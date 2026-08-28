@@ -152,6 +152,12 @@ def _undetailed(entity: Entity) -> Entity:
     return entity.model_copy(update={"detail": None})
 
 
+ANSWERED_BY_OPTION = (
+    "The player chose the option above and the rules have applied it. Develop what it caused; "
+    "do not settle it again."
+)
+
+
 def render_director(
     scene: SceneSnapshot,
     describe: EntityRenderer,
@@ -161,7 +167,15 @@ def render_director(
     resumed: str = "",
 ) -> str:
     # The Director writes no prose, so the canon side leaks nothing by reaching it.
-    decided = (("THE PLAYER'S DECISION, ALREADY RESOLVED", resumed),) if resumed else ()
+    # A chosen option is already applied: shown as its own words, a weak model settles it twice.
+    ending = (
+        (
+            ("THE PLAYER'S DECISION, ALREADY RESOLVED", resumed),
+            ("PLAYER ACTION", ANSWERED_BY_OPTION),
+        )
+        if resumed
+        else (("PLAYER ACTION", prompt),)
+    )
     return _sections(
         (
             *_scene_sections(scene, describe, scenario),
@@ -171,8 +185,7 @@ def render_director(
             ),
             ("ACTIVE THREADS", _threads(scene.threads)),
             ("NOTES FROM THE RULES", "\n".join(f"- {note}" for note in scene.notes) or "- (none)"),
-            *decided,
-            ("PLAYER ACTION", prompt),
+            *ending,
         )
     )
 

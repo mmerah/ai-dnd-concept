@@ -4,8 +4,7 @@
 - [] L2: Few shot learning examples in instructions? Engines ship with them (5 scenarios of low-high complexity presenting how the SRD work) plus core as well (entities/threads/… manipulation). Only worth writing once L1 says which calls the model actually gets wrong.
 - [] L3: What refactor to make fate condensed and cairn barebones as easy as possible to implement. plus: look and replace hard-coded manually built list that are maintenance nightmares.
 - [] L4: Best explanation of loner I found: https://keeper.farirpgs.com/resources/zotiquest-games/loner/introduction/ and of 24xx: https://keeper.farirpgs.com/resources/jason-tocci/24xx/ -> Use to make sure both engines are fully compliant (drastic changes might be needed!). Only thing obviously is our AI-as-GM approach. Read both before adding a third engine, so a drastic change hits the base shape once.
-- [] L5: add fate-condensed system. docs/FATE-CONDENSED.md points at the SRD; build the pack from the official archive.
-- [] L6: add cairn barebones edition. docs/CAIRN-BAREBONES.md points at the SRD; build the pack from the official pages.
+- [] L5/L6: Cairn scrapped 2026-08-28 (branch cairn-shelved), Fate dropped; Breathless is Phase 4 in PLAN.md.
 - [] L7: Sounds/Voices. app/media.py is the template.
 - [] L8: `TURN__RECENT_EXCHANGES` caps what an agent remembers, so a long game forgets its start. A per-location summary, written when the player leaves it, would carry the places already played without carrying every turn. Maybe could be part of the docs/MEMORY-SYSTEM.md? Each entity (npc, location) carries a memory (list[str]) which are created when the player change location (for the npc/location it just left), created by a summarizer agent. Builtin mode is clear on how to do that, but for codemode we need some brainstorm
 - [] L9: RAG? Scenario ingestion. .pdf -> source.md in scenario/<id>/ folder, then RAG on it? Is the drowned-road scenario extending based on source.md? Leaning skip: the source cap already swallows a 76-page adventure whole, and there is no embedding provider in the stack.
@@ -18,12 +17,14 @@
 - [] I4: lots of testing to identify gaps of MVP0
 - [] I5: a new agent, state keeper, that adds/removes traits/tags, reveals, cleans up after the director. Observed with builtin-harness and cheap models: sometimes trait modifications are forgotten, sometimes a reveal is not done when it should have been done, ... Limited set of tools but could improve builtin-harness mode performance
 - [] I6: Rewrite: Skills, instructions, prompts. Easier english (ASD STE100). And content should be verified, not confusing, easy to understand. Particularly for instructions(prompts) since they describe how to actually play to the director (or whole session for codemode). Skills also need to be clearer, tell of everything, maybe indicate where (web link) to find SRD to reconciliate when needed? (but then harness need to authorize web fetch tool in some form, depend on the harness)
+- [] I7: Demo path. One command and one GIF of a full Loner turn in builtin mode. The popular repos win on install friction and demos, not on play quality. This is the only thing they have that we do not.
+- [] I8: Fold in competitor features. See `docs/COMPETITOR-RESEARCH.md`. First two: a re-read-before-you-state rule in the playing skill, and a session recap on resume (first step of L8).
 
 ## Working order
 
 - Phase 1: L3
 - Phase 2: L4
-- Phase 3: L6, L5
+- Phase 3: L5/L6
 - Phase 4: L7
 - Phase 5: L1
 - Phase 6: I4

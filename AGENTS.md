@@ -39,6 +39,7 @@ Tests are deterministic and run offline.
 
 - The model returns typed, validated proposals. Resolver code applies them deterministically to the turn draft, records facts, and owns all state changes, rolls, and ledger updates.
 - Each engine owns all of its mechanics. It defines the overlay schema for authored content, treats incompatible state as invalid, and seeds everything needed by entities created during play.
+- The Director's tool surface is the bar a weak model must clear. An engine ships one Director tool per SRD procedure, never more than 24XX's eight: the engine rolls everything the procedure needs and hands back one result. Core owns the world tools every Director sees; a core tool only one engine's rule reads is added by that engine, so an unused tool never crowds the model's choice.
 - Route all player-facing prose through the narrator. Its input type contains revealed canon exclusively, leaving hidden information with no path into the prompt.
 - Build the app once from one composition root, where dependencies are assembled. Pass collaborators and paths explicitly below it and keep state in owned objects.
 - Represent save compatibility with its recorded origin and strict validation. Treat stale saves as invalid; the save format has no version field or conversion path.

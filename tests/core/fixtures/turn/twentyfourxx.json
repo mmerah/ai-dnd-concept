@@ -30,7 +30,7 @@
     },
     {
       "kind": "attempt_resolved",
-      "trace": "Listen at the vault door without being heard -> success",
+      "trace": "Listen at the vault door without being heard (risk: whatever is behind the door hears him first) -> success",
       "told": true,
       "entity_id": "player",
       "event": {
@@ -110,7 +110,8 @@
   "steps": [
     {
       "name": "director",
-      "output": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
+      "output": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
+      "refusals": []
     },
     {
       "name": "narrator",
@@ -121,7 +122,8 @@
             "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
           }
         ]
-      }
+      },
+      "refusals": []
     }
   ]
 }

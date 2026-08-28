@@ -1,16 +1,18 @@
 import logging
 from asyncio import Task, create_task
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
+
+from pydantic import JsonValue
 
 from aidm.authoring.draft import ExtensionPatch, apply_patch, engine_packs
 from aidm.authoring.run import growth_run
 from aidm.config import Settings, load_settings
 from aidm.content.io import FileStore, load_character, load_scenario
 from aidm.content.model import Character, Scenario
-from aidm.engines.core import Engine, transact
+from aidm.engines.core import Engine, Offer, PlayerAction, offered, play_action, transact
 from aidm.engines.registry import begin_game, build_engine
 from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Frozen, Slug
 from aidm.state.facts import Fact
@@ -162,6 +164,14 @@ class GameSession:
                 on_step("scenario_creator")
             await self._extend()
         return result.turn
+
+    def offers(self) -> tuple[tuple[PlayerAction, Offer], ...]:
+        return offered(self.engine, self.state)
+
+    def act(self, name: Slug, raw: Mapping[str, JsonValue]) -> tuple[Fact, ...]:
+        state, facts = play_action(self.engine, self.state, name, raw, self.rng)
+        self.commit(state)
+        return facts
 
     def scene_art(self) -> Path | None:
         return None if self.media is None else self.media.scene_art(self.state)

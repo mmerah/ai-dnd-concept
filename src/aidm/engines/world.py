@@ -26,8 +26,9 @@ class Move(Frozen):
     )
     to_id: CheckedEntityId = Field(
         description=(
-            "Exact destination id. Use a location for an actor; for an item, use `player`,\n"
-            "an actor here, or the player's location."
+            "Exact destination id. An actor moves to a location id. An item is taken by moving "
+            "it to `player`, handed over by moving it to an actor here, and dropped by moving it "
+            "to the id of the player's current location."
         )
     )
 
@@ -40,8 +41,9 @@ class AddTrait(Frozen):
     entity_id: CheckedEntityId = Field(
         description="Exact entity id. An actor must be here with the player."
     )
-    trait_id: Slug = Field(
-        description="Stable slug, such as `poisoned`. `battle-worn` displays as Battle Worn."
+    name: str = Field(
+        min_length=1,
+        description="The trait's display name, such as `Battle Worn`; its id is derived.",
     )
     text: str = Field(description="The trait's effect in plain language.")
 
@@ -94,7 +96,7 @@ CORE_COMMANDS: tuple[Command, ...] = (
         "add_trait",
         "Add a lasting condition or quality to an entity.",
         AddTrait,
-        lambda draft, one: actions.add_trait(draft, one.entity_id, one.trait_id, one.text),
+        lambda draft, one: actions.add_trait(draft, one.entity_id, one.name, one.text),
     ),
     _world_command(
         "remove_trait",

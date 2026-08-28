@@ -17,7 +17,13 @@ GOAL = "Kael scales the crumbling wall"
 
 
 def _climb(**args: object) -> Attempt:
-    base = {"actor_id": PLAYER_ID, "goal": GOAL, "skill": "Climbing", "hit": True}
+    base = {
+        "actor_id": PLAYER_ID,
+        "goal": GOAL,
+        "risk": "a fall onto the rubble below",
+        "skill": "Climbing",
+        "hit": True,
+    }
     return Attempt.model_validate(base | args)
 
 

@@ -12,12 +12,16 @@ from aidm.app.launch import engine_ids
 from aidm.config import Settings, load_settings
 from aidm.content.io import load_character, load_scenario
 from aidm.engines.core import Engine
+from aidm.engines.loner3e.rules import RULES as LonerRules
 from aidm.engines.loner3e.rules import Mechanics as LonerMechanics
 from aidm.engines.registry import begin_game, build_engine
+from aidm.engines.sheets import SheetMechanics
+from aidm.engines.twentyfourxx.rules import ItemSheet
 from aidm.engines.twentyfourxx.rules import Mechanics as TwentyfourxxMechanics
 from aidm.state.entities import (
     DEAD,
     PLAYER_ID,
+    Counter,
     EngineId,
     Entity,
     EntityId,
@@ -67,6 +71,7 @@ class Run(Frozen):
     # Full stage prompts and outputs, kept only for a run that failed: the debugging record.
     steps: list[StepTrace] = []
     director_calls: int = 0
+    refusals: list[str] = []
     total_steps: int = 0
     seconds: float = 0.0
     narration_chars: int = 0
@@ -106,10 +111,9 @@ class Canon:
     won: tuple[str, ...]
     # Only a stage the scenario's own `when_reached` names can be scored; "" leaves it unscored.
     hidden_stage: str = ""
-    companion_stage: str = ""
-    # A locked way the scenario guards; "" skips the locked-way case for that engine.
-    locked_from: str = ""
-    locked_to: str = ""
+    # The thread's last authored stage and the note that says the prize is taken: an adventure over.
+    done_stage: str = ""
+    done_note: str = ""
 
 
 CANON: dict[EngineId, Canon] = {
@@ -123,9 +127,9 @@ CANON: dict[EngineId, Canon] = {
         thread="vault-seal",
         won=("yes-and", "yes", "yes-but"),
         hidden_stage="stair-charted",
-        companion_stage="archivist-found",
-        locked_from="cloister",
-        locked_to="vault",
+        done_stage="door-found",
+        done_note="Kael broke the seal, took what he came for, and there is nothing left to do "
+        "for this thread.",
     ),
     EngineId("twentyfourxx"): Canon(
         scenario_id="drowned-road",
@@ -137,9 +141,9 @@ CANON: dict[EngineId, Canon] = {
         thread="vault-survey",
         won=("success",),
         hidden_stage="spike-found",
-        companion_stage="relay-reached",
-        locked_from="relay-nine",
-        locked_to="vault-deck",
+        done_stage="hatch-found",
+        done_note="Kael opened the hatch, took the founding survey, and there is nothing left "
+        "to do for this thread.",
     ),
 }
 
@@ -280,9 +284,10 @@ def has_trait(result: TurnResult, entity_id: str, trait_id: str) -> bool:
     return entity is not None and entity.trait(trait_id) is not None
 
 
-def way_locked(result: TurnResult, source: str, target: str) -> bool:
-    way = result.state.world.require_kind(EntityId(source), "location").exit_to(EntityId(target))
-    return way is not None and way.locked
+def breaks_left(result: TurnResult, entity_id: str) -> int:
+    """Sturdy gear counts its breaks on the item sheet; gear with no sheet still breaks once."""
+    sheet = TwentyfourxxMechanics.of_game(result.state).items.get(EntityId(entity_id))
+    return 1 if sheet is None else sheet.breaks.current
 
 
 def card_badge(result: TurnResult, label: str, value: str | None = None) -> bool:
@@ -303,10 +308,34 @@ def bad_luck_rolled(result: TurnResult) -> bool:
     )
 
 
-def luck_restored(result: TurnResult) -> bool:
+def counter_rose(result: TurnResult, marker: str) -> bool:
     return any(
-        fact.kind == "counter_changed" and " luck +" in fact.trace for fact in result.turn.facts
+        fact.kind == "counter_changed" and marker in fact.trace for fact in result.turn.facts
     )
+
+
+def luck_restored(result: TurnResult) -> bool:
+    return counter_rose(result, " luck +")
+
+
+def tied_a_roll(result: TurnResult) -> bool:
+    """A Loner tie: Chance equal to Risk, the one result that moves the Twist Counter."""
+    return any(
+        fact.kind == "question_answered"
+        and fact.event is not None
+        and len(fact.event.dice) == 2
+        and fact.event.dice[0].kept == fact.event.dice[1].kept
+        for fact in result.turn.facts
+    )
+
+
+def loner_luck(result: TurnResult, entity_id: str) -> int:
+    return LonerMechanics.of_game(result.state).sheets[EntityId(entity_id)].luck.current
+
+
+def skill_face(result: TurnResult, skill: str) -> int:
+    sheet = TwentyfourxxMechanics.of_game(result.state).sheets[result.state.player_id]
+    return sheet.face(skill)
 
 
 def _rat_met(state: Game) -> Game:
@@ -353,33 +382,76 @@ def _winded(state: Game) -> Game:
     return draft.committed()
 
 
-def _bulky_gear(item_id: str, name: str, breaks: int = 1) -> Entity:
-    traits = [Trait(id="bulky", name="Bulky")]
-    if breaks > 1:
-        traits.append(Trait(id=f"breaks-{breaks}", name=f"Breaks {breaks}x"))
-    return Entity(
-        id=EntityId(item_id),
-        kind="item",
-        name=name,
-        brief=name,
-        known=True,
-        parent_id=PLAYER_ID,
-        traits=traits,
+def _rat_on_its_last_luck(state: Game) -> Game:
+    """Any yes ends the conflict: the rat's one luck cannot survive an exchange it loses."""
+    draft = _mid_conflict(state).draft()
+    LonerMechanics.of_game(draft).sheets[EntityId("cloister-rat")].luck.current = 1
+    return draft.committed()
+
+
+def _two_ties_in(state: Game) -> Game:
+    draft = staged(state, "cloister", []).draft()
+    LonerMechanics.of_game(draft).twist.current = LonerRules.ties_per_twist - 1
+    return draft.committed()
+
+
+def _adventure_done(state: Game, canon: Canon) -> Game:
+    """The main thread is spent: the world agrees with a player who says the adventure is over."""
+    draft = staged(state, canon.walk_to, []).draft()
+    thread = draft.world.thread(canon.thread)
+    if thread is None:
+        raise ValueError(f"no thread {canon.thread!r}")
+    thread.stage = canon.done_stage
+    thread.note = canon.done_note
+    return draft.committed()
+
+
+def _adventure_closed(state: Game, canon: Canon) -> Game:
+    """One chapter closed and no advance taken yet: the Director owes the player one."""
+    draft = _adventure_done(state, canon).draft()
+    thread = draft.world.thread(canon.thread)
+    if thread is None:
+        raise ValueError(f"no thread {canon.thread!r}")
+    thread.status = "resolved"
+    SheetMechanics.of_game(draft).completed.current = 1
+    return draft.committed()
+
+
+def _broken_arm(state: Game) -> Game:
+    draft = staged(state, "siren-mast", [("siren-mast", "relay-nine")]).draft()
+    draft.player.traits.append(
+        Trait(id="broken-arm", name="Broken Arm", text="(injury) Splinted; it bears no weight.")
     )
+    return draft.committed()
+
+
+def _bulky_gear(draft: Game, item_id: str, name: str, breaks: int = 1) -> None:
+    """Written straight into the world, so its item sheet is seeded here as `Engine.seed` would."""
+    marks = ItemSheet(bulky=True, breaks=Counter(current=breaks, maximum=breaks))
+    draft.world.entities.append(
+        Entity(
+            id=EntityId(item_id),
+            kind="item",
+            name=name,
+            brief=name,
+            known=True,
+            parent_id=PLAYER_ID,
+            rules=marks.model_dump(mode="json"),
+        )
+    )
+    TwentyfourxxMechanics.of_game(draft).items[EntityId(item_id)] = marks
 
 
 def _armored(state: Game) -> Game:
     draft = staged(state, "holdfast", []).draft()
-    draft.world.entities.append(
-        _bulky_gear("battle-armor", "battle armor off Verrin's rack", breaks=3)
-    )
+    _bulky_gear(draft, "battle-armor", "battle armor off Verrin's rack", breaks=3)
     return draft.committed()
 
 
 def _burdened(state: Game) -> Game:
     draft = staged(state, "siren-mast", [("siren-mast", "relay-nine")]).draft()
-    draft.world.entities.append(_bulky_gear("battle-armor", "battle armor", breaks=3))
-    draft.world.entities.append(_bulky_gear("survey-pack", "a full survey pack"))
+    _bulky_gear(draft, "battle-armor", "battle armor", breaks=3)
+    _bulky_gear(draft, "survey-pack", "a full survey pack")
     return draft.committed()
 
 
@@ -439,16 +511,6 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
         if canon.hidden_stage
         else ()
     )
-    met_stage = (
-        (
-            Expectation(
-                "thread-staged",
-                unless_lost(lambda r: staged_at(r, canon.thread, canon.companion_stage), won),
-            ),
-        )
-        if canon.companion_stage
-        else ()
-    )
     cases = (
         Case(
             id=f"{engine_id}/find-and-take",
@@ -474,25 +536,6 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 Expectation("player-moved", lambda r: inside(r, "player", canon.walk_to)),
                 Expectation("nothing-invented", lambda r: not has_fact(r, "entity_created")),
             ),
-        ),
-        Case(
-            id=f"{engine_id}/open-the-way-and-climb",
-            engine_id=engine_id,
-            # Exclude searches because a valid failed search leaves the one who keeps it hidden.
-            prompt=(
-                f"I make my way from {named(start, here)} into {named(start, there)}, and the "
-                f"moment I am through I see {named(start, companion)}, who keeps the place, "
-                "standing there in plain sight."
-            ),
-            expectations=(
-                Expectation(
-                    "player-arrived",
-                    unless_lost(lambda r: inside(r, "player", there), won),
-                ),
-                Expectation("companion-known", unless_lost(lambda r: known(r, companion), won)),
-                *met_stage,
-            ),
-            setup=below,
         ),
         Case(
             id=f"{engine_id}/three-things",
@@ -533,33 +576,6 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
             setup=below,
         ),
     )
-    if canon.locked_from:
-        source, target = canon.locked_from, canon.locked_to
-        cases += (
-            Case(
-                id=f"{engine_id}/locked-way",
-                engine_id=engine_id,
-                # Pure presumption, no attempt on the seal: the one correct ruling is a refusal.
-                prompt=(
-                    f"I walk straight from {named(start, source)} into {named(start, target)} as "
-                    "if the way stood open — I do not stop to deal with whatever seals it, I "
-                    "simply walk in."
-                ),
-                # A roll the player won may fairly open the way; an unearned walk-through fails.
-                expectations=(
-                    Expectation(
-                        "held-out",
-                        lambda r: won_a_roll(r, won) or not inside(r, "player", target),
-                    ),
-                    Expectation(
-                        "still-locked",
-                        lambda r: won_a_roll(r, won) or way_locked(r, source, target),
-                    ),
-                    Expectation("nothing-invented", lambda r: not has_fact(r, "entity_created")),
-                ),
-                setup=lambda state: staged(state, source, []),
-            ),
-        )
     if engine_id == "loner3e":
         cases += (
             Case(
@@ -588,21 +604,6 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 setup=_rat_met,
             ),
             Case(
-                id=f"{engine_id}/press-the-conflict",
-                engine_id=engine_id,
-                # Both pools sit at 6 and one exchange moves at most 3, so the hand-back is sure.
-                prompt=(
-                    "I stay on the rat and press the attack, striking again before it can slip "
-                    "back into the walls."
-                ),
-                expectations=(
-                    Expectation("luck-moved", luck_moved),
-                    Expectation("hands-back", conflict_handed_back),
-                ),
-                setup=_mid_conflict,
-                answers_decision=True,
-            ),
-            Case(
                 id=f"{engine_id}/oppose-the-seal",
                 engine_id=engine_id,
                 # SRD "Everything is a Character": the resisting thing takes `opponent_id`.
@@ -625,10 +626,11 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 id=f"{engine_id}/sneak-past-tomas",
                 engine_id=engine_id,
                 # Quiet Hands plus a deaf porter: the one correct position call is advantage.
+                # The lantern is hooded so its light cannot be read as the deciding tag instead.
                 prompt=(
-                    "Brother Tomas is sweeping with his back to me, deaf to the world. On quiet "
-                    "hands I slip through the colonnade shadows past him toward the bell-tower "
-                    "arch — he must not mark me."
+                    "Brother Tomas is sweeping the colonnade and lifts his head at every scrape "
+                    "of grit. I hood my lantern and try to slip through the shadows past him to "
+                    "the bell-tower arch — if he marks me, the whole abbey hears of it."
                 ),
                 expectations=(
                     Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
@@ -658,6 +660,113 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                     ),
                 ),
                 setup=_winded,
+            ),
+            Case(
+                id=f"{engine_id}/back-away-at-disadvantage",
+                engine_id=engine_id,
+                # Never Walks Away is the frailty in play: the one correct position is disadvantage.
+                prompt=(
+                    "The rat squares up in the colonnade and I try to do the one thing I am "
+                    "worst at: turn my back on a fight, walk away from it, and get out of the "
+                    "cloister before it comes at me. I have never walked away from anything."
+                ),
+                expectations=(
+                    Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
+                    Expectation(
+                        "disadvantage-called",
+                        lambda r: card_badge(r, "Position", "Disadvantage"),
+                    ),
+                ),
+                setup=_rat_met,
+            ),
+            Case(
+                id=f"{engine_id}/twist-on-the-brink",
+                engine_id=engine_id,
+                # The counter sits at two: the third tie fires a twist in this very question.
+                prompt=(
+                    "Brother Tomas is sweeping the colonnade and lifts his head at every scrape "
+                    "of grit. I try to slip through the shadows past him to the bell-tower arch "
+                    "— if he marks me, the whole abbey hears of it."
+                ),
+                expectations=(
+                    Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
+                    Expectation(
+                        "twist-if-tied",
+                        lambda r: not tied_a_roll(r) or has_fact(r, "twist_due"),
+                    ),
+                    Expectation(
+                        "counter-reset-if-tied",
+                        lambda r: (
+                            not tied_a_roll(r) or LonerMechanics.of_game(r.state).twist.current == 0
+                        ),
+                    ),
+                ),
+                setup=_two_ties_in,
+            ),
+            Case(
+                id=f"{engine_id}/rat-out-of-luck",
+                engine_id=engine_id,
+                prompt=(
+                    "I stay on the rat and press the attack, striking again before it can slip "
+                    "back into the walls."
+                ),
+                expectations=(
+                    Expectation("luck-moved", luck_moved),
+                    # A won exchange drops the rat to 0: the conflict ends and both pools refill.
+                    Expectation(
+                        "ended-if-won",
+                        lambda r: not won_a_roll(r, won) or has_fact(r, "conflict_lost"),
+                    ),
+                    Expectation(
+                        "refilled-if-won",
+                        lambda r: (
+                            not won_a_roll(r, won)
+                            or (loner_luck(r, "cloister-rat") == 6 and loner_luck(r, "player") == 6)
+                        ),
+                    ),
+                    Expectation(
+                        "no-hand-back-if-won",
+                        lambda r: not won_a_roll(r, won) or not conflict_handed_back(r),
+                    ),
+                ),
+                setup=_rat_on_its_last_luck,
+                answers_decision=True,
+            ),
+            Case(
+                id=f"{engine_id}/grow-after-the-adventure",
+                engine_id=engine_id,
+                # The advance is owed and the player asks for it by name: one skill gained.
+                prompt=(
+                    "The adventure is over and I have earned my growth. I take what the vault "
+                    "taught me as a new skill: Reads Old Rites. Put it on my sheet now."
+                ),
+                expectations=(
+                    Expectation("skill-gained", lambda r: has_fact(r, "skill_gained")),
+                    Expectation(
+                        "on-the-sheet",
+                        lambda r: any(
+                            "rites" in skill.lower()
+                            for skill in LonerMechanics.of_game(r.state)
+                            .sheets[r.state.player_id]
+                            .skills
+                        ),
+                    ),
+                ),
+                setup=lambda state: _adventure_closed(state, canon),
+            ),
+            Case(
+                id=f"{engine_id}/close-the-adventure",
+                engine_id=engine_id,
+                # The whole adventure closes by the player's own account: one chapter recorded.
+                prompt=(
+                    "It is done. The vault stands open, I have what I came to the abbey for, and "
+                    "I walk out through the cloister gate with it under my arm. This adventure "
+                    "is over; the next one starts somewhere else."
+                ),
+                expectations=(
+                    Expectation("chapter-completed", lambda r: has_fact(r, "chapter_completed")),
+                ),
+                setup=lambda state: _adventure_done(state, canon),
             ),
         )
     if engine_id == "twentyfourxx":
@@ -704,12 +813,11 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 expectations=(
                     Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
                     Expectation("defence-settled", defence_settled),
-                    # A hit the armor turned must spend a break: the fresh 3x mark cannot survive.
+                    # A hit the armor turned must spend a break: its fresh 3 cannot survive.
                     Expectation(
                         "armor-spent-if-turned",
                         lambda r: (
-                            not has_fact(r, "defence_turned")
-                            or not has_trait(r, "battle-armor", "breaks-3")
+                            not has_fact(r, "defence_turned") or breaks_left(r, "battle-armor") < 3
                         ),
                     ),
                 ),
@@ -732,20 +840,6 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 expectations=(
                     Expectation("bad-luck-rolled", bad_luck_rolled),
                     Expectation("stayed-put", lambda r: inside(r, "player", "siren-mast")),
-                ),
-            ),
-            Case(
-                id=f"{engine_id}/haul-with-ovid",
-                engine_id=engine_id,
-                # An ally's die or a helpful circumstance both land the Help badge on the card.
-                prompt=(
-                    "The klaxon cable has come off its drum and the tide is rising toward the "
-                    "contacts. Ovid takes the cable's weight with me and together we haul it "
-                    "back up the mast — I know that drum can take my fingers and I risk it."
-                ),
-                expectations=(
-                    Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
-                    Expectation("help-counted", lambda r: card_badge(r, "Help")),
                 ),
             ),
             Case(
@@ -808,6 +902,80 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 ),
                 setup=_mara_at_hand,
             ),
+            Case(
+                id=f"{engine_id}/ovid-lends-his-die",
+                engine_id=engine_id,
+                # An ally who helps rolls their own skill die: Ovid's Labor d10, not a d6.
+                prompt=(
+                    "The klaxon cable has come off its drum and the tide is rising toward the "
+                    "contacts. I ask Ovid to take the drum with his labourer's back while I "
+                    "guide the cable — he is the one hauling, I am steering it. I know that "
+                    "drum can take my fingers and I risk it."
+                ),
+                expectations=(
+                    Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
+                    Expectation("helper-die", lambda r: card_badge(r, "Help", "d10")),
+                ),
+            ),
+            Case(
+                id=f"{engine_id}/luck-rides-the-attempt",
+                engine_id=engine_id,
+                # A risked crossing with a named, separate threat: a luck test rides the attempt.
+                prompt=(
+                    "I start across the drowned road toward Relay Nine between soundings, "
+                    "wading the causeway with the water at my thighs — the tide could take me "
+                    "and I accept that. And the wrecker who marks travellers is somewhere "
+                    "behind me on this shore; whether he has seen me go is out of my hands."
+                ),
+                expectations=(
+                    Expectation("attempt-resolved", lambda r: has_fact(r, "attempt_resolved")),
+                    Expectation("bad-luck-rolled", bad_luck_rolled),
+                ),
+                setup=below,
+            ),
+            Case(
+                id=f"{engine_id}/climb-with-a-broken-arm",
+                engine_id=engine_id,
+                # An injury that hinders drops the die to d4: the SRD's own example.
+                prompt=(
+                    f"I go up {named(start, there)}'s corroded gantry ladder one-handed, my "
+                    "splinted arm strapped to my chest and useless. I know one slip puts me in "
+                    "the water and I climb anyway."
+                ),
+                expectations=(
+                    Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
+                    Expectation("hindered-called", lambda r: card_badge(r, "Hindered")),
+                ),
+                setup=_broken_arm,
+            ),
+            Case(
+                id=f"{engine_id}/advance-after-the-job",
+                engine_id=engine_id,
+                # The advance is owed: one skill up a step and d6 credits, as the SRD prints it.
+                prompt=(
+                    "The job is done and I have my advance coming. I put what the road taught "
+                    "me into my Climbing — take it up a step now."
+                ),
+                expectations=(
+                    Expectation("skill-raised", lambda r: has_fact(r, "skill_increased")),
+                    Expectation("climbing-d12", lambda r: skill_face(r, "Climbing") == 12),
+                    Expectation("credits-earned", lambda r: counter_rose(r, " credits +")),
+                ),
+                setup=lambda state: _adventure_closed(state, canon),
+            ),
+            Case(
+                id=f"{engine_id}/close-the-job",
+                engine_id=engine_id,
+                prompt=(
+                    "That is the job: the founding survey is in my pack, the vault deck is "
+                    "behind me, and I am back on the Holdfast shore with it. It is done and "
+                    "paid; the next job starts somewhere else."
+                ),
+                expectations=(
+                    Expectation("chapter-completed", lambda r: has_fact(r, "chapter_completed")),
+                ),
+                setup=lambda state: _adventure_done(state, canon),
+            ),
         )
     return cases
 
@@ -823,6 +991,7 @@ async def play(case: Case, settings: Settings, seed: int) -> Run:
         player_input: str | Answer = (
             Answer(text=case.prompt) if case.answers_decision else case.prompt
         )
+        answered: set[Slug] = set()
         for _ in range(SEGMENT_CAP):
             result = await run_segment(
                 played,
@@ -836,9 +1005,11 @@ async def play(case: Case, settings: Settings, seed: int) -> Run:
             played = result.state
             if played.pending is None:
                 break
-            if not played.pending.options:
-                # An unscripted hand-back ends the interaction; the expectations judge it.
+            # A case scripts one answer per decision kind: an unscripted hand-back, or a kind
+            # already answered (a fight's next exchange), is a choice no case scripts.
+            if not played.pending.options or played.pending.kind in answered:
                 break
+            answered.add(played.pending.kind)
             player_input = Answer(option_id=case.choose(played.pending))
         else:
             raise ValueError(f"the interaction was still going after {SEGMENT_CAP} segments")
@@ -850,6 +1021,7 @@ async def play(case: Case, settings: Settings, seed: int) -> Run:
             facts=[f"{fact.kind}: {fact.trace}" for fact in merged.turn.facts],
             steps=[] if all(passed.values()) else list(steps),
             director_calls=sum(1 for step in steps if step.name == "director"),
+            refusals=[refusal for step in steps for refusal in step.refusals],
             total_steps=len(steps),
             seconds=perf_counter() - started,
             narration_chars=len(merged.turn.narration),
@@ -913,8 +1085,11 @@ def print_report(report: Report) -> None:
             f"{case.id:<40} score {scored}/{total} ({scored / total:.0%})"
             f"  errors {errors}/{total}"
             f"  director_calls {mean([run.director_calls for run in runs]):.1f}"
+            f"  refusals {sum(len(run.refusals) for run in runs)}"
             f"  {mean([run.seconds for run in runs]):.1f}s"
         )
+        for refusal in sorted({one for run in runs for one in run.refusals}):
+            print(f"    ! refused: {refusal.splitlines()[0][:110]}")
         for name in case.expectations:
             print(f"    {name:<36} {case.rate(name):.0%}")
         for run in runs:

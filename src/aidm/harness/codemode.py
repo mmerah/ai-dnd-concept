@@ -1,9 +1,10 @@
 import asyncio
+import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from pydantic import ConfigDict, JsonValue
+from pydantic import ConfigDict, Field, JsonValue
 from pydantic_ai import ModelRetry
 
 from aidm.app.launch import (
@@ -94,6 +95,11 @@ class BeginScenario(ToolArgs):
     """Path to a .md, .txt or .pdf adventure to author from. Empty to author from the premise."""
 
 
+class PlayerActionCall(Frozen):
+    name: Slug = Field(description="Exact name from YOU CAN.")
+    args: dict[str, JsonValue] = Field(default_factory=dict, description="Exact args from YOU CAN.")
+
+
 @dataclass
 class Harness:
     """One game, one lock, one turn in flight."""
@@ -152,10 +158,7 @@ class Harness:
             turn.picture()
             if turn is not None
             else render_director(
-                SceneSnapshot.from_game(
-                    state,
-                    (*state.world.pending_notes, *session.engine.advancement.notes(state)),
-                ),
+                SceneSnapshot.from_game(state, session.engine.notes(state)),
                 session.engine.renderer(state),
                 state.scenario,
                 NO_TURN_OPEN,
@@ -166,6 +169,8 @@ class Harness:
             rendered,
             f"WAITING ON THE PLAYER:\n{_waiting(state.pending)}",
         ]
+        if listing := _offers_listing(session):
+            sections.append(f"YOU CAN:\n{listing}")
         # A compacted session that missed the `end_turn` note still reads it here.
         if session.growth_due():
             sections.append(GROWTH_DUE)
@@ -201,6 +206,16 @@ class Harness:
 
     def call_director_tool(self, name: str, raw: dict[str, JsonValue]) -> str:
         return self.started().call(name, raw)
+
+    def player_action(self, call: PlayerActionCall) -> str:
+        session = self.opened()
+        if self.turn is not None:
+            raise ModelRetry("a turn is open; the player acts for themself only between turns.")
+        try:
+            facts = session.act(call.name, call.args)
+        except ValueError as refused:
+            raise ModelRetry(f"{refused}\n{_offers_listing(session)}") from refused
+        return traced(facts)
 
     def begin_growth(self) -> str:
         session = self.opened()
@@ -316,4 +331,11 @@ def _waiting(pending: PendingDecision | None) -> str:
     return (
         f"{pending.kind}: {pending.prompt}\n"
         f"{options or '- (the player answers in their own words)'}"
+    )
+
+
+def _offers_listing(session: GameSession) -> str:
+    return "\n".join(
+        f"- {offer.label}: player_action(name={action.name}, args={json.dumps(offer.args)})"
+        for action, offer in session.offers()
     )

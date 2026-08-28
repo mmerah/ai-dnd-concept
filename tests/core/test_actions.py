@@ -132,7 +132,7 @@ def test_inventory_actions_gate_on_position_and_carrying() -> None:
 def test_trait_changes_round_trip_and_refuse_what_the_entity_does_not_carry() -> None:
     draft = _draft()
 
-    (added,) = actions.add_trait(draft, PLAYER_ID, "hunted", "watched")
+    (added,) = actions.add_trait(draft, PLAYER_ID, "Hunted", "watched")
     assert "[hunted]" in added.trace
     assert draft.player.trait("hunted") is not None
 
@@ -142,14 +142,14 @@ def test_trait_changes_round_trip_and_refuse_what_the_entity_does_not_carry() ->
         _ = actions.remove_trait(draft, PLAYER_ID, "hunted")
     # Kael's character sheet already carries `relic-hunter` as an authored skill.
     with pytest.raises(ValueError, match="already carries the trait"):
-        _ = actions.add_trait(draft, PLAYER_ID, "relic-hunter")
+        _ = actions.add_trait(draft, PLAYER_ID, "Relic Hunter")
 
 
 def test_acting_on_an_unrevealed_actor_reveals_it_before_its_traits_change() -> None:
     draft = _draft()
     _ = actions.move(draft, PLAYER_ID, CLOISTER)
 
-    assert _kinds(actions.add_trait(draft, RAT, "hurt")) == ["entity_discovered", "trait_added"]
+    assert _kinds(actions.add_trait(draft, RAT, "Hurt")) == ["entity_discovered", "trait_added"]
 
 
 def test_a_tick_fills_the_threads_clock_and_stops_at_its_maximum() -> None:
@@ -193,12 +193,12 @@ def test_a_kill_drops_items_and_party_and_then_refuses_the_dead_actor() -> None:
     assert TOMAS not in draft.world.party
 
     with pytest.raises(ValueError, match="dead"):
-        _ = actions.add_trait(draft, TOMAS, "hurt")
+        _ = actions.add_trait(draft, TOMAS, "Hurt")
     _ = draft.committed()
 
     _ = actions.kill(draft, PLAYER_ID)
     with pytest.raises(ValueError, match="dead"):
-        _ = actions.add_trait(draft, PLAYER_ID, "hurt")
+        _ = actions.add_trait(draft, PLAYER_ID, "Hurt")
 
 
 def test_a_tick_on_a_thread_without_a_clock_is_refused() -> None:

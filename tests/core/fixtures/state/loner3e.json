@@ -385,6 +385,7 @@
         }
       }
     },
+    "items": {},
     "completed": {
       "current": 0,
       "maximum": null

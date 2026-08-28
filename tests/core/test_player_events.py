@@ -99,7 +99,7 @@ def test_the_remaining_core_cards_carry_id_free_titles() -> None:
     (left,) = player_events(tuple(actions.leave_party(draft, TOMAS)))
     assert left.title == "Brother Tomas leaves your party"
 
-    added_facts = tuple(actions.add_trait(draft, TOMAS, "wary", "he watches the door"))
+    added_facts = tuple(actions.add_trait(draft, TOMAS, "Wary", "he watches the door"))
     (added,) = player_events(added_facts)
     assert added.title == "Brother Tomas gained Wary"
 
@@ -111,7 +111,7 @@ def test_the_remaining_core_cards_carry_id_free_titles() -> None:
 def test_a_tool_call_on_an_unrevealed_entity_produces_nothing() -> None:
     _, state = initialized()
     draft = state.draft()
-    facts = tuple(actions.add_trait(draft, BELL_TOWER, "haunted", "a cold draft moves through it"))
+    facts = tuple(actions.add_trait(draft, BELL_TOWER, "Haunted", "a cold draft moves through it"))
 
     assert not any(fact.told for fact in facts)
     assert player_events(facts) == ()

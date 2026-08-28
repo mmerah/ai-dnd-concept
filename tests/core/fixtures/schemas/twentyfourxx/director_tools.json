@@ -31,7 +31,7 @@
           "type": "string"
         },
         "to_id": {
-          "description": "Exact destination id. Use a location for an actor; for an item, use `player`,\nan actor here, or the player's location.",
+          "description": "Exact destination id. An actor moves to a location id. An item is taken by moving it to `player`, handed over by moving it to an actor here, and dropped by moving it to the id of the player's current location.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
@@ -73,10 +73,9 @@
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         },
-        "trait_id": {
-          "description": "Stable slug, such as `poisoned`. `battle-worn` displays as Battle Worn.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+        "name": {
+          "description": "The trait's display name, such as `Battle Worn`; its id is derived.",
+          "minLength": 1,
           "type": "string"
         },
         "text": {
@@ -86,7 +85,7 @@
       },
       "required": [
         "entity_id",
-        "trait_id",
+        "name",
         "text"
       ],
       "type": "object"
@@ -263,7 +262,7 @@
   },
   {
     "name": "roll_attempt",
-    "description": "Roll an actor's risky attempt directly. For the player, use `stake_attempt` first unless they already accepted the exact risk.",
+    "description": "Roll an actor's risky attempt directly. For the player, use `stake_attempt` first unless they already accepted the exact `risk`.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -275,6 +274,11 @@
         },
         "goal": {
           "description": "The actor's goal, in one line.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "risk": {
+          "description": "One-line cost of a bad roll. There is no roll without one.",
           "minLength": 1,
           "type": "string"
         },
@@ -313,7 +317,7 @@
         },
         "hindered": {
           "default": "",
-          "description": "Hindering circumstance that lowers the actor's die to d4, or empty.",
+          "description": "Hindering circumstance that lowers the actor's die to d4, such as an injury trait in the way or a heavy load; empty when nothing hinders.",
           "type": "string"
         },
         "luck_test": {
@@ -325,6 +329,7 @@
       "required": [
         "actor_id",
         "goal",
+        "risk",
         "hit"
       ],
       "type": "object"
@@ -332,7 +337,7 @@
   },
   {
     "name": "stake_attempt",
-    "description": "Let the player accept or revise one risky attempt before rolling it.",
+    "description": "Show the player one attempt's `risk` and let them accept or revise it before rolling.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -344,6 +349,11 @@
         },
         "goal": {
           "description": "The actor's goal, in one line.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "risk": {
+          "description": "One-line cost of a bad roll. There is no roll without one.",
           "minLength": 1,
           "type": "string"
         },
@@ -382,32 +392,27 @@
         },
         "hindered": {
           "default": "",
-          "description": "Hindering circumstance that lowers the actor's die to d4, or empty.",
+          "description": "Hindering circumstance that lowers the actor's die to d4, such as an injury trait in the way or a heavy load; empty when nothing hinders.",
           "type": "string"
         },
         "luck_test": {
           "default": "",
           "description": "Separate bad luck that may arrive, or empty for no test.",
           "type": "string"
-        },
-        "risk": {
-          "description": "One-line cost of a bad roll, shown to the player.",
-          "minLength": 1,
-          "type": "string"
         }
       },
       "required": [
         "actor_id",
         "goal",
-        "hit",
-        "risk"
+        "risk",
+        "hit"
       ],
       "type": "object"
     }
   },
   {
     "name": "settle_defence",
-    "description": "Apply the player's choice to break an item or take the full hit.",
+    "description": "Settle a hit the player answered in their own words: break the named item, or null to take it. Never after an answer the picture shows as already resolved.",
     "parameters": {
       "additionalProperties": false,
       "properties": {

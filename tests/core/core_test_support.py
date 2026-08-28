@@ -21,10 +21,11 @@ from aidm.app.launch import engine_ids
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.io import load_character, load_scenario, read_scenarios
 from aidm.content.model import Character, Scenario
-from aidm.engines.core import Engine
+from aidm.engines.core import Advancement, Engine, player_action
 from aidm.engines.registry import begin_game, build_engine
 from aidm.engines.sheets import SheetMechanics
-from aidm.state.entities import EngineId, Entity, Slug
+from aidm.state.entities import EngineId, Entity, Frozen, Slug
+from aidm.state.facts import Fact
 from aidm.state.model import Game
 from aidm.state.play import Answer, MechanicEvent, TurnTrace
 from aidm.turn.run import TurnResult, TurnStep, build_turn_agents, run_segment
@@ -98,6 +99,11 @@ def game(engine_id: EngineId) -> tuple[Engine, Game]:
     return engine, begin_game(engine, scenario_id, selected_scenario, selected_character)
 
 
+def advancement_of(engine: Engine) -> Advancement:
+    assert engine.advancement is not None
+    return engine.advancement
+
+
 def initialized() -> tuple[Engine, Game]:
     return game(LONER3E)
 
@@ -106,8 +112,8 @@ def structured(**output: object) -> ModelResponse:
     return ModelResponse(parts=[TextPart(json.dumps(output))])
 
 
-def tool_call(name: str, **args: object) -> ModelResponse:
-    return ModelResponse(parts=[ToolCallPart(tool_name=name, args=json.dumps(args))])
+def tool_call(tool: str, **args: object) -> ModelResponse:
+    return ModelResponse(parts=[ToolCallPart(tool_name=tool, args=json.dumps(args))])
 
 
 def text(body: str) -> ModelResponse:
@@ -204,3 +210,24 @@ def offline_settings() -> Settings:
         scenarios_dir=SCENARIOS,
         characters_dir=CHARACTERS,
     )
+
+
+class Breath(Frozen):
+    deep: bool
+
+
+def _breathe(draft: Game, args: Breath) -> list[Fact]:
+    del draft
+    return [
+        Fact(kind="breathed", trace="Kael breathes deep", told=args.deep),
+        Fact(kind="breathed", trace="the hidden stair creaks", told=False),
+    ]
+
+
+CATCH_BREATH = player_action(
+    "catch-breath",
+    "A moment to recover.",
+    Breath,
+    _breathe,
+    lambda state: (("Catch your breath", Breath(deep=True)),),
+)

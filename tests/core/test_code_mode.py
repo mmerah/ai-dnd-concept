@@ -7,6 +7,7 @@ from typing import cast
 import pytest
 from claude_agent_sdk import McpSdkServerConfig
 from core_test_support import (
+    CATCH_BREATH,
     CHARACTERS,
     LONER3E,
     SCENARIOS,
@@ -33,6 +34,7 @@ from aidm.state.model import Game
 VAULT = EntityId("vault")
 CLOISTER = EntityId("cloister")
 GROWN = EntityId("sub-crypt")
+
 
 A_QUESTION: dict[str, JsonValue] = {
     "actor_id": PLAYER_ID,
@@ -215,8 +217,7 @@ async def test_an_open_decision_blocks_every_other_tool_until_it_is_answered(
         {"actor_id": PLAYER_ID, "goal": "climb the shaft", "hit": True, "risk": "a long fall"},
     )
     assert _saved(harness).pending is not None
-    with pytest.raises(ValueError, match="waiting on the player"):
-        _ = await call(harness, "reveal", {"entity_id": VAULT})
+    assert "waiting on the player" in await call(harness, "reveal", {"entity_id": VAULT})
     _ = await call(
         harness, "end_turn", {"lines": [{"speaker_id": None, "text": "The shaft yawns."}]}
     )
@@ -471,11 +472,65 @@ async def test_a_resume_that_re_suspended_may_still_develop_what_the_answer_caus
     _ = await call(harness, "start_turn", {"option_id": "proceed"})
 
     _ = await call(
-        harness, "add_trait", {"entity_id": "player", "trait_id": "winded", "text": "Breath short."}
+        harness, "add_trait", {"entity_id": "player", "name": "Winded", "text": "Breath short."}
     )
-    with pytest.raises(ValueError, match="waiting on the player"):
-        _ = await call(
-            harness,
-            "roll_attempt",
-            {"actor_id": PLAYER_ID, "goal": "swing again", "hit": True},
-        )
+    assert "waiting on the player" in await call(
+        harness,
+        "roll_attempt",
+        {"actor_id": PLAYER_ID, "goal": "swing again", "risk": "a longer fall", "hit": True},
+    )
+
+
+async def test_the_picture_shows_you_can_only_when_the_engine_offers_something(
+    tmp_path: Path,
+) -> None:
+    harness = _opened(tmp_path, "loner3e")
+    assert "YOU CAN" not in harness.scene()
+
+    harness.opened().engine.player_actions = (CATCH_BREATH,)
+
+    assert (
+        'YOU CAN:\n- Catch your breath: player_action(name=catch-breath, args={"deep": true})'
+        in harness.scene()
+    )
+
+
+async def test_player_action_applies_the_offer_the_player_asked_for(tmp_path: Path) -> None:
+    harness = _opened(tmp_path, "loner3e")
+    harness.opened().engine.player_actions = (CATCH_BREATH,)
+
+    answered = await call(
+        harness, "player_action", {"name": "catch-breath", "args": {"deep": True}}
+    )
+
+    assert "breathes deep" in answered
+    assert _saved(harness).history[-1].prompt == "Catch your breath"
+
+
+async def test_player_action_refuses_and_lists_offers_for_an_unknown_name(
+    tmp_path: Path,
+) -> None:
+    harness = _opened(tmp_path, "loner3e")
+    harness.opened().engine.player_actions = (CATCH_BREATH,)
+
+    with pytest.raises(ModelRetry, match="catch-breath"):
+        _ = await call(harness, "player_action", {"name": "juggle-knives", "args": {}})
+
+
+async def test_player_action_refuses_and_lists_offers_for_args_matching_none(
+    tmp_path: Path,
+) -> None:
+    harness = _opened(tmp_path, "loner3e")
+    harness.opened().engine.player_actions = (CATCH_BREATH,)
+
+    with pytest.raises(ModelRetry, match="catch-breath"):
+        _ = await call(harness, "player_action", {"name": "catch-breath", "args": {"deep": False}})
+
+
+async def test_player_action_still_refuses_while_a_turn_is_open(tmp_path: Path) -> None:
+    harness = _opened(tmp_path, "loner3e")
+    harness.opened().engine.player_actions = (CATCH_BREATH,)
+    _ = await call(harness, "start_turn", {"text": "I look around."})
+
+    with pytest.raises(ModelRetry, match="a turn is open"):
+        _ = await call(harness, "player_action", {"name": "catch-breath", "args": {"deep": True}})

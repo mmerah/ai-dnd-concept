@@ -1,18 +1,11 @@
-from collections.abc import Mapping
+from importlib import import_module
 from random import Random
+from typing import cast
 
 import pytest
-from core_test_support import (
-    LONER3E,
-    TWENTYFOURXX,
-    game,
-    narrated,
-    played,
-    scripted,
-    text,
-    tool_call,
-)
+from core_test_support import game, narrated, played, scripted
 from golden_test_support import FIXTURES, dumped, golden
+from golden_turn_support import NARRATION
 from pydantic_ai.messages import ModelResponse
 from pydantic_ai.models.function import FunctionModel
 
@@ -36,51 +29,12 @@ HISTORY = (
         lines=(Line(text="A flagstone by the wall sits proud of its neighbours."),),
     ),
 )
-NARRATION = "The flagstone lifts. Beyond the door, something shifts its weight and waits."
 SEED = 11
 
 
-# One unconditional tool call every engine shares, differing only in what its scenario hid.
-def _take(item_id: str) -> ModelResponse:
-    return tool_call("move", entity_id=item_id, to_id="player")
-
-
-# What the last tool call writes once the roll has landed: the same shape under every engine.
-LISTENING = tool_call(
-    "add_trait",
-    entity_id="player",
-    trait_id="listening",
-    text="(condition) Listening for the next shift of weight behind the door.",
-)
-# The fiction resolved by the engine's own roll.
-SCRIPTS: Mapping[EngineId, tuple[ModelResponse, ...]] = {
-    LONER3E: (
-        _take("vault-map"),
-        tool_call(
-            "roll_question",
-            actor_id="player",
-            question="Does he hear what waits past the vault door without being heard?",
-            position="advantage",
-            edge="Quiet Hands",
-        ),
-        LISTENING,
-        text(NARRATION),
-    ),
-    TWENTYFOURXX: (
-        _take("cipher-spike"),
-        tool_call(
-            "roll_attempt",
-            actor_id="player",
-            goal="Listen at the vault door without being heard",
-            hit=False,
-            skill="Stealth",
-            helped="the relic-hunter's ear for old stone",
-            luck_test="something behind the door is already listening back",
-        ),
-        LISTENING,
-        text(NARRATION),
-    ),
-}
+def _script(engine_id: EngineId) -> tuple[ModelResponse, ...]:
+    """Each engine's own package holds its scripted turn, so a new engine needs no core edit."""
+    return cast(tuple[ModelResponse, ...], import_module(f"tests.{engine_id}.golden_turn").SCRIPT)
 
 
 def _behind(state: Game) -> Game:
@@ -95,7 +49,7 @@ async def _played(engine_id: EngineId) -> TurnResult:
         engine,
         _behind(state),
         PROMPT,
-        director=FunctionModel(scripted(*SCRIPTS[engine_id])),
+        director=FunctionModel(scripted(*_script(engine_id))),
         narrator=FunctionModel(scripted(narrated(NARRATION))),
         rng=Random(SEED),
     )

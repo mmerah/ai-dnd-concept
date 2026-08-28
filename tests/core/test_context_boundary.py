@@ -6,6 +6,7 @@ from aidm.engines.loner3e.rules import Mechanics, Sheet
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Kind
 from aidm.state.model import Game, WorldState
 from aidm.turn.context import (
+    ANSWERED_BY_OPTION,
     SceneSnapshot,
     VisibleScene,
     render_director,
@@ -122,3 +123,14 @@ def test_narrator_prompt_names_only_ids_of_entities_the_player_has_met() -> None
     # The Narrator names an id only in `speaker_id`; every id it is shown belongs to someone met.
     assert "Mara[id=mara]" in prompt
     assert "hidden-actor" not in prompt
+
+
+def test_a_chosen_option_is_not_shown_as_the_players_own_words() -> None:
+    held = state()
+    scene = SceneSnapshot.from_game(held)
+    resumed = "asked: A hit is coming.\nthe player chose: Take the hit\n- the hit lands in full"
+    director = render_director(
+        scene, _renderer(held), held.scenario, "Take the hit", resumed=resumed
+    )
+    assert director.count("Take the hit") == 1
+    assert director.endswith(f"PLAYER ACTION:\n{ANSWERED_BY_OPTION}")

@@ -89,6 +89,8 @@ class StepTrace(Frozen):
     name: str
     prompt: str
     output: dict[str, JsonValue] | str
+    # Every refusal the model met and retried on: a pass that hides three is not a clean pass.
+    refusals: tuple[str, ...] = ()
 
 
 class TraceEntryBase(Frozen):

@@ -68,14 +68,14 @@ class Loner3eAdvancement(SheetAdvancement):
         subject = draft.world.require(proposal.subject_id)
         # Sequential against the live sheet, so a rewrite may name what an earlier change wrote.
         return tuple(
-            _rewrite(sheet, subject, change, proposal.why)
+            _rewrite(sheet, subject, change)
             if change.kind == "rewrite"
-            else _gain(sheet, subject, change, proposal.why)
+            else _gain(sheet, subject, change)
             for change in proposal.changes
         )
 
 
-def _gain(sheet: Sheet, subject: Entity, change: Change, why: str) -> Fact:
+def _gain(sheet: Sheet, subject: Entity, change: Change) -> Fact:
     if change.tag in (*sheet.skills, *sheet.gear, *sheet.frailties):
         raise ValueError(f"{subject.name} already has the tag {change.tag!r}")
     if change.kind == "skill":
@@ -88,14 +88,14 @@ def _gain(sheet: Sheet, subject: Entity, change: Change, why: str) -> Fact:
         subject,
         f"{change.kind}_gained",
         f"{subject.name} gained {change.kind} {change.tag}",
-        why,
+        change.why,
         event=MechanicEvent(
             title=f"{subject.name}: new {change.kind} {change.tag}", icon="military_tech"
         ),
     )
 
 
-def _rewrite(sheet: Sheet, subject: Entity, change: Change, why: str) -> Fact:
+def _rewrite(sheet: Sheet, subject: Entity, change: Change) -> Fact:
     old, new = change.tag, change.into
     if old in sheet.skills:
         sheet.skills = _swapped(sheet.skills, old, new)
@@ -109,7 +109,7 @@ def _rewrite(sheet: Sheet, subject: Entity, change: Change, why: str) -> Fact:
         subject,
         "tag_rewritten",
         f"{subject.name} rewrote {old} as {new}",
-        why,
+        change.why,
         event=MechanicEvent(title=f"{subject.name}: {old} → {new}", icon="military_tech"),
     )
 
@@ -172,6 +172,7 @@ class Loner3eEngine(SheetEngine[Sheet]):
     id = EngineId("loner3e")
     badge = ("LONER 3E", "teal-7")
     engine_dir = Path(__file__).parent
+    # SRD "Everything is a Character": a thing that resists is a character, so no item sheet.
     sheet_type = Sheet
     mechanics_type = Mechanics
     pack_type = Pack

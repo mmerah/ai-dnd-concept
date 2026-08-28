@@ -5,6 +5,7 @@ import pytest
 from core_test_support import (
     SCENARIOS,
     TWENTYFOURXX,
+    advancement_of,
     at_boundary,
     game,
     played,
@@ -31,7 +32,6 @@ from aidm.engines.twentyfourxx.rules import (
     Sheet,
     StakedAttempt,
     apply_change_credits,
-    breaks_left,
     outcome_for,
     pool_faces,
     resolve_attempt,
@@ -69,6 +69,7 @@ def test_the_die_pool_is_built_from_the_sheet_help_and_hindrance(
     action = Attempt(
         actor_id=PLAYER_ID,
         goal="climb the wall",
+        risk=RISK,
         hit=True,
         skill=skill,
         helped=helped,
@@ -83,6 +84,7 @@ def test_a_helper_rolls_their_own_skill_die_into_the_pool() -> None:
     action = Attempt(
         actor_id=PLAYER_ID,
         goal="climb the wall",
+        risk=RISK,
         hit=True,
         skill="Climbing",
         helper_id=ALLY,
@@ -110,7 +112,7 @@ def test_an_attempt_is_refused_before_it_rolls_when_the_skill_is_not_on_the_shee
     _, state = game(TWENTYFOURXX)
 
     unknown_skill = Attempt(
-        actor_id=PLAYER_ID, goal="Kael picks the lock.", hit=False, skill="Lockpicking"
+        actor_id=PLAYER_ID, goal="Kael picks the lock.", risk=RISK, hit=False, skill="Lockpicking"
     )
     with pytest.raises(ValueError) as skill_error:
         resolve_attempt(state.draft(), unknown_skill, Random(0))
@@ -125,6 +127,7 @@ def test_an_ally_who_lacks_the_named_skill_is_refused() -> None:
     action = Attempt(
         actor_id=PLAYER_ID,
         goal="Kael picks the lock while Ovid covers the door.",
+        risk=RISK,
         hit=False,
         helper_id=ALLY,
         helper_skill="Lockpicking",
@@ -138,6 +141,7 @@ def test_naming_both_an_ally_and_a_helped_tag_is_refused_at_the_schema() -> None
         Attempt(
             actor_id=PLAYER_ID,
             goal="Kael picks the lock.",
+            risk=RISK,
             hit=False,
             helper_id=ALLY,
             helped="a steady rope",
@@ -146,7 +150,7 @@ def test_naming_both_an_ally_and_a_helped_tag_is_refused_at_the_schema() -> None
 
 def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     engine, state = game(TWENTYFOURXX)
-    advancement = engine.advancement
+    advancement = advancement_of(engine)
     assert advancement.owed(state) == ()
 
     ready = at_boundary(state)
@@ -181,7 +185,7 @@ def test_a_skill_already_at_d12_is_refused_with_the_engines_own_reason() -> None
 
     capped = Advance(subject_id=PLAYER_ID, skill="Climbing", why="there is nowhere higher to climb")
     with pytest.raises(ValueError, match="d12"):
-        _ = engine.advancement.advance(maxed.draft(), capped, Random(0))
+        _ = advancement_of(engine).advance(maxed.draft(), capped, Random(0))
 
 
 def test_credits_are_paid_charged_and_never_overdrawn() -> None:
@@ -211,6 +215,7 @@ def test_a_tested_bad_luck_risk_that_lands_leaves_a_note_for_the_next_turn() -> 
     action = Attempt(
         actor_id=PLAYER_ID,
         goal="Kael tries something risky.",
+        risk=RISK,
         hit=True,
         luck_test="running out of oil",
     )
@@ -252,6 +257,7 @@ def _forcing(**args: object) -> Attempt:
         {
             "actor_id": PLAYER_ID,
             "goal": "Kael forces the vault door",
+            "risk": RISK,
             "hit": True,
             "skill": "Climbing",
         }
@@ -264,9 +270,9 @@ def _staked_forcing(**args: object) -> StakedAttempt:
         {
             "actor_id": PLAYER_ID,
             "goal": "Kael forces the vault door",
+            "risk": RISK,
             "hit": True,
             "skill": "Climbing",
-            "risk": RISK,
         }
         | args
     )
@@ -341,8 +347,8 @@ def test_breaking_an_item_turns_the_hit_and_that_item_is_never_offered_again() -
 
     facts = engine.resume(draft, decision, "lantern", Random(0))
 
-    assert [fact.kind for fact in facts] == ["trait_added", "defence_turned"]
-    assert draft.world.require(LANTERN).trait("broken") is not None
+    assert [fact.kind for fact in facts] == ["defence_turned"]
+    assert Mechanics.of_game(draft).items[LANTERN].broken
     _ = resolve_attempt(draft, _forcing(), Random(HIT))
     assert [option.id for option in _waiting(draft).options] == ["take-it"]
 
@@ -355,7 +361,7 @@ def test_taking_the_hit_records_it_landing_in_full() -> None:
 
     assert landed.kind == "defence_taken"
     assert landed.told
-    assert draft.world.require(LANTERN).trait("broken") is None
+    assert LANTERN not in Mechanics.of_game(draft).items
     assert draft.pending is None
 
 
@@ -375,7 +381,7 @@ def test_an_actors_failed_hit_hands_the_player_no_defence() -> None:
     draft = state.draft()
 
     facts = resolve_attempt(
-        draft, Attempt(actor_id=ALLY, goal="Ovid shoulders it", hit=True), Random(HIT)
+        draft, Attempt(actor_id=ALLY, goal="Ovid shoulders it", risk=RISK, hit=True), Random(HIT)
     )
 
     (resolved,) = [fact for fact in facts if fact.kind == "attempt_resolved"]
@@ -396,16 +402,29 @@ def test_gear_that_breaks_three_times_holds_twice_before_it_is_broken() -> None:
     assert _bought(engine, draft, "battle-armor")
     armor = draft.world.require(EntityId("battle-armor"))
 
+    sheet = Mechanics.of_game(draft).items[armor.id]
+
     for left in (2, 1):
         held = resolve_defence(draft, "Kael takes the burst", armor.id)
         assert [fact.kind for fact in held] == ["defence_turned"]
-        assert breaks_left(armor) == left
-        assert armor.trait("broken") is None
+        assert sheet.breaks.current == left
+        assert not sheet.broken
 
     spent = resolve_defence(draft, "Kael takes the burst", armor.id)
-    assert [fact.kind for fact in spent] == ["trait_added", "defence_turned"]
-    assert armor.trait("broken") is not None
-    assert not [mark for mark in armor.traits if mark.id.startswith("breaks-")]
+    assert [fact.kind for fact in spent] == ["defence_turned"]
+    assert sheet.broken and sheet.breaks.current == 0
+
+
+def test_an_items_marks_reach_the_prompt_as_its_own_state_lines() -> None:
+    engine, state = game(TWENTYFOURXX)
+    draft = state.draft()
+    assert _bought(engine, draft, "battle-armor")
+
+    armor = draft.world.require(EntityId("battle-armor"))
+    assert engine.describe(draft, armor) == "bulky: yes\nbreaks left: 3"
+    _ = resolve_defence(draft, "Kael takes the burst", armor.id)
+    assert engine.describe(draft, armor) == "bulky: yes\nbreaks left: 2"
+    assert engine.describe(draft, draft.world.require(LANTERN)) == ""
 
 
 def test_a_second_purchase_of_the_same_gear_is_charged_and_lands_beside_the_first() -> None:
@@ -525,8 +544,8 @@ async def test_a_hit_the_player_answered_in_their_own_words_is_still_turned() ->
         ),
     )
 
-    assert [fact.kind for fact in result.turn.facts] == ["trait_added", "defence_turned"]
-    assert result.state.world.require(LANTERN).trait("broken") is not None
+    assert [fact.kind for fact in result.turn.facts] == ["defence_turned"]
+    assert Mechanics.of_game(result.state).items[LANTERN].broken
     assert result.state.pending is None
 
 
@@ -569,7 +588,7 @@ def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die
     }
 
 
-def test_a_bulky_kit_item_carries_the_bulky_trait() -> None:
+def test_a_bulky_kit_item_carries_the_bulky_mark() -> None:
     creation = TwentyfourxxEngine().creation
     picks: Picks = {
         "pack": ("srd",),
@@ -579,7 +598,7 @@ def test_a_bulky_kit_item_carries_the_bulky_trait() -> None:
     }
     created = creation.create("Wren", "Solders anything.", picks, Random(0))
     computer = next(item for item in created.profile.items if item.id == "custom-computer")
-    assert [trait.id for trait in computer.traits] == ["bulky"]
+    assert computer.traits == [] and computer.rules == {"bulky": True}
 
 
 def test_an_alien_invents_traits_the_menu_never_listed() -> None:

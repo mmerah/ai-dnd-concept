@@ -5,7 +5,14 @@ from typing import Literal, Self
 
 from pydantic import JsonValue
 from pydantic_ai import Agent, ModelRetry, NativeOutput, RunContext, Tool
-from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, TextPart, UserPromptPart
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    RetryPromptPart,
+    TextPart,
+    UserPromptPart,
+)
 from pydantic_ai.toolsets import FunctionToolset
 from pydantic_ai.usage import UsageLimits
 
@@ -88,7 +95,7 @@ class Turn(DirectorContext):
 
     def picture(self) -> str:
         draft = self.draft
-        notes = (*self.notes, *draft.world.pending_notes, *self.engine.advancement.notes(draft))
+        notes = (*self.notes, *self.engine.notes(draft))
         return context.render_director(
             SceneSnapshot.from_game(draft, notes),
             self.engine.renderer(draft),
@@ -178,6 +185,8 @@ def speakers_refusal(scene: VisibleScene, lines: Sequence[Line]) -> str | None:
 
 def narrator_agent(settings: Settings) -> Agent[VisibleScene, Narration]:
     def attributed(ctx: RunContext[VisibleScene], narration: Narration) -> Narration:
+        if not narration.text:
+            raise ModelRetry("write the narration lines: an empty answer shows the player nothing.")
         if refused := speakers_refusal(ctx.deps, narration.lines):
             raise ModelRetry(refused)
         return narration
@@ -247,7 +256,14 @@ async def run_segment(
         usage_limits=UsageLimits(request_limit=settings.turn.director_request_limit),
     )
     facts = list(turn.log.facts)
-    steps = [StepTrace(name="director", prompt=director_prompt, output=directed.output)]
+    steps = [
+        StepTrace(
+            name="director",
+            prompt=director_prompt,
+            output=directed.output,
+            refusals=retry_prompts(directed.new_messages()),
+        )
+    ]
 
     lines: tuple[Line, ...] = ()
     if draft.pending is None or narrator_lines(facts):
@@ -263,8 +279,6 @@ async def run_segment(
         narration = (
             await stages.narrator.run(narrator_prompt, deps=visible, message_history=history)
         ).output
-        if not narration.text:
-            raise ValueError("the narrator answered with nothing")
         lines = narration.lines
         steps.append(
             StepTrace(
@@ -275,6 +289,16 @@ async def run_segment(
     return turn.finish(lines, tuple(steps))
 
 
+def retry_prompts(messages: Sequence[ModelMessage]) -> tuple[str, ...]:
+    return tuple(
+        part.model_response()
+        for message in messages
+        if isinstance(message, ModelRequest)
+        for part in message.parts
+        if isinstance(part, RetryPromptPart)
+    )
+
+
 def close_segment(
     engine: Engine,
     draft: Game,
@@ -283,19 +307,9 @@ def close_segment(
     events: tuple[MechanicEvent, ...],
 ) -> Game:
     """The one place a segment becomes history: builtin and code mode differ only in when."""
-    draft.turn_events = ()
     if draft.pending is None and draft.player.trait(DEAD) is not None:
         draft.pending = succession_decision(engine, draft)
-    draft.history = (
-        *draft.history,
-        Exchange(
-            prompt=prompt,
-            place=draft.world.require(draft.player_location).name,
-            lines=lines,
-            events=events,
-            decision="" if draft.pending is None else draft.pending.prompt,
-        ),
-    )
+    draft.record(prompt, lines, events)
     draft.turn += 1
     return draft.committed()
 

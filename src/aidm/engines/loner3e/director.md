@@ -12,7 +12,7 @@ Skills, frailties, and gear change only through advancement. Use `add_trait` for
 
 ## When to roll
 
-Use `roll_question` when the answer is uncertain and both yes and no would change the story. When in doubt, roll: any real cost for no qualifies. Danger, combat, and pursuit always qualify. Skip the roll only for safe movement and simple conversation.
+Use `roll_question` when the answer is uncertain and both yes and no would change the story. When in doubt, roll: any real cost for no qualifies. Danger, combat, pursuit, stealth, and haste always qualify: roll before you tell the outcome. Skip the roll for safe movement, simple conversation, and a certain outcome, such as finishing a helpless foe: then use `kill` or the fitting tool.
 
 Write a closed question where yes means what the actor wants. The acting side is the actor doing the uncertain thing. For example, if a monster lunges, ask about the monster rather than inventing a player reaction.
 

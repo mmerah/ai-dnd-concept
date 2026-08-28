@@ -29,11 +29,12 @@ from aidm.state.facts import (
     MechanicEvent,
     entity_fact,
     explained_fact,
+    narrator_lines,
     player_events,
     trace_lines,
 )
 from aidm.state.model import Game, WorldState, draft_refusal
-from aidm.state.play import DecisionOption, PendingDecision
+from aidm.state.play import DecisionOption, Line, PendingDecision
 
 type EntityRenderer = Callable[[Entity], str]
 
@@ -207,7 +208,8 @@ class Engine(ABC):
     authoring_instructions: ClassVar[str] = ""
     mechanics_type: type[Mutable]
     pack_type: ClassVar[type[BaseModel]]
-    advancement: Advancement
+    # Optional because Breathless has no advancement; every other roadmap engine ships one.
+    advancement: Advancement | None = None
     creation: CharacterCreation
 
     def __init__(self, sources: PackSources = SHIPPED_PACKS) -> None:
@@ -216,6 +218,7 @@ class Engine(ABC):
         _ = self.mechanics_type, self.pack_type
         self.director_instructions: str = engine_text(self.engine_dir / "director.md")
         self.director_commands: tuple[Command, ...] = ()
+        self.player_actions: tuple[PlayerAction, ...] = ()
 
     @abstractmethod
     def overlay_rows(self, rules: dict[str, JsonValue]) -> tuple[tuple[str, str], ...]:
@@ -238,13 +241,12 @@ class Engine(ABC):
     def sheet_rows(self, state: Game) -> tuple[tuple[str, str], ...]:
         """Ordered (label, value) pairs summarising the player's own sheet for the player."""
 
-    def settle(self, draft: Game) -> tuple[Fact, ...]:
-        """Consequences a command's landing forces; idempotent, since a turn settles after each."""
-        del draft
-        return ()
-
     def seed(self, draft: Game, entity: Entity, rng: Random) -> None:  # noqa: B027
         """Whatever this engine must give an entity created during play; a hook, not abstract."""
+
+    def notes(self, state: Game) -> tuple[str, ...]:
+        owed = () if self.advancement is None else self.advancement.notes(state)
+        return (*state.world.pending_notes, *owed)
 
     def check_overlay(self, rules: dict[str, JsonValue]) -> None:
         _ = self.overlay_rows(rules)
@@ -347,10 +349,6 @@ def apply_to_draft(engine: Engine, draft: Game, play: Play, rng: Random) -> tupl
     """Every mutation runs this sequence, so seeding cannot be forgotten by a caller."""
     before = draft.pending
     landed = play(draft, rng)
-    decided = draft.pending
-    landed = (*landed, *engine.settle(draft))
-    if draft.pending is not decided:
-        raise ValueError("settle applies consequences; it cannot open a decision")
     if before is not None and draft.pending is not before:
         raise ValueError("the rules already wait on a decision; they take one at a time")
     if draft.pending is not None:
@@ -544,8 +542,77 @@ def run_command(found: Command, deps: DirectorContext, raw: Mapping[str, JsonVal
     """The one gate: a decision on the table blocks everything but developing its answer."""
     pending = deps.draft.pending
     if pending is not None and not (found.during_suspension and deps.suspended_at_start):
-        raise ValueError(
+        # A plain answer, not a refusal: a retry prompt would tell the model to try again.
+        return (
             f"the rules are waiting on the player: {pending.prompt}\n"
             "Put that to the player, then start the next turn with their answer."
         )
     return found.call(deps, raw)
+
+
+# A player's own move between turns: no Director judgement, so no turn.
+
+
+@dataclass(frozen=True, slots=True)
+class Offer:
+    label: str
+    args: dict[str, JsonValue]
+
+
+@dataclass(frozen=True, slots=True)
+class PlayerAction:
+    name: Slug
+    description: str
+    apply: Callable[[Game, Mapping[str, JsonValue]], Sequence[Fact]]
+    offers: Callable[[Game], Sequence[Offer]]
+
+
+def player_action[A: BaseModel](
+    name: Slug,
+    description: str,
+    args: type[A],
+    act: Callable[[Game, A], Sequence[Fact]],
+    offers: Callable[[Game], Sequence[tuple[str, A]]],
+) -> PlayerAction:
+    """Erases `A`: one engine tuple holds actions of different arg types. `offers` lists what the
+    player can do right now, so a UI needs no form and no judgement."""
+    return PlayerAction(
+        name,
+        description,
+        lambda draft, raw: act(draft, args.model_validate(raw)),
+        lambda state: tuple(
+            Offer(label, one.model_dump(mode="json")) for label, one in offers(state)
+        ),
+    )
+
+
+def offered(engine: Engine, state: Game) -> tuple[tuple[PlayerAction, Offer], ...]:
+    return tuple((one, offer) for one in engine.player_actions for offer in one.offers(state))
+
+
+def play_action(
+    engine: Engine, state: Game, name: Slug, raw: Mapping[str, JsonValue], rng: Random
+) -> tuple[Game, tuple[Fact, ...]]:
+    """The exchange it records is how the chat, the journal and the next Director prompt see it."""
+    if state.pending is not None:
+        raise ValueError(f"the rules wait on the player's answer first: {state.pending.prompt}")
+    match = next(
+        (
+            (one, offer)
+            for one, offer in offered(engine, state)
+            if one.name == name and offer.args == dict(raw)
+        ),
+        None,
+    )
+    if match is None:
+        raise ValueError(f"{name!r} with {json.dumps(dict(raw))} is not offered right now")
+    found, offer = match
+
+    def play(draft: Game, _rng: Random) -> tuple[Fact, ...]:
+        facts = tuple(found.apply(draft, raw))
+        # Only told facts reach the player: an untold trace may name hidden canon.
+        told = Line(text="\n".join(narrator_lines(facts)) or "Nothing changed.")
+        draft.record(offer.label, (told,), player_events(facts))
+        return facts
+
+    return transact(engine, state.draft(), play, rng)

@@ -6,6 +6,7 @@ from pathlib import Path
 from time import monotonic
 
 from nicegui import ui
+from pydantic import JsonValue
 
 from aidm.app.runtime import GameSession
 from aidm.harness.driver import Driver
@@ -227,6 +228,7 @@ class GameView:
     @ui.refreshable_method
     def sheet(self) -> None:
         sheet_panel(self.session)
+        player_actions(self)
 
     @ui.refreshable_method
     def journal(self) -> None:
@@ -399,6 +401,31 @@ def decision_panel(view: GameView) -> None:
         if _alive(view.session.state.player):
             pointer = "Or answer" if pending.options else "Answer"
             ui.label(f"{pointer} in your own words below.").classes("text-xs opacity-60")
+
+
+def player_actions(view: GameView) -> None:
+    session = view.session
+    # Code mode plays in another process that holds its own state; a write here would race it.
+    if session.stages is None:
+        return
+    offers = session.offers()
+    if not offers:
+        return
+    heading("You can")
+    with ui.row().classes("w-full items-center").style("gap: 0.5rem"):
+        for action, offer in offers:
+            ui.button(offer.label, on_click=partial(_act, view, action.name, offer.args)).props(
+                "no-caps outline dense"
+            ).tooltip(action.description)
+
+
+async def _act(view: GameView, name: str, args: dict[str, JsonValue]) -> None:
+    if refuse_if_busy(view.session):
+        return
+    async with working(view.session):
+        _ = view.session.act(name, args)
+    view.refresh_all()
+    _scroll(view)
 
 
 def composer(view: GameView) -> None:

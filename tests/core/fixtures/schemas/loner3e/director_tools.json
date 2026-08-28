@@ -31,7 +31,7 @@
           "type": "string"
         },
         "to_id": {
-          "description": "Exact destination id. Use a location for an actor; for an item, use `player`,\nan actor here, or the player's location.",
+          "description": "Exact destination id. An actor moves to a location id. An item is taken by moving it to `player`, handed over by moving it to an actor here, and dropped by moving it to the id of the player's current location.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
@@ -73,10 +73,9 @@
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         },
-        "trait_id": {
-          "description": "Stable slug, such as `poisoned`. `battle-worn` displays as Battle Worn.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+        "name": {
+          "description": "The trait's display name, such as `Battle Worn`; its id is derived.",
+          "minLength": 1,
           "type": "string"
         },
         "text": {
@@ -86,7 +85,7 @@
       },
       "required": [
         "entity_id",
-        "trait_id",
+        "name",
         "text"
       ],
       "type": "object"
@@ -350,7 +349,7 @@
   },
   {
     "name": "advance",
-    "description": "Spend one advance a party member has earned, when the player asks for it. Choose 1-4 changes from this adventure: a new skill, signature gear, a frailty, or a rewrite of an existing tag.",
+    "description": "Spend one advance a party member has earned, when the player asks for it. Choose the changes this adventure earned: a new skill, signature gear, a frailty, or a rewrite of an existing tag.",
     "parameters": {
       "$defs": {
         "Change": {
@@ -376,11 +375,16 @@
               "default": "",
               "description": "New title-case tag for a rewrite. Empty for other kinds.",
               "type": "string"
+            },
+            "why": {
+              "description": "One short reason, in the fiction, for this change.",
+              "type": "string"
             }
           },
           "required": [
             "kind",
-            "tag"
+            "tag",
+            "why"
           ],
           "title": "Change",
           "type": "object"
@@ -396,23 +400,17 @@
           "type": "string"
         },
         "changes": {
-          "description": "One to four earned changes, in reading order.",
+          "description": "Every earned change, in reading order.",
           "items": {
             "$ref": "#/$defs/Change"
           },
-          "maxItems": 4,
           "minItems": 1,
           "type": "array"
-        },
-        "why": {
-          "description": "One short reason, in the fiction, for the change.",
-          "type": "string"
         }
       },
       "required": [
         "subject_id",
-        "changes",
-        "why"
+        "changes"
       ],
       "type": "object"
     }

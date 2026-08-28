@@ -101,7 +101,8 @@
   "steps": [
     {
       "name": "director",
-      "output": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
+      "output": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
+      "refusals": []
     },
     {
       "name": "narrator",
@@ -112,7 +113,8 @@
             "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
           }
         ]
-      }
+      },
+      "refusals": []
     }
   ]
 }

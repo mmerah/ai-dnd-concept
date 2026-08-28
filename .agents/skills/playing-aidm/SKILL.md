@@ -21,10 +21,14 @@ and the server wiring (`.mcp.json`, `.codex/config.toml`) is read from there.
 5. Turn their message into tool calls. Make one call at a time. Read each result before you make
    the next call. `scene()` gives the picture back if you were compacted mid-turn.
 6. `end_turn(lines)` — closes the turn with the prose you wrote.
-7. When `NOTES FROM THE RULES` in `scene()` says an advance is owed and the player asks to grow
+7. When the state from `start_turn`, `end_turn`, or `scene()` ends with `YOU CAN`, the player may
+   ask for one of the moves listed there between turns. Call `player_action` with the exact name
+   and args shown for that move. Do not call it inside a turn, and do not call it for a move the
+   player did not ask for.
+8. When `NOTES FROM THE RULES` in `scene()` says an advance is owed and the player asks to grow
    their character, call `advance(subject_id, ...)` — the tool's own schema carries the engine's
    fields for the change. It refuses when none is owed.
-8. The server answers WORLD GROWTH DUE when the player is nearly out of places to find. Grow the
+9. The server answers WORLD GROWTH DUE when the player is nearly out of places to find. Grow the
    world before the player's next action. Spawn a subagent and tell it to run the `growing-aidm`
    skill; a subagent can reach the `aidm` server, and its long loop stays out of this
    conversation. Run that skill here only if you cannot spawn a subagent.

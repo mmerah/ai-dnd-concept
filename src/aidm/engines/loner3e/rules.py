@@ -6,7 +6,7 @@ from typing import ClassVar, Literal, Self
 from pydantic import Field, model_validator
 
 from aidm.engines.core import Decision, ProposalBase, adjust, pool
-from aidm.engines.sheets import SheetBase, SheetMechanics, require_sheet
+from aidm.engines.sheets import ItemBase, SheetBase, SheetMechanics, require_sheet
 from aidm.state.actions import require_actor_here, roll_pool
 from aidm.state.entities import CheckedEntityId, Counter, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import DiceEvent, EventBadge, Fact, MechanicEvent, entity_fact
@@ -85,7 +85,7 @@ def conflict_prompt(state: Game, actor: Entity, opponent: Entity) -> str:
     )
 
 
-class Sheet(SheetBase):
+class Sheet(SheetBase, ItemBase):
     """The one sheet shape, whether it belongs to the player or to an NPC."""
 
     twist_pack: Slug = SRD_PACK
@@ -214,8 +214,7 @@ def resolve_question(
         # The pools are refilled the moment a side hits 0, so only the fact says the conflict ended.
         if not any(fact.kind == "conflict_lost" for fact in exchange):
             draft.pending = Conflict().pending(conflict_prompt(draft, actor, opponent))
-    elif chance.kept == risk.kept:
-        # Keep pacing tallies from the Narrator and exclude conflict exchanges.
+    if chance.kept == risk.kept:
         mechanics.twist.current += 1
         if _shortfall(mechanics.twist) == 0:
             mechanics.twist.current = 0
@@ -357,7 +356,7 @@ def _pair(action: Question, rng: Random) -> tuple[DiceEvent, DiceEvent, list[Fac
 
 
 GROWTH = (
-    "Choose 1-4 changes from this adventure: a new skill, signature gear, a frailty, or a "
+    "Choose the changes this adventure earned: a new skill, signature gear, a frailty, or a "
     "rewrite of an existing tag."
 )
 
@@ -376,6 +375,7 @@ class Change(Frozen):
         default="",
         description="New title-case tag for a rewrite. Empty for other kinds.",
     )
+    why: str = Field(description="One short reason, in the fiction, for this change.")
 
     @model_validator(mode="after")
     def _rewrite_names_what_it_becomes(self) -> Self:
@@ -389,7 +389,5 @@ class AdventureGrowth(ProposalBase):
 
     changes: tuple[Change, ...] = Field(
         min_length=1,
-        max_length=4,
-        description="One to four earned changes, in reading order.",
+        description="Every earned change, in reading order.",
     )
-    why: str = Field(description="One short reason, in the fiction, for the change.")

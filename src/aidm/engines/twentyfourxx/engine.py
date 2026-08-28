@@ -30,6 +30,7 @@ from aidm.engines.twentyfourxx.rules import (
     Attempt,
     Defence,
     GearItem,
+    ItemSheet,
     LuckTest,
     Mechanics,
     Pack,
@@ -39,7 +40,6 @@ from aidm.engines.twentyfourxx.rules import (
     SkillDie,
     StakedAttempt,
     apply_change_credits,
-    breaks_trait,
     raised,
     resolve_attempt,
     resolve_defence,
@@ -99,7 +99,10 @@ def _settle_defence(deps: DirectorContext, args: SettleDefence) -> str:
     answered = deps.answered
     settled = any(fact.kind in ("defence_turned", "defence_taken") for fact in deps.log.facts)
     if answered is None or answered.kind != "defence" or settled:
-        raise ValueError("no hit is waiting to be settled; there is nothing to break or take.")
+        raise ValueError(
+            "no hit is waiting: the engine already settled it or none was staked. Do not call "
+            "settle_defence again; narrate what the hit cost."
+        )
     goal = Defence.model_validate(answered.payload).goal
     return apply_play(deps, lambda draft, _rng: resolve_defence(draft, goal, args.item_id))
 
@@ -108,19 +111,20 @@ DIRECTOR_COMMANDS: tuple[Command, ...] = (
     rule(
         "roll_attempt",
         "Roll an actor's risky attempt directly. For the player, use `stake_attempt` first unless "
-        "they already accepted the exact risk.",
+        "they already accepted the exact `risk`.",
         Attempt,
         resolve_attempt,
     ),
     action(
         "stake_attempt",
-        "Let the player accept or revise one risky attempt before rolling it.",
+        "Show the player one attempt's `risk` and let them accept or revise it before rolling.",
         StakedAttempt,
         resolve_stake,
     ),
     command(
         "settle_defence",
-        "Apply the player's choice to break an item or take the full hit.",
+        "Settle a hit the player answered in their own words: break the named item, or null to "
+        "take it. Never after an answer the picture shows as already resolved.",
         SettleDefence,
         _settle_defence,
     ),
@@ -275,15 +279,13 @@ class TwentyfourxxCreation(PackCreation[Pack]):
         )
 
 
-BULKY = Trait(
-    id="bulky", name="Bulky", text="Heavy or awkward to lug; more than one may hinder at times."
-)
-
-
 def _carried(entry: GearItem, item_id: EntityId, owner_id: EntityId) -> Entity:
-    traits = [BULKY] if entry.bulky else []
+    # Default-free, so a plain item's `rules` stays empty and its sheet is only made if it breaks.
+    rules: dict[str, JsonValue] = {}
+    if entry.bulky:
+        rules["bulky"] = True
     if entry.breaks > 1:
-        traits.append(breaks_trait(entry.breaks))
+        rules["breaks"] = {"current": entry.breaks, "maximum": entry.breaks}
     return Entity(
         id=item_id,
         kind="item",
@@ -291,7 +293,7 @@ def _carried(entry: GearItem, item_id: EntityId, owner_id: EntityId) -> Entity:
         brief=entry.detail or entry.label,
         known=True,
         parent_id=owner_id,
-        traits=traits,
+        rules=rules,
     )
 
 
@@ -343,11 +345,12 @@ def _count_prompt(what: str, count: int, verb: str = "Choose") -> str:
     return f"{verb} one {what}" if count == 1 else f"{verb} {count} {what}s"
 
 
-class TwentyfourxxEngine(SheetEngine[Sheet]):
+class TwentyfourxxEngine(SheetEngine[Sheet, ItemSheet]):
     id = EngineId("twentyfourxx")
     badge = ("24XX", "indigo-7")
     engine_dir = Path(__file__).parent
     sheet_type = Sheet
+    item_type = ItemSheet
     mechanics_type = Mechanics
     pack_type = Pack
     decisions = (StakedAttempt, Defence)

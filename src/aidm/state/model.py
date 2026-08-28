@@ -20,7 +20,7 @@ from aidm.state.entities import (
     require_unique,
 )
 from aidm.state.facts import Fact, MechanicEvent, entity_fact, labeled
-from aidm.state.play import Exchange, PendingDecision
+from aidm.state.play import Exchange, Line, PendingDecision
 
 ThreadStatus = Literal["active", "resolved", "dormant"]
 
@@ -217,6 +217,22 @@ class Game(Mutable):
         """Notes are read once; a note a tool writes after this steers the next turn."""
         notes, self.world.pending_notes = self.world.pending_notes, ()
         return notes
+
+    def record(
+        self, prompt: str, lines: tuple[Line, ...], events: tuple[MechanicEvent, ...]
+    ) -> None:
+        """The one shape an exchange takes, whether a turn or the player's own action wrote it."""
+        self.turn_events = ()
+        self.history = (
+            *self.history,
+            Exchange(
+                prompt=prompt,
+                place=self.world.require(self.player_location).name,
+                lines=lines,
+                events=events,
+                decision="" if self.pending is None else self.pending.prompt,
+            ),
+        )
 
     def draft(self) -> Self:
         """A working copy a resolution mutates; a failed turn never replaces the committed state."""

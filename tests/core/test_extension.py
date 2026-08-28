@@ -5,6 +5,7 @@ import pytest
 from core_test_support import (
     LONER3E,
     SCENARIOS,
+    advancement_of,
     at_boundary,
     narrated,
     scripted,
@@ -147,7 +148,7 @@ async def test_a_thin_world_grows_inside_the_turn_that_ran_it_thin(
 
     assert any(isinstance(entry, WorldExtended) for entry in game.entries)
     assert (SCENARIOS / "whispering-vault" / "world.json").read_bytes() == authored
-    assert game.engine.advancement.owed(game.state)
+    assert advancement_of(game.engine).owed(game.state)
 
 
 async def test_a_world_with_doors_left_to_find_grows_nothing(

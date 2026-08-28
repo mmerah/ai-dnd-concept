@@ -2,6 +2,19 @@
 
 A narrative game platform with separated roles. A model plays the game master. Engine code resolves the mechanics in typed Python, and the app owns every state change.
 
+## How this differs from other AI game masters
+
+Most AI game master projects let the model decide outcomes. Dice are a script the model may or may not call. State is a markdown or JSON file the model rewrites. The model sees every secret, so it cannot keep one. Almost all of them run D&D 5e on a frontier model.
+
+This project does the opposite:
+
+- Code rolls every die and applies every change. The model only proposes typed tool calls.
+- The narrator receives only revealed facts. Hidden canon has no path into its prompt.
+- A cheap or local model is the design bar. Each engine has a small tool surface a weak model can clear.
+- The rules engines are light, freely licensed SRDs (Loner, 24XX, Breathless), not 5e.
+
+Closest neighbours: `claude-dnd-skill` (Claude Code plugin, 5e, prompt-enforced rules), Familiar and Loremaster (Foundry VTT modules, VTT rolls, model narrates), Daicer and NarrativeEngine-P (open source, code-owned rolls). None of them targets light SRDs or weak models, and none keeps secrets by construction.
+
 ## Rules engines
 
 Two engines ship.
@@ -10,11 +23,9 @@ Two engines ship.
 |---|---|
 | Loner 3e | Chance d6 against Risk d6, six outcomes, a Twist Counter, Harm against Luck |
 | 24XX | one skill die of d6 to d12, +d6 for help, +d4 when hindered, take the highest |
+| Breathless | planned; see `docs/BREATHLESS.md` — d4–d12 skill dice that step down each roll until you Catch Your Breath |
 
-`docs/LONER-3E.md` and `docs/24XX.md` point at each engine's official rules and name every deviation this implementation takes; the rules text itself is not copied here. A candidate engine is a pointer file, not code: the shelf takes official, freely licensed, low-overhead systems, and a package appears only when it is next to be played.
-
-- `docs/CAIRN-BAREBONES.md` is the next planned engine.
-- `docs/FATE-CONDENSED.md` will be implemented after Cairn Barebones.
+`docs/LONER-3E.md`, `docs/24XX.md` and `docs/BREATHLESS.md` point at each engine's official rules and name every deviation this implementation takes; the rules text itself is not copied here. A candidate engine is a pointer file, not code: the shelf takes official, freely licensed, low-overhead systems, and a package appears only when it is next to be played.
 
 ## How a turn runs
 
@@ -128,13 +139,10 @@ The **dev** tab holds **trace** (the plan, the resolved facts and each role's ex
 |---|---|---|
 | `src/aidm/engines/loner3e/` prose, instructions and packs | CC BY-SA 4.0 | Roberto Bisceglie / Zotiquest Games, <https://lonersrd.zotiquestgames.com> |
 | `src/aidm/engines/twentyfourxx/` prose, instructions and pack | CC BY 4.0 | Jason Tocci, <https://24xx-srd.carrd.co> |
+| `src/aidm/engines/breathless/` prose, instructions and pack | ORC License | Fari RPGs, René-Pier Deshaies-Gélinas, <https://farirpgs.itch.io/breathless-srd> |
 
 Each `docs/<game>.md` pointer file carries its game's sources, license and required attribution.
 
 `packs/ap01-fantasy.json` comes from the Loner SRD site's AP01 Fantasy page. That page carries no CC declaration at all — only the site-wide footer "© 2021-2026 Roberto Bisceglie" — while the site index declares CC BY-SA 4.0. It is treated as covered by the site's license. One email to the publisher would settle it.
-
-Fate Condensed, planned as an engine here, requires its attribution wherever a copyright appears, in the same size as the copyright text:
-
-> This work is based on Fate Condensed (found at http://www.faterpg.com/), a product of Evil Hat Productions, LLC, developed, authored, and edited by PK Sullivan, Lara Turner, Leonard Balsera, Fred Hicks, Richard Bellingham, Robert Hanz, Ryan Macklin, and Sophie Lagacé, and licensed for our use under the Creative Commons Attribution 3.0 Unported license (http://creativecommons.org/licenses/by/3.0/).
 
 The license of the rest of the code is an open decision.

@@ -165,11 +165,11 @@ def improvise(draft: Game, item_name: str) -> list[Fact]:
     return [created, moved]
 
 
-def add_trait(draft: Game, entity_id: EntityId, trait_id: Slug, text: str = "") -> list[Fact]:
+def add_trait(draft: Game, entity_id: EntityId, name: str, text: str = "") -> list[Fact]:
     entity, seen = reveal_target(draft, entity_id)
+    trait_id = slug(name, ())
     if entity.trait(trait_id) is not None:
-        raise ValueError(f"{entity.name} already carries the trait {trait_id!r}")
-    name = trait_id.replace("-", " ").title()
+        raise ValueError(f"{entity.name} already carries the trait {name!r}")
     entity.traits.append(Trait(id=trait_id, name=name, text=text))
     trace = f"{draft.label(entity)} gained the trait {name}[{trait_id}]"
     if text:

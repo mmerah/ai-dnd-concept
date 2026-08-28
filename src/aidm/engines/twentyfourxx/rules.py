@@ -5,8 +5,8 @@ from typing import ClassVar, Literal, Self, get_args
 from pydantic import Field, model_validator
 
 from aidm.engines.core import Decision, ProposalBase, adjust, pool, spend
-from aidm.engines.sheets import SheetBase, SheetMechanics, require_sheet
-from aidm.state.actions import add_trait, require_actor_here, roll_pool
+from aidm.engines.sheets import ItemBase, SheetBase, SheetMechanics, require_sheet
+from aidm.state.actions import require_actor_here, roll_pool
 from aidm.state.creation import CreationOption
 from aidm.state.entities import (
     CheckedEntityId,
@@ -15,7 +15,6 @@ from aidm.state.entities import (
     EntityId,
     Frozen,
     Slug,
-    Trait,
 )
 from aidm.state.facts import DiceEvent, EventBadge, Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
@@ -64,7 +63,34 @@ class Sheet(SheetBase):
         return self.skills.get(skill, RULES.default_face)
 
 
-class Mechanics(SheetMechanics[Sheet]): ...
+def _mark(set_on: bool) -> str:
+    return "yes" if set_on else ""
+
+
+class ItemSheet(ItemBase):
+    """A carried item's marks and the breaks it has left; every item breaks once by default."""
+
+    bulky: bool = False
+    broken: bool = False
+    breaks: Counter = Counter(current=1, maximum=1)
+
+    @model_validator(mode="after")
+    def _broken_when_spent(self) -> Self:
+        if self.broken != (self.breaks.current == 0):
+            raise ValueError("an item is broken exactly when it has no breaks left")
+        return self
+
+    def rows(self) -> tuple[tuple[str, str], ...]:
+        # Sturdy gear alone counts: every other item breaks once, which `broken` already says.
+        counted = str(self.breaks.current) if self.breaks.maximum != 1 else ""
+        return (
+            ("Bulky", _mark(self.bulky)),
+            ("Broken", _mark(self.broken)),
+            ("Breaks left", counted),
+        )
+
+
+class Mechanics(SheetMechanics[Sheet, ItemSheet]): ...
 
 
 def raised(current: SkillDie | None) -> SkillDie:
@@ -155,6 +181,10 @@ class Attempt(Frozen):
         min_length=1,
         description="The actor's goal, in one line.",
     )
+    risk: str = Field(
+        min_length=1,
+        description="One-line cost of a bad roll. There is no roll without one.",
+    )
     hit: bool = Field(description="True when a bad roll means physical harm to the actor.")
     skill: str = Field(
         default="",
@@ -174,7 +204,10 @@ class Attempt(Frozen):
     )
     hindered: str = Field(
         default="",
-        description="Hindering circumstance that lowers the actor's die to d4, or empty.",
+        description=(
+            "Hindering circumstance that lowers the actor's die to d4, such as an injury trait "
+            "in the way or a heavy load; empty when nothing hinders."
+        ),
     )
     luck_test: str = Field(
         default="",
@@ -198,8 +231,6 @@ class Attempt(Frozen):
 class StakedAttempt(Attempt, Decision):
     kind: ClassVar[Slug] = "stake"
 
-    risk: str = Field(min_length=1, description="One-line cost of a bad roll, shown to the player.")
-
     def resolve(self, draft: Game, option_id: Slug, rng: Random) -> tuple[Fact, ...]:
         # `proceed` is the only option the engine offers; the player's own words revise instead.
         del option_id
@@ -214,26 +245,6 @@ class LuckTest(Frozen):
         min_length=1,
         description="Possible bad luck, such as low ammo or nearby guards.",
     )
-
-
-BROKEN: Slug = "broken"
-
-
-BREAK_TEXT = "Broken turning a hit into a brief hindrance; useless until repaired."
-
-
-def breaks_trait(remaining: int) -> Trait:
-    return Trait(
-        id=f"breaks-{remaining}",
-        name=f"Breaks {remaining}x",
-        text=f"Sturdy: it can break {remaining} more times before it is useless.",
-    )
-
-
-def breaks_left(item: Entity) -> int:
-    """No `breaks-N` mark is the SRD's printed default: any item breaks once."""
-    faces = range(RULES.max_breaks, 1, -1)
-    return next((left for left in faces if item.trait(f"breaks-{left}") is not None), 1)
 
 
 TAKE_THE_HIT: Slug = "take-it"
@@ -332,39 +343,37 @@ def resolve_defence(draft: Game, goal: str, item_id: EntityId | None) -> tuple[F
     item = draft.world.require_kind(item_id, "item")
     if item.parent_id != draft.player_id:
         raise ValueError(f"the player does not carry {item.name}, so it cannot break for them")
-    if item.trait(BROKEN) is not None:
+    sheet = Mechanics.of_game(draft).items.setdefault(item.id, ItemSheet())
+    if sheet.broken:
         raise ValueError(f"{item.name} is already broken, so it turns nothing")
-    if (left := breaks_left(item)) > 1:
-        spent = breaks_trait(left).id
-        # A budget of one is the unmarked default, so the last mark is removed, never rewritten.
-        item.traits[:] = [
-            breaks_trait(left - 1) if mark.id == spent else mark
-            for mark in item.traits
-            if not (mark.id == spent and left - 1 == 1)
-        ]
+    sheet.breaks.current -= 1
+    if left := sheet.breaks.current:
         return (
             entity_fact(
                 player,
                 "defence_turned",
-                f"{goal}: {item.name} takes the hit and holds; it can break {left - 1} more times",
-                event=MechanicEvent(title=f"{item.name} held", icon="shield"),
+                f"{goal}: {item.name} takes the hit and holds; it can break {left} more times",
+                event=MechanicEvent(title=f"{item.name} held, {left} left", icon="shield"),
             ),
         )
+    # Broken gear stays carried until it is repaired, so its last break removes nothing.
+    sheet.broken = True
     return (
-        *add_trait(draft, item_id, BROKEN, BREAK_TEXT),
         entity_fact(
             player,
             "defence_turned",
             f"{goal}: {item.name} breaks, turning the hit into a brief hindrance",
+            event=MechanicEvent(title=f"{item.name} broke", icon="broken_image"),
         ),
     )
 
 
 def _defence_decision(draft: Game, goal: str) -> PendingDecision:
+    marks = Mechanics.of_game(draft).items
     unbroken = tuple(
         DecisionOption(id=item.id, label=f"Break the {item.name}")
         for item in draft.world.children(draft.player_id, "item")
-        if item.trait(BROKEN) is None
+        if item.id not in marks or not marks[item.id].broken
     )
     return Defence(goal=goal).pending(
         DEFENCE_PROMPT, (*unbroken, DecisionOption(id=TAKE_THE_HIT, label="Take the hit"))
@@ -381,7 +390,9 @@ def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ..
 
     outcome = outcome_for(pooled.kept)
     resolved_at = len(facts)
-    facts.append(entity_fact(actor, "attempt_resolved", f"{action.goal} -> {outcome}"))
+    facts.append(
+        entity_fact(actor, "attempt_resolved", f"{action.goal} (risk: {action.risk}) -> {outcome}")
+    )
 
     dice, effects = (pooled,), ()
     if action.luck_test:

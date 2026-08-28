@@ -66,7 +66,7 @@ async def test_on_event_fires_once_per_visible_tool_in_resolver_order() -> None:
     director = FunctionModel(
         scripted(
             tool_call("move", entity_id="vault-map", to_id="player"),
-            tool_call("add_trait", entity_id="player", trait_id="listening", text="listening"),
+            tool_call("add_trait", entity_id="player", name="Listening", text="listening"),
             text("Kael takes the map and listens."),
         )
     )
@@ -288,8 +288,7 @@ async def test_an_owed_advance_is_noted_lands_on_call_and_is_refused_once_spent(
     engine, state = initialized()
     growth: dict[str, object] = {
         "subject_id": PLAYER_ID,
-        "changes": [{"kind": "gear", "tag": "Waxed Rope"}],
-        "why": "he never climbs without it now",
+        "changes": [{"kind": "gear", "tag": "Waxed Rope", "why": "he never climbs without it now"}],
     }
     director = recorded(
         tool_call("advance", **growth),

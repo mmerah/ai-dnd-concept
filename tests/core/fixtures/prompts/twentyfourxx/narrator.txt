@@ -35,7 +35,7 @@ KNOWN TO THE PLAYER, BUT ELSEWHERE:
 WHAT HAPPENED:
 - learned of the item the cipher spike[cipher-spike]
 - the player Kael[player] took the item the cipher spike[cipher-spike]
-- Listen at the vault door without being heard -> success
+- Listen at the vault door without being heard (risk: whatever is behind the door hears him first) -> success
 - bad luck — something behind the door is already listening back: signs of it
 - the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.
 
