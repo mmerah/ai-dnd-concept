@@ -654,3 +654,58 @@ And that's what makes me much more enthusiastic about it than Cairn: **high-fide
 [3]: https://www.scribd.com/document/745208557/Maze-Rats-Revised-Pages?utm_source=chatgpt.com "Maze Rats Revised Pages | PDF"
 [4]: https://rules.moddable.games/maze-rats/rules/character-creation/ "Character Creation — Maze Rats"
 [5]: https://rules.moddable.games/maze-rats/index.html "Maze Rats — Official Rulebook v0.1.0"
+
+# OPINION (2026-08-28, checked against the tree)
+
+The research says "the architecture impact should be very little." The code agrees. No refactor of
+scenario creation or growth is needed. Maze Rats is one engine package plus tables, and at most
+one small core hook.
+
+## What already fits
+
+- `Entity.exits` is a graph with `known` and `locked` per exit. Loops, shortcuts and multiple
+  routes are legal today. The authoring bar (`_bar_unmet` in `authoring/draft.py`) already demands
+  hidden exits, locked exits, hidden items and `when_reached` consequences. That is "situations,
+  not plots."
+- Growth exists: `GrowthRun`, `extend_brief`, and the `growth_frontier` trigger in
+  `app/runtime.py`. "Return to town, hear new rumors" and "cross into a new hex" are the same
+  frontier trigger with an engine-specific briefing.
+- `Engine.seed()` fills in rules for entities the model creates without them. Monster and NPC
+  shorthand (Health, Armor, AB from level) and morning spells roll there. Breathless refuses a
+  rules-less item; Maze Rats rolls one instead.
+- `PendingDecision` + `Engine.resume()` carry shield shattering and level-up choices.
+  `player_action` carries belt/backpack moves and End Session.
+- Wilderness, dungeon and city procedures need no new location kind. A location's `rules` holds
+  `{"terrain": "difficult", "miles": 6}` or `{"district": true}`; the engine's `pass_time` reads it.
+
+## The engine package
+
+| File | Contents | Size |
+|---|---|---|
+| `rules.py` | `Sheet` (STR/DEX/WIL, health, AB, level, xp, paths, spell slots), `ItemSheet` (weapon class, armor, carry position), `Mechanics` with a transient `CombatState`; rules `danger_roll`, `encounter`, `begin_combat`, `attack`, `morale`, `cast_spell`, `rest`; action `pass_time`; decisions `ShatterShield`, `LevelUp` | ~600 lines, like 24XX |
+| `engine.py` | creation (the 12 SRD steps), `seed`, `validate` (belt ≤ 2), `authoring_instructions` | ~200 lines |
+| `packs/srd.json` | the CC BY tables: spells, monsters, NPCs, treasure, dungeon/wilderness/city | data only |
+| `director.md` | the one rule to scream: a plan that removes the danger means call nothing; a plan that reduces it means Advantage | prose |
+
+## The one core change, if any
+
+Authoring should get pre-rolled table results. The lazy path is zero core change:
+`Engine.authoring_context()` is already engine-owned, so the Maze Rats engine rolls six monsters,
+six NPCs and a dungeon seed and writes them into the briefing text. Add an
+`Engine.authoring_tools` hook appended in `authoring_toolset` (about ten lines) only if the model
+proves it needs to roll more mid-draft.
+
+## Deviations: two
+
+1. **Session.** An explicit `end_session` player action awards XP. Product-level, documented.
+2. **30-foot positioning.** `CombatState` holds `engaged` only; ranged attacks refuse for engaged
+   actors. No map.
+
+A spell's `general_effect` stored as a Director ruling is per SRD, not a deviation.
+
+## Order of work
+
+1. Read `twentyfourxx/rules.py`; its combat transient is the closest template for `CombatState`.
+2. `rules.py` + `engine.py` + `director.md` with the turn evals: two to three sessions.
+3. Tables into `packs/srd.json` and the authoring prompt: one session.
+4. Playtest the danger-roll rule against the weak model; tune `director.md`: one session.
