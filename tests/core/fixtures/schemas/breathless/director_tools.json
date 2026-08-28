@@ -1,0 +1,626 @@
+[
+  {
+    "name": "reveal",
+    "description": "Make a hidden entity known when the player notices, finds, or reaches it.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of the hidden entity.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "move",
+    "description": "Move an actor to a new location, or move a nearby item.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact actor or item id. The item must be carried by the player or loose here.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "to_id": {
+          "description": "Exact destination id. An actor moves to a location id. An item is taken by moving it to `player`, handed over by moving it to an actor here, and dropped by moving it to the id of the player's current location.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "to_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "gain_improvised_item",
+    "description": "Give the player an ordinary, unimportant object not already in the world.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "item_name": {
+          "description": "The object's name, such as `a handful of gravel`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_name"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "add_trait",
+    "description": "Add a lasting condition or quality to an entity.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact entity id. An actor must be here with the player.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "name": {
+          "description": "The trait's display name, such as `Battle Worn`; its id is derived.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "text": {
+          "description": "The trait's effect in plain language.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "name",
+        "text"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "remove_trait",
+    "description": "Remove a lasting condition or quality that has ended.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact entity id. An actor must be here with the player.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "trait_id": {
+          "description": "Exact id of one of the entity's traits.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "trait_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "kill",
+    "description": "Record that an actor has died. Their body and what they carried stay in the world.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "description": "Exact id of the actor who has died. They must be here with the player.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "advance_thread",
+    "description": "Update an active storyline's status, stage, clock, or note.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "thread_id": {
+          "description": "Exact id of an ACTIVE THREAD.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "active",
+                "resolved",
+                "dormant"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New status, or null to keep the current status."
+        },
+        "stage": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New stage slug, or null to keep the current stage."
+        },
+        "tick": {
+          "default": 0,
+          "description": "Number of segments to fill on its clock. Use 0 for no change.",
+          "type": "integer"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "New private note for the Director, or null to keep the current note."
+        }
+      },
+      "required": [
+        "thread_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "unlock_exit",
+    "description": "Unlock an exit from the player's location.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "to_id": {
+          "description": "Exact id of the exit's destination.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "to_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "join_party",
+    "description": "Add an actor here to the player's party.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "description": "Exact id of the actor joining.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "leave_party",
+    "description": "Remove an actor from the player's party.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "description": "Exact id of the actor leaving.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "stake_check",
+    "description": "Show the player one check's `risk` and let them accept or revise it before rolling.",
+    "parameters": {
+      "$defs": {
+        "Skill": {
+          "enum": [
+            "Bash",
+            "Dash",
+            "Sneak",
+            "Shoot",
+            "Think",
+            "Sway"
+          ],
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "description": "Exact id of the player or actor here who takes the action.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "goal": {
+          "description": "The actor's goal, in one line.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "risk": {
+          "description": "One-line cost of a bad roll, told to the player first. No roll without one.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "dangerous": {
+          "description": "True when failing could harm the actor; a vulnerable actor may then die.",
+          "type": "boolean"
+        },
+        "skill": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Skill"
+            },
+            {
+              "const": "",
+              "type": "string"
+            }
+          ],
+          "default": "",
+          "description": "The skill rolled, or empty when an item or a stunt is used."
+        },
+        "item_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of a carried item rolled in place of a skill, or null."
+        },
+        "stunt": {
+          "default": false,
+          "description": "True to roll a d12 stunt instead of a skill or item.",
+          "type": "boolean"
+        },
+        "helper_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of an ally here who also rolls and shares the risk, or null."
+        },
+        "helper_skill": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Skill"
+            },
+            {
+              "const": "",
+              "type": "string"
+            }
+          ],
+          "default": "",
+          "description": "The helper's skill, or empty when they use an item."
+        },
+        "helper_item_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of the item the helper rolls instead, or null."
+        },
+        "helper_stunt": {
+          "default": false,
+          "description": "True when the helper stunts instead.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "actor_id",
+        "goal",
+        "risk",
+        "dangerous"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "roll_check",
+    "description": "Roll an actor's risky check directly. For the player, use `stake_check` first unless they already accepted the exact `risk`.",
+    "parameters": {
+      "$defs": {
+        "Skill": {
+          "enum": [
+            "Bash",
+            "Dash",
+            "Sneak",
+            "Shoot",
+            "Think",
+            "Sway"
+          ],
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "description": "Exact id of the player or actor here who takes the action.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "goal": {
+          "description": "The actor's goal, in one line.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "risk": {
+          "description": "One-line cost of a bad roll, told to the player first. No roll without one.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "dangerous": {
+          "description": "True when failing could harm the actor; a vulnerable actor may then die.",
+          "type": "boolean"
+        },
+        "skill": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Skill"
+            },
+            {
+              "const": "",
+              "type": "string"
+            }
+          ],
+          "default": "",
+          "description": "The skill rolled, or empty when an item or a stunt is used."
+        },
+        "item_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of a carried item rolled in place of a skill, or null."
+        },
+        "stunt": {
+          "default": false,
+          "description": "True to roll a d12 stunt instead of a skill or item.",
+          "type": "boolean"
+        },
+        "helper_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of an ally here who also rolls and shares the risk, or null."
+        },
+        "helper_skill": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Skill"
+            },
+            {
+              "const": "",
+              "type": "string"
+            }
+          ],
+          "default": "",
+          "description": "The helper's skill, or empty when they use an item."
+        },
+        "helper_item_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of the item the helper rolls instead, or null."
+        },
+        "helper_stunt": {
+          "default": false,
+          "description": "True when the helper stunts instead.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "actor_id",
+        "goal",
+        "risk",
+        "dangerous"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "test_luck",
+    "description": "Let a die decide whether something happens.",
+    "parameters": {
+      "$defs": {
+        "Die": {
+          "enum": [
+            4,
+            6,
+            8,
+            10,
+            12
+          ],
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "subject": {
+          "description": "What may happen, in one line.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "die": {
+          "$ref": "#/$defs/Die",
+          "description": "Die rated by the odds: d4 unlikely, d12 near certain."
+        }
+      },
+      "required": [
+        "subject",
+        "die"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "loot_check",
+    "description": "Roll the actor's loot die to scavenge, when the fiction allows it.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "description": "Exact id of the player or actor here who scavenges.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "seeking": {
+          "description": "The item they hope to find, named like `a crowbar`.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id",
+        "seeking"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "change_stress",
+    "description": "Add stress for a complication, or clear it for a secure rest.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "description": "Exact id of the player or an actor here.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "amount": {
+          "description": "Positive adds stress; negative clears it.",
+          "type": "integer"
+        },
+        "why": {
+          "description": "The complication or the rest, in one line.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id",
+        "amount",
+        "why"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "use_med_kit",
+    "description": "Spend the actor's med kit to clear 2 stress, when they say they use it.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "description": "Exact id of the player or a party member here.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id"
+      ],
+      "type": "object"
+    }
+  }
+]

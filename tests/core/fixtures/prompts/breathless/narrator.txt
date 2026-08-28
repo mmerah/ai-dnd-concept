@@ -1,0 +1,50 @@
+SCENARIO:
+Saint Ivo's Cold Vault
+Saint Ivo's went dark on the third night of the collapse with its cold vault still sealed, and eleven years of Crawlers have kept everyone honest about it. Kael has come for what is racked down there: the last cased antivirals, worth a year of anyone's life. He starts in the ambulance bay, where Dov Marek keeps the gate and burns what the night drags in.
+
+PLAYER CHARACTER:
+Kael[id=player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut. — at the ambulance bay[id=ambulance-bay]
+state:
+  job: Relic hunter
+  pronouns: he/him
+  skills: Bash d4, Dash d6, Sneak d8 (rated d10), Shoot d4, Think d8, Sway d4
+  loot die: d12
+  stress: 0/4
+  traits: Relic Hunter[id=relic-hunter] — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (frailty) Old scars make certain memories hard to face., Listening[id=listening] — (condition) Listening for the next shift of weight behind the door.
+inventory:
+- a guttering lantern[id=lantern] — A dented tin lantern whose flame will not hold still.
+  state:
+    die: d10
+    traits: Unsteady Lantern[id=unsteady-lantern] — (gear) Its shifting light exposes seams and movement in deep shadow.
+- a ward nine key card[id=ward-card] — A cracked hospital card taped inside a gurney rack, still magnetised, still cut for the sub-basement door.
+  state:
+    die: d6
+
+HERE WITH THE PLAYER:
+- Dov Marek[id=dov-marek] (npc) — at the ambulance bay — He keeps the bay gate and burns the dead, and has not let anyone in after dark in four years.
+- a fire axe[id=fire-axe] (item) — at the ambulance bay — A long-handled axe off the bay wall bracket, edge rolled but the head sound.
+  state:
+    die: d10
+
+EXITS FROM HERE:
+- the triage hall[id=triage-hall]
+
+KNOWN TO THE PLAYER, BUT ELSEWHERE:
+- the triage hall[id=triage-hall] (location) — The old sorting floor, curtained into stalls with plastic sheeting, where Sela Quist trades off a folding table and counts everything twice.
+- Sela Quist[id=sela-quist] (npc) — at the triage hall — She trades out of the triage hall — water, batteries, boots — and prices in what she can carry.
+- a pair of bolt cutters[id=bolt-cutters] (item) — at the triage hall — Sela's cutters, leaning against her table leg, long enough to take the stairwell chain.
+  state:
+    die: d8
+- a knotted rope ladder[id=rope-ladder] (item) — A window-escape ladder coiled by the plant room door, rated for one body at a time.
+  state:
+    die: d6
+
+WHAT HAPPENED:
+- learned of the item a ward nine key card[ward-card]
+- the player Kael[player] took the item a ward nine key card[ward-card]
+- Listen at the vault door without being heard (risk: whatever is behind the door hears him first) -> success
+- the player Kael[player] Sneak d10 -> d8
+- the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.
+
+PLAYER ACTION:
+I lever up the loose flagstone and listen at the vault door.

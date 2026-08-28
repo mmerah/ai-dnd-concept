@@ -23,7 +23,7 @@ Two engines ship.
 |---|---|
 | Loner 3e | Chance d6 against Risk d6, six outcomes, a Twist Counter, Harm against Luck |
 | 24XX | one skill die of d6 to d12, +d6 for help, +d4 when hindered, take the highest |
-| Breathless | planned; see `docs/BREATHLESS.md` — d4–d12 skill dice that step down each roll until you Catch Your Breath |
+| Breathless | one skill or item die of d4 to d12 that steps down each roll until you Catch Your Breath, three outcome bands, a loot die, stress |
 
 `docs/LONER-3E.md`, `docs/24XX.md` and `docs/BREATHLESS.md` point at each engine's official rules and name every deviation this implementation takes; the rules text itself is not copied here. A candidate engine is a pointer file, not code: the shelf takes official, freely licensed, low-overhead systems, and a package appears only when it is next to be played.
 

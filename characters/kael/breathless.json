@@ -1,0 +1,10 @@
+{
+  "packs": ["srd"],
+  "job": "Relic hunter",
+  "pronouns": "he/him",
+  "skills": {
+    "Sneak": 10,
+    "Think": 8,
+    "Dash": 6
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "name": "Core tables",
+  "source": "https://keeper.farirpgs.com/resources/fari-rpgs/breathless/breathless-srd/",
+  "license": "This work is based on Breathless, product of Fari RPGs (https://farirpgs.com/), developed and authored by René-Pier Deshaies-Gélinas. This product is licensed under the ORC License available online at various locations including www.azoralaw.com/orclicense.",
+  "skills": [
+    { "id": "bash", "label": "Bash", "detail": "wreck, move, force." },
+    { "id": "dash", "label": "Dash", "detail": "run, jump, climb." },
+    { "id": "sneak", "label": "Sneak", "detail": "hide, skulk, lurk." },
+    { "id": "shoot", "label": "Shoot", "detail": "track, throw, fire." },
+    { "id": "think", "label": "Think", "detail": "perceive, analyze, repair." },
+    { "id": "sway", "label": "Sway", "detail": "charm, manipulate, intimidate." }
+  ],
+  "jobs": [
+    "Chef", "IT Specialist", "Nurse", "Personal Trainer", "Influencer", "Police Officer",
+    "Architect", "School Teacher", "Military", "Mechanic", "Park Ranger", "College Student",
+    "DJ", "Civil Engineer", "Homeless", "Contractor", "Bartender", "Firefighter", "Farmer",
+    "Scientist"
+  ],
+  "weapons": [
+    "2x4", "Baseball Bat", "Sledge Hammer", "Crowbar", "Frying Pan", "Golf Club", "Katana",
+    "Shovel", "Machete", "Baton", "Pitchfork", "Banjo", "Chainsaw", "Skate Board", "Dumbbell",
+    "Cricket Bat", "Fire Axe", "Pipe", "Pickaxe", "Hatchet"
+  ],
+  "long_range_weapons": [
+    "Revolver", "9mm Pistol", "Hunting Rifle", "Shotgun", "Bow", "Flamethrower", "Sniper Rifle",
+    "Assault Rifle", "Crossbow", "Molotov Cocktail", "Grenade", "Pipe Bomb"
+  ],
+  "locations": [
+    "Apartment Building", "Shopping Center", "Grocery Store", "Hospital", "Church", "Arcade",
+    "Sewers", "High-School", "Hotel", "Construction Site", "Dance Club", "Factory"
+  ],
+  "complications": [
+    "Another survivor is yelling for help.",
+    "You've attracted a swarm of Crawlers.",
+    "Bandits are on your tail.",
+    "New and nasty kind of Crawler.",
+    "Maniac shooting everything that moves.",
+    "You meet another group of survivors.",
+    "The zone you're in is booby trapped.",
+    "You're out of munitions.",
+    "One of your items suddenly breaks.",
+    "The only way out is blocked.",
+    "You meet someone you knew before.",
+    "You face a pack of feral animals."
+  ],
+  "missions": [
+    "Your group is almost out of supplies.",
+    "Someone in your group is very sick.",
+    "Thugs kicked you out of your safe zone.",
+    "The military is planning to bomb the city.",
+    "You've met someone who's immune.",
+    "The government planned a supply drop.",
+    "A cult is sacrificing people to Crawlers.",
+    "You've met a scientist who's found a cure.",
+    "Someone in your group was captured.",
+    "You've heard of a sanctuary filled with survivors on the other side of the city.",
+    "There's a fire raging across the city.",
+    "Your group has found itself in the middle of a gang war."
+  ]
+}

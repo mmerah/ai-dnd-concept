@@ -19,21 +19,25 @@ ORC License. The required credit, verbatim, wherever a copyright appears:
 
 ## Pack sources
 
-`packs/srd.json` will be transcribed from the SRD page above.
+No separate pack sources. The six skills and the rolling tables (jobs, weapons, long-range weapons,
+locations, complications, missions) are all in the SRD at the page above, transcribed into
+`packs/srd.json`.
 
 ## Deviations in this repo
 
-The engine is not built yet. Nothing to list: a rule not listed here is implemented as printed
-once it exists.
+Every divergence between `src/aidm/engines/breathless/` and the official rules, with the reason it
+stands. Nothing diverges silently: a rule not listed here is implemented as printed.
 
-## Settled before building
+1. **Before We Start is not modelled.** The SRD opens with a content warning and a lines-and-veils
+   step before play. This is a table procedure with no rule inside it; the app has no seat for it.
+   Nothing in play depends on it.
 
-Catch Your Breath is a player action, so it runs with no Director turn. The complication it
-introduces is Director judgement: the action writes one note to `world.pending_notes` ("the rules
-owe a complication; open the next turn with one"), which the next Director prompt already renders.
-No new core hook.
+Three readings the SRD leaves open are settled without diverging from it: stress is a counter that
+stops at 4 (the SRD names 4 as the threshold for vulnerable and nothing above it); a luck test is
+read on the check ladder, the SRD's "interpret the result as you see fit"; and a med kit is a
+mark on the sheet rather than an item, since the SRD counts it apart from the three items.
 
 ## Where the rules live
 
-Mechanics will be in `src/aidm/engines/breathless/`. `packs/srd.json` — not this file — is the
+Mechanics are in `src/aidm/engines/breathless/`. `packs/srd.json` — not this file — is the
 transcription of record.
