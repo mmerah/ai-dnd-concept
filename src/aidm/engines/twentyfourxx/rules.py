@@ -4,8 +4,16 @@ from typing import ClassVar, Literal, Self, get_args
 
 from pydantic import Field, model_validator
 
-from aidm.engines.core import Decision, ProposalBase, adjust, pool, spend
-from aidm.engines.sheets import ItemBase, SheetBase, SheetMechanics, require_sheet
+from aidm.engines.core import (
+    Decision,
+    EntityRules,
+    ProposalBase,
+    SheetBase,
+    adjust,
+    pool,
+    rules,
+    spend,
+)
 from aidm.state.actions import require_actor_here, roll_pool
 from aidm.state.creation import CreationOption
 from aidm.state.entities import (
@@ -67,7 +75,7 @@ def _mark(set_on: bool) -> str:
     return "yes" if set_on else ""
 
 
-class ItemSheet(ItemBase):
+class ItemSheet(EntityRules):
     """A carried item's marks and the breaks it has left; every item breaks once by default."""
 
     bulky: bool = False
@@ -88,9 +96,6 @@ class ItemSheet(ItemBase):
             ("Broken", _mark(self.broken)),
             ("Breaks left", counted),
         )
-
-
-class Mechanics(SheetMechanics[Sheet, ItemSheet]): ...
 
 
 def raised(current: SkillDie | None) -> SkillDie:
@@ -295,11 +300,14 @@ def apply_change_credits(draft: Game, actor_id: EntityId, amount: int) -> list[F
         raise ValueError("changing credits moves the pool; zero moves nothing")
     actor = require_actor_here(draft, actor_id)
     facts = draft.reveal(actor)
-    credits = require_sheet(Mechanics.of_game(draft).sheets, actor).credits
-    if amount > 0:
-        return [*facts, *adjust(draft, actor, "credits", credits, amount, "paid", "payments")]
-    # `spend`, not a negative adjust: an overdraw is refused, not clamped.
-    return [*facts, *spend(draft, actor, "credits", credits, -amount, "payments")]
+    with rules(actor, Sheet) as sheet:
+        if amount > 0:
+            return [
+                *facts,
+                *adjust(draft, actor, "credits", sheet.credits, amount, "paid", "payments"),
+            ]
+        # `spend`, not a negative adjust: an overdraw is refused, not clamped.
+        return [*facts, *spend(draft, actor, "credits", sheet.credits, -amount, "payments")]
 
 
 def _require_playable(
@@ -307,12 +315,12 @@ def _require_playable(
 ) -> tuple[Entity, Sheet, Sheet | None, list[Fact]]:
     actor = require_actor_here(draft, action.actor_id)
     facts = draft.reveal(actor)
-    sheet = Mechanics.of_game(draft).sheets.get(actor.id)
-    if sheet is None:
+    if not actor.rules:
         raise ValueError(
             f"{actor.name} has no character sheet, so it never rolls: narrate its threat, "
             "or put the risk on the player's own attempt or a luck test"
         )
+    sheet = Sheet.model_validate(actor.rules)
     helper_sheet = _helper_sheet(draft, actor, action, facts)
     _require_skill(actor, sheet, action.skill, "skill")
     return actor, sheet, helper_sheet, facts
@@ -343,11 +351,14 @@ def resolve_defence(draft: Game, goal: str, item_id: EntityId | None) -> tuple[F
     item = draft.world.require_kind(item_id, "item")
     if item.parent_id != draft.player_id:
         raise ValueError(f"the player does not carry {item.name}, so it cannot break for them")
-    sheet = Mechanics.of_game(draft).items.setdefault(item.id, ItemSheet())
-    if sheet.broken:
-        raise ValueError(f"{item.name} is already broken, so it turns nothing")
-    sheet.breaks.current -= 1
-    if left := sheet.breaks.current:
+    with rules(item, ItemSheet) as sheet:
+        if sheet.broken:
+            raise ValueError(f"{item.name} is already broken, so it turns nothing")
+        sheet.breaks.current -= 1
+        left = sheet.breaks.current
+        # Broken gear stays carried until it is repaired, so its last break removes nothing.
+        sheet.broken = left == 0
+    if left:
         return (
             entity_fact(
                 player,
@@ -356,8 +367,6 @@ def resolve_defence(draft: Game, goal: str, item_id: EntityId | None) -> tuple[F
                 event=MechanicEvent(title=f"{item.name} held, {left} left", icon="shield"),
             ),
         )
-    # Broken gear stays carried until it is repaired, so its last break removes nothing.
-    sheet.broken = True
     return (
         entity_fact(
             player,
@@ -369,11 +378,10 @@ def resolve_defence(draft: Game, goal: str, item_id: EntityId | None) -> tuple[F
 
 
 def _defence_decision(draft: Game, goal: str) -> PendingDecision:
-    marks = Mechanics.of_game(draft).items
     unbroken = tuple(
         DecisionOption(id=item.id, label=f"Break the {item.name}")
         for item in draft.world.children(draft.player_id, "item")
-        if item.id not in marks or not marks[item.id].broken
+        if not ItemSheet.model_validate(item.rules).broken
     )
     return Defence(goal=goal).pending(
         DEFENCE_PROMPT, (*unbroken, DecisionOption(id=TAKE_THE_HIT, label="Take the hit"))
@@ -440,8 +448,8 @@ def _helper_sheet(draft: Game, actor: Entity, action: Attempt, facts: list[Fact]
         )
     helper = require_actor_here(draft, action.helper_id)
     facts.extend(draft.reveal(helper))
-    sheet = require_sheet(Mechanics.of_game(draft).sheets, helper)
-    _require_skill(helper, sheet, action.helper_skill, "helper_skill")
+    with rules(helper, Sheet) as sheet:
+        _require_skill(helper, sheet, action.helper_skill, "helper_skill")
     return sheet
 
 

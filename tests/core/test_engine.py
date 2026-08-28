@@ -1,15 +1,12 @@
 from collections.abc import Mapping
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel
 
-from aidm.engines.core import Engine, command
-from aidm.state.entities import EngineId, Entity, Frozen, Mutable
-from aidm.state.model import Game, WorldState
-
-
-class BareMechanics(Mutable): ...
+from aidm.engines.core import Engine, EntityRules, NoRules, command
+from aidm.state.entities import EngineId, Frozen, Kind
 
 
 class BarePack(BaseModel): ...
@@ -22,29 +19,12 @@ def _engine(tmp_path: Path) -> Engine:
         id = EngineId("test")
         badge = ("TEST", "grey-6")
         engine_dir = tmp_path
-        mechanics_type = BareMechanics
         pack_type = BarePack
-
-        def overlay_rows(self, rules: dict[str, JsonValue]) -> tuple[tuple[str, str], ...]:
-            del rules
-            return ()
-
-        def opening_mechanics(
-            self, world: WorldState, player_rules: dict[str, JsonValue]
-        ) -> BareMechanics:
-            del world, player_rules
-            return BareMechanics()
-
-        def validate(self, state: Game) -> None:
-            del state
-
-        def describe(self, state: Game, entity: Entity) -> str:
-            del state, entity
-            return ""
-
-        def sheet_rows(self, state: Game) -> tuple[tuple[str, str], ...]:
-            del state
-            return ()
+        rules_types: ClassVar[Mapping[Kind, type[EntityRules]]] = {
+            "actor": NoRules,
+            "item": NoRules,
+            "location": NoRules,
+        }
 
         def pack_models(self) -> Mapping[str, BarePack]:
             return {}

@@ -6,9 +6,9 @@ from pydantic import ValidationError
 
 from aidm.config import Settings
 from aidm.content.io import FileStore, SaveHeader, read_characters, read_scenarios
-from aidm.engines.core import parse_save
 from aidm.engines.registry import ENGINES, engine_class
 from aidm.state.entities import EngineId, Frozen, Slug
+from aidm.state.model import Game
 
 
 def engine_ids() -> tuple[EngineId, ...]:
@@ -187,7 +187,7 @@ def load_catalog(settings: Settings) -> LauncherCatalog:
             saved = SaveHeader.model_validate_json(raw)
             # An installed engine's save must still parse whole, or /game would crash on resume.
             if saved.engine in ids:
-                _ = parse_save(raw, engine_class(saved.engine).mechanics_type)
+                _ = Game.model_validate_json(raw)
         except (ValidationError, ValueError) as error:
             unreadable.append(UnreadableSave(slug=slug, problem=_short_reason(error)))
             continue

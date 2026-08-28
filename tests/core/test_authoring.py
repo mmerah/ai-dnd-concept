@@ -258,7 +258,7 @@ def test_validation_names_what_the_draft_is_missing() -> None:
         )
     )
     broken = scenario_refusal(unplayable, playing)
-    assert broken is not None and broken.startswith("sheets.gaoler.concept: ")
+    assert broken is not None and broken.startswith("rules.gaoler.concept: ")
 
 
 def test_the_shipped_world_written_as_one_patch_is_playable() -> None:

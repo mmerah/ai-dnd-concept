@@ -140,15 +140,3 @@ def test_a_save_whose_body_is_stale_is_reported_not_offered(tmp_path: Path) -> N
     assert not catalog.saves
     assert [broken.slug for broken in catalog.unreadable] == ["stale"]
     assert "\n" not in catalog.unreadable[0].problem
-
-
-def test_a_save_whose_mechanics_are_broken_is_reported_not_offered(tmp_path: Path) -> None:
-    settings = ui_settings(tmp_path)
-    body = json.loads(_opening_state(settings).model_dump_json())
-    body["mechanics"] = {"not": "the loner3e shape"}
-    (tmp_path / "broken-mechanics.json").write_text(json.dumps(body), encoding=ENCODING)
-
-    catalog = load_catalog(settings)
-
-    assert not catalog.saves
-    assert [broken.slug for broken in catalog.unreadable] == ["broken-mechanics"]

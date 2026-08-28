@@ -55,6 +55,7 @@ def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character:
         known=True,
         parent_id=scenario.starting_location_id,
         traits=list(character.profile.traits),
+        rules=dict(character.rules),
     )
     for entity in (*(item.model_copy(deep=True) for item in character.profile.items), player):
         if world.find(entity.id) is not None:
@@ -67,7 +68,6 @@ def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character:
         engine=engine.id,
         player_id=PLAYER_ID,
         world=world,
-        mechanics=engine.opening_mechanics(world, character.rules),
         turn_events=(),
     )
     engine.validate(state)

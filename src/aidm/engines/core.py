@@ -1,12 +1,13 @@
 import json
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
-from typing import ClassVar
+from typing import ClassVar, Self
 
-from pydantic import BaseModel, Field, JsonValue, TypeAdapter
+from pydantic import BaseModel, Field, JsonValue, ValidationError, model_validator
 
 from aidm.content.io import engine_text
 from aidm.content.model import CreatedCharacter, Scenario
@@ -20,8 +21,10 @@ from aidm.state.entities import (
     Entity,
     EntityId,
     Frozen,
+    Kind,
     Mutable,
     Slug,
+    require_unique,
 )
 from aidm.state.facts import (
     NOTHING_CHANGED,
@@ -33,7 +36,7 @@ from aidm.state.facts import (
     player_events,
     trace_lines,
 )
-from aidm.state.model import Game, WorldState, draft_refusal
+from aidm.state.model import Game, draft_refusal
 from aidm.state.play import DecisionOption, Line, PendingDecision
 
 type EntityRenderer = Callable[[Entity], str]
@@ -93,6 +96,58 @@ def spend(
     return [counter_fact(state, entity, key, counter, -amount, f"spent {key}", icon)]
 
 
+# An entity's own rules: authored as JSON, parsed by the engine that reads them.
+
+
+class EntityRules(Mutable, ABC):
+    """One entity's mechanics, whatever this engine's rules make of them."""
+
+    @abstractmethod
+    def rows(self) -> tuple[tuple[str, str], ...]:
+        """Every view of them: labels head the player's panel, and a prompt lowers them."""
+
+
+class NoRules(EntityRules):
+    """A kind this engine gives no mechanics; `extra="forbid"` refuses any rules authored on it."""
+
+    def rows(self) -> tuple[tuple[str, str], ...]:
+        return ()
+
+
+class SheetBase(EntityRules, ABC):
+    packs: tuple[Slug, ...] = ("srd",)
+    chapters: Counter = Counter(current=0)
+
+    @model_validator(mode="after")
+    def _packs_include_srd(self) -> Self:
+        require_unique("sheet pack ids", self.packs)
+        if "srd" not in self.packs:
+            raise ValueError("sheet packs must include 'srd'")
+        return self
+
+
+@contextmanager
+def rules[M: EntityRules](entity: Entity, model: type[M]) -> Generator[M]:
+    """Parsed on entry, written back on exit; the one way an engine changes `entity.rules`."""
+    # Where authored rules are what makes an entity playable, one without them has no sheet.
+    if issubclass(model, SheetBase) and not entity.rules:
+        raise ValueError(f"{entity.name} has no character sheet")
+    parsed = model.model_validate(entity.rules)
+    yield parsed
+    entity.rules = parsed.model_dump(mode="json")
+
+
+def describe_rows(rows: tuple[tuple[str, str], ...], meanings: tuple[tuple[str, str], ...]) -> str:
+    lines: list[str] = []
+    for label, value in rows:
+        if not value:
+            continue
+        lines.append(f"{label.lower()}: {value}")
+        listed = value.split(", ")
+        lines.extend(f"- {tag}: {detail}" for tag, detail in meanings if tag in listed)
+    return "\n".join(lines)
+
+
 # The contract: what a new engine supplies.
 
 
@@ -127,77 +182,34 @@ class ProposalBase(Frozen):
     subject_id: CheckedEntityId = Field(description="Exact id of the party member who advances.")
 
 
-class Advancement(ABC):
-    """One advance per boundary the fiction closed, per party member."""
-
-    proposal_type: ClassVar[type[ProposalBase]]
-    ledger_key: ClassVar[Slug]
-    text: ClassVar[str]
-    spent_why: ClassVar[str]
-
-    @abstractmethod
-    def ledger(self, state: Game, subject_id: EntityId) -> Counter: ...
-
-    @abstractmethod
-    def earned(self, state: Game) -> int:
-        """How many boundaries the fiction has closed: what an advance is owed against."""
-
-    @abstractmethod
-    def grant(self, draft: Game, proposal: ProposalBase, rng: Random) -> tuple[Fact, ...]:
-        """Writes what the proposal buys; moving the ledger itself belongs to the base."""
-
-    def owed(self, state: Game) -> tuple[EntityId, ...]:
-        earned = self.earned(state)
-        return tuple(
-            subject_id
-            for subject_id in (state.player_id, *state.world.party)
-            if earned > self.ledger(state, subject_id).current
-        )
-
-    def advance(self, draft: Game, proposal: ProposalBase, rng: Random) -> tuple[Fact, ...]:
-        subject = draft.world.require(proposal.subject_id)
-        if proposal.subject_id not in (draft.player_id, *draft.world.party):
-            raise ValueError(f"{subject.name} is not in the party")
-        ledger = self.ledger(draft, proposal.subject_id)
-        if self.earned(draft) <= ledger.current:
-            raise ValueError(f"{subject.name} has no advance owed")
-        granted = self.grant(draft, proposal, rng)
-        ledger.current += 1
-        return (
-            *granted,
-            counter_fact(
-                draft, subject, self.ledger_key, ledger, 1, self.spent_why, "military_tech"
-            ),
-        )
-
-    def command(self) -> "Command":
-        return rule(
-            "advance",
-            "Spend one advance a party member has earned, when the player asks for it. "
-            f"{self.text}",
-            self.proposal_type,
-            self.advance,
-        )
-
-    def notes(self, state: Game) -> tuple[str, ...]:
-        # An advance mid-suspension could invalidate the frozen payload the open decision holds.
-        if state.pending is not None:
-            return ()
-        return tuple(
-            f"{state.world.require(subject_id).name} has an advance owed; call advance only when "
-            "the player asks for it."
-            for subject_id in self.owed(state)
-        )
+ADVANCE_TOOL = "Spend one advance a party member has earned, when the player asks for it. "
 
 
-_SAVE_BODY = TypeAdapter(dict[str, JsonValue])
+def party_member(draft: Game, subject_id: EntityId) -> Entity:
+    """An advance is a party member's own: nobody else's sheet is the engine's to grow."""
+    subject = draft.world.require(subject_id)
+    if subject_id not in (draft.player_id, *draft.world.party):
+        raise ValueError(f"{subject.name} is not in the party")
+    return subject
 
 
-def parse_save(raw: str, mechanics_type: type[Mutable]) -> Game:
-    """The engine's mechanics type is the only reader of that field, so it validates first."""
-    body = _SAVE_BODY.validate_json(raw)
-    mechanics = mechanics_type.model_validate(body.get("mechanics"))
-    return Game.model_validate({**body, "mechanics": mechanics})
+def advances_owed[S: SheetBase](
+    state: Game, sheet_type: type[S], ledger: Callable[[S], Counter]
+) -> tuple[str, ...]:
+    """Chapters played standing above the ledger of advances taken, one note each."""
+    # An advance mid-suspension could invalidate the frozen payload the open decision holds.
+    if state.pending is not None:
+        return ()
+    notes: list[str] = []
+    for subject_id in (state.player_id, *state.world.party):
+        subject = state.world.require(subject_id)
+        sheet = sheet_type.model_validate(subject.rules)
+        if sheet.chapters.current > ledger(sheet).current:
+            notes.append(
+                f"{subject.name} has an advance owed; call advance only when the player asks "
+                "for it."
+            )
+    return tuple(notes)
 
 
 class Engine(ABC):
@@ -206,50 +218,54 @@ class Engine(ABC):
     engine_dir: ClassVar[Path]
     decisions: ClassVar[tuple[type[Decision], ...]] = ()
     authoring_instructions: ClassVar[str] = ""
-    mechanics_type: type[Mutable]
+    # Every entity's rules are parsed through the model its kind maps to; `validate` is the gate.
+    rules_types: ClassVar[Mapping[Kind, type[EntityRules]]]
     pack_type: ClassVar[type[BaseModel]]
-    # Optional because Breathless has no advancement; every other roadmap engine ships one.
-    advancement: Advancement | None = None
     creation: CharacterCreation
 
     def __init__(self, sources: PackSources = SHIPPED_PACKS) -> None:
         # Subclasses load `sources` themselves so their packs keep their own type.
         del sources
-        _ = self.mechanics_type, self.pack_type
+        _ = self.rules_types, self.pack_type
         self.director_instructions: str = engine_text(self.engine_dir / "director.md")
         self.director_commands: tuple[Command, ...] = ()
         self.player_actions: tuple[PlayerAction, ...] = ()
 
-    @abstractmethod
-    def overlay_rows(self, rules: dict[str, JsonValue]) -> tuple[tuple[str, str], ...]:
-        """Authored character rules as rows; raises ValueError on rules this engine cannot play."""
-
-    @abstractmethod
-    def opening_mechanics(
-        self, world: WorldState, player_rules: dict[str, JsonValue]
-    ) -> Mutable: ...
-
-    @abstractmethod
     def validate(self, state: Game) -> None:
         """Refuses a state this engine cannot play, rather than repairing one."""
+        installed = set(self.pack_ids)
+        for entity in state.world.entities:
+            try:
+                parsed = self.rules_types[entity.kind].model_validate(entity.rules)
+            except ValidationError as broken:
+                first = broken.errors()[0]
+                place = ".".join(str(part) for part in ("rules", entity.id, *first["loc"]))
+                raise ValueError(f"{place}: {first['msg']}") from broken
+            if isinstance(parsed, SheetBase) and (missing := sorted(set(parsed.packs) - installed)):
+                raise ValueError(f"{entity.id!r} uses packs that are not installed: {missing}")
 
-    @abstractmethod
-    def describe(self, state: Game, entity: Entity) -> str:
-        """One actor's mechanics as a prompt reads them; the player's own panel is `sheet_rows`."""
+    def describe(self, entity: Entity) -> str:
+        """One entity's mechanics as a prompt reads them; the player's own panel is `sheet_rows`."""
+        # An actor the scenario gave no rules is a threat the Director narrates, not a sheet.
+        if entity.kind == "actor" and not entity.rules:
+            return ""
+        return describe_rows(self.rules_types[entity.kind].model_validate(entity.rules).rows(), ())
 
-    @abstractmethod
     def sheet_rows(self, state: Game) -> tuple[tuple[str, str], ...]:
         """Ordered (label, value) pairs summarising the player's own sheet for the player."""
-
-    def seed(self, draft: Game, entity: Entity, rng: Random) -> None:  # noqa: B027
-        """Whatever this engine must give an entity created during play; a hook, not abstract."""
+        return self.rules_types["actor"].model_validate(state.player.rules).rows()
 
     def notes(self, state: Game) -> tuple[str, ...]:
-        owed = () if self.advancement is None else self.advancement.notes(state)
-        return (*state.world.pending_notes, *owed)
+        return (*state.world.pending_notes, *self.owed_notes(state))
 
-    def check_overlay(self, rules: dict[str, JsonValue]) -> None:
-        _ = self.overlay_rows(rules)
+    def owed_notes(self, state: Game) -> tuple[str, ...]:
+        """Advances the party has earned; an engine without advancement owes none."""
+        del state
+        return ()
+
+    def check_overlay(self, overlay: dict[str, JsonValue]) -> None:
+        """The character file this engine plays by, refused where it is read rather than in play."""
+        _ = self.rules_types["actor"].model_validate(overlay)
 
     @property
     def pack_ids(self) -> tuple[Slug, ...]:
@@ -273,7 +289,7 @@ class Engine(ABC):
         return f"{self.authoring_instructions}\n\nSELECTED PACK CONTENT\n{json.dumps(packs)}"
 
     def restored(self, raw: str) -> Game:
-        state = parse_save(raw, self.mechanics_type)
+        state = Game.model_validate_json(raw)
         if state.engine != self.id:
             raise ValueError(f"the save plays {state.engine!r}, not {self.id!r}")
         if state.pending is not None:
@@ -290,9 +306,6 @@ class Engine(ABC):
     def check_pending(self, pending: PendingDecision) -> None:
         """Refuses a decision whose kind this engine does not play or whose payload is invalid."""
         _ = self._decision(pending)
-
-    def renderer(self, state: Game) -> EntityRenderer:
-        return lambda entity: self.describe(state, entity)
 
     def _decision(self, pending: PendingDecision) -> Decision:
         # Core's death hand-over is prepended, so no engine declares it and none can shadow it.
@@ -346,14 +359,13 @@ type Play = Callable[[Game, Random], tuple[Fact, ...]]
 
 
 def apply_to_draft(engine: Engine, draft: Game, play: Play, rng: Random) -> tuple[Fact, ...]:
-    """Every mutation runs this sequence, so seeding cannot be forgotten by a caller."""
+    """Every mutation runs this sequence, so no caller can skip the engine's own gate."""
     before = draft.pending
     landed = play(draft, rng)
     if before is not None and draft.pending is not before:
         raise ValueError("the rules already wait on a decision; they take one at a time")
     if draft.pending is not None:
         engine.check_pending(draft.pending)
-    _seed_created(engine, draft, landed, rng)
     engine.validate(draft)
     return landed
 
@@ -388,12 +400,6 @@ def apply_play(deps: DirectorContext, play: Play) -> str:
 def apply_action(deps: DirectorContext, act: Callable[[Game], Sequence[Fact]]) -> str:
     """`aidm.state.actions` never rolls, so the turn's dice stay with the resolvers that do."""
     return apply_play(deps, lambda draft, _rng: tuple(act(draft)))
-
-
-def _seed_created(engine: Engine, draft: Game, facts: Sequence[Fact], rng: Random) -> None:
-    for fact in facts:
-        if fact.kind == "entity_created" and fact.entity_id is not None:
-            engine.seed(draft, draft.world.require(fact.entity_id), rng)
 
 
 def _reached(draft: Game, facts: Sequence[Fact]) -> list[str]:
@@ -548,6 +554,37 @@ def run_command(found: Command, deps: DirectorContext, raw: Mapping[str, JsonVal
             "Put that to the player, then start the next turn with their answer."
         )
     return found.call(deps, raw)
+
+
+def complete_chapter[S: SheetBase](draft: Game, ending: str, sheet_type: type[S]) -> list[Fact]:
+    """Only those who played the chapter are credited with it: nobody is owed one they missed."""
+    for member_id in (draft.player_id, *draft.world.party):
+        member = draft.world.require(member_id)
+        # A companion nobody wrote rules for has no sheet, and a chapter writes them none.
+        if not member.rules:
+            continue
+        with rules(member, sheet_type) as sheet:
+            sheet.chapters.current += 1
+    return [
+        Fact(
+            kind="chapter_completed",
+            trace=ending,
+            told=True,
+            event=MechanicEvent(title=ending, icon="auto_stories"),
+        )
+    ]
+
+
+def chapter_command[S: SheetBase](description: str, ending: str, sheet_type: type[S]) -> Command:
+    """Every engine closes a chapter the same way; only what it calls one differs."""
+    return command(
+        "complete_chapter",
+        description,
+        NoArgs,
+        lambda deps, _args: apply_action(
+            deps, lambda draft: complete_chapter(draft, ending, sheet_type)
+        ),
+    )
 
 
 # A player's own move between turns: no Director judgement, so no turn.

@@ -1,17 +1,30 @@
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from random import Random
+from typing import ClassVar
 
 from pydantic import Field
 
-from aidm.content.model import CharacterProfile, CreatedCharacter, Scenario
-from aidm.engines.core import ProposalBase, action, rule
+from aidm.content.model import CharacterProfile, CreatedCharacter
+from aidm.engines.core import (
+    ADVANCE_TOOL,
+    Engine,
+    EntityRules,
+    NoRules,
+    action,
+    advances_owed,
+    chapter_command,
+    counter_fact,
+    describe_rows,
+    party_member,
+    rule,
+    rules,
+)
 from aidm.engines.loner3e.rules import (
     GROWTH,
     AdventureGrowth,
     Change,
     Conflict,
-    Mechanics,
     Pack,
     Question,
     Sheet,
@@ -26,7 +39,6 @@ from aidm.engines.packs import (
     find_entry,
     pack_options,
 )
-from aidm.engines.sheets import SheetAdvancement, SheetEngine, chapter_command
 from aidm.engines.sources import SHIPPED_PACKS, PackSources
 from aidm.state.creation import (
     AnyStep,
@@ -38,11 +50,10 @@ from aidm.state.creation import (
 )
 from aidm.state.entities import (
     CheckedEntityId,
-    Counter,
     EngineId,
     Entity,
-    EntityId,
     Frozen,
+    Kind,
 )
 from aidm.state.facts import Fact, MechanicEvent, explained_fact
 from aidm.state.model import Game
@@ -52,27 +63,25 @@ class RestoreLuck(Frozen):
     actor_id: CheckedEntityId = Field(description="Exact id of the player or an actor here.")
 
 
-class Loner3eAdvancement(SheetAdvancement):
-    proposal_type = AdventureGrowth
-    ledger_key = "milestones"
-    text = GROWTH
-    spent_why = "a milestone spent"
-
-    def ledger(self, state: Game, subject_id: EntityId) -> Counter:
-        return Mechanics.of_game(state).sheets[subject_id].milestones
-
-    def grant(self, draft: Game, proposal: ProposalBase, rng: Random) -> tuple[Fact, ...]:
-        del rng
-        assert isinstance(proposal, AdventureGrowth)
-        sheet = Mechanics.of_game(draft).sheets[proposal.subject_id]
-        subject = draft.world.require(proposal.subject_id)
+def advance(draft: Game, proposal: AdventureGrowth, rng: Random) -> tuple[Fact, ...]:
+    """One advance per adventure a party member played: the tags it rewrote or grew."""
+    del rng
+    subject = party_member(draft, proposal.subject_id)
+    with rules(subject, Sheet) as sheet:
+        if sheet.chapters.current <= sheet.milestones.current:
+            raise ValueError(f"{subject.name} has no advance owed")
         # Sequential against the live sheet, so a rewrite may name what an earlier change wrote.
-        return tuple(
+        granted = tuple(
             _rewrite(sheet, subject, change)
             if change.kind == "rewrite"
             else _gain(sheet, subject, change)
             for change in proposal.changes
         )
+        sheet.milestones.current += 1
+        spent = counter_fact(
+            draft, subject, "milestones", sheet.milestones, 1, "a milestone spent", "military_tech"
+        )
+    return (*granted, spent)
 
 
 def _gain(sheet: Sheet, subject: Entity, change: Change) -> Fact:
@@ -168,13 +177,16 @@ class Loner3eCreation(PackCreation[Pack]):
         )
 
 
-class Loner3eEngine(SheetEngine[Sheet]):
+class Loner3eEngine(Engine):
     id = EngineId("loner3e")
     badge = ("LONER 3E", "teal-7")
     engine_dir = Path(__file__).parent
-    # SRD "Everything is a Character": a thing that resists is a character, so no item sheet.
-    sheet_type = Sheet
-    mechanics_type = Mechanics
+    # SRD "Everything is a Character": a thing that resists plays by the one sheet an actor does.
+    rules_types: ClassVar[Mapping[Kind, type[EntityRules]]] = {
+        "actor": Sheet,
+        "item": Sheet,
+        "location": NoRules,
+    }
     pack_type = Pack
     decisions = (Conflict,)
     authoring_instructions = (
@@ -188,7 +200,6 @@ class Loner3eEngine(SheetEngine[Sheet]):
     def __init__(self, sources: PackSources = SHIPPED_PACKS) -> None:
         super().__init__(sources)
         self.packs = sources.load(self.engine_dir / "packs", Pack)
-        self.advancement = Loner3eAdvancement()
         self.creation = Loner3eCreation(self.packs)
         self.director_commands = (
             rule(
@@ -204,23 +215,23 @@ class Loner3eEngine(SheetEngine[Sheet]):
                 lambda draft, one: apply_restore_luck(draft, one.actor_id),
             ),
             chapter_command(
-                "Record that the current adventure has ended.", "the adventure has ended"
+                "Record that the current adventure has ended.", "the adventure has ended", Sheet
             ),
-            self.advancement.command(),
+            rule("advance", ADVANCE_TOOL + GROWTH, AdventureGrowth, advance),
         )
 
     def pack_models(self) -> Mapping[str, Pack]:
         return self.packs
 
-    def uses_sheet(self, entity: Entity) -> bool:
-        return entity.kind == "actor" or bool(entity.rules)
+    def describe(self, entity: Entity) -> str:
+        # An item is described only once play has written rules on it; before that it is scenery.
+        if entity.kind != "actor" and not entity.rules:
+            return ""
+        sheet = Sheet.model_validate(entity.rules)
+        return describe_rows(sheet.rows(), self.meanings(sheet))
 
-    def check_scenario(self, scenario: Scenario) -> None:
-        if blank := sorted(
-            entity.id for entity in scenario.world.of_kind("actor") if not entity.rules
-        ):
-            raise ValueError(f"authored Loner actors carry no `rules`: {blank}")
-        super().check_scenario(scenario)
+    def owed_notes(self, state: Game) -> tuple[str, ...]:
+        return advances_owed(state, Sheet, lambda sheet: sheet.milestones)
 
     def meanings(self, sheet: Sheet) -> tuple[tuple[str, str], ...]:
         packs = tuple(self.packs[pack_id] for pack_id in sheet.packs)
@@ -231,4 +242,4 @@ class Loner3eEngine(SheetEngine[Sheet]):
         )
 
     def twists(self, state: Game) -> tuple[tuple[str, str], ...]:
-        return twist_table(self.packs, Mechanics.of_game(state).sheets[state.player_id].twist_pack)
+        return twist_table(self.packs, Sheet.model_validate(state.player.rules).twist_pack)

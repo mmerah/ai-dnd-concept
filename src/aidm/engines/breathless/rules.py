@@ -4,11 +4,24 @@ from typing import ClassVar, Literal, Self, get_args
 
 from pydantic import Field, model_validator
 
-from aidm.engines.core import Decision, adjust, pool
-from aidm.engines.sheets import ItemBase, SheetBase, SheetMechanics, require_sheet
+from aidm.engines.core import (
+    Decision,
+    EntityRules,
+    SheetBase,
+    adjust,
+    pool,
+    rules,
+)
 from aidm.state.actions import require_actor_here, roll_pool
 from aidm.state.creation import CreationOption
-from aidm.state.entities import CheckedEntityId, Counter, Entity, EntityId, Frozen, slug
+from aidm.state.entities import (
+    CheckedEntityId,
+    Counter,
+    Entity,
+    EntityId,
+    Frozen,
+    slug,
+)
 from aidm.state.facts import EventBadge, Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
 from aidm.state.play import DecisionOption
@@ -93,15 +106,12 @@ class Sheet(SheetBase):
         )
 
 
-class ItemSheet(ItemBase):
+class ItemSheet(EntityRules):
     die: Die = RULES.starting_item
 
     def rows(self) -> tuple[tuple[str, str], ...]:
         spent = self.die == RULES.floor
         return (("Die", "d4: broken, lost, or faded" if spent else f"d{self.die}"),)
-
-
-class Mechanics(SheetMechanics[Sheet, ItemSheet]): ...
 
 
 class Pack(Frozen):
@@ -206,7 +216,8 @@ class Loot(Decision):
         del rng
         actor = draft.world.require_kind(self.actor_id, "actor")
         if option_id == "med-kit":
-            require_sheet(Mechanics.of_game(draft).sheets, actor).med_kit = True
+            with rules(actor, Sheet) as sheet:
+                sheet.med_kit = True
             card = MechanicEvent(title="Med kit", icon="medical_services")
             return (entity_fact(actor, "loot_found", "took a med kit", event=card),)
         return (_found(draft, actor, self.seeking, self.rating),)
@@ -234,37 +245,37 @@ def _rolls(
     draft: Game, actor: Entity, skill: str, item_id: EntityId | None, stunt: bool
 ) -> tuple[Die, str, list[Fact]]:
     """The die one roller brings, worn down after the roll: the trace line and facts of the wear."""
-    mechanics = Mechanics.of_game(draft)
-    sheet = require_sheet(mechanics.sheets, actor)
     if stunt:
-        if sheet.stunted:
-            raise ValueError(
-                f"{actor.name} has pulled a stunt already; they catch their breath before another"
-            )
-        sheet.stunted = True
-        wear: list[Fact] = []
-        return RULES.stunt_die, "stunt d12", wear
+        with rules(actor, Sheet) as sheet:
+            if sheet.stunted:
+                raise ValueError(
+                    f"{actor.name} has pulled a stunt already; they catch their breath before "
+                    "another"
+                )
+            sheet.stunted = True
+        return RULES.stunt_die, "stunt d12", []
     if item_id is not None:
         item = draft.world.require_kind(item_id, "item")
         if item.parent_id != actor.id:
             raise ValueError(f"{actor.name} does not carry {item.name}")
-        held = mechanics.items[item.id]
-        if held.die == RULES.floor:
-            raise ValueError(f"{item.name} is at d4: broken, lost, or faded. It rolls no more")
-        face = held.die
-        held.die = stepped(face)
-        spent = f"d{held.die}"
-        if held.die == RULES.floor:
-            # Broken, lost, or faded: it leaves the backpack and frees its slot.
-            item.parent_id = draft.world.location_of(actor)
-            spent = "d4: broken, lost, or faded, out of the backpack"
+        with rules(item, ItemSheet) as held:
+            if held.die == RULES.floor:
+                raise ValueError(f"{item.name} is at d4: broken, lost, or faded. It rolls no more")
+            face = held.die
+            held.die = stepped(face)
+            spent = f"d{held.die}"
+            if held.die == RULES.floor:
+                # Broken, lost, or faded: it leaves the backpack and frees its slot.
+                item.parent_id = draft.world.location_of(actor)
+                spent = "d4: broken, lost, or faded, out of the backpack"
         trace = f"{item.name} d{face} -> {spent}"
         return face, f"{item.name} d{face}", [entity_fact(item, "item_worn", trace)]
     if skill not in SKILLS:
         raise ValueError("a check rolls a skill, an item, or a stunt")
-    face = sheet.worn[skill]
-    sheet.worn[skill] = stepped(face)
-    trace = f"{draft.label(actor)} {skill} d{face} -> d{sheet.worn[skill]}"
+    with rules(actor, Sheet) as sheet:
+        face = sheet.worn[skill]
+        sheet.worn[skill] = stepped(face)
+        trace = f"{draft.label(actor)} {skill} d{face} -> d{sheet.worn[skill]}"
     return face, f"{skill} d{face}", [entity_fact(actor, "skill_worn", trace)]
 
 
@@ -304,9 +315,8 @@ def resolve_check(draft: Game, action: Check, rng: Random) -> tuple[Fact, ...]:
     trace = f"{action.goal} (risk: {action.risk}) -> {outcome}"
     if outcome == "fail" and action.dangerous:
         # Everyone who rolled shares the risk, so each vulnerable roller is named.
-        sheets = Mechanics.of_game(draft).sheets
         for roller in rollers:
-            if sheets[roller.id].vulnerable:
+            if Sheet.model_validate(roller.rules).vulnerable:
                 warning = (
                     f"{roller.name} is vulnerable and failed a dangerous action: taken out, or dead"
                 )
@@ -330,12 +340,13 @@ def resolve_luck_test(draft: Game, action: LuckTest, rng: Random) -> tuple[Fact,
 def resolve_loot(draft: Game, action: LootCheck, rng: Random) -> tuple[Fact, ...]:
     actor = require_actor_here(draft, action.actor_id)
     facts = draft.reveal(actor)
-    sheet = require_sheet(Mechanics.of_game(draft).sheets, actor)
-    face = sheet.loot
-    sheet.loot = stepped(face)
+    with rules(actor, Sheet) as sheet:
+        face = sheet.loot
+        sheet.loot = stepped(face)
+        held_med_kit = sheet.med_kit
     die, rolled = roll_pool((face,), f"loot — {action.seeking}", rng, label="Loot")
     facts.append(rolled)
-    wear = f"loot die d{face} -> d{sheet.loot}"
+    wear = f"loot die d{face} -> d{stepped(face)}"
     if die.kept <= RULES.trouble_ahead_at:
         here = die.kept <= RULES.trouble_here_at
         found = "trouble is here" if here else "there is trouble ahead"
@@ -348,7 +359,7 @@ def resolve_loot(draft: Game, action: LootCheck, rng: Random) -> tuple[Fact, ...
         facts.append(entity_fact(actor, "loot_found", f"{found} — {wear}", event=card))
         return tuple(facts)
     rating = loot_die(die.kept)
-    if die.kept >= RULES.med_kit_at and not sheet.med_kit:
+    if die.kept >= RULES.med_kit_at and not held_med_kit:
         choice = Loot(actor_id=actor.id, seeking=action.seeking, rating=rating)
         draft.pending = choice.pending(
             MED_KIT_PROMPT,
@@ -389,12 +400,13 @@ def apply_change_stress(draft: Game, action: ChangeStress) -> list[Fact]:
     if action.amount == 0:
         raise ValueError("changing stress moves the counter; zero moves nothing")
     actor = require_actor_here(draft, action.actor_id)
-    sheet = require_sheet(Mechanics.of_game(draft).sheets, actor)
     facts = draft.reveal(actor)
-    facts.extend(
-        adjust(draft, actor, "stress", sheet.stress, action.amount, action.why, "monitor_heart")
-    )
-    if action.amount > 0 and sheet.vulnerable:
+    with rules(actor, Sheet) as sheet:
+        facts.extend(
+            adjust(draft, actor, "stress", sheet.stress, action.amount, action.why, "monitor_heart")
+        )
+        vulnerable = sheet.vulnerable
+    if action.amount > 0 and vulnerable:
         facts.append(
             entity_fact(
                 actor,
@@ -408,10 +420,10 @@ def apply_change_stress(draft: Game, action: ChangeStress) -> list[Fact]:
 
 def apply_catch_breath(draft: Game, action: Breathe) -> list[Fact]:
     actor = require_actor_here(draft, action.actor_id)
-    sheet = require_sheet(Mechanics.of_game(draft).sheets, actor)
-    sheet.worn = dict(sheet.skills)
-    sheet.loot = RULES.loot_start
-    sheet.stunted = False
+    with rules(actor, Sheet) as sheet:
+        sheet.worn = dict(sheet.skills)
+        sheet.loot = RULES.loot_start
+        sheet.stunted = False
     draft.world.pending_notes = (
         *draft.world.pending_notes,
         f"{actor.name} caught their breath: introduce a new complication for the group now, "
@@ -425,41 +437,48 @@ def apply_catch_breath(draft: Game, action: Breathe) -> list[Fact]:
 
 def apply_use_med_kit(draft: Game, action: Breathe) -> list[Fact]:
     actor = require_actor_here(draft, action.actor_id)
-    sheet = require_sheet(Mechanics.of_game(draft).sheets, actor)
-    if not sheet.med_kit:
-        raise ValueError(f"{actor.name} carries no med kit")
-    sheet.med_kit = False
-    return adjust(
-        draft, actor, "stress", sheet.stress, -RULES.med_kit_clears, "used the med kit", "healing"
-    )
+    with rules(actor, Sheet) as sheet:
+        if not sheet.med_kit:
+            raise ValueError(f"{actor.name} carries no med kit")
+        sheet.med_kit = False
+        return adjust(
+            draft,
+            actor,
+            "stress",
+            sheet.stress,
+            -RULES.med_kit_clears,
+            "used the med kit",
+            "healing",
+        )
 
 
 def breathers(state: Game) -> tuple[tuple[str, Breathe], ...]:
-    sheets = Mechanics.of_game(state).sheets
     return tuple(
         (
-            "Catch your breath" if actor_id == state.player_id else f"{name} catches their breath",
-            Breathe(actor_id=actor_id),
+            "Catch your breath"
+            if member.id == state.player_id
+            else f"{member.name} catches their breath",
+            Breathe(actor_id=member.id),
         )
-        for actor_id, name in _party(state)
-        if actor_id in sheets and not sheets[actor_id].rested()
+        for member, sheet in _party(state)
+        if not sheet.rested()
     )
 
 
 def med_kit_holders(state: Game) -> tuple[tuple[str, Breathe], ...]:
-    sheets = Mechanics.of_game(state).sheets
     return tuple(
         (
-            "Use the med kit" if actor_id == state.player_id else f"{name} uses their med kit",
-            Breathe(actor_id=actor_id),
+            "Use the med kit"
+            if member.id == state.player_id
+            else f"{member.name} uses their med kit",
+            Breathe(actor_id=member.id),
         )
-        for actor_id, name in _party(state)
-        if actor_id in sheets and sheets[actor_id].med_kit and sheets[actor_id].stress.current > 0
+        for member, sheet in _party(state)
+        if sheet.med_kit and sheet.stress.current > 0
     )
 
 
-def _party(state: Game) -> tuple[tuple[EntityId, str], ...]:
-    return tuple(
-        (member_id, state.world.require(member_id).name)
-        for member_id in (state.player_id, *state.world.party)
-    )
+def _party(state: Game) -> tuple[tuple[Entity, Sheet], ...]:
+    """Only a member the scenario gave rules plays by a sheet; the rest travel along."""
+    members = (state.world.require(one) for one in (state.player_id, *state.world.party))
+    return tuple((member, Sheet.model_validate(member.rules)) for member in members if member.rules)

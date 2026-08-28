@@ -1,10 +1,10 @@
 from random import Random
 
 import pytest
-from core_test_support import initialized
+from core_test_support import initialized, sheet_of
 
 from aidm.engines.core import Engine, TurnRecord
-from aidm.engines.loner3e.rules import Mechanics
+from aidm.engines.loner3e.rules import Sheet
 from aidm.state import actions
 from aidm.state.entities import DEAD, PLAYER_ID, EntityId
 from aidm.state.model import Game
@@ -45,12 +45,11 @@ def test_a_takeover_moves_the_played_id_and_leaves_the_rest_of_the_game_alone() 
     assert landed.player_id == MARA
     assert landed.player.name == died.world.require(MARA).name
     assert landed.world.entities == died.world.entities
-    assert Mechanics.of_game(landed).sheets == Mechanics.of_game(died).sheets
     assert landed.history == died.history
     assert landed.world.require(PLAYER_ID).trait(DEAD) is not None
     assert MARA not in landed.world.party
     # What the sheet panel draws: the successor's own sheet, read through the played id.
-    assert engine.sheet_rows(landed) == Mechanics.of_game(landed).sheets[MARA].rows()
+    assert engine.sheet_rows(landed) == sheet_of(landed, MARA, Sheet).rows()
 
 
 def test_a_death_with_nobody_to_carry_on_ends_the_game_as_it_always_did() -> None:

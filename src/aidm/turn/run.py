@@ -98,7 +98,7 @@ class Turn(DirectorContext):
         notes = (*self.notes, *self.engine.notes(draft))
         return context.render_director(
             SceneSnapshot.from_game(draft, notes),
-            self.engine.renderer(draft),
+            self.engine.describe,
             draft.scenario,
             self.prompt,
             resumed=self.resumed,
@@ -271,7 +271,7 @@ async def run_segment(
         visible = VisibleScene.revealed_from(SceneSnapshot.from_game(draft))
         narrator_prompt = context.render_narrator(
             visible,
-            engine.renderer(draft),
+            engine.describe,
             draft.scenario,
             evidence=narrator_evidence(facts),
             prompt=prompt,

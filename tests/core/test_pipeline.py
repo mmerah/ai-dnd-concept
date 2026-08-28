@@ -10,6 +10,7 @@ from core_test_support import (
     played,
     recorded,
     scripted,
+    sheet_of,
     shown,
     structured,
     text,
@@ -18,9 +19,9 @@ from core_test_support import (
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolReturnPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.engines.loner3e.rules import Mechanics as LonerMechanics
+from aidm.engines.loner3e.rules import Sheet as LonerSheet
 from aidm.engines.loner3e.rules import outcome_for
-from aidm.engines.twentyfourxx.rules import Mechanics
+from aidm.engines.twentyfourxx.rules import Sheet
 from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.facts import player_events
 from aidm.turn.run import TurnStep
@@ -206,7 +207,7 @@ async def test_a_call_its_own_fields_refuse_is_retried_rather_than_killing_the_t
 
 async def test_a_later_call_is_judged_against_the_mechanics_the_earlier_one_moved() -> None:
     engine, state = game(TWENTYFOURXX)
-    credits = Mechanics.of_game(state).sheets[PLAYER_ID].credits.current
+    credits = sheet_of(state, PLAYER_ID, Sheet).credits.current
     director = recorded(
         tool_call("change_credits", actor_id="player", amount=-credits),
         tool_call("change_credits", actor_id="player", amount=-1),
@@ -214,7 +215,7 @@ async def test_a_later_call_is_judged_against_the_mechanics_the_earlier_one_move
     )
     result = await played(engine, state, "I pay what I owe.", director=FunctionModel(director.stub))
 
-    assert Mechanics.of_game(result.state).sheets[PLAYER_ID].credits.current == 0
+    assert sheet_of(result.state, PLAYER_ID, Sheet).credits.current == 0
     assert director.reasons()
 
 
@@ -296,11 +297,14 @@ async def test_an_owed_advance_is_noted_lands_on_call_and_is_refused_once_spent(
         text("The rope is his for good."),
     )
     result = await played(
-        engine, at_boundary(state), "I keep the rope.", director=FunctionModel(director.stub)
+        engine,
+        at_boundary(state, LonerSheet),
+        "I keep the rope.",
+        director=FunctionModel(director.stub),
     )
 
     assert "Kael has an advance owed" in shown(result.turn, "director")
     assert [event.icon for event in player_events(result.turn.facts)] == ["military_tech"] * 2
-    sheet = LonerMechanics.of_game(result.state).sheets[PLAYER_ID]
+    sheet = sheet_of(result.state, PLAYER_ID, LonerSheet)
     assert (sheet.gear[-1], sheet.milestones.current) == ("Waxed Rope", 1)
     assert any("has no advance owed" in reason for reason in director.reasons())

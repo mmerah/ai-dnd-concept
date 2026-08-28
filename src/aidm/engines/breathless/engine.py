@@ -1,6 +1,7 @@
 from collections.abc import Mapping
 from pathlib import Path
 from random import Random
+from typing import ClassVar
 
 from pydantic import JsonValue
 
@@ -15,7 +16,6 @@ from aidm.engines.breathless.rules import (
     Loot,
     LootCheck,
     LuckTest,
-    Mechanics,
     Pack,
     Sheet,
     StakedCheck,
@@ -29,12 +29,18 @@ from aidm.engines.breathless.rules import (
     resolve_luck_test,
     resolve_stake,
 )
-from aidm.engines.core import action, player_action, rule
+from aidm.engines.core import (
+    Engine,
+    EntityRules,
+    NoRules,
+    action,
+    player_action,
+    rule,
+)
 from aidm.engines.packs import PackCreation, character_packs, pack_options
-from aidm.engines.sheets import SheetEngine
 from aidm.engines.sources import SHIPPED_PACKS, PackSources
 from aidm.state.creation import AnyStep, CreationStep, Picks, TextStep, check_picks, picked
-from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, slug
+from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Kind, slug
 from aidm.state.model import Game
 
 RATED = (10, 8, 6)
@@ -92,13 +98,16 @@ class BreathlessCreation(PackCreation[Pack]):
         )
 
 
-class BreathlessEngine(SheetEngine[Sheet, ItemSheet]):
+class BreathlessEngine(Engine):
     id = EngineId("breathless")
     badge = ("BREATHLESS", "red-7")
     engine_dir = Path(__file__).parent
-    sheet_type = Sheet
-    item_type = ItemSheet
-    mechanics_type = Mechanics
+    # Every item is a die, so a rules-less one is a d10 item rather than no item.
+    rules_types: ClassVar[Mapping[Kind, type[EntityRules]]] = {
+        "actor": Sheet,
+        "item": ItemSheet,
+        "location": NoRules,
+    }
     pack_type = Pack
     decisions = (StakedCheck, Loot)
     authoring_instructions = (
@@ -174,19 +183,14 @@ class BreathlessEngine(SheetEngine[Sheet, ItemSheet]):
     def pack_models(self) -> Mapping[str, Pack]:
         return self.packs
 
-    def uses_item_sheet(self, entity: Entity) -> bool:
-        # Every item is a die, so a rules-less one is a d10 item rather than no item.
-        return entity.kind == "item"
-
     def validate(self, state: Game) -> None:
         super().validate(state)
-        for actor_id in Mechanics.of_game(state).sheets:
-            if (held := len(state.world.children(actor_id, "item"))) > RULES.carry:
+        # The played character rolls their own skills, so a successor without rules cannot play.
+        if not state.player.rules:
+            raise ValueError(f"{state.player.name} has no character sheet")
+        for actor in state.world.of_kind("actor"):
+            held = len(state.world.children(actor.id, "item"))
+            if actor.rules and held > RULES.carry:
                 raise ValueError(
-                    f"{actor_id!r} carries {held} items; the backpack holds {RULES.carry}"
+                    f"{actor.id!r} carries {held} items; the backpack holds {RULES.carry}"
                 )
-
-    def seed(self, draft: Game, entity: Entity, rng: Random) -> None:
-        if entity.kind == "item" and not entity.rules:
-            raise ValueError("an item found during play comes from `loot_check`, with its die")
-        super().seed(draft, entity, rng)

@@ -1,18 +1,16 @@
 from collections.abc import Mapping
-from random import Random
 
 import pytest
-from core_test_support import LONER3E, character, initialized, scenario, updated
-from pydantic import JsonValue
+from core_test_support import LONER3E, character, initialized, scenario, sheet_of, updated
 
-from aidm.engines.core import Engine
+from aidm.engines.core import Engine, rules
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.loner3e.rules import RULES, Mechanics, Pack, Sheet, apply_restore_luck
+from aidm.engines.loner3e.rules import RULES, Pack, Sheet, apply_restore_luck
 from aidm.engines.registry import ENGINES, begin_game, build_engine
 from aidm.state import actions
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId
 from aidm.state.facts import Fact
-from aidm.state.model import Game, WorldState
+from aidm.state.model import Game
 
 
 def _turn(state: Game) -> tuple[Game, tuple[Fact, ...]]:
@@ -28,7 +26,8 @@ def _turn(state: Game) -> tuple[Game, tuple[Fact, ...]]:
 def _spent(state: Game) -> Game:
     """Luck short of full, so the engine's own action has something to restore."""
     draft = state.draft()
-    Mechanics.of_game(draft).sheets[PLAYER_ID].luck.current = 1
+    with rules(draft.world.require(PLAYER_ID), Sheet) as sheet:
+        sheet.luck.current = 1
     return draft.committed()
 
 
@@ -36,7 +35,7 @@ def test_engine_initialization_and_state_contract() -> None:
     engine, state = initialized()
 
     assert state.engine == engine.id
-    assert Mechanics.of_game(state).sheets[PLAYER_ID].luck.current == RULES.luck_max
+    assert sheet_of(state, PLAYER_ID, Sheet).luck.current == RULES.luck_max
     engine.validate(state)
 
     assert engine.restored(state.model_dump_json()) == state
@@ -62,42 +61,7 @@ def test_action_resolution_is_pure_and_renders_every_fact() -> None:
         assert fact.trace
 
 
-def test_a_created_actor_is_refused_until_the_engine_seeds_it() -> None:
-    engine, state = initialized()
-    actor = Entity(
-        id=EntityId("created-actor"),
-        kind="actor",
-        name="A New Actor",
-        brief="Newly introduced.",
-        known=True,
-        parent_id=state.player_location,
-    )
-    item = Entity(
-        id=EntityId("created-item"),
-        kind="item",
-        name="A New Item",
-        brief="Newly introduced.",
-        known=True,
-        parent_id=PLAYER_ID,
-    )
-
-    working = state.draft()
-    for entity in (actor, item):
-        _ = working.add(entity)
-    grown = working.committed()
-
-    with pytest.raises(ValueError, match="no character sheet"):
-        engine.validate(grown)
-    for entity in (actor, item):
-        engine.seed(grown, entity, Random(0))
-    engine.validate(grown)
-
-    mechanics = Mechanics.of_game(grown)
-    assert mechanics.sheets[actor.id] == Sheet()
-    assert item.id not in mechanics.sheets
-
-
-def test_rules_on_an_entity_created_in_play_reach_its_sheet() -> None:
+def test_rules_on_an_entity_created_in_play_are_its_sheet() -> None:
     engine, state = initialized()
     hostile = Entity(
         id=EntityId("grown-hostile"),
@@ -112,15 +76,15 @@ def test_rules_on_an_entity_created_in_play_reach_its_sheet() -> None:
     _ = working.add(hostile)
     grown = working.committed()
 
-    engine.seed(grown, hostile, Random(0))
+    engine.validate(grown)
 
-    sheet = Mechanics.of_game(grown).sheets[hostile.id]
+    sheet = sheet_of(grown, hostile.id, Sheet)
     assert sheet.concept == "A Bloated Cloister Rat"
     assert sheet.skills == ("Bites and Holds On",)
 
 
-def test_authored_rules_reach_the_sheet_of_whatever_carries_them() -> None:
-    """Every actor is rollable; anything else carries mechanics only where a scenario wrote them."""
+def test_authored_rules_are_the_sheet_of_whatever_carries_them() -> None:
+    """Every actor is rollable; anything else is described only where a scenario wrote rules."""
     engine, shipped = build_engine(LONER3E), scenario()
     authored = updated(
         shipped,
@@ -137,10 +101,9 @@ def test_authored_rules_reach_the_sheet_of_whatever_carries_them() -> None:
 
     state = begin_game(engine, "whispering-vault", authored, character())
 
-    sheets = Mechanics.of_game(state).sheets
-    assert sheets[EntityId("vault-map")].concept == "a chart that remembers"
-    assert sheets[EntityId("tomas")].concept == "A Deaf Old Porter"
-    assert EntityId("lantern") not in sheets
+    assert sheet_of(state, EntityId("vault-map"), Sheet).concept == "a chart that remembers"
+    assert sheet_of(state, EntityId("tomas"), Sheet).concept == "A Deaf Old Porter"
+    assert engine.describe(state.world.require(EntityId("lantern"))) == ""
     engine.validate(state)
 
 
@@ -150,31 +113,10 @@ def test_an_engine_that_declares_nothing_is_refused_before_it_plays() -> None:
         badge = ("UNDECLARED", "grey-6")
         engine_dir = Loner3eEngine.engine_dir
 
-        def overlay_rows(self, rules: dict[str, JsonValue]) -> tuple[tuple[str, str], ...]:
-            del rules
-            return ()
-
-        def opening_mechanics(
-            self, world: WorldState, player_rules: dict[str, JsonValue]
-        ) -> Mechanics:
-            del world, player_rules
-            return Mechanics()
-
-        def validate(self, state: Game) -> None:
-            del state
-
-        def describe(self, state: Game, entity: Entity) -> str:
-            del state, entity
-            return ""
-
-        def sheet_rows(self, state: Game) -> tuple[tuple[str, str], ...]:
-            del state
-            return ()
-
         def pack_models(self) -> Mapping[str, Pack]:
             return {}
 
-    with pytest.raises(AttributeError, match="mechanics_type|pack_type"):
+    with pytest.raises(AttributeError, match="rules_types|pack_type"):
         _ = Undeclared()
 
 

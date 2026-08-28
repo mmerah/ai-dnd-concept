@@ -2,7 +2,6 @@ from core_test_support import LONER3E, game, updated, with_entity
 
 from aidm.content.model import ScenarioMeta
 from aidm.engines.core import EntityRenderer
-from aidm.engines.loner3e.rules import Mechanics, Sheet
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Kind
 from aidm.state.model import Game, WorldState
 from aidm.turn.context import (
@@ -45,17 +44,14 @@ def state() -> Game:
         engine=LONER3E,
         player_id=PLAYER_ID,
         world=WorldState(entities=list(entities)),
-        mechanics=Mechanics(
-            sheets={entity.id: Sheet() for entity in entities if entity.kind == "actor"}
-        ),
         turn_events=(),
     )
     return held.committed()
 
 
-def _renderer(held: Game) -> EntityRenderer:
+def _renderer() -> EntityRenderer:
     engine, _ = game(LONER3E)
-    return engine.renderer(held)
+    return engine.describe
 
 
 def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> None:
@@ -93,7 +89,7 @@ def test_a_placement_never_names_an_entity_the_player_has_not_met() -> None:
 def test_the_director_is_shown_authored_detail() -> None:
     held = _with_detail(state(), EntityId("mara"))
     scene = SceneSnapshot.from_game(held)
-    describe = _renderer(held)
+    describe = _renderer()
     director = render_director(scene, describe, held.scenario, "I look around.")
 
     assert "Kael[id=player]" in director
@@ -112,7 +108,7 @@ def test_narrator_prompt_names_only_ids_of_entities_the_player_has_met() -> None
 
     prompt = render_narrator(
         scene,
-        _renderer(held),
+        _renderer(),
         held.scenario,
         evidence="- the map was found",
         prompt="What does Mara say?",
@@ -129,8 +125,6 @@ def test_a_chosen_option_is_not_shown_as_the_players_own_words() -> None:
     held = state()
     scene = SceneSnapshot.from_game(held)
     resumed = "asked: A hit is coming.\nthe player chose: Take the hit\n- the hit lands in full"
-    director = render_director(
-        scene, _renderer(held), held.scenario, "Take the hit", resumed=resumed
-    )
+    director = render_director(scene, _renderer(), held.scenario, "Take the hit", resumed=resumed)
     assert director.count("Take the hit") == 1
     assert director.endswith(f"PLAYER ACTION:\n{ANSWERED_BY_OPTION}")

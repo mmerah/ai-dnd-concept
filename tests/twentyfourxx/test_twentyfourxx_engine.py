@@ -3,32 +3,39 @@ from random import Random
 
 import pytest
 from core_test_support import (
-    SCENARIOS,
     TWENTYFOURXX,
-    advancement_of,
     at_boundary,
     game,
     played,
-    scenario_for,
     scripted,
+    sheet_of,
     text,
     tool_call,
-    updated,
 )
 from pydantic import ValidationError
 from pydantic_ai.models.function import FunctionModel
 
-from aidm.content.io import load_scenario
-from aidm.engines.core import DirectorContext, Engine, TurnRecord
+from aidm.engines.core import (
+    DirectorContext,
+    Engine,
+    TurnRecord,
+    complete_chapter,
+    rules,
+    take_over,
+)
 from aidm.engines.sources import PackSources
-from aidm.engines.twentyfourxx.engine import DIRECTOR_COMMANDS, TwentyfourxxEngine
+from aidm.engines.twentyfourxx.engine import (
+    DIRECTOR_COMMANDS,
+    TwentyfourxxEngine,
+    advance,
+)
 from aidm.engines.twentyfourxx.rules import (
     RULES,
     Advance,
     Attempt,
     Defence,
+    ItemSheet,
     LuckTest,
-    Mechanics,
     Sheet,
     StakedAttempt,
     apply_change_credits,
@@ -39,7 +46,7 @@ from aidm.engines.twentyfourxx.rules import (
     resolve_luck_test,
     resolve_stake,
 )
-from aidm.state.creation import CreationOption, Picks
+from aidm.state.creation import Picks
 from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.facts import Fact, player_events
 from aidm.state.model import Game
@@ -150,21 +157,21 @@ def test_naming_both_an_ally_and_a_helped_tag_is_refused_at_the_schema() -> None
 
 def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     engine, state = game(TWENTYFOURXX)
-    advancement = advancement_of(engine)
-    assert advancement.owed(state) == ()
+    assert engine.owed_notes(state) == ()
 
-    ready = at_boundary(state)
-    assert advancement.owed(ready) == (PLAYER_ID,)
-    before = Mechanics.of_game(ready).sheets[PLAYER_ID]
+    ready = at_boundary(state, Sheet)
+    (owed,) = engine.owed_notes(ready)
+    assert ready.player.name in owed
+    before = sheet_of(ready, PLAYER_ID, Sheet)
 
     raise_existing = Advance(
         subject_id=PLAYER_ID, skill="Tracking", why="the climb taught them the route"
     )
     draft = ready.draft()
-    facts = advancement.advance(draft, raise_existing, Random(3))
+    facts = advance(draft, raise_existing, Random(3))
     grown = draft.committed()
 
-    sheet = Mechanics.of_game(grown).sheets[PLAYER_ID]
+    sheet = sheet_of(grown, PLAYER_ID, Sheet)
     assert sheet.skills["Tracking"] == 10
     assert sheet.jobs.current == before.jobs.current + 1
     (dice_fact,) = [fact for fact in facts if fact.kind == "dice_rolled"]
@@ -173,34 +180,53 @@ def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
 
     take_new = Advance(subject_id=PLAYER_ID, skill="Lockpicking", why="the job called for it")
     draft = ready.draft()
-    _ = advancement.advance(draft, take_new, Random(4))
-    assert Mechanics.of_game(draft.committed()).sheets[PLAYER_ID].skills["Lockpicking"] == 8
+    _ = advance(draft, take_new, Random(4))
+    assert sheet_of(draft.committed(), PLAYER_ID, Sheet).skills["Lockpicking"] == 8
+
+
+def test_a_companion_without_a_sheet_earns_no_chapter_and_cannot_be_played_on() -> None:
+    engine, state = game(TWENTYFOURXX)
+    draft = state.draft()
+    ally = draft.world.require(ALLY)
+    ally.rules, ally.known, ally.parent_id = {}, True, draft.player_location
+    draft.world.party.append(ALLY)
+    _ = complete_chapter(draft, "the job is done", Sheet)
+    joined = draft.committed()
+
+    assert joined.world.require(ALLY).rules == {}
+    (owed,) = engine.owed_notes(joined)
+    assert joined.player.name in owed
+
+    handed = joined.draft()
+    _ = take_over(handed, ALLY)
+    with pytest.raises(ValueError, match="no character sheet"):
+        engine.validate(handed)
 
 
 def test_a_skill_already_at_d12_is_refused_with_the_engines_own_reason() -> None:
-    engine, state = game(TWENTYFOURXX)
-    draft = at_boundary(state).draft()
-    Mechanics.of_game(draft).sheets[PLAYER_ID].skills["Climbing"] = 12
+    _, state = game(TWENTYFOURXX)
+    draft = at_boundary(state, Sheet).draft()
+    with rules(draft.world.require(PLAYER_ID), Sheet) as sheet:
+        sheet.skills["Climbing"] = 12
     maxed = draft.committed()
 
     capped = Advance(subject_id=PLAYER_ID, skill="Climbing", why="there is nowhere higher to climb")
     with pytest.raises(ValueError, match="d12"):
-        _ = advancement_of(engine).advance(maxed.draft(), capped, Random(0))
+        _ = advance(maxed.draft(), capped, Random(0))
 
 
 def test_credits_are_paid_charged_and_never_overdrawn() -> None:
     _, state = game(TWENTYFOURXX)
     draft = state.draft()
-    sheet = Mechanics.of_game(draft).sheets[PLAYER_ID]
-    before = sheet.credits.current
+    before = sheet_of(draft, PLAYER_ID, Sheet).credits.current
 
     paid = apply_change_credits(draft, PLAYER_ID, 3)
     assert [fact.kind for fact in paid] == ["counter_changed"]
-    assert sheet.credits.current == before + 3
+    assert sheet_of(draft, PLAYER_ID, Sheet).credits.current == before + 3
 
     with pytest.raises(ValueError, match="cannot be spent"):
         _ = apply_change_credits(draft, PLAYER_ID, -(before + 4))
-    assert sheet.credits.current == before + 3
+    assert sheet_of(draft, PLAYER_ID, Sheet).credits.current == before + 3
 
     with pytest.raises(ValueError, match="zero moves nothing"):
         _ = apply_change_credits(draft, PLAYER_ID, 0)
@@ -348,7 +374,7 @@ def test_breaking_an_item_turns_the_hit_and_that_item_is_never_offered_again() -
     facts = engine.resume(draft, decision, "lantern", Random(0))
 
     assert [fact.kind for fact in facts] == ["defence_turned"]
-    assert Mechanics.of_game(draft).items[LANTERN].broken
+    assert sheet_of(draft, LANTERN, ItemSheet).broken
     _ = resolve_attempt(draft, _forcing(), Random(HIT))
     assert [option.id for option in _waiting(draft).options] == ["take-it"]
 
@@ -361,7 +387,7 @@ def test_taking_the_hit_records_it_landing_in_full() -> None:
 
     assert landed.kind == "defence_taken"
     assert landed.told
-    assert LANTERN not in Mechanics.of_game(draft).items
+    assert draft.world.require(LANTERN).rules == {}
     assert draft.pending is None
 
 
@@ -402,16 +428,16 @@ def test_gear_that_breaks_three_times_holds_twice_before_it_is_broken() -> None:
     assert _bought(engine, draft, "battle-armor")
     armor = draft.world.require(EntityId("battle-armor"))
 
-    sheet = Mechanics.of_game(draft).items[armor.id]
-
     for left in (2, 1):
         held = resolve_defence(draft, "Kael takes the burst", armor.id)
         assert [fact.kind for fact in held] == ["defence_turned"]
+        sheet = sheet_of(draft, armor.id, ItemSheet)
         assert sheet.breaks.current == left
         assert not sheet.broken
 
     spent = resolve_defence(draft, "Kael takes the burst", armor.id)
     assert [fact.kind for fact in spent] == ["defence_turned"]
+    sheet = sheet_of(draft, armor.id, ItemSheet)
     assert sheet.broken and sheet.breaks.current == 0
 
 
@@ -421,38 +447,36 @@ def test_an_items_marks_reach_the_prompt_as_its_own_state_lines() -> None:
     assert _bought(engine, draft, "battle-armor")
 
     armor = draft.world.require(EntityId("battle-armor"))
-    assert engine.describe(draft, armor) == "bulky: yes\nbreaks left: 3"
+    assert engine.describe(armor) == "bulky: yes\nbreaks left: 3"
     _ = resolve_defence(draft, "Kael takes the burst", armor.id)
-    assert engine.describe(draft, armor) == "bulky: yes\nbreaks left: 2"
-    assert engine.describe(draft, draft.world.require(LANTERN)) == ""
+    assert engine.describe(armor) == "bulky: yes\nbreaks left: 2"
+    assert engine.describe(draft.world.require(LANTERN)) == ""
 
 
 def test_a_second_purchase_of_the_same_gear_is_charged_and_lands_beside_the_first() -> None:
     engine, state = game(TWENTYFOURXX)
     draft = state.draft()
-    sheet = Mechanics.of_game(draft).sheets[PLAYER_ID]
-    before = sheet.credits.current
+    before = sheet_of(draft, PLAYER_ID, Sheet).credits.current
 
     for _ in range(2):
         assert _bought(engine, draft, "pistol")
 
     carried = [item.id for item in draft.world.children(PLAYER_ID, "item")]
     assert "pistol" in carried and "pistol-2" in carried
-    assert sheet.credits.current == before - 2
+    assert sheet_of(draft, PLAYER_ID, Sheet).credits.current == before - 2
 
 
 def test_a_ship_upgrade_is_charged_at_ten_and_installed_in_the_ship() -> None:
     engine, state = game(TWENTYFOURXX)
     draft = state.draft()
-    sheet = Mechanics.of_game(draft).sheets[PLAYER_ID]
     ship = draft.player_location
     _ = apply_change_credits(draft, PLAYER_ID, RULES.ship_upgrade)
-    before = sheet.credits.current
+    before = sheet_of(draft, PLAYER_ID, Sheet).credits.current
 
     assert _bought(engine, draft, "tachyon-burst", onto_id=ship)
 
     assert "tachyon-burst" in [item.id for item in draft.world.children(ship, "item")]
-    assert sheet.credits.current == before - RULES.ship_upgrade
+    assert sheet_of(draft, PLAYER_ID, Sheet).credits.current == before - RULES.ship_upgrade
 
     with pytest.raises(ValueError, match="name the ship"):
         _ = _bought(engine, draft, "jammer")
@@ -466,42 +490,6 @@ def test_duplicate_shop_ids_across_packs_are_refused(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="duplicate 24XX gear ids"):
         _ = TwentyfourxxEngine(PackSources((tmp_path,)))
-
-
-def test_an_entity_may_use_multiple_selected_packs() -> None:
-    engine = TwentyfourxxEngine()
-    srd = engine.packs["srd"]
-    engine.packs["extra"] = srd.model_copy(
-        update={
-            "name": "Extra",
-            "gear": (),
-            "skills": (*srd.skills, CreationOption(id="astrogation", label="Astrogation")),
-        }
-    )
-    authored = load_scenario(SCENARIOS, scenario_for(TWENTYFOURXX))
-    hostile = next(entity for entity in authored.world.of_kind("actor") if entity.rules)
-    skills = hostile.rules["skills"]
-    assert isinstance(skills, dict)
-    mixed = updated(
-        hostile,
-        rules={
-            **hostile.rules,
-            "packs": ["srd", "extra"],
-            "skills": {**skills, "Astrogation": 8},
-        },
-    )
-    scenario = updated(
-        authored,
-        packs=("srd", "extra"),
-        world=updated(
-            authored.world,
-            entities=tuple(
-                mixed if entity.id == hostile.id else entity for entity in authored.world.entities
-            ),
-        ),
-    )
-
-    engine.check_scenario(scenario)
 
 
 def _settle(engine: Engine, state: Game, answered: PendingDecision | None, *, settled: bool) -> str:
@@ -545,7 +533,7 @@ async def test_a_hit_the_player_answered_in_their_own_words_is_still_turned() ->
     )
 
     assert [fact.kind for fact in result.turn.facts] == ["defence_turned"]
-    assert Mechanics.of_game(result.state).items[LANTERN].broken
+    assert sheet_of(result.state, LANTERN, ItemSheet).broken
     assert result.state.pending is None
 
 

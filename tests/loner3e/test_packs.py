@@ -4,8 +4,9 @@ import pytest
 from core_test_support import initialized
 
 from aidm.content.io import ENCODING
+from aidm.engines.core import rules
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.loner3e.rules import SRD_PACK, Mechanics, Pack, PackEntry, twist_table
+from aidm.engines.loner3e.rules import SRD_PACK, Pack, PackEntry, Sheet, twist_table
 from aidm.engines.sources import PackSources
 from aidm.state.entities import PLAYER_ID
 
@@ -44,14 +45,12 @@ def test_a_user_pack_may_carry_its_own_twist_table(tmp_path: Path) -> None:
 
 def test_a_game_records_its_table_set_and_is_refused_without_it() -> None:
     engine, state = initialized()
-    assert Mechanics.of_game(state).sheets[PLAYER_ID].packs == (SRD_PACK,)
-    assert Mechanics.of_game(state).sheets[PLAYER_ID].twist_pack == SRD_PACK
+    player = Sheet.model_validate(state.player.rules)
+    assert (player.packs, player.twist_pack) == ((SRD_PACK,), SRD_PACK)
 
     draft = state.draft()
-    mechanics = Mechanics.of_game(draft)
-    mechanics.sheets[PLAYER_ID] = mechanics.sheets[PLAYER_ID].model_copy(
-        update={"packs": (SRD_PACK, "uninstalled")}
-    )
+    with rules(draft.world.require(PLAYER_ID), Sheet) as sheet:
+        sheet.packs = (SRD_PACK, "uninstalled")
     stranded = draft.committed()
 
     with pytest.raises(ValueError, match="not installed"):

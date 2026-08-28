@@ -1,19 +1,28 @@
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from random import Random
+from typing import ClassVar
 
 from pydantic import Field, JsonValue
 
 from aidm.content.model import CharacterProfile, CreatedCharacter
 from aidm.engines.core import (
+    ADVANCE_TOOL,
     Command,
     DirectorContext,
-    ProposalBase,
+    Engine,
+    EntityRules,
+    NoRules,
     action,
     adjust,
+    advances_owed,
     apply_play,
+    chapter_command,
     command,
+    counter_fact,
+    party_member,
     rule,
+    rules,
 )
 from aidm.engines.packs import (
     PackCreation,
@@ -22,7 +31,6 @@ from aidm.engines.packs import (
     pack_options,
     picked_entry,
 )
-from aidm.engines.sheets import SheetAdvancement, SheetEngine, chapter_command
 from aidm.engines.sources import SHIPPED_PACKS, PackSources
 from aidm.engines.twentyfourxx.rules import (
     GROWTH,
@@ -32,7 +40,6 @@ from aidm.engines.twentyfourxx.rules import (
     GearItem,
     ItemSheet,
     LuckTest,
-    Mechanics,
     Pack,
     Sheet,
     ShipFunction,
@@ -58,11 +65,11 @@ from aidm.state.creation import (
 from aidm.state.entities import (
     PLAYER_ID,
     CheckedEntityId,
-    Counter,
     EngineId,
     Entity,
     EntityId,
     Frozen,
+    Kind,
     Slug,
     Trait,
     require_unique,
@@ -135,24 +142,16 @@ DIRECTOR_COMMANDS: tuple[Command, ...] = (
         ChangeCredits,
         lambda draft, one: apply_change_credits(draft, one.actor_id, one.amount),
     ),
-    chapter_command("Record that the current job has ended.", "the job is done"),
+    chapter_command("Record that the current job has ended.", "the job is done", Sheet),
 )
 
 
-class TwentyfourxxAdvancement(SheetAdvancement):
-    proposal_type = Advance
-    ledger_key = "jobs"
-    text = GROWTH
-    spent_why = "a job's advance taken"
-
-    def ledger(self, state: Game, subject_id: EntityId) -> Counter:
-        return Mechanics.of_game(state).sheets[subject_id].jobs
-
-    def grant(self, draft: Game, proposal: ProposalBase, rng: Random) -> tuple[Fact, ...]:
-        assert isinstance(proposal, Advance)
-        sheet = Mechanics.of_game(draft).sheets[proposal.subject_id]
-        subject = draft.world.require(proposal.subject_id)
-
+def advance(draft: Game, proposal: Advance, rng: Random) -> tuple[Fact, ...]:
+    """One advance per job a party member worked: a skill raised and the job's pay."""
+    subject = party_member(draft, proposal.subject_id)
+    with rules(subject, Sheet) as sheet:
+        if sheet.chapters.current <= sheet.jobs.current:
+            raise ValueError(f"{subject.name} has no advance owed")
         skill = _canonical_skill(sheet, proposal.skill)
         die = raised(sheet.skills.get(skill))
         sheet.skills[skill] = die
@@ -163,12 +162,15 @@ class TwentyfourxxAdvancement(SheetAdvancement):
             proposal.why,
             event=MechanicEvent(title=f"{subject.name}: {skill} d{die}", icon="military_tech"),
         )
-
         earned, dice_fact = roll_pool((6,), "credits earned", rng, label="Credits")
         credit_facts = adjust(
             draft, subject, "credits", sheet.credits, earned.kept, "paid for the job", "payments"
         )
-        return (grown, dice_fact, *credit_facts)
+        sheet.jobs.current += 1
+        spent = counter_fact(
+            draft, subject, "jobs", sheet.jobs, 1, "a job's advance taken", "military_tech"
+        )
+    return (grown, dice_fact, *credit_facts, spent)
 
 
 def _canonical_skill(sheet: Sheet, named: str) -> str:
@@ -345,13 +347,15 @@ def _count_prompt(what: str, count: int, verb: str = "Choose") -> str:
     return f"{verb} one {what}" if count == 1 else f"{verb} {count} {what}s"
 
 
-class TwentyfourxxEngine(SheetEngine[Sheet, ItemSheet]):
+class TwentyfourxxEngine(Engine):
     id = EngineId("twentyfourxx")
     badge = ("24XX", "indigo-7")
     engine_dir = Path(__file__).parent
-    sheet_type = Sheet
-    item_type = ItemSheet
-    mechanics_type = Mechanics
+    rules_types: ClassVar[Mapping[Kind, type[EntityRules]]] = {
+        "actor": Sheet,
+        "item": ItemSheet,
+        "location": NoRules,
+    }
     pack_type = Pack
     decisions = (StakedAttempt, Defence)
     authoring_instructions = (
@@ -366,32 +370,24 @@ class TwentyfourxxEngine(SheetEngine[Sheet, ItemSheet]):
         self.packs = sources.load(self.engine_dir / "packs", Pack)
         self.gear = _gear(self.packs)
         self.ship = _ship(self.packs)
-        self.advancement = TwentyfourxxAdvancement()
         self.creation = TwentyfourxxCreation(self.packs)
         self.director_commands = (
             *DIRECTOR_COMMANDS,
             action("buy_gear", _for_sale(self.packs, self.ship), BuyGear, self._buy_gear),
-            self.advancement.command(),
+            rule("advance", ADVANCE_TOOL + GROWTH, Advance, advance),
         )
 
     def pack_models(self) -> Mapping[str, Pack]:
         return self.packs
 
-    def check_sheet(self, entity: Entity, sheet: Sheet) -> None:
-        skills: set[str] = set()
-        for pack in (self.packs[pack_id] for pack_id in sheet.packs):
-            skills.update(option.label for option in pack.skills)
-            skills.update(skill for specialty in pack.specialties for skill in specialty.skills)
-            skills.update(
-                skill
-                for specialty in pack.specialties
-                for choice in specialty.choices
-                for skill in choice.skills
-            )
-        if unknown := sorted(set(sheet.skills) - skills):
-            raise ValueError(
-                f"{entity.id!r} uses skills outside packs {list(sheet.packs)!r}: {unknown}"
-            )
+    def validate(self, state: Game) -> None:
+        super().validate(state)
+        # The played character rolls their own skills, so a successor without rules cannot play.
+        if not state.player.rules:
+            raise ValueError(f"{state.player.name} has no character sheet")
+
+    def owed_notes(self, state: Game) -> tuple[str, ...]:
+        return advances_owed(state, Sheet, lambda sheet: sheet.jobs)
 
     def _buy_gear(self, draft: Game, args: BuyGear) -> list[Fact]:
         entry = self.gear.get(args.gear_id)

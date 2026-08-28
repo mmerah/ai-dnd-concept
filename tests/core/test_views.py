@@ -1,7 +1,6 @@
 from core_test_support import LONER3E
 
 from aidm.app.runtime import journal_markdown
-from aidm.engines.loner3e.rules import Mechanics, Sheet
 from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId, Exit, Kind
 from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
 from aidm.state.play import Exchange, Line
@@ -46,9 +45,6 @@ def state() -> Game:
         world=WorldState(
             entities=list(entities),
             threads=list(threads),
-        ),
-        mechanics=Mechanics(
-            sheets={entity.id: Sheet() for entity in entities if entity.kind == "actor"}
         ),
         turn_events=(),
     )

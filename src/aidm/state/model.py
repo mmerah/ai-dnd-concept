@@ -2,7 +2,7 @@ from collections.abc import Callable, Iterator
 from copy import deepcopy
 from typing import Literal, Self
 
-from pydantic import Field, SerializeAsAny, ValidationError, model_validator
+from pydantic import Field, ValidationError, model_validator
 
 from aidm.state.entities import (
     DEAD,
@@ -180,8 +180,6 @@ class Game(Mutable):
     # Which entity the player plays: it moves to a companion when the played character dies.
     player_id: CheckedEntityId
     world: WorldState
-    # Opaque to core: the engine that wrote it is the only reader and the only validator.
-    mechanics: SerializeAsAny[Mutable]
     # Cards of the turn in flight; a harness in another process reaches the page through the save.
     turn_events: tuple[MechanicEvent, ...]
     history: tuple[Exchange, ...] = ()
@@ -239,10 +237,8 @@ class Game(Mutable):
         return deepcopy(self)
 
     def committed(self) -> Self:
-        """`mechanics` revalidates separately: `Mutable` forbids extra fields on a whole dump."""
-        mechanics = _revalidated(self.mechanics)
-        dump = self.model_dump(round_trip=True, exclude={"mechanics"})
-        return type(self).model_validate({**dump, "mechanics": mechanics})
+        """Dumping runs no validator, so the dump is validated back: that is the commit gate."""
+        return type(self).model_validate(self.model_dump(round_trip=True))
 
     def add(self, entity: Entity) -> Fact:
         """Copy into the fact, so a later move in the same turn cannot rewrite the entry."""
@@ -278,11 +274,6 @@ def draft_refusal(
     except ValueError as refused:
         return str(refused)
     return None
-
-
-def _revalidated[M: Mutable](model: M) -> M:
-    """Dumping runs no validator, so the dump is validated back: that is the commit gate."""
-    return type(model).model_validate(model.model_dump(round_trip=True))
 
 
 def _move_summary(state: Game, entity: Entity, destination: Entity) -> tuple[str, MechanicEvent]:

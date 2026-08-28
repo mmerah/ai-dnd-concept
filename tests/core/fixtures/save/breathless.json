@@ -337,7 +337,40 @@
           }
         ],
         "exits": [],
-        "rules": {}
+        "rules": {
+          "packs": [
+            "srd"
+          ],
+          "chapters": {
+            "current": 0,
+            "maximum": null
+          },
+          "job": "Relic hunter",
+          "pronouns": "he/him",
+          "skills": {
+            "Sneak": 10,
+            "Think": 8,
+            "Dash": 6,
+            "Bash": 4,
+            "Shoot": 4,
+            "Sway": 4
+          },
+          "worn": {
+            "Bash": 4,
+            "Dash": 6,
+            "Sneak": 8,
+            "Shoot": 4,
+            "Think": 8,
+            "Sway": 4
+          },
+          "loot": 12,
+          "stress": {
+            "current": 0,
+            "maximum": 4
+          },
+          "stunted": false,
+          "med_kit": false
+        }
       }
     ],
     "threads": [
@@ -352,91 +385,6 @@
     ],
     "party": [],
     "pending_notes": []
-  },
-  "mechanics": {
-    "sheets": {
-      "wren-halloway": {
-        "packs": [
-          "srd"
-        ],
-        "job": "",
-        "pronouns": "",
-        "skills": {
-          "Think": 10,
-          "Sneak": 8,
-          "Sway": 6,
-          "Bash": 4,
-          "Dash": 4,
-          "Shoot": 4
-        },
-        "worn": {
-          "Bash": 4,
-          "Dash": 4,
-          "Sneak": 8,
-          "Shoot": 4,
-          "Think": 10,
-          "Sway": 6
-        },
-        "loot": 12,
-        "stress": {
-          "current": 0,
-          "maximum": 4
-        },
-        "stunted": false,
-        "med_kit": false
-      },
-      "player": {
-        "packs": [
-          "srd"
-        ],
-        "job": "Relic hunter",
-        "pronouns": "he/him",
-        "skills": {
-          "Sneak": 10,
-          "Think": 8,
-          "Dash": 6,
-          "Bash": 4,
-          "Shoot": 4,
-          "Sway": 4
-        },
-        "worn": {
-          "Bash": 4,
-          "Dash": 6,
-          "Sneak": 8,
-          "Shoot": 4,
-          "Think": 8,
-          "Sway": 4
-        },
-        "loot": 12,
-        "stress": {
-          "current": 0,
-          "maximum": 4
-        },
-        "stunted": false,
-        "med_kit": false
-      }
-    },
-    "items": {
-      "ward-card": {
-        "die": 6
-      },
-      "fire-axe": {
-        "die": 10
-      },
-      "bolt-cutters": {
-        "die": 8
-      },
-      "rope-ladder": {
-        "die": 6
-      },
-      "lantern": {
-        "die": 10
-      }
-    },
-    "completed": {
-      "current": 0,
-      "maximum": null
-    }
   },
   "turn_events": [],
   "history": [

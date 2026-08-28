@@ -1,15 +1,15 @@
 from random import Random
 
 import pytest
-from core_test_support import game
+from core_test_support import game, sheet_of
 
 from aidm.engines.breathless.rules import (
     RULES,
     Breathe,
     ChangeStress,
     Check,
+    ItemSheet,
     LootCheck,
-    Mechanics,
     Sheet,
     apply_catch_breath,
     apply_change_stress,
@@ -21,7 +21,7 @@ from aidm.engines.breathless.rules import (
     resolve_check,
     resolve_loot,
 )
-from aidm.engines.core import apply_to_draft, play_action
+from aidm.engines.core import apply_to_draft, play_action, rules
 from aidm.state import actions
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId
 from aidm.state.model import Game
@@ -42,7 +42,7 @@ def _check(**changes: object) -> Check:
 
 
 def _sheet(state: Game) -> Sheet:
-    return Mechanics.of_game(state).sheets[PLAYER_ID]
+    return sheet_of(state, PLAYER_ID, Sheet)
 
 
 def test_outcome_bands_and_loot_ratings() -> None:
@@ -79,11 +79,10 @@ def test_a_check_wears_the_skill_down_to_the_floor_and_breath_resets_it() -> Non
 def test_an_item_rolls_in_place_of_a_skill_and_fades_at_d4() -> None:
     engine, state = game(BREATHLESS)
     draft = state.draft()
-    items = Mechanics.of_game(draft).items
-    assert items[LANTERN].die == RULES.starting_item
+    assert sheet_of(draft, LANTERN, ItemSheet).die == RULES.starting_item
     for _ in range(3):
         _ = resolve_check(draft, _check(skill="", item_id=LANTERN), Random(1))
-    assert items[LANTERN].die == RULES.floor
+    assert sheet_of(draft, LANTERN, ItemSheet).die == RULES.floor
     # Broken, lost, or faded: it lies where Kael stands and no longer fills a slot.
     assert draft.world.require(LANTERN).parent_id == draft.player_location
     draft.world.require(LANTERN).parent_id = PLAYER_ID
@@ -122,12 +121,12 @@ def test_loot_finds_trouble_or_an_item_or_a_med_kit_and_wears_the_loot_die() -> 
     notes = len(draft.world.pending_notes)
     # Seed 0 on a d12 rolls high: an item; the die then stands at d10.
     scavenge = LootCheck(actor_id=PLAYER_ID, seeking="a crowbar")
-    # Through the draft gate, so the found item is seeded with its sheet as in play.
+    # Through the draft gate, so the find is refused or committed exactly as it is in play.
     facts = apply_to_draft(engine, draft, lambda d, rng: resolve_loot(d, scavenge, rng), Random(0))
     crowbar = draft.world.require(EntityId("a-crowbar"))
     assert crowbar.parent_id == PLAYER_ID
     kept = int(next(f for f in facts if f.kind == "dice_rolled").trace.rsplit("-> ", 1)[1])
-    assert Mechanics.of_game(draft).items[crowbar.id].die == loot_die(kept)
+    assert sheet_of(draft, crowbar.id, ItemSheet).die == loot_die(kept)
     assert _sheet(draft).loot == 10
 
     # Seed 5 rolls a 10 on the d10: the player chooses between the item and a med kit.
@@ -161,7 +160,6 @@ def test_a_full_backpack_leaves_the_find_on_the_ground_and_refuses_a_fourth_in_h
                 rules={"die": 6},
             )
         )
-        engine.seed(draft, draft.world.require(EntityId(name.replace(" ", "-"))), Random(0))
     engine.validate(draft)
     scavenge = LootCheck(actor_id=PLAYER_ID, seeking="a saw")
     # Seed 0 finds an item; the backpack is full, so it lies at the player's location.
@@ -169,6 +167,7 @@ def test_a_full_backpack_leaves_the_find_on_the_ground_and_refuses_a_fourth_in_h
     assert draft.world.require(EntityId("a-saw")).parent_id == draft.player_location
     with pytest.raises(ValueError, match="backpack holds 3"):
         _ = actions.move(draft, EntityId("a-saw"), PLAYER_ID) and engine.validate(draft)
+    # An item nothing wrote rules on is the SRD's d10 item, not a state the engine refuses.
     draft = state.draft()
     _ = draft.add(
         Entity(
@@ -176,11 +175,11 @@ def test_a_full_backpack_leaves_the_find_on_the_ground_and_refuses_a_fourth_in_h
             kind="item",
             name="a brick",
             brief="a brick",
-            parent_id=PLAYER_ID,
+            parent_id=draft.player_location,
         )
     )
-    with pytest.raises(ValueError, match="comes from `loot_check`"):
-        engine.seed(draft, draft.world.require(EntityId("a-brick")), Random(0))
+    engine.validate(draft)
+    assert sheet_of(draft, EntityId("a-brick"), ItemSheet).die == RULES.starting_item
 
 
 def test_a_helper_rolls_too_and_shares_the_danger() -> None:
@@ -189,13 +188,14 @@ def test_a_helper_rolls_too_and_shares_the_danger() -> None:
     wren = EntityId("wren-halloway")
     draft.world.require(wren).parent_id = draft.player_location
     draft.world.require(wren).known = True
-    Mechanics.of_game(draft).sheets[wren].stress.current = 4
+    with rules(draft.world.require(wren), Sheet) as sheet:
+        sheet.stress.current = 4
     helped = _check(skill="Bash", helper_id=wren, helper_skill="Think")
     # Seed 2 fails the d4+d10 pool.
     facts = resolve_check(draft, helped, Random(2))
     rolled = next(fact for fact in facts if fact.kind == "check_resolved")
     assert rolled.event is not None and len(rolled.event.dice[0].faces) == 2
-    assert Mechanics.of_game(draft).sheets[wren].worn["Think"] == 8
+    assert sheet_of(draft, wren, Sheet).worn["Think"] == 8
     assert rolled.event.outcome == "fail" and "Wren Halloway is vulnerable" in rolled.trace
 
 
@@ -204,7 +204,8 @@ def test_a_med_kit_clears_two_stress_and_is_offered_only_when_useful() -> None:
     draft = state.draft()
     _ = apply_change_stress(draft, ChangeStress(actor_id=PLAYER_ID, amount=3, why="a bite"))
     assert med_kit_holders(draft) == ()
-    _sheet(draft).med_kit = True
+    with rules(draft.world.require(PLAYER_ID), Sheet) as sheet:
+        sheet.med_kit = True
     landed = draft.committed()
     assert [label for label, _ in med_kit_holders(landed)] == ["Use the med kit"]
     after, _ = play_action(engine, landed, "use_med_kit", {"actor_id": PLAYER_ID}, Random(0))

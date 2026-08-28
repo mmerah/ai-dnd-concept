@@ -243,7 +243,18 @@
           }
         ],
         "exits": [],
-        "rules": {}
+        "rules": {
+          "packs": [
+            "srd"
+          ],
+          "specialty": "Sneak",
+          "origin": "Human",
+          "skills": {
+            "Climbing": 10,
+            "Stealth": 10,
+            "Tracking": 8
+          }
+        }
       }
     ],
     "threads": [
@@ -260,112 +271,6 @@
     "pending_notes": [
       "Bad luck is circling: signs of something behind the door is already listening back showed this turn. Let the scene warn of it before it bites."
     ]
-  },
-  "mechanics": {
-    "sheets": {
-      "ovid-sarn": {
-        "packs": [
-          "srd"
-        ],
-        "specialty": "",
-        "origin": "",
-        "skills": {
-          "Labor": 10,
-          "Electronics": 8
-        },
-        "credits": {
-          "current": 2,
-          "maximum": null
-        },
-        "jobs": {
-          "current": 0,
-          "maximum": null
-        }
-      },
-      "verrin-ade": {
-        "packs": [
-          "srd"
-        ],
-        "specialty": "",
-        "origin": "",
-        "skills": {
-          "Connections": 10,
-          "Electronics": 8
-        },
-        "credits": {
-          "current": 2,
-          "maximum": null
-        },
-        "jobs": {
-          "current": 0,
-          "maximum": null
-        }
-      },
-      "mara-voss": {
-        "packs": [
-          "srd"
-        ],
-        "specialty": "",
-        "origin": "",
-        "skills": {
-          "Electronics": 10,
-          "Climbing": 8
-        },
-        "credits": {
-          "current": 2,
-          "maximum": null
-        },
-        "jobs": {
-          "current": 0,
-          "maximum": null
-        }
-      },
-      "deel-hask": {
-        "packs": [
-          "srd"
-        ],
-        "specialty": "",
-        "origin": "",
-        "skills": {
-          "Intimidation": 10,
-          "Hand-to-hand": 8,
-          "Tracking": 8
-        },
-        "credits": {
-          "current": 2,
-          "maximum": null
-        },
-        "jobs": {
-          "current": 0,
-          "maximum": null
-        }
-      },
-      "player": {
-        "packs": [
-          "srd"
-        ],
-        "specialty": "Sneak",
-        "origin": "Human",
-        "skills": {
-          "Climbing": 10,
-          "Stealth": 10,
-          "Tracking": 8
-        },
-        "credits": {
-          "current": 2,
-          "maximum": null
-        },
-        "jobs": {
-          "current": 0,
-          "maximum": null
-        }
-      }
-    },
-    "items": {},
-    "completed": {
-      "current": 0,
-      "maximum": null
-    }
   },
   "turn_events": [],
   "history": [

@@ -5,7 +5,6 @@ import pytest
 from core_test_support import (
     LONER3E,
     SCENARIOS,
-    advancement_of,
     at_boundary,
     narrated,
     scripted,
@@ -28,6 +27,7 @@ from aidm.authoring.draft import (
 )
 from aidm.authoring.run import GrowthRun, briefing, growth_run
 from aidm.content.io import FileStore
+from aidm.engines.loner3e.rules import Sheet
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit
 from aidm.state.model import Game, Thread
 from aidm.state.play import WorldExtended
@@ -50,7 +50,7 @@ def _grown(directory: Path, *, thin: bool = True) -> GameSession:
     """A scenario that grows, staged with one door left to find and a change on offer."""
     game = loner3e_session(directory)
     game.scenario = updated(game.scenario, grows=True)
-    game.state = at_boundary(game.state)
+    game.state = at_boundary(game.state, Sheet)
     if thin:
         tower = game.state.world.require(EntityId("bell-tower"))
         game.state = with_entity(game.state, updated(tower, known=True))
@@ -148,7 +148,7 @@ async def test_a_thin_world_grows_inside_the_turn_that_ran_it_thin(
 
     assert any(isinstance(entry, WorldExtended) for entry in game.entries)
     assert (SCENARIOS / "whispering-vault" / "world.json").read_bytes() == authored
-    assert advancement_of(game.engine).owed(game.state)
+    assert game.engine.owed_notes(game.state)
 
 
 async def test_a_world_with_doors_left_to_find_grows_nothing(
@@ -166,7 +166,7 @@ async def test_a_world_with_doors_left_to_find_grows_nothing(
     assert seen == []
 
 
-def test_a_grown_actor_without_rules_is_named_and_plays_once_it_carries_them(
+def test_a_grown_world_is_briefed_with_its_sheets_and_refused_until_it_hangs_together(
     tmp_path: Path,
 ) -> None:
     """The loop converges only if the briefing shows the shape the refusal asks for."""
@@ -185,13 +185,9 @@ def test_a_grown_actor_without_rules_is_named_and_plays_once_it_carries_them(
         parent_id=_CRYPT_ID,
     )
     _ = run.draft.apply(ScenarioPatch(entities=(updated(_crypt(), exits=[]), warden)))
-    _ = run.draft.connect(EntityId("cloister"), _CRYPT_ID, False, False, False)
 
     refused = run.refusal()
-    assert refused is not None
-    assert "rules" in refused and "bone-warden" in refused
+    assert refused is not None and _CRYPT_ID in refused
 
-    _ = run.draft.apply(
-        ScenarioPatch(entities=(updated(warden, rules={"concept": "A Patient Bone Warden"}),))
-    )
+    _ = run.draft.connect(EntityId("cloister"), _CRYPT_ID, False, False, False)
     assert run.refusal() is None

@@ -123,7 +123,7 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                     ui.separator().classes("q-my-sm")
                     rows = [(trait.name, trait.text) for trait in created.profile.traits]
                     rows.extend(("carrying", item.name) for item in created.profile.items)
-                    rows.extend(engine.overlay_rows(created.rules))
+                    rows.extend(engine.rules_types["actor"].model_validate(created.rules).rows())
                     for label, text in rows:
                         with ui.row().classes("items-baseline").style("gap: 0.5rem"):
                             ui.label(label).classes("text-sm font-bold")

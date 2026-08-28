@@ -13,6 +13,7 @@ from core_test_support import (
     initialized,
     scenario,
     scenario_for,
+    sheet_of,
     updated,
     with_entity,
 )
@@ -20,8 +21,8 @@ from pydantic import ValidationError
 
 from aidm.content.io import load_character, load_scenario
 from aidm.content.model import Character, CharacterProfile, Scenario
-from aidm.engines.loner3e.rules import RULES, Mechanics
-from aidm.engines.twentyfourxx.rules import Mechanics as TwentyfourxxMechanics
+from aidm.engines.core import rules
+from aidm.engines.loner3e.rules import RULES, Sheet
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
 from aidm.state.model import Game
 
@@ -164,7 +165,8 @@ def test_a_scenario_is_refused_by_an_engine_it_was_not_authored_for() -> None:
         _ = begin_game(build_engine(TWENTYFOURXX), "whispering-vault", scenario(), character())
 
 
-def test_an_authored_actor_without_rules_is_refused() -> None:
+def test_an_authored_actor_without_rules_plays_with_a_blank_sheet() -> None:
+    """Loner deviation 2: every character is playable, authored tables or not."""
     authored = scenario()
     bare = updated(authored.world.require(MARA), rules={})
     stripped = updated(
@@ -175,8 +177,9 @@ def test_an_authored_actor_without_rules_is_refused() -> None:
         ),
     )
 
-    with pytest.raises(ValueError, match=r"carry no `rules`.*mara"):
-        _ = begin_game(build_engine(LONER3E), "whispering-vault", stripped, character())
+    begun = begin_game(build_engine(LONER3E), "whispering-vault", stripped, character())
+
+    assert sheet_of(begun, MARA, Sheet) == Sheet()
 
 
 def test_twentyfourxx_opposition_needs_no_sheet() -> None:
@@ -198,7 +201,7 @@ def test_twentyfourxx_opposition_needs_no_sheet() -> None:
 
     begun = begin_game(engine, scenario_id, stripped, player)
 
-    assert hostile.id not in TwentyfourxxMechanics.of_game(begun).sheets
+    assert engine.describe(begun.world.require(hostile.id)) == ""
 
 
 def test_scenario_packs_include_one_srd() -> None:
@@ -214,16 +217,16 @@ def test_a_character_knows_the_gear_they_start_with() -> None:
 
 
 def _luck(state: Game) -> int:
-    return Mechanics.of_game(state).sheets[PLAYER_ID].luck.current
+    return sheet_of(state, PLAYER_ID, Sheet).luck.current
 
 
-def test_a_mechanics_mutation_lands_on_the_commit_and_nowhere_else() -> None:
+def test_a_rules_mutation_lands_on_the_commit_and_nowhere_else() -> None:
     _, state = initialized()
     draft = state.draft()
-    Mechanics.of_game(draft).sheets[PLAYER_ID].luck.current = 1
+    with rules(draft.world.require(PLAYER_ID), Sheet) as sheet:
+        sheet.luck.current = 1
 
     committed = draft.committed()
 
     assert _luck(committed) == 1
-    assert committed.mechanics != state.mechanics
     assert _luck(state) == RULES.luck_max

@@ -1,17 +1,18 @@
 from random import Random
 
 import pytest
-from core_test_support import advancement_of, at_boundary, initialized
+from core_test_support import at_boundary, initialized, sheet_of
 from pydantic import ValidationError
 
-from aidm.engines.loner3e.engine import Loner3eEngine
+from aidm.engines.core import rules
+from aidm.engines.loner3e.engine import Loner3eEngine, advance
 from aidm.engines.loner3e.rules import (
     RULES,
     SRD_PACK,
     AdventureGrowth,
     Change,
-    Mechanics,
     Question,
+    Sheet,
     apply_restore_luck,
     conflict_prompt,
     defeat_note,
@@ -75,7 +76,7 @@ def test_a_question_puts_two_dice_to_the_answer_and_costs_no_luck_on_its_own() -
     facts = resolve_question(draft, _seal(), Random(17), TWISTS)
 
     assert [fact.kind for fact in facts] == ["dice_rolled", "dice_rolled", "question_answered"]
-    assert Mechanics.of_game(draft).sheets[PLAYER_ID].luck.current == RULES.luck_max
+    assert sheet_of(draft, PLAYER_ID, Sheet).luck.current == RULES.luck_max
 
 
 def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> None:
@@ -110,8 +111,8 @@ def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
 def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     _, state = initialized()
     draft = state.draft()
-    mechanics = Mechanics.of_game(draft)
-    mechanics.twist.current = RULES.ties_per_twist - 1
+    with rules(draft.player, Sheet) as sheet:
+        sheet.twist.current = RULES.ties_per_twist - 1
     primed = draft.committed()
 
     action = Question(actor_id=PLAYER_ID, question="Does he slip past unheard?")
@@ -127,7 +128,7 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     subject = next(badge.value for badge in twist.badges if badge.label == "Subject")
     action_name = next(badge.value for badge in twist.badges if badge.label == "Action")
     rolled = twist_note(subject, action_name)
-    assert Mechanics.of_game(draft).twist.current == 0
+    assert sheet_of(draft, PLAYER_ID, Sheet).twist.current == 0
     assert rolled in draft.world.pending_notes
 
 
@@ -149,23 +150,22 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
         draft = state.draft()
         facts = resolve_question(draft, _duel(), Random(seed), TWISTS)
         (oracle,) = player_events(facts)
-        sheets = Mechanics.of_game(draft).sheets
         harm = outcome_for(oracle.dice[0].kept, oracle.dice[1].kept).harm
-        loser = FOE if harm > 0 else PLAYER_ID
-        assert sheets[loser].luck.current == RULES.luck_max - abs(harm)
-        assert sheets[FOE if loser == PLAYER_ID else PLAYER_ID].luck.current == RULES.luck_max
+        loser, held = (FOE, PLAYER_ID) if harm > 0 else (PLAYER_ID, FOE)
+        assert sheet_of(draft, loser, Sheet).luck.current == RULES.luck_max - abs(harm)
+        assert sheet_of(draft, held, Sheet).luck.current == RULES.luck_max
         # A tie still ticks the counter inside a conflict; one tie alone never reaches the twist.
         assert not any(fact.kind == "twist_due" for fact in facts)
         tied = oracle.dice[0].kept == oracle.dice[1].kept
-        assert Mechanics.of_game(draft).twist.current == (1 if tied else 0)
+        assert sheet_of(draft, PLAYER_ID, Sheet).twist.current == (1 if tied else 0)
 
 
 def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     _, state = initialized()
     draft = state.draft()
-    mechanics = Mechanics.of_game(draft)
     # A 10-max pool proves the reset lands on the sheet's own maximum, not on a +luck_max delta.
-    mechanics.sheets[FOE].luck = Counter(current=1, maximum=10)
+    with rules(draft.world.require(FOE), Sheet) as sheet:
+        sheet.luck = Counter(current=1, maximum=10)
     hurt = draft.committed()
 
     for seed in range(200):
@@ -177,9 +177,8 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     else:
         raise AssertionError("no seed under 200 answered yes")
 
-    sheets = Mechanics.of_game(draft).sheets
-    assert sheets[FOE].luck.current == 10
-    assert sheets[PLAYER_ID].luck.current == RULES.luck_max
+    assert sheet_of(draft, FOE, Sheet).luck.current == 10
+    assert sheet_of(draft, PLAYER_ID, Sheet).luck.current == RULES.luck_max
     assert any(fact.kind == "conflict_lost" for fact in facts)
     assert defeat_note(draft.world.require(FOE).name) in draft.world.pending_notes
     # The conflict is over, so the defeat note steers the same run instead of handing control back.
@@ -207,9 +206,9 @@ def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
 
     facts = resolve_question(draft, _seal(opponent_id=LANTERN), Random(0), TWISTS)
 
-    sheets = Mechanics.of_game(draft).sheets
     assert any(fact.kind == "question_answered" for fact in facts)
-    assert min(sheets[LANTERN].luck.current, sheets[PLAYER_ID].luck.current) < RULES.luck_max
+    lantern = sheet_of(draft, LANTERN, Sheet).luck.current
+    assert min(lantern, sheet_of(draft, PLAYER_ID, Sheet).luck.current) < RULES.luck_max
 
     away = state.draft()
     away.world.require(LANTERN).parent_id = EntityId("cloister")
@@ -234,7 +233,8 @@ def test_the_engine_plays_the_hand_back_and_refuses_every_other_decision() -> No
 def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
     _, state = initialized()
     draft = state.draft()
-    Mechanics.of_game(draft).sheets[FOE].luck.current = 0
+    with rules(draft.world.require(FOE), Sheet) as sheet:
+        sheet.luck.current = 0
     spent = draft.committed()
 
     with pytest.raises(ValueError, match="already out of luck"):
@@ -243,11 +243,11 @@ def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
 
 def test_an_adventures_end_owes_an_advance_and_a_tag_the_sheet_lacks_is_refused() -> None:
     engine, state = initialized()
-    advancement = advancement_of(engine)
-    assert advancement.owed(state) == ()
+    assert engine.owed_notes(state) == ()
 
-    ready = at_boundary(state)
-    assert advancement.owed(ready) == (PLAYER_ID,)
+    ready = at_boundary(state, Sheet)
+    (owed,) = engine.owed_notes(ready)
+    assert ready.player.name in owed
 
     rewrite = AdventureGrowth(
         subject_id=PLAYER_ID,
@@ -260,7 +260,7 @@ def test_an_adventures_end_owes_an_advance_and_a_tag_the_sheet_lacks_is_refused(
             ),
         ),
     )
-    assert advancement.advance(ready.draft(), rewrite, Random(0))
+    assert advance(ready.draft(), rewrite, Random(0))
 
     unwritten = AdventureGrowth(
         subject_id=PLAYER_ID,
@@ -274,12 +274,11 @@ def test_an_adventures_end_owes_an_advance_and_a_tag_the_sheet_lacks_is_refused(
         ),
     )
     with pytest.raises(ValueError, match="carries no tag 'Never Held a Blade'"):
-        _ = advancement.advance(ready.draft(), unwritten, Random(0))
+        _ = advance(ready.draft(), unwritten, Random(0))
 
 
 def test_an_npc_party_members_growth_writes_their_own_sheet_not_the_players() -> None:
     engine, state = initialized()
-    advancement = advancement_of(engine)
     grow_mara = AdventureGrowth(
         subject_id=FOE,
         changes=(
@@ -287,26 +286,25 @@ def test_an_npc_party_members_growth_writes_their_own_sheet_not_the_players() ->
         ),
     )
     with pytest.raises(ValueError, match="is not in the party"):
-        _ = advancement.advance(at_boundary(state).draft(), grow_mara, Random(0))
+        _ = advance(at_boundary(state, Sheet).draft(), grow_mara, Random(0))
 
     draft = state.draft()
     draft.world.party.append(FOE)
-    ready = at_boundary(draft.committed())
-    assert set(advancement.owed(ready)) == {PLAYER_ID, FOE}
+    ready = at_boundary(draft.committed(), Sheet)
+    assert len(engine.owed_notes(ready)) == 2
 
     draft = ready.draft()
-    facts = advancement.advance(draft, grow_mara, Random(0))
+    facts = advance(draft, grow_mara, Random(0))
     grown = draft.committed()
 
-    sheets = Mechanics.of_game(grown).sheets
-    assert sheets[FOE].skills[-1] == "Reads Old Stonework"
-    assert sheets[PLAYER_ID].skills == Mechanics.of_game(ready).sheets[PLAYER_ID].skills
+    assert sheet_of(grown, FOE, Sheet).skills[-1] == "Reads Old Stonework"
+    assert sheet_of(grown, PLAYER_ID, Sheet).skills == sheet_of(ready, PLAYER_ID, Sheet).skills
     assert [fact.kind for fact in facts] == ["skill_gained", "counter_changed"]
 
 
-def test_an_actor_seeded_after_an_adventure_is_not_owed_the_growth_they_missed() -> None:
+def test_an_actor_who_joins_after_an_adventure_is_not_owed_the_growth_they_missed() -> None:
     engine, state = initialized()
-    ready = at_boundary(state)
+    ready = at_boundary(state, Sheet)
     draft = ready.draft()
     newcomer = Entity(
         id=EntityId("newcomer"),
@@ -317,35 +315,33 @@ def test_an_actor_seeded_after_an_adventure_is_not_owed_the_growth_they_missed()
         parent_id=draft.player_location,
     )
     _ = draft.add(newcomer)
-    engine.seed(draft, newcomer, Random(0))
     draft.world.party.append(newcomer.id)
     walked_in = draft.committed()
 
     engine.validate(walked_in)
-    assert advancement_of(engine).owed(walked_in) == (PLAYER_ID,)
+    (owed,) = engine.owed_notes(walked_in)
+    assert walked_in.player.name in owed
 
 
 def test_a_closed_chapter_gates_the_advance_and_a_second_one_earns_another() -> None:
     engine, state = initialized()
-    advancement = advancement_of(engine)
     change = AdventureGrowth(
         subject_id=PLAYER_ID,
         changes=(Change(kind="gear", tag="Waxed Rope", why="he never climbs without it now"),),
     )
-    draft = at_boundary(state).draft()
-    _ = advancement.advance(draft, change, Random(0))
+    draft = at_boundary(state, Sheet).draft()
+    _ = advance(draft, change, Random(0))
     spent = draft.committed()
 
-    assert advancement.owed(spent) == ()
+    assert engine.owed_notes(spent) == ()
     with pytest.raises(ValueError, match="has no advance owed"):
-        _ = advancement.advance(spent.draft(), change, Random(0))
-    assert advancement.owed(at_boundary(spent)) == (PLAYER_ID,)
+        _ = advance(spent.draft(), change, Random(0))
+    assert len(engine.owed_notes(at_boundary(spent, Sheet))) == 1
 
 
 def test_an_adventure_growth_with_three_changes_lands_all_three_on_the_sheet() -> None:
-    engine, state = initialized()
-    advancement = advancement_of(engine)
-    ready = at_boundary(state)
+    _, state = initialized()
+    ready = at_boundary(state, Sheet)
 
     growth = AdventureGrowth(
         subject_id=PLAYER_ID,
@@ -356,10 +352,10 @@ def test_an_adventure_growth_with_three_changes_lands_all_three_on_the_sheet() -
         ),
     )
     draft = ready.draft()
-    facts = advancement.advance(draft, growth, Random(0))
+    facts = advance(draft, growth, Random(0))
     grown = draft.committed()
 
-    sheet = Mechanics.of_game(grown).sheets[PLAYER_ID]
+    sheet = sheet_of(grown, PLAYER_ID, Sheet)
     assert (sheet.skills[-1], sheet.gear[-1], sheet.frailties[-1]) == (
         "Reads Tide Marks",
         "Waxed Rope",

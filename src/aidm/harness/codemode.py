@@ -159,7 +159,7 @@ class Harness:
             if turn is not None
             else render_director(
                 SceneSnapshot.from_game(state, session.engine.notes(state)),
-                session.engine.renderer(state),
+                session.engine.describe,
                 state.scenario,
                 NO_TURN_OPEN,
             )

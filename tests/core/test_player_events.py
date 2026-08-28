@@ -1,6 +1,7 @@
 from core_test_support import initialized
 
-from aidm.engines.sheets import complete_chapter
+from aidm.engines.core import complete_chapter
+from aidm.engines.loner3e.rules import Sheet
 from aidm.state import actions
 from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.facts import player_events
@@ -56,7 +57,7 @@ def test_advance_thread_produces_no_event() -> None:
 def test_completing_the_chapter_produces_a_card() -> None:
     _, state = initialized()
     draft = state.draft()
-    facts = tuple(complete_chapter(draft, "the adventure has ended"))
+    facts = tuple(complete_chapter(draft, "the adventure has ended", Sheet))
 
     (event,) = player_events(facts)
     assert event.title == "the adventure has ended"

@@ -21,10 +21,15 @@ from aidm.app.launch import engine_ids
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.io import load_character, load_scenario, read_scenarios
 from aidm.content.model import Character, Scenario
-from aidm.engines.core import Advancement, Engine, player_action
+from aidm.engines.core import (
+    Engine,
+    EntityRules,
+    SheetBase,
+    complete_chapter,
+    player_action,
+)
 from aidm.engines.registry import begin_game, build_engine
-from aidm.engines.sheets import SheetMechanics
-from aidm.state.entities import EngineId, Entity, Frozen, Slug
+from aidm.state.entities import EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game
 from aidm.state.play import Answer, MechanicEvent, TurnTrace
@@ -62,11 +67,16 @@ def with_entity(state: Game, entity: Entity) -> Game:
     return draft.committed()
 
 
-def at_boundary(state: Game) -> Game:
-    """One boundary recorded — an adventure ended, a job done — the trigger both engines count."""
+def at_boundary[S: SheetBase](state: Game, sheet_type: type[S]) -> Game:
+    """One chapter recorded — an adventure ended, a job done — for everyone who played it."""
     draft = state.draft()
-    SheetMechanics.of_game(draft).completed.current += 1
+    _ = complete_chapter(draft, "a chapter closed", sheet_type)
     return draft.committed()
+
+
+def sheet_of[R: EntityRules](state: Game, entity_id: EntityId, model: type[R]) -> R:
+    """One entity's rules as its engine parses them: a copy, so changing state needs `rules()`."""
+    return model.model_validate(state.world.require(entity_id).rules)
 
 
 def scenario() -> Scenario:
@@ -97,11 +107,6 @@ def game(engine_id: EngineId) -> tuple[Engine, Game]:
     selected_scenario = load_scenario(SCENARIOS, scenario_id)
     selected_character = load_character(CHARACTERS, "kael", engine.id, engine.check_overlay)
     return engine, begin_game(engine, scenario_id, selected_scenario, selected_character)
-
-
-def advancement_of(engine: Engine) -> Advancement:
-    assert engine.advancement is not None
-    return engine.advancement
 
 
 def initialized() -> tuple[Engine, Game]:

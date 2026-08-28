@@ -65,20 +65,24 @@ a rule of this one.
    SRD asks for them to emerge from play, and in this app play writes them to the world.
 2. **Only the played character's sheet is built from the tables.** The SRD gives every character a
    Concept, Skills, Frailties and Luck — people, objects, vehicles and curses alike. A scenario may
-   author those tables for any entity via `rules`; an unauthored non-living character instead gets
-   a blank sheet with full Luck the first time a question or conflict names it, and the traits it
+   author those tables for any entity via `rules`; anything unauthored — an actor as much as an
+   object, a vehicle or a curse — instead plays with a blank sheet at full Luck, and the traits it
    already carries stand in for the Concept, Skills and Frailties the SRD would have authored.
+   A milestone is owed for each adventure a character was there for: `complete_chapter` credits
+   the played character and everyone travelling with them whose rules are written, and the count
+   lives on that sheet, so somebody who joins later is not owed the adventures they never played.
 3. **A twist fires inside the question that rolled it.** The SRD has a twist interrupt the scene
    the moment it fires; here the tie that calls one is inside a resolved question, so the
    narration shows the twist arriving in that same turn rather than cutting the question short.
    The pairing reaches the Director in that call's own answer, and it develops what arrived in the
    same interaction.
-4. **One game-wide Twist Counter.** The SRD's counter belongs to the solo player, who is the only
-   one rolling. Here any actor can be the subject of a question, so a single tally covers every
-   roll — a tie anywhere moves the same counter.
+4. **One Twist Counter, on the played character's sheet.** The SRD's counter belongs to the solo
+   player, who is the only one rolling. Here any actor can be the subject of a question, so a
+   single tally covers every roll — a tie anywhere moves the counter on the played character's
+   sheet, and a successor picks the story up with their own.
 5. **The Twist Counter is hidden from the player.** The SRD's solo player keeps the tally
-   themselves; here it lives in mechanics, paces the Director, and is never recited — rising
-   tension shows only in the fiction.
+   themselves; here it stays off every sheet view, paces the Director, and is never recited —
+   rising tension shows only in the fiction.
 6. **`packs/srd.json`'s starter tables are this repo's, not the SRD's.** The concepts, skills,
    frailties and gear in that pack are written for this repo; Loner 3e publishes no such tables.
    Only the twist subject and action columns are the SRD's, and the pack's `license` line already

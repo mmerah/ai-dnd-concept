@@ -6,10 +6,9 @@ from core_test_support import SCENARIOS
 from loner3e_test_support import LONER3E
 
 from aidm.content.io import load_character, load_scenario, write_character
-from aidm.engines.loner3e.rules import RULES, Mechanics
+from aidm.engines.loner3e.rules import RULES, Sheet
 from aidm.engines.registry import begin_game, build_engine
 from aidm.state.creation import CreationStep, Picks
-from aidm.state.entities import PLAYER_ID
 
 
 def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path) -> None:
@@ -29,7 +28,7 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     character = load_character(tmp_path, "fen", engine.id, engine.check_overlay)
     scenario = load_scenario(SCENARIOS, "whispering-vault")
     state = begin_game(engine, "whispering-vault", scenario, character)
-    sheet = Mechanics.of_game(state).sheets[PLAYER_ID]
+    sheet = Sheet.model_validate(state.player.rules)
     assert sheet.packs == ("srd",)
     assert sheet.twist_pack == "srd"
     assert sheet.concept == "A wandering scribe who counts doors"
