@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from functools import partial
 from pathlib import Path
 
 from pydantic import JsonValue
@@ -12,6 +13,7 @@ from aidm.engines.breathless.rules import (
     RULES,
     SKILLS,
     Breathe,
+    BreathlessState,
     ChangeStress,
     Check,
     ItemSheet,
@@ -30,28 +32,40 @@ from aidm.engines.breathless.rules import (
     resolve_stake,
 )
 from aidm.engines.core import (
-    TAKE_OVER,
     Engine,
-    EntityRules,
-    NoRules,
+    EntityRenderer,
+    Mechanics,
     PackCreation,
-    describe_by,
-    director_tool,
+    check_packs,
+    describe_rows,
     load_packs,
+    mechanics_merged,
+    mechanics_of,
     player_action,
+    sheet_of,
 )
-from aidm.engines.world import CORE_TOOLS
 from aidm.state.creation import CreationStep, Picks, check_picks, picked
-from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Kind, slug
+from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, slug
 from aidm.state.model import Game
+from aidm.state.threads import ADVANCE_THREAD
+from aidm.state.tools import director_tool
+from aidm.world.scene import rooms_scene
+from aidm.world.succession import TAKE_OVER, player_over
+from aidm.world.tools import (
+    ADD_TRAIT,
+    DIRECTOR_WORLD,
+    JOIN_PARTY,
+    LEAVE_PARTY,
+    MOVE,
+    REMOVE_TRAIT,
+    REVEAL,
+    UNLOCK_EXIT,
+    kill_tool,
+)
+from aidm.world.topology import children, validate_rooms
 
 ENGINE_DIR = Path(__file__).parent
 RATED = (10, 8, 6)
-RULES_TYPES: Mapping[Kind, type[EntityRules]] = {
-    "actor": Sheet,
-    "item": ItemSheet,
-    "location": NoRules,
-}
 
 
 class BreathlessCreation(PackCreation[Pack]):
@@ -102,38 +116,87 @@ class BreathlessCreation(PackCreation[Pack]):
         )
 
 
-def _checks(state: Game) -> None:
-    # The played character rolls their own skills, so a successor without rules cannot play.
-    if not state.player.rules:
+def _validate(packs: Mapping[str, Pack], state: Game) -> None:
+    check_packs(packs, state)
+    validate_rooms(state.world)
+    game = mechanics_of(state.world, BreathlessState)
+    if stray := sorted(set(game.sheets) - set(state.world.entities)):
+        raise ValueError(f"mechanics.sheets names entities the world does not hold: {stray}")
+    items = {item.id for item in state.world.of_kind("item")}
+    if stray := sorted(set(game.items) - items):
+        raise ValueError(f"mechanics.items names entities that are not items: {stray}")
+    # An item is its die: one the scenario rated none cannot be rolled, so it is not an item.
+    if unrated := sorted(items - set(game.items)):
+        raise ValueError(f"mechanics.items names no die for: {unrated}")
+    # The played character rolls their own skills, so a successor without a sheet cannot play.
+    if state.player_id not in game.sheets:
         raise ValueError(f"{state.player.name} has no character sheet")
     for actor in state.world.of_kind("actor"):
-        held = len(state.world.children(actor.id, "item"))
-        if actor.rules and held > RULES.carry:
+        held = len(children(state.world, actor.id, "item"))
+        if actor.id in game.sheets and held > RULES.carry:
             raise ValueError(f"{actor.id!r} carries {held} items; the backpack holds {RULES.carry}")
+
+
+def describer(state: Game) -> EntityRenderer:
+    game = mechanics_of(state.world, BreathlessState)
+
+    def describe(entity: Entity) -> str:
+        sheet = game.sheets.get(entity.id) or game.items.get(entity.id)
+        return describe_rows(sheet.rows(), ()) if sheet is not None else ""
+
+    return describe
+
+
+def sheet_rows(state: Game) -> tuple[tuple[str, str], ...]:
+    return sheet_of(mechanics_of(state.world, BreathlessState).sheets, state.player).rows()
+
+
+def _character_mechanics(character: Character) -> dict[str, JsonValue]:
+    return {
+        "sheets": {PLAYER_ID: Sheet.model_validate(character.rules).model_dump(mode="json")},
+        "items": {
+            item_id: ItemSheet.model_validate(one).model_dump(mode="json")
+            for item_id, one in character.item_rules.items()
+        },
+    }
 
 
 def build(user_packs: Path) -> Engine:
     packs = load_packs((ENGINE_DIR / "packs", user_packs), Pack)
+    validate = partial(_validate, packs)
     return Engine(
         id=EngineId("breathless"),
-        badge=("BREATHLESS", "red-7"),
-        director_instructions=engine_text(ENGINE_DIR / "director.md"),
-        rules_types=RULES_TYPES,
+        title="BREATHLESS",
+        instructions=f"{DIRECTOR_WORLD}\n\n{engine_text(ENGINE_DIR / 'director.md')}",
         packs=packs,
         creation=BreathlessCreation(packs),
-        checks=_checks,
-        describe=describe_by(RULES_TYPES),
+        validate=validate,
+        sheet_rows=sheet_rows,
+        mechanics_merge=partial(mechanics_merged, BreathlessState),
+        mechanics_without=_without,
+        character_mechanics=_character_mechanics,
+        over=player_over,
+        scene=rooms_scene(describer, lambda state: ()),
         resolvers=(TAKE_OVER, LOOT_ITEM, LOOT_MED_KIT),
         authoring_instructions=(
             "BREATHLESS AUTHORING\n"
-            "Actors may omit rules; describe threats through risks and complications. An actor "
-            "with rules names the skills rated above d4 (Bash, Dash, Sneak, Shoot, Think, Sway). "
-            "Every item is a die: give each one rules with its die (6 to 12). Scenery is not an "
-            "item; put it in the location description."
+            "Actors may omit a sheet; describe threats through risks and complications. An actor "
+            "with a sheet goes under `mechanics.sheets` keyed by its entity id, naming the skills "
+            "rated above d4 (Bash, Dash, Sneak, Shoot, Think, Sway). Every item is a die: each "
+            "one needs `mechanics.items` keyed by its entity id, with its die (6 to 12). Scenery "
+            "is not an item; put it in the location description."
         ),
-        director_tools=(
+        tools=(
             # Every item is a die a loot check hands out, so nothing here is improvised.
-            *(one for one in CORE_TOOLS if one.name != "gain_improvised_item"),
+            REVEAL,
+            MOVE,
+            ADD_TRAIT,
+            REMOVE_TRAIT,
+            kill_tool(validate),
+            UNLOCK_EXIT,
+            JOIN_PARTY,
+            LEAVE_PARTY,
+            ADVANCE_THREAD,
             director_tool(
                 "stake_check",
                 "Show the player one check's `risk` and let them accept or revise it before "
@@ -191,3 +254,10 @@ def build(user_packs: Path) -> Engine:
             ),
         ),
     )
+
+
+def _without(blob: Mechanics, entity_id: EntityId) -> Mechanics:
+    game = BreathlessState.model_validate(blob)
+    _ = game.sheets.pop(entity_id, None)
+    _ = game.items.pop(entity_id, None)
+    return game.model_dump(mode="json")

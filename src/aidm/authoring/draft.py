@@ -1,20 +1,21 @@
 import re
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 
-from pydantic import Field, ValidationError
+from pydantic import Field, JsonValue, ValidationError
 from pypdf import PdfReader
 
 from aidm.config import Settings
 from aidm.content.io import load_character, source_file, write_scenario
-from aidm.content.model import Character, Scenario
+from aidm.content.model import AuthoringBrief, Character, Scenario
 from aidm.engines.core import Engine
 from aidm.engines.registry import begin_game
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Exit, Frozen, Mutable, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
+from aidm.world.topology import player_location
 
 
 def _describe(item: Entity | Thread, verb: str) -> str:
@@ -27,7 +28,7 @@ class ScenarioPatch(Frozen):
     """One draft update. Set only the fields that change."""
 
     meta: ScenarioMeta | None = None
-    starting_location_id: EntityId | None = None
+    player_parent_id: EntityId | None = None
     starting_party: tuple[EntityId, ...] | None = None
     art_style: str | None = Field(
         default=None,
@@ -37,6 +38,10 @@ class ScenarioPatch(Frozen):
     )
     entities: tuple[Entity, ...] = ()
     threads: tuple[Thread, ...] = ()
+    mechanics: dict[str, JsonValue] = Field(
+        default_factory=dict,
+        description="This engine's own rules for the draft, merged over what it already holds.",
+    )
     remove: tuple[str, ...] = ()
 
     def scenario_wide(self) -> list[str]:
@@ -51,20 +56,22 @@ class ScenarioPatch(Frozen):
 class ScenarioDraft(Mutable):
     art_style: str = ""
     meta: ScenarioMeta | None = None
-    starting_location_id: EntityId | None = None
+    player_parent_id: EntityId | None = None
     starting_party: tuple[EntityId, ...] = ()
     entities: dict[EntityId, Entity] = Field(default_factory=dict)
     threads: dict[Slug, Thread] = Field(default_factory=dict)
+    mechanics: dict[str, JsonValue] = Field(default_factory=dict)
 
     @classmethod
     def from_scenario(cls, scenario: Scenario) -> "ScenarioDraft":
         return cls(
             art_style=scenario.art_style,
             meta=scenario.meta,
-            starting_location_id=scenario.starting_location_id,
+            player_parent_id=scenario.player_parent_id,
             starting_party=tuple(scenario.world.party),
             entities=deepcopy(scenario.world.entities),
             threads=deepcopy(scenario.world.threads),
+            mechanics=deepcopy(scenario.world.mechanics),
         )
 
     @classmethod
@@ -74,11 +81,11 @@ class ScenarioDraft(Mutable):
         played = {PLAYER_ID, state.player_id}
         return cls(
             meta=state.scenario,
-            starting_location_id=state.player_location,
+            player_parent_id=player_location(state),
             starting_party=tuple(
                 member
                 for member in world.party
-                if world.require(member).parent_id == state.player_location
+                if world.require(member).parent_id == player_location(state)
             ),
             entities={
                 entity_id: deepcopy(entity)
@@ -86,9 +93,10 @@ class ScenarioDraft(Mutable):
                 if played.isdisjoint({entity.id, entity.parent_id})
             },
             threads=deepcopy(world.threads),
+            mechanics=deepcopy(world.mechanics),
         )
 
-    def apply(self, patch: ScenarioPatch) -> str:
+    def apply(self, patch: ScenarioPatch, engine: Engine) -> str:
         changed: list[str] = []
         for name in patch.scenario_wide():
             setattr(self, name, getattr(patch, name))
@@ -101,11 +109,16 @@ class ScenarioDraft(Mutable):
             verb = "modified" if thread.id in self.threads else "created"
             changed.append(_describe(thread, verb))
             self.threads[thread.id] = thread
-        changed.extend(self._remove(target) for target in patch.remove)
+        if patch.mechanics:
+            self.mechanics = engine.mechanics_merge(self.mechanics, patch.mechanics)
+            changed.append("set mechanics")
+        changed.extend(self._remove(target, engine) for target in patch.remove)
         return "\n".join(changed) if changed else "nothing to change"
 
-    def _remove(self, target: str) -> str:
+    def _remove(self, target: str, engine: Engine) -> str:
         removed: Entity | Thread | None = self.entities.pop(EntityId(target), None)
+        if removed is not None:
+            self.mechanics = engine.mechanics_without(self.mechanics, EntityId(target))
         if removed is None:
             removed = self.threads.pop(target, None)
         if removed is None:
@@ -145,11 +158,12 @@ class ScenarioDraft(Mutable):
         """The one shape the model reads and writes, so the example never teaches a refusal."""
         return ScenarioPatch(
             meta=self.meta,
-            starting_location_id=self.starting_location_id,
+            player_parent_id=self.player_parent_id,
             starting_party=self.starting_party,
             art_style=self.art_style,
             entities=tuple(self.entities.values()),
             threads=tuple(self.threads.values()),
+            mechanics=self.mechanics,
         )
 
     def as_json(self) -> str:
@@ -158,19 +172,22 @@ class ScenarioDraft(Mutable):
     def scenario(self, engine: EngineId, packs: tuple[Slug, ...], grows: bool = False) -> Scenario:
         if self.meta is None:
             raise ValueError("the draft has no `meta` yet: write a title and premise first")
-        if self.starting_location_id is None:
-            raise ValueError("the draft has no `starting_location_id` yet")
+        if self.player_parent_id is None:
+            raise ValueError(
+                "the draft has no `player_parent_id` yet: say where the character starts"
+            )
         return Scenario(
             meta=self.meta,
             grows=grows,
             engine=engine,
             packs=packs,
             art_style=self.art_style,
-            starting_location_id=self.starting_location_id,
+            player_parent_id=self.player_parent_id,
             world=WorldState(
                 entities=dict(self.entities),
                 threads=dict(self.threads),
                 party=list(self.starting_party),
+                mechanics=dict(self.mechanics),
             ),
         )
 
@@ -191,15 +208,17 @@ class PlaytestCheck:
 
 
 def playtest_check(
-    settings: Settings, engine: Engine, packs: tuple[Slug, ...] = ("srd",)
+    settings: Settings, engine: Engine, packs: tuple[Slug, ...] = ()
 ) -> PlaytestCheck:
+    """An empty selection means the engine's first installed pack."""
+    selected = packs or (next(iter(engine.packs)),)
     character = load_character(
         settings.characters_dir,
         settings.authoring.starter_character,
         engine.id,
-        engine.check_overlay,
+        engine.character_mechanics,
     )
-    return PlaytestCheck(engine=engine, character=character, packs=packs)
+    return PlaytestCheck(engine=engine, character=character, packs=selected)
 
 
 MIN_LOCATIONS = 4
@@ -238,9 +257,7 @@ MIN_OPENING_ENTITIES = 2
 def _opening_unmet(scenario: Scenario) -> list[str]:
     unmet: list[str] = []
     beyond = [
-        entity_id
-        for entity_id in scenario.world.entities
-        if entity_id != scenario.starting_location_id
+        entity_id for entity_id in scenario.world.entities if entity_id != scenario.player_parent_id
     ]
     if len(beyond) < MIN_OPENING_ENTITIES:
         unmet.append(
@@ -249,13 +266,6 @@ def _opening_unmet(scenario: Scenario) -> list[str]:
     if not scenario.world.threads:
         unmet.append("at least one thread")
     return unmet
-
-
-@dataclass(frozen=True, slots=True)
-class AuthoringBrief:
-    bar_prompt: str
-    unmet: Callable[[Scenario], list[str]]
-    settled: frozenset[str] = frozenset()
 
 
 WHOLE_SCENARIO = AuthoringBrief("scenario_bar.md", _bar_unmet)

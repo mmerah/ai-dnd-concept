@@ -23,7 +23,7 @@ def character_page(runtime: Runtime, engine_id: str) -> None:
     engine = runtime.engines.get(EngineId(engine_id))
     if engine is None:
         raise ValueError(f"unknown engine {engine_id!r}")
-    with page_header("New character", engine.badge):
+    with page_header("New character", engine.title):
         pass
     creation = engine.creation
     picks: dict[Slug, str] = {}
@@ -89,15 +89,9 @@ def character_page(runtime: Runtime, engine_id: str) -> None:
                     ui.label(f"Not ready yet: {refused}").classes("text-sm opacity-50")
                     return
                 ui.separator().classes("q-my-sm")
+                # 4.2 draws the engine's own sheet here, through `sheet_rows` on a preview game.
                 rows = [(trait.name, trait.text) for trait in preview.profile.traits]
                 rows.extend(("carrying", item.name) for item in preview.profile.items)
-                for item in preview.profile.items:
-                    item_rules = preview.item_rules.get(item.id, {})
-                    item_rows = engine.rules_types["item"].model_validate(item_rules).rows()
-                    rows.extend(
-                        (f"{item.name}: {label}", value) for label, value in item_rows if value
-                    )
-                rows.extend(engine.rules_types["actor"].model_validate(preview.rules).rows())
                 for label, text in rows:
                     labeled_value(label, text)
                 ui.button("Create", icon="person_add", on_click=create).props("color=primary")
@@ -115,10 +109,11 @@ def _engine_and_packs(runtime: Runtime) -> tuple[ui.select, ui.select]:
         .classes("w-full")
         .props("outlined")
     )
+    installed = list(_engine(runtime, engine.value).packs)
     packs = (
         ui.select(
-            options=list(_engine(runtime, engine.value).packs),
-            value=["srd"],
+            options=installed,
+            value=installed[:1],
             label="Content packs",
             multiple=True,
         )
@@ -128,7 +123,7 @@ def _engine_and_packs(runtime: Runtime) -> tuple[ui.select, ui.select]:
 
     def changed_engine(event: ValueChangeEventArguments[object]) -> None:
         packs.options = list(_engine(runtime, event.value).packs)
-        packs.value = ["srd"]
+        packs.value = packs.options[:1]
         packs.update()
 
     engine.on_value_change(changed_engine)

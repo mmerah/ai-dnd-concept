@@ -2,29 +2,19 @@ from pathlib import Path
 from random import Random
 
 import pytest
-from core_test_support import (
-    ENGINES_BUILT,
-    TWENTYFOURXX,
-    at_boundary,
-    game,
-    sheet_of,
-)
+from core_test_support import ENGINES_BUILT, TWENTYFOURXX, game
 from pydantic import ValidationError
+from twentyfourxx_test_support import at_boundary, items, sheets
 
-from aidm.engines.core import (
-    Engine,
-    complete_chapter,
-    rules,
-    take_over,
-)
-from aidm.engines.twentyfourxx.engine import advance, build
+from aidm.engines.core import Engine, rules
+from aidm.engines.twentyfourxx.engine import advance, build, complete_chapter, describer
 from aidm.engines.twentyfourxx.rules import (
     RULES,
     Advance,
     Attempt,
-    ItemSheet,
     LuckTest,
     Sheet,
+    TwentyfourxxState,
     apply_change_credits,
     outcome_for,
     pool_faces,
@@ -38,6 +28,8 @@ from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.facts import Fact, cards
 from aidm.state.model import Game
 from aidm.state.play import PendingDecision, PendingOption, ToolCall
+from aidm.world.succession import take_over
+from aidm.world.topology import children, player_location
 
 ALLY = EntityId("ovid-sarn")
 LANTERN = EntityId("lantern")
@@ -142,14 +134,24 @@ def test_naming_both_an_ally_and_a_helped_tag_is_refused_at_the_schema() -> None
         )
 
 
+def _owed(engine: Engine, state: Game) -> tuple[str, ...]:
+    """The ADVANCES OWED section split back into the one line it holds per member."""
+    return tuple(
+        line
+        for section in engine.scene(state).sections
+        if section.title == "ADVANCES OWED"
+        for line in (section.director or "").splitlines()
+    )
+
+
 def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     engine, state = game(TWENTYFOURXX)
-    assert engine.owed_notes(state) == ()
+    assert _owed(engine, state) == ()
 
-    ready = at_boundary(state, Sheet)
-    (owed,) = engine.owed_notes(ready)
-    assert ready.player.name in owed
-    before = sheet_of(ready, PLAYER_ID, Sheet)
+    ready = at_boundary(state)
+    (note,) = _owed(engine, ready)
+    assert ready.player.name in note
+    before = sheets(ready)[PLAYER_ID]
 
     raise_existing = Advance(
         subject_id=PLAYER_ID, skill="Tracking", why="the climb taught them the route"
@@ -158,7 +160,7 @@ def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     facts = advance(draft, raise_existing, Random(3))
     grown = draft.committed()
 
-    sheet = sheet_of(grown, PLAYER_ID, Sheet)
+    sheet = sheets(grown)[PLAYER_ID]
     assert sheet.skills["Tracking"] == 10
     assert sheet.jobs == before.jobs + 1
     (dice_fact,) = [fact for fact in facts if fact.kind == "dice_rolled"]
@@ -168,21 +170,23 @@ def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     take_new = Advance(subject_id=PLAYER_ID, skill="Lockpicking", why="the job called for it")
     draft = ready.draft()
     _ = advance(draft, take_new, Random(4))
-    assert sheet_of(draft.committed(), PLAYER_ID, Sheet).skills["Lockpicking"] == 8
+    assert sheets(draft.committed())[PLAYER_ID].skills["Lockpicking"] == 8
 
 
 def test_a_companion_without_a_sheet_earns_no_chapter_and_cannot_be_played_on() -> None:
     engine, state = game(TWENTYFOURXX)
     draft = state.draft()
     ally = draft.world.require(ALLY)
-    ally.rules, ally.known, ally.parent_id = {}, True, draft.player_location
+    ally.known, ally.parent_id = True, player_location(draft)
+    draft.world.mechanics = engine.mechanics_without(draft.world.mechanics, ALLY)
     draft.world.party.append(ALLY)
-    _ = complete_chapter(draft, "the job is done", Sheet)
+    _ = complete_chapter(draft)
     joined = draft.committed()
 
-    assert joined.world.require(ALLY).rules == {}
-    (owed,) = engine.owed_notes(joined)
-    assert joined.player.name in owed
+    assert ALLY not in sheets(joined)
+    # The sheetless ally earns no chapter, so the player is the only one owed an advance.
+    (note,) = _owed(engine, joined)
+    assert joined.player.name in note
 
     handed = joined.draft()
     _ = take_over(handed, ALLY)
@@ -192,9 +196,9 @@ def test_a_companion_without_a_sheet_earns_no_chapter_and_cannot_be_played_on() 
 
 def test_a_skill_already_at_d12_is_refused_with_the_engines_own_reason() -> None:
     _, state = game(TWENTYFOURXX)
-    draft = at_boundary(state, Sheet).draft()
-    with rules(draft.world.require(PLAYER_ID), Sheet) as sheet:
-        sheet.skills["Climbing"] = 12
+    draft = at_boundary(state).draft()
+    with rules(draft.world, TwentyfourxxState) as maxing:
+        maxing.sheets[PLAYER_ID].skills["Climbing"] = 12
     maxed = draft.committed()
 
     capped = Advance(subject_id=PLAYER_ID, skill="Climbing", why="there is nowhere higher to climb")
@@ -205,15 +209,15 @@ def test_a_skill_already_at_d12_is_refused_with_the_engines_own_reason() -> None
 def test_credits_are_paid_charged_and_never_overdrawn() -> None:
     _, state = game(TWENTYFOURXX)
     draft = state.draft()
-    before = sheet_of(draft, PLAYER_ID, Sheet).credits.current
+    before = sheets(draft)[PLAYER_ID].credits.current
 
     paid = apply_change_credits(draft, PLAYER_ID, 3)
     assert [fact.kind for fact in paid] == ["counter_changed"]
-    assert sheet_of(draft, PLAYER_ID, Sheet).credits.current == before + 3
+    assert sheets(draft)[PLAYER_ID].credits.current == before + 3
 
     with pytest.raises(ValueError, match="cannot be spent"):
         _ = apply_change_credits(draft, PLAYER_ID, -(before + 4))
-    assert sheet_of(draft, PLAYER_ID, Sheet).credits.current == before + 3
+    assert sheets(draft)[PLAYER_ID].credits.current == before + 3
 
     with pytest.raises(ValueError, match="zero moves nothing"):
         _ = apply_change_credits(draft, PLAYER_ID, 0)
@@ -361,7 +365,7 @@ def test_breaking_an_item_turns_the_hit_and_that_item_is_never_offered_again() -
     facts = _played(engine, draft, decision, "lantern")
 
     assert [fact.kind for fact in facts] == ["defence_turned"]
-    assert sheet_of(draft, LANTERN, ItemSheet).broken
+    assert items(draft)[LANTERN].broken
     _ = resolve_attempt(draft, _forcing(), Random(HIT))
     assert [option.id for option in _waiting(draft).options] == ["take-it"]
 
@@ -374,7 +378,7 @@ def test_taking_the_hit_records_it_landing_in_full() -> None:
 
     assert landed.kind == "defence_taken"
     assert landed.told
-    assert draft.world.require(LANTERN).rules == {}
+    assert LANTERN not in items(draft)
     assert draft.pending is None
 
 
@@ -406,7 +410,7 @@ def test_an_actors_failed_hit_hands_the_player_no_defence() -> None:
 def _bought(
     engine: Engine, draft: Game, gear_id: str, onto_id: str | None = None
 ) -> tuple[Fact, ...]:
-    buy = next(one for one in engine.director_tools if one.name == "buy_gear")
+    buy = next(one for one in engine.tools if one.name == "buy_gear")
     return buy.call(
         draft, {"actor_id": "player", "gear_id": gear_id, "onto_id": onto_id}, Random(0)
     )
@@ -421,13 +425,13 @@ def test_gear_that_breaks_three_times_holds_twice_before_it_is_broken() -> None:
     for left in (2, 1):
         held = resolve_defence(draft, "Kael takes the burst", armor.id)
         assert [fact.kind for fact in held] == ["defence_turned"]
-        sheet = sheet_of(draft, armor.id, ItemSheet)
+        sheet = items(draft)[armor.id]
         assert sheet.breaks.current == left
         assert not sheet.broken
 
     spent = resolve_defence(draft, "Kael takes the burst", armor.id)
     assert [fact.kind for fact in spent] == ["defence_turned"]
-    sheet = sheet_of(draft, armor.id, ItemSheet)
+    sheet = items(draft)[armor.id]
     assert sheet.broken and sheet.breaks.current == 0
 
 
@@ -437,36 +441,36 @@ def test_an_items_marks_reach_the_prompt_as_its_own_state_lines() -> None:
     assert _bought(engine, draft, "battle-armor")
 
     armor = draft.world.require(EntityId("battle-armor"))
-    assert engine.describe(draft, armor) == "bulky: yes\nbreaks left: 3"
+    assert describer(draft)(armor) == "bulky: yes\nbreaks left: 3"
     _ = resolve_defence(draft, "Kael takes the burst", armor.id)
-    assert engine.describe(draft, armor) == "bulky: yes\nbreaks left: 2"
-    assert engine.describe(draft, draft.world.require(LANTERN)) == ""
+    assert describer(draft)(armor) == "bulky: yes\nbreaks left: 2"
+    assert describer(draft)(draft.world.require(LANTERN)) == ""
 
 
 def test_a_second_purchase_of_the_same_gear_is_charged_and_lands_beside_the_first() -> None:
     engine, state = game(TWENTYFOURXX)
     draft = state.draft()
-    before = sheet_of(draft, PLAYER_ID, Sheet).credits.current
+    before = sheets(draft)[PLAYER_ID].credits.current
 
     for _ in range(2):
         assert _bought(engine, draft, "pistol")
 
-    carried = [item.id for item in draft.world.children(PLAYER_ID, "item")]
+    carried = [item.id for item in children(draft.world, PLAYER_ID, "item")]
     assert "pistol" in carried and "pistol-2" in carried
-    assert sheet_of(draft, PLAYER_ID, Sheet).credits.current == before - 2
+    assert sheets(draft)[PLAYER_ID].credits.current == before - 2
 
 
 def test_a_ship_upgrade_is_charged_at_ten_and_installed_in_the_ship() -> None:
     engine, state = game(TWENTYFOURXX)
     draft = state.draft()
-    ship = draft.player_location
+    ship = player_location(draft)
     _ = apply_change_credits(draft, PLAYER_ID, RULES.ship_upgrade)
-    before = sheet_of(draft, PLAYER_ID, Sheet).credits.current
+    before = sheets(draft)[PLAYER_ID].credits.current
 
     assert _bought(engine, draft, "tachyon-burst", onto_id=ship)
 
-    assert "tachyon-burst" in [item.id for item in draft.world.children(ship, "item")]
-    assert sheet_of(draft, PLAYER_ID, Sheet).credits.current == before - RULES.ship_upgrade
+    assert "tachyon-burst" in [item.id for item in children(draft.world, ship, "item")]
+    assert sheets(draft)[PLAYER_ID].credits.current == before - RULES.ship_upgrade
 
     with pytest.raises(ValueError, match="name the ship"):
         _ = _bought(engine, draft, "jammer")
@@ -542,7 +546,7 @@ def test_a_bulky_kit_item_carries_the_bulky_mark() -> None:
     }
     created = creation.create("Wren", "Solders anything.", picks)
     computer = next(item for item in created.profile.items if item.id == "custom-computer")
-    assert computer.traits == [] and computer.rules == {}
+    assert computer.traits == []
     assert created.item_rules[computer.id] == {"bulky": True}
 
 

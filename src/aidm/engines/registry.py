@@ -37,16 +37,11 @@ def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character:
         name=character.name,
         brief=character.brief,
         known=True,
-        parent_id=scenario.starting_location_id,
+        parent_id=scenario.player_parent_id,
         traits=list(character.profile.traits),
-        rules=dict(character.rules),
     )
-    items = (
-        Entity.model_validate(
-            {**item.model_dump(mode="json"), "rules": character.item_rules.get(item.id, {})}
-        )
-        for item in character.profile.items
-    )
+    items = tuple(character.profile.items)
+    world.mechanics = engine.mechanics_merge(world.mechanics, engine.character_mechanics(character))
     for entity in (*items, player):
         if entity.id in world.entities:
             raise ValueError(f"authored entity id {entity.id!r} appears twice")

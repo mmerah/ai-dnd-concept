@@ -11,9 +11,9 @@ from core_test_support import (
     begin_game,
     character,
     initialized,
+    loner_sheet,
     scenario,
     scenario_for,
-    sheet_of,
     updated,
     with_entity,
 )
@@ -21,12 +21,16 @@ from pydantic import ValidationError
 
 from aidm.content.io import load_character, load_scenario
 from aidm.content.model import Character, CharacterProfile
-from aidm.engines.core import apply_to_draft, rules
-from aidm.engines.loner3e.rules import RULES, Sheet
+from aidm.engines.core import rules
+from aidm.engines.loner3e.rules import RULES, Loner3eState
+from aidm.engines.twentyfourxx.rules import TwentyfourxxState
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.model import Game
+from aidm.state.tools import apply_to_draft
+from aidm.world.topology import children, validate_rooms
 
+HERE = "HERE WITH THE PLAYER"
 HELD = EntityId("frayed-rope")
 MARA = EntityId("mara")
 ELENA = EntityId("elena")
@@ -74,58 +78,40 @@ def test_world_and_game_state_reject_inconsistent_topology() -> None:
     with pytest.raises(ValueError, match="player entity must be known"):
         with_entity(state, updated(state.player, known=False))
 
-    with pytest.raises(ValidationError, match="not in a valid location"):
+    with pytest.raises(ValidationError, match="unknown entity id"):
         with_entity(state, updated(state.player, parent_id=EntityId("missing")))
 
-    carried = state.world.children(PLAYER_ID, "item")[0]
-    with pytest.raises(ValidationError, match="cannot be inside anything"):
-        with_entity(state, updated(carried, kind="location"))
+    carried = children(state.world, PLAYER_ID, "item")[0]
+    with pytest.raises(ValidationError, match="inside itself"):
+        with_entity(state, updated(state.player, parent_id=carried.id))
+
+    with pytest.raises(ValueError, match="cannot be inside anything"):
+        validate_rooms(with_entity(state, updated(carried, kind="location")).world)
 
 
-def test_an_engine_refuses_an_authored_payload_it_cannot_read(tmp_path: Path) -> None:
-    folder = tmp_path / "broken"
-    folder.mkdir()
-    _ = (folder / "base.json").write_text('{"name": "Broken", "brief": "Built for this test."}')
-    _ = (folder / f"{LONER3E}.json").write_text('{"sheet": {"character": {"gear": null}}}')
+def test_an_engine_refuses_an_authored_payload_it_cannot_read() -> None:
+    engine, state = initialized()
+    draft = state.draft()
+    draft.world.mechanics = {"sheets": {PLAYER_ID: {"gear": None}}}
 
-    engine = ENGINES_BUILT[LONER3E]
-    with pytest.raises(ValidationError, match="gear"):
-        _ = load_character(tmp_path, "broken", engine.id, engine.check_overlay)
+    with pytest.raises(ValueError, match=r"^mechanics\.sheets\.player\.gear: "):
+        engine.validate(draft)
 
 
-def test_scenario_topology_is_validated() -> None:
-    with pytest.raises(ValidationError, match="starting_location_id"):
-        updated(scenario(), starting_location_id=EntityId("missing"))
-
-
-def test_a_location_no_walk_reaches_is_refused() -> None:
-    authored = scenario()
-    undercroft = Entity(
-        id=EntityId("undercroft"),
-        kind="location",
-        name="the undercroft",
-        brief="A chamber no passage names.",
-        known=False,
-    )
-    grown = updated(authored.world, entities={**authored.world.entities, "undercroft": undercroft})
-    with pytest.raises(ValidationError, match=r"no walk.*undercroft"):
-        updated(authored, world=grown)
-
-
-def test_world_state_rejects_broken_exits_and_party() -> None:
+def test_the_rooms_rules_reject_broken_exits_and_party() -> None:
     world = scenario().world
     study = world.require(EntityId("study"))
     exposed = updated(study, exits=(*study.exits, {"to": "bell-tower", "known": True}))
-    with pytest.raises(ValidationError, match="has not met"):
-        updated(world, entities={**world.entities, study.id: exposed})
+    with pytest.raises(ValueError, match="has not met"):
+        validate_rooms(updated(world, entities={**world.entities, study.id: exposed}))
 
-    with pytest.raises(ValidationError, match="without being met"):
-        updated(world, party=(ELENA,))
+    with pytest.raises(ValueError, match="without being met"):
+        validate_rooms(updated(world, party=(ELENA,)))
 
     mara = world.require(MARA)
     wandering = updated(mara, exits=({"to": "study"},))
-    with pytest.raises(ValidationError, match="cannot have exits"):
-        updated(world, entities={**world.entities, mara.id: wandering})
+    with pytest.raises(ValueError, match="cannot have exits"):
+        validate_rooms(updated(world, entities={**world.entities, mara.id: wandering}))
 
 
 def test_a_committed_game_refuses_a_player_who_travels_with_themselves() -> None:
@@ -164,44 +150,39 @@ def test_a_scenario_is_refused_by_an_engine_it_was_not_authored_for() -> None:
 
 def test_an_authored_actor_without_rules_is_refused() -> None:
     """Loner deviation 2 covers things, not actors: an actor nobody wrote has no sheet to roll."""
-    authored = scenario()
-    bare = updated(authored.world.require(MARA), rules={})
+    engine, authored = ENGINES_BUILT[LONER3E], scenario()
     stripped = updated(
         authored,
         world=updated(
             authored.world,
-            entities={**authored.world.entities, MARA: bare},
+            mechanics=engine.mechanics_without(authored.world.mechanics, MARA),
         ),
     )
 
-    with pytest.raises(ValueError, match="has no rules"):
-        _ = begin_game(ENGINES_BUILT[LONER3E], "whispering-vault", stripped, character())
+    with pytest.raises(ValueError, match="has no sheet"):
+        _ = begin_game(engine, "whispering-vault", stripped, character())
 
 
 def test_twentyfourxx_opposition_needs_no_sheet() -> None:
     engine = ENGINES_BUILT[TWENTYFOURXX]
     scenario_id = scenario_for(TWENTYFOURXX)
     authored = load_scenario(SCENARIOS, scenario_id)
-    hostile = next(entity for entity in authored.world.of_kind("actor") if entity.rules)
+    hostile_id = next(iter(TwentyfourxxState.model_validate(authored.world.mechanics).sheets))
     stripped = updated(
         authored,
         world=updated(
             authored.world,
-            entities={**authored.world.entities, hostile.id: updated(hostile, rules={})},
+            mechanics=engine.mechanics_without(authored.world.mechanics, hostile_id),
         ),
     )
-    player = load_character(CHARACTERS, "kael", engine.id, engine.check_overlay)
+    player = load_character(CHARACTERS, "kael", engine.id, engine.character_mechanics)
 
     begun = begin_game(engine, scenario_id, stripped, player)
 
-    assert engine.describe(begun, begun.world.require(hostile.id)) == ""
-
-
-def test_scenario_packs_include_one_srd() -> None:
-    with pytest.raises(ValidationError, match="must include 'srd'"):
-        updated(scenario(), packs=("ap01-fantasy",))
-    with pytest.raises(ValueError, match="duplicate scenario pack ids"):
-        updated(scenario(), packs=("srd", "srd"))
+    here = next(one for one in engine.scene(begun).sections if one.title == HERE)
+    # One entity's block: its headline and the lines indented under it, mechanics included.
+    block = next(one for one in (here.director or "").split("\n- ") if f"[{hostile_id}]" in one)
+    assert "state:" not in block
 
 
 def test_a_character_knows_the_gear_they_start_with() -> None:
@@ -220,14 +201,14 @@ def test_an_overlay_names_only_gear_the_character_carries() -> None:
 
 
 def _luck(state: Game) -> int:
-    return sheet_of(state, PLAYER_ID, Sheet).luck.current
+    return loner_sheet(state, PLAYER_ID).luck.current
 
 
 def test_a_rules_mutation_lands_on_the_commit_and_nowhere_else() -> None:
     _, state = initialized()
     draft = state.draft()
-    with rules(draft.world.require(PLAYER_ID), Sheet) as sheet:
-        sheet.luck.current = 1
+    with rules(draft.world, Loner3eState) as game:
+        game.sheets[PLAYER_ID].luck.current = 1
 
     committed = draft.committed()
 
@@ -240,11 +221,13 @@ def test_a_told_fact_about_an_unmet_or_unknown_entity_is_refused() -> None:
     leak = Fact(kind="entity_moved", trace="Elena moved", told=True, entity_id=ELENA)
 
     with pytest.raises(ValueError, match="has not met"):
-        _ = apply_to_draft(engine, state.draft(), lambda _draft, _rng: (leak,), Random(0))
+        _ = apply_to_draft(engine.validate, state.draft(), lambda _draft, _rng: (leak,), Random(0))
 
     nobody = Fact(
         kind="entity_moved", trace="a ghost moved", told=True, entity_id=EntityId("ghost")
     )
 
     with pytest.raises(ValueError, match="does not hold"):
-        _ = apply_to_draft(engine, state.draft(), lambda _draft, _rng: (nobody,), Random(0))
+        _ = apply_to_draft(
+            engine.validate, state.draft(), lambda _draft, _rng: (nobody,), Random(0)
+        )

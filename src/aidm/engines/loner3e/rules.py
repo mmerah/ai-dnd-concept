@@ -5,19 +5,27 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.engines.core import ProposalBase, SheetBase, adjust, keep_highest, pool, rules
-from aidm.state.actions import require_actor_here
+from aidm.engines.core import (
+    adjust,
+    keep_highest,
+    pool,
+    rules,
+    sheet_of,
+)
 from aidm.state.entities import (
     CheckedEntityId,
     Counter,
     Entity,
     EntityId,
     Frozen,
+    Mutable,
     Slug,
 )
 from aidm.state.facts import DiceEvent, Fact, entity_fact
 from aidm.state.model import Game
 from aidm.state.play import DecisionOption, PendingDecision
+from aidm.world.actions import require_actor_here
+from aidm.world.topology import is_here
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,18 +87,16 @@ def conflict_prompt(state: Game, actor: Entity, opponent: Entity) -> str:
     )
 
 
-class Sheet(SheetBase):
+class Sheet(Mutable):
     """The one sheet shape, whether it belongs to the player, an NPC, or a thing that resists."""
 
-    twist_pack: Slug = SRD_PACK
+    chapters: int = 0
     concept: str = ""
     skills: tuple[str, ...] = ()
     frailties: tuple[str, ...] = ()
     gear: tuple[str, ...] = ()
     luck: Counter = Counter(current=RULES.luck_max, maximum=RULES.luck_max)
     milestones: int = 0
-    # The played character's tally paces the whole game, so `rows()` leaves it off the sheet views.
-    twist: Counter = Counter(current=0, maximum=RULES.ties_per_twist)
 
     def rows(self) -> tuple[tuple[str, str], ...]:
         return (
@@ -100,6 +106,14 @@ class Sheet(SheetBase):
             ("Gear", ", ".join(self.gear)),
             ("Luck", pool(self.luck)),
         )
+
+
+class Loner3eState(Mutable):
+    sheets: dict[EntityId, Sheet] = Field(default_factory=dict)
+    # The played character's tally paces the whole game, so no sheet carries one.
+    twist: Counter = Counter(current=0, maximum=RULES.ties_per_twist)
+    # None rolls twists from the game's own first table set, so no scenario has to name one.
+    twist_pack: Slug | None = None
 
 
 type Position = Literal["advantage", "neutral", "disadvantage"]
@@ -171,23 +185,34 @@ def outcome_for(chance: int, risk: int) -> Outcome:
     return Outcome(side, 2 * sign)
 
 
-def _sheeted(entity: Entity) -> Entity:
+def _sheeted(game: Loner3eState, entity: Entity) -> Entity:
     """SRD "Everything is a Character": a thing gets its sheet the first time one is asked for."""
-    if entity.kind == "item" and not entity.rules:
-        entity.rules = Sheet().model_dump(mode="json")
+    if entity.kind == "item":
+        _ = game.sheets.setdefault(entity.id, Sheet())
     return entity
 
 
 def resolve_question(
     draft: Game, action: Question, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> tuple[Fact, ...]:
+    with rules(draft.world, Loner3eState) as game:
+        return _question(draft, game, action, rng, twists)
+
+
+def _question(
+    draft: Game,
+    game: Loner3eState,
+    action: Question,
+    rng: Random,
+    twists: tuple[tuple[str, str], ...],
+) -> tuple[Fact, ...]:
     actor = require_actor_here(draft, action.actor_id)
     facts = draft.reveal(actor)
     opponent: Entity | None = None
     if action.opponent_id is not None:
-        opponent = _sheeted(_require_opponent_here(draft, action.opponent_id))
+        opponent = _sheeted(game, _require_opponent_here(draft, action.opponent_id))
         facts.extend(draft.reveal(opponent))
-    _refuse_unless_ready(actor, opponent)
+    _refuse_unless_ready(game, actor, opponent)
 
     chance_kept, chance, risk_kept, risk, facts_rolled = _pair(action, rng)
     facts.extend(facts_rolled)
@@ -197,7 +222,7 @@ def resolve_question(
     facts.append(entity_fact(actor, "question_answered", f"{action.question} -> {outcome.name}"))
     effects: tuple[str, ...] = ()
     if opponent is not None:
-        exchange, effects = _absorbed(_strike(draft, actor, opponent, outcome))
+        exchange, effects = _absorbed(_strike(draft, game, actor, opponent, outcome))
         facts.extend(exchange)
         # The pools are refilled the moment a side hits 0, so only the fact says the conflict ended.
         if not any(fact.kind == "conflict_lost" for fact in exchange):
@@ -208,11 +233,10 @@ def resolve_question(
                 allows_text=True,
             )
     if chance_kept == risk_kept:
-        with rules(draft.player, Sheet) as sheet:
-            sheet.twist.current += 1
-            if _shortfall(sheet.twist) == 0:
-                sheet.twist.current = 0
-                facts.extend(_twist(draft, actor, rng, twists))
+        game.twist.current += 1
+        if _shortfall(game.twist) == 0:
+            game.twist.current = 0
+            facts.extend(_twist(draft, actor, rng, twists))
     # The question is director-authored and names unrevealed canon even on a "no": never shown.
     edge = f" ({action.edge})" if action.edge else ""
     card = "\n".join((f"Oracle — {action.position.capitalize()}{edge} → {outcome.name}", *effects))
@@ -232,7 +256,7 @@ def _require_opponent_here(draft: Game, opponent_id: EntityId) -> Entity:
             f"{opponent_id!r} is a {opponent.kind}, which cannot resist. "
             "Name an actor or an item here."
         )
-    if not draft.is_here(opponent):
+    if not is_here(draft, opponent):
         raise ValueError(
             f"{opponent_id!r} is not here with the player. "
             "Bring it here first, or act on what is here."
@@ -254,11 +278,13 @@ def _shortfall(pool: Counter) -> int:
 
 
 def apply_restore_luck(draft: Game, actor_id: EntityId) -> list[Fact]:
-    actor = require_actor_here(draft, actor_id)
-    facts = draft.reveal(actor)
-    with rules(actor, Sheet) as sheet:
+    with rules(draft.world, Loner3eState) as game:
+        actor = require_actor_here(draft, actor_id)
+        facts = draft.reveal(actor)
         # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
-        facts.extend(_refill(draft, actor, sheet, "the conflict is behind them"))
+        facts.extend(
+            _refill(draft, actor, sheet_of(game.sheets, actor), "the conflict is behind them")
+        )
     return facts
 
 
@@ -288,32 +314,32 @@ def _twist(
     return [subject_fact, action_fact, due]
 
 
-def _strike(draft: Game, actor: Entity, opponent: Entity, outcome: Outcome) -> list[Fact]:
+def _strike(
+    draft: Game, game: Loner3eState, actor: Entity, opponent: Entity, outcome: Outcome
+) -> list[Fact]:
     harm = outcome.harm
     hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
     why = f"{striker.name} gets the better of the exchange"
-    with rules(hit, Sheet) as sheet:
-        facts = adjust(draft, hit, "luck", sheet.luck, -abs(harm), why)
-        over = sheet.luck.current == 0
-        if over:
-            draft.world.pending_notes = (*draft.world.pending_notes, defeat_note(hit.name))
-            lost = f"{hit.name} is out of luck"
-            facts.append(entity_fact(hit, "conflict_lost", lost, card=lost))
-            # SRD: luck resets after conflicts, and a side at 0 is the only end the engine sees.
-            facts.extend(_refill(draft, hit, sheet, "the conflict is over"))
-    if over:
-        with rules(striker, Sheet) as sheet:
-            facts.extend(_refill(draft, striker, sheet, "the conflict is over"))
+    sheet = sheet_of(game.sheets, hit)
+    facts = adjust(draft, hit, "luck", sheet.luck, -abs(harm), why)
+    if sheet.luck.current != 0:
+        return facts
+    draft.world.pending_notes = (*draft.world.pending_notes, defeat_note(hit.name))
+    lost = f"{hit.name} is out of luck"
+    facts.append(entity_fact(hit, "conflict_lost", lost, card=lost))
+    # SRD: luck resets after conflicts, and a side at 0 is the only end the engine sees.
+    facts.extend(_refill(draft, hit, sheet, "the conflict is over"))
+    facts.extend(_refill(draft, striker, sheet_of(game.sheets, striker), "the conflict is over"))
     return facts
 
 
-def _refuse_unless_ready(actor: Entity, opponent: Entity | None) -> None:
+def _refuse_unless_ready(game: Loner3eState, actor: Entity, opponent: Entity | None) -> None:
     if opponent is None:
         return
     if opponent.id == actor.id:
         raise ValueError(f"{actor.name} cannot be their own opposition in a conflict.")
     for side in (actor, opponent):
-        if Sheet.model_validate(side.rules).luck.current == 0:
+        if sheet_of(game.sheets, side).luck.current == 0:
             raise ValueError(
                 f"{side.name} is already out of luck, so that conflict is over. Settle what it "
                 "costs them instead of rolling it again."
@@ -362,9 +388,10 @@ class Change(Frozen):
         return self
 
 
-class AdventureGrowth(ProposalBase):
+class AdventureGrowth(Frozen):
     """All sheet changes earned by one adventure."""
 
+    subject_id: CheckedEntityId = Field(description="Exact id of the party member who advances.")
     changes: tuple[Change, ...] = Field(
         min_length=1,
         description="Every earned change, in reading order.",

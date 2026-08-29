@@ -2,12 +2,14 @@ from pathlib import Path
 
 import pytest
 from core_test_support import ENGINES_BUILT, LONER3E, SCENARIOS
+from loner3e_test_support import sheet
 
 from aidm.content.io import load_character, load_scenario, write_character
-from aidm.engines.core import CharacterCreation
-from aidm.engines.loner3e.rules import RULES, Sheet
+from aidm.engines.core import CharacterCreation, mechanics_of
+from aidm.engines.loner3e.rules import RULES, Loner3eState
 from aidm.engines.registry import begin_game
 from aidm.state.creation import Picks
+from aidm.state.entities import PLAYER_ID
 
 
 def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path) -> None:
@@ -24,16 +26,17 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     }
     created = creation.create("Fen", "A wandering scribe with too many questions.", picks)
     write_character(tmp_path, LONER3E, created)
-    character = load_character(tmp_path, "fen", engine.id, engine.check_overlay)
+    character = load_character(tmp_path, "fen", engine.id, engine.character_mechanics)
     scenario = load_scenario(SCENARIOS, "whispering-vault")
     state = begin_game(engine, "whispering-vault", scenario, character)
-    sheet = Sheet.model_validate(state.player.rules)
-    assert sheet.twist_pack == "srd"
-    assert sheet.concept == "A wandering scribe who counts doors"
-    assert sheet.skills == ("Quiet Hands", "Reads Old Stonework")
-    assert sheet.frailties == ("Never Walks Away",)
-    assert sheet.gear == ("Pry Bar", "Chalk and Wire")
-    assert sheet.luck.current == RULES.luck_max
+    # The merge joins the new sheet into the scenario's blob rather than replacing it.
+    assert mechanics_of(state.world, Loner3eState).twist_pack == "srd"
+    made = sheet(state, PLAYER_ID)
+    assert made.concept == "A wandering scribe who counts doors"
+    assert made.skills == ("Quiet Hands", "Reads Old Stonework")
+    assert made.frailties == ("Never Walks Away",)
+    assert made.gear == ("Pry Bar", "Chalk and Wire")
+    assert made.luck.current == RULES.luck_max
 
 
 def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:

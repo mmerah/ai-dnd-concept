@@ -10,7 +10,7 @@ from aidm.turn import context
 def test_every_role_assembles_the_same_instructions(engine_id: EngineId) -> None:
     engine, _ = game(engine_id)
     roles = {
-        "director": context.director_instructions(engine.director_instructions),
+        "director": context.director_instructions(engine.instructions),
         "narrator": context.NARRATOR,
     }
     for name, instructions in roles.items():

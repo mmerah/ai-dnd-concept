@@ -34,17 +34,14 @@ async def working(session: Busy) -> AsyncGenerator[None]:
         session.busy = False
 
 
-def show_engine_badge(badge: tuple[str, str]) -> None:
-    label, colour = badge
-    ui.badge(label).props(f"color={colour} text-color=white").classes(
+def show_engine_badge(label: str) -> None:
+    ui.badge(label).props("color=primary text-color=white").classes(
         "text-sm font-bold q-px-md q-py-sm"
     )
 
 
 @contextmanager
-def page_header(
-    title: str, badge: tuple[str, str] | None = None, home: bool = True
-) -> Generator[None]:
+def page_header(title: str, badge: str | None = None, home: bool = True) -> Generator[None]:
     theme.apply()
     with ui.header().classes("items-center").style("gap: 1rem"):
         if home:

@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass, field
-from functools import cached_property, partial
+from functools import cached_property
 from pathlib import Path
 
 from pydantic import ConfigDict, Field, JsonValue
@@ -36,13 +36,8 @@ from aidm.state.play import (
     Narration,
     PendingDecision,
 )
-from aidm.turn.context import (
-    NARRATOR,
-    SceneSnapshot,
-    director_instructions,
-    player_scene,
-    render_director,
-)
+from aidm.state.scene import VisibleScene
+from aidm.turn.context import NARRATOR, active_threads, director_instructions, render_director
 from aidm.turn.run import Turn, speakers_refusal
 
 LOGGER = logging.getLogger(__name__)
@@ -93,8 +88,8 @@ class BeginScenario(ToolArgs):
     """Rules engine the finished scenario must be playable under."""
     grows: bool = False
     """Whether the world keeps writing itself in play. Then this run writes only the opening."""
-    packs: tuple[Slug, ...] = ("srd",)
-    """Selected pack ids, always including srd."""
+    packs: tuple[Slug, ...] = ()
+    """Selected pack ids. Empty for the engine's first installed pack."""
     source: str = ""
     """Path to a .md, .txt or .pdf adventure to author from. Empty to author from the premise."""
 
@@ -155,7 +150,7 @@ class Harness:
 
     def rules(self) -> str:
         engine = self.opened().engine
-        return f"{PREAMBLE}\n{director_instructions(engine.director_instructions)}\n\n{NARRATOR}"
+        return f"{PREAMBLE}\n{director_instructions(engine.instructions)}\n\n{NARRATOR}"
 
     def scene(self) -> str:
         return self._picture()
@@ -169,10 +164,11 @@ class Harness:
             turn.picture()
             if turn is not None
             else render_director(
-                SceneSnapshot.from_game(state, session.engine.notes(state)),
-                partial(session.engine.describe, state),
+                session.engine.scene(state),
                 state.scenario,
+                active_threads(state.world.threads.values()),
                 NO_TURN_OPEN,
+                notes=state.world.pending_notes,
             )
         )
         sections = [
@@ -207,7 +203,8 @@ class Harness:
                 "write the narration lines: a turn with neither prose nor an open "
                 "decision shows the player nothing."
             )
-        if refused := speakers_refusal(player_scene(turn.draft), lines):
+        visible = VisibleScene.revealed_from(session.engine.scene(turn.draft), turn.draft.world)
+        if refused := speakers_refusal(visible, lines):
             raise ModelRetry(refused)
         state, trace = turn.finish(lines)
         session.commit(state, trace)
@@ -330,7 +327,7 @@ def _listing(catalog: LauncherCatalog) -> str:
 
 def _recent(state: Game, limit: int) -> str:
     told = [
-        f"> {exchange.prompt}\n[at {exchange.place}] {exchange.narration}"
+        f"> {exchange.prompt}\n[at {exchange.scene}] {exchange.narration}"
         for exchange in state.history[-limit:]
     ]
     return "\n\n".join(told) or "(the game has not started yet)"
@@ -350,6 +347,6 @@ def _waiting(pending: PendingDecision | None) -> str:
 
 def _offers_listing(session: GameSession) -> str:
     return "\n".join(
-        f"- {offer.label}: player_action(name={action.name}, args={json.dumps(offer.args)})"
-        for action, offer in session.offers()
+        f"- {label}: player_action(name={action.name}, args={json.dumps(args)})"
+        for action, label, args in session.offers()
     )

@@ -83,7 +83,7 @@ class Answer(Frozen):
 
 class Exchange(Frozen):
     prompt: str
-    place: str
+    scene: str
     lines: tuple[Line, ...]
     facts: tuple[Fact, ...] = ()
     # The suspending decision's prompt: the pause has to survive after `Game.pending` clears.

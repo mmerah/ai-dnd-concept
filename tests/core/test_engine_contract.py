@@ -4,18 +4,19 @@ from core_test_support import (
     LONER3E,
     character,
     initialized,
+    loner_sheet,
     scenario,
-    sheet_of,
     updated,
 )
 
-from aidm.engines.core import rules
-from aidm.engines.loner3e.rules import RULES, Sheet, apply_restore_luck
+from aidm.engines.core import mechanics_of, rules
+from aidm.engines.loner3e.rules import RULES, Loner3eState, Sheet, apply_restore_luck
 from aidm.engines.registry import begin_game
-from aidm.state import actions
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.model import Game
+from aidm.world import actions
+from aidm.world.topology import player_location
 
 
 def _turn(state: Game) -> tuple[Game, tuple[Fact, ...]]:
@@ -31,8 +32,8 @@ def _turn(state: Game) -> tuple[Game, tuple[Fact, ...]]:
 def _spent(state: Game) -> Game:
     """Luck short of full, so the engine's own action has something to restore."""
     draft = state.draft()
-    with rules(draft.world.require(PLAYER_ID), Sheet) as sheet:
-        sheet.luck.current = 1
+    with rules(draft.world, Loner3eState) as game:
+        game.sheets[PLAYER_ID].luck.current = 1
     return draft.committed()
 
 
@@ -40,7 +41,7 @@ def test_engine_initialization_and_state_contract() -> None:
     engine, state = initialized()
 
     assert state.engine == engine.id
-    assert sheet_of(state, PLAYER_ID, Sheet).luck.current == RULES.luck_max
+    assert loner_sheet(state, PLAYER_ID).luck.current == RULES.luck_max
     engine.validate(state)
 
     assert engine.restored(state.model_dump_json()) == state
@@ -74,16 +75,19 @@ def test_rules_on_an_entity_created_in_play_are_its_sheet() -> None:
         name="A Grown Hostile",
         brief="Written into the world by a growth pass.",
         known=True,
-        parent_id=state.player_location,
-        rules={"concept": "A Bloated Cloister Rat", "skills": ["Bites and Holds On"]},
+        parent_id=player_location(state),
     )
     working = state.draft()
     _ = working.add(hostile)
+    with rules(working.world, Loner3eState) as game:
+        game.sheets[hostile.id] = Sheet(
+            concept="A Bloated Cloister Rat", skills=("Bites and Holds On",)
+        )
     grown = working.committed()
 
     engine.validate(grown)
 
-    sheet = sheet_of(grown, hostile.id, Sheet)
+    sheet = loner_sheet(grown, hostile.id)
     assert sheet.concept == "A Bloated Cloister Rat"
     assert sheet.skills == ("Bites and Holds On",)
 
@@ -95,24 +99,21 @@ def test_authored_rules_are_the_sheet_of_whatever_carries_them() -> None:
         shipped,
         world=updated(
             shipped.world,
-            entities={
-                **shipped.world.entities,
-                EntityId("vault-map"): updated(
-                    shipped.world.require(EntityId("vault-map")),
-                    rules={"concept": "a chart that remembers"},
-                ),
-            },
+            mechanics=engine.mechanics_merge(
+                shipped.world.mechanics,
+                {"sheets": {"vault-map": {"concept": "a chart that remembers"}}},
+            ),
         ),
     )
 
     state = begin_game(engine, "whispering-vault", authored, character())
 
-    assert sheet_of(state, EntityId("vault-map"), Sheet).concept == "a chart that remembers"
-    assert sheet_of(state, EntityId("tomas"), Sheet).concept == "A Deaf Old Porter"
-    assert engine.describe(state, state.world.require(EntityId("lantern"))) == ""
+    assert loner_sheet(state, EntityId("vault-map")).concept == "a chart that remembers"
+    assert loner_sheet(state, EntityId("tomas")).concept == "A Deaf Old Porter"
+    assert EntityId("lantern") not in mechanics_of(state.world, Loner3eState).sheets
     engine.validate(state)
 
 
 def test_every_registered_engine_builds_itself_under_its_own_id() -> None:
     for engine_id in ENGINE_IDS:
-        assert "srd" in ENGINES_BUILT[engine_id].packs
+        assert ENGINES_BUILT[engine_id].id == engine_id

@@ -1,31 +1,33 @@
 from collections.abc import Mapping, Sequence
+from functools import partial
 from pathlib import Path
 from random import Random
 
-from pydantic import Field
+from pydantic import Field, JsonValue
 
 from aidm.content.io import engine_text
 from aidm.content.model import Character, CharacterProfile
 from aidm.engines.core import (
-    ADVANCE_TOOL,
-    TAKE_OVER,
+    ADVANCE_SPENT,
     Engine,
-    EntityRules,
-    NoRules,
+    EntityRenderer,
+    Mechanics,
     PackCreation,
-    advances_owed,
-    chapter_tool,
+    check_packs,
     describe_rows,
-    director_tool,
     find_entry,
     load_packs,
+    mechanics_merged,
+    mechanics_of,
     party_member,
     rules,
+    sheet_of,
 )
 from aidm.engines.loner3e.rules import (
     GROWTH,
     AdventureGrowth,
     Change,
+    Loner3eState,
     Pack,
     Question,
     Sheet,
@@ -33,39 +35,62 @@ from aidm.engines.loner3e.rules import (
     resolve_question,
     twist_table,
 )
-from aidm.engines.world import CORE_TOOLS
 from aidm.state.creation import CreationStep, Picks, check_picks, numbered_steps, picked
 from aidm.state.entities import (
+    PLAYER_ID,
     CheckedEntityId,
     EngineId,
     Entity,
+    EntityId,
     Frozen,
-    Kind,
     Slug,
     slug,
 )
 from aidm.state.facts import Fact, entity_fact
 from aidm.state.model import Game
 from aidm.state.play import DecisionOption
+from aidm.state.threads import ADVANCE_THREAD
+from aidm.state.tools import NoArgs, director_tool
+from aidm.world.scene import rooms_scene
+from aidm.world.succession import TAKE_OVER, player_over
+from aidm.world.tools import (
+    ADD_TRAIT,
+    DIRECTOR_WORLD,
+    GAIN_IMPROVISED_ITEM,
+    JOIN_PARTY,
+    LEAVE_PARTY,
+    MOVE,
+    REMOVE_TRAIT,
+    REVEAL,
+    UNLOCK_EXIT,
+    kill_tool,
+)
+from aidm.world.topology import validate_rooms
 
 ENGINE_DIR = Path(__file__).parent
-# SRD "Everything is a Character": a thing that resists plays by the one sheet an actor does.
-RULES_TYPES: Mapping[Kind, type[EntityRules]] = {
-    "actor": Sheet,
-    "item": Sheet,
-    "location": NoRules,
-}
 
 
 class RestoreLuck(Frozen):
     actor_id: CheckedEntityId = Field(description="Exact id of the player or an actor here.")
 
 
+def complete_chapter(draft: Game) -> tuple[Fact, ...]:
+    """Only those who played the chapter are credited with it: nobody is owed one they missed."""
+    ending = "the adventure has ended"
+    with rules(draft.world, Loner3eState) as game:
+        for member_id in (draft.player_id, *draft.world.party):
+            sheet = game.sheets.get(member_id)
+            if sheet is not None:
+                sheet.chapters += 1
+    return (Fact(kind="chapter_completed", trace=ending, told=True, card=ending),)
+
+
 def advance(draft: Game, proposal: AdventureGrowth, rng: Random) -> tuple[Fact, ...]:
     """One advance per adventure a party member played: the tags it rewrote or grew."""
     del rng
-    subject = party_member(draft, proposal.subject_id)
-    with rules(subject, Sheet) as sheet:
+    with rules(draft.world, Loner3eState) as game:
+        subject = party_member(draft, proposal.subject_id)
+        sheet = sheet_of(game.sheets, subject)
         if sheet.chapters <= sheet.milestones:
             raise ValueError(f"{subject.name} has no advance owed")
         # Sequential against the live sheet, so a rewrite may name what an earlier change wrote.
@@ -165,14 +190,18 @@ class Loner3eCreation(PackCreation[Pack]):
         )
 
 
-def _checks(state: Game) -> None:
+def _validate(packs: Mapping[str, Pack], state: Game) -> None:
+    check_packs(packs, state)
+    validate_rooms(state.world)
+    game = mechanics_of(state.world, Loner3eState)
+    if stray := sorted(set(game.sheets) - set(state.world.entities)):
+        raise ValueError(f"mechanics.sheets names entities the world does not hold: {stray}")
     # Every actor rolls by a sheet: one nobody wrote is refused, not given a blank one.
     for actor in state.world.of_kind("actor"):
-        if not actor.rules:
-            raise ValueError(f"{actor.id!r} has no rules; a Loner actor needs a sheet")
-        twist_pack = Sheet.model_validate(actor.rules).twist_pack
-        if twist_pack not in state.packs:
-            raise ValueError(f"{actor.id!r} rolls twists from {twist_pack!r}, which is unselected")
+        if actor.id not in game.sheets:
+            raise ValueError(f"{actor.id!r} has no sheet; a Loner actor needs one")
+    if game.twist_pack is not None and game.twist_pack not in state.packs:
+        raise ValueError(f"twists roll from {game.twist_pack!r}, which is unselected")
 
 
 def meanings(
@@ -186,31 +215,61 @@ def meanings(
     )
 
 
-def _describe(packs: Mapping[str, Pack], state: Game, entity: Entity) -> str:
-    # An item is described only once play has written rules on it; before that it is scenery.
-    if entity.kind != "actor" and not entity.rules:
-        return ""
-    sheet = Sheet.model_validate(entity.rules)
-    return describe_rows(sheet.rows(), meanings(packs, state.packs, sheet))
+def describer(packs: Mapping[str, Pack], state: Game) -> EntityRenderer:
+    """One parse of the blob per scene; an entity without a sheet is scenery, not mechanics."""
+    game = mechanics_of(state.world, Loner3eState)
+
+    def describe(entity: Entity) -> str:
+        sheet = game.sheets.get(entity.id)
+        if sheet is None:
+            return ""
+        return describe_rows(sheet.rows(), meanings(packs, state.packs, sheet))
+
+    return describe
+
+
+def advances_owed(state: Game) -> tuple[tuple[str, str], ...]:
+    """Chapters played standing above the ledger of advances taken, one note each."""
+    # An advance mid-suspension could invalidate the frozen call an open decision holds.
+    if state.pending is not None:
+        return ()
+    game = mechanics_of(state.world, Loner3eState)
+    owed = [
+        f"- {state.world.require(one).name} has an advance owed; call advance only when the "
+        "player asks for it."
+        for one in (state.player_id, *state.world.party)
+        if (sheet := game.sheets.get(one)) is not None and sheet.chapters > sheet.milestones
+    ]
+    return (("ADVANCES OWED", "\n".join(owed)),) if owed else ()
+
+
+def sheet_rows(state: Game) -> tuple[tuple[str, str], ...]:
+    return sheet_of(mechanics_of(state.world, Loner3eState).sheets, state.player).rows()
 
 
 def twists(packs: Mapping[str, Pack], state: Game) -> tuple[tuple[str, str], ...]:
-    return twist_table(packs, Sheet.model_validate(state.player.rules).twist_pack)
+    chosen = mechanics_of(state.world, Loner3eState).twist_pack
+    return twist_table(packs, chosen or state.packs[0])
 
 
 def build(user_packs: Path) -> Engine:
     packs = load_packs((ENGINE_DIR / "packs", user_packs), Pack)
+    validate = partial(_validate, packs)
+    describe = partial(describer, packs)
     return Engine(
         id=EngineId("loner3e"),
-        badge=("LONER 3E", "teal-7"),
-        director_instructions=engine_text(ENGINE_DIR / "director.md"),
-        rules_types=RULES_TYPES,
+        title="LONER 3E",
+        instructions=f"{DIRECTOR_WORLD}\n\n{engine_text(ENGINE_DIR / 'director.md')}",
         packs=packs,
         creation=Loner3eCreation(packs),
-        checks=_checks,
-        describe=lambda state, entity: _describe(packs, state, entity),
+        validate=validate,
+        over=player_over,
+        scene=rooms_scene(describe, advances_owed),
+        sheet_rows=sheet_rows,
+        mechanics_merge=partial(mechanics_merged, Loner3eState),
+        mechanics_without=_without,
+        character_mechanics=_character_mechanics,
         resolvers=(TAKE_OVER,),
-        owed_notes=lambda state: advances_owed(state, Sheet, lambda sheet: sheet.milestones),
         authoring_instructions=(
             "LONER 3E AUTHORING\n"
             "Every actor needs a rules object with a concept and any fitting skills, frailties, or "
@@ -218,8 +277,17 @@ def build(user_packs: Path) -> Engine:
             "and invent scenario-specific tags when they are clearer. twist_pack names one "
             "selected table set; its Oracle twists are rolled from it."
         ),
-        director_tools=(
-            *CORE_TOOLS,
+        tools=(
+            REVEAL,
+            MOVE,
+            GAIN_IMPROVISED_ITEM,
+            ADD_TRAIT,
+            REMOVE_TRAIT,
+            kill_tool(validate),
+            UNLOCK_EXIT,
+            JOIN_PARTY,
+            LEAVE_PARTY,
+            ADVANCE_THREAD,
             director_tool(
                 "roll_question",
                 "Roll Chance against Risk for one closed dramatic question.",
@@ -232,9 +300,34 @@ def build(user_packs: Path) -> Engine:
                 RestoreLuck,
                 lambda draft, one, _rng: apply_restore_luck(draft, one.actor_id),
             ),
-            chapter_tool(
-                "Record that the current adventure has ended.", "the adventure has ended", Sheet
+            director_tool(
+                "complete_chapter",
+                "Record that the current adventure has ended.",
+                NoArgs,
+                lambda draft, _args, _rng: complete_chapter(draft),
             ),
-            director_tool("advance", ADVANCE_TOOL + GROWTH, AdventureGrowth, advance),
+            director_tool("advance", ADVANCE_SPENT + GROWTH, AdventureGrowth, advance),
         ),
     )
+
+
+def _character_mechanics(character: Character) -> dict[str, JsonValue]:
+    """SRD "Everything is a Character": gear the player carries is sheeted like anyone else."""
+    overlay = dict(character.rules)
+    # The table set the character was built from outranks the scenario's; 3.1 files it directly.
+    chosen = overlay.pop("twist_pack", None)
+    sheets = {PLAYER_ID: overlay, **character.item_rules}
+    blob: dict[str, JsonValue] = {
+        "sheets": {
+            key: Sheet.model_validate(one).model_dump(mode="json") for key, one in sheets.items()
+        }
+    }
+    if chosen is not None:
+        blob["twist_pack"] = chosen
+    return blob
+
+
+def _without(blob: Mechanics, entity_id: EntityId) -> Mechanics:
+    game = Loner3eState.model_validate(blob)
+    _ = game.sheets.pop(entity_id, None)
+    return game.model_dump(mode="json")

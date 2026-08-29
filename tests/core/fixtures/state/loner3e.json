@@ -28,8 +28,7 @@
             "known": true,
             "locked": false
           }
-        ],
-        "rules": {}
+        ]
       },
       "cloister": {
         "id": "cloister",
@@ -57,8 +56,7 @@
             "known": false,
             "locked": true
           }
-        ],
-        "rules": {}
+        ]
       },
       "bell-tower": {
         "id": "bell-tower",
@@ -76,8 +74,7 @@
             "known": false,
             "locked": false
           }
-        ],
-        "rules": {}
+        ]
       },
       "vault": {
         "id": "vault",
@@ -95,8 +92,7 @@
             "known": false,
             "locked": true
           }
-        ],
-        "rules": {}
+        ]
       },
       "mara": {
         "id": "mara",
@@ -108,20 +104,7 @@
         "known": true,
         "parent_id": "study",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "concept": "A Cautious Scribe",
-          "skills": [
-            "Reads a Faded Hand",
-            "Knows the Catalogue"
-          ],
-          "frailties": [
-            "Slow to Trust"
-          ],
-          "gear": [
-            "Ledger and Ink"
-          ]
-        }
+        "exits": []
       },
       "tomas": {
         "id": "tomas",
@@ -133,19 +116,7 @@
         "known": true,
         "parent_id": "cloister",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "concept": "A Deaf Old Porter",
-          "skills": [
-            "Knows Every Door"
-          ],
-          "frailties": [
-            "Hears Almost Nothing"
-          ],
-          "gear": [
-            "Twig Broom"
-          ]
-        }
+        "exits": []
       },
       "elena": {
         "id": "elena",
@@ -157,20 +128,7 @@
         "known": false,
         "parent_id": "bell-tower",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "concept": "A Ruined Archivist",
-          "skills": [
-            "Knows the Old Rites",
-            "Names Her Price"
-          ],
-          "frailties": [
-            "Flinches at the Dark"
-          ],
-          "gear": [
-            "Hooded Lantern"
-          ]
-        }
+        "exits": []
       },
       "cloister-rat": {
         "id": "cloister-rat",
@@ -182,17 +140,7 @@
         "known": false,
         "parent_id": "cloister",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "concept": "A Bloated Cloister Rat",
-          "skills": [
-            "Slips Into the Walls",
-            "Bites and Holds On"
-          ],
-          "frailties": [
-            "Does Not Run"
-          ]
-        }
+        "exits": []
       },
       "vault-map": {
         "id": "vault-map",
@@ -204,8 +152,7 @@
         "known": false,
         "parent_id": "study",
         "traits": [],
-        "exits": [],
-        "rules": {}
+        "exits": []
       },
       "lantern": {
         "id": "lantern",
@@ -223,8 +170,7 @@
             "text": "(gear) Its shifting light exposes seams and movement in deep shadow."
           }
         ],
-        "exits": [],
-        "rules": {}
+        "exits": []
       },
       "player": {
         "id": "player",
@@ -247,22 +193,7 @@
             "text": "(frailty) Old scars make certain memories hard to face."
           }
         ],
-        "exits": [],
-        "rules": {
-          "twist_pack": "srd",
-          "concept": "A Wary Relic-Hunter",
-          "skills": [
-            "Reads Old Stonework",
-            "Quiet Hands"
-          ],
-          "frailties": [
-            "Never Walks Away"
-          ],
-          "gear": [
-            "Pry Bar",
-            "Chalk and Wire"
-          ]
-        }
+        "exits": []
       }
     },
     "threads": {
@@ -274,9 +205,111 @@
       }
     },
     "party": [],
-    "pending_notes": []
+    "pending_notes": [],
+    "mechanics": {
+      "sheets": {
+        "mara": {
+          "chapters": 0,
+          "concept": "A Cautious Scribe",
+          "skills": [
+            "Reads a Faded Hand",
+            "Knows the Catalogue"
+          ],
+          "frailties": [
+            "Slow to Trust"
+          ],
+          "gear": [
+            "Ledger and Ink"
+          ],
+          "luck": {
+            "current": 6,
+            "maximum": 6
+          },
+          "milestones": 0
+        },
+        "tomas": {
+          "chapters": 0,
+          "concept": "A Deaf Old Porter",
+          "skills": [
+            "Knows Every Door"
+          ],
+          "frailties": [
+            "Hears Almost Nothing"
+          ],
+          "gear": [
+            "Twig Broom"
+          ],
+          "luck": {
+            "current": 6,
+            "maximum": 6
+          },
+          "milestones": 0
+        },
+        "elena": {
+          "chapters": 0,
+          "concept": "A Ruined Archivist",
+          "skills": [
+            "Knows the Old Rites",
+            "Names Her Price"
+          ],
+          "frailties": [
+            "Flinches at the Dark"
+          ],
+          "gear": [
+            "Hooded Lantern"
+          ],
+          "luck": {
+            "current": 6,
+            "maximum": 6
+          },
+          "milestones": 0
+        },
+        "cloister-rat": {
+          "chapters": 0,
+          "concept": "A Bloated Cloister Rat",
+          "skills": [
+            "Slips Into the Walls",
+            "Bites and Holds On"
+          ],
+          "frailties": [
+            "Does Not Run"
+          ],
+          "gear": [],
+          "luck": {
+            "current": 6,
+            "maximum": 6
+          },
+          "milestones": 0
+        },
+        "player": {
+          "chapters": 0,
+          "concept": "A Wary Relic-Hunter",
+          "skills": [
+            "Reads Old Stonework",
+            "Quiet Hands"
+          ],
+          "frailties": [
+            "Never Walks Away"
+          ],
+          "gear": [
+            "Pry Bar",
+            "Chalk and Wire"
+          ],
+          "luck": {
+            "current": 6,
+            "maximum": 6
+          },
+          "milestones": 0
+        }
+      },
+      "twist": {
+        "current": 0,
+        "maximum": 3
+      },
+      "twist_pack": "srd"
+    }
   },
-  "turn_events": [],
+  "turn_facts": [],
   "history": [],
   "turn": 0,
   "pending": null

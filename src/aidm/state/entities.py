@@ -1,9 +1,9 @@
 import re
 from collections import Counter as Tally
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from typing import Annotated, Literal, NewType, Self
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 SLUG_MAX = 64
@@ -111,12 +111,10 @@ class Entity(Mutable):
     description: str = ""
     when_reached: str = ""
     known: bool = False
-    # Which kinds may hold which is one rule, in `world.check_placement`.
+    # Which kinds may hold which is one rule, in `world.topology.validate_rooms`.
     parent_id: CheckedEntityId | None = None
     traits: list[Trait] = Field(default_factory=list)
     exits: list[Exit] = Field(default_factory=list)
-    # Opaque to core, like a character overlay: the engine that reads them is their only validator.
-    rules: dict[str, JsonValue] = Field(default_factory=dict)
 
     def trait(self, trait_id: str) -> Trait | None:
         return next((held for held in self.traits if held.id == trait_id), None)
@@ -135,22 +133,3 @@ class Entity(Mutable):
         if any(way.to == self.id for way in self.exits):
             raise ValueError(f"location {self.id!r} has an exit to itself")
         return self
-
-
-_HOLDERS: Mapping[Kind, tuple[Kind, ...]] = {
-    "actor": ("location",),
-    "item": ("actor", "location"),
-    "location": (),
-}
-
-
-def check_placement(entity: Entity, holder: Entity | None) -> None:
-    allowed = _HOLDERS[entity.kind]
-    if not allowed:
-        if entity.parent_id is not None:
-            raise ValueError(f"{entity.kind} {entity.id!r} cannot be inside anything")
-        return
-    if holder is None:
-        raise ValueError(f"{entity.kind} {entity.id!r} is not in a valid {' or '.join(allowed)}")
-    if holder.kind not in allowed:
-        raise ValueError(f"{entity.kind} {entity.id!r} is in a {holder.kind}, which cannot hold it")

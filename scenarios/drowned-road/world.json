@@ -4,10 +4,12 @@
     "premise": "When Ashant's terraformers raised the sea, it swallowed the causeway out to Relay Nine, and the survey station was written off with its vault deck still sealed. Kael has come for what is locked down there: the founding survey nobody has read in thirty years. He starts at the siren mast on the Holdfast shore, where Ovid Sarn sounds the tide klaxon twice a day and nobody walks the drowned road without hearing it."
   },
   "engine": "twentyfourxx",
-  "packs": ["srd"],
+  "packs": [
+    "srd"
+  ],
   "grows": true,
   "art_style": "Cold tidal greys and sodium orange, painted digital concept art; salt-corroded near-future industry under low light.",
-  "starting_location_id": "siren-mast",
+  "player_parent_id": "siren-mast",
   "world": {
     "entities": {
       "siren-mast": {
@@ -93,13 +95,7 @@
         "when_reached": "Ovid knows the crossing hour to the minute and will give it to anyone who asks straight. He will not walk the road himself, and he will say why if pressed.",
         "known": true,
         "parent_id": "siren-mast",
-        "traits": [],
-        "rules": {
-          "skills": {
-            "Labor": 10,
-            "Electronics": 8
-          }
-        }
+        "traits": []
       },
       "verrin-ade": {
         "id": "verrin-ade",
@@ -110,13 +106,7 @@
         "when_reached": "Verrin sells at the printed price, in credits, before the goods leave the rack. She does not haggle, does not extend credit, and will not be talked past the board.",
         "known": true,
         "parent_id": "holdfast",
-        "traits": [],
-        "rules": {
-          "skills": {
-            "Connections": 10,
-            "Electronics": 8
-          }
-        }
+        "traits": []
       },
       "mara-voss": {
         "id": "mara-voss",
@@ -127,13 +117,7 @@
         "when_reached": "Mara has held the relay alone since the station was written off and does not believe the vault should be opened. She will name what she wants before she helps with the hatch.",
         "known": false,
         "parent_id": "relay-nine",
-        "traits": [],
-        "rules": {
-          "skills": {
-            "Electronics": 10,
-            "Climbing": 8
-          }
-        }
+        "traits": []
       },
       "deel-hask": {
         "id": "deel-hask",
@@ -144,14 +128,7 @@
         "when_reached": "Deel takes what the road takes. He follows anyone who asks after the relay, and he starts the fight at the moment the tide has already cut off the way back.",
         "known": false,
         "parent_id": "holdfast",
-        "traits": [],
-        "rules": {
-          "skills": {
-            "Intimidation": 10,
-            "Hand-to-hand": 8,
-            "Tracking": 8
-          }
-        }
+        "traits": []
       },
       "cipher-spike": {
         "id": "cipher-spike",
@@ -173,6 +150,36 @@
         "note": "Kael came for the founding survey locked under Relay Nine: the spike that fills the hatch socket, the crossing out to the stack between soundings, and what Mara Voss will want for letting him down there."
       }
     },
-    "party": []
+    "party": [],
+    "mechanics": {
+      "sheets": {
+        "ovid-sarn": {
+          "skills": {
+            "Labor": 10,
+            "Electronics": 8
+          }
+        },
+        "verrin-ade": {
+          "skills": {
+            "Connections": 10,
+            "Electronics": 8
+          }
+        },
+        "mara-voss": {
+          "skills": {
+            "Electronics": 10,
+            "Climbing": 8
+          }
+        },
+        "deel-hask": {
+          "skills": {
+            "Intimidation": 10,
+            "Hand-to-hand": 8,
+            "Tracking": 8
+          }
+        }
+      },
+      "items": {}
+    }
   }
 }

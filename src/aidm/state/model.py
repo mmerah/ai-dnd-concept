@@ -2,10 +2,9 @@ from collections.abc import Callable, Iterator
 from copy import deepcopy
 from typing import Literal, Self
 
-from pydantic import Field, ValidationError, model_validator
+from pydantic import Field, JsonValue, ValidationError, model_validator
 
 from aidm.state.entities import (
-    DEAD,
     CheckedEntityId,
     EngineId,
     Entity,
@@ -14,7 +13,6 @@ from aidm.state.entities import (
     Kind,
     Mutable,
     Slug,
-    check_placement,
     kind_word,
     require_unique,
 )
@@ -57,42 +55,29 @@ class WorldState(Mutable):
     threads: dict[Slug, Thread] = Field(default_factory=dict)
     party: list[EntityId] = Field(default_factory=list)
     pending_notes: tuple[str, ...] = ()
+    # Engine-owned JSON: core never reads inside it.
+    mechanics: dict[str, JsonValue] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _consistent_fiction(self) -> Self:
+        """Only what holds without room semantics; `world.topology` owns the rooms rules."""
         for key, entity in self.entities.items():
             if key != entity.id:
                 raise ValueError(f"entity {entity.id!r} is filed under {key!r}")
-            # `find`, not `require`: a dangling id is a topology fault, not a lookup failure.
-            holder = None if entity.parent_id is None else self.find(entity.parent_id)
-            check_placement(entity, holder)
-            self._check_exits(entity)
+            self._check_chain(entity)
         for key, thread in self.threads.items():
             if key != thread.id:
                 raise ValueError(f"thread {thread.id!r} is filed under {key!r}")
-        self._check_party()
         return self
 
-    def _check_exits(self, entity: Entity) -> None:
-        """Reject known exits that would expose an unknown destination."""
-        if entity.exits and entity.kind != "location":
-            raise ValueError(f"{entity.kind} {entity.id!r} cannot have exits")
-        for way in entity.exits:
-            far = self.require_kind(way.to, "location")
-            if way.known and not (entity.known and far.known):
-                raise ValueError(
-                    f"the known way from {entity.id!r} to {way.to!r} names a place the player "
-                    "has not met"
-                )
-
-    def _check_party(self) -> None:
-        require_unique("party members", self.party)
-        for member_id in self.party:
-            member = self.require_kind(member_id, "actor")
-            if not member.known:
-                raise ValueError(f"{member_id!r} travels with the player without being met")
-            if member.trait(DEAD) is not None:
-                raise ValueError(f"{member_id!r} is dead and cannot travel with the player")
+    def _check_chain(self, entity: Entity) -> None:
+        seen = {entity.id}
+        current = entity
+        while current.parent_id is not None:
+            if current.parent_id in seen:
+                raise ValueError(f"{entity.id!r} is inside itself through its holders")
+            current = self.require(current.parent_id)
+            seen.add(current.id)
 
     def of_kind(self, kind: Kind) -> Iterator[Entity]:
         return (entity for entity in self.entities.values() if entity.kind == kind)
@@ -121,30 +106,6 @@ class WorldState(Mutable):
             )
         return entity
 
-    def children(self, entity_id: EntityId, kind: Kind | None = None) -> tuple[Entity, ...]:
-        held = self.entities.values() if kind is None else self.of_kind(kind)
-        return tuple(entity for entity in held if entity.parent_id == entity_id)
-
-    def location_of(self, entity: Entity) -> EntityId | None:
-        """Walk holders up to the enclosing place; a location is inside none, so it has none."""
-        current = entity
-        while current.parent_id is not None:
-            current = self.require(current.parent_id)
-        return None if current.id == entity.id else current.id
-
-
-def frontier(world: WorldState) -> int:
-    """Unknown locations a known location leads to: doors the player can still find."""
-    return len(
-        {
-            way.to
-            for entity in world.entities.values()
-            if entity.known
-            for way in entity.exits
-            if not world.require(way.to).known
-        }
-    )
-
 
 class ScenarioMeta(Frozen):
     title: str
@@ -158,7 +119,7 @@ class Game(Mutable):
     character_id: Slug
     scenario: ScenarioMeta
     engine: EngineId
-    packs: tuple[Slug, ...]
+    packs: tuple[Slug, ...] = Field(min_length=1)
     # Which entity the player plays: it moves to a companion when the played character dies.
     player_id: CheckedEntityId
     world: WorldState
@@ -171,8 +132,6 @@ class Game(Mutable):
     @model_validator(mode="after")
     def _playable_game(self) -> Self:
         require_unique("game pack ids", self.packs)
-        if "srd" not in self.packs:
-            raise ValueError("game packs must include 'srd'")
         if not self.player.known:
             raise ValueError("the player entity must be known")
         if self.player_id in self.world.party:
@@ -186,29 +145,21 @@ class Game(Mutable):
     def label(self, entity: Entity) -> str:
         return labeled(entity, self.player_id)
 
-    @property
-    def player_location(self) -> EntityId:
-        location = self.player.parent_id
-        if location is None:
-            raise ValueError("the player is not in a location")
-        return location
-
-    def is_here(self, entity: Entity) -> bool:
-        return self.world.location_of(entity) == self.player_location
-
     def take_notes(self) -> tuple[str, ...]:
         """Notes are read once; a note a tool writes after this steers the next turn."""
         notes, self.world.pending_notes = self.world.pending_notes, ()
         return notes
 
-    def record(self, prompt: str, lines: tuple[Line, ...], facts: tuple[Fact, ...]) -> None:
+    def record(
+        self, scene_label: str, prompt: str, lines: tuple[Line, ...], facts: tuple[Fact, ...]
+    ) -> None:
         """The one shape an exchange takes, whether a turn or the player's own action wrote it."""
         self.turn_facts = ()
         self.history = (
             *self.history,
             Exchange(
                 prompt=prompt,
-                place=self.world.require(self.player_location).name,
+                scene=scene_label,
                 lines=lines,
                 facts=cards(facts),
                 decision="" if self.pending is None else self.pending.prompt,

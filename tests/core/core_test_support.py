@@ -22,11 +22,12 @@ from aidm.content.io import load_character, load_scenario, read_scenarios
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import (
     Engine,
-    EntityRules,
-    SheetBase,
-    complete_chapter,
+    mechanics_of,
     player_action,
 )
+from aidm.engines.loner3e.engine import complete_chapter as loner_chapter
+from aidm.engines.loner3e.rules import Loner3eState
+from aidm.engines.loner3e.rules import Sheet as LonerSheet
 from aidm.engines.registry import ENGINES, begin_game, build_engines
 from aidm.state.entities import EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import Fact
@@ -63,16 +64,16 @@ def with_entity(state: Game, entity: Entity) -> Game:
     return draft.committed()
 
 
-def at_boundary[S: SheetBase](state: Game, sheet_type: type[S]) -> Game:
-    """One chapter recorded — an adventure ended, a job done — for everyone who played it."""
+def loner_at_boundary(state: Game) -> Game:
+    """`at_boundary` for the engine that keeps its sheets in `world.mechanics`."""
     draft = state.draft()
-    _ = complete_chapter(draft, "a chapter closed", sheet_type)
+    _ = loner_chapter(draft)
     return draft.committed()
 
 
-def sheet_of[R: EntityRules](state: Game, entity_id: EntityId, model: type[R]) -> R:
-    """One entity's rules as its engine parses them: a copy, so changing state needs `rules()`."""
-    return model.model_validate(state.world.require(entity_id).rules)
+def loner_sheet(state: Game, entity_id: EntityId) -> LonerSheet:
+    """`sheet_of` for the same engine: a copy, so changing state needs `rules(world, ...)`."""
+    return mechanics_of(state.world, Loner3eState).sheets[entity_id]
 
 
 def scenario() -> Scenario:
@@ -81,7 +82,7 @@ def scenario() -> Scenario:
 
 def character() -> Character:
     engine = ENGINES_BUILT[LONER3E]
-    return load_character(CHARACTERS, "kael", engine.id, engine.check_overlay)
+    return load_character(CHARACTERS, "kael", engine.id, engine.character_mechanics)
 
 
 def scenario_for(engine_id: EngineId) -> Slug:
@@ -101,7 +102,7 @@ def game(engine_id: EngineId) -> tuple[Engine, Game]:
     engine = ENGINES_BUILT[engine_id]
     scenario_id = scenario_for(engine_id)
     selected_scenario = load_scenario(SCENARIOS, scenario_id)
-    selected_character = load_character(CHARACTERS, "kael", engine.id, engine.check_overlay)
+    selected_character = load_character(CHARACTERS, "kael", engine.id, engine.character_mechanics)
     return engine, begin_game(engine, scenario_id, selected_scenario, selected_character)
 
 

@@ -69,7 +69,7 @@ def _new_game(catalog: LauncherCatalog, runtime: Runtime) -> None:
         def form() -> None:
             scenario = catalog.scenario(scenario_id)
             engine = scenario.engines[0]
-            show_engine_badge(runtime.engines[engine].badge)
+            show_engine_badge(runtime.engines[engine].title)
             ui.select(
                 options={entry.id: entry.title for entry in catalog.scenarios},
                 value=scenario_id,
@@ -147,7 +147,7 @@ def _saved_card(saved: SaveOption, runtime: Runtime) -> None:
                 ui.label(f"{saved.character_title} · turn {saved.turn}").classes(
                     "text-sm opacity-70"
                 )
-            show_engine_badge(runtime.engines[saved.engine].badge)
+            show_engine_badge(runtime.engines[saved.engine].title)
             ui.button(
                 "Resume",
                 icon="play_arrow",

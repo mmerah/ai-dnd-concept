@@ -33,8 +33,7 @@
             "known": false,
             "locked": false
           }
-        ],
-        "rules": {}
+        ]
       },
       "triage-hall": {
         "id": "triage-hall",
@@ -57,8 +56,7 @@
             "known": false,
             "locked": false
           }
-        ],
-        "rules": {}
+        ]
       },
       "roof-walk": {
         "id": "roof-walk",
@@ -81,8 +79,7 @@
             "known": false,
             "locked": false
           }
-        ],
-        "rules": {}
+        ]
       },
       "ward-nine": {
         "id": "ward-nine",
@@ -105,8 +102,7 @@
             "known": false,
             "locked": false
           }
-        ],
-        "rules": {}
+        ]
       },
       "stair-shaft": {
         "id": "stair-shaft",
@@ -134,8 +130,7 @@
             "known": false,
             "locked": true
           }
-        ],
-        "rules": {}
+        ]
       },
       "cold-vault": {
         "id": "cold-vault",
@@ -153,8 +148,7 @@
             "known": false,
             "locked": true
           }
-        ],
-        "rules": {}
+        ]
       },
       "dov-marek": {
         "id": "dov-marek",
@@ -166,8 +160,7 @@
         "known": true,
         "parent_id": "ambulance-bay",
         "traits": [],
-        "exits": [],
-        "rules": {}
+        "exits": []
       },
       "sela-quist": {
         "id": "sela-quist",
@@ -179,8 +172,7 @@
         "known": true,
         "parent_id": "triage-hall",
         "traits": [],
-        "exits": [],
-        "rules": {}
+        "exits": []
       },
       "wren-halloway": {
         "id": "wren-halloway",
@@ -192,14 +184,7 @@
         "known": false,
         "parent_id": "roof-walk",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "skills": {
-            "Think": 10,
-            "Sneak": 8,
-            "Sway": 6
-          }
-        }
+        "exits": []
       },
       "bell-crawler": {
         "id": "bell-crawler",
@@ -211,8 +196,7 @@
         "known": false,
         "parent_id": "stair-shaft",
         "traits": [],
-        "exits": [],
-        "rules": {}
+        "exits": []
       },
       "ward-card": {
         "id": "ward-card",
@@ -224,10 +208,7 @@
         "known": false,
         "parent_id": "ambulance-bay",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "die": 6
-        }
+        "exits": []
       },
       "fire-axe": {
         "id": "fire-axe",
@@ -239,10 +220,7 @@
         "known": true,
         "parent_id": "ambulance-bay",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "die": 10
-        }
+        "exits": []
       },
       "bolt-cutters": {
         "id": "bolt-cutters",
@@ -254,10 +232,7 @@
         "known": true,
         "parent_id": "triage-hall",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "die": 8
-        }
+        "exits": []
       },
       "rope-ladder": {
         "id": "rope-ladder",
@@ -269,10 +244,7 @@
         "known": true,
         "parent_id": "roof-walk",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "die": 6
-        }
+        "exits": []
       },
       "lantern": {
         "id": "lantern",
@@ -290,10 +262,7 @@
             "text": "(gear) Its shifting light exposes seams and movement in deep shadow."
           }
         ],
-        "exits": [],
-        "rules": {
-          "die": 10
-        }
+        "exits": []
       },
       "player": {
         "id": "player",
@@ -316,16 +285,7 @@
             "text": "(frailty) Old scars make certain memories hard to face."
           }
         ],
-        "exits": [],
-        "rules": {
-          "job": "Relic hunter",
-          "pronouns": "he/him",
-          "skills": {
-            "Sneak": 10,
-            "Think": 8,
-            "Dash": 6
-          }
-        }
+        "exits": []
       }
     },
     "threads": {
@@ -337,9 +297,84 @@
       }
     },
     "party": [],
-    "pending_notes": []
+    "pending_notes": [],
+    "mechanics": {
+      "sheets": {
+        "wren-halloway": {
+          "job": "",
+          "pronouns": "",
+          "skills": {
+            "Think": 10,
+            "Sneak": 8,
+            "Sway": 6,
+            "Bash": 4,
+            "Dash": 4,
+            "Shoot": 4
+          },
+          "worn": {
+            "Bash": 4,
+            "Dash": 4,
+            "Sneak": 8,
+            "Shoot": 4,
+            "Think": 10,
+            "Sway": 6
+          },
+          "loot": 12,
+          "stress": {
+            "current": 0,
+            "maximum": 4
+          },
+          "stunted": false,
+          "med_kit": false
+        },
+        "player": {
+          "job": "Relic hunter",
+          "pronouns": "he/him",
+          "skills": {
+            "Sneak": 10,
+            "Think": 8,
+            "Dash": 6,
+            "Bash": 4,
+            "Shoot": 4,
+            "Sway": 4
+          },
+          "worn": {
+            "Bash": 4,
+            "Dash": 6,
+            "Sneak": 10,
+            "Shoot": 4,
+            "Think": 8,
+            "Sway": 4
+          },
+          "loot": 12,
+          "stress": {
+            "current": 0,
+            "maximum": 4
+          },
+          "stunted": false,
+          "med_kit": false
+        }
+      },
+      "items": {
+        "ward-card": {
+          "die": 6
+        },
+        "fire-axe": {
+          "die": 10
+        },
+        "bolt-cutters": {
+          "die": 8
+        },
+        "rope-ladder": {
+          "die": 6
+        },
+        "lantern": {
+          "die": 10
+        }
+      }
+    }
   },
-  "turn_events": [],
+  "turn_facts": [],
   "history": [],
   "turn": 0,
   "pending": null

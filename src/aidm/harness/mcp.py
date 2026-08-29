@@ -16,10 +16,11 @@ from aidm.app.runtime import Runtime
 from aidm.authoring.draft import ScenarioDraft
 from aidm.authoring.run import draft_context
 from aidm.config import load_settings
-from aidm.engines.core import DirectorTool, NoArgs
 from aidm.harness.codemode import BeginScenario, Harness, OpenGame, PlayerActionCall, catalogue
 from aidm.llm import schema_of
+from aidm.state.entities import require_unique
 from aidm.state.play import Answer, Narration
+from aidm.state.tools import DirectorTool, NoArgs
 
 SERVER_NAME = "aidm"
 
@@ -130,7 +131,13 @@ async def offered(harness: Harness) -> list[types.Tool]:
     tools = [*PUBLISHED, *(_as_mcp_tool(one) for one in authoring.values())]
     if harness.session is None:
         return tools
-    tools.extend(_published(one) for one in harness.session.engine.director_tools)
+    engine_tools = harness.session.engine.tools
+    # `call` reaches the server's own tools first, so a shared name would shadow the engine's.
+    require_unique(
+        "published tool names",
+        (*DISPATCH, *authoring, *(one.name for one in engine_tools)),
+    )
+    tools.extend(_published(one) for one in engine_tools)
     return tools
 
 

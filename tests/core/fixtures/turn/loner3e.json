@@ -7,95 +7,77 @@
       "trace": "learned of the item the vault map[vault-map]",
       "told": true,
       "entity_id": "vault-map",
-      "event": null
+      "card": "",
+      "dice": []
     },
     {
       "kind": "entity_moved",
       "trace": "the player Kael[player] took the item the vault map[vault-map]",
       "told": true,
       "entity_id": "vault-map",
-      "event": {
-        "title": "Took the vault map",
-        "badges": [],
-        "dice": [],
-        "outcome": "",
-        "effects": [],
-        "icon": "back_hand"
-      }
+      "card": "Took the vault map",
+      "dice": []
     },
     {
       "kind": "dice_rolled",
-      "trace": "Does he hear what waits past the vault door without being heard? — chance: 2d6 [4, 5] -> 5",
+      "trace": "Does he hear what waits past the vault door without being heard? — chance: 2d6 [4, 5]",
       "told": false,
       "entity_id": null,
-      "event": null
+      "card": "",
+      "dice": []
     },
     {
       "kind": "dice_rolled",
-      "trace": "Does he hear what waits past the vault door without being heard? — risk: 1d6 [4] -> 4",
+      "trace": "Does he hear what waits past the vault door without being heard? — risk: 1d6 [4]",
       "told": false,
       "entity_id": null,
-      "event": null
+      "card": "",
+      "dice": []
     },
     {
       "kind": "question_answered",
       "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
       "told": true,
       "entity_id": "player",
-      "event": {
-        "title": "Oracle",
-        "badges": [
-          {
-            "label": "Position",
-            "value": "Advantage"
-          },
-          {
-            "label": "Edge",
-            "value": "Quiet Hands"
-          }
-        ],
-        "dice": [
-          {
-            "label": "Chance",
-            "faces": [
-              6,
-              6
-            ],
-            "rolled": [
-              4,
-              5
-            ],
-            "kept": 5
-          },
-          {
-            "label": "Risk",
-            "faces": [
-              6
-            ],
-            "rolled": [
-              4
-            ],
-            "kept": 4
-          }
-        ],
-        "outcome": "yes-and",
-        "effects": [],
-        "icon": "casino"
-      }
+      "card": "Oracle — Advantage (Quiet Hands) → yes-and",
+      "dice": [
+        {
+          "label": "Chance",
+          "faces": [
+            6,
+            6
+          ],
+          "rolled": [
+            4,
+            5
+          ],
+          "result": "5",
+          "highlight": [
+            1
+          ]
+        },
+        {
+          "label": "Risk",
+          "faces": [
+            6
+          ],
+          "rolled": [
+            4
+          ],
+          "result": "4",
+          "highlight": [
+            0
+          ]
+        }
+      ]
     },
     {
       "kind": "trait_added",
       "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
       "told": true,
       "entity_id": "player",
-      "event": {
-        "title": "Kael gained Listening",
-        "badges": [],
-        "dice": [],
-        "outcome": "",
-        "effects": [],
-        "icon": "add_circle"
-      }
+      "card": "Kael gained Listening",
+      "dice": []
     }
   ],
   "steps": [

@@ -26,11 +26,13 @@ Invariants that hold in every step:
    that is not known and carries only player text; `render_narrator` accepts only
    `VisibleScene`; `apply_to_draft` refuses a told fact about an unknown entity.
 3. One pending decision at a time (`apply_to_draft` check).
-4. Draft/commit round-trip: every mutation runs on `Game.draft()`, commit is
+4. `kill` is the only way to record a death: it drops what the dead carried and opens the
+   succession decision, so `add_trait` refuses the reserved `dead` trait id.
+5. Draft/commit round-trip: every mutation runs on `Game.draft()`, commit is
    `model_validate(model_dump())`. Dict writes on a `WorldState` skip validation; that is why.
-5. Both harnesses (`turn/run.py` and `harness/codemode.py` + `harness/mcp.py`) share
+6. Both harnesses (`turn/run.py` and `harness/codemode.py` + `harness/mcp.py`) share
    `render_director` and `Turn`. Never add a second turn loop.
-6. The builtin loop commits every turn whole (`close_segment`); code mode commits per accepted
+7. The builtin loop commits every turn whole (`close_segment`); code mode commits per accepted
    tool call, and each commit is a legal state.
 
 ## Target shapes
@@ -226,9 +228,9 @@ Rules:
   - `BreathlessState{sheets: dict[EntityId, Sheet], items: dict[EntityId, ItemSheet]}`.
     No `chapters`.
 - A character's mechanics uses the same keys with the player sheet under `sheets.player` and
-  item sheets under their item ids. `Engine.begin(scenario_mechanics, character_mechanics)`
-  returns the game's blob: `mechanics_merge(scenario_mechanics, character_mechanics)`
-  (character wins on key clash, character scalars win).
+  item sheets under their item ids. `begin_game` builds the game's blob with
+  `mechanics_merge(scenario_mechanics, character_mechanics)` (character wins on key clash,
+  character scalars win). There is no `Engine.begin`: it would have one possible body.
 - Core never reads inside the blob. `Engine.mechanics_merge(base, added) -> dict` and
   `Engine.mechanics_without(blob, entity_id) -> dict` are the only two operations on it, each
   parsing with the engine model; `aidm/world/` supplies nothing here.
@@ -248,7 +250,6 @@ class Engine:
     validate: Callable[[Game], None]
     scene: Callable[[Game], Scene]                # the one projection every consumer reads
     sheet_rows: Callable[[Game], tuple[tuple[str, str], ...]]
-    begin: Callable[[dict[str, JsonValue], dict[str, JsonValue]], dict[str, JsonValue]]
     mechanics_merge: Callable[[dict[str, JsonValue], dict[str, JsonValue]], dict[str, JsonValue]]
     mechanics_without: Callable[[dict[str, JsonValue], EntityId], dict[str, JsonValue]]
     player_actions: tuple[PlayerAction, ...] = ()
@@ -265,18 +266,26 @@ Rooms engines register `scene=rooms_scene(describer, director_sections)`; their 
 advance-section functions stay as plain functions in the engine module.
 
 `check_tool_names(engine)` (one function in `engines/core.py`): names unique across `tools` +
-`resolvers`, none equal to a `harness/mcp.py:SERVER_TOOLS` name or an authoring tool name.
+`resolvers`. The clash with `harness/mcp.py:SERVER_TOOLS` and the authoring tools is refused in
+`harness/mcp.py:offered`, the one place all three name lists are in scope; core holds no copy of
+another layer's names.
 
 Kept helpers in `engines/core.py`: `pool`, `adjust`, `spend`, `counter_fact`, `rules`,
-`describe_rows`, `CharacterCreation`, `PackCreation`, `NamedPack`, `find_entry`, `load_packs`
-(no srd check), `PlayerAction`, `player_action`, `offered`, `play_action` (returns
-`tuple[str, dict]` offers).
+`mechanics_of`, `mechanics_merged`, `keep_highest`, `stake_decision`, `sheet_of`, `check_packs`,
+`party_member`, `ADVANCE_SPENT`, `describe_rows`, `CharacterCreation`, `PackCreation`,
+`NamedPack`, `find_entry`, `load_packs` (no srd check), `PlayerAction`, `player_action`,
+`offered`, `play_action` (returns `tuple[str, dict]` offers). The last group is engine
+vocabulary that reads no engine model: `sheet_of` looks an entity up in a sheet map, and
+`party_member` and `ADVANCE_SPENT` say who may take an advance.
 
 Deleted from core: `rules_types`, `EntityRules`, `NoRules`, `SheetBase`, `describe_by`,
 `checks`, `check_overlay`, `advances_owed`, `complete_chapter`, `chapter_tool`,
-`ADVANCE_TOOL`, `ProposalBase`, `party_member`, `owed_notes`, `notes`, `authoring_context`,
-`authoring_instructions`, `Decision`, `Succession`, `decisions`, `_decision`,
-`check_pending`, `resume`, `Offer`, `badge`, `CORE_TOOLS`. `during_suspension` stays.
+`ADVANCE_TOOL`, `ProposalBase`, `owed_notes`, `notes`, `Decision`, `Succession`, `decisions`,
+`_decision`, `check_pending`, `resume`, `Offer`, `badge`, `CORE_TOOLS`. `during_suspension`
+stays. `authoring_context` and `authoring_instructions` stay until 3.2 replaces them with
+`authoring_brief`; deleting them at 2.6 would leave authoring with no guidance at all.
+`Engine.check_overlay` becomes `Engine.character_mechanics(character) -> Mechanics`, which both
+checks the overlay and shapes it into the blob; 3.1 deletes it with `Character.mechanics`.
 
 ### Authoring brief (`content/model.py`)
 
@@ -331,7 +340,8 @@ world/actions.py     reveal, move, kill, improvise, add_trait, remove_trait, unl
                      join_party, leave_party, require_actor_here, reveal_target
 world/topology.py    children(world, id, kind=None), location_of(world, entity),
                      player_location(state), is_here(state, entity), frontier(world),
-                     walk(entities, start), validate_rooms(world)
+                     validate_rooms(world). `walk(entities, start)` arrives with 3.2, its
+                     first caller
 world/scene.py       rooms_scene(describer, director_sections) -> Callable[[Game], Scene]
 world/tools.py       REVEAL, MOVE, GAIN_IMPROVISED_ITEM, ADD_TRAIT, REMOVE_TRAIT,
                      UNLOCK_EXIT, JOIN_PARTY, LEAVE_PARTY   (DirectorTool each; no tuple),
@@ -364,8 +374,10 @@ land and engine mechanics (`roll_attempt`) answer "waiting on the player". `_app
 against the throwaway copy with a copy of the turn rng (`copy.deepcopy(rng)`), never
 `Random(0)`, so a roll-dependent branch draws the same numbers in both runs.
 `render_director(scene: Scene, scenario, threads, prompt, *, resumed="", notes=())` renders
-generic framing only: scenario, active threads, rules notes, player action, then every
-`Scene.sections` (director text, `player` when `director` is None). `render_narrator(scene:
+generic framing only: scenario, then every `Scene.sections` (director text, `player` when
+`director` is None), then active threads, rules notes, and the player action LAST. The action
+stays last because that is where the prompt puts it today and where the evals measured it; only
+the section contents move, which is why the golden `prompts/*` are byte-identical. `render_narrator(scene:
 VisibleScene, ...)` accepts nothing else. Two call sites: `Turn.picture` and
 `Harness._picture`, both through `engine.scene(draft)`. `run_segment` returns `Game`; `Turn.finish(lines)`
 returns `Game`.
@@ -781,7 +793,8 @@ Verify: full check.
 
 Change:
 - `content/model.py`: `AuthoringTool`, `AuthoringBrief` (Target shapes).
-- `world/authoring.py`: `MIN_*`, `_bar_unmet` (re-adds reachability via `walk`),
+- `world/authoring.py`: `MIN_*`, `_bar_unmet` (re-adds reachability, and with it
+  `world/topology.py:walk(entities, start)`, which 2.1 deliberately did not write early),
   `_opening_unmet`, extend unmet, `connect(world, args) -> str` as an `AuthoringTool`,
   `rooms_brief(packs, base, opening, guidance)`, whose `unmet` requires
   `player_parent_id` to name a location; prompts read from `world/prompts/`
@@ -821,10 +834,11 @@ Change:
   `extension_patch`, `apply_patch`, `_added_entity`, `_added_exit`, `_opened`,
   `_materialized`. `Draft.scenario(engine, packs, grows)` builds `Scenario` from `world`
   directly. `ScenarioPatch` stays (the model writes patches; whole-draft writes were
-  rejected) and gains `mechanics: dict[str, JsonValue] = {}`, applied through
-  `engine.mechanics_merge(draft.world.mechanics, patch.mechanics)`. `remove` calls
-  `engine.mechanics_without(draft.world.mechanics, id)`. `Draft` carries the engine's two
-  hooks; core never opens the blob.
+  rejected). It already carries `mechanics: dict[str, JsonValue] = {}` from 2.3, applied
+  through `engine.mechanics_merge(...)`, and `remove` already calls
+  `engine.mechanics_without(...)`: a blob-backed engine cannot be authored without them. 3.3
+  only moves them onto `Draft.world`. `Draft` carries the engine's two hooks; core never opens
+  the blob.
 - `world/authoring.py:diff(base: WorldState, draft: WorldState, mechanics_merge) -> Play`:
   adds entities not in `base` with `known=False` and every exit `known=False`, exits on
   existing locations not in `base` (`known=False`), threads not in `base`, and the mechanics

@@ -3,10 +3,11 @@ from collections.abc import Sequence
 import pytest
 from core_test_support import initialized
 
-from aidm.state import actions
+from aidm.state import threads
 from aidm.state.entities import PLAYER_ID, SLUG_MAX, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.model import AdvanceThread, Game, Thread
+from aidm.world import actions
 
 BELL_TOWER = EntityId("bell-tower")
 CLOISTER = EntityId("cloister")
@@ -23,6 +24,10 @@ VAULT_MAP = EntityId("vault-map")
 def _draft() -> Game:
     _, state = initialized()
     return state.draft()
+
+
+def _validate(state: Game) -> None:
+    initialized()[0].validate(state)
 
 
 def _kinds(facts: Sequence[Fact]) -> list[str]:
@@ -156,7 +161,7 @@ def test_advance_thread_records_the_status_and_the_note_it_moved() -> None:
     draft = _draft()
     draft.world.threads["ritual"] = Thread(id="ritual", title="The rite")
 
-    (renoted,) = actions.advance_thread(
+    (renoted,) = threads.advance_thread(
         draft, AdvanceThread(thread_id="ritual", status="resolved", note="the rite is complete")
     )
     ritual = draft.world.thread("ritual")
@@ -168,7 +173,7 @@ def test_advance_thread_accepts_a_note_only_patch() -> None:
     draft = _draft()
     draft.world.threads["ritual"] = Thread(id="ritual", title="The rite")
 
-    (noted,) = actions.advance_thread(draft, AdvanceThread(thread_id="ritual", note="a quiet clue"))
+    (noted,) = threads.advance_thread(draft, AdvanceThread(thread_id="ritual", note="a quiet clue"))
     ritual = draft.world.thread("ritual")
     assert ritual is not None and ritual.note == "a quiet clue"
     assert noted.trace.endswith("— note: a quiet clue")
@@ -180,7 +185,7 @@ def test_a_kill_drops_items_and_party_and_then_refuses_the_dead_actor() -> None:
     _ = actions.move(draft, LANTERN, TOMAS)
     _ = actions.join_party(draft, TOMAS)
 
-    assert _kinds(actions.kill(draft, TOMAS)) == ["items_dropped", "actor_killed"]
+    assert _kinds(actions.kill(draft, TOMAS, _validate)) == ["items_dropped", "actor_killed"]
     assert draft.world.require(TOMAS).trait("dead") is not None
     assert draft.world.require(LANTERN).parent_id == CLOISTER
     assert TOMAS not in draft.world.party
@@ -189,7 +194,7 @@ def test_a_kill_drops_items_and_party_and_then_refuses_the_dead_actor() -> None:
         _ = actions.add_trait(draft, TOMAS, "Hurt")
     _ = draft.committed()
 
-    _ = actions.kill(draft, PLAYER_ID)
+    _ = actions.kill(draft, PLAYER_ID, _validate)
     with pytest.raises(ValueError, match="dead"):
         _ = actions.add_trait(draft, PLAYER_ID, "Hurt")
 

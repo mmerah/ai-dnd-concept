@@ -1,15 +1,14 @@
 from random import Random
 
 import pytest
-from core_test_support import initialized, sheet_of
+from core_test_support import initialized, loner_sheet
 
 from aidm.engines.core import Engine
-from aidm.engines.loner3e.rules import Sheet
-from aidm.state import actions
 from aidm.state.entities import DEAD, PLAYER_ID, EntityId
 from aidm.state.model import Game
 from aidm.state.play import Answer, Line, ToolCall
 from aidm.turn.run import TurnRecord, close_segment, consume_answer
+from aidm.world import actions
 
 MARA = EntityId("mara")
 FELL = (Line(text="Kael falls, and does not get up."),)
@@ -20,8 +19,8 @@ def _died(engine: Engine, state: Game, *, companion: bool) -> Game:
     draft = state.draft()
     if companion:
         _ = actions.join_party(draft, MARA)
-    _ = actions.kill(draft, draft.player_id)
-    return close_segment(engine, draft, "I open the vault.", FELL, ())
+    _ = actions.kill(draft, draft.player_id, engine.validate)
+    return close_segment(engine.scene(draft).label, draft, "I open the vault.", FELL, ())
 
 
 def _answered(engine: Engine, state: Game, option_id: str) -> Game:
@@ -50,7 +49,7 @@ def test_a_takeover_moves_the_played_id_and_leaves_the_rest_of_the_game_alone() 
     assert landed.world.require(PLAYER_ID).trait(DEAD) is not None
     assert MARA not in landed.world.party
     # What the sheet panel draws: the successor's own sheet, read through the played id.
-    assert engine.sheet_rows(landed) == sheet_of(landed, MARA, Sheet).rows()
+    assert engine.sheet_rows(landed) == loner_sheet(landed, MARA).rows()
 
 
 def test_a_death_with_nobody_to_carry_on_ends_the_game_as_it_always_did() -> None:
@@ -58,7 +57,7 @@ def test_a_death_with_nobody_to_carry_on_ends_the_game_as_it_always_did() -> Non
     died = _died(engine, state, companion=False)
 
     assert died.pending is None
-    with pytest.raises(ValueError, match="the player is dead"):
+    with pytest.raises(ValueError, match="You died."):
         _ = consume_answer(engine, died.draft(), "I get back up.", Random(0), TurnRecord())
 
 

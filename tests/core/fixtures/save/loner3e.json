@@ -28,8 +28,7 @@
             "known": true,
             "locked": false
           }
-        ],
-        "rules": {}
+        ]
       },
       "cloister": {
         "id": "cloister",
@@ -57,8 +56,7 @@
             "known": false,
             "locked": true
           }
-        ],
-        "rules": {}
+        ]
       },
       "bell-tower": {
         "id": "bell-tower",
@@ -76,8 +74,7 @@
             "known": false,
             "locked": false
           }
-        ],
-        "rules": {}
+        ]
       },
       "vault": {
         "id": "vault",
@@ -95,8 +92,7 @@
             "known": false,
             "locked": true
           }
-        ],
-        "rules": {}
+        ]
       },
       "mara": {
         "id": "mara",
@@ -108,20 +104,7 @@
         "known": true,
         "parent_id": "study",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "concept": "A Cautious Scribe",
-          "skills": [
-            "Reads a Faded Hand",
-            "Knows the Catalogue"
-          ],
-          "frailties": [
-            "Slow to Trust"
-          ],
-          "gear": [
-            "Ledger and Ink"
-          ]
-        }
+        "exits": []
       },
       "tomas": {
         "id": "tomas",
@@ -133,19 +116,7 @@
         "known": true,
         "parent_id": "cloister",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "concept": "A Deaf Old Porter",
-          "skills": [
-            "Knows Every Door"
-          ],
-          "frailties": [
-            "Hears Almost Nothing"
-          ],
-          "gear": [
-            "Twig Broom"
-          ]
-        }
+        "exits": []
       },
       "elena": {
         "id": "elena",
@@ -157,20 +128,7 @@
         "known": false,
         "parent_id": "bell-tower",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "concept": "A Ruined Archivist",
-          "skills": [
-            "Knows the Old Rites",
-            "Names Her Price"
-          ],
-          "frailties": [
-            "Flinches at the Dark"
-          ],
-          "gear": [
-            "Hooded Lantern"
-          ]
-        }
+        "exits": []
       },
       "cloister-rat": {
         "id": "cloister-rat",
@@ -182,17 +140,7 @@
         "known": false,
         "parent_id": "cloister",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "concept": "A Bloated Cloister Rat",
-          "skills": [
-            "Slips Into the Walls",
-            "Bites and Holds On"
-          ],
-          "frailties": [
-            "Does Not Run"
-          ]
-        }
+        "exits": []
       },
       "vault-map": {
         "id": "vault-map",
@@ -204,8 +152,7 @@
         "known": true,
         "parent_id": "player",
         "traits": [],
-        "exits": [],
-        "rules": {}
+        "exits": []
       },
       "lantern": {
         "id": "lantern",
@@ -223,8 +170,7 @@
             "text": "(gear) Its shifting light exposes seams and movement in deep shadow."
           }
         ],
-        "exits": [],
-        "rules": {}
+        "exits": []
       },
       "player": {
         "id": "player",
@@ -252,22 +198,7 @@
             "text": "(condition) Listening for the next shift of weight behind the door."
           }
         ],
-        "exits": [],
-        "rules": {
-          "twist_pack": "srd",
-          "concept": "A Wary Relic-Hunter",
-          "skills": [
-            "Reads Old Stonework",
-            "Quiet Hands"
-          ],
-          "frailties": [
-            "Never Walks Away"
-          ],
-          "gear": [
-            "Pry Bar",
-            "Chalk and Wire"
-          ]
-        }
+        "exits": []
       }
     },
     "threads": {
@@ -279,64 +210,160 @@
       }
     },
     "party": [],
-    "pending_notes": []
+    "pending_notes": [],
+    "mechanics": {
+      "sheets": {
+        "mara": {
+          "chapters": 0,
+          "concept": "A Cautious Scribe",
+          "skills": [
+            "Reads a Faded Hand",
+            "Knows the Catalogue"
+          ],
+          "frailties": [
+            "Slow to Trust"
+          ],
+          "gear": [
+            "Ledger and Ink"
+          ],
+          "luck": {
+            "current": 6,
+            "maximum": 6
+          },
+          "milestones": 0
+        },
+        "tomas": {
+          "chapters": 0,
+          "concept": "A Deaf Old Porter",
+          "skills": [
+            "Knows Every Door"
+          ],
+          "frailties": [
+            "Hears Almost Nothing"
+          ],
+          "gear": [
+            "Twig Broom"
+          ],
+          "luck": {
+            "current": 6,
+            "maximum": 6
+          },
+          "milestones": 0
+        },
+        "elena": {
+          "chapters": 0,
+          "concept": "A Ruined Archivist",
+          "skills": [
+            "Knows the Old Rites",
+            "Names Her Price"
+          ],
+          "frailties": [
+            "Flinches at the Dark"
+          ],
+          "gear": [
+            "Hooded Lantern"
+          ],
+          "luck": {
+            "current": 6,
+            "maximum": 6
+          },
+          "milestones": 0
+        },
+        "cloister-rat": {
+          "chapters": 0,
+          "concept": "A Bloated Cloister Rat",
+          "skills": [
+            "Slips Into the Walls",
+            "Bites and Holds On"
+          ],
+          "frailties": [
+            "Does Not Run"
+          ],
+          "gear": [],
+          "luck": {
+            "current": 6,
+            "maximum": 6
+          },
+          "milestones": 0
+        },
+        "player": {
+          "chapters": 0,
+          "concept": "A Wary Relic-Hunter",
+          "skills": [
+            "Reads Old Stonework",
+            "Quiet Hands"
+          ],
+          "frailties": [
+            "Never Walks Away"
+          ],
+          "gear": [
+            "Pry Bar",
+            "Chalk and Wire"
+          ],
+          "luck": {
+            "current": 6,
+            "maximum": 6
+          },
+          "milestones": 0
+        }
+      },
+      "twist": {
+        "current": 0,
+        "maximum": 3
+      },
+      "twist_pack": "srd"
+    }
   },
-  "turn_events": [],
+  "turn_facts": [],
   "history": [
     {
       "prompt": "I try the vault door.",
-      "place": "the sealed vault",
+      "scene": "the sealed vault",
       "lines": [
         {
           "speaker_id": null,
           "text": "The iron handle does not turn."
         }
       ],
-      "events": [],
+      "facts": [],
       "decision": ""
     },
     {
       "prompt": "I look for another way in.",
-      "place": "the sealed vault",
+      "scene": "the sealed vault",
       "lines": [
         {
           "speaker_id": null,
           "text": "A flagstone by the wall sits proud of its neighbours."
         }
       ],
-      "events": [],
+      "facts": [],
       "decision": ""
     },
     {
       "prompt": "I lever up the loose flagstone and listen at the vault door.",
-      "place": "the abbot's study",
+      "scene": "the abbot's study",
       "lines": [
         {
           "speaker_id": null,
           "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
         }
       ],
-      "events": [
+      "facts": [
         {
-          "title": "Took the vault map",
-          "badges": [],
-          "dice": [],
-          "outcome": "",
-          "effects": [],
-          "icon": "back_hand"
+          "kind": "entity_moved",
+          "trace": "the player Kael[player] took the item the vault map[vault-map]",
+          "told": true,
+          "entity_id": "vault-map",
+          "card": "Took the vault map",
+          "dice": []
         },
         {
-          "title": "Oracle",
-          "badges": [
-            {
-              "label": "Position",
-              "value": "Advantage"
-            },
-            {
-              "label": "Edge",
-              "value": "Quiet Hands"
-            }
-          ],
+          "kind": "question_answered",
+          "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
+          "told": true,
+          "entity_id": "player",
+          "card": "Oracle — Advantage (Quiet Hands) → yes-and",
           "dice": [
             {
               "label": "Chance",
@@ -348,7 +375,10 @@
                 4,
                 5
               ],
-              "kept": 5
+              "result": "5",
+              "highlight": [
+                1
+              ]
             },
             {
               "label": "Risk",
@@ -358,20 +388,20 @@
               "rolled": [
                 4
               ],
-              "kept": 4
+              "result": "4",
+              "highlight": [
+                0
+              ]
             }
-          ],
-          "outcome": "yes-and",
-          "effects": [],
-          "icon": "casino"
+          ]
         },
         {
-          "title": "Kael gained Listening",
-          "badges": [],
-          "dice": [],
-          "outcome": "",
-          "effects": [],
-          "icon": "add_circle"
+          "kind": "trait_added",
+          "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
+          "told": true,
+          "entity_id": "player",
+          "card": "Kael gained Listening",
+          "dice": []
         }
       ],
       "decision": ""

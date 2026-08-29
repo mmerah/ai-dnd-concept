@@ -71,7 +71,7 @@ def load_character(
     directory: Path,
     name: Slug,
     engine: EngineId,
-    check_overlay: Callable[[Character], None],
+    read_mechanics: Callable[[Character], object],
 ) -> Character:
     folder = directory / content_id(name)
     overlay = _read(folder / f"{engine}.json", CharacterOverlay)
@@ -81,7 +81,7 @@ def load_character(
         rules=overlay.sheet,
         item_rules=overlay.items,
     )
-    check_overlay(character)
+    _ = read_mechanics(character)
     return character
 
 

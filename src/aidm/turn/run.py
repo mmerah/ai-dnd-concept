@@ -1,6 +1,6 @@
 from collections.abc import Callable, Mapping, Sequence
+from copy import deepcopy
 from dataclasses import dataclass, field
-from functools import partial
 from random import Random
 from typing import Literal, NamedTuple, Self
 
@@ -18,15 +18,8 @@ from pydantic_ai.toolsets import FunctionToolset
 from pydantic_ai.usage import UsageLimits
 
 from aidm.config import Settings
-from aidm.engines.core import (
-    DirectorTool,
-    Engine,
-    Play,
-    apply_to_draft,
-    succession_decision,
-)
+from aidm.engines.core import Engine
 from aidm.llm import build_agent, schema_of
-from aidm.state.entities import DEAD
 from aidm.state.facts import NOTHING, Fact, cards, told_traces, traced
 from aidm.state.model import Game, draft_refusal
 from aidm.state.play import (
@@ -38,9 +31,10 @@ from aidm.state.play import (
     TurnTrace,
     narration_text,
 )
+from aidm.state.scene import VisibleScene
+from aidm.state.tools import DirectorTool, Play, apply_to_draft
 
 from . import context
-from .context import SceneSnapshot, VisibleScene
 
 RULES_WAIT = "the rules now wait on the player's decision"
 
@@ -109,19 +103,19 @@ class Turn:
 
     def picture(self) -> str:
         draft = self.draft
-        notes = (*self.notes, *self.engine.notes(draft))
         return context.render_director(
-            SceneSnapshot.from_game(draft, notes),
-            partial(self.engine.describe, draft),
+            self.engine.scene(draft),
             draft.scenario,
+            context.active_threads(draft.world.threads.values()),
             self.prompt,
             resumed=self.resumed,
+            notes=(*self.notes, *draft.world.pending_notes),
         )
 
     def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
         """The one gate: a decision on the table blocks everything but developing its answer."""
         found = self.engine.tool(name)
-        if found is None or found not in self.engine.director_tools:
+        if found is None or found not in self.engine.tools:
             raise ValueError(f"{name!r} is not a tool of the {self.engine.id!r} engine.")
         pending = self.draft.pending
         if pending is not None and not (found.during_suspension and self.suspended_at_start):
@@ -147,7 +141,13 @@ class Turn:
         return "\n".join(lines) or NOTHING
 
     def finish(self, lines: tuple[Line, ...], steps: tuple[StepTrace, ...] = ()) -> TurnResult:
-        state = close_segment(self.engine, self.draft, self.prompt, lines, tuple(self.log.facts))
+        state = close_segment(
+            self.engine.scene(self.draft).label,
+            self.draft,
+            self.prompt,
+            lines,
+            tuple(self.log.facts),
+        )
         trace = TurnTrace(
             prompt=self.prompt,
             facts=tuple(self.log.facts),
@@ -161,9 +161,11 @@ def _apply(
     engine: Engine, draft: Game, play: Play, rng: Random, log: TurnRecord
 ) -> tuple[Fact, ...]:
     """Refused whole against a throwaway copy before one change of it reaches the draft."""
-    if refused := draft_refusal(draft, lambda copy: apply_to_draft(engine, copy, play, Random(0))):
+    if refused := draft_refusal(
+        draft, lambda copy: apply_to_draft(engine.validate, copy, play, deepcopy(rng))
+    ):
         raise ValueError(refused)
-    landed = apply_to_draft(engine, draft, play, rng)
+    landed = apply_to_draft(engine.validate, draft, play, rng)
     log.landed(draft, landed)
     return landed
 
@@ -198,7 +200,7 @@ def as_tool(found: DirectorTool) -> Tool[Turn]:
 
 
 def director_toolset(engine: Engine) -> FunctionToolset[Turn]:
-    return FunctionToolset(tools=[as_tool(one) for one in engine.director_tools], max_retries=2)
+    return FunctionToolset(tools=[as_tool(one) for one in engine.tools], max_retries=2)
 
 
 @dataclass(frozen=True, slots=True)
@@ -215,7 +217,7 @@ def director_agent(
     return build_agent(
         "director",
         settings,
-        instructions=context.director_instructions(engine.director_instructions),
+        instructions=context.director_instructions(engine.instructions),
         output_type=str,
         deps_type=Turn,
         toolsets=[director_toolset(engine)],
@@ -224,12 +226,11 @@ def director_agent(
 
 def speakers_refusal(scene: VisibleScene, lines: Sequence[Line]) -> str | None:
     """Only the player or someone here with them speaks; the leak rule holds by check, not trust."""
-    present = {scene.player.id, *(entity.id for entity in scene.here)}
     strangers = sorted(
         {
             line.speaker_id
             for line in lines
-            if line.speaker_id is not None and line.speaker_id not in present
+            if line.speaker_id is not None and line.speaker_id not in scene.present_entity_ids
         }
     )
     if not strangers:
@@ -277,7 +278,7 @@ def _replayed(exchange: Exchange) -> str:
     body = "\n".join(part for part in parts if part)
     if not body:
         raise ValueError("an exchange with neither prose nor a decision has nothing to replay")
-    return f"[At {exchange.place}]\n{body}"
+    return f"[At {exchange.scene}]\n{body}"
 
 
 type TurnStep = Literal["director", "narrator", "scenario_creator"]
@@ -325,10 +326,9 @@ async def run_segment(
     lines: tuple[Line, ...] = ()
     if draft.pending is None or told_traces(facts):
         announce("narrator")
-        visible = VisibleScene.revealed_from(SceneSnapshot.from_game(draft))
+        visible = VisibleScene.revealed_from(engine.scene(draft), draft.world)
         narrator_prompt = context.render_narrator(
             visible,
-            partial(engine.describe, draft),
             draft.scenario,
             evidence=traced(facts, told_only=True),
             prompt=prompt,
@@ -357,16 +357,14 @@ def retry_prompts(messages: Sequence[ModelMessage]) -> tuple[str, ...]:
 
 
 def close_segment(
-    engine: Engine,
+    scene_label: str,
     draft: Game,
     prompt: str,
     lines: tuple[Line, ...],
     facts: tuple[Fact, ...],
 ) -> Game:
     """The one place a segment becomes history: builtin and code mode differ only in when."""
-    if draft.pending is None and draft.player.trait(DEAD) is not None:
-        draft.pending = succession_decision(engine, draft)
-    draft.record(prompt, lines, facts)
+    draft.record(scene_label, prompt, lines, facts)
     draft.turn += 1
     return draft.committed()
 
@@ -381,8 +379,8 @@ def consume_answer(
     """The PLAYER ACTION and what a closed answer resolved."""
     chosen = player_input.option_id if isinstance(player_input, Answer) else None
     # Only a listed option — succession, in practice — carries a dead player character's game on.
-    if chosen is None and draft.player.trait(DEAD) is not None:
-        raise ValueError("the player is dead. The only way on is to restart.")
+    if chosen is None and (ended := engine.over(draft)) is not None:
+        raise ValueError(f"{ended} The only way on is to restart.")
     # A new segment starts with no cards: an interrupted turn left its own on the draft.
     draft.turn_facts = ()
     # Any input consumes the decision, a revision included: it never survives its own answer.

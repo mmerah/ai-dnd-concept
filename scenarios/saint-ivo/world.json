@@ -4,10 +4,12 @@
     "premise": "Saint Ivo's went dark on the third night of the collapse with its cold vault still sealed, and eleven years of Crawlers have kept everyone honest about it. Kael has come for what is racked down there: the last cased antivirals, worth a year of anyone's life. He starts in the ambulance bay, where Dov Marek keeps the gate and burns what the night drags in."
   },
   "engine": "breathless",
-  "packs": ["srd"],
+  "packs": [
+    "srd"
+  ],
   "grows": true,
   "art_style": "Sodium light on wet concrete and hospital green, painted digital concept art; taped plastic sheeting, dust, and lanternlight in a dead city.",
-  "starting_location_id": "ambulance-bay",
+  "player_parent_id": "ambulance-bay",
   "world": {
     "entities": {
       "ambulance-bay": {
@@ -159,14 +161,7 @@
         "when_reached": "Wren knows the stair, the reader, and how the Bell Crawler hunts. She will come down with anyone who agrees to bring the cases back up to the block, and she will say so plainly.",
         "known": false,
         "parent_id": "roof-walk",
-        "traits": [],
-        "rules": {
-          "skills": {
-            "Think": 10,
-            "Sneak": 8,
-            "Sway": 6
-          }
-        }
+        "traits": []
       },
       "bell-crawler": {
         "id": "bell-crawler",
@@ -188,10 +183,7 @@
         "when_reached": "Kael has the ward card: advance thread cold-cache with a note that the ward card is taken. It opens the vault door at the bottom of the stair shaft — press on getting down there.",
         "known": false,
         "parent_id": "ambulance-bay",
-        "traits": [],
-        "rules": {
-          "die": 6
-        }
+        "traits": []
       },
       "fire-axe": {
         "id": "fire-axe",
@@ -200,10 +192,7 @@
         "brief": "A long-handled axe off the bay wall bracket, edge rolled but the head sound.",
         "known": true,
         "parent_id": "ambulance-bay",
-        "traits": [],
-        "rules": {
-          "die": 10
-        }
+        "traits": []
       },
       "bolt-cutters": {
         "id": "bolt-cutters",
@@ -212,10 +201,7 @@
         "brief": "Sela's cutters, leaning against her table leg, long enough to take the stairwell chain.",
         "known": true,
         "parent_id": "triage-hall",
-        "traits": [],
-        "rules": {
-          "die": 8
-        }
+        "traits": []
       },
       "rope-ladder": {
         "id": "rope-ladder",
@@ -224,10 +210,7 @@
         "brief": "A window-escape ladder coiled by the plant room door, rated for one body at a time.",
         "known": true,
         "parent_id": "roof-walk",
-        "traits": [],
-        "rules": {
-          "die": 6
-        }
+        "traits": []
       }
     },
     "threads": {
@@ -238,6 +221,31 @@
         "note": "Kael came for the cased antivirals racked in Saint Ivo's cold vault: the ward card that opens the door, six flights of stair shaft that the Bell Crawler hunts by sound, and what Wren Halloway wants for coming down with him."
       }
     },
-    "party": []
+    "party": [],
+    "mechanics": {
+      "sheets": {
+        "wren-halloway": {
+          "skills": {
+            "Think": 10,
+            "Sneak": 8,
+            "Sway": 6
+          }
+        }
+      },
+      "items": {
+        "ward-card": {
+          "die": 6
+        },
+        "fire-axe": {
+          "die": 10
+        },
+        "bolt-cutters": {
+          "die": 8
+        },
+        "rope-ladder": {
+          "die": 6
+        }
+      }
+    }
   }
 }

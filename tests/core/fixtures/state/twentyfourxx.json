@@ -33,8 +33,7 @@
             "known": false,
             "locked": false
           }
-        ],
-        "rules": {}
+        ]
       },
       "holdfast": {
         "id": "holdfast",
@@ -52,8 +51,7 @@
             "known": true,
             "locked": false
           }
-        ],
-        "rules": {}
+        ]
       },
       "relay-nine": {
         "id": "relay-nine",
@@ -76,8 +74,7 @@
             "known": false,
             "locked": true
           }
-        ],
-        "rules": {}
+        ]
       },
       "vault-deck": {
         "id": "vault-deck",
@@ -95,8 +92,7 @@
             "known": false,
             "locked": true
           }
-        ],
-        "rules": {}
+        ]
       },
       "ovid-sarn": {
         "id": "ovid-sarn",
@@ -108,13 +104,7 @@
         "known": true,
         "parent_id": "siren-mast",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "skills": {
-            "Labor": 10,
-            "Electronics": 8
-          }
-        }
+        "exits": []
       },
       "verrin-ade": {
         "id": "verrin-ade",
@@ -126,13 +116,7 @@
         "known": true,
         "parent_id": "holdfast",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "skills": {
-            "Connections": 10,
-            "Electronics": 8
-          }
-        }
+        "exits": []
       },
       "mara-voss": {
         "id": "mara-voss",
@@ -144,13 +128,7 @@
         "known": false,
         "parent_id": "relay-nine",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "skills": {
-            "Electronics": 10,
-            "Climbing": 8
-          }
-        }
+        "exits": []
       },
       "deel-hask": {
         "id": "deel-hask",
@@ -162,14 +140,7 @@
         "known": false,
         "parent_id": "holdfast",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "skills": {
-            "Intimidation": 10,
-            "Hand-to-hand": 8,
-            "Tracking": 8
-          }
-        }
+        "exits": []
       },
       "cipher-spike": {
         "id": "cipher-spike",
@@ -181,8 +152,7 @@
         "known": false,
         "parent_id": "siren-mast",
         "traits": [],
-        "exits": [],
-        "rules": {}
+        "exits": []
       },
       "lantern": {
         "id": "lantern",
@@ -200,8 +170,7 @@
             "text": "(gear) Its shifting light exposes seams and movement in deep shadow."
           }
         ],
-        "exits": [],
-        "rules": {}
+        "exits": []
       },
       "player": {
         "id": "player",
@@ -224,16 +193,7 @@
             "text": "(frailty) Old scars make certain memories hard to face."
           }
         ],
-        "exits": [],
-        "rules": {
-          "specialty": "Sneak",
-          "origin": "Human",
-          "skills": {
-            "Climbing": 10,
-            "Stealth": 10,
-            "Tracking": 8
-          }
-        }
+        "exits": []
       }
     },
     "threads": {
@@ -245,9 +205,86 @@
       }
     },
     "party": [],
-    "pending_notes": []
+    "pending_notes": [],
+    "mechanics": {
+      "sheets": {
+        "ovid-sarn": {
+          "chapters": 0,
+          "specialty": "",
+          "origin": "",
+          "skills": {
+            "Labor": 10,
+            "Electronics": 8
+          },
+          "credits": {
+            "current": 2,
+            "maximum": null
+          },
+          "jobs": 0
+        },
+        "verrin-ade": {
+          "chapters": 0,
+          "specialty": "",
+          "origin": "",
+          "skills": {
+            "Connections": 10,
+            "Electronics": 8
+          },
+          "credits": {
+            "current": 2,
+            "maximum": null
+          },
+          "jobs": 0
+        },
+        "mara-voss": {
+          "chapters": 0,
+          "specialty": "",
+          "origin": "",
+          "skills": {
+            "Electronics": 10,
+            "Climbing": 8
+          },
+          "credits": {
+            "current": 2,
+            "maximum": null
+          },
+          "jobs": 0
+        },
+        "deel-hask": {
+          "chapters": 0,
+          "specialty": "",
+          "origin": "",
+          "skills": {
+            "Intimidation": 10,
+            "Hand-to-hand": 8,
+            "Tracking": 8
+          },
+          "credits": {
+            "current": 2,
+            "maximum": null
+          },
+          "jobs": 0
+        },
+        "player": {
+          "chapters": 0,
+          "specialty": "Sneak",
+          "origin": "Human",
+          "skills": {
+            "Climbing": 10,
+            "Stealth": 10,
+            "Tracking": 8
+          },
+          "credits": {
+            "current": 2,
+            "maximum": null
+          },
+          "jobs": 0
+        }
+      },
+      "items": {}
+    }
   },
-  "turn_events": [],
+  "turn_facts": [],
   "history": [],
   "turn": 0,
   "pending": null

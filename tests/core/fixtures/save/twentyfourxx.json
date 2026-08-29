@@ -33,8 +33,7 @@
             "known": false,
             "locked": false
           }
-        ],
-        "rules": {}
+        ]
       },
       "holdfast": {
         "id": "holdfast",
@@ -52,8 +51,7 @@
             "known": true,
             "locked": false
           }
-        ],
-        "rules": {}
+        ]
       },
       "relay-nine": {
         "id": "relay-nine",
@@ -76,8 +74,7 @@
             "known": false,
             "locked": true
           }
-        ],
-        "rules": {}
+        ]
       },
       "vault-deck": {
         "id": "vault-deck",
@@ -95,8 +92,7 @@
             "known": false,
             "locked": true
           }
-        ],
-        "rules": {}
+        ]
       },
       "ovid-sarn": {
         "id": "ovid-sarn",
@@ -108,13 +104,7 @@
         "known": true,
         "parent_id": "siren-mast",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "skills": {
-            "Labor": 10,
-            "Electronics": 8
-          }
-        }
+        "exits": []
       },
       "verrin-ade": {
         "id": "verrin-ade",
@@ -126,13 +116,7 @@
         "known": true,
         "parent_id": "holdfast",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "skills": {
-            "Connections": 10,
-            "Electronics": 8
-          }
-        }
+        "exits": []
       },
       "mara-voss": {
         "id": "mara-voss",
@@ -144,13 +128,7 @@
         "known": false,
         "parent_id": "relay-nine",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "skills": {
-            "Electronics": 10,
-            "Climbing": 8
-          }
-        }
+        "exits": []
       },
       "deel-hask": {
         "id": "deel-hask",
@@ -162,14 +140,7 @@
         "known": false,
         "parent_id": "holdfast",
         "traits": [],
-        "exits": [],
-        "rules": {
-          "skills": {
-            "Intimidation": 10,
-            "Hand-to-hand": 8,
-            "Tracking": 8
-          }
-        }
+        "exits": []
       },
       "cipher-spike": {
         "id": "cipher-spike",
@@ -181,8 +152,7 @@
         "known": true,
         "parent_id": "player",
         "traits": [],
-        "exits": [],
-        "rules": {}
+        "exits": []
       },
       "lantern": {
         "id": "lantern",
@@ -200,8 +170,7 @@
             "text": "(gear) Its shifting light exposes seams and movement in deep shadow."
           }
         ],
-        "exits": [],
-        "rules": {}
+        "exits": []
       },
       "player": {
         "id": "player",
@@ -229,16 +198,7 @@
             "text": "(condition) Listening for the next shift of weight behind the door."
           }
         ],
-        "exits": [],
-        "rules": {
-          "specialty": "Sneak",
-          "origin": "Human",
-          "skills": {
-            "Climbing": 10,
-            "Stealth": 10,
-            "Tracking": 8
-          }
-        }
+        "exits": []
       }
     },
     "threads": {
@@ -252,64 +212,135 @@
     "party": [],
     "pending_notes": [
       "Bad luck is circling: signs of something behind the door is already listening back showed this turn. Let the scene warn of it before it bites."
-    ]
+    ],
+    "mechanics": {
+      "sheets": {
+        "ovid-sarn": {
+          "chapters": 0,
+          "specialty": "",
+          "origin": "",
+          "skills": {
+            "Labor": 10,
+            "Electronics": 8
+          },
+          "credits": {
+            "current": 2,
+            "maximum": null
+          },
+          "jobs": 0
+        },
+        "verrin-ade": {
+          "chapters": 0,
+          "specialty": "",
+          "origin": "",
+          "skills": {
+            "Connections": 10,
+            "Electronics": 8
+          },
+          "credits": {
+            "current": 2,
+            "maximum": null
+          },
+          "jobs": 0
+        },
+        "mara-voss": {
+          "chapters": 0,
+          "specialty": "",
+          "origin": "",
+          "skills": {
+            "Electronics": 10,
+            "Climbing": 8
+          },
+          "credits": {
+            "current": 2,
+            "maximum": null
+          },
+          "jobs": 0
+        },
+        "deel-hask": {
+          "chapters": 0,
+          "specialty": "",
+          "origin": "",
+          "skills": {
+            "Intimidation": 10,
+            "Hand-to-hand": 8,
+            "Tracking": 8
+          },
+          "credits": {
+            "current": 2,
+            "maximum": null
+          },
+          "jobs": 0
+        },
+        "player": {
+          "chapters": 0,
+          "specialty": "Sneak",
+          "origin": "Human",
+          "skills": {
+            "Climbing": 10,
+            "Stealth": 10,
+            "Tracking": 8
+          },
+          "credits": {
+            "current": 2,
+            "maximum": null
+          },
+          "jobs": 0
+        }
+      },
+      "items": {}
+    }
   },
-  "turn_events": [],
+  "turn_facts": [],
   "history": [
     {
       "prompt": "I try the vault door.",
-      "place": "the sealed vault",
+      "scene": "the sealed vault",
       "lines": [
         {
           "speaker_id": null,
           "text": "The iron handle does not turn."
         }
       ],
-      "events": [],
+      "facts": [],
       "decision": ""
     },
     {
       "prompt": "I look for another way in.",
-      "place": "the sealed vault",
+      "scene": "the sealed vault",
       "lines": [
         {
           "speaker_id": null,
           "text": "A flagstone by the wall sits proud of its neighbours."
         }
       ],
-      "events": [],
+      "facts": [],
       "decision": ""
     },
     {
       "prompt": "I lever up the loose flagstone and listen at the vault door.",
-      "place": "the siren mast",
+      "scene": "the siren mast",
       "lines": [
         {
           "speaker_id": null,
           "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
         }
       ],
-      "events": [
+      "facts": [
         {
-          "title": "Took the cipher spike",
-          "badges": [],
-          "dice": [],
-          "outcome": "",
-          "effects": [],
-          "icon": "back_hand"
+          "kind": "entity_moved",
+          "trace": "the player Kael[player] took the item the cipher spike[cipher-spike]",
+          "told": true,
+          "entity_id": "cipher-spike",
+          "card": "Took the cipher spike",
+          "dice": []
         },
         {
-          "title": "Attempt",
-          "badges": [
-            {
-              "label": "Skill",
-              "value": "Stealth"
-            },
-            {
-              "label": "Help",
-              "value": "d6"
-            }
-          ],
+          "kind": "attempt_resolved",
+          "trace": "Listen at the vault door without being heard (risk: whatever is behind the door hears him first) -> success",
+          "told": true,
+          "entity_id": "player",
+          "card": "Attempt — success\nSkill Stealth, Help d6\nbad luck — something behind the door is already listening back: signs of it",
           "dice": [
             {
               "label": "Pool",
@@ -321,7 +352,10 @@
                 8,
                 5
               ],
-              "kept": 8
+              "result": "8",
+              "highlight": [
+                0
+              ]
             },
             {
               "label": "Luck",
@@ -331,22 +365,20 @@
               "rolled": [
                 4
               ],
-              "kept": 4
+              "result": "4",
+              "highlight": [
+                0
+              ]
             }
-          ],
-          "outcome": "success",
-          "effects": [
-            "bad luck — something behind the door is already listening back: signs of it"
-          ],
-          "icon": "casino"
+          ]
         },
         {
-          "title": "Kael gained Listening",
-          "badges": [],
-          "dice": [],
-          "outcome": "",
-          "effects": [],
-          "icon": "add_circle"
+          "kind": "trait_added",
+          "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
+          "told": true,
+          "entity_id": "player",
+          "card": "Kael gained Listening",
+          "dice": []
         }
       ],
       "decision": ""

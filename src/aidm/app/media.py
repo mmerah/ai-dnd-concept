@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict
 from aidm.config import MediaConfig, ProviderConfig
 from aidm.state.entities import Entity, EntityId
 from aidm.state.model import Game
-from aidm.turn.context import VisibleScene, player_scene
+from aidm.state.scene import VisibleScene
 
 LOGGER = logging.getLogger(__name__)
 
@@ -22,8 +22,8 @@ _FILENAME_SAFE = re.compile(r"[a-z0-9_-]+")
 
 
 def scene_key(scene: VisibleScene) -> str:
-    """Keyed on the place alone: who's present can change turn to turn without a new picture."""
-    return sha1(scene.location.id.encode(), usedforsecurity=False).hexdigest()[:12]
+    """The engine's own key, hashed because it names a file and an id may not be safe as one."""
+    return sha1(scene.key.encode(), usedforsecurity=False).hexdigest()[:12]
 
 
 def illustration_request(
@@ -32,8 +32,7 @@ def illustration_request(
     lines = [
         "Draw one wide, borderless view of this place from the eye level of someone there. "
         "Show a single scene, not a portrait or comic panel.",
-        f"The place: {scene.location.name} — {scene.location.brief}",
-        *(f"Present: {entity.name} — {entity.brief}" for entity in scene.here),
+        scene.art_prompt,
     ]
     if narration:
         lines.append(f"What just happened: {narration}")
@@ -72,12 +71,12 @@ class Illustrator:
     style: str
     generating: set[str] = field(default_factory=set)
 
-    def scene_art(self, state: Game) -> Path | None:
-        return _existing(self.saves, scene_key(player_scene(state)))
+    def scene_art(self, scene: VisibleScene) -> Path | None:
+        return _existing(self.saves, scene_key(scene))
 
-    def scene_pending(self, state: Game) -> bool:
+    def scene_pending(self, scene: VisibleScene) -> bool:
         """Only in-flight scenes wait; missing inactive scenes have failed."""
-        return scene_key(player_scene(state)) in self.generating
+        return scene_key(scene) in self.generating
 
     def _icon_dir(self, entity_id: EntityId) -> Path | None:
         """None when the id cannot name a file; anything play invented lives under the save."""
@@ -98,24 +97,20 @@ class Illustrator:
         self.generating.add(key)
         return True
 
-    async def illustrate(self, state: Game, narration: str) -> None:
-        scene = player_scene(state)
+    async def illustrate(self, state: Game, scene: VisibleScene, narration: str) -> None:
         key = scene_key(scene)
         drawing = _existing(self.saves, key) is None and self._claim(key)
         # The chat avatar wants the player's icon even when this scene's art is already cached.
-        _ = await self._drawn_icon(scene.player)
+        _ = await self._drawn_icon(state.player)
         if not drawing:
             return
         try:
-            await self._draw(scene, key, narration)
+            await self._draw(state, scene, key, narration)
         finally:
             self.generating.discard(key)
 
-    async def _draw(self, scene: VisibleScene, key: str, narration: str) -> None:
-        subjects = sorted(
-            (entity for entity in scene.here if entity.kind != "location"),
-            key=lambda entity: entity.kind != "actor",
-        )
+    async def _draw(self, state: Game, scene: VisibleScene, key: str, narration: str) -> None:
+        subjects = [state.world.require(one) for one in scene.art_subject_ids]
         icons = {
             entity.name: icon
             for entity in subjects[: self.config.max_references]

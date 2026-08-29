@@ -32,6 +32,9 @@ from aidm.content.io import load_scenario, read_scenarios
 from aidm.state.entities import Entity, EntityId, Exit
 from aidm.state.model import ScenarioMeta, Thread
 
+ENGINE = ENGINES_BUILT[LONER3E]
+SRD = ("srd",)
+
 
 async def test_every_shipped_scenario_passes_the_engine_it_is_authored_for() -> None:
     for _, shipped in read_scenarios(SCENARIOS, ENGINE_IDS):
@@ -51,7 +54,7 @@ def test_a_world_colliding_with_the_character_is_refused() -> None:
             name=f"a second {held.name}",
             brief="An identical one, left behind by whoever came before.",
             known=True,
-            parent_id=shipped.starting_location_id,
+            parent_id=shipped.player_parent_id,
         )
         colliding = updated(
             shipped,
@@ -65,7 +68,7 @@ def test_authoring_refuses_an_uninstalled_pack() -> None:
     with pytest.raises(ValueError, match="not installed"):
         _ = scenario_run(
             offline_settings(),
-            ENGINES_BUILT[LONER3E],
+            ENGINE,
             "authored",
             "a vault",
             False,
@@ -92,12 +95,13 @@ def test_write_upserts_elements_by_id() -> None:
     confirmation = draft.apply(
         ScenarioPatch(
             meta=ScenarioMeta(title="The Cell", premise="Get out."),
-            starting_location_id=EntityId("cell"),
+            player_parent_id=EntityId("cell"),
             entities=(
                 _location("cell").model_copy(update={"exits": [Exit(to=EntityId("hall"))]}),
                 _location("hall"),
             ),
-        )
+        ),
+        ENGINE,
     )
     assert "set meta" in confirmation
     assert "created location cell[cell]" in confirmation
@@ -106,7 +110,7 @@ def test_write_upserts_elements_by_id() -> None:
     renamed = _location("cell").model_copy(
         update={"name": "the deep cell", "exits": [Exit(to=EntityId("hall"), locked=True)]}
     )
-    modification = draft.apply(ScenarioPatch(entities=(renamed,)))
+    modification = draft.apply(ScenarioPatch(entities=(renamed,)), ENGINE)
     assert modification == "modified location the deep cell[cell]"
 
     cell = draft.entities[EntityId("cell")]
@@ -116,7 +120,7 @@ def test_write_upserts_elements_by_id() -> None:
 
 def test_connect_writes_the_way_on_both_ends() -> None:
     draft = ScenarioDraft()
-    _ = draft.apply(ScenarioPatch(entities=(_location("cell"), _location("hall"))))
+    _ = draft.apply(ScenarioPatch(entities=(_location("cell"), _location("hall"))), ENGINE)
 
     assert draft.connect(EntityId("cell"), EntityId("hall"), True, False, False) == (
         "joined cell to hall both ways"
@@ -136,7 +140,7 @@ def test_connect_writes_the_way_on_both_ends() -> None:
 def test_connect_refuses_a_known_way_to_a_place_the_player_has_not_met() -> None:
     draft = ScenarioDraft()
     unmet = _location("crypt").model_copy(update={"known": False})
-    _ = draft.apply(ScenarioPatch(entities=(_location("cell"), unmet)))
+    _ = draft.apply(ScenarioPatch(entities=(_location("cell"), unmet)), ENGINE)
 
     with pytest.raises(ValueError, match="has not met"):
         _ = draft.connect(EntityId("cell"), EntityId("crypt"), True, False, False)
@@ -158,11 +162,11 @@ def _answers(history: Sequence[ModelMessage]) -> list[str]:
 
 async def test_every_change_answers_with_what_the_draft_still_needs() -> None:
     session = scenario_run(
-        offline_settings(), ENGINES_BUILT[LONER3E], "authored", "a vault", False, None
+        offline_settings(), ENGINE, "authored", "a vault", False, None, packs=SRD
     )
     thin: dict[str, JsonValue] = {
         "meta": {"title": "The Cell", "premise": "Get out."},
-        "starting_location_id": "study",
+        "player_parent_id": "study",
         "entities": [_location("study").model_dump(mode="json")],
     }
     author = scripted(_write(thin), _write(_as_patch()), _finish("Authored the vault."))
@@ -181,7 +185,7 @@ def _connect(**args: JsonValue) -> ModelResponse:
 
 async def test_an_extension_pass_only_adds_to_the_world_it_stands_on() -> None:
     settings, shipped = offline_settings(), scenario()
-    playing = playtest_check(settings, ENGINES_BUILT[LONER3E])
+    playing = playtest_check(settings, ENGINE, SRD)
     agent = scenario_agent(playing, settings, extend_brief(shipped.world))
     draft = ScenarioDraft.from_scenario(shipped)
     author = recorded(
@@ -207,22 +211,24 @@ async def test_an_extension_pass_only_adds_to_the_world_it_stands_on() -> None:
 
 def test_a_patched_art_style_reaches_the_scenario() -> None:
     draft = ScenarioDraft()
-    _ = draft.apply(ScenarioPatch.model_validate(_as_patch() | {"art_style": "ink-wash noir"}))
-    assert draft.scenario(LONER3E, ("srd",)).art_style == "ink-wash noir"
+    _ = draft.apply(
+        ScenarioPatch.model_validate(_as_patch() | {"art_style": "ink-wash noir"}), ENGINE
+    )
+    assert draft.scenario(LONER3E, SRD).art_style == "ink-wash noir"
 
 
 def test_remove_drops_by_id_and_refuses_an_unknown_one() -> None:
     draft = ScenarioDraft()
-    _ = draft.apply(ScenarioPatch(entities=(_location("cell"),)))
-    deletion = draft.apply(ScenarioPatch(remove=(EntityId("cell"),)))
+    _ = draft.apply(ScenarioPatch(entities=(_location("cell"),)), ENGINE)
+    deletion = draft.apply(ScenarioPatch(remove=(EntityId("cell"),)), ENGINE)
     assert deletion == "deleted location cell[cell]"
     assert not draft.entities
     with pytest.raises(ValueError, match="nothing in the draft"):
-        _ = draft.apply(ScenarioPatch(remove=("ghost",)))
+        _ = draft.apply(ScenarioPatch(remove=("ghost",)), ENGINE)
 
 
 def test_validation_names_what_the_draft_is_missing() -> None:
-    playing = playtest_check(offline_settings(), ENGINES_BUILT[LONER3E])
+    playing = playtest_check(offline_settings(), ENGINE, SRD)
     empty = scenario_refusal(ScenarioDraft(), playing)
     assert empty is not None and "meta" in empty
 
@@ -230,9 +236,10 @@ def test_validation_names_what_the_draft_is_missing() -> None:
     _ = draft.apply(
         ScenarioPatch(
             meta=ScenarioMeta(title="The Cell", premise="Get out."),
-            starting_location_id=EntityId("nowhere"),
+            player_parent_id=EntityId("nowhere"),
             entities=(_location("cell"),),
-        )
+        ),
+        ENGINE,
     )
     dangling = scenario_refusal(draft, playing)
     assert dangling is not None and "nowhere" in dangling
@@ -241,7 +248,7 @@ def test_validation_names_what_the_draft_is_missing() -> None:
     _ = unplayable.apply(
         ScenarioPatch(
             meta=ScenarioMeta(title="The Cell", premise="Get out."),
-            starting_location_id=EntityId("cell"),
+            player_parent_id=EntityId("cell"),
             entities=(
                 _location("cell"),
                 Entity(
@@ -251,39 +258,37 @@ def test_validation_names_what_the_draft_is_missing() -> None:
                     brief="He keeps the only key.",
                     known=True,
                     parent_id=EntityId("cell"),
-                    rules={"concept": 3},
                 ),
             ),
-        )
+        ),
+        ENGINE,
     )
     broken = scenario_refusal(unplayable, playing)
-    assert broken is not None and broken.startswith("rules.gaoler.concept: ")
+    assert broken is not None and "'gaoler' has no sheet" in broken
 
 
 def test_the_shipped_world_written_as_one_patch_is_playable() -> None:
     draft = ScenarioDraft()
     patch = ScenarioPatch.model_validate(_as_patch())
-    _ = draft.apply(patch)
-    assert (
-        scenario_refusal(draft, playtest_check(offline_settings(), ENGINES_BUILT[LONER3E])) is None
-    )
+    _ = draft.apply(patch, ENGINE)
+    assert scenario_refusal(draft, playtest_check(offline_settings(), ENGINE, SRD)) is None
 
 
 async def test_the_agent_authors_through_the_write_tool() -> None:
     settings = offline_settings()
-    session = scenario_run(settings, ENGINES_BUILT[LONER3E], "authored", "a vault", False, None)
+    session = scenario_run(settings, ENGINE, "authored", "a vault", False, None, packs=SRD)
     author = scripted(
         ModelResponse(parts=[ToolCallPart(tool_name="write", args={"patch": _as_patch()})]),
         _finish("Authored the vault."),
     )
     with session.agent.override(model=FunctionModel(author)):
         _ = await session.send(session.opening_prompt)
-    assert session.draft.scenario(LONER3E, ("srd",)).meta.title == scenario().meta.title
+    assert session.draft.scenario(LONER3E, SRD).meta.title == scenario().meta.title
 
 
 async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> None:
     settings = offline_settings()
-    session = scenario_run(settings, ENGINES_BUILT[LONER3E], "authored", "a vault", False, None)
+    session = scenario_run(settings, ENGINE, "authored", "a vault", False, None, packs=SRD)
     author = scripted(
         _finish("all done, and it is great"),
         ModelResponse(parts=[ToolCallPart(tool_name="write", args={"patch": _as_patch()})]),
@@ -291,12 +296,12 @@ async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> Non
     )
     with session.agent.override(model=FunctionModel(author)):
         _ = await session.send(session.opening_prompt)
-    assert session.draft.scenario(LONER3E, ("srd",)).meta.title == scenario().meta.title
+    assert session.draft.scenario(LONER3E, SRD).meta.title == scenario().meta.title
 
 
 async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
     settings = offline_settings()
-    session = scenario_run(settings, ENGINES_BUILT[LONER3E], "authored", "a vault", False, None)
+    session = scenario_run(settings, ENGINE, "authored", "a vault", False, None, packs=SRD)
     study = scenario().world.require(EntityId("study"))
     addition = ScenarioPatch(
         entities=(
@@ -325,7 +330,7 @@ async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
 
 async def test_an_unplayable_draft_is_never_written() -> None:
     session = scenario_run(
-        offline_settings(), ENGINES_BUILT[LONER3E], "authored", "a vault", False, None
+        offline_settings(), ENGINE, "authored", "a vault", False, None, packs=SRD
     )
     with pytest.raises(ValueError, match="does not play"):
         _ = session.write()
@@ -336,11 +341,12 @@ def test_a_thin_draft_hears_every_unmet_bar_item_at_once() -> None:
     _ = draft.apply(
         ScenarioPatch(
             meta=ScenarioMeta(title="The Cell", premise="Get out."),
-            starting_location_id=EntityId("cell"),
+            player_parent_id=EntityId("cell"),
             entities=(_location("cell"),),
-        )
+        ),
+        ENGINE,
     )
-    reason = scenario_refusal(draft, playtest_check(offline_settings(), ENGINES_BUILT[LONER3E]))
+    reason = scenario_refusal(draft, playtest_check(offline_settings(), ENGINE, SRD))
     assert reason is not None
     for wanted in ("locations", "locked", "actors", "item", "thread", "when_reached"):
         assert wanted in reason
@@ -351,7 +357,7 @@ def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
     _ = draft.apply(
         ScenarioPatch(
             meta=ScenarioMeta(title="The Cell", premise="Get out."),
-            starting_location_id=EntityId("cell"),
+            player_parent_id=EntityId("cell"),
             entities=(
                 _location("cell"),
                 Entity(
@@ -361,7 +367,6 @@ def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
                     brief="He keeps the only key.",
                     known=True,
                     parent_id=EntityId("cell"),
-                    rules={"concept": "A Bored Gaoler"},
                 ),
                 Entity(
                     id=EntityId("loose-stone"),
@@ -372,10 +377,12 @@ def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
                 ),
             ),
             threads=(Thread(id="the-way-out", title="The way out", note="The door is barred."),),
-        )
+            mechanics={"sheets": {"gaoler": {"concept": "A Bored Gaoler"}}},
+        ),
+        ENGINE,
     )
-    playing = playtest_check(offline_settings(), ENGINES_BUILT[LONER3E])
+    playing = playtest_check(offline_settings(), ENGINE, SRD)
 
     assert scenario_refusal(draft, playing, OPENING_SLICE) is None
     assert scenario_refusal(draft, playing) is not None
-    assert draft.scenario(LONER3E, ("srd",), grows=True).grows
+    assert draft.scenario(LONER3E, SRD, grows=True).grows

@@ -10,17 +10,15 @@ from pydantic import JsonValue
 
 from aidm.app.runtime import GameSession
 from aidm.harness.driver import Driver
-from aidm.state.entities import DEAD, Entity, EntityId
+from aidm.state.entities import EntityId
 from aidm.state.facts import DiceEvent, Fact
 from aidm.state.play import Answer
-from aidm.turn.context import player_scene
 from aidm.turn.run import TurnStep
 
 from .panels import journal_panel, sheet_panel, state_panel, trace_panel
 from .widgets import (
     avatar,
     decision_widget,
-    entity_row,
     heading,
     page_header,
     refuse_if_busy,
@@ -34,7 +32,7 @@ _ART_BOX = f"flex: none; height: {_SCENE_HEIGHT}; max-width: 50%; aspect-ratio: 
 
 
 def scene_header(session: GameSession, fill_composer: Callable[[str], None]) -> None:
-    scene = player_scene(session.state)
+    scene = session.scene()
     # A quarter of the column at most: the art holds it and the text beside it scrolls.
     with (
         ui.row()
@@ -47,24 +45,18 @@ def scene_header(session: GameSession, fill_composer: Callable[[str], None]) -> 
             .classes("flex-grow")
             .style(f"max-height: {_SCENE_HEIGHT}; overflow-y: auto; gap: 0; min-width: 0")
         ):
-            ui.label(scene.location.name).classes("text-h6 font-bold")
-            ui.label(scene.location.brief).classes("text-sm opacity-70")
-            heading("Here now", tight=True)
-            if not scene.here:
-                ui.label("Nobody but you.").classes("text-sm opacity-70")
-            for entity in scene.here:
-                brief = entity.brief if _alive(entity) else f"Dead. {entity.brief}"
-                entity_row(session.icon(entity.id), entity.name, brief)
-            heading("Exits", tight=True)
-            if not scene.exits:
-                ui.label("None found yet.").classes("text-sm opacity-70")
-            for way in scene.exits:
-                name = scene.canon[way.to].name
+            ui.label(scene.label).classes("text-h6 font-bold")
+            if scene.summary:
+                ui.label(scene.summary).classes("text-sm opacity-70")
+            for title, body in scene.sections:
+                heading(title.capitalize(), tight=True)
+                ui.label(body).classes("text-sm whitespace-pre-wrap")
+            for label, composed in scene.prompts:
                 # The button writes the move into the composer; the player still sends it.
                 ui.button(
-                    name,
-                    icon="lock" if way.locked else "arrow_forward",
-                    on_click=lambda name=name: fill_composer(f"Go to {name}"),
+                    label,
+                    icon="arrow_forward",
+                    on_click=partial(fill_composer, composed),
                 ).props("flat dense no-caps align=left rounded").classes("w-full")
 
 
@@ -84,8 +76,8 @@ def chat(session: GameSession) -> None:
     history = session.state.history
     last = history[-1] if history and session.state.pending is not None else None
     for exchange in history:
-        if exchange.place != here:
-            here = exchange.place
+        if exchange.scene != here:
+            here = exchange.scene
             ui.label(here).classes("w-full text-center text-xs uppercase opacity-50 q-mt-md")
         _bubble(session, session.state.player_id, exchange.prompt, sent=True)
         for fact in exchange.facts:
@@ -366,14 +358,10 @@ async def submit(view: GameView, box: ui.input) -> None:
     await _send(view, typed_input, typed)
 
 
-def _alive(entity: Entity) -> bool:
-    return entity.trait(DEAD) is None
-
-
 def _can_type(session: GameSession, busy: bool) -> bool:
     pending = session.state.pending
     typed = pending is None or pending.allows_text
-    return not busy and typed and _alive(session.state.player)
+    return not busy and typed and session.engine.over(session.state) is None
 
 
 def decision_panel(view: GameView) -> None:
@@ -397,8 +385,7 @@ def decision_panel(view: GameView) -> None:
         if view.viewing:
             ui.label("Answer in the terminal.").classes("text-sm opacity-60")
             return
-        # A dead player character answers by taking a successor's name, never in their own words.
-        if pending.allows_text and _alive(view.session.state.player):
+        if pending.allows_text:
             pointer = "Or answer" if pending.options else "Answer"
             ui.label(f"{pointer} in your own words below.").classes("text-xs opacity-60")
 
@@ -413,8 +400,8 @@ def player_actions(view: GameView) -> None:
         return
     heading("You can")
     with ui.row().classes("w-full items-center").style("gap: 0.5rem"):
-        for action, offer in offers:
-            ui.button(offer.label, on_click=partial(_act, view, action.name, offer.args)).props(
+        for action, label, args in offers:
+            ui.button(label, on_click=partial(_act, view, action.name, args)).props(
                 "no-caps outline dense"
             ).tooltip(action.description)
 
@@ -432,9 +419,11 @@ def composer(view: GameView) -> None:
     session = view.session
     with ui.row().classes("w-full no-wrap items-end game-composer q-pa-sm").style("gap: 0.5rem"):
         # `busy` is only the source NiceGUI needs: it re-runs every backward on its 0.1s poll.
-        ui.label("You died.").classes("text-xs self-center").style(
+        ui.label("").classes("text-xs self-center").style(
             "color: var(--game-danger)"
-        ).bind_visibility_from(session, "busy", backward=lambda _: not _alive(session.state.player))
+        ).bind_text_from(
+            session, "busy", backward=lambda _: session.engine.over(session.state) or ""
+        )
         box = (
             ui.input(placeholder=_composer_placeholder(view))
             .classes("flex-grow")
@@ -478,7 +467,7 @@ def restart(view: GameView) -> None:
 def game_page(session: GameSession, driver: Driver | None = None) -> None:
     session.illustrate_scene()
     view = GameView(session, driver)
-    with page_header(session.state.scenario.title, session.engine.badge):
+    with page_header(session.state.scenario.title, session.engine.title):
         ui.space()
         if not view.viewing:
             ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")

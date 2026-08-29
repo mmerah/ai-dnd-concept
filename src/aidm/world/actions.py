@@ -1,6 +1,9 @@
-from .entities import DEAD, Entity, EntityId, Exit, Slug, Trait, slug
-from .facts import Fact, entity_fact
-from .model import AdvanceThread, Game
+from aidm.state.entities import DEAD, Entity, EntityId, Exit, Slug, Trait, slug
+from aidm.state.facts import Fact, entity_fact
+from aidm.state.model import Game
+from aidm.state.tools import Validate
+from aidm.world.succession import succession_decision
+from aidm.world.topology import children, is_here, player_location
 
 
 def _sentence(text: str) -> str:
@@ -21,7 +24,7 @@ def require_actor_here(state: Game, actor_id: EntityId) -> Entity:
     if actor.trait(DEAD) is not None:
         # ponytail: no resurrection path — a corpse takes no trait either way; restart is the exit.
         raise ValueError(f"{actor.name} is dead; they take no further part.")
-    if actor_id != state.player_id and not state.is_here(actor):
+    if actor_id != state.player_id and not is_here(state, actor):
         raise ValueError(
             f"{actor_id!r} is not here with the player. "
             "Move them here first, or act on who is here."
@@ -29,15 +32,15 @@ def require_actor_here(state: Game, actor_id: EntityId) -> Entity:
     return actor
 
 
-def kill(draft: Game, actor_id: EntityId) -> list[Fact]:
+def kill(draft: Game, actor_id: EntityId, validate: Validate) -> list[Fact]:
     actor = draft.world.require_kind(actor_id, "actor")
     if actor.trait(DEAD) is not None:
         raise ValueError(f"{actor.name} is already dead")
-    if actor_id != draft.player_id and not draft.is_here(actor):
+    if actor_id != draft.player_id and not is_here(draft, actor):
         raise ValueError(f"{actor_id!r} is not here with the player, so they cannot die here")
     facts = draft.reveal(actor)
     actor.traits.append(Trait(id=DEAD, name="Dead"))
-    carried = draft.world.children(actor_id, "item")
+    carried = children(draft.world, actor_id, "item")
     if carried and actor.parent_id is not None:
         where = draft.world.require(actor.parent_id)
         for item in carried:
@@ -54,6 +57,8 @@ def kill(draft: Game, actor_id: EntityId) -> list[Fact]:
             actor, "actor_killed", f"{draft.label(actor)} is dead", card=f"{actor.name} is dead"
         )
     )
+    if actor_id == draft.player_id:
+        draft.pending = succession_decision(draft, validate)
     return facts
 
 
@@ -87,7 +92,7 @@ def move(draft: Game, entity_id: EntityId, to_id: EntityId) -> list[Fact]:
 
 def _move_actor(draft: Game, actor_id: EntityId, to_id: EntityId) -> list[Fact]:
     destination = draft.world.require_kind(to_id, "location")
-    here = draft.player_location
+    here = player_location(draft)
     if actor_id == draft.player_id:
         way = _walkable_exit(draft, draft.world.require(here), destination)
         # Arrival reveals both directions because the player can see the way back.
@@ -114,12 +119,12 @@ def _move_item(draft: Game, item: Entity, to_id: EntityId) -> list[Fact]:
     if to_id == draft.player_id:
         if item.parent_id == draft.player_id:
             raise ValueError(f"the player already carries item {item.id!r}")
-        if item.parent_id != draft.player_location:
+        if item.parent_id != player_location(draft):
             raise ValueError(f"item {item.id!r} is not loose at the player's location")
         return [*draft.reveal(item), draft.move(item, draft.player)]
     receiver = draft.world.require(to_id)
     if receiver.kind == "location":
-        if receiver.id != draft.player_location:
+        if receiver.id != player_location(draft):
             raise ValueError("an item is set down at the player's own location, nowhere else")
     else:
         receiver = require_actor_here(draft, to_id)
@@ -135,7 +140,7 @@ def improvise(draft: Game, item_name: str) -> list[Fact]:
         name=item_name,
         brief=item_name,
         known=True,
-        parent_id=draft.player_location,
+        parent_id=player_location(draft),
     )
     created = draft.add(item)
     moved = draft.move(item, draft.player)
@@ -145,6 +150,9 @@ def improvise(draft: Game, item_name: str) -> list[Fact]:
 def add_trait(draft: Game, entity_id: EntityId, name: str, text: str = "") -> list[Fact]:
     entity, seen = reveal_target(draft, entity_id)
     trait_id = slug(name, ())
+    # Only `kill` may end a life: it drops what the dead carried and offers the succession.
+    if trait_id == DEAD:
+        raise ValueError(f"call kill to record a death, not add_trait with {name!r}")
     if entity.trait(trait_id) is not None:
         raise ValueError(f"{entity.name} already carries the trait {name!r}")
     entity.traits.append(Trait(id=trait_id, name=name, text=text))
@@ -169,7 +177,7 @@ def remove_trait(draft: Game, entity_id: EntityId, trait_id: Slug) -> list[Fact]
 
 
 def unlock_exit(draft: Game, to_id: EntityId) -> list[Fact]:
-    here = draft.world.require_kind(draft.player_location, "location")
+    here = draft.world.require_kind(player_location(draft), "location")
     there = draft.world.require_kind(to_id, "location")
     way = here.exit_to(to_id)
     if way is None:
@@ -211,18 +219,3 @@ def leave_party(draft: Game, actor_id: EntityId) -> list[Fact]:
     trace = f"{draft.label(actor)} no longer travels with the player"
     card = f"{actor.name} leaves your party"
     return [entity_fact(actor, "party_left", trace, card=card)]
-
-
-def advance_thread(draft: Game, effect: AdvanceThread) -> list[Fact]:
-    """Threads are the Director's bookkeeping, so nothing here reaches the Narrator."""
-    thread = draft.world.thread(effect.thread_id)
-    if thread is None:
-        known = ", ".join(sorted(draft.world.threads)) or "(none)"
-        raise ValueError(f"unknown thread {effect.thread_id!r}. The threads are: {known}")
-    thread.status = effect.status or thread.status
-    if effect.note is not None:
-        thread.note = effect.note
-    moved = f"thread {thread.title}[{thread.id}] — status {thread.status}"
-    if thread.note:
-        moved += f" — note: {thread.note}"
-    return [Fact(kind="thread_advanced", trace=moved)]

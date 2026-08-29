@@ -1,22 +1,16 @@
-from functools import partial
-
-from core_test_support import LONER3E, game, updated, with_entity
+from core_test_support import ENGINES_BUILT, LONER3E, game, updated, with_entity
+from pydantic import JsonValue
 
 from aidm.content.model import ScenarioMeta
-from aidm.engines.core import EntityRenderer
+from aidm.engines.core import Engine
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Kind
 from aidm.state.model import Game, WorldState
-from aidm.turn.context import (
-    ANSWERED_BY_OPTION,
-    SceneSnapshot,
-    VisibleScene,
-    placement,
-    render_director,
-    render_narrator,
-)
+from aidm.state.scene import Scene, VisibleScene
+from aidm.turn.context import ANSWERED_BY_OPTION, active_threads, render_director, render_narrator
 
 DESCRIPTION = "She writes in a compact cipher."
 WHEN_REACHED = "Her missing folio points toward the vault."
+SHEET: dict[str, JsonValue] = {"concept": "A Cautious Scribe", "skills": ["Reads a Faded Hand"]}
 
 
 def _with_detail(held: Game, entity_id: EntityId) -> Game:
@@ -47,55 +41,68 @@ def state() -> Game:
         engine=LONER3E,
         packs=("srd",),
         player_id=PLAYER_ID,
-        world=WorldState(entities={entity.id: entity for entity in entities}),
+        world=WorldState(
+            entities={entity.id: entity for entity in entities},
+            mechanics={"sheets": {"player": SHEET, "mara": SHEET, "hidden-actor": SHEET}},
+        ),
         turn_facts=(),
     )
     return held.committed()
 
 
-def _renderer() -> EntityRenderer:
-    engine, state = game(LONER3E)
-    return partial(engine.describe, state)
+def _engine() -> Engine:
+    return ENGINES_BUILT[LONER3E]
+
+
+def _directed(held: Game, prompt: str, *, resumed: str = "") -> str:
+    return render_director(
+        _engine().scene(held),
+        held.scenario,
+        active_threads(held.world.threads.values()),
+        prompt,
+        resumed=resumed,
+    )
 
 
 def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> None:
     held = _with_detail(state(), EntityId("mara"))
-    snapshot = SceneSnapshot.from_game(held)
-    visible = VisibleScene.revealed_from(snapshot)
+    scene = _engine().scene(held)
 
-    assert [entity.id for entity in snapshot.hidden] == ["hidden-actor"]
+    visible = VisibleScene.revealed_from(scene, held.world)
+
     assert set(VisibleScene.model_fields) == {
-        "player",
-        "location",
-        "inventory",
-        "here",
-        "known_elsewhere",
-        "canon",
-        "party",
-        "exits",
+        "key",
+        "label",
+        "summary",
+        "sections",
+        "present_entity_ids",
+        "prompts",
+        "art_prompt",
+        "art_subject_ids",
     }
+    assert set(VisibleScene.model_fields) < set(Scene.model_fields)
     dumped = str(visible.model_dump())
     assert "The Secret" not in dumped
     assert WHEN_REACHED not in dumped
-    assert WHEN_REACHED in str(snapshot.model_dump())
+    assert WHEN_REACHED in str(scene.model_dump())
 
 
 def test_a_placement_never_names_an_entity_the_player_has_not_met() -> None:
     held = state()
     ledger = held.world.require_kind(EntityId("ledger"), "item")
     held = with_entity(held, updated(ledger, parent_id="hidden-actor"))
-    ledger = held.world.require(EntityId("ledger"))
-    snapshot = SceneSnapshot.from_game(held)
 
-    assert placement(snapshot, ledger) == "held by The Secret"
-    assert placement(VisibleScene.revealed_from(snapshot), ledger) == ""
+    scene = _engine().scene(held)
+    visible = VisibleScene.revealed_from(scene, held.world)
+
+    assert "held by The Secret" in _directed(held, "I look around.")
+    assert "The Secret" not in str(visible.sections)
 
 
 def test_the_director_is_shown_authored_detail() -> None:
     held = _with_detail(state(), EntityId("mara"))
-    scene = SceneSnapshot.from_game(held)
-    describe = _renderer()
-    director = render_director(scene, describe, held.scenario, "I look around.")
+
+    director = _directed(held, "I look around.")
 
     assert "Kael[player]" in director
     assert "a lantern[lantern] — A dented light." in director
@@ -104,16 +111,14 @@ def test_the_director_is_shown_authored_detail() -> None:
     assert "luck: 6/6" in director
     assert f"detail: {DESCRIPTION}" in director
     assert f"when reached: {WHEN_REACHED}" in director
-    assert PLAYER_ID not in {entity.id for entity in (*scene.here, *scene.catalogue())}
 
 
 def test_narrator_prompt_names_only_ids_of_entities_the_player_has_met() -> None:
     held = state()
-    scene = VisibleScene.revealed_from(SceneSnapshot.from_game(held))
+    scene = VisibleScene.revealed_from(_engine().scene(held), held.world)
 
     prompt = render_narrator(
         scene,
-        _renderer(),
         held.scenario,
         evidence="- the map was found",
         prompt="What does Mara say?",
@@ -127,9 +132,14 @@ def test_narrator_prompt_names_only_ids_of_entities_the_player_has_met() -> None
 
 
 def test_a_chosen_option_is_not_shown_as_the_players_own_words() -> None:
-    held = state()
-    scene = SceneSnapshot.from_game(held)
     resumed = "asked: A hit is coming.\nthe player chose: Take the hit\n- the hit lands in full"
-    director = render_director(scene, _renderer(), held.scenario, "Take the hit", resumed=resumed)
+
+    director = _directed(state(), "Take the hit", resumed=resumed)
+
     assert director.count("Take the hit") == 1
     assert director.endswith(f"PLAYER ACTION:\n{ANSWERED_BY_OPTION}")
+
+
+def test_the_engines_own_describer_reads_the_blob_once() -> None:
+    engine, held = game(LONER3E)
+    assert "concept:" in str(engine.scene(held).sections)

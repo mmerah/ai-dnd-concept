@@ -8,10 +8,12 @@ from pydantic import SecretStr
 
 from aidm.app.media import GeneratedImage, Illustrator, illustration_request, scene_key
 from aidm.config import MediaConfig, ProviderConfig
-from aidm.state import actions
+from aidm.engines.core import Engine
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
 from aidm.state.model import Game
-from aidm.turn.context import player_scene
+from aidm.state.scene import VisibleScene
+from aidm.world import actions
+from aidm.world.topology import player_location
 
 NARRATION = "The door groans open."
 STYLE = MediaConfig().style
@@ -37,29 +39,33 @@ def _placed(state: Game, name: str, *, known: bool) -> Game:
             name=name,
             brief=f"A {name.lower()}.",
             known=known,
-            parent_id=state.player_location,
+            parent_id=player_location(state),
         ),
     )
 
 
+def _scene(engine: Engine, state: Game) -> VisibleScene:
+    return VisibleScene.revealed_from(engine.scene(state), state.world)
+
+
 def test_illustration_request_names_the_scene_and_no_unrevealed_canon() -> None:
-    _, state = initialized()
+    engine, state = initialized()
     state = _placed(_placed(state, "Brass Lantern", known=True), "Pale Watcher", known=False)
-    request = illustration_request(player_scene(state), NARRATION, STYLE)
-    assert state.world.require(state.player_location).name in request
+    request = illustration_request(_scene(engine, state), NARRATION, STYLE)
+    assert state.world.require(player_location(state)).name in request
     assert "Brass Lantern" in request
     assert NARRATION in request
     assert "Pale Watcher" not in request
 
 
 def test_scene_key_holds_through_a_change_of_cast_but_not_of_place() -> None:
-    _, state = initialized()
-    key = scene_key(player_scene(state))
-    assert scene_key(player_scene(_placed(state, "Pale Watcher", known=False))) == key
-    assert scene_key(player_scene(_placed(state, "Brass Lantern", known=True))) == key
+    engine, state = initialized()
+    key = scene_key(_scene(engine, state))
+    assert scene_key(_scene(engine, _placed(state, "Pale Watcher", known=False))) == key
+    assert scene_key(_scene(engine, _placed(state, "Brass Lantern", known=True))) == key
     draft = state.draft()
     _ = actions.move(draft, PLAYER_ID, CLOISTER)
-    assert scene_key(player_scene(draft.committed())) != key
+    assert scene_key(_scene(engine, draft.committed())) != key
 
 
 def test_an_icon_is_looked_up_in_the_directory_its_entity_belongs_to(tmp_path: Path) -> None:
@@ -89,7 +95,8 @@ def test_an_icon_is_looked_up_in_the_directory_its_entity_belongs_to(tmp_path: P
 async def test_concurrent_illustrations_of_one_scene_generate_it_once(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _, state = initialized()
+    engine, state = initialized()
+    scene = _scene(engine, state)
     prompts: list[str] = []
 
     async def _generate(
@@ -102,7 +109,8 @@ async def test_concurrent_illustrations_of_one_scene_generate_it_once(
     monkeypatch.setattr(Illustrator, "_generate", _generate)
     illustrator = _illustrator(tmp_path)
     _ = await gather(
-        illustrator.illustrate(state, NARRATION), illustrator.illustrate(state, NARRATION)
+        illustrator.illustrate(state, scene, NARRATION),
+        illustrator.illustrate(state, scene, NARRATION),
     )
     scene_prompts = [prompt for prompt in prompts if prompt.startswith("Draw one wide")]
     assert len(scene_prompts) == 1

@@ -1,4 +1,5 @@
-from collections.abc import Mapping
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
@@ -23,56 +24,24 @@ class Scenario(Frozen):
     packs: tuple[Slug, ...] = Field(min_length=1)
     grows: bool = False
     art_style: str = ""
-    starting_location_id: CheckedEntityId
+    # Where the played character starts; a non-rooms engine leaves it null.
+    player_parent_id: CheckedEntityId | None = None
     # Shared by every game of this scenario: read-only — `begin_game` deep-copies before mutating.
     world: WorldState
 
     @model_validator(mode="after")
     def _playable_canon(self) -> Self:
         require_unique("scenario pack ids", self.packs)
-        if "srd" not in self.packs:
-            raise ValueError("scenario packs must include 'srd'")
         if self.world.find(PLAYER_ID) is not None:
             raise ValueError(f"an entity claims the reserved player id {PLAYER_ID!r}")
-        starting_location = self.world.find(self.starting_location_id)
-        if starting_location is None or starting_location.kind != "location":
-            raise ValueError(
-                f"starting_location_id {self.starting_location_id!r} is not a location here"
-            )
+        if self.player_parent_id is not None:
+            _ = self.world.require(self.player_parent_id)
         for companion in self.world.party:
-            if self.world.require(companion).parent_id != self.starting_location_id:
+            if self.world.require(companion).parent_id != self.player_parent_id:
                 raise ValueError(
                     f"the player stands beside who they set out with, unlike {companion!r}"
                 )
         return self
-
-    @model_validator(mode="after")
-    def _every_location_reachable(self) -> Self:
-        """Count locked and unknown exits because play can still open or discover them."""
-        reached = _walk(self.world.entities, self.starting_location_id)
-        unreachable = sorted(
-            entity.id
-            for entity in self.world.entities.values()
-            if entity.kind == "location" and entity.id not in reached
-        )
-        if unreachable:
-            raise ValueError(
-                f"locations no walk of exits reaches from "
-                f"{self.starting_location_id!r}: {unreachable}"
-            )
-        return self
-
-
-def _walk(entities: Mapping[EntityId, Entity], start: EntityId) -> set[EntityId]:
-    reached = {start}
-    frontier = [start]
-    while frontier:
-        here = entities.get(frontier.pop())
-        for way in () if here is None else here.exits:
-            if way.to not in reached:
-                reached.add(way.to)
-                frontier.append(way.to)
-    return reached
 
 
 class CharacterProfile(Frozen):
@@ -95,9 +64,6 @@ class CharacterProfile(Frozen):
         unknown = sorted(item.id for item in self.items if not item.known)
         if unknown:
             raise ValueError(f"a character knows the gear they start with: {unknown}")
-        ids = sorted(item.id for item in self.items if item.rules != {})
-        if ids:
-            raise ValueError(f"gear rules live in the engine overlay, not base.json: {ids}")
         return self
 
 
@@ -129,3 +95,10 @@ class Character(Frozen):
     @property
     def brief(self) -> str:
         return self.profile.brief
+
+
+@dataclass(frozen=True, slots=True)
+class AuthoringBrief:
+    bar_prompt: str
+    unmet: Callable[[Scenario], list[str]]
+    settled: frozenset[str] = frozenset()

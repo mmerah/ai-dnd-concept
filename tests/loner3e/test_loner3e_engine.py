@@ -1,15 +1,16 @@
 from random import Random
 
 import pytest
-from core_test_support import at_boundary, initialized, sheet_of
-from loner3e_test_support import TWISTS
+from core_test_support import initialized
+from loner3e_test_support import TWISTS, at_boundary, sheet
 
-from aidm.engines.core import Engine, rules
+from aidm.engines.core import Engine, mechanics_of, rules
 from aidm.engines.loner3e.engine import advance
 from aidm.engines.loner3e.rules import (
     RULES,
     AdventureGrowth,
     Change,
+    Loner3eState,
     Question,
     Sheet,
     apply_restore_luck,
@@ -24,9 +25,20 @@ from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.facts import cards
 from aidm.state.model import Game
 from aidm.state.play import PendingDecision, PendingOption, ToolCall
+from aidm.world.topology import player_location
 
 FOE = EntityId("mara")
 LANTERN = EntityId("lantern")
+
+
+def _owed(engine: Engine, state: Game) -> tuple[str, ...]:
+    """The ADVANCES OWED section split back into the one line it holds per member."""
+    return tuple(
+        line
+        for section in engine.scene(state).sections
+        if section.title == "ADVANCES OWED"
+        for line in (section.director or "").splitlines()
+    )
 
 
 def _seal(**args: object) -> Question:
@@ -74,7 +86,7 @@ def test_a_question_puts_two_dice_to_the_answer_and_costs_no_luck_on_its_own() -
     facts = resolve_question(draft, _seal(), Random(17), TWISTS)
 
     assert [fact.kind for fact in facts] == ["dice_rolled", "dice_rolled", "question_answered"]
-    assert sheet_of(draft, PLAYER_ID, Sheet).luck.current == RULES.luck_max
+    assert sheet(draft, PLAYER_ID).luck.current == RULES.luck_max
 
 
 def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> None:
@@ -106,8 +118,8 @@ def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
 def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     _, state = initialized()
     draft = state.draft()
-    with rules(draft.player, Sheet) as sheet:
-        sheet.twist.current = RULES.ties_per_twist - 1
+    with rules(draft.world, Loner3eState) as game:
+        game.twist.current = RULES.ties_per_twist - 1
     primed = draft.committed()
 
     action = Question(actor_id=PLAYER_ID, question="Does he slip past unheard?")
@@ -122,7 +134,7 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     _, twist = cards(facts)
     subject, action_name = twist.card.removeprefix("Twist — ").split(" / ")
     rolled = twist_note(subject, action_name)
-    assert sheet_of(draft, PLAYER_ID, Sheet).twist.current == 0
+    assert mechanics_of(draft.world, Loner3eState).twist.current == 0
     assert rolled in draft.world.pending_notes
 
 
@@ -146,20 +158,20 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
         (oracle,) = cards(facts)
         harm = outcome_for(int(oracle.dice[0].result), int(oracle.dice[1].result)).harm
         loser, held = (FOE, PLAYER_ID) if harm > 0 else (PLAYER_ID, FOE)
-        assert sheet_of(draft, loser, Sheet).luck.current == RULES.luck_max - abs(harm)
-        assert sheet_of(draft, held, Sheet).luck.current == RULES.luck_max
+        assert sheet(draft, loser).luck.current == RULES.luck_max - abs(harm)
+        assert sheet(draft, held).luck.current == RULES.luck_max
         # A tie still ticks the counter inside a conflict; one tie alone never reaches the twist.
         assert not any(fact.kind == "twist_due" for fact in facts)
         tied = oracle.dice[0].result == oracle.dice[1].result
-        assert sheet_of(draft, PLAYER_ID, Sheet).twist.current == (1 if tied else 0)
+        assert mechanics_of(draft.world, Loner3eState).twist.current == (1 if tied else 0)
 
 
 def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     _, state = initialized()
     draft = state.draft()
     # A 10-max pool proves the reset lands on the sheet's own maximum, not on a +luck_max delta.
-    with rules(draft.world.require(FOE), Sheet) as sheet:
-        sheet.luck = Counter(current=1, maximum=10)
+    with rules(draft.world, Loner3eState) as game:
+        game.sheets[FOE].luck = Counter(current=1, maximum=10)
     hurt = draft.committed()
 
     for seed in range(200):
@@ -171,8 +183,8 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     else:
         raise AssertionError("no seed under 200 answered yes")
 
-    assert sheet_of(draft, FOE, Sheet).luck.current == 10
-    assert sheet_of(draft, PLAYER_ID, Sheet).luck.current == RULES.luck_max
+    assert sheet(draft, FOE).luck.current == 10
+    assert sheet(draft, PLAYER_ID).luck.current == RULES.luck_max
     assert any(fact.kind == "conflict_lost" for fact in facts)
     assert defeat_note(draft.world.require(FOE).name) in draft.world.pending_notes
     # The conflict is over, so the defeat note steers the same run instead of handing control back.
@@ -201,8 +213,8 @@ def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
     facts = resolve_question(draft, _seal(opponent_id=LANTERN), Random(0), TWISTS)
 
     assert any(fact.kind == "question_answered" for fact in facts)
-    lantern = sheet_of(draft, LANTERN, Sheet).luck.current
-    assert min(lantern, sheet_of(draft, PLAYER_ID, Sheet).luck.current) < RULES.luck_max
+    lantern = sheet(draft, LANTERN).luck.current
+    assert min(lantern, sheet(draft, PLAYER_ID).luck.current) < RULES.luck_max
 
     away = state.draft()
     away.world.require(LANTERN).parent_id = EntityId("cloister")
@@ -242,8 +254,8 @@ def test_the_engine_plays_the_hand_back_and_refuses_every_other_decision() -> No
 def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
     _, state = initialized()
     draft = state.draft()
-    with rules(draft.world.require(FOE), Sheet) as sheet:
-        sheet.luck.current = 0
+    with rules(draft.world, Loner3eState) as game:
+        game.sheets[FOE].luck.current = 0
     spent = draft.committed()
 
     with pytest.raises(ValueError, match="already out of luck"):
@@ -252,10 +264,10 @@ def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
 
 def test_an_adventures_end_owes_an_advance_and_a_tag_the_sheet_lacks_is_refused() -> None:
     engine, state = initialized()
-    assert engine.owed_notes(state) == ()
+    assert _owed(engine, state) == ()
 
-    ready = at_boundary(state, Sheet)
-    (owed,) = engine.owed_notes(ready)
+    ready = at_boundary(state)
+    (owed,) = _owed(engine, ready)
     assert ready.player.name in owed
 
     rewrite = AdventureGrowth(
@@ -295,25 +307,25 @@ def test_an_npc_party_members_growth_writes_their_own_sheet_not_the_players() ->
         ),
     )
     with pytest.raises(ValueError, match="is not in the party"):
-        _ = advance(at_boundary(state, Sheet).draft(), grow_mara, Random(0))
+        _ = advance(at_boundary(state).draft(), grow_mara, Random(0))
 
     draft = state.draft()
     draft.world.party.append(FOE)
-    ready = at_boundary(draft.committed(), Sheet)
-    assert len(engine.owed_notes(ready)) == 2
+    ready = at_boundary(draft.committed())
+    assert len(_owed(engine, ready)) == 2
 
     draft = ready.draft()
     facts = advance(draft, grow_mara, Random(0))
     grown = draft.committed()
 
-    assert sheet_of(grown, FOE, Sheet).skills[-1] == "Reads Old Stonework"
-    assert sheet_of(grown, PLAYER_ID, Sheet).skills == sheet_of(ready, PLAYER_ID, Sheet).skills
+    assert sheet(grown, FOE).skills[-1] == "Reads Old Stonework"
+    assert sheet(grown, PLAYER_ID).skills == sheet(ready, PLAYER_ID).skills
     assert [fact.kind for fact in facts] == ["skill_gained", "milestone_spent"]
 
 
 def test_an_actor_who_joins_after_an_adventure_is_not_owed_the_growth_they_missed() -> None:
     engine, state = initialized()
-    ready = at_boundary(state, Sheet)
+    ready = at_boundary(state)
     draft = ready.draft()
     newcomer = Entity(
         id=EntityId("newcomer"),
@@ -321,15 +333,16 @@ def test_an_actor_who_joins_after_an_adventure_is_not_owed_the_growth_they_misse
         name="A Newcomer",
         brief="Falls in beside Kael.",
         known=True,
-        parent_id=draft.player_location,
-        rules={"concept": "A Newcomer"},
+        parent_id=player_location(draft),
     )
     _ = draft.add(newcomer)
     draft.world.party.append(newcomer.id)
+    with rules(draft.world, Loner3eState) as game:
+        game.sheets[newcomer.id] = Sheet(concept="A Newcomer")
     walked_in = draft.committed()
 
     engine.validate(walked_in)
-    (owed,) = engine.owed_notes(walked_in)
+    (owed,) = _owed(engine, walked_in)
     assert walked_in.player.name in owed
 
 
@@ -339,19 +352,19 @@ def test_a_closed_chapter_gates_the_advance_and_a_second_one_earns_another() -> 
         subject_id=PLAYER_ID,
         changes=(Change(kind="gear", tag="Waxed Rope", why="he never climbs without it now"),),
     )
-    draft = at_boundary(state, Sheet).draft()
+    draft = at_boundary(state).draft()
     _ = advance(draft, change, Random(0))
     spent = draft.committed()
 
-    assert engine.owed_notes(spent) == ()
+    assert _owed(engine, spent) == ()
     with pytest.raises(ValueError, match="has no advance owed"):
         _ = advance(spent.draft(), change, Random(0))
-    assert len(engine.owed_notes(at_boundary(spent, Sheet))) == 1
+    assert len(_owed(engine, at_boundary(spent))) == 1
 
 
 def test_an_adventure_growth_with_three_changes_lands_all_three_on_the_sheet() -> None:
     _, state = initialized()
-    ready = at_boundary(state, Sheet)
+    ready = at_boundary(state)
 
     growth = AdventureGrowth(
         subject_id=PLAYER_ID,
@@ -365,8 +378,8 @@ def test_an_adventure_growth_with_three_changes_lands_all_three_on_the_sheet() -
     facts = advance(draft, growth, Random(0))
     grown = draft.committed()
 
-    sheet = sheet_of(grown, PLAYER_ID, Sheet)
-    assert (sheet.skills[-1], sheet.gear[-1], sheet.frailties[-1]) == (
+    grew = sheet(grown, PLAYER_ID)
+    assert (grew.skills[-1], grew.gear[-1], grew.frailties[-1]) == (
         "Reads Tide Marks",
         "Waxed Rope",
         "Flinches at the Dark",

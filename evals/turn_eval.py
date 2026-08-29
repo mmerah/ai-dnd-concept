@@ -12,15 +12,23 @@ from time import perf_counter
 from aidm.config import Settings, load_settings
 from aidm.content.io import load_character, load_scenario
 from aidm.engines.breathless.rules import RULES as BreathlessRules
-from aidm.engines.breathless.rules import Breathe, Skill, apply_catch_breath
+from aidm.engines.breathless.rules import (
+    Breathe,
+    BreathlessState,
+    Skill,
+    apply_catch_breath,
+    item_sheet_of,
+)
 from aidm.engines.breathless.rules import ItemSheet as BreathlessItemSheet
 from aidm.engines.breathless.rules import Sheet as BreathlessSheet
-from aidm.engines.core import Engine, EntityRules, SheetBase, complete_chapter, rules
+from aidm.engines.core import Engine, mechanics_of, rules, sheet_of
+from aidm.engines.loner3e.engine import complete_chapter as close_loner_chapter
 from aidm.engines.loner3e.rules import RULES as LonerRules
+from aidm.engines.loner3e.rules import Loner3eState
 from aidm.engines.loner3e.rules import Sheet as LonerSheet
 from aidm.engines.registry import begin_game, build_engines
-from aidm.engines.twentyfourxx.rules import ItemSheet
-from aidm.engines.twentyfourxx.rules import Sheet as TwentyfourxxSheet
+from aidm.engines.twentyfourxx.engine import complete_chapter as close_job
+from aidm.engines.twentyfourxx.rules import ItemSheet, TwentyfourxxState
 from aidm.state.entities import (
     DEAD,
     PLAYER_ID,
@@ -36,6 +44,7 @@ from aidm.state.entities import (
 from aidm.state.model import Game
 from aidm.state.play import Answer, PendingDecision, StepTrace, TurnTrace
 from aidm.turn.run import TurnResult, build_turn_agents, run_segment
+from aidm.world.topology import children, player_location
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "evals" / "results"
@@ -177,7 +186,7 @@ def begin(engine_id: EngineId, settings: Settings) -> tuple[Engine, Game]:
         ROOT / settings.characters_dir,
         settings.authoring.starter_character,
         engine.id,
-        engine.check_overlay,
+        engine.character_mechanics,
     )
     return engine, begin_game(engine, canon.scenario_id, scenario, character)
 
@@ -292,8 +301,9 @@ def unless_lost(
     return lambda result: lost_a_roll(result, won) or holds(result)
 
 
-def sheet_of[R: EntityRules](state: Game, entity_id: str, model: type[R]) -> R:
-    return model.model_validate(state.world.require(EntityId(entity_id)).rules)
+def loner_sheet(state: Game, entity_id: str) -> LonerSheet:
+    game = mechanics_of(state.world, Loner3eState)
+    return sheet_of(game.sheets, state.world.require(EntityId(entity_id)))
 
 
 def has_trait(result: TurnResult, entity_id: str, trait_id: str) -> bool:
@@ -302,8 +312,9 @@ def has_trait(result: TurnResult, entity_id: str, trait_id: str) -> bool:
 
 
 def breaks_left(result: TurnResult, entity_id: str) -> int:
-    """Sturdy gear counts its breaks on its own rules; gear with none still breaks once."""
-    return sheet_of(result.state, entity_id, ItemSheet).breaks.current
+    """Sturdy gear counts its breaks on a sheet; gear with none is sheetless and breaks once."""
+    items = mechanics_of(result.state.world, TwentyfourxxState).items
+    return items.get(EntityId(entity_id), ItemSheet()).breaks.current
 
 
 def card_says(result: TurnResult, text: str) -> bool:
@@ -330,7 +341,7 @@ def luck_restored(result: TurnResult) -> bool:
 
 
 def _twists_left(state: Game) -> int:
-    return LonerSheet.model_validate(state.player.rules).twist.current
+    return mechanics_of(state.world, Loner3eState).twist.current
 
 
 def tied_a_roll(result: TurnResult) -> bool:
@@ -344,15 +355,17 @@ def tied_a_roll(result: TurnResult) -> bool:
 
 
 def loner_luck(result: TurnResult, entity_id: str) -> int:
-    return sheet_of(result.state, entity_id, LonerSheet).luck.current
+    return loner_sheet(result.state, entity_id).luck.current
 
 
 def skill_face(result: TurnResult, skill: str) -> int:
-    return sheet_of(result.state, result.state.player_id, TwentyfourxxSheet).face(skill)
+    game = mechanics_of(result.state.world, TwentyfourxxState)
+    return sheet_of(game.sheets, result.state.player).face(skill)
 
 
 def breathless_sheet(result: TurnResult) -> BreathlessSheet:
-    return sheet_of(result.state, result.state.player_id, BreathlessSheet)
+    game = mechanics_of(result.state.world, BreathlessState)
+    return sheet_of(game.sheets, result.state.player)
 
 
 def skill_rolled(result: TurnResult, skill: Skill) -> bool:
@@ -427,7 +440,7 @@ def flagged_vulnerable(result: TurnResult) -> bool:
 
 
 def carried_items(result: TurnResult) -> int:
-    return len(result.state.world.children(result.state.player_id, "item"))
+    return len(children(result.state.world, result.state.player_id, "item"))
 
 
 COMPLICATIONS = frozenset(
@@ -489,23 +502,23 @@ def _seal_met(state: Game) -> Game:
 
 def _winded(state: Game) -> Game:
     draft = _rat_met(state).draft()
-    with rules(draft.player, LonerSheet) as sheet:
-        sheet.luck.current = 2
+    with rules(draft.world, Loner3eState) as game:
+        sheet_of(game.sheets, draft.player).luck.current = 2
     return draft.committed()
 
 
 def _rat_on_its_last_luck(state: Game) -> Game:
     """Any yes ends the conflict: the rat's one luck cannot survive an exchange it loses."""
     draft = _mid_conflict(state).draft()
-    with rules(draft.world.require(EntityId("cloister-rat")), LonerSheet) as sheet:
-        sheet.luck.current = 1
+    with rules(draft.world, Loner3eState) as game:
+        sheet_of(game.sheets, draft.world.require(EntityId("cloister-rat"))).luck.current = 1
     return draft.committed()
 
 
 def _two_ties_in(state: Game) -> Game:
     draft = staged(state, "cloister", []).draft()
-    with rules(draft.player, LonerSheet) as sheet:
-        sheet.twist.current = LonerRules.ties_per_twist - 1
+    with rules(draft.world, Loner3eState) as game:
+        game.twist.current = LonerRules.ties_per_twist - 1
     return draft.committed()
 
 
@@ -519,14 +532,14 @@ def _adventure_done(state: Game, canon: Canon) -> Game:
     return draft.committed()
 
 
-def _adventure_closed[S: SheetBase](state: Game, canon: Canon, sheet_type: type[S]) -> Game:
+def _adventure_closed(state: Game, canon: Canon, close: Callable[[Game], object]) -> Game:
     """One chapter closed and no advance taken yet: the Director owes the player one."""
     draft = _adventure_done(state, canon).draft()
     thread = draft.world.thread(canon.thread)
     if thread is None:
         raise ValueError(f"no thread {canon.thread!r}")
     thread.status = "resolved"
-    _ = complete_chapter(draft, "the chapter closed", sheet_type)
+    _ = close(draft)
     return draft.committed()
 
 
@@ -539,19 +552,21 @@ def _broken_arm(state: Game) -> Game:
 
 
 def _bulky_gear(draft: Game, item_id: str, name: str, breaks: int = 1) -> None:
-    """Written straight into the world: the item's own rules are the sheet it plays by."""
-    marks = ItemSheet(bulky=True, breaks=Counter(current=breaks, maximum=breaks))
-    _ = draft.add(
-        Entity(
-            id=EntityId(item_id),
-            kind="item",
-            name=name,
-            brief=name,
-            known=True,
-            parent_id=PLAYER_ID,
-            rules=marks.model_dump(mode="json"),
+    """Written straight into the world: the sheet the gear plays by is the engine's own blob."""
+    with rules(draft.world, TwentyfourxxState) as game:
+        _ = draft.add(
+            Entity(
+                id=EntityId(item_id),
+                kind="item",
+                name=name,
+                brief=name,
+                known=True,
+                parent_id=PLAYER_ID,
+            )
         )
-    )
+        game.items[EntityId(item_id)] = ItemSheet(
+            bulky=True, breaks=Counter(current=breaks, maximum=breaks)
+        )
 
 
 def _armored(state: Game) -> Game:
@@ -583,8 +598,8 @@ def _docked_skiff(state: Game) -> Game:
     draft.world.require_kind(EntityId("holdfast"), "location").exits.append(
         Exit(to=EntityId("skiff"), known=True)
     )
-    with rules(draft.player, TwentyfourxxSheet) as sheet:
-        sheet.credits.current = 12
+    with rules(draft.world, TwentyfourxxState) as game:
+        sheet_of(game.sheets, draft.player).credits.current = 12
     return draft.committed()
 
 
@@ -598,31 +613,31 @@ def _mara_at_hand(state: Game) -> Game:
 def _stunt_spent(state: Game) -> Game:
     """One d12 flourish is all there is until the player catches their breath."""
     draft = state.draft()
-    with rules(draft.player, BreathlessSheet) as sheet:
-        sheet.stunted = True
+    with rules(draft.world, BreathlessState) as game:
+        sheet_of(game.sheets, draft.player).stunted = True
     return draft.committed()
 
 
 def _stressed(state: Game, stress: int) -> Game:
     draft = state.draft()
-    with rules(draft.player, BreathlessSheet) as sheet:
-        sheet.stress.current = stress
+    with rules(draft.world, BreathlessState) as game:
+        sheet_of(game.sheets, draft.player).stress.current = stress
     return draft.committed()
 
 
 def _med_kit_at_hand(state: Game) -> Game:
     """Stress to spend it on and the kit to spend: using it is the player's own move."""
     draft = _stressed(state, 3).draft()
-    with rules(draft.player, BreathlessSheet) as sheet:
-        sheet.med_kit = True
+    with rules(draft.world, BreathlessState) as game:
+        sheet_of(game.sheets, draft.player).med_kit = True
     return draft.committed()
 
 
 def _spent_loot_die(state: Game) -> Game:
     """A loot die at d4 keeps rolling: the SRD allows it at the player's own risk."""
     draft = state.draft()
-    with rules(draft.player, BreathlessSheet) as sheet:
-        sheet.loot = BreathlessRules.floor
+    with rules(draft.world, BreathlessState) as game:
+        sheet_of(game.sheets, draft.player).loot = BreathlessRules.floor
     return draft.committed()
 
 
@@ -636,26 +651,28 @@ def _wren_at_hand(state: Game) -> Game:
 def _full_backpack(state: Game) -> Game:
     """Two more on top of the lantern fills the backpack; the next find lies where it drops."""
     draft = state.draft()
-    for item_id, name in (("pry-bar", "a pry bar"), ("water-can", "a water can")):
-        _ = draft.add(
-            Entity(
-                id=EntityId(item_id),
-                kind="item",
-                name=name,
-                brief=name,
-                known=True,
-                parent_id=PLAYER_ID,
-                rules={"die": 6},
+    with rules(draft.world, BreathlessState) as game:
+        for item_id, name in (("pry-bar", "a pry bar"), ("water-can", "a water can")):
+            _ = draft.add(
+                Entity(
+                    id=EntityId(item_id),
+                    kind="item",
+                    name=name,
+                    brief=name,
+                    known=True,
+                    parent_id=PLAYER_ID,
+                )
             )
-        )
+            game.items[EntityId(item_id)] = BreathlessItemSheet(die=6)
     return draft.committed()
 
 
 def _spent_lantern(state: Game) -> Game:
     """An item at d4 has broken, been lost, or faded: it rolls no more."""
     draft = state.draft()
-    with rules(draft.world.require(EntityId("lantern")), BreathlessItemSheet) as sheet:
-        sheet.die = BreathlessRules.floor
+    with rules(draft.world, BreathlessState) as game:
+        lantern = draft.world.require(EntityId("lantern"))
+        item_sheet_of(game, lantern).die = BreathlessRules.floor
     return draft.committed()
 
 
@@ -667,10 +684,11 @@ def _breath_caught(state: Game) -> Game:
 
 
 def _armed_gatekeeper(state: Game) -> Game:
-    """Dov rolls for himself, so he is rated and armed as an authored actor with rules would be."""
+    """Dov rolls for himself, so he is rated and armed as an authored actor would be."""
     draft = state.draft()
     dov = draft.world.require(EntityId("dov-marek"))
-    dov.rules = BreathlessSheet(skills={"Bash": 8}).model_dump(mode="json")
+    with rules(draft.world, BreathlessState) as game:
+        game.sheets[dov.id] = BreathlessSheet(skills={"Bash": 8})
     draft.world.require(EntityId("fire-axe")).parent_id = dov.id
     return draft.committed()
 
@@ -695,14 +713,14 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
         return any(f.kind in ("defence_taken", "defence_turned") for f in result.turn.facts)
 
     # Only engines that declare a stake tool can miss by skipping it.
-    stakes = any(one.name.startswith("stake_") for one in built()[engine_id].director_tools)
+    stakes = any(one.name.startswith("stake_") for one in built()[engine_id].tools)
     stake_checks = (Expectation("staked", staked_before_rolling),) if stakes else ()
     cases = (
         Case(
             id=f"{engine_id}/find-and-take",
             engine_id=engine_id,
             prompt=(
-                f"I search {named(start, start.player_location)} until I turn up "
+                f"I search {named(start, player_location(start))} until I turn up "
                 f"{named(start, canon.hidden)}, hidden there, and I pick it up and keep it."
             ),
             expectations=(
@@ -716,7 +734,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
             id=f"{engine_id}/walk-and-look",
             engine_id=engine_id,
             prompt=(
-                f"I walk out of {named(start, start.player_location)} into "
+                f"I walk out of {named(start, player_location(start))} into "
                 f"{named(start, canon.walk_to)}, and there I look around."
             ),
             expectations=(
@@ -802,7 +820,10 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 expectations=(
                     Expectation(
                         "seal-sheeted",
-                        lambda r: bool(r.state.world.require(EntityId("vault-seal")).rules),
+                        lambda r: (
+                            EntityId("vault-seal")
+                            in mechanics_of(r.state.world, Loner3eState).sheets
+                        ),
                     ),
                     Expectation("luck-moved", luck_moved),
                     Expectation("hands-back", conflict_handed_back),
@@ -837,7 +858,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                     Expectation(
                         "luck-full",
                         lambda r: (
-                            (sheet := sheet_of(r.state, r.state.player_id, LonerSheet)).luck.current
+                            (sheet := loner_sheet(r.state, r.state.player_id)).luck.current
                             == sheet.luck.maximum
                         ),
                     ),
@@ -927,11 +948,11 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                         "on-the-sheet",
                         lambda r: any(
                             "rites" in skill.lower()
-                            for skill in sheet_of(r.state, r.state.player_id, LonerSheet).skills
+                            for skill in loner_sheet(r.state, r.state.player_id).skills
                         ),
                     ),
                 ),
-                setup=lambda state: _adventure_closed(state, canon, LonerSheet),
+                setup=lambda state: _adventure_closed(state, canon, close_loner_chapter),
             ),
             Case(
                 id=f"{engine_id}/close-the-adventure",
@@ -1140,7 +1161,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                     Expectation("climbing-d12", lambda r: skill_face(r, "Climbing") == 12),
                     Expectation("credits-earned", lambda r: counter_rose(r, " credits +")),
                 ),
-                setup=lambda state: _adventure_closed(state, canon, TwentyfourxxSheet),
+                setup=lambda state: _adventure_closed(state, canon, close_job),
             ),
             Case(
                 id=f"{engine_id}/close-the-job",

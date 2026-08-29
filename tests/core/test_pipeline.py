@@ -3,14 +3,14 @@ from random import Random
 import pytest
 from core_test_support import (
     TWENTYFOURXX,
-    at_boundary,
     game,
     initialized,
+    loner_at_boundary,
+    loner_sheet,
     narrated,
     played,
     recorded,
     scripted,
-    sheet_of,
     shown,
     structured,
     text,
@@ -18,13 +18,13 @@ from core_test_support import (
 )
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolReturnPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
+from twentyfourxx_test_support import sheets
 
-from aidm.engines.loner3e.rules import Sheet as LonerSheet
 from aidm.engines.loner3e.rules import outcome_for
-from aidm.engines.twentyfourxx.rules import Sheet
 from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.facts import Fact, cards
 from aidm.turn.run import TurnStep
+from aidm.world.topology import children
 
 
 async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> None:
@@ -51,7 +51,7 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
         "entity_discovered",
         "entity_moved",
     ]
-    assert {item.id for item in result.state.world.children(PLAYER_ID, "item")} == {
+    assert {item.id for item in children(result.state.world, PLAYER_ID, "item")} == {
         "lantern",
         "vault-map",
     }
@@ -207,7 +207,7 @@ async def test_a_call_its_own_fields_refuse_is_retried_rather_than_killing_the_t
 
 async def test_a_later_call_is_judged_against_the_mechanics_the_earlier_one_moved() -> None:
     engine, state = game(TWENTYFOURXX)
-    credits = sheet_of(state, PLAYER_ID, Sheet).credits.current
+    credits = sheets(state)[PLAYER_ID].credits.current
     director = recorded(
         tool_call("change_credits", actor_id="player", amount=-credits),
         tool_call("change_credits", actor_id="player", amount=-1),
@@ -215,7 +215,7 @@ async def test_a_later_call_is_judged_against_the_mechanics_the_earlier_one_move
     )
     result = await played(engine, state, "I pay what I owe.", director=FunctionModel(director.stub))
 
-    assert sheet_of(result.state, PLAYER_ID, Sheet).credits.current == 0
+    assert sheets(result.state)[PLAYER_ID].credits.current == 0
     assert director.reasons()
 
 
@@ -298,13 +298,13 @@ async def test_an_owed_advance_is_noted_lands_on_call_and_is_refused_once_spent(
     )
     result = await played(
         engine,
-        at_boundary(state, LonerSheet),
+        loner_at_boundary(state),
         "I keep the rope.",
         director=FunctionModel(director.stub),
     )
 
     assert "Kael has an advance owed" in shown(result.turn, "director")
     assert len(cards(result.turn.facts)) == 2
-    sheet = sheet_of(result.state, PLAYER_ID, LonerSheet)
+    sheet = loner_sheet(result.state, PLAYER_ID)
     assert (sheet.gear[-1], sheet.milestones) == ("Waxed Rope", 1)
     assert any("has no advance owed" in reason for reason in director.reasons())

@@ -17,14 +17,7 @@ from pydantic import Field, ValidationError
 from pydantic_ai.messages import TextPart, ToolReturnPart
 from pydantic_ai.models.function import FunctionModel
 
-from aidm.engines.core import (
-    DirectorTool,
-    Engine,
-    NoArgs,
-    apply_to_draft,
-    director_tool,
-    transact,
-)
+from aidm.engines.core import Engine
 from aidm.state.entities import Frozen
 from aidm.state.facts import Fact
 from aidm.state.model import Game
@@ -35,6 +28,13 @@ from aidm.state.play import (
     PendingDecision,
     PendingOption,
     ToolCall,
+)
+from aidm.state.tools import (
+    DirectorTool,
+    NoArgs,
+    apply_to_draft,
+    director_tool,
+    transact,
 )
 from aidm.turn.run import RULES_WAIT, TurnRecord, consume_answer, exchanges_to_messages
 
@@ -110,7 +110,7 @@ def _strike_tool(*, narrate: bool) -> DirectorTool:
 def _deciding(*, narrate: bool = True) -> tuple[Engine, Game]:
     engine = replace(
         ENGINES_BUILT[LONER3E],
-        director_tools=(_strike_tool(narrate=narrate),),
+        tools=(_strike_tool(narrate=narrate),),
         resolvers=(TURN_THE_HIT, CHAIN_THE_HIT),
     )
     _, state = game(LONER3E)
@@ -212,14 +212,17 @@ def test_a_change_outside_a_turn_cannot_open_a_decision_but_may_run_on_a_suspend
 
     with pytest.raises(ValueError, match="cannot open a decision"):
         _ = transact(
-            engine, state.draft(), lambda draft, _rng: _hit(draft, narrate=False), Random(0)
+            engine.validate,
+            state.draft(),
+            lambda draft, _rng: _hit(draft, narrate=False),
+            Random(0),
         )
 
     def nothing(draft: Game, rng: Random) -> tuple[Fact, ...]:
         del draft, rng
         return ()
 
-    suspended, _ = transact(engine, _suspended(state).draft(), nothing, Random(0))
+    suspended, _ = transact(engine.validate, _suspended(state).draft(), nothing, Random(0))
     assert suspended.pending == DECISION
 
 
@@ -228,13 +231,15 @@ def test_a_second_decision_is_refused_while_one_is_already_open() -> None:
     draft = _suspended(state).draft()
 
     with pytest.raises(ValueError, match="one at a time"):
-        _ = apply_to_draft(engine, draft, lambda draft, _rng: _hit(draft, narrate=False), Random(0))
+        _ = apply_to_draft(
+            engine.validate, draft, lambda draft, _rng: _hit(draft, narrate=False), Random(0)
+        )
 
 
 def test_a_paused_exchange_replays_as_a_message_and_a_silent_one_refuses() -> None:
-    paused = Exchange(prompt="I charge.", place="the cloister", lines=(), decision=DECISION.prompt)
-    stayed = Exchange(prompt="I press on.", place="the cloister", lines=(Line(text="It gives."),))
-    moved = Exchange(prompt="I go up.", place="the bell tower", lines=(Line(text="Rope sways."),))
+    paused = Exchange(prompt="I charge.", scene="the cloister", lines=(), decision=DECISION.prompt)
+    stayed = Exchange(prompt="I press on.", scene="the cloister", lines=(Line(text="It gives."),))
+    moved = Exchange(prompt="I go up.", scene="the bell tower", lines=(Line(text="Rope sways."),))
 
     rendered = [
         part.content
@@ -249,7 +254,7 @@ def test_a_paused_exchange_replays_as_a_message_and_a_silent_one_refuses() -> No
         "[At the bell tower]\nRope sways.",
     ]
     with pytest.raises(ValueError, match="nothing to replay"):
-        _ = exchanges_to_messages([Exchange(prompt="I wait.", place="the cloister", lines=())])
+        _ = exchanges_to_messages([Exchange(prompt="I wait.", scene="the cloister", lines=())])
 
 
 def test_restore_refuses_an_option_whose_call_names_no_tool_or_carries_args_it_rejects() -> None:

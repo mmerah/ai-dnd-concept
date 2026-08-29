@@ -5,29 +5,30 @@ from typing import Literal, Self, get_args
 from pydantic import Field, model_validator
 
 from aidm.engines.core import (
-    EntityRules,
-    ProposalBase,
-    SheetBase,
     adjust,
-    director_tool,
     keep_highest,
+    mechanics_of,
     pool,
     rules,
+    sheet_of,
     spend,
     stake_decision,
 )
-from aidm.state.actions import require_actor_here
 from aidm.state.entities import (
     CheckedEntityId,
     Counter,
     Entity,
     EntityId,
     Frozen,
+    Mutable,
     Slug,
 )
 from aidm.state.facts import DiceEvent, Fact, entity_fact
 from aidm.state.model import Game
 from aidm.state.play import DecisionOption, PendingDecision, PendingOption, ToolCall
+from aidm.state.tools import director_tool
+from aidm.world.actions import require_actor_here
+from aidm.world.topology import children
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,7 +53,8 @@ type SkillDie = Literal[8, 10, 12]
 LADDER: tuple[SkillDie, ...] = get_args(SkillDie.__value__)
 
 
-class Sheet(SheetBase):
+class Sheet(Mutable):
+    chapters: int = 0
     specialty: str = ""
     origin: str = ""
     skills: dict[str, SkillDie] = Field(default_factory=dict)
@@ -76,7 +78,7 @@ def _mark(set_on: bool) -> str:
     return "yes" if set_on else ""
 
 
-class ItemSheet(EntityRules):
+class ItemSheet(Mutable):
     """A carried item's marks and the breaks it has left; every item breaks once by default."""
 
     bulky: bool = False
@@ -97,6 +99,12 @@ class ItemSheet(EntityRules):
             ("Broken", _mark(self.broken)),
             ("Breaks left", counted),
         )
+
+
+class TwentyfourxxState(Mutable):
+    sheets: dict[EntityId, Sheet] = Field(default_factory=dict)
+    # Only gear that is bulky or breaks more than once is worth a sheet; the rest is scenery.
+    items: dict[EntityId, ItemSheet] = Field(default_factory=dict)
 
 
 def raised(current: SkillDie | None) -> SkillDie:
@@ -265,32 +273,36 @@ def _require_skill(actor: Entity, sheet: Sheet, skill: str, field: str) -> None:
 
 
 def apply_change_credits(draft: Game, actor_id: EntityId, amount: int) -> list[Fact]:
+    with rules(draft.world, TwentyfourxxState) as game:
+        return move_credits(draft, game, actor_id, amount)
+
+
+def move_credits(
+    draft: Game, game: TwentyfourxxState, actor_id: EntityId, amount: int
+) -> list[Fact]:
     if amount == 0:
         raise ValueError("changing credits moves the pool; zero moves nothing")
     actor = require_actor_here(draft, actor_id)
     facts = draft.reveal(actor)
-    with rules(actor, Sheet) as sheet:
-        if amount > 0:
-            return [
-                *facts,
-                *adjust(draft, actor, "credits", sheet.credits, amount, "paid"),
-            ]
-        # `spend`, not a negative adjust: an overdraw is refused, not clamped.
-        return [*facts, *spend(draft, actor, "credits", sheet.credits, -amount)]
+    sheet = sheet_of(game.sheets, actor)
+    if amount > 0:
+        return [*facts, *adjust(draft, actor, "credits", sheet.credits, amount, "paid")]
+    # `spend`, not a negative adjust: an overdraw is refused, not clamped.
+    return [*facts, *spend(draft, actor, "credits", sheet.credits, -amount)]
 
 
 def _require_playable(
-    draft: Game, action: Attempt
+    draft: Game, game: TwentyfourxxState, action: Attempt
 ) -> tuple[Entity, Sheet, Sheet | None, list[Fact]]:
     actor = require_actor_here(draft, action.actor_id)
     facts = draft.reveal(actor)
-    if not actor.rules:
+    sheet = game.sheets.get(actor.id)
+    if sheet is None:
         raise ValueError(
             f"{actor.name} has no character sheet, so it never rolls: narrate its threat, "
             "or put the risk on the player's own attempt or a luck test"
         )
-    sheet = Sheet.model_validate(actor.rules)
-    helper_sheet = _helper_sheet(draft, actor, action, facts)
+    helper_sheet = _helper_sheet(draft, game, actor, action, facts)
     _require_skill(actor, sheet, action.skill, "skill")
     return actor, sheet, helper_sheet, facts
 
@@ -298,7 +310,8 @@ def _require_playable(
 def resolve_stake(draft: Game, action: Attempt) -> tuple[Fact, ...]:
     if action.actor_id != draft.player_id:
         raise ValueError("stake only the player's attempt; roll an actor's attempt directly")
-    _ = _require_playable(draft.draft(), action)
+    trial = draft.draft()
+    _ = _require_playable(trial, mechanics_of(trial.world, TwentyfourxxState), action)
     draft.pending = stake_decision(
         action.risk, ToolCall(name=ROLL_ATTEMPT, args=action.model_dump(mode="json"))
     )
@@ -319,7 +332,9 @@ def resolve_defence(draft: Game, goal: str, item_id: EntityId | None) -> tuple[F
     item = draft.world.require_kind(item_id, "item")
     if item.parent_id != draft.player_id:
         raise ValueError(f"the player does not carry {item.name}, so it cannot break for them")
-    with rules(item, ItemSheet) as sheet:
+    with rules(draft.world, TwentyfourxxState) as game:
+        # Plain gear is sheetless until the first hit it turns; every item breaks at least once.
+        sheet = game.items.setdefault(item.id, ItemSheet())
         if sheet.broken:
             raise ValueError(f"{item.name} is already broken, so it turns nothing")
         sheet.breaks.current -= 1
@@ -361,15 +376,15 @@ DEFEND = director_tool(
 )
 
 
-def _defence_decision(draft: Game, goal: str) -> PendingDecision:
+def _defence_decision(draft: Game, game: TwentyfourxxState, goal: str) -> PendingDecision:
     unbroken = tuple(
         PendingOption(
             id=item.id,
             label=f"Break the {item.name}",
             call=ToolCall(name=DEFEND.name, args={"goal": goal, "item_id": item.id}),
         )
-        for item in draft.world.children(draft.player_id, "item")
-        if not ItemSheet.model_validate(item.rules).broken
+        for item in children(draft.world, draft.player_id, "item")
+        if (held := game.items.get(item.id)) is None or not held.broken
     )
     return PendingDecision(
         kind="defence",
@@ -390,7 +405,14 @@ ROLL_ATTEMPT = "roll_attempt"
 
 
 def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ...]:
-    actor, sheet, helper_sheet, facts = _require_playable(draft, action)
+    with rules(draft.world, TwentyfourxxState) as game:
+        return _attempt(draft, game, action, rng)
+
+
+def _attempt(
+    draft: Game, game: TwentyfourxxState, action: Attempt, rng: Random
+) -> tuple[Fact, ...]:
+    actor, sheet, helper_sheet, facts = _require_playable(draft, game, action)
 
     faces = pool_faces(sheet, action, helper_sheet)
     reason = f"{action.goal} — {action.skill or 'no skill'}"
@@ -418,7 +440,7 @@ def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ..
     facts[resolved_at] = facts[resolved_at].model_copy(update={"card": card, "dice": dice})
 
     if action.hit and action.actor_id == draft.player_id and outcome != "success":
-        draft.pending = _defence_decision(draft, action.goal)
+        draft.pending = _defence_decision(draft, game, action.goal)
     return tuple(facts)
 
 
@@ -434,7 +456,9 @@ def resolve_luck_test(draft: Game, action: LuckTest, rng: Random) -> tuple[Fact,
     return tuple(facts)
 
 
-def _helper_sheet(draft: Game, actor: Entity, action: Attempt, facts: list[Fact]) -> Sheet | None:
+def _helper_sheet(
+    draft: Game, game: TwentyfourxxState, actor: Entity, action: Attempt, facts: list[Fact]
+) -> Sheet | None:
     if action.helper_id is None:
         return None
     if action.helper_id == actor.id:
@@ -444,8 +468,8 @@ def _helper_sheet(draft: Game, actor: Entity, action: Attempt, facts: list[Fact]
         )
     helper = require_actor_here(draft, action.helper_id)
     facts.extend(draft.reveal(helper))
-    with rules(helper, Sheet) as sheet:
-        _require_skill(helper, sheet, action.helper_skill, "helper_skill")
+    sheet = sheet_of(game.sheets, helper)
+    _require_skill(helper, sheet, action.helper_skill, "helper_skill")
     return sheet
 
 
@@ -474,9 +498,10 @@ GROWTH = (
 )
 
 
-class Advance(ProposalBase):
+class Advance(Frozen):
     """The skill increase earned by one job."""
 
+    subject_id: CheckedEntityId = Field(description="Exact id of the party member who advances.")
     skill: str = Field(
         min_length=1,
         description="Title-case skill to raise one step or add at d8.",

@@ -22,7 +22,7 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
     draft.history = (
         Exchange(
             prompt="I take the map.",
-            place="the sealed vault",
+            scene="the sealed vault",
             lines=(),
             facts=(
                 Fact(
@@ -57,7 +57,7 @@ def test_content_paths_reject_an_unsafe_id(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="invalid content id"):
         load_scenario(tmp_path, "../escape")
     with pytest.raises(ValueError, match="invalid content id"):
-        load_character(tmp_path, "kael/../..", engine.id, engine.check_overlay)
+        load_character(tmp_path, "kael/../..", engine.id, engine.character_mechanics)
 
 
 def test_write_scenario_round_trips_and_refuses_a_duplicate(tmp_path: Path) -> None:

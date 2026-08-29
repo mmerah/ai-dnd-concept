@@ -5,7 +5,7 @@ import pytest
 from core_test_support import (
     LONER3E,
     SCENARIOS,
-    at_boundary,
+    loner_at_boundary,
     narrated,
     scripted,
     text,
@@ -27,10 +27,10 @@ from aidm.authoring.draft import (
 )
 from aidm.authoring.run import GrowthRun, briefing, growth_run
 from aidm.content.io import FileStore
-from aidm.engines.loner3e.rules import Sheet
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit
 from aidm.state.model import Game, Thread
 from aidm.turn.run import TurnStep
+from aidm.world.topology import player_location
 
 _CRYPT_ID = EntityId("sub-crypt")
 
@@ -49,7 +49,7 @@ def _grown(directory: Path, *, thin: bool = True) -> GameSession:
     """A scenario that grows, staged with one door left to find and a change on offer."""
     game = loner3e_session(directory)
     game.scenario = updated(game.scenario, grows=True)
-    game.state = at_boundary(game.state, Sheet)
+    game.state = loner_at_boundary(game.state)
     if thin:
         tower = game.state.world.require(EntityId("bell-tower"))
         game.state = with_entity(game.state, updated(tower, known=True))
@@ -65,7 +65,7 @@ def _stub_author(monkeypatch: pytest.MonkeyPatch) -> list[Game]:
         seen.append(self.base)
         cloister = self.draft.entities[EntityId("cloister")]
         edited = updated(cloister, exits=[*cloister.exits, Exit(to=_CRYPT_ID)])
-        _ = self.draft.apply(ScenarioPatch(entities=(_crypt(), edited)))
+        _ = self.draft.apply(ScenarioPatch(entities=(_crypt(), edited)), self.playing.engine)
         return "grew the sub-crypt"
 
     monkeypatch.setattr(GrowthRun, "send", authored)
@@ -91,7 +91,7 @@ def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_pat
     ids = set(scenario.world.entities)
     assert PLAYER_ID not in ids
     assert EntityId("lantern") not in ids
-    assert scenario.starting_location_id == game.state.player_location
+    assert scenario.player_parent_id == player_location(game.state)
     assert EntityId("mara") in ids
 
     unmet = scenario_refusal(
@@ -112,7 +112,8 @@ def test_delta_is_the_canon_a_pass_added_and_the_ways_into_it(tmp_path: Path) ->
         ScenarioPatch(
             entities=(_crypt(), edited_cloister),
             threads=(Thread(id="the-lower-dark", title="The lower dark"),),
-        )
+        ),
+        game.engine,
     )
 
     patch = extension_patch(game.state.world, draft)
@@ -146,7 +147,7 @@ async def test_a_thin_world_grows_inside_the_turn_that_ran_it_thin(
     assert _CRYPT_ID in game.engine.restored(saved).world.entities
 
     assert (SCENARIOS / "whispering-vault" / "world.json").read_bytes() == authored
-    assert game.engine.owed_notes(game.state)
+    assert "ADVANCES OWED" in {one.title for one in game.engine.scene(game.state).sections}
 
 
 async def test_a_world_with_doors_left_to_find_grows_nothing(
@@ -181,9 +182,14 @@ def test_a_grown_world_is_briefed_with_its_sheets_and_refused_until_it_hangs_tog
         name="the bone warden",
         brief="He counts the niches every night and never leaves.",
         parent_id=_CRYPT_ID,
-        rules={"concept": "A Bone Warden"},
     )
-    _ = run.draft.apply(ScenarioPatch(entities=(updated(_crypt(), exits=[]), warden)))
+    _ = run.draft.apply(
+        ScenarioPatch(
+            entities=(updated(_crypt(), exits=[]), warden),
+            mechanics={"sheets": {warden.id: {"concept": "A Bone Warden"}}},
+        ),
+        game.engine,
+    )
 
     refused = run.refusal()
     assert refused is not None and _CRYPT_ID in refused

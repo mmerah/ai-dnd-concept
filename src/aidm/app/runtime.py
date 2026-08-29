@@ -12,13 +12,15 @@ from aidm.authoring.run import growth_run
 from aidm.config import Settings, load_settings
 from aidm.content.io import FileStore, load_character, load_scenario
 from aidm.content.model import Character, Scenario
-from aidm.engines.core import Engine, Offer, PlayerAction, offered, play_action, transact
+from aidm.engines.core import Engine, PlayerAction, offered, play_action, transact
 from aidm.engines.registry import begin_game, build_engines
 from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Slug
 from aidm.state.facts import Fact, traced
-from aidm.state.model import Game, frontier
+from aidm.state.model import Game
 from aidm.state.play import Answer, TurnTrace
+from aidm.state.scene import VisibleScene
 from aidm.turn.run import TurnAgents, TurnStep, build_turn_agents, run_segment
+from aidm.world.topology import frontier
 
 from .launch import LaunchTarget
 from .media import ICON_DIR, Illustrator
@@ -110,7 +112,7 @@ class GameSession:
             await self._extend()
         return trace
 
-    def offers(self) -> tuple[tuple[PlayerAction, Offer], ...]:
+    def offers(self) -> tuple[tuple[PlayerAction, str, dict[str, JsonValue]], ...]:
         return offered(self.engine, self.state)
 
     def act(self, name: Slug, raw: Mapping[str, JsonValue]) -> tuple[Fact, ...]:
@@ -118,11 +120,14 @@ class GameSession:
         self.commit(state)
         return facts
 
+    def scene(self) -> VisibleScene:
+        return VisibleScene.revealed_from(self.engine.scene(self.state), self.state.world)
+
     def scene_art(self) -> Path | None:
-        return None if self.media is None else self.media.scene_art(self.state)
+        return None if self.media is None else self.media.scene_art(self.scene())
 
     def scene_pending(self) -> bool:
-        return self.media is not None and self.media.scene_pending(self.state)
+        return self.media is not None and self.media.scene_pending(self.scene())
 
     def illustrate_scene(self) -> None:
         """Draw where the player stands with no turn behind it, so an opening scene has art."""
@@ -135,7 +140,7 @@ class GameSession:
         """Retain background tasks because asyncio may collect unreferenced tasks early."""
         if self.media is None:
             return
-        task = create_task(self.media.illustrate(self.state, narration))
+        task = create_task(self.media.illustrate(self.state, self.scene(), narration))
         self._illustrations.add(task)
         task.add_done_callback(self._illustrations.discard)
 
@@ -184,7 +189,7 @@ class GameSession:
     def apply_growth(self, patch: ExtensionPatch) -> tuple[Fact, ...]:
         """Applied to the current state, which may have moved since the patch was authored."""
         state, facts = transact(
-            self.engine,
+            self.engine.validate,
             self.state.draft(),
             lambda draft, _rng: apply_patch(draft, patch),
             self.rng,
@@ -248,7 +253,7 @@ class Runtime:
         scenario = load_scenario(settings.scenarios_dir, target.scenario_id)
         engine = self.engines[scenario.engine]
         character = load_character(
-            settings.characters_dir, target.character_id, engine.id, engine.check_overlay
+            settings.characters_dir, target.character_id, engine.id, engine.character_mechanics
         )
         store = FileStore(settings.saves_dir)
         return GameSession(

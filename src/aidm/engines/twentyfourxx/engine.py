@@ -1,4 +1,5 @@
 from collections.abc import Iterable, Mapping, Sequence
+from functools import partial
 from pathlib import Path
 from random import Random
 
@@ -7,22 +8,21 @@ from pydantic import Field, JsonValue
 from aidm.content.io import engine_text
 from aidm.content.model import Character, CharacterProfile
 from aidm.engines.core import (
-    ADVANCE_TOOL,
-    TAKE_OVER,
-    DirectorTool,
+    ADVANCE_SPENT,
     Engine,
-    EntityRules,
-    NoRules,
+    EntityRenderer,
+    Mechanics,
     PackCreation,
     adjust,
-    advances_owed,
-    chapter_tool,
-    describe_by,
-    director_tool,
+    check_packs,
+    describe_rows,
     find_entry,
     load_packs,
+    mechanics_merged,
+    mechanics_of,
     party_member,
     rules,
+    sheet_of,
 )
 from aidm.engines.twentyfourxx.rules import (
     DEFEND,
@@ -38,13 +38,14 @@ from aidm.engines.twentyfourxx.rules import (
     ShipFunction,
     ShipUpgrade,
     SkillDie,
+    TwentyfourxxState,
     apply_change_credits,
+    move_credits,
     raised,
     resolve_attempt,
     resolve_luck_test,
     resolve_stake,
 )
-from aidm.engines.world import CORE_TOOLS
 from aidm.state.creation import CreationStep, Picks, check_picks, numbered_steps, picked
 from aidm.state.entities import (
     PLAYER_ID,
@@ -53,7 +54,6 @@ from aidm.state.entities import (
     Entity,
     EntityId,
     Frozen,
-    Kind,
     Slug,
     Trait,
     require_unique,
@@ -62,6 +62,23 @@ from aidm.state.entities import (
 from aidm.state.facts import Fact, entity_fact, roll
 from aidm.state.model import Game
 from aidm.state.play import DecisionOption
+from aidm.state.threads import ADVANCE_THREAD
+from aidm.state.tools import DirectorTool, NoArgs, director_tool
+from aidm.world.scene import rooms_scene
+from aidm.world.succession import TAKE_OVER, player_over
+from aidm.world.tools import (
+    ADD_TRAIT,
+    DIRECTOR_WORLD,
+    GAIN_IMPROVISED_ITEM,
+    JOIN_PARTY,
+    LEAVE_PARTY,
+    MOVE,
+    REMOVE_TRAIT,
+    REVEAL,
+    UNLOCK_EXIT,
+    kill_tool,
+)
+from aidm.world.topology import validate_rooms
 
 ENGINE_DIR = Path(__file__).parent
 
@@ -69,13 +86,6 @@ ENGINE_DIR = Path(__file__).parent
 def picked_entry[T: DecisionOption](entries: Sequence[T], picks: Picks, step: Slug) -> T | None:
     chosen = picked(picks, step)
     return next((entry for entry in entries if entry.id == chosen), None)
-
-
-RULES_TYPES: Mapping[Kind, type[EntityRules]] = {
-    "actor": Sheet,
-    "item": ItemSheet,
-    "location": NoRules,
-}
 
 
 class BuyGear(Frozen):
@@ -117,14 +127,31 @@ DIRECTOR_TOOLS: tuple[DirectorTool, ...] = (
         ChangeCredits,
         lambda draft, one, _rng: apply_change_credits(draft, one.actor_id, one.amount),
     ),
-    chapter_tool("Record that the current job has ended.", "the job is done", Sheet),
+    director_tool(
+        "complete_chapter",
+        "Record that the current job has ended.",
+        NoArgs,
+        lambda draft, _args, _rng: complete_chapter(draft),
+    ),
 )
+
+
+def complete_chapter(draft: Game) -> tuple[Fact, ...]:
+    """Only those who played the chapter are credited with it: nobody is owed one they missed."""
+    ending = "the job is done"
+    with rules(draft.world, TwentyfourxxState) as game:
+        for member_id in (draft.player_id, *draft.world.party):
+            sheet = game.sheets.get(member_id)
+            if sheet is not None:
+                sheet.chapters += 1
+    return (Fact(kind="chapter_completed", trace=ending, told=True, card=ending),)
 
 
 def advance(draft: Game, proposal: Advance, rng: Random) -> tuple[Fact, ...]:
     """One advance per job a party member worked: a skill raised and the job's pay."""
-    subject = party_member(draft, proposal.subject_id)
-    with rules(subject, Sheet) as sheet:
+    with rules(draft.world, TwentyfourxxState) as game:
+        subject = party_member(draft, proposal.subject_id)
+        sheet = sheet_of(game.sheets, subject)
         if sheet.chapters <= sheet.jobs:
             raise ValueError(f"{subject.name} has no advance owed")
         skill = _canonical_skill(sheet, proposal.skill)
@@ -233,13 +260,11 @@ class TwentyfourxxCreation(PackCreation[Pack]):
             )
             if one
         ]
-        items = tuple(
-            _carried(entry, EntityId(entry.id), PLAYER_ID)
-            for entry in (*pack.starting_kit, *specialty.kit, *chosen_kit)
-        )
-        item_rules = {item.id: item.rules for item in items if item.rules}
-        for item in items:
-            item.rules = {}
+        kit = (*pack.starting_kit, *specialty.kit, *chosen_kit)
+        items = tuple(_carried(entry, EntityId(entry.id), PLAYER_ID) for entry in kit)
+        item_rules = {
+            EntityId(entry.id): marks for entry in kit if (marks := _marks(entry)) is not None
+        }
 
         return Character(
             id=slug(name, ()),
@@ -254,12 +279,6 @@ class TwentyfourxxCreation(PackCreation[Pack]):
 
 
 def _carried(entry: GearItem, item_id: EntityId, owner_id: EntityId) -> Entity:
-    # Default-free, so a plain item's `rules` stays empty and its sheet is only made if it breaks.
-    rules: dict[str, JsonValue] = {}
-    if entry.bulky:
-        rules["bulky"] = True
-    if entry.breaks > 1:
-        rules["breaks"] = {"current": entry.breaks, "maximum": entry.breaks}
     return Entity(
         id=item_id,
         kind="item",
@@ -267,8 +286,17 @@ def _carried(entry: GearItem, item_id: EntityId, owner_id: EntityId) -> Entity:
         brief=entry.detail or entry.label,
         known=True,
         parent_id=owner_id,
-        rules=rules,
     )
+
+
+def _marks(entry: GearItem) -> dict[str, JsonValue] | None:
+    """Default-free: plain gear gets no sheet at all, and only real marks are written."""
+    marks: dict[str, JsonValue] = {}
+    if entry.bulky:
+        marks["bulky"] = True
+    if entry.breaks > 1:
+        marks["breaks"] = {"current": entry.breaks, "maximum": entry.breaks}
+    return marks or None
 
 
 def _gear(packs: Mapping[str, Pack]) -> dict[Slug, GearItem]:
@@ -315,10 +343,45 @@ def _functions(ship: Iterable[ShipFunction]) -> str:
     return " ".join(lines)
 
 
-def _checks(state: Game) -> None:
-    # The played character rolls their own skills, so a successor without rules cannot play.
-    if not state.player.rules:
-        raise ValueError(f"{state.player.name} has no character sheet")
+def _validate(packs: Mapping[str, Pack], state: Game) -> None:
+    check_packs(packs, state)
+    validate_rooms(state.world)
+    game = mechanics_of(state.world, TwentyfourxxState)
+    if stray := sorted(set(game.sheets) - set(state.world.entities)):
+        raise ValueError(f"mechanics.sheets names entities the world does not hold: {stray}")
+    if stray := sorted(set(game.items) - {one.id for one in state.world.of_kind("item")}):
+        raise ValueError(f"mechanics.items names items the world does not hold: {stray}")
+    # The played character rolls their own skills, so a successor without a sheet cannot play.
+    _ = sheet_of(game.sheets, state.player)
+
+
+def describer(state: Game) -> EntityRenderer:
+    game = mechanics_of(state.world, TwentyfourxxState)
+
+    def describe(entity: Entity) -> str:
+        sheet = game.sheets.get(entity.id) or game.items.get(entity.id)
+        return "" if sheet is None else describe_rows(sheet.rows(), ())
+
+    return describe
+
+
+def advances_owed(state: Game) -> tuple[tuple[str, str], ...]:
+    """Jobs worked standing above the ledger of advances taken, one note each."""
+    # An advance mid-suspension could invalidate the frozen call an open decision holds.
+    if state.pending is not None:
+        return ()
+    game = mechanics_of(state.world, TwentyfourxxState)
+    owed = [
+        f"- {state.world.require(one).name} has an advance owed; call advance only when the "
+        "player asks for it."
+        for one in (state.player_id, *state.world.party)
+        if (sheet := game.sheets.get(one)) is not None and sheet.chapters > sheet.jobs
+    ]
+    return (("ADVANCES OWED", "\n".join(owed)),) if owed else ()
+
+
+def sheet_rows(state: Game) -> tuple[tuple[str, str], ...]:
+    return sheet_of(mechanics_of(state.world, TwentyfourxxState).sheets, state.player).rows()
 
 
 def _buy_gear(gear: Mapping[Slug, GearItem], draft: Game, args: BuyGear) -> list[Fact]:
@@ -334,32 +397,49 @@ def _buy_gear(gear: Mapping[Slug, GearItem], draft: Game, args: BuyGear) -> list
         _ = draft.world.require_kind(args.onto_id, "location")
     elif args.onto_id is not None:
         raise ValueError(f"{entry.label} is carried gear: leave `onto_id` null")
-    paid = apply_change_credits(draft, args.actor_id, -entry.cost)
     item_id = EntityId(slug(entry.label, draft.world.all_ids()))
+    with rules(draft.world, TwentyfourxxState) as game:
+        paid = move_credits(draft, game, args.actor_id, -entry.cost)
+        if (marks := _marks(entry)) is not None:
+            game.items[item_id] = ItemSheet.model_validate(marks)
     return [*paid, draft.add(_carried(entry, item_id, args.onto_id or args.actor_id))]
 
 
 def build(user_packs: Path) -> Engine:
     packs = load_packs((ENGINE_DIR / "packs", user_packs), Pack)
+    validate = partial(_validate, packs)
     gear, ship = _gear(packs), _ship(packs)
     return Engine(
         id=EngineId("twentyfourxx"),
-        badge=("24XX", "indigo-7"),
-        director_instructions=engine_text(ENGINE_DIR / "director.md"),
-        rules_types=RULES_TYPES,
+        title="24XX",
+        instructions=f"{DIRECTOR_WORLD}\n\n{engine_text(ENGINE_DIR / 'director.md')}",
         packs=packs,
         creation=TwentyfourxxCreation(packs),
-        checks=_checks,
-        describe=describe_by(RULES_TYPES),
+        validate=validate,
+        sheet_rows=sheet_rows,
+        mechanics_merge=partial(mechanics_merged, TwentyfourxxState),
+        mechanics_without=_without,
+        character_mechanics=_character_mechanics,
+        over=player_over,
+        scene=rooms_scene(describer, advances_owed),
         resolvers=(TAKE_OVER, DEFEND),
-        owed_notes=lambda state: advances_owed(state, Sheet, lambda sheet: sheet.jobs),
         authoring_instructions=(
             "24XX AUTHORING\n"
             "Actors may omit rules; describe opposition through behavior, risks, and obstacles. "
-            "When an actor has rules, use only skill names the selected packs supply."
+            "An actor that does roll needs a sheet in `mechanics.sheets` under its exact entity "
+            "id, using only skill names the selected packs supply."
         ),
-        director_tools=(
-            *CORE_TOOLS,
+        tools=(
+            REVEAL,
+            MOVE,
+            GAIN_IMPROVISED_ITEM,
+            ADD_TRAIT,
+            REMOVE_TRAIT,
+            kill_tool(validate),
+            UNLOCK_EXIT,
+            JOIN_PARTY,
+            LEAVE_PARTY,
+            ADVANCE_THREAD,
             *DIRECTOR_TOOLS,
             director_tool(
                 "buy_gear",
@@ -367,6 +447,23 @@ def build(user_packs: Path) -> Engine:
                 BuyGear,
                 lambda draft, one, _rng: _buy_gear(gear, draft, one),
             ),
-            director_tool("advance", ADVANCE_TOOL + GROWTH, Advance, advance),
+            director_tool("advance", ADVANCE_SPENT + GROWTH, Advance, advance),
         ),
     )
+
+
+def _character_mechanics(character: Character) -> dict[str, JsonValue]:
+    return {
+        "sheets": {PLAYER_ID: Sheet.model_validate(character.rules).model_dump(mode="json")},
+        "items": {
+            item_id: ItemSheet.model_validate(one).model_dump(mode="json")
+            for item_id, one in character.item_rules.items()
+        },
+    }
+
+
+def _without(blob: Mechanics, entity_id: EntityId) -> Mechanics:
+    game = TwentyfourxxState.model_validate(blob)
+    _ = game.sheets.pop(entity_id, None)
+    _ = game.items.pop(entity_id, None)
+    return game.model_dump(mode="json")

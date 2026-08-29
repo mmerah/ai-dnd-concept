@@ -414,6 +414,7 @@ async def test_a_scenario_run_writes_a_scenario_that_loads(tmp_path: Path) -> No
             "premise": "A flooded mill hides a drowned bell.",
             "engine": LONER3E,
             "grows": True,
+            "packs": ["srd"],
         },
     )
     assert "finish_scenario" in briefing
@@ -426,7 +427,7 @@ async def test_a_scenario_run_writes_a_scenario_that_loads(tmp_path: Path) -> No
                     "title": "The Sunken Mill",
                     "premise": "A flooded mill hides a drowned bell.",
                 },
-                "starting_location_id": "millrace",
+                "player_parent_id": "millrace",
                 "entities": [
                     {
                         "id": "millrace",
@@ -447,10 +448,10 @@ async def test_a_scenario_run_writes_a_scenario_that_loads(tmp_path: Path) -> No
                         "name": "the miller",
                         "brief": "He has not left the mill since the flood.",
                         "parent_id": "wheelhouse",
-                        "rules": {"concept": "A Miller Who Stayed"},
                     },
                 ],
                 "threads": [{"id": "the-bell", "title": "The drowned bell"}],
+                "mechanics": {"sheets": {"miller": {"concept": "A Miller Who Stayed"}}},
             }
         },
     )

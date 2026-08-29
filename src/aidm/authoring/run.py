@@ -12,7 +12,6 @@ from pydantic_ai.usage import RunUsage
 from aidm.authoring.draft import (
     OPENING_SLICE,
     WHOLE_SCENARIO,
-    AuthoringBrief,
     ExtensionPatch,
     PlaytestCheck,
     ScenarioDraft,
@@ -29,7 +28,7 @@ from aidm.authoring.draft import (
 )
 from aidm.config import Settings
 from aidm.content.io import engine_text, read_scenarios
-from aidm.content.model import Character
+from aidm.content.model import AuthoringBrief, Character
 from aidm.engines.core import Engine
 from aidm.llm import build_agent
 from aidm.state.entities import EngineId, EntityId, Slug
@@ -88,7 +87,7 @@ def authoring_toolset(
         if refused := patch_refusal(patch, brief.settled):
             raise ModelRetry(refused)
         try:
-            return answer(ctx.deps, ctx.deps.apply(patch))
+            return answer(ctx.deps, ctx.deps.apply(patch, playing.engine))
         except ValueError as refused:
             raise ModelRetry(str(refused)) from refused
 
@@ -247,7 +246,7 @@ def scenario_run(
     grows: bool,
     document: Path | None,
     *,
-    packs: tuple[Slug, ...] = ("srd",),
+    packs: tuple[Slug, ...] = (),
     art_style: str = "",
 ) -> ScenarioRun:
     check_new_scenario(settings, slug, premise, document)
