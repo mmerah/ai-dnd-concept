@@ -59,7 +59,7 @@ def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character:
         packs=scenario.packs,
         player_id=PLAYER_ID,
         world=world,
-        turn_events=(),
+        turn_facts=(),
     )
     engine.validate(state)
     return state.committed()

@@ -27,13 +27,12 @@ from aidm.engines.core import (
 )
 from aidm.llm import build_agent, schema_of
 from aidm.state.entities import DEAD
-from aidm.state.facts import NOTHING, Fact, player_events, told_traces, traced
+from aidm.state.facts import NOTHING, Fact, cards, told_traces, traced
 from aidm.state.model import Game, draft_refusal
 from aidm.state.play import (
     Answer,
     Exchange,
     Line,
-    MechanicEvent,
     Narration,
     StepTrace,
     TurnTrace,
@@ -54,19 +53,15 @@ class TurnResult(NamedTuple):
 @dataclass(slots=True)
 class TurnRecord:
     facts: list[Fact] = field(default_factory=list)
-    events: list[MechanicEvent] = field(default_factory=list)
-    on_event: Callable[[MechanicEvent], None] | None = None
+    on_fact: Callable[[Fact], None] | None = None
 
-    def landed(
-        self, draft: Game, facts: tuple[Fact, ...], events: tuple[MechanicEvent, ...]
-    ) -> None:
+    def landed(self, draft: Game, facts: tuple[Fact, ...]) -> None:
         self.facts.extend(facts)
-        self.events.extend(events)
         # On the draft too: a harness that commits per tool call reaches the page only through it.
-        draft.turn_events = tuple(self.events)
-        if self.on_event is not None:
-            for event in events:
-                self.on_event(event)
+        draft.turn_facts = cards(tuple(self.facts))
+        if self.on_fact is not None:
+            for fact in facts:
+                self.on_fact(fact)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -93,9 +88,9 @@ class Turn:
         player_input: str | Answer,
         rng: Random,
         commit: Callable[[Game], None],
-        on_event: Callable[[MechanicEvent], None] | None = None,
+        on_fact: Callable[[Fact], None] | None = None,
     ) -> Self:
-        log = TurnRecord(on_event=on_event)
+        log = TurnRecord(on_fact=on_fact)
         draft = state.draft()
         prompt, resumed = consume_answer(engine, draft, player_input, rng, log)
         notes = draft.take_notes()
@@ -125,8 +120,8 @@ class Turn:
 
     def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
         """The one gate: a decision on the table blocks everything but developing its answer."""
-        found = next((one for one in self.engine.director_tools if one.name == name), None)
-        if found is None:
+        found = self.engine.tool(name)
+        if found is None or found not in self.engine.director_tools:
             raise ValueError(f"{name!r} is not a tool of the {self.engine.id!r} engine.")
         pending = self.draft.pending
         if pending is not None and not (found.during_suspension and self.suspended_at_start):
@@ -152,7 +147,7 @@ class Turn:
         return "\n".join(lines) or NOTHING
 
     def finish(self, lines: tuple[Line, ...], steps: tuple[StepTrace, ...] = ()) -> TurnResult:
-        state = close_segment(self.engine, self.draft, self.prompt, lines, tuple(self.log.events))
+        state = close_segment(self.engine, self.draft, self.prompt, lines, tuple(self.log.facts))
         trace = TurnTrace(
             prompt=self.prompt,
             facts=tuple(self.log.facts),
@@ -169,7 +164,7 @@ def _apply(
     if refused := draft_refusal(draft, lambda copy: apply_to_draft(engine, copy, play, Random(0))):
         raise ValueError(refused)
     landed = apply_to_draft(engine, draft, play, rng)
-    log.landed(draft, landed, player_events(landed))
+    log.landed(draft, landed)
     return landed
 
 
@@ -297,7 +292,7 @@ async def run_segment(
     settings: Settings,
     rng: Random,
     on_step: Callable[[TurnStep], None] | None = None,
-    on_event: Callable[[MechanicEvent], None] | None = None,
+    on_fact: Callable[[Fact], None] | None = None,
 ) -> TurnResult:
     """One player input to the next hand-back, committed whole."""
 
@@ -306,7 +301,7 @@ async def run_segment(
             on_step(step)
 
     history = exchanges_to_messages(state.history[-settings.turn.recent_exchanges :])
-    turn = Turn.begin(engine, state, player_input, rng, lambda _: None, on_event)
+    turn = Turn.begin(engine, state, player_input, rng, lambda _: None, on_fact)
     draft, prompt = turn.draft, turn.prompt
 
     announce("director")
@@ -366,12 +361,12 @@ def close_segment(
     draft: Game,
     prompt: str,
     lines: tuple[Line, ...],
-    events: tuple[MechanicEvent, ...],
+    facts: tuple[Fact, ...],
 ) -> Game:
     """The one place a segment becomes history: builtin and code mode differ only in when."""
     if draft.pending is None and draft.player.trait(DEAD) is not None:
         draft.pending = succession_decision(engine, draft)
-    draft.record(prompt, lines, events)
+    draft.record(prompt, lines, facts)
     draft.turn += 1
     return draft.committed()
 
@@ -389,7 +384,7 @@ def consume_answer(
     if chosen is None and draft.player.trait(DEAD) is not None:
         raise ValueError("the player is dead. The only way on is to restart.")
     # A new segment starts with no cards: an interrupted turn left its own on the draft.
-    draft.turn_events = ()
+    draft.turn_facts = ()
     # Any input consumes the decision, a revision included: it never survives its own answer.
     consumed, draft.pending = draft.pending, None
     if consumed is not None and not consumed.allows_text and chosen is None:
@@ -409,9 +404,12 @@ def consume_answer(
     option = next((one for one in consumed.options if one.id == chosen), None)
     if option is None:
         raise ValueError(f"the {consumed.kind!r} decision offers no option {chosen!r}")
+    found = engine.tool(option.call.name)
+    if found is None:
+        raise ValueError(f"the {engine.id!r} engine has no tool {option.call.name!r}")
     # A refusal raises: the engine enumerated the option, so it is never model error.
     landed = _apply(
-        engine, draft, lambda copy, dice: engine.resume(copy, consumed, option.id, dice), rng, log
+        engine, draft, lambda copy, dice: found.call(copy, option.call.args, dice), rng, log
     )
     traces = traced(landed)
     # A resume that re-suspended has no tool answer to carry the wait, so the prompt says it.

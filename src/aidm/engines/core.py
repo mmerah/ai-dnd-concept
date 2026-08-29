@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
-from typing import ClassVar, Protocol
+from typing import Protocol
 
 from pydantic import BaseModel, Field, JsonValue, ValidationError
 
@@ -24,15 +24,9 @@ from aidm.state.entities import (
     Mutable,
     Slug,
 )
-from aidm.state.facts import (
-    Fact,
-    MechanicEvent,
-    entity_fact,
-    player_events,
-    told_traces,
-)
+from aidm.state.facts import DiceEvent, Fact, entity_fact, roll, told_traces
 from aidm.state.model import Game, draft_refusal
-from aidm.state.play import DecisionOption, Line, PendingDecision
+from aidm.state.play import DecisionOption, Line, PendingDecision, PendingOption, ToolCall
 
 type EntityRenderer = Callable[[Entity], str]
 
@@ -53,14 +47,11 @@ def counter_fact(
     counter: Counter,
     delta: int,
     why: str,
-    icon: str = "casino",
 ) -> Fact:
     moved = f"{key.capitalize()} {delta:+d} -> {pool(counter)}"
-    title = moved if entity.id == state.player_id else f"{entity.name}: {moved}"
+    card = moved if entity.id == state.player_id else f"{entity.name}: {moved}"
     trace = f"{state.label(entity)} {key} {delta:+d} -> {pool(counter)}"
-    return entity_fact(
-        entity, "counter_changed", f"{trace} ({why})", event=MechanicEvent(title=title, icon=icon)
-    )
+    return entity_fact(entity, "counter_changed", f"{trace} ({why})", card=card)
 
 
 def adjust(
@@ -70,25 +61,48 @@ def adjust(
     counter: Counter,
     amount: int,
     why: str,
-    icon: str = "casino",
 ) -> list[Fact]:
     before = counter.current
     counter.current = counter.clamped(before + amount)
     landed = counter.current - before
     if landed == 0:
         return []
-    return [counter_fact(state, entity, key, counter, landed, why, icon)]
+    return [counter_fact(state, entity, key, counter, landed, why)]
 
 
-def spend(
-    state: Game, entity: Entity, key: str, counter: Counter, amount: int, icon: str = "casino"
-) -> list[Fact]:
+def spend(state: Game, entity: Entity, key: str, counter: Counter, amount: int) -> list[Fact]:
     if counter.current < amount:
         raise ValueError(
             f"{entity.name} holds {counter.current} {key}, so {amount} cannot be spent."
         )
     counter.current -= amount
-    return [counter_fact(state, entity, key, counter, -amount, f"spent {key}", icon)]
+    return [counter_fact(state, entity, key, counter, -amount, f"spent {key}")]
+
+
+def keep_highest(
+    faces: Sequence[int], reason: str, rng: Random, *, label: str
+) -> tuple[int, DiceEvent, Fact]:
+    """The one roll shape all three engines make."""
+    rolled, fact = roll(faces, reason, rng)
+    kept = max(rolled)
+    event = DiceEvent(
+        label=label,
+        faces=tuple(faces),
+        rolled=rolled,
+        result=str(kept),
+        highlight=(rolled.index(kept),),
+    )
+    return kept, event, fact
+
+
+def stake_decision(risk: str, call: ToolCall) -> PendingDecision:
+    """`proceed` is the only option; the player's own words revise the plan instead."""
+    return PendingDecision(
+        kind="stake",
+        prompt=f"{risk}\n\nProceed, or change your plan.",
+        options=(PendingOption(id="proceed", label="Proceed", call=call),),
+        allows_text=True,
+    )
 
 
 # An entity's own rules: authored as JSON, parsed by the engine that reads them.
@@ -185,27 +199,6 @@ class PackCreation[P: NamedPack](CharacterCreation):
     def steps_for(self, pack: P, picks: Picks) -> tuple[CreationStep, ...]: ...
 
 
-class Decision(Frozen):
-    """A decision's own fields are the `PendingDecision.payload` a save carries."""
-
-    kind: ClassVar[Slug]
-
-    def pending(
-        self, prompt: str, options: tuple[DecisionOption, ...] = (), *, allows_text: bool = True
-    ) -> PendingDecision:
-        return PendingDecision(
-            kind=self.kind,
-            prompt=prompt,
-            options=options,
-            payload=self.model_dump(mode="json"),
-            allows_text=allows_text,
-        )
-
-    def resolve(self, draft: Game, option_id: Slug, rng: Random) -> tuple[Fact, ...]:
-        del draft, rng
-        raise ValueError(f"a {self.kind!r} decision resolves no option {option_id!r}")
-
-
 class ProposalBase(Frozen):
     subject_id: CheckedEntityId = Field(description="Exact id of the party member who advances.")
 
@@ -225,7 +218,7 @@ def advances_owed[S: SheetBase](
     state: Game, sheet_type: type[S], ledger: Callable[[S], int]
 ) -> tuple[str, ...]:
     """Chapters played standing above the ledger of advances taken, one note each."""
-    # An advance mid-suspension could invalidate the frozen payload the open decision holds.
+    # An advance mid-suspension could invalidate the frozen call an open decision holds.
     if state.pending is not None:
         return ()
     notes: list[str] = []
@@ -284,14 +277,7 @@ def complete_chapter[S: SheetBase](draft: Game, ending: str, sheet_type: type[S]
             continue
         with rules(member, sheet_type) as sheet:
             sheet.chapters += 1
-    return [
-        Fact(
-            kind="chapter_completed",
-            trace=ending,
-            told=True,
-            event=MechanicEvent(title=ending, icon="auto_stories"),
-        )
-    ]
+    return [Fact(kind="chapter_completed", trace=ending, told=True, card=ending)]
 
 
 def chapter_tool[S: SheetBase](description: str, ending: str, sheet_type: type[S]) -> DirectorTool:
@@ -369,7 +355,8 @@ class Engine:
     describe: Callable[[Game, Entity], str]
     # What only this engine's rules can refuse, once every entity's own rules have parsed.
     checks: Callable[[Game], None] = lambda state: None
-    decisions: tuple[type[Decision], ...] = ()
+    # Reached only by picking the open decision's option that names one, never by the Director.
+    resolvers: tuple[DirectorTool, ...] = ()
     player_actions: tuple[PlayerAction, ...] = ()
     authoring_instructions: str = ""
     owed_notes: Callable[[Game], tuple[str, ...]] = lambda state: ()
@@ -408,33 +395,26 @@ class Engine:
         }
         return f"{self.authoring_instructions}\n\nSELECTED PACK CONTENT\n{json.dumps(packs)}"
 
+    def tool(self, name: str) -> DirectorTool | None:
+        return next(
+            (one for one in (*self.director_tools, *self.resolvers) if one.name == name), None
+        )
+
     def restored(self, raw: str) -> Game:
         state = Game.model_validate_json(raw)
         if state.engine != self.id:
             raise ValueError(f"the save plays {state.engine!r}, not {self.id!r}")
         if state.pending is not None:
-            self.check_pending(state.pending)
+            for option in state.pending.options:
+                found = self.tool(option.call.name)
+                if found is None:
+                    raise ValueError(
+                        f"the {self.id!r} engine has no tool {option.call.name!r} to play "
+                        f"option {option.id!r}"
+                    )
+                _ = found.args.model_validate(option.call.args)
         self.validate(state)
         return state
-
-    def resume(
-        self, draft: Game, pending: PendingDecision, option_id: Slug, rng: Random
-    ) -> tuple[Fact, ...]:
-        """Applies a closed answer through the tools' own resolvers; may set `pending` again."""
-        return self._decision(pending).resolve(draft, option_id, rng)
-
-    def check_pending(self, pending: PendingDecision) -> None:
-        """Refuses a decision whose kind this engine does not play or whose payload is invalid."""
-        _ = self._decision(pending)
-
-    def _decision(self, pending: PendingDecision) -> Decision:
-        # Core's death hand-over is prepended, so no engine declares it and none can shadow it.
-        found = next(
-            (one for one in (Succession, *self.decisions) if one.kind == pending.kind), None
-        )
-        if found is None:
-            raise ValueError(f"the {self.id!r} engine cannot play a {pending.kind!r} decision")
-        return found.model_validate(pending.payload)
 
 
 # Applying a change to the turn's draft.
@@ -450,8 +430,14 @@ def apply_to_draft(engine: Engine, draft: Game, play: Play, rng: Random) -> tupl
     landed = play(draft, rng)
     if before is not None and draft.pending is not before:
         raise ValueError("the rules already wait on a decision; they take one at a time")
-    if draft.pending is not None:
-        engine.check_pending(draft.pending)
+    for fact in landed:
+        if not fact.told or fact.entity_id is None:
+            continue
+        subject = draft.world.find(fact.entity_id)
+        if subject is None:
+            raise ValueError(f"a told fact names {fact.entity_id!r}, which the world does not hold")
+        if not subject.known:
+            raise ValueError(f"a told fact names {fact.entity_id!r}, whom the player has not met")
     engine.validate(draft)
     return landed
 
@@ -468,16 +454,6 @@ def transact(engine: Engine, draft: Game, play: Play, rng: Random) -> tuple[Game
 # The played character's death: core-owned, so every engine hands the story on the same way.
 
 
-class Succession(Decision):
-    """A dead player character hands the game to a companion; every engine plays this one."""
-
-    kind: ClassVar[Slug] = "succession"
-
-    def resolve(self, draft: Game, option_id: Slug, rng: Random) -> tuple[Fact, ...]:
-        del rng
-        return take_over(draft, EntityId(option_id))
-
-
 def take_over(draft: Game, successor_id: EntityId) -> tuple[Fact, ...]:
     """Only the played id moves: sheets, items and history keep pointing where they point."""
     successor = draft.world.require_kind(successor_id, "actor")
@@ -492,35 +468,54 @@ def take_over(draft: Game, successor_id: EntityId) -> tuple[Fact, ...]:
             successor,
             "player_succeeded",
             f"{draft.label(successor)} is the played character from here on",
-            event=MechanicEvent(title=f"You play on as {successor.name}", icon="switch_account"),
+            card=f"You play on as {successor.name}",
         ),
     )
+
+
+class TakeOver(Frozen):
+    successor_id: CheckedEntityId = Field(description="Exact id of the party member who plays on.")
+
+
+TAKE_OVER = director_tool(
+    "take_over",
+    "Hand the played character's story on to a companion who travels with them.",
+    TakeOver,
+    lambda draft, one, _rng: take_over(draft, one.successor_id),
+)
 
 
 def succession_decision(engine: Engine, state: Game) -> PendingDecision | None:
     """None where nobody can carry the story on: the game ends with the played character."""
-    options: list[DecisionOption] = []
+    options: list[PendingOption] = []
     for member_id in state.world.party:
-        if _takeover_refusal(engine, state, member_id) is not None:
+        # Eligible means the swap leaves a game this engine can play, so there is no second rule.
+        if (
+            draft_refusal(
+                state,
+                lambda draft, one=member_id: apply_to_draft(
+                    engine, draft, lambda copy, _rng: take_over(copy, one), Random(0)
+                ),
+            )
+            is not None
+        ):
             continue
         member = state.world.require(member_id)
         options.append(
-            DecisionOption(id=member_id, label=f"Play on as {member.name}", detail=member.brief)
+            PendingOption(
+                id=member_id,
+                label=f"Play on as {member.name}",
+                detail=member.brief,
+                call=ToolCall(name=TAKE_OVER.name, args={"successor_id": member_id}),
+            )
         )
     if not options:
         return None
-    return Succession().pending(
-        f"{state.player.name} is dead. Who carries the story on?", tuple(options)
-    )
-
-
-def _takeover_refusal(engine: Engine, state: Game, successor_id: EntityId) -> str | None:
-    """Eligible means the swap leaves a game this engine can play, so there is no second rule."""
-    return draft_refusal(
-        state,
-        lambda draft: apply_to_draft(
-            engine, draft, lambda copy, _rng: take_over(copy, successor_id), Random(0)
-        ),
+    return PendingDecision(
+        kind="succession",
+        prompt=f"{state.player.name} is dead. Who carries the story on?",
+        options=tuple(options),
+        allows_text=False,
     )
 
 
@@ -550,7 +545,7 @@ def play_action(
         facts = tuple(found.apply(draft, raw))
         # Only told facts reach the player: an untold trace may name hidden canon.
         told = Line(text="\n".join(told_traces(facts)) or "Nothing changed.")
-        draft.record(offer.label, (told,), player_events(facts))
+        draft.record(offer.label, (told,), facts)
         return facts
 
     return transact(engine, state.draft(), play, rng)

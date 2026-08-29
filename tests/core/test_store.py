@@ -12,11 +12,11 @@ from aidm.content.io import (
     read_scenarios,
     write_scenario,
 )
-from aidm.state.facts import EventBadge, MechanicEvent
+from aidm.state.facts import Fact
 from aidm.state.play import Exchange
 
 
-def test_a_saved_games_exchange_events_round_trip(tmp_path: Path) -> None:
+def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
     engine, state = initialized()
     draft = state.draft()
     draft.history = (
@@ -24,10 +24,12 @@ def test_a_saved_games_exchange_events_round_trip(tmp_path: Path) -> None:
             prompt="I take the map.",
             place="the sealed vault",
             lines=(),
-            events=(
-                MechanicEvent(
-                    title="the vault map moved to Kael",
-                    badges=(EventBadge(label="Position", value="Neutral"),),
+            facts=(
+                Fact(
+                    kind="entity_moved",
+                    trace="the vault map moved to Kael",
+                    told=True,
+                    card="Took the vault map",
                 ),
             ),
         ),

@@ -61,7 +61,7 @@ def test_a_check_wears_the_skill_down_to_the_floor_and_breath_resets_it() -> Non
     engine, state = game(BREATHLESS)
     draft = state.draft()
     facts = resolve_check(draft, _check(), Random(1))
-    assert any(fact.kind == "check_resolved" and fact.event is not None for fact in facts)
+    assert any(fact.kind == "check_resolved" and fact.card for fact in facts)
     for _ in range(3):
         _ = resolve_check(draft, _check(), Random(1))
     assert _sheet(draft).worn["Sneak"] == RULES.floor
@@ -96,7 +96,7 @@ def test_a_stunt_is_a_d12_once_until_breath() -> None:
     draft = state.draft()
     facts = resolve_check(draft, _check(skill="", stunt=True), Random(1))
     rolled = next(fact for fact in facts if fact.kind == "check_resolved")
-    assert rolled.event is not None and rolled.event.dice[0].faces == (12,)
+    assert rolled.dice[0].faces == (12,)
     with pytest.raises(ValueError, match="catch their breath"):
         _ = resolve_check(draft, _check(skill="", stunt=True), Random(1))
     _ = apply_catch_breath(draft, Breathe(actor_id=PLAYER_ID))
@@ -111,7 +111,7 @@ def test_a_vulnerable_actor_failing_a_dangerous_check_is_flagged() -> None:
     # Seed 3 fails a d4 Bash roll.
     failed = resolve_check(draft, _check(skill="Bash"), Random(3))
     rolled = next(fact for fact in failed if fact.kind == "check_resolved")
-    assert rolled.event is not None and rolled.event.outcome == "fail"
+    assert rolled.card.startswith("Check — fail")
     assert "taken out, or dead" in rolled.trace
 
 
@@ -125,14 +125,18 @@ def test_loot_finds_trouble_or_an_item_or_a_med_kit_and_wears_the_loot_die() -> 
     facts = apply_to_draft(engine, draft, lambda d, rng: resolve_loot(d, scavenge, rng), Random(0))
     crowbar = draft.world.require(EntityId("a-crowbar"))
     assert crowbar.parent_id == PLAYER_ID
-    kept = int(next(f for f in facts if f.kind == "dice_rolled").trace.rsplit("-> ", 1)[1])
+    found = next(f for f in facts if f.kind == "loot_found")
+    kept = int(found.dice[0].result)
     assert sheet_of(draft, crowbar.id, ItemSheet).die == loot_die(kept)
     assert _sheet(draft).loot == 10
 
     # Seed 5 rolls a 10 on the d10: the player chooses between the item and a med kit.
     _ = resolve_loot(draft, LootCheck(actor_id=PLAYER_ID, seeking="bandages"), Random(5))
     assert draft.pending is not None and draft.pending.kind == "loot"
-    _ = engine.resume(draft, draft.pending, "med-kit", Random(0))
+    med_kit = next(one for one in draft.pending.options if one.id == "med-kit")
+    found = engine.tool(med_kit.call.name)
+    assert found is not None
+    _ = found.call(draft, med_kit.call.args, Random(0))
     draft.pending = None
     assert _sheet(draft).med_kit
     assert draft.world.find(EntityId("bandages")) is None
@@ -194,9 +198,10 @@ def test_a_helper_rolls_too_and_shares_the_danger() -> None:
     # Seed 2 fails the d4+d10 pool.
     facts = resolve_check(draft, helped, Random(2))
     rolled = next(fact for fact in facts if fact.kind == "check_resolved")
-    assert rolled.event is not None and len(rolled.event.dice[0].faces) == 2
+    assert len(rolled.dice[0].faces) == 2
     assert sheet_of(draft, wren, Sheet).worn["Think"] == 8
-    assert rolled.event.outcome == "fail" and "Wren Halloway is vulnerable" in rolled.trace
+    assert rolled.card.startswith("Check — fail")
+    assert "Wren Halloway is vulnerable" in rolled.trace
 
 
 def test_a_med_kit_clears_two_stress_and_is_offered_only_when_useful() -> None:

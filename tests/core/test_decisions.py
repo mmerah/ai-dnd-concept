@@ -1,6 +1,5 @@
 from dataclasses import replace
 from random import Random
-from typing import ClassVar
 
 import pytest
 from core_test_support import (
@@ -14,12 +13,11 @@ from core_test_support import (
     text,
     tool_call,
 )
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 from pydantic_ai.messages import TextPart, ToolReturnPart
 from pydantic_ai.models.function import FunctionModel
 
 from aidm.engines.core import (
-    Decision,
     DirectorTool,
     Engine,
     NoArgs,
@@ -27,41 +25,66 @@ from aidm.engines.core import (
     director_tool,
     transact,
 )
-from aidm.state.entities import Slug
+from aidm.state.entities import Frozen
 from aidm.state.facts import Fact
 from aidm.state.model import Game
-from aidm.state.play import Answer, DecisionOption, Exchange, Line, PendingDecision
+from aidm.state.play import (
+    Answer,
+    Exchange,
+    Line,
+    PendingDecision,
+    PendingOption,
+    ToolCall,
+)
 from aidm.turn.run import RULES_WAIT, TurnRecord, consume_answer, exchanges_to_messages
 
-DECISION = PendingDecision(
-    kind="defence",
-    prompt="The blow lands unless something of yours breaks. What gives?",
-    options=(
-        DecisionOption(id="lantern", label="Break the lantern", detail="Its glass shatters."),
-    ),
-    allows_text=True,
-    payload={"outcome": "setback"},
+
+class Broken(Frozen):
+    item: str = Field(description="What breaks to turn the hit.")
+
+
+def _turned(item: str) -> tuple[Fact, ...]:
+    return (Fact(kind="defence_turned", trace=f"{item} broke to turn the hit", told=True),)
+
+
+def _chained(draft: Game, item: str) -> tuple[Fact, ...]:
+    draft.pending = DECISION
+    return _turned(item)
+
+
+TURN_THE_HIT = director_tool(
+    "turn_the_hit",
+    "Break something to turn the hit.",
+    Broken,
+    lambda _draft, one, _rng: _turned(one.item),
+)
+
+CHAIN_THE_HIT = director_tool(
+    "chain_the_hit",
+    "Break something and leave the rules waiting on the same decision again.",
+    Broken,
+    lambda draft, one, _rng: _chained(draft, one.item),
 )
 
 
-class Defence(Decision):
-    """The one decision kind these tests suspend on."""
+def _decision(resolver: DirectorTool) -> PendingDecision:
+    return PendingDecision(
+        kind="defence",
+        prompt="The blow lands unless something of yours breaks. What gives?",
+        options=(
+            PendingOption(
+                id="lantern",
+                label="Break the lantern",
+                detail="Its glass shatters.",
+                call=ToolCall(name=resolver.name, args={"item": "lantern"}),
+            ),
+        ),
+        allows_text=True,
+    )
 
-    kind: ClassVar[Slug] = "defence"
-    outcome: str
 
-    def resolve(self, draft: Game, option_id: Slug, rng: Random) -> tuple[Fact, ...]:
-        del draft, rng
-        return (Fact(kind="defence_turned", trace=f"{option_id} broke to turn the hit", told=True),)
-
-
-class ChainingDefence(Defence):
-    """Answering leaves the rules waiting on the same decision again."""
-
-    def resolve(self, draft: Game, option_id: Slug, rng: Random) -> tuple[Fact, ...]:
-        landed = super().resolve(draft, option_id, rng)
-        draft.pending = DECISION
-        return landed
+DECISION = _decision(TURN_THE_HIT)
+CHAINING = _decision(CHAIN_THE_HIT)
 
 
 def _hit(draft: Game, *, narrate: bool) -> tuple[Fact, ...]:
@@ -84,11 +107,11 @@ def _strike_tool(*, narrate: bool) -> DirectorTool:
     )
 
 
-def _deciding(*, narrate: bool = True, chains: bool = False) -> tuple[Engine, Game]:
+def _deciding(*, narrate: bool = True) -> tuple[Engine, Game]:
     engine = replace(
         ENGINES_BUILT[LONER3E],
         director_tools=(_strike_tool(narrate=narrate),),
-        decisions=(ChainingDefence if chains else Defence,),
+        resolvers=(TURN_THE_HIT, CHAIN_THE_HIT),
     )
     _, state = game(LONER3E)
     return engine, state
@@ -160,11 +183,11 @@ async def test_a_closed_answer_resolves_in_engine_code_before_the_director_conti
 
 
 async def test_a_re_suspended_continuation_keeps_the_rules_waiting() -> None:
-    engine, state = _deciding(chains=True)
+    engine, state = _deciding()
 
     result = await played(
         engine,
-        _suspended(state),
+        _suspended(state, CHAINING),
         Answer(option_id="lantern"),
         director=FunctionModel(scripted(text("The lantern is gone."))),
     )
@@ -229,17 +252,38 @@ def test_a_paused_exchange_replays_as_a_message_and_a_silent_one_refuses() -> No
         _ = exchanges_to_messages([Exchange(prompt="I wait.", place="the cloister", lines=())])
 
 
-def test_a_save_carries_a_decision_and_restore_refuses_one_the_engine_cannot_play() -> None:
+def test_restore_refuses_an_option_whose_call_names_no_tool_or_carries_args_it_rejects() -> None:
     engine, state = _deciding()
-    saved = _suspended(state).model_dump_json()
 
-    assert engine.restored(saved).pending == DECISION
+    assert engine.restored(_suspended(state).model_dump_json()).pending == DECISION
 
-    unplayable = PendingDecision(
-        kind="spend-momentum", prompt="Spend a point?", options=(), allows_text=True, payload={}
+    unknown = _decision(TURN_THE_HIT).model_copy(
+        update={
+            "options": (
+                PendingOption(
+                    id="lantern",
+                    label="Break the lantern",
+                    call=ToolCall(name="spend_momentum", args={}),
+                ),
+            )
+        }
     )
-    with pytest.raises(ValueError, match="cannot play a 'spend-momentum' decision"):
-        _ = engine.restored(_suspended(state, unplayable).model_dump_json())
+    with pytest.raises(ValueError, match="no tool 'spend_momentum' to play option 'lantern'"):
+        _ = engine.restored(_suspended(state, unknown).model_dump_json())
+
+    ill_typed = _decision(TURN_THE_HIT).model_copy(
+        update={
+            "options": (
+                PendingOption(
+                    id="lantern",
+                    label="Break the lantern",
+                    call=ToolCall(name=TURN_THE_HIT.name, args={"nothing": "of theirs"}),
+                ),
+            )
+        }
+    )
+    with pytest.raises(ValidationError):
+        _ = engine.restored(_suspended(state, ill_typed).model_dump_json())
 
 
 def test_a_decision_whose_options_are_the_whole_pick_refuses_an_answer_in_words() -> None:

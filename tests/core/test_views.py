@@ -44,7 +44,7 @@ def state() -> Game:
             entities={entity.id: entity for entity in entities},
             threads={thread.id: thread for thread in threads},
         ),
-        turn_events=(),
+        turn_facts=(),
     )
     return held.committed()
 

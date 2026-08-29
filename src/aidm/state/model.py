@@ -18,7 +18,7 @@ from aidm.state.entities import (
     kind_word,
     require_unique,
 )
-from aidm.state.facts import Fact, MechanicEvent, entity_fact, labeled
+from aidm.state.facts import Fact, cards, entity_fact, labeled
 from aidm.state.play import Exchange, Line, PendingDecision
 
 ThreadStatus = Literal["active", "resolved", "dormant"]
@@ -163,7 +163,7 @@ class Game(Mutable):
     player_id: CheckedEntityId
     world: WorldState
     # Cards of the turn in flight; a harness in another process reaches the page through the save.
-    turn_events: tuple[MechanicEvent, ...]
+    turn_facts: tuple[Fact, ...]
     history: tuple[Exchange, ...] = ()
     turn: int = Field(default=0, ge=0)
     pending: PendingDecision | None = None
@@ -201,18 +201,16 @@ class Game(Mutable):
         notes, self.world.pending_notes = self.world.pending_notes, ()
         return notes
 
-    def record(
-        self, prompt: str, lines: tuple[Line, ...], events: tuple[MechanicEvent, ...]
-    ) -> None:
+    def record(self, prompt: str, lines: tuple[Line, ...], facts: tuple[Fact, ...]) -> None:
         """The one shape an exchange takes, whether a turn or the player's own action wrote it."""
-        self.turn_events = ()
+        self.turn_facts = ()
         self.history = (
             *self.history,
             Exchange(
                 prompt=prompt,
                 place=self.world.require(self.player_location).name,
                 lines=lines,
-                events=events,
+                facts=cards(facts),
                 decision="" if self.pending is None else self.pending.prompt,
             ),
         )
@@ -244,7 +242,7 @@ class Game(Mutable):
     def move(self, entity: Entity, destination: Entity) -> Fact:
         entity.parent_id = destination.id
         trace, card = _move_summary(self, entity, destination)
-        return entity_fact(entity, "entity_moved", trace, event=card)
+        return entity_fact(entity, "entity_moved", trace, card=card)
 
 
 def draft_refusal(
@@ -261,26 +259,26 @@ def draft_refusal(
     return None
 
 
-def _move_summary(state: Game, entity: Entity, destination: Entity) -> tuple[str, MechanicEvent]:
+def _move_summary(state: Game, entity: Entity, destination: Entity) -> tuple[str, str]:
     """Trace (ids, for the Director) and card (plain names, for the player), from one branch."""
-    icon = "directions_walk"
     if entity.kind == "actor":
-        return (
-            f"{state.label(entity)} moved to {state.label(destination)}",
-            MechanicEvent(title=f"{entity.name} moved to {destination.name}", icon=icon),
+        card = (
+            f"{entity.name} moved to {destination.name}"
+            if destination.known
+            else f"{entity.name} leaves"
         )
+        return f"{state.label(entity)} moved to {state.label(destination)}", card
     if destination.id == state.player_id:
-        return (
-            f"{state.label(destination)} took {state.label(entity)}",
-            MechanicEvent(title=f"Took {entity.name}", icon="back_hand"),
-        )
+        return f"{state.label(destination)} took {state.label(entity)}", f"Took {entity.name}"
     if destination.kind == "actor":
         # The giver is always the player: an item only ever moves to an actor by being handed over.
-        return (
-            f"the player gave {state.label(entity)} to {state.label(destination)}",
-            MechanicEvent(title=f"Gave {entity.name} to {destination.name}", icon=icon),
+        card = (
+            f"Gave {entity.name} to {destination.name}"
+            if destination.known
+            else f"Gave away {entity.name}"
         )
+        return f"the player gave {state.label(entity)} to {state.label(destination)}", card
     return (
         f"the player left {state.label(entity)} at {state.label(destination)}",
-        MechanicEvent(title=f"Left {entity.name} at {destination.name}", icon=icon),
+        f"Left {entity.name} at {destination.name}",
     )

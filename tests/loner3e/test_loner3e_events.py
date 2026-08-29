@@ -13,7 +13,7 @@ from aidm.engines.loner3e.rules import (
     resolve_question,
 )
 from aidm.state.entities import PLAYER_ID, EntityId
-from aidm.state.facts import EventBadge, player_events
+from aidm.state.facts import cards
 
 FOE = EntityId("mara")
 
@@ -32,12 +32,11 @@ def test_a_neutral_question_shows_one_chance_die_and_one_risk_die() -> None:
     _, state = initialized()
     facts = resolve_question(state.draft(), _seal(), Random(0), TWISTS)
 
-    (oracle,) = player_events(facts)
+    (oracle,) = cards(facts)
     assert [die.label for die in oracle.dice] == ["Chance", "Risk"]
     assert len(oracle.dice[0].rolled) == 1
     assert len(oracle.dice[1].rolled) == 1
-    assert oracle.title == "Oracle"
-    assert oracle.badges == (EventBadge(label="Position", value="Neutral"),)
+    assert oracle.card.startswith("Oracle — Neutral → ")
 
 
 def test_advantage_rolls_two_chance_dice() -> None:
@@ -46,20 +45,17 @@ def test_advantage_rolls_two_chance_dice() -> None:
         state.draft(), _seal(position="advantage", edge="Relic Hunter"), Random(0), TWISTS
     )
 
-    (oracle,) = player_events(facts)
+    (oracle,) = cards(facts)
     assert len(oracle.dice[0].rolled) == 2
     assert len(oracle.dice[1].rolled) == 1
-    assert oracle.badges == (
-        EventBadge(label="Position", value="Advantage"),
-        EventBadge(label="Edge", value="Relic Hunter"),
-    )
+    assert oracle.card.startswith("Oracle — Advantage (Relic Hunter) → ")
 
 
 def test_disadvantage_rolls_two_risk_dice() -> None:
     _, state = initialized()
     facts = resolve_question(state.draft(), _seal(position="disadvantage"), Random(0), TWISTS)
 
-    (oracle,) = player_events(facts)
+    (oracle,) = cards(facts)
     assert len(oracle.dice[0].rolled) == 1
     assert len(oracle.dice[1].rolled) == 2
 
@@ -68,8 +64,9 @@ def test_the_six_way_outcome_is_mapped_onto_the_card() -> None:
     _, state = initialized()
     facts = resolve_question(state.draft(), _seal(), Random(0), TWISTS)
 
-    (oracle,) = player_events(facts)
-    assert oracle.outcome == outcome_for(oracle.dice[0].kept, oracle.dice[1].kept).name
+    (oracle,) = cards(facts)
+    chance, risk = int(oracle.dice[0].result), int(oracle.dice[1].result)
+    assert oracle.card.endswith(f"→ {outcome_for(chance, risk).name}")
 
 
 def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
@@ -84,17 +81,17 @@ def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
 
     for seed in range(200):
         facts = resolve_question(weakened.draft(), duel, Random(seed), TWISTS)
-        (oracle,) = player_events(facts)
-        if outcome_for(oracle.dice[0].kept, oracle.dice[1].kept).harm > 0:
+        (oracle,) = cards(facts)
+        if outcome_for(int(oracle.dice[0].result), int(oracle.dice[1].result)).harm > 0:
             break
     else:
         raise AssertionError("no seed under 200 dealt the opponent harm")
 
-    assert oracle.effects == (
+    assert oracle.card.split("\n")[1:] == [
         "Mara: Luck -1 -> 0/6",
         "Mara is out of luck",
         "Mara: Luck +6 -> 6/6",
-    )
+    ]
 
 
 def test_a_twist_card_lands_only_once_a_twist_fires() -> None:
@@ -106,17 +103,16 @@ def test_a_twist_card_lands_only_once_a_twist_fires() -> None:
 
     for seed in range(200):
         facts = resolve_question(primed.draft(), _seal(), Random(seed), TWISTS)
-        events = player_events(facts)
-        if len(events) == 2:
+        landed = cards(facts)
+        if len(landed) == 2:
             break
     else:
         raise AssertionError("no seed under 200 tied the dice")
 
-    oracle, twist = events
-    assert oracle.title == "Oracle"
-    assert twist.title == "Twist"
-    assert [badge.label for badge in twist.badges] == ["Subject", "Action"]
-    assert all(badge.value for badge in twist.badges)
+    oracle, twist = landed
+    assert oracle.card.startswith("Oracle — ")
+    subject, action = twist.card.removeprefix("Twist — ").split(" / ")
+    assert subject and action
     assert len(twist.dice) == 2
     assert all(len(die.rolled) == 1 for die in twist.dice)
 
@@ -129,5 +125,5 @@ def test_restoring_luck_shows_as_a_counter_card() -> None:
     spent = draft.committed()
 
     facts = tuple(apply_restore_luck(spent.draft(), PLAYER_ID))
-    (event,) = player_events(facts)
-    assert event.title == "Luck +5 -> 6/6"
+    (event,) = cards(facts)
+    assert event.card == "Luck +5 -> 6/6"

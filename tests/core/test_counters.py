@@ -31,13 +31,12 @@ def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> 
 
     state = _state()
     (changed,) = adjust(state, KAEL, "stress", counter, 99, "the strain")
-    assert changed.event is not None
-    assert (changed.event.title, counter.current) == ("Kael: Stress +5 -> 5/5", 5)
+    assert (changed.card, counter.current) == ("Kael: Stress +5 -> 5/5", 5)
     assert adjust(state, KAEL, "stress", counter, 99, "the strain") == []
 
     counter.current = 0
     (own,) = adjust(state, state.player, "stress", counter, 1, "the strain")
-    assert own.event is not None and own.event.title == "Stress +1 -> 1/5"
+    assert own.card == "Stress +1 -> 1/5"
 
 
 def test_spend_pays_the_pool_and_refuses_what_it_cannot_cover() -> None:
@@ -45,8 +44,7 @@ def test_spend_pays_the_pool_and_refuses_what_it_cannot_cover() -> None:
 
     state = _state()
     (spent,) = spend(state, KAEL, "stress", counter, 2)
-    assert spent.event is not None
-    assert (spent.event.title, counter.current) == ("Kael: Stress -2 -> 3/5", 3)
+    assert (spent.card, counter.current) == ("Kael: Stress -2 -> 3/5", 3)
 
     with pytest.raises(ValueError, match="cannot be spent"):
         _ = spend(state, KAEL, "stress", counter, 4)

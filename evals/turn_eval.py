@@ -253,7 +253,7 @@ def staked_before_rolling(result: TurnResult) -> bool:
     return (
         bool(history)
         and bool(history[0].decision)
-        and not any(event.title in ("Attempt", "Check") for event in history[0].events)
+        and not any(fact.card.startswith(("Attempt", "Check")) for fact in history[0].facts)
     )
 
 
@@ -261,15 +261,19 @@ def staked_before_rolling(result: TurnResult) -> bool:
 ROLL_FACTS = ("attempt_resolved", "question_answered", "check_resolved")
 
 
+def _outcome(trace: str) -> str:
+    """Breathless appends a vulnerability warning after the outcome; the tail stops at it."""
+    return trace.rsplit("-> ", 1)[1].split(". ", 1)[0]
+
+
 def player_outcomes(result: TurnResult) -> list[str]:
     """Outcomes of the player's own resolved rolls: NPC rolls and luck tests count for nothing."""
     return [
-        fact.event.outcome
+        _outcome(fact.trace)
         for fact in result.turn.facts
         if fact.kind in ROLL_FACTS
         and fact.entity_id == result.state.player_id
-        and fact.event is not None
-        and fact.event.outcome
+        and "-> " in fact.trace
     ]
 
 
@@ -302,14 +306,9 @@ def breaks_left(result: TurnResult, entity_id: str) -> int:
     return sheet_of(result.state, entity_id, ItemSheet).breaks.current
 
 
-def card_badge(result: TurnResult, label: str, value: str | None = None) -> bool:
-    """A mechanic card carried the badge: how helped, hindered, and position reach the record."""
-    return any(
-        badge.label == label and (value is None or badge.value == value)
-        for fact in result.turn.facts
-        if fact.event is not None
-        for badge in fact.event.badges
-    )
+def card_says(result: TurnResult, text: str) -> bool:
+    """A card carried the line: how helped, hindered, and position reach the record."""
+    return any(text in fact.card for fact in result.turn.facts)
 
 
 def bad_luck_rolled(result: TurnResult) -> bool:
@@ -338,9 +337,8 @@ def tied_a_roll(result: TurnResult) -> bool:
     """A Loner tie: Chance equal to Risk, the one result that moves the Twist Counter."""
     return any(
         fact.kind == "question_answered"
-        and fact.event is not None
-        and len(fact.event.dice) == 2
-        and fact.event.dice[0].kept == fact.event.dice[1].kept
+        and len(fact.dice) == 2
+        and fact.dice[0].result == fact.dice[1].result
         for fact in result.turn.facts
     )
 
@@ -389,8 +387,8 @@ def luck_die(result: TurnResult) -> int:
         (
             die.faces[0]
             for fact in result.turn.facts
-            if fact.kind == "luck_tested" and fact.event is not None
-            for die in fact.event.dice
+            if fact.kind == "luck_tested"
+            for die in fact.dice
         ),
         0,
     )
@@ -399,9 +397,7 @@ def luck_die(result: TurnResult) -> int:
 def stunt_rolled(result: TurnResult) -> bool:
     """Nothing Kael carries or rates is a d12, so a lone d12 in a check can only be the stunt."""
     return any(
-        fact.kind == "check_resolved"
-        and fact.event is not None
-        and any(die.faces == (12,) for die in fact.event.dice)
+        fact.kind == "check_resolved" and any(die.faces == (12,) for die in fact.dice)
         for fact in result.turn.facts
     )
 
@@ -409,9 +405,7 @@ def stunt_rolled(result: TurnResult) -> bool:
 def rolled_with_help(result: TurnResult) -> bool:
     """A helper adds their die to the same pool, so the check shows two faces instead of one."""
     return any(
-        fact.kind == "check_resolved"
-        and fact.event is not None
-        and any(len(die.faces) == 2 for die in fact.event.dice)
+        fact.kind == "check_resolved" and any(len(die.faces) == 2 for die in fact.dice)
         for fact in result.turn.facts
     )
 
@@ -473,7 +467,6 @@ def _mid_conflict(state: Game) -> Game:
         ),
         options=(),
         allows_text=True,
-        payload={},
     )
     return draft.committed()
 
@@ -828,9 +821,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 ),
                 expectations=(
                     Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
-                    Expectation(
-                        "advantage-called", lambda r: card_badge(r, "Position", "Advantage")
-                    ),
+                    Expectation("advantage-called", lambda r: card_says(r, "Oracle — Advantage")),
                 ),
                 setup=lambda state: staged(state, "cloister", []),
             ),
@@ -866,7 +857,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                     Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
                     Expectation(
                         "disadvantage-called",
-                        lambda r: card_badge(r, "Position", "Disadvantage"),
+                        lambda r: card_says(r, "Oracle — Disadvantage"),
                     ),
                 ),
                 setup=_rat_met,
@@ -1042,7 +1033,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 ),
                 expectations=(
                     Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
-                    Expectation("hindered-called", lambda r: card_badge(r, "Hindered")),
+                    Expectation("hindered-called", lambda r: card_says(r, "Hindered")),
                     Expectation(
                         "win-arrived",
                         unless_lost(lambda r: inside(r, "player", there), won),
@@ -1102,7 +1093,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 ),
                 expectations=(
                     Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
-                    Expectation("helper-die", lambda r: card_badge(r, "Help", "d10")),
+                    Expectation("helper-die", lambda r: card_says(r, "Help d10")),
                 ),
             ),
             Case(
@@ -1132,7 +1123,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 ),
                 expectations=(
                     Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
-                    Expectation("hindered-called", lambda r: card_badge(r, "Hindered")),
+                    Expectation("hindered-called", lambda r: card_says(r, "Hindered")),
                 ),
                 setup=_broken_arm,
             ),

@@ -8,6 +8,7 @@ from aidm.content.io import engine_text
 from aidm.content.model import Character, CharacterProfile
 from aidm.engines.core import (
     ADVANCE_TOOL,
+    TAKE_OVER,
     DirectorTool,
     Engine,
     EntityRules,
@@ -24,10 +25,11 @@ from aidm.engines.core import (
     rules,
 )
 from aidm.engines.twentyfourxx.rules import (
+    DEFEND,
     GROWTH,
+    ROLL_ATTEMPT,
     Advance,
     Attempt,
-    Defence,
     GearItem,
     ItemSheet,
     LuckTest,
@@ -36,7 +38,6 @@ from aidm.engines.twentyfourxx.rules import (
     ShipFunction,
     ShipUpgrade,
     SkillDie,
-    StakedAttempt,
     apply_change_credits,
     raised,
     resolve_attempt,
@@ -44,7 +45,6 @@ from aidm.engines.twentyfourxx.rules import (
     resolve_stake,
 )
 from aidm.engines.world import CORE_TOOLS
-from aidm.state.actions import roll_pool
 from aidm.state.creation import CreationStep, Picks, check_picks, numbered_steps, picked
 from aidm.state.entities import (
     PLAYER_ID,
@@ -59,7 +59,7 @@ from aidm.state.entities import (
     require_unique,
     slug,
 )
-from aidm.state.facts import Fact, MechanicEvent, entity_fact
+from aidm.state.facts import Fact, entity_fact, roll
 from aidm.state.model import Game
 from aidm.state.play import DecisionOption
 
@@ -96,7 +96,7 @@ class ChangeCredits(Frozen):
 
 DIRECTOR_TOOLS: tuple[DirectorTool, ...] = (
     director_tool(
-        "roll_attempt",
+        ROLL_ATTEMPT,
         "Roll an actor's risky attempt directly. For the player, use `stake_attempt` first unless "
         "they already accepted the exact `risk`.",
         Attempt,
@@ -105,7 +105,7 @@ DIRECTOR_TOOLS: tuple[DirectorTool, ...] = (
     director_tool(
         "stake_attempt",
         "Show the player one attempt's `risk` and let them accept or revise it before rolling.",
-        StakedAttempt,
+        Attempt,
         lambda draft, one, _rng: resolve_stake(draft, one),
     ),
     director_tool(
@@ -134,20 +134,23 @@ def advance(draft: Game, proposal: Advance, rng: Random) -> tuple[Fact, ...]:
             subject,
             "skill_increased",
             f"{subject.name} raised {skill} to d{die} ({proposal.why})",
-            event=MechanicEvent(title=f"{subject.name}: {skill} d{die}", icon="military_tech"),
+            card=f"{subject.name}: {skill} d{die}",
         )
-        earned, dice_fact = roll_pool((6,), "credits earned", rng, label="Credits")
+        (earned,), dice_fact = roll((6,), "credits earned", rng)
         credit_facts = adjust(
-            draft, subject, "credits", sheet.credits, earned.kept, "paid for the job", "payments"
+            draft,
+            subject,
+            "credits",
+            sheet.credits,
+            earned,
+            "paid for the job",
         )
         sheet.jobs += 1
         spent = entity_fact(
             subject,
             "job_advance_taken",
             f"{draft.label(subject)} jobs -> {sheet.jobs} (a job's advance taken)",
-            event=MechanicEvent(
-                title=f"{subject.name}: job {sheet.jobs} advance taken", icon="military_tech"
-            ),
+            card=f"{subject.name}: job {sheet.jobs} advance taken",
         )
     return (grown, dice_fact, *credit_facts, spent)
 
@@ -348,7 +351,7 @@ def build(user_packs: Path) -> Engine:
         creation=TwentyfourxxCreation(packs),
         checks=_checks,
         describe=describe_by(RULES_TYPES),
-        decisions=(StakedAttempt, Defence),
+        resolvers=(TAKE_OVER, DEFEND),
         owed_notes=lambda state: advances_owed(state, Sheet, lambda sheet: sheet.jobs),
         authoring_instructions=(
             "24XX AUTHORING\n"

@@ -23,7 +23,7 @@ from aidm.engines.loner3e.rules import Sheet as LonerSheet
 from aidm.engines.loner3e.rules import outcome_for
 from aidm.engines.twentyfourxx.rules import Sheet
 from aidm.state.entities import PLAYER_ID, EntityId
-from aidm.state.facts import player_events
+from aidm.state.facts import Fact, cards
 from aidm.turn.run import TurnStep
 
 
@@ -61,9 +61,9 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
     assert result.state.history[-1].prompt == "I search beneath the desk."
 
 
-async def test_on_event_fires_once_per_visible_tool_in_resolver_order() -> None:
+async def test_on_fact_reports_the_visible_facts_in_resolver_order() -> None:
     engine, state = initialized()
-    fired: list[str] = []
+    fired: list[Fact] = []
     director = FunctionModel(
         scripted(
             tool_call("move", entity_id="vault-map", to_id="player"),
@@ -76,19 +76,17 @@ async def test_on_event_fires_once_per_visible_tool_in_resolver_order() -> None:
         state,
         "I take the map and listen.",
         director=director,
-        on_event=lambda event: fired.append(event.title),
+        on_fact=fired.append,
     )
 
-    assert fired == ["Took the vault map", "Kael gained Listening"]
-    assert [event.title for event in result.state.history[-1].events] == [
-        "Took the vault map",
-        "Kael gained Listening",
-    ]
+    landed = ["Took the vault map", "Kael gained Listening"]
+    assert [fact.card for fact in cards(fired)] == landed
+    assert [fact.card for fact in result.state.history[-1].facts] == landed
 
 
 async def test_a_narrator_failure_leaves_history_and_events_untouched() -> None:
     engine, state = initialized()
-    fired: list[str] = []
+    fired: list[Fact] = []
 
     def boom(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         del messages, info
@@ -107,15 +105,16 @@ async def test_a_narrator_failure_leaves_history_and_events_untouched() -> None:
             "I take the map.",
             director=director,
             narrator=FunctionModel(boom),
-            on_event=lambda event: fired.append(event.title),
+            on_fact=fired.append,
         )
 
-    assert fired == ["Took the vault map"]
+    assert [fact.card for fact in cards(fired)] == ["Took the vault map"]
     assert state.history == ()
 
 
 async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:
     engine, state = initialized()
+    fired: list[Fact] = []
     result = await played(
         engine,
         state,
@@ -132,16 +131,17 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:
         ),
         narrator=FunctionModel(scripted(narrated("You falter."))),
         rng=Random(2),
+        on_fact=fired.append,
     )
 
     answer = next(fact for fact in result.turn.facts if fact.kind == "question_answered")
-    assert answer.event is not None
-    chance, risk = answer.event.dice
+    chance, risk = answer.dice
     rolled = [fact.trace for fact in result.turn.facts if fact.kind == "dice_rolled"]
-    for die, trace in zip(answer.event.dice, rolled, strict=True):
-        assert trace.endswith(f"-> {die.kept}")
-    assert answer.event.outcome == outcome_for(chance.kept, risk.kept).name
+    for die, trace in zip(answer.dice, rolled, strict=True):
+        assert trace.endswith(f"[{', '.join(str(v) for v in die.rolled)}]")
+    assert answer.card.endswith(f"→ {outcome_for(int(chance.result), int(risk.result)).name}")
     engine.validate(result.state)
+    assert any(fact.kind == "dice_rolled" and not fact.told for fact in fired)
 
 
 async def test_the_director_reacts_in_run_to_its_own_earlier_tool_call() -> None:
@@ -304,7 +304,7 @@ async def test_an_owed_advance_is_noted_lands_on_call_and_is_refused_once_spent(
     )
 
     assert "Kael has an advance owed" in shown(result.turn, "director")
-    assert [event.icon for event in player_events(result.turn.facts)] == ["military_tech"] * 2
+    assert len(cards(result.turn.facts)) == 2
     sheet = sheet_of(result.state, PLAYER_ID, LonerSheet)
     assert (sheet.gear[-1], sheet.milestones) == ("Waxed Rope", 1)
     assert any("has no advance owed" in reason for reason in director.reasons())

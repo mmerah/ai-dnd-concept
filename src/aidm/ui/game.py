@@ -11,7 +11,7 @@ from pydantic import JsonValue
 from aidm.app.runtime import GameSession
 from aidm.harness.driver import Driver
 from aidm.state.entities import DEAD, Entity, EntityId
-from aidm.state.facts import DiceEvent, MechanicEvent
+from aidm.state.facts import DiceEvent, Fact
 from aidm.state.play import Answer
 from aidm.turn.context import player_scene
 from aidm.turn.run import TurnStep
@@ -88,43 +88,34 @@ def chat(session: GameSession) -> None:
             here = exchange.place
             ui.label(here).classes("w-full text-center text-xs uppercase opacity-50 q-mt-md")
         _bubble(session, session.state.player_id, exchange.prompt, sent=True)
-        for event in exchange.events:
-            _mechanic_event(event)
+        for fact in exchange.facts:
+            _card(fact)
         for line in exchange.lines:
             _bubble(session, line.speaker_id, line.text, sent=False)
         if exchange.decision and exchange is not last:
             ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
 
 
-def _mechanic_event(event: MechanicEvent) -> None:
-    """Reads `MechanicEvent` only: no engine knowledge of Loner outcomes or 24XX thresholds."""
-    with ui.row().classes("game-card w-full items-start no-wrap"):
-        ui.icon(event.icon).classes("game-card-icon")
-        with ui.column().classes("flex-grow").style("gap: 0.3rem"):
-            ui.label(event.title).classes("text-sm font-bold")
-            if event.badges:
-                with ui.row().classes("items-center").style("gap: 0.35rem"):
-                    for badge in event.badges:
-                        text = f"{badge.label}: {badge.value}" if badge.value else badge.label
-                        ui.badge(text).props("outline")
-            if event.dice:
-                with ui.row().classes("items-start").style("gap: 1rem"):
-                    for group in event.dice:
-                        _dice_group(group)
-            if event.outcome:
-                ui.label(event.outcome).classes("game-outcome")
-            for effect in event.effects:
-                ui.label(effect).classes("text-xs opacity-80")
+def _card(fact: Fact) -> None:
+    headline, *detail = fact.card.split("\n")
+    with ui.column().classes("game-card w-full").style("gap: 0.3rem"):
+        ui.label(headline).classes("text-sm font-bold")
+        for line in detail:
+            ui.label(line).classes("text-xs opacity-80")
+        if fact.dice:
+            with ui.row().classes("items-start").style("gap: 1rem"):
+                for group in fact.dice:
+                    _dice_group(group)
 
 
 def _dice_group(die: DiceEvent) -> None:
     with ui.column().style("gap: 0.2rem"):
         ui.label(die.label).classes("text-xs opacity-60")
         with ui.row().classes("no-wrap").style("gap: 0.3rem"):
-            for face, value in zip(die.faces, die.rolled, strict=True):
+            for index, (face, value) in enumerate(zip(die.faces, die.rolled, strict=True)):
                 with (
                     ui.column()
-                    .classes("game-die" + (" game-die-kept" if value == die.kept else ""))
+                    .classes("game-die" + (" game-die-kept" if index in die.highlight else ""))
                     .style("gap: 0")
                 ):
                     ui.label(f"d{face}").classes("game-die-face")
@@ -158,12 +149,12 @@ _STEP_COPY: dict[TurnStep, tuple[str, str]] = {
 
 
 def live_turn(
-    session: GameSession, prompt: str | None, events: Sequence[MechanicEvent], elapsed: float
+    session: GameSession, prompt: str | None, facts: Sequence[Fact], elapsed: float
 ) -> ui.label | None:
     if prompt is not None:
         _bubble(session, session.state.player_id, prompt, sent=True)
-    for event in events:
-        _mechanic_event(event)
+    for fact in facts:
+        _card(fact)
     if session.step is not None:
         return _inline_status(session.step, elapsed)
     return None
@@ -199,7 +190,7 @@ class GameView:
         self.transcript: ui.scroll_area | None = None
         # The turn in flight, owned by the view, never by game state; cleared on success or failure.
         self.live_prompt: str | None = None
-        self.live_events: list[MechanicEvent] = []
+        self.live_facts: list[Fact] = []
         self.step_started: float | None = None
         self.ticker: ui.label | None = None
 
@@ -227,7 +218,7 @@ class GameView:
     @ui.refreshable_method
     def live_turn(self) -> None:
         elapsed = 0.0 if self.step_started is None else monotonic() - self.step_started
-        self.ticker = live_turn(self.session, self.live_prompt, self.live_events, elapsed)
+        self.ticker = live_turn(self.session, self.live_prompt, self.live_facts, elapsed)
 
     @ui.refreshable_method
     def decision(self) -> None:
@@ -284,13 +275,15 @@ def on_step(view: GameView, step: TurnStep) -> None:
         view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
 
 
-def on_event(view: GameView, event: MechanicEvent, loop: AbstractEventLoop) -> None:
+def on_fact(view: GameView, fact: Fact, loop: AbstractEventLoop) -> None:
     """Schedule refreshes on NiceGUI's loop because sync tools emit from worker threads."""
-    loop.call_soon_threadsafe(_apply_event, view, event)
+    loop.call_soon_threadsafe(_apply_fact, view, fact)
 
 
-def _apply_event(view: GameView, event: MechanicEvent) -> None:
-    view.live_events.append(event)
+def _apply_fact(view: GameView, fact: Fact) -> None:
+    if not (fact.told and fact.card):
+        return
+    view.live_facts.append(fact)
     view.live_turn.refresh()
     _scroll(view)
 
@@ -318,7 +311,7 @@ def poll_art(view: GameView) -> None:
 
 async def _send(view: GameView, player_input: str | Answer, bubble: str) -> None:
     session = view.session
-    view.live_prompt, view.live_events = bubble, []
+    view.live_prompt, view.live_facts = bubble, []
     view.live_turn.refresh()
     _scroll(view)
     async with working(session):
@@ -329,10 +322,10 @@ async def _send(view: GameView, player_input: str | Answer, bubble: str) -> None
             await session.submit(
                 player_input,
                 on_step=lambda step: on_step(view, step),
-                on_event=lambda event: on_event(view, event, loop),
+                on_fact=lambda fact: on_fact(view, fact, loop),
             )
     session.step = None
-    view.live_prompt, view.live_events, view.step_started = None, [], None
+    view.live_prompt, view.live_facts, view.step_started = None, [], None
     if view.composer is not None:
         view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
     view.refresh_all()
@@ -353,7 +346,7 @@ async def _play_with_agent(
         view.log(line)
         # A CLI the app spawned commits from its own process, so the save is the only channel.
         poll_save(view)
-        view.live_events = list(session.state.turn_events)
+        view.live_facts = list(session.state.turn_facts)
         if len(session.state.history) > committed:
             # `end_turn` wrote the real bubble; the live one would now be a second copy.
             view.live_prompt = None
@@ -478,7 +471,7 @@ def restart(view: GameView) -> None:
     if refuse_if_busy(session):
         return
     session.restart()
-    view.live_prompt, view.live_events = None, []
+    view.live_prompt, view.live_facts = None, []
     view.refresh_all()
 
 

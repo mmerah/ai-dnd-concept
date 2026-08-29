@@ -157,16 +157,16 @@ async def test_the_save_carries_the_turn_s_cards_as_they_land_and_files_them_at_
     harness = _opened(tmp_path, "loner3e")
 
     _ = await call(harness, "start_turn", {"text": "I listen at the door."})
-    assert _saved(harness).turn_events == ()
+    assert _saved(harness).turn_facts == ()
     _ = await call(harness, "reveal", {"entity_id": VAULT})
-    assert len(_saved(harness).turn_events) == 1
+    assert len(_saved(harness).turn_facts) == 1
     _ = await call(harness, "roll_question", A_QUESTION)
-    assert len(_saved(harness).turn_events) == 2
+    assert len(_saved(harness).turn_facts) == 2
 
     _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "Dust hangs."}]})
     saved = _saved(harness)
-    assert saved.turn_events == ()
-    assert len(saved.history[-1].events) == 2
+    assert saved.turn_facts == ()
+    assert len(saved.history[-1].facts) == 2
 
 
 async def test_end_turn_records_the_exchange_and_bumps_the_turn(tmp_path: Path) -> None:
@@ -200,6 +200,14 @@ async def test_no_tool_runs_a_turn_before_start_turn_opens_one(tmp_path: Path) -
         _ = await call(harness, "reveal", {"entity_id": VAULT})
     with pytest.raises(ModelRetry):
         _ = await call(harness, "end_turn", {"lines": []})
+
+
+async def test_a_resolver_is_not_callable_by_name_from_the_director(tmp_path: Path) -> None:
+    harness = _opened(tmp_path, "loner3e")
+
+    _ = await call(harness, "start_turn", {"text": "I look around."})
+    with pytest.raises(ValueError, match="is not a tool of"):
+        _ = await call(harness, "take_over", {"successor_id": PLAYER_ID})
 
 
 async def test_a_no_args_tool_refuses_junk_arguments(tmp_path: Path) -> None:

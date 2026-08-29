@@ -1,20 +1,22 @@
 from dataclasses import dataclass
 from random import Random
-from typing import ClassVar, Literal, Self, get_args
+from typing import Literal, Self, get_args
 
 from pydantic import Field, model_validator
 
 from aidm.engines.core import (
-    Decision,
     EntityRules,
     ProposalBase,
     SheetBase,
     adjust,
+    director_tool,
+    keep_highest,
     pool,
     rules,
     spend,
+    stake_decision,
 )
-from aidm.state.actions import require_actor_here, roll_pool
+from aidm.state.actions import require_actor_here
 from aidm.state.entities import (
     CheckedEntityId,
     Counter,
@@ -23,9 +25,9 @@ from aidm.state.entities import (
     Frozen,
     Slug,
 )
-from aidm.state.facts import DiceEvent, EventBadge, Fact, MechanicEvent, entity_fact
+from aidm.state.facts import DiceEvent, Fact, entity_fact
 from aidm.state.model import Game
-from aidm.state.play import DecisionOption, PendingDecision
+from aidm.state.play import DecisionOption, PendingDecision, PendingOption, ToolCall
 
 
 @dataclass(frozen=True, slots=True)
@@ -220,15 +222,6 @@ class Attempt(Frozen):
         return self
 
 
-class StakedAttempt(Attempt, Decision):
-    kind: ClassVar[Slug] = "stake"
-
-    def resolve(self, draft: Game, option_id: Slug, rng: Random) -> tuple[Fact, ...]:
-        # `proceed` is the only option the engine offers; the player's own words revise instead.
-        del option_id
-        return resolve_attempt(draft, self, rng)
-
-
 class LuckTest(Frozen):
     actor_id: CheckedEntityId = Field(
         description="Exact id of the player or actor here facing bad luck."
@@ -245,17 +238,6 @@ TAKE_THE_HIT: Slug = "take-it"
 DEFENCE_PROMPT = (
     "A hit is coming. Break one carried item to make it a brief hindrance, or take the full hit."
 )
-
-
-class Defence(Decision):
-    kind: ClassVar[Slug] = "defence"
-
-    goal: str
-
-    def resolve(self, draft: Game, option_id: Slug, rng: Random) -> tuple[Fact, ...]:
-        del rng
-        item = None if option_id == TAKE_THE_HIT else EntityId(option_id)
-        return resolve_defence(draft, self.goal, item)
 
 
 def outcome_for(kept: int) -> Slug:
@@ -291,10 +273,10 @@ def apply_change_credits(draft: Game, actor_id: EntityId, amount: int) -> list[F
         if amount > 0:
             return [
                 *facts,
-                *adjust(draft, actor, "credits", sheet.credits, amount, "paid", "payments"),
+                *adjust(draft, actor, "credits", sheet.credits, amount, "paid"),
             ]
         # `spend`, not a negative adjust: an overdraw is refused, not clamped.
-        return [*facts, *spend(draft, actor, "credits", sheet.credits, -amount, "payments")]
+        return [*facts, *spend(draft, actor, "credits", sheet.credits, -amount)]
 
 
 def _require_playable(
@@ -313,13 +295,12 @@ def _require_playable(
     return actor, sheet, helper_sheet, facts
 
 
-def resolve_stake(draft: Game, action: StakedAttempt) -> tuple[Fact, ...]:
+def resolve_stake(draft: Game, action: Attempt) -> tuple[Fact, ...]:
     if action.actor_id != draft.player_id:
         raise ValueError("stake only the player's attempt; roll an actor's attempt directly")
     _ = _require_playable(draft.draft(), action)
-    draft.pending = action.pending(
-        f"{action.risk}\n\nProceed, or change your plan.",
-        (DecisionOption(id="proceed", label="Proceed"),),
+    draft.pending = stake_decision(
+        action.risk, ToolCall(name=ROLL_ATTEMPT, args=action.model_dump(mode="json"))
     )
     return ()
 
@@ -332,7 +313,7 @@ def resolve_defence(draft: Game, goal: str, item_id: EntityId | None) -> tuple[F
                 player,
                 "defence_taken",
                 f"{goal}: the hit lands in full",
-                event=MechanicEvent(title="Took the hit", icon="heart_broken"),
+                card="Took the hit",
             ),
         )
     item = draft.world.require_kind(item_id, "item")
@@ -351,7 +332,7 @@ def resolve_defence(draft: Game, goal: str, item_id: EntityId | None) -> tuple[F
                 player,
                 "defence_turned",
                 f"{goal}: {item.name} takes the hit and holds; it can break {left} more times",
-                event=MechanicEvent(title=f"{item.name} held, {left} left", icon="shield"),
+                card=f"{item.name} held, {left} left",
             ),
         )
     return (
@@ -359,22 +340,53 @@ def resolve_defence(draft: Game, goal: str, item_id: EntityId | None) -> tuple[F
             player,
             "defence_turned",
             f"{goal}: {item.name} breaks, turning the hit into a brief hindrance",
-            event=MechanicEvent(title=f"{item.name} broke", icon="broken_image"),
+            card=f"{item.name} broke",
         ),
     )
 
 
+class Defend(Frozen):
+    goal: str = Field(description="The attempt whose hit is landing.")
+    item_id: CheckedEntityId | None = Field(
+        default=None,
+        description="Exact id of the carried item that breaks, or null to take the hit.",
+    )
+
+
+DEFEND = director_tool(
+    "defend",
+    "Break a carried item to turn a hit, or take it in full.",
+    Defend,
+    lambda draft, one, _rng: resolve_defence(draft, one.goal, one.item_id),
+)
+
+
 def _defence_decision(draft: Game, goal: str) -> PendingDecision:
     unbroken = tuple(
-        DecisionOption(id=item.id, label=f"Break the {item.name}")
+        PendingOption(
+            id=item.id,
+            label=f"Break the {item.name}",
+            call=ToolCall(name=DEFEND.name, args={"goal": goal, "item_id": item.id}),
+        )
         for item in draft.world.children(draft.player_id, "item")
         if not ItemSheet.model_validate(item.rules).broken
     )
-    return Defence(goal=goal).pending(
-        DEFENCE_PROMPT,
-        (*unbroken, DecisionOption(id=TAKE_THE_HIT, label="Take the hit")),
+    return PendingDecision(
+        kind="defence",
+        prompt=DEFENCE_PROMPT,
+        options=(
+            *unbroken,
+            PendingOption(
+                id=TAKE_THE_HIT,
+                label="Take the hit",
+                call=ToolCall(name=DEFEND.name, args={"goal": goal, "item_id": None}),
+            ),
+        ),
         allows_text=False,
     )
+
+
+ROLL_ATTEMPT = "roll_attempt"
 
 
 def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ...]:
@@ -382,10 +394,10 @@ def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ..
 
     faces = pool_faces(sheet, action, helper_sheet)
     reason = f"{action.goal} — {action.skill or 'no skill'}"
-    pooled, rolled = roll_pool(faces, reason, rng, label="Pool")
+    kept, pooled, rolled = keep_highest(faces, reason, rng, label="Pool")
     facts.append(rolled)
 
-    outcome = outcome_for(pooled.kept)
+    outcome = outcome_for(kept)
     resolved_at = len(facts)
     facts.append(
         entity_fact(actor, "attempt_resolved", f"{action.goal} (risk: {action.risk}) -> {outcome}")
@@ -397,23 +409,17 @@ def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ..
         luck, _, luck_facts = _bad_luck(draft, actor, action.luck_test, rng)
         dice, effects = (pooled, luck), tuple(f.trace for f in luck_facts if f.told)
         facts.extend(luck_facts)
-    card = MechanicEvent(
-        title="Attempt", badges=_badges(action, faces), dice=dice, outcome=outcome, effects=effects
-    )
-    facts[resolved_at] = facts[resolved_at].model_copy(update={"event": card})
+    detail = [f"Skill {action.skill}"] if action.skill else []
+    if len(faces) > 1:
+        detail.append(f"Help d{faces[-1]}")
+    if action.hindered:
+        detail.append("Hindered")
+    card = "\n".join(line for line in (f"Attempt — {outcome}", ", ".join(detail), *effects) if line)
+    facts[resolved_at] = facts[resolved_at].model_copy(update={"card": card, "dice": dice})
 
     if action.hit and action.actor_id == draft.player_id and outcome != "success":
         draft.pending = _defence_decision(draft, action.goal)
     return tuple(facts)
-
-
-def _badges(action: Attempt, faces: tuple[int, ...]) -> tuple[EventBadge, ...]:
-    badges = [EventBadge(label="Skill", value=action.skill)] if action.skill else []
-    if len(faces) > 1:
-        badges.append(EventBadge(label="Help", value=f"d{faces[-1]}"))
-    if action.hindered:
-        badges.append(EventBadge(label="Hindered", value=""))
-    return tuple(badges)
 
 
 def resolve_luck_test(draft: Game, action: LuckTest, rng: Random) -> tuple[Fact, ...]:
@@ -421,8 +427,9 @@ def resolve_luck_test(draft: Game, action: LuckTest, rng: Random) -> tuple[Fact,
     facts = draft.reveal(actor)
     die, outcome, luck_facts = _bad_luck(draft, actor, action.subject, rng)
     if outcome:
-        card = MechanicEvent(title="Luck Test", dice=(die,), outcome=outcome, icon="warning")
-        luck_facts[-1] = luck_facts[-1].model_copy(update={"event": card})
+        luck_facts[-1] = luck_facts[-1].model_copy(
+            update={"card": f"Luck Test — {outcome}", "dice": (die,)}
+        )
     facts.extend(luck_facts)
     return tuple(facts)
 
@@ -445,10 +452,10 @@ def _helper_sheet(draft: Game, actor: Entity, action: Attempt, facts: list[Fact]
 def _bad_luck(
     draft: Game, actor: Entity, subject: str, rng: Random
 ) -> tuple[DiceEvent, str, list[Fact]]:
-    die, rolled = roll_pool((6,), f"bad luck — {subject}", rng, label="Luck")
-    if die.kept > RULES.signs_at:
+    kept, die, rolled = keep_highest((6,), f"bad luck — {subject}", rng, label="Luck")
+    if kept > RULES.signs_at:
         return die, "", [rolled]
-    trouble = die.kept <= RULES.trouble_at
+    trouble = kept <= RULES.trouble_at
     note = (
         f"Bad luck has caught up with them: {subject} — the narration showed it arriving this "
         "turn. Develop it next: what it costs, what it changes."

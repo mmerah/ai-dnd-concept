@@ -3,9 +3,8 @@ from random import Random
 import pytest
 from core_test_support import at_boundary, initialized, sheet_of
 from loner3e_test_support import TWISTS
-from pydantic import ValidationError
 
-from aidm.engines.core import rules
+from aidm.engines.core import Engine, rules
 from aidm.engines.loner3e.engine import advance
 from aidm.engines.loner3e.rules import (
     RULES,
@@ -22,8 +21,9 @@ from aidm.engines.loner3e.rules import (
     twist_pairing,
 )
 from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId
-from aidm.state.facts import EventBadge, player_events
-from aidm.state.play import PendingDecision
+from aidm.state.facts import cards
+from aidm.state.model import Game
+from aidm.state.play import PendingDecision, PendingOption, ToolCall
 
 FOE = EntityId("mara")
 LANTERN = EntityId("lantern")
@@ -98,11 +98,8 @@ def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
 
     facts = resolve_question(state.draft(), action, Random(1), TWISTS)
 
-    (oracle,) = player_events(facts)
-    assert oracle.badges == (
-        EventBadge(label="Position", value="Disadvantage"),
-        EventBadge(label="Edge", value="Never Walks Away"),
-    )
+    (oracle,) = cards(facts)
+    assert oracle.card.startswith("Oracle — Disadvantage (Never Walks Away) → ")
     assert oracle.dice[1].faces == (6, 6)
 
 
@@ -122,9 +119,8 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     else:
         raise AssertionError("no seed under 200 tied the dice")
 
-    _, twist = player_events(facts)
-    subject = next(badge.value for badge in twist.badges if badge.label == "Subject")
-    action_name = next(badge.value for badge in twist.badges if badge.label == "Action")
+    _, twist = cards(facts)
+    subject, action_name = twist.card.removeprefix("Twist — ").split(" / ")
     rolled = twist_note(subject, action_name)
     assert sheet_of(draft, PLAYER_ID, Sheet).twist.current == 0
     assert rolled in draft.world.pending_notes
@@ -147,14 +143,14 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
     for seed in range(200):
         draft = state.draft()
         facts = resolve_question(draft, _duel(), Random(seed), TWISTS)
-        (oracle,) = player_events(facts)
-        harm = outcome_for(oracle.dice[0].kept, oracle.dice[1].kept).harm
+        (oracle,) = cards(facts)
+        harm = outcome_for(int(oracle.dice[0].result), int(oracle.dice[1].result)).harm
         loser, held = (FOE, PLAYER_ID) if harm > 0 else (PLAYER_ID, FOE)
         assert sheet_of(draft, loser, Sheet).luck.current == RULES.luck_max - abs(harm)
         assert sheet_of(draft, held, Sheet).luck.current == RULES.luck_max
         # A tie still ticks the counter inside a conflict; one tie alone never reaches the twist.
         assert not any(fact.kind == "twist_due" for fact in facts)
-        tied = oracle.dice[0].kept == oracle.dice[1].kept
+        tied = oracle.dice[0].result == oracle.dice[1].result
         assert sheet_of(draft, PLAYER_ID, Sheet).twist.current == (1 if tied else 0)
 
 
@@ -169,8 +165,8 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     for seed in range(200):
         draft = hurt.draft()
         facts = resolve_question(draft, _duel(), Random(seed), TWISTS)
-        (oracle,) = player_events(facts)
-        if outcome_for(oracle.dice[0].kept, oracle.dice[1].kept).harm > 0:
+        (oracle,) = cards(facts)
+        if outcome_for(int(oracle.dice[0].result), int(oracle.dice[1].result)).harm > 0:
             break
     else:
         raise AssertionError("no seed under 200 answered yes")
@@ -214,22 +210,33 @@ def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
         _ = resolve_question(away, _seal(opponent_id=LANTERN), Random(0), TWISTS)
 
 
+def _restored(engine: Engine, state: Game, pending: PendingDecision) -> Game:
+    draft = state.draft()
+    draft.pending = pending
+    return engine.restored(draft.committed().model_dump_json())
+
+
 def test_the_engine_plays_the_hand_back_and_refuses_every_other_decision() -> None:
-    engine, _ = initialized()
+    engine, state = initialized()
     hand_back = PendingDecision(
-        kind="conflict",
-        prompt="Say your next key action.",
-        options=(),
-        allows_text=True,
-        payload={},
+        kind="conflict", prompt="Say your next key action.", options=(), allows_text=True
     )
 
-    engine.check_pending(hand_back)
+    assert _restored(engine, state, hand_back).pending == hand_back
 
-    with pytest.raises(ValueError, match="cannot play a 'defence' decision"):
-        engine.check_pending(hand_back.model_copy(update={"kind": "defence"}))
-    with pytest.raises(ValidationError):
-        engine.check_pending(hand_back.model_copy(update={"payload": {"outcome": "no"}}))
+    unplayable = hand_back.model_copy(
+        update={
+            "options": (
+                PendingOption(
+                    id="lantern",
+                    label="Break the lantern",
+                    call=ToolCall(name="defend", args={}),
+                ),
+            )
+        }
+    )
+    with pytest.raises(ValueError, match="no tool 'defend' to play option 'lantern'"):
+        _ = _restored(engine, state, unplayable)
 
 
 def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:

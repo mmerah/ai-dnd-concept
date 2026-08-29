@@ -6,18 +6,19 @@ from pydantic import JsonValue
 from aidm.content.io import engine_text
 from aidm.content.model import Character, CharacterProfile
 from aidm.engines.breathless.rules import (
+    LOOT_ITEM,
+    LOOT_MED_KIT,
+    ROLL_CHECK,
     RULES,
     SKILLS,
     Breathe,
     ChangeStress,
     Check,
     ItemSheet,
-    Loot,
     LootCheck,
     LuckTest,
     Pack,
     Sheet,
-    StakedCheck,
     apply_catch_breath,
     apply_change_stress,
     apply_use_med_kit,
@@ -29,6 +30,7 @@ from aidm.engines.breathless.rules import (
     resolve_stake,
 )
 from aidm.engines.core import (
+    TAKE_OVER,
     Engine,
     EntityRules,
     NoRules,
@@ -121,7 +123,7 @@ def build(user_packs: Path) -> Engine:
         creation=BreathlessCreation(packs),
         checks=_checks,
         describe=describe_by(RULES_TYPES),
-        decisions=(StakedCheck, Loot),
+        resolvers=(TAKE_OVER, LOOT_ITEM, LOOT_MED_KIT),
         authoring_instructions=(
             "BREATHLESS AUTHORING\n"
             "Actors may omit rules; describe threats through risks and complications. An actor "
@@ -136,11 +138,11 @@ def build(user_packs: Path) -> Engine:
                 "stake_check",
                 "Show the player one check's `risk` and let them accept or revise it before "
                 "rolling.",
-                StakedCheck,
+                Check,
                 lambda draft, one, _rng: resolve_stake(draft, one),
             ),
             director_tool(
-                "roll_check",
+                ROLL_CHECK,
                 "Roll an actor's risky check directly. For the player, use `stake_check` first "
                 "unless they already accepted the exact `risk`.",
                 Check,

@@ -17,7 +17,7 @@ from aidm.engines.registry import begin_game, build_engines
 from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Slug
 from aidm.state.facts import Fact, traced
 from aidm.state.model import Game, frontier
-from aidm.state.play import Answer, MechanicEvent, TurnTrace
+from aidm.state.play import Answer, TurnTrace
 from aidm.turn.run import TurnAgents, TurnStep, build_turn_agents, run_segment
 
 from .launch import LaunchTarget
@@ -87,7 +87,7 @@ class GameSession:
         self,
         player_input: str | Answer,
         on_step: Callable[[TurnStep], None] | None = None,
-        on_event: Callable[[MechanicEvent], None] | None = None,
+        on_fact: Callable[[Fact], None] | None = None,
     ) -> TurnTrace:
         """Commit only after the full segment succeeds."""
         if self.stages is None:
@@ -100,7 +100,7 @@ class GameSession:
             settings=self.settings,
             rng=self.rng,
             on_step=on_step,
-            on_event=on_event,
+            on_fact=on_fact,
         )
         self.commit(state, trace)
         self._illustrate(trace.narration)

@@ -1,18 +1,20 @@
 from dataclasses import dataclass
 from random import Random
-from typing import ClassVar, Literal, Self, get_args
+from typing import Literal, Self, get_args
 
 from pydantic import Field, model_validator
 
 from aidm.engines.core import (
-    Decision,
     EntityRules,
     SheetBase,
     adjust,
+    director_tool,
+    keep_highest,
     pool,
     rules,
+    stake_decision,
 )
-from aidm.state.actions import require_actor_here, roll_pool
+from aidm.state.actions import require_actor_here
 from aidm.state.entities import (
     CheckedEntityId,
     Counter,
@@ -21,9 +23,9 @@ from aidm.state.entities import (
     Frozen,
     slug,
 )
-from aidm.state.facts import EventBadge, Fact, MechanicEvent, entity_fact
+from aidm.state.facts import Fact, entity_fact
 from aidm.state.model import Game
-from aidm.state.play import DecisionOption
+from aidm.state.play import DecisionOption, PendingDecision, PendingOption, ToolCall
 
 type Die = Literal[4, 6, 8, 10, 12]
 type Skill = Literal["Bash", "Dash", "Sneak", "Shoot", "Think", "Sway"]
@@ -176,15 +178,6 @@ class Check(Frozen):
         return self
 
 
-class StakedCheck(Check, Decision):
-    kind: ClassVar = "stake"
-
-    def resolve(self, draft: Game, option_id: str, rng: Random) -> tuple[Fact, ...]:
-        # `proceed` is the only option the engine offers; the player's own words revise instead.
-        del option_id
-        return resolve_check(draft, self, rng)
-
-
 class LuckTest(Frozen):
     subject: str = Field(min_length=1, description="What may happen, in one line.")
     die: Die = Field(description="Die rated by the odds: d4 unlikely, d12 near certain.")
@@ -200,26 +193,6 @@ class LootCheck(Frozen):
 
 
 MED_KIT_PROMPT = "The loot roll is high enough for a med kit. Take the item found, or a med kit?"
-
-
-class Loot(Decision):
-    """A 9+ loot roll: the SRD gives the player the choice, so the choice is theirs to make."""
-
-    kind: ClassVar = "loot"
-
-    actor_id: EntityId
-    seeking: str
-    rating: Die
-
-    def resolve(self, draft: Game, option_id: str, rng: Random) -> tuple[Fact, ...]:
-        del rng
-        actor = draft.world.require_kind(self.actor_id, "actor")
-        if option_id == "med-kit":
-            with rules(actor, Sheet) as sheet:
-                sheet.med_kit = True
-            card = MechanicEvent(title="Med kit", icon="medical_services")
-            return (entity_fact(actor, "loot_found", "took a med kit", event=card),)
-        return (_found(draft, actor, self.seeking, self.rating),)
 
 
 class ChangeStress(Frozen):
@@ -278,22 +251,24 @@ def _rolls(
     return face, f"{skill} d{face}", [entity_fact(actor, "skill_worn", trace)]
 
 
-def resolve_stake(draft: Game, action: StakedCheck) -> tuple[Fact, ...]:
+def resolve_stake(draft: Game, action: Check) -> tuple[Fact, ...]:
     if action.actor_id != draft.player_id:
         raise ValueError("stake only the player's check; roll an actor's check directly")
     _ = resolve_check(draft.draft(), action, Random(0))
-    draft.pending = action.pending(
-        f"{action.risk}\n\nProceed, or change your plan.",
-        (DecisionOption(id="proceed", label="Proceed"),),
+    draft.pending = stake_decision(
+        action.risk, ToolCall(name=ROLL_CHECK, args=action.model_dump(mode="json"))
     )
     return ()
+
+
+ROLL_CHECK = "roll_check"
 
 
 def resolve_check(draft: Game, action: Check, rng: Random) -> tuple[Fact, ...]:
     actor = require_actor_here(draft, action.actor_id)
     facts = draft.reveal(actor)
     face, badge, worn = _rolls(draft, actor, action.skill, action.item_id, action.stunt)
-    faces, badges = [face], [EventBadge(label="Rolls", value=badge)]
+    faces, detail = [face], [f"Rolls {badge}"]
     rollers = [actor]
     if action.helper_id is not None:
         if action.helper_id == actor.id:
@@ -304,12 +279,12 @@ def resolve_check(draft: Game, action: Check, rng: Random) -> tuple[Fact, ...]:
             draft, helper, action.helper_skill, action.helper_item_id, action.helper_stunt
         )
         faces.append(helped)
-        badges.append(EventBadge(label=f"{helper.name} helps", value=helper_badge))
+        detail.append(f"{helper.name} helps: {helper_badge}")
         worn.extend(helper_worn)
         rollers.append(helper)
 
-    pooled, rolled = roll_pool(faces, f"{action.goal} — {badge}", rng, label="Check")
-    outcome = outcome_for(pooled.kept)
+    kept, pooled, rolled = keep_highest(faces, f"{action.goal} — {badge}", rng, label="Check")
+    outcome = outcome_for(kept)
     effects = [fact.trace for fact in worn]
     trace = f"{action.goal} (risk: {action.risk}) -> {outcome}"
     if outcome == "fail" and action.dangerous:
@@ -321,19 +296,21 @@ def resolve_check(draft: Game, action: Check, rng: Random) -> tuple[Fact, ...]:
                 )
                 effects.append(warning)
                 trace += f". {warning}"
-    card = MechanicEvent(
-        title="Check", badges=tuple(badges), dice=(pooled,), outcome=outcome, effects=tuple(effects)
+    card = "\n".join((f"Check — {outcome}", *detail, *effects))
+    facts.extend(
+        (rolled, entity_fact(actor, "check_resolved", trace, card=card, dice=(pooled,)), *worn)
     )
-    facts.extend((rolled, entity_fact(actor, "check_resolved", trace, event=card), *worn))
     return tuple(facts)
 
 
 def resolve_luck_test(draft: Game, action: LuckTest, rng: Random) -> tuple[Fact, ...]:
     del draft
-    die, rolled = roll_pool((action.die,), f"luck — {action.subject}", rng, label="Luck")
-    outcome = outcome_for(die.kept)
-    card = MechanicEvent(title="Luck", dice=(die,), outcome=outcome, icon="casino")
-    return (rolled, Fact(kind="luck_tested", trace=f"{action.subject}: {outcome}", event=card))
+    kept, die, rolled = keep_highest((action.die,), f"luck — {action.subject}", rng, label="Luck")
+    outcome = outcome_for(kept)
+    return (
+        rolled,
+        Fact(kind="luck_tested", trace=f"{action.subject}: {outcome}", dice=(die,)),
+    )
 
 
 def resolve_loot(draft: Game, action: LootCheck, rng: Random) -> tuple[Fact, ...]:
@@ -343,37 +320,58 @@ def resolve_loot(draft: Game, action: LootCheck, rng: Random) -> tuple[Fact, ...
         face = sheet.loot
         sheet.loot = stepped(face)
         held_med_kit = sheet.med_kit
-    die, rolled = roll_pool((face,), f"loot — {action.seeking}", rng, label="Loot")
+    kept, die, rolled = keep_highest((face,), f"loot — {action.seeking}", rng, label="Loot")
     facts.append(rolled)
     wear = f"loot die d{face} -> d{stepped(face)}"
-    if die.kept <= RULES.trouble_ahead_at:
-        here = die.kept <= RULES.trouble_here_at
+
+    def found_fact(found: str) -> Fact:
+        return entity_fact(
+            actor,
+            "loot_found",
+            f"{found} — {wear}",
+            card="\n".join((f"Loot — {found}", wear)),
+            dice=(die,),
+        )
+
+    if kept <= RULES.trouble_ahead_at:
+        here = kept <= RULES.trouble_here_at
         found = "trouble is here" if here else "there is trouble ahead"
         draft.world.pending_notes = (
             *draft.world.pending_notes,
             f"The loot check found {found} instead of {action.seeking}: show it "
             + ("arriving now." if here else "coming, before it bites."),
         )
-        card = MechanicEvent(title="Loot", dice=(die,), outcome=found, effects=(wear,))
-        facts.append(entity_fact(actor, "loot_found", f"{found} — {wear}", event=card))
+        facts.append(found_fact(found))
         return tuple(facts)
-    rating = loot_die(die.kept)
-    if die.kept >= RULES.med_kit_at and not held_med_kit:
-        choice = Loot(actor_id=actor.id, seeking=action.seeking, rating=rating)
-        draft.pending = choice.pending(
-            MED_KIT_PROMPT,
-            (
-                DecisionOption(id="item", label=f"Take {action.seeking} (d{rating})"),
-                DecisionOption(id="med-kit", label="Take a med kit"),
+    rating = loot_die(kept)
+    if kept >= RULES.med_kit_at and not held_med_kit:
+        draft.pending = PendingDecision(
+            kind="loot",
+            prompt=MED_KIT_PROMPT,
+            options=(
+                PendingOption(
+                    id="item",
+                    label=f"Take {action.seeking} (d{rating})",
+                    call=ToolCall(
+                        name=LOOT_ITEM.name,
+                        args={
+                            "actor_id": actor.id,
+                            "seeking": action.seeking,
+                            "rating": rating,
+                        },
+                    ),
+                ),
+                PendingOption(
+                    id="med-kit",
+                    label="Take a med kit",
+                    call=ToolCall(name=LOOT_MED_KIT.name, args={"actor_id": actor.id}),
+                ),
             ),
             allows_text=False,
         )
-        outcome = f"a d{rating} item or a med kit"
-        card = MechanicEvent(title="Loot", dice=(die,), outcome=outcome, effects=(wear,))
-        facts.append(entity_fact(actor, "loot_found", f"{outcome} — {wear}", event=card))
+        facts.append(found_fact(f"a d{rating} item or a med kit"))
         return tuple(facts)
-    card = MechanicEvent(title="Loot", dice=(die,), outcome=f"a d{rating} item", effects=(wear,))
-    facts.append(entity_fact(actor, "loot_found", f"a d{rating} item — {wear}", event=card))
+    facts.append(found_fact(f"a d{rating} item"))
     facts.append(_found(draft, actor, action.seeking, rating))
     return tuple(facts)
 
@@ -391,9 +389,46 @@ def _found(draft: Game, actor: Entity, seeking: str, rating: Die) -> Fact:
         rules={"die": rating},
     )
     where = f", left here: the backpack holds {RULES.carry}" if full else ""
-    card = MechanicEvent(title=f"{item.name}, d{rating}{where}", icon="backpack")
     found = f"new item: {item.name}[{item.id}] d{rating}{where}"
-    return draft.add(item).model_copy(update={"trace": found, "event": card})
+    card = f"{item.name}, d{rating}{where}"
+    return draft.add(item).model_copy(update={"trace": found, "card": card})
+
+
+class LootItem(Frozen):
+    actor_id: CheckedEntityId = Field(description="Exact id of the actor who scavenged.")
+    seeking: str = Field(description="The item they hoped to find.")
+    rating: Die = Field(description="The die the loot roll rated the find at.")
+
+
+class LootMedKit(Frozen):
+    actor_id: CheckedEntityId = Field(description="Exact id of the actor who scavenged.")
+
+
+def loot_item(draft: Game, args: LootItem) -> tuple[Fact, ...]:
+    actor = draft.world.require_kind(args.actor_id, "actor")
+    return (_found(draft, actor, args.seeking, args.rating),)
+
+
+def loot_med_kit(draft: Game, args: LootMedKit) -> tuple[Fact, ...]:
+    actor = draft.world.require_kind(args.actor_id, "actor")
+    with rules(actor, Sheet) as sheet:
+        sheet.med_kit = True
+    return (entity_fact(actor, "loot_found", "took a med kit", card="Med kit"),)
+
+
+LOOT_ITEM = director_tool(
+    "loot_item",
+    "Take the item a loot roll turned up.",
+    LootItem,
+    lambda draft, one, _rng: loot_item(draft, one),
+)
+
+LOOT_MED_KIT = director_tool(
+    "loot_med_kit",
+    "Take a med kit instead of the item a loot roll turned up.",
+    LootMedKit,
+    lambda draft, one, _rng: loot_med_kit(draft, one),
+)
 
 
 def apply_change_stress(draft: Game, action: ChangeStress) -> list[Fact]:
@@ -402,9 +437,7 @@ def apply_change_stress(draft: Game, action: ChangeStress) -> list[Fact]:
     actor = require_actor_here(draft, action.actor_id)
     facts = draft.reveal(actor)
     with rules(actor, Sheet) as sheet:
-        facts.extend(
-            adjust(draft, actor, "stress", sheet.stress, action.amount, action.why, "monitor_heart")
-        )
+        facts.extend(adjust(draft, actor, "stress", sheet.stress, action.amount, action.why))
         vulnerable = sheet.vulnerable
     if action.amount > 0 and vulnerable:
         facts.append(
@@ -430,9 +463,9 @@ def apply_catch_breath(draft: Game, action: Breathe) -> list[Fact]:
         "and put it in the world so it stays: reveal or move an actor, add a trait, add stress, "
         "or stake a check.",
     )
-    card = MechanicEvent(title=f"{actor.name} catches their breath", icon="air")
     trace = f"{draft.label(actor)} caught their breath: skills, loot die and stunt reset"
-    return [entity_fact(actor, "breath_caught", trace, event=card)]
+    card = f"{actor.name} catches their breath"
+    return [entity_fact(actor, "breath_caught", trace, card=card)]
 
 
 def apply_use_med_kit(draft: Game, action: Breathe) -> list[Fact]:
@@ -442,13 +475,7 @@ def apply_use_med_kit(draft: Game, action: Breathe) -> list[Fact]:
             raise ValueError(f"{actor.name} carries no med kit")
         sheet.med_kit = False
         return adjust(
-            draft,
-            actor,
-            "stress",
-            sheet.stress,
-            -RULES.med_kit_clears,
-            "used the med kit",
-            "healing",
+            draft, actor, "stress", sheet.stress, -RULES.med_kit_clears, "used the med kit"
         )
 
 

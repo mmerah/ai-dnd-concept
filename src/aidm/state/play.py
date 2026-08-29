@@ -4,7 +4,7 @@ from typing import Self
 from pydantic import Field, JsonValue, model_validator
 
 from aidm.state.entities import CheckedEntityId, Frozen, Slug, require_unique
-from aidm.state.facts import Fact, MechanicEvent
+from aidm.state.facts import Fact
 
 
 class Line(Frozen):
@@ -31,10 +31,19 @@ class Narration(Frozen):
         return narration_text(self.lines)
 
 
+class ToolCall(Frozen):
+    name: str
+    args: dict[str, JsonValue]
+
+
 class DecisionOption(Frozen):
     id: Slug
     label: str = Field(min_length=1)
     detail: str = ""
+
+
+class PendingOption(DecisionOption):
+    call: ToolCall
 
 
 class PendingDecision(Frozen):
@@ -43,10 +52,9 @@ class PendingDecision(Frozen):
     kind: Slug
     # A prose-less segment replays into model history from this alone, so it can never be empty.
     prompt: str = Field(min_length=1)
-    options: tuple[DecisionOption, ...]
+    options: tuple[PendingOption, ...]
     # False where the SRD gives the player a pick and the options are that pick, whole.
     allows_text: bool
-    payload: dict[str, JsonValue]
 
     @model_validator(mode="after")
     def _options_are_unambiguous(self) -> Self:
@@ -77,7 +85,7 @@ class Exchange(Frozen):
     prompt: str
     place: str
     lines: tuple[Line, ...]
-    events: tuple[MechanicEvent, ...] = ()
+    facts: tuple[Fact, ...] = ()
     # The suspending decision's prompt: the pause has to survive after `Game.pending` clears.
     decision: str = ""
 

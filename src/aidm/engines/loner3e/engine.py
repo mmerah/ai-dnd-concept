@@ -8,6 +8,7 @@ from aidm.content.io import engine_text
 from aidm.content.model import Character, CharacterProfile
 from aidm.engines.core import (
     ADVANCE_TOOL,
+    TAKE_OVER,
     Engine,
     EntityRules,
     NoRules,
@@ -25,7 +26,6 @@ from aidm.engines.loner3e.rules import (
     GROWTH,
     AdventureGrowth,
     Change,
-    Conflict,
     Pack,
     Question,
     Sheet,
@@ -44,7 +44,7 @@ from aidm.state.entities import (
     Slug,
     slug,
 )
-from aidm.state.facts import Fact, MechanicEvent, entity_fact
+from aidm.state.facts import Fact, entity_fact
 from aidm.state.model import Game
 from aidm.state.play import DecisionOption
 
@@ -80,9 +80,7 @@ def advance(draft: Game, proposal: AdventureGrowth, rng: Random) -> tuple[Fact, 
             subject,
             "milestone_spent",
             f"{draft.label(subject)} milestones -> {sheet.milestones} (a milestone spent)",
-            event=MechanicEvent(
-                title=f"{subject.name}: milestone {sheet.milestones} spent", icon="military_tech"
-            ),
+            card=f"{subject.name}: milestone {sheet.milestones} spent",
         )
     return (*granted, spent)
 
@@ -100,9 +98,7 @@ def _gain(sheet: Sheet, subject: Entity, change: Change) -> Fact:
         subject,
         f"{change.kind}_gained",
         f"{subject.name} gained {change.kind} {change.tag} ({change.why})",
-        event=MechanicEvent(
-            title=f"{subject.name}: new {change.kind} {change.tag}", icon="military_tech"
-        ),
+        card=f"{subject.name}: new {change.kind} {change.tag}",
     )
 
 
@@ -120,7 +116,7 @@ def _rewrite(sheet: Sheet, subject: Entity, change: Change) -> Fact:
         subject,
         "tag_rewritten",
         f"{subject.name} rewrote {old} as {new} ({change.why})",
-        event=MechanicEvent(title=f"{subject.name}: {old} → {new}", icon="military_tech"),
+        card=f"{subject.name}: {old} → {new}",
     )
 
 
@@ -213,7 +209,7 @@ def build(user_packs: Path) -> Engine:
         creation=Loner3eCreation(packs),
         checks=_checks,
         describe=lambda state, entity: _describe(packs, state, entity),
-        decisions=(Conflict,),
+        resolvers=(TAKE_OVER,),
         owed_notes=lambda state: advances_owed(state, Sheet, lambda sheet: sheet.milestones),
         authoring_instructions=(
             "LONER 3E AUTHORING\n"

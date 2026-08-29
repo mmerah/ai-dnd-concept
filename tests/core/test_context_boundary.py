@@ -48,7 +48,7 @@ def state() -> Game:
         packs=("srd",),
         player_id=PLAYER_ID,
         world=WorldState(entities={entity.id: entity for entity in entities}),
-        turn_events=(),
+        turn_facts=(),
     )
     return held.committed()
 

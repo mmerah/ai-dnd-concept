@@ -8,7 +8,7 @@ from aidm.engines.loner3e.rules import Sheet
 from aidm.state import actions
 from aidm.state.entities import DEAD, PLAYER_ID, EntityId
 from aidm.state.model import Game
-from aidm.state.play import Answer, Line
+from aidm.state.play import Answer, Line, ToolCall
 from aidm.turn.run import TurnRecord, close_segment, consume_answer
 
 MARA = EntityId("mara")
@@ -39,6 +39,7 @@ def test_a_takeover_moves_the_played_id_and_leaves_the_rest_of_the_game_alone() 
     died = _died(engine, state, companion=True)
     assert died.pending is not None
     assert (died.pending.kind, [one.id for one in died.pending.options]) == ("succession", [MARA])
+    assert died.pending.options[0].call == ToolCall(name="take_over", args={"successor_id": MARA})
 
     landed = _answered(engine, died, MARA)
 

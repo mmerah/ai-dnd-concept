@@ -22,11 +22,9 @@ from aidm.engines.twentyfourxx.rules import (
     RULES,
     Advance,
     Attempt,
-    Defence,
     ItemSheet,
     LuckTest,
     Sheet,
-    StakedAttempt,
     apply_change_credits,
     outcome_for,
     pool_faces,
@@ -37,9 +35,9 @@ from aidm.engines.twentyfourxx.rules import (
 )
 from aidm.state.creation import Picks
 from aidm.state.entities import PLAYER_ID, EntityId
-from aidm.state.facts import Fact, player_events
+from aidm.state.facts import Fact, cards
 from aidm.state.model import Game
-from aidm.state.play import DecisionOption, PendingDecision
+from aidm.state.play import PendingDecision, PendingOption, ToolCall
 
 ALLY = EntityId("ovid-sarn")
 LANTERN = EntityId("lantern")
@@ -165,7 +163,7 @@ def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     assert sheet.jobs == before.jobs + 1
     (dice_fact,) = [fact for fact in facts if fact.kind == "dice_rolled"]
     paid = sheet.credits.current - before.credits.current
-    assert dice_fact.trace.endswith(f"-> {paid}")
+    assert dice_fact.trace.endswith(f"[{paid}]")
 
     take_new = Advance(subject_id=PLAYER_ID, skill="Lockpicking", why="the job called for it")
     draft = ready.draft()
@@ -237,9 +235,9 @@ def test_a_tested_bad_luck_risk_that_lands_leaves_a_note_for_the_next_turn() -> 
 
     draft = state.draft()
     facts = resolve_attempt(draft, action, Random(2))
-    (card,) = player_events(facts)
+    (card,) = cards(facts)
     luck = next(die for die in card.dice if die.label == "Luck")
-    assert 1 <= luck.kept <= 4
+    assert 1 <= int(luck.result) <= 4
     assert len(draft.world.pending_notes) == 1
     assert any(fact.kind == "luck_tested" for fact in facts)
 
@@ -280,19 +278,6 @@ def _forcing(**args: object) -> Attempt:
     )
 
 
-def _staked_forcing(**args: object) -> StakedAttempt:
-    return StakedAttempt.model_validate(
-        {
-            "actor_id": PLAYER_ID,
-            "goal": "Kael forces the vault door",
-            "risk": RISK,
-            "hit": True,
-            "skill": "Climbing",
-        }
-        | args
-    )
-
-
 def _waiting(draft: Game) -> PendingDecision:
     decision = draft.pending
     assert decision is not None
@@ -308,17 +293,28 @@ def _hit(state: Game) -> tuple[Game, PendingDecision]:
     return draft, decision
 
 
+def _played(
+    engine: Engine, draft: Game, decision: PendingDecision, option_id: str
+) -> tuple[Fact, ...]:
+    option = next(one for one in decision.options if one.id == option_id)
+    found = engine.tool(option.call.name)
+    assert found is not None
+    return found.call(draft, option.call.args, Random(HIT))
+
+
 def test_a_stake_freezes_a_playable_attempt_and_waits_on_the_player() -> None:
     _, state = game(TWENTYFOURXX)
     draft = state.draft()
 
-    assert resolve_stake(draft, _staked_forcing()) == ()
+    assert resolve_stake(draft, _forcing()) == ()
 
     decision = _waiting(draft)
     assert decision.kind == "stake"
     assert decision.prompt.startswith(RISK)
     assert [option.id for option in decision.options] == ["proceed"]
-    assert StakedAttempt.model_validate(decision.payload) == _staked_forcing()
+    assert decision.options[0].call == ToolCall(
+        name="roll_attempt", args=_forcing().model_dump(mode="json")
+    )
 
 
 def test_an_actor_attempt_cannot_be_staked() -> None:
@@ -326,7 +322,7 @@ def test_an_actor_attempt_cannot_be_staked() -> None:
     draft = state.draft()
 
     with pytest.raises(ValueError, match="stake only the player's attempt"):
-        _ = resolve_stake(draft, _staked_forcing(actor_id=ALLY))
+        _ = resolve_stake(draft, _forcing(actor_id=ALLY))
     assert draft.pending is None
 
 
@@ -335,32 +331,34 @@ def test_a_stake_on_an_attempt_the_sheet_cannot_carry_freezes_nothing() -> None:
     draft = state.draft()
 
     with pytest.raises(ValueError, match="no skill 'Lockpicking'"):
-        _ = resolve_stake(draft, _staked_forcing(skill="Lockpicking"))
+        _ = resolve_stake(draft, _forcing(skill="Lockpicking"))
     assert draft.pending is None
 
 
 def test_proceeding_rolls_the_frozen_attempt_and_a_hit_hands_back_the_defence() -> None:
     engine, state = game(TWENTYFOURXX)
     draft = state.draft()
-    _ = resolve_stake(draft, _staked_forcing())
+    _ = resolve_stake(draft, _forcing())
     staked = _waiting(draft)
     draft.pending = None
 
-    facts = engine.resume(draft, staked, "proceed", Random(HIT))
+    facts = _played(engine, draft, staked, "proceed")
 
     (resolved,) = [fact for fact in facts if fact.kind == "attempt_resolved"]
     assert resolved.trace.endswith("-> disaster")
     decision = _waiting(draft)
     assert decision.kind == "defence"
     assert [option.id for option in decision.options] == ["lantern", "take-it"]
-    assert Defence.model_validate(decision.payload) == Defence(goal=_forcing().goal)
+    assert decision.options[-1].call == ToolCall(
+        name="defend", args={"goal": _forcing().goal, "item_id": None}
+    )
 
 
 def test_breaking_an_item_turns_the_hit_and_that_item_is_never_offered_again() -> None:
     engine, state = game(TWENTYFOURXX)
     draft, decision = _hit(state)
 
-    facts = engine.resume(draft, decision, "lantern", Random(0))
+    facts = _played(engine, draft, decision, "lantern")
 
     assert [fact.kind for fact in facts] == ["defence_turned"]
     assert sheet_of(draft, LANTERN, ItemSheet).broken
@@ -372,7 +370,7 @@ def test_taking_the_hit_records_it_landing_in_full() -> None:
     engine, state = game(TWENTYFOURXX)
     draft, decision = _hit(state)
 
-    (landed,) = engine.resume(draft, decision, "take-it", Random(0))
+    (landed,) = _played(engine, draft, decision, "take-it")
 
     assert landed.kind == "defence_taken"
     assert landed.told
@@ -485,26 +483,27 @@ def test_duplicate_shop_ids_across_packs_are_refused(tmp_path: Path) -> None:
 
 
 def test_a_decision_this_engine_cannot_play_or_read_is_refused() -> None:
-    engine, _ = game(TWENTYFOURXX)
+    engine, state = game(TWENTYFOURXX)
 
-    with pytest.raises(ValueError, match="cannot play a 'spend-momentum' decision"):
-        engine.check_pending(
-            PendingDecision(
-                kind="spend-momentum",
-                prompt="Spend a point?",
-                options=(),
-                allows_text=True,
-                payload={},
+    def restored(option: PendingOption) -> None:
+        draft = state.draft()
+        draft.pending = PendingDecision(
+            kind="stake", prompt=RISK, options=(option,), allows_text=True
+        )
+        _ = engine.restored(draft.committed().model_dump_json())
+
+    with pytest.raises(ValueError, match="no tool 'spend_momentum' to play option 'proceed'"):
+        restored(
+            PendingOption(
+                id="proceed", label="Proceed", call=ToolCall(name="spend_momentum", args={})
             )
         )
     with pytest.raises(ValidationError):
-        engine.check_pending(
-            PendingDecision(
-                kind="stake",
-                prompt=RISK,
-                options=(DecisionOption(id="proceed", label="Proceed"),),
-                allows_text=True,
-                payload={"goal": "an attempt with no actor"},
+        restored(
+            PendingOption(
+                id="proceed",
+                label="Proceed",
+                call=ToolCall(name="roll_attempt", args={"goal": "an attempt with no actor"}),
             )
         )
 

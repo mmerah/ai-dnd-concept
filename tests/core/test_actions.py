@@ -192,3 +192,24 @@ def test_a_kill_drops_items_and_party_and_then_refuses_the_dead_actor() -> None:
     _ = actions.kill(draft, PLAYER_ID)
     with pytest.raises(ValueError, match="dead"):
         _ = actions.add_trait(draft, PLAYER_ID, "Hurt")
+
+
+def test_an_actor_leaving_for_an_unmet_place_keeps_it_off_the_card() -> None:
+    draft = _draft()
+
+    (moved,) = actions.move(draft, MARA, VAULT)
+
+    assert moved.told
+    assert moved.card == "Mara leaves"
+    assert f"[{VAULT}]" in moved.trace
+
+
+def test_an_item_handed_to_an_unmet_actor_keeps_them_off_the_card() -> None:
+    draft = _draft()
+    _ = actions.move(draft, PLAYER_ID, CLOISTER)
+
+    (given,) = actions.move(draft, LANTERN, RAT)
+
+    assert given.told
+    assert given.card == "Gave away a guttering lantern"
+    assert f"[{RAT}]" in given.trace

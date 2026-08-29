@@ -31,7 +31,7 @@ from aidm.engines.registry import ENGINES, begin_game, build_engines
 from aidm.state.entities import EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game
-from aidm.state.play import Answer, MechanicEvent, TurnTrace
+from aidm.state.play import Answer, TurnTrace
 from aidm.turn.run import TurnResult, TurnStep, build_turn_agents, run_segment
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
@@ -177,7 +177,7 @@ async def played(
     narrator: Model | None = None,
     rng: Random | None = None,
     on_step: Callable[[TurnStep], None] | None = None,
-    on_event: Callable[[MechanicEvent], None] | None = None,
+    on_fact: Callable[[Fact], None] | None = None,
     settings: Settings | None = None,
 ) -> TurnResult:
     """Build a session-style turn with every model role stubbed."""
@@ -195,7 +195,7 @@ async def played(
             settings=settings,
             rng=Random(0) if rng is None else rng,
             on_step=on_step,
-            on_event=on_event,
+            on_fact=on_fact,
         )
 
 

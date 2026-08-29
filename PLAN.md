@@ -75,16 +75,18 @@ class ToolCall(Frozen):
     name: str
     args: dict[str, JsonValue]
 
-class DecisionOption(Frozen):
+class DecisionOption(Frozen):    # unchanged: creation steps and every content pack hold this
     id: Slug
     label: str = Field(min_length=1)
     detail: str = ""
-    call: ToolCall                   # applied when the player picks this option
+
+class PendingOption(DecisionOption):
+    call: ToolCall               # applied when the player picks this option
 
 class PendingDecision(Frozen):
     kind: Slug
     prompt: str = Field(min_length=1)
-    options: tuple[DecisionOption, ...]
+    options: tuple[PendingOption, ...]
     allows_text: bool
     # validator: option ids unique
 
