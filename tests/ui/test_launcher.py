@@ -2,11 +2,12 @@ import json
 import shutil
 from pathlib import Path
 
+import pytest
 from core_test_support import ENGINES_BUILT, LONER3E
 from pydantic import JsonValue
 from ui_test_support import SCENARIOS, ui_settings
 
-from aidm.app.launch import LauncherController, LaunchTarget, load_catalog
+from aidm.app.launch import LaunchTarget, launch_target, load_catalog
 from aidm.app.runtime import Runtime
 from aidm.config import Settings
 from aidm.content.io import ENCODING, FileStore
@@ -37,19 +38,21 @@ def _declaring(tmp_path: Path, engine: str) -> Path:
 
 def test_an_overlay_decides_which_rules_a_character_offers(tmp_path: Path) -> None:
     catalog = load_catalog(ui_settings(tmp_path), ENGINES_BUILT)
-    controller = LauncherController(catalog)
 
     assert catalog.scenario("whispering-vault").engines == ("loner3e",)
-    assert [option.id for option in catalog.characters] == ["kael"]
-    controller.choose_scenario("whispering-vault")
-
-    assert controller.selected_engine == LONER3E
-    assert [option.id for option in controller.compatible_characters()] == ["kael"]
-    assert controller.new_game().model_dump() == {
+    assert [entry.id for entry in catalog.characters_for(LONER3E)] == ["kael"]
+    assert launch_target(catalog, "whispering-vault", "kael").model_dump() == {
         "slug": "whispering-vault--kael",
         "scenario_id": "whispering-vault",
         "character_id": "kael",
     }
+
+
+def test_a_character_without_the_rules_the_scenario_names_is_refused(tmp_path: Path) -> None:
+    catalog = load_catalog(ui_settings(tmp_path), ENGINES_BUILT)
+
+    with pytest.raises(ValueError, match="has no 'loner3e' rules written for it"):
+        _ = launch_target(catalog, "whispering-vault", "nobody")
 
 
 def test_a_directory_holding_no_canon_is_skipped(tmp_path: Path) -> None:
@@ -57,21 +60,9 @@ def test_a_directory_holding_no_canon_is_skipped(tmp_path: Path) -> None:
     (scenarios / "notes").mkdir()
     shutil.copytree(scenarios / "whispering-vault", scenarios / "aaa-draft")
 
-    controller = LauncherController(load_catalog(ui_settings(tmp_path, scenarios), ENGINES_BUILT))
+    catalog = load_catalog(ui_settings(tmp_path, scenarios), ENGINES_BUILT)
 
-    assert [option.id for option in controller.catalog.scenarios] == [
-        "aaa-draft",
-        "whispering-vault",
-    ]
-    controller.choose_scenario("aaa-draft")
-    assert controller.selected_engine == "loner3e"
-
-
-def test_a_scenario_offers_only_the_rules_it_names(tmp_path: Path) -> None:
-    settings = ui_settings(tmp_path, _declaring(tmp_path, "twentyfourxx"))
-    catalog = load_catalog(settings, ENGINES_BUILT)
-
-    assert catalog.scenario("whispering-vault").engines == ("twentyfourxx",)
+    assert [entry.id for entry in catalog.scenarios] == ["aaa-draft", "whispering-vault"]
 
 
 def test_a_scenario_naming_an_uninstalled_engine_is_skipped(tmp_path: Path) -> None:
@@ -84,60 +75,42 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path)
     FileStore(tmp_path).save("old-game", _opening_state(settings))
 
-    controller = LauncherController(load_catalog(settings, ENGINES_BUILT))
-    saved = controller.catalog.save("old-game")
+    (saved,) = load_catalog(settings, ENGINES_BUILT).saves
 
     assert (saved.scenario_title, saved.character_title, saved.turn) == (
         "The Whispering Vault",
         "Kael",
         0,
     )
-    assert controller.resume(saved.slug).model_dump() == {
+    assert saved.target.model_dump() == {
         "slug": "old-game",
         "scenario_id": "whispering-vault",
         "character_id": "kael",
     }
 
 
-def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "change",
+    ({"engine": "retired"}, {"scenario_id": "gone"}, {"character_id": "nobody"}),
+    ids=("engine withdrawn", "scenario deleted", "character deleted"),
+)
+def test_a_save_whose_origin_is_gone_is_not_listed(tmp_path: Path, change: dict[str, str]) -> None:
+    settings = ui_settings(tmp_path)
+    orphan = _opening_state(settings).model_copy(update=change).committed()
+    FileStore(tmp_path).save("orphan", orphan)
+
+    assert not load_catalog(settings, ENGINES_BUILT).saves
+
+
+def test_a_save_the_app_cannot_read_does_not_hide_the_others(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path)
     state = _opening_state(settings)
-    FileStore(tmp_path).save(
-        "withdrawn", state.model_copy(update={"engine": "retired"}).committed()
-    )
-
-    saved = load_catalog(settings, ENGINES_BUILT).save("withdrawn")
-
-    assert not saved.resumable
-    assert saved.problem == "scenario 'whispering-vault' no longer offers the 'retired' engine"
-
-
-def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: Path) -> None:
-    settings = ui_settings(tmp_path)
-    FileStore(tmp_path).save("good", _opening_state(settings))
-    (tmp_path / "broken.json").write_text("{not json", encoding=ENCODING)
+    FileStore(tmp_path).save("good", state)
+    _ = (tmp_path / "broken.json").write_text("{not json", encoding=ENCODING)
+    stale: dict[str, JsonValue] = json.loads(state.model_dump_json())
+    stale["history"] = [{"prompt": "test", "lines": [], "events": [], "outcomes": []}]
+    _ = (tmp_path / "stale.json").write_text(json.dumps(stale), encoding=ENCODING)
 
     catalog = load_catalog(settings, ENGINES_BUILT)
 
-    assert [save.slug for save in catalog.saves] == ["good"]
-    assert [broken.slug for broken in catalog.unreadable] == ["broken"]
-    problem = catalog.unreadable[0].problem
-    assert "\n" not in problem
-    assert len(problem) <= 200
-
-    controller = LauncherController(catalog)
-    controller.choose_scenario("whispering-vault")
-    assert controller.new_game().slug == "whispering-vault--kael"
-
-
-def test_a_save_whose_body_is_stale_is_reported_not_offered(tmp_path: Path) -> None:
-    settings = ui_settings(tmp_path)
-    body = json.loads(_opening_state(settings).model_dump_json())
-    body["history"] = [{"prompt": "test", "lines": [], "events": [], "outcomes": []}]
-    (tmp_path / "stale.json").write_text(json.dumps(body), encoding=ENCODING)
-
-    catalog = load_catalog(settings, ENGINES_BUILT)
-
-    assert not catalog.saves
-    assert [broken.slug for broken in catalog.unreadable] == ["stale"]
-    assert "\n" not in catalog.unreadable[0].problem
+    assert [save.target.slug for save in catalog.saves] == ["good"]

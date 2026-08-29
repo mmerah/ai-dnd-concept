@@ -13,9 +13,8 @@ and `Settings.history_window`. A turn now runs Director -> Narrator, and the con
 unbounded:
 `history = exchanges_to_messages(state.history)`.
 
-Three player-facing surfaces went with it and are recorded nowhere else: `JournalView.memories`,
-the journal panel's "What is remembered" block, and the memories section of the exported journal
-markdown. A re-implementation has to put all three back.
+Two player-facing surfaces went with it and are recorded nowhere else: `JournalView.memories` and
+the journal panel's "What is remembered" block. A re-implementation has to put both back.
 
 ## Why
 

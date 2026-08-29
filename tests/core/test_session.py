@@ -54,15 +54,6 @@ def test_resume_refuses_a_save_that_is_not_this_game(
         session(tmp_path)
 
 
-def test_exporting_the_journal_writes_a_file_a_restart_then_discards(tmp_path: Path) -> None:
-    game = session(tmp_path)
-    path = game.export_journal()
-
-    assert path.read_text(encoding="utf-8").startswith("# ")
-    game.restart()
-    assert not path.exists()
-
-
 def test_one_open_game_per_slug_and_it_keeps_the_origin_it_was_opened_with(tmp_path: Path) -> None:
     runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path))
     opened = runtime.session(TARGET)

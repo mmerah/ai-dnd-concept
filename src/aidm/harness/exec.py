@@ -43,9 +43,6 @@ class ExecDriver(ABC):
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            # pi's closing event carries the whole message history on one line, past the 64 KiB
-            # default.
-            limit=2**20,
             # Its own group, so `interrupt` reaches the MCP server the CLI spawns under itself.
             start_new_session=True,
         )

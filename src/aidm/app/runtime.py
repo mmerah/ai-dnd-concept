@@ -17,32 +17,11 @@ from aidm.engines.registry import begin_game, build_engines
 from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Slug
 from aidm.state.facts import Fact, traced
 from aidm.state.model import Game, frontier
-from aidm.state.play import Answer, Line, MechanicEvent, TurnTrace
+from aidm.state.play import Answer, MechanicEvent, TurnTrace
 from aidm.turn.run import TurnAgents, TurnStep, build_turn_agents, run_segment
 
 from .launch import LaunchTarget
 from .media import ICON_DIR, Illustrator
-
-
-def journal_markdown(state: Game) -> str:
-    """A projection only: the journal is written for a reader and never read back."""
-    threads = sorted(state.world.threads.values(), key=lambda thread: thread.title)
-    lines = [f"# {state.scenario.title}", "", state.scenario.premise, ""]
-    for number, exchange in enumerate(state.history, start=1):
-        told = "\n".join(attributed_line(state, line) for line in exchange.lines)
-        lines.extend((f"## TurnTrace {number}", "", f"> {exchange.prompt}", "", told, ""))
-    if threads:
-        lines.extend(("## Threads", ""))
-        lines.extend(f"- **{thread.title}** — {thread.status}" for thread in threads)
-        lines.append("")
-    return "\n".join(lines)
-
-
-def attributed_line(state: Game, line: Line) -> str:
-    """A speaker is named, because a bare quote reads as narration once the bubbles are gone."""
-    speaker = None if line.speaker_id is None else state.world.require(line.speaker_id)
-    return line.text if speaker is None else f"**{speaker.name}:** {line.text}"
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -151,9 +130,6 @@ class GameSession:
 
     def icon(self, entity_id: EntityId) -> Path | None:
         return None if self.media is None else self.media.icon(entity_id)
-
-    def export_journal(self) -> Path:
-        return self.store.write_journal(self.slug, journal_markdown(self.state))
 
     def _illustrate(self, narration: str) -> None:
         """Retain background tasks because asyncio may collect unreferenced tasks early."""

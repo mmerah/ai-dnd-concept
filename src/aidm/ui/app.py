@@ -1,24 +1,22 @@
 import logging
-from collections.abc import Callable
 from functools import partial
 
 from nicegui import app, ui
 from nicegui.events import ValueChangeEventArguments
 
 from aidm.app.launch import (
-    LauncherController,
+    LauncherCatalog,
     LaunchTarget,
     SaveOption,
+    launch_target,
     load_catalog,
 )
 from aidm.app.runtime import Runtime
-from aidm.config import Settings, load_settings
+from aidm.config import load_settings
 from aidm.harness.claude import ClaudeDriver
 from aidm.harness.codex import CodexDriver
 from aidm.harness.driver import Driver
-from aidm.harness.opencode import OpencodeDriver
-from aidm.harness.pi import PiDriver
-from aidm.state.entities import content_id
+from aidm.state.entities import Slug, content_id
 
 from .create import agent_scenario_page, character_page, scenario_page
 from .game import game_page
@@ -29,7 +27,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def home_page(runtime: Runtime) -> None:
-    controller = LauncherController(load_catalog(runtime.settings, runtime.engines))
+    catalog = load_catalog(runtime.settings, runtime.engines)
     with page_header("AI Dungeon Master", home=False):
         ui.button("Settings", icon="settings", on_click=lambda: ui.navigate.to("/settings")).props(
             "flat color=white"
@@ -43,47 +41,72 @@ def home_page(runtime: Runtime) -> None:
             ui.label("Choose a scenario, then a character written for its rules.").classes(
                 "text-body1 opacity-70"
             )
-            _new_game(controller)
-            _new_content(controller, runtime.settings)
-            _saved_games(controller)
+            _new_game(catalog, runtime)
+            _new_content(runtime)
+            _saved_games(catalog, runtime)
 
 
-def _new_game(controller: LauncherController) -> None:
-    @ui.refreshable
-    def form() -> None:
-        with ui.card().classes("w-full q-pa-lg"):
-            ui.label("New or current game").classes("text-h6 font-bold")
-            if controller.selected_scenario is None or controller.selected_engine is None:
-                ui.label("No playable scenario was found.").classes("text-negative")
-                return
-            scenario = controller.catalog.scenario(controller.selected_scenario)
-            show_engine_badge(controller.catalog.badge(controller.selected_engine))
+def _new_game(catalog: LauncherCatalog, runtime: Runtime) -> None:
+    with ui.card().classes("w-full q-pa-lg"):
+        ui.label("New or current game").classes("text-h6 font-bold")
+        if not catalog.scenarios:
+            ui.label("No playable scenario was found.").classes("text-negative")
+            return
+        scenario_id = catalog.scenarios[0].id
+        character_id: Slug | None = None
+
+        def choose_scenario(event: ValueChangeEventArguments[str]) -> None:
+            nonlocal scenario_id
+            scenario_id = content_id(event.value)
+            form.refresh()
+
+        def choose_character(event: ValueChangeEventArguments[str]) -> None:
+            nonlocal character_id
+            character_id = content_id(event.value)
+            form.refresh()
+
+        @ui.refreshable
+        def form() -> None:
+            scenario = catalog.scenario(scenario_id)
+            engine = scenario.engines[0]
+            show_engine_badge(runtime.engines[engine].badge)
             ui.select(
-                options={option.id: option.title for option in controller.catalog.scenarios},
-                value=controller.selected_scenario,
+                options={entry.id: entry.title for entry in catalog.scenarios},
+                value=scenario_id,
                 label="Scenario",
-                on_change=_chosen("scenario", controller.choose_scenario, form.refresh),  # pyright: ignore[reportUnknownArgumentType]
+                on_change=choose_scenario,
             ).classes("w-full")
             ui.label(scenario.subtitle).classes("text-sm opacity-70")
-            compatible = controller.compatible_characters()
+            written = {
+                entry.id: f"{entry.title} — {entry.subtitle}"
+                for entry in catalog.characters_for(engine)
+            }
+            # The character last chosen may have no rules under a scenario chosen since.
+            chosen = character_id if character_id in written else next(iter(written), None)
             ui.select(
-                options={option.id: f"{option.title} — {option.subtitle}" for option in compatible},
-                value=controller.selected_character,
+                options=written,
+                value=chosen,
                 label="Character",
-                on_change=_chosen("character", controller.choose_character, form.refresh),  # pyright: ignore[reportUnknownArgumentType]
+                on_change=choose_character,
             ).classes("w-full")
-            if not compatible:
+            if chosen is None:
                 ui.label("No character is written for these rules.").classes("text-negative")
                 return
-            _action(controller)
+            target = launch_target(catalog, scenario_id, chosen)
+            started = any(save.target.slug == target.slug for save in catalog.saves)
+            ui.button(
+                "Continue game" if started else "Start game",
+                icon="play_arrow",
+                on_click=partial(_open_game, target),
+            ).props("color=primary").classes("q-mt-md")
 
-    form()
+        form()
 
 
-def _new_content(controller: LauncherController, settings: Settings) -> None:
+def _new_content(runtime: Runtime) -> None:
     with ui.row().classes("items-center").style("gap: 0.5rem"):
         # Authoring calls a model, and only `external` has neither a key nor an agent to ask.
-        if settings.harness == "external":
+        if runtime.settings.harness == "external":
             ui.label("New scenario: call begin_scenario() in the terminal.").classes(
                 "text-sm opacity-70"
             )
@@ -94,11 +117,11 @@ def _new_content(controller: LauncherController, settings: Settings) -> None:
                 on_click=lambda: ui.navigate.to("/create-scenario"),
             ).props("outline dense")
         ui.label("New character:").classes("text-sm opacity-70")
-        for option in controller.catalog.engines:
+        for engine_id in runtime.engines:
             ui.button(
-                option.id,
+                engine_id,
                 icon="person_add",
-                on_click=partial(_navigate_create, option.id),
+                on_click=partial(_navigate_create, engine_id),
             ).props("outline dense")
 
 
@@ -106,77 +129,17 @@ def _navigate_create(engine: str) -> None:
     ui.navigate.to(f"/create/{engine}")
 
 
-def _chosen(
-    what: str,
-    choose: Callable[[str], None],
-    refresh: Callable[[], object],
-) -> Callable[[ValueChangeEventArguments[object]], None]:
-    """One handler per select: they differ only in the choice they record."""
-
-    def handle(event: ValueChangeEventArguments[object]) -> None:
-        LOGGER.info("launcher %s selected: %r", what, event.value)
-        if not isinstance(event.value, str):
-            ui.notify(f"Choose a {what}.", type="warning")
-            return
-        try:
-            choose(event.value)
-        except ValueError as error:
-            ui.notify(str(error), type="negative")
-            return
-        refresh()
-
-    return handle
-
-
-def _action(controller: LauncherController) -> None:
-    target = controller.new_game()
-    catalog = controller.catalog
-    existing = next((save for save in catalog.saves if save.slug == target.slug), None)
-    unreadable = next((save for save in catalog.unreadable if save.slug == target.slug), None)
-    blocked = unreadable or (existing if existing is not None and not existing.resumable else None)
-    if blocked is not None:
-        ui.label(blocked.problem or "This save cannot be resumed.").classes(
-            "text-negative text-sm q-mt-md"
-        )
-        ui.label("Delete or fix the save to continue this game.").classes("text-xs opacity-60")
-        return
-    ui.button(
-        "Continue game" if existing is not None else "Start game",
-        icon="play_arrow",
-        on_click=lambda: _start(controller),
-    ).props("color=primary").classes("q-mt-md")
-
-
-def _start(controller: LauncherController) -> None:
-    LOGGER.info(
-        "launcher start requested: scenario=%r character=%r",
-        controller.selected_scenario,
-        controller.selected_character,
-    )
-    try:
-        target = controller.new_game()
-    except ValueError as error:
-        ui.notify(str(error), type="warning")
-        return
-    ui.navigate.to(target.path)
-
-
-def _saved_games(controller: LauncherController) -> None:
-    catalog = controller.catalog
+def _saved_games(catalog: LauncherCatalog, runtime: Runtime) -> None:
     ui.label("Saved games").classes("text-h5 font-bold q-mt-md")
-    if not catalog.saves and not catalog.unreadable:
+    if not catalog.saves:
         ui.label("No saved games yet.").classes("text-body1 opacity-60")
         return
     with ui.column().classes("w-full").style("gap: 0.75rem"):
         for saved in catalog.saves:
-            _saved_card(controller, saved)
-        for broken in catalog.unreadable:
-            with ui.card().classes("w-full q-pa-md"):
-                ui.label(broken.slug).classes("text-h6 font-bold")
-                ui.label(f"Unreadable save: {broken.problem}").classes("text-negative text-sm")
+            _saved_card(saved, runtime)
 
 
-def _saved_card(controller: LauncherController, saved: SaveOption) -> None:
+def _saved_card(saved: SaveOption, runtime: Runtime) -> None:
     with ui.card().classes("w-full q-pa-md"):
         with ui.row().classes("w-full items-center").style("gap: 1rem"):
             with ui.column().classes("col").style("gap: 0.25rem"):
@@ -184,26 +147,16 @@ def _saved_card(controller: LauncherController, saved: SaveOption) -> None:
                 ui.label(f"{saved.character_title} · turn {saved.turn}").classes(
                     "text-sm opacity-70"
                 )
-            show_engine_badge(controller.catalog.badge(saved.engine))
-            if saved.resumable:
-                ui.button(
-                    "Resume",
-                    icon="play_arrow",
-                    on_click=partial(_resume, controller, saved.slug),
-                ).props("color=primary")
-            else:
-                ui.label(saved.problem or "Save cannot be resumed.").classes(
-                    "text-negative text-sm"
-                )
+            show_engine_badge(runtime.engines[saved.engine].badge)
+            ui.button(
+                "Resume",
+                icon="play_arrow",
+                on_click=partial(_open_game, saved.target),
+            ).props("color=primary")
 
 
-def _resume(controller: LauncherController, slug: str) -> None:
-    LOGGER.info("launcher resume requested: slug=%s", slug)
-    try:
-        target = controller.resume(slug)
-    except ValueError as error:
-        ui.notify(str(error), type="negative")
-        return
+def _open_game(target: LaunchTarget) -> None:
+    LOGGER.info("launcher opening %r", target.slug)
     ui.navigate.to(target.path)
 
 
@@ -227,10 +180,6 @@ def _register_pages(runtime: Runtime) -> None:
                     drivers[slug] = ClaudeDriver(runtime=runtime, slug=slug)
                 case "codex":
                     drivers[slug] = CodexDriver(runtime=runtime, slug=slug)
-                case "opencode":
-                    drivers[slug] = OpencodeDriver(runtime=runtime, slug=slug)
-                case "pi":
-                    drivers[slug] = PiDriver(runtime=runtime, slug=slug)
                 case _:
                     return None
         return drivers[slug]

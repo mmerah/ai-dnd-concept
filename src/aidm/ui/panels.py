@@ -2,10 +2,10 @@ import json
 
 from nicegui import ui
 
-from aidm.app.runtime import GameSession, attributed_line
+from aidm.app.runtime import GameSession
 from aidm.state.facts import traced
-from aidm.state.model import Thread
-from aidm.state.play import StepTrace, TurnTrace
+from aidm.state.model import Game, Thread
+from aidm.state.play import Line, StepTrace, TurnTrace
 from aidm.turn.context import placement, player_scene
 
 from .widgets import entity_row, heading, labeled_value
@@ -41,13 +41,14 @@ def _thread_card(thread: Thread) -> None:
         ui.label(thread.status).classes("text-xs opacity-60")
 
 
+def _attributed_line(state: Game, line: Line) -> str:
+    """A speaker is named, because a bare quote reads as narration once the bubbles are gone."""
+    speaker = None if line.speaker_id is None else state.world.require(line.speaker_id)
+    return line.text if speaker is None else f"**{speaker.name}:** {line.text}"
+
+
 def journal_panel(session: GameSession) -> None:
     threads = session.state.world.threads.values()
-
-    def export() -> None:
-        ui.notify(f"Journal written to {session.export_journal()}")
-
-    ui.button("Export markdown", icon="download", on_click=export).props("flat dense")
     if threads:
         heading("Threads")
         for thread in threads:
@@ -63,7 +64,7 @@ def journal_panel(session: GameSession) -> None:
     for number, exchange in reversed(list(enumerate(session.state.history, start=1))):
         with ui.expansion(f"turn {number}: {exchange.prompt}").classes("w-full"):
             for line in exchange.lines:
-                ui.markdown(attributed_line(session.state, line)).classes("text-sm")
+                ui.markdown(_attributed_line(session.state, line)).classes("text-sm")
 
 
 def trace_panel(session: GameSession) -> None:

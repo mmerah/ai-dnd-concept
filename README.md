@@ -67,8 +67,6 @@ In **code mode** one coding agent plays the Director, the Narrator and the scena
 | `external` | a CLI you start yourself | follows the save (read-only) |
 | `claude` | Claude Code, in this process | plays |
 | `codex` | `codex exec`, one process per turn | plays |
-| `opencode` | `opencode run`, one process per turn | plays |
-| `pi` | `pi -p`, one process per turn | plays |
 
 ```bash
 echo "HARNESS=external" >> .env   # you start the agent
@@ -79,7 +77,7 @@ echo "HARNESS=claude" >> .env     # the app starts the agent
 uv run aidm                       # type the action; the dev tab logs the tool calls
 ```
 
-`claude` runs the MCP server in this process, on the app's own `Runtime`: one writer, and a turn appears as the agent commits it. The other three run their server in a second process, so the page reads each turn back off the save file. They are slower and cost more per turn.
+`claude` runs the MCP server in this process, on the app's own `Runtime`: one writer, and a turn appears as the agent commits it. `codex` runs its server in a second process, so the page reads each turn back off the save file. They are slower and cost more per turn.
 
 ### What each harness needs
 
@@ -90,10 +88,8 @@ Nothing is installed. Every config file is in the repository, and `.claude/skill
 | `claude` | none | `.claude/skills` |
 | `external` | `.mcp.json` | `.claude/skills` |
 | `codex` | `.codex/config.toml` + trust the project | `.agents/skills` |
-| `opencode` | `opencode.json` | `.agents/skills` |
-| `pi` | `.mcp.json` (`pi-mcp-adapter` extension) | `.agents/skills` |
 
-`codex` runs with `--approve-for-me`, because `codex exec` cancels every MCP call under its default `never` policy ([codex#24135](https://github.com/openai/codex/issues/24135)). `pi` ships no MCP client, so the extension proxies every tool behind one `mcp` tool.
+`codex` runs with `--approve-for-me`, because `codex exec` cancels every MCP call under its default `never` policy ([codex#24135](https://github.com/openai/codex/issues/24135)).
 
 Code mode gives up two things:
 

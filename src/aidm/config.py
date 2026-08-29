@@ -123,7 +123,7 @@ class Settings(BaseSettings):
     turn: TurnConfig = TurnConfig()
     authoring: AuthoringConfig = AuthoringConfig()
     # Who plays the turn: the app's own roles, an agent you run yourself, or one the app launches.
-    harness: Literal["builtin", "external", "claude", "codex", "opencode", "pi"] = "builtin"
+    harness: Literal["builtin", "external", "claude", "codex"] = "builtin"
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")
     characters_dir: Path = Path("characters")

@@ -11,8 +11,8 @@ from pydantic_ai.toolsets import FunctionToolset
 
 from aidm.app.launch import (
     LauncherCatalog,
-    LauncherController,
     LaunchTarget,
+    launch_target,
     load_catalog,
 )
 from aidm.app.runtime import GameSession, Runtime
@@ -298,9 +298,9 @@ def _check_playable(run: AuthoringRun) -> None:
 
 
 def _target(catalog: LauncherCatalog, slug: str) -> LaunchTarget:
-    controller = LauncherController(catalog)
-    if any(save.slug == slug for save in catalog.saves):
-        return controller.resume(slug)
+    saved = next((save for save in catalog.saves if save.target.slug == slug), None)
+    if saved is not None:
+        return saved.target
     named = slug.split("--")
     if len(named) != 2:
         raise ModelRetry(
@@ -308,11 +308,9 @@ def _target(catalog: LauncherCatalog, slug: str) -> LaunchTarget:
         )
     scenario_id, character_id = named
     try:
-        controller.choose_scenario(scenario_id)
-        controller.choose_character(character_id)
+        return launch_target(catalog, scenario_id, character_id)
     except ValueError as unknown:
         raise ModelRetry(f"{unknown}\n{_listing(catalog)}") from unknown
-    return controller.new_game()
 
 
 def catalogue(runtime: Runtime) -> str:
@@ -322,10 +320,10 @@ def catalogue(runtime: Runtime) -> str:
 def _listing(catalog: LauncherCatalog) -> str:
     return "\n".join(
         (
-            "saves: " + (", ".join(save.slug for save in catalog.saves) or "(none)"),
+            "saves: " + (", ".join(save.target.slug for save in catalog.saves) or "(none)"),
             "scenarios: " + ", ".join(entry.id for entry in catalog.scenarios),
             "characters: " + ", ".join(entry.id for entry in catalog.characters),
-            "engines: " + ", ".join(option.id for option in catalog.engines),
+            "engines: " + ", ".join(catalog.engines),
         )
     )
 

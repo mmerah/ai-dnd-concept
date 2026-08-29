@@ -252,8 +252,8 @@ key==id invariant and the end of O(n) scans, not for lines.
    `runtime.engines[id].badge`. −125 lines.
 5. Journal export (`journal_markdown`, `write_journal`, the export button): the journal tab
    already shows the chronicle. −24 lines.
-6. Authoring `write` takes the whole draft; delete `ScenarioPatch`, `connect`, `patch_refusal`.
-   Only after an authoring eval exists. −65 lines.
+6. Refused 2026-08-29: patch-based authoring stays (`ScenarioPatch`, `connect`, `patch_refusal`).
+   Small patches are proven to work for a model; a whole-draft `write` is not.
 
 Refused 2026-08-28, do not re-propose: narration as one string (NPC bubbles stay), deleting
 media (always played on), deleting the settings page, player actions, live streaming, card as a

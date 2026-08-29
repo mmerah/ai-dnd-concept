@@ -5,10 +5,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
 
-from pydantic import BaseModel, ConfigDict, JsonValue
+from pydantic import BaseModel, JsonValue
 
 from aidm.state.entities import EngineId, Slug, content_id, require_unique
-from aidm.state.model import Game, ScenarioMeta
+from aidm.state.model import Game
 
 from .model import (
     Character,
@@ -129,18 +129,6 @@ def engine_text(path: Path) -> str:
     return path.read_text(encoding=ENCODING)
 
 
-class SaveHeader(BaseModel):
-    """What the launcher reads off a save before any engine is built to read the rest of it."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    engine: EngineId
-    scenario_id: Slug
-    character_id: Slug
-    scenario: ScenarioMeta
-    turn: int
-
-
 @dataclass(frozen=True, slots=True)
 class FileStore:
     directory: Path
@@ -164,23 +152,14 @@ class FileStore:
         path = self._save_path(slug)
         return path.stat().st_mtime_ns if path.exists() else 0
 
-    def write_journal(self, slug: str, body: str) -> Path:
-        path = self._journal_path(slug)
-        _write(path, body)
-        return path
-
     def media_dir(self, slug: str) -> Path:
         return _safe_path(self.directory, slug, ".media")
 
     def discard(self, slug: str) -> None:
         self._save_path(slug).unlink(missing_ok=True)
-        self._journal_path(slug).unlink(missing_ok=True)
 
     def _save_path(self, slug: str) -> Path:
         return _safe_path(self.directory, slug, ".json")
-
-    def _journal_path(self, slug: str) -> Path:
-        return _safe_path(self.directory, slug, ".journal.md")
 
 
 def _copy(path: Path, original: Path) -> None:

@@ -77,4 +77,14 @@ Eval gate runs with `--concurrency 16` (default 4 is slow).
 ## Phase 8 — close the eval gaps (added 2026-08-29), not started
 - Baseline gaps at 9 repeats: swing-the-fire-axe (axe-rolled 2/9, axe-in-hand 6/9), mend-the-floodlight
   (think-rolled 6/9), no-improvised-brick (shoot-rolled 8/9). All Breathless.
-## Phase 7 — needs maintainer say, not started
+## Phase 7 — decided items 7.3–7.5 (started 2026-08-29)
+- [x] 7.3 opencode.py + pi.py + opencode.json deleted, Settings.harness = builtin|external|claude|codex,
+  exec.py limit note gone, README rows gone. 7.3+7.5: 9215 → 9101 src lines, 281 tests.
+- [x] 7.5 journal_markdown/export_journal/write_journal/_journal_path + Export button + 2 tests deleted.
+- [x] 7.4 launcher: LauncherController + EngineOption/UnreadableSave/SaveHeader/SaveOption.problem gone;
+  load_catalog + launch_target(catalog, scenario_id, character_id); unparsable or uninstalled-engine save = log
+  line + skip; codemode._target shares it; badges read runtime.engines[id].badge. 9101 → 8947 src lines, 282 tests.
+- [x] 7.4 review: a save whose scenario or character is gone is skipped too (it crashed /game on Resume);
+  SaveOption holds its LaunchTarget, catalog carries the engine ids, attributed_line moved to the only panel
+  that draws it. 8947 → 8916 src lines, 282 tests.
+- 7.6 refused 2026-08-29 by the maintainer: patch-based authoring stays (proven in other projects). Do not re-propose.
