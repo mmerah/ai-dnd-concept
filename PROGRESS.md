@@ -88,3 +88,18 @@ Eval gate runs with `--concurrency 16` (default 4 is slow).
   SaveOption holds its LaunchTarget, catalog carries the engine ids, attributed_line moved to the only panel
   that draws it. 8947 → 8916 src lines, 282 tests.
 - 7.6 refused 2026-08-29 by the maintainer: patch-based authoring stays (proven in other projects). Do not re-propose.
+## Phase 8 — close the eval gaps (started 2026-08-29)
+- [ ] 8.1 baseline: `run --label phase8-base --repeats 27 --concurrency 27` (running)
+- [x] 8.1 baseline evals/results/phase8-base.json: 98.6% (3274/3321), 55 cases, 27 repeats, 0 errors.
+- [x] 8.2 five expectations under 90%: fire-axe axe-rolled 16/27 + axe-in-hand 23/27 (Bash rolled, axe in goal text),
+  mend-the-floodlight 20/27 (loot_check instead of Think), no-improvised-brick 24/27 (Bash for a throw),
+  loner3e/risky-climb 23/27 (move alone, no roll).
+- [x] 8.3 rung 1 (one director.md sentence each): item_id line rewritten + "throwing anything is Shoot";
+  "repairing ... is a Think check, never a loot check"; Loner "rushed or dangerous journey is a roll first and a move after".
+  phase8-r1 (5 cases × 27): fire-axe 96/100, floodlight 100, brick 100, risky-climb 100, fight-the-rat held 100.
+- [x] 8.4 full run evals/results/phase8-r1-full.json: 99.0% (3287/3321) vs base 98.6%, errors 0, calls 1.28. New baseline.
+  Targets in the full run: fire-axe 27/27+27/27, floodlight 26/27, brick 27/27, loner risky-climb 27/27.
+  Dips breathless/risky-climb 26→23 and after-the-breath 26→24 re-ran at 26/27 each on the same code: lottery.
+  Goldens: only instructions/{breathless,loner3e}/director.txt (the three sentences); schemas unchanged.
+- [x] 8.5 every expectation ≥90% at 27 repeats; no known limits recorded. PLAN.md deleted (its own last line).
+- Maintainer rule 2026-08-29: after a baseline, eval only the low/in-progress cases with --case; no full runs.

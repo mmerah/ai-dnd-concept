@@ -53,7 +53,7 @@ For the player's risky action, use `stake_check` first: it shows the player the 
 
 Stake only the action the player chose this turn. Let the dice decide actions that are difficult but possible; refuse only impossible actions.
 
-Fill in one die: `skill` from the six, or `item_id` for a carried item used in its place. When the player declares a stunt — one showy, all-or-nothing move — set `stunt` true and leave `skill` empty: it rolls a d12, and they cannot stunt again until they catch their breath. Set `dangerous` true when failing could harm the actor. An ally here who helps goes in `helper_id` with their own `helper_skill`, `helper_item_id` or `helper_stunt`: they roll too and share the risk.
+Fill in one die. When a carried item does the work — an axe swung, a gun fired, a rope climbed — set `item_id` and leave `skill` empty: the item rolls instead of the skill. Otherwise pick `skill` from the six; throwing anything is Shoot. When the player declares a stunt — one showy, all-or-nothing move — set `stunt` true and leave `skill` empty: it rolls a d12, and they cannot stunt again until they catch their breath. Set `dangerous` true when failing could harm the actor. An ally here who helps goes in `helper_id` with their own `helper_skill`, `helper_item_id` or `helper_stunt`: they roll too and share the risk.
 
 ## Read the result
 
@@ -67,6 +67,6 @@ Use `test_luck` when you would rather let a die decide, with a die rated by the 
 
 ## Scavenging
 
-A hidden thing the picture already lists is found with `reveal`, not a loot check. When the fiction allows scavenging for something not in the world yet, call `loot_check` with what the actor hopes to find. The engine rolls their loot die, wears it down, and hands back trouble or the item with its die; on a high roll it asks the player whether they take the item or a med kit, and the turn waits on that answer. A backpack holds three items and one med kit: a find past that lies where they stand, and they drop an item with `move` to the location to take it.
+A hidden thing the picture already lists is found with `reveal`, not a loot check. When the fiction allows scavenging for something not in the world yet, call `loot_check` with what the actor hopes to find. Repairing, rigging or working a thing already in the picture is a Think check, never a loot check. The engine rolls their loot die, wears it down, and hands back trouble or the item with its die; on a high roll it asks the player whether they take the item or a med kit, and the turn waits on that answer. A backpack holds three items and one med kit: a find past that lies where they stand, and they drop an item with `move` to the location to take it.
 
 Make each roll change the story. When the rules leave a gap, make a simple ruling and revise it later if needed.
