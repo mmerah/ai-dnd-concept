@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 import pytest
@@ -20,7 +19,7 @@ from core_test_support import (
 from pydantic import ValidationError
 
 from aidm.content.io import load_character, load_scenario
-from aidm.content.model import Character, CharacterProfile, Scenario
+from aidm.content.model import Character, CharacterProfile
 from aidm.engines.core import rules
 from aidm.engines.loner3e.rules import RULES, Sheet
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
@@ -30,16 +29,6 @@ HELD = EntityId("frayed-rope")
 MARA = EntityId("mara")
 ELENA = EntityId("elena")
 TOMAS = EntityId("tomas")
-_HALL = {"id": "hall", "kind": "location", "name": "the hall", "brief": "A hall.", "known": True}
-_DOUBLED = json.dumps(
-    {
-        "meta": {"title": "Twice Over", "premise": "One id, authored twice."},
-        "starting_location_id": "hall",
-        "engine": "loner3e",
-        "packs": ["srd"],
-        "world": {"entities": [_HALL, {**_HALL, "name": "the hall again"}]},
-    }
-)
 
 
 def _character(*, holds: Entity) -> Character:
@@ -65,11 +54,20 @@ def _rope(item_id: EntityId, *, known: bool = True) -> Entity:
     )
 
 
+def test_a_doubled_id_in_a_world_file_is_refused(tmp_path: Path) -> None:
+    world = (SCENARIOS / "whispering-vault" / "world.json").read_text(encoding="utf-8")
+    doubled = world.replace('"study": {', '"study": {}, "study": {', 1)
+    (tmp_path / "doubled").mkdir()
+    _ = (tmp_path / "doubled" / "world.json").write_text(doubled, encoding="utf-8")
+    with pytest.raises(ValueError, match="duplicate keys"):
+        _ = load_scenario(tmp_path, "doubled")
+
+
 def test_world_and_game_state_reject_inconsistent_topology() -> None:
     _, state = initialized()
-    twice = state.world.require(PLAYER_ID).model_dump(round_trip=True)
-    with pytest.raises(ValidationError, match="duplicate entity ids"):
-        type(state.world).model_validate({"entities": [twice, twice]})
+    misfiled = state.world.require(PLAYER_ID).model_dump(round_trip=True)
+    with pytest.raises(ValidationError, match="filed under"):
+        type(state.world).model_validate({"entities": {"someone-else": misfiled}})
 
     with pytest.raises(ValueError, match="player entity must be known"):
         with_entity(state, updated(state.player, known=False))
@@ -96,9 +94,6 @@ def test_an_engine_refuses_an_authored_payload_it_cannot_read(tmp_path: Path) ->
 def test_scenario_topology_is_validated() -> None:
     with pytest.raises(ValidationError, match="starting_location_id"):
         updated(scenario(), starting_location_id=EntityId("missing"))
-    with pytest.raises(ValidationError, match="duplicate entity ids"):
-        # Keyed by id from a flat array, so the duplicate has to be caught before it collapses.
-        Scenario.model_validate_json(_DOUBLED)
 
 
 def test_a_location_no_walk_reaches_is_refused() -> None:
@@ -110,7 +105,7 @@ def test_a_location_no_walk_reaches_is_refused() -> None:
         brief="A chamber no passage names.",
         known=False,
     )
-    grown = updated(authored.world, entities=(*authored.world.entities, undercroft))
+    grown = updated(authored.world, entities={**authored.world.entities, "undercroft": undercroft})
     with pytest.raises(ValidationError, match=r"no walk.*undercroft"):
         updated(authored, world=grown)
 
@@ -120,7 +115,7 @@ def test_world_state_rejects_broken_exits_and_party() -> None:
     study = world.require(EntityId("study"))
     exposed = updated(study, exits=(*study.exits, {"to": "bell-tower", "known": True}))
     with pytest.raises(ValidationError, match="has not met"):
-        updated(world, entities=tuple(exposed if e.id == study.id else e for e in world.entities))
+        updated(world, entities={**world.entities, study.id: exposed})
 
     with pytest.raises(ValidationError, match="without being met"):
         updated(world, party=(ELENA,))
@@ -128,7 +123,7 @@ def test_world_state_rejects_broken_exits_and_party() -> None:
     mara = world.require(MARA)
     wandering = updated(mara, exits=({"to": "study"},))
     with pytest.raises(ValidationError, match="cannot have exits"):
-        updated(world, entities=tuple(wandering if e.id == mara.id else e for e in world.entities))
+        updated(world, entities={**world.entities, mara.id: wandering})
 
 
 def test_a_committed_game_refuses_a_player_who_travels_with_themselves() -> None:
@@ -173,7 +168,7 @@ def test_an_authored_actor_without_rules_is_refused() -> None:
         authored,
         world=updated(
             authored.world,
-            entities=tuple(bare if e.id == MARA else e for e in authored.world.entities),
+            entities={**authored.world.entities, MARA: bare},
         ),
     )
 
@@ -190,10 +185,7 @@ def test_twentyfourxx_opposition_needs_no_sheet() -> None:
         authored,
         world=updated(
             authored.world,
-            entities=tuple(
-                updated(entity, rules={}) if entity.id == hostile.id else entity
-                for entity in authored.world.entities
-            ),
+            entities={**authored.world.entities, hostile.id: updated(hostile, rules={})},
         ),
     )
     player = load_character(CHARACTERS, "kael", engine.id, engine.check_overlay)

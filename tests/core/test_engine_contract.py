@@ -95,12 +95,13 @@ def test_authored_rules_are_the_sheet_of_whatever_carries_them() -> None:
         shipped,
         world=updated(
             shipped.world,
-            entities=[
-                updated(entity, rules={"concept": "a chart that remembers"})
-                if entity.id == EntityId("vault-map")
-                else entity
-                for entity in shipped.world.entities
-            ],
+            entities={
+                **shipped.world.entities,
+                EntityId("vault-map"): updated(
+                    shipped.world.require(EntityId("vault-map")),
+                    rules={"concept": "a chart that remembers"},
+                ),
+            },
         ),
     )
 

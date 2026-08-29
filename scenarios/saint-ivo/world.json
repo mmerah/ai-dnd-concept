@@ -9,8 +9,8 @@
   "art_style": "Sodium light on wet concrete and hospital green, painted digital concept art; taped plastic sheeting, dust, and lanternlight in a dead city.",
   "starting_location_id": "ambulance-bay",
   "world": {
-    "entities": [
-      {
+    "entities": {
+      "ambulance-bay": {
         "id": "ambulance-bay",
         "kind": "location",
         "name": "the ambulance bay",
@@ -30,7 +30,7 @@
           }
         ]
       },
-      {
+      "triage-hall": {
         "id": "triage-hall",
         "kind": "location",
         "name": "the triage hall",
@@ -50,7 +50,7 @@
           }
         ]
       },
-      {
+      "roof-walk": {
         "id": "roof-walk",
         "kind": "location",
         "name": "the roof walk",
@@ -69,7 +69,7 @@
           }
         ]
       },
-      {
+      "ward-nine": {
         "id": "ward-nine",
         "kind": "location",
         "name": "ward nine",
@@ -88,7 +88,7 @@
           }
         ]
       },
-      {
+      "stair-shaft": {
         "id": "stair-shaft",
         "kind": "location",
         "name": "the stair shaft",
@@ -111,7 +111,7 @@
           }
         ]
       },
-      {
+      "cold-vault": {
         "id": "cold-vault",
         "kind": "location",
         "name": "the cold vault",
@@ -128,7 +128,7 @@
           }
         ]
       },
-      {
+      "dov-marek": {
         "id": "dov-marek",
         "kind": "actor",
         "name": "Dov Marek",
@@ -139,7 +139,7 @@
         "parent_id": "ambulance-bay",
         "traits": []
       },
-      {
+      "sela-quist": {
         "id": "sela-quist",
         "kind": "actor",
         "name": "Sela Quist",
@@ -150,7 +150,7 @@
         "parent_id": "triage-hall",
         "traits": []
       },
-      {
+      "wren-halloway": {
         "id": "wren-halloway",
         "kind": "actor",
         "name": "Wren Halloway",
@@ -168,7 +168,7 @@
           }
         }
       },
-      {
+      "bell-crawler": {
         "id": "bell-crawler",
         "kind": "actor",
         "name": "the Bell Crawler",
@@ -179,7 +179,7 @@
         "parent_id": "stair-shaft",
         "traits": []
       },
-      {
+      "ward-card": {
         "id": "ward-card",
         "kind": "item",
         "name": "a ward nine key card",
@@ -193,7 +193,7 @@
           "die": 6
         }
       },
-      {
+      "fire-axe": {
         "id": "fire-axe",
         "kind": "item",
         "name": "a fire axe",
@@ -205,7 +205,7 @@
           "die": 10
         }
       },
-      {
+      "bolt-cutters": {
         "id": "bolt-cutters",
         "kind": "item",
         "name": "a pair of bolt cutters",
@@ -217,7 +217,7 @@
           "die": 8
         }
       },
-      {
+      "rope-ladder": {
         "id": "rope-ladder",
         "kind": "item",
         "name": "a knotted rope ladder",
@@ -229,15 +229,15 @@
           "die": 6
         }
       }
-    ],
-    "threads": [
-      {
+    },
+    "threads": {
+      "cold-cache": {
         "id": "cold-cache",
         "title": "The sealed cold vault",
         "status": "active",
         "note": "Kael came for the cased antivirals racked in Saint Ivo's cold vault: the ward card that opens the door, six flights of stair shaft that the Bell Crawler hunts by sound, and what Wren Halloway wants for coming down with him."
       }
-    ],
+    },
     "party": []
   }
 }

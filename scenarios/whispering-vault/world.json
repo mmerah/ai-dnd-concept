@@ -7,8 +7,8 @@
   "packs": ["srd"],
   "starting_location_id": "study",
   "world": {
-    "entities": [
-      {
+    "entities": {
+      "study": {
         "id": "study",
         "kind": "location",
         "name": "the abbot's study",
@@ -22,7 +22,7 @@
           }
         ]
       },
-      {
+      "cloister": {
         "id": "cloister",
         "kind": "location",
         "name": "the cloister",
@@ -43,7 +43,7 @@
           }
         ]
       },
-      {
+      "bell-tower": {
         "id": "bell-tower",
         "kind": "location",
         "name": "the bell tower",
@@ -56,7 +56,7 @@
           }
         ]
       },
-      {
+      "vault": {
         "id": "vault",
         "kind": "location",
         "name": "the sealed vault",
@@ -72,7 +72,7 @@
           }
         ]
       },
-      {
+      "mara": {
         "id": "mara",
         "kind": "actor",
         "name": "Mara",
@@ -86,7 +86,7 @@
           "gear": ["Ledger and Ink"]
         }
       },
-      {
+      "tomas": {
         "id": "tomas",
         "kind": "actor",
         "name": "Brother Tomas",
@@ -100,7 +100,7 @@
           "gear": ["Twig Broom"]
         }
       },
-      {
+      "elena": {
         "id": "elena",
         "kind": "actor",
         "name": "Elena",
@@ -116,7 +116,7 @@
           "gear": ["Hooded Lantern"]
         }
       },
-      {
+      "cloister-rat": {
         "id": "cloister-rat",
         "kind": "actor",
         "name": "a bloated rat",
@@ -129,7 +129,7 @@
           "frailties": ["Does Not Run"]
         }
       },
-      {
+      "vault-map": {
         "id": "vault-map",
         "kind": "item",
         "name": "the vault map",
@@ -139,15 +139,15 @@
         "known": false,
         "parent_id": "study"
       }
-    ],
-    "threads": [
-      {
+    },
+    "threads": {
+      "vault-seal": {
         "id": "vault-seal",
         "title": "The sealed vault",
         "status": "active",
         "note": "Kael came for the vault under the abbey: the way down to it, the seal on its door, and what opening that seal costs."
       }
-    ],
+    },
     "party": []
   }
 }

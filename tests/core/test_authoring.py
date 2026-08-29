@@ -54,7 +54,8 @@ def test_a_world_colliding_with_the_character_is_refused() -> None:
             parent_id=shipped.starting_location_id,
         )
         colliding = updated(
-            shipped, world=updated(shipped.world, entities=(*shipped.world.entities, extra))
+            shipped,
+            world=updated(shipped.world, entities={**shipped.world.entities, extra.id: extra}),
         )
         with pytest.raises(ValueError, match="appears twice"):
             playing.check(colliding)
@@ -74,8 +75,7 @@ def test_authoring_refuses_an_uninstalled_pack() -> None:
 
 
 def _as_patch() -> dict[str, JsonValue]:
-    """The shipped scenario in the shape the authoring example teaches."""
-    return ScenarioDraft.from_scenario(scenario()).model_dump(mode="json")
+    return ScenarioDraft.from_scenario(scenario()).as_patch().model_dump(mode="json")
 
 
 def _location(name: str) -> Entity:
@@ -109,7 +109,7 @@ def test_write_upserts_elements_by_id() -> None:
     modification = draft.apply(ScenarioPatch(entities=(renamed,)))
     assert modification == "modified location the deep cell[cell]"
 
-    cell = next(entity for entity in draft.entities if entity.id == EntityId("cell"))
+    cell = draft.entities[EntityId("cell")]
     assert cell.name == "the deep cell"
     assert cell.exits == [Exit(to=EntityId("hall"), locked=True)]
 
@@ -121,7 +121,7 @@ def test_connect_writes_the_way_on_both_ends() -> None:
     assert draft.connect(EntityId("cell"), EntityId("hall"), True, False, False) == (
         "joined cell to hall both ways"
     )
-    cell, hall = draft.entities
+    cell, hall = draft.entities.values()
     assert [(way.to, way.known) for way in cell.exits] == [("hall", True)]
     assert [(way.to, way.known) for way in hall.exits] == [("cell", True)]
 
@@ -140,7 +140,7 @@ def test_connect_refuses_a_known_way_to_a_place_the_player_has_not_met() -> None
 
     with pytest.raises(ValueError, match="has not met"):
         _ = draft.connect(EntityId("cell"), EntityId("crypt"), True, False, False)
-    assert not draft.entities[0].exits and not draft.entities[1].exits
+    assert not any(entity.exits for entity in draft.entities.values())
 
 
 def _write(patch: dict[str, JsonValue]) -> ModelResponse:
@@ -297,7 +297,7 @@ async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> Non
 async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
     settings = offline_settings()
     session = scenario_run(settings, ENGINES_BUILT[LONER3E], "authored", "a vault", False, None)
-    study = next(entity for entity in scenario().world.entities if entity.id == EntityId("study"))
+    study = scenario().world.require(EntityId("study"))
     addition = ScenarioPatch(
         entities=(
             _location("belfry"),
@@ -319,7 +319,7 @@ async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
         assert session.refusal() is None
         before = len(session.history)
         _ = await session.send("add a bell tower")
-    assert EntityId("belfry") in {entity.id for entity in session.draft.entities}
+    assert EntityId("belfry") in session.draft.entities
     assert len(session.history) > before
 
 

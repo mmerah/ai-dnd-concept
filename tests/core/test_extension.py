@@ -30,7 +30,6 @@ from aidm.content.io import FileStore
 from aidm.engines.loner3e.rules import Sheet
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit
 from aidm.state.model import Game, Thread
-from aidm.state.play import WorldExtended
 from aidm.turn.run import TurnStep
 
 _CRYPT_ID = EntityId("sub-crypt")
@@ -64,7 +63,7 @@ def _stub_author(monkeypatch: pytest.MonkeyPatch) -> list[Game]:
     async def authored(self: GrowthRun, instruction: str) -> str:
         del instruction
         seen.append(self.base)
-        cloister = next(e for e in self.draft.entities if e.id == EntityId("cloister"))
+        cloister = self.draft.entities[EntityId("cloister")]
         edited = updated(cloister, exits=[*cloister.exits, Exit(to=_CRYPT_ID)])
         _ = self.draft.apply(ScenarioPatch(entities=(_crypt(), edited)))
         return "grew the sub-crypt"
@@ -89,7 +88,7 @@ def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_pat
     draft = ScenarioDraft.from_game(game.state)
     scenario = draft.scenario(LONER3E, ("srd",))
 
-    ids = {entity.id for entity in scenario.world.entities}
+    ids = set(scenario.world.entities)
     assert PLAYER_ID not in ids
     assert EntityId("lantern") not in ids
     assert scenario.starting_location_id == game.state.player_location
@@ -107,7 +106,7 @@ def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_pat
 def test_delta_is_the_canon_a_pass_added_and_the_ways_into_it(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
     draft = ScenarioDraft.from_game(game.state)
-    cloister = next(entity for entity in draft.entities if entity.id == EntityId("cloister"))
+    cloister = draft.entities[EntityId("cloister")]
     edited_cloister = updated(cloister, exits=[*cloister.exits, Exit(to=_CRYPT_ID)], brief="edited")
     _ = draft.apply(
         ScenarioPatch(
@@ -144,9 +143,8 @@ async def test_a_thin_world_grows_inside_the_turn_that_ran_it_thin(
 
     saved = FileStore(tmp_path).load("poc")
     assert saved is not None
-    assert _CRYPT_ID in {entity.id for entity in game.engine.restored(saved).world.entities}
+    assert _CRYPT_ID in game.engine.restored(saved).world.entities
 
-    assert any(isinstance(entry, WorldExtended) for entry in game.entries)
     assert (SCENARIOS / "whispering-vault" / "world.json").read_bytes() == authored
     assert game.engine.owed_notes(game.state)
 

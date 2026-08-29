@@ -39,7 +39,7 @@ from aidm.engines.core import (
     player_action,
 )
 from aidm.engines.world import CORE_TOOLS
-from aidm.state.creation import AnyStep, CreationStep, Picks, TextStep, check_picks, picked
+from aidm.state.creation import CreationStep, Picks, check_picks, picked
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Kind, slug
 from aidm.state.model import Game
 
@@ -54,20 +54,20 @@ RULES_TYPES: Mapping[Kind, type[EntityRules]] = {
 
 
 class BreathlessCreation(PackCreation[Pack]):
-    def steps_for(self, pack: Pack, picks: Picks) -> tuple[AnyStep, ...]:
-        del picks
+    def steps_for(self, pack: Pack, picks: Picks) -> tuple[CreationStep, ...]:
+        rated: list[CreationStep] = []
+        used: set[str] = set()
+        for die in RATED:
+            left = tuple(skill for skill in pack.skills if skill.id not in used)
+            rated.append(
+                CreationStep(id=f"d{die}", prompt=f"Choose the skill rated d{die}", options=left)
+            )
+            used.add(picked(picks, f"d{die}"))
         return (
-            *(
-                CreationStep(
-                    id=f"d{die}",
-                    prompt=f"Choose the skill rated d{die}",
-                    options=pack.skills,
-                )
-                for die in RATED
-            ),
-            TextStep(id="job", prompt="The job they had before", hint=", ".join(pack.jobs[:3])),
-            TextStep(id="pronouns", prompt="Their pronouns", hint="they/them"),
-            TextStep(
+            *rated,
+            CreationStep(id="job", prompt="The job they had before", hint=", ".join(pack.jobs[:3])),
+            CreationStep(id="pronouns", prompt="Their pronouns", hint="they/them"),
+            CreationStep(
                 id="item",
                 prompt="One item they brought, a d10 item",
                 hint=", ".join(pack.weapons[:3]),
@@ -76,13 +76,11 @@ class BreathlessCreation(PackCreation[Pack]):
 
     def create(self, name: str, brief: str, picks: Picks) -> Character:
         check_picks(self.steps(picks), picks)
-        rated = {picked(picks, f"d{die}")[0]: die for die in RATED}
-        if len(rated) != len(RATED):
-            raise ValueError("the d10, d8 and d6 go to three different skills")
+        rated = {picked(picks, f"d{die}"): die for die in RATED}
         skills: dict[str, JsonValue] = {
             skill: rated.get(skill.lower(), RULES.floor) for skill in SKILLS
         }
-        item_name = picked(picks, "item")[0]
+        item_name = picked(picks, "item")
         item = Entity(
             id=EntityId(slug(item_name, ())),
             kind="item",
@@ -96,8 +94,8 @@ class BreathlessCreation(PackCreation[Pack]):
             id=slug(name, ()),
             profile=CharacterProfile(name=name, brief=brief, items=(item,)),
             rules={
-                "job": picked(picks, "job")[0],
-                "pronouns": picked(picks, "pronouns")[0],
+                "job": picked(picks, "job"),
+                "pronouns": picked(picks, "pronouns"),
                 "skills": skills,
             },
         )

@@ -512,11 +512,13 @@ def test_a_decision_this_engine_cannot_play_or_read_is_refused() -> None:
 def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die() -> None:
     creation = ENGINES_BUILT[TWENTYFOURXX].creation
     picks: Picks = {
-        "pack": ("srd",),
-        "specialty": ("psychic",),
-        "training": ("telepathy-at-d10",),
-        "origin": ("human",),
-        "skills": ("stealth", "deception", "connections"),
+        "pack": "srd",
+        "specialty": "psychic",
+        "training": "telepathy-at-d10",
+        "origin": "human",
+        "skill-1": "stealth",
+        "skill-2": "deception",
+        "skill-3": "connections",
     }
     created = creation.create("Vex", "A quiet reader of rooms.", picks)
     assert [item.name for item in created.profile.items] == ["Comm", "Bottle of PsychOut"]
@@ -532,10 +534,12 @@ def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die
 def test_a_bulky_kit_item_carries_the_bulky_mark() -> None:
     creation = ENGINES_BUILT[TWENTYFOURXX].creation
     picks: Picks = {
-        "pack": ("srd",),
-        "specialty": ("tech",),
-        "origin": ("human",),
-        "skills": ("climbing", "stealth", "tracking"),
+        "pack": "srd",
+        "specialty": "tech",
+        "origin": "human",
+        "skill-1": "climbing",
+        "skill-2": "stealth",
+        "skill-3": "tracking",
     }
     created = creation.create("Wren", "Solders anything.", picks)
     computer = next(item for item in created.profile.items if item.id == "custom-computer")
@@ -545,10 +549,11 @@ def test_a_bulky_kit_item_carries_the_bulky_mark() -> None:
 def test_an_alien_invents_traits_the_menu_never_listed() -> None:
     creation = ENGINES_BUILT[TWENTYFOURXX].creation
     picks: Picks = {
-        "pack": ("srd",),
-        "specialty": ("sneak",),
-        "origin": ("alien",),
-        "traits": ("Wings", "A tail that reads the air"),
+        "pack": "srd",
+        "specialty": "sneak",
+        "origin": "alien",
+        "trait-1": "Wings",
+        "trait-2": "A tail that reads the air",
     }
     created = creation.create("Ixl", "Feathered and patient.", picks)
     names = [trait.name for trait in created.profile.traits]
@@ -558,10 +563,12 @@ def test_an_alien_invents_traits_the_menu_never_listed() -> None:
 def test_a_humans_three_increases_can_stack_onto_one_skill() -> None:
     creation = ENGINES_BUILT[TWENTYFOURXX].creation
     picks: Picks = {
-        "pack": ("srd",),
-        "specialty": ("sneak",),
-        "origin": ("human",),
-        "skills": ("tracking", "tracking", "tracking"),
+        "pack": "srd",
+        "specialty": "sneak",
+        "origin": "human",
+        "skill-1": "tracking",
+        "skill-2": "tracking",
+        "skill-3": "tracking",
     }
     created = creation.create("Rho", "Never stops moving.", picks)
     assert created.rules["skills"] == {"Climbing": 8, "Stealth": 8, "Tracking": 12}

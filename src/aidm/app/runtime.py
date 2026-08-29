@@ -15,16 +15,9 @@ from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine, Offer, PlayerAction, offered, play_action, transact
 from aidm.engines.registry import begin_game, build_engines
 from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Slug
-from aidm.state.facts import Fact
+from aidm.state.facts import Fact, traced
 from aidm.state.model import Game, frontier
-from aidm.state.play import (
-    Answer,
-    Line,
-    MechanicEvent,
-    TraceEntry,
-    TurnTrace,
-    WorldExtended,
-)
+from aidm.state.play import Answer, Line, MechanicEvent, TurnTrace
 from aidm.turn.run import TurnAgents, TurnStep, build_turn_agents, run_segment
 
 from .launch import LaunchTarget
@@ -33,7 +26,7 @@ from .media import ICON_DIR, Illustrator
 
 def journal_markdown(state: Game) -> str:
     """A projection only: the journal is written for a reader and never read back."""
-    threads = sorted(state.world.threads, key=lambda thread: thread.title)
+    threads = sorted(state.world.threads.values(), key=lambda thread: thread.title)
     lines = [f"# {state.scenario.title}", "", state.scenario.premise, ""]
     for number, exchange in enumerate(state.history, start=1):
         told = "\n".join(attributed_line(state, line) for line in exchange.lines)
@@ -92,7 +85,7 @@ class GameSession:
     settings: Settings
     media: Illustrator | None = None
     rng: Random = field(default_factory=Random)
-    entries: list[TraceEntry] = field(default_factory=list)
+    entries: list[TurnTrace] = field(default_factory=list)
     busy: bool = False
     step: TurnStep | None = None
     _illustrations: set[Task[None]] = field(default_factory=set, repr=False)
@@ -177,7 +170,7 @@ class GameSession:
         self.entries = []
         self.illustrate_scene()
 
-    def commit(self, state: Game, entry: TraceEntry | None = None) -> None:
+    def commit(self, state: Game, entry: TurnTrace | None = None) -> None:
         """Code mode commits per tool call, so a landed change has no turn trace to record yet."""
         self.store.save(self.slug, state)
         self.state = state
@@ -220,7 +213,8 @@ class GameSession:
             lambda draft, _rng: apply_patch(draft, patch),
             self.rng,
         )
-        self.commit(state, WorldExtended(facts=facts))
+        self.commit(state)
+        LOGGER.info("the world grew: %s", traced(facts))
         return facts
 
     def _begun(self) -> Game:

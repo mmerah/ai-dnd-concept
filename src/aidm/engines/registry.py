@@ -42,9 +42,9 @@ def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character:
         rules=dict(character.rules),
     )
     for entity in (*(item.model_copy(deep=True) for item in character.profile.items), player):
-        if world.find(entity.id) is not None:
+        if entity.id in world.entities:
             raise ValueError(f"authored entity id {entity.id!r} appears twice")
-        world.entities.append(entity)
+        world.entities[entity.id] = entity
     state = Game(
         scenario_id=scenario_id,
         character_id=character.id,

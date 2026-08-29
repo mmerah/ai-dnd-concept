@@ -34,15 +34,7 @@ from aidm.engines.loner3e.rules import (
     twist_table,
 )
 from aidm.engines.world import CORE_TOOLS
-from aidm.state.creation import (
-    AnyStep,
-    CreationOption,
-    CreationStep,
-    Picks,
-    TextStep,
-    check_picks,
-    picked,
-)
+from aidm.state.creation import CreationStep, Picks, check_picks, numbered_steps, picked
 from aidm.state.entities import (
     CheckedEntityId,
     EngineId,
@@ -54,6 +46,7 @@ from aidm.state.entities import (
 )
 from aidm.state.facts import Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
+from aidm.state.play import DecisionOption
 
 ENGINE_DIR = Path(__file__).parent
 # SRD "Everything is a Character": a thing that resists plays by the one sheet an actor does.
@@ -132,7 +125,7 @@ def _rewrite(sheet: Sheet, subject: Entity, change: Change) -> Fact:
 
 
 def pack_meanings(
-    entries: Sequence[CreationOption], tags: Sequence[str]
+    entries: Sequence[DecisionOption], tags: Sequence[str]
 ) -> tuple[tuple[str, str], ...]:
     detail_of = {entry.label: entry.detail for entry in entries if entry.detail}
     return tuple((tag, detail_of[tag]) for tag in tags if tag in detail_of)
@@ -143,39 +136,35 @@ def _swapped(tags: tuple[str, ...], old: str, new: str) -> tuple[str, ...]:
 
 
 class Loner3eCreation(PackCreation[Pack]):
-    def steps_for(self, pack: Pack, picks: Picks) -> tuple[AnyStep, ...]:
-        del picks
+    def steps_for(self, pack: Pack, picks: Picks) -> tuple[CreationStep, ...]:
         return (
-            TextStep(
+            CreationStep(
                 id="concept",
                 prompt="Write a one-line concept",
                 hint=", ".join(entry.label for entry in pack.concepts[:3]),
             ),
-            CreationStep(id="skills", prompt="Choose two skills", options=pack.skills, choose=2),
+            *numbered_steps("skill", "Choose skill", 2, pack.skills, distinct_from=picks),
             CreationStep(id="frailty", prompt="Choose a frailty", options=pack.frailties),
-            CreationStep(
-                id="gear",
-                prompt="Choose two pieces of gear",
-                options=pack.gear,
-                choose=2,
-            ),
+            *numbered_steps("gear", "Choose gear", 2, pack.gear, distinct_from=picks),
         )
 
     def create(self, name: str, brief: str, picks: Picks) -> Character:
         check_picks(self.steps(picks), picks)
-        chosen = picked(picks, "pack")[0]
+        chosen = picked(picks, "pack")
         pack = self.packs[chosen]
         return Character(
             id=slug(name, ()),
             profile=CharacterProfile(name=name, brief=brief),
             rules={
                 "twist_pack": chosen,
-                "concept": picked(picks, "concept")[0],
+                "concept": picked(picks, "concept"),
                 "skills": [
-                    find_entry(pack.skills, skill).label for skill in picked(picks, "skills")
+                    find_entry(pack.skills, picked(picks, f"skill-{one}")).label for one in (1, 2)
                 ],
-                "frailties": [find_entry(pack.frailties, picked(picks, "frailty")[0]).label],
-                "gear": [find_entry(pack.gear, gear).label for gear in picked(picks, "gear")],
+                "frailties": [find_entry(pack.frailties, picked(picks, "frailty")).label],
+                "gear": [
+                    find_entry(pack.gear, picked(picks, f"gear-{one}")).label for one in (1, 2)
+                ],
             },
         )
 

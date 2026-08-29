@@ -259,6 +259,43 @@ Refused 2026-08-28, do not re-propose: narration as one string (NPC bubbles stay
 media (always played on), deleting the settings page, player actions, live streaming, card as a
 string, per-scenario pack choice, the riding 24XX luck test, options-only stake.
 
+## Phase 8 — Close the eval gaps
+
+The Director is the bar a weak model must clear. After Phase 7 the code is as small as it gets;
+what is left is the cases the model still fails. This phase is measurement first, then the
+cheapest fix that closes each gap.
+
+1. Measure: `uv run python evals/turn_eval.py run --label phase8-base --repeats 27 --concurrency
+   27`. Nine repeats hide a 4-in-9 case behind the backend lottery (`swing-the-fire-axe` scored
+   17% and 28% on the same code, same day). Twenty-seven gives the number a floor. Check the
+   OpenRouter backend before reading any number (memory: eval-conditions-closure).
+2. List every expectation under 90% with its failing runs' tool calls and refusals. At the
+   Phase 6 baseline that is `breathless/swing-the-fire-axe` (axe-rolled 2/9, axe-in-hand 6/9),
+   `breathless/mend-the-floodlight` (think-rolled 6/9), `breathless/no-improvised-brick`
+   (shoot-rolled 8/9). Read the failing runs, not the score: a refusal, a missing call and a
+   wrong argument are three different gaps.
+3. Close each gap with the cheapest rung that holds, one gap per eval run, `--case <id>
+   --repeats 27` first and the full run after:
+   1. Instruction text: one sentence in the core or engine `director.md` (memory:
+      load-bearing-director-lines lists the four lines that are already known to carry weight).
+   2. Tool description: the `director_tool(description=...)` string.
+   3. Field description: a `Field(description=...)` on the tool's args.
+   4. Tool schema: a field's shape, a default, an enum. Schema size was the measured failure
+      variable for weak models: a schema change must shrink or hold the size of
+      `tests/core/fixtures/schemas/*/director_tools.json`.
+   5. Refusal text: what `ModelRetry` says back. A refusal the model recovers from on the next
+      call is a closed gap at one extra call.
+   6. A resolver rule: the engine does what the model forgot (a `take` folded into an item roll,
+      say). Only where the SRD allows it and only after 1–5 lost.
+4. A rung is kept only when the case moves and the full run holds at or above the baseline
+   (score, errors, and `director_calls`). Regenerate prompt and schema goldens after each kept
+   rung and read the diff.
+5. Stop when every expectation is at or above 90% over 27 repeats, or when the remaining gap has
+   lost all six rungs; then record it in the case as a known limit with the rung that came
+   closest.
+
+Reasonably closed means 90%, not 100%: below that, the backend lottery owns the number.
+
 ## Deviations
 
 - Loner 2 (unauthored characters get a blank sheet) widens to authored actors in phase 1; the
@@ -269,4 +306,4 @@ string, per-scenario pack choice, the riding 24XX luck test, options-only stake.
   time.
 - Loner 3 (twist timing) is inherent to Director → Narrator and stays documented.
 
-Delete this file after phase 6 (or 7). The git log is the record.
+Delete this file after phase 8. The git log is the record.

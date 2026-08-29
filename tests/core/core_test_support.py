@@ -59,12 +59,7 @@ def updated[T: BaseModel](model: T, **changes: object) -> T:
 
 def with_entity(state: Game, entity: Entity) -> Game:
     draft = state.draft()
-    entities = draft.world.entities
-    held = draft.world.find(entity.id)
-    if held is None:
-        entities.append(entity)
-    else:
-        entities[entities.index(held)] = entity
+    draft.world.entities[entity.id] = entity
     return draft.committed()
 
 

@@ -481,7 +481,7 @@ def _mid_conflict(state: Game) -> Game:
 def _seal_met(state: Game) -> Game:
     """A non-living opponent the SRD's "Everything is a Character" covers, staged as an item."""
     draft = staged(state, "cloister", []).draft()
-    draft.world.entities.append(
+    _ = draft.add(
         Entity(
             id=EntityId("vault-seal"),
             kind="item",
@@ -548,7 +548,7 @@ def _broken_arm(state: Game) -> Game:
 def _bulky_gear(draft: Game, item_id: str, name: str, breaks: int = 1) -> None:
     """Written straight into the world: the item's own rules are the sheet it plays by."""
     marks = ItemSheet(bulky=True, breaks=Counter(current=breaks, maximum=breaks))
-    draft.world.entities.append(
+    _ = draft.add(
         Entity(
             id=EntityId(item_id),
             kind="item",
@@ -577,7 +577,7 @@ def _burdened(state: Game) -> Game:
 def _docked_skiff(state: Game) -> Game:
     """A ship is a location; the SRD sells its upgrades through the same catalogue."""
     draft = staged(state, "holdfast", []).draft()
-    draft.world.entities.append(
+    _ = draft.add(
         Entity(
             id=EntityId("skiff"),
             kind="location",
@@ -644,7 +644,7 @@ def _full_backpack(state: Game) -> Game:
     """Two more on top of the lantern fills the backpack; the next find lies where it drops."""
     draft = state.draft()
     for item_id, name in (("pry-bar", "a pry bar"), ("water-can", "a water can")):
-        draft.world.entities.append(
+        _ = draft.add(
             Entity(
                 id=EntityId(item_id),
                 kind="item",

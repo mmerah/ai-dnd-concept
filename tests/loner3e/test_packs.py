@@ -7,7 +7,7 @@ from aidm.content.io import ENCODING
 from aidm.engines.core import load_packs
 from aidm.engines.loner3e.engine import ENGINE_DIR, build
 from aidm.engines.loner3e.rules import SRD_PACK, Pack, twist_table
-from aidm.state.creation import CreationOption
+from aidm.state.play import DecisionOption
 
 
 def test_a_broken_user_pack_raises_rather_than_being_skipped(tmp_path: Path) -> None:
@@ -18,7 +18,7 @@ def test_a_broken_user_pack_raises_rather_than_being_skipped(tmp_path: Path) -> 
 
 
 def test_a_user_pack_may_carry_its_own_twist_table(tmp_path: Path) -> None:
-    entry = CreationOption(id="entry", label="Entry")
+    entry = DecisionOption(id="entry", label="Entry")
     subjects = ("a", "b", "c", "d", "e", "f")
     actions = ("g", "h", "i", "j", "k", "l")
     mine = Pack(

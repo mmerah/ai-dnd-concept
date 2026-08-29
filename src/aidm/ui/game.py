@@ -12,12 +12,20 @@ from aidm.app.runtime import GameSession
 from aidm.harness.driver import Driver
 from aidm.state.entities import DEAD, Entity, EntityId
 from aidm.state.facts import DiceEvent, MechanicEvent
-from aidm.state.play import Answer, DecisionOption
+from aidm.state.play import Answer
 from aidm.turn.context import player_scene
 from aidm.turn.run import TurnStep
 
 from .panels import journal_panel, sheet_panel, state_panel, trace_panel
-from .widgets import avatar, entity_row, heading, page_header, refuse_if_busy, working
+from .widgets import (
+    avatar,
+    decision_widget,
+    entity_row,
+    heading,
+    page_header,
+    refuse_if_busy,
+    working,
+)
 
 _SCENE_HEIGHT = "calc(25vh - 1rem)"
 
@@ -51,7 +59,7 @@ def scene_header(session: GameSession, fill_composer: Callable[[str], None]) -> 
             if not scene.exits:
                 ui.label("None found yet.").classes("text-sm opacity-70")
             for way in scene.exits:
-                name = scene.exit_name(way)
+                name = scene.canon[way.to].name
                 # The button writes the move into the composer; the player still sends it.
                 ui.button(
                     name,
@@ -380,28 +388,22 @@ def decision_panel(view: GameView) -> None:
     if pending is None:
         return
 
-    async def answer(option: DecisionOption) -> None:
+    labels = {option.id: option.label for option in pending.options}
+
+    async def answer(option_id: str) -> None:
         if refuse_if_busy(view.session):
             return
-        await _send(view, Answer(option_id=option.id), option.label)
+        await _send(view, Answer(option_id=option_id), labels[option_id])
 
     with ui.column().classes("game-card game-decision w-full").style("gap: 0.5rem"):
         with ui.row().classes("items-center no-wrap").style("gap: 0.4rem"):
             ui.icon("pause_circle").classes("game-card-icon")
             ui.label(pending.kind).classes("text-xs font-bold game-outcome")
             ui.label("the game is waiting on you").classes("text-xs opacity-60")
-        ui.label(pending.prompt).classes("text-base whitespace-pre-wrap")
+        decision_widget(pending.prompt, () if view.viewing else pending.options, answer)
         if view.viewing:
             ui.label("Answer in the terminal.").classes("text-sm opacity-60")
             return
-        if pending.options:
-            with ui.row().classes("w-full items-center").style("gap: 0.5rem"):
-                for option in pending.options:
-                    button = ui.button(option.label, on_click=partial(answer, option)).props(
-                        "no-caps outline"
-                    )
-                    if option.detail:
-                        button.tooltip(option.detail)
         # A dead player character answers by taking a successor's name, never in their own words.
         if pending.allows_text and _alive(view.session.state.player):
             pointer = "Or answer" if pending.options else "Answer"

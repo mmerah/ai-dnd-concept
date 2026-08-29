@@ -7,7 +7,7 @@ from re import fullmatch
 
 from pydantic import BaseModel, ConfigDict, JsonValue
 
-from aidm.state.entities import EngineId, Slug, content_id
+from aidm.state.entities import EngineId, Slug, content_id, require_unique
 from aidm.state.model import Game, ScenarioMeta
 
 from .model import (
@@ -113,7 +113,13 @@ def _read_text(path: Path) -> str:
 
 
 def _read[T: BaseModel](path: Path, model: type[T]) -> T:
-    return model.model_validate_json(_read_text(path))
+    # `json` keeps the last of two equal keys, so a doubled entity id would vanish without a word.
+    return model.model_validate(json.loads(_read_text(path), object_pairs_hook=_unique_keys))
+
+
+def _unique_keys(pairs: list[tuple[str, JsonValue]]) -> dict[str, JsonValue]:
+    require_unique("keys in a JSON object", (key for key, _ in pairs))
+    return dict(pairs)
 
 
 def engine_text(path: Path) -> str:

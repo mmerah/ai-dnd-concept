@@ -43,8 +43,8 @@ def state() -> Game:
         packs=("srd",),
         player_id=PLAYER_ID,
         world=WorldState(
-            entities=list(entities),
-            threads=list(threads),
+            entities={entity.id: entity for entity in entities},
+            threads={thread.id: thread for thread in threads},
         ),
         turn_events=(),
     )

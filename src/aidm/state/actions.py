@@ -242,7 +242,7 @@ def advance_thread(draft: Game, effect: AdvanceThread) -> list[Fact]:
     """Threads are the Director's bookkeeping, so nothing here reaches the Narrator."""
     thread = draft.world.thread(effect.thread_id)
     if thread is None:
-        known = ", ".join(sorted(thread.id for thread in draft.world.threads)) or "(none)"
+        known = ", ".join(sorted(draft.world.threads)) or "(none)"
         raise ValueError(f"unknown thread {effect.thread_id!r}. The threads are: {known}")
     thread.status = effect.status or thread.status
     if effect.note is not None:

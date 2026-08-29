@@ -13,7 +13,6 @@ from aidm.engines.core import (
     rules,
 )
 from aidm.state.actions import require_actor_here, roll_pool
-from aidm.state.creation import CreationOption
 from aidm.state.entities import (
     CheckedEntityId,
     Counter,
@@ -118,7 +117,7 @@ class Pack(Frozen):
     name: str
     source: str
     license: str
-    skills: tuple[CreationOption, ...] = Field(min_length=1)
+    skills: tuple[DecisionOption, ...] = Field(min_length=1)
     jobs: tuple[str, ...] = ()
     weapons: tuple[str, ...] = ()
     long_range_weapons: tuple[str, ...] = ()

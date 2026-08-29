@@ -15,7 +15,6 @@ from aidm.engines.core import (
     spend,
 )
 from aidm.state.actions import require_actor_here, roll_pool
-from aidm.state.creation import CreationOption
 from aidm.state.entities import (
     CheckedEntityId,
     Counter,
@@ -107,7 +106,7 @@ def raised(current: SkillDie | None) -> SkillDie:
     return LADDER[index + 1]
 
 
-class GearItem(CreationOption):
+class GearItem(DecisionOption):
     bulky: bool = False
     cost: int = Field(default=1, ge=1)
     breaks: int = Field(default=1, ge=1, le=RULES.max_breaks)
@@ -126,12 +125,12 @@ class ShipFunction(Frozen):
     upgrades: tuple[ShipUpgrade, ...] = ()
 
 
-class SkillGrant(CreationOption):
+class SkillGrant(DecisionOption):
     skills: tuple[str, ...] = Field(min_length=1)
     die: SkillDie = 8
 
 
-class Specialty(CreationOption):
+class Specialty(DecisionOption):
     skills: tuple[str, ...] = ()
     choices: tuple[SkillGrant, ...] = ()
     kit: tuple[GearItem, ...] = ()
@@ -144,10 +143,10 @@ class Specialty(CreationOption):
         return self
 
 
-class Origin(CreationOption):
+class Origin(DecisionOption):
     increases: int = Field(default=0, ge=0, le=3)
     # Example traits shown as hints when the player invents their own; not a bound on their answer.
-    traits: tuple[CreationOption, ...] = ()
+    traits: tuple[DecisionOption, ...] = ()
     invents: int = Field(default=0, ge=0)
     kit_choice: tuple[GearItem, ...] = ()
 
@@ -163,7 +162,7 @@ class Pack(Frozen):
     specialties: tuple[Specialty, ...] = Field(min_length=1)
     origins: tuple[Origin, ...] = Field(min_length=1)
     # The skill menu an origin's increases are chosen from.
-    skills: tuple[CreationOption, ...] = Field(min_length=1)
+    skills: tuple[DecisionOption, ...] = Field(min_length=1)
 
 
 class Attempt(Frozen):

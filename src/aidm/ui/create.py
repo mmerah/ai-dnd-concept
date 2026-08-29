@@ -1,6 +1,6 @@
 import logging
 import tempfile
-from collections.abc import Callable, Sequence
+from functools import partial
 from pathlib import Path
 from typing import cast
 
@@ -11,10 +11,10 @@ from aidm.app.runtime import Runtime
 from aidm.authoring.run import ScenarioRun, scenario_run
 from aidm.content.io import write_character
 from aidm.harness.driver import Driver
-from aidm.state.creation import AnyStep, CreationStep, TextStep, picked
+from aidm.state.creation import picked
 from aidm.state.entities import EngineId, Slug, content_id
 
-from .widgets import page_header, refuse_if_busy, working
+from .widgets import decision_widget, labeled_value, page_header, refuse_if_busy, working
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,231 +26,77 @@ def character_page(runtime: Runtime, engine_id: str) -> None:
     with page_header("New character", engine.badge):
         pass
     creation = engine.creation
+    picks: dict[Slug, str] = {}
     with ui.column().classes("w-full q-pa-lg items-center"):
-        picks: dict[Slug, tuple[str, ...]] = {}
-        with ui.row().classes("no-wrap items-start").style("width: min(80rem, 100%); gap: 1rem"):
-            with ui.card().classes("q-pa-lg").style("flex: 1; min-width: 0"):
-                name = (
-                    ui.input(label="Name", on_change=lambda _: preview.refresh())
-                    .classes("w-full")
-                    .props("outlined")
-                )
-                brief = (
-                    ui.input(
-                        label="Brief",
-                        placeholder="Who are they, in one sentence?",
-                        on_change=lambda _: preview.refresh(),
-                    )
-                    .classes("w-full")
-                    .props("outlined")
-                )
-
-                rendered: tuple[str, ...] = ()
-
-                @ui.refreshable
-                def form() -> None:
-                    nonlocal rendered
-                    steps = creation.steps(picks)
-                    rendered = _shape(steps)
-                    # Pack switches may preserve step ids while replacing their valid options.
-                    offered = {
-                        step.id: {option.id for option in step.options}
-                        for step in steps
-                        if isinstance(step, CreationStep)
-                    }
-                    written = {step.id: step.count for step in steps if isinstance(step, TextStep)}
-                    for step_id in list(picks):
-                        if (asked := written.get(step_id)) is not None:
-                            # Drop surplus answers when a pack reduces a step's count.
-                            picks[step_id] = picks[step_id][:asked]
-                            continue
-                        kept = tuple(
-                            pick for pick in picks[step_id] if pick in offered.get(step_id, set())
-                        )
-                        if kept:
-                            picks[step_id] = kept
-                        else:
-                            del picks[step_id]
-                    for step in steps:
-                        _step_widget(step, picks, refresh_form_and_preview)
-                    with ui.row().classes("items-center q-mt-md").style("gap: 0.5rem"):
-                        ui.button("Create", icon="person_add", on_click=create).props(
-                            "color=primary"
-                        )
-
-                def create() -> None:
-                    title = (name.value or "").strip()
-                    if not title:
-                        ui.notify("Name the character.", type="warning")
-                        return
-                    try:
-                        created = creation.create(title, (brief.value or "").strip(), picks)
-                        write_character(runtime.settings.characters_dir, engine.id, created)
-                    except ValueError as refused:
-                        ui.notify(str(refused), type="negative")
-                        return
-                    LOGGER.info("character created: slug=%s engine=%s", created.id, engine.id)
-                    ui.navigate.to("/")
-
-                @ui.refreshable
-                def preview() -> None:
-                    ui.label((name.value or "").strip() or "Unnamed").classes("text-lg font-bold")
-                    if brief_text := (brief.value or "").strip():
-                        ui.label(brief_text).classes("text-sm opacity-70")
-                    for step in creation.steps(picks):
-                        chosen = _answer(step, picks)
-                        dim = "" if chosen else " opacity-50"
-                        with ui.row().classes(f"items-baseline{dim}").style("gap: 0.5rem"):
-                            ui.label(step.prompt).classes("text-sm font-bold")
-                            ui.label(chosen or "—").classes("text-sm")
-                    try:
-                        created = creation.create(
-                            (name.value or "").strip() or "Unnamed", brief_text, picks
-                        )
-                    except ValueError as refused:
-                        ui.label(f"Not ready yet: {refused}").classes("text-sm opacity-50")
-                        return
-                    ui.separator().classes("q-my-sm")
-                    rows = [(trait.name, trait.text) for trait in created.profile.traits]
-                    rows.extend(("carrying", item.name) for item in created.profile.items)
-                    rows.extend(engine.rules_types["actor"].model_validate(created.rules).rows())
-                    for label, text in rows:
-                        with ui.row().classes("items-baseline").style("gap: 0.5rem"):
-                            ui.label(label).classes("text-sm font-bold")
-                            if text:
-                                ui.label(text).classes("text-sm")
-
-                def refresh_form_and_preview() -> None:
-                    # Rebuild only changed widgets to preserve unfinished input.
-                    if _shape(creation.steps(picks)) != rendered:
-                        form.refresh()
-                    preview.refresh()
-
-                form()
-            with ui.card().classes("q-pa-lg").style("flex: 1; min-width: 0"):
-                preview()
-
-
-def _shape(steps: Sequence[AnyStep]) -> tuple[str, ...]:
-    """Exclude picks so unchanged widgets retain focus while answers change."""
-    parts: list[str] = []
-    for step in steps:
-        if isinstance(step, TextStep):
-            parts.append(f"{step.id}: {step.prompt}: text: {step.hint}: {step.count}")
-        else:
-            parts.append(
-                f"{step.id}: {step.prompt}: {step.choose}: {step.repeats}: "
-                f"{[option.id for option in step.options]}"
+        with ui.card().classes("q-pa-lg").style("width: min(60rem, 100%)"):
+            name = ui.input(label="Name").classes("w-full").props("outlined")
+            brief = (
+                ui.input(label="Brief", placeholder="Who are they, in one sentence?")
+                .classes("w-full")
+                .props("outlined")
             )
-    return tuple(parts)
 
+            def answer(step_id: Slug, given: str) -> None:
+                picks[step_id] = given
+                form.refresh()
 
-def _answer(step: AnyStep, picks: dict[Slug, tuple[str, ...]]) -> str:
-    if isinstance(step, TextStep):
-        return ", ".join(picked(picks, step.id))
-    labels = {option.id: option.label for option in step.options}
-    return ", ".join(labels.get(pick, pick) for pick in picked(picks, step.id))
+            def rewind(step_id: Slug) -> None:
+                for key in list(picks)[list(picks).index(step_id) :]:
+                    del picks[key]
+                form.refresh()
 
+            def create() -> None:
+                title = (name.value or "").strip()
+                if not title:
+                    ui.notify("Name the character.", type="warning")
+                    return
+                try:
+                    created = creation.create(title, (brief.value or "").strip(), picks)
+                    write_character(runtime.settings.characters_dir, engine.id, created)
+                except ValueError as refused:
+                    ui.notify(str(refused), type="negative")
+                    return
+                LOGGER.info("character created: slug=%s engine=%s", created.id, engine.id)
+                ui.navigate.to("/")
 
-def _step_widget(
-    step: AnyStep, picks: dict[Slug, tuple[str, ...]], refresh: Callable[[], object]
-) -> None:
-    if isinstance(step, TextStep):
-        _written_widget(step, picks, refresh)
-    elif step.repeats:
-        # Quasar multi-selects cannot hold duplicate values, so repeats use separate selects.
-        _repeated_widget(step, picks, refresh)
-    else:
-        _chosen_widget(step, picks, refresh)
+            @ui.refreshable
+            def form() -> None:
+                steps = creation.steps(picks)
+                for step in steps:
+                    if given := picked(picks, step.id):
+                        shown = next((o.label for o in step.options if o.id == given), given)
+                        with (
+                            ui.row().classes("cursor-pointer").on("click", partial(rewind, step.id))
+                        ):
+                            labeled_value(step.prompt, shown)
+                asking = next((step for step in steps if not picked(picks, step.id)), None)
+                if asking is not None:
+                    decision_widget(
+                        asking.prompt,
+                        asking.options,
+                        partial(answer, asking.id),
+                        text_hint=None if asking.options else asking.hint or "In your own words",
+                        detail_shown=True,
+                    )
+                    return
+                try:
+                    preview = creation.create(
+                        (name.value or "").strip() or "Unnamed",
+                        (brief.value or "").strip(),
+                        picks,
+                    )
+                except ValueError as refused:
+                    ui.label(f"Not ready yet: {refused}").classes("text-sm opacity-50")
+                    return
+                ui.separator().classes("q-my-sm")
+                rows = [(trait.name, trait.text) for trait in preview.profile.traits]
+                rows.extend(("carrying", item.name) for item in preview.profile.items)
+                rows.extend(engine.rules_types["actor"].model_validate(preview.rules).rows())
+                for label, text in rows:
+                    labeled_value(label, text)
+                ui.button("Create", icon="person_add", on_click=create).props("color=primary")
 
-
-def _labels(step: CreationStep) -> dict[str, str]:
-    return {
-        option.id: f"{option.label} — {option.detail}" if option.detail else option.label
-        for option in step.options
-    }
-
-
-def _chosen_widget(
-    step: CreationStep,
-    picks: dict[Slug, tuple[str, ...]],
-    refresh: Callable[[], object],
-) -> None:
-    options = _labels(step)
-    held = picked(picks, step.id)
-    value = list(held) if step.choose > 1 else (held[0] if held else None)
-
-    def changed(event: ValueChangeEventArguments[object]) -> None:
-        chosen = event.value
-        if isinstance(chosen, list):
-            picks[step.id] = tuple(item for item in chosen if isinstance(item, str))  # pyright: ignore[reportUnknownVariableType]
-        elif isinstance(chosen, str):
-            picks[step.id] = (chosen,)
-        else:
-            picks.pop(step.id, None)
-        refresh()
-
-    ui.select(
-        options=options,
-        value=value,
-        label=step.prompt,
-        multiple=step.choose > 1,
-        on_change=changed,  # pyright: ignore[reportUnknownArgumentType]
-    ).classes("w-full")
-
-
-def _repeated_widget(
-    step: CreationStep,
-    picks: dict[Slug, tuple[str, ...]],
-    refresh: Callable[[], object],
-) -> None:
-    options = _labels(step)
-    held = picked(picks, step.id)
-    for index in range(step.choose):
-        value = held[index] if index < len(held) else None
-        label = step.prompt if step.choose == 1 else f"{step.prompt} {index + 1}"
-
-        def changed(event: ValueChangeEventArguments[object], index: int = index) -> None:
-            chosen = event.value if isinstance(event.value, str) else ""
-            _write_answer(picks, step.id, step.choose, index, chosen)
-            refresh()
-
-        ui.select(options=options, value=value, label=label, on_change=changed).classes("w-full")
-
-
-def _written_widget(
-    step: TextStep,
-    picks: dict[Slug, tuple[str, ...]],
-    refresh: Callable[[], object],
-) -> None:
-    held = picked(picks, step.id)
-    for index in range(step.count):
-        value = held[index] if index < len(held) else ""
-        label = step.prompt if step.count == 1 else f"{step.prompt} {index + 1}"
-
-        def changed(event: ValueChangeEventArguments[object], index: int = index) -> None:
-            text = event.value.strip() if isinstance(event.value, str) else ""
-            _write_answer(picks, step.id, step.count, index, text)
-            refresh()
-
-        ui.input(
-            label=label,
-            value=value,
-            placeholder=step.hint,
-            on_change=changed,  # pyright: ignore[reportArgumentType]
-        ).classes("w-full").props("outlined")
-
-
-def _write_answer(
-    picks: dict[Slug, tuple[str, ...]], step_id: Slug, length: int, index: int, value: str
-) -> None:
-    answers = list(picked(picks, step_id)[:length])
-    answers += [""] * (length - len(answers))
-    answers[index] = value
-    if any(answer.strip() for answer in answers):
-        picks[step_id] = tuple(answers)
-    else:
-        picks.pop(step_id, None)
+            form()
 
 
 def _engine_and_packs(runtime: Runtime) -> tuple[ui.select, ui.select]:

@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 
 from aidm.content.io import engine_text
@@ -7,27 +7,16 @@ from aidm.state.entities import Entity, EntityId, Exit, Frozen, Trait, kind_word
 from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
 
 
-class BaseScene(Frozen):
+class SceneSnapshot(Frozen):
     player: Entity
     location: Entity
     inventory: tuple[Entity, ...]
     here: tuple[Entity, ...]
     known_elsewhere: tuple[Entity, ...]
-    placements: dict[EntityId, str]
-    exits: tuple[Exit, ...] = ()
-    exit_names: dict[EntityId, str] = {}
-
-    def placement_of(self, entity: Entity) -> str:
-        return self.placements[entity.id]
-
-    def exit_name(self, way: Exit) -> str:
-        return self.exit_names[way.to]
-
-
-class SceneSnapshot(BaseScene):
     hidden: tuple[Entity, ...]
-    canon: tuple[Entity, ...]
+    canon: Mapping[EntityId, Entity]
     party: tuple[EntityId, ...]
+    exits: tuple[Exit, ...] = ()
     threads: tuple[Thread, ...] = ()
     notes: tuple[str, ...] = ()
 
@@ -36,18 +25,13 @@ class SceneSnapshot(BaseScene):
         world = state.world
         player = state.player
         location = world.require_kind(state.player_location, "location")
-        canon = tuple(world.entities)
-        by_id = {entity.id: entity for entity in canon}
-        shown = [entity for entity in canon if entity.id != player.id]
+        shown = [entity for entity in world.entities.values() if entity.id != player.id]
         inventory = world.children(player.id, "item")
         carried_ids = {item.id for item in inventory}
         placed = [
             entity for entity in shown if entity.id not in carried_ids and entity.id != location.id
         ]
         locations = {entity.id: world.location_of(entity) for entity in placed}
-        party = tuple(world.party)
-        exit_names = {way.to: world.require(way.to).name for way in location.exits}
-        exits = tuple(sorted(location.exits, key=lambda way: exit_names[way.to]))
         return cls(
             player=player,
             location=location,
@@ -63,14 +47,12 @@ class SceneSnapshot(BaseScene):
                 if entity.known and entity.id in locations and locations[entity.id] != location.id
             ),
             hidden=_reachable_hidden(world, location),
-            canon=canon,
-            placements=_placements(by_id, canon, frozenset(by_id), party, player.id),
-            exits=exits,
-            exit_names=exit_names,
-            party=party,
+            canon=dict(world.entities),
+            party=tuple(world.party),
+            exits=tuple(sorted(location.exits, key=lambda way: world.require(way.to).name)),
             threads=tuple(
                 sorted(
-                    (thread for thread in world.threads if thread.status != "resolved"),
+                    (thread for thread in world.threads.values() if thread.status != "resolved"),
                     key=lambda thread: thread.title,
                 )
             ),
@@ -78,73 +60,64 @@ class SceneSnapshot(BaseScene):
         )
 
     def catalogue(self) -> tuple[Entity, ...]:
-        return tuple(entity for entity in self.canon if entity.id != self.player.id)
+        return tuple(entity for entity in self.canon.values() if entity.id != self.player.id)
 
 
 def _reachable_hidden(world: WorldState, here: Entity) -> tuple[Entity, ...]:
     """Unknown canon a turn could touch: here, one exit away, or a signposted location."""
     near = {here.id, *(way.to for way in here.exits)}
-    signposted = {way.to for entity in world.entities if entity.known for way in entity.exits}
+    entities = world.entities.values()
+    signposted = {way.to for entity in entities if entity.known for way in entity.exits}
     return tuple(
         entity
-        for entity in world.entities
+        for entity in entities
         if not entity.known and (world.location_of(entity) in near or entity.id in signposted)
     )
 
 
-class VisibleScene(BaseScene):
+class VisibleScene(Frozen):
     """The Narrator's view: it holds no unrevealed entity and names none, by construction."""
+
+    player: Entity
+    location: Entity
+    inventory: tuple[Entity, ...]
+    here: tuple[Entity, ...]
+    known_elsewhere: tuple[Entity, ...]
+    canon: Mapping[EntityId, Entity]
+    party: tuple[EntityId, ...]
+    exits: tuple[Exit, ...] = ()
 
     @classmethod
     def revealed_from(cls, snapshot: SceneSnapshot) -> "VisibleScene":
-        by_id = {entity.id: entity for entity in snapshot.canon}
-        shown = (
-            snapshot.player,
-            snapshot.location,
-            *snapshot.inventory,
-            *snapshot.here,
-            *snapshot.known_elsewhere,
-        )
-        met = frozenset(entity.id for entity in snapshot.canon if entity.known)
-        known_exits = tuple(way for way in snapshot.exits if way.known)
         return cls(
             player=_undetailed(snapshot.player),
             location=_undetailed(snapshot.location),
             inventory=tuple(_undetailed(item) for item in snapshot.inventory),
             here=tuple(_undetailed(entity) for entity in snapshot.here),
             known_elsewhere=tuple(_undetailed(entity) for entity in snapshot.known_elsewhere),
-            placements=_placements(by_id, shown, met, snapshot.party, snapshot.player.id),
-            exits=known_exits,
-            exit_names={way.to: snapshot.exit_name(way) for way in known_exits},
+            canon={
+                entity_id: _undetailed(entity)
+                for entity_id, entity in snapshot.canon.items()
+                if entity.known
+            },
+            party=snapshot.party,
+            exits=tuple(way for way in snapshot.exits if way.known),
         )
 
 
-def _placements(
-    by_id: Mapping[EntityId, Entity],
-    entities: Iterable[Entity],
-    nameable: frozenset[EntityId],
-    party: tuple[EntityId, ...],
-    player_id: EntityId,
-) -> dict[EntityId, str]:
-    return {entity.id: _placement(entity, by_id, nameable, party, player_id) for entity in entities}
+type Scene = SceneSnapshot | VisibleScene
 
 
-def _placement(
-    entity: Entity,
-    by_id: Mapping[EntityId, Entity],
-    nameable: frozenset[EntityId],
-    party: tuple[EntityId, ...],
-    player_id: EntityId,
-) -> str:
+def placement(scene: Scene, entity: Entity) -> str:
     """A placement names its holder only where the reader may be told that holder exists."""
-    if entity.id in party:
+    if entity.id in scene.party:
         return "travelling with the player"
-    holder = None if entity.parent_id is None else by_id[entity.parent_id]
-    if holder is None or holder.id not in nameable:
+    holder = None if entity.parent_id is None else scene.canon.get(entity.parent_id)
+    if holder is None:
         return ""
     if holder.kind == "location":
         return f"at {holder.name}"
-    return "carried" if holder.id == player_id else f"held by {holder.name}"
+    return "carried" if holder.id == scene.player.id else f"held by {holder.name}"
 
 
 def _undetailed(entity: Entity) -> Entity:
@@ -181,7 +154,7 @@ def render_director(
             *_scene_sections(scene, describe, scenario),
             (
                 "EXISTS BUT THE PLAYER DOES NOT KNOW IT YET",
-                _entities(scene.hidden, describe, placement=scene.placement_of),
+                _entities(scene, scene.hidden, describe),
             ),
             ("ACTIVE THREADS", _threads(scene.threads)),
             ("NOTES FROM THE RULES", "\n".join(f"- {note}" for note in scene.notes) or "- (none)"),
@@ -216,7 +189,7 @@ def _premise(scenario: ScenarioMeta) -> tuple[str, str]:
 
 
 def _scene_sections(
-    scene: BaseScene, describe: EntityRenderer, scenario: ScenarioMeta
+    scene: Scene, describe: EntityRenderer, scenario: ScenarioMeta
 ) -> tuple[tuple[str, str], ...]:
     return (
         _premise(scenario),
@@ -226,7 +199,7 @@ def _scene_sections(
         ),
         (
             "HERE WITH THE PLAYER",
-            _entities(scene.here, describe, placement=scene.placement_of),
+            _entities(scene, scene.here, describe),
         ),
         (
             "EXITS FROM HERE",
@@ -234,7 +207,7 @@ def _scene_sections(
         ),
         (
             "KNOWN TO THE PLAYER, BUT ELSEWHERE",
-            _entities(scene.known_elsewhere, describe, placement=scene.placement_of),
+            _entities(scene, scene.known_elsewhere, describe),
         ),
     )
 
@@ -260,16 +233,11 @@ def _character(
     return f"{line}\ninventory:\n{held or '- (none)'}"
 
 
-def _entities(
-    entities: Sequence[Entity],
-    describe: EntityRenderer,
-    *,
-    placement: Callable[[Entity], str],
-) -> str:
+def _entities(scene: Scene, entities: Sequence[Entity], describe: EntityRenderer) -> str:
     return (
         "\n".join(
             _with_state(
-                _headline(entity, placement(entity)) + _detail(entity),
+                _headline(entity, placement(scene, entity)) + _detail(entity),
                 entity_state(entity, describe),
                 "  ",
             )
@@ -279,11 +247,10 @@ def _entities(
     )
 
 
-def _exit_line(scene: BaseScene, way: Exit) -> str:
-    labelled = f"[{way.to}]"
+def _exit_line(scene: Scene, way: Exit) -> str:
     locked = " — locked" if way.locked else ""
     unfound = " — the player has not found this way yet" if not way.known else ""
-    return f"- {scene.exit_name(way)}{labelled}{locked}{unfound}"
+    return f"- {scene.canon[way.to].name}[{way.to}]{locked}{unfound}"
 
 
 def _threads(threads: Sequence[Thread]) -> str:

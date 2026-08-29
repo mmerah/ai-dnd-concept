@@ -5,8 +5,8 @@ from nicegui import ui
 from aidm.app.runtime import GameSession, attributed_line
 from aidm.state.facts import traced
 from aidm.state.model import Thread
-from aidm.state.play import StepTrace, TraceEntry, TurnTrace, WorldExtended
-from aidm.turn.context import player_scene
+from aidm.state.play import StepTrace, TurnTrace
+from aidm.turn.context import placement, player_scene
 
 from .widgets import entity_row, heading, labeled_value
 
@@ -28,7 +28,7 @@ def sheet_panel(session: GameSession) -> None:
         heading("Carrying")
         for item in inventory:
             entity_row(session.icon(item.id), item.name, item.brief)
-    threads = session.state.world.threads
+    threads = session.state.world.threads.values()
     if threads:
         heading("Threads")
         for thread in threads:
@@ -42,7 +42,7 @@ def _thread_card(thread: Thread) -> None:
 
 
 def journal_panel(session: GameSession) -> None:
-    threads = session.state.world.threads
+    threads = session.state.world.threads.values()
 
     def export() -> None:
         ui.notify(f"Journal written to {session.export_journal()}")
@@ -57,7 +57,7 @@ def journal_panel(session: GameSession) -> None:
         heading("What you know of")
         for entity in scene.known_elsewhere:
             entity_row(
-                session.icon(entity.id), entity.name, scene.placement_of(entity) or entity.brief
+                session.icon(entity.id), entity.name, placement(scene, entity) or entity.brief
             )
     heading("Chronicle")
     for number, exchange in reversed(list(enumerate(session.state.history, start=1))):
@@ -70,31 +70,14 @@ def trace_panel(session: GameSession) -> None:
     entries = session.entries
     if not entries:
         ui.label("No turns yet this session.").classes("opacity-60")
-    turns = 0
-    titles: list[str] = []
-    for entry in entries:
-        match entry:
-            case TurnTrace(prompt=prompt):
-                turns += 1
-                titles.append(f"turn {turns}: {prompt}")
-            case WorldExtended():
-                titles.append(f"after turn {turns}: the world grew")
-    for index, entry in reversed(list(enumerate(entries))):
-        with ui.expansion(titles[index], value=index == len(entries) - 1):
-            _entry_trace(entry)
+    for number, turn in reversed(list(enumerate(entries, start=1))):
+        with ui.expansion(f"turn {number}: {turn.prompt}", value=number == len(entries)):
+            _turn_trace(turn)
 
 
 def _section(title: str, body: str) -> None:
     ui.label(title).classes("text-xs font-bold opacity-60 mt-3")
     ui.label(body).classes("text-sm whitespace-pre-wrap")
-
-
-def _entry_trace(entry: TraceEntry) -> None:
-    match entry:
-        case WorldExtended(facts=facts):
-            _section("THE WORLD GREW", traced(facts))
-        case TurnTrace():
-            _turn_trace(entry)
 
 
 def _turn_trace(turn: TurnTrace) -> None:

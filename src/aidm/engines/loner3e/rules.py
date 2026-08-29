@@ -7,7 +7,6 @@ from pydantic import Field, model_validator
 
 from aidm.engines.core import Decision, ProposalBase, SheetBase, adjust, pool, rules
 from aidm.state.actions import require_actor_here, roll_pool
-from aidm.state.creation import CreationOption
 from aidm.state.entities import (
     CheckedEntityId,
     Counter,
@@ -18,6 +17,7 @@ from aidm.state.entities import (
 )
 from aidm.state.facts import DiceEvent, EventBadge, Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
+from aidm.state.play import DecisionOption
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,10 +43,10 @@ class Pack(Frozen):
     name: str
     source: str
     license: str
-    concepts: tuple[CreationOption, ...] = Field(min_length=1)
-    skills: tuple[CreationOption, ...] = Field(min_length=1)
-    frailties: tuple[CreationOption, ...] = Field(min_length=1)
-    gear: tuple[CreationOption, ...] = Field(min_length=1)
+    concepts: tuple[DecisionOption, ...] = Field(min_length=1)
+    skills: tuple[DecisionOption, ...] = Field(min_length=1)
+    frailties: tuple[DecisionOption, ...] = Field(min_length=1)
+    gear: tuple[DecisionOption, ...] = Field(min_length=1)
     twist_subjects: tuple[str, ...] | None = None
     twist_actions: tuple[str, ...] | None = None
 

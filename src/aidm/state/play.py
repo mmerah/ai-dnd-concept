@@ -94,20 +94,10 @@ class StepTrace(Frozen):
     refusals: tuple[str, ...] = ()
 
 
-class TraceEntryBase(Frozen):
-    """A trace entry records what occurred, never the resulting state."""
+class TurnTrace(Frozen):
+    """What the turn's roles did, never the resulting state."""
 
-    facts: tuple[Fact, ...] = ()
-
-
-class TurnTrace(TraceEntryBase):
     prompt: str
     narration: str
+    facts: tuple[Fact, ...] = ()
     steps: tuple[StepTrace, ...] = ()
-
-
-class WorldExtended(TraceEntryBase):
-    """Canon a background authoring run appended."""
-
-
-type TraceEntry = TurnTrace | WorldExtended

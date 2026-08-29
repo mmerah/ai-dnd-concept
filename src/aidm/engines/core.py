@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, JsonValue, ValidationError
 
 from aidm.content.io import ENCODING
 from aidm.content.model import Character
-from aidm.state.creation import AnyStep, CreationOption, CreationStep, Picks, picked
+from aidm.state.creation import CreationStep, Picks, picked
 from aidm.state.entities import (
     DEAD,
     CheckedEntityId,
@@ -140,7 +140,7 @@ def describe_rows(rows: tuple[tuple[str, str], ...], meanings: tuple[tuple[str, 
 
 class CharacterCreation(ABC):
     @abstractmethod
-    def steps(self, picks: Picks) -> tuple[AnyStep, ...]:
+    def steps(self, picks: Picks) -> tuple[CreationStep, ...]:
         """Tolerates partial or stale picks, so follow-up steps appear as parents are picked."""
 
     @abstractmethod
@@ -161,7 +161,7 @@ def load_packs[P: BaseModel](directories: Sequence[Path], model: type[P]) -> dic
     return packs
 
 
-def find_entry[T: CreationOption](entries: Sequence[T], chosen: str) -> T:
+def find_entry[T: DecisionOption](entries: Sequence[T], chosen: str) -> T:
     return next(entry for entry in entries if entry.id == chosen)
 
 
@@ -173,16 +173,16 @@ class PackCreation[P: NamedPack](CharacterCreation):
     def __init__(self, packs: Mapping[str, P]) -> None:
         self.packs = packs
 
-    def steps(self, picks: Picks) -> tuple[AnyStep, ...]:
+    def steps(self, picks: Picks) -> tuple[CreationStep, ...]:
         options = tuple(
-            CreationOption(id=one, label=one_pack.name) for one, one_pack in self.packs.items()
+            DecisionOption(id=one, label=one_pack.name) for one, one_pack in self.packs.items()
         )
         first = CreationStep(id="pack", prompt="Choose a character table set", options=options)
-        pack = self.packs.get(chosen[0]) if (chosen := picked(picks, "pack")) else None
+        pack = self.packs.get(picked(picks, "pack"))
         return (first,) if pack is None else (first, *self.steps_for(pack, picks))
 
     @abstractmethod
-    def steps_for(self, pack: P, picks: Picks) -> tuple[AnyStep, ...]: ...
+    def steps_for(self, pack: P, picks: Picks) -> tuple[CreationStep, ...]: ...
 
 
 class Decision(Frozen):
@@ -378,7 +378,7 @@ class Engine:
         """Refuses a state this engine cannot play, rather than repairing one."""
         if missing := sorted(set(state.packs) - set(self.packs)):
             raise ValueError(f"the game names packs not installed for {self.id!r}: {missing}")
-        for entity in state.world.entities:
+        for entity in state.world.entities.values():
             try:
                 _ = self.rules_types[entity.kind].model_validate(entity.rules)
             except ValidationError as broken:

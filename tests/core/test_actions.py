@@ -73,7 +73,7 @@ def test_movement_walks_unfound_ways_and_stops_at_locked_ones() -> None:
 def test_movement_is_refused_where_no_way_is_authored_at_all() -> None:
     draft = _draft()
     pit = Entity(id=EntityId("oubliette"), kind="location", name="the oubliette", brief="A pit.")
-    draft.world.entities.append(pit)
+    draft.world.entities[pit.id] = pit
     draft.player.parent_id = pit.id
 
     with pytest.raises(ValueError, match="no way leads from here"):
@@ -154,7 +154,7 @@ def test_acting_on_an_unrevealed_actor_reveals_it_before_its_traits_change() -> 
 
 def test_advance_thread_records_the_status_and_the_note_it_moved() -> None:
     draft = _draft()
-    draft.world.threads.append(Thread(id="ritual", title="The rite"))
+    draft.world.threads["ritual"] = Thread(id="ritual", title="The rite")
 
     (renoted,) = actions.advance_thread(
         draft, AdvanceThread(thread_id="ritual", status="resolved", note="the rite is complete")
@@ -166,7 +166,7 @@ def test_advance_thread_records_the_status_and_the_note_it_moved() -> None:
 
 def test_advance_thread_accepts_a_note_only_patch() -> None:
     draft = _draft()
-    draft.world.threads.append(Thread(id="ritual", title="The rite"))
+    draft.world.threads["ritual"] = Thread(id="ritual", title="The rite")
 
     (noted,) = actions.advance_thread(draft, AdvanceThread(thread_id="ritual", note="a quiet clue"))
     ritual = draft.world.thread("ritual")

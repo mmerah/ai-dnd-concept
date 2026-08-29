@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Mapping
 from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
@@ -52,7 +52,7 @@ class Scenario(Frozen):
         reached = _walk(self.world.entities, self.starting_location_id)
         unreachable = sorted(
             entity.id
-            for entity in self.world.entities
+            for entity in self.world.entities.values()
             if entity.kind == "location" and entity.id not in reached
         )
         if unreachable:
@@ -63,12 +63,11 @@ class Scenario(Frozen):
         return self
 
 
-def _walk(entities: Sequence[Entity], start: EntityId) -> set[EntityId]:
-    by_id = {entity.id: entity for entity in entities}
+def _walk(entities: Mapping[EntityId, Entity], start: EntityId) -> set[EntityId]:
     reached = {start}
     frontier = [start]
     while frontier:
-        here = by_id.get(frontier.pop())
+        here = entities.get(frontier.pop())
         for way in () if here is None else here.exits:
             if way.to not in reached:
                 reached.add(way.to)

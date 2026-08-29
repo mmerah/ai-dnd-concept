@@ -45,15 +45,7 @@ from aidm.engines.twentyfourxx.rules import (
 )
 from aidm.engines.world import CORE_TOOLS
 from aidm.state.actions import roll_pool
-from aidm.state.creation import (
-    AnyStep,
-    CreationOption,
-    CreationStep,
-    Picks,
-    TextStep,
-    check_picks,
-    picked,
-)
+from aidm.state.creation import CreationStep, Picks, check_picks, numbered_steps, picked
 from aidm.state.entities import (
     PLAYER_ID,
     CheckedEntityId,
@@ -69,13 +61,14 @@ from aidm.state.entities import (
 )
 from aidm.state.facts import Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
+from aidm.state.play import DecisionOption
 
 ENGINE_DIR = Path(__file__).parent
 
 
-def picked_entry[T: CreationOption](entries: Sequence[T], picks: Picks, step: Slug) -> T | None:
-    chosen = picked(picks, step)[:1]
-    return next((entry for entry in entries if entry.id in chosen), None)
+def picked_entry[T: DecisionOption](entries: Sequence[T], picks: Picks, step: Slug) -> T | None:
+    chosen = picked(picks, step)
+    return next((entry for entry in entries if entry.id == chosen), None)
 
 
 RULES_TYPES: Mapping[Kind, type[EntityRules]] = {
@@ -164,8 +157,8 @@ def _canonical_skill(sheet: Sheet, named: str) -> str:
 
 
 class TwentyfourxxCreation(PackCreation[Pack]):
-    def steps_for(self, pack: Pack, picks: Picks) -> tuple[AnyStep, ...]:
-        steps: list[AnyStep] = [
+    def steps_for(self, pack: Pack, picks: Picks) -> tuple[CreationStep, ...]:
+        steps: list[CreationStep] = [
             CreationStep(
                 id="specialty",
                 prompt="Choose a specialty",
@@ -199,54 +192,43 @@ class TwentyfourxxCreation(PackCreation[Pack]):
                     options=origin.kit_choice,
                 )
             )
-        if origin is not None and origin.invents:
-            steps.append(
-                TextStep(
-                    id="traits",
-                    prompt=_count_prompt("trait", origin.invents, verb="Invent"),
-                    count=origin.invents,
-                    hint=", ".join(option.label for option in origin.traits),
-                )
-            )
-        if origin is not None and origin.increases:
-            steps.append(
-                CreationStep(
-                    id="skills",
-                    prompt=_count_prompt("further skill", origin.increases),
-                    options=pack.skills,
-                    choose=origin.increases,
-                    repeats=True,
-                )
-            )
+        if origin is not None:
+            hint = ", ".join(option.label for option in origin.traits)
+            steps.extend(numbered_steps("trait", "Invent trait", origin.invents, hint=hint))
+            steps.extend(numbered_steps("skill", "Raise skill", origin.increases, pack.skills))
         return tuple(steps)
 
     def create(self, name: str, brief: str, picks: Picks) -> Character:
         check_picks(self.steps(picks), picks)
-        chosen = picked(picks, "pack")[0]
+        chosen = picked(picks, "pack")
         pack = self.packs[chosen]
-        specialty = find_entry(pack.specialties, picked(picks, "specialty")[0])
-        origin = find_entry(pack.origins, picked(picks, "origin")[0])
+        specialty = find_entry(pack.specialties, picked(picks, "specialty"))
+        origin = find_entry(pack.origins, picked(picks, "origin"))
 
         skills: dict[str, SkillDie] = {}
         for skill in specialty.skills:
             skills[skill] = raised(skills.get(skill))
-        for grant_id in picked(picks, "training"):
+        if grant_id := picked(picks, "training"):
             grant = find_entry(specialty.choices, grant_id)
             for skill in grant.skills:
                 held = skills.get(skill)
                 skills[skill] = grant.die if held is None else max(held, grant.die)
-        for skill_id in picked(picks, "skills"):
-            label = find_entry(pack.skills, skill_id).label
+        for index in range(origin.increases):
+            label = find_entry(pack.skills, picked(picks, f"skill-{index + 1}")).label
             skills[label] = raised(skills.get(label))
         skills_json: dict[str, JsonValue] = {skill: die for skill, die in skills.items()}
 
         traits: list[Trait] = []
-        for written in picked(picks, "traits"):
-            taken = [trait.id for trait in traits]
-            traits.append(Trait(id=slug(written, taken), name=written))
+        for index in range(origin.invents):
+            written = picked(picks, f"trait-{index + 1}")
+            traits.append(Trait(id=slug(written, [trait.id for trait in traits]), name=written))
         chosen_kit = [
-            *(find_entry(specialty.kit_choice, one) for one in picked(picks, "specialty-kit")),
-            *(find_entry(origin.kit_choice, one) for one in picked(picks, "origin-kit")),
+            find_entry(entries, one)
+            for entries, one in (
+                (specialty.kit_choice, picked(picks, "specialty-kit")),
+                (origin.kit_choice, picked(picks, "origin-kit")),
+            )
+            if one
         ]
         items = tuple(
             _carried(entry, EntityId(entry.id), PLAYER_ID)
@@ -324,10 +306,6 @@ def _functions(ship: Iterable[ShipFunction]) -> str:
             printed.append(f"Upgrade with {', '.join(up.id for up in one.upgrades)}.")
         lines.append(f"{one.label}: {' '.join(printed)}")
     return " ".join(lines)
-
-
-def _count_prompt(what: str, count: int, verb: str = "Choose") -> str:
-    return f"{verb} one {what}" if count == 1 else f"{verb} {count} {what}s"
 
 
 def _checks(state: Game) -> None:

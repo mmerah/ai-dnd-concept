@@ -218,13 +218,13 @@ def test_a_med_kit_clears_two_stress_and_is_offered_only_when_useful() -> None:
 def test_creation_rates_three_skills_and_packs_a_d10_item() -> None:
     engine, _ = game(BREATHLESS)
     picks = {
-        "pack": ("srd",),
-        "d10": ("shoot",),
-        "d8": ("think",),
-        "d6": ("dash",),
-        "job": ("Nurse",),
-        "pronouns": ("she/her",),
-        "item": ("a fire axe",),
+        "pack": "srd",
+        "d10": "shoot",
+        "d8": "think",
+        "d6": "dash",
+        "job": "Nurse",
+        "pronouns": "she/her",
+        "item": "a fire axe",
     }
     created = engine.creation.create("Ines", "A nurse who kept her axe.", picks)
     assert created.rules["skills"] == {
@@ -236,5 +236,5 @@ def test_creation_rates_three_skills_and_packs_a_d10_item() -> None:
         "Sway": 4,
     }
     assert created.profile.items[0].rules == {"die": 10}
-    with pytest.raises(ValueError, match="three different skills"):
-        _ = engine.creation.create("Ines", "", picks | {"d8": ("shoot",)})
+    with pytest.raises(ValueError, match="offers no"):
+        _ = engine.creation.create("Ines", "", picks | {"d8": "shoot"})

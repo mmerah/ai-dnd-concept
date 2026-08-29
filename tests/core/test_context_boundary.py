@@ -10,6 +10,7 @@ from aidm.turn.context import (
     ANSWERED_BY_OPTION,
     SceneSnapshot,
     VisibleScene,
+    placement,
     render_director,
     render_narrator,
 )
@@ -46,7 +47,7 @@ def state() -> Game:
         engine=LONER3E,
         packs=("srd",),
         player_id=PLAYER_ID,
-        world=WorldState(entities=list(entities)),
+        world=WorldState(entities={entity.id: entity for entity in entities}),
         turn_events=(),
     )
     return held.committed()
@@ -69,9 +70,9 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
         "inventory",
         "here",
         "known_elsewhere",
-        "placements",
+        "canon",
+        "party",
         "exits",
-        "exit_names",
     }
     dumped = str(visible.model_dump())
     assert "The Secret" not in dumped
@@ -83,10 +84,11 @@ def test_a_placement_never_names_an_entity_the_player_has_not_met() -> None:
     held = state()
     ledger = held.world.require_kind(EntityId("ledger"), "item")
     held = with_entity(held, updated(ledger, parent_id="hidden-actor"))
+    ledger = held.world.require(EntityId("ledger"))
     snapshot = SceneSnapshot.from_game(held)
 
-    assert snapshot.placement_of(ledger) == "held by The Secret"
-    assert VisibleScene.revealed_from(snapshot).placement_of(ledger) == ""
+    assert placement(snapshot, ledger) == "held by The Secret"
+    assert placement(VisibleScene.revealed_from(snapshot), ledger) == ""
 
 
 def test_the_director_is_shown_authored_detail() -> None:

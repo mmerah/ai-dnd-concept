@@ -1,9 +1,12 @@
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Sequence
 from contextlib import asynccontextmanager, contextmanager
+from functools import partial
 from pathlib import Path
 from typing import Protocol
 
 from nicegui import ui
+
+from aidm.state.play import DecisionOption
 
 from . import theme
 
@@ -80,6 +83,37 @@ def labeled_value(label: str, value: str) -> None:
     with ui.row().classes("w-full items-baseline no-wrap mt-2").style("gap: 0.5rem"):
         ui.label(label).classes("text-xs font-bold opacity-60")
         ui.label(value or "—").classes("text-sm")
+
+
+def decision_widget(
+    prompt: str,
+    options: Sequence[DecisionOption],
+    answer: Callable[[str], Awaitable[None] | None],
+    *,
+    text_hint: str | None = None,
+    detail_shown: bool = False,
+) -> None:
+    ui.label(prompt).classes("text-base whitespace-pre-wrap")
+    if options:
+        with ui.row().classes("w-full items-center").style("gap: 0.5rem"):
+            for option in options:
+                inline = detail_shown and option.detail
+                label = f"{option.label} — {option.detail}" if inline else option.label
+                button = ui.button(label, on_click=partial(answer, option.id)).props(
+                    "no-caps outline"
+                )
+                if option.detail and not inline:
+                    button.tooltip(option.detail)
+    if text_hint is None:
+        return
+    with ui.row().classes("w-full no-wrap items-center").style("gap: 0.5rem"):
+        box = ui.input(placeholder=text_hint).classes("flex-grow").props("outlined dense")
+
+        def written() -> Awaitable[None] | None:
+            return answer(text) if (text := (box.value or "").strip()) else None
+
+        box.on("keydown.enter", written)
+        ui.button("Answer", on_click=written).props("no-caps")
 
 
 def heading(title: str, *, tight: bool = False) -> None:

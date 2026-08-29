@@ -11,8 +11,8 @@
   ],
   "player_id": "player",
   "world": {
-    "entities": [
-      {
+    "entities": {
+      "study": {
         "id": "study",
         "kind": "location",
         "name": "the abbot's study",
@@ -31,7 +31,7 @@
         ],
         "rules": {}
       },
-      {
+      "cloister": {
         "id": "cloister",
         "kind": "location",
         "name": "the cloister",
@@ -60,7 +60,7 @@
         ],
         "rules": {}
       },
-      {
+      "bell-tower": {
         "id": "bell-tower",
         "kind": "location",
         "name": "the bell tower",
@@ -79,7 +79,7 @@
         ],
         "rules": {}
       },
-      {
+      "vault": {
         "id": "vault",
         "kind": "location",
         "name": "the sealed vault",
@@ -98,7 +98,7 @@
         ],
         "rules": {}
       },
-      {
+      "mara": {
         "id": "mara",
         "kind": "actor",
         "name": "Mara",
@@ -123,7 +123,7 @@
           ]
         }
       },
-      {
+      "tomas": {
         "id": "tomas",
         "kind": "actor",
         "name": "Brother Tomas",
@@ -147,7 +147,7 @@
           ]
         }
       },
-      {
+      "elena": {
         "id": "elena",
         "kind": "actor",
         "name": "Elena",
@@ -172,7 +172,7 @@
           ]
         }
       },
-      {
+      "cloister-rat": {
         "id": "cloister-rat",
         "kind": "actor",
         "name": "a bloated rat",
@@ -194,7 +194,7 @@
           ]
         }
       },
-      {
+      "vault-map": {
         "id": "vault-map",
         "kind": "item",
         "name": "the vault map",
@@ -207,7 +207,7 @@
         "exits": [],
         "rules": {}
       },
-      {
+      "lantern": {
         "id": "lantern",
         "kind": "item",
         "name": "a guttering lantern",
@@ -226,7 +226,7 @@
         "exits": [],
         "rules": {}
       },
-      {
+      "player": {
         "id": "player",
         "kind": "actor",
         "name": "Kael",
@@ -264,15 +264,15 @@
           ]
         }
       }
-    ],
-    "threads": [
-      {
+    },
+    "threads": {
+      "vault-seal": {
         "id": "vault-seal",
         "title": "The sealed vault",
         "status": "active",
         "note": "Kael came for the vault under the abbey: the way down to it, the seal on its door, and what opening that seal costs."
       }
-    ],
+    },
     "party": [],
     "pending_notes": []
   },

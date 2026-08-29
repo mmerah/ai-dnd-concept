@@ -9,8 +9,8 @@
   "art_style": "Cold tidal greys and sodium orange, painted digital concept art; salt-corroded near-future industry under low light.",
   "starting_location_id": "siren-mast",
   "world": {
-    "entities": [
-      {
+    "entities": {
+      "siren-mast": {
         "id": "siren-mast",
         "kind": "location",
         "name": "the siren mast",
@@ -30,7 +30,7 @@
           }
         ]
       },
-      {
+      "holdfast": {
         "id": "holdfast",
         "kind": "location",
         "name": "Holdfast",
@@ -47,7 +47,7 @@
           }
         ]
       },
-      {
+      "relay-nine": {
         "id": "relay-nine",
         "kind": "location",
         "name": "Relay Nine",
@@ -67,7 +67,7 @@
           }
         ]
       },
-      {
+      "vault-deck": {
         "id": "vault-deck",
         "kind": "location",
         "name": "the vault deck",
@@ -84,7 +84,7 @@
           }
         ]
       },
-      {
+      "ovid-sarn": {
         "id": "ovid-sarn",
         "kind": "actor",
         "name": "Ovid Sarn",
@@ -101,7 +101,7 @@
           }
         }
       },
-      {
+      "verrin-ade": {
         "id": "verrin-ade",
         "kind": "actor",
         "name": "Verrin Ade",
@@ -118,7 +118,7 @@
           }
         }
       },
-      {
+      "mara-voss": {
         "id": "mara-voss",
         "kind": "actor",
         "name": "Mara Voss",
@@ -135,7 +135,7 @@
           }
         }
       },
-      {
+      "deel-hask": {
         "id": "deel-hask",
         "kind": "actor",
         "name": "Deel Hask",
@@ -153,7 +153,7 @@
           }
         }
       },
-      {
+      "cipher-spike": {
         "id": "cipher-spike",
         "kind": "item",
         "name": "the cipher spike",
@@ -164,15 +164,15 @@
         "parent_id": "siren-mast",
         "traits": []
       }
-    ],
-    "threads": [
-      {
+    },
+    "threads": {
+      "vault-survey": {
         "id": "vault-survey",
         "title": "The sealed vault deck",
         "status": "active",
         "note": "Kael came for the founding survey locked under Relay Nine: the spike that fills the hatch socket, the crossing out to the stack between soundings, and what Mara Voss will want for letting him down there."
       }
-    ],
+    },
     "party": []
   }
 }

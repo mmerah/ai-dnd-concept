@@ -11,8 +11,8 @@
   ],
   "player_id": "player",
   "world": {
-    "entities": [
-      {
+    "entities": {
+      "ambulance-bay": {
         "id": "ambulance-bay",
         "kind": "location",
         "name": "the ambulance bay",
@@ -36,7 +36,7 @@
         ],
         "rules": {}
       },
-      {
+      "triage-hall": {
         "id": "triage-hall",
         "kind": "location",
         "name": "the triage hall",
@@ -60,7 +60,7 @@
         ],
         "rules": {}
       },
-      {
+      "roof-walk": {
         "id": "roof-walk",
         "kind": "location",
         "name": "the roof walk",
@@ -84,7 +84,7 @@
         ],
         "rules": {}
       },
-      {
+      "ward-nine": {
         "id": "ward-nine",
         "kind": "location",
         "name": "ward nine",
@@ -108,7 +108,7 @@
         ],
         "rules": {}
       },
-      {
+      "stair-shaft": {
         "id": "stair-shaft",
         "kind": "location",
         "name": "the stair shaft",
@@ -137,7 +137,7 @@
         ],
         "rules": {}
       },
-      {
+      "cold-vault": {
         "id": "cold-vault",
         "kind": "location",
         "name": "the cold vault",
@@ -156,7 +156,7 @@
         ],
         "rules": {}
       },
-      {
+      "dov-marek": {
         "id": "dov-marek",
         "kind": "actor",
         "name": "Dov Marek",
@@ -169,7 +169,7 @@
         "exits": [],
         "rules": {}
       },
-      {
+      "sela-quist": {
         "id": "sela-quist",
         "kind": "actor",
         "name": "Sela Quist",
@@ -182,7 +182,7 @@
         "exits": [],
         "rules": {}
       },
-      {
+      "wren-halloway": {
         "id": "wren-halloway",
         "kind": "actor",
         "name": "Wren Halloway",
@@ -201,7 +201,7 @@
           }
         }
       },
-      {
+      "bell-crawler": {
         "id": "bell-crawler",
         "kind": "actor",
         "name": "the Bell Crawler",
@@ -214,7 +214,7 @@
         "exits": [],
         "rules": {}
       },
-      {
+      "ward-card": {
         "id": "ward-card",
         "kind": "item",
         "name": "a ward nine key card",
@@ -229,7 +229,7 @@
           "die": 6
         }
       },
-      {
+      "fire-axe": {
         "id": "fire-axe",
         "kind": "item",
         "name": "a fire axe",
@@ -244,7 +244,7 @@
           "die": 10
         }
       },
-      {
+      "bolt-cutters": {
         "id": "bolt-cutters",
         "kind": "item",
         "name": "a pair of bolt cutters",
@@ -259,7 +259,7 @@
           "die": 8
         }
       },
-      {
+      "rope-ladder": {
         "id": "rope-ladder",
         "kind": "item",
         "name": "a knotted rope ladder",
@@ -274,7 +274,7 @@
           "die": 6
         }
       },
-      {
+      "lantern": {
         "id": "lantern",
         "kind": "item",
         "name": "a guttering lantern",
@@ -293,7 +293,7 @@
         "exits": [],
         "rules": {}
       },
-      {
+      "player": {
         "id": "player",
         "kind": "actor",
         "name": "Kael",
@@ -349,15 +349,15 @@
           "med_kit": false
         }
       }
-    ],
-    "threads": [
-      {
+    },
+    "threads": {
+      "cold-cache": {
         "id": "cold-cache",
         "title": "The sealed cold vault",
         "status": "active",
         "note": "Kael came for the cased antivirals racked in Saint Ivo's cold vault: the ward card that opens the door, six flights of stair shaft that the Bell Crawler hunts by sound, and what Wren Halloway wants for coming down with him."
       }
-    ],
+    },
     "party": [],
     "pending_notes": []
   },

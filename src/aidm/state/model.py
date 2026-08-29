@@ -53,20 +53,23 @@ class AdvanceThread(Frozen):
 class WorldState(Mutable):
     """The whole persistent fiction; `Game` holds the played game around it."""
 
-    entities: list[Entity] = Field(default_factory=list)
-    threads: list[Thread] = Field(default_factory=list)
+    entities: dict[EntityId, Entity] = Field(default_factory=dict)
+    threads: dict[Slug, Thread] = Field(default_factory=dict)
     party: list[EntityId] = Field(default_factory=list)
     pending_notes: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def _consistent_fiction(self) -> Self:
-        require_unique("entity ids", (entity.id for entity in self.entities))
-        require_unique("thread ids", (thread.id for thread in self.threads))
-        for entity in self.entities:
+        for key, entity in self.entities.items():
+            if key != entity.id:
+                raise ValueError(f"entity {entity.id!r} is filed under {key!r}")
             # `find`, not `require`: a dangling id is a topology fault, not a lookup failure.
             holder = None if entity.parent_id is None else self.find(entity.parent_id)
             check_placement(entity, holder)
             self._check_exits(entity)
+        for key, thread in self.threads.items():
+            if key != thread.id:
+                raise ValueError(f"thread {thread.id!r} is filed under {key!r}")
         self._check_party()
         return self
 
@@ -92,16 +95,16 @@ class WorldState(Mutable):
                 raise ValueError(f"{member_id!r} is dead and cannot travel with the player")
 
     def of_kind(self, kind: Kind) -> Iterator[Entity]:
-        return (entity for entity in self.entities if entity.kind == kind)
+        return (entity for entity in self.entities.values() if entity.kind == kind)
 
     def all_ids(self) -> set[EntityId]:
-        return {entity.id for entity in self.entities}
+        return set(self.entities)
 
     def find(self, entity_id: EntityId) -> Entity | None:
-        return next((entity for entity in self.entities if entity.id == entity_id), None)
+        return self.entities.get(entity_id)
 
     def thread(self, thread_id: Slug) -> Thread | None:
-        return next((thread for thread in self.threads if thread.id == thread_id), None)
+        return self.threads.get(thread_id)
 
     def require(self, entity_id: EntityId) -> Entity:
         entity = self.find(entity_id)
@@ -119,7 +122,7 @@ class WorldState(Mutable):
         return entity
 
     def children(self, entity_id: EntityId, kind: Kind | None = None) -> tuple[Entity, ...]:
-        held = self.entities if kind is None else self.of_kind(kind)
+        held = self.entities.values() if kind is None else self.of_kind(kind)
         return tuple(entity for entity in held if entity.parent_id == entity_id)
 
     def location_of(self, entity: Entity) -> EntityId | None:
@@ -132,12 +135,11 @@ class WorldState(Mutable):
 
 def frontier(world: WorldState) -> int:
     """Unknown locations a known location leads to: doors the player can still find."""
-    known = {entity.id for entity in world.entities if entity.known}
     return len(
         {
             way.to
-            for entity in world.entities
-            if entity.id in known
+            for entity in world.entities.values()
+            if entity.known
             for way in entity.exits
             if not world.require(way.to).known
         }
@@ -225,9 +227,9 @@ class Game(Mutable):
 
     def add(self, entity: Entity) -> Fact:
         """Copy into the fact, so a later move in the same turn cannot rewrite the entry."""
-        if self.world.find(entity.id) is not None:
+        if entity.id in self.world.entities:
             raise ValueError(f"entity id {entity.id!r} already exists")
-        self.world.entities.append(entity)
+        self.world.entities[entity.id] = entity
         summary = f"new {kind_word(entity.kind)}: {entity.name}[{entity.id}]"
         return entity_fact(entity, "entity_created", summary)
 

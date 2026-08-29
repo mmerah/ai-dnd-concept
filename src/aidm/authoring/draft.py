@@ -1,5 +1,6 @@
 import re
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterator
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,34 +17,10 @@ from aidm.state.facts import Fact
 from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
 
 
-def _index[T: Entity | Thread](kept: list[T], target: str) -> int | None:
-    return next((index for index, held in enumerate(kept) if held.id == target), None)
-
-
 def _describe(item: Entity | Thread, verb: str) -> str:
     if isinstance(item, Entity):
         return f"{verb} {item.kind} {item.name}[{item.id}]"
     return f"{verb} thread {item.title}[{item.id}]"
-
-
-def _upsert[T: Entity | Thread](kept: list[T], written: Iterable[T]) -> list[str]:
-    lines: list[str] = []
-    for one in written:
-        found = _index(kept, one.id)
-        if found is None:
-            kept.append(one)
-            lines.append(_describe(one, "created"))
-        else:
-            kept[found] = one
-            lines.append(_describe(one, "modified"))
-    return lines
-
-
-def _drop[T: Entity | Thread](kept: list[T], target: str) -> T | None:
-    found = _index(kept, target)
-    if found is None:
-        return None
-    return kept.pop(found)
 
 
 class ScenarioPatch(Frozen):
@@ -76,8 +53,8 @@ class ScenarioDraft(Mutable):
     meta: ScenarioMeta | None = None
     starting_location_id: EntityId | None = None
     starting_party: tuple[EntityId, ...] = ()
-    entities: list[Entity] = Field(default_factory=list)
-    threads: list[Thread] = Field(default_factory=list)
+    entities: dict[EntityId, Entity] = Field(default_factory=dict)
+    threads: dict[Slug, Thread] = Field(default_factory=dict)
 
     @classmethod
     def from_scenario(cls, scenario: Scenario) -> "ScenarioDraft":
@@ -86,8 +63,8 @@ class ScenarioDraft(Mutable):
             meta=scenario.meta,
             starting_location_id=scenario.starting_location_id,
             starting_party=tuple(scenario.world.party),
-            entities=[entity.model_copy(deep=True) for entity in scenario.world.entities],
-            threads=[thread.model_copy(deep=True) for thread in scenario.world.threads],
+            entities=deepcopy(scenario.world.entities),
+            threads=deepcopy(scenario.world.threads),
         )
 
     @classmethod
@@ -103,12 +80,12 @@ class ScenarioDraft(Mutable):
                 for member in world.party
                 if world.require(member).parent_id == state.player_location
             ),
-            entities=[
-                entity.model_copy(deep=True)
-                for entity in world.entities
+            entities={
+                entity_id: deepcopy(entity)
+                for entity_id, entity in world.entities.items()
                 if played.isdisjoint({entity.id, entity.parent_id})
-            ],
-            threads=[thread.model_copy(deep=True) for thread in world.threads],
+            },
+            threads=deepcopy(world.threads),
         )
 
     def apply(self, patch: ScenarioPatch) -> str:
@@ -116,15 +93,21 @@ class ScenarioDraft(Mutable):
         for name in patch.scenario_wide():
             setattr(self, name, getattr(patch, name))
             changed.append(f"set {name}")
-        changed.extend(_upsert(self.entities, patch.entities))
-        changed.extend(_upsert(self.threads, patch.threads))
+        for entity in patch.entities:
+            verb = "modified" if entity.id in self.entities else "created"
+            changed.append(_describe(entity, verb))
+            self.entities[entity.id] = entity
+        for thread in patch.threads:
+            verb = "modified" if thread.id in self.threads else "created"
+            changed.append(_describe(thread, verb))
+            self.threads[thread.id] = thread
         changed.extend(self._remove(target) for target in patch.remove)
         return "\n".join(changed) if changed else "nothing to change"
 
     def _remove(self, target: str) -> str:
-        removed = _drop(self.entities, target)
+        removed: Entity | Thread | None = self.entities.pop(EntityId(target), None)
         if removed is None:
-            removed = _drop(self.threads, target)
+            removed = self.threads.pop(target, None)
         if removed is None:
             raise ValueError(
                 f"nothing in the draft has id {target!r}; read `scenario_so_far` and remove ids "
@@ -153,14 +136,24 @@ class ScenarioDraft(Mutable):
         return f"joined {from_id} to {to_id} {'one way' if one_way else 'both ways'}"
 
     def _require_location(self, entity_id: EntityId) -> Entity:
-        found = _index(self.entities, entity_id)
-        held = None if found is None else self.entities[found]
+        held = self.entities.get(entity_id)
         if held is None or held.kind != "location":
             raise ValueError(f"the draft holds no location {entity_id!r}")
         return held
 
+    def as_patch(self) -> ScenarioPatch:
+        """The one shape the model reads and writes, so the example never teaches a refusal."""
+        return ScenarioPatch(
+            meta=self.meta,
+            starting_location_id=self.starting_location_id,
+            starting_party=self.starting_party,
+            art_style=self.art_style,
+            entities=tuple(self.entities.values()),
+            threads=tuple(self.threads.values()),
+        )
+
     def as_json(self) -> str:
-        return self.model_dump_json(indent=2)
+        return self.as_patch().model_dump_json(indent=2)
 
     def scenario(self, engine: EngineId, packs: tuple[Slug, ...], grows: bool = False) -> Scenario:
         if self.meta is None:
@@ -175,8 +168,8 @@ class ScenarioDraft(Mutable):
             art_style=self.art_style,
             starting_location_id=self.starting_location_id,
             world=WorldState(
-                entities=list(self.entities),
-                threads=list(self.threads),
+                entities=dict(self.entities),
+                threads=dict(self.threads),
                 party=list(self.starting_party),
             ),
         )
@@ -215,7 +208,7 @@ MIN_ACTORS = 2
 
 def _bar_unmet(scenario: Scenario) -> list[str]:
     unmet: list[str] = []
-    entities, threads = scenario.world.entities, scenario.world.threads
+    entities, threads = scenario.world.entities.values(), scenario.world.threads
     locations = sorted(entity.id for entity in entities if entity.kind == "location")
     if len(locations) < MIN_LOCATIONS:
         unmet.append(f"four or more locations; the draft has {len(locations)}: {locations}")
@@ -245,7 +238,9 @@ MIN_OPENING_ENTITIES = 2
 def _opening_unmet(scenario: Scenario) -> list[str]:
     unmet: list[str] = []
     beyond = [
-        entity for entity in scenario.world.entities if entity.id != scenario.starting_location_id
+        entity_id
+        for entity_id in scenario.world.entities
+        if entity_id != scenario.starting_location_id
     ]
     if len(beyond) < MIN_OPENING_ENTITIES:
         unmet.append(
@@ -269,19 +264,19 @@ OPENING_SLICE = AuthoringBrief("scenario_opening.md", _opening_unmet)
 
 
 def extend_brief(before: WorldState) -> AuthoringBrief:
-    held = {entity.id for entity in before.entities}
+    held = set(before.entities)
 
     def unmet(scenario: Scenario) -> list[str]:
         added = {
             entity.id
-            for entity in scenario.world.entities
+            for entity in scenario.world.entities.values()
             if entity.kind == "location" and entity.id not in held
         }
         if not added:
             return ["at least one location the world did not already hold"]
         if not any(
             way.to in added
-            for entity in scenario.world.entities
+            for entity in scenario.world.entities.values()
             if entity.id in held and entity.known
             for way in entity.exits
         ):
@@ -294,7 +289,7 @@ def extend_brief(before: WorldState) -> AuthoringBrief:
     return AuthoringBrief(
         "scenario_extend.md",
         unmet,
-        settled=frozenset(held | {thread.id for thread in before.threads}),
+        settled=frozenset(held | set(before.threads)),
     )
 
 
@@ -392,18 +387,19 @@ def extension_prompt(settings: Settings, state: Game) -> str:
 
 
 def extension_patch(before: WorldState, after: ScenarioDraft) -> ExtensionPatch:
-    held = {entity.id: entity for entity in before.entities}
-    opened = {thread.id for thread in before.threads}
+    held = before.entities
     return ExtensionPatch(
-        entities=tuple(entity for entity in after.entities if entity.id not in held),
+        entities=tuple(entity for entity in after.entities.values() if entity.id not in held),
         exits=tuple(
             ExitLink(location_id=entity.id, to=way.to, locked=way.locked)
-            for entity in after.entities
+            for entity in after.entities.values()
             if (was := held.get(entity.id)) is not None
             for way in entity.exits
             if was.exit_to(way.to) is None
         ),
-        threads=tuple(thread for thread in after.threads if thread.id not in opened),
+        threads=tuple(
+            thread for thread in after.threads.values() if thread.id not in before.threads
+        ),
     )
 
 
@@ -434,7 +430,7 @@ def _added_exit(draft: Game, link: ExitLink) -> Fact:
 def _opened(draft: Game, thread: Thread) -> Fact:
     if draft.world.thread(thread.id) is not None:
         raise ValueError(f"a thread {thread.id!r} already exists")
-    draft.world.threads.append(thread.model_copy(deep=True))
+    draft.world.threads[thread.id] = thread.model_copy(deep=True)
     return _materialized(f"thread {thread.id}")
 
 

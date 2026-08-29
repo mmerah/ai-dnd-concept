@@ -1,4 +1,6 @@
 {
+  "prompt": "I lever up the loose flagstone and listen at the vault door.",
+  "narration": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
   "facts": [
     {
       "kind": "entity_discovered",
@@ -96,8 +98,6 @@
       }
     }
   ],
-  "prompt": "I lever up the loose flagstone and listen at the vault door.",
-  "narration": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
   "steps": [
     {
       "name": "director",
