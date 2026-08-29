@@ -84,7 +84,7 @@ def test_an_engine_refuses_an_authored_payload_it_cannot_read(tmp_path: Path) ->
     folder = tmp_path / "broken"
     folder.mkdir()
     _ = (folder / "base.json").write_text('{"name": "Broken", "brief": "Built for this test."}')
-    _ = (folder / f"{LONER3E}.json").write_text('{"character": {"gear": null}}')
+    _ = (folder / f"{LONER3E}.json").write_text('{"sheet": {"character": {"gear": null}}}')
 
     engine = ENGINES_BUILT[LONER3E]
     with pytest.raises(ValidationError, match="gear"):
@@ -205,6 +205,16 @@ def test_scenario_packs_include_one_srd() -> None:
 def test_a_character_knows_the_gear_they_start_with() -> None:
     with pytest.raises(ValidationError, match="knows the gear they start with"):
         _character(holds=_rope(HELD, known=False))
+
+
+def test_an_overlay_names_only_gear_the_character_carries() -> None:
+    with pytest.raises(ValidationError, match="does not carry"):
+        Character(
+            id="test-character",
+            profile=CharacterProfile(name="Test Character", brief="Built for this test."),
+            rules={},
+            item_rules={HELD: {}},
+        )
 
 
 def _luck(state: Game) -> int:

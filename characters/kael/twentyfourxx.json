@@ -1,9 +1,12 @@
 {
-  "specialty": "Sneak",
-  "origin": "Human",
-  "skills": {
-    "Climbing": 10,
-    "Stealth": 10,
-    "Tracking": 8
-  }
+  "sheet": {
+    "specialty": "Sneak",
+    "origin": "Human",
+    "skills": {
+      "Climbing": 10,
+      "Stealth": 10,
+      "Tracking": 8
+    }
+  },
+  "items": {}
 }

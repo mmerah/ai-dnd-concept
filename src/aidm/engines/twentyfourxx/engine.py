@@ -234,6 +234,9 @@ class TwentyfourxxCreation(PackCreation[Pack]):
             _carried(entry, EntityId(entry.id), PLAYER_ID)
             for entry in (*pack.starting_kit, *specialty.kit, *chosen_kit)
         )
+        item_rules = {item.id: item.rules for item in items if item.rules}
+        for item in items:
+            item.rules = {}
 
         return Character(
             id=slug(name, ()),
@@ -243,6 +246,7 @@ class TwentyfourxxCreation(PackCreation[Pack]):
                 "origin": origin.label,
                 "skills": skills_json,
             },
+            item_rules=item_rules,
         )
 
 

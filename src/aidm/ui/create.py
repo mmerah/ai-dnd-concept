@@ -91,6 +91,12 @@ def character_page(runtime: Runtime, engine_id: str) -> None:
                 ui.separator().classes("q-my-sm")
                 rows = [(trait.name, trait.text) for trait in preview.profile.traits]
                 rows.extend(("carrying", item.name) for item in preview.profile.items)
+                for item in preview.profile.items:
+                    item_rules = preview.item_rules.get(item.id, {})
+                    item_rows = engine.rules_types["item"].model_validate(item_rules).rows()
+                    rows.extend(
+                        (f"{item.name}: {label}", value) for label, value in item_rows if value
+                    )
                 rows.extend(engine.rules_types["actor"].model_validate(preview.rules).rows())
                 for label, text in rows:
                     labeled_value(label, text)

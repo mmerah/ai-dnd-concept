@@ -167,7 +167,7 @@ def test_a_full_backpack_leaves_the_find_on_the_ground_and_refuses_a_fourth_in_h
     assert draft.world.require(EntityId("a-saw")).parent_id == draft.player_location
     with pytest.raises(ValueError, match="backpack holds 3"):
         _ = actions.move(draft, EntityId("a-saw"), PLAYER_ID) and engine.validate(draft)
-    # An item nothing wrote rules on is the SRD's d10 item, not a state the engine refuses.
+    # An item is its die: one without rules is not a Breathless item.
     draft = state.draft()
     _ = draft.add(
         Entity(
@@ -178,8 +178,8 @@ def test_a_full_backpack_leaves_the_find_on_the_ground_and_refuses_a_fourth_in_h
             parent_id=draft.player_location,
         )
     )
-    engine.validate(draft)
-    assert sheet_of(draft, EntityId("a-brick"), ItemSheet).die == RULES.starting_item
+    with pytest.raises(ValueError, match="die"):
+        engine.validate(draft)
 
 
 def test_a_helper_rolls_too_and_shares_the_danger() -> None:
@@ -235,6 +235,7 @@ def test_creation_rates_three_skills_and_packs_a_d10_item() -> None:
         "Think": 8,
         "Sway": 4,
     }
-    assert created.profile.items[0].rules == {"die": 10}
+    assert created.profile.items[0].rules == {}
+    assert created.item_rules[created.profile.items[0].id] == {"die": 10}
     with pytest.raises(ValueError, match="offers no"):
         _ = engine.creation.create("Ines", "", picks | {"d8": "shoot"})

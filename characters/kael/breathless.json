@@ -1,9 +1,16 @@
 {
-  "job": "Relic hunter",
-  "pronouns": "he/him",
-  "skills": {
-    "Sneak": 10,
-    "Think": 8,
-    "Dash": 6
+  "sheet": {
+    "job": "Relic hunter",
+    "pronouns": "he/him",
+    "skills": {
+      "Sneak": 10,
+      "Think": 8,
+      "Dash": 6
+    }
+  },
+  "items": {
+    "lantern": {
+      "die": 10
+    }
   }
 }

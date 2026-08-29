@@ -12,6 +12,7 @@ from aidm.state.model import Game
 
 from .model import (
     Character,
+    CharacterOverlay,
     CharacterProfile,
     Scenario,
 )
@@ -70,15 +71,17 @@ def load_character(
     directory: Path,
     name: Slug,
     engine: EngineId,
-    check_overlay: Callable[[dict[str, JsonValue]], None],
+    check_overlay: Callable[[Character], None],
 ) -> Character:
     folder = directory / content_id(name)
+    overlay = _read(folder / f"{engine}.json", CharacterOverlay)
     character = Character(
         id=name,
         profile=_read(folder / PROFILE_FILE, CharacterProfile),
-        rules=json.loads(_read_text(folder / f"{engine}.json")),
+        rules=overlay.sheet,
+        item_rules=overlay.items,
     )
-    check_overlay(character.rules)
+    check_overlay(character)
     return character
 
 
@@ -87,7 +90,8 @@ def write_character(directory: Path, engine: EngineId, character: Character) -> 
     if folder.exists():
         raise ValueError(f"character {character.id!r} already exists")
     _write(folder / PROFILE_FILE, character.profile.model_dump_json(indent=2))
-    _write(folder / f"{engine}.json", json.dumps(character.rules, indent=2))
+    overlay = CharacterOverlay(sheet=character.rules, items=character.item_rules)
+    _write(folder / f"{engine}.json", overlay.model_dump_json(indent=2))
 
 
 def write_scenario(

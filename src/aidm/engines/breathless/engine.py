@@ -45,7 +45,6 @@ from aidm.state.model import Game
 
 ENGINE_DIR = Path(__file__).parent
 RATED = (10, 8, 6)
-# Every item is a die, so a rules-less one is a d10 item rather than no item.
 RULES_TYPES: Mapping[Kind, type[EntityRules]] = {
     "actor": Sheet,
     "item": ItemSheet,
@@ -88,7 +87,6 @@ class BreathlessCreation(PackCreation[Pack]):
             brief=item_name,
             known=True,
             parent_id=PLAYER_ID,
-            rules={"die": RULES.starting_item},
         )
         return Character(
             id=slug(name, ()),
@@ -98,6 +96,7 @@ class BreathlessCreation(PackCreation[Pack]):
                 "pronouns": picked(picks, "pronouns"),
                 "skills": skills,
             },
+            item_rules={item.id: {"die": RULES.starting_item}},
         )
 
 
@@ -127,8 +126,8 @@ def build(user_packs: Path) -> Engine:
             "BREATHLESS AUTHORING\n"
             "Actors may omit rules; describe threats through risks and complications. An actor "
             "with rules names the skills rated above d4 (Bash, Dash, Sneak, Shoot, Think, Sway). "
-            "Every item is a die: give a usable one rules with its die (6 to 12) and leave set "
-            "dressing without rules, which makes it a d10 item."
+            "Every item is a die: give each one rules with its die (6 to 12). Scenery is not an "
+            "item; put it in the location description."
         ),
         director_tools=(
             # Every item is a die a loot check hands out, so nothing here is improvised.

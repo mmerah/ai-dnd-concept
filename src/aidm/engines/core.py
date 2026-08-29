@@ -394,9 +394,11 @@ class Engine:
     def notes(self, state: Game) -> tuple[str, ...]:
         return (*state.world.pending_notes, *self.owed_notes(state))
 
-    def check_overlay(self, overlay: dict[str, JsonValue]) -> None:
+    def check_overlay(self, character: Character) -> None:
         """The character file this engine plays by, refused where it is read rather than in play."""
-        _ = self.rules_types["actor"].model_validate(overlay)
+        _ = self.rules_types["actor"].model_validate(character.rules)
+        for item_rules in character.item_rules.values():
+            _ = self.rules_types["item"].model_validate(item_rules)
 
     def authoring_context(self, pack_ids: tuple[Slug, ...]) -> str:
         # Defaults restate rules the guidance already carries; dropping them halves the prompt.

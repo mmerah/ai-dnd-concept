@@ -41,7 +41,13 @@ def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character:
         traits=list(character.profile.traits),
         rules=dict(character.rules),
     )
-    for entity in (*(item.model_copy(deep=True) for item in character.profile.items), player):
+    items = (
+        Entity.model_validate(
+            {**item.model_dump(mode="json"), "rules": character.item_rules.get(item.id, {})}
+        )
+        for item in character.profile.items
+    )
+    for entity in (*items, player):
         if entity.id in world.entities:
             raise ValueError(f"authored entity id {entity.id!r} appears twice")
         world.entities[entity.id] = entity

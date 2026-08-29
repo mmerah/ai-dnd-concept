@@ -106,7 +106,7 @@ class Sheet(SheetBase):
 
 
 class ItemSheet(EntityRules):
-    die: Die = RULES.starting_item
+    die: Die
 
     def rows(self) -> tuple[tuple[str, str], ...]:
         spent = self.die == RULES.floor

@@ -543,7 +543,8 @@ def test_a_bulky_kit_item_carries_the_bulky_mark() -> None:
     }
     created = creation.create("Wren", "Solders anything.", picks)
     computer = next(item for item in created.profile.items if item.id == "custom-computer")
-    assert computer.traits == [] and computer.rules == {"bulky": True}
+    assert computer.traits == [] and computer.rules == {}
+    assert created.item_rules[computer.id] == {"bulky": True}
 
 
 def test_an_alien_invents_traits_the_menu_never_listed() -> None:

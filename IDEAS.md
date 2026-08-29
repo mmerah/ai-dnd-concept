@@ -16,6 +16,7 @@
 - [] I6: Rewrite: Skills, instructions, prompts. Easier english (ASD STE100). And content should be verified, not confusing, easy to understand. Particularly for instructions(prompts) since they describe how to actually play to the director (or whole session for codemode). Skills also need to be clearer, tell of everything, maybe indicate where (web link) to find SRD to reconciliate when needed? (but then harness need to authorize web fetch tool in some form, depend on the harness)
 - [] I7: Demo path. One command and one GIF of a full Loner turn in builtin mode. The popular repos win on install friction and demos, not on play quality. This is the only thing they have that we do not.
 - [] I8: Fold in competitor features. See `docs/COMPETITOR-RESEARCH.md`. First two: a re-read-before-you-state rule in the playing skill, and a session recap on resume (first step of L8).
+- [] I9: Pack authoring: write a pack (skills, gear, tables) through the authoring loop, then a scenario or character that plays with it.
 
 ## Working order
 

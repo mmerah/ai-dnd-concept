@@ -95,13 +95,32 @@ class CharacterProfile(Frozen):
         unknown = sorted(item.id for item in self.items if not item.known)
         if unknown:
             raise ValueError(f"a character knows the gear they start with: {unknown}")
+        ids = sorted(item.id for item in self.items if item.rules != {})
+        if ids:
+            raise ValueError(f"gear rules live in the engine overlay, not base.json: {ids}")
         return self
+
+
+class CharacterOverlay(Frozen):
+    """`<engine>.json`: the sheet the engine plays by and the rules of each `base.json` item."""
+
+    sheet: dict[str, JsonValue]
+    items: dict[EntityId, dict[str, JsonValue]] = Field(default_factory=dict)
 
 
 class Character(Frozen):
     id: Slug
     profile: CharacterProfile
     rules: dict[str, JsonValue]
+    item_rules: dict[EntityId, dict[str, JsonValue]] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _overlay_names_carried_gear(self) -> Self:
+        carried = {item.id for item in self.profile.items}
+        ids = sorted(set(self.item_rules) - carried)
+        if ids:
+            raise ValueError(f"overlay names gear the character does not carry: {ids}")
+        return self
 
     @property
     def name(self) -> str:
