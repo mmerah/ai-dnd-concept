@@ -1,24 +1,20 @@
 from pathlib import Path
 
 import pytest
-from core_test_support import initialized
+from core_test_support import initialized, updated
 
 from aidm.content.io import ENCODING
-from aidm.engines.core import rules
-from aidm.engines.loner3e.engine import build, load_packs
-from aidm.engines.loner3e.rules import SRD_PACK, Pack, Sheet, twist_table
-from aidm.engines.sources import PackSources
+from aidm.engines.core import load_packs
+from aidm.engines.loner3e.engine import ENGINE_DIR, build
+from aidm.engines.loner3e.rules import SRD_PACK, Pack, twist_table
 from aidm.state.creation import CreationOption
-from aidm.state.entities import PLAYER_ID
 
 
-def test_a_broken_user_pack_is_skipped_and_the_shipped_ones_still_load(tmp_path: Path) -> None:
+def test_a_broken_user_pack_raises_rather_than_being_skipped(tmp_path: Path) -> None:
     (tmp_path / "junk.json").write_text("{not json", encoding=ENCODING)
 
-    engine = build(PackSources((tmp_path,)))
-
-    assert "junk" not in engine.packs
-    assert {"srd", "ap01-fantasy"} <= set(engine.packs)
+    with pytest.raises(ValueError):
+        _ = build(tmp_path)
 
 
 def test_a_user_pack_may_carry_its_own_twist_table(tmp_path: Path) -> None:
@@ -38,21 +34,17 @@ def test_a_user_pack_may_carry_its_own_twist_table(tmp_path: Path) -> None:
     )
     (tmp_path / "mine.json").write_text(mine.model_dump_json(), encoding=ENCODING)
 
-    packs = load_packs(PackSources((tmp_path,)))
+    packs = load_packs((ENGINE_DIR / "packs", tmp_path), Pack)
 
     assert twist_table(packs, "mine") == tuple(zip(subjects, actions, strict=True))
     assert twist_table(packs, "ap01-fantasy") == twist_table(packs, SRD_PACK)
 
 
-def test_a_game_records_its_table_set_and_is_refused_without_it() -> None:
+def test_a_game_records_its_table_sets_and_is_refused_without_them() -> None:
     engine, state = initialized()
-    player = Sheet.model_validate(state.player.rules)
-    assert (player.packs, player.twist_pack) == ((SRD_PACK,), SRD_PACK)
+    assert state.packs == (SRD_PACK,)
 
-    draft = state.draft()
-    with rules(draft.world.require(PLAYER_ID), Sheet) as sheet:
-        sheet.packs = (SRD_PACK, "uninstalled")
-    stranded = draft.committed()
+    stranded = updated(state, packs=(SRD_PACK, "uninstalled"))
 
     with pytest.raises(ValueError, match="not installed"):
         engine.validate(stranded)

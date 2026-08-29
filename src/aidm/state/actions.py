@@ -244,22 +244,10 @@ def advance_thread(draft: Game, effect: AdvanceThread) -> list[Fact]:
     if thread is None:
         known = ", ".join(sorted(thread.id for thread in draft.world.threads)) or "(none)"
         raise ValueError(f"unknown thread {effect.thread_id!r}. The threads are: {known}")
-    clock = thread.clock
-    if effect.tick:
-        if clock is None:
-            raise ValueError(
-                f"the thread {thread.id!r} has no clock to tick. Move its stage or status instead."
-            )
-        clock.current = clock.clamped(clock.current + effect.tick)
     thread.status = effect.status or thread.status
-    thread.stage = effect.stage or thread.stage
     if effect.note is not None:
         thread.note = effect.note
     moved = f"thread {thread.title}[{thread.id}] — status {thread.status}"
-    if thread.stage:
-        moved += f", stage {thread.stage}"
-    if clock is not None:
-        moved += f", clock {clock.current}/{clock.maximum}"
     if thread.note:
         moved += f" — note: {thread.note}"
     return [Fact(kind="thread_advanced", trace=moved)]

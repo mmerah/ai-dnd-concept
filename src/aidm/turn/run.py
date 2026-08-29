@@ -1,5 +1,6 @@
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
+from functools import partial
 from random import Random
 from typing import Literal, NamedTuple, Self
 
@@ -116,7 +117,7 @@ class Turn:
         notes = (*self.notes, *self.engine.notes(draft))
         return context.render_director(
             SceneSnapshot.from_game(draft, notes),
-            self.engine.describe,
+            partial(self.engine.describe, draft),
             draft.scenario,
             self.prompt,
             resumed=self.resumed,
@@ -178,9 +179,9 @@ def _reached(draft: Game, facts: Sequence[Fact]) -> list[str]:
     for fact in facts:
         if fact.kind != "entity_discovered" or fact.entity_id is None:
             continue
-        detail = draft.world.require(fact.entity_id).detail
-        if detail is not None and detail.when_reached:
-            lines.append(f"- {detail.when_reached}")
+        reached = draft.world.require(fact.entity_id).when_reached
+        if reached:
+            lines.append(f"- {reached}")
     return lines
 
 
@@ -332,7 +333,7 @@ async def run_segment(
         visible = VisibleScene.revealed_from(SceneSnapshot.from_game(draft))
         narrator_prompt = context.render_narrator(
             visible,
-            engine.describe,
+            partial(engine.describe, draft),
             draft.scenario,
             evidence=traced(facts, told_only=True),
             prompt=prompt,

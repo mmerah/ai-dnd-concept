@@ -194,14 +194,14 @@ async def test_a_call_its_own_fields_refuse_is_retried_rather_than_killing_the_t
     engine, state = initialized()
     director = recorded(
         tool_call("advance_thread", thread_id="vault-seal"),
-        tool_call("advance_thread", thread_id="vault-seal", stage="seal-found"),
+        tool_call("advance_thread", thread_id="vault-seal", note="The seal is found."),
         text("The seal is found."),
     )
     result = await played(engine, state, "I press on.", director=FunctionModel(director.stub))
 
     thread = result.state.world.thread("vault-seal")
-    assert thread is not None and thread.stage == "seal-found"
-    reason = "status, its stage, its clock, or its note"
+    assert thread is not None and thread.note == "The seal is found."
+    reason = "status or its note"
     assert any(reason in seen for seen in director.reasons())
 
 

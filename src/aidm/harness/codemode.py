@@ -2,10 +2,12 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass, field
+from functools import cached_property, partial
 from pathlib import Path
 
 from pydantic import ConfigDict, Field, JsonValue
 from pydantic_ai import ModelRetry
+from pydantic_ai.toolsets import FunctionToolset
 
 from aidm.app.launch import (
     LauncherCatalog,
@@ -14,10 +16,12 @@ from aidm.app.launch import (
     load_catalog,
 )
 from aidm.app.runtime import GameSession, Runtime
+from aidm.authoring.draft import ScenarioDraft, playtest_check
 from aidm.authoring.run import (
     AuthoringRun,
     GrowthRun,
     ScenarioRun,
+    authoring_toolset,
     briefing,
     draft_context,
     growth_run,
@@ -111,10 +115,17 @@ class Harness:
     turn: Turn | None = None
     authoring: AuthoringRun | None = None
 
+    @cached_property
+    def blank_authoring(self) -> FunctionToolset[ScenarioDraft]:
+        """Names and schemas only: the SDK lists tools once at connect, before any run is open."""
+        return authoring_toolset(
+            playtest_check(self.settings, next(iter(self.runtime.engines.values())))
+        )
+
     def opened(self) -> GameSession:
         if self.session is None:
             raise ModelRetry(
-                f"no game is open; call open_game(slug) first.\n{catalogue(self.settings)}"
+                f"no game is open; call open_game(slug) first.\n{catalogue(self.runtime)}"
             )
         return self.session
 
@@ -124,7 +135,7 @@ class Harness:
         return self.turn
 
     def open_game(self, slug: str) -> str:
-        target = _target(load_catalog(self.settings), slug)
+        target = _target(load_catalog(self.settings, self.runtime.engines), slug)
         session = self.runtime.session(target)
         self.session = session
         self.turn = None
@@ -159,7 +170,7 @@ class Harness:
             if turn is not None
             else render_director(
                 SceneSnapshot.from_game(state, session.engine.notes(state)),
-                session.engine.describe,
+                partial(session.engine.describe, state),
                 state.scenario,
                 NO_TURN_OPEN,
             )
@@ -229,12 +240,15 @@ class Harness:
         return briefing(run, "finish_growth")
 
     def begin_scenario(self, asked: BeginScenario) -> str:
+        engine = self.runtime.engines.get(asked.engine)
+        if engine is None:
+            raise ModelRetry(f"unknown engine {asked.engine!r}")
         run = scenario_run(
             self.settings,
+            engine,
             asked.slug,
             asked.premise,
             asked.grows,
-            asked.engine,
             Path(asked.source) if asked.source else None,
             packs=asked.packs,
         )
@@ -301,8 +315,8 @@ def _target(catalog: LauncherCatalog, slug: str) -> LaunchTarget:
     return controller.new_game()
 
 
-def catalogue(settings: Settings) -> str:
-    return _listing(load_catalog(settings))
+def catalogue(runtime: Runtime) -> str:
+    return _listing(load_catalog(runtime.settings, runtime.engines))
 
 
 def _listing(catalog: LauncherCatalog) -> str:

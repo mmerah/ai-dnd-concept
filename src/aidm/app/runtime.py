@@ -7,16 +7,16 @@ from random import Random
 
 from pydantic import JsonValue
 
-from aidm.authoring.draft import ExtensionPatch, apply_patch, engine_packs
+from aidm.authoring.draft import ExtensionPatch, apply_patch
 from aidm.authoring.run import growth_run
 from aidm.config import Settings, load_settings
 from aidm.content.io import FileStore, load_character, load_scenario
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine, Offer, PlayerAction, offered, play_action, transact
-from aidm.engines.registry import begin_game, build_engine
-from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Frozen, Slug
+from aidm.engines.registry import begin_game, build_engines
+from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Slug
 from aidm.state.facts import Fact
-from aidm.state.model import Game, ThreadStatus, frontier
+from aidm.state.model import Game, frontier
 from aidm.state.play import (
     Answer,
     Line,
@@ -31,37 +31,16 @@ from .launch import LaunchTarget
 from .media import ICON_DIR, Illustrator
 
 
-class ThreadSummary(Frozen):
-    title: str
-    status: ThreadStatus
-    stage: str | None = None
-    clock: str = ""
-
-
-def thread_summaries(state: Game) -> tuple[ThreadSummary, ...]:
-    return tuple(
-        ThreadSummary(
-            title=thread.title,
-            status=thread.status,
-            stage=None if thread.stage is None else thread.stage.replace("-", " "),
-            clock=""
-            if thread.clock is None
-            else f"{thread.clock.current} / {thread.clock.maximum}",
-        )
-        for thread in sorted(state.world.threads, key=lambda thread: thread.title)
-    )
-
-
 def journal_markdown(state: Game) -> str:
     """A projection only: the journal is written for a reader and never read back."""
-    threads = thread_summaries(state)
+    threads = sorted(state.world.threads, key=lambda thread: thread.title)
     lines = [f"# {state.scenario.title}", "", state.scenario.premise, ""]
     for number, exchange in enumerate(state.history, start=1):
         told = "\n".join(attributed_line(state, line) for line in exchange.lines)
         lines.extend((f"## TurnTrace {number}", "", f"> {exchange.prompt}", "", told, ""))
     if threads:
         lines.extend(("## Threads", ""))
-        lines.extend(f"- {_thread_line(thread)}" for thread in threads)
+        lines.extend(f"- **{thread.title}** — {thread.status}" for thread in threads)
         lines.append("")
     return "\n".join(lines)
 
@@ -70,12 +49,6 @@ def attributed_line(state: Game, line: Line) -> str:
     """A speaker is named, because a bare quote reads as narration once the bubbles are gone."""
     speaker = None if line.speaker_id is None else state.world.require(line.speaker_id)
     return line.text if speaker is None else f"**{speaker.name}:** {line.text}"
-
-
-def _thread_line(thread: ThreadSummary) -> str:
-    stage = f" at {thread.stage}" if thread.stage is not None else ""
-    clock = f" [{thread.clock}]" if thread.clock else ""
-    return f"**{thread.title}** — {thread.status}{stage}{clock}"
 
 
 LOGGER = logging.getLogger(__name__)
@@ -273,8 +246,11 @@ class Runtime:
     """The composition root: settings, the built engines, and the games currently open."""
 
     settings: Settings
-    _engines: dict[tuple[EngineId, Slug | None], Engine] = field(default_factory=dict, repr=False)
     _sessions: dict[str, GameSession] = field(default_factory=dict, repr=False)
+    engines: dict[EngineId, Engine] = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.engines = build_engines(self.settings.packs_dir)
 
     def busy_refusal(self) -> str | None:
         """Evicting a session mid-turn would let the next tab open a rival writer on that save."""
@@ -283,16 +259,8 @@ class Runtime:
 
     def reload_settings(self) -> None:
         self.settings = load_settings()
-        self._engines.clear()
+        self.engines = build_engines(self.settings.packs_dir)
         self._sessions.clear()
-
-    def engine(self, engine_id: EngineId, scenario_id: Slug | None = None) -> Engine:
-        """Memoised per scenario, because a scenario may ship content packs of its own."""
-        held = self._engines.get((engine_id, scenario_id))
-        if held is None:
-            held = build_engine(engine_id, engine_packs(self.settings, engine_id, scenario_id))
-            self._engines[engine_id, scenario_id] = held
-        return held
 
     def session(self, target: LaunchTarget) -> GameSession:
         """Memoised: a page render must not rebuild the game and drop the turn in flight."""
@@ -308,7 +276,7 @@ class Runtime:
     def _open(self, target: LaunchTarget) -> GameSession:
         settings = self.settings
         scenario = load_scenario(settings.scenarios_dir, target.scenario_id)
-        engine = self.engine(scenario.engine, target.scenario_id)
+        engine = self.engines[scenario.engine]
         character = load_character(
             settings.characters_dir, target.character_id, engine.id, engine.check_overlay
         )

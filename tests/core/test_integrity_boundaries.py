@@ -4,11 +4,11 @@ from pathlib import Path
 import pytest
 from core_test_support import (
     CHARACTERS,
+    ENGINES_BUILT,
     LONER3E,
     SCENARIOS,
     TWENTYFOURXX,
     begin_game,
-    build_engine,
     character,
     initialized,
     scenario,
@@ -88,7 +88,7 @@ def test_an_engine_refuses_an_authored_payload_it_cannot_read(tmp_path: Path) ->
     _ = (folder / "base.json").write_text('{"name": "Broken", "brief": "Built for this test."}')
     _ = (folder / f"{LONER3E}.json").write_text('{"character": {"gear": null}}')
 
-    engine = build_engine(LONER3E)
+    engine = ENGINES_BUILT[LONER3E]
     with pytest.raises(ValidationError, match="gear"):
         _ = load_character(tmp_path, "broken", engine.id, engine.check_overlay)
 
@@ -149,7 +149,7 @@ def test_entity_ids_use_one_grammar() -> None:
 
 
 def test_a_scenario_starts_the_party_it_authors() -> None:
-    engine = build_engine(LONER3E)
+    engine = ENGINES_BUILT[LONER3E]
     authored = scenario()
     started = updated(authored, world=updated(authored.world, party=[MARA]))
 
@@ -162,7 +162,7 @@ def test_a_scenario_starts_the_party_it_authors() -> None:
 
 def test_a_scenario_is_refused_by_an_engine_it_was_not_authored_for() -> None:
     with pytest.raises(ValueError, match="does not play"):
-        _ = begin_game(build_engine(TWENTYFOURXX), "whispering-vault", scenario(), character())
+        _ = begin_game(ENGINES_BUILT[TWENTYFOURXX], "whispering-vault", scenario(), character())
 
 
 def test_an_authored_actor_without_rules_is_refused() -> None:
@@ -178,11 +178,11 @@ def test_an_authored_actor_without_rules_is_refused() -> None:
     )
 
     with pytest.raises(ValueError, match="has no rules"):
-        _ = begin_game(build_engine(LONER3E), "whispering-vault", stripped, character())
+        _ = begin_game(ENGINES_BUILT[LONER3E], "whispering-vault", stripped, character())
 
 
 def test_twentyfourxx_opposition_needs_no_sheet() -> None:
-    engine = build_engine(TWENTYFOURXX)
+    engine = ENGINES_BUILT[TWENTYFOURXX]
     scenario_id = scenario_for(TWENTYFOURXX)
     authored = load_scenario(SCENARIOS, scenario_id)
     hostile = next(entity for entity in authored.world.of_kind("actor") if entity.rules)
@@ -200,7 +200,7 @@ def test_twentyfourxx_opposition_needs_no_sheet() -> None:
 
     begun = begin_game(engine, scenario_id, stripped, player)
 
-    assert engine.describe(begun.world.require(hostile.id)) == ""
+    assert engine.describe(begun, begun.world.require(hostile.id)) == ""
 
 
 def test_scenario_packs_include_one_srd() -> None:

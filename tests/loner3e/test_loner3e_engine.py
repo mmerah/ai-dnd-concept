@@ -2,13 +2,13 @@ from random import Random
 
 import pytest
 from core_test_support import at_boundary, initialized, sheet_of
+from loner3e_test_support import TWISTS
 from pydantic import ValidationError
 
 from aidm.engines.core import rules
-from aidm.engines.loner3e.engine import advance, load_packs
+from aidm.engines.loner3e.engine import advance
 from aidm.engines.loner3e.rules import (
     RULES,
-    SRD_PACK,
     AdventureGrowth,
     Change,
     Question,
@@ -20,13 +20,11 @@ from aidm.engines.loner3e.rules import (
     resolve_question,
     twist_note,
     twist_pairing,
-    twist_table,
 )
 from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.facts import EventBadge, player_events
 from aidm.state.play import PendingDecision
 
-TWISTS = twist_table(load_packs(), SRD_PACK)
 FOE = EntityId("mara")
 LANTERN = EntityId("lantern")
 

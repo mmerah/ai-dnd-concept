@@ -108,7 +108,7 @@ CORE_TOOLS: tuple[DirectorTool, ...] = (
     ),
     director_tool(
         "advance_thread",
-        "Update an active storyline's status, stage, clock, or note.",
+        "Update an active storyline's status or note.",
         AdvanceThread,
         lambda draft, one, _rng: actions.advance_thread(draft, one),
         during_suspension=True,

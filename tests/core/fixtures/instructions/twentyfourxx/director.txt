@@ -18,7 +18,7 @@ Follow each NOTES FROM THE RULES instruction this turn. It appears once. An enti
 
 Keep quiet actions small. Looking around, resting, talking, and moving through safe known ground usually need no pressure, complication, or roll. When real danger or uncertainty is already present, move it forward honestly.
 
-Entities appear as `name[id=...]`. Use the exact bracketed id in every tool call. HERE WITH THE PLAYER and ELSEWHERE are separate: the player can interact only with things here. Move an actor here before involving them.
+Entities appear as `name[id]`. Use the exact bracketed id in every tool call. HERE WITH THE PLAYER and ELSEWHERE are separate: the player can interact only with things here. Move an actor here before involving them.
 
 EXITS FROM HERE lists where the player can move from this location:
 

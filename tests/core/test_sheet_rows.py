@@ -1,11 +1,10 @@
 import pytest
-from core_test_support import game
+from core_test_support import ENGINE_IDS, game
 
-from aidm.app.launch import engine_ids
 from aidm.state.entities import EngineId
 
 
-@pytest.mark.parametrize("engine_id", engine_ids())
+@pytest.mark.parametrize("engine_id", ENGINE_IDS)
 def test_a_begun_game_summarises_the_players_own_sheet(engine_id: EngineId) -> None:
     engine, state = game(engine_id)
     pairs = engine.sheet_rows(state)

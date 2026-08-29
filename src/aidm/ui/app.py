@@ -9,7 +9,6 @@ from aidm.app.launch import (
     LauncherController,
     LaunchTarget,
     SaveOption,
-    as_engine_id,
     load_catalog,
 )
 from aidm.app.runtime import Runtime
@@ -29,8 +28,8 @@ from .widgets import page_header, show_engine_badge
 LOGGER = logging.getLogger(__name__)
 
 
-def home_page(settings: Settings) -> None:
-    controller = LauncherController(load_catalog(settings))
+def home_page(runtime: Runtime) -> None:
+    controller = LauncherController(load_catalog(runtime.settings, runtime.engines))
     with page_header("AI Dungeon Master", home=False):
         ui.button("Settings", icon="settings", on_click=lambda: ui.navigate.to("/settings")).props(
             "flat color=white"
@@ -45,7 +44,7 @@ def home_page(settings: Settings) -> None:
                 "text-body1 opacity-70"
             )
             _new_game(controller)
-            _new_content(controller, settings)
+            _new_content(controller, runtime.settings)
             _saved_games(controller)
 
 
@@ -252,7 +251,7 @@ def _register_pages(runtime: Runtime) -> None:
 
     @ui.page("/")
     def _index() -> None:  # pyright: ignore[reportUnusedFunction]
-        home_page(runtime.settings)
+        home_page(runtime)
 
     @ui.page("/game/{slug}/{scenario}/{character}")
     def _game(  # pyright: ignore[reportUnusedFunction]
@@ -273,17 +272,17 @@ def _register_pages(runtime: Runtime) -> None:
 
     @ui.page("/create/{engine}")
     def _create(engine: str) -> None:  # pyright: ignore[reportUnusedFunction]
-        character_page(runtime, as_engine_id(engine))
+        character_page(runtime, engine)
 
     @ui.page("/create-scenario")
     def _create_scenario() -> None:  # pyright: ignore[reportUnusedFunction]
         writer = driver_for(None)
         if writer is not None:
-            agent_scenario_page(writer, runtime.settings)
+            agent_scenario_page(writer, runtime)
         elif runtime.settings.harness == "external":
             ui.label("Authoring runs in your terminal here: call begin_scenario().")
         else:
-            scenario_page(runtime.settings)
+            scenario_page(runtime)
 
     @ui.page("/settings")
     def _settings() -> None:  # pyright: ignore[reportUnusedFunction]

@@ -148,8 +148,8 @@ def _placement(
 
 
 def _undetailed(entity: Entity) -> Entity:
-    """`detail.when_reached` is canon authored before it is reached, so the Narrator gets none."""
-    return entity.model_copy(update={"detail": None})
+    """Both are canon authored for the Director before the scene, so the Narrator gets neither."""
+    return entity.model_copy(update={"description": "", "when_reached": ""})
 
 
 ANSWERED_BY_OPTION = (
@@ -280,7 +280,7 @@ def _entities(
 
 
 def _exit_line(scene: BaseScene, way: Exit) -> str:
-    labelled = f"[id={way.to}]"
+    labelled = f"[{way.to}]"
     locked = " — locked" if way.locked else ""
     unfound = " — the player has not found this way yet" if not way.known else ""
     return f"- {scene.exit_name(way)}{labelled}{locked}{unfound}"
@@ -291,9 +291,7 @@ def _threads(threads: Sequence[Thread]) -> str:
 
 
 def _thread_line(thread: Thread) -> str:
-    stage = f", stage {thread.stage}" if thread.stage is not None else ""
-    clock = "" if thread.clock is None else f", clock {thread.clock.current}/{thread.clock.maximum}"
-    line = f"- {thread.title}[id={thread.id}] — status {thread.status}{stage}{clock}"
+    line = f"- {thread.title}[{thread.id}] — status {thread.status}"
     return f"{line}\n  note: {thread.note}" if thread.note else line
 
 
@@ -303,17 +301,13 @@ def _headline(entity: Entity, placement: str) -> str:
 
 
 def _detail(entity: Entity) -> str:
-    if entity.detail is None:
-        return ""
-    described = f"\n  detail: {entity.detail.description}" if entity.detail.description else ""
-    reached = (
-        f"\n  when reached: {entity.detail.when_reached}" if entity.detail.when_reached else ""
-    )
+    described = f"\n  detail: {entity.description}" if entity.description else ""
+    reached = f"\n  when reached: {entity.when_reached}" if entity.when_reached else ""
     return f"{described}{reached}"
 
 
 def _label(entity: Entity) -> str:
-    return f"{entity.name}[id={entity.id}]"
+    return f"{entity.name}[{entity.id}]"
 
 
 def entity_state(entity: Entity, describe: EntityRenderer) -> str:
@@ -325,7 +319,7 @@ def entity_state(entity: Entity, describe: EntityRenderer) -> str:
 
 
 def _trait(trait: Trait) -> str:
-    name = f"{trait.name}[id={trait.id}]"
+    name = f"{trait.name}[{trait.id}]"
     return name + (f" — {trait.text}" if trait.text else "")
 
 

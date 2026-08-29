@@ -1,8 +1,17 @@
-from core_test_support import LONER3E, character, initialized, scenario, sheet_of, updated
+from core_test_support import (
+    ENGINE_IDS,
+    ENGINES_BUILT,
+    LONER3E,
+    character,
+    initialized,
+    scenario,
+    sheet_of,
+    updated,
+)
 
 from aidm.engines.core import rules
 from aidm.engines.loner3e.rules import RULES, Sheet, apply_restore_luck
-from aidm.engines.registry import ENGINES, begin_game, build_engine
+from aidm.engines.registry import begin_game
 from aidm.state import actions
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
 from aidm.state.facts import Fact
@@ -81,7 +90,7 @@ def test_rules_on_an_entity_created_in_play_are_its_sheet() -> None:
 
 def test_authored_rules_are_the_sheet_of_whatever_carries_them() -> None:
     """Every actor is rollable; anything else is described only where a scenario wrote rules."""
-    engine, shipped = build_engine(LONER3E), scenario()
+    engine, shipped = ENGINES_BUILT[LONER3E], scenario()
     authored = updated(
         shipped,
         world=updated(
@@ -99,10 +108,10 @@ def test_authored_rules_are_the_sheet_of_whatever_carries_them() -> None:
 
     assert sheet_of(state, EntityId("vault-map"), Sheet).concept == "a chart that remembers"
     assert sheet_of(state, EntityId("tomas"), Sheet).concept == "A Deaf Old Porter"
-    assert engine.describe(state.world.require(EntityId("lantern"))) == ""
+    assert engine.describe(state, state.world.require(EntityId("lantern"))) == ""
     engine.validate(state)
 
 
 def test_every_registered_engine_builds_itself_under_its_own_id() -> None:
-    for engine_id in ENGINES:
-        assert "srd" in build_engine(engine_id).pack_ids
+    for engine_id in ENGINE_IDS:
+        assert "srd" in ENGINES_BUILT[engine_id].packs

@@ -4,7 +4,7 @@ import pytest
 from core_test_support import initialized
 
 from aidm.state import actions
-from aidm.state.entities import PLAYER_ID, SLUG_MAX, Counter, Entity, EntityId
+from aidm.state.entities import PLAYER_ID, SLUG_MAX, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.model import AdvanceThread, Game, Thread
 
@@ -152,16 +152,9 @@ def test_acting_on_an_unrevealed_actor_reveals_it_before_its_traits_change() -> 
     assert _kinds(actions.add_trait(draft, RAT, "Hurt")) == ["entity_discovered", "trait_added"]
 
 
-def test_a_tick_fills_the_threads_clock_and_stops_at_its_maximum() -> None:
+def test_advance_thread_records_the_status_and_the_note_it_moved() -> None:
     draft = _draft()
-    draft.world.threads.append(
-        Thread(id="ritual", title="The rite", clock=Counter(current=0, maximum=2))
-    )
-
-    for filled in (1, 2, 2):
-        _ = actions.advance_thread(draft, AdvanceThread(thread_id="ritual", tick=1))
-        ritual = draft.world.thread("ritual")
-        assert ritual is not None and ritual.clock is not None and ritual.clock.current == filled
+    draft.world.threads.append(Thread(id="ritual", title="The rite"))
 
     (renoted,) = actions.advance_thread(
         draft, AdvanceThread(thread_id="ritual", status="resolved", note="the rite is complete")
@@ -199,9 +192,3 @@ def test_a_kill_drops_items_and_party_and_then_refuses_the_dead_actor() -> None:
     _ = actions.kill(draft, PLAYER_ID)
     with pytest.raises(ValueError, match="dead"):
         _ = actions.add_trait(draft, PLAYER_ID, "Hurt")
-
-
-def test_a_tick_on_a_thread_without_a_clock_is_refused() -> None:
-    draft = _draft()
-    with pytest.raises(ValueError, match="no clock to tick"):
-        _ = actions.advance_thread(draft, AdvanceThread(thread_id="vault-seal", tick=1))

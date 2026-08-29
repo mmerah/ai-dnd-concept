@@ -1,3 +1,5 @@
+from functools import partial
+
 from core_test_support import LONER3E, game, updated, with_entity
 
 from aidm.content.model import ScenarioMeta
@@ -18,7 +20,7 @@ WHEN_REACHED = "Her missing folio points toward the vault."
 
 def _with_detail(held: Game, entity_id: EntityId) -> Game:
     entity = held.world.require_kind(entity_id, "actor")
-    detailed = updated(entity, detail={"description": DESCRIPTION, "when_reached": WHEN_REACHED})
+    detailed = updated(entity, description=DESCRIPTION, when_reached=WHEN_REACHED)
     return with_entity(held, detailed)
 
 
@@ -42,6 +44,7 @@ def state() -> Game:
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
         engine=LONER3E,
+        packs=("srd",),
         player_id=PLAYER_ID,
         world=WorldState(entities=list(entities)),
         turn_events=(),
@@ -50,8 +53,8 @@ def state() -> Game:
 
 
 def _renderer() -> EntityRenderer:
-    engine, _ = game(LONER3E)
-    return engine.describe
+    engine, state = game(LONER3E)
+    return partial(engine.describe, state)
 
 
 def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> None:
@@ -92,10 +95,10 @@ def test_the_director_is_shown_authored_detail() -> None:
     describe = _renderer()
     director = render_director(scene, describe, held.scenario, "I look around.")
 
-    assert "Kael[id=player]" in director
-    assert "a lantern[id=lantern] — A dented light." in director
-    assert "a ledger[id=ledger] (item) — held by Mara" in director
-    assert "The Secret[id=hidden-actor]" in director
+    assert "Kael[player]" in director
+    assert "a lantern[lantern] — A dented light." in director
+    assert "a ledger[ledger] (item) — held by Mara" in director
+    assert "The Secret[hidden-actor]" in director
     assert "luck: 6/6" in director
     assert f"detail: {DESCRIPTION}" in director
     assert f"when reached: {WHEN_REACHED}" in director
@@ -117,7 +120,7 @@ def test_narrator_prompt_names_only_ids_of_entities_the_player_has_met() -> None
     assert "luck: 6/6" in prompt
     assert "The Secret" not in prompt
     # The Narrator names an id only in `speaker_id`; every id it is shown belongs to someone met.
-    assert "Mara[id=mara]" in prompt
+    assert "Mara[mara]" in prompt
     assert "hidden-actor" not in prompt
 
 

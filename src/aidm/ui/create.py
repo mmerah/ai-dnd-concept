@@ -7,11 +7,8 @@ from typing import cast
 from nicegui import ui
 from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
-from aidm.app.launch import engine_ids
 from aidm.app.runtime import Runtime
-from aidm.authoring.draft import BRIEFS, WHOLE_SCENARIO, brief_named, installed_pack_ids
 from aidm.authoring.run import ScenarioRun, scenario_run
-from aidm.config import Settings
 from aidm.content.io import write_character
 from aidm.harness.driver import Driver
 from aidm.state.creation import AnyStep, CreationStep, TextStep, picked
@@ -22,8 +19,10 @@ from .widgets import page_header, refuse_if_busy, working
 LOGGER = logging.getLogger(__name__)
 
 
-def character_page(runtime: Runtime, engine_id: EngineId) -> None:
-    engine = runtime.engine(engine_id)
+def character_page(runtime: Runtime, engine_id: str) -> None:
+    engine = runtime.engines.get(EngineId(engine_id))
+    if engine is None:
+        raise ValueError(f"unknown engine {engine_id!r}")
     with page_header("New character", engine.badge):
         pass
     creation = engine.creation
@@ -86,11 +85,11 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                         return
                     try:
                         created = creation.create(title, (brief.value or "").strip(), picks)
-                        write_character(runtime.settings.characters_dir, engine_id, created)
+                        write_character(runtime.settings.characters_dir, engine.id, created)
                     except ValueError as refused:
                         ui.notify(str(refused), type="negative")
                         return
-                    LOGGER.info("character created: slug=%s engine=%s", created.id, engine_id)
+                    LOGGER.info("character created: slug=%s engine=%s", created.id, engine.id)
                     ui.navigate.to("/")
 
                 @ui.refreshable
@@ -254,11 +253,11 @@ def _write_answer(
         picks.pop(step_id, None)
 
 
-def _engine_and_packs(settings: Settings) -> tuple[ui.select, ui.select]:
+def _engine_and_packs(runtime: Runtime) -> tuple[ui.select, ui.select]:
     engine = (
         ui.select(
-            options=list(engine_ids()),
-            value=engine_ids()[0],
+            options=list(runtime.engines),
+            value=next(iter(runtime.engines)),
             label="Rules it plays under",
         )
         .classes("w-full")
@@ -266,7 +265,7 @@ def _engine_and_packs(settings: Settings) -> tuple[ui.select, ui.select]:
     )
     packs = (
         ui.select(
-            options=list(installed_pack_ids(settings, _engine(engine.value))),
+            options=list(_engine(runtime, engine.value).packs),
             value=["srd"],
             label="Content packs",
             multiple=True,
@@ -276,7 +275,7 @@ def _engine_and_packs(settings: Settings) -> tuple[ui.select, ui.select]:
     )
 
     def changed_engine(event: ValueChangeEventArguments[object]) -> None:
-        packs.options = list(installed_pack_ids(settings, _engine(event.value)))
+        packs.options = list(_engine(runtime, event.value).packs)
         packs.value = ["srd"]
         packs.update()
 
@@ -284,7 +283,8 @@ def _engine_and_packs(settings: Settings) -> tuple[ui.select, ui.select]:
     return engine, packs
 
 
-def scenario_page(settings: Settings) -> None:
+def scenario_page(runtime: Runtime) -> None:
+    settings = runtime.settings
     with page_header("New scenario"):
         pass
     document: Path | None = None
@@ -317,16 +317,7 @@ def scenario_page(settings: Settings) -> None:
                 .props("outlined")
             )
             grows = ui.switch("Grows during play", value=True).classes("w-full")
-            engine, packs = _engine_and_packs(settings)
-            brief = (
-                ui.select(
-                    options=[one.label for one in BRIEFS],
-                    label="How much to author",
-                    value=WHOLE_SCENARIO.label,
-                )
-                .classes("w-full")
-                .props("outlined")
-            )
+            engine, packs = _engine_and_packs(runtime)
             art_style = (
                 ui.input(label="Art style", placeholder=settings.media.style)
                 .classes("w-full")
@@ -352,13 +343,12 @@ def scenario_page(settings: Settings) -> None:
                 try:
                     new_session = scenario_run(
                         settings,
+                        _engine(runtime, engine.value),
                         content_id(scenario_id.value or ""),
                         (premise.value or "").strip(),
                         bool(grows.value),
-                        _engine(engine.value),
                         document,
                         packs=_packs(packs.value),
-                        brief=brief_named(brief.value or WHOLE_SCENARIO.label),
                         art_style=(art_style.value or "").strip(),
                     )
                 except ValueError as error:
@@ -368,7 +358,7 @@ def scenario_page(settings: Settings) -> None:
                 LOGGER.info(
                     "scenario authoring started: slug=%s grows=%s document=%s",
                     session.slug,
-                    session.draft.grows,
+                    session.grows,
                     document is not None,
                 )
                 for widget in (
@@ -378,7 +368,6 @@ def scenario_page(settings: Settings) -> None:
                     grows,
                     engine,
                     packs,
-                    brief,
                     art_style,
                     author_button,
                 ):
@@ -458,7 +447,7 @@ def scenario_page(settings: Settings) -> None:
             readback()
 
 
-def agent_scenario_page(driver: Driver, settings: Settings) -> None:
+def agent_scenario_page(driver: Driver, runtime: Runtime) -> None:
     """Code mode has no api_key for the authoring roles, so the agent writes the scenario."""
     with page_header("New scenario"):
         pass
@@ -475,7 +464,7 @@ def agent_scenario_page(driver: Driver, settings: Settings) -> None:
             .classes("w-full")
             .props("outlined autogrow")
         )
-        engine, packs = _engine_and_packs(settings)
+        engine, packs = _engine_and_packs(runtime)
         grows = ui.switch("Grows during play", value=True).classes("w-full")
 
         async def uploaded(event: UploadEventArguments) -> None:
@@ -491,7 +480,7 @@ def agent_scenario_page(driver: Driver, settings: Settings) -> None:
 
         async def write() -> None:
             try:
-                chosen = _engine(engine.value)
+                chosen = _engine(runtime, engine.value).id
                 chosen_packs = _packs(packs.value)
                 slug_value = content_id((scenario_id.value or "").strip())
             except ValueError as error:
@@ -526,8 +515,9 @@ def agent_scenario_page(driver: Driver, settings: Settings) -> None:
         log = ui.log(max_lines=500).classes("w-full h-96 text-xs")
 
 
-def _engine(value: object) -> EngineId:
-    chosen = next((engine for engine in engine_ids() if engine == value), None)
+def _engine(runtime: Runtime, value: object):
+    """No return annotation: `ui` may not import `aidm.engines`, even to name the type."""
+    chosen = runtime.engines.get(EngineId(str(value)))
     if chosen is None:
         raise ValueError("choose a ruleset")
     return chosen

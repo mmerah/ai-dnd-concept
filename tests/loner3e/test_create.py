@@ -1,17 +1,16 @@
 from pathlib import Path
 
 import pytest
-from core_test_support import SCENARIOS
-from loner3e_test_support import LONER3E
+from core_test_support import ENGINES_BUILT, LONER3E, SCENARIOS
 
 from aidm.content.io import load_character, load_scenario, write_character
 from aidm.engines.loner3e.rules import RULES, Sheet
-from aidm.engines.registry import begin_game, build_engine
+from aidm.engines.registry import begin_game
 from aidm.state.creation import CreationStep, Picks
 
 
 def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path) -> None:
-    engine = build_engine(LONER3E)
+    engine = ENGINES_BUILT[LONER3E]
     creation = engine.creation
     picks: Picks = {
         "pack": ("srd",),
@@ -26,7 +25,6 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     scenario = load_scenario(SCENARIOS, "whispering-vault")
     state = begin_game(engine, "whispering-vault", scenario, character)
     sheet = Sheet.model_validate(state.player.rules)
-    assert sheet.packs == ("srd",)
     assert sheet.twist_pack == "srd"
     assert sheet.concept == "A wandering scribe who counts doors"
     assert sheet.skills == ("Quiet Hands", "Reads Old Stonework")
@@ -36,7 +34,7 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
 
 
 def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:
-    creation = build_engine(LONER3E).creation
+    creation = ENGINES_BUILT[LONER3E].creation
     chosen: Picks = {"pack": ("srd",)}
     legal: Picks = {
         step.id: chosen.get(

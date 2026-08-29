@@ -68,7 +68,6 @@ class AuthoringConfig(BaseModel):
     request_limit: int = Field(default=40, ge=1, json_schema_extra=BUILTIN_ONLY)
     # Every generated scenario must be playable by the character the app ships with.
     starter_character: Slug = "kael"
-    worked_example: Slug = "whispering-vault"
     growth_frontier: int = Field(default=1, ge=0)
     # This ~30k-token ceiling admits a 76-page adventure without swallowing the context.
     source_max_chars: int = Field(default=120_000, ge=1)

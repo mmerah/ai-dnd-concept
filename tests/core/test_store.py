@@ -2,9 +2,8 @@ import json
 from pathlib import Path
 
 import pytest
-from core_test_support import LONER3E, initialized, scenario
+from core_test_support import ENGINE_IDS, ENGINES_BUILT, LONER3E, initialized, scenario
 
-from aidm.app.launch import engine_ids
 from aidm.content.io import (
     ENCODING,
     FileStore,
@@ -13,7 +12,6 @@ from aidm.content.io import (
     read_scenarios,
     write_scenario,
 )
-from aidm.engines.registry import build_engine
 from aidm.state.facts import EventBadge, MechanicEvent
 from aidm.state.play import Exchange
 
@@ -53,7 +51,7 @@ def test_storage_rejects_unsafe_slugs(tmp_path: Path, slug: str) -> None:
 
 
 def test_content_paths_reject_an_unsafe_id(tmp_path: Path) -> None:
-    engine = build_engine(LONER3E)
+    engine = ENGINES_BUILT[LONER3E]
     with pytest.raises(ValueError, match="invalid content id"):
         load_scenario(tmp_path, "../escape")
     with pytest.raises(ValueError, match="invalid content id"):
@@ -78,4 +76,4 @@ def test_read_scenarios_skips_a_world_that_fails_to_validate(tmp_path: Path) -> 
     broken.mkdir()
     (broken / "world.json").write_text(json.dumps({"meta": {}}), encoding=ENCODING)
 
-    assert [slug for slug, _ in read_scenarios(tmp_path, engine_ids())] == ["good"]
+    assert [slug for slug, _ in read_scenarios(tmp_path, ENGINE_IDS)] == ["good"]

@@ -20,10 +20,6 @@ Work from the repository root. Scenarios are written to `scenarios/` under the w
    vocabulary where the engine requires it; some engines explicitly allow freeform tags.
 4. `write(patch)` and `connect(from_id, to_id)` — build the world in passes. Every answer ends
    with what the draft still needs. Show the user each pass and follow their steering.
-5. `write_pack(pack_id, content)` — only when the selected packs genuinely lack an item, table
-   entry or skill the scenario needs. The pack is checked against the engine's own pack schema and
-   ships in the scenario's directory, where play loads it like an installed pack. Shape `content`
-   like the selected pack content in the briefing, and write only what is missing.
-6. `scenario_so_far()` — the whole draft as JSON. Call it whenever you lose track of the draft.
-7. `finish_scenario()` — checks the draft and writes it to disk. A draft under the bar
+5. `scenario_so_far()` — the whole draft as JSON. Call it whenever you lose track of the draft.
+6. `finish_scenario()` — checks the draft and writes it to disk. A draft under the bar
    comes back with the reason, and the run stays open.

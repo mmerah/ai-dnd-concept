@@ -3,68 +3,68 @@ Saint Ivo's Cold Vault
 Saint Ivo's went dark on the third night of the collapse with its cold vault still sealed, and eleven years of Crawlers have kept everyone honest about it. Kael has come for what is racked down there: the last cased antivirals, worth a year of anyone's life. He starts in the ambulance bay, where Dov Marek keeps the gate and burns what the night drags in.
 
 PLAYER CHARACTER:
-Kael[id=player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut. — at the ambulance bay[id=ambulance-bay]
+Kael[player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut. — at the ambulance bay[ambulance-bay]
 state:
   job: Relic hunter
   pronouns: he/him
   skills: Bash d4, Dash d6, Sneak d10, Shoot d4, Think d8, Sway d4
   loot die: d12
   stress: 0/4
-  traits: Relic Hunter[id=relic-hunter] — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (frailty) Old scars make certain memories hard to face.
+  traits: Relic Hunter[relic-hunter] — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past[marked-by-the-past] — (frailty) Old scars make certain memories hard to face.
 inventory:
-- a guttering lantern[id=lantern] — A dented tin lantern whose flame will not hold still.
+- a guttering lantern[lantern] — A dented tin lantern whose flame will not hold still.
   state:
     die: d10
-    traits: Unsteady Lantern[id=unsteady-lantern] — (gear) Its shifting light exposes seams and movement in deep shadow.
+    traits: Unsteady Lantern[unsteady-lantern] — (gear) Its shifting light exposes seams and movement in deep shadow.
 
 HERE WITH THE PLAYER:
-- Dov Marek[id=dov-marek] (npc) — at the ambulance bay — He keeps the bay gate and burns the dead, and has not let anyone in after dark in four years.
+- Dov Marek[dov-marek] (npc) — at the ambulance bay — He keeps the bay gate and burns the dead, and has not let anyone in after dark in four years.
   detail: He works the gate alone with a fire axe and a burn drum, and he knows the count of everyone still living in the block.
   when reached: Dov will name what walks each floor if asked straight, and he will not go inside the building for any price. He says why when pressed.
-- a fire axe[id=fire-axe] (item) — at the ambulance bay — A long-handled axe off the bay wall bracket, edge rolled but the head sound.
+- a fire axe[fire-axe] (item) — at the ambulance bay — A long-handled axe off the bay wall bracket, edge rolled but the head sound.
   state:
     die: d10
 
 EXITS FROM HERE:
-- the roof walk[id=roof-walk] — the player has not found this way yet
-- the triage hall[id=triage-hall]
+- the roof walk[roof-walk] — the player has not found this way yet
+- the triage hall[triage-hall]
 
 KNOWN TO THE PLAYER, BUT ELSEWHERE:
-- the triage hall[id=triage-hall] (location) — The old sorting floor, curtained into stalls with plastic sheeting, where Sela Quist trades off a folding table and counts everything twice.
+- the triage hall[triage-hall] (location) — The old sorting floor, curtained into stalls with plastic sheeting, where Sela Quist trades off a folding table and counts everything twice.
   detail: Every stall runs on lantern light, and the stairwell door at the far end is chained shut from this side.
   when reached: Kael has come into the triage hall. Sela Quist trades here and knows which floors Crawlers walk; she is here unless the fiction has moved her.
-- Sela Quist[id=sela-quist] (npc) — at the triage hall — She trades out of the triage hall — water, batteries, boots — and prices in what she can carry.
+- Sela Quist[sela-quist] (npc) — at the triage hall — She trades out of the triage hall — water, batteries, boots — and prices in what she can carry.
   detail: Her table holds cutters, tape, fuel and salt, and she keeps a written list of who owes her.
   when reached: Sela trades goods for goods and never on credit. She knows the vault is real and she knows what it costs to get down there; she will trade that too.
-- a pair of bolt cutters[id=bolt-cutters] (item) — at the triage hall — Sela's cutters, leaning against her table leg, long enough to take the stairwell chain.
+- a pair of bolt cutters[bolt-cutters] (item) — at the triage hall — Sela's cutters, leaning against her table leg, long enough to take the stairwell chain.
   state:
     die: d8
-- a knotted rope ladder[id=rope-ladder] (item) — at the roof walk — A window-escape ladder coiled by the plant room door, rated for one body at a time.
+- a knotted rope ladder[rope-ladder] (item) — at the roof walk — A window-escape ladder coiled by the plant room door, rated for one body at a time.
   state:
     die: d6
 
 EXISTS BUT THE PLAYER DOES NOT KNOW IT YET:
-- the roof walk[id=roof-walk] (location) — A scaffold plank slung between the bay canopy and the annex roof, six storeys up, with the plant room door propped at the far end.
+- the roof walk[roof-walk] (location) — A scaffold plank slung between the bay canopy and the annex roof, six storeys up, with the plant room door propped at the far end.
   detail: The plank has no rail and the scaffold clamps have rusted loose; the annex parapet is a long reach off the end of it.
-  when reached: Kael has crossed to the roof walk: advance thread cold-cache to stage roof-reached. Wren Halloway lives in the plant room here, and the ward stair below is the only way down inside — press on getting past her to it.
-- the stair shaft[id=stair-shaft] (location) — A service stairwell dropping six flights to the sub-basement, ankle-deep in standing water at the bottom and loud with every step.
+  when reached: Kael has crossed to the roof walk: advance thread cold-cache with a note that the roof walk is reached. Wren Halloway lives in the plant room here, and the ward stair below is the only way down inside — press on getting past her to it.
+- the stair shaft[stair-shaft] (location) — A service stairwell dropping six flights to the sub-basement, ankle-deep in standing water at the bottom and loud with every step.
   detail: The vault door on the bottom landing takes a ward card, and its reader still has power off the hospital's buried cells.
   when reached: Kael has come down the stair shaft. The Bell Crawler hunts these flights by sound, and the card reader on the vault door is the only obstacle left — press on how he gets to it quietly.
-- Wren Halloway[id=wren-halloway] (npc) — at the roof walk — The last ward nurse at Saint Ivo's, eleven years in the annex plant room, who nailed the mattresses up herself.
+- Wren Halloway[wren-halloway] (npc) — at the roof walk — The last ward nurse at Saint Ivo's, eleven years in the annex plant room, who nailed the mattresses up herself.
   detail: She has kept the roof door shut and the ward quiet since the third night, and she still wears the ward card lanyard even though the card is gone.
   when reached: Wren knows the stair, the reader, and how the Bell Crawler hunts. She will come down with anyone who agrees to bring the cases back up to the block, and she will say so plainly.
   state:
     skills: Bash d4, Dash d4, Sneak d8, Shoot d4, Think d10, Sway d6
     loot die: d12
     stress: 0/4
-- a ward nine key card[id=ward-card] (item) — at the ambulance bay — A cracked hospital card taped inside a gurney rack, still magnetised, still cut for the sub-basement door.
+- a ward nine key card[ward-card] (item) — at the ambulance bay — A cracked hospital card taped inside a gurney rack, still magnetised, still cut for the sub-basement door.
   detail: The photo is worn off but the sub-basement stripe is intact, and the tape holding it is a paramedic's, wrapped fast.
-  when reached: Kael has the ward card: advance thread cold-cache to stage card-found. It opens the vault door at the bottom of the stair shaft — press on getting down there.
+  when reached: Kael has the ward card: advance thread cold-cache with a note that the ward card is taken. It opens the vault door at the bottom of the stair shaft — press on getting down there.
   state:
     die: d6
 
 ACTIVE THREADS:
-- The sealed cold vault[id=cold-cache] — status active, stage unfound
+- The sealed cold vault[cold-cache] — status active
   note: Kael came for the cased antivirals racked in Saint Ivo's cold vault: the ward card that opens the door, six flights of stair shaft that the Bell Crawler hunts by sound, and what Wren Halloway wants for coming down with him.
 
 NOTES FROM THE RULES:

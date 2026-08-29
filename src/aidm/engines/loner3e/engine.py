@@ -11,10 +11,13 @@ from aidm.engines.core import (
     Engine,
     EntityRules,
     NoRules,
+    PackCreation,
     advances_owed,
     chapter_tool,
     describe_rows,
     director_tool,
+    find_entry,
+    load_packs,
     party_member,
     rules,
 )
@@ -30,8 +33,6 @@ from aidm.engines.loner3e.rules import (
     resolve_question,
     twist_table,
 )
-from aidm.engines.packs import PackCreation, character_packs, find_entry
-from aidm.engines.sources import SHIPPED_PACKS, PackSources
 from aidm.engines.world import CORE_TOOLS
 from aidm.state.creation import (
     AnyStep,
@@ -48,6 +49,7 @@ from aidm.state.entities import (
     Entity,
     Frozen,
     Kind,
+    Slug,
     slug,
 )
 from aidm.state.facts import Fact, MechanicEvent, entity_fact
@@ -167,7 +169,6 @@ class Loner3eCreation(PackCreation[Pack]):
             id=slug(name, ()),
             profile=CharacterProfile(name=name, brief=brief),
             rules={
-                "packs": character_packs(chosen),
                 "twist_pack": chosen,
                 "concept": picked(picks, "concept")[0],
                 "skills": [
@@ -184,10 +185,15 @@ def _checks(state: Game) -> None:
     for actor in state.world.of_kind("actor"):
         if not actor.rules:
             raise ValueError(f"{actor.id!r} has no rules; a Loner actor needs a sheet")
+        twist_pack = Sheet.model_validate(actor.rules).twist_pack
+        if twist_pack not in state.packs:
+            raise ValueError(f"{actor.id!r} rolls twists from {twist_pack!r}, which is unselected")
 
 
-def meanings(packs: Mapping[str, Pack], sheet: Sheet) -> tuple[tuple[str, str], ...]:
-    chosen = tuple(packs[pack_id] for pack_id in sheet.packs)
+def meanings(
+    packs: Mapping[str, Pack], selected: Sequence[Slug], sheet: Sheet
+) -> tuple[tuple[str, str], ...]:
+    chosen = tuple(packs[pack_id] for pack_id in selected)
     # The concept's pack blurb is generic where the entity's own brief is not: skip it.
     return pack_meanings(
         tuple(entry for pack in chosen for entry in (*pack.skills, *pack.frailties, *pack.gear)),
@@ -195,42 +201,37 @@ def meanings(packs: Mapping[str, Pack], sheet: Sheet) -> tuple[tuple[str, str], 
     )
 
 
-def _describe(packs: Mapping[str, Pack], entity: Entity) -> str:
+def _describe(packs: Mapping[str, Pack], state: Game, entity: Entity) -> str:
     # An item is described only once play has written rules on it; before that it is scenery.
     if entity.kind != "actor" and not entity.rules:
         return ""
     sheet = Sheet.model_validate(entity.rules)
-    return describe_rows(sheet.rows(), meanings(packs, sheet))
+    return describe_rows(sheet.rows(), meanings(packs, state.packs, sheet))
 
 
 def twists(packs: Mapping[str, Pack], state: Game) -> tuple[tuple[str, str], ...]:
     return twist_table(packs, Sheet.model_validate(state.player.rules).twist_pack)
 
 
-def load_packs(sources: PackSources = SHIPPED_PACKS) -> dict[str, Pack]:
-    return sources.load(ENGINE_DIR / "packs", Pack)
-
-
-def build(sources: PackSources = SHIPPED_PACKS) -> Engine:
-    packs = load_packs(sources)
+def build(user_packs: Path) -> Engine:
+    packs = load_packs((ENGINE_DIR / "packs", user_packs), Pack)
     return Engine(
         id=EngineId("loner3e"),
         badge=("LONER 3E", "teal-7"),
         director_instructions=engine_text(ENGINE_DIR / "director.md"),
         rules_types=RULES_TYPES,
-        pack_type=Pack,
         packs=packs,
         creation=Loner3eCreation(packs),
         checks=_checks,
-        describe=lambda entity: _describe(packs, entity),
+        describe=lambda state, entity: _describe(packs, state, entity),
         decisions=(Conflict,),
         owed_notes=lambda state: advances_owed(state, Sheet, lambda sheet: sheet.milestones),
         authoring_instructions=(
             "LONER 3E AUTHORING\n"
             "Every actor needs a rules object with a concept and any fitting skills, frailties, or "
             "gear. Loner tags are freeform descriptions: use selected pack entries when they fit "
-            "and invent scenario-specific tags when they are clearer. Set packs to every selected "
-            "table set the entity uses; twist_pack chooses its one Oracle table."
+            "and invent scenario-specific tags when they are clearer. twist_pack names one "
+            "selected table set; its Oracle twists are rolled from it."
         ),
         director_tools=(
             *CORE_TOOLS,

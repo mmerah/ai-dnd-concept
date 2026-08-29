@@ -121,7 +121,7 @@
   },
   {
     "name": "advance_thread",
-    "description": "Update an active storyline's status, stage, clock, or note.",
+    "description": "Update an active storyline's status or note.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -147,25 +147,6 @@
           ],
           "default": null,
           "description": "New status, or null to keep the current status."
-        },
-        "stage": {
-          "anyOf": [
-            {
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "New stage slug, or null to keep the current stage."
-        },
-        "tick": {
-          "default": 0,
-          "description": "Number of segments to fill on its clock. Use 0 for no change.",
-          "type": "integer"
         },
         "note": {
           "anyOf": [

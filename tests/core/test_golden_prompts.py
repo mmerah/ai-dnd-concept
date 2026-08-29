@@ -1,13 +1,12 @@
 import pytest
-from core_test_support import game
+from core_test_support import ENGINE_IDS, game
 from golden_test_support import FIXTURES, golden
 
-from aidm.app.launch import engine_ids
 from aidm.state.entities import EngineId
 from aidm.turn import context
 
 
-@pytest.mark.parametrize("engine_id", engine_ids())
+@pytest.mark.parametrize("engine_id", ENGINE_IDS)
 def test_every_role_assembles_the_same_instructions(engine_id: EngineId) -> None:
     engine, _ = game(engine_id)
     roles = {

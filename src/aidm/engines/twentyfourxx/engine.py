@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from random import Random
 
@@ -12,21 +12,17 @@ from aidm.engines.core import (
     Engine,
     EntityRules,
     NoRules,
+    PackCreation,
     adjust,
     advances_owed,
     chapter_tool,
     describe_by,
     director_tool,
+    find_entry,
+    load_packs,
     party_member,
     rules,
 )
-from aidm.engines.packs import (
-    PackCreation,
-    character_packs,
-    find_entry,
-    picked_entry,
-)
-from aidm.engines.sources import SHIPPED_PACKS, PackSources
 from aidm.engines.twentyfourxx.rules import (
     GROWTH,
     Advance,
@@ -51,6 +47,7 @@ from aidm.engines.world import CORE_TOOLS
 from aidm.state.actions import roll_pool
 from aidm.state.creation import (
     AnyStep,
+    CreationOption,
     CreationStep,
     Picks,
     TextStep,
@@ -74,6 +71,13 @@ from aidm.state.facts import Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
 
 ENGINE_DIR = Path(__file__).parent
+
+
+def picked_entry[T: CreationOption](entries: Sequence[T], picks: Picks, step: Slug) -> T | None:
+    chosen = picked(picks, step)[:1]
+    return next((entry for entry in entries if entry.id in chosen), None)
+
+
 RULES_TYPES: Mapping[Kind, type[EntityRules]] = {
     "actor": Sheet,
     "item": ItemSheet,
@@ -253,7 +257,6 @@ class TwentyfourxxCreation(PackCreation[Pack]):
             id=slug(name, ()),
             profile=CharacterProfile(name=name, brief=brief, traits=tuple(traits), items=items),
             rules={
-                "packs": character_packs(chosen),
                 "specialty": specialty.label,
                 "origin": origin.label,
                 "skills": skills_json,
@@ -351,15 +354,14 @@ def _buy_gear(gear: Mapping[Slug, GearItem], draft: Game, args: BuyGear) -> list
     return [*paid, draft.add(_carried(entry, item_id, args.onto_id or args.actor_id))]
 
 
-def build(sources: PackSources = SHIPPED_PACKS) -> Engine:
-    packs = sources.load(ENGINE_DIR / "packs", Pack)
+def build(user_packs: Path) -> Engine:
+    packs = load_packs((ENGINE_DIR / "packs", user_packs), Pack)
     gear, ship = _gear(packs), _ship(packs)
     return Engine(
         id=EngineId("twentyfourxx"),
         badge=("24XX", "indigo-7"),
         director_instructions=engine_text(ENGINE_DIR / "director.md"),
         rules_types=RULES_TYPES,
-        pack_type=Pack,
         packs=packs,
         creation=TwentyfourxxCreation(packs),
         checks=_checks,
@@ -369,8 +371,7 @@ def build(sources: PackSources = SHIPPED_PACKS) -> Engine:
         authoring_instructions=(
             "24XX AUTHORING\n"
             "Actors may omit rules; describe opposition through behavior, risks, and obstacles. "
-            "When an actor has rules, set packs to every table set it uses and use only skill "
-            "names those selected packs supply."
+            "When an actor has rules, use only skill names the selected packs supply."
         ),
         director_tools=(
             *CORE_TOOLS,

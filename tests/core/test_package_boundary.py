@@ -3,10 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from aidm.app.launch import engine_ids
+from aidm.engines.registry import ENGINES as REGISTERED
 
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
-ENGINES = tuple(f"aidm.engines.{engine_id}" for engine_id in engine_ids())
+ENGINES = tuple(f"aidm.engines.{engine_id}" for engine_id in REGISTERED)
 # Flow: state <- content <- engines <- turn <- authoring <- app <- harness <- ui.
 LAYERS = ("state", "content", "engines", "turn", "authoring", "app", "harness")
 # `ui` sits above them all, imports downwards, and additionally stays engine-agnostic.

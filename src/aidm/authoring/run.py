@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
 
-from pydantic import JsonValue
 from pydantic_ai import Agent, ModelRetry, RunContext, ToolOutput, UsageLimits
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models.test import TestModel
@@ -19,20 +18,17 @@ from aidm.authoring.draft import (
     ScenarioDraft,
     ScenarioPatch,
     check_new_scenario,
-    engine_packs,
     extend_brief,
     extension_patch,
     extension_prompt,
-    pack_refusal,
     patch_refusal,
     playtest_check,
     scenario_refusal,
-    selected_packs,
     world_prompt,
     write_draft,
 )
 from aidm.config import Settings
-from aidm.content.io import engine_text, load_scenario, read_scenarios
+from aidm.content.io import engine_text, read_scenarios
 from aidm.content.model import Character
 from aidm.engines.core import Engine
 from aidm.llm import build_agent
@@ -44,10 +40,8 @@ _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 def _example(settings: Settings, engine_id: EngineId) -> str | None:
     """The example must speak the authored engine's `rules` dialect, or it teaches refusals."""
-    scenarios = dict(read_scenarios(settings.scenarios_dir, (engine_id,)))
-    preferred = scenarios.get(settings.authoring.worked_example)
-    chosen = preferred if preferred is not None else next(iter(scenarios.values()), None)
-    return None if chosen is None else ScenarioDraft.from_scenario(chosen).as_json()
+    first = next(read_scenarios(settings.scenarios_dir, (engine_id,)), None)
+    return None if first is None else ScenarioDraft.from_scenario(first[1]).as_json()
 
 
 def _instructions(settings: Settings, brief: AuthoringBrief, playing: PlaytestCheck) -> str:
@@ -76,7 +70,7 @@ def draft_context(draft: ScenarioDraft, tool_name: str | None = None) -> RunCont
 
 
 def authoring_toolset(
-    playing: PlaytestCheck | None,
+    playing: PlaytestCheck,
     brief: AuthoringBrief = WHOLE_SCENARIO,
 ) -> FunctionToolset[ScenarioDraft]:
     def answer(draft: ScenarioDraft, changed: str) -> str:
@@ -97,21 +91,6 @@ def authoring_toolset(
             return answer(ctx.deps, ctx.deps.apply(patch))
         except ValueError as refused:
             raise ModelRetry(str(refused)) from refused
-
-    def write_pack(
-        ctx: RunContext[ScenarioDraft], pack_id: Slug, content: dict[str, JsonValue]
-    ) -> str:
-        """Ship a content pack with this scenario, for content the selected packs lack.
-
-        Args:
-            pack_id: Id for the new pack: lowercase words joined by hyphens.
-            content: The whole pack, shaped exactly like the selected pack content above.
-        """
-        if playing is None:
-            raise ModelRetry("no engine is loaded to check this pack against")
-        if refused := pack_refusal(ctx.deps, playing, brief, pack_id, content):
-            raise ModelRetry(refused)
-        return answer(ctx.deps, ctx.deps.write_pack(pack_id, content))
 
     def connect(
         ctx: RunContext[ScenarioDraft],
@@ -140,7 +119,7 @@ def authoring_toolset(
         except ValueError as refused:
             raise ModelRetry(str(refused)) from refused
 
-    return FunctionToolset(tools=[scenario_so_far, write, connect, write_pack])
+    return FunctionToolset(tools=[scenario_so_far, write, connect])
 
 
 def scenario_agent(
@@ -211,21 +190,20 @@ class ScenarioRun(AuthoringRun):
     slug: Slug
     premise: str
     document: Path | None
-    art_style: str = ""
+    grows: bool = False
     busy: bool = False
 
     def write(self) -> str:
         """Revalidates the draft — the agent's 'ok' is never trusted — before it reaches disk."""
         if reason := self.refusal():
             raise ValueError(f"the draft does not play: {reason}")
-        # The form's style overrides whatever the author wrote from the source's own tone.
-        self.draft.art_style = self.art_style or self.draft.art_style
         return write_draft(
             self.settings,
             self.slug,
             self.draft,
             self.playing.engine.id,
             self.playing.packs,
+            self.grows,
             self.document or self.premise,
         )
 
@@ -249,13 +227,7 @@ def briefing(run: AuthoringRun, finish: str) -> str:
 
 def growth_run(settings: Settings, engine: Engine, character: Character, state: Game) -> GrowthRun:
     brief = extend_brief(state.world)
-    scenario = load_scenario(settings.scenarios_dir, state.scenario_id)
-    playing = PlaytestCheck(
-        engine=engine,
-        character=character,
-        packs=selected_packs(engine, scenario.packs),
-        sources=engine_packs(settings, engine.id, state.scenario_id),
-    )
+    playing = PlaytestCheck(engine=engine, character=character, packs=state.packs)
     return GrowthRun(
         settings=settings,
         draft=ScenarioDraft.from_game(state),
@@ -269,23 +241,21 @@ def growth_run(settings: Settings, engine: Engine, character: Character, state: 
 
 def scenario_run(
     settings: Settings,
+    engine: Engine,
     slug: Slug,
     premise: str,
     grows: bool,
-    engine: EngineId,
     document: Path | None,
     *,
     packs: tuple[Slug, ...] = ("srd",),
-    brief: AuthoringBrief | None = None,
     art_style: str = "",
 ) -> ScenarioRun:
     check_new_scenario(settings, slug, premise, document)
-    if brief is None:
-        brief = OPENING_SLICE if grows else WHOLE_SCENARIO
+    brief = OPENING_SLICE if grows else WHOLE_SCENARIO
     playing = playtest_check(settings, engine, packs)
     return ScenarioRun(
         settings=settings,
-        draft=ScenarioDraft(grows=grows),
+        draft=ScenarioDraft(art_style=art_style),
         playing=playing,
         brief=brief,
         toolset=authoring_toolset(playing, brief),
@@ -293,5 +263,5 @@ def scenario_run(
         slug=slug,
         premise=premise,
         document=document,
-        art_style=art_style,
+        grows=grows,
     )

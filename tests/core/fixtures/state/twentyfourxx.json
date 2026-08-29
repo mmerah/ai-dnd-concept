@@ -6,6 +6,9 @@
     "premise": "When Ashant's terraformers raised the sea, it swallowed the causeway out to Relay Nine, and the survey station was written off with its vault deck still sealed. Kael has come for what is locked down there: the founding survey nobody has read in thirty years. He starts at the siren mast on the Holdfast shore, where Ovid Sarn sounds the tide klaxon twice a day and nobody walks the drowned road without hearing it."
   },
   "engine": "twentyfourxx",
+  "packs": [
+    "srd"
+  ],
   "player_id": "player",
   "world": {
     "entities": [
@@ -14,10 +17,8 @@
         "kind": "location",
         "name": "the siren mast",
         "brief": "A ferrocrete mast at the head of the causeway, carrying a tide klaxon that carries eight kilometres out over the water.",
-        "detail": {
-          "description": "An inspection panel low on the mast's seaward face sits a finger proud of its frame, and whatever is behind it has stayed dry.",
-          "when_reached": "Look behind the loose inspection panel for a hidden object."
-        },
+        "description": "An inspection panel low on the mast's seaward face sits a finger proud of its frame, and whatever is behind it has stayed dry.",
+        "when_reached": "Look behind the loose inspection panel for a hidden object.",
         "known": true,
         "parent_id": null,
         "traits": [],
@@ -40,10 +41,8 @@
         "kind": "location",
         "name": "Holdfast",
         "brief": "Forty pressure-huts stacked above the tideline around a bar and a salvage counter, with the crossing hours running in red on the counter's board.",
-        "detail": {
-          "description": "Verrin Ade's counter carries what comes off the wrecks — armour, cyber-work, air — racked behind her and priced in credits, paid before it leaves the rack.",
-          "when_reached": "Kael has come into Holdfast. Deel Hask drinks at the bar and marks anyone who asks after Relay Nine; he is here unless the fiction has moved him."
-        },
+        "description": "Verrin Ade's counter carries what comes off the wrecks — armour, cyber-work, air — racked behind her and priced in credits, paid before it leaves the rack.",
+        "when_reached": "Kael has come into Holdfast. Deel Hask drinks at the bar and marks anyone who asks after Relay Nine; he is here unless the fiction has moved him.",
         "known": true,
         "parent_id": null,
         "traits": [],
@@ -61,10 +60,8 @@
         "kind": "location",
         "name": "Relay Nine",
         "brief": "A survey relay on a rock stack out in the shallows, reached up a corroded gantry ladder; its beacon has not missed a night in forty years.",
-        "detail": {
-          "description": "The gantry's lowest rungs are gone entirely, and the pressure hatch on the lower deck is shut and rimed white with salt.",
-          "when_reached": "Kael has crossed to Relay Nine: advance thread vault-survey to stage relay-reached. Mara Voss keeps the beacon here, and the hatch on the lower deck is the only way down — press on getting it open."
-        },
+        "description": "The gantry's lowest rungs are gone entirely, and the pressure hatch on the lower deck is shut and rimed white with salt.",
+        "when_reached": "Kael has crossed to Relay Nine: advance thread vault-survey with a note that Relay Nine is reached. Mara Voss keeps the beacon here, and the hatch on the lower deck is the only way down — press on getting it open.",
         "known": false,
         "parent_id": null,
         "traits": [],
@@ -87,10 +84,8 @@
         "kind": "location",
         "name": "the vault deck",
         "brief": "The relay's lowest deck, flooded to the knee in cold black water, with the data vault shut behind a hatch nobody has opened since the station was written off.",
-        "detail": {
-          "description": "The hatch reads a physical key-spike, not a code, and its socket is bright and clean where every surface around it has corroded.",
-          "when_reached": "Kael has found the way down: advance thread vault-survey to stage hatch-found. The spike socket on the hatch is the whole obstacle now — press on what filling it will cost him."
-        },
+        "description": "The hatch reads a physical key-spike, not a code, and its socket is bright and clean where every surface around it has corroded.",
+        "when_reached": "Kael has found the way down: advance thread vault-survey with a note that the vault hatch is found. The spike socket on the hatch is the whole obstacle now — press on what filling it will cost him.",
         "known": false,
         "parent_id": null,
         "traits": [],
@@ -108,10 +103,8 @@
         "kind": "actor",
         "name": "Ovid Sarn",
         "brief": "The siren keeper, heavy and silent, who sounds the tide klaxon twice a day and has not missed a sounding in eleven years.",
-        "detail": {
-          "description": "He keeps the mast's relay gear running on scavenged parts and times the soundings off a hand counter rather than the station clock he no longer trusts.",
-          "when_reached": "Ovid knows the crossing hour to the minute and will give it to anyone who asks straight. He will not walk the road himself, and he will say why if pressed."
-        },
+        "description": "He keeps the mast's relay gear running on scavenged parts and times the soundings off a hand counter rather than the station clock he no longer trusts.",
+        "when_reached": "Ovid knows the crossing hour to the minute and will give it to anyone who asks straight. He will not walk the road himself, and he will say why if pressed.",
         "known": true,
         "parent_id": "siren-mast",
         "traits": [],
@@ -128,10 +121,8 @@
         "kind": "actor",
         "name": "Verrin Ade",
         "brief": "She runs Holdfast's salvage counter and prices everything the wrecks give up: plate, cyber-work, bottled air.",
-        "detail": {
-          "description": "Her rack holds vests and battle armour off drowned divers, a case of cyber-eyes in gel, and survey packs still carrying another crew's tags.",
-          "when_reached": "Verrin sells at the printed price, in credits, before the goods leave the rack. She does not haggle, does not extend credit, and will not be talked past the board."
-        },
+        "description": "Her rack holds vests and battle armour off drowned divers, a case of cyber-eyes in gel, and survey packs still carrying another crew's tags.",
+        "when_reached": "Verrin sells at the printed price, in credits, before the goods leave the rack. She does not haggle, does not extend credit, and will not be talked past the board.",
         "known": true,
         "parent_id": "holdfast",
         "traits": [],
@@ -148,10 +139,8 @@
         "kind": "actor",
         "name": "Mara Voss",
         "brief": "The last beacon tech on Relay Nine, forty years alone on the stack and unseen by anyone crossing below.",
-        "detail": {
-          "description": "She has kept the beacon lit on parts she machines herself, and she knows the lower deck floods on a schedule the tide tables get wrong.",
-          "when_reached": "Mara has held the relay alone since the station was written off and does not believe the vault should be opened. She will name what she wants before she helps with the hatch."
-        },
+        "description": "She has kept the beacon lit on parts she machines herself, and she knows the lower deck floods on a schedule the tide tables get wrong.",
+        "when_reached": "Mara has held the relay alone since the station was written off and does not believe the vault should be opened. She will name what she wants before she helps with the hatch.",
         "known": false,
         "parent_id": "relay-nine",
         "traits": [],
@@ -168,10 +157,8 @@
         "kind": "actor",
         "name": "Deel Hask",
         "brief": "A wrecker who works the drowned road, cutting divers out of their suits when the tide catches them short; he drinks at Holdfast and marks who asks after Relay Nine.",
-        "detail": {
-          "description": "He carries a salvage cutting bar that goes through plate as readily as it goes through a suit seal, and he has never yet needed it twice on the same person.",
-          "when_reached": "Deel takes what the road takes. He follows anyone who asks after the relay, and he starts the fight at the moment the tide has already cut off the way back."
-        },
+        "description": "He carries a salvage cutting bar that goes through plate as readily as it goes through a suit seal, and he has never yet needed it twice on the same person.",
+        "when_reached": "Deel takes what the road takes. He follows anyone who asks after the relay, and he starts the fight at the moment the tide has already cut off the way back.",
         "known": false,
         "parent_id": "holdfast",
         "traits": [],
@@ -189,10 +176,8 @@
         "kind": "item",
         "name": "the cipher spike",
         "brief": "A corroded survey key-spike in a sleeve of grease-paper, cut for a socket nothing on this shore has.",
-        "detail": {
-          "description": "Survey issue, its contacts salt-pitted but whole; the sleeve is stamped with Relay Nine's registry and a hand-scratched date the station was already closed by.",
-          "when_reached": "Kael has the cipher spike: advance thread vault-survey to stage spike-found. It was cut for the vault hatch under Relay Nine — press on reaching the socket it fills."
-        },
+        "description": "Survey issue, its contacts salt-pitted but whole; the sleeve is stamped with Relay Nine's registry and a hand-scratched date the station was already closed by.",
+        "when_reached": "Kael has the cipher spike: advance thread vault-survey with a note that the cipher spike is taken. It was cut for the vault hatch under Relay Nine — press on reaching the socket it fills.",
         "known": false,
         "parent_id": "siren-mast",
         "traits": [],
@@ -204,7 +189,8 @@
         "kind": "item",
         "name": "a guttering lantern",
         "brief": "A dented tin lantern whose flame will not hold still.",
-        "detail": null,
+        "description": "",
+        "when_reached": "",
         "known": true,
         "parent_id": "player",
         "traits": [
@@ -222,7 +208,8 @@
         "kind": "actor",
         "name": "Kael",
         "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
-        "detail": null,
+        "description": "",
+        "when_reached": "",
         "known": true,
         "parent_id": "siren-mast",
         "traits": [
@@ -239,9 +226,6 @@
         ],
         "exits": [],
         "rules": {
-          "packs": [
-            "srd"
-          ],
           "specialty": "Sneak",
           "origin": "Human",
           "skills": {
@@ -257,9 +241,7 @@
         "id": "vault-survey",
         "title": "The sealed vault deck",
         "status": "active",
-        "stage": "unfound",
-        "note": "Kael came for the founding survey locked under Relay Nine: the spike that fills the hatch socket, the crossing out to the stack between soundings, and what Mara Voss will want for letting him down there.",
-        "clock": null
+        "note": "Kael came for the founding survey locked under Relay Nine: the spike that fills the hatch socket, the crossing out to the stack between soundings, and what Mara Voss will want for letting him down there."
       }
     ],
     "party": [],

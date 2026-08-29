@@ -32,12 +32,12 @@ from aidm.engines.core import (
     Engine,
     EntityRules,
     NoRules,
+    PackCreation,
     describe_by,
     director_tool,
+    load_packs,
     player_action,
 )
-from aidm.engines.packs import PackCreation, character_packs
-from aidm.engines.sources import SHIPPED_PACKS, PackSources
 from aidm.engines.world import CORE_TOOLS
 from aidm.state.creation import AnyStep, CreationStep, Picks, TextStep, check_picks, picked
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Kind, slug
@@ -76,7 +76,6 @@ class BreathlessCreation(PackCreation[Pack]):
 
     def create(self, name: str, brief: str, picks: Picks) -> Character:
         check_picks(self.steps(picks), picks)
-        chosen = picked(picks, "pack")[0]
         rated = {picked(picks, f"d{die}")[0]: die for die in RATED}
         if len(rated) != len(RATED):
             raise ValueError("the d10, d8 and d6 go to three different skills")
@@ -97,7 +96,6 @@ class BreathlessCreation(PackCreation[Pack]):
             id=slug(name, ()),
             profile=CharacterProfile(name=name, brief=brief, items=(item,)),
             rules={
-                "packs": character_packs(chosen),
                 "job": picked(picks, "job")[0],
                 "pronouns": picked(picks, "pronouns")[0],
                 "skills": skills,
@@ -115,14 +113,13 @@ def _checks(state: Game) -> None:
             raise ValueError(f"{actor.id!r} carries {held} items; the backpack holds {RULES.carry}")
 
 
-def build(sources: PackSources = SHIPPED_PACKS) -> Engine:
-    packs = sources.load(ENGINE_DIR / "packs", Pack)
+def build(user_packs: Path) -> Engine:
+    packs = load_packs((ENGINE_DIR / "packs", user_packs), Pack)
     return Engine(
         id=EngineId("breathless"),
         badge=("BREATHLESS", "red-7"),
         director_instructions=engine_text(ENGINE_DIR / "director.md"),
         rules_types=RULES_TYPES,
-        pack_type=Pack,
         packs=packs,
         creation=BreathlessCreation(packs),
         checks=_checks,

@@ -6,6 +6,9 @@
     "premise": "Saint Ivo's went dark on the third night of the collapse with its cold vault still sealed, and eleven years of Crawlers have kept everyone honest about it. Kael has come for what is racked down there: the last cased antivirals, worth a year of anyone's life. He starts in the ambulance bay, where Dov Marek keeps the gate and burns what the night drags in."
   },
   "engine": "breathless",
+  "packs": [
+    "srd"
+  ],
   "player_id": "player",
   "world": {
     "entities": [
@@ -14,10 +17,8 @@
         "kind": "location",
         "name": "the ambulance bay",
         "brief": "A concrete apron under a sagging canopy, gated with welded bed frames, where Dov Marek burns what the night drags in.",
-        "detail": {
-          "description": "One rig still sits in the bay on flat tyres, its rear doors open, and the gurney locked inside has never been unracked.",
-          "when_reached": "Search the gurney rack in the dead ambulance for a hidden object."
-        },
+        "description": "One rig still sits in the bay on flat tyres, its rear doors open, and the gurney locked inside has never been unracked.",
+        "when_reached": "Search the gurney rack in the dead ambulance for a hidden object.",
         "known": true,
         "parent_id": null,
         "traits": [],
@@ -40,10 +41,8 @@
         "kind": "location",
         "name": "the triage hall",
         "brief": "The old sorting floor, curtained into stalls with plastic sheeting, where Sela Quist trades off a folding table and counts everything twice.",
-        "detail": {
-          "description": "Every stall runs on lantern light, and the stairwell door at the far end is chained shut from this side.",
-          "when_reached": "Kael has come into the triage hall. Sela Quist trades here and knows which floors Crawlers walk; she is here unless the fiction has moved her."
-        },
+        "description": "Every stall runs on lantern light, and the stairwell door at the far end is chained shut from this side.",
+        "when_reached": "Kael has come into the triage hall. Sela Quist trades here and knows which floors Crawlers walk; she is here unless the fiction has moved her.",
         "known": true,
         "parent_id": null,
         "traits": [],
@@ -66,10 +65,8 @@
         "kind": "location",
         "name": "the roof walk",
         "brief": "A scaffold plank slung between the bay canopy and the annex roof, six storeys up, with the plant room door propped at the far end.",
-        "detail": {
-          "description": "The plank has no rail and the scaffold clamps have rusted loose; the annex parapet is a long reach off the end of it.",
-          "when_reached": "Kael has crossed to the roof walk: advance thread cold-cache to stage roof-reached. Wren Halloway lives in the plant room here, and the ward stair below is the only way down inside — press on getting past her to it."
-        },
+        "description": "The plank has no rail and the scaffold clamps have rusted loose; the annex parapet is a long reach off the end of it.",
+        "when_reached": "Kael has crossed to the roof walk: advance thread cold-cache with a note that the roof walk is reached. Wren Halloway lives in the plant room here, and the ward stair below is the only way down inside — press on getting past her to it.",
         "known": false,
         "parent_id": null,
         "traits": [],
@@ -92,10 +89,8 @@
         "kind": "location",
         "name": "ward nine",
         "brief": "Forty beds in the dark under the annex roof, every one stripped, and the corridor beyond them soundproofed with mattresses.",
-        "detail": {
-          "description": "The mattresses on the corridor walls were nailed up from this side, and the ward door at the end is barred with a bed rail.",
-          "when_reached": "Kael has reached ward nine. The barred door drops into the stair shaft, and whatever the mattresses were meant to keep quiet is below it — press on what he hears through the floor."
-        },
+        "description": "The mattresses on the corridor walls were nailed up from this side, and the ward door at the end is barred with a bed rail.",
+        "when_reached": "Kael has reached ward nine. The barred door drops into the stair shaft, and whatever the mattresses were meant to keep quiet is below it — press on what he hears through the floor.",
         "known": false,
         "parent_id": null,
         "traits": [],
@@ -118,10 +113,8 @@
         "kind": "location",
         "name": "the stair shaft",
         "brief": "A service stairwell dropping six flights to the sub-basement, ankle-deep in standing water at the bottom and loud with every step.",
-        "detail": {
-          "description": "The vault door on the bottom landing takes a ward card, and its reader still has power off the hospital's buried cells.",
-          "when_reached": "Kael has come down the stair shaft. The Bell Crawler hunts these flights by sound, and the card reader on the vault door is the only obstacle left — press on how he gets to it quietly."
-        },
+        "description": "The vault door on the bottom landing takes a ward card, and its reader still has power off the hospital's buried cells.",
+        "when_reached": "Kael has come down the stair shaft. The Bell Crawler hunts these flights by sound, and the card reader on the vault door is the only obstacle left — press on how he gets to it quietly.",
         "known": false,
         "parent_id": null,
         "traits": [],
@@ -149,10 +142,8 @@
         "kind": "location",
         "name": "the cold vault",
         "brief": "A sealed pharmacy store in the sub-basement, still cold, its racks intact behind a door nobody has opened since the third night.",
-        "detail": {
-          "description": "The cased antivirals sit racked and labelled where the last night shift left them, eleven years of dust on nothing.",
-          "when_reached": "Kael is inside the cold vault: advance thread cold-cache to stage vault-reached. The cases are here and the way out is a stair full of noise — press on what he carries and what he leaves."
-        },
+        "description": "The cased antivirals sit racked and labelled where the last night shift left them, eleven years of dust on nothing.",
+        "when_reached": "Kael is inside the cold vault: advance thread cold-cache with a note that the cold vault is open. The cases are here and the way out is a stair full of noise — press on what he carries and what he leaves.",
         "known": false,
         "parent_id": null,
         "traits": [],
@@ -170,10 +161,8 @@
         "kind": "actor",
         "name": "Dov Marek",
         "brief": "He keeps the bay gate and burns the dead, and has not let anyone in after dark in four years.",
-        "detail": {
-          "description": "He works the gate alone with a fire axe and a burn drum, and he knows the count of everyone still living in the block.",
-          "when_reached": "Dov will name what walks each floor if asked straight, and he will not go inside the building for any price. He says why when pressed."
-        },
+        "description": "He works the gate alone with a fire axe and a burn drum, and he knows the count of everyone still living in the block.",
+        "when_reached": "Dov will name what walks each floor if asked straight, and he will not go inside the building for any price. He says why when pressed.",
         "known": true,
         "parent_id": "ambulance-bay",
         "traits": [],
@@ -185,10 +174,8 @@
         "kind": "actor",
         "name": "Sela Quist",
         "brief": "She trades out of the triage hall — water, batteries, boots — and prices in what she can carry.",
-        "detail": {
-          "description": "Her table holds cutters, tape, fuel and salt, and she keeps a written list of who owes her.",
-          "when_reached": "Sela trades goods for goods and never on credit. She knows the vault is real and she knows what it costs to get down there; she will trade that too."
-        },
+        "description": "Her table holds cutters, tape, fuel and salt, and she keeps a written list of who owes her.",
+        "when_reached": "Sela trades goods for goods and never on credit. She knows the vault is real and she knows what it costs to get down there; she will trade that too.",
         "known": true,
         "parent_id": "triage-hall",
         "traits": [],
@@ -200,18 +187,13 @@
         "kind": "actor",
         "name": "Wren Halloway",
         "brief": "The last ward nurse at Saint Ivo's, eleven years in the annex plant room, who nailed the mattresses up herself.",
-        "detail": {
-          "description": "She has kept the roof door shut and the ward quiet since the third night, and she still wears the ward card lanyard even though the card is gone.",
-          "when_reached": "Wren knows the stair, the reader, and how the Bell Crawler hunts. She will come down with anyone who agrees to bring the cases back up to the block, and she will say so plainly."
-        },
+        "description": "She has kept the roof door shut and the ward quiet since the third night, and she still wears the ward card lanyard even though the card is gone.",
+        "when_reached": "Wren knows the stair, the reader, and how the Bell Crawler hunts. She will come down with anyone who agrees to bring the cases back up to the block, and she will say so plainly.",
         "known": false,
         "parent_id": "roof-walk",
         "traits": [],
         "exits": [],
         "rules": {
-          "packs": [
-            "srd"
-          ],
           "skills": {
             "Think": 10,
             "Sneak": 8,
@@ -224,10 +206,8 @@
         "kind": "actor",
         "name": "the Bell Crawler",
         "brief": "A Crawler grown wrong in the dark of the stair shaft: blind, patient, and hunting entirely by sound.",
-        "detail": {
-          "description": "It holds still on a landing until something makes noise, and the water at the bottom of the shaft tells it everything.",
-          "when_reached": "It comes for noise, not light. It takes a slow turn to find a quiet intruder and no time at all to find a loud one."
-        },
+        "description": "It holds still on a landing until something makes noise, and the water at the bottom of the shaft tells it everything.",
+        "when_reached": "It comes for noise, not light. It takes a slow turn to find a quiet intruder and no time at all to find a loud one.",
         "known": false,
         "parent_id": "stair-shaft",
         "traits": [],
@@ -239,10 +219,8 @@
         "kind": "item",
         "name": "a ward nine key card",
         "brief": "A cracked hospital card taped inside a gurney rack, still magnetised, still cut for the sub-basement door.",
-        "detail": {
-          "description": "The photo is worn off but the sub-basement stripe is intact, and the tape holding it is a paramedic's, wrapped fast.",
-          "when_reached": "Kael has the ward card: advance thread cold-cache to stage card-found. It opens the vault door at the bottom of the stair shaft — press on getting down there."
-        },
+        "description": "The photo is worn off but the sub-basement stripe is intact, and the tape holding it is a paramedic's, wrapped fast.",
+        "when_reached": "Kael has the ward card: advance thread cold-cache with a note that the ward card is taken. It opens the vault door at the bottom of the stair shaft — press on getting down there.",
         "known": true,
         "parent_id": "player",
         "traits": [],
@@ -256,7 +234,8 @@
         "kind": "item",
         "name": "a fire axe",
         "brief": "A long-handled axe off the bay wall bracket, edge rolled but the head sound.",
-        "detail": null,
+        "description": "",
+        "when_reached": "",
         "known": true,
         "parent_id": "ambulance-bay",
         "traits": [],
@@ -270,7 +249,8 @@
         "kind": "item",
         "name": "a pair of bolt cutters",
         "brief": "Sela's cutters, leaning against her table leg, long enough to take the stairwell chain.",
-        "detail": null,
+        "description": "",
+        "when_reached": "",
         "known": true,
         "parent_id": "triage-hall",
         "traits": [],
@@ -284,7 +264,8 @@
         "kind": "item",
         "name": "a knotted rope ladder",
         "brief": "A window-escape ladder coiled by the plant room door, rated for one body at a time.",
-        "detail": null,
+        "description": "",
+        "when_reached": "",
         "known": true,
         "parent_id": "roof-walk",
         "traits": [],
@@ -298,7 +279,8 @@
         "kind": "item",
         "name": "a guttering lantern",
         "brief": "A dented tin lantern whose flame will not hold still.",
-        "detail": null,
+        "description": "",
+        "when_reached": "",
         "known": true,
         "parent_id": "player",
         "traits": [
@@ -316,7 +298,8 @@
         "kind": "actor",
         "name": "Kael",
         "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
-        "detail": null,
+        "description": "",
+        "when_reached": "",
         "known": true,
         "parent_id": "ambulance-bay",
         "traits": [
@@ -338,9 +321,6 @@
         ],
         "exits": [],
         "rules": {
-          "packs": [
-            "srd"
-          ],
           "chapters": 0,
           "job": "Relic hunter",
           "pronouns": "he/him",
@@ -375,9 +355,7 @@
         "id": "cold-cache",
         "title": "The sealed cold vault",
         "status": "active",
-        "stage": "unfound",
-        "note": "Kael came for the cased antivirals racked in Saint Ivo's cold vault: the ward card that opens the door, six flights of stair shaft that the Bell Crawler hunts by sound, and what Wren Halloway wants for coming down with him.",
-        "clock": null
+        "note": "Kael came for the cased antivirals racked in Saint Ivo's cold vault: the ward card that opens the door, six flights of stair shaft that the Bell Crawler hunts by sound, and what Wren Halloway wants for coming down with him."
       }
     ],
     "party": [],

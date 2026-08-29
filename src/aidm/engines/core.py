@@ -3,13 +3,15 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
+from pathlib import Path
 from random import Random
-from typing import ClassVar, Self
+from typing import ClassVar, Protocol
 
-from pydantic import BaseModel, Field, JsonValue, ValidationError, model_validator
+from pydantic import BaseModel, Field, JsonValue, ValidationError
 
-from aidm.content.model import Character, Scenario
-from aidm.state.creation import AnyStep, Picks
+from aidm.content.io import ENCODING
+from aidm.content.model import Character
+from aidm.state.creation import AnyStep, CreationOption, CreationStep, Picks, picked
 from aidm.state.entities import (
     DEAD,
     CheckedEntityId,
@@ -21,7 +23,6 @@ from aidm.state.entities import (
     Kind,
     Mutable,
     Slug,
-    require_unique,
 )
 from aidm.state.facts import (
     Fact,
@@ -109,15 +110,7 @@ class NoRules(EntityRules):
 
 
 class SheetBase(EntityRules, ABC):
-    packs: tuple[Slug, ...] = ("srd",)
     chapters: int = 0
-
-    @model_validator(mode="after")
-    def _packs_include_srd(self) -> Self:
-        require_unique("sheet pack ids", self.packs)
-        if "srd" not in self.packs:
-            raise ValueError("sheet packs must include 'srd'")
-        return self
 
 
 @contextmanager
@@ -153,6 +146,43 @@ class CharacterCreation(ABC):
     @abstractmethod
     def create(self, name: str, brief: str, picks: Picks) -> Character:
         """Raises ValueError with the reason the page shows when the pick set is illegal."""
+
+
+def load_packs[P: BaseModel](directories: Sequence[Path], model: type[P]) -> dict[str, P]:
+    """Later directories win; a broken file raises rather than being skipped."""
+    packs: dict[str, P] = {}
+    for directory in directories:
+        if not directory.is_dir():
+            continue
+        for path in sorted(directory.glob("*.json")):
+            packs[path.stem] = model.model_validate_json(path.read_text(encoding=ENCODING))
+    if "srd" not in packs:
+        raise ValueError(f"no srd content pack was found for {model.__module__}")
+    return packs
+
+
+def find_entry[T: CreationOption](entries: Sequence[T], chosen: str) -> T:
+    return next(entry for entry in entries if entry.id == chosen)
+
+
+class NamedPack(Protocol):
+    name: str
+
+
+class PackCreation[P: NamedPack](CharacterCreation):
+    def __init__(self, packs: Mapping[str, P]) -> None:
+        self.packs = packs
+
+    def steps(self, picks: Picks) -> tuple[AnyStep, ...]:
+        options = tuple(
+            CreationOption(id=one, label=one_pack.name) for one, one_pack in self.packs.items()
+        )
+        first = CreationStep(id="pack", prompt="Choose a character table set", options=options)
+        pack = self.packs.get(chosen[0]) if (chosen := picked(picks, "pack")) else None
+        return (first,) if pack is None else (first, *self.steps_for(pack, picks))
+
+    @abstractmethod
+    def steps_for(self, pack: P, picks: Picks) -> tuple[AnyStep, ...]: ...
 
 
 class Decision(Frozen):
@@ -310,10 +340,13 @@ def player_action[A: BaseModel](
     )
 
 
-def describe_by(rules_types: Mapping[Kind, type[EntityRules]]) -> EntityRenderer:
+def describe_by(
+    rules_types: Mapping[Kind, type[EntityRules]],
+) -> Callable[[Game, Entity], str]:
     """One entity's mechanics as a prompt reads them; the player's own panel is `sheet_rows`."""
 
-    def describe(entity: Entity) -> str:
+    def describe(state: Game, entity: Entity) -> str:
+        del state
         # An actor the scenario gave no rules is a threat the Director narrates, not a sheet.
         if entity.kind == "actor" and not entity.rules:
             return ""
@@ -329,12 +362,11 @@ class Engine:
     director_instructions: str
     # Every entity's rules are parsed through the model its kind maps to; `validate` is the gate.
     rules_types: Mapping[Kind, type[EntityRules]]
-    pack_type: type[BaseModel]
     packs: Mapping[str, BaseModel]
     # The complete list: each engine spreads `CORE_TOOLS` itself, so core stays import-free.
     director_tools: tuple[DirectorTool, ...]
     creation: CharacterCreation
-    describe: EntityRenderer
+    describe: Callable[[Game, Entity], str]
     # What only this engine's rules can refuse, once every entity's own rules have parsed.
     checks: Callable[[Game], None] = lambda state: None
     decisions: tuple[type[Decision], ...] = ()
@@ -342,23 +374,17 @@ class Engine:
     authoring_instructions: str = ""
     owed_notes: Callable[[Game], tuple[str, ...]] = lambda state: ()
 
-    @property
-    def pack_ids(self) -> tuple[Slug, ...]:
-        return tuple(self.packs)
-
     def validate(self, state: Game) -> None:
         """Refuses a state this engine cannot play, rather than repairing one."""
+        if missing := sorted(set(state.packs) - set(self.packs)):
+            raise ValueError(f"the game names packs not installed for {self.id!r}: {missing}")
         for entity in state.world.entities:
             try:
-                parsed = self.rules_types[entity.kind].model_validate(entity.rules)
+                _ = self.rules_types[entity.kind].model_validate(entity.rules)
             except ValidationError as broken:
                 first = broken.errors()[0]
                 place = ".".join(str(part) for part in ("rules", entity.id, *first["loc"]))
                 raise ValueError(f"{place}: {first['msg']}") from broken
-            if isinstance(parsed, SheetBase) and (
-                missing := sorted(set(parsed.packs) - set(self.packs))
-            ):
-                raise ValueError(f"{entity.id!r} uses packs that are not installed: {missing}")
         self.checks(state)
 
     def sheet_rows(self, state: Game) -> tuple[tuple[str, str], ...]:
@@ -371,10 +397,6 @@ class Engine:
     def check_overlay(self, overlay: dict[str, JsonValue]) -> None:
         """The character file this engine plays by, refused where it is read rather than in play."""
         _ = self.rules_types["actor"].model_validate(overlay)
-
-    def check_scenario(self, scenario: Scenario) -> None:
-        if missing := sorted(set(scenario.packs) - set(self.packs)):
-            raise ValueError(f"scenario names packs not installed for {self.id!r}: {missing}")
 
     def authoring_context(self, pack_ids: tuple[Slug, ...]) -> str:
         # Defaults restate rules the guidance already carries; dropping them halves the prompt.

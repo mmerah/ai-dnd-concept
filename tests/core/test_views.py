@@ -1,7 +1,7 @@
 from core_test_support import LONER3E
 
 from aidm.app.runtime import journal_markdown
-from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId, Exit, Kind
+from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit, Kind
 from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
 from aidm.state.play import Exchange, Line
 from aidm.turn.context import player_scene
@@ -33,7 +33,6 @@ def state() -> Game:
             id="the-vault",
             title="The Vault",
             note="Director steering text",
-            clock=Counter(current=1, maximum=4),
         ),
     )
     held = Game(
@@ -41,6 +40,7 @@ def state() -> Game:
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
         engine=LONER3E,
+        packs=("srd",),
         player_id=PLAYER_ID,
         world=WorldState(
             entities=list(entities),
@@ -79,5 +79,4 @@ def test_the_journal_export_writes_the_chronicle_and_leaks_no_steering_note() ->
     assert "You step into the study." in markdown
     assert "**Mara:** Shut the door behind you." in markdown
     assert "**The Vault**" in markdown
-    assert "[1 / 4]" in markdown
     assert "Director steering text" not in markdown

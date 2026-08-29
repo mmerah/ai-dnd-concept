@@ -3,7 +3,17 @@ from random import Random
 from typing import ClassVar
 
 import pytest
-from core_test_support import LONER3E, game, played, recorded, scripted, shown, text, tool_call
+from core_test_support import (
+    ENGINES_BUILT,
+    LONER3E,
+    game,
+    played,
+    recorded,
+    scripted,
+    shown,
+    text,
+    tool_call,
+)
 from pydantic import ValidationError
 from pydantic_ai.messages import TextPart, ToolReturnPart
 from pydantic_ai.models.function import FunctionModel
@@ -17,7 +27,6 @@ from aidm.engines.core import (
     director_tool,
     transact,
 )
-from aidm.engines.registry import build_engine
 from aidm.state.entities import Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game
@@ -77,7 +86,7 @@ def _strike_tool(*, narrate: bool) -> DirectorTool:
 
 def _deciding(*, narrate: bool = True, chains: bool = False) -> tuple[Engine, Game]:
     engine = replace(
-        build_engine(LONER3E),
+        ENGINES_BUILT[LONER3E],
         director_tools=(_strike_tool(narrate=narrate),),
         decisions=(ChainingDefence if chains else Defence,),
     )

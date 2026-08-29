@@ -3,12 +3,12 @@ import argparse
 import asyncio
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 from random import Random
 from statistics import mean
 from time import perf_counter
 
-from aidm.app.launch import engine_ids
 from aidm.config import Settings, load_settings
 from aidm.content.io import load_character, load_scenario
 from aidm.engines.breathless.rules import RULES as BreathlessRules
@@ -18,7 +18,7 @@ from aidm.engines.breathless.rules import Sheet as BreathlessSheet
 from aidm.engines.core import Engine, EntityRules, SheetBase, complete_chapter, rules
 from aidm.engines.loner3e.rules import RULES as LonerRules
 from aidm.engines.loner3e.rules import Sheet as LonerSheet
-from aidm.engines.registry import begin_game, build_engine
+from aidm.engines.registry import begin_game, build_engines
 from aidm.engines.twentyfourxx.rules import ItemSheet
 from aidm.engines.twentyfourxx.rules import Sheet as TwentyfourxxSheet
 from aidm.state.entities import (
@@ -39,7 +39,13 @@ from aidm.turn.run import TurnResult, build_turn_agents, run_segment
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "evals" / "results"
-ENGINES = engine_ids()
+
+
+@cache
+def built() -> dict[EngineId, Engine]:
+    return build_engines(ROOT / load_settings().packs_dir)
+
+
 # The longest valid chain is stake -> proceed -> defence.
 SEGMENT_CAP = 4
 
@@ -112,10 +118,7 @@ class Canon:
     hidden: str
     thread: str
     won: tuple[str, ...]
-    # Only a stage the scenario's own `when_reached` names can be scored; "" leaves it unscored.
-    hidden_stage: str = ""
-    # The thread's last authored stage and the note that says the prize is taken: an adventure over.
-    done_stage: str = ""
+    # The note that says the prize is taken: an adventure over.
     done_note: str = ""
 
 
@@ -129,8 +132,6 @@ CANON: dict[EngineId, Canon] = {
         hidden="vault-map",
         thread="vault-seal",
         won=("yes-and", "yes", "yes-but"),
-        hidden_stage="stair-charted",
-        done_stage="door-found",
         done_note="Kael broke the seal, took what he came for, and there is nothing left to do "
         "for this thread.",
     ),
@@ -143,8 +144,6 @@ CANON: dict[EngineId, Canon] = {
         hidden="cipher-spike",
         thread="vault-survey",
         won=("success",),
-        hidden_stage="spike-found",
-        done_stage="hatch-found",
         done_note="Kael opened the hatch, took the founding survey, and there is nothing left "
         "to do for this thread.",
     ),
@@ -157,8 +156,6 @@ CANON: dict[EngineId, Canon] = {
         hidden="ward-card",
         thread="cold-cache",
         won=("success",),
-        hidden_stage="card-found",
-        done_stage="vault-reached",
         done_note="Kael opened the cold vault, took the cased antivirals, and there is nothing "
         "left to do for this thread.",
     ),
@@ -173,7 +170,7 @@ def canon_for(engine_id: EngineId) -> Canon:
 
 
 def begin(engine_id: EngineId, settings: Settings) -> tuple[Engine, Game]:
-    engine = build_engine(engine_id)
+    engine = built()[engine_id]
     canon = canon_for(engine_id)
     scenario = load_scenario(ROOT / settings.scenarios_dir, canon.scenario_id)
     character = load_character(
@@ -221,11 +218,6 @@ def inside(result: TurnResult, entity_id: str, holder: str) -> bool:
 def dead(result: TurnResult, entity_id: str) -> bool:
     entity = result.state.world.find(EntityId(entity_id))
     return entity is not None and entity.trait(DEAD) is not None
-
-
-def staged_at(result: TurnResult, thread_id: str, stage: str) -> bool:
-    thread = result.state.world.thread(thread_id)
-    return thread is not None and thread.stage == stage
 
 
 def has_fact(result: TurnResult, kind: str) -> bool:
@@ -530,7 +522,6 @@ def _adventure_done(state: Game, canon: Canon) -> Game:
     thread = draft.world.thread(canon.thread)
     if thread is None:
         raise ValueError(f"no thread {canon.thread!r}")
-    thread.stage = canon.done_stage
     thread.note = canon.done_note
     return draft.committed()
 
@@ -711,14 +702,8 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
         return any(f.kind in ("defence_taken", "defence_turned") for f in result.turn.facts)
 
     # Only engines that declare a stake tool can miss by skipping it.
-    stakes = any(one.name.startswith("stake_") for one in build_engine(engine_id).director_tools)
+    stakes = any(one.name.startswith("stake_") for one in built()[engine_id].director_tools)
     stake_checks = (Expectation("staked", staked_before_rolling),) if stakes else ()
-    # Scored only where the scenario's own `when_reached` tells the Director which stage to set.
-    find_stage = (
-        (Expectation("thread-staged", lambda r: staged_at(r, canon.thread, canon.hidden_stage)),)
-        if canon.hidden_stage
-        else ()
-    )
     cases = (
         Case(
             id=f"{engine_id}/find-and-take",
@@ -730,7 +715,8 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
             expectations=(
                 Expectation("find-known", lambda r: known(r, canon.hidden)),
                 Expectation("find-carried", lambda r: inside(r, canon.hidden, "player")),
-                *find_stage,
+                # The item's own `when_reached` tells the Director to advance the thread.
+                Expectation("thread-advanced", lambda r: has_fact(r, "thread_advanced")),
             ),
         ),
         Case(
@@ -1616,8 +1602,8 @@ def print_report(report: Report) -> None:
 
 
 def select(settings: Settings, ids: Sequence[str], engine: str | None) -> list[Case]:
-    engines = ENGINES if engine is None else (EngineId(engine),)
-    if unknown := [name for name in engines if name not in ENGINES]:
+    engines = tuple(built()) if engine is None else (EngineId(engine),)
+    if unknown := [name for name in engines if name not in built()]:
         raise SystemExit(f"unknown engine(s): {unknown}")
     cases = [case for name in engines for case in cases_for(name, settings)]
     if not ids:

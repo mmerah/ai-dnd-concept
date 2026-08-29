@@ -17,7 +17,6 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_settings import SettingsConfigDict
 
-from aidm.app.launch import engine_ids
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.io import load_character, load_scenario, read_scenarios
 from aidm.content.model import Character, Scenario
@@ -28,7 +27,7 @@ from aidm.engines.core import (
     complete_chapter,
     player_action,
 )
-from aidm.engines.registry import begin_game, build_engine
+from aidm.engines.registry import ENGINES, begin_game, build_engines
 from aidm.state.entities import EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game
@@ -49,6 +48,8 @@ SCENARIOS = REPOSITORY_ROOT / "scenarios"
 CHARACTERS = REPOSITORY_ROOT / "characters"
 LONER3E = EngineId("loner3e")
 TWENTYFOURXX = EngineId("twentyfourxx")
+ENGINE_IDS = tuple(ENGINES)
+ENGINES_BUILT = build_engines(REPOSITORY_ROOT / "packs")
 
 
 def updated[T: BaseModel](model: T, **changes: object) -> T:
@@ -84,7 +85,7 @@ def scenario() -> Scenario:
 
 
 def character() -> Character:
-    engine = build_engine(LONER3E)
+    engine = ENGINES_BUILT[LONER3E]
     return load_character(CHARACTERS, "kael", engine.id, engine.check_overlay)
 
 
@@ -92,7 +93,7 @@ def scenario_for(engine_id: EngineId) -> Slug:
     """Read off the shipped content rather than tabulated, so a second one fails here loudly."""
     shipped = [
         slug
-        for slug, scenario in read_scenarios(SCENARIOS, engine_ids())
+        for slug, scenario in read_scenarios(SCENARIOS, ENGINE_IDS)
         if scenario.engine == engine_id
     ]
     if len(shipped) != 1:
@@ -102,7 +103,7 @@ def scenario_for(engine_id: EngineId) -> Slug:
 
 def game(engine_id: EngineId) -> tuple[Engine, Game]:
     """The scenario authored for this engine and the shipped character, composed together."""
-    engine = build_engine(engine_id)
+    engine = ENGINES_BUILT[engine_id]
     scenario_id = scenario_for(engine_id)
     selected_scenario = load_scenario(SCENARIOS, scenario_id)
     selected_character = load_character(CHARACTERS, "kael", engine.id, engine.check_overlay)

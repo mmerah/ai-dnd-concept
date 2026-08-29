@@ -34,7 +34,7 @@ Stars measure install friction and demos, not play quality. See I7 in `IDEAS.md`
 
 ### Do now
 
-1. **Re-read, do not trust the summary** (claude-dnd-skill). After context compaction the model must re-read state before it states a fact. For code mode this is one line in `.agents/skills/playing-aidm/SKILL.md`: "Before you state a trait, item, or clock value, call the state tool. Do not recall it." Fixes the drift their issue #7 reports.
+1. **Re-read, do not trust the summary** (claude-dnd-skill). After context compaction the model must re-read state before it states a fact. For code mode this is one line in `.agents/skills/playing-aidm/SKILL.md`: "Before you state a trait, item, or thread note, call the state tool. Do not recall it." Fixes the drift their issue #7 reports.
 2. **Session recap on resume** (claude-dnd-skill, NarrativeEngine-P). One Narrator call at game open: "Previously..." from the last N turns. This is the cheapest first step of L8 (long-game memory).
 
 ### Later

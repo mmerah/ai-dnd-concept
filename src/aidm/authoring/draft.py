@@ -1,23 +1,16 @@
 import re
-from collections.abc import Callable, Iterable, Iterator, Mapping
-from dataclasses import dataclass, replace
+from collections.abc import Callable, Iterable, Iterator
+from dataclasses import dataclass
 from pathlib import Path
 
-from pydantic import Field, JsonValue, ValidationError
+from pydantic import Field, ValidationError
 from pypdf import PdfReader
 
 from aidm.config import Settings
-from aidm.content.io import (
-    load_character,
-    load_scenario,
-    scenario_packs,
-    source_file,
-    write_scenario,
-)
+from aidm.content.io import load_character, source_file, write_scenario
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine
-from aidm.engines.registry import begin_game, build_engine
-from aidm.engines.sources import SHIPPED_PACKS, PackSources
+from aidm.engines.registry import begin_game
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Exit, Frozen, Mutable, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
@@ -78,25 +71,17 @@ class ScenarioPatch(Frozen):
         ]
 
 
-# Read back but never written by `write`: the run settles `grows`, and `write_pack` owns `packs`.
-NOT_PATCHED = {"grows", "packs"}
-
-
 class ScenarioDraft(Mutable):
-    grows: bool = False
     art_style: str = ""
     meta: ScenarioMeta | None = None
     starting_location_id: EntityId | None = None
     starting_party: tuple[EntityId, ...] = ()
     entities: list[Entity] = Field(default_factory=list)
     threads: list[Thread] = Field(default_factory=list)
-    # Content packs this draft ships with; they reach disk beside the world it writes.
-    packs: dict[Slug, JsonValue] = Field(default_factory=dict)
 
     @classmethod
     def from_scenario(cls, scenario: Scenario) -> "ScenarioDraft":
         return cls(
-            grows=scenario.grows,
             art_style=scenario.art_style,
             meta=scenario.meta,
             starting_location_id=scenario.starting_location_id,
@@ -174,24 +159,19 @@ class ScenarioDraft(Mutable):
             raise ValueError(f"the draft holds no location {entity_id!r}")
         return held
 
-    def write_pack(self, pack_id: Slug, content: dict[str, JsonValue]) -> str:
-        wrote = "rewrote" if pack_id in self.packs else "wrote"
-        self.packs[pack_id] = content
-        return f"{wrote} content pack {pack_id}"
-
     def as_json(self) -> str:
-        return self.model_dump_json(indent=2, exclude=NOT_PATCHED)
+        return self.model_dump_json(indent=2)
 
-    def scenario(self, engine: EngineId, packs: tuple[Slug, ...] = ("srd",)) -> Scenario:
+    def scenario(self, engine: EngineId, packs: tuple[Slug, ...], grows: bool = False) -> Scenario:
         if self.meta is None:
             raise ValueError("the draft has no `meta` yet: write a title and premise first")
         if self.starting_location_id is None:
             raise ValueError("the draft has no `starting_location_id` yet")
         return Scenario(
             meta=self.meta,
-            grows=self.grows,
+            grows=grows,
             engine=engine,
-            packs=(*packs, *self.packs),
+            packs=packs,
             art_style=self.art_style,
             starting_location_id=self.starting_location_id,
             world=WorldState(
@@ -207,56 +187,26 @@ class PlaytestCheck:
     engine: Engine
     character: Character
     packs: tuple[Slug, ...]
-    sources: PackSources = SHIPPED_PACKS
+
+    def __post_init__(self) -> None:
+        if missing := sorted(set(self.packs) - set(self.engine.packs)):
+            raise ValueError(f"packs not installed for {self.engine.id!r}: {missing}")
 
     def check(self, scenario: Scenario) -> None:
         # A playtest never saves, so the game's id is never read; any well-formed slug serves.
         _ = begin_game(self.engine, "draft", scenario, self.character)
 
-    def shipping(self, drafted: Mapping[Slug, JsonValue]) -> "PlaytestCheck":
-        """This check under an engine that also holds the packs a draft has written itself."""
-        if not drafted:
-            return self
-        return replace(
-            self, engine=build_engine(self.engine.id, replace(self.sources, drafted=drafted))
-        )
-
-
-def engine_packs(
-    settings: Settings, engine_id: EngineId, scenario_id: Slug | None = None
-) -> PackSources:
-    """Installed user packs, then the packs one scenario ships; a run's own drafts join later."""
-    beside = () if scenario_id is None else (scenario_packs(settings.scenarios_dir, scenario_id),)
-    return PackSources((settings.packs_dir / engine_id, *beside))
-
-
-def selected_packs(engine: Engine, packs: tuple[Slug, ...]) -> tuple[Slug, ...]:
-    if "srd" not in packs:
-        raise ValueError("scenario packs must include 'srd'")
-    if len(packs) != len(set(packs)):
-        raise ValueError("scenario pack ids must be unique")
-    if missing := sorted(set(packs) - set(engine.pack_ids)):
-        raise ValueError(f"packs not installed for {engine.id!r}: {missing}")
-    return packs
-
-
-def installed_pack_ids(settings: Settings, engine_id: EngineId) -> tuple[Slug, ...]:
-    return build_engine(engine_id, engine_packs(settings, engine_id)).pack_ids
-
 
 def playtest_check(
-    settings: Settings, engine_id: EngineId, packs: tuple[Slug, ...] = ("srd",)
+    settings: Settings, engine: Engine, packs: tuple[Slug, ...] = ("srd",)
 ) -> PlaytestCheck:
-    sources = engine_packs(settings, engine_id)
-    engine = build_engine(engine_id, sources)
-    chosen = selected_packs(engine, packs)
     character = load_character(
         settings.characters_dir,
         settings.authoring.starter_character,
         engine.id,
         engine.check_overlay,
     )
-    return PlaytestCheck(engine=engine, character=character, packs=chosen, sources=sources)
+    return PlaytestCheck(engine=engine, character=character, packs=packs)
 
 
 MIN_LOCATIONS = 4
@@ -284,13 +234,8 @@ def _bar_unmet(scenario: Scenario) -> list[str]:
         unmet.append("at least one item starting `known: false` — a secret to find")
     if not threads:
         unmet.append("at least one thread")
-    if not any(
-        entity.detail is not None and entity.detail.when_reached and not entity.known
-        for entity in entities
-    ):
-        unmet.append(
-            "at least one unknown entity whose `detail.when_reached` carries a consequence"
-        )
+    if not any(entity.when_reached and not entity.known for entity in entities):
+        unmet.append("at least one unknown entity whose `when_reached` carries a consequence")
     return unmet
 
 
@@ -315,23 +260,12 @@ def _opening_unmet(scenario: Scenario) -> list[str]:
 class AuthoringBrief:
     bar_prompt: str
     unmet: Callable[[Scenario], list[str]]
-    label: str = ""
     settled: frozenset[str] = frozenset()
-    # A pack ships in a scenario's own directory, which a world grown mid-game no longer writes.
-    writes_packs: bool = True
 
 
-WHOLE_SCENARIO = AuthoringBrief("scenario_bar.md", _bar_unmet, label="a whole scenario")
+WHOLE_SCENARIO = AuthoringBrief("scenario_bar.md", _bar_unmet)
 # An opening slice is deliberately thin: the rest of the world is written during play.
-OPENING_SLICE = AuthoringBrief(
-    "scenario_opening.md", _opening_unmet, label="an opening slice, grown in play"
-)
-
-BRIEFS: tuple[AuthoringBrief, ...] = (WHOLE_SCENARIO, OPENING_SLICE)
-
-
-def brief_named(label: str) -> AuthoringBrief:
-    return next(one for one in BRIEFS if one.label == label)
+OPENING_SLICE = AuthoringBrief("scenario_opening.md", _opening_unmet)
 
 
 def extend_brief(before: WorldState) -> AuthoringBrief:
@@ -361,17 +295,13 @@ def extend_brief(before: WorldState) -> AuthoringBrief:
         "scenario_extend.md",
         unmet,
         settled=frozenset(held | {thread.id for thread in before.threads}),
-        writes_packs=False,
     )
 
 
 def scenario_refusal(
-    draft: ScenarioDraft, playing: PlaytestCheck | None, brief: AuthoringBrief = WHOLE_SCENARIO
+    draft: ScenarioDraft, playing: PlaytestCheck, brief: AuthoringBrief = WHOLE_SCENARIO
 ) -> str | None:
-    if playing is None:
-        return "no engine is loaded to play this draft against"
     try:
-        playing = playing.shipping(draft.packs)
         scenario = draft.scenario(playing.engine.id, playing.packs)
         playing.check(scenario)
     except ValidationError as broken:
@@ -383,34 +313,6 @@ def scenario_refusal(
     if unmet := brief.unmet(scenario):
         listed = "\n".join(f"- {item}" for item in unmet)
         return f"the draft plays, but it is under the bar. Still missing:\n{listed}"
-    return None
-
-
-def pack_refusal(
-    draft: ScenarioDraft,
-    playing: PlaytestCheck,
-    brief: AuthoringBrief,
-    pack_id: Slug,
-    content: dict[str, JsonValue],
-) -> str | None:
-    """Refused before the draft holds it, so a pack that cannot be played never lands."""
-    if not brief.writes_packs:
-        return (
-            "a world grown in play cannot ship a content pack: the game is already running on "
-            "the packs its scenario named. Write what this pass needs as entities, traits and "
-            "threads instead."
-        )
-    if pack_id in playing.engine.pack_ids:
-        return (
-            f"{pack_id!r} is already installed for {playing.engine.id!r}. Give a pack of your own "
-            "an id of its own, and write only what the selected packs lack."
-        )
-    try:
-        _ = playing.engine.pack_type.model_validate(content)
-        # Rebuilt whole, so a pack colliding with an installed one is refused here and not later.
-        _ = playing.shipping({**draft.packs, pack_id: content})
-    except ValueError as broken:
-        return str(broken)
     return None
 
 
@@ -452,10 +354,11 @@ def write_draft(
     draft: ScenarioDraft,
     engine: EngineId,
     packs: tuple[Slug, ...],
+    grows: bool,
     source: Path | str,
 ) -> str:
-    scenario = draft.scenario(engine, packs)
-    write_scenario(settings.scenarios_dir, slug, scenario, draft.packs, source)
+    scenario = draft.scenario(engine, packs, grows)
+    write_scenario(settings.scenarios_dir, slug, scenario, source)
     return summarize(scenario)
 
 
@@ -479,10 +382,9 @@ class ExtensionPatch(Frozen):
 
 
 def extension_prompt(settings: Settings, state: Game) -> str:
-    scenario = load_scenario(settings.scenarios_dir, state.scenario_id)
     document = source_file(settings.scenarios_dir, state.scenario_id)
     given = given_text(settings, state.scenario.premise, document)
-    packs = ", ".join(scenario.packs)
+    packs = ", ".join(state.packs)
     return (
         f"{given}\n\nThis scenario is authored against these content packs: {packs}."
         "\n\nExtend the world `scenario_so_far` holds."

@@ -98,12 +98,6 @@ class Sheet(SheetBase):
     # The played character's tally paces the whole game, so `rows()` leaves it off the sheet views.
     twist: Counter = Counter(current=0, maximum=RULES.ties_per_twist)
 
-    @model_validator(mode="after")
-    def _twist_pack_is_selected(self) -> Self:
-        if self.twist_pack not in self.packs:
-            raise ValueError("twist_pack must be one of the sheet packs")
-        return self
-
     def rows(self) -> tuple[tuple[str, str], ...]:
         return (
             ("Concept", self.concept),

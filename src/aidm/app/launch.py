@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from textwrap import shorten
 
@@ -6,20 +6,9 @@ from pydantic import ValidationError
 
 from aidm.config import Settings
 from aidm.content.io import FileStore, SaveHeader, read_characters, read_scenarios
-from aidm.engines.registry import ENGINES, build_engine
+from aidm.engines.core import Engine
 from aidm.state.entities import EngineId, Frozen, Slug
 from aidm.state.model import Game
-
-
-def engine_ids() -> tuple[EngineId, ...]:
-    return tuple(ENGINES)
-
-
-def as_engine_id(value: str) -> EngineId:
-    """Narrow a routed string, so an unknown engine cannot reach a filename downstream."""
-    if value not in ENGINES:
-        raise ValueError(f"unknown engine {value!r}")
-    return EngineId(value)
 
 
 class EngineOption(Frozen):
@@ -162,10 +151,10 @@ class LauncherController:
             self.selected_character = compatible[0].id if compatible else None
 
 
-def load_catalog(settings: Settings) -> LauncherCatalog:
-    ids = engine_ids()
+def load_catalog(settings: Settings, engines: Mapping[EngineId, Engine]) -> LauncherCatalog:
+    ids = tuple(engines)
     engine_options = tuple(
-        EngineOption(id=engine_id, badge=build_engine(engine_id).badge) for engine_id in ids
+        EngineOption(id=engine_id, badge=engines[engine_id].badge) for engine_id in ids
     )
     scenarios = tuple(
         CatalogEntry(
@@ -177,8 +166,8 @@ def load_catalog(settings: Settings) -> LauncherCatalog:
         for name, scenario in read_scenarios(settings.scenarios_dir, ids)
     )
     characters = tuple(
-        CatalogEntry(id=name, title=profile.name, subtitle=profile.brief, engines=engines)
-        for name, profile, engines in read_characters(settings.characters_dir, ids)
+        CatalogEntry(id=name, title=profile.name, subtitle=profile.brief, engines=written)
+        for name, profile, written in read_characters(settings.characters_dir, ids)
     )
     files = FileStore(settings.saves_dir)
     saves: list[SaveOption] = []

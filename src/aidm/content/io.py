@@ -1,10 +1,9 @@
 import json
 import logging
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
-from types import MappingProxyType
 
 from pydantic import BaseModel, ConfigDict, JsonValue
 
@@ -19,7 +18,6 @@ from .model import (
 
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"
-PACKS_DIR = "packs"
 PROFILE_FILE = "base.json"
 SOURCE_STEM = "source"
 SOURCE_SUFFIXES = (".md", ".txt", ".pdf")
@@ -62,11 +60,6 @@ def load_scenario(directory: Path, name: Slug) -> Scenario:
     return _read(folder / WORLD_FILE, Scenario)
 
 
-def scenario_packs(directory: Path, name: Slug) -> Path:
-    """A scenario ships the content packs it needs beside its world, read like installed ones."""
-    return directory / content_id(name) / PACKS_DIR
-
-
 def source_file(directory: Path, name: Slug) -> Path | None:
     folder = directory / content_id(name)
     paths = (folder / f"{SOURCE_STEM}{suffix}" for suffix in SOURCE_SUFFIXES)
@@ -101,15 +94,12 @@ def write_scenario(
     directory: Path,
     name: Slug,
     scenario: Scenario,
-    packs: Mapping[Slug, JsonValue] = MappingProxyType({}),
     source: str | Path | None = None,
 ) -> None:
     folder = directory / content_id(name)
     if folder.exists():
         raise ValueError(f"scenario {name!r} already exists")
     _write(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
-    for pack_id, content in packs.items():
-        _write(folder / PACKS_DIR / f"{pack_id}.json", json.dumps(content, indent=2))
     if isinstance(source, Path):
         _copy(folder / f"{SOURCE_STEM}{source.suffix}", source)
     elif source is not None:

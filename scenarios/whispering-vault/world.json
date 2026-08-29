@@ -61,10 +61,8 @@
         "kind": "location",
         "name": "the sealed vault",
         "brief": "The undercroft chamber Kael came for, its door bearing a seal nobody living can read.",
-        "detail": {
-          "description": "The door is stone, and the seal cut into it is unweathered where everything around it has worn.",
-          "when_reached": "Kael has found the vault door: advance thread vault-seal to stage door-found. The seal is the whole obstacle now \u2014 press on what opening it will cost."
-        },
+        "description": "The door is stone, and the seal cut into it is unweathered where everything around it has worn.",
+        "when_reached": "Kael has found the vault door: advance thread vault-seal with a note that the vault door is found. The seal is the whole obstacle now \u2014 press on what opening it will cost.",
         "known": false,
         "parent_id": null,
         "exits": [
@@ -107,10 +105,8 @@
         "kind": "actor",
         "name": "Elena",
         "brief": "The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite; she catalogued the vault ledgers beside Mara for two winters, until the night she went below alone and never came back up.",
-        "detail": {
-          "description": "She carries the sealing rite in her head and nowhere else.",
-          "when_reached": "Kael has found the archivist: advance thread vault-seal to stage archivist-found. She will name a price before she gives the rite up, and the rite is not known until she has."
-        },
+        "description": "She carries the sealing rite in her head and nowhere else.",
+        "when_reached": "Kael has found the archivist: advance thread vault-seal with a note that the archivist is found. She will name a price before she gives the rite up, and the rite is not known until she has.",
         "known": false,
         "parent_id": "bell-tower",
         "rules": {
@@ -138,10 +134,8 @@
         "kind": "item",
         "name": "the vault map",
         "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",
-        "detail": {
-          "description": "Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.",
-          "when_reached": "Kael has the stair charted: advance thread vault-seal to stage stair-charted. The chart marks a way down from the cloister that the abbey's own plans deny \u2014 press on getting down there."
-        },
+        "description": "Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.",
+        "when_reached": "Kael has the stair charted: advance thread vault-seal with a note that the stair down is charted. The chart marks a way down from the cloister that the abbey's own plans deny \u2014 press on getting down there.",
         "known": false,
         "parent_id": "study"
       }
@@ -151,7 +145,6 @@
         "id": "vault-seal",
         "title": "The sealed vault",
         "status": "active",
-        "stage": "unfound",
         "note": "Kael came for the vault under the abbey: the way down to it, the seal on its door, and what opening that seal costs."
       }
     ],

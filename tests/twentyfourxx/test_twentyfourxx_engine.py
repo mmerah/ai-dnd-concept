@@ -3,6 +3,7 @@ from random import Random
 
 import pytest
 from core_test_support import (
+    ENGINES_BUILT,
     TWENTYFOURXX,
     at_boundary,
     game,
@@ -16,7 +17,6 @@ from aidm.engines.core import (
     rules,
     take_over,
 )
-from aidm.engines.sources import PackSources
 from aidm.engines.twentyfourxx.engine import advance, build
 from aidm.engines.twentyfourxx.rules import (
     RULES,
@@ -439,10 +439,10 @@ def test_an_items_marks_reach_the_prompt_as_its_own_state_lines() -> None:
     assert _bought(engine, draft, "battle-armor")
 
     armor = draft.world.require(EntityId("battle-armor"))
-    assert engine.describe(armor) == "bulky: yes\nbreaks left: 3"
+    assert engine.describe(draft, armor) == "bulky: yes\nbreaks left: 3"
     _ = resolve_defence(draft, "Kael takes the burst", armor.id)
-    assert engine.describe(armor) == "bulky: yes\nbreaks left: 2"
-    assert engine.describe(draft.world.require(LANTERN)) == ""
+    assert engine.describe(draft, armor) == "bulky: yes\nbreaks left: 2"
+    assert engine.describe(draft, draft.world.require(LANTERN)) == ""
 
 
 def test_a_second_purchase_of_the_same_gear_is_charged_and_lands_beside_the_first() -> None:
@@ -477,11 +477,11 @@ def test_a_ship_upgrade_is_charged_at_ten_and_installed_in_the_ship() -> None:
 
 
 def test_duplicate_shop_ids_across_packs_are_refused(tmp_path: Path) -> None:
-    srd = build().packs["srd"]
+    srd = build(tmp_path).packs["srd"]
     (tmp_path / "duplicate.json").write_text(srd.model_dump_json())
 
     with pytest.raises(ValueError, match="duplicate 24XX gear ids"):
-        _ = build(PackSources((tmp_path,)))
+        _ = build(tmp_path)
 
 
 def test_a_decision_this_engine_cannot_play_or_read_is_refused() -> None:
@@ -510,7 +510,7 @@ def test_a_decision_this_engine_cannot_play_or_read_is_refused() -> None:
 
 
 def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die() -> None:
-    creation = build().creation
+    creation = ENGINES_BUILT[TWENTYFOURXX].creation
     picks: Picks = {
         "pack": ("srd",),
         "specialty": ("psychic",),
@@ -521,7 +521,6 @@ def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die
     created = creation.create("Vex", "A quiet reader of rooms.", picks)
     assert [item.name for item in created.profile.items] == ["Comm", "Bottle of PsychOut"]
     assert created.profile.traits == ()
-    assert created.rules["packs"] == ["srd"]
     assert created.rules["skills"] == {
         "Telepathy": 10,
         "Stealth": 8,
@@ -531,7 +530,7 @@ def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die
 
 
 def test_a_bulky_kit_item_carries_the_bulky_mark() -> None:
-    creation = build().creation
+    creation = ENGINES_BUILT[TWENTYFOURXX].creation
     picks: Picks = {
         "pack": ("srd",),
         "specialty": ("tech",),
@@ -544,7 +543,7 @@ def test_a_bulky_kit_item_carries_the_bulky_mark() -> None:
 
 
 def test_an_alien_invents_traits_the_menu_never_listed() -> None:
-    creation = build().creation
+    creation = ENGINES_BUILT[TWENTYFOURXX].creation
     picks: Picks = {
         "pack": ("srd",),
         "specialty": ("sneak",),
@@ -557,7 +556,7 @@ def test_an_alien_invents_traits_the_menu_never_listed() -> None:
 
 
 def test_a_humans_three_increases_can_stack_onto_one_skill() -> None:
-    creation = build().creation
+    creation = ENGINES_BUILT[TWENTYFOURXX].creation
     picks: Picks = {
         "pack": ("srd",),
         "specialty": ("sneak",),

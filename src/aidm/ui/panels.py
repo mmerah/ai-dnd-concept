@@ -2,13 +2,9 @@ import json
 
 from nicegui import ui
 
-from aidm.app.runtime import (
-    GameSession,
-    ThreadSummary,
-    attributed_line,
-    thread_summaries,
-)
+from aidm.app.runtime import GameSession, attributed_line
 from aidm.state.facts import traced
+from aidm.state.model import Thread
 from aidm.state.play import StepTrace, TraceEntry, TurnTrace, WorldExtended
 from aidm.turn.context import player_scene
 
@@ -32,22 +28,21 @@ def sheet_panel(session: GameSession) -> None:
         heading("Carrying")
         for item in inventory:
             entity_row(session.icon(item.id), item.name, item.brief)
-    threads = thread_summaries(session.state)
+    threads = session.state.world.threads
     if threads:
         heading("Threads")
         for thread in threads:
             _thread_card(thread)
 
 
-def _thread_card(thread: ThreadSummary) -> None:
+def _thread_card(thread: Thread) -> None:
     with ui.column().classes("w-full mt-2").style("gap: 0"):
         ui.label(thread.title).classes("text-sm font-bold")
-        parts = (thread.status, thread.stage or "", thread.clock)
-        ui.label(" · ".join(part for part in parts if part)).classes("text-xs opacity-60")
+        ui.label(thread.status).classes("text-xs opacity-60")
 
 
 def journal_panel(session: GameSession) -> None:
-    threads = thread_summaries(session.state)
+    threads = session.state.world.threads
 
     def export() -> None:
         ui.notify(f"Journal written to {session.export_journal()}")

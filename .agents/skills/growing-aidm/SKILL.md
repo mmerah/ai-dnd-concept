@@ -24,9 +24,5 @@ starts without them, and then the first call fails.
    draft under the bar comes back with the reason, and the run stays open. Fix the draft and call
    `finish_growth` again.
 
-`write_pack` is published here but refuses: a game already runs on the packs its scenario named,
-and this pass writes no scenario file to ship a new one in. Say what the world needs in entities,
-traits and threads, or add the pack to the scenario and start a new game.
-
 Write ids of your own. The live game holds more than `scenario_so_far` shows you. `finish_growth`
 refuses an id the game has already taken; rename it and call `finish_growth` again.

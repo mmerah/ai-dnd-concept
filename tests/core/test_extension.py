@@ -87,7 +87,7 @@ async def _turn(game: GameSession, on_step: Callable[[TurnStep], None] | None = 
 def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
     draft = ScenarioDraft.from_game(game.state)
-    scenario = draft.scenario(LONER3E)
+    scenario = draft.scenario(LONER3E, ("srd",))
 
     ids = {entity.id for entity in scenario.world.entities}
     assert PLAYER_ID not in ids

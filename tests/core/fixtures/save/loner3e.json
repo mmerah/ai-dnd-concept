@@ -6,6 +6,9 @@
     "premise": "The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit."
   },
   "engine": "loner3e",
+  "packs": [
+    "srd"
+  ],
   "player_id": "player",
   "world": {
     "entities": [
@@ -14,7 +17,8 @@
         "kind": "location",
         "name": "the abbot's study",
         "brief": "A cramped room of ledgers and cold candle stubs; a loose flagstone hides something under the desk.",
-        "detail": null,
+        "description": "",
+        "when_reached": "",
         "known": true,
         "parent_id": null,
         "traits": [],
@@ -32,7 +36,8 @@
         "kind": "location",
         "name": "the cloister",
         "brief": "A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.",
-        "detail": null,
+        "description": "",
+        "when_reached": "",
         "known": true,
         "parent_id": null,
         "traits": [],
@@ -60,7 +65,8 @@
         "kind": "location",
         "name": "the bell tower",
         "brief": "A cramped climb of rotten ladders above the nave, its bell long since stilled.",
-        "detail": null,
+        "description": "",
+        "when_reached": "",
         "known": false,
         "parent_id": null,
         "traits": [],
@@ -78,10 +84,8 @@
         "kind": "location",
         "name": "the sealed vault",
         "brief": "The undercroft chamber Kael came for, its door bearing a seal nobody living can read.",
-        "detail": {
-          "description": "The door is stone, and the seal cut into it is unweathered where everything around it has worn.",
-          "when_reached": "Kael has found the vault door: advance thread vault-seal to stage door-found. The seal is the whole obstacle now — press on what opening it will cost."
-        },
+        "description": "The door is stone, and the seal cut into it is unweathered where everything around it has worn.",
+        "when_reached": "Kael has found the vault door: advance thread vault-seal with a note that the vault door is found. The seal is the whole obstacle now — press on what opening it will cost.",
         "known": false,
         "parent_id": null,
         "traits": [],
@@ -99,7 +103,8 @@
         "kind": "actor",
         "name": "Mara",
         "brief": "The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.",
-        "detail": null,
+        "description": "",
+        "when_reached": "",
         "known": true,
         "parent_id": "study",
         "traits": [],
@@ -123,7 +128,8 @@
         "kind": "actor",
         "name": "Brother Tomas",
         "brief": "A deaf old porter who sweeps the cloister and knows almost nothing about the vault.",
-        "detail": null,
+        "description": "",
+        "when_reached": "",
         "known": true,
         "parent_id": "cloister",
         "traits": [],
@@ -146,10 +152,8 @@
         "kind": "actor",
         "name": "Elena",
         "brief": "The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite; she catalogued the vault ledgers beside Mara for two winters, until the night she went below alone and never came back up.",
-        "detail": {
-          "description": "She carries the sealing rite in her head and nowhere else.",
-          "when_reached": "Kael has found the archivist: advance thread vault-seal to stage archivist-found. She will name a price before she gives the rite up, and the rite is not known until she has."
-        },
+        "description": "She carries the sealing rite in her head and nowhere else.",
+        "when_reached": "Kael has found the archivist: advance thread vault-seal with a note that the archivist is found. She will name a price before she gives the rite up, and the rite is not known until she has.",
         "known": false,
         "parent_id": "bell-tower",
         "traits": [],
@@ -173,7 +177,8 @@
         "kind": "actor",
         "name": "a bloated rat",
         "brief": "It has grown fat on the dead garden and does not run from a lantern.",
-        "detail": null,
+        "description": "",
+        "when_reached": "",
         "known": false,
         "parent_id": "cloister",
         "traits": [],
@@ -194,10 +199,8 @@
         "kind": "item",
         "name": "the vault map",
         "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",
-        "detail": {
-          "description": "Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.",
-          "when_reached": "Kael has the stair charted: advance thread vault-seal to stage stair-charted. The chart marks a way down from the cloister that the abbey's own plans deny — press on getting down there."
-        },
+        "description": "Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.",
+        "when_reached": "Kael has the stair charted: advance thread vault-seal with a note that the stair down is charted. The chart marks a way down from the cloister that the abbey's own plans deny — press on getting down there.",
         "known": true,
         "parent_id": "player",
         "traits": [],
@@ -209,7 +212,8 @@
         "kind": "item",
         "name": "a guttering lantern",
         "brief": "A dented tin lantern whose flame will not hold still.",
-        "detail": null,
+        "description": "",
+        "when_reached": "",
         "known": true,
         "parent_id": "player",
         "traits": [
@@ -227,7 +231,8 @@
         "kind": "actor",
         "name": "Kael",
         "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
-        "detail": null,
+        "description": "",
+        "when_reached": "",
         "known": true,
         "parent_id": "study",
         "traits": [
@@ -249,9 +254,6 @@
         ],
         "exits": [],
         "rules": {
-          "packs": [
-            "srd"
-          ],
           "twist_pack": "srd",
           "concept": "A Wary Relic-Hunter",
           "skills": [
@@ -273,9 +275,7 @@
         "id": "vault-seal",
         "title": "The sealed vault",
         "status": "active",
-        "stage": "unfound",
-        "note": "Kael came for the vault under the abbey: the way down to it, the seal on its door, and what opening that seal costs.",
-        "clock": null
+        "note": "Kael came for the vault under the abbey: the way down to it, the seal on its door, and what opening that seal costs."
       }
     ],
     "party": [],

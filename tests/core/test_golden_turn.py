@@ -3,13 +3,12 @@ from random import Random
 from typing import cast
 
 import pytest
-from core_test_support import game, narrated, played, scripted
+from core_test_support import ENGINE_IDS, game, narrated, played, scripted
 from golden_test_support import FIXTURES, dumped, golden
 from golden_turn_support import NARRATION
 from pydantic_ai.messages import ModelResponse
 from pydantic_ai.models.function import FunctionModel
 
-from aidm.app.launch import engine_ids
 from aidm.state.entities import EngineId
 from aidm.state.model import Game
 from aidm.state.play import Exchange, Line
@@ -55,7 +54,7 @@ async def _played(engine_id: EngineId) -> TurnResult:
     )
 
 
-@pytest.mark.parametrize("engine_id", engine_ids())
+@pytest.mark.parametrize("engine_id", ENGINE_IDS)
 async def test_a_scripted_turn_renders_and_records_unchanged(engine_id: EngineId) -> None:
     result = await _played(engine_id)
 

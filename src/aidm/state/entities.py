@@ -84,11 +84,6 @@ class Counter(Mutable):
         return bounded if self.maximum is None else min(bounded, self.maximum)
 
 
-class EntityDetail(Frozen):
-    description: str
-    when_reached: str
-
-
 class Trait(Frozen):
     """A lasting quality."""
 
@@ -113,7 +108,8 @@ class Entity(Mutable):
     kind: Kind
     name: str
     brief: str
-    detail: EntityDetail | None = None
+    description: str = ""
+    when_reached: str = ""
     known: bool = False
     # Which kinds may hold which is one rule, in `world.check_placement`.
     parent_id: CheckedEntityId | None = None

@@ -7,7 +7,6 @@ from pydantic import Field, ValidationError, model_validator
 from aidm.state.entities import (
     DEAD,
     CheckedEntityId,
-    Counter,
     EngineId,
     Entity,
     EntityId,
@@ -31,29 +30,13 @@ class Thread(Mutable):
     id: Slug
     title: str
     status: ThreadStatus = "active"
-    stage: Slug | None = None
     note: str = ""
-    clock: Counter | None = None
-
-    @model_validator(mode="after")
-    def _a_clock_fills(self) -> Self:
-        if self.clock is not None and self.clock.maximum is None:
-            raise ValueError(f"thread {self.id!r} has a clock with no maximum to fill")
-        return self
 
 
 class AdvanceThread(Frozen):
     thread_id: Slug = Field(description="Exact id of an ACTIVE THREAD.")
     status: ThreadStatus | None = Field(
         default=None, description="New status, or null to keep the current status."
-    )
-    stage: Slug | None = Field(
-        default=None,
-        description="New stage slug, or null to keep the current stage.",
-    )
-    tick: int = Field(
-        default=0,
-        description="Number of segments to fill on its clock. Use 0 for no change.",
     )
     note: str | None = Field(
         default=None,
@@ -62,12 +45,8 @@ class AdvanceThread(Frozen):
 
     @model_validator(mode="after")
     def _moves_something(self) -> Self:
-        if self.tick < 0:
-            raise ValueError("a tick fills a clock; it never runs one backwards")
-        if self.status is None and self.stage is None and not self.tick and self.note is None:
-            raise ValueError(
-                "advance-thread moves a thread's status, its stage, its clock, or its note"
-            )
+        if self.status is None and self.note is None:
+            raise ValueError("advance-thread moves a thread's status or its note")
         return self
 
 
@@ -177,6 +156,7 @@ class Game(Mutable):
     character_id: Slug
     scenario: ScenarioMeta
     engine: EngineId
+    packs: tuple[Slug, ...]
     # Which entity the player plays: it moves to a companion when the played character dies.
     player_id: CheckedEntityId
     world: WorldState
@@ -187,7 +167,10 @@ class Game(Mutable):
     pending: PendingDecision | None = None
 
     @model_validator(mode="after")
-    def _the_player_is_playable(self) -> Self:
+    def _playable_game(self) -> Self:
+        require_unique("game pack ids", self.packs)
+        if "srd" not in self.packs:
+            raise ValueError("game packs must include 'srd'")
         if not self.player.known:
             raise ValueError("the player entity must be known")
         if self.player_id in self.world.party:

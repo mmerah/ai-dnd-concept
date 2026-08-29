@@ -2,7 +2,7 @@ import json
 import shutil
 from pathlib import Path
 
-from core_test_support import LONER3E
+from core_test_support import ENGINES_BUILT, LONER3E
 from pydantic import JsonValue
 from ui_test_support import SCENARIOS, ui_settings
 
@@ -36,7 +36,7 @@ def _declaring(tmp_path: Path, engine: str) -> Path:
 
 
 def test_an_overlay_decides_which_rules_a_character_offers(tmp_path: Path) -> None:
-    catalog = load_catalog(ui_settings(tmp_path))
+    catalog = load_catalog(ui_settings(tmp_path), ENGINES_BUILT)
     controller = LauncherController(catalog)
 
     assert catalog.scenario("whispering-vault").engines == ("loner3e",)
@@ -57,7 +57,7 @@ def test_a_directory_holding_no_canon_is_skipped(tmp_path: Path) -> None:
     (scenarios / "notes").mkdir()
     shutil.copytree(scenarios / "whispering-vault", scenarios / "aaa-draft")
 
-    controller = LauncherController(load_catalog(ui_settings(tmp_path, scenarios)))
+    controller = LauncherController(load_catalog(ui_settings(tmp_path, scenarios), ENGINES_BUILT))
 
     assert [option.id for option in controller.catalog.scenarios] == [
         "aaa-draft",
@@ -68,13 +68,14 @@ def test_a_directory_holding_no_canon_is_skipped(tmp_path: Path) -> None:
 
 
 def test_a_scenario_offers_only_the_rules_it_names(tmp_path: Path) -> None:
-    catalog = load_catalog(ui_settings(tmp_path, _declaring(tmp_path, "twentyfourxx")))
+    settings = ui_settings(tmp_path, _declaring(tmp_path, "twentyfourxx"))
+    catalog = load_catalog(settings, ENGINES_BUILT)
 
     assert catalog.scenario("whispering-vault").engines == ("twentyfourxx",)
 
 
 def test_a_scenario_naming_an_uninstalled_engine_is_skipped(tmp_path: Path) -> None:
-    catalog = load_catalog(ui_settings(tmp_path, _declaring(tmp_path, "cairn2e")))
+    catalog = load_catalog(ui_settings(tmp_path, _declaring(tmp_path, "cairn2e")), ENGINES_BUILT)
 
     assert not catalog.scenarios
 
@@ -83,7 +84,7 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path)
     FileStore(tmp_path).save("old-game", _opening_state(settings))
 
-    controller = LauncherController(load_catalog(settings))
+    controller = LauncherController(load_catalog(settings, ENGINES_BUILT))
     saved = controller.catalog.save("old-game")
 
     assert (saved.scenario_title, saved.character_title, saved.turn) == (
@@ -105,7 +106,7 @@ def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Pat
         "withdrawn", state.model_copy(update={"engine": "retired"}).committed()
     )
 
-    saved = load_catalog(settings).save("withdrawn")
+    saved = load_catalog(settings, ENGINES_BUILT).save("withdrawn")
 
     assert not saved.resumable
     assert saved.problem == "scenario 'whispering-vault' no longer offers the 'retired' engine"
@@ -116,7 +117,7 @@ def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: 
     FileStore(tmp_path).save("good", _opening_state(settings))
     (tmp_path / "broken.json").write_text("{not json", encoding=ENCODING)
 
-    catalog = load_catalog(settings)
+    catalog = load_catalog(settings, ENGINES_BUILT)
 
     assert [save.slug for save in catalog.saves] == ["good"]
     assert [broken.slug for broken in catalog.unreadable] == ["broken"]
@@ -135,7 +136,7 @@ def test_a_save_whose_body_is_stale_is_reported_not_offered(tmp_path: Path) -> N
     body["history"] = [{"prompt": "test", "lines": [], "events": [], "outcomes": []}]
     (tmp_path / "stale.json").write_text(json.dumps(body), encoding=ENCODING)
 
-    catalog = load_catalog(settings)
+    catalog = load_catalog(settings, ENGINES_BUILT)
 
     assert not catalog.saves
     assert [broken.slug for broken in catalog.unreadable] == ["stale"]
