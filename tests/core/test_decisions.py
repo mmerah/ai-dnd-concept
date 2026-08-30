@@ -18,6 +18,7 @@ from pydantic_ai.messages import TextPart, ToolReturnPart
 from pydantic_ai.models.function import FunctionModel
 
 from aidm.engines.core import Engine
+from aidm.kernel.views import speaker_of
 from aidm.state.entities import Frozen
 from aidm.state.facts import Fact
 from aidm.state.model import Game
@@ -321,8 +322,9 @@ def test_a_decision_whose_options_are_the_whole_pick_refuses_an_answer_in_words(
     engine, state = _deciding()
     draft = _suspended(state, DECISION.model_copy(update={"allows_text": False})).draft()
 
+    speaker = speaker_of(engine.views(draft).player.player)
     with pytest.raises(ValueError, match="takes one of its options, not words"):
         _ = consume_answer(
-            Turn(engine=engine, draft=draft, rng=Random(0), commit=lambda _: None),
+            Turn(engine=engine, draft=draft, rng=Random(0), commit=lambda _: None, speaker=speaker),
             Answer(text="I dive aside"),
         )

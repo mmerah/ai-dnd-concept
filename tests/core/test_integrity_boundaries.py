@@ -22,13 +22,12 @@ from core_test_support import (
 from pydantic import ValidationError
 
 from aidm.content.io import load_character, load_scenario
-from aidm.content.model import Character, CharacterPayload
 from aidm.engines.core import rules
 from aidm.engines.loner3e.rules import LUCK_MAX, Loner3eState
 from aidm.engines.twentyfourxx.rules import TwentyfourxxState
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
 from aidm.state.facts import Fact
-from aidm.state.model import Game
+from aidm.state.model import Character, CharacterPayload, Game
 from aidm.state.tools import apply_to_draft
 from aidm.world.topology import children, validate_rooms
 

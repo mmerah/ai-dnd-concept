@@ -10,6 +10,7 @@ from pydantic import JsonValue
 
 from aidm.app.runtime import GameService
 from aidm.harness.driver import Driver
+from aidm.kernel.views import speaker_of
 from aidm.state.entities import EntityId
 from aidm.state.facts import DiceEvent, Fact
 from aidm.state.play import Answer, Speaker
@@ -143,7 +144,7 @@ def live_turn(
     session: GameService, prompt: str | None, facts: Sequence[Fact], elapsed: float
 ) -> ui.label | None:
     if prompt is not None:
-        _bubble(session, session.state.player_speaker(), prompt, sent=True)
+        _bubble(session, speaker_of(session.view().player.player), prompt, sent=True)
     for fact in facts:
         _card(fact)
     if session.step is not None:

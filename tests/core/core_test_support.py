@@ -20,7 +20,6 @@ from pydantic_settings import SettingsConfigDict
 
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.io import load_character, load_scenario, read_scenarios
-from aidm.content.model import Character, Scenario
 from aidm.engines.core import (
     Engine,
     mechanics_of,
@@ -32,7 +31,7 @@ from aidm.engines.loner3e.rules import Sheet as LonerSheet
 from aidm.engines.registry import ENGINES, begin_game, build_engines
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import Fact
-from aidm.state.model import Game, WorldState
+from aidm.state.model import Character, Game, Scenario, WorldState
 from aidm.state.play import Answer, Speaker
 from aidm.turn.run import Turn, TurnStep, build_turn_agents, run_segment
 

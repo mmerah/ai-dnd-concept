@@ -10,9 +10,7 @@ from pydantic import BaseModel, JsonValue
 from aidm.kernel.envelope import CharacterEnvelope, ScenarioEnvelope
 from aidm.kernel.protocol import AnyEngine
 from aidm.state.entities import EngineId, Slug, content_id, require_unique
-from aidm.state.model import Game
-
-from .model import Character, Scenario
+from aidm.state.model import Character, Game, Scenario
 
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"

@@ -1,3 +1,4 @@
+from random import Random
 from typing import Protocol
 
 from pydantic import BaseModel
@@ -6,7 +7,9 @@ from aidm.kernel.envelope import CharacterEnvelope
 from aidm.kernel.views import CreationPreview, Views
 from aidm.state.creation import CreationStep, Picks
 from aidm.state.entities import EngineId
-from aidm.state.model import Game
+from aidm.state.facts import Fact
+from aidm.state.model import Character, Game, Scenario
+from aidm.state.play import PendingOption
 from aidm.state.tools import DirectorTool
 
 
@@ -36,9 +39,11 @@ class Engine[S: BaseModel](Protocol):
     def tools(self) -> tuple[DirectorTool, ...]: ...
     @property
     def creation(self) -> Creation: ...
+    def new_game(self, scenario: Scenario, character: Character, /) -> S: ...
     def restored(self, raw: str, /) -> Game: ...
     def validate(self, state: Game, /) -> None: ...
     def views(self, state: Game, /) -> Views: ...
+    def answer(self, draft: Game, chosen: PendingOption, rng: Random, /) -> tuple[Fact, ...]: ...
     def over(self, state: Game, /) -> str | None: ...
 
 

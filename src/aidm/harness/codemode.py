@@ -37,8 +37,7 @@ from aidm.state.play import (
     Narration,
     PendingDecision,
 )
-from aidm.state.scene import VisibleScene
-from aidm.turn.context import NARRATOR, active_threads, director_instructions, render_director
+from aidm.turn.context import NARRATOR, director_instructions, render_director
 from aidm.turn.run import Turn, speakers_refusal
 
 LOGGER = logging.getLogger(__name__)
@@ -170,9 +169,8 @@ class Harness:
             turn.picture()
             if turn is not None
             else render_director(
-                session.engine.scene(state),
+                session.view().director.sections,
                 state.scenario,
-                active_threads(state.world.threads.values()),
                 NO_TURN_OPEN,
                 notes=state.notes,
             )
@@ -203,8 +201,7 @@ class Harness:
                 "write the narration lines: a turn with neither prose nor an open "
                 "decision shows the player nothing."
             )
-        visible = VisibleScene.revealed_from(session.engine.scene(turn.draft), turn.draft.world)
-        if refused := speakers_refusal(visible, lines):
+        if refused := speakers_refusal(turn.engine.views(turn.draft).narrator, lines):
             raise ModelRetry(refused)
         state = session.end_turn(turn, lines)
         self.turn = None
@@ -231,7 +228,7 @@ class Harness:
         # Refusing an un-due begin keeps the world from growing on a whim.
         if not session.growth_due():
             raise ModelRetry("the player still has places to find; grow the world when it is due.")
-        run = growth_run(session.settings, session.engine, session.character, session.state)
+        run = growth_run(session.settings, session.legacy, session.character, session.state)
         self._hold(run)
         return briefing(run, "finish_growth")
 

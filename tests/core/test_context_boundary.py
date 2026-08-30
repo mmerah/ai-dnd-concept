@@ -1,12 +1,11 @@
 from core_test_support import ENGINES_BUILT, LONER3E, game, updated, with_entity
 from pydantic import JsonValue
 
-from aidm.content.model import ScenarioMeta
 from aidm.engines.core import Engine
+from aidm.kernel.views import NarratorView
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Kind
-from aidm.state.model import Game, WorldPayload, WorldState
-from aidm.state.scene import Scene, VisibleScene
-from aidm.turn.context import ANSWERED_BY_OPTION, active_threads, render_director, render_narrator
+from aidm.state.model import Game, ScenarioMeta, WorldPayload, WorldState
+from aidm.turn.context import ANSWERED_BY_OPTION, render_director, render_narrator
 
 DESCRIPTION = "She writes in a compact cipher."
 WHEN_REACHED = "Her missing folio points toward the vault."
@@ -58,9 +57,8 @@ def _engine() -> Engine:
 
 def _directed(held: Game, prompt: str, *, resumed: str = "") -> str:
     return render_director(
-        _engine().scene(held),
+        _engine().views(held).director.sections,
         held.scenario,
-        active_threads(held.world.threads.values()),
         prompt,
         resumed=resumed,
     )
@@ -70,20 +68,19 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
     held = _with_detail(state(), EntityId("mara"))
     scene = _engine().scene(held)
 
-    visible = VisibleScene.revealed_from(scene, held.world)
+    narrator = _engine().views(held).narrator
 
-    assert set(VisibleScene.model_fields) == {
+    assert set(NarratorView.model_fields) == {
         "key",
         "label",
         "summary",
         "sections",
-        "present_entity_ids",
         "prompts",
         "art_prompt",
-        "art_subject_ids",
+        "subjects",
+        "speakers",
     }
-    assert set(VisibleScene.model_fields) < set(Scene.model_fields)
-    dumped = str(visible.model_dump())
+    dumped = str(narrator.model_dump())
     assert "The Secret" not in dumped
     assert WHEN_REACHED not in dumped
     assert WHEN_REACHED in str(scene.model_dump())
@@ -94,11 +91,10 @@ def test_a_placement_never_names_an_entity_the_player_has_not_met() -> None:
     ledger = held.world.require_kind(EntityId("ledger"), "item")
     held = with_entity(held, updated(ledger, parent_id="hidden-actor"))
 
-    scene = _engine().scene(held)
-    visible = VisibleScene.revealed_from(scene, held.world)
+    narrator = _engine().views(held).narrator
 
     assert "held by The Secret" in _directed(held, "I look around.")
-    assert "The Secret" not in str(visible.sections)
+    assert "The Secret" not in str(narrator.sections)
 
 
 def test_the_director_is_shown_authored_detail() -> None:
@@ -117,10 +113,9 @@ def test_the_director_is_shown_authored_detail() -> None:
 
 def test_narrator_prompt_names_only_ids_of_entities_the_player_has_met() -> None:
     held = state()
-    scene = VisibleScene.revealed_from(_engine().scene(held), held.world)
 
     prompt = render_narrator(
-        scene,
+        _engine().views(held).narrator,
         held.scenario,
         evidence="- the map was found",
         prompt="What does Mara say?",

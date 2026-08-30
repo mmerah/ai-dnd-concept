@@ -50,8 +50,10 @@ class DecisionOption(Frozen):
 
 
 class PendingOption(DecisionOption):
-    name: str
-    args: dict[str, JsonValue]
+    """The frozen tool call an engine plays this option by, empty when its `answer` reads the id."""
+
+    name: str = ""
+    args: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class PendingDecision(Frozen):

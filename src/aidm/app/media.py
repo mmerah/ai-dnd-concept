@@ -10,9 +10,7 @@ from httpx import AsyncClient
 from pydantic import BaseModel, ConfigDict
 
 from aidm.config import MediaConfig, ProviderConfig
-from aidm.state.entities import Entity, EntityId
-from aidm.state.model import Game
-from aidm.state.scene import VisibleScene
+from aidm.kernel.views import ArtSubject, NarratorView, Views
 
 LOGGER = logging.getLogger(__name__)
 
@@ -21,13 +19,13 @@ SUFFIXES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
 _FILENAME_SAFE = re.compile(r"[a-z0-9_-]+")
 
 
-def scene_key(scene: VisibleScene) -> str:
+def scene_key(scene: NarratorView) -> str:
     """The engine's own key, hashed because it names a file and an id may not be safe as one."""
     return sha1(scene.key.encode(), usedforsecurity=False).hexdigest()[:12]
 
 
 def illustration_request(
-    scene: VisibleScene, narration: str, style: str, referenced: Sequence[str] = ()
+    scene: NarratorView, narration: str, style: str, referenced: Sequence[str] = ()
 ) -> str:
     lines = [
         "Draw one wide, borderless view of this place from the eye level of someone there. "
@@ -46,9 +44,9 @@ def illustration_request(
     return "\n".join(lines)
 
 
-def icon_request(entity: Entity, style: str) -> str:
+def icon_request(subject: ArtSubject, style: str) -> str:
     return (
-        f"Draw a borderless portrait token of {entity.name} — {entity.brief}. "
+        f"Draw a borderless portrait token of {subject.name} — {subject.brief}. "
         f"Centre the subject alone, filling the square on a plain background. "
         f"Include only props they carry. {style}"
     )
@@ -71,14 +69,14 @@ class Illustrator:
     style: str
     generating: set[str] = field(default_factory=set)
 
-    def scene_art(self, scene: VisibleScene) -> Path | None:
+    def scene_art(self, scene: NarratorView) -> Path | None:
         return _existing(self.saves, scene_key(scene))
 
-    def scene_pending(self, scene: VisibleScene) -> bool:
+    def scene_pending(self, scene: NarratorView) -> bool:
         """Only in-flight scenes wait; missing inactive scenes have failed."""
         return scene_key(scene) in self.generating
 
-    def icon(self, entity_id: EntityId) -> Path | None:
+    def icon(self, entity_id: str) -> Path | None:
         """What the chat shows as an avatar: a cached icon only, never a generation."""
         if _FILENAME_SAFE.fullmatch(entity_id) is None:
             LOGGER.warning("entity id %r cannot name a file; no icon", entity_id)
@@ -96,24 +94,23 @@ class Illustrator:
         self.generating.add(key)
         return True
 
-    async def illustrate(self, state: Game, scene: VisibleScene, narration: str) -> None:
-        key = scene_key(scene)
+    async def illustrate(self, views: Views, narration: str) -> None:
+        key = scene_key(views.narrator)
         drawing = _existing(self.saves, key) is None and self._claim(key)
         # The chat avatar wants the player's icon even when this scene's art is already cached.
-        _ = await self._drawn_icon(state.player)
+        _ = await self._drawn_icon(views.player.player)
         if not drawing:
             return
         try:
-            await self._draw(state, scene, key, narration)
+            await self._draw(views.narrator, key, narration)
         finally:
             self.generating.discard(key)
 
-    async def _draw(self, state: Game, scene: VisibleScene, key: str, narration: str) -> None:
-        subjects = [state.world.require(one) for one in scene.art_subject_ids]
+    async def _draw(self, scene: NarratorView, key: str, narration: str) -> None:
         icons = {
-            entity.name: icon
-            for entity in subjects[: self.config.max_references]
-            if (icon := await self._drawn_icon(entity)) is not None
+            subject.name: icon
+            for subject in scene.subjects[: self.config.max_references]
+            if (icon := await self._drawn_icon(subject)) is not None
         }
         generated = await self._generate(
             illustration_request(scene, narration, self.style, tuple(icons)),
@@ -123,28 +120,28 @@ class Illustrator:
         if generated is not None:
             _write(self.saves / f"{key}{generated.suffix}", generated.data)
 
-    async def _drawn_icon(self, entity: Entity) -> Path | None:
+    async def _drawn_icon(self, subject: ArtSubject) -> Path | None:
         """The cached icon, or one drawn now and kept; a loser of the race goes without."""
-        found = self.icon(entity.id)
+        found = self.icon(subject.id)
         if found is not None:
             return found
         # `icon` cannot tell an unsafe id from a missing file, so generation is guarded again.
-        if _FILENAME_SAFE.fullmatch(entity.id) is None:
+        if _FILENAME_SAFE.fullmatch(subject.id) is None:
             return None
         # An entity id is `[a-z0-9_-]+`, so the colon keeps icon claims off the scene keys.
-        claim = f"icon:{entity.id}"
+        claim = f"icon:{subject.id}"
         if not self._claim(claim):
             return None
         try:
             generated = await self._generate(
-                icon_request(entity, self.style), self.config.icon_ratio
+                icon_request(subject, self.style), self.config.icon_ratio
             )
         finally:
             self.generating.discard(claim)
         if generated is None:
             return None
         # Authored directories stay authored: a drawn icon is the save's own.
-        path = self.saves / ICON_DIR / f"{entity.id}{generated.suffix}"
+        path = self.saves / ICON_DIR / f"{subject.id}{generated.suffix}"
         _write(path, generated.data)
         return path
 

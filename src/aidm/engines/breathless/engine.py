@@ -5,7 +5,6 @@ from pathlib import Path
 from pydantic import JsonValue
 
 from aidm.content.io import engine_text
-from aidm.content.model import Character, CharacterPayload
 from aidm.engines.breathless.rules import (
     CARRY_LIMIT,
     DIE_FLOOR,
@@ -48,7 +47,7 @@ from aidm.engines.core import (
 )
 from aidm.state.creation import CreationStep, Picks, check_picks, picked
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, slug
-from aidm.state.model import Game
+from aidm.state.model import Character, CharacterPayload, Game
 from aidm.state.tools import director_tool
 from aidm.world.authoring import rooms_brief, rooms_growth_due
 from aidm.world.scene import rooms_scene

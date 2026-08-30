@@ -1,8 +1,12 @@
+from dataclasses import replace
+
 import pytest
 from core_test_support import initialized
 
+from aidm.engines.core import Engine
 from aidm.state.entities import PLAYER_ID, CheckedEntityId, EntityId
-from aidm.state.scene import Scene, VisibleScene
+from aidm.state.model import Game
+from aidm.state.scene import Scene
 
 HIDDEN = EntityId("vault")
 
@@ -24,8 +28,16 @@ def _scene(
     )
 
 
-def test_revealed_from_refuses_an_unknown_id_in_any_set() -> None:
-    _, state = initialized()
+def _staged(engine: Engine, scene: Scene) -> Engine:
+    def build(state: Game) -> Scene:
+        del state
+        return scene
+
+    return replace(engine, scene=build)
+
+
+def test_views_refuse_an_unknown_id_in_any_set() -> None:
+    engine, state = initialized()
     assert not state.world.require(HIDDEN).known
     unmet = (
         _scene(public=frozenset({HIDDEN})),
@@ -34,12 +46,12 @@ def test_revealed_from_refuses_an_unknown_id_in_any_set() -> None:
     )
     for scene in unmet:
         with pytest.raises(ValueError, match="has not met"):
-            _ = VisibleScene.revealed_from(scene, state.world)
+            _ = _staged(engine, scene).views(state)
     with pytest.raises(ValueError, match="does not hold"):
-        _ = VisibleScene.revealed_from(_scene(public=frozenset({EntityId("nobody")})), state.world)
+        _ = _staged(engine, _scene(public=frozenset({EntityId("nobody")}))).views(state)
 
 
-def test_revealed_from_drops_director_text() -> None:
-    _, state = initialized()
-    visible = VisibleScene.revealed_from(_scene(present=frozenset({PLAYER_ID})), state.world)
-    assert visible.sections == (("PLAYER", "Kael stands here."),)
+def test_the_narrator_view_drops_director_text() -> None:
+    engine, state = initialized()
+    narrator = _staged(engine, _scene(present=frozenset({PLAYER_ID}))).views(state).narrator
+    assert narrator.sections == (("PLAYER", "Kael stands here."),)

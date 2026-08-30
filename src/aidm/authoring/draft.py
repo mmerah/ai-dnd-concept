@@ -9,11 +9,19 @@ from pypdf import PdfReader
 
 from aidm.config import Settings
 from aidm.content.io import load_character, source_file, write_scenario
-from aidm.content.model import AuthoringBrief, Character, Scenario, ScenarioPayload
+from aidm.content.model import AuthoringBrief
 from aidm.engines.core import Engine
 from aidm.engines.registry import begin_game
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Mutable, Slug
-from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
+from aidm.state.model import (
+    Character,
+    Game,
+    Scenario,
+    ScenarioMeta,
+    ScenarioPayload,
+    Thread,
+    WorldState,
+)
 from aidm.world.topology import player_location
 
 

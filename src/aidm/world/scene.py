@@ -1,7 +1,7 @@
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 
 from aidm.state.entities import Entity, EntityId, Exit, Trait, kind_word
-from aidm.state.model import Game, WorldState
+from aidm.state.model import Game, Thread, WorldState
 from aidm.state.scene import Scene
 from aidm.world.topology import children, location_of, player_location
 
@@ -9,6 +9,16 @@ type EntityText = Callable[[Entity], str]
 # One parse of the mechanics blob per scene, closed over by the renderer it returns.
 type Describer = Callable[[Game], EntityText]
 type DirectorSections = Callable[[Game], tuple[tuple[str, str], ...]]
+
+
+def _threads(threads: Iterable[Thread]) -> str:
+    active = sorted((one for one in threads if one.status != "resolved"), key=lambda one: one.title)
+    return "\n".join(_thread_line(one) for one in active) or "- (none)"
+
+
+def _thread_line(thread: Thread) -> str:
+    line = f"- {thread.title}[{thread.id}] — status {thread.status}"
+    return f"{line}\n  note: {thread.note}" if thread.note else line
 
 
 def label(entity: Entity) -> str:
@@ -185,7 +195,11 @@ def rooms_scene(describer: Describer, engine_sections: DirectorSections) -> Call
             label=location.name,
             summary=location.brief,
             sections=tuple((title, text) for title, text in shown_blocks if text),
-            director_sections=(*blocks(shown=False), *engine_sections(state)),
+            director_sections=(
+                *blocks(shown=False),
+                *engine_sections(state),
+                ("ACTIVE THREADS", _threads(world.threads.values())),
+            ),
             public_entity_ids=frozenset(
                 {player.id, location.id}
                 | {one.id for one in (*inventory, *here, *elsewhere, *found)}

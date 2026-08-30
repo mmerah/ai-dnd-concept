@@ -124,7 +124,7 @@ def _opened(tmp_path: Path, engine: str, growth_frontier: int = 1) -> Harness:
 
 def _offering(harness: Harness) -> None:
     session = harness.opened()
-    session.engine = replace(session.engine, player_actions=(CATCH_BREATH,))
+    session.engine = replace(session.legacy, player_actions=(CATCH_BREATH,))
 
 
 def _growing(tmp_path: Path) -> Harness:

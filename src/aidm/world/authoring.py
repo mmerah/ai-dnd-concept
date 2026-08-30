@@ -5,10 +5,10 @@ from random import Random
 from pydantic import Field, JsonValue
 
 from aidm.content.io import engine_text
-from aidm.content.model import AuthoringBrief, AuthoringTool, Scenario
+from aidm.content.model import AuthoringBrief, AuthoringTool
 from aidm.state.entities import Entity, EntityId, Exit, Frozen
 from aidm.state.facts import Fact
-from aidm.state.model import Game, Mechanics, MechanicsPatch, Thread, WorldState
+from aidm.state.model import Game, Mechanics, MechanicsPatch, Scenario, Thread, WorldState
 from aidm.state.tools import Play
 from aidm.world.topology import frontier, walk
 

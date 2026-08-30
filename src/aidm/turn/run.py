@@ -17,12 +17,12 @@ from pydantic_ai.toolsets import FunctionToolset
 from pydantic_ai.usage import UsageLimits
 
 from aidm.config import Settings
-from aidm.engines.core import Engine
+from aidm.kernel.protocol import AnyEngine
+from aidm.kernel.views import NarratorView, speaker_of
 from aidm.llm import build_agent, schema_of
 from aidm.state.facts import NOTHING, Fact, cards, told_traces, traced
 from aidm.state.model import Game, draft_refusal
 from aidm.state.play import Answer, Exchange, Line, Narration, Speaker, SpokenLine
-from aidm.state.scene import VisibleScene
 from aidm.state.tools import DirectorTool, Play, apply_to_draft
 
 from . import context
@@ -34,7 +34,7 @@ RULES_WAIT = "the rules now wait on the player's decision"
 class Turn:
     """One player input to the next hand-back; the draft is the only state that moves."""
 
-    engine: Engine
+    engine: AnyEngine
     draft: Game
     rng: Random
     # Receives the draft: builtin passes a no-op and commits once, code mode saves per call.
@@ -47,20 +47,23 @@ class Turn:
     resumed: str = ""
     notes: tuple[str, ...] = ()
     # Captured before the answer resolves: succession must not rename the prompt just played.
-    speaker: Speaker | None = None
+    speaker: Speaker
 
     @classmethod
     def begin(
         cls,
-        engine: Engine,
+        engine: AnyEngine,
         state: Game,
         player_input: str | Answer,
         rng: Random,
         commit: Callable[[Game], None],
         on_fact: Callable[[Fact], None] | None = None,
     ) -> Self:
-        turn = cls(engine=engine, draft=state.draft(), rng=rng, commit=commit, on_fact=on_fact)
-        turn.speaker = turn.draft.player_speaker()
+        draft = state.draft()
+        speaker = speaker_of(engine.views(draft).player.player)
+        turn = cls(
+            engine=engine, draft=draft, rng=rng, commit=commit, on_fact=on_fact, speaker=speaker
+        )
         turn.prompt, turn.resumed = consume_answer(turn, player_input)
         turn.notes = turn.draft.take_notes()
         turn.suspended_at_start = turn.draft.pending is not None
@@ -78,9 +81,8 @@ class Turn:
     def picture(self) -> str:
         draft = self.draft
         return context.render_director(
-            self.engine.scene(draft),
+            self.engine.views(draft).director.sections,
             draft.scenario,
-            context.active_threads(draft.world.threads.values()),
             self.prompt,
             resumed=self.resumed,
             notes=(*self.notes, *draft.notes),
@@ -88,8 +90,8 @@ class Turn:
 
     def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
         """The one gate: a decision on the table blocks everything but developing its answer."""
-        found = self.engine.tool(name)
-        if found is None or found not in self.engine.tools:
+        found = next((one for one in self.engine.tools if one.name == name), None)
+        if found is None:
             raise ValueError(f"{name!r} is not a tool of the {self.engine.id!r} engine.")
         pending = self.draft.pending
         if pending is not None and not (found.during_suspension and self.suspended_at_start):
@@ -116,10 +118,10 @@ class Turn:
 
     def finish(self, lines: tuple[Line, ...]) -> Game:
         return close_segment(
-            self.engine.scene(self.draft).label,
+            self.engine.views(self.draft).narrator,
             self.draft,
             self.prompt,
-            self.speaker or self.draft.player_speaker(),
+            self.speaker,
             lines,
             tuple(self.facts),
         )
@@ -166,18 +168,18 @@ def as_tool(found: DirectorTool) -> Tool[Turn]:
     )
 
 
-def director_toolset(engine: Engine) -> FunctionToolset[Turn]:
+def director_toolset(engine: AnyEngine) -> FunctionToolset[Turn]:
     return FunctionToolset(tools=[as_tool(one) for one in engine.tools], max_retries=2)
 
 
 @dataclass(frozen=True, slots=True)
 class TurnAgents:
     director: Agent[Turn, str]
-    narrator: Agent[VisibleScene, Narration]
+    narrator: Agent[NarratorView, Narration]
 
 
 def director_agent(
-    engine: Engine,
+    engine: AnyEngine,
     settings: Settings,
 ) -> Agent[Turn, str]:
     """Everything that happens this turn happens through a tool; the closing text only traces."""
@@ -191,13 +193,14 @@ def director_agent(
     )
 
 
-def speakers_refusal(scene: VisibleScene, lines: Sequence[Line]) -> str | None:
+def speakers_refusal(view: NarratorView, lines: Sequence[Line]) -> str | None:
     """Only the player or someone here with them speaks; the leak rule holds by check, not trust."""
+    here = {one.id for one in view.speakers}
     strangers = sorted(
         {
             line.speaker_id
             for line in lines
-            if line.speaker_id is not None and line.speaker_id not in scene.present_entity_ids
+            if line.speaker_id is not None and line.speaker_id not in here
         }
     )
     if not strangers:
@@ -208,8 +211,8 @@ def speakers_refusal(scene: VisibleScene, lines: Sequence[Line]) -> str | None:
     )
 
 
-def narrator_agent(settings: Settings) -> Agent[VisibleScene, Narration]:
-    def attributed(ctx: RunContext[VisibleScene], narration: Narration) -> Narration:
+def narrator_agent(settings: Settings) -> Agent[NarratorView, Narration]:
+    def attributed(ctx: RunContext[NarratorView], narration: Narration) -> Narration:
         if not narration.text:
             raise ModelRetry("write the narration lines: an empty answer shows the player nothing.")
         if refused := speakers_refusal(ctx.deps, narration.lines):
@@ -221,12 +224,12 @@ def narrator_agent(settings: Settings) -> Agent[VisibleScene, Narration]:
         settings,
         instructions=context.NARRATOR,
         output_type=NativeOutput(Narration),
-        deps_type=VisibleScene,
+        deps_type=NarratorView,
         validator=attributed,
     )
 
 
-def build_turn_agents(engine: Engine, settings: Settings) -> TurnAgents:
+def build_turn_agents(engine: AnyEngine, settings: Settings) -> TurnAgents:
     return TurnAgents(director=director_agent(engine, settings), narrator=narrator_agent(settings))
 
 
@@ -262,7 +265,7 @@ async def run_segment(
         if on_step is not None:
             on_step(step)
 
-    engine, draft, prompt = turn.engine, turn.draft, turn.prompt
+    draft, prompt = turn.draft, turn.prompt
     history = exchanges_to_messages(draft.history[-settings.turn.recent_exchanges :])
 
     announce("director")
@@ -278,35 +281,38 @@ async def run_segment(
     lines: tuple[Line, ...] = ()
     if draft.pending is None or told_traces(facts):
         announce("narrator")
-        visible = VisibleScene.revealed_from(engine.scene(draft), draft.world)
+        view = turn.engine.views(draft).narrator
         narrator_prompt = context.render_narrator(
-            visible,
+            view,
             draft.scenario,
             evidence=traced(facts, told_only=True),
             prompt=prompt,
         )
         narration = (
-            await stages.narrator.run(narrator_prompt, deps=visible, message_history=history)
+            await stages.narrator.run(narrator_prompt, deps=view, message_history=history)
         ).output
         lines = narration.lines
 
     return lines
 
 
-def spoken(state: Game, lines: Sequence[Line]) -> tuple[SpokenLine, ...]:
+def spoken(view: NarratorView, lines: Sequence[Line]) -> tuple[SpokenLine, ...]:
     """Attribution is denormalized here, so chat and journal never resolve ids through state."""
+    here = {one.id: one for one in view.speakers}
 
     def one(line: Line) -> SpokenLine:
         if line.speaker_id is None:
             return SpokenLine(text=line.text)
-        who = state.world.require(line.speaker_id)
-        return SpokenLine(speaker=Speaker(name=who.name, id=who.id), text=line.text)
+        who = here.get(line.speaker_id)
+        if who is None:
+            raise ValueError(f"nobody here has id {line.speaker_id!r}")
+        return SpokenLine(speaker=who, text=line.text)
 
     return tuple(one(line) for line in lines)
 
 
 def close_segment(
-    scene_label: str,
+    view: NarratorView,
     draft: Game,
     prompt: str,
     speaker: Speaker,
@@ -314,7 +320,7 @@ def close_segment(
     facts: tuple[Fact, ...],
 ) -> Game:
     """The one place a segment becomes history: builtin and code mode differ only in when."""
-    draft.record(scene_label, prompt, speaker, spoken(draft, lines), facts)
+    draft.record(view.label, prompt, speaker, spoken(view, lines), facts)
     draft.turn += 1
     return draft.committed()
 
@@ -347,11 +353,8 @@ def consume_answer(turn: Turn, player_input: str | Answer) -> tuple[str, str]:
     option = next((one for one in consumed.options if one.id == chosen), None)
     if option is None:
         raise ValueError(f"the {consumed.kind!r} decision offers no option {chosen!r}")
-    found = engine.tool(option.name)
-    if found is None:
-        raise ValueError(f"the {engine.id!r} engine has no tool {option.name!r}")
     # A refusal raises: the engine enumerated the option, so it is never model error.
-    landed = _apply(turn, lambda copy, dice: found.call(copy, option.args, dice))
+    landed = _apply(turn, lambda copy, dice: engine.answer(copy, option, dice))
     traces = traced(landed)
     # A resume that re-suspended has no tool answer to carry the wait, so the prompt says it.
     if draft.pending is not None:

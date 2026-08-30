@@ -1,5 +1,5 @@
 from aidm.state.entities import Frozen
-from aidm.state.play import DecisionOption
+from aidm.state.play import DecisionOption, Speaker
 
 
 class ArtSubject(Frozen):
@@ -24,12 +24,16 @@ class DirectorView(Frozen):
 class NarratorView(Frozen):
     """The Narrator's input type: it has no field that can hold hidden canon."""
 
+    # Scene identity, as the art cache names it.
+    key: str
     label: str
     summary: str
     sections: tuple[tuple[str, str], ...]
     prompts: tuple[tuple[str, str], ...]
     art_prompt: str
     subjects: tuple[ArtSubject, ...]
+    # The player and everyone present who may speak; nobody else can be attributed a line.
+    speakers: tuple[Speaker, ...]
 
 
 class PlayerView(Frozen):
@@ -43,6 +47,10 @@ class Views(Frozen):
     director: DirectorView
     narrator: NarratorView
     player: PlayerView
+
+
+def speaker_of(subject: ArtSubject) -> Speaker:
+    return Speaker(name=subject.name, id=subject.id)
 
 
 class CreationPreview(Frozen):

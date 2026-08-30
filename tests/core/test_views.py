@@ -2,7 +2,6 @@ from core_test_support import ENGINES_BUILT, LONER3E
 
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit, Kind
 from aidm.state.model import Game, ScenarioMeta, Thread, WorldPayload, WorldState
-from aidm.state.scene import VisibleScene
 
 
 def _entity(entity_id: str, kind: Kind, name: str, brief: str, **fields: object) -> Entity:
@@ -55,9 +54,7 @@ def test_the_player_scene_holds_no_unrevealed_entity_or_unknown_exit() -> None:
     engine = ENGINES_BUILT[LONER3E]
     held = state()
 
-    scene = VisibleScene.revealed_from(engine.scene(held), held.world)
-
-    shown = str(scene.model_dump())
+    shown = str(engine.views(held).narrator.model_dump())
     assert "The Secret" not in shown
     assert "crypt" not in shown
     assert "Mara" in shown

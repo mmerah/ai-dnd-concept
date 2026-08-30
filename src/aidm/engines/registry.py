@@ -2,10 +2,10 @@ from collections.abc import Callable, Mapping
 from importlib import import_module
 from pathlib import Path
 
-from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine
-from aidm.state.entities import PLAYER_ID, EngineId, Entity, Slug
-from aidm.state.model import Game, WorldPayload
+from aidm.kernel.protocol import AnyEngine
+from aidm.state.entities import EngineId, Slug
+from aidm.state.model import Character, Game, Scenario
 
 # A new engine registers by existing; its folder name is the id its `build` must declare.
 ENGINES: Mapping[EngineId, Callable[[Path], Engine]] = {
@@ -24,7 +24,9 @@ def build_engines(packs_dir: Path) -> dict[EngineId, Engine]:
     return built
 
 
-def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character: Character) -> Game:
+def begin_game(
+    engine: AnyEngine, scenario_id: Slug, scenario: Scenario, character: Character
+) -> Game:
     if scenario.engine != engine.id:
         raise ValueError(
             f"{scenario_id!r} is authored for the {scenario.engine!r} rules, "
@@ -35,22 +37,6 @@ def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character:
             f"{character.id!r} is written for the {character.engine!r} rules, "
             f"which the {engine.id!r} engine does not play"
         )
-    world = scenario.world.model_copy(deep=True)
-    player = Entity(
-        id=PLAYER_ID,
-        kind="actor",
-        name=character.name,
-        brief=character.brief,
-        known=True,
-        parent_id=scenario.player_parent_id,
-        traits=list(character.traits),
-    )
-    items = tuple(character.items)
-    world.mechanics = engine.mechanics_patch(world.mechanics, character.mechanics, ())
-    for entity in (*items, player):
-        if entity.id in world.entities:
-            raise ValueError(f"authored entity id {entity.id!r} appears twice")
-        world.entities[entity.id] = entity
     state = Game(
         scenario_id=scenario_id,
         character_id=character.id,
@@ -58,7 +44,7 @@ def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character:
         engine=engine.id,
         packs=scenario.packs,
         turn_facts=(),
-        payload=WorldPayload(player_id=PLAYER_ID, world=world),
+        payload=engine.new_game(scenario, character),
     )
     engine.validate(state)
     return state.committed()

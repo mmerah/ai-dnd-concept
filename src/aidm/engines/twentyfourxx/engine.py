@@ -6,7 +6,6 @@ from random import Random
 from pydantic import Field, JsonValue
 
 from aidm.content.io import engine_text
-from aidm.content.model import Character, CharacterPayload
 from aidm.engines.core import (
     ADVANCE_SPENT,
     Engine,
@@ -61,7 +60,7 @@ from aidm.state.entities import (
     slug,
 )
 from aidm.state.facts import Fact, entity_fact, roll
-from aidm.state.model import Game
+from aidm.state.model import Character, CharacterPayload, Game
 from aidm.state.play import DecisionOption
 from aidm.state.tools import DirectorTool, NoArgs, director_tool
 from aidm.world.authoring import rooms_brief, rooms_growth_due

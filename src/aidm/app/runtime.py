@@ -10,15 +10,14 @@ from pydantic import JsonValue
 from aidm.authoring.run import growth_run
 from aidm.config import Settings, load_settings
 from aidm.content.io import FileStore, load_character, scenario_envelope, scenario_of
-from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine, PlayerAction, offered, play_action, transact
 from aidm.engines.registry import begin_game, build_engines
-from aidm.kernel.views import Views
+from aidm.kernel.protocol import AnyEngine
+from aidm.kernel.views import NarratorView, Views
 from aidm.state.entities import EngineId, EntityId, Slug
 from aidm.state.facts import Fact, traced
-from aidm.state.model import Game
+from aidm.state.model import Character, Game, Scenario
 from aidm.state.play import Answer, Line
-from aidm.state.scene import VisibleScene
 from aidm.state.tools import Play
 from aidm.turn.run import Turn, TurnAgents, TurnStep, build_turn_agents, run_segment
 
@@ -54,7 +53,7 @@ class GameService:
     target: LaunchTarget
     scenario: Scenario
     character: Character
-    engine: Engine
+    engine: AnyEngine
     stages: TurnAgents | None
     store: FileStore
     settings: Settings
@@ -114,19 +113,26 @@ class GameService:
                 on_step("scenario_creator")
             await self._extend()
 
+    @property
+    def legacy(self) -> Engine:
+        """Growth and player actions still live on the rooms dataclass until the Phase-3 port."""
+        if not isinstance(self.engine, Engine):
+            raise ValueError(f"the {self.engine.id!r} engine is not the rooms dataclass")
+        return self.engine
+
     def offers(self) -> tuple[tuple[PlayerAction, str, dict[str, JsonValue]], ...]:
-        return offered(self.engine, self.state)
+        return offered(self.legacy, self.state)
 
     def act(self, name: Slug, raw: Mapping[str, JsonValue]) -> tuple[Fact, ...]:
-        state, facts = play_action(self.engine, self.state, name, raw, self.rng)
+        state, facts = play_action(self.legacy, self.state, name, raw, self.rng)
         self.commit(state)
         return facts
 
     def view(self) -> Views:
         return self.engine.views(self.state)
 
-    def scene(self) -> VisibleScene:
-        return VisibleScene.revealed_from(self.engine.scene(self.state), self.state.world)
+    def scene(self) -> NarratorView:
+        return self.view().narrator
 
     def scene_art(self) -> Path | None:
         return None if self.media is None else self.media.scene_art(self.scene())
@@ -145,7 +151,7 @@ class GameService:
         """Retain background tasks because asyncio may collect unreferenced tasks early."""
         if self.media is None:
             return
-        task = create_task(self.media.illustrate(self.state, self.scene(), narration))
+        task = create_task(self.media.illustrate(self.view(), narration))
         self._illustrations.add(task)
         task.add_done_callback(self._illustrations.discard)
 
@@ -173,14 +179,14 @@ class GameService:
         return True
 
     def growth_due(self) -> bool:
-        return self.scenario.grows and self.engine.growth_due(
+        return self.scenario.grows and self.legacy.growth_due(
             self.state, self.settings.authoring.growth_frontier
         )
 
     async def _extend(self) -> None:
         """A failure only logs: growth is a bonus, and it retries on the next thin turn."""
         try:
-            run = growth_run(self.settings, self.engine, self.character, self.state)
+            run = growth_run(self.settings, self.legacy, self.character, self.state)
             _ = await run.send(run.opening_prompt)
             _ = self.apply_growth(run.play())
         except Exception:

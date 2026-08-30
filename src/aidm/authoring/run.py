@@ -24,11 +24,11 @@ from aidm.authoring.draft import (
 )
 from aidm.config import Settings
 from aidm.content.io import engine_text, read_scenarios
-from aidm.content.model import AuthoringBrief, AuthoringTool, Character
+from aidm.content.model import AuthoringBrief, AuthoringTool
 from aidm.engines.core import Engine, mechanics_delta
 from aidm.llm import build_agent, schema_of
 from aidm.state.entities import Slug
-from aidm.state.model import Game
+from aidm.state.model import Character, Game
 from aidm.state.tools import Play
 from aidm.world.authoring import diff
 

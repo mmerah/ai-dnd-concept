@@ -114,8 +114,8 @@ def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_pat
 
     unmet = scenario_refusal(
         draft,
-        PlaytestCheck(engine=game.engine, character=game.character, packs=("srd",)),
-        game.engine.authoring_brief(("srd",), game.state.world, False),
+        PlaytestCheck(engine=game.legacy, character=game.character, packs=("srd",)),
+        game.legacy.authoring_brief(("srd",), game.state.world, False),
     )
     assert isinstance(unmet, str)
     assert "location" in unmet
@@ -146,7 +146,7 @@ async def test_a_thin_world_grows_inside_the_turn_that_ran_it_thin(
     assert _CRYPT_ID in game.engine.restored(saved).world.entities
 
     assert (SCENARIOS / "whispering-vault" / "world.json").read_bytes() == authored
-    assert "ADVANCES OWED" in dict(game.engine.scene(game.state).director_sections)
+    assert "ADVANCES OWED" in dict(game.view().director.sections)
 
 
 async def test_a_world_with_doors_left_to_find_grows_nothing(
@@ -169,7 +169,7 @@ def test_a_grown_world_is_briefed_with_its_sheets_and_refused_until_it_hangs_tog
 ) -> None:
     """The loop converges only if the briefing shows the shape the refusal asks for."""
     game = _grown(tmp_path)
-    run = growth_run(game.settings, game.engine, game.character, game.state)
+    run = growth_run(game.settings, game.legacy, game.character, game.state)
     instructions = briefing(run, "finish_growth")
     assert "content packs: srd" in instructions
     assert '"concept": "A Wary Relic-Hunter"' in instructions
@@ -181,7 +181,7 @@ def test_a_grown_world_is_briefed_with_its_sheets_and_refused_until_it_hangs_tog
             entities=(updated(_crypt(), exits=[]), _warden()),
             mechanics={"sheets": {_WARDEN_ID: {"concept": "A Bone Warden"}}},
         ),
-        game.engine,
+        game.legacy,
     )
 
     refused = run.refusal()

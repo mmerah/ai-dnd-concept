@@ -4,6 +4,7 @@ import pytest
 from core_test_support import initialized, loner_sheet
 
 from aidm.engines.core import Engine
+from aidm.kernel.views import speaker_of
 from aidm.state.entities import DEAD, PLAYER_ID, EntityId
 from aidm.state.model import Game
 from aidm.state.play import Answer, Line
@@ -20,12 +21,14 @@ def _died(engine: Engine, state: Game, *, companion: bool) -> Game:
     if companion:
         _ = actions.join_party(draft, MARA)
     _ = actions.kill(draft, draft.player_id, engine.validate)
-    speaker = draft.player_speaker()
-    return close_segment(engine.scene(draft).label, draft, "I open the vault.", speaker, FELL, ())
+    views = engine.views(draft)
+    speaker = speaker_of(views.player.player)
+    return close_segment(views.narrator, draft, "I open the vault.", speaker, FELL, ())
 
 
 def _turn(engine: Engine, draft: Game) -> Turn:
-    return Turn(engine=engine, draft=draft, rng=Random(0), commit=lambda _: None)
+    speaker = speaker_of(engine.views(draft).player.player)
+    return Turn(engine=engine, draft=draft, rng=Random(0), commit=lambda _: None, speaker=speaker)
 
 
 def _answered(engine: Engine, state: Game, option_id: str) -> Game:

@@ -10,7 +10,7 @@ from typing import Protocol
 from pydantic import BaseModel, JsonValue, ValidationError
 
 from aidm.content.io import ENCODING
-from aidm.content.model import AuthoringBrief, Character, CharacterPayload, ScenarioPayload
+from aidm.content.model import AuthoringBrief
 from aidm.kernel.envelope import CharacterEnvelope, SaveEnvelope
 from aidm.kernel.views import (
     ArtSubject,
@@ -20,9 +20,11 @@ from aidm.kernel.views import (
     PlayerPrompt,
     PlayerView,
     Views,
+    speaker_of,
 )
 from aidm.state.creation import CreationStep, Picks, picked
 from aidm.state.entities import (
+    PLAYER_ID,
     Counter,
     EngineId,
     Entity,
@@ -31,9 +33,19 @@ from aidm.state.entities import (
     require_unique,
 )
 from aidm.state.facts import DiceEvent, Fact, entity_fact, roll, told_traces
-from aidm.state.model import Game, Mechanics, MechanicsPatch, WorldPayload, WorldState
+from aidm.state.model import (
+    Character,
+    CharacterPayload,
+    Game,
+    Mechanics,
+    MechanicsPatch,
+    Scenario,
+    ScenarioPayload,
+    WorldPayload,
+    WorldState,
+)
 from aidm.state.play import DecisionOption, PendingDecision, PendingOption, SpokenLine
-from aidm.state.scene import Scene, VisibleScene
+from aidm.state.scene import Scene
 from aidm.state.tools import DirectorTool, Validate, transact
 
 type EntityRenderer = Callable[[Entity], str]
@@ -347,6 +359,13 @@ class Engine:
     def tool(self, name: str) -> DirectorTool | None:
         return next((one for one in (*self.tools, *self.resolvers) if one.name == name), None)
 
+    def _required_tool(self, name: str, *, option_id: str | None = None) -> DirectorTool:
+        found = self.tool(name)
+        if found is None:
+            playing = f" to play option {option_id!r}" if option_id is not None else ""
+            raise ValueError(f"the {self.id!r} engine has no tool {name!r}{playing}")
+        return found
+
     def restored(self, raw: str) -> Game:
         envelope = SaveEnvelope.model_validate_json(raw)
         if envelope.engine != self.id:
@@ -355,19 +374,20 @@ class Engine:
         state = Game.model_validate(envelope.model_dump() | {"payload": payload})
         if state.pending is not None:
             for option in state.pending.options:
-                found = self.tool(option.name)
-                if found is None:
-                    raise ValueError(
-                        f"the {self.id!r} engine has no tool {option.name!r} to play "
-                        f"option {option.id!r}"
-                    )
+                found = self._required_tool(option.name, option_id=option.id)
                 _ = found.args.model_validate(option.args)
         self.validate(state)
         return state
 
     def views(self, state: Game) -> Views:
         scene = self.scene(state)
-        visible = VisibleScene.revealed_from(scene, state.world)
+        named = scene.public_entity_ids | scene.present_entity_ids | set(scene.art_subject_ids)
+        for entity_id in sorted(named):
+            entity = state.world.find(entity_id)
+            if entity is None:
+                raise ValueError(f"the scene names {entity_id!r}, which the world does not hold")
+            if not entity.known:
+                raise ValueError(f"the scene names {entity_id!r}, whom the player has not met")
 
         def subject(entity_id: EntityId) -> ArtSubject:
             entity = state.world.require(entity_id)
@@ -377,12 +397,16 @@ class Engine:
         return Views(
             director=DirectorView(sections=scene.director_sections),
             narrator=NarratorView(
-                label=visible.label,
-                summary=visible.summary,
-                sections=visible.sections,
-                prompts=visible.prompts,
-                art_prompt=visible.art_prompt,
-                subjects=tuple(subject(one) for one in visible.art_subject_ids),
+                key=scene.key,
+                label=scene.label,
+                summary=scene.summary,
+                sections=scene.sections,
+                prompts=scene.prompts,
+                art_prompt=scene.art_prompt,
+                subjects=tuple(subject(one) for one in scene.art_subject_ids),
+                speakers=tuple(
+                    speaker_of(subject(one)) for one in sorted(scene.present_entity_ids)
+                ),
             ),
             player=PlayerView(
                 player=subject(state.player_id),
@@ -398,6 +422,27 @@ class Engine:
                 ),
             ),
         )
+
+    def new_game(self, scenario: Scenario, character: Character) -> WorldPayload:
+        world = scenario.world.model_copy(deep=True)
+        player = Entity(
+            id=PLAYER_ID,
+            kind="actor",
+            name=character.name,
+            brief=character.brief,
+            known=True,
+            parent_id=scenario.player_parent_id,
+            traits=list(character.traits),
+        )
+        world.mechanics = self.mechanics_patch(world.mechanics, character.mechanics, ())
+        for entity in (*character.items, player):
+            if entity.id in world.entities:
+                raise ValueError(f"authored entity id {entity.id!r} appears twice")
+            world.entities[entity.id] = entity
+        return WorldPayload(player_id=PLAYER_ID, world=world)
+
+    def answer(self, draft: Game, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
+        return self._required_tool(chosen.name).call(draft, chosen.args, rng)
 
 
 def offered(
@@ -430,7 +475,9 @@ def play_action(
         facts = tuple(found.apply(draft, raw))
         # Only told facts reach the player: an untold trace may name hidden canon.
         told = SpokenLine(text="\n".join(told_traces(facts)) or "Nothing changed.")
-        draft.record(engine.scene(draft).label, offered_as, draft.player_speaker(), (told,), facts)
+        views = engine.views(draft)
+        speaker = speaker_of(views.player.player)
+        draft.record(views.narrator.label, offered_as, speaker, (told,), facts)
         return facts
 
     return transact(engine.validate, state.draft(), play, rng)
