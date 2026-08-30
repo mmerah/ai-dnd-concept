@@ -25,7 +25,7 @@ def _illustrator(tmp_path: Path) -> Illustrator:
         config=MediaConfig(enabled=True),
         provider=ProviderConfig(base_url="https://example.invalid/v1", api_key=SecretStr("test")),
         saves=tmp_path / "save.media",
-        icon_dirs={},
+        icon_dirs=(),
         style=STYLE,
     )
 
@@ -68,7 +68,7 @@ def test_scene_key_holds_through_a_change_of_cast_but_not_of_place() -> None:
     assert scene_key(_scene(engine, draft.committed())) != key
 
 
-def test_an_icon_is_looked_up_in_the_directory_its_entity_belongs_to(tmp_path: Path) -> None:
+def test_an_icon_is_looked_up_in_each_authored_directory_in_order(tmp_path: Path) -> None:
     scenario_dir = tmp_path / "scenario"
     character_dir = tmp_path / "character"
     saves_dir = tmp_path / "save.media"
@@ -83,7 +83,7 @@ def test_an_icon_is_looked_up_in_the_directory_its_entity_belongs_to(tmp_path: P
         config=MediaConfig(enabled=True),
         provider=ProviderConfig(base_url="https://example.invalid/v1", api_key=SecretStr("test")),
         saves=saves_dir,
-        icon_dirs={EntityId("mara"): scenario_dir, EntityId("player"): character_dir},
+        icon_dirs=(scenario_dir, character_dir),
         style=STYLE,
     )
     assert illustrator.icon(EntityId("mara")) == scenario_dir / "mara.png"

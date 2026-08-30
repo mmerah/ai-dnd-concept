@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
@@ -10,16 +10,10 @@ from pydantic import BaseModel, JsonValue
 from aidm.state.entities import EngineId, Slug, content_id, require_unique
 from aidm.state.model import Game
 
-from .model import (
-    Character,
-    CharacterOverlay,
-    CharacterProfile,
-    Scenario,
-)
+from .model import Character, Scenario
 
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"
-PROFILE_FILE = "base.json"
 SOURCE_STEM = "source"
 SOURCE_SUFFIXES = (".md", ".txt", ".pdf")
 _SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9-]*"
@@ -45,11 +39,12 @@ def read_scenarios(directory: Path, engines: Sequence[EngineId]) -> Iterator[tup
 
 def read_characters(
     directory: Path, engines: Sequence[EngineId]
-) -> Iterator[tuple[Slug, CharacterProfile, tuple[EngineId, ...]]]:
-    for path in _content_dirs(directory, PROFILE_FILE):
+) -> Iterator[tuple[Slug, Character, tuple[EngineId, ...]]]:
+    """One entry per character: the catalog keys by id, so the first written engine names them."""
+    for path in sorted(directory.iterdir()):
         written = tuple(engine for engine in engines if (path / f"{engine}.json").is_file())
         if written:
-            yield content_id(path.name), _read(path / PROFILE_FILE, CharacterProfile), written
+            yield content_id(path.name), _read(path / f"{written[0]}.json", Character), written
 
 
 def _content_dirs(directory: Path, canon: str) -> Iterator[Path]:
@@ -67,31 +62,26 @@ def source_file(directory: Path, name: Slug) -> Path | None:
     return next((path for path in paths if path.is_file()), None)
 
 
-def load_character(
-    directory: Path,
-    name: Slug,
-    engine: EngineId,
-    read_mechanics: Callable[[Character], object],
-) -> Character:
+def load_character(directory: Path, name: Slug, engine: EngineId) -> Character:
     folder = directory / content_id(name)
-    overlay = _read(folder / f"{engine}.json", CharacterOverlay)
-    character = Character(
-        id=name,
-        profile=_read(folder / PROFILE_FILE, CharacterProfile),
-        rules=overlay.sheet,
-        item_rules=overlay.items,
-    )
-    _ = read_mechanics(character)
+    character = _read(folder / f"{engine}.json", Character)
+    if character.engine != engine:
+        raise ValueError(f"{folder.name}/{engine}.json plays {character.engine!r}, not {engine!r}")
+    if character.id != content_id(name):
+        raise ValueError(f"character {character.id!r} is filed under {content_id(name)!r}")
     return character
 
 
-def write_character(directory: Path, engine: EngineId, character: Character) -> None:
+def write_character(directory: Path, character: Character) -> None:
     folder = directory / content_id(character.id)
-    if folder.exists():
+    path = folder / f"{character.engine}.json"
+    if path.exists():
         raise ValueError(f"character {character.id!r} already exists")
-    _write(folder / PROFILE_FILE, character.profile.model_dump_json(indent=2))
-    overlay = CharacterOverlay(sheet=character.rules, items=character.item_rules)
-    _write(folder / f"{engine}.json", overlay.model_dump_json(indent=2))
+    # One folder is one person played by several engines, so any sibling settles who that is.
+    sibling = next(folder.glob("*.json"), None)
+    if sibling is not None and (held := _read(sibling, Character)).name != character.name:
+        raise ValueError(f"character {character.id!r} is {held.name!r}, not {character.name!r}")
+    _write(path, character.model_dump_json(indent=2))
 
 
 def write_scenario(

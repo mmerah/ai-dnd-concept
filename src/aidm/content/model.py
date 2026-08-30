@@ -1,15 +1,14 @@
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Self
 
-from pydantic import Field, JsonValue, model_validator
+from pydantic import BaseModel, Field, JsonValue, model_validator
 
 from aidm.state.entities import (
     PLAYER_ID,
     CheckedEntityId,
     EngineId,
     Entity,
-    EntityId,
     Frozen,
     Slug,
     Trait,
@@ -44,20 +43,23 @@ class Scenario(Frozen):
         return self
 
 
-class CharacterProfile(Frozen):
-    """`base.json`: who the character is, the traits they carry, and the gear they start holding."""
+class Character(Frozen):
+    """`characters/<id>/<engine>.json`: who they are and the sheet this engine plays them by."""
 
+    id: Slug
+    engine: EngineId
     name: str
     brief: str
     traits: tuple[Trait, ...] = ()
     items: tuple[Entity, ...] = ()
+    mechanics: dict[str, JsonValue] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _held_and_known(self) -> Self:
         """Reject unknown carried gear because the Narrator sees the inventory."""
         wrong_kind = sorted(item.id for item in self.items if item.kind != "item")
         if wrong_kind:
-            raise ValueError(f"a character's profile holds items only: {wrong_kind}")
+            raise ValueError(f"a character holds items only: {wrong_kind}")
         misplaced = sorted(item.id for item in self.items if item.parent_id != PLAYER_ID)
         if misplaced:
             raise ValueError(f"a character's items start in their own hands: {misplaced}")
@@ -67,38 +69,18 @@ class CharacterProfile(Frozen):
         return self
 
 
-class CharacterOverlay(Frozen):
-    """`<engine>.json`: the sheet the engine plays by and the rules of each `base.json` item."""
-
-    sheet: dict[str, JsonValue]
-    items: dict[EntityId, dict[str, JsonValue]] = Field(default_factory=dict)
-
-
-class Character(Frozen):
-    id: Slug
-    profile: CharacterProfile
-    rules: dict[str, JsonValue]
-    item_rules: dict[EntityId, dict[str, JsonValue]] = Field(default_factory=dict)
-
-    @model_validator(mode="after")
-    def _overlay_names_carried_gear(self) -> Self:
-        carried = {item.id for item in self.profile.items}
-        ids = sorted(set(self.item_rules) - carried)
-        if ids:
-            raise ValueError(f"overlay names gear the character does not carry: {ids}")
-        return self
-
-    @property
-    def name(self) -> str:
-        return self.profile.name
-
-    @property
-    def brief(self) -> str:
-        return self.profile.brief
+@dataclass(frozen=True, slots=True)
+class AuthoringTool:
+    name: str
+    description: str
+    args: type[BaseModel]
+    apply: Callable[[WorldState, Mapping[str, JsonValue]], str]
 
 
 @dataclass(frozen=True, slots=True)
 class AuthoringBrief:
     bar_prompt: str
+    guidance: str
     unmet: Callable[[Scenario], list[str]]
     settled: frozenset[str] = frozenset()
+    tools: tuple[AuthoringTool, ...] = ()

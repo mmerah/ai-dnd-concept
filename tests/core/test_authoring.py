@@ -18,22 +18,25 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, Tool
 from pydantic_ai.models.function import FunctionModel
 
 from aidm.authoring.draft import (
-    OPENING_SLICE,
-    ExitLink,
-    ScenarioDraft,
+    Draft,
     ScenarioPatch,
-    extend_brief,
-    extension_patch,
+    patch_refusal,
     playtest_check,
     scenario_refusal,
 )
 from aidm.authoring.run import scenario_agent, scenario_run
 from aidm.content.io import load_scenario, read_scenarios
+from aidm.content.model import AuthoringBrief
 from aidm.state.entities import Entity, EntityId, Exit
-from aidm.state.model import ScenarioMeta, Thread
+from aidm.state.model import ScenarioMeta, Thread, WorldState
+from aidm.world.authoring import Connect, connect
 
 ENGINE = ENGINES_BUILT[LONER3E]
 SRD = ("srd",)
+
+
+def _brief(base: WorldState | None = None, opening: bool = False) -> AuthoringBrief:
+    return ENGINE.authoring_brief(SRD, base, opening)
 
 
 async def test_every_shipped_scenario_passes_the_engine_it_is_authored_for() -> None:
@@ -47,7 +50,7 @@ def test_a_world_colliding_with_the_character_is_refused() -> None:
     for engine_id in ENGINE_IDS:
         playing = playtest_check(offline_settings(), ENGINES_BUILT[engine_id])
         shipped = load_scenario(SCENARIOS, scenario_for(engine_id))
-        held = playing.character.profile.items[0]
+        held = playing.character.items[0]
         extra = Entity(
             id=held.id,
             kind="item",
@@ -78,7 +81,7 @@ def test_authoring_refuses_an_uninstalled_pack() -> None:
 
 
 def _as_patch() -> dict[str, JsonValue]:
-    return ScenarioDraft.from_scenario(scenario()).as_patch().model_dump(mode="json")
+    return Draft.from_scenario(scenario()).as_patch().model_dump(mode="json")
 
 
 def _location(name: str) -> Entity:
@@ -91,7 +94,7 @@ def _finish(summary: str) -> ModelResponse:
 
 
 def test_write_upserts_elements_by_id() -> None:
-    draft = ScenarioDraft()
+    draft = Draft()
     confirmation = draft.apply(
         ScenarioPatch(
             meta=ScenarioMeta(title="The Cell", premise="Get out."),
@@ -113,38 +116,44 @@ def test_write_upserts_elements_by_id() -> None:
     modification = draft.apply(ScenarioPatch(entities=(renamed,)), ENGINE)
     assert modification == "modified location the deep cell[cell]"
 
-    cell = draft.entities[EntityId("cell")]
+    cell = draft.world.entities[EntityId("cell")]
     assert cell.name == "the deep cell"
     assert cell.exits == [Exit(to=EntityId("hall"), locked=True)]
 
 
 def test_connect_writes_the_way_on_both_ends() -> None:
-    draft = ScenarioDraft()
+    draft = Draft()
     _ = draft.apply(ScenarioPatch(entities=(_location("cell"), _location("hall"))), ENGINE)
 
-    assert draft.connect(EntityId("cell"), EntityId("hall"), True, False, False) == (
-        "joined cell to hall both ways"
-    )
-    cell, hall = draft.entities.values()
+    assert connect(
+        draft.world, Connect(from_id=EntityId("cell"), to_id=EntityId("hall"), known=True)
+    ) == ("joined cell to hall both ways")
+    cell, hall = draft.world.entities.values()
     assert [(way.to, way.known) for way in cell.exits] == [("hall", True)]
     assert [(way.to, way.known) for way in hall.exits] == [("cell", True)]
 
     with pytest.raises(ValueError, match="already leads"):
-        _ = draft.connect(EntityId("hall"), EntityId("cell"), False, False, True)
+        _ = connect(
+            draft.world,
+            Connect(from_id=EntityId("hall"), to_id=EntityId("cell"), one_way=True),
+        )
     with pytest.raises(ValueError, match="no location 'ghost'"):
-        _ = draft.connect(EntityId("cell"), EntityId("ghost"), False, False, False)
+        _ = connect(draft.world, Connect(from_id=EntityId("cell"), to_id=EntityId("ghost")))
     with pytest.raises(ValueError, match="somewhere other than"):
-        _ = draft.connect(EntityId("cell"), EntityId("cell"), False, False, False)
+        _ = connect(draft.world, Connect(from_id=EntityId("cell"), to_id=EntityId("cell")))
 
 
 def test_connect_refuses_a_known_way_to_a_place_the_player_has_not_met() -> None:
-    draft = ScenarioDraft()
+    draft = Draft()
     unmet = _location("crypt").model_copy(update={"known": False})
     _ = draft.apply(ScenarioPatch(entities=(_location("cell"), unmet)), ENGINE)
 
     with pytest.raises(ValueError, match="has not met"):
-        _ = draft.connect(EntityId("cell"), EntityId("crypt"), True, False, False)
-    assert not any(entity.exits for entity in draft.entities.values())
+        _ = connect(
+            draft.world,
+            Connect(from_id=EntityId("cell"), to_id=EntityId("crypt"), known=True),
+        )
+    assert not any(entity.exits for entity in draft.world.entities.values())
 
 
 def _write(patch: dict[str, JsonValue]) -> ModelResponse:
@@ -186,8 +195,8 @@ def _connect(**args: JsonValue) -> ModelResponse:
 async def test_an_extension_pass_only_adds_to_the_world_it_stands_on() -> None:
     settings, shipped = offline_settings(), scenario()
     playing = playtest_check(settings, ENGINE, SRD)
-    agent = scenario_agent(playing, settings, extend_brief(shipped.world))
-    draft = ScenarioDraft.from_scenario(shipped)
+    agent = scenario_agent(playing, settings, _brief(shipped.world))
+    draft = Draft.from_scenario(shipped)
     author = recorded(
         _write(_as_patch()),
         _write({"entities": [_location("study").model_dump(mode="json")]}),
@@ -204,13 +213,29 @@ async def test_an_extension_pass_only_adds_to_the_world_it_stands_on() -> None:
     assert "already holds ['study']" in canon
     assert "Join one of them to a location this pass wrote" in both_settled
 
-    grown = extension_patch(shipped.world, draft)
-    assert [entity.id for entity in grown.entities] == [EntityId("sub-crypt")]
-    assert grown.exits == (ExitLink(location_id=EntityId("cloister"), to=EntityId("sub-crypt")),)
+    added = set(draft.world.entities) - set(shipped.world.entities)
+    assert added == {EntityId("sub-crypt")}
+    assert draft.world.require(EntityId("cloister")).exit_to(EntityId("sub-crypt")) is not None
+
+
+def test_growth_never_writes_over_the_live_games_mechanics() -> None:
+    settled = frozenset({"mara"})
+
+    over_a_sheet = patch_refusal(
+        ScenarioPatch(mechanics={"sheets": {"mara": {"concept": "Someone Else"}}}), settled
+    )
+    assert over_a_sheet is not None and "already holds ['mara']" in over_a_sheet
+
+    scenario_wide = patch_refusal(
+        ScenarioPatch(mechanics={"twist_pack": "srd", "twist": "a fresh one"}), settled
+    )
+    assert scenario_wide == "a scenario already in play keeps its twist, twist_pack"
+
+    assert patch_refusal(ScenarioPatch(mechanics={"sheets": {"ghost": {}}}), settled) is None
 
 
 def test_a_patched_art_style_reaches_the_scenario() -> None:
-    draft = ScenarioDraft()
+    draft = Draft()
     _ = draft.apply(
         ScenarioPatch.model_validate(_as_patch() | {"art_style": "ink-wash noir"}), ENGINE
     )
@@ -218,21 +243,21 @@ def test_a_patched_art_style_reaches_the_scenario() -> None:
 
 
 def test_remove_drops_by_id_and_refuses_an_unknown_one() -> None:
-    draft = ScenarioDraft()
+    draft = Draft()
     _ = draft.apply(ScenarioPatch(entities=(_location("cell"),)), ENGINE)
     deletion = draft.apply(ScenarioPatch(remove=(EntityId("cell"),)), ENGINE)
     assert deletion == "deleted location cell[cell]"
-    assert not draft.entities
+    assert not draft.world.entities
     with pytest.raises(ValueError, match="nothing in the draft"):
         _ = draft.apply(ScenarioPatch(remove=("ghost",)), ENGINE)
 
 
 def test_validation_names_what_the_draft_is_missing() -> None:
     playing = playtest_check(offline_settings(), ENGINE, SRD)
-    empty = scenario_refusal(ScenarioDraft(), playing)
+    empty = scenario_refusal(Draft(), playing, _brief())
     assert empty is not None and "meta" in empty
 
-    draft = ScenarioDraft()
+    draft = Draft()
     _ = draft.apply(
         ScenarioPatch(
             meta=ScenarioMeta(title="The Cell", premise="Get out."),
@@ -241,10 +266,10 @@ def test_validation_names_what_the_draft_is_missing() -> None:
         ),
         ENGINE,
     )
-    dangling = scenario_refusal(draft, playing)
+    dangling = scenario_refusal(draft, playing, _brief())
     assert dangling is not None and "nowhere" in dangling
 
-    unplayable = ScenarioDraft()
+    unplayable = Draft()
     _ = unplayable.apply(
         ScenarioPatch(
             meta=ScenarioMeta(title="The Cell", premise="Get out."),
@@ -263,15 +288,17 @@ def test_validation_names_what_the_draft_is_missing() -> None:
         ),
         ENGINE,
     )
-    broken = scenario_refusal(unplayable, playing)
+    broken = scenario_refusal(unplayable, playing, _brief())
     assert broken is not None and "'gaoler' has no sheet" in broken
 
 
 def test_the_shipped_world_written_as_one_patch_is_playable() -> None:
-    draft = ScenarioDraft()
+    draft = Draft()
     patch = ScenarioPatch.model_validate(_as_patch())
     _ = draft.apply(patch, ENGINE)
-    assert scenario_refusal(draft, playtest_check(offline_settings(), ENGINE, SRD)) is None
+    assert (
+        scenario_refusal(draft, playtest_check(offline_settings(), ENGINE, SRD), _brief()) is None
+    )
 
 
 async def test_the_agent_authors_through_the_write_tool() -> None:
@@ -324,7 +351,7 @@ async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
         assert session.refusal() is None
         before = len(session.history)
         _ = await session.send("add a bell tower")
-    assert EntityId("belfry") in session.draft.entities
+    assert EntityId("belfry") in session.draft.world.entities
     assert len(session.history) > before
 
 
@@ -337,23 +364,24 @@ async def test_an_unplayable_draft_is_never_written() -> None:
 
 
 def test_a_thin_draft_hears_every_unmet_bar_item_at_once() -> None:
-    draft = ScenarioDraft()
+    draft = Draft()
     _ = draft.apply(
         ScenarioPatch(
             meta=ScenarioMeta(title="The Cell", premise="Get out."),
             player_parent_id=EntityId("cell"),
-            entities=(_location("cell"),),
+            entities=(_location("cell"), _location("vault")),
         ),
         ENGINE,
     )
-    reason = scenario_refusal(draft, playtest_check(offline_settings(), ENGINE, SRD))
+    reason = scenario_refusal(draft, playtest_check(offline_settings(), ENGINE, SRD), _brief())
     assert reason is not None
     for wanted in ("locations", "locked", "actors", "item", "thread", "when_reached"):
         assert wanted in reason
+    assert "no walk of exits reaches from 'cell': ['vault']" in reason
 
 
 def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
-    draft = ScenarioDraft()
+    draft = Draft()
     _ = draft.apply(
         ScenarioPatch(
             meta=ScenarioMeta(title="The Cell", premise="Get out."),
@@ -383,6 +411,6 @@ def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
     )
     playing = playtest_check(offline_settings(), ENGINE, SRD)
 
-    assert scenario_refusal(draft, playing, OPENING_SLICE) is None
-    assert scenario_refusal(draft, playing) is not None
+    assert scenario_refusal(draft, playing, _brief(opening=True)) is None
+    assert scenario_refusal(draft, playing, _brief()) is not None
     assert draft.scenario(LONER3E, SRD, grows=True).grows

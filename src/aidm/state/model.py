@@ -48,6 +48,9 @@ class AdvanceThread(Frozen):
         return self
 
 
+type Mechanics = dict[str, JsonValue]
+
+
 class WorldState(Mutable):
     """The whole persistent fiction; `Game` holds the played game around it."""
 
@@ -56,7 +59,7 @@ class WorldState(Mutable):
     party: list[EntityId] = Field(default_factory=list)
     pending_notes: tuple[str, ...] = ()
     # Engine-owned JSON: core never reads inside it.
-    mechanics: dict[str, JsonValue] = Field(default_factory=dict)
+    mechanics: Mechanics = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _consistent_fiction(self) -> Self:

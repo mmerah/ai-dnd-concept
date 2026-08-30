@@ -75,8 +75,8 @@ def load_catalog(settings: Settings, engines: Mapping[EngineId, Engine]) -> Laun
         for name, scenario in read_scenarios(settings.scenarios_dir, ids)
     )
     characters = tuple(
-        CatalogEntry(id=name, title=profile.name, subtitle=profile.brief, engines=written)
-        for name, profile, written in read_characters(settings.characters_dir, ids)
+        CatalogEntry(id=name, title=character.name, subtitle=character.brief, engines=written)
+        for name, character, written in read_characters(settings.characters_dir, ids)
     )
     titles = {entry.id: entry.title for entry in characters}
     scenario_ids = {entry.id for entry in scenarios}

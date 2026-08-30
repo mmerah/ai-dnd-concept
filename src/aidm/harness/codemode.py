@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import cached_property
 from pathlib import Path
 
@@ -16,7 +16,7 @@ from aidm.app.launch import (
     load_catalog,
 )
 from aidm.app.runtime import GameSession, Runtime
-from aidm.authoring.draft import ScenarioDraft, playtest_check
+from aidm.authoring.draft import Draft, playtest_check
 from aidm.authoring.run import (
     AuthoringRun,
     GrowthRun,
@@ -28,6 +28,7 @@ from aidm.authoring.run import (
     scenario_run,
 )
 from aidm.config import Settings
+from aidm.content.model import AuthoringTool
 from aidm.state.entities import EngineId, Frozen, Slug
 from aidm.state.facts import traced
 from aidm.state.model import Game
@@ -111,10 +112,20 @@ class Harness:
     authoring: AuthoringRun | None = None
 
     @cached_property
-    def blank_authoring(self) -> FunctionToolset[ScenarioDraft]:
+    def blank_authoring(self) -> FunctionToolset[Draft]:
         """Names and schemas only: the SDK lists tools once at connect, before any run is open."""
+        engines = list(self.runtime.engines.values())
+        briefs = [
+            engine.authoring_brief((next(iter(engine.packs)),), None, False) for engine in engines
+        ]
+        published: dict[str, AuthoringTool] = {}
+        for one in (tool for brief in briefs for tool in brief.tools):
+            held = published.setdefault(one.name, one)
+            if held.args is not one.args:
+                raise ValueError(f"two engines publish a different {one.name!r} authoring tool")
         return authoring_toolset(
-            playtest_check(self.settings, next(iter(self.runtime.engines.values())))
+            playtest_check(self.settings, engines[0]),
+            replace(briefs[0], tools=tuple(published.values())),
         )
 
     def opened(self) -> GameSession:
@@ -269,7 +280,7 @@ class Harness:
         if not isinstance(run, GrowthRun):
             raise ModelRetry("no growth run is open; call begin_growth first.")
         _check_playable(run)
-        landed = session.apply_growth(run.patch())
+        landed = session.apply_growth(run.play())
         self.authoring = None
         return traced(landed)
 

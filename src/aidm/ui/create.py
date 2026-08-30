@@ -52,7 +52,7 @@ def character_page(runtime: Runtime, engine_id: str) -> None:
                     return
                 try:
                     created = creation.create(title, (brief.value or "").strip(), picks)
-                    write_character(runtime.settings.characters_dir, engine.id, created)
+                    write_character(runtime.settings.characters_dir, created)
                 except ValueError as refused:
                     ui.notify(str(refused), type="negative")
                     return
@@ -90,8 +90,8 @@ def character_page(runtime: Runtime, engine_id: str) -> None:
                     return
                 ui.separator().classes("q-my-sm")
                 # 4.2 draws the engine's own sheet here, through `sheet_rows` on a preview game.
-                rows = [(trait.name, trait.text) for trait in preview.profile.traits]
-                rows.extend(("carrying", item.name) for item in preview.profile.items)
+                rows = [(trait.name, trait.text) for trait in preview.traits]
+                rows.extend(("carrying", item.name) for item in preview.items)
                 for label, text in rows:
                     labeled_value(label, text)
                 ui.button("Create", icon="person_add", on_click=create).props("color=primary")

@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 
 import pytest
@@ -13,16 +13,14 @@ from core_test_support import (
     with_entity,
 )
 from loner3e_test_support import loner3e_session
+from pydantic import JsonValue
 from pydantic_ai.models.function import FunctionModel
 
 from aidm.app.runtime import GameSession
 from aidm.authoring.draft import (
-    ExitLink,
+    Draft,
     PlaytestCheck,
-    ScenarioDraft,
     ScenarioPatch,
-    extend_brief,
-    extension_patch,
     scenario_refusal,
 )
 from aidm.authoring.run import GrowthRun, briefing, growth_run
@@ -30,9 +28,22 @@ from aidm.content.io import FileStore
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit
 from aidm.state.model import Game, Thread
 from aidm.turn.run import TurnStep
+from aidm.world.authoring import Connect, connect
 from aidm.world.topology import player_location
 
 _CRYPT_ID = EntityId("sub-crypt")
+_WARDEN_ID = EntityId("bone-warden")
+_COUNT_ID = "warden-count"
+
+
+def _warden() -> Entity:
+    return Entity(
+        id=_WARDEN_ID,
+        kind="actor",
+        name="the bone warden",
+        brief="He counts the niches every night and never leaves.",
+        parent_id=_CRYPT_ID,
+    )
 
 
 def _crypt() -> Entity:
@@ -63,10 +74,17 @@ def _stub_author(monkeypatch: pytest.MonkeyPatch) -> list[Game]:
     async def authored(self: GrowthRun, instruction: str) -> str:
         del instruction
         seen.append(self.base)
-        cloister = self.draft.entities[EntityId("cloister")]
+        cloister = self.draft.world.entities[EntityId("cloister")]
         edited = updated(cloister, exits=[*cloister.exits, Exit(to=_CRYPT_ID)])
-        _ = self.draft.apply(ScenarioPatch(entities=(_crypt(), edited)), self.playing.engine)
-        return "grew the sub-crypt"
+        _ = self.draft.apply(
+            ScenarioPatch(
+                entities=(_crypt(), edited, _warden()),
+                threads=(Thread(id=_COUNT_ID, title="The warden's nightly count"),),
+                mechanics={"sheets": {_WARDEN_ID: {"concept": "A Bone Warden"}}},
+            ),
+            self.playing.engine,
+        )
+        return "grew the sub-crypt and its warden"
 
     monkeypatch.setattr(GrowthRun, "send", authored)
     return seen
@@ -85,7 +103,7 @@ async def _turn(game: GameSession, on_step: Callable[[TurnStep], None] | None = 
 
 def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
-    draft = ScenarioDraft.from_game(game.state)
+    draft = Draft.from_game(game.state)
     scenario = draft.scenario(LONER3E, ("srd",))
 
     ids = set(scenario.world.entities)
@@ -97,30 +115,10 @@ def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_pat
     unmet = scenario_refusal(
         draft,
         PlaytestCheck(engine=game.engine, character=game.character, packs=("srd",)),
-        extend_brief(game.state.world),
+        game.engine.authoring_brief(("srd",), game.state.world, False),
     )
     assert isinstance(unmet, str)
     assert "location" in unmet
-
-
-def test_delta_is_the_canon_a_pass_added_and_the_ways_into_it(tmp_path: Path) -> None:
-    game = loner3e_session(tmp_path)
-    draft = ScenarioDraft.from_game(game.state)
-    cloister = draft.entities[EntityId("cloister")]
-    edited_cloister = updated(cloister, exits=[*cloister.exits, Exit(to=_CRYPT_ID)], brief="edited")
-    _ = draft.apply(
-        ScenarioPatch(
-            entities=(_crypt(), edited_cloister),
-            threads=(Thread(id="the-lower-dark", title="The lower dark"),),
-        ),
-        game.engine,
-    )
-
-    patch = extension_patch(game.state.world, draft)
-
-    assert [entity.id for entity in patch.entities] == [_CRYPT_ID]
-    assert patch.exits == (ExitLink(location_id=EntityId("cloister"), to=_CRYPT_ID),)
-    assert [thread.id for thread in patch.threads] == ["the-lower-dark"]
 
 
 async def test_a_thin_world_grows_inside_the_turn_that_ran_it_thin(
@@ -141,6 +139,7 @@ async def test_a_thin_world_grows_inside_the_turn_that_ran_it_thin(
     way = game.state.world.require(EntityId("cloister")).exit_to(_CRYPT_ID)
     assert way is not None
     assert way.known is False
+    assert game.state.world.thread(_COUNT_ID) is not None
 
     saved = FileStore(tmp_path).load("poc")
     assert saved is not None
@@ -175,18 +174,12 @@ def test_a_grown_world_is_briefed_with_its_sheets_and_refused_until_it_hangs_tog
     assert "content packs: srd" in instructions
     assert '"concept": "A Wary Relic-Hunter"' in instructions
     assert '"srd": {' in instructions and '"name": "Starter tables"' in instructions
+    assert '"mechanics": {' in instructions
 
-    warden = Entity(
-        id=EntityId("bone-warden"),
-        kind="actor",
-        name="the bone warden",
-        brief="He counts the niches every night and never leaves.",
-        parent_id=_CRYPT_ID,
-    )
     _ = run.draft.apply(
         ScenarioPatch(
-            entities=(updated(_crypt(), exits=[]), warden),
-            mechanics={"sheets": {warden.id: {"concept": "A Bone Warden"}}},
+            entities=(updated(_crypt(), exits=[]), _warden()),
+            mechanics={"sheets": {_WARDEN_ID: {"concept": "A Bone Warden"}}},
         ),
         game.engine,
     )
@@ -194,5 +187,23 @@ def test_a_grown_world_is_briefed_with_its_sheets_and_refused_until_it_hangs_tog
     refused = run.refusal()
     assert refused is not None and _CRYPT_ID in refused
 
-    _ = run.draft.connect(EntityId("cloister"), _CRYPT_ID, False, False, False)
+    _ = connect(run.draft.world, Connect(from_id=EntityId("cloister"), to_id=_CRYPT_ID))
     assert run.refusal() is None
+
+
+async def test_a_grown_npc_brings_its_sheet_into_the_live_game(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    game = _grown(tmp_path)
+    held = set(_sheets(game.state.world.mechanics))
+    _ = _stub_author(monkeypatch)
+
+    await _turn(game)
+
+    assert set(_sheets(game.state.world.mechanics)) == held | {_WARDEN_ID}
+
+
+def _sheets(mechanics: Mapping[str, JsonValue]) -> Mapping[str, JsonValue]:
+    sheets = mechanics["sheets"]
+    assert isinstance(sheets, dict)
+    return sheets

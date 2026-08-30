@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from core_test_support import ENGINES_BUILT, LONER3E, SCENARIOS
+from core_test_support import ENGINES_BUILT, LONER3E, SCENARIOS, TWENTYFOURXX, updated
 from loner3e_test_support import sheet
 
 from aidm.content.io import load_character, load_scenario, write_character
@@ -25,8 +25,8 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
         "gear-2": "chalk-and-wire",
     }
     created = creation.create("Fen", "A wandering scribe with too many questions.", picks)
-    write_character(tmp_path, LONER3E, created)
-    character = load_character(tmp_path, "fen", engine.id, engine.character_mechanics)
+    write_character(tmp_path, created)
+    character = load_character(tmp_path, "fen", engine.id)
     scenario = load_scenario(SCENARIOS, "whispering-vault")
     state = begin_game(engine, "whispering-vault", scenario, character)
     # The merge joins the new sheet into the scenario's blob rather than replacing it.
@@ -51,9 +51,21 @@ def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="is unanswered"):
         creation.create("Fen", "", {**legal, "concept": "  "})
     created = creation.create("Fen", "", legal)
-    write_character(tmp_path, LONER3E, created)
+    write_character(tmp_path, created)
     with pytest.raises(ValueError, match="already exists"):
-        write_character(tmp_path, LONER3E, created)
+        write_character(tmp_path, created)
+
+
+def test_one_folder_holds_one_person_across_engines(tmp_path: Path) -> None:
+    creation = ENGINES_BUILT[LONER3E].creation
+    fen = creation.create("Fen", "A wandering scribe.", _answered(creation, {"pack": "srd"}))
+    write_character(tmp_path, fen)
+
+    with pytest.raises(ValueError, match="is 'Fen', not 'Mira'"):
+        write_character(tmp_path, updated(fen, engine=TWENTYFOURXX, name="Mira"))
+
+    write_character(tmp_path, updated(fen, engine=TWENTYFOURXX))
+    assert load_character(tmp_path, "fen", TWENTYFOURXX).name == "Fen"
 
 
 def _answered(creation: CharacterCreation, chosen: Picks) -> Picks:

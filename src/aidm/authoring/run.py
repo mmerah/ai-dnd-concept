@@ -3,22 +3,18 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
 
-from pydantic_ai import Agent, ModelRetry, RunContext, ToolOutput, UsageLimits
+from pydantic import JsonValue
+from pydantic_ai import Agent, ModelRetry, RunContext, Tool, ToolOutput, UsageLimits
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.toolsets import FunctionToolset
 from pydantic_ai.usage import RunUsage
 
 from aidm.authoring.draft import (
-    OPENING_SLICE,
-    WHOLE_SCENARIO,
-    ExtensionPatch,
+    Draft,
     PlaytestCheck,
-    ScenarioDraft,
     ScenarioPatch,
     check_new_scenario,
-    extend_brief,
-    extension_patch,
     extension_prompt,
     patch_refusal,
     playtest_check,
@@ -28,11 +24,13 @@ from aidm.authoring.draft import (
 )
 from aidm.config import Settings
 from aidm.content.io import engine_text, read_scenarios
-from aidm.content.model import AuthoringBrief, Character
-from aidm.engines.core import Engine
-from aidm.llm import build_agent
-from aidm.state.entities import EngineId, EntityId, Slug
+from aidm.content.model import AuthoringBrief, AuthoringTool, Character
+from aidm.engines.core import Engine, mechanics_delta
+from aidm.llm import build_agent, schema_of
+from aidm.state.entities import EngineId, Slug
 from aidm.state.model import Game
+from aidm.state.tools import Play
+from aidm.world.authoring import diff
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
@@ -40,11 +38,11 @@ _PROMPTS_DIR = Path(__file__).parent / "prompts"
 def _example(settings: Settings, engine_id: EngineId) -> str | None:
     """The example must speak the authored engine's `rules` dialect, or it teaches refusals."""
     first = next(read_scenarios(settings.scenarios_dir, (engine_id,)), None)
-    return None if first is None else ScenarioDraft.from_scenario(first[1]).as_json()
+    return None if first is None else Draft.from_scenario(first[1]).as_json()
 
 
 def _instructions(settings: Settings, brief: AuthoringBrief, playing: PlaytestCheck) -> str:
-    rules = json.dumps(playing.character.rules, indent=2)
+    mechanics = json.dumps(playing.character.mechanics, indent=2)
     example = _example(settings, playing.engine.id)
     shown = (
         ()
@@ -53,36 +51,32 @@ def _instructions(settings: Settings, brief: AuthoringBrief, playing: PlaytestCh
     )
     return "\n\n".join(
         (
-            engine_text(_PROMPTS_DIR / "scenario_world.md"),
-            engine_text(_PROMPTS_DIR / brief.bar_prompt),
+            brief.bar_prompt,
             *shown,
             engine_text(_PROMPTS_DIR / "scenario_rules.md"),
-            f"```json\n{rules}\n```",
-            playing.engine.authoring_context(playing.packs),
+            f"```json\n{mechanics}\n```",
+            brief.guidance,
         )
     )
 
 
-def draft_context(draft: ScenarioDraft, tool_name: str | None = None) -> RunContext[ScenarioDraft]:
+def draft_context(draft: Draft, tool_name: str | None = None) -> RunContext[Draft]:
     # A RunContext needs a model; no authoring tool reads one.
     return RunContext(deps=draft, model=TestModel(), usage=RunUsage(), tool_name=tool_name)
 
 
-def authoring_toolset(
-    playing: PlaytestCheck,
-    brief: AuthoringBrief = WHOLE_SCENARIO,
-) -> FunctionToolset[ScenarioDraft]:
-    def answer(draft: ScenarioDraft, changed: str) -> str:
+def authoring_toolset(playing: PlaytestCheck, brief: AuthoringBrief) -> FunctionToolset[Draft]:
+    def answer(draft: Draft, changed: str) -> str:
         standing = scenario_refusal(draft, playing, brief) or (
             "it plays. Read it back and judge it as a thing to play before you finish."
         )
         return f"{changed}\n\nDRAFT: {standing}"
 
-    def scenario_so_far(ctx: RunContext[ScenarioDraft]) -> str:
+    def scenario_so_far(ctx: RunContext[Draft]) -> str:
         """Read the complete current draft as formatted JSON."""
         return ctx.deps.as_json()
 
-    def write(ctx: RunContext[ScenarioDraft], patch: ScenarioPatch) -> str:
+    def write(ctx: RunContext[Draft], patch: ScenarioPatch) -> str:
         """Apply one update and return the changes plus what the draft still needs."""
         if refused := patch_refusal(patch, brief.settled):
             raise ModelRetry(refused)
@@ -91,42 +85,29 @@ def authoring_toolset(
         except ValueError as refused:
             raise ModelRetry(str(refused)) from refused
 
-    def connect(
-        ctx: RunContext[ScenarioDraft],
-        from_id: EntityId,
-        to_id: EntityId,
-        known: bool = False,
-        locked: bool = False,
-        one_way: bool = False,
-    ) -> str:
-        """Connect two locations already in the draft.
+    def as_tool(one: AuthoringTool) -> Tool[Draft]:
+        async def call(ctx: RunContext[Draft], **raw: JsonValue) -> str:
+            try:
+                return answer(ctx.deps, one.apply(ctx.deps.world, raw))
+            except ValueError as refused:
+                raise ModelRetry(str(refused)) from refused
 
-        Args:
-            from_id: Exact id of the first location.
-            to_id: Exact id of the second location.
-            known: Whether the player knows this route at the start.
-            locked: Whether the route starts locked.
-            one_way: Whether the route goes only from the first location to the second.
-        """
-        if {from_id, to_id} <= brief.settled:
-            raise ModelRetry(
-                f"{from_id!r} and {to_id!r} are both the live game's, and nothing here can take "
-                "a way between them back. Join one of them to a location this pass wrote."
-            )
-        try:
-            return answer(ctx.deps, ctx.deps.connect(from_id, to_id, known, locked, one_way))
-        except ValueError as refused:
-            raise ModelRetry(str(refused)) from refused
+        return Tool.from_schema(
+            call,
+            one.name,
+            one.description,
+            schema_of(one.args),
+            takes_ctx=True,
+            sequential=True,
+        )
 
-    return FunctionToolset(tools=[scenario_so_far, write, connect])
+    return FunctionToolset(tools=[scenario_so_far, write, *(as_tool(one) for one in brief.tools)])
 
 
 def scenario_agent(
-    playing: PlaytestCheck,
-    settings: Settings,
-    brief: AuthoringBrief = WHOLE_SCENARIO,
-) -> Agent[ScenarioDraft, str]:
-    def playable(ctx: RunContext[ScenarioDraft], summary: str) -> str:
+    playing: PlaytestCheck, settings: Settings, brief: AuthoringBrief
+) -> Agent[Draft, str]:
+    def playable(ctx: RunContext[Draft], summary: str) -> str:
         if reason := scenario_refusal(ctx.deps, playing, brief):
             raise ModelRetry(f"the draft does not play yet, so it is not finished: {reason}")
         return summary
@@ -140,7 +121,7 @@ def scenario_agent(
             name="finish",
             description="Finish a playable draft with a 2-3 sentence summary.",
         ),
-        deps_type=ScenarioDraft,
+        deps_type=Draft,
         toolsets=[authoring_toolset(playing, brief)],
         validator=playable,
     )
@@ -149,15 +130,15 @@ def scenario_agent(
 @dataclass(kw_only=True)
 class AuthoringRun:
     settings: Settings
-    draft: ScenarioDraft
+    draft: Draft
     playing: PlaytestCheck
     brief: AuthoringBrief
-    toolset: FunctionToolset[ScenarioDraft]
+    toolset: FunctionToolset[Draft]
     opening_prompt: str
     history: list[ModelMessage] = field(default_factory=list)
 
     @cached_property
-    def agent(self) -> Agent[ScenarioDraft, str]:
+    def agent(self) -> Agent[Draft, str]:
         """Built on first send: code mode drives the toolset itself and may hold no api key."""
         return scenario_agent(self.playing, self.settings, self.brief)
 
@@ -180,8 +161,10 @@ class AuthoringRun:
 class GrowthRun(AuthoringRun):
     base: Game
 
-    def patch(self) -> ExtensionPatch:
-        return extension_patch(self.base.world, self.draft)
+    def play(self) -> Play:
+        base, draft = self.base.world, self.draft.world
+        delta = mechanics_delta(base.mechanics, draft.mechanics)
+        return diff(base, draft, delta, self.playing.engine.mechanics_merge)
 
 
 @dataclass(kw_only=True)
@@ -225,11 +208,11 @@ def briefing(run: AuthoringRun, finish: str) -> str:
 
 
 def growth_run(settings: Settings, engine: Engine, character: Character, state: Game) -> GrowthRun:
-    brief = extend_brief(state.world)
+    brief = engine.authoring_brief(state.packs, state.world, False)
     playing = PlaytestCheck(engine=engine, character=character, packs=state.packs)
     return GrowthRun(
         settings=settings,
-        draft=ScenarioDraft.from_game(state),
+        draft=Draft.from_game(state),
         playing=playing,
         brief=brief,
         toolset=authoring_toolset(playing, brief),
@@ -250,11 +233,11 @@ def scenario_run(
     art_style: str = "",
 ) -> ScenarioRun:
     check_new_scenario(settings, slug, premise, document)
-    brief = OPENING_SLICE if grows else WHOLE_SCENARIO
     playing = playtest_check(settings, engine, packs)
+    brief = engine.authoring_brief(playing.packs, None, grows)
     return ScenarioRun(
         settings=settings,
-        draft=ScenarioDraft(art_style=art_style),
+        draft=Draft(art_style=art_style),
         playing=playing,
         brief=brief,
         toolset=authoring_toolset(playing, brief),

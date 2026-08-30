@@ -42,6 +42,18 @@ def is_here(state: Game, entity: Entity) -> bool:
     return location_of(state.world, entity) == player_location(state)
 
 
+def walk(entities: Mapping[EntityId, Entity], start: EntityId) -> set[EntityId]:
+    reached = {start}
+    frontier = [start]
+    while frontier:
+        here = entities.get(frontier.pop())
+        for way in () if here is None else here.exits:
+            if way.to not in reached:
+                reached.add(way.to)
+                frontier.append(way.to)
+    return reached
+
+
 def frontier(world: WorldState) -> int:
     """Unknown locations a known location leads to: doors the player can still find."""
     return len(

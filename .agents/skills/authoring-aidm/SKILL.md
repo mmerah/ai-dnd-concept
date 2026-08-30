@@ -15,9 +15,11 @@ Work from the repository root. Scenarios are written to `scenarios/` under the w
    scenario that grows needs only an opening slice, because play writes the rest of its world.
 2. `begin_scenario(slug, premise, engine, grows, packs, source)` — returns the briefing: the bar
    the draft must meet, engine-specific rules, selected pack content, and a worked example.
-   `packs` defaults to `srd`; always include it and add only installed pack ids the scenario uses.
-3. Follow the briefing's engine guidance for which entities need `rules`. Use selected-pack
-   vocabulary where the engine requires it; some engines explicitly allow freeform tags.
+   `packs` defaults to the engine's first installed pack; always include it and add only
+   installed pack ids the scenario uses.
+3. Follow the briefing's engine guidance for which entities need a sheet: an NPC sheet goes under
+   `mechanics` keyed by id. Use selected-pack vocabulary where the engine requires it; some
+   engines explicitly allow freeform tags.
 4. `write(patch)` and `connect(from_id, to_id)` — build the world in passes. Every answer ends
    with what the draft still needs. Show the user each pass and follow their steering.
 5. `scenario_so_far()` — the whole draft as JSON. Call it whenever you lose track of the draft.

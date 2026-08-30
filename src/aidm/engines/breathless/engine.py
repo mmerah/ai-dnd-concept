@@ -5,7 +5,7 @@ from pathlib import Path
 from pydantic import JsonValue
 
 from aidm.content.io import engine_text
-from aidm.content.model import Character, CharacterProfile
+from aidm.content.model import Character
 from aidm.engines.breathless.rules import (
     LOOT_ITEM,
     LOOT_MED_KIT,
@@ -36,6 +36,7 @@ from aidm.engines.core import (
     EntityRenderer,
     Mechanics,
     PackCreation,
+    authoring_guidance,
     check_packs,
     describe_rows,
     load_packs,
@@ -49,6 +50,7 @@ from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, slug
 from aidm.state.model import Game
 from aidm.state.threads import ADVANCE_THREAD
 from aidm.state.tools import director_tool
+from aidm.world.authoring import rooms_brief, rooms_growth_due
 from aidm.world.scene import rooms_scene
 from aidm.world.succession import TAKE_OVER, player_over
 from aidm.world.tools import (
@@ -104,15 +106,18 @@ class BreathlessCreation(PackCreation[Pack]):
             known=True,
             parent_id=PLAYER_ID,
         )
+        sheet = Sheet.model_validate(
+            {"job": picked(picks, "job"), "pronouns": picked(picks, "pronouns"), "skills": skills}
+        )
         return Character(
             id=slug(name, ()),
-            profile=CharacterProfile(name=name, brief=brief, items=(item,)),
-            rules={
-                "job": picked(picks, "job"),
-                "pronouns": picked(picks, "pronouns"),
-                "skills": skills,
-            },
-            item_rules={item.id: {"die": RULES.starting_item}},
+            engine=EngineId("breathless"),
+            name=name,
+            brief=brief,
+            items=(item,),
+            mechanics=BreathlessState(
+                sheets={PLAYER_ID: sheet}, items={item.id: ItemSheet(die=RULES.starting_item)}
+            ).model_dump(mode="json"),
         )
 
 
@@ -151,14 +156,14 @@ def sheet_rows(state: Game) -> tuple[tuple[str, str], ...]:
     return sheet_of(mechanics_of(state.world, BreathlessState).sheets, state.player).rows()
 
 
-def _character_mechanics(character: Character) -> dict[str, JsonValue]:
-    return {
-        "sheets": {PLAYER_ID: Sheet.model_validate(character.rules).model_dump(mode="json")},
-        "items": {
-            item_id: ItemSheet.model_validate(one).model_dump(mode="json")
-            for item_id, one in character.item_rules.items()
-        },
-    }
+_AUTHORING = (
+    "BREATHLESS AUTHORING\n"
+    "Actors may omit a sheet; describe threats through risks and complications. An actor "
+    "with a sheet goes under `mechanics.sheets` keyed by its entity id, naming the skills "
+    "rated above d4 (Bash, Dash, Sneak, Shoot, Think, Sway). Every item is a die: each "
+    "one needs `mechanics.items` keyed by its entity id, with its die (6 to 12). Scenery "
+    "is not an item; put it in the location description."
+)
 
 
 def build(user_packs: Path) -> Engine:
@@ -174,18 +179,13 @@ def build(user_packs: Path) -> Engine:
         sheet_rows=sheet_rows,
         mechanics_merge=partial(mechanics_merged, BreathlessState),
         mechanics_without=_without,
-        character_mechanics=_character_mechanics,
         over=player_over,
         scene=rooms_scene(describer, lambda state: ()),
         resolvers=(TAKE_OVER, LOOT_ITEM, LOOT_MED_KIT),
-        authoring_instructions=(
-            "BREATHLESS AUTHORING\n"
-            "Actors may omit a sheet; describe threats through risks and complications. An actor "
-            "with a sheet goes under `mechanics.sheets` keyed by its entity id, naming the skills "
-            "rated above d4 (Bash, Dash, Sneak, Shoot, Think, Sway). Every item is a die: each "
-            "one needs `mechanics.items` keyed by its entity id, with its die (6 to 12). Scenery "
-            "is not an item; put it in the location description."
+        authoring_brief=lambda chosen, base, opening: rooms_brief(
+            base, opening, authoring_guidance(_AUTHORING, packs, chosen)
         ),
+        growth_due=rooms_growth_due,
         tools=(
             # Every item is a die a loot check hands out, so nothing here is improvised.
             REVEAL,

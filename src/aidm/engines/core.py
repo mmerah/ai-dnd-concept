@@ -10,7 +10,7 @@ from typing import Protocol
 from pydantic import BaseModel, JsonValue, ValidationError
 
 from aidm.content.io import ENCODING
-from aidm.content.model import Character
+from aidm.content.model import AuthoringBrief, Character
 from aidm.state.creation import CreationStep, Picks, picked
 from aidm.state.entities import (
     Counter,
@@ -21,7 +21,7 @@ from aidm.state.entities import (
     require_unique,
 )
 from aidm.state.facts import DiceEvent, Fact, entity_fact, roll, told_traces
-from aidm.state.model import Game, WorldState
+from aidm.state.model import Game, Mechanics, WorldState
 from aidm.state.play import DecisionOption, Line, PendingDecision, PendingOption, ToolCall
 from aidm.state.scene import Scene
 from aidm.state.tools import DirectorTool, Validate, transact
@@ -103,9 +103,6 @@ def stake_decision(risk: str, call: ToolCall) -> PendingDecision:
     )
 
 
-type Mechanics = dict[str, JsonValue]
-
-
 @contextmanager
 def rules[M: BaseModel](world: WorldState, model: type[M]) -> Generator[M]:
     """Parsed once at tool entry, written back once at exit; never nested."""
@@ -136,6 +133,21 @@ def mechanics_merged[M: BaseModel](
         else:
             merged[key] = value
     return model.model_validate(merged).model_dump(mode="json")
+
+
+def mechanics_delta(base: Mechanics, added: Mechanics) -> Mechanics:
+    """One level deep, matching `mechanics_merged`: a new NPC's sheet sits inside `sheets`."""
+    delta: Mechanics = {}
+    for key, value in added.items():
+        held = base.get(key)
+        if held == value:
+            continue
+        if isinstance(value, dict) and isinstance(held, dict):
+            if inner := {name: one for name, one in value.items() if held.get(name) != one}:
+                delta[key] = inner
+        else:
+            delta[key] = value
+    return delta
 
 
 def sheet_of[S](sheets: Mapping[EntityId, S], entity: Entity) -> S:
@@ -245,6 +257,14 @@ def player_action[A: BaseModel](
     )
 
 
+def authoring_guidance(text: str, packs: Mapping[str, BaseModel], chosen: tuple[Slug, ...]) -> str:
+    # Defaults restate rules the guidance already carries; dropping them halves the prompt.
+    selected = {
+        pack_id: packs[pack_id].model_dump(mode="json", exclude_defaults=True) for pack_id in chosen
+    }
+    return f"{text}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"
+
+
 def check_tool_names(engine: "Engine") -> None:
     require_unique(
         f"tool names of the {engine.id!r} engine",
@@ -267,24 +287,16 @@ class Engine:
     sheet_rows: Callable[[Game], tuple[tuple[str, str], ...]]
     mechanics_merge: Callable[[Mechanics, Mechanics], Mechanics]
     mechanics_without: Callable[[Mechanics, EntityId], Mechanics]
-    # The character file as this engine's blob; 3.1 replaces it with `Character.mechanics`.
-    character_mechanics: Callable[[Character], Mechanics]
     scene: Callable[[Game], Scene]
     # None while the game can still be played on; the text the player is shown when it cannot.
     over: Callable[[Game], str | None] = lambda state: None
     player_actions: tuple[PlayerAction, ...] = ()
-    authoring_instructions: str = ""
+    # Selected packs, the world an extension pass stands on or None, and the opening-slice flag.
+    authoring_brief: Callable[[tuple[Slug, ...], WorldState | None, bool], AuthoringBrief]
+    growth_due: Callable[[Game, int], bool] = lambda state, frontier: False
 
     def __post_init__(self) -> None:
         check_tool_names(self)
-
-    def authoring_context(self, pack_ids: tuple[Slug, ...]) -> str:
-        # Defaults restate rules the guidance already carries; dropping them halves the prompt.
-        packs = {
-            pack_id: self.packs[pack_id].model_dump(mode="json", exclude_defaults=True)
-            for pack_id in pack_ids
-        }
-        return f"{self.authoring_instructions}\n\nSELECTED PACK CONTENT\n{json.dumps(packs)}"
 
     def tool(self, name: str) -> DirectorTool | None:
         return next((one for one in (*self.tools, *self.resolvers) if one.name == name), None)

@@ -82,7 +82,7 @@ def scenario() -> Scenario:
 
 def character() -> Character:
     engine = ENGINES_BUILT[LONER3E]
-    return load_character(CHARACTERS, "kael", engine.id, engine.character_mechanics)
+    return load_character(CHARACTERS, "kael", engine.id)
 
 
 def scenario_for(engine_id: EngineId) -> Slug:
@@ -102,7 +102,7 @@ def game(engine_id: EngineId) -> tuple[Engine, Game]:
     engine = ENGINES_BUILT[engine_id]
     scenario_id = scenario_for(engine_id)
     selected_scenario = load_scenario(SCENARIOS, scenario_id)
-    selected_character = load_character(CHARACTERS, "kael", engine.id, engine.character_mechanics)
+    selected_character = load_character(CHARACTERS, "kael", engine.id)
     return engine, begin_game(engine, scenario_id, selected_scenario, selected_character)
 
 

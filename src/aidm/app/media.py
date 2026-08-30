@@ -1,7 +1,7 @@
 import logging
 import re
 from base64 import b64decode, b64encode
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from hashlib import sha1
 from pathlib import Path
@@ -67,7 +67,7 @@ class Illustrator:
     config: MediaConfig
     provider: ProviderConfig
     saves: Path
-    icon_dirs: Mapping[EntityId, Path]
+    icon_dirs: tuple[Path, ...]
     style: str
     generating: set[str] = field(default_factory=set)
 
@@ -78,17 +78,16 @@ class Illustrator:
         """Only in-flight scenes wait; missing inactive scenes have failed."""
         return scene_key(scene) in self.generating
 
-    def _icon_dir(self, entity_id: EntityId) -> Path | None:
-        """None when the id cannot name a file; anything play invented lives under the save."""
+    def icon(self, entity_id: EntityId) -> Path | None:
+        """What the chat shows as an avatar: a cached icon only, never a generation."""
         if _FILENAME_SAFE.fullmatch(entity_id) is None:
             LOGGER.warning("entity id %r cannot name a file; no icon", entity_id)
             return None
-        return self.icon_dirs.get(entity_id, self.saves / ICON_DIR)
-
-    def icon(self, entity_id: EntityId) -> Path | None:
-        """What the chat shows as an avatar: a cached icon only, never a generation."""
-        directory = self._icon_dir(entity_id)
-        return None if directory is None else _existing(directory, entity_id)
+        for directory in (*self.icon_dirs, self.saves / ICON_DIR):
+            found = _existing(directory, entity_id)
+            if found is not None:
+                return found
+        return None
 
     def _claim(self, key: str) -> bool:
         # Synchronous: an await between the read and the write would let two callers both pay.
@@ -126,12 +125,12 @@ class Illustrator:
 
     async def _drawn_icon(self, entity: Entity) -> Path | None:
         """The cached icon, or one drawn now and kept; a loser of the race goes without."""
-        directory = self._icon_dir(entity.id)
-        if directory is None:
-            return None
-        found = _existing(directory, entity.id)
+        found = self.icon(entity.id)
         if found is not None:
             return found
+        # `icon` cannot tell an unsafe id from a missing file, so generation is guarded again.
+        if _FILENAME_SAFE.fullmatch(entity.id) is None:
+            return None
         # An entity id is `[a-z0-9_-]+`, so the colon keeps icon claims off the scene keys.
         claim = f"icon:{entity.id}"
         if not self._claim(claim):
@@ -144,7 +143,8 @@ class Illustrator:
             self.generating.discard(claim)
         if generated is None:
             return None
-        path = directory / f"{entity.id}{generated.suffix}"
+        # Authored directories stay authored: a drawn icon is the save's own.
+        path = self.saves / ICON_DIR / f"{entity.id}{generated.suffix}"
         _write(path, generated.data)
         return path
 

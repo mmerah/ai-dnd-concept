@@ -12,8 +12,7 @@ from aidm.content.io import load_character, source_file, write_scenario
 from aidm.content.model import AuthoringBrief, Character, Scenario
 from aidm.engines.core import Engine
 from aidm.engines.registry import begin_game
-from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Exit, Frozen, Mutable, Slug
-from aidm.state.facts import Fact
+from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Mutable, Slug
 from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
 from aidm.world.topology import player_location
 
@@ -53,74 +52,71 @@ class ScenarioPatch(Frozen):
         ]
 
 
-class ScenarioDraft(Mutable):
+class Draft(Mutable):
     art_style: str = ""
     meta: ScenarioMeta | None = None
     player_parent_id: EntityId | None = None
-    starting_party: tuple[EntityId, ...] = ()
-    entities: dict[EntityId, Entity] = Field(default_factory=dict)
-    threads: dict[Slug, Thread] = Field(default_factory=dict)
-    mechanics: dict[str, JsonValue] = Field(default_factory=dict)
+    world: WorldState = Field(default_factory=WorldState)
 
     @classmethod
-    def from_scenario(cls, scenario: Scenario) -> "ScenarioDraft":
+    def from_scenario(cls, scenario: Scenario) -> "Draft":
         return cls(
             art_style=scenario.art_style,
             meta=scenario.meta,
             player_parent_id=scenario.player_parent_id,
-            starting_party=tuple(scenario.world.party),
-            entities=deepcopy(scenario.world.entities),
-            threads=deepcopy(scenario.world.threads),
-            mechanics=deepcopy(scenario.world.mechanics),
+            world=deepcopy(scenario.world),
         )
 
     @classmethod
-    def from_game(cls, state: Game) -> "ScenarioDraft":
+    def from_game(cls, state: Game) -> "Draft":
         """Exclude played-character state: `Scenario` refuses the reserved player id."""
         world = state.world
         played = {PLAYER_ID, state.player_id}
+        here = player_location(state)
         return cls(
             meta=state.scenario,
-            player_parent_id=player_location(state),
-            starting_party=tuple(
-                member
-                for member in world.party
-                if world.require(member).parent_id == player_location(state)
+            player_parent_id=here,
+            world=WorldState(
+                entities={
+                    entity_id: deepcopy(entity)
+                    for entity_id, entity in world.entities.items()
+                    if played.isdisjoint({entity.id, entity.parent_id})
+                },
+                threads=deepcopy(world.threads),
+                party=[member for member in world.party if world.require(member).parent_id == here],
+                mechanics=deepcopy(world.mechanics),
             ),
-            entities={
-                entity_id: deepcopy(entity)
-                for entity_id, entity in world.entities.items()
-                if played.isdisjoint({entity.id, entity.parent_id})
-            },
-            threads=deepcopy(world.threads),
-            mechanics=deepcopy(world.mechanics),
         )
 
     def apply(self, patch: ScenarioPatch, engine: Engine) -> str:
         changed: list[str] = []
+        party = patch.starting_party
         for name in patch.scenario_wide():
-            setattr(self, name, getattr(patch, name))
+            if name == "starting_party" and party is not None:
+                self.world.party = list(party)
+            else:
+                setattr(self, name, getattr(patch, name))
             changed.append(f"set {name}")
         for entity in patch.entities:
-            verb = "modified" if entity.id in self.entities else "created"
+            verb = "modified" if entity.id in self.world.entities else "created"
             changed.append(_describe(entity, verb))
-            self.entities[entity.id] = entity
+            self.world.entities[entity.id] = entity
         for thread in patch.threads:
-            verb = "modified" if thread.id in self.threads else "created"
+            verb = "modified" if thread.id in self.world.threads else "created"
             changed.append(_describe(thread, verb))
-            self.threads[thread.id] = thread
+            self.world.threads[thread.id] = thread
         if patch.mechanics:
-            self.mechanics = engine.mechanics_merge(self.mechanics, patch.mechanics)
+            self.world.mechanics = engine.mechanics_merge(self.world.mechanics, patch.mechanics)
             changed.append("set mechanics")
         changed.extend(self._remove(target, engine) for target in patch.remove)
         return "\n".join(changed) if changed else "nothing to change"
 
     def _remove(self, target: str, engine: Engine) -> str:
-        removed: Entity | Thread | None = self.entities.pop(EntityId(target), None)
+        removed: Entity | Thread | None = self.world.entities.pop(EntityId(target), None)
         if removed is not None:
-            self.mechanics = engine.mechanics_without(self.mechanics, EntityId(target))
+            self.world.mechanics = engine.mechanics_without(self.world.mechanics, EntityId(target))
         if removed is None:
-            removed = self.threads.pop(target, None)
+            removed = self.world.threads.pop(target, None)
         if removed is None:
             raise ValueError(
                 f"nothing in the draft has id {target!r}; read `scenario_so_far` and remove ids "
@@ -128,42 +124,16 @@ class ScenarioDraft(Mutable):
             )
         return _describe(removed, "deleted")
 
-    def connect(
-        self, from_id: EntityId, to_id: EntityId, known: bool, locked: bool, one_way: bool
-    ) -> str:
-        if from_id == to_id:
-            raise ValueError(f"a way leads somewhere other than {from_id!r}")
-        ends = {from_id: self._require_location(from_id), to_id: self._require_location(to_id)}
-        ways = ((from_id, to_id),) if one_way else ((from_id, to_id), (to_id, from_id))
-        # Appending to `exits` skips validation, so every refusal lands before the first append.
-        for start, end in ways:
-            if ends[start].exit_to(end) is not None:
-                raise ValueError(f"a way already leads from {start!r} to {end!r}")
-            if known and not (ends[start].known and ends[end].known):
-                raise ValueError(
-                    f"a known way from {start!r} to {end!r} names a place the player has not "
-                    "met; leave it unknown until both ends are"
-                )
-        for start, end in ways:
-            ends[start].exits.append(Exit(to=end, known=known, locked=locked))
-        return f"joined {from_id} to {to_id} {'one way' if one_way else 'both ways'}"
-
-    def _require_location(self, entity_id: EntityId) -> Entity:
-        held = self.entities.get(entity_id)
-        if held is None or held.kind != "location":
-            raise ValueError(f"the draft holds no location {entity_id!r}")
-        return held
-
     def as_patch(self) -> ScenarioPatch:
         """The one shape the model reads and writes, so the example never teaches a refusal."""
         return ScenarioPatch(
             meta=self.meta,
             player_parent_id=self.player_parent_id,
-            starting_party=self.starting_party,
+            starting_party=tuple(self.world.party),
             art_style=self.art_style,
-            entities=tuple(self.entities.values()),
-            threads=tuple(self.threads.values()),
-            mechanics=self.mechanics,
+            entities=tuple(self.world.entities.values()),
+            threads=tuple(self.world.threads.values()),
+            mechanics=self.world.mechanics,
         )
 
     def as_json(self) -> str:
@@ -183,12 +153,8 @@ class ScenarioDraft(Mutable):
             packs=packs,
             art_style=self.art_style,
             player_parent_id=self.player_parent_id,
-            world=WorldState(
-                entities=dict(self.entities),
-                threads=dict(self.threads),
-                party=list(self.starting_party),
-                mechanics=dict(self.mechanics),
-            ),
+            # Dict writes on the draft's world skip validation, so revalidating here is the gate.
+            world=WorldState.model_validate(self.world.model_dump(round_trip=True)),
         )
 
 
@@ -213,99 +179,12 @@ def playtest_check(
     """An empty selection means the engine's first installed pack."""
     selected = packs or (next(iter(engine.packs)),)
     character = load_character(
-        settings.characters_dir,
-        settings.authoring.starter_character,
-        engine.id,
-        engine.character_mechanics,
+        settings.characters_dir, settings.authoring.starter_character, engine.id
     )
     return PlaytestCheck(engine=engine, character=character, packs=selected)
 
 
-MIN_LOCATIONS = 4
-MIN_ACTORS = 2
-
-
-def _bar_unmet(scenario: Scenario) -> list[str]:
-    unmet: list[str] = []
-    entities, threads = scenario.world.entities.values(), scenario.world.threads
-    locations = sorted(entity.id for entity in entities if entity.kind == "location")
-    if len(locations) < MIN_LOCATIONS:
-        unmet.append(f"four or more locations; the draft has {len(locations)}: {locations}")
-    ways = [way for entity in entities for way in entity.exits]
-    if all(way.known for way in ways):
-        unmet.append("at least one exit starting `known: false` — a way to find")
-    if not any(way.locked for way in ways):
-        unmet.append("at least one exit starting `locked: true`")
-    actors = [entity for entity in entities if entity.kind == "actor"]
-    if len(actors) < MIN_ACTORS:
-        actor_ids = sorted(actor.id for actor in actors)
-        unmet.append(f"two or more actors; the draft has {len(actors)}: {actor_ids}")
-    if all(actor.known for actor in actors):
-        unmet.append("at least one actor starting `known: false`")
-    if not any(entity.kind == "item" and not entity.known for entity in entities):
-        unmet.append("at least one item starting `known: false` — a secret to find")
-    if not threads:
-        unmet.append("at least one thread")
-    if not any(entity.when_reached and not entity.known for entity in entities):
-        unmet.append("at least one unknown entity whose `when_reached` carries a consequence")
-    return unmet
-
-
-MIN_OPENING_ENTITIES = 2
-
-
-def _opening_unmet(scenario: Scenario) -> list[str]:
-    unmet: list[str] = []
-    beyond = [
-        entity_id for entity_id in scenario.world.entities if entity_id != scenario.player_parent_id
-    ]
-    if len(beyond) < MIN_OPENING_ENTITIES:
-        unmet.append(
-            f"two or three entities besides the starting location; the draft has {len(beyond)}"
-        )
-    if not scenario.world.threads:
-        unmet.append("at least one thread")
-    return unmet
-
-
-WHOLE_SCENARIO = AuthoringBrief("scenario_bar.md", _bar_unmet)
-# An opening slice is deliberately thin: the rest of the world is written during play.
-OPENING_SLICE = AuthoringBrief("scenario_opening.md", _opening_unmet)
-
-
-def extend_brief(before: WorldState) -> AuthoringBrief:
-    held = set(before.entities)
-
-    def unmet(scenario: Scenario) -> list[str]:
-        added = {
-            entity.id
-            for entity in scenario.world.entities.values()
-            if entity.kind == "location" and entity.id not in held
-        }
-        if not added:
-            return ["at least one location the world did not already hold"]
-        if not any(
-            way.to in added
-            for entity in scenario.world.entities.values()
-            if entity.id in held and entity.known
-            for way in entity.exits
-        ):
-            return [
-                "at least one exit from a location the player already knows of into one of the "
-                f"new ones: {sorted(added)}"
-            ]
-        return []
-
-    return AuthoringBrief(
-        "scenario_extend.md",
-        unmet,
-        settled=frozenset(held | set(before.threads)),
-    )
-
-
-def scenario_refusal(
-    draft: ScenarioDraft, playing: PlaytestCheck, brief: AuthoringBrief = WHOLE_SCENARIO
-) -> str | None:
+def scenario_refusal(draft: Draft, playing: PlaytestCheck, brief: AuthoringBrief) -> str | None:
     try:
         scenario = draft.scenario(playing.engine.id, playing.packs)
         playing.check(scenario)
@@ -327,7 +206,12 @@ def patch_refusal(patch: ScenarioPatch, settled: frozenset[str]) -> str | None:
         return None
     if moved := patch.scenario_wide():
         return f"a scenario already in play keeps its {', '.join(moved)}"
-    held = {item.id for item in (*patch.entities, *patch.threads)} | set(patch.remove)
+    if whole := {key for key, value in patch.mechanics.items() if not isinstance(value, dict)}:
+        return f"a scenario already in play keeps its {', '.join(sorted(whole))}"
+    written = {
+        name for value in patch.mechanics.values() if isinstance(value, dict) for name in value
+    }
+    held = {item.id for item in (*patch.entities, *patch.threads)} | set(patch.remove) | written
     if taken := sorted(held & settled):
         return (
             f"the live game already holds {taken}, some of it beyond what `scenario_so_far` "
@@ -356,7 +240,7 @@ def check_new_scenario(settings: Settings, slug: Slug, premise: str, document: P
 def write_draft(
     settings: Settings,
     slug: Slug,
-    draft: ScenarioDraft,
+    draft: Draft,
     engine: EngineId,
     packs: tuple[Slug, ...],
     grows: bool,
@@ -374,18 +258,6 @@ def summarize(scenario: Scenario) -> str:
     )
 
 
-class ExitLink(Frozen):
-    location_id: EntityId
-    to: EntityId
-    locked: bool = False
-
-
-class ExtensionPatch(Frozen):
-    entities: tuple[Entity, ...] = ()
-    exits: tuple[ExitLink, ...] = ()
-    threads: tuple[Thread, ...] = ()
-
-
 def extension_prompt(settings: Settings, state: Game) -> str:
     document = source_file(settings.scenarios_dir, state.scenario_id)
     given = given_text(settings, state.scenario.premise, document)
@@ -394,59 +266,6 @@ def extension_prompt(settings: Settings, state: Game) -> str:
         f"{given}\n\nThis scenario is authored against these content packs: {packs}."
         "\n\nExtend the world `scenario_so_far` holds."
     )
-
-
-def extension_patch(before: WorldState, after: ScenarioDraft) -> ExtensionPatch:
-    held = before.entities
-    return ExtensionPatch(
-        entities=tuple(entity for entity in after.entities.values() if entity.id not in held),
-        exits=tuple(
-            ExitLink(location_id=entity.id, to=way.to, locked=way.locked)
-            for entity in after.entities.values()
-            if (was := held.get(entity.id)) is not None
-            for way in entity.exits
-            if was.exit_to(way.to) is None
-        ),
-        threads=tuple(
-            thread for thread in after.threads.values() if thread.id not in before.threads
-        ),
-    )
-
-
-def apply_patch(draft: Game, patch: ExtensionPatch) -> tuple[Fact, ...]:
-    facts = [_added_entity(draft, entity) for entity in patch.entities]
-    facts.extend(_added_exit(draft, link) for link in patch.exits)
-    facts.extend(_opened(draft, thread) for thread in patch.threads)
-    return tuple(facts)
-
-
-def _added_entity(draft: Game, entity: Entity) -> Fact:
-    # Copied, so the patch recorded in the trace is not the object the world goes on mutating.
-    materialized = entity.model_copy(deep=True)
-    materialized.known = False
-    for way in materialized.exits:
-        way.known = False
-    return draft.add(materialized)
-
-
-def _added_exit(draft: Game, link: ExitLink) -> Fact:
-    here = draft.world.require_kind(link.location_id, "location")
-    if here.exit_to(link.to) is not None:
-        raise ValueError(f"a way already leads from {here.id!r} to {link.to!r}")
-    here.exits.append(Exit(to=link.to, locked=link.locked))
-    return _materialized(f"way from {here.id} to {link.to}")
-
-
-def _opened(draft: Game, thread: Thread) -> Fact:
-    if draft.world.thread(thread.id) is not None:
-        raise ValueError(f"a thread {thread.id!r} already exists")
-    draft.world.threads[thread.id] = thread.model_copy(deep=True)
-    return _materialized(f"thread {thread.id}")
-
-
-def _materialized(what: str) -> Fact:
-    """Private canon coming into being is not a fictional event, so it narrates nothing."""
-    return Fact(kind="canon_materialized", trace=f"materialized {what}")
 
 
 MIN_PASSAGE = 24

@@ -12,6 +12,7 @@ from aidm.engines.twentyfourxx.rules import (
     RULES,
     Advance,
     Attempt,
+    ItemSheet,
     LuckTest,
     Sheet,
     TwentyfourxxState,
@@ -524,9 +525,10 @@ def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die
         "skill-3": "connections",
     }
     created = creation.create("Vex", "A quiet reader of rooms.", picks)
-    assert [item.name for item in created.profile.items] == ["Comm", "Bottle of PsychOut"]
-    assert created.profile.traits == ()
-    assert created.rules["skills"] == {
+    assert [item.name for item in created.items] == ["Comm", "Bottle of PsychOut"]
+    assert created.traits == ()
+    made = TwentyfourxxState.model_validate(created.mechanics)
+    assert made.sheets[PLAYER_ID].skills == {
         "Telepathy": 10,
         "Stealth": 8,
         "Deception": 8,
@@ -545,9 +547,11 @@ def test_a_bulky_kit_item_carries_the_bulky_mark() -> None:
         "skill-3": "tracking",
     }
     created = creation.create("Wren", "Solders anything.", picks)
-    computer = next(item for item in created.profile.items if item.id == "custom-computer")
+    computer = next(item for item in created.items if item.id == "custom-computer")
     assert computer.traits == []
-    assert created.item_rules[computer.id] == {"bulky": True}
+    assert TwentyfourxxState.model_validate(created.mechanics).items[computer.id] == ItemSheet(
+        bulky=True
+    )
 
 
 def test_an_alien_invents_traits_the_menu_never_listed() -> None:
@@ -560,7 +564,7 @@ def test_an_alien_invents_traits_the_menu_never_listed() -> None:
         "trait-2": "A tail that reads the air",
     }
     created = creation.create("Ixl", "Feathered and patient.", picks)
-    names = [trait.name for trait in created.profile.traits]
+    names = [trait.name for trait in created.traits]
     assert names == ["Wings", "A tail that reads the air"]
 
 
@@ -575,4 +579,5 @@ def test_a_humans_three_increases_can_stack_onto_one_skill() -> None:
         "skill-3": "tracking",
     }
     created = creation.create("Rho", "Never stops moving.", picks)
-    assert created.rules["skills"] == {"Climbing": 8, "Stealth": 8, "Tracking": 12}
+    made = TwentyfourxxState.model_validate(created.mechanics)
+    assert made.sheets[PLAYER_ID].skills == {"Climbing": 8, "Stealth": 8, "Tracking": 12}

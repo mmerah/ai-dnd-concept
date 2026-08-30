@@ -7,20 +7,19 @@ from random import Random
 
 from pydantic import JsonValue
 
-from aidm.authoring.draft import ExtensionPatch, apply_patch
 from aidm.authoring.run import growth_run
 from aidm.config import Settings, load_settings
 from aidm.content.io import FileStore, load_character, load_scenario
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine, PlayerAction, offered, play_action, transact
 from aidm.engines.registry import begin_game, build_engines
-from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Slug
+from aidm.state.entities import EngineId, EntityId, Slug
 from aidm.state.facts import Fact, traced
 from aidm.state.model import Game
 from aidm.state.play import Answer, TurnTrace
 from aidm.state.scene import VisibleScene
+from aidm.state.tools import Play
 from aidm.turn.run import TurnAgents, TurnStep, build_turn_agents, run_segment
-from aidm.world.topology import frontier
 
 from .launch import LaunchTarget
 from .media import ICON_DIR, Illustrator
@@ -44,13 +43,7 @@ def open_media(
         config=settings.media,
         provider=settings.providers.for_name(settings.media.provider),
         saves=store.media_dir(target.slug),
-        icon_dirs={
-            **{entity_id: scenario_icons for entity_id in scenario.world.all_ids()},
-            **{
-                entity_id: character_icons
-                for entity_id in (PLAYER_ID, *(item.id for item in character.profile.items))
-            },
-        },
+        icon_dirs=(scenario_icons, character_icons),
         style=scenario.art_style or settings.media.style,
     )
 
@@ -172,9 +165,8 @@ class GameSession:
         return True
 
     def growth_due(self) -> bool:
-        return (
-            self.scenario.grows
-            and frontier(self.state.world) <= self.settings.authoring.growth_frontier
+        return self.scenario.grows and self.engine.growth_due(
+            self.state, self.settings.authoring.growth_frontier
         )
 
     async def _extend(self) -> None:
@@ -182,18 +174,13 @@ class GameSession:
         try:
             run = growth_run(self.settings, self.engine, self.character, self.state)
             _ = await run.send(run.opening_prompt)
-            _ = self.apply_growth(run.patch())
+            _ = self.apply_growth(run.play())
         except Exception:
             LOGGER.exception("extending %r failed", self.slug)
 
-    def apply_growth(self, patch: ExtensionPatch) -> tuple[Fact, ...]:
-        """Applied to the current state, which may have moved since the patch was authored."""
-        state, facts = transact(
-            self.engine.validate,
-            self.state.draft(),
-            lambda draft, _rng: apply_patch(draft, patch),
-            self.rng,
-        )
+    def apply_growth(self, play: Play) -> tuple[Fact, ...]:
+        """Applied to the current state, which may have moved since the pass was authored."""
+        state, facts = transact(self.engine.validate, self.state.draft(), play, self.rng)
         self.commit(state)
         LOGGER.info("the world grew: %s", traced(facts))
         return facts
@@ -252,9 +239,7 @@ class Runtime:
         settings = self.settings
         scenario = load_scenario(settings.scenarios_dir, target.scenario_id)
         engine = self.engines[scenario.engine]
-        character = load_character(
-            settings.characters_dir, target.character_id, engine.id, engine.character_mechanics
-        )
+        character = load_character(settings.characters_dir, target.character_id, engine.id)
         store = FileStore(settings.saves_dir)
         return GameSession(
             target=target,

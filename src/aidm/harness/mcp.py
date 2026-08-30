@@ -13,7 +13,7 @@ from pydantic_ai import ModelRetry
 from pydantic_ai.toolsets import ToolsetTool
 
 from aidm.app.runtime import Runtime
-from aidm.authoring.draft import ScenarioDraft
+from aidm.authoring.draft import Draft
 from aidm.authoring.run import draft_context
 from aidm.config import load_settings
 from aidm.harness.codemode import BeginScenario, Harness, OpenGame, PlayerActionCall, catalogue
@@ -127,7 +127,7 @@ def _as_mcp_tool[D](tool: ToolsetTool[D]) -> types.Tool:
 
 
 async def offered(harness: Harness) -> list[types.Tool]:
-    authoring = await harness.blank_authoring.get_tools(draft_context(ScenarioDraft()))
+    authoring = await harness.blank_authoring.get_tools(draft_context(Draft()))
     tools = [*PUBLISHED, *(_as_mcp_tool(one) for one in authoring.values())]
     if harness.session is None:
         return tools

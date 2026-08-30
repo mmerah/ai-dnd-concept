@@ -3,16 +3,17 @@ from functools import partial
 from pathlib import Path
 from random import Random
 
-from pydantic import Field, JsonValue
+from pydantic import Field
 
 from aidm.content.io import engine_text
-from aidm.content.model import Character, CharacterProfile
+from aidm.content.model import Character
 from aidm.engines.core import (
     ADVANCE_SPENT,
     Engine,
     EntityRenderer,
     Mechanics,
     PackCreation,
+    authoring_guidance,
     check_packs,
     describe_rows,
     find_entry,
@@ -51,6 +52,7 @@ from aidm.state.model import Game
 from aidm.state.play import DecisionOption
 from aidm.state.threads import ADVANCE_THREAD
 from aidm.state.tools import NoArgs, director_tool
+from aidm.world.authoring import rooms_brief, rooms_growth_due
 from aidm.world.scene import rooms_scene
 from aidm.world.succession import TAKE_OVER, player_over
 from aidm.world.tools import (
@@ -173,20 +175,22 @@ class Loner3eCreation(PackCreation[Pack]):
         check_picks(self.steps(picks), picks)
         chosen = picked(picks, "pack")
         pack = self.packs[chosen]
+        sheet = Sheet(
+            concept=picked(picks, "concept"),
+            skills=tuple(
+                find_entry(pack.skills, picked(picks, f"skill-{one}")).label for one in (1, 2)
+            ),
+            frailties=(find_entry(pack.frailties, picked(picks, "frailty")).label,),
+            gear=tuple(find_entry(pack.gear, picked(picks, f"gear-{one}")).label for one in (1, 2)),
+        )
         return Character(
             id=slug(name, ()),
-            profile=CharacterProfile(name=name, brief=brief),
-            rules={
-                "twist_pack": chosen,
-                "concept": picked(picks, "concept"),
-                "skills": [
-                    find_entry(pack.skills, picked(picks, f"skill-{one}")).label for one in (1, 2)
-                ],
-                "frailties": [find_entry(pack.frailties, picked(picks, "frailty")).label],
-                "gear": [
-                    find_entry(pack.gear, picked(picks, f"gear-{one}")).label for one in (1, 2)
-                ],
-            },
+            engine=EngineId("loner3e"),
+            name=name,
+            brief=brief,
+            mechanics=Loner3eState(sheets={PLAYER_ID: sheet}, twist_pack=chosen).model_dump(
+                mode="json"
+            ),
         )
 
 
@@ -252,6 +256,16 @@ def twists(packs: Mapping[str, Pack], state: Game) -> tuple[tuple[str, str], ...
     return twist_table(packs, chosen or state.packs[0])
 
 
+_AUTHORING = (
+    "LONER 3E AUTHORING\n"
+    "Every actor needs a sheet in `mechanics.sheets` under its exact entity id, with a "
+    "concept and any fitting skills, frailties, or gear. Loner tags are freeform "
+    "descriptions: use selected pack entries when they fit and invent scenario-specific "
+    "tags when they are clearer. twist_pack names one selected table set; its Oracle "
+    "twists are rolled from it."
+)
+
+
 def build(user_packs: Path) -> Engine:
     packs = load_packs((ENGINE_DIR / "packs", user_packs), Pack)
     validate = partial(_validate, packs)
@@ -268,15 +282,11 @@ def build(user_packs: Path) -> Engine:
         sheet_rows=sheet_rows,
         mechanics_merge=partial(mechanics_merged, Loner3eState),
         mechanics_without=_without,
-        character_mechanics=_character_mechanics,
         resolvers=(TAKE_OVER,),
-        authoring_instructions=(
-            "LONER 3E AUTHORING\n"
-            "Every actor needs a rules object with a concept and any fitting skills, frailties, or "
-            "gear. Loner tags are freeform descriptions: use selected pack entries when they fit "
-            "and invent scenario-specific tags when they are clearer. twist_pack names one "
-            "selected table set; its Oracle twists are rolled from it."
+        authoring_brief=lambda chosen, base, opening: rooms_brief(
+            base, opening, authoring_guidance(_AUTHORING, packs, chosen)
         ),
+        growth_due=rooms_growth_due,
         tools=(
             REVEAL,
             MOVE,
@@ -309,22 +319,6 @@ def build(user_packs: Path) -> Engine:
             director_tool("advance", ADVANCE_SPENT + GROWTH, AdventureGrowth, advance),
         ),
     )
-
-
-def _character_mechanics(character: Character) -> dict[str, JsonValue]:
-    """SRD "Everything is a Character": gear the player carries is sheeted like anyone else."""
-    overlay = dict(character.rules)
-    # The table set the character was built from outranks the scenario's; 3.1 files it directly.
-    chosen = overlay.pop("twist_pack", None)
-    sheets = {PLAYER_ID: overlay, **character.item_rules}
-    blob: dict[str, JsonValue] = {
-        "sheets": {
-            key: Sheet.model_validate(one).model_dump(mode="json") for key, one in sheets.items()
-        }
-    }
-    if chosen is not None:
-        blob["twist_pack"] = chosen
-    return blob
 
 
 def _without(blob: Mechanics, entity_id: EntityId) -> Mechanics:

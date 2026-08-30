@@ -1,16 +1,53 @@
 {
-  "sheet": {
-    "job": "Relic hunter",
-    "pronouns": "he/him",
-    "skills": {
-      "Sneak": 10,
-      "Think": 8,
-      "Dash": 6
+  "id": "kael",
+  "engine": "breathless",
+  "name": "Kael",
+  "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
+  "traits": [
+    {
+      "id": "relic-hunter",
+      "name": "Relic Hunter",
+      "text": "(skill) Kael knows how old sanctums conceal what matters."
+    },
+    {
+      "id": "marked-by-the-past",
+      "name": "Marked by the Past",
+      "text": "(frailty) Old scars make certain memories hard to face."
     }
-  },
-  "items": {
-    "lantern": {
-      "die": 10
+  ],
+  "items": [
+    {
+      "id": "lantern",
+      "kind": "item",
+      "name": "a guttering lantern",
+      "brief": "A dented tin lantern whose flame will not hold still.",
+      "known": true,
+      "parent_id": "player",
+      "traits": [
+        {
+          "id": "unsteady-lantern",
+          "name": "Unsteady Lantern",
+          "text": "(gear) Its shifting light exposes seams and movement in deep shadow."
+        }
+      ]
+    }
+  ],
+  "mechanics": {
+    "sheets": {
+      "player": {
+        "job": "Relic hunter",
+        "pronouns": "he/him",
+        "skills": {
+          "Sneak": 10,
+          "Think": 8,
+          "Dash": 6
+        }
+      }
+    },
+    "items": {
+      "lantern": {
+        "die": 10
+      }
     }
   }
 }

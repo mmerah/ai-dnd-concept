@@ -20,7 +20,7 @@ from core_test_support import (
 from pydantic import ValidationError
 
 from aidm.content.io import load_character, load_scenario
-from aidm.content.model import Character, CharacterProfile
+from aidm.content.model import Character
 from aidm.engines.core import rules
 from aidm.engines.loner3e.rules import RULES, Loner3eState
 from aidm.engines.twentyfourxx.rules import TwentyfourxxState
@@ -40,12 +40,10 @@ TOMAS = EntityId("tomas")
 def _character(*, holds: Entity) -> Character:
     return Character(
         id="test-character",
-        profile=CharacterProfile(
-            name="Test Character",
-            brief="A character built only for this test.",
-            items=(holds,),
-        ),
-        rules={},
+        engine=LONER3E,
+        name="Test Character",
+        brief="A character built only for this test.",
+        items=(holds,),
     )
 
 
@@ -143,9 +141,27 @@ def test_a_scenario_starts_the_party_it_authors() -> None:
         updated(authored, world=updated(authored.world, party=[TOMAS]))
 
 
-def test_a_scenario_is_refused_by_an_engine_it_was_not_authored_for() -> None:
+def test_a_game_is_refused_a_scenario_or_a_character_from_another_engine() -> None:
+    twentyfourxx = ENGINES_BUILT[TWENTYFOURXX]
     with pytest.raises(ValueError, match="does not play"):
-        _ = begin_game(ENGINES_BUILT[TWENTYFOURXX], "whispering-vault", scenario(), character())
+        _ = begin_game(twentyfourxx, "whispering-vault", scenario(), character())
+
+    theirs = scenario_for(TWENTYFOURXX)
+    with pytest.raises(ValueError, match="is written for the 'loner3e' rules"):
+        _ = begin_game(twentyfourxx, theirs, load_scenario(SCENARIOS, theirs), character())
+
+
+def test_a_character_file_belongs_to_its_folder_and_its_engine(tmp_path: Path) -> None:
+    written = character().model_dump_json()
+    (tmp_path / "kael").mkdir()
+    _ = (tmp_path / "kael" / f"{TWENTYFOURXX}.json").write_text(written, encoding="utf-8")
+    (tmp_path / "mira").mkdir()
+    _ = (tmp_path / "mira" / f"{LONER3E}.json").write_text(written, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="plays 'loner3e', not 'twentyfourxx'"):
+        _ = load_character(tmp_path, "kael", TWENTYFOURXX)
+    with pytest.raises(ValueError, match="'kael' is filed under 'mira'"):
+        _ = load_character(tmp_path, "mira", LONER3E)
 
 
 def test_an_authored_actor_without_rules_is_refused() -> None:
@@ -175,7 +191,7 @@ def test_twentyfourxx_opposition_needs_no_sheet() -> None:
             mechanics=engine.mechanics_without(authored.world.mechanics, hostile_id),
         ),
     )
-    player = load_character(CHARACTERS, "kael", engine.id, engine.character_mechanics)
+    player = load_character(CHARACTERS, "kael", engine.id)
 
     begun = begin_game(engine, scenario_id, stripped, player)
 
@@ -188,16 +204,6 @@ def test_twentyfourxx_opposition_needs_no_sheet() -> None:
 def test_a_character_knows_the_gear_they_start_with() -> None:
     with pytest.raises(ValidationError, match="knows the gear they start with"):
         _character(holds=_rope(HELD, known=False))
-
-
-def test_an_overlay_names_only_gear_the_character_carries() -> None:
-    with pytest.raises(ValidationError, match="does not carry"):
-        Character(
-            id="test-character",
-            profile=CharacterProfile(name="Test Character", brief="Built for this test."),
-            rules={},
-            item_rules={HELD: {}},
-        )
 
 
 def _luck(state: Game) -> int:

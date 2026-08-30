@@ -6,7 +6,7 @@ from random import Random
 from pydantic import Field, JsonValue
 
 from aidm.content.io import engine_text
-from aidm.content.model import Character, CharacterProfile
+from aidm.content.model import Character
 from aidm.engines.core import (
     ADVANCE_SPENT,
     Engine,
@@ -14,6 +14,7 @@ from aidm.engines.core import (
     Mechanics,
     PackCreation,
     adjust,
+    authoring_guidance,
     check_packs,
     describe_rows,
     find_entry,
@@ -64,6 +65,7 @@ from aidm.state.model import Game
 from aidm.state.play import DecisionOption
 from aidm.state.threads import ADVANCE_THREAD
 from aidm.state.tools import DirectorTool, NoArgs, director_tool
+from aidm.world.authoring import rooms_brief, rooms_growth_due
 from aidm.world.scene import rooms_scene
 from aidm.world.succession import TAKE_OVER, player_over
 from aidm.world.tools import (
@@ -262,19 +264,24 @@ class TwentyfourxxCreation(PackCreation[Pack]):
         ]
         kit = (*pack.starting_kit, *specialty.kit, *chosen_kit)
         items = tuple(_carried(entry, EntityId(entry.id), PLAYER_ID) for entry in kit)
-        item_rules = {
-            EntityId(entry.id): marks for entry in kit if (marks := _marks(entry)) is not None
-        }
-
+        sheet = Sheet.model_validate(
+            {"specialty": specialty.label, "origin": origin.label, "skills": skills_json}
+        )
         return Character(
             id=slug(name, ()),
-            profile=CharacterProfile(name=name, brief=brief, traits=tuple(traits), items=items),
-            rules={
-                "specialty": specialty.label,
-                "origin": origin.label,
-                "skills": skills_json,
-            },
-            item_rules=item_rules,
+            engine=EngineId("twentyfourxx"),
+            name=name,
+            brief=brief,
+            traits=tuple(traits),
+            items=items,
+            mechanics=TwentyfourxxState(
+                sheets={PLAYER_ID: sheet},
+                items={
+                    EntityId(entry.id): ItemSheet.model_validate(marks)
+                    for entry in kit
+                    if (marks := _marks(entry)) is not None
+                },
+            ).model_dump(mode="json"),
         )
 
 
@@ -405,6 +412,14 @@ def _buy_gear(gear: Mapping[Slug, GearItem], draft: Game, args: BuyGear) -> list
     return [*paid, draft.add(_carried(entry, item_id, args.onto_id or args.actor_id))]
 
 
+_AUTHORING = (
+    "24XX AUTHORING\n"
+    "Actors may omit rules; describe opposition through behavior, risks, and obstacles. "
+    "An actor that does roll needs a sheet in `mechanics.sheets` under its exact entity "
+    "id, using only skill names the selected packs supply."
+)
+
+
 def build(user_packs: Path) -> Engine:
     packs = load_packs((ENGINE_DIR / "packs", user_packs), Pack)
     validate = partial(_validate, packs)
@@ -419,16 +434,13 @@ def build(user_packs: Path) -> Engine:
         sheet_rows=sheet_rows,
         mechanics_merge=partial(mechanics_merged, TwentyfourxxState),
         mechanics_without=_without,
-        character_mechanics=_character_mechanics,
         over=player_over,
         scene=rooms_scene(describer, advances_owed),
         resolvers=(TAKE_OVER, DEFEND),
-        authoring_instructions=(
-            "24XX AUTHORING\n"
-            "Actors may omit rules; describe opposition through behavior, risks, and obstacles. "
-            "An actor that does roll needs a sheet in `mechanics.sheets` under its exact entity "
-            "id, using only skill names the selected packs supply."
+        authoring_brief=lambda chosen, base, opening: rooms_brief(
+            base, opening, authoring_guidance(_AUTHORING, packs, chosen)
         ),
+        growth_due=rooms_growth_due,
         tools=(
             REVEAL,
             MOVE,
@@ -450,16 +462,6 @@ def build(user_packs: Path) -> Engine:
             director_tool("advance", ADVANCE_SPENT + GROWTH, Advance, advance),
         ),
     )
-
-
-def _character_mechanics(character: Character) -> dict[str, JsonValue]:
-    return {
-        "sheets": {PLAYER_ID: Sheet.model_validate(character.rules).model_dump(mode="json")},
-        "items": {
-            item_id: ItemSheet.model_validate(one).model_dump(mode="json")
-            for item_id, one in character.item_rules.items()
-        },
-    }
 
 
 def _without(blob: Mechanics, entity_id: EntityId) -> Mechanics:

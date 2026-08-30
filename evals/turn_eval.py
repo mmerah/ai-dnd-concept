@@ -183,10 +183,7 @@ def begin(engine_id: EngineId, settings: Settings) -> tuple[Engine, Game]:
     canon = canon_for(engine_id)
     scenario = load_scenario(ROOT / settings.scenarios_dir, canon.scenario_id)
     character = load_character(
-        ROOT / settings.characters_dir,
-        settings.authoring.starter_character,
-        engine.id,
-        engine.character_mechanics,
+        ROOT / settings.characters_dir, settings.authoring.starter_character, engine.id
     )
     return engine, begin_game(engine, canon.scenario_id, scenario, character)
 

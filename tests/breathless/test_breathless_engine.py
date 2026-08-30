@@ -240,7 +240,8 @@ def test_creation_rates_three_skills_and_packs_a_d10_item() -> None:
         "item": "a fire axe",
     }
     created = engine.creation.create("Ines", "A nurse who kept her axe.", picks)
-    assert created.rules["skills"] == {
+    made = BreathlessState.model_validate(created.mechanics)
+    assert made.sheets[PLAYER_ID].skills == {
         "Bash": 4,
         "Dash": 6,
         "Sneak": 4,
@@ -248,6 +249,6 @@ def test_creation_rates_three_skills_and_packs_a_d10_item() -> None:
         "Think": 8,
         "Sway": 4,
     }
-    assert created.item_rules[created.profile.items[0].id] == {"die": 10}
+    assert made.items[created.items[0].id] == ItemSheet(die=10)
     with pytest.raises(ValueError, match="offers no"):
         _ = engine.creation.create("Ines", "", picks | {"d8": "shoot"})

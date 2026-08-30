@@ -30,6 +30,11 @@ def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character:
             f"{scenario_id!r} is authored for the {scenario.engine!r} rules, "
             f"which the {engine.id!r} engine does not play"
         )
+    if character.engine != engine.id:
+        raise ValueError(
+            f"{character.id!r} is written for the {character.engine!r} rules, "
+            f"which the {engine.id!r} engine does not play"
+        )
     world = scenario.world.model_copy(deep=True)
     player = Entity(
         id=PLAYER_ID,
@@ -38,10 +43,10 @@ def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character:
         brief=character.brief,
         known=True,
         parent_id=scenario.player_parent_id,
-        traits=list(character.profile.traits),
+        traits=list(character.traits),
     )
-    items = tuple(character.profile.items)
-    world.mechanics = engine.mechanics_merge(world.mechanics, engine.character_mechanics(character))
+    items = tuple(character.items)
+    world.mechanics = engine.mechanics_merge(world.mechanics, character.mechanics)
     for entity in (*items, player):
         if entity.id in world.entities:
             raise ValueError(f"authored entity id {entity.id!r} appears twice")
