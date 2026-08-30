@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
 
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel, JsonValue, SecretStr
 from pydantic_ai.messages import (
     ModelMessage,
     ModelResponse,
@@ -117,6 +117,14 @@ def structured(**output: object) -> ModelResponse:
 
 def tool_call(tool: str, **args: object) -> ModelResponse:
     return ModelResponse(parts=[ToolCallPart(tool_name=tool, args=json.dumps(args))])
+
+
+def change_args(verb: str, **fields: JsonValue) -> dict[str, JsonValue]:
+    return {"change": {"verb": verb, **fields}}
+
+
+def changed(verb: str, **fields: JsonValue) -> ModelResponse:
+    return tool_call("change_world", **change_args(verb, **fields))
 
 
 def text(body: str) -> ModelResponse:

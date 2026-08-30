@@ -14,6 +14,7 @@ from core_test_support import (
     SCENARIOS,
     TWENTYFOURXX,
     EnvFileFreeSettings,
+    change_args,
     scenario_for,
     updated,
     with_entity,
@@ -142,9 +143,9 @@ def _saved(harness: Harness) -> Game:
 async def test_a_director_tool_call_lands_on_disk(tmp_path: Path) -> None:
     harness = _opened(tmp_path, "loner3e")
 
-    assert "reveal" in {tool.name for tool in await offered(harness)}
+    assert "change_world" in {tool.name for tool in await offered(harness)}
     _ = await call(harness, "start_turn", {"text": "I look around."})
-    answered = await call(harness, "reveal", {"entity_id": VAULT})
+    answered = await call(harness, "change_world", change_args("reveal", entity_id=VAULT))
 
     assert "vault" in answered
     assert _saved(harness).world.require(VAULT).known
@@ -158,7 +159,7 @@ async def test_the_save_carries_the_turn_s_cards_as_they_land_and_files_them_at_
 
     _ = await call(harness, "start_turn", {"text": "I listen at the door."})
     assert _saved(harness).turn_facts == ()
-    _ = await call(harness, "reveal", {"entity_id": VAULT})
+    _ = await call(harness, "change_world", change_args("reveal", entity_id=VAULT))
     assert len(_saved(harness).turn_facts) == 1
     _ = await call(harness, "roll_question", A_QUESTION)
     assert len(_saved(harness).turn_facts) == 2
@@ -197,7 +198,7 @@ async def test_no_tool_runs_a_turn_before_start_turn_opens_one(tmp_path: Path) -
     harness = _opened(tmp_path, "loner3e")
 
     with pytest.raises(ModelRetry):
-        _ = await call(harness, "reveal", {"entity_id": VAULT})
+        _ = await call(harness, "change_world", change_args("reveal", entity_id=VAULT))
     with pytest.raises(ModelRetry):
         _ = await call(harness, "end_turn", {"lines": []})
 
@@ -231,7 +232,9 @@ async def test_an_open_decision_blocks_every_other_tool_until_it_is_answered(
         {"actor_id": PLAYER_ID, "goal": "climb the shaft", "hit": True, "risk": "a long fall"},
     )
     assert _saved(harness).pending is not None
-    assert "waiting on the player" in await call(harness, "reveal", {"entity_id": VAULT})
+    assert "waiting on the player" in await call(
+        harness, "change_world", change_args("reveal", entity_id=VAULT)
+    )
     _ = await call(
         harness, "end_turn", {"lines": [{"speaker_id": None, "text": "The shaft yawns."}]}
     )
@@ -374,7 +377,7 @@ async def test_a_turn_tool_commits_as_usual_while_a_growth_run_is_open(tmp_path:
     _ = await call(harness, "begin_growth", {})
 
     _ = await call(harness, "start_turn", {"text": "I look around."})
-    _ = await call(harness, "reveal", {"entity_id": VAULT})
+    _ = await call(harness, "change_world", change_args("reveal", entity_id=VAULT))
     _ = await call(harness, "write", {"patch": A_NEW_PLACE})
     _ = await call(harness, "connect", {"from_id": CLOISTER, "to_id": GROWN})
     _ = await call(harness, "finish_growth", {})
@@ -484,7 +487,9 @@ async def test_a_resume_that_re_suspended_may_still_develop_what_the_answer_caus
     _ = await call(harness, "start_turn", {"option_id": "proceed"})
 
     _ = await call(
-        harness, "add_trait", {"entity_id": "player", "name": "Winded", "text": "Breath short."}
+        harness,
+        "change_world",
+        change_args("add_trait", entity_id="player", name="Winded", text="Breath short."),
     )
     assert "waiting on the player" in await call(
         harness,

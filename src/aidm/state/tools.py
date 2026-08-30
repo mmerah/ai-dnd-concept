@@ -88,12 +88,3 @@ def advance_thread(draft: Game, effect: AdvanceThread) -> list[Fact]:
     if thread.note:
         moved += f" — note: {thread.note}"
     return [Fact(kind="thread_advanced", trace=moved)]
-
-
-ADVANCE_THREAD: DirectorTool = director_tool(
-    "advance_thread",
-    "Update an active storyline's status or note.",
-    AdvanceThread,
-    lambda draft, one, _rng: advance_thread(draft, one),
-    during_suspension=True,
-)

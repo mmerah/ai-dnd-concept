@@ -3,6 +3,7 @@ from random import Random
 import pytest
 from core_test_support import (
     TWENTYFOURXX,
+    changed,
     game,
     initialized,
     loner_at_boundary,
@@ -31,7 +32,7 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
     steps: list[TurnStep] = []
     director = FunctionModel(
         scripted(
-            tool_call("move", entity_id="vault-map", to_id="player"),
+            changed("move", entity_id="vault-map", to_id="player"),
             text("The map is in hand."),
         )
     )
@@ -67,8 +68,8 @@ async def test_on_fact_reports_the_visible_facts_in_resolver_order() -> None:
     fired: list[Fact] = []
     director = FunctionModel(
         scripted(
-            tool_call("move", entity_id="vault-map", to_id="player"),
-            tool_call("add_trait", entity_id="player", name="Listening", text="listening"),
+            changed("move", entity_id="vault-map", to_id="player"),
+            changed("add_trait", entity_id="player", name="Listening", text="listening"),
             text("Kael takes the map and listens."),
         )
     )
@@ -95,7 +96,7 @@ async def test_a_narrator_failure_leaves_history_and_events_untouched() -> None:
 
     director = FunctionModel(
         scripted(
-            tool_call("move", entity_id="vault-map", to_id="player"),
+            changed("move", entity_id="vault-map", to_id="player"),
             text("The map is in hand."),
         )
     )
@@ -153,8 +154,8 @@ async def test_the_director_reacts_in_run_to_its_own_earlier_tool_call() -> None
         "I search the cloister for another way up.",
         director=FunctionModel(
             scripted(
-                tool_call("move", entity_id="player", to_id="cloister"),
-                tool_call("move", entity_id="player", to_id="bell-tower"),
+                changed("move", entity_id="player", to_id="cloister"),
+                changed("move", entity_id="player", to_id="bell-tower"),
                 text("A rotten ladder climbs into the dark."),
             )
         ),
@@ -166,8 +167,8 @@ async def test_the_director_reacts_in_run_to_its_own_earlier_tool_call() -> None
 async def test_an_illegal_tool_call_is_retried_with_the_reason() -> None:
     engine, state = initialized()
     director = recorded(
-        tool_call("reveal", entity_id="nowhere"),
-        tool_call("reveal", entity_id="vault"),
+        changed("reveal", entity_id="nowhere"),
+        changed("reveal", entity_id="vault"),
         text("Something is there."),
     )
     state = await played(engine, state, "I wait.", director=FunctionModel(director.stub))
@@ -178,7 +179,10 @@ async def test_an_illegal_tool_call_is_retried_with_the_reason() -> None:
 
 async def test_a_discovered_entitys_instruction_comes_back_with_the_tool_result() -> None:
     engine, state = initialized()
-    director = recorded(tool_call("reveal", entity_id="vault"), text("Something is there."))
+    director = recorded(
+        changed("reveal", entity_id="vault"),
+        text("Something is there."),
+    )
     await played(engine, state, "I wait.", director=FunctionModel(director.stub))
 
     returns = [
@@ -193,8 +197,8 @@ async def test_a_discovered_entitys_instruction_comes_back_with_the_tool_result(
 async def test_a_call_its_own_fields_refuse_is_retried_rather_than_killing_the_turn() -> None:
     engine, state = initialized()
     director = recorded(
-        tool_call("advance_thread", thread_id="vault-seal"),
-        tool_call("advance_thread", thread_id="vault-seal", note="The seal is found."),
+        changed("advance_thread", thread_id="vault-seal"),
+        changed("advance_thread", thread_id="vault-seal", note="The seal is found."),
         text("The seal is found."),
     )
     state = await played(engine, state, "I press on.", director=FunctionModel(director.stub))
@@ -246,7 +250,7 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
 
     director = FunctionModel(
         scripted(
-            tool_call("move", entity_id="vault-map", to_id="player"),
+            changed("move", entity_id="vault-map", to_id="player"),
             text("The map is in hand."),
         )
     )
@@ -262,7 +266,7 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
 async def test_a_director_run_that_fails_discards_what_the_earlier_tool_call_did() -> None:
     engine, state = initialized()
     before = state.model_dump_json()
-    first = tool_call("move", entity_id="vault-map", to_id="player")
+    first = changed("move", entity_id="vault-map", to_id="player")
     calls = 0
 
     def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:

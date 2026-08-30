@@ -1,9 +1,9 @@
-from core_test_support import tool_call
+from core_test_support import changed
 from pydantic_ai.messages import ModelResponse
 
 NARRATION = "The flagstone lifts. Beyond the door, something shifts its weight and waits."
 
-LISTENING = tool_call(
+LISTENING = changed(
     "add_trait",
     entity_id="player",
     name="Listening",
@@ -12,4 +12,4 @@ LISTENING = tool_call(
 
 
 def take(item_id: str) -> ModelResponse:
-    return tool_call("move", entity_id=item_id, to_id="player")
+    return changed("move", entity_id=item_id, to_id="player")

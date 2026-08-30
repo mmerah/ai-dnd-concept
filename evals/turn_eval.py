@@ -11,8 +11,17 @@ from statistics import mean
 from time import perf_counter
 from types import ModuleType
 
+from pydantic import JsonValue
 from pydantic_ai import capture_run_messages
-from pydantic_ai.messages import ModelMessage, ModelRequest, RetryPromptPart, UserPromptPart
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    RetryPromptPart,
+    ToolCallPart,
+    ToolReturnPart,
+    UserPromptPart,
+)
 
 from aidm.config import Settings, load_settings
 from aidm.content.io import load_character, load_scenario
@@ -61,6 +70,7 @@ class Played(Frozen):
     director_calls: int = 0
     retry_prompts: tuple[str, ...] = ()
     prompts: tuple[str, ...] = ()
+    calls: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,6 +104,7 @@ class Run(Frozen):
     prompts: list[str] = []
     director_calls: int = 0
     refusals: list[str] = []
+    calls: list[str] = []
     seconds: float = 0.0
 
     @property
@@ -127,6 +138,29 @@ def _asked(messages: Sequence[ModelMessage]) -> str:
         for part in message.parts
         if isinstance(part, UserPromptPart)
     )
+
+
+def _called(messages: Sequence[ModelMessage]) -> tuple[str, ...]:
+    """Tool calls that got a plain return back, each with the union arm its args selected."""
+    landed = {
+        part.tool_call_id
+        for message in messages
+        if isinstance(message, ModelRequest)
+        for part in message.parts
+        if isinstance(part, ToolReturnPart)
+    }
+    calls: list[str] = []
+    for message in messages:
+        if not isinstance(message, ModelResponse):
+            continue
+        for part in message.parts:
+            if not isinstance(part, ToolCallPart) or part.tool_call_id not in landed:
+                continue
+            raw: dict[str, JsonValue] = part.args_as_dict()
+            change = raw.get("change")
+            arm = change.get("verb") if isinstance(change, dict) else None
+            calls.append(f"{part.tool_name}:{arm}" if isinstance(arm, str) else part.tool_name)
+    return tuple(calls)
 
 
 def _refused(messages: Sequence[ModelMessage]) -> tuple[str, ...]:
@@ -173,6 +207,7 @@ async def play(case: Case, settings: Settings, seed: int) -> Run:
                 director_calls=played.director_calls + steps.count("director"),
                 retry_prompts=(*played.retry_prompts, *_refused(messages)),
                 prompts=(*played.prompts, _asked(messages)),
+                calls=(*played.calls, *_called(messages)),
             )
             pending = committed.pending
             if pending is None:
@@ -192,6 +227,7 @@ async def play(case: Case, settings: Settings, seed: int) -> Run:
             prompts=[] if all(passed.values()) else list(played.prompts),
             director_calls=played.director_calls,
             refusals=list(played.retry_prompts),
+            calls=list(played.calls),
             seconds=perf_counter() - started,
         )
     except Exception as error:
@@ -200,6 +236,7 @@ async def play(case: Case, settings: Settings, seed: int) -> Run:
             passed={check.name: False for check in case.expectations},
             facts=[f"{fact.kind}: {fact.trace}" for fact in played.facts],
             prompts=list(played.prompts),
+            calls=list(played.calls),
             seconds=perf_counter() - started,
         )
 
