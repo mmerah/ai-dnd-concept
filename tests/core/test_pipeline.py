@@ -11,7 +11,6 @@ from core_test_support import (
     played,
     recorded,
     scripted,
-    shown,
     structured,
     text,
     tool_call,
@@ -36,29 +35,31 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
             text("The map is in hand."),
         )
     )
-    narrator = FunctionModel(scripted(narrated("A creased chart slides into your hand.")))
-    result = await played(
+    narrator = recorded(narrated("A creased chart slides into your hand."))
+    facts: list[Fact] = []
+    state = await played(
         engine,
         state,
         "I search beneath the desk.",
         director=director,
-        narrator=narrator,
+        narrator=FunctionModel(narrator.stub),
         on_step=steps.append,
+        on_fact=facts.append,
     )
 
     assert tuple(steps) == ("director", "narrator")
-    assert [fact.kind for fact in result.turn.facts] == [
+    assert [fact.kind for fact in facts] == [
         "entity_discovered",
         "entity_moved",
     ]
-    assert {item.id for item in children(result.state.world, PLAYER_ID, "item")} == {
+    assert {item.id for item in children(state.world, PLAYER_ID, "item")} == {
         "lantern",
         "vault-map",
     }
-    assert "Elena" not in shown(result.turn, "narrator")
-    assert "engine_data" not in shown(result.turn, "narrator")
-    assert result.state.turn == 1
-    assert result.state.history[-1].prompt == "I search beneath the desk."
+    assert "Elena" not in narrator.prompt()
+    assert "engine_data" not in narrator.prompt()
+    assert state.turn == 1
+    assert state.history[-1].prompt == "I search beneath the desk."
 
 
 async def test_on_fact_reports_the_visible_facts_in_resolver_order() -> None:
@@ -71,7 +72,7 @@ async def test_on_fact_reports_the_visible_facts_in_resolver_order() -> None:
             text("Kael takes the map and listens."),
         )
     )
-    result = await played(
+    state = await played(
         engine,
         state,
         "I take the map and listen.",
@@ -81,7 +82,7 @@ async def test_on_fact_reports_the_visible_facts_in_resolver_order() -> None:
 
     landed = ["Took the vault map", "Kael gained Listening"]
     assert [fact.card for fact in cards(fired)] == landed
-    assert [fact.card for fact in result.state.history[-1].facts] == landed
+    assert [fact.card for fact in state.history[-1].facts] == landed
 
 
 async def test_a_narrator_failure_leaves_history_and_events_untouched() -> None:
@@ -115,7 +116,7 @@ async def test_a_narrator_failure_leaves_history_and_events_untouched() -> None:
 async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:
     engine, state = initialized()
     fired: list[Fact] = []
-    result = await played(
+    state = await played(
         engine,
         state,
         "I plead with the door.",
@@ -134,19 +135,19 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:
         on_fact=fired.append,
     )
 
-    answer = next(fact for fact in result.turn.facts if fact.kind == "question_answered")
+    answer = next(fact for fact in fired if fact.kind == "question_answered")
     chance, risk = answer.dice
-    rolled = [fact.trace for fact in result.turn.facts if fact.kind == "dice_rolled"]
+    rolled = [fact.trace for fact in fired if fact.kind == "dice_rolled"]
     for die, trace in zip(answer.dice, rolled, strict=True):
         assert trace.endswith(f"[{', '.join(str(v) for v in die.rolled)}]")
-    assert answer.card.endswith(f"→ {outcome_for(int(chance.result), int(risk.result)).name}")
-    engine.validate(result.state)
+    assert answer.card.endswith(f"→ {outcome_for(max(chance.rolled), max(risk.rolled)).name}")
+    engine.validate(state)
     assert any(fact.kind == "dice_rolled" and not fact.told for fact in fired)
 
 
 async def test_the_director_reacts_in_run_to_its_own_earlier_tool_call() -> None:
     engine, state = initialized()
-    result = await played(
+    state = await played(
         engine,
         state,
         "I search the cloister for another way up.",
@@ -159,8 +160,7 @@ async def test_the_director_reacts_in_run_to_its_own_earlier_tool_call() -> None
         ),
     )
 
-    assert result.state.player.parent_id == "bell-tower"
-    assert tuple(step.name for step in result.turn.steps) == ("director", "narrator")
+    assert state.player.parent_id == "bell-tower"
 
 
 async def test_an_illegal_tool_call_is_retried_with_the_reason() -> None:
@@ -170,9 +170,9 @@ async def test_an_illegal_tool_call_is_retried_with_the_reason() -> None:
         tool_call("reveal", entity_id="vault"),
         text("Something is there."),
     )
-    result = await played(engine, state, "I wait.", director=FunctionModel(director.stub))
+    state = await played(engine, state, "I wait.", director=FunctionModel(director.stub))
 
-    assert result.state.world.require(EntityId("vault")).known
+    assert state.world.require(EntityId("vault")).known
     assert any("unknown entity id 'nowhere'" in reason for reason in director.reasons())
 
 
@@ -197,9 +197,9 @@ async def test_a_call_its_own_fields_refuse_is_retried_rather_than_killing_the_t
         tool_call("advance_thread", thread_id="vault-seal", note="The seal is found."),
         text("The seal is found."),
     )
-    result = await played(engine, state, "I press on.", director=FunctionModel(director.stub))
+    state = await played(engine, state, "I press on.", director=FunctionModel(director.stub))
 
-    thread = result.state.world.thread("vault-seal")
+    thread = state.world.thread("vault-seal")
     assert thread is not None and thread.note == "The seal is found."
     reason = "status or its note"
     assert any(reason in seen for seen in director.reasons())
@@ -213,9 +213,9 @@ async def test_a_later_call_is_judged_against_the_mechanics_the_earlier_one_move
         tool_call("change_credits", actor_id="player", amount=-1),
         text("The purse is empty."),
     )
-    result = await played(engine, state, "I pay what I owe.", director=FunctionModel(director.stub))
+    state = await played(engine, state, "I pay what I owe.", director=FunctionModel(director.stub))
 
-    assert sheets(result.state)[PLAYER_ID].credits.current == 0
+    assert sheets(state)[PLAYER_ID].credits.current == 0
     assert director.reasons()
 
 
@@ -225,7 +225,7 @@ async def test_a_narrated_line_spoken_by_someone_not_here_is_retried_with_the_id
         structured(lines=[{"speaker_id": "elena", "text": "You should not be here."}]),
         narrated("The door settles."),
     )
-    result = await played(
+    state = await played(
         engine,
         state,
         "I wait.",
@@ -234,7 +234,7 @@ async def test_a_narrated_line_spoken_by_someone_not_here_is_retried_with_the_id
     )
 
     assert any("elena" in reason for reason in narrator.reasons())
-    assert result.state.history[-1].narration == "The door settles."
+    assert state.history[-1].narration == "The door settles."
 
 
 async def test_a_failed_role_never_mutates_the_input_state() -> None:
@@ -296,15 +296,17 @@ async def test_an_owed_advance_is_noted_lands_on_call_and_is_refused_once_spent(
         tool_call("advance", **growth),
         text("The rope is his for good."),
     )
-    result = await played(
+    facts: list[Fact] = []
+    state = await played(
         engine,
         loner_at_boundary(state),
         "I keep the rope.",
         director=FunctionModel(director.stub),
+        on_fact=facts.append,
     )
 
-    assert "Kael has an advance owed" in shown(result.turn, "director")
-    assert len(cards(result.turn.facts)) == 2
-    sheet = loner_sheet(result.state, PLAYER_ID)
+    assert "Kael has an advance owed" in director.prompt()
+    assert len(cards(tuple(facts))) == 2
+    sheet = loner_sheet(state, PLAYER_ID)
     assert (sheet.gear[-1], sheet.milestones) == ("Waxed Rope", 1)
     assert any("has no advance owed" in reason for reason in director.reasons())

@@ -33,10 +33,7 @@ def render_director(
     return _sections(
         (
             _premise(scenario),
-            *(
-                (section.title, section.player if section.director is None else section.director)
-                for section in scene.sections
-            ),
+            *scene.director_sections,
             ("ACTIVE THREADS", _threads(threads)),
             ("NOTES FROM THE RULES", "\n".join(f"- {note}" for note in notes) or "- (none)"),
             *ending,

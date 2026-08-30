@@ -4,7 +4,7 @@ from pydantic import Field
 
 from aidm.content.io import engine_text
 from aidm.state.entities import CheckedEntityId, Frozen, Slug
-from aidm.state.tools import DirectorTool, Validate, director_tool
+from aidm.state.tools import ADVANCE_THREAD, DirectorTool, Validate, director_tool
 from aidm.world import actions
 
 # The prompt fragment that names these tools; a non-rooms engine ships neither.
@@ -143,3 +143,22 @@ LEAVE_PARTY: DirectorTool = director_tool(
     lambda draft, one, _rng: actions.leave_party(draft, one.actor_id),
     during_suspension=True,
 )
+
+
+def rooms_tools(
+    validate: Validate, *extra: DirectorTool, improvised: bool = True
+) -> tuple[DirectorTool, ...]:
+    """The world tools every dungeon-crawler engine ships, in the order their schemas record."""
+    return (
+        REVEAL,
+        MOVE,
+        *((GAIN_IMPROVISED_ITEM,) if improvised else ()),
+        ADD_TRAIT,
+        REMOVE_TRAIT,
+        kill_tool(validate),
+        UNLOCK_EXIT,
+        JOIN_PARTY,
+        LEAVE_PARTY,
+        ADVANCE_THREAD,
+        *extra,
+    )

@@ -21,15 +21,12 @@ from aidm.state.entities import (
     require_unique,
 )
 from aidm.state.facts import DiceEvent, Fact, entity_fact, roll, told_traces
-from aidm.state.model import Game, Mechanics, WorldState
-from aidm.state.play import DecisionOption, Line, PendingDecision, PendingOption, ToolCall
+from aidm.state.model import Game, Mechanics, MechanicsPatch, WorldState
+from aidm.state.play import DecisionOption, Line, PendingDecision, PendingOption
 from aidm.state.scene import Scene
 from aidm.state.tools import DirectorTool, Validate, transact
 
 type EntityRenderer = Callable[[Entity], str]
-
-
-# The small vocabulary an engine's rules are written with.
 
 
 def pool(counter: Counter) -> str:
@@ -80,25 +77,23 @@ def spend(state: Game, entity: Entity, key: str, counter: Counter, amount: int) 
 def keep_highest(
     faces: Sequence[int], reason: str, rng: Random, *, label: str
 ) -> tuple[int, DiceEvent, Fact]:
-    """The one roll shape all three engines make."""
     rolled, fact = roll(faces, reason, rng)
     kept = max(rolled)
     event = DiceEvent(
         label=label,
         faces=tuple(faces),
         rolled=rolled,
-        result=str(kept),
         highlight=(rolled.index(kept),),
     )
     return kept, event, fact
 
 
-def stake_decision(risk: str, call: ToolCall) -> PendingDecision:
+def stake_decision(risk: str, name: str, args: dict[str, JsonValue]) -> PendingDecision:
     """`proceed` is the only option; the player's own words revise the plan instead."""
     return PendingDecision(
         kind="stake",
         prompt=f"{risk}\n\nProceed, or change your plan.",
-        options=(PendingOption(id="proceed", label="Proceed", call=call),),
+        options=(PendingOption(id="proceed", label="Proceed", name=name, args=args),),
         allows_text=True,
     )
 
@@ -121,22 +116,31 @@ def mechanics_of[M: BaseModel](world: WorldState, model: type[M]) -> M:
         raise ValueError(f"{place}: {first['msg']}") from broken
 
 
-def mechanics_merged[M: BaseModel](
-    model: type[M], base: dict[str, JsonValue], added: dict[str, JsonValue]
-) -> dict[str, JsonValue]:
-    """One level deep, so sheet maps join instead of replacing each other; `added` wins."""
-    merged: dict[str, JsonValue] = dict(base)
+def mechanics_patched[M: BaseModel](
+    model: type[M],
+    blob: Mechanics,
+    added: Mechanics,
+    removed_ids: Sequence[EntityId],
+    *,
+    entity_maps: tuple[str, ...],
+) -> Mechanics:
+    """Merges one level deep so sheet maps join instead of replacing each other; `added` wins.
+    Validated before ids drop, so a patch cannot hide a bad sheet by adding and removing it."""
+    merged: Mechanics = dict(blob)
     for key, value in added.items():
         held = merged.get(key)
-        if isinstance(value, dict) and isinstance(held, dict):
-            merged[key] = held | value
-        else:
-            merged[key] = value
-    return model.model_validate(merged).model_dump(mode="json")
+        merged[key] = held | value if isinstance(value, dict) and isinstance(held, dict) else value
+    patched = model.model_validate(merged).model_dump(mode="json")
+    dropped = set(removed_ids)
+    for key in entity_maps:
+        held: JsonValue = patched.get(key)
+        if isinstance(held, dict):
+            patched[key] = {one: sheet for one, sheet in held.items() if one not in dropped}
+    return patched
 
 
 def mechanics_delta(base: Mechanics, added: Mechanics) -> Mechanics:
-    """One level deep, matching `mechanics_merged`: a new NPC's sheet sits inside `sheets`."""
+    """One level deep, matching `mechanics_patched`: a new NPC's sheet sits inside `sheets`."""
     delta: Mechanics = {}
     for key, value in added.items():
         held = base.get(key)
@@ -158,6 +162,22 @@ def sheet_of[S](sheets: Mapping[EntityId, S], entity: Entity) -> S:
 
 
 ADVANCE_SPENT = "Spend one advance a party member has earned, when the player asks for it. "
+
+
+def owed_notes[S](
+    state: Game, sheets: Mapping[EntityId, S], is_owed: Callable[[S], bool]
+) -> tuple[tuple[str, str], ...]:
+    """Chapters played standing above the ledger of advances taken, one note each."""
+    # An advance mid-suspension could invalidate the frozen call an open decision holds.
+    if state.pending is not None:
+        return ()
+    owed = [
+        f"- {state.world.require(one).name} has an advance owed; call advance only when the "
+        "player asks for it."
+        for one in (state.player_id, *state.world.party)
+        if (sheet := sheets.get(one)) is not None and is_owed(sheet)
+    ]
+    return (("ADVANCES OWED", "\n".join(owed)),) if owed else ()
 
 
 def party_member(draft: Game, subject_id: EntityId) -> Entity:
@@ -182,9 +202,6 @@ def describe_rows(rows: tuple[tuple[str, str], ...], meanings: tuple[tuple[str, 
         listed = value.split(", ")
         lines.extend(f"- {tag}: {detail}" for tag, detail in meanings if tag in listed)
     return "\n".join(lines)
-
-
-# The contract: what a new engine supplies.
 
 
 class CharacterCreation(ABC):
@@ -265,13 +282,6 @@ def authoring_guidance(text: str, packs: Mapping[str, BaseModel], chosen: tuple[
     return f"{text}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"
 
 
-def check_tool_names(engine: "Engine") -> None:
-    require_unique(
-        f"tool names of the {engine.id!r} engine",
-        (one.name for one in (*engine.tools, *engine.resolvers)),
-    )
-
-
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Engine:
     id: EngineId
@@ -284,9 +294,7 @@ class Engine:
     resolvers: tuple[DirectorTool, ...] = ()
     creation: CharacterCreation
     validate: Validate
-    sheet_rows: Callable[[Game], tuple[tuple[str, str], ...]]
-    mechanics_merge: Callable[[Mechanics, Mechanics], Mechanics]
-    mechanics_without: Callable[[Mechanics, EntityId], Mechanics]
+    mechanics_patch: MechanicsPatch
     scene: Callable[[Game], Scene]
     # None while the game can still be played on; the text the player is shown when it cannot.
     over: Callable[[Game], str | None] = lambda state: None
@@ -296,7 +304,10 @@ class Engine:
     growth_due: Callable[[Game, int], bool] = lambda state, frontier: False
 
     def __post_init__(self) -> None:
-        check_tool_names(self)
+        require_unique(
+            f"tool names of the {self.id!r} engine",
+            (one.name for one in (*self.tools, *self.resolvers)),
+        )
 
     def tool(self, name: str) -> DirectorTool | None:
         return next((one for one in (*self.tools, *self.resolvers) if one.name == name), None)
@@ -307,13 +318,13 @@ class Engine:
             raise ValueError(f"the save plays {state.engine!r}, not {self.id!r}")
         if state.pending is not None:
             for option in state.pending.options:
-                found = self.tool(option.call.name)
+                found = self.tool(option.name)
                 if found is None:
                     raise ValueError(
-                        f"the {self.id!r} engine has no tool {option.call.name!r} to play "
+                        f"the {self.id!r} engine has no tool {option.name!r} to play "
                         f"option {option.id!r}"
                     )
-                _ = found.args.model_validate(option.call.args)
+                _ = found.args.model_validate(option.args)
         self.validate(state)
         return state
 

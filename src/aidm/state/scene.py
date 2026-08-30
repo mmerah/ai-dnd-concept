@@ -4,21 +4,15 @@ from aidm.state.entities import CheckedEntityId, Frozen
 from aidm.state.model import WorldState
 
 
-class SceneSection(Frozen):
-    """One block of the turn's context; `director` is what only the Director may read."""
-
-    title: str
-    player: str = ""
-    director: str | None = None  # None means the player text serves both readers
-
-
 class Scene(Frozen):
     """The current player-facing context, not a place: every consumer reads this projection."""
 
     key: str
     label: str
     summary: str = ""
-    sections: tuple[SceneSection, ...]
+    sections: tuple[tuple[str, str], ...]
+    # The Director's own list, whole: an engine states both, so nothing leaks by omission.
+    director_sections: tuple[tuple[str, str], ...]
     # Entity-derived player text declares its entity here, as a told fact declares its own.
     public_entity_ids: frozenset[CheckedEntityId] = frozenset()
     present_entity_ids: frozenset[CheckedEntityId] = frozenset()
@@ -52,9 +46,7 @@ class VisibleScene(Frozen):
             key=scene.key,
             label=scene.label,
             summary=scene.summary,
-            sections=tuple(
-                (section.title, section.player) for section in scene.sections if section.player
-            ),
+            sections=scene.sections,
             present_entity_ids=scene.present_entity_ids,
             prompts=scene.prompts,
             art_prompt=scene.art_prompt,

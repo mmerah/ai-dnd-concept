@@ -27,19 +27,12 @@ from aidm.state.play import DecisionOption, PendingDecision
 from aidm.world.actions import require_actor_here
 from aidm.world.topology import is_here
 
-
-@dataclass(frozen=True, slots=True)
-class Rules:
-    """Loner 3e's numbers in one place; docs/LONER-3E.md points at the SRD and its deviations."""
-
-    luck_max: int = 6
-    ties_per_twist: int = 3
-    die_face: int = 6  # every roll in the game is one d6, and every table is six rows
-    and_at: int = 4  # both dice 4+ sharpens the answer to -and
-    but_at: int = 3  # both dice 3 or under softens it to -but
-
-
-RULES = Rules()
+# Loner 3e's numbers; docs/LONER-3E.md points at the SRD and its deviations.
+LUCK_MAX = 6
+TIES_PER_TWIST = 3
+DIE_FACE = 6  # every roll in the game is one d6, and every table is six rows
+AND_AT = 4  # both dice 4+ sharpens the answer to -and
+BUT_AT = 3  # both dice 3 or under softens it to -but
 
 
 SRD_PACK: Slug = "srd"
@@ -63,7 +56,7 @@ class Pack(Frozen):
         if (self.twist_subjects is None) != (self.twist_actions is None):
             raise ValueError("twist_subjects and twist_actions come together or not at all")
         for column in (self.twist_subjects, self.twist_actions):
-            if column is not None and len(column) != RULES.die_face:
+            if column is not None and len(column) != DIE_FACE:
                 raise ValueError("a twist column is one d6: exactly six entries")
         return self
 
@@ -95,7 +88,7 @@ class Sheet(Mutable):
     skills: tuple[str, ...] = ()
     frailties: tuple[str, ...] = ()
     gear: tuple[str, ...] = ()
-    luck: Counter = Counter(current=RULES.luck_max, maximum=RULES.luck_max)
+    luck: Counter = Counter(current=LUCK_MAX, maximum=LUCK_MAX)
     milestones: int = 0
 
     def rows(self) -> tuple[tuple[str, str], ...]:
@@ -111,7 +104,7 @@ class Sheet(Mutable):
 class Loner3eState(Mutable):
     sheets: dict[EntityId, Sheet] = Field(default_factory=dict)
     # The played character's tally paces the whole game, so no sheet carries one.
-    twist: Counter = Counter(current=0, maximum=RULES.ties_per_twist)
+    twist: Counter = Counter(current=0, maximum=TIES_PER_TWIST)
     # None rolls twists from the game's own first table set, so no scenario has to name one.
     twist_pack: Slug | None = None
 
@@ -178,9 +171,9 @@ def outcome_for(chance: int, risk: int) -> Outcome:
     if chance == risk:
         return Outcome("yes-but", 1)
     side, sign = ("yes", 1) if chance > risk else ("no", -1)
-    if min(chance, risk) >= RULES.and_at:
+    if min(chance, risk) >= AND_AT:
         return Outcome(f"{side}-and", 3 * sign)
-    if max(chance, risk) <= RULES.but_at:
+    if max(chance, risk) <= BUT_AT:
         return Outcome(f"{side}-but", sign)
     return Outcome(side, 2 * sign)
 
@@ -296,7 +289,7 @@ def _twist(
     draft: Game, actor: Entity, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> list[Fact]:
     """The SRD's table is rolled here so the dice trace; the Director only reads the pairing."""
-    face = (RULES.die_face,)
+    face = (DIE_FACE,)
     subject_kept, subject_die, subject_fact = keep_highest(
         face, "twist — subject", rng, label="Subject"
     )
@@ -348,7 +341,7 @@ def _refuse_unless_ready(game: Loner3eState, actor: Entity, opponent: Entity | N
 
 def _pair(action: Question, rng: Random) -> tuple[int, DiceEvent, int, DiceEvent, list[Fact]]:
     """One extra die at most, and only for the side the judged position favours."""
-    face = RULES.die_face
+    face = DIE_FACE
     chance_faces = (face, face) if action.position == "advantage" else (face,)
     risk_faces = (face, face) if action.position == "disadvantage" else (face,)
     asked = action.question

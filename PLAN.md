@@ -364,9 +364,12 @@ Verify: full check; `uv run aidm` opens and a game page renders.
   `mark_passage`, a one-step `creation`, a room-free `AuthoringBrief` with no `connect`,
   `growth_due` False, `over=lambda state: None`, its own `mechanics_patch`. `scene` returns
   `Scene(key="journal", label="Journal I", sections=(("JOURNAL", <public text>),),
-  director_sections=(("COUNTER", <counter text>),), present_entity_ids={player},
-  art_prompt="an open journal ...")`. No import from `aidm.world`; no locations, exits, party,
-  threads, death or dice; `player_parent_id` null.
+  director_sections=(("JOURNAL", <public text>), ("COUNTER", <counter text>)),
+  present_entity_ids={player}, art_prompt="an open journal ...")`. **`director_sections` is the
+  Director's complete list, not an addition to `sections`** — `render_director` reads it alone,
+  so an engine that names only its private blocks hides the rest of its own scene. No import
+  from `aidm.world`; no locations, exits, party, threads, death or dice; `player_parent_id`
+  null.
 - `tests/nonrooms/test_nonrooms.py` asserts:
   1. `run_segment` with a `FunctionModel` calls `mark_passage`, commits counter `1`, records
      `Exchange.scene == "Journal I"`, leaves `player.parent_id` None.

@@ -20,7 +20,7 @@ You create the world for a playable tabletop scenario. Rules come from the selec
 - `threads`: the scenario's active storylines. Use a kebab-case `id`, a title, and a private `note` explaining where the storyline stands and what it means now.
 - `art_style`: one line naming the illustrations' palette, medium, and mood. Match the source or premise. Omit it to use the app default.
 
-`connect` creates each location's `exits`. Use `known: false` for an undiscovered route and `locked: true` for a closed one. A known exit needs both locations to be known.
+`connect` creates each location's `exits`; never write an `exits` list yourself. Use `known: false` for an undiscovered route and `locked: true` for a closed one. A known exit needs both locations to be known.
 
 Write specific, finished content. Each location should reward a visit. Each secret needs a discoverable lead. Each thread needs an entity whose `when_reached` advances it. Make the title and premise matter in play.
 

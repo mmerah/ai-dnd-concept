@@ -12,6 +12,7 @@ from pydantic_ai.messages import (
     RetryPromptPart,
     TextPart,
     ToolCallPart,
+    UserPromptPart,
 )
 from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
@@ -32,8 +33,8 @@ from aidm.engines.registry import ENGINES, begin_game, build_engines
 from aidm.state.entities import EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game
-from aidm.state.play import Answer, TurnTrace
-from aidm.turn.run import TurnResult, TurnStep, build_turn_agents, run_segment
+from aidm.state.play import Answer
+from aidm.turn.run import TurnStep, build_turn_agents, run_segment
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 
@@ -145,6 +146,14 @@ class Recorder:
     stub: Stub
     calls: list[list[ModelMessage]] = field(default_factory=list)
 
+    def prompt(self) -> str:
+        """What the role was shown on its first request; the golden prompts come from here."""
+        return next(
+            str(part.content)
+            for part in self.calls[0][-1].parts
+            if isinstance(part, UserPromptPart)
+        )
+
     def reasons(self) -> list[str]:
         return [
             str(part.content)
@@ -165,10 +174,6 @@ def recorded(*responses: ModelResponse) -> Recorder:
     return Recorder(stub=stub, calls=calls)
 
 
-def shown(turn: TurnTrace, name: str) -> str:
-    return next(step.prompt for step in turn.steps if step.name == name)
-
-
 async def played(
     engine: Engine,
     state: Game,
@@ -180,7 +185,7 @@ async def played(
     on_step: Callable[[TurnStep], None] | None = None,
     on_fact: Callable[[Fact], None] | None = None,
     settings: Settings | None = None,
-) -> TurnResult:
+) -> Game:
     """Build a session-style turn with every model role stubbed."""
     settings = settings or offline_settings()
     stages = build_turn_agents(engine, settings)

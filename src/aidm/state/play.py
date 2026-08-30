@@ -31,11 +31,6 @@ class Narration(Frozen):
         return narration_text(self.lines)
 
 
-class ToolCall(Frozen):
-    name: str
-    args: dict[str, JsonValue]
-
-
 class DecisionOption(Frozen):
     id: Slug
     label: str = Field(min_length=1)
@@ -43,7 +38,8 @@ class DecisionOption(Frozen):
 
 
 class PendingOption(DecisionOption):
-    call: ToolCall
+    name: str
+    args: dict[str, JsonValue]
 
 
 class PendingDecision(Frozen):
@@ -92,20 +88,3 @@ class Exchange(Frozen):
     @property
     def narration(self) -> str:
         return narration_text(self.lines)
-
-
-class StepTrace(Frozen):
-    name: str
-    prompt: str
-    output: dict[str, JsonValue] | str
-    # Every refusal the model met and retried on: a pass that hides three is not a clean pass.
-    refusals: tuple[str, ...] = ()
-
-
-class TurnTrace(Frozen):
-    """What the turn's roles did, never the resulting state."""
-
-    prompt: str
-    narration: str
-    facts: tuple[Fact, ...] = ()
-    steps: tuple[StepTrace, ...] = ()

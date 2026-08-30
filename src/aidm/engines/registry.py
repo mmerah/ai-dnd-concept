@@ -46,7 +46,7 @@ def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character:
         traits=list(character.traits),
     )
     items = tuple(character.items)
-    world.mechanics = engine.mechanics_merge(world.mechanics, character.mechanics)
+    world.mechanics = engine.mechanics_patch(world.mechanics, character.mechanics, ())
     for entity in (*items, player):
         if entity.id in world.entities:
             raise ValueError(f"authored entity id {entity.id!r} appears twice")

@@ -13,7 +13,6 @@ class DiceEvent(Frozen):
     label: str
     faces: tuple[int, ...]
     rolled: tuple[int, ...]
-    result: str = ""
     highlight: tuple[int, ...] = ()
 
     @model_validator(mode="after")
@@ -89,7 +88,6 @@ def roll(faces: Sequence[int], reason: str, rng: Random) -> tuple[tuple[int, ...
 
 
 def _notation(faces: Sequence[int]) -> str:
-    """`2d6` for a uniform pool, `d8+d10` for a mixed one."""
     if len(set(faces)) == 1:
         return f"{len(faces)}d{faces[0]}"
     return "+".join(f"d{face}" for face in faces)

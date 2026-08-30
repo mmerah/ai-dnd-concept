@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from copy import deepcopy
 from typing import Literal, Self
 
@@ -49,6 +49,8 @@ class AdvanceThread(Frozen):
 
 
 type Mechanics = dict[str, JsonValue]
+# (blob, added, removed ids) -> blob. One operation, so a rejected patch leaves nothing behind.
+type MechanicsPatch = Callable[[Mechanics, Mechanics, Sequence[EntityId]], Mechanics]
 
 
 class WorldState(Mutable):

@@ -2,7 +2,7 @@ from collections.abc import Callable, Mapping, Sequence
 
 from aidm.state.entities import Entity, EntityId, Exit, Trait, kind_word
 from aidm.state.model import Game, WorldState
-from aidm.state.scene import Scene, SceneSection
+from aidm.state.scene import Scene
 from aidm.world.topology import children, location_of, player_location
 
 type EntityText = Callable[[Entity], str]
@@ -136,9 +136,7 @@ def _with_state(line: str, state: str, indent: str = "") -> str:
     return f"{line}\n{indent}state:\n{block}"
 
 
-def rooms_scene(
-    describer: Describer, director_sections: DirectorSections
-) -> Callable[[Game], Scene]:
+def rooms_scene(describer: Describer, engine_sections: DirectorSections) -> Callable[[Game], Scene]:
     def build(state: Game) -> Scene:
         world = state.world
         player = state.player
@@ -176,12 +174,8 @@ def rooms_scene(
                 ("EXISTS BUT THE PLAYER DOES NOT KNOW IT YET", "" if shown else listed(hidden)),
             )
 
-        sections = tuple(
-            SceneSection(title=title, player=text, director=None if text == full else full)
-            for (title, text), (_, full) in zip(
-                blocks(shown=True), blocks(shown=False), strict=True
-            )
-        )
+        # Rendered twice, never stripped: the player's blocks are their own pass over known canon.
+        shown_blocks = blocks(shown=True)
         cast = sorted(
             (one for one in here if one.kind != "location"), key=lambda one: one.kind != "actor"
         )
@@ -190,10 +184,8 @@ def rooms_scene(
             key=location.id,
             label=location.name,
             summary=location.brief,
-            sections=(
-                *sections,
-                *(SceneSection(title=one, director=body) for one, body in director_sections(state)),
-            ),
+            sections=tuple((title, text) for title, text in shown_blocks if text),
+            director_sections=(*blocks(shown=False), *engine_sections(state)),
             public_entity_ids=frozenset(
                 {player.id, location.id}
                 | {one.id for one in (*inventory, *here, *elsewhere, *found)}

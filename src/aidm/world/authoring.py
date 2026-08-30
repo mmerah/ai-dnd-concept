@@ -8,7 +8,7 @@ from aidm.content.io import engine_text
 from aidm.content.model import AuthoringBrief, AuthoringTool, Scenario
 from aidm.state.entities import Entity, EntityId, Exit, Frozen
 from aidm.state.facts import Fact
-from aidm.state.model import Game, Mechanics, Thread, WorldState
+from aidm.state.model import Game, Mechanics, MechanicsPatch, Thread, WorldState
 from aidm.state.tools import Play
 from aidm.world.topology import frontier, walk
 
@@ -73,8 +73,17 @@ def _connect_tool(settled: frozenset[str]) -> AuthoringTool:
     return AuthoringTool("connect", "Connect two locations already in the draft.", Connect, apply)
 
 
+def _party_unmet(scenario: Scenario) -> list[str]:
+    """Companions stand beside the player at the start: a rooms rule, so not `Scenario`'s."""
+    start = scenario.player_parent_id
+    if start is None:
+        return []
+    apart = [one for one in scenario.world.party if scenario.world.require(one).parent_id != start]
+    return [f"every starting party member in {start!r}, unlike {apart}"] if apart else []
+
+
 def _bar_unmet(scenario: Scenario) -> list[str]:
-    unmet: list[str] = []
+    unmet = _party_unmet(scenario)
     entities, threads = scenario.world.entities.values(), scenario.world.threads
     locations = sorted(entity.id for entity in entities if entity.kind == "location")
     if len(locations) < MIN_LOCATIONS:
@@ -106,7 +115,7 @@ def _bar_unmet(scenario: Scenario) -> list[str]:
 
 
 def _opening_unmet(scenario: Scenario) -> list[str]:
-    unmet: list[str] = []
+    unmet = _party_unmet(scenario)
     beyond = [
         entity_id for entity_id in scenario.world.entities if entity_id != scenario.player_parent_id
     ]
@@ -173,7 +182,7 @@ def diff(
     base: WorldState,
     draft: WorldState,
     mechanics: Mechanics,
-    merge: Callable[[Mechanics, Mechanics], Mechanics],
+    patch: MechanicsPatch,
 ) -> Play:
     """What an authoring pass added, materialized into a game that may have moved on since."""
     added = tuple(entity for entity in draft.entities.values() if entity.id not in base.entities)
@@ -192,7 +201,7 @@ def diff(
         facts.extend(_added_exit(game, location_id, way) for location_id, way in ways)
         facts.extend(_opened(game, thread) for thread in threads)
         if mechanics:
-            game.world.mechanics = merge(game.world.mechanics, mechanics)
+            game.world.mechanics = patch(game.world.mechanics, mechanics, ())
         return tuple(facts)
 
     return play

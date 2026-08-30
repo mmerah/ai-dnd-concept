@@ -5,7 +5,7 @@ from loner3e_test_support import TWISTS
 
 from aidm.engines.core import rules
 from aidm.engines.loner3e.rules import (
-    RULES,
+    TIES_PER_TWIST,
     Loner3eState,
     Question,
     apply_restore_luck,
@@ -65,7 +65,7 @@ def test_the_six_way_outcome_is_mapped_onto_the_card() -> None:
     facts = resolve_question(state.draft(), _seal(), Random(0), TWISTS)
 
     (oracle,) = cards(facts)
-    chance, risk = int(oracle.dice[0].result), int(oracle.dice[1].result)
+    chance, risk = max(oracle.dice[0].rolled), max(oracle.dice[1].rolled)
     assert oracle.card.endswith(f"→ {outcome_for(chance, risk).name}")
 
 
@@ -82,7 +82,7 @@ def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
     for seed in range(200):
         facts = resolve_question(weakened.draft(), duel, Random(seed), TWISTS)
         (oracle,) = cards(facts)
-        if outcome_for(int(oracle.dice[0].result), int(oracle.dice[1].result)).harm > 0:
+        if outcome_for(max(oracle.dice[0].rolled), max(oracle.dice[1].rolled)).harm > 0:
             break
     else:
         raise AssertionError("no seed under 200 dealt the opponent harm")
@@ -98,7 +98,7 @@ def test_a_twist_card_lands_only_once_a_twist_fires() -> None:
     _, state = initialized()
     draft = state.draft()
     with rules(draft.world, Loner3eState) as game:
-        game.twist.current = RULES.ties_per_twist - 1
+        game.twist.current = TIES_PER_TWIST - 1
     primed = draft.committed()
 
     for seed in range(200):

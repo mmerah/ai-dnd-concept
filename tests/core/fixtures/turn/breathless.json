@@ -1,87 +1,63 @@
-{
-  "prompt": "I lever up the loose flagstone and listen at the vault door.",
-  "narration": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
-  "facts": [
-    {
-      "kind": "entity_discovered",
-      "trace": "learned of the item a ward nine key card[ward-card]",
-      "told": true,
-      "entity_id": "ward-card",
-      "card": "",
-      "dice": []
-    },
-    {
-      "kind": "entity_moved",
-      "trace": "the player Kael[player] took the item a ward nine key card[ward-card]",
-      "told": true,
-      "entity_id": "ward-card",
-      "card": "Took a ward nine key card",
-      "dice": []
-    },
-    {
-      "kind": "dice_rolled",
-      "trace": "Listen at the vault door without being heard — Sneak d10: 1d10 [8]",
-      "told": false,
-      "entity_id": null,
-      "card": "",
-      "dice": []
-    },
-    {
-      "kind": "check_resolved",
-      "trace": "Listen at the vault door without being heard (risk: whatever is behind the door hears him first) -> success",
-      "told": true,
-      "entity_id": "player",
-      "card": "Check — success\nRolls Sneak d10\nthe player Kael[player] Sneak d10 -> d8",
-      "dice": [
-        {
-          "label": "Check",
-          "faces": [
-            10
-          ],
-          "rolled": [
-            8
-          ],
-          "result": "8",
-          "highlight": [
-            0
-          ]
-        }
-      ]
-    },
-    {
-      "kind": "skill_worn",
-      "trace": "the player Kael[player] Sneak d10 -> d8",
-      "told": true,
-      "entity_id": "player",
-      "card": "",
-      "dice": []
-    },
-    {
-      "kind": "trait_added",
-      "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
-      "told": true,
-      "entity_id": "player",
-      "card": "Kael gained Listening",
-      "dice": []
-    }
-  ],
-  "steps": [
-    {
-      "name": "director",
-      "output": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
-      "refusals": []
-    },
-    {
-      "name": "narrator",
-      "output": {
-        "lines": [
-          {
-            "speaker_id": null,
-            "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
-          }
+[
+  {
+    "kind": "entity_discovered",
+    "trace": "learned of the item a ward nine key card[ward-card]",
+    "told": true,
+    "entity_id": "ward-card",
+    "card": "",
+    "dice": []
+  },
+  {
+    "kind": "entity_moved",
+    "trace": "the player Kael[player] took the item a ward nine key card[ward-card]",
+    "told": true,
+    "entity_id": "ward-card",
+    "card": "Took a ward nine key card",
+    "dice": []
+  },
+  {
+    "kind": "dice_rolled",
+    "trace": "Listen at the vault door without being heard — Sneak d10: 1d10 [8]",
+    "told": false,
+    "entity_id": null,
+    "card": "",
+    "dice": []
+  },
+  {
+    "kind": "check_resolved",
+    "trace": "Listen at the vault door without being heard (risk: whatever is behind the door hears him first) -> success",
+    "told": true,
+    "entity_id": "player",
+    "card": "Check — success\nRolls Sneak d10\nthe player Kael[player] Sneak d10 -> d8",
+    "dice": [
+      {
+        "label": "Check",
+        "faces": [
+          10
+        ],
+        "rolled": [
+          8
+        ],
+        "highlight": [
+          0
         ]
-      },
-      "refusals": []
-    }
-  ]
-}
+      }
+    ]
+  },
+  {
+    "kind": "skill_worn",
+    "trace": "the player Kael[player] Sneak d10 -> d8",
+    "told": true,
+    "entity_id": "player",
+    "card": "",
+    "dice": []
+  },
+  {
+    "kind": "trait_added",
+    "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
+    "told": true,
+    "entity_id": "player",
+    "card": "Kael gained Listening",
+    "dice": []
+  }
+]

@@ -5,7 +5,7 @@ from pydantic import Field
 from aidm.state.entities import DEAD, CheckedEntityId, EntityId, Frozen
 from aidm.state.facts import Fact, entity_fact
 from aidm.state.model import Game, draft_refusal
-from aidm.state.play import PendingDecision, PendingOption, ToolCall
+from aidm.state.play import PendingDecision, PendingOption
 from aidm.state.tools import DirectorTool, Validate, apply_to_draft, director_tool
 
 
@@ -59,7 +59,8 @@ def succession_decision(state: Game, validate: Validate) -> PendingDecision | No
                 id=member_id,
                 label=f"Play on as {member.name}",
                 detail=member.brief,
-                call=ToolCall(name=TAKE_OVER.name, args={"successor_id": member_id}),
+                name=TAKE_OVER.name,
+                args={"successor_id": member_id},
             )
         )
     if not options:

@@ -16,7 +16,7 @@ from aidm.engines.registry import begin_game, build_engines
 from aidm.state.entities import EngineId, EntityId, Slug
 from aidm.state.facts import Fact, traced
 from aidm.state.model import Game
-from aidm.state.play import Answer, TurnTrace
+from aidm.state.play import Answer
 from aidm.state.scene import VisibleScene
 from aidm.state.tools import Play
 from aidm.turn.run import TurnAgents, TurnStep, build_turn_agents, run_segment
@@ -59,7 +59,6 @@ class GameSession:
     settings: Settings
     media: Illustrator | None = None
     rng: Random = field(default_factory=Random)
-    entries: list[TurnTrace] = field(default_factory=list)
     busy: bool = False
     step: TurnStep | None = None
     _illustrations: set[Task[None]] = field(default_factory=set, repr=False)
@@ -83,11 +82,11 @@ class GameSession:
         player_input: str | Answer,
         on_step: Callable[[TurnStep], None] | None = None,
         on_fact: Callable[[Fact], None] | None = None,
-    ) -> TurnTrace:
+    ) -> None:
         """Commit only after the full segment succeeds."""
         if self.stages is None:
             raise ValueError("code mode plays the turn in the MCP server, not here")
-        state, trace = await run_segment(
+        state = await run_segment(
             self.state,
             player_input,
             engine=self.engine,
@@ -97,13 +96,12 @@ class GameSession:
             on_step=on_step,
             on_fact=on_fact,
         )
-        self.commit(state, trace)
-        self._illustrate(trace.narration)
+        self.commit(state)
+        self._illustrate(state.history[-1].narration)
         if self.growth_due():
             if on_step is not None:
                 on_step("scenario_creator")
             await self._extend()
-        return trace
 
     def offers(self) -> tuple[tuple[PlayerAction, str, dict[str, JsonValue]], ...]:
         return offered(self.engine, self.state)
@@ -141,16 +139,12 @@ class GameSession:
         opening = self._begun()
         self.store.discard(self.slug)
         self.state = opening
-        self.entries = []
         self.illustrate_scene()
 
-    def commit(self, state: Game, entry: TurnTrace | None = None) -> None:
-        """Code mode commits per tool call, so a landed change has no turn trace to record yet."""
+    def commit(self, state: Game) -> None:
         self.store.save(self.slug, state)
         self.state = state
         self._stamp = self.store.stamp(self.slug)
-        if entry is not None:
-            self.entries.append(entry)
 
     def reload(self) -> bool:
         """Code mode plays the turn in another process; the viewer re-reads what that committed."""

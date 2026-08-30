@@ -102,8 +102,6 @@ class PlayerActionCall(Frozen):
 
 @dataclass
 class Harness:
-    """One game, one lock, one turn in flight."""
-
     settings: Settings
     runtime: Runtime
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
@@ -164,9 +162,6 @@ class Harness:
         return f"{PREAMBLE}\n{director_instructions(engine.instructions)}\n\n{NARRATOR}"
 
     def scene(self) -> str:
-        return self._picture()
-
-    def _picture(self) -> str:
         session = self.opened()
         state = session.state
         recent = self.settings.turn.recent_exchanges
@@ -203,7 +198,7 @@ class Harness:
             session.rng,
             lambda draft: session.commit(draft.committed()),
         )
-        return self._picture()
+        return self.scene()
 
     def end_turn(self, closing: Narration) -> str:
         session = self.opened()
@@ -217,8 +212,8 @@ class Harness:
         visible = VisibleScene.revealed_from(session.engine.scene(turn.draft), turn.draft.world)
         if refused := speakers_refusal(visible, lines):
             raise ModelRetry(refused)
-        state, trace = turn.finish(lines)
-        session.commit(state, trace)
+        state = turn.finish(lines)
+        session.commit(state)
         self.turn = None
         closed = f"turn {state.turn} committed."
         return f"{closed}\n{GROWTH_DUE}" if session.growth_due() else closed

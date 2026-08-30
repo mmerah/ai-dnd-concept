@@ -60,7 +60,7 @@ def test_the_outcome_ladder_is_mapped_onto_the_card() -> None:
     facts = resolve_attempt(state.draft(), _climb(), Random(0))
 
     (event,) = cards(facts)
-    assert event.card.startswith(f"Attempt — {outcome_for(int(event.dice[0].result))}")
+    assert event.card.startswith(f"Attempt — {outcome_for(max(event.dice[0].rolled))}")
 
 
 def test_the_luck_test_card_carries_its_die_and_the_trouble_label() -> None:

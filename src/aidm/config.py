@@ -13,7 +13,6 @@ ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "
 # A stage is built by name, so an unbuildable role cannot be configured.
 Role = Literal["director", "narrator", "scenario_creator"]
 ENV_FILE = ".env"
-# Which harness reads a setting.
 BUILTIN_ONLY: dict[str, JsonValue] = {"applies": "builtin"}
 CODE_MODE_ONLY: dict[str, JsonValue] = {"applies": "code mode"}
 

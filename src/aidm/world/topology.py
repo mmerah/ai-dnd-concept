@@ -95,7 +95,6 @@ def _check_placement(entity: Entity, holder: Entity | None) -> None:
 
 
 def _check_exits(world: WorldState, entity: Entity) -> None:
-    """Reject known exits that would expose an unknown destination."""
     if entity.exits and entity.kind != "location":
         raise ValueError(f"{entity.kind} {entity.id!r} cannot have exits")
     for way in entity.exits:

@@ -9,7 +9,7 @@ from twentyfourxx_test_support import at_boundary, items, sheets
 from aidm.engines.core import Engine, rules
 from aidm.engines.twentyfourxx.engine import advance, build, complete_chapter, describer
 from aidm.engines.twentyfourxx.rules import (
-    RULES,
+    SHIP_UPGRADE,
     Advance,
     Attempt,
     ItemSheet,
@@ -28,7 +28,7 @@ from aidm.state.creation import Picks
 from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.facts import Fact, cards
 from aidm.state.model import Game
-from aidm.state.play import PendingDecision, PendingOption, ToolCall
+from aidm.state.play import PendingDecision, PendingOption
 from aidm.world.succession import take_over
 from aidm.world.topology import children, player_location
 
@@ -139,9 +139,9 @@ def _owed(engine: Engine, state: Game) -> tuple[str, ...]:
     """The ADVANCES OWED section split back into the one line it holds per member."""
     return tuple(
         line
-        for section in engine.scene(state).sections
-        if section.title == "ADVANCES OWED"
-        for line in (section.director or "").splitlines()
+        for title, body in engine.scene(state).director_sections
+        if title == "ADVANCES OWED"
+        for line in body.splitlines()
     )
 
 
@@ -179,7 +179,7 @@ def test_a_companion_without_a_sheet_earns_no_chapter_and_cannot_be_played_on() 
     draft = state.draft()
     ally = draft.world.require(ALLY)
     ally.known, ally.parent_id = True, player_location(draft)
-    draft.world.mechanics = engine.mechanics_without(draft.world.mechanics, ALLY)
+    draft.world.mechanics = engine.mechanics_patch(draft.world.mechanics, {}, (ALLY,))
     draft.world.party.append(ALLY)
     _ = complete_chapter(draft)
     joined = draft.committed()
@@ -242,7 +242,7 @@ def test_a_tested_bad_luck_risk_that_lands_leaves_a_note_for_the_next_turn() -> 
     facts = resolve_attempt(draft, action, Random(2))
     (card,) = cards(facts)
     luck = next(die for die in card.dice if die.label == "Luck")
-    assert 1 <= int(luck.result) <= 4
+    assert 1 <= max(luck.rolled) <= 4
     assert len(draft.world.pending_notes) == 1
     assert any(fact.kind == "luck_tested" for fact in facts)
 
@@ -302,9 +302,9 @@ def _played(
     engine: Engine, draft: Game, decision: PendingDecision, option_id: str
 ) -> tuple[Fact, ...]:
     option = next(one for one in decision.options if one.id == option_id)
-    found = engine.tool(option.call.name)
+    found = engine.tool(option.name)
     assert found is not None
-    return found.call(draft, option.call.args, Random(HIT))
+    return found.call(draft, option.args, Random(HIT))
 
 
 def test_a_stake_freezes_a_playable_attempt_and_waits_on_the_player() -> None:
@@ -317,9 +317,8 @@ def test_a_stake_freezes_a_playable_attempt_and_waits_on_the_player() -> None:
     assert decision.kind == "stake"
     assert decision.prompt.startswith(RISK)
     assert [option.id for option in decision.options] == ["proceed"]
-    assert decision.options[0].call == ToolCall(
-        name="roll_attempt", args=_forcing().model_dump(mode="json")
-    )
+    staked = decision.options[0]
+    assert (staked.name, staked.args) == ("roll_attempt", _forcing().model_dump(mode="json"))
 
 
 def test_an_actor_attempt_cannot_be_staked() -> None:
@@ -354,9 +353,8 @@ def test_proceeding_rolls_the_frozen_attempt_and_a_hit_hands_back_the_defence() 
     decision = _waiting(draft)
     assert decision.kind == "defence"
     assert [option.id for option in decision.options] == ["lantern", "take-it"]
-    assert decision.options[-1].call == ToolCall(
-        name="defend", args={"goal": _forcing().goal, "item_id": None}
-    )
+    taken = decision.options[-1]
+    assert (taken.name, taken.args) == ("defend", {"goal": _forcing().goal, "item_id": None})
 
 
 def test_breaking_an_item_turns_the_hit_and_that_item_is_never_offered_again() -> None:
@@ -465,13 +463,13 @@ def test_a_ship_upgrade_is_charged_at_ten_and_installed_in_the_ship() -> None:
     engine, state = game(TWENTYFOURXX)
     draft = state.draft()
     ship = player_location(draft)
-    _ = apply_change_credits(draft, PLAYER_ID, RULES.ship_upgrade)
+    _ = apply_change_credits(draft, PLAYER_ID, SHIP_UPGRADE)
     before = sheets(draft)[PLAYER_ID].credits.current
 
     assert _bought(engine, draft, "tachyon-burst", onto_id=ship)
 
     assert "tachyon-burst" in [item.id for item in children(draft.world, ship, "item")]
-    assert sheets(draft)[PLAYER_ID].credits.current == before - RULES.ship_upgrade
+    assert sheets(draft)[PLAYER_ID].credits.current == before - SHIP_UPGRADE
 
     with pytest.raises(ValueError, match="name the ship"):
         _ = _bought(engine, draft, "jammer")
@@ -498,17 +496,14 @@ def test_a_decision_this_engine_cannot_play_or_read_is_refused() -> None:
         _ = engine.restored(draft.committed().model_dump_json())
 
     with pytest.raises(ValueError, match="no tool 'spend_momentum' to play option 'proceed'"):
-        restored(
-            PendingOption(
-                id="proceed", label="Proceed", call=ToolCall(name="spend_momentum", args={})
-            )
-        )
+        restored(PendingOption(id="proceed", label="Proceed", name="spend_momentum", args={}))
     with pytest.raises(ValidationError):
         restored(
             PendingOption(
                 id="proceed",
                 label="Proceed",
-                call=ToolCall(name="roll_attempt", args={"goal": "an attempt with no actor"}),
+                name="roll_attempt",
+                args={"goal": "an attempt with no actor"},
             )
         )
 

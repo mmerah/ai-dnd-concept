@@ -1,5 +1,6 @@
 import logging
 import tempfile
+from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from typing import cast
@@ -89,7 +90,6 @@ def character_page(runtime: Runtime, engine_id: str) -> None:
                     ui.label(f"Not ready yet: {refused}").classes("text-sm opacity-50")
                     return
                 ui.separator().classes("q-my-sm")
-                # 4.2 draws the engine's own sheet here, through `sheet_rows` on a preview game.
                 rows = [(trait.name, trait.text) for trait in preview.traits]
                 rows.extend(("carrying", item.name) for item in preview.items)
                 for label, text in rows:
@@ -97,6 +97,45 @@ def character_page(runtime: Runtime, engine_id: str) -> None:
                 ui.button("Create", icon="person_add", on_click=create).props("color=primary")
 
             form()
+
+
+@dataclass(slots=True)
+class _ScenarioForm:
+    """The fields both scenario pages ask for; `document` is set by the upload handler."""
+
+    scenario_id: ui.input
+    premise: ui.textarea
+    upload: ui.upload
+    grows: ui.switch
+    engine: ui.select
+    packs: ui.select
+    document: Path | None = None
+
+
+def _scenario_form(runtime: Runtime) -> _ScenarioForm:
+    scenario_id = (
+        ui.input(label="Slug", placeholder="the-drowned-road").classes("w-full").props("outlined")
+    )
+    premise = (
+        ui.textarea(label="Premise", placeholder="What is this adventure about?")
+        .classes("w-full")
+        .props("outlined autogrow")
+    )
+
+    async def uploaded(event: UploadEventArguments) -> None:
+        form.document = Path(tempfile.mkdtemp()) / event.file.name
+        await event.file.save(form.document)
+        ui.notify(f"Using {event.file.name}")
+
+    upload = (
+        ui.upload(label="Source document", auto_upload=True, on_upload=uploaded)
+        .classes("w-full")
+        .props("outlined")
+    )
+    grows = ui.switch("Grows during play", value=True).classes("w-full")
+    engine, packs = _engine_and_packs(runtime)
+    form = _ScenarioForm(scenario_id, premise, upload, grows, engine, packs)
+    return form
 
 
 def _engine_and_packs(runtime: Runtime) -> tuple[ui.select, ui.select]:
@@ -134,37 +173,12 @@ def scenario_page(runtime: Runtime) -> None:
     settings = runtime.settings
     with page_header("New scenario"):
         pass
-    document: Path | None = None
     session: ScenarioRun | None = None
     exchanges: list[tuple[str, str]] = []
 
     with ui.row().classes("no-wrap items-start").style("width: min(80rem, 100%); gap: 1rem"):
         with ui.card().classes("q-pa-lg").style("flex: 1; min-width: 0"):
-            scenario_id = (
-                ui.input(label="Slug", placeholder="the-drowned-road")
-                .classes("w-full")
-                .props("outlined")
-            )
-            premise = (
-                ui.textarea(label="Premise", placeholder="What is this adventure about?")
-                .classes("w-full")
-                .props("outlined autogrow")
-            )
-
-            async def uploaded(event: UploadEventArguments) -> None:
-                nonlocal document
-                target = Path(tempfile.mkdtemp()) / event.file.name
-                await event.file.save(target)
-                document = target
-                ui.notify(f"Using {event.file.name}")
-
-            upload = (
-                ui.upload(label="Source document", auto_upload=True, on_upload=uploaded)
-                .classes("w-full")
-                .props("outlined")
-            )
-            grows = ui.switch("Grows during play", value=True).classes("w-full")
-            engine, packs = _engine_and_packs(runtime)
+            form = _scenario_form(runtime)
             art_style = (
                 ui.input(label="Art style", placeholder=settings.media.style)
                 .classes("w-full")
@@ -190,12 +204,12 @@ def scenario_page(runtime: Runtime) -> None:
                 try:
                     new_session = scenario_run(
                         settings,
-                        _engine(runtime, engine.value),
-                        content_id(scenario_id.value or ""),
-                        (premise.value or "").strip(),
-                        bool(grows.value),
-                        document,
-                        packs=_packs(packs.value),
+                        _engine(runtime, form.engine.value),
+                        content_id(form.scenario_id.value or ""),
+                        (form.premise.value or "").strip(),
+                        bool(form.grows.value),
+                        form.document,
+                        packs=_packs(form.packs.value),
                         art_style=(art_style.value or "").strip(),
                     )
                 except ValueError as error:
@@ -206,15 +220,15 @@ def scenario_page(runtime: Runtime) -> None:
                     "scenario authoring started: slug=%s grows=%s document=%s",
                     session.slug,
                     session.grows,
-                    document is not None,
+                    form.document is not None,
                 )
                 for widget in (
-                    scenario_id,
-                    premise,
-                    upload,
-                    grows,
-                    engine,
-                    packs,
+                    form.scenario_id,
+                    form.premise,
+                    form.upload,
+                    form.grows,
+                    form.engine,
+                    form.packs,
                     art_style,
                     author_button,
                 ):
@@ -298,53 +312,29 @@ def agent_scenario_page(driver: Driver, runtime: Runtime) -> None:
     """Code mode has no api_key for the authoring roles, so the agent writes the scenario."""
     with page_header("New scenario"):
         pass
-    document: Path | None = None
-
     with ui.card().classes("q-pa-lg").style("width: min(60rem, 100%)"):
-        scenario_id = (
-            ui.input(label="Slug", placeholder="the-drowned-road")
-            .classes("w-full")
-            .props("outlined")
-        )
-        premise = (
-            ui.textarea(label="Premise", placeholder="What is this adventure about?")
-            .classes("w-full")
-            .props("outlined autogrow")
-        )
-        engine, packs = _engine_and_packs(runtime)
-        grows = ui.switch("Grows during play", value=True).classes("w-full")
-
-        async def uploaded(event: UploadEventArguments) -> None:
-            nonlocal document
-            target = Path(tempfile.mkdtemp()) / event.file.name
-            await event.file.save(target)
-            document = target
-            ui.notify(f"Using {event.file.name}")
-
-        ui.upload(label="Source document", auto_upload=True, on_upload=uploaded).classes(
-            "w-full"
-        ).props("outlined")
+        form = _scenario_form(runtime)
 
         async def write() -> None:
             try:
-                chosen = _engine(runtime, engine.value).id
-                chosen_packs = _packs(packs.value)
-                slug_value = content_id((scenario_id.value or "").strip())
+                chosen = _engine(runtime, form.engine.value).id
+                chosen_packs = _packs(form.packs.value)
+                slug_value = content_id((form.scenario_id.value or "").strip())
             except ValueError as error:
                 ui.notify(str(error), type="negative")
                 return
             # `source` is a path the tool opens, so it is named only when a document was uploaded.
-            source = "" if document is None else f" source={document}."
+            source = "" if form.document is None else f" source={form.document}."
             instruction = (
                 f"Write a scenario with slug {slug_value!r}, "
-                f"premise: {(premise.value or '').strip()}. "
+                f"premise: {(form.premise.value or '').strip()}. "
                 f"It must play under {chosen!r} with packs={chosen_packs!r}. "
-                f"grows={bool(grows.value)}.{source} "
+                f"grows={bool(form.grows.value)}.{source} "
                 "Call begin_scenario with exactly those values, then run the authoring loop and "
                 "finish_scenario."
             )
             write_button.disable()
-            LOGGER.info("agent authoring started: slug=%s document=%s", slug_value, document)
+            LOGGER.info("agent authoring started: slug=%s document=%s", slug_value, form.document)
             try:
                 async for line in driver.play(instruction):
                     log.push(line)

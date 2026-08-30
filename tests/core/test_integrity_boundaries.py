@@ -22,7 +22,7 @@ from pydantic import ValidationError
 from aidm.content.io import load_character, load_scenario
 from aidm.content.model import Character
 from aidm.engines.core import rules
-from aidm.engines.loner3e.rules import RULES, Loner3eState
+from aidm.engines.loner3e.rules import LUCK_MAX, Loner3eState
 from aidm.engines.twentyfourxx.rules import TwentyfourxxState
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
 from aidm.state.facts import Fact
@@ -137,8 +137,9 @@ def test_a_scenario_starts_the_party_it_authors() -> None:
     begun = begin_game(engine, "whispering-vault", started, character())
     assert begun.world.party == [MARA]
     # Tomas is known and unique, so this is the stands-at-start check alone, not the party's own.
-    with pytest.raises(ValidationError, match="who they set out with"):
-        updated(authored, world=updated(authored.world, party=[TOMAS]))
+    apart = updated(authored, world=updated(authored.world, party=[TOMAS]))
+    unmet = engine.authoring_brief(apart.packs, None, False).unmet(apart)
+    assert unmet == ["every starting party member in 'study', unlike ['tomas']"]
 
 
 def test_a_game_is_refused_a_scenario_or_a_character_from_another_engine() -> None:
@@ -171,7 +172,7 @@ def test_an_authored_actor_without_rules_is_refused() -> None:
         authored,
         world=updated(
             authored.world,
-            mechanics=engine.mechanics_without(authored.world.mechanics, MARA),
+            mechanics=engine.mechanics_patch(authored.world.mechanics, {}, (MARA,)),
         ),
     )
 
@@ -188,16 +189,16 @@ def test_twentyfourxx_opposition_needs_no_sheet() -> None:
         authored,
         world=updated(
             authored.world,
-            mechanics=engine.mechanics_without(authored.world.mechanics, hostile_id),
+            mechanics=engine.mechanics_patch(authored.world.mechanics, {}, (hostile_id,)),
         ),
     )
     player = load_character(CHARACTERS, "kael", engine.id)
 
     begun = begin_game(engine, scenario_id, stripped, player)
 
-    here = next(one for one in engine.scene(begun).sections if one.title == HERE)
+    here = dict(engine.scene(begun).director_sections)[HERE]
     # One entity's block: its headline and the lines indented under it, mechanics included.
-    block = next(one for one in (here.director or "").split("\n- ") if f"[{hostile_id}]" in one)
+    block = next(one for one in here.split("\n- ") if f"[{hostile_id}]" in one)
     assert "state:" not in block
 
 
@@ -219,7 +220,7 @@ def test_a_rules_mutation_lands_on_the_commit_and_nowhere_else() -> None:
     committed = draft.committed()
 
     assert _luck(committed) == 1
-    assert _luck(state) == RULES.luck_max
+    assert _luck(state) == LUCK_MAX
 
 
 def test_a_told_fact_about_an_unmet_or_unknown_entity_is_refused() -> None:

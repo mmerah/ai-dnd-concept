@@ -11,7 +11,6 @@ from aidm.engines.core import (
     ADVANCE_SPENT,
     Engine,
     EntityRenderer,
-    Mechanics,
     PackCreation,
     adjust,
     authoring_guidance,
@@ -19,8 +18,9 @@ from aidm.engines.core import (
     describe_rows,
     find_entry,
     load_packs,
-    mechanics_merged,
     mechanics_of,
+    mechanics_patched,
+    owed_notes,
     party_member,
     rules,
     sheet_of,
@@ -63,23 +63,11 @@ from aidm.state.entities import (
 from aidm.state.facts import Fact, entity_fact, roll
 from aidm.state.model import Game
 from aidm.state.play import DecisionOption
-from aidm.state.threads import ADVANCE_THREAD
 from aidm.state.tools import DirectorTool, NoArgs, director_tool
 from aidm.world.authoring import rooms_brief, rooms_growth_due
 from aidm.world.scene import rooms_scene
 from aidm.world.succession import TAKE_OVER, player_over
-from aidm.world.tools import (
-    ADD_TRAIT,
-    DIRECTOR_WORLD,
-    GAIN_IMPROVISED_ITEM,
-    JOIN_PARTY,
-    LEAVE_PARTY,
-    MOVE,
-    REMOVE_TRAIT,
-    REVEAL,
-    UNLOCK_EXIT,
-    kill_tool,
-)
+from aidm.world.tools import DIRECTOR_WORLD, rooms_tools
 from aidm.world.topology import validate_rooms
 
 ENGINE_DIR = Path(__file__).parent
@@ -373,22 +361,8 @@ def describer(state: Game) -> EntityRenderer:
 
 
 def advances_owed(state: Game) -> tuple[tuple[str, str], ...]:
-    """Jobs worked standing above the ledger of advances taken, one note each."""
-    # An advance mid-suspension could invalidate the frozen call an open decision holds.
-    if state.pending is not None:
-        return ()
     game = mechanics_of(state.world, TwentyfourxxState)
-    owed = [
-        f"- {state.world.require(one).name} has an advance owed; call advance only when the "
-        "player asks for it."
-        for one in (state.player_id, *state.world.party)
-        if (sheet := game.sheets.get(one)) is not None and sheet.chapters > sheet.jobs
-    ]
-    return (("ADVANCES OWED", "\n".join(owed)),) if owed else ()
-
-
-def sheet_rows(state: Game) -> tuple[tuple[str, str], ...]:
-    return sheet_of(mechanics_of(state.world, TwentyfourxxState).sheets, state.player).rows()
+    return owed_notes(state, game.sheets, lambda sheet: sheet.chapters > sheet.jobs)
 
 
 def _buy_gear(gear: Mapping[Slug, GearItem], draft: Game, args: BuyGear) -> list[Fact]:
@@ -431,9 +405,9 @@ def build(user_packs: Path) -> Engine:
         packs=packs,
         creation=TwentyfourxxCreation(packs),
         validate=validate,
-        sheet_rows=sheet_rows,
-        mechanics_merge=partial(mechanics_merged, TwentyfourxxState),
-        mechanics_without=_without,
+        mechanics_patch=partial(
+            mechanics_patched, TwentyfourxxState, entity_maps=("sheets", "items")
+        ),
         over=player_over,
         scene=rooms_scene(describer, advances_owed),
         resolvers=(TAKE_OVER, DEFEND),
@@ -441,17 +415,8 @@ def build(user_packs: Path) -> Engine:
             base, opening, authoring_guidance(_AUTHORING, packs, chosen)
         ),
         growth_due=rooms_growth_due,
-        tools=(
-            REVEAL,
-            MOVE,
-            GAIN_IMPROVISED_ITEM,
-            ADD_TRAIT,
-            REMOVE_TRAIT,
-            kill_tool(validate),
-            UNLOCK_EXIT,
-            JOIN_PARTY,
-            LEAVE_PARTY,
-            ADVANCE_THREAD,
+        tools=rooms_tools(
+            validate,
             *DIRECTOR_TOOLS,
             director_tool(
                 "buy_gear",
@@ -462,10 +427,3 @@ def build(user_packs: Path) -> Engine:
             director_tool("advance", ADVANCE_SPENT + GROWTH, Advance, advance),
         ),
     )
-
-
-def _without(blob: Mechanics, entity_id: EntityId) -> Mechanics:
-    game = TwentyfourxxState.model_validate(blob)
-    _ = game.sheets.pop(entity_id, None)
-    _ = game.items.pop(entity_id, None)
-    return game.model_dump(mode="json")

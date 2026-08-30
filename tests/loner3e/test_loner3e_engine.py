@@ -7,7 +7,8 @@ from loner3e_test_support import TWISTS, at_boundary, sheet
 from aidm.engines.core import Engine, mechanics_of, rules
 from aidm.engines.loner3e.engine import advance
 from aidm.engines.loner3e.rules import (
-    RULES,
+    LUCK_MAX,
+    TIES_PER_TWIST,
     AdventureGrowth,
     Change,
     Loner3eState,
@@ -24,7 +25,7 @@ from aidm.engines.loner3e.rules import (
 from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.facts import cards
 from aidm.state.model import Game
-from aidm.state.play import PendingDecision, PendingOption, ToolCall
+from aidm.state.play import PendingDecision, PendingOption
 from aidm.world.topology import player_location
 
 FOE = EntityId("mara")
@@ -35,9 +36,9 @@ def _owed(engine: Engine, state: Game) -> tuple[str, ...]:
     """The ADVANCES OWED section split back into the one line it holds per member."""
     return tuple(
         line
-        for section in engine.scene(state).sections
-        if section.title == "ADVANCES OWED"
-        for line in (section.director or "").splitlines()
+        for title, body in engine.scene(state).director_sections
+        if title == "ADVANCES OWED"
+        for line in body.splitlines()
     )
 
 
@@ -86,7 +87,7 @@ def test_a_question_puts_two_dice_to_the_answer_and_costs_no_luck_on_its_own() -
     facts = resolve_question(draft, _seal(), Random(17), TWISTS)
 
     assert [fact.kind for fact in facts] == ["dice_rolled", "dice_rolled", "question_answered"]
-    assert sheet(draft, PLAYER_ID).luck.current == RULES.luck_max
+    assert sheet(draft, PLAYER_ID).luck.current == LUCK_MAX
 
 
 def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> None:
@@ -119,7 +120,7 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     _, state = initialized()
     draft = state.draft()
     with rules(draft.world, Loner3eState) as game:
-        game.twist.current = RULES.ties_per_twist - 1
+        game.twist.current = TIES_PER_TWIST - 1
     primed = draft.committed()
 
     action = Question(actor_id=PLAYER_ID, question="Does he slip past unheard?")
@@ -156,13 +157,13 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
         draft = state.draft()
         facts = resolve_question(draft, _duel(), Random(seed), TWISTS)
         (oracle,) = cards(facts)
-        harm = outcome_for(int(oracle.dice[0].result), int(oracle.dice[1].result)).harm
+        harm = outcome_for(max(oracle.dice[0].rolled), max(oracle.dice[1].rolled)).harm
         loser, held = (FOE, PLAYER_ID) if harm > 0 else (PLAYER_ID, FOE)
-        assert sheet(draft, loser).luck.current == RULES.luck_max - abs(harm)
-        assert sheet(draft, held).luck.current == RULES.luck_max
+        assert sheet(draft, loser).luck.current == LUCK_MAX - abs(harm)
+        assert sheet(draft, held).luck.current == LUCK_MAX
         # A tie still ticks the counter inside a conflict; one tie alone never reaches the twist.
         assert not any(fact.kind == "twist_due" for fact in facts)
-        tied = oracle.dice[0].result == oracle.dice[1].result
+        tied = max(oracle.dice[0].rolled) == max(oracle.dice[1].rolled)
         assert mechanics_of(draft.world, Loner3eState).twist.current == (1 if tied else 0)
 
 
@@ -178,13 +179,13 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
         draft = hurt.draft()
         facts = resolve_question(draft, _duel(), Random(seed), TWISTS)
         (oracle,) = cards(facts)
-        if outcome_for(int(oracle.dice[0].result), int(oracle.dice[1].result)).harm > 0:
+        if outcome_for(max(oracle.dice[0].rolled), max(oracle.dice[1].rolled)).harm > 0:
             break
     else:
         raise AssertionError("no seed under 200 answered yes")
 
     assert sheet(draft, FOE).luck.current == 10
-    assert sheet(draft, PLAYER_ID).luck.current == RULES.luck_max
+    assert sheet(draft, PLAYER_ID).luck.current == LUCK_MAX
     assert any(fact.kind == "conflict_lost" for fact in facts)
     assert defeat_note(draft.world.require(FOE).name) in draft.world.pending_notes
     # The conflict is over, so the defeat note steers the same run instead of handing control back.
@@ -214,7 +215,7 @@ def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
 
     assert any(fact.kind == "question_answered" for fact in facts)
     lantern = sheet(draft, LANTERN).luck.current
-    assert min(lantern, sheet(draft, PLAYER_ID).luck.current) < RULES.luck_max
+    assert min(lantern, sheet(draft, PLAYER_ID).luck.current) < LUCK_MAX
 
     away = state.draft()
     away.world.require(LANTERN).parent_id = EntityId("cloister")
@@ -242,7 +243,8 @@ def test_the_engine_plays_the_hand_back_and_refuses_every_other_decision() -> No
                 PendingOption(
                     id="lantern",
                     label="Break the lantern",
-                    call=ToolCall(name="defend", args={}),
+                    name="defend",
+                    args={},
                 ),
             )
         }

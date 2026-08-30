@@ -10,7 +10,7 @@ from core_test_support import (
 )
 
 from aidm.engines.core import mechanics_of, rules
-from aidm.engines.loner3e.rules import RULES, Loner3eState, Sheet, apply_restore_luck
+from aidm.engines.loner3e.rules import LUCK_MAX, Loner3eState, Sheet, apply_restore_luck
 from aidm.engines.registry import begin_game
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
 from aidm.state.facts import Fact
@@ -41,7 +41,7 @@ def test_engine_initialization_and_state_contract() -> None:
     engine, state = initialized()
 
     assert state.engine == engine.id
-    assert loner_sheet(state, PLAYER_ID).luck.current == RULES.luck_max
+    assert loner_sheet(state, PLAYER_ID).luck.current == LUCK_MAX
     engine.validate(state)
 
     assert engine.restored(state.model_dump_json()) == state
@@ -99,9 +99,10 @@ def test_authored_rules_are_the_sheet_of_whatever_carries_them() -> None:
         shipped,
         world=updated(
             shipped.world,
-            mechanics=engine.mechanics_merge(
+            mechanics=engine.mechanics_patch(
                 shipped.world.mechanics,
                 {"sheets": {"vault-map": {"concept": "a chart that remembers"}}},
+                (),
             ),
         ),
     )

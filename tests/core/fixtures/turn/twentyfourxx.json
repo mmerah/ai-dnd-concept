@@ -1,110 +1,85 @@
-{
-  "prompt": "I lever up the loose flagstone and listen at the vault door.",
-  "narration": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
-  "facts": [
-    {
-      "kind": "entity_discovered",
-      "trace": "learned of the item the cipher spike[cipher-spike]",
-      "told": true,
-      "entity_id": "cipher-spike",
-      "card": "",
-      "dice": []
-    },
-    {
-      "kind": "entity_moved",
-      "trace": "the player Kael[player] took the item the cipher spike[cipher-spike]",
-      "told": true,
-      "entity_id": "cipher-spike",
-      "card": "Took the cipher spike",
-      "dice": []
-    },
-    {
-      "kind": "dice_rolled",
-      "trace": "Listen at the vault door without being heard — Stealth: d10+d6 [8, 5]",
-      "told": false,
-      "entity_id": null,
-      "card": "",
-      "dice": []
-    },
-    {
-      "kind": "attempt_resolved",
-      "trace": "Listen at the vault door without being heard (risk: whatever is behind the door hears him first) -> success",
-      "told": true,
-      "entity_id": "player",
-      "card": "Attempt — success\nSkill Stealth, Help d6\nbad luck — something behind the door is already listening back: signs of it",
-      "dice": [
-        {
-          "label": "Pool",
-          "faces": [
-            10,
-            6
-          ],
-          "rolled": [
-            8,
-            5
-          ],
-          "result": "8",
-          "highlight": [
-            0
-          ]
-        },
-        {
-          "label": "Luck",
-          "faces": [
-            6
-          ],
-          "rolled": [
-            4
-          ],
-          "result": "4",
-          "highlight": [
-            0
-          ]
-        }
-      ]
-    },
-    {
-      "kind": "dice_rolled",
-      "trace": "bad luck — something behind the door is already listening back: 1d6 [4]",
-      "told": false,
-      "entity_id": null,
-      "card": "",
-      "dice": []
-    },
-    {
-      "kind": "luck_tested",
-      "trace": "bad luck — something behind the door is already listening back: signs of it",
-      "told": true,
-      "entity_id": "player",
-      "card": "",
-      "dice": []
-    },
-    {
-      "kind": "trait_added",
-      "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
-      "told": true,
-      "entity_id": "player",
-      "card": "Kael gained Listening",
-      "dice": []
-    }
-  ],
-  "steps": [
-    {
-      "name": "director",
-      "output": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
-      "refusals": []
-    },
-    {
-      "name": "narrator",
-      "output": {
-        "lines": [
-          {
-            "speaker_id": null,
-            "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
-          }
+[
+  {
+    "kind": "entity_discovered",
+    "trace": "learned of the item the cipher spike[cipher-spike]",
+    "told": true,
+    "entity_id": "cipher-spike",
+    "card": "",
+    "dice": []
+  },
+  {
+    "kind": "entity_moved",
+    "trace": "the player Kael[player] took the item the cipher spike[cipher-spike]",
+    "told": true,
+    "entity_id": "cipher-spike",
+    "card": "Took the cipher spike",
+    "dice": []
+  },
+  {
+    "kind": "dice_rolled",
+    "trace": "Listen at the vault door without being heard — Stealth: d10+d6 [8, 5]",
+    "told": false,
+    "entity_id": null,
+    "card": "",
+    "dice": []
+  },
+  {
+    "kind": "attempt_resolved",
+    "trace": "Listen at the vault door without being heard (risk: whatever is behind the door hears him first) -> success",
+    "told": true,
+    "entity_id": "player",
+    "card": "Attempt — success\nSkill Stealth, Help d6\nbad luck — something behind the door is already listening back: signs of it",
+    "dice": [
+      {
+        "label": "Pool",
+        "faces": [
+          10,
+          6
+        ],
+        "rolled": [
+          8,
+          5
+        ],
+        "highlight": [
+          0
         ]
       },
-      "refusals": []
-    }
-  ]
-}
+      {
+        "label": "Luck",
+        "faces": [
+          6
+        ],
+        "rolled": [
+          4
+        ],
+        "highlight": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "dice_rolled",
+    "trace": "bad luck — something behind the door is already listening back: 1d6 [4]",
+    "told": false,
+    "entity_id": null,
+    "card": "",
+    "dice": []
+  },
+  {
+    "kind": "luck_tested",
+    "trace": "bad luck — something behind the door is already listening back: signs of it",
+    "told": true,
+    "entity_id": "player",
+    "card": "",
+    "dice": []
+  },
+  {
+    "kind": "trait_added",
+    "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
+    "told": true,
+    "entity_id": "player",
+    "card": "Kael gained Listening",
+    "dice": []
+  }
+]

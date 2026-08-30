@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from random import Random
 from typing import Literal, Self, get_args
 
@@ -24,7 +23,7 @@ from aidm.state.entities import (
 )
 from aidm.state.facts import Fact, entity_fact
 from aidm.state.model import Game
-from aidm.state.play import DecisionOption, PendingDecision, PendingOption, ToolCall
+from aidm.state.play import DecisionOption, PendingDecision, PendingOption
 from aidm.state.tools import director_tool
 from aidm.world.actions import require_actor_here
 from aidm.world.topology import children, location_of
@@ -33,23 +32,18 @@ type Die = Literal[4, 6, 8, 10, 12]
 type Skill = Literal["Bash", "Dash", "Sneak", "Shoot", "Think", "Sway"]
 
 
-@dataclass(frozen=True, slots=True)
-class Rules:
-    floor: Die = 4  # skills never go below d4; an item at d4 has broken, been lost, or faded
-    loot_start: Die = 12
-    stunt_die: Die = 12
-    starting_item: Die = 10
-    fail_at: int = 2  # 1-2 fails with a complication
-    mixed_at: int = 4  # 3-4 succeeds with a complication
-    trouble_here_at: int = 2  # loot 1-2
-    trouble_ahead_at: int = 4  # loot 3-4
-    med_kit_at: int = 9  # loot 9+ may be a med kit instead of the item
-    med_kit_clears: int = 2
-    vulnerable_at: int = 4
-    carry: int = 3  # items besides the one med kit
-
-
-RULES = Rules()
+DIE_FLOOR: Die = 4  # skills never go below d4; an item at d4 has broken, been lost, or faded
+LOOT_START: Die = 12
+STUNT_DIE: Die = 12
+STARTING_ITEM: Die = 10
+FAIL_AT = 2  # 1-2 fails with a complication
+MIXED_AT = 4  # 3-4 succeeds with a complication
+TROUBLE_HERE_AT = 2  # loot 1-2
+TROUBLE_AHEAD_AT = 4  # loot 3-4
+MED_KIT_AT = 9  # loot 9+ may be a med kit instead of the item
+MED_KIT_CLEARS = 2
+VULNERABLE_AT = 4
+CARRY_LIMIT = 3  # items besides the one med kit
 
 LADDER: tuple[Die, ...] = get_args(Die.__value__)
 SKILLS: tuple[Skill, ...] = get_args(Skill.__value__)
@@ -71,15 +65,15 @@ class Sheet(Mutable):
     # Ratings as created; `worn` is where each skill stands now, reset by Catch Your Breath.
     skills: dict[Skill, Die] = Field(default_factory=dict)
     worn: dict[Skill, Die] = Field(default_factory=dict)
-    loot: Die = RULES.loot_start
-    stress: Counter = Counter(current=0, maximum=RULES.vulnerable_at)
+    loot: Die = LOOT_START
+    stress: Counter = Counter(current=0, maximum=VULNERABLE_AT)
     stunted: bool = False
     med_kit: bool = False
 
     @model_validator(mode="after")
     def _six_skills(self) -> Self:
         for skill in SKILLS:
-            self.skills.setdefault(skill, RULES.floor)
+            self.skills.setdefault(skill, DIE_FLOOR)
             self.worn.setdefault(skill, self.skills[skill])
         if over := sorted(skill for skill in SKILLS if self.worn[skill] > self.skills[skill]):
             raise ValueError(f"a worn skill cannot stand above its rating: {over}")
@@ -87,10 +81,10 @@ class Sheet(Mutable):
 
     @property
     def vulnerable(self) -> bool:
-        return self.stress.current >= RULES.vulnerable_at
+        return self.stress.current >= VULNERABLE_AT
 
     def rested(self) -> bool:
-        return self.worn == self.skills and self.loot == RULES.loot_start and not self.stunted
+        return self.worn == self.skills and self.loot == LOOT_START and not self.stunted
 
     def rows(self) -> tuple[tuple[str, str], ...]:
         skills = ", ".join(
@@ -113,7 +107,7 @@ class ItemSheet(Mutable):
     die: Die
 
     def rows(self) -> tuple[tuple[str, str], ...]:
-        spent = self.die == RULES.floor
+        spent = self.die == DIE_FLOOR
         return (("Die", "d4: broken, lost, or faded" if spent else f"d{self.die}"),)
 
 
@@ -221,9 +215,9 @@ class Breathe(Frozen):
 
 
 def outcome_for(kept: int) -> str:
-    if kept <= RULES.fail_at:
+    if kept <= FAIL_AT:
         return "fail"
-    if kept <= RULES.mixed_at:
+    if kept <= MIXED_AT:
         return "mixed"
     return "success"
 
@@ -244,18 +238,18 @@ def _rolls(
                 f"{actor.name} has pulled a stunt already; they catch their breath before another"
             )
         sheet.stunted = True
-        return RULES.stunt_die, "stunt d12", []
+        return STUNT_DIE, "stunt d12", []
     if item_id is not None:
         item = draft.world.require_kind(item_id, "item")
         if item.parent_id != actor.id:
             raise ValueError(f"{actor.name} does not carry {item.name}")
         held = item_sheet_of(game, item)
-        if held.die == RULES.floor:
+        if held.die == DIE_FLOOR:
             raise ValueError(f"{item.name} is at d4: broken, lost, or faded. It rolls no more")
         face = held.die
         held.die = stepped(face)
         spent = f"d{held.die}"
-        if held.die == RULES.floor:
+        if held.die == DIE_FLOOR:
             # Broken, lost, or faded: it leaves the backpack and frees its slot.
             item.parent_id = location_of(draft.world, actor)
             spent = "d4: broken, lost, or faded, out of the backpack"
@@ -275,9 +269,7 @@ def resolve_stake(draft: Game, action: Check) -> tuple[Fact, ...]:
         raise ValueError("stake only the player's check; roll an actor's check directly")
     # A throwaway resolution: only its refusal matters, so the dice it draws are discarded.
     _ = resolve_check(draft.draft(), action, Random())
-    draft.pending = stake_decision(
-        action.risk, ToolCall(name=ROLL_CHECK, args=action.model_dump(mode="json"))
-    )
+    draft.pending = stake_decision(action.risk, ROLL_CHECK, action.model_dump(mode="json"))
     return ()
 
 
@@ -364,8 +356,8 @@ def _loot(draft: Game, game: BreathlessState, action: LootCheck, rng: Random) ->
             dice=(die,),
         )
 
-    if kept <= RULES.trouble_ahead_at:
-        here = kept <= RULES.trouble_here_at
+    if kept <= TROUBLE_AHEAD_AT:
+        here = kept <= TROUBLE_HERE_AT
         found = "trouble is here" if here else "there is trouble ahead"
         draft.world.pending_notes = (
             *draft.world.pending_notes,
@@ -375,7 +367,7 @@ def _loot(draft: Game, game: BreathlessState, action: LootCheck, rng: Random) ->
         facts.append(found_fact(found))
         return tuple(facts)
     rating = loot_die(kept)
-    if kept >= RULES.med_kit_at and not held_med_kit:
+    if kept >= MED_KIT_AT and not held_med_kit:
         draft.pending = PendingDecision(
             kind="loot",
             prompt=MED_KIT_PROMPT,
@@ -383,19 +375,14 @@ def _loot(draft: Game, game: BreathlessState, action: LootCheck, rng: Random) ->
                 PendingOption(
                     id="item",
                     label=f"Take {action.seeking} (d{rating})",
-                    call=ToolCall(
-                        name=LOOT_ITEM.name,
-                        args={
-                            "actor_id": actor.id,
-                            "seeking": action.seeking,
-                            "rating": rating,
-                        },
-                    ),
+                    name=LOOT_ITEM.name,
+                    args={"actor_id": actor.id, "seeking": action.seeking, "rating": rating},
                 ),
                 PendingOption(
                     id="med-kit",
                     label="Take a med kit",
-                    call=ToolCall(name=LOOT_MED_KIT.name, args={"actor_id": actor.id}),
+                    name=LOOT_MED_KIT.name,
+                    args={"actor_id": actor.id},
                 ),
             ),
             allows_text=False,
@@ -409,7 +396,7 @@ def _loot(draft: Game, game: BreathlessState, action: LootCheck, rng: Random) ->
 
 def _found(draft: Game, game: BreathlessState, actor: Entity, seeking: str, rating: Die) -> Fact:
     # A full backpack does not stop the find: the item lies where they stand until they drop one.
-    full = len(children(draft.world, actor.id, "item")) >= RULES.carry
+    full = len(children(draft.world, actor.id, "item")) >= CARRY_LIMIT
     item = Entity(
         id=EntityId(slug(seeking, draft.world.all_ids())),
         kind="item",
@@ -419,7 +406,7 @@ def _found(draft: Game, game: BreathlessState, actor: Entity, seeking: str, rati
         parent_id=location_of(draft.world, actor) if full else actor.id,
     )
     game.items[item.id] = ItemSheet(die=rating)
-    where = f", left here: the backpack holds {RULES.carry}" if full else ""
+    where = f", left here: the backpack holds {CARRY_LIMIT}" if full else ""
     found = f"new item: {item.name}[{item.id}] d{rating}{where}"
     card = f"{item.name}, d{rating}{where}"
     return draft.add(item).model_copy(update={"trace": found, "card": card})
@@ -489,7 +476,7 @@ def apply_catch_breath(draft: Game, action: Breathe) -> list[Fact]:
     with rules(draft.world, BreathlessState) as game:
         sheet = sheet_of(game.sheets, actor)
         sheet.worn = dict(sheet.skills)
-        sheet.loot = RULES.loot_start
+        sheet.loot = LOOT_START
         sheet.stunted = False
     draft.world.pending_notes = (
         *draft.world.pending_notes,
@@ -509,9 +496,7 @@ def apply_use_med_kit(draft: Game, action: Breathe) -> list[Fact]:
         if not sheet.med_kit:
             raise ValueError(f"{actor.name} carries no med kit")
         sheet.med_kit = False
-        return adjust(
-            draft, actor, "stress", sheet.stress, -RULES.med_kit_clears, "used the med kit"
-        )
+        return adjust(draft, actor, "stress", sheet.stress, -MED_KIT_CLEARS, "used the med kit")
 
 
 def breathers(state: Game) -> tuple[tuple[str, Breathe], ...]:

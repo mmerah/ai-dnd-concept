@@ -2,7 +2,7 @@ import pytest
 from core_test_support import initialized
 
 from aidm.state.entities import PLAYER_ID, CheckedEntityId, EntityId
-from aidm.state.scene import Scene, SceneSection, VisibleScene
+from aidm.state.scene import Scene, VisibleScene
 
 HIDDEN = EntityId("vault")
 
@@ -16,10 +16,8 @@ def _scene(
     return Scene(
         key="study",
         label="The Study",
-        sections=(
-            SceneSection(title="PLAYER", player="Kael stands here."),
-            SceneSection(title="HIDDEN", director="A vault waits below."),
-        ),
+        sections=(("PLAYER", "Kael stands here."),),
+        director_sections=(("PLAYER", "Kael stands here."), ("HIDDEN", "A vault waits below.")),
         public_entity_ids=public,
         present_entity_ids=present,
         art_subject_ids=subjects,

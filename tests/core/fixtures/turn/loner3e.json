@@ -1,102 +1,77 @@
-{
-  "prompt": "I lever up the loose flagstone and listen at the vault door.",
-  "narration": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
-  "facts": [
-    {
-      "kind": "entity_discovered",
-      "trace": "learned of the item the vault map[vault-map]",
-      "told": true,
-      "entity_id": "vault-map",
-      "card": "",
-      "dice": []
-    },
-    {
-      "kind": "entity_moved",
-      "trace": "the player Kael[player] took the item the vault map[vault-map]",
-      "told": true,
-      "entity_id": "vault-map",
-      "card": "Took the vault map",
-      "dice": []
-    },
-    {
-      "kind": "dice_rolled",
-      "trace": "Does he hear what waits past the vault door without being heard? — chance: 2d6 [4, 5]",
-      "told": false,
-      "entity_id": null,
-      "card": "",
-      "dice": []
-    },
-    {
-      "kind": "dice_rolled",
-      "trace": "Does he hear what waits past the vault door without being heard? — risk: 1d6 [4]",
-      "told": false,
-      "entity_id": null,
-      "card": "",
-      "dice": []
-    },
-    {
-      "kind": "question_answered",
-      "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
-      "told": true,
-      "entity_id": "player",
-      "card": "Oracle — Advantage (Quiet Hands) → yes-and",
-      "dice": [
-        {
-          "label": "Chance",
-          "faces": [
-            6,
-            6
-          ],
-          "rolled": [
-            4,
-            5
-          ],
-          "result": "5",
-          "highlight": [
-            1
-          ]
-        },
-        {
-          "label": "Risk",
-          "faces": [
-            6
-          ],
-          "rolled": [
-            4
-          ],
-          "result": "4",
-          "highlight": [
-            0
-          ]
-        }
-      ]
-    },
-    {
-      "kind": "trait_added",
-      "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
-      "told": true,
-      "entity_id": "player",
-      "card": "Kael gained Listening",
-      "dice": []
-    }
-  ],
-  "steps": [
-    {
-      "name": "director",
-      "output": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
-      "refusals": []
-    },
-    {
-      "name": "narrator",
-      "output": {
-        "lines": [
-          {
-            "speaker_id": null,
-            "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
-          }
+[
+  {
+    "kind": "entity_discovered",
+    "trace": "learned of the item the vault map[vault-map]",
+    "told": true,
+    "entity_id": "vault-map",
+    "card": "",
+    "dice": []
+  },
+  {
+    "kind": "entity_moved",
+    "trace": "the player Kael[player] took the item the vault map[vault-map]",
+    "told": true,
+    "entity_id": "vault-map",
+    "card": "Took the vault map",
+    "dice": []
+  },
+  {
+    "kind": "dice_rolled",
+    "trace": "Does he hear what waits past the vault door without being heard? — chance: 2d6 [4, 5]",
+    "told": false,
+    "entity_id": null,
+    "card": "",
+    "dice": []
+  },
+  {
+    "kind": "dice_rolled",
+    "trace": "Does he hear what waits past the vault door without being heard? — risk: 1d6 [4]",
+    "told": false,
+    "entity_id": null,
+    "card": "",
+    "dice": []
+  },
+  {
+    "kind": "question_answered",
+    "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
+    "told": true,
+    "entity_id": "player",
+    "card": "Oracle — Advantage (Quiet Hands) → yes-and",
+    "dice": [
+      {
+        "label": "Chance",
+        "faces": [
+          6,
+          6
+        ],
+        "rolled": [
+          4,
+          5
+        ],
+        "highlight": [
+          1
         ]
       },
-      "refusals": []
-    }
-  ]
-}
+      {
+        "label": "Risk",
+        "faces": [
+          6
+        ],
+        "rolled": [
+          4
+        ],
+        "highlight": [
+          0
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "trait_added",
+    "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
+    "told": true,
+    "entity_id": "player",
+    "card": "Kael gained Listening",
+    "dice": []
+  }
+]

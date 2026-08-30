@@ -15,7 +15,7 @@ from aidm.state.facts import DiceEvent, Fact
 from aidm.state.play import Answer
 from aidm.turn.run import TurnStep
 
-from .panels import journal_panel, sheet_panel, state_panel, trace_panel
+from .panels import journal_panel, sheet_panel, state_panel
 from .widgets import (
     avatar,
     decision_widget,
@@ -226,10 +226,6 @@ class GameView:
         journal_panel(self.session)
 
     @ui.refreshable_method
-    def trace(self) -> None:
-        trace_panel(self.session)
-
-    @ui.refreshable_method
     def state(self) -> None:
         state_panel(self.session)
 
@@ -241,7 +237,6 @@ class GameView:
             self.decision,
             self.sheet,
             self.journal,
-            self.trace,
             self.state,
         ):
             panel.refresh()
@@ -498,8 +493,6 @@ def game_page(session: GameSession, driver: Driver | None = None) -> None:
                 with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
                     view.journal()
                 with ui.tab_panel(dev_tab), ui.scroll_area().classes("w-full h-full"):
-                    with ui.expansion("trace", value=True).classes("w-full"):
-                        view.trace()
                     with ui.expansion("state").classes("w-full"):
                         view.state()
                     if driver is not None:

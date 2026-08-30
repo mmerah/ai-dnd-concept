@@ -6,7 +6,7 @@ from loner3e_test_support import sheet
 
 from aidm.content.io import load_character, load_scenario, write_character
 from aidm.engines.core import CharacterCreation, mechanics_of
-from aidm.engines.loner3e.rules import RULES, Loner3eState
+from aidm.engines.loner3e.rules import LUCK_MAX, Loner3eState
 from aidm.engines.registry import begin_game
 from aidm.state.creation import Picks
 from aidm.state.entities import PLAYER_ID
@@ -36,7 +36,7 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     assert made.skills == ("Quiet Hands", "Reads Old Stonework")
     assert made.frailties == ("Never Walks Away",)
     assert made.gear == ("Pry Bar", "Chalk and Wire")
-    assert made.luck.current == RULES.luck_max
+    assert made.luck.current == LUCK_MAX
 
 
 def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:

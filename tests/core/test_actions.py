@@ -3,7 +3,7 @@ from collections.abc import Sequence
 import pytest
 from core_test_support import initialized
 
-from aidm.state import threads
+from aidm.state import tools
 from aidm.state.entities import PLAYER_ID, SLUG_MAX, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.model import AdvanceThread, Game, Thread
@@ -161,7 +161,7 @@ def test_advance_thread_records_the_status_and_the_note_it_moved() -> None:
     draft = _draft()
     draft.world.threads["ritual"] = Thread(id="ritual", title="The rite")
 
-    (renoted,) = threads.advance_thread(
+    (renoted,) = tools.advance_thread(
         draft, AdvanceThread(thread_id="ritual", status="resolved", note="the rite is complete")
     )
     ritual = draft.world.thread("ritual")
@@ -173,7 +173,7 @@ def test_advance_thread_accepts_a_note_only_patch() -> None:
     draft = _draft()
     draft.world.threads["ritual"] = Thread(id="ritual", title="The rite")
 
-    (noted,) = threads.advance_thread(draft, AdvanceThread(thread_id="ritual", note="a quiet clue"))
+    (noted,) = tools.advance_thread(draft, AdvanceThread(thread_id="ritual", note="a quiet clue"))
     ritual = draft.world.thread("ritual")
     assert ritual is not None and ritual.note == "a quiet clue"
     assert noted.trace.endswith("— note: a quiet clue")

@@ -6,8 +6,8 @@ from core_test_support import initialized, loner_sheet
 from aidm.engines.core import Engine
 from aidm.state.entities import DEAD, PLAYER_ID, EntityId
 from aidm.state.model import Game
-from aidm.state.play import Answer, Line, ToolCall
-from aidm.turn.run import TurnRecord, close_segment, consume_answer
+from aidm.state.play import Answer, Line
+from aidm.turn.run import Turn, close_segment, consume_answer
 from aidm.world import actions
 
 MARA = EntityId("mara")
@@ -23,9 +23,13 @@ def _died(engine: Engine, state: Game, *, companion: bool) -> Game:
     return close_segment(engine.scene(draft).label, draft, "I open the vault.", FELL, ())
 
 
+def _turn(engine: Engine, draft: Game) -> Turn:
+    return Turn(engine=engine, draft=draft, rng=Random(0), commit=lambda _: None)
+
+
 def _answered(engine: Engine, state: Game, option_id: str) -> Game:
     draft = state.draft()
-    _ = consume_answer(engine, draft, Answer(option_id=option_id), Random(0), TurnRecord())
+    _ = consume_answer(_turn(engine, draft), Answer(option_id=option_id))
     return draft.committed()
 
 
@@ -38,7 +42,8 @@ def test_a_takeover_moves_the_played_id_and_leaves_the_rest_of_the_game_alone() 
     died = _died(engine, state, companion=True)
     assert died.pending is not None
     assert (died.pending.kind, [one.id for one in died.pending.options]) == ("succession", [MARA])
-    assert died.pending.options[0].call == ToolCall(name="take_over", args={"successor_id": MARA})
+    chosen = died.pending.options[0]
+    assert (chosen.name, chosen.args) == ("take_over", {"successor_id": MARA})
 
     landed = _answered(engine, died, MARA)
 
@@ -48,8 +53,8 @@ def test_a_takeover_moves_the_played_id_and_leaves_the_rest_of_the_game_alone() 
     assert landed.history == died.history
     assert landed.world.require(PLAYER_ID).trait(DEAD) is not None
     assert MARA not in landed.world.party
-    # What the sheet panel draws: the successor's own sheet, read through the played id.
-    assert engine.sheet_rows(landed) == loner_sheet(landed, MARA).rows()
+    # What the scene draws: the successor's own sheet, read through the played id.
+    assert loner_sheet(landed, MARA).rows()[0][1] in str(engine.scene(landed).sections)
 
 
 def test_a_death_with_nobody_to_carry_on_ends_the_game_as_it_always_did() -> None:
@@ -58,7 +63,7 @@ def test_a_death_with_nobody_to_carry_on_ends_the_game_as_it_always_did() -> Non
 
     assert died.pending is None
     with pytest.raises(ValueError, match="You died."):
-        _ = consume_answer(engine, died.draft(), "I get back up.", Random(0), TurnRecord())
+        _ = consume_answer(_turn(engine, died.draft()), "I get back up.")
 
 
 def test_the_death_decision_survives_the_save_it_is_written_into() -> None:
@@ -78,4 +83,4 @@ def test_a_save_written_after_a_takeover_reopens_on_the_successor() -> None:
     reopened = _reopened(engine, landed)
 
     assert reopened.player_id == MARA
-    assert engine.sheet_rows(reopened) == engine.sheet_rows(landed)
+    assert engine.scene(reopened).sections == engine.scene(landed).sections

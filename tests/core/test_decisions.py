@@ -9,7 +9,6 @@ from core_test_support import (
     played,
     recorded,
     scripted,
-    shown,
     text,
     tool_call,
 )
@@ -27,7 +26,6 @@ from aidm.state.play import (
     Line,
     PendingDecision,
     PendingOption,
-    ToolCall,
 )
 from aidm.state.tools import (
     DirectorTool,
@@ -36,7 +34,7 @@ from aidm.state.tools import (
     director_tool,
     transact,
 )
-from aidm.turn.run import RULES_WAIT, TurnRecord, consume_answer, exchanges_to_messages
+from aidm.turn.run import RULES_WAIT, Turn, TurnStep, consume_answer, exchanges_to_messages
 
 
 class Broken(Frozen):
@@ -76,7 +74,8 @@ def _decision(resolver: DirectorTool) -> PendingDecision:
                 id="lantern",
                 label="Break the lantern",
                 detail="Its glass shatters.",
-                call=ToolCall(name=resolver.name, args={"item": "lantern"}),
+                name=resolver.name,
+                args={"item": "lantern"},
             ),
         ),
         allows_text=True,
@@ -134,8 +133,13 @@ async def test_a_suspending_resolver_ends_the_run_and_records_the_pause() -> Non
     engine, state = _deciding()
     director = recorded(tool_call("strike"), text("The rules wait on the player."))
 
-    result = await played(
-        engine, state, "I charge the guard.", director=FunctionModel(director.stub)
+    steps: list[TurnStep] = []
+    state = await played(
+        engine,
+        state,
+        "I charge the guard.",
+        director=FunctionModel(director.stub),
+        on_step=steps.append,
     )
 
     answers = [
@@ -146,53 +150,58 @@ async def test_a_suspending_resolver_ends_the_run_and_records_the_pause() -> Non
         if isinstance(part, ToolReturnPart)
     ]
     assert any(RULES_WAIT in answer for answer in answers)
-    assert result.state.pending == DECISION
-    assert result.state.history[-1].decision == DECISION.prompt
-    assert [step.name for step in result.turn.steps] == ["director", "narrator"]
+    assert state.pending == DECISION
+    assert state.history[-1].decision == DECISION.prompt
+    assert steps == ["director", "narrator"]
 
 
 async def test_a_hand_back_that_moved_no_fiction_gets_no_prose() -> None:
     engine, state = _deciding(narrate=False)
 
-    result = await played(
+    steps: list[TurnStep] = []
+    state = await played(
         engine,
         state,
         "I charge the guard.",
         director=FunctionModel(scripted(tool_call("strike"), text("The rules wait."))),
+        on_step=steps.append,
     )
 
-    assert [step.name for step in result.turn.steps] == ["director"]
-    assert result.turn.narration == ""
-    assert result.state.history[-1].lines == ()
+    assert steps == ["director"]
+    assert state.history[-1].lines == ()
+    assert state.history[-1].narration == ""
 
 
 async def test_a_closed_answer_resolves_in_engine_code_before_the_director_continues() -> None:
     engine, state = _deciding()
 
-    result = await played(
+    director = recorded(text("The lantern is gone."))
+    facts: list[Fact] = []
+    state = await played(
         engine,
         _suspended(state),
         Answer(option_id="lantern"),
-        director=FunctionModel(scripted(text("The lantern is gone."))),
+        director=FunctionModel(director.stub),
+        on_fact=facts.append,
     )
 
-    assert [fact.kind for fact in result.turn.facts] == ["defence_turned"]
-    assert "lantern broke to turn the hit" in shown(result.turn, "director")
-    assert result.state.history[-1].prompt == "Break the lantern"
-    assert result.state.pending is None
+    assert [fact.kind for fact in facts] == ["defence_turned"]
+    assert "lantern broke to turn the hit" in director.prompt()
+    assert state.history[-1].prompt == "Break the lantern"
+    assert state.pending is None
 
 
 async def test_a_re_suspended_continuation_keeps_the_rules_waiting() -> None:
     engine, state = _deciding()
 
-    result = await played(
+    state = await played(
         engine,
         _suspended(state, CHAINING),
         Answer(option_id="lantern"),
         director=FunctionModel(scripted(text("The lantern is gone."))),
     )
 
-    assert result.state.pending == DECISION
+    assert state.pending == DECISION
 
 
 async def test_an_option_the_decision_never_offered_raises() -> None:
@@ -268,7 +277,8 @@ def test_restore_refuses_an_option_whose_call_names_no_tool_or_carries_args_it_r
                 PendingOption(
                     id="lantern",
                     label="Break the lantern",
-                    call=ToolCall(name="spend_momentum", args={}),
+                    name="spend_momentum",
+                    args={},
                 ),
             )
         }
@@ -282,7 +292,8 @@ def test_restore_refuses_an_option_whose_call_names_no_tool_or_carries_args_it_r
                 PendingOption(
                     id="lantern",
                     label="Break the lantern",
-                    call=ToolCall(name=TURN_THE_HIT.name, args={"nothing": "of theirs"}),
+                    name=TURN_THE_HIT.name,
+                    args={"nothing": "of theirs"},
                 ),
             )
         }
@@ -296,4 +307,7 @@ def test_a_decision_whose_options_are_the_whole_pick_refuses_an_answer_in_words(
     draft = _suspended(state, DECISION.model_copy(update={"allows_text": False})).draft()
 
     with pytest.raises(ValueError, match="takes one of its options, not words"):
-        _ = consume_answer(engine, draft, Answer(text="I dive aside"), Random(0), TurnRecord())
+        _ = consume_answer(
+            Turn(engine=engine, draft=draft, rng=Random(0), commit=lambda _: None),
+            Answer(text="I dive aside"),
+        )

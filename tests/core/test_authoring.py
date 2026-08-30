@@ -414,3 +414,16 @@ def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
     assert scenario_refusal(draft, playing, _brief(opening=True)) is None
     assert scenario_refusal(draft, playing, _brief()) is not None
     assert draft.scenario(LONER3E, SRD, grows=True).grows
+
+
+def test_a_patch_that_refuses_leaves_the_draft_exactly_as_it_was() -> None:
+    draft = Draft()
+    _ = draft.apply(ScenarioPatch(entities=(_location("cell"), _location("hall"))), ENGINE)
+    before = draft.model_dump()
+
+    with pytest.raises(ValueError, match="nothing in the draft has id 'nowhere'"):
+        _ = draft.apply(
+            ScenarioPatch(entities=(_location("vault"),), remove=("cell", "nowhere")), ENGINE
+        )
+
+    assert draft.model_dump() == before

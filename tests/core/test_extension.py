@@ -146,7 +146,7 @@ async def test_a_thin_world_grows_inside_the_turn_that_ran_it_thin(
     assert _CRYPT_ID in game.engine.restored(saved).world.entities
 
     assert (SCENARIOS / "whispering-vault" / "world.json").read_bytes() == authored
-    assert "ADVANCES OWED" in {one.title for one in game.engine.scene(game.state).sections}
+    assert "ADVANCES OWED" in dict(game.engine.scene(game.state).director_sections)
 
 
 async def test_a_world_with_doors_left_to_find_grows_nothing(

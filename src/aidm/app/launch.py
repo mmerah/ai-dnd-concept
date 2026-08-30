@@ -48,7 +48,6 @@ class LauncherCatalog(Frozen):
         return found
 
     def characters_for(self, engine: EngineId) -> tuple[CatalogEntry, ...]:
-        """A character is playable under any engine it ships an overlay for."""
         return tuple(entry for entry in self.characters if engine in entry.engines)
 
 

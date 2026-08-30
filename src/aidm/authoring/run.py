@@ -143,7 +143,6 @@ class AuthoringRun:
         return scenario_agent(self.playing, self.settings, self.brief)
 
     async def send(self, instruction: str) -> str:
-        """One agent turn against the same draft and the same history."""
         result = await self.agent.run(
             instruction,
             deps=self.draft,
@@ -164,7 +163,7 @@ class GrowthRun(AuthoringRun):
     def play(self) -> Play:
         base, draft = self.base.world, self.draft.world
         delta = mechanics_delta(base.mechanics, draft.mechanics)
-        return diff(base, draft, delta, self.playing.engine.mechanics_merge)
+        return diff(base, draft, delta, self.playing.engine.mechanics_patch)
 
 
 @dataclass(kw_only=True)
@@ -191,9 +190,9 @@ class ScenarioRun(AuthoringRun):
 
 
 _HOW_TO_WORK = (
-    "Write with `write`, join locations with `connect`, and read the whole draft back with "
-    "`scenario_so_far` whenever you have lost track of it. Each answer ends with what the draft "
-    "still needs. Call `{finish}` once it plays."
+    "Write with `write`, use your other tools for what `write` does not set, and read the whole "
+    "draft back with `scenario_so_far` whenever you have lost track of it. Each answer ends with "
+    "what the draft still needs. Call `{finish}` once it plays."
 )
 
 

@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from random import Random
 from typing import Literal, Self, get_args
 
@@ -25,26 +24,20 @@ from aidm.state.entities import (
 )
 from aidm.state.facts import DiceEvent, Fact, entity_fact
 from aidm.state.model import Game
-from aidm.state.play import DecisionOption, PendingDecision, PendingOption, ToolCall
+from aidm.state.play import DecisionOption, PendingDecision, PendingOption
 from aidm.state.tools import director_tool
 from aidm.world.actions import require_actor_here
 from aidm.world.topology import children
 
-
-@dataclass(frozen=True, slots=True)
-class Rules:
-    starting_credits: int = 2
-    default_face: int = 6  # an unlisted skill rolls the bare d6
-    hindered_face: int = 4
-    disaster_at: int = 2  # kept 1-2
-    setback_at: int = 4  # kept 3-4
-    trouble_at: int = 2  # 1-2 on the bad-luck die
-    signs_at: int = 4  # 3-4 on the bad-luck die
-    max_breaks: int = 3  # the sturdiest printed armour breaks up to 3x
-    ship_upgrade: int = 10  # every starship upgrade is printed at the same price
-
-
-RULES = Rules()
+STARTING_CREDITS = 2
+DEFAULT_FACE = 6  # an unlisted skill rolls the bare d6
+HINDERED_FACE = 4
+DISASTER_AT = 2  # kept 1-2
+SETBACK_AT = 4  # kept 3-4
+TROUBLE_AT = 2  # 1-2 on the bad-luck die
+SIGNS_AT = 4  # 3-4 on the bad-luck die
+MAX_BREAKS = 3  # the sturdiest printed armour breaks up to 3x
+SHIP_UPGRADE = 10  # every starship upgrade is printed at the same price
 
 
 type SkillDie = Literal[8, 10, 12]
@@ -58,7 +51,7 @@ class Sheet(Mutable):
     specialty: str = ""
     origin: str = ""
     skills: dict[str, SkillDie] = Field(default_factory=dict)
-    credits: Counter = Counter(current=RULES.starting_credits)
+    credits: Counter = Counter(current=STARTING_CREDITS)
     jobs: int = 0
 
     def rows(self) -> tuple[tuple[str, str], ...]:
@@ -71,7 +64,7 @@ class Sheet(Mutable):
         )
 
     def face(self, skill: str) -> int:
-        return self.skills.get(skill, RULES.default_face)
+        return self.skills.get(skill, DEFAULT_FACE)
 
 
 def _mark(set_on: bool) -> str:
@@ -119,11 +112,11 @@ def raised(current: SkillDie | None) -> SkillDie:
 class GearItem(DecisionOption):
     bulky: bool = False
     cost: int = Field(default=1, ge=1)
-    breaks: int = Field(default=1, ge=1, le=RULES.max_breaks)
+    breaks: int = Field(default=1, ge=1, le=MAX_BREAKS)
 
 
 class ShipUpgrade(GearItem):
-    cost: int = Field(default=RULES.ship_upgrade, ge=1)
+    cost: int = Field(default=SHIP_UPGRADE, ge=1)
 
 
 class ShipFunction(Frozen):
@@ -249,18 +242,18 @@ DEFENCE_PROMPT = (
 
 
 def outcome_for(kept: int) -> Slug:
-    if kept <= RULES.disaster_at:
+    if kept <= DISASTER_AT:
         return "disaster"
-    if kept <= RULES.setback_at:
+    if kept <= SETBACK_AT:
         return "setback"
     return "success"
 
 
 def pool_faces(sheet: Sheet, action: Attempt, helper: Sheet | None) -> tuple[int, ...]:
-    base = RULES.hindered_face if action.hindered else sheet.face(action.skill)
+    base = HINDERED_FACE if action.hindered else sheet.face(action.skill)
     if helper is not None:
         return (base, helper.face(action.helper_skill))
-    return (base, RULES.default_face) if action.helped else (base,)
+    return (base, DEFAULT_FACE) if action.helped else (base,)
 
 
 def _require_skill(actor: Entity, sheet: Sheet, skill: str, field: str) -> None:
@@ -312,9 +305,7 @@ def resolve_stake(draft: Game, action: Attempt) -> tuple[Fact, ...]:
         raise ValueError("stake only the player's attempt; roll an actor's attempt directly")
     trial = draft.draft()
     _ = _require_playable(trial, mechanics_of(trial.world, TwentyfourxxState), action)
-    draft.pending = stake_decision(
-        action.risk, ToolCall(name=ROLL_ATTEMPT, args=action.model_dump(mode="json"))
-    )
+    draft.pending = stake_decision(action.risk, ROLL_ATTEMPT, action.model_dump(mode="json"))
     return ()
 
 
@@ -381,7 +372,8 @@ def _defence_decision(draft: Game, game: TwentyfourxxState, goal: str) -> Pendin
         PendingOption(
             id=item.id,
             label=f"Break the {item.name}",
-            call=ToolCall(name=DEFEND.name, args={"goal": goal, "item_id": item.id}),
+            name=DEFEND.name,
+            args={"goal": goal, "item_id": item.id},
         )
         for item in children(draft.world, draft.player_id, "item")
         if (held := game.items.get(item.id)) is None or not held.broken
@@ -394,7 +386,8 @@ def _defence_decision(draft: Game, game: TwentyfourxxState, goal: str) -> Pendin
             PendingOption(
                 id=TAKE_THE_HIT,
                 label="Take the hit",
-                call=ToolCall(name=DEFEND.name, args={"goal": goal, "item_id": None}),
+                name=DEFEND.name,
+                args={"goal": goal, "item_id": None},
             ),
         ),
         allows_text=False,
@@ -477,9 +470,9 @@ def _bad_luck(
     draft: Game, actor: Entity, subject: str, rng: Random
 ) -> tuple[DiceEvent, str, list[Fact]]:
     kept, die, rolled = keep_highest((6,), f"bad luck — {subject}", rng, label="Luck")
-    if kept > RULES.signs_at:
+    if kept > SIGNS_AT:
         return die, "", [rolled]
-    trouble = kept <= RULES.trouble_at
+    trouble = kept <= TROUBLE_AT
     note = (
         f"Bad luck has caught up with them: {subject} — the narration showed it arriving this "
         "turn. Develop it next: what it costs, what it changes."

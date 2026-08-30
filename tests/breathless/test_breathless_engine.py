@@ -5,7 +5,8 @@ from breathless_test_support import item_sheet, sheet
 from core_test_support import game
 
 from aidm.engines.breathless.rules import (
-    RULES,
+    DIE_FLOOR,
+    STARTING_ITEM,
     Breathe,
     BreathlessState,
     ChangeStress,
@@ -68,7 +69,7 @@ def test_a_check_wears_the_skill_down_to_the_floor_and_breath_resets_it() -> Non
     assert any(fact.kind == "check_resolved" and fact.card for fact in facts)
     for _ in range(3):
         _ = resolve_check(draft, _check(), Random(1))
-    assert _sheet(draft).worn["Sneak"] == RULES.floor
+    assert _sheet(draft).worn["Sneak"] == DIE_FLOOR
     assert _sheet(draft).skills["Sneak"] == 10
     engine.validate(draft)
 
@@ -83,10 +84,10 @@ def test_a_check_wears_the_skill_down_to_the_floor_and_breath_resets_it() -> Non
 def test_an_item_rolls_in_place_of_a_skill_and_fades_at_d4() -> None:
     engine, state = game(BREATHLESS)
     draft = state.draft()
-    assert item_sheet(draft, LANTERN).die == RULES.starting_item
+    assert item_sheet(draft, LANTERN).die == STARTING_ITEM
     for _ in range(3):
         _ = resolve_check(draft, _check(skill="", item_id=LANTERN), Random(1))
-    assert item_sheet(draft, LANTERN).die == RULES.floor
+    assert item_sheet(draft, LANTERN).die == DIE_FLOOR
     # Broken, lost, or faded: it lies where Kael stands and no longer fills a slot.
     assert draft.world.require(LANTERN).parent_id == player_location(draft)
     draft.world.require(LANTERN).parent_id = PLAYER_ID
@@ -132,7 +133,7 @@ def test_loot_finds_trouble_or_an_item_or_a_med_kit_and_wears_the_loot_die() -> 
     crowbar = draft.world.require(EntityId("a-crowbar"))
     assert crowbar.parent_id == PLAYER_ID
     found = next(f for f in facts if f.kind == "loot_found")
-    kept = int(found.dice[0].result)
+    kept = max(found.dice[0].rolled)
     assert item_sheet(draft, crowbar.id).die == loot_die(kept)
     assert _sheet(draft).loot == 10
 
@@ -140,9 +141,9 @@ def test_loot_finds_trouble_or_an_item_or_a_med_kit_and_wears_the_loot_die() -> 
     _ = resolve_loot(draft, LootCheck(actor_id=PLAYER_ID, seeking="bandages"), Random(5))
     assert draft.pending is not None and draft.pending.kind == "loot"
     med_kit = next(one for one in draft.pending.options if one.id == "med-kit")
-    found = engine.tool(med_kit.call.name)
+    found = engine.tool(med_kit.name)
     assert found is not None
-    _ = found.call(draft, med_kit.call.args, Random(0))
+    _ = found.call(draft, med_kit.args, Random(0))
     draft.pending = None
     assert _sheet(draft).med_kit
     assert draft.world.find(EntityId("bandages")) is None

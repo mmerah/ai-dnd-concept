@@ -35,11 +35,6 @@ class Scenario(Frozen):
             raise ValueError(f"an entity claims the reserved player id {PLAYER_ID!r}")
         if self.player_parent_id is not None:
             _ = self.world.require(self.player_parent_id)
-        for companion in self.world.party:
-            if self.world.require(companion).parent_id != self.player_parent_id:
-                raise ValueError(
-                    f"the player stands beside who they set out with, unlike {companion!r}"
-                )
         return self
 
 

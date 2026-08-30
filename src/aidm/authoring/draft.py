@@ -72,6 +72,7 @@ class Draft(Mutable):
         """Exclude played-character state: `Scenario` refuses the reserved player id."""
         world = state.world
         played = {PLAYER_ID, state.player_id}
+        # Growth is rooms-only: an engine whose player stands nowhere cannot be extended.
         here = player_location(state)
         return cls(
             meta=state.scenario,
@@ -89,6 +90,10 @@ class Draft(Mutable):
         )
 
     def apply(self, patch: ScenarioPatch, engine: Engine) -> str:
+        # Every refusal runs before the first write, so a rejected patch leaves the draft whole.
+        removing = [self._require_held(target) for target in patch.remove]
+        gone = tuple(one.id for one in removing if isinstance(one, Entity))
+        mechanics = engine.mechanics_patch(self.world.mechanics, patch.mechanics, gone)
         changed: list[str] = []
         party = patch.starting_party
         for name in patch.scenario_wide():
@@ -106,23 +111,29 @@ class Draft(Mutable):
             changed.append(_describe(thread, verb))
             self.world.threads[thread.id] = thread
         if patch.mechanics:
-            self.world.mechanics = engine.mechanics_merge(self.world.mechanics, patch.mechanics)
             changed.append("set mechanics")
-        changed.extend(self._remove(target, engine) for target in patch.remove)
+        if patch.mechanics or gone:
+            self.world.mechanics = mechanics
+        changed.extend(self._remove(one) for one in removing)
         return "\n".join(changed) if changed else "nothing to change"
 
-    def _remove(self, target: str, engine: Engine) -> str:
-        removed: Entity | Thread | None = self.world.entities.pop(EntityId(target), None)
-        if removed is not None:
-            self.world.mechanics = engine.mechanics_without(self.world.mechanics, EntityId(target))
-        if removed is None:
-            removed = self.world.threads.pop(target, None)
-        if removed is None:
+    def _require_held(self, target: str) -> Entity | Thread:
+        held: Entity | Thread | None = self.world.entities.get(EntityId(target))
+        if held is None:
+            held = self.world.threads.get(target)
+        if held is None:
             raise ValueError(
                 f"nothing in the draft has id {target!r}; read `scenario_so_far` and remove ids "
                 "exactly as it spells them"
             )
-        return _describe(removed, "deleted")
+        return held
+
+    def _remove(self, held: Entity | Thread) -> str:
+        if isinstance(held, Entity):
+            _ = self.world.entities.pop(held.id, None)
+        else:
+            _ = self.world.threads.pop(held.id, None)
+        return _describe(held, "deleted")
 
     def as_patch(self) -> ScenarioPatch:
         """The one shape the model reads and writes, so the example never teaches a refusal."""
@@ -142,10 +153,6 @@ class Draft(Mutable):
     def scenario(self, engine: EngineId, packs: tuple[Slug, ...], grows: bool = False) -> Scenario:
         if self.meta is None:
             raise ValueError("the draft has no `meta` yet: write a title and premise first")
-        if self.player_parent_id is None:
-            raise ValueError(
-                "the draft has no `player_parent_id` yet: say where the character starts"
-            )
         return Scenario(
             meta=self.meta,
             grows=grows,
@@ -176,7 +183,6 @@ class PlaytestCheck:
 def playtest_check(
     settings: Settings, engine: Engine, packs: tuple[Slug, ...] = ()
 ) -> PlaytestCheck:
-    """An empty selection means the engine's first installed pack."""
     selected = packs or (next(iter(engine.packs)),)
     character = load_character(
         settings.characters_dir, settings.authoring.starter_character, engine.id
@@ -215,7 +221,7 @@ def patch_refusal(patch: ScenarioPatch, settled: frozenset[str]) -> str | None:
     if taken := sorted(held & settled):
         return (
             f"the live game already holds {taken}, some of it beyond what `scenario_so_far` "
-            "shows you. Write ids of your own, and reach what is already there with `connect`."
+            "shows you. Write ids of your own, and reach what is already there with your tools."
         )
     return None
 

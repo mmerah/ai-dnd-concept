@@ -11,15 +11,15 @@ from aidm.engines.core import (
     ADVANCE_SPENT,
     Engine,
     EntityRenderer,
-    Mechanics,
     PackCreation,
     authoring_guidance,
     check_packs,
     describe_rows,
     find_entry,
     load_packs,
-    mechanics_merged,
     mechanics_of,
+    mechanics_patched,
+    owed_notes,
     party_member,
     rules,
     sheet_of,
@@ -42,7 +42,6 @@ from aidm.state.entities import (
     CheckedEntityId,
     EngineId,
     Entity,
-    EntityId,
     Frozen,
     Slug,
     slug,
@@ -50,23 +49,11 @@ from aidm.state.entities import (
 from aidm.state.facts import Fact, entity_fact
 from aidm.state.model import Game
 from aidm.state.play import DecisionOption
-from aidm.state.threads import ADVANCE_THREAD
 from aidm.state.tools import NoArgs, director_tool
 from aidm.world.authoring import rooms_brief, rooms_growth_due
 from aidm.world.scene import rooms_scene
 from aidm.world.succession import TAKE_OVER, player_over
-from aidm.world.tools import (
-    ADD_TRAIT,
-    DIRECTOR_WORLD,
-    GAIN_IMPROVISED_ITEM,
-    JOIN_PARTY,
-    LEAVE_PARTY,
-    MOVE,
-    REMOVE_TRAIT,
-    REVEAL,
-    UNLOCK_EXIT,
-    kill_tool,
-)
+from aidm.world.tools import DIRECTOR_WORLD, rooms_tools
 from aidm.world.topology import validate_rooms
 
 ENGINE_DIR = Path(__file__).parent
@@ -233,22 +220,8 @@ def describer(packs: Mapping[str, Pack], state: Game) -> EntityRenderer:
 
 
 def advances_owed(state: Game) -> tuple[tuple[str, str], ...]:
-    """Chapters played standing above the ledger of advances taken, one note each."""
-    # An advance mid-suspension could invalidate the frozen call an open decision holds.
-    if state.pending is not None:
-        return ()
     game = mechanics_of(state.world, Loner3eState)
-    owed = [
-        f"- {state.world.require(one).name} has an advance owed; call advance only when the "
-        "player asks for it."
-        for one in (state.player_id, *state.world.party)
-        if (sheet := game.sheets.get(one)) is not None and sheet.chapters > sheet.milestones
-    ]
-    return (("ADVANCES OWED", "\n".join(owed)),) if owed else ()
-
-
-def sheet_rows(state: Game) -> tuple[tuple[str, str], ...]:
-    return sheet_of(mechanics_of(state.world, Loner3eState).sheets, state.player).rows()
+    return owed_notes(state, game.sheets, lambda sheet: sheet.chapters > sheet.milestones)
 
 
 def twists(packs: Mapping[str, Pack], state: Game) -> tuple[tuple[str, str], ...]:
@@ -279,25 +252,14 @@ def build(user_packs: Path) -> Engine:
         validate=validate,
         over=player_over,
         scene=rooms_scene(describe, advances_owed),
-        sheet_rows=sheet_rows,
-        mechanics_merge=partial(mechanics_merged, Loner3eState),
-        mechanics_without=_without,
+        mechanics_patch=partial(mechanics_patched, Loner3eState, entity_maps=("sheets",)),
         resolvers=(TAKE_OVER,),
         authoring_brief=lambda chosen, base, opening: rooms_brief(
             base, opening, authoring_guidance(_AUTHORING, packs, chosen)
         ),
         growth_due=rooms_growth_due,
-        tools=(
-            REVEAL,
-            MOVE,
-            GAIN_IMPROVISED_ITEM,
-            ADD_TRAIT,
-            REMOVE_TRAIT,
-            kill_tool(validate),
-            UNLOCK_EXIT,
-            JOIN_PARTY,
-            LEAVE_PARTY,
-            ADVANCE_THREAD,
+        tools=rooms_tools(
+            validate,
             director_tool(
                 "roll_question",
                 "Roll Chance against Risk for one closed dramatic question.",
@@ -319,9 +281,3 @@ def build(user_packs: Path) -> Engine:
             director_tool("advance", ADVANCE_SPENT + GROWTH, AdventureGrowth, advance),
         ),
     )
-
-
-def _without(blob: Mechanics, entity_id: EntityId) -> Mechanics:
-    game = Loner3eState.model_validate(blob)
-    _ = game.sheets.pop(entity_id, None)
-    return game.model_dump(mode="json")
