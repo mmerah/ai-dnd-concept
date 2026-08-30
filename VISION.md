@@ -1,294 +1,720 @@
-# VISION: kernel, engines, kits
+# VISION: a game you play in a browser, run by CLIs you already pay for
 
-This file is self-standing. It supersedes the old "smaller core" plan (Phases 1–3.5 shipped;
-git log is the record). PLAN.md is derived from this file and judged by the measurement rules
-at the end. Three adversarial reviews audited this document (two agent reviews of the first
-draft, one Codex/gpt-5.6-sol review of the derived plan against the code); their corrections
-are folded in, most visibly in the arithmetic and the phase boundaries.
+This file is the authority on the target and the reasoning. It is self-standing. A plan is
+derived from it; this file is not the order of work.
 
 ## The one-line vision
 
-> The kernel stops defining what a game is. The kernel hosts an engine. Each engine owns its
-> complete typed game. The current world model becomes the first kit: a set of modules an
-> engine composes.
+> The app is the game, and you play it in a browser.
+> Its three roles — game master, narrator, worldsmith — are one-shot CLI sessions the app
+> spawns, so play costs a subscription the player already has.
+> The world is a sequence of scenes, not a map.
+> One engine ships. The other two come back on the new design.
 
-## Why — and what the payoff honestly is
+## Why
 
-Three taxes recur in today's code:
+1. **People should be able to play it.** One window. Type, read, look at the art. No terminal,
+   no MCP setup, no split attention. The coding CLIs are the engine room, not the interface.
+2. **The player already owns a strong model.** Claude Code, Codex, OpenCode or Pi on a
+   subscription. The app spawns those and pays nothing per turn to play. *(Illustration is the
+   one exception: it is optional, off by default, and needs its own image-API key.)*
+3. **One process owns the game.** The app is the only writer. No second terminal, no save-file
+   polling, no two servers racing over one save.
+4. **A map is a tax nobody asked for.** Keeping a spatial graph valid — exits, locks, parent
+   chains, containment cycles, reachability, a frontier — costs a thousand lines and much of
+   the game master's attention every turn. Scenes cost neither.
+5. **Three engines is three ports.** Porting one proves the design; porting three before it is
+   proven pays for the same lesson three times, and carries the generic machinery that only
+   exists to hold three.
 
-1. **The ownership seam.** Engine state lives as an untyped JSON blob (`WorldState.mechanics`)
-   inside a typed core world. `rules()`, `mechanics_of`, `mechanics_patched`,
-   `mechanics_delta`, `entity_maps`, and the authoring blob plumbing exist only to service
-   that seam.
-2. **A shared ontology posing as a platform.** Actors, locations, items, exits, traits,
-   party, threads, discovery flags, death, frontier growth: one adventure-game design every
-   engine must shape its SRD onto. A 24XX ship is a `location` because upgrades need
-   somewhere to attach; Breathless scenery must not be an `item` because kit items carry dice.
-3. **The Director executes our object model.** Nine or ten bookkeeping verbs sit beside the
-   SRD procedure tools, and the prompt teaches the model to sequence them.
-
-**The payoff is fidelity and cost-of-the-next-engine, not lines.** Review finding, verified:
-the eight deviations recorded in `docs/*.md` are procedure-level (solo tables, twist timing,
-"Before We Start") and this refactor closes none of them. What it closes is the *impedance*
-layer — concepts forced into the wrong shape — and what it cheapens is every future engine,
-which arrives writing its SRD's own nouns instead of ours. The line count is a **ceiling**,
-not the goal: `src` `.py` lines must end at or below today's 9076 (see Arithmetic).
+`src` should land near **5,150**, down from 9,452, with Loner 3e playable end to end. Each
+engine added back afterwards costs about 500 on the new design.
 
 ## Target architecture
 
 ```
-KERNEL  (aidm/kernel/, aidm/app/, aidm/ui/, aidm/harness/)
-  turn loop: Director -> Narrator, history replay, request limits
-  draft -> validate -> commit transaction (validation is the engine's)
-  save/scenario/character envelopes around one engine payload
-  secrecy type boundary: the Narrator input type has no private field
-  kernel-owned view types (Director/Narrator/Player), filled by engines
-  authoring loop: run the agent, retry refused patches, gate finish()
-  GameService: today's GameSession renamed and extended — not a new layer
-  config, LLM roles, media, launch, settings
+                        ┌──────────── the browser ────────────┐
+                        │  play page   art · transcript · dice │
+                        │  home · new character · settings     │
+                        └───────────────┬──────────────────────┘
+                                        │
+APP  (one process, the only writer)     │
+  GameService     open, play, act, answer, commit
+  three spawns    game master · narrator · worldsmith
+  MCP endpoint    the tool surface the game master calls
+  media, settings, composition root
 
-        tiny typed engine protocol
+        typed engine seam
 
-ENGINE  (aidm/engines/<name>/)
-  its complete typed State, Scenario payload, Character payload
-  its SRD procedure tools, with all deterministic consequences inside
-  its decisions (continuations) and answer()
-  fills the kernel view types from its state
-  its validation, creation (with a preview), player actions
-  its authoring module (usually the kit's)
+ENGINE  aidm/engines/loner3e/
+  its typed State, embedding the kit's SceneState[Sheet union]
+  its SRD procedure tools, with every deterministic consequence inside
+  its validation, character creation, scene-boundary hook
 
-KITS    (aidm/kits/rooms/, later aidm/kits/scenes/)
-  a kit is a SET OF MODULES an engine composes a la carte:
-    state model  RoomsState[S] — S is the ENGINE'S DISCRIMINATED SHEET UNION
-                 (actor/item/ship sheets differ; one plain type cannot hold them);
-                 entities carry `sheet: S | None`; the kit state holds `player_id`
-    change_world (one fiction-settlement tool + its consequences + leak checks)
-    views        (fills the kernel view types from kit state)
-    authoring    (draft model whose patch carries `connections`, bars, growth)
+KIT     aidm/kits/scenes/
+  SceneState[S], change_world, scene_spent, the scene bar
+  the worldsmith prompt and the source reader
+  fills the view types the pages and the narrator read
 ```
 
-Three design rules the reviews forced, adopted because each keeps an arithmetic row honest:
+**The kit fills the views**, not the engine. It holds the cast, the scene and the threads, which
+is nearly everything a view carries; the engine contributes its sheet rows through one callback.
+One implementation instead of one per engine.
 
-1. **`GameService` is `GameSession` renamed.** It already exposes open/submit/act/offers/
-   scene/commit/reload/growth. It gains `view` and explicit begin/call/end turn methods,
-   because the two commit modes are real semantics: builtin commits once per segment, code
-   mode per accepted call, plus the closing narration. A new layer above it would add lines.
-2. **View types are kernel-owned generic presentation data; engines fill them.** This keeps
-   the package-boundary test (`ui` may not import `aidm.engines`) alive and pays the view
-   cost once, not three times. The boundary test itself is rewritten for `kernel`/`kits`
-   the moment those packages exist, not after.
-3. **The kit entity carries the engine's sheet as a discriminated union** (`RoomsState[S]`,
-   `Entity[S].sheet: S | None`). This is what actually deletes `sheet_of`, the per-engine
-   stray-id checks, and the sheets-keyed-by-id merge in growth. A parallel `sheets` map
-   would keep all of them; a single non-union sheet type cannot represent any current engine.
+## How a turn runs
 
-## The kernel
+```
+player types in the page
+   │
+   ├─ APP spawns the GAME MASTER, serving it the MCP tools
+   │     start_turn  → the whole picture: scene, cast, hidden, threads
+   │     engine tools → the engine rolls; code applies; facts return
+   │     change_world → one settled change per call
+   │     next_scene   → brief the worldsmith (does not end the turn)
+   │
+   ├─ the spawn returns when the process exits
+   ├─ APP builds the narrator prompt from NarratorView and the told facts
+   ├─ APP spawns the NARRATOR → the lines the player reads
+   ├─ APP validates, records, commits
+   ├─ APP starts the illustration
+   └─ if scene_spent fires, APP starts the worldsmith on a snapshot
+```
 
-The kernel knows: engine id, save envelope, turn/history, player input, one open player
-prompt, public/private evidence, role orchestration, generic presentation data.
+---
 
-**Architecture test:** an AST/identifier-level check (word boundaries, not substrings — a
-naive grep false-positives on `.items()` and Codex CLI event names) that no module under
-`aidm/kernel`, `aidm/app`, or `aidm/ui` names the rooms ontology as an identifier: `actor`,
-`location`, `exit`, `party`, `thread`, `trait`, `dead`, `inventory`, `sheet`, `frontier`,
-`item`, `known`. `aidm/harness` is covered with an explicit allowlist for the Codex CLI's
-own `item.completed`/`thread.started` event names. Scope and node kinds are part of the
-test's definition, or it either misses leaks or rejects legitimate names.
+## 1. Three roles, three contexts, one subscription
 
-What the kernel keeps, with the review corrections:
+| role | is given | returns | when |
+|---|---|---|---|
+| **Game Master** | the game state, all canon, hidden included | tool calls | every turn |
+| **Narrator** | `NarratorView`, told facts, the last few told passages | the lines the player reads | every turn |
+| **Worldsmith** | source, history, full cast, threads, packs, the GM's intent | one typed `Scene` | at a scene boundary |
 
-- **Draft → validate → commit**, with the throwaway trial application. The four
-  trial-then-apply wrappers (`apply_to_draft`, `transact`, `draft_refusal`, `Turn._apply`,
-  49 physical lines) collapse toward one survivor.
-- **The turn loop.** One loop, ever. The kernel's single fact-kind branch
-  (`entity_discovered` → `when_reached`, ~10 lines) moves inside the kit's `change_world`.
-  The `during_suspension` flag survives on the kernel tool type — "legal while a prompt is
-  open" is turn-loop semantics (the kit's `change_world` opts in; procedure tools do not),
-  not something continuations replace.
-- **The resolution record.** Tools and `answer()` return a typed resolution: facts plus
-  rules-notes. `Fact` keeps `trace`/`told`/`card`/`dice`; notes move off kit state onto the
-  save envelope through that return path — engines write notes in five places today, so the
-  channel must be in the return type, not a side door.
-- **Denormalized speech, without leaking it to the Narrator.** The Narrator proposes minimal
-  lines (`speaker_id`, `text`); the resolver validates them and records a *persisted* line
-  carrying speaker name + icon key. `Exchange` records the prompt's speaker the same way —
-  otherwise, after succession, old player messages render under the successor's name. Chat,
-  journal, and replay stop resolving ids through engine state. Views carry
-  `(id, name, brief)` art subjects **including the player** (today's illustrator draws the
-  player icon from state even though scenes exclude the player from subjects).
-- **The secrecy boundary, weakened knowingly.** The kernel keeps the type boundary: the
-  Narrator input type has no field for private text, and only that type reaches the narrator
-  prompt. The leak *checks* (told facts about unmet entities, speaker ids, unknown names in
-  sections) move into the rooms kit and are mandatory there. An engine with no hidden canon
-  pays nothing. The secrecy golden survives, rebuilt on views.
-- **Two-stage parse everywhere content crosses disk**, not just the launcher: envelope
-  first, then the named engine's payload model — in `content/io.py` catalog reads, save
-  restore/reload, and authoring writes. Parsing the envelope alone would admit
-  payload-invalid content into the catalog. The launcher keeps skip-unreadable behavior.
-- **GameService and its four adapters:** builtin loop, MCP/code mode, the NiceGUI pages, and
-  the read-only `external` viewer (save polling + `reload()`). The service carries the rule
-  that a change outside a turn may not open a player prompt (today `transact`'s check, read
-  post-inversion off the view's prompt field).
-- **The authoring loop only.** The kernel runs the authoring agent: send instructions, turn
-  refusals into `ModelRetry`, gate `finish()` through the engine's unmet list, write the
-  file. Draft model, patch dialect, bars, prompts, growth: engine-supplied (usually the
-  kit's authoring module). **Per-engine authoring tools are dissolved, not deferred**: the
-  kit's patch gains a `connections` field, deleting `AuthoringTool` and the publication
-  machinery in the same phase (a split would run two connection-writing paths). Two
-  constraints ride the fold: the authored entity shape must not also expose writable
-  `exits`, and every connection is preflighted before the patch's first mutation — today's
-  `connect` validates before its first append, and `Draft.apply` must not regress that
-  atomicity. This also dissolves the Claude SDK blocker: the SDK bridge drops
-  `tools/list_changed` and cannot learn tools after connect (`harness/claude.py`).
+Two reasons this is the design, not decoration:
 
-## The engine protocol
+1. **It is the only way secrecy survives.** The game master must read hidden canon in order to
+   plan, so it cannot also be what writes the player's prose. It produces no prose at all.
+2. **Isolation writes better.** A fresh worldsmith holding the source, the story so far and the
+   cast writes a stronger scene than a game master whose context is twenty turns of dice.
 
-Small, typed with generics; the composition root holds engines behind one erased base
-(Python has no existential generics — that one seam is accepted and named here). The
-protocol must name the *payload* types, not just the state — `Scenario` and `Character`
-stop being concrete shared models:
+**The player never sees a role's raw output except through the app.** The transcript renders the
+narrator's lines. The dev tab shows the game master's stdout, raw.
+
+### Every role is fresh. No role keeps a session.
+
+All three are spawned, used once and dropped — the game master too. Continuity lives in state,
+never in a model's context:
+
+| what carries over | where it lives |
+|---|---|
+| what the game master needs this turn | `start_turn`'s picture, rebuilt from state |
+| what this scene is really about | `Scene.note`, written by the worldsmith, never narrated |
+| what the story has promised | the threads, with their private notes |
+| what the player has read | the recent told passages, in the narrator's prompt |
+| what happened, whole | the scenes played, in the worldsmith's prompt |
+
+Both current drivers already spawn one conversation per turn, because `start_turn` hands back
+the play so far and a kept session would only be that history twice.
+
+Three things follow, all good. A crash loses nothing, because no context was the only copy of
+anything. Each role can run on a different CLI or model. And anything worth remembering must be
+written into state, where the save keeps it.
+
+**Spawn cost is verified.** A session's spawn count and token spend were measured against a real
+subscription and are acceptable. This is recorded because the whole design rests on it.
+
+### The spawner
+
+One helper serves all three: it builds a prompt in our code, runs a one-shot CLI, and validates
+what comes back.
+
+```python
+class Spawner(Protocol):
+    async def run[T](self, role: Role, prompt: str, expect: type[T]) -> T: ...
+```
+
+```
+CliSpawner.run
+  ├─ start the configured argv with the prompt as its last argument
+  ├─ read its output under the role's timeout, killing the process group on abandon
+  ├─ take the final assistant message: a JSON event stream for CLIs that emit one,
+  │     the last fenced block otherwise — one small reader per CLI, not per role
+  ├─ parse and validate against `expect`
+  ├─ on a validation error, re-prompt once with that error
+  └─ on a second failure, raise
+```
+
+Configured in `.env`, editable in the settings page:
+
+```
+ROLES__MASTER__COMMAND     = "codex exec --json"
+ROLES__MASTER__TIMEOUT     = 300
+ROLES__NARRATOR__COMMAND   = ""      # empty reuses the master command
+ROLES__NARRATOR__TIMEOUT   = 120
+ROLES__WORLDSMITH__COMMAND = ""
+ROLES__WORLDSMITH__TIMEOUT = 600
+```
+
+- **The app controls each spawn's environment**, because all three are its own children, never
+  nested inside one another.
+- **Every role has its own timeout.** The worldsmith writes a whole scene and is slow; the
+  narrator writes four sentences and is fast.
+- **Failure is loud.** A spawn that fails or returns nothing valid fails its step. The turn does
+  not commit, the scene does not change, and the page says why. Nothing falls back to a role
+  that saw hidden canon.
+
+`harness/exec.py` already spawns a CLI, streams its output and kills the process group; that is
+the machinery this reuses.
+
+### 1.1 The narration boundary
+
+The text the player reads is built from `NarratorView` — a type with no field that can hold
+hidden canon — and reaches the page without passing through the game master.
+
+```
+  ├─ view   = kit.narrator_view(draft)
+  ├─ prompt = render_narrator(view, told_facts, recent_passages, action)
+  ├─ lines  = spawn(narrator, prompt, Narration)
+  ├─ validate: every speaker_id is in view.speakers
+  └─ record and commit
+```
+
+Held by **type, by process, and by surface** at once. Continuity comes from the last few told
+passages, which the player has already read, so they leak nothing.
+
+**Output shape.** `Narration{lines: [{speaker_id, text}]}` as JSON, with the spawner's one
+retry. Structured lines are what let the transcript draw named, iconned bubbles, which is the
+difference between a game and a log. Plain prose is the recorded fallback if parsing proves
+unreliable.
+
+### 1.2 The turn, precisely
+
+`GameService.play(action)` owns the turn. The MCP tools are what the game master calls *inside*
+it.
+
+```
+play(action)
+  ├─ turn = Turn.begin(state.draft(), action)
+  ├─ spawn the game master against `turn`; every call is trial-validated, then applied
+  ├─ the spawn's exit ends the turn
+  ├─ narrate, unless a decision is pending and no told fact landed
+  ├─ record, commit, start the illustration
+  └─ if scene_spent fires, start the worldsmith on a deep copy of the committed state
+```
+
+- **The exit is the only end signal.** There is no `end_turn` tool. A CLI that crashes, is
+  compacted away or simply stops is not a failure if it applied legal changes — those changes
+  are the turn. Only a turn that applied nothing is refused, and the draft is dropped.
+- **A pending decision stops the turn early.** Remaining tools are refused with the decision's
+  text. The turn commits, the page shows the decision, and the player's answer opens the next
+  turn. The narrator runs only if a told fact landed, so a bare decision shows buttons and no
+  prose.
+- **`next_scene` does not end the turn.** The write runs in the background and the new scene is
+  installed under the *next* `start_turn`. The player may take another turn in the old scene
+  meanwhile; that is fine, because the worldsmith reads a **snapshot taken when it started**,
+  never the live state. If the snapshot has gone stale by more than one turn, the result is
+  discarded and rewritten.
+
+---
+
+## 2. The scene kit
+
+A scene, not a location, is the unit of the world.
+
+### State
+
+```python
+class Scene(Frozen):
+    id: Slug
+    place: Slug                          # names the art; reused when the story returns here
+    title: str
+    situation: str                       # what is true here now, for the game master
+    present: tuple[EntityId, ...]        # everyone and everything here and known
+    hidden: tuple[EntityId, ...]         # here, not yet found
+    note: str = ""                       # private; never narrated, never in a view
+
+class SceneState[S](Mutable):
+    cast: dict[EntityId, Entity[S]]      # persists across scenes; sheet: S | None
+    played: tuple[Scene, ...]
+    current: Scene
+    threads: dict[Slug, Thread]
+    companions: list[EntityId]
+    player_id: EntityId
+    source: str = ""
+```
+
+`Entity` keeps `id`, `kind`, `name`, `brief`, `description`, `known` and `traits`, and gains
+`sheet: S | None` and `carried_by: EntityId | None`. It loses `exits`, `parent_id` and
+`when_reached`.
+
+**`place` is why art still caches.** Scene ids are unique, so keying the image on the scene
+would redraw every time. The worldsmith names the `place` and reuses an existing one when the
+story comes back to it, so returning to the chapel reuses the chapel's picture. Portraits
+already cache per entity. A genuinely new place costs one image; that is the expected cost of
+illustration, which is optional and needs its own key.
+
+### Where a thing is: one field, no new concept
+
+- **Carried** is `carried_by`. **Here** is membership in `current.present`.
+- **Dropping** clears `carried_by` and leaves the item in `present`. It is lying here.
+- **When a scene closes, what the player and companions carry comes with them.** Everything
+  else stays behind.
+- **Nothing is lost.** The worldsmith gets the whole cast, and code computes each entity's last
+  known place by scanning `played` backwards for the scene that held it. Come back to the
+  chapel and the worldsmith can put the dropped lantern back on the floor.
+
+Left behind is good fiction, not a bug. No `at_scene` field, no loose-item pool.
+
+### `change_world` — one tool, one call, one change
+
+`verb` picks the arm: `reveal`, `enter`, `leave`, `move_item`, `improvise_item`, `add_trait`,
+`remove_trait`, `kill`, `join_party`, `leave_party`, `advance_thread`. Deterministic
+consequences run inside the arm.
+
+**Measured** (probe, §10): 11 arms in **5,479 bytes**, against the map version's 10 arms in
+5,926 — one more verb in less schema, because no arm carries placement or exit reasoning. Over
+five turns a real CLI made **0 invalid and 0 refused** calls. The arms are not the risk.
+
+### The scene boundary is computed, not judged
+
+The probe found the real defect: the player waded out of the opening scene and **the game master
+did not call `next_scene`**. No thread advanced either. A game master left to notice an ending on
+its own will sit in one scene forever.
+
+So the kit computes it. `scene_spent(state) -> str | None` returns why this scene looks
+finished:
+
+| signal | reason |
+|---|---|
+| `current.hidden` empty and something was revealed here | everything here has been found |
+| an actor present died, or a thread moved to `resolved` | the confrontation settled |
+| the engine's `beat_closed(state)` returns true | Loner's conflict ended and luck restored |
+| no told fact landed for two turns | the scene is spent |
+| turns in this scene passed a cap | the safety net |
+
+When it fires, the turn result appends: *this scene looks finished — <reason>. Call `next_scene`
+if it is.* The game master may still call it on its own judgement; the signal only guarantees it
+gets asked. This is the `NOTES FROM THE RULES` channel the codebase already ships, and directive
+text at the decision point is what fixed trigger reliability the last time it was measured here.
+
+`scene_spent` also starts the speculative write, so the same predicate that fixes the trigger is
+what hides the latency.
+
+---
+
+## 3. Content: characters, scenarios, growth
+
+Content the **player** chooses is a page. Content the **story** invents is the worldsmith. There
+is no batch authoring agent and no draft object.
+
+### Characters — a page
+
+One form: a name, a brief, a concept, and picks from the selected pack. The engine supplies the
+options; the page renders them. The per-engine step-machine (`PackCreation`, nested
+`CreationStep` trees) goes — with one engine it is a flat form.
+
+### Starting a game — a page and one worldsmith call
+
+The home page offers a scenario and a character. "New scenario" is a small form: packs, a title,
+and either a premise or an uploaded `.md`, `.txt` or `.pdf`.
+
+1. The app reads the source to text — de-hyphenated, passages joined, capped — or takes the
+   premise.
+2. It builds the worldsmith prompt with no history and no cast, asking for an opening.
+3. `spawn(worldsmith, prompt, Scene)` returns the opening and the cast it writes.
+4. The app validates against the scene bar, writes `scenarios/<id>/world.json`, copies the
+   source beside it, and opens the game at turn zero.
+
+```
+scenarios/<id>/
+  world.json      envelope { meta, engine, packs, art_style, payload }
+                  payload  { opening: Scene, cast, threads, source }
+  source.md|.pdf  optional
+```
+
+### Growing the world — the worldsmith
+
+**Growth is not a mode. It is the scene boundary.** The game master briefs; the worldsmith
+writes.
+
+```
+next_scene(intent: "They follow the smuggler to the docks; she means to betray them.",
+           include: ("gideon",))          # a hint, not an order
+```
+
+That is the whole signature. Code resolves the rest:
+
+```
+  prompt = render_worldsmith(
+      source    = the adventure text, whole
+      played    = every scene: its place, situation, and what happened in it
+      cast      = every entity: name, brief, traits, sheet, and where it was last seen
+      threads   = status and private note on each
+      packs     = the selected pack tables
+      guidance  = the engine's authoring_guidance
+      intent, include
+      …and one standing instruction: surprise the player. Turn an established fact
+      against them, or bring back something they have stopped thinking about. Surprise
+      by recombining what exists, never by inventing what the source would not hold.)
+```
+
+**Packs belong in this prompt.** They are the setting's vocabulary — which skills, gear and
+frailties this world uses. The source document is the *adventure*; the packs are the *setting*.
+Without them the worldsmith writes fantasy tags into a cyberpunk game. They are dumped with
+defaults excluded, so the cost is small.
+
+Why this shape:
+
+- **The game master's context stays clean.** The source, the whole cast and every past scene
+  never enter its window. Its job stays small: play the turn, judge when a scene ends.
+- **Code owns the material.** What the next scene is written from is a function of state, not
+  something an agent assembles or forgets.
+- **The source goes over whole**, into a fresh context, so the cap that already swallows a
+  76-page adventure is not competing with twenty turns of play.
+- **Same spawner as narration.** One mechanism, three uses, one failure rule.
+
+### A scene change is slow. Start it early, then make it a beat.
+
+**Measured: 335 seconds** (probe, §10). No prompt trick removes it.
+
+1. **`next_scene` never blocks.** It returns at once; the write runs in the background against a
+   snapshot; `scene()` reports progress.
+2. **Start speculatively when `scene_spent` fires**, using its reason as a stand-in intent,
+   before the game master says anything. If the real intent is already served, the wait is over;
+   if not, discard and rewrite. A wasted spawn costs latency you were spending anyway.
+3. **Make the remainder a beat.** A scene transition in a game should look like one: the scene
+   closing, the next illustration arriving, the story turning.
+
+### Ids are the worldsmith's failure mode
+
+The probe's scene was good and still broke on one thing: it wrote `kael` where the id is
+`player`. Three defences, in order:
+
+1. **The worldsmith never names the player.** Code puts them in every scene.
+2. **Unknown ids resolve by name** — a case-insensitive match against one cast member's name.
+3. **Then the spawner's one retry**, with the unknown id named in the error.
+
+A refusal that costs five minutes must be the last resort.
+
+### The scene bar
+
+Every scene must pass four checks before it is installed:
+
+1. A situation of real substance, and at least one cast member besides the player.
+2. At least one standing thread touched, opened or resolved.
+3. At least one existing cast member brought back — after the opening.
+4. When a source exists, a detail traceable to it.
+
+Those are the failure signatures of railroading. A scene that misses one is re-prompted with the
+reason, once, then refused. A validation rule that runs on every scene forever is worth more
+than a test suite that runs when someone remembers.
+
+---
+
+## 4. The MCP surface
+
+What the **game master** sees, served from the running app so the spawned CLI talks to the live
+game rather than a save file.
+
+| tool | purpose |
+|---|---|
+| `start_turn` | opens the turn; returns the whole picture |
+| `scene` | the same picture again, after a compaction |
+| `change_world` | one settled change; `verb` picks the arm |
+| `next_scene` | brief the worldsmith on what comes next |
+| *engine tools* | one per SRD procedure, never more than eight |
+
+Four fixed tools plus the engine's. There is no `end_turn`: the process exiting is the signal.
+
+Everything the player chooses — opening a game, making a character, restarting, answering a
+decision — is a page control. The game master plays; it does not administer.
+
+No tool hands the game master the source, the full cast, or the scene history in bulk. That
+material goes to the worldsmith, in its own process.
+
+**Transport.** MCP over localhost HTTP, mounted on the server the app already runs, with two
+proven fallbacks behind it: an in-process SDK server where the CLI offers one, and a stdio
+server otherwise. All three keep the app the only writer, because the spawns are sequential.
+
+### Tool legality
+
+| | `start_turn` | `scene` | engine tools · `change_world` | `next_scene` |
+|---|---|---|---|---|
+| no turn open | yes | yes | no | no |
+| turn open | no | yes | yes | yes |
+| turn open, decision pending | no | yes | `change_world` only | no |
+| game over | no | yes | no | no |
+
+A refused call says what to do instead. A pending decision is answered by the player on the
+page; the next turn carries their answer.
+
+---
+
+## 5. The pages
+
+### What the pages read
+
+Two types the kit fills. The page imports neither the engine nor the kit.
+
+```python
+class Subject(Frozen):
+    id: str; name: str; brief: str
+
+class NarratorView(Frozen):        # no field can hold hidden canon
+    place: Slug                    # names the art cache entry
+    title: str
+    situation: str                 # the public shape of the scene, never Scene.note
+    art_prompt: str
+    subjects: tuple[Subject, ...]  # who to draw, player included
+    speakers: tuple[Speaker, ...]  # who may be given a line; nobody else
+
+class PlayerView(Frozen):
+    player: Subject
+    sheet: tuple[tuple[str, str], ...]      # the engine's own rows, via one callback
+    carrying: tuple[Subject, ...]
+    present: tuple[Subject, ...]
+    companions: tuple[str, ...]
+    threads: tuple[tuple[str, str], ...]
+    scenes: tuple[str, ...]                 # the breadcrumb
+    prompt: PlayerPrompt | None
+    over: str | None
+```
+
+The transcript reads `Exchange` from the save, not a view.
+
+### The play page
+
+```
+┌───────────────────────────────┬──────────────────┐
+│  SCENE ART  16:9              │  CAST            │
+│  The Drowned Chapel           │  ◯ Mira   ◯ Rat  │
+├───────────────────────────────┤  ◯ Kael (you)    │
+│  › I edge along the wall      ├──────────────────┤
+│  ┌ Chance d6=5  Risk d6=2 ─┐  │  SHEET           │
+│  │ Mira: Luck -1 → 3/6     │  │  Luck  3/6       │
+│  └─────────────────────────┘  │  skills: …       │
+│  ◯ Water closes over your…    │  carrying: …     │
+│  ◉ Mira: "Don't stop now."    ├──────────────────┤
+│                               │  THREADS         │
+│  [ What do you do? ______ ]   │  • the bell      │
+└───────────────────────────────┴──────────────────┘
+   scene 4 · ‹ 1 2 3 [4] ›              scene│journal│dev
+```
+
+- **The transcript** is the record: the action, the cards and dice the rules produced, then the
+  narrator's lines as named bubbles with portraits.
+- **The dice cards** are why this beats a chat app: visible proof that code rolled.
+- **The right column**: scene (cast, sheet), journal (threads, chronicle), dev (raw stdout).
+- **Decisions** are answered here, as buttons or in the player's own words.
+
+### The home page
+
+Saves to resume, and the forms to start one.
+
+### The settings page
+
+It reflects over the `Settings` model — walking the fields, rendering each by type, writing one
+`.env` key per box — so a new setting appears for free. A key set in the shell is shown as such
+and left alone, a cleared box restores the default, a stored secret is never read back, the
+model is revalidated before writing, and saving applies live. It is where the player points the
+three roles at their CLI.
+
+---
+
+## 6. The engine seam
 
 ```python
 class Engine[S: BaseModel](Protocol):
     id: EngineId
     title: str
-    instructions: str
-    state: type[S]                                   # save payload, validated strictly
-    scenario: type[BaseModel]                        # scenario payload
-    character: type[BaseModel]                       # character payload
-    tools: tuple[Tool[S], ...]                       # static; SRD procedures + change_world
-
-    def new_game(self, scenario, character, packs) -> S: ...
-    def validate(self, state: S, packs) -> None: ...  # pack ids ride the envelope
-    def answer(self, state: S, answer: Answer) -> Resolution: ...
-    def views(self, state: S) -> Views: ...
-    def over(self, state: S) -> str | None: ...
-    creation: CharacterCreation                       # create() returns payload + CreationPreview
-    player_actions: tuple[PlayerAction, ...]
-    def authoring(self) -> Authoring | None: ...
+    instructions: str          # the game master's rules note for this SRD
+    authoring_guidance: str    # what a sheet needs, for the worldsmith
+    state: type[S]
+    scenario: type[BaseModel]
+    character: type[BaseModel]
+    tools: tuple[DirectorTool, ...]
+    creation: Creation
+    def new_game(self, scenario, character) -> S: ...
+    def validate(self, state) -> None: ...
+    def sheet_rows(self, state, entity_id) -> tuple[tuple[str, str], ...]: ...
+    def answer(self, draft, chosen, rng) -> tuple[Fact, ...]: ...
+    def beat_closed(self, state) -> bool: ...        # feeds scene_spent
+    def scene_closed(self, draft) -> tuple[Fact, ...]: ...
+    def over(self, state) -> str | None: ...
 ```
 
-The exact member list is PLAN work; two rules are fixed: **the kernel asks the engine what
-to do**, and the envelope's pack ids are passed into `new_game`/`validate` because engines
-read them (Loner's twists, `check_packs`). `tools` is static; per-turn legal toolsets are
-recorded future work.
+The engine's `State` embeds `SceneState[SheetUnion]` and adds its own fields. The sheet union is
+the engine's, because actor sheets and item sheets are different models.
 
-Decisions become engine continuations. The kernel sees `PlayerPrompt {prompt, options,
-allows_text}` on the view and routes the player's `Answer` to `engine.answer`. `resolvers`,
-`PendingOption.name/args`, and `Engine.restored`'s per-option revalidation leave the kernel
-(`during_suspension` stays, see above). Reviewer caution, kept visible: the kit supplies one
-shared frozen-call continuation for its own flows (succession, stakes), or three engines
-re-invent `PendingOption` privately and the deletion inverts into growth.
+**What one engine deletes from the seam.** `AnyEngine` erasure, the import-by-name registry, the
+per-engine `written` tuple in the character catalog, and the `characters_for(engine)` filter all
+exist to hold three engines at once. They come back when engine two does. The composition root
+names Loner directly.
 
-## The Director's surface
+**The payload becomes a discriminated union.** Once the engine's state is typed, `engine` is a
+natural tag, so `SerializeAsAny`, `require_parsed_payload` and every `_legacy` narrowing property
+collapse into one `Field(discriminator="engine")`. This closes the engine set at type-check time,
+which is free with one engine and cheap with three.
 
-**Decided: one `change_world` tool** — the rooms kit collapses reveal / move / improvised
-item / traits / kill / unlock / party / threads into one discriminated-union tool. Engines
-select arms as their own union model (Breathless ships no improvised-item arm), and the
-wrapper field carries a description (the schema guard requires one). One call, one
-transaction, one readback; deterministic consequences (drops on death, reveal cascades,
-`when_reached` notes, the succession prompt) happen inside it. The Director's whole surface
-is then: the engine's SRD procedure tools plus `change_world`.
+The untyped `mechanics` blob and everything servicing it — parse-on-entry, write-back, one-level
+merge, delta, keyed-map cleanup, stray-id checks — is deleted.
 
-**Sequencing correction from review: probe it first, against today's code — properly.**
-The probe is bigger than a tuple swap and the plan budgets it: ~22 test references call the
-old tool names and must move to union arms; the director prompt goldens move with
-`director_world.md`, not only the schema fixtures; the eval record must gain arm telemetry
-(today it discards successful tool names, so "wrong-arm rate" is unmeasurable); and the
-multi-verb baseline (`*/three-things`) must be run on the old surface *before* the swap —
-`phase3-5` holds only the three named cases. The metric is the union arm's schema size
-(complete per-engine tool lists already run 10.9–15.9 KB). If the union measurably loses,
-revert and the kit keeps separate verbs — the decision flips by recorded procedure at
-near-zero sunk cost.
+---
 
-## Feature-by-feature impact
+## 7. What is kept, and what is deleted
 
-Every current feature survives except the raw-state panel (decision below).
+**Kept, and load-bearing:** the model proposes and Python decides, with trial-validate then
+apply; `Fact` with its `trace`/`told`/`card`/`dice` split; strict Pydantic at every boundary and
+no save migration; scene art, portraits, named bubbles, dice cards, decisions; the save,
+scenario and character envelopes.
 
-| Feature | After the inversion |
-|---|---|
-| Loner3e, 24XX, Breathless | Each gets a typed `State` embedding `RoomsState[S]` with its own sheet union plus its own fields. Blob glue, `sheet_of`, stray-id checks deleted. A 24XX ship becomes a 24XX model. |
-| SRD deviations | Recorded procedure-level deviations stay (they are design choices). Impedance mismatches close; future engines land writing their SRD's own nouns. |
-| Character creation | Flow unchanged: `CreationStep`/`Picks` stay the kernel↔UI contract. `create()` returns the payload plus a `CreationPreview` the page renders — defined with the envelope, not later, or the page breaks a phase early. |
-| Scenarios & characters | Envelope + engine payload; two-stage parse at every disk boundary. All shipped JSON is rewritten once. |
-| Saves & launcher | Envelope + payload; launcher lists from the envelope alone, keeps skip-unreadable. Old saves invalid; no migration (standing policy). |
-| Packs | Engine-owned end to end (`load_packs`, `check_packs`, `PackCreation`, `authoring_guidance`); envelopes keep the pack-id list, and it is passed into `new_game`/`validate`. |
-| Authoring (premise + PDF) | Same product, same skills, same source path. Kernel runs the loop; rooms kit ships the draft model with `connections` (preflighted, no second exits path). Both authoring pages stay. |
-| World growth | Rooms kit module: same frontier rule, extension pass, growth skill. |
-| Threads | Rooms kit state, in the Director view, advanced through `change_world`. |
-| Death & succession | Inside the kit's `change_world` death arm; the succession continuation uses the kit's shared frozen-call shape. |
-| Player actions | Unchanged concept, engine-owned; the service refuses one while a prompt is open. |
-| UI (NiceGUI) | Pages render kernel view types and stop traversing game state. Chat/journal read persisted denormalized lines. Settings/theme untouched. **Raw-state panel deleted (decision); the code-driver agent log is kept** — it is the only live view of driver activity. |
-| Media / illustration | Views carry `art_prompt` + `(id, name, brief)` subjects including the player; `media.py` stops reading engine state. |
-| Code mode (MCP + Claude/Codex drivers) | Adapter over `GameService`'s begin/call/end. Its LLM-facing prose stays. Both drivers stay (decision). |
-| Evals & tests | ~1.8k eval + ~5.7k test lines rewritten against payloads and views — priced work, measured per phase. The 55 case ids survive: the existing `twentyfourxx/fit-the-skiff` case converts to the typed ship (a ship fixture already exists, as a location). Goldens regenerate once per atomic phase; targeted cases only. |
-| Narrator secrecy | Type in the kernel, checks in the kit; the secrecy golden survives with its meaning intact. |
+**Deleted now:**
 
-## What is deliberately not changing
-
-- The model proposes; Python decides. Draft → validate → commit with trial application.
-- One turn loop; every harness drives it through `GameService`.
-- All player-facing prose flows through the Narrator.
-- Tests offline (`FunctionModel`); settings in one `.env`; one composition root.
-- No event sourcing, no ECS, no capability framework. The inversion is ownership, not new
-  abstraction.
-- **Kept by decision, do not re-propose:** the Codex driver (`harness/codex.py` + `exec.py`),
-  the builtin in-app authoring chat page, and the code-driver agent log. Offered as
-  deletions and refused.
-
-## Honest arithmetic
-
-Three audits recounted this table (two agent reviews, then Codex against the derived plan).
-Each round moved the numbers the same direction; the structural reason: whatever does not
-fit the kit cleanly gets multiplied by three engines. Base: **9076** `src` `.py` lines
-(the counter is `.py` files only; also tracked: ~5691 `tests`, ~1783 `evals`).
-
-| item | third-audit estimate |
+| | src |
 |---|---:|
-| Phase 0 `change_world` probe (arg models survive as arms) | −10 to −40, or 0 if reverted |
-| kernel types, envelopes, protocol, service, shim | +180 to +300 |
-| hostile engine | ≈ 0 src (tests grow ~150) |
-| atomic port: seam + old `Engine` + world→kit + authoring fold + engine payloads | −110 to −250 |
-| code mode onto service begin/call/end; UI/media onto views | 0 to −40 |
-| scheduled deletions (wrappers −20, raw-state −5, carryovers, pack meanings −10..−20) | −40 to −70 |
-| extra cuts from the Codex review (media `AliasPath` model, `write()` double-construction, `ItemSheet.broken`, inline `take_notes`/`close_segment`/`offered`/`play_action`, merge `ui/panels.py`, mapping wrappers) | −60 to −76 |
-| **net** | **≈ −300 to +80** |
+| 24XX and Breathless engines, returning later | −1,702 |
+| `world/` map ontology → `kits/scenes/` | −544 |
+| `authoring/` batch author, draft and patch machinery | −479 |
+| the harness split: external mode, save polling, three drivers, stdio entry point | −466 |
+| `ui/`: authoring chat page, launcher form, raw-state panel, per-CLI event parsers | −527 |
+| in-app model agents; prompt building kept and extended | −233 |
+| mechanics blob seam, payload shim, `AnyEngine`, registry, `PackCreation` | −350 |
+| **`PlayerAction`** — two actions exist, both Breathless; returns with it | −80 |
+| **succession** — 170 lines and a permanent transcript tax for one edge case; death ends the game | −80 |
+| **`resolvers`** — a second hidden tool list; folded into `tools` with a legality flag | −25 |
+| **`grows`** — every scenario grows now | −5 |
+| `llm.py`, role model config, `content/model.py` | −91 |
+| `evals/` | (1,817, its own tree) |
 
-**Read that plainly: the ceiling is reachable but not assured.** So the rules, per the
-standing bar (smaller, or break-even and more maintainable):
+**Evals go.** They measured a weak model against the tool surface; the roles are frontier CLIs
+now. Their job — catching a world that plays badly — passes to the scene bar, which runs on
+every scene instead of on request. Cheap to write again if a small-model target returns.
 
-1. Every PLAN phase records `src`, `tests`, and `evals` `.py` counts before and after.
-2. **`src` must end at or below 9076.** A phase tracking above its estimate stops and
-   re-scopes; no invented cuts, no reaching for the refused deletions.
-3. Weak-model criterion decides tool-surface questions by measured eval, targeted cases only.
-4. No interim stand-ins for decided features; each phase leaves the game playable, and no
-   phase leaves two implementations of the same concept alive (the reason the kit move and
-   the port are one atomic phase).
+### Staying testable offline
 
-## Acceptance tests
+Removing the in-process agents removes `FunctionModel`'s guarantee, so **the spawner is a
+protocol with one real and one fake implementation**, injected from the composition root.
 
-1. **The hostile engine, before any port.** A tiny playable engine with no locations, items,
-   other actors, party, threads, discovery, death, or growth: one resource, two procedures,
-   built on the new protocol and driven end to end through `GameService`. If it must stub
-   any kernel concept, the kernel is still too opinionated. (Replaces the old Phase 4.2
-   journal engine, which targeted the pre-inversion `Engine`.)
-2. **Port 24XX first among the three.** The litmus: `twentyfourxx/fit-the-skiff` and the
-   ship-upgrade test, converted so the upgrade installs into a 24XX ship model, not a
-   `location`.
-3. **The identifier-level kernel-vocabulary test**, with its scope and allowlist defined, as
-   a standing CI check.
-4. **Secrecy regression:** the golden proving hidden canon cannot reach the narrator prompt
-   survives, rebuilt on views.
+- `CliSpawner` is the only thing in the codebase that starts a process. No test constructs it.
+- `ScriptedSpawner` answers from a per-role queue and **records every prompt it was given**. That
+  recording is what the boundary tests assert on: a golden of the narrator prompt is how "hidden
+  canon cannot reach it" stays proven.
+- The game master's fake plays a list of tool calls against the live MCP surface, which is what
+  the golden-turn tests already do with a scripted model.
 
-## Planned future work (recorded, not scheduled)
+**Prompt files.** Everything under `world/prompts/` and each engine's `director.md` speaks the
+map's vocabulary. They become four: a game-master brief, a narrator brief, a worldsmith brief,
+and one short rules note per engine. The scenario-bar and extension prompts are deleted.
 
-- **Scenes kit.** The world as a sequence of scenes; the Director decides a new scene is
-  due; authoring draws it from premise, source document, and play so far. Second kit, proof
-  that kits compose, and a product change to how games play; waits until the inversion has
-  shipped and 24XX is ported.
-- **`change_world` fallback.** If the Phase-0 probe or post-port evals show the union losing
-  (score, retries, wrong-arm rate on the standing cases), the kit splits it back into verbs.
-  Local change either way.
-- **Dynamic legal toolsets** (no advance tool when no advance is owed): after the surface
-  settles.
-- **`ClaudeDriver` as `ExecDriver` subclass** the day it bills like the API (standing note).
+**Dependencies.** `pydantic-ai` leaves `pyproject.toml`. Two small replacements: a JSON-schema
+generator that inlines `$defs` (~20 lines, checked against the current schema fixtures), and
+`ModelRetry` becoming a plain `ValueError`.
+
+---
+
+## 8. Arithmetic
+
+Base: **9,452** `src`; 6,044 `tests`; 1,817 `evals`.
+
+| item | src |
+|---|---:|
+| 24XX + Breathless deleted (`236+534+430+502`) | −1,702 |
+| `engines/core.py` 483 → ~250 (seam, `sheet_of`, `PackCreation`, `PlayerAction`) | −233 |
+| `registry.py` and `AnyEngine` | −45 |
+| `world/` 1,044 → `kits/scenes/` ~500 | −544 |
+| `authoring/` 569 → ~90 source reader | −479 |
+| `harness/` 836 → spawner ~120 + MCP ~250 | −466 |
+| `turn/` 433 → ~200 prompt builders and `Turn` | −233 |
+| `ui/` 1,557 → ~1,030 | −527 |
+| `state/` shim, `_legacy`, succession, `Scene` to the kit | −220 |
+| `llm.py`, role config, `content/model.py` | −91 |
+| spawner protocol, fake, timeouts, retry | +120 |
+| `render_worldsmith`, the scene bar, `scene_spent` | +160 |
+| MCP legality, scene tools, `place` handling | +100 |
+| **net** | **≈ 5,290** |
+
+Range **4,900 to 5,600**. Tests fall to about **2,800**; evals to zero. Each engine added back
+costs about **500** on the new design — no blob, no map impedance, one flat creation form.
+
+Rules: every phase records `src` and `tests` before and after; a phase over its own estimate
+stops and re-scopes; each phase leaves the game playable from the browser; no phase leaves two
+implementations of one concept; goldens regenerate once per phase and every diff is read.
+
+## 9. Acceptance tests
+
+1. **The narration boundary holds by type.** Only `NarratorView` reaches the prompt builder, and
+   a golden proves a hidden entity's name cannot appear in it.
+2. **The prose never passes through the game master.** No tool result it receives holds the
+   narrator's lines, the source, the full cast, or the history in bulk.
+3. **A failed spawn refuses.** A dead narrator leaves the turn uncommitted; a dead worldsmith
+   leaves the scene unchanged; each says why.
+4. **A game master that exits without finishing still commits** what it legally applied, and one
+   that applied nothing is refused.
+5. **Loner 3e plays** end to end from the page: type, see cards and dice, read the prose, and
+   the save validates.
+6. **The scene bar catches a thin scene**, and a scene end is signalled by `scene_spent`.
+7. **A worldsmith id slip recovers** without a retry: a name resolves to its id, and the player
+   is injected by code.
+8. **A dropped item comes back.** Left in scene 2, brought back by the worldsmith in scene 5,
+   with its identity intact.
+9. **`place` caches art.** Two scenes sharing a `place` share one image.
+10. **A source document becomes a game.** Upload a `.pdf`, play five scenes, each drawn from it.
+11. **The settings page round-trips** a switch, a select, a number and a secret.
+
+## 10. Order of work
+
+**A — the scene-kit probe. DONE. The kit is approved.**
+
+| measured | result |
+|---|---|
+| `change_world` schema | 5,479 bytes, 11 arms (map: 5,926 / 10) |
+| schema-invalid calls in 5 turns | **0** |
+| rule-refused calls in 5 turns | **0** |
+| threads advanced / `next_scene` called at the boundary | **0 / no** — fixed by `scene_spent` |
+| worldsmith scene quality | strong: a complication straight from the source, two existing cast brought back, the secret kept, a private note with a real cost |
+| worldsmith latency | **335 s** |
+| worldsmith id errors | 1 — wrote the player's name for their id |
+
+Verdict on the open question: **alive, not railroaded.** The four constraints did their job.
+
+**B — the `SceneState[S]` spike.** Half a day, before the port. A generic, a discriminated sheet
+union and a discriminated payload, round-tripped through the save envelope and back. This is the
+riskiest unestimated piece; prove it in isolation.
+
+**C — cut to one engine.** Delete 24XX and Breathless with their tests, packs, characters and
+scenarios; delete `PlayerAction`, succession, `resolvers`, `grows`, `AnyEngine` and the registry.
+Loner 3e still plays on the map. This is a clean, self-contained deletion phase.
+
+**D — the scene kit and the port.** `kits/scenes/`: state, arms, `scene_spent`, the worldsmith
+prompt, the scene bar, the views, the source reader. Port Loner onto it. Delete `world/`, the
+mechanics seam and the payload shim.
+
+**E — the three spawns.** The `Spawner` protocol, `CliSpawner`, `ScriptedSpawner`, timeouts, the
+retry. `render_narrator` with continuity, `render_worldsmith`, speaker validation, loud failures.
+Wire `play()` to game master → narrator → commit, and the boundary to the snapshot worldsmith.
+Delete the in-app agents, `llm.py`, the role model config.
+
+**F — the surface.** The MCP endpoint serving the live service, four fixed tools, the legality
+table. Delete external mode, save polling and the drivers.
+
+**G — the pages.** The play page with the transcript, the new-scenario form, the flat character
+form, the trimmed settings page.
+
+**H — the sweep.** Delete `evals/`. Drop `pydantic-ai`. Rewrite `README.md` and `CLAUDE.md`. Grep
+every deleted name.
+
+**I — the engines return.** 24XX, then Breathless, each rewritten on the new design from its SRD
+notes in `docs/`. Breathless brings `PlayerAction` back with it. The second engine restores
+`AnyEngine` and the registry.
+
+## 11. Recorded, not scheduled
+
+- **A narration-against-facts check.** Nothing verifies the prose matches the record. Worth one
+  narrator retry on a contradiction, once the surface settles.
+- **Scene summaries**, if long games show the worldsmith losing the thread.
+- **A persistent worldsmith session**, if continuity across scenes proves thin.
+- **Plain-prose narration**, dropping bubbles, if JSON parsing proves unreliable.
+- **Lower reasoning effort or a chunked source** for the worldsmith, if 335 s still drags.
+- **Succession**, if losing your character to a companion turns out to be missed.
+- **A small-model target**, which would need a tool-accuracy suite over the MCP surface.
+- **Multiplayer, save migrations, a database, event sourcing, undo.** No.
