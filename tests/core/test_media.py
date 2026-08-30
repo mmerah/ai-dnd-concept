@@ -9,15 +9,14 @@ from pydantic import SecretStr
 from aidm.app.media import GeneratedImage, Illustrator, illustration_request, scene_key
 from aidm.config import MediaConfig, ProviderConfig
 from aidm.engines.core import Engine
+from aidm.engines.loner3e.state import ActorSheet, LonerSheet
 from aidm.kernel.views import NarratorView
-from aidm.state.entities import PLAYER_ID, Entity, EntityId
+from aidm.kits.scenes.state import Entity
+from aidm.state.entities import EntityId
 from aidm.state.model import Game
-from aidm.world import actions
-from aidm.world.topology import player_location
 
 NARRATION = "The door groans open."
 STYLE = MediaConfig().style
-CLOISTER = EntityId("cloister")
 
 
 def _illustrator(tmp_path: Path) -> Illustrator:
@@ -33,13 +32,13 @@ def _illustrator(tmp_path: Path) -> Illustrator:
 def _placed(state: Game, name: str, *, known: bool) -> Game:
     return with_entity(
         state,
-        Entity(
+        Entity[LonerSheet](
             id=EntityId(name.lower().replace(" ", "-")),
-            kind="item",
+            kind="actor",
             name=name,
             brief=f"A {name.lower()}.",
             known=known,
-            parent_id=player_location(state),
+            sheet=ActorSheet(concept=name),
         ),
     )
 
@@ -50,10 +49,10 @@ def _scene(engine: Engine, state: Game) -> NarratorView:
 
 def test_illustration_request_names_the_scene_and_no_unrevealed_canon() -> None:
     engine, state = initialized()
-    state = _placed(_placed(state, "Brass Lantern", known=True), "Pale Watcher", known=False)
+    state = _placed(_placed(state, "Brass Warden", known=True), "Pale Watcher", known=False)
     request = illustration_request(_scene(engine, state), NARRATION, STYLE)
-    assert state.world.require(player_location(state)).name in request
-    assert "Brass Lantern" in request
+    assert state.world.current.title in request
+    assert "Brass Warden" in request
     assert NARRATION in request
     assert "Pale Watcher" not in request
 
@@ -62,9 +61,11 @@ def test_scene_key_holds_through_a_change_of_cast_but_not_of_place() -> None:
     engine, state = initialized()
     key = scene_key(_scene(engine, state))
     assert scene_key(_scene(engine, _placed(state, "Pale Watcher", known=False))) == key
-    assert scene_key(_scene(engine, _placed(state, "Brass Lantern", known=True))) == key
+    assert scene_key(_scene(engine, _placed(state, "Brass Warden", known=True))) == key
     draft = state.draft()
-    _ = actions.move(draft, PLAYER_ID, CLOISTER)
+    draft.world.current = draft.world.current.model_copy(
+        update={"id": "cloister-1", "place": "cloister"}
+    )
     assert scene_key(_scene(engine, draft.committed())) != key
 
 

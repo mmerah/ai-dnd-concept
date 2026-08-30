@@ -6,7 +6,7 @@ from pydantic import BaseModel, JsonValue
 
 from aidm.state.entities import Frozen
 from aidm.state.facts import Fact
-from aidm.state.model import AdvanceThread, Game
+from aidm.state.model import Game
 
 
 class NoArgs(Frozen):
@@ -55,7 +55,7 @@ def apply_to_draft(validate: Validate, draft: Game, play: Play, rng: Random) -> 
     for fact in landed:
         if not fact.told or fact.entity_id is None:
             continue
-        subject = draft.world.find(fact.entity_id)
+        subject = draft.world.cast.get(fact.entity_id)
         if subject is None:
             raise ValueError(f"a told fact names {fact.entity_id!r}, which the world does not hold")
         if not subject.known:
@@ -73,18 +73,3 @@ def transact(
     if draft.pending is not before:
         raise ValueError("a change outside a turn cannot open a decision for the player")
     return draft.committed(), landed
-
-
-def advance_thread(draft: Game, effect: AdvanceThread) -> list[Fact]:
-    """Threads are the Director's bookkeeping, so nothing here reaches the Narrator."""
-    thread = draft.world.thread(effect.thread_id)
-    if thread is None:
-        known = ", ".join(sorted(draft.world.threads)) or "(none)"
-        raise ValueError(f"unknown thread {effect.thread_id!r}. The threads are: {known}")
-    thread.status = effect.status or thread.status
-    if effect.note is not None:
-        thread.note = effect.note
-    moved = f"thread {thread.title}[{thread.id}] — status {thread.status}"
-    if thread.note:
-        moved += f" — note: {thread.note}"
-    return [Fact(kind="thread_advanced", trace=moved)]

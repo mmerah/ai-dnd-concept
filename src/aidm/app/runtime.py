@@ -1,28 +1,23 @@
-import logging
 from asyncio import Task, create_task
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
 
-from aidm.authoring.run import growth_run
 from aidm.config import Settings, load_settings
 from aidm.content.io import FileStore, load_character, scenario_envelope, scenario_of
 from aidm.engines.core import Engine
 from aidm.engines.registry import begin_game, build_engines
-from aidm.kernel.protocol import AnyEngine
 from aidm.kernel.views import NarratorView, Views
+from aidm.kits.scenes.boundary import scene_spent
 from aidm.state.entities import EngineId, EntityId
-from aidm.state.facts import Fact, traced
+from aidm.state.facts import Fact
 from aidm.state.model import Character, Game, Scenario
 from aidm.state.play import Answer, Line
-from aidm.state.tools import Play, transact
 from aidm.turn.run import Turn, TurnAgents, TurnStep, build_turn_agents, run_segment
 
 from .launch import LaunchTarget
 from .media import ICON_DIR, Illustrator
-
-LOGGER = logging.getLogger(__name__)
 
 
 def open_media(
@@ -51,7 +46,7 @@ class GameService:
     target: LaunchTarget
     scenario: Scenario
     character: Character
-    engine: AnyEngine
+    engine: Engine
     stages: TurnAgents | None
     store: FileStore
     settings: Settings
@@ -106,17 +101,9 @@ class GameService:
         lines = await run_segment(turn, stages=self.stages, settings=self.settings, on_step=on_step)
         state = self.end_turn(turn, lines)
         self._illustrate(state.history[-1].narration)
-        if self.growth_due():
-            if on_step is not None:
-                on_step("scenario_creator")
-            await self._extend()
 
-    @property
-    def legacy(self) -> Engine:
-        """Growth still lives on the rooms dataclass until the scene kit replaces it."""
-        if not isinstance(self.engine, Engine):
-            raise ValueError(f"the {self.engine.id!r} engine is not the rooms dataclass")
-        return self.engine
+    def scene_spent(self) -> str | None:
+        return scene_spent(self.state)
 
     def view(self) -> Views:
         return self.engine.views(self.state)
@@ -167,27 +154,6 @@ class GameService:
         self._stamp = stamp
         self.state = self._resumable(self.engine.restored(saved))
         return True
-
-    def growth_due(self) -> bool:
-        return self.scenario.grows and self.legacy.growth_due(
-            self.state, self.settings.authoring.growth_frontier
-        )
-
-    async def _extend(self) -> None:
-        """A failure only logs: growth is a bonus, and it retries on the next thin turn."""
-        try:
-            run = growth_run(self.settings, self.legacy, self.character, self.state)
-            _ = await run.send(run.opening_prompt)
-            _ = self.apply_growth(run.play())
-        except Exception:
-            LOGGER.exception("extending %r failed", self.slug)
-
-    def apply_growth(self, play: Play) -> tuple[Fact, ...]:
-        """Applied to the current state, which may have moved since the pass was authored."""
-        state, facts = transact(self.engine.validate, self.state.draft(), play, self.rng)
-        self.commit(state)
-        LOGGER.info("the world grew: %s", traced(facts))
-        return facts
 
     def _begun(self) -> Game:
         return begin_game(self.engine, self.target.scenario_id, self.scenario, self.character)

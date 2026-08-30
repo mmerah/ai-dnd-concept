@@ -3,10 +3,12 @@ from core_test_support import initialized
 from pydantic import ValidationError
 
 from aidm.engines.core import adjust
-from aidm.state.entities import Counter, Entity, EntityId
+from aidm.engines.loner3e.state import LonerSheet
+from aidm.kits.scenes.state import Entity
+from aidm.state.entities import Counter, EntityId
 from aidm.state.model import Game
 
-KAEL = Entity(id=EntityId("kael"), kind="actor", name="Kael", brief="", known=True)
+KAEL = Entity[LonerSheet](id=EntityId("kael"), kind="actor", name="Kael", brief="", known=True)
 
 
 def _state() -> Game:
@@ -35,5 +37,5 @@ def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> 
     assert adjust(state, KAEL, "stress", counter, 99, "the strain") == []
 
     counter.current = 0
-    (own,) = adjust(state, state.player, "stress", counter, 1, "the strain")
+    (own,) = adjust(state, state.world.player, "stress", counter, 1, "the strain")
     assert own.card == "Stress +1 -> 1/5"

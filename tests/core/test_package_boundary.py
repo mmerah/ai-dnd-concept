@@ -5,17 +5,20 @@ import pytest
 
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
 ENGINES = ("aidm.engines.loner3e",)
-# The composition root is the one place allowed to name the engine it builds.
-ROOT = "engines/registry.py"
-# Flow: state <- kernel <- content <- world <- engines <- turn <- authoring <- app <- harness <- ui.
-LAYERS = ("state", "kernel", "content", "world", "engines", "turn", "authoring", "app", "harness")
+# The composition root builds the engine; the save payload is a closed union over engine states.
+ROOTS = {"engines/registry.py", "state/model.py"}
+# Flow: state <- kernel <- content <- kits <- engines <- turn <- app <- harness <- ui.
+LAYERS = ("state", "kernel", "content", "kits", "engines", "turn", "app", "harness")
+# The one inversion: `state.model` names the engine states its payload union is over, and those
+# modules import nothing above `state.entities`.
+ALLOWED = {"state": {"aidm.engines.loner3e.state"}}
 # `ui` sits above them all, imports downwards, and additionally stays engine-agnostic.
 TOPS = {"ui": {"aidm.engines"}}
 # A framework belongs to the layers that own it and to nothing below them.
 CONFINED = {
     "nicegui": ("ui",),
-    "pydantic_ai": ("turn", "authoring", "app", "ui", "harness"),
-    "aidm.config": ("turn", "authoring", "app", "ui", "harness"),
+    "pydantic_ai": ("turn", "app", "ui", "harness"),
+    "aidm.config": ("turn", "app", "ui", "harness"),
 }
 
 
@@ -73,7 +76,12 @@ def test_packages_import_only_in_the_allowed_direction(
     package: str,
     forbidden: set[str],
 ) -> None:
-    imports = _imports(package)
+    allowed = ALLOWED.get(package, set())
+    imports = {
+        name
+        for name in _imports(package)
+        if not any(name == one or name.startswith(f"{one}.") for one in allowed)
+    }
     violations = {
         name
         for name in imports
@@ -90,4 +98,4 @@ def test_no_module_names_a_concrete_engine() -> None:
         if name.startswith(ENGINES)
         if not name.startswith(f"aidm.engines.{path.parts[-2]}")
     }
-    assert naming == {ROOT}
+    assert naming == ROOTS

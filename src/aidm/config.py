@@ -6,8 +6,6 @@ from dotenv import set_key, unset_key
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from aidm.state.entities import Slug
-
 ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
 # A stage is built by name, so an unbuildable role cannot be configured.
@@ -60,16 +58,11 @@ class TurnConfig(BaseModel):
     harness_model: str = Field(default="", json_schema_extra=CODE_MODE_ONLY)
 
 
-class AuthoringConfig(BaseModel):
+class SourceConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    # An author works in passes; past this many calls the run is spinning, not authoring.
-    request_limit: int = Field(default=40, ge=1, json_schema_extra=BUILTIN_ONLY)
-    # Every generated scenario must be playable by the character the app ships with.
-    starter_character: Slug = "kael"
-    growth_frontier: int = Field(default=1, ge=0)
     # This ~30k-token ceiling admits a 76-page adventure without swallowing the context.
-    source_max_chars: int = Field(default=120_000, ge=1)
+    max_chars: int = Field(default=120_000, ge=1)
 
 
 class Roles(BaseModel):
@@ -120,7 +113,7 @@ class Settings(BaseSettings):
     roles: Roles = Field(default=Roles(), json_schema_extra=BUILTIN_ONLY)
     media: MediaConfig = MediaConfig()
     turn: TurnConfig = TurnConfig()
-    authoring: AuthoringConfig = AuthoringConfig()
+    source: SourceConfig = SourceConfig()
     # Who plays the turn: the app's own roles, an agent you run yourself, or one the app launches.
     harness: Literal["builtin", "external", "claude", "codex"] = "builtin"
     saves_dir: Path = Path("saves")

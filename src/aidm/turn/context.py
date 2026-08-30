@@ -45,7 +45,11 @@ def render_narrator(
     return _sections(
         (
             _premise(scenario),
-            *view.sections,
+            ("SCENE", f"{view.title}\n{view.situation}"),
+            (
+                "WHO IS HERE",
+                "\n".join(f"- {one.name} — {one.brief}" for one in view.subjects) or "- (none)",
+            ),
             ("WHAT HAPPENED", evidence),
             ("PLAYER ACTION", prompt),
         )

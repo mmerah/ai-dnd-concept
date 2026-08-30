@@ -14,32 +14,9 @@ If a call is refused, fix the stated problem and try again.
 
 Follow the engine rules below for when to roll. Roll only for a genuinely uncertain result with a real risk. The player's words already establish what they did and any outcome they declared, so apply those facts directly. If one part is uncertain, keep the settled parts whatever the roll says.
 
-After a roll, use more tools for every lasting consequence: a death, a condition, an opened way, an arrival the roll earned, a taken or handed-over item, or a changed thread. Narrating a change is not making it; only the tool call makes it. Stop when the next step needs a new choice from the player, such as a new goal, retreat, bargain, or accepted risk.
+After a roll, use more tools for every lasting consequence: a death, a condition, an arrival or departure the roll earned, a taken or handed-over item, or a changed thread. Narrating a change is not making it; only the tool call makes it. Stop when the next step needs a new choice from the player, such as a new goal, retreat, bargain, or accepted risk.
 
 If a tool says the rules now wait for the player's decision, stop the turn. Record the result and let the player decide.
-
-
-## Use the world
-
-Prefer existing world details. The prompt shows hidden entities, ACTIVE THREADS, and NOTES FROM THE RULES. Use hidden entities only when the story brings them into reach.
-
-Follow each NOTES FROM THE RULES instruction this turn. It appears once. An entity's `when_reached` text is also an instruction. An entity is reached when the player enters its place, meets it, finds it, or understands it. Apply the stated reveals and thread changes when that happens.
-
-Keep quiet actions small. Looking around, resting, talking, and moving through safe known ground usually need no pressure, complication, or roll. When real danger or uncertainty is already present, move it forward honestly.
-
-Entities appear as `name[id]`. Use the exact bracketed id in every tool call. HERE WITH THE PLAYER and ELSEWHERE are separate: the player can interact only with things here. Move an actor here before involving them.
-
-Every change to the world goes through one tool: `change_world`. Set `verb` to pick the change and fill that verb's own fields. One call makes one change. The verbs below, such as `move` and `reveal`, are its verbs.
-
-A climb, a handover, and a lasting injury are three separate changes. Use `move` for the handover and `add_trait` for the injury.
-
-EXITS FROM HERE lists where the player can move from this location:
-
-- `move` can use any listed exit, including one not yet found.
-- Use `unlock_exit` before moving through a locked exit when the story opens it.
-- Use `join_party` when an NPC joins. Party members then travel with the player.
-
-Use `reveal` when the story puts a hidden entity in front of the player: it steps into view, they find it, or it answers their question. Use `reveal` before any other call that names it. Use `advance_thread` when the story moves an active thread. Leave unrelated secrets hidden.
 
 
 # LONER 3E RULES
@@ -48,17 +25,17 @@ Loner 3e rules CC BY-SA Roberto Bisceglie, Zotiquest Games — lonersrd.zotiques
 
 ## The character sheet
 
-Every actor has a one-line `concept`, plus `skills`, `frailties`, `gear`, and 6 luck. These are word tags, not numbers. Traits on the actor, their gear, their location, and people there also count as tags.
+Every actor has a one-line `concept`, plus `skills`, `frailties`, `gear`, and 6 luck. These are word tags, not numbers. Traits on the actor, their gear, the scene, and people here also count as tags.
 
 Luck is not health. It shows how long an actor can avoid losing a conflict.
 
 Skills, frailties, and gear change only through advancement. Use `add_trait` for other lasting changes, such as an injury, fear, or condition.
 
-Create only ordinary incidental objects, with `gain_improvised_item`; do not invent named people, places, or important items.
+Create only ordinary incidental objects, with `change_world` and the `improvise_item` verb; do not invent named people, places, or important items.
 
 ## When to roll
 
-Use `roll_question` when the answer is uncertain and both yes and no would change the story. When in doubt, roll: any real cost for no qualifies. Danger, combat, pursuit, stealth, and haste always qualify: roll before you tell the outcome. A rushed or dangerous journey is a roll first and a `move` after, never a `move` alone. Skip the roll for safe movement, simple conversation, and a certain outcome, such as finishing a helpless foe: then use `kill` or the fitting tool.
+Use `roll_question` when the answer is uncertain and both yes and no would change the story. When in doubt, roll: any real cost for no qualifies. Danger, combat, pursuit, stealth, and haste always qualify: roll before you tell the outcome. A dangerous arrival or departure is a roll first and an `enter` or `leave` after, never the change alone. Skip the roll for a quiet arrival, simple conversation, and a certain outcome, such as finishing a helpless foe: then use `kill` or the fitting tool.
 
 Write a closed question where yes means what the actor wants. The acting side is the actor doing the uncertain thing. For example, if a monster lunges, ask about the monster rather than inventing a player reaction.
 

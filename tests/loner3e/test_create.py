@@ -1,12 +1,11 @@
 from pathlib import Path
 
 import pytest
-from core_test_support import ENGINES_BUILT, LONER3E, SCENARIOS, updated
-from loner3e_test_support import sheet
+from core_test_support import ENGINES_BUILT, LONER3E, SCENARIOS, loner_sheet, updated
 
 from aidm.content.io import load_character, load_scenario, write_character
-from aidm.engines.core import CharacterCreation, mechanics_of
-from aidm.engines.loner3e.rules import LUCK_MAX, Loner3eState
+from aidm.engines.core import CharacterCreation
+from aidm.engines.loner3e.state import LUCK_MAX
 from aidm.engines.registry import begin_game
 from aidm.state.creation import Picks
 from aidm.state.entities import PLAYER_ID, EngineId
@@ -31,9 +30,8 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     character = load_character(tmp_path, "fen", engine)
     scenario = load_scenario(SCENARIOS, "whispering-vault", engine)
     state = begin_game(engine, "whispering-vault", scenario, character)
-    # The merge joins the new sheet into the scenario's blob rather than replacing it.
-    assert mechanics_of(state.world, Loner3eState).twist_pack == "srd"
-    made = sheet(state, PLAYER_ID)
+    assert state.payload.twist_pack == "srd"
+    made = loner_sheet(state, PLAYER_ID)
     assert made.concept == "A wandering scribe who counts doors"
     assert made.skills == ("Quiet Hands", "Reads Old Stonework")
     assert made.frailties == ("Never Walks Away",)

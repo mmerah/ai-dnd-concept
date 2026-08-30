@@ -288,7 +288,7 @@ finished:
 |---|---|
 | `current.hidden` empty and something was revealed here | everything here has been found |
 | an actor present died, or a thread moved to `resolved` | the confrontation settled |
-| the engine's `beat_closed(state)` returns true | Loner's conflict ended and luck restored |
+| a rule wrote `spent` — a thread resolved, a conflict settled | the engine says so, where it knows |
 | no told fact landed for two turns | the scene is spent |
 | turns in this scene passed a cap | the safety net |
 
@@ -528,7 +528,7 @@ class Engine[S: BaseModel](Protocol):
     id: EngineId
     title: str
     instructions: str          # the game master's rules note for this SRD
-    authoring_guidance: str    # what a sheet needs, for the worldsmith
+    def guidance(self, state) -> str: ...            # what a sheet needs, for the worldsmith
     state: type[S]
     scenario: type[BaseModel]
     character: type[BaseModel]
@@ -538,7 +538,6 @@ class Engine[S: BaseModel](Protocol):
     def validate(self, state) -> None: ...
     def sheet_rows(self, state, entity_id) -> tuple[tuple[str, str], ...]: ...
     def answer(self, draft, chosen, rng) -> tuple[Fact, ...]: ...
-    def beat_closed(self, state) -> bool: ...        # feeds scene_spent
     def scene_closed(self, draft) -> tuple[Fact, ...]: ...
     def over(self, state) -> str | None: ...
 ```

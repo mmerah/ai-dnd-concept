@@ -1,5 +1,4 @@
 import asyncio
-import shutil
 from pathlib import Path
 from random import Random
 from typing import cast
@@ -8,33 +7,27 @@ import pytest
 from claude_agent_sdk import McpSdkServerConfig
 from core_test_support import (
     CHARACTERS,
-    ENGINES_BUILT,
     LONER3E,
     SCENARIOS,
     EnvFileFreeSettings,
     change_args,
     scenario_for,
-    updated,
-    with_entity,
 )
 from pydantic import JsonValue, ValidationError
 from pydantic_ai import ModelRetry
 
 from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import Runtime
-from aidm.config import AuthoringConfig, Settings
-from aidm.content.io import load_scenario
+from aidm.config import Settings
 from aidm.harness.claude import ClaudeDriver
 from aidm.harness.codemode import Harness
 from aidm.harness.exec import ExecDriver
 from aidm.harness.mcp import SERVER_NAME, call, offered
-from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId
+from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.model import Game
 
-VAULT = EntityId("vault")
-CLOISTER = EntityId("cloister")
-GROWN = EntityId("sub-crypt")
-
+VAULT_MAP = EntityId("vault-map")
+MARA = EntityId("mara")
 
 A_QUESTION: dict[str, JsonValue] = {
     "actor_id": PLAYER_ID,
@@ -42,27 +35,19 @@ A_QUESTION: dict[str, JsonValue] = {
     "position": "advantage",
     "edge": "Quiet Hands",
 }
-A_NEW_PLACE: dict[str, JsonValue] = {
-    "entities": [
-        {
-            "id": GROWN,
-            "kind": "location",
-            "name": "the sub-crypt",
-            "brief": "Ossuary niches below the cloister.",
-        }
-    ]
+A_CONFLICT: dict[str, JsonValue] = {
+    "actor_id": PLAYER_ID,
+    "question": "Does he wrest the ledger out of her hands?",
+    "opponent_id": MARA,
 }
 
 
-def _settings(
-    tmp_path: Path, growth_frontier: int = 1, scenarios_dir: Path = SCENARIOS
-) -> Settings:
+def _settings(tmp_path: Path) -> Settings:
     # No api_key anywhere: code mode plays without one, and this fixture is that claim's test.
     return EnvFileFreeSettings(
-        scenarios_dir=scenarios_dir,
+        scenarios_dir=SCENARIOS,
         characters_dir=CHARACTERS,
         saves_dir=tmp_path,
-        authoring=AuthoringConfig(growth_frontier=growth_frontier),
         harness="external",
     )
 
@@ -77,11 +62,9 @@ def test_the_driver_serves_this_app_s_own_mcp_server_in_process(tmp_path: Path) 
     assert options.strict_mcp_config
 
 
-async def test_the_agent_s_first_listing_already_carries_the_engine_commands(
-    tmp_path: Path,
-) -> None:
+def test_the_agent_s_first_listing_already_carries_the_engine_commands(tmp_path: Path) -> None:
     driver = ClaudeDriver(runtime=Runtime(_settings(tmp_path)), slug="whispering-vault--kael")
-    assert "roll_question" in {tool.name for tool in await offered(driver.opened())}
+    assert "roll_question" in {tool.name for tool in offered(driver.opened())}
 
 
 class _Chatty(ExecDriver):
@@ -108,21 +91,10 @@ async def test_abandoning_a_turn_kills_the_cli_it_spawned(tmp_path: Path) -> Non
     assert driver.process is None
 
 
-def _harness(settings: Settings) -> Harness:
-    return Harness(settings=settings, runtime=Runtime(settings))
-
-
-def _opened(tmp_path: Path, engine: str, growth_frontier: int = 1) -> Harness:
-    harness = _harness(_settings(tmp_path, growth_frontier))
-    slug = f"{scenario_for(EngineId(engine))}--kael"
-    harness.open_game(slug)
-    return harness
-
-
-def _growing(tmp_path: Path) -> Harness:
-    harness = _opened(tmp_path, "loner3e", growth_frontier=9)
-    session = harness.opened()
-    session.scenario = updated(session.scenario, grows=True)
+def _opened(tmp_path: Path) -> Harness:
+    settings = _settings(tmp_path)
+    harness = Harness(settings=settings, runtime=Runtime(settings))
+    harness.open_game(f"{scenario_for(LONER3E)}--kael")
     return harness
 
 
@@ -133,45 +105,41 @@ def _saved(harness: Harness) -> Game:
     return session.engine.restored(raw)
 
 
-async def test_a_director_tool_call_lands_on_disk(tmp_path: Path) -> None:
-    harness = _opened(tmp_path, "loner3e")
+def test_a_director_tool_call_lands_on_disk(tmp_path: Path) -> None:
+    harness = _opened(tmp_path)
 
-    assert "change_world" in {tool.name for tool in await offered(harness)}
-    _ = await call(harness, "start_turn", {"text": "I look around."})
-    answered = await call(harness, "change_world", change_args("reveal", entity_id=VAULT))
+    assert "change_world" in {tool.name for tool in offered(harness)}
+    _ = call(harness, "start_turn", {"text": "I look around."})
+    answered = call(harness, "change_world", change_args("reveal", entity_id=VAULT_MAP))
 
-    assert "vault" in answered
-    assert _saved(harness).world.require(VAULT).known
+    assert "vault-map" in answered
+    assert _saved(harness).world.require(VAULT_MAP).known
 
 
-async def test_the_save_carries_the_turn_s_cards_as_they_land_and_files_them_at_the_end(
+def test_the_save_carries_the_turn_s_cards_as_they_land_and_files_them_at_the_end(
     tmp_path: Path,
 ) -> None:
     """The page streams mechanics off the save, so a harness in another process shows them too."""
-    harness = _opened(tmp_path, "loner3e")
+    harness = _opened(tmp_path)
 
-    _ = await call(harness, "start_turn", {"text": "I listen at the door."})
+    _ = call(harness, "start_turn", {"text": "I listen at the door."})
     assert _saved(harness).turn_facts == ()
-    _ = await call(harness, "change_world", change_args("reveal", entity_id=VAULT))
+    _ = call(harness, "change_world", change_args("reveal", entity_id=VAULT_MAP))
     assert len(_saved(harness).turn_facts) == 1
-    _ = await call(harness, "roll_question", A_QUESTION)
+    _ = call(harness, "roll_question", A_QUESTION)
     assert len(_saved(harness).turn_facts) == 2
 
-    _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "Dust hangs."}]})
+    _ = call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "Dust hangs."}]})
     saved = _saved(harness)
     assert saved.turn_facts == ()
     assert len(saved.history[-1].facts) == 2
 
 
-async def test_end_turn_records_the_exchange_and_bumps_the_turn(tmp_path: Path) -> None:
-    harness = _opened(tmp_path, "loner3e")
+def test_end_turn_records_the_exchange_and_bumps_the_turn(tmp_path: Path) -> None:
+    harness = _opened(tmp_path)
 
-    _ = await call(harness, "start_turn", {"text": "I look around."})
-    _ = await call(
-        harness,
-        "end_turn",
-        {"lines": [{"speaker_id": None, "text": "Dust hangs."}]},
-    )
+    _ = call(harness, "start_turn", {"text": "I look around."})
+    _ = call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "Dust hangs."}]})
 
     saved = _saved(harness)
     assert saved.turn == 1
@@ -179,70 +147,58 @@ async def test_end_turn_records_the_exchange_and_bumps_the_turn(tmp_path: Path) 
     assert saved.history[-1].narration == "Dust hangs."
 
 
-async def test_a_turn_with_neither_prose_nor_a_decision_is_refused(tmp_path: Path) -> None:
-    harness = _opened(tmp_path, "loner3e")
+def test_a_turn_with_neither_prose_nor_a_decision_is_refused(tmp_path: Path) -> None:
+    harness = _opened(tmp_path)
 
-    _ = await call(harness, "start_turn", {"text": "I wait."})
+    _ = call(harness, "start_turn", {"text": "I wait."})
     with pytest.raises(ModelRetry):
-        _ = await call(harness, "end_turn", {"lines": []})
+        _ = call(harness, "end_turn", {"lines": []})
 
 
-async def test_no_tool_runs_a_turn_before_start_turn_opens_one(tmp_path: Path) -> None:
-    harness = _opened(tmp_path, "loner3e")
+def test_no_tool_runs_a_turn_before_start_turn_opens_one(tmp_path: Path) -> None:
+    harness = _opened(tmp_path)
 
     with pytest.raises(ModelRetry):
-        _ = await call(harness, "change_world", change_args("reveal", entity_id=VAULT))
+        _ = call(harness, "change_world", change_args("reveal", entity_id=VAULT_MAP))
     with pytest.raises(ModelRetry):
-        _ = await call(harness, "end_turn", {"lines": []})
+        _ = call(harness, "end_turn", {"lines": []})
 
 
-async def test_a_name_the_engine_does_not_publish_is_refused(tmp_path: Path) -> None:
-    harness = _opened(tmp_path, "loner3e")
+def test_a_name_the_engine_does_not_publish_is_refused(tmp_path: Path) -> None:
+    harness = _opened(tmp_path)
 
-    _ = await call(harness, "start_turn", {"text": "I look around."})
+    _ = call(harness, "start_turn", {"text": "I look around."})
     with pytest.raises(ValueError, match="is not a tool of"):
-        _ = await call(harness, "settle_everything", {})
+        _ = call(harness, "settle_everything", {})
 
 
-async def test_a_no_args_tool_refuses_junk_arguments(tmp_path: Path) -> None:
-    harness = _opened(tmp_path, "loner3e")
+def test_a_no_args_tool_refuses_junk_arguments(tmp_path: Path) -> None:
+    harness = _opened(tmp_path)
 
     with pytest.raises(ValidationError):
-        _ = await call(harness, "scene", {"junk": 1})
+        _ = call(harness, "scene", {"junk": 1})
 
 
-async def test_an_open_decision_blocks_every_other_tool_until_it_is_answered(
-    tmp_path: Path,
-) -> None:
+def test_an_open_decision_blocks_every_other_tool_until_it_is_answered(tmp_path: Path) -> None:
     """An unfinished conflict: nothing else lands until the player's next message answers it."""
-    harness = _opened(tmp_path, "loner3e")
+    harness = _opened(tmp_path)
     harness.opened().rng = Random(0)
 
-    _ = await call(harness, "start_turn", {"text": "I wrench the lantern from its bracket."})
-    _ = await call(
-        harness,
-        "roll_question",
-        {
-            "actor_id": PLAYER_ID,
-            "question": "Does he wrench it free?",
-            "opponent_id": "lantern",
-        },
-    )
+    _ = call(harness, "start_turn", {"text": "I grab for the ledger in her hands."})
+    _ = call(harness, "roll_question", A_CONFLICT)
     assert _saved(harness).pending is not None
-    assert "waiting on the player" in await call(
-        harness, "change_world", change_args("reveal", entity_id=VAULT)
+    assert "waiting on the player" in call(
+        harness, "change_world", change_args("reveal", entity_id=VAULT_MAP)
     )
-    _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "It holds."}]})
+    _ = call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "She holds on."}]})
 
-    _ = await call(harness, "start_turn", {"text": "I let it be."})
+    _ = call(harness, "start_turn", {"text": "I let it be."})
     assert _saved(harness).pending is None
-    _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "You step back."}]})
+    _ = call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "You step back."}]})
 
 
-async def test_a_viewer_in_another_process_picks_up_what_the_server_committed(
-    tmp_path: Path,
-) -> None:
-    harness = _opened(tmp_path, "loner3e")
+def test_a_viewer_in_another_process_picks_up_what_the_server_committed(tmp_path: Path) -> None:
+    harness = _opened(tmp_path)
     viewer = Runtime(harness.settings).session(
         LaunchTarget(
             slug=harness.opened().slug, scenario_id="whispering-vault", character_id="kael"
@@ -250,213 +206,35 @@ async def test_a_viewer_in_another_process_picks_up_what_the_server_committed(
     )
     assert viewer.state.turn == 0
 
-    _ = await call(harness, "start_turn", {"text": "I listen."})
-    _ = await call(
-        harness,
-        "end_turn",
-        {"lines": [{"speaker_id": None, "text": "Water drips."}]},
-    )
+    _ = call(harness, "start_turn", {"text": "I listen."})
+    _ = call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "Water drips."}]})
 
     assert viewer.reload()
     assert viewer.state.turn == 1
     assert not viewer.reload()
 
 
-async def test_opening_a_new_game_writes_the_save_the_viewer_reads(tmp_path: Path) -> None:
-    harness = _opened(tmp_path, "loner3e")
+def test_opening_a_new_game_writes_the_save_the_viewer_reads(tmp_path: Path) -> None:
+    harness = _opened(tmp_path)
 
     saved = _saved(harness)
     assert saved.turn == 0
     assert saved.history == ()
 
 
-async def test_an_answers_note_is_shown_now_and_spent_rather_than_leaking_a_turn_late(
+def test_an_answers_note_is_shown_now_and_spent_rather_than_leaking_a_turn_late(
     tmp_path: Path,
 ) -> None:
     """`start_turn` takes the note `consume_answer` wrote; `scene()` still shows it mid-turn."""
-    harness = _opened(tmp_path, "loner3e")
+    harness = _opened(tmp_path)
     harness.opened().rng = Random(0)
-    _ = await call(harness, "start_turn", {"text": "I wrench the lantern from its bracket."})
-    _ = await call(
-        harness,
-        "roll_question",
-        {
-            "actor_id": PLAYER_ID,
-            "question": "Does he wrench it free?",
-            "opponent_id": "lantern",
-        },
-    )
-    _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "It holds."}]})
+    _ = call(harness, "start_turn", {"text": "I grab for the ledger in her hands."})
+    _ = call(harness, "roll_question", A_CONFLICT)
+    _ = call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "She holds on."}]})
 
-    opened = await call(harness, "start_turn", {"text": "I back off and look for a rope"})
+    opened = call(harness, "start_turn", {"text": "I let go and step back"})
 
     assert "paused play" in opened
     assert "paused play" in harness.scene()
-    _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "You wait."}]})
+    _ = call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "You wait."}]})
     assert "paused play" not in harness.scene()
-
-
-async def test_end_turn_says_growth_is_due_only_when_it_is(tmp_path: Path) -> None:
-    """The server states it off committed state; the model never judges whether it is time."""
-    harness = _opened(tmp_path, "loner3e", growth_frontier=9)
-    rested: dict[str, JsonValue] = {
-        "lines": [{"speaker_id": None, "text": "Quiet settles."}],
-    }
-
-    _ = await call(harness, "start_turn", {"text": "I rest."})
-    assert "WORLD GROWTH DUE" not in await call(harness, "end_turn", rested)
-
-    session = harness.opened()
-    session.scenario = updated(session.scenario, grows=True)
-    _ = await call(harness, "start_turn", {"text": "I rest."})
-    assert "WORLD GROWTH DUE" in await call(harness, "end_turn", rested)
-    assert "WORLD GROWTH DUE" in harness.scene()
-
-
-async def test_a_growth_run_lands_canon_the_player_has_still_to_find(tmp_path: Path) -> None:
-    harness = _growing(tmp_path)
-
-    assert "scenario_so_far" in await call(harness, "begin_growth", {})
-    _ = await call(harness, "write", {"patch": A_NEW_PLACE})
-    _ = await call(harness, "connect", {"from_id": CLOISTER, "to_id": GROWN})
-    landed = await call(harness, "finish_growth", {})
-
-    assert GROWN in landed
-    world = _saved(harness).world
-    assert not world.require(GROWN).known
-    assert world.require(CLOISTER).exit_to(GROWN) is not None
-    assert harness.authoring is None
-
-
-async def test_a_draft_under_the_bar_is_refused_and_the_run_stays_open(tmp_path: Path) -> None:
-    harness = _growing(tmp_path)
-    _ = await call(harness, "begin_growth", {})
-    _ = await call(harness, "write", {"patch": A_NEW_PLACE})
-
-    with pytest.raises(ModelRetry) as refused:
-        _ = await call(harness, "finish_growth", {})
-
-    assert "exit" in str(refused.value)
-    assert harness.authoring is not None
-
-
-async def test_authoring_needs_a_run_and_a_second_begin_discards_the_first(
-    tmp_path: Path,
-) -> None:
-    harness = _growing(tmp_path)
-    with pytest.raises(ModelRetry):
-        _ = await call(harness, "scenario_so_far", {})
-
-    _ = await call(harness, "begin_growth", {})
-    _ = await call(harness, "write", {"patch": A_NEW_PLACE})
-    _ = await call(harness, "begin_growth", {})
-
-    assert GROWN not in await call(harness, "scenario_so_far", {})
-
-
-async def test_opening_a_game_abandons_an_open_growth_run(tmp_path: Path) -> None:
-    """Its patch is diffed against the game it began in, so it must not land in another."""
-    harness = _growing(tmp_path)
-    _ = await call(harness, "begin_growth", {})
-
-    harness.open_game(f"{scenario_for(LONER3E)}--kael")
-
-    assert harness.authoring is None
-
-
-async def test_a_turn_tool_commits_as_usual_while_a_growth_run_is_open(tmp_path: Path) -> None:
-    """The patch is additions-only, so play and authorship need no exclusion between them."""
-    harness = _growing(tmp_path)
-    _ = await call(harness, "begin_growth", {})
-
-    _ = await call(harness, "start_turn", {"text": "I look around."})
-    _ = await call(harness, "change_world", change_args("reveal", entity_id=VAULT))
-    _ = await call(harness, "write", {"patch": A_NEW_PLACE})
-    _ = await call(harness, "connect", {"from_id": CLOISTER, "to_id": GROWN})
-    _ = await call(harness, "finish_growth", {})
-
-    world = _saved(harness).world
-    assert world.require(VAULT).known and not world.require(GROWN).known
-
-
-async def test_an_id_the_game_took_meanwhile_reaches_the_author_at_finish(
-    tmp_path: Path,
-) -> None:
-    """Builtin logs and drops the patch; here the driver is told, and can rename and re-finish."""
-    harness = _growing(tmp_path)
-    _ = await call(harness, "begin_growth", {})
-    _ = await call(harness, "write", {"patch": A_NEW_PLACE})
-    _ = await call(harness, "connect", {"from_id": CLOISTER, "to_id": GROWN})
-    session = harness.opened()
-    taken = Entity(id=GROWN, kind="location", name="the sub-crypt", brief="Taken first.")
-    session.commit(with_entity(session.state, taken))
-
-    with pytest.raises(ValueError):
-        _ = await call(harness, "finish_growth", {})
-
-    assert harness.authoring is not None
-
-
-async def test_a_scenario_run_writes_a_scenario_that_loads(tmp_path: Path) -> None:
-    scenarios = tmp_path / "scenarios"
-    shutil.copytree(SCENARIOS, scenarios)
-    harness = _harness(_settings(tmp_path, scenarios_dir=scenarios))
-
-    briefing = await call(
-        harness,
-        "begin_scenario",
-        {
-            "slug": "sunken-mill",
-            "premise": "A flooded mill hides a drowned bell.",
-            "engine": LONER3E,
-            "grows": True,
-            "packs": ["srd"],
-        },
-    )
-    assert "finish_scenario" in briefing
-    _ = await call(
-        harness,
-        "write",
-        {
-            "patch": {
-                "meta": {
-                    "title": "The Sunken Mill",
-                    "premise": "A flooded mill hides a drowned bell.",
-                },
-                "player_parent_id": "millrace",
-                "entities": [
-                    {
-                        "id": "millrace",
-                        "kind": "location",
-                        "name": "the millrace",
-                        "brief": "Black water races under a broken sluice.",
-                        "known": True,
-                    },
-                    {
-                        "id": "wheelhouse",
-                        "kind": "location",
-                        "name": "the wheelhouse",
-                        "brief": "The great wheel stands still and furred with weed.",
-                    },
-                    {
-                        "id": "miller",
-                        "kind": "actor",
-                        "name": "the miller",
-                        "brief": "He has not left the mill since the flood.",
-                        "parent_id": "wheelhouse",
-                    },
-                ],
-                "threads": [{"id": "the-bell", "title": "The drowned bell"}],
-                "mechanics": {"sheets": {"miller": {"concept": "A Miller Who Stayed"}}},
-            }
-        },
-    )
-    _ = await call(harness, "connect", {"from_id": "millrace", "to_id": "wheelhouse"})
-
-    written = await call(harness, "finish_scenario", {})
-
-    assert "The Sunken Mill" in written
-    landed = load_scenario(scenarios, "sunken-mill", ENGINES_BUILT[LONER3E])
-    assert landed.meta.title == "The Sunken Mill"
-    assert landed.packs == ("srd",)
-    assert harness.authoring is None

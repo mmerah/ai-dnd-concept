@@ -14,25 +14,23 @@ from core_test_support import (
     text,
     tool_call,
 )
-from pydantic_ai.messages import ModelMessage, ModelResponse, ToolReturnPart
+from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.engines.loner3e.rules import outcome_for
 from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.facts import Fact, cards
 from aidm.turn.run import TurnStep
-from aidm.world.topology import children
+
+MAP = EntityId("vault-map")
+FOUND = changed("reveal", entity_id="vault-map")
+TAKEN = changed("move_item", item_id="vault-map", to="player")
 
 
 async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> None:
     engine, state = initialized()
     steps: list[TurnStep] = []
-    director = FunctionModel(
-        scripted(
-            changed("move", entity_id="vault-map", to_id="player"),
-            text("The map is in hand."),
-        )
-    )
+    director = FunctionModel(scripted(FOUND, TAKEN, text("The map is in hand.")))
     narrator = recorded(narrated("A creased chart slides into your hand."))
     facts: list[Fact] = []
     state = await played(
@@ -50,12 +48,10 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
         "entity_discovered",
         "entity_moved",
     ]
-    assert {item.id for item in children(state.world, PLAYER_ID, "item")} == {
-        "lantern",
-        "vault-map",
-    }
+    assert {one.id for one in state.world.carried_by(PLAYER_ID)} == {"vault-map"}
     assert "Elena" not in narrator.prompt()
-    assert "engine_data" not in narrator.prompt()
+    # The sheets are the game master's: no tag the engine rolls by reaches the narrator.
+    assert "concept" not in narrator.prompt()
     assert state.turn == 1
     assert state.history[-1].prompt == "I search beneath the desk."
 
@@ -65,7 +61,8 @@ async def test_on_fact_reports_the_visible_facts_in_resolver_order() -> None:
     fired: list[Fact] = []
     director = FunctionModel(
         scripted(
-            changed("move", entity_id="vault-map", to_id="player"),
+            FOUND,
+            TAKEN,
             changed("add_trait", entity_id="player", name="Listening", text="listening"),
             text("Kael takes the map and listens."),
         )
@@ -78,7 +75,7 @@ async def test_on_fact_reports_the_visible_facts_in_resolver_order() -> None:
         on_fact=fired.append,
     )
 
-    landed = ["Took the vault map", "Kael gained Listening"]
+    landed = ["The vault map discovered", "Took the vault map", "Kael gained Listening"]
     assert [fact.card for fact in cards(fired)] == landed
     assert [fact.card for fact in state.history[-1].facts] == landed
 
@@ -91,12 +88,7 @@ async def test_a_narrator_failure_leaves_history_and_events_untouched() -> None:
         del messages, info
         raise RuntimeError("narrator exploded")
 
-    director = FunctionModel(
-        scripted(
-            changed("move", entity_id="vault-map", to_id="player"),
-            text("The map is in hand."),
-        )
-    )
+    director = FunctionModel(scripted(FOUND, TAKEN, text("The map is in hand.")))
     with pytest.raises(RuntimeError, match="narrator exploded"):
         await played(
             engine,
@@ -107,7 +99,10 @@ async def test_a_narrator_failure_leaves_history_and_events_untouched() -> None:
             on_fact=fired.append,
         )
 
-    assert [fact.card for fact in cards(fired)] == ["Took the vault map"]
+    assert [fact.card for fact in cards(fired)] == [
+        "The vault map discovered",
+        "Took the vault map",
+    ]
     assert state.history == ()
 
 
@@ -148,47 +143,30 @@ async def test_the_director_reacts_in_run_to_its_own_earlier_tool_call() -> None
     state = await played(
         engine,
         state,
-        "I search the cloister for another way up.",
+        "I call the old porter over.",
         director=FunctionModel(
             scripted(
-                changed("move", entity_id="player", to_id="cloister"),
-                changed("move", entity_id="player", to_id="bell-tower"),
-                text("A rotten ladder climbs into the dark."),
+                changed("enter", entity_id="tomas"),
+                changed("join_party", actor_id="tomas"),
+                text("Tomas shuffles in and stays at his shoulder."),
             )
         ),
     )
 
-    assert state.player.parent_id == "bell-tower"
+    assert state.world.companions == ["tomas"]
 
 
 async def test_an_illegal_tool_call_is_retried_with_the_reason() -> None:
     engine, state = initialized()
     director = recorded(
         changed("reveal", entity_id="nowhere"),
-        changed("reveal", entity_id="vault"),
+        FOUND,
         text("Something is there."),
     )
     state = await played(engine, state, "I wait.", director=FunctionModel(director.stub))
 
-    assert state.world.require(EntityId("vault")).known
-    assert any("unknown entity id 'nowhere'" in reason for reason in director.reasons())
-
-
-async def test_a_discovered_entitys_instruction_comes_back_with_the_tool_result() -> None:
-    engine, state = initialized()
-    director = recorded(
-        changed("reveal", entity_id="vault"),
-        text("Something is there."),
-    )
-    await played(engine, state, "I wait.", director=FunctionModel(director.stub))
-
-    returns = [
-        part.content
-        for msg in director.calls[-1]
-        for part in msg.parts
-        if isinstance(part, ToolReturnPart)
-    ]
-    assert any("press on what opening it will cost" in str(c) for c in returns)
+    assert state.world.require(MAP).known
+    assert any("unknown id 'nowhere'" in reason for reason in director.reasons())
 
 
 async def test_a_call_its_own_fields_refuse_is_retried_rather_than_killing_the_turn() -> None:
@@ -200,13 +178,12 @@ async def test_a_call_its_own_fields_refuse_is_retried_rather_than_killing_the_t
     )
     state = await played(engine, state, "I press on.", director=FunctionModel(director.stub))
 
-    thread = state.world.thread("vault-seal")
-    assert thread is not None and thread.note == "The seal is found."
+    assert state.world.threads["vault-seal"].note == "The seal is found."
     reason = "status or its note"
     assert any(reason in seen for seen in director.reasons())
 
 
-async def test_a_later_call_is_judged_against_the_mechanics_the_earlier_one_moved() -> None:
+async def test_a_later_call_is_judged_against_the_sheet_the_earlier_one_moved() -> None:
     engine, state = initialized()
     growth = {
         "subject_id": PLAYER_ID,
@@ -249,12 +226,7 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
         del messages, info
         raise RuntimeError("narrator exploded")
 
-    director = FunctionModel(
-        scripted(
-            changed("move", entity_id="vault-map", to_id="player"),
-            text("The map is in hand."),
-        )
-    )
+    director = FunctionModel(scripted(FOUND, TAKEN, text("The map is in hand.")))
     before = state.model_dump_json()
     with pytest.raises(RuntimeError, match="narrator exploded"):
         await played(
@@ -267,7 +239,6 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
 async def test_a_director_run_that_fails_discards_what_the_earlier_tool_call_did() -> None:
     engine, state = initialized()
     before = state.model_dump_json()
-    first = changed("move", entity_id="vault-map", to_id="player")
     calls = 0
 
     def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
@@ -275,7 +246,7 @@ async def test_a_director_run_that_fails_discards_what_the_earlier_tool_call_did
         nonlocal calls
         calls += 1
         if calls == 1:
-            return first
+            return FOUND
         raise RuntimeError("the director exploded")
 
     with pytest.raises(RuntimeError, match="the director exploded"):
@@ -287,7 +258,7 @@ async def test_a_director_run_that_fails_discards_what_the_earlier_tool_call_did
         )
 
     assert state.model_dump_json() == before
-    assert state.world.require(EntityId("vault-map")).parent_id != PLAYER_ID
+    assert not state.world.require(MAP).known
 
 
 async def test_an_owed_advance_is_noted_lands_on_call_and_is_refused_once_spent() -> None:

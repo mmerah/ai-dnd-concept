@@ -2,65 +2,37 @@ SCENARIO:
 The Whispering Vault
 The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit.
 
-PLAYER CHARACTER:
-Kael[player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut. — at the abbot's study[study]
-state:
-  concept: A Wary Relic-Hunter
-  skills: Reads Old Stonework, Quiet Hands
-  - Reads Old Stonework: Makes sense of inscriptions and stonework that everyone else reads as rubble.
-  - Quiet Hands: Picks locks, pockets, and latches without a sound.
-  frailties: Never Walks Away
-  - Never Walks Away: Cannot leave a fight, or a wrong, unfinished.
-  gear: Pry Bar, Chalk and Wire
-  - Pry Bar: Forces a door, a crate, or a stubborn slab of stone.
-  - Chalk and Wire: Marks a trail and rigs a lock from chalk and a length of wire.
-  luck: 6/6
-  traits: Relic Hunter[relic-hunter] — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past[marked-by-the-past] — (frailty) Old scars make certain memories hard to face.
-inventory:
-- a guttering lantern[lantern] — A dented tin lantern whose flame will not hold still.
-  state:
-    traits: Unsteady Lantern[unsteady-lantern] — (gear) Its shifting light exposes seams and movement in deep shadow.
+SCENE:
+The Abbot's Study
+The only lit room left in the abbey: ledgers stacked to the beams, candle stubs gone cold, and Mara still cataloguing books nobody will read. A flagstone under the desk sits a finger proud of its neighbours.
+
+YOU PLAY FOR:
+- Kael[player] (actor) — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
+  concept: A Wary Relic-Hunter; skills: Reads Old Stonework, Quiet Hands; frailties: Never Walks Away; gear: Pry Bar, Chalk and Wire, A Guttering Lantern; luck: 6/6
+
+CARRYING:
+- (none)
 
 HERE WITH THE PLAYER:
-- Mara[mara] (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
-  state:
-    concept: A Cautious Scribe
-    skills: Reads a Faded Hand, Knows the Catalogue
-    frailties: Slow to Trust
-    gear: Ledger and Ink
-    luck: 6/6
+- Mara[mara] (actor) — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
+  concept: A Cautious Scribe; skills: Reads a Faded Hand, Knows the Catalogue; frailties: Slow to Trust; gear: Ledger and Ink; luck: 6/6
 
-EXITS FROM HERE:
-- the cloister[cloister]
-
-KNOWN TO THE PLAYER, BUT ELSEWHERE:
-- the cloister[cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
-- Brother Tomas[tomas] (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
-  state:
-    concept: A Deaf Old Porter
-    skills: Knows Every Door
-    frailties: Hears Almost Nothing
-    gear: Twig Broom
-    luck: 6/6
-
-EXISTS BUT THE PLAYER DOES NOT KNOW IT YET:
-- the bell tower[bell-tower] (location) — A cramped climb of rotten ladders above the nave, its bell long since stilled.
-- the sealed vault[vault] (location) — The undercroft chamber Kael came for, its door bearing a seal nobody living can read.
-  detail: The door is stone, and the seal cut into it is unweathered where everything around it has worn.
-  when reached: Kael has found the vault door: advance thread vault-seal with a note that the vault door is found. The seal is the whole obstacle now — press on what opening it will cost.
-- a bloated rat[cloister-rat] (npc) — at the cloister — It has grown fat on the dead garden and does not run from a lantern.
-  state:
-    concept: A Bloated Cloister Rat
-    skills: Slips Into the Walls, Bites and Holds On
-    frailties: Does Not Run
-    luck: 6/6
-- the vault map[vault-map] (item) — at the abbot's study — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
+HIDDEN HERE (the player has not found these):
+- the vault map[vault-map] (item) — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
   detail: Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.
-  when reached: Kael has the stair charted: advance thread vault-seal with a note that the stair down is charted. The chart marks a way down from the cloister that the abbey's own plans deny — press on getting down there.
 
 ACTIVE THREADS:
-- The sealed vault[vault-seal] — status active
-  note: Kael came for the vault under the abbey: the way down to it, the seal on its door, and what opening that seal costs.
+- The sealed vault[vault-seal] — Kael came for the vault under the abbey: the way down to it, the seal on its door, and what opening that seal costs.
+
+WHAT THE TAGS IN PLAY MEAN:
+- Reads Old Stonework: Makes sense of inscriptions and stonework that everyone else reads as rubble.
+- Quiet Hands: Picks locks, pockets, and latches without a sound.
+- Never Walks Away: Cannot leave a fight, or a wrong, unfinished.
+- Pry Bar: Forces a door, a crate, or a stubborn slab of stone.
+- Chalk and Wire: Marks a trail and rigs a lock from chalk and a length of wire.
+
+SCENE NOTE (never narrate this):
+Kael wants the way down. The map under the flagstone is the way down, and Mara will not volunteer it.
 
 NOTES FROM THE RULES:
 - (none)

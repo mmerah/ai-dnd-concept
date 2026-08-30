@@ -2,51 +2,16 @@ SCENARIO:
 The Whispering Vault
 The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit.
 
-PLAYER CHARACTER:
-Kael[player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut. — at the abbot's study[study]
-state:
-  concept: A Wary Relic-Hunter
-  skills: Reads Old Stonework, Quiet Hands
-  - Reads Old Stonework: Makes sense of inscriptions and stonework that everyone else reads as rubble.
-  - Quiet Hands: Picks locks, pockets, and latches without a sound.
-  frailties: Never Walks Away
-  - Never Walks Away: Cannot leave a fight, or a wrong, unfinished.
-  gear: Pry Bar, Chalk and Wire
-  - Pry Bar: Forces a door, a crate, or a stubborn slab of stone.
-  - Chalk and Wire: Marks a trail and rigs a lock from chalk and a length of wire.
-  luck: 6/6
-  traits: Relic Hunter[relic-hunter] — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past[marked-by-the-past] — (frailty) Old scars make certain memories hard to face., Listening[listening] — (condition) Listening for the next shift of weight behind the door.
-inventory:
-- a guttering lantern[lantern] — A dented tin lantern whose flame will not hold still.
-  state:
-    traits: Unsteady Lantern[unsteady-lantern] — (gear) Its shifting light exposes seams and movement in deep shadow.
-- the vault map[vault-map] — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
+SCENE:
+The Abbot's Study
+The only lit room left in the abbey: ledgers stacked to the beams, candle stubs gone cold, and Mara still cataloguing books nobody will read. A flagstone under the desk sits a finger proud of its neighbours.
 
-HERE WITH THE PLAYER:
-- Mara[mara] (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
-  state:
-    concept: A Cautious Scribe
-    skills: Reads a Faded Hand, Knows the Catalogue
-    frailties: Slow to Trust
-    gear: Ledger and Ink
-    luck: 6/6
-
-EXITS FROM HERE:
-- the cloister[cloister]
-
-KNOWN TO THE PLAYER, BUT ELSEWHERE:
-- the cloister[cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
-- Brother Tomas[tomas] (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
-  state:
-    concept: A Deaf Old Porter
-    skills: Knows Every Door
-    frailties: Hears Almost Nothing
-    gear: Twig Broom
-    luck: 6/6
+WHO IS HERE:
+- Kael — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
+- Mara — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
 
 WHAT HAPPENED:
 - learned of the item the vault map[vault-map]
-- the player Kael[player] took the item the vault map[vault-map]
 - Does he hear what waits past the vault door without being heard? -> yes-and
 - the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.
 

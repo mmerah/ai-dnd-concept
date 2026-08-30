@@ -2,7 +2,7 @@ from aidm.state.entities import Frozen
 from aidm.state.play import DecisionOption, Speaker
 
 
-class ArtSubject(Frozen):
+class Subject(Frozen):
     id: str
     name: str
     brief: str
@@ -15,7 +15,7 @@ class PlayerPrompt(Frozen):
 
 
 class DirectorView(Frozen):
-    """The Director's whole picture: an engine states every section, so nothing leaks by
+    """The game master's whole picture: the kit states every section, so nothing leaks by
     omission."""
 
     sections: tuple[tuple[str, str], ...]
@@ -24,23 +24,29 @@ class DirectorView(Frozen):
 class NarratorView(Frozen):
     """The Narrator's input type: it has no field that can hold hidden canon."""
 
-    # Scene identity, as the art cache names it.
-    key: str
-    label: str
-    summary: str
-    sections: tuple[tuple[str, str], ...]
-    prompts: tuple[tuple[str, str], ...]
+    # The place, as the art cache names it: two scenes in one place share one picture.
+    place: str
+    title: str
+    situation: str
     art_prompt: str
-    subjects: tuple[ArtSubject, ...]
+    subjects: tuple[Subject, ...]
     # The player and everyone present who may speak; nobody else can be attributed a line.
     speakers: tuple[Speaker, ...]
 
 
 class PlayerView(Frozen):
-    """Scene art and subjects live on the narrator view; this holds only what the player owns."""
+    """What the pages read: scene art and subjects live on the narrator view, not here."""
 
-    player: ArtSubject
+    player: Subject
+    sheet: tuple[tuple[str, str], ...]
+    traits: tuple[tuple[str, str], ...]
+    carrying: tuple[Subject, ...]
+    present: tuple[Subject, ...]
+    companions: tuple[str, ...]
+    threads: tuple[tuple[str, str], ...]
+    scenes: tuple[str, ...]
     prompt: PlayerPrompt | None
+    over: str | None
 
 
 class Views(Frozen):
@@ -49,7 +55,7 @@ class Views(Frozen):
     player: PlayerView
 
 
-def speaker_of(subject: ArtSubject) -> Speaker:
+def speaker_of(subject: Subject) -> Speaker:
     return Speaker(name=subject.name, id=subject.id)
 
 

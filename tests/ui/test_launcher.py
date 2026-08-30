@@ -96,8 +96,9 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
 )
 def test_a_save_whose_origin_is_gone_is_not_listed(tmp_path: Path, change: dict[str, str]) -> None:
     settings = ui_settings(tmp_path)
-    orphan = _opening_state(settings).model_copy(update=change).committed()
-    FileStore(tmp_path).save("orphan", orphan)
+    # Written as JSON: `Game` refuses a withdrawn engine tag, and the catalog reads the envelope.
+    orphan = json.loads(_opening_state(settings).model_dump_json()) | change
+    (tmp_path / "orphan.json").write_text(json.dumps(orphan), encoding="utf-8")
 
     assert not load_catalog(settings, ENGINES_BUILT).saves
 

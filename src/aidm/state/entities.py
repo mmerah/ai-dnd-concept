@@ -1,7 +1,7 @@
 import re
 from collections import Counter as Tally
 from collections.abc import Iterable
-from typing import Annotated, Literal, NewType, Self
+from typing import Annotated, NewType, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -20,14 +20,6 @@ class Mutable(BaseModel):
     """State a resolution mutates in place; commit revalidates the whole draft once."""
 
     model_config = ConfigDict(extra="forbid")
-
-
-Kind = Literal["actor", "location", "item"]
-
-
-def kind_word(kind: Kind) -> str:
-    """Prompts and traces say 'npc', because 'actor' reads as the player too."""
-    return "npc" if kind == "actor" else kind
 
 
 EngineId = NewType("EngineId", str)
@@ -84,6 +76,12 @@ class Counter(Mutable):
         return bounded if self.maximum is None else min(bounded, self.maximum)
 
 
+def pool(counter: Counter) -> str:
+    if counter.maximum is None:
+        return str(counter.current)
+    return f"{counter.current}/{counter.maximum}"
+
+
 class Trait(Frozen):
     """A lasting quality."""
 
@@ -93,43 +91,3 @@ class Trait(Frozen):
 
 
 DEAD: Slug = "dead"
-
-
-class Exit(Mutable):
-    """A one-way exit from a location."""
-
-    to: CheckedEntityId
-    known: bool = False
-    locked: bool = False
-
-
-class Entity(Mutable):
-    id: CheckedEntityId
-    kind: Kind
-    name: str
-    brief: str
-    description: str = ""
-    when_reached: str = ""
-    known: bool = False
-    # Which kinds may hold which is one rule, in `world.topology.validate_rooms`.
-    parent_id: CheckedEntityId | None = None
-    traits: list[Trait] = Field(default_factory=list)
-    exits: list[Exit] = Field(default_factory=list)
-
-    def trait(self, trait_id: str) -> Trait | None:
-        return next((held for held in self.traits if held.id == trait_id), None)
-
-    def exit_to(self, to_id: EntityId) -> Exit | None:
-        return next((way for way in self.exits if way.to == to_id), None)
-
-    @model_validator(mode="after")
-    def _traits_are_unambiguous(self) -> Self:
-        require_unique(f"trait ids on {self.id!r}", (held.id for held in self.traits))
-        return self
-
-    @model_validator(mode="after")
-    def _exits_are_unambiguous(self) -> Self:
-        require_unique(f"exits of {self.id!r}", (way.to for way in self.exits))
-        if any(way.to == self.id for way in self.exits):
-            raise ValueError(f"location {self.id!r} has an exit to itself")
-        return self

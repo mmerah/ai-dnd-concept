@@ -10,13 +10,10 @@ from mcp.server import NotificationOptions, Server, ServerRequestContext
 from mcp.server.stdio import stdio_server
 from pydantic import BaseModel, JsonValue, TypeAdapter
 from pydantic_ai import ModelRetry
-from pydantic_ai.toolsets import ToolsetTool
 
 from aidm.app.runtime import Runtime
-from aidm.authoring.draft import Draft
-from aidm.authoring.run import draft_context
 from aidm.config import load_settings
-from aidm.harness.codemode import BeginScenario, Harness, OpenGame, catalogue
+from aidm.harness.codemode import Harness, OpenGame, catalogue
 from aidm.llm import schema_of
 from aidm.state.entities import require_unique
 from aidm.state.play import Answer, Narration
@@ -84,65 +81,29 @@ SERVER_TOOLS: tuple[ServerTool, ...] = (
         lambda harness, raw: harness.end_turn(Narration.model_validate(raw)),
         Narration,
     ),
-    ServerTool(
-        "begin_growth",
-        "Open an authoring run that writes new unknown canon into the open game's world.",
-        lambda harness, _raw: harness.begin_growth(),
-    ),
-    ServerTool(
-        "begin_scenario",
-        "Open an authoring run that writes a whole new scenario. No game need be open.",
-        lambda harness, raw: harness.begin_scenario(BeginScenario.model_validate(raw)),
-        BeginScenario,
-    ),
-    ServerTool(
-        "finish_growth",
-        "Check the grown draft and materialize it into the open game as canon to be found.",
-        lambda harness, _raw: harness.finish_growth(),
-    ),
-    ServerTool(
-        "finish_scenario",
-        "Check the draft and write it to disk as a scenario anyone can play.",
-        lambda harness, _raw: harness.finish_scenario(),
-    ),
 )
 
 DISPATCH = {tool.name: tool for tool in SERVER_TOOLS}
 PUBLISHED = tuple(_published(tool) for tool in SERVER_TOOLS)
 
 
-def _as_mcp_tool[D](tool: ToolsetTool[D]) -> types.Tool:
-    definition = tool.tool_def
-    return types.Tool(
-        name=definition.name,
-        description=definition.description or "",
-        input_schema=definition.parameters_json_schema,
-    )
-
-
-async def offered(harness: Harness) -> list[types.Tool]:
-    authoring = await harness.blank_authoring.get_tools(draft_context(Draft()))
-    tools = [*PUBLISHED, *(_as_mcp_tool(one) for one in authoring.values())]
+def offered(harness: Harness) -> list[types.Tool]:
+    tools = list(PUBLISHED)
     if harness.session is None:
         return tools
     engine_tools = harness.session.engine.tools
     # `call` reaches the server's own tools first, so a shared name would shadow the engine's.
-    require_unique(
-        "published tool names",
-        (*DISPATCH, *authoring, *(one.name for one in engine_tools)),
-    )
+    require_unique("published tool names", (*DISPATCH, *(one.name for one in engine_tools)))
     tools.extend(_published(one) for one in engine_tools)
     return tools
 
 
-async def call(harness: Harness, name: str, raw: dict[str, JsonValue]) -> str:
+def call(harness: Harness, name: str, raw: dict[str, JsonValue]) -> str:
     tool = DISPATCH.get(name)
     if tool is not None:
         # A NoArgs tool ignores `raw` in its handler, so junk arguments need a guard of their own.
         _ = tool.args.model_validate(raw)
         return tool.run(harness, raw)
-    if name in harness.blank_authoring.tools:
-        return await harness.authoring_tool(name, raw)
     return harness.call_director_tool(name, raw)
 
 
@@ -152,7 +113,7 @@ def build_server(harness: Harness) -> Server[LifespanContext]:
     ) -> types.ListToolsResult:
         del ctx, params
         async with harness.lock:
-            return types.ListToolsResult(tools=await offered(harness))
+            return types.ListToolsResult(tools=offered(harness))
 
     async def on_call_tool(
         ctx: ServerRequestContext[LifespanContext], params: types.CallToolRequestParams
@@ -160,7 +121,7 @@ def build_server(harness: Harness) -> Server[LifespanContext]:
         """The lock replaces the builtin loop's sequential toolset: Claude Code parallelises."""
         async with harness.lock:
             try:
-                answered = await call(
+                answered = call(
                     harness, params.name, _ARGUMENTS.validate_python(params.arguments or {})
                 )
             except (ModelRetry, ValueError) as refused:

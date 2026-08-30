@@ -4,15 +4,7 @@
     "trace": "learned of the item the vault map[vault-map]",
     "told": true,
     "entity_id": "vault-map",
-    "card": "",
-    "dice": []
-  },
-  {
-    "kind": "entity_moved",
-    "trace": "the player Kael[player] took the item the vault map[vault-map]",
-    "told": true,
-    "entity_id": "vault-map",
-    "card": "Took the vault map",
+    "card": "The vault map discovered",
     "dice": []
   },
   {

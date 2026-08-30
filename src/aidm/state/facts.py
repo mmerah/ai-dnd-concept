@@ -4,7 +4,7 @@ from typing import Self
 
 from pydantic import model_validator
 
-from aidm.state.entities import Entity, EntityId, Frozen, kind_word
+from aidm.state.entities import EntityId, Frozen
 
 NOTHING = "- (nothing changed)"
 
@@ -37,32 +37,6 @@ class Fact(Frozen):
     entity_id: EntityId | None = None
     card: str = ""
     dice: tuple[DiceEvent, ...] = ()
-
-
-def labeled(entity: Entity, player_id: EntityId) -> str:
-    """A trace names an entity by kind, name, and exact id, so the Director can reuse the id."""
-    word = "player" if entity.id == player_id else kind_word(entity.kind)
-    return f"the {word} {entity.name}[{entity.id}]"
-
-
-def entity_fact(
-    entity: Entity,
-    kind: str,
-    trace: str,
-    *,
-    narrate: bool = True,
-    card: str = "",
-    dice: tuple[DiceEvent, ...] = (),
-) -> Fact:
-    """An entity the player has not learned of narrates nothing, so no unknown name leaks."""
-    return Fact(
-        kind=kind,
-        trace=trace,
-        told=narrate and entity.known,
-        entity_id=entity.id,
-        card=card,
-        dice=dice,
-    )
 
 
 def cards(facts: Sequence[Fact]) -> tuple[Fact, ...]:

@@ -4,9 +4,10 @@ import pytest
 from core_test_support import initialized, updated
 
 from aidm.content.io import ENCODING
-from aidm.engines.core import load_packs, rules
+from aidm.engines.core import load_packs
 from aidm.engines.loner3e.engine import ENGINE_DIR, build
-from aidm.engines.loner3e.rules import SRD_PACK, Loner3eState, Pack, twist_table
+from aidm.engines.loner3e.rules import Pack, twist_table
+from aidm.engines.loner3e.state import SRD_PACK
 from aidm.state.play import DecisionOption
 
 
@@ -50,8 +51,7 @@ def test_a_game_records_its_table_sets_and_is_refused_without_them() -> None:
         engine.validate(stranded)
 
     unselected = state.draft()
-    with rules(unselected.world, Loner3eState) as game:
-        game.twist_pack = "ap01-fantasy"
+    unselected.payload.twist_pack = "ap01-fantasy"
 
     with pytest.raises(ValueError, match="which is unselected"):
         engine.validate(unselected)

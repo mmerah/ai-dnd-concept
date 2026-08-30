@@ -2,7 +2,6 @@ from pathlib import Path
 
 from aidm.engines.core import Engine
 from aidm.engines.loner3e.engine import build as build_loner3e
-from aidm.kernel.protocol import AnyEngine
 from aidm.state.entities import EngineId, Slug
 from aidm.state.model import Character, Game, Scenario
 
@@ -13,9 +12,7 @@ def build_engines(packs_dir: Path) -> dict[EngineId, Engine]:
     return {engine.id: engine}
 
 
-def begin_game(
-    engine: AnyEngine, scenario_id: Slug, scenario: Scenario, character: Character
-) -> Game:
+def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character: Character) -> Game:
     if scenario.engine != engine.id:
         raise ValueError(
             f"{scenario_id!r} is authored for the {scenario.engine!r} rules, "
@@ -32,7 +29,6 @@ def begin_game(
         scenario=scenario.meta,
         engine=engine.id,
         packs=scenario.packs,
-        turn_facts=(),
         payload=engine.new_game(scenario, character),
     )
     engine.validate(state)

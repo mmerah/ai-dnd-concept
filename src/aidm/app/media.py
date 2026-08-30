@@ -10,7 +10,7 @@ from httpx import AsyncClient
 from pydantic import BaseModel, ConfigDict
 
 from aidm.config import MediaConfig, ProviderConfig
-from aidm.kernel.views import ArtSubject, NarratorView, Views
+from aidm.kernel.views import NarratorView, Subject, Views
 
 LOGGER = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ _FILENAME_SAFE = re.compile(r"[a-z0-9_-]+")
 
 def scene_key(scene: NarratorView) -> str:
     """The engine's own key, hashed because it names a file and an id may not be safe as one."""
-    return sha1(scene.key.encode(), usedforsecurity=False).hexdigest()[:12]
+    return sha1(scene.place.encode(), usedforsecurity=False).hexdigest()[:12]
 
 
 def illustration_request(
@@ -44,7 +44,7 @@ def illustration_request(
     return "\n".join(lines)
 
 
-def icon_request(subject: ArtSubject, style: str) -> str:
+def icon_request(subject: Subject, style: str) -> str:
     return (
         f"Draw a borderless portrait token of {subject.name} — {subject.brief}. "
         f"Centre the subject alone, filling the square on a plain background. "
@@ -120,7 +120,7 @@ class Illustrator:
         if generated is not None:
             _write(self.saves / f"{key}{generated.suffix}", generated.data)
 
-    async def _drawn_icon(self, subject: ArtSubject) -> Path | None:
+    async def _drawn_icon(self, subject: Subject) -> Path | None:
         """The cached icon, or one drawn now and kept; a loser of the race goes without."""
         found = self.icon(subject.id)
         if found is not None:

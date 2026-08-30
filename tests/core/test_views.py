@@ -1,60 +1,24 @@
-from core_test_support import ENGINES_BUILT, LONER3E
+from core_test_support import initialized, with_entity
 
-from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit, Kind
-from aidm.state.model import Game, ScenarioMeta, Thread, WorldPayload, WorldState
+from aidm.engines.loner3e.state import ActorSheet, LonerSheet
+from aidm.kits.scenes.state import Entity
+from aidm.state.entities import EntityId
 
-
-def _entity(entity_id: str, kind: Kind, name: str, brief: str, **fields: object) -> Entity:
-    return Entity.model_validate(
-        {"id": entity_id, "kind": kind, "name": name, "brief": brief} | fields
-    )
-
-
-def state() -> Game:
-    entities = (
-        _entity(
-            "study",
-            "location",
-            "Study",
-            "A small room.",
-            known=True,
-            exits=[Exit(to=EntityId("crypt"))],
-        ),
-        _entity("player", "actor", "Kael", "A hunter.", known=True, parent_id="study"),
-        _entity("mara", "actor", "Mara", "A known scribe.", known=True, parent_id="study"),
-        _entity("hidden-actor", "actor", "The Secret", "Unrevealed canon.", parent_id="study"),
-        _entity("crypt", "location", "Crypt", "A sealed vault.", known=False),
-    )
-    threads = (
-        Thread(
-            id="the-vault",
-            title="The Vault",
-            note="Director steering text",
-        ),
-    )
-    held = Game(
-        scenario_id="whispering-vault",
-        character_id="kael",
-        scenario=ScenarioMeta(title="Test", premise="Test"),
-        engine=LONER3E,
-        packs=("srd",),
-        payload=WorldPayload(
-            player_id=PLAYER_ID,
-            world=WorldState(
-                entities={entity.id: entity for entity in entities},
-                threads={thread.id: thread for thread in threads},
-            ),
-        ),
-        turn_facts=(),
-    )
-    return held.committed()
+SECRET = Entity[LonerSheet](
+    id=EntityId("hidden-actor"),
+    kind="actor",
+    name="The Secret",
+    brief="Unrevealed canon.",
+    sheet=ActorSheet(concept="A Watcher"),
+)
 
 
-def test_the_player_scene_holds_no_unrevealed_entity_or_unknown_exit() -> None:
-    engine = ENGINES_BUILT[LONER3E]
-    held = state()
+def test_the_narrator_view_names_nobody_in_the_scene_the_player_has_not_met() -> None:
+    engine, state = initialized()
 
-    shown = str(engine.views(held).narrator.model_dump())
+    shown = str(engine.views(with_entity(state, SECRET)).narrator.model_dump())
+
     assert "The Secret" not in shown
-    assert "crypt" not in shown
+    # The vault map is hidden here, and Mara is standing in the room.
+    assert "vault map" not in shown
     assert "Mara" in shown

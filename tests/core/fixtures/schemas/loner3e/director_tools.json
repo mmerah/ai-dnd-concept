@@ -13,18 +13,18 @@
               "type": "string"
             },
             "entity_id": {
-              "description": "Exact entity id. An actor must be here with the player.",
+              "description": "Exact entity id. An actor must be here.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
             },
             "name": {
-              "description": "The trait's display name, such as `Battle Worn`; its id is derived.",
+              "description": "Display name, such as `Battle Worn`.",
               "minLength": 1,
               "type": "string"
             },
             "text": {
-              "description": "The trait's effect in plain language.",
+              "description": "The effect in plain language.",
               "type": "string"
             }
           },
@@ -37,12 +37,16 @@
           "title": "AddTrait",
           "type": "object"
         },
-        "AdvanceThreadArm": {
+        "AdvanceThread": {
           "additionalProperties": false,
-          "description": "Update an active storyline's status or note.",
+          "description": "Update an active storyline's status or private note.",
           "properties": {
+            "verb": {
+              "const": "advance_thread",
+              "type": "string"
+            },
             "thread_id": {
-              "description": "Exact id of an ACTIVE THREAD.",
+              "description": "Exact id of an active thread.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
@@ -74,43 +78,62 @@
                 }
               ],
               "default": null,
-              "description": "New private note for the Director, or null to keep the current note."
-            },
-            "verb": {
-              "const": "advance_thread",
-              "type": "string"
+              "description": "New private note, or null to keep the current note."
             }
           },
           "required": [
-            "thread_id",
-            "verb"
+            "verb",
+            "thread_id"
           ],
-          "title": "AdvanceThreadArm",
+          "title": "AdvanceThread",
           "type": "object"
         },
-        "GainImprovisedItem": {
+        "Enter": {
           "additionalProperties": false,
-          "description": "Give the player an ordinary, unimportant object not already in the world.",
+          "description": "Bring a cast member into the current scene.",
           "properties": {
             "verb": {
-              "const": "gain_improvised_item",
+              "const": "enter",
               "type": "string"
             },
-            "item_name": {
-              "description": "The object's name, such as `a handful of gravel`.",
+            "entity_id": {
+              "description": "Exact id of a cast member not already here.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
             }
           },
           "required": [
             "verb",
-            "item_name"
+            "entity_id"
           ],
-          "title": "GainImprovisedItem",
+          "title": "Enter",
+          "type": "object"
+        },
+        "ImproviseItem": {
+          "additionalProperties": false,
+          "description": "Give the player an ordinary object not already in the world.",
+          "properties": {
+            "verb": {
+              "const": "improvise_item",
+              "type": "string"
+            },
+            "name": {
+              "description": "The object's name, such as `a handful of gravel`.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "name"
+          ],
+          "title": "ImproviseItem",
           "type": "object"
         },
         "JoinParty": {
           "additionalProperties": false,
-          "description": "Add an actor here to the player's party.",
+          "description": "An actor here starts travelling with the player.",
           "properties": {
             "verb": {
               "const": "join_party",
@@ -132,14 +155,14 @@
         },
         "Kill": {
           "additionalProperties": false,
-          "description": "Record that an actor has died. Their body and what they carried stay in the world.",
+          "description": "Record that an actor has died. What they carried falls loose here.",
           "properties": {
             "verb": {
               "const": "kill",
               "type": "string"
             },
             "actor_id": {
-              "description": "Exact id of the actor who has died. They must be here with the player.",
+              "description": "Exact id of the actor here who died.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
@@ -152,16 +175,38 @@
           "title": "Kill",
           "type": "object"
         },
+        "Leave": {
+          "additionalProperties": false,
+          "description": "Take a cast member out of the current scene.",
+          "properties": {
+            "verb": {
+              "const": "leave",
+              "type": "string"
+            },
+            "entity_id": {
+              "description": "Exact id of someone here.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "entity_id"
+          ],
+          "title": "Leave",
+          "type": "object"
+        },
         "LeaveParty": {
           "additionalProperties": false,
-          "description": "Remove an actor from the player's party.",
+          "description": "A companion stops travelling with the player.",
           "properties": {
             "verb": {
               "const": "leave_party",
               "type": "string"
             },
             "actor_id": {
-              "description": "Exact id of the actor leaving.",
+              "description": "Exact id of the companion leaving.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
@@ -174,22 +219,22 @@
           "title": "LeaveParty",
           "type": "object"
         },
-        "Move": {
+        "MoveItem": {
           "additionalProperties": false,
-          "description": "Move an actor to a new location, or move a nearby item.",
+          "description": "Move an item: to the player, to someone here, or loose in the scene.",
           "properties": {
             "verb": {
-              "const": "move",
+              "const": "move_item",
               "type": "string"
             },
-            "entity_id": {
-              "description": "Exact actor or item id. The item must be carried by the player or loose here.",
+            "item_id": {
+              "description": "Exact id of an item here or carried.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
             },
-            "to_id": {
-              "description": "Exact destination id. An actor moves to a location id. An item is taken by moving it to `player`, handed over by moving it to an actor here, and dropped by moving it to the id of the player's current location.",
+            "to": {
+              "description": "`player`, `scene`, or the exact id of an actor here.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
@@ -197,28 +242,28 @@
           },
           "required": [
             "verb",
-            "entity_id",
-            "to_id"
+            "item_id",
+            "to"
           ],
-          "title": "Move",
+          "title": "MoveItem",
           "type": "object"
         },
         "RemoveTrait": {
           "additionalProperties": false,
-          "description": "Remove a lasting condition or quality that has ended.",
+          "description": "Remove a lasting condition that has ended.",
           "properties": {
             "verb": {
               "const": "remove_trait",
               "type": "string"
             },
             "entity_id": {
-              "description": "Exact entity id. An actor must be here with the player.",
+              "description": "Exact entity id.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
             },
             "trait_id": {
-              "description": "Exact id of one of the entity's traits.",
+              "description": "Exact id of one of its traits.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
@@ -241,7 +286,7 @@
               "type": "string"
             },
             "entity_id": {
-              "description": "Exact id of the hidden entity.",
+              "description": "Exact id of an entity listed as hidden here.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
@@ -253,28 +298,6 @@
           ],
           "title": "Reveal",
           "type": "object"
-        },
-        "UnlockExit": {
-          "additionalProperties": false,
-          "description": "Unlock an exit from the player's location.",
-          "properties": {
-            "verb": {
-              "const": "unlock_exit",
-              "type": "string"
-            },
-            "to_id": {
-              "description": "Exact id of the exit's destination.",
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "to_id"
-          ],
-          "title": "UnlockExit",
-          "type": "object"
         }
       },
       "additionalProperties": false,
@@ -284,27 +307,34 @@
           "discriminator": {
             "mapping": {
               "add_trait": "#/$defs/AddTrait",
-              "advance_thread": "#/$defs/AdvanceThreadArm",
-              "gain_improvised_item": "#/$defs/GainImprovisedItem",
+              "advance_thread": "#/$defs/AdvanceThread",
+              "enter": "#/$defs/Enter",
+              "improvise_item": "#/$defs/ImproviseItem",
               "join_party": "#/$defs/JoinParty",
               "kill": "#/$defs/Kill",
+              "leave": "#/$defs/Leave",
               "leave_party": "#/$defs/LeaveParty",
-              "move": "#/$defs/Move",
+              "move_item": "#/$defs/MoveItem",
               "remove_trait": "#/$defs/RemoveTrait",
-              "reveal": "#/$defs/Reveal",
-              "unlock_exit": "#/$defs/UnlockExit"
+              "reveal": "#/$defs/Reveal"
             },
             "propertyName": "verb"
           },
           "oneOf": [
             {
-              "$ref": "#/$defs/GainImprovisedItem"
-            },
-            {
               "$ref": "#/$defs/Reveal"
             },
             {
-              "$ref": "#/$defs/Move"
+              "$ref": "#/$defs/Enter"
+            },
+            {
+              "$ref": "#/$defs/Leave"
+            },
+            {
+              "$ref": "#/$defs/MoveItem"
+            },
+            {
+              "$ref": "#/$defs/ImproviseItem"
             },
             {
               "$ref": "#/$defs/AddTrait"
@@ -316,16 +346,13 @@
               "$ref": "#/$defs/Kill"
             },
             {
-              "$ref": "#/$defs/UnlockExit"
-            },
-            {
               "$ref": "#/$defs/JoinParty"
             },
             {
               "$ref": "#/$defs/LeaveParty"
             },
             {
-              "$ref": "#/$defs/AdvanceThreadArm"
+              "$ref": "#/$defs/AdvanceThread"
             }
           ]
         }

@@ -134,6 +134,7 @@ checked end to end: the director's `change_world` landed a `Watchful` trait, the
 recorded, the turn committed at 1, the save was re-read by a second `Runtime` at turn 1, and both
 views rendered. The game plays.
 
+
 ### Known and accepted
 
 - `README.md`, `CLAUDE.md` and `AGENTS.md` still describe three engines and the weak-model tool
@@ -145,3 +146,161 @@ views rendered. The game plays.
   phase either — it still has top-level `player_id` and `world`, and `speaker_id` on its lines. The
   home page logs it and skips it. `saves/` is untracked.
 - `docs/24XX.md` and `docs/BREATHLESS.md` kept; phase 6 needs them.
+
+## Phase 2 — The scene kit, and Loner ported onto it — DONE
+
+`src` 7,471 -> **5,806** (target ≈ 6,300; under, because step 9 also deleted the harness's four
+authoring tools and the growth tools, which was the bulk of what phase 3 still had to remove).
+`tests` 4,411 -> **3,408**. Verification: 179 passed; ruff check, ruff format and basedpyright
+clean.
+
+**The turn checkpoint, actually taken.** A fresh `Runtime` opened `whispering-vault--kael` and
+`submit()` ran a full turn against scripted director and narrator models: `reveal` found the vault
+map, `roll_question` rolled Advantage on Quiet Hands and answered `yes`, `move_item` put the map
+in Kael's hands, the narrator's prose recorded, three cards landed, and the turn committed at 1. A
+second `Runtime` re-read the save at turn 1 with the map still carried and all five sheet rows
+rendering. `scene_spent` then fired, and the note for the next turn reads *"This scene looks
+finished — everything here has been found."* `uv run aidm` serves 200 on both pages.
+
+### Steps 1–4 — the kit (done, checked one by one)
+
+`src/aidm/kits/scenes/` is seven files:
+
+- **`state.py`** — `Entity[S: BaseModel]`, `Scene`, `Thread`, `SceneCanon[S]`, `SceneState[S]`, plus
+  `labeled`, `entity_fact` and `kind_word`, which moved off the deleted map entity. Shapes copied
+  from `docs/probes/state_spike.py`; the sheet union is a plain assignment, as the probe demanded.
+  Two additions the plan did not name:
+  - `Scene.opened_at` — the turn the scene was installed on. `scene_spent` counts turns in a scene
+    from it, and nothing else in state could say how long the player has been here.
+  - `SceneState.spent` — why the scene already looks finished, written by the arm that settled it.
+    A thread resolving is a scene-ending signal, and a resolved thread stays resolved forever, so
+    it cannot be derived after the fact. `apply_scene` clears it.
+- **`tools.py`** — the eleven `change_world` arms and `apply_change`, ported from the probe to
+  return typed `Fact`s with the card wording the map arms used. `scene_tools()` publishes
+  `change_world`; core owns it and the engine adds its own procedures after it.
+- **`boundary.py`** — `scene_spent(state)`, new, plus the `SPENT_NOTE` it is read out as. Five
+  signals: the scene's `spent` note, nothing left hidden, someone here dead, two quiet turns, and
+  a 12-turn cap. `close_segment` appends the note, so the game master is asked every turn the
+  scene looks finished.
+- **`worldsmith.py`** — `render_worldsmith` and `scene_unmet` from the probe; `apply_scene` and
+  `SceneDraft` are new. The player is added by code, unknown ids resolve case-insensitively
+  against cast names before refusal, and what the player and companions carry follows them.
+- **`views.py`** — `narrator_view`, `player_view` and `director_view`, filled from kit state with
+  the engine's sheet rows arriving through one callback.
+- **`source.py`** — `whole_text`, `_pdf_pages`, `_passages`, `given_text`, moved off
+  `authoring/draft.py`. `given_text` takes `max_chars` rather than `Settings`, so the kit stays
+  clear of `aidm.config`.
+
+**The scene bar has three checks in code, not four.** "A detail traceable to the source" cannot be
+verified by code; it stays in the worldsmith's prompt.
+
+### Steps 5–10 — the switchover
+
+- **The engine is typed.** `engines/loner3e/state.py` is new and holds `ActorSheet`, `ItemSheet`,
+  the `LonerSheet` union, `Loner3eState`, `Loner3eScenario`, `Loner3eCharacter` and the SRD
+  constants. It imports the kit and nothing above it, which is what lets `state/model.py` name it.
+- **The payload is typed, not a union yet.** With one engine, `Annotated[X, Field(discriminator=…)]`
+  is not a legal single-member union, so `Payload = Loner3eState` with the `engine` tag already on
+  it. Phase 6 turns the three aliases in `state/model.py` into real unions and nothing else moves.
+- **One inversion, recorded.** `state/model.py` imports `engines/loner3e/state.py`. That is what
+  closes the engine set at type-check time, as `VISION.md` §6 asks.
+  `tests/core/test_package_boundary.py` records it as one named exception, and `ROOTS` now holds
+  two files instead of one.
+- **`content/io.py` takes an `EngineIdentity`**, a one-member protocol in `kernel/protocol.py`.
+  It only ever needed `engine.id`, and `AnyEngine` was the only reason it named an engine at all.
+- Deleted whole: `src/aidm/world/`, `src/aidm/authoring/`, `src/aidm/state/scene.py`,
+  `src/aidm/content/model.py`, and from `state/entities.py` the map's `Entity`, `Exit`, `Kind`
+  and `kind_word`.
+- `Game` lost `player`, `player_id`, `label`, `add`, `reveal`, `move` and every `_legacy` property;
+  `committed()` is one `model_validate` of one dump.
+
+### Two decisions the plan did not anticipate
+
+**`beat_closed` was cut, and the rule that closes a beat writes the signal instead.** PLAN step 5
+and `VISION.md` §6 ask the engine for `beat_closed(state)`. No such predicate can work for Loner,
+and not because the obvious one is badly written: **`_strike` refills both pools the instant a
+side reaches zero**, by the SRD. By the time any predicate could run, a scene that just ended a
+conflict is indistinguishable from one where nothing happened. The rule that knows writes
+`SceneState.spent` at the moment it knows. `beat_closed` is gone from the `Engine` dataclass, the
+protocol and `scene_spent`; `VISION.md` §2 and §6 are updated to match. `scene_closed` stays: it
+is a mutation, not a predicate.
+
+**The engine's sheet rows reach the prompts through the same callback the views use.** The first
+port rendered the sheet from `model_dump(exclude_defaults=True)` inside the kit, which printed
+`skills: ['a', 'b']` and silently dropped luck at 6/6 — the whole conflict clock — because full
+luck is the default. `entity_line`, `director_view` and `render_worldsmith` now take `SheetRows`,
+which is what `VISION.md` §2 says the seam is. The engine's `TAGS IN PLAY` section shrank to a
+glossary of what the tags mean, because the sheets are on the entity lines already, and
+`describe_rows` went with the duplication.
+
+### Known and accepted
+
+- **A scene change cannot be driven from play yet.** `apply_scene` is written and tested, but the
+  only role that can write a scene is the worldsmith, which is a phase-3 spawn. Phase 2 has no
+  `next_scene` tool, and building one against the pydantic-ai path would be work phase 3 deletes.
+  PLAN's "force a scene change" is covered by `tests/core/test_scene_kit.py` for now.
+- `harness/driver.py` and `harness/claude.py` still name the `growing-aidm` and `authoring-aidm`
+  skills. Phase 3 step 10 deletes both skills and both files.
+- `AuthoringConfig` became `SourceConfig` with one knob, `source.max_chars`. `request_limit`,
+  `starter_character` and `growth_frontier` had no reader left.
+- Deleted tests, with what went with them: the whole authoring and growth suites; the map's
+  placement, exit-locking and room-walking checks; the mechanics-blob parse and describer tests;
+  the `SerializeAsAny` payload guard; `when_reached`. `tests/core/test_scene_kit.py` is new and
+  covers the arms, the scene boundary, `apply_scene`, the scene bar and the typed round trip.
+- `Entity.description` is authored and now renders on the entity line, for the game master and the
+  worldsmith only. Before this phase nothing read it.
+
+### The adversarial review, and what it caught
+
+A review pass against the staged diff found **seven correctness bugs**, all reproduced and all
+now fixed with a regression test each. They are worth recording because six of the seven share
+one cause: **a consequence that the map version settled was dropped in the port to arms.**
+
+| what broke | why | fix |
+|---|---|---|
+| a scene could be installed with **no player in it**, and `apply_scene` would file the player under `hidden` | the probe's measured id failure (`kael` for `player`) landing in the wrong list, and no validator said the player is in their own scene | `SceneState` now requires the player present and known; `apply_scene` strips followers from both lists before anything else |
+| `kill` **lost what the dead carried** | the arm cleared `carried_by` but never put the item in `present`, while its own trace said "fell loose here" | dropped items join `present`, which is what "here" means |
+| `add_trait`/`remove_trait` accepted **a corpse, or someone two scenes away** | the arms used `_here`, which checks presence; the map version went through `require_actor_here`, which checks life too | one `_acted_on` helper: an actor must be here and alive, a thing only here |
+| `scene_closed` **raised on a scene that ended in a death** | it restored luck through the tool-facing helper, which refuses the dead | `close_conflicts` lives in `rules.py`, skips the dead, and refills directly |
+| `apply_scene` **mutated before it validated**, and could install a duplicate id | `model_copy(update=...)` skips validation, so `Scene`'s own uniqueness check never ran on the resolved list | ids dedupe on resolve, the `Scene` is built and validated first, and the world is touched only after |
+| a save's `engine` and its payload's **could disagree** | the tag became the payload's discriminator, and nothing tied the outer field to it | one check in `Game._playable_game` |
+| the scene bar **deadlocked forever** once every thread resolved | it asked whether the world held a standing thread, which no scene can change; `SceneDraft` had no way to open one | `SceneDraft` carries `threads`, and the bar counts the ones this scene opens |
+
+Four smaller ones went with them: the name fallback for a wrong id was **dead for any capitalised
+name**, because the field pattern rejected it before the fallback ran; `apply_scene` silently
+un-knew a character the player had met and force-revealed items a companion carried; `move_item`
+printed a card for a move that changed nothing; `reveal` could raise `IndexError` instead of
+refusing.
+
+**The fix that mattered most is the smallest.** `SceneDraft` stopped wrapping a `Scene` and became
+the model-facing shape in its own right: free-text ids, no `id`, no `opened_at`. Code owns what
+code owns, the name fallback works for every name, and the strict `Scene` is what gets stored.
+
+### What the review was right about beyond the bugs
+
+- **The scene-spent nudge was available in phase 2, and I said it was not.** `VISION.md` §2 is
+  explicit that the payoff of `scene_spent` is the directive text, not the write. `close_segment`
+  now appends `SPENT_NOTE` to `Game.notes`, which the existing `NOTES FROM THE RULES` section
+  already renders. Three lines, no worldsmith, and phase 3 deletes none of it. The golden save
+  carries the note, so it is proven end to end.
+- `kits/scenes/rows.py` was a module for one type alias, created to dodge a cycle that existed
+  only because `entity_line` sat in `worldsmith.py`. `entity_line` moved to `views.py`, where its
+  only caller was; the module and the cycle both went.
+- `Scene.opened_at` moved to `SceneState.opened_at`: one field instead of one per archived scene,
+  and off the schema the worldsmith fills.
+- `_kill` no longer writes `spent`; `scene_spent` already derives "someone here is dead".
+- `engines/core.py` gave up everything only Loner read: `ADVANCE_SPENT`, `owed_notes` (now
+  `advances_owed`), `party_member`, `check_packs`, `find_entry`, `authoring_guidance`. The fields
+  nothing read — `Engine.state`, `Engine.packs` — and the `new_game`/`open_game` double name went
+  with them.
+- **`Engine.guidance` was wired wrong and invisible.** It was built once at `build()` time with
+  `chosen=()`, so the selected pack tables were always `{}` — the exact failure `VISION.md` §3
+  warns about ("without them the worldsmith writes fantasy tags into a cyberpunk game"). It is now
+  `Callable[[Game], str]`, computed per game from `state.packs`.
+- `PlayerView` carries `traits`, so `ui/panels.py` stops reaching past the view into engine state.
+- `PROGRESS.md` contradicted itself about `beat_closed` forty lines apart, and `VISION.md` still
+  specified the hook. Both fixed.
+
+**Where I disagreed with the review.** It called `render_worldsmith`, `given_text` and
+`scene_closed` dead code. PLAN steps 4 and 5 ask phase 2 to build all three, and `CLAUDE.md` says
+to build an agreed capability in its final planned form. They stay, uncalled, until phase 3.

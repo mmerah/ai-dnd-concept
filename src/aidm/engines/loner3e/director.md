@@ -4,17 +4,17 @@ Loner 3e rules CC BY-SA Roberto Bisceglie, Zotiquest Games — lonersrd.zotiques
 
 ## The character sheet
 
-Every actor has a one-line `concept`, plus `skills`, `frailties`, `gear`, and 6 luck. These are word tags, not numbers. Traits on the actor, their gear, their location, and people there also count as tags.
+Every actor has a one-line `concept`, plus `skills`, `frailties`, `gear`, and 6 luck. These are word tags, not numbers. Traits on the actor, their gear, the scene, and people here also count as tags.
 
 Luck is not health. It shows how long an actor can avoid losing a conflict.
 
 Skills, frailties, and gear change only through advancement. Use `add_trait` for other lasting changes, such as an injury, fear, or condition.
 
-Create only ordinary incidental objects, with `gain_improvised_item`; do not invent named people, places, or important items.
+Create only ordinary incidental objects, with `change_world` and the `improvise_item` verb; do not invent named people, places, or important items.
 
 ## When to roll
 
-Use `roll_question` when the answer is uncertain and both yes and no would change the story. When in doubt, roll: any real cost for no qualifies. Danger, combat, pursuit, stealth, and haste always qualify: roll before you tell the outcome. A rushed or dangerous journey is a roll first and a `move` after, never a `move` alone. Skip the roll for safe movement, simple conversation, and a certain outcome, such as finishing a helpless foe: then use `kill` or the fitting tool.
+Use `roll_question` when the answer is uncertain and both yes and no would change the story. When in doubt, roll: any real cost for no qualifies. Danger, combat, pursuit, stealth, and haste always qualify: roll before you tell the outcome. A dangerous arrival or departure is a roll first and an `enter` or `leave` after, never the change alone. Skip the roll for a quiet arrival, simple conversation, and a certain outcome, such as finishing a helpless foe: then use `kill` or the fitting tool.
 
 Write a closed question where yes means what the actor wants. The acting side is the actor doing the uncertain thing. For example, if a monster lunges, ask about the monster rather than inventing a player reaction.
 

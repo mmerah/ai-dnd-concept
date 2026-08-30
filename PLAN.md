@@ -201,7 +201,7 @@ and that is expected. Check at the end of step 10.**
      `world: SceneState[LonerSheet]`, where `LonerSheet` is the union of the actor sheet and the
      item sheet
    - put each sheet on its entity and delete the `sheets` dictionary
-   - add `authoring_guidance: str`, `beat_closed(state)` and `scene_closed(draft)`
+   - add `guidance(state)` and `scene_closed(draft)`
    - the rules themselves do not change; only the state they read does
 
 6. **Make the payload a discriminated union.** Now that `Loner3eState` exists and carries
@@ -440,7 +440,8 @@ For each engine:
 2. Create `src/aidm/engines/<name>/` with its typed state, embedding `SceneState` with its own
    sheet union. 24XX's ship is a sheet on an entity, not a place.
 3. Write its procedure tools — one per SRD rule, never more than eight.
-4. Write its `authoring_guidance`, `beat_closed`, `scene_closed`, `over`, and creation options.
+4. Write its `guidance`, `scene_closed`, `over`, and creation options. A scene-ending signal
+   no predicate can see is written to `SceneState.spent` by the rule that causes it — see phase 2.
 5. Add its pack file under `src/aidm/engines/<name>/packs/` and one character file.
 6. Write one scenario for it.
 7. Add its test directory to `pythonpath` in `pyproject.toml`.
@@ -457,9 +458,9 @@ whether `catch_breath` belongs on the scene boundary instead. That may be all it
 
 # Checklist
 
-- [ ] Phase 0 — probe code in `docs/probes/`
-- [ ] Phase 1 — one engine. `src` ≈ 7,530
-- [ ] Phase 2 — the scene kit and the port. `src` ≈ 6,300
+- [x] Phase 0 — probe code in `docs/probes/`
+- [x] Phase 1 — one engine. `src` 7,471
+- [x] Phase 2 — the scene kit and the port. `src` 5,806
 - [ ] Phase 3 — the three roles and the tool surface. `src` ≈ 5,650
 - [ ] Phase 4 — the pages. `src` ≈ 5,400
 - [ ] Phase 5 — the sweep. `src` ≈ 5,400

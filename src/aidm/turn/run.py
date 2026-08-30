@@ -17,8 +17,9 @@ from pydantic_ai.toolsets import FunctionToolset
 from pydantic_ai.usage import UsageLimits
 
 from aidm.config import Settings
-from aidm.kernel.protocol import AnyEngine
+from aidm.engines.core import Engine
 from aidm.kernel.views import NarratorView
+from aidm.kits.scenes.boundary import SPENT_NOTE, scene_spent
 from aidm.llm import build_agent, schema_of
 from aidm.state.facts import NOTHING, Fact, cards, told_traces, traced
 from aidm.state.model import Game, draft_refusal
@@ -34,7 +35,7 @@ RULES_WAIT = "the rules now wait on the player's decision"
 class Turn:
     """One player input to the next hand-back; the draft is the only state that moves."""
 
-    engine: AnyEngine
+    engine: Engine
     draft: Game
     rng: Random
     # Receives the draft: builtin passes a no-op and commits once, code mode saves per call.
@@ -50,7 +51,7 @@ class Turn:
     @classmethod
     def begin(
         cls,
-        engine: AnyEngine,
+        engine: Engine,
         state: Game,
         player_input: str | Answer,
         rng: Random,
@@ -105,7 +106,6 @@ class Turn:
         landed = _apply(self, play)
         lines = [f"- {fact.trace}" for fact in landed]
         lines.extend(f"- {note}" for note in self.draft.notes[already_pending:])
-        lines.extend(_reached(self.draft, landed))
         if decided_before is None and self.draft.pending is not None:
             lines.append(f"- {RULES_WAIT}")
         return "\n".join(lines) or NOTHING
@@ -132,18 +132,6 @@ def _apply(turn: Turn, play: Play) -> tuple[Fact, ...]:
     return landed
 
 
-def _reached(draft: Game, facts: Sequence[Fact]) -> list[str]:
-    # The prompt was rendered before the discovery, so the instruction authored for it arrives here.
-    lines: list[str] = []
-    for fact in facts:
-        if fact.kind != "entity_discovered" or fact.entity_id is None:
-            continue
-        reached = draft.world.require(fact.entity_id).when_reached
-        if reached:
-            lines.append(f"- {reached}")
-    return lines
-
-
 def as_tool(found: DirectorTool) -> Tool[Turn]:
     async def call(ctx: RunContext[Turn], **raw: JsonValue) -> str:
         try:
@@ -161,7 +149,7 @@ def as_tool(found: DirectorTool) -> Tool[Turn]:
     )
 
 
-def director_toolset(engine: AnyEngine) -> FunctionToolset[Turn]:
+def director_toolset(engine: Engine) -> FunctionToolset[Turn]:
     return FunctionToolset(tools=[as_tool(one) for one in engine.tools], max_retries=2)
 
 
@@ -172,7 +160,7 @@ class TurnAgents:
 
 
 def director_agent(
-    engine: AnyEngine,
+    engine: Engine,
     settings: Settings,
 ) -> Agent[Turn, str]:
     """Everything that happens this turn happens through a tool; the closing text only traces."""
@@ -222,7 +210,7 @@ def narrator_agent(settings: Settings) -> Agent[NarratorView, Narration]:
     )
 
 
-def build_turn_agents(engine: AnyEngine, settings: Settings) -> TurnAgents:
+def build_turn_agents(engine: Engine, settings: Settings) -> TurnAgents:
     return TurnAgents(director=director_agent(engine, settings), narrator=narrator_agent(settings))
 
 
@@ -312,8 +300,11 @@ def close_segment(
     facts: tuple[Fact, ...],
 ) -> Game:
     """The one place a segment becomes history: builtin and code mode differ only in when."""
-    draft.record(view.label, prompt, spoken(view, lines), facts)
+    draft.record(draft.world.current.title, prompt, spoken(view, lines), facts)
     draft.turn += 1
+    # Directive text at the decision point is what fixed trigger reliability when it was measured.
+    if (reason := scene_spent(draft)) is not None:
+        draft.notes = (*draft.notes, SPENT_NOTE.format(reason=reason))
     return draft.committed()
 
 

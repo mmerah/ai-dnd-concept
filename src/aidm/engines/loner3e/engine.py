@@ -1,4 +1,6 @@
+import json
 from collections.abc import Mapping, Sequence
+from copy import deepcopy
 from functools import partial
 from pathlib import Path
 from random import Random
@@ -6,54 +8,45 @@ from random import Random
 from pydantic import Field
 
 from aidm.content.io import engine_text
-from aidm.engines.core import (
-    ADVANCE_SPENT,
-    Engine,
-    EntityRenderer,
-    PackCreation,
-    authoring_guidance,
-    check_packs,
-    describe_rows,
-    find_entry,
-    load_packs,
-    mechanics_of,
-    mechanics_patched,
-    owed_notes,
-    party_member,
-    rules,
-    sheet_of,
-)
+from aidm.engines.core import Engine, PackCreation, load_packs
 from aidm.engines.loner3e.rules import (
     GROWTH,
+    Actor,
     AdventureGrowth,
     Change,
-    Loner3eState,
     Pack,
     Question,
-    Sheet,
+    actor_sheet,
     apply_restore_luck,
+    close_conflicts,
     resolve_question,
     twist_table,
 )
+from aidm.engines.loner3e.state import (
+    ActorSheet,
+    Loner3eCharacter,
+    Loner3eState,
+    LonerSheet,
+)
+from aidm.kernel.views import CreationPreview
+from aidm.kits.scenes.state import Entity, SceneState, entity_fact
+from aidm.kits.scenes.tools import scene_tools
+from aidm.kits.scenes.views import SheetRows
 from aidm.state.creation import CreationStep, Picks, check_picks, numbered_steps, picked
 from aidm.state.entities import (
     DEAD,
     PLAYER_ID,
     CheckedEntityId,
     EngineId,
-    Entity,
+    EntityId,
     Frozen,
     Slug,
     slug,
 )
-from aidm.state.facts import Fact, entity_fact
-from aidm.state.model import Character, CharacterPayload, Game
+from aidm.state.facts import Fact
+from aidm.state.model import Character, Game, Scenario
 from aidm.state.play import DecisionOption
 from aidm.state.tools import NoArgs, director_tool
-from aidm.world.authoring import rooms_brief, rooms_growth_due
-from aidm.world.scene import rooms_scene
-from aidm.world.tools import DIRECTOR_WORLD, rooms_tools
-from aidm.world.topology import validate_rooms
 
 ENGINE_DIR = Path(__file__).parent
 
@@ -62,43 +55,79 @@ class RestoreLuck(Frozen):
     actor_id: CheckedEntityId = Field(description="Exact id of the player or an actor here.")
 
 
+ADVANCE_SPENT = "Spend one advance a party member has earned, when the player asks for it. "
+
+
+def party(state: Game) -> tuple[EntityId, ...]:
+    return (state.world.player_id, *state.world.companions)
+
+
+def check_packs(packs: Mapping[str, Pack], state: Game) -> None:
+    if missing := sorted(set(state.packs) - set(packs)):
+        raise ValueError(f"the game names packs not installed: {missing}")
+
+
+def find_entry(entries: Sequence[DecisionOption], chosen: str) -> DecisionOption:
+    return next(entry for entry in entries if entry.id == chosen)
+
+
+def party_member(draft: Game, subject_id: EntityId) -> Actor:
+    """An advance is a party member's own: nobody else's sheet is an engine's to grow."""
+    subject = draft.world.require(subject_id)
+    if subject_id not in party(draft):
+        raise ValueError(f"{subject.name} is not in the party")
+    return subject
+
+
+def advances_owed(state: Game) -> tuple[tuple[str, str], ...]:
+    """Chapters played standing above the ledger of advances taken, one note each."""
+    # An advance mid-suspension could invalidate the frozen call an open decision holds.
+    if state.pending is not None:
+        return ()
+    owed = [
+        f"- {state.world.require(one).name} has an advance owed; call advance only when the "
+        "player asks for it."
+        for one in party(state)
+        if _advance_owed(state, one)
+    ]
+    return (("ADVANCES OWED", "\n".join(owed)),) if owed else ()
+
+
 def complete_chapter(draft: Game) -> tuple[Fact, ...]:
     """Only those who played the chapter are credited with it: nobody is owed one they missed."""
     ending = "the adventure has ended"
-    with rules(draft.world, Loner3eState) as game:
-        for member_id in (draft.player_id, *draft.world.party):
-            sheet = game.sheets.get(member_id)
-            if sheet is not None:
-                sheet.chapters += 1
+    for member_id in party(draft):
+        sheet = draft.world.require(member_id).sheet
+        if isinstance(sheet, ActorSheet):
+            sheet.chapters += 1
     return (Fact(kind="chapter_completed", trace=ending, told=True, card=ending),)
 
 
 def advance(draft: Game, proposal: AdventureGrowth, rng: Random) -> tuple[Fact, ...]:
     """One advance per adventure a party member played: the tags it rewrote or grew."""
     del rng
-    with rules(draft.world, Loner3eState) as game:
-        subject = party_member(draft, proposal.subject_id)
-        sheet = sheet_of(game.sheets, subject)
-        if sheet.chapters <= sheet.milestones:
-            raise ValueError(f"{subject.name} has no advance owed")
-        # Sequential against the live sheet, so a rewrite may name what an earlier change wrote.
-        granted = tuple(
-            _rewrite(sheet, subject, change)
-            if change.kind == "rewrite"
-            else _gain(sheet, subject, change)
-            for change in proposal.changes
-        )
-        sheet.milestones += 1
-        spent = entity_fact(
-            subject,
-            "milestone_spent",
-            f"{draft.label(subject)} milestones -> {sheet.milestones} (a milestone spent)",
-            card=f"{subject.name}: milestone {sheet.milestones} spent",
-        )
+    subject: Actor = party_member(draft, proposal.subject_id)
+    sheet = actor_sheet(subject)
+    if sheet.chapters <= sheet.milestones:
+        raise ValueError(f"{subject.name} has no advance owed")
+    # Sequential against the live sheet, so a rewrite may name what an earlier change wrote.
+    granted = tuple(
+        _rewrite(sheet, subject, change)
+        if change.kind == "rewrite"
+        else _gain(sheet, subject, change)
+        for change in proposal.changes
+    )
+    sheet.milestones += 1
+    spent = entity_fact(
+        subject,
+        "milestone_spent",
+        f"{draft.world.label(subject)} milestones -> {sheet.milestones} (a milestone spent)",
+        card=f"{subject.name}: milestone {sheet.milestones} spent",
+    )
     return (*granted, spent)
 
 
-def _gain(sheet: Sheet, subject: Entity, change: Change) -> Fact:
+def _gain(sheet: ActorSheet, subject: Actor, change: Change) -> Fact:
     if change.tag in (*sheet.skills, *sheet.gear, *sheet.frailties):
         raise ValueError(f"{subject.name} already has the tag {change.tag!r}")
     if change.kind == "skill":
@@ -115,7 +144,7 @@ def _gain(sheet: Sheet, subject: Entity, change: Change) -> Fact:
     )
 
 
-def _rewrite(sheet: Sheet, subject: Entity, change: Change) -> Fact:
+def _rewrite(sheet: ActorSheet, subject: Actor, change: Change) -> Fact:
     old, new = change.tag, change.into
     if old in sheet.skills:
         sheet.skills = _swapped(sheet.skills, old, new)
@@ -161,7 +190,7 @@ class Loner3eCreation(PackCreation[Pack]):
         check_picks(self.steps(picks), picks)
         chosen = picked(picks, "pack")
         pack = self.packs[chosen]
-        sheet = Sheet(
+        sheet = ActorSheet(
             concept=picked(picks, "concept"),
             skills=tuple(
                 find_entry(pack.skills, picked(picks, f"skill-{one}")).label for one in (1, 2)
@@ -174,30 +203,52 @@ class Loner3eCreation(PackCreation[Pack]):
             engine=EngineId("loner3e"),
             name=name,
             brief=brief,
-            payload=CharacterPayload(
-                mechanics=Loner3eState(sheets={PLAYER_ID: sheet}, twist_pack=chosen).model_dump(
-                    mode="json"
-                )
-            ),
+            payload=Loner3eCharacter(sheet=sheet, twist_pack=chosen),
         )
+
+    def preview(self, character: Character) -> CreationPreview:
+        return CreationPreview(rows=character.payload.sheet.rows())
+
+
+def new_game(scenario: Scenario, character: Character) -> Loner3eState:
+    """The player is added by code and never authored, so no scenario can claim their id."""
+    canon = deepcopy(scenario.payload.world)
+    if PLAYER_ID in canon.cast:
+        raise ValueError(f"an entity claims the reserved player id {PLAYER_ID!r}")
+    cast: dict[EntityId, Entity[LonerSheet]] = dict(canon.cast)
+    cast[PLAYER_ID] = Entity[LonerSheet](
+        id=PLAYER_ID,
+        kind="actor",
+        name=character.name,
+        brief=character.brief,
+        known=True,
+        sheet=character.payload.sheet,
+    )
+    opening = canon.opening.model_copy(update={"present": (PLAYER_ID, *canon.opening.present)})
+    world = SceneState[LonerSheet](
+        cast=cast,
+        current=opening,
+        threads=canon.threads,
+        player_id=PLAYER_ID,
+        source=canon.source,
+    )
+    return Loner3eState(world=world, twist_pack=character.payload.twist_pack)
 
 
 def _validate(packs: Mapping[str, Pack], state: Game) -> None:
     check_packs(packs, state)
-    validate_rooms(state.world)
-    game = mechanics_of(state.world, Loner3eState)
-    if stray := sorted(set(game.sheets) - set(state.world.entities)):
-        raise ValueError(f"mechanics.sheets names entities the world does not hold: {stray}")
+    world = state.world
     # Every actor rolls by a sheet: one nobody wrote is refused, not given a blank one.
-    for actor in state.world.of_kind("actor"):
-        if actor.id not in game.sheets:
-            raise ValueError(f"{actor.id!r} has no sheet; a Loner actor needs one")
-    if game.twist_pack is not None and game.twist_pack not in state.packs:
-        raise ValueError(f"twists roll from {game.twist_pack!r}, which is unselected")
+    for one in world.cast.values():
+        if one.kind == "actor" and not isinstance(one.sheet, ActorSheet):
+            raise ValueError(f"{one.id!r} has no sheet; a Loner actor needs one")
+    twist_pack = state.payload.twist_pack
+    if twist_pack is not None and twist_pack not in state.packs:
+        raise ValueError(f"twists roll from {twist_pack!r}, which is unselected")
 
 
 def meanings(
-    packs: Mapping[str, Pack], selected: Sequence[Slug], sheet: Sheet
+    packs: Mapping[str, Pack], selected: Sequence[Slug], sheet: ActorSheet
 ) -> tuple[tuple[str, str], ...]:
     chosen = tuple(packs[pack_id] for pack_id in selected)
     # The concept's pack blurb is generic where the entity's own brief is not: skip it.
@@ -207,62 +258,72 @@ def meanings(
     )
 
 
-def describer(packs: Mapping[str, Pack], state: Game) -> EntityRenderer:
-    """One parse of the blob per scene; an entity without a sheet is scenery, not mechanics."""
-    game = mechanics_of(state.world, Loner3eState)
+def sheet_rows(state: Game) -> SheetRows:
+    def rows(entity_id: EntityId) -> tuple[tuple[str, str], ...]:
+        sheet = state.world.require(entity_id).sheet
+        return () if sheet is None else sheet.rows()
 
-    def describe(entity: Entity) -> str:
-        sheet = game.sheets.get(entity.id)
-        if sheet is None:
-            return ""
-        return describe_rows(sheet.rows(), meanings(packs, state.packs, sheet))
-
-    return describe
+    return rows
 
 
-def advances_owed(state: Game) -> tuple[tuple[str, str], ...]:
-    game = mechanics_of(state.world, Loner3eState)
-    return owed_notes(state, game.sheets, lambda sheet: sheet.chapters > sheet.milestones)
+def engine_sections(packs: Mapping[str, Pack], state: Game) -> tuple[tuple[str, str], ...]:
+    """A glossary of the tags in play, plus any advance the party is owed. The sheets themselves
+    are already on the entity lines."""
+    glossary: dict[str, str] = {}
+    for one in state.world.here():
+        if isinstance(sheet := one.sheet, ActorSheet):
+            glossary.update(meanings(packs, state.packs, sheet))
+    lines = "\n".join(f"- {tag}: {detail}" for tag, detail in glossary.items())
+    spelled = (("WHAT THE TAGS IN PLAY MEAN", lines),) if glossary else ()
+    return (*spelled, *advances_owed(state))
+
+
+def _advance_owed(state: Game, entity_id: EntityId) -> bool:
+    sheet = state.world.require(entity_id).sheet
+    return isinstance(sheet, ActorSheet) and sheet.chapters > sheet.milestones
 
 
 def twists(packs: Mapping[str, Pack], state: Game) -> tuple[tuple[str, str], ...]:
-    chosen = mechanics_of(state.world, Loner3eState).twist_pack
-    return twist_table(packs, chosen or state.packs[0])
+    return twist_table(packs, state.payload.twist_pack or state.packs[0])
 
 
 _AUTHORING = (
     "LONER 3E AUTHORING\n"
-    "Every actor needs a sheet in `mechanics.sheets` under its exact entity id, with a "
-    "concept and any fitting skills, frailties, or gear. Loner tags are freeform "
-    "descriptions: use selected pack entries when they fit and invent scenario-specific "
-    "tags when they are clearer. twist_pack names one selected table set; its Oracle "
-    "twists are rolled from it."
+    "Every actor needs an `actor` sheet with a concept and any fitting skills, frailties, or "
+    "gear. Anything that can resist without a will of its own takes an `item` sheet, which is "
+    "luck alone. Loner tags are freeform descriptions: use selected pack entries when they fit "
+    "and invent scenario-specific tags when they are clearer."
 )
 
 
+def guidance(packs: Mapping[str, Pack], state: Game) -> str:
+    """The packs are the setting's vocabulary, so the worldsmith reads the ones this game selected.
+    Defaults restate rules the guidance already carries; dropping them halves the prompt."""
+    selected = {
+        one: packs[one].model_dump(mode="json", exclude_defaults=True) for one in state.packs
+    }
+    return f"{_AUTHORING}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"
+
+
 def player_over(state: Game) -> str | None:
-    return "You died." if state.player.trait(DEAD) is not None else None
+    return "You died." if state.world.player.trait(DEAD) is not None else None
 
 
 def build(user_packs: Path) -> Engine:
     packs = load_packs((ENGINE_DIR / "packs", user_packs), Pack)
-    validate = partial(_validate, packs)
-    describe = partial(describer, packs)
     return Engine(
         id=EngineId("loner3e"),
         title="LONER 3E",
-        instructions=f"{DIRECTOR_WORLD}\n\n{engine_text(ENGINE_DIR / 'director.md')}",
-        packs=packs,
+        instructions=engine_text(ENGINE_DIR / "director.md"),
+        guidance=partial(guidance, packs),
         creation=Loner3eCreation(packs),
-        validate=validate,
+        validate=partial(_validate, packs),
+        new_game=new_game,
+        sheet_rows=sheet_rows,
+        sections=partial(engine_sections, packs),
         over=player_over,
-        scene=rooms_scene(describe, advances_owed),
-        mechanics_patch=partial(mechanics_patched, Loner3eState, entity_maps=("sheets",)),
-        authoring_brief=lambda chosen, base, opening: rooms_brief(
-            base, opening, authoring_guidance(_AUTHORING, packs, chosen)
-        ),
-        growth_due=rooms_growth_due,
-        tools=rooms_tools(
+        scene_closed=close_conflicts,
+        tools=scene_tools(
             director_tool(
                 "roll_question",
                 "Roll Chance against Risk for one closed dramatic question.",

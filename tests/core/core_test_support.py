@@ -20,14 +20,14 @@ from pydantic_settings import SettingsConfigDict
 
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.io import load_character, load_scenario, read_scenarios
-from aidm.engines.core import Engine, mechanics_of
+from aidm.engines.core import Engine
 from aidm.engines.loner3e.engine import complete_chapter as loner_chapter
-from aidm.engines.loner3e.rules import Loner3eState
-from aidm.engines.loner3e.rules import Sheet as LonerSheet
+from aidm.engines.loner3e.state import ActorSheet, LonerSheet
 from aidm.engines.registry import begin_game, build_engines
-from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Slug
+from aidm.kits.scenes.state import Entity
+from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Slug
 from aidm.state.facts import Fact
-from aidm.state.model import Character, Game, Scenario, WorldState
+from aidm.state.model import Character, Game, Scenario
 from aidm.state.play import Answer, Speaker
 from aidm.turn.run import Turn, TurnStep, build_turn_agents, run_segment
 
@@ -51,32 +51,29 @@ KAEL = Speaker(name="Kael", id=PLAYER_ID)
 
 def updated[T: BaseModel](model: T, **changes: object) -> T:
     """A validating copy. Production commits once per turn; a test wants the check right here."""
-    dumped = model.model_dump(round_trip=True) | changes
-    if isinstance(model, Game | Scenario | Character) and isinstance(dumped["payload"], dict):
-        dumped["payload"] = type(model.payload).model_validate(dumped["payload"])
-    return type(model).model_validate(dumped)
+    return type(model).model_validate(model.model_dump(round_trip=True) | changes)
 
 
-def with_world(authored: Scenario, world: WorldState) -> Scenario:
-    return updated(authored, payload=updated(authored.payload, world=world))
-
-
-def with_entity(state: Game, entity: Entity) -> Game:
+def with_entity(state: Game, entity: Entity[LonerSheet]) -> Game:
+    """Added to the cast and to the scene, because a scene entity is where a scene entity lives."""
     draft = state.draft()
-    draft.world.entities[entity.id] = entity
+    draft.world.cast[entity.id] = entity
+    current = draft.world.current
+    draft.world.current = current.model_copy(update={"present": (*current.present, entity.id)})
     return draft.committed()
 
 
 def loner_at_boundary(state: Game) -> Game:
-    """`at_boundary` for the engine that keeps its sheets in `world.mechanics`."""
     draft = state.draft()
     _ = loner_chapter(draft)
     return draft.committed()
 
 
-def loner_sheet(state: Game, entity_id: EntityId) -> LonerSheet:
-    """`sheet_of` for the same engine: a copy, so changing state needs `rules(world, ...)`."""
-    return mechanics_of(state.world, Loner3eState).sheets[entity_id]
+def loner_sheet(state: Game, entity_id: EntityId) -> ActorSheet:
+    sheet = state.world.require(entity_id).sheet
+    if not isinstance(sheet, ActorSheet):
+        raise AssertionError(f"{entity_id!r} has no actor sheet")
+    return sheet
 
 
 def scenario() -> Scenario:

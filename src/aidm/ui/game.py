@@ -1,6 +1,6 @@
 import logging
 from asyncio import AbstractEventLoop, get_running_loop
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from functools import partial
 from pathlib import Path
 from time import monotonic
@@ -19,7 +19,6 @@ from .panels import journal_panel, sheet_panel, state_panel
 from .widgets import (
     avatar,
     decision_widget,
-    heading,
     page_header,
     refuse_if_busy,
     working,
@@ -31,7 +30,7 @@ _SCENE_HEIGHT = "calc(25vh - 1rem)"
 _ART_BOX = f"flex: none; height: {_SCENE_HEIGHT}; max-width: 50%; aspect-ratio: 16 / 9"
 
 
-def scene_header(session: GameService, fill_composer: Callable[[str], None]) -> None:
+def scene_header(session: GameService) -> None:
     scene = session.scene()
     # A quarter of the column at most: the art holds it and the text beside it scrolls.
     with (
@@ -45,19 +44,8 @@ def scene_header(session: GameService, fill_composer: Callable[[str], None]) -> 
             .classes("flex-grow")
             .style(f"max-height: {_SCENE_HEIGHT}; overflow-y: auto; gap: 0; min-width: 0")
         ):
-            ui.label(scene.label).classes("text-h6 font-bold")
-            if scene.summary:
-                ui.label(scene.summary).classes("text-sm opacity-70")
-            for title, body in scene.sections:
-                heading(title.capitalize(), tight=True)
-                ui.label(body).classes("text-sm whitespace-pre-wrap")
-            for label, composed in scene.prompts:
-                # The button writes the move into the composer; the player still sends it.
-                ui.button(
-                    label,
-                    icon="arrow_forward",
-                    on_click=partial(fill_composer, composed),
-                ).props("flat dense no-caps align=left rounded").classes("w-full")
+            ui.label(scene.title).classes("text-h6 font-bold")
+            ui.label(scene.situation).classes("text-sm opacity-70")
 
 
 def _scene_art(session: GameService) -> None:
@@ -195,13 +183,9 @@ class GameView:
         if self.agent_log is not None and not self.agent_log.is_deleted:
             self.agent_log.push(line)
 
-    def fill_composer(self, text: str) -> None:
-        if self.composer is not None:
-            self.composer.value = text
-
     @ui.refreshable_method
     def scene(self) -> None:
-        scene_header(self.session, self.fill_composer)
+        scene_header(self.session)
 
     @ui.refreshable_method
     def chat(self) -> None:

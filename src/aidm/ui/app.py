@@ -18,7 +18,7 @@ from aidm.harness.codex import CodexDriver
 from aidm.harness.driver import Driver
 from aidm.state.entities import Slug, content_id
 
-from .create import agent_scenario_page, character_page, scenario_page
+from .create import character_page
 from .game import game_page
 from .settings import settings_page
 from .widgets import page_header, show_engine_badge
@@ -105,17 +105,6 @@ def _new_game(catalog: LauncherCatalog, runtime: Runtime) -> None:
 
 def _new_content(runtime: Runtime) -> None:
     with ui.row().classes("items-center").style("gap: 0.5rem"):
-        # Authoring calls a model, and only `external` has neither a key nor an agent to ask.
-        if runtime.settings.harness == "external":
-            ui.label("New scenario: call begin_scenario() in the terminal.").classes(
-                "text-sm opacity-70"
-            )
-        else:
-            ui.button(
-                "New scenario",
-                icon="auto_stories",
-                on_click=lambda: ui.navigate.to("/create-scenario"),
-            ).props("outline dense")
         ui.label("New character:").classes("text-sm opacity-70")
         for engine_id in runtime.engines:
             ui.button(
@@ -170,10 +159,10 @@ def start() -> None:
 
 
 def _register_pages(runtime: Runtime) -> None:
-    drivers: dict[str | None, Driver] = {}
+    drivers: dict[str, Driver] = {}
 
-    def driver_for(slug: str | None) -> Driver | None:
-        """Memoised: one conversation per game, and `slug=None` is the authoring one."""
+    def driver_for(slug: str) -> Driver | None:
+        """Memoised: one conversation per game."""
         if slug not in drivers:
             match runtime.settings.harness:
                 case "claude":
@@ -222,16 +211,6 @@ def _register_pages(runtime: Runtime) -> None:
     @ui.page("/create/{engine}")
     def _create(engine: str) -> None:  # pyright: ignore[reportUnusedFunction]
         character_page(runtime, engine)
-
-    @ui.page("/create-scenario")
-    def _create_scenario() -> None:  # pyright: ignore[reportUnusedFunction]
-        writer = driver_for(None)
-        if writer is not None:
-            agent_scenario_page(writer, runtime)
-        elif runtime.settings.harness == "external":
-            ui.label("Authoring runs in your terminal here: call begin_scenario().")
-        else:
-            scenario_page(runtime)
 
     @ui.page("/settings")
     def _settings() -> None:  # pyright: ignore[reportUnusedFunction]

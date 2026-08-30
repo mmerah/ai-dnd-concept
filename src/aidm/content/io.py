@@ -8,7 +8,7 @@ from re import fullmatch
 from pydantic import BaseModel, JsonValue
 
 from aidm.kernel.envelope import CharacterEnvelope, ScenarioEnvelope
-from aidm.kernel.protocol import AnyEngine
+from aidm.kernel.protocol import EngineIdentity
 from aidm.state.entities import EngineId, Slug, content_id, require_unique
 from aidm.state.model import Character, Game, Scenario
 
@@ -21,22 +21,20 @@ _SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9-]*"
 LOGGER = logging.getLogger(__name__)
 
 
-def scenario_of(envelope: ScenarioEnvelope, engine: AnyEngine) -> Scenario:
+def scenario_of(envelope: ScenarioEnvelope, engine: EngineIdentity) -> Scenario:
     if envelope.engine != engine.id:
         raise ValueError(f"the scenario plays {envelope.engine!r}, not {engine.id!r}")
-    payload = engine.scenario.model_validate(envelope.payload)
-    return Scenario.model_validate(envelope.model_dump() | {"payload": payload})
+    return Scenario.model_validate(envelope.model_dump())
 
 
-def character_of(envelope: CharacterEnvelope, engine: AnyEngine) -> Character:
+def character_of(envelope: CharacterEnvelope, engine: EngineIdentity) -> Character:
     if envelope.engine != engine.id:
         raise ValueError(f"the character plays {envelope.engine!r}, not {engine.id!r}")
-    payload = engine.character.model_validate(envelope.payload)
-    return Character.model_validate(envelope.model_dump() | {"payload": payload})
+    return Character.model_validate(envelope.model_dump())
 
 
 def read_scenarios(
-    directory: Path, engines: Mapping[EngineId, AnyEngine]
+    directory: Path, engines: Mapping[EngineId, EngineIdentity]
 ) -> Iterator[tuple[Slug, Scenario]]:
     for path in _content_dirs(directory, WORLD_FILE):
         try:
@@ -56,7 +54,7 @@ def read_scenarios(
 
 
 def read_characters(
-    directory: Path, engines: Mapping[EngineId, AnyEngine]
+    directory: Path, engines: Mapping[EngineId, EngineIdentity]
 ) -> Iterator[tuple[Slug, Character, tuple[EngineId, ...]]]:
     """One entry per character: the catalog keys by id, so the first written engine names them."""
     for path in sorted(directory.iterdir()):
@@ -81,7 +79,7 @@ def scenario_envelope(directory: Path, name: Slug) -> ScenarioEnvelope:
     return _read(folder / WORLD_FILE, ScenarioEnvelope)
 
 
-def load_scenario(directory: Path, name: Slug, engine: AnyEngine) -> Scenario:
+def load_scenario(directory: Path, name: Slug, engine: EngineIdentity) -> Scenario:
     return scenario_of(scenario_envelope(directory, name), engine)
 
 
@@ -91,7 +89,7 @@ def source_file(directory: Path, name: Slug) -> Path | None:
     return next((path for path in paths if path.is_file()), None)
 
 
-def load_character(directory: Path, name: Slug, engine: AnyEngine) -> Character:
+def load_character(directory: Path, name: Slug, engine: EngineIdentity) -> Character:
     folder = directory / content_id(name)
     character = character_of(_read(folder / f"{engine.id}.json", CharacterEnvelope), engine)
     if character.id != content_id(name):

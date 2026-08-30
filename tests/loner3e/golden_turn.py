@@ -1,9 +1,9 @@
-from core_test_support import text, tool_call
-from golden_turn_support import LISTENING, NARRATION, take
+from core_test_support import changed, text, tool_call
+from golden_turn_support import LISTENING, NARRATION
 from pydantic_ai.messages import ModelResponse
 
 SCRIPT: tuple[ModelResponse, ...] = (
-    take("vault-map"),
+    changed("reveal", entity_id="vault-map"),
     tool_call(
         "roll_question",
         actor_id="player",
