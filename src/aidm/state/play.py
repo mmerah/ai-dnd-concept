@@ -93,8 +93,6 @@ class Answer(Frozen):
 
 class Exchange(Frozen):
     prompt: str
-    # Who the player was when they wrote the prompt: succession must not rename old messages.
-    speaker: Speaker
     scene: str
     lines: tuple[SpokenLine, ...]
     facts: tuple[Fact, ...] = ()

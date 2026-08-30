@@ -25,7 +25,7 @@ from aidm.engines.loner3e.rules import (
 from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.facts import cards
 from aidm.state.model import Game
-from aidm.state.play import PendingDecision, PendingOption
+from aidm.state.play import PendingDecision
 from aidm.world.topology import player_location
 
 FOE = EntityId("mara")
@@ -223,34 +223,15 @@ def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
         _ = resolve_question(away, _seal(opponent_id=LANTERN), Random(0), TWISTS)
 
 
-def _restored(engine: Engine, state: Game, pending: PendingDecision) -> Game:
-    draft = state.draft()
-    draft.pending = pending
-    return engine.restored(draft.committed().model_dump_json())
-
-
-def test_the_engine_plays_the_hand_back_and_refuses_every_other_decision() -> None:
+def test_the_open_ended_hand_back_survives_a_save() -> None:
     engine, state = initialized()
     hand_back = PendingDecision(
         kind="conflict", prompt="Say your next key action.", options=(), allows_text=True
     )
+    draft = state.draft()
+    draft.pending = hand_back
 
-    assert _restored(engine, state, hand_back).pending == hand_back
-
-    unplayable = hand_back.model_copy(
-        update={
-            "options": (
-                PendingOption(
-                    id="lantern",
-                    label="Break the lantern",
-                    name="defend",
-                    args={},
-                ),
-            )
-        }
-    )
-    with pytest.raises(ValueError, match="no tool 'defend' to play option 'lantern'"):
-        _ = _restored(engine, state, unplayable)
+    assert engine.restored(draft.committed().model_dump_json()).pending == hand_back
 
 
 def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:

@@ -2,9 +2,7 @@ from random import Random
 
 import pytest
 from core_test_support import (
-    TWENTYFOURXX,
     changed,
-    game,
     initialized,
     loner_at_boundary,
     loner_sheet,
@@ -18,7 +16,6 @@ from core_test_support import (
 )
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolReturnPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
-from twentyfourxx_test_support import sheets
 
 from aidm.engines.loner3e.rules import outcome_for
 from aidm.state.entities import PLAYER_ID, EntityId
@@ -210,17 +207,21 @@ async def test_a_call_its_own_fields_refuse_is_retried_rather_than_killing_the_t
 
 
 async def test_a_later_call_is_judged_against_the_mechanics_the_earlier_one_moved() -> None:
-    engine, state = game(TWENTYFOURXX)
-    credits = sheets(state)[PLAYER_ID].credits.current
+    engine, state = initialized()
+    growth = {
+        "subject_id": PLAYER_ID,
+        "changes": [{"kind": "skill", "tag": "Vault-Wise", "why": "the seal gave up its trick"}],
+    }
     director = recorded(
-        tool_call("change_credits", actor_id="player", amount=-credits),
-        tool_call("change_credits", actor_id="player", amount=-1),
-        text("The purse is empty."),
+        tool_call("complete_chapter"),
+        tool_call("advance", **growth),
+        tool_call("advance", **growth),
+        text("The chapter closes."),
     )
-    state = await played(engine, state, "I pay what I owe.", director=FunctionModel(director.stub))
+    state = await played(engine, state, "I close the book.", director=FunctionModel(director.stub))
 
-    assert sheets(state)[PLAYER_ID].credits.current == 0
-    assert director.reasons()
+    assert loner_sheet(state, PLAYER_ID).milestones == 1
+    assert any("no advance owed" in reason for reason in director.reasons())
 
 
 async def test_a_narrated_line_spoken_by_someone_not_here_is_retried_with_the_id() -> None:

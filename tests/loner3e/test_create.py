@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from core_test_support import ENGINES_BUILT, LONER3E, SCENARIOS, TWENTYFOURXX, updated
+from core_test_support import ENGINES_BUILT, LONER3E, SCENARIOS, updated
 from loner3e_test_support import sheet
 
 from aidm.content.io import load_character, load_scenario, write_character
@@ -9,7 +9,9 @@ from aidm.engines.core import CharacterCreation, mechanics_of
 from aidm.engines.loner3e.rules import LUCK_MAX, Loner3eState
 from aidm.engines.registry import begin_game
 from aidm.state.creation import Picks
-from aidm.state.entities import PLAYER_ID
+from aidm.state.entities import PLAYER_ID, EngineId
+
+OTHER = EngineId("ruleless")
 
 
 def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path) -> None:
@@ -62,10 +64,10 @@ def test_one_folder_holds_one_person_across_engines(tmp_path: Path) -> None:
     write_character(tmp_path, fen)
 
     with pytest.raises(ValueError, match="is 'Fen', not 'Mira'"):
-        write_character(tmp_path, updated(fen, engine=TWENTYFOURXX, name="Mira"))
+        write_character(tmp_path, updated(fen, engine=OTHER, name="Mira"))
 
-    write_character(tmp_path, updated(fen, engine=TWENTYFOURXX))
-    assert load_character(tmp_path, "fen", ENGINES_BUILT[TWENTYFOURXX]).name == "Fen"
+    write_character(tmp_path, updated(fen, engine=OTHER))
+    assert load_character(tmp_path, "fen", ENGINES_BUILT[LONER3E]).name == "Fen"
 
 
 def _answered(creation: CharacterCreation, chosen: Picks) -> Picks:

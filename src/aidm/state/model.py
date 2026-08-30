@@ -27,7 +27,7 @@ from aidm.state.entities import (
     require_unique,
 )
 from aidm.state.facts import Fact, cards, entity_fact, labeled
-from aidm.state.play import Exchange, PendingDecision, Speaker, SpokenLine
+from aidm.state.play import Exchange, PendingDecision, SpokenLine
 
 ThreadStatus = Literal["active", "resolved", "dormant"]
 
@@ -307,7 +307,6 @@ class Game(Mutable):
         self,
         scene_label: str,
         prompt: str,
-        speaker: Speaker,
         lines: tuple[SpokenLine, ...],
         facts: tuple[Fact, ...],
     ) -> None:
@@ -317,7 +316,6 @@ class Game(Mutable):
             *self.history,
             Exchange(
                 prompt=prompt,
-                speaker=speaker,
                 scene=scene_label,
                 lines=lines,
                 facts=cards(facts),

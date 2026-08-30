@@ -4,7 +4,6 @@ from random import Random
 import pytest
 from core_test_support import (
     ENGINES_BUILT,
-    KAEL,
     LONER3E,
     game,
     played,
@@ -18,7 +17,6 @@ from pydantic_ai.messages import TextPart, ToolReturnPart
 from pydantic_ai.models.function import FunctionModel
 
 from aidm.engines.core import Engine
-from aidm.kernel.views import speaker_of
 from aidm.state.entities import Frozen
 from aidm.state.facts import Fact
 from aidm.state.model import Game
@@ -111,8 +109,7 @@ def _strike_tool(*, narrate: bool) -> DirectorTool:
 def _deciding(*, narrate: bool = True) -> tuple[Engine, Game]:
     engine = replace(
         ENGINES_BUILT[LONER3E],
-        tools=(_strike_tool(narrate=narrate),),
-        resolvers=(TURN_THE_HIT, CHAIN_THE_HIT),
+        tools=(_strike_tool(narrate=narrate), TURN_THE_HIT, CHAIN_THE_HIT),
     )
     _, state = game(LONER3E)
     return engine, state
@@ -248,18 +245,14 @@ def test_a_second_decision_is_refused_while_one_is_already_open() -> None:
 
 
 def test_a_paused_exchange_replays_as_a_message_and_a_silent_one_refuses() -> None:
-    paused = Exchange(
-        prompt="I charge.", speaker=KAEL, scene="the cloister", lines=(), decision=DECISION.prompt
-    )
+    paused = Exchange(prompt="I charge.", scene="the cloister", lines=(), decision=DECISION.prompt)
     stayed = Exchange(
         prompt="I press on.",
-        speaker=KAEL,
         scene="the cloister",
         lines=(SpokenLine(text="It gives."),),
     )
     moved = Exchange(
         prompt="I go up.",
-        speaker=KAEL,
         scene="the bell tower",
         lines=(SpokenLine(text="Rope sways."),),
     )
@@ -277,54 +270,33 @@ def test_a_paused_exchange_replays_as_a_message_and_a_silent_one_refuses() -> No
         "[At the bell tower]\nRope sways.",
     ]
     with pytest.raises(ValueError, match="nothing to replay"):
-        _ = exchanges_to_messages(
-            [Exchange(prompt="I wait.", speaker=KAEL, scene="the cloister", lines=())]
-        )
+        _ = exchanges_to_messages([Exchange(prompt="I wait.", scene="the cloister", lines=())])
 
 
-def test_restore_refuses_an_option_whose_call_names_no_tool_or_carries_args_it_rejects() -> None:
+def _option(**changes: object) -> PendingOption:
+    return PendingOption.model_validate(
+        {"id": "lantern", "label": "Break the lantern", "name": TURN_THE_HIT.name} | changes
+    )
+
+
+def test_an_option_whose_call_names_no_tool_or_carries_args_it_rejects_is_refused() -> None:
     engine, state = _deciding()
+    draft = _suspended(state).draft()
 
     assert engine.restored(_suspended(state).model_dump_json()).pending == DECISION
 
-    unknown = _decision(TURN_THE_HIT).model_copy(
-        update={
-            "options": (
-                PendingOption(
-                    id="lantern",
-                    label="Break the lantern",
-                    name="spend_momentum",
-                    args={},
-                ),
-            )
-        }
-    )
     with pytest.raises(ValueError, match="no tool 'spend_momentum' to play option 'lantern'"):
-        _ = engine.restored(_suspended(state, unknown).model_dump_json())
-
-    ill_typed = _decision(TURN_THE_HIT).model_copy(
-        update={
-            "options": (
-                PendingOption(
-                    id="lantern",
-                    label="Break the lantern",
-                    name=TURN_THE_HIT.name,
-                    args={"nothing": "of theirs"},
-                ),
-            )
-        }
-    )
+        _ = engine.answer(draft, _option(name="spend_momentum"), Random(0))
     with pytest.raises(ValidationError):
-        _ = engine.restored(_suspended(state, ill_typed).model_dump_json())
+        _ = engine.answer(draft, _option(args={"nothing": "of theirs"}), Random(0))
 
 
 def test_a_decision_whose_options_are_the_whole_pick_refuses_an_answer_in_words() -> None:
     engine, state = _deciding()
     draft = _suspended(state, DECISION.model_copy(update={"allows_text": False})).draft()
 
-    speaker = speaker_of(engine.views(draft).player.player)
     with pytest.raises(ValueError, match="takes one of its options, not words"):
         _ = consume_answer(
-            Turn(engine=engine, draft=draft, rng=Random(0), commit=lambda _: None, speaker=speaker),
+            Turn(engine=engine, draft=draft, rng=Random(0), commit=lambda _: None),
             Answer(text="I dive aside"),
         )

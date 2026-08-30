@@ -1,24 +1,22 @@
 import logging
 from asyncio import Task, create_task
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
 
-from pydantic import JsonValue
-
 from aidm.authoring.run import growth_run
 from aidm.config import Settings, load_settings
 from aidm.content.io import FileStore, load_character, scenario_envelope, scenario_of
-from aidm.engines.core import Engine, PlayerAction, offered, play_action, transact
+from aidm.engines.core import Engine
 from aidm.engines.registry import begin_game, build_engines
 from aidm.kernel.protocol import AnyEngine
 from aidm.kernel.views import NarratorView, Views
-from aidm.state.entities import EngineId, EntityId, Slug
+from aidm.state.entities import EngineId, EntityId
 from aidm.state.facts import Fact, traced
 from aidm.state.model import Character, Game, Scenario
 from aidm.state.play import Answer, Line
-from aidm.state.tools import Play
+from aidm.state.tools import Play, transact
 from aidm.turn.run import Turn, TurnAgents, TurnStep, build_turn_agents, run_segment
 
 from .launch import LaunchTarget
@@ -115,18 +113,10 @@ class GameService:
 
     @property
     def legacy(self) -> Engine:
-        """Growth and player actions still live on the rooms dataclass until the Phase-3 port."""
+        """Growth still lives on the rooms dataclass until the scene kit replaces it."""
         if not isinstance(self.engine, Engine):
             raise ValueError(f"the {self.engine.id!r} engine is not the rooms dataclass")
         return self.engine
-
-    def offers(self) -> tuple[tuple[PlayerAction, str, dict[str, JsonValue]], ...]:
-        return offered(self.legacy, self.state)
-
-    def act(self, name: Slug, raw: Mapping[str, JsonValue]) -> tuple[Fact, ...]:
-        state, facts = play_action(self.legacy, self.state, name, raw, self.rng)
-        self.commit(state)
-        return facts
 
     def view(self) -> Views:
         return self.engine.views(self.state)

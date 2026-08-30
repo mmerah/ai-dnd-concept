@@ -1,8 +1,6 @@
 from aidm.state.entities import DEAD, Entity, EntityId, Exit, Slug, Trait, slug
 from aidm.state.facts import Fact, entity_fact
 from aidm.state.model import Game
-from aidm.state.tools import Validate
-from aidm.world.succession import succession_decision
 from aidm.world.topology import children, is_here, player_location
 
 
@@ -32,7 +30,7 @@ def require_actor_here(state: Game, actor_id: EntityId) -> Entity:
     return actor
 
 
-def kill(draft: Game, actor_id: EntityId, validate: Validate) -> list[Fact]:
+def kill(draft: Game, actor_id: EntityId) -> list[Fact]:
     actor = draft.world.require_kind(actor_id, "actor")
     if actor.trait(DEAD) is not None:
         raise ValueError(f"{actor.name} is already dead")
@@ -57,8 +55,6 @@ def kill(draft: Game, actor_id: EntityId, validate: Validate) -> list[Fact]:
             actor, "actor_killed", f"{draft.label(actor)} is dead", card=f"{actor.name} is dead"
         )
     )
-    if actor_id == draft.player_id:
-        draft.pending = succession_decision(draft, validate)
     return facts
 
 
@@ -150,7 +146,7 @@ def improvise(draft: Game, item_name: str) -> list[Fact]:
 def add_trait(draft: Game, entity_id: EntityId, name: str, text: str = "") -> list[Fact]:
     entity, seen = reveal_target(draft, entity_id)
     trait_id = slug(name, ())
-    # Only `kill` may end a life: it drops what the dead carried and offers the succession.
+    # Only `kill` may end a life: it drops what the dead carried.
     if trait_id == DEAD:
         raise ValueError(f"call kill to record a death, not add_trait with {name!r}")
     if entity.trait(trait_id) is not None:

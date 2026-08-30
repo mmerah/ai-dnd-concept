@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
-from core_test_support import ENGINES_BUILT, KAEL, LONER3E, initialized, scenario
+from core_test_support import ENGINES_BUILT, LONER3E, initialized, scenario
 
 from aidm.content.io import (
     ENCODING,
@@ -22,7 +22,6 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
     draft.history = (
         Exchange(
             prompt="I take the map.",
-            speaker=KAEL,
             scene="the sealed vault",
             lines=(),
             facts=(

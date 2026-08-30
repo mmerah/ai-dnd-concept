@@ -2,7 +2,7 @@ import pytest
 from core_test_support import initialized
 from pydantic import ValidationError
 
-from aidm.engines.core import adjust, spend
+from aidm.engines.core import adjust
 from aidm.state.entities import Counter, Entity, EntityId
 from aidm.state.model import Game
 
@@ -37,14 +37,3 @@ def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> 
     counter.current = 0
     (own,) = adjust(state, state.player, "stress", counter, 1, "the strain")
     assert own.card == "Stress +1 -> 1/5"
-
-
-def test_spend_pays_the_pool_and_refuses_what_it_cannot_cover() -> None:
-    counter = Counter(current=5, maximum=5)
-
-    state = _state()
-    (spent,) = spend(state, KAEL, "stress", counter, 2)
-    assert (spent.card, counter.current) == ("Kael: Stress -2 -> 3/5", 3)
-
-    with pytest.raises(ValueError, match="cannot be spent"):
-        _ = spend(state, KAEL, "stress", counter, 4)

@@ -3,10 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from aidm.engines.registry import ENGINES as REGISTERED
-
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
-ENGINES = tuple(f"aidm.engines.{engine_id}" for engine_id in REGISTERED)
+ENGINES = ("aidm.engines.loner3e",)
+# The composition root is the one place allowed to name the engine it builds.
+ROOT = "engines/registry.py"
 # Flow: state <- kernel <- content <- world <- engines <- turn <- authoring <- app <- harness <- ui.
 LAYERS = ("state", "kernel", "content", "world", "engines", "turn", "authoring", "app", "harness")
 # `ui` sits above them all, imports downwards, and additionally stays engine-agnostic.
@@ -83,7 +83,6 @@ def test_packages_import_only_in_the_allowed_direction(
 
 
 def test_no_module_names_a_concrete_engine() -> None:
-    # The registry discovers engines by module name, so not even it imports one.
     naming = {
         str(path.relative_to(SOURCE))
         for path in SOURCE.rglob("*.py")
@@ -91,4 +90,4 @@ def test_no_module_names_a_concrete_engine() -> None:
         if name.startswith(ENGINES)
         if not name.startswith(f"aidm.engines.{path.parts[-2]}")
     }
-    assert not naming
+    assert naming == {ROOT}

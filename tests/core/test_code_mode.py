@@ -1,6 +1,5 @@
 import asyncio
 import shutil
-from dataclasses import replace
 from pathlib import Path
 from random import Random
 from typing import cast
@@ -8,12 +7,10 @@ from typing import cast
 import pytest
 from claude_agent_sdk import McpSdkServerConfig
 from core_test_support import (
-    CATCH_BREATH,
     CHARACTERS,
     ENGINES_BUILT,
     LONER3E,
     SCENARIOS,
-    TWENTYFOURXX,
     EnvFileFreeSettings,
     change_args,
     scenario_for,
@@ -122,11 +119,6 @@ def _opened(tmp_path: Path, engine: str, growth_frontier: int = 1) -> Harness:
     return harness
 
 
-def _offering(harness: Harness) -> None:
-    session = harness.opened()
-    session.engine = replace(session.legacy, player_actions=(CATCH_BREATH,))
-
-
 def _growing(tmp_path: Path) -> Harness:
     harness = _opened(tmp_path, "loner3e", growth_frontier=9)
     session = harness.opened()
@@ -204,12 +196,12 @@ async def test_no_tool_runs_a_turn_before_start_turn_opens_one(tmp_path: Path) -
         _ = await call(harness, "end_turn", {"lines": []})
 
 
-async def test_a_resolver_is_not_callable_by_name_from_the_director(tmp_path: Path) -> None:
+async def test_a_name_the_engine_does_not_publish_is_refused(tmp_path: Path) -> None:
     harness = _opened(tmp_path, "loner3e")
 
     _ = await call(harness, "start_turn", {"text": "I look around."})
     with pytest.raises(ValueError, match="is not a tool of"):
-        _ = await call(harness, "take_over", {"successor_id": PLAYER_ID})
+        _ = await call(harness, "settle_everything", {})
 
 
 async def test_a_no_args_tool_refuses_junk_arguments(tmp_path: Path) -> None:
@@ -222,33 +214,29 @@ async def test_a_no_args_tool_refuses_junk_arguments(tmp_path: Path) -> None:
 async def test_an_open_decision_blocks_every_other_tool_until_it_is_answered(
     tmp_path: Path,
 ) -> None:
-    """The whole suspension chain: a stake, its failed roll, and the hit settled by its pick."""
-    harness = _opened(tmp_path, "twentyfourxx")
+    """An unfinished conflict: nothing else lands until the player's next message answers it."""
+    harness = _opened(tmp_path, "loner3e")
     harness.opened().rng = Random(0)
 
-    _ = await call(harness, "start_turn", {"text": "I climb the shaft."})
+    _ = await call(harness, "start_turn", {"text": "I wrench the lantern from its bracket."})
     _ = await call(
         harness,
-        "stake_attempt",
-        {"actor_id": PLAYER_ID, "goal": "climb the shaft", "hit": True, "risk": "a long fall"},
+        "roll_question",
+        {
+            "actor_id": PLAYER_ID,
+            "question": "Does he wrench it free?",
+            "opponent_id": "lantern",
+        },
     )
     assert _saved(harness).pending is not None
     assert "waiting on the player" in await call(
         harness, "change_world", change_args("reveal", entity_id=VAULT)
     )
-    _ = await call(
-        harness, "end_turn", {"lines": [{"speaker_id": None, "text": "The shaft yawns."}]}
-    )
+    _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "It holds."}]})
 
-    _ = await call(harness, "start_turn", {"option_id": "proceed"})
-    pending = _saved(harness).pending
-    assert pending is not None and pending.kind == "defence"
-    # The options are the whole pick: the engine settles the hit from the one the player takes.
-    _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "You slip."}]})
-
-    _ = await call(harness, "start_turn", {"option_id": "take-it"})
+    _ = await call(harness, "start_turn", {"text": "I let it be."})
     assert _saved(harness).pending is None
-    _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "It lands."}]})
+    _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "You step back."}]})
 
 
 async def test_a_viewer_in_another_process_picks_up_what_the_server_committed(
@@ -286,15 +274,19 @@ async def test_an_answers_note_is_shown_now_and_spent_rather_than_leaking_a_turn
     tmp_path: Path,
 ) -> None:
     """`start_turn` takes the note `consume_answer` wrote; `scene()` still shows it mid-turn."""
-    harness = _opened(tmp_path, "twentyfourxx")
+    harness = _opened(tmp_path, "loner3e")
     harness.opened().rng = Random(0)
-    _ = await call(harness, "start_turn", {"text": "I climb the shaft."})
+    _ = await call(harness, "start_turn", {"text": "I wrench the lantern from its bracket."})
     _ = await call(
         harness,
-        "stake_attempt",
-        {"actor_id": PLAYER_ID, "goal": "climb the shaft", "hit": True, "risk": "a long fall"},
+        "roll_question",
+        {
+            "actor_id": PLAYER_ID,
+            "question": "Does he wrench it free?",
+            "opponent_id": "lantern",
+        },
     )
-    _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "It yawns."}]})
+    _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "It holds."}]})
 
     opened = await call(harness, "start_turn", {"text": "I back off and look for a rope"})
 
@@ -362,12 +354,12 @@ async def test_authoring_needs_a_run_and_a_second_begin_discards_the_first(
     assert GROWN not in await call(harness, "scenario_so_far", {})
 
 
-async def test_opening_another_game_abandons_the_growth_run_of_the_first(tmp_path: Path) -> None:
+async def test_opening_a_game_abandons_an_open_growth_run(tmp_path: Path) -> None:
     """Its patch is diffed against the game it began in, so it must not land in another."""
     harness = _growing(tmp_path)
     _ = await call(harness, "begin_growth", {})
 
-    harness.open_game(f"{scenario_for(TWENTYFOURXX)}--kael")
+    harness.open_game(f"{scenario_for(LONER3E)}--kael")
 
     assert harness.authoring is None
 
@@ -468,87 +460,3 @@ async def test_a_scenario_run_writes_a_scenario_that_loads(tmp_path: Path) -> No
     assert landed.meta.title == "The Sunken Mill"
     assert landed.packs == ("srd",)
     assert harness.authoring is None
-
-
-async def test_a_resume_that_re_suspended_may_still_develop_what_the_answer_caused(
-    tmp_path: Path,
-) -> None:
-    """The same gate the builtin Director runs: core commands land, engine mechanics do not."""
-    harness = _opened(tmp_path, "twentyfourxx")
-    harness.opened().rng = Random(0)
-    _ = await call(harness, "start_turn", {"text": "I climb the shaft."})
-    _ = await call(
-        harness,
-        "stake_attempt",
-        {"actor_id": PLAYER_ID, "goal": "climb the shaft", "hit": True, "risk": "a long fall"},
-    )
-    _ = await call(
-        harness, "end_turn", {"lines": [{"speaker_id": None, "text": "The shaft yawns."}]}
-    )
-    _ = await call(harness, "start_turn", {"option_id": "proceed"})
-
-    _ = await call(
-        harness,
-        "change_world",
-        change_args("add_trait", entity_id="player", name="Winded", text="Breath short."),
-    )
-    assert "waiting on the player" in await call(
-        harness,
-        "roll_attempt",
-        {"actor_id": PLAYER_ID, "goal": "swing again", "risk": "a longer fall", "hit": True},
-    )
-
-
-async def test_the_picture_shows_you_can_only_when_the_engine_offers_something(
-    tmp_path: Path,
-) -> None:
-    harness = _opened(tmp_path, "loner3e")
-    assert "YOU CAN" not in harness.scene()
-
-    _offering(harness)
-
-    assert (
-        'YOU CAN:\n- Catch your breath: player_action(name=catch-breath, args={"deep": true})'
-        in harness.scene()
-    )
-
-
-async def test_player_action_applies_the_offer_the_player_asked_for(tmp_path: Path) -> None:
-    harness = _opened(tmp_path, "loner3e")
-    _offering(harness)
-
-    answered = await call(
-        harness, "player_action", {"name": "catch-breath", "args": {"deep": True}}
-    )
-
-    assert "breathes deep" in answered
-    assert _saved(harness).history[-1].prompt == "Catch your breath"
-
-
-async def test_player_action_refuses_and_lists_offers_for_an_unknown_name(
-    tmp_path: Path,
-) -> None:
-    harness = _opened(tmp_path, "loner3e")
-    _offering(harness)
-
-    with pytest.raises(ModelRetry, match="catch-breath"):
-        _ = await call(harness, "player_action", {"name": "juggle-knives", "args": {}})
-
-
-async def test_player_action_refuses_and_lists_offers_for_args_matching_none(
-    tmp_path: Path,
-) -> None:
-    harness = _opened(tmp_path, "loner3e")
-    _offering(harness)
-
-    with pytest.raises(ModelRetry, match="catch-breath"):
-        _ = await call(harness, "player_action", {"name": "catch-breath", "args": {"deep": False}})
-
-
-async def test_player_action_still_refuses_while_a_turn_is_open(tmp_path: Path) -> None:
-    harness = _opened(tmp_path, "loner3e")
-    _offering(harness)
-    _ = await call(harness, "start_turn", {"text": "I look around."})
-
-    with pytest.raises(ModelRetry, match="a turn is open"):
-        _ = await call(harness, "player_action", {"name": "catch-breath", "args": {"deep": True}})

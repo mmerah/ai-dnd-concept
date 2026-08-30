@@ -4,17 +4,14 @@ from random import Random
 
 import pytest
 from core_test_support import (
-    CHARACTERS,
     ENGINES_BUILT,
     LONER3E,
     SCENARIOS,
-    TWENTYFOURXX,
     begin_game,
     character,
     initialized,
     loner_sheet,
     scenario,
-    scenario_for,
     updated,
     with_entity,
     with_world,
@@ -24,18 +21,17 @@ from pydantic import ValidationError
 from aidm.content.io import load_character, load_scenario
 from aidm.engines.core import rules
 from aidm.engines.loner3e.rules import LUCK_MAX, Loner3eState
-from aidm.engines.twentyfourxx.rules import TwentyfourxxState
-from aidm.state.entities import PLAYER_ID, Entity, EntityId
+from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.model import Character, CharacterPayload, Game
 from aidm.state.tools import apply_to_draft
 from aidm.world.topology import children, validate_rooms
 
-HERE = "HERE WITH THE PLAYER"
 HELD = EntityId("frayed-rope")
 MARA = EntityId("mara")
 ELENA = EntityId("elena")
 TOMAS = EntityId("tomas")
+OTHER = EngineId("ruleless")
 
 
 def _character(*, holds: Entity) -> Character:
@@ -144,26 +140,23 @@ def test_a_scenario_starts_the_party_it_authors() -> None:
 
 
 def test_a_game_is_refused_a_scenario_or_a_character_from_another_engine() -> None:
-    twentyfourxx = ENGINES_BUILT[TWENTYFOURXX]
-    with pytest.raises(ValueError, match="does not play"):
-        _ = begin_game(twentyfourxx, "whispering-vault", scenario(), character())
-
-    theirs = scenario_for(TWENTYFOURXX)
-    with pytest.raises(ValueError, match="is written for the 'loner3e' rules"):
-        _ = begin_game(
-            twentyfourxx, theirs, load_scenario(SCENARIOS, theirs, twentyfourxx), character()
-        )
+    engine = ENGINES_BUILT[LONER3E]
+    with pytest.raises(ValueError, match="authored for the 'ruleless' rules"):
+        _ = begin_game(engine, "whispering-vault", updated(scenario(), engine=OTHER), character())
+    with pytest.raises(ValueError, match="written for the 'ruleless' rules"):
+        _ = begin_game(engine, "whispering-vault", scenario(), updated(character(), engine=OTHER))
 
 
 def test_a_character_file_belongs_to_its_folder_and_its_engine(tmp_path: Path) -> None:
     written = character().model_dump_json()
+    foreign = json.dumps(json.loads(written) | {"engine": OTHER})
     (tmp_path / "kael").mkdir()
-    _ = (tmp_path / "kael" / f"{TWENTYFOURXX}.json").write_text(written, encoding="utf-8")
+    _ = (tmp_path / "kael" / f"{LONER3E}.json").write_text(foreign, encoding="utf-8")
     (tmp_path / "mira").mkdir()
     _ = (tmp_path / "mira" / f"{LONER3E}.json").write_text(written, encoding="utf-8")
 
-    with pytest.raises(ValueError, match="plays 'loner3e', not 'twentyfourxx'"):
-        _ = load_character(tmp_path, "kael", ENGINES_BUILT[TWENTYFOURXX])
+    with pytest.raises(ValueError, match="plays 'ruleless', not 'loner3e'"):
+        _ = load_character(tmp_path, "kael", ENGINES_BUILT[LONER3E])
     with pytest.raises(ValueError, match="'kael' is filed under 'mira'"):
         _ = load_character(tmp_path, "mira", ENGINES_BUILT[LONER3E])
 
@@ -181,28 +174,6 @@ def test_an_authored_actor_without_rules_is_refused() -> None:
 
     with pytest.raises(ValueError, match="has no sheet"):
         _ = begin_game(engine, "whispering-vault", stripped, character())
-
-
-def test_twentyfourxx_opposition_needs_no_sheet() -> None:
-    engine = ENGINES_BUILT[TWENTYFOURXX]
-    scenario_id = scenario_for(TWENTYFOURXX)
-    authored = load_scenario(SCENARIOS, scenario_id, engine)
-    hostile_id = next(iter(TwentyfourxxState.model_validate(authored.world.mechanics).sheets))
-    stripped = with_world(
-        authored,
-        updated(
-            authored.world,
-            mechanics=engine.mechanics_patch(authored.world.mechanics, {}, (hostile_id,)),
-        ),
-    )
-    player = load_character(CHARACTERS, "kael", engine)
-
-    begun = begin_game(engine, scenario_id, stripped, player)
-
-    here = dict(engine.scene(begun).director_sections)[HERE]
-    # One entity's block: its headline and the lines indented under it, mechanics included.
-    block = next(one for one in here.split("\n- ") if f"[{hostile_id}]" in one)
-    assert "state:" not in block
 
 
 def test_a_character_knows_the_gear_they_start_with() -> None:

@@ -7,7 +7,7 @@ from aidm.content.io import engine_text
 from aidm.state.entities import CheckedEntityId, Frozen, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import AdvanceThread, Game
-from aidm.state.tools import DirectorTool, Validate, advance_thread, director_tool
+from aidm.state.tools import DirectorTool, advance_thread, director_tool
 from aidm.world import actions
 
 # The prompt fragment that names these tools; a non-rooms engine ships neither.
@@ -104,9 +104,10 @@ class AdvanceThreadArm(AdvanceThread):
     verb: Literal["advance_thread"]
 
 
-# Plain aliases, not `type`: the unions must flatten so the discriminator sees every arm.
-WorldChangeWithoutImprovisedItem = (
-    Reveal
+# A plain alias, not `type`: the union must flatten so the discriminator sees every arm.
+WorldChange = (
+    GainImprovisedItem
+    | Reveal
     | Move
     | AddTrait
     | RemoveTrait
@@ -116,7 +117,6 @@ WorldChangeWithoutImprovisedItem = (
     | LeaveParty
     | AdvanceThreadArm
 )
-WorldChange = GainImprovisedItem | WorldChangeWithoutImprovisedItem
 
 _CHANGE_DESCRIPTION = "The one world change to apply; `verb` picks the change."
 
@@ -125,13 +125,7 @@ class ChangeWorld(Frozen):
     change: WorldChange = Field(discriminator="verb", description=_CHANGE_DESCRIPTION)
 
 
-class ChangeWorldWithoutImprovisedItem(Frozen):
-    change: WorldChangeWithoutImprovisedItem = Field(
-        discriminator="verb", description=_CHANGE_DESCRIPTION
-    )
-
-
-def apply_change(draft: Game, change: WorldChange, validate: Validate) -> list[Fact]:
+def apply_change(draft: Game, change: WorldChange) -> list[Fact]:
     match change:
         case Reveal():
             return actions.reveal(draft, change.entity_id)
@@ -144,8 +138,7 @@ def apply_change(draft: Game, change: WorldChange, validate: Validate) -> list[F
         case RemoveTrait():
             return actions.remove_trait(draft, change.entity_id, change.trait_id)
         case Kill():
-            # A played character's death opens a succession decision, which needs the engine's gate.
-            return actions.kill(draft, change.actor_id, validate)
+            return actions.kill(draft, change.actor_id)
         case UnlockExit():
             return actions.unlock_exit(draft, change.to_id)
         case JoinParty():
@@ -156,15 +149,13 @@ def apply_change(draft: Game, change: WorldChange, validate: Validate) -> list[F
             return advance_thread(draft, change)
 
 
-def rooms_tools(
-    validate: Validate, *extra: DirectorTool, improvised: bool = True
-) -> tuple[DirectorTool, ...]:
+def rooms_tools(*extra: DirectorTool) -> tuple[DirectorTool, ...]:
     change_world = director_tool(
         "change_world",
         "Apply one settled world change to match the story. Set `verb` to pick the change and "
         "fill that verb's own fields. One call makes one change.",
-        ChangeWorld if improvised else ChangeWorldWithoutImprovisedItem,
-        lambda draft, one, _rng: apply_change(draft, one.change, validate),
+        ChangeWorld,
+        lambda draft, one, _rng: apply_change(draft, one.change),
         during_suspension=True,
     )
     return (change_world, *extra)

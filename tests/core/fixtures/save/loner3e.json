@@ -13,10 +13,6 @@
   "history": [
     {
       "prompt": "I try the vault door.",
-      "speaker": {
-        "name": "Kael",
-        "id": "player"
-      },
       "scene": "the sealed vault",
       "lines": [
         {
@@ -29,10 +25,6 @@
     },
     {
       "prompt": "I look for another way in.",
-      "speaker": {
-        "name": "Kael",
-        "id": "player"
-      },
       "scene": "the sealed vault",
       "lines": [
         {
@@ -45,10 +37,6 @@
     },
     {
       "prompt": "I lever up the loose flagstone and listen at the vault door.",
-      "speaker": {
-        "name": "Kael",
-        "id": "player"
-      },
       "scene": "the abbot's study",
       "lines": [
         {

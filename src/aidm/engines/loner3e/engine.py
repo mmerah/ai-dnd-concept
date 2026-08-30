@@ -37,6 +37,7 @@ from aidm.engines.loner3e.rules import (
 )
 from aidm.state.creation import CreationStep, Picks, check_picks, numbered_steps, picked
 from aidm.state.entities import (
+    DEAD,
     PLAYER_ID,
     CheckedEntityId,
     EngineId,
@@ -51,7 +52,6 @@ from aidm.state.play import DecisionOption
 from aidm.state.tools import NoArgs, director_tool
 from aidm.world.authoring import rooms_brief, rooms_growth_due
 from aidm.world.scene import rooms_scene
-from aidm.world.succession import TAKE_OVER, player_over
 from aidm.world.tools import DIRECTOR_WORLD, rooms_tools
 from aidm.world.topology import validate_rooms
 
@@ -240,6 +240,10 @@ _AUTHORING = (
 )
 
 
+def player_over(state: Game) -> str | None:
+    return "You died." if state.player.trait(DEAD) is not None else None
+
+
 def build(user_packs: Path) -> Engine:
     packs = load_packs((ENGINE_DIR / "packs", user_packs), Pack)
     validate = partial(_validate, packs)
@@ -254,13 +258,11 @@ def build(user_packs: Path) -> Engine:
         over=player_over,
         scene=rooms_scene(describe, advances_owed),
         mechanics_patch=partial(mechanics_patched, Loner3eState, entity_maps=("sheets",)),
-        resolvers=(TAKE_OVER,),
         authoring_brief=lambda chosen, base, opening: rooms_brief(
             base, opening, authoring_guidance(_AUTHORING, packs, chosen)
         ),
         growth_due=rooms_growth_due,
         tools=rooms_tools(
-            validate,
             director_tool(
                 "roll_question",
                 "Roll Chance against Risk for one closed dramatic question.",

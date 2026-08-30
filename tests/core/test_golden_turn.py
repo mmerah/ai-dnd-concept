@@ -3,7 +3,7 @@ from random import Random
 from typing import cast
 
 import pytest
-from core_test_support import ENGINE_IDS, KAEL, Recorder, game, narrated, played, recorded
+from core_test_support import ENGINE_IDS, Recorder, game, narrated, played, recorded
 from golden_test_support import FIXTURES, dumped, golden, golden_json
 from golden_turn_support import NARRATION
 from pydantic_ai.messages import ModelResponse
@@ -19,13 +19,11 @@ PROMPT = "I lever up the loose flagstone and listen at the vault door."
 HISTORY = (
     Exchange(
         prompt="I try the vault door.",
-        speaker=KAEL,
         scene="the sealed vault",
         lines=(SpokenLine(text="The iron handle does not turn."),),
     ),
     Exchange(
         prompt="I look for another way in.",
-        speaker=KAEL,
         scene="the sealed vault",
         lines=(SpokenLine(text="A flagstone by the wall sits proud of its neighbours."),),
     ),

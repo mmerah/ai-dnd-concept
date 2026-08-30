@@ -18,11 +18,11 @@ from pydantic_ai.usage import UsageLimits
 
 from aidm.config import Settings
 from aidm.kernel.protocol import AnyEngine
-from aidm.kernel.views import NarratorView, speaker_of
+from aidm.kernel.views import NarratorView
 from aidm.llm import build_agent, schema_of
 from aidm.state.facts import NOTHING, Fact, cards, told_traces, traced
 from aidm.state.model import Game, draft_refusal
-from aidm.state.play import Answer, Exchange, Line, Narration, Speaker, SpokenLine
+from aidm.state.play import Answer, Exchange, Line, Narration, SpokenLine
 from aidm.state.tools import DirectorTool, Play, apply_to_draft
 
 from . import context
@@ -46,8 +46,6 @@ class Turn:
     prompt: str = ""
     resumed: str = ""
     notes: tuple[str, ...] = ()
-    # Captured before the answer resolves: succession must not rename the prompt just played.
-    speaker: Speaker
 
     @classmethod
     def begin(
@@ -59,11 +57,7 @@ class Turn:
         commit: Callable[[Game], None],
         on_fact: Callable[[Fact], None] | None = None,
     ) -> Self:
-        draft = state.draft()
-        speaker = speaker_of(engine.views(draft).player.player)
-        turn = cls(
-            engine=engine, draft=draft, rng=rng, commit=commit, on_fact=on_fact, speaker=speaker
-        )
+        turn = cls(engine=engine, draft=state.draft(), rng=rng, commit=commit, on_fact=on_fact)
         turn.prompt, turn.resumed = consume_answer(turn, player_input)
         turn.notes = turn.draft.take_notes()
         turn.suspended_at_start = turn.draft.pending is not None
@@ -121,7 +115,6 @@ class Turn:
             self.engine.views(self.draft).narrator,
             self.draft,
             self.prompt,
-            self.speaker,
             lines,
             tuple(self.facts),
         )
@@ -315,12 +308,11 @@ def close_segment(
     view: NarratorView,
     draft: Game,
     prompt: str,
-    speaker: Speaker,
     lines: tuple[Line, ...],
     facts: tuple[Fact, ...],
 ) -> Game:
     """The one place a segment becomes history: builtin and code mode differ only in when."""
-    draft.record(view.label, prompt, speaker, spoken(view, lines), facts)
+    draft.record(view.label, prompt, spoken(view, lines), facts)
     draft.turn += 1
     return draft.committed()
 
@@ -329,8 +321,7 @@ def consume_answer(turn: Turn, player_input: str | Answer) -> tuple[str, str]:
     """The PLAYER ACTION and what a closed answer resolved."""
     engine, draft = turn.engine, turn.draft
     chosen = player_input.option_id if isinstance(player_input, Answer) else None
-    # Only a listed option — succession, in practice — carries a dead player character's game on.
-    if chosen is None and (ended := engine.over(draft)) is not None:
+    if (ended := engine.over(draft)) is not None:
         raise ValueError(f"{ended} The only way on is to restart.")
     # A new segment starts with no cards: an interrupted turn left its own on the draft.
     draft.turn_facts = ()

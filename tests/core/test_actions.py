@@ -26,10 +26,6 @@ def _draft() -> Game:
     return state.draft()
 
 
-def _validate(state: Game) -> None:
-    initialized()[0].validate(state)
-
-
 def _kinds(facts: Sequence[Fact]) -> list[str]:
     return [fact.kind for fact in facts]
 
@@ -185,7 +181,7 @@ def test_a_kill_drops_items_and_party_and_then_refuses_the_dead_actor() -> None:
     _ = actions.move(draft, LANTERN, TOMAS)
     _ = actions.join_party(draft, TOMAS)
 
-    assert _kinds(actions.kill(draft, TOMAS, _validate)) == ["items_dropped", "actor_killed"]
+    assert _kinds(actions.kill(draft, TOMAS)) == ["items_dropped", "actor_killed"]
     assert draft.world.require(TOMAS).trait("dead") is not None
     assert draft.world.require(LANTERN).parent_id == CLOISTER
     assert TOMAS not in draft.world.party
@@ -194,7 +190,7 @@ def test_a_kill_drops_items_and_party_and_then_refuses_the_dead_actor() -> None:
         _ = actions.add_trait(draft, TOMAS, "Hurt")
     _ = draft.committed()
 
-    _ = actions.kill(draft, PLAYER_ID, _validate)
+    _ = actions.kill(draft, PLAYER_ID)
     with pytest.raises(ValueError, match="dead"):
         _ = actions.add_trait(draft, PLAYER_ID, "Hurt")
 

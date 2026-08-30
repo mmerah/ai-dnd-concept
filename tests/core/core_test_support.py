@@ -20,16 +20,12 @@ from pydantic_settings import SettingsConfigDict
 
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.io import load_character, load_scenario, read_scenarios
-from aidm.engines.core import (
-    Engine,
-    mechanics_of,
-    player_action,
-)
+from aidm.engines.core import Engine, mechanics_of
 from aidm.engines.loner3e.engine import complete_chapter as loner_chapter
 from aidm.engines.loner3e.rules import Loner3eState
 from aidm.engines.loner3e.rules import Sheet as LonerSheet
-from aidm.engines.registry import ENGINES, begin_game, build_engines
-from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug
+from aidm.engines.registry import begin_game, build_engines
+from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Character, Game, Scenario, WorldState
 from aidm.state.play import Answer, Speaker
@@ -48,9 +44,8 @@ REPOSITORY_ROOT = Path(__file__).parents[2]
 SCENARIOS = REPOSITORY_ROOT / "scenarios"
 CHARACTERS = REPOSITORY_ROOT / "characters"
 LONER3E = EngineId("loner3e")
-TWENTYFOURXX = EngineId("twentyfourxx")
-ENGINE_IDS = tuple(ENGINES)
 ENGINES_BUILT = build_engines(REPOSITORY_ROOT / "packs")
+ENGINE_IDS = tuple(ENGINES_BUILT)
 KAEL = Speaker(name="Kael", id=PLAYER_ID)
 
 
@@ -226,24 +221,3 @@ def offline_settings() -> Settings:
         scenarios_dir=SCENARIOS,
         characters_dir=CHARACTERS,
     )
-
-
-class Breath(Frozen):
-    deep: bool
-
-
-def _breathe(draft: Game, args: Breath) -> list[Fact]:
-    del draft
-    return [
-        Fact(kind="breathed", trace="Kael breathes deep", told=args.deep),
-        Fact(kind="breathed", trace="the hidden stair creaks", told=False),
-    ]
-
-
-CATCH_BREATH = player_action(
-    "catch-breath",
-    "A moment to recover.",
-    Breath,
-    _breathe,
-    lambda state: (("Catch your breath", Breath(deep=True)),),
-)

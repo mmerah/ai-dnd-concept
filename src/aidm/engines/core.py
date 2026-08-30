@@ -32,7 +32,7 @@ from aidm.state.entities import (
     Slug,
     require_unique,
 )
-from aidm.state.facts import DiceEvent, Fact, entity_fact, roll, told_traces
+from aidm.state.facts import DiceEvent, Fact, entity_fact, roll
 from aidm.state.model import (
     Character,
     CharacterPayload,
@@ -44,9 +44,9 @@ from aidm.state.model import (
     WorldPayload,
     WorldState,
 )
-from aidm.state.play import DecisionOption, PendingDecision, PendingOption, SpokenLine
+from aidm.state.play import DecisionOption, PendingOption
 from aidm.state.scene import Scene
-from aidm.state.tools import DirectorTool, Validate, transact
+from aidm.state.tools import DirectorTool, Validate
 
 type EntityRenderer = Callable[[Entity], str]
 
@@ -87,15 +87,6 @@ def adjust(
     return [counter_fact(state, entity, key, counter, landed, why)]
 
 
-def spend(state: Game, entity: Entity, key: str, counter: Counter, amount: int) -> list[Fact]:
-    if counter.current < amount:
-        raise ValueError(
-            f"{entity.name} holds {counter.current} {key}, so {amount} cannot be spent."
-        )
-    counter.current -= amount
-    return [counter_fact(state, entity, key, counter, -amount, f"spent {key}")]
-
-
 def keep_highest(
     faces: Sequence[int], reason: str, rng: Random, *, label: str
 ) -> tuple[int, DiceEvent, Fact]:
@@ -108,16 +99,6 @@ def keep_highest(
         highlight=(rolled.index(kept),),
     )
     return kept, event, fact
-
-
-def stake_decision(risk: str, name: str, args: dict[str, JsonValue]) -> PendingDecision:
-    """`proceed` is the only option; the player's own words revise the plan instead."""
-    return PendingDecision(
-        kind="stake",
-        prompt=f"{risk}\n\nProceed, or change your plan.",
-        options=(PendingOption(id="proceed", label="Proceed", name=name, args=args),),
-        allows_text=True,
-    )
 
 
 @contextmanager
@@ -289,31 +270,6 @@ class PackCreation[P: NamedPack](CharacterCreation):
     def steps_for(self, pack: P, picks: Picks) -> tuple[CreationStep, ...]: ...
 
 
-@dataclass(frozen=True, slots=True)
-class PlayerAction:
-    name: Slug
-    description: str
-    apply: Callable[[Game, Mapping[str, JsonValue]], Sequence[Fact]]
-    offers: Callable[[Game], Sequence[tuple[str, dict[str, JsonValue]]]]
-
-
-def player_action[A: BaseModel](
-    name: Slug,
-    description: str,
-    args: type[A],
-    act: Callable[[Game, A], Sequence[Fact]],
-    offers: Callable[[Game], Sequence[tuple[str, A]]],
-) -> PlayerAction:
-    """Erases `A`: one engine tuple holds actions of different arg types. `offers` lists what the
-    player can do right now, so a UI needs no form and no judgement."""
-    return PlayerAction(
-        name,
-        description,
-        lambda draft, raw: act(draft, args.model_validate(raw)),
-        lambda state: tuple((label, one.model_dump(mode="json")) for label, one in offers(state)),
-    )
-
-
 def authoring_guidance(text: str, packs: Mapping[str, BaseModel], chosen: tuple[Slug, ...]) -> str:
     # Defaults restate rules the guidance already carries; dropping them halves the prompt.
     selected = {
@@ -337,34 +293,18 @@ class Engine:
     character: type[BaseModel] = CharacterPayload
     # The complete list: each engine names the world tools it wants, so core stays import-free.
     tools: tuple[DirectorTool, ...]
-    # Reached only by picking the open decision's option that names one, never by the Director.
-    resolvers: tuple[DirectorTool, ...] = ()
     creation: CharacterCreation
     validate: Validate
     mechanics_patch: MechanicsPatch
     scene: Callable[[Game], Scene]
     # None while the game can still be played on; the text the player is shown when it cannot.
     over: Callable[[Game], str | None] = lambda state: None
-    player_actions: tuple[PlayerAction, ...] = ()
     # Selected packs, the world an extension pass stands on or None, and the opening-slice flag.
     authoring_brief: Callable[[tuple[Slug, ...], WorldState | None, bool], AuthoringBrief]
     growth_due: Callable[[Game, int], bool] = lambda state, frontier: False
 
     def __post_init__(self) -> None:
-        require_unique(
-            f"tool names of the {self.id!r} engine",
-            (one.name for one in (*self.tools, *self.resolvers)),
-        )
-
-    def tool(self, name: str) -> DirectorTool | None:
-        return next((one for one in (*self.tools, *self.resolvers) if one.name == name), None)
-
-    def _required_tool(self, name: str, *, option_id: str | None = None) -> DirectorTool:
-        found = self.tool(name)
-        if found is None:
-            playing = f" to play option {option_id!r}" if option_id is not None else ""
-            raise ValueError(f"the {self.id!r} engine has no tool {name!r}{playing}")
-        return found
+        require_unique(f"tool names of the {self.id!r} engine", (one.name for one in self.tools))
 
     def restored(self, raw: str) -> Game:
         envelope = SaveEnvelope.model_validate_json(raw)
@@ -372,10 +312,6 @@ class Engine:
             raise ValueError(f"the save plays {envelope.engine!r}, not {self.id!r}")
         payload = self.state.model_validate(envelope.payload)
         state = Game.model_validate(envelope.model_dump() | {"payload": payload})
-        if state.pending is not None:
-            for option in state.pending.options:
-                found = self._required_tool(option.name, option_id=option.id)
-                _ = found.args.model_validate(option.args)
         self.validate(state)
         return state
 
@@ -442,42 +378,9 @@ class Engine:
         return WorldPayload(player_id=PLAYER_ID, world=world)
 
     def answer(self, draft: Game, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
-        return self._required_tool(chosen.name).call(draft, chosen.args, rng)
-
-
-def offered(
-    engine: Engine, state: Game
-) -> tuple[tuple[PlayerAction, str, dict[str, JsonValue]], ...]:
-    return tuple(
-        (one, label, args) for one in engine.player_actions for label, args in one.offers(state)
-    )
-
-
-def play_action(
-    engine: Engine, state: Game, name: Slug, raw: Mapping[str, JsonValue], rng: Random
-) -> tuple[Game, tuple[Fact, ...]]:
-    """The exchange it records is how the chat, the journal and the next Director prompt see it."""
-    if state.pending is not None:
-        raise ValueError(f"the rules wait on the player's answer first: {state.pending.prompt}")
-    match = next(
-        (
-            (one, label)
-            for one, label, args in offered(engine, state)
-            if one.name == name and args == dict(raw)
-        ),
-        None,
-    )
-    if match is None:
-        raise ValueError(f"{name!r} with {json.dumps(dict(raw))} is not offered right now")
-    found, offered_as = match
-
-    def play(draft: Game, _rng: Random) -> tuple[Fact, ...]:
-        facts = tuple(found.apply(draft, raw))
-        # Only told facts reach the player: an untold trace may name hidden canon.
-        told = SpokenLine(text="\n".join(told_traces(facts)) or "Nothing changed.")
-        views = engine.views(draft)
-        speaker = speaker_of(views.player.player)
-        draft.record(views.narrator.label, offered_as, speaker, (told,), facts)
-        return facts
-
-    return transact(engine.validate, state.draft(), play, rng)
+        found = next((one for one in self.tools if one.name == chosen.name), None)
+        if found is None:
+            raise ValueError(
+                f"the {self.id!r} engine has no tool {chosen.name!r} to play option {chosen.id!r}"
+            )
+        return found.call(draft, chosen.args, rng)

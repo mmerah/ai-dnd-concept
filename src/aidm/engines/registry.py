@@ -1,27 +1,16 @@
-from collections.abc import Callable, Mapping
-from importlib import import_module
 from pathlib import Path
 
 from aidm.engines.core import Engine
+from aidm.engines.loner3e.engine import build as build_loner3e
 from aidm.kernel.protocol import AnyEngine
 from aidm.state.entities import EngineId, Slug
 from aidm.state.model import Character, Game, Scenario
 
-# A new engine registers by existing; its folder name is the id its `build` must declare.
-ENGINES: Mapping[EngineId, Callable[[Path], Engine]] = {
-    EngineId(path.parent.name): import_module(f"aidm.engines.{path.parent.name}.engine").build
-    for path in sorted(Path(__file__).parent.glob("*/engine.py"))
-}
-
 
 def build_engines(packs_dir: Path) -> dict[EngineId, Engine]:
-    built: dict[EngineId, Engine] = {}
-    for engine_id, build in ENGINES.items():
-        one = build(packs_dir / engine_id)
-        if one.id != engine_id:
-            raise ValueError(f"the {engine_id!r} package builds the {one.id!r} engine")
-        built[engine_id] = one
-    return built
+    """User packs sit in a folder named for the engine, beside the ones the package ships."""
+    engine = build_loner3e(packs_dir / "loner3e")
+    return {engine.id: engine}
 
 
 def begin_game(

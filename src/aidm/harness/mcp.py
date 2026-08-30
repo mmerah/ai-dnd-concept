@@ -16,7 +16,7 @@ from aidm.app.runtime import Runtime
 from aidm.authoring.draft import Draft
 from aidm.authoring.run import draft_context
 from aidm.config import load_settings
-from aidm.harness.codemode import BeginScenario, Harness, OpenGame, PlayerActionCall, catalogue
+from aidm.harness.codemode import BeginScenario, Harness, OpenGame, catalogue
 from aidm.llm import schema_of
 from aidm.state.entities import require_unique
 from aidm.state.play import Answer, Narration
@@ -83,12 +83,6 @@ SERVER_TOOLS: tuple[ServerTool, ...] = (
         "Close the turn with the prose the player reads.",
         lambda harness, raw: harness.end_turn(Narration.model_validate(raw)),
         Narration,
-    ),
-    ServerTool(
-        "player_action",
-        "Apply one player action the player chose, between turns. Not a Director tool.",
-        lambda harness, raw: harness.player_action(PlayerActionCall.model_validate(raw)),
-        PlayerActionCall,
     ),
     ServerTool(
         "begin_growth",
