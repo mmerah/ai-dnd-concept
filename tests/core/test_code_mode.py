@@ -10,6 +10,7 @@ from claude_agent_sdk import McpSdkServerConfig
 from core_test_support import (
     CATCH_BREATH,
     CHARACTERS,
+    ENGINES_BUILT,
     LONER3E,
     SCENARIOS,
     TWENTYFOURXX,
@@ -463,7 +464,7 @@ async def test_a_scenario_run_writes_a_scenario_that_loads(tmp_path: Path) -> No
     written = await call(harness, "finish_scenario", {})
 
     assert "The Sunken Mill" in written
-    landed = load_scenario(scenarios, "sunken-mill")
+    landed = load_scenario(scenarios, "sunken-mill", ENGINES_BUILT[LONER3E])
     assert landed.meta.title == "The Sunken Mill"
     assert landed.packs == ("srd",)
     assert harness.authoring is None

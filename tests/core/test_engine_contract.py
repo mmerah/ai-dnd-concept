@@ -7,11 +7,13 @@ from core_test_support import (
     loner_sheet,
     scenario,
     updated,
+    with_world,
 )
 
 from aidm.engines.core import mechanics_of, rules
 from aidm.engines.loner3e.rules import LUCK_MAX, Loner3eState, Sheet, apply_restore_luck
 from aidm.engines.registry import begin_game
+from aidm.kernel.protocol import AnyEngine
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.model import Game
@@ -95,9 +97,9 @@ def test_rules_on_an_entity_created_in_play_are_its_sheet() -> None:
 def test_authored_rules_are_the_sheet_of_whatever_carries_them() -> None:
     """Every actor is rollable; anything else is described only where a scenario wrote rules."""
     engine, shipped = ENGINES_BUILT[LONER3E], scenario()
-    authored = updated(
+    authored = with_world(
         shipped,
-        world=updated(
+        updated(
             shipped.world,
             mechanics=engine.mechanics_patch(
                 shipped.world.mechanics,
@@ -117,4 +119,6 @@ def test_authored_rules_are_the_sheet_of_whatever_carries_them() -> None:
 
 def test_every_registered_engine_builds_itself_under_its_own_id() -> None:
     for engine_id in ENGINE_IDS:
-        assert ENGINES_BUILT[engine_id].id == engine_id
+        # The annotation is the check: an engine that drifts from the protocol fails to type.
+        checked: AnyEngine = ENGINES_BUILT[engine_id]
+        assert checked.id == engine_id

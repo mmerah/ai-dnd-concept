@@ -2,7 +2,15 @@ from collections.abc import Callable, Iterator, Sequence
 from copy import deepcopy
 from typing import Literal, Self
 
-from pydantic import Field, JsonValue, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    JsonValue,
+    SerializeAsAny,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from aidm.state.entities import (
     CheckedEntityId,
@@ -17,7 +25,7 @@ from aidm.state.entities import (
     require_unique,
 )
 from aidm.state.facts import Fact, cards, entity_fact, labeled
-from aidm.state.play import Exchange, Line, PendingDecision
+from aidm.state.play import Exchange, PendingDecision, Speaker, SpokenLine
 
 ThreadStatus = Literal["active", "resolved", "dormant"]
 
@@ -59,7 +67,6 @@ class WorldState(Mutable):
     entities: dict[EntityId, Entity] = Field(default_factory=dict)
     threads: dict[Slug, Thread] = Field(default_factory=dict)
     party: list[EntityId] = Field(default_factory=list)
-    pending_notes: tuple[str, ...] = ()
     # Engine-owned JSON: core never reads inside it.
     mechanics: Mechanics = Field(default_factory=dict)
 
@@ -117,31 +124,69 @@ class ScenarioMeta(Frozen):
     premise: str
 
 
+def require_parsed_payload(value: object) -> object:
+    """A bare BaseModel would swallow a dict whole; the engine parses its payload first."""
+    if not isinstance(value, BaseModel):
+        raise ValueError("the engine parses the payload before the model holds it")
+    return value
+
+
+class WorldPayload(Mutable):
+    """The legacy engines' save payload; it dies with the Phase-3 port to typed engine states."""
+
+    # Which entity the player plays: it moves to a companion when the played character dies.
+    player_id: CheckedEntityId
+    world: WorldState
+
+    @model_validator(mode="after")
+    def _playable(self) -> Self:
+        if not self.world.require_kind(self.player_id, "actor").known:
+            raise ValueError("the player entity must be known")
+        if self.player_id in self.world.party:
+            raise ValueError("the player cannot travel with themselves")
+        return self
+
+
 class Game(Mutable):
-    """The game as it is played, and the boundary a save on disk is validated through."""
+    """The game as it is played; its dump is the save envelope around one engine payload."""
 
     scenario_id: Slug
     character_id: Slug
     scenario: ScenarioMeta
     engine: EngineId
     packs: tuple[Slug, ...] = Field(min_length=1)
-    # Which entity the player plays: it moves to a companion when the played character dies.
-    player_id: CheckedEntityId
-    world: WorldState
+    turn: int = Field(default=0, ge=0)
+    history: tuple[Exchange, ...] = ()
     # Cards of the turn in flight; a harness in another process reaches the page through the save.
     turn_facts: tuple[Fact, ...]
-    history: tuple[Exchange, ...] = ()
-    turn: int = Field(default=0, ge=0)
     pending: PendingDecision | None = None
+    notes: tuple[str, ...] = ()
+    payload: SerializeAsAny[BaseModel]
+
+    _payload_is_parsed = field_validator("payload", mode="before")(require_parsed_payload)
 
     @model_validator(mode="after")
     def _playable_game(self) -> Self:
         require_unique("game pack ids", self.packs)
-        if not self.player.known:
-            raise ValueError("the player entity must be known")
-        if self.player_id in self.world.party:
-            raise ValueError("the player cannot travel with themselves")
         return self
+
+    @property
+    def _legacy(self) -> WorldPayload:
+        if not isinstance(self.payload, WorldPayload):
+            raise ValueError(f"the {self.engine!r} state holds no rooms world")
+        return self.payload
+
+    @property
+    def world(self) -> WorldState:
+        return self._legacy.world
+
+    @property
+    def player_id(self) -> EntityId:
+        return self._legacy.player_id
+
+    @player_id.setter
+    def player_id(self, value: EntityId) -> None:
+        self._legacy.player_id = value
 
     @property
     def player(self) -> Entity:
@@ -150,13 +195,22 @@ class Game(Mutable):
     def label(self, entity: Entity) -> str:
         return labeled(entity, self.player_id)
 
+    def player_speaker(self) -> Speaker:
+        player = self.player
+        return Speaker(name=player.name, id=player.id)
+
     def take_notes(self) -> tuple[str, ...]:
         """Notes are read once; a note a tool writes after this steers the next turn."""
-        notes, self.world.pending_notes = self.world.pending_notes, ()
+        notes, self.notes = self.notes, ()
         return notes
 
     def record(
-        self, scene_label: str, prompt: str, lines: tuple[Line, ...], facts: tuple[Fact, ...]
+        self,
+        scene_label: str,
+        prompt: str,
+        speaker: Speaker,
+        lines: tuple[SpokenLine, ...],
+        facts: tuple[Fact, ...],
     ) -> None:
         """The one shape an exchange takes, whether a turn or the player's own action wrote it."""
         self.turn_facts = ()
@@ -164,6 +218,7 @@ class Game(Mutable):
             *self.history,
             Exchange(
                 prompt=prompt,
+                speaker=speaker,
                 scene=scene_label,
                 lines=lines,
                 facts=cards(facts),
@@ -177,7 +232,9 @@ class Game(Mutable):
 
     def committed(self) -> Self:
         """Dumping runs no validator, so the dump is validated back: that is the commit gate."""
-        return type(self).model_validate(self.model_dump(round_trip=True))
+        dumped = self.model_dump(round_trip=True)
+        dumped["payload"] = type(self.payload).model_validate(dumped["payload"])
+        return type(self).model_validate(dumped)
 
     def add(self, entity: Entity) -> Fact:
         """Copy into the fact, so a later move in the same turn cannot rewrite the entry."""

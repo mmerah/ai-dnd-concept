@@ -3,7 +3,7 @@ from random import Random
 
 from core_test_support import ENGINES_BUILT, LONER3E, character, offline_settings, scenario
 
-from aidm.app.runtime import GameSession, LaunchTarget
+from aidm.app.runtime import GameService, LaunchTarget
 from aidm.content.io import FileStore
 from aidm.engines.core import load_packs, mechanics_of
 from aidm.engines.loner3e.engine import ENGINE_DIR, complete_chapter
@@ -16,10 +16,10 @@ TARGET = LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="
 TWISTS = twist_table(load_packs((ENGINE_DIR / "packs",), Pack), SRD_PACK)
 
 
-def loner3e_session(directory: Path) -> GameSession:
+def loner3e_session(directory: Path) -> GameService:
     settings = offline_settings()
     engine = ENGINES_BUILT[LONER3E]
-    return GameSession(
+    return GameService(
         target=TARGET,
         scenario=scenario(),
         character=character(),

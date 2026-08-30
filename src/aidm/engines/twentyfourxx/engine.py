@@ -6,7 +6,7 @@ from random import Random
 from pydantic import Field, JsonValue
 
 from aidm.content.io import engine_text
-from aidm.content.model import Character
+from aidm.content.model import Character, CharacterPayload
 from aidm.engines.core import (
     ADVANCE_SPENT,
     Engine,
@@ -260,16 +260,18 @@ class TwentyfourxxCreation(PackCreation[Pack]):
             engine=EngineId("twentyfourxx"),
             name=name,
             brief=brief,
-            traits=tuple(traits),
-            items=items,
-            mechanics=TwentyfourxxState(
-                sheets={PLAYER_ID: sheet},
-                items={
-                    EntityId(entry.id): ItemSheet.model_validate(marks)
-                    for entry in kit
-                    if (marks := _marks(entry)) is not None
-                },
-            ).model_dump(mode="json"),
+            payload=CharacterPayload(
+                traits=tuple(traits),
+                items=items,
+                mechanics=TwentyfourxxState(
+                    sheets={PLAYER_ID: sheet},
+                    items={
+                        EntityId(entry.id): ItemSheet.model_validate(marks)
+                        for entry in kit
+                        if (marks := _marks(entry)) is not None
+                    },
+                ).model_dump(mode="json"),
+            ),
         )
 
 

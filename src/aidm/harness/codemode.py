@@ -15,7 +15,7 @@ from aidm.app.launch import (
     launch_target,
     load_catalog,
 )
-from aidm.app.runtime import GameSession, Runtime
+from aidm.app.runtime import GameService, Runtime
 from aidm.authoring.draft import Draft, playtest_check
 from aidm.authoring.run import (
     AuthoringRun,
@@ -105,7 +105,7 @@ class Harness:
     settings: Settings
     runtime: Runtime
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
-    session: GameSession | None = None
+    session: GameService | None = None
     turn: Turn | None = None
     authoring: AuthoringRun | None = None
 
@@ -126,7 +126,7 @@ class Harness:
             replace(briefs[0], tools=tuple(published.values())),
         )
 
-    def opened(self) -> GameSession:
+    def opened(self) -> GameService:
         if self.session is None:
             raise ModelRetry(
                 f"no game is open; call open_game(slug) first.\n{catalogue(self.runtime)}"
@@ -174,7 +174,7 @@ class Harness:
                 state.scenario,
                 active_threads(state.world.threads.values()),
                 NO_TURN_OPEN,
-                notes=state.world.pending_notes,
+                notes=state.notes,
             )
         )
         sections = [
@@ -191,13 +191,7 @@ class Harness:
 
     def start_turn(self, answer: Answer) -> str:
         session = self.opened()
-        self.turn = Turn.begin(
-            session.engine,
-            session.state,
-            answer,
-            session.rng,
-            lambda draft: session.commit(draft.committed()),
-        )
+        self.turn = session.begin_turn(answer)
         return self.scene()
 
     def end_turn(self, closing: Narration) -> str:
@@ -212,8 +206,7 @@ class Harness:
         visible = VisibleScene.revealed_from(session.engine.scene(turn.draft), turn.draft.world)
         if refused := speakers_refusal(visible, lines):
             raise ModelRetry(refused)
-        state = turn.finish(lines)
-        session.commit(state)
+        state = session.end_turn(turn, lines)
         self.turn = None
         closed = f"turn {state.turn} committed."
         return f"{closed}\n{GROWTH_DUE}" if session.growth_due() else closed
@@ -351,7 +344,7 @@ def _waiting(pending: PendingDecision | None) -> str:
     return "\n".join([f"{pending.kind}: {pending.prompt}", *lines])
 
 
-def _offers_listing(session: GameSession) -> str:
+def _offers_listing(session: GameService) -> str:
     return "\n".join(
         f"- {label}: player_action(name={action.name}, args={json.dumps(args)})"
         for action, label, args in session.offers()

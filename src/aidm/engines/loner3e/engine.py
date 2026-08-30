@@ -6,7 +6,7 @@ from random import Random
 from pydantic import Field
 
 from aidm.content.io import engine_text
-from aidm.content.model import Character
+from aidm.content.model import Character, CharacterPayload
 from aidm.engines.core import (
     ADVANCE_SPENT,
     Engine,
@@ -175,8 +175,10 @@ class Loner3eCreation(PackCreation[Pack]):
             engine=EngineId("loner3e"),
             name=name,
             brief=brief,
-            mechanics=Loner3eState(sheets={PLAYER_ID: sheet}, twist_pack=chosen).model_dump(
-                mode="json"
+            payload=CharacterPayload(
+                mechanics=Loner3eState(sheets={PLAYER_ID: sheet}, twist_pack=chosen).model_dump(
+                    mode="json"
+                )
             ),
         )
 

@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
-from core_test_support import ENGINE_IDS, ENGINES_BUILT, LONER3E, initialized, scenario
+from core_test_support import ENGINES_BUILT, KAEL, LONER3E, initialized, scenario
 
 from aidm.content.io import (
     ENCODING,
@@ -22,6 +22,7 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
     draft.history = (
         Exchange(
             prompt="I take the map.",
+            speaker=KAEL,
             scene="the sealed vault",
             lines=(),
             facts=(
@@ -55,16 +56,16 @@ def test_storage_rejects_unsafe_slugs(tmp_path: Path, slug: str) -> None:
 def test_content_paths_reject_an_unsafe_id(tmp_path: Path) -> None:
     engine = ENGINES_BUILT[LONER3E]
     with pytest.raises(ValueError, match="invalid content id"):
-        load_scenario(tmp_path, "../escape")
+        load_scenario(tmp_path, "../escape", engine)
     with pytest.raises(ValueError, match="invalid content id"):
-        load_character(tmp_path, "kael/../..", engine.id)
+        load_character(tmp_path, "kael/../..", engine)
 
 
 def test_write_scenario_round_trips_and_refuses_a_duplicate(tmp_path: Path) -> None:
     original = scenario()
 
     write_scenario(tmp_path, "vault-copy", original)
-    loaded = load_scenario(tmp_path, "vault-copy")
+    loaded = load_scenario(tmp_path, "vault-copy", ENGINES_BUILT[LONER3E])
 
     assert loaded == original
     with pytest.raises(ValueError, match="already exists"):
@@ -78,4 +79,4 @@ def test_read_scenarios_skips_a_world_that_fails_to_validate(tmp_path: Path) -> 
     broken.mkdir()
     (broken / "world.json").write_text(json.dumps({"meta": {}}), encoding=ENCODING)
 
-    assert [slug for slug, _ in read_scenarios(tmp_path, ENGINE_IDS)] == ["good"]
+    assert [slug for slug, _ in read_scenarios(tmp_path, ENGINES_BUILT)] == ["good"]

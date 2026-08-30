@@ -52,12 +52,12 @@ def character_page(runtime: Runtime, engine_id: str) -> None:
                     ui.notify("Name the character.", type="warning")
                     return
                 try:
-                    created = creation.create(title, (brief.value or "").strip(), picks)
-                    write_character(runtime.settings.characters_dir, created)
+                    envelope, _ = creation.created(title, (brief.value or "").strip(), picks)
+                    write_character(runtime.settings.characters_dir, envelope)
                 except ValueError as refused:
                     ui.notify(str(refused), type="negative")
                     return
-                LOGGER.info("character created: slug=%s engine=%s", created.id, engine.id)
+                LOGGER.info("character created: slug=%s engine=%s", envelope.id, engine.id)
                 ui.navigate.to("/")
 
             @ui.refreshable
@@ -81,7 +81,7 @@ def character_page(runtime: Runtime, engine_id: str) -> None:
                     )
                     return
                 try:
-                    preview = creation.create(
+                    _, preview = creation.created(
                         (name.value or "").strip() or "Unnamed",
                         (brief.value or "").strip(),
                         picks,
@@ -90,9 +90,7 @@ def character_page(runtime: Runtime, engine_id: str) -> None:
                     ui.label(f"Not ready yet: {refused}").classes("text-sm opacity-50")
                     return
                 ui.separator().classes("q-my-sm")
-                rows = [(trait.name, trait.text) for trait in preview.traits]
-                rows.extend(("carrying", item.name) for item in preview.items)
-                for label, text in rows:
+                for label, text in preview.rows:
                     labeled_value(label, text)
                 ui.button("Create", icon="person_add", on_click=create).props("color=primary")
 

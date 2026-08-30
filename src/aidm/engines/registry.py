@@ -5,7 +5,7 @@ from pathlib import Path
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, Slug
-from aidm.state.model import Game
+from aidm.state.model import Game, WorldPayload
 
 # A new engine registers by existing; its folder name is the id its `build` must declare.
 ENGINES: Mapping[EngineId, Callable[[Path], Engine]] = {
@@ -57,9 +57,8 @@ def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character:
         scenario=scenario.meta,
         engine=engine.id,
         packs=scenario.packs,
-        player_id=PLAYER_ID,
-        world=world,
         turn_facts=(),
+        payload=WorldPayload(player_id=PLAYER_ID, world=world),
     )
     engine.validate(state)
     return state.committed()

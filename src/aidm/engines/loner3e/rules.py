@@ -295,7 +295,7 @@ def _twist(
     )
     action_kept, action_die, action_fact = keep_highest(face, "twist — action", rng, label="Action")
     subject, action = twist_pairing(subject_kept, action_kept, twists)
-    draft.world.pending_notes = (*draft.world.pending_notes, twist_note(subject, action))
+    draft.notes = (*draft.notes, twist_note(subject, action))
     # Echo the unnamed SRD intrusion in the call that rolled it without adding canon.
     due = entity_fact(
         actor,
@@ -317,7 +317,7 @@ def _strike(
     facts = adjust(draft, hit, "luck", sheet.luck, -abs(harm), why)
     if sheet.luck.current != 0:
         return facts
-    draft.world.pending_notes = (*draft.world.pending_notes, defeat_note(hit.name))
+    draft.notes = (*draft.notes, defeat_note(hit.name))
     lost = f"{hit.name} is out of luck"
     facts.append(entity_fact(hit, "conflict_lost", lost, card=lost))
     # SRD: luck resets after conflicts, and a side at 0 is the only end the engine sees.

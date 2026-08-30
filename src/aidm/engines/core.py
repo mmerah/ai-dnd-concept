@@ -10,7 +10,17 @@ from typing import Protocol
 from pydantic import BaseModel, JsonValue, ValidationError
 
 from aidm.content.io import ENCODING
-from aidm.content.model import AuthoringBrief, Character
+from aidm.content.model import AuthoringBrief, Character, CharacterPayload, ScenarioPayload
+from aidm.kernel.envelope import CharacterEnvelope, SaveEnvelope
+from aidm.kernel.views import (
+    ArtSubject,
+    CreationPreview,
+    DirectorView,
+    NarratorView,
+    PlayerPrompt,
+    PlayerView,
+    Views,
+)
 from aidm.state.creation import CreationStep, Picks, picked
 from aidm.state.entities import (
     Counter,
@@ -21,9 +31,9 @@ from aidm.state.entities import (
     require_unique,
 )
 from aidm.state.facts import DiceEvent, Fact, entity_fact, roll, told_traces
-from aidm.state.model import Game, Mechanics, MechanicsPatch, WorldState
-from aidm.state.play import DecisionOption, Line, PendingDecision, PendingOption
-from aidm.state.scene import Scene
+from aidm.state.model import Game, Mechanics, MechanicsPatch, WorldPayload, WorldState
+from aidm.state.play import DecisionOption, PendingDecision, PendingOption, SpokenLine
+from aidm.state.scene import Scene, VisibleScene
 from aidm.state.tools import DirectorTool, Validate, transact
 
 type EntityRenderer = Callable[[Entity], str]
@@ -213,6 +223,24 @@ class CharacterCreation(ABC):
     def create(self, name: str, brief: str, picks: Picks) -> Character:
         """Raises ValueError with the reason the page shows when the pick set is illegal."""
 
+    def created(
+        self, name: str, brief: str, picks: Picks
+    ) -> tuple[CharacterEnvelope, CreationPreview]:
+        character = self.create(name, brief, picks)
+        payload = character.payload.model_dump(mode="json")
+        envelope = CharacterEnvelope(
+            id=character.id,
+            engine=character.engine,
+            name=character.name,
+            brief=character.brief,
+            payload=payload,
+        )
+        rows = (
+            *((trait.name, trait.text) for trait in character.traits),
+            *(("carrying", item.name) for item in character.items),
+        )
+        return envelope, CreationPreview(rows=rows)
+
 
 def load_packs[P: BaseModel](directories: Sequence[Path], model: type[P]) -> dict[str, P]:
     """Later directories win; a broken file raises rather than being skipped."""
@@ -284,10 +312,17 @@ def authoring_guidance(text: str, packs: Mapping[str, BaseModel], chosen: tuple[
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Engine:
+    """Satisfies `kernel.protocol.Engine` structurally; the extra fields are the Phase-1 shim
+    the Phase-3 port deletes."""
+
     id: EngineId
     title: str
     instructions: str
     packs: Mapping[str, BaseModel]
+    # The envelope payload models this engine parses at stage two of every disk read.
+    state: type[BaseModel] = WorldPayload
+    scenario: type[BaseModel] = ScenarioPayload
+    character: type[BaseModel] = CharacterPayload
     # The complete list: each engine names the world tools it wants, so core stays import-free.
     tools: tuple[DirectorTool, ...]
     # Reached only by picking the open decision's option that names one, never by the Director.
@@ -313,9 +348,11 @@ class Engine:
         return next((one for one in (*self.tools, *self.resolvers) if one.name == name), None)
 
     def restored(self, raw: str) -> Game:
-        state = Game.model_validate_json(raw)
-        if state.engine != self.id:
-            raise ValueError(f"the save plays {state.engine!r}, not {self.id!r}")
+        envelope = SaveEnvelope.model_validate_json(raw)
+        if envelope.engine != self.id:
+            raise ValueError(f"the save plays {envelope.engine!r}, not {self.id!r}")
+        payload = self.state.model_validate(envelope.payload)
+        state = Game.model_validate(envelope.model_dump() | {"payload": payload})
         if state.pending is not None:
             for option in state.pending.options:
                 found = self.tool(option.name)
@@ -327,6 +364,40 @@ class Engine:
                 _ = found.args.model_validate(option.args)
         self.validate(state)
         return state
+
+    def views(self, state: Game) -> Views:
+        scene = self.scene(state)
+        visible = VisibleScene.revealed_from(scene, state.world)
+
+        def subject(entity_id: EntityId) -> ArtSubject:
+            entity = state.world.require(entity_id)
+            return ArtSubject(id=entity.id, name=entity.name, brief=entity.brief)
+
+        prompt = state.pending
+        return Views(
+            director=DirectorView(sections=scene.director_sections),
+            narrator=NarratorView(
+                label=visible.label,
+                summary=visible.summary,
+                sections=visible.sections,
+                prompts=visible.prompts,
+                art_prompt=visible.art_prompt,
+                subjects=tuple(subject(one) for one in visible.art_subject_ids),
+            ),
+            player=PlayerView(
+                player=subject(state.player_id),
+                prompt=None
+                if prompt is None
+                else PlayerPrompt(
+                    prompt=prompt.prompt,
+                    options=tuple(
+                        DecisionOption(id=one.id, label=one.label, detail=one.detail)
+                        for one in prompt.options
+                    ),
+                    allows_text=prompt.allows_text,
+                ),
+            ),
+        )
 
 
 def offered(
@@ -358,8 +429,8 @@ def play_action(
     def play(draft: Game, _rng: Random) -> tuple[Fact, ...]:
         facts = tuple(found.apply(draft, raw))
         # Only told facts reach the player: an untold trace may name hidden canon.
-        told = Line(text="\n".join(told_traces(facts)) or "Nothing changed.")
-        draft.record(engine.scene(draft).label, offered_as, (told,), facts)
+        told = SpokenLine(text="\n".join(told_traces(facts)) or "Nothing changed.")
+        draft.record(engine.scene(draft).label, offered_as, draft.player_speaker(), (told,), facts)
         return facts
 
     return transact(engine.validate, state.draft(), play, rng)

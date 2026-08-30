@@ -4,8 +4,8 @@ from collections.abc import Mapping
 from aidm.config import Settings
 from aidm.content.io import FileStore, read_characters, read_scenarios
 from aidm.engines.core import Engine
+from aidm.kernel.envelope import SaveEnvelope
 from aidm.state.entities import EngineId, Frozen, Slug
-from aidm.state.model import Game
 
 LOGGER = logging.getLogger(__name__)
 
@@ -71,11 +71,11 @@ def load_catalog(settings: Settings, engines: Mapping[EngineId, Engine]) -> Laun
             subtitle=scenario.meta.premise,
             engines=(scenario.engine,),
         )
-        for name, scenario in read_scenarios(settings.scenarios_dir, ids)
+        for name, scenario in read_scenarios(settings.scenarios_dir, engines)
     )
     characters = tuple(
         CatalogEntry(id=name, title=character.name, subtitle=character.brief, engines=written)
-        for name, character, written in read_characters(settings.characters_dir, ids)
+        for name, character, written in read_characters(settings.characters_dir, engines)
     )
     titles = {entry.id: entry.title for entry in characters}
     scenario_ids = {entry.id for entry in scenarios}
@@ -86,7 +86,7 @@ def load_catalog(settings: Settings, engines: Mapping[EngineId, Engine]) -> Laun
         if raw is None:
             continue
         try:
-            game = Game.model_validate_json(raw)
+            game = SaveEnvelope.model_validate_json(raw)
         except ValueError as unreadable:
             # Skip rather than raise: one save the app could not resume must not hide the rest.
             LOGGER.warning("skipping save %r: %s", slug, unreadable)

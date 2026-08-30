@@ -21,7 +21,7 @@ from aidm.engines.core import Engine
 from aidm.llm import build_agent, schema_of
 from aidm.state.facts import NOTHING, Fact, cards, told_traces, traced
 from aidm.state.model import Game, draft_refusal
-from aidm.state.play import Answer, Exchange, Line, Narration
+from aidm.state.play import Answer, Exchange, Line, Narration, Speaker, SpokenLine
 from aidm.state.scene import VisibleScene
 from aidm.state.tools import DirectorTool, Play, apply_to_draft
 
@@ -46,6 +46,8 @@ class Turn:
     prompt: str = ""
     resumed: str = ""
     notes: tuple[str, ...] = ()
+    # Captured before the answer resolves: succession must not rename the prompt just played.
+    speaker: Speaker | None = None
 
     @classmethod
     def begin(
@@ -58,6 +60,7 @@ class Turn:
         on_fact: Callable[[Fact], None] | None = None,
     ) -> Self:
         turn = cls(engine=engine, draft=state.draft(), rng=rng, commit=commit, on_fact=on_fact)
+        turn.speaker = turn.draft.player_speaker()
         turn.prompt, turn.resumed = consume_answer(turn, player_input)
         turn.notes = turn.draft.take_notes()
         turn.suspended_at_start = turn.draft.pending is not None
@@ -80,7 +83,7 @@ class Turn:
             context.active_threads(draft.world.threads.values()),
             self.prompt,
             resumed=self.resumed,
-            notes=(*self.notes, *draft.world.pending_notes),
+            notes=(*self.notes, *draft.notes),
         )
 
     def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
@@ -101,11 +104,11 @@ class Turn:
 
     def _applied(self, play: Play) -> str:
         """What the call changed, as the Director reads it back."""
-        already_pending = len(self.draft.world.pending_notes)
+        already_pending = len(self.draft.notes)
         decided_before = self.draft.pending
         landed = _apply(self, play)
         lines = [f"- {fact.trace}" for fact in landed]
-        lines.extend(f"- {note}" for note in self.draft.world.pending_notes[already_pending:])
+        lines.extend(f"- {note}" for note in self.draft.notes[already_pending:])
         lines.extend(_reached(self.draft, landed))
         if decided_before is None and self.draft.pending is not None:
             lines.append(f"- {RULES_WAIT}")
@@ -116,6 +119,7 @@ class Turn:
             self.engine.scene(self.draft).label,
             self.draft,
             self.prompt,
+            self.speaker or self.draft.player_speaker(),
             lines,
             tuple(self.facts),
         )
@@ -248,23 +252,18 @@ type TurnStep = Literal["director", "narrator", "scenario_creator"]
 
 
 async def run_segment(
-    state: Game,
-    player_input: str | Answer,
+    turn: Turn,
     *,
-    engine: Engine,
     stages: TurnAgents,
     settings: Settings,
-    rng: Random,
     on_step: Callable[[TurnStep], None] | None = None,
-    on_fact: Callable[[Fact], None] | None = None,
-) -> Game:
+) -> tuple[Line, ...]:
     def announce(step: TurnStep) -> None:
         if on_step is not None:
             on_step(step)
 
-    history = exchanges_to_messages(state.history[-settings.turn.recent_exchanges :])
-    turn = Turn.begin(engine, state, player_input, rng, lambda _: None, on_fact)
-    draft, prompt = turn.draft, turn.prompt
+    engine, draft, prompt = turn.engine, turn.draft, turn.prompt
+    history = exchanges_to_messages(draft.history[-settings.turn.recent_exchanges :])
 
     announce("director")
     director_prompt = turn.picture()
@@ -291,18 +290,31 @@ async def run_segment(
         ).output
         lines = narration.lines
 
-    return turn.finish(lines)
+    return lines
+
+
+def spoken(state: Game, lines: Sequence[Line]) -> tuple[SpokenLine, ...]:
+    """Attribution is denormalized here, so chat and journal never resolve ids through state."""
+
+    def one(line: Line) -> SpokenLine:
+        if line.speaker_id is None:
+            return SpokenLine(text=line.text)
+        who = state.world.require(line.speaker_id)
+        return SpokenLine(speaker=Speaker(name=who.name, id=who.id), text=line.text)
+
+    return tuple(one(line) for line in lines)
 
 
 def close_segment(
     scene_label: str,
     draft: Game,
     prompt: str,
+    speaker: Speaker,
     lines: tuple[Line, ...],
     facts: tuple[Fact, ...],
 ) -> Game:
     """The one place a segment becomes history: builtin and code mode differ only in when."""
-    draft.record(scene_label, prompt, lines, facts)
+    draft.record(scene_label, prompt, speaker, spoken(draft, lines), facts)
     draft.turn += 1
     return draft.committed()
 
@@ -324,8 +336,8 @@ def consume_answer(turn: Turn, player_input: str | Answer) -> tuple[str, str]:
         return player_input, ""
     if chosen is None:
         if consumed is not None:
-            draft.world.pending_notes = (
-                *draft.world.pending_notes,
+            draft.notes = (
+                *draft.notes,
                 f'The rules paused play to ask the player: "{consumed.prompt}" '
                 "The PLAYER ACTION is their answer.",
             )

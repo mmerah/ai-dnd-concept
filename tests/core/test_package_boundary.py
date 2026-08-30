@@ -7,8 +7,8 @@ from aidm.engines.registry import ENGINES as REGISTERED
 
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
 ENGINES = tuple(f"aidm.engines.{engine_id}" for engine_id in REGISTERED)
-# Flow: state <- content <- world <- engines <- turn <- authoring <- app <- harness <- ui.
-LAYERS = ("state", "content", "world", "engines", "turn", "authoring", "app", "harness")
+# Flow: state <- kernel <- content <- world <- engines <- turn <- authoring <- app <- harness <- ui.
+LAYERS = ("state", "kernel", "content", "world", "engines", "turn", "authoring", "app", "harness")
 # `ui` sits above them all, imports downwards, and additionally stays engine-agnostic.
 TOPS = {"ui": {"aidm.engines"}}
 # A framework belongs to the layers that own it and to nothing below them.

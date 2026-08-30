@@ -136,7 +136,7 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     subject, action_name = twist.card.removeprefix("Twist — ").split(" / ")
     rolled = twist_note(subject, action_name)
     assert mechanics_of(draft.world, Loner3eState).twist.current == 0
-    assert rolled in draft.world.pending_notes
+    assert rolled in draft.notes
 
 
 def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
@@ -187,7 +187,7 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     assert sheet(draft, FOE).luck.current == 10
     assert sheet(draft, PLAYER_ID).luck.current == LUCK_MAX
     assert any(fact.kind == "conflict_lost" for fact in facts)
-    assert defeat_note(draft.world.require(FOE).name) in draft.world.pending_notes
+    assert defeat_note(draft.world.require(FOE).name) in draft.notes
     # The conflict is over, so the defeat note steers the same run instead of handing control back.
     assert draft.pending is None
 

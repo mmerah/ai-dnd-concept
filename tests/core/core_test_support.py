@@ -30,11 +30,11 @@ from aidm.engines.loner3e.engine import complete_chapter as loner_chapter
 from aidm.engines.loner3e.rules import Loner3eState
 from aidm.engines.loner3e.rules import Sheet as LonerSheet
 from aidm.engines.registry import ENGINES, begin_game, build_engines
-from aidm.state.entities import EngineId, Entity, EntityId, Frozen, Slug
+from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import Fact
-from aidm.state.model import Game
-from aidm.state.play import Answer
-from aidm.turn.run import TurnStep, build_turn_agents, run_segment
+from aidm.state.model import Game, WorldState
+from aidm.state.play import Answer, Speaker
+from aidm.turn.run import Turn, TurnStep, build_turn_agents, run_segment
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 
@@ -52,11 +52,19 @@ LONER3E = EngineId("loner3e")
 TWENTYFOURXX = EngineId("twentyfourxx")
 ENGINE_IDS = tuple(ENGINES)
 ENGINES_BUILT = build_engines(REPOSITORY_ROOT / "packs")
+KAEL = Speaker(name="Kael", id=PLAYER_ID)
 
 
 def updated[T: BaseModel](model: T, **changes: object) -> T:
     """A validating copy. Production commits once per turn; a test wants the check right here."""
-    return type(model).model_validate(model.model_dump(round_trip=True) | changes)
+    dumped = model.model_dump(round_trip=True) | changes
+    if isinstance(model, Game | Scenario | Character) and isinstance(dumped["payload"], dict):
+        dumped["payload"] = type(model.payload).model_validate(dumped["payload"])
+    return type(model).model_validate(dumped)
+
+
+def with_world(authored: Scenario, world: WorldState) -> Scenario:
+    return updated(authored, payload=updated(authored.payload, world=world))
 
 
 def with_entity(state: Game, entity: Entity) -> Game:
@@ -78,19 +86,18 @@ def loner_sheet(state: Game, entity_id: EntityId) -> LonerSheet:
 
 
 def scenario() -> Scenario:
-    return load_scenario(SCENARIOS, "whispering-vault")
+    return load_scenario(SCENARIOS, "whispering-vault", ENGINES_BUILT[LONER3E])
 
 
 def character() -> Character:
-    engine = ENGINES_BUILT[LONER3E]
-    return load_character(CHARACTERS, "kael", engine.id)
+    return load_character(CHARACTERS, "kael", ENGINES_BUILT[LONER3E])
 
 
 def scenario_for(engine_id: EngineId) -> Slug:
     """Read off the shipped content rather than tabulated, so a second one fails here loudly."""
     shipped = [
         slug
-        for slug, scenario in read_scenarios(SCENARIOS, ENGINE_IDS)
+        for slug, scenario in read_scenarios(SCENARIOS, ENGINES_BUILT)
         if scenario.engine == engine_id
     ]
     if len(shipped) != 1:
@@ -102,8 +109,8 @@ def game(engine_id: EngineId) -> tuple[Engine, Game]:
     """The scenario authored for this engine and the shipped character, composed together."""
     engine = ENGINES_BUILT[engine_id]
     scenario_id = scenario_for(engine_id)
-    selected_scenario = load_scenario(SCENARIOS, scenario_id)
-    selected_character = load_character(CHARACTERS, "kael", engine.id)
+    selected_scenario = load_scenario(SCENARIOS, scenario_id, engine)
+    selected_character = load_character(CHARACTERS, "kael", engine)
     return engine, begin_game(engine, scenario_id, selected_scenario, selected_character)
 
 
@@ -201,16 +208,11 @@ async def played(
     with ExitStack() as stack:
         stack.enter_context(stages.director.override(model=director))
         stack.enter_context(stages.narrator.override(model=narrator))
-        return await run_segment(
-            state,
-            player_input,
-            engine=engine,
-            stages=stages,
-            settings=settings,
-            rng=Random(0) if rng is None else rng,
-            on_step=on_step,
-            on_fact=on_fact,
+        turn = Turn.begin(
+            engine, state, player_input, Random(0) if rng is None else rng, lambda _: None, on_fact
         )
+        lines = await run_segment(turn, stages=stages, settings=settings, on_step=on_step)
+        return turn.finish(lines)
 
 
 def offline_settings() -> Settings:

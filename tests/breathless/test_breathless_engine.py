@@ -77,7 +77,7 @@ def test_a_check_wears_the_skill_down_to_the_floor_and_breath_resets_it() -> Non
     assert [label for label, _ in breathers(landed)] == ["Catch your breath"]
     after, facts = play_action(engine, landed, "catch_breath", {"actor_id": PLAYER_ID}, Random(0))
     assert _sheet(after).worn["Sneak"] == 10
-    assert "complication" in after.world.pending_notes[-1]
+    assert "complication" in after.notes[-1]
     assert breathers(after) == ()
 
 
@@ -123,7 +123,7 @@ def test_a_vulnerable_actor_failing_a_dangerous_check_is_flagged() -> None:
 def test_loot_finds_trouble_or_an_item_or_a_med_kit_and_wears_the_loot_die() -> None:
     engine, state = game(BREATHLESS)
     draft = state.draft()
-    notes = len(draft.world.pending_notes)
+    notes = len(draft.notes)
     # Seed 0 on a d12 rolls high: an item; the die then stands at d10.
     scavenge = LootCheck(actor_id=PLAYER_ID, seeking="a crowbar")
     # Through the draft gate, so the find is refused or committed exactly as it is in play.
@@ -151,7 +151,7 @@ def test_loot_finds_trouble_or_an_item_or_a_med_kit_and_wears_the_loot_die() -> 
     # Seed 6 rolls a 2 on the d8: trouble is here.
     trouble = resolve_loot(draft, LootCheck(actor_id=PLAYER_ID, seeking="a rifle"), Random(6))
     assert draft.world.find(EntityId("a-rifle")) is None
-    assert len(draft.world.pending_notes) == notes + 1
+    assert len(draft.notes) == notes + 1
     assert any(fact.kind == "loot_found" for fact in trouble)
     engine.validate(draft)
 

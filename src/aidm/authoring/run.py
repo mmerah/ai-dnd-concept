@@ -27,7 +27,7 @@ from aidm.content.io import engine_text, read_scenarios
 from aidm.content.model import AuthoringBrief, AuthoringTool, Character
 from aidm.engines.core import Engine, mechanics_delta
 from aidm.llm import build_agent, schema_of
-from aidm.state.entities import EngineId, Slug
+from aidm.state.entities import Slug
 from aidm.state.model import Game
 from aidm.state.tools import Play
 from aidm.world.authoring import diff
@@ -35,15 +35,15 @@ from aidm.world.authoring import diff
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 
-def _example(settings: Settings, engine_id: EngineId) -> str | None:
+def _example(settings: Settings, engine: Engine) -> str | None:
     """The example must speak the authored engine's `rules` dialect, or it teaches refusals."""
-    first = next(read_scenarios(settings.scenarios_dir, (engine_id,)), None)
+    first = next(read_scenarios(settings.scenarios_dir, {engine.id: engine}), None)
     return None if first is None else Draft.from_scenario(first[1]).as_json()
 
 
 def _instructions(settings: Settings, brief: AuthoringBrief, playing: PlaytestCheck) -> str:
     mechanics = json.dumps(playing.character.mechanics, indent=2)
-    example = _example(settings, playing.engine.id)
+    example = _example(settings, playing.engine)
     shown = (
         ()
         if example is None

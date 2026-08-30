@@ -16,7 +16,7 @@ from loner3e_test_support import loner3e_session
 from pydantic import JsonValue
 from pydantic_ai.models.function import FunctionModel
 
-from aidm.app.runtime import GameSession
+from aidm.app.runtime import GameService
 from aidm.authoring.draft import (
     Draft,
     PlaytestCheck,
@@ -56,7 +56,7 @@ def _crypt() -> Entity:
     )
 
 
-def _grown(directory: Path, *, thin: bool = True) -> GameSession:
+def _grown(directory: Path, *, thin: bool = True) -> GameService:
     """A scenario that grows, staged with one door left to find and a change on offer."""
     game = loner3e_session(directory)
     game.scenario = updated(game.scenario, grows=True)
@@ -90,7 +90,7 @@ def _stub_author(monkeypatch: pytest.MonkeyPatch) -> list[Game]:
     return seen
 
 
-async def _turn(game: GameSession, on_step: Callable[[TurnStep], None] | None = None) -> None:
+async def _turn(game: GameService, on_step: Callable[[TurnStep], None] | None = None) -> None:
     assert game.stages is not None
     director = FunctionModel(scripted(text("nothing to do")))
     narrator = FunctionModel(scripted(narrated("You wait.")))

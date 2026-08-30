@@ -5,7 +5,7 @@ from pathlib import Path
 from pydantic import JsonValue
 
 from aidm.content.io import engine_text
-from aidm.content.model import Character
+from aidm.content.model import Character, CharacterPayload
 from aidm.engines.breathless.rules import (
     CARRY_LIMIT,
     DIE_FLOOR,
@@ -104,10 +104,12 @@ class BreathlessCreation(PackCreation[Pack]):
             engine=EngineId("breathless"),
             name=name,
             brief=brief,
-            items=(item,),
-            mechanics=BreathlessState(
-                sheets={PLAYER_ID: sheet}, items={item.id: ItemSheet(die=STARTING_ITEM)}
-            ).model_dump(mode="json"),
+            payload=CharacterPayload(
+                items=(item,),
+                mechanics=BreathlessState(
+                    sheets={PLAYER_ID: sheet}, items={item.id: ItemSheet(die=STARTING_ITEM)}
+                ).model_dump(mode="json"),
+            ),
         )
 
 

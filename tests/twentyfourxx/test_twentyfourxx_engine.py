@@ -243,12 +243,12 @@ def test_a_tested_bad_luck_risk_that_lands_leaves_a_note_for_the_next_turn() -> 
     (card,) = cards(facts)
     luck = next(die for die in card.dice if die.label == "Luck")
     assert 1 <= max(luck.rolled) <= 4
-    assert len(draft.world.pending_notes) == 1
+    assert len(draft.notes) == 1
     assert any(fact.kind == "luck_tested" for fact in facts)
 
     draft = state.draft()
     facts = resolve_attempt(draft, action, Random(1))
-    assert draft.world.pending_notes == state.world.pending_notes == ()
+    assert draft.notes == state.notes == ()
     assert not any(fact.kind == "luck_tested" for fact in facts)
 
 
@@ -259,7 +259,7 @@ def test_a_standalone_luck_test_needs_no_attempt_and_only_bad_luck_leaves_a_note
     draft = state.draft()
     trouble = resolve_luck_test(draft, action, Random(2))
     assert _tested(trouble).trace.endswith(": trouble")
-    assert len(draft.world.pending_notes) == 1
+    assert len(draft.notes) == 1
 
     signs = resolve_luck_test(state.draft(), action, Random(0))
     assert _tested(signs).trace.endswith(": signs of it")
@@ -267,7 +267,7 @@ def test_a_standalone_luck_test_needs_no_attempt_and_only_bad_luck_leaves_a_note
     draft = state.draft()
     clear = resolve_luck_test(draft, action, Random(5))
     assert not any(fact.kind == "luck_tested" for fact in clear)
-    assert draft.world.pending_notes == ()
+    assert draft.notes == ()
 
 
 def _forcing(**args: object) -> Attempt:

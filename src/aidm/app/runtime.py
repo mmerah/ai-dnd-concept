@@ -9,17 +9,18 @@ from pydantic import JsonValue
 
 from aidm.authoring.run import growth_run
 from aidm.config import Settings, load_settings
-from aidm.content.io import FileStore, load_character, load_scenario
+from aidm.content.io import FileStore, load_character, scenario_envelope, scenario_of
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine, PlayerAction, offered, play_action, transact
 from aidm.engines.registry import begin_game, build_engines
+from aidm.kernel.views import Views
 from aidm.state.entities import EngineId, EntityId, Slug
 from aidm.state.facts import Fact, traced
 from aidm.state.model import Game
-from aidm.state.play import Answer
+from aidm.state.play import Answer, Line
 from aidm.state.scene import VisibleScene
 from aidm.state.tools import Play
-from aidm.turn.run import TurnAgents, TurnStep, build_turn_agents, run_segment
+from aidm.turn.run import Turn, TurnAgents, TurnStep, build_turn_agents, run_segment
 
 from .launch import LaunchTarget
 from .media import ICON_DIR, Illustrator
@@ -49,7 +50,7 @@ def open_media(
 
 
 @dataclass
-class GameSession:
+class GameService:
     target: LaunchTarget
     scenario: Scenario
     character: Character
@@ -77,6 +78,24 @@ class GameSession:
     def slug(self) -> str:
         return self.target.slug
 
+    def begin_turn(
+        self,
+        player_input: str | Answer,
+        on_fact: Callable[[Fact], None] | None = None,
+    ) -> Turn:
+        """Code mode commits per accepted call; builtin commits once when the segment ends."""
+        commit: Callable[[Game], None] = (
+            (lambda draft: self.commit(draft.committed()))
+            if self.settings.code_mode
+            else (lambda _: None)
+        )
+        return Turn.begin(self.engine, self.state, player_input, self.rng, commit, on_fact)
+
+    def end_turn(self, turn: Turn, lines: tuple[Line, ...]) -> Game:
+        state = turn.finish(lines)
+        self.commit(state)
+        return state
+
     async def submit(
         self,
         player_input: str | Answer,
@@ -86,17 +105,9 @@ class GameSession:
         """Commit only after the full segment succeeds."""
         if self.stages is None:
             raise ValueError("code mode plays the turn in the MCP server, not here")
-        state = await run_segment(
-            self.state,
-            player_input,
-            engine=self.engine,
-            stages=self.stages,
-            settings=self.settings,
-            rng=self.rng,
-            on_step=on_step,
-            on_fact=on_fact,
-        )
-        self.commit(state)
+        turn = self.begin_turn(player_input, on_fact)
+        lines = await run_segment(turn, stages=self.stages, settings=self.settings, on_step=on_step)
+        state = self.end_turn(turn, lines)
         self._illustrate(state.history[-1].narration)
         if self.growth_due():
             if on_step is not None:
@@ -110,6 +121,9 @@ class GameSession:
         state, facts = play_action(self.engine, self.state, name, raw, self.rng)
         self.commit(state)
         return facts
+
+    def view(self) -> Views:
+        return self.engine.views(self.state)
 
     def scene(self) -> VisibleScene:
         return VisibleScene.revealed_from(self.engine.scene(self.state), self.state.world)
@@ -202,7 +216,7 @@ class Runtime:
     """The composition root: settings, the built engines, and the games currently open."""
 
     settings: Settings
-    _sessions: dict[str, GameSession] = field(default_factory=dict, repr=False)
+    _sessions: dict[str, GameService] = field(default_factory=dict, repr=False)
     engines: dict[EngineId, Engine] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -218,7 +232,7 @@ class Runtime:
         self.engines = build_engines(self.settings.packs_dir)
         self._sessions.clear()
 
-    def session(self, target: LaunchTarget) -> GameSession:
+    def session(self, target: LaunchTarget) -> GameService:
         """Memoised: a page render must not rebuild the game and drop the turn in flight."""
         held = self._sessions.get(target.slug)
         if held is not None:
@@ -229,13 +243,14 @@ class Runtime:
         self._sessions[target.slug] = opened
         return opened
 
-    def _open(self, target: LaunchTarget) -> GameSession:
+    def _open(self, target: LaunchTarget) -> GameService:
         settings = self.settings
-        scenario = load_scenario(settings.scenarios_dir, target.scenario_id)
-        engine = self.engines[scenario.engine]
-        character = load_character(settings.characters_dir, target.character_id, engine.id)
+        envelope = scenario_envelope(settings.scenarios_dir, target.scenario_id)
+        engine = self.engines[envelope.engine]
+        scenario = scenario_of(envelope, engine)
+        character = load_character(settings.characters_dir, target.character_id, engine)
         store = FileStore(settings.saves_dir)
-        return GameSession(
+        return GameService(
             target=target,
             scenario=scenario,
             character=character,

@@ -480,7 +480,7 @@ def _bad_luck(
         else f"Bad luck is circling: signs of {subject} showed this turn. Let the scene warn of "
         "it before it bites."
     )
-    draft.world.pending_notes = (*draft.world.pending_notes, note)
+    draft.notes = (*draft.notes, note)
     label = "trouble" if trouble else "signs of it"
     tested = entity_fact(actor, "luck_tested", f"bad luck — {subject}: {label}")
     return die, "Trouble" if trouble else "Signs", [rolled, tested]

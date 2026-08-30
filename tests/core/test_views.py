@@ -1,7 +1,7 @@
 from core_test_support import ENGINES_BUILT, LONER3E
 
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit, Kind
-from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
+from aidm.state.model import Game, ScenarioMeta, Thread, WorldPayload, WorldState
 from aidm.state.scene import VisibleScene
 
 
@@ -39,10 +39,12 @@ def state() -> Game:
         scenario=ScenarioMeta(title="Test", premise="Test"),
         engine=LONER3E,
         packs=("srd",),
-        player_id=PLAYER_ID,
-        world=WorldState(
-            entities={entity.id: entity for entity in entities},
-            threads={thread.id: thread for thread in threads},
+        payload=WorldPayload(
+            player_id=PLAYER_ID,
+            world=WorldState(
+                entities={entity.id: entity for entity in entities},
+                threads={thread.id: thread for thread in threads},
+            ),
         ),
         turn_facts=(),
     )

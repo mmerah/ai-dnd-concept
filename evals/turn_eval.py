@@ -31,7 +31,7 @@ from aidm.state.entities import EngineId, Frozen, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game
 from aidm.state.play import Answer, PendingDecision
-from aidm.turn.run import TurnStep, build_turn_agents, run_segment
+from aidm.turn.run import Turn, TurnStep, build_turn_agents, run_segment
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "evals" / "results"
@@ -55,9 +55,9 @@ def cases_module(engine_id: EngineId) -> ModuleType:
 def begin(engine_id: EngineId, settings: Settings) -> tuple[Engine, Game]:
     engine = built()[engine_id]
     scenario_id: Slug = cases_module(engine_id).CANON.scenario_id
-    scenario = load_scenario(ROOT / settings.scenarios_dir, scenario_id)
+    scenario = load_scenario(ROOT / settings.scenarios_dir, scenario_id, engine)
     character = load_character(
-        ROOT / settings.characters_dir, settings.authoring.starter_character, engine.id
+        ROOT / settings.characters_dir, settings.authoring.starter_character, engine
     )
     return engine, begin_game(engine, scenario_id, scenario, character)
 
@@ -190,16 +190,13 @@ async def play(case: Case, settings: Settings, seed: int) -> Run:
             steps: list[TurnStep] = []
             # The Director runs first, so its messages are the ones this context keeps.
             with capture_run_messages() as messages:
-                committed = await run_segment(
-                    played.state,
-                    player_input,
-                    engine=engine,
-                    stages=stages,
-                    settings=settings,
-                    rng=rng,
-                    on_step=steps.append,
-                    on_fact=facts.append,
+                turn = Turn.begin(
+                    engine, played.state, player_input, rng, lambda _: None, facts.append
                 )
+                lines = await run_segment(
+                    turn, stages=stages, settings=settings, on_step=steps.append
+                )
+                committed = turn.finish(lines)
             # Only a committed segment's facts join the record: a failed narrator rolled its back.
             played = Played(
                 state=committed,

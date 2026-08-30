@@ -15,7 +15,19 @@ class Line(Frozen):
     text: str = Field(min_length=1, description="Dialogue only, or one passage of narration.")
 
 
-def narration_text(lines: Sequence[Line]) -> str:
+class Speaker(Frozen):
+    """A speaker as recorded: chat and journal render this without resolving engine state."""
+
+    name: str
+    id: str
+
+
+class SpokenLine(Frozen):
+    speaker: Speaker | None = None
+    text: str = Field(min_length=1)
+
+
+def narration_text(lines: Sequence[Line | SpokenLine]) -> str:
     return "\n".join(line.text for line in lines)
 
 
@@ -79,8 +91,10 @@ class Answer(Frozen):
 
 class Exchange(Frozen):
     prompt: str
+    # Who the player was when they wrote the prompt: succession must not rename old messages.
+    speaker: Speaker
     scene: str
-    lines: tuple[Line, ...]
+    lines: tuple[SpokenLine, ...]
     facts: tuple[Fact, ...] = ()
     # The suspending decision's prompt: the pause has to survive after `Game.pending` clears.
     decision: str = ""

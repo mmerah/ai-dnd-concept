@@ -1,0 +1,46 @@
+from typing import Protocol
+
+from pydantic import BaseModel
+
+from aidm.kernel.envelope import CharacterEnvelope
+from aidm.kernel.views import CreationPreview, Views
+from aidm.state.creation import CreationStep, Picks
+from aidm.state.entities import EngineId
+from aidm.state.model import Game
+from aidm.state.tools import DirectorTool
+
+
+class Creation(Protocol):
+    def steps(self, picks: Picks) -> tuple[CreationStep, ...]: ...
+    def created(
+        self, name: str, brief: str, picks: Picks
+    ) -> tuple[CharacterEnvelope, CreationPreview]: ...
+
+
+class Engine[S: BaseModel](Protocol):
+    """Properties, not attributes: only a read-only member accepts a frozen dataclass field."""
+
+    @property
+    def id(self) -> EngineId: ...
+    @property
+    def title(self) -> str: ...
+    @property
+    def instructions(self) -> str: ...
+    @property
+    def state(self) -> type[S]: ...
+    @property
+    def scenario(self) -> type[BaseModel]: ...
+    @property
+    def character(self) -> type[BaseModel]: ...
+    @property
+    def tools(self) -> tuple[DirectorTool, ...]: ...
+    @property
+    def creation(self) -> Creation: ...
+    def restored(self, raw: str, /) -> Game: ...
+    def validate(self, state: Game, /) -> None: ...
+    def views(self, state: Game, /) -> Views: ...
+    def over(self, state: Game, /) -> str | None: ...
+
+
+# Python has no existential generics; the composition root holds engines by this erased form.
+type AnyEngine = Engine[BaseModel]

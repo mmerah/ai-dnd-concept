@@ -1,16 +1,15 @@
 from nicegui import ui
 
-from aidm.app.runtime import GameSession
+from aidm.app.runtime import GameService
 from aidm.state.entities import Entity
 from aidm.state.model import Game, Thread
-from aidm.state.play import Line
 from aidm.world.scene import placement
 from aidm.world.topology import children, location_of
 
 from .widgets import entity_row, heading
 
 
-def sheet_panel(session: GameSession) -> None:
+def sheet_panel(session: GameService) -> None:
     player = session.state.player
     entity_row(session.icon(player.id), player.name, player.brief)
     if player.traits:
@@ -45,13 +44,7 @@ def _thread_card(thread: Thread) -> None:
         ui.label(thread.status).classes("text-xs opacity-60")
 
 
-def _attributed_line(state: Game, line: Line) -> str:
-    """A speaker is named, because a bare quote reads as narration once the bubbles are gone."""
-    speaker = None if line.speaker_id is None else state.world.require(line.speaker_id)
-    return line.text if speaker is None else f"**{speaker.name}:** {line.text}"
-
-
-def journal_panel(session: GameSession) -> None:
+def journal_panel(session: GameService) -> None:
     threads = session.state.world.threads.values()
     if threads:
         heading("Threads")
@@ -67,11 +60,14 @@ def journal_panel(session: GameSession) -> None:
     heading("Chronicle")
     for number, exchange in reversed(list(enumerate(session.state.history, start=1))):
         with ui.expansion(f"turn {number}: {exchange.prompt}").classes("w-full"):
+            # A speaker is named, because a bare quote reads as narration without bubbles.
             for line in exchange.lines:
-                ui.markdown(_attributed_line(session.state, line)).classes("text-sm")
+                who = line.speaker
+                said = line.text if who is None else f"**{who.name}:** {line.text}"
+                ui.markdown(said).classes("text-sm")
 
 
-def state_panel(session: GameSession) -> None:
+def state_panel(session: GameService) -> None:
     ui.code(
         session.state.model_dump_json(indent=2),
         language="json",

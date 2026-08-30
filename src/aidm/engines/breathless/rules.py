@@ -359,8 +359,8 @@ def _loot(draft: Game, game: BreathlessState, action: LootCheck, rng: Random) ->
     if kept <= TROUBLE_AHEAD_AT:
         here = kept <= TROUBLE_HERE_AT
         found = "trouble is here" if here else "there is trouble ahead"
-        draft.world.pending_notes = (
-            *draft.world.pending_notes,
+        draft.notes = (
+            *draft.notes,
             f"The loot check found {found} instead of {action.seeking}: show it "
             + ("arriving now." if here else "coming, before it bites."),
         )
@@ -478,8 +478,8 @@ def apply_catch_breath(draft: Game, action: Breathe) -> list[Fact]:
         sheet.worn = dict(sheet.skills)
         sheet.loot = LOOT_START
         sheet.stunted = False
-    draft.world.pending_notes = (
-        *draft.world.pending_notes,
+    draft.notes = (
+        *draft.notes,
         f"{actor.name} caught their breath: introduce a new complication for the group now, "
         "and put it in the world so it stays: reveal or move an actor, add a trait, add stress, "
         "or stake a check.",

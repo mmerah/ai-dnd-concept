@@ -20,7 +20,8 @@ def _died(engine: Engine, state: Game, *, companion: bool) -> Game:
     if companion:
         _ = actions.join_party(draft, MARA)
     _ = actions.kill(draft, draft.player_id, engine.validate)
-    return close_segment(engine.scene(draft).label, draft, "I open the vault.", FELL, ())
+    speaker = draft.player_speaker()
+    return close_segment(engine.scene(draft).label, draft, "I open the vault.", speaker, FELL, ())
 
 
 def _turn(engine: Engine, draft: Game) -> Turn:

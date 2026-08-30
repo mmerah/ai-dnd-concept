@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from random import Random
 
@@ -16,11 +17,12 @@ from core_test_support import (
     scenario_for,
     updated,
     with_entity,
+    with_world,
 )
 from pydantic import ValidationError
 
 from aidm.content.io import load_character, load_scenario
-from aidm.content.model import Character
+from aidm.content.model import Character, CharacterPayload
 from aidm.engines.core import rules
 from aidm.engines.loner3e.rules import LUCK_MAX, Loner3eState
 from aidm.engines.twentyfourxx.rules import TwentyfourxxState
@@ -43,7 +45,7 @@ def _character(*, holds: Entity) -> Character:
         engine=LONER3E,
         name="Test Character",
         brief="A character built only for this test.",
-        items=(holds,),
+        payload=CharacterPayload(items=(holds,)),
     )
 
 
@@ -64,7 +66,7 @@ def test_a_doubled_id_in_a_world_file_is_refused(tmp_path: Path) -> None:
     (tmp_path / "doubled").mkdir()
     _ = (tmp_path / "doubled" / "world.json").write_text(doubled, encoding="utf-8")
     with pytest.raises(ValueError, match="duplicate keys"):
-        _ = load_scenario(tmp_path, "doubled")
+        _ = load_scenario(tmp_path, "doubled", ENGINES_BUILT[LONER3E])
 
 
 def test_world_and_game_state_reject_inconsistent_topology() -> None:
@@ -132,12 +134,12 @@ def test_entity_ids_use_one_grammar() -> None:
 def test_a_scenario_starts_the_party_it_authors() -> None:
     engine = ENGINES_BUILT[LONER3E]
     authored = scenario()
-    started = updated(authored, world=updated(authored.world, party=[MARA]))
+    started = with_world(authored, updated(authored.world, party=[MARA]))
 
     begun = begin_game(engine, "whispering-vault", started, character())
     assert begun.world.party == [MARA]
     # Tomas is known and unique, so this is the stands-at-start check alone, not the party's own.
-    apart = updated(authored, world=updated(authored.world, party=[TOMAS]))
+    apart = with_world(authored, updated(authored.world, party=[TOMAS]))
     unmet = engine.authoring_brief(apart.packs, None, False).unmet(apart)
     assert unmet == ["every starting party member in 'study', unlike ['tomas']"]
 
@@ -149,7 +151,9 @@ def test_a_game_is_refused_a_scenario_or_a_character_from_another_engine() -> No
 
     theirs = scenario_for(TWENTYFOURXX)
     with pytest.raises(ValueError, match="is written for the 'loner3e' rules"):
-        _ = begin_game(twentyfourxx, theirs, load_scenario(SCENARIOS, theirs), character())
+        _ = begin_game(
+            twentyfourxx, theirs, load_scenario(SCENARIOS, theirs, twentyfourxx), character()
+        )
 
 
 def test_a_character_file_belongs_to_its_folder_and_its_engine(tmp_path: Path) -> None:
@@ -160,17 +164,17 @@ def test_a_character_file_belongs_to_its_folder_and_its_engine(tmp_path: Path) -
     _ = (tmp_path / "mira" / f"{LONER3E}.json").write_text(written, encoding="utf-8")
 
     with pytest.raises(ValueError, match="plays 'loner3e', not 'twentyfourxx'"):
-        _ = load_character(tmp_path, "kael", TWENTYFOURXX)
+        _ = load_character(tmp_path, "kael", ENGINES_BUILT[TWENTYFOURXX])
     with pytest.raises(ValueError, match="'kael' is filed under 'mira'"):
-        _ = load_character(tmp_path, "mira", LONER3E)
+        _ = load_character(tmp_path, "mira", ENGINES_BUILT[LONER3E])
 
 
 def test_an_authored_actor_without_rules_is_refused() -> None:
     """Loner deviation 2 covers things, not actors: an actor nobody wrote has no sheet to roll."""
     engine, authored = ENGINES_BUILT[LONER3E], scenario()
-    stripped = updated(
+    stripped = with_world(
         authored,
-        world=updated(
+        updated(
             authored.world,
             mechanics=engine.mechanics_patch(authored.world.mechanics, {}, (MARA,)),
         ),
@@ -183,16 +187,16 @@ def test_an_authored_actor_without_rules_is_refused() -> None:
 def test_twentyfourxx_opposition_needs_no_sheet() -> None:
     engine = ENGINES_BUILT[TWENTYFOURXX]
     scenario_id = scenario_for(TWENTYFOURXX)
-    authored = load_scenario(SCENARIOS, scenario_id)
+    authored = load_scenario(SCENARIOS, scenario_id, engine)
     hostile_id = next(iter(TwentyfourxxState.model_validate(authored.world.mechanics).sheets))
-    stripped = updated(
+    stripped = with_world(
         authored,
-        world=updated(
+        updated(
             authored.world,
             mechanics=engine.mechanics_patch(authored.world.mechanics, {}, (hostile_id,)),
         ),
     )
-    player = load_character(CHARACTERS, "kael", engine.id)
+    player = load_character(CHARACTERS, "kael", engine)
 
     begun = begin_game(engine, scenario_id, stripped, player)
 
@@ -238,3 +242,20 @@ def test_a_told_fact_about_an_unmet_or_unknown_entity_is_refused() -> None:
         _ = apply_to_draft(
             engine.validate, state.draft(), lambda _draft, _rng: (nobody,), Random(0)
         )
+
+
+def test_a_raw_dict_payload_is_refused_before_it_can_vanish() -> None:
+    """`SerializeAsAny[BaseModel]` would swallow a dict whole; the guard is the only defence."""
+    state = initialized()[1]
+    with pytest.raises(ValidationError, match="parses the payload"):
+        _ = Game.model_validate(state.model_dump(mode="json"))
+    with pytest.raises(ValidationError, match="parses the payload"):
+        _ = Character.model_validate(character().model_dump(mode="json"))
+
+
+def test_a_save_whose_payload_the_engine_rejects_is_refused() -> None:
+    engine, state = initialized()
+    raw = state.model_dump(mode="json")
+    raw["payload"]["world"]["entities"]["ghost"] = {"kind": "actor"}
+    with pytest.raises(ValidationError):
+        _ = engine.restored(json.dumps(raw))

@@ -8,11 +8,11 @@ from time import monotonic
 from nicegui import ui
 from pydantic import JsonValue
 
-from aidm.app.runtime import GameSession
+from aidm.app.runtime import GameService
 from aidm.harness.driver import Driver
 from aidm.state.entities import EntityId
 from aidm.state.facts import DiceEvent, Fact
-from aidm.state.play import Answer
+from aidm.state.play import Answer, Speaker
 from aidm.turn.run import TurnStep
 
 from .panels import journal_panel, sheet_panel, state_panel
@@ -31,7 +31,7 @@ _SCENE_HEIGHT = "calc(25vh - 1rem)"
 _ART_BOX = f"flex: none; height: {_SCENE_HEIGHT}; max-width: 50%; aspect-ratio: 16 / 9"
 
 
-def scene_header(session: GameSession, fill_composer: Callable[[str], None]) -> None:
+def scene_header(session: GameService, fill_composer: Callable[[str], None]) -> None:
     scene = session.scene()
     # A quarter of the column at most: the art holds it and the text beside it scrolls.
     with (
@@ -60,7 +60,7 @@ def scene_header(session: GameSession, fill_composer: Callable[[str], None]) -> 
                 ).props("flat dense no-caps align=left rounded").classes("w-full")
 
 
-def _scene_art(session: GameSession) -> None:
+def _scene_art(session: GameService) -> None:
     art = session.scene_art()
     if art is not None:
         # `contain` letterboxes a frame drawn at another ratio instead of cropping its subject.
@@ -69,7 +69,7 @@ def _scene_art(session: GameSession) -> None:
         ui.skeleton().classes("rounded-borders").style(_ART_BOX)
 
 
-def chat(session: GameSession) -> None:
+def chat(session: GameService) -> None:
     if not session.state.history:
         ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
     here = ""
@@ -79,11 +79,11 @@ def chat(session: GameSession) -> None:
         if exchange.scene != here:
             here = exchange.scene
             ui.label(here).classes("w-full text-center text-xs uppercase opacity-50 q-mt-md")
-        _bubble(session, session.state.player_id, exchange.prompt, sent=True)
+        _bubble(session, exchange.speaker, exchange.prompt, sent=True)
         for fact in exchange.facts:
             _card(fact)
         for line in exchange.lines:
-            _bubble(session, line.speaker_id, line.text, sent=False)
+            _bubble(session, line.speaker, line.text, sent=False)
         if exchange.decision and exchange is not last:
             ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
 
@@ -114,9 +114,8 @@ def _dice_group(die: DiceEvent) -> None:
                     ui.label(str(value)).classes("game-die-value")
 
 
-def _bubble(session: GameSession, speaker_id: EntityId | None, text: str, *, sent: bool) -> None:
-    speaker = None if speaker_id is None else session.state.world.require(speaker_id)
-    icon = None if speaker_id is None else session.icon(speaker_id)
+def _bubble(session: GameService, speaker: Speaker | None, text: str, *, sent: bool) -> None:
+    icon = None if speaker is None else session.icon(EntityId(speaker.id))
     name = "DM" if speaker is None else speaker.name
     message = ui.chat_message(text, name=name, sent=sent).classes("w-full")
     if speaker is None:
@@ -141,10 +140,10 @@ _STEP_COPY: dict[TurnStep, tuple[str, str]] = {
 
 
 def live_turn(
-    session: GameSession, prompt: str | None, facts: Sequence[Fact], elapsed: float
+    session: GameService, prompt: str | None, facts: Sequence[Fact], elapsed: float
 ) -> ui.label | None:
     if prompt is not None:
-        _bubble(session, session.state.player_id, prompt, sent=True)
+        _bubble(session, session.state.player_speaker(), prompt, sent=True)
     for fact in facts:
         _card(fact)
     if session.step is not None:
@@ -172,7 +171,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class GameView:
-    def __init__(self, session: GameSession, driver: Driver | None = None) -> None:
+    def __init__(self, session: GameService, driver: Driver | None = None) -> None:
         self.session = session
         self.driver = driver
         self.agent_log: ui.log | None = None
@@ -353,7 +352,7 @@ async def submit(view: GameView, box: ui.input) -> None:
     await _send(view, typed_input, typed)
 
 
-def _can_type(session: GameSession, busy: bool) -> bool:
+def _can_type(session: GameService, busy: bool) -> bool:
     pending = session.state.pending
     typed = pending is None or pending.allows_text
     return not busy and typed and session.engine.over(session.state) is None
@@ -459,7 +458,7 @@ def restart(view: GameView) -> None:
     view.refresh_all()
 
 
-def game_page(session: GameSession, driver: Driver | None = None) -> None:
+def game_page(session: GameService, driver: Driver | None = None) -> None:
     session.illustrate_scene()
     view = GameView(session, driver)
     with page_header(session.state.scenario.title, session.engine.title):

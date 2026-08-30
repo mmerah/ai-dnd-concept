@@ -9,7 +9,7 @@ from pypdf import PdfReader
 
 from aidm.config import Settings
 from aidm.content.io import load_character, source_file, write_scenario
-from aidm.content.model import AuthoringBrief, Character, Scenario
+from aidm.content.model import AuthoringBrief, Character, Scenario, ScenarioPayload
 from aidm.engines.core import Engine
 from aidm.engines.registry import begin_game
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Mutable, Slug
@@ -159,9 +159,11 @@ class Draft(Mutable):
             engine=engine,
             packs=packs,
             art_style=self.art_style,
-            player_parent_id=self.player_parent_id,
-            # Dict writes on the draft's world skip validation, so revalidating here is the gate.
-            world=WorldState.model_validate(self.world.model_dump(round_trip=True)),
+            payload=ScenarioPayload(
+                player_parent_id=self.player_parent_id,
+                # Dict writes on the draft's world skip validation; revalidating here is the gate.
+                world=WorldState.model_validate(self.world.model_dump(round_trip=True)),
+            ),
         )
 
 
@@ -185,7 +187,7 @@ def playtest_check(
 ) -> PlaytestCheck:
     selected = packs or (next(iter(engine.packs)),)
     character = load_character(
-        settings.characters_dir, settings.authoring.starter_character, engine.id
+        settings.characters_dir, settings.authoring.starter_character, engine
     )
     return PlaytestCheck(engine=engine, character=character, packs=selected)
 

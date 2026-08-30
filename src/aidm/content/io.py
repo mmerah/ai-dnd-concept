@@ -1,12 +1,14 @@
 import json
 import logging
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
 
 from pydantic import BaseModel, JsonValue
 
+from aidm.kernel.envelope import CharacterEnvelope, ScenarioEnvelope
+from aidm.kernel.protocol import AnyEngine
 from aidm.state.entities import EngineId, Slug, content_id, require_unique
 from aidm.state.model import Game
 
@@ -21,39 +23,68 @@ _SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9-]*"
 LOGGER = logging.getLogger(__name__)
 
 
-def read_scenarios(directory: Path, engines: Sequence[EngineId]) -> Iterator[tuple[Slug, Scenario]]:
+def scenario_of(envelope: ScenarioEnvelope, engine: AnyEngine) -> Scenario:
+    if envelope.engine != engine.id:
+        raise ValueError(f"the scenario plays {envelope.engine!r}, not {engine.id!r}")
+    payload = engine.scenario.model_validate(envelope.payload)
+    return Scenario.model_validate(envelope.model_dump() | {"payload": payload})
+
+
+def character_of(envelope: CharacterEnvelope, engine: AnyEngine) -> Character:
+    if envelope.engine != engine.id:
+        raise ValueError(f"the character plays {envelope.engine!r}, not {engine.id!r}")
+    payload = engine.character.model_validate(envelope.payload)
+    return Character.model_validate(envelope.model_dump() | {"payload": payload})
+
+
+def read_scenarios(
+    directory: Path, engines: Mapping[EngineId, AnyEngine]
+) -> Iterator[tuple[Slug, Scenario]]:
     for path in _content_dirs(directory, WORLD_FILE):
         try:
-            scenario = _read(path / WORLD_FILE, Scenario)
+            envelope = _read(path / WORLD_FILE, ScenarioEnvelope)
+            engine = engines.get(envelope.engine)
+            if engine is None:
+                LOGGER.warning(
+                    "skipping scenario %r: it needs the %r engine", path.name, envelope.engine
+                )
+                continue
+            scenario = scenario_of(envelope, engine)
         except ValueError as unreadable:
             # Skip incomplete scenarios so the home screen remains usable.
             LOGGER.warning("skipping scenario %r: %s", path.name, unreadable)
-            continue
-        if scenario.engine not in engines:
-            LOGGER.warning(
-                "skipping scenario %r: it needs the %r engine", path.name, scenario.engine
-            )
             continue
         yield content_id(path.name), scenario
 
 
 def read_characters(
-    directory: Path, engines: Sequence[EngineId]
+    directory: Path, engines: Mapping[EngineId, AnyEngine]
 ) -> Iterator[tuple[Slug, Character, tuple[EngineId, ...]]]:
     """One entry per character: the catalog keys by id, so the first written engine names them."""
     for path in sorted(directory.iterdir()):
         written = tuple(engine for engine in engines if (path / f"{engine}.json").is_file())
-        if written:
-            yield content_id(path.name), _read(path / f"{written[0]}.json", Character), written
+        if not written:
+            continue
+        try:
+            envelope = _read(path / f"{written[0]}.json", CharacterEnvelope)
+            character = character_of(envelope, engines[written[0]])
+        except ValueError as unreadable:
+            LOGGER.warning("skipping character %r: %s", path.name, unreadable)
+            continue
+        yield content_id(path.name), character, written
 
 
 def _content_dirs(directory: Path, canon: str) -> Iterator[Path]:
     return (path for path in sorted(directory.iterdir()) if (path / canon).is_file())
 
 
-def load_scenario(directory: Path, name: Slug) -> Scenario:
+def scenario_envelope(directory: Path, name: Slug) -> ScenarioEnvelope:
     folder = directory / content_id(name)
-    return _read(folder / WORLD_FILE, Scenario)
+    return _read(folder / WORLD_FILE, ScenarioEnvelope)
+
+
+def load_scenario(directory: Path, name: Slug, engine: AnyEngine) -> Scenario:
+    return scenario_of(scenario_envelope(directory, name), engine)
 
 
 def source_file(directory: Path, name: Slug) -> Path | None:
@@ -62,24 +93,22 @@ def source_file(directory: Path, name: Slug) -> Path | None:
     return next((path for path in paths if path.is_file()), None)
 
 
-def load_character(directory: Path, name: Slug, engine: EngineId) -> Character:
+def load_character(directory: Path, name: Slug, engine: AnyEngine) -> Character:
     folder = directory / content_id(name)
-    character = _read(folder / f"{engine}.json", Character)
-    if character.engine != engine:
-        raise ValueError(f"{folder.name}/{engine}.json plays {character.engine!r}, not {engine!r}")
+    character = character_of(_read(folder / f"{engine.id}.json", CharacterEnvelope), engine)
     if character.id != content_id(name):
         raise ValueError(f"character {character.id!r} is filed under {content_id(name)!r}")
     return character
 
 
-def write_character(directory: Path, character: Character) -> None:
+def write_character(directory: Path, character: CharacterEnvelope) -> None:
     folder = directory / content_id(character.id)
     path = folder / f"{character.engine}.json"
     if path.exists():
         raise ValueError(f"character {character.id!r} already exists")
     # One folder is one person played by several engines, so any sibling settles who that is.
     sibling = next(folder.glob("*.json"), None)
-    if sibling is not None and (held := _read(sibling, Character)).name != character.name:
+    if sibling is not None and (held := _read(sibling, CharacterEnvelope)).name != character.name:
         raise ValueError(f"character {character.id!r} is {held.name!r}, not {character.name!r}")
     _write(path, character.model_dump_json(indent=2))
 

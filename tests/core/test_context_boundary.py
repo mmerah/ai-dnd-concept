@@ -4,7 +4,7 @@ from pydantic import JsonValue
 from aidm.content.model import ScenarioMeta
 from aidm.engines.core import Engine
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Kind
-from aidm.state.model import Game, WorldState
+from aidm.state.model import Game, WorldPayload, WorldState
 from aidm.state.scene import Scene, VisibleScene
 from aidm.turn.context import ANSWERED_BY_OPTION, active_threads, render_director, render_narrator
 
@@ -40,10 +40,12 @@ def state() -> Game:
         scenario=ScenarioMeta(title="Test", premise="Test"),
         engine=LONER3E,
         packs=("srd",),
-        player_id=PLAYER_ID,
-        world=WorldState(
-            entities={entity.id: entity for entity in entities},
-            mechanics={"sheets": {"player": SHEET, "mara": SHEET, "hidden-actor": SHEET}},
+        payload=WorldPayload(
+            player_id=PLAYER_ID,
+            world=WorldState(
+                entities={entity.id: entity for entity in entities},
+                mechanics={"sheets": {"player": SHEET, "mara": SHEET, "hidden-actor": SHEET}},
+            ),
         ),
         turn_facts=(),
     )

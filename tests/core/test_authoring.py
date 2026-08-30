@@ -12,6 +12,7 @@ from core_test_support import (
     scenario_for,
     scripted,
     updated,
+    with_world,
 )
 from pydantic import JsonValue
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, ToolReturnPart
@@ -40,7 +41,7 @@ def _brief(base: WorldState | None = None, opening: bool = False) -> AuthoringBr
 
 
 async def test_every_shipped_scenario_passes_the_engine_it_is_authored_for() -> None:
-    for _, shipped in read_scenarios(SCENARIOS, ENGINE_IDS):
+    for _, shipped in read_scenarios(SCENARIOS, ENGINES_BUILT):
         playtest_check(offline_settings(), ENGINES_BUILT[shipped.engine], shipped.packs).check(
             shipped
         )
@@ -49,7 +50,7 @@ async def test_every_shipped_scenario_passes_the_engine_it_is_authored_for() -> 
 def test_a_world_colliding_with_the_character_is_refused() -> None:
     for engine_id in ENGINE_IDS:
         playing = playtest_check(offline_settings(), ENGINES_BUILT[engine_id])
-        shipped = load_scenario(SCENARIOS, scenario_for(engine_id))
+        shipped = load_scenario(SCENARIOS, scenario_for(engine_id), ENGINES_BUILT[engine_id])
         held = playing.character.items[0]
         extra = Entity(
             id=held.id,
@@ -59,9 +60,8 @@ def test_a_world_colliding_with_the_character_is_refused() -> None:
             known=True,
             parent_id=shipped.player_parent_id,
         )
-        colliding = updated(
-            shipped,
-            world=updated(shipped.world, entities={**shipped.world.entities, extra.id: extra}),
+        colliding = with_world(
+            shipped, updated(shipped.world, entities={**shipped.world.entities, extra.id: extra})
         )
         with pytest.raises(ValueError, match="appears twice"):
             playing.check(colliding)
