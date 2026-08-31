@@ -119,7 +119,7 @@ raises they did with a second real engine. Three leftovers it found, all fixed:
 Left for later, by the review's own reckoning: the `WorldChange` flattening comment and
 `_CHANGE_DESCRIPTION` (phase 2 deletes the file), and the restore-time option revalidation that
 step 7 moved to `engine.answer` — moot while Loner's only decision carries no options, worth
-revisiting when phase 6 brings an optioned one back.
+revisiting when phase 7 brings an optioned one back.
 
 One coverage note the review raised and this phase cannot close: answering an *optioned* decision
 through the MCP surface lost its only harness test with 24XX. Loner has no optioned decision, so
@@ -178,7 +178,7 @@ decision card printed off the raw state.
 - The local `saves/whispering-vault--kael.json` does not load, but it did not load before this
   phase either — it still has top-level `player_id` and `world`, and `speaker_id` on its lines. The
   home page logs it and skips it. `saves/` is untracked.
-- `docs/24XX.md` and `docs/BREATHLESS.md` kept; phase 6 needs them.
+- `docs/24XX.md` and `docs/BREATHLESS.md` kept; phase 7 needs them.
 
 ## Phase 2 — The scene kit, and Loner ported onto it — DONE
 
@@ -235,6 +235,8 @@ verified by code; it stays in the worldsmith's prompt.
 - **The payload is typed, not a union yet.** With one engine, `Annotated[X, Field(discriminator=…)]`
   is not a legal single-member union, so `Payload = Loner3eState` with the `engine` tag already on
   it. Phase 6 turns the three aliases in `state/model.py` into real unions and nothing else moves.
+  (Refuted twice since: the payload must not be a union, and `Game` goes generic instead — see
+  "Before phase 7 — what 24XX actually costs" and "PLAN renumbered" below.)
 - **One inversion, recorded.** `state/model.py` imports `engines/loner3e/state.py`. That is what
   closes the engine set at type-check time, as `VISION.md` §6 asks.
   `tests/core/test_package_boundary.py` records it as one named exception, and `ROOTS` now holds
@@ -770,7 +772,7 @@ MCP endpoint at `/mcp/`.
    cannot drift from itself.
 
 4. **`docs/ROADMAP.md` and `docs/MEMORY-SYSTEM.md` deleted.** `24XX.md` and `BREATHLESS.md` kept for
-   phase 6. `COMPETITOR-RESEARCH.md` and `NEXT-ENGINE-RESEARCH.md` kept and untouched: they are
+   phase 7. `COMPETITOR-RESEARCH.md` and `NEXT-ENGINE-RESEARCH.md` kept and untouched: they are
    research, not design, and the step did not name them.
 
    **`docs/probes/` deleted too** (643 lines), with its `extend-exclude` entry in `pyproject.toml`.
@@ -826,14 +828,15 @@ unused, every `CLAUDE.md` rule matches today's code, and every README claim matc
 - `IDEAS.md` entries I5 and I7 still say "builtin mode". It is a backlog file, not a design
   document, and rewriting a backlog was not the step.
 - `docs/24XX.md` and `docs/NEXT-ENGINE-RESEARCH.md` cite the deleted `twentyfourxx/director.md` by
-  path. Phase 6 rewrites that engine and its notes.
+  path. Phase 7 rewrites that engine and its notes.
 - **The session was played offline**, against `ScriptedSpawner`, as at the end of phases 3 and 4.
   A session against three real CLIs is still untaken.
 
-## Before phase 6 — what 24XX actually costs
+## Before phase 7 — what 24XX actually costs
 
 No code changed here. The plan claimed "about 500 lines each"; it was measured instead, and
-`PLAN.md` phase 6 now carries the answer and a step 0.
+`PLAN.md` phase 7 now carries the answer. (Its step 0 moved into phase 6 when the plan was
+renumbered — see below.)
 
 **The number is ~1,050 `src` python lines, not 500.** Three methods agree: scale the old 24XX (932)
 by Loner's measured port delta (+21.5%) -> 1,132; walk all sixty old symbols one by one -> 1,035;
@@ -916,9 +919,9 @@ Also folded into the plan: `AnyEngine` turns out not to be needed (the compositi
 concrete dataclass), and 24XX has no tool headroom, because `resolvers` went in phase 1 and `defend`
 must now be public — exactly eight.
 
-## Before phase 6 — what Breathless actually costs
+## Before phase 7 — what Breathless actually costs
 
-Same method as the 24XX measurement, same day. No code changed. `PLAN.md` phase 6 carries the
+Same method as the 24XX measurement, same day. No code changed. `PLAN.md` phase 7 carries the
 result.
 
 **Breathless is the smallest of the three: ~770 `src` python lines**, below Loner's 820 and 27%
@@ -1054,3 +1057,97 @@ still crossed into the next scene; that `_named_in` refused "the bell tower" for
 merge their history in the worldsmith prompt. `scene_spent` runs after `draft.turn += 1`, so
 `SCENE_TURN_CAP = 12` fires on the eleventh turn in a scene; it is a safety net and the number is
 not load-bearing.
+
+---
+
+## PLAN renumbered — phase 6 is now the architecture deletion (before phase 6)
+
+No code changed. `src` 5,791, `tests` 3,542. Two sessions were asked, independently, what drastic
+refactor the codebase still wants. They agreed on the diagnosis and disagreed on two things worth
+recording.
+
+**The honest headline: there is no drastic LOC win left.** A sweep for unreferenced public symbols
+in `src` finds **zero**. No function exceeds 100 lines. Constants sit on top almost everywhere. The
+deletions that survive scrutiny are worth about −180, of which ~30 is a move to `tests/`, and the
+generic-`Game` change adds an unmeasured amount back. **Phase 6 is budgeted flat: 5,750–5,850.**
+The other session predicted "several hundred" removed; tallying its own list gives roughly half
+that. The win available is shape, not size. Recorded here so nobody invents deletions to hit a
+number.
+
+**What moved.** New phase 6 is the architecture deletion, in six steps: collapse the live-game
+lifecycle onto one session; one engine extension point; generic `Game` and delete the envelope
+layer; the fixed engine file template; flatten the shared vocabulary; one strict file order. The
+engines return in phase 7, and **its old step 0 moved into phase 6 step 3** — making `Game` generic
+is a refactor, not an engine, and phase 7's "give the shared helpers a home" step is subsumed by
+the file template.
+
+### The two decisions
+
+**The engine file template is four fixed files, the same names for every engine, forever:**
+`state.py`, `rules.py`, `creation.py`, `engine.py`. The other session proposed slicing Loner into
+`oracle.py` and `advancement.py`. **Refused by the maintainer, and the refusal is right**: 24XX has
+no oracle and Breathless has no advancement system at all, so that template cannot repeat.
+Consistency across engines beats per-engine expressiveness here, because phase 7 writes two more.
+
+**`kits/` stays.** An earlier draft flattened `kits/scenes/` to `scenes/` on the grounds that one
+kit is a speculative namespace. `kits/rooms/` is planned, so it is not speculative. Only
+`kits/scenes/source.py` moves out, into `core/`, because PDF and text extraction has nothing to do
+with scenes.
+
+### The adversarial review, and what it caught
+
+An Opus review of the written phase found nine factual errors and eight steps that could not be
+followed as written. The three that changed the plan:
+
+**The generic-`Game` sketch does not type-check.** `class Game[P: BaseModel]` with no `world`
+property fails under strict mode: every bare `: Game` trips `reportMissingTypeArgument`, and
+`payload.world` cannot resolve on a `BaseModel` bound. `Game._playable_game` reads
+`self.payload.engine`, which is a **runtime `AttributeError`** under `SaveEnvelope =
+Game[RawPayload]` — on the home page, where the payload is a dict. Worst: a `Payload[S]` base
+**type-checks with zero errors and silently drops the engine's payload fields on `committed()`**,
+so `twist` and `twist_pack` would vanish on every commit. The `d4750fb` probe only ever proved a
+*union* was wrong; it never exercised the readers outside the engine. Step 3 now refuses to start
+without a second probe, its line estimate is deleted rather than guessed, and the save golden
+fixtures carry an explicit stop rule — they are the only place that data loss would show.
+
+**An `ast.unparse` reorder tool would destroy every comment in `src` and the equivalence check
+would still pass green**, because an `ast.dump` multiset is blind to comments and
+`ruff format --check` formats the comment-free output happily. Step 6 now says: move source line
+spans, never unparse.
+
+**The four-file table did not add up.** It claimed 822 → 651 for a pure reshuffle, and left ~150
+lines of `engine.py` — `new_game`, `_validate`, `sheet_rows`, `engine_sections`, `player_over` —
+with no home in any bucket. Corrected: `engine.py` keeps the engine's own implementation of the
+contract, `rules.py` grows to ~430, and the total stays 822.
+
+**One count in this file's own measurements was wrong, and it was ours.** The order-dependency
+probe reported "17 dependencies in four files". `ui/settings.py:21 Boxes` is a PEP-695 `type` alias,
+lazily evaluated, so it was never an edge. The real figure is **16 in three files**. The script did
+not tell `type X = ...` from `X = Annotated[...]`, which this repo relies on three lines apart at
+`loner3e/state.py:55-58`. That distinction is now a rule the tool must implement.
+
+**Also folded in.** `tests/core/test_package_boundary.py` holds five layout tables that steps 3 and
+5 each invalidate — they must be edited in the same step or the check is red for the wrong reason.
+The blast radius was stale by one commit: **20 `.world` readers and 29 `: Game` annotations**
+outside the engine, not 13 and 28, with all five new ones in `turn/`, the layer that cannot name an
+engine.
+
+### Two deletions found on the way
+
+`state/tools.py:66 transact` (9 lines) and `content/io.py:82 load_scenario` (3 lines) are public
+with zero callers in `src`; production uses `scenario_envelope` plus `scenario_of`. Both are
+reached only from tests, the same category as `ScriptedSpawner`.
+
+### One defect found, not yet fixed
+
+`Engine.views()` builds all three views eagerly, master prompt included. `ui/game.py` has five
+NiceGUI `backward=` callbacks that each call `session.view()`, and the binding loop runs at 0.1s.
+The player page assembles the *game master's* prompt — entity lines, tag glossary, hidden section —
+about 50 times a second per open tab. Splitting `Engine.views` into three methods costs nothing;
+it is filed under "also in this phase".
+
+**One thing landed while this was written.** `b832fc2` ("one turn owns the tool surface") added
+`Runtime.play_refusal()` and made `playing()` raise on a second in-flight turn. That makes step
+1.7 sharper, not stale: there are now **three** answers to "may this session play" — `busy`,
+`turn is not None`, and `play_refusal()` — where the step already argued that two was one too
+many. It also deleted `refuse_if_busy`, which was `Busy`'s second caller. `src` stays 5,791.
