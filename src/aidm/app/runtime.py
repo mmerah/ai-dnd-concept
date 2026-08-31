@@ -27,6 +27,8 @@ from aidm.engines.registry import begin_game, build_engines
 from aidm.kits.scenes.worldsmith import opening_canon, scene_refusal
 from aidm.turn.context import (
     CROSSING,
+    MASTER,
+    NARRATOR,
     render_master,
     render_narrator,
     render_opening,
@@ -44,6 +46,7 @@ from aidm.turn.run import (
 from .launch import LaunchTarget
 from .media import Illustrator, open_illustrator
 from .scene_write import install_scene, write_next
+from .sessions import Conversations
 from .spawn import CliSpawner, Spawner, answered
 
 LOGGER = logging.getLogger(__name__)
@@ -60,6 +63,7 @@ class GameService:
     engine: Engine
     spawner: Spawner
     store: FileStore
+    sessions: Conversations
     settings: Settings
     media: Illustrator | None = None
     rng: Random = field(default_factory=Random)
@@ -126,6 +130,8 @@ class GameService:
             await self._cross_over(announce, turn.prompt)
         except BaseException:
             self._abandon_write()
+            # The turn is thrown away, so a role that remembers playing it must be too.
+            self.sessions.forget(self.slug)
             raise
         finally:
             self.turn, self.step, self.busy = None, None, False
@@ -133,16 +139,26 @@ class GameService:
     async def _act(self, turn: Turn) -> None:
         """A crashed game master still played the turn, if it applied anything legal first."""
         self.master_log = ""
+
+        def nothing_landed() -> bool:
+            return not turn.facts and turn.draft.pending is None
+
         try:
-            self.master_log = await self.spawner.run(
-                "master", render_master(self.engine.instructions, turn.prompt)
+            spoken = await self.sessions.ask(
+                self.slug,
+                "master",
+                MASTER + self.engine.instructions,
+                render_master(self.engine.instructions, turn.prompt),
+                cold_retry=nothing_landed,
             )
         except (OSError, ValueError) as failed:
-            if not turn.facts and turn.draft.pending is None:
+            if nothing_landed():
                 raise
             LOGGER.warning(
                 "the game master failed after applying %d facts: %s", len(turn.facts), failed
             )
+            return
+        self.master_log = spoken.text
 
     async def _narrate(
         self, draft: Game, facts: tuple[Fact, ...], prompt: str, *, fatal: bool
@@ -159,7 +175,7 @@ class GameService:
                 ),
                 Narration,
                 lambda written: narration_refusal(view, written),
-                partial(self.spawner.run, "narrator"),
+                partial(self.sessions.ask, self.slug, "narrator", NARRATOR),
             )
         except (OSError, ValueError) as failed:
             if fatal:
@@ -250,6 +266,7 @@ class GameService:
     def restart(self) -> None:
         opening = self._begun()
         self.store.discard(self.slug)
+        self.sessions.forget(self.slug)
         self.state = opening
         self.illustrate_scene()
 
@@ -400,6 +417,7 @@ class Runtime:
             engine=engine,
             spawner=self.spawner,
             store=store,
+            sessions=Conversations(self.spawner, store, settings),
             settings=settings,
             media=open_illustrator(settings, target, scenario, character, store),
         )

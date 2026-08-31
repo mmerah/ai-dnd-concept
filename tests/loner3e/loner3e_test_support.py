@@ -10,7 +10,7 @@ from core_test_support import (
     scenario,
 )
 
-from aidm.app.runtime import GameService, LaunchTarget
+from aidm.app.runtime import Conversations, GameService, LaunchTarget
 from aidm.core.io import FileStore
 from aidm.engines.core import load_packs
 from aidm.engines.loner3e.creation import Pack
@@ -25,13 +25,16 @@ TWISTS = twist_table(load_packs((ENGINE_DIR / "packs",), Pack), SRD_PACK)
 def loner3e_session(directory: Path) -> GameService:
     settings = offline_settings()
     engine = ENGINES_BUILT[LONER3E]
+    spawner = ScriptedSpawner()
+    store = FileStore(directory)
     return GameService(
         target=TARGET,
         scenario=scenario(),
         character=character(),
         engine=engine,
-        spawner=ScriptedSpawner(),
-        store=FileStore(directory),
+        spawner=spawner,
+        store=store,
+        sessions=Conversations(spawner, store, settings),
         settings=settings,
         rng=Random(1),
     )

@@ -201,6 +201,41 @@ async def test_a_master_that_crashes_after_applying_still_commits_what_it_applie
     assert table.service.state.world.require(MAP).known
 
 
+async def test_a_resumed_master_is_not_run_again_once_a_tool_has_landed(tmp_path: Path) -> None:
+    """A cold retry would replay the prompt and apply the same mutation twice."""
+    table = opened(tmp_path)
+    _ = await played(table, "I look around.")
+
+    def crash() -> None:
+        _ = table.call("start_turn", {})
+        _ = table.call(*FOUND)
+        raise OSError("the game master exploded")
+
+    table.spawner.turns.append(crash)
+    table.spawner.answers["narrator"] = [narrated("The map is in hand.")]
+    spawned = len(table.spawner.prompts)
+
+    await table.service.play("I take the map.")
+
+    assert [role for role, _ in table.spawner.prompts[spawned:]].count("master") == 1
+
+
+async def test_a_resumed_master_that_landed_nothing_is_tried_again_cold(tmp_path: Path) -> None:
+    table = opened(tmp_path)
+    _ = await played(table, "I look around.")
+
+    def crash() -> None:
+        raise OSError("the game master never started")
+
+    table.spawner.turns += [crash, crash]
+    spawned = len(table.spawner.prompts)
+
+    with pytest.raises(OSError, match="never started"):
+        await table.service.play("I take the map.")
+
+    assert [session for _, session in table.spawner.resumed[spawned:]] == ["master-1", None]
+
+
 async def test_a_turn_that_applied_nothing_and_failed_is_refused(tmp_path: Path) -> None:
     table = opened(tmp_path)
     before = table.service.state.model_dump_json()

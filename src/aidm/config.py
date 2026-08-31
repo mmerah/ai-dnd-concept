@@ -7,18 +7,11 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ProviderName = Literal["openrouter", "local"]
-# Each role is a one-shot CLI the app spawns, so a role is only a name and a command.
+# Each role is a one-shot CLI the app spawns, so a role is only a name and how to spawn it.
 Role = Literal["master", "narrator", "worldsmith"]
+CliProvider = Literal["claude", "codex"]
+Effort = Literal["low", "medium", "high"]
 ENV_FILE = ".env"
-
-# An uploaded adventure reaches every prompt, so a role that can read files, run commands or
-# reach the user's own MCP servers is a way out of the game. Only the game master gets tools,
-# and only this repo's: the roles that merely write text get none at all.
-MASTER_COMMAND = (
-    'claude -p --permission-mode bypassPermissions --tools "" '
-    "--mcp-config .mcp.json --strict-mcp-config"
-)
-WRITER_COMMAND = 'claude -p --tools "" --strict-mcp-config'
 
 
 class ProviderConfig(BaseModel):
@@ -29,13 +22,17 @@ class ProviderConfig(BaseModel):
 
 
 class RoleConfig(BaseModel):
-    """How to spawn one role. An empty `command` reuses the master's."""
+    """How to spawn one role. The driver for `provider` turns this into a command line."""
 
     model_config = ConfigDict(frozen=True)
 
-    # The whole command, model flag included: only the CLI knows how it names its own models.
-    command: str = ""
+    provider: CliProvider = "claude"
+    # A string, not a `Literal`: model aliases move faster than this file.
+    model: str = Field(min_length=1)
+    effort: Effort = "medium"
     timeout: float = Field(default=300.0, gt=0.0)
+    # An explicit escape hatch. A raw command cannot resume a session.
+    command: str = ""
 
 
 class MediaConfig(BaseModel):
@@ -68,20 +65,19 @@ class SourceConfig(BaseModel):
 
 
 class Roles(BaseModel):
-    master: RoleConfig = RoleConfig(command=MASTER_COMMAND)
-    narrator: RoleConfig = RoleConfig(command=WRITER_COMMAND, timeout=120.0)
+    master: RoleConfig = RoleConfig(model="opus", effort="high")
+    narrator: RoleConfig = RoleConfig(model="sonnet", effort="low", timeout=120.0)
     # A whole scene from the source, the cast and the history: measured at 335 seconds.
-    worldsmith: RoleConfig = RoleConfig(command=WRITER_COMMAND, timeout=900.0)
+    worldsmith: RoleConfig = RoleConfig(model="sonnet", timeout=900.0)
 
     def for_name(self, name: Role) -> RoleConfig:
         match name:
             case "master":
-                found = self.master
+                return self.master
             case "narrator":
-                found = self.narrator
+                return self.narrator
             case "worldsmith":
-                found = self.worldsmith
-        return found if found.command else found.model_copy(update={"command": self.master.command})
+                return self.worldsmith
 
 
 class Providers(BaseModel):

@@ -20,6 +20,7 @@ What is below is what a later phase still needs to know.
 | scene transitions rebuilt (off-plan) | 5,791 | 3,519 |
 | 6 — the architecture deletion | 5,600 | 3,517 |
 | 7A — the restructuring pass | 5,578 | 3,661 |
+| 7B — the roles get drivers | 5,892 | 3,901 |
 
 Every phase ended with the full check green — pytest, ruff check, ruff format, basedpyright — and
 with a turn actually played, not only checked. Phase 4 is the one phase that grew `src`: it added
@@ -236,8 +237,126 @@ point of the step.
    Nothing writes a past run, and `apply_scene` and the verbs both dedupe, so no duplicate can
    arise. `SceneRun` lost its own validator in exchange for the authored file losing three fields.
 
-## Phase 7B — not started
+## Phase 7B — the roles get drivers — done
 
-**7B** gives the three roles typed CLI drivers, provider/model/effort settings, resumed provider
-sessions and a scrubbed child environment (`src` 5,578 -> about 5,880). See `PLAN.md` for the
-steps.
+`src` 5,578 -> **5,892**, against the plan's ~5,880. `tests` 3,661 -> **3,901**. Full check
+green at every step, and a turn played in the browser on the new drivers.
+
+### What each step did
+
+1. **Provider, model and effort are settings.** `RoleConfig` is `provider` + `model` + `effort` +
+   `timeout`, with `command` kept as an escape hatch that marks the role unresumable.
+   `MASTER_COMMAND` and `WRITER_COMMAND` are gone, and so is the rule that an empty command
+   inherited the master's.
+2. **Typed drivers behind one boundary.** `ClaudeDriver` and `CodexDriver` build a command and
+   parse the output; `CliSpawner` is still the only thing that starts a process. `RunResult`
+   carries the text, the session and the token counts.
+3. **A retry carries on its own attempt.** `answered` keeps the session the refused attempt
+   returned and re-prompts with the error alone.
+4. **A session per save, per role.** `app/sessions.py` holds `Conversations`, a sidecar at
+   `saves/.sessions/<slug>.json`, a sha256 fingerprint of `provider|model|effort|instructions`,
+   and a lock per save and role. The master and the narrator resume; the worldsmith stays one
+   conversation per attempt.
+5. **What a role can reach, measured.** The child environment is `PATH`, `HOME`, `LANG`, `TERM`
+   and one provider key. Each role runs in an empty temporary directory. What the probe found is
+   below; the probe itself was thrown away, as phase 5 threw away its own.
+6. **One log line per spawn**: role, provider, model, effort, cold or resumed, duration, input
+   and cached tokens. `Conversations` logs the fallback reason separately.
+
+### Decisions taken inside the phase
+
+1. **`--tools ""` disables nothing**, although `claude --help` says it does. Asked to run
+   `echo REACHED` under it, a spawned role ran it. That flag was in `MASTER_COMMAND` and
+   `WRITER_COMMAND` from phase 3, so **every role had a shell for three phases.** Two things work
+   instead: `--tools <name>` restricts to that name, and `--restricted` drops the
+   command-running tools and `WebFetch`, confines the file tools to the working directory, and
+   ignores the user's own settings files. Under `--restricted --tools Read` the role answers
+   `["Read"]` and says it has no shell. The master adds `--allowed-tools mcp__aidm` and
+   `--mcp-config`, and reached `scene` on the live server. Measured on Claude Code 2.1.251.
+2. **`Driver.command` takes the role.** Whether a role gets this game's MCP server is a fact about
+   the role, not an operator knob, so it stays in code and never enters `Settings`.
+3. **`answered` still returns the value alone.** The plan had it return the session too, for the
+   caller to store. `Conversations.ask` owns resume, storage and the lock instead, so no caller
+   holds a session: `answered` only threads one between its own two attempts.
+4. **No generated configuration file.** `--mcp-config` takes a JSON string, so there is nothing to
+   write and nothing to clean up. The temporary working directory is the only thing removed.
+5. **`io._write` became public `io.write_text`**, and `FileStore.sessions_path` names the sidecar,
+   so the sidecar is written with the same staged-then-replace method a save is.
+6. **The memory note that `claude -p` has no model flag is out of date.** `--model` and `--effort`
+   both exist in 2.1.251, which is what made this phase's settings possible.
+
+### The adversarial review found eight real defects
+
+Every one is fixed, and every fix was proved by mutating the `src` line and watching a test fail.
+
+1. **A cold fallback replayed a continuation into a new conversation.** `answered` sends only the
+   error when it holds a session. If that resume was rejected, `Conversations.ask` re-ran the same
+   error text cold, so the role got a refusal with no brief. A session the caller names is now
+   never retried cold.
+2. **A thrown-away turn left the master remembering it.** The narrator raising discards the whole
+   draft, but the master's session had already been stored — so the next turn resumed a
+   conversation that believed it applied changes the game never received. `play` now forgets the
+   save's sessions when it throws the turn away. `restart` forgetting them had no test either.
+3. **`ClaudeDriver.parse` ignored `is_error`.** A failed run can exit 0 and put its error where
+   the answer goes, so the master would have "played" a turn whose text was an error message.
+4. **Every codex isolation flag was untested.** Three mutations passed the suite: writers given an
+   unsandboxed shell, `--disable apps` and `--ignore-user-config` deleted, and the master/writer
+   privileges swapped. Now asserted.
+5. **The fingerprint's `instructions` term was untested**, so an edit to `master.md` would have
+   kept resuming a conversation briefed on the old text.
+6. **`_found` never descended into arrays**, although two docstrings said "at any depth".
+7. **`--allowed-tools mcp__aidm` and the `KEPT_ENV` list were unpinned.** Deleting the flag, or
+   adding `SSH_AUTH_SOCK` and `AWS_SECRET_ACCESS_KEY` to the allowlist, failed nothing. The
+   environment test now asserts the child's keys exactly.
+8. **A sidecar that cannot be read or written broke the turn.** It is disposable memory, so both
+   now log and carry on.
+
+The review also cleared four categories: the lock cannot deadlock (`answered` calls `ask` twice
+in sequence, never nested), the double-application gate reads `turn.facts` live through the turn
+object, no secret or repository path reaches a command line, and the sidecar path cannot enter the
+save catalog.
+
+### Played, not only checked
+
+Three turns of `The Whispering Vault`, from the browser:
+
+1. **Claude, cold.** The master rolled the oracle, the dice landed, the narrator wrote the scene.
+2. **Claude, resumed.** `master spawned: ... resumed in 27.0s, input=12 cached=87208` and
+   `narrator spawned: ... resumed in 5.6s`. Both carried on their own conversation.
+3. **Codex, all three roles.** `master spawned: provider=codex model=gpt-5.6-sol effort=high cold
+   in 33.8s, input=51554 cached=32256`, then the narrator, then three spoken lines on the page.
+   It started **cold** because the provider and the model had changed — the fingerprint doing its
+   job, live.
+
+`ui/app.py` now calls `logging.basicConfig`. Without it the root logger dropped every INFO record,
+so no spawn line could ever be read.
+
+### Open — known and accepted
+
+1. **The codex master can never resume.** Measured: `codex exec resume` accepts neither
+   `--sandbox` nor `--approve-for-me`, and a resumed thread answers every MCP call with "MCP tool
+   call requires approval, but approval policy is never" — under `on-request`, `granular` and
+   `untrusted` alike. Only `--approve-for-me` on a cold start lets a call through. So the codex
+   master starts cold every turn, and only the narrator and the worldsmith resume. Their flag set
+   was measured end to end: a cold spawn was told the word PLUM and a resumed one said it back.
+2. **A cold retry can open on a refusal.** `start_turn` sets `started` but lands no fact, so a
+   master that dies straight after it is retried cold, and that retry's first call answers
+   `ALREADY_OPEN`. It is an answer, not a crash, and the gate is right to read facts rather than
+   `started`.
+3. **`HOME` is on the allowlist**, so a Claude role can still see `~/.claude`. `--restricted`
+   ignores the settings files there; that is the flag's claim, not something the probe showed.
+4. **Codex keeps a shell.** `--disable shell` and `--disable mcp` are both rejected as unknown
+   feature flags, so the codex acceptance is least privilege, as the plan allowed: read-only
+   sandbox (workspace-write for the master, which cannot take `--sandbox` beside
+   `--approve-for-me`), empty working directory, `--ignore-user-config`, `--disable apps`,
+   `web_search=disabled`, and a scrubbed environment. Under all of that the role still ran
+   `/bin/bash -lc 'echo REACHED'`. **`--ignore-user-config` alone left the account's own MCP
+   servers standing** — a corporate Polarion server, a site-deployment server and a
+   workspace-agent server, about a hundred tools — which is what `--disable apps` removes.
+   Measured on codex-cli 0.151.0.
+5. **Claude keeps `Read`.** Naming no built-in tool re-enables all of them, so one harmless tool is
+   the floor. `--restricted` confines it to the empty working directory.
+6. **`master_log` is the parsed final message, not the raw stream.** The dev tab showed codex's
+   whole event stream before; it now shows the answer.
+7. **The default models are Claude aliases.** Moving a role to codex means changing `model` in the
+   same edit; `opus` is not a codex model.

@@ -18,7 +18,7 @@ class FakeBox:
 
 def test_only_a_real_edit_is_written(tmp_path: Path) -> None:
     settings = ui_settings(saves_dir=tmp_path)
-    settings.roles = Roles(narrator=RoleConfig(command="stub -p"))
+    settings.roles = Roles(narrator=RoleConfig(model="sonnet", command="stub -p"))
     changed = _changes(
         settings,
         {

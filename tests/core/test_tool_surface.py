@@ -406,7 +406,7 @@ async def test_abandoning_a_spawn_kills_the_process_group_it_started(tmp_path: P
     )
 
     with pytest.raises(asyncio.TimeoutError):
-        await CliSpawner(settings).run("master", "go")
+        await CliSpawner(settings).run("master", "go", None)
 
 
 def test_the_surface_publishes_for_the_engine_whose_turn_is_in_flight(tmp_path: Path) -> None:

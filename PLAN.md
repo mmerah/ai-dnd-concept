@@ -814,8 +814,8 @@ yet. One log line per spawn closes that.
 
 - `src` is about **5,880**, from about 5,540.
 - Full check green at every step.
-- A turn plays on Claude and a turn plays on Codex, each with its tool surface recorded under
-  `docs/probes/`.
+- A turn plays on Claude and a turn plays on Codex, each with its tool surface recorded in
+  `PROGRESS.md`. The probe itself is thrown away, as phase 5 threw away its own.
 - A second turn in the same game resumes the master's and the narrator's conversations, and
   changing a model in Settings makes the next turn start cold.
 - A master that fails **after** applying a tool does not re-run. Check this by hand: kill the
@@ -958,7 +958,7 @@ shared machinery.
 
 - [x] Phases 0–6 — done. `src` 9,452 -> 5,600
 - [x] Phase 7A — the restructuring pass. `src` 5,600 -> 5,578
-- [ ] Phase 7B — the roles get drivers. `src` 5,578 -> about 5,880
+- [x] Phase 7B — the roles get drivers. `src` 5,578 -> 5,892
 - [ ] Phase 8 — the engines return
 - [ ] Full check green at every checkpoint
 - [ ] The game plays from the browser at the end of every phase

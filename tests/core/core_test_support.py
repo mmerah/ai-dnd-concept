@@ -1,6 +1,7 @@
 import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
 from random import Random
 
@@ -10,6 +11,7 @@ from pydantic_settings import SettingsConfigDict
 from aidm.app import mcp
 from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import GameService, Runtime
+from aidm.app.spawn import RunResult
 from aidm.config import Role, Settings
 from aidm.core.entities import PLAYER_ID, EngineId, EntityId, Slug
 from aidm.core.facts import Fact
@@ -136,17 +138,21 @@ class ScriptedSpawner:
     turns: list[Callable[[], None]] = field(default_factory=list)
     answers: dict[Role, list[str]] = field(default_factory=dict)
     prompts: list[tuple[Role, str]] = field(default_factory=list)
+    resumed: list[tuple[Role, str | None]] = field(default_factory=list)
 
-    async def run(self, role: Role, prompt: str) -> str:
+    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
         self.prompts.append((role, prompt))
+        self.resumed.append((role, session))
+        # A session every time, so a test exercises the resumed path the real CLIs take.
+        spoke = partial(RunResult, session=f"{role}-1")
         if role == "master":
             if self.turns:
                 self.turns.pop(0)()
-            return prompt
+            return spoke(prompt)
         answers = self.answers.get(role)
         if not answers:
             raise ValueError(f"the scripted {role} has no answer left")
-        return answers.pop(0)
+        return spoke(answers.pop(0))
 
     def prompt(self, role: Role) -> str:
         """The first prompt the role was given; the golden prompts come from here."""

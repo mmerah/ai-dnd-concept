@@ -35,7 +35,11 @@ class FileStore:
         return path.read_text(encoding=ENCODING) if path.exists() else None
 
     def save(self, slug: str, state: Game) -> None:
-        _write(self._save_path(slug), state.model_dump_json(indent=2))
+        write_text(self._save_path(slug), state.model_dump_json(indent=2))
+
+    def sessions_path(self, slug: str) -> Path:
+        """Under a dot directory, so `slugs` can never list a sidecar as a save."""
+        return _safe_path(self.directory / ".sessions", slug, ".json")
 
     def media_dir(self, slug: str) -> Path:
         return _safe_path(self.directory, slug, ".media")
@@ -45,6 +49,14 @@ class FileStore:
 
     def _save_path(self, slug: str) -> Path:
         return _safe_path(self.directory, slug, ".json")
+
+
+def write_text(path: Path, body: str) -> None:
+    """Two processes may read one save; a reader must never see a half-written file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    staged = path.with_name(f"{path.name}.writing")
+    staged.write_text(body, encoding=ENCODING)
+    staged.replace(path)
 
 
 def decoded(raw: str) -> JsonValue:
@@ -105,7 +117,7 @@ def write_character(directory: Path, character: Character) -> None:
     sibling = next(folder.glob("*.json"), None)
     if sibling is not None and (held := _read(sibling, CharacterHeader)).name != character.name:
         raise ValueError(f"character {character.id!r} is {held.name!r}, not {character.name!r}")
-    _write(path, character.model_dump_json(indent=2))
+    write_text(path, character.model_dump_json(indent=2))
 
 
 def write_scenario(
@@ -117,7 +129,7 @@ def write_scenario(
     folder = directory / content_id(name)
     if folder.exists():
         raise ValueError(f"scenario {name!r} already exists")
-    _write(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
+    write_text(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
     if source is not None:
         _copy(folder / f"{SOURCE_STEM}{source.suffix}", source)
 
@@ -151,14 +163,6 @@ def _unique_keys(pairs: list[tuple[str, JsonValue]]) -> dict[str, JsonValue]:
 def _copy(path: Path, original: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     _ = path.write_bytes(original.read_bytes())
-
-
-def _write(path: Path, body: str) -> None:
-    """Two processes may read one save; a reader must never see a half-written file."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    staged = path.with_name(f"{path.name}.writing")
-    staged.write_text(body, encoding=ENCODING)
-    staged.replace(path)
 
 
 def _safe_path(directory: Path, stem: str, suffix: str) -> Path:

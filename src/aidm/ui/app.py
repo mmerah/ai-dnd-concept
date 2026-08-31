@@ -46,6 +46,8 @@ def home_page(runtime: Runtime) -> None:
 
 
 def start() -> None:
+    # Without a handler the root logger drops every INFO record, spawns included.
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     settings = load_settings()
     _register_pages(Runtime(settings, CliSpawner(settings)))
     ui.run(  # pyright: ignore[reportUnknownMemberType]

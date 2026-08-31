@@ -1,17 +1,13 @@
-from collections.abc import Awaitable, Callable
-
 from aidm.core.facts import Fact
 from aidm.core.model import Game, SceneWrite
 from aidm.engines.core import Engine
 from aidm.kits.scenes.worldsmith import apply_scene, scene_refusal
 from aidm.turn.context import render_worldsmith
 
-from .spawn import answered
+from .spawn import Ask, answered
 
 
-async def write_next(
-    snapshot: Game, intent: str, engine: Engine, ask: Callable[[str], Awaitable[str]]
-) -> SceneWrite:
+async def write_next(snapshot: Game, intent: str, engine: Engine, ask: Ask) -> SceneWrite:
     prompt = render_worldsmith(
         snapshot.world, intent, engine.guidance(snapshot.packs), engine.sheet_rows(snapshot)
     )

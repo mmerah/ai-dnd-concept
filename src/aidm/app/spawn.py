@@ -1,25 +1,161 @@
 import json
+import logging
 import shlex
 from asyncio import subprocess, wait_for
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
-from os import killpg
+from os import environ, killpg
 from signal import SIGKILL
+from tempfile import TemporaryDirectory
+from time import monotonic
 from typing import Protocol
 
-from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
+from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter, ValidationError
 
-from aidm.config import Role, Settings
+from aidm.config import CliProvider, Role, RoleConfig, Settings
 
 RETRIES = 1
+# The child inherits nothing else: the shell that started the app may hold keys no role should see.
+KEPT_ENV = ("PATH", "HOME", "LANG", "TERM")
 # What `answered` asks of the value it parsed, beyond its own schema; the reason re-prompts.
 type Check[T] = Callable[[T], str | None]
+# One spawn: the prompt, and the conversation to carry on, if any.
+type Ask = Callable[[str, str | None], Awaitable["RunResult"]]
+
+LOGGER = logging.getLogger(__name__)
 
 _EVENT: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
 
 
+@dataclass(frozen=True, slots=True)
+class RunResult:
+    text: str
+    session: str | None
+    input_tokens: int = 0
+    cached_tokens: int = 0
+
+
+class Driver(Protocol):
+    """Builds a command line and reads what it printed. A driver never starts a process."""
+
+    @property
+    def secrets(self) -> tuple[str, ...]:
+        """Beyond `KEPT_ENV`: what this CLI needs to authenticate."""
+        ...
+
+    def command(
+        self, role: Role, config: RoleConfig, session: str | None, url: str
+    ) -> Sequence[str]: ...
+    def parse(self, output: str) -> RunResult: ...
+
+
+class _ClaudeUsage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    input_tokens: int = 0
+    cache_read_input_tokens: int = 0
+
+
+class _ClaudeResult(BaseModel):
+    """What `--output-format json` prints; anything else is read as loose text."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    result: str
+    session_id: str
+    # A failed run can still exit 0 and put its error where the answer goes.
+    is_error: bool = False
+    usage: _ClaudeUsage = _ClaudeUsage()
+
+
+@dataclass(frozen=True, slots=True)
+class ClaudeDriver:
+    secrets: tuple[str, ...] = ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN")
+
+    def command(
+        self, role: Role, config: RoleConfig, session: str | None, url: str
+    ) -> Sequence[str]:
+        """The last flag takes no list, because the prompt follows it."""
+        argv = [
+            "claude",
+            "-p",
+            "--output-format",
+            "json",
+            "--model",
+            config.model,
+            "--effort",
+            config.effort,
+            *(() if session is None else ("--resume", session)),
+            # Measured: `--tools ""` disables nothing, naming one tool does.
+            "--restricted",
+            "--tools",
+            "Read",
+        ]
+        if role == "master":
+            argv += ["--allowed-tools", "mcp__aidm", "--mcp-config", _claude_mcp(url)]
+        return (*argv, "--strict-mcp-config")
+
+    def parse(self, output: str) -> RunResult:
+        try:
+            said = _ClaudeResult.model_validate_json(output)
+        except ValidationError:
+            return RunResult(final_message(output), None)
+        if said.is_error:
+            raise ValueError(f"the run failed: {said.result[-500:]}")
+        return RunResult(
+            said.result,
+            said.session_id,
+            said.usage.input_tokens,
+            said.usage.cache_read_input_tokens,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class CodexDriver:
+    secrets: tuple[str, ...] = ("OPENAI_API_KEY",)
+
+    def command(
+        self, role: Role, config: RoleConfig, session: str | None, url: str
+    ) -> Sequence[str]:
+        # Measured: a resumed thread refuses every MCP call, so the master always starts cold.
+        carried = None if role == "master" else session
+        argv = ["codex", "exec", *(() if carried is None else ("resume", carried))]
+        argv += [
+            "--json",
+            "--model",
+            config.model,
+            "-c",
+            f"model_reasoning_effort={config.effort}",
+            "-c",
+            "web_search=disabled",
+            # The account's own MCP servers, which `--ignore-user-config` leaves standing.
+            "--disable",
+            "apps",
+            "--ignore-user-config",
+            "--ignore-rules",
+            "--skip-git-repo-check",
+        ]
+        if role == "master":
+            # Only `--approve-for-me` lets an MCP call through, and it refuses `--sandbox`.
+            return (*argv, "--approve-for-me", "-c", f"mcp_servers.aidm.url={url}")
+        # `resume` takes no `--sandbox`, so a writer's box rides `-c`, which both forms accept.
+        return (*argv, "-c", "sandbox_mode=read-only", "-c", "approval_policy=never")
+
+    def parse(self, output: str) -> RunResult:
+        events = [one for line in output.splitlines() if (one := _object(line)) is not None]
+        return RunResult(
+            final_message(output),
+            _string(events, "thread_id"),
+            _count(events, "input_tokens"),
+            _count(events, "cached_input_tokens"),
+        )
+
+
+DRIVERS: Mapping[CliProvider, Driver] = {"claude": ClaudeDriver(), "codex": CodexDriver()}
+
+
 class Spawner(Protocol):
-    async def run(self, role: Role, prompt: str) -> str: ...
+    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,28 +164,31 @@ class CliSpawner:
 
     settings: Settings
 
-    async def run(self, role: Role, prompt: str) -> str:
+    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
         config = self.settings.roles.for_name(role)
-        if not config.command:
-            raise ValueError(f"role {role!r} has no command; set ROLES__{role.upper()}__COMMAND")
-        process = await subprocess.create_subprocess_exec(
-            *shlex.split(config.command),
-            prompt,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            # Its own group, so an abandoned spawn cannot leave children playing on.
-            start_new_session=True,
+        driver = DRIVERS[config.provider]
+        raw = bool(config.command)
+        url = f"http://localhost:{self.settings.server_port}/mcp/"
+        argv = shlex.split(config.command) if raw else driver.command(role, config, session, url)
+        started = monotonic()
+        # An empty working directory, so a role cannot read this repository even if it tries.
+        with TemporaryDirectory(prefix=f"aidm-{role}-") as empty:
+            output = await _spawned(role, argv, prompt, config.timeout, driver.secrets, empty)
+        # A raw command is the operator's own; it is unresumable and its output unparsed.
+        result = RunResult(final_message(output), None) if raw else driver.parse(output)
+        LOGGER.info(
+            "%s spawned: provider=%s model=%s effort=%s %s in %.1fs, input=%d cached=%d",
+            role,
+            config.provider,
+            config.model,
+            config.effort,
+            # Read off the command, because a driver may refuse to carry a session on.
+            "resumed" if "resume" in argv or "--resume" in argv else "cold",
+            monotonic() - started,
+            result.input_tokens,
+            result.cached_tokens,
         )
-        try:
-            streamed = await wait_for(process.communicate(), config.timeout)
-        finally:
-            # A no-op once it exited; an abandoned or timed-out spawn dies with its children.
-            _kill(process)
-        output = streamed[0].decode(errors="replace")
-        if process.returncode != 0:
-            raise ValueError(f"the {role} exited {process.returncode}: {output[-500:]}")
-        return output
+        return result
 
 
 def final_message(output: str) -> str:
@@ -83,19 +222,58 @@ async def answered[T: BaseModel](
     prompt: str,
     expect: type[T],
     check: Check[T],
-    ask: Callable[[str], Awaitable[str]],
+    ask: Ask,
 ) -> T:
     """The one retry, shared: a role that fails twice fails its step, loudly."""
-    asked, refused = prompt, ""
+    asked, refused, held = prompt, "", None
     for _ in range(RETRIES + 1):
         try:
-            answer = expect.model_validate_json(final_message(await ask(asked)))
+            spoken = await ask(asked, held)
+            held = spoken.session
+            answer = expect.model_validate_json(final_message(spoken.text))
             if (refused := check(answer)) is None:
                 return answer
         except ValidationError as invalid:
             refused = str(invalid)
-        asked = f"{prompt}\n\nYour last answer was refused: {refused}\nAnswer again, fixed."
+        told = f"Your last answer was refused: {refused}\nAnswer again, fixed."
+        # The retry carries on the refused attempt, which has read the prompt already.
+        asked = told if held is not None else f"{prompt}\n\n{told}"
     raise ValueError(f"the {role} answered nothing usable: {refused}")
+
+
+async def _spawned(
+    role: Role,
+    argv: Sequence[str],
+    prompt: str,
+    timeout: float,
+    secrets: Sequence[str],
+    cwd: str,
+) -> str:
+    process = await subprocess.create_subprocess_exec(
+        *argv,
+        prompt,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        cwd=cwd,
+        env={name: environ[name] for name in (*KEPT_ENV, *secrets) if name in environ},
+        # Its own group, so an abandoned spawn cannot leave children playing on.
+        start_new_session=True,
+    )
+    try:
+        streamed = await wait_for(process.communicate(), timeout)
+    finally:
+        # A no-op once it exited; an abandoned or timed-out spawn dies with its children.
+        _kill(process)
+    output = streamed[0].decode(errors="replace")
+    if process.returncode != 0:
+        raise ValueError(f"the {role} exited {process.returncode}: {output[-500:]}")
+    return output
+
+
+def _claude_mcp(url: str) -> str:
+    """A string, not a file: `--mcp-config` takes either, and a string needs no cleanup."""
+    return json.dumps({"mcpServers": {"aidm": {"type": "http", "url": url}}})
 
 
 def _last_said(output: str) -> str | None:
@@ -118,13 +296,35 @@ def _object(line: str) -> JsonValue | None:
 
 def _said(node: JsonValue) -> str | None:
     """Every event stream we have seen names the message it carries `text`, at some depth."""
+    found = _found(node, "text")
+    return found if isinstance(found, str) else None
+
+
+def _string(events: Sequence[JsonValue], name: str) -> str | None:
+    """The first event that names it: a stream announces its thread before it says anything."""
+    found = next((one for event in events if (one := _found(event, name)) is not None), None)
+    return found if isinstance(found, str) else None
+
+
+def _count(events: Sequence[JsonValue], name: str) -> int:
+    """The last event that names it: a turn reports its usage once, at the end."""
+    found = next(
+        (one for event in reversed(events) if (one := _found(event, name)) is not None), None
+    )
+    return found if isinstance(found, int) else 0
+
+
+def _found(node: JsonValue, name: str) -> JsonValue | None:
+    """An event nests its payload, so a name is searched for at any depth."""
+    if isinstance(node, list):
+        return next((one for item in node if (one := _found(item, name)) is not None), None)
     if not isinstance(node, dict):
         return None
-    for name, value in node.items():
-        if name == "text" and isinstance(value, str):
+    for key, value in node.items():
+        if key == name:
             return value
-        if (found := _said(value)) is not None:
-            return found
+        if (deeper := _found(value, name)) is not None:
+            return deeper
     return None
 
 
