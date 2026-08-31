@@ -829,3 +829,130 @@ unused, every `CLAUDE.md` rule matches today's code, and every README claim matc
   path. Phase 6 rewrites that engine and its notes.
 - **The session was played offline**, against `ScriptedSpawner`, as at the end of phases 3 and 4.
   A session against three real CLIs is still untaken.
+
+## Before phase 6 — what 24XX actually costs
+
+No code changed here. The plan claimed "about 500 lines each"; it was measured instead, and
+`PLAN.md` phase 6 now carries the answer and a step 0.
+
+**The number is ~1,050 `src` python lines, not 500.** Three methods agree: scale the old 24XX (932)
+by Loner's measured port delta (+21.5%) -> 1,132; walk all sixty old symbols one by one -> 1,035;
+fixed cost (932 − 40 saved + 113 new-design overhead) -> 1,005. The cleanest refutation needs no
+estimate at all: **Loner 3e, the simplest engine here, is 820 lines**, and 24XX is larger than Loner
+at every comparable symbol. On top: ~460 non-python (the pack alone is 278), ~740 test lines, ~59
+for the shared machinery engine two brings back.
+
+**The port makes an engine grow.** Loner went 675 -> 820 across phases 1–4. The engine now owns its
+typed state (83), three payload models, `new_game`, `guidance`, `scene_closed`, and ~34 lines of
+helpers that came back when `engines/core.py` fell from 483 to 141. 24XX pays every one.
+
+### Is Loner earning its 820 lines? Yes.
+
+Measured by category: 74 imports (9%), ~80 lines of prompt prose the model reads (10%), ~104 of
+state and pack schema (13%), ~180 of SRD mechanics (22%), ~82 advancement, ~62 creation, ~109 seam
+wiring. Nothing is fat. Two candidate cuts were examined and **both rejected**:
+
+- **The tag glossary (24 lines) stays.** It looked like duplication; it is not. The entity line
+  prints tag *names* only (`skills: Reads Old Stonework, Quiet Hands`), and the glossary prints each
+  name once with its meaning. That detail exists nowhere else in the master prompt, and it is what
+  the `position` and `edge` fields of `roll_question` are judged from. Checked against the golden
+  fixture, not inferred. One known gap: only pack tags get a meaning, so a scenario-invented tag
+  like "A Guttering Lantern" reaches the master unexplained.
+- **`_gain` + `_rewrite` (31 lines) stay.** A keyed tag map would collapse them to ~12, but it
+  trades named sheet fields for string keys and changes the save shape. Rejected on purpose, so it
+  is not re-proposed.
+
+### The one real finding: ~40 lines of `core.py` refugees inside Loner
+
+`owed_notes`, `party_member`, `check_packs`, `find_entry`, `ADVANCE_SPENT` and `describe_rows` all
+lived in `engines/core.py` at `c9dbf9f`. Today their equivalents sit in `engines/loner3e/engine.py`,
+and none of them names a Loner rule. With one engine that reads as engine code; with two it is
+duplication. Checked against the old 24XX: `find_entry` had 6 uses there, `party_member`,
+`owed_notes`, `check_packs`, `describe_rows` and `ADVANCE_SPENT` 2 each, `pack_meanings` and
+`world.party` none.
+
+**Decision: a new `engines/party.py` for the party and advance-ledger cluster (~24 lines), and the
+pack and option lookups back into `core.py` beside `load_packs` (~14 lines).** Not one `helpers.py`
+bag — the two clusters are different ideas, and `core.py` was just cut from 483 to 141, so it should
+not become a dumping ground again. Done **while writing 24XX**, so the second engine proves each
+move rather than predicting it. Saves 50–65 lines in engine two.
+
+### The two risks that could move the estimate
+
+Both verified in the code, both now step 0 of phase 6.
+
+- **`SceneWrite` cannot become a union.** It is rendered into the worldsmith's prompt as its answer
+  schema (`turn/context.py:152`) and passed as the spawn's output type. A union hands the worldsmith
+  both engines' schemas. It has to become an `Engine` member.
+- **`Game.world` returns `LonerWorld`** and feeds six generic kit functions. Pydantic generics are
+  invariant. If a union forces `Game[S]`, that is +50 to 150 lines across three layers. **Probe it
+  in `/tmp` under basedpyright strict before writing any engine code** — the house method.
+
+Also folded into the plan: `AnyEngine` turns out not to be needed (the composition root holds the
+concrete dataclass), and 24XX has no tool headroom, because `resolvers` went in phase 1 and `defend`
+must now be public — exactly eight.
+
+## Before phase 6 — what Breathless actually costs
+
+Same method as the 24XX measurement, same day. No code changed. `PLAN.md` phase 6 carries the
+result.
+
+**Breathless is the smallest of the three: ~770 `src` python lines**, below Loner's 820 and 27%
+below 24XX. Two methods agree — a walk of all 63 old symbols gives 767, fixed cost gives 801. The
+third method, scaling by Loner's +21.5% port delta, gives 936 and was **rejected**: that delta was
+partly ~34 lines of `core.py` refugees Loner absorbed, and Breathless uses none of them.
+
+**Why it is smaller: it has no advancement system at all.** No chapters, no milestones, no advances
+— a grep over the old 770 lines finds two hits, both the dead map-growth trigger. Loner spends 119
+lines of `engine.py` on the advance ledger, the tag glossary and their helpers. That surplus more
+than pays for Breathless's three extra tools and its 48-line `Check`, the largest model any engine
+publishes.
+
+Budget: ~256 non-python, ~615 tests, ~10 lines of shared machinery. Its pack is 60 lines against
+24XX's 278, because it is six options plus five flat string lists with no per-entry detail — four
+of those lists have zero code readers and reach the model only through `guidance()`.
+
+### It does not need the step-0 helper split
+
+Verified by reading, not assumed: zero uses of `party`, `party_member`, `advances_owed`,
+`ADVANCE_SPENT`, `find_entry`, `other_than` or `pack_meanings`. **`engines/party.py` serves 24XX and
+Loner only.** Breathless shares `check_packs` and `pack_options` — about 5 lines. `stake_decision`,
+deleted from core in phase 1, has exactly two callers ever, one each in Breathless and 24XX: inline
+it in whichever lands first and lift it only if a third appears.
+
+### The decision worth the most: `catch_breath` goes on the scene boundary
+
+PLAN asked the question; it is now answered with numbers. The `PlayerAction` route costs **118
+lines**, of which **80 are core** — `engines/core.py`, `app/runtime.py`, `ui/game.py`. The boundary
+route is **13**, wired by an `Engine` member that already exists: `scene_closed` iterates
+`world.here()` and resets the worn dice, exactly as Loner's `close_conflicts` refills luck in 8.
+
+**Saving: 105 lines, and `PlayerAction` never comes back.** `breathers`, `med_kit_holders` and
+`_party` die with it, and `use_med_kit` needs no button — it was already a master tool.
+
+**The risk is a rules risk, not a line-count risk.** Dice stepping down *is* Breathless, and Catch
+Your Breath is a release the player buys with a complication. Free and involuntary at every scene
+end, it defuses the game. `scene_closed` must write the complication note too. Play a session before
+committing; the fallback is the +118 route.
+
+### One live defect the port would hit
+
+The old engine set `improvised=False` with the comment "every item is a die a loot check hands
+out". Today `scene_tools` publishes `improvise_item` to every engine unconditionally, and it creates
+an item with `sheet=None` — which a Breathless `_validate` that requires a rated item refuses, every
+time the game master calls it. Verified in both trees. Fix in the engine (tolerate a sheet-less item,
+refuse to roll it) and record it as a deviation. **Not** a per-engine flag on `scene_tools`: that is
+a core abstraction for one engine.
+
+### Also folded into the plan
+
+Fold the two loot tools into one `take_loot` with a `med_kit` flag — `resolvers` is gone, so two
+public tools would put Breathless at eight with no headroom; one leaves a slot spare. A worn-out
+item must be un-carried **and** added to `world.current.present`, or it vanishes from every view.
+And Breathless was under-tested rather than simple to test: 286 old lines against Loner's 731, with
+no events, packs or creation test — about 240 of its ~615 is new coverage.
+
+### Not counted in either estimate
+
+Each engine also regenerates about **1,300–1,400 lines of golden JSON**, because the golden tests
+parameterise over `ENGINE_IDS`. Machine-written, but real diff to read at the end of the phase.

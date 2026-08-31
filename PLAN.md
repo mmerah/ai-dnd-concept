@@ -431,14 +431,58 @@ rewrites prose. Expect the count to stay near 5,400.
 **Goal:** 24XX and Breathless play again, on the new design.
 
 Do them one at a time, and only after phase 5 is done and the game has been played for real.
-Each should cost about **500 lines**: there is no untyped state and no map to fight.
 
-For each engine:
+**They cost about 1,050 and about 770 lines of `src` python, not 500 each.** Both were measured
+after phase 5, each three ways. 24XX: 1,005 / 1,035 / 1,132. Breathless: 767 / 801, with the
+port-delta method rejected because it assumes helpers Breathless does not use. The floor needs no estimate: **Loner 3e, the
+simplest engine here, is 820 lines** — `rules.py` 361, `engine.py` 376, `state.py` 83 — and 24XX is
+larger than Loner at every comparable symbol. The port makes an engine grow, not shrink: Loner went
+675 -> 820 across it, because the engine now owns its typed state, its sheet union, `new_game`,
+`guidance` and `scene_closed`. Budget on top of the 1,050: about **460** non-python lines (the pack
+alone is 278), about **740** test lines, and about **59** for the shared machinery below.
 
-1. Read its notes in `docs/24XX.md` or `docs/BREATHLESS.md`.
+## Step 0 — before either engine (do it once)
+
+1. **Probe the two-engine save union.** `state/model.py:19-22` says a phase-6 comment out loud, but
+   two of the four aliases do not survive becoming a union:
+   - **`SceneWrite`** is rendered *into the worldsmith's prompt* as its answer schema
+     (`turn/context.py:152`, and passed as the spawn's output type at `runtime.py:242` and `:396`).
+     A union there hands the worldsmith both engines' schemas and lets a Loner game accept a 24XX
+     scene. It has to become an `Engine` member instead — `scene: type[SceneDraft[S]]`, as
+     `VISION.md` §6 sketches — threaded through those three call sites. **+15 to 25 lines.**
+   - **`Game.world`** (`model.py:78`) returns `LonerWorld`. As a union it feeds six generic kit
+     functions — `narrator_view[S]`, `master_view`, `apply_change[S]`, `apply_scene[S]` — and
+     pydantic generics are invariant. Write a `/tmp` throwaway with two engine states and run
+     `basedpyright` strict on those call sites **before** writing any engine code. If it forces
+     `Game[S]`, that is **+50 to 150 lines** across `state`, `turn` and `app`, and the whole
+     estimate moves.
+
+2. **Give the shared helpers a home.** Phase 2 dissolved `engines/core.py` from 483 lines to 141,
+   and about 40 lines of engine-agnostic machinery landed inside Loner. Engine two would copy every
+   one of them. Measured against the old 24XX at `c9dbf9f`, six are proven shared — `find_entry`
+   (6 uses), `party_member`, `owed_notes`, `check_packs`, `describe_rows` and `ADVANCE_SPENT` (2
+   each) — while `pack_meanings` and `world.party` had none. Split them by what they are, and do it
+   **while writing 24XX**, so the second engine proves each move instead of predicting it:
+   - **`engines/party.py`**, a new file: `party`, `party_member`, `advances_owed`, `_advance_owed`,
+     `ADVANCE_SPENT`. About 24 lines. Party membership and the advance ledger are one idea, and
+     they are not the seam.
+   - **`engines/core.py`**, beside `load_packs` and `CharacterCreation`, where `find_entry` lived
+     until phase 2: `check_packs`, `find_entry`, `other_than`, `pack_options`. About 14 lines,
+     taking `core.py` to ~155 — still a third of its old size.
+   - **Left in Loner**: `pack_meanings` and `_swapped`. 24XX used neither.
+
+   Saving: **50 to 65 lines** in engine two, and nothing duplicated.
+
+Then, for each engine:
+
+1. Read its notes in `docs/24XX.md` or `docs/BREATHLESS.md`. **`docs/24XX.md` deviation 1 is now
+   false**: succession was deleted in phase 1, so a killed 24XX player no longer passes to a
+   companion. Re-make that rules decision and rewrite the deviation.
 2. Create `src/aidm/engines/<name>/` with its typed state, embedding `SceneState` with its own
    sheet union. 24XX's ship is a sheet on an entity, not a place.
-3. Write its procedure tools — one per SRD rule, never more than eight.
+3. Write its procedure tools — one per SRD rule, never more than eight. **24XX has no headroom**:
+   `resolvers` went in phase 1, so `defend` — which used to be hidden from the model — must sit in
+   the public list, taking 24XX to exactly eight.
 4. Write its `guidance`, `scene_closed`, `over`, and creation options. A scene-ending signal
    no predicate can see is written to `SceneState.spent` by the rule that causes it — see phase 2.
 5. Add its pack file under `src/aidm/engines/<name>/packs/` and one character file.
@@ -446,12 +490,62 @@ For each engine:
 7. Add its test directory to `pythonpath` in `pyproject.toml`.
 8. Full check, then play a turn.
 
-**With the second engine**, bring back the little that holds more than one: the `AnyEngine`
-alias for the composition root, engine discovery in the registry, and the engine choice on the
-home page.
+**With the second engine**, bring back the little that holds more than one, measured at about
+**59 lines**: the closed payload union in `state/model.py` (+8), engine discovery in the registry
+(+3 — two explicit imports and a two-entry dict; the `import_module` loop costs 12 and buys nothing
+for two engines), the engine choice and badge on the home page (+26), `app/launch.py`'s
+`characters_for` and `CatalogEntry.engines` (+10), the `runtime.engine` property becoming a lookup
+(+10), and the two tables in `test_package_boundary.py` that name `loner3e` (+2).
 
-**With Breathless**, bring back player actions — `catch_breath` and `use_med_kit`. Check first
-whether `catch_breath` belongs on the scene boundary instead. That may be all it needs.
+**`AnyEngine` is not needed.** `runtime.py:16` imports the *concrete* `engines.core.Engine`
+dataclass, which is not generic, and `protocol.Engine[S]` has no runtime reader. The composition
+root holds `dict[EngineId, core.Engine]` and that stays valid with two engines.
+
+## Breathless, measured
+
+**It is the smallest of the three: about 770 `src` python lines**, below Loner's 820 and well below
+24XX. One thing drives that: **Breathless has no advancement system at all** — no chapters, no
+milestones, no advances. Loner spends 119 lines of `engine.py` on that ledger and its tag glossary;
+Breathless writes none of it, which more than pays for its three extra tools and its 48-line
+`Check`. Budget: ~256 non-python (its pack is 60 lines, against 24XX's 278), ~615 test lines, and
+about 10 lines of shared machinery.
+
+1. **Breathless does not need step 0's helper split.** Verified by reading: zero uses of `party`,
+   `party_member`, `advances_owed`, `ADVANCE_SPENT`, `find_entry`, `other_than` or `pack_meanings`.
+   `engines/party.py` serves 24XX and Loner only. Breathless shares exactly `check_packs` and
+   `pack_options` — about 5 lines — and everything else it needs is already in `core.py`.
+
+2. **Do not bring player actions back. `catch_breath` goes on the scene boundary.** Measured, the
+   `PlayerAction` route costs **118 lines**, of which **80 are core** — `engines/core.py`,
+   `app/runtime.py`, `ui/game.py`. The boundary route is **13**: `scene_closed` iterates
+   `world.here()` and resets `worn`/`loot`/`stunted`, exactly as Loner's `close_conflicts` refills
+   luck in 8. **Saving: 105 lines, and `PlayerAction` never returns.** `breathers`,
+   `med_kit_holders` and `_party` (29 lines) die with it. `use_med_kit` needs no button either — it
+   was already a master tool, and `rules.md` already tells the game master to call it.
+
+   **Play a real session before committing to this.** Dice stepping down *is* Breathless, and a
+   free involuntary reset at every scene end defuses it. Keep it SRD-faithful: `scene_closed` must
+   also write the complication note, because a breather is always paid for.
+
+3. **Fold the two loot tools into one.** `resolvers` went in phase 1, so `LOOT_ITEM` and
+   `LOOT_MED_KIT` would both have to be public, putting Breathless at eight with no headroom.
+   `PendingOption` already carries `name` plus `args`, so both options can name **one** tool with
+   `med_kit: true|false`. That leaves 7 engine tools plus `change_world` — one slot spare, where
+   24XX has none.
+
+4. **`improvise_item` is now unconditional, and it breaks a Breathless invariant.** The old engine
+   set `improvised=False` with the comment "every item is a die a loot check hands out". Today
+   `scene_tools` publishes `improvise_item` to every engine, and it creates an item with
+   `sheet=None`, which Breathless's "every item is rated" `_validate` refuses — every time the game
+   master calls it. Fix it in the engine, not in core: `_validate` tolerates a sheet-less item and
+   `_rolls` refuses to roll one. Two lines, plus one new deviation in `docs/BREATHLESS.md`. Do not
+   add a per-engine flag back to `scene_tools` for one engine.
+
+5. **Two porting traps.** A worn-out item is un-carried *and* put into `world.current.present`, or
+   it vanishes from every view — the old room tree did that implicitly. And `Breathless` was
+   under-tested, not simple to test: its old suite was 286 lines against Loner's 731, with no
+   events test, no packs test and no creation test. About 240 of its ~615 lines are coverage that
+   never existed.
 
 ---
 

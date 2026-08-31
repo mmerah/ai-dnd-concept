@@ -320,7 +320,9 @@ _AUTHORING = (
     "Every actor needs an `actor` sheet with a concept and any fitting skills, frailties, or "
     "gear. Anything that can resist without a will of its own takes an `item` sheet, which is "
     "luck alone. Loner tags are freeform descriptions: use selected pack entries when they fit "
-    "and invent scenario-specific tags when they are clearer."
+    "and invent scenario-specific tags when they are clearer. Only a pack tag carries a meaning "
+    "the game master can look up, so an invented tag that does not say what it does needs one "
+    "sentence in that entity's `description`: positions are judged from it."
 )
 
 
