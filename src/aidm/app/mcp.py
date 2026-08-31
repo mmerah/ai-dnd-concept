@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
 
 from aidm.app.runtime import NO_TURN, GameService, Runtime
 from aidm.state.entities import Frozen, require_unique
-from aidm.state.tools import DirectorTool, NoArgs, schema_of
+from aidm.state.tools import MasterTool, NoArgs, schema_of
 from aidm.turn.run import Turn
 
 SERVER_NAME = "aidm"
@@ -111,7 +111,7 @@ def call(runtime: Runtime, name: str, raw: dict[str, JsonValue]) -> str:
     return tool.run(service, raw)
 
 
-def _published(tool: ServerTool | DirectorTool) -> types.Tool:
+def _published(tool: ServerTool | MasterTool) -> types.Tool:
     return types.Tool(
         name=tool.name, description=tool.description, input_schema=schema_of(tool.args)
     )

@@ -193,7 +193,7 @@ def resolve_question(
         if _shortfall(twist) == 0:
             twist.current = 0
             facts.extend(_twist(draft, actor, rng, twists))
-    # The question is director-authored and names unrevealed canon even on a "no": never shown.
+    # The question is master-authored and names unrevealed canon even on a "no": never shown.
     edge = f" ({action.edge})" if action.edge else ""
     card = "\n".join((f"Oracle — {action.position.capitalize()}{edge} → {outcome.name}", *effects))
     facts[answered_at] = facts[answered_at].model_copy(

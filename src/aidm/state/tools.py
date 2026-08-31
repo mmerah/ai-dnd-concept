@@ -14,7 +14,7 @@ class NoArgs(Frozen):
 
 
 @dataclass(frozen=True, slots=True)
-class DirectorTool:
+class MasterTool:
     name: str
     description: str
     args: type[BaseModel]
@@ -23,21 +23,21 @@ class DirectorTool:
     during_suspension: bool = False
 
 
-def director_tool[A: BaseModel](
+def master_tool[A: BaseModel](
     name: str,
     description: str,
     args: type[A],
     resolve: Callable[[Game, A, Random], Sequence[Fact]],
     *,
     during_suspension: bool = False,
-) -> DirectorTool:
+) -> MasterTool:
     if bare := [key for key, one in args.model_fields.items() if not one.description]:
         raise ValueError(f"{name} parameters the model reads carry no description: {bare}")
 
     def call(draft: Game, raw: Mapping[str, JsonValue], rng: Random) -> tuple[Fact, ...]:
         return tuple(resolve(draft, args.model_validate(raw), rng))
 
-    return DirectorTool(name, description, args, call, during_suspension)
+    return MasterTool(name, description, args, call, during_suspension)
 
 
 # The rng is a parameter so a trial run against a throwaway copy cannot consume the turn's dice.

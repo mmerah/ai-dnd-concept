@@ -15,7 +15,7 @@ class PlayerPrompt(Frozen):
     allows_text: bool
 
 
-class DirectorView(Frozen):
+class MasterView(Frozen):
     """The game master's whole picture: the kit states every section, so nothing leaks by
     omission."""
 
@@ -51,7 +51,7 @@ class PlayerView(Frozen):
 
 
 class Views(Frozen):
-    director: DirectorView
+    master: MasterView
     narrator: NarratorView
     player: PlayerView
 

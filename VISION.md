@@ -532,7 +532,7 @@ class Engine[S: BaseModel](Protocol):
     state: type[S]
     scenario: type[BaseModel]
     character: type[BaseModel]
-    tools: tuple[DirectorTool, ...]
+    tools: tuple[MasterTool, ...]
     creation: Creation
     def new_game(self, scenario, character) -> S: ...
     def validate(self, state) -> None: ...

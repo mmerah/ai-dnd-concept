@@ -3,7 +3,7 @@ from collections.abc import Callable, Iterable
 from pydantic import BaseModel
 
 from aidm.kernel.views import (
-    DirectorView,
+    MasterView,
     NarratorView,
     PlayerPrompt,
     PlayerView,
@@ -112,12 +112,12 @@ def _lines[S: BaseModel](
     return "\n".join(entity_line(world, one, rows) for one in entities) or "- (none)"
 
 
-def director_view(state: Game, rows: SheetRows, engine_sections: EngineSections) -> DirectorView:
+def master_view(state: Game, rows: SheetRows, engine_sections: EngineSections) -> MasterView:
     """Every section stated, hidden canon included: the game master reads all of it."""
     world = state.world
     scene = world.current
     player = world.player
-    return DirectorView(
+    return MasterView(
         sections=(
             ("SCENE", f"{scene.title}\n{scene.situation}"),
             ("YOU PLAY FOR", entity_line(world, player, rows)),

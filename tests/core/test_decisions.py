@@ -12,10 +12,10 @@ from aidm.state.facts import Fact
 from aidm.state.model import Game
 from aidm.state.play import Answer, PendingDecision, PendingOption
 from aidm.state.tools import (
-    DirectorTool,
+    MasterTool,
     NoArgs,
     apply_to_draft,
-    director_tool,
+    master_tool,
     transact,
 )
 from aidm.turn.run import RULES_WAIT, Turn, TurnStep, consume_answer
@@ -34,14 +34,14 @@ def _chained(draft: Game, item: str) -> tuple[Fact, ...]:
     return _turned(item)
 
 
-TURN_THE_HIT = director_tool(
+TURN_THE_HIT = master_tool(
     "turn_the_hit",
     "Break something to turn the hit.",
     Broken,
     lambda _draft, one, _rng: _turned(one.item),
 )
 
-CHAIN_THE_HIT = director_tool(
+CHAIN_THE_HIT = master_tool(
     "chain_the_hit",
     "Break something and leave the rules waiting on the same decision again.",
     Broken,
@@ -49,7 +49,7 @@ CHAIN_THE_HIT = director_tool(
 )
 
 
-def _decision(resolver: DirectorTool) -> PendingDecision:
+def _decision(resolver: MasterTool) -> PendingDecision:
     return PendingDecision(
         kind="defence",
         prompt="The blow lands unless something of yours breaks. What gives?",
@@ -81,8 +81,8 @@ def _hit(draft: Game, *, narrate: bool) -> tuple[Fact, ...]:
     )
 
 
-def _strike_tool(*, narrate: bool) -> DirectorTool:
-    return director_tool(
+def _strike_tool(*, narrate: bool) -> MasterTool:
+    return master_tool(
         "strike",
         "Take a hit the player may turn by breaking something of theirs.",
         NoArgs,

@@ -35,7 +35,7 @@ def _owed(engine: Engine, state: Game) -> tuple[str, ...]:
     """The ADVANCES OWED section split back into the one line it holds per member."""
     return tuple(
         line
-        for title, body in engine.views(state).director.sections
+        for title, body in engine.views(state).master.sections
         if title == "ADVANCES OWED"
         for line in body.splitlines()
     )

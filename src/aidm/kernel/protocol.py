@@ -11,7 +11,7 @@ from aidm.state.entities import EngineId, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Character, Game, Scenario
 from aidm.state.play import DecisionOption, PendingOption
-from aidm.state.tools import DirectorTool
+from aidm.state.tools import MasterTool
 
 
 class EngineIdentity(Protocol):
@@ -38,7 +38,7 @@ class Engine[S: BaseModel](Protocol):
     @property
     def instructions(self) -> str: ...
     @property
-    def tools(self) -> tuple[DirectorTool, ...]: ...
+    def tools(self) -> tuple[MasterTool, ...]: ...
     @property
     def creation(self) -> Creation: ...
     @property

@@ -143,6 +143,7 @@ def start() -> None:
     _register_pages(Runtime(settings, CliSpawner(settings)))
     ui.run(  # pyright: ignore[reportUnknownMemberType]
         title="AI Dungeon Master",
+        port=settings.server_port,
         reload=False,
         show=False,
     )

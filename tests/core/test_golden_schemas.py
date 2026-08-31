@@ -7,10 +7,10 @@ from aidm.state.tools import schema_of
 
 
 @pytest.mark.parametrize("engine_id", ENGINE_IDS)
-def test_the_director_is_offered_the_same_tools(engine_id: EngineId) -> None:
+def test_the_master_is_offered_the_same_tools(engine_id: EngineId) -> None:
     engine, _ = game(engine_id)
     golden_json(
-        FIXTURES / "schemas" / engine_id / "director_tools.json",
+        FIXTURES / "schemas" / engine_id / "master_tools.json",
         [
             {"name": one.name, "description": one.description, "parameters": schema_of(one.args)}
             for one in engine.tools

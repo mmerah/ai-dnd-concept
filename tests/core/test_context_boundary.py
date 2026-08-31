@@ -41,9 +41,9 @@ def _engine() -> Engine:
     return ENGINES_BUILT[LONER3E]
 
 
-def _directed(held: Game, prompt: str, *, resumed: str = "") -> str:
+def _master_prompt(held: Game, prompt: str, *, resumed: str = "") -> str:
     return render_picture(
-        _engine().views(held).director.sections,
+        _engine().views(held).master.sections,
         held,
         prompt,
         resumed=resumed,
@@ -65,28 +65,28 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
     dumped = str(views.narrator.model_dump())
     assert "The Secret" not in dumped
     assert held.world.current.note not in dumped
-    assert held.world.current.note in str(views.director.sections)
+    assert held.world.current.note in str(views.master.sections)
 
 
 def test_a_carried_item_never_names_the_holder_the_player_has_not_met() -> None:
     held = _state()
 
-    assert "carried by the npc The Secret[hidden-actor]" in _directed(held, "I look around.")
+    assert "carried by the npc The Secret[hidden-actor]" in _master_prompt(held, "I look around.")
     assert "The Secret" not in str(_engine().views(held).narrator.model_dump())
 
 
-def test_the_director_is_shown_the_hidden_canon_and_the_tags_in_play() -> None:
+def test_the_master_is_shown_the_hidden_canon_and_the_tags_in_play() -> None:
     held = _state()
 
-    director = _directed(held, "I look around.")
+    master = _master_prompt(held, "I look around.")
 
-    assert "Kael[player]" in director
-    assert "a ledger[ledger] (item)" in director
-    assert "The Secret[hidden-actor]" in director
+    assert "Kael[player]" in master
+    assert "a ledger[ledger] (item)" in master
+    assert "The Secret[hidden-actor]" in master
     # Hidden here: the map the player has not found yet.
-    assert "the vault map[vault-map]" in director
-    assert "concept: A Wary Relic-Hunter" in director
-    assert "luck: 6/6" in director
+    assert "the vault map[vault-map]" in master
+    assert "concept: A Wary Relic-Hunter" in master
+    assert "luck: 6/6" in master
 
 
 def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:
@@ -120,7 +120,7 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_read() -> None:
 def test_a_chosen_option_is_not_shown_as_the_players_own_words() -> None:
     resumed = "asked: A hit is coming.\nthe player chose: Take the hit\n- the hit lands in full"
 
-    director = _directed(_state(), "Take the hit", resumed=resumed)
+    master = _master_prompt(_state(), "Take the hit", resumed=resumed)
 
-    assert director.count("Take the hit") == 1
-    assert director.endswith(f"PLAYER ACTION:\n{ANSWERED_BY_OPTION}")
+    assert master.count("Take the hit") == 1
+    assert master.endswith(f"PLAYER ACTION:\n{ANSWERED_BY_OPTION}")

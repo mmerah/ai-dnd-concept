@@ -11,7 +11,7 @@ from aidm.kits.scenes.state import (
 )
 from aidm.state.entities import DEAD, CheckedEntityId, EntityId, Frozen, Slug, Trait, slug
 from aidm.state.facts import Fact
-from aidm.state.tools import DirectorTool, director_tool
+from aidm.state.tools import MasterTool, master_tool
 
 TO_PLAYER = "player"
 TO_SCENE = "scene"
@@ -321,9 +321,9 @@ CHANGE_WORLD = (
 )
 
 
-def scene_tools(*extra: DirectorTool) -> tuple[DirectorTool, ...]:
+def scene_tools(*extra: MasterTool) -> tuple[MasterTool, ...]:
     """Core owns `change_world`; an engine names the procedure tools that follow it."""
-    change_world = director_tool(
+    change_world = master_tool(
         "change_world",
         CHANGE_WORLD,
         ChangeWorld,

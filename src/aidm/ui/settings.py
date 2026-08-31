@@ -35,7 +35,8 @@ def settings_page(settings: Settings, apply: Callable[[], str | None]) -> None:
     with ui.column().classes("w-full q-pa-lg items-center"):
         with ui.column().style("width: min(56rem, 100%); gap: 1rem"):
             ui.label(
-                "Each box is one key in .env. Saving applies it; reopen an open game to pick it up."
+                "Each box is one key in .env. Saving applies it; reopen an open game to pick "
+                "it up. The server port applies at the next start, and .mcp.json must match it."
             ).classes("text-sm opacity-70")
             with ui.row().classes("w-full no-wrap items-start").style("gap: 1rem"):
                 with ui.tabs().props("vertical dense").classes("w-40") as tabs:

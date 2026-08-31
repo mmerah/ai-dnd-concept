@@ -59,9 +59,6 @@ class SourceConfig(BaseModel):
 
 
 class Roles(BaseModel):
-    # Ignored, not forbidden: a `.env` still holding the old role keys must keep loading.
-    model_config = ConfigDict(extra="ignore")
-
     master: RoleConfig = RoleConfig(command="claude -p --permission-mode bypassPermissions")
     narrator: RoleConfig = RoleConfig(timeout=120.0)
     # A whole scene from the source, the cast and the history: measured at 335 seconds.
@@ -109,6 +106,9 @@ class Settings(BaseSettings):
     media: MediaConfig = MediaConfig()
     turn: TurnConfig = TurnConfig()
     source: SourceConfig = SourceConfig()
+    # `.mcp.json` and `.codex/config.toml` hard-code this port: change all three together.
+    # Not `PORT`: that name is set in too many shells to be safe to read.
+    server_port: int = Field(default=8080, gt=0, lt=65536)
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")
     characters_dir: Path = Path("characters")

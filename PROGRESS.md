@@ -744,3 +744,88 @@ decision card printed off the raw state.
 - `README.md`, `CLAUDE.md` and `AGENTS.md` still describe the old design; phase 5 rewrites them.
 - The scenario form's uploaded file is saved under a `mkdtemp()` directory and copied into the
   scenario folder by `write_scenario`; the temporary copy is left for the OS to reap.
+
+## Phase 5 — The sweep — DONE
+
+`src` 5,625 -> **5,627**, `tests` 3,393 -> **3,386**. The phase removes dependencies and rewrites
+prose, so it was never going to move `src` much; the two lines it adds are `Settings.server_port`.
+Verification: 183 passed; ruff check, ruff format and basedpyright clean. `uv run aidm` serves 200 on `/`, `/create`, `/scenario`, `/settings` and on the
+MCP endpoint at `/mcp/`.
+
+1. **`pydantic-ai` removed** from `pyproject.toml`. No code imported it: phase 3 deleted `llm.py`
+   and the two agents, and `ModelRetry` had no reader left, so there was nothing to turn into a
+   `ValueError`. **`claude-agent-sdk` went with it** — the step did not name it, but `harness/`
+   took its only importer, and 428 lines came off `uv.lock` between the two.
+
+2. **Prompt files: already four, and already clean.** `master.md`, `narrator.md`, `worldsmith.md`
+   and Loner's rules note are the only `.md` under `src/`, and none of them says location, exit,
+   map, room or topology. The one change: `engines/loner3e/director.md` -> `rules.md`, so no file
+   is named after a role that no longer exists.
+
+3. **`README.md` rewritten** for the scene design, the three spawned CLIs and the one engine.
+   **`CLAUDE.md` rewritten**: the weak-model design bar is gone, the pydantic-ai and `FunctionModel`
+   rules are replaced by the spawn contract and `ScriptedSpawner`, the authoring-tools rule is now
+   the worldsmith's deep copy, and the import flow is written out in one line. **`AGENTS.md` is now
+   a symlink to `CLAUDE.md`** — the two had already drifted apart by one sentence, and one file
+   cannot drift from itself.
+
+4. **`docs/ROADMAP.md` and `docs/MEMORY-SYSTEM.md` deleted.** `24XX.md` and `BREATHLESS.md` kept for
+   phase 6. `COMPETITOR-RESEARCH.md` and `NEXT-ENGINE-RESEARCH.md` kept and untouched: they are
+   research, not design, and the step did not name them.
+
+   **`docs/probes/` deleted too** (643 lines), with its `extend-exclude` entry in `pyproject.toml`.
+   The step named two files, but phase 0 wrote the probes for phase 2 to copy from, phase 2 shipped,
+   and nothing had read them since. What they proved is written up at the top of this file.
+
+5. **The leftover grep is clean.** Of the fourteen terms, thirteen had no hit left in `src` or
+   `tests`. The fourteenth, `director`, was alive under a dead name.
+
+### The one real change: `director` -> `master`
+
+`DirectorTool`, `director_tool`, `DirectorView`, `director_view` and `Views.director` all named the
+role phase 3 deleted. Renamed everywhere, plus the golden fixture
+`schemas/loner3e/director_tools.json` -> `master_tools.json` and the test helper `_directed` ->
+`_master_prompt`. No behaviour changed and no golden content changed — only the fixture's filename.
+
+`VISION.md:535` still wrote `DirectorTool` in the `Engine` dataclass; fixed, since that file stays.
+
+### `docs/LONER-3E.md` was stale in four places
+
+It is a pointer file that survives every phase, and its deviations still described deleted code:
+sheets authored "via `rules`", a successor picking up the Twist Counter, and the Director holding
+the player's seat. Rewritten against what the code does now — a sheet lives on its entity, an item
+gets a blank sheet with full Luck the first time a question names it, and there is no succession.
+
+### One thing the README rewrite exposed
+
+The port was NiceGUI's default and was written down nowhere, while `.mcp.json` and
+`.codex/config.toml` both hard-code 8080. `Settings.server_port` now carries it, `ui.run` reads it,
+and the settings page says the port applies at the next start and that `.mcp.json` must match.
+The field is not called `port`: that env name is set in too many shells, and a stray one would move
+the server away from the two config files without a word. Checked live: `SERVER_PORT=8123 uv run
+aidm` serves on 8123.
+
+### What the audit caught
+
+An adversarial Opus review of the whole phase found **one real leftover and one false number**.
+
+- `tests/core/test_config.py` still set `ROLES__DIRECTOR__MODEL`. The step-5 grep term was
+  lowercase, so the uppercase env key slipped through. The test existed to prove that a `.env`
+  holding the old role keys keeps loading, and `Roles` carried `extra="ignore"` and a comment to
+  serve it — a field, a comment and a test all shaped around old data, which the house rule
+  forbids. All three deleted. Nothing changed: `extra="ignore"` is pydantic's default for a nested
+  model, so the line only ever documented a promise we do not make.
+- The first count claimed 5,625 -> 5,625. Measured, it is 5,627. Corrected above.
+
+Everything else it checked held: the rename is complete and undamaged, the four prompt files are
+free of map vocabulary, `director.md` -> `rules.md` is byte-identical, both dependencies are truly
+unused, every `CLAUDE.md` rule matches today's code, and every README claim matches the code.
+
+### Known and accepted
+
+- `IDEAS.md` entries I5 and I7 still say "builtin mode". It is a backlog file, not a design
+  document, and rewriting a backlog was not the step.
+- `docs/24XX.md` and `docs/NEXT-ENGINE-RESEARCH.md` cite the deleted `twentyfourxx/director.md` by
+  path. Phase 6 rewrites that engine and its notes.
+- **The session was played offline**, against `ScriptedSpawner`, as at the end of phases 3 and 4.
+  A session against three real CLIs is still untaken.

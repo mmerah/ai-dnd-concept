@@ -1,44 +1,34 @@
 # AI Dungeon Master
 
-A narrative game platform with separated roles. A model plays the game master. Engine code resolves the mechanics in typed Python, and the app owns every state change.
+A narrative game you play in a browser. Its three roles — game master, narrator and worldsmith — are one-shot CLI sessions the app spawns, so play costs a coding subscription you already have. Engine code resolves the mechanics in typed Python, and the app owns every state change.
+
+The world is a sequence of scenes. When a scene is spent, the worldsmith writes the next one.
 
 ## How this differs from other AI game masters
 
-Most AI game master projects let the model decide outcomes. Dice are a script the model may or may not call. State is a markdown or JSON file the model rewrites. The model sees every secret, so it cannot keep one. Almost all of them run D&D 5e on a frontier model.
-
-This project does the opposite:
-
-- Code rolls every die and applies every change. The model only proposes typed tool calls.
-- The narrator receives only revealed facts. Hidden canon has no path into its prompt.
-- A cheap or local model is the design bar. Each engine has a small tool surface a weak model can clear.
-- The rules engines are light, freely licensed SRDs (Loner, 24XX, Breathless), not 5e.
-
-Closest neighbours: `claude-dnd-skill` (Claude Code plugin, 5e, prompt-enforced rules), Familiar and Loremaster (Foundry VTT modules, VTT rolls, model narrates), Daicer and NarrativeEngine-P (open source, code-owned rolls). None of them targets light SRDs or weak models, and none keeps secrets by construction.
+Most AI game master projects let the model decide outcomes, keep state in a file the model rewrites, and show the model every secret, so it cannot keep one. Here, code rolls every die and applies every change; the model only proposes typed tool calls. The narrator's input type, `NarratorView`, carries revealed canon only, so hidden canon has no path into player-facing prose.
 
 ## Rules engines
 
-Two engines ship.
+One engine ships.
 
 | Engine | Core mechanic |
 |---|---|
 | Loner 3e | Chance d6 against Risk d6, six outcomes, a Twist Counter, Harm against Luck |
-| 24XX | one skill die of d6 to d12, +d6 for help, +d4 when hindered, take the highest |
-| Breathless | one skill or item die of d4 to d12 that steps down each roll until you Catch Your Breath, three outcome bands, a loot die, stress |
 
-`docs/LONER-3E.md`, `docs/24XX.md` and `docs/BREATHLESS.md` point at each engine's official rules and name every deviation this implementation takes; the rules text itself is not copied here. A candidate engine is a pointer file, not code: the shelf takes official, freely licensed, low-overhead systems, and a package appears only when it is next to be played.
+`docs/LONER-3E.md` points at the official rules and names every deviation this implementation takes; the rules text itself is not copied here. 24XX and Breathless come back on this design; `docs/24XX.md` and `docs/BREATHLESS.md` are their pointer files.
 
 ## How a turn runs
 
 ```text
-prompt → DIRECTOR → resolve → NARRATOR → commit
-         tool calls  engine code  prose
+player types → GAME MASTER → NARRATOR → commit
+                tool calls    prose
 ```
 
-- The Director calls one tool for each mechanic, and reads tool results before the next call.
-- Engine code resolves each call on a draft: the rolls, the costs and the outcome.
-- Core commits a validated state, and owns the fiction: entities, placement, threads, traits.
-- The Narrator writes the prose based on the mechanical facts. It receives no unrevealed canon in
-  builtin mode; code mode holds this by prompt.
+- The app spawns the game master and serves it the tools. It reads the whole picture, calls one tool per consequence, and writes no prose.
+- Engine code rolls the dice and applies each call to the turn draft. There is no `end_turn` tool: the process exiting ends the turn.
+- The app builds the narrator prompt from `NarratorView` and the told facts, spawns the narrator, then validates, records and commits.
+- When `scene_spent` fires, the app starts the worldsmith on a snapshot of the committed state. The scene it writes arrives on a later turn.
 
 ## Run
 
@@ -47,60 +37,48 @@ uv sync
 uv run aidm     # http://localhost:8080
 ```
 
-Set `PROVIDERS__OPENROUTER__API_KEY` in `.env`. Code mode needs no key. Every `.env` key except the four directory paths is editable at `/settings` in the app, and a change applies as soon as it is saved.
+- The home page lists the saves and starts a game from a scenario and a character. It also opens the new-character form and the new-scenario form, which takes a premise or an uploaded `.md`, `.txt` or `.pdf` and asks the worldsmith for an opening scene.
+- The play page holds the transcript on the left, and **scene**, **journal** and **dev** tabs on the right. The dev tab shows the game master's raw output.
+- `/settings` reflects over the `Settings` model, writes one `.env` key per box, and applies the change live.
 
-- The home page lists the saves, and starts a new game from a scenario and a character; the scenario names its engine.
-- Content packs load from `packs/<engine>/*.json`. A user pack replaces a shipped pack of the same name, and `PACKS_DIR` moves the directory.
-- Scene illustrations are off. `MEDIA__ENABLED=true` turns them on, `MEDIA__MODEL` picks the model. An image is generated after a turn commits, and only when the scene has changed.
+Scenarios live in `scenarios/`, characters in `characters/`, saves in `saves/`.
 
-## Two modes
+### The roles
 
-Both modes use the same engines, state and saves. `HARNESS` in `.env` selects one.
+Each role is a command and a timeout in `.env`:
 
-In **builtin mode**, the default, the browser is the game. The Director and the Narrator run on the models named in `.env`, or on your own machine through the `local` provider.
-
-In **code mode** one coding agent plays the Director, the Narrator and the scenario creator over an MCP server. With a subscription, only scene illustrations would need an API key and billing.
-
-| `HARNESS` | Who plays the turn | The browser |
-|---|---|---|
-| `builtin` | the app's own roles | plays |
-| `external` | a CLI you start yourself | follows the save (read-only) |
-| `claude` | Claude Code, in this process | plays |
-| `codex` | `codex exec`, one process per turn | plays |
-
-```bash
-echo "HARNESS=external" >> .env   # you start the agent
-claude                            # approve the aidm server once, then say "play"
-uv run aidm                       # read-only window; open_game answers with its link
-
-echo "HARNESS=claude" >> .env     # the app starts the agent
-uv run aidm                       # type the action; the dev tab logs the tool calls
+```text
+ROLES__MASTER__COMMAND     = "claude -p --permission-mode bypassPermissions"
+ROLES__MASTER__TIMEOUT     = 300
+ROLES__NARRATOR__COMMAND   = ""      # empty reuses the master command
+ROLES__NARRATOR__TIMEOUT   = 120
+ROLES__WORLDSMITH__COMMAND = ""
+ROLES__WORLDSMITH__TIMEOUT = 900
 ```
 
-`claude` runs the MCP server in this process, on the app's own `Runtime`: one writer, and a turn appears as the agent commits it. `codex` runs its server in a second process, so the page reads each turn back off the save file. They are slower and cost more per turn.
+The command carries the model flag, because only the CLI knows how it names its own models. A spawn that fails or returns nothing usable is retried once, then fails its step loudly.
 
-### What each harness needs
+### The tool surface
 
-Nothing is installed. Every config file is in the repository, and `.claude/skills` symlinks into `.agents/skills`, so both trees carry the `aidm` skills.
+The app mounts an MCP endpoint at `/mcp` on the server it already runs, so the spawned game master reaches the live game instead of a save file. `.mcp.json` and `.codex/config.toml` both point at `http://localhost:8080/mcp/`; Codex needs the project marked trusted, because it does not read `.mcp.json`. `SERVER_PORT` in `.env` moves the server, and both files must then move with it.
 
-| Harness | Config file | Skills |
-|---|---|---|
-| `claude` | none | `.claude/skills` |
-| `external` | `.mcp.json` | `.claude/skills` |
-| `codex` | `.codex/config.toml` + trust the project | `.agents/skills` |
+| tool | purpose |
+|---|---|
+| `start_turn` | opens the turn and returns the whole picture |
+| `scene` | the same picture again, after a compaction |
+| `next_scene` | brief the worldsmith; returns at once and does not end the turn |
+| `change_world` | one settled world change; `verb` picks the arm |
+| `roll_question` | Loner: Chance against Risk for one dramatic question |
+| `restore_luck` | Loner: restore an actor's luck after a conflict |
+| `complete_chapter` | Loner: record that the adventure has ended |
+| `advance` | Loner: spend an advance a party member earned |
 
-`codex` runs with `--approve-for-me`, because `codex exec` cancels every MCP call under its default `never` policy ([codex#24135](https://github.com/openai/codex/issues/24135)).
+A call that does not fit the moment is refused with what to do instead.
 
-Code mode gives up two things:
+### Content and media
 
-- The hidden-canon boundary for narration is only a prompt rule, not enforced.
-- The model half has no offline test. `tests/core/test_code_mode.py` drives the MCP handlers as plain functions.
-
-Characters and scenarios are still made in the browser, and the scenario page asks the agent when `HARNESS` names one. Under `external` it sends you to `begin_scenario()` in the terminal.
-
-## Worlds that grow
-
-A scenario written with `grows` keeps writing itself: when the player is nearly out of places to find, new locations, exits and threads are added. Builtin mode does this after the turn, on the scenario creator role. Code mode reports that growth is due, and the agent runs the `growing-aidm` skill in a subagent (ideally), so the play conversation pays nothing.
+- Loner packs ship in `src/aidm/engines/loner3e/packs/*.json`. A user pack in `<PACKS_DIR>/loner3e/` replaces a shipped pack of the same name.
+- Scene illustrations are off. `MEDIA__ENABLED=true` turns them on and needs `PROVIDERS__OPENROUTER__API_KEY`; that key is needed for nothing else. Two scenes in one `place` share one image.
 
 ## Checks
 
@@ -111,22 +89,23 @@ uv run ruff format --check
 uv run basedpyright
 ```
 
+Tests run offline: `ScriptedSpawner` answers each role from a queue and records every prompt it was given, and `CliSpawner` is the only thing in the codebase that starts a process.
+
 ## Layout
 
 One distribution. `tests/core/test_package_boundary.py` enforces the import direction:
 
 ```text
-state ← content ← engines ← turn ← authoring ← app ← harness ← ui
+state ← kernel ← content ← kits ← engines ← turn ← app ← ui
 ```
 
-`aidm/config.py` is a leaf that every layer may read. An engine never imports another engine, and only `ui` imports NiceGUI.
-
-The **dev** tab holds **trace** (the plan, the resolved facts and each role's exact prompt), **state**, and the **agent** log when the app launched an agent.
+`ui` sits above them all and stays engine-agnostic. Only `ui` imports NiceGUI, and only `turn`, `app` and `ui` read `aidm/config.py`. Two modules may name the concrete engine: `engines/registry.py`, which builds it, and `state/model.py`, whose save payload is a closed union over engine states.
 
 ## Docs
 
-- `AGENTS.md`: durable engineering and architecture rules.
-- `docs/ROADMAP.md`: known weaknesses and direction.
+- `CLAUDE.md`: durable engineering and architecture rules. `AGENTS.md` symlinks to it.
+- `VISION.md`: the target design and the reasoning behind it.
+- `PLAN.md`: the order of work.
 - `IDEAS.md`: loose ends and the idea backlog.
 
 ## Licensing
@@ -134,11 +113,9 @@ The **dev** tab holds **trace** (the plan, the resolved facts and each role's ex
 | Files | License | Attribution |
 |---|---|---|
 | `src/aidm/engines/loner3e/` prose, instructions and packs | CC BY-SA 4.0 | Roberto Bisceglie / Zotiquest Games, <https://lonersrd.zotiquestgames.com> |
-| `src/aidm/engines/twentyfourxx/` prose, instructions and pack | CC BY 4.0 | Jason Tocci, <https://24xx-srd.carrd.co> |
-| `src/aidm/engines/breathless/` prose, instructions and pack | ORC License | Fari RPGs, René-Pier Deshaies-Gélinas, <https://farirpgs.itch.io/breathless-srd> |
 
 Each `docs/<game>.md` pointer file carries its game's sources, license and required attribution.
 
-`packs/ap01-fantasy.json` comes from the Loner SRD site's AP01 Fantasy page. That page carries no CC declaration at all — only the site-wide footer "© 2021-2026 Roberto Bisceglie" — while the site index declares CC BY-SA 4.0. It is treated as covered by the site's license. One email to the publisher would settle it.
+`src/aidm/engines/loner3e/packs/ap01-fantasy.json` comes from the Loner SRD site's AP01 Fantasy page. That page carries no CC declaration at all — only the site-wide footer "© 2021-2026 Roberto Bisceglie" — while the site index declares CC BY-SA 4.0. It is treated as covered by the site's license. One email to the publisher would settle it.
 
 The license of the rest of the code is an open decision.

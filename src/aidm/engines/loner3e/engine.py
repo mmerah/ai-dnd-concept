@@ -46,7 +46,7 @@ from aidm.state.entities import (
 from aidm.state.facts import Fact
 from aidm.state.model import Character, Game, Scenario
 from aidm.state.play import DecisionOption
-from aidm.state.tools import NoArgs, director_tool
+from aidm.state.tools import NoArgs, master_tool
 
 ENGINE_DIR = Path(__file__).parent
 
@@ -342,7 +342,7 @@ def build(user_packs: Path) -> Engine:
     return Engine(
         id=EngineId("loner3e"),
         title="LONER 3E",
-        instructions=engine_text(ENGINE_DIR / "director.md"),
+        instructions=engine_text(ENGINE_DIR / "rules.md"),
         packs=pack_options(packs),
         guidance=partial(guidance, packs),
         creation=Loner3eCreation(packs),
@@ -353,24 +353,24 @@ def build(user_packs: Path) -> Engine:
         over=player_over,
         scene_closed=close_conflicts,
         tools=scene_tools(
-            director_tool(
+            master_tool(
                 "roll_question",
                 "Roll Chance against Risk for one closed dramatic question.",
                 Question,
                 lambda draft, one, rng: resolve_question(draft, one, rng, twists(packs, draft)),
             ),
-            director_tool(
+            master_tool(
                 "restore_luck",
                 "Restore an actor's luck after a conflict ends.",
                 RestoreLuck,
                 lambda draft, one, _rng: apply_restore_luck(draft, one.actor_id),
             ),
-            director_tool(
+            master_tool(
                 "complete_chapter",
                 "Record that the current adventure has ended.",
                 NoArgs,
                 lambda draft, _args, _rng: complete_chapter(draft),
             ),
-            director_tool("advance", ADVANCE_SPENT + GROWTH, AdventureGrowth, advance),
+            master_tool("advance", ADVANCE_SPENT + GROWTH, AdventureGrowth, advance),
         ),
     )

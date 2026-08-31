@@ -13,7 +13,7 @@ from aidm.kits.scenes.state import Entity, entity_fact, labeled
 from aidm.kits.scenes.views import (
     EngineSections,
     SheetRows,
-    director_view,
+    master_view,
     narrator_view,
     player_view,
 )
@@ -22,7 +22,7 @@ from aidm.state.entities import Counter, EngineId, Slug, pool, require_unique
 from aidm.state.facts import DiceEvent, Fact, roll
 from aidm.state.model import Character, Game, Payload, Scenario
 from aidm.state.play import DecisionOption, PendingOption
-from aidm.state.tools import DirectorTool, Validate
+from aidm.state.tools import MasterTool, Validate
 
 
 def _counter_fact[S: BaseModel](
@@ -103,7 +103,7 @@ class Engine:
     packs: tuple[DecisionOption, ...]
     # What a sheet needs for the selected packs, written for the worldsmith.
     guidance: Callable[[Sequence[Slug]], str]
-    tools: tuple[DirectorTool, ...]
+    tools: tuple[MasterTool, ...]
     creation: CharacterCreation
     validate: Validate
     new_game: Callable[[Scenario, Character], Payload]
@@ -127,7 +127,7 @@ class Engine:
 
     def views(self, state: Game) -> Views:
         return Views(
-            director=director_view(state, self.sheet_rows(state), self.sections),
+            master=master_view(state, self.sheet_rows(state), self.sections),
             narrator=narrator_view(state.world),
             player=player_view(state, self.sheet_rows(state), self.over(state)),
         )

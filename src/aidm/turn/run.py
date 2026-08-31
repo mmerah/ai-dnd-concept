@@ -63,7 +63,7 @@ class Turn:
     def picture(self, recent: int) -> str:
         draft = self.draft
         return context.render_picture(
-            self.engine.views(draft).director.sections,
+            self.engine.views(draft).master.sections,
             draft,
             self.prompt,
             resumed=self.resumed,
