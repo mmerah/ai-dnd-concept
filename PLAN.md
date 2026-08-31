@@ -339,11 +339,10 @@ between. **Steps 1–4 are checked one by one. Steps 5–9 are one atomic group.
 
    **Now run the full check.**
 
-10. **Update the skills and the MCP config.** `.claude/skills/playing-aidm/SKILL.md` names
-    `list_games`, `open_game` and `end_turn`; the growing and authoring skills name tools that
-    no longer exist. Fold the three skills into one `playing-aidm` that describes the four tools
-    and the scene boundary. Delete `growing-aidm` and `authoring-aidm`. Update `.mcp.json` for
-    the new endpoint.
+10. **Delete the skills and update the MCP config.** All three name tools that no longer exist,
+    and the game master's brief is now built into its prompt, so a skill would be a second copy
+    of it with no reader. Point `.mcp.json` and `.codex/config.toml` at the new endpoint: those
+    two files are how each spawned CLI finds the server.
 
 11. **Full check, then play a turn from the page.**
 

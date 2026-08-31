@@ -473,6 +473,26 @@ repository before calling anything, and spent 62k input tokens on one tool call.
 briefs now forbid reading, searching or running anything in the repository**; the tools and the
 prompt carry the whole game.
 
+### The skills are deleted, not folded
+
+PLAN step 10 says fold the three into one `playing-aidm`. That was written before the briefs moved
+into the prompts. A skill describing the tool surface is now **a second copy of `master.md` with
+no reader**: nothing in the codebase names it, and with `open_game` and `list_games` gone a human
+in their own terminal cannot start a game at all — only the page can. All three are deleted.
+
+**`.mcp.json` and `.codex/config.toml` are load-bearing**, not conveniences: they are how the
+spawned `claude -p` and `codex exec` each find the server. Both point at
+`http://localhost:8080/mcp/`.
+
+`.claude/skills/` keeps `i-have-adhd` and `nicegui-development`, which are the maintainer's own
+development skills and have nothing to do with playing. They are also the reason the briefs forbid
+reading the repository: `i-have-adhd` would wreck the narrator's prose if a spawn ever read it.
+
+**Worth trying on the first real turn:** `claude -p --permission-mode bypassPermissions --tools ""`
+disables every built-in tool and leaves only the MCP ones, which enforces by flag what the brief
+currently asks for. It is not the shipped default because it could not be spawned from this
+session to confirm MCP tools survive it.
+
 ### Known and accepted
 
 - The one full turn against a real coding CLI has not been taken. Every piece under it has.
