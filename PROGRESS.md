@@ -114,4 +114,13 @@ parametrize over `ENGINE_IDS`. Machine-written, but a real diff to read.
 
 ## Phase 7
 
-Not drafted. See `PLAN.md`.
+Drafted and split in two. **7A** restructures: it removes the envelope stack, the split tool
+dispatcher, the default-engine guess and the two-graph chronology (`src` 5,600 -> about 5,540).
+**7B** gives the three roles typed CLI drivers, provider/model/effort settings, resumed provider
+sessions and a scrubbed child environment (`src` about 5,540 -> about 5,880). See `PLAN.md` for
+the steps. Neither has started.
+
+**7A is not a line-deletion phase, and the plan says so.** An adversarial review measured every
+step: most of what 7A touches moves rather than disappears, and `SceneRun` puts the scene fields
+into a wrapper instead of deleting them. The win is in the design, not the count. A first draft
+claimed about −180 lines; that was wrong and the numbers in `PLAN.md` are the measured ones.
