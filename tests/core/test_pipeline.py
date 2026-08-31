@@ -4,6 +4,7 @@ from random import Random
 import pytest
 from core_test_support import (
     changed,
+    initialized,
     loner_at_boundary,
     loner_sheet,
     narrated,
@@ -15,12 +16,14 @@ from pydantic import JsonValue
 
 from aidm.core.entities import PLAYER_ID, EntityId
 from aidm.core.facts import Fact, cards
+from aidm.core.model import Game
 from aidm.engines.loner3e.rules import outcome_for
-from aidm.turn.run import TurnStep
+from aidm.turn.run import Turn, TurnStep
 
 MAP = EntityId("vault-map")
 FOUND = changed("reveal", entity_id="vault-map")
 TAKEN = changed("move_item", item_id="vault-map", to="player")
+ASKED = tool_call("roll_question", actor_id=PLAYER_ID, question="Does the door give?")
 
 
 async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_path: Path) -> None:
@@ -46,7 +49,7 @@ async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_pat
     # The sheets are the game master's: no tag the engine rolls by reaches the narrator.
     assert "concept" not in narrator
     assert state.turn == 1
-    assert state.history[-1].prompt == "I search beneath the desk."
+    assert state.world.exchanges()[-1].prompt == "I search beneath the desk."
 
 
 async def test_on_fact_reports_the_visible_facts_in_resolver_order(tmp_path: Path) -> None:
@@ -64,7 +67,7 @@ async def test_on_fact_reports_the_visible_facts_in_resolver_order(tmp_path: Pat
 
     landed = ["The vault map discovered", "Took the vault map", "Kael: new trait Listening"]
     assert [fact.card for fact in cards(fired)] == landed
-    assert [fact.card for fact in state.history[-1].facts] == landed
+    assert [fact.card for fact in state.world.exchanges()[-1].facts] == landed
 
 
 async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: Path) -> None:
@@ -76,7 +79,7 @@ async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: 
         await table.service.play("I take the map.")
 
     assert table.service.state.model_dump_json() == before
-    assert table.service.state.history == ()
+    assert table.service.state.world.exchanges() == ()
 
 
 async def test_the_engine_rolls_the_outcome_the_facts_then_record(tmp_path: Path) -> None:
@@ -175,7 +178,7 @@ async def test_a_line_spoken_by_someone_not_here_is_re_prompted_with_the_id(
     await table.service.play("I wait.")
 
     assert any("elena" in prompt for role, prompt in table.spawner.prompts if role == "narrator")
-    assert table.service.state.history[-1].narration == "The door settles."
+    assert table.service.state.world.exchanges()[-1].narration == "The door settles."
 
 
 async def test_a_master_that_crashes_after_applying_still_commits_what_it_applied(
@@ -237,3 +240,30 @@ async def test_an_owed_advance_is_noted_lands_on_call_and_is_refused_once_spent(
     sheet = loner_sheet(state, PLAYER_ID)
     assert (sheet.gear[-1], sheet.milestones) == ("Waxed Rope", 1)
     assert any("no advance owed" in one for one in table.refusals)
+
+
+async def test_two_rolls_in_one_turn_do_not_read_the_same_dice(tmp_path: Path) -> None:
+    table = opened(tmp_path, rng=Random(1))
+    facts: list[Fact] = []
+
+    _ = await played(table, "I try the door twice.", ASKED, ASKED, on_fact=facts.append)
+
+    first, second = (fact.dice for fact in facts if fact.kind == "question_answered")
+    assert first != second
+
+
+def test_a_refused_call_leaves_the_turn_the_dice_it_had() -> None:
+    engine, state = initialized()
+    turn = Turn.begin(engine, state, "I try the door.", Random(1), 1)
+    before = turn.rng.getstate()
+
+    with pytest.raises(ValueError, match="the rules said no"):
+        _ = turn.apply(_rolls_then_refuses)
+
+    assert turn.rng.getstate() == before
+
+
+def _rolls_then_refuses(draft: Game, rng: Random) -> tuple[Fact, ...]:
+    del draft
+    _ = rng.random()
+    raise ValueError("the rules said no")

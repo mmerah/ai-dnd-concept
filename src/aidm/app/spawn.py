@@ -53,8 +53,7 @@ class CliSpawner:
 
 
 def final_message(output: str) -> str:
-    """The agent's last message: its own event for a CLI that streams JSON lines, else the last
-    fenced block, else the object the answer ends on."""
+    """The agent's last message: its own event, else the last fence, else the trailing object."""
     if (said := _last_said(output)) is not None:
         return said
     fenced = output.rsplit("```", 2)
@@ -83,7 +82,7 @@ async def answered[T: BaseModel](
     role: Role,
     prompt: str,
     expect: type[T],
-    check: Check[T] | None,
+    check: Check[T],
     ask: Callable[[str], Awaitable[str]],
 ) -> T:
     """The one retry, shared: a role that fails twice fails its step, loudly."""
@@ -91,7 +90,7 @@ async def answered[T: BaseModel](
     for _ in range(RETRIES + 1):
         try:
             answer = expect.model_validate_json(final_message(await ask(asked)))
-            if (refused := check(answer) if check else None) is None:
+            if (refused := check(answer)) is None:
                 return answer
         except ValidationError as invalid:
             refused = str(invalid)

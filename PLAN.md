@@ -957,8 +957,8 @@ shared machinery.
 # Checklist
 
 - [x] Phases 0–6 — done. `src` 9,452 -> 5,600
-- [ ] Phase 7A — the restructuring pass. `src` 5,600 -> about 5,540 (5,500–5,610)
-- [ ] Phase 7B — the roles get drivers. `src` about 5,540 -> about 5,880
+- [x] Phase 7A — the restructuring pass. `src` 5,600 -> 5,578
+- [ ] Phase 7B — the roles get drivers. `src` 5,578 -> about 5,880
 - [ ] Phase 8 — the engines return
 - [ ] Full check green at every checkpoint
 - [ ] The game plays from the browser at the end of every phase

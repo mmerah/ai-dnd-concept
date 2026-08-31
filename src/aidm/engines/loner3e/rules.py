@@ -291,7 +291,7 @@ def meanings(
 
 
 def twists(packs: Mapping[str, Pack], state: Game) -> tuple[tuple[str, str], ...]:
-    return twist_table(packs, state.payload.twist_pack or state.packs[0])
+    return twist_table(packs, state.payload.twist_pack)
 
 
 def _sheeted(one: Actor) -> Actor:
@@ -311,7 +311,7 @@ def _require_opponent_here(world: LonerWorld, opponent_id: EntityId) -> Actor:
             f"{opponent_id!r} is a {opponent.kind}, which cannot resist. "
             "Name an actor or an item here."
         )
-    if opponent.id not in world.current.present:
+    if opponent.id not in world.run.present:
         raise ValueError(
             f"{opponent_id!r} is not here with the player. "
             "Bring it here first, or act on what is here."
@@ -382,7 +382,7 @@ def _strike(draft: Game, actor: Actor, opponent: Actor, outcome: Outcome) -> lis
     if luck.current != 0:
         return facts
     draft.notes = (*draft.notes, defeat_note(hit.name))
-    draft.world.spent = f"the conflict with {hit.name} is settled"
+    draft.world.run.spent = f"the conflict with {hit.name} is settled"
     lost = f"{hit.name} is out of luck"
     facts.append(entity_fact(hit, "conflict_lost", lost, card=lost))
     # SRD: luck resets after conflicts, and a side at 0 is the only end the engine sees.

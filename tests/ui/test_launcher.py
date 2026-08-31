@@ -1,17 +1,23 @@
 import json
 import shutil
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from core_test_support import ENGINES_BUILT, ScriptedSpawner
+from core_test_support import ENGINES_BUILT, LONER3E, ScriptedSpawner
 from pydantic import JsonValue
 from ui_test_support import REPOSITORY_ROOT, SCENARIOS, ui_settings
 
 from aidm.app.launch import LaunchTarget, launch_target, load_catalog
 from aidm.app.runtime import Runtime
 from aidm.config import Settings
+from aidm.core.entities import EngineId
 from aidm.core.io import ENCODING, FileStore
 from aidm.core.model import Game
+
+MIRROR = EngineId("mirror")
+# A second engine installed, so the engine the launcher pairs on is observable at all.
+INSTALLED = {**ENGINES_BUILT, MIRROR: replace(ENGINES_BUILT[LONER3E], id=MIRROR)}
 
 
 def _opening_state(settings: Settings) -> Game:
@@ -71,6 +77,25 @@ def test_a_scenario_naming_an_uninstalled_engine_is_skipped(tmp_path: Path) -> N
     assert not catalog.scenarios
 
 
+def test_a_character_is_offered_only_to_the_rules_it_is_written_for(tmp_path: Path) -> None:
+    catalog = load_catalog(ui_settings(tmp_path, _declaring(tmp_path, MIRROR)), INSTALLED)
+
+    assert [entry.id for entry in catalog.characters_for(LONER3E)] == ["kael"]
+    assert catalog.characters_for(MIRROR) == ()
+    with pytest.raises(ValueError, match="no character 'kael' is written for the 'mirror' rules"):
+        _ = launch_target(catalog, "whispering-vault", "kael")
+
+
+def test_a_save_whose_engine_is_not_the_scenarios_is_not_listed(tmp_path: Path) -> None:
+    FileStore(tmp_path).save("old-game", _opening_state(ui_settings(tmp_path)))
+
+    catalog = load_catalog(ui_settings(tmp_path, _declaring(tmp_path, MIRROR)), INSTALLED)
+
+    # The scenario and the character are both still there; only the rules disagree.
+    assert [entry.id for entry in catalog.characters] == ["kael"]
+    assert not catalog.saves
+
+
 def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path)
     FileStore(tmp_path).save("old-game", _opening_state(settings))
@@ -103,13 +128,25 @@ def test_a_save_whose_origin_is_gone_is_not_listed(tmp_path: Path, change: dict[
     assert not load_catalog(settings, ENGINES_BUILT).saves
 
 
+def test_a_save_that_lists_but_will_not_open_still_reaches_the_player(tmp_path: Path) -> None:
+    """The header is what the launcher reads; the payload is only read when the game opens."""
+    settings = ui_settings(tmp_path)
+    raw = _opening_state(settings).model_dump(mode="json")
+    raw["payload"]["world"]["cast"]["ghost"] = {"kind": "actor"}
+    _ = (tmp_path / "unopenable.json").write_text(json.dumps(raw), encoding=ENCODING)
+
+    (save,) = load_catalog(settings, ENGINES_BUILT).saves
+
+    with pytest.raises(ValueError):
+        _ = Runtime(settings, ScriptedSpawner()).session(save.target)
+
+
 def test_a_save_the_app_cannot_read_does_not_hide_the_others(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path)
     state = _opening_state(settings)
     FileStore(tmp_path).save("good", state)
     _ = (tmp_path / "broken.json").write_text("{not json", encoding=ENCODING)
-    stale: dict[str, JsonValue] = json.loads(state.model_dump_json())
-    stale["history"] = [{"prompt": "test", "lines": [], "events": [], "outcomes": []}]
+    stale: dict[str, JsonValue] = json.loads(state.model_dump_json()) | {"turn": -1}
     _ = (tmp_path / "stale.json").write_text(json.dumps(stale), encoding=ENCODING)
 
     catalog = load_catalog(settings, ENGINES_BUILT)
@@ -156,7 +193,7 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
     runtime = Runtime(settings, spawner)
 
     name = await runtime.new_scenario(
-        "The Sunken Bell", "The tide took the lower town.", None, ("srd",), "kael"
+        LONER3E, "The Sunken Bell", "The tide took the lower town.", None, ("srd",), "kael"
     )
 
     # The scene bar refuses the first answer, and the reason goes back with the re-prompt.
@@ -182,7 +219,9 @@ async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: P
     runtime = Runtime(ui_settings(tmp_path, scenarios), spawner)
 
     with pytest.raises(ValueError, match="has no sheet"):
-        _ = await runtime.new_scenario("The Sunken Bell", "The tide.", None, ("srd",), "kael")
+        _ = await runtime.new_scenario(
+            LONER3E, "The Sunken Bell", "The tide.", None, ("srd",), "kael"
+        )
 
     assert not scenarios.exists()
 
@@ -192,7 +231,7 @@ async def test_a_scenario_written_from_a_document_keeps_it_beside_the_world(tmp_
     spawner = ScriptedSpawner(answers={"worldsmith": [json.dumps(_OPENING)]})
     runtime = Runtime(ui_settings(tmp_path, scenarios), spawner)
 
-    name = await runtime.new_scenario("The Sunken Bell", "", SOURCE_MD, ("srd",), "kael")
+    name = await runtime.new_scenario(LONER3E, "The Sunken Bell", "", SOURCE_MD, ("srd",), "kael")
 
     assert (scenarios / name / "source.md").is_file()
     state = runtime.session(

@@ -67,8 +67,7 @@ class Loner3eState(Mutable):
     world: SceneState[LonerSheet]
     # The played character's tally paces the whole game, so no sheet carries one.
     twist: Counter = Field(default_factory=lambda: Counter(current=0, maximum=TIES_PER_TWIST))
-    # None rolls twists from the game's own first table set, so no scenario has to name one.
-    twist_pack: Slug | None = None
+    twist_pack: Slug
 
 
 class Loner3eScenario(Mutable):

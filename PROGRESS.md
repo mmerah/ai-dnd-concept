@@ -19,6 +19,7 @@ What is below is what a later phase still needs to know.
 | 5 — the sweep | 5,627 | 3,386 |
 | scene transitions rebuilt (off-plan) | 5,791 | 3,519 |
 | 6 — the architecture deletion | 5,600 | 3,517 |
+| 7A — the restructuring pass | 5,578 | 3,661 |
 
 Every phase ended with the full check green — pytest, ruff check, ruff format, basedpyright — and
 with a turn actually played, not only checked. Phase 4 is the one phase that grew `src`: it added
@@ -66,12 +67,10 @@ it, a crash that orphaned the worldsmith, and a claim in this very file that was
 
 ## Open — known and accepted
 
-1. **`_history` keys a scene's outcomes by title**, so two scenes sharing a title merge their
-   history in the worldsmith prompt. Scene ids exist; the join does not use them.
 2. **The tag glossary only explains pack tags.** A scenario-invented tag such as "A Guttering
    Lantern" reaches the master unexplained.
-3. **`scene_spent` runs after `draft.turn += 1`**, so `SCENE_TURN_CAP = 12` fires on the eleventh
-   turn in a scene. It is a safety net and the number is not load-bearing.
+3. **`scene_spent` runs after the exchange is recorded**, so `SCENE_TURN_CAP = 12` fires on the
+   twelfth exchange in a scene. It is a safety net and the number is not load-bearing.
 4. `IDEAS.md` entries I5 and I7 still say "builtin mode"; `docs/24XX.md` and
    `docs/NEXT-ENGINE-RESEARCH.md` cite the deleted `twentyfourxx/director.md` by path. The engine
    phase rewrites the latter two.
@@ -112,15 +111,133 @@ and Loner spends 119 lines on that ledger and its glossary.
 **Each engine also regenerates ~1,300–1,400 lines of golden JSON**, because the golden tests
 parametrize over `ENGINE_IDS`. Machine-written, but a real diff to read.
 
-## Phase 7
+## Phase 7A — the restructuring pass — done
 
-Drafted and split in two. **7A** restructures: it removes the envelope stack, the split tool
-dispatcher, the default-engine guess and the two-graph chronology (`src` 5,600 -> about 5,540).
+`src` 5,600 -> **5,578**, inside the plan's 5,500-5,610 band. `tests` 3,517 -> 3,661. Full check
+green at every step, and the game opens end to end on the new shape.
+
+**7A was never a deletion phase, and it did not become one.** Steps 1, 4 and 5 add lines on
+purpose; step 6 moves five fields into a wrapper. Nothing was invented to reach a number, and no
+named deletion was skipped to protect one.
+
+### What each step did
+
+1. **Four cards in the scene tab.** `sheet_panel` -> `scene_sidebar`, four `game-card` helpers,
+   `_threads` folded into `_threads_card`. No new CSS.
+2. **The envelope stack is gone.** `core/envelope.py` deleted. `Header` sits in `core/entities.py`;
+   `EngineHeader`, `SaveHeader` and `CharacterHeader` in `core/model.py`. `io.decoded` is the one
+   JSON decode, and every reader goes through it, so the duplicate-key guard covers saves and
+   character files too. The save, scenario and character JSON did **not** change.
+3. **One dispatcher, owned by `Turn`.** `Turn.call` holds the whole gate. `TurnTool` and
+   `TURN_TOOLS` live in `turn/run.py`. Deleted: `ServerTool`, `SERVER_TOOLS`, `_DISPATCH`,
+   `GameService.call_tool`, `_tool_refusal`, `_engine_call`, `_require_turn`, `turn_started` and
+   `draft_refusal`. `_apply` is copy-and-swap, so **an engine tool body runs once, not twice**, and
+   a refused call consumes no dice.
+4. **The engine id is an explicit coordinate.** `CatalogEntry.engine`,
+   `LauncherCatalog.characters_for`, `read_characters` yielding one row per character *and* engine,
+   `Runtime.engine` deleted, `new_scenario` takes an `engine_id`. Both create pages carry an engine
+   select that appears only when a second engine is installed.
+5. **Authoring left the composition root, and the ABC is gone.** `app/scene_write.py` holds
+   `write_next` and `write_opening`. `CharacterCreation` became three plain callables on `Engine`.
+6. **The world is a list of played scenes.** `SceneRun` holds the scene, who was in it and what
+   happened. `SceneState.runs` is the only chronology; `Game.history`, `Game.turn_facts`,
+   `Exchange.scene`, `Scene.id`, `SceneState.played/current/opened_at/spent/settled` are all gone.
+   `apply_scene` lost its `turn` parameter and `render_worldsmith` its `played` parameter.
+7. **Three dead branches.** `Loner3eState.twist_pack` is a required `Slug`; the `or state.packs[0]`
+   fallback and the `is not None` guard are gone. `answered`'s `check` parameter lost its `| None`
+   too — no caller ever passed one.
+
+### Decisions taken inside the phase
+
+1. **A header routes a document; it does not validate it.** A save whose *payload* is stale now
+   lists on the home page and fails loudly when opened. Only a broken header hides it.
+   `test_a_save_the_app_cannot_read_does_not_hide_the_others` was rewritten to break the header
+   (`turn: -1`), which also survives step 6 deleting `Game.history`.
+2. **`created` was not added.** `ui` may not import `aidm.engines` (`test_package_boundary.TOPS`),
+   so the plan's `created(engine, ...)` call from `ui/create.py` could not compile. The page calls
+   `engine.create_character` and `engine.preview_character` instead. Smaller, and it needs no
+   bundling function.
+3. **`Turn.tools()` was dropped as dead.** `Runtime.published_tools` is the only caller of that
+   list.
+4. **`close_segment`'s "not on the turn a scene opened" guard is now structural**:
+   `len(world.run.exchanges) <= 1`, which `opened_at` measured before. Same behaviour, one less
+   field.
+5. **`scene_spent` counts `len(run.exchanges)` against `SCENE_TURN_CAP`.** A crossing still counts
+   as one of the twelve, exactly as it did.
+
+### An adversarial review closed every gap it found
+
+The review found **no functional defect**: the `Turn.call` gate is line-by-line equivalent to the
+old five-place logic, both guard rewrites are provably identical (`len(run.exchanges) ==
+turn - opened_at` holds invariantly, because `close_segment` is the only writer of `turn` and the
+only caller of `record`), and there is no list aliasing. It found one real regression and a set of
+invariants no test could fail. All are fixed:
+
+1. **The authored `world.json` carried play state.** `SceneCanon.opening` had become a full
+   `SceneRun`, so every scenario the worldsmith wrote got `exchanges`, `settled` and `spent` —
+   three fields `new_game` silently discarded. `SceneCanon` now holds `opening: Scene` with its own
+   `present`/`hidden`. `SceneRun._each_id_once` is gone; `_check_named` does the id check for both.
+2. **`write_opening` was a pure argument shuffle** with one caller. Deleted and inlined.
+3. **`runtime.py` gave up 32 lines it did not own**: `_installed` -> `scene_write.install_scene`,
+   `_open_media` -> `media.open_illustrator`, `_narration_refusal` -> `turn/run.narration_refusal`.
+   437 -> **405**.
+4. **Two open-coded `next(iter(runtime.engines))`** replaced by one `Runtime.default_engine()`, so
+   phase 8 has one place to change. `_lone_engine` deleted, `recent` made required.
+5. **Five invariants had no failing test.** Every new test below was proved by mutating the `src`
+   line it guards and watching it fail: `_apply`'s rng copy and write-back; `characters_for`'s
+   filter; `load_catalog`'s three-way agreement; `read_characters` per-engine rows;
+   `published_tools` reading the live turn; `close_segment`'s first-exchange guard;
+   `Engine.restored`'s engine check; and a save that lists but will not open.
+6. **The golden turn had lost its cross-scene case.** Both played exchanges had landed in one run,
+   so forcing `_recent`'s label to the current scene passed. The played turn now sits in an earlier
+   run, "The Vault Stair", and that mutation fails. It also fixes prose that read wrong: "I try the
+   vault door" is now filed under the stair, not the study.
+
+### The four behaviours the plan says have no automated check — now three do
+
+
+
+1. A decision that re-suspends leaves the master's picture ending in `RULES_WAIT` —
+   `test_a_re_suspended_continuation_keeps_the_rules_waiting`.
+2. A save file and a character file with a duplicated JSON key are both refused —
+   two new tests in `test_integrity_boundaries.py`.
+3. A crossing counts as one turn against the twelve-turn cap —
+   `test_the_players_own_answer_is_the_brief_and_the_crossing_lands_in_that_turn` asserts the
+   crossing lands as the new run's own single exchange.
+4. **Still unchecked: the chat prints no "Paused:" line directly above the live decision widget.**
+   The rule is preserved in `ui/game.py` `chat`, but it is UI layout and has no test. Read it in
+   the browser.
+
+### The golden fixtures
+
+Regenerated once. Every changed line was read. `state/loner3e.json` and `save/loner3e.json` show
+only the intended move: the exchanges go inside the run, `Exchange.scene` and `Scene.id` go, and
+`opened_at`/`spent`/`settled` move onto the run. **Every fact, die roll and spoken line survives
+byte for byte.** `prompts/loner3e/picture.txt` changed two lines: the recent-play label now reads
+`[at The Abbot's Study]` instead of the hand-written `[at the sealed vault]`, because the scene a
+turn belongs to is now structural and no longer a string the fixture could set freely. That is the
+point of the step.
+
+`scenarios/whispering-vault/world.json` was hand-migrated: the opening is now a `SceneRun`.
+`saves/` was already empty.
+
+### Open — known and accepted
+
+1. **`app/runtime.py` is 405 lines, not under 400.** Three helpers that were not composition root
+   have left it. What remains is the live-game lifecycle and the composition root itself, plus the
+   `new_scenario` body the plan keeps there on purpose. Nothing was invented to close the last five
+   lines.
+2. **`last_seen` still stops counting an entity as seen in a run they left.** An entity removed by
+   `leave` is gone from `run.present`, so a later scan does not find them in that run. Behaviour is
+   unchanged from before the phase; fixing it would need a field.
+3. **Step 4 cost more than its +20 estimate.** The refreshable scenario form and the engine select
+   are real page code the plan under-counted.
+4. **`_check_named` no longer checks a *past* run's ids for uniqueness**, only the current one.
+   Nothing writes a past run, and `apply_scene` and the verbs both dedupe, so no duplicate can
+   arise. `SceneRun` lost its own validator in exchange for the authored file losing three fields.
+
+## Phase 7B — not started
+
 **7B** gives the three roles typed CLI drivers, provider/model/effort settings, resumed provider
-sessions and a scrubbed child environment (`src` about 5,540 -> about 5,880). See `PLAN.md` for
-the steps. Neither has started.
-
-**7A is not a line-deletion phase, and the plan says so.** An adversarial review measured every
-step: most of what 7A touches moves rather than disappears, and `SceneRun` puts the scene fields
-into a wrapper instead of deleting them. The win is in the design, not the count. A first draft
-claimed about −180 lines; that was wrong and the numbers in `PLAN.md` are the measured ones.
+sessions and a scrubbed child environment (`src` 5,578 -> about 5,880). See `PLAN.md` for the
+steps.

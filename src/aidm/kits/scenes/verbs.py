@@ -136,29 +136,25 @@ class ChangeWorld(Frozen):
 
 def apply_change[S: BaseModel](world: SceneState[S], change: WorldChange) -> list[Fact]:  # noqa: C901
     """Every arm settles its own deterministic consequences, so a call leaves nothing half-done."""
-    scene = world.current
+    run = world.run
     match change:
         case Reveal():
             one = world.require(change.entity_id)
-            if change.entity_id not in scene.hidden:
+            if change.entity_id not in run.hidden:
                 raise ValueError(f"{change.entity_id!r} is not hidden here")
-            world.current = scene.model_copy(
-                update={
-                    "hidden": tuple(x for x in scene.hidden if x != one.id),
-                    "present": (*scene.present, one.id),
-                }
-            )
+            run.hidden.remove(one.id)
+            run.present.append(one.id)
             facts = world.reveal(one)
             if not facts:
                 raise ValueError(f"the player has already met {one.name}")
             return [facts[0].model_copy(update={"card": _sentence(f"{one.name} discovered")})]
         case Enter():
             one = world.require(change.entity_id)
-            if one.id in scene.present:
+            if one.id in run.present:
                 raise ValueError(f"{one.name} is already here")
-            if one.id in scene.hidden:
+            if one.id in run.hidden:
                 raise ValueError(f"{one.name} is hidden here; reveal them instead")
-            world.current = scene.model_copy(update={"present": (*scene.present, one.id)})
+            run.present.append(one.id)
             seen = world.reveal(one)
             trace = f"{world.label(one)} arrives"
             return [*seen, entity_fact(one, "entity_entered", trace, card=f"{one.name} arrives")]
@@ -166,9 +162,7 @@ def apply_change[S: BaseModel](world: SceneState[S], change: WorldChange) -> lis
             one = _here(world, world.require(change.entity_id))
             if one.id == world.player_id:
                 raise ValueError("the player is in every scene; move the story on instead")
-            world.current = scene.model_copy(
-                update={"present": tuple(x for x in scene.present if x != one.id)}
-            )
+            run.present.remove(one.id)
             trace = f"{world.label(one)} leaves"
             return [entity_fact(one, "entity_left", trace, card=f"{one.name} leaves")]
         case MoveItem():
@@ -184,7 +178,7 @@ def apply_change[S: BaseModel](world: SceneState[S], change: WorldChange) -> lis
                 carried_by=world.player_id,
             )
             world.cast[new_id] = item
-            world.current = scene.model_copy(update={"present": (*scene.present, new_id)})
+            run.present.append(new_id)
             trace = f"new item: {world.label(item)}"
             return [entity_fact(item, "entity_created", trace, card=f"Took {item.name}")]
         case AddTrait():
@@ -249,7 +243,7 @@ def scene_tools(*extra: MasterTool) -> tuple[MasterTool, ...]:
 
 
 def _here[S: BaseModel](world: SceneState[S], one: Entity[S]) -> Entity[S]:
-    if one.id not in world.current.present:
+    if one.id not in world.run.present:
         raise ValueError(f"{one.name} is not here with the player, so nothing can happen to them")
     return one
 
@@ -266,7 +260,7 @@ def _sentence(text: str) -> str:
 
 def _move_item[S: BaseModel](world: SceneState[S], change: MoveItem) -> list[Fact]:
     item = world.require_kind(change.item_id, "item")
-    if item.carried_by is None and item.id not in world.current.present:
+    if item.carried_by is None and item.id not in world.run.present:
         raise ValueError(f"{item.name} is not here, and nobody is carrying it")
     holder_id = world.player_id if change.to == TO_PLAYER else None
     if change.to not in (TO_PLAYER, TO_SCENE):
@@ -286,10 +280,8 @@ def _move_item[S: BaseModel](world: SceneState[S], change: MoveItem) -> list[Fac
         item.carried_by = holder.id
         trace = f"{world.label(item)} passes to {world.label(holder)}"
         card = f"Gave {item.name} to {holder.name}"
-    if item.id not in world.current.present:
-        world.current = world.current.model_copy(
-            update={"present": (*world.current.present, item.id)}
-        )
+    if item.id not in world.run.present:
+        world.run.present.append(item.id)
     return [*seen, entity_fact(item, "entity_moved", trace, card=card)]
 
 
@@ -305,9 +297,8 @@ def _kill[S: BaseModel](world: SceneState[S], actor_id: EntityId) -> list[Fact]:
     for held in dropped:
         held.carried_by = None
     if dropped:
-        scene = world.current
-        loose = tuple(held.id for held in dropped if held.id not in scene.present)
-        world.current = scene.model_copy(update={"present": (*scene.present, *loose)})
+        here = world.run.present
+        here.extend([held.id for held in dropped if held.id not in here])
         named = ", ".join(world.label(held) for held in dropped)
         # Untold: a dropped item may still be unrevealed, and its name must not reach the narrator.
         facts.append(Fact(kind="items_dropped", trace=f"{named} fell loose here"))
@@ -328,7 +319,7 @@ def _advance_thread[S: BaseModel](world: SceneState[S], change: AdvanceThread) -
     if change.note is not None:
         thread.note = change.note
     if change.status == "resolved":
-        world.spent = f"the thread {thread.title!r} resolved"
+        world.run.spent = f"the thread {thread.title!r} resolved"
     moved = f"thread {thread.title}[{thread.id}] — status {thread.status}"
     if thread.note:
         moved += f" — note: {thread.note}"

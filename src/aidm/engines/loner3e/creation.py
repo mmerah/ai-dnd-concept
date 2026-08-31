@@ -9,7 +9,6 @@ from aidm.core.entities import EngineId, Frozen, Slug, slug
 from aidm.core.model import Character
 from aidm.core.play import DecisionOption
 from aidm.core.views import Rows
-from aidm.engines.core import CharacterCreation
 from aidm.engines.loner3e.state import DIE_FACE, ActorSheet, Loner3eCharacter
 
 _AUTHORING = (
@@ -46,61 +45,59 @@ class Pack(Frozen):
         return self
 
 
-class Loner3eCreation(CharacterCreation):
-    def __init__(self, packs: Mapping[str, Pack]) -> None:
-        self.packs = packs
+def creation_steps(packs: Mapping[str, Pack], picks: Picks) -> tuple[CreationStep, ...]:
+    first = CreationStep(
+        id="pack", prompt="Choose a character table set", options=pack_options(packs)
+    )
+    pack = packs.get(picked(picks, "pack"))
+    if pack is None:
+        return (first,)
+    return (
+        first,
+        CreationStep(
+            id="concept",
+            prompt="Write a one-line concept",
+            hint=", ".join(entry.label for entry in pack.concepts[:3]),
+        ),
+        CreationStep(id="skill-1", prompt="Choose skill 1", options=pack.skills),
+        CreationStep(
+            id="skill-2",
+            prompt="Choose skill 2",
+            options=other_than(pack.skills, picked(picks, "skill-1")),
+        ),
+        CreationStep(id="frailty", prompt="Choose a frailty", options=pack.frailties),
+        CreationStep(id="gear-1", prompt="Choose gear 1", options=pack.gear),
+        CreationStep(
+            id="gear-2",
+            prompt="Choose gear 2",
+            options=other_than(pack.gear, picked(picks, "gear-1")),
+        ),
+    )
 
-    def steps(self, picks: Picks) -> tuple[CreationStep, ...]:
-        first = CreationStep(
-            id="pack", prompt="Choose a character table set", options=pack_options(self.packs)
-        )
-        pack = self.packs.get(picked(picks, "pack"))
-        if pack is None:
-            return (first,)
-        return (
-            first,
-            CreationStep(
-                id="concept",
-                prompt="Write a one-line concept",
-                hint=", ".join(entry.label for entry in pack.concepts[:3]),
-            ),
-            CreationStep(id="skill-1", prompt="Choose skill 1", options=pack.skills),
-            CreationStep(
-                id="skill-2",
-                prompt="Choose skill 2",
-                options=other_than(pack.skills, picked(picks, "skill-1")),
-            ),
-            CreationStep(id="frailty", prompt="Choose a frailty", options=pack.frailties),
-            CreationStep(id="gear-1", prompt="Choose gear 1", options=pack.gear),
-            CreationStep(
-                id="gear-2",
-                prompt="Choose gear 2",
-                options=other_than(pack.gear, picked(picks, "gear-1")),
-            ),
-        )
 
-    def create(self, name: str, brief: str, picks: Picks) -> Character:
-        check_picks(self.steps(picks), picks)
-        chosen = picked(picks, "pack")
-        pack = self.packs[chosen]
-        sheet = ActorSheet(
-            concept=picked(picks, "concept"),
-            skills=tuple(
-                find_entry(pack.skills, picked(picks, f"skill-{one}")).label for one in (1, 2)
-            ),
-            frailties=(find_entry(pack.frailties, picked(picks, "frailty")).label,),
-            gear=tuple(find_entry(pack.gear, picked(picks, f"gear-{one}")).label for one in (1, 2)),
-        )
-        return Character(
-            id=slug(name, ()),
-            engine=EngineId("loner3e"),
-            name=name,
-            brief=brief,
-            payload=Loner3eCharacter(sheet=sheet, twist_pack=chosen),
-        )
+def create_character(packs: Mapping[str, Pack], name: str, brief: str, picks: Picks) -> Character:
+    check_picks(creation_steps(packs, picks), picks)
+    chosen = picked(picks, "pack")
+    pack = packs[chosen]
+    sheet = ActorSheet(
+        concept=picked(picks, "concept"),
+        skills=tuple(
+            find_entry(pack.skills, picked(picks, f"skill-{one}")).label for one in (1, 2)
+        ),
+        frailties=(find_entry(pack.frailties, picked(picks, "frailty")).label,),
+        gear=tuple(find_entry(pack.gear, picked(picks, f"gear-{one}")).label for one in (1, 2)),
+    )
+    return Character(
+        id=slug(name, ()),
+        engine=EngineId("loner3e"),
+        name=name,
+        brief=brief,
+        payload=Loner3eCharacter(sheet=sheet, twist_pack=chosen),
+    )
 
-    def preview(self, character: Character) -> Rows:
-        return character.payload.sheet.rows()
+
+def preview_character(character: Character) -> Rows:
+    return character.payload.sheet.rows()
 
 
 def find_entry(entries: Sequence[DecisionOption], chosen: str) -> DecisionOption:

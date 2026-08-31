@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,40 +7,15 @@ from pydantic import BaseModel
 
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import Counter, EngineId, Slug, pool, require_unique
-from aidm.core.envelope import CharacterEnvelope, SaveEnvelope
 from aidm.core.facts import DiceEvent, Fact, roll
-from aidm.core.io import ENCODING
-from aidm.core.model import Character, Game, Payload, Scenario
+from aidm.core.io import ENCODING, decoded
+from aidm.core.model import Character, EngineHeader, Game, Payload, Scenario
 from aidm.core.play import DecisionOption, PendingOption
 from aidm.core.tools import MasterTool, Validate
 from aidm.core.views import NarratorView, PlayerView, Rows
 from aidm.kits.scenes import render
 from aidm.kits.scenes.render import EngineSections, SheetRows
 from aidm.kits.scenes.state import Entity, entity_fact, labeled
-
-
-class CharacterCreation(ABC):
-    @abstractmethod
-    def steps(self, picks: Picks) -> tuple[CreationStep, ...]:
-        """Tolerates partial or stale picks, so follow-up steps appear as parents are picked."""
-
-    @abstractmethod
-    def create(self, name: str, brief: str, picks: Picks) -> Character:
-        """Raises ValueError with the reason the page shows when the pick set is illegal."""
-
-    @abstractmethod
-    def preview(self, character: Character) -> Rows: ...
-
-    def created(self, name: str, brief: str, picks: Picks) -> tuple[CharacterEnvelope, Rows]:
-        character = self.create(name, brief, picks)
-        envelope = CharacterEnvelope(
-            id=character.id,
-            engine=character.engine,
-            name=character.name,
-            brief=character.brief,
-            payload=character.payload.model_dump(mode="json"),
-        )
-        return envelope, self.preview(character)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -55,7 +29,11 @@ class Engine:
     # What a sheet needs for the selected packs, written for the worldsmith.
     guidance: Callable[[Sequence[Slug]], str]
     tools: tuple[MasterTool, ...]
-    creation: CharacterCreation
+    # Tolerates partial or stale picks, so follow-up steps appear as parents are picked.
+    creation_steps: Callable[[Picks], tuple[CreationStep, ...]]
+    # Raises ValueError with the reason the page shows when the pick set is illegal.
+    create_character: Callable[[str, str, Picks], Character]
+    preview_character: Callable[[Character], Rows]
     validate: Validate
     new_game: Callable[[Scenario, Character], Payload]
     sheet_rows: Callable[[Game], SheetRows]
@@ -69,10 +47,10 @@ class Engine:
         require_unique(f"tool names of the {self.id!r} engine", (one.name for one in self.tools))
 
     def restored(self, raw: str) -> Game:
-        envelope = SaveEnvelope.model_validate_json(raw)
-        if envelope.engine != self.id:
-            raise ValueError(f"the save plays {envelope.engine!r}, not {self.id!r}")
-        state = Game.model_validate_json(raw)
+        value = decoded(raw)
+        if (header := EngineHeader.model_validate(value)).engine != self.id:
+            raise ValueError(f"the save plays {header.engine!r}, not {self.id!r}")
+        state = Game.model_validate(value)
         self.validate(state)
         return state
 

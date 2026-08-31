@@ -6,11 +6,11 @@ from pydantic import BaseModel
 
 from aidm.core.io import engine_text
 from aidm.core.model import Game, ScenarioMeta, SceneWrite
-from aidm.core.play import Exchange, Narration, PendingDecision
+from aidm.core.play import Narration, PendingDecision
 from aidm.core.tools import schema_of
 from aidm.core.views import NarratorView
 from aidm.kits.scenes.render import SheetRows, entity_line, thread_lines
-from aidm.kits.scenes.state import SceneState
+from aidm.kits.scenes.state import SceneRun, SceneState
 
 ANSWERED_BY_OPTION = (
     "The player chose the option above and the rules have applied it. Develop what it caused; "
@@ -104,16 +104,12 @@ def render_narrator(
 
 
 def render_worldsmith[S: BaseModel](
-    world: SceneState[S],
-    played: Sequence[Exchange],
-    intent: str,
-    guidance: str,
-    rows: SheetRows,
+    world: SceneState[S], intent: str, guidance: str, rows: SheetRows
 ) -> str:
     """The whole material for one scene, assembled by code so no role has to remember it."""
     return _worldsmith(
         source=world.source,
-        history=_history(world, played),
+        history=_history(world),
         cast="\n".join(entity_line(world, one, rows, where=True) for one in world.cast.values()),
         threads=thread_lines(world.threads.values(), standing_only=False),
         guidance=guidance,
@@ -137,7 +133,7 @@ def render_opening(source: str, guidance: str) -> str:
 
 def told_passages(state: Game, limit: int) -> tuple[str, ...]:
     """What the player has already read, so continuity costs the narrator no hidden canon."""
-    return tuple(one.narration for one in state.history[-limit:] if one.narration)
+    return tuple(one.narration for one in state.world.exchanges()[-limit:] if one.narration)
 
 
 def _worldsmith(
@@ -164,24 +160,24 @@ def _worldsmith(
     )
 
 
-def _history[S: BaseModel](world: SceneState[S], played: Sequence[Exchange]) -> str:
+def _history[S: BaseModel](world: SceneState[S]) -> str:
     """A scene authored is not a scene played, and the next one has to follow from the second."""
-    told: dict[str, list[str]] = {}
-    for exchange in played:
-        told.setdefault(exchange.scene, []).append(f"> {exchange.prompt}\n{exchange.narration}")
     return "\n\n".join(
         "\n".join(
             (
-                f"SCENE {number}: {one.title} ({one.place})",
-                f"the question: {one.question}",
-                one.situation,
+                f"SCENE {number}: {run.scene.title} ({run.scene.place})",
+                f"the question: {run.scene.question}",
+                run.scene.situation,
                 # Its end, not its whole play: the prompt must not grow with the game forever.
-                "what happened: "
-                + ("\n".join(told.get(one.title, [])[-TAIL_EXCHANGES:]) or "(nothing yet)"),
+                "what happened: " + (_told(run) or "(nothing yet)"),
             )
         )
-        for number, one in enumerate((*world.played, world.current), start=1)
+        for number, run in enumerate(world.runs, start=1)
     )
+
+
+def _told(run: SceneRun) -> str:
+    return "\n".join(f"> {one.prompt}\n{one.narration}" for one in run.exchanges[-TAIL_EXCHANGES:])
 
 
 def _shape(model: type[BaseModel]) -> str:
@@ -199,10 +195,11 @@ def _premise(scenario: ScenarioMeta) -> tuple[str, str]:
 
 def _recent(state: Game, limit: int) -> str:
     told = [
-        f"> {exchange.prompt}\n[at {exchange.scene}] {exchange.narration}"
-        for exchange in state.history[-limit:]
+        f"> {one.prompt}\n[at {run.scene.title}] {one.narration}"
+        for run in state.world.runs
+        for one in run.exchanges
     ]
-    return "\n\n".join(told) or "(the game has not started yet)"
+    return "\n\n".join(told[-limit:]) or "(the game has not started yet)"
 
 
 def _waiting(pending: PendingDecision | None) -> str:

@@ -95,8 +95,8 @@ def player_view[S: BaseModel](state: Game, rows: SheetRows, over: str | None) ->
             for one in world.threads.values()
             if one.status != "resolved"
         ),
-        scenes=tuple(one.title for one in (*world.played, world.current)),
-        settled=world.settled,
+        scenes=tuple(one.scene.title for one in world.runs),
+        settled=world.run.settled,
         prompt=None
         if pending is None
         else PlayerPrompt(
@@ -128,7 +128,7 @@ def master_sections(state: Game, rows: SheetRows, engine_sections: EngineSection
         ),
         (
             "HIDDEN HERE (the player has not found these)",
-            _lines(world, (world.require(one) for one in scene.hidden), rows),
+            _lines(world, (world.require(one) for one in world.run.hidden), rows),
         ),
         ("ACTIVE THREADS", thread_lines(world.threads.values(), standing_only=True)),
         *engine_sections(state),

@@ -63,9 +63,7 @@ def test_scene_key_holds_through_a_change_of_cast_but_not_of_place() -> None:
     assert scene_key(_scene(engine, _placed(state, "Pale Watcher", known=False))) == key
     assert scene_key(_scene(engine, _placed(state, "Brass Warden", known=True))) == key
     draft = state.draft()
-    draft.world.current = draft.world.current.model_copy(
-        update={"id": "cloister-1", "place": "cloister"}
-    )
+    draft.world.run.scene = draft.world.current.model_copy(update={"place": "cloister"})
     assert scene_key(_scene(engine, draft.committed())) != key
 
 

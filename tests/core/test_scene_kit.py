@@ -1,5 +1,5 @@
 import pytest
-from core_test_support import initialized, updated
+from core_test_support import initialized
 
 from aidm.core.entities import PLAYER_ID, EntityId
 from aidm.core.facts import Fact, cards
@@ -34,10 +34,7 @@ def changed(draft: Game, verb: str, **fields: object) -> list[str]:
 def _carded(turns: int) -> tuple[Exchange, ...]:
     """Turns that each landed something, so only the cap can end the scene."""
     card = Fact(kind="trait_added", trace="something happened", told=True, card="Something")
-    return tuple(
-        Exchange(prompt="I press on.", scene="The Abbot's Study", lines=(), facts=(card,))
-        for _ in range(turns)
-    )
+    return tuple(Exchange(prompt="I press on.", lines=(), facts=(card,)) for _ in range(turns))
 
 
 def refused(draft: Game, verb: str, **fields: object) -> str:
@@ -50,8 +47,8 @@ def test_reveal_moves_a_hidden_entity_into_the_scene_and_tells_the_player() -> N
     _, state = initialized()
     draft = state.draft()
     traces = changed(draft, "reveal", entity_id=MAP)
-    assert MAP in draft.world.current.present
-    assert MAP not in draft.world.current.hidden
+    assert MAP in draft.world.run.present
+    assert MAP not in draft.world.run.hidden
     assert draft.world.require(MAP).known
     assert "the vault map" in traces[0]
     _ = draft.committed()
@@ -71,7 +68,7 @@ def test_an_item_is_carried_by_its_holder_and_here_by_the_scene() -> None:
     _ = changed(draft, "move_item", item_id=MAP, to="scene")
     # Dropping clears the holder and leaves the item lying here.
     assert draft.world.require(MAP).carried_by is None
-    assert MAP in draft.world.current.present
+    assert MAP in draft.world.run.present
 
 
 def test_an_actor_who_is_not_here_cannot_be_acted_on() -> None:
@@ -96,8 +93,8 @@ def test_a_scene_that_settled_says_so() -> None:
     _, state = initialized()
     draft = state.draft()
     _ = changed(draft, "advance_thread", thread_id="vault-seal", status="resolved")
-    assert draft.world.spent
-    assert scene_spent(draft) == draft.world.spent
+    assert draft.world.run.spent
+    assert scene_spent(draft) == draft.world.run.spent
 
 
 def test_finding_everything_here_does_not_end_the_scene() -> None:
@@ -105,13 +102,16 @@ def test_finding_everything_here_does_not_end_the_scene() -> None:
     _, state = initialized()
     draft = state.draft()
     _ = changed(draft, "reveal", entity_id=MAP)
-    assert not draft.world.current.hidden
+    assert not draft.world.run.hidden
     assert scene_spent(draft) is None
 
 
 def test_a_scene_nobody_ends_is_ended_by_the_cap() -> None:
     _, state = initialized()
-    assert scene_spent(updated(state, turn=SCENE_TURN_CAP)) is not None
+    draft = state.draft()
+    idle = Exchange(prompt="I wait.", lines=())
+    draft.world.run.exchanges = [idle for _ in range(SCENE_TURN_CAP)]
+    assert scene_spent(draft) is not None
     assert scene_spent(state) is None
 
 
@@ -133,13 +133,12 @@ def test_the_player_and_what_the_party_carries_follow_into_the_next_scene() -> N
     draft = state.draft()
     _ = changed(draft, "reveal", entity_id=MAP)
     _ = changed(draft, "move_item", item_id=MAP, to="player")
-    apply_scene(draft.world, _next_scene(), turn=4)
-    here = draft.world.current.present
+    apply_scene(draft.world, _next_scene())
+    here = draft.world.run.present
     # The player is added by code and the map came with them; Mara stayed only because she is named.
     assert PLAYER_ID in here and MAP in here
-    assert draft.world.opened_at == 4
-    assert [one.id for one in draft.world.played] == ["study-1"]
-    assert draft.world.spent == ""
+    assert [run.scene.place for run in draft.world.runs[:-1]] == ["abbots-study"]
+    assert draft.world.run.spent == ""
     _ = draft.committed()
 
 
@@ -147,10 +146,10 @@ def test_an_id_the_worldsmith_got_wrong_resolves_by_name_before_it_is_refused() 
     _, state = initialized()
     draft = state.draft()
     # The probe's failure: the worldsmith writes a display name where an exact id was asked for.
-    apply_scene(draft.world, _next_scene(present=("Mara",)), turn=1)
-    assert draft.world.current.present == (PLAYER_ID, MARA)
+    apply_scene(draft.world, _next_scene(present=("Mara",)))
+    assert draft.world.run.present == [PLAYER_ID, MARA]
     with pytest.raises(ValueError, match="no such id or name"):
-        apply_scene(state.draft().world, _next_scene(present=(EntityId("nobody"),)), turn=1)
+        apply_scene(state.draft().world, _next_scene(present=(EntityId("nobody"),)))
 
 
 def test_a_situation_that_names_what_it_hides_is_refused() -> None:
@@ -194,7 +193,7 @@ def test_the_scene_bar_names_what_a_thin_scene_is_missing() -> None:
 def test_an_entity_is_never_lost_when_a_scene_leaves_it_behind() -> None:
     _, state = initialized()
     draft = state.draft()
-    apply_scene(draft.world, _next_scene(), turn=1)
+    apply_scene(draft.world, _next_scene())
     assert draft.world.last_seen(MAP) == "The Abbot's Study"
     assert MAP in draft.world.cast
 
@@ -211,7 +210,7 @@ def test_a_sheet_survives_the_save_whole() -> None:
 def test_the_cast_may_not_name_someone_it_does_not_hold() -> None:
     _, state = initialized()
     draft = state.draft()
-    draft.world.current = draft.world.current.model_copy(update={"present": ("ghost",)})
+    draft.world.run.present = [EntityId("ghost")]
     with pytest.raises(ValueError, match="not in the cast"):
         _ = draft.committed()
 
@@ -243,7 +242,7 @@ def test_what_the_dead_carried_is_left_where_they_fell() -> None:
     )
     _ = changed(draft, "kill", actor_id=MARA)
     # The trace says the ring fell loose here, so a later turn has to be able to pick it up.
-    assert RING in draft.world.current.present
+    assert RING in draft.world.run.present
     assert changed(draft, "move_item", item_id=RING, to="player")
     _ = draft.committed()
 
@@ -296,9 +295,9 @@ def test_a_fact_about_someone_unmet_reaches_neither_player_nor_narrator() -> Non
     _, state = initialized()
     draft = state.draft()
     # Here, but not yet found: a trait on it must not put its name in front of the player.
-    draft.world.current = draft.world.current.model_copy(
-        update={"hidden": (), "present": (*draft.world.current.present, MAP)}
-    )
+    run = draft.world.run
+    run.hidden = []
+    run.present = [*run.present, MAP]
     landed = changed_facts(draft, "add_trait", entity_id=MAP, name="Torn", text="")
     assert landed and not any(fact.told for fact in landed)
     assert not cards(landed)
@@ -307,9 +306,9 @@ def test_a_fact_about_someone_unmet_reaches_neither_player_nor_narrator() -> Non
 def test_the_player_is_in_every_scene_and_never_hidden_in_one() -> None:
     _, state = initialized()
     draft = state.draft()
-    apply_scene(draft.world, _next_scene(present=("kael",), hidden=("Kael", TOMAS)), turn=1)
-    assert PLAYER_ID in draft.world.current.present
-    assert PLAYER_ID not in draft.world.current.hidden
+    apply_scene(draft.world, _next_scene(present=("kael",), hidden=("Kael", TOMAS)))
+    assert PLAYER_ID in draft.world.run.present
+    assert PLAYER_ID not in draft.world.run.hidden
     _ = draft.committed()
 
 
@@ -317,10 +316,10 @@ def test_a_scene_that_hides_someone_already_met_is_refused_whole() -> None:
     _, state = initialized()
     draft = state.draft()
     with pytest.raises(ValueError, match="already met"):
-        apply_scene(draft.world, _next_scene(present=(), hidden=(MARA,)), turn=1)
+        apply_scene(draft.world, _next_scene(present=(), hidden=(MARA,)))
     # Refused before the first write: the world still stands in the scene it was in.
-    assert draft.world.current.id == "study-1"
-    assert draft.world.played == ()
+    assert draft.world.current.place == "abbots-study"
+    assert draft.world.runs[:-1] == []
 
 
 def test_what_a_companion_carries_follows_without_being_revealed() -> None:
@@ -330,8 +329,8 @@ def test_what_a_companion_carries_follows_without_being_revealed() -> None:
     draft.world.cast[RING] = Entity[LonerSheet](
         id=RING, kind="item", name="a signet ring", brief="a ring", carried_by=MARA
     )
-    apply_scene(draft.world, _next_scene(present=()), turn=1)
-    assert RING in draft.world.current.present
+    apply_scene(draft.world, _next_scene(present=()))
+    assert RING in draft.world.run.present
     assert not draft.world.require(RING).known
 
 
@@ -359,5 +358,6 @@ def test_a_save_and_its_payload_agree_on_which_rules_they_play() -> None:
 
 def test_the_turn_cap_ends_a_scene_that_kept_landing_things() -> None:
     _, state = initialized()
-    busy = updated(state, turn=SCENE_TURN_CAP, history=_carded(SCENE_TURN_CAP))
-    assert scene_spent(busy) == f"{SCENE_TURN_CAP} turns have passed here"
+    draft = state.draft()
+    draft.world.run.exchanges = list(_carded(SCENE_TURN_CAP))
+    assert scene_spent(draft) == f"{SCENE_TURN_CAP} turns have passed here"

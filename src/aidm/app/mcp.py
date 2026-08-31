@@ -7,9 +7,9 @@ from mcp.server.streamable_http_manager import StreamableHTTPASGIApp, Streamable
 from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import JsonValue, TypeAdapter
 
-from aidm.app.runtime import NO_TURN, SERVER_TOOLS, Runtime, ServerTool
-from aidm.core.entities import require_unique
-from aidm.core.tools import MasterTool, NoArgs, schema_of
+from aidm.app.runtime import Runtime
+from aidm.core.tools import MasterTool, schema_of
+from aidm.turn.run import NO_TURN, TurnTool
 
 SERVER_NAME = "aidm"
 MOUNT_PATH = "/mcp"
@@ -34,18 +34,15 @@ class Endpoint:
 
 
 def offered(runtime: Runtime) -> list[types.Tool]:
-    engine_tools = runtime.engine.tools
-    # `call` reaches the server's own tools first, so a shared name would shadow the engine's.
-    names = (*(one.name for one in SERVER_TOOLS), *(one.name for one in engine_tools))
-    require_unique("published tool names", names)
-    return [_published(one) for one in (*SERVER_TOOLS, *engine_tools)]
+    return [_published(one) for one in runtime.published_tools()]
 
 
 def call(runtime: Runtime, name: str, raw: dict[str, JsonValue]) -> str:
     session = runtime.playing()
-    if session is None:
+    turn = None if session is None else session.turn
+    if turn is None:
         raise ValueError(NO_TURN)
-    return session.call_tool(name, raw)
+    return turn.call(name, raw)
 
 
 def endpoint(runtime: Runtime) -> Endpoint:
@@ -86,9 +83,10 @@ def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
     return Server(SERVER_NAME, on_list_tools=on_list_tools, on_call_tool=on_call_tool)
 
 
-def _published(tool: ServerTool | MasterTool) -> types.Tool:
-    args = NoArgs if isinstance(tool, ServerTool) else tool.args
-    return types.Tool(name=tool.name, description=tool.description, input_schema=schema_of(args))
+def _published(tool: TurnTool | MasterTool) -> types.Tool:
+    return types.Tool(
+        name=tool.name, description=tool.description, input_schema=schema_of(tool.args)
+    )
 
 
 def _content(body: str, error: bool = False) -> types.CallToolResult:

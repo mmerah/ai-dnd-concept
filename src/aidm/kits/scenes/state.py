@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
@@ -14,6 +14,7 @@ from aidm.core.entities import (
     require_unique,
 )
 from aidm.core.facts import DiceEvent, Fact
+from aidm.core.play import Exchange
 
 Kind = Literal["actor", "item", "prop"]
 ThreadStatus = Literal["active", "resolved", "dormant"]
@@ -42,24 +43,25 @@ class Entity[S: BaseModel](Mutable):
 
 
 class Scene(Frozen):
-    """One beat of the story: what is true here now, and who is here to meet it."""
-
-    id: Slug
     # Names the art cache entry, so returning to a place reuses its picture.
     place: Slug
     title: str
-    # Public: what this scene exists to settle. The player reads it; settling it ends the scene.
+    # Public: the player reads it; settling it ends the scene.
     question: str = Field(min_length=10)
     situation: str = Field(min_length=40)
-    present: tuple[CheckedEntityId, ...] = ()
-    hidden: tuple[CheckedEntityId, ...] = ()
     # What `question` does not say: never narrated, never in a view.
     secret: str = ""
 
-    @model_validator(mode="after")
-    def _each_id_once(self) -> Self:
-        require_unique(f"ids in scene {self.id!r}", (*self.present, *self.hidden))
-        return self
+
+class SceneRun(Mutable):
+    scene: Scene
+    present: list[CheckedEntityId] = Field(default_factory=list)
+    hidden: list[CheckedEntityId] = Field(default_factory=list)
+    exchanges: list[Exchange] = Field(default_factory=list)
+    # The game master has called the question answered; the player may move on, or play on.
+    settled: bool = False
+    # Why the scene looks finished already, written by the rule that settled it.
+    spent: str = ""
 
 
 class Thread(Mutable):
@@ -76,13 +78,15 @@ class SceneCanon[S: BaseModel](Mutable):
 
     cast: dict[EntityId, Entity[S]] = Field(default_factory=dict)
     opening: Scene
+    present: list[CheckedEntityId] = Field(default_factory=list)
+    hidden: list[CheckedEntityId] = Field(default_factory=list)
     threads: dict[Slug, Thread] = Field(default_factory=dict)
     source: str = ""
 
     @model_validator(mode="after")
     def _playable_canon(self) -> Self:
         _check_filing(self.cast, self.threads)
-        _check_named(self.opening, self.cast)
+        _check_named(self.present, self.hidden, self.cast)
         return self
 
 
@@ -90,28 +94,21 @@ class SceneState[S: BaseModel](Mutable):
     """The world as a sequence of scenes: the cast persists, the scene is what is happening."""
 
     cast: dict[EntityId, Entity[S]] = Field(default_factory=dict)
-    played: tuple[Scene, ...] = ()
-    current: Scene
+    runs: list[SceneRun] = Field(min_length=1)
     threads: dict[Slug, Thread] = Field(default_factory=dict)
     companions: list[EntityId] = Field(default_factory=list)
     player_id: EntityId
     source: str = ""
-    # The turn the current scene opened on; the scene boundary counts turns from it.
-    opened_at: int = Field(default=0, ge=0)
-    # Why the scene looks finished already, written by the rule that settled it.
-    spent: str = ""
-    # The game master has called the question answered; the player may move on, or play on.
-    settled: bool = False
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
         _check_filing(self.cast, self.threads)
-        _check_named(self.current, self.cast)
+        _check_named(self.run.present, self.run.hidden, self.cast)
         if self.player_id not in self.cast:
             raise ValueError("the player is not in the cast")
         if not self.player.known:
             raise ValueError("the player is unknown to themselves")
-        if self.player_id not in self.current.present:
+        if self.player_id not in self.run.present:
             raise ValueError("the player is not in their own scene")
         if self.player_id in self.companions:
             raise ValueError("the player cannot travel with themselves")
@@ -137,11 +134,22 @@ class SceneState[S: BaseModel](Mutable):
         return one
 
     @property
+    def run(self) -> SceneRun:
+        return self.runs[-1]
+
+    @property
+    def current(self) -> Scene:
+        return self.run.scene
+
+    @property
     def player(self) -> Entity[S]:
         return self.require(self.player_id)
 
+    def exchanges(self) -> tuple[Exchange, ...]:
+        return tuple(one for run in self.runs for one in run.exchanges)
+
     def here(self) -> Iterator[Entity[S]]:
-        return (self.require(one) for one in self.current.present)
+        return (self.require(one) for one in self.run.present)
 
     def carried_by(self, holder_id: EntityId) -> Iterator[Entity[S]]:
         return (one for one in self.cast.values() if one.carried_by == holder_id)
@@ -160,7 +168,7 @@ class SceneState[S: BaseModel](Mutable):
         actor = self.require_kind(actor_id, "actor")
         if actor.trait(DEAD) is not None:
             raise ValueError(f"{actor.name} is dead; they take no further part.")
-        if actor.id not in self.current.present:
+        if actor.id not in self.run.present:
             raise ValueError(
                 f"{actor_id!r} is not here with the player. "
                 "Bring them here first, or act on who is here."
@@ -169,9 +177,9 @@ class SceneState[S: BaseModel](Mutable):
 
     def last_seen(self, entity_id: EntityId) -> str:
         """Scan backwards for the scene that held them, so nothing the story dropped is lost."""
-        for scene in (self.current, *reversed(self.played)):
-            if entity_id in (*scene.present, *scene.hidden):
-                return scene.title
+        for run in reversed(self.runs):
+            if entity_id in (*run.present, *run.hidden):
+                return run.scene.title
         return ""
 
 
@@ -219,10 +227,13 @@ def _check_filing[S: BaseModel](
             raise ValueError(f"thread {thread.id!r} is filed under {key!r}")
 
 
-def _check_named[S: BaseModel](scene: Scene, cast: dict[EntityId, Entity[S]]) -> None:
-    for who in (*scene.present, *scene.hidden):
+def _check_named[S: BaseModel](
+    present: Sequence[EntityId], hidden: Sequence[EntityId], cast: dict[EntityId, Entity[S]]
+) -> None:
+    require_unique("ids in the scene", (*present, *hidden))
+    for who in (*present, *hidden):
         if who not in cast:
             raise ValueError(f"scene names {who!r}, who is not in the cast")
-    for who in scene.hidden:
+    for who in hidden:
         if cast[who].known:
             raise ValueError(f"{who!r} is hidden here but the player has already met them")

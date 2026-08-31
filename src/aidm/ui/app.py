@@ -86,7 +86,8 @@ def _new_game(catalog: LauncherCatalog) -> None:
             ).classes("w-full")
             ui.label(scenario.subtitle).classes("text-sm opacity-70")
             written = {
-                entry.id: f"{entry.title} — {entry.subtitle}" for entry in catalog.characters
+                entry.id: f"{entry.title} — {entry.subtitle}"
+                for entry in catalog.characters_for(scenario.engine)
             }
             chosen = character_id if character_id in written else next(iter(written), None)
             ui.select(
@@ -96,7 +97,7 @@ def _new_game(catalog: LauncherCatalog) -> None:
                 on_change=choose_character,
             ).classes("w-full")
             if chosen is None:
-                ui.label("No character has been made yet.").classes("text-negative")
+                ui.label("No character is written for these rules.").classes("text-negative")
                 return
             target = launch_target(catalog, scenario_id, chosen)
             started = any(save.target.slug == target.slug for save in catalog.saves)

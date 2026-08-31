@@ -10,7 +10,6 @@ from core_test_support import (
     begin_game,
     character,
     initialized,
-    load_scenario,
     loner_sheet,
     scenario,
     updated,
@@ -20,10 +19,10 @@ from pydantic import ValidationError
 
 from aidm.core.entities import DEAD, PLAYER_ID, EngineId, EntityId, Trait
 from aidm.core.facts import Fact
-from aidm.core.io import load_character
+from aidm.core.io import load_character, read_scenario
 from aidm.core.model import Game
 from aidm.core.tools import apply_to_draft
-from aidm.engines.loner3e.state import LUCK_MAX, LonerSheet
+from aidm.engines.loner3e.state import LUCK_MAX, LonerSheet, LonerWorld
 from aidm.kits.scenes.state import Entity
 
 MARA = EntityId("mara")
@@ -37,7 +36,24 @@ def test_a_doubled_id_in_a_world_file_is_refused(tmp_path: Path) -> None:
     (tmp_path / "doubled").mkdir()
     _ = (tmp_path / "doubled" / "world.json").write_text(doubled, encoding="utf-8")
     with pytest.raises(ValueError, match="duplicate keys"):
-        _ = load_scenario(tmp_path, "doubled", ENGINES_BUILT[LONER3E])
+        _ = read_scenario(tmp_path, "doubled")
+
+
+def test_a_doubled_key_in_a_save_is_refused() -> None:
+    engine, state = initialized()
+    doubled = state.model_dump_json().replace('{"scenario_id"', '{"turn": 0, "scenario_id"', 1)
+    with pytest.raises(ValueError, match="duplicate keys"):
+        _ = engine.restored(doubled)
+
+
+def test_a_doubled_key_in_a_character_file_is_refused(tmp_path: Path) -> None:
+    written = character()
+    folder = tmp_path / written.id
+    folder.mkdir()
+    doubled = written.model_dump_json().replace('{"id"', '{"name": "Other", "id"', 1)
+    _ = (folder / f"{written.engine}.json").write_text(doubled, encoding="utf-8")
+    with pytest.raises(ValueError, match="duplicate keys"):
+        _ = load_character(tmp_path, written.id, written.engine)
 
 
 def test_the_scene_world_rejects_state_it_cannot_stand_on() -> None:
@@ -51,7 +67,7 @@ def test_the_scene_world_rejects_state_it_cannot_stand_on() -> None:
         _ = updated(world, player_id="nobody")
 
     with pytest.raises(ValidationError, match="scene names"):
-        _ = updated(world, current=updated(world.current, present=("ghost",)))
+        _ = _with_run(world, present=["ghost"])
 
     with pytest.raises(ValidationError, match="who is not in the cast"):
         _ = with_entity(
@@ -66,7 +82,11 @@ def test_the_scene_world_rejects_state_it_cannot_stand_on() -> None:
         )
 
     with pytest.raises(ValidationError, match="already met"):
-        _ = updated(world, current=updated(world.current, present=(PLAYER_ID,), hidden=(MARA,)))
+        _ = _with_run(world, present=[PLAYER_ID], hidden=[MARA])
+
+
+def _with_run(world: LonerWorld, **changes: object) -> LonerWorld:
+    return updated(world, runs=[world.run.model_dump(round_trip=True) | changes])
 
 
 def test_an_engine_refuses_an_actor_its_rules_cannot_roll() -> None:
@@ -107,7 +127,7 @@ def test_entity_and_scene_ids_use_one_grammar() -> None:
     with pytest.raises(ValidationError, match="pattern"):
         _ = updated(state.world.require(MARA), id="bell_tower")
     with pytest.raises(ValidationError, match="pattern"):
-        _ = updated(state.world.current, id="study_1")
+        _ = updated(state.world.run, present=["study_1"])
 
 
 def test_a_game_is_refused_a_scenario_or_a_character_from_another_engine() -> None:
@@ -170,3 +190,10 @@ def test_a_save_whose_payload_the_engine_rejects_is_refused() -> None:
     raw["payload"]["world"]["cast"]["ghost"] = {"kind": "actor"}
     with pytest.raises(ValidationError):
         _ = engine.restored(json.dumps(raw))
+
+
+def test_a_save_from_other_rules_is_refused_before_it_is_read() -> None:
+    engine, state = initialized()
+    foreign = json.dumps(state.model_dump(mode="json") | {"engine": OTHER})
+    with pytest.raises(ValueError, match="the save plays 'ruleless', not 'loner3e'"):
+        _ = engine.restored(foreign)

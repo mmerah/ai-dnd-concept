@@ -1,5 +1,6 @@
 import asyncio
 import json
+from dataclasses import replace
 from pathlib import Path
 from random import Random
 
@@ -20,11 +21,11 @@ from pydantic import JsonValue
 
 from aidm.app.launch import LaunchTarget
 from aidm.app.mcp import call, offered
-from aidm.app.runtime import ALREADY_OPEN, DECIDING, NO_TURN, START_FIRST
 from aidm.app.spawn import CliSpawner, final_message
-from aidm.core.entities import PLAYER_ID, EntityId
+from aidm.core.entities import PLAYER_ID, EngineId, EntityId
 from aidm.core.model import SceneWrite
 from aidm.core.play import Narration
+from aidm.turn.run import ALREADY_OPEN, DECIDING, NO_TURN, START_FIRST, TURN_TOOLS, Turn
 
 VAULT_MAP = EntityId("vault-map")
 MARA = EntityId("mara")
@@ -117,7 +118,7 @@ async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(
         _ = table.call("change_world", change_args("reveal", entity_id=VAULT_MAP))
         turn = table.service.turn
         assert turn is not None
-        landed.append(len(turn.draft.turn_facts))
+        landed.append(len(turn.facts))
 
     table.spawner.turns.append(script)
     table.spawner.answers["narrator"] = [narrated("A chart, under the stone.")]
@@ -126,8 +127,7 @@ async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(
     assert landed == [1]
     saved = table.saved()
     assert saved.world.require(VAULT_MAP).known
-    assert saved.turn_facts == ()
-    assert len(saved.history[-1].facts) == 1
+    assert len(saved.world.exchanges()[-1].facts) == 1
 
 
 async def test_an_open_decision_blocks_every_other_tool_until_the_player_answers(
@@ -180,7 +180,7 @@ async def test_next_scene_asks_the_player_and_writes_nothing_yet(tmp_path: Path)
     assert state.turn == 1
     # An offer, not a decision: nothing waits on the player and the scene is still playable.
     assert state.pending is None
-    assert state.world.settled
+    assert state.world.run.settled
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 
 
@@ -198,7 +198,7 @@ async def test_the_offer_does_not_close_the_scene_or_stop_the_player(tmp_path: P
     )
 
     assert state.world.current.title == "The Abbot's Study"
-    assert state.world.settled
+    assert state.world.run.settled
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 
     state = await played(
@@ -249,11 +249,19 @@ async def test_the_spent_note_never_reaches_the_scene_it_is_not_about(tmp_path: 
 
     _ = await played(table, "I have what I came for.", the_way_on())
     state = await played(
-        table, "Out into the cloister walk.", arrival="Rain takes the arcade.", moving_on=True
+        table,
+        "Out into the cloister walk.",
+        changed("kill", actor_id=MARA),
+        arrival="Rain takes the arcade.",
+        moving_on=True,
     )
 
     assert state.world.current.title == "The Cloister Walk"
     assert not any("looks spent" in note for note in state.notes)
+
+    # The body came with them: the note it earns is this scene's second exchange, not its first.
+    state = await played(table, "I look at what she wrote.", narration="Ledgers, nothing more.")
+    assert any("looks spent" in note for note in state.notes)
 
 
 async def test_the_way_on_is_offered_once(tmp_path: Path) -> None:
@@ -272,7 +280,7 @@ async def test_the_way_on_is_offered_once(tmp_path: Path) -> None:
 
     assert "already settled" in table.refusals[-1]
     assert state.world.current.title == "The Cloister Walk"
-    assert not state.world.settled
+    assert not state.world.run.settled
 
 
 async def test_a_crossing_the_narrator_will_not_write_still_keeps_the_scene(
@@ -286,7 +294,7 @@ async def test_a_crossing_the_narrator_will_not_write_still_keeps_the_scene(
     state = await played(table, "Out into the cloister walk.", moving_on=True)
 
     assert state.world.current.title == "The Cloister Walk"
-    assert state.history[-1].narration == ""
+    assert state.world.exchanges()[-1].narration == ""
 
 
 async def test_the_players_own_answer_is_the_brief_and_the_crossing_lands_in_that_turn(
@@ -305,9 +313,10 @@ async def test_the_players_own_answer_is_the_brief_and_the_crossing_lands_in_tha
     )
 
     assert state.world.current.title == "The Cloister Walk"
-    assert EntityId("tomas") in state.world.current.hidden
-    assert state.history[-1].scene == "The Cloister Walk"
-    assert "Rain finds you" in state.history[-1].narration
+    assert EntityId("tomas") in state.world.run.hidden
+    # Lands as the new run's own exchange, not tacked onto the scene the player just left.
+    assert len(state.world.run.exchanges) == 1
+    assert "Rain finds you" in state.world.run.exchanges[-1].narration
     assert "before Tomas hears the door" in table.spawner.prompt("worldsmith")
 
 
@@ -400,8 +409,18 @@ async def test_abandoning_a_spawn_kills_the_process_group_it_started(tmp_path: P
         await CliSpawner(settings).run("master", "go")
 
 
-def test_the_engine_is_the_one_the_surface_publishes_for(tmp_path: Path) -> None:
-    assert opened(tmp_path).runtime.engine.id == LONER3E
+def test_the_surface_publishes_for_the_engine_whose_turn_is_in_flight(tmp_path: Path) -> None:
+    table = opened(tmp_path)
+    toolless = replace(table.service.engine, id=EngineId("mirror"), tools=())
+    # First of the installed engines, so reading the engines instead of the turn would show it.
+    table.runtime.engines = {toolless.id: toolless, **table.runtime.engines}
+    state = table.service.state
+    table.service.turn = Turn.begin(table.service.engine, state, "I look.", Random(0), 1)
+
+    assert "roll_question" in [one.name for one in table.runtime.published_tools()]
+
+    table.service.turn = None
+    assert [one.name for one in table.runtime.published_tools()] == [one.name for one in TURN_TOOLS]
 
 
 # What `codex exec --json` actually printed, banner line and all.

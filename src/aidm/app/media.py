@@ -9,8 +9,12 @@ from pathlib import Path
 from httpx import AsyncClient
 from pydantic import BaseModel, ConfigDict
 
-from aidm.config import MediaConfig, ProviderConfig
+from aidm.config import MediaConfig, ProviderConfig, Settings
+from aidm.core.io import FileStore
+from aidm.core.model import Character, Scenario
 from aidm.core.views import NarratorView, Subject
+
+from .launch import LaunchTarget
 
 LOGGER = logging.getLogger(__name__)
 
@@ -171,6 +175,27 @@ class _ImageReply(BaseModel):
     def url(self) -> str | None:
         images = self.choices[0].message.images if self.choices else ()
         return images[0].image_url.url if images else None
+
+
+def open_illustrator(
+    settings: Settings,
+    target: LaunchTarget,
+    scenario: Scenario,
+    character: Character,
+    store: FileStore,
+) -> Illustrator | None:
+    """Share authored icons across games while keeping generated canon and scenes per save."""
+    if not settings.media.enabled:
+        return None
+    scenario_icons = settings.scenarios_dir / target.scenario_id / ICON_DIR
+    character_icons = settings.characters_dir / target.character_id / ICON_DIR
+    return Illustrator(
+        config=settings.media,
+        provider=settings.providers.for_name(settings.media.provider),
+        saves=store.media_dir(target.slug),
+        icon_dirs=(scenario_icons, character_icons),
+        style=scenario.art_style or settings.media.style,
+    )
 
 
 def scene_key(scene: NarratorView) -> str:

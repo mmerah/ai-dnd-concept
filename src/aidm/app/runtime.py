@@ -1,23 +1,15 @@
 import logging
 from asyncio import Lock, Task, create_task
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
 from random import Random
 
-from pydantic import JsonValue
-
 from aidm.config import Settings, load_settings
-from aidm.core.entities import EngineId, EntityId, Slug, slug
+from aidm.core.entities import EngineId, EntityId, Slug, require_unique, slug
 from aidm.core.facts import Fact, told_traces, traced
-from aidm.core.io import (
-    FileStore,
-    load_character,
-    scenario_envelope,
-    scenario_of,
-    write_scenario,
-)
+from aidm.core.io import FileStore, load_character, read_scenario, write_scenario
 from aidm.core.model import (
     Character,
     Game,
@@ -28,38 +20,36 @@ from aidm.core.model import (
 )
 from aidm.core.play import Answer, Line, Narration
 from aidm.core.source import given_text
-from aidm.core.tools import NoArgs
+from aidm.core.tools import MasterTool
 from aidm.core.views import NarratorView, PlayerView
 from aidm.engines.core import Engine
 from aidm.engines.registry import begin_game, build_engines
-from aidm.kits.scenes.worldsmith import apply_scene, opening_canon, scene_refusal
+from aidm.kits.scenes.worldsmith import opening_canon, scene_refusal
 from aidm.turn.context import (
     CROSSING,
     render_master,
     render_narrator,
     render_opening,
-    render_picture,
-    render_worldsmith,
     told_passages,
 )
-from aidm.turn.run import Turn, TurnStep, close_segment, speakers_refusal
+from aidm.turn.run import (
+    TURN_TOOLS,
+    Turn,
+    TurnStep,
+    TurnTool,
+    close_segment,
+    narration_refusal,
+)
 
 from .launch import LaunchTarget
-from .media import ICON_DIR, Illustrator
+from .media import Illustrator, open_illustrator
+from .scene_write import install_scene, write_next
 from .spawn import CliSpawner, Spawner, answered
 
 LOGGER = logging.getLogger(__name__)
 
-NO_TURN = "no turn is open. The player starts one from the page; wait to be spawned again."
-OFFERED = (
-    "the player is choosing where to go; their answer opens the next scene. "
-    "This turn is not over — finish what their action caused, then exit."
-)
 # What the crossing is filed under in the chronicle: the player took no action in it.
 CROSSED = "(the story moves on)"
-START_FIRST = "call `start_turn` first: it opens the turn and hands back the picture."
-ALREADY_OPEN = "the turn is already open. `scene` gives the picture back."
-DECIDING = "the rules are waiting on the player; the scene after this one waits with them."
 
 
 @dataclass
@@ -78,8 +68,6 @@ class GameService:
     step: TurnStep | None = None
     # The turn in flight; the tool surface reaches the live game through it.
     turn: Turn | None = None
-    # The game master has called `start_turn`; nothing may change the world before it does.
-    turn_started: bool = False
     # The game master's whole output, raw, for the dev tab; one spawn, so one string.
     master_log: str = ""
     # Why the last scene write failed or would not fit; empty when none has.
@@ -108,7 +96,7 @@ class GameService:
         moving_on: bool = False,
     ) -> None:
         """`moving_on` is the player taking the way on, so `action` is what they mean to pursue."""
-        if moving_on and not self.state.world.settled:
+        if moving_on and not self.state.world.run.settled:
             raise ValueError("this scene has no way on yet; play it out first")
 
         def announce(step: TurnStep) -> None:
@@ -116,8 +104,10 @@ class GameService:
             if on_step is not None:
                 on_step(step)
 
-        turn = Turn.begin(self.engine, self.state, action, self.rng, on_fact)
-        self.busy, self.turn, self.turn_started, self.write_failure = True, turn, False, ""
+        turn = Turn.begin(
+            self.engine, self.state, action, self.rng, self.settings.turn.recent_exchanges, on_fact
+        )
+        self.busy, self.turn, self.write_failure = True, turn, ""
         try:
             # The player named where they go; the worldsmith writes while the turn still plays.
             if moving_on:
@@ -132,7 +122,7 @@ class GameService:
             # Cleared before the crossing: the tool surface must not reach a turn nobody plays.
             self.turn, self.step = None, None
             self.commit(state)
-            self._illustrate(state.history[-1].narration)
+            self._illustrate(state.world.run.exchanges[-1].narration)
             await self._cross_over(announce, turn.prompt)
         except BaseException:
             self._abandon_write()
@@ -168,7 +158,7 @@ class GameService:
                     passages=told_passages(draft, self.settings.turn.recent_exchanges),
                 ),
                 Narration,
-                lambda written: _narration_refusal(view, written),
+                lambda written: narration_refusal(view, written),
                 partial(self.spawner.run, "narrator"),
             )
         except (OSError, ValueError) as failed:
@@ -178,70 +168,6 @@ class GameService:
             LOGGER.warning("the crossing went unnarrated: %s", failed)
             return ()
         return narration.lines
-
-    def call_tool(self, name: str, raw: dict[str, JsonValue]) -> str:
-        turn = self._require_turn()
-        if (refused := self._tool_refusal(turn, name)) is not None:
-            raise ValueError(refused)
-        served = _DISPATCH.get(name)
-        if served is None:
-            return self._engine_call(turn, name, raw)
-        # A server tool takes no arguments, so junk ones need a guard of their own.
-        _ = NoArgs.model_validate(raw)
-        return served.run(self)
-
-    def start_turn(self) -> str:
-        self.turn_started = True
-        return self.picture()
-
-    def picture(self) -> str:
-        turn = self._require_turn()
-        return render_picture(
-            self.engine.master_sections(turn.draft),
-            turn.draft,
-            turn.prompt,
-            resumed=turn.resumed,
-            notes=(*turn.notes, *turn.draft.notes),
-            recent=self.settings.turn.recent_exchanges,
-        )
-
-    def offer_the_way_on(self) -> str:
-        self._require_turn().settle_scene()
-        return OFFERED
-
-    def _tool_refusal(self, turn: Turn, name: str) -> str | None:
-        if name == "scene":
-            return None
-        if name == "start_turn":
-            return ALREADY_OPEN if self.turn_started else None
-        if not self.turn_started:
-            return START_FIRST
-        if (ended := self.engine.over(turn.draft)) is not None:
-            return f"{ended} The game is over; the player restarts from the page."
-        # `next_scene` changes the world without reaching the engine, so its pending row is here.
-        if name == "next_scene" and turn.draft.pending is not None:
-            return DECIDING
-        return None
-
-    def _engine_call(self, turn: Turn, name: str, raw: Mapping[str, JsonValue]) -> str:
-        """The one gate: a decision on the table blocks everything but developing its answer."""
-        found = next((one for one in self.engine.tools if one.name == name), None)
-        if found is None:
-            raise ValueError(f"{name!r} is not a tool of the {self.engine.id!r} engine.")
-        pending = turn.draft.pending
-        if pending is not None and not (found.during_suspension and turn.suspended_at_start):
-            # A plain answer, not a refusal: a retry prompt would tell the model to try again.
-            return (
-                f"the rules are waiting on the player: {pending.prompt}\n"
-                "Stop here and exit; the player's answer opens the next turn."
-            )
-        return turn.apply(lambda draft, rng: found.call(draft, raw, rng))
-
-    def _require_turn(self) -> Turn:
-        turn = self.turn
-        if turn is None:
-            raise ValueError(NO_TURN)
-        return turn
 
     async def _cross_over(self, announce: Callable[[TurnStep], None], pursuit: str) -> None:
         if self._writing is None:
@@ -257,7 +183,7 @@ class GameService:
                 return
             draft = self.state.draft()
             try:
-                facts = _installed(self.engine, draft, written)
+                facts = install_scene(self.engine, draft, written)
             except ValueError as outgrown:
                 # Dropping the scene costs a scene; raising costs the turn that was already played.
                 self.write_failure = str(outgrown)
@@ -269,7 +195,7 @@ class GameService:
             self.commit(close_segment(view, draft, CROSSED, lines, facts))
         finally:
             self.step = None
-        self._illustrate(self.state.history[-1].narration)
+        self._illustrate(self.state.world.run.exchanges[-1].narration)
 
     def _abandon_write(self) -> None:
         """Cancelled, not just dropped: a write left running would install a scene a turn late."""
@@ -283,20 +209,9 @@ class GameService:
         self._writing = create_task(self._write(self.state.draft(), intent))
 
     async def _write(self, snapshot: Game, intent: str) -> SceneWrite | None:
-        prompt = render_worldsmith(
-            snapshot.world,
-            snapshot.history,
-            intent,
-            self.engine.guidance(snapshot.packs),
-            self.engine.sheet_rows(snapshot),
-        )
         try:
-            return await answered(
-                "worldsmith",
-                prompt,
-                SceneWrite,
-                lambda written: scene_refusal(written, snapshot.world),
-                partial(self.spawner.run, "worldsmith"),
+            return await write_next(
+                snapshot, intent, self.engine, partial(self.spawner.run, "worldsmith")
             )
         except (OSError, ValueError) as failed:
             self.write_failure = str(failed)
@@ -360,36 +275,6 @@ class GameService:
         return state
 
 
-@dataclass(frozen=True, slots=True)
-class ServerTool:
-    name: str
-    description: str
-    run: Callable[[GameService], str]
-
-
-SERVER_TOOLS: tuple[ServerTool, ...] = (
-    ServerTool(
-        "start_turn",
-        "Open the turn and get the whole game back: the scene, who is here, what is hidden here,"
-        " the threads, the notes from the rules and the recent play. Call it first every turn.",
-        GameService.start_turn,
-    ),
-    ServerTool(
-        "scene",
-        "The same picture start_turn gives, for when you were compacted mid-turn.",
-        GameService.picture,
-    ),
-    ServerTool(
-        "next_scene",
-        "Say this scene's question is settled. The player is then asked what they want to pursue,"
-        " and their own words are what the next scene is built from. Do not answer for them.",
-        GameService.offer_the_way_on,
-    ),
-)
-
-_DISPATCH = {tool.name: tool for tool in SERVER_TOOLS}
-
-
 @dataclass(slots=True)
 class Runtime:
     """The composition root: settings, the built engine, the spawner, and the games open."""
@@ -403,10 +288,17 @@ class Runtime:
     def __post_init__(self) -> None:
         self.engines = build_engines(self.settings.packs_dir)
 
-    @property
-    def engine(self) -> Engine:
-        """One engine ships, and the tool surface publishes before a game is even open."""
-        return next(iter(self.engines.values()))
+    def default_engine(self) -> EngineId:
+        """Dict order picks it; a create page has to start somewhere."""
+        return next(iter(self.engines))
+
+    def published_tools(self) -> tuple[TurnTool | MasterTool, ...]:
+        """A CLI lists tools only inside its own turn, so with none open any engine will do."""
+        playing = self.playing()
+        engine = playing.engine if playing is not None else self.engines[self.default_engine()]
+        published = (*TURN_TOOLS, *engine.tools)
+        require_unique("published tool names", (one.name for one in published))
+        return published
 
     def playing(self) -> GameService | None:
         """A second turn in flight has no owner: the tool surface is shared."""
@@ -434,6 +326,7 @@ class Runtime:
 
     async def new_scenario(
         self,
+        engine_id: EngineId,
         title: str,
         premise: str,
         document: Path | None,
@@ -444,7 +337,7 @@ class Runtime:
         # `Scenario` refuses an empty pack tuple, but only after the write; refuse it before.
         if not packs:
             raise ValueError("a scenario needs at least one table set")
-        engine = self.engine
+        engine = self.engines[engine_id]
         character = load_character(self.settings.characters_dir, character_id, engine.id)
         source = given_text(premise, document, self.settings.source.max_chars)
         name = slug(title, self._scenario_ids())
@@ -458,8 +351,7 @@ class Runtime:
             )
 
         def refusal(scene: SceneWrite) -> str | None:
-            """The rules judge the opening too, so an actor the engine will not play costs the
-            re-prompt rather than a scenario file nothing can ever open."""
+            """The rules judge the opening, so an unplayable actor costs a re-prompt, not a file."""
             refused = scene_refusal(scene)
             if refused is not None:
                 return refused
@@ -497,9 +389,8 @@ class Runtime:
 
     def _open(self, target: LaunchTarget) -> GameService:
         settings = self.settings
-        envelope = scenario_envelope(settings.scenarios_dir, target.scenario_id)
-        engine = self.engines[envelope.engine]
-        scenario = scenario_of(envelope, engine.id)
+        scenario = read_scenario(settings.scenarios_dir, target.scenario_id)
+        engine = self.engines[scenario.engine]
         character = load_character(settings.characters_dir, target.character_id, engine.id)
         store = FileStore(settings.saves_dir)
         return GameService(
@@ -510,46 +401,5 @@ class Runtime:
             spawner=self.spawner,
             store=store,
             settings=settings,
-            media=_open_media(settings, target, scenario, character, store),
+            media=open_illustrator(settings, target, scenario, character, store),
         )
-
-
-def _open_media(
-    settings: Settings,
-    target: LaunchTarget,
-    scenario: Scenario,
-    character: Character,
-    store: FileStore,
-) -> Illustrator | None:
-    """Share authored icons across games while keeping generated canon and scenes per save."""
-    if not settings.media.enabled:
-        return None
-    scenario_icons = settings.scenarios_dir / target.scenario_id / ICON_DIR
-    character_icons = settings.characters_dir / target.character_id / ICON_DIR
-    return Illustrator(
-        config=settings.media,
-        provider=settings.providers.for_name(settings.media.provider),
-        saves=store.media_dir(target.slug),
-        icon_dirs=(scenario_icons, character_icons),
-        style=scenario.art_style or settings.media.style,
-    )
-
-
-def _narration_refusal(view: NarratorView, written: Narration) -> str | None:
-    if not written.text:
-        return "write the narration lines: an empty answer shows the player nothing."
-    return speakers_refusal(view, written.lines)
-
-
-def _installed(engine: Engine, draft: Game, written: SceneWrite) -> tuple[Fact, ...]:
-    """What the rules settle as the old scene ends, then the new scene itself."""
-    closed = engine.scene_closed(draft)
-    # A deep copy: the trial run and the real one must not share the entities the scene brings.
-    apply_scene(draft.world, written.model_copy(deep=True), draft.turn)
-    # Companions cross by code, so nothing else would tell the narrator they came along.
-    came = [draft.world.require(one).name for one in draft.world.companions]
-    trace = f"the story moves to {written.title}"
-    if came:
-        trace += f", and {', '.join(came)} travels there with the player"
-    opened = Fact(kind="scene_opened", trace=trace, told=True, card=f"New scene: {written.title}")
-    return (*closed, opened)

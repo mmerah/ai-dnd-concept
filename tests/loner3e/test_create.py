@@ -1,12 +1,12 @@
 from pathlib import Path
 
 import pytest
-from core_test_support import ENGINES_BUILT, LONER3E, SCENARIOS, load_scenario, loner_sheet, updated
+from core_test_support import ENGINES_BUILT, LONER3E, SCENARIOS, loner_sheet, updated
 
 from aidm.core.creation import Picks
 from aidm.core.entities import PLAYER_ID, EngineId
-from aidm.core.io import load_character, write_character
-from aidm.engines.core import CharacterCreation
+from aidm.core.io import load_character, read_scenario, write_character
+from aidm.engines.core import Engine
 from aidm.engines.loner3e.state import LUCK_MAX
 from aidm.engines.registry import begin_game
 
@@ -15,7 +15,6 @@ OTHER = EngineId("ruleless")
 
 def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path) -> None:
     engine = ENGINES_BUILT[LONER3E]
-    creation = engine.creation
     picks: Picks = {
         "pack": "srd",
         "concept": "A wandering scribe who counts doors",
@@ -25,10 +24,10 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
         "gear-1": "pry-bar",
         "gear-2": "chalk-and-wire",
     }
-    created, _ = creation.created("Fen", "A wandering scribe with too many questions.", picks)
+    created = engine.create_character("Fen", "A wandering scribe with too many questions.", picks)
     write_character(tmp_path, created)
     character = load_character(tmp_path, "fen", engine.id)
-    scenario = load_scenario(SCENARIOS, "whispering-vault", engine)
+    scenario = read_scenario(SCENARIOS, "whispering-vault")
     state = begin_game(engine, "whispering-vault", scenario, character)
     assert state.payload.twist_pack == "srd"
     made = loner_sheet(state, PLAYER_ID)
@@ -40,25 +39,27 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
 
 
 def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:
-    creation = ENGINES_BUILT[LONER3E].creation
-    legal: Picks = _answered(creation, {"pack": "srd"})
+    engine = ENGINES_BUILT[LONER3E]
+    legal: Picks = _answered(engine, {"pack": "srd"})
     with pytest.raises(ValueError, match="no creation step"):
-        creation.create("Fen", "", {**legal, "class": "fighter"})
+        engine.create_character("Fen", "", {**legal, "class": "fighter"})
     with pytest.raises(ValueError, match="is unanswered"):
-        creation.create("Fen", "", {key: value for key, value in legal.items() if key != "gear-2"})
+        engine.create_character(
+            "Fen", "", {key: value for key, value in legal.items() if key != "gear-2"}
+        )
     with pytest.raises(ValueError, match="offers no"):
-        creation.create("Fen", "", {**legal, "frailty": "unwritten"})
+        engine.create_character("Fen", "", {**legal, "frailty": "unwritten"})
     with pytest.raises(ValueError, match="is unanswered"):
-        creation.create("Fen", "", {**legal, "concept": "  "})
-    created, _ = creation.created("Fen", "", legal)
+        engine.create_character("Fen", "", {**legal, "concept": "  "})
+    created = engine.create_character("Fen", "", legal)
     write_character(tmp_path, created)
     with pytest.raises(ValueError, match="already exists"):
         write_character(tmp_path, created)
 
 
 def test_one_folder_holds_one_person_across_engines(tmp_path: Path) -> None:
-    creation = ENGINES_BUILT[LONER3E].creation
-    fen, _ = creation.created("Fen", "A wandering scribe.", _answered(creation, {"pack": "srd"}))
+    engine = ENGINES_BUILT[LONER3E]
+    fen = engine.create_character("Fen", "A wandering scribe.", _answered(engine, {"pack": "srd"}))
     write_character(tmp_path, fen)
 
     with pytest.raises(ValueError, match="is 'Fen', not 'Mira'"):
@@ -68,19 +69,21 @@ def test_one_folder_holds_one_person_across_engines(tmp_path: Path) -> None:
     assert load_character(tmp_path, "fen", ENGINES_BUILT[LONER3E].id).name == "Fen"
 
 
-def _answered(creation: CharacterCreation, chosen: Picks) -> Picks:
+def _answered(engine: Engine, chosen: Picks) -> Picks:
     """Answers each step with its first option, so later steps appear as earlier ones land."""
     picks = dict(chosen)
-    while step := next((one for one in creation.steps(picks) if one.id not in picks), None):
+    while step := next((one for one in engine.creation_steps(picks) if one.id not in picks), None):
         picks[step.id] = step.options[0].id if step.options else "Something written"
     return picks
 
 
 def test_the_second_skill_step_drops_what_the_first_one_took() -> None:
-    creation = ENGINES_BUILT[LONER3E].creation
-    steps = {step.id: step for step in creation.steps({"pack": "srd", "skill-1": "quiet-hands"})}
+    engine = ENGINES_BUILT[LONER3E]
+    steps = {
+        step.id: step for step in engine.creation_steps({"pack": "srd", "skill-1": "quiet-hands"})
+    }
     assert "quiet-hands" not in {option.id for option in steps["skill-2"].options}
     assert "quiet-hands" in {option.id for option in steps["skill-1"].options}
-    legal = _answered(creation, {"pack": "srd"})
+    legal = _answered(engine, {"pack": "srd"})
     with pytest.raises(ValueError, match="offers no"):
-        _ = creation.create("Fen", "", {**legal, "skill-2": legal["skill-1"]})
+        _ = engine.create_character("Fen", "", {**legal, "skill-2": legal["skill-1"]})

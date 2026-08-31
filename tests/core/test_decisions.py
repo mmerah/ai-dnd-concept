@@ -116,7 +116,7 @@ async def test_a_suspending_resolver_ends_the_run_and_records_the_pause(tmp_path
 
     assert any(RULES_WAIT in answer for answer in table.answers)
     assert state.pending == DECISION
-    assert state.history[-1].decision == DECISION.prompt
+    assert state.world.exchanges()[-1].decision == DECISION.prompt
     assert steps == ["master", "narrator"]
 
 
@@ -129,8 +129,8 @@ async def test_a_hand_back_that_moved_no_fiction_gets_no_prose(tmp_path: Path) -
 
     state = table.service.state
     assert steps == ["master"]
-    assert state.history[-1].lines == ()
-    assert state.history[-1].narration == ""
+    assert state.world.exchanges()[-1].lines == ()
+    assert state.world.exchanges()[-1].narration == ""
 
 
 async def test_a_closed_answer_resolves_in_engine_code_before_the_master_continues(
@@ -144,7 +144,7 @@ async def test_a_closed_answer_resolves_in_engine_code_before_the_master_continu
 
     assert [fact.kind for fact in facts] == ["defence_turned"]
     assert "lantern broke to turn the hit" in table.answers[0]
-    assert state.history[-1].prompt == "Break the lantern"
+    assert state.world.exchanges()[-1].prompt == "Break the lantern"
     assert state.pending is None
 
 
@@ -155,6 +155,9 @@ async def test_a_re_suspended_continuation_keeps_the_rules_waiting(tmp_path: Pat
     state = await played(table, Answer(option_id="lantern"))
 
     assert state.pending == DECISION
+    # A re-suspension has no tool answer to carry the wait, so the picture has to end on it.
+    resolved = table.answers[0].split("\n\nPLAYER ACTION:")[0]
+    assert resolved.endswith(f"- {RULES_WAIT}")
 
 
 async def test_an_option_the_decision_never_offered_raises(tmp_path: Path) -> None:

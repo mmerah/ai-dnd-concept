@@ -6,29 +6,35 @@ from core_test_support import (
     ENGINE_IDS,
     ENGINES_BUILT,
     LONER3E,
+    character,
     initialized,
-    load_scenario,
     scenario,
+    updated,
 )
 
+from aidm.core.entities import EngineId
 from aidm.core.facts import Fact
 from aidm.core.io import (
     ENCODING,
     FileStore,
     load_character,
+    read_characters,
+    read_scenario,
     read_scenarios,
+    write_character,
     write_scenario,
 )
 from aidm.core.play import Exchange
+
+MIRROR = EngineId("mirror")
 
 
 def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
     engine, state = initialized()
     draft = state.draft()
-    draft.history = (
+    draft.world.run.exchanges = [
         Exchange(
             prompt="I take the map.",
-            scene="the sealed vault",
             lines=(),
             facts=(
                 Fact(
@@ -39,7 +45,7 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
                 ),
             ),
         ),
-    )
+    ]
     saved = draft.committed()
     store = FileStore(tmp_path)
 
@@ -47,7 +53,7 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
     reloaded = store.load("roundtrip")
 
     assert reloaded is not None
-    assert engine.restored(reloaded).history == saved.history
+    assert engine.restored(reloaded).world.exchanges() == saved.world.exchanges()
 
 
 @pytest.mark.parametrize("slug", ("../escape", "/absolute", "bad slug", ""))
@@ -61,7 +67,7 @@ def test_storage_rejects_unsafe_slugs(tmp_path: Path, slug: str) -> None:
 def test_content_paths_reject_an_unsafe_id(tmp_path: Path) -> None:
     engine = ENGINES_BUILT[LONER3E]
     with pytest.raises(ValueError, match="invalid content id"):
-        load_scenario(tmp_path, "../escape", engine)
+        read_scenario(tmp_path, "../escape")
     with pytest.raises(ValueError, match="invalid content id"):
         load_character(tmp_path, "kael/../..", engine.id)
 
@@ -70,7 +76,7 @@ def test_write_scenario_round_trips_and_refuses_a_duplicate(tmp_path: Path) -> N
     original = scenario()
 
     write_scenario(tmp_path, "vault-copy", original)
-    loaded = load_scenario(tmp_path, "vault-copy", ENGINES_BUILT[LONER3E])
+    loaded = read_scenario(tmp_path, "vault-copy")
 
     assert loaded == original
     with pytest.raises(ValueError, match="already exists"):
@@ -85,3 +91,13 @@ def test_read_scenarios_skips_a_world_that_fails_to_validate(tmp_path: Path) -> 
     (broken / "world.json").write_text(json.dumps({"meta": {}}), encoding=ENCODING)
 
     assert [slug for slug, _ in read_scenarios(tmp_path, ENGINE_IDS)] == ["good"]
+
+
+def test_a_character_written_for_two_engines_is_read_once_for_each(tmp_path: Path) -> None:
+    written = character()
+    write_character(tmp_path, written)
+    write_character(tmp_path, updated(written, engine=MIRROR))
+
+    rows = [(name, engine) for name, engine, _ in read_characters(tmp_path, (LONER3E, MIRROR))]
+
+    assert rows == [("kael", LONER3E), ("kael", MIRROR)]

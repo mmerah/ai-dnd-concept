@@ -8,7 +8,14 @@ from aidm.core.io import engine_text
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.tools import NoArgs, master_tool
 from aidm.engines.core import Engine, load_packs
-from aidm.engines.loner3e.creation import Loner3eCreation, Pack, guidance, pack_options
+from aidm.engines.loner3e.creation import (
+    Pack,
+    create_character,
+    creation_steps,
+    guidance,
+    pack_options,
+    preview_character,
+)
 from aidm.engines.loner3e.rules import (
     ADVANCE_SPENT,
     GROWTH,
@@ -26,7 +33,7 @@ from aidm.engines.loner3e.rules import (
 )
 from aidm.engines.loner3e.state import ActorSheet, Loner3eState, LonerSheet
 from aidm.kits.scenes.render import SheetRows
-from aidm.kits.scenes.state import Entity, SceneState
+from aidm.kits.scenes.state import Entity, SceneRun, SceneState
 from aidm.kits.scenes.verbs import scene_tools
 
 ENGINE_DIR = Path(__file__).parent
@@ -46,10 +53,15 @@ def new_game(scenario: Scenario, character: Character) -> Loner3eState:
         known=True,
         sheet=character.payload.sheet,
     )
-    opening = canon.opening.model_copy(update={"present": (PLAYER_ID, *canon.opening.present)})
     world = SceneState[LonerSheet](
         cast=cast,
-        current=opening,
+        runs=[
+            SceneRun(
+                scene=canon.opening,
+                present=[PLAYER_ID, *canon.present],
+                hidden=list(canon.hidden),
+            )
+        ],
         threads=canon.threads,
         player_id=PLAYER_ID,
         source=canon.source,
@@ -88,7 +100,9 @@ def build(user_packs: Path) -> Engine:
         instructions=engine_text(ENGINE_DIR / "rules.md"),
         packs=pack_options(packs),
         guidance=partial(guidance, packs),
-        creation=Loner3eCreation(packs),
+        creation_steps=partial(creation_steps, packs),
+        create_character=partial(create_character, packs),
+        preview_character=preview_character,
         validate=partial(_validate, packs),
         new_game=new_game,
         sheet_rows=sheet_rows,
@@ -131,6 +145,5 @@ def _validate(packs: Mapping[str, Pack], state: Game) -> None:
     for one in world.cast.values():
         if one.kind == "actor" and not isinstance(one.sheet, ActorSheet):
             raise ValueError(f"{one.id!r} has no sheet; a Loner actor needs one")
-    twist_pack = state.payload.twist_pack
-    if twist_pack is not None and twist_pack not in state.packs:
+    if (twist_pack := state.payload.twist_pack) not in state.packs:
         raise ValueError(f"twists roll from {twist_pack!r}, which is unselected")

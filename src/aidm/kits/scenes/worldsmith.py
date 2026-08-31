@@ -2,8 +2,8 @@ from collections.abc import Iterable
 
 from pydantic import BaseModel, Field
 
-from aidm.core.entities import EntityId, Slug, slug
-from aidm.kits.scenes.state import Entity, Frozen, Scene, SceneCanon, SceneState, Thread
+from aidm.core.entities import EntityId, Slug
+from aidm.kits.scenes.state import Entity, Frozen, Scene, SceneCanon, SceneRun, SceneState, Thread
 
 MIN_SITUATION = 80
 
@@ -33,16 +33,9 @@ def scene_refusal[S: BaseModel](
 def opening_canon[S: BaseModel](draft: SceneDraft[S], source: str) -> SceneCanon[S]:
     return SceneCanon[S](
         cast=draft.cast,
-        opening=Scene(
-            id=slug(draft.title, ()),
-            place=draft.place,
-            title=draft.title,
-            question=draft.question,
-            situation=draft.situation,
-            present=tuple(_resolve(draft.present, draft.cast, "present")),
-            hidden=tuple(_resolve(draft.hidden, draft.cast, "hidden")),
-            secret=draft.secret,
-        ),
+        opening=_scene(draft),
+        present=_resolve(draft.present, draft.cast, "present"),
+        hidden=_resolve(draft.hidden, draft.cast, "hidden"),
         threads=draft.threads,
         source=source,
     )
@@ -56,7 +49,7 @@ def resolved_id[S: BaseModel](wanted: str, cast: dict[EntityId, Entity[S]]) -> E
     return EntityId(matches[0]) if len(matches) == 1 else None
 
 
-def apply_scene[S: BaseModel](world: SceneState[S], draft: SceneDraft[S], turn: int) -> None:
+def apply_scene[S: BaseModel](world: SceneState[S], draft: SceneDraft[S]) -> None:
     """Every refusal lands before the first write: a rejected scene leaves the world alone."""
     for one, held in draft.cast.items():
         if one in world.cast:
@@ -74,25 +67,21 @@ def apply_scene[S: BaseModel](world: SceneState[S], draft: SceneDraft[S], turn: 
         raise ValueError(f"the scene hides {met}, whom the player has already met")
     carried = [one.id for one in cast.values() if one.carried_by in followers]
     kept = [one for one in (*followers, *carried) if one not in present and one not in hidden]
-    scene = Scene(
-        id=slug(draft.title, {one.id for one in (*world.played, world.current)}),
-        place=draft.place,
-        title=draft.title,
-        question=draft.question,
-        situation=draft.situation,
-        present=(*kept, *present),
-        hidden=tuple(hidden),
-        secret=draft.secret,
-    )
-
     world.cast = cast
     for one in present:
         cast[one].known = True
     world.threads.update(draft.threads)
-    world.played = (*world.played, world.current)
-    world.current = scene
-    world.opened_at = turn
-    world.spent, world.settled = "", False
+    world.runs.append(SceneRun(scene=_scene(draft), present=[*kept, *present], hidden=hidden))
+
+
+def _scene[S: BaseModel](draft: SceneDraft[S]) -> Scene:
+    return Scene(
+        place=draft.place,
+        title=draft.title,
+        question=draft.question,
+        situation=draft.situation,
+        secret=draft.secret,
+    )
 
 
 def _scene_unmet[S: BaseModel](

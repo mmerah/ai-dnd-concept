@@ -4,10 +4,10 @@ The abbey of Saint Corvin was abandoned in a single night. Kael has come for the
 
 RECENT PLAY (this is turn 1):
 > I try the vault door.
-[at the sealed vault] The iron handle does not turn.
+[at The Vault Stair] The iron handle does not turn.
 
 > I look for another way in.
-[at the sealed vault] A flagstone by the wall sits proud of its neighbours.
+[at The Abbot's Study] A flagstone by the wall sits proud of its neighbours.
 
 SCENE:
 The Abbot's Study

@@ -10,97 +10,6 @@
     "srd"
   ],
   "turn": 1,
-  "history": [
-    {
-      "prompt": "I try the vault door.",
-      "scene": "the sealed vault",
-      "lines": [
-        {
-          "speaker": null,
-          "text": "The iron handle does not turn."
-        }
-      ],
-      "facts": [],
-      "decision": ""
-    },
-    {
-      "prompt": "I look for another way in.",
-      "scene": "the sealed vault",
-      "lines": [
-        {
-          "speaker": null,
-          "text": "A flagstone by the wall sits proud of its neighbours."
-        }
-      ],
-      "facts": [],
-      "decision": ""
-    },
-    {
-      "prompt": "I lever up the loose flagstone and listen at the vault door.",
-      "scene": "The Abbot's Study",
-      "lines": [
-        {
-          "speaker": null,
-          "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
-        }
-      ],
-      "facts": [
-        {
-          "kind": "entity_discovered",
-          "trace": "learned of the item the vault map[vault-map]",
-          "told": true,
-          "entity_id": "vault-map",
-          "card": "The vault map discovered",
-          "dice": []
-        },
-        {
-          "kind": "question_answered",
-          "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
-          "told": true,
-          "entity_id": "player",
-          "card": "Oracle — Advantage (Quiet Hands) → yes-and",
-          "dice": [
-            {
-              "label": "Chance",
-              "faces": [
-                6,
-                6
-              ],
-              "rolled": [
-                4,
-                5
-              ],
-              "highlight": [
-                1
-              ]
-            },
-            {
-              "label": "Risk",
-              "faces": [
-                6
-              ],
-              "rolled": [
-                4
-              ],
-              "highlight": [
-                0
-              ]
-            }
-          ]
-        },
-        {
-          "kind": "trait_added",
-          "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
-          "told": true,
-          "entity_id": "player",
-          "card": "Kael: new trait Listening",
-          "dice": []
-        }
-      ],
-      "decision": ""
-    }
-  ],
-  "turn_facts": [],
   "pending": null,
   "notes": [],
   "payload": {
@@ -274,21 +183,129 @@
           "carried_by": null
         }
       },
-      "played": [],
-      "current": {
-        "id": "study-1",
-        "place": "abbots-study",
-        "title": "The Abbot's Study",
-        "question": "Can you get the way down to the vault out of this room, and out of Mara?",
-        "situation": "The only lit room left in the abbey: ledgers stacked to the beams, candle stubs gone cold, and Mara still cataloguing books nobody will read. A flagstone under the desk sits a finger proud of its neighbours.",
-        "present": [
-          "player",
-          "mara",
-          "vault-map"
-        ],
-        "hidden": [],
-        "secret": "The map is under the loose flagstone, and Mara knows it; she will not volunteer it while the ledgers are unfinished."
-      },
+      "runs": [
+        {
+          "scene": {
+            "place": "vault-stair",
+            "title": "The Vault Stair",
+            "question": "Is there a way past the vault door from the stair?",
+            "situation": "A short flight of steps ends at an iron door, sealed, the abbey's dust undisturbed on its sill.",
+            "secret": ""
+          },
+          "present": [
+            "player"
+          ],
+          "hidden": [],
+          "exchanges": [
+            {
+              "prompt": "I try the vault door.",
+              "lines": [
+                {
+                  "speaker": null,
+                  "text": "The iron handle does not turn."
+                }
+              ],
+              "facts": [],
+              "decision": ""
+            }
+          ],
+          "settled": false,
+          "spent": ""
+        },
+        {
+          "scene": {
+            "place": "abbots-study",
+            "title": "The Abbot's Study",
+            "question": "Can you get the way down to the vault out of this room, and out of Mara?",
+            "situation": "The only lit room left in the abbey: ledgers stacked to the beams, candle stubs gone cold, and Mara still cataloguing books nobody will read. A flagstone under the desk sits a finger proud of its neighbours.",
+            "secret": "The map is under the loose flagstone, and Mara knows it; she will not volunteer it while the ledgers are unfinished."
+          },
+          "present": [
+            "player",
+            "mara",
+            "vault-map"
+          ],
+          "hidden": [],
+          "exchanges": [
+            {
+              "prompt": "I look for another way in.",
+              "lines": [
+                {
+                  "speaker": null,
+                  "text": "A flagstone by the wall sits proud of its neighbours."
+                }
+              ],
+              "facts": [],
+              "decision": ""
+            },
+            {
+              "prompt": "I lever up the loose flagstone and listen at the vault door.",
+              "lines": [
+                {
+                  "speaker": null,
+                  "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
+                }
+              ],
+              "facts": [
+                {
+                  "kind": "entity_discovered",
+                  "trace": "learned of the item the vault map[vault-map]",
+                  "told": true,
+                  "entity_id": "vault-map",
+                  "card": "The vault map discovered",
+                  "dice": []
+                },
+                {
+                  "kind": "question_answered",
+                  "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
+                  "told": true,
+                  "entity_id": "player",
+                  "card": "Oracle — Advantage (Quiet Hands) → yes-and",
+                  "dice": [
+                    {
+                      "label": "Chance",
+                      "faces": [
+                        6,
+                        6
+                      ],
+                      "rolled": [
+                        4,
+                        5
+                      ],
+                      "highlight": [
+                        1
+                      ]
+                    },
+                    {
+                      "label": "Risk",
+                      "faces": [
+                        6
+                      ],
+                      "rolled": [
+                        4
+                      ],
+                      "highlight": [
+                        0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "kind": "trait_added",
+                  "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
+                  "told": true,
+                  "entity_id": "player",
+                  "card": "Kael: new trait Listening",
+                  "dice": []
+                }
+              ],
+              "decision": ""
+            }
+          ],
+          "settled": false,
+          "spent": ""
+        }
+      ],
       "threads": {
         "vault-seal": {
           "id": "vault-seal",
@@ -299,10 +316,7 @@
       },
       "companions": [],
       "player_id": "player",
-      "source": "",
-      "opened_at": 0,
-      "spent": "",
-      "settled": false
+      "source": ""
     },
     "twist": {
       "current": 0,

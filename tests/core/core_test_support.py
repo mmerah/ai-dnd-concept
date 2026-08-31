@@ -13,7 +13,7 @@ from aidm.app.runtime import GameService, Runtime
 from aidm.config import Role, Settings
 from aidm.core.entities import PLAYER_ID, EngineId, EntityId, Slug
 from aidm.core.facts import Fact
-from aidm.core.io import load_character, read_scenarios, scenario_envelope, scenario_of
+from aidm.core.io import load_character, read_scenario, read_scenarios
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import Answer, Speaker
 from aidm.engines.core import Engine
@@ -51,8 +51,7 @@ def with_entity(state: Game, entity: Entity[LonerSheet]) -> Game:
     """Added to the cast and to the scene, because a scene entity is where a scene entity lives."""
     draft = state.draft()
     draft.world.cast[entity.id] = entity
-    current = draft.world.current
-    draft.world.current = current.model_copy(update={"present": (*current.present, entity.id)})
+    draft.world.run.present.append(entity.id)
     return draft.committed()
 
 
@@ -69,13 +68,8 @@ def loner_sheet(state: Game, entity_id: EntityId) -> ActorSheet:
     return sheet
 
 
-def load_scenario(directory: Path, name: Slug, engine: Engine) -> Scenario:
-    """Production reads `scenario_envelope` and `scenario_of` separately; tests want one call."""
-    return scenario_of(scenario_envelope(directory, name), engine.id)
-
-
 def scenario() -> Scenario:
-    return load_scenario(SCENARIOS, "whispering-vault", ENGINES_BUILT[LONER3E])
+    return read_scenario(SCENARIOS, "whispering-vault")
 
 
 def character() -> Character:
@@ -98,7 +92,7 @@ def game(engine_id: EngineId) -> tuple[Engine, Game]:
     """The scenario authored for this engine and the shipped character, composed together."""
     engine = ENGINES_BUILT[engine_id]
     scenario_id = scenario_for(engine_id)
-    selected_scenario = load_scenario(SCENARIOS, scenario_id, engine)
+    selected_scenario = read_scenario(SCENARIOS, scenario_id)
     selected_character = load_character(CHARACTERS, "kael", engine.id)
     return engine, begin_game(engine, scenario_id, selected_scenario, selected_character)
 

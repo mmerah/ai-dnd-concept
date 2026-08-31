@@ -1,10 +1,10 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from copy import deepcopy
 from typing import Self
 
-from pydantic import Field, ValidationError, model_validator
+from pydantic import Field, model_validator
 
-from aidm.core.entities import EngineId, Frozen, Mutable, Slug, require_unique
+from aidm.core.entities import EngineId, Frozen, Header, Mutable, Slug, require_unique
 from aidm.core.facts import Fact, cards
 from aidm.core.play import Exchange, PendingDecision, SpokenLine
 from aidm.engines.loner3e.state import (
@@ -24,6 +24,22 @@ SceneWrite = LonerScene
 class ScenarioMeta(Frozen):
     title: str
     premise: str
+
+
+class EngineHeader(Header):
+    engine: EngineId
+
+
+class SaveHeader(EngineHeader):
+    scenario_id: Slug
+    character_id: Slug
+    scenario: ScenarioMeta
+    turn: int = Field(ge=0)
+
+
+class CharacterHeader(EngineHeader):
+    id: Slug
+    name: str
 
 
 class Scenario(Frozen):
@@ -60,8 +76,6 @@ class Game(Mutable):
     engine: EngineId
     packs: tuple[Slug, ...] = Field(min_length=1)
     turn: int = Field(default=0, ge=0)
-    history: tuple[Exchange, ...] = ()
-    turn_facts: tuple[Fact, ...] = ()
     pending: PendingDecision | None = None
     notes: tuple[str, ...] = ()
     payload: Payload
@@ -82,24 +96,14 @@ class Game(Mutable):
         notes, self.notes = self.notes, ()
         return notes
 
-    def record(
-        self,
-        scene_label: str,
-        prompt: str,
-        lines: tuple[SpokenLine, ...],
-        facts: Sequence[Fact],
-    ) -> None:
-        """The one shape an exchange takes, whether a turn or the player's own action wrote it."""
-        self.turn_facts = ()
-        self.history = (
-            *self.history,
+    def record(self, prompt: str, lines: tuple[SpokenLine, ...], facts: Sequence[Fact]) -> None:
+        self.world.run.exchanges.append(
             Exchange(
                 prompt=prompt,
-                scene=scene_label,
                 lines=lines,
                 facts=cards(facts),
                 decision="" if self.pending is None else self.pending.prompt,
-            ),
+            )
         )
 
     def draft(self) -> Self:
@@ -109,17 +113,3 @@ class Game(Mutable):
     def committed(self) -> Self:
         """Dumping runs no validator, so the dump is validated back: that is the commit gate."""
         return type(self).model_validate(self.model_dump(round_trip=True))
-
-
-def draft_refusal(
-    state: Game, mutate: Callable[[Game], object], what: str = "the state this leaves"
-) -> str | None:
-    draft = state.draft()
-    try:
-        _ = mutate(draft)
-        _ = draft.committed()
-    except ValidationError as broken:
-        return f"{what} is invalid: {broken.errors()[0]['msg']}"
-    except ValueError as refused:
-        return str(refused)
-    return None

@@ -1,18 +1,30 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from random import Random
 from typing import Literal, Self
 
-from aidm.core.facts import NOTHING, Fact, cards, traced
-from aidm.core.model import Game, draft_refusal
-from aidm.core.play import Answer, Line, SpokenLine
-from aidm.core.tools import Play, apply_to_draft
+from pydantic import BaseModel, JsonValue, ValidationError
+
+from aidm.core.facts import NOTHING, Fact, traced
+from aidm.core.model import Game
+from aidm.core.play import Answer, Line, Narration, SpokenLine
+from aidm.core.tools import NoArgs, Play, apply_to_draft
 from aidm.core.views import NarratorView
 from aidm.engines.core import Engine
 from aidm.kits.scenes.boundary import SCENE_SETTLED, SPENT_NOTE, scene_spent
+from aidm.turn.context import render_picture
 
 RULES_WAIT = "the rules now wait on the player's decision"
+NO_TURN = "no turn is open. The player starts one from the page; wait to be spawned again."
+START_FIRST = "call `start_turn` first: it opens the turn and hands back the picture."
+ALREADY_OPEN = "the turn is already open. `scene` gives the picture back."
+DECIDING = "the rules are waiting on the player; the scene after this one waits with them."
+GAME_OVER = "The game is over; the player restarts from the page."
+OFFERED = (
+    "the player is choosing where to go; their answer opens the next scene. "
+    "This turn is not over — finish what their action caused, then exit."
+)
 
 type TurnStep = Literal["master", "narrator", "worldsmith"]
 
@@ -31,6 +43,10 @@ class Turn:
     prompt: str = ""
     resumed: str = ""
     notes: tuple[str, ...] = ()
+    # Injected, so `turn` reads no settings itself.
+    recent: int = 0
+    # The game master has called `start_turn`; nothing may change the world before it does.
+    started: bool = False
 
     @classmethod
     def begin(
@@ -39,9 +55,10 @@ class Turn:
         state: Game,
         player_input: str | Answer,
         rng: Random,
+        recent: int,
         on_fact: Callable[[Fact], None] | None = None,
     ) -> Self:
-        turn = cls(engine=engine, draft=state.draft(), rng=rng, on_fact=on_fact)
+        turn = cls(engine=engine, draft=state.draft(), rng=rng, recent=recent, on_fact=on_fact)
         turn.prompt, turn.resumed = consume_answer(turn, player_input)
         turn.notes = turn.draft.take_notes()
         turn.suspended_at_start = turn.draft.pending is not None
@@ -49,19 +66,59 @@ class Turn:
 
     def landed(self, facts: tuple[Fact, ...]) -> None:
         self.facts.extend(facts)
-        self.draft.turn_facts = cards(tuple(self.facts))
         if self.on_fact is not None:
             for fact in facts:
                 self.on_fact(fact)
 
-    def settle_scene(self) -> None:
-        """An offer, not a decision: the player may take it or keep playing here, so this must
-        not block the turn the way a pending decision does."""
-        if self.draft.world.settled:
+    def start_turn(self) -> str:
+        self.started = True
+        return self.picture()
+
+    def picture(self) -> str:
+        return render_picture(
+            self.engine.master_sections(self.draft),
+            self.draft,
+            self.prompt,
+            resumed=self.resumed,
+            notes=(*self.notes, *self.draft.notes),
+            recent=self.recent,
+        )
+
+    def offer_the_way_on(self) -> str:
+        """An offer, not a decision: it must not block the turn the way a pending decision does."""
+        if self.draft.world.run.settled:
             raise ValueError("this scene is already settled; the player has the way on")
-        self.draft.world.settled = True
+        self.draft.world.run.settled = True
         # Told, so the narrator closes the scene and asks: a silent ending is no ending.
         self.landed((SCENE_SETTLED,))
+        return OFFERED
+
+    def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
+        """The one gate: every published tool is refused, answered or applied here."""
+        if name == "start_turn" and self.started:
+            raise ValueError(ALREADY_OPEN)
+        if name not in ("scene", "start_turn"):
+            if not self.started:
+                raise ValueError(START_FIRST)
+            if (ended := self.engine.over(self.draft)) is not None:
+                raise ValueError(f"{ended} {GAME_OVER}")
+            # `next_scene` changes the world without reaching the engine, so its row is here.
+            if name == "next_scene" and self.draft.pending is not None:
+                raise ValueError(DECIDING)
+        if (served := next((one for one in TURN_TOOLS if one.name == name), None)) is not None:
+            _ = served.args.model_validate(raw)
+            return served.run(self)
+        found = next((one for one in self.engine.tools if one.name == name), None)
+        if found is None:
+            raise ValueError(f"{name!r} is not a tool of the {self.engine.id!r} engine.")
+        pending = self.draft.pending
+        if pending is not None and not (found.during_suspension and self.suspended_at_start):
+            # A plain answer, not a refusal: a retry prompt would tell the model to try again.
+            return (
+                f"the rules are waiting on the player: {pending.prompt}\n"
+                "Stop here and exit; the player's answer opens the next turn."
+            )
+        return self.apply(lambda draft, rng: found.call(draft, raw, rng))
 
     def apply(self, play: Play) -> str:
         """What the call changed, as the game master reads it back."""
@@ -84,6 +141,35 @@ class Turn:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class TurnTool:
+    name: str
+    description: str
+    run: Callable[[Turn], str]
+    args: type[BaseModel] = NoArgs
+
+
+TURN_TOOLS: tuple[TurnTool, ...] = (
+    TurnTool(
+        "start_turn",
+        "Open the turn and get the whole game back: the scene, who is here, what is hidden here,"
+        " the threads, the notes from the rules and the recent play. Call it first every turn.",
+        Turn.start_turn,
+    ),
+    TurnTool(
+        "scene",
+        "The same picture start_turn gives, for when you were compacted mid-turn.",
+        Turn.picture,
+    ),
+    TurnTool(
+        "next_scene",
+        "Say this scene's question is settled. The player is then asked what they want to pursue,"
+        " and their own words are what the next scene is built from. Do not answer for them.",
+        Turn.offer_the_way_on,
+    ),
+)
+
+
 def speakers_refusal(view: NarratorView, lines: Sequence[Line]) -> str | None:
     """Only the player or someone here with them speaks; the leak rule holds by check, not trust."""
     here = {one.id for one in view.speakers}
@@ -102,6 +188,12 @@ def speakers_refusal(view: NarratorView, lines: Sequence[Line]) -> str | None:
     )
 
 
+def narration_refusal(view: NarratorView, written: Narration) -> str | None:
+    if not written.text:
+        return "write the narration lines: an empty answer shows the player nothing."
+    return speakers_refusal(view, written.lines)
+
+
 def close_segment(
     view: NarratorView,
     draft: Game,
@@ -109,12 +201,10 @@ def close_segment(
     lines: tuple[Line, ...],
     facts: tuple[Fact, ...],
 ) -> Game:
-    draft.record(draft.world.current.title, prompt, _spoken(view, lines), facts)
+    draft.record(prompt, _spoken(view, lines), facts)
     draft.turn += 1
-    # Directive text at the decision point is what fixed trigger reliability when it was measured.
-    # Not once the master has settled the scene, and never on the turn one opened: that note would
-    # be about the scene the player has just left.
-    if draft.world.settled or draft.world.opened_at >= draft.turn - 1:
+    # Never on a run's first exchange: that note would be about the scene the player just left.
+    if draft.world.run.settled or len(draft.world.run.exchanges) <= 1:
         return draft.committed()
     if (reason := scene_spent(draft)) is not None:
         draft.notes = (*draft.notes, SPENT_NOTE.format(reason=reason))
@@ -127,8 +217,6 @@ def consume_answer(turn: Turn, player_input: str | Answer) -> tuple[str, str]:
     chosen = player_input.option_id if isinstance(player_input, Answer) else None
     if (ended := engine.over(draft)) is not None:
         raise ValueError(f"{ended} The only way on is to restart.")
-    # A new segment starts with no cards: an interrupted turn left its own on the draft.
-    draft.turn_facts = ()
     # Any input consumes the decision, a revision included: it never survives its own answer.
     consumed, draft.pending = draft.pending, None
     if consumed is not None and not consumed.allows_text and chosen is None:
@@ -152,7 +240,7 @@ def consume_answer(turn: Turn, player_input: str | Answer) -> tuple[str, str]:
     landed = _apply(turn, lambda copy, dice: engine.answer(copy, option, dice))
     traces = traced(landed)
     # A resume that re-suspended has no tool answer to carry the wait, so the prompt says it.
-    if draft.pending is not None:
+    if turn.draft.pending is not None:
         traces += f"\n- {RULES_WAIT}"
     section = f"asked: {consumed.prompt}\nthe player chose: {option.label}\n{traces}"
     return option.label, section
@@ -174,12 +262,16 @@ def _spoken(view: NarratorView, lines: Sequence[Line]) -> tuple[SpokenLine, ...]
 
 
 def _apply(turn: Turn, play: Play) -> tuple[Fact, ...]:
-    """Refused whole against a throwaway copy before one change of it reaches the draft."""
-    engine, draft = turn.engine, turn.draft
-    if refused := draft_refusal(
-        draft, lambda copy: apply_to_draft(engine.validate, copy, play, deepcopy(turn.rng))
-    ):
-        raise ValueError(refused)
-    landed = apply_to_draft(engine.validate, draft, play, turn.rng)
+    """One execution against a candidate; a refused call leaves the draft and the dice alone."""
+    candidate, dice = turn.draft.draft(), deepcopy(turn.rng)
+    try:
+        landed = apply_to_draft(turn.engine.validate, candidate, play, dice)
+        committed = candidate.committed()
+    except ValidationError as broken:
+        raise ValueError(
+            f"the state this leaves is invalid: {broken.errors()[0]['msg']}"
+        ) from broken
+    turn.draft = committed
+    turn.rng.setstate(dice.getstate())
     turn.landed(landed)
     return landed

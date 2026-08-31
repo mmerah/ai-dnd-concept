@@ -14,7 +14,7 @@ from aidm.core.play import Answer, Speaker
 from aidm.core.views import speaker_of
 from aidm.turn.run import TurnStep
 
-from .panels import journal_panel, sheet_panel
+from .panels import journal_panel, scene_sidebar
 from .widgets import (
     avatar,
     decision_widget,
@@ -85,7 +85,7 @@ class GameView:
 
     @ui.refreshable_method
     def sheet(self) -> None:
-        sheet_panel(self.session)
+        scene_sidebar(self.session)
 
     @ui.refreshable_method
     def journal(self) -> None:
@@ -124,23 +124,25 @@ def scene_header(session: GameService) -> None:
 
 
 def chat(session: GameService) -> None:
-    if not session.state.history:
+    world = session.state.world
+    if not world.exchanges():
         ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
-    here = ""
-    history = session.state.history
-    last = history[-1] if history and session.state.pending is not None else None
+    # The live decision widget sits directly below the last exchange, so it needs no pause line.
+    played = world.run.exchanges
+    last = played[-1] if played and session.state.pending is not None else None
     player = speaker_of(session.player_view().player)
-    for exchange in history:
-        if exchange.scene != here:
-            here = exchange.scene
-            ui.label(here).classes("w-full text-center text-xs uppercase opacity-50 q-mt-md")
-        _bubble(session, player, exchange.prompt, sent=True)
-        for fact in exchange.facts:
-            _card(fact)
-        for line in exchange.lines:
-            _bubble(session, line.speaker, line.text, sent=False)
-        if exchange.decision and exchange is not last:
-            ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
+    for run in world.runs:
+        if not run.exchanges:
+            continue
+        ui.label(run.scene.title).classes("w-full text-center text-xs uppercase opacity-50 q-mt-md")
+        for exchange in run.exchanges:
+            _bubble(session, player, exchange.prompt, sent=True)
+            for fact in exchange.facts:
+                _card(fact)
+            for line in exchange.lines:
+                _bubble(session, line.speaker, line.text, sent=False)
+            if exchange.decision and exchange is not last:
+                ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
 
 
 def live_turn(

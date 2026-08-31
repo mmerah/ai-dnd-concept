@@ -10,8 +10,6 @@
     "srd"
   ],
   "turn": 0,
-  "history": [],
-  "turn_facts": [],
   "pending": null,
   "notes": [],
   "payload": {
@@ -179,22 +177,27 @@
           "carried_by": null
         }
       },
-      "played": [],
-      "current": {
-        "id": "study-1",
-        "place": "abbots-study",
-        "title": "The Abbot's Study",
-        "question": "Can you get the way down to the vault out of this room, and out of Mara?",
-        "situation": "The only lit room left in the abbey: ledgers stacked to the beams, candle stubs gone cold, and Mara still cataloguing books nobody will read. A flagstone under the desk sits a finger proud of its neighbours.",
-        "present": [
-          "player",
-          "mara"
-        ],
-        "hidden": [
-          "vault-map"
-        ],
-        "secret": "The map is under the loose flagstone, and Mara knows it; she will not volunteer it while the ledgers are unfinished."
-      },
+      "runs": [
+        {
+          "scene": {
+            "place": "abbots-study",
+            "title": "The Abbot's Study",
+            "question": "Can you get the way down to the vault out of this room, and out of Mara?",
+            "situation": "The only lit room left in the abbey: ledgers stacked to the beams, candle stubs gone cold, and Mara still cataloguing books nobody will read. A flagstone under the desk sits a finger proud of its neighbours.",
+            "secret": "The map is under the loose flagstone, and Mara knows it; she will not volunteer it while the ledgers are unfinished."
+          },
+          "present": [
+            "player",
+            "mara"
+          ],
+          "hidden": [
+            "vault-map"
+          ],
+          "exchanges": [],
+          "settled": false,
+          "spent": ""
+        }
+      ],
       "threads": {
         "vault-seal": {
           "id": "vault-seal",
@@ -205,10 +208,7 @@
       },
       "companions": [],
       "player_id": "player",
-      "source": "",
-      "opened_at": 0,
-      "spent": "",
-      "settled": false
+      "source": ""
     },
     "twist": {
       "current": 0,

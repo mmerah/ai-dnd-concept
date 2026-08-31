@@ -19,11 +19,11 @@ SCENE_SETTLED = Fact(
 
 def scene_spent(state: Game) -> str | None:
     """Deliberately blunt: catches only what no reading of the fiction can miss."""
-    world = state.world
-    if world.spent:
-        return world.spent
-    if any(one.trait(DEAD) is not None for one in world.here()):
+    run = state.world.run
+    if run.spent:
+        return run.spent
+    if any(one.trait(DEAD) is not None for one in state.world.here()):
         return "someone here is dead"
-    if state.turn - world.opened_at >= SCENE_TURN_CAP:
+    if len(run.exchanges) >= SCENE_TURN_CAP:
         return f"{SCENE_TURN_CAP} turns have passed here"
     return None

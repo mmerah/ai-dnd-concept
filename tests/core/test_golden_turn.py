@@ -8,25 +8,13 @@ from core_test_support import ENGINE_IDS, Call, opened, played
 from golden_test_support import FIXTURES, dumped, golden, golden_json
 from golden_turn_support import NARRATION
 
-from aidm.core.entities import EngineId
+from aidm.core.entities import PLAYER_ID, EngineId
 from aidm.core.facts import Fact
 from aidm.core.model import Game
 from aidm.core.play import Exchange, SpokenLine
+from aidm.kits.scenes.state import Scene, SceneRun
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
-# Real played turns behind it, so RECENT PLAY and the told passages render something.
-HISTORY = (
-    Exchange(
-        prompt="I try the vault door.",
-        scene="the sealed vault",
-        lines=(SpokenLine(text="The iron handle does not turn."),),
-    ),
-    Exchange(
-        prompt="I look for another way in.",
-        scene="the sealed vault",
-        lines=(SpokenLine(text="A flagstone by the wall sits proud of its neighbours."),),
-    ),
-)
 SEED = 11
 
 
@@ -36,8 +24,35 @@ def _script(engine_id: EngineId) -> tuple[Call, ...]:
 
 
 def _behind(state: Game) -> Game:
+    """One played turn in the scene before this one: RECENT PLAY has to group by run, not title."""
     draft = state.draft()
-    draft.history = HISTORY
+    draft.world.runs.insert(
+        0,
+        SceneRun(
+            scene=Scene(
+                place="vault-stair",
+                title="The Vault Stair",
+                question="Is there a way past the vault door from the stair?",
+                situation=(
+                    "A short flight of steps ends at an iron door, sealed, "
+                    "the abbey's dust undisturbed on its sill."
+                ),
+            ),
+            present=[PLAYER_ID],
+            exchanges=[
+                Exchange(
+                    prompt="I try the vault door.",
+                    lines=(SpokenLine(text="The iron handle does not turn."),),
+                )
+            ],
+        ),
+    )
+    draft.world.run.exchanges = [
+        Exchange(
+            prompt="I look for another way in.",
+            lines=(SpokenLine(text="A flagstone by the wall sits proud of its neighbours."),),
+        )
+    ]
     return draft.committed()
 
 
