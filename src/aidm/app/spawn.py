@@ -8,7 +8,7 @@ from os import killpg
 from signal import SIGKILL
 from typing import Protocol
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
 
 from aidm.config import Role, Settings
 
@@ -28,7 +28,10 @@ class Spawner(Protocol):
 
 
 def final_message(output: str) -> str:
-    """The last fenced block, else the object the answer ends on: one reader for every CLI."""
+    """The agent's last message: its own event for a CLI that streams JSON lines, else the last
+    fenced block, else the object the answer ends on."""
+    if (said := _last_said(output)) is not None:
+        return said
     fenced = output.rsplit("```", 2)
     if len(fenced) == 3:
         body = fenced[1]
@@ -49,6 +52,39 @@ def final_message(output: str) -> str:
         if end == len(tail):
             return tail[start:]
     return output
+
+
+def _last_said(output: str) -> str | None:
+    """Two JSON objects on their own lines is an event stream; one is the answer itself."""
+    events = [one for line in output.splitlines() if (one := _object(line)) is not None]
+    if len(events) < 2:
+        return None
+    # Backwards, because the reasoning and the tool calls carry text of their own and come first.
+    return next((said for one in reversed(events) if (said := _said(one)) is not None), None)
+
+
+_EVENT: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
+
+
+def _object(line: str) -> JsonValue | None:
+    if not line.startswith("{"):
+        return None
+    try:
+        return _EVENT.validate_json(line)
+    except ValidationError:
+        return None
+
+
+def _said(node: JsonValue) -> str | None:
+    """Every event stream we have seen names the message it carries `text`, at some depth."""
+    if not isinstance(node, dict):
+        return None
+    for name, value in node.items():
+        if name == "text" and isinstance(value, str):
+            return value
+        if (found := _said(value)) is not None:
+            return found
+    return None
 
 
 def _decodes(body: str) -> bool:

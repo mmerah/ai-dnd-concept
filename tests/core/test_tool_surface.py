@@ -18,10 +18,11 @@ from pydantic import JsonValue
 
 from aidm.app.mcp import ALREADY_OPEN, DECIDING, START_FIRST, call, offered
 from aidm.app.runtime import NO_TURN
-from aidm.app.spawn import CliSpawner
+from aidm.app.spawn import CliSpawner, final_message
 from aidm.kits.scenes.boundary import scene_spent
 from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.model import SceneWrite
+from aidm.state.play import Narration
 
 VAULT_MAP = EntityId("vault-map")
 MARA = EntityId("mara")
@@ -287,3 +288,37 @@ async def _settled(table: Table) -> None:
 
 def test_the_engine_is_the_one_the_surface_publishes_for(tmp_path: Path) -> None:
     assert opened(tmp_path).runtime.engine.id == LONER3E
+
+
+# What `codex exec --json` actually printed, banner line and all.
+CODEX_STREAM = """Reading additional input from stdin...
+{"type":"thread.started","thread_id":"01a055c7"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"{\\"lines\\": \
+[{\\"speaker_id\\": null, \\"text\\": \\"ok\\"}]}"}}
+{"type":"turn.completed","usage":{"input_tokens":16174,"output_tokens":20}}
+"""
+
+
+@pytest.mark.parametrize(
+    ("output", "wanted"),
+    (
+        (CODEX_STREAM, '{"lines": [{"speaker_id": null, "text": "ok"}]}'),
+        ('{"lines": [{"speaker_id": null, "text": "ok"}]}', None),
+        ('Here it is:\n{"lines": [{"speaker_id": null, "text": "ok"}]}', None),
+        ('```json\n{"lines": [{"speaker_id": null, "text": "ok"}]}\n```', None),
+        (
+            'I read:\n```py\nx = 1\n```\nAnswer:\n{"lines": [{"speaker_id": null, "text": "ok"}]}',
+            None,
+        ),
+    ),
+    ids=("a codex event stream", "bare", "after prose", "fenced", "a fence that is not the answer"),
+)
+def test_every_shape_a_cli_answers_in_parses_to_the_same_narration(
+    output: str, wanted: str | None
+) -> None:
+    narration = Narration.model_validate_json(final_message(output))
+
+    assert narration.text == "ok"
+    if wanted is not None:
+        assert final_message(output) == wanted

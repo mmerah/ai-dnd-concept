@@ -13,4 +13,6 @@ After the opening scene, bring back at least one cast member the player already 
 
 Never name the player: they are put into the scene by code. Name everyone else by their exact id. A new person or thing goes in `cast`, filed under its own id, and may then be named in `present` or `hidden`. `note` is private, for the game master alone, and is never read to the player.
 
+Everything you need is below. Do not read, search or run anything in the repository.
+
 Answer with one JSON object and nothing else, in the shape ANSWER WITH gives.

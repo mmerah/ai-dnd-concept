@@ -307,7 +307,7 @@ to build an agreed capability in its final planned form. They stay, uncalled, un
 
 ## Phase 3 — The three roles and the tool surface — DONE
 
-`src` 5,806 -> **5,422** (target ≈ 5,650; under it, because deleting `llm.py` and the whole
+`src` 5,806 -> **5,458** (target ≈ 5,650; under it, because deleting `llm.py` and the whole
 `harness/` package cost more than the spawner, the MCP surface and `play()` added back).
 `tests` 3,408 -> **3,275**.
 
@@ -453,13 +453,29 @@ letting `CancelledError` escape; `finally` clears the turn on every path; the tw
 race cancels cleanly with no unretrieved exception; and `schema_of` is byte-identical, which the
 untouched schema golden proves.
 
+### Both CLIs work, and the reader that makes that true
+
+`final_message` reads three shapes, in order: an event stream, a fenced block, and the object the
+answer ends on. **An event stream is two or more JSON objects on their own lines** — one object is
+the answer itself — and the message is the last `text` string in the last event that carries one.
+That names no CLI, and it covers both of the streams we have: codex's
+`item.completed.item.agent_message.text` and Claude's assistant events. Five answer shapes are
+tested against one `Narration`, including a codex stream captured from a real run, banner line and
+all.
+
+**codex was driven against the live game.** With `uv run aidm` up, `codex exec --json
+--approve-for-me` read `.codex/config.toml`, reached `http://localhost:8080/mcp/`, called `scene`
+and reported our own refusal back. `--approve-for-me` is required: under its default policy codex
+cancels every MCP call.
+
+That run also showed the cost of an unbriefed game master. Codex read a skill file out of the
+repository before calling anything, and spent 62k input tokens on one tool call. **All three
+briefs now forbid reading, searching or running anything in the repository**; the tools and the
+prompt carry the whole game.
+
 ### Known and accepted
 
-- The one turn against a real coding CLI has not been taken. Everything under it has.
-- **There is one final-message reader, not one per CLI.** `VISION.md` §1 asks for a JSON event
-  stream reader for CLIs that emit one. The shipped default is `claude -p`, whose last message is
-  the answer, so the fence-or-trailing-object reader is enough. `codex exec --json` would need
-  its own reader, and would fail loudly rather than quietly if pointed at one today.
+- The one full turn against a real coding CLI has not been taken. Every piece under it has.
 - **A finished speculative scene is thrown away when the game master's own intent differs.** That
   is what PLAN step 8 asks for, and it means the common path pays for a second full write. Worth
   revisiting against real latencies.

@@ -4,4 +4,6 @@ Show important state through natural details, such as wounds, fear, pressure, ar
 
 When the player speaks to someone here, include their reply. Return `lines` in order. Use `speaker_id: null` for narration. For spoken dialogue, use the speaker's exact id and put only their words in `text`. Only the player and people here may speak.
 
+Everything you need is below. Do not read, search or run anything in the repository.
+
 Answer with one JSON object and nothing else, in the shape ANSWER WITH gives.
