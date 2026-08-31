@@ -2,7 +2,7 @@ import pytest
 from core_test_support import initialized, updated
 
 from aidm.engines.loner3e.state import ActorSheet, LonerSheet
-from aidm.kits.scenes.boundary import QUIET_TURNS, SCENE_TURN_CAP, scene_spent
+from aidm.kits.scenes.boundary import SCENE_TURN_CAP, scene_spent
 from aidm.kits.scenes.state import Entity, Thread
 from aidm.kits.scenes.tools import ChangeWorld, apply_change
 from aidm.kits.scenes.worldsmith import MIN_SITUATION, SceneDraft, apply_scene, scene_refusal
@@ -100,17 +100,17 @@ def test_a_scene_that_settled_says_so() -> None:
     assert scene_spent(draft) == draft.world.spent
 
 
-def test_a_scene_with_nothing_left_to_find_is_spent() -> None:
+def test_finding_everything_here_does_not_end_the_scene() -> None:
+    """`hidden` is content, not a clock: the scene's own question is what ends it."""
     _, state = initialized()
     draft = state.draft()
     _ = changed(draft, "reveal", entity_id=MAP)
-    assert scene_spent(draft) == "everything here has been found"
+    assert not draft.world.current.hidden
+    assert scene_spent(draft) is None
 
 
 def test_a_scene_nobody_ends_is_ended_by_the_cap() -> None:
     _, state = initialized()
-    quiet = updated(state, turn=QUIET_TURNS)
-    assert scene_spent(quiet) == f"nothing landed for {QUIET_TURNS} turns"
     assert scene_spent(updated(state, turn=SCENE_TURN_CAP)) is not None
     assert scene_spent(state) is None
 
@@ -121,6 +121,7 @@ def _next_scene(
     return SceneDraft[LonerSheet](
         place="cloister",
         title="The Cloister",
+        question="Does the cloister walk still reach the stair?",
         situation=SITUATION,
         present=present,
         hidden=hidden,
@@ -152,12 +153,39 @@ def test_an_id_the_worldsmith_got_wrong_resolves_by_name_before_it_is_refused() 
         apply_scene(state.draft().world, _next_scene(present=(EntityId("nobody"),)), turn=1)
 
 
+def test_a_situation_that_names_what_it_hides_is_refused() -> None:
+    """`situation` is read to the player, so it must not hand them the find."""
+    _, state = initialized()
+    told = _next_scene()
+    hidden_name = state.world.require(EntityId(TOMAS)).name
+    told = told.model_copy(update={"situation": f"{SITUATION} {hidden_name} waits in the dark."})
+
+    assert scene_refusal(told, state.world) == (
+        f"the scene needs a situation that does not name what is hidden: ['{hidden_name}']"
+    )
+
+
+def test_a_one_word_name_is_a_word_the_situation_may_use() -> None:
+    """A prop called `Bell` shares its word with any bell tower; refusing that costs a crossing."""
+    _, state = initialized()
+    draft = state.draft()
+    draft.world.require(EntityId(TOMAS)).name = "Bell"
+    told = _next_scene()
+    told = told.model_copy(update={"situation": f"{SITUATION} The bell tower stands over it."})
+
+    assert scene_refusal(told, draft.world) is None
+
+
 def test_the_scene_bar_names_what_a_thin_scene_is_missing() -> None:
     _, state = initialized()
-    thin = SceneDraft[LonerSheet](place="nowhere", title="Nowhere", situation="x" * MIN_SITUATION)
+    thin = SceneDraft[LonerSheet](
+        place="nowhere",
+        title="Nowhere",
+        question="Is there anything here at all?",
+        situation="x" * MIN_SITUATION,
+    )
     assert scene_refusal(thin, state.world) == (
         "the scene needs at least one cast member besides the player; "
-        "at least one hidden entity — something to find; "
         "at least one existing cast member brought back"
     )
     assert scene_refusal(_next_scene(), state.world) is None

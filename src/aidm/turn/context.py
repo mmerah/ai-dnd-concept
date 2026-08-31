@@ -9,18 +9,29 @@ from aidm.kernel.views import NarratorView
 from aidm.kits.scenes.state import SceneState
 from aidm.kits.scenes.views import SheetRows, entity_line, thread_lines
 from aidm.state.model import Game, ScenarioMeta, SceneWrite
-from aidm.state.play import Narration, PendingDecision
+from aidm.state.play import Exchange, Narration, PendingDecision
 from aidm.state.tools import schema_of
 
 ANSWERED_BY_OPTION = (
     "The player chose the option above and the rules have applied it. Develop what it caused; "
     "do not settle it again."
 )
+# Stands where the player's action goes; `pursuit` is what they said they were leaving for.
+CROSSING = (
+    "The player is leaving WHAT THE PLAYER HAS READ for the place in SCENE. They asked for this: "
+    '"{pursuit}"\n\n'
+    "Write the crossing: a sentence of leaving, then the arrival. Cover the distance and the time "
+    "in the fewest words that make it real, and end on what they see first. WHAT HAPPENED names "
+    "anyone who travelled with them. They have not acted in the new place yet, so settle nothing."
+)
 SURPRISE = (
     "Surprise the player. Turn an established fact against them, or bring back something they "
     "have stopped thinking about. Surprise by recombining what exists, never by inventing what "
     "the source would not hold."
 )
+
+# Its ending is what the next scene follows; the whole of it would grow with the game forever.
+TAIL_EXCHANGES = 3
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
@@ -80,6 +91,7 @@ def render_narrator(
             ("YOUR ROLE", NARRATOR),
             ("WHAT THE PLAYER HAS READ", "\n\n".join(passages) or "(nothing yet)"),
             ("SCENE", f"{view.title}\n{view.situation}"),
+            ("WHAT THIS SCENE IS ABOUT", view.question),
             (
                 "WHO IS HERE",
                 "\n".join(f"- {one.name} — {one.brief}" for one in view.subjects) or "- (none)",
@@ -93,23 +105,19 @@ def render_narrator(
 
 def render_worldsmith[S: BaseModel](
     world: SceneState[S],
+    played: Sequence[Exchange],
     intent: str,
-    include: Sequence[str],
     guidance: str,
     rows: SheetRows,
 ) -> str:
     """The whole material for one scene, assembled by code so no role has to remember it."""
     return _worldsmith(
         source=world.source,
-        history="\n\n".join(
-            f"SCENE {number}: {one.title} ({one.place})\n{one.situation}"
-            for number, one in enumerate((*world.played, world.current), start=1)
-        ),
+        history=_history(world, played),
         cast="\n".join(entity_line(world, one, rows, where=True) for one in world.cast.values()),
         threads=thread_lines(world.threads.values(), standing_only=False),
         guidance=guidance,
         intent=intent,
-        include=include,
     )
 
 
@@ -124,7 +132,6 @@ def render_opening(source: str, guidance: str) -> str:
             "Write the opening scene of this adventure: where the player starts, who is there, "
             "and what is waiting to be found."
         ),
-        include=(),
     )
 
 
@@ -136,7 +143,6 @@ def _worldsmith(
     threads: str,
     guidance: str,
     intent: str,
-    include: Sequence[str],
 ) -> str:
     return _sections(
         (
@@ -147,10 +153,29 @@ def _worldsmith(
             ("THREADS", threads),
             ("ENGINE GUIDANCE", guidance),
             ("WHAT COMES NEXT", intent),
-            ("FACES TO BRING BACK (a hint, not an order)", ", ".join(include) or "(none)"),
             ("STANDING INSTRUCTION", SURPRISE),
             ("ANSWER WITH", _shape(SceneWrite)),
         )
+    )
+
+
+def _history[S: BaseModel](world: SceneState[S], played: Sequence[Exchange]) -> str:
+    """A scene authored is not a scene played, and the next one has to follow from the second."""
+    told: dict[str, list[str]] = {}
+    for exchange in played:
+        told.setdefault(exchange.scene, []).append(f"> {exchange.prompt}\n{exchange.narration}")
+    return "\n\n".join(
+        "\n".join(
+            (
+                f"SCENE {number}: {one.title} ({one.place})",
+                f"the question: {one.question}",
+                one.situation,
+                # Its end, not its whole play: the prompt must not grow with the game forever.
+                "what happened: "
+                + ("\n".join(told.get(one.title, [])[-TAIL_EXCHANGES:]) or "(nothing yet)"),
+            )
+        )
+        for number, one in enumerate((*world.played, world.current), start=1)
     )
 
 

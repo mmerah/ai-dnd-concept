@@ -39,7 +39,7 @@
         },
         "AdvanceThread": {
           "additionalProperties": false,
-          "description": "Update an active storyline's status or private note.",
+          "description": "Update an active storyline's status or the line the player reads about it.",
           "properties": {
             "verb": {
               "const": "advance_thread",
@@ -78,7 +78,7 @@
                 }
               ],
               "default": null,
-              "description": "New private note, or null to keep the current note."
+              "description": "What the player now knows about this thread, or the lead they have on it, in one sentence. The player reads this. Null keeps the current note."
             }
           },
           "required": [

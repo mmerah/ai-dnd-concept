@@ -129,6 +129,7 @@ _OPENING_ITEM: JsonValue = {
 _OPENING: dict[str, JsonValue] = {
     "place": "sunken-bell",
     "title": "The Bell Under the Water",
+    "question": "Can you reach the bell tower before the tide turns again?",
     "situation": "The tide has taken the lower town and left the bell tower standing in it, "
     "and something down there still rings the hour.",
     "present": ["hana"],
@@ -149,7 +150,9 @@ _OPENING: dict[str, JsonValue] = {
 
 async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path, tmp_path / "scenarios")
-    thin = json.dumps({key: value for key, value in _OPENING.items() if key != "hidden"})
+    thin = json.dumps(
+        {key: value for key, value in _OPENING.items() if key not in ("present", "hidden")}
+    )
     spawner = ScriptedSpawner(answers={"worldsmith": [thin, json.dumps(_OPENING)]})
     runtime = Runtime(settings, spawner)
 
@@ -158,7 +161,7 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
     )
 
     # The scene bar refuses the first answer, and the reason goes back with the re-prompt.
-    assert "something to find" in spawner.prompts[1][1]
+    assert "besides the player" in spawner.prompts[1][1]
     # The selected pack is the setting's vocabulary, so the worldsmith is given its tables.
     assert "Quiet Hands" in spawner.prompt("worldsmith")
     catalog = load_catalog(settings, runtime.engines)

@@ -13,6 +13,9 @@ SCENE:
 The Abbot's Study
 The only lit room left in the abbey: ledgers stacked to the beams, candle stubs gone cold, and Mara still cataloguing books nobody will read. A flagstone under the desk sits a finger proud of its neighbours.
 
+THE QUESTION THIS SCENE SETTLES:
+Can you get the way down to the vault out of this room, and out of Mara?
+
 YOU PLAY FOR:
 - Kael[player] (actor) — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
   concept: A Wary Relic-Hunter; skills: Reads Old Stonework, Quiet Hands; frailties: Never Walks Away; gear: Pry Bar, Chalk and Wire, A Guttering Lantern; luck: 6/6
@@ -38,8 +41,8 @@ WHAT THE TAGS IN PLAY MEAN:
 - Pry Bar: Forces a door, a crate, or a stubborn slab of stone.
 - Chalk and Wire: Marks a trail and rigs a lock from chalk and a length of wire.
 
-SCENE NOTE (never narrate this):
-Kael wants the way down. The map under the flagstone is the way down, and Mara will not volunteer it.
+THE SCENE'S SECRET (never narrate this):
+The map is under the loose flagstone, and Mara knows it; she will not volunteer it while the ledgers are unfinished.
 
 NOTES FROM THE RULES:
 - (none)

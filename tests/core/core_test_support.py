@@ -115,6 +115,10 @@ def tool_call(name: str, **args: JsonValue) -> Call:
     return name, args
 
 
+def the_way_on() -> Call:
+    return "next_scene", {}
+
+
 def narrated(body: str, speaker_id: str | None = None) -> str:
     return json.dumps({"lines": [{"speaker_id": speaker_id, "text": body}]})
 
@@ -186,12 +190,18 @@ async def played(
     action: str | Answer,
     *calls: Call,
     narration: str = "You wait.",
+    arrival: str | None = None,
     start: bool = True,
+    moving_on: bool = False,
     on_step: Callable[[TurnStep], None] | None = None,
     on_fact: Callable[[Fact], None] | None = None,
 ) -> Game:
     """One turn, with the game master's tool calls scripted and the narrator's answer canned."""
     table.spawner.turns.append(table.plays(calls, start=start))
-    table.spawner.answers.setdefault("narrator", []).append(narrated(narration))
-    await table.service.play(action, on_step=on_step, on_fact=on_fact)
+    canned = table.spawner.answers.setdefault("narrator", [])
+    canned.append(narrated(narration))
+    # The crossing is its own narrator spawn, so a turn that installs a scene answers twice.
+    if arrival is not None:
+        canned.append(narrated(arrival))
+    await table.service.play(action, on_step=on_step, on_fact=on_fact, moving_on=moving_on)
     return table.service.state

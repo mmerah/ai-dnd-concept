@@ -6,10 +6,10 @@ import mcp_types as types
 from mcp.server import Server, ServerRequestContext
 from mcp.server.streamable_http_manager import StreamableHTTPASGIApp, StreamableHTTPSessionManager
 from mcp.server.transport_security import TransportSecuritySettings
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
+from pydantic import BaseModel, JsonValue, TypeAdapter
 
 from aidm.app.runtime import NO_TURN, GameService, Runtime
-from aidm.state.entities import Frozen, require_unique
+from aidm.state.entities import require_unique
 from aidm.state.tools import MasterTool, NoArgs, schema_of
 from aidm.turn.run import Turn
 
@@ -22,16 +22,6 @@ DECIDING = "the rules are waiting on the player; the scene after this one waits 
 _ARGUMENTS = TypeAdapter(dict[str, JsonValue])
 
 
-class NextScene(Frozen):
-    # Without this the field docstrings below never reach the schema the model reads.
-    model_config = ConfigDict(use_attribute_docstrings=True)
-
-    intent: str = Field(min_length=1)
-    """What comes next, in one or two sentences: where the story goes and what is at stake."""
-    include: tuple[str, ...] = ()
-    """Ids of cast the next scene should bring back. A hint, not an order."""
-
-
 @dataclass(frozen=True, slots=True)
 class ServerTool:
     """What is published is what is run: one place for the name, the schema and the behaviour."""
@@ -40,11 +30,6 @@ class ServerTool:
     description: str
     run: Callable[[GameService, dict[str, JsonValue]], str]
     args: type[BaseModel] = NoArgs
-
-
-def _next_scene(service: GameService, raw: dict[str, JsonValue]) -> str:
-    asked = NextScene.model_validate(raw)
-    return service.begin_next_scene(asked.intent, asked.include)
 
 
 SERVER_TOOLS: tuple[ServerTool, ...] = (
@@ -61,10 +46,9 @@ SERVER_TOOLS: tuple[ServerTool, ...] = (
     ),
     ServerTool(
         "next_scene",
-        "Brief the worldsmith on what comes next. It returns at once and does not end the turn;"
-        " the scene it writes arrives on a later turn.",
-        _next_scene,
-        NextScene,
+        "Say this scene's question is settled. The player is then asked what they want to pursue,"
+        " and their own words are what the next scene is built from. Do not answer for them.",
+        lambda service, _raw: service.offer_the_way_on(),
     ),
 )
 

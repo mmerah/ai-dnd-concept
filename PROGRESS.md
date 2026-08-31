@@ -980,3 +980,77 @@ no events, packs or creation test — about 240 of its ~615 is new coverage.
 
 Each engine also regenerates about **1,300–1,400 lines of golden JSON**, because the golden tests
 parameterise over `ENGINE_IDS`. Machine-written, but real diff to read at the end of the phase.
+
+## Scene transitions rebuilt (after phase 5, before phase 6)
+
+`src` 5,627 -> 5,770, `tests` 3,519. Not a plan phase: play found the transition broken. Two
+outside opinions (one Opus agent, one codex session) diagnosed it, and two adversarial reviews
+found what the fixes then broke. This entry records what shipped; git holds the path there.
+
+**What was wrong.** Four mechanisms, all confirmed in the code:
+
+1. `_install_scene` ran inside `start_turn`, so the scene changed *before* the game master read
+   the player's action. The player typed in one scene and was resolved in another.
+2. `scene_spent` returned "everything here has been found" the moment `Scene.hidden` emptied, and
+   the scene bar required at least one hidden entity. A scene with one hidden thing ended the turn
+   the player found it. Finding things was punished.
+3. `_speculate` started the worldsmith after every commit, passing the boundary reason
+   ("everything here has been found") as the *intent*. A diagnostic string authored the story, and
+   its scene was already installed by the time the game master could ask for a different one.
+4. `SPENT_NOTE` was written at the end of the old turn and captured by `Turn.begin` before the new
+   scene installed, so the game master read "this scene looks spent" beside a brand-new scene.
+   One transition became a run of them.
+
+**What shipped.**
+
+- **`Scene.question`**, public: one sentence saying what the scene exists to settle. Shown to the
+  player, given to all three roles, and what the game master plays toward. `hidden` is content
+  again, never a clock; `scene_spent` keeps three blunt cases nobody can miss and is a safety net,
+  not the trigger.
+- **`Scene.secret`**, private, renamed from `note`: what the question does *not* say — how it
+  settles, what it costs, what somebody will not admit. The shipped scenario had proved the
+  conflation by opening its note with a restatement of its own question.
+- **`next_scene` takes no arguments** and sets `SceneState.settled`. It is deliberately not a
+  `PendingDecision`: a decision blocks the game master's tools and forces the player out of a
+  scene they may still want to play. The narrator closes the scene and asks what they want to
+  pursue; the page grows a **move on** button beside the same composer. Send keeps playing here.
+- **The crossing is its own segment** at the end of the turn the player moved on: await the write,
+  install, then a second narrator spawn. It is `render_narrator` with the crossing instruction in
+  the `PLAYER ACTION` slot, which is how `ANSWERED_BY_OPTION` already works — no second renderer.
+  It carries the player's own sentence, the new scene's question, and the names of any companions
+  who crossed, because `apply_scene` moves them by code and nothing else would say so.
+- **The player's own words are the whole brief.** Never a lead, never a reason string.
+- **`Thread.note` is public** — what the player knows about a thread, or their next lead. Threads
+  are the navigation surface, so the scene tab shows title, status and note.
+- **The scene bar refuses a `situation` that names a hidden entity**, multi-word names only: a prop
+  called `Bell` shares its word with any bell tower, and a refusal costs the whole crossing.
+- **The cast stopped following the player around.** `worldsmith.md` said "one of them is somebody
+  the player already knows", which reads as *a person, every scene*; with a cast of two that is
+  always the same face. It now asks for one thing already established — person, object, place or
+  rumour — and says a person needs a reason to be there.
+- The right panel is four labelled blocks: this scene, here, sheet, threads.
+
+**Deleted.** `_speculate`, `STALE_AFTER`, `_written_at`, `_write_intent`, the discard-and-rewrite
+branch, `QUIET_TURNS`, the empty-`hidden` signal, `render_arrival`, `NextScene` and its `leads` and
+`include` fields, `WAY_ON`, `WAY_ON_ASKED`, `Turn.chose_the_way_on`.
+
+**Refused.** `Scene.ways_out` — authored exits rebuild the map ontology the vision threw out. A
+travel tool. Keeping speculation behind the player's choice: a scene written before they choose is
+a scene for the wrong place. A menu of destinations: smaller than the sentence the player would
+have written, and the threads panel is already the standing list of what is open.
+
+**What the two reviews caught, all fixed.** The first found that clicking a lead crashed the turn
+(`consume_answer` routed every chosen option through a tool-name lookup, and a lead had no tool);
+that `next_scene` on the crossing turn installed a scene on top of a fresh decision, reproducing
+the original symptom; that a refused arrival narration destroyed a good scene and put the raw model
+error on the player's screen; and that a crashed master orphaned the worldsmith task. The second
+found that `SPENT_NOTE` still told the master to call `next_scene` "with the leads", through the
+one channel measured to change its behaviour; that an orphaned write still teleported the player on
+a later ordinary turn, because only a second *moving-on* turn cancelled it; that a dead player
+still crossed into the next scene; that `_named_in` refused "the bell tower" for a prop named
+`Bell`; and that `NarratorView.question` was set and read by nothing.
+
+**Known and accepted.** `_history` keys a scene's outcomes by title, so two scenes sharing a title
+merge their history in the worldsmith prompt. `scene_spent` runs after `draft.turn += 1`, so
+`SCENE_TURN_CAP = 12` fires on the eleventh turn in a scene; it is a safety net and the number is
+not load-bearing.

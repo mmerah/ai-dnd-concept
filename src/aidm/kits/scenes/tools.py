@@ -92,7 +92,7 @@ class LeaveParty(Frozen):
 
 
 class AdvanceThread(Frozen):
-    """Update an active storyline's status or private note."""
+    """Update an active storyline's status or the line the player reads about it."""
 
     verb: Literal["advance_thread"]
     thread_id: Slug = Field(description="Exact id of an active thread.")
@@ -100,7 +100,9 @@ class AdvanceThread(Frozen):
         default=None, description="New status, or null to keep the current status."
     )
     note: str | None = Field(
-        default=None, description="New private note, or null to keep the current note."
+        default=None,
+        description="What the player now knows about this thread, or the lead they have on it, "
+        "in one sentence. The player reads this. Null keeps the current note.",
     )
 
 
@@ -208,7 +210,7 @@ def apply_change[S: BaseModel](world: SceneState[S], change: WorldChange) -> lis
             trace = f"{world.label(one)} gained the trait {change.name}[{trait_id}]"
             if change.text:
                 trace += f" — {change.text}"
-            card = f"{one.name} gained {change.name}"
+            card = f"{one.name}: new trait {change.name}"
             return [entity_fact(one, "trait_added", trace, card=card)]
         case RemoveTrait():
             one = _acted_on(world, change.entity_id)
@@ -220,7 +222,8 @@ def apply_change[S: BaseModel](world: SceneState[S], change: WorldChange) -> lis
                 )
             one.traits.remove(held)
             trace = f"{world.label(one)} lost the trait {held.name}[{held.id}]"
-            return [entity_fact(one, "trait_removed", trace, card=f"{one.name} lost {held.name}")]
+            card = f"{one.name}: trait {held.name} lifted"
+            return [entity_fact(one, "trait_removed", trace, card=card)]
         case Kill():
             return _kill(world, change.actor_id)
         case JoinParty():

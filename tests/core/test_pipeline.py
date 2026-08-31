@@ -62,7 +62,7 @@ async def test_on_fact_reports_the_visible_facts_in_resolver_order(tmp_path: Pat
         on_fact=fired.append,
     )
 
-    landed = ["The vault map discovered", "Took the vault map", "Kael gained Listening"]
+    landed = ["The vault map discovered", "Took the vault map", "Kael: new trait Listening"]
     assert [fact.card for fact in cards(fired)] == landed
     assert [fact.card for fact in state.history[-1].facts] == landed
 

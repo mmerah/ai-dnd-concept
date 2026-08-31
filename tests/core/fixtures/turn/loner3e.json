@@ -63,7 +63,7 @@
     "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
     "told": true,
     "entity_id": "player",
-    "card": "Kael gained Listening",
+    "card": "Kael: new trait Listening",
     "dice": []
   }
 ]

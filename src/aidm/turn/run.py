@@ -8,7 +8,7 @@ from pydantic import JsonValue
 
 from aidm.engines.core import Engine
 from aidm.kernel.views import NarratorView
-from aidm.kits.scenes.boundary import SPENT_NOTE, scene_spent
+from aidm.kits.scenes.boundary import SCENE_SETTLED, SPENT_NOTE, scene_spent
 from aidm.state.facts import NOTHING, Fact, cards, traced
 from aidm.state.model import Game, draft_refusal
 from aidm.state.play import Answer, Line, SpokenLine
@@ -59,6 +59,15 @@ class Turn:
         if self.on_fact is not None:
             for fact in facts:
                 self.on_fact(fact)
+
+    def offer_the_way_on(self) -> None:
+        """An offer, not a decision: the player may take it or keep playing here, so this must
+        not block the turn the way a pending decision does."""
+        if self.draft.world.settled:
+            raise ValueError("this scene is already settled; the player has the way on")
+        self.draft.world.settled = True
+        # Told, so the narrator closes the scene and asks: a silent ending is no ending.
+        self.landed((SCENE_SETTLED,))
 
     def picture(self, recent: int) -> str:
         draft = self.draft
@@ -161,6 +170,10 @@ def close_segment(
     draft.record(draft.world.current.title, prompt, spoken(view, lines), facts)
     draft.turn += 1
     # Directive text at the decision point is what fixed trigger reliability when it was measured.
+    # Not once the master has settled the scene, and never on the turn one opened: that note would
+    # be about the scene the player has just left.
+    if draft.world.settled or draft.world.opened_at >= draft.turn - 1:
+        return draft.committed()
     if (reason := scene_spent(draft)) is not None:
         draft.notes = (*draft.notes, SPENT_NOTE.format(reason=reason))
     return draft.committed()

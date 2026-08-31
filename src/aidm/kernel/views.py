@@ -8,6 +8,12 @@ class Subject(Frozen):
     brief: str
 
 
+class ThreadRow(Frozen):
+    title: str
+    status: str
+    note: str
+
+
 class PlayerPrompt(Frozen):
     kind: str
     prompt: str
@@ -28,6 +34,7 @@ class NarratorView(Frozen):
     # The place, as the art cache names it: two scenes in one place share one picture.
     place: str
     title: str
+    question: str
     situation: str
     art_prompt: str
     subjects: tuple[Subject, ...]
@@ -39,13 +46,15 @@ class PlayerView(Frozen):
     """What the pages read: scene art and subjects live on the narrator view, not here."""
 
     player: Subject
+    question: str
     sheet: tuple[tuple[str, str], ...]
     traits: tuple[tuple[str, str], ...]
     carrying: tuple[Subject, ...]
     present: tuple[Subject, ...]
     companions: tuple[str, ...]
-    threads: tuple[tuple[str, str], ...]
+    threads: tuple[ThreadRow, ...]
     scenes: tuple[str, ...]
+    settled: bool
     prompt: PlayerPrompt | None
     over: str | None
 

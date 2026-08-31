@@ -6,12 +6,13 @@ from random import Random
 import pytest
 from core_test_support import (
     LONER3E,
-    Table,
     change_args,
+    changed,
     narrated,
     offline_settings,
     opened,
     played,
+    the_way_on,
     updated,
 )
 from pydantic import JsonValue
@@ -19,7 +20,6 @@ from pydantic import JsonValue
 from aidm.app.mcp import ALREADY_OPEN, DECIDING, START_FIRST, call, offered
 from aidm.app.runtime import NO_TURN
 from aidm.app.spawn import CliSpawner, final_message
-from aidm.kits.scenes.boundary import scene_spent
 from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.model import SceneWrite
 from aidm.state.play import Narration
@@ -38,7 +38,8 @@ A_SCENE = {
     "at the far end with the lantern shuttered to a slit.",
     "present": ["mara"],
     "hidden": ["tomas"],
-    "note": "Tomas is listening from the chapter house door.",
+    "question": "Can you reach the chapter house before the lantern gives you away?",
+    "secret": "Tomas is listening from the chapter house door.",
 }
 
 
@@ -135,7 +136,7 @@ async def test_a_decision_on_the_table_holds_the_next_scene_back_too(tmp_path: P
         table,
         "I grab for the ledger in her hands.",
         ("roll_question", A_CONFLICT),
-        ("next_scene", {"intent": "Out into the cloister walk."}),
+        the_way_on(),
         narration="She holds on.",
     )
 
@@ -143,88 +144,192 @@ async def test_a_decision_on_the_table_holds_the_next_scene_back_too(tmp_path: P
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 
 
-async def test_a_scene_the_world_has_outgrown_is_dropped_rather_than_killing_the_turn(
-    tmp_path: Path,
-) -> None:
-    """The write reads the committed state, so this turn's own changes can undo its scene."""
+async def test_next_scene_asks_the_player_and_writes_nothing_yet(tmp_path: Path) -> None:
     table = opened(tmp_path)
-    table.spawner.answers["worldsmith"] = [_scene()]
-
-    _ = await played(
-        table,
-        "I call the porter over.",
-        ("next_scene", {"intent": "Into the cloister walk."}),
-        ("change_world", change_args("enter", entity_id="tomas")),
-    )
-    await _settled(table)
-    state = await played(table, "I follow him out.")
-
-    assert "already met" in table.service.write_failure
-    assert state.turn == 2
-    assert state.world.current.title == "The Abbot's Study"
-
-
-async def test_next_scene_does_not_end_the_turn_and_installs_at_the_next_start(
-    tmp_path: Path,
-) -> None:
-    table = opened(tmp_path)
-    table.spawner.answers["worldsmith"] = [_scene()]
 
     state = await played(
         table,
-        "I follow her out into the rain.",
-        ("next_scene", {"intent": "They step into the cloister walk.", "include": ["mara"]}),
-        narration="The door swings wide.",
+        "I have what I came for.",
+        the_way_on(),
+        narration="The flagstone settles back.",
     )
 
     assert state.turn == 1
-    assert state.world.current.title == "The Abbot's Study"
-    await _settled(table)
+    # An offer, not a decision: nothing waits on the player and the scene is still playable.
+    assert state.pending is None
+    assert state.world.settled
+    assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 
-    state = await played(table, "I look for the lantern.", narration="The rain answers.")
+
+async def test_the_offer_does_not_close_the_scene_or_stop_the_player(tmp_path: Path) -> None:
+    """The way on is an offer: the player may keep playing here for as long as they like."""
+    table = opened(tmp_path)
+    table.spawner.answers["worldsmith"] = [_scene()]
+
+    _ = await played(table, "I have what I came for.", the_way_on())
+    state = await played(
+        table,
+        "I go back to the shelves and read the spines.",
+        ("change_world", change_args("reveal", entity_id=VAULT_MAP)),
+        narration="Dust comes away on your sleeve.",
+    )
+
+    assert state.world.current.title == "The Abbot's Study"
+    assert state.world.settled
+    assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
+
+    state = await played(
+        table,
+        "Down the stair the map marks.",
+        arrival="The cold comes up to meet you.",
+        moving_on=True,
+    )
+    assert state.world.current.title == "The Cloister Walk"
+
+
+async def test_a_turn_that_dies_after_asking_to_move_takes_its_write_with_it(
+    tmp_path: Path,
+) -> None:
+    """Left alive, that write installs its scene on a later turn the player never asked to leave."""
+    table = opened(tmp_path)
+    table.spawner.answers["worldsmith"] = [_scene()]
+    table.spawner.answers["narrator"] = []
+
+    _ = await played(table, "I have what I came for.", the_way_on())
+    with pytest.raises(ValueError):
+        _ = await played(table, "Out into the cloister walk.", moving_on=True, narration="")
+    state = await played(table, "I look at the ledgers again.", narration="Dust, and more dust.")
+
+    assert state.world.current.title == "The Abbot's Study"
+
+
+async def test_a_player_who_died_moving_on_does_not_arrive(tmp_path: Path) -> None:
+    table = opened(tmp_path)
+    table.spawner.answers["worldsmith"] = [_scene()]
+
+    _ = await played(table, "I have what I came for.", the_way_on())
+    state = await played(
+        table,
+        "Down the stair, and quickly.",
+        changed("kill", actor_id=PLAYER_ID),
+        moving_on=True,
+    )
+
+    assert state.world.current.title == "The Abbot's Study"
+    assert table.service.engine.over(state) is not None
+
+
+async def test_the_spent_note_never_reaches_the_scene_it_is_not_about(tmp_path: Path) -> None:
+    """The original defect: the master read 'this scene looks spent' beside a brand-new scene."""
+    table = opened(tmp_path)
+    table.spawner.answers["worldsmith"] = [_scene()]
+
+    _ = await played(table, "I have what I came for.", the_way_on())
+    state = await played(
+        table, "Out into the cloister walk.", arrival="Rain takes the arcade.", moving_on=True
+    )
 
     assert state.world.current.title == "The Cloister Walk"
-    assert state.world.require(EntityId("tomas")).id in state.world.current.hidden
+    assert not any("looks spent" in note for note in state.notes)
+
+
+async def test_the_way_on_is_offered_once(tmp_path: Path) -> None:
+    """Offering again would move the player out of a scene they have not played yet."""
+    table = opened(tmp_path)
+    table.spawner.answers["worldsmith"] = [_scene()]
+
+    _ = await played(table, "I go.", the_way_on())
+    state = await played(
+        table,
+        "Out into the cloister walk.",
+        the_way_on(),
+        arrival="Rain takes the arcade.",
+        moving_on=True,
+    )
+
+    assert "already settled" in table.refusals[-1]
+    assert state.world.current.title == "The Cloister Walk"
+    assert not state.world.settled
+
+
+async def test_a_crossing_the_narrator_will_not_write_still_keeps_the_scene(
+    tmp_path: Path,
+) -> None:
+    """The scene cost a spawn of its own; a refused arrival must not throw it away."""
+    table = opened(tmp_path)
+    table.spawner.answers["worldsmith"] = [_scene()]
+
+    _ = await played(table, "I go.", the_way_on())
+    state = await played(table, "Out into the cloister walk.", moving_on=True)
+
+    assert state.world.current.title == "The Cloister Walk"
+    assert state.history[-1].narration == ""
+
+
+async def test_the_players_own_answer_is_the_brief_and_the_crossing_lands_in_that_turn(
+    tmp_path: Path,
+) -> None:
+    table = opened(tmp_path)
+    table.spawner.answers["worldsmith"] = [_scene()]
+
+    _ = await played(table, "I have what I came for.", the_way_on())
+    state = await played(
+        table,
+        "Out through the cloister walk, before Tomas hears the door.",
+        narration="You pull the door to.",
+        arrival="Rain finds you before the arcade does.",
+        moving_on=True,
+    )
+
+    assert state.world.current.title == "The Cloister Walk"
+    assert EntityId("tomas") in state.world.current.hidden
     assert state.history[-1].scene == "The Cloister Walk"
+    assert "Rain finds you" in state.history[-1].narration
+    assert "before Tomas hears the door" in table.spawner.prompt("worldsmith")
+
+
+async def test_a_scene_the_world_has_outgrown_is_dropped_rather_than_killing_the_turn(
+    tmp_path: Path,
+) -> None:
+    """The write reads a copy taken as the turn opened, so the turn itself can undo its scene."""
+    table = opened(tmp_path)
+    table.spawner.answers["worldsmith"] = [_scene()]
+
+    _ = await played(table, "I go.", the_way_on())
+    state = await played(
+        table,
+        "Out into the cloister walk.",
+        ("change_world", change_args("enter", entity_id="tomas")),
+        moving_on=True,
+    )
+
+    assert "already met" in table.service.write_failure
+    assert state.world.current.title == "The Abbot's Study"
 
 
 async def test_the_scene_bar_refuses_a_thin_scene(tmp_path: Path) -> None:
     table = opened(tmp_path)
-    thin = _scene(hidden=[], present=[])
+    thin = _scene(present=[], hidden=[])
     table.spawner.answers["worldsmith"] = [thin, thin]
 
-    _ = await played(
-        table,
-        "I go.",
-        ("next_scene", {"intent": "They step into the cloister walk."}),
-    )
-    await _settled(table)
+    _ = await played(table, "I go.", the_way_on())
+    _ = await played(table, "Out into the cloister walk.", moving_on=True)
 
-    assert "something to find" in table.service.write_failure
+    assert "besides the player" in table.service.write_failure
     assert table.service.state.world.current.title == "The Abbot's Study"
 
 
-async def test_a_scene_written_for_a_world_the_player_has_left_is_discarded_and_rewritten(
-    tmp_path: Path,
-) -> None:
+async def test_a_scene_with_nothing_hidden_in_it_is_allowed(tmp_path: Path) -> None:
     table = opened(tmp_path)
-    table.spawner.answers["worldsmith"] = [_scene(), _scene(title="The Chapter House")]
+    table.spawner.answers["worldsmith"] = [_scene(hidden=[])]
 
-    _ = await played(table, "I go.", ("next_scene", {"intent": "Into the cloister walk."}))
-    await _settled(table)
-    # Two turns where the game master never asks for the picture, so nothing installs the scene.
-    _ = await played(table, "I wait.", start=False)
-    _ = await played(table, "I wait again.", start=False)
-    _ = await played(table, "I look up.")
-    await _settled(table)
+    _ = await played(table, "I go.", the_way_on())
+    state = await played(
+        table, "Out into the cloister walk.", arrival="The rain has the arcade.", moving_on=True
+    )
 
-    assert table.service.state.world.current.title == "The Abbot's Study"
-    written = [prompt for role, prompt in table.spawner.prompts if role == "worldsmith"]
-    assert len(written) == 2
-    assert "Into the cloister walk." in written[1]
-
-    _ = await played(table, "I go through.")
-    assert table.service.state.world.current.title == "The Chapter House"
+    assert table.service.write_failure == ""
+    assert state.world.current.title == "The Cloister Walk"
 
 
 async def test_a_worldsmith_that_fails_leaves_the_scene_unchanged_and_says_why(
@@ -232,39 +337,32 @@ async def test_a_worldsmith_that_fails_leaves_the_scene_unchanged_and_says_why(
 ) -> None:
     table = opened(tmp_path)
 
-    _ = await played(table, "I go.", ("next_scene", {"intent": "Into the cloister walk."}))
-    await _settled(table)
+    _ = await played(table, "I go.", the_way_on())
+    _ = await played(table, "Out into the cloister walk.", moving_on=True)
 
     assert "no answer left" in table.service.write_failure
     assert table.service.state.world.current.title == "The Abbot's Study"
 
 
-async def test_the_boundary_starts_the_write_before_the_master_asks(tmp_path: Path) -> None:
-    """`scene_spent` fires once everything hidden here is found; the wait starts then."""
-    table = opened(tmp_path)
-    table.spawner.answers["worldsmith"] = [_scene()]
-
-    _ = await played(
-        table, "I search the study.", ("change_world", change_args("reveal", entity_id=VAULT_MAP))
-    )
-    await _settled(table)
-
-    assert scene_spent(table.service.state) == "everything here has been found"
-    assert any(role == "worldsmith" for role, _ in table.spawner.prompts)
-
-
-async def test_the_worldsmith_is_shown_the_source_the_cast_and_the_shape_it_answers_in(
+async def test_the_worldsmith_is_shown_the_source_the_cast_and_what_actually_happened(
     tmp_path: Path,
 ) -> None:
     table = opened(tmp_path)
     table.spawner.answers["worldsmith"] = [_scene()]
 
-    _ = await played(table, "I go.", ("next_scene", {"intent": "Into the cloister walk."}))
-    await _settled(table)
+    _ = await played(
+        table, "I search the study.", narration="A flagstone sits proud of its neighbours."
+    )
+    _ = await played(table, "I have what I came for.", the_way_on())
+    _ = await played(
+        table, "Out into the cloister walk.", arrival="Rain takes the arcade.", moving_on=True
+    )
 
     prompt = table.spawner.prompt("worldsmith")
     assert "Brother Tomas" in prompt
-    assert "Into the cloister walk." in prompt
+    assert "Out into the cloister walk." in prompt
+    # What the scene was authored as is not what the scene became; the next one follows the second.
+    assert "A flagstone sits proud of its neighbours." in prompt
     assert json.dumps(SceneWrite.model_json_schema()["properties"]["place"]["title"]) not in prompt
 
 
@@ -277,13 +375,6 @@ async def test_abandoning_a_spawn_kills_the_process_group_it_started(tmp_path: P
 
     with pytest.raises(asyncio.TimeoutError):
         await CliSpawner(settings).act("go")
-
-
-async def _settled(table: Table) -> None:
-    """Let the background scene write finish; nothing in it awaits anything real."""
-    del table
-    for _ in range(4):
-        await asyncio.sleep(0)
 
 
 def test_the_engine_is_the_one_the_surface_publishes_for(tmp_path: Path) -> None:

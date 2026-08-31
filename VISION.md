@@ -70,14 +70,16 @@ player types in the page
    │     start_turn  → the whole picture: scene, cast, hidden, threads
    │     engine tools → the engine rolls; code applies; facts return
    │     change_world → one settled change per call
-   │     next_scene   → brief the worldsmith (does not end the turn)
+   │     next_scene   → say the question is settled (does not end the turn)
    │
    ├─ the spawn returns when the process exits
    ├─ APP builds the narrator prompt from NarratorView and the told facts
    ├─ APP spawns the NARRATOR → the lines the player reads
    ├─ APP validates, records, commits
    ├─ APP starts the illustration
-   └─ if scene_spent fires, APP starts the worldsmith on a snapshot
+   └─ if the player pressed MOVE ON this turn, APP crosses over:
+         spawns the WORLDSMITH on a snapshot, installs the scene,
+         and spawns the NARRATOR again for the leaving and the arriving
 ```
 
 ---
@@ -199,7 +201,7 @@ play(action)
   ├─ the spawn's exit ends the turn
   ├─ narrate, unless a decision is pending and no told fact landed
   ├─ record, commit, start the illustration
-  └─ if scene_spent fires, start the worldsmith on a deep copy of the committed state
+  └─ cross over, if the player pressed MOVE ON
 ```
 
 - **The exit is the only end signal.** There is no `end_turn` tool. A CLI that crashes, is
@@ -209,11 +211,11 @@ play(action)
   text. The turn commits, the page shows the decision, and the player's answer opens the next
   turn. The narrator runs only if a told fact landed, so a bare decision shows buttons and no
   prose.
-- **`next_scene` does not end the turn.** The write runs in the background and the new scene is
-  installed under the *next* `start_turn`. The player may take another turn in the old scene
-  meanwhile; that is fine, because the worldsmith reads a **snapshot taken when it started**,
-  never the live state. If the snapshot has gone stale by more than one turn, the result is
-  discarded and rewritten.
+- **`next_scene` does not end the turn, and does not write.** It sets `SceneState.settled`, and
+  the page grows a **move on** button beside the composer. The scene stays playable. When the
+  player presses it, *that* turn starts the worldsmith on a **deep copy taken as it began**, never
+  the live state, and awaits it at the end of the same turn — so a scene never installs under an
+  action written for the scene before it. A turn that dies cancels its own write.
 
 ---
 
@@ -228,10 +230,11 @@ class Scene(Frozen):
     id: Slug
     place: Slug                          # names the art; reused when the story returns here
     title: str
+    question: str                        # public: what this scene exists to settle
     situation: str                       # what is true here now, for the game master
     present: tuple[EntityId, ...]        # everyone and everything here and known
     hidden: tuple[EntityId, ...]         # here, not yet found
-    note: str = ""                       # private; never narrated, never in a view
+    secret: str = ""                     # what `question` does not say; never in a view
 
 class SceneState[S](Mutable):
     cast: dict[EntityId, Entity[S]]      # persists across scenes; sheet: S | None
@@ -241,6 +244,7 @@ class SceneState[S](Mutable):
     companions: list[EntityId]
     player_id: EntityId
     source: str = ""
+    settled: bool = False                # the way on is offered; the scene is still playable
 ```
 
 `Entity` keeps `id`, `kind`, `name`, `brief`, `description`, `known` and `traits`, and gains
@@ -275,30 +279,39 @@ consequences run inside the arm.
 5,926 — one more verb in less schema, because no arm carries placement or exit reasoning. Over
 five turns a real CLI made **0 invalid and 0 refused** calls. The arms are not the risk.
 
-### The scene boundary is computed, not judged
+### The question ends the scene; the player chooses what follows
 
-The probe found the real defect: the player waded out of the opening scene and **the game master
-did not call `next_scene`**. No thread advanced either. A game master left to notice an ending on
-its own will sit in one scene forever.
+Every scene carries one public `question`: what it exists to settle, in a sentence the player
+reads. The game master plays until it is settled — answered, refused, or made moot — and that
+judgement is the boundary. Play proved the alternative: a computed boundary that counted props
+ended the scene the turn the player found the one thing hidden in it, which punishes them for
+playing well.
 
-So the kit computes it. `scene_spent(state) -> str | None` returns why this scene looks
-finished:
+`scene_spent(state) -> str | None` survives as a safety net only, for the cases no reading of
+the fiction can miss:
 
 | signal | reason |
 |---|---|
-| `current.hidden` empty and something was revealed here | everything here has been found |
-| an actor present died, or a thread moved to `resolved` | the confrontation settled |
 | a rule wrote `spent` — a thread resolved, a conflict settled | the engine says so, where it knows |
-| no told fact landed for two turns | the scene is spent |
+| an actor present died | someone here is dead |
 | turns in this scene passed a cap | the safety net |
 
-When it fires, the turn result appends: *this scene looks finished — <reason>. Call `next_scene`
-if it is.* The game master may still call it on its own judgement; the signal only guarantees it
-gets asked. This is the `NOTES FROM THE RULES` channel the codebase already ships, and directive
-text at the decision point is what fixed trigger reliability the last time it was measured here.
+When it fires, the turn result appends a `NOTES FROM THE RULES` line. It is never appended on the
+turn a scene opened, or the note would describe the scene the player has just left.
 
-`scene_spent` also starts the speculative write, so the same predicate that fixes the trigger is
-what hides the latency.
+**`next_scene` offers; it does not decide, and it does not stop play.** It takes no arguments and
+sets `SceneState.finished`. The narrator closes the scene and asks what the player wants to
+pursue; the page then shows one box with two buttons — **send** keeps playing here, **move on**
+leaves. It is deliberately not a `PendingDecision`: a decision blocks the game master's tools and
+forces an answer, and the player may well have things left to try. The scene stays open until
+they say where they are going, and that sentence is the worldsmith's whole brief.
+
+No menu of destinations. It is a smaller world than the sentence the player would have written,
+and the threads panel is already the standing list of what is open.
+
+**`question` is public, `secret` is not.** The question is what the scene exists to settle, written
+for the player. The secret is what the question does not say: how it settles, what it costs, or
+what somebody here will not admit. A secret that restates the question is a wasted field.
 
 ---
 
@@ -338,11 +351,11 @@ scenarios/<id>/
 writes.
 
 ```
-next_scene(intent: "They follow the smuggler to the docks; she means to betray them.",
-           include: ("gideon",))          # a hint, not an order
+next_scene()
 ```
 
-That is the whole signature. Code resolves the rest:
+That is the whole signature. The player answers the question it raises, and their sentence — not a
+lead, not a reason string — becomes `intent`. Code resolves the rest:
 
 ```
   prompt = render_worldsmith(
@@ -377,13 +390,14 @@ Why this shape:
 
 **Measured: 335 seconds** (probe, §10). No prompt trick removes it.
 
-1. **`next_scene` never blocks.** It returns at once; the write runs in the background against a
-   snapshot; `scene()` reports progress.
-2. **Start speculatively when `scene_spent` fires**, using its reason as a stand-in intent,
-   before the game master says anything. If the real intent is already served, the wait is over;
-   if not, discard and rewrite. A wasted spawn costs latency you were spending anyway.
-3. **Make the remainder a beat.** A scene transition in a game should look like one: the scene
-   closing, the next illustration arriving, the story turning.
+1. **The write starts as the answering turn begins**, and is awaited at its end. The turn the
+   player spends leaving is the wait, and it is spent inside the fiction.
+2. **Never speculate.** An earlier design started the write when `scene_spent` fired, using the
+   reason string as a stand-in intent. It hid the latency in the only case where latency did not
+   matter, and let a diagnostic sentence author the story. A visible wait for a place the player
+   named beats an instant arrival somewhere they did not.
+3. **Make the remainder a beat.** The crossing is its own segment: the worldsmith spinner, then a
+   second narrator spawn that writes the leaving and the arriving.
 
 ### Ids are the worldsmith's failure mode
 
@@ -421,7 +435,7 @@ game rather than a save file.
 | `start_turn` | opens the turn; returns the whole picture |
 | `scene` | the same picture again, after a compaction |
 | `change_world` | one settled change; `verb` picks the arm |
-| `next_scene` | brief the worldsmith on what comes next |
+| `next_scene` | say the scene's question is settled, so the player is asked what to pursue |
 | *engine tools* | one per SRD procedure, never more than eight |
 
 Four fixed tools plus the engine's. There is no `end_turn`: the process exiting is the signal.
@@ -651,7 +665,8 @@ implementations of one concept; goldens regenerate once per phase and every diff
    that applied nothing is refused.
 5. **Loner 3e plays** end to end from the page: type, see cards and dice, read the prose, and
    the save validates.
-6. **The scene bar catches a thin scene**, and a scene end is signalled by `scene_spent`.
+6. **The scene bar catches a thin scene**, and a scene ends when the player presses **move on**
+   — never under an action written for the scene before it, and never for a dead player.
 7. **A worldsmith id slip recovers** without a retry: a name resolves to its id, and the player
    is injected by code.
 8. **A dropped item comes back.** Left in scene 2, brought back by the worldsmith in scene 5,

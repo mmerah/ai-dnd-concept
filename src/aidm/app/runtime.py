@@ -16,7 +16,6 @@ from aidm.content.io import (
 from aidm.engines.core import Engine
 from aidm.engines.registry import begin_game, build_engines
 from aidm.kernel.views import NarratorView, Views
-from aidm.kits.scenes.boundary import scene_spent
 from aidm.kits.scenes.source import given_text
 from aidm.kits.scenes.worldsmith import apply_scene, opening_canon, scene_refusal
 from aidm.state.entities import EngineId, EntityId, Slug, slug
@@ -31,13 +30,14 @@ from aidm.state.model import (
 )
 from aidm.state.play import Answer, Line, Narration
 from aidm.turn.context import (
+    CROSSING,
     render_master,
     render_narrator,
     render_opening,
     render_worldsmith,
     told_passages,
 )
-from aidm.turn.run import Turn, TurnStep, speakers_refusal
+from aidm.turn.run import Turn, TurnStep, close_segment, speakers_refusal
 
 from .launch import LaunchTarget
 from .media import ICON_DIR, Illustrator
@@ -46,12 +46,12 @@ from .spawn import CliSpawner, Spawner
 LOGGER = logging.getLogger(__name__)
 
 NO_TURN = "no turn is open. The player starts one from the page; wait to be spawned again."
-WRITING = (
-    "the worldsmith is writing the next scene; it arrives on a later turn. "
-    "This turn is not over — finish what the player's action caused, then exit."
+OFFERED = (
+    "the player is choosing where to go; their answer opens the next scene. "
+    "This turn is not over — finish what their action caused, then exit."
 )
-# A scene written more turns ago than this describes a world the player has already left.
-STALE_AFTER = 1
+# What the crossing is filed under in the chronicle: the player took no action in it.
+CROSSED = "(the story moves on)"
 
 
 def open_media(
@@ -97,8 +97,6 @@ class GameService:
     _illustrations: set[Task[None]] = field(default_factory=set, repr=False)
     _writing: Task[None] | None = field(default=None, repr=False)
     _written: SceneWrite | None = field(default=None, repr=False)
-    _written_at: int = 0
-    _write_intent: str = ""
     state: Game = field(init=False)
 
     def __post_init__(self) -> None:
@@ -117,8 +115,13 @@ class GameService:
         action: str | Answer,
         on_step: Callable[[TurnStep], None] | None = None,
         on_fact: Callable[[Fact], None] | None = None,
+        *,
+        moving_on: bool = False,
     ) -> None:
-        """The turn: the game master's exit ends it, the narrator writes it, then it commits."""
+        """The turn: the game master's exit ends it, the narrator writes it, then it commits.
+        `moving_on` is the player taking the way on, so `action` is what they mean to pursue."""
+        if moving_on and not self.state.world.settled:
+            raise ValueError("this scene has no way on yet; play it out first")
 
         def announce(step: TurnStep) -> None:
             self.step = step
@@ -126,7 +129,10 @@ class GameService:
                 on_step(step)
 
         turn = Turn.begin(self.engine, self.state, action, self.rng, on_fact)
-        self.turn = turn
+        self.turn, self.write_failure = turn, ""
+        # The player named where they go; the worldsmith writes while the turn is still playing.
+        if moving_on:
+            self._write_scene(turn.prompt)
         try:
             announce("master")
             await self._act(turn)
@@ -135,11 +141,15 @@ class GameService:
                 announce("narrator")
                 lines = await self._narrate(turn)
             state = turn.finish(lines)
+        except BaseException:
+            # The write's owner is dying; left alive it would install a scene on a later turn.
+            self._abandon_write()
+            raise
         finally:
             self.turn, self.step = None, None
         self.commit(state)
         self._illustrate(state.history[-1].narration)
-        self._speculate()
+        await self._cross_over(announce, turn.prompt)
 
     async def _act(self, turn: Turn) -> None:
         """A crashed game master still played the turn, if it applied anything legal first."""
@@ -171,18 +181,16 @@ class GameService:
         return narration.lines
 
     def start_turn(self) -> str:
-        """The scene the worldsmith wrote is installed here, so the picture already holds it."""
         turn = self._playing()
-        self._install_scene(turn)
         turn.started = True
-        return self.picture()
+        return turn.picture(self.settings.turn.recent_exchanges)
 
     def picture(self) -> str:
         return self._playing().picture(self.settings.turn.recent_exchanges)
 
-    def begin_next_scene(self, intent: str, include: Sequence[str]) -> str:
-        self._write_scene(intent, include)
-        return WRITING
+    def offer_the_way_on(self) -> str:
+        self._playing().offer_the_way_on()
+        return OFFERED
 
     def _playing(self) -> Turn:
         turn = self.turn
@@ -190,48 +198,73 @@ class GameService:
             raise ValueError(NO_TURN)
         return turn
 
-    def _install_scene(self, turn: Turn) -> None:
-        written, self._written = self._written, None
-        if written is None:
+    async def _cross_over(self, announce: Callable[[TurnStep], None], pursuit: str) -> None:
+        if self._writing is None:
             return
-        if turn.draft.turn - self._written_at > STALE_AFTER:
-            # Discarded and rewritten: a worldsmith slower than the player would else never land.
-            LOGGER.info("rewriting a scene written for turn %d", self._written_at)
-            self._write_scene(self._write_intent, ())
+        if self.engine.over(self.state) is not None:
+            self._abandon_write()
             return
+        writing, self._writing = self._writing, None
         try:
-            _ = turn.apply(lambda draft, _rng: _installed(self.engine, draft, written))
-        except ValueError as refused:
-            # The snapshot moved under the scene; dropping it costs a scene, raising costs the turn.
-            self.write_failure = str(refused)
-            LOGGER.warning("the written scene no longer fits the world: %s", refused)
-
-    def _speculate(self) -> None:
-        """Start the write before the game master asks: the wait was being spent anyway."""
-        reason = scene_spent(self.state)
-        if reason is None or self._written is not None or self._writing_now():
-            return
-        self._write_scene(reason, ())
-
-    def _writing_now(self) -> bool:
-        return self._writing is not None and not self._writing.done()
-
-    def _write_scene(self, intent: str, include: Sequence[str]) -> None:
-        if self._writing_now():
-            if self._write_intent == intent:
+            announce("worldsmith")
+            await writing
+            written, self._written = self._written, None
+            if written is None:
                 return
-            # A speculative draft the game master's own intent supersedes is worth nothing.
-            _ = self._writing and self._writing.cancel()
-        self._written, self._write_intent, self.write_failure = None, intent, ""
-        # A deep copy, never the live state: the player may take another turn while this runs.
-        task = create_task(self._write(self.state.draft(), intent, tuple(include)))
-        self._writing = task
+            draft = self.state.draft()
+            try:
+                facts = _installed(self.engine, draft, written)
+            except ValueError as outgrown:
+                # Dropping the scene costs a scene; raising costs the turn that was already played.
+                self.write_failure = str(outgrown)
+                LOGGER.warning("the written scene no longer fits the world: %s", outgrown)
+                return
+            announce("narrator")
+            lines = await self._narrate_arrival(draft, facts, pursuit)
+            view = self.engine.views(draft).narrator
+            self.commit(close_segment(view, draft, CROSSED, lines, facts))
+        finally:
+            self.step = None
+        self._illustrate(self.state.history[-1].narration)
 
-    async def _write(self, snapshot: Game, intent: str, include: tuple[str, ...]) -> None:
+    async def _narrate_arrival(
+        self, draft: Game, facts: tuple[Fact, ...], pursuit: str
+    ) -> tuple[Line, ...]:
+        view = self.engine.views(draft).narrator
+        try:
+            narration = await self.spawner.write(
+                "narrator",
+                render_narrator(
+                    view,
+                    evidence=traced(facts, told_only=True),
+                    prompt=CROSSING.format(pursuit=pursuit),
+                    passages=told_passages(draft, self.settings.turn.recent_exchanges),
+                ),
+                Narration,
+                lambda written: _narration_refusal(view, written),
+            )
+        except (OSError, ValueError) as failed:
+            # The scene cost minutes to write; an unwritable crossing must not throw it away.
+            LOGGER.warning("the crossing went unnarrated: %s", failed)
+            return ()
+        return narration.lines
+
+    def _abandon_write(self) -> None:
+        """Cancelled, not just dropped: an awaited-by-nobody write still writes `_written`."""
+        if self._writing is not None:
+            _ = self._writing.cancel()
+        self._writing, self._written = None, None
+
+    def _write_scene(self, intent: str) -> None:
+        self._abandon_write()
+        # A deep copy, never the live state: the turn keeps playing while this runs.
+        self._writing = create_task(self._write(self.state.draft(), intent))
+
+    async def _write(self, snapshot: Game, intent: str) -> None:
         prompt = render_worldsmith(
             snapshot.world,
+            snapshot.history,
             intent,
-            include,
             self.engine.guidance(snapshot.packs),
             self.engine.sheet_rows(snapshot),
         )
@@ -242,7 +275,6 @@ class GameService:
                 SceneWrite,
                 lambda written: scene_refusal(written, snapshot.world),
             )
-            self._written_at = snapshot.turn
         except (OSError, ValueError) as failed:
             self.write_failure = str(failed)
             LOGGER.warning("the worldsmith wrote no scene: %s", failed)
@@ -313,12 +345,12 @@ def _installed(engine: Engine, draft: Game, written: SceneWrite) -> tuple[Fact, 
     closed = engine.scene_closed(draft)
     # A deep copy: the trial run and the real one must not share the entities the scene brings.
     apply_scene(draft.world, written.model_copy(deep=True), draft.turn)
-    opened = Fact(
-        kind="scene_opened",
-        trace=f"the story moves to {written.title}",
-        told=True,
-        card=f"New scene: {written.title}",
-    )
+    # Companions cross by code, so nothing else would tell the narrator they came along.
+    came = [draft.world.require(one).name for one in draft.world.companions]
+    trace = f"the story moves to {written.title}"
+    if came:
+        trace += f", and {', '.join(came)} travels there with the player"
+    opened = Fact(kind="scene_opened", trace=trace, told=True, card=f"New scene: {written.title}")
     return (*closed, opened)
 
 

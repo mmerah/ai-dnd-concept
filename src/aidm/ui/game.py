@@ -206,6 +206,10 @@ class GameView:
         decision_panel(self)
 
     @ui.refreshable_method
+    def way_on(self) -> None:
+        way_on_panel(self)
+
+    @ui.refreshable_method
     def sheet(self) -> None:
         sheet_panel(self.session)
 
@@ -219,6 +223,7 @@ class GameView:
             self.chat,
             self.live_turn,
             self.decision,
+            self.way_on,
             self.sheet,
             self.journal,
         ):
@@ -279,7 +284,9 @@ def poll_art(view: GameView) -> None:
         view.scene.refresh()
 
 
-async def _send(view: GameView, player_input: str | Answer, bubble: str) -> None:
+async def _send(
+    view: GameView, player_input: str | Answer, bubble: str, *, moving_on: bool = False
+) -> None:
     session = view.session
     view.live_prompt, view.live_facts = bubble, []
     view.live_turn.refresh()
@@ -290,6 +297,7 @@ async def _send(view: GameView, player_input: str | Answer, bubble: str) -> None
             player_input,
             on_step=lambda step: on_step(view, step),
             on_fact=lambda fact: on_fact(view, fact, loop),
+            moving_on=moving_on,
         )
     view.log(session.master_log)
     session.step = None
@@ -300,7 +308,7 @@ async def _send(view: GameView, player_input: str | Answer, bubble: str) -> None
     _scroll(view)
 
 
-async def submit(view: GameView, box: ui.input) -> None:
+async def submit(view: GameView, box: ui.input, moving_on: bool = False) -> None:
     session = view.session
     typed = (box.value or "").strip()
     LOGGER.info("player submitted prompt: non_empty=%s busy=%s", bool(typed), session.busy)
@@ -310,7 +318,22 @@ async def submit(view: GameView, box: ui.input) -> None:
     # Quasar never saw the typed value change, so only an explicit push empties the composer.
     _ = box.run_method("updateValue")
     typed_input = typed if session.view().player.prompt is None else Answer(text=typed)
-    await _send(view, typed_input, typed)
+    await _send(view, typed_input, typed, moving_on=moving_on)
+
+
+def way_on_panel(view: GameView) -> None:
+    """The banner, not the offer: the Move on button beside the composer is the offer. This keeps
+    the state legible after a reload, when the narrator's asking has scrolled away."""
+    if not view.session.view().player.settled:
+        return
+    with (
+        ui.row().classes("game-card game-decision w-full items-center no-wrap").style("gap: 0.4rem")
+    ):
+        ui.icon("arrow_forward").classes("game-card-icon")
+        ui.label("this scene is settled").classes("text-xs font-bold game-outcome")
+        ui.label("keep playing, or say where you go and press Move on").classes(
+            "text-xs opacity-60"
+        )
 
 
 def _can_type(session: GameService, busy: bool) -> bool:
@@ -366,6 +389,12 @@ def composer(view: GameView) -> None:
             .props("round flat")
             .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
         )
+        _ = (
+            ui.button("Move on", icon="arrow_forward", on_click=lambda: submit(view, box, True))
+            .props("no-caps outline dense")
+            .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
+            .bind_visibility_from(session, "busy", backward=lambda _: session.view().player.settled)
+        )
     view.composer = box
 
 
@@ -393,6 +422,7 @@ def game_page(session: GameService) -> None:
                 view.chat()
                 view.live_turn()
             view.decision()
+            view.way_on()
             composer(view)
             view.transcript = transcript
         with splitter.after, ui.column().classes("w-full h-full").style("gap: 0"):

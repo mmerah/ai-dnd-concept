@@ -1,45 +1,64 @@
 from nicegui import ui
 
 from aidm.app.runtime import GameService
+from aidm.kernel.views import ThreadRow
 from aidm.state.entities import EntityId
 
 from .widgets import entity_row, heading, labeled_value
 
+NO_WAY_ON = "The way on could not be written. You are still where you were."
+
 
 def sheet_panel(session: GameService) -> None:
     view = session.view().player
-    entity_row(session.icon(EntityId(view.player.id)), view.player.name, view.player.brief)
-    if view.present:
-        heading("Here")
-        for one in view.present:
-            entity_row(session.icon(EntityId(one.id)), one.name, one.brief)
+    heading("This scene", tight=True)
+    ui.label(view.question).classes("text-sm mt-1")
+    if session.write_failure:
+        ui.label(NO_WAY_ON).classes("text-xs text-warning mt-1")
+
+    heading("Here")
+    entity_row(
+        session.icon(EntityId(view.player.id)), f"{view.player.name} (you)", view.player.brief
+    )
+    for one in view.present:
+        entity_row(session.icon(EntityId(one.id)), one.name, one.brief)
     if view.companions:
         labeled_value("Travelling with", ", ".join(view.companions))
+
+    heading("Sheet")
+    for label, text in view.sheet:
+        labeled_value(label, text)
     if view.traits:
-        heading("Traits")
-        with ui.row().classes("w-full items-center").style("gap: 0.35rem"):
+        with ui.row().classes("w-full items-center mt-2").style("gap: 0.35rem"):
             for name, text in view.traits:
                 badge = ui.badge(name).props("color=grey-8 outline")
                 if text:
                     badge.tooltip(text)
-    for label, text in view.sheet:
-        labeled_value(label, text)
-    if view.carrying:
-        heading("Carrying")
-        for item in view.carrying:
-            entity_row(session.icon(EntityId(item.id)), item.name, item.brief)
+    labeled_value("Carrying", "" if view.carrying else "nothing")
+    for item in view.carrying:
+        entity_row(session.icon(EntityId(item.id)), item.name, item.brief)
+
+    heading("Threads")
+    _threads(view.threads)
+
+
+def _threads(threads: tuple[ThreadRow, ...]) -> None:
+    if not threads:
+        ui.label("nothing open").classes("text-sm opacity-60 mt-2")
+    for one in threads:
+        with ui.column().classes("w-full mt-2").style("gap: 0"):
+            with ui.row().classes("w-full items-baseline no-wrap").style("gap: 0.4rem"):
+                ui.label(one.title).classes("text-sm font-bold")
+                if one.status != "active":
+                    ui.badge(one.status).props("color=grey-8 outline").classes("text-xs")
+            if one.note:
+                ui.label(one.note).classes("text-xs opacity-70")
 
 
 def journal_panel(session: GameService) -> None:
     view = session.view().player
-    if view.threads:
-        heading("Threads")
-        for title, status in view.threads:
-            with ui.column().classes("w-full mt-2").style("gap: 0"):
-                ui.label(title).classes("text-sm font-bold")
-                ui.label(status).classes("text-xs opacity-60")
     if view.scenes:
-        heading("Scenes")
+        heading("Scenes", tight=True)
         for title in view.scenes:
             ui.label(title).classes("text-sm")
     heading("Chronicle")

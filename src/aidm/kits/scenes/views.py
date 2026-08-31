@@ -8,6 +8,7 @@ from aidm.kernel.views import (
     PlayerPrompt,
     PlayerView,
     Subject,
+    ThreadRow,
     speaker_of,
 )
 from aidm.kits.scenes.state import Entity, SceneState, Thread
@@ -64,6 +65,7 @@ def narrator_view[S: BaseModel](world: SceneState[S]) -> NarratorView:
     return NarratorView(
         place=scene.place,
         title=scene.title,
+        question=scene.question,
         situation=scene.situation,
         art_prompt="\n".join(
             (
@@ -82,15 +84,19 @@ def player_view[S: BaseModel](state: Game, rows: SheetRows, over: str | None) ->
     pending = state.pending
     return PlayerView(
         player=subject_of(player),
+        question=world.current.question,
         sheet=rows(player.id),
         traits=tuple((one.name, one.text) for one in player.traits),
         carrying=tuple(subject_of(one) for one in world.carried_by(player.id) if one.known),
         present=tuple(subject_of(one) for one in world.here() if one.known and one.id != player.id),
         companions=tuple(world.require(one).name for one in world.companions),
         threads=tuple(
-            (one.title, one.status) for one in world.threads.values() if one.status != "resolved"
+            ThreadRow(title=one.title, status=one.status, note=one.note)
+            for one in world.threads.values()
+            if one.status != "resolved"
         ),
         scenes=tuple(one.title for one in (*world.played, world.current)),
+        settled=world.settled,
         prompt=None
         if pending is None
         else PlayerPrompt(
@@ -120,6 +126,7 @@ def master_view(state: Game, rows: SheetRows, engine_sections: EngineSections) -
     return MasterView(
         sections=(
             ("SCENE", f"{scene.title}\n{scene.situation}"),
+            ("THE QUESTION THIS SCENE SETTLES", scene.question),
             ("YOU PLAY FOR", entity_line(world, player, rows)),
             ("CARRYING", _lines(world, world.carried_by(player.id), rows)),
             (
@@ -132,6 +139,6 @@ def master_view(state: Game, rows: SheetRows, engine_sections: EngineSections) -
             ),
             ("ACTIVE THREADS", thread_lines(world.threads.values(), standing_only=True)),
             *engine_sections(state),
-            ("SCENE NOTE (never narrate this)", scene.note or "(none)"),
+            ("THE SCENE'S SECRET (never narrate this)", scene.secret or "(none)"),
         )
     )

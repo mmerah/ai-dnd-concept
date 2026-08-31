@@ -59,13 +59,14 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
         "title",
         "situation",
         "art_prompt",
+        "question",
         "subjects",
         "speakers",
     }
     dumped = str(views.narrator.model_dump())
     assert "The Secret" not in dumped
-    assert held.world.current.note not in dumped
-    assert held.world.current.note in str(views.master.sections)
+    assert held.world.current.secret not in dumped
+    assert held.world.current.secret in str(views.master.sections)
 
 
 def test_a_carried_item_never_names_the_holder_the_player_has_not_met() -> None:
@@ -101,7 +102,7 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:
     assert "Mara" in prompt
     assert "The Secret" not in prompt
     assert "hidden-actor" not in prompt
-    assert held.world.current.note not in prompt
+    assert held.world.current.secret not in prompt
 
 
 def test_the_narrator_prompt_carries_only_what_the_player_has_read() -> None:

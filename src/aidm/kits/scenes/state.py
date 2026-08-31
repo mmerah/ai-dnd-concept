@@ -53,11 +53,13 @@ class Scene(Frozen):
     # Names the art cache entry, so returning to a place reuses its picture.
     place: Slug
     title: str
+    # Public: what this scene exists to settle. The player reads it; settling it ends the scene.
+    question: str = Field(min_length=10)
     situation: str = Field(min_length=40)
     present: tuple[CheckedEntityId, ...] = ()
     hidden: tuple[CheckedEntityId, ...] = ()
-    # Private: never narrated, never in a view.
-    note: str = ""
+    # What `question` does not say: never narrated, never in a view.
+    secret: str = ""
 
     @model_validator(mode="after")
     def _each_id_once(self) -> Self:
@@ -66,7 +68,7 @@ class Scene(Frozen):
 
 
 class Thread(Mutable):
-    """A storyline the scenario tracks."""
+    """A storyline the scenario tracks; the note is public, and the player reads it."""
 
     id: Slug
     title: str
@@ -103,6 +105,8 @@ class SceneState[S: BaseModel](Mutable):
     opened_at: int = Field(default=0, ge=0)
     # Why the scene looks finished already, written by the rule that settled it.
     spent: str = ""
+    # The game master has called the question answered; the player may move on, or play on.
+    settled: bool = False
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
