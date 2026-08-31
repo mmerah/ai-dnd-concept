@@ -48,15 +48,17 @@ Scenarios live in `scenarios/`, characters in `characters/`, saves in `saves/`.
 Each role is a command and a timeout in `.env`:
 
 ```text
-ROLES__MASTER__COMMAND     = "claude -p --permission-mode bypassPermissions"
+ROLES__MASTER__COMMAND     = "claude -p --permission-mode bypassPermissions --tools \"\" --mcp-config .mcp.json --strict-mcp-config"
 ROLES__MASTER__TIMEOUT     = 300
-ROLES__NARRATOR__COMMAND   = ""      # empty reuses the master command
+ROLES__NARRATOR__COMMAND   = "claude -p --tools \"\" --strict-mcp-config"   # empty reuses the master command
 ROLES__NARRATOR__TIMEOUT   = 120
-ROLES__WORLDSMITH__COMMAND = ""
+ROLES__WORLDSMITH__COMMAND = "claude -p --tools \"\" --strict-mcp-config"
 ROLES__WORLDSMITH__TIMEOUT = 900
 ```
 
 The command carries the model flag, because only the CLI knows how it names its own models. A spawn that fails or returns nothing usable is retried once, then fails its step loudly.
+
+An uploaded adventure reaches every prompt, so the commands take the tools away: the game master keeps this repo's MCP server and nothing else, and the two roles that only write text get no tools at all. Give every role its own command when you swap the CLI.
 
 ### The tool surface
 

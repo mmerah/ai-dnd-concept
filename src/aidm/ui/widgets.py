@@ -15,13 +15,6 @@ class Busy(Protocol):
     busy: bool
 
 
-def refuse_if_busy(session: Busy) -> bool:
-    if not session.busy:
-        return False
-    ui.notify("Finish the current turn first.", type="warning")
-    return True
-
-
 @asynccontextmanager
 async def working(session: Busy) -> AsyncGenerator[None]:
     """A failure is shown to the player and swallowed: the session must never stay busy."""

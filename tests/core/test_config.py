@@ -8,6 +8,7 @@ def test_a_role_with_no_command_of_its_own_falls_back_to_the_masters(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("ROLES__MASTER__COMMAND", "claude -p")
+    monkeypatch.setenv("ROLES__NARRATOR__COMMAND", "")
     settings = EnvFileFreeSettings()
     assert settings.roles.for_name("narrator").command == "claude -p"
 

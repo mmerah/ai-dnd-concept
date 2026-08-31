@@ -12,11 +12,13 @@ from core_test_support import (
     offline_settings,
     opened,
     played,
+    scenario_for,
     the_way_on,
     updated,
 )
 from pydantic import JsonValue
 
+from aidm.app.launch import LaunchTarget
 from aidm.app.mcp import ALREADY_OPEN, DECIDING, START_FIRST, call, offered
 from aidm.app.runtime import NO_TURN
 from aidm.app.spawn import CliSpawner, final_message
@@ -80,6 +82,27 @@ async def test_the_legality_table_says_what_to_do_instead(tmp_path: Path) -> Non
     assert table.refusals[0] == START_FIRST
     assert table.refusals[1] == ALREADY_OPEN
     assert "junk" in table.refusals[2]
+
+
+async def test_a_second_game_in_flight_refuses_the_call_rather_than_routing_it(
+    tmp_path: Path,
+) -> None:
+    """Two tabs, two saves: a tool call belongs to one turn, and guessing would play the wrong."""
+    table = opened(tmp_path)
+    other = table.runtime.session(
+        LaunchTarget(slug="rival", scenario_id=scenario_for(LONER3E), character_id="kael")
+    )
+
+    def script() -> None:
+        _ = table.call("start_turn", {})
+        other.turn = table.service.turn
+        _ = table.call("scene", {})
+
+    table.spawner.turns.append(script)
+    table.spawner.answers["narrator"] = [narrated("Dust hangs.")]
+    await table.service.play("I look around.")
+
+    assert "turns are in flight" in table.refusals[0]
 
 
 async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(

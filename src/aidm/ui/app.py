@@ -172,13 +172,14 @@ def _register_pages(runtime: Runtime) -> None:
         character: str,
     ) -> None:
         game_page(
+            runtime,
             runtime.session(
                 LaunchTarget(
                     slug=slug,
                     scenario_id=content_id(scenario),
                     character_id=content_id(character),
                 )
-            )
+            ),
         )
 
     @ui.page("/create")

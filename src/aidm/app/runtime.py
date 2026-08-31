@@ -373,13 +373,22 @@ class Runtime:
         return next(iter(self.engines.values()))
 
     def playing(self) -> GameService | None:
-        """One process owns the game and turns are sequential, so at most one is in flight."""
-        return next((one for one in self._sessions.values() if one.turn is not None), None)
+        """A second turn in flight has no owner: the tool surface is shared."""
+        in_flight = [one for one in self._sessions.values() if one.turn is not None]
+        if len(in_flight) > 1:
+            raise ValueError(f"turns are in flight in {[one.slug for one in in_flight]}")
+        return in_flight[0] if in_flight else None
 
     def busy_refusal(self) -> str | None:
         """Evicting a session mid-turn would let the next tab open a rival writer on that save."""
         playing = [slug for slug, session in self._sessions.items() if session.busy]
         return f"A turn is in flight in {playing[0]!r}." if playing else None
+
+    def play_refusal(self, session: GameService) -> str | None:
+        """A settings reload drops every session, but a page can still hold one."""
+        if self._sessions.get(session.slug) is not session:
+            return "The settings changed. Reload this page before you play on."
+        return self.busy_refusal()
 
     def reload_settings(self) -> None:
         self.settings = load_settings()

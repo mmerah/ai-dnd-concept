@@ -7,7 +7,7 @@ from time import monotonic
 
 from nicegui import ui
 
-from aidm.app.runtime import GameService
+from aidm.app.runtime import GameService, Runtime
 from aidm.kernel.views import speaker_of
 from aidm.state.entities import EntityId
 from aidm.state.facts import DiceEvent, Fact
@@ -19,7 +19,6 @@ from .widgets import (
     avatar,
     decision_widget,
     page_header,
-    refuse_if_busy,
     working,
 )
 
@@ -171,7 +170,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 class GameView:
-    def __init__(self, session: GameService) -> None:
+    def __init__(self, runtime: Runtime, session: GameService) -> None:
+        self.runtime = runtime
         self.session = session
         self.agent_log: ui.log | None = None
         self.shown_art: tuple[Path | None, bool] = (None, False)
@@ -284,6 +284,14 @@ def poll_art(view: GameView) -> None:
         view.scene.refresh()
 
 
+def refuse_play(view: GameView) -> bool:
+    refusal = view.runtime.play_refusal(view.session)
+    if refusal is None:
+        return False
+    ui.notify(refusal, type="warning")
+    return True
+
+
 async def _send(
     view: GameView, player_input: str | Answer, bubble: str, *, moving_on: bool = False
 ) -> None:
@@ -312,7 +320,7 @@ async def submit(view: GameView, box: ui.input, moving_on: bool = False) -> None
     session = view.session
     typed = (box.value or "").strip()
     LOGGER.info("player submitted prompt: non_empty=%s busy=%s", bool(typed), session.busy)
-    if not typed or refuse_if_busy(session):
+    if not typed or refuse_play(view):
         return
     box.value = ""
     # Quasar never saw the typed value change, so only an explicit push empties the composer.
@@ -350,7 +358,7 @@ def decision_panel(view: GameView) -> None:
     labels = {option.id: option.label for option in pending.options}
 
     async def answer(option_id: str) -> None:
-        if refuse_if_busy(view.session):
+        if refuse_play(view):
             return
         await _send(view, Answer(option_id=option_id), labels[option_id])
 
@@ -400,16 +408,16 @@ def composer(view: GameView) -> None:
 
 def restart(view: GameView) -> None:
     session = view.session
-    if refuse_if_busy(session):
+    if refuse_play(view):
         return
     session.restart()
     view.live_prompt, view.live_facts = None, []
     view.refresh_all()
 
 
-def game_page(session: GameService) -> None:
+def game_page(runtime: Runtime, session: GameService) -> None:
     session.illustrate_scene()
-    view = GameView(session)
+    view = GameView(runtime, session)
     with page_header(session.state.scenario.title, session.engine.title):
         ui.space()
         ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")

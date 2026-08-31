@@ -58,11 +58,21 @@ class SourceConfig(BaseModel):
     max_chars: int = Field(default=120_000, ge=1)
 
 
+# An uploaded adventure reaches every prompt, so a role that can read files, run commands or
+# reach the user's own MCP servers is a way out of the game. Only the game master gets tools,
+# and only this repo's: the roles that merely write text get none at all.
+MASTER_COMMAND = (
+    'claude -p --permission-mode bypassPermissions --tools "" '
+    "--mcp-config .mcp.json --strict-mcp-config"
+)
+WRITER_COMMAND = 'claude -p --tools "" --strict-mcp-config'
+
+
 class Roles(BaseModel):
-    master: RoleConfig = RoleConfig(command="claude -p --permission-mode bypassPermissions")
-    narrator: RoleConfig = RoleConfig(timeout=120.0)
+    master: RoleConfig = RoleConfig(command=MASTER_COMMAND)
+    narrator: RoleConfig = RoleConfig(command=WRITER_COMMAND, timeout=120.0)
     # A whole scene from the source, the cast and the history: measured at 335 seconds.
-    worldsmith: RoleConfig = RoleConfig(timeout=900.0)
+    worldsmith: RoleConfig = RoleConfig(command=WRITER_COMMAND, timeout=900.0)
 
     def for_name(self, name: Role) -> RoleConfig:
         match name:
