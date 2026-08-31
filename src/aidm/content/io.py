@@ -55,7 +55,7 @@ def read_scenarios(
 
 def read_characters(
     directory: Path, engines: Mapping[EngineId, EngineIdentity]
-) -> Iterator[tuple[Slug, Character, tuple[EngineId, ...]]]:
+) -> Iterator[tuple[Slug, Character]]:
     """One entry per character: the catalog keys by id, so the first written engine names them."""
     for path in sorted(directory.iterdir()):
         written = tuple(engine for engine in engines if (path / f"{engine}.json").is_file())
@@ -67,7 +67,7 @@ def read_characters(
         except ValueError as unreadable:
             LOGGER.warning("skipping character %r: %s", path.name, unreadable)
             continue
-        yield content_id(path.name), character, written
+        yield content_id(path.name), character
 
 
 def _content_dirs(directory: Path, canon: str) -> Iterator[Path]:
@@ -81,12 +81,6 @@ def scenario_envelope(directory: Path, name: Slug) -> ScenarioEnvelope:
 
 def load_scenario(directory: Path, name: Slug, engine: EngineIdentity) -> Scenario:
     return scenario_of(scenario_envelope(directory, name), engine)
-
-
-def source_file(directory: Path, name: Slug) -> Path | None:
-    folder = directory / content_id(name)
-    paths = (folder / f"{SOURCE_STEM}{suffix}" for suffix in SOURCE_SUFFIXES)
-    return next((path for path in paths if path.is_file()), None)
 
 
 def load_character(directory: Path, name: Slug, engine: EngineIdentity) -> Character:
@@ -113,16 +107,14 @@ def write_scenario(
     directory: Path,
     name: Slug,
     scenario: Scenario,
-    source: str | Path | None = None,
+    source: Path | None = None,
 ) -> None:
     folder = directory / content_id(name)
     if folder.exists():
         raise ValueError(f"scenario {name!r} already exists")
     _write(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
-    if isinstance(source, Path):
+    if source is not None:
         _copy(folder / f"{SOURCE_STEM}{source.suffix}", source)
-    elif source is not None:
-        _write(folder / f"{SOURCE_STEM}{SOURCE_SUFFIXES[0]}", source)
 
 
 def _read_text(path: Path) -> str:
@@ -165,11 +157,6 @@ class FileStore:
 
     def save(self, slug: str, state: Game) -> None:
         _write(self._save_path(slug), state.model_dump_json(indent=2))
-
-    def stamp(self, slug: str) -> int:
-        """A viewer in another process polls this rather than re-parsing the save every tick."""
-        path = self._save_path(slug)
-        return path.stat().st_mtime_ns if path.exists() else 0
 
     def media_dir(self, slug: str) -> Path:
         return _safe_path(self.directory, slug, ".media")

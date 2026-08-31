@@ -6,17 +6,37 @@ from pathlib import Path
 from random import Random
 
 from aidm.config import Settings, load_settings
-from aidm.content.io import FileStore, load_character, scenario_envelope, scenario_of
+from aidm.content.io import (
+    FileStore,
+    load_character,
+    scenario_envelope,
+    scenario_of,
+    write_scenario,
+)
 from aidm.engines.core import Engine
 from aidm.engines.registry import begin_game, build_engines
 from aidm.kernel.views import NarratorView, Views
 from aidm.kits.scenes.boundary import scene_spent
-from aidm.kits.scenes.worldsmith import apply_scene, scene_unmet
-from aidm.state.entities import EngineId, EntityId
+from aidm.kits.scenes.source import given_text
+from aidm.kits.scenes.worldsmith import apply_scene, opening_canon, scene_refusal
+from aidm.state.entities import EngineId, EntityId, Slug, slug
 from aidm.state.facts import Fact, told_traces, traced
-from aidm.state.model import Character, Game, Scenario, SceneWrite
+from aidm.state.model import (
+    Character,
+    Game,
+    Scenario,
+    ScenarioMeta,
+    ScenarioPayload,
+    SceneWrite,
+)
 from aidm.state.play import Answer, Line, Narration
-from aidm.turn.context import render_master, render_narrator, render_worldsmith, told_passages
+from aidm.turn.context import (
+    render_master,
+    render_narrator,
+    render_opening,
+    render_worldsmith,
+    told_passages,
+)
 from aidm.turn.run import Turn, TurnStep, speakers_refusal
 
 from .launch import LaunchTarget
@@ -208,19 +228,20 @@ class GameService:
         self._writing = task
 
     async def _write(self, snapshot: Game, intent: str, include: tuple[str, ...]) -> None:
-        def unmet(written: SceneWrite) -> str | None:
-            missing = scene_unmet(written, snapshot.world, opening=False)
-            return None if not missing else "the scene needs " + "; ".join(missing)
-
         prompt = render_worldsmith(
             snapshot.world,
             intent,
             include,
-            self.engine.guidance(snapshot),
+            self.engine.guidance(snapshot.packs),
             self.engine.sheet_rows(snapshot),
         )
         try:
-            self._written = await self.spawner.write("worldsmith", prompt, SceneWrite, unmet)
+            self._written = await self.spawner.write(
+                "worldsmith",
+                prompt,
+                SceneWrite,
+                lambda written: scene_refusal(written, snapshot.world),
+            )
             self._written_at = snapshot.turn
         except (OSError, ValueError) as failed:
             self.write_failure = str(failed)
@@ -333,6 +354,54 @@ class Runtime:
         self.engines = build_engines(self.settings.packs_dir)
         self.spawner = CliSpawner(self.settings)
         self._sessions.clear()
+
+    async def new_scenario(
+        self,
+        title: str,
+        premise: str,
+        document: Path | None,
+        packs: Sequence[Slug],
+        character_id: Slug,
+    ) -> Slug:
+        """One worldsmith call, before any game exists: the opening scene is the scenario."""
+        # `Scenario` refuses an empty pack tuple, but only after the write; refuse it before.
+        if not packs:
+            raise ValueError("a scenario needs at least one table set")
+        engine = self.engine
+        character = load_character(self.settings.characters_dir, character_id, engine)
+        source = given_text(premise, document, self.settings.source.max_chars)
+        name = slug(title, self._scenario_ids())
+
+        def written(scene: SceneWrite) -> Scenario:
+            return Scenario(
+                meta=ScenarioMeta(title=title, premise=premise or scene.situation),
+                engine=engine.id,
+                packs=tuple(packs),
+                payload=ScenarioPayload(world=opening_canon(scene, source)),
+            )
+
+        def refusal(scene: SceneWrite) -> str | None:
+            """The rules judge the opening too, so an actor the engine will not play costs the
+            re-prompt rather than a scenario file nothing can ever open."""
+            refused = scene_refusal(scene)
+            if refused is not None:
+                return refused
+            try:
+                _ = begin_game(engine, name, written(scene), character)
+            except ValueError as unplayable:
+                return str(unplayable)
+            return None
+
+        scene = await self.spawner.write(
+            "worldsmith", render_opening(source, engine.guidance(packs)), SceneWrite, refusal
+        )
+        write_scenario(self.settings.scenarios_dir, name, written(scene), document)
+        LOGGER.info("scenario written: slug=%s title=%r", name, title)
+        return name
+
+    def _scenario_ids(self) -> tuple[str, ...]:
+        directory = self.settings.scenarios_dir
+        return tuple(one.name for one in directory.iterdir()) if directory.is_dir() else ()
 
     def session(self, target: LaunchTarget) -> GameService:
         """Memoised: a page render must not rebuild the game and drop the turn in flight."""

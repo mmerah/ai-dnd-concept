@@ -34,12 +34,6 @@ async def working(session: Busy) -> AsyncGenerator[None]:
         session.busy = False
 
 
-def show_engine_badge(label: str) -> None:
-    ui.badge(label).props("color=primary text-color=white").classes(
-        "text-sm font-bold q-px-md q-py-sm"
-    )
-
-
 @contextmanager
 def page_header(title: str, badge: str | None = None, home: bool = True) -> Generator[None]:
     theme.apply()
@@ -50,7 +44,9 @@ def page_header(title: str, badge: str | None = None, home: bool = True) -> Gene
             )
         ui.label(title).classes("text-lg font-bold")
         if badge is not None:
-            show_engine_badge(badge)
+            ui.badge(badge).props("color=primary text-color=white").classes(
+                "text-sm font-bold q-px-md q-py-sm"
+            )
         yield
 
 
@@ -86,31 +82,17 @@ def decision_widget(
     prompt: str,
     options: Sequence[DecisionOption],
     answer: Callable[[str], Awaitable[None] | None],
-    *,
-    text_hint: str | None = None,
-    detail_shown: bool = False,
 ) -> None:
     ui.label(prompt).classes("text-base whitespace-pre-wrap")
-    if options:
-        with ui.row().classes("w-full items-center").style("gap: 0.5rem"):
-            for option in options:
-                inline = detail_shown and option.detail
-                label = f"{option.label} — {option.detail}" if inline else option.label
-                button = ui.button(label, on_click=partial(answer, option.id)).props(
-                    "no-caps outline"
-                )
-                if option.detail and not inline:
-                    button.tooltip(option.detail)
-    if text_hint is None:
+    if not options:
         return
-    with ui.row().classes("w-full no-wrap items-center").style("gap: 0.5rem"):
-        box = ui.input(placeholder=text_hint).classes("flex-grow").props("outlined dense")
-
-        def written() -> Awaitable[None] | None:
-            return answer(text) if (text := (box.value or "").strip()) else None
-
-        box.on("keydown.enter", written)
-        ui.button("Answer", on_click=written).props("no-caps")
+    with ui.row().classes("w-full items-center").style("gap: 0.5rem"):
+        for option in options:
+            button = ui.button(option.label, on_click=partial(answer, option.id)).props(
+                "no-caps outline"
+            )
+            if option.detail:
+                button.tooltip(option.detail)
 
 
 def heading(title: str, *, tight: bool = False) -> None:

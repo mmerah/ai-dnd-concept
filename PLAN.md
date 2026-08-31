@@ -461,7 +461,7 @@ whether `catch_breath` belongs on the scene boundary instead. That may be all it
 - [x] Phase 1 — one engine. `src` 7,471
 - [x] Phase 2 — the scene kit and the port. `src` 5,806
 - [x] Phase 3 — the three roles and the tool surface. `src` 5,458
-- [ ] Phase 4 — the pages. `src` ≈ 5,400
+- [x] Phase 4 — the pages. `src` 5,625
 - [ ] Phase 5 — the sweep. `src` ≈ 5,400
 - [ ] Phase 6 — the engines return
 - [ ] Full check green at every checkpoint

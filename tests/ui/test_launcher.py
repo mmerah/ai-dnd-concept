@@ -3,9 +3,9 @@ import shutil
 from pathlib import Path
 
 import pytest
-from core_test_support import ENGINES_BUILT, LONER3E
+from core_test_support import ENGINES_BUILT
 from pydantic import JsonValue
-from ui_test_support import SCENARIOS, ui_settings
+from ui_test_support import REPOSITORY_ROOT, SCENARIOS, ui_settings
 
 from aidm.app.launch import LaunchTarget, launch_target, load_catalog
 from aidm.app.runtime import Runtime
@@ -37,11 +37,11 @@ def _declaring(tmp_path: Path, engine: str) -> Path:
     return scenarios
 
 
-def test_an_overlay_decides_which_rules_a_character_offers(tmp_path: Path) -> None:
+def test_the_catalog_pairs_a_scenario_with_a_character(tmp_path: Path) -> None:
     catalog = load_catalog(ui_settings(tmp_path), ENGINES_BUILT)
 
-    assert catalog.scenario("whispering-vault").engines == ("loner3e",)
-    assert [entry.id for entry in catalog.characters_for(LONER3E)] == ["kael"]
+    assert catalog.scenario("whispering-vault").title == "The Whispering Vault"
+    assert [entry.id for entry in catalog.characters] == ["kael"]
     assert launch_target(catalog, "whispering-vault", "kael").model_dump() == {
         "slug": "whispering-vault--kael",
         "scenario_id": "whispering-vault",
@@ -49,10 +49,10 @@ def test_an_overlay_decides_which_rules_a_character_offers(tmp_path: Path) -> No
     }
 
 
-def test_a_character_without_the_rules_the_scenario_names_is_refused(tmp_path: Path) -> None:
+def test_a_character_the_catalog_does_not_hold_is_refused(tmp_path: Path) -> None:
     catalog = load_catalog(ui_settings(tmp_path), ENGINES_BUILT)
 
-    with pytest.raises(ValueError, match="has no 'loner3e' rules written for it"):
+    with pytest.raises(ValueError, match="no character 'nobody'"):
         _ = launch_target(catalog, "whispering-vault", "nobody")
 
 
@@ -116,3 +116,86 @@ def test_a_save_the_app_cannot_read_does_not_hide_the_others(tmp_path: Path) -> 
     catalog = load_catalog(settings, ENGINES_BUILT)
 
     assert [save.target.slug for save in catalog.saves] == ["good"]
+
+
+SOURCE_MD = REPOSITORY_ROOT / "tests/core/fixtures/source/drowned-road.md"
+_OPENING_ITEM: JsonValue = {
+    "id": "bell-rope",
+    "kind": "item",
+    "name": "the bell rope",
+    "brief": "Frayed, and still wet.",
+    "sheet": {"kind": "item"},
+}
+_OPENING: dict[str, JsonValue] = {
+    "place": "sunken-bell",
+    "title": "The Bell Under the Water",
+    "situation": "The tide has taken the lower town and left the bell tower standing in it, "
+    "and something down there still rings the hour.",
+    "present": ["hana"],
+    "hidden": ["bell-rope"],
+    "cast": {
+        "hana": {
+            "id": "hana",
+            "kind": "actor",
+            "name": "Hana",
+            "brief": "A ferrywoman who knows the flooded streets.",
+            "sheet": {"kind": "actor", "concept": "A ferrywoman"},
+        },
+        "bell-rope": _OPENING_ITEM,
+    },
+    "threads": {"the-bell": {"id": "the-bell", "title": "Who rings the bell"}},
+}
+
+
+async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> None:
+    settings = ui_settings(tmp_path, tmp_path / "scenarios")
+    thin = json.dumps({key: value for key, value in _OPENING.items() if key != "hidden"})
+    spawner = ScriptedSpawner(answers={"worldsmith": [thin, json.dumps(_OPENING)]})
+    runtime = Runtime(settings, spawner)
+
+    name = await runtime.new_scenario(
+        "The Sunken Bell", "The tide took the lower town.", None, ("srd",), "kael"
+    )
+
+    # The scene bar refuses the first answer, and the reason goes back with the re-prompt.
+    assert "something to find" in spawner.prompts[1][1]
+    # The selected pack is the setting's vocabulary, so the worldsmith is given its tables.
+    assert "Quiet Hands" in spawner.prompt("worldsmith")
+    catalog = load_catalog(settings, runtime.engines)
+    state = runtime.session(launch_target(catalog, name, "kael")).state
+    assert (name, state.turn) == ("the-sunken-bell", 0)
+    assert state.world.current.title == "The Bell Under the Water"
+    assert state.world.player.name == "Kael"
+    assert state.world.source.startswith("PREMISE:")
+
+
+async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: Path) -> None:
+    """The scene bar is the kit's; only the engine knows an actor of its own needs a sheet."""
+    scenarios = tmp_path / "scenarios"
+    cast: dict[str, JsonValue] = {
+        "hana": {"id": "hana", "kind": "actor", "name": "Hana", "brief": "A ferrywoman."}
+    }
+    sheetless = json.dumps(_OPENING | {"cast": {**cast, "bell-rope": _OPENING_ITEM}})
+    spawner = ScriptedSpawner(answers={"worldsmith": [sheetless, sheetless]})
+    runtime = Runtime(ui_settings(tmp_path, scenarios), spawner)
+
+    with pytest.raises(ValueError, match="has no sheet"):
+        _ = await runtime.new_scenario("The Sunken Bell", "The tide.", None, ("srd",), "kael")
+
+    assert not scenarios.exists()
+
+
+async def test_a_scenario_written_from_a_document_keeps_it_beside_the_world(tmp_path: Path) -> None:
+    scenarios = tmp_path / "scenarios"
+    spawner = ScriptedSpawner(answers={"worldsmith": [json.dumps(_OPENING)]})
+    runtime = Runtime(ui_settings(tmp_path, scenarios), spawner)
+
+    name = await runtime.new_scenario("The Sunken Bell", "", SOURCE_MD, ("srd",), "kael")
+
+    assert (scenarios / name / "source.md").is_file()
+    state = runtime.session(
+        launch_target(load_catalog(runtime.settings, runtime.engines), name, "kael")
+    ).state
+    assert state.world.source.startswith("SOURCE DOCUMENT:")
+    # The premise the player never wrote is the scene's own words.
+    assert state.scenario.premise == _OPENING["situation"]

@@ -17,10 +17,10 @@ from aidm.app.spawn import CliSpawner
 from aidm.config import load_settings
 from aidm.state.entities import Slug, content_id
 
-from .create import character_page
+from .create import character_page, scenario_page
 from .game import game_page
 from .settings import settings_page
-from .widgets import page_header, show_engine_badge
+from .widgets import page_header
 
 LOGGER = logging.getLogger(__name__)
 
@@ -40,12 +40,12 @@ def home_page(runtime: Runtime) -> None:
             ui.label("Choose a scenario, then a character written for its rules.").classes(
                 "text-body1 opacity-70"
             )
-            _new_game(catalog, runtime)
-            _new_content(runtime)
-            _saved_games(catalog, runtime)
+            _new_game(catalog)
+            _new_content()
+            _saved_games(catalog)
 
 
-def _new_game(catalog: LauncherCatalog, runtime: Runtime) -> None:
+def _new_game(catalog: LauncherCatalog) -> None:
     with ui.card().classes("w-full q-pa-lg"):
         ui.label("New or current game").classes("text-h6 font-bold")
         if not catalog.scenarios:
@@ -67,8 +67,6 @@ def _new_game(catalog: LauncherCatalog, runtime: Runtime) -> None:
         @ui.refreshable
         def form() -> None:
             scenario = catalog.scenario(scenario_id)
-            engine = scenario.engines[0]
-            show_engine_badge(runtime.engines[engine].title)
             ui.select(
                 options={entry.id: entry.title for entry in catalog.scenarios},
                 value=scenario_id,
@@ -77,10 +75,8 @@ def _new_game(catalog: LauncherCatalog, runtime: Runtime) -> None:
             ).classes("w-full")
             ui.label(scenario.subtitle).classes("text-sm opacity-70")
             written = {
-                entry.id: f"{entry.title} — {entry.subtitle}"
-                for entry in catalog.characters_for(engine)
+                entry.id: f"{entry.title} — {entry.subtitle}" for entry in catalog.characters
             }
-            # The character last chosen may have no rules under a scenario chosen since.
             chosen = character_id if character_id in written else next(iter(written), None)
             ui.select(
                 options=written,
@@ -89,7 +85,7 @@ def _new_game(catalog: LauncherCatalog, runtime: Runtime) -> None:
                 on_change=choose_character,
             ).classes("w-full")
             if chosen is None:
-                ui.label("No character is written for these rules.").classes("text-negative")
+                ui.label("No character has been made yet.").classes("text-negative")
                 return
             target = launch_target(catalog, scenario_id, chosen)
             started = any(save.target.slug == target.slug for save in catalog.saves)
@@ -102,32 +98,27 @@ def _new_game(catalog: LauncherCatalog, runtime: Runtime) -> None:
         form()
 
 
-def _new_content(runtime: Runtime) -> None:
+def _new_content() -> None:
     with ui.row().classes("items-center").style("gap: 0.5rem"):
-        ui.label("New character:").classes("text-sm opacity-70")
-        for engine_id in runtime.engines:
-            ui.button(
-                engine_id,
-                icon="person_add",
-                on_click=partial(_navigate_create, engine_id),
-            ).props("outline dense")
+        ui.button(
+            "New character", icon="person_add", on_click=lambda: ui.navigate.to("/create")
+        ).props("outline dense")
+        ui.button(
+            "New scenario", icon="auto_stories", on_click=lambda: ui.navigate.to("/scenario")
+        ).props("outline dense")
 
 
-def _navigate_create(engine: str) -> None:
-    ui.navigate.to(f"/create/{engine}")
-
-
-def _saved_games(catalog: LauncherCatalog, runtime: Runtime) -> None:
+def _saved_games(catalog: LauncherCatalog) -> None:
     ui.label("Saved games").classes("text-h5 font-bold q-mt-md")
     if not catalog.saves:
         ui.label("No saved games yet.").classes("text-body1 opacity-60")
         return
     with ui.column().classes("w-full").style("gap: 0.75rem"):
         for saved in catalog.saves:
-            _saved_card(saved, runtime)
+            _saved_card(saved)
 
 
-def _saved_card(saved: SaveOption, runtime: Runtime) -> None:
+def _saved_card(saved: SaveOption) -> None:
     with ui.card().classes("w-full q-pa-md"):
         with ui.row().classes("w-full items-center").style("gap: 1rem"):
             with ui.column().classes("col").style("gap: 0.25rem"):
@@ -135,7 +126,6 @@ def _saved_card(saved: SaveOption, runtime: Runtime) -> None:
                 ui.label(f"{saved.character_title} · turn {saved.turn}").classes(
                     "text-sm opacity-70"
                 )
-            show_engine_badge(runtime.engines[saved.engine].title)
             ui.button(
                 "Resume",
                 icon="play_arrow",
@@ -190,9 +180,13 @@ def _register_pages(runtime: Runtime) -> None:
             )
         )
 
-    @ui.page("/create/{engine}")
-    def _create(engine: str) -> None:  # pyright: ignore[reportUnusedFunction]
-        character_page(runtime, engine)
+    @ui.page("/create")
+    def _create() -> None:  # pyright: ignore[reportUnusedFunction]
+        character_page(runtime)
+
+    @ui.page("/scenario")
+    def _scenario() -> None:  # pyright: ignore[reportUnusedFunction]
+        scenario_page(runtime)
 
     @ui.page("/settings")
     def _settings() -> None:  # pyright: ignore[reportUnusedFunction]

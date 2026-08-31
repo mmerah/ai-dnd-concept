@@ -9,6 +9,12 @@ from .widgets import entity_row, heading, labeled_value
 def sheet_panel(session: GameService) -> None:
     view = session.view().player
     entity_row(session.icon(EntityId(view.player.id)), view.player.name, view.player.brief)
+    if view.present:
+        heading("Here")
+        for one in view.present:
+            entity_row(session.icon(EntityId(one.id)), one.name, one.brief)
+    if view.companions:
+        labeled_value("Travelling with", ", ".join(view.companions))
     if view.traits:
         heading("Traits")
         with ui.row().classes("w-full items-center").style("gap: 0.35rem"):
@@ -44,10 +50,3 @@ def journal_panel(session: GameService) -> None:
                 who = line.speaker
                 said = line.text if who is None else f"**{who.name}:** {line.text}"
                 ui.markdown(said).classes("text-sm")
-
-
-def state_panel(session: GameService) -> None:
-    ui.code(
-        session.state.model_dump_json(indent=2),
-        language="json",
-    ).classes("w-full text-xs")

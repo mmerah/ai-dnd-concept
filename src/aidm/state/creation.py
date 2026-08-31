@@ -20,25 +20,6 @@ def picked(picks: Picks, step_id: Slug) -> str:
     return picks.get(step_id, "")
 
 
-def numbered_steps(
-    base: Slug,
-    prompt: str,
-    count: int,
-    options: Sequence[DecisionOption] = (),
-    hint: str = "",
-    distinct_from: Picks | None = None,
-) -> tuple[CreationStep, ...]:
-    steps: list[CreationStep] = []
-    used: set[str] = set()
-    for index in range(1, count + 1):
-        step_id = f"{base}-{index}"
-        left = tuple(option for option in options if option.id not in used)
-        steps.append(CreationStep(id=step_id, prompt=f"{prompt} {index}", options=left, hint=hint))
-        if distinct_from is not None:
-            used.add(picked(distinct_from, step_id))
-    return tuple(steps)
-
-
 def check_picks(steps: Sequence[CreationStep], picks: Picks) -> None:
     """One legality rule for the page and for `create`, so neither can drift."""
     known = {step.id for step in steps}

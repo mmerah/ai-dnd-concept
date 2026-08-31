@@ -9,6 +9,7 @@ class Subject(Frozen):
 
 
 class PlayerPrompt(Frozen):
+    kind: str
     prompt: str
     options: tuple[DecisionOption, ...]
     allows_text: bool

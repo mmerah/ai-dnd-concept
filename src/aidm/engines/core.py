@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
-from typing import Protocol
 
 from pydantic import BaseModel
 
@@ -18,8 +17,8 @@ from aidm.kits.scenes.views import (
     narrator_view,
     player_view,
 )
-from aidm.state.creation import CreationStep, Picks, picked
-from aidm.state.entities import Counter, EngineId, pool, require_unique
+from aidm.state.creation import CreationStep, Picks
+from aidm.state.entities import Counter, EngineId, Slug, pool, require_unique
 from aidm.state.facts import DiceEvent, Fact, roll
 from aidm.state.model import Character, Game, Payload, Scenario
 from aidm.state.play import DecisionOption, PendingOption
@@ -94,26 +93,6 @@ def load_packs[P: BaseModel](directories: Sequence[Path], model: type[P]) -> dic
     return packs
 
 
-class NamedPack(Protocol):
-    name: str
-
-
-class PackCreation[P: NamedPack](CharacterCreation):
-    def __init__(self, packs: Mapping[str, P]) -> None:
-        self.packs = packs
-
-    def steps(self, picks: Picks) -> tuple[CreationStep, ...]:
-        options = tuple(
-            DecisionOption(id=one, label=one_pack.name) for one, one_pack in self.packs.items()
-        )
-        first = CreationStep(id="pack", prompt="Choose a character table set", options=options)
-        pack = self.packs.get(picked(picks, "pack"))
-        return (first,) if pack is None else (first, *self.steps_for(pack, picks))
-
-    @abstractmethod
-    def steps_for(self, pack: P, picks: Picks) -> tuple[CreationStep, ...]: ...
-
-
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Engine:
     """Satisfies `kernel.protocol.Engine` structurally; one engine ships, so this is concrete."""
@@ -121,8 +100,9 @@ class Engine:
     id: EngineId
     title: str
     instructions: str
-    # What a sheet needs for this game's packs, written for the worldsmith.
-    guidance: Callable[[Game], str]
+    packs: tuple[DecisionOption, ...]
+    # What a sheet needs for the selected packs, written for the worldsmith.
+    guidance: Callable[[Sequence[Slug]], str]
     tools: tuple[DirectorTool, ...]
     creation: CharacterCreation
     validate: Validate

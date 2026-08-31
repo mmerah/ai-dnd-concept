@@ -14,7 +14,6 @@ class CatalogEntry(Frozen):
     id: Slug
     title: str
     subtitle: str
-    engines: tuple[EngineId, ...]
 
 
 class LaunchTarget(Frozen):
@@ -29,7 +28,6 @@ class LaunchTarget(Frozen):
 
 class SaveOption(Frozen):
     target: LaunchTarget
-    engine: EngineId
     scenario_title: str
     character_title: str
     turn: int
@@ -47,14 +45,11 @@ class LauncherCatalog(Frozen):
             raise ValueError(f"unknown scenario {scenario_id!r}")
         return found
 
-    def characters_for(self, engine: EngineId) -> tuple[CatalogEntry, ...]:
-        return tuple(entry for entry in self.characters if engine in entry.engines)
-
 
 def launch_target(catalog: LauncherCatalog, scenario_id: Slug, character_id: Slug) -> LaunchTarget:
-    engine = catalog.scenario(scenario_id).engines[0]
-    if character_id not in {entry.id for entry in catalog.characters_for(engine)}:
-        raise ValueError(f"character {character_id!r} has no {engine!r} rules written for it")
+    _ = catalog.scenario(scenario_id)
+    if character_id not in {entry.id for entry in catalog.characters}:
+        raise ValueError(f"no character {character_id!r} is written for these rules")
     return LaunchTarget(
         slug=f"{scenario_id}--{character_id}",
         scenario_id=scenario_id,
@@ -65,17 +60,12 @@ def launch_target(catalog: LauncherCatalog, scenario_id: Slug, character_id: Slu
 def load_catalog(settings: Settings, engines: Mapping[EngineId, Engine]) -> LauncherCatalog:
     ids = tuple(engines)
     scenarios = tuple(
-        CatalogEntry(
-            id=name,
-            title=scenario.meta.title,
-            subtitle=scenario.meta.premise,
-            engines=(scenario.engine,),
-        )
+        CatalogEntry(id=name, title=scenario.meta.title, subtitle=scenario.meta.premise)
         for name, scenario in read_scenarios(settings.scenarios_dir, engines)
     )
     characters = tuple(
-        CatalogEntry(id=name, title=character.name, subtitle=character.brief, engines=written)
-        for name, character, written in read_characters(settings.characters_dir, engines)
+        CatalogEntry(id=name, title=character.name, subtitle=character.brief)
+        for name, character in read_characters(settings.characters_dir, engines)
     )
     titles = {entry.id: entry.title for entry in characters}
     scenario_ids = {entry.id for entry in scenarios}
@@ -103,7 +93,6 @@ def load_catalog(settings: Settings, engines: Mapping[EngineId, Engine]) -> Laun
                 target=LaunchTarget(
                     slug=slug, scenario_id=game.scenario_id, character_id=game.character_id
                 ),
-                engine=game.engine,
                 scenario_title=game.scenario.title,
                 character_title=titles[game.character_id],
                 turn=game.turn,

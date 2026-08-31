@@ -5,7 +5,7 @@ from aidm.engines.loner3e.state import ActorSheet, LonerSheet
 from aidm.kits.scenes.boundary import QUIET_TURNS, SCENE_TURN_CAP, scene_spent
 from aidm.kits.scenes.state import Entity, Thread
 from aidm.kits.scenes.tools import ChangeWorld, apply_change
-from aidm.kits.scenes.worldsmith import MIN_SITUATION, SceneDraft, apply_scene, scene_unmet
+from aidm.kits.scenes.worldsmith import MIN_SITUATION, SceneDraft, apply_scene, scene_refusal
 from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.facts import Fact, cards
 from aidm.state.model import Game
@@ -155,12 +155,12 @@ def test_an_id_the_worldsmith_got_wrong_resolves_by_name_before_it_is_refused() 
 def test_the_scene_bar_names_what_a_thin_scene_is_missing() -> None:
     _, state = initialized()
     thin = SceneDraft[LonerSheet](place="nowhere", title="Nowhere", situation="x" * MIN_SITUATION)
-    assert scene_unmet(thin, state.world, opening=False) == [
-        "at least one cast member besides the player",
-        "at least one hidden entity — something to find",
-        "at least one existing cast member brought back",
-    ]
-    assert not scene_unmet(_next_scene(), state.world, opening=False)
+    assert scene_refusal(thin, state.world) == (
+        "the scene needs at least one cast member besides the player; "
+        "at least one hidden entity — something to find; "
+        "at least one existing cast member brought back"
+    )
+    assert scene_refusal(_next_scene(), state.world) is None
 
 
 def test_an_entity_is_never_lost_when_a_scene_leaves_it_behind() -> None:
@@ -312,14 +312,14 @@ def test_the_scene_bar_will_not_deadlock_once_every_thread_resolves() -> None:
     draft = state.draft()
     _ = changed(draft, "advance_thread", thread_id="vault-seal", status="resolved")
     opened = _next_scene()
-    assert "at least one standing thread, opened here or already running" in scene_unmet(
-        opened, draft.world, opening=False
-    )
+    refusal = scene_refusal(opened, draft.world)
+    assert refusal is not None
+    assert "at least one standing thread, opened here or already running" in refusal
     # The worldsmith opens a thread in the same draft, which is the way out.
     with_thread = opened.model_copy(
         update={"threads": {"the-stair": Thread(id="the-stair", title="What waits below")}}
     )
-    assert not scene_unmet(with_thread, draft.world, opening=False)
+    assert scene_refusal(with_thread, draft.world) is None
 
 
 def test_a_save_and_its_payload_agree_on_which_rules_they_play() -> None:

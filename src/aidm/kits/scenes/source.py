@@ -10,9 +10,11 @@ _LINE_BREAK_HYPHEN = re.compile(r"(\w)-\s+(\w)")
 
 
 def given_text(premise: str, document: Path | None, max_chars: int) -> str:
+    """Both, when the player gave both: a premise beside a document says what to take from it."""
     if document is None:
         return f"PREMISE:\n{premise}"
-    return f"SOURCE DOCUMENT:\n{whole_text(document, max_chars)}"
+    whole = f"SOURCE DOCUMENT:\n{whole_text(document, max_chars)}"
+    return f"PREMISE:\n{premise}\n\n{whole}" if premise else whole
 
 
 def whole_text(path: Path, max_chars: int) -> str:

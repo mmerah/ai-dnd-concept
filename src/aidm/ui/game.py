@@ -14,7 +14,7 @@ from aidm.state.facts import DiceEvent, Fact
 from aidm.state.play import Answer, Speaker
 from aidm.turn.run import TurnStep
 
-from .panels import journal_panel, sheet_panel, state_panel
+from .panels import journal_panel, sheet_panel
 from .widgets import (
     avatar,
     decision_widget,
@@ -44,7 +44,19 @@ def scene_header(session: GameService) -> None:
             .style(f"max-height: {_SCENE_HEIGHT}; overflow-y: auto; gap: 0; min-width: 0")
         ):
             ui.label(scene.title).classes("text-h6 font-bold")
+            _breadcrumb(session)
             ui.label(scene.situation).classes("text-sm opacity-70")
+
+
+def _breadcrumb(session: GameService) -> None:
+    """Where this scene sits in the story: the number of every scene played, this one marked."""
+    played = session.view().player.scenes
+    with ui.row().classes("items-center").style("gap: 0.3rem"):
+        for number, title in enumerate(played, start=1):
+            here = number == len(played)
+            ui.label(str(number)).classes(
+                f"text-xs {'font-bold game-outcome' if here else 'opacity-40'}"
+            ).tooltip(title)
 
 
 def _scene_art(session: GameService) -> None:
@@ -201,10 +213,6 @@ class GameView:
     def journal(self) -> None:
         journal_panel(self.session)
 
-    @ui.refreshable_method
-    def state(self) -> None:
-        state_panel(self.session)
-
     def refresh_all(self) -> None:
         for panel in (
             self.scene,
@@ -213,7 +221,6 @@ class GameView:
             self.decision,
             self.sheet,
             self.journal,
-            self.state,
         ):
             panel.refresh()
 
@@ -222,7 +229,7 @@ def _composer_placeholder(view: GameView) -> str:
     step = view.session.step
     if step is not None:
         return f"{_STEP_COPY[step][0]} is working..."
-    pending = view.session.state.pending
+    pending = view.session.view().player.prompt
     if pending is not None:
         if not pending.allows_text:
             return "Choose an option above."
@@ -302,18 +309,18 @@ async def submit(view: GameView, box: ui.input) -> None:
     box.value = ""
     # Quasar never saw the typed value change, so only an explicit push empties the composer.
     _ = box.run_method("updateValue")
-    typed_input = typed if session.state.pending is None else Answer(text=typed)
+    typed_input = typed if session.view().player.prompt is None else Answer(text=typed)
     await _send(view, typed_input, typed)
 
 
 def _can_type(session: GameService, busy: bool) -> bool:
-    pending = session.state.pending
-    typed = pending is None or pending.allows_text
-    return not busy and typed and session.engine.over(session.state) is None
+    player = session.view().player
+    typed = player.prompt is None or player.prompt.allows_text
+    return not busy and typed and player.over is None
 
 
 def decision_panel(view: GameView) -> None:
-    pending = view.session.state.pending
+    pending = view.session.view().player.prompt
     if pending is None:
         return
 
@@ -341,9 +348,7 @@ def composer(view: GameView) -> None:
         # `busy` is only the source NiceGUI needs: it re-runs every backward on its 0.1s poll.
         ui.label("").classes("text-xs self-center").style(
             "color: var(--game-danger)"
-        ).bind_text_from(
-            session, "busy", backward=lambda _: session.engine.over(session.state) or ""
-        )
+        ).bind_text_from(session, "busy", backward=lambda _: session.view().player.over or "")
         box = (
             ui.input(placeholder=_composer_placeholder(view))
             .classes("flex-grow")
@@ -401,8 +406,6 @@ def game_page(session: GameService) -> None:
                 with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
                     view.journal()
                 with ui.tab_panel(dev_tab), ui.scroll_area().classes("w-full h-full"):
-                    with ui.expansion("state").classes("w-full"):
-                        view.state()
                     with ui.expansion("game master", value=True).classes("w-full"):
                         view.agent_log = ui.log(max_lines=500).classes("w-full h-64 text-xs")
 

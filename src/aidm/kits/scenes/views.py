@@ -94,6 +94,7 @@ def player_view[S: BaseModel](state: Game, rows: SheetRows, over: str | None) ->
         prompt=None
         if pending is None
         else PlayerPrompt(
+            kind=pending.kind,
             prompt=pending.prompt,
             options=tuple(
                 DecisionOption(id=one.id, label=one.label, detail=one.detail)

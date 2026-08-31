@@ -8,7 +8,7 @@ from random import Random
 from pydantic import Field
 
 from aidm.content.io import engine_text
-from aidm.engines.core import Engine, PackCreation, load_packs
+from aidm.engines.core import CharacterCreation, Engine, load_packs
 from aidm.engines.loner3e.rules import (
     GROWTH,
     Actor,
@@ -32,7 +32,7 @@ from aidm.kernel.views import CreationPreview
 from aidm.kits.scenes.state import Entity, SceneState, entity_fact
 from aidm.kits.scenes.tools import scene_tools
 from aidm.kits.scenes.views import SheetRows
-from aidm.state.creation import CreationStep, Picks, check_picks, numbered_steps, picked
+from aidm.state.creation import CreationStep, Picks, check_picks, picked
 from aidm.state.entities import (
     DEAD,
     PLAYER_ID,
@@ -173,17 +173,45 @@ def _swapped(tags: tuple[str, ...], old: str, new: str) -> tuple[str, ...]:
     return tuple(new if tag == old else tag for tag in tags)
 
 
-class Loner3eCreation(PackCreation[Pack]):
-    def steps_for(self, pack: Pack, picks: Picks) -> tuple[CreationStep, ...]:
+def other_than(options: Sequence[DecisionOption], taken: str) -> tuple[DecisionOption, ...]:
+    return tuple(option for option in options if option.id != taken)
+
+
+def pack_options(packs: Mapping[str, Pack]) -> tuple[DecisionOption, ...]:
+    return tuple(DecisionOption(id=key, label=one.name) for key, one in packs.items())
+
+
+class Loner3eCreation(CharacterCreation):
+    def __init__(self, packs: Mapping[str, Pack]) -> None:
+        self.packs = packs
+
+    def steps(self, picks: Picks) -> tuple[CreationStep, ...]:
+        first = CreationStep(
+            id="pack", prompt="Choose a character table set", options=pack_options(self.packs)
+        )
+        pack = self.packs.get(picked(picks, "pack"))
+        if pack is None:
+            return (first,)
         return (
+            first,
             CreationStep(
                 id="concept",
                 prompt="Write a one-line concept",
                 hint=", ".join(entry.label for entry in pack.concepts[:3]),
             ),
-            *numbered_steps("skill", "Choose skill", 2, pack.skills, distinct_from=picks),
+            CreationStep(id="skill-1", prompt="Choose skill 1", options=pack.skills),
+            CreationStep(
+                id="skill-2",
+                prompt="Choose skill 2",
+                options=other_than(pack.skills, picked(picks, "skill-1")),
+            ),
             CreationStep(id="frailty", prompt="Choose a frailty", options=pack.frailties),
-            *numbered_steps("gear", "Choose gear", 2, pack.gear, distinct_from=picks),
+            CreationStep(id="gear-1", prompt="Choose gear 1", options=pack.gear),
+            CreationStep(
+                id="gear-2",
+                prompt="Choose gear 2",
+                options=other_than(pack.gear, picked(picks, "gear-1")),
+            ),
         )
 
     def create(self, name: str, brief: str, picks: Picks) -> Character:
@@ -296,11 +324,11 @@ _AUTHORING = (
 )
 
 
-def guidance(packs: Mapping[str, Pack], state: Game) -> str:
+def guidance(packs: Mapping[str, Pack], selected_ids: Sequence[Slug]) -> str:
     """The packs are the setting's vocabulary, so the worldsmith reads the ones this game selected.
     Defaults restate rules the guidance already carries; dropping them halves the prompt."""
     selected = {
-        one: packs[one].model_dump(mode="json", exclude_defaults=True) for one in state.packs
+        one: packs[one].model_dump(mode="json", exclude_defaults=True) for one in selected_ids
     }
     return f"{_AUTHORING}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"
 
@@ -315,6 +343,7 @@ def build(user_packs: Path) -> Engine:
         id=EngineId("loner3e"),
         title="LONER 3E",
         instructions=engine_text(ENGINE_DIR / "director.md"),
+        packs=pack_options(packs),
         guidance=partial(guidance, packs),
         creation=Loner3eCreation(packs),
         validate=partial(_validate, packs),

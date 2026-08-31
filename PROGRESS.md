@@ -135,6 +135,39 @@ recorded, the turn committed at 1, the save was re-read by a second `Runtime` at
 views rendered. The game plays.
 
 
+### The adversarial review, and what it caught
+
+The review found **one integrity hole, one regression and three smaller bugs**, all reproduced,
+all fixed here with a test where a test was worth having.
+
+| what broke | why | fix |
+|---|---|---|
+| `new_scenario` could write a scenario **no engine will ever open** | the scene bar is the kit's, and it never asks the engine; `Entity.sheet` is optional, so an actor with no sheet passed the bar, reached `world.json`, and was refused for good at `begin_game`. Five minutes spent, a dead folder left in the catalog, and the one re-prompt never used on it | the refusal callback now runs `begin_game` against the scenario it would write. The rules judge the opening **before** it reaches disk, inside the retry that already existed. This deletes the `runtime.session(opened)` workaround the first draft put on the page |
+| the create page **showed no option detail** | the flat form rendered `option.label` alone, and the preview prints labels too | the select shows `label — detail` |
+| an empty pack selection **cost a whole worldsmith call** | `Scenario.packs` has `min_length=1`, and the `Scenario` is built after the write | one guard at the top of `new_scenario` |
+| a premise typed **beside** an uploaded document was silently dropped | `given_text` returned the document and ignored the premise, while `ScenarioMeta.premise` still stored it | both are handed over; a premise beside a document says what to take from it |
+| the uploaded filename named a path **unchecked** | `accept=".md,.txt,.pdf"` is the browser's, not ours | `Path(event.file.name).name` |
+
+**What the review got wrong.** It called `Runtime.lock` "declared, never acquired". `app/mcp.py:132`
+acquires it on every tool call — it is what keeps two concurrent calls from one CLI off the same
+draft. Kept.
+
+**Cuts it found, all taken** (about 50 lines): `show_engine_badge` inlined into its one caller, the
+`OPENING` constant inlined, `scene_unmet` made private behind `scene_refusal`, `write_scenario`'s
+string-source branch, the accept list now reading `SOURCE_SUFFIXES` instead of restating it, four
+docstrings and comments that restated their own code, and the `waiting` spinner row replaced by
+the button's own `loading` prop. Plus the cluster `VISION.md` §6 says returns with engine two:
+`characters_for`, `CatalogEntry.engines`, `SaveOption.engine` and the per-character `written`
+tuple out of `read_characters`.
+
+**The one it named that was not taken as deletion.** `PlayerView.over`, `.prompt` and
+`.companions` were computed on every view build and read by nobody, while `ui/game.py` reached
+past the view into `session.engine` and `session.state.pending` for the same two facts. The review
+said "delete the fields or use them; do not ship both". They are used now: `VISION.md` §5 says the
+page reads the view and imports neither the engine nor the kit, so deleting fields the vision
+names would have been the wrong half. `PlayerPrompt` gained `kind`, which is the one thing the
+decision card printed off the raw state.
+
 ### Known and accepted
 
 - `README.md`, `CLAUDE.md` and `AGENTS.md` still describe three engines and the weak-model tool
@@ -232,6 +265,39 @@ luck is the default. `entity_line`, `director_view` and `render_worldsmith` now 
 which is what `VISION.md` §2 says the seam is. The engine's `TAGS IN PLAY` section shrank to a
 glossary of what the tags mean, because the sheets are on the entity lines already, and
 `describe_rows` went with the duplication.
+
+### The adversarial review, and what it caught
+
+The review found **one integrity hole, one regression and three smaller bugs**, all reproduced,
+all fixed here with a test where a test was worth having.
+
+| what broke | why | fix |
+|---|---|---|
+| `new_scenario` could write a scenario **no engine will ever open** | the scene bar is the kit's, and it never asks the engine; `Entity.sheet` is optional, so an actor with no sheet passed the bar, reached `world.json`, and was refused for good at `begin_game`. Five minutes spent, a dead folder left in the catalog, and the one re-prompt never used on it | the refusal callback now runs `begin_game` against the scenario it would write. The rules judge the opening **before** it reaches disk, inside the retry that already existed. This deletes the `runtime.session(opened)` workaround the first draft put on the page |
+| the create page **showed no option detail** | the flat form rendered `option.label` alone, and the preview prints labels too | the select shows `label — detail` |
+| an empty pack selection **cost a whole worldsmith call** | `Scenario.packs` has `min_length=1`, and the `Scenario` is built after the write | one guard at the top of `new_scenario` |
+| a premise typed **beside** an uploaded document was silently dropped | `given_text` returned the document and ignored the premise, while `ScenarioMeta.premise` still stored it | both are handed over; a premise beside a document says what to take from it |
+| the uploaded filename named a path **unchecked** | `accept=".md,.txt,.pdf"` is the browser's, not ours | `Path(event.file.name).name` |
+
+**What the review got wrong.** It called `Runtime.lock` "declared, never acquired". `app/mcp.py:132`
+acquires it on every tool call — it is what keeps two concurrent calls from one CLI off the same
+draft. Kept.
+
+**Cuts it found, all taken** (about 50 lines): `show_engine_badge` inlined into its one caller, the
+`OPENING` constant inlined, `scene_unmet` made private behind `scene_refusal`, `write_scenario`'s
+string-source branch, the accept list now reading `SOURCE_SUFFIXES` instead of restating it, four
+docstrings and comments that restated their own code, and the `waiting` spinner row replaced by
+the button's own `loading` prop. Plus the cluster `VISION.md` §6 says returns with engine two:
+`characters_for`, `CatalogEntry.engines`, `SaveOption.engine` and the per-character `written`
+tuple out of `read_characters`.
+
+**The one it named that was not taken as deletion.** `PlayerView.over`, `.prompt` and
+`.companions` were computed on every view build and read by nobody, while `ui/game.py` reached
+past the view into `session.engine` and `session.state.pending` for the same two facts. The review
+said "delete the fields or use them; do not ship both". They are used now: `VISION.md` §5 says the
+page reads the view and imports neither the engine nor the kit, so deleting fields the vision
+names would have been the wrong half. `PlayerPrompt` gained `kind`, which is the one thing the
+decision card printed off the raw state.
 
 ### Known and accepted
 
@@ -493,6 +559,39 @@ disables every built-in tool and leaves only the MCP ones, which enforces by fla
 currently asks for. It is not the shipped default because it could not be spawned from this
 session to confirm MCP tools survive it.
 
+### The adversarial review, and what it caught
+
+The review found **one integrity hole, one regression and three smaller bugs**, all reproduced,
+all fixed here with a test where a test was worth having.
+
+| what broke | why | fix |
+|---|---|---|
+| `new_scenario` could write a scenario **no engine will ever open** | the scene bar is the kit's, and it never asks the engine; `Entity.sheet` is optional, so an actor with no sheet passed the bar, reached `world.json`, and was refused for good at `begin_game`. Five minutes spent, a dead folder left in the catalog, and the one re-prompt never used on it | the refusal callback now runs `begin_game` against the scenario it would write. The rules judge the opening **before** it reaches disk, inside the retry that already existed. This deletes the `runtime.session(opened)` workaround the first draft put on the page |
+| the create page **showed no option detail** | the flat form rendered `option.label` alone, and the preview prints labels too | the select shows `label — detail` |
+| an empty pack selection **cost a whole worldsmith call** | `Scenario.packs` has `min_length=1`, and the `Scenario` is built after the write | one guard at the top of `new_scenario` |
+| a premise typed **beside** an uploaded document was silently dropped | `given_text` returned the document and ignored the premise, while `ScenarioMeta.premise` still stored it | both are handed over; a premise beside a document says what to take from it |
+| the uploaded filename named a path **unchecked** | `accept=".md,.txt,.pdf"` is the browser's, not ours | `Path(event.file.name).name` |
+
+**What the review got wrong.** It called `Runtime.lock` "declared, never acquired". `app/mcp.py:132`
+acquires it on every tool call — it is what keeps two concurrent calls from one CLI off the same
+draft. Kept.
+
+**Cuts it found, all taken** (about 50 lines): `show_engine_badge` inlined into its one caller, the
+`OPENING` constant inlined, `scene_unmet` made private behind `scene_refusal`, `write_scenario`'s
+string-source branch, the accept list now reading `SOURCE_SUFFIXES` instead of restating it, four
+docstrings and comments that restated their own code, and the `waiting` spinner row replaced by
+the button's own `loading` prop. Plus the cluster `VISION.md` §6 says returns with engine two:
+`characters_for`, `CatalogEntry.engines`, `SaveOption.engine` and the per-character `written`
+tuple out of `read_characters`.
+
+**The one it named that was not taken as deletion.** `PlayerView.over`, `.prompt` and
+`.companions` were computed on every view build and read by nobody, while `ui/game.py` reached
+past the view into `session.engine` and `session.state.pending` for the same two facts. The review
+said "delete the fields or use them; do not ship both". They are used now: `VISION.md` §5 says the
+page reads the view and imports neither the engine nor the kit, so deleting fields the vision
+names would have been the wrong half. `PlayerPrompt` gained `kind`, which is the one thing the
+decision card printed off the raw state.
+
 ### Known and accepted
 
 - The one full turn against a real coding CLI has not been taken. Every piece under it has.
@@ -501,3 +600,147 @@ session to confirm MCP tools survive it.
   revisiting against real latencies.
 - `README.md`, `CLAUDE.md` and `AGENTS.md` still describe the old design; phase 5 rewrites them.
 - `Settings.turn.recent_exchanges` is the one depth every role reads, as before.
+
+## Phase 4 — The pages — DONE
+
+`src` 5,458 -> **5,625** (target ≈ 5,400). `tests` 3,275 -> **3,393**; 184 passed, ruff check,
+ruff format and basedpyright clean.
+
+**The count went up, and the plan said it would go down by ~58.** Phase 4 adds a page that did not
+exist — the new-scenario form, `Runtime.new_scenario`, `render_opening`, `opening_canon` — about
+190 lines of new capability, against about 120 deleted. Nothing was invented to hit the number;
+the phase is over its target by 225 lines and that is recorded rather than fixed.
+
+### Three steps were already done, in phase 3
+
+- **Step 2 (delete the polling)** — `poll_save`, `GameService.reload` and the save stamp went with
+  `Settings.code_mode`. `poll_art` is kept, as the step asks. (`FileStore.stamp`, the last reader
+  of which was `poll_save`, was still there; deleted now, with `content.io.source_file`, which
+  nothing has called since phase 2.)
+- **Step 3 (point the illustrator at the new view)** — `media.scene_key` already hashes
+  `NarratorView.place`, so two scenes in one place share one image. A newly installed scene is
+  drawn already: it installs inside `start_turn`, and `play()` calls `_illustrate` after the commit
+  that follows, against the new scene. `game_page` also draws on render, so an opening scene has
+  art before any turn.
+- **Step 7 (trim the settings page)** — `BUILTIN_ONLY`, `CODE_MODE_ONLY` and the `applies`
+  rendering went in phase 3.
+
+### The steps of this phase
+
+1. **Step 1 — the play page.** It already had the transcript, the dice cards and the three tabs.
+   What was missing against `VISION.md` §5 is the CAST block: `sheet_panel` now opens with a
+   "Here" list of `PlayerView.present`, which was built in phase 2 and read by nobody, the
+   companions line, and the scene breadcrumb: the number of every scene played, this one marked,
+   under the scene title. The first draft skipped the breadcrumb and the review was right that
+   this narrowed the plan — `VISION.md` §5 draws a position marker, not a pager, and it costs
+   nine lines.
+2. **Step 4 — the home page.** `_new_content(runtime)` and `_navigate_create(engine)` are gone,
+   with the engine badges on the game card and on every save row: with one engine there is nothing
+   to badge. What is left is the scenario+character card, "New character", "New scenario", and the
+   saves. (`driver_for`/`close_drivers` went in phase 3.)
+3. **Step 5 — character creation is one flat form.** `PackCreation`, `NamedPack` and
+   `numbered_steps` deleted; `Loner3eCreation` writes its seven steps out itself, with a two-line
+   `other_than` for the skill-2/gear-2 distinctness that `numbered_steps(distinct_from=...)` used
+   to give. The page renders every step at once — `ui.select` where a step has options, `ui.input`
+   where it does not — instead of asking one at a time with click-to-rewind. Two judgement calls
+   from that: a text field refreshes the form on `blur`, not per keystroke (a refresh rebuilds the
+   widget and steals focus mid-word), and `_drop_stale` clears an answer whose step no longer
+   offers it, so a select never renders a value absent from its own options.
+4. **Step 6 — the new-scenario page.** A title, table sets, a character, and a premise or an
+   uploaded `.md`/`.txt`/`.pdf`; on submit it spawns the worldsmith once, checks the scene bar,
+   writes `scenarios/<id>/world.json`, copies the source beside it, and opens the game. The
+   spinner says several minutes, because it is.
+5. **Step 8 — the raw-state panel is gone.** The dev tab is the game master's output, as
+   `VISION.md` §5 says.
+6. **Step 9 — goldens rebuilt: not one byte moved.** The prompts that have goldens (master,
+   picture, narrator) were untouched by this phase, and so were the save and state fixtures.
+
+### What step 6 forced on the kit, and why
+
+- **`scene_unmet(draft, world=None)` — the `opening` flag is gone.** No world *is* the opening:
+  nobody exists yet to bring back, and no id can be the player's. One parameter instead of two,
+  and the pair can no longer disagree.
+- **`scene_refusal(draft, world)`** owns the "the scene needs …" wording, which `Runtime` needs in
+  two places. `scene_unmet` is private behind it; it had no production caller of its own.
+- **`opening_canon(draft, source)`** turns a `SceneDraft` into the `SceneCanon` a scenario file
+  stores: ids resolved against the draft's own cast, and no player in it. `apply_scene` cannot do
+  this — it needs a world with a player already in it.
+- **`render_worldsmith` split.** The old `opening=True` branch stubbed history and cast and then
+  read `world.source` — but at scenario-creation time there is no `SceneState` to hold that source,
+  and none can be built without a player. `render_opening(source, guidance)` and
+  `render_worldsmith(world, …)` now share one `_worldsmith(...)` section builder.
+- **`Engine.guidance` takes the selected pack ids, not a `Game`.** It only ever read `state.packs`,
+  and a scenario is written before any game exists.
+- **`Engine.packs`** is back — as `tuple[DecisionOption, ...]`, the installed table sets. The
+  scenario form needs the list, and the character creation's own pack step calls the same
+  `pack_options(packs)` — the same function on the same dict, not a shared value.
+
+### One real trap the checkpoint found
+
+A character built on one table set and a scenario written with another is refused by the rules —
+`"twists roll from 'ap01-fantasy', which is unselected"` — and that refusal used to land as a
+broken game page after the five-minute write. The scenario page now opens the session itself
+before navigating, so the refusal is a red toast on the page where the choice was made. The form
+also preselects every installed pack, which is the case that cannot fail.
+
+### The checkpoint, actually taken
+
+A whole session offline, against a scripted worldsmith, master and narrator:
+
+1. a character made through `creation.steps`/`created` and written to disk;
+2. `new_scenario` from a premise — the first opening was **refused by the scene bar** ("something
+   to find") and the re-prompt carried the reason; the second was written to
+   `scenarios/the-sunken-bell/world.json`;
+3. the game opened at turn 0 on the written scene, with the player in it;
+4. one turn: `start_turn`, `change_world(reveal bell-rope)`, `next_scene`, narrated and committed;
+5. the next turn installed the second scene — `The Bell Chamber`, with the first in `played`;
+6. the save re-read at turn 2 and both views rendered.
+
+`uv run aidm` then served 200 on `/`, `/create`, `/scenario`, `/settings` and a game page.
+
+**Not taken: a session against real CLIs.** That is still one `uv run aidm` and typed turns, as at
+the end of phase 3.
+
+### The adversarial review, and what it caught
+
+The review found **one integrity hole, one regression and three smaller bugs**, all reproduced,
+all fixed here with a test where a test was worth having.
+
+| what broke | why | fix |
+|---|---|---|
+| `new_scenario` could write a scenario **no engine will ever open** | the scene bar is the kit's, and it never asks the engine; `Entity.sheet` is optional, so an actor with no sheet passed the bar, reached `world.json`, and was refused for good at `begin_game`. Five minutes spent, a dead folder left in the catalog, and the one re-prompt never used on it | the refusal callback now runs `begin_game` against the scenario it would write. The rules judge the opening **before** it reaches disk, inside the retry that already existed. This deletes the `runtime.session(opened)` workaround the first draft put on the page |
+| the create page **showed no option detail** | the flat form rendered `option.label` alone, and the preview prints labels too | the select shows `label — detail` |
+| an empty pack selection **cost a whole worldsmith call** | `Scenario.packs` has `min_length=1`, and the `Scenario` is built after the write | one guard at the top of `new_scenario` |
+| a premise typed **beside** an uploaded document was silently dropped | `given_text` returned the document and ignored the premise, while `ScenarioMeta.premise` still stored it | both are handed over; a premise beside a document says what to take from it |
+| the uploaded filename named a path **unchecked** | `accept=".md,.txt,.pdf"` is the browser's, not ours | `Path(event.file.name).name` |
+
+**What the review got wrong.** It called `Runtime.lock` "declared, never acquired". `app/mcp.py:132`
+acquires it on every tool call — it is what keeps two concurrent calls from one CLI off the same
+draft. Kept.
+
+**Cuts it found, all taken** (about 50 lines): `show_engine_badge` inlined into its one caller, the
+`OPENING` constant inlined, `scene_unmet` made private behind `scene_refusal`, `write_scenario`'s
+string-source branch, the accept list now reading `SOURCE_SUFFIXES` instead of restating it, four
+docstrings and comments that restated their own code, and the `waiting` spinner row replaced by
+the button's own `loading` prop. Plus the cluster `VISION.md` §6 says returns with engine two:
+`characters_for`, `CatalogEntry.engines`, `SaveOption.engine` and the per-character `written`
+tuple out of `read_characters`.
+
+**The one it named that was not taken as deletion.** `PlayerView.over`, `.prompt` and
+`.companions` were computed on every view build and read by nobody, while `ui/game.py` reached
+past the view into `session.engine` and `session.state.pending` for the same two facts. The review
+said "delete the fields or use them; do not ship both". They are used now: `VISION.md` §5 says the
+page reads the view and imports neither the engine nor the kit, so deleting fields the vision
+names would have been the wrong half. `PlayerPrompt` gained `kind`, which is the one thing the
+decision card printed off the raw state.
+
+### Known and accepted
+
+- `decision_widget` lost `text_hint` and `detail_shown`: the flat creation form was their only
+  caller. **`detail_shown` was also the only thing showing `DecisionOption.detail`**, and the first
+  draft of the flat form dropped it — a player picked two skills and a frailty with no explanation
+  anywhere on the page. The selects now read `"Quiet Hands — Picks locks, pockets, and latches
+  without a sound."`.
+- `README.md`, `CLAUDE.md` and `AGENTS.md` still describe the old design; phase 5 rewrites them.
+- The scenario form's uploaded file is saved under a `mkdtemp()` directory and copied into the
+  scenario folder by `write_scenario`; the temporary copy is left for the OS to reap.

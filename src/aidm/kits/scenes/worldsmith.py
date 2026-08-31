@@ -2,7 +2,7 @@ from collections.abc import Iterable
 
 from pydantic import BaseModel, Field
 
-from aidm.kits.scenes.state import Entity, Frozen, Scene, SceneState, Thread
+from aidm.kits.scenes.state import Entity, Frozen, Scene, SceneCanon, SceneState, Thread
 from aidm.state.entities import EntityId, Slug, slug
 
 MIN_SITUATION = 80
@@ -22,17 +22,22 @@ class SceneDraft[S: BaseModel](Frozen):
     threads: dict[Slug, Thread] = Field(default_factory=dict)
 
 
-def scene_unmet[S: BaseModel](
-    draft: SceneDraft[S], world: SceneState[S], *, opening: bool
+def _scene_unmet[S: BaseModel](
+    draft: SceneDraft[S], world: SceneState[S] | None = None
 ) -> list[str]:
-    """The scene bar. A scene that misses one of these is re-prompted with the reason."""
-    known = {**world.cast, **draft.cast}
+    """The scene bar. A scene that misses one of these is re-prompted with the reason. No world is
+    the opening: nobody exists yet to bring back, and no id can be the player's."""
+    held = {} if world is None else world.cast
+    player_id = None if world is None else world.player_id
+    known = {**held, **draft.cast}
     others = [
-        one for one in (*draft.present, *draft.hidden) if resolved_id(one, known) != world.player_id
+        one
+        for one in (*draft.present, *draft.hidden)
+        if player_id is None or resolved_id(one, known) != player_id
     ]
     standing = [
         one
-        for one in (*world.threads.values(), *draft.threads.values())
+        for one in (*(() if world is None else world.threads.values()), *draft.threads.values())
         if one.status != "resolved"
     ]
     unmet: list[str] = []
@@ -42,11 +47,35 @@ def scene_unmet[S: BaseModel](
         unmet.append("at least one hidden entity — something to find")
     if not standing:
         unmet.append("at least one standing thread, opened here or already running")
-    if not opening and not any(resolved_id(one, world.cast) is not None for one in others):
+    if world is not None and not any(resolved_id(one, held) is not None for one in others):
         unmet.append("at least one existing cast member brought back")
     if stray := sorted(one for one in others if resolved_id(one, known) is None):
         unmet.append(f"ids that exist; these name nobody: {stray}")
     return unmet
+
+
+def scene_refusal[S: BaseModel](
+    draft: SceneDraft[S], world: SceneState[S] | None = None
+) -> str | None:
+    missing = _scene_unmet(draft, world)
+    return None if not missing else "the scene needs " + "; ".join(missing)
+
+
+def opening_canon[S: BaseModel](draft: SceneDraft[S], source: str) -> SceneCanon[S]:
+    return SceneCanon[S](
+        cast=draft.cast,
+        opening=Scene(
+            id=slug(draft.title, ()),
+            place=draft.place,
+            title=draft.title,
+            situation=draft.situation,
+            present=tuple(_resolve(draft.present, draft.cast, "present")),
+            hidden=tuple(_resolve(draft.hidden, draft.cast, "hidden")),
+            note=draft.note,
+        ),
+        threads=draft.threads,
+        source=source,
+    )
 
 
 def resolved_id[S: BaseModel](wanted: str, cast: dict[EntityId, Entity[S]]) -> EntityId | None:

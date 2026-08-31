@@ -97,26 +97,54 @@ def render_worldsmith[S: BaseModel](
     include: Sequence[str],
     guidance: str,
     rows: SheetRows,
-    *,
-    opening: bool = False,
 ) -> str:
     """The whole material for one scene, assembled by code so no role has to remember it."""
-    if opening:
-        history = "(no scenes yet — write the opening)"
-        cast = "(no cast yet — write the people and things this scene needs)"
-    else:
-        history = "\n\n".join(
+    return _worldsmith(
+        source=world.source,
+        history="\n\n".join(
             f"SCENE {number}: {one.title} ({one.place})\n{one.situation}"
             for number, one in enumerate((*world.played, world.current), start=1)
-        )
-        cast = "\n".join(entity_line(world, one, rows, where=True) for one in world.cast.values())
+        ),
+        cast="\n".join(entity_line(world, one, rows, where=True) for one in world.cast.values()),
+        threads=thread_lines(world.threads.values(), standing_only=False),
+        guidance=guidance,
+        intent=intent,
+        include=include,
+    )
+
+
+def render_opening(source: str, guidance: str) -> str:
+    return _worldsmith(
+        source=source,
+        history="(no scenes yet — write the opening)",
+        cast="(no cast yet — write the people and things this scene needs)",
+        threads="- (none yet — open the first)",
+        guidance=guidance,
+        intent=(
+            "Write the opening scene of this adventure: where the player starts, who is there, "
+            "and what is waiting to be found."
+        ),
+        include=(),
+    )
+
+
+def _worldsmith(
+    *,
+    source: str,
+    history: str,
+    cast: str,
+    threads: str,
+    guidance: str,
+    intent: str,
+    include: Sequence[str],
+) -> str:
     return _sections(
         (
             ("YOUR ROLE", WORLDSMITH),
-            ("SOURCE MATERIAL", world.source or "(none — write from the threads and the cast)"),
+            ("SOURCE MATERIAL", source or "(none — write from the threads and the cast)"),
             ("SCENES SO FAR", history),
             ("THE WHOLE CAST", cast),
-            ("THREADS", thread_lines(world.threads.values(), standing_only=False)),
+            ("THREADS", threads),
             ("ENGINE GUIDANCE", guidance),
             ("WHAT COMES NEXT", intent),
             ("FACES TO BRING BACK (a hint, not an order)", ", ".join(include) or "(none)"),
