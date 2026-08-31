@@ -6,54 +6,18 @@ from random import Random
 
 from pydantic import BaseModel
 
-from aidm.content.io import ENCODING
-from aidm.kernel.envelope import CharacterEnvelope, SaveEnvelope
-from aidm.kernel.views import CreationPreview, Views
+from aidm.core.creation import CreationStep, Picks
+from aidm.core.entities import Counter, EngineId, Slug, pool, require_unique
+from aidm.core.envelope import CharacterEnvelope, SaveEnvelope
+from aidm.core.facts import DiceEvent, Fact, roll
+from aidm.core.io import ENCODING
+from aidm.core.model import Character, Game, Payload, Scenario
+from aidm.core.play import DecisionOption, PendingOption
+from aidm.core.tools import MasterTool, Validate
+from aidm.core.views import NarratorView, PlayerView, Rows
+from aidm.kits.scenes import render
+from aidm.kits.scenes.render import EngineSections, SheetRows
 from aidm.kits.scenes.state import Entity, entity_fact, labeled
-from aidm.kits.scenes.views import (
-    EngineSections,
-    SheetRows,
-    master_view,
-    narrator_view,
-    player_view,
-)
-from aidm.state.creation import CreationStep, Picks
-from aidm.state.entities import Counter, EngineId, Slug, pool, require_unique
-from aidm.state.facts import DiceEvent, Fact, roll
-from aidm.state.model import Character, Game, Payload, Scenario
-from aidm.state.play import DecisionOption, PendingOption
-from aidm.state.tools import MasterTool, Validate
-
-
-def _counter_fact[S: BaseModel](
-    state: Game, entity: Entity[S], key: str, counter: Counter, delta: int, why: str
-) -> Fact:
-    moved = f"{key.capitalize()} {delta:+d} -> {pool(counter)}"
-    card = moved if entity.id == state.world.player_id else f"{entity.name}: {moved}"
-    trace = f"{labeled(entity, state.world.player_id)} {key} {delta:+d} -> {pool(counter)}"
-    return entity_fact(entity, "counter_changed", f"{trace} ({why})", card=card)
-
-
-def adjust[S: BaseModel](
-    state: Game, entity: Entity[S], key: str, counter: Counter, amount: int, why: str
-) -> list[Fact]:
-    before = counter.current
-    counter.current = counter.clamped(before + amount)
-    landed = counter.current - before
-    if landed == 0:
-        return []
-    return [_counter_fact(state, entity, key, counter, landed, why)]
-
-
-def keep_highest(
-    faces: Sequence[int], reason: str, rng: Random, *, label: str
-) -> tuple[int, DiceEvent, Fact]:
-    rolled, fact = roll(faces, reason, rng)
-    kept = max(rolled)
-    event = DiceEvent(
-        label=label, faces=tuple(faces), rolled=rolled, highlight=(rolled.index(kept),)
-    )
-    return kept, event, fact
 
 
 class CharacterCreation(ABC):
@@ -66,11 +30,9 @@ class CharacterCreation(ABC):
         """Raises ValueError with the reason the page shows when the pick set is illegal."""
 
     @abstractmethod
-    def preview(self, character: Character) -> CreationPreview: ...
+    def preview(self, character: Character) -> Rows: ...
 
-    def created(
-        self, name: str, brief: str, picks: Picks
-    ) -> tuple[CharacterEnvelope, CreationPreview]:
+    def created(self, name: str, brief: str, picks: Picks) -> tuple[CharacterEnvelope, Rows]:
         character = self.create(name, brief, picks)
         envelope = CharacterEnvelope(
             id=character.id,
@@ -82,20 +44,9 @@ class CharacterCreation(ABC):
         return envelope, self.preview(character)
 
 
-def load_packs[P: BaseModel](directories: Sequence[Path], model: type[P]) -> dict[str, P]:
-    """Later directories win; a broken file raises rather than being skipped."""
-    packs: dict[str, P] = {}
-    for directory in directories:
-        if not directory.is_dir():
-            continue
-        for path in sorted(directory.glob("*.json")):
-            packs[path.stem] = model.model_validate_json(path.read_text(encoding=ENCODING))
-    return packs
-
-
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Engine:
-    """Satisfies `kernel.protocol.Engine` structurally; one engine ships, so this is concrete."""
+    """The one engine extension point: one engine ships, so this is concrete, not a protocol."""
 
     id: EngineId
     title: str
@@ -125,12 +76,14 @@ class Engine:
         self.validate(state)
         return state
 
-    def views(self, state: Game) -> Views:
-        return Views(
-            master=master_view(state, self.sheet_rows(state), self.sections),
-            narrator=narrator_view(state.world),
-            player=player_view(state, self.sheet_rows(state), self.over(state)),
-        )
+    def master_sections(self, state: Game) -> Rows:
+        return render.master_sections(state, self.sheet_rows(state), self.sections)
+
+    def narrator_view(self, state: Game) -> NarratorView:
+        return render.narrator_view(state.world)
+
+    def player_view(self, state: Game) -> PlayerView:
+        return render.player_view(state, self.sheet_rows(state), self.over(state))
 
     def answer(self, draft: Game, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
         found = next((one for one in self.tools if one.name == chosen.name), None)
@@ -139,3 +92,45 @@ class Engine:
                 f"the {self.id!r} engine has no tool {chosen.name!r} to play option {chosen.id!r}"
             )
         return found.call(draft, chosen.args, rng)
+
+
+def adjust[S: BaseModel](
+    state: Game, entity: Entity[S], key: str, counter: Counter, amount: int, why: str
+) -> list[Fact]:
+    before = counter.current
+    counter.current = counter.clamped(before + amount)
+    landed = counter.current - before
+    if landed == 0:
+        return []
+    return [_counter_fact(state, entity, key, counter, landed, why)]
+
+
+def keep_highest(
+    faces: Sequence[int], reason: str, rng: Random, *, label: str
+) -> tuple[int, DiceEvent, Fact]:
+    rolled, fact = roll(faces, reason, rng)
+    kept = max(rolled)
+    event = DiceEvent(
+        label=label, faces=tuple(faces), rolled=rolled, highlight=(rolled.index(kept),)
+    )
+    return kept, event, fact
+
+
+def load_packs[P: BaseModel](directories: Sequence[Path], model: type[P]) -> dict[str, P]:
+    """Later directories win; a broken file raises rather than being skipped."""
+    packs: dict[str, P] = {}
+    for directory in directories:
+        if not directory.is_dir():
+            continue
+        for path in sorted(directory.glob("*.json")):
+            packs[path.stem] = model.model_validate_json(path.read_text(encoding=ENCODING))
+    return packs
+
+
+def _counter_fact[S: BaseModel](
+    state: Game, entity: Entity[S], key: str, counter: Counter, delta: int, why: str
+) -> Fact:
+    moved = f"{key.capitalize()} {delta:+d} -> {pool(counter)}"
+    card = moved if entity.id == state.world.player_id else f"{entity.name}: {moved}"
+    trace = f"{labeled(entity, state.world.player_id)} {key} {delta:+d} -> {pool(counter)}"
+    return entity_fact(entity, "counter_changed", f"{trace} ({why})", card=card)

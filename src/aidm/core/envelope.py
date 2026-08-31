@@ -1,11 +1,11 @@
 from pydantic import Field, JsonValue
 
-from aidm.state.entities import EngineId, Frozen, Slug
-from aidm.state.facts import Fact
-from aidm.state.model import ScenarioMeta
-from aidm.state.play import Exchange, PendingDecision
+from aidm.core.entities import EngineId, Frozen, Slug
+from aidm.core.facts import Fact
+from aidm.core.model import ScenarioMeta
+from aidm.core.play import Exchange, PendingDecision
 
-# The envelope reads a save whole; the engine's own state is the discriminated payload.
+# The envelope reads a save whole; the payload stays raw until an engine parses it.
 type RawPayload = dict[str, JsonValue]
 
 

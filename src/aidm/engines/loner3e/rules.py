@@ -1,11 +1,16 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from random import Random
 from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
+from aidm.core.entities import DEAD, CheckedEntityId, Counter, EntityId, Frozen, Slug
+from aidm.core.facts import DiceEvent, Fact
+from aidm.core.model import Game
+from aidm.core.play import DecisionOption, PendingDecision
 from aidm.engines.core import adjust, keep_highest
+from aidm.engines.loner3e.creation import Pack
 from aidm.engines.loner3e.state import (
     AND_AT,
     BUT_AT,
@@ -18,35 +23,86 @@ from aidm.engines.loner3e.state import (
     LonerWorld,
 )
 from aidm.kits.scenes.state import Entity, entity_fact
-from aidm.state.entities import DEAD, CheckedEntityId, Counter, EntityId, Frozen, Slug
-from aidm.state.facts import DiceEvent, Fact
-from aidm.state.model import Game
-from aidm.state.play import DecisionOption, PendingDecision
 
 type Actor = Entity[LonerSheet]
 
+type Position = Literal["advantage", "neutral", "disadvantage"]
 
-class Pack(Frozen):
-    """One published table set the player can build a character from."""
+GROWTH = (
+    "Choose the changes this adventure earned: a new skill, signature gear, a frailty, or a "
+    "rewrite of an existing tag."
+)
 
-    name: str
-    source: str
-    license: str
-    concepts: tuple[DecisionOption, ...] = Field(min_length=1)
-    skills: tuple[DecisionOption, ...] = Field(min_length=1)
-    frailties: tuple[DecisionOption, ...] = Field(min_length=1)
-    gear: tuple[DecisionOption, ...] = Field(min_length=1)
-    twist_subjects: tuple[str, ...] | None = None
-    twist_actions: tuple[str, ...] | None = None
+ADVANCE_SPENT = "Spend one advance a party member has earned, when the player asks for it. "
+
+
+class Question(Frozen):
+    actor_id: CheckedEntityId = Field(
+        description="Exact id of the player or actor here who takes the action."
+    )
+    question: str = Field(
+        min_length=1,
+        description="Closed question where yes means the actor gets what they want.",
+    )
+    position: Position = Field(
+        default="neutral",
+        description="Which side the relevant tags and situation favour.",
+    )
+    edge: str = Field(
+        default="",
+        description="Tag or circumstance that sets the position. Empty for neutral.",
+    )
+    opponent_id: CheckedEntityId | None = Field(
+        default=None,
+        description=(
+            "Exact id of the actor or item here that resists. Null when nothing fights back."
+        ),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class Outcome:
+    """One of the six answers, carrying the luck an exchange costs the side that lost it."""
+
+    name: Slug
+    harm: int
+
+
+class Change(Frozen):
+    """One sheet change earned by the adventure."""
+
+    kind: Literal["skill", "gear", "frailty", "rewrite"] = Field(
+        description="Type of sheet change."
+    )
+    tag: str = Field(
+        min_length=1,
+        description="New title-case tag, or the exact current tag for a rewrite.",
+    )
+    into: str = Field(
+        default="",
+        description="New title-case tag for a rewrite. Empty for other kinds.",
+    )
+    why: str = Field(description="One short reason, in the fiction, for this change.")
 
     @model_validator(mode="after")
-    def _twist_columns_pair_up(self) -> Self:
-        if (self.twist_subjects is None) != (self.twist_actions is None):
-            raise ValueError("twist_subjects and twist_actions come together or not at all")
-        for column in (self.twist_subjects, self.twist_actions):
-            if column is not None and len(column) != DIE_FACE:
-                raise ValueError("a twist column is one d6: exactly six entries")
+    def _rewrite_names_what_it_becomes(self) -> Self:
+        if bool(self.into) != (self.kind == "rewrite"):
+            raise ValueError("`into` belongs to a rewrite and to nothing else")
         return self
+
+
+class AdventureGrowth(Frozen):
+    """All sheet changes earned by one adventure."""
+
+    subject_id: CheckedEntityId = Field(description="Exact id of the party member who advances.")
+    changes: tuple[Change, ...] = Field(
+        min_length=1,
+        description="Every earned change, in reading order.",
+    )
+
+
+class RestoreLuck(Frozen):
+    actor_id: CheckedEntityId = Field(description="Exact id of the player or an actor here.")
 
 
 def twist_table(packs: Mapping[str, Pack], chosen: Slug) -> tuple[tuple[str, str], ...]:
@@ -75,39 +131,6 @@ def luck_of(one: Actor) -> Counter:
     return one.sheet.luck
 
 
-def actor_sheet(one: Actor) -> ActorSheet:
-    if not isinstance(one.sheet, ActorSheet):
-        raise ValueError(f"{one.name} has no character sheet")
-    return one.sheet
-
-
-type Position = Literal["advantage", "neutral", "disadvantage"]
-
-
-class Question(Frozen):
-    actor_id: CheckedEntityId = Field(
-        description="Exact id of the player or actor here who takes the action."
-    )
-    question: str = Field(
-        min_length=1,
-        description="Closed question where yes means the actor gets what they want.",
-    )
-    position: Position = Field(
-        default="neutral",
-        description="Which side the relevant tags and situation favour.",
-    )
-    edge: str = Field(
-        default="",
-        description="Tag or circumstance that sets the position. Empty for neutral.",
-    )
-    opponent_id: CheckedEntityId | None = Field(
-        default=None,
-        description=(
-            "Exact id of the actor or item here that resists. Null when nothing fights back."
-        ),
-    )
-
-
 def twist_pairing(
     subject: int, action: int, twists: tuple[tuple[str, str], ...]
 ) -> tuple[str, str]:
@@ -131,14 +154,6 @@ def defeat_note(name: str) -> str:
     )
 
 
-@dataclass(frozen=True, slots=True)
-class Outcome:
-    """One of the six answers, carrying the luck an exchange costs the side that lost it."""
-
-    name: Slug
-    harm: int
-
-
 def outcome_for(chance: int, risk: int) -> Outcome:
     if chance == risk:
         return Outcome("yes-but", 1)
@@ -148,13 +163,6 @@ def outcome_for(chance: int, risk: int) -> Outcome:
     if max(chance, risk) <= BUT_AT:
         return Outcome(f"{side}-but", sign)
     return Outcome(side, 2 * sign)
-
-
-def _sheeted(one: Actor) -> Actor:
-    """SRD "Everything is a Character": a thing gets its sheet the first time one is asked for."""
-    if one.kind == "item" and one.sheet is None:
-        one.sheet = ItemSheet()
-    return one
 
 
 def resolve_question(
@@ -202,6 +210,97 @@ def resolve_question(
     return tuple(facts)
 
 
+def apply_restore_luck(draft: Game, actor_id: EntityId) -> list[Fact]:
+    actor = draft.world.require_actor_here(actor_id)
+    facts = draft.world.reveal(actor)
+    # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
+    facts.extend(_refill(draft, actor, "the conflict is behind them"))
+    return facts
+
+
+def close_conflicts(draft: Game) -> tuple[Fact, ...]:
+    """A scene ends its conflicts so nobody carries a spent pool on; the dead keep theirs."""
+    facts: list[Fact] = []
+    for one in draft.world.here():
+        if one.sheet is not None and one.trait(DEAD) is None and one.sheet.luck.current < LUCK_MAX:
+            facts.extend(_refill(draft, one, "the scene is over"))
+    return tuple(facts)
+
+
+def party(state: Game) -> tuple[EntityId, ...]:
+    return (state.world.player_id, *state.world.companions)
+
+
+def advances_owed(state: Game) -> tuple[tuple[str, str], ...]:
+    """Chapters played standing above the ledger of advances taken, one note each."""
+    # An advance mid-suspension could invalidate the frozen call an open decision holds.
+    if state.pending is not None:
+        return ()
+    owed = [
+        f"- {state.world.require(one).name} has an advance owed; call advance only when the "
+        "player asks for it."
+        for one in party(state)
+        if _advance_owed(state, one)
+    ]
+    return (("ADVANCES OWED", "\n".join(owed)),) if owed else ()
+
+
+def complete_chapter(draft: Game) -> tuple[Fact, ...]:
+    """Only those who played the chapter are credited with it: nobody is owed one they missed."""
+    ending = "the adventure has ended"
+    for member_id in party(draft):
+        sheet = draft.world.require(member_id).sheet
+        if isinstance(sheet, ActorSheet):
+            sheet.chapters += 1
+    return (Fact(kind="chapter_completed", trace=ending, told=True, card=ending),)
+
+
+def advance(draft: Game, proposal: AdventureGrowth, rng: Random) -> tuple[Fact, ...]:
+    """One advance per adventure a party member played: the tags it rewrote or grew."""
+    del rng
+    subject: Actor = _party_member(draft, proposal.subject_id)
+    sheet = _actor_sheet(subject)
+    if sheet.chapters <= sheet.milestones:
+        raise ValueError(f"{subject.name} has no advance owed")
+    # Sequential against the live sheet, so a rewrite may name what an earlier change wrote.
+    granted = tuple(
+        _rewrite(sheet, subject, change)
+        if change.kind == "rewrite"
+        else _gain(sheet, subject, change)
+        for change in proposal.changes
+    )
+    sheet.milestones += 1
+    spent = entity_fact(
+        subject,
+        "milestone_spent",
+        f"{draft.world.label(subject)} milestones -> {sheet.milestones} (a milestone spent)",
+        card=f"{subject.name}: milestone {sheet.milestones} spent",
+    )
+    return (*granted, spent)
+
+
+def meanings(
+    packs: Mapping[str, Pack], selected: Sequence[Slug], sheet: ActorSheet
+) -> tuple[tuple[str, str], ...]:
+    chosen = tuple(packs[pack_id] for pack_id in selected)
+    # The concept's pack blurb is generic where the entity's own brief is not: skip it.
+    return _pack_meanings(
+        tuple(entry for pack in chosen for entry in (*pack.skills, *pack.frailties, *pack.gear)),
+        (*sheet.skills, *sheet.frailties, *sheet.gear),
+    )
+
+
+def twists(packs: Mapping[str, Pack], state: Game) -> tuple[tuple[str, str], ...]:
+    return twist_table(packs, state.payload.twist_pack or state.packs[0])
+
+
+def _sheeted(one: Actor) -> Actor:
+    """SRD "Everything is a Character": a thing gets its sheet the first time one is asked for."""
+    if one.kind == "item" and one.sheet is None:
+        one.sheet = ItemSheet()
+    return one
+
+
 def _require_opponent_here(world: LonerWorld, opponent_id: EntityId) -> Actor:
     """SRD "Everything is a Character": a ship, an object or a curse resists as an actor does."""
     opponent = world.require(opponent_id)
@@ -220,6 +319,20 @@ def _require_opponent_here(world: LonerWorld, opponent_id: EntityId) -> Actor:
     return opponent
 
 
+def _actor_sheet(one: Actor) -> ActorSheet:
+    if not isinstance(one.sheet, ActorSheet):
+        raise ValueError(f"{one.name} has no character sheet")
+    return one.sheet
+
+
+def _party_member(draft: Game, subject_id: EntityId) -> Actor:
+    """An advance is a party member's own: nobody else's sheet is an engine's to grow."""
+    subject = draft.world.require(subject_id)
+    if subject_id not in party(draft):
+        raise ValueError(f"{subject.name} is not in the party")
+    return subject
+
+
 def _absorbed(exchange: list[Fact]) -> tuple[list[Fact], tuple[str, ...]]:
     """The exchange reads as lines inside the Oracle card, so it shows no cards of its own."""
     lines = tuple(fact.card for fact in exchange if fact.told and fact.card)
@@ -231,24 +344,6 @@ def _shortfall(pool: Counter) -> int:
     if pool.maximum is None:
         raise ValueError("an unbounded pool has no full to measure against")
     return pool.maximum - pool.current
-
-
-def apply_restore_luck(draft: Game, actor_id: EntityId) -> list[Fact]:
-    actor = draft.world.require_actor_here(actor_id)
-    facts = draft.world.reveal(actor)
-    # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
-    facts.extend(_refill(draft, actor, "the conflict is behind them"))
-    return facts
-
-
-def close_conflicts(draft: Game) -> tuple[Fact, ...]:
-    """A scene ends the conflicts in it, so nobody carries a spent pool into the next one.
-    The dead keep theirs: a corpse takes no luck back."""
-    facts: list[Fact] = []
-    for one in draft.world.here():
-        if one.sheet is not None and one.trait(DEAD) is None and one.sheet.luck.current < LUCK_MAX:
-            facts.extend(_refill(draft, one, "the scene is over"))
-    return tuple(facts)
 
 
 def _refill(draft: Game, side: Actor, why: str) -> list[Fact]:
@@ -322,40 +417,52 @@ def _pair(action: Question, rng: Random) -> tuple[int, DiceEvent, int, DiceEvent
     return chance_kept, chance, risk_kept, risk, [chance_fact, risk_fact]
 
 
-GROWTH = (
-    "Choose the changes this adventure earned: a new skill, signature gear, a frailty, or a "
-    "rewrite of an existing tag."
-)
-
-
-class Change(Frozen):
-    """One sheet change earned by the adventure."""
-
-    kind: Literal["skill", "gear", "frailty", "rewrite"] = Field(
-        description="Type of sheet change."
+def _gain(sheet: ActorSheet, subject: Actor, change: Change) -> Fact:
+    if change.tag in (*sheet.skills, *sheet.gear, *sheet.frailties):
+        raise ValueError(f"{subject.name} already has the tag {change.tag!r}")
+    if change.kind == "skill":
+        sheet.skills = (*sheet.skills, change.tag)
+    elif change.kind == "gear":
+        sheet.gear = (*sheet.gear, change.tag)
+    else:
+        sheet.frailties = (*sheet.frailties, change.tag)
+    return entity_fact(
+        subject,
+        f"{change.kind}_gained",
+        f"{subject.name} gained {change.kind} {change.tag} ({change.why})",
+        card=f"{subject.name}: new {change.kind} {change.tag}",
     )
-    tag: str = Field(
-        min_length=1,
-        description="New title-case tag, or the exact current tag for a rewrite.",
+
+
+def _rewrite(sheet: ActorSheet, subject: Actor, change: Change) -> Fact:
+    old, new = change.tag, change.into
+    if old in sheet.skills:
+        sheet.skills = _swapped(sheet.skills, old, new)
+    elif old in sheet.frailties:
+        sheet.frailties = _swapped(sheet.frailties, old, new)
+    elif old in sheet.gear:
+        sheet.gear = _swapped(sheet.gear, old, new)
+    else:
+        raise ValueError(f"{subject.name} carries no tag {old!r} to rewrite")
+    return entity_fact(
+        subject,
+        "tag_rewritten",
+        f"{subject.name} rewrote {old} as {new} ({change.why})",
+        card=f"{subject.name}: {old} → {new}",
     )
-    into: str = Field(
-        default="",
-        description="New title-case tag for a rewrite. Empty for other kinds.",
-    )
-    why: str = Field(description="One short reason, in the fiction, for this change.")
-
-    @model_validator(mode="after")
-    def _rewrite_names_what_it_becomes(self) -> Self:
-        if bool(self.into) != (self.kind == "rewrite"):
-            raise ValueError("`into` belongs to a rewrite and to nothing else")
-        return self
 
 
-class AdventureGrowth(Frozen):
-    """All sheet changes earned by one adventure."""
+def _swapped(tags: tuple[str, ...], old: str, new: str) -> tuple[str, ...]:
+    return tuple(new if tag == old else tag for tag in tags)
 
-    subject_id: CheckedEntityId = Field(description="Exact id of the party member who advances.")
-    changes: tuple[Change, ...] = Field(
-        min_length=1,
-        description="Every earned change, in reading order.",
-    )
+
+def _advance_owed(state: Game, entity_id: EntityId) -> bool:
+    sheet = state.world.require(entity_id).sheet
+    return isinstance(sheet, ActorSheet) and sheet.chapters > sheet.milestones
+
+
+def _pack_meanings(
+    entries: Sequence[DecisionOption], tags: Sequence[str]
+) -> tuple[tuple[str, str], ...]:
+    detail_of = {entry.label: entry.detail for entry in entries if entry.detail}
+    return tuple((tag, detail_of[tag]) for tag in tags if tag in detail_of)

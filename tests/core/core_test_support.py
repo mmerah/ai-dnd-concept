@@ -10,18 +10,17 @@ from pydantic_settings import SettingsConfigDict
 from aidm.app import mcp
 from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import GameService, Runtime
-from aidm.app.spawn import ScriptedSpawner
-from aidm.config import Settings
-from aidm.content.io import load_character, load_scenario, read_scenarios
+from aidm.config import Role, Settings
+from aidm.core.entities import PLAYER_ID, EngineId, EntityId, Slug
+from aidm.core.facts import Fact
+from aidm.core.io import load_character, read_scenarios, scenario_envelope, scenario_of
+from aidm.core.model import Character, Game, Scenario
+from aidm.core.play import Answer, Speaker
 from aidm.engines.core import Engine
-from aidm.engines.loner3e.engine import complete_chapter as loner_chapter
+from aidm.engines.loner3e.rules import complete_chapter as loner_chapter
 from aidm.engines.loner3e.state import ActorSheet, LonerSheet
 from aidm.engines.registry import begin_game, build_engines
 from aidm.kits.scenes.state import Entity
-from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Slug
-from aidm.state.facts import Fact
-from aidm.state.model import Character, Game, Scenario
-from aidm.state.play import Answer, Speaker
 from aidm.turn.run import TurnStep
 
 # One tool call as a scripted game master makes it.
@@ -70,19 +69,24 @@ def loner_sheet(state: Game, entity_id: EntityId) -> ActorSheet:
     return sheet
 
 
+def load_scenario(directory: Path, name: Slug, engine: Engine) -> Scenario:
+    """Production reads `scenario_envelope` and `scenario_of` separately; tests want one call."""
+    return scenario_of(scenario_envelope(directory, name), engine.id)
+
+
 def scenario() -> Scenario:
     return load_scenario(SCENARIOS, "whispering-vault", ENGINES_BUILT[LONER3E])
 
 
 def character() -> Character:
-    return load_character(CHARACTERS, "kael", ENGINES_BUILT[LONER3E])
+    return load_character(CHARACTERS, "kael", ENGINES_BUILT[LONER3E].id)
 
 
 def scenario_for(engine_id: EngineId) -> Slug:
     """Read off the shipped content rather than tabulated, so a second one fails here loudly."""
     shipped = [
         slug
-        for slug, scenario in read_scenarios(SCENARIOS, ENGINES_BUILT)
+        for slug, scenario in read_scenarios(SCENARIOS, ENGINE_IDS)
         if scenario.engine == engine_id
     ]
     if len(shipped) != 1:
@@ -95,7 +99,7 @@ def game(engine_id: EngineId) -> tuple[Engine, Game]:
     engine = ENGINES_BUILT[engine_id]
     scenario_id = scenario_for(engine_id)
     selected_scenario = load_scenario(SCENARIOS, scenario_id, engine)
-    selected_character = load_character(CHARACTERS, "kael", engine)
+    selected_character = load_character(CHARACTERS, "kael", engine.id)
     return engine, begin_game(engine, scenario_id, selected_scenario, selected_character)
 
 
@@ -129,6 +133,30 @@ def offline_settings(saves: Path | None = None) -> Settings:
         scenarios_dir=SCENARIOS,
         characters_dir=CHARACTERS,
     )
+
+
+@dataclass(slots=True)
+class ScriptedSpawner:
+    """Answers from a per-role list and records every prompt it was given. Tests use this."""
+
+    turns: list[Callable[[], None]] = field(default_factory=list)
+    answers: dict[Role, list[str]] = field(default_factory=dict)
+    prompts: list[tuple[Role, str]] = field(default_factory=list)
+
+    async def run(self, role: Role, prompt: str) -> str:
+        self.prompts.append((role, prompt))
+        if role == "master":
+            if self.turns:
+                self.turns.pop(0)()
+            return prompt
+        answers = self.answers.get(role)
+        if not answers:
+            raise ValueError(f"the scripted {role} has no answer left")
+        return answers.pop(0)
+
+    def prompt(self, role: Role) -> str:
+        """The first prompt the role was given; the golden prompts come from here."""
+        return next(text for name, text in self.prompts if name == role)
 
 
 @dataclass(slots=True)

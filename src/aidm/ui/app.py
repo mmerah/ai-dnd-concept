@@ -15,7 +15,7 @@ from aidm.app.mcp import MOUNT_PATH, endpoint
 from aidm.app.runtime import Runtime
 from aidm.app.spawn import CliSpawner
 from aidm.config import load_settings
-from aidm.state.entities import Slug, content_id
+from aidm.core.entities import Slug, content_id
 
 from .create import character_page, scenario_page
 from .game import game_page
@@ -43,6 +43,17 @@ def home_page(runtime: Runtime) -> None:
             _new_game(catalog)
             _new_content()
             _saved_games(catalog)
+
+
+def start() -> None:
+    settings = load_settings()
+    _register_pages(Runtime(settings, CliSpawner(settings)))
+    ui.run(  # pyright: ignore[reportUnknownMemberType]
+        title="AI Dungeon Master",
+        port=settings.server_port,
+        reload=False,
+        show=False,
+    )
 
 
 def _new_game(catalog: LauncherCatalog) -> None:
@@ -136,17 +147,6 @@ def _saved_card(saved: SaveOption) -> None:
 def _open_game(target: LaunchTarget) -> None:
     LOGGER.info("launcher opening %r", target.slug)
     ui.navigate.to(target.path)
-
-
-def start() -> None:
-    settings = load_settings()
-    _register_pages(Runtime(settings, CliSpawner(settings)))
-    ui.run(  # pyright: ignore[reportUnknownMemberType]
-        title="AI Dungeon Master",
-        port=settings.server_port,
-        reload=False,
-        show=False,
-    )
 
 
 def _register_pages(runtime: Runtime) -> None:

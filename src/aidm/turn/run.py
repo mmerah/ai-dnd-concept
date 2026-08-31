@@ -1,20 +1,16 @@
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from random import Random
 from typing import Literal, Self
 
-from pydantic import JsonValue
-
+from aidm.core.facts import NOTHING, Fact, cards, traced
+from aidm.core.model import Game, draft_refusal
+from aidm.core.play import Answer, Line, SpokenLine
+from aidm.core.tools import Play, apply_to_draft
+from aidm.core.views import NarratorView
 from aidm.engines.core import Engine
-from aidm.kernel.views import NarratorView
 from aidm.kits.scenes.boundary import SCENE_SETTLED, SPENT_NOTE, scene_spent
-from aidm.state.facts import NOTHING, Fact, cards, traced
-from aidm.state.model import Game, draft_refusal
-from aidm.state.play import Answer, Line, SpokenLine
-from aidm.state.tools import Play, apply_to_draft
-
-from . import context
 
 RULES_WAIT = "the rules now wait on the player's decision"
 
@@ -23,15 +19,13 @@ type TurnStep = Literal["master", "narrator", "worldsmith"]
 
 @dataclass(slots=True, kw_only=True)
 class Turn:
-    """One player input to the next hand-back; the draft is the only state that moves."""
+    """The transaction: one player input applied to a draft. The session owns the lifecycle."""
 
     engine: Engine
     draft: Game
     rng: Random
     on_fact: Callable[[Fact], None] | None = None
     facts: list[Fact] = field(default_factory=list)
-    # The game master has called `start_turn`; nothing may change the world before it does.
-    started: bool = False
     # The run began with a re-suspended decision: it develops what the answer caused, no more.
     suspended_at_start: bool = False
     prompt: str = ""
@@ -60,7 +54,7 @@ class Turn:
             for fact in facts:
                 self.on_fact(fact)
 
-    def offer_the_way_on(self) -> None:
+    def settle_scene(self) -> None:
         """An offer, not a decision: the player may take it or keep playing here, so this must
         not block the turn the way a pending decision does."""
         if self.draft.world.settled:
@@ -68,31 +62,6 @@ class Turn:
         self.draft.world.settled = True
         # Told, so the narrator closes the scene and asks: a silent ending is no ending.
         self.landed((SCENE_SETTLED,))
-
-    def picture(self, recent: int) -> str:
-        draft = self.draft
-        return context.render_picture(
-            self.engine.views(draft).master.sections,
-            draft,
-            self.prompt,
-            resumed=self.resumed,
-            notes=(*self.notes, *draft.notes),
-            recent=recent,
-        )
-
-    def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
-        """The one gate: a decision on the table blocks everything but developing its answer."""
-        found = next((one for one in self.engine.tools if one.name == name), None)
-        if found is None:
-            raise ValueError(f"{name!r} is not a tool of the {self.engine.id!r} engine.")
-        pending = self.draft.pending
-        if pending is not None and not (found.during_suspension and self.suspended_at_start):
-            # A plain answer, not a refusal: a retry prompt would tell the model to try again.
-            return (
-                f"the rules are waiting on the player: {pending.prompt}\n"
-                "Stop here and exit; the player's answer opens the next turn."
-            )
-        return self.apply(lambda draft, rng: found.call(draft, raw, rng))
 
     def apply(self, play: Play) -> str:
         """What the call changed, as the game master reads it back."""
@@ -107,24 +76,12 @@ class Turn:
 
     def finish(self, lines: tuple[Line, ...]) -> Game:
         return close_segment(
-            self.engine.views(self.draft).narrator,
+            self.engine.narrator_view(self.draft),
             self.draft,
             self.prompt,
             lines,
             tuple(self.facts),
         )
-
-
-def _apply(turn: Turn, play: Play) -> tuple[Fact, ...]:
-    """Refused whole against a throwaway copy before one change of it reaches the draft."""
-    engine, draft = turn.engine, turn.draft
-    if refused := draft_refusal(
-        draft, lambda copy: apply_to_draft(engine.validate, copy, play, deepcopy(turn.rng))
-    ):
-        raise ValueError(refused)
-    landed = apply_to_draft(engine.validate, draft, play, turn.rng)
-    turn.landed(landed)
-    return landed
 
 
 def speakers_refusal(view: NarratorView, lines: Sequence[Line]) -> str | None:
@@ -145,21 +102,6 @@ def speakers_refusal(view: NarratorView, lines: Sequence[Line]) -> str | None:
     )
 
 
-def spoken(view: NarratorView, lines: Sequence[Line]) -> tuple[SpokenLine, ...]:
-    """Attribution is denormalized here, so chat and journal never resolve ids through state."""
-    here = {one.id: one for one in view.speakers}
-
-    def one(line: Line) -> SpokenLine:
-        if line.speaker_id is None:
-            return SpokenLine(text=line.text)
-        who = here.get(line.speaker_id)
-        if who is None:
-            raise ValueError(f"nobody here has id {line.speaker_id!r}")
-        return SpokenLine(speaker=who, text=line.text)
-
-    return tuple(one(line) for line in lines)
-
-
 def close_segment(
     view: NarratorView,
     draft: Game,
@@ -167,7 +109,7 @@ def close_segment(
     lines: tuple[Line, ...],
     facts: tuple[Fact, ...],
 ) -> Game:
-    draft.record(draft.world.current.title, prompt, spoken(view, lines), facts)
+    draft.record(draft.world.current.title, prompt, _spoken(view, lines), facts)
     draft.turn += 1
     # Directive text at the decision point is what fixed trigger reliability when it was measured.
     # Not once the master has settled the scene, and never on the turn one opened: that note would
@@ -214,3 +156,30 @@ def consume_answer(turn: Turn, player_input: str | Answer) -> tuple[str, str]:
         traces += f"\n- {RULES_WAIT}"
     section = f"asked: {consumed.prompt}\nthe player chose: {option.label}\n{traces}"
     return option.label, section
+
+
+def _spoken(view: NarratorView, lines: Sequence[Line]) -> tuple[SpokenLine, ...]:
+    """Attribution is denormalized here, so chat and journal never resolve ids through state."""
+    here = {one.id: one for one in view.speakers}
+
+    def one(line: Line) -> SpokenLine:
+        if line.speaker_id is None:
+            return SpokenLine(text=line.text)
+        who = here.get(line.speaker_id)
+        if who is None:
+            raise ValueError(f"nobody here has id {line.speaker_id!r}")
+        return SpokenLine(speaker=who, text=line.text)
+
+    return tuple(one(line) for line in lines)
+
+
+def _apply(turn: Turn, play: Play) -> tuple[Fact, ...]:
+    """Refused whole against a throwaway copy before one change of it reaches the draft."""
+    engine, draft = turn.engine, turn.draft
+    if refused := draft_refusal(
+        draft, lambda copy: apply_to_draft(engine.validate, copy, play, deepcopy(turn.rng))
+    ):
+        raise ValueError(refused)
+    landed = apply_to_draft(engine.validate, draft, play, turn.rng)
+    turn.landed(landed)
+    return landed

@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence
 
-from aidm.state.entities import Frozen, Slug
-from aidm.state.play import DecisionOption
+from aidm.core.entities import Frozen, Slug
+from aidm.core.play import DecisionOption
 
 type Picks = Mapping[Slug, str]
 ANSWER_MAX = 100

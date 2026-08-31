@@ -2,19 +2,19 @@ from collections.abc import Callable, Iterable
 
 from pydantic import BaseModel
 
-from aidm.kernel.views import (
-    MasterView,
+from aidm.core.entities import EntityId
+from aidm.core.model import Game
+from aidm.core.play import DecisionOption
+from aidm.core.views import (
     NarratorView,
     PlayerPrompt,
     PlayerView,
+    Rows,
     Subject,
     ThreadRow,
     speaker_of,
 )
 from aidm.kits.scenes.state import Entity, SceneState, Thread
-from aidm.state.entities import EntityId
-from aidm.state.model import Game
-from aidm.state.play import DecisionOption
 
 # The engine's own sheet rows for one entity; empty for scenery nothing rolls against.
 type SheetRows = Callable[[EntityId], tuple[tuple[str, str], ...]]
@@ -112,33 +112,31 @@ def player_view[S: BaseModel](state: Game, rows: SheetRows, over: str | None) ->
     )
 
 
-def _lines[S: BaseModel](
-    world: SceneState[S], entities: Iterable[Entity[S]], rows: SheetRows
-) -> str:
-    return "\n".join(entity_line(world, one, rows) for one in entities) or "- (none)"
-
-
-def master_view(state: Game, rows: SheetRows, engine_sections: EngineSections) -> MasterView:
+def master_sections(state: Game, rows: SheetRows, engine_sections: EngineSections) -> Rows:
     """Every section stated, hidden canon included: the game master reads all of it."""
     world = state.world
     scene = world.current
     player = world.player
-    return MasterView(
-        sections=(
-            ("SCENE", f"{scene.title}\n{scene.situation}"),
-            ("THE QUESTION THIS SCENE SETTLES", scene.question),
-            ("YOU PLAY FOR", entity_line(world, player, rows)),
-            ("CARRYING", _lines(world, world.carried_by(player.id), rows)),
-            (
-                "HERE WITH THE PLAYER",
-                _lines(world, (one for one in world.here() if one.id != player.id), rows),
-            ),
-            (
-                "HIDDEN HERE (the player has not found these)",
-                _lines(world, (world.require(one) for one in scene.hidden), rows),
-            ),
-            ("ACTIVE THREADS", thread_lines(world.threads.values(), standing_only=True)),
-            *engine_sections(state),
-            ("THE SCENE'S SECRET (never narrate this)", scene.secret or "(none)"),
-        )
+    return (
+        ("SCENE", f"{scene.title}\n{scene.situation}"),
+        ("THE QUESTION THIS SCENE SETTLES", scene.question),
+        ("YOU PLAY FOR", entity_line(world, player, rows)),
+        ("CARRYING", _lines(world, world.carried_by(player.id), rows)),
+        (
+            "HERE WITH THE PLAYER",
+            _lines(world, (one for one in world.here() if one.id != player.id), rows),
+        ),
+        (
+            "HIDDEN HERE (the player has not found these)",
+            _lines(world, (world.require(one) for one in scene.hidden), rows),
+        ),
+        ("ACTIVE THREADS", thread_lines(world.threads.values(), standing_only=True)),
+        *engine_sections(state),
+        ("THE SCENE'S SECRET (never narrate this)", scene.secret or "(none)"),
     )
+
+
+def _lines[S: BaseModel](
+    world: SceneState[S], entities: Iterable[Entity[S]], rows: SheetRows
+) -> str:
+    return "\n".join(entity_line(world, one, rows) for one in entities) or "- (none)"

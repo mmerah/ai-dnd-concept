@@ -1,8 +1,8 @@
 from nicegui import ui
 
 from aidm.app.runtime import GameService
-from aidm.kernel.views import ThreadRow
-from aidm.state.entities import EntityId
+from aidm.core.entities import EntityId
+from aidm.core.views import ThreadRow
 
 from .widgets import entity_row, heading, labeled_value
 
@@ -10,7 +10,7 @@ NO_WAY_ON = "The way on could not be written. You are still where you were."
 
 
 def sheet_panel(session: GameService) -> None:
-    view = session.view().player
+    view = session.player_view()
     heading("This scene", tight=True)
     ui.label(view.question).classes("text-sm mt-1")
     if session.write_failure:
@@ -42,21 +42,8 @@ def sheet_panel(session: GameService) -> None:
     _threads(view.threads)
 
 
-def _threads(threads: tuple[ThreadRow, ...]) -> None:
-    if not threads:
-        ui.label("nothing open").classes("text-sm opacity-60 mt-2")
-    for one in threads:
-        with ui.column().classes("w-full mt-2").style("gap: 0"):
-            with ui.row().classes("w-full items-baseline no-wrap").style("gap: 0.4rem"):
-                ui.label(one.title).classes("text-sm font-bold")
-                if one.status != "active":
-                    ui.badge(one.status).props("color=grey-8 outline").classes("text-xs")
-            if one.note:
-                ui.label(one.note).classes("text-xs opacity-70")
-
-
 def journal_panel(session: GameService) -> None:
-    view = session.view().player
+    view = session.player_view()
     if view.scenes:
         heading("Scenes", tight=True)
         for title in view.scenes:
@@ -69,3 +56,16 @@ def journal_panel(session: GameService) -> None:
                 who = line.speaker
                 said = line.text if who is None else f"**{who.name}:** {line.text}"
                 ui.markdown(said).classes("text-sm")
+
+
+def _threads(threads: tuple[ThreadRow, ...]) -> None:
+    if not threads:
+        ui.label("nothing open").classes("text-sm opacity-60 mt-2")
+    for one in threads:
+        with ui.column().classes("w-full mt-2").style("gap: 0"):
+            with ui.row().classes("w-full items-baseline no-wrap").style("gap: 0.4rem"):
+                ui.label(one.title).classes("text-sm font-bold")
+                if one.status != "active":
+                    ui.badge(one.status).props("color=grey-8 outline").classes("text-xs")
+            if one.note:
+                ui.label(one.note).classes("text-xs opacity-70")

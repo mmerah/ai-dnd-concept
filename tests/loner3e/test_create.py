@@ -1,14 +1,14 @@
 from pathlib import Path
 
 import pytest
-from core_test_support import ENGINES_BUILT, LONER3E, SCENARIOS, loner_sheet, updated
+from core_test_support import ENGINES_BUILT, LONER3E, SCENARIOS, load_scenario, loner_sheet, updated
 
-from aidm.content.io import load_character, load_scenario, write_character
+from aidm.core.creation import Picks
+from aidm.core.entities import PLAYER_ID, EngineId
+from aidm.core.io import load_character, write_character
 from aidm.engines.core import CharacterCreation
 from aidm.engines.loner3e.state import LUCK_MAX
 from aidm.engines.registry import begin_game
-from aidm.state.creation import Picks
-from aidm.state.entities import PLAYER_ID, EngineId
 
 OTHER = EngineId("ruleless")
 
@@ -27,7 +27,7 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     }
     created, _ = creation.created("Fen", "A wandering scribe with too many questions.", picks)
     write_character(tmp_path, created)
-    character = load_character(tmp_path, "fen", engine)
+    character = load_character(tmp_path, "fen", engine.id)
     scenario = load_scenario(SCENARIOS, "whispering-vault", engine)
     state = begin_game(engine, "whispering-vault", scenario, character)
     assert state.payload.twist_pack == "srd"
@@ -65,7 +65,7 @@ def test_one_folder_holds_one_person_across_engines(tmp_path: Path) -> None:
         write_character(tmp_path, updated(fen, engine=OTHER, name="Mira"))
 
     write_character(tmp_path, updated(fen, engine=OTHER))
-    assert load_character(tmp_path, "fen", ENGINES_BUILT[LONER3E]).name == "Fen"
+    assert load_character(tmp_path, "fen", ENGINES_BUILT[LONER3E].id).name == "Fen"
 
 
 def _answered(creation: CharacterCreation, chosen: Picks) -> Picks:

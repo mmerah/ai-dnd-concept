@@ -10,46 +10,13 @@ from httpx import AsyncClient
 from pydantic import BaseModel, ConfigDict
 
 from aidm.config import MediaConfig, ProviderConfig
-from aidm.kernel.views import NarratorView, Subject, Views
+from aidm.core.views import NarratorView, Subject
 
 LOGGER = logging.getLogger(__name__)
 
 ICON_DIR = "icons"
 SUFFIXES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
 _FILENAME_SAFE = re.compile(r"[a-z0-9_-]+")
-
-
-def scene_key(scene: NarratorView) -> str:
-    """The engine's own key, hashed because it names a file and an id may not be safe as one."""
-    return sha1(scene.place.encode(), usedforsecurity=False).hexdigest()[:12]
-
-
-def illustration_request(
-    scene: NarratorView, narration: str, style: str, referenced: Sequence[str] = ()
-) -> str:
-    lines = [
-        "Draw one wide, borderless view of this place from the eye level of someone there. "
-        "Show a single scene, not a portrait or comic panel.",
-        scene.art_prompt,
-    ]
-    if narration:
-        lines.append(f"What just happened: {narration}")
-    if referenced:
-        # Map attachments to names so recurring characters retain their likeness.
-        lines.append(
-            f"Use the attached images as likeness references in this order: "
-            f"{', '.join(referenced)}. Keep each appearance consistent."
-        )
-    lines.append(style)
-    return "\n".join(lines)
-
-
-def icon_request(subject: Subject, style: str) -> str:
-    return (
-        f"Draw a borderless portrait token of {subject.name} — {subject.brief}. "
-        f"Centre the subject alone, filling the square on a plain background. "
-        f"Include only props they carry. {style}"
-    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,15 +61,15 @@ class Illustrator:
         self.generating.add(key)
         return True
 
-    async def illustrate(self, views: Views, narration: str) -> None:
-        key = scene_key(views.narrator)
+    async def illustrate(self, scene: NarratorView, player: Subject, narration: str) -> None:
+        key = scene_key(scene)
         drawing = _existing(self.saves, key) is None and self._claim(key)
         # The chat avatar wants the player's icon even when this scene's art is already cached.
-        _ = await self._drawn_icon(views.player.player)
+        _ = await self._drawn_icon(player)
         if not drawing:
             return
         try:
-            await self._draw(views.narrator, key, narration)
+            await self._draw(scene, key, narration)
         finally:
             self.generating.discard(key)
 
@@ -134,7 +101,7 @@ class Illustrator:
             return None
         try:
             generated = await self._generate(
-                icon_request(subject, self.style), self.config.icon_ratio
+                _icon_request(subject, self.style), self.config.icon_ratio
             )
         finally:
             self.generating.discard(claim)
@@ -204,6 +171,39 @@ class _ImageReply(BaseModel):
     def url(self) -> str | None:
         images = self.choices[0].message.images if self.choices else ()
         return images[0].image_url.url if images else None
+
+
+def scene_key(scene: NarratorView) -> str:
+    """The engine's own key, hashed because it names a file and an id may not be safe as one."""
+    return sha1(scene.place.encode(), usedforsecurity=False).hexdigest()[:12]
+
+
+def illustration_request(
+    scene: NarratorView, narration: str, style: str, referenced: Sequence[str] = ()
+) -> str:
+    lines = [
+        "Draw one wide, borderless view of this place from the eye level of someone there. "
+        "Show a single scene, not a portrait or comic panel.",
+        scene.art_prompt,
+    ]
+    if narration:
+        lines.append(f"What just happened: {narration}")
+    if referenced:
+        # Map attachments to names so recurring characters retain their likeness.
+        lines.append(
+            f"Use the attached images as likeness references in this order: "
+            f"{', '.join(referenced)}. Keep each appearance consistent."
+        )
+    lines.append(style)
+    return "\n".join(lines)
+
+
+def _icon_request(subject: Subject, style: str) -> str:
+    return (
+        f"Draw a borderless portrait token of {subject.name} — {subject.brief}. "
+        f"Centre the subject alone, filling the square on a plain background. "
+        f"Include only props they carry. {style}"
+    )
 
 
 def _decode(url: str) -> GeneratedImage | None:

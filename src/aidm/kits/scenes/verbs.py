@@ -2,6 +2,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from aidm.core.entities import DEAD, CheckedEntityId, EntityId, Frozen, Slug, Trait, slug
+from aidm.core.facts import Fact
+from aidm.core.tools import MasterTool, master_tool
 from aidm.kits.scenes.state import (
     Entity,
     SceneState,
@@ -9,12 +12,14 @@ from aidm.kits.scenes.state import (
     ThreadStatus,
     entity_fact,
 )
-from aidm.state.entities import DEAD, CheckedEntityId, EntityId, Frozen, Slug, Trait, slug
-from aidm.state.facts import Fact
-from aidm.state.tools import MasterTool, master_tool
 
 TO_PLAYER = "player"
 TO_SCENE = "scene"
+
+CHANGE_WORLD = (
+    "Apply one settled world change to match the story. Set `verb` to pick the change and fill "
+    "that verb's own fields. One call makes one change."
+)
 
 
 class Reveal(Frozen):
@@ -129,22 +134,6 @@ class ChangeWorld(Frozen):
     )
 
 
-def _here[S: BaseModel](world: SceneState[S], one: Entity[S]) -> Entity[S]:
-    if one.id not in world.current.present:
-        raise ValueError(f"{one.name} is not here with the player, so nothing can happen to them")
-    return one
-
-
-def _acted_on[S: BaseModel](world: SceneState[S], entity_id: EntityId) -> Entity[S]:
-    """An actor must be here and alive; a thing only has to be here."""
-    one = world.require(entity_id)
-    return world.require_actor_here(entity_id) if one.kind == "actor" else _here(world, one)
-
-
-def _sentence(text: str) -> str:
-    return text[:1].upper() + text[1:]
-
-
 def apply_change[S: BaseModel](world: SceneState[S], change: WorldChange) -> list[Fact]:  # noqa: C901
     """Every arm settles its own deterministic consequences, so a call leaves nothing half-done."""
     scene = world.current
@@ -247,6 +236,34 @@ def apply_change[S: BaseModel](world: SceneState[S], change: WorldChange) -> lis
             return _advance_thread(world, change)
 
 
+def scene_tools(*extra: MasterTool) -> tuple[MasterTool, ...]:
+    """The kit owns `change_world`; an engine names the procedure tools that follow it."""
+    change_world = master_tool(
+        "change_world",
+        CHANGE_WORLD,
+        ChangeWorld,
+        lambda draft, one, _rng: apply_change(draft.world, one.change),
+        during_suspension=True,
+    )
+    return (change_world, *extra)
+
+
+def _here[S: BaseModel](world: SceneState[S], one: Entity[S]) -> Entity[S]:
+    if one.id not in world.current.present:
+        raise ValueError(f"{one.name} is not here with the player, so nothing can happen to them")
+    return one
+
+
+def _acted_on[S: BaseModel](world: SceneState[S], entity_id: EntityId) -> Entity[S]:
+    """An actor must be here and alive; a thing only has to be here."""
+    one = world.require(entity_id)
+    return world.require_actor_here(entity_id) if one.kind == "actor" else _here(world, one)
+
+
+def _sentence(text: str) -> str:
+    return text[:1].upper() + text[1:]
+
+
 def _move_item[S: BaseModel](world: SceneState[S], change: MoveItem) -> list[Fact]:
     item = world.require_kind(change.item_id, "item")
     if item.carried_by is None and item.id not in world.current.present:
@@ -316,21 +333,3 @@ def _advance_thread[S: BaseModel](world: SceneState[S], change: AdvanceThread) -
     if thread.note:
         moved += f" — note: {thread.note}"
     return [Fact(kind="thread_advanced", trace=moved)]
-
-
-CHANGE_WORLD = (
-    "Apply one settled world change to match the story. Set `verb` to pick the change and fill "
-    "that verb's own fields. One call makes one change."
-)
-
-
-def scene_tools(*extra: MasterTool) -> tuple[MasterTool, ...]:
-    """Core owns `change_world`; an engine names the procedure tools that follow it."""
-    change_world = master_tool(
-        "change_world",
-        CHANGE_WORLD,
-        ChangeWorld,
-        lambda draft, one, _rng: apply_change(draft.world, one.change),
-        during_suspension=True,
-    )
-    return (change_world, *extra)

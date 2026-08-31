@@ -4,7 +4,7 @@ from typing import Self
 
 from pydantic import model_validator
 
-from aidm.state.entities import EntityId, Frozen
+from aidm.core.entities import EntityId, Frozen
 
 NOTHING = "- (nothing changed)"
 

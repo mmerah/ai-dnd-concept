@@ -3,8 +3,8 @@ from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
 
-from aidm.state.entities import CheckedEntityId, Frozen, Slug, require_unique
-from aidm.state.facts import Fact
+from aidm.core.entities import CheckedEntityId, Frozen, Slug, require_unique
+from aidm.core.facts import Fact
 
 
 class Line(Frozen):
@@ -25,10 +25,6 @@ class Speaker(Frozen):
 class SpokenLine(Frozen):
     speaker: Speaker | None = None
     text: str = Field(min_length=1)
-
-
-def narration_text(lines: Sequence[Line | SpokenLine]) -> str:
-    return "\n".join(line.text for line in lines)
 
 
 class Narration(Frozen):
@@ -102,3 +98,7 @@ class Exchange(Frozen):
     @property
     def narration(self) -> str:
         return narration_text(self.lines)
+
+
+def narration_text(lines: Sequence[Line | SpokenLine]) -> str:
+    return "\n".join(line.text for line in lines)

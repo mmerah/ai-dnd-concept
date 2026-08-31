@@ -8,9 +8,9 @@ from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
 from aidm.app.launch import launch_target, load_catalog
 from aidm.app.runtime import Runtime
-from aidm.content.io import SOURCE_SUFFIXES, write_character
-from aidm.state.creation import CreationStep, picked
-from aidm.state.entities import Slug
+from aidm.core.creation import CreationStep, picked
+from aidm.core.entities import Slug
+from aidm.core.io import SOURCE_SUFFIXES, write_character
 
 from .widgets import labeled_value, page_header
 
@@ -92,18 +92,11 @@ def character_page(runtime: Runtime) -> None:
                     ui.label(f"Not ready yet: {refused}").classes("text-sm opacity-50")
                     return
                 ui.separator().classes("q-my-sm")
-                for label, text in preview.rows:
+                for label, text in preview:
                     labeled_value(label, text)
                 ui.button("Create", icon="person_add", on_click=create).props("color=primary")
 
             form()
-
-
-def _drop_stale(steps: tuple[CreationStep, ...], picks: dict[Slug, str]) -> None:
-    """A new pack, or a skill moved onto its twin, can leave an answer its step no longer offers."""
-    for step in steps:
-        if step.options and picked(picks, step.id) not in {one.id for one in step.options}:
-            _ = picks.pop(step.id, None)
 
 
 def scenario_page(runtime: Runtime) -> None:
@@ -178,3 +171,10 @@ def scenario_page(runtime: Runtime) -> None:
             if not written:
                 button.disable()
                 ui.label("Make a character first.").classes("text-sm text-negative")
+
+
+def _drop_stale(steps: tuple[CreationStep, ...], picks: dict[Slug, str]) -> None:
+    """A new pack, or a skill moved onto its twin, can leave an answer its step no longer offers."""
+    for step in steps:
+        if step.options and picked(picks, step.id) not in {one.id for one in step.options}:
+            _ = picks.pop(step.id, None)

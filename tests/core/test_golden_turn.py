@@ -8,10 +8,10 @@ from core_test_support import ENGINE_IDS, Call, opened, played
 from golden_test_support import FIXTURES, dumped, golden, golden_json
 from golden_turn_support import NARRATION
 
-from aidm.state.entities import EngineId
-from aidm.state.facts import Fact
-from aidm.state.model import Game
-from aidm.state.play import Exchange, SpokenLine
+from aidm.core.entities import EngineId
+from aidm.core.facts import Fact
+from aidm.core.model import Game
+from aidm.core.play import Exchange, SpokenLine
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
 # Real played turns behind it, so RECENT PLAY and the told passages render something.

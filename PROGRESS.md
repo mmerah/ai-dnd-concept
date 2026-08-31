@@ -1151,3 +1151,316 @@ it is filed under "also in this phase".
 1.7 sharper, not stale: there are now **three** answers to "may this session play" — `busy`,
 `turn is not None`, and `play_refusal()` — where the step already argued that two was one too
 many. It also deleted `refuse_if_busy`, which was `Busy`'s second caller. `src` stays 5,791.
+
+## Phase 6 — The architecture deletion — IN PROGRESS
+
+`src` 5,791 -> **5,694** so far. Target for the whole phase is 5,750–5,850, so the phase is
+already under it; steps 4 and 5 move lines without deleting them.
+
+### Step 1 — the live-game lifecycle — DONE
+
+`GameService` is the one lifecycle owner. `Turn` is a transaction object: draft, facts, input
+consumption, validated application, and nothing else.
+
+- `Turn.started`, `Turn.picture` and `Turn.call` moved to the session as `turn_started`,
+  `picture()` and `_engine_call()`. `Turn.offer_the_way_on` became `Turn.settle_scene`, and the
+  session's `offer_the_way_on()` is what the tool calls. `turn/run.py` no longer imports
+  `turn.context`.
+- `mcp.py:refusal()` moved to `GameService._tool_refusal`. `ServerTool`, `SERVER_TOOLS` and
+  `DISPATCH` moved with it, so what is published stays beside what it runs. `app/mcp.py` is now
+  transport: it publishes the tool list and forwards to `session.call_tool(name, args)`. It holds
+  no game rule.
+- **The crossing stayed where it is.** Step 1.4 asked for an interface that does not reach into
+  session privates. `_cross_over`, `_write`, `_write_scene`, `_abandon_write` and `_installed`
+  touch `state`, `step`, `write_failure`, `_writing`, `commit`, `_illustrate`, `spawner`, `engine`
+  and `settings`. No such interface exists, so the step's own fallback applies: the win comes from
+  1.2 and 1.3 alone.
+- `_written` deleted. `_write` returns the scene and `_writing` is a `Task[SceneWrite | None]`, so
+  the value the task produces is handed back by the task.
+- `_narrate` and `_narrate_arrival` merged into one `_narrate(draft, facts, prompt, *, fatal)`.
+- **`busy` is now the one answer, and the session owns it.** `play()` sets it and clears it in a
+  `finally`. `ui/widgets.py:working()` no longer takes a session and only shows the failure, and
+  `Busy` is deleted. The window `Runtime.busy_refusal()` guards did not move: `working()` used to
+  set the flag with no await between the refusal check and the call, and `play()` now sets it as
+  its first statement, which is the same point in the schedule. `playing()`'s `turn is not None`
+  stays, because it answers a different question — which session's turn owns the tool surface —
+  and it is deliberately false during the crossing.
+- `start_turn` stays a tool, as the step says.
+
+### Step 2 — one engine extension point — DONE
+
+- `kernel/protocol.py` deleted, 53 lines. Its `Engine` had no runtime reader, and `Creation` had
+  no reader at all. `tests/core/test_engine_contract.py` went with it: against a single concrete
+  dataclass the assertion was tautological.
+- `EngineIdentity` deleted. The four single-engine readers in `content/io.py` take an `EngineId`.
+  The two that took a mapping take **`Collection[EngineId]`**, not `Container` — `read_characters`
+  iterates the engines to find which file names a character, and iteration order decides which
+  engine names them, so an unordered `set` would have made that non-deterministic. The existing
+  engines dict still satisfies it, so no caller changed.
+- `CharacterCreation` kept, as the step says.
+
+### Also in this phase — both DONE
+
+- **`Engine.views()` split into `master_view`, `narrator_view` and `player_view`.** The player page
+  no longer assembles the game master's prompt about fifty times a second per open tab. `Views`
+  deleted from `kernel/views.py`, and `Illustrator.illustrate` now takes the narrator view and the
+  player subject instead of the container.
+- **`state/tools.py:transact` and `content/io.py:load_scenario` deleted.** Both were public with
+  zero callers in `src`. The tests that reached them were rewritten: `load_scenario` is now a
+  three-line helper in `tests/core/core_test_support.py`, and the one test that exercised
+  `transact`'s out-of-turn guard keeps that guard as a local in `tests/core/test_decisions.py`.
+
+### Step 3 — generic `Game` — REFUTED, NOT DONE
+
+The step demanded a probe before starting. Five were written, in `/tmp/gameprobe`. **Every route to
+step 3 fails**, and the four aliases in `state/model.py` stay.
+
+**Route 1, the two-parameter shape `Game[S, P: EnginePayload[S]]`, is rejected by the type
+checker.** `TypeVar constraint type cannot be generic` — a bound may not reference another type
+parameter. It also showed a second error the plan had not recorded: an engine narrowing
+`engine: EngineId` to `engine: Literal["loner3e"]` is `reportIncompatibleVariableOverride`, so a
+shared payload base cannot declare `engine` and let engines discriminate on it for free.
+
+**Route 2, `Game[S]` with a `SerializeAsAny` payload and an engine-side subclass, works.** It
+round-trips byte-identically, keeps `twist` and `twist_pack` through `committed()`, keeps the
+subclass through a base-typed handle, and costs one narrow `pyright: ignore`. **Route 3, the same
+shape parameterised by the world type instead of the sheet, reorders the dump** — `world` lands
+before `engine` — which breaks the byte-identity the step's own rule 3.7 demands. So route 2 is the
+only survivor of the two.
+
+**Route 2 was not taken, and the honest reason is cost, not impossibility.** An earlier draft of
+this entry said the type parameter "can never be bound", because `Engine`, `GameService` and
+`Runtime` hold `Game`, `Scenario` and `Character` as *fields*:
+
+```
+Engine.new_game:   Callable[[Scenario, Character], Payload]
+Engine.validate:   Callable[[Game], None]
+Engine.sheet_rows: Callable[[Game], SheetRows]
+GameService.state: Game
+Runtime._sessions: dict[str, GameService]
+```
+
+**That was wrong, and an adversarial review measured it wrong.** Under this repo's own strict
+config, a *bare* `Game` errors five ways but `Game[Any]` type-checks with zero errors, and
+`payload.engine` resolves on it — the **bound** supplies the members, not the argument. So the
+parameter can be spelled above the engine layer behind a single alias, without any layer naming an
+engine. What route 2 really costs:
+
+- a per-engine `Game` subclass, to narrow `payload` back to the concrete payload type
+- about 46 annotation sites, plus that alias
+- an `Any` inside the alias, which `CLAUDE.md` bans in so many words
+
+And what it buys outside the engine is **three lines**. Every read of a concrete payload or sheet
+type outside `engines/loner3e/` is `core/model.py:73 self.payload.engine`,
+`core/model.py:79 self.payload.world`, and `engines/core.py:44 character.payload.model_dump(...)`.
+Nothing in `kits/`, `turn/`, `app/` or `ui/` reads one: the kit is already generic over
+`[S: BaseModel]`, and `ui` reads `PlayerView`.
+
+**So the debt is real and it is recorded as a cost, not a wall.** The payoff lands when engine #2
+arrives, not before.
+
+**Route 3, erasing the sheet parameter, is the cleanest design and dies on the published schema.**
+Delete `[S]` from `Entity`, `SceneState`, `SceneCanon` and `SceneDraft` — 48 annotations in the kit
+— and let every engine sheet subclass one `Sheet` base. Nothing is generic anywhere, `state/model`
+names only the kit, and Loner barely changes: it already narrows with `isinstance(sheet,
+ActorSheet)` in six places and has `actor_sheet()`. The probe passes every runtime check: a saved
+sheet is rebuilt as its **subclass** through a reflected `kind` dispatch, the round-trip is
+byte-identical, `committed()` keeps the subclass, `extra="forbid"` still bites through the
+dispatch, an unknown kind is refused, assignment validates, and `basedpyright` reports zero errors.
+
+It fails on one thing. `PlainValidator` has no input schema, so `Entity.model_json_schema()`
+renders the sheet as `{}`. `SceneDraft.cast` reuses `Entity`, so **the worldsmith would be handed a
+schema that says nothing about what a sheet is.** Only a concrete union renders, and a concrete
+union means some module above the kit names the engine's sheets — which is the inversion step 3 set
+out to delete. `WithJsonSchema` was not tried: any static schema there is a hand-kept copy of the
+engine's sheet union.
+
+**What Phase 7 inherits.** The union route is refuted for good (`d4750fb`: invariance errors at
+`narrator_view`, `apply_change`, `apply_scene`), and so is sheet erasure, on the schema. **Route 2
+plus a per-engine `Game` subclass is the shortest path open, and it is open.** Note that the schema
+argument that killed sheet erasure does not touch route 2: there the sheet stays a concrete
+Pydantic union, so `SceneDraft[LonerSheet]` still renders a real schema for the worldsmith, and
+step 3.3's `scene: type[SceneDraft[S]]` on `Engine` would have worked. The one untried alternative
+is a `SceneDraft` that stops reusing `Entity`, so the sheet parameter survives on the written draft
+while the stored state erases it.
+
+**Step 4 is therefore unblocked.** It only had to follow step 3 because step 3 would have rewritten
+the same annotations twice.
+
+### Step 4 — the fixed engine file template — DONE
+
+`loner3e` is four files with the same four names every engine will repeat. **822 -> 823 lines: a
+reshuffle, not a deletion.** The one extra line is import churn.
+
+| file | owns | before | after |
+|---|---|---|---|
+| `state.py` | payload, sheet union, typed state | 83 | 83 |
+| `rules.py` | tool argument models **and their resolvers**, plus their helpers | 361 | 472 |
+| `creation.py` | `Pack`, character creation, pack options, `guidance` | — | 130 |
+| `engine.py` | `build()`, and this engine's own implementation of the contract | 378 | 138 |
+
+`rules.py` gained `advance`, `_gain`, `_rewrite`, `complete_chapter` and the helpers they need —
+`party`, `party_member`, `advances_owed`, `meanings`, `twists`, `pack_meanings`, `_swapped`,
+`_advance_owed`, `ADVANCE_SPENT`, `RestoreLuck` — and lost `Pack` to `creation.py`.
+`engine.py` keeps `new_game`, `_validate`, `player_over`, `sheet_rows` and `engine_sections`,
+which have no home in the other three.
+
+**The import chain came out as `state <- creation <- rules <- engine`, not the sketched
+`state <- rules <- creation <- engine`.** `Pack` is a content model, so it belongs in
+`creation.py`, and `twist_table`, `twists` and `meanings` all type-hint `Mapping[str, Pack]`, so
+`rules.py` reads it. Verified acyclic: `creation.py` names nothing in `rules.py`.
+
+`find_entry` and `other_than` moved to `creation.py` because `Loner3eCreation` is their only
+remaining reader. `check_packs` moved there too and `engine.py` imports it back for `_validate`.
+
+Four test files changed one import line each. Nothing else outside the package moved.
+
+### Step 5 — flatten the shared vocabulary — DONE
+
+`src` 5,695 -> **5,656**. The −39 is `ScriptedSpawner` leaving `src/` and the two spawn wrappers
+collapsing, not a deletion of behaviour. This step buys names, not lines.
+
+`state/`, `kernel/` and `content/` are one `core/` package of ten modules: `entities`, `facts`,
+`play`, `creation`, `model`, `tools`, `views`, `envelope`, `io`, `source`.
+
+**The two destination names, decided before the merge, because the merge would otherwise have
+recreated two of the three collisions it exists to fix:**
+
+- `kernel/views.py` -> `core/views.py` — the view **models**. `kits/scenes/views.py` ->
+  `kits/scenes/render.py` — the view **builders**.
+- `state/tools.py` -> `core/tools.py` — the tool **machinery**. `kits/scenes/tools.py` ->
+  `kits/scenes/verbs.py` — the `change_world` **verbs**, which is what `CLAUDE.md` already calls
+  them.
+
+`model.py` and `envelope.py` keep their names. Step 3 was to have resolved that pair and did not,
+but they no longer read as two names for one thing now that both sit in `core/`: one is the game as
+played, the other is the raw-payload read that opens a file before the engine is known.
+
+`kits/scenes/source.py` -> `core/source.py`, because PDF and text extraction has nothing to do with
+scenes and the runtime is its only reader. `kits/` itself stays: `kits/rooms/` is planned.
+
+**`ScriptedSpawner` moved to `tests/core/core_test_support.py`.** A test double does not ship.
+Nothing in `src/` names it.
+
+**`Spawner` is one method: `run(role, prompt) -> str`.** `CliSpawner._run` already had that exact
+signature and became the public one. `written()` was already the standalone shared retry, so the
+three typed callers now call it directly with `partial(spawner.run, role)`. `ScriptedSpawner.run`
+branches on `role == "master"` to keep the hook-popping and prompt-echoing that only `act` did.
+
+One collision the rename forced: `runtime.new_scenario` held a local function named `written`,
+which the newly imported module-level `written` shadowed. The local is now `as_scenario`.
+
+`CLAUDE.md`'s flow line is now `core <- kits <- engines <- turn <- app <- ui`.
+`test_package_boundary.py`'s `LAYERS`, `ROOTS` and `ALLOWED` were retargeted in the same step. The
+suite drops 188 -> 186 tests for one reason only: `LAYERS` went from seven packages to five, and
+that table is what parametrizes the boundary test.
+
+### Step 6 — one strict file order, applied by tool — DONE
+
+Every `.py` under `src/` now reads: **imports -> constants and type aliases -> models and classes
+-> public functions -> private helpers.** `tests/` was left out of scope; the golden-fixture
+modules are the risk there and nothing is gained.
+
+A throwaway script in `/tmp/reorder/`, not kept in the repo — there is no ruff rule for
+module-level definition order. **28 of 47 files changed, about 238 of 722 top-level statements
+moved.** The other 19 files were already in order and were not rewritten.
+
+It moved source line spans and never `ast.unparse`d. Each statement moved as its span plus the
+comment block immediately above it and its decorators. **122 comment lines before, 122 after.**
+
+**The topological sort found 936 definition-time edges, of which 16 would have been broken by a
+plain bucket sort** — the number the plan predicted, in the three files it named:
+
+| file | edges |
+|---|---|
+| `kits/scenes/verbs.py` | 11 verb classes -> the `WorldChange` alias |
+| `engines/loner3e/state.py` | `_full_luck` -> `ActorSheet`, `ItemSheet` (a **private** factory before two models) |
+| `engines/loner3e/state.py` | `ActorSheet`, `ItemSheet` -> the `LonerSheet` alias |
+| `app/runtime.py` | `ServerTool` -> `SERVER_TOOLS` (step 1 moved this out of `app/mcp.py`) |
+
+They collapse to four surviving rank inversions. Every other adjacent pair in `src` is in
+non-decreasing bucket order.
+
+`type X = ...` was treated as lazy and `X = Annotated[...]` as eager. `LonerSheet` and `LonerWorld`
+sit three lines apart in `state.py` and depend on exactly that distinction.
+
+Verified in the four cheapest-first checks: the `ast.dump` multiset of top-level nodes is identical
+per file (the script refuses to write otherwise); every module imports cleanly **in a fresh
+interpreter each**, 46 of 46 — `ui/__main__.py` is excluded because importing it runs `start()`;
+`pytest` green with golden fixtures; `basedpyright` clean.
+
+`src` 5,656 -> **5,640**. The −16 is blank-line regrouping only.
+
+`CLAUDE.md` gained the ordering rule and its exception, beside the existing dependency-flow rule.
+
+## Phase 6 — result
+
+**`src` 5,791 -> 5,640. `tests` 3,560 -> 3,513.** The plan's target was 5,750–5,850 and warned the
+phase would not shrink `src`; it came in 110 under the bottom of that range, because step 3 added
+nothing back. **No deletion was invented to reach a number.**
+
+Full check green at every checkpoint: 186 passed, ruff clean, ruff format clean, basedpyright
+clean. The suite lost two tests against phase 5, both structural: `test_engine_contract.py` went
+with `kernel/protocol.py`, and the boundary test is parametrized by `LAYERS`, which went from seven
+packages to five.
+
+**Played, not just checked.** A full turn runs end to end on the new lifecycle: the catalog opens
+`whispering-vault`/`kael`, the tool surface publishes eight tools — `start_turn`, `scene`,
+`next_scene` and the engine's five — the master calls `start_turn`, `scene` and `next_scene`
+through `session.call_tool`, the narrator writes, the turn commits, and `busy` and `turn` both
+clear.
+
+**Left undone, and why:** step 3. Five probes, all recorded above. The four aliases in
+`core/model.py` stay, and `core/envelope.py` stays with them.
+
+### The adversarial review, and what it changed
+
+An Opus review of the staged phase found **one real defect**, a list of missed cuts, and one wrong
+claim in this file. `src` 5,640 -> **5,600**, `tests` 3,513 -> 3,517, 186 -> 187 tests.
+
+**The defect: a scene written for one turn installed itself at the end of the next one.** `play()`
+guarded only its first half. If `commit` or `_illustrate` raised, the method exited with a live
+worldsmith task still on `_writing`, and the next ordinary turn — where the player never asked to
+move on — reached `_cross_over`, awaited it and installed the scene. Exactly the hazard
+`_abandon_write`'s own docstring names. `play()` is now one guarded block whose
+`except BaseException` abandons the write and whose `finally` clears `turn`, `step` and `busy`;
+`turn` is still cleared before the crossing, so the tool surface cannot reach a turn nobody plays.
+`test_a_failed_commit_leaves_no_scene_write_running_for_a_later_turn` fails if the guard is removed;
+that was checked by removing it.
+
+**Cuts the phase missed.**
+
+- `MasterView` and `CreationPreview` were one-field models that every reader unwrapped on the spot.
+  Both deleted for a `Rows` alias, and `Engine.master_view` became `master_sections`, which is what
+  it returns.
+- `ServerTool.args` was `NoArgs` at all three call sites: a field that never varied. Deleted.
+  `DISPATCH` is private, and the three `lambda session: session.X()` are the bound methods.
+- Eight public symbols had one caller, in their own file — `open_media`, `build_server`, `spoken`,
+  `icon_request`, `kind_word`, `pack_meanings`, `actor_sheet`, `party_member`. All are private now
+  and sit in their file's private section. Step 4 made the last three in-file-only, so this phase
+  created three of them. The plan's claim that a sweep for unreferenced public symbols finds zero
+  was wrong.
+- `check_packs` landed in `creation.py` with no reader there; it is a validation rule and now sits
+  above `_validate` in `engine.py`.
+- `read_scenarios`/`read_characters` took `Collection[EngineId]`, which admits a set — and
+  `read_characters` iterates, with the order deciding which engine names a character. Now
+  `Sequence[EngineId]`.
+- `engines/core.py` imported the renamed `render` module back as `scene_views`, undoing step 5's
+  rename at its single most important call site.
+- The `transact` deletion left a test asserting that a `raise` written 80 lines above it raises —
+  the same tautology step 2 deleted `test_engine_contract.py` for. Gone.
+- `spawn.written()` collided with a lambda parameter, two function parameters and a local at its own
+  call sites, and had already forced an unrelated rename. It is `answered()`.
+
+**Clean, and confirmed by measurement:** the legality table moved with no rule changing meaning;
+`turn_started` cannot leak between turns; the merged `_narrate` kept both behaviours; a cancelled
+write can never be installed; `ScriptedSpawner.run` reproduces `act` exactly; step 6 has exactly the
+four predicted rank inversions, all 46 modules import in a fresh interpreter, and no comment was
+lost or reattached. **Constants are right on both sides**: nothing in `Settings` is a game rule, and
+nothing hardcoded is an operator knob — `RETRIES`, `SCENE_TURN_CAP`, `LUCK_MAX`, `DIE_FACE`,
+`AND_AT`, `BUT_AT` and `TIES_PER_TWIST` all stay where they are.
+
+**One claim in this file was wrong, and the correction is above.** The step 3 entry said a generic
+`Game` "can never be bound". The review measured that a bare `Game` errors but `Game[Any]`
+type-checks clean, because the bound supplies the members. Step 3 was skipped on cost, not
+impossibility, and Phase 7 needs to read it that way.

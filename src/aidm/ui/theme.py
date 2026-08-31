@@ -77,12 +77,12 @@ body, body.body--dark, .nicegui-content, .q-page {
 """
 
 
+def apply() -> None:
+    ui.dark_mode(True)
+    _inject_css()
+
+
 @cache
 def _inject_css() -> None:
     # `shared=True` appends to the app-wide head on every call; injected once per process.
     ui.add_css(_CSS, shared=True)
-
-
-def apply() -> None:
-    ui.dark_mode(True)
-    _inject_css()

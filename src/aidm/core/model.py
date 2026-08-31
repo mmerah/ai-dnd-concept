@@ -4,6 +4,9 @@ from typing import Self
 
 from pydantic import Field, ValidationError, model_validator
 
+from aidm.core.entities import EngineId, Frozen, Mutable, Slug, require_unique
+from aidm.core.facts import Fact, cards
+from aidm.core.play import Exchange, PendingDecision, SpokenLine
 from aidm.engines.loner3e.state import (
     Loner3eCharacter,
     Loner3eScenario,
@@ -11,11 +14,7 @@ from aidm.engines.loner3e.state import (
     LonerScene,
     LonerWorld,
 )
-from aidm.state.entities import EngineId, Frozen, Mutable, Slug, require_unique
-from aidm.state.facts import Fact, cards
-from aidm.state.play import Exchange, PendingDecision, SpokenLine
 
-# Phase 6 turns each of these into `Annotated[A | B, Field(discriminator="engine")]`.
 Payload = Loner3eState
 ScenarioPayload = Loner3eScenario
 CharacterPayload = Loner3eCharacter

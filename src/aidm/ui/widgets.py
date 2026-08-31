@@ -2,29 +2,23 @@ from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Sequ
 from contextlib import asynccontextmanager, contextmanager
 from functools import partial
 from pathlib import Path
-from typing import Protocol
 
 from nicegui import ui
 
-from aidm.state.play import DecisionOption
+from aidm.core.play import DecisionOption
 
 from . import theme
 
-
-class Busy(Protocol):
-    busy: bool
+DM_ICON = "auto_stories"
 
 
 @asynccontextmanager
-async def working(session: Busy) -> AsyncGenerator[None]:
-    """A failure is shown to the player and swallowed: the session must never stay busy."""
-    session.busy = True
+async def working() -> AsyncGenerator[None]:
+    """A failure is shown to the player and swallowed, so the page stays usable after it."""
     try:
         yield
     except Exception as error:
         ui.notify(f"{type(error).__name__}: {error}", type="negative", multi_line=True)
-    finally:
-        session.busy = False
 
 
 @contextmanager
@@ -41,9 +35,6 @@ def page_header(title: str, badge: str | None = None, home: bool = True) -> Gene
                 "text-sm font-bold q-px-md q-py-sm"
             )
         yield
-
-
-DM_ICON = "auto_stories"
 
 
 def entity_row(icon: Path | None, name: str, sub: str) -> None:

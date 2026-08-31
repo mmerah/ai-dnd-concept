@@ -3,6 +3,8 @@ from random import Random
 from core_test_support import initialized, loner_sheet
 from loner3e_test_support import TWISTS
 
+from aidm.core.entities import PLAYER_ID, EntityId
+from aidm.core.facts import cards
 from aidm.engines.loner3e.rules import (
     Question,
     apply_restore_luck,
@@ -10,8 +12,6 @@ from aidm.engines.loner3e.rules import (
     resolve_question,
 )
 from aidm.engines.loner3e.state import TIES_PER_TWIST
-from aidm.state.entities import PLAYER_ID, EntityId
-from aidm.state.facts import cards
 
 FOE = EntityId("mara")
 

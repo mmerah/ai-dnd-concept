@@ -33,7 +33,9 @@ Tests are deterministic and run offline.
 - Write a comment or non-runtime docstring only for a non-obvious reason, constraint, tradeoff, invariant, or tooling exception, and keep it to one line. Let names and signatures explain behavior. Treat descriptions used by reflection, Pydantic, or LLM prompts as runtime behavior: preserve their meaning and verify changes.
 - Keep directives such as `# pyright: ignore[...]` narrowly scoped and add a reason when needed.
 - Keep package `__init__.py` files empty and import from explicit module paths.
-- Use module-scope runtime imports for both values and types. Keep the dependency flow one-way so imports stay acyclic: `state <- kernel <- content <- kits <- engines <- turn <- app <- ui`. Break a cycle by moving the smallest shared type into its own module.
+- Use module-scope runtime imports for both values and types. Keep the dependency flow one-way so imports stay acyclic: `core <- kits <- engines <- turn <- app <- ui`. Break a cycle by moving the smallest shared type into its own module.
+- Order every module top to bottom: imports, then constants and type aliases, then models and classes, then public functions, then private helpers.
+- A statement evaluated at module scope keeps its dependency order; that order is the law and the section rank only breaks ties, so a table may follow the classes it names and a factory may precede the model whose default it is.
 
 ## Design rules
 

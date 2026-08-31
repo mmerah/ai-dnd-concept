@@ -2,9 +2,9 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
+from aidm.core.entities import Counter, Mutable, Slug, pool
 from aidm.kits.scenes.state import SceneCanon, SceneState
 from aidm.kits.scenes.worldsmith import SceneDraft
-from aidm.state.entities import Counter, Mutable, Slug, pool
 
 # Loner 3e's numbers; docs/LONER-3E.md points at the SRD and its deviations.
 LUCK_MAX = 6
@@ -14,6 +14,8 @@ AND_AT = 4  # both dice 4+ sharpens the answer to -and
 BUT_AT = 3  # both dice 3 or under softens it to -but
 
 SRD_PACK: Slug = "srd"
+
+type LonerWorld = SceneState[LonerSheet]
 
 
 def _full_luck() -> Counter:
@@ -54,9 +56,6 @@ class ItemSheet(Mutable):
 
 # A plain assignment, not `type`: a `type` alias defeats the discriminator.
 LonerSheet = Annotated[ActorSheet | ItemSheet, Field(discriminator="kind")]
-
-type LonerWorld = SceneState[LonerSheet]
-
 
 LonerScene = SceneDraft[LonerSheet]
 

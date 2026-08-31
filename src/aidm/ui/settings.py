@@ -12,15 +12,14 @@ from aidm.config import Settings, env_key, save_settings
 
 from .widgets import page_header
 
+type Boxes = dict[tuple[str, ...], Box]
+# A cleared box writes no key at all, which is the only way back to a field's own default.
+type Changes = dict[tuple[str, ...], str | None]
+
 
 class Box(Protocol):
     @property
     def value(self) -> object: ...
-
-
-type Boxes = dict[tuple[str, ...], Box]
-# A cleared box writes no key at all, which is the only way back to a field's own default.
-type Changes = dict[tuple[str, ...], str | None]
 
 
 def settings_page(settings: Settings, apply: Callable[[], str | None]) -> None:

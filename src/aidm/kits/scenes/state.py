@@ -3,7 +3,7 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from aidm.state.entities import (
+from aidm.core.entities import (
     DEAD,
     CheckedEntityId,
     EntityId,
@@ -13,15 +13,10 @@ from aidm.state.entities import (
     Trait,
     require_unique,
 )
-from aidm.state.facts import DiceEvent, Fact
+from aidm.core.facts import DiceEvent, Fact
 
 Kind = Literal["actor", "item", "prop"]
 ThreadStatus = Literal["active", "resolved", "dormant"]
-
-
-def kind_word(kind: Kind) -> str:
-    """Prompts and traces say 'npc', because 'actor' reads as the player too."""
-    return "npc" if kind == "actor" else kind
 
 
 class Entity[S: BaseModel](Mutable):
@@ -180,31 +175,9 @@ class SceneState[S: BaseModel](Mutable):
         return ""
 
 
-def _check_filing[S: BaseModel](
-    cast: dict[EntityId, Entity[S]], threads: dict[Slug, Thread]
-) -> None:
-    for key, one in cast.items():
-        if key != one.id:
-            raise ValueError(f"entity {one.id!r} is filed under {key!r}")
-        if one.carried_by is not None and one.carried_by not in cast:
-            raise ValueError(f"{one.id!r} is carried by {one.carried_by!r}, who is not in the cast")
-    for key, thread in threads.items():
-        if key != thread.id:
-            raise ValueError(f"thread {thread.id!r} is filed under {key!r}")
-
-
-def _check_named[S: BaseModel](scene: Scene, cast: dict[EntityId, Entity[S]]) -> None:
-    for who in (*scene.present, *scene.hidden):
-        if who not in cast:
-            raise ValueError(f"scene names {who!r}, who is not in the cast")
-    for who in scene.hidden:
-        if cast[who].known:
-            raise ValueError(f"{who!r} is hidden here but the player has already met them")
-
-
 def labeled[S: BaseModel](entity: Entity[S], player_id: EntityId) -> str:
     """A trace names an entity by kind, name, and exact id, so the model can reuse the id."""
-    word = "player" if entity.id == player_id else kind_word(entity.kind)
+    word = "player" if entity.id == player_id else _kind_word(entity.kind)
     return f"the {word} {entity.name}[{entity.id}]"
 
 
@@ -226,3 +199,30 @@ def entity_fact[S: BaseModel](
         card=card,
         dice=dice,
     )
+
+
+def _kind_word(kind: Kind) -> str:
+    """Prompts and traces say 'npc', because 'actor' reads as the player too."""
+    return "npc" if kind == "actor" else kind
+
+
+def _check_filing[S: BaseModel](
+    cast: dict[EntityId, Entity[S]], threads: dict[Slug, Thread]
+) -> None:
+    for key, one in cast.items():
+        if key != one.id:
+            raise ValueError(f"entity {one.id!r} is filed under {key!r}")
+        if one.carried_by is not None and one.carried_by not in cast:
+            raise ValueError(f"{one.id!r} is carried by {one.carried_by!r}, who is not in the cast")
+    for key, thread in threads.items():
+        if key != thread.id:
+            raise ValueError(f"thread {thread.id!r} is filed under {key!r}")
+
+
+def _check_named[S: BaseModel](scene: Scene, cast: dict[EntityId, Entity[S]]) -> None:
+    for who in (*scene.present, *scene.hidden):
+        if who not in cast:
+            raise ValueError(f"scene names {who!r}, who is not in the cast")
+    for who in scene.hidden:
+        if cast[who].known:
+            raise ValueError(f"{who!r} is hidden here but the player has already met them")

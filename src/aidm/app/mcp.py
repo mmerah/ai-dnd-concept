@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
 
@@ -6,102 +5,64 @@ import mcp_types as types
 from mcp.server import Server, ServerRequestContext
 from mcp.server.streamable_http_manager import StreamableHTTPASGIApp, StreamableHTTPSessionManager
 from mcp.server.transport_security import TransportSecuritySettings
-from pydantic import BaseModel, JsonValue, TypeAdapter
+from pydantic import JsonValue, TypeAdapter
 
-from aidm.app.runtime import NO_TURN, GameService, Runtime
-from aidm.state.entities import require_unique
-from aidm.state.tools import MasterTool, NoArgs, schema_of
-from aidm.turn.run import Turn
+from aidm.app.runtime import NO_TURN, SERVER_TOOLS, Runtime, ServerTool
+from aidm.core.entities import require_unique
+from aidm.core.tools import MasterTool, NoArgs, schema_of
 
 SERVER_NAME = "aidm"
 MOUNT_PATH = "/mcp"
-START_FIRST = "call `start_turn` first: it opens the turn and hands back the picture."
-ALREADY_OPEN = "the turn is already open. `scene` gives the picture back."
-DECIDING = "the rules are waiting on the player; the scene after this one waits with them."
 
 _ARGUMENTS = TypeAdapter(dict[str, JsonValue])
 
 
 @dataclass(frozen=True, slots=True)
-class ServerTool:
-    """What is published is what is run: one place for the name, the schema and the behaviour."""
+class Endpoint:
+    """The transport, served from the running app so the spawned CLI reaches the live game."""
 
-    name: str
-    description: str
-    run: Callable[[GameService, dict[str, JsonValue]], str]
-    args: type[BaseModel] = NoArgs
+    asgi: StreamableHTTPASGIApp
+    # A mounted app's own lifespan never runs, so the manager's task group is opened by hand.
+    running: AsyncExitStack
+    manager: StreamableHTTPSessionManager
 
+    async def open(self) -> None:
+        _ = await self.running.enter_async_context(self.manager.run())
 
-SERVER_TOOLS: tuple[ServerTool, ...] = (
-    ServerTool(
-        "start_turn",
-        "Open the turn and get the whole game back: the scene, who is here, what is hidden here,"
-        " the threads, the notes from the rules and the recent play. Call it first every turn.",
-        lambda service, _raw: service.start_turn(),
-    ),
-    ServerTool(
-        "scene",
-        "The same picture start_turn gives, for when you were compacted mid-turn.",
-        lambda service, _raw: service.picture(),
-    ),
-    ServerTool(
-        "next_scene",
-        "Say this scene's question is settled. The player is then asked what they want to pursue,"
-        " and their own words are what the next scene is built from. Do not answer for them.",
-        lambda service, _raw: service.offer_the_way_on(),
-    ),
-)
-
-DISPATCH = {tool.name: tool for tool in SERVER_TOOLS}
-
-
-def refusal(turn: Turn, name: str) -> str | None:
-    """The legality table: a call that does not fit the moment says what to do instead."""
-    if name == "scene":
-        return None
-    if name == "start_turn":
-        return ALREADY_OPEN if turn.started else None
-    if not turn.started:
-        return START_FIRST
-    if (ended := turn.engine.over(turn.draft)) is not None:
-        return f"{ended} The game is over; the player restarts from the page."
-    # `next_scene` never reaches `Turn.call`, so the pending row is enforced for it here.
-    if name == "next_scene" and turn.draft.pending is not None:
-        return DECIDING
-    return None
+    async def close(self) -> None:
+        await self.running.aclose()
 
 
 def offered(runtime: Runtime) -> list[types.Tool]:
     engine_tools = runtime.engine.tools
     # `call` reaches the server's own tools first, so a shared name would shadow the engine's.
-    require_unique("published tool names", (*DISPATCH, *(one.name for one in engine_tools)))
+    names = (*(one.name for one in SERVER_TOOLS), *(one.name for one in engine_tools))
+    require_unique("published tool names", names)
     return [_published(one) for one in (*SERVER_TOOLS, *engine_tools)]
 
 
 def call(runtime: Runtime, name: str, raw: dict[str, JsonValue]) -> str:
-    service = runtime.playing()
-    if service is None:
+    session = runtime.playing()
+    if session is None:
         raise ValueError(NO_TURN)
-    turn = service.turn
-    if turn is None:
-        raise ValueError(NO_TURN)
-    if (refused := refusal(turn, name)) is not None:
-        raise ValueError(refused)
-    tool = DISPATCH.get(name)
-    if tool is None:
-        return turn.call(name, raw)
-    # A NoArgs tool ignores `raw` in its handler, so junk arguments need a guard of their own.
-    _ = tool.args.model_validate(raw)
-    return tool.run(service, raw)
+    return session.call_tool(name, raw)
 
 
-def _published(tool: ServerTool | MasterTool) -> types.Tool:
-    return types.Tool(
-        name=tool.name, description=tool.description, input_schema=schema_of(tool.args)
+def endpoint(runtime: Runtime) -> Endpoint:
+    manager = StreamableHTTPSessionManager(
+        app=_build_server(runtime),
+        json_response=True,
+        stateless=True,
+        security_settings=TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=["127.0.0.1:*", "localhost:*"],
+            allowed_origins=["http://127.0.0.1:*", "http://localhost:*"],
+        ),
     )
+    return Endpoint(asgi=StreamableHTTPASGIApp(manager), running=AsyncExitStack(), manager=manager)
 
 
-def build_server(runtime: Runtime) -> Server[dict[str, object]]:
+def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
     async def on_list_tools(
         ctx: ServerRequestContext[dict[str, object]], params: types.PaginatedRequestParams | None
     ) -> types.ListToolsResult:
@@ -125,35 +86,10 @@ def build_server(runtime: Runtime) -> Server[dict[str, object]]:
     return Server(SERVER_NAME, on_list_tools=on_list_tools, on_call_tool=on_call_tool)
 
 
+def _published(tool: ServerTool | MasterTool) -> types.Tool:
+    args = NoArgs if isinstance(tool, ServerTool) else tool.args
+    return types.Tool(name=tool.name, description=tool.description, input_schema=schema_of(args))
+
+
 def _content(body: str, error: bool = False) -> types.CallToolResult:
     return types.CallToolResult(content=[types.TextContent(text=body)], is_error=error)
-
-
-@dataclass(frozen=True, slots=True)
-class Endpoint:
-    """The transport, served from the running app so the spawned CLI reaches the live game."""
-
-    asgi: StreamableHTTPASGIApp
-    # A mounted app's own lifespan never runs, so the manager's task group is opened by hand.
-    running: AsyncExitStack
-    manager: StreamableHTTPSessionManager
-
-    async def open(self) -> None:
-        _ = await self.running.enter_async_context(self.manager.run())
-
-    async def close(self) -> None:
-        await self.running.aclose()
-
-
-def endpoint(runtime: Runtime) -> Endpoint:
-    manager = StreamableHTTPSessionManager(
-        app=build_server(runtime),
-        json_response=True,
-        stateless=True,
-        security_settings=TransportSecuritySettings(
-            enable_dns_rebinding_protection=True,
-            allowed_hosts=["127.0.0.1:*", "localhost:*"],
-            allowed_origins=["http://127.0.0.1:*", "http://localhost:*"],
-        ),
-    )
-    return Endpoint(asgi=StreamableHTTPASGIApp(manager), running=AsyncExitStack(), manager=manager)

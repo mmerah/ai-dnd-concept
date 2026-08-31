@@ -3,16 +3,15 @@ import shutil
 from pathlib import Path
 
 import pytest
-from core_test_support import ENGINES_BUILT
+from core_test_support import ENGINES_BUILT, ScriptedSpawner
 from pydantic import JsonValue
 from ui_test_support import REPOSITORY_ROOT, SCENARIOS, ui_settings
 
 from aidm.app.launch import LaunchTarget, launch_target, load_catalog
 from aidm.app.runtime import Runtime
-from aidm.app.spawn import ScriptedSpawner
 from aidm.config import Settings
-from aidm.content.io import ENCODING, FileStore
-from aidm.state.model import Game
+from aidm.core.io import ENCODING, FileStore
+from aidm.core.model import Game
 
 
 def _opening_state(settings: Settings) -> Game:

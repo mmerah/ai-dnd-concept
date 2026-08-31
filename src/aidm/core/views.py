@@ -1,5 +1,7 @@
-from aidm.state.entities import Frozen
-from aidm.state.play import DecisionOption, Speaker
+from aidm.core.entities import Frozen
+from aidm.core.play import DecisionOption, Speaker
+
+type Rows = tuple[tuple[str, str], ...]
 
 
 class Subject(Frozen):
@@ -19,13 +21,6 @@ class PlayerPrompt(Frozen):
     prompt: str
     options: tuple[DecisionOption, ...]
     allows_text: bool
-
-
-class MasterView(Frozen):
-    """The game master's whole picture: the kit states every section, so nothing leaks by
-    omission."""
-
-    sections: tuple[tuple[str, str], ...]
 
 
 class NarratorView(Frozen):
@@ -59,15 +54,5 @@ class PlayerView(Frozen):
     over: str | None
 
 
-class Views(Frozen):
-    master: MasterView
-    narrator: NarratorView
-    player: PlayerView
-
-
 def speaker_of(subject: Subject) -> Speaker:
     return Speaker(name=subject.name, id=subject.id)
-
-
-class CreationPreview(Frozen):
-    rows: tuple[tuple[str, str], ...]

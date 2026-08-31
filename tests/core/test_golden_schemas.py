@@ -2,8 +2,8 @@ import pytest
 from core_test_support import ENGINE_IDS, game
 from golden_test_support import FIXTURES, golden_json
 
-from aidm.state.entities import EngineId
-from aidm.state.tools import schema_of
+from aidm.core.entities import EngineId
+from aidm.core.tools import schema_of
 
 
 @pytest.mark.parametrize("engine_id", ENGINE_IDS)

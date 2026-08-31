@@ -1,11 +1,11 @@
 from core_test_support import ENGINES_BUILT, LONER3E, initialized, with_entity
 
+from aidm.core.entities import EntityId
+from aidm.core.model import Game
+from aidm.core.views import NarratorView
 from aidm.engines.core import Engine
 from aidm.engines.loner3e.state import ActorSheet, LonerSheet
-from aidm.kernel.views import NarratorView
 from aidm.kits.scenes.state import Entity
-from aidm.state.entities import EntityId
-from aidm.state.model import Game
 from aidm.turn.context import ANSWERED_BY_OPTION, render_narrator, render_picture
 
 SECRET = EntityId("hidden-actor")
@@ -43,7 +43,7 @@ def _engine() -> Engine:
 
 def _master_prompt(held: Game, prompt: str, *, resumed: str = "") -> str:
     return render_picture(
-        _engine().views(held).master.sections,
+        _engine().master_sections(held),
         held,
         prompt,
         resumed=resumed,
@@ -52,7 +52,8 @@ def _master_prompt(held: Game, prompt: str, *, resumed: str = "") -> str:
 
 def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> None:
     held = _state()
-    views = _engine().views(held)
+    narrator = _engine().narrator_view(held)
+    master = _engine().master_sections(held)
 
     assert set(NarratorView.model_fields) == {
         "place",
@@ -63,17 +64,17 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
         "subjects",
         "speakers",
     }
-    dumped = str(views.narrator.model_dump())
+    dumped = str(narrator.model_dump())
     assert "The Secret" not in dumped
     assert held.world.current.secret not in dumped
-    assert held.world.current.secret in str(views.master.sections)
+    assert held.world.current.secret in str(master)
 
 
 def test_a_carried_item_never_names_the_holder_the_player_has_not_met() -> None:
     held = _state()
 
     assert "carried by the npc The Secret[hidden-actor]" in _master_prompt(held, "I look around.")
-    assert "The Secret" not in str(_engine().views(held).narrator.model_dump())
+    assert "The Secret" not in str(_engine().narrator_view(held).model_dump())
 
 
 def test_the_master_is_shown_the_hidden_canon_and_the_tags_in_play() -> None:
@@ -94,7 +95,7 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:
     held = _state()
 
     prompt = render_narrator(
-        _engine().views(held).narrator,
+        _engine().narrator_view(held),
         evidence="- the map was found",
         prompt="What does Mara say?",
     )
@@ -109,7 +110,7 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_read() -> None:
     held = _state()
 
     prompt = render_narrator(
-        _engine().views(held).narrator,
+        _engine().narrator_view(held),
         evidence="- the map was found",
         prompt="What does Mara say?",
         passages=("Water drips.",),

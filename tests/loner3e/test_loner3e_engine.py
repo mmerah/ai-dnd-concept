@@ -4,12 +4,16 @@ import pytest
 from core_test_support import initialized, loner_at_boundary, loner_sheet, with_entity
 from loner3e_test_support import TWISTS
 
+from aidm.core.entities import PLAYER_ID, Counter, EntityId
+from aidm.core.facts import cards
+from aidm.core.model import Game
+from aidm.core.play import PendingDecision
 from aidm.engines.core import Engine
-from aidm.engines.loner3e.engine import advance
 from aidm.engines.loner3e.rules import (
     AdventureGrowth,
     Change,
     Question,
+    advance,
     apply_restore_luck,
     conflict_prompt,
     defeat_note,
@@ -21,11 +25,7 @@ from aidm.engines.loner3e.rules import (
 )
 from aidm.engines.loner3e.state import LUCK_MAX, TIES_PER_TWIST, ActorSheet, LonerSheet
 from aidm.kits.scenes.state import Entity
-from aidm.kits.scenes.tools import Reveal, apply_change
-from aidm.state.entities import PLAYER_ID, Counter, EntityId
-from aidm.state.facts import cards
-from aidm.state.model import Game
-from aidm.state.play import PendingDecision
+from aidm.kits.scenes.verbs import Reveal, apply_change
 
 FOE = EntityId("mara")
 MAP = EntityId("vault-map")
@@ -35,7 +35,7 @@ def _owed(engine: Engine, state: Game) -> tuple[str, ...]:
     """The ADVANCES OWED section split back into the one line it holds per member."""
     return tuple(
         line
-        for title, body in engine.views(state).master.sections
+        for title, body in engine.master_sections(state)
         if title == "ADVANCES OWED"
         for line in body.splitlines()
     )

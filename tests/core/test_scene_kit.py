@@ -1,15 +1,15 @@
 import pytest
 from core_test_support import initialized, updated
 
+from aidm.core.entities import PLAYER_ID, EntityId
+from aidm.core.facts import Fact, cards
+from aidm.core.model import Game
+from aidm.core.play import Exchange
 from aidm.engines.loner3e.state import ActorSheet, LonerSheet
 from aidm.kits.scenes.boundary import SCENE_TURN_CAP, scene_spent
 from aidm.kits.scenes.state import Entity, Thread
-from aidm.kits.scenes.tools import ChangeWorld, apply_change
+from aidm.kits.scenes.verbs import ChangeWorld, apply_change
 from aidm.kits.scenes.worldsmith import MIN_SITUATION, SceneDraft, apply_scene, scene_refusal
-from aidm.state.entities import PLAYER_ID, EntityId
-from aidm.state.facts import Fact, cards
-from aidm.state.model import Game
-from aidm.state.play import Exchange
 
 MAP = EntityId("vault-map")
 RING = EntityId("ring")

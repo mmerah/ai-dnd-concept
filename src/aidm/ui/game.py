@@ -8,10 +8,10 @@ from time import monotonic
 from nicegui import ui
 
 from aidm.app.runtime import GameService, Runtime
-from aidm.kernel.views import speaker_of
-from aidm.state.entities import EntityId
-from aidm.state.facts import DiceEvent, Fact
-from aidm.state.play import Answer, Speaker
+from aidm.core.entities import EntityId
+from aidm.core.facts import DiceEvent, Fact
+from aidm.core.play import Answer, Speaker
+from aidm.core.views import speaker_of
 from aidm.turn.run import TurnStep
 
 from .panels import journal_panel, sheet_panel
@@ -24,104 +24,7 @@ from .widgets import (
 
 _SCENE_HEIGHT = "calc(25vh - 1rem)"
 
-
 _ART_BOX = f"flex: none; height: {_SCENE_HEIGHT}; max-width: 50%; aspect-ratio: 16 / 9"
-
-
-def scene_header(session: GameService) -> None:
-    scene = session.scene()
-    # A quarter of the column at most: the art holds it and the text beside it scrolls.
-    with (
-        ui.row()
-        .classes("w-full items-start no-wrap")
-        .style(f"max-height: {_SCENE_HEIGHT}; overflow: hidden; gap: 0.75rem")
-    ):
-        _scene_art(session)
-        with (
-            ui.column()
-            .classes("flex-grow")
-            .style(f"max-height: {_SCENE_HEIGHT}; overflow-y: auto; gap: 0; min-width: 0")
-        ):
-            ui.label(scene.title).classes("text-h6 font-bold")
-            _breadcrumb(session)
-            ui.label(scene.situation).classes("text-sm opacity-70")
-
-
-def _breadcrumb(session: GameService) -> None:
-    """Where this scene sits in the story: the number of every scene played, this one marked."""
-    played = session.view().player.scenes
-    with ui.row().classes("items-center").style("gap: 0.3rem"):
-        for number, title in enumerate(played, start=1):
-            here = number == len(played)
-            ui.label(str(number)).classes(
-                f"text-xs {'font-bold game-outcome' if here else 'opacity-40'}"
-            ).tooltip(title)
-
-
-def _scene_art(session: GameService) -> None:
-    art = session.scene_art()
-    if art is not None:
-        # `contain` letterboxes a frame drawn at another ratio instead of cropping its subject.
-        ui.image(art).props("fit=contain").classes("rounded-borders").style(_ART_BOX)
-    elif session.scene_pending():
-        ui.skeleton().classes("rounded-borders").style(_ART_BOX)
-
-
-def chat(session: GameService) -> None:
-    if not session.state.history:
-        ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
-    here = ""
-    history = session.state.history
-    last = history[-1] if history and session.state.pending is not None else None
-    player = speaker_of(session.view().player.player)
-    for exchange in history:
-        if exchange.scene != here:
-            here = exchange.scene
-            ui.label(here).classes("w-full text-center text-xs uppercase opacity-50 q-mt-md")
-        _bubble(session, player, exchange.prompt, sent=True)
-        for fact in exchange.facts:
-            _card(fact)
-        for line in exchange.lines:
-            _bubble(session, line.speaker, line.text, sent=False)
-        if exchange.decision and exchange is not last:
-            ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
-
-
-def _card(fact: Fact) -> None:
-    headline, *detail = fact.card.split("\n")
-    with ui.column().classes("game-card w-full").style("gap: 0.3rem"):
-        ui.label(headline).classes("text-sm font-bold")
-        for line in detail:
-            ui.label(line).classes("text-xs opacity-80")
-        if fact.dice:
-            with ui.row().classes("items-start").style("gap: 1rem"):
-                for group in fact.dice:
-                    _dice_group(group)
-
-
-def _dice_group(die: DiceEvent) -> None:
-    with ui.column().style("gap: 0.2rem"):
-        ui.label(die.label).classes("text-xs opacity-60")
-        with ui.row().classes("no-wrap").style("gap: 0.3rem"):
-            for index, (face, value) in enumerate(zip(die.faces, die.rolled, strict=True)):
-                with (
-                    ui.column()
-                    .classes("game-die" + (" game-die-kept" if index in die.highlight else ""))
-                    .style("gap: 0")
-                ):
-                    ui.label(f"d{face}").classes("game-die-face")
-                    ui.label(str(value)).classes("game-die-value")
-
-
-def _bubble(session: GameService, speaker: Speaker | None, text: str, *, sent: bool) -> None:
-    icon = None if speaker is None else session.icon(EntityId(speaker.id))
-    name = "DM" if speaker is None else speaker.name
-    message = ui.chat_message(text, name=name, sent=sent).classes("w-full")
-    if speaker is None:
-        message.props("bg-color=grey-3")
-    with message.add_slot("avatar"):
-        avatar(icon, None if speaker is None else name)
-
 
 _STEP_COPY: dict[TurnStep, tuple[str, str]] = {
     "master": (
@@ -136,35 +39,6 @@ _STEP_COPY: dict[TurnStep, tuple[str, str]] = {
         "This one is slow — a few minutes is normal.",
     ),
 }
-
-
-def live_turn(
-    session: GameService, prompt: str | None, facts: Sequence[Fact], elapsed: float
-) -> ui.label | None:
-    if prompt is not None:
-        _bubble(session, speaker_of(session.view().player.player), prompt, sent=True)
-    for fact in facts:
-        _card(fact)
-    if session.step is not None:
-        return _inline_status(session.step, elapsed)
-    return None
-
-
-def _inline_status(step: TurnStep, elapsed: float) -> ui.label:
-    label, description = _STEP_COPY[step]
-    with ui.row().classes("items-center no-wrap q-py-xs").style("gap: 0.4rem"):
-        ui.spinner(size="1.1rem")
-        ui.label(label).classes("text-sm font-bold")
-        ticker = ui.label(_clock(elapsed)).classes("text-xs font-mono")
-    if description:
-        ui.label(description).classes("text-xs opacity-70")
-    return ticker
-
-
-def _clock(seconds: float) -> str:
-    minutes, rest = divmod(int(seconds), 60)
-    return f"{minutes}:{rest:02d}"
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -230,16 +104,55 @@ class GameView:
             panel.refresh()
 
 
-def _composer_placeholder(view: GameView) -> str:
-    step = view.session.step
-    if step is not None:
-        return f"{_STEP_COPY[step][0]} is working..."
-    pending = view.session.view().player.prompt
-    if pending is not None:
-        if not pending.allows_text:
-            return "Choose an option above."
-        return "The game is waiting on your answer."
-    return "What do you do?"
+def scene_header(session: GameService) -> None:
+    scene = session.scene()
+    # A quarter of the column at most: the art holds it and the text beside it scrolls.
+    with (
+        ui.row()
+        .classes("w-full items-start no-wrap")
+        .style(f"max-height: {_SCENE_HEIGHT}; overflow: hidden; gap: 0.75rem")
+    ):
+        _scene_art(session)
+        with (
+            ui.column()
+            .classes("flex-grow")
+            .style(f"max-height: {_SCENE_HEIGHT}; overflow-y: auto; gap: 0; min-width: 0")
+        ):
+            ui.label(scene.title).classes("text-h6 font-bold")
+            _breadcrumb(session)
+            ui.label(scene.situation).classes("text-sm opacity-70")
+
+
+def chat(session: GameService) -> None:
+    if not session.state.history:
+        ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
+    here = ""
+    history = session.state.history
+    last = history[-1] if history and session.state.pending is not None else None
+    player = speaker_of(session.player_view().player)
+    for exchange in history:
+        if exchange.scene != here:
+            here = exchange.scene
+            ui.label(here).classes("w-full text-center text-xs uppercase opacity-50 q-mt-md")
+        _bubble(session, player, exchange.prompt, sent=True)
+        for fact in exchange.facts:
+            _card(fact)
+        for line in exchange.lines:
+            _bubble(session, line.speaker, line.text, sent=False)
+        if exchange.decision and exchange is not last:
+            ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
+
+
+def live_turn(
+    session: GameService, prompt: str | None, facts: Sequence[Fact], elapsed: float
+) -> ui.label | None:
+    if prompt is not None:
+        _bubble(session, speaker_of(session.player_view().player), prompt, sent=True)
+    for fact in facts:
+        _card(fact)
+    if session.step is not None:
+        return _inline_status(session.step, elapsed)
+    return None
 
 
 def on_step(view: GameView, step: TurnStep) -> None:
@@ -253,20 +166,6 @@ def on_step(view: GameView, step: TurnStep) -> None:
 def on_fact(view: GameView, fact: Fact, loop: AbstractEventLoop) -> None:
     """Schedule refreshes on NiceGUI's loop because sync tools emit from worker threads."""
     loop.call_soon_threadsafe(_apply_fact, view, fact)
-
-
-def _apply_fact(view: GameView, fact: Fact) -> None:
-    if not (fact.told and fact.card):
-        return
-    view.live_facts.append(fact)
-    view.live_turn.refresh()
-    _scroll(view)
-
-
-def _scroll(view: GameView) -> None:
-    if (transcript := view.transcript) is not None:
-        # A method call on an existing element needs no NiceGUI slot; `ui.timer` here would.
-        get_running_loop().call_later(0.1, lambda: transcript.scroll_to(percent=1.0))
 
 
 def tick_elapsed(view: GameView) -> None:
@@ -292,30 +191,6 @@ def refuse_play(view: GameView) -> bool:
     return True
 
 
-async def _send(
-    view: GameView, player_input: str | Answer, bubble: str, *, moving_on: bool = False
-) -> None:
-    session = view.session
-    view.live_prompt, view.live_facts = bubble, []
-    view.live_turn.refresh()
-    _scroll(view)
-    async with working(session):
-        loop = get_running_loop()
-        await session.play(
-            player_input,
-            on_step=lambda step: on_step(view, step),
-            on_fact=lambda fact: on_fact(view, fact, loop),
-            moving_on=moving_on,
-        )
-    view.log(session.master_log)
-    session.step = None
-    view.live_prompt, view.live_facts, view.step_started = None, [], None
-    if view.composer is not None:
-        view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
-    view.refresh_all()
-    _scroll(view)
-
-
 async def submit(view: GameView, box: ui.input, moving_on: bool = False) -> None:
     session = view.session
     typed = (box.value or "").strip()
@@ -325,14 +200,13 @@ async def submit(view: GameView, box: ui.input, moving_on: bool = False) -> None
     box.value = ""
     # Quasar never saw the typed value change, so only an explicit push empties the composer.
     _ = box.run_method("updateValue")
-    typed_input = typed if session.view().player.prompt is None else Answer(text=typed)
+    typed_input = typed if session.player_view().prompt is None else Answer(text=typed)
     await _send(view, typed_input, typed, moving_on=moving_on)
 
 
 def way_on_panel(view: GameView) -> None:
-    """The banner, not the offer: the Move on button beside the composer is the offer. This keeps
-    the state legible after a reload, when the narrator's asking has scrolled away."""
-    if not view.session.view().player.settled:
+    """The banner, not the offer: legible after a reload, once the asking has scrolled away."""
+    if not view.session.player_view().settled:
         return
     with (
         ui.row().classes("game-card game-decision w-full items-center no-wrap").style("gap: 0.4rem")
@@ -344,14 +218,8 @@ def way_on_panel(view: GameView) -> None:
         )
 
 
-def _can_type(session: GameService, busy: bool) -> bool:
-    player = session.view().player
-    typed = player.prompt is None or player.prompt.allows_text
-    return not busy and typed and player.over is None
-
-
 def decision_panel(view: GameView) -> None:
-    pending = view.session.view().player.prompt
+    pending = view.session.player_view().prompt
     if pending is None:
         return
 
@@ -379,7 +247,7 @@ def composer(view: GameView) -> None:
         # `busy` is only the source NiceGUI needs: it re-runs every backward on its 0.1s poll.
         ui.label("").classes("text-xs self-center").style(
             "color: var(--game-danger)"
-        ).bind_text_from(session, "busy", backward=lambda _: session.view().player.over or "")
+        ).bind_text_from(session, "busy", backward=lambda _: session.player_view().over or "")
         box = (
             ui.input(placeholder=_composer_placeholder(view))
             .classes("flex-grow")
@@ -401,7 +269,7 @@ def composer(view: GameView) -> None:
             ui.button("Move on", icon="arrow_forward", on_click=lambda: submit(view, box, True))
             .props("no-caps outline dense")
             .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
-            .bind_visibility_from(session, "busy", backward=lambda _: session.view().player.settled)
+            .bind_visibility_from(session, "busy", backward=lambda _: session.player_view().settled)
         )
     view.composer = box
 
@@ -450,3 +318,131 @@ def game_page(runtime: Runtime, session: GameService) -> None:
     ui.timer(1.0, lambda: tick_elapsed(view))
     if session.media is not None:
         ui.timer(3.0, lambda: poll_art(view))
+
+
+def _breadcrumb(session: GameService) -> None:
+    """Where this scene sits in the story: the number of every scene played, this one marked."""
+    played = session.player_view().scenes
+    with ui.row().classes("items-center").style("gap: 0.3rem"):
+        for number, title in enumerate(played, start=1):
+            here = number == len(played)
+            ui.label(str(number)).classes(
+                f"text-xs {'font-bold game-outcome' if here else 'opacity-40'}"
+            ).tooltip(title)
+
+
+def _scene_art(session: GameService) -> None:
+    art = session.scene_art()
+    if art is not None:
+        # `contain` letterboxes a frame drawn at another ratio instead of cropping its subject.
+        ui.image(art).props("fit=contain").classes("rounded-borders").style(_ART_BOX)
+    elif session.scene_pending():
+        ui.skeleton().classes("rounded-borders").style(_ART_BOX)
+
+
+def _card(fact: Fact) -> None:
+    headline, *detail = fact.card.split("\n")
+    with ui.column().classes("game-card w-full").style("gap: 0.3rem"):
+        ui.label(headline).classes("text-sm font-bold")
+        for line in detail:
+            ui.label(line).classes("text-xs opacity-80")
+        if fact.dice:
+            with ui.row().classes("items-start").style("gap: 1rem"):
+                for group in fact.dice:
+                    _dice_group(group)
+
+
+def _dice_group(die: DiceEvent) -> None:
+    with ui.column().style("gap: 0.2rem"):
+        ui.label(die.label).classes("text-xs opacity-60")
+        with ui.row().classes("no-wrap").style("gap: 0.3rem"):
+            for index, (face, value) in enumerate(zip(die.faces, die.rolled, strict=True)):
+                with (
+                    ui.column()
+                    .classes("game-die" + (" game-die-kept" if index in die.highlight else ""))
+                    .style("gap: 0")
+                ):
+                    ui.label(f"d{face}").classes("game-die-face")
+                    ui.label(str(value)).classes("game-die-value")
+
+
+def _bubble(session: GameService, speaker: Speaker | None, text: str, *, sent: bool) -> None:
+    icon = None if speaker is None else session.icon(EntityId(speaker.id))
+    name = "DM" if speaker is None else speaker.name
+    message = ui.chat_message(text, name=name, sent=sent).classes("w-full")
+    if speaker is None:
+        message.props("bg-color=grey-3")
+    with message.add_slot("avatar"):
+        avatar(icon, None if speaker is None else name)
+
+
+def _inline_status(step: TurnStep, elapsed: float) -> ui.label:
+    label, description = _STEP_COPY[step]
+    with ui.row().classes("items-center no-wrap q-py-xs").style("gap: 0.4rem"):
+        ui.spinner(size="1.1rem")
+        ui.label(label).classes("text-sm font-bold")
+        ticker = ui.label(_clock(elapsed)).classes("text-xs font-mono")
+    if description:
+        ui.label(description).classes("text-xs opacity-70")
+    return ticker
+
+
+def _clock(seconds: float) -> str:
+    minutes, rest = divmod(int(seconds), 60)
+    return f"{minutes}:{rest:02d}"
+
+
+def _composer_placeholder(view: GameView) -> str:
+    step = view.session.step
+    if step is not None:
+        return f"{_STEP_COPY[step][0]} is working..."
+    pending = view.session.player_view().prompt
+    if pending is not None:
+        if not pending.allows_text:
+            return "Choose an option above."
+        return "The game is waiting on your answer."
+    return "What do you do?"
+
+
+def _apply_fact(view: GameView, fact: Fact) -> None:
+    if not (fact.told and fact.card):
+        return
+    view.live_facts.append(fact)
+    view.live_turn.refresh()
+    _scroll(view)
+
+
+def _scroll(view: GameView) -> None:
+    if (transcript := view.transcript) is not None:
+        # A method call on an existing element needs no NiceGUI slot; `ui.timer` here would.
+        get_running_loop().call_later(0.1, lambda: transcript.scroll_to(percent=1.0))
+
+
+async def _send(
+    view: GameView, player_input: str | Answer, bubble: str, *, moving_on: bool = False
+) -> None:
+    session = view.session
+    view.live_prompt, view.live_facts = bubble, []
+    view.live_turn.refresh()
+    _scroll(view)
+    async with working():
+        loop = get_running_loop()
+        await session.play(
+            player_input,
+            on_step=lambda step: on_step(view, step),
+            on_fact=lambda fact: on_fact(view, fact, loop),
+            moving_on=moving_on,
+        )
+    view.log(session.master_log)
+    session.step = None
+    view.live_prompt, view.live_facts, view.step_started = None, [], None
+    if view.composer is not None:
+        view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
+    view.refresh_all()
+    _scroll(view)
+
+
+def _can_type(session: GameService, busy: bool) -> bool:
+    player = session.player_view()
+    typed = player.prompt is None or player.prompt.allows_text
+    return not busy and typed and player.over is None

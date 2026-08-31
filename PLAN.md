@@ -797,7 +797,7 @@ about 10 lines of shared machinery.
 - [x] Phase 3 — the three roles and the tool surface. `src` 5,458
 - [x] Phase 4 — the pages. `src` 5,625
 - [x] Phase 5 — the sweep. `src` 5,627
-- [ ] Phase 6 — the architecture deletion. `src` 5,791 -> 5,750–5,850
+- [x] Phase 6 — the architecture deletion. `src` 5,791 -> 5,640. Step 3 refuted and skipped
 - [ ] Phase 7 — the engines return
 - [ ] Full check green at every checkpoint
 - [ ] The game plays from the browser at the end of every phase

@@ -2,7 +2,7 @@ import pytest
 from core_test_support import ENGINE_IDS, game
 from golden_test_support import FIXTURES, dumped, golden
 
-from aidm.state.entities import EngineId
+from aidm.core.entities import EngineId
 
 
 @pytest.mark.parametrize("engine_id", ENGINE_IDS)

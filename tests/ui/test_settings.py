@@ -2,11 +2,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+from core_test_support import ScriptedSpawner
 from ui_test_support import ui_settings
 
 from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import Runtime
-from aidm.app.spawn import ScriptedSpawner
 from aidm.config import RoleConfig, Roles, load_settings, save_settings
 from aidm.ui.settings import _changes  # pyright: ignore[reportPrivateUsage]
 

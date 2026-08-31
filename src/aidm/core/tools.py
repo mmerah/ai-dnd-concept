@@ -4,9 +4,13 @@ from random import Random
 
 from pydantic import BaseModel, JsonValue
 
-from aidm.state.entities import Frozen
-from aidm.state.facts import Fact
-from aidm.state.model import Game
+from aidm.core.entities import Frozen
+from aidm.core.facts import Fact
+from aidm.core.model import Game
+
+# The rng is a parameter so a trial run against a throwaway copy cannot consume the turn's dice.
+type Play = Callable[[Game, Random], tuple[Fact, ...]]
+type Validate = Callable[[Game], None]
 
 
 class NoArgs(Frozen):
@@ -40,11 +44,6 @@ def master_tool[A: BaseModel](
     return MasterTool(name, description, args, call, during_suspension)
 
 
-# The rng is a parameter so a trial run against a throwaway copy cannot consume the turn's dice.
-type Play = Callable[[Game, Random], tuple[Fact, ...]]
-type Validate = Callable[[Game], None]
-
-
 def apply_to_draft(validate: Validate, draft: Game, play: Play, rng: Random) -> tuple[Fact, ...]:
     """Every mutation runs this sequence, so no caller can skip the engine's own gate."""
     before = draft.pending
@@ -61,17 +60,6 @@ def apply_to_draft(validate: Validate, draft: Game, play: Play, rng: Random) -> 
             raise ValueError(f"a told fact names {fact.entity_id!r}, whom the player has not met")
     validate(draft)
     return landed
-
-
-def transact(
-    validate: Validate, draft: Game, play: Play, rng: Random
-) -> tuple[Game, tuple[Fact, ...]]:
-    """A draft mutated and committed whole, for a change that stands on its own outside a turn."""
-    before = draft.pending
-    landed = apply_to_draft(validate, draft, play, rng)
-    if draft.pending is not before:
-        raise ValueError("a change outside a turn cannot open a decision for the player")
-    return draft.committed(), landed
 
 
 def schema_of(args: type[BaseModel]) -> dict[str, JsonValue]:

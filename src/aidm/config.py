@@ -11,6 +11,15 @@ ProviderName = Literal["openrouter", "local"]
 Role = Literal["master", "narrator", "worldsmith"]
 ENV_FILE = ".env"
 
+# An uploaded adventure reaches every prompt, so a role that can read files, run commands or
+# reach the user's own MCP servers is a way out of the game. Only the game master gets tools,
+# and only this repo's: the roles that merely write text get none at all.
+MASTER_COMMAND = (
+    'claude -p --permission-mode bypassPermissions --tools "" '
+    "--mcp-config .mcp.json --strict-mcp-config"
+)
+WRITER_COMMAND = 'claude -p --tools "" --strict-mcp-config'
+
 
 class ProviderConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
@@ -56,16 +65,6 @@ class SourceConfig(BaseModel):
 
     # This ~30k-token ceiling admits a 76-page adventure without swallowing the context.
     max_chars: int = Field(default=120_000, ge=1)
-
-
-# An uploaded adventure reaches every prompt, so a role that can read files, run commands or
-# reach the user's own MCP servers is a way out of the game. Only the game master gets tools,
-# and only this repo's: the roles that merely write text get none at all.
-MASTER_COMMAND = (
-    'claude -p --permission-mode bypassPermissions --tools "" '
-    "--mcp-config .mcp.json --strict-mcp-config"
-)
-WRITER_COMMAND = 'claude -p --tools "" --strict-mcp-config'
 
 
 class Roles(BaseModel):

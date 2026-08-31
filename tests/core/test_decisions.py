@@ -6,18 +6,12 @@ import pytest
 from core_test_support import ENGINES_BUILT, LONER3E, Table, opened, played, tool_call
 from pydantic import Field, ValidationError
 
+from aidm.core.entities import Frozen
+from aidm.core.facts import Fact
+from aidm.core.model import Game
+from aidm.core.play import Answer, PendingDecision, PendingOption
+from aidm.core.tools import MasterTool, NoArgs, apply_to_draft, master_tool
 from aidm.engines.core import Engine
-from aidm.state.entities import Frozen
-from aidm.state.facts import Fact
-from aidm.state.model import Game
-from aidm.state.play import Answer, PendingDecision, PendingOption
-from aidm.state.tools import (
-    MasterTool,
-    NoArgs,
-    apply_to_draft,
-    master_tool,
-    transact,
-)
 from aidm.turn.run import RULES_WAIT, Turn, TurnStep, consume_answer
 
 
@@ -171,24 +165,16 @@ async def test_an_option_the_decision_never_offered_raises(tmp_path: Path) -> No
         _ = await played(table, Answer(option_id="vest"))
 
 
-def test_a_change_outside_a_turn_cannot_open_a_decision_but_may_run_on_a_suspended_state(
-    tmp_path: Path,
-) -> None:
+def test_a_change_may_run_on_a_state_already_suspended_on_a_decision(tmp_path: Path) -> None:
     engine, state = _engine(), opened(tmp_path).service.state
-
-    with pytest.raises(ValueError, match="cannot open a decision"):
-        _ = transact(
-            engine.validate,
-            state.draft(),
-            lambda draft, _rng: _hit(draft, narrate=False),
-            Random(0),
-        )
 
     def nothing(draft: Game, rng: Random) -> tuple[Fact, ...]:
         del draft, rng
         return ()
 
-    suspended, _ = transact(engine.validate, _pending(state).draft(), nothing, Random(0))
+    draft = _pending(state).draft()
+    _ = apply_to_draft(engine.validate, draft, nothing, Random(0))
+    suspended = draft.committed()
     assert suspended.pending == DECISION
 
 

@@ -1,8 +1,8 @@
 from core_test_support import initialized, with_entity
 
+from aidm.core.entities import EntityId
 from aidm.engines.loner3e.state import ActorSheet, LonerSheet
 from aidm.kits.scenes.state import Entity
-from aidm.state.entities import EntityId
 
 SECRET = Entity[LonerSheet](
     id=EntityId("hidden-actor"),
@@ -16,7 +16,7 @@ SECRET = Entity[LonerSheet](
 def test_the_narrator_view_names_nobody_in_the_scene_the_player_has_not_met() -> None:
     engine, state = initialized()
 
-    shown = str(engine.views(with_entity(state, SECRET)).narrator.model_dump())
+    shown = str(engine.narrator_view(with_entity(state, SECRET)).model_dump())
 
     assert "The Secret" not in shown
     # The vault map is hidden here, and Mara is standing in the room.

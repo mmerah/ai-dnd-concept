@@ -4,13 +4,13 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from aidm.content.io import engine_text
-from aidm.kernel.views import NarratorView
+from aidm.core.io import engine_text
+from aidm.core.model import Game, ScenarioMeta, SceneWrite
+from aidm.core.play import Exchange, Narration, PendingDecision
+from aidm.core.tools import schema_of
+from aidm.core.views import NarratorView
+from aidm.kits.scenes.render import SheetRows, entity_line, thread_lines
 from aidm.kits.scenes.state import SceneState
-from aidm.kits.scenes.views import SheetRows, entity_line, thread_lines
-from aidm.state.model import Game, ScenarioMeta, SceneWrite
-from aidm.state.play import Exchange, Narration, PendingDecision
-from aidm.state.tools import schema_of
 
 ANSWERED_BY_OPTION = (
     "The player chose the option above and the rules have applied it. Develop what it caused; "
@@ -135,6 +135,11 @@ def render_opening(source: str, guidance: str) -> str:
     )
 
 
+def told_passages(state: Game, limit: int) -> tuple[str, ...]:
+    """What the player has already read, so continuity costs the narrator no hidden canon."""
+    return tuple(one.narration for one in state.history[-limit:] if one.narration)
+
+
 def _worldsmith(
     *,
     source: str,
@@ -190,11 +195,6 @@ def _sections(parts: Iterable[tuple[str, str]]) -> str:
 
 def _premise(scenario: ScenarioMeta) -> tuple[str, str]:
     return "SCENARIO", f"{scenario.title}\n{scenario.premise}"
-
-
-def told_passages(state: Game, limit: int) -> tuple[str, ...]:
-    """What the player has already read, so continuity costs the narrator no hidden canon."""
-    return tuple(one.narration for one in state.history[-limit:] if one.narration)
 
 
 def _recent(state: Game, limit: int) -> str:

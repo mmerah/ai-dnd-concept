@@ -1,6 +1,6 @@
-from aidm.state.entities import DEAD
-from aidm.state.facts import Fact
-from aidm.state.model import Game
+from aidm.core.entities import DEAD
+from aidm.core.facts import Fact
+from aidm.core.model import Game
 
 # The safety net: a scene nobody ends is ended for them.
 SCENE_TURN_CAP = 12
@@ -18,8 +18,7 @@ SCENE_SETTLED = Fact(
 
 
 def scene_spent(state: Game) -> str | None:
-    """Why this scene looks spent, or None. Deliberately blunt: the scene's own question is what
-    ends it, and these are only the cases no reading of the fiction can miss."""
+    """Deliberately blunt: catches only what no reading of the fiction can miss."""
     world = state.world
     if world.spent:
         return world.spent

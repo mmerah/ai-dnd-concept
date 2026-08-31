@@ -1,14 +1,20 @@
 from pathlib import Path
 
 import pytest
-from core_test_support import offline_settings, updated
+from core_test_support import ScriptedSpawner, offline_settings, opened, played, the_way_on, updated
 from loner3e_test_support import TARGET
 from loner3e_test_support import loner3e_session as session
 
 from aidm.app.runtime import Runtime
-from aidm.app.spawn import ScriptedSpawner
-from aidm.content.io import FileStore
-from aidm.state.model import ScenarioMeta
+from aidm.core.io import FileStore
+from aidm.core.model import Game, ScenarioMeta
+
+
+class _UnsavableStore(FileStore):
+    """Overrides `save` alone: `FileStore` is frozen and slotted, so this cannot monkeypatch it."""
+
+    def save(self, slug: str, state: Game) -> None:
+        raise OSError("disk is gone")
 
 
 def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path) -> None:
@@ -62,3 +68,19 @@ def test_one_open_game_per_slug_and_it_keeps_the_origin_it_was_opened_with(tmp_p
     assert runtime.session(updated(TARGET, slug="second")).engine is opened.engine
     with pytest.raises(ValueError, match="open session 'poc' plays"):
         runtime.session(updated(TARGET, character_id="someone-else"))
+
+
+async def test_a_failed_commit_leaves_no_scene_write_running_for_a_later_turn(
+    tmp_path: Path,
+) -> None:
+    """Regression: a write left running after a failed commit installed its scene a turn late."""
+    table = opened(tmp_path)
+    _ = await played(table, "I have what I came for.", the_way_on())
+    table.service.store = _UnsavableStore(table.service.store.directory)
+
+    with pytest.raises(OSError):
+        _ = await played(table, "Down the stair the map marks.", moving_on=True)
+
+    assert table.service._writing is None  # pyright: ignore[reportPrivateUsage] regression guard
+    assert table.service.busy is False
+    assert table.service.turn is None

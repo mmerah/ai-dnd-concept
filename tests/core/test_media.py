@@ -8,12 +8,12 @@ from pydantic import SecretStr
 
 from aidm.app.media import GeneratedImage, Illustrator, illustration_request, scene_key
 from aidm.config import MediaConfig, ProviderConfig
+from aidm.core.entities import EntityId
+from aidm.core.model import Game
+from aidm.core.views import NarratorView
 from aidm.engines.core import Engine
 from aidm.engines.loner3e.state import ActorSheet, LonerSheet
-from aidm.kernel.views import NarratorView
 from aidm.kits.scenes.state import Entity
-from aidm.state.entities import EntityId
-from aidm.state.model import Game
 
 NARRATION = "The door groans open."
 STYLE = MediaConfig().style
@@ -44,7 +44,7 @@ def _placed(state: Game, name: str, *, known: bool) -> Game:
 
 
 def _scene(engine: Engine, state: Game) -> NarratorView:
-    return engine.views(state).narrator
+    return engine.narrator_view(state)
 
 
 def test_illustration_request_names_the_scene_and_no_unrevealed_canon() -> None:
@@ -97,7 +97,8 @@ async def test_concurrent_illustrations_of_one_scene_generate_it_once(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     engine, state = initialized()
-    views = engine.views(state)
+    scene = engine.narrator_view(state)
+    player = engine.player_view(state).player
     prompts: list[str] = []
 
     async def _generate(
@@ -110,8 +111,8 @@ async def test_concurrent_illustrations_of_one_scene_generate_it_once(
     monkeypatch.setattr(Illustrator, "_generate", _generate)
     illustrator = _illustrator(tmp_path)
     _ = await gather(
-        illustrator.illustrate(views, NARRATION),
-        illustrator.illustrate(views, NARRATION),
+        illustrator.illustrate(scene, player, NARRATION),
+        illustrator.illustrate(scene, player, NARRATION),
     )
     scene_prompts = [prompt for prompt in prompts if prompt.startswith("Draw one wide")]
     assert len(scene_prompts) == 1

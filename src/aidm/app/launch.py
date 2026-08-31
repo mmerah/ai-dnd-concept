@@ -2,10 +2,10 @@ import logging
 from collections.abc import Mapping
 
 from aidm.config import Settings
-from aidm.content.io import FileStore, read_characters, read_scenarios
+from aidm.core.entities import EngineId, Frozen, Slug
+from aidm.core.envelope import SaveEnvelope
+from aidm.core.io import FileStore, read_characters, read_scenarios
 from aidm.engines.core import Engine
-from aidm.kernel.envelope import SaveEnvelope
-from aidm.state.entities import EngineId, Frozen, Slug
 
 LOGGER = logging.getLogger(__name__)
 
@@ -61,11 +61,11 @@ def load_catalog(settings: Settings, engines: Mapping[EngineId, Engine]) -> Laun
     ids = tuple(engines)
     scenarios = tuple(
         CatalogEntry(id=name, title=scenario.meta.title, subtitle=scenario.meta.premise)
-        for name, scenario in read_scenarios(settings.scenarios_dir, engines)
+        for name, scenario in read_scenarios(settings.scenarios_dir, ids)
     )
     characters = tuple(
         CatalogEntry(id=name, title=character.name, subtitle=character.brief)
-        for name, character in read_characters(settings.characters_dir, engines)
+        for name, character in read_characters(settings.characters_dir, ids)
     )
     titles = {entry.id: entry.title for entry in characters}
     scenario_ids = {entry.id for entry in scenarios}

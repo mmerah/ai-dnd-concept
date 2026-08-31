@@ -10,6 +10,7 @@ from core_test_support import (
     begin_game,
     character,
     initialized,
+    load_scenario,
     loner_sheet,
     scenario,
     updated,
@@ -17,13 +18,13 @@ from core_test_support import (
 )
 from pydantic import ValidationError
 
-from aidm.content.io import load_character, load_scenario
+from aidm.core.entities import DEAD, PLAYER_ID, EngineId, EntityId, Trait
+from aidm.core.facts import Fact
+from aidm.core.io import load_character
+from aidm.core.model import Game
+from aidm.core.tools import apply_to_draft
 from aidm.engines.loner3e.state import LUCK_MAX, LonerSheet
 from aidm.kits.scenes.state import Entity
-from aidm.state.entities import DEAD, PLAYER_ID, EngineId, EntityId, Trait
-from aidm.state.facts import Fact
-from aidm.state.model import Game
-from aidm.state.tools import apply_to_draft
 
 MARA = EntityId("mara")
 ELENA = EntityId("elena")
@@ -126,9 +127,9 @@ def test_a_character_file_belongs_to_its_folder_and_its_engine(tmp_path: Path) -
     _ = (tmp_path / "mira" / f"{LONER3E}.json").write_text(written, encoding="utf-8")
 
     with pytest.raises(ValueError, match="plays 'ruleless', not 'loner3e'"):
-        _ = load_character(tmp_path, "kael", ENGINES_BUILT[LONER3E])
+        _ = load_character(tmp_path, "kael", ENGINES_BUILT[LONER3E].id)
     with pytest.raises(ValueError, match="'kael' is filed under 'mira'"):
-        _ = load_character(tmp_path, "mira", ENGINES_BUILT[LONER3E])
+        _ = load_character(tmp_path, "mira", ENGINES_BUILT[LONER3E].id)
 
 
 def _luck(state: Game) -> int:

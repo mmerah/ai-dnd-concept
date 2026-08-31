@@ -2,8 +2,8 @@ from collections.abc import Iterable
 
 from pydantic import BaseModel, Field
 
+from aidm.core.entities import EntityId, Slug, slug
 from aidm.kits.scenes.state import Entity, Frozen, Scene, SceneCanon, SceneState, Thread
-from aidm.state.entities import EntityId, Slug, slug
 
 MIN_SITUATION = 80
 
@@ -21,49 +21,6 @@ class SceneDraft[S: BaseModel](Frozen):
     secret: str = ""
     cast: dict[EntityId, Entity[S]] = Field(default_factory=dict)
     threads: dict[Slug, Thread] = Field(default_factory=dict)
-
-
-def _scene_unmet[S: BaseModel](
-    draft: SceneDraft[S], world: SceneState[S] | None = None
-) -> list[str]:
-    """The scene bar. A scene that misses one of these is re-prompted with the reason. No world is
-    the opening: nobody exists yet to bring back, and no id can be the player's."""
-    held = {} if world is None else world.cast
-    player_id = None if world is None else world.player_id
-    known = {**held, **draft.cast}
-    others = [
-        one
-        for one in (*draft.present, *draft.hidden)
-        if player_id is None or resolved_id(one, known) != player_id
-    ]
-    standing = [
-        one
-        for one in (*(() if world is None else world.threads.values()), *draft.threads.values())
-        if one.status != "resolved"
-    ]
-    unmet: list[str] = []
-    if not others:
-        unmet.append("at least one cast member besides the player")
-    if not standing:
-        unmet.append("at least one standing thread, opened here or already running")
-    if world is not None and not any(resolved_id(one, held) is not None for one in others):
-        unmet.append("at least one existing cast member brought back")
-    if stray := sorted(one for one in others if resolved_id(one, known) is None):
-        unmet.append(f"ids that exist; these name nobody: {stray}")
-    # `situation` is read to the player, so naming a hidden entity there hands them the find.
-    if told := sorted(_named_in(draft.situation, draft.hidden, known)):
-        unmet.append(f"a situation that does not name what is hidden: {told}")
-    return unmet
-
-
-def _named_in[S: BaseModel](
-    situation: str, hidden: Iterable[str], cast: dict[EntityId, Entity[S]]
-) -> list[str]:
-    """Multi-word names only: a prop called `Bell` shares its word with any bell tower, and a
-    refusal costs the player the whole crossing while a second scene is written."""
-    said = situation.casefold()
-    found = (cast[one] for wanted in hidden if (one := resolved_id(wanted, cast)) is not None)
-    return [one.name for one in found if " " in one.name.strip() and one.name.casefold() in said]
 
 
 def scene_refusal[S: BaseModel](
@@ -136,6 +93,47 @@ def apply_scene[S: BaseModel](world: SceneState[S], draft: SceneDraft[S], turn: 
     world.current = scene
     world.opened_at = turn
     world.spent, world.settled = "", False
+
+
+def _scene_unmet[S: BaseModel](
+    draft: SceneDraft[S], world: SceneState[S] | None = None
+) -> list[str]:
+    """No world means the opening: nobody exists yet, and no id can be the player's."""
+    held = {} if world is None else world.cast
+    player_id = None if world is None else world.player_id
+    known = {**held, **draft.cast}
+    others = [
+        one
+        for one in (*draft.present, *draft.hidden)
+        if player_id is None or resolved_id(one, known) != player_id
+    ]
+    standing = [
+        one
+        for one in (*(() if world is None else world.threads.values()), *draft.threads.values())
+        if one.status != "resolved"
+    ]
+    unmet: list[str] = []
+    if not others:
+        unmet.append("at least one cast member besides the player")
+    if not standing:
+        unmet.append("at least one standing thread, opened here or already running")
+    if world is not None and not any(resolved_id(one, held) is not None for one in others):
+        unmet.append("at least one existing cast member brought back")
+    if stray := sorted(one for one in others if resolved_id(one, known) is None):
+        unmet.append(f"ids that exist; these name nobody: {stray}")
+    # `situation` is read to the player, so naming a hidden entity there hands them the find.
+    if told := sorted(_named_in(draft.situation, draft.hidden, known)):
+        unmet.append(f"a situation that does not name what is hidden: {told}")
+    return unmet
+
+
+def _named_in[S: BaseModel](
+    situation: str, hidden: Iterable[str], cast: dict[EntityId, Entity[S]]
+) -> list[str]:
+    """Multi-word names only: a prop called `Bell` shares its word with any bell tower."""
+    said = situation.casefold()
+    found = (cast[one] for wanted in hidden if (one := resolved_id(wanted, cast)) is not None)
+    return [one.name for one in found if " " in one.name.strip() and one.name.casefold() in said]
 
 
 def _resolve[S: BaseModel](

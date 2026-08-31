@@ -1,7 +1,7 @@
 import pytest
 
-from aidm.state.entities import Frozen
-from aidm.state.tools import master_tool
+from aidm.core.entities import Frozen
+from aidm.core.tools import master_tool
 
 
 def test_a_tool_parameter_the_model_cannot_read_is_refused() -> None:

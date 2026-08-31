@@ -19,12 +19,12 @@ from core_test_support import (
 from pydantic import JsonValue
 
 from aidm.app.launch import LaunchTarget
-from aidm.app.mcp import ALREADY_OPEN, DECIDING, START_FIRST, call, offered
-from aidm.app.runtime import NO_TURN
+from aidm.app.mcp import call, offered
+from aidm.app.runtime import ALREADY_OPEN, DECIDING, NO_TURN, START_FIRST
 from aidm.app.spawn import CliSpawner, final_message
-from aidm.state.entities import PLAYER_ID, EntityId
-from aidm.state.model import SceneWrite
-from aidm.state.play import Narration
+from aidm.core.entities import PLAYER_ID, EntityId
+from aidm.core.model import SceneWrite
+from aidm.core.play import Narration
 
 VAULT_MAP = EntityId("vault-map")
 MARA = EntityId("mara")
@@ -397,7 +397,7 @@ async def test_abandoning_a_spawn_kills_the_process_group_it_started(tmp_path: P
     )
 
     with pytest.raises(asyncio.TimeoutError):
-        await CliSpawner(settings).act("go")
+        await CliSpawner(settings).run("master", "go")
 
 
 def test_the_engine_is_the_one_the_surface_publishes_for(tmp_path: Path) -> None:

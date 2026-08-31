@@ -5,13 +5,13 @@ import pytest
 
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
 ENGINES = ("aidm.engines.loner3e",)
-# The composition root builds the engine; the save payload is a closed union over engine states.
-ROOTS = {"engines/registry.py", "state/model.py"}
-# Flow: state <- kernel <- content <- kits <- engines <- turn <- app <- ui.
-LAYERS = ("state", "kernel", "content", "kits", "engines", "turn", "app")
-# The one inversion: `state.model` names the engine states its payload union is over, and those
-# modules import nothing above `state.entities`.
-ALLOWED = {"state": {"aidm.engines.loner3e.state"}}
+# The composition root builds the engine; `core.model` aliases its payload types.
+ROOTS = {"engines/registry.py", "core/model.py"}
+# Flow: core <- kits <- engines <- turn <- app <- ui.
+LAYERS = ("core", "kits", "engines", "turn", "app")
+# The one inversion: `core.model` names the engine states its payload aliases, and those
+# modules import nothing above `core.entities`.
+ALLOWED = {"core": {"aidm.engines.loner3e.state"}}
 # `ui` sits above them all, imports downwards, and additionally stays engine-agnostic.
 TOPS = {"ui": {"aidm.engines"}}
 # A framework belongs to the layers that own it and to nothing below them.
