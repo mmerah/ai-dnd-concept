@@ -434,7 +434,8 @@ Do them one at a time, and only after phase 5 is done and the game has been play
 
 **They cost about 1,050 and about 770 lines of `src` python, not 500 each.** Both were measured
 after phase 5, each three ways. 24XX: 1,005 / 1,035 / 1,132. Breathless: 767 / 801, with the
-port-delta method rejected because it assumes helpers Breathless does not use. The floor needs no estimate: **Loner 3e, the
+port-delta method rejected because it assumes helpers Breathless does not use. Step 0 adds about
+**40 to 60** more, paid once. So the first engine lands near **1,110** and the second near **830**. The floor needs no estimate: **Loner 3e, the
 simplest engine here, is 820 lines** — `rules.py` 361, `engine.py` 376, `state.py` 83 — and 24XX is
 larger than Loner at every comparable symbol. The port makes an engine grow, not shrink: Loner went
 675 -> 820 across it, because the engine now owns its typed state, its sheet union, `new_game`,
@@ -443,19 +444,43 @@ alone is 278), about **740** test lines, and about **59** for the shared machine
 
 ## Step 0 — before either engine (do it once)
 
-1. **Probe the two-engine save union.** `state/model.py:19-22` says a phase-6 comment out loud, but
-   two of the four aliases do not survive becoming a union:
-   - **`SceneWrite`** is rendered *into the worldsmith's prompt* as its answer schema
-     (`turn/context.py:152`, and passed as the spawn's output type at `runtime.py:242` and `:396`).
-     A union there hands the worldsmith both engines' schemas and lets a Loner game accept a 24XX
-     scene. It has to become an `Engine` member instead — `scene: type[SceneDraft[S]]`, as
-     `VISION.md` §6 sketches — threaded through those three call sites. **+15 to 25 lines.**
-   - **`Game.world`** (`model.py:78`) returns `LonerWorld`. As a union it feeds six generic kit
-     functions — `narrator_view[S]`, `master_view`, `apply_change[S]`, `apply_scene[S]` — and
-     pydantic generics are invariant. Write a `/tmp` throwaway with two engine states and run
-     `basedpyright` strict on those call sites **before** writing any engine code. If it forces
-     `Game[S]`, that is **+50 to 150 lines** across `state`, `turn` and `app`, and the whole
-     estimate moves.
+1. **Make `Game` generic. Do not make the payload a union.** The probe is done, and
+   `state/model.py:18` — "phase 6 turns each of these into `Annotated[A | B, ...]`" — is wrong for
+   two of its four aliases. Both were run against `basedpyright` strict.
+
+   - **`Game.world` cannot hold a union.** With `payload` a union, `world` returns
+     `SceneState[LonerSheet] | SceneState[TfxSheet]`, and strict mode gives **three errors**, one
+     each at `narrator_view`, `apply_change` and `apply_scene`: *"Type parameter `S@SceneState` is
+     invariant, but `TfxSheet` is not the same as `LonerSheet`."* Runtime is fine — both engines
+     parse, dump and run — so this ships as a silent type hole for anyone who reaches for `Any`.
+     Methods are not the problem: `world.require(...)` and `world.here()` resolve per arm.
+
+   - **What passes, with zero errors:**
+     ```python
+     class Game[P: BaseModel](BaseModel):
+         engine: str
+         payload: P
+         # no `world` property: only code that knows the engine knows the sheet type
+     ```
+     The union stays at the parse boundary, where it already lives — `Engine.restored()` checks
+     `envelope.engine` before validating, so each engine parses its own concrete `Game`.
+
+   - **Measured blast radius**: 13 `.world` readers in `src` outside the engine, across 8 files, of
+     which only **four** need the sheet type (`apply_change`, `apply_scene`, `scene_refusal`,
+     `narrator_view`). 28 `: Game` annotations outside the engine, 18 inside. Each takes a
+     `[P: BaseModel]` parameter — a bare `Game[BaseModel]` **also fails**, because invariance bites
+     there too. **About +40 to +60 lines, not the +150 worst case.**
+
+   - **The nine sheet-free readers** want only `player_id`, `current.title` and `cast.get(id)`.
+     Make those call sites generic as well rather than lifting `scene` and `player_id` onto `Game`:
+     a copy beside `world.current` is a second source of truth that can drift, and a type parameter
+     cannot.
+
+   - **`SceneWrite` still has to leave `state/model.py`.** It is rendered *into the worldsmith's
+     prompt* as its answer schema (`turn/context.py:152`, and passed as the spawn's output type at
+     `runtime.py:242` and `:396`). A union there hands the worldsmith both engines' schemas and lets
+     a Loner game accept a 24XX scene. It becomes an `Engine` member — `scene: type[SceneDraft[S]]`,
+     as `VISION.md` §6 sketches — threaded through those three call sites. **+15 to 25 lines.**
 
 2. **Give the shared helpers a home.** Phase 2 dissolved `engines/core.py` from 483 lines to 141,
    and about 40 lines of engine-agnostic machinery landed inside Loner. Engine two would copy every
