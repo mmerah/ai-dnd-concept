@@ -1,5 +1,6 @@
-from asyncio import Task, create_task
-from collections.abc import Callable
+import logging
+from asyncio import Lock, Task, create_task
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
@@ -10,14 +11,27 @@ from aidm.engines.core import Engine
 from aidm.engines.registry import begin_game, build_engines
 from aidm.kernel.views import NarratorView, Views
 from aidm.kits.scenes.boundary import scene_spent
+from aidm.kits.scenes.worldsmith import apply_scene, scene_unmet
 from aidm.state.entities import EngineId, EntityId
-from aidm.state.facts import Fact
-from aidm.state.model import Character, Game, Scenario
-from aidm.state.play import Answer, Line
-from aidm.turn.run import Turn, TurnAgents, TurnStep, build_turn_agents, run_segment
+from aidm.state.facts import Fact, told_traces, traced
+from aidm.state.model import Character, Game, Scenario, SceneWrite
+from aidm.state.play import Answer, Line, Narration
+from aidm.turn.context import render_master, render_narrator, render_worldsmith, told_passages
+from aidm.turn.run import Turn, TurnStep, speakers_refusal
 
 from .launch import LaunchTarget
 from .media import ICON_DIR, Illustrator
+from .spawn import CliSpawner, Spawner
+
+LOGGER = logging.getLogger(__name__)
+
+NO_TURN = "no turn is open. The player starts one from the page; wait to be spawned again."
+WRITING = (
+    "the worldsmith is writing the next scene; it arrives on a later turn. "
+    "This turn is not over — finish what the player's action caused, then exit."
+)
+# A scene written more turns ago than this describes a world the player has already left.
+STALE_AFTER = 1
 
 
 def open_media(
@@ -47,19 +61,27 @@ class GameService:
     scenario: Scenario
     character: Character
     engine: Engine
-    stages: TurnAgents | None
+    spawner: Spawner
     store: FileStore
     settings: Settings
     media: Illustrator | None = None
     rng: Random = field(default_factory=Random)
     busy: bool = False
     step: TurnStep | None = None
+    # The turn in flight; the tool surface reaches the live game through it.
+    turn: Turn | None = None
+    # The game master's whole output, raw, for the dev tab; one spawn, so one string.
+    master_log: str = ""
+    # Why the last scene write failed or would not fit; empty when none has.
+    write_failure: str = ""
     _illustrations: set[Task[None]] = field(default_factory=set, repr=False)
+    _writing: Task[None] | None = field(default=None, repr=False)
+    _written: SceneWrite | None = field(default=None, repr=False)
+    _written_at: int = 0
+    _write_intent: str = ""
     state: Game = field(init=False)
-    _stamp: int = field(init=False, default=0)
 
     def __post_init__(self) -> None:
-        self._stamp = self.store.stamp(self.slug)
         saved = self.store.load(self.slug)
         if saved is None:
             self.state = self._begun()
@@ -70,40 +92,139 @@ class GameService:
     def slug(self) -> str:
         return self.target.slug
 
-    def begin_turn(
+    async def play(
         self,
-        player_input: str | Answer,
-        on_fact: Callable[[Fact], None] | None = None,
-    ) -> Turn:
-        """Code mode commits per accepted call; builtin commits once when the segment ends."""
-        commit: Callable[[Game], None] = (
-            (lambda draft: self.commit(draft.committed()))
-            if self.settings.code_mode
-            else (lambda _: None)
-        )
-        return Turn.begin(self.engine, self.state, player_input, self.rng, commit, on_fact)
-
-    def end_turn(self, turn: Turn, lines: tuple[Line, ...]) -> Game:
-        state = turn.finish(lines)
-        self.commit(state)
-        return state
-
-    async def submit(
-        self,
-        player_input: str | Answer,
+        action: str | Answer,
         on_step: Callable[[TurnStep], None] | None = None,
         on_fact: Callable[[Fact], None] | None = None,
     ) -> None:
-        """Commit only after the full segment succeeds."""
-        if self.stages is None:
-            raise ValueError("code mode plays the turn in the MCP server, not here")
-        turn = self.begin_turn(player_input, on_fact)
-        lines = await run_segment(turn, stages=self.stages, settings=self.settings, on_step=on_step)
-        state = self.end_turn(turn, lines)
-        self._illustrate(state.history[-1].narration)
+        """The turn: the game master's exit ends it, the narrator writes it, then it commits."""
 
-    def scene_spent(self) -> str | None:
-        return scene_spent(self.state)
+        def announce(step: TurnStep) -> None:
+            self.step = step
+            if on_step is not None:
+                on_step(step)
+
+        turn = Turn.begin(self.engine, self.state, action, self.rng, on_fact)
+        self.turn = turn
+        try:
+            announce("master")
+            await self._act(turn)
+            lines: tuple[Line, ...] = ()
+            if turn.draft.pending is None or told_traces(turn.facts):
+                announce("narrator")
+                lines = await self._narrate(turn)
+            state = turn.finish(lines)
+        finally:
+            self.turn, self.step = None, None
+        self.commit(state)
+        self._illustrate(state.history[-1].narration)
+        self._speculate()
+
+    async def _act(self, turn: Turn) -> None:
+        """A crashed game master still played the turn, if it applied anything legal first."""
+        self.master_log = ""
+        try:
+            self.master_log = await self.spawner.act(
+                render_master(self.engine.instructions, turn.prompt)
+            )
+        except (OSError, ValueError) as failed:
+            if not turn.facts and turn.draft.pending is None:
+                raise
+            LOGGER.warning(
+                "the game master failed after applying %d facts: %s", len(turn.facts), failed
+            )
+
+    async def _narrate(self, turn: Turn) -> tuple[Line, ...]:
+        view = self.engine.views(turn.draft).narrator
+        narration = await self.spawner.write(
+            "narrator",
+            render_narrator(
+                view,
+                evidence=traced(turn.facts, told_only=True),
+                prompt=turn.prompt,
+                passages=told_passages(turn.draft, self.settings.turn.recent_exchanges),
+            ),
+            Narration,
+            lambda written: _narration_refusal(view, written),
+        )
+        return narration.lines
+
+    def start_turn(self) -> str:
+        """The scene the worldsmith wrote is installed here, so the picture already holds it."""
+        turn = self._playing()
+        self._install_scene(turn)
+        turn.started = True
+        return self.picture()
+
+    def picture(self) -> str:
+        return self._playing().picture(self.settings.turn.recent_exchanges)
+
+    def begin_next_scene(self, intent: str, include: Sequence[str]) -> str:
+        self._write_scene(intent, include)
+        return WRITING
+
+    def _playing(self) -> Turn:
+        turn = self.turn
+        if turn is None:
+            raise ValueError(NO_TURN)
+        return turn
+
+    def _install_scene(self, turn: Turn) -> None:
+        written, self._written = self._written, None
+        if written is None:
+            return
+        if turn.draft.turn - self._written_at > STALE_AFTER:
+            # Discarded and rewritten: a worldsmith slower than the player would else never land.
+            LOGGER.info("rewriting a scene written for turn %d", self._written_at)
+            self._write_scene(self._write_intent, ())
+            return
+        try:
+            _ = turn.apply(lambda draft, _rng: _installed(self.engine, draft, written))
+        except ValueError as refused:
+            # The snapshot moved under the scene; dropping it costs a scene, raising costs the turn.
+            self.write_failure = str(refused)
+            LOGGER.warning("the written scene no longer fits the world: %s", refused)
+
+    def _speculate(self) -> None:
+        """Start the write before the game master asks: the wait was being spent anyway."""
+        reason = scene_spent(self.state)
+        if reason is None or self._written is not None or self._writing_now():
+            return
+        self._write_scene(reason, ())
+
+    def _writing_now(self) -> bool:
+        return self._writing is not None and not self._writing.done()
+
+    def _write_scene(self, intent: str, include: Sequence[str]) -> None:
+        if self._writing_now():
+            if self._write_intent == intent:
+                return
+            # A speculative draft the game master's own intent supersedes is worth nothing.
+            _ = self._writing and self._writing.cancel()
+        self._written, self._write_intent, self.write_failure = None, intent, ""
+        # A deep copy, never the live state: the player may take another turn while this runs.
+        task = create_task(self._write(self.state.draft(), intent, tuple(include)))
+        self._writing = task
+
+    async def _write(self, snapshot: Game, intent: str, include: tuple[str, ...]) -> None:
+        def unmet(written: SceneWrite) -> str | None:
+            missing = scene_unmet(written, snapshot.world, opening=False)
+            return None if not missing else "the scene needs " + "; ".join(missing)
+
+        prompt = render_worldsmith(
+            snapshot.world,
+            intent,
+            include,
+            self.engine.guidance(snapshot),
+            self.engine.sheet_rows(snapshot),
+        )
+        try:
+            self._written = await self.spawner.write("worldsmith", prompt, SceneWrite, unmet)
+            self._written_at = snapshot.turn
+        except (OSError, ValueError) as failed:
+            self.write_failure = str(failed)
+            LOGGER.warning("the worldsmith wrote no scene: %s", failed)
 
     def view(self) -> Views:
         return self.engine.views(self.state)
@@ -141,19 +262,6 @@ class GameService:
     def commit(self, state: Game) -> None:
         self.store.save(self.slug, state)
         self.state = state
-        self._stamp = self.store.stamp(self.slug)
-
-    def reload(self) -> bool:
-        """Code mode plays the turn in another process; the viewer re-reads what that committed."""
-        stamp = self.store.stamp(self.slug)
-        if stamp == self._stamp:
-            return False
-        saved = self.store.load(self.slug)
-        if saved is None:
-            return False
-        self._stamp = stamp
-        self.state = self._resumable(self.engine.restored(saved))
-        return True
 
     def _begun(self) -> Game:
         return begin_game(self.engine, self.target.scenario_id, self.scenario, self.character)
@@ -173,16 +281,47 @@ class GameService:
         return state
 
 
+def _narration_refusal(view: NarratorView, written: Narration) -> str | None:
+    if not written.text:
+        return "write the narration lines: an empty answer shows the player nothing."
+    return speakers_refusal(view, written.lines)
+
+
+def _installed(engine: Engine, draft: Game, written: SceneWrite) -> tuple[Fact, ...]:
+    """What the rules settle as the old scene ends, then the new scene itself."""
+    closed = engine.scene_closed(draft)
+    # A deep copy: the trial run and the real one must not share the entities the scene brings.
+    apply_scene(draft.world, written.model_copy(deep=True), draft.turn)
+    opened = Fact(
+        kind="scene_opened",
+        trace=f"the story moves to {written.title}",
+        told=True,
+        card=f"New scene: {written.title}",
+    )
+    return (*closed, opened)
+
+
 @dataclass(slots=True)
 class Runtime:
-    """The composition root: settings, the built engines, and the games currently open."""
+    """The composition root: settings, the built engine, the spawner, and the games open."""
 
     settings: Settings
+    spawner: Spawner
     _sessions: dict[str, GameService] = field(default_factory=dict, repr=False)
+    lock: Lock = field(default_factory=Lock, repr=False)
     engines: dict[EngineId, Engine] = field(init=False)
 
     def __post_init__(self) -> None:
         self.engines = build_engines(self.settings.packs_dir)
+
+    @property
+    def engine(self) -> Engine:
+        """One engine ships, and the tool surface publishes before a game is even open."""
+        return next(iter(self.engines.values()))
+
+    def playing(self) -> GameService | None:
+        """One process owns the game and turns are sequential, so at most one is in flight."""
+        return next((one for one in self._sessions.values() if one.turn is not None), None)
 
     def busy_refusal(self) -> str | None:
         """Evicting a session mid-turn would let the next tab open a rival writer on that save."""
@@ -192,6 +331,7 @@ class Runtime:
     def reload_settings(self) -> None:
         self.settings = load_settings()
         self.engines = build_engines(self.settings.packs_dir)
+        self.spawner = CliSpawner(self.settings)
         self._sessions.clear()
 
     def session(self, target: LaunchTarget) -> GameService:
@@ -217,7 +357,7 @@ class Runtime:
             scenario=scenario,
             character=character,
             engine=engine,
-            stages=None if settings.code_mode else build_turn_agents(engine, settings),
+            spawner=self.spawner,
             store=store,
             settings=settings,
             media=open_media(settings, target, scenario, character, store),

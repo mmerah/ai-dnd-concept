@@ -9,6 +9,7 @@ from ui_test_support import SCENARIOS, ui_settings
 
 from aidm.app.launch import LaunchTarget, launch_target, load_catalog
 from aidm.app.runtime import Runtime
+from aidm.app.spawn import ScriptedSpawner
 from aidm.config import Settings
 from aidm.content.io import ENCODING, FileStore
 from aidm.state.model import Game
@@ -17,7 +18,7 @@ from aidm.state.model import Game
 def _opening_state(settings: Settings) -> Game:
     """The launcher reads saves, so a test needs a state a real game would have written."""
     target = LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
-    return Runtime(settings).session(target).state
+    return Runtime(settings, ScriptedSpawner()).session(target).state
 
 
 def _scenarios_copy(tmp_path: Path) -> Path:

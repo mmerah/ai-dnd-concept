@@ -6,6 +6,7 @@ from ui_test_support import ui_settings
 
 from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import Runtime
+from aidm.app.spawn import ScriptedSpawner
 from aidm.config import RoleConfig, Roles, load_settings, save_settings
 from aidm.ui.settings import _changes  # pyright: ignore[reportPrivateUsage]
 
@@ -17,21 +18,21 @@ class FakeBox:
 
 def test_only_a_real_edit_is_written(tmp_path: Path) -> None:
     settings = ui_settings(saves_dir=tmp_path)
-    settings.roles = Roles(director=RoleConfig(temperature=0.7))
+    settings.roles = Roles(narrator=RoleConfig(command="stub -p"))
     changed = _changes(
         settings,
         {
             ("providers", "openrouter", "api_key"): FakeBox(""),
             ("media", "enabled"): FakeBox(True),
             ("turn", "recent_exchanges"): FakeBox(20.0),
-            ("roles", "director", "max_tokens"): FakeBox(9000.0),
-            ("roles", "director", "temperature"): FakeBox(None),
+            ("roles", "narrator", "timeout"): FakeBox(90.0),
+            ("roles", "narrator", "command"): FakeBox(None),
         },
     )
     assert changed == {
         ("media", "enabled"): "true",
-        ("roles", "director", "max_tokens"): "9000",
-        ("roles", "director", "temperature"): None,
+        ("roles", "narrator", "timeout"): "90",
+        ("roles", "narrator", "command"): None,
     }
 
 
@@ -46,25 +47,25 @@ def test_a_saved_key_reads_back_and_the_rest_of_the_file_survives(
 ) -> None:
     env = tmp_path / ".env"
     _ = env.write_text("# keep me\nPROVIDERS__OPENROUTER__API_KEY=test\nMEDIA__ENABLED=true\n")
-    for shadowing in ("ROLES__DIRECTOR__MAX_TOKENS", "MEDIA__STYLE", "MEDIA__ENABLED"):
+    for shadowing in ("ROLES__NARRATOR__TIMEOUT", "MEDIA__STYLE", "MEDIA__ENABLED"):
         monkeypatch.delenv(shadowing, raising=False)
     monkeypatch.chdir(tmp_path)
     save_settings(
         {
-            ("roles", "director", "max_tokens"): "9000",
+            ("roles", "narrator", "timeout"): "90",
             ("media", "style"): 'it is "grim"',
             ("media", "enabled"): None,
         }
     )
     reread = load_settings()
-    assert reread.roles.director.max_tokens == 9000
+    assert reread.roles.narrator.timeout == 90
     assert reread.media.style == 'it is "grim"'
     assert reread.media.enabled is False
     assert "# keep me" in env.read_text(encoding="utf-8")
 
 
 def test_settings_are_not_reloaded_under_a_turn_in_flight(tmp_path: Path) -> None:
-    runtime = Runtime(ui_settings(saves_dir=tmp_path))
+    runtime = Runtime(ui_settings(saves_dir=tmp_path), ScriptedSpawner())
     session = runtime.session(
         LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
     )

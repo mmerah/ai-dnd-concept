@@ -2,6 +2,13 @@ SCENARIO:
 The Whispering Vault
 The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit.
 
+RECENT PLAY (this is turn 1):
+> I try the vault door.
+[at the sealed vault] The iron handle does not turn.
+
+> I look for another way in.
+[at the sealed vault] A flagstone by the wall sits proud of its neighbours.
+
 SCENE:
 The Abbot's Study
 The only lit room left in the abbey: ledgers stacked to the beams, candle stubs gone cold, and Mara still cataloguing books nobody will read. A flagstone under the desk sits a finger proud of its neighbours.
@@ -36,6 +43,9 @@ Kael wants the way down. The map under the flagstone is the way down, and Mara w
 
 NOTES FROM THE RULES:
 - (none)
+
+WAITING ON THE PLAYER:
+- (nothing; the turn is yours to run)
 
 PLAYER ACTION:
 I lever up the loose flagstone and listen at the vault door.

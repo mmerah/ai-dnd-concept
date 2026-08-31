@@ -11,11 +11,10 @@ from aidm.app.launch import (
     launch_target,
     load_catalog,
 )
+from aidm.app.mcp import MOUNT_PATH, endpoint
 from aidm.app.runtime import Runtime
+from aidm.app.spawn import CliSpawner
 from aidm.config import load_settings
-from aidm.harness.claude import ClaudeDriver
-from aidm.harness.codex import CodexDriver
-from aidm.harness.driver import Driver
 from aidm.state.entities import Slug, content_id
 
 from .create import character_page
@@ -150,7 +149,8 @@ def _open_game(target: LaunchTarget) -> None:
 
 
 def start() -> None:
-    _register_pages(Runtime(load_settings()))
+    settings = load_settings()
+    _register_pages(Runtime(settings, CliSpawner(settings)))
     ui.run(  # pyright: ignore[reportUnknownMemberType]
         title="AI Dungeon Master",
         reload=False,
@@ -159,31 +159,14 @@ def start() -> None:
 
 
 def _register_pages(runtime: Runtime) -> None:
-    drivers: dict[str, Driver] = {}
-
-    def driver_for(slug: str) -> Driver | None:
-        """Memoised: one conversation per game."""
-        if slug not in drivers:
-            match runtime.settings.harness:
-                case "claude":
-                    drivers[slug] = ClaudeDriver(runtime=runtime, slug=slug)
-                case "codex":
-                    drivers[slug] = CodexDriver(runtime=runtime, slug=slug)
-                case _:
-                    return None
-        return drivers[slug]
-
-    async def close_drivers() -> None:
-        for driver in drivers.values():
-            await driver.close()
-
-    app.on_shutdown(close_drivers)  # pyright: ignore[reportUnknownMemberType]
+    served = endpoint(runtime)
+    app.mount(MOUNT_PATH, served.asgi)
+    app.on_startup(served.open)  # pyright: ignore[reportUnknownMemberType]
+    app.on_shutdown(served.close)  # pyright: ignore[reportUnknownMemberType]
 
     def apply_settings() -> str | None:
-        """Only the memoised map is dropped: a driver mid-turn holds its own reference."""
         refusal = runtime.busy_refusal()
         if refusal is None:
-            drivers.clear()
             runtime.reload_settings()
         return refusal
 
@@ -204,8 +187,7 @@ def _register_pages(runtime: Runtime) -> None:
                     scenario_id=content_id(scenario),
                     character_id=content_id(character),
                 )
-            ),
-            driver_for(slug),
+            )
         )
 
     @ui.page("/create/{engine}")

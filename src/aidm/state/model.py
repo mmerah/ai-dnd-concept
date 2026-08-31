@@ -4,7 +4,13 @@ from typing import Self
 
 from pydantic import Field, ValidationError, model_validator
 
-from aidm.engines.loner3e.state import Loner3eCharacter, Loner3eScenario, Loner3eState, LonerWorld
+from aidm.engines.loner3e.state import (
+    Loner3eCharacter,
+    Loner3eScenario,
+    Loner3eState,
+    LonerScene,
+    LonerWorld,
+)
 from aidm.state.entities import EngineId, Frozen, Mutable, Slug, require_unique
 from aidm.state.facts import Fact, cards
 from aidm.state.play import Exchange, PendingDecision, SpokenLine
@@ -13,6 +19,7 @@ from aidm.state.play import Exchange, PendingDecision, SpokenLine
 Payload = Loner3eState
 ScenarioPayload = Loner3eScenario
 CharacterPayload = Loner3eCharacter
+SceneWrite = LonerScene
 
 
 class ScenarioMeta(Frozen):

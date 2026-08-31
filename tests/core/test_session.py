@@ -6,6 +6,7 @@ from loner3e_test_support import TARGET
 from loner3e_test_support import loner3e_session as session
 
 from aidm.app.runtime import Runtime
+from aidm.app.spawn import ScriptedSpawner
 from aidm.content.io import FileStore
 from aidm.state.model import ScenarioMeta
 
@@ -54,7 +55,7 @@ def test_resume_refuses_a_save_that_is_not_this_game(
 
 
 def test_one_open_game_per_slug_and_it_keeps_the_origin_it_was_opened_with(tmp_path: Path) -> None:
-    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path))
+    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), ScriptedSpawner())
     opened = runtime.session(TARGET)
 
     assert runtime.session(TARGET) is opened

@@ -3,6 +3,7 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from aidm.kits.scenes.state import SceneCanon, SceneState
+from aidm.kits.scenes.worldsmith import SceneDraft
 from aidm.state.entities import Counter, Mutable, Slug, pool
 
 # Loner 3e's numbers; docs/LONER-3E.md points at the SRD and its deviations.
@@ -55,6 +56,9 @@ class ItemSheet(Mutable):
 LonerSheet = Annotated[ActorSheet | ItemSheet, Field(discriminator="kind")]
 
 type LonerWorld = SceneState[LonerSheet]
+
+
+LonerScene = SceneDraft[LonerSheet]
 
 
 class Loner3eState(Mutable):

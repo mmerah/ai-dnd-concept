@@ -304,3 +304,164 @@ code owns, the name fallback works for every name, and the strict `Scene` is wha
 **Where I disagreed with the review.** It called `render_worldsmith`, `given_text` and
 `scene_closed` dead code. PLAN steps 4 and 5 ask phase 2 to build all three, and `CLAUDE.md` says
 to build an agreed capability in its final planned form. They stay, uncalled, until phase 3.
+
+## Phase 3 — The three roles and the tool surface — DONE
+
+`src` 5,806 -> **5,422** (target ≈ 5,650; under it, because deleting `llm.py` and the whole
+`harness/` package cost more than the spawner, the MCP surface and `play()` added back).
+`tests` 3,408 -> **3,275**.
+
+### The probe taken before step 6, which was the plan's hardest piece
+
+An MCP streamable-HTTP endpoint **mounts on the server NiceGUI already runs**. A throwaway served
+`StreamableHTTPASGIApp(StreamableHTTPSessionManager(...))` at `/mcp`, opened `manager.run()` from
+`app.on_startup` and closed it on shutdown; a real `mcp` client initialised, listed the tool and
+called it. **No fallback is needed**, so `harness/claude.py` is deleted as step 9 allows.
+
+### The end-to-end check, actually taken
+
+Not just "the app serves 200". A `Runtime` with a real `CliSpawner` was mounted on a bare ASGI
+server and `play()` was run:
+
+- the app **spawned a real process** with the master prompt as its last argument (6,319 bytes);
+- that process **connected back over HTTP MCP to the live game**, called `start_turn`, read the
+  picture, called `change_world(reveal vault-map)` and read back
+  `- learned of the item the vault map[vault-map]`;
+- it exited, and **its exit ended the turn**;
+- a second spawn answered as the narrator, its JSON was parsed and validated, and the turn
+  committed at 1 with the map found and the prose recorded.
+
+Separately, `uv run aidm` serves the eight tools on `http://localhost:8080/mcp/` to a real MCP
+client and refuses with *"no turn is open. The player starts one from the page"* until one is.
+
+A **nested `claude -p` spawn could not be run from this session**, so the one thing left unproven
+is the argv shape of the shipped default command. That is one `uv run aidm` and one typed turn.
+
+### The design, where it settled
+
+**`start_turn` is what opens the turn, not `play()`.** `play()` builds the `Turn` before it
+spawns, but `Turn.started` stays false until the game master calls `start_turn`. That is what
+makes `VISION.md` §4's "no turn open" row real: nothing may change the world before the master
+has read the picture. `start_turn` takes no arguments — the player's action is in the prompt.
+
+**The tool surface finds its game through `Runtime.playing()`**: the one session with a turn in
+flight. One process owns the game and turns are sequential, so there is at most one, and
+`open_game` and `list_games` have nothing left to do.
+
+**The legality table is split in two, deliberately.** `app/mcp.refusal` owns the ordering rules
+(`start_turn` first, once, and not after the game ends). The pending-decision row stays in
+`Turn.call`, where it already was and is already tested: two gates that could disagree would be
+worse than one that lives beside the tools it guards.
+
+**The picture is built once.** `render_picture` (the old `render_director`) is what both
+`start_turn` and `scene` return, and it now carries RECENT PLAY and WAITING ON THE PLAYER, which
+the code-mode harness used to bolt on. `render_master` is the small spawn prompt: the brief, the
+engine's rules, the action.
+
+**Each role's brief is in its prompt.** A spawned CLI has no system-prompt channel, so
+`render_master`, `render_narrator` and `render_worldsmith` each open with a YOUR ROLE section and
+close, for the two that answer, with an ANSWER WITH section holding the generated JSON schema of
+the type they must return. The schema is generated, so it cannot drift from the type.
+
+### Decisions the plan did not cover, and the deviations
+
+- **`schema_of` went to `state/tools.py`, not `app/mcp.py`.** `turn/context.py` needs it to write
+  the ANSWER WITH sections, and `turn` may not import `app`. It sits beside `DirectorTool`, which
+  owns the `args` type it reads.
+- **It does not inline `$defs`, and it did not need to.** The only thing pydantic-ai's generator
+  did was strip *property* titles. Ten lines of post-processing reproduce it **byte-identically**
+  against all five tool schemas, `$defs` and all, and the schema golden is unchanged.
+- **`Roles` and `RoleConfig` were repurposed rather than deleted and re-created.** The plan says
+  delete them; what it means is delete the model-provider config. The classes keep their names and
+  now hold `command`, `model` and `timeout`, which is what `VISION.md`'s `.env` example asks for.
+  `Roles` became `extra="ignore"` so a `.env` still holding `ROLES__DIRECTOR__*` keeps loading, as
+  the plan promises.
+- **`Spawner.act` returns the game master's output** rather than the plan's `None`, which would
+  leave phase 4's dev tab with no source. `CliSpawner` reads the whole output at once, so a return
+  value is all it takes; the callback the first draft used bought nothing.
+- **`RoleConfig` has no `model` field**, though the plan names one. Every shape it could take is
+  wrong for some CLI: `-m` is what this repo's old driver used and `claude -p` rejects it. The
+  command carries the model — `claude -p --model opus` — which is the only thing that works for
+  every CLI at once.
+- **`write` takes a `check`.** The narrator's speaker rule and the worldsmith's scene bar are both
+  "the answer parsed but is not acceptable", and both want the same one re-prompt. One
+  `Check[T] | None` parameter serves both, and the retry loop is one shared function, so
+  `ScriptedSpawner` retries exactly as `CliSpawner` does — which is what keeps the
+  "a line spoken by someone not here is re-prompted with the id" test alive.
+- **`render_narrator` lost the scenario premise**, as the plan's "and nothing else" says. It gains
+  WHAT THE PLAYER HAS READ: the last told passages, which the player has already seen, so they
+  leak nothing.
+- **`Runtime` takes its spawner from the composition root**, rather than building one. That is
+  what lets a test inject `ScriptedSpawner` without touching a private field.
+- **`GameService.reload`, `poll_save` and the save-stamp were deleted here, not in phase 4.**
+  They existed only for a second writer in another process, and `Settings.code_mode` — their only
+  guard — went this phase.
+- `BUILTIN_ONLY`, `CODE_MODE_ONLY` and the settings page's `applies` rendering also went now
+  rather than in phase 4 step 7: with `harness` gone they had no reader and no marked field left.
+- **`Settings._keys_present` was kept**, though the plan says delete it. Its role half went with
+  `Settings.role()`; its media half is the only thing that refuses illustration with no key.
+
+### The worldsmith, wired
+
+`next_scene(intent, include)` returns at once and starts a background write against a **deep copy
+of the committed state**. After every commit, `_speculate` starts the same write from
+`scene_spent`'s reason when no write is running and no scene is waiting; a real intent that
+differs cancels the speculative one. The finished scene is installed by **`start_turn`**, so the
+picture the master reads already holds it, and `Engine.scene_closed` runs in the same
+trial-validated apply. A scene whose snapshot is more than one turn old is discarded.
+
+### Tests
+
+- `tests/core/test_code_mode.py` -> `test_tool_surface.py`, rewritten: the published set, the
+  legality table's three refusals, a change landing on the draft then on disk, the decision gate,
+  `next_scene` not ending the turn and installing at the next `start_turn`, the scene bar refusing
+  a thin scene, a stale scene discarded, a failed worldsmith saying why, the speculative write
+  firing off `scene_spent`, and `CliSpawner` killing an abandoned process group.
+- `tests/core/core_test_support.py` lost every pydantic-ai helper and gained `Table`: a live
+  `Runtime`, its `GameService` and a `ScriptedSpawner`, with `call` mirroring the server by
+  turning a refusal into a result the scripted master reads and carries on from. `changed(...)`
+  and `tool_call(...)` keep their names and now return tool calls instead of `ModelResponse`s, so
+  most call sites did not move.
+- **Two tests deleted.** `test_a_paused_exchange_replays_as_a_message_and_a_silent_one_refuses`
+  went with `exchanges_to_messages`: a fresh CLI gets RECENT PLAY as text, not a replayed message
+  history. `test_the_driver_serves_this_app_s_own_mcp_server_in_process` went with the SDK driver.
+- **Two tests are new for the new rule**: a game master that crashes after applying still commits
+  what it applied, and a turn that applied nothing and failed is refused.
+- The `fixtures/instructions/` goldens folded into the prompt goldens, which now cover master,
+  picture and narrator.
+
+### The adversarial review, and what it caught
+
+A review pass against the staged diff walked all eleven steps and found **four correctness bugs**,
+all reproduced and all now fixed with a regression test each.
+
+| what broke | why | fix |
+|---|---|---|
+| `next_scene` **ran while a decision was pending** | the pending row of the legality table lives in `Turn.call`, and `next_scene` is a server tool that never reaches it — the split had a hole at exactly the tool that skips the second gate | one row in `refusal()` |
+| a written scene the turn had **outgrown killed the whole turn** | the worldsmith snapshots the committed state, so a later change in the same turn can invalidate the scene; `apply_scene` then raised **out of `start_turn`**, so `started` stayed false and every later call was refused | `_install_scene` catches the refusal, records it and drops the scene: a lost scene costs less than a lost turn |
+| a **stale scene was discarded and never rewritten** | `VISION.md` §1.2 says discarded *and rewritten*; the code only logged. With a 335-second worldsmith and a one-turn staleness bound, any write slower than a player turn was silently lost forever | the same intent is written again from a fresh snapshot |
+| `final_message` **preferred an earlier fenced block** to the trailing JSON | a CLI that fences a code sample before answering would have its sample parsed as the answer | the fence is used only if it decodes as JSON |
+
+Three smaller things went with them: `GameService.scene_spent()` was a wrapper with one caller;
+`LonerScene` was a subclass whose docstring claimed a generic alias would not typecheck, which is
+false — it is a plain assignment now; and `render_worldsmith` took a `shape` parameter with exactly
+one possible argument.
+
+The review confirmed the parts most likely to be wrong are right: `except (OSError, ValueError)`
+catches a timed-out master (`asyncio.TimeoutError` is `TimeoutError`, which is an `OSError`) while
+letting `CancelledError` escape; `finally` clears the turn on every path; the two-writes-in-one-turn
+race cancels cleanly with no unretrieved exception; and `schema_of` is byte-identical, which the
+untouched schema golden proves.
+
+### Known and accepted
+
+- The one turn against a real coding CLI has not been taken. Everything under it has.
+- **There is one final-message reader, not one per CLI.** `VISION.md` §1 asks for a JSON event
+  stream reader for CLIs that emit one. The shipped default is `claude -p`, whose last message is
+  the answer, so the fence-or-trailing-object reader is enough. `codex exec --json` would need
+  its own reader, and would fail loudly rather than quietly if pointed at one today.
+- **A finished speculative scene is thrown away when the game master's own intent differs.** That
+  is what PLAN step 8 asks for, and it means the common path pays for a second full write. Worth
+  revisiting against real latencies.
+- `README.md`, `CLAUDE.md` and `AGENTS.md` still describe the old design; phase 5 rewrites them.
+- `Settings.turn.recent_exchanges` is the one depth every role reads, as before.

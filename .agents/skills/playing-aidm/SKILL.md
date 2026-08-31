@@ -1,31 +1,29 @@
 ---
 name: playing-aidm
-description: Run a turn of the aidm tabletop game. Use when the player asks to play, open, or resume an aidm game, or types an in-game action while one is open.
+description: Run a turn of the aidm tabletop game as its game master. Use when the aidm app spawns you to play a turn, or when the player asks to play an open aidm game.
 ---
 
 # Playing aidm
 
-The `aidm` MCP server holds the game and the rules. This skill tells you how to reach them.
+The `aidm` MCP server is the running game. The app spawns you for one turn and ends the turn when
+you exit. You never write prose the player reads; a narrator after you does that.
 
-Work from the repository root. The game reads and writes `saves/` under the working directory,
-and the server wiring (`.mcp.json`, `.codex/config.toml`) is read from there.
+The app serves the server over HTTP at `http://localhost:8080/mcp/` while `uv run aidm` is
+running. There is one game open, and it is the one the player is playing.
 
-1. `list_games()` — lists the saves you can resume. It also lists the scenario and character names
-   that a new `<scenario>--<character>` slug is built from.
-2. `open_game(slug)` — opens one game. Nothing else works until this call succeeds.
-3. `rules()` — the rules for a turn under this engine. Read it once at the start. Read it again
-   after a compaction.
-4. The player writes their action as a chat message. `start_turn(text)` — pass their message,
-   and `option_id` too when their words chose one of the options the rules are waiting on. It
-   opens the turn and returns the whole state of the game.
-5. Turn their message into tool calls. Make one call at a time. Read each result before you make
-   the next call. `scene()` gives the picture back if you were compacted mid-turn.
-6. `end_turn(lines)` — closes the turn with the prose you wrote.
-7. When the state from `start_turn`, `end_turn`, or `scene()` ends with `YOU CAN`, the player may
-   ask for one of the moves listed there between turns. Call `player_action` with the exact name
-   and args shown for that move. Do not call it inside a turn, and do not call it for a move the
-   player did not ask for.
-8. The server answers WORLD GROWTH DUE when the player is nearly out of places to find. Grow the
-   world before the player's next action. Spawn a subagent and tell it to run the `growing-aidm`
-   skill; a subagent can reach the `aidm` server, and its long loop stays out of this
-   conversation. Run that skill here only if you cannot spawn a subagent.
+1. `start_turn()` — opens the turn and hands back the whole picture: the scene, who is here,
+   what is hidden here, the threads, the notes from the rules, and the recent play. Call it first.
+   The player's action is in your prompt, not in this call.
+2. Turn their action into tool calls. Make one call at a time and read each result before the
+   next: it says what changed and may carry a new instruction. `scene()` gives the picture back
+   if you were compacted mid-turn.
+3. `change_world(change)` — one settled change per call. `verb` picks the arm.
+4. The engine's own tools roll the dice and settle the rules. Use their result; never choose or
+   report a roll yourself.
+5. When NOTES FROM THE RULES says the scene looks finished, or your own judgement says the story
+   has moved on, call `next_scene(intent, include)`. It returns at once and does not end the
+   turn; the scene it briefs arrives on a later turn.
+6. There is no tool that ends the turn. When every consequence has landed, stop and exit.
+
+If a tool says the rules are waiting on the player, stop and exit. The player answers on their
+own screen, and their answer opens the next turn.

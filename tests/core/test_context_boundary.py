@@ -6,7 +6,7 @@ from aidm.kernel.views import NarratorView
 from aidm.kits.scenes.state import Entity
 from aidm.state.entities import EntityId
 from aidm.state.model import Game
-from aidm.turn.context import ANSWERED_BY_OPTION, render_director, render_narrator
+from aidm.turn.context import ANSWERED_BY_OPTION, render_narrator, render_picture
 
 SECRET = EntityId("hidden-actor")
 
@@ -42,9 +42,9 @@ def _engine() -> Engine:
 
 
 def _directed(held: Game, prompt: str, *, resumed: str = "") -> str:
-    return render_director(
+    return render_picture(
         _engine().views(held).director.sections,
-        held.scenario,
+        held,
         prompt,
         resumed=resumed,
     )
@@ -94,7 +94,6 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:
 
     prompt = render_narrator(
         _engine().views(held).narrator,
-        held.scenario,
         evidence="- the map was found",
         prompt="What does Mara say?",
     )
@@ -103,6 +102,19 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:
     assert "The Secret" not in prompt
     assert "hidden-actor" not in prompt
     assert held.world.current.note not in prompt
+
+
+def test_the_narrator_prompt_carries_only_what_the_player_has_read() -> None:
+    held = _state()
+
+    prompt = render_narrator(
+        _engine().views(held).narrator,
+        evidence="- the map was found",
+        prompt="What does Mara say?",
+        passages=("Water drips.",),
+    )
+
+    assert "Water drips." in prompt
 
 
 def test_a_chosen_option_is_not_shown_as_the_players_own_words() -> None:

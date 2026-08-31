@@ -1,24 +1,17 @@
 import json
-from collections.abc import Callable
-from contextlib import ExitStack
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
 
-from pydantic import BaseModel, JsonValue, SecretStr
-from pydantic_ai.messages import (
-    ModelMessage,
-    ModelResponse,
-    RetryPromptPart,
-    TextPart,
-    ToolCallPart,
-    UserPromptPart,
-)
-from pydantic_ai.models import Model
-from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic import BaseModel, JsonValue
 from pydantic_settings import SettingsConfigDict
 
-from aidm.config import ProviderConfig, Providers, Settings
+from aidm.app import mcp
+from aidm.app.launch import LaunchTarget
+from aidm.app.runtime import GameService, Runtime
+from aidm.app.spawn import ScriptedSpawner
+from aidm.config import Settings
 from aidm.content.io import load_character, load_scenario, read_scenarios
 from aidm.engines.core import Engine
 from aidm.engines.loner3e.engine import complete_chapter as loner_chapter
@@ -29,9 +22,10 @@ from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Character, Game, Scenario
 from aidm.state.play import Answer, Speaker
-from aidm.turn.run import Turn, TurnStep, build_turn_agents, run_segment
+from aidm.turn.run import TurnStep
 
-type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
+# One tool call as a scripted game master makes it.
+type Call = tuple[str, dict[str, JsonValue]]
 
 
 class EnvFileFreeSettings(Settings):
@@ -109,112 +103,95 @@ def initialized() -> tuple[Engine, Game]:
     return game(LONER3E)
 
 
-def structured(**output: object) -> ModelResponse:
-    return ModelResponse(parts=[TextPart(json.dumps(output))])
-
-
-def tool_call(tool: str, **args: object) -> ModelResponse:
-    return ModelResponse(parts=[ToolCallPart(tool_name=tool, args=json.dumps(args))])
-
-
 def change_args(verb: str, **fields: JsonValue) -> dict[str, JsonValue]:
     return {"change": {"verb": verb, **fields}}
 
 
-def changed(verb: str, **fields: JsonValue) -> ModelResponse:
-    return tool_call("change_world", **change_args(verb, **fields))
+def changed(verb: str, **fields: JsonValue) -> Call:
+    return "change_world", change_args(verb, **fields)
 
 
-def text(body: str) -> ModelResponse:
-    return ModelResponse(parts=[TextPart(body)])
+def tool_call(name: str, **args: JsonValue) -> Call:
+    return name, args
 
 
-def narrated(body: str) -> ModelResponse:
-    """The narrator's answer, as `NativeOutput(Narration)` presents it."""
-    return structured(lines=[{"speaker_id": None, "text": body}])
+def narrated(body: str, speaker_id: str | None = None) -> str:
+    return json.dumps({"lines": [{"speaker_id": speaker_id, "text": body}]})
 
 
-def scripted(*responses: ModelResponse) -> Stub:
-    """Call N answers with response N, because a retried output asks the model again."""
-    remaining = iter(responses)
-
-    def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        del messages, info
-        return next(remaining)
-
-    return stub
-
-
-@dataclass(slots=True)
-class Recorder:
-    """A scripted stub that keeps what it was asked, so a test can read the retries it was sent."""
-
-    stub: Stub
-    calls: list[list[ModelMessage]] = field(default_factory=list)
-
-    def prompt(self) -> str:
-        """What the role was shown on its first request; the golden prompts come from here."""
-        return next(
-            str(part.content)
-            for part in self.calls[0][-1].parts
-            if isinstance(part, UserPromptPart)
-        )
-
-    def reasons(self) -> list[str]:
-        return [
-            str(part.content)
-            for messages in self.calls
-            for part in messages[-1].parts
-            if isinstance(part, RetryPromptPart)
-        ]
-
-
-def recorded(*responses: ModelResponse) -> Recorder:
-    answer = scripted(*responses)
-    calls: list[list[ModelMessage]] = []
-
-    def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        calls.append(list(messages))
-        return answer(messages, info)
-
-    return Recorder(stub=stub, calls=calls)
-
-
-async def played(
-    engine: Engine,
-    state: Game,
-    player_input: str | Answer,
-    *,
-    director: Model,
-    narrator: Model | None = None,
-    rng: Random | None = None,
-    on_step: Callable[[TurnStep], None] | None = None,
-    on_fact: Callable[[Fact], None] | None = None,
-    settings: Settings | None = None,
-) -> Game:
-    """Build a session-style turn with every model role stubbed."""
-    settings = settings or offline_settings()
-    stages = build_turn_agents(engine, settings)
-    narrator = narrator or FunctionModel(scripted(narrated("You wait.")))
-    with ExitStack() as stack:
-        stack.enter_context(stages.director.override(model=director))
-        stack.enter_context(stages.narrator.override(model=narrator))
-        turn = Turn.begin(
-            engine, state, player_input, Random(0) if rng is None else rng, lambda _: None, on_fact
-        )
-        lines = await run_segment(turn, stages=stages, settings=settings, on_step=on_step)
-        return turn.finish(lines)
-
-
-def offline_settings() -> Settings:
+def offline_settings(saves: Path | None = None) -> Settings:
     return EnvFileFreeSettings(
-        providers=Providers(
-            openrouter=ProviderConfig(
-                base_url="https://example.invalid/v1",
-                api_key=SecretStr("test"),
-            )
-        ),
-        saves_dir=Path("saves"),
+        saves_dir=Path("saves") if saves is None else saves,
         scenarios_dir=SCENARIOS,
         characters_dir=CHARACTERS,
     )
+
+
+@dataclass(slots=True)
+class Table:
+    """A live game and the tool surface a scripted game master plays it through."""
+
+    runtime: Runtime
+    service: GameService
+    spawner: ScriptedSpawner
+    refusals: list[str] = field(default_factory=list)
+    answers: list[str] = field(default_factory=list)
+
+    def call(self, name: str, args: dict[str, JsonValue]) -> str:
+        """What the server does: a refusal is an error result the CLI reads and carries on from."""
+        try:
+            answered = mcp.call(self.runtime, name, args)
+        except ValueError as refused:
+            self.refusals.append(str(refused))
+            answered = str(refused)
+        self.answers.append(answered)
+        return answered
+
+    def plays(self, calls: Sequence[Call], *, start: bool = True) -> Callable[[], None]:
+        def run() -> None:
+            for name, args in (("start_turn", {}), *calls) if start else calls:
+                _ = self.call(name, args)
+
+        return run
+
+    def saved(self) -> Game:
+        raw = self.service.store.load(self.service.slug)
+        assert raw is not None
+        return self.service.engine.restored(raw)
+
+
+def opened(
+    saves: Path,
+    *,
+    rng: Random | None = None,
+    settings: Settings | None = None,
+    engine: Engine | None = None,
+) -> Table:
+    settings = settings or offline_settings(saves)
+    spawner = ScriptedSpawner()
+    runtime = Runtime(settings, spawner)
+    if engine is not None:
+        runtime.engines[LONER3E] = engine
+    scenario_id = scenario_for(LONER3E)
+    service = runtime.session(
+        LaunchTarget(slug=f"{scenario_id}--kael", scenario_id=scenario_id, character_id="kael")
+    )
+    if rng is not None:
+        service.rng = rng
+    return Table(runtime=runtime, service=service, spawner=spawner)
+
+
+async def played(
+    table: Table,
+    action: str | Answer,
+    *calls: Call,
+    narration: str = "You wait.",
+    start: bool = True,
+    on_step: Callable[[TurnStep], None] | None = None,
+    on_fact: Callable[[Fact], None] | None = None,
+) -> Game:
+    """One turn, with the game master's tool calls scripted and the narrator's answer canned."""
+    table.spawner.turns.append(table.plays(calls, start=start))
+    table.spawner.answers.setdefault("narrator", []).append(narrated(narration))
+    await table.service.play(action, on_step=on_step, on_fact=on_fact)
+    return table.service.state

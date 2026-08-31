@@ -8,7 +8,6 @@ from time import monotonic
 from nicegui import ui
 
 from aidm.app.runtime import GameService
-from aidm.harness.driver import Driver
 from aidm.kernel.views import speaker_of
 from aidm.state.entities import EntityId
 from aidm.state.facts import DiceEvent, Fact
@@ -114,16 +113,16 @@ def _bubble(session: GameService, speaker: Speaker | None, text: str, *, sent: b
 
 
 _STEP_COPY: dict[TurnStep, tuple[str, str]] = {
-    "director": (
-        "Director",
+    "master": (
+        "Game Master",
         "Works out what your action actually does: who reacts, what changes, "
         "and whether the dice decide it.",
     ),
     "narrator": ("Narrator", "Writes what you see and hear this turn."),
-    "scenario_creator": (
+    "worldsmith": (
         "Worldsmith",
-        "Writes new places and people into the world, because it was running out of somewhere "
-        "for you to go. This one is slow — a few minutes is normal.",
+        "Writes the next scene: where the story goes and who is waiting there. "
+        "This one is slow — a few minutes is normal.",
     ),
 }
 
@@ -160,9 +159,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 class GameView:
-    def __init__(self, session: GameService, driver: Driver | None = None) -> None:
+    def __init__(self, session: GameService) -> None:
         self.session = session
-        self.driver = driver
         self.agent_log: ui.log | None = None
         self.shown_art: tuple[Path | None, bool] = (None, False)
         # Both are built by the page below this view, and the panels reach them through it.
@@ -173,11 +171,6 @@ class GameView:
         self.live_facts: list[Fact] = []
         self.step_started: float | None = None
         self.ticker: ui.label | None = None
-
-    @property
-    def viewing(self) -> bool:
-        """An agent you start yourself writes the save from another process; this only shows it."""
-        return self.session.settings.harness == "external"
 
     def log(self, line: str) -> None:
         if self.agent_log is not None and not self.agent_log.is_deleted:
@@ -285,42 +278,19 @@ async def _send(view: GameView, player_input: str | Answer, bubble: str) -> None
     view.live_turn.refresh()
     _scroll(view)
     async with working(session):
-        if view.driver is not None:
-            await _play_with_agent(view, view.driver, player_input, bubble)
-        else:
-            loop = get_running_loop()
-            await session.submit(
-                player_input,
-                on_step=lambda step: on_step(view, step),
-                on_fact=lambda fact: on_fact(view, fact, loop),
-            )
+        loop = get_running_loop()
+        await session.play(
+            player_input,
+            on_step=lambda step: on_step(view, step),
+            on_fact=lambda fact: on_fact(view, fact, loop),
+        )
+    view.log(session.master_log)
     session.step = None
     view.live_prompt, view.live_facts, view.step_started = None, [], None
     if view.composer is not None:
         view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
     view.refresh_all()
     _scroll(view)
-
-
-async def _play_with_agent(
-    view: GameView, driver: Driver, player_input: str | Answer, bubble: str
-) -> None:
-    """The agent commits through the MCP tools, so each message it sends is a cue to redraw."""
-    session = view.session
-    on_step(view, "director")
-    committed = len(session.state.history)
-    # `start_turn` takes the chosen option by id, and only the text reaches the agent.
-    chose = player_input.option_id if isinstance(player_input, Answer) else None
-    text = bubble if chose is None else f"{bubble} (option_id: {chose})"
-    async for line in driver.play(text):
-        view.log(line)
-        # A CLI the app spawned commits from its own process, so the save is the only channel.
-        poll_save(view)
-        view.live_facts = list(session.state.turn_facts)
-        if len(session.state.history) > committed:
-            # `end_turn` wrote the real bubble; the live one would now be a second copy.
-            view.live_prompt = None
-        view.refresh_all()
 
 
 async def submit(view: GameView, box: ui.input) -> None:
@@ -359,10 +329,7 @@ def decision_panel(view: GameView) -> None:
             ui.icon("pause_circle").classes("game-card-icon")
             ui.label(pending.kind).classes("text-xs font-bold game-outcome")
             ui.label("the game is waiting on you").classes("text-xs opacity-60")
-        decision_widget(pending.prompt, () if view.viewing else pending.options, answer)
-        if view.viewing:
-            ui.label("Answer in the terminal.").classes("text-sm opacity-60")
-            return
+        decision_widget(pending.prompt, pending.options, answer)
         if pending.allows_text:
             pointer = "Or answer" if pending.options else "Answer"
             ui.label(f"{pointer} in your own words below.").classes("text-xs opacity-60")
@@ -394,18 +361,7 @@ def composer(view: GameView) -> None:
             .props("round flat")
             .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
         )
-        if (driver := view.driver) is not None:
-            ui.button(icon="stop", on_click=driver.interrupt).props("round flat").tooltip(
-                "Stop the agent"
-            ).bind_visibility_from(session, "busy")
     view.composer = box
-
-
-def poll_save(view: GameView) -> None:
-    """The turn commits in another process, so the viewer watches the save file for it to land."""
-    if view.session.reload():
-        view.session.illustrate_scene()
-        view.refresh_all()
 
 
 def restart(view: GameView) -> None:
@@ -417,13 +373,12 @@ def restart(view: GameView) -> None:
     view.refresh_all()
 
 
-def game_page(session: GameService, driver: Driver | None = None) -> None:
+def game_page(session: GameService) -> None:
     session.illustrate_scene()
-    view = GameView(session, driver)
+    view = GameView(session)
     with page_header(session.state.scenario.title, session.engine.title):
         ui.space()
-        if not view.viewing:
-            ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")
+        ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")
 
     # Account for the header and page padding so the input stays above the fold.
     with ui.splitter(value=55).classes("w-full").style("height: calc(100vh - 6rem)") as splitter:
@@ -433,12 +388,7 @@ def game_page(session: GameService, driver: Driver | None = None) -> None:
                 view.chat()
                 view.live_turn()
             view.decision()
-            if view.viewing:
-                ui.label("Played in the terminal; this window follows along.").classes(
-                    "w-full text-xs opacity-60 q-pa-sm"
-                )
-            else:
-                composer(view)
+            composer(view)
             view.transcript = transcript
         with splitter.after, ui.column().classes("w-full h-full").style("gap: 0"):
             with ui.tabs().classes("w-full") as tabs:
@@ -453,13 +403,9 @@ def game_page(session: GameService, driver: Driver | None = None) -> None:
                 with ui.tab_panel(dev_tab), ui.scroll_area().classes("w-full h-full"):
                     with ui.expansion("state").classes("w-full"):
                         view.state()
-                    if driver is not None:
-                        with ui.expansion("agent", value=True).classes("w-full"):
-                            view.agent_log = ui.log(max_lines=500).classes("w-full h-64 text-xs")
+                    with ui.expansion("game master", value=True).classes("w-full"):
+                        view.agent_log = ui.log(max_lines=500).classes("w-full h-64 text-xs")
 
     ui.timer(1.0, lambda: tick_elapsed(view))
-    if session.settings.code_mode:
-        # `external` depends on this; under `claude` it only catches a turn whose stream was lost.
-        ui.timer(2.0, lambda: poll_save(view))
     if session.media is not None:
         ui.timer(3.0, lambda: poll_art(view))

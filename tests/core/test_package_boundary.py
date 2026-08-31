@@ -7,8 +7,8 @@ SOURCE = Path(__file__).parents[2] / "src" / "aidm"
 ENGINES = ("aidm.engines.loner3e",)
 # The composition root builds the engine; the save payload is a closed union over engine states.
 ROOTS = {"engines/registry.py", "state/model.py"}
-# Flow: state <- kernel <- content <- kits <- engines <- turn <- app <- harness <- ui.
-LAYERS = ("state", "kernel", "content", "kits", "engines", "turn", "app", "harness")
+# Flow: state <- kernel <- content <- kits <- engines <- turn <- app <- ui.
+LAYERS = ("state", "kernel", "content", "kits", "engines", "turn", "app")
 # The one inversion: `state.model` names the engine states its payload union is over, and those
 # modules import nothing above `state.entities`.
 ALLOWED = {"state": {"aidm.engines.loner3e.state"}}
@@ -17,8 +17,7 @@ TOPS = {"ui": {"aidm.engines"}}
 # A framework belongs to the layers that own it and to nothing below them.
 CONFINED = {
     "nicegui": ("ui",),
-    "pydantic_ai": ("turn", "app", "ui", "harness"),
-    "aidm.config": ("turn", "app", "ui", "harness"),
+    "aidm.config": ("turn", "app", "ui"),
 }
 
 

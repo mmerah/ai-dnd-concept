@@ -2,10 +2,10 @@ import os
 from collections.abc import Callable
 from pathlib import Path
 from types import UnionType
-from typing import Literal, Protocol, cast, get_args, get_origin
+from typing import Literal, Protocol, get_args, get_origin
 
 from nicegui import ui
-from pydantic import BaseModel, JsonValue, SecretStr, ValidationError
+from pydantic import BaseModel, SecretStr, ValidationError
 from pydantic.fields import FieldInfo
 
 from aidm.config import Settings, env_key, save_settings
@@ -24,7 +24,6 @@ type Changes = dict[tuple[str, ...], str | None]
 
 
 def settings_page(settings: Settings, apply: Callable[[], str | None]) -> None:
-    mode = "code mode" if settings.code_mode else "builtin"
     boxes: Boxes = {}
     groups = _shown(settings)
     # In the header, where a panel taller than the last one cannot move it.
@@ -41,11 +40,11 @@ def settings_page(settings: Settings, apply: Callable[[], str | None]) -> None:
             with ui.row().classes("w-full no-wrap items-start").style("gap: 1rem"):
                 with ui.tabs().props("vertical dense").classes("w-40") as tabs:
                     for name, field, _ in groups:
-                        ui.tab(name, label=_label((name,), field, mode))
+                        ui.tab(name, label=_label((name,), field))
                 with ui.tab_panels(tabs, value=groups[0][0]).classes("w-full"):
                     for name, field, value in groups:
                         with ui.tab_panel(name):
-                            boxes |= _render(value, field, (name,), mode)
+                            boxes |= _render(value, field, (name,))
 
 
 def _shown(model: BaseModel) -> list[tuple[str, FieldInfo, object]]:
@@ -54,33 +53,24 @@ def _shown(model: BaseModel) -> list[tuple[str, FieldInfo, object]]:
     return [(n, f, getattr(model, n)) for n, f in fields if not isinstance(getattr(model, n), Path)]
 
 
-def _render(value: object, field: FieldInfo, path: tuple[str, ...], mode: str) -> Boxes:
+def _render(value: object, field: FieldInfo, path: tuple[str, ...]) -> Boxes:
     if not isinstance(value, BaseModel):
-        return {path: _widget(_label(path, field, mode), field, value)}
+        return {path: _widget(_label(path, field), field, value)}
     boxes: Boxes = {}
     for name, nested, held in _shown(value):
         if isinstance(held, BaseModel):
-            with ui.expansion(_label((*path, name), nested, mode)).classes("w-full").props("dense"):
-                boxes |= _render(held, nested, (*path, name), mode)
+            with ui.expansion(_label((*path, name), nested)).classes("w-full").props("dense"):
+                boxes |= _render(held, nested, (*path, name))
         else:
-            boxes |= _render(held, nested, (*path, name), mode)
+            boxes |= _render(held, nested, (*path, name))
     return boxes
 
 
-def _label(path: tuple[str, ...], field: FieldInfo, mode: str) -> str:
+def _label(path: tuple[str, ...], field: FieldInfo) -> str:
     spelled = path[-1].replace("_", " ")
     if env_key(path) in os.environ:
         return f"{spelled} — set in your shell, which wins"
-    applies = _applies(field)
-    return spelled if applies in (None, mode) else f"{spelled} — {applies} only"
-
-
-def _applies(field: FieldInfo) -> str | None:
-    extra = field.json_schema_extra
-    if not isinstance(extra, dict):
-        return None
-    marked = cast(dict[str, JsonValue], extra).get("applies")
-    return marked if isinstance(marked, str) else None
+    return spelled
 
 
 def _widget(label: str, field: FieldInfo, value: object) -> Box:

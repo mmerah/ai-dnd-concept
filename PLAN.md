@@ -421,7 +421,7 @@ rewrites prose. Expect the count to stay near 5,400.
 
 5. **Search for leftovers.** Grep `src` and `tests` for: `mechanics`, `exits`, `parent_id`,
    `when_reached`, `frontier`, `PlayerAction`, `resolvers`, `succession`, `grows`, `harness`,
-   `builtin`, `external`, `code_mode`. Delete what is dead.
+   `builtin`, `external`, `code_mode`, `director`. Delete what is dead.
 
 6. **Full check, then play a session.**
 
@@ -461,7 +461,7 @@ whether `catch_breath` belongs on the scene boundary instead. That may be all it
 - [x] Phase 0 — probe code in `docs/probes/`
 - [x] Phase 1 — one engine. `src` 7,471
 - [x] Phase 2 — the scene kit and the port. `src` 5,806
-- [ ] Phase 3 — the three roles and the tool surface. `src` ≈ 5,650
+- [x] Phase 3 — the three roles and the tool surface. `src` 5,422
 - [ ] Phase 4 — the pages. `src` ≈ 5,400
 - [ ] Phase 5 — the sweep. `src` ≈ 5,400
 - [ ] Phase 6 — the engines return

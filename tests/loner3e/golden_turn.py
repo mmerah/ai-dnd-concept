@@ -1,8 +1,7 @@
-from core_test_support import changed, text, tool_call
-from golden_turn_support import LISTENING, NARRATION
-from pydantic_ai.messages import ModelResponse
+from core_test_support import Call, changed, tool_call
+from golden_turn_support import LISTENING
 
-SCRIPT: tuple[ModelResponse, ...] = (
+SCRIPT: tuple[Call, ...] = (
     changed("reveal", entity_id="vault-map"),
     tool_call(
         "roll_question",
@@ -12,5 +11,4 @@ SCRIPT: tuple[ModelResponse, ...] = (
         edge="Quiet Hands",
     ),
     LISTENING,
-    text(NARRATION),
 )

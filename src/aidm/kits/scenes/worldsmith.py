@@ -3,15 +3,9 @@ from collections.abc import Iterable
 from pydantic import BaseModel, Field
 
 from aidm.kits.scenes.state import Entity, Frozen, Scene, SceneState, Thread
-from aidm.kits.scenes.views import SheetRows, entity_line, thread_lines
 from aidm.state.entities import EntityId, Slug, slug
 
 MIN_SITUATION = 80
-SURPRISE = (
-    "Surprise the player. Turn an established fact against them, or bring back something they "
-    "have stopped thinking about. Surprise by recombining what exists, never by inventing what "
-    "the source would not hold."
-)
 
 
 class SceneDraft[S: BaseModel](Frozen):
@@ -112,37 +106,3 @@ def _resolve[S: BaseModel](
         if matched not in found:
             found.append(matched)
     return found
-
-
-def render_worldsmith[S: BaseModel](
-    world: SceneState[S],
-    intent: str,
-    include: tuple[str, ...],
-    guidance: str,
-    rows: SheetRows,
-    *,
-    opening: bool = False,
-) -> str:
-    """The whole material for one scene, assembled by code so no role has to remember it."""
-    if opening:
-        history = "(no scenes yet — write the opening)"
-        cast = "(no cast yet — write the people and things this scene needs)"
-    else:
-        history = "\n\n".join(
-            f"SCENE {number}: {one.title} ({one.place})\n{one.situation}"
-            for number, one in enumerate((*world.played, world.current), start=1)
-        )
-        cast = "\n".join(entity_line(world, one, rows, where=True) for one in world.cast.values())
-    return "\n\n".join(
-        f"{name}:\n{body}"
-        for name, body in (
-            ("SOURCE MATERIAL", world.source or "(none — write from the threads and the cast)"),
-            ("SCENES SO FAR", history),
-            ("THE WHOLE CAST", cast),
-            ("THREADS", thread_lines(world.threads.values(), standing_only=False)),
-            ("ENGINE GUIDANCE", guidance),
-            ("WHAT COMES NEXT", intent),
-            ("FACES TO BRING BACK (a hint, not an order)", ", ".join(include) or "(none)"),
-            ("STANDING INSTRUCTION", SURPRISE),
-        )
-    )

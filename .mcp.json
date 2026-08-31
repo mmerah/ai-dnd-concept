@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "aidm": {
-      "command": "uv",
-      "args": ["run", "python", "-m", "aidm.harness.mcp"]
+      "type": "http",
+      "url": "http://localhost:8080/mcp/"
     }
   }
 }

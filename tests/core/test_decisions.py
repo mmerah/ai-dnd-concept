@@ -1,32 +1,16 @@
 from dataclasses import replace
+from pathlib import Path
 from random import Random
 
 import pytest
-from core_test_support import (
-    ENGINES_BUILT,
-    LONER3E,
-    game,
-    played,
-    recorded,
-    scripted,
-    text,
-    tool_call,
-)
+from core_test_support import ENGINES_BUILT, LONER3E, Table, opened, played, tool_call
 from pydantic import Field, ValidationError
-from pydantic_ai.messages import TextPart, ToolReturnPart
-from pydantic_ai.models.function import FunctionModel
 
 from aidm.engines.core import Engine
 from aidm.state.entities import Frozen
 from aidm.state.facts import Fact
 from aidm.state.model import Game
-from aidm.state.play import (
-    Answer,
-    Exchange,
-    PendingDecision,
-    PendingOption,
-    SpokenLine,
-)
+from aidm.state.play import Answer, PendingDecision, PendingOption
 from aidm.state.tools import (
     DirectorTool,
     NoArgs,
@@ -34,7 +18,7 @@ from aidm.state.tools import (
     director_tool,
     transact,
 )
-from aidm.turn.run import RULES_WAIT, Turn, TurnStep, consume_answer, exchanges_to_messages
+from aidm.turn.run import RULES_WAIT, Turn, TurnStep, consume_answer
 
 
 class Broken(Frozen):
@@ -106,19 +90,21 @@ def _strike_tool(*, narrate: bool) -> DirectorTool:
     )
 
 
-def _deciding(*, narrate: bool = True) -> tuple[Engine, Game]:
-    engine = replace(
+def _engine(*, narrate: bool = True) -> Engine:
+    return replace(
         ENGINES_BUILT[LONER3E],
         tools=(_strike_tool(narrate=narrate), TURN_THE_HIT, CHAIN_THE_HIT),
     )
-    _, state = game(LONER3E)
-    return engine, state
 
 
-def _suspended(state: Game, decision: PendingDecision = DECISION) -> Game:
-    draft = state.draft()
+def _deciding(saves: Path, *, narrate: bool = True) -> Table:
+    return opened(saves, engine=_engine(narrate=narrate))
+
+
+def _suspend(table: Table, decision: PendingDecision = DECISION) -> None:
+    draft = table.service.state.draft()
     draft.pending = decision
-    return draft.committed()
+    table.service.commit(draft.committed())
 
 
 def test_an_answer_is_a_chosen_option_or_written_text_but_never_both_nor_neither() -> None:
@@ -128,95 +114,67 @@ def test_an_answer_is_a_chosen_option_or_written_text_but_never_both_nor_neither
         _ = Answer(option_id="lantern", text="I dive behind the crate")
 
 
-async def test_a_suspending_resolver_ends_the_run_and_records_the_pause() -> None:
-    engine, state = _deciding()
-    director = recorded(tool_call("strike"), text("The rules wait on the player."))
-
+async def test_a_suspending_resolver_ends_the_run_and_records_the_pause(tmp_path: Path) -> None:
+    table = _deciding(tmp_path)
     steps: list[TurnStep] = []
-    state = await played(
-        engine,
-        state,
-        "I charge the guard.",
-        director=FunctionModel(director.stub),
-        on_step=steps.append,
-    )
 
-    answers = [
-        str(part.content)
-        for messages in director.calls
-        for message in messages
-        for part in message.parts
-        if isinstance(part, ToolReturnPart)
-    ]
-    assert any(RULES_WAIT in answer for answer in answers)
+    state = await played(table, "I charge the guard.", tool_call("strike"), on_step=steps.append)
+
+    assert any(RULES_WAIT in answer for answer in table.answers)
     assert state.pending == DECISION
     assert state.history[-1].decision == DECISION.prompt
-    assert steps == ["director", "narrator"]
+    assert steps == ["master", "narrator"]
 
 
-async def test_a_hand_back_that_moved_no_fiction_gets_no_prose() -> None:
-    engine, state = _deciding(narrate=False)
-
+async def test_a_hand_back_that_moved_no_fiction_gets_no_prose(tmp_path: Path) -> None:
+    table = _deciding(tmp_path, narrate=False)
     steps: list[TurnStep] = []
-    state = await played(
-        engine,
-        state,
-        "I charge the guard.",
-        director=FunctionModel(scripted(tool_call("strike"), text("The rules wait."))),
-        on_step=steps.append,
-    )
+    table.spawner.turns.append(table.plays((tool_call("strike"),)))
 
-    assert steps == ["director"]
+    await table.service.play("I charge the guard.", on_step=steps.append)
+
+    state = table.service.state
+    assert steps == ["master"]
     assert state.history[-1].lines == ()
     assert state.history[-1].narration == ""
 
 
-async def test_a_closed_answer_resolves_in_engine_code_before_the_director_continues() -> None:
-    engine, state = _deciding()
-
-    director = recorded(text("The lantern is gone."))
+async def test_a_closed_answer_resolves_in_engine_code_before_the_master_continues(
+    tmp_path: Path,
+) -> None:
+    table = _deciding(tmp_path)
+    _suspend(table)
     facts: list[Fact] = []
-    state = await played(
-        engine,
-        _suspended(state),
-        Answer(option_id="lantern"),
-        director=FunctionModel(director.stub),
-        on_fact=facts.append,
-    )
+
+    state = await played(table, Answer(option_id="lantern"), on_fact=facts.append)
 
     assert [fact.kind for fact in facts] == ["defence_turned"]
-    assert "lantern broke to turn the hit" in director.prompt()
+    assert "lantern broke to turn the hit" in table.answers[0]
     assert state.history[-1].prompt == "Break the lantern"
     assert state.pending is None
 
 
-async def test_a_re_suspended_continuation_keeps_the_rules_waiting() -> None:
-    engine, state = _deciding()
+async def test_a_re_suspended_continuation_keeps_the_rules_waiting(tmp_path: Path) -> None:
+    table = _deciding(tmp_path)
+    _suspend(table, CHAINING)
 
-    state = await played(
-        engine,
-        _suspended(state, CHAINING),
-        Answer(option_id="lantern"),
-        director=FunctionModel(scripted(text("The lantern is gone."))),
-    )
+    state = await played(table, Answer(option_id="lantern"))
 
     assert state.pending == DECISION
 
 
-async def test_an_option_the_decision_never_offered_raises() -> None:
-    engine, state = _deciding()
+async def test_an_option_the_decision_never_offered_raises(tmp_path: Path) -> None:
+    table = _deciding(tmp_path)
+    _suspend(table)
 
     with pytest.raises(ValueError, match="offers no option 'vest'"):
-        _ = await played(
-            engine,
-            _suspended(state),
-            Answer(option_id="vest"),
-            director=FunctionModel(scripted(text("unreachable"))),
-        )
+        _ = await played(table, Answer(option_id="vest"))
 
 
-def test_a_change_outside_a_turn_cannot_open_a_decision_but_may_run_on_a_suspended_state() -> None:
-    engine, state = _deciding()
+def test_a_change_outside_a_turn_cannot_open_a_decision_but_may_run_on_a_suspended_state(
+    tmp_path: Path,
+) -> None:
+    engine, state = _engine(), opened(tmp_path).service.state
 
     with pytest.raises(ValueError, match="cannot open a decision"):
         _ = transact(
@@ -230,47 +188,17 @@ def test_a_change_outside_a_turn_cannot_open_a_decision_but_may_run_on_a_suspend
         del draft, rng
         return ()
 
-    suspended, _ = transact(engine.validate, _suspended(state).draft(), nothing, Random(0))
+    suspended, _ = transact(engine.validate, _pending(state).draft(), nothing, Random(0))
     assert suspended.pending == DECISION
 
 
-def test_a_second_decision_is_refused_while_one_is_already_open() -> None:
-    engine, state = _deciding()
-    draft = _suspended(state).draft()
+def test_a_second_decision_is_refused_while_one_is_already_open(tmp_path: Path) -> None:
+    engine, draft = _engine(), _pending(opened(tmp_path).service.state).draft()
 
     with pytest.raises(ValueError, match="one at a time"):
         _ = apply_to_draft(
             engine.validate, draft, lambda draft, _rng: _hit(draft, narrate=False), Random(0)
         )
-
-
-def test_a_paused_exchange_replays_as_a_message_and_a_silent_one_refuses() -> None:
-    paused = Exchange(prompt="I charge.", scene="the cloister", lines=(), decision=DECISION.prompt)
-    stayed = Exchange(
-        prompt="I press on.",
-        scene="the cloister",
-        lines=(SpokenLine(text="It gives."),),
-    )
-    moved = Exchange(
-        prompt="I go up.",
-        scene="the bell tower",
-        lines=(SpokenLine(text="Rope sways."),),
-    )
-
-    rendered = [
-        part.content
-        for message in exchanges_to_messages([paused, stayed, moved])
-        for part in message.parts
-        if isinstance(part, TextPart)
-    ]
-
-    assert rendered == [
-        f"[At the cloister]\n[The rules paused the turn for the player: {DECISION.prompt}]",
-        "[At the cloister]\nIt gives.",
-        "[At the bell tower]\nRope sways.",
-    ]
-    with pytest.raises(ValueError, match="nothing to replay"):
-        _ = exchanges_to_messages([Exchange(prompt="I wait.", scene="the cloister", lines=())])
 
 
 def _option(**changes: object) -> PendingOption:
@@ -279,11 +207,13 @@ def _option(**changes: object) -> PendingOption:
     )
 
 
-def test_an_option_whose_call_names_no_tool_or_carries_args_it_rejects_is_refused() -> None:
-    engine, state = _deciding()
-    draft = _suspended(state).draft()
+def test_an_option_whose_call_names_no_tool_or_carries_args_it_rejects_is_refused(
+    tmp_path: Path,
+) -> None:
+    engine, suspended = _engine(), _pending(opened(tmp_path).service.state)
+    draft = suspended.draft()
 
-    assert engine.restored(_suspended(state).model_dump_json()).pending == DECISION
+    assert engine.restored(suspended.model_dump_json()).pending == DECISION
 
     with pytest.raises(ValueError, match="no tool 'spend_momentum' to play option 'lantern'"):
         _ = engine.answer(draft, _option(name="spend_momentum"), Random(0))
@@ -291,12 +221,20 @@ def test_an_option_whose_call_names_no_tool_or_carries_args_it_rejects_is_refuse
         _ = engine.answer(draft, _option(args={"nothing": "of theirs"}), Random(0))
 
 
-def test_a_decision_whose_options_are_the_whole_pick_refuses_an_answer_in_words() -> None:
-    engine, state = _deciding()
-    draft = _suspended(state, DECISION.model_copy(update={"allows_text": False})).draft()
+def test_a_decision_whose_options_are_the_whole_pick_refuses_an_answer_in_words(
+    tmp_path: Path,
+) -> None:
+    engine, state = _engine(), opened(tmp_path).service.state
+    closed = DECISION.model_copy(update={"allows_text": False})
 
     with pytest.raises(ValueError, match="takes one of its options, not words"):
         _ = consume_answer(
-            Turn(engine=engine, draft=draft, rng=Random(0), commit=lambda _: None),
+            Turn(engine=engine, draft=_pending(state, closed).draft(), rng=Random(0)),
             Answer(text="I dive aside"),
         )
+
+
+def _pending(state: Game, decision: PendingDecision = DECISION) -> Game:
+    draft = state.draft()
+    draft.pending = decision
+    return draft.committed()
