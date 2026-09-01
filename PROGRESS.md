@@ -8,6 +8,7 @@ decided along the way, and anything left known-and-accepted.
 | phase | `src` | `tests` |
 |---|---|---|
 | start (`2c3e8a5`, phase 8 committed) | 8,913 | 5,101 |
+| 1 — Maze Rats and the rooms kit deleted | 6,365 | 4,144 |
 
 ## Why the plan was rewritten (2026-09-01)
 
@@ -94,5 +95,20 @@ from 1,800 to about 1,950 on the reviewer's count (965 + 810 + 393 today, ~100 o
 
 ## Phase entries
 
-None yet. Each phase adds: counts before and after, the decisions made inside it, what the
-adversarial review caught, and what was left known-and-accepted.
+Each phase adds: counts before and after, the decisions made inside it, what the adversarial
+review caught, and what was left known-and-accepted.
+
+### Phase 1 — Maze Rats and the rooms kit deleted (2026-09-01)
+
+- **Counts:** `src` 8,913 -> 6,365 (target about 6,350); `tests` 5,101 -> 4,144. 37 files
+  staged, +5 / −9,669. Loner goldens byte-identical; no regeneration.
+- **Off-plan, decided inside the phase:** `tests/ui/test_launcher.py` listed `("kael",
+  "mazerats")` in two assertions the plan did not name; trimmed to Loner. `CLAUDE.md` design
+  rule 2 named `src/aidm/kits/rooms/`; the clause was dropped so the rule file stays true (phase 5
+  still rewrites the rule). Untracked residue removed: the empty
+  `tests/core/fixtures/schemas/mazerats/` and `tools/__pycache__`, so `tools/` is gone.
+- **Review:** Fable found the three items above, all fixed; Codex Sol found nothing. No
+  refutations.
+- **Known and accepted:** `uv run aidm` serves the home page (HTTP 200); on SIGTERM it logs
+  `RuntimeError: Attempted to exit cancel scope in a different task` from
+  `src/aidm/app/mcp.py:34`, a shutdown-only fault in code this phase does not touch.

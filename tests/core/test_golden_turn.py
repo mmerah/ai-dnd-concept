@@ -13,7 +13,6 @@ from aidm.core.facts import Fact
 from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, SpokenLine
 from aidm.engines.loner3e.state import Loner3eGame
-from aidm.engines.mazerats.state import MazeRatsGame
 from aidm.kits.scenes.state import Scene, SceneRun
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
@@ -27,8 +26,6 @@ def _script(engine_id: EngineId) -> tuple[Call, ...]:
 
 def _behind(state: AnyGame) -> AnyGame:
     """One played turn in the scene before this one: RECENT PLAY has to group by run, not title."""
-    if isinstance(state, MazeRatsGame):
-        return _maze_behind(state)
     if not isinstance(state, Loner3eGame):
         raise AssertionError(f"unsupported golden engine state: {type(state).__name__}")
     draft = state.draft()
@@ -57,17 +54,6 @@ def _behind(state: AnyGame) -> AnyGame:
         Exchange(
             prompt="I look for another way in.",
             lines=(SpokenLine(text="A flagstone by the wall sits proud of its neighbours."),),
-        )
-    ]
-    return draft.committed()
-
-
-def _maze_behind(state: MazeRatsGame) -> MazeRatsGame:
-    draft = state.draft()
-    draft.payload.world.visit.exchanges = [
-        Exchange(
-            prompt="I study the boot prints.",
-            lines=(SpokenLine(text="The prints disappear beneath the silver arch."),),
         )
     ]
     return draft.committed()
