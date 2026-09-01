@@ -1,4 +1,4 @@
-## Ideas
+## Ideas (in no particular order)
 
 - [] 1: Sounds/Voices. app/media.py is the template.
 - [] 2: `recent_exchanges` caps what an agent remembers, so a long game forgets its start. A per-location summary, written when the player leaves it, would carry the places already played without carrying every turn. Maybe could be part of a memory system? Engines decides who/what carries a memory (list[str]) which are created in a controlled manner (e.g. when changing location or scene), created by a summarizer agent.
@@ -14,3 +14,4 @@
 - [] 12: Fold in competitor features. See `docs/COMPETITOR-RESEARCH.md`. First two: a re-read-before-you-state rule in the playing skill, and a session recap on resume (first step of L8).
 - [] 13: Pack authoring: write a pack (skills, gear, tables) through the authoring loop, then a scenario or character that plays with it.
 - [] 14: The docs for each engine: have a template/format for each? Engines that are not implemented have the sections content as "unimplemented"?
+- [] 15: A "Hub"? Some engines are very "hub"-oriented. Basically a place where you get jobs or choose to go on an adventure of some kind. A tavern, a ship, a fixer/handler, whatever. In 24XX you choose a "job", you go through that job as a series of Scenes under the overarching "job" then you go back, based on reputation or skills or whatever you now have access to new jobs. Means a scenario is one "job" or whtever representation the engine wants. But then new job gets proposed in the "Hub" and written by the worldsmith. Separation of info necessary whatever happened in other jobs don't matter? Or it does and previous NPCs/Factions/... whatever can re-appear. In Tunnel Goons it could be a tavern where you go on adventures, thus the "dungeon"/"series of places" you go through are under an overarching adventure. Also means you can recruit? An NPC joining your party can then go on a different adventure than the one he was created for. Maybe scenarios in the folder are either "Hub"-type or "One-Shot"? Thus they are differentiated in UI, and maybe in the way agents connect in-between them?. Lots of brainstorming is needed.
