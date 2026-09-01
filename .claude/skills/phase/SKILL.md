@@ -1,36 +1,58 @@
 ---
 name: phase
-description: Run one PLAN.md phase end to end — brief, Opus implementer driving Codex Luna, Fable + Codex Sol adversarial reviews, fold, PROGRESS.md entry — and stop before the commit. Use when the user says "implement phase N", "run phase N", or "/phase N".
+description: Run one PLAN.md phase end to end — brief, Codex Luna implements from it, you verify, Fable + Codex Sol adversarial reviews, fold, PROGRESS.md entry — and stop before the commit. Use when the user says "implement phase N", "run phase N", or "/phase N".
 argument-hint: <phase number or name>
 ---
 
 # /phase $ARGUMENTS
 
-You are the orchestrator. You read, brief, spawn, relay, verify, and record. You do not write
-code and you do not commit. Restate `step k of 6` at the top of every message to the user.
+You are the orchestrator and the implementer's brain. Codex writes the code; you write its
+instructions, read its diff, verify, and decide. You do not write code beyond a few-line fix and
+you never commit. Restate `step k of 6` at the top of every message to the user.
 
 ## 1. Brief
 
 Read `PLAN.md` (the "How to work" rules and phase $ARGUMENTS), `PROGRESS.md` (standing
-decisions), and `CLAUDE.md`. Record the `src` line count from the `PLAN.md` command.
-Write `/tmp/phase-$ARGUMENTS/brief.md`:
+decisions), `CLAUDE.md`, and every file the phase names. Trace the real flow the change touches;
+you cannot instruct what you have not read. Record the `src` line count from the `PLAN.md` command.
+
+Write `/tmp/phase-$ARGUMENTS/brief.md`. It is both the record of the phase and the instruction
+Codex runs, so it must be precise:
 
 ```
 # Phase <N> — <title>
 ## Goal            one paragraph, copied intent not paraphrased rules
-## Steps           numbered, one action each, straight from PLAN.md
+## Steps           numbered, one action each, straight from PLAN.md; for each: the files to
+                   touch and the exact shapes (signatures, models, fields)
+## Tests           the tests to add or change, by name
 ## Done when       observable checks: tests named, behaviour named, line-count target
 ## Out of scope    what the phase must not touch; standing decisions it must not re-open
-## Files           the files each step touches, as far as PLAN.md names them
+## Rules           the two paragraphs below, verbatim
 ```
+
+Rules paragraphs:
+
+> Read only the files named here and their direct imports. Do not explore the rest of the repo.
+> Verify with: `uv run pytest`, `uv run ruff check`, `uv run ruff format --check`,
+> `uv run basedpyright`. Don't commit, only stage when you finish.
+
+> Follow our coding principles: clean, SOLID, DRY, KISS, simple/readable code, concise docstrings,
+> only comment the 'why', fail fast, strict type safety, avoid 'Any' and avoid any optional unless
+> needed, keep tests minimal and only on the core behavior.
 
 If PLAN.md is ambiguous on something that changes the work, ask the user once, now.
 
 ## 2. Implement
 
-`Agent(subagent_type="implementer", prompt="Implement the brief at /tmp/phase-N/brief.md")`.
-Keep its agent id; you will message it again. When it reports, check the four commands yourself
-and `git diff --cached --stat`. A skipped step goes back to the implementer before any review.
+1. Run Codex in the background (it can run over an hour; a foreground Bash call caps at 10 min):
+   `.claude/scripts/codex.sh gpt-5.6-luna xhigh workspace-write < /tmp/phase-N/brief.md`
+   Wait for the completion notification. Do not poll.
+2. Verify yourself: the four commands, then `git status` and `git diff` against the brief step by
+   step. Read the diff; do not trust Codex's summary.
+3. Red check or a missing step → write `/tmp/phase-N/impl-2.md` with only the gap and the exact
+   error, rerun the same script with it. Three rounds and still red → stop and report to the user;
+   never patch around it silently.
+4. `git add -A`, run the four commands once more on the staged tree.
 
 ## 3. Review — both at once, in one message
 
@@ -43,14 +65,19 @@ Save the Fable review to `/tmp/phase-N/review-fable.md`.
 
 ## 4. Fold
 
-`SendMessage` both review files' contents to the implementer: "Fold these. Fix or refute each."
-Read its table. Any refutation you do not agree with: hand it to the user with the reviewer's
-finding and the implementer's reason side by side. Do not decide it for them.
+1. For every finding in both reviews decide: **fix** or **refute**. Refute only with a concrete
+   reason (a line, a rule in `CLAUDE.md`, a measured fact). "Matter of taste" is not a reason.
+2. Fixes of a few lines: edit directly. Larger fixes: one `/tmp/phase-N/fold-1.md` to Codex Luna,
+   same script as step 2.
+3. Four commands green, `git add -A`.
+4. Write one table: `# | finding | fixed / refuted | reason or file:line`. Any refutation that
+   rests on your own judgment of the instructions you wrote: hand it to the user with the finding
+   and your reason side by side. Do not decide it for them.
 
 ## 5. Verify
 
-Run the four `PLAN.md` commands and `uv run aidm` smoke if the phase touched the game. Count `src`
-lines again. Read the staged diff's `--stat` and open anything the reviews flagged as fixed.
+Run the four commands and `uv run aidm` smoke if the phase touched the game. Count `src` lines
+again. Read the staged diff's `--stat` and open anything the reviews flagged as fixed.
 
 ## 6. Record and stop
 
