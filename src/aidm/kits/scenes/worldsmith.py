@@ -1,11 +1,36 @@
+import json
 from collections.abc import Iterable
+from pathlib import Path
+from typing import cast
 
 from pydantic import BaseModel, Field
 
-from aidm.core.entities import EntityId, Slug
-from aidm.kits.scenes.state import Entity, Frozen, Scene, SceneCanon, SceneRun, SceneState, Thread
+from aidm.core.entities import EntityId, Frozen, Slug
+from aidm.core.facts import Fact
+from aidm.core.io import engine_text
+from aidm.core.model import WorldsmithAnswer
+from aidm.core.tools import schema_of
+from aidm.core.views import sections
+from aidm.kits.entities import Entity, Thread
+from aidm.kits.scenes.render import SheetRows, entity_line, thread_lines
+from aidm.kits.scenes.state import Scene, SceneCanon, SceneRun, SceneState
 
 MIN_SITUATION = 80
+TAIL_EXCHANGES = 3
+# The narrator's brief for a crossing; `{pursuit}` is what the player said they were going after.
+CROSSING = (
+    "The player is leaving WHAT THE PLAYER HAS READ for the place in SCENE. They asked for this: "
+    '"{pursuit}"\n\n'
+    "Write the crossing: a sentence of leaving, then the arrival. Cover the distance and the time "
+    "in the fewest words that make it real, and end on what they see first. WHAT HAPPENED names "
+    "anyone who travelled with them. They have not acted in the new place yet, so settle nothing."
+)
+SURPRISE = (
+    "Surprise the player. Turn an established fact against them, or bring back something they "
+    "have stopped thinking about. Surprise by recombining what exists, never by inventing what "
+    "the source would not hold."
+)
+WORLDSMITH = engine_text(Path(__file__).parent / "prompts" / "worldsmith.md")
 
 
 class SceneDraft[S: BaseModel](Frozen):
@@ -70,8 +95,119 @@ def apply_scene[S: BaseModel](world: SceneState[S], draft: SceneDraft[S]) -> Non
     world.cast = cast
     for one in present:
         cast[one].known = True
-    world.threads.update(draft.threads)
+    # The author saw a snapshot while the current turn could advance existing threads.
+    # Keep those committed values; only genuinely new authored ids belong in this scene.
+    world.threads.update(
+        (thread_id, thread)
+        for thread_id, thread in draft.threads.items()
+        if thread_id not in world.threads
+    )
     world.runs.append(SceneRun(scene=_scene(draft), present=[*kept, *present], hidden=hidden))
+
+
+async def write_next[S: BaseModel](
+    world: SceneState[S],
+    scene_type: type[SceneDraft[S]],
+    intent: str,
+    guidance: str,
+    rows: SheetRows,
+    answer: WorldsmithAnswer,
+) -> SceneDraft[S]:
+    def refusal(written: BaseModel) -> str | None:
+        return scene_refusal(cast(SceneDraft[S], written), world)
+
+    written = await answer(
+        render_worldsmith(world, intent, guidance, rows, scene_type), scene_type, refusal
+    )
+    return cast(SceneDraft[S], written)
+
+
+def install_scene[S: BaseModel](
+    world: SceneState[S], written: SceneDraft[S], closed: tuple[Fact, ...]
+) -> tuple[Fact, ...]:
+    apply_scene(world, written.model_copy(deep=True))
+    came = [world.require(one).name for one in world.companions]
+    trace = f"the story moves to {written.title}"
+    if came:
+        trace += f", and {', '.join(came)} travels there with the player"
+    opened = Fact(kind="scene_opened", trace=trace, told=True, card=f"New scene: {written.title}")
+    return *closed, opened
+
+
+def render_worldsmith[S: BaseModel](
+    world: SceneState[S],
+    intent: str,
+    guidance: str,
+    rows: SheetRows,
+    answer: type[BaseModel],
+) -> str:
+    return _worldsmith(
+        source=world.source,
+        history=_history(world),
+        cast="\n".join(entity_line(world, one, rows, where=True) for one in world.cast.values()),
+        threads=thread_lines(world.threads.values(), standing_only=False),
+        guidance=guidance,
+        intent=intent,
+        answer=answer,
+    )
+
+
+def render_opening(source: str, guidance: str, answer: type[BaseModel]) -> str:
+    return _worldsmith(
+        source=source,
+        history="(no scenes yet — write the opening)",
+        cast="(no cast yet — write the people and things this scene needs)",
+        threads="- (none yet — open the first)",
+        guidance=guidance,
+        intent=(
+            "Write the opening scene of this adventure: where the player starts, who is there, "
+            "and what is waiting to be found."
+        ),
+        answer=answer,
+    )
+
+
+def _worldsmith(
+    *,
+    source: str,
+    history: str,
+    cast: str,
+    threads: str,
+    guidance: str,
+    intent: str,
+    answer: type[BaseModel],
+) -> str:
+    return sections(
+        (
+            ("YOUR ROLE", WORLDSMITH),
+            ("SOURCE MATERIAL", source or "(none — write from the threads and the cast)"),
+            ("SCENES SO FAR", history),
+            ("THE WHOLE CAST", cast),
+            ("THREADS", threads),
+            ("ENGINE GUIDANCE", guidance),
+            ("WHAT COMES NEXT", intent),
+            ("STANDING INSTRUCTION", SURPRISE),
+            ("ANSWER WITH", json.dumps(schema_of(answer), indent=2, ensure_ascii=False)),
+        )
+    )
+
+
+def _history[S: BaseModel](world: SceneState[S]) -> str:
+    return "\n\n".join(
+        "\n".join(
+            (
+                f"SCENE {number}: {run.scene.title} ({run.scene.place})",
+                f"the question: {run.scene.question}",
+                run.scene.situation,
+                "what happened: " + (_told(run) or "(nothing yet)"),
+            )
+        )
+        for number, run in enumerate(world.runs, start=1)
+    )
+
+
+def _told(run: SceneRun) -> str:
+    return "\n".join(f"> {one.prompt}\n{one.narration}" for one in run.exchanges[-TAIL_EXCHANGES:])
 
 
 def _scene[S: BaseModel](draft: SceneDraft[S]) -> Scene:

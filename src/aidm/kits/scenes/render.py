@@ -1,61 +1,29 @@
-from collections.abc import Callable, Iterable
+from typing import Any
 
 from pydantic import BaseModel
 
-from aidm.core.entities import EntityId
-from aidm.core.model import Game
-from aidm.core.play import DecisionOption
-from aidm.core.views import (
-    NarratorView,
-    PlayerPrompt,
-    PlayerView,
-    Rows,
-    Subject,
-    ThreadRow,
-    speaker_of,
+from aidm.core.model import AnyGame, Game
+from aidm.core.views import NarratorView, PlayerView, Rows, ThreadRow, speaker_of
+from aidm.kits.entities import Entity
+from aidm.kits.render import (
+    EngineSections,
+    SheetRows,
+    entity_lines,
+    player_prompt,
+    subject_of,
+    thread_lines,
 )
-from aidm.kits.scenes.state import Entity, SceneState, Thread
-
-# The engine's own sheet rows for one entity; empty for scenery nothing rolls against.
-type SheetRows = Callable[[EntityId], tuple[tuple[str, str], ...]]
-# Sections only the engine can state, such as the advances it owes the party.
-type EngineSections = Callable[[Game], tuple[tuple[str, str], ...]]
+from aidm.kits.render import (
+    entity_line as line_of,
+)
+from aidm.kits.scenes.state import SceneState
 
 
 def entity_line[S: BaseModel](
     world: SceneState[S], one: Entity[S], rows: SheetRows, *, where: bool = False
 ) -> str:
-    parts = [f"- {one.name}[{one.id}] ({one.kind}) — {one.brief}"]
-    if one.description:
-        parts.append(f"  detail: {one.description}")
-    if sheet := "; ".join(f"{label.lower()}: {value}" for label, value in rows(one.id) if value):
-        parts.append(f"  {sheet}")
-    if one.traits:
-        parts.append("  traits: " + ", ".join(f"{t.name}[{t.id}]" for t in one.traits))
-    if one.carried_by is not None:
-        parts.append(f"  carried by {world.label(world.require(one.carried_by))}")
-    if one.id in world.companions:
-        parts.append("  travels with the player")
-    if where and (seen := world.last_seen(one.id)):
-        parts.append(f"  last seen in: {seen}")
-    return "\n".join(parts)
-
-
-def thread_lines(threads: Iterable[Thread], *, standing_only: bool) -> str:
-    shown = [one for one in threads if one.status != "resolved" or not standing_only]
-    return (
-        "\n".join(
-            # A status is worth a word only when it is not the ordinary one.
-            f"- {one.title}[{one.id}]{'' if one.status == 'active' else f' — {one.status}'}"
-            f" — {one.note}"
-            for one in shown
-        )
-        or "- (none)"
-    )
-
-
-def subject_of[S: BaseModel](one: Entity[S]) -> Subject:
-    return Subject(id=one.id, name=one.name, brief=one.brief)
+    seen = world.last_seen(one.id) if where else ""
+    return line_of(world, one, rows, detail=f"last seen in: {seen}" if seen else "")
 
 
 def narrator_view[S: BaseModel](world: SceneState[S]) -> NarratorView:
@@ -65,7 +33,7 @@ def narrator_view[S: BaseModel](world: SceneState[S]) -> NarratorView:
     return NarratorView(
         place=scene.place,
         title=scene.title,
-        question=scene.question,
+        focus=scene.question,
         situation=scene.situation,
         art_prompt="\n".join(
             (
@@ -78,13 +46,13 @@ def narrator_view[S: BaseModel](world: SceneState[S]) -> NarratorView:
     )
 
 
-def player_view[S: BaseModel](state: Game, rows: SheetRows, over: str | None) -> PlayerView:
-    world = state.world
+def player_view[S: BaseModel](
+    state: AnyGame, world: SceneState[S], rows: SheetRows, over: str | None
+) -> PlayerView:
     player = world.player
-    pending = state.pending
     return PlayerView(
         player=subject_of(player),
-        question=world.current.question,
+        focus=world.current.question,
         sheet=rows(player.id),
         traits=tuple((one.name, one.text) for one in player.traits),
         carrying=tuple(subject_of(one) for one in world.carried_by(player.id) if one.known),
@@ -95,48 +63,40 @@ def player_view[S: BaseModel](state: Game, rows: SheetRows, over: str | None) ->
             for one in world.threads.values()
             if one.status != "resolved"
         ),
-        scenes=tuple(one.scene.title for one in world.runs),
-        settled=world.run.settled,
-        prompt=None
-        if pending is None
-        else PlayerPrompt(
-            kind=pending.kind,
-            prompt=pending.prompt,
-            options=tuple(
-                DecisionOption(id=one.id, label=one.label, detail=one.detail)
-                for one in pending.options
-            ),
-            allows_text=pending.allows_text,
+        trail=tuple(one.scene.title for one in world.runs),
+        world_rows=(
+            (("Way on", "Keep playing, or name where you go and move on."),)
+            if world.run.settled
+            else ()
         ),
+        prompt=player_prompt(state),
         over=over,
     )
 
 
-def master_sections(state: Game, rows: SheetRows, engine_sections: EngineSections) -> Rows:
+def master_sections[G: Game[Any], S: BaseModel](
+    state: G,
+    world: SceneState[S],
+    rows: SheetRows,
+    engine_sections: EngineSections[G],
+) -> Rows:
     """Every section stated, hidden canon included: the game master reads all of it."""
-    world = state.world
     scene = world.current
     player = world.player
     return (
         ("SCENE", f"{scene.title}\n{scene.situation}"),
         ("THE QUESTION THIS SCENE SETTLES", scene.question),
         ("YOU PLAY FOR", entity_line(world, player, rows)),
-        ("CARRYING", _lines(world, world.carried_by(player.id), rows)),
+        ("CARRYING", entity_lines(world, world.carried_by(player.id), rows)),
         (
             "HERE WITH THE PLAYER",
-            _lines(world, (one for one in world.here() if one.id != player.id), rows),
+            entity_lines(world, (one for one in world.here() if one.id != player.id), rows),
         ),
         (
             "HIDDEN HERE (the player has not found these)",
-            _lines(world, (world.require(one) for one in world.run.hidden), rows),
+            entity_lines(world, (world.require(one) for one in world.run.hidden), rows),
         ),
         ("ACTIVE THREADS", thread_lines(world.threads.values(), standing_only=True)),
         *engine_sections(state),
         ("THE SCENE'S SECRET (never narrate this)", scene.secret or "(none)"),
     )
-
-
-def _lines[S: BaseModel](
-    world: SceneState[S], entities: Iterable[Entity[S]], rows: SheetRows
-) -> str:
-    return "\n".join(entity_line(world, one, rows) for one in entities) or "- (none)"

@@ -6,9 +6,8 @@ from loner3e_test_support import TWISTS
 
 from aidm.core.entities import PLAYER_ID, Counter, EntityId
 from aidm.core.facts import cards
-from aidm.core.model import Game
 from aidm.core.play import PendingDecision
-from aidm.engines.core import Engine
+from aidm.engines.core import AnyEngine
 from aidm.engines.loner3e.rules import (
     AdventureGrowth,
     Change,
@@ -23,15 +22,21 @@ from aidm.engines.loner3e.rules import (
     twist_note,
     twist_pairing,
 )
-from aidm.engines.loner3e.state import LUCK_MAX, TIES_PER_TWIST, ActorSheet, LonerSheet
-from aidm.kits.scenes.state import Entity
+from aidm.engines.loner3e.state import (
+    LUCK_MAX,
+    TIES_PER_TWIST,
+    ActorSheet,
+    Loner3eGame,
+    LonerSheet,
+)
+from aidm.kits.entities import Entity
 from aidm.kits.scenes.verbs import Reveal, apply_change
 
 FOE = EntityId("mara")
 MAP = EntityId("vault-map")
 
 
-def _owed(engine: Engine, state: Game) -> tuple[str, ...]:
+def _owed(engine: AnyEngine, state: Loner3eGame) -> tuple[str, ...]:
     """The ADVANCES OWED section split back into the one line it holds per member."""
     return tuple(
         line
@@ -184,7 +189,7 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     assert loner_sheet(draft, FOE).luck.current == 10
     assert loner_sheet(draft, PLAYER_ID).luck.current == LUCK_MAX
     assert any(fact.kind == "conflict_lost" for fact in facts)
-    assert defeat_note(draft.world.require(FOE).name) in draft.notes
+    assert defeat_note(draft.payload.world.require(FOE).name) in draft.notes
     # The conflict is over, so the defeat note steers the same run instead of handing control back.
     assert draft.pending is None
 
@@ -197,8 +202,8 @@ def test_an_exchange_both_sides_survive_hands_the_next_key_action_to_the_player(
 
     decision = draft.pending
     assert decision is not None
-    foe = draft.world.require(FOE)
-    expected = conflict_prompt(draft.world, draft.world.player, foe)
+    foe = draft.payload.world.require(FOE)
+    expected = conflict_prompt(draft.payload.world, draft.payload.world.player, foe)
     assert (decision.kind, decision.prompt) == ("conflict", expected)
     assert foe.name in decision.prompt
     assert decision.options == ()
@@ -212,11 +217,11 @@ def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
         _ = resolve_question(state.draft(), _seal(opponent_id=MAP), Random(0), TWISTS)
 
     draft = state.draft()
-    _ = apply_change(draft.world, Reveal(verb="reveal", entity_id=MAP))
+    _ = apply_change(draft.payload.world, Reveal(verb="reveal", entity_id=MAP))
     facts = resolve_question(draft, _seal(opponent_id=MAP), Random(0), TWISTS)
 
     assert any(fact.kind == "question_answered" for fact in facts)
-    resisted = luck_of(draft.world.require(MAP)).current
+    resisted = luck_of(draft.payload.world.require(MAP)).current
     assert min(resisted, loner_sheet(draft, PLAYER_ID).luck.current) < LUCK_MAX
 
 
@@ -247,7 +252,7 @@ def test_an_adventures_end_owes_an_advance_and_a_tag_the_sheet_lacks_is_refused(
 
     ready = loner_at_boundary(state)
     (owed,) = _owed(engine, ready)
-    assert ready.world.player.name in owed
+    assert ready.payload.world.player.name in owed
 
     rewrite = AdventureGrowth(
         subject_id=PLAYER_ID,
@@ -289,7 +294,7 @@ def test_an_npc_party_members_growth_writes_their_own_sheet_not_the_players() ->
         _ = advance(loner_at_boundary(state).draft(), grow_mara, Random(0))
 
     draft = state.draft()
-    draft.world.companions.append(FOE)
+    draft.payload.world.companions.append(FOE)
     ready = loner_at_boundary(draft.committed())
     assert len(_owed(engine, ready)) == 2
 
@@ -314,12 +319,12 @@ def test_an_actor_who_joins_after_an_adventure_is_not_owed_the_growth_they_misse
         sheet=ActorSheet(concept="A Newcomer"),
     )
     draft = with_entity(ready, newcomer).draft()
-    draft.world.companions.append(newcomer.id)
+    draft.payload.world.companions.append(newcomer.id)
     walked_in = draft.committed()
 
     engine.validate(walked_in)
     (owed,) = _owed(engine, walked_in)
-    assert walked_in.world.player.name in owed
+    assert walked_in.payload.world.player.name in owed
 
 
 def test_a_closed_chapter_gates_the_advance_and_a_second_one_earns_another() -> None:

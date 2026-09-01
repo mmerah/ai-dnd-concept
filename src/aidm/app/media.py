@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict
 
 from aidm.config import MediaConfig, ProviderConfig, Settings
 from aidm.core.io import FileStore
-from aidm.core.model import Character, Scenario
+from aidm.core.model import AnyCharacter, AnyScenario
 from aidm.core.views import NarratorView, Subject
 
 from .launch import LaunchTarget
@@ -180,8 +180,8 @@ class _ImageReply(BaseModel):
 def open_illustrator(
     settings: Settings,
     target: LaunchTarget,
-    scenario: Scenario,
-    character: Character,
+    scenario: AnyScenario,
+    character: AnyCharacter,
     store: FileStore,
 ) -> Illustrator | None:
     """Share authored icons across games while keeping generated canon and scenes per save."""

@@ -7,13 +7,13 @@ from loner3e_test_support import loner3e_session as session
 
 from aidm.app.runtime import Runtime
 from aidm.core.io import FileStore
-from aidm.core.model import Game, ScenarioMeta
+from aidm.core.model import AnyGame, ScenarioMeta
 
 
 class _UnsavableStore(FileStore):
     """Overrides `save` alone: `FileStore` is frozen and slotted, so this cannot monkeypatch it."""
 
-    def save(self, slug: str, state: Game) -> None:
+    def save(self, slug: str, state: AnyGame) -> None:
         raise OSError("disk is gone")
 
 

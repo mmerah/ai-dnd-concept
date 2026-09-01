@@ -6,10 +6,15 @@ from pydantic import Field, model_validator
 
 from aidm.core.creation import CreationStep, Picks, check_picks, picked
 from aidm.core.entities import EngineId, Frozen, Slug, slug
-from aidm.core.model import Character
+from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption
 from aidm.core.views import Rows
-from aidm.engines.loner3e.state import DIE_FACE, ActorSheet, Loner3eCharacter
+from aidm.engines.loner3e.state import (
+    DIE_FACE,
+    ActorSheet,
+    Loner3eCharacter,
+    Loner3eCharacterFile,
+)
 
 _AUTHORING = (
     "LONER 3E AUTHORING\n"
@@ -75,7 +80,9 @@ def creation_steps(packs: Mapping[str, Pack], picks: Picks) -> tuple[CreationSte
     )
 
 
-def create_character(packs: Mapping[str, Pack], name: str, brief: str, picks: Picks) -> Character:
+def create_character(
+    packs: Mapping[str, Pack], name: str, brief: str, picks: Picks
+) -> Loner3eCharacterFile:
     check_picks(creation_steps(packs, picks), picks)
     chosen = picked(picks, "pack")
     pack = packs[chosen]
@@ -87,7 +94,7 @@ def create_character(packs: Mapping[str, Pack], name: str, brief: str, picks: Pi
         frailties=(find_entry(pack.frailties, picked(picks, "frailty")).label,),
         gear=tuple(find_entry(pack.gear, picked(picks, f"gear-{one}")).label for one in (1, 2)),
     )
-    return Character(
+    return Loner3eCharacterFile(
         id=slug(name, ()),
         engine=EngineId("loner3e"),
         name=name,
@@ -96,7 +103,9 @@ def create_character(packs: Mapping[str, Pack], name: str, brief: str, picks: Pi
     )
 
 
-def preview_character(character: Character) -> Rows:
+def preview_character(character: AnyCharacter) -> Rows:
+    if not isinstance(character, Loner3eCharacterFile):
+        raise ValueError("Loner 3E received an incompatible character")
     return character.payload.sheet.rows()
 
 

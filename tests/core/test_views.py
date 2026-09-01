@@ -2,7 +2,7 @@ from core_test_support import initialized, with_entity
 
 from aidm.core.entities import EntityId
 from aidm.engines.loner3e.state import ActorSheet, LonerSheet
-from aidm.kits.scenes.state import Entity
+from aidm.kits.entities import Entity
 
 SECRET = Entity[LonerSheet](
     id=EntityId("hidden-actor"),

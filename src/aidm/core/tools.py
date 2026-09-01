@@ -1,16 +1,18 @@
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from random import Random
+from typing import Any
 
 from pydantic import BaseModel, JsonValue
 
-from aidm.core.entities import Frozen
+from aidm.core.entities import EntityId, Frozen
 from aidm.core.facts import Fact
 from aidm.core.model import Game
 
 # The rng is a parameter so a trial run against a throwaway copy cannot consume the turn's dice.
-type Play = Callable[[Game, Random], tuple[Fact, ...]]
-type Validate = Callable[[Game], None]
+type Play[G: Game[Any]] = Callable[[G, Random], tuple[Fact, ...]]
+type Validate[G: Game[Any]] = Callable[[G], None]
+type EntityKnown[G: Game[Any]] = Callable[[G, EntityId], bool | None]
 
 
 class NoArgs(Frozen):
@@ -18,33 +20,39 @@ class NoArgs(Frozen):
 
 
 @dataclass(frozen=True, slots=True)
-class MasterTool:
+class MasterTool[G: Game[Any]]:
     name: str
     description: str
     args: type[BaseModel]
-    call: Callable[[Game, Mapping[str, JsonValue], Random], tuple[Fact, ...]]
+    call: Callable[[G, Mapping[str, JsonValue], Random], tuple[Fact, ...]]
     # World tools may still run in a turn that opened suspended; engine mechanics may not.
     during_suspension: bool = False
 
 
-def master_tool[A: BaseModel](
+def master_tool[G: Game[Any], A: BaseModel](
     name: str,
     description: str,
     args: type[A],
-    resolve: Callable[[Game, A, Random], Sequence[Fact]],
+    resolve: Callable[[G, A, Random], Sequence[Fact]],
     *,
     during_suspension: bool = False,
-) -> MasterTool:
+) -> MasterTool[G]:
     if bare := [key for key, one in args.model_fields.items() if not one.description]:
         raise ValueError(f"{name} parameters the model reads carry no description: {bare}")
 
-    def call(draft: Game, raw: Mapping[str, JsonValue], rng: Random) -> tuple[Fact, ...]:
+    def call(draft: G, raw: Mapping[str, JsonValue], rng: Random) -> tuple[Fact, ...]:
         return tuple(resolve(draft, args.model_validate(raw), rng))
 
     return MasterTool(name, description, args, call, during_suspension)
 
 
-def apply_to_draft(validate: Validate, draft: Game, play: Play, rng: Random) -> tuple[Fact, ...]:
+def apply_to_draft[G: Game[Any]](
+    validate: Validate[G],
+    entity_known: EntityKnown[G],
+    draft: G,
+    play: Play[G],
+    rng: Random,
+) -> tuple[Fact, ...]:
     """Every mutation runs this sequence, so no caller can skip the engine's own gate."""
     before = draft.pending
     landed = play(draft, rng)
@@ -53,10 +61,10 @@ def apply_to_draft(validate: Validate, draft: Game, play: Play, rng: Random) -> 
     for fact in landed:
         if not fact.told or fact.entity_id is None:
             continue
-        subject = draft.world.cast.get(fact.entity_id)
-        if subject is None:
+        known = entity_known(draft, fact.entity_id)
+        if known is None:
             raise ValueError(f"a told fact names {fact.entity_id!r}, which the world does not hold")
-        if not subject.known:
+        if not known:
             raise ValueError(f"a told fact names {fact.entity_id!r}, whom the player has not met")
     validate(draft)
     return landed

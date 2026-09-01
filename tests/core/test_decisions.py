@@ -8,10 +8,11 @@ from pydantic import Field, ValidationError
 
 from aidm.core.entities import Frozen
 from aidm.core.facts import Fact
-from aidm.core.model import Game
+from aidm.core.model import AnyGame
 from aidm.core.play import Answer, PendingDecision, PendingOption
 from aidm.core.tools import MasterTool, NoArgs, apply_to_draft, master_tool
-from aidm.engines.core import Engine
+from aidm.engines.core import AnyEngine
+from aidm.engines.loner3e.state import Loner3eGame
 from aidm.turn.run import RULES_WAIT, Turn, TurnStep, consume_answer
 
 
@@ -23,19 +24,19 @@ def _turned(item: str) -> tuple[Fact, ...]:
     return (Fact(kind="defence_turned", trace=f"{item} broke to turn the hit", told=True),)
 
 
-def _chained(draft: Game, item: str) -> tuple[Fact, ...]:
-    draft.pending = DECISION
+def _chained(draft: AnyGame, item: str) -> tuple[Fact, ...]:
+    _loner(draft).pending = DECISION
     return _turned(item)
 
 
-TURN_THE_HIT = master_tool(
+TURN_THE_HIT: MasterTool[AnyGame] = master_tool(
     "turn_the_hit",
     "Break something to turn the hit.",
     Broken,
     lambda _draft, one, _rng: _turned(one.item),
 )
 
-CHAIN_THE_HIT = master_tool(
+CHAIN_THE_HIT: MasterTool[AnyGame] = master_tool(
     "chain_the_hit",
     "Break something and leave the rules waiting on the same decision again.",
     Broken,
@@ -43,7 +44,7 @@ CHAIN_THE_HIT = master_tool(
 )
 
 
-def _decision(resolver: MasterTool) -> PendingDecision:
+def _decision(resolver: MasterTool[AnyGame]) -> PendingDecision:
     return PendingDecision(
         kind="defence",
         prompt="The blow lands unless something of yours breaks. What gives?",
@@ -64,8 +65,8 @@ DECISION = _decision(TURN_THE_HIT)
 CHAINING = _decision(CHAIN_THE_HIT)
 
 
-def _hit(draft: Game, *, narrate: bool) -> tuple[Fact, ...]:
-    draft.pending = DECISION
+def _hit(draft: AnyGame, *, narrate: bool) -> tuple[Fact, ...]:
+    _loner(draft).pending = DECISION
     return (
         Fact(
             kind="hit_taken",
@@ -75,7 +76,7 @@ def _hit(draft: Game, *, narrate: bool) -> tuple[Fact, ...]:
     )
 
 
-def _strike_tool(*, narrate: bool) -> MasterTool:
+def _strike_tool(*, narrate: bool) -> MasterTool[AnyGame]:
     return master_tool(
         "strike",
         "Take a hit the player may turn by breaking something of theirs.",
@@ -84,18 +85,18 @@ def _strike_tool(*, narrate: bool) -> MasterTool:
     )
 
 
-def _engine(*, narrate: bool = True) -> Engine:
+def _engine(*, narrate: bool = True) -> AnyEngine:
     return replace(
         ENGINES_BUILT[LONER3E],
         tools=(_strike_tool(narrate=narrate), TURN_THE_HIT, CHAIN_THE_HIT),
     )
 
 
-def _deciding(saves: Path, *, narrate: bool = True) -> Table:
+def _deciding(saves: Path, *, narrate: bool = True) -> Table[Loner3eGame]:
     return opened(saves, engine=_engine(narrate=narrate))
 
 
-def _suspend(table: Table, decision: PendingDecision = DECISION) -> None:
+def _suspend(table: Table[Loner3eGame], decision: PendingDecision = DECISION) -> None:
     draft = table.service.state.draft()
     draft.pending = decision
     table.service.commit(draft.committed())
@@ -116,7 +117,7 @@ async def test_a_suspending_resolver_ends_the_run_and_records_the_pause(tmp_path
 
     assert any(RULES_WAIT in answer for answer in table.answers)
     assert state.pending == DECISION
-    assert state.world.exchanges()[-1].decision == DECISION.prompt
+    assert state.payload.world.exchanges()[-1].decision == DECISION.prompt
     assert steps == ["master", "narrator"]
 
 
@@ -129,8 +130,8 @@ async def test_a_hand_back_that_moved_no_fiction_gets_no_prose(tmp_path: Path) -
 
     state = table.service.state
     assert steps == ["master"]
-    assert state.world.exchanges()[-1].lines == ()
-    assert state.world.exchanges()[-1].narration == ""
+    assert state.payload.world.exchanges()[-1].lines == ()
+    assert state.payload.world.exchanges()[-1].narration == ""
 
 
 async def test_a_closed_answer_resolves_in_engine_code_before_the_master_continues(
@@ -144,7 +145,7 @@ async def test_a_closed_answer_resolves_in_engine_code_before_the_master_continu
 
     assert [fact.kind for fact in facts] == ["defence_turned"]
     assert "lantern broke to turn the hit" in table.answers[0]
-    assert state.world.exchanges()[-1].prompt == "Break the lantern"
+    assert state.payload.world.exchanges()[-1].prompt == "Break the lantern"
     assert state.pending is None
 
 
@@ -171,12 +172,12 @@ async def test_an_option_the_decision_never_offered_raises(tmp_path: Path) -> No
 def test_a_change_may_run_on_a_state_already_suspended_on_a_decision(tmp_path: Path) -> None:
     engine, state = _engine(), opened(tmp_path).service.state
 
-    def nothing(draft: Game, rng: Random) -> tuple[Fact, ...]:
+    def nothing(draft: AnyGame, rng: Random) -> tuple[Fact, ...]:
         del draft, rng
         return ()
 
     draft = _pending(state).draft()
-    _ = apply_to_draft(engine.validate, draft, nothing, Random(0))
+    _ = apply_to_draft(engine.validate, engine.entity_known, draft, nothing, Random(0))
     suspended = draft.committed()
     assert suspended.pending == DECISION
 
@@ -186,7 +187,11 @@ def test_a_second_decision_is_refused_while_one_is_already_open(tmp_path: Path) 
 
     with pytest.raises(ValueError, match="one at a time"):
         _ = apply_to_draft(
-            engine.validate, draft, lambda draft, _rng: _hit(draft, narrate=False), Random(0)
+            engine.validate,
+            engine.entity_known,
+            draft,
+            lambda draft, _rng: _hit(draft, narrate=False),
+            Random(0),
         )
 
 
@@ -223,7 +228,13 @@ def test_a_decision_whose_options_are_the_whole_pick_refuses_an_answer_in_words(
         )
 
 
-def _pending(state: Game, decision: PendingDecision = DECISION) -> Game:
-    draft = state.draft()
+def _pending(state: AnyGame, decision: PendingDecision = DECISION) -> Loner3eGame:
+    draft = _loner(state).draft()
     draft.pending = decision
     return draft.committed()
+
+
+def _loner(state: AnyGame) -> Loner3eGame:
+    if not isinstance(state, Loner3eGame):
+        raise AssertionError("the Loner test received another game type")
+    return state

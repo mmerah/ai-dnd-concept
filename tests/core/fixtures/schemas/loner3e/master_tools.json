@@ -364,6 +364,15 @@
     }
   },
   {
+    "name": "next_scene",
+    "description": "Say this scene's question is settled. The player is then asked what they want to pursue, and their own words build the next scene. Do not answer for them.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    }
+  },
+  {
     "name": "roll_question",
     "description": "Roll Chance against Risk for one closed dramatic question.",
     "parameters": {

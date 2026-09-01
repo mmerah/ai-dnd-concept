@@ -40,7 +40,7 @@ Tests are deterministic and run offline.
 ## Design rules
 
 - Each role is a one-shot CLI the app spawns. It returns typed, validated proposals. Resolver code applies them deterministically to the turn draft, records facts, and owns all state changes, rolls, and ledger updates.
-- The world is a sequence of scenes, not a map. The scene kit under `src/aidm/kits/scenes/` owns scene state, the `change_world` verbs, the scene boundary, and the views.
+- The world is whatever its engine-selected kit says it is: the scene kit under `src/aidm/kits/scenes/` owns sentence-driven scenes, while the rooms kit under `src/aidm/kits/rooms/` owns authored maps. Each kit owns its state, `change_world` verbs, boundary, and views.
 - Each engine owns all of its mechanics. It puts its own sheet union on kit entities, treats incompatible state as invalid, and gives entities created during play a default sheet.
 - An engine ships one game-master tool per SRD procedure, never more than eight: the engine rolls everything the procedure needs and hands back one result. The kit owns the world tools every game master sees; a tool only one engine's rules read is added by that engine, so an unused tool never crowds the model's choice.
 - Route all player-facing prose through the narrator. Its input type contains revealed canon exclusively, leaving hidden information with no path into the prompt.

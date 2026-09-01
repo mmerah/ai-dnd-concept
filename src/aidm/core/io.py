@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
@@ -8,7 +8,13 @@ from re import fullmatch
 from pydantic import BaseModel, JsonValue
 
 from aidm.core.entities import EngineId, Slug, content_id, require_unique
-from aidm.core.model import Character, CharacterHeader, EngineHeader, Game, Scenario
+from aidm.core.model import (
+    AnyCharacter,
+    AnyGame,
+    AnyScenario,
+    CharacterHeader,
+    EngineHeader,
+)
 
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"
@@ -34,7 +40,7 @@ class FileStore:
         path = self._save_path(slug)
         return path.read_text(encoding=ENCODING) if path.exists() else None
 
-    def save(self, slug: str, state: Game) -> None:
+    def save(self, slug: str, state: AnyGame) -> None:
         write_text(self._save_path(slug), state.model_dump_json(indent=2))
 
     def sessions_path(self, slug: str) -> Path:
@@ -64,16 +70,20 @@ def decoded(raw: str) -> JsonValue:
     return json.loads(raw, object_pairs_hook=_unique_keys)
 
 
-def read_scenarios(directory: Path, engines: Sequence[EngineId]) -> Iterator[tuple[Slug, Scenario]]:
+def read_scenarios(
+    directory: Path, models: Mapping[EngineId, type[AnyScenario]]
+) -> Iterator[tuple[Slug, AnyScenario]]:
     for path in _content_dirs(directory, WORLD_FILE):
         try:
             value = decoded(_read_text(path / WORLD_FILE))
-            if (header := EngineHeader.model_validate(value)).engine not in engines:
+            header = EngineHeader.model_validate(value)
+            model = models.get(header.engine)
+            if model is None:
                 LOGGER.warning(
                     "skipping scenario %r: it needs the %r engine", path.name, header.engine
                 )
                 continue
-            scenario = Scenario.model_validate(value)
+            scenario = model.model_validate(value)
         except ValueError as unreadable:
             # Skip incomplete scenarios so the home screen remains usable.
             LOGGER.warning("skipping scenario %r: %s", path.name, unreadable)
@@ -82,25 +92,39 @@ def read_scenarios(directory: Path, engines: Sequence[EngineId]) -> Iterator[tup
 
 
 def read_characters(
-    directory: Path, engines: Sequence[EngineId]
-) -> Iterator[tuple[Slug, EngineId, Character]]:
+    directory: Path, models: Mapping[EngineId, type[AnyCharacter]]
+) -> Iterator[tuple[Slug, EngineId, AnyCharacter]]:
     """One entry per character and engine written, so a shared id never names one engine's rules."""
     for path in sorted(directory.iterdir()):
-        for engine in engines:
+        for engine, model in models.items():
             if not (path / f"{engine}.json").is_file():
                 continue
             try:
-                yield content_id(path.name), engine, load_character(directory, path.name, engine)
+                yield (
+                    content_id(path.name),
+                    engine,
+                    load_character(directory, path.name, engine, model),
+                )
             except ValueError as unreadable:
                 LOGGER.warning("skipping character %r: %s", path.name, unreadable)
 
 
-def read_scenario(directory: Path, name: Slug) -> Scenario:
-    return _read(directory / content_id(name) / WORLD_FILE, Scenario)
+def read_scenario(
+    directory: Path, name: Slug, models: Mapping[EngineId, type[AnyScenario]]
+) -> AnyScenario:
+    path = directory / content_id(name) / WORLD_FILE
+    value = decoded(_read_text(path))
+    engine = EngineHeader.model_validate(value).engine
+    model = models.get(engine)
+    if model is None:
+        raise ValueError(f"the scenario needs the unavailable {engine!r} engine")
+    return model.model_validate(value)
 
 
-def load_character(directory: Path, name: Slug, engine: EngineId) -> Character:
-    character = _read(directory / content_id(name) / f"{engine}.json", Character)
+def load_character(
+    directory: Path, name: Slug, engine: EngineId, model: type[AnyCharacter]
+) -> AnyCharacter:
+    character = _read(directory / content_id(name) / f"{engine}.json", model)
     if character.engine != engine:
         raise ValueError(f"the character plays {character.engine!r}, not {engine!r}")
     if character.id != content_id(name):
@@ -108,7 +132,7 @@ def load_character(directory: Path, name: Slug, engine: EngineId) -> Character:
     return character
 
 
-def write_character(directory: Path, character: Character) -> None:
+def write_character(directory: Path, character: AnyCharacter) -> None:
     folder = directory / content_id(character.id)
     path = folder / f"{character.engine}.json"
     if path.exists():
@@ -123,7 +147,7 @@ def write_character(directory: Path, character: Character) -> None:
 def write_scenario(
     directory: Path,
     name: Slug,
-    scenario: Scenario,
+    scenario: AnyScenario,
     source: Path | None = None,
 ) -> None:
     folder = directory / content_id(name)

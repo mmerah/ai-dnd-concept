@@ -7,7 +7,6 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import DEAD, CheckedEntityId, Counter, EntityId, Frozen, Slug
 from aidm.core.facts import DiceEvent, Fact
-from aidm.core.model import Game
 from aidm.core.play import DecisionOption, PendingDecision
 from aidm.engines.core import adjust, keep_highest
 from aidm.engines.loner3e.creation import Pack
@@ -19,10 +18,11 @@ from aidm.engines.loner3e.state import (
     SRD_PACK,
     ActorSheet,
     ItemSheet,
+    Loner3eGame,
     LonerSheet,
     LonerWorld,
 )
-from aidm.kits.scenes.state import Entity, entity_fact
+from aidm.kits.entities import Entity, entity_fact
 
 type Actor = Entity[LonerSheet]
 
@@ -166,9 +166,9 @@ def outcome_for(chance: int, risk: int) -> Outcome:
 
 
 def resolve_question(
-    draft: Game, action: Question, rng: Random, twists: tuple[tuple[str, str], ...]
+    draft: Loner3eGame, action: Question, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> tuple[Fact, ...]:
-    world = draft.world
+    world = draft.payload.world
     actor = world.require_actor_here(action.actor_id)
     facts = world.reveal(actor)
     opponent: Actor | None = None
@@ -210,52 +210,52 @@ def resolve_question(
     return tuple(facts)
 
 
-def apply_restore_luck(draft: Game, actor_id: EntityId) -> list[Fact]:
-    actor = draft.world.require_actor_here(actor_id)
-    facts = draft.world.reveal(actor)
+def apply_restore_luck(draft: Loner3eGame, actor_id: EntityId) -> list[Fact]:
+    actor = draft.payload.world.require_actor_here(actor_id)
+    facts = draft.payload.world.reveal(actor)
     # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
     facts.extend(_refill(draft, actor, "the conflict is behind them"))
     return facts
 
 
-def close_conflicts(draft: Game) -> tuple[Fact, ...]:
+def close_conflicts(draft: Loner3eGame) -> tuple[Fact, ...]:
     """A scene ends its conflicts so nobody carries a spent pool on; the dead keep theirs."""
     facts: list[Fact] = []
-    for one in draft.world.here():
+    for one in draft.payload.world.here():
         if one.sheet is not None and one.trait(DEAD) is None and one.sheet.luck.current < LUCK_MAX:
             facts.extend(_refill(draft, one, "the scene is over"))
     return tuple(facts)
 
 
-def party(state: Game) -> tuple[EntityId, ...]:
-    return (state.world.player_id, *state.world.companions)
+def party(state: Loner3eGame) -> tuple[EntityId, ...]:
+    return (state.payload.world.player_id, *state.payload.world.companions)
 
 
-def advances_owed(state: Game) -> tuple[tuple[str, str], ...]:
+def advances_owed(state: Loner3eGame) -> tuple[tuple[str, str], ...]:
     """Chapters played standing above the ledger of advances taken, one note each."""
     # An advance mid-suspension could invalidate the frozen call an open decision holds.
     if state.pending is not None:
         return ()
     owed = [
-        f"- {state.world.require(one).name} has an advance owed; call advance only when the "
-        "player asks for it."
+        f"- {state.payload.world.require(one).name} has an advance owed; call advance only "
+        "when the player asks for it."
         for one in party(state)
         if _advance_owed(state, one)
     ]
     return (("ADVANCES OWED", "\n".join(owed)),) if owed else ()
 
 
-def complete_chapter(draft: Game) -> tuple[Fact, ...]:
+def complete_chapter(draft: Loner3eGame) -> tuple[Fact, ...]:
     """Only those who played the chapter are credited with it: nobody is owed one they missed."""
     ending = "the adventure has ended"
     for member_id in party(draft):
-        sheet = draft.world.require(member_id).sheet
+        sheet = draft.payload.world.require(member_id).sheet
         if isinstance(sheet, ActorSheet):
             sheet.chapters += 1
     return (Fact(kind="chapter_completed", trace=ending, told=True, card=ending),)
 
 
-def advance(draft: Game, proposal: AdventureGrowth, rng: Random) -> tuple[Fact, ...]:
+def advance(draft: Loner3eGame, proposal: AdventureGrowth, rng: Random) -> tuple[Fact, ...]:
     """One advance per adventure a party member played: the tags it rewrote or grew."""
     del rng
     subject: Actor = _party_member(draft, proposal.subject_id)
@@ -273,7 +273,8 @@ def advance(draft: Game, proposal: AdventureGrowth, rng: Random) -> tuple[Fact, 
     spent = entity_fact(
         subject,
         "milestone_spent",
-        f"{draft.world.label(subject)} milestones -> {sheet.milestones} (a milestone spent)",
+        f"{draft.payload.world.label(subject)} milestones -> {sheet.milestones} "
+        "(a milestone spent)",
         card=f"{subject.name}: milestone {sheet.milestones} spent",
     )
     return (*granted, spent)
@@ -290,7 +291,7 @@ def meanings(
     )
 
 
-def twists(packs: Mapping[str, Pack], state: Game) -> tuple[tuple[str, str], ...]:
+def twists(packs: Mapping[str, Pack], state: Loner3eGame) -> tuple[tuple[str, str], ...]:
     return twist_table(packs, state.payload.twist_pack)
 
 
@@ -325,9 +326,9 @@ def _actor_sheet(one: Actor) -> ActorSheet:
     return one.sheet
 
 
-def _party_member(draft: Game, subject_id: EntityId) -> Actor:
+def _party_member(draft: Loner3eGame, subject_id: EntityId) -> Actor:
     """An advance is a party member's own: nobody else's sheet is an engine's to grow."""
-    subject = draft.world.require(subject_id)
+    subject = draft.payload.world.require(subject_id)
     if subject_id not in party(draft):
         raise ValueError(f"{subject.name} is not in the party")
     return subject
@@ -346,13 +347,13 @@ def _shortfall(pool: Counter) -> int:
     return pool.maximum - pool.current
 
 
-def _refill(draft: Game, side: Actor, why: str) -> list[Fact]:
+def _refill(draft: Loner3eGame, side: Actor, why: str) -> list[Fact]:
     luck = luck_of(side)
-    return adjust(draft, side, "luck", luck, _shortfall(luck), why)
+    return adjust(draft.payload.world.player_id, side, "luck", luck, _shortfall(luck), why)
 
 
 def _twist(
-    draft: Game, actor: Actor, rng: Random, twists: tuple[tuple[str, str], ...]
+    draft: Loner3eGame, actor: Actor, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> list[Fact]:
     """The SRD's table is rolled here so the dice trace; the model only reads the pairing."""
     face = (DIE_FACE,)
@@ -373,16 +374,16 @@ def _twist(
     return [subject_fact, action_fact, due]
 
 
-def _strike(draft: Game, actor: Actor, opponent: Actor, outcome: Outcome) -> list[Fact]:
+def _strike(draft: Loner3eGame, actor: Actor, opponent: Actor, outcome: Outcome) -> list[Fact]:
     harm = outcome.harm
     hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
     why = f"{striker.name} gets the better of the exchange"
     luck = luck_of(hit)
-    facts = adjust(draft, hit, "luck", luck, -abs(harm), why)
+    facts = adjust(draft.payload.world.player_id, hit, "luck", luck, -abs(harm), why)
     if luck.current != 0:
         return facts
     draft.notes = (*draft.notes, defeat_note(hit.name))
-    draft.world.run.spent = f"the conflict with {hit.name} is settled"
+    draft.payload.world.run.spent = f"the conflict with {hit.name} is settled"
     lost = f"{hit.name} is out of luck"
     facts.append(entity_fact(hit, "conflict_lost", lost, card=lost))
     # SRD: luck resets after conflicts, and a side at 0 is the only end the engine sees.
@@ -456,8 +457,8 @@ def _swapped(tags: tuple[str, ...], old: str, new: str) -> tuple[str, ...]:
     return tuple(new if tag == old else tag for tag in tags)
 
 
-def _advance_owed(state: Game, entity_id: EntityId) -> bool:
-    sheet = state.world.require(entity_id).sheet
+def _advance_owed(state: Loner3eGame, entity_id: EntityId) -> bool:
+    sheet = state.payload.world.require(entity_id).sheet
     return isinstance(sheet, ActorSheet) and sheet.chapters > sheet.milestones
 
 

@@ -9,11 +9,10 @@ from pydantic import SecretStr
 from aidm.app.media import GeneratedImage, Illustrator, illustration_request, scene_key
 from aidm.config import MediaConfig, ProviderConfig
 from aidm.core.entities import EntityId
-from aidm.core.model import Game
 from aidm.core.views import NarratorView
-from aidm.engines.core import Engine
-from aidm.engines.loner3e.state import ActorSheet, LonerSheet
-from aidm.kits.scenes.state import Entity
+from aidm.engines.core import AnyEngine
+from aidm.engines.loner3e.state import ActorSheet, Loner3eGame, LonerSheet
+from aidm.kits.entities import Entity
 
 NARRATION = "The door groans open."
 STYLE = MediaConfig().style
@@ -29,7 +28,7 @@ def _illustrator(tmp_path: Path) -> Illustrator:
     )
 
 
-def _placed(state: Game, name: str, *, known: bool) -> Game:
+def _placed(state: Loner3eGame, name: str, *, known: bool) -> Loner3eGame:
     return with_entity(
         state,
         Entity[LonerSheet](
@@ -43,7 +42,7 @@ def _placed(state: Game, name: str, *, known: bool) -> Game:
     )
 
 
-def _scene(engine: Engine, state: Game) -> NarratorView:
+def _scene(engine: AnyEngine, state: Loner3eGame) -> NarratorView:
     return engine.narrator_view(state)
 
 
@@ -51,7 +50,7 @@ def test_illustration_request_names_the_scene_and_no_unrevealed_canon() -> None:
     engine, state = initialized()
     state = _placed(_placed(state, "Brass Warden", known=True), "Pale Watcher", known=False)
     request = illustration_request(_scene(engine, state), NARRATION, STYLE)
-    assert state.world.current.title in request
+    assert state.payload.world.current.title in request
     assert "Brass Warden" in request
     assert NARRATION in request
     assert "Pale Watcher" not in request
@@ -63,7 +62,9 @@ def test_scene_key_holds_through_a_change_of_cast_but_not_of_place() -> None:
     assert scene_key(_scene(engine, _placed(state, "Pale Watcher", known=False))) == key
     assert scene_key(_scene(engine, _placed(state, "Brass Warden", known=True))) == key
     draft = state.draft()
-    draft.world.run.scene = draft.world.current.model_copy(update={"place": "cloister"})
+    draft.payload.world.run.scene = draft.payload.world.current.model_copy(
+        update={"place": "cloister"}
+    )
     assert scene_key(_scene(engine, draft.committed())) != key
 
 

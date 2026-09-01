@@ -35,7 +35,7 @@ _STEP_COPY: dict[TurnStep, tuple[str, str]] = {
     "narrator": ("Narrator", "Writes what you see and hear this turn."),
     "worldsmith": (
         "Worldsmith",
-        "Writes the next scene: where the story goes and who is waiting there. "
+        "Writes the next scene or region: where the story goes and who is waiting there. "
         "This one is slow — a few minutes is normal.",
     ),
 }
@@ -124,25 +124,24 @@ def scene_header(session: GameService) -> None:
 
 
 def chat(session: GameService) -> None:
-    world = session.state.world
-    if not world.exchanges():
+    history = session.engine.history(session.state)
+    if not history:
         ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
     # The live decision widget sits directly below the last exchange, so it needs no pause line.
-    played = world.run.exchanges
-    last = played[-1] if played and session.state.pending is not None else None
+    last = history[-1] if history and session.state.pending is not None else None
     player = speaker_of(session.player_view().player)
-    for run in world.runs:
-        if not run.exchanges:
-            continue
-        ui.label(run.scene.title).classes("w-full text-center text-xs uppercase opacity-50 q-mt-md")
-        for exchange in run.exchanges:
-            _bubble(session, player, exchange.prompt, sent=True)
-            for fact in exchange.facts:
-                _card(fact)
-            for line in exchange.lines:
-                _bubble(session, line.speaker, line.text, sent=False)
-            if exchange.decision and exchange is not last:
-                ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
+    heading = ""
+    for exchange in history:
+        if exchange.scene and exchange.scene != heading:
+            heading = exchange.scene
+            ui.label(heading).classes("w-full text-center text-xs uppercase opacity-50 q-mt-md")
+        _bubble(session, player, exchange.prompt, sent=True)
+        for fact in exchange.facts:
+            _card(fact)
+        for line in exchange.lines:
+            _bubble(session, line.speaker, line.text, sent=False)
+        if exchange.decision and exchange is not last:
+            ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
 
 
 def live_turn(
@@ -208,14 +207,14 @@ async def submit(view: GameView, box: ui.input, moving_on: bool = False) -> None
 
 def way_on_panel(view: GameView) -> None:
     """The banner, not the offer: legible after a reload, once the asking has scrolled away."""
-    if not view.session.player_view().settled:
+    if not view.session.transition_available():
         return
     with (
         ui.row().classes("game-card game-decision w-full items-center no-wrap").style("gap: 0.4rem")
     ):
         ui.icon("arrow_forward").classes("game-card-icon")
-        ui.label("this scene is settled").classes("text-xs font-bold game-outcome")
-        ui.label("keep playing, or say where you go and press Move on").classes(
+        ui.label("there is more beyond here").classes("text-xs font-bold game-outcome")
+        ui.label("keep playing, or say what you pursue and press Move on").classes(
             "text-xs opacity-60"
         )
 
@@ -271,7 +270,9 @@ def composer(view: GameView) -> None:
             ui.button("Move on", icon="arrow_forward", on_click=lambda: submit(view, box, True))
             .props("no-caps outline dense")
             .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
-            .bind_visibility_from(session, "busy", backward=lambda _: session.player_view().settled)
+            .bind_visibility_from(
+                session, "busy", backward=lambda _: session.transition_available()
+            )
         )
     view.composer = box
 
@@ -324,7 +325,7 @@ def game_page(runtime: Runtime, session: GameService) -> None:
 
 def _breadcrumb(session: GameService) -> None:
     """Where this scene sits in the story: the number of every scene played, this one marked."""
-    played = session.player_view().scenes
+    played = session.player_view().trail
     with ui.row().classes("items-center").style("gap: 0.3rem"):
         for number, title in enumerate(played, start=1):
             here = number == len(played)

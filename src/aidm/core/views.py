@@ -1,7 +1,13 @@
+from collections.abc import Iterable
+
 from aidm.core.entities import Frozen
 from aidm.core.play import DecisionOption, Speaker
 
 type Rows = tuple[tuple[str, str], ...]
+
+
+def sections(parts: Iterable[tuple[str, str]]) -> str:
+    return "\n\n".join(f"{name}:\n{body.strip()}" for name, body in parts)
 
 
 class Subject(Frozen):
@@ -29,7 +35,7 @@ class NarratorView(Frozen):
     # The place, as the art cache names it: two scenes in one place share one picture.
     place: str
     title: str
-    question: str
+    focus: str
     situation: str
     art_prompt: str
     subjects: tuple[Subject, ...]
@@ -41,15 +47,15 @@ class PlayerView(Frozen):
     """What the pages read: scene art and subjects live on the narrator view, not here."""
 
     player: Subject
-    question: str
+    focus: str
     sheet: tuple[tuple[str, str], ...]
     traits: tuple[tuple[str, str], ...]
     carrying: tuple[Subject, ...]
     present: tuple[Subject, ...]
     companions: tuple[str, ...]
     threads: tuple[ThreadRow, ...]
-    scenes: tuple[str, ...]
-    settled: bool
+    trail: tuple[str, ...]
+    world_rows: Rows
     prompt: PlayerPrompt | None
     over: str | None
 

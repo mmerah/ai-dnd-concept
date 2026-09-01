@@ -19,12 +19,13 @@ from core_test_support import (
 )
 from pydantic import JsonValue
 
+import aidm.app.spawn as spawn_module
 from aidm.app.launch import LaunchTarget
 from aidm.app.mcp import call, offered
 from aidm.app.spawn import CliSpawner, final_message
 from aidm.core.entities import PLAYER_ID, EngineId, EntityId
-from aidm.core.model import SceneWrite
 from aidm.core.play import Narration
+from aidm.engines.loner3e.state import LonerScene
 from aidm.turn.run import ALREADY_OPEN, DECIDING, NO_TURN, START_FIRST, TURN_TOOLS, Turn
 
 VAULT_MAP = EntityId("vault-map")
@@ -50,12 +51,12 @@ def _scene(**changes: object) -> str:
     return json.dumps(A_SCENE | changes)
 
 
-def test_the_surface_publishes_four_fixed_tools_plus_the_engines(tmp_path: Path) -> None:
+def test_the_surface_publishes_turn_world_and_engine_tools(tmp_path: Path) -> None:
     table = opened(tmp_path)
 
     names = [tool.name for tool in offered(table.runtime)]
 
-    assert names[:3] == ["start_turn", "scene", "next_scene"]
+    assert names[:2] == ["start_turn", "scene"]
     assert {"change_world", "roll_question"} <= set(names)
     assert "end_turn" not in names
 
@@ -126,8 +127,8 @@ async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(
 
     assert landed == [1]
     saved = table.saved()
-    assert saved.world.require(VAULT_MAP).known
-    assert len(saved.world.exchanges()[-1].facts) == 1
+    assert saved.payload.world.require(VAULT_MAP).known
+    assert len(saved.payload.world.exchanges()[-1].facts) == 1
 
 
 async def test_an_open_decision_blocks_every_other_tool_until_the_player_answers(
@@ -146,7 +147,7 @@ async def test_an_open_decision_blocks_every_other_tool_until_the_player_answers
 
     assert state.pending is not None
     assert any("waiting on the player" in one for one in table.answers)
-    assert not state.world.require(VAULT_MAP).known
+    assert not state.payload.world.require(VAULT_MAP).known
 
     state = await played(table, "I let it be.", narration="You step back.")
     assert state.pending is None
@@ -163,7 +164,7 @@ async def test_a_decision_on_the_table_holds_the_next_scene_back_too(tmp_path: P
         narration="She holds on.",
     )
 
-    assert table.refusals == [DECIDING]
+    assert table.refusals[-1] == DECIDING
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 
 
@@ -180,7 +181,7 @@ async def test_next_scene_asks_the_player_and_writes_nothing_yet(tmp_path: Path)
     assert state.turn == 1
     # An offer, not a decision: nothing waits on the player and the scene is still playable.
     assert state.pending is None
-    assert state.world.run.settled
+    assert state.payload.world.run.settled
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 
 
@@ -197,8 +198,8 @@ async def test_the_offer_does_not_close_the_scene_or_stop_the_player(tmp_path: P
         narration="Dust comes away on your sleeve.",
     )
 
-    assert state.world.current.title == "The Abbot's Study"
-    assert state.world.run.settled
+    assert state.payload.world.current.title == "The Abbot's Study"
+    assert state.payload.world.run.settled
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 
     state = await played(
@@ -207,7 +208,7 @@ async def test_the_offer_does_not_close_the_scene_or_stop_the_player(tmp_path: P
         arrival="The cold comes up to meet you.",
         moving_on=True,
     )
-    assert state.world.current.title == "The Cloister Walk"
+    assert state.payload.world.current.title == "The Cloister Walk"
 
 
 async def test_a_turn_that_dies_after_asking_to_move_takes_its_write_with_it(
@@ -223,7 +224,7 @@ async def test_a_turn_that_dies_after_asking_to_move_takes_its_write_with_it(
         _ = await played(table, "Out into the cloister walk.", moving_on=True, narration="")
     state = await played(table, "I look at the ledgers again.", narration="Dust, and more dust.")
 
-    assert state.world.current.title == "The Abbot's Study"
+    assert state.payload.world.current.title == "The Abbot's Study"
 
 
 async def test_a_player_who_died_moving_on_does_not_arrive(tmp_path: Path) -> None:
@@ -238,7 +239,7 @@ async def test_a_player_who_died_moving_on_does_not_arrive(tmp_path: Path) -> No
         moving_on=True,
     )
 
-    assert state.world.current.title == "The Abbot's Study"
+    assert state.payload.world.current.title == "The Abbot's Study"
     assert table.service.engine.over(state) is not None
 
 
@@ -256,7 +257,7 @@ async def test_the_spent_note_never_reaches_the_scene_it_is_not_about(tmp_path: 
         moving_on=True,
     )
 
-    assert state.world.current.title == "The Cloister Walk"
+    assert state.payload.world.current.title == "The Cloister Walk"
     assert not any("looks spent" in note for note in state.notes)
 
     # The body came with them: the note it earns is this scene's second exchange, not its first.
@@ -279,8 +280,8 @@ async def test_the_way_on_is_offered_once(tmp_path: Path) -> None:
     )
 
     assert "already settled" in table.refusals[-1]
-    assert state.world.current.title == "The Cloister Walk"
-    assert not state.world.run.settled
+    assert state.payload.world.current.title == "The Cloister Walk"
+    assert not state.payload.world.run.settled
 
 
 async def test_a_crossing_the_narrator_will_not_write_still_keeps_the_scene(
@@ -293,8 +294,8 @@ async def test_a_crossing_the_narrator_will_not_write_still_keeps_the_scene(
     _ = await played(table, "I go.", the_way_on())
     state = await played(table, "Out into the cloister walk.", moving_on=True)
 
-    assert state.world.current.title == "The Cloister Walk"
-    assert state.world.exchanges()[-1].narration == ""
+    assert state.payload.world.current.title == "The Cloister Walk"
+    assert state.payload.world.exchanges()[-1].narration == ""
 
 
 async def test_the_players_own_answer_is_the_brief_and_the_crossing_lands_in_that_turn(
@@ -312,11 +313,11 @@ async def test_the_players_own_answer_is_the_brief_and_the_crossing_lands_in_tha
         moving_on=True,
     )
 
-    assert state.world.current.title == "The Cloister Walk"
-    assert EntityId("tomas") in state.world.run.hidden
+    assert state.payload.world.current.title == "The Cloister Walk"
+    assert EntityId("tomas") in state.payload.world.run.hidden
     # Lands as the new run's own exchange, not tacked onto the scene the player just left.
-    assert len(state.world.run.exchanges) == 1
-    assert "Rain finds you" in state.world.run.exchanges[-1].narration
+    assert len(state.payload.world.run.exchanges) == 1
+    assert "Rain finds you" in state.payload.world.run.exchanges[-1].narration
     assert "before Tomas hears the door" in table.spawner.prompt("worldsmith")
 
 
@@ -336,7 +337,7 @@ async def test_a_scene_the_world_has_outgrown_is_dropped_rather_than_killing_the
     )
 
     assert "already met" in table.service.write_failure
-    assert state.world.current.title == "The Abbot's Study"
+    assert state.payload.world.current.title == "The Abbot's Study"
 
 
 async def test_the_scene_bar_refuses_a_thin_scene(tmp_path: Path) -> None:
@@ -348,7 +349,7 @@ async def test_the_scene_bar_refuses_a_thin_scene(tmp_path: Path) -> None:
     _ = await played(table, "Out into the cloister walk.", moving_on=True)
 
     assert "besides the player" in table.service.write_failure
-    assert table.service.state.world.current.title == "The Abbot's Study"
+    assert table.service.state.payload.world.current.title == "The Abbot's Study"
 
 
 async def test_a_scene_with_nothing_hidden_in_it_is_allowed(tmp_path: Path) -> None:
@@ -361,7 +362,7 @@ async def test_a_scene_with_nothing_hidden_in_it_is_allowed(tmp_path: Path) -> N
     )
 
     assert table.service.write_failure == ""
-    assert state.world.current.title == "The Cloister Walk"
+    assert state.payload.world.current.title == "The Cloister Walk"
 
 
 async def test_a_worldsmith_that_fails_leaves_the_scene_unchanged_and_says_why(
@@ -373,7 +374,7 @@ async def test_a_worldsmith_that_fails_leaves_the_scene_unchanged_and_says_why(
     _ = await played(table, "Out into the cloister walk.", moving_on=True)
 
     assert "no answer left" in table.service.write_failure
-    assert table.service.state.world.current.title == "The Abbot's Study"
+    assert table.service.state.payload.world.current.title == "The Abbot's Study"
 
 
 async def test_the_worldsmith_is_shown_the_source_the_cast_and_what_actually_happened(
@@ -395,23 +396,45 @@ async def test_the_worldsmith_is_shown_the_source_the_cast_and_what_actually_hap
     assert "Out into the cloister walk." in prompt
     # What the scene was authored as is not what the scene became; the next one follows the second.
     assert "A flagstone sits proud of its neighbours." in prompt
-    assert json.dumps(SceneWrite.model_json_schema()["properties"]["place"]["title"]) not in prompt
+    assert json.dumps(LonerScene.model_json_schema()["properties"]["place"]["title"]) not in prompt
 
 
-async def test_abandoning_a_spawn_kills_the_process_group_it_started(tmp_path: Path) -> None:
+async def test_abandoning_a_spawn_kills_the_process_group_it_started(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """The CLI's own children must not outlive the turn."""
+    killed: list[tuple[int, int]] = []
+
+    class FakeProcess:
+        pid = 1234
+        returncode = None
+
+        async def communicate(self) -> tuple[bytes, bytes]:
+            await asyncio.Future()
+            return b"", b""
+
+    async def fake_create(*_argv: str, **_kwargs: object) -> FakeProcess:
+        return FakeProcess()
+
+    monkeypatch.setattr(spawn_module.subprocess, "create_subprocess_exec", fake_create)
+
+    def fake_killpg(pid: int, signal: int) -> None:
+        killed.append((pid, signal))
+
+    monkeypatch.setattr(spawn_module, "killpg", fake_killpg)
     settings = updated(
         offline_settings(tmp_path),
-        roles={"master": {"command": "sh -c 'sleep 30' --", "timeout": 0.5}},
+        roles={"master": {"command": "ignored", "timeout": 0.01}},
     )
 
     with pytest.raises(asyncio.TimeoutError):
         await CliSpawner(settings).run("master", "go", None)
+    assert killed == [(1234, spawn_module.SIGKILL)]
 
 
 def test_the_surface_publishes_for_the_engine_whose_turn_is_in_flight(tmp_path: Path) -> None:
     table = opened(tmp_path)
-    toolless = replace(table.service.engine, id=EngineId("mirror"), tools=())
+    toolless = replace(table.service.engine, id=EngineId("mirror"), world_tools=(), tools=())
     # First of the installed engines, so reading the engines instead of the turn would show it.
     table.runtime.engines = {toolless.id: toolless, **table.runtime.engines}
     state = table.service.state

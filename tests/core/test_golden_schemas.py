@@ -13,6 +13,6 @@ def test_the_master_is_offered_the_same_tools(engine_id: EngineId) -> None:
         FIXTURES / "schemas" / engine_id / "master_tools.json",
         [
             {"name": one.name, "description": one.description, "parameters": schema_of(one.args)}
-            for one in engine.tools
+            for one in (*engine.world_tools, *engine.tools)
         ],
     )

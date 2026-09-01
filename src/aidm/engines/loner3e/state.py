@@ -3,6 +3,7 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from aidm.core.entities import Counter, Mutable, Slug, pool
+from aidm.core.model import Character, Game, Scenario
 from aidm.kits.scenes.state import SceneCanon, SceneState
 from aidm.kits.scenes.worldsmith import SceneDraft
 
@@ -79,3 +80,15 @@ class Loner3eCharacter(Mutable):
     engine: Literal["loner3e"] = "loner3e"
     sheet: ActorSheet
     twist_pack: Slug
+
+
+class Loner3eGame(Game[Loner3eState]):
+    pass
+
+
+class Loner3eScenarioFile(Scenario[Loner3eScenario]):
+    pass
+
+
+class Loner3eCharacterFile(Character[Loner3eCharacter]):
+    pass

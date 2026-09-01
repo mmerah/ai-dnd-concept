@@ -13,17 +13,20 @@ from aidm.app.runtime import Runtime
 from aidm.config import Settings
 from aidm.core.entities import EngineId
 from aidm.core.io import ENCODING, FileStore
-from aidm.core.model import Game
+from aidm.engines.loner3e.state import Loner3eGame
 
 MIRROR = EngineId("mirror")
 # A second engine installed, so the engine the launcher pairs on is observable at all.
 INSTALLED = {**ENGINES_BUILT, MIRROR: replace(ENGINES_BUILT[LONER3E], id=MIRROR)}
 
 
-def _opening_state(settings: Settings) -> Game:
+def _opening_state(settings: Settings) -> Loner3eGame:
     """The launcher reads saves, so a test needs a state a real game would have written."""
     target = LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
-    return Runtime(settings, ScriptedSpawner()).session(target).state
+    state = Runtime(settings, ScriptedSpawner()).session(target).state
+    if not isinstance(state, Loner3eGame):
+        raise AssertionError("the Loner service holds another game type")
+    return state
 
 
 def _scenarios_copy(tmp_path: Path) -> Path:
@@ -46,7 +49,10 @@ def test_the_catalog_pairs_a_scenario_with_a_character(tmp_path: Path) -> None:
     catalog = load_catalog(ui_settings(tmp_path), ENGINES_BUILT)
 
     assert catalog.scenario("whispering-vault").title == "The Whispering Vault"
-    assert [entry.id for entry in catalog.characters] == ["kael"]
+    assert [(entry.id, entry.engine) for entry in catalog.characters] == [
+        ("kael", LONER3E),
+        ("kael", EngineId("mazerats")),
+    ]
     assert launch_target(catalog, "whispering-vault", "kael").model_dump() == {
         "slug": "whispering-vault--kael",
         "scenario_id": "whispering-vault",
@@ -92,7 +98,10 @@ def test_a_save_whose_engine_is_not_the_scenarios_is_not_listed(tmp_path: Path) 
     catalog = load_catalog(ui_settings(tmp_path, _declaring(tmp_path, MIRROR)), INSTALLED)
 
     # The scenario and the character are both still there; only the rules disagree.
-    assert [entry.id for entry in catalog.characters] == ["kael"]
+    assert [(entry.id, entry.engine) for entry in catalog.characters] == [
+        ("kael", LONER3E),
+        ("kael", EngineId("mazerats")),
+    ]
     assert not catalog.saves
 
 
@@ -121,7 +130,7 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
 )
 def test_a_save_whose_origin_is_gone_is_not_listed(tmp_path: Path, change: dict[str, str]) -> None:
     settings = ui_settings(tmp_path)
-    # Written as JSON: `Game` refuses a withdrawn engine tag, and the catalog reads the envelope.
+    # JSON lets Loner3eGame refuse a withdrawn engine tag while the catalog reads the envelope.
     orphan = json.loads(_opening_state(settings).model_dump_json()) | change
     (tmp_path / "orphan.json").write_text(json.dumps(orphan), encoding="utf-8")
 
@@ -203,9 +212,9 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
     catalog = load_catalog(settings, runtime.engines)
     state = runtime.session(launch_target(catalog, name, "kael")).state
     assert (name, state.turn) == ("the-sunken-bell", 0)
-    assert state.world.current.title == "The Bell Under the Water"
-    assert state.world.player.name == "Kael"
-    assert state.world.source.startswith("PREMISE:")
+    assert state.payload.world.current.title == "The Bell Under the Water"
+    assert state.payload.world.player.name == "Kael"
+    assert state.payload.world.source.startswith("PREMISE:")
 
 
 async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: Path) -> None:
@@ -237,6 +246,6 @@ async def test_a_scenario_written_from_a_document_keeps_it_beside_the_world(tmp_
     state = runtime.session(
         launch_target(load_catalog(runtime.settings, runtime.engines), name, "kael")
     ).state
-    assert state.world.source.startswith("SOURCE DOCUMENT:")
+    assert state.payload.world.source.startswith("SOURCE DOCUMENT:")
     # The premise the player never wrote is the scene's own words.
     assert state.scenario.premise == _OPENING["situation"]

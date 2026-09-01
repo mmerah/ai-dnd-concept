@@ -1,0 +1,102 @@
+SCENARIO:
+The Blackglass Maze
+A buried observatory has folded its halls into a blackglass maze, and a stolen star-map waits somewhere below.
+
+RECENT PLAY (this is turn 1):
+> I study the boot prints.
+The prints disappear beneath the silver arch.
+
+CURRENT PLACE:
+The Moon Gate[moon-gate]
+Dust lies in a perfect ring around the arch, except for fresh boot prints leading into the dark.
+
+YOU PLAY FOR:
+- Kael[player] (actor) — A scarred relic-hunter who enters every sealed place with a pry bar and a plan.
+  str / dex / wil: +1 / +2 / +0; health: 4/4; armour: 0; attack bonus: +0; level / xp: 1 / 0; paths: fingersmith
+  carried by the place The Moon Gate[moon-gate]
+
+CARRYING:
+- Crowbar[crowbar] (item) — Starting equipment.
+  category: ordinary; carry: backpack
+  carried by the player Kael[player]
+- Lockpicks (3)[lockpicks-3] (item) — Starting equipment.
+  category: ordinary; carry: belt
+  carried by the player Kael[player]
+- Rope (50 ft.)[rope-50-ft] (item) — Starting equipment.
+  category: ordinary; carry: backpack
+  carried by the player Kael[player]
+- Torch[torch] (item) — Starting equipment.
+  category: ordinary; carry: backpack
+  carried by the player Kael[player]
+- Medicine (3)[medicine-3] (item) — Starting equipment.
+  category: medicine; carry: backpack
+  carried by the player Kael[player]
+- Chalk[chalk] (item) — Starting equipment.
+  category: ordinary; carry: backpack
+  carried by the player Kael[player]
+- Light armour[light-armour] (item) — Starting equipment.
+  category: light; carry: worn
+  carried by the player Kael[player]
+- Shield[shield] (item) — Starting equipment.
+  category: shield; carry: hands
+  carried by the player Kael[player]
+- Short sword[short-sword] (item) — Starting equipment.
+  category: light; carry: hands
+  carried by the player Kael[player]
+- Bow[bow] (item) — Starting equipment.
+  category: ranged; carry: belt
+  carried by the player Kael[player]
+
+HERE WITH THE PLAYER:
+- a pry bar[pry-bar] (item) — A short iron bar with a flattened hook.
+  category: heavy; carry: backpack
+  carried by the place The Moon Gate[moon-gate]
+- Crowbar[crowbar] (item) — Starting equipment.
+  category: ordinary; carry: backpack
+  carried by the player Kael[player]
+- Lockpicks (3)[lockpicks-3] (item) — Starting equipment.
+  category: ordinary; carry: belt
+  carried by the player Kael[player]
+- Rope (50 ft.)[rope-50-ft] (item) — Starting equipment.
+  category: ordinary; carry: backpack
+  carried by the player Kael[player]
+- Torch[torch] (item) — Starting equipment.
+  category: ordinary; carry: backpack
+  carried by the player Kael[player]
+- Medicine (3)[medicine-3] (item) — Starting equipment.
+  category: medicine; carry: backpack
+  carried by the player Kael[player]
+- Chalk[chalk] (item) — Starting equipment.
+  category: ordinary; carry: backpack
+  carried by the player Kael[player]
+- Light armour[light-armour] (item) — Starting equipment.
+  category: light; carry: worn
+  carried by the player Kael[player]
+- Shield[shield] (item) — Starting equipment.
+  category: shield; carry: hands
+  carried by the player Kael[player]
+- Short sword[short-sword] (item) — Starting equipment.
+  category: light; carry: hands
+  carried by the player Kael[player]
+- Bow[bow] (item) — Starting equipment.
+  category: ranged; carry: belt
+  carried by the player Kael[player]
+
+HIDDEN HERE (the player has not found these):
+- (none)
+
+WAYS OUT:
+- The Echo Hall[echo-hall] — known
+- The Glass Vault[glass-vault] — unknown; locked
+
+ACTIVE THREADS:
+- The stolen star-map[find-star-map] — Find the silver map before the maze shifts again.
+
+NOTES FROM THE RULES:
+- (none)
+
+WAITING ON THE PLAYER:
+- (nothing; the turn is yours to run)
+
+PLAYER ACTION:
+I lever up the loose flagstone and listen at the vault door.

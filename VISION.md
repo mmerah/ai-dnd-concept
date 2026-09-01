@@ -8,7 +8,7 @@ derived from it; this file is not the order of work.
 > The app is the game, and you play it in a browser.
 > Its three roles — game master, narrator, worldsmith — are one-shot CLI sessions the app
 > spawns, so play costs a subscription the player already has.
-> The world is a sequence of scenes, not a map.
+> The world is what its kit says it is: sentence-driven scenes or an authored map.
 > One engine ships. The other two come back on the new design.
 
 ## Why
@@ -20,9 +20,9 @@ derived from it; this file is not the order of work.
    one exception: it is optional, off by default, and needs its own image-API key.)*
 3. **One process owns the game.** The app is the only writer. No second terminal, no save-file
    polling, no two servers racing over one save.
-4. **A map is a tax nobody asked for.** Keeping a spatial graph valid — exits, locks, parent
-   chains, containment cycles, reachability, a frontier — costs a thousand lines and much of
-   the game master's attention every turn. Scenes cost neither.
+4. **A map is a deliberate kit choice.** Keeping a spatial graph valid — ways, locks, containment
+   cycles, reachability and a frontier — costs real machinery, but Maze Rats needs that map for
+   loops, shortcuts and dungeon procedures. The scene kit still avoids that tax by design.
 5. **Three engines is three ports.** Porting one proves the design; porting three before it is
    proven pays for the same lesson three times, and carries the generic machinery that only
    exists to hold three.
@@ -46,15 +46,15 @@ APP  (one process, the only writer)     │
 
         typed engine seam
 
-ENGINE  aidm/engines/loner3e/
-  its typed State, embedding the kit's SceneState[Sheet union]
+ENGINE  aidm/engines/<engine>/
+  its typed Game and payload, embedding the selected kit's world state
   its SRD procedure tools, with every deterministic consequence inside
-  its validation, character creation, scene-boundary hook
+  its validation, character creation and kit boundary hooks
 
-KIT     aidm/kits/scenes/
-  SceneState[S], change_world, scene_spent, the scene bar
-  the worldsmith prompt and the source reader
-  fills the view types the pages and the narrator read
+KIT     aidm/kits/scenes/       sentence-driven scenes, or
+        aidm/kits/rooms/        authored places and directed ways
+  each kit supplies world state, change_world and world tools,
+  boundary/record/history callbacks, worldsmith authoring, and views
 ```
 
 **The kit fills the views**, not the engine. It holds the cast, the scene and the threads, which
@@ -219,9 +219,15 @@ play(action)
 
 ---
 
-## 2. The scene kit
+## 2. The world kits
 
-A scene, not a location, is the unit of the world.
+The engine chooses one world kit. The scene kit makes a player's sentence the brief for the next
+place; the rooms kit makes an authored graph the space the player explores. Shared entities and
+views do not erase the distinction between those world models.
+
+### The scene kit
+
+A scene, not a location, is the unit of the scene kit's world.
 
 ### State
 
@@ -257,9 +263,10 @@ story comes back to it, so returning to the chapel reuses the chapel's picture. 
 already cache per entity. A genuinely new place costs one image; that is the expected cost of
 illustration, which is optional and needs its own key.
 
-### Where a thing is: one field, no new concept
+### Where a thing is: one field, two kit readings
 
-- **Carried** is `carried_by`. **Here** is membership in `current.present`.
+- In the **scene kit**, **carried** is `carried_by` and **here** is membership in
+  `current.present`.
 - **Dropping** clears `carried_by` and leaves the item in `present`. It is lying here.
 - **When a scene closes, what the player and companions carry comes with them.** Everything
   else stays behind.
@@ -268,6 +275,23 @@ illustration, which is optional and needs its own key.
   chapel and the worldsmith can put the dropped lantern back on the floor.
 
 Left behind is good fiction, not a bug. No `at_scene` field, no loose-item pool.
+
+### The rooms kit
+
+Rooms are an authored map for engines whose procedures need real routes. A place is a shared
+`Entity` with kind `place`; `RoomWorld.ways` stores directed `Way(to, known, locked)` entries on
+the world, not on entities. A two-way passage is two directed ways, so one-way and asymmetric
+locks remain expressible.
+
+Every non-place entity is held by an actor or a place through `carried_by`; places are held by
+nothing. Holder chains cannot cycle. The player is an actor held by a place, and companions travel
+with the player. `move` can traverse any unlocked way out of the current place, including an
+unknown way; arrival reveals the destination and the return way. `unlock_way` clears a lock.
+
+The map authoring bar requires a loop, a shortcut, a locked way and hidden content, and every place
+must be reachable from the start by a directed walk (including through unknown or locked ways).
+`frontier` counts unknown places reachable from known places. Extending a map adds an authored
+region and joins it to the existing graph; it is not a scene crossing.
 
 ### `change_world` — one tool, one call, one change
 
@@ -333,22 +357,26 @@ and either a premise or an uploaded `.md`, `.txt` or `.pdf`.
 
 1. The app reads the source to text — de-hyphenated, passages joined, capped — or takes the
    premise.
-2. It builds the worldsmith prompt with no history and no cast, asking for an opening.
-3. `spawn(worldsmith, prompt, Scene)` returns the opening and the cast it writes.
-4. The app validates against the scene bar, writes `scenarios/<id>/world.json`, copies the
+2. It builds the selected kit's worldsmith prompt with no history and no cast.
+3. `spawn(worldsmith, prompt, kit-specific draft)` returns the authored opening world.
+4. The app validates the kit's authoring bar, writes `scenarios/<id>/world.json`, copies the
    source beside it, and opens the game at turn zero.
 
 ```
 scenarios/<id>/
   world.json      envelope { meta, engine, packs, art_style, payload }
-                  payload  { opening: Scene, cast, threads, source }
+                  payload  { kit-specific world, cast, threads, source }
   source.md|.pdf  optional
 ```
 
-### Growing the world — the worldsmith
+### Continuing the world — kit-specific authoring
 
-**Growth is not a mode. It is the scene boundary.** The game master briefs; the worldsmith
-writes.
+The game master briefs; the worldsmith writes. The scene kit authors the next scene at its
+boundary. The rooms kit authors a new region only when its authored map has no reachable frontier.
+
+#### Scene kit growth
+
+**Growth is not a mode. It is the scene boundary.**
 
 ```
 next_scene()
@@ -398,6 +426,13 @@ Why this shape:
    named beats an instant arrival somewhere they did not.
 3. **Make the remainder a beat.** The crossing is its own segment: the worldsmith spinner, then a
    second narrator spawn that writes the leaving and the arriving.
+
+#### Rooms kit extension
+
+When `frontier` is exhausted, the page offers the player a brief. The worldsmith writes a complete
+new region with places, ways and hidden content; code joins it to the existing graph and validates
+the whole map. The player stays where they are, with no arrival narration: an extension is not a
+scene crossing.
 
 ### Ids are the worldsmith's failure mode
 
@@ -538,36 +573,57 @@ three roles at their CLI.
 ## 6. The engine seam
 
 ```python
-class Engine[S: BaseModel](Protocol):
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Engine[G: Game[Any]]:
     id: EngineId
     title: str
-    instructions: str          # the game master's rules note for this SRD
-    def guidance(self, state) -> str: ...            # what a sheet needs, for the worldsmith
-    state: type[S]
-    scenario: type[BaseModel]
-    character: type[BaseModel]
-    tools: tuple[MasterTool, ...]
-    creation: Creation
-    def new_game(self, scenario, character) -> S: ...
-    def validate(self, state) -> None: ...
-    def sheet_rows(self, state, entity_id) -> tuple[tuple[str, str], ...]: ...
-    def answer(self, draft, chosen, rng) -> tuple[Fact, ...]: ...
-    def scene_closed(self, draft) -> tuple[Fact, ...]: ...
-    def over(self, state) -> str | None: ...
+    instructions: str
+    packs: tuple[DecisionOption, ...]
+    game: type[G]
+    scenario: type[AnyScenario]
+    character: type[AnyCharacter]
+    guidance: Callable[[Sequence[Slug]], str]
+    world_tools: tuple[MasterTool[G], ...]
+    tools: tuple[MasterTool[G], ...]
+    creation_steps: Callable[[Picks], tuple[CreationStep, ...]]
+    create_character: Callable[[str, str, Picks], AnyCharacter]
+    preview_character: Callable[[AnyCharacter], Rows]
+    validate: Validate[G]
+    new_game: Callable[[AnyScenario, AnyCharacter], BaseModel]
+    entity_known: Callable[[G, EntityId], bool | None]
+    record: Callable[[G, str, tuple[SpokenLine, ...], Sequence[Fact]], tuple[str, ...]]
+    history: Callable[[G], tuple[Exchange, ...]]
+    master_sections: Callable[[G], Rows]
+    narrator_view: Callable[[G], NarratorView]
+    player_view: Callable[[G], PlayerView]
+    over: Callable[[G], str | None]
+    authoring: Authoring
+    crossing: Transition[G] | None
+    extension: Transition[G] | None
 ```
 
-The engine's `State` embeds `SceneState[SheetUnion]` and adds its own fields. The sheet union is
-the engine's, because actor sheets and item sheets are different models.
+`Engine` is the extension point joining an engine's typed game to its chosen world kit. The
+engine owns its sheet union, state and SRD mechanics; the kit supplies `world_tools`, entity
+knowledge, recording, history, views and world authoring. `crossing` belongs to the scene kit and
+may be absent; `extension` belongs to the rooms kit and may be absent.
 
-**What one engine deletes from the seam.** `AnyEngine` erasure, the import-by-name registry, the
-per-engine `written` tuple in the character catalog, and the `characters_for(engine)` filter all
-exist to hold three engines at once. They come back when engine two does. The composition root
-names Loner directly.
+Both are one `Transition`, a record of `ready`, `write`, `install` and an `arrival_brief`. They were
+two identical records once, and the wiring above them duplicated with them; what actually differs is
+the behaviour in the callables, not the shape holding them. A scene crossing moves the player and
+narrates the arrival, so it supplies a brief; a map extension installs latent places and leaves the
+player standing, so it supplies none. The app reads `Engine.crossing` and `Engine.extension` to know
+which it holds, and never inspects a kit.
 
-**The payload becomes a discriminated union.** Once the engine's state is typed, `engine` is a
-natural tag, so `SerializeAsAny`, `require_parsed_payload` and every `_legacy` narrowing property
-collapse into one `Field(discriminator="engine")`. This closes the engine set at type-check time,
-which is free with one engine and cheap with three.
+`world_tools` are published with `TURN_TOOLS` and the engine's mechanics tools. Scene engines put
+`change_world` and `next_scene` there; rooms engines put `change_world`, `move` and `unlock_way`
+there. `tools` therefore contains engine procedures only.
+
+`AnyEngine` is the erased alias beside `Engine` in `engines/core.py`; the registry and per-engine
+composition return with the second engine. `core/`, `turn/`, `app/` and `ui/` consume callbacks
+through this seam and import neither concrete engine nor concrete kit.
+
+The save payload is an engine-specific `Game` model. Its `EngineHeader` rejects a save for the
+wrong engine before the concrete game validates it; there is no compatibility or migration path.
 
 The untyped `mechanics` blob and everything servicing it — parse-on-entry, write-back, one-level
 merge, delta, keyed-map cleanup, stray-id checks — is deleted.

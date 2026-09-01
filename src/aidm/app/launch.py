@@ -5,7 +5,7 @@ from aidm.config import Settings
 from aidm.core.entities import EngineId, Frozen, Slug
 from aidm.core.io import FileStore, decoded, read_characters, read_scenarios
 from aidm.core.model import SaveHeader
-from aidm.engines.core import Engine
+from aidm.engines.core import AnyEngine
 
 LOGGER = logging.getLogger(__name__)
 
@@ -60,8 +60,9 @@ def launch_target(catalog: LauncherCatalog, scenario_id: Slug, character_id: Slu
     )
 
 
-def load_catalog(settings: Settings, engines: Mapping[EngineId, Engine]) -> LauncherCatalog:
-    ids = tuple(engines)
+def load_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> LauncherCatalog:
+    scenario_models = {engine_id: engine.scenario for engine_id, engine in engines.items()}
+    character_models = {engine_id: engine.character for engine_id, engine in engines.items()}
     scenarios = tuple(
         CatalogEntry(
             id=name,
@@ -69,11 +70,11 @@ def load_catalog(settings: Settings, engines: Mapping[EngineId, Engine]) -> Laun
             title=scenario.meta.title,
             subtitle=scenario.meta.premise,
         )
-        for name, scenario in read_scenarios(settings.scenarios_dir, ids)
+        for name, scenario in read_scenarios(settings.scenarios_dir, scenario_models)
     )
     characters = tuple(
         CatalogEntry(id=name, engine=engine, title=character.name, subtitle=character.brief)
-        for name, engine, character in read_characters(settings.characters_dir, ids)
+        for name, engine, character in read_characters(settings.characters_dir, character_models)
     )
     titles = {(entry.id, entry.engine): entry.title for entry in characters}
     played_by = {entry.id: entry.engine for entry in scenarios}

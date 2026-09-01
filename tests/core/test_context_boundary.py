@@ -1,17 +1,16 @@
 from core_test_support import ENGINES_BUILT, LONER3E, initialized, with_entity
 
 from aidm.core.entities import EntityId
-from aidm.core.model import Game
 from aidm.core.views import NarratorView
-from aidm.engines.core import Engine
-from aidm.engines.loner3e.state import ActorSheet, LonerSheet
-from aidm.kits.scenes.state import Entity
+from aidm.engines.core import AnyEngine
+from aidm.engines.loner3e.state import ActorSheet, Loner3eGame, LonerSheet
+from aidm.kits.entities import Entity
 from aidm.turn.context import ANSWERED_BY_OPTION, render_narrator, render_picture
 
 SECRET = EntityId("hidden-actor")
 
 
-def _state() -> Game:
+def _state() -> Loner3eGame:
     """An unmet actor in the scene, holding an item, so both leak paths are open at once."""
     _, state = initialized()
     state = with_entity(
@@ -37,14 +36,15 @@ def _state() -> Game:
     )
 
 
-def _engine() -> Engine:
+def _engine() -> AnyEngine:
     return ENGINES_BUILT[LONER3E]
 
 
-def _master_prompt(held: Game, prompt: str, *, resumed: str = "") -> str:
+def _master_prompt(held: Loner3eGame, prompt: str, *, resumed: str = "") -> str:
     return render_picture(
         _engine().master_sections(held),
         held,
+        _engine().history(held),
         prompt,
         resumed=resumed,
     )
@@ -60,14 +60,14 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
         "title",
         "situation",
         "art_prompt",
-        "question",
+        "focus",
         "subjects",
         "speakers",
     }
     dumped = str(narrator.model_dump())
     assert "The Secret" not in dumped
-    assert held.world.current.secret not in dumped
-    assert held.world.current.secret in str(master)
+    assert held.payload.world.current.secret not in dumped
+    assert held.payload.world.current.secret in str(master)
 
 
 def test_a_carried_item_never_names_the_holder_the_player_has_not_met() -> None:
@@ -103,7 +103,7 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:
     assert "Mara" in prompt
     assert "The Secret" not in prompt
     assert "hidden-actor" not in prompt
-    assert held.world.current.secret not in prompt
+    assert held.payload.world.current.secret not in prompt
 
 
 def test_the_narrator_prompt_carries_only_what_the_player_has_read() -> None:

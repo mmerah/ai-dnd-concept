@@ -16,8 +16,9 @@ from pydantic import JsonValue
 
 from aidm.core.entities import PLAYER_ID, EntityId
 from aidm.core.facts import Fact, cards
-from aidm.core.model import Game
+from aidm.core.model import AnyGame
 from aidm.engines.loner3e.rules import outcome_for
+from aidm.engines.loner3e.state import Loner3eGame
 from aidm.turn.run import Turn, TurnStep
 
 MAP = EntityId("vault-map")
@@ -43,13 +44,13 @@ async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_pat
 
     assert tuple(steps) == ("master", "narrator")
     assert [fact.kind for fact in facts] == ["entity_discovered", "entity_moved"]
-    assert {one.id for one in state.world.carried_by(PLAYER_ID)} == {"vault-map"}
+    assert {one.id for one in state.payload.world.carried_by(PLAYER_ID)} == {"vault-map"}
     narrator = table.spawner.prompt("narrator")
     assert "Elena" not in narrator
     # The sheets are the game master's: no tag the engine rolls by reaches the narrator.
     assert "concept" not in narrator
     assert state.turn == 1
-    assert state.world.exchanges()[-1].prompt == "I search beneath the desk."
+    assert state.payload.world.exchanges()[-1].prompt == "I search beneath the desk."
 
 
 async def test_on_fact_reports_the_visible_facts_in_resolver_order(tmp_path: Path) -> None:
@@ -67,7 +68,7 @@ async def test_on_fact_reports_the_visible_facts_in_resolver_order(tmp_path: Pat
 
     landed = ["The vault map discovered", "Took the vault map", "Kael: new trait Listening"]
     assert [fact.card for fact in cards(fired)] == landed
-    assert [fact.card for fact in state.world.exchanges()[-1].facts] == landed
+    assert [fact.card for fact in state.payload.world.exchanges()[-1].facts] == landed
 
 
 async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: Path) -> None:
@@ -79,7 +80,7 @@ async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: 
         await table.service.play("I take the map.")
 
     assert table.service.state.model_dump_json() == before
-    assert table.service.state.world.exchanges() == ()
+    assert table.service.state.payload.world.exchanges() == ()
 
 
 async def test_the_engine_rolls_the_outcome_the_facts_then_record(tmp_path: Path) -> None:
@@ -118,7 +119,7 @@ async def test_the_master_reacts_in_run_to_its_own_earlier_tool_call(tmp_path: P
         changed("join_party", actor_id="tomas"),
     )
 
-    assert state.world.companions == ["tomas"]
+    assert state.payload.world.companions == ["tomas"]
 
 
 async def test_an_illegal_tool_call_is_refused_with_the_reason(tmp_path: Path) -> None:
@@ -126,7 +127,7 @@ async def test_an_illegal_tool_call_is_refused_with_the_reason(tmp_path: Path) -
 
     state = await played(table, "I wait.", changed("reveal", entity_id="nowhere"), FOUND)
 
-    assert state.world.require(MAP).known
+    assert state.payload.world.require(MAP).known
     assert any("unknown id 'nowhere'" in one for one in table.refusals)
 
 
@@ -140,7 +141,7 @@ async def test_a_call_its_own_fields_refuse_does_not_kill_the_turn(tmp_path: Pat
         changed("advance_thread", thread_id="vault-seal", note="The seal is found."),
     )
 
-    assert state.world.threads["vault-seal"].note == "The seal is found."
+    assert state.payload.world.threads["vault-seal"].note == "The seal is found."
     assert any("status or its note" in one for one in table.refusals)
 
 
@@ -178,7 +179,7 @@ async def test_a_line_spoken_by_someone_not_here_is_re_prompted_with_the_id(
     await table.service.play("I wait.")
 
     assert any("elena" in prompt for role, prompt in table.spawner.prompts if role == "narrator")
-    assert table.service.state.world.exchanges()[-1].narration == "The door settles."
+    assert table.service.state.payload.world.exchanges()[-1].narration == "The door settles."
 
 
 async def test_a_master_that_crashes_after_applying_still_commits_what_it_applied(
@@ -198,7 +199,7 @@ async def test_a_master_that_crashes_after_applying_still_commits_what_it_applie
     await table.service.play("I take the map and read it.")
 
     assert table.service.state.turn == 1
-    assert table.service.state.world.require(MAP).known
+    assert table.service.state.payload.world.require(MAP).known
 
 
 async def test_a_resumed_master_is_not_run_again_once_a_tool_has_landed(tmp_path: Path) -> None:
@@ -255,7 +256,10 @@ async def test_an_owed_advance_is_noted_lands_on_call_and_is_refused_once_spent(
     tmp_path: Path,
 ) -> None:
     table = opened(tmp_path)
-    table.service.commit(loner_at_boundary(table.service.state))
+    state = table.service.state
+    if not isinstance(state, Loner3eGame):
+        raise AssertionError("the Loner service holds another game type")
+    table.service.commit(loner_at_boundary(state))
     growth: dict[str, JsonValue] = {
         "subject_id": PLAYER_ID,
         "changes": [{"kind": "gear", "tag": "Waxed Rope", "why": "he never climbs without it now"}],
@@ -298,7 +302,7 @@ def test_a_refused_call_leaves_the_turn_the_dice_it_had() -> None:
     assert turn.rng.getstate() == before
 
 
-def _rolls_then_refuses(draft: Game, rng: Random) -> tuple[Fact, ...]:
+def _rolls_then_refuses(draft: AnyGame, rng: Random) -> tuple[Fact, ...]:
     del draft
     _ = rng.random()
     raise ValueError("the rules said no")

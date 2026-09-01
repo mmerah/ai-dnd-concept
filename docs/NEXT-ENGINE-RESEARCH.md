@@ -1,3 +1,19 @@
+> **CORRECTION, 2026-08-31. This document's Maze Rats rules claims are wrong, and they were
+> built before they were checked.**
+>
+> Lines about "random encounters every 10 in-game minutes, with a 3-in-6 chance", "wilderness
+> travel rates ... with a 2-in-6 discovery check", and "moving through a district has a 1-in-6
+> encounter chance" cite third-party OSR blog posts, not Maze Rats. **Maze Rats contains none of
+> them.** It has three rules pages — Core Rules, Character Creation, Character Sheet — and no
+> time-keeping and no random-encounter procedure of any kind. Verified against
+> `https://rules.moddable.games/maze-rats/`.
+>
+> These claims reached `PLAN.md` as the stated reason for Phase 8 and were then implemented as a
+> `pass_time` tool, which had to be deleted. The `OPINION` section is separately stale: it cites
+> `Entity.exits`, `Engine.seed()`, `authoring/draft.py` and `player_action`, all long deleted.
+>
+> **Take nothing from this file as a rule without checking the rulebook.**
+
 Yes — and I think there are actually **two different things you could mean by “reward player skill”**, and they lead to two very different fourth engines.
 
 **Pokémon/Showdown rewards tactical skill.**

@@ -20,12 +20,12 @@ def scene_sidebar(session: GameService) -> None:
 
 def journal_panel(session: GameService) -> None:
     view = session.player_view()
-    if view.scenes:
-        heading("Scenes", tight=True)
-        for title in view.scenes:
+    if view.trail:
+        heading("Trail", tight=True)
+        for title in view.trail:
             ui.label(title).classes("text-sm")
     heading("Chronicle")
-    played = session.state.world.exchanges()
+    played = session.engine.history(session.state)
     for number, exchange in reversed(list(enumerate(played, start=1))):
         with ui.expansion(f"turn {number}: {exchange.prompt}").classes("w-full"):
             # A speaker is named, because a bare quote reads as narration without bubbles.
@@ -38,7 +38,9 @@ def journal_panel(session: GameService) -> None:
 def _scene_card(view: PlayerView, failure: str) -> None:
     with ui.column().classes("game-card w-full"):
         heading("This scene", tight=True)
-        ui.label(view.question).classes("text-sm mt-1")
+        ui.label(view.focus).classes("text-sm mt-1")
+        for label, text in view.world_rows:
+            labeled_value(label, text)
         if failure:
             ui.label(NO_WAY_ON).classes("text-xs text-warning mt-1")
 

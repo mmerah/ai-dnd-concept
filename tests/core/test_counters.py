@@ -3,15 +3,14 @@ from core_test_support import initialized
 from pydantic import ValidationError
 
 from aidm.core.entities import Counter, EntityId
-from aidm.core.model import Game
 from aidm.engines.core import adjust
-from aidm.engines.loner3e.state import LonerSheet
-from aidm.kits.scenes.state import Entity
+from aidm.engines.loner3e.state import Loner3eGame, LonerSheet
+from aidm.kits.entities import Entity
 
 KAEL = Entity[LonerSheet](id=EntityId("kael"), kind="actor", name="Kael", brief="", known=True)
 
 
-def _state() -> Game:
+def _state() -> Loner3eGame:
     """A counter card drops the name for the played character alone, so it needs the state."""
     _, state = initialized()
     return state
@@ -32,10 +31,17 @@ def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> 
     counter = Counter(current=0, maximum=5)
 
     state = _state()
-    (changed,) = adjust(state, KAEL, "stress", counter, 99, "the strain")
+    (changed,) = adjust(state.payload.world.player_id, KAEL, "stress", counter, 99, "the strain")
     assert (changed.card, counter.current) == ("Kael: Stress +5 -> 5/5", 5)
-    assert adjust(state, KAEL, "stress", counter, 99, "the strain") == []
+    assert adjust(state.payload.world.player_id, KAEL, "stress", counter, 99, "the strain") == []
 
     counter.current = 0
-    (own,) = adjust(state, state.world.player, "stress", counter, 1, "the strain")
+    (own,) = adjust(
+        state.payload.world.player_id,
+        state.payload.world.player,
+        "stress",
+        counter,
+        1,
+        "the strain",
+    )
     assert own.card == "Stress +1 -> 1/5"

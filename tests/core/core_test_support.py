@@ -16,13 +16,19 @@ from aidm.config import Role, Settings
 from aidm.core.entities import PLAYER_ID, EngineId, EntityId, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import load_character, read_scenario, read_scenarios
-from aidm.core.model import Character, Game, Scenario
+from aidm.core.model import AnyGame
 from aidm.core.play import Answer, Speaker
-from aidm.engines.core import Engine
+from aidm.engines.core import AnyEngine
 from aidm.engines.loner3e.rules import complete_chapter as loner_chapter
-from aidm.engines.loner3e.state import ActorSheet, LonerSheet
+from aidm.engines.loner3e.state import (
+    ActorSheet,
+    Loner3eCharacterFile,
+    Loner3eGame,
+    Loner3eScenarioFile,
+    LonerSheet,
+)
 from aidm.engines.registry import begin_game, build_engines
-from aidm.kits.scenes.state import Entity
+from aidm.kits.entities import Entity
 from aidm.turn.run import TurnStep
 
 # One tool call as a scripted game master makes it.
@@ -41,6 +47,7 @@ CHARACTERS = REPOSITORY_ROOT / "characters"
 LONER3E = EngineId("loner3e")
 ENGINES_BUILT = build_engines(REPOSITORY_ROOT / "packs")
 ENGINE_IDS = tuple(ENGINES_BUILT)
+SCENARIO_MODELS = {engine_id: engine.scenario for engine_id, engine in ENGINES_BUILT.items()}
 KAEL = Speaker(name="Kael", id=PLAYER_ID)
 
 
@@ -49,40 +56,47 @@ def updated[T: BaseModel](model: T, **changes: object) -> T:
     return type(model).model_validate(model.model_dump(round_trip=True) | changes)
 
 
-def with_entity(state: Game, entity: Entity[LonerSheet]) -> Game:
+def with_entity(state: Loner3eGame, entity: Entity[LonerSheet]) -> Loner3eGame:
     """Added to the cast and to the scene, because a scene entity is where a scene entity lives."""
     draft = state.draft()
-    draft.world.cast[entity.id] = entity
-    draft.world.run.present.append(entity.id)
+    draft.payload.world.cast[entity.id] = entity
+    draft.payload.world.run.present.append(entity.id)
     return draft.committed()
 
 
-def loner_at_boundary(state: Game) -> Game:
+def loner_at_boundary(state: Loner3eGame) -> Loner3eGame:
     draft = state.draft()
     _ = loner_chapter(draft)
     return draft.committed()
 
 
-def loner_sheet(state: Game, entity_id: EntityId) -> ActorSheet:
-    sheet = state.world.require(entity_id).sheet
+def loner_sheet(state: Loner3eGame, entity_id: EntityId) -> ActorSheet:
+    sheet = state.payload.world.require(entity_id).sheet
     if not isinstance(sheet, ActorSheet):
         raise AssertionError(f"{entity_id!r} has no actor sheet")
     return sheet
 
 
-def scenario() -> Scenario:
-    return read_scenario(SCENARIOS, "whispering-vault")
+def scenario() -> Loner3eScenarioFile:
+    loaded = read_scenario(SCENARIOS, "whispering-vault", SCENARIO_MODELS)
+    if not isinstance(loaded, Loner3eScenarioFile):
+        raise AssertionError("the Loner scenario parsed as another engine")
+    return loaded
 
 
-def character() -> Character:
-    return load_character(CHARACTERS, "kael", ENGINES_BUILT[LONER3E].id)
+def character() -> Loner3eCharacterFile:
+    engine = ENGINES_BUILT[LONER3E]
+    loaded = load_character(CHARACTERS, "kael", engine.id, engine.character)
+    if not isinstance(loaded, Loner3eCharacterFile):
+        raise AssertionError("the Loner character parsed as another engine")
+    return loaded
 
 
 def scenario_for(engine_id: EngineId) -> Slug:
     """Read off the shipped content rather than tabulated, so a second one fails here loudly."""
     shipped = [
         slug
-        for slug, scenario in read_scenarios(SCENARIOS, ENGINE_IDS)
+        for slug, scenario in read_scenarios(SCENARIOS, SCENARIO_MODELS)
         if scenario.engine == engine_id
     ]
     if len(shipped) != 1:
@@ -90,17 +104,21 @@ def scenario_for(engine_id: EngineId) -> Slug:
     return shipped[0]
 
 
-def game(engine_id: EngineId) -> tuple[Engine, Game]:
+def game(engine_id: EngineId) -> tuple[AnyEngine, AnyGame]:
     """The scenario authored for this engine and the shipped character, composed together."""
     engine = ENGINES_BUILT[engine_id]
     scenario_id = scenario_for(engine_id)
-    selected_scenario = read_scenario(SCENARIOS, scenario_id)
-    selected_character = load_character(CHARACTERS, "kael", engine.id)
-    return engine, begin_game(engine, scenario_id, selected_scenario, selected_character)
+    selected_scenario = read_scenario(SCENARIOS, scenario_id, SCENARIO_MODELS)
+    selected_character = load_character(CHARACTERS, "kael", engine.id, engine.character)
+    begun = begin_game(engine, scenario_id, selected_scenario, selected_character)
+    return engine, begun
 
 
-def initialized() -> tuple[Engine, Game]:
-    return game(LONER3E)
+def initialized() -> tuple[AnyEngine, Loner3eGame]:
+    engine, state = game(LONER3E)
+    if not isinstance(state, Loner3eGame):
+        raise AssertionError("the Loner engine began another game type")
+    return engine, state
 
 
 def change_args(verb: str, **fields: JsonValue) -> dict[str, JsonValue]:
@@ -160,12 +178,13 @@ class ScriptedSpawner:
 
 
 @dataclass(slots=True)
-class Table:
+class Table[G: AnyGame]:
     """A live game and the tool surface a scripted game master plays it through."""
 
     runtime: Runtime
     service: GameService
     spawner: ScriptedSpawner
+    state_type: type[G]
     refusals: list[str] = field(default_factory=list)
     answers: list[str] = field(default_factory=list)
 
@@ -186,10 +205,20 @@ class Table:
 
         return run
 
-    def saved(self) -> Game:
+    @property
+    def state(self) -> G:
+        state = self.service.state
+        if not isinstance(state, self.state_type):
+            raise AssertionError(f"the service holds an unexpected {self.state_type.__name__}")
+        return state
+
+    def saved(self) -> G:
         raw = self.service.store.load(self.service.slug)
         assert raw is not None
-        return self.service.engine.restored(raw)
+        restored = self.service.engine.restored(raw)
+        if not isinstance(restored, self.state_type):
+            raise AssertionError(f"the save restored an unexpected {self.state_type.__name__}")
+        return restored
 
 
 def opened(
@@ -197,24 +226,62 @@ def opened(
     *,
     rng: Random | None = None,
     settings: Settings | None = None,
-    engine: Engine | None = None,
-) -> Table:
+    engine: AnyEngine | None = None,
+) -> Table[Loner3eGame]:
+    return _opened(
+        saves,
+        rng=rng,
+        settings=settings,
+        engine=engine,
+        engine_id=LONER3E,
+        state_type=Loner3eGame,
+    )
+
+
+def opened_for(
+    saves: Path,
+    engine_id: EngineId,
+    *,
+    rng: Random | None = None,
+    settings: Settings | None = None,
+) -> Table[AnyGame]:
+    """Open a golden-test table for whichever concrete engine is under test."""
+    engine = ENGINES_BUILT[engine_id]
+    return _opened(
+        saves,
+        rng=rng,
+        settings=settings,
+        engine=engine,
+        engine_id=engine_id,
+        state_type=engine.game,
+    )
+
+
+def _opened[G: AnyGame](
+    saves: Path,
+    *,
+    rng: Random | None,
+    settings: Settings | None,
+    engine: AnyEngine | None,
+    engine_id: EngineId,
+    state_type: type[G],
+) -> Table[G]:
     settings = settings or offline_settings(saves)
     spawner = ScriptedSpawner()
     runtime = Runtime(settings, spawner)
-    if engine is not None:
-        runtime.engines[LONER3E] = engine
-    scenario_id = scenario_for(LONER3E)
+    selected_engine = ENGINES_BUILT[engine_id] if engine is None else engine
+    runtime.engines[engine_id] = selected_engine
+    scenario_id = scenario_for(engine_id)
     service = runtime.session(
         LaunchTarget(slug=f"{scenario_id}--kael", scenario_id=scenario_id, character_id="kael")
     )
     if rng is not None:
         service.rng = rng
-    return Table(runtime=runtime, service=service, spawner=spawner)
+    return Table(runtime=runtime, service=service, spawner=spawner, state_type=state_type)
 
 
-async def played(
-    table: Table,
+async def played[G: AnyGame](
+    table: Table[G],
     action: str | Answer,
     *calls: Call,
     narration: str = "You wait.",
@@ -223,7 +290,7 @@ async def played(
     moving_on: bool = False,
     on_step: Callable[[TurnStep], None] | None = None,
     on_fact: Callable[[Fact], None] | None = None,
-) -> Game:
+) -> G:
     """One turn, with the game master's tool calls scripted and the narrator's answer canned."""
     table.spawner.turns.append(table.plays(calls, start=start))
     canned = table.spawner.answers.setdefault("narrator", [])
@@ -232,4 +299,4 @@ async def played(
     if arrival is not None:
         canned.append(narrated(arrival))
     await table.service.play(action, on_step=on_step, on_fact=on_fact, moving_on=moving_on)
-    return table.service.state
+    return table.state

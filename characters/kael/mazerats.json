@@ -1,0 +1,75 @@
+{
+  "id": "kael",
+  "engine": "mazerats",
+  "name": "Kael",
+  "brief": "A scarred relic-hunter who enters every sealed place with a pry bar and a plan.",
+  "payload": {
+    "engine": "mazerats",
+    "pack": "srd",
+    "sheet": {
+      "kind": "actor",
+      "strength": 1,
+      "dexterity": 2,
+      "will": 0,
+      "health": {"current": 4, "maximum": 4},
+      "armour": 0,
+      "attack_bonus": 0,
+      "level": 1,
+      "xp": 0,
+      "paths": ["fingersmith"],
+      "spell_slots": []
+    },
+    "inventory": [
+      {
+        "id": "crowbar",
+        "name": "Crowbar",
+        "sheet": {"kind": "item", "position": "backpack"}
+      },
+      {
+        "id": "lockpicks-3",
+        "name": "Lockpicks (3)",
+        "sheet": {"kind": "item", "position": "belt"}
+      },
+      {
+        "id": "rope-50-ft",
+        "name": "Rope (50 ft.)",
+        "sheet": {"kind": "item", "position": "backpack"}
+      },
+      {
+        "id": "torch",
+        "name": "Torch",
+        "sheet": {"kind": "item", "position": "backpack"}
+      },
+      {
+        "id": "medicine-3",
+        "name": "Medicine (3)",
+        "sheet": {"kind": "item", "medicine": true, "position": "backpack"}
+      },
+      {
+        "id": "chalk",
+        "name": "Chalk",
+        "sheet": {"kind": "item", "position": "backpack"}
+      },
+      {
+        "id": "light-armour",
+        "name": "Light armour",
+        "sheet": {"kind": "item", "armour": "light", "position": "worn"}
+      },
+      {
+        "id": "shield",
+        "name": "Shield",
+        "sheet": {"kind": "item", "shield": true, "position": "hands"}
+      },
+      {
+        "id": "short-sword",
+        "name": "Short sword",
+        "sheet": {"kind": "item", "weapon": "light", "position": "hands"}
+      },
+      {
+        "id": "bow",
+        "name": "Bow",
+        "sheet": {"kind": "item", "weapon": "ranged", "position": "belt"}
+      }
+    ]
+  }
+}

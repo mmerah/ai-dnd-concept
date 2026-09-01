@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 from core_test_support import (
-    ENGINE_IDS,
     ENGINES_BUILT,
     LONER3E,
+    SCENARIO_MODELS,
     character,
     initialized,
     scenario,
@@ -32,7 +32,7 @@ MIRROR = EngineId("mirror")
 def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
     engine, state = initialized()
     draft = state.draft()
-    draft.world.run.exchanges = [
+    draft.payload.world.run.exchanges = [
         Exchange(
             prompt="I take the map.",
             lines=(),
@@ -53,7 +53,7 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
     reloaded = store.load("roundtrip")
 
     assert reloaded is not None
-    assert engine.restored(reloaded).world.exchanges() == saved.world.exchanges()
+    assert engine.restored(reloaded).payload.world.exchanges() == saved.payload.world.exchanges()
 
 
 @pytest.mark.parametrize("slug", ("../escape", "/absolute", "bad slug", ""))
@@ -67,16 +67,16 @@ def test_storage_rejects_unsafe_slugs(tmp_path: Path, slug: str) -> None:
 def test_content_paths_reject_an_unsafe_id(tmp_path: Path) -> None:
     engine = ENGINES_BUILT[LONER3E]
     with pytest.raises(ValueError, match="invalid content id"):
-        read_scenario(tmp_path, "../escape")
+        read_scenario(tmp_path, "../escape", SCENARIO_MODELS)
     with pytest.raises(ValueError, match="invalid content id"):
-        load_character(tmp_path, "kael/../..", engine.id)
+        load_character(tmp_path, "kael/../..", engine.id, engine.character)
 
 
 def test_write_scenario_round_trips_and_refuses_a_duplicate(tmp_path: Path) -> None:
     original = scenario()
 
     write_scenario(tmp_path, "vault-copy", original)
-    loaded = read_scenario(tmp_path, "vault-copy")
+    loaded = read_scenario(tmp_path, "vault-copy", SCENARIO_MODELS)
 
     assert loaded == original
     with pytest.raises(ValueError, match="already exists"):
@@ -90,7 +90,7 @@ def test_read_scenarios_skips_a_world_that_fails_to_validate(tmp_path: Path) -> 
     broken.mkdir()
     (broken / "world.json").write_text(json.dumps({"meta": {}}), encoding=ENCODING)
 
-    assert [slug for slug, _ in read_scenarios(tmp_path, ENGINE_IDS)] == ["good"]
+    assert [slug for slug, _ in read_scenarios(tmp_path, SCENARIO_MODELS)] == ["good"]
 
 
 def test_a_character_written_for_two_engines_is_read_once_for_each(tmp_path: Path) -> None:
@@ -98,6 +98,10 @@ def test_a_character_written_for_two_engines_is_read_once_for_each(tmp_path: Pat
     write_character(tmp_path, written)
     write_character(tmp_path, updated(written, engine=MIRROR))
 
-    rows = [(name, engine) for name, engine, _ in read_characters(tmp_path, (LONER3E, MIRROR))]
+    models = {
+        LONER3E: ENGINES_BUILT[LONER3E].character,
+        MIRROR: ENGINES_BUILT[LONER3E].character,
+    }
+    rows = [(name, engine) for name, engine, _ in read_characters(tmp_path, models)]
 
     assert rows == [("kael", LONER3E), ("kael", MIRROR)]

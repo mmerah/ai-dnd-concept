@@ -1,69 +1,91 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
+from typing import Any
 
 from pydantic import BaseModel
 
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import Counter, EngineId, Slug, pool, require_unique
+from aidm.core.entities import Counter, EngineId, EntityId, Slug, pool, require_unique
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.io import ENCODING, decoded
-from aidm.core.model import Character, EngineHeader, Game, Payload, Scenario
-from aidm.core.play import DecisionOption, PendingOption
+from aidm.core.model import (
+    AnyCharacter,
+    AnyScenario,
+    CheckAnswer,
+    EngineHeader,
+    Game,
+    WorldsmithAnswer,
+)
+from aidm.core.play import DecisionOption, Exchange, PendingOption, SpokenLine
 from aidm.core.tools import MasterTool, Validate
 from aidm.core.views import NarratorView, PlayerView, Rows
-from aidm.kits.scenes import render
-from aidm.kits.scenes.render import EngineSections, SheetRows
-from aidm.kits.scenes.state import Entity, entity_fact, labeled
+from aidm.kits.entities import Entity, entity_fact, labeled
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class Engine:
-    """The one engine extension point: one engine ships, so this is concrete, not a protocol."""
+class Authoring:
+    answer: type[BaseModel]
+    prompt: Callable[[str, str], str]
+    refusal: CheckAnswer
+    build: Callable[[str, str, tuple[Slug, ...], BaseModel, str], AnyScenario]
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Transition[G: Game[Any]]:
+    """A kit's way of growing the world: when it is offered, how it is written, how it installs."""
+
+    ready: Callable[[G], bool]
+    write: Callable[[G, str, str, WorldsmithAnswer], Awaitable[BaseModel]]
+    install: Callable[[G, BaseModel], tuple[Fact, ...]]
+    # The narrator's brief for the arrival, supplied by the kit whose transition moves the player.
+    arrival_brief: str = ""
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Engine[G: Game[Any]]:
+    """The one extension point joining an engine's rules to its chosen world kit."""
 
     id: EngineId
     title: str
     instructions: str
     packs: tuple[DecisionOption, ...]
-    # What a sheet needs for the selected packs, written for the worldsmith.
+    game: type[G]
+    scenario: type[AnyScenario]
+    character: type[AnyCharacter]
     guidance: Callable[[Sequence[Slug]], str]
-    tools: tuple[MasterTool, ...]
-    # Tolerates partial or stale picks, so follow-up steps appear as parents are picked.
+    world_tools: tuple[MasterTool[G], ...]
+    tools: tuple[MasterTool[G], ...]
     creation_steps: Callable[[Picks], tuple[CreationStep, ...]]
-    # Raises ValueError with the reason the page shows when the pick set is illegal.
-    create_character: Callable[[str, str, Picks], Character]
-    preview_character: Callable[[Character], Rows]
-    validate: Validate
-    new_game: Callable[[Scenario, Character], Payload]
-    sheet_rows: Callable[[Game], SheetRows]
-    sections: EngineSections
-    # None while the game can still be played on; the text the player is shown when it cannot.
-    over: Callable[[Game], str | None]
-    # What the rules settle as a scene ends, such as luck restored after a conflict.
-    scene_closed: Callable[[Game], tuple[Fact, ...]]
+    create_character: Callable[[str, str, Picks], AnyCharacter]
+    preview_character: Callable[[AnyCharacter], Rows]
+    validate: Validate[G]
+    new_game: Callable[[AnyScenario, AnyCharacter], BaseModel]
+    entity_known: Callable[[G, EntityId], bool | None]
+    record: Callable[[G, str, tuple[SpokenLine, ...], Sequence[Fact]], tuple[str, ...]]
+    history: Callable[[G], tuple[Exchange, ...]]
+    master_sections: Callable[[G], Rows]
+    narrator_view: Callable[[G], NarratorView]
+    player_view: Callable[[G], PlayerView]
+    over: Callable[[G], str | None]
+    authoring: Authoring
+    crossing: Transition[G] | None
+    extension: Transition[G] | None
 
     def __post_init__(self) -> None:
-        require_unique(f"tool names of the {self.id!r} engine", (one.name for one in self.tools))
+        tools = (*self.world_tools, *self.tools)
+        require_unique(f"tool names of the {self.id!r} engine", (one.name for one in tools))
 
-    def restored(self, raw: str) -> Game:
+    def restored(self, raw: str) -> G:
         value = decoded(raw)
         if (header := EngineHeader.model_validate(value)).engine != self.id:
             raise ValueError(f"the save plays {header.engine!r}, not {self.id!r}")
-        state = Game.model_validate(value)
+        state = self.game.model_validate(value)
         self.validate(state)
         return state
 
-    def master_sections(self, state: Game) -> Rows:
-        return render.master_sections(state, self.sheet_rows(state), self.sections)
-
-    def narrator_view(self, state: Game) -> NarratorView:
-        return render.narrator_view(state.world)
-
-    def player_view(self, state: Game) -> PlayerView:
-        return render.player_view(state, self.sheet_rows(state), self.over(state))
-
-    def answer(self, draft: Game, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
+    def answer(self, draft: G, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
         found = next((one for one in self.tools if one.name == chosen.name), None)
         if found is None:
             raise ValueError(
@@ -72,15 +94,23 @@ class Engine:
         return found.call(draft, chosen.args, rng)
 
 
+type AnyEngine = Engine[Any]
+
+
 def adjust[S: BaseModel](
-    state: Game, entity: Entity[S], key: str, counter: Counter, amount: int, why: str
+    player_id: EntityId,
+    entity: Entity[S],
+    key: str,
+    counter: Counter,
+    amount: int,
+    why: str,
 ) -> list[Fact]:
     before = counter.current
     counter.current = counter.clamped(before + amount)
     landed = counter.current - before
     if landed == 0:
         return []
-    return [_counter_fact(state, entity, key, counter, landed, why)]
+    return [_counter_fact(player_id, entity, key, counter, landed, why)]
 
 
 def keep_highest(
@@ -106,9 +136,14 @@ def load_packs[P: BaseModel](directories: Sequence[Path], model: type[P]) -> dic
 
 
 def _counter_fact[S: BaseModel](
-    state: Game, entity: Entity[S], key: str, counter: Counter, delta: int, why: str
+    player_id: EntityId,
+    entity: Entity[S],
+    key: str,
+    counter: Counter,
+    delta: int,
+    why: str,
 ) -> Fact:
     moved = f"{key.capitalize()} {delta:+d} -> {pool(counter)}"
-    card = moved if entity.id == state.world.player_id else f"{entity.name}: {moved}"
-    trace = f"{labeled(entity, state.world.player_id)} {key} {delta:+d} -> {pool(counter)}"
+    card = moved if entity.id == player_id else f"{entity.name}: {moved}"
+    trace = f"{labeled(entity, player_id)} {key} {delta:+d} -> {pool(counter)}"
     return entity_fact(entity, "counter_changed", f"{trace} ({why})", card=card)
