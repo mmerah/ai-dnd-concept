@@ -17,22 +17,16 @@ THE QUESTION THIS SCENE SETTLES:
 Can you get the way down to the vault out of this room, and out of Mara?
 
 YOU PLAY FOR:
-- Kael[player] (actor) — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
-  concept: A Wary Relic-Hunter; skills: Reads Old Stonework, Quiet Hands; frailties: Never Walks Away; gear: Pry Bar, Chalk and Wire, A Guttering Lantern; luck: 6/6
-
-CARRYING:
-- (none)
+- Kael[player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
+  concept: A Wary Relic-Hunter; skills: Reads Old Stonework, Quiet Hands; frailties: Never Walks Away; gear: Pry Bar, Chalk and Wire, A Guttering Lantern; goal: Find what has been sealed away, and open it; motive: Whatever was worth sealing is worth more unsealed; luck: 6/6
 
 HERE WITH THE PLAYER:
-- Mara[mara] (actor) — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
-  concept: A Cautious Scribe; skills: Reads a Faded Hand, Knows the Catalogue; frailties: Slow to Trust; gear: Ledger and Ink; luck: 6/6
+- Mara[mara] — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
+  concept: A Cautious Scribe; skills: Reads a Faded Hand, Knows the Catalogue; frailties: Slow to Trust; gear: Ledger and Ink; goal: Finish the catalogue before anyone strips the abbey; motive: It is the last thing the abbot asked of her; luck: 6/6
 
 HIDDEN HERE (the player has not found these):
-- the vault map[vault-map] (item) — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
-  detail: Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.
-
-ACTIVE THREADS:
-- The sealed vault[vault-seal] — Kael came for the vault under the abbey: the way down to it, the seal on its door, and what opening that seal costs.
+- the vault map[vault-map] — A creased chart of the undercroft, marking a stair the abbey's own plans deny. Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.
+  luck: 6/6
 
 WHAT THE TAGS IN PLAY MEAN:
 - Reads Old Stonework: Makes sense of inscriptions and stonework that everyone else reads as rubble.

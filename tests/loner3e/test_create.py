@@ -4,10 +4,10 @@ import pytest
 from core_test_support import ENGINES_BUILT, LONER3E, SCENARIOS, loner_sheet, updated
 
 from aidm.core.creation import Picks
-from aidm.core.entities import PLAYER_ID, EngineId
+from aidm.core.entities import EngineId
 from aidm.core.io import load_character, read_scenario, write_character
-from aidm.engines.core import AnyEngine
-from aidm.engines.loner3e.state import LUCK_MAX, Loner3eGame
+from aidm.engines.core import PLAYER_ID, AnyEngine
+from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame
 from aidm.engines.registry import begin_game
 
 OTHER = EngineId("ruleless")
@@ -18,6 +18,8 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     picks: Picks = {
         "pack": "srd",
         "concept": "A wandering scribe who counts doors",
+        "goal": "Count every door in the old city",
+        "motive": "The tally is the only thing that still makes sense",
         "skill-1": "quiet-hands",
         "skill-2": "reads-old-stonework",
         "frailty": "never-walks-away",

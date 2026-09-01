@@ -7,7 +7,7 @@ WHAT COMES NEXT is the player's own words about where they are going and what th
 Every scene must have all of these:
 
 1. A situation of real substance, and at least one cast member besides the player.
-2. At least one standing thread touched, opened or resolved.
+2. Bear on the player's `goal`, or bring their `nemesis` nearer.
 3. After the opening, one thing already established: a person, an object, a place, or a rumour. It does not have to be a person, and a person needs a reason to be there — the cast does not follow the player from scene to scene. Somebody the player left behind stays behind until the story brings them back.
 4. One `question`: what this scene exists to settle, in one sentence, written for the player to read. It must be answerable by what they do here, and settling it is what ends the scene. Never a yes-or-no the situation has already answered.
 5. When a source exists, a detail traceable to it.
@@ -18,7 +18,7 @@ Never name the player: they are put into the scene by code. Name everyone else b
 
 The scene's `secret` is what the `question` does not say: how it settles, what it costs, or what somebody here will not admit. Never restate the question in it. It is for the game master alone and is never read to the player.
 
-A thread's `note` is the opposite: the player reads it, so write what they know about that storyline, or the lead they have on it.
+A living character may carry a `goal`, a `motive` and a `nemesis`; an object, a vehicle or a curse does not. Every character rolls with luck of its own, so give a door or a storm the `skills` and `frailties` it resists with.
 
 Everything you need is below. Do not read, search or run anything in the repository.
 

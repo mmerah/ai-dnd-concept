@@ -4,6 +4,7 @@ from pathlib import Path
 from core_test_support import changed, opened, played, the_way_on
 
 from aidm.core.entities import EntityId
+from aidm.engines.core import PLAYER_ID
 
 
 def _scene(**changes: object) -> str:
@@ -23,56 +24,36 @@ def _scene(**changes: object) -> str:
     return json.dumps(scene)
 
 
-async def test_crossing_keeps_a_thread_advanced_after_the_worldsmith_snapshot(
+async def test_crossing_keeps_a_drive_set_after_the_worldsmith_snapshot(
     tmp_path: Path,
 ) -> None:
     table = opened(tmp_path)
-    table.spawner.answers["worldsmith"] = [
-        _scene(
-            threads={
-                "vault-seal": {
-                    "id": "vault-seal",
-                    "title": "The sealed vault",
-                    "status": "active",
-                    "note": "stale snapshot note",
-                }
-            }
-        )
-    ]
+    table.spawner.answers["worldsmith"] = [_scene()]
 
     _ = await played(table, "I have what I came for.", the_way_on())
     state = await played(
         table,
         "Out into the cloister walk.",
-        changed(
-            "advance_thread",
-            thread_id="vault-seal",
-            status="dormant",
-            note="The player now knows the seal is weakening.",
-        ),
+        changed("drive", entity_id=PLAYER_ID, goal="Get the vault map out safely"),
         arrival="Rain takes the arcade.",
         moving_on=True,
     )
 
-    thread = state.payload.world.threads["vault-seal"]
-    assert thread.status == "dormant"
-    assert thread.note == "The player now knows the seal is weakening."
+    assert state.payload.world.player.goal == "Get the vault map out safely"
 
 
 async def test_invalid_actor_from_crossing_is_rejected_before_commit(tmp_path: Path) -> None:
+    """A cast id already in the world only clashes once merged: soft checks let it through."""
     table = opened(tmp_path)
     table.spawner.answers["worldsmith"] = [
         _scene(
             cast={
-                "broken-actor": {
-                    "id": "broken-actor",
-                    "kind": "actor",
-                    "name": "Broken Actor",
-                    "brief": "A person with no rules sheet.",
-                    "sheet": None,
+                "mara": {
+                    "id": "mara",
+                    "name": "Another Mara",
+                    "brief": "Filed under an id the world already holds.",
                 }
             },
-            present=["mara", "broken-actor"],
         )
     ]
 
@@ -80,5 +61,5 @@ async def test_invalid_actor_from_crossing_is_rejected_before_commit(tmp_path: P
     state = await played(table, "Out into the cloister walk.", moving_on=True)
 
     assert state.payload.world.current.title == "The Abbot's Study"
-    assert EntityId("broken-actor") not in state.payload.world.cast
-    assert "has no sheet" in table.service.write_failure
+    assert state.payload.world.require(EntityId("mara")).name == "Mara"
+    assert "already in the cast" in table.service.write_failure

@@ -12,7 +12,7 @@ from aidm.core.model import AnyGame
 from aidm.core.play import Answer, PendingDecision, PendingOption
 from aidm.core.tools import MasterTool, NoArgs, apply_to_draft, master_tool
 from aidm.engines.core import AnyEngine
-from aidm.engines.loner3e.state import Loner3eGame
+from aidm.engines.loner3e.world import Loner3eGame
 from aidm.turn.run import RULES_WAIT, Turn, TurnStep, consume_answer
 
 

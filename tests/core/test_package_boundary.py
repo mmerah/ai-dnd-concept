@@ -7,8 +7,8 @@ SOURCE = Path(__file__).parents[2] / "src" / "aidm"
 ENGINES = ("aidm.engines.loner3e",)
 # The composition root builds the installed concrete engines.
 ROOTS = {"engines/registry.py"}
-# Flow: core <- kits <- engines <- turn <- app <- ui.
-LAYERS = ("core", "kits", "engines", "turn", "app")
+# Flow: core <- engines <- turn <- app <- ui.
+LAYERS = ("core", "engines", "turn", "app")
 ALLOWED: dict[str, set[str]] = {}
 # `ui` sits above them all, imports downwards, and additionally stays engine-agnostic.
 TOPS = {"ui": {"aidm.engines"}}
@@ -96,20 +96,3 @@ def test_no_module_names_a_concrete_engine() -> None:
         if not name.startswith(f"aidm.engines.{path.parts[-2]}")
     }
     assert naming == ROOTS
-
-
-def test_consumers_do_not_name_a_kit() -> None:
-    """The engine seam carries the world; naming any kit would put a world model above it."""
-    consumers = (
-        *_source_files("core"),
-        *_source_files("turn"),
-        *_source_files("app"),
-        *_source_files("ui"),
-    )
-    naming = {
-        str(path.relative_to(SOURCE))
-        for path in consumers
-        for name in _file_imports(path)
-        if name.startswith("aidm.kits")
-    }
-    assert not naming

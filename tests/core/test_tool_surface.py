@@ -23,13 +23,14 @@ import aidm.app.spawn as spawn_module
 from aidm.app.launch import LaunchTarget
 from aidm.app.mcp import call, offered
 from aidm.app.spawn import CliSpawner, final_message
-from aidm.core.entities import PLAYER_ID, EngineId, EntityId
+from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import WorldsmithAnswer
 from aidm.core.play import Narration, narration_text
-from aidm.engines.core import Transition
-from aidm.engines.loner3e.state import Loner3eGame, LonerScene
-from aidm.kits.scenes import worldsmith
-from aidm.turn.run import ALREADY_OPEN, DECIDING, NO_TURN, START_FIRST, TURN_TOOLS, Turn
+from aidm.engines.core import PLAYER_ID, Transition
+from aidm.engines.loner3e import worldsmith
+from aidm.engines.loner3e.world import Loner3eGame
+from aidm.engines.loner3e.worldsmith import SceneDraft
+from aidm.turn.run import ALREADY_OPEN, NO_TURN, START_FIRST, TURN_TOOLS, Turn
 
 VAULT_MAP = EntityId("vault-map")
 MARA = EntityId("mara")
@@ -167,7 +168,7 @@ async def test_a_decision_on_the_table_holds_the_next_scene_back_too(tmp_path: P
         narration="She holds on.",
     )
 
-    assert table.refusals[-1] == DECIDING
+    assert "waiting on the player" in table.answers[-1]
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 
 
@@ -221,8 +222,8 @@ async def test_a_transition_without_an_arrival_brief_extends_without_a_turn(tmp_
     def ready(_state: Loner3eGame) -> bool:
         return True
 
-    async def write(state: Loner3eGame, _intent: str, _answer: WorldsmithAnswer) -> LonerScene:
-        written = LonerScene.model_validate_json(_scene())
+    async def write(state: Loner3eGame, _intent: str, _answer: WorldsmithAnswer) -> SceneDraft:
+        written = SceneDraft.model_validate_json(_scene())
         if (refused := worldsmith.scene_refusal(written, state.payload.world)) is not None:
             raise ValueError(refused)
         return written
@@ -248,11 +249,7 @@ async def test_a_transition_without_an_arrival_brief_extends_without_a_turn(tmp_
 
 def test_authoring_build_raises_on_an_unmet_bar(tmp_path: Path) -> None:
     table = opened(tmp_path)
-    mara = table.state.payload.world.require(MARA)
-    scene = LonerScene.model_validate(
-        json.loads(_scene(present=["mara"], hidden=[]))
-        | {"cast": {str(MARA): mara.model_dump(round_trip=True)}}
-    )
+    scene = SceneDraft.model_validate(json.loads(_scene(present=[], hidden=[])))
 
     with pytest.raises(ValueError, match="the scene needs"):
         _ = table.service.engine.authoring.build("T", "p", "", table.state.packs, scene, "")
@@ -282,7 +279,7 @@ async def test_a_player_who_died_moving_on_does_not_arrive(tmp_path: Path) -> No
     state = await played(
         table,
         "Down the stair, and quickly.",
-        changed("kill", actor_id=PLAYER_ID),
+        changed("kill", entity_id=PLAYER_ID),
         moving_on=True,
     )
 
@@ -299,7 +296,7 @@ async def test_the_spent_note_never_reaches_the_scene_it_is_not_about(tmp_path: 
     state = await played(
         table,
         "Out into the cloister walk.",
-        changed("kill", actor_id=MARA),
+        changed("kill", entity_id=MARA),
         arrival="Rain takes the arcade.",
         moving_on=True,
     )
@@ -443,7 +440,7 @@ async def test_the_worldsmith_is_shown_the_source_the_cast_and_what_actually_hap
     assert "Out into the cloister walk." in prompt
     # What the scene was authored as is not what the scene became; the next one follows the second.
     assert "A flagstone sits proud of its neighbours." in prompt
-    assert json.dumps(LonerScene.model_json_schema()["properties"]["place"]["title"]) not in prompt
+    assert json.dumps(SceneDraft.model_json_schema()["properties"]["place"]["title"]) not in prompt
 
 
 async def test_abandoning_a_spawn_kills_the_process_group_it_started(

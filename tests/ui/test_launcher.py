@@ -13,7 +13,7 @@ from aidm.app.runtime import Runtime
 from aidm.config import Settings
 from aidm.core.entities import EngineId
 from aidm.core.io import ENCODING, FileStore
-from aidm.engines.loner3e.state import Loner3eGame
+from aidm.engines.loner3e.world import Loner3eGame
 
 MIRROR = EngineId("mirror")
 # A second engine installed, so the engine the launcher pairs on is observable at all.
@@ -139,7 +139,7 @@ def test_a_save_that_lists_but_will_not_open_still_reaches_the_player(tmp_path: 
     """The header is what the launcher reads; the payload is only read when the game opens."""
     settings = ui_settings(tmp_path)
     raw = _opening_state(settings).model_dump(mode="json")
-    raw["payload"]["world"]["cast"]["ghost"] = {"kind": "actor"}
+    raw["payload"]["world"]["cast"]["ghost"] = {"name": "Ghost"}
     _ = (tmp_path / "unopenable.json").write_text(json.dumps(raw), encoding=ENCODING)
 
     (save,) = load_catalog(settings, ENGINES_BUILT).saves
@@ -164,10 +164,8 @@ def test_a_save_the_app_cannot_read_does_not_hide_the_others(tmp_path: Path) -> 
 SOURCE_MD = REPOSITORY_ROOT / "tests/core/fixtures/source/drowned-road.md"
 _OPENING_ITEM: JsonValue = {
     "id": "bell-rope",
-    "kind": "item",
     "name": "the bell rope",
     "brief": "Frayed, and still wet.",
-    "sheet": {"kind": "item"},
 }
 _OPENING: dict[str, JsonValue] = {
     "place": "sunken-bell",
@@ -180,14 +178,12 @@ _OPENING: dict[str, JsonValue] = {
     "cast": {
         "hana": {
             "id": "hana",
-            "kind": "actor",
             "name": "Hana",
             "brief": "A ferrywoman who knows the flooded streets.",
-            "sheet": {"kind": "actor", "concept": "A ferrywoman"},
+            "concept": "A ferrywoman",
         },
         "bell-rope": _OPENING_ITEM,
     },
-    "threads": {"the-bell": {"id": "the-bell", "title": "Who rings the bell"}},
 }
 
 
@@ -224,16 +220,20 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
 
 
 async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: Path) -> None:
-    """The scene bar is the kit's; only the engine knows an actor of its own needs a sheet."""
+    """A structurally broken cast entry fails to parse on both tries, so nothing reaches disk."""
     scenarios = tmp_path / "scenarios"
     cast: dict[str, JsonValue] = {
-        "hana": {"id": "hana", "kind": "actor", "name": "Hana", "brief": "A ferrywoman."}
+        "hana": {
+            "id": "hana-imposter",
+            "name": "Hana",
+            "brief": "A ferrywoman.",
+        }
     }
-    sheetless = json.dumps(_OPENING | {"cast": {**cast, "bell-rope": _OPENING_ITEM}})
-    spawner = ScriptedSpawner(answers={"worldsmith": [sheetless, sheetless]})
+    broken = json.dumps(_OPENING | {"cast": {**cast, "bell-rope": _OPENING_ITEM}})
+    spawner = ScriptedSpawner(answers={"worldsmith": [broken, broken]})
     runtime = Runtime(ui_settings(tmp_path, scenarios), spawner)
 
-    with pytest.raises(ValueError, match="has no sheet"):
+    with pytest.raises(ValueError, match="filed under"):
         _ = await runtime.new_scenario(
             LONER3E, "The Sunken Bell", "The tide.", None, ("srd",), "kael", art_style=""
         )

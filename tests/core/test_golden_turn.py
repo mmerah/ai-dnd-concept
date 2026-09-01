@@ -8,12 +8,12 @@ from core_test_support import ENGINE_IDS, Call, opened_for, played
 from golden_test_support import FIXTURES, dumped, golden, golden_json
 from golden_turn_support import NARRATION
 
-from aidm.core.entities import PLAYER_ID, EngineId
+from aidm.core.entities import EngineId
 from aidm.core.facts import Fact
 from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, SpokenLine
-from aidm.engines.loner3e.state import Loner3eGame
-from aidm.kits.scenes.state import Scene, SceneRun
+from aidm.engines.core import PLAYER_ID
+from aidm.engines.loner3e.world import Loner3eGame, Scene, SceneRun
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
 SEED = 11

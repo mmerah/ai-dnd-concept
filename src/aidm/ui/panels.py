@@ -10,10 +10,6 @@ NO_WAY_ON = "The way on could not be written. You are still where you were."
 def scene_sidebar(session: GameService) -> None:
     view = session.player_view()
     with ui.column().classes("w-full").style("gap: 0.75rem"):
-        with ui.column().classes("game-card w-full"):
-            heading("Sheet", tight=True)
-            for label, text in view.sheet:
-                labeled_value(label, text)
         for panel in view.panels:
             with ui.column().classes("game-card w-full"):
                 heading(panel.title, tight=True)

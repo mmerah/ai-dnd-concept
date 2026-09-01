@@ -14,16 +14,15 @@ from core_test_support import (
     loner_sheet,
     scenario,
     updated,
-    with_entity,
 )
 from pydantic import ValidationError
 
-from aidm.core.entities import DEAD, PLAYER_ID, EngineId, EntityId, Trait
+from aidm.core.entities import EngineId, EntityId
 from aidm.core.facts import Fact
 from aidm.core.io import load_character, read_scenario
 from aidm.core.tools import apply_to_draft
-from aidm.engines.loner3e.state import LUCK_MAX, Loner3eGame, LonerSheet, LonerWorld
-from aidm.kits.entities import Entity
+from aidm.engines.core import PLAYER_ID
+from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, LonerWorld
 
 MARA = EntityId("mara")
 ELENA = EntityId("elena")
@@ -69,18 +68,6 @@ def test_the_scene_world_rejects_state_it_cannot_stand_on() -> None:
     with pytest.raises(ValidationError, match="scene names"):
         _ = _with_run(world, present=["ghost"])
 
-    with pytest.raises(ValidationError, match="who is not in the cast"):
-        _ = with_entity(
-            state,
-            Entity[LonerSheet](
-                id=EntityId("stray"),
-                kind="item",
-                name="a stray page",
-                brief="Torn from a ledger.",
-                carried_by=EntityId("missing"),
-            ),
-        )
-
     with pytest.raises(ValidationError, match="already met"):
         _ = _with_run(world, present=[PLAYER_ID], hidden=[MARA])
 
@@ -89,20 +76,10 @@ def _with_run(world: LonerWorld, **changes: object) -> LonerWorld:
     return updated(world, runs=[world.run.model_dump(round_trip=True) | changes])
 
 
-def test_an_engine_refuses_an_actor_its_rules_cannot_roll() -> None:
-    """Loner deviation 2 covers things, not actors: an actor nobody wrote has no sheet to roll."""
-    engine, state = initialized()
-    draft = state.draft()
-    draft.payload.world.require(MARA).sheet = None
-
-    with pytest.raises(ValueError, match="has no sheet"):
-        engine.validate(draft)
-
-
 def test_the_party_rules_refuse_the_dead_and_the_doubled() -> None:
     _, state = initialized()
     dead = state.draft()
-    dead.payload.world.require(MARA).traits.append(Trait(id=DEAD, name="Dead"))
+    dead.payload.world.require(MARA).alive = False
     dead.payload.world.companions.append(MARA)
     with pytest.raises(ValueError, match="cannot travel with the player"):
         _ = dead.committed()
@@ -201,7 +178,7 @@ def test_a_told_fact_about_an_unmet_or_unknown_entity_is_refused() -> None:
 def test_a_save_whose_payload_the_engine_rejects_is_refused() -> None:
     engine, state = initialized()
     raw = state.model_dump(mode="json")
-    raw["payload"]["world"]["cast"]["ghost"] = {"kind": "actor"}
+    raw["payload"]["world"]["cast"]["ghost"] = {"name": "Ghost"}
     with pytest.raises(ValidationError):
         _ = engine.restored(json.dumps(raw))
 

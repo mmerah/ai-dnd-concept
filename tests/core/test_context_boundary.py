@@ -3,36 +3,24 @@ from core_test_support import ENGINES_BUILT, LONER3E, initialized, with_entity
 from aidm.core.entities import EntityId
 from aidm.core.views import NarratorView
 from aidm.engines.core import AnyEngine
-from aidm.engines.loner3e.state import ActorSheet, Loner3eGame, LonerSheet
-from aidm.kits.entities import Entity
+from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter
 from aidm.turn.context import ANSWERED_BY_OPTION, render_narrator, render_picture
 
 SECRET = EntityId("hidden-actor")
 
 
 def _state() -> Loner3eGame:
-    """An unmet actor in the scene, holding an item, so both leak paths are open at once."""
+    """An unmet character and a known one, both here, so both leak paths are open at once."""
     _, state = initialized()
     state = with_entity(
         state,
-        Entity[LonerSheet](
-            id=SECRET,
-            kind="actor",
-            name="The Secret",
-            brief="Unrevealed canon.",
-            sheet=ActorSheet(concept="A Watcher"),
+        LonerCharacter(
+            id=SECRET, name="The Secret", brief="Unrevealed canon.", concept="A Watcher"
         ),
     )
     return with_entity(
         state,
-        Entity[LonerSheet](
-            id=EntityId("ledger"),
-            kind="item",
-            name="a ledger",
-            brief="Mara's notes.",
-            known=True,
-            carried_by=SECRET,
-        ),
+        LonerCharacter(id=EntityId("ledger"), name="a ledger", brief="Mara's notes.", known=True),
     )
 
 
@@ -70,20 +58,13 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
     assert held.payload.world.current.secret in str(master)
 
 
-def test_a_carried_item_never_names_the_holder_the_player_has_not_met() -> None:
-    held = _state()
-
-    assert "carried by the npc The Secret[hidden-actor]" in _master_prompt(held, "I look around.")
-    assert "The Secret" not in str(_engine().narrator_view(held).model_dump())
-
-
 def test_the_master_is_shown_the_hidden_canon_and_the_tags_in_play() -> None:
     held = _state()
 
     master = _master_prompt(held, "I look around.")
 
     assert "Kael[player]" in master
-    assert "a ledger[ledger] (item)" in master
+    assert "a ledger[ledger]" in master
     assert "The Secret[hidden-actor]" in master
     # Hidden here: the map the player has not found yet.
     assert "the vault map[vault-map]" in master

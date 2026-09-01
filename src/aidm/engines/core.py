@@ -2,12 +2,12 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
-from typing import Any
+from typing import Any, Self
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import Counter, EngineId, EntityId, Slug, pool, require_unique
+from aidm.core.entities import EngineId, EntityId, Mutable, Slug, require_unique
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.io import ENCODING, decoded
 from aidm.core.model import (
@@ -20,7 +20,24 @@ from aidm.core.model import (
 from aidm.core.play import DecisionOption, Exchange, PendingOption, SpokenLine
 from aidm.core.tools import MasterTool, Validate
 from aidm.core.views import NarratorView, PlayerView, Rows
-from aidm.kits.entities import Entity, entity_fact, labeled
+
+PLAYER_ID = EntityId("player")
+
+
+class Counter(Mutable):
+    current: int
+    maximum: int
+
+    @model_validator(mode="after")
+    def _within_bounds(self) -> Self:
+        if self.current < 0:
+            raise ValueError(f"{self.current} is below zero")
+        if self.current > self.maximum:
+            raise ValueError(f"{self.current} is above maximum {self.maximum}")
+        return self
+
+    def clamped(self, value: int) -> int:
+        return min(max(value, 0), self.maximum)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -42,7 +59,7 @@ class Transition[G: Game[Any]]:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Engine[G: Game[Any]]:
-    """The seam joining an engine's rules to its chosen world kit."""
+    """The seam joining an engine's rules to the platform."""
 
     id: EngineId
     title: str
@@ -90,20 +107,8 @@ class Engine[G: Game[Any]]:
 type AnyEngine = Engine[Any]
 
 
-def adjust[S: BaseModel](
-    player_id: EntityId,
-    entity: Entity[S],
-    key: str,
-    counter: Counter,
-    amount: int,
-    why: str,
-) -> list[Fact]:
-    before = counter.current
-    counter.current = counter.clamped(before + amount)
-    landed = counter.current - before
-    if landed == 0:
-        return []
-    return [_counter_fact(player_id, entity, key, counter, landed, why)]
+def pool(counter: Counter) -> str:
+    return f"{counter.current}/{counter.maximum}"
 
 
 def keep_highest(
@@ -126,17 +131,3 @@ def load_packs[P: BaseModel](directories: Sequence[Path], model: type[P]) -> dic
         for path in sorted(directory.glob("*.json")):
             packs[path.stem] = model.model_validate_json(path.read_text(encoding=ENCODING))
     return packs
-
-
-def _counter_fact[S: BaseModel](
-    player_id: EntityId,
-    entity: Entity[S],
-    key: str,
-    counter: Counter,
-    delta: int,
-    why: str,
-) -> Fact:
-    moved = f"{key.capitalize()} {delta:+d} -> {pool(counter)}"
-    card = moved if entity.id == player_id else f"{entity.name}: {moved}"
-    trace = f"{labeled(entity, player_id)} {key} {delta:+d} -> {pool(counter)}"
-    return entity_fact(entity, "counter_changed", f"{trace} ({why})", card=card)

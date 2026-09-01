@@ -18,7 +18,6 @@ RULES_WAIT = "the rules now wait on the player's decision"
 NO_TURN = "no turn is open. The player starts one from the page; wait to be spawned again."
 START_FIRST = "call `start_turn` first: it opens the turn and hands back the picture."
 ALREADY_OPEN = "the turn is already open. `scene` gives the picture back."
-DECIDING = "the rules are waiting on the player; the scene after this one waits with them."
 GAME_OVER = "The game is over; the player restarts from the page."
 
 type TurnStep = Literal["master", "narrator", "worldsmith"]
@@ -94,8 +93,6 @@ class Turn:
         if found is None:
             raise ValueError(f"{name!r} is not a tool of the {self.engine.id!r} engine.")
         pending = self.draft.pending
-        if name == "next_scene" and pending is not None:
-            raise ValueError(DECIDING)
         if pending is not None and not (found.during_suspension and self.suspended_at_start):
             # A plain answer, not a refusal: a retry prompt would tell the model to try again.
             return (
@@ -137,8 +134,8 @@ class TurnTool:
 TURN_TOOLS: tuple[TurnTool, ...] = (
     TurnTool(
         "start_turn",
-        "Open the turn and get the whole game back: the scene, who is here, what is hidden here,"
-        " the threads, the notes from the rules and the recent play. Call it first every turn.",
+        "Open the turn and get the whole picture back: the world as it stands, the notes from "
+        "the rules and the recent play. Call it first every turn.",
         Turn.start_turn,
     ),
     TurnTool(

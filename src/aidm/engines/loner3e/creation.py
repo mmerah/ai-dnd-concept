@@ -9,21 +9,23 @@ from aidm.core.entities import EngineId, Frozen, Slug, slug
 from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption
 from aidm.core.views import Rows
-from aidm.engines.loner3e.state import (
+from aidm.engines.loner3e.world import (
     DIE_FACE,
-    ActorSheet,
     Loner3eCharacter,
     Loner3eCharacterFile,
+    player_character,
 )
 
 _AUTHORING = (
     "LONER 3E AUTHORING\n"
-    "Every actor needs an `actor` sheet with a concept and any fitting skills, frailties, or "
-    "gear. Anything that can resist without a will of its own takes an `item` sheet, which is "
-    "luck alone. Loner tags are freeform descriptions: use selected pack entries when they fit "
-    "and invent scenario-specific tags when they are clearer. Only a pack tag carries a meaning "
-    "the game master can look up, so an invented tag that does not say what it does needs one "
-    "sentence in that entity's `description`: positions are judged from it."
+    "Every character — a person, an object, a vehicle or a curse alike — has a one-line "
+    "`concept` and any fitting `skills`, `frailties` or `gear`, and rolls with luck of its own. "
+    "Living characters may carry a `goal`, a `motive` and a `nemesis`; objects, vehicles and "
+    "curses do not. "
+    "Loner tags are freeform descriptions: use selected pack entries when they fit and invent "
+    "scenario-specific tags when they are clearer. Only a pack tag carries a meaning the game "
+    "master can look up, so an invented tag that does not say what it does needs one sentence "
+    "in that character's `brief`: positions are judged from it."
 )
 
 
@@ -64,6 +66,8 @@ def creation_steps(packs: Mapping[str, Pack], picks: Picks) -> tuple[CreationSte
             prompt="Write a one-line concept",
             hint=", ".join(entry.label for entry in pack.concepts[:3]),
         ),
+        CreationStep(id="goal", prompt="What does your character want?"),
+        CreationStep(id="motive", prompt="Why do they want it?"),
         CreationStep(id="skill-1", prompt="Choose skill 1", options=pack.skills),
         CreationStep(
             id="skill-2",
@@ -86,27 +90,26 @@ def create_character(
     check_picks(creation_steps(packs, picks), picks)
     chosen = picked(picks, "pack")
     pack = packs[chosen]
-    sheet = ActorSheet(
+    payload = Loner3eCharacter(
         concept=picked(picks, "concept"),
+        goal=picked(picks, "goal"),
+        motive=picked(picks, "motive"),
         skills=tuple(
             find_entry(pack.skills, picked(picks, f"skill-{one}")).label for one in (1, 2)
         ),
         frailties=(find_entry(pack.frailties, picked(picks, "frailty")).label,),
         gear=tuple(find_entry(pack.gear, picked(picks, f"gear-{one}")).label for one in (1, 2)),
+        twist_pack=chosen,
     )
     return Loner3eCharacterFile(
-        id=slug(name, ()),
-        engine=EngineId("loner3e"),
-        name=name,
-        brief=brief,
-        payload=Loner3eCharacter(sheet=sheet, twist_pack=chosen),
+        id=slug(name, ()), engine=EngineId("loner3e"), name=name, brief=brief, payload=payload
     )
 
 
 def preview_character(character: AnyCharacter) -> Rows:
     if not isinstance(character, Loner3eCharacterFile):
         raise ValueError("Loner 3E received an incompatible character")
-    return character.payload.sheet.rows()
+    return player_character(character).rows()
 
 
 def find_entry(entries: Sequence[DecisionOption], chosen: str) -> DecisionOption:

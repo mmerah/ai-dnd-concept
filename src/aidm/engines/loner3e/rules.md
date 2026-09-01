@@ -4,13 +4,11 @@ Loner 3e rules CC BY-SA Roberto Bisceglie, Zotiquest Games — lonersrd.zotiques
 
 ## The character sheet
 
-Every actor has a one-line `concept`, plus `skills`, `frailties`, `gear`, and 6 luck. These are word tags, not numbers. Traits on the actor, their gear, the scene, and people here also count as tags.
+Every character has a one-line `concept`, plus `skills`, `frailties`, `gear`, `conditions` and 6 luck. These are word tags, not numbers. A person, an object, a vehicle or a curse alike: everything here is a character. Living characters also have a `goal`, a `motive` and a `nemesis`.
 
-Luck is not health. It shows how long an actor can avoid losing a conflict.
+Luck is not health. It shows how long a character can avoid losing a conflict.
 
-Skills, frailties, and gear change only through advancement. Use `add_trait` for other lasting changes, such as an injury, fear, or condition.
-
-Create only ordinary incidental objects, with `change_world` and the `improvise_item` verb; do not invent named people, places, or important items.
+Skills and frailties grow through advancement. Use `change_world` with `change_tags` when the story plainly writes a tag: `gear` for a thing taken, given, lost or used up; a `condition` for a lasting mark such as an injury, a fear or a debt, lifted the same way when it ends. When play shows what a character wants, why, or who stands in their way, write it with the `drive` verb.
 
 ## When to roll
 
@@ -20,7 +18,7 @@ Write a closed question where yes means what the actor wants. The acting side is
 
 Set `position` from the story:
 
-- `advantage`: a helpful skill, gear tag, trait, or situation clearly matters.
+- `advantage`: a helpful skill, gear tag, condition, or situation clearly matters.
 - `disadvantage`: a frailty, opposing tag, or situation clearly works against the actor.
 - `neutral`: neither side clearly wins.
 
@@ -41,18 +39,28 @@ Keep an answered question settled. If a result fits awkwardly, reveal a complica
 
 ## Conflicts
 
-A conflict has two active sides, such as a fight, chase, hunt, or argument. When another actor resists, set `opponent_id` to their exact id; a thing here that fights back, such as a vehicle, a machine, or a cursed object, takes its item id there in the same way. This field makes the exchange affect luck. Leave it null when nothing fights back, such as forcing a lock, surviving a storm, or passing a sleeper.
+A conflict has two active sides, such as a fight, chase, hunt, or argument. When another character resists, set `opponent_id` to their exact id: a person, a vehicle, a machine or a cursed object all resist the same way. This field makes the exchange affect luck. Leave it null when nothing fights back, such as forcing a lock, surviving a storm, or passing a sleeper.
 
 Run one conflict exchange per turn. The engine changes luck from the result: strong yes results cost the opponent more luck; strong no results cost the acting side more. Do not add a second effect just to represent a landed blow. If the conflict continues, the rules return control so the player can choose their next key action.
 
-At 0 luck, that actor loses the conflict. Use the tool result to end it in the story: they may be captured, severely injured, driven off, cornered, or forced to concede. This does not automatically mean death. If the ending leaves a lasting mark on either side, write it now with `add_trait`: this is the one point in a conflict where that is right. The engine restores both sides' luck.
+At 0 luck, that character loses the conflict. Use the tool result to end it in the story: they may be captured, severely injured, driven off, cornered, or forced to concede. This does not automatically mean death. If the ending leaves a lasting mark on either side, write it now with `change_tags`: this is the one point in a conflict where that is right. The engine restores both sides' luck.
 
-Use `restore_luck` after a conflict ends another way and the actor has had a breath. Hazards outside a conflict still use `roll_question`.
+Use `restore_luck` after a conflict ends another way and the character has had a breath. Hazards outside a conflict still use `roll_question`.
 
-## Twists and chapters
+## Twists and the adventure's end
 
 After enough tied rolls, the engine returns a twist subject and action. Treat the pair as a complication arriving this turn, and apply any lasting changes with tools. Keep the pair; do not reroll it.
 
-Use `complete_chapter` once when the whole adventure closes, usually when its main thread resolves. A scene ending is not enough. This records the advancement owed.
+Use `complete_chapter` once when the whole adventure closes, usually when its main goal is settled. A scene ending is not enough. This records the advancement owed.
 
 Match the turn's mood: Dramatic raises pressure, Quiet gives space to recover or plan, and Meanwhile lets the wider world move. Use the mood the story has earned.
+
+## Let the player choose where the story goes
+
+Every scene has one question, given to you as THE QUESTION THIS SCENE SETTLES. Play until it is settled — answered, refused, or made moot by what the player did. NOTES FROM THE RULES may also tell you a scene looks finished.
+
+When it is settled, call `next_scene` once. The Narrator then closes the scene and asks the player what they want to pursue. Do not decide for them, do not offer them a list, and do not describe the next place.
+
+The player is not forced to leave. They may keep playing here, and you keep playing with them; the scene stays open until they say where they are going. Their answer is what the next scene is built from.
+
+`next_scene` does not end the turn. Finish what the player's action caused, then exit.

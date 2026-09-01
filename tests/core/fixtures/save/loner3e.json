@@ -18,169 +18,159 @@
       "cast": {
         "mara": {
           "id": "mara",
-          "kind": "actor",
           "name": "Mara",
           "brief": "The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.",
-          "description": "",
           "known": true,
-          "traits": [],
-          "sheet": {
-            "kind": "actor",
-            "chapters": 0,
-            "concept": "A Cautious Scribe",
-            "skills": [
-              "Reads a Faded Hand",
-              "Knows the Catalogue"
-            ],
-            "frailties": [
-              "Slow to Trust"
-            ],
-            "gear": [
-              "Ledger and Ink"
-            ],
-            "luck": {
-              "current": 6,
-              "maximum": 6
-            },
-            "milestones": 0
+          "concept": "A Cautious Scribe",
+          "skills": [
+            "Reads a Faded Hand",
+            "Knows the Catalogue"
+          ],
+          "frailties": [
+            "Slow to Trust"
+          ],
+          "gear": [
+            "Ledger and Ink"
+          ],
+          "conditions": [],
+          "goal": "Finish the catalogue before anyone strips the abbey",
+          "motive": "It is the last thing the abbot asked of her",
+          "nemesis": "",
+          "luck": {
+            "current": 6,
+            "maximum": 6
           },
-          "carried_by": null
+          "alive": true,
+          "advances_owed": 0
         },
         "vault-map": {
           "id": "vault-map",
-          "kind": "item",
           "name": "the vault map",
-          "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",
-          "description": "Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.",
+          "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny. Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.",
           "known": true,
-          "traits": [],
-          "sheet": null,
-          "carried_by": null
+          "concept": "",
+          "skills": [],
+          "frailties": [],
+          "gear": [],
+          "conditions": [],
+          "goal": "",
+          "motive": "",
+          "nemesis": "",
+          "luck": {
+            "current": 6,
+            "maximum": 6
+          },
+          "alive": true,
+          "advances_owed": 0
         },
         "tomas": {
           "id": "tomas",
-          "kind": "actor",
           "name": "Brother Tomas",
           "brief": "A deaf old porter who sweeps the cloister and knows almost nothing about the vault.",
-          "description": "",
           "known": false,
-          "traits": [],
-          "sheet": {
-            "kind": "actor",
-            "chapters": 0,
-            "concept": "A Deaf Old Porter",
-            "skills": [
-              "Knows Every Door"
-            ],
-            "frailties": [
-              "Hears Almost Nothing"
-            ],
-            "gear": [
-              "Twig Broom"
-            ],
-            "luck": {
-              "current": 6,
-              "maximum": 6
-            },
-            "milestones": 0
+          "concept": "A Deaf Old Porter",
+          "skills": [
+            "Knows Every Door"
+          ],
+          "frailties": [
+            "Hears Almost Nothing"
+          ],
+          "gear": [
+            "Twig Broom"
+          ],
+          "conditions": [],
+          "goal": "",
+          "motive": "",
+          "nemesis": "",
+          "luck": {
+            "current": 6,
+            "maximum": 6
           },
-          "carried_by": null
+          "alive": true,
+          "advances_owed": 0
         },
         "elena": {
           "id": "elena",
-          "kind": "actor",
           "name": "Elena",
-          "brief": "The vault's former archivist; she alone remembers the sealing rite, and she names a price before she gives it up.",
-          "description": "She catalogued the vault ledgers beside Mara for two winters, until the night she went below alone and never came back up. The rite is in her head and nowhere else.",
+          "brief": "The vault's former archivist; she alone remembers the sealing rite, and she names a price before she gives it up. She catalogued the vault ledgers beside Mara for two winters, until the night she went below alone and never came back up. The rite is in her head and nowhere else.",
           "known": false,
-          "traits": [],
-          "sheet": {
-            "kind": "actor",
-            "chapters": 0,
-            "concept": "A Ruined Archivist",
-            "skills": [
-              "Knows the Old Rites",
-              "Names Her Price"
-            ],
-            "frailties": [
-              "Flinches at the Dark"
-            ],
-            "gear": [
-              "Hooded Lantern"
-            ],
-            "luck": {
-              "current": 6,
-              "maximum": 6
-            },
-            "milestones": 0
+          "concept": "A Ruined Archivist",
+          "skills": [
+            "Knows the Old Rites",
+            "Names Her Price"
+          ],
+          "frailties": [
+            "Flinches at the Dark"
+          ],
+          "gear": [
+            "Hooded Lantern"
+          ],
+          "conditions": [],
+          "goal": "Be paid for the sealing rite",
+          "motive": "Two winters below earned her that much",
+          "nemesis": "",
+          "luck": {
+            "current": 6,
+            "maximum": 6
           },
-          "carried_by": null
+          "alive": true,
+          "advances_owed": 0
         },
         "cloister-rat": {
           "id": "cloister-rat",
-          "kind": "actor",
           "name": "a bloated rat",
           "brief": "It has grown fat on the dead garden and does not run from a lantern.",
-          "description": "",
           "known": false,
-          "traits": [],
-          "sheet": {
-            "kind": "actor",
-            "chapters": 0,
-            "concept": "A Bloated Cloister Rat",
-            "skills": [
-              "Slips Into the Walls",
-              "Bites and Holds On"
-            ],
-            "frailties": [
-              "Does Not Run"
-            ],
-            "gear": [],
-            "luck": {
-              "current": 6,
-              "maximum": 6
-            },
-            "milestones": 0
+          "concept": "A Bloated Cloister Rat",
+          "skills": [
+            "Slips Into the Walls",
+            "Bites and Holds On"
+          ],
+          "frailties": [
+            "Does Not Run"
+          ],
+          "gear": [],
+          "conditions": [],
+          "goal": "",
+          "motive": "",
+          "nemesis": "",
+          "luck": {
+            "current": 6,
+            "maximum": 6
           },
-          "carried_by": null
+          "alive": true,
+          "advances_owed": 0
         },
         "player": {
           "id": "player",
-          "kind": "actor",
           "name": "Kael",
           "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
-          "description": "",
           "known": true,
-          "traits": [
-            {
-              "id": "listening",
-              "name": "Listening",
-              "text": "(condition) Listening for the next shift of weight behind the door."
-            }
+          "concept": "A Wary Relic-Hunter",
+          "skills": [
+            "Reads Old Stonework",
+            "Quiet Hands"
           ],
-          "sheet": {
-            "kind": "actor",
-            "chapters": 0,
-            "concept": "A Wary Relic-Hunter",
-            "skills": [
-              "Reads Old Stonework",
-              "Quiet Hands"
-            ],
-            "frailties": [
-              "Never Walks Away"
-            ],
-            "gear": [
-              "Pry Bar",
-              "Chalk and Wire",
-              "A Guttering Lantern"
-            ],
-            "luck": {
-              "current": 6,
-              "maximum": 6
-            },
-            "milestones": 0
+          "frailties": [
+            "Never Walks Away"
+          ],
+          "gear": [
+            "Pry Bar",
+            "Chalk and Wire",
+            "A Guttering Lantern"
+          ],
+          "conditions": [
+            "Listening"
+          ],
+          "goal": "Find what has been sealed away, and open it",
+          "motive": "Whatever was worth sealing is worth more unsealed",
+          "nemesis": "",
+          "luck": {
+            "current": 6,
+            "maximum": 6
           },
-          "carried_by": null
+          "alive": true,
+          "advances_owed": 0
         }
       },
       "runs": [
@@ -249,7 +239,7 @@
               "facts": [
                 {
                   "kind": "entity_discovered",
-                  "trace": "learned of the item the vault map[vault-map]",
+                  "trace": "learned of the vault map[vault-map]",
                   "told": true,
                   "entity_id": "vault-map",
                   "card": "The vault map discovered",
@@ -291,11 +281,11 @@
                   ]
                 },
                 {
-                  "kind": "trait_added",
-                  "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
+                  "kind": "tags_changed",
+                  "trace": "the player Kael[player] condition +Listening",
                   "told": true,
                   "entity_id": "player",
-                  "card": "Kael: new trait Listening",
+                  "card": "Now: Listening",
                   "dice": []
                 }
               ],
@@ -306,14 +296,6 @@
           "spent": ""
         }
       ],
-      "threads": {
-        "vault-seal": {
-          "id": "vault-seal",
-          "title": "The sealed vault",
-          "status": "active",
-          "note": "Kael came for the vault under the abbey: the way down to it, the seal on its door, and what opening that seal costs."
-        }
-      },
       "companions": [],
       "player_id": "player",
       "source": ""

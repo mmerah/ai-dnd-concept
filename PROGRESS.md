@@ -11,6 +11,7 @@ decided along the way, and anything left known-and-accepted.
 | 1 — Maze Rats and the rooms kit deleted | 6,365 | 4,144 |
 | 2 — the seam and the player view | 6,334 | 4,221 |
 | 2b — mechanical cuts from the phase 2 review | 6,225 | 4,202 |
+| 3 — Loner owns its world; `kits/` deleted; SRD-minimal world; seven files | 5,734 | 4,117 |
 
 ## Why the plan was rewritten (2026-09-01)
 
@@ -50,8 +51,8 @@ recommendation independently and is folded into `VISION.md`.
    scene. An authored map is a different engine's world, not a Loner feature.
 5. **`packs` stays on the envelopes and on `Engine`.** Tunnel Goons has none and ships `()`; 24XX,
    Breathless and Maze Rats all have them.
-6. **The `PlayerView` collapse is decided**: `sheet` plus titled `panels` whose rows may carry an
-   icon id. The page draws what the engine hands it and knows no field called companion, thread,
+6. **The `PlayerView` collapse is decided**: titled `panels` whose rows may carry an icon id
+   (phase 3 deleted `sheet`; the engine's first panel is its sheet card). The page draws what the engine hands it and knows no field called companion, thread,
    carrying, focus or trail.
 7. **Decision options stay.** A review proposed deleting `PendingOption`, `Engine.answer` and
    `PendingDecision.options` because only Maze Rats built options. Refused: Tunnel Goons'
@@ -176,3 +177,50 @@ between phases 2 and 3 so the phase 3 diff stays about `kits/`.
   cleared-box arm of `_changes` untested, the `.env` rename risk — checked, none present — and a
   stale key name in `IDEAS.md`); Codex Sol found the missing `parse` test. All fixed. Sol's cut
   "drop the `PROGRESS.md` edit" refuted: the brief's out-of-scope list bound the implementer.
+
+### Phase 3 — Loner owns its world (2026-09-01)
+
+Three implementer rounds on one staged diff; the maintainer widened the phase twice mid-flight.
+
+- **Counts:** `src` 6,225 -> 5,734 (target about 5,970); Loner 1,771 (ceiling 2,000); `tests`
+  4,202 -> 4,117. 57 files staged, +2,131 / −2,858. Goldens regenerated twice (round 2, and the
+  fold); every changed line is the character shape, the moved `master.md` section, the verb
+  renames, or the schema union arms.
+- **Round 1 (`PLAN.md` steps 1–6):** `kits/` folded into `engines/loner3e/`; `LonerCharacter`
+  replaces `Entity[S]` (no `kind`, `sheet`, `carried_by`, `description`); `next_scene` left the
+  platform; every adapter and lambda gone, `build()` names module functions; `Counter`, `pool`,
+  `PLAYER_ID` moved to `engines/core.py`. Off-plan: `adjust` moved into Loner (settled item 1: no
+  shared entity shape); the four mechanics' lambdas went too (settled item 5), so every resolver
+  takes `(draft, args, rng)`.
+- **Round 2 (maintainer, checked against the SRD page):** the smallest world Loner 3e allows. The
+  SRD has no threads, no chapter/milestone counters, no trait records, and leaves death to
+  narration; a lasting mark is a "condition" tag; living characters have Goal, Motive, Nemesis.
+  So: threads deleted, `goal`/`motive`/`nemesis` on the character; `Trait` -> `conditions`;
+  `DEAD` -> `alive`; `chapters`/`milestones` -> `advances_owed`; verbs `change_tags` and `drive`
+  replace `change_gear`/`add_trait`/`remove_trait`/`advance_thread`; creation asks goal and
+  motive. `PlayerView.sheet` deleted: the engine's first panel is its own sheet card, so the
+  sidebar is wholly engine-owned. `docs/LONER-3E.md` now lists five deviations plus a "What the
+  AI game master adds" section. Deviation 1 (goal/motive/nemesis as threads) and 2 (sheets only
+  for the played character) vanished.
+- **Round 3 (maintainer):** one engine file per seam group: `world.py`, `creation.py`,
+  `tools.py` (all six tools), `views.py`, `worldsmith.py` + `.md`, `engine.py`, `rules.md`;
+  `state.py`, `rules.py`, `verbs.py`, `render.py` gone; `SceneState` -> `LonerWorld`. `PLAN.md`
+  Phase 4's file list, settled items 2 and 4, and the Phase 4 "No threads" line were edited to
+  match (maintainer-requested).
+- **Review:** Fable 12 findings + 4 cuts, Sol 6. Fixed: the Twist Counter ticked inside Harm &
+  Luck exchanges (SRD: it does not; a regression the old design note had right); `install_scene`
+  closed conflicts after the move, so someone left behind kept a spent pool; `change_tags`
+  bypassed the alive gate; duplicate tags in one call; `SceneDraft` let the worldsmith author
+  `alive=false`/`advances_owed`/spent luck (refused now); an authored opening left present cast
+  unknown (`opening_canon` marks them, `_check_named` refuses present-unknown); `actor_id` ->
+  `entity_id` on `kill`/`join_party`/`leave_party`; leftover "actor/item/trait" wording;
+  `rows()` drops empty values; file-order slips in `world.py`; `Counter.maximum: int` (no
+  unbounded user); `type Actor` and `_advance_owed` cut. Refuted on fact: `DIE_FACE` stays in
+  `world.py` (`creation.py` sits below `tools.py` and reads it; the brief's placement cycles).
+  Refuted on the maintainer's word, recorded here: the `PLAN.md` rule edits (asked for in
+  session) and Kael's `goal` ("Find what has been sealed away, and open it" — a character file
+  is shared across scenarios, so it names no vault).
+- **Known and accepted:** `with_entity` (test helper) files an unknown entity under `hidden`
+  now, since present-unknown is unreachable in play. Smoke: home page HTTP 200; no turn played
+  (spawns live CLIs); the shutdown fault at `app/mcp.py:34` is unchanged. Tunnel Goons (Phase 4)
+  ships the same seven files.

@@ -54,13 +54,14 @@ Rules:
 1. **No shared world layer, in any name.** No `kits/`, no `World` protocol, no generic
    `Entity[S]`. Each engine owns its world model. Two engines may duplicate a small verb; a
    helper moves to `engines/core.py` only when both engines hold the identical function.
-2. **An engine is self-contained and at most 2,000 Python lines.** State, world, verbs, rules,
-   creation, worldsmith, render, recording, `rules.md`, packs — all under `engines/<id>/`.
+2. **An engine is self-contained and at most 2,000 Python lines.** Seven files — `world.py`,
+   `creation.py`, `tools.py`, `views.py`, `worldsmith.py` + `worldsmith.md`, `engine.py`,
+   `rules.md` — plus packs, all under `engines/<id>/`, one file per seam group.
 3. **At most eight game-master tools per engine, world verbs included.** `Engine.tools` is one
    tuple. The turn tools `start_turn` and `scene` are the platform's and do not count.
 4. **`core/` knows no world shape.** It knows an entity only as the id the told-fact gate checks:
    `EntityId`, `Fact.entity_id` and the gate stay, because they are the "no unknown name reaches
-   the narrator" boundary. Counter, Trait, `DEAD` and `PLAYER_ID` are engine-tier and live in
+   the narrator" boundary. `Counter` and `PLAYER_ID` are engine-tier and live in
    `engines/core.py`.
 5. **`Engine` stays a frozen dataclass of typed callables.** `build()` passes module functions.
    One `partial(fn, packs)` per member that reads the loaded packs is allowed; what is banned is
@@ -185,22 +186,21 @@ Loner lands at about **1,950**; 2,000 is the ceiling, not the target. About **�
    deviation with its reason. Two are expected: level-up is "every 2 game sessions", which here is
    an end-of-adventure step; and monsters need a written statline (HP and a Difficulty Score) —
    verify what the PDF prints before deciding the shape.
-2. `engines/tunnelgoons/state.py` and `world.py` — the payload and a strict world: `Goon` (Brute,
+2. `engines/tunnelgoons/world.py` — the payload and a strict world: `Goon` (Brute,
    Skulker, Erudite, HP `Counter(10)`, Inventory Score 8), `Monster` (HP, DS), `Item` (the ability
    it helps, and `on: EntityId` — a goon, a monster or a place, checked by one validator), `Place`,
-   `Way(to, known, locked)`, the companions, the visits. **No threads**: no Tunnel Goons rule reads
-   one. Actors have a `place` field and items an `on` field, so the holder matrix is in the types,
+   `Way(to, known, locked)`, the companions, the visits. Actors have a `place` field and items an `on` field, so the holder matrix is in the types,
    and a validator checks each id names something of the right kind. Lift `move`, `unlock_way`,
    reachability, `frontier` and `_has_shortcut` from `git show 2c3e8a5:src/aidm/kits/rooms/`; they
    were reviewed twice.
-3. `rules.py` — three tools: `action_roll` (2d6 + ability + relevant items against DS 8/10/12;
+3. `tools.py` — three tools: `action_roll` (2d6 + ability + relevant items against DS 8/10/12;
    with risk, the difference is damage, to the goon on a miss or to the monster on a hit; over-
    inventory penalty), `rest` (a night in a safe spot heals), `level_up` (a `PendingDecision` with
-   options: which ability, then HP or Inventory). `verbs.py` — `change_world` with the arms
-   `reveal`, `move_item`, `kill`, `join_party`, `leave_party`; plus `move` and `unlock_way`.
+   options: which ability, then HP or Inventory). `change_world` with the arms `reveal`,
+   `move_item`, `kill`, `join_party`, `leave_party`; plus `move` and `unlock_way`.
    **Six tools.**
 4. `creation.py` — the SRD's five steps. `worldsmith.py` — the opening map and the extension, with
-   the bar: reachability from the start, a shortcut, a locked way, something hidden. `render.py`,
+   the bar: reachability from the start, a shortcut, a locked way, something hidden. `views.py`,
    `engine.py`, `rules.md`. `packs=()`, and `ui/create.py` hides the pack select when
    `engine.packs` is empty.
 5. One character, one authored map, `tests/tunnelgoons` on `pythonpath`, goldens for the engine.
@@ -229,7 +229,7 @@ Tunnel Goons lands at or under **1,000**. About **+950**.
 - [x] Phase 8 committed as the checkpoint, `2c3e8a5`
 - [x] Phase 1 — Maze Rats and the rooms kit deleted. `src` 8,913 -> 6,365
 - [x] Phase 2 — the seam and the player view. `src` 6,365 -> 6,334
-- [ ] Phase 3 — Loner owns its world; `kits/` deleted. about 5,970
+- [x] Phase 3 — Loner owns its world; `kits/` deleted. `src` 6,225 -> 5,734
 - [ ] Phase 4 — Tunnel Goons. about 6,920
 - [ ] Phase 5 — the enduring documents
 - [ ] Full check green at every checkpoint; a turn played at the end of every phase

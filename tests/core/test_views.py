@@ -1,15 +1,21 @@
 from core_test_support import initialized, with_entity
 
-from aidm.core.entities import PLAYER_ID, EntityId
-from aidm.engines.loner3e.state import ActorSheet, LonerSheet
-from aidm.kits.entities import Entity
+from aidm.core.entities import EntityId
+from aidm.engines.core import PLAYER_ID
+from aidm.engines.loner3e.world import LonerCharacter
 
-SECRET = Entity[LonerSheet](
+SECRET = LonerCharacter(
     id=EntityId("hidden-actor"),
-    kind="actor",
     name="The Secret",
     brief="Unrevealed canon.",
-    sheet=ActorSheet(concept="A Watcher"),
+    concept="A Watcher",
+)
+
+OBJECT = LonerCharacter(
+    id=EntityId("a-locked-chest"),
+    name="A Locked Chest",
+    brief="Iron-bound, and shut fast.",
+    known=True,
 )
 
 
@@ -24,17 +30,24 @@ def test_the_narrator_view_names_nobody_in_the_scene_the_player_has_not_met() ->
     assert "Mara" in shown
 
 
+def test_everyone_known_and_present_may_speak() -> None:
+    """SRD "Everything is a Character": a thing present and known is a speaker too."""
+    engine, state = initialized()
+
+    view = engine.narrator_view(with_entity(state, OBJECT))
+
+    assert OBJECT.id in {one.id for one in view.speakers}
+
+
 def test_the_player_view_panels_carry_icon_ids_for_who_is_here() -> None:
     engine, state = initialized()
 
     view = engine.player_view(with_entity(state, SECRET))
 
     assert tuple(panel.title for panel in view.panels) == (
+        "Character",
         "This scene",
         "Here",
-        "Traits",
-        "Carrying",
-        "Threads",
         "Trail",
     )
     here = next(panel for panel in view.panels if panel.title == "Here")

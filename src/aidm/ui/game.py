@@ -78,7 +78,7 @@ class GameView:
         way_on_panel(self)
 
     @ui.refreshable_method
-    def sheet(self) -> None:
+    def sidebar(self) -> None:
         scene_sidebar(self.session)
 
     @ui.refreshable_method
@@ -92,7 +92,7 @@ class GameView:
             self.live_turn,
             self.decision,
             self.way_on,
-            self.sheet,
+            self.sidebar,
             self.journal,
         ):
             panel.refresh()
@@ -303,7 +303,7 @@ def game_page(runtime: Runtime, session: GameService) -> None:
                 journal_tab = ui.tab("journal")
             with ui.tab_panels(tabs, value=scene_tab).classes("w-full flex-grow"):
                 with ui.tab_panel(scene_tab), ui.scroll_area().classes("w-full h-full"):
-                    view.sheet()
+                    view.sidebar()
                 with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
                     view.journal()
 

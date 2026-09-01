@@ -2,12 +2,12 @@ import pytest
 from core_test_support import initialized
 from pydantic import ValidationError
 
-from aidm.core.entities import Counter, EntityId
-from aidm.engines.core import adjust
-from aidm.engines.loner3e.state import Loner3eGame, LonerSheet
-from aidm.kits.entities import Entity
+from aidm.core.entities import EntityId
+from aidm.engines.core import Counter
+from aidm.engines.loner3e.tools import adjust
+from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter
 
-KAEL = Entity[LonerSheet](id=EntityId("kael"), kind="actor", name="Kael", brief="", known=True)
+KAEL = LonerCharacter(id=EntityId("kael"), name="Kael", brief="", known=True)
 
 
 def _state() -> Loner3eGame:

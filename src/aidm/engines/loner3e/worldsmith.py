@@ -1,19 +1,29 @@
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import cast
 
 from pydantic import BaseModel, Field
 
-from aidm.core.entities import EntityId, Frozen, Slug
+from aidm.core.entities import EngineId, EntityId, Frozen, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
-from aidm.core.model import WorldsmithAnswer
+from aidm.core.model import AnyScenario, ScenarioMeta, WorldsmithAnswer
 from aidm.core.tools import schema_of
 from aidm.core.views import sections
-from aidm.kits.entities import Entity, Thread
-from aidm.kits.scenes.render import SheetRows, entity_line, thread_lines
-from aidm.kits.scenes.state import Scene, SceneCanon, SceneRun, SceneState
+from aidm.engines.loner3e.creation import Pack, guidance
+from aidm.engines.loner3e.tools import close_conflicts
+from aidm.engines.loner3e.views import entity_line
+from aidm.engines.loner3e.world import (
+    LUCK_MAX,
+    Loner3eGame,
+    Loner3eScenario,
+    Loner3eScenarioFile,
+    LonerCharacter,
+    LonerWorld,
+    Scene,
+    SceneCanon,
+    SceneRun,
+)
 
 MIN_SITUATION = 80
 TAIL_EXCHANGES = 3
@@ -30,10 +40,10 @@ SURPRISE = (
     "have stopped thinking about. Surprise by recombining what exists, never by inventing what "
     "the source would not hold."
 )
-WORLDSMITH = (Path(__file__).parent / "prompts" / "worldsmith.md").read_text(encoding=ENCODING)
+WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
 
 
-class SceneDraft[S: BaseModel](Frozen):
+class SceneDraft(Frozen):
     """What the worldsmith returns. Ids arrive as free text so a wrong one can be matched against
     a cast name before it is refused; code owns the scene id and never asks for the player."""
 
@@ -44,33 +54,33 @@ class SceneDraft[S: BaseModel](Frozen):
     present: tuple[str, ...] = ()
     hidden: tuple[str, ...] = ()
     secret: str = ""
-    cast: dict[EntityId, Entity[S]] = Field(default_factory=dict)
-    threads: dict[Slug, Thread] = Field(default_factory=dict)
+    cast: dict[EntityId, LonerCharacter] = Field(default_factory=dict)
 
 
 def arrival_brief(pursuit: str) -> str:
     return CROSSING.format(pursuit=pursuit)
 
 
-def scene_refusal[S: BaseModel](
-    draft: SceneDraft[S], world: SceneState[S] | None = None
-) -> str | None:
+def scene_refusal(draft: SceneDraft, world: LonerWorld | None = None) -> str | None:
     missing = _scene_unmet(draft, world)
     return None if not missing else "the scene needs " + "; ".join(missing)
 
 
-def opening_canon[S: BaseModel](draft: SceneDraft[S], source: str) -> SceneCanon[S]:
-    return SceneCanon[S](
-        cast=draft.cast,
+def opening_canon(draft: SceneDraft, source: str) -> SceneCanon:
+    cast = draft.cast
+    present = _resolve(draft.present, cast, "present")
+    for one in present:
+        cast[one].known = True
+    return SceneCanon(
+        cast=cast,
         opening=_scene(draft),
-        present=_resolve(draft.present, draft.cast, "present"),
-        hidden=_resolve(draft.hidden, draft.cast, "hidden"),
-        threads=draft.threads,
+        present=present,
+        hidden=_resolve(draft.hidden, cast, "hidden"),
         source=source,
     )
 
 
-def resolved_id[S: BaseModel](wanted: str, cast: dict[EntityId, Entity[S]]) -> EntityId | None:
+def resolved_id(wanted: str, cast: dict[EntityId, LonerCharacter]) -> EntityId | None:
     """Ids are the worldsmith's failure mode: an unknown one matches a cast name before refusal."""
     if wanted in cast:
         return EntityId(wanted)
@@ -78,14 +88,14 @@ def resolved_id[S: BaseModel](wanted: str, cast: dict[EntityId, Entity[S]]) -> E
     return EntityId(matches[0]) if len(matches) == 1 else None
 
 
-def apply_scene[S: BaseModel](world: SceneState[S], draft: SceneDraft[S]) -> None:
+def apply_scene(world: LonerWorld, draft: SceneDraft) -> None:
     """Every refusal lands before the first write: a rejected scene leaves the world alone."""
     for one, held in draft.cast.items():
         if one in world.cast:
             raise ValueError(f"the scene rewrites {one!r}, who is already in the cast")
         if one != held.id:
             raise ValueError(f"entity {held.id!r} is filed under {one!r}")
-    cast: dict[EntityId, Entity[S]] = {**world.cast, **draft.cast}
+    cast: dict[EntityId, LonerCharacter] = {**world.cast, **draft.cast}
     # The player and their companions are in every scene; naming them is not how they get there.
     followers = [world.player_id, *world.companions]
     present = [one for one in _resolve(draft.present, cast, "present") if one not in followers]
@@ -94,43 +104,34 @@ def apply_scene[S: BaseModel](world: SceneState[S], draft: SceneDraft[S]) -> Non
         raise ValueError(f"the scene lists {overlap} as both present and hidden")
     if met := sorted(one for one in hidden if cast[one].known):
         raise ValueError(f"the scene hides {met}, whom the player has already met")
-    carried = [one.id for one in cast.values() if one.carried_by in followers]
-    kept = [one for one in (*followers, *carried) if one not in present and one not in hidden]
+    kept = [one for one in followers if one not in present and one not in hidden]
     world.cast = cast
     for one in present:
         cast[one].known = True
-    # The author saw a snapshot while the current turn could advance existing threads.
-    # Keep those committed values; only genuinely new authored ids belong in this scene.
-    world.threads.update(
-        (thread_id, thread)
-        for thread_id, thread in draft.threads.items()
-        if thread_id not in world.threads
-    )
     world.runs.append(SceneRun(scene=_scene(draft), present=[*kept, *present], hidden=hidden))
 
 
-async def write_next[S: BaseModel](
-    world: SceneState[S],
-    scene_type: type[SceneDraft[S]],
-    intent: str,
-    guidance: str,
-    rows: SheetRows,
-    answer: WorldsmithAnswer,
-) -> SceneDraft[S]:
+async def write_next(
+    packs: Mapping[str, Pack], state: Loner3eGame, intent: str, answer: WorldsmithAnswer
+) -> BaseModel:
+    world = state.payload.world
+
     def refusal(written: BaseModel) -> str | None:
-        return scene_refusal(cast(SceneDraft[S], written), world)
+        if not isinstance(written, SceneDraft):
+            raise ValueError("Loner 3E received an incompatible scene")
+        return scene_refusal(written, world)
 
-    written = await answer(
-        render_worldsmith(world, intent, guidance, rows, scene_type), scene_type, refusal
-    )
-    return cast(SceneDraft[S], written)
+    prompt = render_worldsmith(world, intent, guidance(packs, state.packs))
+    return await answer(prompt, SceneDraft, refusal)
 
 
-def install_scene[S: BaseModel](
-    world: SceneState[S], written: SceneDraft[S], closed: tuple[Fact, ...]
-) -> tuple[Fact, ...]:
-    apply_scene(world, written.model_copy(deep=True))
-    came = [world.require(one).name for one in world.companions]
+def install_scene(state: Loner3eGame, written: BaseModel) -> tuple[Fact, ...]:
+    if not isinstance(written, SceneDraft):
+        raise ValueError("Loner 3E received an incompatible scene")
+    # Read before the move: someone left behind is still in the scene that is closing.
+    closed = close_conflicts(state)
+    apply_scene(state.payload.world, written.model_copy(deep=True))
+    came = [state.payload.world.require(one).name for one in state.payload.world.companions]
     trace = f"the story moves to {written.title}"
     if came:
         trace += f", and {', '.join(came)} travels there with the player"
@@ -138,36 +139,52 @@ def install_scene[S: BaseModel](
     return *closed, opened
 
 
-def render_worldsmith[S: BaseModel](
-    world: SceneState[S],
-    intent: str,
-    guidance: str,
-    rows: SheetRows,
-    answer: type[BaseModel],
-) -> str:
+def render_worldsmith(world: LonerWorld, intent: str, guidance: str) -> str:
+    cast = "\n".join(
+        entity_line(world, one, detail=_where(world, one)) for one in world.cast.values()
+    )
     return _worldsmith(
         source=world.source,
         history=_history(world),
-        cast="\n".join(entity_line(world, one, rows, where=True) for one in world.cast.values()),
-        threads=thread_lines(world.threads.values(), standing_only=False),
+        cast=cast,
         guidance=guidance,
         intent=intent,
-        answer=answer,
+        answer=SceneDraft,
     )
 
 
-def render_opening(source: str, guidance: str, answer: type[BaseModel]) -> str:
+def render_opening(packs: Mapping[str, Pack], source: str, picks: Sequence[Slug]) -> str:
     return _worldsmith(
         source=source,
         history="(no scenes yet — write the opening)",
         cast="(no cast yet — write the people and things this scene needs)",
-        threads="- (none yet — open the first)",
-        guidance=guidance,
+        guidance=guidance(packs, picks),
         intent=(
             "Write the opening scene of this adventure: where the player starts, who is there, "
             "and what is waiting to be found."
         ),
-        answer=answer,
+        answer=SceneDraft,
+    )
+
+
+def build_scenario(
+    title: str,
+    premise: str,
+    art_style: str,
+    packs: tuple[Slug, ...],
+    written: BaseModel,
+    source: str,
+) -> AnyScenario:
+    if not isinstance(written, SceneDraft):
+        raise ValueError("Loner 3E received an incompatible scene")
+    if (refused := scene_refusal(written)) is not None:
+        raise ValueError(refused)
+    return Loner3eScenarioFile(
+        meta=ScenarioMeta(title=title, premise=premise or written.situation),
+        engine=EngineId("loner3e"),
+        packs=packs,
+        art_style=art_style,
+        payload=Loner3eScenario(world=opening_canon(written, source)),
     )
 
 
@@ -176,7 +193,6 @@ def _worldsmith(
     source: str,
     history: str,
     cast: str,
-    threads: str,
     guidance: str,
     intent: str,
     answer: type[BaseModel],
@@ -184,10 +200,9 @@ def _worldsmith(
     return sections(
         (
             ("YOUR ROLE", WORLDSMITH),
-            ("SOURCE MATERIAL", source or "(none — write from the threads and the cast)"),
+            ("SOURCE MATERIAL", source or "(none — write from the cast)"),
             ("SCENES SO FAR", history),
             ("THE WHOLE CAST", cast),
-            ("THREADS", threads),
             ("ENGINE GUIDANCE", guidance),
             ("WHAT COMES NEXT", intent),
             ("STANDING INSTRUCTION", SURPRISE),
@@ -196,7 +211,12 @@ def _worldsmith(
     )
 
 
-def _history[S: BaseModel](world: SceneState[S]) -> str:
+def _where(world: LonerWorld, one: LonerCharacter) -> str:
+    seen = world.last_seen(one.id)
+    return f"last seen in: {seen}" if seen else ""
+
+
+def _history(world: LonerWorld) -> str:
     return "\n\n".join(
         "\n".join(
             (
@@ -214,7 +234,7 @@ def _told(run: SceneRun) -> str:
     return "\n".join(f"> {one.prompt}\n{one.narration}" for one in run.exchanges[-TAIL_EXCHANGES:])
 
 
-def _scene[S: BaseModel](draft: SceneDraft[S]) -> Scene:
+def _scene(draft: SceneDraft) -> Scene:
     return Scene(
         place=draft.place,
         title=draft.title,
@@ -224,9 +244,7 @@ def _scene[S: BaseModel](draft: SceneDraft[S]) -> Scene:
     )
 
 
-def _scene_unmet[S: BaseModel](
-    draft: SceneDraft[S], world: SceneState[S] | None = None
-) -> list[str]:
+def _scene_unmet(draft: SceneDraft, world: LonerWorld | None = None) -> list[str]:
     """No world means the opening: nobody exists yet, and no id can be the player's."""
     held = {} if world is None else world.cast
     player_id = None if world is None else world.player_id
@@ -236,16 +254,9 @@ def _scene_unmet[S: BaseModel](
         for one in (*draft.present, *draft.hidden)
         if player_id is None or resolved_id(one, known) != player_id
     ]
-    standing = [
-        one
-        for one in (*(() if world is None else world.threads.values()), *draft.threads.values())
-        if one.status != "resolved"
-    ]
     unmet: list[str] = []
     if not others:
         unmet.append("at least one cast member besides the player")
-    if not standing:
-        unmet.append("at least one standing thread, opened here or already running")
     if world is not None and not any(resolved_id(one, held) is not None for one in others):
         unmet.append("at least one existing cast member brought back")
     if stray := sorted(one for one in others if resolved_id(one, known) is None):
@@ -253,11 +264,20 @@ def _scene_unmet[S: BaseModel](
     # `situation` is read to the player, so naming a hidden entity there hands them the find.
     if told := sorted(_named_in(draft.situation, draft.hidden, known)):
         unmet.append(f"a situation that does not name what is hidden: {told}")
+    if broken := sorted(
+        eid
+        for eid, one in draft.cast.items()
+        if not one.alive or one.advances_owed or one.luck.current != LUCK_MAX
+    ):
+        unmet.append(
+            f"cast members as the worldsmith may write them: alive, no advance owed, full luck: "
+            f"{broken}"
+        )
     return unmet
 
 
-def _named_in[S: BaseModel](
-    situation: str, hidden: Iterable[str], cast: dict[EntityId, Entity[S]]
+def _named_in(
+    situation: str, hidden: Iterable[str], cast: dict[EntityId, LonerCharacter]
 ) -> list[str]:
     """Multi-word names only: a prop called `Bell` shares its word with any bell tower."""
     said = situation.casefold()
@@ -265,8 +285,8 @@ def _named_in[S: BaseModel](
     return [one.name for one in found if " " in one.name.strip() and one.name.casefold() in said]
 
 
-def _resolve[S: BaseModel](
-    wanted: Iterable[str], cast: dict[EntityId, Entity[S]], where: str
+def _resolve(
+    wanted: Iterable[str], cast: dict[EntityId, LonerCharacter], where: str
 ) -> list[EntityId]:
     found: list[EntityId] = []
     for one in wanted:

@@ -13,22 +13,21 @@ from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import GameService, Runtime
 from aidm.app.spawn import RunResult
 from aidm.config import Role, Settings
-from aidm.core.entities import PLAYER_ID, EngineId, EntityId, Slug
+from aidm.core.entities import EngineId, EntityId, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import load_character, read_scenario, read_scenarios
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, Speaker
-from aidm.engines.core import AnyEngine
-from aidm.engines.loner3e.rules import complete_chapter as loner_chapter
-from aidm.engines.loner3e.state import (
-    ActorSheet,
+from aidm.core.tools import NoArgs
+from aidm.engines.core import PLAYER_ID, AnyEngine
+from aidm.engines.loner3e.tools import complete_chapter as loner_chapter
+from aidm.engines.loner3e.world import (
     Loner3eCharacterFile,
     Loner3eGame,
     Loner3eScenarioFile,
-    LonerSheet,
+    LonerCharacter,
 )
 from aidm.engines.registry import begin_game, build_engines
-from aidm.kits.entities import Entity
 from aidm.turn.run import TurnStep
 
 # One tool call as a scripted game master makes it.
@@ -56,25 +55,23 @@ def updated[T: BaseModel](model: T, **changes: object) -> T:
     return type(model).model_validate(model.model_dump(round_trip=True) | changes)
 
 
-def with_entity(state: Loner3eGame, entity: Entity[LonerSheet]) -> Loner3eGame:
-    """Added to the cast and to the scene, because a scene entity is where a scene entity lives."""
+def with_entity(state: Loner3eGame, entity: LonerCharacter) -> Loner3eGame:
+    """Added to the cast and to the scene: present must be known, so an unmet one is hidden."""
     draft = state.draft()
     draft.payload.world.cast[entity.id] = entity
-    draft.payload.world.run.present.append(entity.id)
+    run = draft.payload.world.run
+    (run.present if entity.known else run.hidden).append(entity.id)
     return draft.committed()
 
 
 def loner_at_boundary(state: Loner3eGame) -> Loner3eGame:
     draft = state.draft()
-    _ = loner_chapter(draft)
+    _ = loner_chapter(draft, NoArgs(), Random(0))
     return draft.committed()
 
 
-def loner_sheet(state: Loner3eGame, entity_id: EntityId) -> ActorSheet:
-    sheet = state.payload.world.require(entity_id).sheet
-    if not isinstance(sheet, ActorSheet):
-        raise AssertionError(f"{entity_id!r} has no actor sheet")
-    return sheet
+def loner_sheet(state: Loner3eGame, entity_id: EntityId) -> LonerCharacter:
+    return state.payload.world.require(entity_id)
 
 
 def scenario() -> Loner3eScenarioFile:

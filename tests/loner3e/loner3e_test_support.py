@@ -15,11 +15,11 @@ from aidm.core.io import FileStore
 from aidm.engines.core import load_packs
 from aidm.engines.loner3e.creation import Pack
 from aidm.engines.loner3e.engine import ENGINE_DIR
-from aidm.engines.loner3e.rules import twist_table
-from aidm.engines.loner3e.state import SRD_PACK
+from aidm.engines.loner3e.tools import SRD_PACK, twist_table
 
 TARGET = LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
-TWISTS = twist_table(load_packs((ENGINE_DIR / "packs",), Pack), SRD_PACK)
+PACKS = load_packs((ENGINE_DIR / "packs",), Pack)
+TWISTS = twist_table(PACKS, SRD_PACK)
 
 
 def loner3e_session(directory: Path) -> GameService:

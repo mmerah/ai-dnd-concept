@@ -11,8 +11,7 @@ from aidm.config import MediaConfig, ProviderConfig
 from aidm.core.entities import EntityId
 from aidm.core.views import NarratorView
 from aidm.engines.core import AnyEngine
-from aidm.engines.loner3e.state import ActorSheet, Loner3eGame, LonerSheet
-from aidm.kits.entities import Entity
+from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter
 
 NARRATION = "The door groans open."
 STYLE = MediaConfig().style
@@ -31,13 +30,12 @@ def _illustrator(tmp_path: Path) -> Illustrator:
 def _placed(state: Loner3eGame, name: str, *, known: bool) -> Loner3eGame:
     return with_entity(
         state,
-        Entity[LonerSheet](
+        LonerCharacter(
             id=EntityId(name.lower().replace(" ", "-")),
-            kind="actor",
             name=name,
             brief=f"A {name.lower()}.",
             known=known,
-            sheet=ActorSheet(concept=name),
+            concept=name,
         ),
     )
 

@@ -24,11 +24,12 @@ Can you get the way down to the vault out of this room, and out of Mara?
 WHO IS HERE:
 - Kael — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
 - Mara — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
+- the vault map — A creased chart of the undercroft, marking a stair the abbey's own plans deny. Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.
 
 WHAT HAPPENED:
-- learned of the item the vault map[vault-map]
+- learned of the vault map[vault-map]
 - Does he hear what waits past the vault door without being heard? -> yes-and
-- the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.
+- the player Kael[player] condition +Listening
 
 PLAYER ACTION:
 I lever up the loose flagstone and listen at the vault door.

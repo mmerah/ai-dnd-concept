@@ -14,16 +14,17 @@ from core_test_support import (
 )
 from pydantic import JsonValue
 
-from aidm.core.entities import PLAYER_ID, EntityId
+from aidm.core.entities import EntityId
 from aidm.core.facts import Fact, cards
 from aidm.core.model import AnyGame
-from aidm.engines.loner3e.rules import outcome_for
-from aidm.engines.loner3e.state import Loner3eGame
+from aidm.engines.core import PLAYER_ID
+from aidm.engines.loner3e.tools import outcome_for
+from aidm.engines.loner3e.world import Loner3eGame
 from aidm.turn.run import Turn, TurnStep
 
 MAP = EntityId("vault-map")
 FOUND = changed("reveal", entity_id="vault-map")
-TAKEN = changed("move_item", item_id="vault-map", to="player")
+TAKEN = changed("change_tags", entity_id=PLAYER_ID, kind="gear", gained=["the vault map"])
 ASKED = tool_call("roll_question", actor_id=PLAYER_ID, question="Does the door give?")
 
 
@@ -43,8 +44,8 @@ async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_pat
     )
 
     assert tuple(steps) == ("master", "narrator")
-    assert [fact.kind for fact in facts] == ["entity_discovered", "entity_moved"]
-    assert {one.id for one in state.payload.world.carried_by(PLAYER_ID)} == {"vault-map"}
+    assert [fact.kind for fact in facts] == ["entity_discovered", "tags_changed"]
+    assert "the vault map" in state.payload.world.player.gear
     narrator = table.spawner.prompt("narrator")
     assert "Elena" not in narrator
     # The sheets are the game master's: no tag the engine rolls by reaches the narrator.
@@ -62,11 +63,11 @@ async def test_on_fact_reports_the_visible_facts_in_resolver_order(tmp_path: Pat
         "I take the map and listen.",
         FOUND,
         TAKEN,
-        changed("add_trait", entity_id="player", name="Listening", text="listening"),
+        changed("change_tags", entity_id="player", kind="condition", gained=["Listening"]),
         on_fact=fired.append,
     )
 
-    landed = ["The vault map discovered", "Took the vault map", "Kael: new trait Listening"]
+    landed = ["The vault map discovered", "Took the vault map", "Now: Listening"]
     assert [fact.card for fact in cards(fired)] == landed
     assert [fact.card for fact in state.payload.world.exchanges()[-1].facts] == landed
 
@@ -116,7 +117,7 @@ async def test_the_master_reacts_in_run_to_its_own_earlier_tool_call(tmp_path: P
         table,
         "I call the old porter over.",
         changed("enter", entity_id="tomas"),
-        changed("join_party", actor_id="tomas"),
+        changed("join_party", entity_id="tomas"),
     )
 
     assert state.payload.world.companions == ["tomas"]
@@ -137,12 +138,12 @@ async def test_a_call_its_own_fields_refuse_does_not_kill_the_turn(tmp_path: Pat
     state = await played(
         table,
         "I press on.",
-        changed("advance_thread", thread_id="vault-seal"),
-        changed("advance_thread", thread_id="vault-seal", note="The seal is found."),
+        changed("drive", entity_id=PLAYER_ID),
+        changed("drive", entity_id=PLAYER_ID, goal="Find the way down."),
     )
 
-    assert state.payload.world.threads["vault-seal"].note == "The seal is found."
-    assert any("status or its note" in one for one in table.refusals)
+    assert state.payload.world.player.goal == "Find the way down."
+    assert any("goal, a motive or a nemesis" in one for one in table.refusals)
 
 
 async def test_a_later_call_is_judged_against_the_sheet_the_earlier_one_moved(
@@ -162,7 +163,7 @@ async def test_a_later_call_is_judged_against_the_sheet_the_earlier_one_moved(
         tool_call("advance", **growth),
     )
 
-    assert loner_sheet(state, PLAYER_ID).milestones == 1
+    assert loner_sheet(state, PLAYER_ID).advances_owed == 0
     assert any("no advance owed" in one for one in table.refusals)
 
 
@@ -277,7 +278,7 @@ async def test_an_owed_advance_is_noted_lands_on_call_and_is_refused_once_spent(
     assert "Kael has an advance owed" in table.answers[0]
     assert len(cards(tuple(facts))) == 2
     sheet = loner_sheet(state, PLAYER_ID)
-    assert (sheet.gear[-1], sheet.milestones) == ("Waxed Rope", 1)
+    assert (sheet.gear[-1], sheet.advances_owed) == ("Waxed Rope", 0)
     assert any("no advance owed" in one for one in table.refusals)
 
 

@@ -4,88 +4,90 @@
     "description": "Apply one settled world change to match the story. Set `verb` to pick the change and fill that verb's own fields. One call makes one change.",
     "parameters": {
       "$defs": {
-        "AddTrait": {
+        "ChangeTags": {
           "additionalProperties": false,
-          "description": "Add a lasting condition or quality to an entity.",
+          "description": "A character here gains or loses tags: a thing taken or lost, a lasting mark, a lesson.",
           "properties": {
             "verb": {
-              "const": "add_trait",
+              "const": "change_tags",
               "type": "string"
             },
             "entity_id": {
-              "description": "Exact entity id. An actor must be here.",
+              "description": "Exact id of the player or someone here.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
             },
-            "name": {
-              "description": "Display name, such as `Battle Worn`.",
-              "minLength": 1,
+            "kind": {
+              "description": "`gear` for a thing taken or lost; `condition` for a lasting mark such as `Battle Worn` or `Poisoned`; `skill` or `frailty` only when the story plainly wrote one.",
+              "enum": [
+                "skill",
+                "frailty",
+                "gear",
+                "condition"
+              ],
               "type": "string"
             },
-            "text": {
-              "description": "The effect in plain language.",
-              "type": "string"
+            "gained": {
+              "default": [],
+              "description": "Title-case tags gained, such as `Rusty Key`.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "lost": {
+              "default": [],
+              "description": "Exact tags lost, lifted or used up.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
             }
           },
           "required": [
             "verb",
             "entity_id",
-            "name",
-            "text"
+            "kind"
           ],
-          "title": "AddTrait",
+          "title": "ChangeTags",
           "type": "object"
         },
-        "AdvanceThread": {
+        "Drive": {
           "additionalProperties": false,
-          "description": "Update an active storyline's status or the line the player reads about it.",
+          "description": "What a living character wants, why, and who stands in their way, once play has shown it.",
           "properties": {
             "verb": {
-              "const": "advance_thread",
+              "const": "drive",
               "type": "string"
             },
-            "thread_id": {
-              "description": "Exact id of an active thread.",
+            "entity_id": {
+              "description": "Exact id of the player or a living character here.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
             },
-            "status": {
-              "anyOf": [
-                {
-                  "enum": [
-                    "active",
-                    "resolved",
-                    "dormant"
-                  ],
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "New status, or null to keep the current status."
+            "goal": {
+              "default": "",
+              "description": "What they now pursue, in one line. Empty keeps the current goal.",
+              "type": "string"
             },
-            "note": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "What the player now knows about this thread, or the lead they have on it, in one sentence. The player reads this. Null keeps the current note."
+            "motive": {
+              "default": "",
+              "description": "Why, in one line. Empty keeps the current motive.",
+              "type": "string"
+            },
+            "nemesis": {
+              "default": "",
+              "description": "Who or what stands in their way. Empty keeps the current nemesis.",
+              "type": "string"
             }
           },
           "required": [
             "verb",
-            "thread_id"
+            "entity_id"
           ],
-          "title": "AdvanceThread",
+          "title": "Drive",
           "type": "object"
         },
         "Enter": {
@@ -110,37 +112,16 @@
           "title": "Enter",
           "type": "object"
         },
-        "ImproviseItem": {
-          "additionalProperties": false,
-          "description": "Give the player an ordinary object not already in the world.",
-          "properties": {
-            "verb": {
-              "const": "improvise_item",
-              "type": "string"
-            },
-            "name": {
-              "description": "The object's name, such as `a handful of gravel`.",
-              "minLength": 1,
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "name"
-          ],
-          "title": "ImproviseItem",
-          "type": "object"
-        },
         "JoinParty": {
           "additionalProperties": false,
-          "description": "An actor here starts travelling with the player.",
+          "description": "A character here starts travelling with the player.",
           "properties": {
             "verb": {
               "const": "join_party",
               "type": "string"
             },
-            "actor_id": {
-              "description": "Exact id of the actor joining.",
+            "entity_id": {
+              "description": "Exact id of who is joining.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
@@ -148,21 +129,21 @@
           },
           "required": [
             "verb",
-            "actor_id"
+            "entity_id"
           ],
           "title": "JoinParty",
           "type": "object"
         },
         "Kill": {
           "additionalProperties": false,
-          "description": "Record that an actor has died. What they carried falls loose here.",
+          "description": "Record that someone here has died.",
           "properties": {
             "verb": {
               "const": "kill",
               "type": "string"
             },
-            "actor_id": {
-              "description": "Exact id of the actor here who died.",
+            "entity_id": {
+              "description": "Exact id of who here died.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
@@ -170,7 +151,7 @@
           },
           "required": [
             "verb",
-            "actor_id"
+            "entity_id"
           ],
           "title": "Kill",
           "type": "object"
@@ -205,7 +186,7 @@
               "const": "leave_party",
               "type": "string"
             },
-            "actor_id": {
+            "entity_id": {
               "description": "Exact id of the companion leaving.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
@@ -214,67 +195,9 @@
           },
           "required": [
             "verb",
-            "actor_id"
+            "entity_id"
           ],
           "title": "LeaveParty",
-          "type": "object"
-        },
-        "MoveItem": {
-          "additionalProperties": false,
-          "description": "Move an item: to the player, to someone here, or loose in the scene.",
-          "properties": {
-            "verb": {
-              "const": "move_item",
-              "type": "string"
-            },
-            "item_id": {
-              "description": "Exact id of an item here or carried.",
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-              "type": "string"
-            },
-            "to": {
-              "description": "`player`, `scene`, or the exact id of an actor here.",
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "item_id",
-            "to"
-          ],
-          "title": "MoveItem",
-          "type": "object"
-        },
-        "RemoveTrait": {
-          "additionalProperties": false,
-          "description": "Remove a lasting condition that has ended.",
-          "properties": {
-            "verb": {
-              "const": "remove_trait",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact entity id.",
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-              "type": "string"
-            },
-            "trait_id": {
-              "description": "Exact id of one of its traits.",
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id",
-            "trait_id"
-          ],
-          "title": "RemoveTrait",
           "type": "object"
         },
         "Reveal": {
@@ -306,16 +229,13 @@
           "description": "The one world change to apply; `verb` picks the change.",
           "discriminator": {
             "mapping": {
-              "add_trait": "#/$defs/AddTrait",
-              "advance_thread": "#/$defs/AdvanceThread",
+              "change_tags": "#/$defs/ChangeTags",
+              "drive": "#/$defs/Drive",
               "enter": "#/$defs/Enter",
-              "improvise_item": "#/$defs/ImproviseItem",
               "join_party": "#/$defs/JoinParty",
               "kill": "#/$defs/Kill",
               "leave": "#/$defs/Leave",
               "leave_party": "#/$defs/LeaveParty",
-              "move_item": "#/$defs/MoveItem",
-              "remove_trait": "#/$defs/RemoveTrait",
               "reveal": "#/$defs/Reveal"
             },
             "propertyName": "verb"
@@ -331,16 +251,10 @@
               "$ref": "#/$defs/Leave"
             },
             {
-              "$ref": "#/$defs/MoveItem"
+              "$ref": "#/$defs/ChangeTags"
             },
             {
-              "$ref": "#/$defs/ImproviseItem"
-            },
-            {
-              "$ref": "#/$defs/AddTrait"
-            },
-            {
-              "$ref": "#/$defs/RemoveTrait"
+              "$ref": "#/$defs/Drive"
             },
             {
               "$ref": "#/$defs/Kill"
@@ -350,9 +264,6 @@
             },
             {
               "$ref": "#/$defs/LeaveParty"
-            },
-            {
-              "$ref": "#/$defs/AdvanceThread"
             }
           ]
         }
@@ -421,7 +332,7 @@
             }
           ],
           "default": null,
-          "description": "Exact id of the actor or item here that resists. Null when nothing fights back."
+          "description": "Exact id of the character here that resists. Null when nothing fights back."
         }
       },
       "required": [
@@ -438,7 +349,7 @@
       "additionalProperties": false,
       "properties": {
         "actor_id": {
-          "description": "Exact id of the player or an actor here.",
+          "description": "Exact id of the player or a character here.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
