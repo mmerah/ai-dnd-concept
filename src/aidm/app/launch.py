@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from aidm.config import Settings
 from aidm.core.entities import EngineId, Frozen, Slug
 from aidm.core.io import FileStore, decoded, read_characters, read_scenarios
-from aidm.core.model import SaveHeader
+from aidm.core.model import SaveHeader, ScenarioKind
 from aidm.engines.core import AnyEngine
 
 LOGGER = logging.getLogger(__name__)
@@ -15,6 +15,7 @@ class CatalogEntry(Frozen):
     engine: EngineId
     title: str
     subtitle: str
+    kind: ScenarioKind = "one-shot"
 
 
 class LaunchTarget(Frozen):
@@ -32,6 +33,7 @@ class SaveOption(Frozen):
     scenario_title: str
     character_title: str
     turn: int
+    kind: ScenarioKind
 
 
 class LauncherCatalog(Frozen):
@@ -69,6 +71,7 @@ def load_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> L
             engine=scenario.engine,
             title=scenario.meta.title,
             subtitle=scenario.meta.premise,
+            kind=scenario.meta.kind,
         )
         for name, scenario in read_scenarios(settings.scenarios_dir, scenario_models)
     )
@@ -102,6 +105,7 @@ def load_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> L
                 scenario_title=game.scenario.title,
                 character_title=title,
                 turn=game.turn,
+                kind=game.scenario.kind,
             )
         )
     return LauncherCatalog(scenarios=scenarios, characters=characters, saves=tuple(saves))

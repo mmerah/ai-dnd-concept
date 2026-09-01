@@ -7,6 +7,7 @@ from aidm.core.entities import EngineId
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, AnyScenario
 from aidm.engines.core import PLAYER_ID, Authoring, Engine, Transition, load_packs
+from aidm.engines.hub import check_kind
 from aidm.engines.scenes import SceneRun, arrival_brief
 from aidm.engines.twentyfourxx.creation import (
     Pack,
@@ -66,6 +67,7 @@ def check_packs(packs: Mapping[str, Pack], state: TwentyfourxxGame) -> None:
         raise ValueError("a 24XX game needs at least one table set")
     if missing := sorted(set(state.packs) - set(packs)):
         raise ValueError(f"the game names packs not installed: {missing}")
+    check_kind(state.scenario.kind, None)
 
 
 def build(user_packs: Path) -> Engine[TwentyfourxxGame]:

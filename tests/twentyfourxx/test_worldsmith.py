@@ -181,7 +181,7 @@ def test_opening_canon_marks_present_known() -> None:
 
 def test_build_scenario_refuses_an_unmet_draft() -> None:
     with pytest.raises(ValueError, match="cast member besides the player"):
-        build_scenario("Loading Bay", "", "", (), _draft(), source="")
+        build_scenario("Loading Bay", "", "", (), _draft(), source="", kind="one-shot")
 
 
 def test_build_scenario_stamps_the_engine_id() -> None:
@@ -190,5 +190,5 @@ def test_build_scenario_stamps_the_engine_id() -> None:
         present=(stranger,),
         cast={stranger: Npc(id=stranger, name="A Stranger", brief="new to the world")},
     )
-    scenario = build_scenario("Loading Bay", "", "", (), draft, source="")
+    scenario = build_scenario("Loading Bay", "", "", (), draft, source="", kind="one-shot")
     assert scenario.engine == EngineId("twentyfourxx")

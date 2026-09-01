@@ -3,7 +3,8 @@
   "character_id": "kael",
   "scenario": {
     "title": "The Drowned Road",
-    "premise": "The causeway to Saint Ferrant only opens for four hours either side of low water, and the tide bell at the Bell House counts down the crossing. Kael has reached the Bell House with the water already rising, and something that used to be a person is still out on the flats."
+    "premise": "The causeway to Saint Ferrant only opens for four hours either side of low water, and the tide bell at the Bell House counts down the crossing. Kael has reached the Bell House with the water already rising, and something that used to be a person is still out on the flats.",
+    "kind": "one-shot"
   },
   "engine": "breathless",
   "packs": [
@@ -82,7 +83,8 @@
             "title": "The Bell House",
             "question": "Can they reach the causeway and cross it before the tide takes it back?",
             "situation": "The Bell House stands at the causeway's landward end, its rope still swinging from the second peal. Ovid Sarn watches the flats through a cracked window while Ivo Casks paces by the door, and out past the mudflats the chapel lamp waits a mile off across water already climbing your boots.",
-            "secret": "Ovid rings the bell twice to mark the crossing window, never as a call for help; a third ring means something is already out on the causeway."
+            "secret": "Ovid rings the bell twice to mark the crossing window, never as a call for help; a third ring means something is already out on the causeway.",
+            "debrief": null
           },
           "present": [
             "ovid-sarn",

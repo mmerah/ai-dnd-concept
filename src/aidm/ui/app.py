@@ -88,6 +88,8 @@ def _new_game(catalog: LauncherCatalog) -> None:
                 on_change=choose_scenario,
             ).classes("w-full")
             ui.label(scenario.subtitle).classes("text-sm opacity-70")
+            if scenario.kind == "campaign":
+                ui.badge("campaign").props("outline")
             written = {
                 entry.id: f"{entry.title} — {entry.subtitle}"
                 for entry in catalog.characters_for(scenario.engine)
@@ -141,6 +143,8 @@ def _saved_card(saved: SaveOption) -> None:
                 ui.label(f"{saved.character_title} · turn {saved.turn}").classes(
                     "text-sm opacity-70"
                 )
+                if saved.kind == "campaign":
+                    ui.badge("campaign").props("outline")
             ui.button(
                 "Resume",
                 icon="play_arrow",

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from aidm.core.entities import EngineId, EntityId, Frozen, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
-from aidm.core.model import AnyScenario, ScenarioMeta, WorldsmithAnswer
+from aidm.core.model import AnyScenario, ScenarioKind, ScenarioMeta, WorldsmithAnswer
 from aidm.core.tools import schema_of
 from aidm.core.views import sections
 from aidm.engines.loner3e.creation import Pack, guidance
@@ -134,7 +134,11 @@ def render_worldsmith(world: LonerWorld, intent: str, guidance: str) -> str:
     )
 
 
-def render_opening(packs: Mapping[str, Pack], source: str, picks: Sequence[Slug]) -> str:
+def render_opening(
+    packs: Mapping[str, Pack], source: str, picks: Sequence[Slug], kind: ScenarioKind
+) -> str:
+    if kind == "campaign":
+        raise ValueError("Loner 3E has no hub yet")
     return _worldsmith(
         source=source,
         history="(no scenes yet — write the opening)",
@@ -155,13 +159,14 @@ def build_scenario(
     packs: tuple[Slug, ...],
     written: BaseModel,
     source: str,
+    kind: ScenarioKind,
 ) -> AnyScenario:
     if not isinstance(written, SceneDraft):
         raise ValueError("Loner 3E received an incompatible scene")
     if (refused := scene_refusal(written)) is not None:
         raise ValueError(refused)
     return Loner3eScenarioFile(
-        meta=ScenarioMeta(title=title, premise=premise or written.situation),
+        meta=ScenarioMeta(title=title, premise=premise or written.situation, kind=kind),
         engine=EngineId("loner3e"),
         packs=packs,
         art_style=art_style,

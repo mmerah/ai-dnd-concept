@@ -1,3 +1,6 @@
+from collections.abc import Awaitable, Callable
+from functools import partial
+
 from nicegui import ui
 
 from aidm.app.runtime import GameService
@@ -8,7 +11,7 @@ NO_WAY_ON = "The way on could not be written. You are still where you were."
 
 
 @ui.refreshable
-def scene_sidebar(session: GameService) -> None:
+def scene_sidebar(session: GameService, move_on: Callable[[str], Awaitable[None]]) -> None:
     view = session.player_view()
     with ui.column().classes("w-full").style("gap: 0.75rem"):
         for panel in view.panels:
@@ -17,7 +20,13 @@ def scene_sidebar(session: GameService) -> None:
                 if not panel.rows:
                     ui.label("nothing").classes("text-sm opacity-60 mt-2")
                 for row in panel.rows:
-                    if row.icon_id is not None:
+                    if row.intent:
+                        ui.button(row.label, on_click=partial(move_on, row.intent)).props(
+                            "no-caps outline dense"
+                        )
+                        if row.detail:
+                            ui.label(row.detail).classes("text-xs opacity-70")
+                    elif row.icon_id is not None:
                         entity_row(session.icon(row.icon_id), row.label, row.detail)
                     elif row.detail:
                         labeled_value(row.label, row.detail)

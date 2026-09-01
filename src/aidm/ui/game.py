@@ -168,6 +168,16 @@ async def submit(view: GameView, box: ui.input, moving_on: bool = False) -> None
     await _send(view, typed_input, typed, moving_on=moving_on)
 
 
+async def move_on(view: GameView, intent: str) -> None:
+    if refuse_play(view):
+        return
+    pending = view.session.player_view().prompt
+    if pending is not None and not pending.allows_text:
+        ui.notify("Choose an option above.", type="warning")
+        return
+    await _send(view, intent if pending is None else Answer(text=intent), intent, moving_on=True)
+
+
 @ui.refreshable
 def way_on_panel(view: GameView) -> None:
     """The banner, not the offer: legible after a reload, once the asking has scrolled away."""
@@ -275,7 +285,7 @@ def game_page(runtime: Runtime, session: GameService) -> None:
                 journal_tab = ui.tab("journal")
             with ui.tab_panels(tabs, value=scene_tab).classes("w-full flex-grow"):
                 with ui.tab_panel(scene_tab), ui.scroll_area().classes("w-full h-full"):
-                    scene_sidebar(session)
+                    scene_sidebar(session, partial(move_on, view))
                 with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
                     journal_panel(session)
 

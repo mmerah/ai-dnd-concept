@@ -16,7 +16,7 @@ from aidm.config import Role, Settings
 from aidm.core.entities import EngineId, EntityId, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import load_character, read_scenario, read_scenarios
-from aidm.core.model import AnyGame
+from aidm.core.model import AnyGame, ScenarioKind
 from aidm.core.play import Answer, Speaker
 from aidm.engines.core import PLAYER_ID, AnyEngine
 from aidm.engines.loner3e.world import (
@@ -84,26 +84,41 @@ def character() -> Loner3eCharacterFile:
     return loaded
 
 
-def scenario_for(engine_id: EngineId) -> Slug:
+def scenario_for(engine_id: EngineId, kind: ScenarioKind = "one-shot") -> Slug:
     """Read off the shipped content rather than tabulated, so a second one fails here loudly."""
-    shipped = [
+    matches = [
         slug
         for slug, scenario in read_scenarios(SCENARIOS, SCENARIO_MODELS)
-        if scenario.engine == engine_id
+        if scenario.engine == engine_id and scenario.meta.kind == kind
     ]
-    if len(shipped) != 1:
-        raise ValueError(f"{engine_id!r} ships {len(shipped)} scenarios, not one: {shipped}")
-    return shipped[0]
+    if len(matches) != 1:
+        raise ValueError(f"{engine_id!r} ships {len(matches)} {kind} scenarios, not one: {matches}")
+    return matches[0]
 
 
-def game(engine_id: EngineId) -> tuple[AnyEngine, AnyGame]:
+def game(engine_id: EngineId, kind: ScenarioKind = "one-shot") -> tuple[AnyEngine, AnyGame]:
     """The scenario authored for this engine and the shipped character, composed together."""
     engine = ENGINES_BUILT[engine_id]
-    scenario_id = scenario_for(engine_id)
+    scenario_id = scenario_for(engine_id, kind)
     selected_scenario = read_scenario(SCENARIOS, scenario_id, SCENARIO_MODELS)
     selected_character = load_character(CHARACTERS, "kael", engine.id, engine.character)
     begun = begin_game(engine, scenario_id, selected_scenario, selected_character)
     return engine, begun
+
+
+def shipped(engine_id: EngineId) -> tuple[ScenarioKind, ...]:
+    """Which kinds this engine has a shipped scenario for, in the order they are played."""
+    kinds = {
+        scenario.meta.kind
+        for _, scenario in read_scenarios(SCENARIOS, SCENARIO_MODELS)
+        if scenario.engine == engine_id
+    }
+    return tuple(kind for kind in ("one-shot", "campaign") if kind in kinds)
+
+
+SHIPPED: tuple[tuple[EngineId, ScenarioKind], ...] = tuple(
+    (engine_id, kind) for engine_id in ENGINE_IDS for kind in shipped(engine_id)
+)
 
 
 def initialized() -> tuple[AnyEngine, Loner3eGame]:
