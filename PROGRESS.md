@@ -9,6 +9,7 @@ decided along the way, and anything left known-and-accepted.
 |---|---|---|
 | start (`2c3e8a5`, phase 8 committed) | 8,913 | 5,101 |
 | 1 — Maze Rats and the rooms kit deleted | 6,365 | 4,144 |
+| 2 — the seam and the player view | 6,334 | 4,221 |
 
 ## Why the plan was rewritten (2026-09-01)
 
@@ -55,9 +56,10 @@ recommendation independently and is folded into `VISION.md`.
    `PendingDecision.options` because only Maze Rats built options. Refused: Tunnel Goons'
    `level_up` is an option pick (which ability; HP or Inventory), and the SRD gives the choice to
    the player, not to prose.
-8. **`Engine.guidance`, `Authoring.refusal` and `Scenario.art_style` are deleted in phase 2.** The
-   first was a round trip through the platform, the second duplicated `build` + `begin_game`, the
-   third was never written by anything.
+8. **`Engine.guidance` and `Authoring.refusal` are deleted in phase 2.** The first was a round
+   trip through the platform, the second duplicated `build` + `begin_game`. `Scenario.art_style`
+   was slated with them because nothing wrote it; the maintainer chose instead to finish the
+   feature (phase 2 fold 1): the field stays and the `/scenario` page writes it.
 
 ## Open — known and accepted
 
@@ -112,3 +114,34 @@ review caught, and what was left known-and-accepted.
 - **Known and accepted:** `uv run aidm` serves the home page (HTTP 200); on SIGTERM it logs
   `RuntimeError: Attempted to exit cancel scope in a different task` from
   `src/aidm/app/mcp.py:34`, a shutdown-only fault in code this phase does not touch.
+
+### Phase 2 — the seam and the player view (2026-09-01)
+
+- **Counts:** `src` 6,365 -> 6,334 (target about 6,285; −31 against −80); `tests` 4,144 ->
+  4,221. 24 files staged (the research doc is most of the deletion). Every golden byte-identical;
+  no regeneration. The shortfall: the `PlayerView` collapse moved fields into `Panel` rows
+  instead of deleting them, and the plan's −80 counted the fields alone; the `art_style` writer
+  (below) added about 17. Nothing was invented to close the gap (`PLAN.md` rule 6).
+- **Off-plan, decided inside the phase:** step 6 reversed by the maintainer — `Scenario.art_style`
+  stays and gets its writer: an "Art style" input on the `/scenario` page, carried through
+  `Runtime.new_scenario(..., *, art_style)` and `Authoring.build(title, premise, art_style, packs,
+  written, source)`; the illustrator reads `scenario.art_style or settings.media.style` as before.
+  The sidebar draws the `Sheet` card first, then the
+  engine's panels in the order it lists them; the kit's panels are `This scene`, `Here`,
+  `Traits`, `Carrying`, `Threads`, `Trail`, so the Trail moved from the journal into the sidebar
+  and the scene header's breadcrumb is gone. `Transition.arrival_brief` carries no comment: its
+  type says what `None` means. `GameService._write` lost its `noun` parameter (one log line). The "crossing" word
+  left `app/runtime.py`'s comments and log lines because the done-when grep forbade it there;
+  `worldsmith.CROSSING` and `arrival_brief` keep it in the kit.
+- **Review:** Fable found three (the `Engine` member order against `VISION.md`, a double
+  `ready` check on the extend path, a test named for the deleted `world_tools` tier) and three
+  cuts (`tuple(packs)`, `transition` bound twice, the `noun` parameter); Codex Sol found the
+  member order alone. All six fixed; no refutations. Fable's second pass listed about −90 lines
+  of cuts outside the phase (spawn token accounting, `engine_text`, one-field config wrappers,
+  `AGENTS.md` duplicating `CLAUDE.md`, and more); recorded in `/tmp/phase-2/review-fable.md`,
+  not folded, for the maintainer to weigh against Phases 3–5.
+- **Known and accepted:** the `ready` lambda in Loner's `Transition` and the `_entity_known`
+  adapter survive until Phase 3 step 4. The extend path (`arrival_brief is None`) has no engine
+  behind it until Tunnel Goons; one test drives it through a replaced `Transition`. Smoke:
+  `uv run aidm` serves `/` and the game page (both HTTP 200, panels rendered); no turn was
+  played (a turn spawns live CLIs); the Phase 1 shutdown fault at `app/mcp.py:34` is unchanged.

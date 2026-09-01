@@ -228,7 +228,7 @@ Tunnel Goons lands at or under **1,000**. About **+950**.
 
 - [x] Phase 8 committed as the checkpoint, `2c3e8a5`
 - [x] Phase 1 — Maze Rats and the rooms kit deleted. `src` 8,913 -> 6,365
-- [ ] Phase 2 — the seam and the player view. about 6,270
+- [x] Phase 2 — the seam and the player view. `src` 6,365 -> 6,334
 - [ ] Phase 3 — Loner owns its world; `kits/` deleted. about 5,970
 - [ ] Phase 4 — Tunnel Goons. about 6,920
 - [ ] Phase 5 — the enduring documents

@@ -48,6 +48,10 @@ class SceneDraft[S: BaseModel](Frozen):
     threads: dict[Slug, Thread] = Field(default_factory=dict)
 
 
+def arrival_brief(pursuit: str) -> str:
+    return CROSSING.format(pursuit=pursuit)
+
+
 def scene_refusal[S: BaseModel](
     draft: SceneDraft[S], world: SceneState[S] | None = None
 ) -> str | None:

@@ -12,7 +12,7 @@ from aidm.core.model import Game
 # The rng is a parameter so a trial run against a throwaway copy cannot consume the turn's dice.
 type Play[G: Game[Any]] = Callable[[G, Random], tuple[Fact, ...]]
 type Validate[G: Game[Any]] = Callable[[G], None]
-type EntityKnown[G: Game[Any]] = Callable[[G, EntityId], bool | None]
+type Known[G: Game[Any]] = Callable[[G, EntityId], bool | None]
 
 
 class NoArgs(Frozen):
@@ -48,7 +48,7 @@ def master_tool[G: Game[Any], A: BaseModel](
 
 def apply_to_draft[G: Game[Any]](
     validate: Validate[G],
-    entity_known: EntityKnown[G],
+    known: Known[G],
     draft: G,
     play: Play[G],
     rng: Random,
@@ -61,10 +61,10 @@ def apply_to_draft[G: Game[Any]](
     for fact in landed:
         if not fact.told or fact.entity_id is None:
             continue
-        known = entity_known(draft, fact.entity_id)
-        if known is None:
+        seen = known(draft, fact.entity_id)
+        if seen is None:
             raise ValueError(f"a told fact names {fact.entity_id!r}, which the world does not hold")
-        if not known:
+        if not seen:
             raise ValueError(f"a told fact names {fact.entity_id!r}, whom the player has not met")
     validate(draft)
     return landed

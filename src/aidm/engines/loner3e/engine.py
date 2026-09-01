@@ -151,15 +151,13 @@ def build(user_packs: Path) -> Engine[Loner3eGame]:
         game=Loner3eGame,
         scenario=Loner3eScenarioFile,
         character=Loner3eCharacterFile,
-        guidance=partial(guidance, packs),
-        world_tools=scene_tools(_world_of),
-        tools=mechanics,
+        tools=(*scene_tools(_world_of), *mechanics),
         creation_steps=partial(creation_steps, packs),
         create_character=partial(create_character, packs),
         preview_character=preview_character,
         validate=partial(_validate, packs),
         new_game=new_game,
-        entity_known=_entity_known,
+        known=_entity_known,
         record=_record,
         history=_history,
         master_sections=partial(_master_sections, packs),
@@ -168,17 +166,15 @@ def build(user_packs: Path) -> Engine[Loner3eGame]:
         over=player_over,
         authoring=Authoring(
             answer=LonerScene,
-            prompt=lambda source, rules: worldsmith.render_opening(source, rules, LonerScene),
-            refusal=_authoring_refusal,
+            prompt=partial(_authoring_prompt, packs),
             build=_build_scenario,
         ),
-        crossing=Transition(
+        transition=Transition(
             ready=lambda state: state.payload.world.run.settled,
-            write=_write_next,
+            write=partial(_write_next, packs),
             install=_install_scene,
-            arrival_brief=worldsmith.CROSSING,
+            arrival_brief=worldsmith.arrival_brief,
         ),
-        extension=None,
     )
 
 
@@ -237,34 +233,43 @@ def _player_view(state: Loner3eGame) -> PlayerView:
     return render.player_view(state, state.payload.world, sheet_rows(state), player_over(state))
 
 
-def _authoring_refusal(written: BaseModel) -> str | None:
-    return worldsmith.scene_refusal(cast(LonerScene, written))
+def _authoring_prompt(packs: Mapping[str, Pack], source: str, picks: Sequence[Slug]) -> str:
+    return worldsmith.render_opening(source, guidance(packs, picks), LonerScene)
 
 
 def _build_scenario(
     title: str,
     premise: str,
+    art_style: str,
     packs: tuple[Slug, ...],
     written: BaseModel,
     source: str,
 ) -> AnyScenario:
     scene = cast(LonerScene, written)
+    if (refused := worldsmith.scene_refusal(scene)) is not None:
+        raise ValueError(refused)
     return Loner3eScenarioFile(
         meta=ScenarioMeta(title=title, premise=premise or scene.situation),
         engine=EngineId("loner3e"),
         packs=packs,
+        art_style=art_style,
         payload=Loner3eScenario(world=worldsmith.opening_canon(scene, source)),
     )
 
 
 async def _write_next(
+    packs: Mapping[str, Pack],
     state: Loner3eGame,
     intent: str,
-    rules: str,
     answer: WorldsmithAnswer,
 ) -> BaseModel:
     return await worldsmith.write_next(
-        state.payload.world, LonerScene, intent, rules, sheet_rows(state), answer
+        state.payload.world,
+        LonerScene,
+        intent,
+        guidance(packs, state.packs),
+        sheet_rows(state),
+        answer,
     )
 
 

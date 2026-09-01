@@ -177,7 +177,7 @@ def test_a_change_may_run_on_a_state_already_suspended_on_a_decision(tmp_path: P
         return ()
 
     draft = _pending(state).draft()
-    _ = apply_to_draft(engine.validate, engine.entity_known, draft, nothing, Random(0))
+    _ = apply_to_draft(engine.validate, engine.known, draft, nothing, Random(0))
     suspended = draft.committed()
     assert suspended.pending == DECISION
 
@@ -188,7 +188,7 @@ def test_a_second_decision_is_refused_while_one_is_already_open(tmp_path: Path) 
     with pytest.raises(ValueError, match="one at a time"):
         _ = apply_to_draft(
             engine.validate,
-            engine.entity_known,
+            engine.known,
             draft,
             lambda draft, _rng: _hit(draft, narrate=False),
             Random(0),

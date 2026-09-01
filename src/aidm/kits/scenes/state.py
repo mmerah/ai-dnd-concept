@@ -108,7 +108,7 @@ class SceneState[S: BaseModel](Mutable):
 
     def exchanges(self) -> tuple[Exchange, ...]:
         return tuple(
-            one if one.scene else one.model_copy(update={"scene": run.scene.title})
+            one if one.where else one.model_copy(update={"where": run.scene.title})
             for run in self.runs
             for one in run.exchanges
         )

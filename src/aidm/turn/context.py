@@ -104,7 +104,7 @@ def _recent(history: Sequence[Exchange], limit: int) -> str:
 
 
 def _recent_exchange(exchange: Exchange) -> str:
-    location = f"[at {exchange.scene}] " if exchange.scene else ""
+    location = f"[at {exchange.where}] " if exchange.where else ""
     return f"> {exchange.prompt}\n{location}{exchange.narration}"
 
 

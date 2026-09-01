@@ -156,6 +156,11 @@ def scenario_page(runtime: Runtime) -> None:
             .classes("w-full")
             .props("outlined autogrow")
         )
+        style = (
+            ui.input(label="Art style", placeholder="Leave empty for the default style")
+            .classes("w-full")
+            .props("outlined")
+        )
         ui.label("Or upload the adventure itself.").classes("text-sm opacity-70 q-mt-md")
         _ = (
             ui.upload(on_upload=took, max_files=1, auto_upload=True)
@@ -172,7 +177,13 @@ def scenario_page(runtime: Runtime) -> None:
             button.props("loading")
             try:
                 name = await runtime.new_scenario(
-                    engine_id, chosen, told, document, packs.value, character.value
+                    engine_id,
+                    chosen,
+                    told,
+                    document,
+                    packs.value,
+                    character.value,
+                    art_style=(style.value or "").strip(),
                 )
                 opened = launch_target(
                     load_catalog(runtime.settings, runtime.engines), name, character.value

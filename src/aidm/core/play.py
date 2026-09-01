@@ -91,7 +91,7 @@ class Exchange(Frozen):
     prompt: str
     lines: tuple[SpokenLine, ...]
     facts: tuple[Fact, ...] = ()
-    scene: str = Field(default="", exclude=True)
+    where: str = Field(default="", exclude=True)
     # The suspending decision's prompt: the pause has to survive after `Game.pending` clears.
     decision: str = ""
 

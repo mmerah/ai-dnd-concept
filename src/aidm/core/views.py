@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 
-from aidm.core.entities import Frozen
+from aidm.core.entities import EntityId, Frozen
 from aidm.core.play import DecisionOption, Speaker
 
 type Rows = tuple[tuple[str, str], ...]
@@ -16,10 +16,16 @@ class Subject(Frozen):
     brief: str
 
 
-class ThreadRow(Frozen):
+class PanelRow(Frozen):
+    label: str
+    detail: str
+    # Set when the row is an entity, so the sidebar can draw its icon.
+    icon_id: EntityId | None = None
+
+
+class Panel(Frozen):
     title: str
-    status: str
-    note: str
+    rows: tuple[PanelRow, ...]
 
 
 class PlayerPrompt(Frozen):
@@ -47,15 +53,8 @@ class PlayerView(Frozen):
     """What the pages read: scene art and subjects live on the narrator view, not here."""
 
     player: Subject
-    focus: str
-    sheet: tuple[tuple[str, str], ...]
-    traits: tuple[tuple[str, str], ...]
-    carrying: tuple[Subject, ...]
-    present: tuple[Subject, ...]
-    companions: tuple[str, ...]
-    threads: tuple[ThreadRow, ...]
-    trail: tuple[str, ...]
-    world_rows: Rows
+    sheet: Rows
+    panels: tuple[Panel, ...]
     prompt: PlayerPrompt | None
     over: str | None
 

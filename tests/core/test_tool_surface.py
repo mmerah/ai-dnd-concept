@@ -24,8 +24,11 @@ from aidm.app.launch import LaunchTarget
 from aidm.app.mcp import call, offered
 from aidm.app.spawn import CliSpawner, final_message
 from aidm.core.entities import PLAYER_ID, EngineId, EntityId
+from aidm.core.model import WorldsmithAnswer
 from aidm.core.play import Narration
-from aidm.engines.loner3e.state import LonerScene
+from aidm.engines.core import Transition
+from aidm.engines.loner3e.state import Loner3eGame, LonerScene
+from aidm.kits.scenes import worldsmith
 from aidm.turn.run import ALREADY_OPEN, DECIDING, NO_TURN, START_FIRST, TURN_TOOLS, Turn
 
 VAULT_MAP = EntityId("vault-map")
@@ -51,7 +54,7 @@ def _scene(**changes: object) -> str:
     return json.dumps(A_SCENE | changes)
 
 
-def test_the_surface_publishes_turn_world_and_engine_tools(tmp_path: Path) -> None:
+def test_the_surface_publishes_turn_and_engine_tools(tmp_path: Path) -> None:
     table = opened(tmp_path)
 
     names = [tool.name for tool in offered(table.runtime)]
@@ -209,6 +212,50 @@ async def test_the_offer_does_not_close_the_scene_or_stop_the_player(tmp_path: P
         moving_on=True,
     )
     assert state.payload.world.current.title == "The Cloister Walk"
+
+
+async def test_a_transition_without_an_arrival_brief_extends_without_a_turn(tmp_path: Path) -> None:
+    table = opened(tmp_path)
+    engine = table.service.engine
+
+    def ready(_state: Loner3eGame) -> bool:
+        return True
+
+    async def write(state: Loner3eGame, _intent: str, _answer: WorldsmithAnswer) -> LonerScene:
+        written = LonerScene.model_validate_json(_scene())
+        if (refused := worldsmith.scene_refusal(written, state.payload.world)) is not None:
+            raise ValueError(refused)
+        return written
+
+    table.service.engine = replace(
+        engine,
+        transition=Transition(
+            ready=ready,
+            write=write,
+            install=engine.transition.install,
+            arrival_brief=None,
+        ),
+    )
+    before = table.state.turn
+    runs = len(table.state.payload.world.runs)
+
+    await table.service.play("Out into the cloister walk.", moving_on=True)
+
+    assert table.state.turn == before
+    assert len(table.state.payload.world.runs) == runs + 1
+    assert not any(role == "master" for role, _ in table.spawner.prompts)
+
+
+def test_authoring_build_raises_on_an_unmet_bar(tmp_path: Path) -> None:
+    table = opened(tmp_path)
+    mara = table.state.payload.world.require(MARA)
+    scene = LonerScene.model_validate(
+        json.loads(_scene(present=["mara"], hidden=[]))
+        | {"cast": {str(MARA): mara.model_dump(round_trip=True)}}
+    )
+
+    with pytest.raises(ValueError, match="the scene needs"):
+        _ = table.service.engine.authoring.build("T", "p", "", table.state.packs, scene, "")
 
 
 async def test_a_turn_that_dies_after_asking_to_move_takes_its_write_with_it(
@@ -434,7 +481,7 @@ async def test_abandoning_a_spawn_kills_the_process_group_it_started(
 
 def test_the_surface_publishes_for_the_engine_whose_turn_is_in_flight(tmp_path: Path) -> None:
     table = opened(tmp_path)
-    toolless = replace(table.service.engine, id=EngineId("mirror"), world_tools=(), tools=())
+    toolless = replace(table.service.engine, id=EngineId("mirror"), tools=())
     # First of the installed engines, so reading the engines instead of the turn would show it.
     table.runtime.engines = {toolless.id: toolless, **table.runtime.engines}
     state = table.service.state

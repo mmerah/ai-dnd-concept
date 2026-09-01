@@ -13,7 +13,6 @@ from aidm.core.io import ENCODING, decoded
 from aidm.core.model import (
     AnyCharacter,
     AnyScenario,
-    CheckAnswer,
     EngineHeader,
     Game,
     WorldsmithAnswer,
@@ -27,25 +26,23 @@ from aidm.kits.entities import Entity, entity_fact, labeled
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Authoring:
     answer: type[BaseModel]
-    prompt: Callable[[str, str], str]
-    refusal: CheckAnswer
-    build: Callable[[str, str, tuple[Slug, ...], BaseModel, str], AnyScenario]
+    prompt: Callable[[str, Sequence[Slug]], str]
+    build: Callable[[str, str, str, tuple[Slug, ...], BaseModel, str], AnyScenario]
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Transition[G: Game[Any]]:
-    """A kit's way of growing the world: when it is offered, how it is written, how it installs."""
+    """How the world grows: when it is offered, how it is written, how it installs."""
 
     ready: Callable[[G], bool]
-    write: Callable[[G, str, str, WorldsmithAnswer], Awaitable[BaseModel]]
+    write: Callable[[G, str, WorldsmithAnswer], Awaitable[BaseModel]]
     install: Callable[[G, BaseModel], tuple[Fact, ...]]
-    # The narrator's brief for the arrival, supplied by the kit whose transition moves the player.
-    arrival_brief: str = ""
+    arrival_brief: Callable[[str], str] | None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Engine[G: Game[Any]]:
-    """The one extension point joining an engine's rules to its chosen world kit."""
+    """The seam joining an engine's rules to its chosen world kit."""
 
     id: EngineId
     title: str
@@ -54,28 +51,24 @@ class Engine[G: Game[Any]]:
     game: type[G]
     scenario: type[AnyScenario]
     character: type[AnyCharacter]
-    guidance: Callable[[Sequence[Slug]], str]
-    world_tools: tuple[MasterTool[G], ...]
-    tools: tuple[MasterTool[G], ...]
     creation_steps: Callable[[Picks], tuple[CreationStep, ...]]
     create_character: Callable[[str, str, Picks], AnyCharacter]
     preview_character: Callable[[AnyCharacter], Rows]
+    tools: tuple[MasterTool[G], ...]
     validate: Validate[G]
     new_game: Callable[[AnyScenario, AnyCharacter], BaseModel]
-    entity_known: Callable[[G, EntityId], bool | None]
+    over: Callable[[G], str | None]
+    known: Callable[[G, EntityId], bool | None]
     record: Callable[[G, str, tuple[SpokenLine, ...], Sequence[Fact]], tuple[str, ...]]
     history: Callable[[G], tuple[Exchange, ...]]
     master_sections: Callable[[G], Rows]
     narrator_view: Callable[[G], NarratorView]
     player_view: Callable[[G], PlayerView]
-    over: Callable[[G], str | None]
     authoring: Authoring
-    crossing: Transition[G] | None
-    extension: Transition[G] | None
+    transition: Transition[G]
 
     def __post_init__(self) -> None:
-        tools = (*self.world_tools, *self.tools)
-        require_unique(f"tool names of the {self.id!r} engine", (one.name for one in tools))
+        require_unique(f"tool names of the {self.id!r} engine", (one.name for one in self.tools))
 
     def restored(self, raw: str) -> G:
         value = decoded(raw)

@@ -200,7 +200,13 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
     runtime = Runtime(settings, spawner)
 
     name = await runtime.new_scenario(
-        LONER3E, "The Sunken Bell", "The tide took the lower town.", None, ("srd",), "kael"
+        LONER3E,
+        "The Sunken Bell",
+        "The tide took the lower town.",
+        None,
+        ("srd",),
+        "kael",
+        art_style="woodcut",
     )
 
     # The scene bar refuses the first answer, and the reason goes back with the re-prompt.
@@ -213,6 +219,8 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
     assert state.payload.world.current.title == "The Bell Under the Water"
     assert state.payload.world.player.name == "Kael"
     assert state.payload.world.source.startswith("PREMISE:")
+    world = json.loads((settings.scenarios_dir / name / "world.json").read_text(encoding=ENCODING))
+    assert world["art_style"] == "woodcut"
 
 
 async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: Path) -> None:
@@ -227,7 +235,7 @@ async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: P
 
     with pytest.raises(ValueError, match="has no sheet"):
         _ = await runtime.new_scenario(
-            LONER3E, "The Sunken Bell", "The tide.", None, ("srd",), "kael"
+            LONER3E, "The Sunken Bell", "The tide.", None, ("srd",), "kael", art_style=""
         )
 
     assert not scenarios.exists()
@@ -238,7 +246,9 @@ async def test_a_scenario_written_from_a_document_keeps_it_beside_the_world(tmp_
     spawner = ScriptedSpawner(answers={"worldsmith": [json.dumps(_OPENING)]})
     runtime = Runtime(ui_settings(tmp_path, scenarios), spawner)
 
-    name = await runtime.new_scenario(LONER3E, "The Sunken Bell", "", SOURCE_MD, ("srd",), "kael")
+    name = await runtime.new_scenario(
+        LONER3E, "The Sunken Bell", "", SOURCE_MD, ("srd",), "kael", art_style=""
+    )
 
     assert (scenarios / name / "source.md").is_file()
     state = runtime.session(

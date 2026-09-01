@@ -119,7 +119,6 @@ def scene_header(session: GameService) -> None:
             .style(f"max-height: {_SCENE_HEIGHT}; overflow-y: auto; gap: 0; min-width: 0")
         ):
             ui.label(scene.title).classes("text-h6 font-bold")
-            _breadcrumb(session)
             ui.label(scene.situation).classes("text-sm opacity-70")
 
 
@@ -132,8 +131,8 @@ def chat(session: GameService) -> None:
     player = speaker_of(session.player_view().player)
     heading = ""
     for exchange in history:
-        if exchange.scene and exchange.scene != heading:
-            heading = exchange.scene
+        if exchange.where and exchange.where != heading:
+            heading = exchange.where
             ui.label(heading).classes("w-full text-center text-xs uppercase opacity-50 q-mt-md")
         _bubble(session, player, exchange.prompt, sent=True)
         for fact in exchange.facts:
@@ -321,17 +320,6 @@ def game_page(runtime: Runtime, session: GameService) -> None:
     ui.timer(1.0, lambda: tick_elapsed(view))
     if session.media is not None:
         ui.timer(3.0, lambda: poll_art(view))
-
-
-def _breadcrumb(session: GameService) -> None:
-    """Where this scene sits in the story: the number of every scene played, this one marked."""
-    played = session.player_view().trail
-    with ui.row().classes("items-center").style("gap: 0.3rem"):
-        for number, title in enumerate(played, start=1):
-            here = number == len(played)
-            ui.label(str(number)).classes(
-                f"text-xs {'font-bold game-outcome' if here else 'opacity-40'}"
-            ).tooltip(title)
 
 
 def _scene_art(session: GameService) -> None:

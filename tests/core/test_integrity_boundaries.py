@@ -178,7 +178,7 @@ def test_a_told_fact_about_an_unmet_or_unknown_entity_is_refused() -> None:
     with pytest.raises(ValueError, match="has not met"):
         _ = apply_to_draft(
             engine.validate,
-            engine.entity_known,
+            engine.known,
             state.draft(),
             lambda _draft, _rng: (leak,),
             Random(0),
@@ -191,7 +191,7 @@ def test_a_told_fact_about_an_unmet_or_unknown_entity_is_refused() -> None:
     with pytest.raises(ValueError, match="does not hold"):
         _ = apply_to_draft(
             engine.validate,
-            engine.entity_known,
+            engine.known,
             state.draft(),
             lambda _draft, _rng: (nobody,),
             Random(0),

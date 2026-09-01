@@ -93,7 +93,7 @@ class Turn:
             _ = served.args.model_validate(raw)
             return served.run(self)
         found = next(
-            (one for one in (*self.engine.world_tools, *self.engine.tools) if one.name == name),
+            (one for one in self.engine.tools if one.name == name),
             None,
         )
         if found is None:
@@ -246,9 +246,7 @@ def _apply(turn: Turn, play: Play[AnyGame]) -> tuple[Fact, ...]:
     """One execution against a candidate; a refused call leaves the draft and the dice alone."""
     candidate, dice = turn.draft.draft(), deepcopy(turn.rng)
     try:
-        landed = apply_to_draft(
-            turn.engine.validate, turn.engine.entity_known, candidate, play, dice
-        )
+        landed = apply_to_draft(turn.engine.validate, turn.engine.known, candidate, play, dice)
         committed = candidate.committed()
     except ValidationError as broken:
         raise ValueError(
