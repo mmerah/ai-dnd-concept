@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from aidm.core.entities import EntityId, Frozen, Slug
 from aidm.core.facts import Fact
-from aidm.core.io import engine_text
+from aidm.core.io import ENCODING
 from aidm.core.model import WorldsmithAnswer
 from aidm.core.tools import schema_of
 from aidm.core.views import sections
@@ -30,7 +30,7 @@ SURPRISE = (
     "have stopped thinking about. Surprise by recombining what exists, never by inventing what "
     "the source would not hold."
 )
-WORLDSMITH = engine_text(Path(__file__).parent / "prompts" / "worldsmith.md")
+WORLDSMITH = (Path(__file__).parent / "prompts" / "worldsmith.md").read_text(encoding=ENCODING)
 
 
 class SceneDraft[S: BaseModel](Frozen):

@@ -1,6 +1,5 @@
 import json
 import logging
-import shlex
 from asyncio import subprocess, wait_for
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -31,8 +30,6 @@ _EVENT: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
 class RunResult:
     text: str
     session: str | None
-    input_tokens: int = 0
-    cached_tokens: int = 0
 
 
 class Driver(Protocol):
@@ -49,15 +46,8 @@ class Driver(Protocol):
     def parse(self, output: str) -> RunResult: ...
 
 
-class _ClaudeUsage(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    input_tokens: int = 0
-    cache_read_input_tokens: int = 0
-
-
 class _ClaudeResult(BaseModel):
-    """What `--output-format json` prints; anything else is read as loose text."""
+    """What `--output-format json` prints."""
 
     model_config = ConfigDict(extra="ignore")
 
@@ -65,7 +55,6 @@ class _ClaudeResult(BaseModel):
     session_id: str
     # A failed run can still exit 0 and put its error where the answer goes.
     is_error: bool = False
-    usage: _ClaudeUsage = _ClaudeUsage()
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,16 +87,11 @@ class ClaudeDriver:
     def parse(self, output: str) -> RunResult:
         try:
             said = _ClaudeResult.model_validate_json(output)
-        except ValidationError:
-            return RunResult(final_message(output), None)
+        except ValidationError as broken:
+            raise ValueError(f"claude printed no JSON result: {output[-500:]}") from broken
         if said.is_error:
             raise ValueError(f"the run failed: {said.result[-500:]}")
-        return RunResult(
-            said.result,
-            said.session_id,
-            said.usage.input_tokens,
-            said.usage.cache_read_input_tokens,
-        )
+        return RunResult(said.result, said.session_id)
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,12 +127,7 @@ class CodexDriver:
 
     def parse(self, output: str) -> RunResult:
         events = [one for line in output.splitlines() if (one := _object(line)) is not None]
-        return RunResult(
-            final_message(output),
-            _string(events, "thread_id"),
-            _count(events, "input_tokens"),
-            _count(events, "cached_input_tokens"),
-        )
+        return RunResult(final_message(output), _string(events, "thread_id"))
 
 
 DRIVERS: Mapping[CliProvider, Driver] = {"claude": ClaudeDriver(), "codex": CodexDriver()}
@@ -167,17 +146,15 @@ class CliSpawner:
     async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
         config = self.settings.roles.for_name(role)
         driver = DRIVERS[config.provider]
-        raw = bool(config.command)
         url = f"http://localhost:{self.settings.server_port}/mcp/"
-        argv = shlex.split(config.command) if raw else driver.command(role, config, session, url)
+        argv = driver.command(role, config, session, url)
         started = monotonic()
         # An empty working directory, so a role cannot read this repository even if it tries.
         with TemporaryDirectory(prefix=f"aidm-{role}-") as empty:
             output = await _spawned(role, argv, prompt, config.timeout, driver.secrets, empty)
-        # A raw command is the operator's own; it is unresumable and its output unparsed.
-        result = RunResult(final_message(output), None) if raw else driver.parse(output)
+        result = driver.parse(output)
         LOGGER.info(
-            "%s spawned: provider=%s model=%s effort=%s %s in %.1fs, input=%d cached=%d",
+            "%s spawned: provider=%s model=%s effort=%s %s in %.1fs",
             role,
             config.provider,
             config.model,
@@ -185,8 +162,6 @@ class CliSpawner:
             # Read off the command, because a driver may refuse to carry a session on.
             "resumed" if "resume" in argv or "--resume" in argv else "cold",
             monotonic() - started,
-            result.input_tokens,
-            result.cached_tokens,
         )
         return result
 
@@ -241,6 +216,10 @@ async def answered[T: BaseModel](
     raise ValueError(f"the {role} answered nothing usable: {refused}")
 
 
+def child_environment(secrets: Sequence[str]) -> dict[str, str]:
+    return {name: environ[name] for name in (*KEPT_ENV, *secrets) if name in environ}
+
+
 async def _spawned(
     role: Role,
     argv: Sequence[str],
@@ -256,7 +235,7 @@ async def _spawned(
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         cwd=cwd,
-        env={name: environ[name] for name in (*KEPT_ENV, *secrets) if name in environ},
+        env=child_environment(secrets),
         # Its own group, so an abandoned spawn cannot leave children playing on.
         start_new_session=True,
     )
@@ -304,14 +283,6 @@ def _string(events: Sequence[JsonValue], name: str) -> str | None:
     """The first event that names it: a stream announces its thread before it says anything."""
     found = next((one for event in events if (one := _found(event, name)) is not None), None)
     return found if isinstance(found, str) else None
-
-
-def _count(events: Sequence[JsonValue], name: str) -> int:
-    """The last event that names it: a turn reports its usage once, at the end."""
-    found = next(
-        (one for event in reversed(events) if (one := _found(event, name)) is not None), None
-    )
-    return found if isinstance(found, int) else 0
 
 
 def _found(node: JsonValue, name: str) -> JsonValue | None:

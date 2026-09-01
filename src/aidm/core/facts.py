@@ -49,10 +49,6 @@ def traced(facts: Sequence[Fact], *, told_only: bool = False) -> str:
     return "\n".join(f"- {fact.trace}" for fact in facts if fact.told or not told_only) or NOTHING
 
 
-def told_traces(facts: Sequence[Fact]) -> tuple[str, ...]:
-    return tuple(fact.trace for fact in facts if fact.told)
-
-
 def roll(faces: Sequence[int], reason: str, rng: Random) -> tuple[tuple[int, ...], Fact]:
     if not faces:
         raise ValueError("a dice pool rolls at least one die")

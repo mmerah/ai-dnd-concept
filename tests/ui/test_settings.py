@@ -18,21 +18,21 @@ class FakeBox:
 
 def test_only_a_real_edit_is_written(tmp_path: Path) -> None:
     settings = ui_settings(saves_dir=tmp_path)
-    settings.roles = Roles(narrator=RoleConfig(model="sonnet", command="stub -p"))
+    settings.roles = Roles(narrator=RoleConfig(model="sonnet"))
     changed = _changes(
         settings,
         {
             ("providers", "openrouter", "api_key"): FakeBox(""),
             ("media", "enabled"): FakeBox(True),
-            ("turn", "recent_exchanges"): FakeBox(20.0),
+            ("media", "style"): FakeBox(None),
+            ("recent_exchanges",): FakeBox(20.0),
             ("roles", "narrator", "timeout"): FakeBox(90.0),
-            ("roles", "narrator", "command"): FakeBox(None),
         },
     )
     assert changed == {
         ("media", "enabled"): "true",
+        ("media", "style"): None,
         ("roles", "narrator", "timeout"): "90",
-        ("roles", "narrator", "command"): None,
     }
 
 

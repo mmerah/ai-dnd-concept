@@ -8,7 +8,6 @@ from time import monotonic
 from nicegui import ui
 
 from aidm.app.runtime import GameService, Runtime
-from aidm.core.entities import EntityId
 from aidm.core.facts import DiceEvent, Fact
 from aidm.core.play import Answer, Speaker
 from aidm.core.views import speaker_of
@@ -47,7 +46,6 @@ class GameView:
     def __init__(self, runtime: Runtime, session: GameService) -> None:
         self.runtime = runtime
         self.session = session
-        self.agent_log: ui.log | None = None
         self.shown_art: tuple[Path | None, bool] = (None, False)
         # Both are built by the page below this view, and the panels reach them through it.
         self.composer: ui.input | None = None
@@ -57,10 +55,6 @@ class GameView:
         self.live_facts: list[Fact] = []
         self.step_started: float | None = None
         self.ticker: ui.label | None = None
-
-    def log(self, line: str) -> None:
-        if self.agent_log is not None and not self.agent_log.is_deleted:
-            self.agent_log.push(line)
 
     @ui.refreshable_method
     def scene(self) -> None:
@@ -286,7 +280,7 @@ def restart(view: GameView) -> None:
 
 
 def game_page(runtime: Runtime, session: GameService) -> None:
-    session.illustrate_scene()
+    session.illustrate()
     view = GameView(runtime, session)
     with page_header(session.state.scenario.title, session.engine.title):
         ui.space()
@@ -307,15 +301,11 @@ def game_page(runtime: Runtime, session: GameService) -> None:
             with ui.tabs().classes("w-full") as tabs:
                 scene_tab = ui.tab("scene")
                 journal_tab = ui.tab("journal")
-                dev_tab = ui.tab("dev", icon="code").classes("game-dev-tab")
             with ui.tab_panels(tabs, value=scene_tab).classes("w-full flex-grow"):
                 with ui.tab_panel(scene_tab), ui.scroll_area().classes("w-full h-full"):
                     view.sheet()
                 with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
                     view.journal()
-                with ui.tab_panel(dev_tab), ui.scroll_area().classes("w-full h-full"):
-                    with ui.expansion("game master", value=True).classes("w-full"):
-                        view.agent_log = ui.log(max_lines=500).classes("w-full h-64 text-xs")
 
     ui.timer(1.0, lambda: tick_elapsed(view))
     if session.media is not None:
@@ -358,7 +348,7 @@ def _dice_group(die: DiceEvent) -> None:
 
 
 def _bubble(session: GameService, speaker: Speaker | None, text: str, *, sent: bool) -> None:
-    icon = None if speaker is None else session.icon(EntityId(speaker.id))
+    icon = None if speaker is None else session.icon(speaker.id)
     name = "DM" if speaker is None else speaker.name
     message = ui.chat_message(text, name=name, sent=sent).classes("w-full")
     if speaker is None:
@@ -424,7 +414,6 @@ async def _send(
             on_fact=lambda fact: on_fact(view, fact, loop),
             moving_on=moving_on,
         )
-    view.log(session.master_log)
     session.step = None
     view.live_prompt, view.live_facts, view.step_started = None, [], None
     if view.composer is not None:

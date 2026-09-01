@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 
-from aidm.core.entities import EntityId, Frozen
+from aidm.core.entities import CheckedEntityId, EntityId, Frozen
 from aidm.core.play import DecisionOption, Speaker
 
 type Rows = tuple[tuple[str, str], ...]
@@ -11,7 +11,7 @@ def sections(parts: Iterable[tuple[str, str]]) -> str:
 
 
 class Subject(Frozen):
-    id: str
+    id: CheckedEntityId
     name: str
     brief: str
 

@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from aidm.core.entities import DEAD, PLAYER_ID, EngineId, EntityId, Slug
 from aidm.core.facts import Fact
-from aidm.core.io import engine_text
+from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, AnyScenario, ScenarioMeta, WorldsmithAnswer
 from aidm.core.play import Exchange, SpokenLine
 from aidm.core.tools import MasterTool, NoArgs, master_tool
@@ -146,7 +146,7 @@ def build(user_packs: Path) -> Engine[Loner3eGame]:
     return Engine(
         id=EngineId("loner3e"),
         title="LONER 3E",
-        instructions=engine_text(ENGINE_DIR / "rules.md"),
+        instructions=(ENGINE_DIR / "rules.md").read_text(encoding=ENCODING),
         packs=pack_options(packs),
         game=Loner3eGame,
         scenario=Loner3eScenarioFile,

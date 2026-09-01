@@ -31,8 +31,6 @@ class RoleConfig(BaseModel):
     model: str = Field(min_length=1)
     effort: Effort = "medium"
     timeout: float = Field(default=300.0, gt=0.0)
-    # An explicit escape hatch. A raw command cannot resume a session.
-    command: str = ""
 
 
 class MediaConfig(BaseModel):
@@ -48,20 +46,6 @@ class MediaConfig(BaseModel):
     timeout: float = Field(default=180.0, gt=0.0)
     max_references: int = Field(default=4, ge=0)
     style: str = "Painterly fantasy illustration, muted colours, no text or lettering."
-
-
-class TurnConfig(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    # How many past exchanges a role is shown; every role reads the same depth.
-    recent_exchanges: int = Field(default=20, ge=1)
-
-
-class SourceConfig(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    # This ~30k-token ceiling admits a 76-page adventure without swallowing the context.
-    max_chars: int = Field(default=120_000, ge=1)
 
 
 class Roles(BaseModel):
@@ -109,8 +93,10 @@ class Settings(BaseSettings):
     providers: Providers = Providers()
     roles: Roles = Roles()
     media: MediaConfig = MediaConfig()
-    turn: TurnConfig = TurnConfig()
-    source: SourceConfig = SourceConfig()
+    # How many past exchanges a role is shown; every role reads the same depth.
+    recent_exchanges: int = Field(default=20, ge=1)
+    # This ~30k-token ceiling admits a 76-page adventure without swallowing the context.
+    source_max_chars: int = Field(default=120_000, ge=1)
     # `.mcp.json` and `.codex/config.toml` hard-code this port: change all three together.
     # Not `PORT`: that name is set in too many shells to be safe to read.
     server_port: int = Field(default=8080, gt=0, lt=65536)

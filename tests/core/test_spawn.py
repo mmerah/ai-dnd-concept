@@ -1,5 +1,4 @@
 import json
-import os
 from dataclasses import replace
 from pathlib import Path
 
@@ -7,14 +6,7 @@ import pytest
 from core_test_support import ScriptedSpawner, offline_settings, opened, played, updated
 
 from aidm.app.sessions import Conversations, SessionFile, fingerprint
-from aidm.app.spawn import (
-    KEPT_ENV,
-    ClaudeDriver,
-    CliSpawner,
-    CodexDriver,
-    RunResult,
-    answered,
-)
+from aidm.app.spawn import ClaudeDriver, CodexDriver, RunResult, answered, child_environment
 from aidm.config import RoleConfig
 from aidm.core.io import FileStore
 from aidm.core.play import Narration
@@ -80,31 +72,27 @@ def test_a_conversation_started_on_other_instructions_is_a_different_one() -> No
     assert fingerprint(config, "the old rules") != fingerprint(config, "the new rules")
 
 
+def test_a_claude_reply_that_is_not_json_is_a_broken_run() -> None:
+    with pytest.raises(ValueError, match="no JSON result"):
+        _ = ClaudeDriver().parse("I answered in prose.")
+
+
 @pytest.mark.parametrize(
     ("driver", "output", "session"),
     (
         (
             ClaudeDriver(),
-            json.dumps(
-                {
-                    "result": "said",
-                    "session_id": "abc-123",
-                    "usage": {"input_tokens": 900, "cache_read_input_tokens": 700},
-                }
-            ),
+            json.dumps({"result": "said", "session_id": "abc-123"}),
             "abc-123",
         ),
         (CodexDriver(), CODEX_OUTPUT, "abc-123"),
     ),
     ids=("claude", "codex"),
 )
-def test_a_driver_reads_the_session_and_the_tokens_its_cli_reported(
+def test_a_driver_reads_the_session_its_cli_reported(
     driver: ClaudeDriver | CodexDriver, output: str, session: str
 ) -> None:
-    result = driver.parse(output)
-
-    assert result.session == session
-    assert (result.input_tokens, result.cached_tokens) == (900, 700)
+    assert driver.parse(output).session == session
 
 
 async def test_a_retry_carries_on_the_refused_attempt_and_sends_only_the_error() -> None:
@@ -121,24 +109,18 @@ async def test_a_retry_carries_on_the_refused_attempt_and_sends_only_the_error()
     assert "THE WHOLE BRIEF" not in asked[1][0]
 
 
-async def test_the_child_environment_holds_nothing_but_the_allowlist(
+def test_the_child_environment_holds_nothing_but_the_allowlist(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("A_KEY_NO_ROLE_SHOULD_SEE", "secret")
-    settings = updated(
-        offline_settings(),
-        roles={"narrator": {"model": "sonnet", "command": "sh -c 'env' --"}},
-    )
+    monkeypatch.setenv("PATH", "/bin")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
 
-    spoken = await CliSpawner(settings).run("narrator", "go", None)
+    held = child_environment(ClaudeDriver().secrets)
 
-    named = {line.split("=", 1)[0] for line in spoken.text.splitlines() if "=" in line}
-    # `sh` writes these three itself; everything else the child holds was passed to it.
-    assert named - {"PWD", "SHLVL", "_"} == {
-        name for name in (*KEPT_ENV, *ClaudeDriver().secrets) if name in os.environ
-    }
-    # A raw command is the operator's own, so it is never resumed.
-    assert spoken.session is None
+    assert "A_KEY_NO_ROLE_SHOULD_SEE" not in held
+    assert held["PATH"] == "/bin"
+    assert held["ANTHROPIC_API_KEY"] == "k"
 
 
 async def test_a_second_turn_carries_on_and_a_changed_model_starts_cold(tmp_path: Path) -> None:

@@ -10,6 +10,7 @@ decided along the way, and anything left known-and-accepted.
 | start (`2c3e8a5`, phase 8 committed) | 8,913 | 5,101 |
 | 1 — Maze Rats and the rooms kit deleted | 6,365 | 4,144 |
 | 2 — the seam and the player view | 6,334 | 4,221 |
+| 2b — mechanical cuts from the phase 2 review | 6,225 | 4,202 |
 
 ## Why the plan was rewritten (2026-09-01)
 
@@ -137,11 +138,41 @@ review caught, and what was left known-and-accepted.
   `ready` check on the extend path, a test named for the deleted `world_tools` tier) and three
   cuts (`tuple(packs)`, `transition` bound twice, the `noun` parameter); Codex Sol found the
   member order alone. All six fixed; no refutations. Fable's second pass listed about −90 lines
-  of cuts outside the phase (spawn token accounting, `engine_text`, one-field config wrappers,
-  `AGENTS.md` duplicating `CLAUDE.md`, and more); recorded in `/tmp/phase-2/review-fable.md`,
-  not folded, for the maintainer to weigh against Phases 3–5.
+  of cuts outside the phase (spawn token accounting, `engine_text`, one-field config wrappers
+  and more; its `AGENTS.md` item was wrong, that file is already a symlink). Not folded here;
+  they became step 2b below.
 - **Known and accepted:** the `ready` lambda in Loner's `Transition` and the `_entity_known`
   adapter survive until Phase 3 step 4. The extend path (`arrival_brief is None`) has no engine
   behind it until Tunnel Goons; one test drives it through a replaced `Transition`. Smoke:
   `uv run aidm` serves `/` and the game page (both HTTP 200, panels rendered); no turn was
   played (a turn spawns live CLIs); the Phase 1 shutdown fault at `app/mcp.py:34` is unchanged.
+
+### Step 2b — mechanical cuts from the phase 2 review (2026-09-01)
+
+Not a `PLAN.md` phase: the out-of-phase cuts Fable's phase 2 review listed, taken as one commit
+between phases 2 and 3 so the phase 3 diff stays about `kits/`.
+
+- **Counts:** `src` 6,334 -> 6,225 (−109; the review guessed about −90); `tests` 4,221 -> 4,202.
+  Goldens byte-identical.
+- **Cut:** spawn token accounting (`RunResult.input_tokens/cached_tokens`, `_ClaudeUsage`,
+  `_count`); `_FILENAME_SAFE` re-checks in `media.py` (`Speaker.id` and `Subject.id` are now
+  `CheckedEntityId`, so the type holds the invariant); `TurnConfig`/`SourceConfig` flattened to
+  `Settings.recent_exchanges` and `Settings.source_max_chars` (env keys `RECENT_EXCHANGES`,
+  `SOURCE_MAX_CHARS`; the local `.env` held neither old key); `engine_text`, `_copy`
+  (`shutil.copyfile`), `_content_dirs`; `Turn.landed`, `Game.take_notes`, `Narration.text`,
+  `told_traces`, `illustrate_scene` (now public `illustrate(narration="")`), `_premise`, the
+  `render_sections` alias (`render_picture`'s parameter became `engine_sections` so the import
+  is not shadowed), `Header` folded into `EngineHeader`.
+- **Decided by the maintainer:** `RoleConfig.command` and the raw-command branch deleted; the
+  page's dev tab and `master_log` deleted; `ClaudeDriver.parse` raises on non-JSON output
+  instead of reading it as loose text.
+- **Refuted from the review's list:** `picked()` (eleven identical `.get(id, "")` calls are what
+  a helper is for); `_open_game` (two callers, not one); `AGENTS.md` (already a symlink to
+  `CLAUDE.md`; the review's `diff -q` followed the link).
+- **Tests:** the env-allowlist test started a real `sh`, which `CLAUDE.md` forbids; the env dict
+  became `child_environment(secrets)` and the test checks it without a process. The raw-command
+  timeout test lost `command=`; a test proves `parse` raises on prose.
+- **Review:** Fable found five (a malformed `PROGRESS.md` line, a `_ = await` leftover, the
+  cleared-box arm of `_changes` untested, the `.env` rename risk — checked, none present — and a
+  stale key name in `IDEAS.md`); Codex Sol found the missing `parse` test. All fixed. Sol's cut
+  "drop the `PROGRESS.md` edit" refuted: the brief's out-of-scope list bound the implementer.

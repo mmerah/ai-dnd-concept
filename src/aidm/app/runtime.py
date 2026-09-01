@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from aidm.config import Settings, load_settings
 from aidm.core.entities import EngineId, EntityId, Slug, require_unique, slug
-from aidm.core.facts import Fact, told_traces, traced
+from aidm.core.facts import Fact, traced
 from aidm.core.io import FileStore, load_character, read_scenario, write_scenario
 from aidm.core.model import (
     AnyCharacter,
@@ -68,8 +68,6 @@ class GameService:
     step: TurnStep | None = None
     # The turn in flight; the tool surface reaches the live game through it.
     turn: Turn | None = None
-    # The game master's whole output, raw, for the dev tab; one spawn, so one string.
-    master_log: str = ""
     # Why the last scene write failed or would not fit; empty when none has.
     write_failure: str = ""
     _illustrations: set[Task[None]] = field(default_factory=set, repr=False)
@@ -104,7 +102,7 @@ class GameService:
             raise ValueError("the world offers no transition from here")
         announce = partial(self._announce, on_step=on_step)
         turn = Turn.begin(
-            self.engine, self.state, action, self.rng, self.settings.turn.recent_exchanges, on_fact
+            self.engine, self.state, action, self.rng, self.settings.recent_exchanges, on_fact
         )
         self.busy, self.turn, self.write_failure = True, turn, ""
         try:
@@ -114,14 +112,14 @@ class GameService:
             announce("master")
             await self._act(turn)
             lines: tuple[Line, ...] = ()
-            if turn.draft.pending is None or told_traces(turn.facts):
+            if turn.draft.pending is None or any(fact.told for fact in turn.facts):
                 announce("narrator")
                 lines = await self._narrate(turn.draft, tuple(turn.facts), turn.prompt, fatal=True)
             state = turn.finish(lines)
             # Cleared before arrival: the tool surface must not reach a turn nobody plays.
             self.turn, self.step = None, None
             self.commit(state)
-            self._illustrate(_latest_narration(self.engine, state))
+            self.illustrate(_latest_narration(self.engine, state))
             await self._cross_over(announce, turn.prompt)
         except BaseException:
             self._abandon_write()
@@ -166,13 +164,12 @@ class GameService:
 
     async def _act(self, turn: Turn) -> None:
         """A crashed game master still played the turn, if it applied anything legal first."""
-        self.master_log = ""
 
         def nothing_landed() -> bool:
             return not turn.facts and turn.draft.pending is None
 
         try:
-            spoken = await self.sessions.ask(
+            await self.sessions.ask(
                 self.slug,
                 "master",
                 MASTER + self.engine.instructions,
@@ -185,8 +182,6 @@ class GameService:
             LOGGER.warning(
                 "the game master failed after applying %d facts: %s", len(turn.facts), failed
             )
-            return
-        self.master_log = spoken.text
 
     async def _narrate(
         self, draft: AnyGame, facts: tuple[Fact, ...], prompt: str, *, fatal: bool
@@ -200,7 +195,7 @@ class GameService:
                     evidence=traced(facts, told_only=True),
                     prompt=prompt,
                     passages=told_passages(
-                        self.engine.history(draft), self.settings.turn.recent_exchanges
+                        self.engine.history(draft), self.settings.recent_exchanges
                     ),
                 ),
                 Narration,
@@ -233,7 +228,7 @@ class GameService:
             await self._install(transition, written, announce, transition.arrival_brief(pursuit))
         finally:
             self.step = None
-        self._illustrate(_latest_narration(self.engine, self.state))
+        self.illustrate(_latest_narration(self.engine, self.state))
 
     async def _install(
         self,
@@ -304,14 +299,10 @@ class GameService:
     def scene_pending(self) -> bool:
         return self.media is not None and self.media.scene_pending(self.scene())
 
-    def illustrate_scene(self) -> None:
-        """Draw where the player stands with no turn behind it, so an opening scene has art."""
-        self._illustrate("")
-
     def icon(self, entity_id: EntityId) -> Path | None:
         return None if self.media is None else self.media.icon(entity_id)
 
-    def _illustrate(self, narration: str) -> None:
+    def illustrate(self, narration: str = "") -> None:
         """Retain background tasks because asyncio may collect unreferenced tasks early."""
         if self.media is None:
             return
@@ -326,7 +317,7 @@ class GameService:
         self.store.discard(self.slug)
         self.sessions.forget(self.slug)
         self.state = opening
-        self.illustrate_scene()
+        self.illustrate()
 
     def commit(self, state: AnyGame) -> None:
         self.store.save(self.slug, state)
@@ -415,7 +406,7 @@ class Runtime:
         character = load_character(
             self.settings.characters_dir, character_id, engine.id, engine.character
         )
-        source = given_text(premise, document, self.settings.source.max_chars)
+        source = given_text(premise, document, self.settings.source_max_chars)
         name = slug(title, self._scenario_ids())
 
         def as_scenario(written: BaseModel) -> AnyScenario:

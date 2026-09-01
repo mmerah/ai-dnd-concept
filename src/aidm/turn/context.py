@@ -4,12 +4,11 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from aidm.core.io import engine_text
-from aidm.core.model import AnyGame, ScenarioMeta
+from aidm.core.io import ENCODING
+from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, Narration, PendingDecision
 from aidm.core.tools import schema_of
-from aidm.core.views import NarratorView
-from aidm.core.views import sections as render_sections
+from aidm.core.views import NarratorView, sections
 
 ANSWERED_BY_OPTION = (
     "The player chose the option above and the rules have applied it. Develop what it caused; "
@@ -18,13 +17,13 @@ ANSWERED_BY_OPTION = (
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
-MASTER = engine_text(_PROMPTS_DIR / "master.md")
-NARRATOR = engine_text(_PROMPTS_DIR / "narrator.md")
+MASTER = (_PROMPTS_DIR / "master.md").read_text(encoding=ENCODING)
+NARRATOR = (_PROMPTS_DIR / "narrator.md").read_text(encoding=ENCODING)
 
 
 def render_master(instructions: str, action: str) -> str:
     """The spawn prompt: the rules, and the action. `start_turn` hands back the picture."""
-    return render_sections(
+    return sections(
         (
             ("YOUR ROLE", MASTER),
             ("THE RULES OF THIS GAME", instructions),
@@ -34,7 +33,7 @@ def render_master(instructions: str, action: str) -> str:
 
 
 def render_picture(
-    sections: Sequence[tuple[str, str]],
+    engine_sections: Sequence[tuple[str, str]],
     state: AnyGame,
     history: Sequence[Exchange],
     prompt: str,
@@ -52,11 +51,11 @@ def render_picture(
         if resumed
         else (("PLAYER ACTION", prompt),)
     )
-    return render_sections(
+    return sections(
         (
-            _premise(state.scenario),
+            ("SCENARIO", f"{state.scenario.title}\n{state.scenario.premise}"),
             (f"RECENT PLAY (this is turn {state.turn + 1})", _recent(history, recent)),
-            *sections,
+            *engine_sections,
             ("NOTES FROM THE RULES", "\n".join(f"- {note}" for note in notes) or "- (none)"),
             ("WAITING ON THE PLAYER", _waiting(state.pending)),
             *ending,
@@ -68,7 +67,7 @@ def render_narrator(
     view: NarratorView, *, evidence: str, prompt: str, passages: Sequence[str] = ()
 ) -> str:
     """Only the narrator view reaches this, so hidden canon has no path into the prose."""
-    return render_sections(
+    return sections(
         (
             ("YOUR ROLE", NARRATOR),
             ("WHAT THE PLAYER HAS READ", "\n\n".join(passages) or "(nothing yet)"),
@@ -92,10 +91,6 @@ def told_passages(history: Sequence[Exchange], limit: int) -> tuple[str, ...]:
 
 def _shape(model: type[BaseModel]) -> str:
     return json.dumps(schema_of(model), indent=2, ensure_ascii=False)
-
-
-def _premise(scenario: ScenarioMeta) -> tuple[str, str]:
-    return "SCENARIO", f"{scenario.title}\n{scenario.premise}"
 
 
 def _recent(history: Sequence[Exchange], limit: int) -> str:

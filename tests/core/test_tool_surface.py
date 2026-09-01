@@ -25,7 +25,7 @@ from aidm.app.mcp import call, offered
 from aidm.app.spawn import CliSpawner, final_message
 from aidm.core.entities import PLAYER_ID, EngineId, EntityId
 from aidm.core.model import WorldsmithAnswer
-from aidm.core.play import Narration
+from aidm.core.play import Narration, narration_text
 from aidm.engines.core import Transition
 from aidm.engines.loner3e.state import Loner3eGame, LonerScene
 from aidm.kits.scenes import worldsmith
@@ -471,7 +471,7 @@ async def test_abandoning_a_spawn_kills_the_process_group_it_started(
     monkeypatch.setattr(spawn_module, "killpg", fake_killpg)
     settings = updated(
         offline_settings(tmp_path),
-        roles={"master": {"command": "ignored", "timeout": 0.01}},
+        roles={"master": {"timeout": 0.01}},
     )
 
     with pytest.raises(asyncio.TimeoutError):
@@ -522,6 +522,6 @@ def test_every_shape_a_cli_answers_in_parses_to_the_same_narration(
 ) -> None:
     narration = Narration.model_validate_json(final_message(output))
 
-    assert narration.text == "ok"
+    assert narration_text(narration.lines) == "ok"
     if wanted is not None:
         assert final_message(output) == wanted

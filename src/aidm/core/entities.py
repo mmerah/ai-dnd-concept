@@ -31,12 +31,6 @@ class Mutable(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class Header(BaseModel):
-    """Routes a document before its engine is known; the rest of the document is ignored."""
-
-    model_config = ConfigDict(extra="ignore", frozen=True)
-
-
 class Counter(Mutable):
     current: int
     maximum: int | None = None  # None is unbounded: wealth, experience

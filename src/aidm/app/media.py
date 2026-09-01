@@ -1,5 +1,4 @@
 import logging
-import re
 from base64 import b64decode, b64encode
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -10,6 +9,7 @@ from httpx import AsyncClient
 from pydantic import BaseModel, ConfigDict
 
 from aidm.config import MediaConfig, ProviderConfig, Settings
+from aidm.core.entities import EntityId
 from aidm.core.io import FileStore
 from aidm.core.model import AnyCharacter, AnyScenario
 from aidm.core.views import NarratorView, Subject
@@ -20,7 +20,6 @@ LOGGER = logging.getLogger(__name__)
 
 ICON_DIR = "icons"
 SUFFIXES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
-_FILENAME_SAFE = re.compile(r"[a-z0-9_-]+")
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,11 +46,8 @@ class Illustrator:
         """Only in-flight scenes wait; missing inactive scenes have failed."""
         return scene_key(scene) in self.generating
 
-    def icon(self, entity_id: str) -> Path | None:
+    def icon(self, entity_id: EntityId) -> Path | None:
         """What the chat shows as an avatar: a cached icon only, never a generation."""
-        if _FILENAME_SAFE.fullmatch(entity_id) is None:
-            LOGGER.warning("entity id %r cannot name a file; no icon", entity_id)
-            return None
         for directory in (*self.icon_dirs, self.saves / ICON_DIR):
             found = _existing(directory, entity_id)
             if found is not None:
@@ -96,9 +92,6 @@ class Illustrator:
         found = self.icon(subject.id)
         if found is not None:
             return found
-        # `icon` cannot tell an unsafe id from a missing file, so generation is guarded again.
-        if _FILENAME_SAFE.fullmatch(subject.id) is None:
-            return None
         # An entity id is `[a-z0-9_-]+`, so the colon keeps icon claims off the scene keys.
         claim = f"icon:{subject.id}"
         if not self._claim(claim):

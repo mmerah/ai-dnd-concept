@@ -2,9 +2,9 @@ from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from typing import Any, Self
 
-from pydantic import BaseModel, Field, SerializeAsAny, model_validator
+from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, model_validator
 
-from aidm.core.entities import EngineId, Frozen, Header, Mutable, Slug, require_unique
+from aidm.core.entities import EngineId, Frozen, Mutable, Slug, require_unique
 from aidm.core.play import PendingDecision
 
 
@@ -13,7 +13,11 @@ class ScenarioMeta(Frozen):
     premise: str
 
 
-class EngineHeader(Header):
+class EngineHeader(BaseModel):
+    """Routes a document before its engine is known; the rest of the document is ignored."""
+
+    model_config = ConfigDict(extra="ignore", frozen=True)
+
     engine: EngineId
 
 
@@ -71,11 +75,6 @@ class Game[P: BaseModel](Mutable):
     def _playable_game(self) -> Self:
         require_unique("game pack ids", self.packs)
         return self
-
-    def take_notes(self) -> tuple[str, ...]:
-        """Notes are read once; a note a tool writes after this steers the next turn."""
-        notes, self.notes = self.notes, ()
-        return notes
 
     def draft(self) -> Self:
         """A working copy a resolution mutates; a failed turn never replaces the committed state."""

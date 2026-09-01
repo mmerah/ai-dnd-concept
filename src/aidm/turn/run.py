@@ -55,15 +55,10 @@ class Turn:
     ) -> Self:
         turn = cls(engine=engine, draft=state.draft(), rng=rng, recent=recent, on_fact=on_fact)
         turn.prompt, turn.resumed = consume_answer(turn, player_input)
-        turn.notes = turn.draft.take_notes()
+        # Notes are read once; a note a tool writes after this steers the next turn.
+        turn.notes, turn.draft.notes = turn.draft.notes, ()
         turn.suspended_at_start = turn.draft.pending is not None
         return turn
-
-    def landed(self, facts: tuple[Fact, ...]) -> None:
-        self.facts.extend(facts)
-        if self.on_fact is not None:
-            for fact in facts:
-                self.on_fact(fact)
 
     def start_turn(self) -> str:
         self.started = True
@@ -173,7 +168,7 @@ def speakers_refusal(view: NarratorView, lines: Sequence[Line]) -> str | None:
 
 
 def narration_refusal(view: NarratorView, written: Narration) -> str | None:
-    if not written.text:
+    if not written.lines:
         return "write the narration lines: an empty answer shows the player nothing."
     return speakers_refusal(view, written.lines)
 
@@ -254,5 +249,8 @@ def _apply(turn: Turn, play: Play[AnyGame]) -> tuple[Fact, ...]:
         ) from broken
     turn.draft = committed
     turn.rng.setstate(dice.getstate())
-    turn.landed(landed)
+    turn.facts.extend(landed)
+    if turn.on_fact is not None:
+        for fact in landed:
+            turn.on_fact(fact)
     return landed

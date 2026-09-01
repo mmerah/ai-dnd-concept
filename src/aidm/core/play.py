@@ -19,7 +19,7 @@ class Speaker(Frozen):
     """A speaker as recorded: chat and journal render this without resolving engine state."""
 
     name: str
-    id: str
+    id: CheckedEntityId
 
 
 class SpokenLine(Frozen):
@@ -33,10 +33,6 @@ class Narration(Frozen):
     lines: tuple[Line, ...] = Field(
         description="All narration and dialogue in order, 2-4 sentences total."
     )
-
-    @property
-    def text(self) -> str:
-        return narration_text(self.lines)
 
 
 class DecisionOption(Frozen):

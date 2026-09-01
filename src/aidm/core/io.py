@@ -1,5 +1,6 @@
 import json
 import logging
+import shutil
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -73,7 +74,7 @@ def decoded(raw: str) -> JsonValue:
 def read_scenarios(
     directory: Path, models: Mapping[EngineId, type[AnyScenario]]
 ) -> Iterator[tuple[Slug, AnyScenario]]:
-    for path in _content_dirs(directory, WORLD_FILE):
+    for path in sorted(p for p in directory.iterdir() if (p / WORLD_FILE).is_file()):
         try:
             value = decoded(_read_text(path / WORLD_FILE))
             header = EngineHeader.model_validate(value)
@@ -155,18 +156,7 @@ def write_scenario(
         raise ValueError(f"scenario {name!r} already exists")
     write_text(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
     if source is not None:
-        _copy(folder / f"{SOURCE_STEM}{source.suffix}", source)
-
-
-def engine_text(path: Path) -> str:
-    """In core so `engines.core` and `turn.context` share it without a cycle."""
-    if not path.is_file():
-        raise ValueError(f"engine file {str(path)!r} is missing")
-    return path.read_text(encoding=ENCODING)
-
-
-def _content_dirs(directory: Path, canon: str) -> Iterator[Path]:
-    return (path for path in sorted(directory.iterdir()) if (path / canon).is_file())
+        shutil.copyfile(source, folder / f"{SOURCE_STEM}{source.suffix}")
 
 
 def _read_text(path: Path) -> str:
@@ -182,11 +172,6 @@ def _read[T: BaseModel](path: Path, model: type[T]) -> T:
 def _unique_keys(pairs: list[tuple[str, JsonValue]]) -> dict[str, JsonValue]:
     require_unique("keys in a JSON object", (key for key, _ in pairs))
     return dict(pairs)
-
-
-def _copy(path: Path, original: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    _ = path.write_bytes(original.read_bytes())
 
 
 def _safe_path(directory: Path, stem: str, suffix: str) -> Path:

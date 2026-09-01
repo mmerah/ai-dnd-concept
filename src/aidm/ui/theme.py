@@ -72,8 +72,6 @@ body, body.body--dark, .nicegui-content, .q-page {
   border: 1px solid var(--game-border);
   border-radius: var(--game-radius);
 }
-
-.game-dev-tab { opacity: .6; }
 """
 
 
