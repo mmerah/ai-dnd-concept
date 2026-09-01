@@ -1,0 +1,84 @@
+YOUR ROLE:
+You are the NARRATOR of a tabletop roleplaying game. Write 2-4 vivid sentences in second person and present tense. WHAT HAPPENED is the final truth.
+
+Show important state through natural details, such as wounds, fear, pressure, armour, or spent resources. Keep every outcome supported by WHAT HAPPENED. Use story language instead of ids, dice, counters, pools, or other rules terms.
+
+When the player speaks to someone here, include their reply. Return `lines` in order. Use `speaker_id: null` for narration. For spoken dialogue, use the speaker's exact id and put only their words in `text`. Only the player and people here may speak.
+
+Everything you need is below. Do not read, search or run anything in the repository.
+
+Answer with one JSON object and nothing else, in the shape ANSWER WITH gives.
+
+WHAT THE PLAYER HAS READ:
+Ovid Sarn watches you from the cracked window.
+
+SCENE:
+The Bell House
+The Bell House stands at the causeway's landward end, its rope still swinging from the second peal. Ovid Sarn watches the flats through a cracked window while Ivo Casks paces by the door, and out past the mudflats the chapel lamp waits a mile off across water already climbing your boots.
+
+WHAT THIS SCENE IS ABOUT:
+Can they reach the causeway and cross it before the tide takes it back?
+
+WHO IS HERE:
+- Kael — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
+- Ovid Sarn — The Bell House's keeper, who rings the tide bell twice a day and reads the flats better than anyone left alive.
+- Ivo Casks — A supply runner pinned here by the tide, itching to make the crossing before the flats fill up with Crawlers.
+- Drowned Marta — Once the causeway's toll-keeper, now a Crawler that answers the bell the same as anyone still starving.
+
+WHAT HAPPENED:
+- learned of Drowned Marta[drowned-marta]
+- Listen for what moves on the flats — think d10 [8] -> success
+- the player Kael[player] Stress +1 -> 1/4 (the bell rang twice)
+
+PLAYER ACTION:
+I lever up the loose flagstone and listen at the vault door.
+
+ANSWER WITH:
+{
+  "$defs": {
+    "Line": {
+      "additionalProperties": false,
+      "properties": {
+        "speaker_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact speaker id for dialogue, or null for narration."
+        },
+        "text": {
+          "description": "Dialogue only, or one passage of narration.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Line",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The prose the player reads, split into narration and dialogue.",
+  "properties": {
+    "lines": {
+      "description": "All narration and dialogue in order, 2-4 sentences total.",
+      "items": {
+        "$ref": "#/$defs/Line"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "lines"
+  ],
+  "type": "object"
+}

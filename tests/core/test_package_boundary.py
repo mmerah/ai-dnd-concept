@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
-ENGINES = ("aidm.engines.loner3e", "aidm.engines.tunnelgoons")
+ENGINES = ("aidm.engines.loner3e", "aidm.engines.tunnelgoons", "aidm.engines.breathless")
 # The composition root builds the installed concrete engines.
 ROOTS = {"engines/registry.py"}
 # Flow: core <- engines <- turn <- app <- ui.

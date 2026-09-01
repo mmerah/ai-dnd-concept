@@ -1,0 +1,107 @@
+import json
+from collections.abc import Mapping, Sequence
+from typing import Self
+
+from pydantic import Field, model_validator
+
+from aidm.core.creation import CreationStep, Picks, check_picks, picked
+from aidm.core.entities import EngineId, Frozen, Slug, slug
+from aidm.core.model import AnyCharacter
+from aidm.core.play import DecisionOption
+from aidm.core.views import Rows
+from aidm.engines.breathless.world import (
+    SKILLS,
+    BreathlessCharacter,
+    BreathlessCharacterFile,
+    player_survivor,
+)
+
+_AUTHORING = (
+    "BREATHLESS AUTHORING\n"
+    "The cast carries no dice: an NPC is a name, a brief and whether the player has met them, "
+    "nothing more. A threat is a brief the player's own roll meets, never a stat block. "
+    "Use the pack's `locations`, `complications` and `missions` as the setting's vocabulary."
+)
+
+
+class Pack(Frozen):
+    """One published table set the player can build a survivor from."""
+
+    name: str
+    source: str
+    license: str
+    skills: tuple[DecisionOption, ...] = Field(min_length=6, max_length=6)
+    jobs: tuple[str, ...]
+    weapons: tuple[str, ...]
+    long_range_weapons: tuple[str, ...]
+    locations: tuple[str, ...]
+    complications: tuple[str, ...] = Field(min_length=12, max_length=12)  # one d12
+    missions: tuple[str, ...]
+
+    @model_validator(mode="after")
+    def _six_srd_skills(self) -> Self:
+        if {one.id for one in self.skills} != set(SKILLS):
+            raise ValueError("the six SRD skills, by id")
+        return self
+
+
+def creation_steps(packs: Mapping[str, Pack], picks: Picks) -> tuple[CreationStep, ...]:
+    first = CreationStep(id="pack", prompt="Choose a table set", options=pack_options(packs))
+    pack = packs.get(picked(picks, "pack"))
+    if pack is None:
+        return (first,)
+    d10 = picked(picks, "skill-d10")
+    d8 = picked(picks, "skill-d8")
+    return (
+        first,
+        CreationStep(id="pronouns", prompt="Pronouns"),
+        CreationStep(id="job", prompt="Job", hint=", ".join(pack.jobs[:3])),
+        CreationStep(id="skill-d10", prompt="Skill at d10", options=pack.skills),
+        CreationStep(id="skill-d8", prompt="Skill at d8", options=other_than(pack.skills, d10)),
+        CreationStep(
+            id="skill-d6",
+            prompt="Skill at d6",
+            options=other_than(other_than(pack.skills, d10), d8),
+        ),
+        CreationStep(id="item", prompt="Your one item", hint=", ".join(pack.weapons[:3])),
+    )
+
+
+def create_character(
+    packs: Mapping[str, Pack], name: str, brief: str, picks: Picks
+) -> BreathlessCharacterFile:
+    check_picks(creation_steps(packs, picks), picks)
+    payload = BreathlessCharacter.model_validate(
+        {
+            "pronouns": picked(picks, "pronouns"),
+            "job": picked(picks, "job"),
+            "skills": {picked(picks, f"skill-d{die}"): die for die in (10, 8, 6)},
+            "item": picked(picks, "item"),
+        }
+    )
+    return BreathlessCharacterFile(
+        id=slug(name, ()), engine=EngineId("breathless"), name=name, brief=brief, payload=payload
+    )
+
+
+def preview_character(character: AnyCharacter) -> Rows:
+    if not isinstance(character, BreathlessCharacterFile):
+        raise ValueError("Breathless received an incompatible character")
+    return (*player_survivor(character).rows(), ("Backpack", character.payload.item))
+
+
+def pack_options(packs: Mapping[str, Pack]) -> tuple[DecisionOption, ...]:
+    return tuple(DecisionOption(id=key, label=one.name) for key, one in packs.items())
+
+
+def guidance(packs: Mapping[str, Pack], selected_ids: Sequence[Slug]) -> str:
+    """Defaults restate rules the guidance already carries; dropping them halves the prompt."""
+    selected = {
+        one: packs[one].model_dump(mode="json", include={"locations", "complications", "missions"})
+        for one in selected_ids
+    }
+    return f"{_AUTHORING}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"
+
+
+def other_than(options: Sequence[DecisionOption], taken: str) -> tuple[DecisionOption, ...]:
+    return tuple(option for option in options if option.id != taken)

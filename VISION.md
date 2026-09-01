@@ -143,7 +143,8 @@ above the seam. Done when:
 
 Each returns self-contained, on the same seam, with its own `docs/<ENGINE>.md`:
 
-- **Maze Rats** — the audited rules live in git at `2c3e8a5`; the return rewrites the world on
+- **Maze Rats** — the audited rules live in git at `2c3e8a5` and its `docs/MAZE-RATS.md` at
+  `62f95c6`; the return rewrites the world on
   its own strict actor/item/place model and fits 2,000 lines by dropping nothing the SRD prints.
 - **24XX** and **Breathless** — scene engines; notes in `docs/24XX.md` and `docs/BREATHLESS.md`.
 - **A Pokémon-style engine** — battles delegated to Pokémon Showdown. The point is the boundary:

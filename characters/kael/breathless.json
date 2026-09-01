@@ -1,0 +1,16 @@
+{
+  "id": "kael",
+  "engine": "breathless",
+  "name": "Kael",
+  "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
+  "payload": {
+    "pronouns": "he/him",
+    "job": "Park Ranger",
+    "skills": {
+      "think": 10,
+      "sneak": 8,
+      "bash": 6
+    },
+    "item": "Fire Axe"
+  }
+}

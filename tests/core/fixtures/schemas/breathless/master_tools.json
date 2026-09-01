@@ -1,0 +1,363 @@
+[
+  {
+    "name": "change_world",
+    "description": "Apply one settled world change to match the story. Set `verb` to pick the change and fill that verb's own fields. One call makes one change.",
+    "parameters": {
+      "$defs": {
+        "DropItem": {
+          "additionalProperties": false,
+          "description": "Take an item out of the player's backpack for good.",
+          "properties": {
+            "verb": {
+              "const": "drop_item",
+              "type": "string"
+            },
+            "item_id": {
+              "description": "Exact id of an item the player carries.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "item_id"
+          ],
+          "title": "DropItem",
+          "type": "object"
+        },
+        "Enter": {
+          "additionalProperties": false,
+          "description": "Bring a cast member into the current scene.",
+          "properties": {
+            "verb": {
+              "const": "enter",
+              "type": "string"
+            },
+            "entity_id": {
+              "description": "Exact id of a cast member not already here.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "entity_id"
+          ],
+          "title": "Enter",
+          "type": "object"
+        },
+        "Kill": {
+          "additionalProperties": false,
+          "description": "Record that someone here has died.",
+          "properties": {
+            "verb": {
+              "const": "kill",
+              "type": "string"
+            },
+            "entity_id": {
+              "description": "Exact id of who here died.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "entity_id"
+          ],
+          "title": "Kill",
+          "type": "object"
+        },
+        "Leave": {
+          "additionalProperties": false,
+          "description": "Take a cast member out of the current scene.",
+          "properties": {
+            "verb": {
+              "const": "leave",
+              "type": "string"
+            },
+            "entity_id": {
+              "description": "Exact id of someone here.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "entity_id"
+          ],
+          "title": "Leave",
+          "type": "object"
+        },
+        "Reveal": {
+          "additionalProperties": false,
+          "description": "Make a hidden entity known when the player notices, finds, or reaches it.",
+          "properties": {
+            "verb": {
+              "const": "reveal",
+              "type": "string"
+            },
+            "entity_id": {
+              "description": "Exact id of an entity listed as hidden here.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "entity_id"
+          ],
+          "title": "Reveal",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "change": {
+          "description": "The one world change to apply; `verb` picks the change.",
+          "discriminator": {
+            "mapping": {
+              "drop_item": "#/$defs/DropItem",
+              "enter": "#/$defs/Enter",
+              "kill": "#/$defs/Kill",
+              "leave": "#/$defs/Leave",
+              "reveal": "#/$defs/Reveal"
+            },
+            "propertyName": "verb"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Reveal"
+            },
+            {
+              "$ref": "#/$defs/Enter"
+            },
+            {
+              "$ref": "#/$defs/Leave"
+            },
+            {
+              "$ref": "#/$defs/Kill"
+            },
+            {
+              "$ref": "#/$defs/DropItem"
+            }
+          ]
+        }
+      },
+      "required": [
+        "change"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "next_scene",
+    "description": "Say this scene's question is settled. The player is then asked what they want to pursue, and their own words build the next scene. Do not answer for them.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    }
+  },
+  {
+    "name": "check",
+    "description": "Roll a check for an action with a real cost, on a skill, a carried item, or a stunt.",
+    "parameters": {
+      "$defs": {
+        "Skill": {
+          "enum": [
+            "bash",
+            "dash",
+            "sneak",
+            "shoot",
+            "think",
+            "sway"
+          ],
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "what": {
+          "description": "The action, in a few words; it heads the card.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "skill": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Skill"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Which of the six skills the action calls on."
+        },
+        "item_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of a carried item used instead of a skill."
+        },
+        "stunt": {
+          "default": false,
+          "description": "True to attempt an extraordinary stunt at d12 instead of a skill or item.",
+          "type": "boolean"
+        },
+        "dangerous": {
+          "default": false,
+          "description": "True when a fail would plainly hurt the player.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "what"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "catch_breath",
+    "description": "Let the player catch their breath: skills, loot die and the stunt reset, at the cost of a new complication.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    }
+  },
+  {
+    "name": "change_stress",
+    "description": "A complication costs the player stress; laying low somewhere secure clears an amount at your discretion. Never a stand-in for `use_med_kit`.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "description": "How much stress changes: positive for a complication's cost, negative to clear it.",
+          "type": "integer"
+        },
+        "why": {
+          "description": "What causes the change, in a few words.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "why"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "use_med_kit",
+    "description": "Spend the player's med kit to clear 2 stress.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    }
+  },
+  {
+    "name": "loot_check",
+    "description": "Scavenge for an item. Leave `granted` and `choice` null; the engine fills them once the player answers.",
+    "parameters": {
+      "$defs": {
+        "Die": {
+          "enum": [
+            4,
+            6,
+            8,
+            10,
+            12
+          ],
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "item": {
+          "description": "What is found if the roll finds anything; the die sets how good it is.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "granted": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Die"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Leave null; the engine fills it when the player answers."
+        },
+        "choice": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Leave null; the engine fills it when the player answers."
+        }
+      },
+      "required": [
+        "item"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "test_luck",
+    "description": "Roll a die to answer a question about the world where nobody is acting.",
+    "parameters": {
+      "$defs": {
+        "Die": {
+          "enum": [
+            4,
+            6,
+            8,
+            10,
+            12
+          ],
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "question": {
+          "description": "A closed question about the world where nobody is acting.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "die": {
+          "$ref": "#/$defs/Die",
+          "description": "Which die to roll, picked by the odds."
+        }
+      },
+      "required": [
+        "question",
+        "die"
+      ],
+      "type": "object"
+    }
+  }
+]

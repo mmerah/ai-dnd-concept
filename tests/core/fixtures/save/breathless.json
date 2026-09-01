@@ -1,0 +1,160 @@
+{
+  "scenario_id": "drowned-road",
+  "character_id": "kael",
+  "scenario": {
+    "title": "The Drowned Road",
+    "premise": "The causeway to Saint Ferrant only opens for four hours either side of low water, and the tide bell at the Bell House counts down the crossing. Kael has reached the Bell House with the water already rising, and something that used to be a person is still out on the flats."
+  },
+  "engine": "breathless",
+  "packs": [
+    "srd"
+  ],
+  "turn": 1,
+  "pending": null,
+  "notes": [],
+  "payload": {
+    "world": {
+      "cast": {
+        "ovid-sarn": {
+          "id": "ovid-sarn",
+          "name": "Ovid Sarn",
+          "brief": "The Bell House's keeper, who rings the tide bell twice a day and reads the flats better than anyone left alive.",
+          "known": true,
+          "alive": true
+        },
+        "ivo-casks": {
+          "id": "ivo-casks",
+          "name": "Ivo Casks",
+          "brief": "A supply runner pinned here by the tide, itching to make the crossing before the flats fill up with Crawlers.",
+          "known": true,
+          "alive": true
+        },
+        "drowned-marta": {
+          "id": "drowned-marta",
+          "name": "Drowned Marta",
+          "brief": "Once the causeway's toll-keeper, now a Crawler that answers the bell the same as anyone still starving.",
+          "known": true,
+          "alive": true
+        }
+      },
+      "player": {
+        "id": "player",
+        "name": "Kael",
+        "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
+        "known": true,
+        "pronouns": "he/him",
+        "job": "Park Ranger",
+        "skills": {
+          "think": 10,
+          "sneak": 8,
+          "bash": 6,
+          "dash": 4,
+          "shoot": 4,
+          "sway": 4
+        },
+        "worn": {
+          "bash": 6,
+          "dash": 4,
+          "sneak": 8,
+          "shoot": 4,
+          "think": 8,
+          "sway": 4
+        },
+        "items": {
+          "fire-axe": {
+            "name": "Fire Axe",
+            "die": 10
+          }
+        },
+        "med_kit": false,
+        "loot": 12,
+        "stress": {
+          "current": 1,
+          "maximum": 4
+        },
+        "stunted": false,
+        "alive": true
+      },
+      "runs": [
+        {
+          "scene": {
+            "place": "bell-house",
+            "title": "The Bell House",
+            "question": "Can they reach the causeway and cross it before the tide takes it back?",
+            "situation": "The Bell House stands at the causeway's landward end, its rope still swinging from the second peal. Ovid Sarn watches the flats through a cracked window while Ivo Casks paces by the door, and out past the mudflats the chapel lamp waits a mile off across water already climbing your boots.",
+            "secret": "Ovid rings the bell twice to mark the crossing window, never as a call for help; a third ring means something is already out on the causeway."
+          },
+          "present": [
+            "ovid-sarn",
+            "ivo-casks",
+            "drowned-marta"
+          ],
+          "hidden": [],
+          "exchanges": [
+            {
+              "prompt": "I look around the Bell House before going further.",
+              "lines": [
+                {
+                  "speaker": null,
+                  "text": "Ovid Sarn watches you from the cracked window."
+                }
+              ],
+              "facts": [],
+              "decision": ""
+            },
+            {
+              "prompt": "I lever up the loose flagstone and listen at the vault door.",
+              "lines": [
+                {
+                  "speaker": null,
+                  "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
+                }
+              ],
+              "facts": [
+                {
+                  "kind": "entity_discovered",
+                  "trace": "learned of Drowned Marta[drowned-marta]",
+                  "told": true,
+                  "entity_id": "drowned-marta",
+                  "card": "Drowned Marta discovered",
+                  "dice": []
+                },
+                {
+                  "kind": "checked",
+                  "trace": "Listen for what moves on the flats — think d10 [8] -> success",
+                  "told": true,
+                  "entity_id": "player",
+                  "card": "Listen for what moves on the flats — Think d10 → success",
+                  "dice": [
+                    {
+                      "label": "d10",
+                      "faces": [
+                        10
+                      ],
+                      "rolled": [
+                        8
+                      ],
+                      "highlight": []
+                    }
+                  ]
+                },
+                {
+                  "kind": "counter_changed",
+                  "trace": "the player Kael[player] Stress +1 -> 1/4 (the bell rang twice)",
+                  "told": true,
+                  "entity_id": "player",
+                  "card": "Stress +1 -> 1/4",
+                  "dice": []
+                }
+              ],
+              "decision": ""
+            }
+          ],
+          "settled": false,
+          "spent": ""
+        }
+      ],
+      "source": "# The Drowned Road\n\nThe causeway to Saint Ferrant runs three miles over tidal flats and is walkable\nfor four hours either side of low water.\n\n> The bell rings twice. The water is already over your boots, and the chapel\n> lamp is still a mile off.\n\nThe Bell House stands at the causeway's landward end. Its keeper, Ovid Sarn,\nrings the tide bell twice a day.\n\np. 3\n"
+    }
+  }
+}

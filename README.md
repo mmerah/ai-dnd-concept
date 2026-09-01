@@ -12,7 +12,7 @@ Python code controls the rules and the game state. It rolls the dice, validates 
 
 The app does not give save-file access to the AI roles. The narrator receives revealed information only. Hidden information cannot enter the narration.
 
-Two engines ship from one build, and they play nothing alike. Loner 3e is a solo game in scenes. An oracle answers questions. The player writes the way to the next scene. Tunnel Goons is a dungeon crawl on an authored map. The game master runs it. The player walks, fights and rests. The map grows when it runs out.
+Three engines ship from one build, and they play nothing alike. Loner 3e is a solo game in scenes. An oracle answers questions. The player writes the way to the next scene. Tunnel Goons is a dungeon crawl on an authored map. The game master runs it. The player walks, fights and rests. The map grows when it runs out. Breathless is a survival game in scenes. Every roll wears the die down. Catching breath resets the dice and brings a complication.
 
 ## Start the app
 
@@ -40,6 +40,7 @@ Open Settings in the app to change the AI commands or other settings.
 - Read [CLAUDE.md](CLAUDE.md) for development rules and checks.
 - Read [docs/LONER-3E.md](docs/LONER-3E.md) for sources, license, attribution, and implementation differences.
 - Read [docs/TUNNEL-GOONS.md](docs/TUNNEL-GOONS.md) for sources, license, attribution, and implementation differences.
+- Read [docs/BREATHLESS.md](docs/BREATHLESS.md) for sources, license, attribution, and implementation differences.
 
 ## License
 
@@ -48,5 +49,8 @@ and attribution.
 
 Tunnel Goons is © Nate Treme, released under a Creative Commons 4.0 International License. The
 [Tunnel Goons notes](docs/TUNNEL-GOONS.md) give the attribution.
+
+Breathless is based on Breathless by Fari RPGs, licensed under the ORC License. The
+[Breathless notes](docs/BREATHLESS.md) give the full credit line.
 
 This project does not yet specify a license for the other code.

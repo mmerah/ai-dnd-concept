@@ -1,0 +1,40 @@
+SCENARIO:
+The Drowned Road
+The causeway to Saint Ferrant only opens for four hours either side of low water, and the tide bell at the Bell House counts down the crossing. Kael has reached the Bell House with the water already rising, and something that used to be a person is still out on the flats.
+
+RECENT PLAY (this is turn 1):
+> I look around the Bell House before going further.
+[at The Bell House] Ovid Sarn watches you from the cracked window.
+
+SCENE:
+The Bell House
+The Bell House stands at the causeway's landward end, its rope still swinging from the second peal. Ovid Sarn watches the flats through a cracked window while Ivo Casks paces by the door, and out past the mudflats the chapel lamp waits a mile off across water already climbing your boots.
+
+THE QUESTION THIS SCENE SETTLES:
+Can they reach the causeway and cross it before the tide takes it back?
+
+YOU PLAY FOR:
+- Kael[player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
+  pronouns: he/him; job: Park Ranger; skills: Bash d6, Dash d4, Sneak d8, Shoot d4, Think d10, Sway d4; loot die: d12; stress: 0/4
+
+BACKPACK:
+- Fire Axe[fire-axe] — d10
+
+HERE WITH THE PLAYER:
+- Ovid Sarn[ovid-sarn] — The Bell House's keeper, who rings the tide bell twice a day and reads the flats better than anyone left alive.
+- Ivo Casks[ivo-casks] — A supply runner pinned here by the tide, itching to make the crossing before the flats fill up with Crawlers.
+
+HIDDEN HERE (the player has not found these):
+- Drowned Marta[drowned-marta] — Once the causeway's toll-keeper, now a Crawler that answers the bell the same as anyone still starving.
+
+THE SCENE'S SECRET (never narrate this):
+Ovid rings the bell twice to mark the crossing window, never as a call for help; a third ring means something is already out on the causeway.
+
+NOTES FROM THE RULES:
+- (none)
+
+WAITING ON THE PLAYER:
+- (nothing; the turn is yours to run)
+
+PLAYER ACTION:
+I lever up the loose flagstone and listen at the vault door.
