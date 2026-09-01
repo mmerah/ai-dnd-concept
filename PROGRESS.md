@@ -19,6 +19,7 @@ One entry per phase of `PLAN.md`: counts, decisions made off-plan, refuted findi
 - Review fixes folded (Fable): `job_done` now returns the untold `dice_rolled` fact with its two told facts, as every other roller does; a `leave`-only test renamed from its reveal/enter name; `-> None` added to part A's test defs. Nothing refuted.
 - Codex Sol review NOT run: the `codex` CLI is not installed in the remote container this phase ran in (no OpenAI credentials). Fable review only; it returned "phase complete", no cuts.
 - Known and accepted: `uv run aidm` boots and lists The Silent Relay; the golden turn plays a 24XX turn offline (reveal, Stealth attempt, spend). The SIGTERM shutdown traceback is the NiceGUI/MCP lifespan teardown noted in Phase 1. Golden regen was additions-only: no other engine's fixture changed by a byte.
+- Also this phase (maintainer asked): `README.md` says four engines with a 24XX paragraph, docs link and licence line (Phase 4 still does the one-paragraph-per-engine rewrite); the phase skill now seats a second Opus reviewer where `codex` is unavailable.
 
 ## Phase 2 — fold the identical scene code
 
