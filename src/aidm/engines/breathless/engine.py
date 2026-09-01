@@ -21,7 +21,6 @@ from aidm.engines.breathless.world import (
     BreathlessScenarioFile,
     BreathlessState,
     BreathlessWorld,
-    SceneRun,
     history,
     known,
     player_over,
@@ -31,13 +30,13 @@ from aidm.engines.breathless.world import (
 )
 from aidm.engines.breathless.worldsmith import (
     SceneDraft,
-    arrival_brief,
     build_scenario,
     install_scene,
     render_opening,
     write_next,
 )
 from aidm.engines.core import PLAYER_ID, Authoring, Engine, Transition, load_packs
+from aidm.engines.scenes import SceneRun, arrival_brief
 
 ENGINE_DIR = Path(__file__).parent
 

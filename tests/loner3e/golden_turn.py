@@ -4,7 +4,8 @@ from golden_turn_support import LISTENING
 from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, SpokenLine
 from aidm.engines.core import PLAYER_ID
-from aidm.engines.loner3e.world import Loner3eGame, Scene, SceneRun
+from aidm.engines.loner3e.world import Loner3eGame
+from aidm.engines.scenes import Scene, SceneRun
 
 SCRIPT: tuple[Call, ...] = (
     changed("reveal", entity_id="vault-map"),

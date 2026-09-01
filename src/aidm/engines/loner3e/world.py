@@ -4,30 +4,19 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Slug, require_unique
+from aidm.core.entities import CheckedEntityId, EntityId, Mutable, require_unique
 from aidm.core.facts import Fact, cards
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import Exchange, SpokenLine
 from aidm.core.views import Rows
 from aidm.engines.core import PLAYER_ID, Counter, check_filing, labeled, pool, reveal
+from aidm.engines.scenes import SPENT_NOTE, Scene, SceneRun, check_named, scene_spent
 
 LUCK_MAX = 6
 DIE_FACE = 6  # every roll in the game is one d6, and every table is six rows
 TIES_PER_TWIST = 3
-SCENE_TURN_CAP = 12
 
 TagKind = Literal["skill", "frailty", "gear", "condition"]
-
-SPENT_NOTE = "This scene looks spent — {reason}. If its question is settled, call `next_scene`."
-SCENE_SETTLED = Fact(
-    kind="scene_settled",
-    trace=(
-        "this scene is settled. Bring it to a close, then ask the player what they want to "
-        "pursue next — in the fiction, naming what the scene left open, never as a list of "
-        "choices. They may also stay and keep playing here, so ask; do not push them out"
-    ),
-    told=True,
-)
 
 
 class LonerCharacter(Mutable):
@@ -67,28 +56,6 @@ class LonerCharacter(Mutable):
         )
 
 
-class Scene(Frozen):
-    # Names the art cache entry, so returning to a place reuses its picture.
-    place: Slug
-    title: str
-    # Public: the player reads it; settling it ends the scene.
-    question: str = Field(min_length=10)
-    situation: str = Field(min_length=40)
-    # What `question` does not say: never narrated, never in a view.
-    secret: str = ""
-
-
-class SceneRun(Mutable):
-    scene: Scene
-    present: list[CheckedEntityId] = Field(default_factory=list)
-    hidden: list[CheckedEntityId] = Field(default_factory=list)
-    exchanges: list[Exchange] = Field(default_factory=list)
-    # The game master has called the question answered; the player may move on, or play on.
-    settled: bool = False
-    # Why the scene looks finished already, written by the rule that settled it.
-    spent: str = ""
-
-
 class SceneCanon(Mutable):
     """A scenario as authored: its opening scene and cast, with no player in it yet."""
 
@@ -101,7 +68,7 @@ class SceneCanon(Mutable):
     @model_validator(mode="after")
     def _playable_canon(self) -> Self:
         check_filing(self.cast)
-        _check_named(self.present, self.hidden, self.cast)
+        check_named(self.present, self.hidden, self.cast)
         return self
 
 
@@ -117,7 +84,7 @@ class LonerWorld(Mutable):
     @model_validator(mode="after")
     def _consistent(self) -> Self:
         check_filing(self.cast)
-        _check_named(self.run.present, self.run.hidden, self.cast)
+        check_named(self.run.present, self.run.hidden, self.cast)
         if self.player_id not in self.cast:
             raise ValueError("the player is not in the cast")
         if not self.player.known:
@@ -226,18 +193,6 @@ class Loner3eCharacterFile(Character[Loner3eCharacter]):
     pass
 
 
-def scene_spent(world: LonerWorld) -> str | None:
-    """Deliberately blunt: catches only what no reading of the fiction can miss."""
-    run = world.run
-    if run.spent:
-        return run.spent
-    if any(not one.alive for one in world.here()):
-        return "someone here is dead"
-    if len(run.exchanges) >= SCENE_TURN_CAP:
-        return f"{SCENE_TURN_CAP} turns have passed here"
-    return None
-
-
 def known(state: Loner3eGame, entity_id: EntityId) -> bool | None:
     one = state.payload.world.cast.get(entity_id)
     return None if one is None else one.known
@@ -257,7 +212,7 @@ def record(
     )
     if world.run.settled or len(world.run.exchanges) <= 1:
         return ()
-    reason = scene_spent(world)
+    reason = scene_spent(world.run, any(not one.alive for one in world.here()))
     return () if reason is None else (SPENT_NOTE.format(reason=reason),)
 
 
@@ -312,18 +267,3 @@ def set_tags(one: LonerCharacter, kind: TagKind, tags: tuple[str, ...]) -> None:
             one.gear = tags
         case "condition":
             one.conditions = tags
-
-
-def _check_named(
-    present: Sequence[EntityId], hidden: Sequence[EntityId], cast: dict[EntityId, LonerCharacter]
-) -> None:
-    require_unique("ids in the scene", (*present, *hidden))
-    for who in (*present, *hidden):
-        if who not in cast:
-            raise ValueError(f"scene names {who!r}, who is not in the cast")
-    for who in hidden:
-        if cast[who].known:
-            raise ValueError(f"{who!r} is hidden here but the player has already met them")
-    for who in present:
-        if not cast[who].known:
-            raise ValueError(f"{who!r} is here but the player has not met them")

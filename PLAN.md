@@ -63,7 +63,9 @@ Targets are targets. The cap is Settled 2's 2,000 lines per engine.
 1. **No shared world layer, in any name.** No `kits/`, no `World` protocol, no generic
    `SceneWorld[C]`. Each engine owns its world model. A helper moves to `engines/core.py` only
    when two engines hold the identical function or the identical model, and it moves verbatim.
-   Phase 2 is that move, and nothing more.
+   Phase 2 is that move, and nothing more. Its scene code lives in `engines/scenes.py`, a flat
+   module beside `core.py`: `core.py` is the seam every engine imports, `scenes.py` is what
+   only the scene engines import (maintainer's call in Phase 2).
 2. **An engine is self-contained and at most 2,000 Python lines.** Seven files — `world.py`,
    `creation.py`, `tools.py`, `views.py`, `worldsmith.py` + `worldsmith.md`, `engine.py`,
    `rules.md` — plus `packs/srd.json`, all under `engines/<id>/`.
@@ -90,7 +92,10 @@ Targets are targets. The cap is Settled 2's 2,000 lines per engine.
 10. **Shared helpers in `engines/core.py`:** `PLAYER_ID`, `Entity`, `Counter`, `pool`, `adjust`,
     `counter_fact`, `check_filing`, `labeled`, `entity_fact`, `reveal`, `keep_highest`,
     `load_packs`. Import them; do not redefine them. `Entity` is `id`, `name`, `known` — nothing
-    else; do not widen it.
+    else; do not widen it. **Shared scene code in `engines/scenes.py`:** `Scene`, `SceneRun`,
+    `scene_spent`, `check_named`, `resolved_id`, `resolve_ids`, `named_in`, `scene_history`,
+    `told_tail`, `arrival_brief` and the constants `SCENE_TURN_CAP`, `TAIL_EXCHANGES`,
+    `SPENT_NOTE`, `SCENE_SETTLED`, `CROSSING`, `SURPRISE`.
 11. **The player is not in `cast`.** `world.player` is the sheet; `cast` is everyone else.
     `PLAYER_ID` never appears in `run.present` or `run.hidden`. `here()` yields the player first,
     then `cast[i] for i in run.present`. `require(id)`, `require_here(id)` and
@@ -371,7 +376,7 @@ engine at target 1,700 lines (cap 2,000), `docs/BREATHLESS.md` lists every devia
 ## Phase 2 — fold the identical scene code
 
 One implementer. Put `engines/loner3e/` and `engines/breathless/` side by side. Move to
-`engines/core.py` **only** what is byte-identical. Measured on Loner today, the movable set is
+`engines/scenes.py` (new; see Settled 1) **only** what is byte-identical. Measured on Loner today, the movable set is
 about 96 lines; the net after moving from two engines is about −90. Names that were private go
 public on the move: `resolve_ids`, `named_in`, `scene_history`, `told_tail`.
 
@@ -387,7 +392,7 @@ turn out identical, move them; if a move needs a type parameter, a protocol or a
 work, it does not move. `tests/loner3e/golden_turn.py` imports `Scene, SceneRun` from
 `loner3e.world`; repoint it.
 
-Files: `engines/core.py`, `loner3e/{world,worldsmith,tools}.py`,
+Files: `engines/scenes.py`, `loner3e/{world,worldsmith,tools}.py`,
 `breathless/{world,worldsmith,tools}.py`, `tests/loner3e/golden_turn.py`.
 
 **Done when:** green; `AIDM_GOLDEN_REGEN=1 uv run pytest; git diff --exit-code tests/core/fixtures`

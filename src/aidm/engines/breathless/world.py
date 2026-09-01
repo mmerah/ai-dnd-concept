@@ -4,20 +4,13 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import (
-    CheckedEntityId,
-    EntityId,
-    Frozen,
-    Mutable,
-    Slug,
-    require_unique,
-    slug,
-)
+from aidm.core.entities import CheckedEntityId, EntityId, Mutable, slug
 from aidm.core.facts import Fact, cards
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import Exchange, SpokenLine
 from aidm.core.views import Rows
 from aidm.engines.core import PLAYER_ID, Counter, check_filing, labeled, pool, reveal
+from aidm.engines.scenes import SPENT_NOTE, Scene, SceneRun, check_named, scene_spent
 
 type Die = Literal[4, 6, 8, 10, 12]
 LADDER: tuple[Die, ...] = (4, 6, 8, 10, 12)
@@ -29,18 +22,6 @@ LOOT_START: Die = 12
 STUNT_DIE: Die = 12
 STARTING_ITEM: Die = 10
 MED_KIT_CLEARS = 2
-SCENE_TURN_CAP = 12
-
-SPENT_NOTE = "This scene looks spent — {reason}. If its question is settled, call `next_scene`."
-SCENE_SETTLED = Fact(
-    kind="scene_settled",
-    trace=(
-        "this scene is settled. Bring it to a close, then ask the player what they want to "
-        "pursue next — in the fiction, naming what the scene left open, never as a list of "
-        "choices. They may also stay and keep playing here, so ask; do not push them out"
-    ),
-    told=True,
-)
 
 
 class Item(Mutable):
@@ -109,28 +90,6 @@ class Npc(Mutable):
     alive: bool = True
 
 
-class Scene(Frozen):
-    # Names the art cache entry, so returning to a place reuses its picture.
-    place: Slug
-    title: str
-    # Public: the player reads it; settling it ends the scene.
-    question: str = Field(min_length=10)
-    situation: str = Field(min_length=40)
-    # What `question` does not say: never narrated, never in a view.
-    secret: str = ""
-
-
-class SceneRun(Mutable):
-    scene: Scene
-    present: list[CheckedEntityId] = Field(default_factory=list)
-    hidden: list[CheckedEntityId] = Field(default_factory=list)
-    exchanges: list[Exchange] = Field(default_factory=list)
-    # The game master has called the question answered; the player may move on, or play on.
-    settled: bool = False
-    # Why the scene looks finished already, written by the rule that settled it.
-    spent: str = ""
-
-
 class SceneCanon(Mutable):
     """A scenario as authored: its opening scene and cast, with no player in it yet."""
 
@@ -143,7 +102,7 @@ class SceneCanon(Mutable):
     @model_validator(mode="after")
     def _playable_canon(self) -> Self:
         check_filing(self.cast)
-        _check_named(self.present, self.hidden, self.cast)
+        check_named(self.present, self.hidden, self.cast)
         return self
 
 
@@ -158,7 +117,7 @@ class BreathlessWorld(Mutable):
     @model_validator(mode="after")
     def _consistent(self) -> Self:
         check_filing(self.cast)
-        _check_named(self.run.present, self.run.hidden, self.cast)
+        check_named(self.run.present, self.run.hidden, self.cast)
         if not self.player.known:
             raise ValueError("the player is unknown to themselves")
         if self.player.id != PLAYER_ID:
@@ -270,17 +229,6 @@ def stepped(die: Die) -> Die:
     return LADDER[max(LADDER.index(die) - 1, 0)]
 
 
-def scene_spent(run: SceneRun, someone_dead: bool) -> str | None:
-    """Deliberately blunt: catches only what no reading of the fiction can miss."""
-    if run.spent:
-        return run.spent
-    if someone_dead:
-        return "someone here is dead"
-    if len(run.exchanges) >= SCENE_TURN_CAP:
-        return f"{SCENE_TURN_CAP} turns have passed here"
-    return None
-
-
 def known(state: BreathlessGame, entity_id: EntityId) -> bool | None:
     if entity_id == PLAYER_ID:
         return True
@@ -331,18 +279,3 @@ def player_survivor(character: BreathlessCharacterFile) -> Survivor:
         skills=payload.skills,
         items={EntityId(slug(payload.item, ())): Item(name=payload.item, die=STARTING_ITEM)},
     )
-
-
-def _check_named(
-    present: Sequence[EntityId], hidden: Sequence[EntityId], cast: dict[EntityId, Npc]
-) -> None:
-    require_unique("ids in the scene", (*present, *hidden))
-    for who in (*present, *hidden):
-        if who not in cast:
-            raise ValueError(f"scene names {who!r}, who is not in the cast")
-    for who in hidden:
-        if cast[who].known:
-            raise ValueError(f"{who!r} is hidden here but the player has already met them")
-    for who in present:
-        if not cast[who].known:
-            raise ValueError(f"{who!r} is here but the player has not met them")

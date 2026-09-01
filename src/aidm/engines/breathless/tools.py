@@ -14,7 +14,6 @@ from aidm.engines.breathless.world import (
     CARRY,
     LOOT_START,
     MED_KIT_CLEARS,
-    SCENE_SETTLED,
     STUNT_DIE,
     BreathlessGame,
     BreathlessWorld,
@@ -26,6 +25,7 @@ from aidm.engines.breathless.world import (
     stepped,
 )
 from aidm.engines.core import PLAYER_ID, counter_fact, entity_fact
+from aidm.engines.scenes import SCENE_SETTLED
 
 CHANGE_WORLD = (
     "Apply one settled world change to match the story. Set `verb` to pick the change and fill "

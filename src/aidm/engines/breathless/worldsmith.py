@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -18,28 +18,21 @@ from aidm.engines.breathless.world import (
     BreathlessScenarioFile,
     BreathlessWorld,
     Npc,
-    Scene,
     SceneCanon,
-    SceneRun,
     Survivor,
 )
 from aidm.engines.core import PLAYER_ID, Entity
+from aidm.engines.scenes import (
+    SURPRISE,
+    Scene,
+    SceneRun,
+    named_in,
+    resolve_ids,
+    resolved_id,
+    scene_history,
+)
 
 MIN_SITUATION = 80
-TAIL_EXCHANGES = 3
-# The narrator's brief for a crossing; `{pursuit}` is what the player said they were going after.
-CROSSING = (
-    "The player is leaving WHAT THE PLAYER HAS READ for the place in SCENE. They asked for this: "
-    '"{pursuit}"\n\n'
-    "Write the crossing: a sentence of leaving, then the arrival. Cover the distance and the time "
-    "in the fewest words that make it real, and end on what they see first. WHAT HAPPENED names "
-    "anyone who travelled with them. They have not acted in the new place yet, so settle nothing."
-)
-SURPRISE = (
-    "Surprise the player. Turn an established fact against them, or bring back something they "
-    "have stopped thinking about. Surprise by recombining what exists, never by inventing what "
-    "the source would not hold."
-)
 WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
 
 
@@ -57,10 +50,6 @@ class SceneDraft(Frozen):
     cast: dict[EntityId, Npc] = Field(default_factory=dict)
 
 
-def arrival_brief(pursuit: str) -> str:
-    return CROSSING.format(pursuit=pursuit)
-
-
 def scene_refusal(draft: SceneDraft, world: BreathlessWorld | None = None) -> str | None:
     missing = _scene_unmet(draft, world)
     return None if not missing else "the scene needs " + "; ".join(missing)
@@ -68,24 +57,16 @@ def scene_refusal(draft: SceneDraft, world: BreathlessWorld | None = None) -> st
 
 def opening_canon(draft: SceneDraft, source: str) -> SceneCanon:
     cast = draft.cast
-    present = _resolve(draft.present, cast, "present")
+    present = resolve_ids(draft.present, cast, "present")
     for one in present:
         cast[one].known = True
     return SceneCanon(
         cast=cast,
         opening=_scene(draft),
         present=present,
-        hidden=_resolve(draft.hidden, cast, "hidden"),
+        hidden=resolve_ids(draft.hidden, cast, "hidden"),
         source=source,
     )
-
-
-def resolved_id(wanted: str, cast: Mapping[EntityId, Entity]) -> EntityId | None:
-    """Ids are the worldsmith's failure mode: an unknown one matches a cast name before refusal."""
-    if wanted in cast:
-        return EntityId(wanted)
-    matches = [one.id for one in cast.values() if one.name.casefold() == wanted.casefold()]
-    return EntityId(matches[0]) if len(matches) == 1 else None
 
 
 def apply_scene(world: BreathlessWorld, draft: SceneDraft) -> None:
@@ -99,8 +80,8 @@ def apply_scene(world: BreathlessWorld, draft: SceneDraft) -> None:
             raise ValueError(f"entity {held.id!r} is filed under {one!r}")
     cast: dict[EntityId, Npc] = {**world.cast, **draft.cast}
     known: Mapping[EntityId, Entity] = {PLAYER_ID: world.player, **cast}
-    present = [one for one in _resolve(draft.present, known, "present") if one != PLAYER_ID]
-    hidden = [one for one in _resolve(draft.hidden, known, "hidden") if one != PLAYER_ID]
+    present = [one for one in resolve_ids(draft.present, known, "present") if one != PLAYER_ID]
+    hidden = [one for one in resolve_ids(draft.hidden, known, "hidden") if one != PLAYER_ID]
     if overlap := sorted(set(present) & set(hidden)):
         raise ValueError(f"the scene lists {overlap} as both present and hidden")
     if met := sorted(one for one in hidden if cast[one].known):
@@ -142,7 +123,7 @@ def render_worldsmith(world: BreathlessWorld, intent: str, guidance: str) -> str
     )
     return _worldsmith(
         source=world.source,
-        history=_history(world),
+        history=scene_history(world.runs),
         cast=cast,
         guidance=guidance,
         intent=intent,
@@ -213,24 +194,6 @@ def _where(world: BreathlessWorld, one: Survivor | Npc) -> str:
     return f"last seen in: {seen}" if seen else ""
 
 
-def _history(world: BreathlessWorld) -> str:
-    return "\n\n".join(
-        "\n".join(
-            (
-                f"SCENE {number}: {run.scene.title} ({run.scene.place})",
-                f"the question: {run.scene.question}",
-                run.scene.situation,
-                "what happened: " + (_told(run) or "(nothing yet)"),
-            )
-        )
-        for number, run in enumerate(world.runs, start=1)
-    )
-
-
-def _told(run: SceneRun) -> str:
-    return "\n".join(f"> {one.prompt}\n{one.narration}" for one in run.exchanges[-TAIL_EXCHANGES:])
-
-
 def _scene(draft: SceneDraft) -> Scene:
     return Scene(
         place=draft.place,
@@ -258,26 +221,8 @@ def _scene_unmet(draft: SceneDraft, world: BreathlessWorld | None = None) -> lis
     if stray := sorted(one for one in others if resolved_id(one, known) is None):
         unmet.append(f"ids that exist; these name nobody: {stray}")
     # `situation` is read to the player, so naming a hidden entity there hands them the find.
-    if told := sorted(_named_in(draft.situation, draft.hidden, known)):
+    if told := sorted(named_in(draft.situation, draft.hidden, known)):
         unmet.append(f"a situation that does not name what is hidden: {told}")
     if broken := sorted(eid for eid, one in draft.cast.items() if not one.alive):
         unmet.append(f"cast members as the worldsmith may write them: alive: {broken}")
     return unmet
-
-
-def _named_in(situation: str, hidden: Iterable[str], cast: Mapping[EntityId, Entity]) -> list[str]:
-    """Multi-word names only: a prop called `Bell` shares its word with any bell tower."""
-    said = situation.casefold()
-    found = (cast[one] for wanted in hidden if (one := resolved_id(wanted, cast)) is not None)
-    return [one.name for one in found if " " in one.name.strip() and one.name.casefold() in said]
-
-
-def _resolve(wanted: Iterable[str], cast: Mapping[EntityId, Entity], where: str) -> list[EntityId]:
-    found: list[EntityId] = []
-    for one in wanted:
-        matched = resolved_id(one, cast)
-        if matched is None:
-            raise ValueError(f"the scene lists {one!r} as {where}, and no such id or name exists")
-        if matched not in found:
-            found.append(matched)
-    return found

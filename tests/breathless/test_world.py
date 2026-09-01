@@ -3,7 +3,6 @@ import pytest
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.play import Exchange
 from aidm.engines.breathless.world import (
-    SCENE_TURN_CAP,
     SKILLS,
     STARTING_ITEM,
     BreathlessCharacter,
@@ -11,14 +10,12 @@ from aidm.engines.breathless.world import (
     BreathlessWorld,
     Item,
     Npc,
-    Scene,
-    SceneRun,
     Survivor,
     player_survivor,
-    scene_spent,
     stepped,
 )
 from aidm.engines.core import PLAYER_ID
+from aidm.engines.scenes import SCENE_TURN_CAP, Scene, SceneRun, scene_spent
 
 MIRA = EntityId("mira")
 

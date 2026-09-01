@@ -22,7 +22,6 @@ from aidm.engines.loner3e.world import (
     Loner3eScenarioFile,
     Loner3eState,
     LonerWorld,
-    SceneRun,
     history,
     known,
     player_character,
@@ -32,12 +31,12 @@ from aidm.engines.loner3e.world import (
 )
 from aidm.engines.loner3e.worldsmith import (
     SceneDraft,
-    arrival_brief,
     build_scenario,
     install_scene,
     render_opening,
     write_next,
 )
+from aidm.engines.scenes import SceneRun, arrival_brief
 
 ENGINE_DIR = Path(__file__).parent
 

@@ -13,10 +13,10 @@ from aidm.engines.breathless.world import (
     BreathlessScenario,
     BreathlessScenarioFile,
     Npc,
-    Scene,
     SceneCanon,
 )
 from aidm.engines.core import PLAYER_ID, AnyEngine
+from aidm.engines.scenes import Scene
 
 FIRE_AXE = EntityId("fire-axe")
 

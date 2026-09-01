@@ -6,13 +6,7 @@ from aidm.core.facts import Fact, cards
 from aidm.core.play import Exchange
 from aidm.engines.core import PLAYER_ID
 from aidm.engines.loner3e.tools import ChangeWorld, apply_change
-from aidm.engines.loner3e.world import (
-    LUCK_MAX,
-    SCENE_TURN_CAP,
-    Loner3eGame,
-    LonerCharacter,
-    scene_spent,
-)
+from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, LonerCharacter
 from aidm.engines.loner3e.worldsmith import (
     MIN_SITUATION,
     SceneDraft,
@@ -20,6 +14,7 @@ from aidm.engines.loner3e.worldsmith import (
     install_scene,
     scene_refusal,
 )
+from aidm.engines.scenes import SCENE_TURN_CAP, scene_spent
 
 MAP = EntityId("vault-map")
 MARA = EntityId("mara")
@@ -79,7 +74,8 @@ def test_finding_everything_here_does_not_end_the_scene() -> None:
     draft = state.draft()
     _ = changed(draft, "reveal", entity_id=MAP)
     assert not draft.payload.world.run.hidden
-    assert scene_spent(draft.payload.world) is None
+    world = draft.payload.world
+    assert scene_spent(world.run, any(not one.alive for one in world.here())) is None
 
 
 def test_a_scene_nobody_ends_is_ended_by_the_cap() -> None:
@@ -87,8 +83,10 @@ def test_a_scene_nobody_ends_is_ended_by_the_cap() -> None:
     draft = state.draft()
     idle = Exchange(prompt="I wait.", lines=())
     draft.payload.world.run.exchanges = [idle for _ in range(SCENE_TURN_CAP)]
-    assert scene_spent(draft.payload.world) is not None
-    assert scene_spent(state.payload.world) is None
+    world = draft.payload.world
+    assert scene_spent(world.run, any(not one.alive for one in world.here())) is not None
+    world = state.payload.world
+    assert scene_spent(world.run, any(not one.alive for one in world.here())) is None
 
 
 def _next_scene(
@@ -271,7 +269,10 @@ def test_the_turn_cap_ends_a_scene_that_kept_landing_things() -> None:
     _, state = initialized()
     draft = state.draft()
     draft.payload.world.run.exchanges = list(_carded(SCENE_TURN_CAP))
-    assert scene_spent(draft.payload.world) == f"{SCENE_TURN_CAP} turns have passed here"
+    world = draft.payload.world
+    assert scene_spent(world.run, any(not one.alive for one in world.here())) == (
+        f"{SCENE_TURN_CAP} turns have passed here"
+    )
 
 
 def test_change_tags_edits_one_list_and_refuses_what_it_cannot_move() -> None:

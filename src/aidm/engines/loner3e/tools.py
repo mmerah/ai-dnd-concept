@@ -15,7 +15,6 @@ from aidm.engines.loner3e.creation import Pack
 from aidm.engines.loner3e.world import (
     DIE_FACE,
     LUCK_MAX,
-    SCENE_SETTLED,
     Loner3eGame,
     LonerCharacter,
     LonerWorld,
@@ -23,6 +22,7 @@ from aidm.engines.loner3e.world import (
     set_tags,
     tags_of,
 )
+from aidm.engines.scenes import SCENE_SETTLED
 
 AND_AT = 4  # both dice 4+ sharpens the answer to -and
 BUT_AT = 3  # both dice 3 or under softens it to -but

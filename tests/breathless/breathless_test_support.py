@@ -10,11 +10,10 @@ from aidm.engines.breathless.world import (
     BreathlessWorld,
     Item,
     Npc,
-    Scene,
-    SceneRun,
     Survivor,
 )
 from aidm.engines.core import PLAYER_ID
+from aidm.engines.scenes import Scene, SceneRun
 
 MIRA = EntityId("mira")
 DAX = EntityId("dax")
