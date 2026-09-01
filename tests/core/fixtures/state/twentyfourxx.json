@@ -1,0 +1,101 @@
+{
+  "scenario_id": "silent-relay",
+  "character_id": "kael",
+  "scenario": {
+    "title": "The Silent Relay",
+    "premise": "Relay station QV-9 stopped answering six days ago, and Kael is the operator sent to bring its beacon back online before the next convoy jumps in blind."
+  },
+  "engine": "twentyfourxx",
+  "packs": [
+    "srd"
+  ],
+  "turn": 0,
+  "pending": null,
+  "notes": [],
+  "payload": {
+    "world": {
+      "cast": {
+        "vessa-rune": {
+          "id": "vessa-rune",
+          "name": "Vessa Rune",
+          "brief": "QV-9's keeper for eleven years, she knows every corridor by feel and won't say why she hasn't left the docking ring in six days; her override codes can lock Kael out of the whole station.",
+          "known": true,
+          "alive": true
+        },
+        "harl-odum": {
+          "id": "harl-odum",
+          "name": "Harl Odum",
+          "brief": "A salvage pilot who claims he only just made port, though his skiff has sat cold at the outer berth since before the relay went dark; his cutting torch opens more than hull plate.",
+          "known": true,
+          "alive": true
+        },
+        "warden-six": {
+          "id": "warden-six",
+          "name": "Warden Six",
+          "brief": "QV-9's maintenance android, still carrying out a shutdown order it was never told to stand down from; its manipulator arms can crush a suit seal without meaning to kill.",
+          "known": false,
+          "alive": true
+        }
+      },
+      "player": {
+        "id": "player",
+        "name": "Kael",
+        "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
+        "known": true,
+        "specialty": "Sneak",
+        "origin": "Human",
+        "traits": [],
+        "skills": {
+          "Stealth": 12,
+          "Climbing": 8,
+          "Piloting": 8
+        },
+        "credits": 2,
+        "items": {
+          "comm": {
+            "name": "Comm",
+            "bulky": false,
+            "breaks": 1,
+            "broken_times": 0
+          },
+          "climbing-gear": {
+            "name": "Climbing gear",
+            "bulky": false,
+            "breaks": 1,
+            "broken_times": 0
+          },
+          "night-vision-goggles": {
+            "name": "Night vision goggles",
+            "bulky": false,
+            "breaks": 1,
+            "broken_times": 0
+          }
+        },
+        "hindrances": [],
+        "alive": true
+      },
+      "runs": [
+        {
+          "scene": {
+            "place": "docking-ring",
+            "title": "The Docking Ring",
+            "question": "Can Kael reach the control deck and find out why the relay went dark?",
+            "situation": "QV-9's docking ring hums with full power, yet every comm panel down the corridor sits dark and silent. Vessa Rune waits at the airlock with her override key already drawn, and Harl Odum's salvage skiff sits clamped to the outer berth, its hatch cycling open before Kael has even hailed it.",
+            "secret": "Six days ago Vessa Rune ordered the station's maintenance android to seal the relay compartment and cut the beacon rather than risk a corrupted signal reaching the convoy; it has followed that order against everyone since, herself included."
+          },
+          "present": [
+            "vessa-rune",
+            "harl-odum"
+          ],
+          "hidden": [
+            "warden-six"
+          ],
+          "exchanges": [],
+          "settled": false,
+          "spent": ""
+        }
+      ],
+      "source": "# The Silent Relay\n\nRelay station QV-9 sits on the convoy line three jumps out from the nearest yard, its beacon the only thing keeping ships from translating in blind.\n\n> Six days dark and still drawing power. Something on that station chose the silence.\n\nThe docking ring holds atmosphere and gravity; whatever cut the beacon left the rest of QV-9 running.\n\np. 1\n"
+    }
+  }
+}

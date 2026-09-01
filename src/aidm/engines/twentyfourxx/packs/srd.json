@@ -1,0 +1,114 @@
+{
+  "name": "Core tables",
+  "source": "https://24xx-srd.carrd.co/",
+  "license": "24XX rules (v1.4) are CC BY Jason Tocci.",
+  "skills": [
+    { "id": "climbing", "label": "Climbing" },
+    { "id": "connections", "label": "Connections" },
+    { "id": "deception", "label": "Deception" },
+    { "id": "electronics", "label": "Electronics" },
+    { "id": "engines", "label": "Engines" },
+    { "id": "explosives", "label": "Explosives" },
+    { "id": "hacking", "label": "Hacking" },
+    { "id": "hand-to-hand", "label": "Hand-to-hand" },
+    { "id": "intimidation", "label": "Intimidation" },
+    { "id": "labor", "label": "Labor" },
+    { "id": "persuasion", "label": "Persuasion" },
+    { "id": "piloting", "label": "Piloting" },
+    { "id": "running", "label": "Running" },
+    { "id": "shooting", "label": "Shooting" },
+    { "id": "spacewalking", "label": "Spacewalking" },
+    { "id": "stealth", "label": "Stealth" },
+    { "id": "tracking", "label": "Tracking" }
+  ],
+  "starting_kit": [{ "name": "Comm" }],
+  "specialties": [
+    {
+      "id": "face",
+      "label": "Face",
+      "detail": "Take an extensive disguise wardrobe.",
+      "skills": { "Reading People": 8, "Deception": 8 },
+      "kit": [{ "name": "Disguise wardrobe" }]
+    },
+    {
+      "id": "muscle",
+      "label": "Muscle",
+      "detail": "Take a sword, firearm, or cyber-arm.",
+      "skills": { "Intimidation": 8 },
+      "choice": [
+        { "id": "hand-to-hand", "label": "Hand-to-hand", "skills": { "Hand-to-hand": 8 } },
+        { "id": "shooting", "label": "Shooting", "skills": { "Shooting": 8 } }
+      ],
+      "kit_choice": [{ "name": "Sword" }, { "name": "Firearm" }, { "name": "Cyber-arm" }]
+    },
+    {
+      "id": "psychic",
+      "label": "Psychic",
+      "detail": "Take a bottle of PsychOut, which amplifies powers and is addictive.",
+      "skills": {},
+      "choice": [
+        {
+          "id": "both-at-d8",
+          "label": "Telepathy and Telekinesis at d8",
+          "skills": { "Telepathy": 8, "Telekinesis": 8 }
+        },
+        {
+          "id": "telepathy-at-d10",
+          "label": "Telepathy at d10",
+          "skills": { "Telepathy": 10 }
+        },
+        {
+          "id": "telekinesis-at-d10",
+          "label": "Telekinesis at d10",
+          "skills": { "Telekinesis": 10 }
+        }
+      ],
+      "kit": [{ "name": "Bottle of PsychOut (amplifies powers, addictive)" }]
+    },
+    {
+      "id": "medic",
+      "label": "Medic",
+      "detail": "Take a medkit and cyber-surgery tools (bulky).",
+      "skills": { "Medicine": 8, "Electronics": 8 },
+      "kit": [{ "name": "Medkit" }, { "name": "Cyber-surgery tools", "bulky": true }]
+    },
+    {
+      "id": "sneak",
+      "label": "Sneak",
+      "detail": "Take climbing gear and night vision goggles.",
+      "skills": { "Climbing": 8, "Stealth": 8 },
+      "kit": [{ "name": "Climbing gear" }, { "name": "Night vision goggles" }]
+    },
+    {
+      "id": "tech",
+      "label": "Tech",
+      "detail": "Take repair tools and a custom computer (bulky).",
+      "skills": { "Hacking": 8, "Electronics": 8 },
+      "kit": [{ "name": "Repair tools" }, { "name": "Custom computer", "bulky": true }]
+    }
+  ],
+  "origins": [
+    {
+      "id": "alien",
+      "label": "Alien",
+      "detail": "Invent two traits, like electric current, wings, natural camouflage, or six-limbed.",
+      "invents": 2
+    },
+    {
+      "id": "android",
+      "label": "Android",
+      "detail": "Take an upgrade-ready cyber-body: synth skin (looks human) or a case (breaks harmlessly for defense).",
+      "increases": 1,
+      "choice": [
+        { "id": "synth-skin", "label": "Synth skin", "detail": "Looks human." },
+        { "id": "case", "label": "Case", "detail": "Breaks harmlessly for defense." }
+      ]
+    },
+    {
+      "id": "human",
+      "label": "Human",
+      "detail": "Apply 3 skill increases.",
+      "increases": 3
+    }
+  ]
+}

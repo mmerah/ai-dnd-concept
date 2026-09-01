@@ -12,6 +12,14 @@ One entry per phase of `PLAN.md`: counts, decisions made off-plan, refuted findi
 - Known and accepted: `uv run aidm` smoke boots and lists The Drowned Road; a live turn needs the CLIs, the golden turn plays it offline. SIGTERM shutdown error is NiceGUI/MCP lifespan teardown, not this phase.
 - Also this phase (maintainer asked): `README.md` says three engines with a Breathless paragraph and licence line (Phase 4 still does the four-engine rewrite); `docs/MAZE-RATS.md` deleted, `VISION.md` points at its history (`62f95c6`).
 
+## Phase 3 — 24XX
+
+- `src`: 8,103 → 9,546 (PLAN target about 9,560). `engines/twentyfourxx/`: 1,441 Python lines (target 1,600, cap 2,000). 6 tools + 9 arms.
+- Off-plan decisions: Kael's sheet is `{Stealth: 12, Climbing: 8, Piloting: 8}` — PLAN §3.5's parenthetical "(Stealth d10, …)" is unreachable (the Sneak specialty grants Stealth d8, so the listed increases Stealth, Stealth, Piloting land d12; no three-increase pick set produces d10); the literal pick list won. Scenario `silent-relay` (The Silent Relay: relay station QV-9 gone dark; opening `docking-ring`, Vessa Rune + Harl Odum present, Warden Six hidden) is original — no 24XX source fixture exists, drowned-road is Breathless'. `guidance()` returns the authoring preamble only: this pack holds creation tables, not setting vocabulary. The android body is a trait, so the case's printed defense break is a documented deviation in `docs/24XX.md`. A kit's printed description folds into its name (PsychOut) or drops — `Kit` has no detail field. The pyproject `pythonpath`/`extraPaths` edit and `twentyfourxx_test_support.py` moved from the PLAN's part-D file list into part A (sibling test files import the support via pythonpath); the `change_world` test helpers live in `test_tools.py`, not the support file (parallel parts must not share a file). Registration fallout: `TWENTYFOURXX` constant in `core_test_support.py`, two catalog pairs in `tests/ui/test_launcher.py`.
+- Review fixes folded (Fable): `job_done` now returns the untold `dice_rolled` fact with its two told facts, as every other roller does; a `leave`-only test renamed from its reveal/enter name; `-> None` added to part A's test defs. Nothing refuted.
+- Codex Sol review NOT run: the `codex` CLI is not installed in the remote container this phase ran in (no OpenAI credentials). Fable review only; it returned "phase complete", no cuts.
+- Known and accepted: `uv run aidm` boots and lists The Silent Relay; the golden turn plays a 24XX turn offline (reveal, Stealth attempt, spend). The SIGTERM shutdown traceback is the NiceGUI/MCP lifespan teardown noted in Phase 1. Golden regen was additions-only: no other engine's fixture changed by a byte.
+
 ## Phase 2 — fold the identical scene code
 
 - `src`: 8,214 → 8,103 (PLAN target about 8,160; −111 against the planned −90). Fixtures byte-identical after regen.
