@@ -15,7 +15,7 @@ Judge by reading the code and tracing callers.
 2. Read `CLAUDE.md` (the rules the code must follow) and the phase's section of `PLAN.md`.
 3. Read `git diff --cached --stat`, then `git diff --cached` — the whole thing.
 4. For every hunk you doubt, open the full file around it and grep for the symbol's callers
-   across `src/` and `tests/`; a hunk alone hides duplicated helpers, dead code, and broken callers.
+   across `src/`; a hunk alone hides duplicated helpers, dead code, and broken callers.
 5. Write the report in the shape below and stop. Nothing else after it.
 
 ## What to judge
@@ -26,14 +26,16 @@ what by itself, variable/classes/method naming accurate to what they do, correct
 changes, and if the solutions taken are the best/cleanest ones, and that file organisation respects
 the CLAUDE.md rules.
 
+Tests: do not audit cases. Check only that a new core behaviour has a test and that no test
+was deleted without its feature. Findings about test wording or coverage detail are not findings.
+
 Personal observations to check every time:
 
 - Make sure the phase has been fully and completely realized. Compare each step of the brief to the
   diff; name every step that is missing or half done.
 - Make sure no over-engineering has been added: no abstraction with one user, no config for a fixed
   value, no scaffolding "for later", no compatibility path for old data.
-- Make sure all cuts that could have been made are done: dead code the change orphaned, tests that
-  now test nothing, helpers that a stdlib or an existing helper already covers.
+- Make sure all cuts that could have been made are done: dead code the change orphaned, helpers that a stdlib or an existing helper already covers.
 - Make sure to identify any fat/ceremony that can be removed: wrappers, pass-through layers,
   re-validation, docstrings that repeat the signature.
 

@@ -14,7 +14,8 @@ you never commit. Restate `step k of 6` at the top of every message to the user.
 
 Read `PLAN.md` (the "How to work" rules and phase $ARGUMENTS), `PROGRESS.md` (standing
 decisions), `CLAUDE.md`, and every file the phase names. Trace the real flow the change touches;
-you cannot instruct what you have not read. Record the `src` line count from the `PLAN.md` command.
+you cannot instruct what you have not read. Open `tests/` only where a PLAN step names a file;
+the brief never lists tests. Record the `src` line count from the `PLAN.md` command.
 
 Write `/tmp/phase-$ARGUMENTS/brief.md`. It is both the record of the phase and the instruction
 the implementer runs, so it must be precise:
@@ -26,8 +27,7 @@ the implementer runs, so it must be precise:
 ## Goal            one paragraph, copied intent not paraphrased rules
 ## Steps           numbered, one action each, straight from PLAN.md; for each: the files to
                    touch and the exact shapes (signatures, models, fields)
-## Tests           the tests to add or change, by name
-## Done when       observable checks: tests named, behaviour named, line-count target
+## Done when       observable checks: behaviour named, line-count target, four commands green
 ## Out of scope    what the phase must not touch; standing decisions it must not re-open
 ## Split           one implementer | parallel: A, B | sequential: A then B | mix — see below
 ## Rules           the two paragraphs below, verbatim
@@ -46,7 +46,7 @@ Group the steps into parts by the files they touch:
   implementers edit one file.
 
 Write one `/tmp/phase-$ARGUMENTS/brief-<A|B|..>.md` per part. Each part-brief is complete on its
-own: Goal, its Steps, its Tests, its Done when, the shared shapes, and an Out of scope that names
+own: Goal, its Steps, its Done when, the shared shapes, and an Out of scope that names
 the files the other parts own. `brief.md` stays the record of the whole phase and names the split.
 
 Rules paragraphs:
@@ -57,7 +57,8 @@ Rules paragraphs:
 
 > Follow our coding principles: clean, SOLID, DRY, KISS, simple/readable code, concise docstrings,
 > only comment the 'why', fail fast, strict type safety, avoid 'Any' and avoid any optional unless
-> needed, keep tests minimal and only on the core behavior.
+> needed. Tests: green, and one test per new core behaviour. Do not read `tests/` beyond the
+> files a step names; do not enumerate or audit existing test cases.
 
 If PLAN.md is ambiguous on something that changes the work, ask the user once, now.
 
@@ -69,7 +70,8 @@ If PLAN.md is ambiguous on something that changes the work, ask the user once, n
    Parallel parts: all `Agent` calls in one message. Sequential parts: spawn the next only after
    the previous part passed step 2.2. Wait for completion notifications. Do not poll.
 2. Verify yourself: the four commands, then `git status` and `git diff` against the part's brief
-   step by step. Read the diff; do not trust the implementer's summary.
+   step by step. Read the `src/` diff; do not trust the implementer's summary. For `tests/` the
+   check is only: green, and each new behaviour has one test.
 3. Red check or a missing step → `SendMessage` the same agent with only the gap and the exact
    error; it keeps its round-1 context. Three rounds and still red → stop and report to the user;
    never patch around it silently.
