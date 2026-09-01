@@ -1,0 +1,545 @@
+# PLAN — campaigns with a home base
+
+The order of work for the hub. `docs/HUB-SPECS.md` says what a campaign is and why; read it once,
+first. This file says what to do, step by step, and is self-standing. Where it departs from the
+spec it says so, with the reason, in Settled.
+
+A campaign is one save whose world has a hub. A job is what happens between two visits home. The
+platform learns two envelope fields and nothing else; every engine builds its own hub under the
+seam.
+
+## How to work
+
+Run these four from the repository root, with `UV_CACHE_DIR` unset. "Full check" means all four
+pass:
+
+```bash
+uv run pytest
+uv run ruff check
+uv run ruff format --check
+uv run basedpyright
+```
+
+Rules:
+
+1. **Do the steps in order.** Each is one action. Finish it before starting the next.
+2. **Run the full check at the end of every step**, except the steps a phase marks "checked
+   together": a new shipped scenario makes the golden state test look for its fixture, so the
+   content file and the fixture regen are always the last two steps of a phase.
+3. **Tests must be green.** Change a shape and update its tests in the same step. Test lines are
+   not budgeted. One test per new behaviour; no test of prose or wiring.
+4. **Golden files** live in `tests/core/fixtures/`. Rebuild them **once**, at the end of a phase:
+   ```bash
+   AIDM_GOLDEN_REGEN=1 uv run pytest    # exits red by design; it wrote, it did not check
+   uv run pytest
+   ```
+   Then read every changed line. A one-shot's prompt fixture must not change by a byte in any
+   phase; only `"kind": "one-shot"` lands in the state and save fixtures, in Phase 1.
+5. **Count `src` lines** at the start and end of each phase; write both in `PROGRESS.md`, one
+   entry per phase (Phase 1 creates the file):
+   ```bash
+   find src -name '*.py' | xargs cat | wc -l
+   ```
+6. **If a phase runs far past its target, stop and say so.** Never pad, never invent a deletion.
+7. **Leave the game playable** at the end of every phase: `uv run aidm`, open a game, take a turn.
+8. **One commit per phase.** Never leave two versions of one thing alive.
+9. **Review each phase adversarially against its staged diff before the commit.**
+10. **Verify every rule against the SRD page before you build on it.** The docs under `docs/`
+    hold sources and deviations, never rules text. The two rules this plan builds on were read
+    2026-09-01: 24XX "After a job, each character increases a skill (none→d8→d10→d12) and gains
+    d6 credits", and its d6 job-finding setup "1–2 Nothing. Owe somebody to get in on a job. /
+    3–4 Found a job, but something seems off. / 5–6 Choose between 2 jobs." Breathless prints no
+    between-runs step. Tunnel Goons' `level_up` and Loner's growth line are already built.
+
+| phase | `src` after |
+|---|---|
+| start (`c9efa13`) | 9,548 |
+| 1 — the seam and the shared hub | about 9,720 |
+| 2 — 24XX | about 9,870 |
+| 3 — Breathless and Loner | about 10,140 |
+| 4 — Tunnel Goons | about 10,290 |
+| 5 — the enduring documents | about 10,290 |
+
+Targets are targets. The caps are 2,000 lines per engine and fifteen tools; no phase adds a tool.
+
+---
+
+## Settled. Do not re-open these inside a phase.
+
+`PLAN.md` at `8ba0261` Settled 1–16 stand. `HUB-SPECS.md` Settled 1–17 stand except where a
+line below says otherwise.
+
+1. **The platform learns two fields.** `ScenarioMeta.kind: ScenarioKind = "one-shot"` and
+   `PanelRow.intent: str = ""`. `core`, `turn`, `app` and `ui` never say "hub", "job", "board"
+   or "debrief". The one platform behaviour beyond the fields: a silent install (`arrival_brief
+   is None`) that lands a told card is recorded as a lineless exchange, so the card shows.
+2. **The board lives on the world, not the scene.** `world.hub: Slug | None` and
+   `world.board: tuple[Offer, ...]` on every engine's world and canon. HUB-SPECS Settled 5 hangs
+   the board on `Scene.offers`; Tunnel Goons has no scene to hang it on, and one shape lets the
+   shared helpers read all four engines. A return swaps the whole board.
+3. **A debrief is a value on the hub stop.** `Debrief{text, finished}` on `Scene.debrief` (scene
+   engines) and `Visit.debrief` (Tunnel Goons), `None` everywhere else. A job is derived by one
+   walk over `Stop{place, title, debrief}` triples in `engines/core.py`; nothing else is stored.
+4. **The shared hub code is written into `engines/core.py` and `engines/scenes.py` in Phase 1**,
+   not built in one engine and moved. HUB-SPECS says build-then-move; this plan already names
+   the shared shapes, and writing them twice to move them once is a phase of churn. `core.py`
+   holds what Tunnel Goons needs too; `scenes.py` holds what only scene engines need. Anything
+   bound to an engine's world type stays in the engine, as `8ba0261` Settled 1 says.
+5. **The return is its own model.** Scene engines answer a return with `HubDraft(SceneDraft)`,
+   Tunnel Goons with `ReturnDraft`. A required `debrief`, a required `finished` and `offers` of
+   two or three are structural; the bar checks only the place. A `SceneDraft` never carries a
+   debrief, so "refused anywhere else" is `extra="forbid"`.
+6. **Home is a fixed intent.** `GO_HOME = "Go home."` (scene engines) and `REPORT_IN = "Report
+   in."` (Tunnel Goons) are the exact strings the sidebar rows send and `write` matches on. A
+   typed "go home" is a job scene like any other; if the worldsmith places it at the hub, the bar
+   refuses it and the player reads the sidebar.
+7. **The way on stays the scene's.** `ready` is `way_open = run.settled or at_hub`. The "Go home"
+   row shows only when the way is open, so pressing it never raises "no transition from here".
+   Leaving a job means settling its current scene first, as leaving any scene does. Tunnel
+   Goons: `way_open = at_hub or map_exhausted`; "Report in" shows at the tavern with a job open.
+8. **The "more beyond here" banner stays.** HUB-SPECS hides it at the hub; the platform would
+   have to know what a hub is. At the hub its text is true ("keep playing, or say what you pursue
+   and press Move on"). Not built.
+9. **The between-jobs note is the engine's.** On a finished job's return, `install` appends one
+   note to `state.notes`: 24XX names `job_done`, Loner the growth line, Tunnel Goons `level_up`,
+   Breathless nothing. An unfinished job appends no note.
+10. **Two cards on a return.** `job_closed` ("Job done: <title>" or "Job left open: <title>",
+    then the debrief on its own line) and the engine's usual opening card. Tunnel Goons' job
+    take is one told card, "A way opens: <region start>", so the player sees the map grew.
+11. **The master reads the ledger.** `master_sections` gains `JOBS SO FAR` in a campaign and
+    `THE BOARD` at the hub, so the fixer can talk about the work and the master remembers what
+    was done twenty turns ago. The narrator's view does not change.
+12. **Prompt memory is compacted per job.** `SCENES SO FAR` (worldsmith) and `Trail` (sidebar)
+    run from the last debriefed stop; `JOBS SO FAR` is one line per closed job. Older scenes stay
+    in the save. The cast list still grows; accepted.
+13. **Content is hand-written.** One campaign scenario per engine, beside its one-shot. The test
+    support requires exactly one shipped scenario per (engine, kind).
+14. **`validate` refuses `kind` and `hub` disagreeing**, through `check_kind` in each engine's
+    validate: the only place that sees both the envelope and the payload.
+15. **Nothing else.** No session reset, no `PendingDecision` for the board, no reputation, no
+    crew, no write-back to `characters/`, no new master tool, no journal chapters beyond the
+    `where` heading every exchange already carries.
+
+---
+
+## Phase 1 — the seam and the shared hub
+
+Everything above the engines, plus the type-free hub helpers, with no engine playing a campaign
+yet. **Split:** A (platform and helpers) then B (the pages), sequential: B needs A's fields.
+
+### 1.1 `core/model.py`, `core/views.py`
+
+```python
+type ScenarioKind = Literal["one-shot", "campaign"]
+
+class ScenarioMeta(Frozen):
+    title: str
+    premise: str
+    kind: ScenarioKind = "one-shot"
+
+class PanelRow(Frozen):
+    label: str
+    detail: str
+    icon_id: EntityId | None = None
+    # Set when the row is a way on: the sidebar draws a button that plays Move on with it.
+    intent: str = ""
+```
+
+### 1.2 `engines/core.py`
+
+```python
+BOARD_MIN, BOARD_MAX = 2, 3
+
+class Offer(Frozen):
+    title: str = Field(min_length=1)
+    pitch: str = Field(min_length=1)   # the words the player takes the job with
+
+class Debrief(Frozen):
+    text: str = Field(min_length=1)
+    finished: bool
+
+class Stop(Frozen):
+    """One run or visit, as the job walk reads it; the engine maps its own shape to this."""
+    place: Slug
+    title: str
+    debrief: Debrief | None = None
+
+class Job(Frozen):
+    title: str
+    debrief: Debrief
+
+@dataclass Authoring:
+    prompt: Callable[[str, Sequence[Slug], ScenarioKind], str]
+    build: Callable[[str, str, str, tuple[Slug, ...], BaseModel, str, ScenarioKind], AnyScenario]
+```
+
+Functions, all pure:
+
+- `check_kind(kind, hub)`: `(kind == "campaign") != (hub is not None)` raises.
+- `check_board(hub, board)`: no hub → board empty; hub → `BOARD_MIN <= len <= BOARD_MAX`.
+- `job_titles(hub, stops) -> tuple[str, ...]`: one per stop; `""` at the hub (or without one);
+  else the title of the first stop since the last hub stop. This is the chapter heading.
+- `closed_jobs(hub, stops) -> tuple[Job, ...]`: a stop with a debrief closes the job of the last
+  titled stop before it (since the previous debrief).
+- `open_job(hub, stops) -> str | None`: the title of the last titled stop after the last
+  debrief, else `None`. Tunnel Goons reads it for "Report in".
+- `job_start(hub, stops) -> int`: index of the last stop with a debrief, else 0. `Trail` and the
+  worldsmith's history run from here.
+- `board_rows(board)`: `PanelRow(label=offer.title, detail=offer.pitch, intent=offer.pitch)`.
+- `jobs_rows(jobs)`: `PanelRow(label=title + ("" if finished else " (left open)"), detail=text)`.
+- `ledger(jobs) -> str`: `- <title>: <text>` per job, `(left open)` appended when not finished.
+- `job_closed(job) -> Fact`: `kind="job_closed"`, told, card `"Job done: <title>\n<text>"` or
+  `"Job left open: <title>\n<text>"`, trace `"the job <title> closed (done|left open): <text>"`.
+
+Tests in `tests/core/test_hub.py`: the walk on a stop list with two closed jobs and one open;
+`check_board`; `check_kind`; the card text.
+
+### 1.3 `engines/scenes.py`
+
+```python
+GO_HOME = "Go home."
+HOME_ROW = PanelRow(label="Go home", detail="Leave the job where it stands.", intent=GO_HOME)
+HUB_ROW = PanelRow(label="Take a job from the board, or name where you go.", detail="")
+HUB_BRIEF = (
+    "The hub is {title} ({place}). Anyone from its cast the player names in WHAT COMES NEXT is "
+    "present in the scene you write. Never place a scene at {place}: home is reached by going home."
+)
+RETURN_BRIEF = (
+    "The player is going home to {title} ({place}); write the hub scene there. `debrief` is one "
+    "paragraph on the job they just left, written for the player; `finished` is true only when "
+    "that job was completed. Return the whole board in `offers`: keep, drop or add, two or three "
+    "in all. A job left open normally stays on the board, so the player can take it again."
+)
+
+class Scene(Frozen):
+    ...                                # as today, plus:
+    debrief: Debrief | None = None     # the hub's word on the job just left; hub runs after the first
+```
+
+- `check_hub(hub, board, runs)`: `check_board`; no hub → no run has a debrief; hub → `runs[0]`
+  is at the hub with no debrief, and for every later run `(place == hub) == (debrief is not None)`.
+- `stops_of(runs) -> tuple[Stop, ...]`: `Stop(place, scene.title, scene.debrief)`.
+- `hub_sections(hub_title, hub, board, jobs, *, returning) -> Rows`: `("JOBS SO FAR", ledger or
+  "(none yet)")`, `("THE BOARD", "- <title>: <pitch>" lines)`, `("THE HUB", RETURN_BRIEF if
+  returning else HUB_BRIEF)`.
+
+### 1.4 The engines' seam
+
+Every `build_scenario` and `render_opening`/`render_map` gains the `kind` parameter. In this
+phase `build_scenario` raises `ValueError("<engine> has no hub yet")` on `"campaign"`; the four
+`validate` functions call `check_kind(state.scenario.kind, None)`. Phases 2–4 replace both.
+
+### 1.5 `app/runtime.py`, `app/launch.py`
+
+- `new_scenario(..., art_style, kind)` passes `kind` to `authoring.prompt` and `build`.
+- `_install`, `brief is None`: `self.commit(close_segment(self.engine, view, draft, CROSSED,
+  (), facts))` when `cards(facts)` is non-empty, else the plain commit as today. `close_segment`
+  takes empty lines already; the exchange is the card alone.
+- `CatalogEntry.kind: ScenarioKind`, `SaveOption.kind: ScenarioKind`, read from the meta.
+
+### 1.6 `ui/create.py`, `ui/app.py`, `ui/panels.py`, `ui/game.py`
+
+- Scenario page: `ui.toggle({"one-shot": "One-shot", "campaign": "Campaign"}, value="one-shot")`
+  above the premise; its value goes to `new_scenario`.
+- Home page: `ui.badge("campaign")` after the scenario subtitle and on a saved card, when the
+  entry's kind is `"campaign"`.
+- `scene_sidebar(session, move_on: Callable[[str], Awaitable[None]])`: a row with an intent
+  renders as `ui.button(row.label, on_click=partial(move_on, row.intent)).props("no-caps outline
+  dense")` with `row.detail` as a small label beneath. `game_page` passes
+  `partial(move_on, view)`, where `move_on(view, intent)` in `game.py` is `submit`'s tail:
+  refuse when `refuse_play(view)`, else `_send(view, intent if prompt is None else
+  Answer(text=intent), intent, moving_on=True)`.
+
+### 1.7 Tests and fixtures
+
+- `core_test_support.py`: `scenario_for(engine_id, kind="one-shot")` and `game(engine_id, kind)`
+  filter on `meta.kind` and still require exactly one; `shipped(engine_id) -> tuple[ScenarioKind,
+  ...]`; `SHIPPED = tuple((e, k) for e in ENGINE_IDS for k in shipped(e))`.
+- `test_golden_state.py` parametrises over `SHIPPED`; a campaign fixture is
+  `state/<engine>-campaign.json`. The turn, prompt and schema goldens stay on the one-shot.
+- `test_tool_surface.py`: the `build` call gains `"one-shot"`; one new test, on the
+  `arrival_brief=None` pattern already there, that an install returning a told card lands one
+  exchange with no lines and the card.
+- Regen: `state/` and `save/` gain `"kind": "one-shot"`; nothing else moves.
+
+**Split.** A: 1.1–1.5, `test_hub.py`, `core_test_support.py`, `test_golden_state.py`,
+`test_tool_surface.py`, regen. B (needs A): 1.6, `ui/`.
+
+**Done when:** green; every one-shot plays as before; the create page offers the toggle and a
+campaign is refused with the engine's message; `src` about 9,720.
+
+---
+
+## Phase 2 — 24XX
+
+The first engine with a hub. **Split:** one implementer; the parts below are files, not agents.
+
+### 2.1 `world.py`
+
+```python
+class SceneCanon(Mutable):
+    ...                                          # as today, plus:
+    hub: Slug | None = None
+    board: tuple[Offer, ...] = ()
+    # validator: check_board; hub set → opening.place == hub; opening.debrief is None
+
+class TwentyfourxxWorld(Mutable):
+    ...                                          # as today, plus:
+    hub: Slug | None = None
+    board: tuple[Offer, ...] = ()
+    # validator adds check_hub(hub, board, runs)
+
+    @property
+    def at_hub(self) -> bool: ...                # hub is not None and current.place == hub
+    def stops(self) -> tuple[Stop, ...]: ...     # stops_of(runs)
+    def job_runs(self) -> list[SceneRun]: ...    # runs[job_start(hub, stops):]
+    def exchanges(self): ...                     # where = f"{job} — {title}" when job_titles gives one
+```
+
+- `record`: returns no spent note when `world.at_hub`.
+- `settled` becomes `way_open(state)`: `run.settled or world.at_hub`. `engine.py` registers it.
+- `new_game` copies `hub` and `board` from the canon.
+- `check_packs` becomes `check_game(packs, state)`: the pack checks, then
+  `check_kind(state.scenario.kind, world.hub)`.
+
+### 2.2 `worldsmith.py`, `worldsmith.md`
+
+```python
+BOARD_GUIDANCE = (
+    "The SRD's job-finding setup, as guidance for the board: 1–2 nothing, owe somebody to get in "
+    "on a job; 3–4 found a job, but something seems off; 5–6 a choice between two jobs. Let the "
+    "offers carry that range: one that costs a favour, one where something is off, a plain choice."
+)
+JOB_DONE_NOTE = (
+    "The job {title} is closed and was completed. The SRD's after-a-job step applies: call "
+    "`job_done` once, with the skill the player names."
+)
+
+class SceneDraft(Frozen):
+    ...                                          # as today, plus:
+    offers: tuple[Offer, ...] = ()               # the board; a campaign's opening hub only
+
+class HubDraft(SceneDraft):
+    offers: tuple[Offer, ...] = Field(min_length=BOARD_MIN, max_length=BOARD_MAX)
+    debrief: str = Field(min_length=1)
+    finished: bool
+```
+
+- `scene_refusal(draft, world=None, *, hub=False)` and `_scene_unmet(draft, world, *, hub)`:
+  `hub` means this draft is the hub scene. `hub`: with a world, `world.hub` must be set and
+  `draft.place == world.hub`; without one (the campaign opening) `BOARD_MIN <= len(offers) <=
+  BOARD_MAX`. Not `hub`: `offers == ()`, and with a world hub `draft.place != world.hub` ("home
+  is reached by going home"). The existing checks stay.
+- `opening_canon(draft, source, kind)`: `hub = draft.place` and `board = draft.offers` for a
+  campaign.
+- `_scene(draft)`: `debrief=Debrief(text=draft.debrief, finished=draft.finished)` for a
+  `HubDraft`.
+- `write_next`: `returning = world.hub is not None and intent == GO_HOME`; the model is
+  `HubDraft` when returning else `SceneDraft`; the refusal checks `isinstance` against that model
+  and calls `scene_refusal(written, world, hub=returning)`.
+- `install_scene`: `apply_scene` as today, then for a `HubDraft`: `world.board = written.offers`;
+  `job = closed_jobs(world.hub, world.stops())[-1]`; when `job.debrief.finished`, append
+  `JOB_DONE_NOTE.format(title=job.title)` to `state.notes`; return `(job_closed(job), opened)`.
+- `render_worldsmith(world, intent, guidance, *, returning=False)`: history is
+  `scene_history(world.job_runs())`; in a campaign `_worldsmith` receives
+  `hub_sections(world.runs[0].scene.title, world.hub, world.board, closed_jobs(...),
+  returning=returning)` and inserts them after `SCENES SO FAR`; the answer schema is `HubDraft`
+  when returning; `BOARD_GUIDANCE` joins the guidance when returning.
+- `render_opening(packs, source, picks, kind)`: a campaign's intent is "Write the opening of this
+  campaign: the hub the player keeps coming back to — one place, the fixer and the regulars —
+  and a board of two or three `offers`. Nothing has happened yet." plus `BOARD_GUIDANCE`.
+- `build_scenario(..., kind)`: `scene_refusal(written, hub=(kind == "campaign"))`;
+  `ScenarioMeta(..., kind=kind)`; `opening_canon(written, source, kind)`.
+- `worldsmith.md`: one line: "An `offers` entry is a job the hub can hand the player: a `title`
+  and a `pitch` in the fixer's own words, enough to walk out on."
+
+### 2.3 `views.py`, `rules.md`
+
+- `player_view`: `This scene` rows are the question, then `HUB_ROW` at the hub, else when settled
+  the "Way on" row and, in a campaign, `HOME_ROW`. Panels, in order: `Character`, `Gear`, `This
+  scene`, `Board` (campaign, at the hub only: `board_rows`), `Here`, `Trail` (`job_runs()`),
+  `Jobs done` (campaign: `jobs_rows(closed_jobs(...))`).
+- `master_sections`: after `THE SCENE'S SECRET`, `("JOBS SO FAR", ledger or "- (none yet)")` in
+  a campaign and `("THE BOARD", "- <title>: <pitch>" lines)` at the hub.
+- `rules.md`, a `## Campaigns` section before the scene rules: the hub is always open, so
+  `next_scene` is never needed there and the spent note never fires; play the hub as any scene —
+  talk, trade, rest — and never push the player out; the board is the player's to take from the
+  page, so do not choose for them; when NOTES FROM THE RULES says a job closed and was completed,
+  call `job_done` once with the skill the player names. `job_done`'s description and its rules
+  line read "once per job" instead of "once per adventure".
+
+### 2.4 Content, tests, docs
+
+- `scenarios/<slug>/world.json`, `kind: "campaign"`, packs `["srd"]`: a station bar as the hub
+  (`place` is the hub slug), a fixer and a bartender present, one regular hidden, a `secret`,
+  and a board of three offers spanning `BOARD_GUIDANCE`. No debrief. Hand-written; the implementer
+  names it.
+- `twentyfourxx_test_support.py`: `hub_world()` — a hub run with a board, then one job run.
+- Tests: the world refuses a debrief off the hub and a first run away from it; `check_game`
+  refuses a campaign without a hub; `way_open` at an unsettled hub; `record` never nags at the
+  hub; `write_next` asks for a `HubDraft` on `GO_HOME` and a `SceneDraft` otherwise (a scripted
+  `answer` records the model); a job scene placed at the hub is refused; `install_scene` on a
+  return swaps the board, lands the two cards and the note only when finished; `player_view`
+  shows the board at the hub, "Go home" only when settled in a job, and `Jobs done` after a
+  return; `exchanges()` heads a job scene `<job> — <scene>`.
+- Checked together: the scenario, then regen (`state/twentyfourxx-campaign.json` appears).
+- `docs/24XX.md`: deviation 3 becomes "the d6 job-finding setup is prompt guidance for the
+  board, not a roll"; the reading "a job is the whole adventure" becomes "a job is one outing
+  from the hub in a campaign, the whole adventure in a one-shot"; the tool table's `job_done`
+  line says once per job.
+
+**Done when:** green; a 24XX campaign opens at the bar with three buttons, an offer opens a job,
+"Go home" lands the card, the note and the new board; engine at about 1,580 lines (cap 2,000);
+`src` about 9,870.
+
+---
+
+## Phase 3 — Breathless and Loner
+
+Copy Phase 2 into both. **Split:** parallel, A Breathless, B Loner; they share no file.
+
+### 3.1 Breathless (A)
+
+Exactly 2.1–2.4 with Breathless' types. Differences: no `BOARD_GUIDANCE` (the SRD prints no job
+table); no note on a finished job (the SRD prints no between-runs step), so `install_scene`
+appends nothing to `state.notes`; `rules.md`'s `## Campaigns` says the return is the camp and
+nothing is owed. Content: a camp or safe house as the hub, the pack's `missions` as the offers'
+vocabulary. `docs/BREATHLESS.md` gains one reading: a campaign's between-runs step is none.
+
+### 3.2 Loner (B)
+
+Exactly 2.1–2.4 with Loner's types (`cast: dict[EntityId, LonerCharacter]`, `player_id`).
+Differences: companions come home as they go anywhere (`apply_scene` keeps followers already);
+`close_conflicts` runs before the move as it does now; the note is `GROWTH_NOTE = "The job
+{title} is closed and was completed. The adventure's end applies: ask what the character
+learned, then write it once with `change_tags` and `drive`."`; `rules.md`'s "Twists and the
+adventure's end" section says the note names when a job's end counts as one. Content: a guild
+hall as the hub, packs as the one-shot's. `docs/LONER-3E.md` deviation 5's growth line says per
+job in a campaign.
+
+**Done when:** green; both campaigns play a job and a return; each engine under about 1,560
+lines; `src` about 10,140.
+
+---
+
+## Phase 4 — Tunnel Goons
+
+Full parity on the map's own terms. One implementer.
+
+### 4.1 `engines/core.py`: `told_tail` moves
+
+`told_tail(exchanges: Sequence[Exchange]) -> str` and `TAIL_EXCHANGES` move verbatim from
+`scenes.py` to `core.py`; `scene_history` calls `told_tail(run.exchanges)`. Tunnel Goons cannot
+import `scenes.py`.
+
+### 4.2 `world.py`
+
+```python
+class Visit(Mutable):
+    place: CheckedEntityId
+    exchanges: list[Exchange] = Field(default_factory=list)
+    debrief: Debrief | None = None       # the tavern's word on the job just reported
+
+class MapCanon(Dungeon):
+    start: CheckedEntityId
+    source: str = ""
+    hub: CheckedEntityId | None = None   # validator: check_board; hub set → hub == start
+    board: tuple[Offer, ...] = ()
+
+class TunnelWorld(Dungeon):
+    ...                                  # as today, plus hub, board, and in the validator:
+    # check_board; hub in places; visits[0].place == hub when set, and no debrief on it;
+    # a debrief only on a hub visit; no debrief without a hub.
+    # at_hub, stops() (title = places[visit.place].name), exchanges() with the job heading.
+```
+
+`new_game` copies `hub` and `board`.
+
+### 4.3 `worldsmith.py`, `worldsmith.md`
+
+```python
+REPORT_IN = "Report in."
+REPORT_ROW = PanelRow(label="Report in", detail="Tell the tavern how it went.", intent=REPORT_IN)
+LEVEL_UP_NOTE = (
+    "The job {title} is closed and was completed: the adventure ended. `level_up` applies once."
+)
+
+class MapDraft(Dungeon):
+    start: CheckedEntityId
+    board: tuple[Offer, ...] = ()        # a campaign's opening tavern only
+
+class ReturnDraft(Frozen):
+    debrief: str = Field(min_length=1)
+    finished: bool
+    offers: tuple[Offer, ...] = Field(min_length=BOARD_MIN, max_length=BOARD_MAX)
+```
+
+- Bars. `map_refusal` (one-shot opening) adds `board == ()`. `hub_refusal(draft)` (campaign
+  opening): the start is in `places` and known, every place reachable from it, `BOARD_MIN <=
+  len(board) <= BOARD_MAX`; nothing about locks, shortcuts or hidden things — a tavern needs
+  none. `job_refusal(draft, world)`: `_map_unmet` (the one-shot bar) plus the id-overlap check
+  and `board == ()`. `extension_refusal` adds `board == ()`. The overlap check becomes
+  `_overlap_unmet(draft, world)`, shared by job and extension.
+- `apply_extension(world, draft)` becomes `attach(world, draft, *, known: bool)`: the two
+  appended ways carry `known`; a job attaches known, an extension unknown, so the tavern's
+  `Ways out` shows the job's door.
+- `write_extension(state, intent, answer)`: at the hub with `intent == REPORT_IN`, refuse with
+  "no job is open to report" when `open_job` is `None`, else `answer(_render_return(world),
+  ReturnDraft, ...)`; at the hub otherwise, `_render_job(world, intent)` with the job bar; away
+  from the hub, the extension as today.
+- `install_extension(state, written)`: a `ReturnDraft` appends `Visit(place=hub, debrief=
+  Debrief(...))`, sets `world.board`, takes `job = closed_jobs(...)[-1]`, appends
+  `LEVEL_UP_NOTE` when finished, returns `(job_closed(job),)`. A `MapDraft` at the hub attaches
+  known and returns `Fact(kind="job_taken", told=True, card=f"A way opens: {start.name}")`; away
+  from the hub, as today.
+- `_render_return(world)`: `MAP SO FAR`, `JOBS SO FAR` (ledger), `THIS JOB` (each visit since
+  `job_start`: the place line and `told_tail(visit.exchanges)`), `THE BOARD`, `THE PLAYER`,
+  `WHAT COMES NEXT` = `RETURN_BRIEF`-style text naming the tavern, `ANSWER WITH` `ReturnDraft`.
+  `_render_job` is `_render_extension` with `JOBS SO FAR`, `THE BOARD` and a `THE HUB` line: the
+  region joins the map at the tavern, is a whole dungeon (the opening bar), and old dungeons stay.
+- `render_map(source, picks, kind)`: a campaign's `MAP SO FAR` says "write the tavern: one
+  known place, its keeper and regulars as npcs, no ways out, and a `board` of two or three
+  offers". `build_scenario(..., kind)` picks the bar by kind and sets `hub=start`, `board`.
+- `map_exhausted` becomes `way_open(state)`: `world.at_hub or frontier(world) == 0`.
+- `worldsmith.md`: one paragraph on the tavern and the board, one on a job region.
+
+### 4.4 `views.py`, `rules.md`
+
+- `player_view`: `Board` panel at the hub — `board_rows(world.board)` then `REPORT_ROW` when
+  `open_job` is not `None`; `Trail` from `job_start`; `Jobs done` in a campaign.
+- `master_sections`: `JOBS SO FAR` in a campaign, `THE BOARD` at the hub.
+- `rules.md`, `## Campaigns`: the tavern is home; the player takes work from the page; a job is
+  a dungeon hung off the tavern; there is no teleport home — the player walks, and you may cover
+  a known trek in one turn of `move` calls; when NOTES FROM THE RULES says a job closed and was
+  completed, call `level_up` once. "The map's end" says the page also offers work at the tavern.
+
+### 4.5 Content, tests, docs
+
+- `scenarios/<slug>/world.json`, `kind: "campaign"`: one place, the tavern, known; the keeper
+  and one regular as npcs; no ways; a board of three. Hand-written.
+- Tests: the world refuses a debrief off the hub; `way_open` at the tavern; `attach` known vs
+  unknown; `write_extension` picks `ReturnDraft` on `REPORT_IN` and refuses it with no job open;
+  `install_extension` on a return appends the debriefed visit, swaps the board, lands the card
+  and the note; a job take at the hub lands the told card and a known way; `open_job` after a
+  walk out and back; `player_view` shows "Report in" only then.
+- Checked together: the scenario, then regen (`state/tunnelgoons-campaign.json`).
+- `docs/TUNNEL-GOONS.md`: deviation 1 says per adventure in a one-shot, per job in a campaign.
+
+**Done when:** green; the tavern hands out a dungeon, the player walks it and back, "Report in"
+lands the card; engine at about 1,420 lines; `src` about 10,290.
+
+---
+
+## Phase 5 — the enduring documents
+
+One implementer.
+
+1. `README.md`: one paragraph on campaigns after the engine paragraphs.
+2. `VISION.md`: the target architecture names the hub as an engine concern under the seam and
+   the two envelope fields as the platform's whole share; the after-MVP0 list loses nothing.
+3. `CLAUDE.md`: unchanged unless a rule above proved false; then fix the rule, not the code.
+4. `docs/HUB-SPECS.md`: delete; VISION carries the idea, the engine docs carry the rules, git
+   history (`c9efa13`) carries the spec. `IDEAS.md` 15 is done and leaves.
+5. Delete `PLAN.md` and `PROGRESS.md`. The git log is the record.
+
+**Done when:** every document says what the code does, and no document holds rules text.
