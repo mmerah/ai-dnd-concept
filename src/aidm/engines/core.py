@@ -15,6 +15,7 @@ from aidm.core.model import (
     AnyScenario,
     EngineHeader,
     Game,
+    ScenarioKind,
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption, Exchange, PendingOption, SpokenLine
@@ -54,8 +55,8 @@ class Counter(Mutable):
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Authoring:
     answer: type[BaseModel]
-    prompt: Callable[[str, Sequence[Slug]], str]
-    build: Callable[[str, str, str, tuple[Slug, ...], BaseModel, str], AnyScenario]
+    prompt: Callable[[str, Sequence[Slug], ScenarioKind], str]
+    build: Callable[[str, str, str, tuple[Slug, ...], BaseModel, str, ScenarioKind], AnyScenario]
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 from aidm.core.entities import CheckedEntityId, EngineId, EntityId, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
-from aidm.core.model import AnyScenario, ScenarioMeta, WorldsmithAnswer
+from aidm.core.model import AnyScenario, ScenarioKind, ScenarioMeta, WorldsmithAnswer
 from aidm.core.tools import schema_of
 from aidm.core.views import sections
 from aidm.engines.tunnelgoons.views import entity_line
@@ -88,8 +88,10 @@ async def write_extension(
     return await answer(_render_extension(world, intent), MapDraft, refusal)
 
 
-def render_map(source: str, picks: Sequence[Slug]) -> str:
+def render_map(source: str, picks: Sequence[Slug], kind: ScenarioKind) -> str:
     """`Authoring.prompt`; `picks` stays unused — Tunnel Goons ships no packs to pick from."""
+    if kind == "campaign":
+        raise ValueError("Tunnel Goons has no hub yet")
     return sections(
         (
             ("YOUR ROLE", WORLDSMITH),
@@ -107,6 +109,7 @@ def build_scenario(
     packs: tuple[Slug, ...],
     written: BaseModel,
     source: str,
+    kind: ScenarioKind,
 ) -> AnyScenario:
     if not isinstance(written, MapDraft):
         raise ValueError("Tunnel Goons received an incompatible map")
@@ -114,7 +117,7 @@ def build_scenario(
         raise ValueError(refused)
     return TunnelGoonsScenarioFile(
         meta=ScenarioMeta(
-            title=title, premise=premise or written.places[written.start].description
+            title=title, premise=premise or written.places[written.start].description, kind=kind
         ),
         engine=EngineId("tunnelgoons"),
         packs=packs,

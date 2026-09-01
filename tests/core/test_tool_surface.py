@@ -215,7 +215,9 @@ async def test_the_offer_does_not_close_the_scene_or_stop_the_player(tmp_path: P
     assert state.payload.world.current.title == "The Cloister Walk"
 
 
-async def test_a_transition_without_an_arrival_brief_extends_without_a_turn(tmp_path: Path) -> None:
+async def test_a_transition_without_an_arrival_brief_extends_on_a_lineless_exchange(
+    tmp_path: Path,
+) -> None:
     table = opened(tmp_path)
     engine = table.service.engine
 
@@ -242,8 +244,14 @@ async def test_a_transition_without_an_arrival_brief_extends_without_a_turn(tmp_
 
     await table.service.play("Out into the cloister walk.", moving_on=True)
 
-    assert table.state.turn == before
+    assert table.state.turn == before + 1
     assert len(table.state.payload.world.runs) == runs + 1
+    new_run = table.state.payload.world.runs[-1]
+    assert len(new_run.exchanges) == 1
+    exchange = new_run.exchanges[0]
+    assert exchange.lines == ()
+    assert exchange.prompt == "Out into the cloister walk."
+    assert any(fact.card == "New scene: The Cloister Walk" for fact in exchange.facts)
     assert not any(role == "master" for role, _ in table.spawner.prompts)
 
 
@@ -252,7 +260,9 @@ def test_authoring_build_raises_on_an_unmet_bar(tmp_path: Path) -> None:
     scene = SceneDraft.model_validate(json.loads(_scene(present=[], hidden=[])))
 
     with pytest.raises(ValueError, match="the scene needs"):
-        _ = table.service.engine.authoring.build("T", "p", "", table.state.packs, scene, "")
+        _ = table.service.engine.authoring.build(
+            "T", "p", "", table.state.packs, scene, "", "one-shot"
+        )
 
 
 async def test_a_turn_that_dies_after_asking_to_move_takes_its_write_with_it(

@@ -3,7 +3,8 @@
   "character_id": "kael",
   "scenario": {
     "title": "The Buried Keep",
-    "premise": "A garrison keep collapsed into its own tunnels two winters back, and something down there still moves through the dark."
+    "premise": "A garrison keep collapsed into its own tunnels two winters back, and something down there still moves through the dark.",
+    "kind": "one-shot"
   },
   "engine": "tunnelgoons",
   "packs": [],

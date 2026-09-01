@@ -10,13 +10,14 @@ from pydantic import BaseModel
 
 from aidm.config import Settings, load_settings
 from aidm.core.entities import EngineId, EntityId, Slug, require_unique, slug
-from aidm.core.facts import Fact, traced
+from aidm.core.facts import Fact, cards, traced
 from aidm.core.io import FileStore, load_character, read_scenario, write_scenario
 from aidm.core.model import (
     AnyCharacter,
     AnyGame,
     AnyScenario,
     CheckAnswer,
+    ScenarioKind,
 )
 from aidm.core.play import Answer, Line, Narration
 from aidm.core.source import given_text
@@ -132,7 +133,7 @@ class GameService:
         intent: str | Answer,
         on_step: Callable[[TurnStep], None] | None = None,
     ) -> None:
-        """Author and install a region without opening or advancing a player turn."""
+        """Author and install a region without a player turn; a told card is still filed."""
         transition = self.engine.transition
         if not transition.ready(self.state):
             raise ValueError("the world has no frontier to extend")
@@ -212,7 +213,7 @@ class GameService:
         announce("worldsmith")
         written = await self._write(transition, self.state.draft(), intent)
         if written is not None:
-            await self._install(transition, written, announce, brief)
+            await self._install(transition, written, announce, brief, intent)
 
     async def _install(
         self,
@@ -220,6 +221,7 @@ class GameService:
         written: BaseModel,
         announce: Callable[[TurnStep], None],
         brief: str | None,
+        intent: str,
     ) -> None:
         draft = self.state.draft()
         try:
@@ -230,13 +232,15 @@ class GameService:
             self.write_failure = str(outgrown)
             LOGGER.warning("the written world no longer fits: %s", outgrown)
             return
-        if brief is None:
+        if brief is None and not cards(facts):
             self.commit(draft.committed())
             return
-        announce("narrator")
-        lines = await self._narrate(draft, facts, brief, fatal=False)
+        prompt, lines = intent, ()  # a silent install's told card is filed under its intent
+        if brief is not None:
+            announce("narrator")
+            prompt, lines = CROSSED, await self._narrate(draft, facts, brief, fatal=False)
         view = self.engine.narrator_view(draft)
-        self.commit(close_segment(self.engine, view, draft, CROSSED, lines, facts))
+        self.commit(close_segment(self.engine, view, draft, prompt, lines, facts))
 
     async def _write(
         self, transition: Transition[AnyGame], snapshot: AnyGame, intent: str
@@ -373,6 +377,7 @@ class Runtime:
         character_id: Slug,
         *,
         art_style: str,
+        kind: ScenarioKind,
     ) -> Slug:
         """One worldsmith call authors the engine's complete opening world."""
         engine = self.engines[engine_id]
@@ -383,7 +388,9 @@ class Runtime:
         name = slug(title, self._scenario_ids())
 
         def as_scenario(written: BaseModel) -> AnyScenario:
-            return engine.authoring.build(title, premise, art_style, tuple(packs), written, source)
+            return engine.authoring.build(
+                title, premise, art_style, tuple(packs), written, source, kind
+            )
 
         def refusal(written: BaseModel) -> str | None:
             try:
@@ -394,7 +401,7 @@ class Runtime:
 
         written = await answered(
             "worldsmith",
-            engine.authoring.prompt(source, packs),
+            engine.authoring.prompt(source, packs, kind),
             engine.authoring.answer,
             refusal,
             partial(self.spawner.run, "worldsmith"),

@@ -12,6 +12,7 @@ from aidm.app.runtime import Runtime
 from aidm.core.creation import CreationStep, picked
 from aidm.core.entities import EngineId, Slug
 from aidm.core.io import SOURCE_SUFFIXES, write_character
+from aidm.core.model import ScenarioKind
 
 from .widgets import labeled_value, page_header
 
@@ -155,6 +156,7 @@ def scenario_page(runtime: Runtime) -> None:
             value=written[0].id if written else None,
             label="Character",
         ).classes("w-full")
+        kind_toggle = ui.toggle({"one-shot": "One-shot", "campaign": "Campaign"}, value="one-shot")
         premise = (
             ui.textarea(label="Premise", placeholder="What is this adventure about?")
             .classes("w-full")
@@ -179,6 +181,7 @@ def scenario_page(runtime: Runtime) -> None:
                 ui.notify("A title, a character, and a premise or a document.", type="warning")
                 return
             button.props("loading")
+            kind: ScenarioKind = "campaign" if kind_toggle.value == "campaign" else "one-shot"
             try:
                 name = await runtime.new_scenario(
                     engine_id,
@@ -188,6 +191,7 @@ def scenario_page(runtime: Runtime) -> None:
                     packs.value if packs is not None else (),
                     character.value,
                     art_style=(style.value or "").strip(),
+                    kind=kind,
                 )
                 opened = launch_target(
                     load_catalog(runtime.settings, runtime.engines), name, character.value

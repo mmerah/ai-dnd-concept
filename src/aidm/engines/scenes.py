@@ -6,6 +6,7 @@ from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Slug,
 from aidm.core.facts import Fact
 from aidm.core.play import Exchange
 from aidm.engines.core import Entity
+from aidm.engines.hub import Debrief, Offer, Stop, check_board
 
 SCENE_TURN_CAP = 12
 TAIL_EXCHANGES = 3
@@ -43,6 +44,7 @@ class Scene(Frozen):
     situation: str = Field(min_length=40)
     # What `question` does not say: never narrated, never in a view.
     secret: str = ""
+    debrief: Debrief | None = None  # the hub's word on the job just left; hub runs after the first
 
 
 class SceneRun(Mutable):
@@ -130,3 +132,31 @@ def scene_history(runs: Sequence[SceneRun]) -> str:
 
 def told_tail(run: SceneRun) -> str:
     return "\n".join(f"> {one.prompt}\n{one.narration}" for one in run.exchanges[-TAIL_EXCHANGES:])
+
+
+def check_hub(hub: Slug | None, board: Sequence[Offer], runs: Sequence[SceneRun]) -> None:
+    check_board(hub, board)
+    if hub is None:
+        for index, run in enumerate(runs):
+            if run.scene.debrief is not None:
+                raise ValueError(f"run {index} has a debrief with no hub")
+        return
+    first = runs[0].scene
+    if first.place != hub or first.debrief is not None:
+        raise ValueError(f"run 0 does not open at hub {hub!r} with no debrief")
+    for index in range(1, len(runs)):
+        scene = runs[index].scene
+        at_hub = scene.place == hub
+        if at_hub and scene.debrief is None:
+            raise ValueError(f"run {index} is at the hub with no debrief")
+        if not at_hub and scene.debrief is not None:
+            raise ValueError(f"run {index} is away from the hub with a debrief")
+        if at_hub and runs[index - 1].scene.place == hub:
+            raise ValueError(f"run {index} is a hub run right after a hub run")
+
+
+def stops_of(runs: Sequence[SceneRun]) -> tuple[Stop, ...]:
+    return tuple(
+        Stop(place=run.scene.place, title=run.scene.title, debrief=run.scene.debrief)
+        for run in runs
+    )

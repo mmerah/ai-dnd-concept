@@ -21,6 +21,8 @@ class PanelRow(Frozen):
     detail: str
     # Set when the row is an entity, so the sidebar can draw its icon.
     icon_id: EntityId | None = None
+    # Set when the row is a way on: the sidebar draws a button that plays Move on with it.
+    intent: str = ""
 
 
 class Panel(Frozen):

@@ -216,6 +216,7 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
         ("srd",),
         "kael",
         art_style="woodcut",
+        kind="one-shot",
     )
 
     # The scene bar refuses the first answer, and the reason goes back with the re-prompt.
@@ -248,7 +249,14 @@ async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: P
 
     with pytest.raises(ValueError, match="filed under"):
         _ = await runtime.new_scenario(
-            LONER3E, "The Sunken Bell", "The tide.", None, ("srd",), "kael", art_style=""
+            LONER3E,
+            "The Sunken Bell",
+            "The tide.",
+            None,
+            ("srd",),
+            "kael",
+            art_style="",
+            kind="one-shot",
         )
 
     assert not scenarios.exists()
@@ -260,7 +268,7 @@ async def test_a_scenario_written_from_a_document_keeps_it_beside_the_world(tmp_
     runtime = Runtime(ui_settings(tmp_path, scenarios), spawner)
 
     name = await runtime.new_scenario(
-        LONER3E, "The Sunken Bell", "", SOURCE_MD, ("srd",), "kael", art_style=""
+        LONER3E, "The Sunken Bell", "", SOURCE_MD, ("srd",), "kael", art_style="", kind="one-shot"
     )
 
     assert (scenarios / name / "source.md").is_file()

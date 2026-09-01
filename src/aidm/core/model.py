@@ -1,16 +1,19 @@
 from collections.abc import Awaitable, Callable
 from copy import deepcopy
-from typing import Any, Self
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, model_validator
 
 from aidm.core.entities import EngineId, Frozen, Mutable, Slug, require_unique
 from aidm.core.play import PendingDecision
 
+type ScenarioKind = Literal["one-shot", "campaign"]
+
 
 class ScenarioMeta(Frozen):
     title: str
     premise: str
+    kind: ScenarioKind = "one-shot"
 
 
 class EngineHeader(BaseModel):

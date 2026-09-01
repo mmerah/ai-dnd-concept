@@ -5,6 +5,7 @@ from aidm.core.entities import EngineId
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, AnyScenario
 from aidm.engines.core import Authoring, Engine, Transition
+from aidm.engines.hub import check_kind
 from aidm.engines.tunnelgoons.creation import create_character, creation_steps, preview_character
 from aidm.engines.tunnelgoons.tools import tools
 from aidm.engines.tunnelgoons.views import master_sections, narrator_view, player_view
@@ -58,6 +59,7 @@ def new_game(scenario: AnyScenario, character: AnyCharacter) -> TunnelGoonsState
 def validate(state: TunnelGoonsGame) -> None:
     if state.packs:
         raise ValueError("Tunnel Goons has no table sets")
+    check_kind(state.scenario.kind, None)
 
 
 def build() -> Engine[TunnelGoonsGame]:
