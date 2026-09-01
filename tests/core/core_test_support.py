@@ -44,6 +44,7 @@ CHARACTERS = REPOSITORY_ROOT / "characters"
 LONER3E = EngineId("loner3e")
 TUNNELGOONS = EngineId("tunnelgoons")
 BREATHLESS = EngineId("breathless")
+TWENTYFOURXX = EngineId("twentyfourxx")
 ENGINES_BUILT = build_engines(REPOSITORY_ROOT / "packs")
 ENGINE_IDS = tuple(ENGINES_BUILT)
 SCENARIO_MODELS = {engine_id: engine.scenario for engine_id, engine in ENGINES_BUILT.items()}

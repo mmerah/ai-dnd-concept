@@ -12,7 +12,7 @@ Python code controls the rules and the game state. It rolls the dice, validates 
 
 The app does not give save-file access to the AI roles. The narrator receives revealed information only. Hidden information cannot enter the narration.
 
-Three engines ship from one build, and they play nothing alike. Loner 3e is a solo game in scenes. An oracle answers questions. The player writes the way to the next scene. Tunnel Goons is a dungeon crawl on an authored map. The game master runs it. The player walks, fights and rests. The map grows when it runs out. Breathless is a survival game in scenes. Every roll wears the die down. Catching breath resets the dice and brings a complication.
+Four engines ship from one build, and they play nothing alike. Loner 3e is a solo game in scenes. An oracle answers questions. The player writes the way to the next scene. Tunnel Goons is a dungeon crawl on an authored map. The game master runs it. The player walks, fights and rests. The map grows when it runs out. Breathless is a survival game in scenes. Every roll wears the die down. Catching breath resets the dice and brings a complication. 24XX is a science-fiction game in scenes. One skill die meets three outcome bands. Harm is a hindrance, gear breaks to soften a hit, and a finished job raises a skill.
 
 ## Start the app
 
@@ -41,6 +41,7 @@ Open Settings in the app to change the AI commands or other settings.
 - Read [docs/LONER-3E.md](docs/LONER-3E.md) for sources, license, attribution, and implementation differences.
 - Read [docs/TUNNEL-GOONS.md](docs/TUNNEL-GOONS.md) for sources, license, attribution, and implementation differences.
 - Read [docs/BREATHLESS.md](docs/BREATHLESS.md) for sources, license, attribution, and implementation differences.
+- Read [docs/24XX.md](docs/24XX.md) for sources, license, attribution, and implementation differences.
 
 ## License
 
@@ -52,5 +53,7 @@ Tunnel Goons is © Nate Treme, released under a Creative Commons 4.0 Internation
 
 Breathless is based on Breathless by Fari RPGs, licensed under the ORC License. The
 [Breathless notes](docs/BREATHLESS.md) give the full credit line.
+
+24XX rules (v1.4) are CC BY Jason Tocci. The [24XX notes](docs/24XX.md) give the attribution.
 
 This project does not yet specify a license for the other code.

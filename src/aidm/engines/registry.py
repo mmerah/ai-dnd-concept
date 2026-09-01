@@ -6,6 +6,7 @@ from aidm.engines.breathless.engine import build as build_breathless
 from aidm.engines.core import AnyEngine
 from aidm.engines.loner3e.engine import build as build_loner3e
 from aidm.engines.tunnelgoons.engine import build as build_tunnelgoons
+from aidm.engines.twentyfourxx.engine import build as build_twentyfourxx
 
 
 def build_engines(packs_dir: Path) -> dict[EngineId, AnyEngine]:
@@ -14,6 +15,7 @@ def build_engines(packs_dir: Path) -> dict[EngineId, AnyEngine]:
         build_loner3e(packs_dir / "loner3e"),
         build_tunnelgoons(),
         build_breathless(packs_dir / "breathless"),
+        build_twentyfourxx(packs_dir / "twentyfourxx"),
     )
     require_unique("engine ids", (engine.id for engine in engines))
     return {engine.id: engine for engine in engines}

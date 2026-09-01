@@ -1,6 +1,6 @@
 ---
 name: phase
-description: Run one PLAN.md phase end to end — brief, one or more Sonnet/Opus subagents implement from it (parallel, sequential, or a mix), you verify, Fable + Codex Sol adversarial reviews, fold, PROGRESS.md entry — and stop before the commit. Use when the user says "implement phase N", "run phase N", or "/phase N".
+description: Run one PLAN.md phase end to end — brief, one or more Sonnet/Opus subagents implement from it (parallel, sequential, or a mix), you verify, Fable + Codex Sol adversarial reviews (a second Opus reviewer where codex is unavailable), fold, PROGRESS.md entry — and stop before the commit. Use when the user says "implement phase N", "run phase N", or "/phase N".
 argument-hint: <phase number or name>
 ---
 
@@ -89,6 +89,12 @@ If PLAN.md is ambiguous on something that changes the work, ask the user once, n
   (Bash, `run_in_background: true`)
 
 Save the Fable review to `/tmp/phase-N/review-fable.md`.
+
+No `codex` on the machine (remote containers have neither the CLI nor OpenAI credentials)?
+Replace that review with a second independent reviewer instead of skipping it:
+`Agent(subagent_type="reviewer", model="opus", prompt="Review the staged phase; brief:
+/tmp/phase-N/brief.md")`, saved to `/tmp/phase-N/review-opus.md`. Say in the final report which
+pair of reviews ran.
 
 ## 4. Fold
 
