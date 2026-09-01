@@ -9,7 +9,7 @@ Keep this file under 200 lines.
 > Its three roles — game master, narrator, worldsmith — are one-shot CLI sessions the app
 > spawns, so play costs the subscription the player already has.
 > Each engine is a complete tabletop game: its rules, its world, its authoring, its views.
-> The app runs any engine. Two ship, and they play nothing alike.
+> The app runs any engine. Four ship, and they play nothing alike.
 
 ## Why
 
@@ -24,10 +24,12 @@ Keep this file under 200 lines.
    "everything is a character" and plays in scenes; a dungeon game needs places and ways. A shared
    world layer made both engines lie about their own rules and cost a generic type nobody owned.
    So every engine owns its world, and the platform owns none.
-5. **Two engines prove the multi-engine claim.** Loner 3e is oracle-driven solo play in
+5. **Four engines prove the multi-engine claim.** Loner 3e is oracle-driven solo play in
    sentence-driven scenes. Tunnel Goons is game-master-driven dungeon crawl on an authored map.
-   They differ on resolution, on world shape, on authoring and on what the player decides. If the
-   platform runs both without a branch, it runs the next one.
+   They differ on resolution, on world shape, on authoring and on what the player decides.
+   Breathless and 24XX are scene games too, but differ again on the dice: Breathless wears every
+   die down until the player catches breath; 24XX keeps a fixed skill die and breaks gear to
+   soften the hit. If the platform runs all four without a branch, it runs the next one.
 
 ## Target architecture
 
@@ -70,7 +72,8 @@ import no concrete engine; the registry is the one composition point.
 
 ## What an engine is
 
-One package under `engines/<id>/`, and everything the game needs is inside it:
+One package under `engines/<id>/`, and everything the game needs is inside it (the scene
+engines share the scene lifecycle in `engines/scenes.py`):
 
 1. **State** — a typed payload with the engine's own world model. Invariants are structural: a
    thing that cannot hold a sheet has no sheet field. Incompatible state is invalid, not repaired.
@@ -146,7 +149,6 @@ Each returns self-contained, on the same seam, with its own `docs/<ENGINE>.md`:
 - **Maze Rats** — the audited rules live in git at `2c3e8a5` and its `docs/MAZE-RATS.md` at
   `62f95c6`; the return rewrites the world on
   its own strict actor/item/place model and fits 2,000 lines by dropping nothing the SRD prints.
-- **24XX** and **Breathless** — scene engines; notes in `docs/24XX.md` and `docs/BREATHLESS.md`.
 - **A Pokémon-style engine** — battles delegated to Pokémon Showdown. The point is the boundary:
   AIDM runs the RPG, Showdown runs the fight, neither reads the other's internals.
 

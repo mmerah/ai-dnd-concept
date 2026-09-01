@@ -93,5 +93,6 @@ its keep for a reason the SRD has no need of.
 
 ## Where the rules live
 
-Mechanics are in `src/aidm/engines/loner3e/`. `packs/srd.json`'s twist columns — not this file —
+Mechanics are in `src/aidm/engines/loner3e/`; the scene machinery shared with the other scene
+engines is in `src/aidm/engines/scenes.py`. `packs/srd.json`'s twist columns — not this file —
 are the transcription of record.

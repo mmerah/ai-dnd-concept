@@ -82,7 +82,7 @@ hub visits. "Job" is the design and code word; an engine's panel text may use it
 14. **No write-back to `characters/`.** Growth lives in the save. A second campaign starts the
     same character fresh.
 15. **Death ends the campaign.** As every engine does today.
-16. **`PLAN.md` Settled 6 stands.** Breathless and 24XX gain no companions. The worldsmith prompt
+16. **`PLAN.md` (in git history at `8ba0261`) Settled 6 stands.** Breathless and 24XX gain no companions. The worldsmith prompt
     says: anyone from the hub's cast the player names in their intent is `present` in the job's
     opening scene. Loner's companions travel as they do now. A guaranteed crew list would be
     companions by another name; it is not built.
@@ -136,7 +136,7 @@ case. It is inherent. The card and a cheap fixer turn in between are the mitigat
 ## What each engine adds
 
 Under the seam. Build it in one engine first; the second engine's phase is the verbatim move
-to `engines/core.py`, as `PLAN.md` Settled 1 says. About 100 lines per scene engine.
+to `engines/core.py`, as `PLAN.md` (`8ba0261`) Settled 1 says. About 100 lines per scene engine.
 
 | engine | hub | job | between-jobs step |
 |---|---|---|---|
@@ -179,7 +179,7 @@ without recording them, so the card would vanish. `_install` records them as a l
    `job_closed` card shows.
 
 Not done, on purpose: no session reset at the job boundary (`app` knows no job), no
-`PendingDecision` for the board (`PLAN.md` Settled 15: an offer does not block the master's tools),
+`PendingDecision` for the board (`PLAN.md` (`8ba0261`) Settled 15: an offer does not block the master's tools),
 no reputation counter, no crew list.
 
 ## Content

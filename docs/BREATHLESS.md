@@ -75,5 +75,6 @@ Fields and tools that exist for the app around the rules, not the rules themselv
 
 ## Where the rules live
 
-Mechanics are in `src/aidm/engines/breathless/`. `packs/srd.json` — not this file — is the
+Mechanics are in `src/aidm/engines/breathless/`; the scene machinery shared with the other scene
+engines is in `src/aidm/engines/scenes.py`. `packs/srd.json` — not this file — is the
 transcription of record.
