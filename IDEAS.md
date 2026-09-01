@@ -1,6 +1,5 @@
 ## Ideas
 
-- [] 0: Refactors once PLAN.md is in: ponytail-audit + Minimal engines so that there is as little deviations for each as possible (any deviation that look easy to close should be closed in the most elegant/clean/ponytail way) + Simplification of codebase if any available
 - [] 1: Sounds/Voices. app/media.py is the template.
 - [] 2: `recent_exchanges` caps what an agent remembers, so a long game forgets its start. A per-location summary, written when the player leaves it, would carry the places already played without carrying every turn. Maybe could be part of a memory system? Engines decides who/what carries a memory (list[str]) which are created in a controlled manner (e.g. when changing location or scene), created by a summarizer agent.
 - [] 3: RAG? Scenario ingestion. .pdf -> source.md in scenario/<id>/ folder, then RAG on it? Leaning skip: the source cap already swallows a 76-page adventure whole, and there is no embedding provider in the stack.
