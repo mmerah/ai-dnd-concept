@@ -16,10 +16,11 @@ Everything mechanical here was taken from the rulebook itself, not from summarie
   [`rules.moddable.games/games/maze-rats/data/`](https://rules.moddable.games/games/maze-rats/data/)
 
 Maze Rats is copyright Ben Milton (questingblog.com), licensed under
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The pack at
-`src/aidm/engines/mazerats/packs/srd.json` is a transcription of the CC BY tables and carries that
-attribution and licence. `tools/import_mazerats_pack.py` regenerates it from the source files and is
-the record of how it was made.
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The pack and its importer are deleted
+from the tree; they live in git at `2c3e8a5`:
+`git show 2c3e8a5:src/aidm/engines/mazerats/packs/srd.json` and
+`git show 2c3e8a5:tools/import_mazerats_pack.py`. The pack was a transcription of the CC BY tables
+and carries that attribution and licence.
 
 **Maze Rats has three rules pages: Core Rules, Character Creation, Character Sheet.** It has no
 dungeon clock, no wandering-monster check, no travel rates and no district encounter chances. If a

@@ -1,7 +1,7 @@
 # VISION: a game you play in a browser, run by CLIs you already pay for
 
 This file says what we build and why, at a high level. It is the authority on the target.
-`PLAN.md` is the order of work and is derived from this file. Keep this file under 200 lines.
+Keep this file under 200 lines.
 
 ## The one-line vision
 
@@ -75,7 +75,7 @@ One package under `engines/<id>/`, and everything the game needs is inside it:
 1. **State** — a typed payload with the engine's own world model. Invariants are structural: a
    thing that cannot hold a sheet has no sheet field. Incompatible state is invalid, not repaired.
 2. **Rules** — one game-master tool per SRD procedure, world verbs included, never more than
-   eight. The engine rolls everything the procedure needs and hands back one result.
+   fifteen. The engine rolls everything the procedure needs and hands back one result.
 3. **Creation** — the SRD's own steps, as typed picks.
 4. **Worldsmith** — the opening world for a new scenario, and how the world grows in play. The
    growth bar is the engine's: a scene needs a question, a map needs a route.
