@@ -44,6 +44,7 @@ REPOSITORY_ROOT = Path(__file__).parents[2]
 SCENARIOS = REPOSITORY_ROOT / "scenarios"
 CHARACTERS = REPOSITORY_ROOT / "characters"
 LONER3E = EngineId("loner3e")
+TUNNELGOONS = EngineId("tunnelgoons")
 ENGINES_BUILT = build_engines(REPOSITORY_ROOT / "packs")
 ENGINE_IDS = tuple(ENGINES_BUILT)
 SCENARIO_MODELS = {engine_id: engine.scenario for engine_id, engine in ENGINES_BUILT.items()}

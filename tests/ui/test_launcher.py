@@ -4,7 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from core_test_support import ENGINES_BUILT, LONER3E, ScriptedSpawner
+from core_test_support import ENGINES_BUILT, LONER3E, TUNNELGOONS, ScriptedSpawner
 from pydantic import JsonValue
 from ui_test_support import REPOSITORY_ROOT, SCENARIOS, ui_settings
 
@@ -51,6 +51,7 @@ def test_the_catalog_pairs_a_scenario_with_a_character(tmp_path: Path) -> None:
     assert catalog.scenario("whispering-vault").title == "The Whispering Vault"
     assert [(entry.id, entry.engine) for entry in catalog.characters] == [
         ("kael", LONER3E),
+        ("kael", TUNNELGOONS),
     ]
     assert launch_target(catalog, "whispering-vault", "kael").model_dump() == {
         "slug": "whispering-vault--kael",
@@ -99,6 +100,7 @@ def test_a_save_whose_engine_is_not_the_scenarios_is_not_listed(tmp_path: Path) 
     # The scenario and the character are both still there; only the rules disagree.
     assert [(entry.id, entry.engine) for entry in catalog.characters] == [
         ("kael", LONER3E),
+        ("kael", TUNNELGOONS),
     ]
     assert not catalog.saves
 

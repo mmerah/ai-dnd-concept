@@ -1,0 +1,40 @@
+SCENARIO:
+The Buried Keep
+A garrison keep collapsed into its own tunnels two winters back, and something down there still moves through the dark.
+
+RECENT PLAY (this is turn 1):
+> I look around the archway before going further.
+[at The Collapsed Archway] Grix waves you toward the corridor, impatient.
+
+CURRENT PLACE:
+The Collapsed Archway[entrance]
+A collapsed archway lets grey light down into the tunnels below.
+
+YOU PLAY FOR:
+- Kael[player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
+  brute: 1; skulker: 2; erudite: 0; health: 10/10; inventory: 3/8; level: 1
+
+CARRYING:
+- Pry Bar (melee weapon)[pry-bar-melee-weapon]
+- Rope[rope]
+- Torch[torch]
+
+HERE WITH THE PLAYER:
+- Grix[grix] — A jumpy scavenger who got this far and no further.
+  health: 6/6 (its Difficulty Score)
+
+HIDDEN HERE (the player has not found these):
+- (none)
+
+WAYS OUT:
+- The Root Corridor[corridor] — known
+- The Flooded Cellar[cellar] — unknown
+
+NOTES FROM THE RULES:
+- (none)
+
+WAITING ON THE PLAYER:
+- (nothing; the turn is yours to run)
+
+PLAYER ACTION:
+I lever up the loose flagstone and listen at the vault door.

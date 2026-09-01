@@ -34,12 +34,12 @@ dev = [
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]
 asyncio_mode = "auto"
-pythonpath = ["tests/core", "tests/loner3e", "tests/ui"]
+pythonpath = ["tests/core", "tests/loner3e", "tests/tunnelgoons", "tests/ui"]
 testpaths = ["tests"]
 
 [tool.basedpyright]
 include = ["src", "tests"]
-extraPaths = ["src", "tests/core", "tests/loner3e", "tests/ui"]
+extraPaths = ["src", "tests/core", "tests/loner3e", "tests/tunnelgoons", "tests/ui"]
 typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"

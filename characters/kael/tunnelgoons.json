@@ -1,0 +1,13 @@
+{
+  "id": "kael",
+  "engine": "tunnelgoons",
+  "name": "Kael",
+  "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
+  "payload": {
+    "engine": "tunnelgoons",
+    "brute": 1,
+    "skulker": 2,
+    "erudite": 0,
+    "items": ["Pry Bar (melee weapon)", "Rope", "Torch"]
+  }
+}

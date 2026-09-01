@@ -39,12 +39,22 @@ None. The starting item list is in the SRD's character creation.
 
 ## The tools
 
-Not built yet.
+- `change_world` — reveal something found, move an item, or kill an npc.
+- `move` — carry the player, and any NPCs named in `with_ids`, through an unlocked way listed in WAYS OUT.
+- `unlock_way` — open a locked way once the story has dealt with it.
+- `action_roll` — 2d6 plus an ability and helpful items, against a Difficulty Score or an npc.
+- `rest` — heal the player to full Health in a safe spot.
+- `level_up` — raise one ability and either Health or Inventory by 1, once at the adventure's end.
 
 ## Deviations in this repo
 
-Not built yet.
+1. Levelling up is an end-of-adventure step the master calls once, not the SRD's every-2-sessions cadence.
+2. Character creation uses the SRD 1.1 page's 3 ability points, not 1.2's 2.
+
+## What the AI game master adds
+
+Every entity has `known`, and a `Way` is known once the player has walked it: what the player has found stays legible turn to turn without the master having to restate it. Every non-player character — friend or foe — is one shape, exactly as the SRD prints: an id, a name, a Health that is also its Difficulty Score, and whether it is still alive. Only the player has abilities, and only the player rolls; the map's extension bar lets the worldsmith write a new region once the authored map is fully walked. `kill` ends a helpless npc outright, no roll needed.
 
 ## Where the rules live
 
-Not built yet.
+`src/aidm/engines/tunnelgoons/`, instructions in `rules.md`.

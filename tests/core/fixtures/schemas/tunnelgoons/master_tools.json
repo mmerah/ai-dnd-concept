@@ -1,0 +1,279 @@
+[
+  {
+    "name": "change_world",
+    "description": "Apply one settled world change to match the story. Set `verb` to pick the change and fill that verb's own fields. One call makes one change.",
+    "parameters": {
+      "$defs": {
+        "Kill": {
+          "additionalProperties": false,
+          "properties": {
+            "verb": {
+              "const": "kill",
+              "type": "string"
+            },
+            "entity_id": {
+              "description": "Exact id of an npc here.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "entity_id"
+          ],
+          "title": "Kill",
+          "type": "object"
+        },
+        "MoveItem": {
+          "additionalProperties": false,
+          "properties": {
+            "verb": {
+              "const": "move_item",
+              "type": "string"
+            },
+            "item_id": {
+              "description": "Exact id of an item here or carried.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            "to": {
+              "description": "Exact id of the player, an npc here, or this place.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "item_id",
+            "to"
+          ],
+          "title": "MoveItem",
+          "type": "object"
+        },
+        "Reveal": {
+          "additionalProperties": false,
+          "properties": {
+            "verb": {
+              "const": "reveal",
+              "type": "string"
+            },
+            "entity_id": {
+              "description": "Exact id of something hidden here: an npc or an item.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "entity_id"
+          ],
+          "title": "Reveal",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "change": {
+          "description": "The one world change to apply; `verb` picks the change.",
+          "discriminator": {
+            "mapping": {
+              "kill": "#/$defs/Kill",
+              "move_item": "#/$defs/MoveItem",
+              "reveal": "#/$defs/Reveal"
+            },
+            "propertyName": "verb"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Reveal"
+            },
+            {
+              "$ref": "#/$defs/MoveItem"
+            },
+            {
+              "$ref": "#/$defs/Kill"
+            }
+          ]
+        }
+      },
+      "required": [
+        "change"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "move",
+    "description": "Move through an unlocked way from the player's current place.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "to_id": {
+          "description": "Exact id of the place to move to.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "with_ids": {
+          "default": [],
+          "description": "Exact ids of living NPCs here who come along.",
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "to_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "unlock_way",
+    "description": "Unlock a locked way out of the player's current place.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "to_id": {
+          "description": "Exact id of the locked way's destination.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "to_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "action_roll",
+    "description": "Roll 2d6 plus an ability and helpful items against a Difficulty Score or an npc.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "what": {
+          "description": "The action, in a few words; it heads the card.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "ability": {
+          "description": "Which ability the action calls on.",
+          "enum": [
+            "brute",
+            "skulker",
+            "erudite"
+          ],
+          "type": "string"
+        },
+        "items": {
+          "default": [],
+          "description": "Exact ids of items the player carries that plainly help; +1 each.",
+          "items": {
+            "maxLength": 64,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "difficulty": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Difficulty Score; the SRD's guidelines: 8 easy, 10 moderate, 12 hard. Null when `against` names an NPC."
+        },
+        "against": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of an npc here; its Health is the Difficulty Score."
+        },
+        "dangerous": {
+          "default": false,
+          "description": "A fight, a trap, a fall: the margin becomes damage, to the NPC on a hit or to the player on a miss.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "what",
+        "ability"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "rest",
+    "description": "Spend the night in a safe spot to heal the player's Health to full.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    }
+  },
+  {
+    "name": "level_up",
+    "description": "Raise one ability and either Health or Inventory Score by 1 at an adventure's end.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "ability": {
+          "anyOf": [
+            {
+              "enum": [
+                "brute",
+                "skulker",
+                "erudite"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Which ability to raise by 1; null asks the player."
+        },
+        "boost": {
+          "anyOf": [
+            {
+              "enum": [
+                "health",
+                "inventory"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Health or Inventory to raise by 1; null asks the player."
+        }
+      },
+      "type": "object"
+    }
+  }
+]

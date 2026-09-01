@@ -12,6 +12,7 @@ decided along the way, and anything left known-and-accepted.
 | 2 — the seam and the player view | 6,334 | 4,221 |
 | 2b — mechanical cuts from the phase 2 review | 6,225 | 4,202 |
 | 3 — Loner owns its world; `kits/` deleted; SRD-minimal world; seven files | 5,734 | 4,117 |
+| 4 — Tunnel Goons; one NPC shape, no companions | 7,092 | 5,008 |
 
 ## Why the plan was rewritten (2026-09-01)
 
@@ -224,3 +225,50 @@ Three implementer rounds on one staged diff; the maintainer widened the phase tw
   now, since present-unknown is unreachable in play. Smoke: home page HTTP 200; no turn played
   (spawns live CLIs); the shutdown fault at `app/mcp.py:34` is unchanged. Tunnel Goons (Phase 4)
   ships the same seven files.
+
+### Phase 4 — Tunnel Goons (2026-09-01)
+
+Two Sonnet implementers in sequence (A: world, creation, tools, views; B: worldsmith, engine,
+rules, wiring, content, goldens), one fold round on B.
+
+- **Counts:** `src` 5,734 -> 7,092 (PLAN said about 6,920); Tunnel Goons 1,353 (PLAN's "at or
+  under 1,000" was an estimate, the maintainer's word is fidelity first then the smallest code;
+  ceiling 2,000); Loner 1,771 unchanged; `tests` 4,117 -> 5,008. 36 files staged,
+  +3,496 / −52. Loner goldens byte-identical; Tunnel Goons goldens generated.
+- **Step 1** (`docs/TUNNEL-GOONS.md`) was already committed at `11cef00`. The rulebook read was
+  the SRD page (1.1); the itch.io PDF needs a browser click and was not read, so `rules.md`
+  carries the doc's interim attribution line, to be replaced by the PDF's verbatim licence line.
+- **Read off the SRD, not the plan:** a non-player character's DS *is* its Health, so `Npc.hp`
+  is one counter (PLAN's "Monster (HP, DS)" collapses); only a *dangerous* action turns the
+  margin into damage (a roll read against an NPC's DS with no danger wounds nobody); the SRD
+  1.1 page's 3 ability points, not 1.2's 2; Difficulty Scores are guidelines, so `difficulty`
+  is an int with 8/10/12 named, not a `Literal`.
+- **Decided by the maintainer inside the phase ("closer to the SRD without a bigger engine"):**
+  NPC goons and companions cut — every non-player character is one shape (DS = Health, never
+  rolls), the player is the only `Goon`; `join_party`/`leave_party` and every party validator
+  gone; an NPC who follows is named in `Move.with_ids` each move, no party state. `rest`'s
+  "no safe spot beside a living monster" wall cut (the SRD leaves "safe" to the referee).
+  `Item.helps` cut (the SRD says "relevant items", judged in play). Level-up stays an
+  end-of-adventure step the master calls once with no arguments; the player picks from six
+  options (standing decision 7's case).
+- **Six tools:** `change_world` (reveal, move_item, kill), `move`, `unlock_way`,
+  `action_roll`, `rest`, `level_up`. `packs=()`; the create page hides the pack select when an
+  engine has none. `tests/core/test_golden_turn.py` no longer imports Loner: each engine's
+  `tests/<id>/golden_turn.py` exports `SCRIPT` and `behind`.
+- **Review:** Fable 11 findings + 5 cuts, Sol 8 findings + 3 cuts and "phase complete: no"
+  (ability definitions missing from `rules.md`, dead actors still speakers, held items absent
+  from the picture, inventory shown as the score alone, the hidden item not behind the lock, no
+  test playing PLAN's walk). All fixed: damage gated on `dangerous`; a no-op
+  `TunnelWorld.model_validate(candidate)` deleted (same claimed-but-absent pattern as Phase
+  3.5); unreachable dead/player-id re-checks deleted; `_damage` -> `_adjust_health`;
+  `items_at` folded into `carried`; `_reveal` builds its fact directly; `move_item` refuses an
+  unmet holder; `entity_line` marks `(dead)` and renders inventory `carried/score`;
+  `storeroom -> sealed-cell` locked with the flask behind it; `tests/tunnelgoons/test_play.py`
+  walks the shipped map start to finish (three places, the route back, a fight, unlock, rest,
+  the map run out, an extension installed without a turn). Refuted on the SRD: Sol's "validate
+  monster Health as 4–12" — the SRD sets no band; the invented range was removed from
+  `worldsmith.md` instead (Fable's finding 11).
+- **Known and accepted:** starting items are free text (the SRD list is the hint); the page
+  offers no icon for them. Smoke: home page HTTP 200 with The Buried Keep listed; no turn
+  played (spawns live CLIs); the shutdown fault at `app/mcp.py:34` is unchanged.
+

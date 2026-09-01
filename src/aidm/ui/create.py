@@ -140,12 +140,16 @@ def scenario_page(runtime: Runtime) -> None:
         engine = runtime.engines[engine_id]
         written = catalog.characters_for(engine_id)
         title = ui.input(label="Title").classes("w-full").props("outlined")
-        packs = ui.select(
-            options={one.id: one.label for one in engine.packs},
-            value=[one.id for one in engine.packs],
-            label="Table sets",
-            multiple=True,
-        ).classes("w-full")
+        packs = (
+            ui.select(
+                options={one.id: one.label for one in engine.packs},
+                value=[one.id for one in engine.packs],
+                label="Table sets",
+                multiple=True,
+            ).classes("w-full")
+            if engine.packs
+            else None
+        )
         character = ui.select(
             options={one.id: f"{one.title} — {one.subtitle}" for one in written},
             value=written[0].id if written else None,
@@ -181,7 +185,7 @@ def scenario_page(runtime: Runtime) -> None:
                     chosen,
                     told,
                     document,
-                    packs.value,
+                    packs.value if packs is not None else (),
                     character.value,
                     art_style=(style.value or "").strip(),
                 )

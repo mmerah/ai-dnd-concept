@@ -1,0 +1,55 @@
+[
+  {
+    "kind": "entity_discovered",
+    "trace": "learned of The Flooded Cellar[cellar]",
+    "told": true,
+    "entity_id": "cellar",
+    "card": "",
+    "dice": []
+  },
+  {
+    "kind": "arrived",
+    "trace": "the player arrives at The Flooded Cellar[cellar]",
+    "told": true,
+    "entity_id": "cellar",
+    "card": "Arrived at The Flooded Cellar",
+    "dice": []
+  },
+  {
+    "kind": "dice_rolled",
+    "trace": "Wade through the flooded cellar — skulker: 2d6 [4, 5]",
+    "told": false,
+    "entity_id": null,
+    "card": "",
+    "dice": []
+  },
+  {
+    "kind": "action_rolled",
+    "trace": "Wade through the flooded cellar — skulker 11 vs DS 10 -> success",
+    "told": true,
+    "entity_id": "player",
+    "card": "Wade through the flooded cellar — Skulker 11 vs DS 10 → success",
+    "dice": [
+      {
+        "label": "2d6",
+        "faces": [
+          6,
+          6
+        ],
+        "rolled": [
+          4,
+          5
+        ],
+        "highlight": []
+      }
+    ]
+  },
+  {
+    "kind": "entity_discovered",
+    "trace": "learned of Cellar Lurker[lurker]",
+    "told": true,
+    "entity_id": "lurker",
+    "card": "Cellar Lurker discovered",
+    "dice": []
+  }
+]

@@ -230,7 +230,7 @@ Tunnel Goons lands at or under **1,000**. About **+950**.
 - [x] Phase 1 — Maze Rats and the rooms kit deleted. `src` 8,913 -> 6,365
 - [x] Phase 2 — the seam and the player view. `src` 6,365 -> 6,334
 - [x] Phase 3 — Loner owns its world; `kits/` deleted. `src` 6,225 -> 5,734
-- [ ] Phase 4 — Tunnel Goons. about 6,920
+- [x] Phase 4 — Tunnel Goons. `src` 5,734 -> 7,092
 - [ ] Phase 5 — the enduring documents
 - [ ] Full check green at every checkpoint; a turn played at the end of every phase
 - [ ] `src` counts in `PROGRESS.md` for every phase

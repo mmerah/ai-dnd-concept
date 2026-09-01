@@ -1,0 +1,240 @@
+import json
+from collections.abc import Sequence
+from copy import deepcopy
+from pathlib import Path
+from typing import Self
+
+from pydantic import BaseModel, Field, model_validator
+
+from aidm.core.entities import CheckedEntityId, EngineId, EntityId, Frozen, Slug
+from aidm.core.facts import Fact
+from aidm.core.io import ENCODING
+from aidm.core.model import AnyScenario, ScenarioMeta, WorldsmithAnswer
+from aidm.core.tools import schema_of
+from aidm.core.views import sections
+from aidm.engines.tunnelgoons.views import entity_line
+from aidm.engines.tunnelgoons.world import (
+    Dungeon,
+    Item,
+    MapCanon,
+    Npc,
+    Place,
+    TunnelGoonsGame,
+    TunnelGoonsScenario,
+    TunnelGoonsScenarioFile,
+    TunnelWorld,
+    Way,
+    frontier,
+    has_shortcut,
+    walk,
+)
+
+MIN_PLACES = 4
+MIN_EXTENSION_PLACES = 2
+WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
+
+
+class MapDraft(Frozen):
+    """The worldsmith's complete authored region: the map, and what stands and lies in it."""
+
+    places: dict[EntityId, Place] = Field(default_factory=dict)
+    ways: dict[EntityId, tuple[Way, ...]] = Field(default_factory=dict)
+    npcs: dict[EntityId, Npc] = Field(default_factory=dict)
+    items: dict[EntityId, Item] = Field(default_factory=dict)
+    start: CheckedEntityId
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Self:
+        _ = Dungeon(places=self.places, ways=self.ways, npcs=self.npcs, items=self.items)
+        return self
+
+
+def map_refusal(draft: MapDraft) -> str | None:
+    unmet = _map_unmet(draft)
+    return None if not unmet else "the map needs " + "; ".join(unmet)
+
+
+def extension_refusal(draft: MapDraft, world: TunnelWorld) -> str | None:
+    unmet = _extension_unmet(draft, world)
+    return None if not unmet else "the extension needs " + "; ".join(unmet)
+
+
+def opening_canon(draft: MapDraft, source: str) -> MapCanon:
+    return MapCanon.model_validate({**draft.model_dump(), "source": source})
+
+
+def apply_extension(world: TunnelWorld, draft: MapDraft) -> None:
+    """Every refusal lands before the first write: a rejected region leaves the world alone."""
+    if (refused := extension_refusal(draft, world)) is not None:
+        raise ValueError(refused)
+    anchor_id = world.current.id
+    candidate = world.model_copy(deep=True)
+    candidate.places.update(deepcopy(draft.places))
+    candidate.ways.update(deepcopy(draft.ways))
+    candidate.npcs.update(deepcopy(draft.npcs))
+    candidate.items.update(deepcopy(draft.items))
+    _append_way(candidate.ways, anchor_id, draft.start)
+    _append_way(candidate.ways, draft.start, anchor_id)
+    _require_reachable(candidate)
+
+    world.places = candidate.places
+    world.ways = candidate.ways
+    world.npcs = candidate.npcs
+    world.items = candidate.items
+
+
+def install_extension(state: TunnelGoonsGame, written: BaseModel) -> tuple[Fact, ...]:
+    if not isinstance(written, MapDraft):
+        raise ValueError("Tunnel Goons received an incompatible map")
+    world = state.payload.world
+    anchor = world.current.name
+    apply_extension(world, written)
+    trace = f"a hidden region opens beyond {anchor}"
+    return (Fact(kind="region_added", trace=trace, told=False),)
+
+
+async def write_extension(
+    state: TunnelGoonsGame, intent: str, answer: WorldsmithAnswer
+) -> BaseModel:
+    world = state.payload.world
+
+    def refusal(written: BaseModel) -> str | None:
+        if not isinstance(written, MapDraft):
+            raise ValueError("Tunnel Goons received an incompatible map")
+        return extension_refusal(written, world)
+
+    return await answer(_render_extension(world, intent), MapDraft, refusal)
+
+
+def render_map(source: str, picks: Sequence[Slug]) -> str:
+    """`Authoring.prompt`; `picks` stays unused — Tunnel Goons ships no packs to pick from."""
+    return sections(
+        (
+            ("YOUR ROLE", WORLDSMITH),
+            ("SOURCE MATERIAL", source or "(none — write from the setting)"),
+            ("MAP SO FAR", "(no map yet — write the opening map)"),
+            ("ANSWER WITH", json.dumps(schema_of(MapDraft), indent=2, ensure_ascii=False)),
+        )
+    )
+
+
+def build_scenario(
+    title: str,
+    premise: str,
+    art_style: str,
+    packs: tuple[Slug, ...],
+    written: BaseModel,
+    source: str,
+) -> AnyScenario:
+    if not isinstance(written, MapDraft):
+        raise ValueError("Tunnel Goons received an incompatible map")
+    if (refused := map_refusal(written)) is not None:
+        raise ValueError(refused)
+    return TunnelGoonsScenarioFile(
+        meta=ScenarioMeta(
+            title=title, premise=premise or written.places[written.start].description
+        ),
+        engine=EngineId("tunnelgoons"),
+        packs=packs,
+        art_style=art_style,
+        payload=TunnelGoonsScenario(world=opening_canon(written, source)),
+    )
+
+
+def map_exhausted(state: TunnelGoonsGame) -> bool:
+    return frontier(state.payload.world) == 0
+
+
+def _map_unmet(draft: MapDraft) -> list[str]:
+    places = draft.places
+    unmet: list[str] = []
+    if len(places) < MIN_PLACES:
+        unmet.append(f"{MIN_PLACES} or more places; the map has {len(places)}: {sorted(places)}")
+    if draft.start not in places:
+        unmet.append(f"a starting place {draft.start!r}")
+    else:
+        if not places[draft.start].known:
+            unmet.append("the starting place known to the player")
+        if missing := sorted(set(places) - walk(draft.ways, draft.start, places)):
+            unmet.append(f"places no walk of ways reaches from {draft.start!r}: {missing}")
+        if not any(way.known for way in draft.ways.get(draft.start, ())):
+            unmet.append("at least one known way out of the starting place")
+    ways = [way for leaving in draft.ways.values() for way in leaving]
+    if not any(not way.known for way in ways):
+        unmet.append("at least one way starting unknown")
+    if not any(way.locked for way in ways):
+        unmet.append("at least one way starting locked")
+    if not _has_hidden_thing(draft):
+        unmet.append("at least one hidden npc or item")
+    if not has_shortcut(draft.ways, places):
+        unmet.append("a shortcut with an alternate route")
+    return unmet
+
+
+def _extension_unmet(draft: MapDraft, world: TunnelWorld) -> list[str]:
+    places = draft.places
+    unmet: list[str] = []
+    if len(places) < MIN_EXTENSION_PLACES:
+        unmet.append(
+            f"{MIN_EXTENSION_PLACES} or more new places; the region has {len(places)}: "
+            f"{sorted(places)}"
+        )
+    if draft.start not in places:
+        unmet.append(f"a starting place {draft.start!r}")
+    else:
+        if places[draft.start].known:
+            unmet.append("a starting place hidden from the player")
+        if missing := sorted(set(places) - walk(draft.ways, draft.start, places)):
+            unmet.append(f"places no walk of ways reaches from {draft.start!r}: {missing}")
+    if not any(way for leaving in draft.ways.values() for way in leaving):
+        unmet.append("ways connecting the new places")
+    if not _has_hidden_thing(draft):
+        unmet.append("at least one hidden npc or item")
+    existing = {*world.places, *world.npcs, *world.items}
+    added = {*draft.places, *draft.npcs, *draft.items}
+    if overlap := sorted(existing & added):
+        unmet.append(f"ids not already in the world: {overlap}")
+    return unmet
+
+
+def _has_hidden_thing(draft: MapDraft) -> bool:
+    return any(not one.known for one in (*draft.npcs.values(), *draft.items.values()))
+
+
+def _append_way(ways: dict[EntityId, tuple[Way, ...]], from_id: EntityId, to_id: EntityId) -> None:
+    ways[from_id] = (*ways.get(from_id, ()), Way(to=to_id))
+
+
+def _require_reachable(world: TunnelWorld) -> None:
+    start = world.visits[0].place
+    if missing := sorted(set(world.places) - walk(world.ways, start, world.places)):
+        raise ValueError(f"places no walk of ways reaches from {start!r}: {missing}")
+
+
+def _render_extension(world: TunnelWorld, intent: str) -> str:
+    return sections(
+        (
+            ("YOUR ROLE", WORLDSMITH),
+            ("SOURCE MATERIAL", world.source or "(none — write from the setting)"),
+            ("MAP SO FAR", _map_so_far(world)),
+            ("THE PLAYER", entity_line(world, world.player)),
+            ("WHAT THE PLAYER WANTS TO PURSUE", intent),
+            ("ANSWER WITH", json.dumps(schema_of(MapDraft), indent=2, ensure_ascii=False)),
+        )
+    )
+
+
+def _map_so_far(world: TunnelWorld) -> str:
+    seen: dict[EntityId, Place] = {}
+    for visit in world.visits:
+        seen.setdefault(visit.place, world.require_place(visit.place))
+    lines: list[str] = []
+    for place in seen.values():
+        known_ways = ", ".join(
+            world.require_place(one.to).name for one in world.ways.get(place.id, ()) if one.known
+        )
+        lines.append(
+            f"{place.name}[{place.id}] — {place.description}\n"
+            f"  known ways out: {known_ways or '(none)'}"
+        )
+    return "\n".join(lines)
