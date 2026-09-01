@@ -5,11 +5,11 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Mutable, require_unique, slug
-from aidm.core.facts import DiceEvent, Fact, cards
+from aidm.core.facts import Fact, cards
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import Exchange, SpokenLine
 from aidm.core.views import Rows
-from aidm.engines.core import PLAYER_ID, Counter, pool
+from aidm.engines.core import PLAYER_ID, Counter, check_filing, labeled, pool, reveal
 
 Ability = Literal["brute", "skulker", "erudite"]
 ABILITIES: tuple[Ability, ...] = ("brute", "skulker", "erudite")
@@ -112,9 +112,9 @@ class Dungeon(Mutable):
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
-        _check_filing(self.places)
-        _check_filing(self.npcs)
-        _check_filing(self.items)
+        check_filing(self.places)
+        check_filing(self.npcs)
+        check_filing(self.items)
         require_unique("ids across places, npcs and items", (*self.places, *self.npcs, *self.items))
         for one in self.npcs.values():
             if one.place not in self.places:
@@ -226,15 +226,10 @@ class TunnelWorld(Dungeon):
         return item
 
     def label(self, one: Entity) -> str:
-        if one.id == self.player.id:
-            return f"the player {one.name}[{one.id}]"
-        return f"{one.name}[{one.id}]"
+        return labeled(one, self.player.id)
 
     def reveal(self, one: Entity) -> list[Fact]:
-        if one.known:
-            return []
-        one.known = True
-        return [entity_fact(one, "entity_discovered", f"learned of {self.label(one)}")]
+        return reveal(one, self.player.id)
 
     def exchanges(self) -> tuple[Exchange, ...]:
         return tuple(
@@ -247,17 +242,14 @@ class TunnelWorld(Dungeon):
 
 
 class TunnelGoonsState(Mutable):
-    engine: Literal["tunnelgoons"] = "tunnelgoons"
     world: TunnelWorld
 
 
 class TunnelGoonsScenario(Mutable):
-    engine: Literal["tunnelgoons"] = "tunnelgoons"
     world: MapCanon
 
 
 class TunnelGoonsCharacter(Mutable):
-    engine: Literal["tunnelgoons"] = "tunnelgoons"
     brute: int = Field(ge=0)
     skulker: int = Field(ge=0)
     erudite: int = Field(ge=0)
@@ -280,21 +272,6 @@ class TunnelGoonsScenarioFile(Scenario[TunnelGoonsScenario]):
 
 class TunnelGoonsCharacterFile(Character[TunnelGoonsCharacter]):
     pass
-
-
-def entity_fact(
-    one: Entity,
-    kind: str,
-    trace: str,
-    *,
-    narrate: bool = True,
-    card: str = "",
-    dice: tuple[DiceEvent, ...] = (),
-) -> Fact:
-    """An entity the player has not learned of narrates nothing, so no unknown name leaks."""
-    return Fact(
-        kind=kind, trace=trace, told=narrate and one.known, entity_id=one.id, card=card, dice=dice
-    )
 
 
 def known(state: TunnelGoonsGame, entity_id: EntityId) -> bool | None:
@@ -385,9 +362,3 @@ def has_shortcut(ways: dict[EntityId, tuple[Way, ...]], places: dict[EntityId, P
         for start, leaving in ways.items()
         for direct in leaving
     )
-
-
-def _check_filing[T: Npc | Item | Place](pool: dict[EntityId, T]) -> None:
-    for key, one in pool.items():
-        if key != one.id:
-            raise ValueError(f"entity {one.id!r} is filed under {key!r}")

@@ -2,7 +2,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
-from typing import Any, Self
+from typing import Any, Protocol, Self
 
 from pydantic import BaseModel, model_validator
 
@@ -22,6 +22,17 @@ from aidm.core.tools import MasterTool, Validate
 from aidm.core.views import NarratorView, PlayerView, Rows
 
 PLAYER_ID = EntityId("player")
+
+
+class Entity(Protocol):
+    """What every world thing shares: an id, a name, and whether the player has met it."""
+
+    @property
+    def id(self) -> EntityId: ...
+    @property
+    def name(self) -> str: ...
+
+    known: bool
 
 
 class Counter(Mutable):
@@ -109,6 +120,54 @@ type AnyEngine = Engine[Any]
 
 def pool(counter: Counter) -> str:
     return f"{counter.current}/{counter.maximum}"
+
+
+def adjust(counter: Counter, amount: int) -> int:
+    """Move a bounded pool and say how far it moved; a clamp can land short of `amount`."""
+    before = counter.current
+    counter.current = counter.clamped(before + amount)
+    return counter.current - before
+
+
+def check_filing[E: Entity](pool: dict[EntityId, E]) -> None:
+    for key, one in pool.items():
+        if key != one.id:
+            raise ValueError(f"entity {one.id!r} is filed under {key!r}")
+
+
+def labeled(entity: Entity, player_id: EntityId) -> str:
+    """A trace names an entity by name and exact id, so the model can reuse the id."""
+    if entity.id == player_id:
+        return f"the player {entity.name}[{entity.id}]"
+    return f"{entity.name}[{entity.id}]"
+
+
+def entity_fact(
+    entity: Entity,
+    kind: str,
+    trace: str,
+    *,
+    narrate: bool = True,
+    card: str = "",
+    dice: tuple[DiceEvent, ...] = (),
+) -> Fact:
+    """An entity the player has not learned of narrates nothing, so no unknown name leaks."""
+    return Fact(
+        kind=kind,
+        trace=trace,
+        told=narrate and entity.known,
+        entity_id=entity.id,
+        card=card,
+        dice=dice,
+    )
+
+
+def reveal(entity: Entity, player_id: EntityId) -> list[Fact]:
+    """Leave cards to the containing action or the standalone reveal arm."""
+    if entity.known:
+        return []
+    entity.known = True
+    return [entity_fact(entity, "entity_discovered", f"learned of {labeled(entity, player_id)}")]
 
 
 def keep_highest(

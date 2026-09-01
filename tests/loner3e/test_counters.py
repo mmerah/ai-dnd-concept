@@ -4,7 +4,7 @@ from pydantic import ValidationError
 
 from aidm.core.entities import EntityId
 from aidm.engines.core import Counter
-from aidm.engines.loner3e.tools import adjust
+from aidm.engines.loner3e.tools import adjust_luck
 from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter
 
 KAEL = LonerCharacter(id=EntityId("kael"), name="Kael", brief="", known=True)
@@ -28,20 +28,13 @@ def test_counter_rejects_current_outside_its_bounds_and_clamps_in_both_direction
 
 
 def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> None:
-    counter = Counter(current=0, maximum=5)
-
     state = _state()
-    (changed,) = adjust(state.payload.world.player_id, KAEL, "stress", counter, 99, "the strain")
-    assert (changed.card, counter.current) == ("Kael: Stress +5 -> 5/5", 5)
-    assert adjust(state.payload.world.player_id, KAEL, "stress", counter, 99, "the strain") == []
+    KAEL.luck.current = 0
+    (changed,) = adjust_luck(state.payload.world.player_id, KAEL, 99, "the strain")
+    assert (changed.card, KAEL.luck.current) == ("Kael: Luck +6 -> 6/6", 6)
+    assert adjust_luck(state.payload.world.player_id, KAEL, 99, "the strain") == []
 
-    counter.current = 0
-    (own,) = adjust(
-        state.payload.world.player_id,
-        state.payload.world.player,
-        "stress",
-        counter,
-        1,
-        "the strain",
-    )
-    assert own.card == "Stress +1 -> 1/5"
+    player = state.payload.world.player
+    player.luck.current = 0
+    (own,) = adjust_luck(state.payload.world.player_id, player, 1, "the strain")
+    assert own.card == "Luck +1 -> 1/6"

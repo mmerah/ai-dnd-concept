@@ -5,11 +5,11 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Slug, require_unique
-from aidm.core.facts import DiceEvent, Fact, cards
+from aidm.core.facts import Fact, cards
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import Exchange, SpokenLine
 from aidm.core.views import Rows
-from aidm.engines.core import PLAYER_ID, Counter, pool
+from aidm.engines.core import PLAYER_ID, Counter, check_filing, labeled, pool, reveal
 
 LUCK_MAX = 6
 DIE_FACE = 6  # every roll in the game is one d6, and every table is six rows
@@ -197,7 +197,6 @@ class LonerWorld(Mutable):
 class Loner3eState(Mutable):
     """The save payload: the scene world, plus the two counters the SRD keeps beside it."""
 
-    engine: Literal["loner3e"] = "loner3e"
     world: LonerWorld
     # The played character's tally paces the whole game, so no sheet carries one.
     twist: Counter = Field(default_factory=partial(Counter, current=0, maximum=TIES_PER_TWIST))
@@ -205,12 +204,10 @@ class Loner3eState(Mutable):
 
 
 class Loner3eScenario(Mutable):
-    engine: Literal["loner3e"] = "loner3e"
     world: SceneCanon
 
 
 class Loner3eCharacter(Mutable):
-    engine: Literal["loner3e"] = "loner3e"
     concept: str = ""
     skills: tuple[str, ...] = ()
     frailties: tuple[str, ...] = ()
@@ -242,41 +239,6 @@ def scene_spent(world: LonerWorld) -> str | None:
     if len(run.exchanges) >= SCENE_TURN_CAP:
         return f"{SCENE_TURN_CAP} turns have passed here"
     return None
-
-
-def labeled(entity: LonerCharacter, player_id: EntityId) -> str:
-    """A trace names an entity by name and exact id, so the model can reuse the id."""
-    if entity.id == player_id:
-        return f"the player {entity.name}[{entity.id}]"
-    return f"{entity.name}[{entity.id}]"
-
-
-def entity_fact(
-    entity: LonerCharacter,
-    kind: str,
-    trace: str,
-    *,
-    narrate: bool = True,
-    card: str = "",
-    dice: tuple[DiceEvent, ...] = (),
-) -> Fact:
-    """A character the player has not learned of narrates nothing, so no unknown name leaks."""
-    return Fact(
-        kind=kind,
-        trace=trace,
-        told=narrate and entity.known,
-        entity_id=entity.id,
-        card=card,
-        dice=dice,
-    )
-
-
-def reveal(entity: LonerCharacter, player_id: EntityId) -> list[Fact]:
-    """Leave cards to the containing action or the standalone reveal arm."""
-    if entity.known:
-        return []
-    entity.known = True
-    return [entity_fact(entity, "entity_discovered", f"learned of {labeled(entity, player_id)}")]
 
 
 def known(state: Loner3eGame, entity_id: EntityId) -> bool | None:
@@ -353,12 +315,6 @@ def set_tags(one: LonerCharacter, kind: TagKind, tags: tuple[str, ...]) -> None:
             one.gear = tags
         case "condition":
             one.conditions = tags
-
-
-def check_filing(cast: dict[EntityId, LonerCharacter]) -> None:
-    for key, one in cast.items():
-        if key != one.id:
-            raise ValueError(f"entity {one.id!r} is filed under {key!r}")
 
 
 def _check_named(

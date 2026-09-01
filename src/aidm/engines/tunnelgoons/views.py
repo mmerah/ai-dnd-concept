@@ -1,15 +1,13 @@
 from collections.abc import Iterable
 
-from aidm.core.model import AnyGame
-from aidm.core.play import DecisionOption
 from aidm.core.views import (
     NarratorView,
     Panel,
     PanelRow,
-    PlayerPrompt,
     PlayerView,
     Rows,
     Subject,
+    player_prompt,
     speaker_of,
 )
 from aidm.engines.core import pool
@@ -25,18 +23,6 @@ from aidm.engines.tunnelgoons.world import (
 
 def subject_of(one: Goon | Npc) -> Subject:
     return Subject(id=one.id, name=one.name, brief=one.brief)
-
-
-def player_prompt(state: AnyGame) -> PlayerPrompt | None:
-    pending = state.pending
-    if pending is None:
-        return None
-    options = tuple(
-        DecisionOption(id=one.id, label=one.label, detail=one.detail) for one in pending.options
-    )
-    return PlayerPrompt(
-        kind=pending.kind, prompt=pending.prompt, options=options, allows_text=pending.allows_text
-    )
 
 
 def narrator_view(state: TunnelGoonsGame) -> NarratorView:

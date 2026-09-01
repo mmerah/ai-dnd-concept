@@ -7,7 +7,7 @@ from aidm.core.entities import CheckedEntityId, EntityId, Frozen, require_unique
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.tools import MasterTool, NoArgs, master_tool
-from aidm.engines.core import pool
+from aidm.engines.core import adjust, entity_fact, pool
 from aidm.engines.tunnelgoons.world import (
     ABILITIES,
     Ability,
@@ -20,7 +20,6 @@ from aidm.engines.tunnelgoons.world import (
     TunnelWorld,
     Visit,
     Way,
-    entity_fact,
 )
 
 CHANGE_WORLD = (
@@ -360,9 +359,7 @@ def _carried_items(
 
 
 def _adjust_health(world: TunnelWorld, one: Goon | Npc, delta: int, why: str) -> list[Fact]:
-    before = one.hp.current
-    one.hp.current = one.hp.clamped(before + delta)
-    landed = one.hp.current - before
+    landed = adjust(one.hp, delta)
     if landed == 0:
         return []
     moved = f"Health {landed:+d} -> {pool(one.hp)}"

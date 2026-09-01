@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen
+from aidm.core.model import AnyGame
 from aidm.core.play import DecisionOption, Speaker
 
 type Rows = tuple[tuple[str, str], ...]
@@ -60,3 +61,15 @@ class PlayerView(Frozen):
 
 def speaker_of(subject: Subject) -> Speaker:
     return Speaker(name=subject.name, id=subject.id)
+
+
+def player_prompt(state: AnyGame) -> PlayerPrompt | None:
+    pending = state.pending
+    if pending is None:
+        return None
+    options = tuple(
+        DecisionOption(id=one.id, label=one.label, detail=one.detail) for one in pending.options
+    )
+    return PlayerPrompt(
+        kind=pending.kind, prompt=pending.prompt, options=options, allows_text=pending.allows_text
+    )

@@ -8,7 +8,6 @@
     "srd"
   ],
   "payload": {
-    "engine": "loner3e",
     "world": {
       "opening": {
         "place": "abbots-study",

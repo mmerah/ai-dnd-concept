@@ -1,15 +1,13 @@
 from collections.abc import Iterable, Mapping
 
-from aidm.core.model import AnyGame
-from aidm.core.play import DecisionOption
 from aidm.core.views import (
     NarratorView,
     Panel,
     PanelRow,
-    PlayerPrompt,
     PlayerView,
     Rows,
     Subject,
+    player_prompt,
     speaker_of,
 )
 from aidm.engines.loner3e.creation import Pack
@@ -34,23 +32,6 @@ def entity_line(world: LonerWorld, one: LonerCharacter, *, detail: str = "") -> 
 
 def entity_lines(world: LonerWorld, entities: Iterable[LonerCharacter]) -> str:
     return "\n".join(entity_line(world, one) for one in entities) or "- (none)"
-
-
-def player_prompt(state: AnyGame) -> PlayerPrompt | None:
-    pending = state.pending
-    return (
-        None
-        if pending is None
-        else PlayerPrompt(
-            kind=pending.kind,
-            prompt=pending.prompt,
-            options=tuple(
-                DecisionOption(id=one.id, label=one.label, detail=one.detail)
-                for one in pending.options
-            ),
-            allows_text=pending.allows_text,
-        )
-    )
 
 
 def narrator_view(state: Loner3eGame) -> NarratorView:

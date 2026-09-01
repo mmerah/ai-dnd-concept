@@ -10,7 +10,7 @@ from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Slug, require_
 from aidm.core.facts import DiceEvent, Fact
 from aidm.core.play import DecisionOption, PendingDecision
 from aidm.core.tools import MasterTool, NoArgs, master_tool
-from aidm.engines.core import Counter, keep_highest, pool
+from aidm.engines.core import Counter, adjust, entity_fact, keep_highest, labeled, pool
 from aidm.engines.loner3e.creation import Pack
 from aidm.engines.loner3e.world import (
     DIE_FACE,
@@ -20,8 +20,6 @@ from aidm.engines.loner3e.world import (
     LonerCharacter,
     LonerWorld,
     TagKind,
-    entity_fact,
-    labeled,
     set_tags,
     tags_of,
 )
@@ -272,15 +270,11 @@ def outcome_for(chance: int, risk: int) -> Outcome:
     return Outcome(side, 2 * sign)
 
 
-def adjust(
-    player_id: EntityId, one: LonerCharacter, key: str, counter: Counter, amount: int, why: str
-) -> list[Fact]:
-    before = counter.current
-    counter.current = counter.clamped(before + amount)
-    landed = counter.current - before
+def adjust_luck(player_id: EntityId, one: LonerCharacter, amount: int, why: str) -> list[Fact]:
+    landed = adjust(one.luck, amount)
     if landed == 0:
         return []
-    return [_counter_fact(player_id, one, key, counter, landed, why)]
+    return [_counter_fact(player_id, one, "luck", one.luck, landed, why)]
 
 
 def resolve_question(
@@ -587,7 +581,7 @@ def _shortfall(pool: Counter) -> int:
 
 def _refill(draft: Loner3eGame, side: LonerCharacter, why: str) -> list[Fact]:
     player_id = draft.payload.world.player_id
-    return adjust(player_id, side, "luck", side.luck, _shortfall(side.luck), why)
+    return adjust_luck(player_id, side, _shortfall(side.luck), why)
 
 
 def _twist(
@@ -618,7 +612,7 @@ def _strike(
     harm = outcome.harm
     hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
     why = f"{striker.name} gets the better of the exchange"
-    facts = adjust(draft.payload.world.player_id, hit, "luck", hit.luck, -abs(harm), why)
+    facts = adjust_luck(draft.payload.world.player_id, hit, -abs(harm), why)
     if hit.luck.current != 0:
         return facts
     draft.notes = (*draft.notes, defeat_note(hit.name))

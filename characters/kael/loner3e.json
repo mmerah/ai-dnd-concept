@@ -4,7 +4,6 @@
   "name": "Kael",
   "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
   "payload": {
-    "engine": "loner3e",
     "concept": "A Wary Relic-Hunter",
     "skills": ["Reads Old Stonework", "Quiet Hands"],
     "frailties": ["Never Walks Away"],

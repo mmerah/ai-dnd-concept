@@ -7,7 +7,6 @@
   "packs": [],
   "art_style": "",
   "payload": {
-    "engine": "tunnelgoons",
     "world": {
       "places": {
         "entrance": {
