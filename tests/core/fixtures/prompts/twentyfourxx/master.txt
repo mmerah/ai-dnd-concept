@@ -38,7 +38,8 @@ the like.
 ## When to call `attempt`
 
 Call it for anything whose outcome matters. Name `skill` when one applies; leave it empty to
-roll the plain d6, unskilled.
+roll the plain d6, unskilled. Name `helped` with why when circumstances or an ally pitch in: an
+extra d6 is rolled and the highest die counts.
 
 ## Reading the result
 

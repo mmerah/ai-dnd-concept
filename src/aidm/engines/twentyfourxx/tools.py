@@ -245,18 +245,18 @@ def attempt(
         die = HINDERED_DIE
 
     reason = f"{args.what} — {label}"
+    die_label = f"d{die}+d{HELP_DIE}" if args.helped else f"d{die}"
     if args.helped:
-        help_label = f"d{die}+d{HELP_DIE}"
-        face, event, dice_fact = keep_highest((die, HELP_DIE), reason, rng, label=help_label)
+        face, event, dice_fact = keep_highest((die, HELP_DIE), reason, rng, label=die_label)
     else:
         rolled, dice_fact = roll((die,), reason, rng)
         face = rolled[0]
-        event = DiceEvent(label=f"d{die}", faces=(die,), rolled=rolled)
+        event = DiceEvent(label=die_label, faces=(die,), rolled=rolled)
 
     result = outcome(face)
     shown = ", ".join(str(one) for one in event.rolled)
-    trace = f"{args.what} — {label} d{die} [{shown}] -> {result}"
-    card = f"{args.what} — {_sentence(label)} d{die} → {result}"
+    trace = f"{args.what} — {label} {die_label} [{shown}] -> {result}"
+    card = f"{args.what} — {_sentence(label)} {die_label} → {result}"
     qualifiers = "; ".join(
         part
         for part in (
@@ -301,6 +301,8 @@ def test_luck(_draft: TwentyfourxxGame, args: TestLuck, rng: Random) -> tuple[Fa
 def defend(draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
     world = draft.payload.world
     player = world.player
+    if not player.alive:
+        raise ValueError(_PLAYER_DEAD)
     item = player.items.get(args.item_id)
     if item is None:
         raise ValueError(f"{args.item_id!r} is not among the player's items")
@@ -342,7 +344,7 @@ def job_done(
         card=f"+₡{gained} -> ₡{player.credits}",
         dice=(event,),
     )
-    return [dice_fact, raise_fact, credit_fact]
+    return [raise_fact, dice_fact, credit_fact]
 
 
 def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[TwentyfourxxGame], ...]:
@@ -394,16 +396,16 @@ def _resolve_skill(packs: Mapping[str, Pack], player: Operator, wanted: str) -> 
     for key in player.skills:
         if key.casefold() == folded:
             return key
-    srd = packs.get(SRD_PACK)
-    if srd is None:
-        raise ValueError("the SRD table set with its skill list is not installed")
-    for option in srd.skills:
-        if option.label.casefold() == folded:
-            return option.label
+    labels: list[str] = []
+    for pack in packs.values():
+        for option in pack.skills:
+            if option.label.casefold() == folded:
+                return option.label
+            if option.label not in labels:
+                labels.append(option.label)
     sheet = ", ".join(sorted(player.skills)) or "none"
-    pack_list = ", ".join(option.label for option in srd.skills)
     raise ValueError(
-        f"{wanted!r} is not a skill on the sheet ({sheet}) or in the pack ({pack_list})"
+        f"{wanted!r} is not a skill on the sheet ({sheet}) or in the packs ({', '.join(labels)})"
     )
 
 
@@ -429,9 +431,11 @@ def _kill(world: TwentyfourxxWorld, entity_id: EntityId) -> list[Fact]:
 
 def _change_hindrances(world: TwentyfourxxWorld, change: ChangeHindrances) -> list[Fact]:
     player = world.player
+    held = set(player.hindrances)
     for one in change.gained:
-        if one in player.hindrances:
+        if one in held:
             raise ValueError(f"{one!r} is already among the player's hindrances")
+        held.add(one)
     for one in change.lost:
         if one not in player.hindrances:
             raise ValueError(f"{one!r} is not among the player's hindrances")

@@ -16,18 +16,15 @@ from aidm.engines.twentyfourxx.creation import (
 PACKS_DIR = (
     Path(__file__).resolve().parents[2] / "src" / "aidm" / "engines" / "twentyfourxx" / "packs"
 )
+PACKS = load_packs((PACKS_DIR,), Pack)
 
 
 class _OtherPayload(BaseModel):
     pass
 
 
-def _packs() -> dict[str, Pack]:
-    return load_packs((PACKS_DIR,), Pack)
-
-
 def test_steps_grow_as_picks_land() -> None:
-    packs = _packs()
+    packs = PACKS
     assert [s.id for s in creation_steps(packs, {})] == ["pack"]
     steps = creation_steps(packs, {"pack": "srd"})
     assert [s.id for s in steps] == ["pack", "specialty"]
@@ -36,28 +33,28 @@ def test_steps_grow_as_picks_land() -> None:
 
 
 def test_muscle_shows_specialty_choice_and_weapon() -> None:
-    packs = _packs()
+    packs = PACKS
     ids = [s.id for s in creation_steps(packs, {"pack": "srd", "specialty": "muscle"})]
     assert "specialty-choice" in ids
     assert "weapon" in ids
 
 
 def test_sneak_shows_neither_specialty_choice_nor_weapon() -> None:
-    packs = _packs()
+    packs = PACKS
     ids = [s.id for s in creation_steps(packs, {"pack": "srd", "specialty": "sneak"})]
     assert "specialty-choice" not in ids
     assert "weapon" not in ids
 
 
 def test_alien_shows_two_trait_steps() -> None:
-    packs = _packs()
+    packs = PACKS
     picks = {"pack": "srd", "specialty": "sneak", "origin": "alien"}
     ids = [s.id for s in creation_steps(packs, picks)]
     assert ids[-2:] == ["trait-1", "trait-2"]
 
 
 def test_android_shows_body_and_one_increase() -> None:
-    packs = _packs()
+    packs = PACKS
     picks = {"pack": "srd", "specialty": "sneak", "origin": "android"}
     ids = [s.id for s in creation_steps(packs, picks)]
     assert "body" in ids
@@ -66,7 +63,7 @@ def test_android_shows_body_and_one_increase() -> None:
 
 
 def test_human_shows_three_increases() -> None:
-    packs = _packs()
+    packs = PACKS
     picks = {"pack": "srd", "specialty": "sneak", "origin": "human"}
     ids = [s.id for s in creation_steps(packs, picks)]
     assert [i for i in ids if i.startswith("increase-")] == [
@@ -77,7 +74,7 @@ def test_human_shows_three_increases() -> None:
 
 
 def test_create_character_builds_the_sheet() -> None:
-    packs = _packs()
+    packs = PACKS
     picks = {
         "pack": "srd",
         "specialty": "sneak",
@@ -94,7 +91,7 @@ def test_create_character_builds_the_sheet() -> None:
 
 
 def test_pick_past_d12_is_refused() -> None:
-    packs = _packs()
+    packs = PACKS
     picks = {
         "pack": "srd",
         "specialty": "sneak",
@@ -108,7 +105,7 @@ def test_pick_past_d12_is_refused() -> None:
 
 
 def test_items_land_in_order_comm_kit_weapon() -> None:
-    packs = _packs()
+    packs = PACKS
     picks = {
         "pack": "srd",
         "specialty": "muscle",
@@ -124,7 +121,7 @@ def test_items_land_in_order_comm_kit_weapon() -> None:
 
 
 def test_preview_character_ends_with_gear_row() -> None:
-    packs = _packs()
+    packs = PACKS
     picks = {
         "pack": "srd",
         "specialty": "sneak",

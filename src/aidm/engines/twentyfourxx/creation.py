@@ -97,9 +97,10 @@ def creation_steps(packs: Mapping[str, Pack], picks: Picks) -> tuple[CreationSte
     origin = _by_key(pack.origins, lambda one: one.id, picked(picks, "origin"))
     if origin is None:
         return tuple(steps)
-    if origin.invents == 2:
-        steps.append(CreationStep(id="trait-1", prompt="First trait", hint=origin.detail))
-        steps.append(CreationStep(id="trait-2", prompt="Second trait", hint=origin.detail))
+    for number in range(1, origin.invents + 1):
+        steps.append(
+            CreationStep(id=f"trait-{number}", prompt=f"Trait {number}", hint=origin.detail)
+        )
     if origin.choice:
         steps.append(CreationStep(id="body", prompt="Body", options=origin.choice))
     for number in range(1, origin.increases + 1):
@@ -131,13 +132,10 @@ def create_character(
             specialty.kit_choice, lambda kit: slug(kit.name, ()), picked(picks, "weapon")
         )
 
-    if origin.invents == 2:
-        traits = (picked(picks, "trait-1"), picked(picks, "trait-2"))
-    elif origin.choice:
+    traits = tuple(picked(picks, f"trait-{number}") for number in range(1, origin.invents + 1))
+    if origin.choice:
         body = _require(origin.choice, lambda one: one.id, picked(picks, "body"))
-        traits = (body.label,)
-    else:
-        traits = ()
+        traits = (*traits, body.label)
 
     items = pack.starting_kit + specialty.kit + ((weapon,) if weapon is not None else ())
 
