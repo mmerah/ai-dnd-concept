@@ -1,13 +1,13 @@
 ---
 name: phase
-description: Run one PLAN.md phase end to end — brief, Codex Luna implements from it, you verify, Fable + Codex Sol adversarial reviews, fold, PROGRESS.md entry — and stop before the commit. Use when the user says "implement phase N", "run phase N", or "/phase N".
+description: Run one PLAN.md phase end to end — brief, a Sonnet or Opus subagent implements from it, you verify, Fable + Codex Sol adversarial reviews, fold, PROGRESS.md entry — and stop before the commit. Use when the user says "implement phase N", "run phase N", or "/phase N".
 argument-hint: <phase number or name>
 ---
 
 # /phase $ARGUMENTS
 
-You are the orchestrator and the implementer's brain. Codex writes the code; you write its
-instructions, read its diff, verify, and decide. You do not write code beyond a few-line fix and
+You are the orchestrator and the implementer's brain. A Claude subagent writes the code; you write
+its instructions, read its diff, verify, and decide. You do not write code beyond a few-line fix and
 you never commit. Restate `step k of 6` at the top of every message to the user.
 
 ## 1. Brief
@@ -17,10 +17,12 @@ decisions), `CLAUDE.md`, and every file the phase names. Trace the real flow the
 you cannot instruct what you have not read. Record the `src` line count from the `PLAN.md` command.
 
 Write `/tmp/phase-$ARGUMENTS/brief.md`. It is both the record of the phase and the instruction
-Codex runs, so it must be precise:
+the implementer runs, so it must be precise:
 
 ```
 # Phase <N> — <title>
+## Implementer     sonnet | opus — opus only if a step below says "decide" or "research"
+                   instead of naming a shape; a research phase produces a brief, not a diff
 ## Goal            one paragraph, copied intent not paraphrased rules
 ## Steps           numbered, one action each, straight from PLAN.md; for each: the files to
                    touch and the exact shapes (signatures, models, fields)
@@ -44,13 +46,14 @@ If PLAN.md is ambiguous on something that changes the work, ask the user once, n
 
 ## 2. Implement
 
-1. Run Codex in the background (it can run over an hour; a foreground Bash call caps at 10 min):
-   `.claude/scripts/codex.sh gpt-5.6-luna xhigh workspace-write < /tmp/phase-N/brief.md`
+1. Spawn the implementer in the background with the model the brief names:
+   `Agent(subagent_type="general-purpose", model="sonnet"|"opus",
+   prompt="Implement /tmp/phase-N/brief.md exactly. Read it first; its Rules section binds you.")`
    Wait for the completion notification. Do not poll.
 2. Verify yourself: the four commands, then `git status` and `git diff` against the brief step by
-   step. Read the diff; do not trust Codex's summary.
-3. Red check or a missing step → write `/tmp/phase-N/impl-2.md` with only the gap and the exact
-   error, rerun the same script with it. Three rounds and still red → stop and report to the user;
+   step. Read the diff; do not trust the implementer's summary.
+3. Red check or a missing step → `SendMessage` the same agent with only the gap and the exact
+   error; it keeps its round-1 context. Three rounds and still red → stop and report to the user;
    never patch around it silently.
 4. `git add -A`, run the four commands once more on the staged tree.
 
@@ -67,8 +70,8 @@ Save the Fable review to `/tmp/phase-N/review-fable.md`.
 
 1. For every finding in both reviews decide: **fix** or **refute**. Refute only with a concrete
    reason (a line, a rule in `CLAUDE.md`, a measured fact). "Matter of taste" is not a reason.
-2. Fixes of a few lines: edit directly. Larger fixes: one `/tmp/phase-N/fold-1.md` to Codex Luna,
-   same script as step 2.
+2. Fixes of a few lines: edit directly. Larger fixes: `SendMessage` the implementer agent with
+   the findings to fix, same as step 2.3.
 3. Four commands green, `git add -A`.
 4. Write one table: `# | finding | fixed / refuted | reason or file:line`. Any refutation that
    rests on your own judgment of the instructions you wrote: hand it to the user with the finding
