@@ -3,8 +3,7 @@ from core_test_support import initialized
 from pydantic import ValidationError
 
 from aidm.core.entities import EntityId
-from aidm.engines.core import Counter
-from aidm.engines.loner3e.tools import adjust_luck
+from aidm.engines.core import Counter, counter_fact
 from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter
 
 KAEL = LonerCharacter(id=EntityId("kael"), name="Kael", brief="", known=True)
@@ -30,11 +29,17 @@ def test_counter_rejects_current_outside_its_bounds_and_clamps_in_both_direction
 def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> None:
     state = _state()
     KAEL.luck.current = 0
-    (changed,) = adjust_luck(state.payload.world.player_id, KAEL, 99, "the strain")
+    (changed,) = counter_fact(
+        KAEL, KAEL.luck, 99, "Luck", "the strain", state.payload.world.player_id
+    )
     assert (changed.card, KAEL.luck.current) == ("Kael: Luck +6 -> 6/6", 6)
-    assert adjust_luck(state.payload.world.player_id, KAEL, 99, "the strain") == []
+    assert (
+        counter_fact(KAEL, KAEL.luck, 99, "Luck", "the strain", state.payload.world.player_id) == []
+    )
 
     player = state.payload.world.player
     player.luck.current = 0
-    (own,) = adjust_luck(state.payload.world.player_id, player, 1, "the strain")
+    (own,) = counter_fact(
+        player, player.luck, 1, "Luck", "the strain", state.payload.world.player_id
+    )
     assert own.card == "Luck +1 -> 1/6"

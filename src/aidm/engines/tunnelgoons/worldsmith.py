@@ -1,12 +1,10 @@
 import json
 from collections.abc import Sequence
-from copy import deepcopy
 from pathlib import Path
-from typing import Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict
 
-from aidm.core.entities import CheckedEntityId, EngineId, EntityId, Frozen, Slug
+from aidm.core.entities import CheckedEntityId, EngineId, EntityId, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyScenario, ScenarioMeta, WorldsmithAnswer
@@ -15,9 +13,7 @@ from aidm.core.views import sections
 from aidm.engines.tunnelgoons.views import entity_line
 from aidm.engines.tunnelgoons.world import (
     Dungeon,
-    Item,
     MapCanon,
-    Npc,
     Place,
     TunnelGoonsGame,
     TunnelGoonsScenario,
@@ -34,19 +30,12 @@ MIN_EXTENSION_PLACES = 2
 WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
 
 
-class MapDraft(Frozen):
+class MapDraft(Dungeon):
     """The worldsmith's complete authored region: the map, and what stands and lies in it."""
 
-    places: dict[EntityId, Place] = Field(default_factory=dict)
-    ways: dict[EntityId, tuple[Way, ...]] = Field(default_factory=dict)
-    npcs: dict[EntityId, Npc] = Field(default_factory=dict)
-    items: dict[EntityId, Item] = Field(default_factory=dict)
-    start: CheckedEntityId
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
-    @model_validator(mode="after")
-    def _consistent(self) -> Self:
-        _ = Dungeon(places=self.places, ways=self.ways, npcs=self.npcs, items=self.items)
-        return self
+    start: CheckedEntityId
 
 
 def map_refusal(draft: MapDraft) -> str | None:
@@ -68,19 +57,12 @@ def apply_extension(world: TunnelWorld, draft: MapDraft) -> None:
     if (refused := extension_refusal(draft, world)) is not None:
         raise ValueError(refused)
     anchor_id = world.current.id
-    candidate = world.model_copy(deep=True)
-    candidate.places.update(deepcopy(draft.places))
-    candidate.ways.update(deepcopy(draft.ways))
-    candidate.npcs.update(deepcopy(draft.npcs))
-    candidate.items.update(deepcopy(draft.items))
-    _append_way(candidate.ways, anchor_id, draft.start)
-    _append_way(candidate.ways, draft.start, anchor_id)
-    _require_reachable(candidate)
-
-    world.places = candidate.places
-    world.ways = candidate.ways
-    world.npcs = candidate.npcs
-    world.items = candidate.items
+    world.places.update(draft.places)
+    world.ways.update(draft.ways)
+    world.npcs.update(draft.npcs)
+    world.items.update(draft.items)
+    _append_way(world.ways, anchor_id, draft.start)
+    _append_way(world.ways, draft.start, anchor_id)
 
 
 def install_extension(state: TunnelGoonsGame, written: BaseModel) -> tuple[Fact, ...]:
@@ -203,12 +185,6 @@ def _has_hidden_thing(draft: MapDraft) -> bool:
 
 def _append_way(ways: dict[EntityId, tuple[Way, ...]], from_id: EntityId, to_id: EntityId) -> None:
     ways[from_id] = (*ways.get(from_id, ()), Way(to=to_id))
-
-
-def _require_reachable(world: TunnelWorld) -> None:
-    start = world.visits[0].place
-    if missing := sorted(set(world.places) - walk(world.ways, start, world.places)):
-        raise ValueError(f"places no walk of ways reaches from {start!r}: {missing}")
 
 
 def _render_extension(world: TunnelWorld, intent: str) -> str:

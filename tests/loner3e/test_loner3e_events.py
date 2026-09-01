@@ -111,8 +111,8 @@ def test_a_twist_card_lands_only_once_a_twist_fires() -> None:
     assert oracle.card.startswith("Oracle — ")
     subject, action = twist.card.removeprefix("Twist — ").split(" / ")
     assert subject and action
-    assert len(twist.dice) == 2
-    assert all(len(die.rolled) == 1 for die in twist.dice)
+    (twist_dice,) = twist.dice
+    assert twist_dice.faces == (6, 6)
 
 
 def test_restoring_luck_shows_as_a_counter_card() -> None:

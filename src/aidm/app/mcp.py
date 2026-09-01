@@ -1,6 +1,3 @@
-from contextlib import AsyncExitStack
-from dataclasses import dataclass
-
 import mcp_types as types
 from mcp.server import Server, ServerRequestContext
 from mcp.server.streamable_http_manager import StreamableHTTPASGIApp, StreamableHTTPSessionManager
@@ -18,22 +15,6 @@ MOUNT_PATH = "/mcp"
 _ARGUMENTS = TypeAdapter(dict[str, JsonValue])
 
 
-@dataclass(frozen=True, slots=True)
-class Endpoint:
-    """The transport, served from the running app so the spawned CLI reaches the live game."""
-
-    asgi: StreamableHTTPASGIApp
-    # A mounted app's own lifespan never runs, so the manager's task group is opened by hand.
-    running: AsyncExitStack
-    manager: StreamableHTTPSessionManager
-
-    async def open(self) -> None:
-        _ = await self.running.enter_async_context(self.manager.run())
-
-    async def close(self) -> None:
-        await self.running.aclose()
-
-
 def offered(runtime: Runtime) -> list[types.Tool]:
     return [_published(one) for one in runtime.published_tools()]
 
@@ -46,7 +27,10 @@ def call(runtime: Runtime, name: str, raw: dict[str, JsonValue]) -> str:
     return turn.call(name, raw)
 
 
-def endpoint(runtime: Runtime) -> Endpoint:
+def endpoint(
+    runtime: Runtime,
+) -> tuple[StreamableHTTPASGIApp, StreamableHTTPSessionManager]:
+    """The transport, served from the running app so the spawned CLI reaches the live game."""
     manager = StreamableHTTPSessionManager(
         app=_build_server(runtime),
         json_response=True,
@@ -57,7 +41,7 @@ def endpoint(runtime: Runtime) -> Endpoint:
             allowed_origins=["http://127.0.0.1:*", "http://localhost:*"],
         ),
     )
-    return Endpoint(asgi=StreamableHTTPASGIApp(manager), running=AsyncExitStack(), manager=manager)
+    return StreamableHTTPASGIApp(manager), manager
 
 
 def _build_server(runtime: Runtime) -> Server[dict[str, object]]:

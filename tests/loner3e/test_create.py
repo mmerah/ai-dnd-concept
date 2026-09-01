@@ -33,7 +33,6 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     state = begin_game(engine, "whispering-vault", scenario, character)
     if not isinstance(state, Loner3eGame):
         raise AssertionError("the Loner engine began another game type")
-    assert state.payload.twist_pack == "srd"
     made = loner_sheet(state, PLAYER_ID)
     assert made.concept == "A wandering scribe who counts doors"
     assert made.skills == ("Quiet Hands", "Reads Old Stonework")

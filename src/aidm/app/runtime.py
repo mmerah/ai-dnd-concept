@@ -71,7 +71,6 @@ class GameService:
     # Why the last scene write failed or would not fit; empty when none has.
     write_failure: str = ""
     _illustrations: set[Task[None]] = field(default_factory=set, repr=False)
-    _writing: Task[BaseModel | None] | None = field(default=None, repr=False)
     state: AnyGame = field(init=False)
 
     def __post_init__(self) -> None:
@@ -94,11 +93,11 @@ class GameService:
         moving_on: bool = False,
     ) -> None:
         """`moving_on` is the player taking the way on, so `action` is what they mean to pursue."""
-        transition = self.engine.transition
-        if moving_on and transition.arrival_brief is None:
+        arrival_brief = self.engine.transition.arrival_brief
+        if moving_on and arrival_brief is None:
             await self.extend(action, on_step=on_step)
             return
-        if moving_on and not transition.ready(self.state):
+        if moving_on and not self.engine.transition.ready(self.state):
             raise ValueError("the world offers no transition from here")
         announce = partial(self._announce, on_step=on_step)
         turn = Turn.begin(
@@ -106,9 +105,6 @@ class GameService:
         )
         self.busy, self.turn, self.write_failure = True, turn, ""
         try:
-            # The player named where they go; the worldsmith writes while the turn still plays.
-            if moving_on:
-                self._write_scene(turn.prompt)
             announce("master")
             await self._act(turn)
             lines: tuple[Line, ...] = ()
@@ -120,9 +116,11 @@ class GameService:
             self.turn, self.step = None, None
             self.commit(state)
             self.illustrate(_latest_narration(self.engine, state))
-            await self._cross_over(announce, turn.prompt)
+            # The player named where they go; the worldsmith writes it once the turn is safe.
+            if moving_on and arrival_brief is not None and self.engine.over(state) is None:
+                await self._grow(turn.prompt, announce, arrival_brief(turn.prompt))
+                self.illustrate(_latest_narration(self.engine, self.state))
         except BaseException:
-            self._abandon_write()
             # The turn is thrown away, so a role that remembers playing it must be too.
             self.sessions.forget(self.slug)
             raise
@@ -149,10 +147,7 @@ class GameService:
         announce = partial(self._announce, on_step=on_step)
         self.busy, self.write_failure = True, ""
         try:
-            announce("worldsmith")
-            written = await self._write(transition, self.state.draft(), intent_text)
-            if written is not None:
-                await self._install(transition, written, announce, None)
+            await self._grow(intent_text, announce, None)
         finally:
             self.step = None
             self.busy = False
@@ -210,25 +205,14 @@ class GameService:
             return ()
         return narration.lines
 
-    async def _cross_over(self, announce: Callable[[TurnStep], None], pursuit: str) -> None:
-        if self._writing is None:
-            return
-        if self.engine.over(self.state) is not None:
-            self._abandon_write()
-            return
-        writing, self._writing = self._writing, None
-        try:
-            announce("worldsmith")
-            written = await writing
-            if written is None:
-                return
-            transition = self.engine.transition
-            if transition.arrival_brief is None:
-                raise ValueError("the transition has no arrival brief")
-            await self._install(transition, written, announce, transition.arrival_brief(pursuit))
-        finally:
-            self.step = None
-        self.illustrate(_latest_narration(self.engine, self.state))
+    async def _grow(
+        self, intent: str, announce: Callable[[TurnStep], None], brief: str | None
+    ) -> None:
+        transition = self.engine.transition
+        announce("worldsmith")
+        written = await self._write(transition, self.state.draft(), intent)
+        if written is not None:
+            await self._install(transition, written, announce, brief)
 
     async def _install(
         self,
@@ -253,17 +237,6 @@ class GameService:
         lines = await self._narrate(draft, facts, brief, fatal=False)
         view = self.engine.narrator_view(draft)
         self.commit(close_segment(self.engine, view, draft, CROSSED, lines, facts))
-
-    def _abandon_write(self) -> None:
-        """Cancelled, not just dropped: a write left running would install a scene a turn late."""
-        if self._writing is not None:
-            _ = self._writing.cancel()
-        self._writing = None
-
-    def _write_scene(self, intent: str) -> None:
-        self._abandon_write()
-        # A deep copy, never the live state: the turn keeps playing while this runs.
-        self._writing = create_task(self._write(self.engine.transition, self.state.draft(), intent))
 
     async def _write(
         self, transition: Transition[AnyGame], snapshot: AnyGame, intent: str

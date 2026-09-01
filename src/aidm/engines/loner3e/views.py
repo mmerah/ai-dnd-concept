@@ -7,11 +7,10 @@ from aidm.core.views import (
     PlayerView,
     Rows,
     Subject,
-    player_prompt,
     speaker_of,
 )
 from aidm.engines.loner3e.creation import Pack
-from aidm.engines.loner3e.tools import advance_notes, meanings
+from aidm.engines.loner3e.tools import meanings
 from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter, LonerWorld, player_over
 
 
@@ -87,7 +86,7 @@ def player_view(state: Loner3eGame) -> PlayerView:
                 rows=tuple(PanelRow(label=one.scene.title, detail="") for one in world.runs),
             ),
         ),
-        prompt=player_prompt(state),
+        prompt=state.pending,
         over=player_over(state),
     )
 
@@ -115,7 +114,6 @@ def master_sections(packs: Mapping[str, Pack], state: Loner3eGame) -> Rows:
             entity_lines(world, (world.require(one) for one in world.run.hidden)),
         ),
         *spelled,
-        *advance_notes(state),
         ("THE SCENE'S SECRET (never narrate this)", scene.secret or "(none)"),
     )
 

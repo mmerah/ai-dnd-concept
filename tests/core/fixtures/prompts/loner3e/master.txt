@@ -34,7 +34,7 @@ Every character has a one-line `concept`, plus `skills`, `frailties`, `gear`, `c
 
 Luck is not health. It shows how long a character can avoid losing a conflict.
 
-Skills and frailties grow through advancement. Use `change_world` with `change_tags` when the story plainly writes a tag: `gear` for a thing taken, given, lost or used up; a `condition` for a lasting mark such as an injury, a fear or a debt, lifted the same way when it ends. When play shows what a character wants, why, or who stands in their way, write it with the `drive` verb.
+Use `change_world` with `change_tags` when the story plainly writes a tag: `gear` for a thing taken, given, lost or used up; a `condition` for a lasting mark such as an injury, a fear or a debt, lifted the same way when it ends. When play shows what a character wants, why, or who stands in their way, write it with the `drive` verb.
 
 ## When to roll
 
@@ -77,7 +77,7 @@ Use `restore_luck` after a conflict ends another way and the character has had a
 
 After enough tied rolls, the engine returns a twist subject and action. Treat the pair as a complication arriving this turn, and apply any lasting changes with tools. Keep the pair; do not reroll it.
 
-Use `complete_chapter` once when the whole adventure closes, usually when its main goal is settled. A scene ending is not enough. This records the advancement owed.
+When the whole adventure closes, ask the player what their character learned. Then write it once: `change_tags` for a new or changed skill, gear or frailty; `drive` for a new nemesis. Do not grow skills or frailties before the adventure closes.
 
 Match the turn's mood: Dramatic raises pressure, Quiet gives space to recover or plan, and Meanwhile lets the wider world move. Use the mood the story has earned.
 

@@ -1,20 +1,17 @@
 from random import Random
 
 import pytest
-from core_test_support import initialized, loner_at_boundary, loner_sheet, with_entity
+from core_test_support import initialized, loner_sheet
 from loner3e_test_support import PACKS, TWISTS
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import cards
 from aidm.core.play import PendingDecision
-from aidm.engines.core import PLAYER_ID, AnyEngine, Counter
+from aidm.engines.core import PLAYER_ID, Counter
 from aidm.engines.loner3e.tools import (
-    AdventureGrowth,
-    Change,
     Question,
     RestoreLuck,
     Reveal,
-    advance,
     apply_change,
     apply_restore_luck,
     conflict_prompt,
@@ -24,20 +21,10 @@ from aidm.engines.loner3e.tools import (
     twist_note,
     twist_pairing,
 )
-from aidm.engines.loner3e.world import LUCK_MAX, TIES_PER_TWIST, Loner3eGame, LonerCharacter
+from aidm.engines.loner3e.world import LUCK_MAX, TIES_PER_TWIST
 
 FOE = EntityId("mara")
 MAP = EntityId("vault-map")
-
-
-def _owed(engine: AnyEngine, state: Loner3eGame) -> tuple[str, ...]:
-    """The ADVANCES OWED section split back into the one line it holds per member."""
-    return tuple(
-        line
-        for title, body in engine.master_sections(state)
-        if title == "ADVANCES OWED"
-        for line in body.splitlines()
-    )
 
 
 def _seal(**args: object) -> Question:
@@ -255,132 +242,6 @@ def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
 
     with pytest.raises(ValueError, match="already out of luck"):
         _ = resolve_question(PACKS, spent.draft(), _duel(), Random(0))
-
-
-def test_an_adventures_end_owes_an_advance_and_a_tag_the_sheet_lacks_is_refused() -> None:
-    engine, state = initialized()
-    assert _owed(engine, state) == ()
-
-    ready = loner_at_boundary(state)
-    (owed,) = _owed(engine, ready)
-    assert ready.payload.world.player.name in owed
-
-    rewrite = AdventureGrowth(
-        subject_id=PLAYER_ID,
-        changes=(
-            Change(
-                kind="rewrite",
-                tag="Never Walks Away",
-                into="Knows When to Walk Away",
-                why="the vault taught him the cost",
-            ),
-        ),
-    )
-    assert advance(ready.draft(), rewrite, Random(0))
-
-    unwritten = AdventureGrowth(
-        subject_id=PLAYER_ID,
-        changes=(
-            Change(
-                kind="rewrite",
-                tag="Never Held a Blade",
-                into="Holds It Well",
-                why="a tag the sheet does not carry",
-            ),
-        ),
-    )
-    with pytest.raises(ValueError, match="carries no tag 'Never Held a Blade'"):
-        _ = advance(ready.draft(), unwritten, Random(0))
-
-
-def test_an_npc_party_members_growth_writes_their_own_sheet_not_the_players() -> None:
-    engine, state = initialized()
-    grow_mara = AdventureGrowth(
-        subject_id=FOE,
-        changes=(
-            Change(kind="skill", tag="Reads Old Stonework", why="she has read enough of it now"),
-        ),
-    )
-    with pytest.raises(ValueError, match="is not in the party"):
-        _ = advance(loner_at_boundary(state).draft(), grow_mara, Random(0))
-
-    draft = state.draft()
-    draft.payload.world.companions.append(FOE)
-    ready = loner_at_boundary(draft.committed())
-    assert len(_owed(engine, ready)) == 2
-
-    draft = ready.draft()
-    facts = advance(draft, grow_mara, Random(0))
-    grown = draft.committed()
-
-    assert loner_sheet(grown, FOE).skills[-1] == "Reads Old Stonework"
-    assert loner_sheet(grown, PLAYER_ID).skills == loner_sheet(ready, PLAYER_ID).skills
-    assert [fact.kind for fact in facts] == ["skill_gained", "advance_spent"]
-
-
-def test_an_actor_who_joins_after_an_adventure_is_not_owed_the_growth_they_missed() -> None:
-    engine, state = initialized()
-    ready = loner_at_boundary(state)
-    newcomer = LonerCharacter(
-        id=EntityId("newcomer"),
-        name="A Newcomer",
-        brief="Falls in beside Kael.",
-        known=True,
-        concept="A Newcomer",
-    )
-    draft = with_entity(ready, newcomer).draft()
-    draft.payload.world.companions.append(newcomer.id)
-    walked_in = draft.committed()
-
-    engine.validate(walked_in)
-    (owed,) = _owed(engine, walked_in)
-    assert walked_in.payload.world.player.name in owed
-
-
-def test_a_closed_chapter_gates_the_advance_and_a_second_one_earns_another() -> None:
-    engine, state = initialized()
-    change = AdventureGrowth(
-        subject_id=PLAYER_ID,
-        changes=(Change(kind="gear", tag="Waxed Rope", why="he never climbs without it now"),),
-    )
-    draft = loner_at_boundary(state).draft()
-    _ = advance(draft, change, Random(0))
-    spent = draft.committed()
-
-    assert _owed(engine, spent) == ()
-    with pytest.raises(ValueError, match="has no advance owed"):
-        _ = advance(spent.draft(), change, Random(0))
-    assert len(_owed(engine, loner_at_boundary(spent))) == 1
-
-
-def test_an_adventure_growth_with_three_changes_lands_all_three_on_the_sheet() -> None:
-    _, state = initialized()
-    ready = loner_at_boundary(state)
-
-    growth = AdventureGrowth(
-        subject_id=PLAYER_ID,
-        changes=(
-            Change(kind="skill", tag="Reads Tide Marks", why="the vault left its mark on him"),
-            Change(kind="gear", tag="Waxed Rope", why="he never climbs without it now"),
-            Change(kind="frailty", tag="Flinches at the Dark", why="the dark held too long"),
-        ),
-    )
-    draft = ready.draft()
-    facts = advance(draft, growth, Random(0))
-    grown = draft.committed()
-
-    grew = loner_sheet(grown, PLAYER_ID)
-    assert (grew.skills[-1], grew.gear[-1], grew.frailties[-1]) == (
-        "Reads Tide Marks",
-        "Waxed Rope",
-        "Flinches at the Dark",
-    )
-    assert [fact.kind for fact in facts] == [
-        "skill_gained",
-        "gear_gained",
-        "frailty_gained",
-        "advance_spent",
-    ]
 
 
 def test_restoring_luck_that_is_already_full_is_a_quiet_no_op() -> None:

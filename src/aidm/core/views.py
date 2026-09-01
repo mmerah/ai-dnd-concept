@@ -1,8 +1,7 @@
 from collections.abc import Iterable
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen
-from aidm.core.model import AnyGame
-from aidm.core.play import DecisionOption, Speaker
+from aidm.core.play import PendingDecision, Speaker
 
 type Rows = tuple[tuple[str, str], ...]
 
@@ -29,13 +28,6 @@ class Panel(Frozen):
     rows: tuple[PanelRow, ...]
 
 
-class PlayerPrompt(Frozen):
-    kind: str
-    prompt: str
-    options: tuple[DecisionOption, ...]
-    allows_text: bool
-
-
 class NarratorView(Frozen):
     """The Narrator's input type: it has no field that can hold hidden canon."""
 
@@ -55,21 +47,9 @@ class PlayerView(Frozen):
 
     player: Subject
     panels: tuple[Panel, ...]
-    prompt: PlayerPrompt | None
+    prompt: PendingDecision | None
     over: str | None
 
 
 def speaker_of(subject: Subject) -> Speaker:
     return Speaker(name=subject.name, id=subject.id)
-
-
-def player_prompt(state: AnyGame) -> PlayerPrompt | None:
-    pending = state.pending
-    if pending is None:
-        return None
-    options = tuple(
-        DecisionOption(id=one.id, label=one.label, detail=one.detail) for one in pending.options
-    )
-    return PlayerPrompt(
-        kind=pending.kind, prompt=pending.prompt, options=options, allows_text=pending.allows_text
-    )

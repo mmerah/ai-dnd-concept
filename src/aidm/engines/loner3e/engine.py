@@ -63,7 +63,7 @@ def new_game(scenario: AnyScenario, character: AnyCharacter) -> Loner3eState:
         player_id=PLAYER_ID,
         source=canon.source,
     )
-    return Loner3eState(world=world, twist_pack=character.payload.twist_pack)
+    return Loner3eState(world=world)
 
 
 def check_packs(packs: Mapping[str, Pack], state: Loner3eGame) -> None:
@@ -87,7 +87,7 @@ def build(user_packs: Path) -> Engine[Loner3eGame]:
         creation_steps=partial(creation_steps, packs),
         create_character=partial(create_character, packs),
         preview_character=preview_character,
-        validate=partial(_validate, packs),
+        validate=partial(check_packs, packs),
         new_game=new_game,
         known=known,
         record=record,
@@ -108,9 +108,3 @@ def build(user_packs: Path) -> Engine[Loner3eGame]:
             arrival_brief=arrival_brief,
         ),
     )
-
-
-def _validate(packs: Mapping[str, Pack], state: Loner3eGame) -> None:
-    check_packs(packs, state)
-    if (twist_pack := state.payload.twist_pack) not in state.packs:
-        raise ValueError(f"twists roll from {twist_pack!r}, which is unselected")

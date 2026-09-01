@@ -75,10 +75,10 @@ a rule of this one.
    frailties and gear in that pack are written for this repo; Loner 3e publishes no such tables.
    Only the twist subject and action columns are the SRD's, and the pack's `license` line already
    says so.
-5. **Everyone the player travels with is credited an advance.** The SRD's post-game growth is the
-   solo player's; here `complete_chapter` credits the player and every companion, and the count
-   lives on each character, so somebody who joins later is not owed the adventures they never
-   played.
+5. **Companions.** The solo SRD has no party; here `join_party` and `leave_party` mark who
+   travels with the player, and companions follow into the next scene. Post-game growth is the
+   SRD's own step, written with `change_tags` and `drive` when the adventure closes: no advance
+   is counted or owed.
 
 ## What the AI game master adds
 
@@ -90,7 +90,6 @@ its keep for a reason the SRD has no need of.
 - `alive` and `kill` — the SRD leaves death to narration; the gate needs a flag.
 - `next_scene`, `settled` and the turn cap — a scene nobody ends is ended for them.
 - No mood roll — the SRD offers it "when unsure"; the game master holds that judgment.
-- `twist_pack` — which table set the twist rolls from.
 
 ## Where the rules live
 

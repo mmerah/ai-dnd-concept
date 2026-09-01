@@ -53,7 +53,6 @@ None. The starting item list is in the SRD's character creation.
 ## Deviations in this repo
 
 1. Levelling up is an end-of-adventure step the master calls once. The SRD page says "every 2 game sessions", the 1.1 PDF "at the end of a game session"; an adventure is the closest thing this app has to a session.
-2. Character creation uses the SRD 1.1 page's 3 ability points, not 1.2's 2.
 
 ## What the AI game master adds
 

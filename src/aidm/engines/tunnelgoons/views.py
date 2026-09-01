@@ -7,7 +7,6 @@ from aidm.core.views import (
     PlayerView,
     Rows,
     Subject,
-    player_prompt,
     speaker_of,
 )
 from aidm.engines.core import pool
@@ -91,7 +90,7 @@ def player_view(state: TunnelGoonsGame) -> PlayerView:
                 ),
             ),
         ),
-        prompt=player_prompt(state),
+        prompt=state.pending,
         over=player_over(state),
     )
 

@@ -129,6 +129,18 @@ def adjust(counter: Counter, amount: int) -> int:
     return counter.current - before
 
 
+def counter_fact(
+    one: Entity, counter: Counter, amount: int, label: str, why: str, player_id: EntityId
+) -> list[Fact]:
+    landed = adjust(counter, amount)
+    if landed == 0:
+        return []
+    moved = f"{label} {landed:+d} -> {pool(counter)}"
+    card = moved if one.id == player_id else f"{one.name}: {moved}"
+    trace = f"{labeled(one, player_id)} {moved} ({why})"
+    return [entity_fact(one, "counter_changed", trace, card=card)]
+
+
 def check_filing[E: Entity](pool: dict[EntityId, E]) -> None:
     for key, one in pool.items():
         if key != one.id:

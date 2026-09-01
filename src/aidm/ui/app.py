@@ -1,4 +1,5 @@
 import logging
+from contextlib import AsyncExitStack
 from functools import partial
 
 from nicegui import app, ui
@@ -153,10 +154,12 @@ def _open_game(target: LaunchTarget) -> None:
 
 
 def _register_pages(runtime: Runtime) -> None:
-    served = endpoint(runtime)
-    app.mount(MOUNT_PATH, served.asgi)
-    app.on_startup(served.open)  # pyright: ignore[reportUnknownMemberType]
-    app.on_shutdown(served.close)  # pyright: ignore[reportUnknownMemberType]
+    asgi, manager = endpoint(runtime)
+    app.mount(MOUNT_PATH, asgi)
+    # A mounted app's own lifespan never runs, so the manager's task group is opened by hand.
+    running = AsyncExitStack()
+    app.on_startup(lambda: running.enter_async_context(manager.run()))  # pyright: ignore[reportUnknownMemberType]
+    app.on_shutdown(running.aclose)  # pyright: ignore[reportUnknownMemberType]
 
     def apply_settings() -> str | None:
         refusal = runtime.busy_refusal()

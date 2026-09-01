@@ -9,7 +9,6 @@
     "frailties": ["Never Walks Away"],
     "gear": ["Pry Bar", "Chalk and Wire", "A Guttering Lantern"],
     "goal": "Find what has been sealed away, and open it",
-    "motive": "Whatever was worth sealing is worth more unsealed",
-    "twist_pack": "srd"
+    "motive": "Whatever was worth sealing is worth more unsealed"
   }
 }

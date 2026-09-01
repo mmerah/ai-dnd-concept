@@ -1,6 +1,6 @@
 import logging
-from asyncio import AbstractEventLoop, get_running_loop
-from collections.abc import Sequence
+from asyncio import get_running_loop
+from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
 from time import monotonic
@@ -42,62 +42,35 @@ _STEP_COPY: dict[TurnStep, tuple[str, str]] = {
 LOGGER = logging.getLogger(__name__)
 
 
+@dataclass
 class GameView:
-    def __init__(self, runtime: Runtime, session: GameService) -> None:
-        self.runtime = runtime
-        self.session = session
-        self.shown_art: tuple[Path | None, bool] = (None, False)
-        # Both are built by the page below this view, and the panels reach them through it.
-        self.composer: ui.input | None = None
-        self.transcript: ui.scroll_area | None = None
-        # The turn in flight, owned by the view, never by game state; cleared on success or failure.
-        self.live_prompt: str | None = None
-        self.live_facts: list[Fact] = []
-        self.step_started: float | None = None
-        self.ticker: ui.label | None = None
-
-    @ui.refreshable_method
-    def scene(self) -> None:
-        scene_header(self.session)
-
-    @ui.refreshable_method
-    def chat(self) -> None:
-        chat(self.session)
-
-    @ui.refreshable_method
-    def live_turn(self) -> None:
-        elapsed = 0.0 if self.step_started is None else monotonic() - self.step_started
-        self.ticker = live_turn(self.session, self.live_prompt, self.live_facts, elapsed)
-
-    @ui.refreshable_method
-    def decision(self) -> None:
-        decision_panel(self)
-
-    @ui.refreshable_method
-    def way_on(self) -> None:
-        way_on_panel(self)
-
-    @ui.refreshable_method
-    def sidebar(self) -> None:
-        scene_sidebar(self.session)
-
-    @ui.refreshable_method
-    def journal(self) -> None:
-        journal_panel(self.session)
-
-    def refresh_all(self) -> None:
-        for panel in (
-            self.scene,
-            self.chat,
-            self.live_turn,
-            self.decision,
-            self.way_on,
-            self.sidebar,
-            self.journal,
-        ):
-            panel.refresh()
+    runtime: Runtime
+    session: GameService
+    shown_art: tuple[Path | None, bool] = (None, False)
+    # Both are built by the page below this view, and the panels reach them through it.
+    composer: ui.input | None = None
+    transcript: ui.scroll_area | None = None
+    # The turn in flight, owned by the view, never by game state; cleared on success or failure.
+    live_prompt: str | None = None
+    live_facts: list[Fact] = field(default_factory=list)
+    step_started: float | None = None
+    ticker: ui.label | None = None
 
 
+def refresh_all() -> None:
+    for panel in (
+        scene_header,
+        chat,
+        live_turn,
+        decision_panel,
+        way_on_panel,
+        scene_sidebar,
+        journal_panel,
+    ):
+        panel.refresh()
+
+
+@ui.refreshable
 def scene_header(session: GameService) -> None:
     scene = session.scene()
     # A quarter of the column at most: the art holds it and the text beside it scrolls.
@@ -116,6 +89,7 @@ def scene_header(session: GameService) -> None:
             ui.label(scene.situation).classes("text-sm opacity-70")
 
 
+@ui.refreshable
 def chat(session: GameService) -> None:
     history = session.engine.history(session.state)
     if not history:
@@ -137,29 +111,25 @@ def chat(session: GameService) -> None:
             ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
 
 
-def live_turn(
-    session: GameService, prompt: str | None, facts: Sequence[Fact], elapsed: float
-) -> ui.label | None:
-    if prompt is not None:
-        _bubble(session, speaker_of(session.player_view().player), prompt, sent=True)
-    for fact in facts:
+@ui.refreshable
+def live_turn(view: GameView) -> None:
+    session = view.session
+    if view.live_prompt is not None:
+        _bubble(session, speaker_of(session.player_view().player), view.live_prompt, sent=True)
+    for fact in view.live_facts:
         _card(fact)
+    view.ticker = None
     if session.step is not None:
-        return _inline_status(session.step, elapsed)
-    return None
+        elapsed = 0.0 if view.step_started is None else monotonic() - view.step_started
+        view.ticker = _inline_status(session.step, elapsed)
 
 
 def on_step(view: GameView, step: TurnStep) -> None:
     view.session.step = step
     view.step_started = monotonic()
-    view.live_turn.refresh()
+    live_turn.refresh()
     if view.composer is not None:
         view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
-
-
-def on_fact(view: GameView, fact: Fact, loop: AbstractEventLoop) -> None:
-    """Schedule refreshes on NiceGUI's loop because sync tools emit from worker threads."""
-    loop.call_soon_threadsafe(_apply_fact, view, fact)
 
 
 def tick_elapsed(view: GameView) -> None:
@@ -174,7 +144,7 @@ def poll_art(view: GameView) -> None:
     shown = (view.session.scene_art(), view.session.scene_pending())
     if shown != view.shown_art:
         view.shown_art = shown
-        view.scene.refresh()
+        scene_header.refresh()
 
 
 def refuse_play(view: GameView) -> bool:
@@ -198,6 +168,7 @@ async def submit(view: GameView, box: ui.input, moving_on: bool = False) -> None
     await _send(view, typed_input, typed, moving_on=moving_on)
 
 
+@ui.refreshable
 def way_on_panel(view: GameView) -> None:
     """The banner, not the offer: legible after a reload, once the asking has scrolled away."""
     if not view.session.transition_available():
@@ -212,6 +183,7 @@ def way_on_panel(view: GameView) -> None:
         )
 
 
+@ui.refreshable
 def decision_panel(view: GameView) -> None:
     pending = view.session.player_view().prompt
     if pending is None:
@@ -276,7 +248,7 @@ def restart(view: GameView) -> None:
         return
     session.restart()
     view.live_prompt, view.live_facts = None, []
-    view.refresh_all()
+    refresh_all()
 
 
 def game_page(runtime: Runtime, session: GameService) -> None:
@@ -289,12 +261,12 @@ def game_page(runtime: Runtime, session: GameService) -> None:
     # Account for the header and page padding so the input stays above the fold.
     with ui.splitter(value=55).classes("w-full").style("height: calc(100vh - 6rem)") as splitter:
         with splitter.before, ui.column().classes("w-full h-full p-4").style("gap: 0.5rem"):
-            view.scene()
+            scene_header(session)
             with ui.scroll_area().classes("w-full flex-grow game-transcript") as transcript:
-                view.chat()
-                view.live_turn()
-            view.decision()
-            view.way_on()
+                chat(session)
+                live_turn(view)
+            decision_panel(view)
+            way_on_panel(view)
             composer(view)
             view.transcript = transcript
         with splitter.after, ui.column().classes("w-full h-full").style("gap: 0"):
@@ -303,9 +275,9 @@ def game_page(runtime: Runtime, session: GameService) -> None:
                 journal_tab = ui.tab("journal")
             with ui.tab_panels(tabs, value=scene_tab).classes("w-full flex-grow"):
                 with ui.tab_panel(scene_tab), ui.scroll_area().classes("w-full h-full"):
-                    view.sidebar()
+                    scene_sidebar(session)
                 with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
-                    view.journal()
+                    journal_panel(session)
 
     ui.timer(1.0, lambda: tick_elapsed(view))
     if session.media is not None:
@@ -385,11 +357,11 @@ def _composer_placeholder(view: GameView) -> str:
     return "What do you do?"
 
 
-def _apply_fact(view: GameView, fact: Fact) -> None:
+def on_fact(view: GameView, fact: Fact) -> None:
     if not (fact.told and fact.card):
         return
     view.live_facts.append(fact)
-    view.live_turn.refresh()
+    live_turn.refresh()
     _scroll(view)
 
 
@@ -404,21 +376,20 @@ async def _send(
 ) -> None:
     session = view.session
     view.live_prompt, view.live_facts = bubble, []
-    view.live_turn.refresh()
+    live_turn.refresh()
     _scroll(view)
     async with working():
-        loop = get_running_loop()
         await session.play(
             player_input,
             on_step=lambda step: on_step(view, step),
-            on_fact=lambda fact: on_fact(view, fact, loop),
+            on_fact=lambda fact: on_fact(view, fact),
             moving_on=moving_on,
         )
     session.step = None
     view.live_prompt, view.live_facts, view.step_started = None, [], None
     if view.composer is not None:
         view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
-    view.refresh_all()
+    refresh_all()
     _scroll(view)
 
 

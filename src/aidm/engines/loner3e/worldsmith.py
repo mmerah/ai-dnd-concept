@@ -265,14 +265,9 @@ def _scene_unmet(draft: SceneDraft, world: LonerWorld | None = None) -> list[str
     if told := sorted(_named_in(draft.situation, draft.hidden, known)):
         unmet.append(f"a situation that does not name what is hidden: {told}")
     if broken := sorted(
-        eid
-        for eid, one in draft.cast.items()
-        if not one.alive or one.advances_owed or one.luck.current != LUCK_MAX
+        eid for eid, one in draft.cast.items() if not one.alive or one.luck.current != LUCK_MAX
     ):
-        unmet.append(
-            f"cast members as the worldsmith may write them: alive, no advance owed, full luck: "
-            f"{broken}"
-        )
+        unmet.append(f"cast members as the worldsmith may write them: alive, full luck: {broken}")
     return unmet
 
 

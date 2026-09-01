@@ -99,7 +99,6 @@ def create_character(
         ),
         frailties=(find_entry(pack.frailties, picked(picks, "frailty")).label,),
         gear=tuple(find_entry(pack.gear, picked(picks, f"gear-{one}")).label for one in (1, 2)),
-        twist_pack=chosen,
     )
     return Loner3eCharacterFile(
         id=slug(name, ()), engine=EngineId("loner3e"), name=name, brief=brief, payload=payload

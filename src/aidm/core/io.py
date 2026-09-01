@@ -76,15 +76,7 @@ def read_scenarios(
 ) -> Iterator[tuple[Slug, AnyScenario]]:
     for path in sorted(p for p in directory.iterdir() if (p / WORLD_FILE).is_file()):
         try:
-            value = decoded(_read_text(path / WORLD_FILE))
-            header = EngineHeader.model_validate(value)
-            model = models.get(header.engine)
-            if model is None:
-                LOGGER.warning(
-                    "skipping scenario %r: it needs the %r engine", path.name, header.engine
-                )
-                continue
-            scenario = model.model_validate(value)
+            scenario = read_scenario(directory, path.name, models)
         except ValueError as unreadable:
             # Skip incomplete scenarios so the home screen remains usable.
             LOGGER.warning("skipping scenario %r: %s", path.name, unreadable)

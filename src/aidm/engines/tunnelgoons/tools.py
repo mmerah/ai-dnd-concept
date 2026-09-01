@@ -7,7 +7,7 @@ from aidm.core.entities import CheckedEntityId, EntityId, Frozen, require_unique
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.tools import MasterTool, NoArgs, master_tool
-from aidm.engines.core import adjust, entity_fact, pool
+from aidm.engines.core import counter_fact, entity_fact, pool
 from aidm.engines.tunnelgoons.world import (
     ABILITIES,
     Ability,
@@ -212,13 +212,13 @@ def action_roll(draft: TunnelGoonsGame, args: ActionRoll, rng: Random) -> list[F
     if not args.dangerous:
         return facts
     if npc is not None and success:
-        facts.extend(_adjust_health(world, npc, -margin, "the player's action"))
+        facts.extend(counter_fact(npc, npc.hp, -margin, "Health", "the player's action", player.id))
         if npc.hp.current == 0:
             npc.alive = False
             slain = f"{world.label(npc)} is slain"
             facts.append(entity_fact(npc, "npc_slain", slain, card=f"{npc.name} is slain"))
     elif not success:
-        facts.extend(_adjust_health(world, player, margin, args.what))
+        facts.extend(counter_fact(player, player.hp, margin, "Health", args.what, player.id))
         if player.hp.current == 0:
             player.alive = False
             dead = f"{world.label(player)} is dead"
@@ -229,7 +229,9 @@ def action_roll(draft: TunnelGoonsGame, args: ActionRoll, rng: Random) -> list[F
 def rest(draft: TunnelGoonsGame, _args: NoArgs, _rng: Random) -> list[Fact]:
     world = draft.payload.world
     player = world.player
-    facts = _adjust_health(world, player, player.hp.maximum - player.hp.current, "resting")
+    facts = counter_fact(
+        player, player.hp, player.hp.maximum - player.hp.current, "Health", "resting", player.id
+    )
     trace = f"the player rests at {world.label(world.current)}"
     facts.append(entity_fact(player, "rested", trace, card=f"Rested — Health {pool(player.hp)}"))
     return facts
@@ -356,12 +358,3 @@ def _carried_items(
             raise ValueError(f"{item_id!r} is not in the player's hands")
         items.append(item)
     return tuple(items)
-
-
-def _adjust_health(world: TunnelWorld, one: Goon | Npc, delta: int, why: str) -> list[Fact]:
-    landed = adjust(one.hp, delta)
-    if landed == 0:
-        return []
-    moved = f"Health {landed:+d} -> {pool(one.hp)}"
-    card = moved if one.id == world.player.id else f"{one.name}: {moved}"
-    return [entity_fact(one, "counter_changed", f"{world.label(one)} {moved} ({why})", card=card)]

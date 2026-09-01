@@ -39,8 +39,7 @@
             "current": 6,
             "maximum": 6
           },
-          "alive": true,
-          "advances_owed": 0
+          "alive": true
         },
         "vault-map": {
           "id": "vault-map",
@@ -59,8 +58,7 @@
             "current": 6,
             "maximum": 6
           },
-          "alive": true,
-          "advances_owed": 0
+          "alive": true
         },
         "tomas": {
           "id": "tomas",
@@ -85,8 +83,7 @@
             "current": 6,
             "maximum": 6
           },
-          "alive": true,
-          "advances_owed": 0
+          "alive": true
         },
         "elena": {
           "id": "elena",
@@ -112,8 +109,7 @@
             "current": 6,
             "maximum": 6
           },
-          "alive": true,
-          "advances_owed": 0
+          "alive": true
         },
         "cloister-rat": {
           "id": "cloister-rat",
@@ -137,8 +133,7 @@
             "current": 6,
             "maximum": 6
           },
-          "alive": true,
-          "advances_owed": 0
+          "alive": true
         },
         "player": {
           "id": "player",
@@ -166,8 +161,7 @@
             "current": 6,
             "maximum": 6
           },
-          "alive": true,
-          "advances_owed": 0
+          "alive": true
         }
       },
       "runs": [
@@ -198,7 +192,6 @@
     "twist": {
       "current": 0,
       "maximum": 3
-    },
-    "twist_pack": "srd"
+    }
   }
 }

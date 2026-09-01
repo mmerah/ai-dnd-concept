@@ -1,7 +1,6 @@
 import logging
-from asyncio import Lock
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from hashlib import sha256
 
 from pydantic import Field, ValidationError
@@ -31,7 +30,6 @@ class Conversations:
     spawner: Spawner
     store: FileStore
     settings: Settings
-    _locks: dict[tuple[str, Role], Lock] = field(default_factory=dict, repr=False)
 
     async def ask(
         self,
@@ -44,21 +42,20 @@ class Conversations:
     ) -> RunResult:
         """Once the role has applied anything, a cold retry would apply it twice."""
         stamp = fingerprint(self.settings.roles.for_name(role), instructions)
-        async with self._locks.setdefault((slug, role), Lock()):
-            held = session if session is not None else self._held(slug, role, stamp)
-            while True:
-                try:
-                    spoken = await self.spawner.run(role, prompt, held)
-                except (OSError, ValueError) as failed:
-                    self._write(slug, role, stamp, None)
-                    # A named session means the prompt is a continuation, which says nothing cold.
-                    if held is None or session is not None or not cold_retry():
-                        raise
-                    LOGGER.warning("the resumed %s failed, starting cold: %s", role, failed)
-                    held = None
-                    continue
-                self._write(slug, role, stamp, spoken.session)
-                return spoken
+        held = session if session is not None else self._held(slug, role, stamp)
+        while True:
+            try:
+                spoken = await self.spawner.run(role, prompt, held)
+            except (OSError, ValueError) as failed:
+                self._write(slug, role, stamp, None)
+                # A named session means the prompt is a continuation, which says nothing cold.
+                if held is None or session is not None or not cold_retry():
+                    raise
+                LOGGER.warning("the resumed %s failed, starting cold: %s", role, failed)
+                held = None
+                continue
+            self._write(slug, role, stamp, spoken.session)
+            return spoken
 
     def forget(self, slug: str) -> None:
         self.store.sessions_path(slug).unlink(missing_ok=True)

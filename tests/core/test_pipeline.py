@@ -5,21 +5,17 @@ import pytest
 from core_test_support import (
     changed,
     initialized,
-    loner_at_boundary,
-    loner_sheet,
     narrated,
     opened,
     played,
     tool_call,
 )
-from pydantic import JsonValue
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact, cards
 from aidm.core.model import AnyGame
 from aidm.engines.core import PLAYER_ID
 from aidm.engines.loner3e.tools import outcome_for
-from aidm.engines.loner3e.world import Loner3eGame
 from aidm.turn.run import Turn, TurnStep
 
 MAP = EntityId("vault-map")
@@ -146,25 +142,17 @@ async def test_a_call_its_own_fields_refuse_does_not_kill_the_turn(tmp_path: Pat
     assert any("goal, a motive or a nemesis" in one for one in table.refusals)
 
 
-async def test_a_later_call_is_judged_against_the_sheet_the_earlier_one_moved(
+async def test_a_later_call_in_one_turn_sees_the_earlier_calls_draft(
     tmp_path: Path,
 ) -> None:
     table = opened(tmp_path)
-    growth: dict[str, JsonValue] = {
-        "subject_id": PLAYER_ID,
-        "changes": [{"kind": "skill", "tag": "Vault-Wise", "why": "the seal gave up its trick"}],
-    }
 
     state = await played(
-        table,
-        "I close the book.",
-        tool_call("complete_chapter"),
-        tool_call("advance", **growth),
-        tool_call("advance", **growth),
+        table, "I close the book.", tool_call("next_scene"), tool_call("next_scene")
     )
 
-    assert loner_sheet(state, PLAYER_ID).advances_owed == 0
-    assert any("no advance owed" in one for one in table.refusals)
+    assert state.payload.world.run.settled
+    assert any("already settled" in one for one in table.refusals)
 
 
 async def test_a_line_spoken_by_someone_not_here_is_re_prompted_with_the_id(
@@ -251,35 +239,6 @@ async def test_a_turn_that_applied_nothing_and_failed_is_refused(tmp_path: Path)
         await table.service.play("I take the map.")
 
     assert table.service.state.model_dump_json() == before
-
-
-async def test_an_owed_advance_is_noted_lands_on_call_and_is_refused_once_spent(
-    tmp_path: Path,
-) -> None:
-    table = opened(tmp_path)
-    state = table.service.state
-    if not isinstance(state, Loner3eGame):
-        raise AssertionError("the Loner service holds another game type")
-    table.service.commit(loner_at_boundary(state))
-    growth: dict[str, JsonValue] = {
-        "subject_id": PLAYER_ID,
-        "changes": [{"kind": "gear", "tag": "Waxed Rope", "why": "he never climbs without it now"}],
-    }
-    facts: list[Fact] = []
-
-    state = await played(
-        table,
-        "I keep the rope.",
-        tool_call("advance", **growth),
-        tool_call("advance", **growth),
-        on_fact=facts.append,
-    )
-
-    assert "Kael has an advance owed" in table.answers[0]
-    assert len(cards(tuple(facts))) == 2
-    sheet = loner_sheet(state, PLAYER_ID)
-    assert (sheet.gear[-1], sheet.advances_owed) == ("Waxed Rope", 0)
-    assert any("no advance owed" in one for one in table.refusals)
 
 
 async def test_two_rolls_in_one_turn_do_not_read_the_same_dice(tmp_path: Path) -> None:

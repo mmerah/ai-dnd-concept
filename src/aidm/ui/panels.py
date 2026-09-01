@@ -7,6 +7,7 @@ from .widgets import entity_row, heading, labeled_value
 NO_WAY_ON = "The way on could not be written. You are still where you were."
 
 
+@ui.refreshable
 def scene_sidebar(session: GameService) -> None:
     view = session.player_view()
     with ui.column().classes("w-full").style("gap: 0.75rem"):
@@ -26,6 +27,7 @@ def scene_sidebar(session: GameService) -> None:
             ui.label(NO_WAY_ON).classes("text-xs text-warning mt-1")
 
 
+@ui.refreshable
 def journal_panel(session: GameService) -> None:
     heading("Chronicle")
     played = session.engine.history(session.state)

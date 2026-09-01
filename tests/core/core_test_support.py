@@ -18,9 +18,7 @@ from aidm.core.facts import Fact
 from aidm.core.io import load_character, read_scenario, read_scenarios
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, Speaker
-from aidm.core.tools import NoArgs
 from aidm.engines.core import PLAYER_ID, AnyEngine
-from aidm.engines.loner3e.tools import complete_chapter as loner_chapter
 from aidm.engines.loner3e.world import (
     Loner3eCharacterFile,
     Loner3eGame,
@@ -62,12 +60,6 @@ def with_entity(state: Loner3eGame, entity: LonerCharacter) -> Loner3eGame:
     draft.payload.world.cast[entity.id] = entity
     run = draft.payload.world.run
     (run.present if entity.known else run.hidden).append(entity.id)
-    return draft.committed()
-
-
-def loner_at_boundary(state: Loner3eGame) -> Loner3eGame:
-    draft = state.draft()
-    _ = loner_chapter(draft, NoArgs(), Random(0))
     return draft.committed()
 
 

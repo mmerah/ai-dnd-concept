@@ -181,8 +181,7 @@ def test_the_scene_bar_names_what_a_thin_scene_is_missing() -> None:
         update={"cast": {ghost: LonerCharacter(id=ghost, name="Ghost", brief="", alive=False)}}
     )
     assert scene_refusal(broken, state.payload.world) == (
-        "the scene needs cast members as the worldsmith may write them: alive, no advance owed, "
-        "full luck: ['ghost']"
+        "the scene needs cast members as the worldsmith may write them: alive, full luck: ['ghost']"
     )
 
 

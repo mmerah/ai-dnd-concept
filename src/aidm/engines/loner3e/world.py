@@ -48,7 +48,6 @@ class LonerCharacter(Mutable):
     nemesis: str = ""
     luck: Counter = Field(default_factory=partial(Counter, current=LUCK_MAX, maximum=LUCK_MAX))
     alive: bool = True
-    advances_owed: int = Field(default=0, ge=0)
 
     def rows(self) -> Rows:
         return tuple(
@@ -200,7 +199,6 @@ class Loner3eState(Mutable):
     world: LonerWorld
     # The played character's tally paces the whole game, so no sheet carries one.
     twist: Counter = Field(default_factory=partial(Counter, current=0, maximum=TIES_PER_TWIST))
-    twist_pack: Slug
 
 
 class Loner3eScenario(Mutable):
@@ -214,7 +212,6 @@ class Loner3eCharacter(Mutable):
     gear: tuple[str, ...] = ()
     goal: str = ""
     motive: str = ""
-    twist_pack: Slug
 
 
 class Loner3eGame(Game[Loner3eState]):
