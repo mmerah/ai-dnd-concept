@@ -22,7 +22,8 @@ Tests run offline. They are deterministic.
 
 - Write pure functions. Put side effects at the edges (files, network, UI).
 - State models are mutable. Value models are frozen.
-- Do not use `Any`. Use exact types.
+- Do not use `Any`. Use exact types, except in `engines/scenes.py`'s seam functions, where
+  `Game[P]`'s invariance makes `SceneState[Any, Any]` the only spelling of the bound.
 - Validate data at each boundary (file, model output, tool call) with strict Pydantic V2 models. Reject bad data at once.
 - Do not add an abstraction until two things need it.
 - Do not build for future needs.

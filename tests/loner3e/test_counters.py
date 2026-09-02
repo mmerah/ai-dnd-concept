@@ -30,16 +30,16 @@ def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> 
     state = _state()
     KAEL.luck.current = 0
     (changed,) = counter_fact(
-        KAEL, KAEL.luck, 99, "Luck", "the strain", state.payload.world.player_id
+        KAEL, KAEL.luck, 99, "Luck", "the strain", state.payload.world.player.id
     )
     assert (changed.card, KAEL.luck.current) == ("Kael: Luck +6 -> 6/6", 6)
     assert (
-        counter_fact(KAEL, KAEL.luck, 99, "Luck", "the strain", state.payload.world.player_id) == []
+        counter_fact(KAEL, KAEL.luck, 99, "Luck", "the strain", state.payload.world.player.id) == []
     )
 
     player = state.payload.world.player
     player.luck.current = 0
     (own,) = counter_fact(
-        player, player.luck, 1, "Luck", "the strain", state.payload.world.player_id
+        player, player.luck, 1, "Luck", "the strain", state.payload.world.player.id
     )
     assert own.card == "Luck +1 -> 1/6"

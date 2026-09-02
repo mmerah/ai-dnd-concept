@@ -13,17 +13,14 @@ from core_test_support import (
 from aidm.core.entities import EntityId
 from aidm.core.io import load_character, read_scenario
 from aidm.core.model import ScenarioMeta
-from aidm.engines.core import PLAYER_ID, AnyEngine
+from aidm.engines.core import PLAYER_ID, AnyEngine, Person
 from aidm.engines.hub import Offer
-from aidm.engines.scenes import Scene
+from aidm.engines.scenes import Scene, SceneCanon, SceneScenario
 from aidm.engines.twentyfourxx.engine import new_game
 from aidm.engines.twentyfourxx.tools import SRD_PACK
 from aidm.engines.twentyfourxx.world import (
-    Npc,
-    SceneCanon,
     TwentyfourxxCharacterFile,
     TwentyfourxxGame,
-    TwentyfourxxScenario,
     TwentyfourxxScenarioFile,
 )
 
@@ -93,12 +90,12 @@ def test_restored_round_trips() -> None:
 
 
 def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
-    decoy = Npc(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
+    decoy = Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
     scenario = TwentyfourxxScenarioFile(
         meta=ScenarioMeta(title="Test", premise="A test scenario."),
         engine=TWENTYFOURXX,
         packs=(SRD_PACK,),
-        payload=TwentyfourxxScenario(
+        payload=SceneScenario(
             world=SceneCanon(
                 cast={PLAYER_ID: decoy},
                 opening=Scene(

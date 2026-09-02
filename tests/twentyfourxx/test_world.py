@@ -2,7 +2,8 @@ import pytest
 from twentyfourxx_test_support import KESTREL, SABLE, hub_world, small_world
 
 from aidm.core.entities import EngineId, EntityId
-from aidm.engines.core import PLAYER_ID
+from aidm.engines.core import PLAYER_ID, Person
+from aidm.engines.scenes import way_open
 from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
     Item,
@@ -13,7 +14,6 @@ from aidm.engines.twentyfourxx.world import (
     TwentyfourxxWorld,
     player_operator,
     raised,
-    way_open,
 )
 
 
@@ -59,11 +59,13 @@ def test_rows_drops_empties_and_shows_credits() -> None:
     assert "Hindrances" not in rows
 
 
-def test_player_must_be_filed_as_player_id() -> None:
+def test_a_cast_that_holds_the_player_is_refused() -> None:
     world = small_world().payload.world
-    bad_player = world.player.model_copy(update={"id": EntityId("not-player")})
-    with pytest.raises(ValueError):
-        TwentyfourxxWorld(cast=world.cast, player=bad_player, runs=world.runs)
+    decoy = Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
+    with pytest.raises(ValueError, match="the player is in the cast"):
+        TwentyfourxxWorld(
+            cast={**world.cast, PLAYER_ID: decoy}, player=world.player, runs=world.runs
+        )
 
 
 def test_player_is_never_listed_in_the_scene() -> None:

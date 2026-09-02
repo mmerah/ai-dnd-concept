@@ -6,11 +6,21 @@ from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Slug, require_unique
+from aidm.core.entities import CheckedEntityId, Frozen, Slug, require_unique
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.play import DecisionOption, PendingDecision
 from aidm.core.tools import MasterTool, master_tool
-from aidm.engines.core import Counter, counter_fact, entity_fact, keep_highest
+from aidm.engines.core import (
+    CHANGE_WORLD,
+    Counter,
+    JoinParty,
+    LeaveParty,
+    counter_fact,
+    entity_fact,
+    join_party,
+    keep_highest,
+    leave_party,
+)
 from aidm.engines.loner3e.creation import Pack
 from aidm.engines.loner3e.world import (
     DIE_FACE,
@@ -22,40 +32,26 @@ from aidm.engines.loner3e.world import (
     set_tags,
     tags_of,
 )
-from aidm.engines.scenes import NEXT_SCENE, NextScene, settle
+from aidm.engines.scenes import (
+    NEXT_SCENE,
+    Enter,
+    Kill,
+    Leave,
+    NextScene,
+    Reveal,
+    enter,
+    kill,
+    leave,
+    reveal_hidden,
+    settle,
+)
 
 AND_AT = 4  # both dice 4+ sharpens the answer to -and
 BUT_AT = 3  # both dice 3 or under softens it to -but
 
 SRD_PACK: Slug = "srd"
 
-CHANGE_WORLD = (
-    "Apply one settled world change to match the story. Set `verb` to pick the change and fill "
-    "that verb's own fields. One call makes one change."
-)
-
 type Position = Literal["advantage", "neutral", "disadvantage"]
-
-
-class Reveal(Frozen):
-    """Make a hidden entity known when the player notices, finds, or reaches it."""
-
-    verb: Literal["reveal"]
-    entity_id: CheckedEntityId = Field(description="Exact id of an entity listed as hidden here.")
-
-
-class Enter(Frozen):
-    """Bring a cast member into the current scene."""
-
-    verb: Literal["enter"]
-    entity_id: CheckedEntityId = Field(description="Exact id of a cast member not already here.")
-
-
-class Leave(Frozen):
-    """Take a cast member out of the current scene."""
-
-    verb: Literal["leave"]
-    entity_id: CheckedEntityId = Field(description="Exact id of someone here.")
 
 
 class ChangeTags(Frozen):
@@ -88,27 +84,6 @@ class Drive(Frozen):
     nemesis: str = Field(
         default="", description="Who or what stands in their way. Empty keeps the current nemesis."
     )
-
-
-class Kill(Frozen):
-    """Record that someone here has died."""
-
-    verb: Literal["kill"]
-    entity_id: CheckedEntityId = Field(description="Exact id of who here died.")
-
-
-class JoinParty(Frozen):
-    """A character here starts travelling with the player."""
-
-    verb: Literal["join_party"]
-    entity_id: CheckedEntityId = Field(description="Exact id of who is joining.")
-
-
-class LeaveParty(Frozen):
-    """A companion stops travelling with the player."""
-
-    verb: Literal["leave_party"]
-    entity_id: CheckedEntityId = Field(description="Exact id of the companion leaving.")
 
 
 # A plain alias, not `type`: the union must flatten so the discriminator sees every arm.
@@ -158,42 +133,24 @@ class RestoreLuck(Frozen):
 
 def apply_change(world: LonerWorld, change: WorldChange) -> list[Fact]:
     """Every arm settles its own deterministic consequences, so a call leaves nothing half-done."""
-    run = world.run
     match change:
         case Reveal():
-            one = world.require(change.entity_id)
-            if change.entity_id not in run.hidden:
-                raise ValueError(f"{change.entity_id!r} is not hidden here")
-            run.hidden.remove(one.id)
-            run.present.append(one.id)
-            return _reveal(world, one)
+            return reveal_hidden(world, change.entity_id)
         case Enter():
-            one = world.require(change.entity_id)
-            if one.id in run.present:
-                raise ValueError(f"{one.name} is already here")
-            if one.id in run.hidden:
-                raise ValueError(f"{one.name} is hidden here; reveal them instead")
-            run.present.append(one.id)
-            seen = world.reveal(one)
-            trace = f"{world.label(one)} arrives"
-            return [*seen, entity_fact(one, "entity_entered", trace, card=f"{one.name} arrives")]
+            return enter(world, change.entity_id)
         case Leave():
-            one = world.require_here(change.entity_id)
-            if one.id == world.player_id:
-                raise ValueError("the player is in every scene; move the story on instead")
-            run.present.remove(one.id)
-            trace = f"{world.label(one)} leaves"
-            return [entity_fact(one, "entity_left", trace, card=f"{one.name} leaves")]
+            return leave(world, change.entity_id)
         case ChangeTags():
             return _change_tags(world, world.require_alive_here(change.entity_id), change)
         case Drive():
             return _drive(world, world.require_alive_here(change.entity_id), change)
         case Kill():
-            return _kill(world, change.entity_id)
+            return kill(world, change.entity_id)
         case JoinParty():
-            return _join_party(world, change)
+            one = world.require_alive_here(change.entity_id)
+            return [*world.reveal(one), join_party(world.party, one)]
         case LeaveParty():
-            return _leave_party(world, change)
+            return [leave_party(world.party, world.require(change.entity_id))]
 
 
 def change_world(draft: Loner3eGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
@@ -298,7 +255,7 @@ def meanings(
 
 
 def conflict_prompt(world: LonerWorld, actor: LonerCharacter, opponent: LonerCharacter) -> str:
-    foe = actor if opponent.id == world.player_id else opponent
+    foe = actor if opponent.id == world.player.id else opponent
     return (
         f"The conflict with {foe.name} runs on: neither side is out of luck yet. Press the "
         "attack, try something else, or break away — what do you do?"
@@ -356,14 +313,6 @@ def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[Loner3eGame], ...]:
     )
 
 
-def _reveal(world: LonerWorld, one: LonerCharacter) -> list[Fact]:
-    """The discovery itself, distinct from the standalone `reveal` verb's card."""
-    facts = world.reveal(one)
-    if not facts:
-        raise ValueError(f"the player has already met {one.name}")
-    return [facts[0].model_copy(update={"card": _sentence(f"{one.name} discovered")})]
-
-
 def _change_tags(world: LonerWorld, one: LonerCharacter, change: ChangeTags) -> list[Fact]:
     if not change.gained and not change.lost:
         raise ValueError("change_tags needs at least one gained or lost tag")
@@ -406,42 +355,6 @@ def _drive(world: LonerWorld, one: LonerCharacter, change: Drive) -> list[Fact]:
     return [entity_fact(one, "drive_set", trace, card=card)]
 
 
-def _kill(world: LonerWorld, entity_id: EntityId) -> list[Fact]:
-    one = world.require_here(entity_id)
-    if not one.alive:
-        raise ValueError(f"{one.name} is already dead")
-    facts = world.reveal(one)
-    if one.id in world.companions:
-        world.companions.remove(one.id)
-    one.alive = False
-    trace = f"{world.label(one)} is dead"
-    facts.append(entity_fact(one, "actor_killed", trace, card=f"{one.name} is dead"))
-    return facts
-
-
-def _join_party(world: LonerWorld, change: JoinParty) -> list[Fact]:
-    one = world.require_alive_here(change.entity_id)
-    if one.id in world.companions:
-        raise ValueError(f"{one.name} already travels with the player")
-    seen = world.reveal(one)
-    world.companions.append(one.id)
-    trace = f"{world.label(one)} travels with the player"
-    return [*seen, entity_fact(one, "party_joined", trace, card=f"{one.name} joins your party")]
-
-
-def _leave_party(world: LonerWorld, change: LeaveParty) -> list[Fact]:
-    one = world.require(change.entity_id)
-    if one.id not in world.companions:
-        raise ValueError(f"{one.name} does not travel with the player")
-    world.companions.remove(one.id)
-    trace = f"{world.label(one)} no longer travels with the player"
-    return [entity_fact(one, "party_left", trace, card=f"{one.name} leaves your party")]
-
-
-def _sentence(text: str) -> str:
-    return text[:1].upper() + text[1:]
-
-
 def _absorbed(exchange: list[Fact]) -> tuple[list[Fact], tuple[str, ...]]:
     """The exchange reads as lines inside the Oracle card, so it shows no cards of its own."""
     lines = tuple(fact.card for fact in exchange if fact.told and fact.card)
@@ -454,8 +367,9 @@ def _shortfall(pool: Counter) -> int:
 
 
 def _refill(draft: Loner3eGame, side: LonerCharacter, why: str) -> list[Fact]:
-    player_id = draft.payload.world.player_id
-    return counter_fact(side, side.luck, _shortfall(side.luck), "Luck", why, player_id)
+    return counter_fact(
+        side, side.luck, _shortfall(side.luck), "Luck", why, draft.payload.world.player.id
+    )
 
 
 def _twist(
@@ -483,8 +397,7 @@ def _strike(
     harm = outcome.harm
     hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
     why = f"{striker.name} gets the better of the exchange"
-    player_id = draft.payload.world.player_id
-    facts = counter_fact(hit, hit.luck, -abs(harm), "Luck", why, player_id)
+    facts = counter_fact(hit, hit.luck, -abs(harm), "Luck", why, draft.payload.world.player.id)
     if hit.luck.current != 0:
         return facts
     draft.notes = (*draft.notes, defeat_note(hit.name))

@@ -10,7 +10,6 @@ from breathless_test_support import (
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
-from aidm.engines.breathless.world import Npc
 from aidm.engines.breathless.worldsmith import (
     HubDraft,
     ReturnDraft,
@@ -21,7 +20,7 @@ from aidm.engines.breathless.worldsmith import (
     render_worldsmith,
     scene_refusal,
 )
-from aidm.engines.core import PLAYER_ID
+from aidm.engines.core import PLAYER_ID, Person
 
 
 def _draft(**fields: object) -> SceneDraft:
@@ -44,7 +43,7 @@ def test_apply_scene_drops_the_player_from_present() -> None:
 def test_apply_scene_refuses_a_draft_cast_entry_under_player_id() -> None:
     world = small_world().payload.world
     draft = _draft(
-        cast={PLAYER_ID: Npc(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)}
+        cast={PLAYER_ID: Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)}
     )
     with pytest.raises(ValueError, match="rewrites the player"):
         apply_scene(world, draft)
@@ -65,7 +64,7 @@ def test_the_next_scene_needs_one_brought_back() -> None:
     stranger = EntityId("stranger")
     draft = _draft(
         hidden=(stranger,),
-        cast={stranger: Npc(id=stranger, name="A Stranger", brief="unknown to the world")},
+        cast={stranger: Person(id=stranger, name="A Stranger", brief="unknown to the world")},
     )
     assert scene_refusal(draft, world) == (
         "the scene needs at least one existing cast member brought back"
@@ -76,7 +75,7 @@ def test_a_dead_draft_cast_member_is_refused() -> None:
     world = small_world().payload.world
     ghost = EntityId("ghost")
     draft = _draft(
-        present=("mira",), cast={ghost: Npc(id=ghost, name="Ghost", brief="", alive=False)}
+        present=("mira",), cast={ghost: Person(id=ghost, name="Ghost", brief="", alive=False)}
     )
     assert scene_refusal(draft, world) == (
         "the scene needs cast members as the worldsmith may write them: alive: ['ghost']"
@@ -91,7 +90,7 @@ def test_a_hidden_multi_word_name_in_situation_is_refused() -> None:
         situation=told,
         present=("mira",),
         hidden=(stalker,),
-        cast={stalker: Npc(id=stalker, name="Old Man Riley", brief="")},
+        cast={stalker: Person(id=stalker, name="Old Man Riley", brief="")},
     )
     assert scene_refusal(draft, world) == (
         "the scene needs a situation that does not name what is hidden: ['Old Man Riley']"
@@ -139,7 +138,7 @@ def _return_draft(*, offers: int = 2) -> ReturnDraft:
 def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> None:
     world = hub_world().payload.world
     stranger = EntityId("stranger")
-    world.cast[stranger] = Npc(id=stranger, name="Old Man Riley", brief="", known=False)
+    world.cast[stranger] = Person(id=stranger, name="Old Man Riley", brief="", known=False)
     draft = _return_draft().model_copy(update={"debrief": "Old Man Riley saw them off with a nod."})
     assert scene_refusal(draft, world) == (
         "the scene needs a debrief that does not name what the player has not met: "
@@ -168,7 +167,7 @@ def _opening(**fields: object) -> SceneDraft:
     return _draft(
         place=HUB_PLACE,
         present=("keeper",),
-        cast={"keeper": Npc(id=EntityId("keeper"), name="Keeper", brief="Holds the camp")},
+        cast={"keeper": Person(id=EntityId("keeper"), name="Keeper", brief="Holds the camp")},
         **fields,
     )
 

@@ -62,14 +62,14 @@ def test_the_scene_world_rejects_state_it_cannot_stand_on() -> None:
     with pytest.raises(ValidationError, match="filed under"):
         _ = updated(world, cast={"someone-else": world.player.model_dump(round_trip=True)})
 
-    with pytest.raises(ValidationError, match="the player is not in the cast"):
-        _ = updated(world, player_id="nobody")
+    with pytest.raises(ValidationError, match="unknown to themselves"):
+        _ = updated(world, player=world.player.model_copy(update={"known": False}))
 
     with pytest.raises(ValidationError, match="scene names"):
         _ = _with_run(world, present=["ghost"])
 
     with pytest.raises(ValidationError, match="already met"):
-        _ = _with_run(world, present=[PLAYER_ID], hidden=[MARA])
+        _ = _with_run(world, present=[], hidden=[MARA])
 
 
 def _with_run(world: LonerWorld, **changes: object) -> LonerWorld:
@@ -80,21 +80,20 @@ def test_the_party_rules_refuse_the_dead_and_the_doubled() -> None:
     _, state = initialized()
     dead = state.draft()
     dead.payload.world.require(MARA).alive = False
-    dead.payload.world.companions.append(MARA)
+    dead.payload.world.party.append(MARA)
     with pytest.raises(ValueError, match="cannot travel with the player"):
         _ = dead.committed()
 
     twice = state.draft()
-    twice.payload.world.companions.extend((MARA, MARA))
-    with pytest.raises(ValueError, match="duplicate companions"):
+    twice.payload.world.party.extend((MARA, MARA))
+    with pytest.raises(ValueError, match="duplicate party"):
         _ = twice.committed()
 
 
 def test_a_committed_game_refuses_a_player_who_travels_with_themselves() -> None:
-    """The played id is state, not world canon, so the party rule is checked at the commit."""
     _, state = initialized()
     draft = state.draft()
-    draft.payload.world.companions.append(draft.payload.world.player_id)
+    draft.payload.world.party.append(draft.payload.world.player.id)
     with pytest.raises(ValueError, match="cannot travel with themselves"):
         _ = draft.committed()
 

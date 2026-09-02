@@ -12,8 +12,8 @@ from aidm.core.views import (
 from aidm.engines.hub import board_panel, jobs_panel, master_tail, question_heading
 from aidm.engines.loner3e.creation import Pack
 from aidm.engines.loner3e.tools import meanings
-from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter, LonerWorld, player_over
-from aidm.engines.scenes import scene_rows, trail_panel
+from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter, LonerWorld
+from aidm.engines.scenes import player_over, scene_rows, trail_panel
 
 
 def subject_of(one: LonerCharacter) -> Subject:
@@ -24,7 +24,7 @@ def entity_line(world: LonerWorld, one: LonerCharacter, *, detail: str = "") -> 
     parts = [f"- {one.name}[{one.id}] — {one.brief}"]
     if sheet := "; ".join(f"{label.lower()}: {value}" for label, value in one.rows()):
         parts.append(f"  {sheet}")
-    if one.id in world.companions:
+    if one.id in world.party:
         parts.append("  travels with the player")
     if detail:
         parts.append(f"  {detail}")
@@ -62,11 +62,11 @@ def player_view(state: Loner3eGame) -> PlayerView:
         PanelRow(label=f"{player.name} (you)", detail=player.brief, icon_id=player.id),
         *(_entity_row(one) for one in world.here() if one.known and one.id != player.id),
     ]
-    if world.companions:
+    if world.party:
         here_rows.append(
             PanelRow(
                 label="Travelling with",
-                detail=", ".join(world.require(one).name for one in world.companions),
+                detail=", ".join(world.require(one).name for one in world.party),
             )
         )
     return PlayerView(

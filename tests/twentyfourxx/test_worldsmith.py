@@ -15,9 +15,8 @@ from twentyfourxx_test_support import (
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.facts import Fact
 from aidm.core.model import CheckAnswer
-from aidm.engines.core import PLAYER_ID
+from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.hub import GO_HOME, TAKE_JOB
-from aidm.engines.twentyfourxx.world import Npc
 from aidm.engines.twentyfourxx.worldsmith import (
     BOARD_GUIDANCE,
     JobDraft,
@@ -69,7 +68,7 @@ def test_apply_scene_lands_new_cast() -> None:
         world,
         _draft(
             present=("kestrel", "stranger"),
-            cast={stranger: Npc(id=stranger, name="A Stranger", brief="unknown to the world")},
+            cast={stranger: Person(id=stranger, name="A Stranger", brief="unknown to the world")},
         ),
     )
     assert stranger in world.cast
@@ -78,7 +77,7 @@ def test_apply_scene_lands_new_cast() -> None:
 def test_apply_scene_refuses_a_draft_cast_entry_under_player_id() -> None:
     world = small_world().payload.world
     draft = _draft(
-        cast={PLAYER_ID: Npc(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)}
+        cast={PLAYER_ID: Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)}
     )
     with pytest.raises(ValueError, match="rewrites the player"):
         apply_scene(world, draft)
@@ -88,7 +87,7 @@ def test_apply_scene_refuses_rewriting_an_existing_cast_member() -> None:
     world = small_world().payload.world
     draft = _draft(
         present=("kestrel",),
-        cast={KESTREL: Npc(id=KESTREL, name="Kestrel", brief="rewritten")},
+        cast={KESTREL: Person(id=KESTREL, name="Kestrel", brief="rewritten")},
     )
     with pytest.raises(ValueError, match="already in the cast"):
         apply_scene(world, draft)
@@ -100,7 +99,7 @@ def test_apply_scene_refuses_a_misfiled_cast_entry() -> None:
     other = EntityId("other")
     draft = _draft(
         present=("stranger",),
-        cast={stranger: Npc(id=other, name="A Stranger", brief="filed wrongly")},
+        cast={stranger: Person(id=other, name="A Stranger", brief="filed wrongly")},
     )
     with pytest.raises(ValueError, match="is filed under"):
         apply_scene(world, draft)
@@ -122,12 +121,17 @@ def test_the_opening_needs_a_cast_member() -> None:
     assert scene_refusal(_draft()) == "the scene needs at least one cast member besides the player"
 
 
+def test_the_opening_refuses_a_present_name_that_exists_nowhere() -> None:
+    draft = _draft(present=("nobody",))
+    assert scene_refusal(draft) == "the scene needs ids that exist; these name nobody: ['nobody']"
+
+
 def test_the_next_scene_needs_one_brought_back() -> None:
     world = small_world().payload.world
     stranger = EntityId("stranger")
     draft = _draft(
         hidden=(stranger,),
-        cast={stranger: Npc(id=stranger, name="A Stranger", brief="unknown to the world")},
+        cast={stranger: Person(id=stranger, name="A Stranger", brief="unknown to the world")},
     )
     assert scene_refusal(draft, world) == (
         "the scene needs at least one existing cast member brought back"
@@ -138,7 +142,7 @@ def test_a_dead_draft_cast_member_is_refused() -> None:
     world = small_world().payload.world
     ghost = EntityId("ghost")
     draft = _draft(
-        present=("kestrel",), cast={ghost: Npc(id=ghost, name="Ghost", brief="", alive=False)}
+        present=("kestrel",), cast={ghost: Person(id=ghost, name="Ghost", brief="", alive=False)}
     )
     assert scene_refusal(draft, world) == (
         "the scene needs cast members as the worldsmith may write them: alive: ['ghost']"
@@ -153,7 +157,7 @@ def test_a_hidden_multi_word_name_in_situation_is_refused() -> None:
         situation=told,
         present=("kestrel",),
         hidden=(stalker,),
-        cast={stalker: Npc(id=stalker, name="Old Man Riley", brief="")},
+        cast={stalker: Person(id=stalker, name="Old Man Riley", brief="")},
     )
     assert scene_refusal(draft, world) == (
         "the scene needs a situation that does not name what is hidden: ['Old Man Riley']"
@@ -192,7 +196,7 @@ def test_opening_canon_marks_present_known() -> None:
     stranger = EntityId("stranger")
     draft = _draft(
         present=(stranger,),
-        cast={stranger: Npc(id=stranger, name="A Stranger", brief="new to the world")},
+        cast={stranger: Person(id=stranger, name="A Stranger", brief="new to the world")},
     )
     canon = opening_canon(draft, source="")
     assert canon.cast[stranger].known is True
@@ -207,7 +211,7 @@ def test_build_scenario_stamps_the_engine_id() -> None:
     stranger = EntityId("stranger")
     draft = _draft(
         present=(stranger,),
-        cast={stranger: Npc(id=stranger, name="A Stranger", brief="new to the world")},
+        cast={stranger: Person(id=stranger, name="A Stranger", brief="new to the world")},
     )
     scenario = build_scenario("Loading Bay", "", "", (), draft, source="", kind="one-shot")
     assert scenario.engine == EngineId("twentyfourxx")
@@ -264,7 +268,7 @@ async def test_write_next_picks_the_draft_the_moment_calls_for() -> None:
 def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> None:
     world = hub_world().payload.world
     stranger = EntityId("stranger")
-    world.cast[stranger] = Npc(id=stranger, name="Old Man Riley", brief="", known=False)
+    world.cast[stranger] = Person(id=stranger, name="Old Man Riley", brief="", known=False)
     draft = _return_draft().model_copy(update={"debrief": "Old Man Riley saw them off with a nod."})
     assert scene_refusal(draft, world) == (
         "the scene needs a debrief that does not name what the player has not met: "

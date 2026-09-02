@@ -11,13 +11,10 @@ from aidm.engines.breathless.creation import Pack, guidance
 from aidm.engines.breathless.views import entity_line
 from aidm.engines.breathless.world import (
     BreathlessGame,
-    BreathlessScenario,
     BreathlessScenarioFile,
     BreathlessWorld,
-    Npc,
-    SceneCanon,
 )
-from aidm.engines.core import PLAYER_ID, Entity
+from aidm.engines.core import Entity, Person
 from aidm.engines.hub import (
     BOARD_MAX,
     BOARD_MIN,
@@ -32,7 +29,9 @@ from aidm.engines.hub import (
 from aidm.engines.scenes import (
     MIN_SITUATION,
     Scene,
+    SceneCanon,
     SceneRun,
+    SceneScenario,
     cast_unmet,
     hub_rows,
     hub_unmet,
@@ -58,7 +57,7 @@ class SceneDraft(Frozen):
     present: tuple[str, ...] = ()
     hidden: tuple[str, ...] = ()
     secret: str = ""
-    cast: dict[EntityId, Npc] = Field(default_factory=dict)
+    cast: dict[EntityId, Person] = Field(default_factory=dict)
 
 
 class JobDraft(SceneDraft):
@@ -88,7 +87,7 @@ def scene_refusal(draft: SceneDraft, world: BreathlessWorld | None = None) -> st
     return None if not missing else "the scene needs " + "; ".join(missing)
 
 
-def opening_canon(draft: SceneDraft, source: str) -> SceneCanon:
+def opening_canon(draft: SceneDraft, source: str) -> SceneCanon[Person]:
     cast = draft.cast
     present = resolve_ids(draft.present, cast, "present")
     for one in present:
@@ -108,16 +107,18 @@ def opening_canon(draft: SceneDraft, source: str) -> SceneCanon:
 def apply_scene(world: BreathlessWorld, draft: SceneDraft) -> None:
     """Every refusal lands before the first write: a rejected scene leaves the world alone."""
     for one, held in draft.cast.items():
-        if one == PLAYER_ID:
+        if one == world.player.id:
             raise ValueError("the scene rewrites the player")
         if one in world.cast:
             raise ValueError(f"the scene rewrites {one!r}, who is already in the cast")
         if one != held.id:
             raise ValueError(f"entity {held.id!r} is filed under {one!r}")
-    cast: dict[EntityId, Npc] = {**world.cast, **draft.cast}
-    known: Mapping[EntityId, Entity] = {PLAYER_ID: world.player, **cast}
-    present = [one for one in resolve_ids(draft.present, known, "present") if one != PLAYER_ID]
-    hidden = [one for one in resolve_ids(draft.hidden, known, "hidden") if one != PLAYER_ID]
+    cast: dict[EntityId, Person] = {**world.cast, **draft.cast}
+    known: Mapping[EntityId, Entity] = {world.player.id: world.player, **cast}
+    present = [
+        one for one in resolve_ids(draft.present, known, "present") if one != world.player.id
+    ]
+    hidden = [one for one in resolve_ids(draft.hidden, known, "hidden") if one != world.player.id]
     if overlap := sorted(set(present) & set(hidden)):
         raise ValueError(f"the scene lists {overlap} as both present and hidden")
     if met := sorted(one for one in hidden if cast[one].known):
@@ -214,7 +215,7 @@ def build_scenario(
         engine=EngineId("breathless"),
         packs=packs,
         art_style=art_style,
-        payload=BreathlessScenario(world=opening_canon(written, source)),
+        payload=SceneScenario(world=opening_canon(written, source)),
     )
 
 
@@ -236,13 +237,15 @@ def _scene_unmet(draft: SceneDraft, world: BreathlessWorld | None = None) -> lis
     """No world means the opening: nobody exists yet, and no id can be the player's."""
     held = {} if world is None else world.cast
     known: Mapping[EntityId, Entity] = (
-        dict(draft.cast) if world is None else {PLAYER_ID: world.player, **held, **draft.cast}
+        dict(draft.cast) if world is None else {world.player.id: world.player, **held, **draft.cast}
     )
     others = [
-        one for one in (*draft.present, *draft.hidden) if resolved_id(one, known) != PLAYER_ID
+        one
+        for one in (*draft.present, *draft.hidden)
+        if world is None or resolved_id(one, known) != world.player.id
     ]
     unmet = cast_unmet(others, draft.hidden, draft.situation, known, held, opening=world is None)
-    if broken := sorted(eid for eid, one in draft.cast.items() if not one.alive):
+    if broken := sorted(eid for eid, one in draft.cast.items() if one.unwritten()):
         unmet.append(f"cast members as the worldsmith may write them: alive: {broken}")
     unmet.extend(
         hub_unmet(

@@ -20,10 +20,10 @@ from aidm.engines.breathless.tools import (
 )
 from aidm.engines.breathless.tools import TestLuck as LuckTest
 from aidm.engines.breathless.tools import test_luck as roll_luck
-from aidm.engines.breathless.world import Item, player_over, stepped
+from aidm.engines.breathless.world import Item, stepped
 from aidm.engines.core import PLAYER_ID, load_packs
 from aidm.engines.hub import JOB_DONE
-from aidm.engines.scenes import NextScene
+from aidm.engines.scenes import NextScene, player_over
 
 PACKS_DIR = Path(__file__).parents[2] / "src" / "aidm" / "engines" / "breathless" / "packs"
 PACKS = load_packs((PACKS_DIR,), Pack)

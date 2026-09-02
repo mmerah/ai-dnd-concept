@@ -10,14 +10,11 @@ from aidm.engines.breathless.world import (
     BreathlessCharacter,
     BreathlessCharacterFile,
     BreathlessGame,
-    BreathlessScenario,
     BreathlessScenarioFile,
-    Npc,
-    SceneCanon,
 )
-from aidm.engines.core import PLAYER_ID, AnyEngine
+from aidm.engines.core import PLAYER_ID, AnyEngine, Person
 from aidm.engines.hub import Offer
-from aidm.engines.scenes import Scene
+from aidm.engines.scenes import Scene, SceneCanon, SceneScenario
 
 FIRE_AXE = EntityId("fire-axe")
 
@@ -76,12 +73,12 @@ def test_restored_round_trips() -> None:
 
 
 def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
-    decoy = Npc(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
+    decoy = Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
     scenario = BreathlessScenarioFile(
         meta=ScenarioMeta(title="Test", premise="A test scenario."),
         engine=EngineId("breathless"),
         packs=(SRD_PACK,),
-        payload=BreathlessScenario(
+        payload=SceneScenario(
             world=SceneCanon(
                 cast={PLAYER_ID: decoy},
                 opening=Scene(

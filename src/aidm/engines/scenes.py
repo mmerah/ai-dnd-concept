@@ -1,15 +1,28 @@
 import json
-from collections.abc import Iterable, Mapping, Sequence
-from typing import Self
+from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
+from copy import deepcopy
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Slug, require_unique
 from aidm.core.facts import Fact, cards
+from aidm.core.model import Game
 from aidm.core.play import Exchange, SpokenLine
 from aidm.core.tools import schema_of
 from aidm.core.views import Panel, PanelRow, Rows, sections
-from aidm.engines.core import Entity, told_tail
+from aidm.engines.core import (
+    PLAYER_ID,
+    Entity,
+    Person,
+    check_filing,
+    check_party,
+    entity_fact,
+    labeled,
+    reveal,
+    sentence,
+    told_tail,
+)
 from aidm.engines.hub import (
     HOME_ROW,
     HUB_ROW,
@@ -19,6 +32,7 @@ from aidm.engines.hub import (
     Offer,
     Stop,
     check_board,
+    check_kind,
     closed_jobs,
     heading,
     hub_sections,
@@ -92,17 +106,56 @@ class NextScene(Frozen):
     )
 
 
-class SceneWorld(Mutable):
-    """What the three scene worlds share; each engine adds its cast, its player and its checks."""
+class SceneCanon[C: Person](Mutable):
+    """A scenario as authored: its opening scene and cast, with no player in it yet."""
 
-    runs: list[SceneRun] = Field(min_length=1)
+    cast: dict[EntityId, C] = Field(default_factory=dict)
+    opening: Scene
+    present: list[CheckedEntityId] = Field(default_factory=list)
+    hidden: list[CheckedEntityId] = Field(default_factory=list)
     source: str = ""
     hub: Slug | None = None
     board: tuple[Offer, ...] = ()
 
     @model_validator(mode="after")
-    def _hub_consistent(self) -> Self:
+    def _playable_canon(self) -> Self:
+        check_filing(self.cast)
+        check_named(self.present, self.hidden, self.cast)
+        check_hub(self.hub, self.board, (SceneRun(scene=self.opening),))
+        return self
+
+
+class SceneScenario[C: Person](Mutable):
+    world: SceneCanon[C]
+
+
+class SceneWorld[C: Person, P: Person](Mutable):
+    """The world as a sequence of scenes: the player is a sheet, never a cast entry."""
+
+    runs: list[SceneRun] = Field(min_length=1)
+    source: str = ""
+    hub: Slug | None = None
+    board: tuple[Offer, ...] = ()
+    cast: dict[EntityId, C] = Field(default_factory=dict)
+    player: P
+    party: list[EntityId] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Self:
         check_hub(self.hub, self.board, self.runs)
+        check_filing(self.cast)
+        check_named(self.run.present, self.run.hidden, self.cast)
+        if not self.player.known:
+            raise ValueError("the player is unknown to themselves")
+        if self.player.id in self.cast:
+            raise ValueError("the player is in the cast")
+        if self.player.id in (*self.run.present, *self.run.hidden):
+            raise ValueError("the player is in every scene and is never listed in it")
+        if self.player.id in self.party:
+            raise ValueError("the player cannot travel with themselves")
+        check_party(self.party, self.cast)
+        if left := sorted(set(self.party) - set(self.run.present)):
+            raise ValueError(f"the party is in every scene; {left} are not in this one")
         return self
 
     @property
@@ -156,8 +209,198 @@ class SceneWorld(Mutable):
                 return f"last seen in: {run.scene.title}"
         return ""
 
+    def members(self) -> list[C]:
+        return [self.cast[one] for one in self.party]
 
-def settle(world: SceneWorld, job_done: bool) -> tuple[Fact, ...]:
+    def require(self, entity_id: EntityId) -> C | P:
+        if entity_id == self.player.id:
+            return self.player
+        one = self.cast.get(entity_id)
+        if one is None:
+            raise ValueError(f"unknown id {entity_id!r}. Use only ids you were shown.")
+        return one
+
+    def require_here(self, entity_id: EntityId) -> C | P:
+        one = self.require(entity_id)
+        if one.id == self.player.id:
+            return one
+        if one.id not in self.run.present:
+            raise ValueError(
+                f"{one.name} is not here with the player, so nothing can happen to them"
+            )
+        return one
+
+    def require_alive_here(self, entity_id: EntityId) -> C | P:
+        one = self.require(entity_id)
+        if not one.alive:
+            raise ValueError(f"{one.name} is dead; they take no further part.")
+        if one.id == self.player.id:
+            return one
+        if one.id not in self.run.present:
+            raise ValueError(
+                f"{entity_id!r} is not here with the player. "
+                "Bring them here first, or act on who is here."
+            )
+        return one
+
+    def here(self) -> Iterator[C | P]:
+        yield self.player
+        for entity_id in self.run.present:
+            yield self.cast[entity_id]
+
+    def label(self, entity: Person) -> str:
+        return labeled(entity, self.player.id)
+
+    def reveal(self, entity: Person) -> list[Fact]:
+        return reveal(entity, self.player.id)
+
+
+class SceneState[C: Person, P: Person](Mutable):
+    world: SceneWorld[C, P]
+
+
+class Reveal(Frozen):
+    """Make a hidden entity known when the player notices, finds, or reaches it."""
+
+    verb: Literal["reveal"]
+    entity_id: CheckedEntityId = Field(description="Exact id of an entity listed as hidden here.")
+
+
+class Enter(Frozen):
+    """Bring a cast member into the current scene."""
+
+    verb: Literal["enter"]
+    entity_id: CheckedEntityId = Field(description="Exact id of a cast member not already here.")
+
+
+class Leave(Frozen):
+    """Take a cast member out of the current scene."""
+
+    verb: Literal["leave"]
+    entity_id: CheckedEntityId = Field(description="Exact id of someone here.")
+
+
+class Kill(Frozen):
+    """Record that someone here has died."""
+
+    verb: Literal["kill"]
+    entity_id: CheckedEntityId = Field(description="Exact id of who here died.")
+
+
+def new_world[C: Person, P: Person](canon: SceneCanon[C], player: P) -> SceneWorld[C, P]:
+    """The player is added by code and never authored, so no scenario can claim their id."""
+    canon = deepcopy(canon)
+    if PLAYER_ID in canon.cast:
+        raise ValueError(f"an entity claims the reserved player id {PLAYER_ID!r}")
+    return SceneWorld(
+        cast=canon.cast,
+        player=player,
+        runs=[
+            SceneRun(scene=canon.opening, present=list(canon.present), hidden=list(canon.hidden))
+        ],
+        source=canon.source,
+        hub=canon.hub,
+        board=canon.board,
+    )
+
+
+def reveal_hidden[C: Person, P: Person](world: SceneWorld[C, P], entity_id: EntityId) -> list[Fact]:
+    """The discovery itself, distinct from what `enter` tells about someone walking in."""
+    one = world.require(entity_id)
+    if entity_id not in world.run.hidden:
+        raise ValueError(f"{entity_id!r} is not hidden here")
+    world.run.hidden.remove(one.id)
+    world.run.present.append(one.id)
+    facts = world.reveal(one)
+    if not facts:
+        raise ValueError(f"the player has already met {one.name}")
+    return [facts[0].model_copy(update={"card": sentence(f"{one.name} discovered")})]
+
+
+def enter[C: Person, P: Person](world: SceneWorld[C, P], entity_id: EntityId) -> list[Fact]:
+    if entity_id == world.player.id:
+        raise ValueError("the player is in every scene; move the story on instead")
+    one = world.require(entity_id)
+    if one.id in world.run.present:
+        raise ValueError(f"{one.name} is already here")
+    if one.id in world.run.hidden:
+        raise ValueError(f"{one.name} is hidden here; reveal them instead")
+    world.run.present.append(one.id)
+    trace = f"{world.label(one)} arrives"
+    return [
+        *world.reveal(one),
+        entity_fact(one, "entity_entered", trace, card=f"{one.name} arrives"),
+    ]
+
+
+def leave[C: Person, P: Person](world: SceneWorld[C, P], entity_id: EntityId) -> list[Fact]:
+    if entity_id == world.player.id:
+        raise ValueError("the player is in every scene; move the story on instead")
+    one = world.require_here(entity_id)
+    if one.id in world.party:
+        raise ValueError(f"{one.name} travels with the player and leaves through `leave_party`")
+    world.run.present.remove(one.id)
+    trace = f"{world.label(one)} leaves"
+    return [entity_fact(one, "entity_left", trace, card=f"{one.name} leaves")]
+
+
+def kill[C: Person, P: Person](world: SceneWorld[C, P], entity_id: EntityId) -> list[Fact]:
+    one = world.require_here(entity_id)
+    if not one.alive:
+        raise ValueError(f"{one.name} is already dead")
+    facts = world.reveal(one)
+    if one.id in world.party:
+        world.party.remove(one.id)
+    one.alive = False
+    card = "You are dead" if one.id == world.player.id else f"{one.name} is dead"
+    facts.append(entity_fact(one, "actor_killed", f"{world.label(one)} is dead", card=card))
+    return facts
+
+
+def check_game[S: SceneState[Any, Any]](packs: Collection[str], state: Game[S]) -> None:
+    if not state.packs:
+        raise ValueError(f"a {state.engine!r} game needs at least one table set")
+    if missing := sorted(set(state.packs) - set(packs)):
+        raise ValueError(f"the game names packs not installed: {missing}")
+    check_kind(state.scenario.kind, state.payload.world.hub)
+
+
+def known[S: SceneState[Any, Any]](state: Game[S], entity_id: EntityId) -> bool | None:
+    world = state.payload.world
+    if entity_id == world.player.id:
+        return True
+    one = world.cast.get(entity_id)
+    return None if one is None else one.known
+
+
+def record[S: SceneState[Any, Any]](
+    state: Game[S], prompt: str, lines: tuple[SpokenLine, ...], facts: Sequence[Fact]
+) -> tuple[str, ...]:
+    world = state.payload.world
+    return record_exchange(
+        world,
+        prompt,
+        lines,
+        facts,
+        "" if state.pending is None else state.pending.prompt,
+        someone_dead=any(not one.alive for one in world.here()),
+    )
+
+
+def history[S: SceneState[Any, Any]](state: Game[S]) -> tuple[Exchange, ...]:
+    return state.payload.world.exchanges()
+
+
+def way_open[S: SceneState[Any, Any]](state: Game[S]) -> bool:
+    world = state.payload.world
+    return world.run.settled or world.at_hub
+
+
+def player_over[S: SceneState[Any, Any]](state: Game[S]) -> str | None:
+    return "You died." if not state.payload.world.player.alive else None
+
+
+def settle[C: Person, P: Person](world: SceneWorld[C, P], job_done: bool) -> tuple[Fact, ...]:
     if world.run.settled:
         raise ValueError("this scene is already settled; the player has the way on")
     if job_done and (world.hub is None or world.at_hub):
@@ -167,8 +410,8 @@ def settle(world: SceneWorld, job_done: bool) -> tuple[Fact, ...]:
     return (SCENE_SETTLED, JOB_DONE) if job_done else (SCENE_SETTLED,)
 
 
-def record_exchange(
-    world: SceneWorld,
+def record_exchange[C: Person, P: Person](
+    world: SceneWorld[C, P],
     prompt: str,
     lines: tuple[SpokenLine, ...],
     facts: Sequence[Fact],
@@ -219,7 +462,7 @@ def worldsmith_prompt(
     )
 
 
-def hub_rows(world: SceneWorld, *, returning: bool) -> Rows:
+def hub_rows[C: Person, P: Person](world: SceneWorld[C, P], *, returning: bool) -> Rows:
     if world.hub is None:
         return ()
     return hub_sections(
@@ -361,7 +604,7 @@ def check_hub(hub: Slug | None, board: Sequence[Offer], runs: Sequence[SceneRun]
             raise ValueError(f"run {index} is a hub run right after a hub run")
 
 
-def scene_rows(world: SceneWorld) -> tuple[PanelRow, ...]:
+def scene_rows[C: Person, P: Person](world: SceneWorld[C, P]) -> tuple[PanelRow, ...]:
     rows = [PanelRow(label=world.current.question, detail="")]
     if world.at_hub:
         rows.append(HUB_ROW)

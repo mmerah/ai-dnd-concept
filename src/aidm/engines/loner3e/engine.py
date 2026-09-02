@@ -1,13 +1,10 @@
-from collections.abc import Mapping
-from copy import deepcopy
 from functools import partial
 from pathlib import Path
 
 from aidm.core.entities import EngineId
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, AnyScenario
-from aidm.engines.core import PLAYER_ID, Authoring, Engine, Transition, load_packs
-from aidm.engines.hub import check_kind
+from aidm.engines.core import Authoring, Engine, Transition, load_packs
 from aidm.engines.loner3e.creation import (
     Pack,
     create_character,
@@ -22,13 +19,7 @@ from aidm.engines.loner3e.world import (
     Loner3eGame,
     Loner3eScenarioFile,
     Loner3eState,
-    LonerWorld,
-    history,
-    known,
     player_character,
-    player_over,
-    record,
-    way_open,
 )
 from aidm.engines.loner3e.worldsmith import (
     build_scenario,
@@ -37,43 +28,26 @@ from aidm.engines.loner3e.worldsmith import (
     render_opening,
     write_next,
 )
-from aidm.engines.scenes import SceneRun, arrival_brief
+from aidm.engines.scenes import (
+    arrival_brief,
+    check_game,
+    history,
+    known,
+    new_world,
+    player_over,
+    record,
+    way_open,
+)
 
 ENGINE_DIR = Path(__file__).parent
 
 
 def new_game(scenario: AnyScenario, character: AnyCharacter) -> Loner3eState:
-    """The player is added by code and never authored, so no scenario can claim their id."""
     if not isinstance(scenario, Loner3eScenarioFile):
         raise ValueError("Loner 3E received an incompatible scenario")
     if not isinstance(character, Loner3eCharacterFile):
         raise ValueError("Loner 3E received an incompatible character")
-    canon = deepcopy(scenario.payload.world)
-    if PLAYER_ID in canon.cast:
-        raise ValueError(f"an entity claims the reserved player id {PLAYER_ID!r}")
-    world = LonerWorld(
-        cast={**canon.cast, PLAYER_ID: player_character(character)},
-        runs=[
-            SceneRun(
-                scene=canon.opening,
-                present=[PLAYER_ID, *canon.present],
-                hidden=list(canon.hidden),
-            )
-        ],
-        player_id=PLAYER_ID,
-        source=canon.source,
-        hub=canon.hub,
-        board=canon.board,
-    )
-    return Loner3eState(world=world)
-
-
-def check_game(packs: Mapping[str, Pack], state: Loner3eGame) -> None:
-    if not state.packs:
-        raise ValueError("a Loner 3E game needs at least one table set")
-    if missing := sorted(set(state.packs) - set(packs)):
-        raise ValueError(f"the game names packs not installed: {missing}")
-    check_kind(state.scenario.kind, state.payload.world.hub)
+    return Loner3eState(world=new_world(scenario.payload.world, player_character(character)))
 
 
 def build(user_packs: Path) -> Engine[Loner3eGame]:

@@ -2,7 +2,7 @@ from breathless_test_support import DAX, small_world
 
 from aidm.core.views import PanelRow
 from aidm.engines.breathless.views import entity_line, master_sections, narrator_view, player_view
-from aidm.engines.breathless.world import Npc
+from aidm.engines.core import Person
 
 
 def test_the_player_views_backpack_panel_lists_items_and_the_med_kit() -> None:
@@ -39,6 +39,6 @@ def test_narrator_view_lists_only_known_entities_player_first() -> None:
 
 
 def test_entity_line_marks_a_dead_one_after_the_brief() -> None:
-    dead = Npc(id=DAX, name="Dax", brief="A looter", known=True, alive=False)
+    dead = Person(id=DAX, name="Dax", brief="A looter", known=True, alive=False)
     line = entity_line(dead)
     assert line.startswith("- Dax[dax] — A looter (dead)")

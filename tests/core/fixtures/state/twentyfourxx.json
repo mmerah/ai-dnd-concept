@@ -70,6 +70,7 @@
         "name": "Kael",
         "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
         "known": true,
+        "alive": true,
         "specialty": "Sneak",
         "origin": "Human",
         "traits": [],
@@ -99,9 +100,9 @@
             "broken_times": 0
           }
         },
-        "hindrances": [],
-        "alive": true
-      }
+        "hindrances": []
+      },
+      "party": []
     }
   }
 }

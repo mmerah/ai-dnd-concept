@@ -7,6 +7,7 @@ from aidm.core.entities import EngineId, EntityId, Frozen, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyScenario, ScenarioKind, ScenarioMeta, WorldsmithAnswer
+from aidm.engines.core import Person
 from aidm.engines.hub import (
     BOARD_MAX,
     BOARD_MIN,
@@ -22,18 +23,17 @@ from aidm.engines.loner3e.creation import Pack, guidance
 from aidm.engines.loner3e.tools import close_conflicts
 from aidm.engines.loner3e.views import entity_line
 from aidm.engines.loner3e.world import (
-    LUCK_MAX,
     Loner3eGame,
-    Loner3eScenario,
     Loner3eScenarioFile,
     LonerCharacter,
     LonerWorld,
-    SceneCanon,
 )
 from aidm.engines.scenes import (
     MIN_SITUATION,
     Scene,
+    SceneCanon,
     SceneRun,
+    SceneScenario,
     cast_unmet,
     hub_rows,
     hub_unmet,
@@ -95,7 +95,7 @@ def scene_refusal(draft: SceneDraft, world: LonerWorld | None = None) -> str | N
     return None if not missing else "the scene needs " + "; ".join(missing)
 
 
-def opening_canon(draft: SceneDraft, source: str) -> SceneCanon:
+def opening_canon(draft: SceneDraft, source: str) -> SceneCanon[LonerCharacter]:
     cast = draft.cast
     present = resolve_ids(draft.present, cast, "present")
     for one in present:
@@ -115,26 +115,28 @@ def opening_canon(draft: SceneDraft, source: str) -> SceneCanon:
 def apply_scene(world: LonerWorld, draft: SceneDraft) -> None:
     """Every refusal lands before the first write: a rejected scene leaves the world alone."""
     for one, held in draft.cast.items():
+        if one == world.player.id:
+            raise ValueError("the scene rewrites the player")
         if one in world.cast:
             raise ValueError(f"the scene rewrites {one!r}, who is already in the cast")
         if one != held.id:
             raise ValueError(f"entity {held.id!r} is filed under {one!r}")
     cast: dict[EntityId, LonerCharacter] = {**world.cast, **draft.cast}
-    # The player and their companions are in every scene; naming them is not how they get there.
-    followers = [world.player_id, *world.companions]
-    present = [one for one in resolve_ids(draft.present, cast, "present") if one not in followers]
-    hidden = [one for one in resolve_ids(draft.hidden, cast, "hidden") if one not in followers]
+    known: Mapping[EntityId, Person] = {world.player.id: world.player, **cast}
+    # The player and their party are in every scene; naming them is not how they get there.
+    followers = [world.player.id, *world.party]
+    present = [one for one in resolve_ids(draft.present, known, "present") if one not in followers]
+    hidden = [one for one in resolve_ids(draft.hidden, known, "hidden") if one not in followers]
     if overlap := sorted(set(present) & set(hidden)):
         raise ValueError(f"the scene lists {overlap} as both present and hidden")
     if met := sorted(one for one in hidden if cast[one].known):
         raise ValueError(f"the scene hides {met}, whom the player has already met")
-    kept = [one for one in followers if one not in present and one not in hidden]
     finished = world.job_done  # the master's verdict on the job the return is closing
     world.cast = cast
     for one in present:
         cast[one].known = True
     world.runs.append(
-        SceneRun(scene=_scene(draft, finished), present=[*kept, *present], hidden=hidden)
+        SceneRun(scene=_scene(draft, finished), present=[*world.party, *present], hidden=hidden)
     )
 
 
@@ -161,7 +163,7 @@ def install_scene(state: Loner3eGame, written: BaseModel) -> tuple[Fact, ...]:
     closed = close_conflicts(state)
     world = state.payload.world
     apply_scene(world, written.model_copy(deep=True))
-    came = [world.require(one).name for one in world.companions]
+    came = [world.require(one).name for one in world.party]
     trace = f"the story moves to {written.title}"
     if came:
         trace += f", and {', '.join(came)} travels there with the player"
@@ -181,7 +183,8 @@ def render_worldsmith(
 ) -> str:
     returning = issubclass(answer, ReturnDraft)
     cast = "\n".join(
-        entity_line(world, one, detail=world.last_seen(one.id)) for one in world.cast.values()
+        entity_line(world, one, detail=world.last_seen(one.id))
+        for one in (world.player, *world.cast.values())
     )
     return worldsmith_prompt(
         WORLDSMITH,
@@ -227,7 +230,7 @@ def build_scenario(
         engine=EngineId("loner3e"),
         packs=packs,
         art_style=art_style,
-        payload=Loner3eScenario(world=opening_canon(written, source)),
+        payload=SceneScenario(world=opening_canon(written, source)),
     )
 
 
@@ -248,17 +251,16 @@ def _scene(draft: SceneDraft, finished: bool) -> Scene:
 def _scene_unmet(draft: SceneDraft, world: LonerWorld | None = None) -> list[str]:
     """No world means the opening: nobody exists yet, and no id can be the player's."""
     held = {} if world is None else world.cast
-    player_id = None if world is None else world.player_id
-    known = {**held, **draft.cast}
+    known: Mapping[EntityId, Person] = (
+        dict(draft.cast) if world is None else {world.player.id: world.player, **held, **draft.cast}
+    )
     others = [
         one
         for one in (*draft.present, *draft.hidden)
-        if player_id is None or resolved_id(one, known) != player_id
+        if world is None or resolved_id(one, known) != world.player.id
     ]
     unmet = cast_unmet(others, draft.hidden, draft.situation, known, held, opening=world is None)
-    if broken := sorted(
-        eid for eid, one in draft.cast.items() if not one.alive or one.luck.current != LUCK_MAX
-    ):
+    if broken := sorted(eid for eid, one in draft.cast.items() if one.unwritten()):
         unmet.append(f"cast members as the worldsmith may write them: alive, full luck: {broken}")
     unmet.extend(
         hub_unmet(

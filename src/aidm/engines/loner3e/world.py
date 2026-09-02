@@ -1,24 +1,13 @@
-from collections.abc import Iterator, Sequence
 from functools import partial
-from typing import Literal, Self
+from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field
 
-from aidm.core.entities import CheckedEntityId, EntityId, Mutable, Slug, require_unique
-from aidm.core.facts import Fact
+from aidm.core.entities import Mutable
 from aidm.core.model import Character, Game, Scenario
-from aidm.core.play import Exchange, SpokenLine
 from aidm.core.views import Rows
-from aidm.engines.core import PLAYER_ID, Counter, check_filing, labeled, pool, reveal
-from aidm.engines.hub import Offer
-from aidm.engines.scenes import (
-    Scene,
-    SceneRun,
-    SceneWorld,
-    check_hub,
-    check_named,
-    record_exchange,
-)
+from aidm.engines.core import PLAYER_ID, Counter, Person, pool
+from aidm.engines.scenes import SceneScenario, SceneState, SceneWorld
 
 LUCK_MAX = 6
 DIE_FACE = 6  # every roll in the game is one d6, and every table is six rows
@@ -27,13 +16,9 @@ TIES_PER_TWIST = 3
 TagKind = Literal["skill", "frailty", "gear", "condition"]
 
 
-class LonerCharacter(Mutable):
+class LonerCharacter(Person):
     """SRD "Everything is a Character": a person, an object, a vehicle or a curse alike."""
 
-    id: CheckedEntityId
-    name: str
-    brief: str
-    known: bool = False
     concept: str = ""
     skills: tuple[str, ...] = ()
     frailties: tuple[str, ...] = ()
@@ -44,7 +29,6 @@ class LonerCharacter(Mutable):
     motive: str = ""
     nemesis: str = ""
     luck: Counter = Field(default_factory=partial(Counter, current=LUCK_MAX, maximum=LUCK_MAX))
-    alive: bool = True
 
     def rows(self) -> Rows:
         return tuple(
@@ -63,100 +47,23 @@ class LonerCharacter(Mutable):
             if value
         )
 
-
-class SceneCanon(Mutable):
-    """A scenario as authored: its opening scene and cast, with no player in it yet."""
-
-    cast: dict[EntityId, LonerCharacter] = Field(default_factory=dict)
-    opening: Scene
-    present: list[CheckedEntityId] = Field(default_factory=list)
-    hidden: list[CheckedEntityId] = Field(default_factory=list)
-    source: str = ""
-    hub: Slug | None = None
-    board: tuple[Offer, ...] = ()
-
-    @model_validator(mode="after")
-    def _playable_canon(self) -> Self:
-        check_filing(self.cast)
-        check_named(self.present, self.hidden, self.cast)
-        check_hub(self.hub, self.board, (SceneRun(scene=self.opening),))
-        return self
+    def unwritten(self) -> str:
+        missing = [
+            why
+            for why, held in (("alive", self.alive), ("full luck", self.luck.current == LUCK_MAX))
+            if not held
+        ]
+        return ", ".join(missing)
 
 
-class LonerWorld(SceneWorld):
-    """The world as a sequence of scenes: the cast persists, the scene is what is happening."""
-
-    cast: dict[EntityId, LonerCharacter] = Field(default_factory=dict)
-    companions: list[EntityId] = Field(default_factory=list)
-    player_id: EntityId
-
-    @model_validator(mode="after")
-    def _consistent(self) -> Self:
-        check_filing(self.cast)
-        check_named(self.run.present, self.run.hidden, self.cast)
-        if self.player_id not in self.cast:
-            raise ValueError("the player is not in the cast")
-        if not self.player.known:
-            raise ValueError("the player is unknown to themselves")
-        if self.player_id not in self.run.present:
-            raise ValueError("the player is not in their own scene")
-        if self.player_id in self.companions:
-            raise ValueError("the player cannot travel with themselves")
-        require_unique("companions", self.companions)
-        for member_id in self.companions:
-            if not self.require(member_id).alive:
-                raise ValueError(f"{member_id!r} is dead and cannot travel with the player")
-        return self
-
-    def require(self, entity_id: EntityId) -> LonerCharacter:
-        one = self.cast.get(entity_id)
-        if one is None:
-            raise ValueError(f"unknown id {entity_id!r}. Use only ids you were shown.")
-        return one
-
-    def require_here(self, entity_id: EntityId) -> LonerCharacter:
-        one = self.require(entity_id)
-        if one.id not in self.run.present:
-            raise ValueError(
-                f"{one.name} is not here with the player, so nothing can happen to them"
-            )
-        return one
-
-    def require_alive_here(self, entity_id: EntityId) -> LonerCharacter:
-        one = self.require(entity_id)
-        if not one.alive:
-            raise ValueError(f"{one.name} is dead; they take no further part.")
-        if one.id not in self.run.present:
-            raise ValueError(
-                f"{entity_id!r} is not here with the player. "
-                "Bring them here first, or act on who is here."
-            )
-        return one
-
-    @property
-    def player(self) -> LonerCharacter:
-        return self.require(self.player_id)
-
-    def here(self) -> Iterator[LonerCharacter]:
-        return (self.require(one) for one in self.run.present)
-
-    def label(self, entity: LonerCharacter) -> str:
-        return labeled(entity, self.player_id)
-
-    def reveal(self, entity: LonerCharacter) -> list[Fact]:
-        return reveal(entity, self.player_id)
+LonerWorld = SceneWorld[LonerCharacter, LonerCharacter]
 
 
-class Loner3eState(Mutable):
-    """The save payload: the scene world, plus the two counters the SRD keeps beside it."""
+class Loner3eState(SceneState[LonerCharacter, LonerCharacter]):
+    """The save payload: the scene world, plus the counter the SRD keeps beside it."""
 
-    world: LonerWorld
     # The played character's tally paces the whole game, so no sheet carries one.
     twist: Counter = Field(default_factory=partial(Counter, current=0, maximum=TIES_PER_TWIST))
-
-
-class Loner3eScenario(Mutable):
-    world: SceneCanon
 
 
 class Loner3eCharacter(Mutable):
@@ -172,44 +79,12 @@ class Loner3eGame(Game[Loner3eState]):
     pass
 
 
-class Loner3eScenarioFile(Scenario[Loner3eScenario]):
+class Loner3eScenarioFile(Scenario[SceneScenario[LonerCharacter]]):
     pass
 
 
 class Loner3eCharacterFile(Character[Loner3eCharacter]):
     pass
-
-
-def known(state: Loner3eGame, entity_id: EntityId) -> bool | None:
-    one = state.payload.world.cast.get(entity_id)
-    return None if one is None else one.known
-
-
-def record(
-    state: Loner3eGame, prompt: str, lines: tuple[SpokenLine, ...], facts: Sequence[Fact]
-) -> tuple[str, ...]:
-    world = state.payload.world
-    return record_exchange(
-        world,
-        prompt,
-        lines,
-        facts,
-        "" if state.pending is None else state.pending.prompt,
-        someone_dead=any(not one.alive for one in world.here()),
-    )
-
-
-def history(state: Loner3eGame) -> tuple[Exchange, ...]:
-    return state.payload.world.exchanges()
-
-
-def way_open(state: Loner3eGame) -> bool:
-    world = state.payload.world
-    return world.run.settled or world.at_hub
-
-
-def player_over(state: Loner3eGame) -> str | None:
-    return "You died." if not state.payload.world.player.alive else None
 
 
 def player_character(character: Loner3eCharacterFile) -> LonerCharacter:

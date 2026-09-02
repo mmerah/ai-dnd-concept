@@ -83,6 +83,7 @@
         "name": "Kael",
         "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
         "known": true,
+        "alive": true,
         "pronouns": "he/him",
         "job": "Park Ranger",
         "skills": {
@@ -113,9 +114,9 @@
           "current": 0,
           "maximum": 4
         },
-        "stunted": false,
-        "alive": true
-      }
+        "stunted": false
+      },
+      "party": []
     }
   }
 }

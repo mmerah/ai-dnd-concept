@@ -8,8 +8,20 @@ from pydantic import Field, model_validator
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.tools import MasterTool, master_tool
-from aidm.engines.core import PLAYER_ID, entity_fact, keep_highest
-from aidm.engines.scenes import NEXT_SCENE, NextScene, settle
+from aidm.engines.core import CHANGE_WORLD, PLAYER_DEAD, entity_fact, keep_highest, sentence
+from aidm.engines.scenes import (
+    NEXT_SCENE,
+    Enter,
+    Kill,
+    Leave,
+    NextScene,
+    Reveal,
+    enter,
+    kill,
+    leave,
+    reveal_hidden,
+    settle,
+)
 from aidm.engines.twentyfourxx.creation import Pack
 from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
@@ -17,47 +29,13 @@ from aidm.engines.twentyfourxx.world import (
     HINDERED_DIE,
     MAIMED,
     Item,
-    Npc,
     Operator,
     TwentyfourxxGame,
     TwentyfourxxWorld,
     raised,
 )
 
-CHANGE_WORLD = (
-    "Apply one settled world change to match the story. Set `verb` to pick the change and fill "
-    "that verb's own fields. One call makes one change."
-)
 SRD_PACK = "srd"
-_PLAYER_DEAD = "the player is dead; they take no further part."
-
-
-class Reveal(Frozen):
-    """Make a hidden entity known when the player notices, finds, or reaches it."""
-
-    verb: Literal["reveal"]
-    entity_id: CheckedEntityId = Field(description="Exact id of an entity listed as hidden here.")
-
-
-class Enter(Frozen):
-    """Bring a cast member into the current scene."""
-
-    verb: Literal["enter"]
-    entity_id: CheckedEntityId = Field(description="Exact id of a cast member not already here.")
-
-
-class Leave(Frozen):
-    """Take a cast member out of the current scene."""
-
-    verb: Literal["leave"]
-    entity_id: CheckedEntityId = Field(description="Exact id of someone here.")
-
-
-class Kill(Frozen):
-    """Record that someone here has died."""
-
-    verb: Literal["kill"]
-    entity_id: CheckedEntityId = Field(description="Exact id of who here died.")
 
 
 class ChangeHindrances(Frozen):
@@ -173,36 +151,15 @@ def outcome(face: int) -> str:
 
 def apply_change(world: TwentyfourxxWorld, change: WorldChange) -> list[Fact]:
     """Every arm settles its own deterministic consequences, so a call leaves nothing half-done."""
-    run = world.run
     match change:
         case Reveal():
-            one = world.require(change.entity_id)
-            if change.entity_id not in run.hidden:
-                raise ValueError(f"{change.entity_id!r} is not hidden here")
-            run.hidden.remove(one.id)
-            run.present.append(one.id)
-            return _reveal(world, one)
+            return reveal_hidden(world, change.entity_id)
         case Enter():
-            if change.entity_id == PLAYER_ID:
-                raise ValueError("the player is in every scene; move the story on instead")
-            one = world.require(change.entity_id)
-            if one.id in run.present:
-                raise ValueError(f"{one.name} is already here")
-            if one.id in run.hidden:
-                raise ValueError(f"{one.name} is hidden here; reveal them instead")
-            run.present.append(one.id)
-            seen = world.reveal(one)
-            trace = f"{world.label(one)} arrives"
-            return [*seen, entity_fact(one, "entity_entered", trace, card=f"{one.name} arrives")]
+            return enter(world, change.entity_id)
         case Leave():
-            if change.entity_id == PLAYER_ID:
-                raise ValueError("the player is in every scene; move the story on instead")
-            one = world.require_here(change.entity_id)
-            run.present.remove(one.id)
-            trace = f"{world.label(one)} leaves"
-            return [entity_fact(one, "entity_left", trace, card=f"{one.name} leaves")]
+            return leave(world, change.entity_id)
         case Kill():
-            return _kill(world, change.entity_id)
+            return kill(world, change.entity_id)
         case ChangeHindrances():
             return _change_hindrances(world, change)
         case GainItem():
@@ -229,7 +186,7 @@ def attempt(
     world = draft.payload.world
     player = world.player
     if not player.alive:
-        raise ValueError(_PLAYER_DEAD)
+        raise ValueError(PLAYER_DEAD)
 
     if args.skill:
         label = _resolve_skill(packs, player, args.skill)
@@ -252,7 +209,7 @@ def attempt(
     result = outcome(face)
     shown = ", ".join(str(one) for one in event.rolled)
     trace = f"{args.what} — {label} {die_label} [{shown}] -> {result}"
-    card = f"{args.what} — {_sentence(label)} {die_label} → {result}"
+    card = f"{args.what} — {sentence(label)} {die_label} → {result}"
     qualifiers = "; ".join(
         part
         for part in (
@@ -298,7 +255,7 @@ def defend(draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
     world = draft.payload.world
     player = world.player
     if not player.alive:
-        raise ValueError(_PLAYER_DEAD)
+        raise ValueError(PLAYER_DEAD)
     item = player.items.get(args.item_id)
     if item is None:
         raise ValueError(f"{args.item_id!r} is not among the player's items")
@@ -319,7 +276,7 @@ def job_done(
     world = draft.payload.world
     player = world.player
     if not player.alive:
-        raise ValueError(_PLAYER_DEAD)
+        raise ValueError(PLAYER_DEAD)
     label = _resolve_skill(packs, player, args.skill)
     new_die = raised(player.skills.get(label))
     player.skills[label] = new_die
@@ -404,26 +361,6 @@ def _resolve_skill(packs: Mapping[str, Pack], player: Operator, wanted: str) -> 
     )
 
 
-def _reveal(world: TwentyfourxxWorld, one: Operator | Npc) -> list[Fact]:
-    """The discovery itself, distinct from the standalone `reveal` verb's card."""
-    facts = world.reveal(one)
-    if not facts:
-        raise ValueError(f"the player has already met {one.name}")
-    return [facts[0].model_copy(update={"card": _sentence(f"{one.name} discovered")})]
-
-
-def _kill(world: TwentyfourxxWorld, entity_id: EntityId) -> list[Fact]:
-    one = world.require_here(entity_id)
-    if not one.alive:
-        raise ValueError(f"{one.name} is already dead")
-    facts = world.reveal(one)
-    one.alive = False
-    card = "You are dead" if one.id == PLAYER_ID else f"{one.name} is dead"
-    trace = f"{world.label(one)} is dead"
-    facts.append(entity_fact(one, "actor_killed", trace, card=card))
-    return facts
-
-
 def _change_hindrances(world: TwentyfourxxWorld, change: ChangeHindrances) -> list[Fact]:
     player = world.player
     held = set(player.hindrances)
@@ -493,7 +430,3 @@ def _spend(world: TwentyfourxxWorld, change: Spend) -> list[Fact]:
     card = f"₡{change.amount} spent — {change.why}"
     trace = f"{world.label(player)} spends ₡{change.amount} — {change.why}"
     return [entity_fact(player, "credits_spent", trace, card=card)]
-
-
-def _sentence(text: str) -> str:
-    return text[:1].upper() + text[1:]

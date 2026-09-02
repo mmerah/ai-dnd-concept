@@ -48,12 +48,12 @@ def hub_world() -> Loner3eGame:
     keeper = LonerCharacter(
         id=KEEPER, name="Keeper", brief="Runs the guild hall's board", known=True
     )
-    hub_run = SceneRun(scene=_hub_scene(), present=[PLAYER_ID, KEEPER])
-    job_run = SceneRun(scene=_job_scene(), present=[PLAYER_ID])
+    hub_run = SceneRun(scene=_hub_scene(), present=[KEEPER])
+    job_run = SceneRun(scene=_job_scene())
     world = LonerWorld(
-        cast={PLAYER_ID: _player(), KEEPER: keeper},
+        cast={KEEPER: keeper},
+        player=_player(),
         runs=[hub_run, job_run],
-        player_id=PLAYER_ID,
         hub=HUB_PLACE,
         board=(
             Offer(title="Job One", pitch="I take job one."),
