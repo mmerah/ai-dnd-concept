@@ -1,11 +1,13 @@
 # NEXT-SPECS — after the hub
 
 Tracks A through F of the 2026-09-02 brainstorm became `PLAN.md` and were cut from this file.
-What stays: the maintainer's decisions, Track G (the party, then crews), and what was left in
-`IDEAS.md` or refused. Track G becomes its own `PLAN.md`, written from this file when Phases 1
-through 5 have landed and the campaign has been played through once with the recap. Counts and
-names below are as written on 2026-09-02; the code after Phase 2 is the reference for the
-party helpers Track G quotes (`check_party`, `join_party`, `leave_party`, `Person`).
+What stays: the maintainer's decisions, Track R (the seam, from `REFACTOR-PROPOSAL.md`), Track G
+(the party, then crews), and what was left in `IDEAS.md` or refused. Track R becomes its own
+`PLAN.md` when PLAN.md's six phases have landed; Track G follows it, written when the campaign
+has been played through once with the recap. Counts and names below are as written on
+2026-09-02; the code after Phase 2 is the reference for the party helpers Track G quotes
+(`check_party`, `join_party`, `leave_party`, `Person`); Track R names files as PLAN.md Phase 5
+lays them (`engines/seam.py`, `engines/scenes/`).
 
 ## Decisions made in the brainstorm (the maintainer's, 2026-09-02)
 
@@ -39,6 +41,139 @@ imports; `core`/`turn`/`app`/`ui` know no world shape; only the narrator writes 
 text from revealed facts; only resolver code changes state or rolls; a bad answer is re-prompted
 once; saves carry no version; no abstraction until two things need it; no building for later.
 
+
+---
+
+## Track R — the seam, made smaller (`REFACTOR-PROPOSAL.md`)
+
+No behaviour change, no prompt change, no golden moves: `prompts/`, `schemas/`, `turn/`,
+`state/` and `save/` are the track's invariant, and a phase that moves one has a bug. Read on
+2026-09-02 against the code after Phase 3, where the three `engine.py` are 84–86 lines of the
+same wiring, the three scene `worldsmith.py` are 42–50 lines binding a cast type and four
+strings, and `GameService` runs `ready → write → install → arrival_brief` as a second state
+machine after the turn (`_grow`, `_write`, `_install`, about 90 lines). Two phases, R.1 then
+R.2, about two hours of agent time each. `src` from Phase 6's 9,735 to about 9,450.
+
+### Open decisions (the maintainer's; the sketch below assumes the first option of each)
+
+1. **R.2's form: a spec and a factory (`SceneRules` + `scene_engine`), or the proposal's class
+   hierarchy (`SceneEngine` with `BreathlessEngine(SceneEngine)`).** Both delete the same
+   wiring. The factory keeps `Engine` a frozen dataclass of callables, which the platform reads
+   by attribute and the tests rewire with `dataclasses.replace`; the class form moves
+   behaviour onto objects, against "write pure functions", and gives the three engines a base
+   class whose overridable surface is the abstraction `CLAUDE.md` says not to add.
+2. **Proposal 2, one flat draft: refused (below), or kept as an optional R.3.** The sketch
+   refuses it.
+
+### R.1 One transaction: `advance` and `author`
+
+The platform asks the engine two things of the worldsmith and stops knowing their stages.
+
+- **`core/model.py`.** `WorldsmithAnswer` becomes a `Protocol` with a generic call,
+  `async def __call__[M: BaseModel](self, prompt: str, model: type[M], refusal: Callable[[M],
+  str | None]) -> M`; `CheckAnswer` goes. `app/spawn.py`'s `answered` is already generic, so the
+  engine's answer is typed end to end: `_is_draft`, its `__pydantic_generic_metadata__` read
+  and `install_scene`'s `SceneDraft[Any]` go, and the CLAUDE.md `Any` line loses that clause.
+- **`engines/seam.py`.** `Authoring` and `Transition` are deleted; `Engine` gains four fields
+  in their place:
+  ```python
+  author: Callable[
+      [str, Sequence[Slug], ScenarioKind, WorldsmithAnswer, Callable[[AnyScenario], str | None]],
+      Awaitable[AnyScenario],
+  ]                                  # source, packs, kind, the worldsmith, "is it playable"
+  ready: Callable[[G], bool]
+  advance: Callable[[G, str, WorldsmithAnswer], Awaitable[tuple[Fact, ...]]]
+  arrival_brief: Callable[[str], str] | None
+  ```
+  `advance` writes, then installs on the draft it is given, and raises `ValueError` both when
+  nothing usable was written and when the written world no longer fits; the platform never
+  holds the written model. `author` composes the engine's own bar with the platform's
+  playability check and returns the built file.
+- **`app/runtime.py`.** `_write` and `_install` fold into `_grow`: `draft = self.state.draft()`;
+  `try: facts = await self.engine.advance(draft, intent, self._ask); self.engine.validate(draft)`
+  `except (OSError, ValueError)` sets `write_failure`, logs once, returns; then today's tail
+  (silent commit, or the narrated crossing through `close_segment`). `_ask` is one method over
+  `answered("worldsmith", ...)`. `new_scenario` becomes `written = await engine.author(source,
+  packs, kind, self._ask, playable)` then `write_scenario(..., written.model_copy(update=...))`,
+  where `playable` runs `begin_game`. The UI's `transition_available` reads `engine.ready`.
+- **`engines/scenes/worldsmith.py`.** `write_next` + `install_scene` become
+  `advance[C, P, S](state, intent, answer, *, cast_type, role, guidance, finished_note,
+  before: Callable[[Game[S]], tuple[Fact, ...]] | None)`; `before` is Loner's `close_conflicts`,
+  run before the install as the wrapper does today. `render_opening` + `opening_draft` +
+  `build_scenario` become `author[C](...)`. Each engine's `worldsmith.py` keeps one `advance`
+  and one `author` wrapper until R.2 removes them. Tunnel Goons: `write_extension` +
+  `install_extension` become `advance`; `render_map` + `opening_draft` + `build_scenario`
+  become `author`; the `MapDraft | ReturnDraft` union is typed, no `BaseModel` left.
+- **Tests.** `test_a_transition_without_an_arrival_brief_extends_on_a_lineless_exchange`
+  rewires `advance` and `arrival_brief`; `test_authoring_build_raises_on_an_unmet_bar` becomes
+  a scripted `author` that the bar refuses; the four `test_worldsmith.py` call `advance` and
+  `author` where they called the pairs. No test of prose or wiring is added.
+- **Done when.** Green; every golden unchanged; `grep -rn "BaseModel" src/aidm/engines/seam.py
+  src/aidm/app/runtime.py` finds no written-model parameter; a failed write and an install that
+  no longer fits both leave the state untouched and set `write_failure`. About −110 lines.
+
+### R.2 One scene engine
+
+After R.1, a scene `engine.py` wires 24 fields, of which eight are the same `scenes` function
+in all three (`validate`, `known`, `record`, `history`, `narrator_view`, `over`, `ready`,
+`arrival_brief`), two come from a wrapper that binds four strings, and `new_game` is two
+`isinstance` checks around `new_world`. The proposal's litmus, "a fifth scene engine is its
+state model, its creation, its tools and its sections", is what this phase buys.
+
+- **`engines/scenes/engine.py`** (a new file in the Phase 5 package):
+  ```python
+  @dataclass(frozen=True, slots=True, kw_only=True)
+  class SceneRules[C: Person, S: SceneState[Any, Any], K: BaseModel]:
+      """What one scene engine says for itself; `scene_engine` wires the lifecycle around it."""
+      id: EngineId; title: str; art_style: str
+      directory: Path                          # rules.md, worldsmith.md, packs/
+      pack: type[K]; cast: type[C]
+      game: type[Game[S]]; scenario: type[Scenario[SceneScenario[C]]]; character: type[AnyCharacter]
+      new_state: Callable[[AnyScenario, AnyCharacter], S]     # today's new_game, minus the two checks
+      tools: Callable[[Mapping[str, K]], tuple[MasterTool[Game[S]], ...]]
+      creation_steps, create_character, preview_character, pack_options, guidance   # today's, uncurried
+      master_sections: Callable[[Mapping[str, K], Game[S]], Rows]
+      panels: Callable[[Game[S]], tuple[Panel, ...]]          # 24XX Gear, Breathless Backpack, Loner ()
+      hub_phrase: str; finished_note: str
+      board_guidance: str = ""                 # 24XX: joined on every campaign write and opening
+      before_crossing: Callable[[Game[S]], tuple[Fact, ...]] | None = None   # Loner: close_conflicts
+
+  def scene_engine[C, S, K](rules: SceneRules[C, S, K], user_packs: Path) -> Engine[Game[S]]
+      # loads the packs; the two "received an incompatible ..." checks use rules.title;
+      # the eight shared functions; player_view = scenes.player_view(state, rules.panels(state));
+      # advance/author from R.1 with the four strings bound; instructions from directory/rules.md
+  ```
+  `S: SceneState[Any, Any]` is the bound the seam functions already spell, so it adds no
+  `Any`. Loner's `Loner3eState` carries `twist`, which is why the state is a field and not
+  `SceneState[C, P]`.
+- **Each scene engine.** `engine.py` is the `SceneRules` literal plus `build(user_packs) =
+  scene_engine(RULES, user_packs)`, about 35 lines. `worldsmith.py` is deleted: `WORLDSMITH`,
+  `HUB_PHRASE`, `JOB_DONE_NOTE`/`GROWTH_NOTE`, `BOARD_GUIDANCE` move into `engine.py`'s
+  constants block. `views.py` keeps `master_sections` and the gear lines, and gains nothing.
+  Tunnel Goons is untouched: one engine of its shape is no reason for a second factory.
+- **Tests.** `tests/*/test_engine.py` build through `scene_engine`; a test that a fifth
+  `SceneRules` with a bare `Person` cast and no tools builds a playable engine is the one new
+  behaviour test.
+- **Done when.** Green; every golden unchanged; the three `engine.py` under 40 lines; no scene
+  `worldsmith.py` exists; `docs/<ENGINE>.md` and `README.md`'s architecture paragraph (PLAN 5.4)
+  name `SceneRules` where they named "the wiring file". About −170 lines.
+
+### Refused, with the reason
+
+- **Proposal 4, the master as worldsmith**: the maintainer's note in `REFACTOR-PROPOSAL.md`
+  stands. Authoring is a second profession; scenario creation needs the role anyway; the
+  fifteen-tool cap is the master's attention budget.
+- **Proposal 2, one flat draft with optional `recap`, `job`, `offers`, `debrief`**: the five
+  classes are the schema the worldsmith answers in, and pydantic enforces which fields a
+  crossing, a job or a return owes; a flat draft moves that demand into prose descriptions and
+  the bar, the schema the model reads grows fields it must leave empty, and the eight
+  `isinstance` sites become eight `if draft.offers` sites. The ugliest piece, `_is_draft`,
+  goes with R.1's typed answer, which is what the proposal was reacting to. A return closing a
+  job is a domain distinction, not a leaked output shape.
+- **A class hierarchy for R.2** (unless decision 1 goes the other way): see the decision.
+- **A generic "role" abstraction over master, narrator and worldsmith**: the proposal's own
+  second response refuses it, and so does this track. Nothing in R touches `Turn`, `Fact`,
+  `Game.draft/committed` or `NarratorView`.
 
 ---
 
