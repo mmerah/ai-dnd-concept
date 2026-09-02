@@ -54,16 +54,14 @@ strings, and `GameService` runs `ready → write → install → arrival_brief` 
 machine after the turn (`_grow`, `_write`, `_install`, about 90 lines). Two phases, R.1 then
 R.2, about two hours of agent time each. `src` from Phase 6's 9,735 to about 9,450.
 
-### Open decisions (the maintainer's; the sketch below assumes the first option of each)
+### Decisions (the maintainer's, 2026-09-02)
 
-1. **R.2's form: a spec and a factory (`SceneRules` + `scene_engine`), or the proposal's class
-   hierarchy (`SceneEngine` with `BreathlessEngine(SceneEngine)`).** Both delete the same
-   wiring. The factory keeps `Engine` a frozen dataclass of callables, which the platform reads
-   by attribute and the tests rewire with `dataclasses.replace`; the class form moves
-   behaviour onto objects, against "write pure functions", and gives the three engines a base
-   class whose overridable surface is the abstraction `CLAUDE.md` says not to add.
-2. **Proposal 2, one flat draft: refused (below), or kept as an optional R.3.** The sketch
-   refuses it.
+1. **R.2 is a spec and a factory (`SceneRules` + `scene_engine`), not a class hierarchy.** Both
+   delete the same wiring. The factory keeps `Engine` a frozen dataclass of callables, which
+   the platform reads by attribute and the tests rewire with `dataclasses.replace`; a
+   `SceneEngine` base class would move behaviour onto objects, against "write pure functions",
+   and its overridable surface is the abstraction `CLAUDE.md` says not to add.
+2. **Proposal 2, one flat draft, is refused** (reason below). No R.3.
 
 ### R.1 One transaction: `advance` and `author`
 
@@ -170,7 +168,7 @@ state model, its creation, its tools and its sections", is what this phase buys.
   `isinstance` sites become eight `if draft.offers` sites. The ugliest piece, `_is_draft`,
   goes with R.1's typed answer, which is what the proposal was reacting to. A return closing a
   job is a domain distinction, not a leaked output shape.
-- **A class hierarchy for R.2** (unless decision 1 goes the other way): see the decision.
+- **A class hierarchy for R.2**: decision 1.
 - **A generic "role" abstraction over master, narrator and worldsmith**: the proposal's own
   second response refuses it, and so does this track. Nothing in R touches `Turn`, `Fact`,
   `Game.draft/committed` or `NarratorView`.
