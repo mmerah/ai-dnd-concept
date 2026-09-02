@@ -19,14 +19,18 @@ Counts at writing: `src` 10,115 lines (24XX 1,460, Loner 1,418, Breathless 1,341
 3. **Voices are an HTTP provider on the illustration pattern**: off by default, the OpenRouter
    key the player already has, a local server if they run one, and the narrator's voice chosen
    per scenario as its art style is. No in-process model.
-4. **The tool cap stays fifteen, counted as tools plus `change_world` arms.** Small folds are
-   fine. An engine that plays a crew (Track G) may go to twenty; its `docs/<ENGINE>.md` says so.
+4. **The tool cap stays fifteen, counted as tools plus `change_world` arms**, the two party
+   arms every engine carries (Track G.1) not counted. Small folds are fine. An engine that
+   plays a crew (Track G) may go to twenty in all; its `docs/<ENGINE>.md` says so.
 5. **Campaign refinements are all built**, except moving home, which stays in `IDEAS.md`.
 6. **`VISION.md` is deleted** after its non-goals and turn steps move. `COMPETITOR-RESEARCH.md`
    stays as a reference to other projects. PLAN.md Phase 5.2 (rewrite VISION's architecture)
    is skipped: Track F deletes the file.
-7. **Crew play (IDEAS 16) is in scope**, 24XX first, designed to play as the SRD prints it. It
-   retires PLAN.md settled 17 (no companions gained) and 19's "no crew list", and closes
+7. **Party play (IDEAS 16) is in scope, in two layers.** A minimal party every engine gets:
+   an NPC joins and follows the player, is interacted with, and every role reads it as part of
+   the party the player leads; the master applies the engine's own help knob. Then engine
+   layers on top: 24XX sheets, help dice, the ship and succession; Tunnel Goons goons who roll
+   and level. Retires PLAN.md settled 17 (no companions gained) and 19's "no crew list"; closes
    `docs/24XX.md` deviations 1, 2 and 5.
 8. Ponytail audit: dropped. Eval loop (IDEAS 4): stays in `IDEAS.md`.
 
@@ -66,11 +70,12 @@ class SceneWorld[C: Person, P: Person](Mutable):
     cast: dict[EntityId, C]
     player: P                                # id == PLAYER_ID, known, never listed in a run
     runs, source, hub, board                 # as today
-    # require, require_here, require_alive_here, here (player first), label, reveal: today's
-    # 24XX bodies. Three hooks, overridable, no callback:
-    def travellers(self) -> tuple[EntityId, ...]: return ()      # Loner: its companions
+    party: list[EntityId] = []               # who travels with the player (Loner's `companions`,
+                                             # for every engine): in cast, alive, unique, never
+                                             # the player; in every scene, home included
+    # require, require_here, require_alive_here, here (player, party, present), label, reveal:
+    # today's 24XX bodies. One hook, overridable, no callback:
     def authored_unmet(self, cast: Mapping[EntityId, C]) -> list[str]: ...  # alive; Loner: full luck
-    def on_death(self, one: C | P) -> None: ...                  # Loner: drop a dead companion
 
 class SceneState[C: Person, P: Person](Mutable):   # each engine's State subclasses it
     world: SceneWorld[C, P]                        # Loner adds `twist`
@@ -87,7 +92,7 @@ invariant; the `Any` here is a generic bound, the exception Track E writes into 
 Each engine's `build()` then passes them straight, with no adapter.
 
 Shared functions, each today's 24XX body with the engine's constants as parameters:
-`opening_draft(cast_type, kind)`, `opening_canon`, `apply_scene` (keeps `travellers()` in every
+`opening_draft(cast_type, kind)`, `opening_canon`, `apply_scene` (keeps `party` in every
 scene, so Loner's companion block goes), `write_next(world, intent, answer, *, role, guidance,
 board_guidance="")` (24XX joins `BOARD_GUIDANCE` on a return; computed inside, after the pick),
 `install_scene(world, written, *, finished_note: str)` (24XX `JOB_DONE_NOTE`, Loner
@@ -96,25 +101,27 @@ board_guidance="")` (24XX joins `BOARD_GUIDANCE` on a return; computed inside, a
 board_guidance="")`, `build_scenario(file_type, engine_id, ...)`, `scene_unmet` (`cast_unmet` +
 `authored_unmet` + `hub_unmet`), `narrator_view(world)`, `scene_panels(world, sheet_panels)` (the
 `player_view` frame: Character, the engine's panels, This scene, Board, Here, Trail, Jobs;
-"Travelling with" from `travellers()`), `master_rows(world, *, sheet: Rows, extra: Rows)` (the
+"Travelling with" from `party`), `master_rows(world, *, sheet: Rows, extra: Rows)` (the
 `master_sections` frame: SCENE, the question heading, YOU PLAY FOR, the engine's section such as
 GEAR or BACKPACK, HERE, HIDDEN, Loner's glossary as `extra`, the secret, `master_tail`),
 `entity_line(world, one, detail)` (reads `Person.rows()`; "travels with the player" from
-`travellers()`), `new_game(canon, player, world_type)`, `check_game(packs, state, title)`, and
-the four world arms `Reveal`, `Enter`, `Leave`, `Kill` with `reveal_hidden/enter/leave/kill(world,
-id)`; `kill` calls `on_death`. `CHANGE_WORLD`, `sentence`, `PLAYER_DEAD` move to
-`engines/core.py`. `Entity` (the protocol) gains `brief`.
+`party`), `new_game(canon, player, world_type)`, `check_game(packs, state, title)`, and the six
+world arms `Reveal`, `Enter`, `Leave`, `Kill`, `JoinParty`, `LeaveParty` with
+`reveal_hidden/enter/leave/kill/join_party/leave_party(world, id)`; `kill` drops a dead member
+from `party`. The arm models `JoinParty`/`LeaveParty` (Loner's today) live in `engines/core.py`,
+since Tunnel Goons registers them in Track G; in this track only Loner does. `CHANGE_WORLD`,
+`sentence`, `PLAYER_DEAD` move to `engines/core.py`. `Entity` (the protocol) gains `brief`.
 
 Each engine keeps: its `Person` subclasses (`Operator`, `Survivor`, `LonerCharacter`), its
 `State`/`Game`/`ScenarioFile`/`CharacterFile`, `player_*` builders, `WORLDSMITH`, `HUB_PHRASE`,
 its note, `BOARD_GUIDANCE`, its SRD tools and arms, its own panels and master section, and a
 `build()` that wires `partial`s.
 
-Loner: `LonerWorld(SceneWorld[LonerCharacter, LonerCharacter])` with `companions`; `player_id`
-goes; `new_game` stops listing `PLAYER_ID` in `present`; `travellers()` returns the companions;
-`on_death` removes one; `roll_question` on the player resolves through
-`require_alive_here(PLAYER_ID)`, which the base answers with `player`; `conflict_prompt`,
-`close_conflicts`, `meanings` and the twist counter read `here()` and the sheet as today.
+Loner: `LonerWorld(SceneWorld[LonerCharacter, LonerCharacter])`; `companions` becomes the
+base's `party` and `player_id` goes; `new_game` stops listing `PLAYER_ID` in `present`;
+`roll_question` on the player resolves through `require_alive_here(PLAYER_ID)`, which the base
+answers with `player`; `conflict_prompt`, `close_conflicts`, `meanings` and the twist counter
+read `here()` and the sheet as today.
 
 Dead code, same phase: `ui/settings.py _without_none`, the `places` guard in Tunnel Goons
 `walk`, 24XX `SRD_PACK`, `Known[G]` re-spelled in `engines/core.py`, `other_than` ×2 and
@@ -281,8 +288,9 @@ a shared `test_luck` body (two five-line bodies with different ladders).
   are the exact type. Write the exception into `CLAUDE.md` rather than leave the rule false.
 - `Counter.clamped` (one user, `adjust`) inlined; docstrings past one line trimmed where the
   code says the what.
-- `CLAUDE.md`: "at most fifteen game-master tools, counted as tools plus `change_world` arms;
-  twenty for an engine whose SRD plays a crew, named in its `docs/<ENGINE>.md`".
+- `CLAUDE.md`: "at most fifteen game-master tools, counted as tools plus `change_world` arms,
+  the two shared party arms not counted; twenty in all for an engine whose SRD plays a crew,
+  named in its `docs/<ENGINE>.md`".
 
 ---
 
@@ -314,13 +322,16 @@ VISION` finds nothing.
 
 ---
 
-## Track G — crew play (IDEAS 16)
+## Track G — the party, then crews (IDEAS 16)
 
-The largest track and its own `PLAN.md`. 24XX first, because its SRD prints the crew, the ship,
-the help rule and succession; Tunnel Goons second, because its SRD is a party game and its
-`Npc` already has Health and walks along. Loner's companions already roll through `actor_id`;
-Breathless stays solo (its "the cast carries no dice" decision stands until 24XX has played).
-This section is the design; the phase briefs quote it.
+Two layers. **The party** is the platform's minimum and every engine has it after G.1: an NPC
+joins the player, follows them everywhere, can be talked to, hurt and lost, and every role reads
+them as part of the party the player leads, not as someone who happens to be present; the
+master turns a member's help into the engine's own knob. **A crew** is what an engine builds on
+top when its SRD prints it: 24XX (sheets, help dice, the ship, succession) and Tunnel Goons
+(goons who roll and level). Loner's companions are the party already; Breathless gets the party
+and no crew (its "the cast carries no dice" stands until 24XX has played). G is its own
+`PLAN.md`; this section is the design the briefs quote.
 
 ### G.0 The SRD, read 2026-09-02 at `24xx-srd.carrd.co` (verify again at phase start)
 
@@ -336,101 +347,108 @@ This section is the design; the phase briefs quote it.
 
 > After a job, each character increases a skill (none→d8→d10→d12) and gains d6 credits.
 
-### G.1 The shape (24XX)
+### G.1 The party (all four engines)
 
-- **The party.** `SceneWorld` (Track A) gains `party: dict[EntityId, P] = Field(min_length=1)`
-  and `lead: EntityId = PLAYER_ID`; `player` becomes the property `party[lead]`; `here()` yields
-  the party first; `travellers()` returns the party minus the lead, so the crew is present in
-  every scene, home included, and the worldsmith never lists them. Every engine without a crew
-  has a one-entry party and changes nowhere else. `known()`, `require()`, `Illustrator.icon`
-  read the party by id. Every `PLAYER_ID` read that means "the lead" (24XX 25 sites, Breathless
-  27, Loner 8, `engines/core.py labeled/counter_fact/reveal`) becomes `world.lead`; `PLAYER_ID`
-  stays the first lead's id; the "You are dead" card fires only for the lead.
-- **Where crew comes from.** 24XX's cast type becomes `Regular(Npc)` with `sheet:
-  TwentyfourxxCharacter | None = None` (the character file's own payload: specialty, origin,
-  traits, skills, kit; the SRD's specialties are the vocabulary), so `scenes.Npc` stays one
-  class. Only a sheeted regular can be hired. The `hire` arm moves a living regular from
-  `cast` and `run.present` into `party` as an `Operator` (same id, so icon and transcript hold;
-  credits 0; kit from the sheet); `dismiss` moves a party member back into `cast` as a
-  `Regular` with the sheet they now have and appends them to `run.present`. The SRD prints no
-  dismiss; it is what the app adds, so a crew that leaves has somewhere to go. `apply_scene`
-  refuses a draft id that is in `party`, as it refuses `PLAYER_ID`. `PARTY_MAX = 4` (the lead
-  and three): prompt size, not SRD; a fifth hire is refused. In a campaign a hire is refused
-  away from the hub (`at_hub`); a one-shot allows it anywhere.
-- **Rolls.** `Attempt.actor_id: CheckedEntityId = PLAYER_ID` (any living party member);
-  `Attempt.helped_by: CheckedEntityId | None` names one ally in the party: they roll their own
-  die for the named skill (d6 when they lack it, d4 when their `hindrances` is non-empty)
-  beside the actor's, and the highest counts; `helped` (circumstance) stays the extra d6; both
-  may apply. "Share the risk" is the master's: the consequence lands on the actor by code
+- **Platform share, two things, as the hub had two.** `NarratorView.party: tuple[Subject,
+  ...]`, the player first then who travels with them, a subset of `subjects` (who the player
+  is, not a world shape); `render_narrator` prints `YOUR PARTY: you are <name>; with you: <names
+  or nobody>`. The `Illustrator` takes the player from it. Nothing else in `core`, `turn`, `app`
+  or `ui` changes: the panel is a `Panel`, the arms are `change_world` arms.
+- **Shared engine code** (`engines/core.py`): the `JoinParty`/`LeaveParty` arm models (Track
+  A moved them there), `party_lines(members) -> str` for the master's `THE PARTY (led by the
+  player)` section, `party_panel(members) -> Panel` for the sidebar. Scene worlds have
+  `SceneWorld.party` from Track A; `TunnelWorld.party: list[EntityId]` (npcs, alive, unique)
+  is added here, and `move` carries the party with the player, `with_ids` staying for an NPC
+  who follows once.
+- **Registration.** 24XX and Breathless register the two arms (15 → 17, 12 → 14, the pair not
+  counted per Track E's `CLAUDE.md` line); Tunnel Goons too (9 → 11); Loner already has them.
+  Joining needs the member alive and present; leaving needs them in the party; `kill` drops
+  them. The player's death ends the game as today until an engine adds succession.
+- **What the master reads**, one shared paragraph in each `rules.md`: a party member is the
+  player's to command in the fiction and yours to voice; when one plainly helps, that is the
+  engine's help — 24XX `helped`, Loner `position`/`edge`, Tunnel Goons a lower `difficulty` or
+  a named item, Breathless nothing (the SRD prints no help rule; the fiction carries it); a
+  member cannot act on their own dice unless the engine gives them some (G.2, G.3); never
+  volunteer a member's action to soften a scene.
+- **Worldsmith.** `TAKE_BRIEF`'s "anyone from the hub's cast the player names is present" stays
+  for non-members; the party is in every scene without being listed.
+
+### G.2 24XX crew
+
+- **Who can roll.** 24XX's cast type becomes `Regular(Npc)` with `sheet: TwentyfourxxCharacter
+  | None = None` (the character file's own payload; the SRD's specialties are the vocabulary),
+  so `scenes.Npc` stays one class. `join_party` on a sheeted regular also moves them from `cast`
+  into `crew: dict[EntityId, Operator]` (same id, so icon and transcript hold; credits 0; kit
+  from the sheet); `leave_party` moves an operator back to `cast` as a `Regular` with the sheet
+  they now carry. An unsheeted member follows and helps as G.1; only an operator rolls.
+  `require()` searches `player`, `crew`, `cast`. `apply_scene` refuses a draft id that is in
+  the party or the crew. `PARTY_MAX = 3` members (prompt size, not SRD). In a campaign a
+  sheeted join is refused away from the hub: hiring is the fixer's business.
+- **Rolls.** `Attempt.actor_id: CheckedEntityId = PLAYER_ID` (the player or a crew operator);
+  `Attempt.helped_by: CheckedEntityId | None` names one crew operator: they roll their own die
+  for the named skill (d6 when they lack it, d4 when their `hindrances` is non-empty) beside
+  the actor's, and the highest counts; `helped` (circumstance) stays the extra d6; both may
+  apply. "Share the risk" is the master's: the consequence lands on the actor by code
   (`risking_death`, `Maimed`), and `rules.md` says the helper takes a hindrance through
   `change_hindrances` when the fiction puts it on them. `Defend.actor_id`,
-  `ChangeHindrances.entity_id`, and `actor_id` on `GainItem`/`DropItem`/`RepairItem`/`Spend`,
-  all defaulting to the lead: gear and credits are per operator, as the SRD keeps them.
-- **After a job.** The job's first scene stamps `Scene.party: tuple[EntityId, ...]` (code, from
-  the party as it left the hub). `JobDone.raises: tuple[Raise(actor_id, skill), ...]` covers
-  every stamped member still alive, refused when one is missing or a stranger is named; each
-  raises the named skill and rolls their own d6 credits. One call per job. A regular hired
-  after the return earns nothing for it.
+  `ChangeHindrances.entity_id`, and `actor_id` on `GainItem`/`DropItem`/`RepairItem`/`Spend`
+  default to the player: gear and credits are per operator, as the SRD keeps them.
+- **After a job.** The job's first scene stamps `Scene.crew: tuple[EntityId, ...]` (code, the
+  operators as they left the hub). `JobDone.raises: tuple[Raise(actor_id, skill), ...]` covers
+  the player and every stamped operator still alive, refused when one is missing or a stranger
+  is named; each raises the named skill and rolls their own d6 credits. One call per job.
 - **The ship.** `world.ship: Ship | None`; `Ship.functions: dict[ShipFunction, Function(upgraded:
-  bool = False, broken: bool = False)]` over the seven printed functions, all present at basic.
-  The worldsmith answers `ship: bool` on the opening draft (a campaign whose hub is a ship, or a
-  crew that owns one; a one-shot may too); code builds the seven. `ship_upgrade(function)` costs
-  the lead ₡10; `ship_repair(function, cost)`; `Defend` takes exactly one of `item_id` or
-  `ship_function`, and hull armor breaks through it. A `Ship` panel shows when there is one.
-- **Succession.** When the lead dies with a living party member, the death site sets
+  bool = False, broken: bool = False)]` over the seven printed functions. The worldsmith answers
+  `ship: bool` on the opening draft; code builds the seven. `ship_upgrade(function)` costs the
+  player ₡10; `ship_repair(function, cost)`; `Defend` takes exactly one of `item_id` or
+  `ship_function`. A `Ship` panel shows when there is one.
+- **Succession.** When the player dies with a living crew operator, the death site sets
   `PendingDecision(kind="succession", prompt="Who leads now?", options=one PendingOption per
-  living member with name="change_world", args={"change": {"verb": "take_lead", "actor_id":
-  ...}}, allows_text=False)` instead of ending the game; `Engine.answer` plays it, and
-  `take_lead` sets `world.lead`. `player_over` fires only when nobody in the party is alive. The
-  dead lead stays in the party, dead. The narrator's "you" follows the lead: `NarratorView.you:
-  Subject` (a core field: who the player is, not a world shape; `Illustrator` reads it too) and
-  `render_narrator` says "YOU are <name>; the crew are named".
-- **Counts.** Arms added: `hire`, `dismiss`, `ship_upgrade`, `ship_repair`, `take_lead` (an arm,
-  so it plays under the decision and rides `during_suspension`). 24XX goes 15 → 20.
-- **Views and prompts.** A `Crew` panel (each member's `rows()`, hindrances, "dead"); `Here`
-  lists the party first; the master's `YOU PLAY FOR` becomes `THE PARTY (the lead first)`;
-  `creation.py _AUTHORING` ("the cast carries no dice") and the `attempt` description are
-  rewritten for regulars and `helped_by`; `worldsmith.md` says a sheet is for someone who could
-  plausibly be hired, at most one per scene.
+  living operator with name="change_world", args={"change": {"verb": "take_lead", "actor_id":
+  ...}}, allows_text=False)` instead of ending the game; `take_lead` swaps the sheets: the chosen
+  operator becomes `world.player` and the dead one joins `crew`, both keeping their ids, so the
+  invariant becomes `player.id not in cast` and every `PLAYER_ID` read that means "the player"
+  (24XX 25 sites, `engines/core.py labeled/counter_fact/reveal`) reads `world.player.id`.
+  `player_over` fires only when the player and every operator are dead. `NarratorView.party`
+  carries the new "you" with no further change.
+- **Counts.** Arms: `join_party`, `leave_party` (G.1), `take_lead`, `ship_upgrade`,
+  `ship_repair`. 24XX goes 15 → 20.
+- **Views and prompts.** The `Party` panel shows an operator's `rows()`, hindrances, "dead";
+  the master's `THE PARTY` prints sheets for operators; `creation.py _AUTHORING` ("the cast
+  carries no dice") and the `attempt` description are rewritten; `worldsmith.md` says a sheet is
+  for someone who could plausibly be hired, at most one per scene.
 
-### G.2 How it plays (the rules the master reads)
+### G.3 Tunnel Goons crew
 
-1. The player's words drive the lead. A crew member acts when the player's action names them or
-   the fiction makes them act; the master never volunteers crew rolls to soften a scene.
-2. Help is one ally per roll, named in `helped_by`; they share the risk in the fiction.
-3. A crew member can die like anyone; the lead's death pauses the game on the succession
-   decision; a party with nobody alive is over.
-4. At the hub, hiring is the fixer's business: a sheeted regular can be hired; the board and
-   the jobs do not change shape.
-5. The ship is gear: functions break to defend, cost ₡10 to upgrade, and the master names the
-   function in an emergency as the SRD says.
-
-### G.3 Tunnel Goons
-
-`party: dict[EntityId, Goon]` with `lead`; `Npc.sheet` is the three abilities; `hire`/`dismiss`/
-`take_lead` arms; `ActionRoll.actor_id`; `move` carries the party and keeps `with_ids` for an
-NPC who follows; `rest` heals the party; `level_up` opens one decision per living party member
-in turn; `Dungeon._consistent`'s holder check moves to `TunnelWorld` and reads `party`, and
-`entity()`/`known()` search it. 9 → 12. `docs/TUNNEL-GOONS.md` deviation 1 (one goon) closes.
+`Npc.sheet` is the three abilities; a sheeted member is a goon: `ActionRoll.actor_id`, `rest`
+heals the party, `level_up` opens one decision per living goon in turn, `take_lead` swaps
+sheets as 24XX. `Dungeon._consistent`'s item-holder check moves to `TunnelWorld` and reads the
+party, and `entity()`/`known()` search it. 11 → 12. `docs/TUNNEL-GOONS.md` deviation 1 (one
+goon) closes.
 
 ### G.4 Phases, in order
 
-1. `scenes.py`: `party`/`lead`, `NarratorView.you`, `render_narrator`; every engine a one-entry
-   party; goldens: `narrator.txt` gains the YOU line, nothing else.
-2. 24XX: `Regular`, `hire`/`dismiss`, `actor_id` on the tools, `helped_by`, `Scene.party` and
-   `JobDone.raises`, `Crew` panel, `rules.md`, `_AUTHORING`, `worldsmith.md`, `docs/24XX.md`.
+1. The party: `NarratorView.party`, `render_narrator`, `party_lines`/`party_panel`, the arms in
+   24XX, Breathless and Tunnel Goons, `TunnelWorld.party` and `move`, the shared `rules.md`
+   paragraph; goldens: `narrator.txt` gains the YOUR PARTY line, `master.txt` the section and
+   the paragraph, `master_tools.json` the two arms, nothing else.
+2. 24XX: `Regular`, `crew`, `actor_id` on the tools, `helped_by`, `Scene.crew` and
+   `JobDone.raises`, the panel rows, `rules.md`, `_AUTHORING`, `worldsmith.md`, `docs/24XX.md`.
 3. 24XX: the ship and succession; `scenarios/amber-tap` gains a sheeted regular and a ship.
 4. Tunnel Goons: G.3.
 5. Docs; `IDEAS.md` 16 leaves.
 
-**Done when.** A hired regular rolls beside Kael and the highest die counts; Kael dies on a
-`risking_death` disaster and the page asks who leads; the new lead plays the return home and
-`job_done` raises both survivors; the hull breaks to defend; 24XX at most 1,600 lines after
-Track A, twenty verbs. About +450 lines across `scenes.py`, 24XX and Tunnel Goons.
+**Done when.** In every engine a named NPC joins, walks into the next scene and is read as the
+party by all three roles; a hired regular rolls beside Kael and the highest die counts; Kael dies
+on a `risking_death` disaster and the page asks who leads; the new lead plays the return home
+and `job_done` raises both survivors; the hull breaks to defend; 24XX at most 1,600 lines after
+Track A, twenty verbs. About +500 lines across `core/views.py`, `turn/context.py`,
+`engines/core.py`, `scenes.py`, 24XX and Tunnel Goons.
 
-**Risks.** Prompt size grows by one entity line per crew member per role. The narrator must keep
-"you" on the lead: the golden and one speakers test guard it. The crew must not soak every risk:
-`helped_by` is one ally, and `rules.md` G.2.1 forbids volunteered crew rolls.
+**Risks.** Prompt size grows by one entity line per member per role; `PARTY_MAX` bounds it. The
+narrator must keep "you" on the player: the golden and one speakers test guard it. The crew must
+not soak every risk: `helped_by` is one ally, and the shared paragraph forbids volunteered
+member actions.
 
 ---
 
@@ -444,7 +462,7 @@ Track A, twenty verbs. About +450 lines across `scenes.py`, 24XX and Tunnel Goon
 | E — fold and audit | 1 | 9,435 | A |
 | C — voices | 1 | 9,635 | none |
 | F — docs | 1 | 9,635 | E (for `CLAUDE.md`) |
-| G — crew play | 5 | 10,100 | A, B, E |
+| G — the party, then crews | 5 | 10,150 | A, B, E |
 
 A first: everything after it is written once. C is independent and can slot anywhere. G is its
 own `PLAN.md`, written from this file when A through E have landed and the campaign has been
