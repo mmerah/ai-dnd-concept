@@ -6,7 +6,7 @@ from dotenv import set_key, unset_key
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ProviderName = Literal["openrouter", "local", "kokoro"]
+ProviderName = Literal["openrouter", "local"]
 # Each role is a one-shot CLI the app spawns, so a role is only a name and how to spawn it.
 Role = Literal["master", "narrator", "worldsmith"]
 CliProvider = Literal["claude", "codex"]
@@ -90,11 +90,6 @@ class Providers(BaseModel):
         base_url="http://localhost:11434/v1",
         api_key=SecretStr("none"),
     )
-    # `local` is Ollama's port and serves no speech, hence a second local provider.
-    kokoro: ProviderConfig = ProviderConfig(
-        base_url="http://localhost:8880/v1",
-        api_key=SecretStr("none"),
-    )
 
     def for_name(self, name: ProviderName) -> ProviderConfig:
         match name:
@@ -102,8 +97,6 @@ class Providers(BaseModel):
                 return self.openrouter
             case "local":
                 return self.local
-            case "kokoro":
-                return self.kokoro
 
 
 class Settings(BaseSettings):
