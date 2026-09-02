@@ -17,7 +17,9 @@ Never name the player: they are put into the scene by code. Name everyone else b
 
 The scene's `secret` is what the `question` does not say: how it settles, what it costs, or what somebody here will not admit. Never restate the question in it. It is for the game master alone and is never read to the player.
 
-An `offers` entry is a job the hub can hand the player: a `title`, and a `pitch` in the player's own words as they would take it — "I take the Deck 9 crate run." — enough to walk out on.
+An `offers` entry is a job the hub can hand the player: a `title`, and a `pitch` as the board posts it — "Crates off Deck 9, no manifest, half up front." — enough to walk out on.
+
+`job` goes on the scene that leaves the hub only: a short paragraph on the job as taken — who wants what done, what done looks like, what it pays. Title that scene after the offer taken.
 
 The cast carries no dice. Write a threat as a `brief` — what it does and how it hurts — and the player's own roll meets it.
 

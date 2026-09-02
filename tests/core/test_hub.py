@@ -1,13 +1,16 @@
 import pytest
 
 from aidm.engines.hub import (
+    TAKE_JOB,
     Debrief,
     Job,
     Offer,
     Stop,
+    board_rows,
     check_board,
     check_kind,
     closed_jobs,
+    hub_sections,
     job_closed,
     job_start,
     job_titles,
@@ -137,3 +140,23 @@ def test_check_hub_accepts_a_job_between_two_hub_visits() -> None:
     board = (Offer(title="A", pitch="Do a"), Offer(title="B", pitch="Do b"))
 
     check_hub(HUB, board, (_run(HUB), _run("a1"), _run(HUB, DONE)))
+
+
+def test_board_rows_plays_take_job_with_the_title_and_keeps_the_pitch() -> None:
+    offer = Offer(title="Deck 9 Crate Run", pitch="Crates off Deck 9, no manifest, half up front.")
+
+    (row,) = board_rows((offer,))
+
+    assert row.label == "Deck 9 Crate Run"
+    assert row.detail == "Crates off Deck 9, no manifest, half up front."
+    assert row.intent == TAKE_JOB.format(title="Deck 9 Crate Run")
+
+
+def test_hub_sections_picks_the_brief_by_moment() -> None:
+    taking = dict(hub_sections("The Amber Tap", HUB, (), (), moment="taking"))
+    away = dict(hub_sections("The Amber Tap", HUB, (), (), moment="away"))
+    returning = dict(hub_sections("The Amber Tap", HUB, (), (), moment="returning"))
+
+    assert taking["THE HUB"].startswith("The player is leaving The Amber Tap")
+    assert away["THE HUB"].startswith("The hub is The Amber Tap")
+    assert returning["THE HUB"].startswith("Write the hub scene there.")

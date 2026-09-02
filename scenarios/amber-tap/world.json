@@ -14,15 +14,15 @@
       "board": [
         {
           "title": "The Debt to Ruiz",
-          "pitch": "I take the job Tomas asked as a favour, no questions."
+          "pitch": "Tomas needs a debt collected quiet, no questions — no pay, but he wipes what you owe him."
         },
         {
           "title": "The Quiet Contract",
-          "pitch": "I take the shipment run that pays too well for what it says it is."
+          "pitch": "Sealed manifest to Deck 3 by dawn, hands off the cargo — double the going rate."
         },
         {
           "title": "Deck 9 Crate Run",
-          "pitch": "I take the Deck 9 crate run."
+          "pitch": "Crates off Deck 9, no manifest, half up front."
         }
       ],
       "opening": {

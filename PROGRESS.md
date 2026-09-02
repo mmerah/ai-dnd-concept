@@ -59,3 +59,28 @@ that the plan did not say.
   `ReturnDraft` keeps the structural bound: it inherits nothing.
 - Known and accepted: `uv run aidm` serves the home page (HTTP 200); a played campaign turn needs
   the real CLIs and was not smoke-tested in the remote container.
+
+## Phase 2b — the shape, refined
+
+- Added to the plan after Phase 2 on the maintainer's review of the play: five refinements, made
+  once before Phases 3 and 4 copy the shape. `src` lines: 9,929 before, 9,970 after (target about
+  9,990). The engine 1,578 → 1,599.
+- Decisions the maintainer made here, now in PLAN.md (settled 6, 9, 13 and section 2b): `pitch` is
+  the fixer's words and an offer's button plays `TAKE_JOB`; a job's opening scene carries `job`, a
+  short paragraph (at least 80 characters), read by the master as `THE JOB`; the worldsmith gets
+  one brief per moment (taking, away, returning) and may grow an offer out of the ledger; the
+  hub's question is headed `WHAT THIS PLACE IS ABOUT`; the return card reads `Home: ...`; the
+  panel is `Jobs`; `BOARD_GUIDANCE` is a range, not a recipe. The field is named `job` because
+  "job" is the code word in every engine; an engine's prose keeps its SRD word.
+- Off-plan decisions: `JOB_ASK` in `hub.py` is the one copy of "who wants what done, what done
+  looks like, what it pays", used by `TAKE_BRIEF` and the bar; `BRIEFS: dict[Moment, str]` is
+  module-level; `HUB_BRIEF` is `AWAY_BRIEF`. Every scene that leaves the hub is a job, free text
+  included, so `job` is required on all of them (PLAN item 2 now says so).
+- Reviews: Fable reviewer and an Opus reviewer. Fixed: the PLAN targets for Phases 3–5 (2b's lines
+  carried forward), a tautology in 2b.3, `docs/HUB-SPECS.md`'s stale "Jobs done" and pitch lines,
+  settled 13 naming the wrong title for the `Home:` card, `MIN_JOB` 40 → 80, the second Amber
+  Tap pitch, and three cuts (`label` in `install_scene`, the inlined `moment`, the module-level
+  `BRIEFS`).
+- Refuted: fold `WRITE_HUB_SCENE` into `RETURN_BRIEF` as its only user. PLAN 4.3 has Tunnel
+  Goons' `_render_return` use `RETURN_BRIEF` bare, so the split gains its second user in Phase 4.
+- Known and accepted: `turn/` fixtures did not change; they hold facts, not scenes.

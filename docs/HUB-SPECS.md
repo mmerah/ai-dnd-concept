@@ -29,7 +29,7 @@ Both are folders under `scenarios/`, and the home page lists both.
 | opens on | the adventure's first scene or place | the hub, with a board of offers |
 | ends when | the story ends, or death | death only |
 | the worldsmith writes | the next scene or region | the next job's opening, and the return home |
-| the player sees | today's page | today's page plus offer buttons, "Go home" / "Report in", a "Jobs done" panel, chapter headings |
+| the player sees | today's page | today's page plus offer buttons, "Go home" / "Report in", a "Jobs" panel, chapter headings |
 
 Two words, two levels. A **campaign** is the scenario kind. A **job** is one outing between two
 hub visits. "Job" is the design and code word; an engine's panel text may use its SRD's word
@@ -47,8 +47,8 @@ hub visits. "Job" is the design and code word; an engine's panel text may use it
 4. **The hub is a scene** with a fixed place slug. The player plays turns there: talks, shops,
    rests, recruits. Master tools work there as anywhere.
 5. **The hub scene carries the board.** `Scene.offers: tuple[Offer, ...]`, `Offer{title, pitch}`,
-   non-empty only at the hub. The sidebar shows each offer as a button. Clicking one is Move on
-   with the pitch as intent, so the worldsmith writes the job's opening scene from the pitch.
+   non-empty only at the hub. The sidebar shows each offer as a button. Clicking one plays `TAKE_JOB` with
+   the offer's title; the worldsmith reads the pitch off THE BOARD.
    Free text + Move on still works at the hub, for a job with a twist or for going somewhere
    else.
 6. **Going home is a button.** During a job the sidebar shows a "Go home" row. Clicking it is
@@ -75,7 +75,7 @@ hub visits. "Job" is the design and code word; an engine's panel text may use it
     returns the new board: keep, drop, add. Two or three offers total, refused otherwise. An offer
     still there next visit makes the world feel like a world.
 12. **Reputation is prose.** No SRD prints a reputation counter, so none is built. The ledger and
-    the sheet are what the worldsmith reads to decide which offers fit. A "Jobs done" panel
+    the sheet are what the worldsmith reads to decide which offers fit. A "Jobs" panel
     (title, one-line debrief) shows the player how far they have come.
 13. **No new master tools.** 24XX is at fifteen. The board, the debrief and the return are the
     worldsmith's and the transition's, not a tool's.
@@ -118,14 +118,14 @@ home page ── campaign badge ──▶ play page
    is not shown there; the hub's own `This scene` row says "Take a job from the board, or name
    where you go". `rules.md` tells the master the hub is always open, and `scene_spent` never
    nags at the hub.
-3. The player clicks an offer. The worldsmith gets the pitch as WHAT COMES NEXT and writes the
+3. The player clicks an offer. Its button plays `TAKE_JOB` with the title; the worldsmith reads the pitch off THE BOARD and writes the
    job's opening scene. Existing bar, existing arrival narration.
 4. The job runs as scenes run today. The master's picture and the narrator's view do not change.
    The sidebar's "Trail" panel lists this job's scenes only.
 5. The player clicks "Go home". The worldsmith writes the hub scene. The return bar refuses a hub
    scene without a `debrief` or without two or three `offers`, and refuses either anywhere else.
 6. On install: the `job_closed` card, the note to the master, the arrival narration. The board
-   panel shows the new offers; the "Jobs done" panel gains a line.
+   panel shows the new offers; the "Jobs" panel gains a line.
 7. The chronicle heads each exchange `<job> — <scene>`, so the transcript reads as chapters.
    Nothing more is built for chapters.
 
@@ -146,7 +146,7 @@ to `engines/core.py`, as `PLAN.md` (`8ba0261`) Settled 1 says. About 100 lines p
 | Tunnel Goons | the tavern, a `Place` | a region attached to the tavern | `level_up` (printed) |
 
 Shared shape: `world.hub: Slug | None`; `Scene.offers` and `Scene.debrief`; the return
-refusals; the compacted history; the board rows, the "Go home" row and the "Jobs done" panel;
+refusals; the compacted history; the board rows, the "Go home" row and the "Jobs" panel;
 `ready = settled or at_hub`.
 
 **24XX** gets a fidelity win: the SRD's optional d6 job-finding setup, which the engine does not

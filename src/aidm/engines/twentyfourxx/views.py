@@ -98,7 +98,7 @@ def player_view(state: TwentyfourxxGame) -> PlayerView:
         *(_entity_row(one) for one in world.here() if one.known and one.id != player.id),
     ]
     board = (Panel(title="Board", rows=board_rows(world.board)),) if world.at_hub else ()
-    jobs = (Panel(title="Jobs done", rows=jobs_rows(world.jobs())),) if world.hub else ()
+    jobs = (Panel(title="Jobs", rows=jobs_rows(world.jobs())),) if world.hub else ()
     return PlayerView(
         player=subject_of(player),
         panels=(
@@ -132,9 +132,12 @@ def master_sections(state: TwentyfourxxGame) -> Rows:
         if detail := gear_detail(item):
             line += f" — {detail}"
         gear_lines.append(line)
+    question_heading = (
+        "WHAT THIS PLACE IS ABOUT" if world.at_hub else "THE QUESTION THIS SCENE SETTLES"
+    )
     sections: list[tuple[str, str]] = [
         ("SCENE", f"{scene.title}\n{scene.situation}"),
-        ("THE QUESTION THIS SCENE SETTLES", scene.question),
+        (question_heading, scene.question),
         ("YOU PLAY FOR", entity_line(player)),
         ("GEAR", "\n".join(gear_lines) or "- (none)"),
         (
@@ -147,6 +150,9 @@ def master_sections(state: TwentyfourxxGame) -> Rows:
         ),
         ("THE SCENE'S SECRET (never narrate this)", scene.secret or "(none)"),
     ]
+    job = next((run.scene.job for run in world.job_runs() if run.scene.job), "")
+    if job:
+        sections.append(("THE JOB", job))
     if world.hub is not None:
         sections.append(("JOBS SO FAR", ledger(world.jobs())))
     if world.at_hub:

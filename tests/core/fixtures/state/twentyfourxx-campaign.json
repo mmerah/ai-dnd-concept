@@ -83,7 +83,8 @@
             "question": "What job does Kael take off the board tonight, or why are they still just drinking?",
             "situation": "The Amber Tap smells of recycled air and cheap synth-whiskey, its walls papered with job flyers gone soft at the corners. Dessa Korr leans on the bar's far end with a data-slate already scrolling, and Tomas Ruiz keeps pouring without waiting to be asked twice.",
             "secret": "Dessa Korr skims a cut off every job she boards before Kael ever sees the offer, and the regular working the corner booth is the only one at the Tap who has noticed.",
-            "debrief": null
+            "debrief": null,
+            "job": ""
           },
           "present": [
             "dessa-korr",
@@ -102,15 +103,15 @@
       "board": [
         {
           "title": "The Debt to Ruiz",
-          "pitch": "I take the job Tomas asked as a favour, no questions."
+          "pitch": "Tomas needs a debt collected quiet, no questions — no pay, but he wipes what you owe him."
         },
         {
           "title": "The Quiet Contract",
-          "pitch": "I take the shipment run that pays too well for what it says it is."
+          "pitch": "Sealed manifest to Deck 3 by dawn, hands off the cargo — double the going rate."
         },
         {
           "title": "Deck 9 Crate Run",
-          "pitch": "I take the Deck 9 crate run."
+          "pitch": "Crates off Deck 9, no manifest, half up front."
         }
       ]
     }

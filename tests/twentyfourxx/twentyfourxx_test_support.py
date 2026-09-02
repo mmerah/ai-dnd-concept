@@ -24,6 +24,7 @@ HUB_PLACE = "amber-tap"
 JOB_PLACE = "dock-run"
 HUB_SITUATION = "The bar is quiet before the evening rush, and the fixer's board is up on the wall."
 JOB_SITUATION = "The dockside warehouse is stacked with crates nobody has claimed in a week."
+JOB = "Sable wants the crates counted and hauled clear before the shift change; she pays on drop."
 
 
 def small_world() -> TwentyfourxxGame:
@@ -92,6 +93,7 @@ def _job_scene() -> Scene:
         title="The Dock Run",
         question="Can Kael clear the warehouse before the shift change?",
         situation=JOB_SITUATION,
+        job=JOB,
     )
 
 
