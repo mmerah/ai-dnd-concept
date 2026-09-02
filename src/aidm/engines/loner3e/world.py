@@ -4,13 +4,22 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Mutable, require_unique
+from aidm.core.entities import CheckedEntityId, EntityId, Mutable, Slug, require_unique
 from aidm.core.facts import Fact, cards
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import Exchange, SpokenLine
 from aidm.core.views import Rows
 from aidm.engines.core import PLAYER_ID, Counter, check_filing, labeled, pool, reveal
-from aidm.engines.scenes import SPENT_NOTE, Scene, SceneRun, check_named, scene_spent
+from aidm.engines.hub import Job, Offer, Stop, closed_jobs, job_start, job_titles
+from aidm.engines.scenes import (
+    SPENT_NOTE,
+    Scene,
+    SceneRun,
+    check_hub,
+    check_named,
+    scene_spent,
+    stops_of,
+)
 
 LUCK_MAX = 6
 DIE_FACE = 6  # every roll in the game is one d6, and every table is six rows
@@ -64,11 +73,14 @@ class SceneCanon(Mutable):
     present: list[CheckedEntityId] = Field(default_factory=list)
     hidden: list[CheckedEntityId] = Field(default_factory=list)
     source: str = ""
+    hub: Slug | None = None
+    board: tuple[Offer, ...] = ()
 
     @model_validator(mode="after")
     def _playable_canon(self) -> Self:
         check_filing(self.cast)
         check_named(self.present, self.hidden, self.cast)
+        check_hub(self.hub, self.board, (SceneRun(scene=self.opening),))
         return self
 
 
@@ -80,6 +92,8 @@ class LonerWorld(Mutable):
     companions: list[EntityId] = Field(default_factory=list)
     player_id: EntityId
     source: str = ""
+    hub: Slug | None = None
+    board: tuple[Offer, ...] = ()
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -97,7 +111,21 @@ class LonerWorld(Mutable):
         for member_id in self.companions:
             if not self.require(member_id).alive:
                 raise ValueError(f"{member_id!r} is dead and cannot travel with the player")
+        check_hub(self.hub, self.board, self.runs)
         return self
+
+    @property
+    def at_hub(self) -> bool:
+        return self.hub is not None and self.current.place == self.hub
+
+    def stops(self) -> tuple[Stop, ...]:
+        return stops_of(self.runs)
+
+    def job_runs(self) -> list[SceneRun]:
+        return self.runs[job_start(self.hub, self.stops()) :]
+
+    def jobs(self) -> tuple[Job, ...]:
+        return closed_jobs(self.hub, self.stops())
 
     def require(self, entity_id: EntityId) -> LonerCharacter:
         one = self.cast.get(entity_id)
@@ -137,11 +165,16 @@ class LonerWorld(Mutable):
         return self.require(self.player_id)
 
     def exchanges(self) -> tuple[Exchange, ...]:
-        return tuple(
-            one if one.where else one.model_copy(update={"where": run.scene.title})
-            for run in self.runs
-            for one in run.exchanges
-        )
+        filed: list[Exchange] = []
+        for run, job in zip(self.runs, job_titles(self.hub, self.stops()), strict=True):
+            where = (
+                run.scene.title if job in ("", run.scene.title) else f"{job} — {run.scene.title}"
+            )
+            filed.extend(
+                one if one.where else one.model_copy(update={"where": where})
+                for one in run.exchanges
+            )
+        return tuple(filed)
 
     def here(self) -> Iterator[LonerCharacter]:
         return (self.require(one) for one in self.run.present)
@@ -210,7 +243,7 @@ def record(
             decision="" if state.pending is None else state.pending.prompt,
         )
     )
-    if world.run.settled or len(world.run.exchanges) <= 1:
+    if world.run.settled or world.at_hub or len(world.run.exchanges) <= 1:
         return ()
     reason = scene_spent(world.run, any(not one.alive for one in world.here()))
     return () if reason is None else (SPENT_NOTE.format(reason=reason),)
@@ -220,8 +253,9 @@ def history(state: Loner3eGame) -> tuple[Exchange, ...]:
     return state.payload.world.exchanges()
 
 
-def settled(state: Loner3eGame) -> bool:
-    return state.payload.world.run.settled
+def way_open(state: Loner3eGame) -> bool:
+    world = state.payload.world
+    return world.run.settled or world.at_hub
 
 
 def player_over(state: Loner3eGame) -> str | None:

@@ -13,6 +13,7 @@ from aidm.engines.breathless.world import (
     Survivor,
 )
 from aidm.engines.core import PLAYER_ID
+from aidm.engines.hub import Offer
 from aidm.engines.scenes import Scene, SceneRun
 
 MIRA = EntityId("mira")
@@ -21,6 +22,20 @@ WRENCH = EntityId("wrench")
 SITUATION = (
     "Booths lie overturned and glass covers the floor of the diner, the front door barred "
     "shut against the mob still pounding just outside in the street."
+)
+KEEPER = EntityId("keeper")
+HUB_PLACE = "the-camp"
+JOB_PLACE = "the-pharmacy"
+HUB_SITUATION = (
+    "The camp is quiet before the evening watch, and the supply board is chalked up by the gate."
+)
+JOB_SITUATION = (
+    "The pharmacy shelves are half-looted already, and something shuffles behind the counter "
+    "in the dark."
+)
+JOB = (
+    "Mira's group is nearly out of medicine and Keeper wants the pharmacy's shelves cleared "
+    "before the Crawlers wake; whoever goes brings back what they can carry."
 )
 
 
@@ -37,6 +52,30 @@ def small_world() -> BreathlessGame:
         scenario_id="diner",
         character_id="jax",
         scenario=ScenarioMeta(title="Diner", premise="A quiet diner, disturbed."),
+        engine=EngineId("breathless"),
+        payload=BreathlessState(world=world),
+    )
+
+
+def hub_world() -> BreathlessGame:
+    """A campaign world: a hub run with a known keeper, then one job run away from it."""
+    keeper = Npc(id=KEEPER, name="Keeper", brief="Runs the camp", known=True)
+    hub_run = SceneRun(scene=_hub_scene(), present=[KEEPER])
+    job_run = SceneRun(scene=_job_scene())
+    world = BreathlessWorld(
+        cast={KEEPER: keeper},
+        player=_player(),
+        runs=[hub_run, job_run],
+        hub=HUB_PLACE,
+        board=(
+            Offer(title="Job One", pitch="I take job one."),
+            Offer(title="Job Two", pitch="I take job two."),
+        ),
+    )
+    return BreathlessGame(
+        scenario_id="the-camp",
+        character_id="jax",
+        scenario=ScenarioMeta(title="The Camp", premise="A hub campaign.", kind="campaign"),
         engine=EngineId("breathless"),
         payload=BreathlessState(world=world),
     )
@@ -74,4 +113,23 @@ def _player() -> Survivor:
         known=True,
         skills={"think": 10, "sneak": 8, "bash": 6},
         items={WRENCH: Item(name="Wrench", die=10)},
+    )
+
+
+def _hub_scene() -> Scene:
+    return Scene(
+        place=HUB_PLACE,
+        title="The Camp",
+        question="What keeps the group coming back to the camp?",
+        situation=HUB_SITUATION,
+    )
+
+
+def _job_scene() -> Scene:
+    return Scene(
+        place=JOB_PLACE,
+        title="The Pharmacy Run",
+        question="Can Jax clear the pharmacy before the Crawlers notice?",
+        situation=JOB_SITUATION,
+        job=JOB,
     )

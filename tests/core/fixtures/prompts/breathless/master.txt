@@ -68,6 +68,15 @@ engine rolls, and the player answers what to do with any find.
 `test_luck` answers a question about the world where nobody is acting; `check` is for the player
 doing something. Pick the die by the odds.
 
+## Campaigns
+
+The hub is always open, so `next_scene` is never needed there and the spent note never fires;
+play the hub as any scene — talk, trade, rest — and never push the player out. The board is the
+player's to take from the page, so do not choose for them. The return is the camp: a run
+ends when the player comes home, and nothing is owed for it — Breathless prints no step
+between runs. THE JOB is what the player walked out on. At the hub WHAT THIS PLACE IS ABOUT
+replaces the scene's question: nothing settles there.
+
 ## Let the player choose where the story goes
 
 Every scene has one question, given to you as THE QUESTION THIS SCENE SETTLES. Play until it is settled — answered, refused, or made moot by what the player did. NOTES FROM THE RULES may also tell you a scene looks finished.

@@ -1,4 +1,5 @@
 import pytest
+from breathless_test_support import JOB_PLACE, JOB_SITUATION, hub_world
 
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.play import Exchange
@@ -12,9 +13,12 @@ from aidm.engines.breathless.world import (
     Npc,
     Survivor,
     player_survivor,
+    record,
     stepped,
+    way_open,
 )
 from aidm.engines.core import PLAYER_ID
+from aidm.engines.hub import Debrief
 from aidm.engines.scenes import SCENE_TURN_CAP, Scene, SceneRun, scene_spent
 
 MIRA = EntityId("mira")
@@ -111,6 +115,65 @@ def test_scene_spent_reports_the_turn_cap() -> None:
     exchange = Exchange(prompt="p", lines=())
     run = SceneRun(scene=_scene(), exchanges=[exchange] * SCENE_TURN_CAP)
     assert scene_spent(run, someone_dead=False) == f"{SCENE_TURN_CAP} turns have passed here"
+
+
+def test_world_refuses_a_debrief_on_a_run_away_from_the_hub() -> None:
+    game = hub_world()
+    world = game.payload.world
+    scene = world.runs[1].scene.model_copy(update={"debrief": Debrief(text="Done.", finished=True)})
+    bad_run = world.runs[1].model_copy(update={"scene": scene})
+    with pytest.raises(ValueError):
+        BreathlessWorld(
+            cast=world.cast,
+            player=world.player,
+            runs=[world.runs[0], bad_run],
+            hub=world.hub,
+            board=world.board,
+        )
+
+
+def test_world_refuses_a_first_run_away_from_the_hub() -> None:
+    game = hub_world()
+    world = game.payload.world
+    with pytest.raises(ValueError):
+        BreathlessWorld(
+            cast=world.cast,
+            player=world.player,
+            runs=[world.runs[1]],
+            hub=world.hub,
+            board=world.board,
+        )
+
+
+def test_way_open_is_true_at_an_unsettled_hub() -> None:
+    game = hub_world()
+    game.payload.world.runs = [game.payload.world.runs[0]]
+    assert way_open(game)
+
+
+def test_record_returns_no_spent_note_at_the_hub() -> None:
+    game = hub_world()
+    game.payload.world.runs = [game.payload.world.runs[0]]
+    notes: tuple[str, ...] = ()
+    for _ in range(13):
+        notes = record(game, "do something", (), ())
+    assert notes == ()
+
+
+def test_exchanges_heads_a_jobs_later_scene() -> None:
+    game = hub_world()
+    world = game.payload.world
+    later = SceneRun(
+        scene=Scene(
+            place=JOB_PLACE,
+            title="Deeper In",
+            question="Can Jax get further into the pharmacy?",
+            situation=JOB_SITUATION,
+        ),
+        exchanges=[Exchange(prompt="p", lines=(), decision="", where="")],
+    )
+    world.runs.append(later)
+    assert world.exchanges()[-1].where == "The Pharmacy Run — Deeper In"
 
 
 def test_player_survivor_files_the_item_under_its_slug_at_d10() -> None:

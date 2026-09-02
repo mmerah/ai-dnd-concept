@@ -16,6 +16,7 @@ from aidm.engines.breathless.world import (
     SceneCanon,
 )
 from aidm.engines.core import PLAYER_ID, AnyEngine
+from aidm.engines.hub import Offer
 from aidm.engines.scenes import Scene
 
 FIRE_AXE = EntityId("fire-axe")
@@ -40,6 +41,33 @@ def test_a_scenario_with_no_packs_is_refused_by_check_packs() -> None:
     engine, state = _breathless_game()
     with pytest.raises(ValueError, match="at least one table set"):
         engine.validate(updated(state, packs=()))
+
+
+def test_check_game_refuses_a_campaign_meta_with_no_hub() -> None:
+    engine, state = _breathless_game()
+    campaign_meta = state.scenario.model_copy(update={"kind": "campaign"})
+    with pytest.raises(ValueError, match="campaign"):
+        engine.validate(updated(state, scenario=campaign_meta))
+
+
+def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
+    engine, state = _breathless_game()
+    world = state.payload.world
+    hub_payload = state.payload.model_copy(
+        update={
+            "world": world.model_copy(
+                update={
+                    "hub": world.run.scene.place,
+                    "board": (
+                        Offer(title="Job One", pitch="I take job one."),
+                        Offer(title="Job Two", pitch="I take job two."),
+                    ),
+                }
+            )
+        }
+    )
+    with pytest.raises(ValueError, match="one-shot"):
+        engine.validate(updated(state, payload=hub_payload))
 
 
 def test_restored_round_trips() -> None:

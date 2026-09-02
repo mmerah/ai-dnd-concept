@@ -11,15 +11,62 @@ from core_test_support import (
 )
 
 from aidm.app.runtime import Conversations, GameService, LaunchTarget
+from aidm.core.entities import EngineId, EntityId
 from aidm.core.io import FileStore
-from aidm.engines.core import load_packs
+from aidm.core.model import ScenarioMeta
+from aidm.engines.core import PLAYER_ID, load_packs
+from aidm.engines.hub import Offer
 from aidm.engines.loner3e.creation import Pack
 from aidm.engines.loner3e.engine import ENGINE_DIR
 from aidm.engines.loner3e.tools import twist_table
+from aidm.engines.loner3e.world import Loner3eGame, Loner3eState, LonerCharacter, LonerWorld
+from aidm.engines.scenes import Scene, SceneRun
 
 TARGET = LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
 PACKS = load_packs((ENGINE_DIR / "packs",), Pack)
 TWISTS = twist_table(PACKS)
+
+HUB_PLACE = "guild-hall"
+JOB_PLACE = "sealed-cairn"
+HUB_SITUATION = (
+    "The guild hall is quiet before the evening crowd, and the keeper's board is chalked up on "
+    "the wall."
+)
+JOB_SITUATION = (
+    "The cairn's outer stones have been pried loose, and something older than the hill waits "
+    "under them."
+)
+JOB = (
+    "Orsa wants the cairn's seal broken and whatever is inside brought back whole; she pays in "
+    "silver."
+)
+KEEPER = EntityId("keeper")
+
+
+def hub_world() -> Loner3eGame:
+    """A campaign world: a hub run with a known keeper, then one job run away from it."""
+    keeper = LonerCharacter(
+        id=KEEPER, name="Keeper", brief="Runs the guild hall's board", known=True
+    )
+    hub_run = SceneRun(scene=_hub_scene(), present=[PLAYER_ID, KEEPER])
+    job_run = SceneRun(scene=_job_scene(), present=[PLAYER_ID])
+    world = LonerWorld(
+        cast={PLAYER_ID: _player(), KEEPER: keeper},
+        runs=[hub_run, job_run],
+        player_id=PLAYER_ID,
+        hub=HUB_PLACE,
+        board=(
+            Offer(title="Job One", pitch="I take job one."),
+            Offer(title="Job Two", pitch="I take job two."),
+        ),
+    )
+    return Loner3eGame(
+        scenario_id="guild-hall",
+        character_id="kael",
+        scenario=ScenarioMeta(title="The Guild Hall", premise="A hub campaign.", kind="campaign"),
+        engine=EngineId("loner3e"),
+        payload=Loner3eState(world=world),
+    )
 
 
 def loner3e_session(directory: Path) -> GameService:
@@ -37,4 +84,38 @@ def loner3e_session(directory: Path) -> GameService:
         sessions=Conversations(spawner, store, settings),
         settings=settings,
         rng=Random(1),
+    )
+
+
+def _hub_scene() -> Scene:
+    return Scene(
+        place=HUB_PLACE,
+        title="The Guild Hall",
+        question="What keeps Kael coming back to the guild hall tonight?",
+        situation=HUB_SITUATION,
+    )
+
+
+def _job_scene() -> Scene:
+    return Scene(
+        place=JOB_PLACE,
+        title="The Sealed Cairn",
+        question="Can Kael break the cairn's seal before whatever is inside wakes?",
+        situation=JOB_SITUATION,
+        job=JOB,
+    )
+
+
+def _player() -> LonerCharacter:
+    return LonerCharacter(
+        id=PLAYER_ID,
+        name="Kael",
+        brief="A wary relic-hunter",
+        known=True,
+        concept="A Wary Relic-Hunter",
+        skills=("Reads Old Stonework",),
+        frailties=("Never Walks Away",),
+        gear=("Pry Bar",),
+        goal="Find what has been sealed away",
+        motive="Whatever was worth sealing is worth more unsealed",
     )

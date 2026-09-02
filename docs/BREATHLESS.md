@@ -55,11 +55,12 @@ stands. Nothing diverges silently: a rule not listed here is implemented as prin
 5. **No companions.** The SRD prints no rule for another character joining the player, so the
    engine has none; the worldsmith's bar brings the cast back scene by scene.
 
-Three readings the SRD leaves open are settled without diverging from it: stress is a counter that
+Four readings the SRD leaves open are settled without diverging from it: stress is a counter that
 stops at 4 (the SRD names 4 as the threshold for vulnerable and nothing above it); the catch-breath
 complication is one d12 on the SRD's own table, offered to the game master as a note rather than
-forced into the story; and a luck test is read on the check ladder, the SRD's "interpret the
-result as you see fit".
+forced into the story; a luck test is read on the check ladder, the SRD's "interpret the
+result as you see fit"; and a campaign's between-runs step is none: the SRD prints nothing between
+runs, so a finished run's return appends no note and nothing is owed.
 
 ## What the AI game master adds
 
