@@ -31,9 +31,9 @@ from aidm.engines.loner3e.world import (
     way_open,
 )
 from aidm.engines.loner3e.worldsmith import (
-    SceneDraft,
     build_scenario,
     install_scene,
+    opening_draft,
     render_opening,
     write_next,
 )
@@ -100,7 +100,7 @@ def build(user_packs: Path) -> Engine[Loner3eGame]:
         player_view=player_view,
         over=player_over,
         authoring=Authoring(
-            answer=SceneDraft,
+            answer=opening_draft,
             prompt=partial(render_opening, packs),
             build=build_scenario,
         ),

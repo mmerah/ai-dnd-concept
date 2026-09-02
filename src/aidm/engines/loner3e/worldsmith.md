@@ -18,10 +18,6 @@ Never name the player: they are put into the scene by code. Name everyone else b
 
 The scene's `secret` is what the `question` does not say: how it settles, what it costs, or what somebody here will not admit. Never restate the question in it. It is for the game master alone and is never read to the player.
 
-An `offers` entry is a job the hub can hand the player: a `title`, and a `pitch` as the board posts it — "A sealed crypt under the mill, the miller pays in silver for what is inside." — enough to walk out on.
-
-`job` goes on the scene that leaves the hub only: a short paragraph on the job as taken — who wants what done, what done looks like, what it pays. Title that scene after the offer taken.
-
 A living character may carry a `goal`, a `motive` and a `nemesis`; an object, a vehicle or a curse does not. Every character rolls with luck of its own, so give a door or a storm the `skills` and `frailties` it resists with.
 
 Everything you need is below. Do not read, search or run anything in the repository.

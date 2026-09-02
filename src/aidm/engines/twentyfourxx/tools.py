@@ -7,9 +7,9 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, slug
 from aidm.core.facts import DiceEvent, Fact, roll
-from aidm.core.tools import MasterTool, NoArgs, master_tool
+from aidm.core.tools import MasterTool, master_tool
 from aidm.engines.core import PLAYER_ID, entity_fact, keep_highest
-from aidm.engines.scenes import SCENE_SETTLED
+from aidm.engines.scenes import NEXT_SCENE, NextScene, settle
 from aidm.engines.twentyfourxx.creation import Pack
 from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
@@ -219,12 +219,8 @@ def change_world(draft: TwentyfourxxGame, args: ChangeWorld, _rng: Random) -> li
     return apply_change(draft.payload.world, args.change)
 
 
-def next_scene(draft: TwentyfourxxGame, _args: NoArgs, _rng: Random) -> tuple[Fact, ...]:
-    world = draft.payload.world
-    if world.run.settled:
-        raise ValueError("this scene is already settled; the player has the way on")
-    world.run.settled = True
-    return (SCENE_SETTLED,)
+def next_scene(draft: TwentyfourxxGame, args: NextScene, _rng: Random) -> tuple[Fact, ...]:
+    return settle(draft.payload.world, args.job_done)
 
 
 def attempt(
@@ -354,9 +350,8 @@ def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[TwentyfourxxGame], ...]
         ),
         master_tool(
             "next_scene",
-            "Say this scene's question is settled. The player is then asked what they want to "
-            "pursue, and their own words build the next scene. Do not answer for them.",
-            NoArgs,
+            NEXT_SCENE,
+            NextScene,
             next_scene,
         ),
         master_tool(

@@ -17,10 +17,6 @@ Never name the player: they are put into the scene by code. Name everyone else b
 
 The scene's `secret` is what the `question` does not say: how it settles, what it costs, or what somebody here will not admit. Never restate the question in it. It is for the game master alone and is never read to the player.
 
-An `offers` entry is a run the hub can hand the player: a `title`, and a `pitch` as the board posts it — "Insulin in the pharmacy on Ninth, Crawlers between here and there." — enough to walk out on.
-
-`job` goes on the scene that leaves the hub only: a short paragraph on the run as taken — who wants what done, what done looks like, what it pays. Title that scene after the offer taken.
-
 The cast carries no dice. Write a threat as a `brief` — what it does and how it hurts — and the player's own roll meets it.
 
 Everything you need is below. Do not read, search or run anything in the repository.

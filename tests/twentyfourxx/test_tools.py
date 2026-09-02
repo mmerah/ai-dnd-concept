@@ -2,12 +2,13 @@ from pathlib import Path
 from random import Random
 
 import pytest
-from twentyfourxx_test_support import KESTREL, LOCKPICKS, small_world
+from twentyfourxx_test_support import KESTREL, LOCKPICKS, hub_world, small_world
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
-from aidm.core.tools import NoArgs
 from aidm.engines.core import PLAYER_ID, load_packs
+from aidm.engines.hub import JOB_DONE
+from aidm.engines.scenes import NextScene
 from aidm.engines.twentyfourxx.creation import Pack
 from aidm.engines.twentyfourxx.tools import (
     Attempt,
@@ -233,11 +234,25 @@ def test_kill_on_the_player_flips_player_over() -> None:
 
 def test_next_scene_settles_and_refuses_a_second_call() -> None:
     draft = small_world().draft()
-    facts = next_scene(draft, NoArgs(), Random(0))
+    facts = next_scene(draft, NextScene(), Random(0))
     assert draft.payload.world.run.settled
     assert facts[0].kind == "scene_settled"
     with pytest.raises(ValueError, match="already settled"):
-        _ = next_scene(draft, NoArgs(), Random(0))
+        _ = next_scene(draft, NextScene(), Random(0))
+
+
+def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() -> None:
+    draft = hub_world()
+    world = draft.payload.world
+    facts = next_scene(draft, NextScene(job_done=True), Random(0))
+    assert world.run.settled
+    assert world.run.job_done
+    assert JOB_DONE in facts
+
+    at_hub = hub_world()
+    at_hub.payload.world.runs = [at_hub.payload.world.runs[0]]
+    with pytest.raises(ValueError, match="no job is open here"):
+        _ = next_scene(at_hub, NextScene(job_done=True), Random(0))
 
 
 def test_leave_takes_a_cast_member_out() -> None:

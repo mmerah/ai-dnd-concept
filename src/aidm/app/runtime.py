@@ -402,7 +402,7 @@ class Runtime:
         written = await answered(
             "worldsmith",
             engine.authoring.prompt(source, packs, kind),
-            engine.authoring.answer,
+            engine.authoring.answer(kind),
             refusal,
             partial(self.spawner.run, "worldsmith"),
         )

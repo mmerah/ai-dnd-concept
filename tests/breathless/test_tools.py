@@ -2,7 +2,7 @@ from pathlib import Path
 from random import Random
 
 import pytest
-from breathless_test_support import WRENCH, changed_facts, refused, small_world
+from breathless_test_support import WRENCH, changed_facts, hub_world, refused, small_world
 
 from aidm.core.entities import EntityId
 from aidm.core.tools import NoArgs
@@ -15,12 +15,15 @@ from aidm.engines.breathless.tools import (
     change_stress,
     check,
     loot_check,
+    next_scene,
     use_med_kit,
 )
 from aidm.engines.breathless.tools import TestLuck as LuckTest
 from aidm.engines.breathless.tools import test_luck as roll_luck
 from aidm.engines.breathless.world import Item, player_over, stepped
 from aidm.engines.core import PLAYER_ID, load_packs
+from aidm.engines.hub import JOB_DONE
+from aidm.engines.scenes import NextScene
 
 PACKS_DIR = Path(__file__).parents[2] / "src" / "aidm" / "engines" / "breathless" / "packs"
 PACKS = load_packs((PACKS_DIR,), Pack)
@@ -194,3 +197,17 @@ def test_drop_item_removes_the_key() -> None:
     draft = small_world().draft()
     _ = changed_facts(draft, "drop_item", item_id=WRENCH)
     assert WRENCH not in draft.payload.world.player.items
+
+
+def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() -> None:
+    draft = hub_world()
+    world = draft.payload.world
+    facts = next_scene(draft, NextScene(job_done=True), Random(0))
+    assert world.run.settled
+    assert world.run.job_done
+    assert JOB_DONE in facts
+
+    at_hub = hub_world()
+    at_hub.payload.world.runs = [at_hub.payload.world.runs[0]]
+    with pytest.raises(ValueError, match="no job is open here"):
+        _ = next_scene(at_hub, NextScene(job_done=True), Random(0))

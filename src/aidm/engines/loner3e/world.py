@@ -5,20 +5,19 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Mutable, Slug, require_unique
-from aidm.core.facts import Fact, cards
+from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import Exchange, SpokenLine
 from aidm.core.views import Rows
 from aidm.engines.core import PLAYER_ID, Counter, check_filing, labeled, pool, reveal
-from aidm.engines.hub import Job, Offer, Stop, closed_jobs, job_start, job_titles
+from aidm.engines.hub import Offer
 from aidm.engines.scenes import (
-    SPENT_NOTE,
     Scene,
     SceneRun,
+    SceneWorld,
     check_hub,
     check_named,
-    scene_spent,
-    stops_of,
+    record_exchange,
 )
 
 LUCK_MAX = 6
@@ -84,16 +83,12 @@ class SceneCanon(Mutable):
         return self
 
 
-class LonerWorld(Mutable):
+class LonerWorld(SceneWorld):
     """The world as a sequence of scenes: the cast persists, the scene is what is happening."""
 
     cast: dict[EntityId, LonerCharacter] = Field(default_factory=dict)
-    runs: list[SceneRun] = Field(min_length=1)
     companions: list[EntityId] = Field(default_factory=list)
     player_id: EntityId
-    source: str = ""
-    hub: Slug | None = None
-    board: tuple[Offer, ...] = ()
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -111,21 +106,7 @@ class LonerWorld(Mutable):
         for member_id in self.companions:
             if not self.require(member_id).alive:
                 raise ValueError(f"{member_id!r} is dead and cannot travel with the player")
-        check_hub(self.hub, self.board, self.runs)
         return self
-
-    @property
-    def at_hub(self) -> bool:
-        return self.hub is not None and self.current.place == self.hub
-
-    def stops(self) -> tuple[Stop, ...]:
-        return stops_of(self.runs)
-
-    def job_runs(self) -> list[SceneRun]:
-        return self.runs[job_start(self.hub, self.stops()) :]
-
-    def jobs(self) -> tuple[Job, ...]:
-        return closed_jobs(self.hub, self.stops())
 
     def require(self, entity_id: EntityId) -> LonerCharacter:
         one = self.cast.get(entity_id)
@@ -153,28 +134,8 @@ class LonerWorld(Mutable):
         return one
 
     @property
-    def run(self) -> SceneRun:
-        return self.runs[-1]
-
-    @property
-    def current(self) -> Scene:
-        return self.run.scene
-
-    @property
     def player(self) -> LonerCharacter:
         return self.require(self.player_id)
-
-    def exchanges(self) -> tuple[Exchange, ...]:
-        filed: list[Exchange] = []
-        for run, job in zip(self.runs, job_titles(self.hub, self.stops()), strict=True):
-            where = (
-                run.scene.title if job in ("", run.scene.title) else f"{job} — {run.scene.title}"
-            )
-            filed.extend(
-                one if one.where else one.model_copy(update={"where": where})
-                for one in run.exchanges
-            )
-        return tuple(filed)
 
     def here(self) -> Iterator[LonerCharacter]:
         return (self.require(one) for one in self.run.present)
@@ -184,13 +145,6 @@ class LonerWorld(Mutable):
 
     def reveal(self, entity: LonerCharacter) -> list[Fact]:
         return reveal(entity, self.player_id)
-
-    def last_seen(self, entity_id: EntityId) -> str:
-        """Scan backwards for the scene that held them, so nothing the story dropped is lost."""
-        for run in reversed(self.runs):
-            if entity_id in (*run.present, *run.hidden):
-                return run.scene.title
-        return ""
 
 
 class Loner3eState(Mutable):
@@ -235,18 +189,14 @@ def record(
     state: Loner3eGame, prompt: str, lines: tuple[SpokenLine, ...], facts: Sequence[Fact]
 ) -> tuple[str, ...]:
     world = state.payload.world
-    world.run.exchanges.append(
-        Exchange(
-            prompt=prompt,
-            lines=lines,
-            facts=cards(facts),
-            decision="" if state.pending is None else state.pending.prompt,
-        )
+    return record_exchange(
+        world,
+        prompt,
+        lines,
+        facts,
+        "" if state.pending is None else state.pending.prompt,
+        someone_dead=any(not one.alive for one in world.here()),
     )
-    if world.run.settled or world.at_hub or len(world.run.exchanges) <= 1:
-        return ()
-    reason = scene_spent(world.run, any(not one.alive for one in world.here()))
-    return () if reason is None else (SPENT_NOTE.format(reason=reason),)
 
 
 def history(state: Loner3eGame) -> tuple[Exchange, ...]:

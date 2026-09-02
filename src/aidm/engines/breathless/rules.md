@@ -44,12 +44,14 @@ doing something. Pick the die by the odds.
 
 ## Campaigns
 
-The hub is always open, so `next_scene` is never needed there and the spent note never fires;
-play the hub as any scene — talk, trade, rest — and never push the player out. The board is the
-player's to take from the page, so do not choose for them. The return is the camp: a run
-ends when the player comes home, and nothing is owed for it — Breathless prints no step
-between runs. THE JOB is what the player walked out on. At the hub WHAT THIS PLACE IS ABOUT
-replaces the scene's question: nothing settles there.
+The hub is always open, so `next_scene` is never needed there; play the hub as any scene — talk,
+trade, rest — and never push the player out. The board is the player's to take from the page, so do
+not choose for them. When the story and the player's own words close the job, call `next_scene` with
+`job_done`; settled without it, the job stays open, and the player may go home either way. The
+return is the camp: a run ends when the player comes home, and nothing is owed for it — Breathless
+prints no step between runs. `Go home.` and `I take the job "…".` are the page's own words for
+leaving: play the goodbye in one call or none, then exit. THE JOB is what the player walked out on.
+At the hub WHAT THIS PLACE IS ABOUT replaces the scene's question: nothing settles there.
 
 ## Let the player choose where the story goes
 

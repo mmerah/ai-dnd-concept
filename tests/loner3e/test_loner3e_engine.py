@@ -2,13 +2,13 @@ from random import Random
 
 import pytest
 from core_test_support import initialized, loner_sheet, updated
-from loner3e_test_support import PACKS, TWISTS
+from loner3e_test_support import PACKS, TWISTS, hub_world
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import cards
 from aidm.core.play import PendingDecision
 from aidm.engines.core import PLAYER_ID, Counter
-from aidm.engines.hub import Offer
+from aidm.engines.hub import JOB_DONE, Offer
 from aidm.engines.loner3e.tools import (
     Question,
     RestoreLuck,
@@ -17,12 +17,14 @@ from aidm.engines.loner3e.tools import (
     apply_restore_luck,
     conflict_prompt,
     defeat_note,
+    next_scene,
     outcome_for,
     resolve_question,
     twist_note,
     twist_pairing,
 )
 from aidm.engines.loner3e.world import LUCK_MAX, TIES_PER_TWIST
+from aidm.engines.scenes import NextScene
 
 FOE = EntityId("mara")
 MAP = EntityId("vault-map")
@@ -249,6 +251,20 @@ def test_restoring_luck_that_is_already_full_is_a_quiet_no_op() -> None:
     _, state = initialized()
 
     assert apply_restore_luck(state.draft(), RestoreLuck(actor_id=PLAYER_ID), Random(0)) == []
+
+
+def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() -> None:
+    draft = hub_world()
+    world = draft.payload.world
+    facts = next_scene(draft, NextScene(job_done=True), Random(0))
+    assert world.run.settled
+    assert world.run.job_done
+    assert JOB_DONE in facts
+
+    at_hub = hub_world()
+    at_hub.payload.world.runs = [at_hub.payload.world.runs[0]]
+    with pytest.raises(ValueError, match="no job is open here"):
+        _ = next_scene(at_hub, NextScene(job_done=True), Random(0))
 
 
 def test_check_game_refuses_a_campaign_meta_with_no_hub() -> None:

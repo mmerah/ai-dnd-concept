@@ -157,6 +157,10 @@ def scenario_page(runtime: Runtime) -> None:
             label="Character",
         ).classes("w-full")
         kind_toggle = ui.toggle({"one-shot": "One-shot", "campaign": "Campaign"}, value="one-shot")
+        ui.label(
+            "A campaign opens at a home base with a board of jobs. "
+            "Say where home is and who runs it."
+        ).classes("text-sm opacity-70")
         premise = (
             ui.textarea(label="Premise", placeholder="What is this adventure about?")
             .classes("w-full")

@@ -9,10 +9,11 @@ from aidm.core.views import (
     Subject,
     speaker_of,
 )
-from aidm.engines.hub import HOME_ROW, HUB_ROW, board_lines, board_rows, jobs_rows, ledger
+from aidm.engines.hub import board_panel, jobs_panel, master_tail, question_heading
 from aidm.engines.loner3e.creation import Pack
 from aidm.engines.loner3e.tools import meanings
 from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter, LonerWorld, player_over
+from aidm.engines.scenes import scene_rows, trail_panel
 
 
 def subject_of(one: LonerCharacter) -> Subject:
@@ -57,15 +58,6 @@ def narrator_view(state: Loner3eGame) -> NarratorView:
 def player_view(state: Loner3eGame) -> PlayerView:
     world = state.payload.world
     player = world.player
-    scene_rows = [PanelRow(label=world.current.question, detail="")]
-    if world.at_hub:
-        scene_rows.append(HUB_ROW)
-    elif world.run.settled:
-        scene_rows.append(
-            PanelRow(label="Way on", detail="Keep playing, or name where you go and move on.")
-        )
-        if world.hub is not None:
-            scene_rows.append(HOME_ROW)
     here_rows = [
         PanelRow(label=f"{player.name} (you)", detail=player.brief, icon_id=player.id),
         *(_entity_row(one) for one in world.here() if one.known and one.id != player.id),
@@ -77,8 +69,6 @@ def player_view(state: Loner3eGame) -> PlayerView:
                 detail=", ".join(world.require(one).name for one in world.companions),
             )
         )
-    board = (Panel(title="Board", rows=board_rows(world.board)),) if world.at_hub else ()
-    jobs = (Panel(title="Jobs", rows=jobs_rows(world.jobs())),) if world.hub else ()
     return PlayerView(
         player=subject_of(player),
         panels=(
@@ -86,14 +76,11 @@ def player_view(state: Loner3eGame) -> PlayerView:
                 title="Character",
                 rows=tuple(PanelRow(label=label, detail=detail) for label, detail in player.rows()),
             ),
-            Panel(title="This scene", rows=tuple(scene_rows)),
-            *board,
+            Panel(title="This scene", rows=scene_rows(world)),
+            *board_panel(world.at_hub, world.board),
             Panel(title="Here", rows=tuple(here_rows)),
-            Panel(
-                title="Trail",
-                rows=tuple(PanelRow(label=one.scene.title, detail="") for one in world.job_runs()),
-            ),
-            *jobs,
+            trail_panel(world.job_runs()),
+            *jobs_panel(world.jobs()),
         ),
         prompt=state.pending,
         over=player_over(state),
@@ -110,12 +97,9 @@ def master_sections(packs: Mapping[str, Pack], state: Loner3eGame) -> Rows:
         glossary.update(meanings(packs, state.packs, one))
     lines = "\n".join(f"- {tag}: {detail}" for tag, detail in glossary.items())
     spelled = (("WHAT THE TAGS IN PLAY MEAN", lines),) if glossary else ()
-    question_heading = (
-        "WHAT THIS PLACE IS ABOUT" if world.at_hub else "THE QUESTION THIS SCENE SETTLES"
-    )
-    sections: list[tuple[str, str]] = [
+    return (
         ("SCENE", f"{scene.title}\n{scene.situation}"),
-        (question_heading, scene.question),
+        (question_heading(world.at_hub), scene.question),
         ("YOU PLAY FOR", entity_line(world, player)),
         (
             "HERE WITH THE PLAYER",
@@ -127,15 +111,8 @@ def master_sections(packs: Mapping[str, Pack], state: Loner3eGame) -> Rows:
         ),
         *spelled,
         ("THE SCENE'S SECRET (never narrate this)", scene.secret or "(none)"),
-    ]
-    job = next((run.scene.job for run in world.job_runs() if run.scene.job), "")
-    if job:
-        sections.append(("THE JOB", job))
-    if world.hub is not None:
-        sections.append(("JOBS SO FAR", ledger(world.jobs())))
-    if world.at_hub:
-        sections.append(("THE BOARD", board_lines(world.board)))
-    return tuple(sections)
+        *master_tail(world.hub, world.at_hub, world.board, world.jobs(), world.job),
+    )
 
 
 def _entity_row(one: LonerCharacter) -> PanelRow:

@@ -25,7 +25,7 @@ from aidm.engines.breathless.world import (
     stepped,
 )
 from aidm.engines.core import PLAYER_ID, counter_fact, entity_fact
-from aidm.engines.scenes import SCENE_SETTLED
+from aidm.engines.scenes import NEXT_SCENE, NextScene, settle
 
 CHANGE_WORLD = (
     "Apply one settled world change to match the story. Set `verb` to pick the change and fill "
@@ -187,12 +187,8 @@ def change_world(draft: BreathlessGame, args: ChangeWorld, _rng: Random) -> list
     return apply_change(draft.payload.world, args.change)
 
 
-def next_scene(draft: BreathlessGame, _args: NoArgs, _rng: Random) -> tuple[Fact, ...]:
-    world = draft.payload.world
-    if world.run.settled:
-        raise ValueError("this scene is already settled; the player has the way on")
-    world.run.settled = True
-    return (SCENE_SETTLED,)
+def next_scene(draft: BreathlessGame, args: NextScene, _rng: Random) -> tuple[Fact, ...]:
+    return settle(draft.payload.world, args.job_done)
 
 
 def check(draft: BreathlessGame, args: Check, rng: Random) -> list[Fact]:
@@ -349,9 +345,8 @@ def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[BreathlessGame], ...]:
         ),
         master_tool(
             "next_scene",
-            "Say this scene's question is settled. The player is then asked what they want to "
-            "pursue, and their own words build the next scene. Do not answer for them.",
-            NoArgs,
+            NEXT_SCENE,
+            NextScene,
             next_scene,
         ),
         master_tool(

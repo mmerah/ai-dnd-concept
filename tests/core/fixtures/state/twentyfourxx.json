@@ -15,6 +15,33 @@
   "notes": [],
   "payload": {
     "world": {
+      "runs": [
+        {
+          "scene": {
+            "place": "docking-ring",
+            "title": "The Docking Ring",
+            "question": "Can Kael reach the control deck and find out why the relay went dark?",
+            "situation": "QV-9's docking ring hums with full power, yet every comm panel down the corridor sits dark and silent. Vessa Rune waits at the airlock with her override key already drawn, and Harl Odum's salvage skiff sits clamped to the outer berth, its hatch cycling open before Kael has even hailed it.",
+            "secret": "Six days ago Vessa Rune ordered the station's maintenance android to seal the relay compartment and cut the beacon rather than risk a corrupted signal reaching the convoy; it has followed that order against everyone since, herself included.",
+            "debrief": null,
+            "job": ""
+          },
+          "present": [
+            "vessa-rune",
+            "harl-odum"
+          ],
+          "hidden": [
+            "warden-six"
+          ],
+          "exchanges": [],
+          "settled": false,
+          "spent": "",
+          "job_done": false
+        }
+      ],
+      "source": "# The Silent Relay\n\nRelay station QV-9 sits on the convoy line three jumps out from the nearest yard, its beacon the only thing keeping ships from translating in blind.\n\n> Six days dark and still drawing power. Something on that station chose the silence.\n\nThe docking ring holds atmosphere and gravity; whatever cut the beacon left the rest of QV-9 running.\n\np. 1\n",
+      "hub": null,
+      "board": [],
       "cast": {
         "vessa-rune": {
           "id": "vessa-rune",
@@ -74,33 +101,7 @@
         },
         "hindrances": [],
         "alive": true
-      },
-      "runs": [
-        {
-          "scene": {
-            "place": "docking-ring",
-            "title": "The Docking Ring",
-            "question": "Can Kael reach the control deck and find out why the relay went dark?",
-            "situation": "QV-9's docking ring hums with full power, yet every comm panel down the corridor sits dark and silent. Vessa Rune waits at the airlock with her override key already drawn, and Harl Odum's salvage skiff sits clamped to the outer berth, its hatch cycling open before Kael has even hailed it.",
-            "secret": "Six days ago Vessa Rune ordered the station's maintenance android to seal the relay compartment and cut the beacon rather than risk a corrupted signal reaching the convoy; it has followed that order against everyone since, herself included.",
-            "debrief": null,
-            "job": ""
-          },
-          "present": [
-            "vessa-rune",
-            "harl-odum"
-          ],
-          "hidden": [
-            "warden-six"
-          ],
-          "exchanges": [],
-          "settled": false,
-          "spent": ""
-        }
-      ],
-      "source": "# The Silent Relay\n\nRelay station QV-9 sits on the convoy line three jumps out from the nearest yard, its beacon the only thing keeping ships from translating in blind.\n\n> Six days dark and still drawing power. Something on that station chose the silence.\n\nThe docking ring holds atmosphere and gravity; whatever cut the beacon left the rest of QV-9 running.\n\np. 1\n",
-      "hub": null,
-      "board": []
+      }
     }
   }
 }
