@@ -102,5 +102,5 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
             item="Fire Axe",
         ),
     )
-    with pytest.raises(ValueError, match="reserved player id"):
+    with pytest.raises(ValueError, match="the player is in the cast"):
         new_game(scenario, character)
