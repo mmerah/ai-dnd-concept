@@ -707,8 +707,8 @@ def scene_unmet[C: Person, P: Person](
             "a scene that does not list the player or the party; "
             f"they are put there by code: {named}"
         )
-    # The party is already something established in the scene; with one, nothing more is owed.
-    needs_return = world is not None and not world.party
+    # Nothing can be brought back once everyone left behind travels with the player.
+    needs_return = world is not None and bool(set(world.cast) - set(world.party))
     unmet.extend(
         cast_unmet(others, draft.hidden, draft.situation, everyone, held, needs_return=needs_return)
     )
