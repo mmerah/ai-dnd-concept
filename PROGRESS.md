@@ -105,14 +105,15 @@ that the plan did not say.
   Waystation hub `question` had a settleable second clause; the single-use `campaign` local in
   both `render_opening`s; `loner3e_test_support.py`'s public function after its private ones;
   one `opening_canon` campaign test per engine (the authoring path had none).
-- Awaiting the maintainer's call, kept as is: both reviewers note the hub code is now a third
+- Decided after the phase, on the maintainer's call: both reviewers note the hub code is now a third
   identical copy across the scene engines (`_scene_unmet`'s hub tail, `render_worldsmith`'s hub
   block, `install_scene`'s `HubDraft` branch, `master_sections`' tail, the two optional panels,
   `at_hub`/`stops`/`job_runs`/`jobs`/`exchanges`, plus `MIN_JOB` and `ONE_SHOT_OPENING`). Kept
   because settled 7 keeps anything bound to an engine's world type in the engine with no type
   parameter, protocol or callback, and `hub.py`/`scenes.py` are outside this phase. The pure
   pieces (the `where` heading expression, `MIN_JOB`, `ONE_SHOT_OPENING`) could move to `hub.py`
-  without touching settled 7; a candidate for after Phase 4, when Tunnel Goons shows what it
-  shares.
+  without touching settled 7. The maintainer agreed with the reviewers: PLAN.md Phase 4b moves
+  all of it into `hub.py` and `scenes.py` once Tunnel Goons shows what it shares, and settled 7
+  now says shared code takes plain values, never a world.
 - Known and accepted: `uv run aidm` serves the home page (HTTP 200); a played campaign turn
   needs the real CLIs and was not smoke-tested in the remote container.
