@@ -1,4 +1,3 @@
-from functools import partial
 from typing import Literal, Self
 
 from pydantic import Field, model_validator
@@ -7,7 +6,7 @@ from aidm.core.entities import EntityId, Mutable, slug
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
 from aidm.engines.core import PLAYER_ID, Counter, Person, pool
-from aidm.engines.scenes import SceneScenario, SceneState, SceneWorld
+from aidm.engines.scenes.world import SceneScenario, SceneState, SceneWorld
 
 type Die = Literal[4, 6, 8, 10, 12]
 LADDER: tuple[Die, ...] = (4, 6, 8, 10, 12)
@@ -36,7 +35,7 @@ class Survivor(Person):
     items: dict[EntityId, Item] = Field(default_factory=dict)  # the backpack
     med_kit: bool = False
     loot: Die = LOOT_START
-    stress: Counter = Field(default_factory=partial(Counter, current=0, maximum=STRESS_MAX))
+    stress: Counter = Field(default_factory=lambda: Counter(current=0, maximum=STRESS_MAX))
     stunted: bool = False
 
     @model_validator(mode="after")
@@ -106,7 +105,7 @@ def stepped(die: Die) -> Die:
     return LADDER[max(LADDER.index(die) - 1, 0)]
 
 
-def player_survivor(character: BreathlessCharacterFile) -> Survivor:
+def player_survivor(character: Character[BreathlessCharacter]) -> Survivor:
     """The played character as the world holds them; `new_game` and `preview_character` share it."""
     payload = character.payload
     return Survivor(

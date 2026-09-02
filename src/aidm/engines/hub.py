@@ -26,8 +26,12 @@ OFFER_ASK = (
     "manifest, half up front.' — enough to walk out on"
 )
 ONE_SHOT_OPENING = (
-    "Write the opening scene of this adventure: where the player starts, who is there, "
-    "and what is waiting to be found."
+    "Write the opening scene of this adventure: the one place the player starts in, who is "
+    "there, and a `question` that settles in that place. A scene ends when the player leaves "
+    "it, so a question about somewhere farther on belongs to a later scene. `cast` is the "
+    "adventure's people and things, not the scene's: write who is met here and who the player "
+    "will meet farther in, and list under `present` and `hidden` only who is here now. "
+    "`hidden` is for something worth finding here; it is not required."
 )
 CAMPAIGN_OPENING = (  # one template; `{hub}` is the engine's own phrase for its home base
     "Write the opening of this campaign: the hub the player keeps coming back to — one place, "

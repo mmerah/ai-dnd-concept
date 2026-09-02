@@ -5,10 +5,12 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked
-from aidm.core.entities import EngineId, Frozen, Slug, slug
+from aidm.core.entities import EngineId, Slug, slug
 from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption
 from aidm.core.views import Rows
+from aidm.engines.core import Pack as ScenePack
+from aidm.engines.core import pack_options
 from aidm.engines.loner3e.world import (
     DIE_FACE,
     Loner3eCharacter,
@@ -29,10 +31,9 @@ _AUTHORING = (
 )
 
 
-class Pack(Frozen):
+class Pack(ScenePack):
     """One published table set the player can build a character from."""
 
-    name: str
     source: str
     license: str
     concepts: tuple[DecisionOption, ...] = Field(min_length=1)
@@ -113,10 +114,6 @@ def preview_character(character: AnyCharacter) -> Rows:
 
 def find_entry(entries: Sequence[DecisionOption], chosen: str) -> DecisionOption:
     return next(entry for entry in entries if entry.id == chosen)
-
-
-def pack_options(packs: Mapping[str, Pack]) -> tuple[DecisionOption, ...]:
-    return tuple(DecisionOption(id=key, label=one.name) for key, one in packs.items())
 
 
 def guidance(packs: Mapping[str, Pack], selected_ids: Sequence[Slug]) -> str:

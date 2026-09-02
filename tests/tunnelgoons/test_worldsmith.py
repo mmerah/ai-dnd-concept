@@ -1,10 +1,11 @@
+from collections.abc import Callable
+
 import pytest
 from core_test_support import TUNNELGOONS, game
 from pydantic import BaseModel
 from tunnelgoons_test_support import START, TAVERN, hub_world, small_world
 
 from aidm.core.entities import EntityId
-from aidm.core.model import CheckAnswer
 from aidm.engines.hub import Debrief, Offer
 from aidm.engines.tunnelgoons.views import REPORT_IN
 from aidm.engines.tunnelgoons.world import Item, Place, TunnelGoonsGame, Visit, Way
@@ -173,10 +174,13 @@ async def test_write_extension_picks_return_draft_on_report_in_with_a_job_open()
     state.payload.world.visits = _walked_job_visits()
     recorded: list[type[BaseModel]] = []
 
-    async def answer(_prompt: str, model: type[BaseModel], refusal: CheckAnswer) -> BaseModel:
+    async def answer[M: BaseModel](
+        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
         recorded.append(model)
-        assert refusal(RETURN) is None
-        return RETURN
+        written = model.model_validate(RETURN.model_dump())
+        assert refusal(written) is None
+        return written
 
     _ = await write_extension(state, REPORT_IN, answer)
 
@@ -184,7 +188,9 @@ async def test_write_extension_picks_return_draft_on_report_in_with_a_job_open()
 
 
 async def test_write_extension_refuses_report_in_with_no_job_open() -> None:
-    async def answer(_prompt: str, _model: type[BaseModel], _refusal: CheckAnswer) -> BaseModel:
+    async def answer[M: BaseModel](
+        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
         raise AssertionError("no answer should be asked for")
 
     unwalked = hub_world()
@@ -201,7 +207,9 @@ async def test_write_extension_refuses_a_walked_job_open_with_another_intent() -
     state = hub_world()
     state.payload.world.visits = _walked_job_visits()
 
-    async def answer(_prompt: str, _model: type[BaseModel], _refusal: CheckAnswer) -> BaseModel:
+    async def answer[M: BaseModel](
+        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
         raise AssertionError("no answer should be asked for")
 
     with pytest.raises(ValueError, match="report the open job first"):
@@ -211,9 +219,11 @@ async def test_write_extension_refuses_a_walked_job_open_with_another_intent() -
 async def test_write_extension_asks_for_map_draft_away_or_at_the_hub_otherwise() -> None:
     recorded: list[type[BaseModel]] = []
 
-    async def answer(_prompt: str, model: type[BaseModel], _refusal: CheckAnswer) -> BaseModel:
+    async def answer[M: BaseModel](
+        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
         recorded.append(model)
-        return THIN
+        return model.model_validate(THIN.model_dump())
 
     _ = await write_extension(hub_world(), "Nose around the docks.", answer)
     _ = await write_extension(small_world(), "Push north.", answer)

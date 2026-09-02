@@ -1,18 +1,20 @@
-from functools import partial
+from collections.abc import Sequence
 from pathlib import Path
 
-from aidm.core.entities import EngineId
-from aidm.core.io import ENCODING
-from aidm.core.model import AnyCharacter, AnyScenario
-from aidm.engines.core import Authoring, Engine, Transition, load_packs
+from aidm.core.creation import CreationStep, Picks
+from aidm.core.entities import EngineId, Slug
+from aidm.core.facts import Fact
+from aidm.core.model import AnyCharacter
+from aidm.core.tools import MasterTool
+from aidm.core.views import Rows
 from aidm.engines.loner3e.creation import (
     Pack,
     create_character,
     creation_steps,
-    pack_options,
+    guidance,
     preview_character,
 )
-from aidm.engines.loner3e.tools import tools
+from aidm.engines.loner3e.tools import close_conflicts, tools
 from aidm.engines.loner3e.views import master_sections
 from aidm.engines.loner3e.world import (
     Loner3eCharacterFile,
@@ -22,66 +24,50 @@ from aidm.engines.loner3e.world import (
     LonerCharacter,
     player_character,
 )
-from aidm.engines.loner3e.worldsmith import install_scene, render_opening, write_next
-from aidm.engines.scenes import (
-    arrival_brief,
-    build_scenario,
-    check_game,
-    history,
-    known,
-    narrator_view,
-    new_world,
-    opening_draft,
-    player_over,
-    player_view,
-    record,
-    way_open,
+from aidm.engines.scenes.engine import SceneEngine
+from aidm.engines.scenes.world import SceneCanon, new_world
+
+# Read by the next turn, which is usually the next offer click: the note must stand on its own.
+GROWTH_NOTE = (
+    "The job {title} is closed and was completed. The adventure's end applies: ask what the "
+    "character learned if the player has not said, then write it once with `change_tags` and "
+    "`drive`."
 )
 
-ENGINE_DIR = Path(__file__).parent
 
+class Loner3eEngine(SceneEngine[LonerCharacter, LonerCharacter, Loner3eGame, Pack]):
+    id = EngineId("loner3e")
+    title = "LONER 3E"
+    art_style = "Painterly illustration, muted colours, no text or lettering."
+    directory = Path(__file__).parent
+    game = Loner3eGame
+    scenario = Loner3eScenarioFile
+    character = Loner3eCharacterFile
+    cast = LonerCharacter
+    pack = Pack
+    hub_phrase = "a guild hall or a ship, whoever keeps it and the regulars"
+    finished_note = GROWTH_NOTE
 
-def new_game(scenario: AnyScenario, character: AnyCharacter) -> Loner3eState:
-    if not isinstance(scenario, Loner3eScenarioFile):
-        raise ValueError("Loner 3E received an incompatible scenario")
-    if not isinstance(character, Loner3eCharacterFile):
-        raise ValueError("Loner 3E received an incompatible character")
-    return Loner3eState(world=new_world(scenario.payload.world, player_character(character)))
+    def master_tools(self) -> tuple[MasterTool[Loner3eGame], ...]:
+        return tools(self.packs)
 
+    def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
+        return creation_steps(self.packs, picks)
 
-def build(user_packs: Path) -> Engine[Loner3eGame]:
-    packs = load_packs((ENGINE_DIR / "packs", user_packs), Pack)
-    return Engine(
-        id=EngineId("loner3e"),
-        title="LONER 3E",
-        art_style="Painterly illustration, muted colours, no text or lettering.",
-        instructions=(ENGINE_DIR / "rules.md").read_text(encoding=ENCODING),
-        packs=pack_options(packs),
-        game=Loner3eGame,
-        scenario=Loner3eScenarioFile,
-        character=Loner3eCharacterFile,
-        tools=tools(packs),
-        creation_steps=partial(creation_steps, packs),
-        create_character=partial(create_character, packs),
-        preview_character=preview_character,
-        validate=partial(check_game, packs),
-        new_game=new_game,
-        known=known,
-        record=record,
-        history=history,
-        master_sections=partial(master_sections, packs),
-        narrator_view=narrator_view,
-        player_view=player_view,
-        over=player_over,
-        authoring=Authoring(
-            answer=partial(opening_draft, LonerCharacter),
-            prompt=partial(render_opening, packs),
-            build=partial(build_scenario, Loner3eScenarioFile, EngineId("loner3e"), LonerCharacter),
-        ),
-        transition=Transition(
-            ready=way_open,
-            write=partial(write_next, packs),
-            install=install_scene,
-            arrival_brief=arrival_brief,
-        ),
-    )
+    def create_character(self, name: str, brief: str, picks: Picks) -> AnyCharacter:
+        return create_character(self.packs, name, brief, picks)
+
+    def preview_character(self, character: AnyCharacter) -> Rows:
+        return preview_character(character)
+
+    def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
+        return guidance(self.packs, picks)
+
+    def new_state(self, canon: SceneCanon[LonerCharacter], character: AnyCharacter) -> Loner3eState:
+        return Loner3eState(world=new_world(canon, player_character(character)))
+
+    def master_sections(self, state: Loner3eGame) -> Rows:
+        return master_sections(self.packs, state)
+
+    def leaving(self, state: Loner3eGame) -> tuple[Fact, ...]:
+        return close_conflicts(state)

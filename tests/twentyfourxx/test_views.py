@@ -1,9 +1,12 @@
+from core_test_support import ENGINES_BUILT, TWENTYFOURXX
 from twentyfourxx_test_support import LOCKPICKS, small_world
 
 from aidm.core.views import PanelRow
-from aidm.engines.scenes import narrator_view
-from aidm.engines.twentyfourxx.views import gear_detail, master_sections, player_view
+from aidm.engines.scenes.views import narrator_view
+from aidm.engines.twentyfourxx.views import gear_detail, master_sections
 from aidm.engines.twentyfourxx.world import Item
+
+ENGINE = ENGINES_BUILT[TWENTYFOURXX]
 
 
 def test_gear_detail_of_a_plain_item_is_empty() -> None:
@@ -29,7 +32,7 @@ def test_narrator_view_lists_only_known_entities() -> None:
 
 
 def test_player_view_gear_panel_lists_items() -> None:
-    view = player_view(small_world())
+    view = ENGINE.player_view(small_world())
     gear = next(panel for panel in view.panels if panel.title == "Gear")
     assert PanelRow(label="Lockpick set", detail="") in gear.rows
 

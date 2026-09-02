@@ -1,12 +1,13 @@
 import asyncio
 import json
-from dataclasses import replace
+from collections.abc import Callable
 from pathlib import Path
 from random import Random
 
 import pytest
 from core_test_support import (
     LONER3E,
+    LONER3E_PACKS,
     change_args,
     changed,
     narrated,
@@ -17,19 +18,44 @@ from core_test_support import (
     the_way_on,
     updated,
 )
-from pydantic import JsonValue
+from pydantic import BaseModel, JsonValue
 
 import aidm.app.spawn as spawn_module
 from aidm.app.launch import LaunchTarget
 from aidm.app.mcp import call, offered
 from aidm.app.spawn import CliSpawner, final_message
 from aidm.core.entities import EngineId, EntityId
+from aidm.core.facts import Fact
 from aidm.core.model import WorldsmithAnswer
 from aidm.core.play import Narration, narration_text
-from aidm.engines.core import PLAYER_ID, Transition
+from aidm.engines.core import PLAYER_ID
+from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter
-from aidm.engines.scenes import SceneDraft, scene_refusal
+from aidm.engines.scenes.drafts import SceneDraft
+from aidm.engines.scenes.world import scene_refusal
+from aidm.engines.scenes.worldsmith import install_scene
 from aidm.turn.run import ALREADY_OPEN, NO_TURN, START_FIRST, TURN_TOOLS, Turn
+
+
+class _SilentEngine(Loner3eEngine):
+    """A Loner engine whose world grows with no crossing to narrate."""
+
+    crossing = None
+
+    def ready(self, state: Loner3eGame) -> bool:
+        return True
+
+    async def advance(
+        self, draft: Loner3eGame, intent: str, worldsmith: WorldsmithAnswer
+    ) -> tuple[Fact, ...]:
+        written = SceneDraft[LonerCharacter].model_validate_json(_bare_scene())
+        if (refused := scene_refusal(written, self.world(draft))) is not None:
+            raise ValueError(refused)
+        return (
+            *self.leaving(draft),
+            *install_scene(draft, written, finished_note=self.finished_note),
+        )
+
 
 VAULT_MAP = EntityId("vault-map")
 MARA = EntityId("mara")
@@ -227,28 +253,7 @@ async def test_a_transition_without_an_arrival_brief_extends_on_a_lineless_excha
     tmp_path: Path,
 ) -> None:
     table = opened(tmp_path)
-    engine = table.service.engine
-
-    def ready(_state: Loner3eGame) -> bool:
-        return True
-
-    async def write(
-        state: Loner3eGame, _intent: str, _answer: WorldsmithAnswer
-    ) -> SceneDraft[LonerCharacter]:
-        written = SceneDraft[LonerCharacter].model_validate_json(_bare_scene())
-        if (refused := scene_refusal(written, state.payload.world)) is not None:
-            raise ValueError(refused)
-        return written
-
-    table.service.engine = replace(
-        engine,
-        transition=Transition(
-            ready=ready,
-            write=write,
-            install=engine.transition.install,
-            arrival_brief=None,
-        ),
-    )
+    table.service.engine = _SilentEngine(LONER3E_PACKS)
     before = table.state.turn
     runs = len(table.state.payload.world.runs)
 
@@ -265,13 +270,22 @@ async def test_a_transition_without_an_arrival_brief_extends_on_a_lineless_excha
     assert not any(role == "master" for role, _ in table.spawner.prompts)
 
 
-def test_authoring_build_raises_on_an_unmet_bar(tmp_path: Path) -> None:
+async def test_authoring_raises_when_the_worldsmith_never_meets_the_bar(tmp_path: Path) -> None:
     table = opened(tmp_path)
-    thin = json.loads(_bare_scene(present=[], hidden=[]))
-    scene = SceneDraft[LonerCharacter].model_validate(thin)
+    thin = SceneDraft[LonerCharacter].model_validate(json.loads(_bare_scene(present=[], hidden=[])))
+
+    async def answer[M: BaseModel](
+        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
+        written = model.model_validate(thin.model_dump())
+        if (refused := refusal(written)) is not None:
+            raise ValueError(f"the worldsmith answered nothing usable: {refused}")
+        return written
 
     with pytest.raises(ValueError, match="the scene needs"):
-        _ = table.service.engine.authoring.build("T", "p", table.state.packs, scene, "", "one-shot")
+        _ = await table.service.engine.author(
+            "T", "p", "", table.state.packs, "one-shot", answer, lambda _built: None
+        )
 
 
 async def test_a_turn_that_dies_after_asking_to_move_takes_its_write_with_it(
@@ -518,7 +532,9 @@ async def test_abandoning_a_spawn_kills_the_process_group_it_started(
 
 def test_the_surface_publishes_for_the_engine_whose_turn_is_in_flight(tmp_path: Path) -> None:
     table = opened(tmp_path)
-    toolless = replace(table.service.engine, id=EngineId("mirror"), tools=())
+    toolless = Loner3eEngine(LONER3E_PACKS)
+    toolless.id = EngineId("mirror")
+    toolless.tools = ()
     # First of the installed engines, so reading the engines instead of the turn would show it.
     table.runtime.engines = {toolless.id: toolless, **table.runtime.engines}
     state = table.service.state

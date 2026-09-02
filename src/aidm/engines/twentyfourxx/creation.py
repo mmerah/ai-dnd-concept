@@ -7,6 +7,8 @@ from aidm.core.entities import EngineId, Frozen, Slug, slug
 from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption
 from aidm.core.views import Rows
+from aidm.engines.core import Pack as ScenePack
+from aidm.engines.core import pack_options
 from aidm.engines.twentyfourxx.world import (
     Kit,
     SkillDie,
@@ -52,8 +54,7 @@ class Origin(Frozen):
     choice: tuple[DecisionOption, ...] = ()  # android: synth skin | case
 
 
-class Pack(Frozen):
-    name: str
+class Pack(ScenePack):
     source: str
     license: str
     skills: tuple[DecisionOption, ...] = Field(min_length=17, max_length=17)
@@ -162,10 +163,6 @@ def preview_character(character: AnyCharacter) -> Rows:
         raise ValueError("24XX received an incompatible character")
     names = ", ".join(kit.name for kit in character.payload.items)
     return (*player_operator(character).rows(), ("Gear", names))
-
-
-def pack_options(packs: Mapping[str, Pack]) -> tuple[DecisionOption, ...]:
-    return tuple(DecisionOption(id=key, label=one.name) for key, one in packs.items())
 
 
 def guidance(packs: Mapping[str, Pack], selected_ids: Sequence[Slug]) -> str:

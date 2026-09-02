@@ -1,22 +1,26 @@
 from breathless_test_support import DAX, small_world
+from core_test_support import BREATHLESS, ENGINES_BUILT
 
 from aidm.core.views import PanelRow
-from aidm.engines.breathless.views import master_sections, player_view
+from aidm.engines.breathless.views import master_sections
 from aidm.engines.core import Person
-from aidm.engines.scenes import entity_line, narrator_view
+from aidm.engines.scenes.views import narrator_view
+from aidm.engines.scenes.world import entity_line
+
+ENGINE = ENGINES_BUILT[BREATHLESS]
 
 
 def test_the_player_views_backpack_panel_lists_items_and_the_med_kit() -> None:
     game = small_world()
     game.payload.world.player.med_kit = True
-    view = player_view(game)
+    view = ENGINE.player_view(game)
     backpack = next(panel for panel in view.panels if panel.title == "Backpack")
     assert PanelRow(label="Wrench", detail="d10") in backpack.rows
     assert PanelRow(label="Med kit", detail="held") in backpack.rows
 
 
 def test_the_player_views_here_panel_lists_the_player_first_then_known_cast() -> None:
-    view = player_view(small_world())
+    view = ENGINE.player_view(small_world())
     here = next(panel for panel in view.panels if panel.title == "Here")
     assert [row.label for row in here.rows] == ["Jax (you)", "Mira"]
 

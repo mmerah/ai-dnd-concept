@@ -12,34 +12,15 @@ from aidm.config import Settings, load_settings
 from aidm.core.entities import EngineId, EntityId, Slug, require_unique, slug
 from aidm.core.facts import Fact, cards, traced
 from aidm.core.io import FileStore, load_character, read_scenario, write_scenario
-from aidm.core.model import (
-    AnyCharacter,
-    AnyGame,
-    AnyScenario,
-    CheckAnswer,
-    ScenarioKind,
-)
+from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioKind
 from aidm.core.play import Answer, Line, Narration
 from aidm.core.source import given_text
 from aidm.core.tools import MasterTool
 from aidm.core.views import NarratorView, PlayerView
-from aidm.engines.core import AnyEngine, Transition
 from aidm.engines.registry import begin_game, build_engines
-from aidm.turn.context import (
-    MASTER,
-    NARRATOR,
-    render_master,
-    render_narrator,
-    told_passages,
-)
-from aidm.turn.run import (
-    TURN_TOOLS,
-    Turn,
-    TurnStep,
-    TurnTool,
-    close_segment,
-    narration_refusal,
-)
+from aidm.engines.seam import AnyEngine
+from aidm.turn.context import MASTER, NARRATOR, render_master, render_narrator, told_passages
+from aidm.turn.run import TURN_TOOLS, Turn, TurnStep, TurnTool, close_segment, narration_refusal
 
 from .launch import LaunchTarget
 from .media import Illustrator, open_illustrator
@@ -52,10 +33,27 @@ LOGGER = logging.getLogger(__name__)
 CROSSED = "(the story moves on)"
 BEGUN = "(the story begins)"
 OPENING = (
-    "The story begins here; the player has read nothing yet. Write the opening: who they are "
-    "(WHO IS HERE names them first), where they stand, what is in front of them, and what pulls "
-    "at them, from WHAT THIS SCENE IS ABOUT. They have not acted, so settle nothing."
+    "The story begins here; the player has read nothing yet. Tell them, in the fiction and in "
+    "this order: who they are (WHO IS HERE names them first) and where they stand; what is in "
+    "front of them, the situation as they see it now; what they are here to do, from WHAT THIS "
+    "SCENE IS ABOUT, said as the thing pulling at them; and two or three things they could "
+    "plainly do first, offered by the place and the people, in prose, never as a list. Six to "
+    "eight sentences. They have not acted, so settle nothing."
 )
+
+
+@dataclass(frozen=True, slots=True)
+class _Worldsmith:
+    """The `WorldsmithAnswer` the platform hands an engine: one spawned role, one shared retry."""
+
+    spawner: Spawner
+
+    async def __call__[M: BaseModel](
+        self, prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
+        return await answered(
+            "worldsmith", prompt, model, refusal, partial(self.spawner.run, "worldsmith")
+        )
 
 
 @dataclass
@@ -126,11 +124,11 @@ class GameService:
         on_commit: Callable[[], None] | None = None,
     ) -> None:
         """`moving_on` is the player taking the way on, so `action` is what they mean to pursue."""
-        arrival_brief = self.engine.transition.arrival_brief
-        if moving_on and arrival_brief is None:
+        crossing = self.engine.crossing
+        if moving_on and crossing is None:
             await self.extend(action, on_step=on_step)
             return
-        if moving_on and not self.engine.transition.ready(self.state):
+        if moving_on and not self.engine.ready(self.state):
             raise ValueError("the world offers no transition from here")
         announce = partial(self._announce, on_step=on_step)
         turn = Turn.begin(
@@ -152,8 +150,8 @@ class GameService:
                 on_commit()
             self.illustrate(_latest_narration(self.engine, state))
             # The player named where they go; the worldsmith writes it once the turn is safe.
-            if moving_on and arrival_brief is not None and self.engine.over(state) is None:
-                await self._grow(turn.prompt, announce, arrival_brief(turn.prompt))
+            if moving_on and crossing is not None and self.engine.over(state) is None:
+                await self._grow(turn.prompt, announce, crossing.format(pursuit=turn.prompt))
                 self.illustrate(_latest_narration(self.engine, self.state))
         except BaseException:
             # The turn is thrown away, so a role that remembers playing it must be too.
@@ -168,8 +166,7 @@ class GameService:
         on_step: Callable[[TurnStep], None] | None = None,
     ) -> None:
         """Author and install a region without a player turn; a told card is still filed."""
-        transition = self.engine.transition
-        if not transition.ready(self.state):
+        if not self.engine.ready(self.state):
             raise ValueError("the world has no frontier to extend")
         if self.busy:
             raise ValueError("a turn is already in flight")
@@ -243,28 +240,15 @@ class GameService:
     async def _grow(
         self, intent: str, announce: Callable[[TurnStep], None], brief: str | None
     ) -> None:
-        transition = self.engine.transition
         announce("worldsmith")
-        written = await self._write(transition, self.state.draft(), intent)
-        if written is not None:
-            await self._install(transition, written, announce, brief, intent)
-
-    async def _install(
-        self,
-        transition: Transition[AnyGame],
-        written: BaseModel,
-        announce: Callable[[TurnStep], None],
-        brief: str | None,
-        intent: str,
-    ) -> None:
         draft = self.state.draft()
         try:
-            facts = transition.install(draft, written)
+            facts = await self.engine.advance(draft, intent, _Worldsmith(self.spawner))
             self.engine.validate(draft)
-        except ValueError as outgrown:
+        except (OSError, ValueError) as failed:
             # Dropping the write costs a scene; raising costs the turn that was already played.
-            self.write_failure = str(outgrown)
-            LOGGER.warning("the written world no longer fits: %s", outgrown)
+            self.write_failure = str(failed)
+            LOGGER.warning("the world did not grow: %s", failed)
             return
         if brief is None and not cards(facts):
             self.commit(draft.committed())
@@ -276,30 +260,11 @@ class GameService:
         view = self.engine.narrator_view(draft)
         self.commit(close_segment(self.engine, view, draft, prompt, lines, facts))
 
-    async def _write(
-        self, transition: Transition[AnyGame], snapshot: AnyGame, intent: str
-    ) -> BaseModel | None:
-        async def answer(prompt: str, model: type[BaseModel], refusal: CheckAnswer) -> BaseModel:
-            return await answered(
-                "worldsmith",
-                prompt,
-                model,
-                refusal,
-                partial(self.spawner.run, "worldsmith"),
-            )
-
-        try:
-            return await transition.write(snapshot, intent, answer)
-        except (OSError, ValueError) as failed:
-            self.write_failure = str(failed)
-            LOGGER.warning("the worldsmith wrote nothing: %s", failed)
-            return None
-
     def player_view(self) -> PlayerView:
         return self.engine.player_view(self.state)
 
     def transition_available(self) -> bool:
-        return self.engine.transition.ready(self.state)
+        return self.engine.ready(self.state)
 
     def scene(self) -> NarratorView:
         return self.engine.narrator_view(self.state)
@@ -421,27 +386,20 @@ class Runtime:
         source = given_text(premise, document, self.settings.source_max_chars)
         name = slug(title, self._scenario_ids())
 
-        def as_scenario(written: BaseModel) -> AnyScenario:
-            return engine.authoring.build(title, premise, tuple(packs), written, source, kind)
-
-        def refusal(written: BaseModel) -> str | None:
+        def playable(built: AnyScenario) -> str | None:
             try:
-                _ = begin_game(engine, name, as_scenario(written), character)
+                _ = begin_game(engine, name, built, character)
             except ValueError as unplayable:
                 return str(unplayable)
             return None
 
-        written = await answered(
-            "worldsmith",
-            engine.authoring.prompt(source, packs, kind),
-            engine.authoring.answer(kind),
-            refusal,
-            partial(self.spawner.run, "worldsmith"),
+        written = await engine.author(
+            title, premise, source, packs, kind, _Worldsmith(self.spawner), playable
         )
         write_scenario(
             self.settings.scenarios_dir,
             name,
-            as_scenario(written).model_copy(update={"art_style": art_style}),
+            written.model_copy(update={"art_style": art_style}),
             document,
         )
         LOGGER.info("scenario written: slug=%s title=%r", name, title)

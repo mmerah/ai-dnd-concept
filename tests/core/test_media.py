@@ -18,8 +18,8 @@ from aidm.config import MediaConfig, ProviderConfig, Providers
 from aidm.core.entities import EntityId
 from aidm.core.io import FileStore
 from aidm.core.views import NarratorView
-from aidm.engines.core import AnyEngine
 from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter
+from aidm.engines.seam import AnyEngine
 
 NARRATION = "The door groans open."
 STYLE = "Painterly fantasy illustration, muted colours, no text or lettering."

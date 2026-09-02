@@ -36,7 +36,8 @@
           "settled": false,
           "spent": "",
           "job_done": false,
-          "recap": ""
+          "recap": "",
+          "pursuit": ""
         }
       ],
       "source": "",

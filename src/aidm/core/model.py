@@ -1,6 +1,6 @@
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from copy import deepcopy
-from typing import Any, Literal, Self
+from typing import Any, Literal, Protocol, Self
 
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, model_validator
 
@@ -61,6 +61,14 @@ class Character[P: BaseModel](Frozen):
     payload: P
 
 
+class WorldsmithAnswer(Protocol):
+    """How an engine asks the worldsmith: one prompt, the model to answer in, one refusal."""
+
+    async def __call__[M: BaseModel](
+        self, prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M: ...
+
+
 class Game[P: BaseModel](Mutable):
     """The game as it is played; its dump is the save envelope around one engine payload."""
 
@@ -86,10 +94,6 @@ class Game[P: BaseModel](Mutable):
     def committed(self) -> Self:
         """Dumping runs no validator, so the dump is validated back: that is the commit gate."""
         return type(self).model_validate(self.model_dump(round_trip=True))
-
-
-type CheckAnswer = Callable[[BaseModel], str | None]
-type WorldsmithAnswer = Callable[[str, type[BaseModel], CheckAnswer], Awaitable[BaseModel]]
 
 
 type AnyScenario = Scenario[Any]

@@ -5,18 +5,12 @@ from aidm.core.entities import EntityId
 from aidm.core.facts import Fact, cards
 from aidm.core.play import Exchange
 from aidm.engines.core import PLAYER_ID
-from aidm.engines.loner3e.tools import ChangeWorld, apply_change
+from aidm.engines.loner3e.engine import GROWTH_NOTE
+from aidm.engines.loner3e.tools import ChangeWorld, apply_change, close_conflicts
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, LonerCharacter
-from aidm.engines.loner3e.worldsmith import install_scene
-from aidm.engines.scenes import (
-    MIN_SITUATION,
-    SCENE_TURN_CAP,
-    SPENT_NOTE,
-    SceneDraft,
-    apply_scene,
-    record_exchange,
-    scene_refusal,
-)
+from aidm.engines.scenes.drafts import MIN_SITUATION, SceneDraft
+from aidm.engines.scenes.world import SCENE_TURN_CAP, SPENT_NOTE, scene_refusal
+from aidm.engines.scenes.worldsmith import install_scene
 
 MAP = EntityId("vault-map")
 MARA = EntityId("mara")
@@ -106,7 +100,7 @@ def test_the_party_follows_into_the_next_scene() -> None:
     _, state = initialized()
     draft = state.draft()
     _ = changed(draft, "join_party", entity_id=MARA)
-    apply_scene(draft.payload.world, _next_scene(present=()))
+    draft.payload.world.apply_scene(_next_scene(present=()))
     here = draft.payload.world.run.present
     # Mara comes along because she travels with the player; the player is never listed.
     assert MARA in here and PLAYER_ID not in here
@@ -120,7 +114,10 @@ def test_someone_left_behind_is_refilled_when_the_scene_moves_on() -> None:
     draft = state.draft()
     draft.payload.world.require(MARA).luck.current = LUCK_MAX - 2
 
-    facts = install_scene(draft, _next_scene(present=(), hidden=(TOMAS,)))
+    facts = (
+        *close_conflicts(draft),
+        *install_scene(draft, _next_scene(present=(), hidden=(TOMAS,)), finished_note=GROWTH_NOTE),
+    )
 
     assert MARA not in draft.payload.world.party
     assert draft.payload.world.require(MARA).luck.current == LUCK_MAX
@@ -131,10 +128,10 @@ def test_an_id_the_worldsmith_got_wrong_resolves_by_name_before_it_is_refused() 
     _, state = initialized()
     draft = state.draft()
     # The probe's failure: the worldsmith writes a display name where an exact id was asked for.
-    apply_scene(draft.payload.world, _next_scene(present=("Mara",)))
+    draft.payload.world.apply_scene(_next_scene(present=("Mara",)))
     assert draft.payload.world.run.present == [MARA]
     with pytest.raises(ValueError, match="these name nobody"):
-        apply_scene(state.draft().payload.world, _next_scene(present=(EntityId("nobody"),)))
+        state.draft().payload.world.apply_scene(_next_scene(present=(EntityId("nobody"),)))
 
 
 def test_a_situation_that_names_what_it_hides_is_refused() -> None:
@@ -186,7 +183,7 @@ def test_the_scene_bar_names_what_a_thin_scene_is_missing() -> None:
 def test_an_entity_is_never_lost_when_a_scene_leaves_it_behind() -> None:
     _, state = initialized()
     draft = state.draft()
-    apply_scene(draft.payload.world, _next_scene())
+    draft.payload.world.apply_scene(_next_scene())
     assert draft.payload.world.last_seen(MAP) == "last seen in: The Abbot's Study"
     assert MAP in draft.payload.world.cast
 
@@ -258,14 +255,14 @@ def test_the_player_is_in_every_scene_and_is_never_listed_in_one() -> None:
     _, state = initialized()
     draft = state.draft()
     with pytest.raises(ValueError, match="put there by code"):
-        apply_scene(draft.payload.world, _next_scene(present=("kael",), hidden=("Kael", TOMAS)))
+        draft.payload.world.apply_scene(_next_scene(present=("kael",), hidden=("Kael", TOMAS)))
 
 
 def test_a_scene_that_hides_someone_already_met_is_refused_whole() -> None:
     _, state = initialized()
     draft = state.draft()
     with pytest.raises(ValueError, match="already met"):
-        apply_scene(draft.payload.world, _next_scene(present=(), hidden=(MARA,)))
+        draft.payload.world.apply_scene(_next_scene(present=(), hidden=(MARA,)))
     # Refused before the first write: the world still stands in the scene it was in.
     assert draft.payload.world.current.place == "abbots-study"
     assert draft.payload.world.runs[:-1] == []
@@ -335,6 +332,6 @@ def test_drive_writes_what_play_revealed() -> None:
 def _spent(draft: Loner3eGame) -> tuple[str, ...]:
     """One more turn here, and what the master is told about the scene looking finished."""
     world = draft.payload.world
-    return record_exchange(
-        world, "I wait.", (), (), "", someone_dead=any(not one.alive for one in world.here())
+    return world.record_exchange(
+        "I wait.", (), (), "", someone_dead=any(not one.alive for one in world.here())
     )

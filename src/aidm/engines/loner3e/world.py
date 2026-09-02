@@ -1,4 +1,3 @@
-from functools import partial
 from typing import Literal
 
 from pydantic import Field
@@ -7,7 +6,7 @@ from aidm.core.entities import Mutable
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
 from aidm.engines.core import PLAYER_ID, Counter, Person, pool
-from aidm.engines.scenes import SceneScenario, SceneState, SceneWorld
+from aidm.engines.scenes.world import SceneScenario, SceneState, SceneWorld
 
 LUCK_MAX = 6
 DIE_FACE = 6  # every roll in the game is one d6, and every table is six rows
@@ -28,7 +27,7 @@ class LonerCharacter(Person):
     goal: str = ""
     motive: str = ""
     nemesis: str = ""
-    luck: Counter = Field(default_factory=partial(Counter, current=LUCK_MAX, maximum=LUCK_MAX))
+    luck: Counter = Field(default_factory=lambda: Counter(current=LUCK_MAX, maximum=LUCK_MAX))
 
     def rows(self) -> Rows:
         return tuple(
@@ -63,7 +62,7 @@ class Loner3eState(SceneState[LonerCharacter, LonerCharacter]):
     """The save payload: the scene world, plus the counter the SRD keeps beside it."""
 
     # The played character's tally paces the whole game, so no sheet carries one.
-    twist: Counter = Field(default_factory=partial(Counter, current=0, maximum=TIES_PER_TWIST))
+    twist: Counter = Field(default_factory=lambda: Counter(current=0, maximum=TIES_PER_TWIST))
 
 
 class Loner3eCharacter(Mutable):
@@ -87,7 +86,7 @@ class Loner3eCharacterFile(Character[Loner3eCharacter]):
     pass
 
 
-def player_character(character: Loner3eCharacterFile) -> LonerCharacter:
+def player_character(character: Character[Loner3eCharacter]) -> LonerCharacter:
     """The played character as the world holds them; `new_game` and `preview_character` share it."""
     payload = character.payload
     return LonerCharacter(

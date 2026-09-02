@@ -27,7 +27,8 @@ locations, complications, missions) are all in the SRD at the page above, transc
 
 - `change_world` — reveal someone found, bring a cast member in or out of the scene, record a
   death, or drop an item from the backpack for good.
-- `next_scene` — say the scene's question is settled; the player is then asked what they pursue.
+- `next_scene` — say the scene's question is settled, or that the player left it; the player is
+  then asked what they pursue.
 - `check` — roll a skill, a carried item, or the once-per-breath stunt on the 1–2 / 3–4 / 5+
   ladder; the die rolled wears one step, and an item reduced to d4 is gone.
 - `catch_breath` — reset skills, the loot die and the stunt; stress stays; one d12 on the SRD's
@@ -76,6 +77,6 @@ Fields and tools that exist for the app around the rules, not the rules themselv
 
 ## Where the rules live
 
-Mechanics are in `src/aidm/engines/breathless/`; the scene machinery shared with the other scene
-engines is in `src/aidm/engines/scenes.py`. `packs/srd.json` — not this file — is the
-transcription of record.
+Mechanics are in `src/aidm/engines/breathless/`; the scene machinery shared with the other
+scene engines is `SceneEngine` in `src/aidm/engines/scenes/`. `packs/srd.json` — not this file —
+is the transcription of record.

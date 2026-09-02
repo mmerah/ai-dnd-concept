@@ -284,6 +284,11 @@
           "default": false,
           "description": "A campaign only: settling this scene also finishes the job the player walked out on.",
           "type": "boolean"
+        },
+        "pursuit": {
+          "default": "",
+          "description": "Set when the player has left this place for good with its question open: where they are going, in their own words. Empty when the question settled here.",
+          "type": "string"
         }
       },
       "type": "object"

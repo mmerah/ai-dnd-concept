@@ -11,7 +11,7 @@ The Docking Ring
 QV-9's docking ring hums with full power, yet every comm panel down the corridor sits dark and silent. Vessa Rune waits at the airlock with her override key already drawn, and Harl Odum's salvage skiff sits clamped to the outer berth, its hatch cycling open before Kael has even hailed it.
 
 THE QUESTION THIS SCENE SETTLES:
-Can Kael reach the control deck and find out why the relay went dark?
+Can Kael get through Vessa's airlock and into the station, and on whose terms?
 
 YOU PLAY FOR:
 - Kael[player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.

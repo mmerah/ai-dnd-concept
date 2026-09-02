@@ -31,7 +31,8 @@ class Narration(Frozen):
     """The prose the player reads, split into narration and dialogue."""
 
     lines: tuple[Line, ...] = Field(
-        description="All narration and dialogue in order, 2-4 sentences total."
+        description="All narration and dialogue in order; 2-4 sentences, or the length "
+        "PLAYER ACTION asks for."
     )
 
 

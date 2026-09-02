@@ -6,7 +6,7 @@ from aidm.core.entities import EntityId, Frozen, Mutable, slug
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
 from aidm.engines.core import PLAYER_ID, Person
-from aidm.engines.scenes import SceneScenario, SceneState, SceneWorld
+from aidm.engines.scenes.world import SceneScenario, SceneState, SceneWorld
 
 type SkillDie = Literal[8, 10, 12]
 LADDER: tuple[SkillDie, ...] = (8, 10, 12)
@@ -99,7 +99,7 @@ def raised(current: SkillDie | None) -> SkillDie:
     return LADDER[LADDER.index(current) + 1]
 
 
-def player_operator(character: TwentyfourxxCharacterFile) -> Operator:
+def player_operator(character: Character[TwentyfourxxCharacter]) -> Operator:
     """The played character as the world holds them; `new_game` and `preview_character` share it."""
     payload = character.payload
     taken: list[str] = []

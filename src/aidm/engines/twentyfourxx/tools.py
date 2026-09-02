@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from functools import partial
+from dataclasses import dataclass
 from random import Random
 from typing import Literal, Self
 
@@ -9,19 +9,7 @@ from aidm.core.entities import CheckedEntityId, EntityId, Frozen, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.tools import MasterTool, master_tool
 from aidm.engines.core import CHANGE_WORLD, PLAYER_DEAD, entity_fact, keep_highest, sentence
-from aidm.engines.scenes import (
-    NEXT_SCENE,
-    Enter,
-    Kill,
-    Leave,
-    NextScene,
-    Reveal,
-    enter,
-    kill,
-    leave,
-    reveal_hidden,
-    settle,
-)
+from aidm.engines.scenes.world import NEXT_SCENE, Enter, Kill, Leave, NextScene, Reveal
 from aidm.engines.twentyfourxx.creation import Pack
 from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
@@ -139,6 +127,113 @@ class JobDone(Frozen):
     )
 
 
+@dataclass(frozen=True, slots=True)
+class Skills:
+    """The rules that read the table sets: a skill the master names is matched against them."""
+
+    packs: Mapping[str, Pack]
+
+    def attempt(self, draft: TwentyfourxxGame, args: Attempt, rng: Random) -> list[Fact]:
+        world = draft.payload.world
+        player = world.player
+        if not player.alive:
+            raise ValueError(PLAYER_DEAD)
+
+        if args.skill:
+            label = self._resolve_skill(player, args.skill)
+            die = player.die(label)
+        else:
+            label = "unskilled"
+            die = DEFAULT_DIE
+        if args.hindered:
+            die = HINDERED_DIE
+
+        reason = f"{args.what} — {label}"
+        die_label = f"d{die}+d{HELP_DIE}" if args.helped else f"d{die}"
+        if args.helped:
+            face, event, dice_fact = keep_highest((die, HELP_DIE), reason, rng, label=die_label)
+        else:
+            rolled, dice_fact = roll((die,), reason, rng)
+            face = rolled[0]
+            event = DiceEvent(label=die_label, faces=(die,), rolled=rolled)
+
+        result = outcome(face)
+        shown = ", ".join(str(one) for one in event.rolled)
+        trace = f"{args.what} — {label} {die_label} [{shown}] -> {result}"
+        card = f"{args.what} — {sentence(label)} {die_label} → {result}"
+        qualifiers = "; ".join(
+            part
+            for part in (
+                f"helped — {args.helped}" if args.helped else "",
+                f"hindered — {args.hindered}" if args.hindered else "",
+            )
+            if part
+        )
+        if qualifiers:
+            card = f"{card} ({qualifiers})"
+
+        facts: list[Fact] = [
+            dice_fact,
+            entity_fact(player, "attempted", trace, card=card, dice=(event,)),
+        ]
+
+        if args.risking_death and result == "disaster":
+            player.alive = False
+            death_trace = f"{world.label(player)} is dead"
+            facts.append(entity_fact(player, "actor_killed", death_trace, card="You are dead"))
+        elif args.risking_death and result == "setback" and MAIMED not in player.hindrances:
+            player.hindrances = (*player.hindrances, MAIMED)
+            maimed_trace = f"{world.label(player)} is maimed"
+            facts.append(entity_fact(player, "hindrances_changed", maimed_trace, card="Maimed"))
+
+        return facts
+
+    def job_done(self, draft: TwentyfourxxGame, args: JobDone, rng: Random) -> list[Fact]:
+        world = draft.payload.world
+        player = world.player
+        if not player.alive:
+            raise ValueError(PLAYER_DEAD)
+        label = self._resolve_skill(player, args.skill)
+        new_die = raised(player.skills.get(label))
+        player.skills[label] = new_die
+        raise_trace = f"{world.label(player)} — {label} rises to d{new_die}"
+        raise_fact = entity_fact(
+            player, "skill_raised", raise_trace, card=f"Skill up: {label} d{new_die}"
+        )
+
+        rolled, dice_fact = roll((6,), "credits earned", rng)
+        gained = rolled[0]
+        player.credits += gained
+        event = DiceEvent(label="d6", faces=(6,), rolled=rolled)
+        credit_trace = f"{world.label(player)} earns ₡{gained} -> ₡{player.credits}"
+        credit_fact = entity_fact(
+            player,
+            "credits_gained",
+            credit_trace,
+            card=f"+₡{gained} -> ₡{player.credits}",
+            dice=(event,),
+        )
+        return [raise_fact, dice_fact, credit_fact]
+
+    def _resolve_skill(self, player: Operator, wanted: str) -> str:
+        folded = wanted.casefold()
+        for key in player.skills:
+            if key.casefold() == folded:
+                return key
+        labels: list[str] = []
+        for pack in self.packs.values():
+            for option in pack.skills:
+                if option.label.casefold() == folded:
+                    return option.label
+                if option.label not in labels:
+                    labels.append(option.label)
+        sheet = ", ".join(sorted(player.skills)) or "none"
+        raise ValueError(
+            f"{wanted!r} is not a skill on the sheet ({sheet}) or in the packs "
+            f"({', '.join(labels)})"
+        )
+
+
 def outcome(face: int) -> str:
     if face <= 2:
         return "disaster"
@@ -151,13 +246,13 @@ def apply_change(world: TwentyfourxxWorld, change: WorldChange) -> list[Fact]:
     """Every arm settles its own deterministic consequences, so a call leaves nothing half-done."""
     match change:
         case Reveal():
-            return reveal_hidden(world, change.entity_id)
+            return world.reveal_hidden(change.entity_id)
         case Enter():
-            return enter(world, change.entity_id)
+            return world.enter(change.entity_id)
         case Leave():
-            return leave(world, change.entity_id)
+            return world.leave(change.entity_id)
         case Kill():
-            return kill(world, change.entity_id)
+            return world.kill(change.entity_id)
         case ChangeHindrances():
             return _change_hindrances(world, change)
         case GainItem():
@@ -175,65 +270,7 @@ def change_world(draft: TwentyfourxxGame, args: ChangeWorld, _rng: Random) -> li
 
 
 def next_scene(draft: TwentyfourxxGame, args: NextScene, _rng: Random) -> tuple[Fact, ...]:
-    return settle(draft.payload.world, args.job_done)
-
-
-def attempt(
-    packs: Mapping[str, Pack], draft: TwentyfourxxGame, args: Attempt, rng: Random
-) -> list[Fact]:
-    world = draft.payload.world
-    player = world.player
-    if not player.alive:
-        raise ValueError(PLAYER_DEAD)
-
-    if args.skill:
-        label = _resolve_skill(packs, player, args.skill)
-        die = player.die(label)
-    else:
-        label = "unskilled"
-        die = DEFAULT_DIE
-    if args.hindered:
-        die = HINDERED_DIE
-
-    reason = f"{args.what} — {label}"
-    die_label = f"d{die}+d{HELP_DIE}" if args.helped else f"d{die}"
-    if args.helped:
-        face, event, dice_fact = keep_highest((die, HELP_DIE), reason, rng, label=die_label)
-    else:
-        rolled, dice_fact = roll((die,), reason, rng)
-        face = rolled[0]
-        event = DiceEvent(label=die_label, faces=(die,), rolled=rolled)
-
-    result = outcome(face)
-    shown = ", ".join(str(one) for one in event.rolled)
-    trace = f"{args.what} — {label} {die_label} [{shown}] -> {result}"
-    card = f"{args.what} — {sentence(label)} {die_label} → {result}"
-    qualifiers = "; ".join(
-        part
-        for part in (
-            f"helped — {args.helped}" if args.helped else "",
-            f"hindered — {args.hindered}" if args.hindered else "",
-        )
-        if part
-    )
-    if qualifiers:
-        card = f"{card} ({qualifiers})"
-
-    facts: list[Fact] = [
-        dice_fact,
-        entity_fact(player, "attempted", trace, card=card, dice=(event,)),
-    ]
-
-    if args.risking_death and result == "disaster":
-        player.alive = False
-        death_trace = f"{world.label(player)} is dead"
-        facts.append(entity_fact(player, "actor_killed", death_trace, card="You are dead"))
-    elif args.risking_death and result == "setback" and MAIMED not in player.hindrances:
-        player.hindrances = (*player.hindrances, MAIMED)
-        maimed_trace = f"{world.label(player)} is maimed"
-        facts.append(entity_fact(player, "hindrances_changed", maimed_trace, card="Maimed"))
-
-    return facts
+    return draft.payload.world.settle(args.job_done, args.pursuit)
 
 
 def test_luck(_draft: TwentyfourxxGame, args: TestLuck, rng: Random) -> tuple[Fact, ...]:
@@ -268,37 +305,8 @@ def defend(draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
     return [entity_fact(player, "item_broken", trace, card=card)]
 
 
-def job_done(
-    packs: Mapping[str, Pack], draft: TwentyfourxxGame, args: JobDone, rng: Random
-) -> list[Fact]:
-    world = draft.payload.world
-    player = world.player
-    if not player.alive:
-        raise ValueError(PLAYER_DEAD)
-    label = _resolve_skill(packs, player, args.skill)
-    new_die = raised(player.skills.get(label))
-    player.skills[label] = new_die
-    raise_trace = f"{world.label(player)} — {label} rises to d{new_die}"
-    raise_fact = entity_fact(
-        player, "skill_raised", raise_trace, card=f"Skill up: {label} d{new_die}"
-    )
-
-    rolled, dice_fact = roll((6,), "credits earned", rng)
-    gained = rolled[0]
-    player.credits += gained
-    event = DiceEvent(label="d6", faces=(6,), rolled=rolled)
-    credit_trace = f"{world.label(player)} earns ₡{gained} -> ₡{player.credits}"
-    credit_fact = entity_fact(
-        player,
-        "credits_gained",
-        credit_trace,
-        card=f"+₡{gained} -> ₡{player.credits}",
-        dice=(event,),
-    )
-    return [raise_fact, dice_fact, credit_fact]
-
-
 def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[TwentyfourxxGame], ...]:
+    skills = Skills(packs)
     return (
         master_tool(
             "change_world", CHANGE_WORLD, ChangeWorld, change_world, during_suspension=True
@@ -316,7 +324,7 @@ def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[TwentyfourxxGame], ...]
             "die, but here it is the d6 of circumstance, because an NPC carries no dice. Name "
             "`hindered` with why the player is hindered, when they are.",
             Attempt,
-            partial(attempt, packs),
+            skills.attempt,
         ),
         master_tool(
             "test_luck",
@@ -336,26 +344,8 @@ def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[TwentyfourxxGame], ...]
             "Once per job, when the player's own words close out the job: raise the named "
             "skill and pay out its credits.",
             JobDone,
-            partial(job_done, packs),
+            skills.job_done,
         ),
-    )
-
-
-def _resolve_skill(packs: Mapping[str, Pack], player: Operator, wanted: str) -> str:
-    folded = wanted.casefold()
-    for key in player.skills:
-        if key.casefold() == folded:
-            return key
-    labels: list[str] = []
-    for pack in packs.values():
-        for option in pack.skills:
-            if option.label.casefold() == folded:
-                return option.label
-            if option.label not in labels:
-                labels.append(option.label)
-    sheet = ", ".join(sorted(player.skills)) or "none"
-    raise ValueError(
-        f"{wanted!r} is not a skill on the sheet ({sheet}) or in the packs ({', '.join(labels)})"
     )
 
 

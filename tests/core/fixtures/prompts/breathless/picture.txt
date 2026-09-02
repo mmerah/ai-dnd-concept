@@ -11,7 +11,7 @@ The Bell House
 The Bell House stands at the causeway's landward end, its rope still swinging from the second peal. Ovid Sarn watches the flats through a cracked window while Ivo Casks paces by the door, and out past the mudflats the chapel lamp waits a mile off across water already climbing your boots.
 
 THE QUESTION THIS SCENE SETTLES:
-Can they reach the causeway and cross it before the tide takes it back?
+Can Kael get out of the Bell House and onto the causeway before Ovid rings the third bell?
 
 YOU PLAY FOR:
 - Kael[player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.

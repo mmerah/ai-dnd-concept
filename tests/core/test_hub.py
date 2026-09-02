@@ -25,7 +25,7 @@ from aidm.engines.hub import (
     place_unmet,
     question_heading,
 )
-from aidm.engines.scenes import Scene, SceneRun, check_hub
+from aidm.engines.scenes.world import Scene, SceneRun, check_hub
 
 HUB = "hub"
 DONE = Debrief(text="Finished the job.", finished=True)

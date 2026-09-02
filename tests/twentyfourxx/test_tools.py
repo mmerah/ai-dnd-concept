@@ -8,17 +8,16 @@ from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
 from aidm.engines.core import PLAYER_ID, load_packs
 from aidm.engines.hub import JOB_DONE
-from aidm.engines.scenes import NextScene, player_over
+from aidm.engines.scenes.world import NextScene, player_over
 from aidm.engines.twentyfourxx.creation import Pack
 from aidm.engines.twentyfourxx.tools import (
     Attempt,
     ChangeWorld,
     Defend,
     JobDone,
+    Skills,
     apply_change,
-    attempt,
     defend,
-    job_done,
     next_scene,
 )
 from aidm.engines.twentyfourxx.tools import TestLuck as LuckTest
@@ -27,6 +26,7 @@ from aidm.engines.twentyfourxx.world import STARTING_CREDITS, TwentyfourxxGame
 
 PACKS_DIR = Path(__file__).parents[2] / "src" / "aidm" / "engines" / "twentyfourxx" / "packs"
 PACKS = load_packs((PACKS_DIR,), Pack)
+SKILLS = Skills(PACKS)
 
 
 def changed_facts(draft: TwentyfourxxGame, verb: str, **fields: object) -> list[Fact]:
@@ -46,28 +46,28 @@ def refused(draft: TwentyfourxxGame, verb: str, **fields: object) -> str:
 
 def test_attempt_bands_disaster_setback_success() -> None:
     draft = small_world().draft()
-    facts = attempt(PACKS, draft, Attempt(what="Slip past", skill="Stealth"), Random(2))
+    facts = SKILLS.attempt(draft, Attempt(what="Slip past", skill="Stealth"), Random(2))
     assert facts[1].trace.endswith("-> disaster")
 
     draft = small_world().draft()
-    facts = attempt(PACKS, draft, Attempt(what="Slip past", skill="Stealth"), Random(1))
+    facts = SKILLS.attempt(draft, Attempt(what="Slip past", skill="Stealth"), Random(1))
     assert facts[1].trace.endswith("-> setback")
 
     draft = small_world().draft()
-    facts = attempt(PACKS, draft, Attempt(what="Slip past", skill="Stealth"), Random(0))
+    facts = SKILLS.attempt(draft, Attempt(what="Slip past", skill="Stealth"), Random(0))
     assert facts[1].trace.endswith("-> success")
 
 
 def test_attempt_unskilled_rolls_the_plain_d6() -> None:
     draft = small_world().draft()
-    facts = attempt(PACKS, draft, Attempt(what="Guess"), Random(0))
+    facts = SKILLS.attempt(draft, Attempt(what="Guess"), Random(0))
     assert facts[1].dice[0].faces == (6,)
     assert "unskilled" in facts[1].trace
 
 
 def test_attempt_pack_label_not_on_sheet_rolls_d6() -> None:
     draft = small_world().draft()
-    facts = attempt(PACKS, draft, Attempt(what="Scale the wall", skill="Climbing"), Random(0))
+    facts = SKILLS.attempt(draft, Attempt(what="Scale the wall", skill="Climbing"), Random(0))
     assert facts[1].dice[0].faces == (6,)
     assert "Climbing" in facts[1].trace
 
@@ -75,15 +75,14 @@ def test_attempt_pack_label_not_on_sheet_rolls_d6() -> None:
 def test_attempt_unknown_skill_refused_with_both_lists() -> None:
     draft = small_world().draft()
     with pytest.raises(ValueError) as raised:
-        _ = attempt(PACKS, draft, Attempt(what="Try", skill="Nonexistent"), Random(0))
+        _ = SKILLS.attempt(draft, Attempt(what="Try", skill="Nonexistent"), Random(0))
     assert "Stealth" in str(raised.value)
     assert "Climbing" in str(raised.value)
 
 
 def test_attempt_hindered_rolls_d4() -> None:
     draft = small_world().draft()
-    facts = attempt(
-        PACKS,
+    facts = SKILLS.attempt(
         draft,
         Attempt(what="Slip past", skill="Stealth", hindered="a jammed door"),
         Random(0),
@@ -93,16 +92,15 @@ def test_attempt_hindered_rolls_d4() -> None:
 
 def test_attempt_helped_adds_the_d6_and_keeps_highest() -> None:
     draft = small_world().draft()
-    facts = attempt(
-        PACKS, draft, Attempt(what="Slip past", skill="Stealth", helped="Kestrel covers"), Random(0)
+    facts = SKILLS.attempt(
+        draft, Attempt(what="Slip past", skill="Stealth", helped="Kestrel covers"), Random(0)
     )
     assert facts[1].dice[0].faces == (10, 6)
 
 
 def test_attempt_helped_and_hindered_together_roll_4_and_6() -> None:
     draft = small_world().draft()
-    facts = attempt(
-        PACKS,
+    facts = SKILLS.attempt(
         draft,
         Attempt(
             what="Slip past", skill="Stealth", hindered="a jammed door", helped="Kestrel covers"
@@ -115,22 +113,22 @@ def test_attempt_helped_and_hindered_together_roll_4_and_6() -> None:
 def test_risking_death_kills_on_disaster_and_maims_on_setback_not_doubled() -> None:
     draft = small_world().draft()
     player = draft.payload.world.player
-    facts = attempt(
-        PACKS, draft, Attempt(what="Sneak past", skill="Stealth", risking_death=True), Random(1)
+    facts = SKILLS.attempt(
+        draft, Attempt(what="Sneak past", skill="Stealth", risking_death=True), Random(1)
     )
     assert player.alive
     assert player.hindrances == ("Maimed",)
     assert any(fact.card == "Maimed" for fact in facts)
 
-    _ = attempt(
-        PACKS, draft, Attempt(what="Sneak past", skill="Stealth", risking_death=True), Random(1)
+    _ = SKILLS.attempt(
+        draft, Attempt(what="Sneak past", skill="Stealth", risking_death=True), Random(1)
     )
     assert player.hindrances == ("Maimed",)
 
     draft = small_world().draft()
     player = draft.payload.world.player
-    facts = attempt(
-        PACKS, draft, Attempt(what="Sneak past", skill="Stealth", risking_death=True), Random(2)
+    facts = SKILLS.attempt(
+        draft, Attempt(what="Sneak past", skill="Stealth", risking_death=True), Random(2)
     )
     assert not player.alive
     assert any(fact.card == "You are dead" for fact in facts)
@@ -140,7 +138,7 @@ def test_attempt_refused_when_dead() -> None:
     draft = small_world().draft()
     draft.payload.world.player.alive = False
     with pytest.raises(ValueError, match="dead"):
-        _ = attempt(PACKS, draft, Attempt(what="Slip past", skill="Stealth"), Random(0))
+        _ = SKILLS.attempt(draft, Attempt(what="Slip past", skill="Stealth"), Random(0))
 
 
 def test_luck_facts_are_untold() -> None:
@@ -212,16 +210,16 @@ def test_job_done_raises_a_skill_enters_a_new_one_refuses_at_d12_adds_credits() 
     player = draft.payload.world.player
     before_credits = player.credits
 
-    facts = job_done(PACKS, draft, JobDone(skill="Stealth"), Random(0))
+    facts = SKILLS.job_done(draft, JobDone(skill="Stealth"), Random(0))
     assert player.skills["Stealth"] == 12
     assert player.credits == before_credits + 4
     assert any(fact.card == "Skill up: Stealth d12" for fact in facts)
 
-    _ = job_done(PACKS, draft, JobDone(skill="Climbing"), Random(1))
+    _ = SKILLS.job_done(draft, JobDone(skill="Climbing"), Random(1))
     assert player.skills["Climbing"] == 8
 
     with pytest.raises(ValueError, match="d12"):
-        _ = job_done(PACKS, draft, JobDone(skill="Stealth"), Random(0))
+        _ = SKILLS.job_done(draft, JobDone(skill="Stealth"), Random(0))
 
 
 def test_kill_on_the_player_flips_player_over() -> None:

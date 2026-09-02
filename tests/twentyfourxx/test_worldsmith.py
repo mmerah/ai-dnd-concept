@@ -1,4 +1,7 @@
+from collections.abc import Callable
+
 import pytest
+from core_test_support import REPOSITORY_ROOT
 from pydantic import BaseModel
 from twentyfourxx_test_support import (
     HUB_PLACE,
@@ -14,29 +17,28 @@ from twentyfourxx_test_support import (
 
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.facts import Fact
-from aidm.core.model import AnyScenario, CheckAnswer
+from aidm.core.model import AnyScenario, WorldsmithAnswer
 from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.hub import GO_HOME, TAKE_JOB
-from aidm.engines.scenes import (
-    JobDraft,
-    NextDraft,
-    ReturnDraft,
-    SceneDraft,
-    apply_scene,
-    build_scenario,
-    opening_canon,
-    render_worldsmith,
-    scene_refusal,
-)
-from aidm.engines.twentyfourxx.world import TwentyfourxxScenarioFile
-from aidm.engines.twentyfourxx.worldsmith import (
-    BOARD_GUIDANCE,
-    WORLDSMITH,
-    install_scene,
-    write_next,
-)
+from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft, SceneDraft
+from aidm.engines.scenes.world import scene_refusal
+from aidm.engines.scenes.worldsmith import build_scenario, install_scene, opening_canon, write_next
+from aidm.engines.twentyfourxx.engine import BOARD_GUIDANCE, JOB_DONE_NOTE, TwentyfourxxEngine
+from aidm.engines.twentyfourxx.world import TwentyfourxxGame, TwentyfourxxScenarioFile
 
 TWENTYFOURXX = EngineId("twentyfourxx")
+ENGINE = TwentyfourxxEngine(REPOSITORY_ROOT / "packs" / "twentyfourxx")
+WORLDSMITH = ENGINE.role
+GUIDANCE = "guidance text"
+
+
+async def _written(
+    game: TwentyfourxxGame, intent: str, answer: WorldsmithAnswer
+) -> SceneDraft[Person]:
+    """The write alone: these tests read the model asked for, and install nothing."""
+    return await write_next(
+        game.payload.world, intent, answer, cast_type=Person, role=WORLDSMITH, guidance=GUIDANCE
+    )
 
 
 def _draft(**fields: object) -> SceneDraft[Person]:
@@ -51,41 +53,32 @@ def _draft(**fields: object) -> SceneDraft[Person]:
 
 def _built(written: SceneDraft[Person]) -> AnyScenario:
     return build_scenario(
-        TwentyfourxxScenarioFile,
-        TWENTYFOURXX,
-        Person,
-        "Loading Bay",
-        "",
-        (),
-        written,
-        "",
-        "one-shot",
+        TwentyfourxxScenarioFile, TWENTYFOURXX, "Loading Bay", "", (), written, "", "one-shot"
     )
 
 
 def test_apply_scene_resolves_present_by_name() -> None:
     world = small_world().payload.world
-    apply_scene(world, _draft(present=("Kestrel", "sable")))
+    world.apply_scene(_draft(present=("Kestrel", "sable")))
     assert SABLE in world.run.present
 
 
 def test_apply_scene_resolves_present_by_id_too() -> None:
     world = small_world().payload.world
-    apply_scene(world, _draft(present=(str(SABLE),)))
+    world.apply_scene(_draft(present=(str(SABLE),)))
     assert SABLE in world.run.present
 
 
 def test_apply_scene_marks_present_cast_known() -> None:
     world = small_world().payload.world
-    apply_scene(world, _draft(present=("sable",)))
+    world.apply_scene(_draft(present=("sable",)))
     assert world.cast[SABLE].known is True
 
 
 def test_apply_scene_lands_new_cast() -> None:
     world = small_world().payload.world
     stranger = EntityId("stranger")
-    apply_scene(
-        world,
+    world.apply_scene(
         _draft(
             present=("kestrel", "stranger"),
             cast={stranger: Person(id=stranger, name="A Stranger", brief="unknown to the world")},
@@ -100,7 +93,7 @@ def test_apply_scene_refuses_a_draft_cast_entry_under_player_id() -> None:
         cast={PLAYER_ID: Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)}
     )
     with pytest.raises(ValueError, match="rewrites the player"):
-        apply_scene(world, draft)
+        world.apply_scene(draft)
 
 
 def test_apply_scene_re_files_an_existing_cast_member_as_a_new_brief_alone() -> None:
@@ -110,7 +103,7 @@ def test_apply_scene_re_files_an_existing_cast_member_as_a_new_brief_alone() -> 
         cast={KESTREL: Person(id=KESTREL, name="Another Kestrel", brief="rewritten")},
     )
 
-    apply_scene(world, draft)
+    world.apply_scene(draft)
 
     assert (world.cast[KESTREL].name, world.cast[KESTREL].brief) == ("Kestrel", "rewritten")
 
@@ -124,7 +117,7 @@ def test_apply_scene_refuses_a_misfiled_cast_entry() -> None:
         cast={stranger: Person(id=other, name="A Stranger", brief="filed wrongly")},
     )
     with pytest.raises(ValueError, match="is filed under"):
-        apply_scene(world, draft)
+        world.apply_scene(draft)
 
 
 def test_the_bar_refuses_present_hidden_overlap() -> None:
@@ -207,7 +200,7 @@ def test_a_hidden_multi_word_name_in_situation_is_refused() -> None:
 def test_apply_scene_refuses_a_scene_that_lists_the_player() -> None:
     world = small_world().payload.world
     with pytest.raises(ValueError, match="put there by code"):
-        apply_scene(world, _draft(present=("kestrel", "player")))
+        world.apply_scene(_draft(present=("kestrel", "player")))
 
 
 def test_the_bar_refuses_a_scene_that_lists_the_player_or_the_party() -> None:
@@ -226,14 +219,14 @@ def test_the_bar_refuses_a_scene_that_lists_the_player_or_the_party() -> None:
 def test_apply_scene_puts_the_party_first_in_the_new_run() -> None:
     world = small_world().payload.world
     world.party = [KESTREL]
-    apply_scene(world, _draft(present=("sable",)))
+    world.apply_scene(_draft(present=("sable",)))
     assert world.run.present == [KESTREL, SABLE]
 
 
 def test_install_scene_names_who_travelled_in_the_trace() -> None:
     game = small_world()
     game.payload.world.party = [KESTREL]
-    facts = install_scene(game, _draft(present=("sable",)))
+    facts = install_scene(game, _draft(present=("sable",)), finished_note=JOB_DONE_NOTE)
     assert facts[0].trace == (
         "the story moves to The Bay Office, the player travelling with Kestrel"
     )
@@ -241,7 +234,7 @@ def test_install_scene_names_who_travelled_in_the_trace() -> None:
 
 def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
     game = small_world()
-    facts = install_scene(game, _draft(present=("kestrel",)))
+    facts = install_scene(game, _draft(present=("kestrel",)), finished_note=JOB_DONE_NOTE)
     assert len(game.payload.world.runs) == 2
     assert facts == (
         Fact(
@@ -255,12 +248,8 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
 
 
 def test_render_worldsmith_lists_the_player_first() -> None:
-    prompt = render_worldsmith(
-        small_world().payload.world,
-        "Explore the bay.",
-        "guidance text",
-        SceneDraft[Person],
-        role=WORLDSMITH,
+    prompt = small_world().payload.world.render_worldsmith(
+        "Explore the bay.", "guidance text", SceneDraft[Person], role=WORLDSMITH
     )
     assert prompt.index("Rook[player]") < prompt.index("Kestrel[kestrel]")
 
@@ -268,8 +257,8 @@ def test_render_worldsmith_lists_the_player_first() -> None:
 def test_render_worldsmith_says_who_travels_with_the_player() -> None:
     world = small_world().payload.world
     world.party = [KESTREL]
-    prompt = render_worldsmith(
-        world, "Explore the bay.", "guidance text", SceneDraft[Person], role=WORLDSMITH
+    prompt = world.render_worldsmith(
+        "Explore the bay.", "guidance text", SceneDraft[Person], role=WORLDSMITH
     )
     assert "travels with the player" in prompt
 
@@ -342,25 +331,28 @@ async def test_write_next_picks_the_draft_the_moment_calls_for() -> None:
     game = hub_world()
     recorded: list[type[BaseModel]] = []
 
-    async def answer(prompt: str, model: type[BaseModel], refusal: CheckAnswer) -> BaseModel:
+    async def answer[M: BaseModel](
+        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
         recorded.append(model)
         if model is ReturnDraft[Person]:
-            written: SceneDraft[Person] = _return_draft()
+            chosen: SceneDraft[Person] = _return_draft()
         elif model is JobDraft[Person]:
-            written = _job_draft()
+            chosen = _job_draft()
         else:
-            written = _next_draft(present=("fixer",))
+            chosen = _next_draft(present=("fixer",))
+        written = model.model_validate(chosen.model_dump())
         assert refusal(written) is None
         return written
 
-    _ = await write_next({}, game, GO_HOME, answer)
+    _ = await _written(game, GO_HOME, answer)
     assert recorded[-1] is ReturnDraft[Person]
 
-    _ = await write_next({}, game, "I look around the warehouse.", answer)
+    _ = await _written(game, "I look around the warehouse.", answer)
     assert recorded[-1] is NextDraft[Person]
 
     _ = game.payload.world.runs.pop()  # home again: the next scene is the one that leaves
-    _ = await write_next({}, game, TAKE_JOB.format(title="Job One"), answer)
+    _ = await _written(game, TAKE_JOB.format(title="Job One"), answer)
     assert recorded[-1] is JobDraft[Person]
 
 
@@ -378,7 +370,7 @@ def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> Non
 def test_install_scene_on_a_finished_hub_draft_swaps_the_board_and_notes_the_job() -> None:
     game = hub_world()
     game.payload.world.run.job_done = True
-    facts = install_scene(game, _return_draft())
+    facts = install_scene(game, _return_draft(), finished_note=JOB_DONE_NOTE)
     world = game.payload.world
     assert [offer.title for offer in world.board] == ["Job 1", "Job 2"]
     assert [fact.kind for fact in facts] == ["job_closed", "scene_opened"]
@@ -387,7 +379,7 @@ def test_install_scene_on_a_finished_hub_draft_swaps_the_board_and_notes_the_job
 
 def test_install_scene_on_an_open_hub_draft_skips_the_note() -> None:
     game = hub_world()
-    facts = install_scene(game, _return_draft())
+    facts = install_scene(game, _return_draft(), finished_note=JOB_DONE_NOTE)
     assert [fact.kind for fact in facts] == ["job_closed", "scene_opened"]
     assert game.notes == ()
 
@@ -396,27 +388,25 @@ async def test_write_next_gives_the_board_guidance_on_every_campaign_write() -> 
     game = hub_world()
     prompts: list[str] = []
 
-    async def answer(prompt: str, model: type[BaseModel], refusal: CheckAnswer) -> BaseModel:
+    async def answer[M: BaseModel](
+        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
         prompts.append(prompt)
-        return _draft(present=("fixer",))
+        return model.model_validate(_next_draft(present=("fixer",)).model_dump())
 
-    _ = await write_next({}, game, "I look around the warehouse.", answer)
+    _ = await ENGINE.advance(game, "I look around the warehouse.", answer)
     assert BOARD_GUIDANCE in prompts[-1]
 
 
 def test_render_worldsmith_prints_the_job_line_for_the_job_run() -> None:
-    prompt = render_worldsmith(
-        hub_world().payload.world,
-        "I look around.",
-        "guidance text",
-        SceneDraft[Person],
-        role=WORLDSMITH,
+    prompt = hub_world().payload.world.render_worldsmith(
+        "I look around.", "guidance text", SceneDraft[Person], role=WORLDSMITH
     )
     assert f"the job: {JOB}" in prompt
 
 
 def test_the_scene_card_carries_the_stake_and_a_job_draft_its_terms() -> None:
-    facts = install_scene(hub_world(), _job_draft())
+    facts = install_scene(hub_world(), _job_draft(), finished_note=JOB_DONE_NOTE)
     assert facts[0].card == (
         "New scene: The Bay Office\n"
         "At stake: Can they slip past the night crew before the lights return?\n"
@@ -426,5 +416,5 @@ def test_the_scene_card_carries_the_stake_and_a_job_draft_its_terms() -> None:
 
 def test_install_scene_on_a_hub_draft_lands_a_home_card() -> None:
     game = hub_world()
-    facts = install_scene(game, _return_draft())
+    facts = install_scene(game, _return_draft(), finished_note=JOB_DONE_NOTE)
     assert any(fact.card.startswith("Home: Back at the Amber Tap") for fact in facts)

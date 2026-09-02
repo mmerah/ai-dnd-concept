@@ -12,7 +12,7 @@
       "opening": {
         "place": "docking-ring",
         "title": "The Docking Ring",
-        "question": "Can Kael reach the control deck and find out why the relay went dark?",
+        "question": "Can Kael get through Vessa's airlock and into the station, and on whose terms?",
         "situation": "QV-9's docking ring hums with full power, yet every comm panel down the corridor sits dark and silent. Vessa Rune waits at the airlock with her override key already drawn, and Harl Odum's salvage skiff sits clamped to the outer berth, its hatch cycling open before Kael has even hailed it.",
         "secret": "Six days ago Vessa Rune ordered the station's maintenance android to seal the relay compartment and cut the beacon rather than risk a corrupted signal reaching the convoy; it has followed that order against everyone since, herself included."
       },

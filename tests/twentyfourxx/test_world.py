@@ -3,7 +3,7 @@ from twentyfourxx_test_support import KESTREL, SABLE, hub_world, small_world
 
 from aidm.core.entities import EngineId, EntityId
 from aidm.engines.core import PLAYER_ID, Person
-from aidm.engines.scenes import way_open
+from aidm.engines.scenes.world import way_open
 from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
     Item,

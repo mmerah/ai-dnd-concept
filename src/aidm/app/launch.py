@@ -5,7 +5,7 @@ from aidm.config import Settings
 from aidm.core.entities import EngineId, Frozen, Slug
 from aidm.core.io import FileStore, decoded, read_characters, read_scenarios
 from aidm.core.model import SaveHeader, ScenarioKind
-from aidm.engines.core import AnyEngine
+from aidm.engines.seam import AnyEngine
 
 LOGGER = logging.getLogger(__name__)
 

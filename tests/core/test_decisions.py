@@ -1,9 +1,8 @@
-from dataclasses import replace
 from pathlib import Path
 from random import Random
 
 import pytest
-from core_test_support import ENGINES_BUILT, LONER3E, Table, opened, played, tool_call
+from core_test_support import LONER3E_PACKS, Table, opened, played, tool_call
 from pydantic import Field, ValidationError
 
 from aidm.core.entities import Frozen
@@ -11,8 +10,9 @@ from aidm.core.facts import Fact
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, PendingDecision, PendingOption
 from aidm.core.tools import MasterTool, NoArgs, apply_to_draft, master_tool
-from aidm.engines.core import AnyEngine
+from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
+from aidm.engines.seam import AnyEngine
 from aidm.turn.run import RULES_WAIT, Turn, TurnStep, consume_answer
 
 
@@ -29,14 +29,14 @@ def _chained(draft: AnyGame, item: str) -> tuple[Fact, ...]:
     return _turned(item)
 
 
-TURN_THE_HIT: MasterTool[AnyGame] = master_tool(
+TURN_THE_HIT: MasterTool[Loner3eGame] = master_tool(
     "turn_the_hit",
     "Break something to turn the hit.",
     Broken,
     lambda _draft, one, _rng: _turned(one.item),
 )
 
-CHAIN_THE_HIT: MasterTool[AnyGame] = master_tool(
+CHAIN_THE_HIT: MasterTool[Loner3eGame] = master_tool(
     "chain_the_hit",
     "Break something and leave the rules waiting on the same decision again.",
     Broken,
@@ -44,7 +44,7 @@ CHAIN_THE_HIT: MasterTool[AnyGame] = master_tool(
 )
 
 
-def _decision(resolver: MasterTool[AnyGame]) -> PendingDecision:
+def _decision(resolver: MasterTool[Loner3eGame]) -> PendingDecision:
     return PendingDecision(
         kind="defence",
         prompt="The blow lands unless something of yours breaks. What gives?",
@@ -76,7 +76,7 @@ def _hit(draft: AnyGame, *, narrate: bool) -> tuple[Fact, ...]:
     )
 
 
-def _strike_tool(*, narrate: bool) -> MasterTool[AnyGame]:
+def _strike_tool(*, narrate: bool) -> MasterTool[Loner3eGame]:
     return master_tool(
         "strike",
         "Take a hit the player may turn by breaking something of theirs.",
@@ -86,10 +86,9 @@ def _strike_tool(*, narrate: bool) -> MasterTool[AnyGame]:
 
 
 def _engine(*, narrate: bool = True) -> AnyEngine:
-    return replace(
-        ENGINES_BUILT[LONER3E],
-        tools=(_strike_tool(narrate=narrate), TURN_THE_HIT, CHAIN_THE_HIT),
-    )
+    engine = Loner3eEngine(LONER3E_PACKS)
+    engine.tools = (_strike_tool(narrate=narrate), TURN_THE_HIT, CHAIN_THE_HIT)
+    return engine
 
 
 def _deciding(saves: Path, *, narrate: bool = True) -> Table[Loner3eGame]:

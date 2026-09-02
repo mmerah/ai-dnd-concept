@@ -1,6 +1,5 @@
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from functools import partial
 from random import Random
 from typing import Literal
 
@@ -32,19 +31,7 @@ from aidm.engines.loner3e.world import (
     set_tags,
     tags_of,
 )
-from aidm.engines.scenes import (
-    NEXT_SCENE,
-    Enter,
-    Kill,
-    Leave,
-    NextScene,
-    Reveal,
-    enter,
-    kill,
-    leave,
-    reveal_hidden,
-    settle,
-)
+from aidm.engines.scenes.world import NEXT_SCENE, Enter, Kill, Leave, NextScene, Reveal
 
 AND_AT = 4  # both dice 4+ sharpens the answer to -and
 BUT_AT = 3  # both dice 3 or under softens it to -but
@@ -131,21 +118,78 @@ class RestoreLuck(Frozen):
     actor_id: CheckedEntityId = Field(description="Exact id of the player or a character here.")
 
 
+@dataclass(frozen=True, slots=True)
+class Oracle:
+    """The rules that read the table sets: a tie that fills the Twist Counter rolls on them."""
+
+    packs: Mapping[str, Pack]
+
+    def resolve_question(
+        self, draft: Loner3eGame, action: Question, rng: Random
+    ) -> tuple[Fact, ...]:
+        world = draft.payload.world
+        actor = world.require_alive_here(action.actor_id)
+        facts = world.reveal(actor)
+        opponent: LonerCharacter | None = None
+        if action.opponent_id is not None:
+            opponent = world.require_alive_here(action.opponent_id)
+            facts.extend(world.reveal(opponent))
+        _refuse_unless_ready(actor, opponent)
+
+        chance_kept, chance, risk_kept, risk, facts_rolled = _pair(action, rng)
+        facts.extend(facts_rolled)
+
+        outcome = outcome_for(chance_kept, risk_kept)
+        answered_at = len(facts)
+        facts.append(
+            entity_fact(actor, "question_answered", f"{action.question} -> {outcome.name}")
+        )
+        effects: tuple[str, ...] = ()
+        if opponent is not None:
+            exchange, effects = _absorbed(_strike(draft, actor, opponent, outcome))
+            facts.extend(exchange)
+            # The pools refill the moment a side hits 0, so only the fact says the conflict ended.
+            if not any(fact.kind == "conflict_lost" for fact in exchange):
+                draft.pending = PendingDecision(
+                    kind="conflict",
+                    prompt=conflict_prompt(world, actor, opponent),
+                    options=(),
+                    allows_text=True,
+                )
+        # SRD: the Twist Counter does not apply to Harm & Luck, so a tied conflict roll never
+        # ticks it.
+        if chance_kept == risk_kept and opponent is None:
+            twist = draft.payload.twist
+            twist.current += 1
+            if _shortfall(twist) == 0:
+                twist.current = 0
+                facts.extend(_twist(draft, actor, rng, twist_table(self.packs)))
+        # The question is master-authored and names unrevealed canon even on a "no": never shown.
+        edge = f" ({action.edge})" if action.edge else ""
+        card = "\n".join(
+            (f"Oracle — {action.position.capitalize()}{edge} → {outcome.name}", *effects)
+        )
+        facts[answered_at] = facts[answered_at].model_copy(
+            update={"card": card, "dice": (chance, risk)}
+        )
+        return tuple(facts)
+
+
 def apply_change(world: LonerWorld, change: WorldChange) -> list[Fact]:
     """Every arm settles its own deterministic consequences, so a call leaves nothing half-done."""
     match change:
         case Reveal():
-            return reveal_hidden(world, change.entity_id)
+            return world.reveal_hidden(change.entity_id)
         case Enter():
-            return enter(world, change.entity_id)
+            return world.enter(change.entity_id)
         case Leave():
-            return leave(world, change.entity_id)
+            return world.leave(change.entity_id)
         case ChangeTags():
             return _change_tags(world, world.require_alive_here(change.entity_id), change)
         case Drive():
             return _drive(world, world.require_alive_here(change.entity_id), change)
         case Kill():
-            return kill(world, change.entity_id)
+            return world.kill(change.entity_id)
         case JoinParty():
             one = world.require_alive_here(change.entity_id)
             return [*world.reveal(one), join_party(world.party, one)]
@@ -158,7 +202,7 @@ def change_world(draft: Loner3eGame, args: ChangeWorld, _rng: Random) -> list[Fa
 
 
 def next_scene(draft: Loner3eGame, args: NextScene, _rng: Random) -> tuple[Fact, ...]:
-    return settle(draft.payload.world, args.job_done)
+    return draft.payload.world.settle(args.job_done, args.pursuit)
 
 
 def twist_table(packs: Mapping[str, Pack]) -> tuple[tuple[str, str], ...]:
@@ -178,52 +222,6 @@ def outcome_for(chance: int, risk: int) -> Outcome:
     if max(chance, risk) <= BUT_AT:
         return Outcome(f"{side}-but", sign)
     return Outcome(side, 2 * sign)
-
-
-def resolve_question(
-    packs: Mapping[str, Pack], draft: Loner3eGame, action: Question, rng: Random
-) -> tuple[Fact, ...]:
-    world = draft.payload.world
-    actor = world.require_alive_here(action.actor_id)
-    facts = world.reveal(actor)
-    opponent: LonerCharacter | None = None
-    if action.opponent_id is not None:
-        opponent = world.require_alive_here(action.opponent_id)
-        facts.extend(world.reveal(opponent))
-    _refuse_unless_ready(actor, opponent)
-
-    chance_kept, chance, risk_kept, risk, facts_rolled = _pair(action, rng)
-    facts.extend(facts_rolled)
-
-    outcome = outcome_for(chance_kept, risk_kept)
-    answered_at = len(facts)
-    facts.append(entity_fact(actor, "question_answered", f"{action.question} -> {outcome.name}"))
-    effects: tuple[str, ...] = ()
-    if opponent is not None:
-        exchange, effects = _absorbed(_strike(draft, actor, opponent, outcome))
-        facts.extend(exchange)
-        # The pools refill the moment a side hits 0, so only the fact says the conflict ended.
-        if not any(fact.kind == "conflict_lost" for fact in exchange):
-            draft.pending = PendingDecision(
-                kind="conflict",
-                prompt=conflict_prompt(world, actor, opponent),
-                options=(),
-                allows_text=True,
-            )
-    # SRD: the Twist Counter does not apply to Harm & Luck, so a tied conflict roll never ticks it.
-    if chance_kept == risk_kept and opponent is None:
-        twist = draft.payload.twist
-        twist.current += 1
-        if _shortfall(twist) == 0:
-            twist.current = 0
-            facts.extend(_twist(draft, actor, rng, twist_table(packs)))
-    # The question is master-authored and names unrevealed canon even on a "no": never shown.
-    edge = f" ({action.edge})" if action.edge else ""
-    card = "\n".join((f"Oracle — {action.position.capitalize()}{edge} → {outcome.name}", *effects))
-    facts[answered_at] = facts[answered_at].model_copy(
-        update={"card": card, "dice": (chance, risk)}
-    )
-    return tuple(facts)
 
 
 def apply_restore_luck(draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
@@ -288,6 +286,7 @@ def defeat_note(name: str) -> str:
 
 def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[Loner3eGame], ...]:
     """Four tools: two world tools, then the two SRD procedures that roll or reset."""
+    oracle = Oracle(packs)
     return (
         master_tool(
             "change_world", CHANGE_WORLD, ChangeWorld, change_world, during_suspension=True
@@ -302,7 +301,7 @@ def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[Loner3eGame], ...]:
             "roll_question",
             "Roll Chance against Risk for one closed dramatic question.",
             Question,
-            partial(resolve_question, packs),
+            oracle.resolve_question,
         ),
         master_tool(
             "restore_luck",

@@ -37,7 +37,8 @@
           "settled": false,
           "spent": "",
           "job_done": false,
-          "recap": ""
+          "recap": "",
+          "pursuit": ""
         }
       ],
       "source": "A dockside bar, a fixer's board, and whatever job pays the rent this week.",

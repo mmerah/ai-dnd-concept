@@ -13,10 +13,10 @@ from core_test_support import (
 from aidm.core.entities import EntityId
 from aidm.core.io import load_character, read_scenario
 from aidm.core.model import ScenarioMeta
-from aidm.engines.core import PLAYER_ID, AnyEngine, Person
+from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.hub import Offer
-from aidm.engines.scenes import Scene, SceneCanon, SceneScenario
-from aidm.engines.twentyfourxx.engine import new_game
+from aidm.engines.scenes.world import Scene, SceneCanon, SceneScenario
+from aidm.engines.seam import AnyEngine
 from aidm.engines.twentyfourxx.world import (
     TwentyfourxxCharacterFile,
     TwentyfourxxGame,
@@ -109,14 +109,14 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
     )
     character = load_character(CHARACTERS, "kael", TWENTYFOURXX, TwentyfourxxCharacterFile)
     with pytest.raises(ValueError, match="the player is in the cast"):
-        new_game(scenario, character)
+        ENGINES_BUILT[TWENTYFOURXX].new_game(scenario, character)
 
 
 def test_a_foreign_scenario_is_refused_by_new_game() -> None:
     character = load_character(CHARACTERS, "kael", TWENTYFOURXX, TwentyfourxxCharacterFile)
     foreign_scenario = read_scenario(SCENARIOS, "drowned-road", SCENARIO_MODELS)
     with pytest.raises(ValueError, match="incompatible scenario"):
-        new_game(foreign_scenario, character)
+        ENGINES_BUILT[TWENTYFOURXX].new_game(foreign_scenario, character)
 
 
 def test_a_foreign_character_is_refused_by_new_game() -> None:
@@ -124,4 +124,4 @@ def test_a_foreign_character_is_refused_by_new_game() -> None:
     breathless = ENGINES_BUILT[BREATHLESS]
     foreign_character = load_character(CHARACTERS, "kael", BREATHLESS, breathless.character)
     with pytest.raises(ValueError, match="incompatible character"):
-        new_game(scenario, foreign_character)
+        ENGINES_BUILT[TWENTYFOURXX].new_game(scenario, foreign_character)
