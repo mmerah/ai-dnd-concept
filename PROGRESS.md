@@ -167,9 +167,9 @@ review findings and why, anything known and accepted.
 
 ### Refuted findings
 
-- "The opening exchange shows as a player-sent bubble reading `(the story begins)`": PLAN 4.2
-  prescribes the chronicle line and no chat change; the crossing's `(the story moves on)` has
-  drawn the same way since it landed. Handed to the maintainer as a call.
+- "The opening exchange shows as a player-sent bubble reading `(the story begins)`": fixed on
+  the maintainer's call. `chat` draws `BEGUN` and `CROSSED` as a centred caption, never as the
+  player's words.
 - "The newest live card re-tumbles on every `live_turn` refresh, one per step": PLAN 4.6 says
   "every step and fact refreshes it, so only the newest card tumbles"; tracking a seen fact on
   `GameView` is not in the plan. Handed to the maintainer as a call.
