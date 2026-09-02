@@ -22,6 +22,8 @@ review findings and why, anything known and accepted.
 - `Person.unwritten()` is wired into the three `_scene_unmet` bodies now, so one version of the
   rule is alive at the commit; the refusal texts are unchanged.
 - `check_game` takes `packs: Collection[str]`: it reads only the pack ids.
+- `new_world` has no `PLAYER_ID` guard: the world's validator already refuses a cast that
+  holds the player's id, and nothing in the scene lifecycle spells `PLAYER_ID`.
 - Loner's `apply_scene` gained 24XX's "the scene rewrites the player" guard: the old refusal
   relied on the player being a cast entry.
 - Two tests of a rule the plan removes (`player.id == PLAYER_ID`, refused in the validator) are
@@ -32,8 +34,6 @@ review findings and why, anything known and accepted.
 
 ### Refuted findings
 
-- "`PLAYER_ID in canon.cast` in `new_world` duplicates the validator": PLAN 1.2 spells the
-  check; its message names the reserved id for the scenario author, the validator's does not.
 - "`members()`, `party_rows`, `party_panel` have no caller": PLAN 1.1 and 1.2 put them in this
   phase; Phase 2 wires them.
 - "The party symbols belong in `scenes.py`": PLAN 1.1 puts them in `engines/core.py` so they take

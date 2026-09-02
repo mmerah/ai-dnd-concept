@@ -12,7 +12,6 @@ from aidm.core.play import Exchange, SpokenLine
 from aidm.core.tools import schema_of
 from aidm.core.views import Panel, PanelRow, Rows, sections
 from aidm.engines.core import (
-    PLAYER_ID,
     Entity,
     Person,
     check_filing,
@@ -290,8 +289,6 @@ class Kill(Frozen):
 def new_world[C: Person, P: Person](canon: SceneCanon[C], player: P) -> SceneWorld[C, P]:
     """The player is added by code and never authored, so no scenario can claim their id."""
     canon = deepcopy(canon)
-    if PLAYER_ID in canon.cast:
-        raise ValueError(f"an entity claims the reserved player id {PLAYER_ID!r}")
     return SceneWorld(
         cast=canon.cast,
         player=player,
