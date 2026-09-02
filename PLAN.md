@@ -109,8 +109,8 @@ def party_panel(members: Sequence[Person]) -> tuple[Panel, ...]:
 ```
 
 `Person` lives here, not in `scenes.py`, so the party functions take it instead of a second
-protocol. Inline `Counter.clamped` into `adjust` (its one user). Delete `TAIL_EXCHANGES` and
-`told_tail` only in Phase 3.
+protocol. `TAIL_EXCHANGES` and `told_tail` move only in Phase 3; `Counter.clamped` goes in
+Phase 4.
 
 ### 1.2 `engines/scenes.py`: the world
 
@@ -136,12 +136,13 @@ class SceneScenario[C: Person](Mutable):
 
 
 class SceneWorld[C: Person, P: Person](Mutable):
-    cast: dict[EntityId, C] = Field(default_factory=dict)
-    player: P                                  # known, never in the cast, never listed in a run
+    # Field order is today's dump order, so the fixtures move only where a field is new.
     runs: list[SceneRun] = Field(min_length=1)
     source: str = ""
     hub: Slug | None = None
     board: tuple[Offer, ...] = ()
+    cast: dict[EntityId, C] = Field(default_factory=dict)
+    player: P                                  # known, never in the cast, never listed in a run
     party: list[EntityId] = Field(default_factory=list)   # in the cast, alive, unique, present in every scene
 
     @model_validator(mode="after")
@@ -172,9 +173,12 @@ class SceneState[C: Person, P: Person](Mutable):
     world: SceneWorld[C, P]
 ```
 
-Nothing in `scenes.py` spells `PLAYER_ID` except `new_game`. The world arms, one model and one
-function each, with the tools' docstrings and field descriptions verbatim so `master_tools.json`
-does not move:
+Nothing in `scenes.py` spells `PLAYER_ID` except `new_game`. Once `SceneWorld` is generic a
+bare `SceneWorld` annotation is a strict-pyright error, so every function that takes a world is
+generic: `def settle[C: Person, P: Person](world: SceneWorld[C, P], job_done: bool)`, and the
+same on `record_exchange`, `hub_rows`, `scene_rows` and the arms below. The world arms, one
+model and one function each, with the tools' docstrings and field descriptions verbatim so
+`master_tools.json` does not move:
 
 ```python
 class Reveal(Frozen): ...    # verb: Literal["reveal"], entity_id
@@ -182,24 +186,27 @@ class Enter(Frozen): ...
 class Leave(Frozen): ...
 class Kill(Frozen): ...
 
-def reveal_hidden(world: SceneWorld[Any, Any], entity_id: EntityId) -> list[Fact]
+def reveal_hidden[C: Person, P: Person](world: SceneWorld[C, P], entity_id: EntityId) -> list[Fact]
     # today's Reveal arm + `_reveal` (card sentence(f"{name} discovered"))
-def enter(world, entity_id) -> list[Fact]       # refuses the player, someone here, someone hidden here
-def leave(world, entity_id) -> list[Fact]       # refuses the player; refuses a party member:
-                                                # f"{one.name} travels with the player and leaves through `leave_party`"
-def kill(world, entity_id) -> list[Fact]        # require_here; refuse the dead; reveal; drop from party; alive=False;
-                                                # card "You are dead" for the player, else f"{one.name} is dead"
+def enter[C, P](world, entity_id) -> list[Fact]     # refuses the player, someone here, someone hidden here
+def leave[C, P](world, entity_id) -> list[Fact]     # refuses the player; refuses a party member:
+                                                    # f"{one.name} travels with the player and leaves through `leave_party`"
+def kill[C, P](world, entity_id) -> list[Fact]      # require_here; refuse the dead; reveal; drop from party; alive=False;
+                                                    # card "You are dead" for the player, else f"{one.name} is dead"
 ```
 
-The seam functions, generic on the state because `Game[P]` is invariant:
+The seam functions take the game, and `Game[P]` is invariant, so they are generic on the state
+with a bound of `Any`:
 
 ```python
 def new_game[C: Person, P: Person](canon: SceneCanon[C], player: P) -> SceneWorld[C, P]:
-    """deepcopy the canon; refuse PLAYER_ID in its cast; build the world with runs=[SceneRun(opening, present, hidden)]."""
-    # returns an unparametrized instance; the state's field validates it into SceneWorld[C, P]
+    """deepcopy the canon; refuse PLAYER_ID in its cast; return SceneWorld(cast=canon.cast, player=player,
+    runs=[SceneRun(scene=canon.opening, present=list(canon.present), hidden=list(canon.hidden))], source, hub, board)."""
+    # written unparametrized; pyright infers SceneWorld[C, P] from the arguments, and the state's field
+    # validates the instance into the parametrized class
 
-def check_game[S: SceneState[Any, Any]](packs: Mapping[str, BaseModel], state: Game[S], title: str) -> None
-    # "a {title} game needs at least one table set"; missing packs; check_kind
+def check_game[S: SceneState[Any, Any]](packs: Mapping[str, BaseModel], state: Game[S]) -> None
+    # f"a {state.engine!r} game needs at least one table set"; missing packs; check_kind
 def known[S: SceneState[Any, Any]](state: Game[S], entity_id: EntityId) -> bool | None
 def record[S: ...](state: Game[S], prompt, lines, facts) -> tuple[str, ...]
 def history[S: ...](state: Game[S]) -> tuple[Exchange, ...]
@@ -207,8 +214,9 @@ def way_open[S: ...](state: Game[S]) -> bool
 def player_over[S: ...](state: Game[S]) -> str | None
 ```
 
-`Any` here is a generic bound only. Add to `CLAUDE.md`'s "Do not use `Any`" line: ", except as
-the bound of a generic seam function".
+Add to `CLAUDE.md`'s "Do not use `Any`" line: ", except in `engines/scenes.py`'s seam
+functions, where `Game[P]`'s invariance makes `SceneState[Any, Any]` the only spelling of the
+bound". No other `Any` is added.
 
 ### 1.3 The three engines
 
@@ -246,7 +254,7 @@ Loner's player leaves the cast and lives at `world.player`; `companions` becomes
 
 `engine.py`: `new_game` keeps its two isinstance checks, then
 `Loner3eState(world=new_game(scenario.payload.world, player_character(character)))`. `build()`
-wires `validate=partial(check_game, packs, title="Loner 3E")`, `known=known`, `record=record`,
+wires `validate=partial(check_game, packs)`, `known=known`, `record=record`,
 `history=history`, `over=player_over`, `ready=way_open`, all from `scenes.py`.
 
 `tools.py`: `apply_change`'s `Reveal`/`Enter`/`Leave`/`Kill` cases call `reveal_hidden`,
@@ -259,7 +267,13 @@ Only Loner registers the party arms in this phase.
 
 `worldsmith.py` and `views.py` are folded in Phase 2; touch them only where the shape forces
 it: `Npc` → `Person` in the drafts and `apply_scene`, `world.companions` → `world.party`,
-`world.player_id` → `world.player.id`, `SceneCanon` → `SceneCanon[...]`.
+`world.player_id` → `world.player.id`, `SceneCanon` → `SceneCanon[...]`. Loner's
+`worldsmith.py` needs three more edits, each making it read as 24XX's does today, because its
+player is no longer in the cast: `apply_scene`'s `followers` is `world.party` alone (the player
+is never listed, so `kept` holds party members only and `present=[*kept, *present]`);
+`render_worldsmith` prints `entity_line(world, world.player, ...)` first, then the cast;
+`_scene_unmet`'s `known` mapping is `{world.player.id: world.player, **held, **draft.cast}` and
+`others` drops what resolves to `world.player.id`.
 
 Test support follows the shape: `core_test_support.with_entity`, `loner3e_test_support.hub_world`
 (the player at `player=`, not in `cast`, `party=[]`), every test reading `companions`,
@@ -272,12 +286,15 @@ line (1.2). Recreate `PROGRESS.md` with this phase's entry.
 
 ### Done when
 
-Green. Goldens: `state/` and `save/` for 24XX and Breathless gain `"party": []` on the world;
-Loner's carry `"player": {...}` beside the cast, the player out of `cast` and `present`,
-`"party": []` in place of `"companions"`, no `"player_id"`; `master.txt`, `master_tools.json`,
-`narrator.txt` and `picture.txt` unchanged for all four engines. A Loner turn joins Mara to
-the party, and the next scene's `present` holds her without the worldsmith naming her; `leave`
-on her is refused; `kill` drops her. `src` about 9,950; each `world.py` under 110 lines.
+Green. Goldens: `state/` and `save/` for 24XX and Breathless gain `"party": []` after
+`"player"`; Loner's carry `"player": {...}` after the cast, the player out of `cast` and
+`present`, `"party": []` in place of `"companions"`, no `"player_id"`; in every engine's sheet
+dump (`Operator`, `Survivor`, `LonerCharacter`) `"alive"` moves up to follow `"known"`, since
+`Person` declares it; `master.txt`, `master_tools.json`, `narrator.txt` and `picture.txt`
+unchanged for all four engines. A Loner turn joins Mara to the party, and the next scene's
+`present` holds her without the worldsmith naming her; `leave` on her is refused; `kill` drops
+her; Loner's player death now cards "You are dead" as the other engines do. `src` about
+9,950; each `world.py` under 110 lines.
 
 ---
 
@@ -306,24 +323,27 @@ class ReturnDraft[C: Person](HubDraft[C]):    debrief: str = Field(min_length=1)
 
 def opening_draft[C: Person](cast_type: type[C], kind: ScenarioKind) -> type[SceneDraft[C]]:
     return HubDraft[cast_type] if kind == "campaign" else SceneDraft[cast_type]
+    # a class subscripted by a `type[C]` variable type-checks under basedpyright strict; pydantic
+    # parametrizes it at runtime, and `isinstance(x, HubDraft)` on the result is True
 
-def scene_unmet(draft: SceneDraft[Any], world: SceneWorld[Any, Any] | None) -> list[str]
+def scene_unmet[C: Person, P: Person](draft: SceneDraft[C], world: SceneWorld[C, P] | None) -> list[str]
     # held = {} or world.cast; everyone = draft.cast alone, or {player.id: player, **held, **draft.cast}
     # followers = () or (player.id, *party): any of them resolved in present/hidden is unmet:
     #   f"a scene that does not list the player or the party; they are put there by code: {named}"
     # cast_unmet(others, ...) with others = present + hidden; then per cast entry with unwritten():
     #   f"cast members as the worldsmith may write them: {[f'{eid}: {why}', ...]}"; then hub_unmet
-def scene_refusal(draft, world=None) -> str | None      # "the scene needs " + "; ".join(unmet)
-def opening_canon(draft, source) -> SceneCanon[C]       # today's body
-def apply_scene(world: SceneWorld[C, P], draft: SceneDraft[C]) -> None
+def scene_refusal[C, P](draft, world=None) -> str | None      # "the scene needs " + "; ".join(unmet)
+def opening_canon[C](draft, source) -> SceneCanon[C]          # today's body
+def apply_scene[C: Person, P: Person](world: SceneWorld[C, P], draft: SceneDraft[C]) -> None
     # refuse: a cast entry under the player's id ("the scene rewrites the player"), an existing id, misfiled;
-    # resolve present/hidden against {player.id: player, **cast}; refuse the player or a party member named;
-    # overlap; hidden-but-met; then world.cast = merged, mark present known,
-    # runs.append(SceneRun(scene=_scene(draft, world.job_done), present=[*world.party, *present], hidden=hidden))
+    # everyone = {player.id: player, **merged cast}; resolve present/hidden against it;
+    # refuse the player or a party member named; overlap; hidden-but-met; then world.cast = merged,
+    # mark present known, runs.append(SceneRun(scene=_scene(draft, world.job_done),
+    #                                          present=[*world.party, *present], hidden=hidden))
 ```
 
-`_scene(draft, finished) -> Scene` moves as is. `Any` on the draft and world parameters is the
-same generic-bound exception as Phase 1.
+`_scene(draft, finished) -> Scene` moves as is. The local mapping is `everyone` in both
+functions; `known` would shadow the seam function of that name in the same module.
 
 ### 2.2 `engines/scenes.py`: the crossing
 
@@ -336,25 +356,36 @@ async def write_next[C: Person, P: Person](
     # model = ReturnDraft[cast_type] | JobDraft[cast_type] | SceneDraft[cast_type]; refusal as today
 
 def install_scene[S: SceneState[Any, Any]](state: Game[S], written: BaseModel, *, finished_note: str) -> tuple[Fact, ...]
-    # apply_scene(world, written.model_copy(deep=True)); trace "the story moves to {title}" +
+    # if not isinstance(written, SceneDraft): raise ValueError(f"{state.engine!r} received an incompatible scene")
+    # draft: SceneDraft[Any] = written     # isinstance narrows to SceneDraft[Unknown]; a parametrized class is no isinstance target
+    # apply_scene(world, draft.model_copy(deep=True)); trace "the story moves to {title}" +
     # (f", and {names} travel there with the player" when world.members()); card "Home: " | "New scene: ";
     # on ReturnDraft: world.board = offers; job = world.jobs()[-1]; if finished and finished_note:
     # state.notes += (finished_note.format(title=job.title),); return (job_closed(job), opened)
 
-def render_worldsmith(world, intent, guidance, answer, *, role) -> str
-    # cast = entity_line(player, detail=last_seen) then each cast member; scene_history(world.job_runs()); hub_rows
+def render_worldsmith[C, P](world, intent, guidance, answer, *, role) -> str
+    # cast = entity_line(player, detail=last_seen) then each cast member with
+    # detail="travels with the player" for a party member, else last_seen: the worldsmith must know who follows;
+    # scene_history(world.job_runs()); hub_rows
 def render_opening[C: Person](cast_type, role, source, guidance, kind, hub_phrase) -> str
 def build_scenario[C: Person](
     file_type: type[Scenario[SceneScenario[C]]], engine_id: EngineId,
-    title, premise, art_style, packs, written: BaseModel, source, kind,
+    title, premise, packs, written: BaseModel, source, kind,
 ) -> AnyScenario
     # isinstance(written, SceneDraft) else f"{engine_id} received an incompatible scene"; scene_refusal;
-    # file_type(meta=ScenarioMeta(title, premise or written.situation, kind), engine=engine_id, packs, art_style,
+    # file_type(meta=ScenarioMeta(title, premise or written.situation, kind), engine=engine_id, packs,
     #           payload=SceneScenario(world=opening_canon(written, source)))
 ```
 
 Pydantic validates an unparametrized `SceneScenario(...)` into the file's parametrized field;
-no type argument is needed.
+no type argument is needed. The `SceneDraft[Any]` in `install_scene` is the one local `Any`
+the `CLAUDE.md` exception covers beside the bounds.
+
+`art_style` leaves `Authoring.build`: its type becomes `Callable[[str, str, tuple[Slug, ...],
+BaseModel, str, ScenarioKind], AnyScenario]` (title, premise, packs, written, source, kind),
+Tunnel Goons' `build_scenario` drops the parameter too, and `Runtime.new_scenario` applies it
+once on the built file: `write_scenario(..., as_scenario(written).model_copy(update={"art_style":
+art_style}), document)`. Phase 5 adds `voice` to that same update.
 
 ### 2.3 `engines/scenes.py`: the views
 
@@ -386,18 +417,25 @@ async def write_next(packs, state: TwentyfourxxGame, intent, answer) -> BaseMode
         told = "\n\n".join((told, BOARD_GUIDANCE))
     return await scenes.write_next(world, intent, answer, cast_type=Person, role=WORLDSMITH, guidance=told)
 
-def install_scene(state, written):                 # Loner: closed = close_conflicts(state) first, returned first
+def install_scene(state, written):
     return scenes.install_scene(state, written, finished_note=JOB_DONE_NOTE)
+
+# Loner: the conflicts close before the crossing, since close_conflicts reads the scene being left
+def install_scene(state, written):
+    closed = close_conflicts(state)
+    return (*closed, *scenes.install_scene(state, written, finished_note=GROWTH_NOTE))
+
+def render_opening(packs, source, picks, kind) -> str:       # guidance is the engine's; 24XX joins BOARD_GUIDANCE for a campaign
+    return scenes.render_opening(Person, WORLDSMITH, source, guidance(packs, picks), kind, HUB_PHRASE)
 ```
 
 `build()` wires `Authoring(answer=partial(opening_draft, Person), prompt=partial(render_opening,
-Person, WORLDSMITH, ...), build=partial(build_scenario, TwentyfourxxScenarioFile,
-EngineId("twentyfourxx")))`; `render_opening`'s guidance is a per-engine function of
-`(packs, picks)` since 24XX joins `BOARD_GUIDANCE` for a campaign: keep a four-line
-`render_opening(packs, source, picks, kind)` wrapper per engine.
+packs), build=partial(build_scenario, TwentyfourxxScenarioFile, EngineId("twentyfourxx")))`,
+the first and last from `scenes.py`, `render_opening` the wrapper above.
 
 `views.py` shrinks to `master_sections` (its own ten-line tuple, since 24XX's `GEAR` and Loner's
-glossary sit in different slots) plus the engine's extra panel and gear lines:
+glossary sit in different slots) plus the engine's extra panel and gear lines. `views.py` no
+longer imports `worldsmith.py` or the reverse: both import `scenes`:
 
 ```python
 def master_sections(state) -> Rows:
@@ -422,12 +460,14 @@ Delete each engine's `SceneDraft` family, `scene_refusal`, `opening_canon`, `app
 `render_worldsmith`, `build_scenario`, `_scene`, `_scene_unmet`, `subject_of`, `entity_line`,
 `entity_lines`, `narrator_view`, `_entity_row`.
 
-### 2.5 Dead code, same phase
+### 2.5 Dead code, same phase, part A
 
 `ui/settings.py _without_none` (no `Optional` field exists; use `field.annotation` directly);
-the `way.to in places` guard in Tunnel Goons `walk` (the validator guarantees it); 24XX
-`SRD_PACK`; `core/tools.py`'s `Known` alias re-spelled at `Engine.known` (import `Known`);
-`other_than` from Breathless and Loner `creation.py` into `core/creation.py`.
+the `way.to in places` guard in Tunnel Goons `walk`, with its `places` parameter, the same
+parameter on `has_shortcut`, and the argument at their four call sites (the validator
+guarantees every way leads to a place); 24XX `SRD_PACK`; `core/tools.py`'s `Known` alias
+re-spelled at `Engine.known` (import `Known`); `other_than` from Breathless and Loner
+`creation.py` into `core/creation.py`. Part A does all of it, so B and C touch no shared file.
 
 ### 2.6 Docs
 
@@ -503,12 +543,13 @@ In `game_page`, after `view.transcript = transcript`:
 
 ### 3.5 The save card says where you are, `app/launch.py`, `ui/app.py`
 
-`SaveOption.where: str`. In `load_catalog`, inside the existing `try`, after the header:
-`state = engines[game.engine].restored(raw)` (the `ValueError` of a stale save is already
-skipped with a warning), then `history = engines[game.engine].history(state)` and
-`where = history[-1].where if history else ""`. Do the engine lookup after the
-`played_by`/`title` check so an unknown engine is still the warning it is today. `_saved_card`
-reads `f"{saved.character_title} · turn {saved.turn}"` plus `f" · {saved.where}"` when set.
+`SaveOption.where: str`. In `load_catalog`, in this order: the header in its existing `try`;
+the `played_by`/`title` check as today; then a second `try` around
+`state = engines[game.engine].restored(raw)` whose `except ValueError` logs the same "skipping
+save" warning and continues (a stale save is invalid, never repaired); then
+`history = engines[game.engine].history(state)` and `where = history[-1].where if history
+else ""`. `_saved_card` reads `f"{saved.character_title} · turn {saved.turn}"` plus
+`f" · {saved.where}"` when set.
 
 ### 3.6 `IDEAS.md`
 
@@ -537,9 +578,10 @@ No behaviour change. **One implementer, sonnet.**
   `AnyGame` into the constants block under `ScenarioKind` (`type` aliases are lazy).
   `engines/core.py`: `AnyEngine` likewise. The `WorldChange` unions, `DRIVERS`, `TURN_TOOLS`
   and Tunnel Goons' `Entity` alias must follow their classes: one comment each says so.
-- Tunnel Goons `validate` → `check_game`. The local `known` mapping in `scenes.py`'s
-  `apply_scene` and `scene_unmet` → `everyone`. `twentyfourxx.creation.guidance`: one comment,
+- Tunnel Goons `validate` → `check_game`. `twentyfourxx.creation.guidance`: one comment,
   "kept for `partial` parity with the other engines".
+- Inline `Counter.clamped` into `adjust`, its one user; `tests/loner3e/test_counters.py`
+  loses its two `clamped` asserts.
 - Trim every docstring past one line where the code says the what.
 
 ### 4.2 `CLAUDE.md`
@@ -580,10 +622,10 @@ as two items. Then delete `VISION.md`, its line in `README.md`'s "Project inform
 
 ### 4.5 Engine docs, one shape
 
-Every `docs/<ENGINE>.md` in the order `docs/24XX.md` has: official sources, licence and
-attribution, pack sources, the tools, deviations, readings the SRD leaves open, what the app
-adds, where the rules live. Reorder Breathless, Loner and Tunnel Goons; do not rewrite their
-text. Tunnel Goons gains the two missing headings with "None." where it has nothing to say.
+The four `docs/<ENGINE>.md` already share one heading order; only `docs/LONER-3E.md` lacks
+`## The tools`. Add it between "Pack sources" and "Deviations", one line per tool as the other
+three write them: `change_world` (its eight arms named), `next_scene`, `roll_question`,
+`restore_luck`. Nothing else moves.
 
 ### Done when
 
@@ -611,7 +653,9 @@ class SpeechConfig(BaseModel):
     provider: ProviderName = "openrouter"
     model: str = "google/gemini-3.1-flash-tts-preview"
     voice: str = "Kore"                                   # the narrator's, when the scenario names none
-    voices: tuple[str, ...] = ("Kore", "Puck", "Charon", "Zephyr", "Fenrir")   # the pool dialogue draws from
+    voices: tuple[str, ...] = Field(                      # the pool dialogue draws from
+        default=("Kore", "Puck", "Charon", "Zephyr", "Fenrir"), min_length=1
+    )
     sample_rate: int = Field(default=24_000, gt=0)
     timeout: float = Field(default=60.0, gt=0.0)
 
@@ -631,18 +675,18 @@ it unchanged.
 
 ### 5.2 The scenario's voice
 
-`Scenario.voice: str = ""` in `core/model.py` beside `art_style`. `Authoring.build` and
-`Runtime.new_scenario` take `voice: str` beside `art_style`; `scenes.build_scenario` and
-Tunnel Goons' `build_scenario` pass it through. `ui/create.py`: an input "Narrator voice"
-with placeholder "Leave empty for the default voice" under the art style input, passed as
-`voice=`.
+`Scenario.voice: str = ""` in `core/model.py` beside `art_style`. `Runtime.new_scenario`
+takes `voice: str` beside `art_style` and adds it to the `model_copy(update=...)` Phase 2
+left there; `Authoring.build` does not change. `ui/create.py`: an input "Narrator voice" with
+placeholder "Leave empty for the default voice" under the art style input, passed as `voice=`.
 
 ### 5.3 `app/media.py` shares, `app/speech.py` reads
 
-In `media.py`, make module functions of what both files use: `existing(directory, stem,
-suffixes)`, `write_bytes(path, data)`, `claim(generating: set[str], key) -> bool` (synchronous,
-as today's comment says), and `post_bearer(provider, path, body, timeout) -> bytes` (the bearer
-POST with `raise_for_status`, returning `reply.content`; `_generate` parses the JSON from it).
+In `media.py`, make module functions of the two things both files use: `claim(generating:
+set[str], key) -> bool` (synchronous, as today's comment says) and `post_bearer(provider, path,
+body, timeout) -> bytes` (the bearer POST with `raise_for_status`, returning `reply.content`;
+`_generate` parses its JSON from that). `_existing` and `_write` stay media's: a clip has one
+suffix and `wave` writes the file.
 
 `app/speech.py`, about 100 lines:
 
@@ -658,11 +702,12 @@ class Reader:
     voice: str                        # the narrator's
     generating: set[str] = field(default_factory=set)
 
-    def clip(self, exchange: Exchange) -> Path | None          # existing wav for clip_key(...)
+    def clip(self, exchange: Exchange) -> Path | None          # saves / f"{key}.wav" when it is a file
     def pending(self, exchange: Exchange) -> bool
     async def read(self, exchange: Exchange) -> None
         # key; skip when cached or not claimed; one POST per line; on any failure LOGGER.exception once and return;
-        # join the pcm chunks; write a wav at saves / f"{key}.wav" through `wave`: 1 channel, 2 bytes, config.sample_rate
+        # join the pcm chunks; saves.mkdir(parents=True, exist_ok=True); wave.open(path, "wb") with
+        # 1 channel, 2-byte samples, config.sample_rate
 
 def open_reader(settings: Settings, store: FileStore, slug: str, scenario: AnyScenario) -> Reader | None
     # None unless settings.speech.enabled; voice = scenario.voice or settings.speech.voice
@@ -681,22 +726,30 @@ spawns or posts anything.
 
 ### 5.4 `app/runtime.py`
 
-`GameService.voice: Reader | None = None`, set by `_open` through `open_reader`. Add
-`speak()`: like `illustrate`, a retained `create_task(self.voice.read(history[-1]))` over
-`self.engine.history(self.state)`, no-op when `voice` is None or the history is empty. Call it
-right after `self.illustrate(...)` in `play` (both places) and after the narrated crossing's
-commit in `_install`. `newest_clip() -> Path | None` and `clip_pending() -> bool` read the last
-exchange. Cards, situations and debriefs are not spoken; a resumed game generates nothing for
-old exchanges.
+`GameService.reader: Reader | None = None`, set by `_open` through `open_reader`. Add
+`speak()`: like `illustrate`, a retained `create_task(self.reader.read(history[-1]))` over
+`self.engine.history(self.state)`, no-op when `reader` is None or the history is empty. Call it
+right after each of the two `self.illustrate(...)` calls in `play`; the narrated crossing
+commits inside that same `play`, so `_install` needs no hook. `newest_clip() -> Path | None`
+and `clip_pending() -> bool` read the last exchange. Cards, situations and debriefs are not
+spoken; a resumed game generates nothing for old exchanges.
 
 ### 5.5 `ui/game.py`
 
-In `chat`, after an exchange's lines: when `session.voice is not None` and
-`session.voice.clip(exchange)` exists, `ui.audio(path, autoplay=newest, controls=not newest)`
-where `newest` is `exchange is history[-1]`. `GameView.shown_clip: tuple[Path | None, bool]`
-beside `shown_art`; `poll_art` also compares `(session.newest_clip(), session.clip_pending())`
-and refreshes `chat` when it moved; the 3-second timer runs when `media` or `voice` is set.
-About 20 lines.
+`chat` takes the `GameView` (it needs the session and one flag). After an exchange's lines,
+when `session.reader is not None` and `session.reader.clip(exchange)` is a path:
+`ui.audio(path, controls=True, autoplay=path == view.autoplay_clip)`. `GameView` gains
+`shown_clip: tuple[Path | None, bool]`, initialised in `game_page` from
+`(session.newest_clip(), session.clip_pending())` so a cached clip never autoplays on a page
+load, and `autoplay_clip: Path | None = None`. `poll_art` keeps its art comparison and adds a
+second: when `(session.newest_clip(), session.clip_pending())` differs from `shown_clip`,
+store it, set `autoplay_clip` to the clip when it is a path, and `chat.refresh()`. `_send`
+clears `autoplay_clip` before `refresh_all`, so the previous clip does not restart at the next
+turn. The 3-second timer runs when `media` or `reader` is set. About 25 lines.
+
+### 5.6 `IDEAS.md`
+
+Item 1 (sounds and voices) is done: delete it.
 
 ### Done when
 
