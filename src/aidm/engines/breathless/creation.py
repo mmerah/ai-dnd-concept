@@ -5,7 +5,7 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked
-from aidm.core.entities import EngineId, Frozen, Slug, slug
+from aidm.core.entities import EngineId, Slug, slug
 from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption
 from aidm.core.views import Rows
@@ -15,6 +15,8 @@ from aidm.engines.breathless.world import (
     BreathlessCharacterFile,
     player_survivor,
 )
+from aidm.engines.core import Pack as ScenePack
+from aidm.engines.core import pack_options
 
 _AUTHORING = (
     "BREATHLESS AUTHORING\n"
@@ -24,10 +26,9 @@ _AUTHORING = (
 )
 
 
-class Pack(Frozen):
+class Pack(ScenePack):
     """One published table set the player can build a survivor from."""
 
-    name: str
     source: str
     license: str
     skills: tuple[DecisionOption, ...] = Field(min_length=6, max_length=6)
@@ -88,10 +89,6 @@ def preview_character(character: AnyCharacter) -> Rows:
     if not isinstance(character, BreathlessCharacterFile):
         raise ValueError("Breathless received an incompatible character")
     return (*player_survivor(character).rows(), ("Backpack", character.payload.item))
-
-
-def pack_options(packs: Mapping[str, Pack]) -> tuple[DecisionOption, ...]:
-    return tuple(DecisionOption(id=key, label=one.name) for key, one in packs.items())
 
 
 def guidance(packs: Mapping[str, Pack], selected_ids: Sequence[Slug]) -> str:

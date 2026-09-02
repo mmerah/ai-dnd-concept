@@ -1,6 +1,5 @@
 import json
 import shutil
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -8,6 +7,7 @@ from core_test_support import (
     BREATHLESS,
     ENGINES_BUILT,
     LONER3E,
+    LONER3E_PACKS,
     TUNNELGOONS,
     TWENTYFOURXX,
     ScriptedSpawner,
@@ -20,11 +20,14 @@ from aidm.app.runtime import Runtime
 from aidm.config import Settings
 from aidm.core.entities import EngineId
 from aidm.core.io import ENCODING, FileStore
+from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
 
 MIRROR = EngineId("mirror")
+_MIRRORED = Loner3eEngine(LONER3E_PACKS)
+_MIRRORED.id = MIRROR
 # A second engine installed, so the engine the launcher pairs on is observable at all.
-INSTALLED = {**ENGINES_BUILT, MIRROR: replace(ENGINES_BUILT[LONER3E], id=MIRROR)}
+INSTALLED = {**ENGINES_BUILT, MIRROR: _MIRRORED}
 
 
 def _opening_state(settings: Settings) -> Loner3eGame:

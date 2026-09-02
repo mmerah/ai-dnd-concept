@@ -1,5 +1,4 @@
 from collections.abc import Iterable, Iterator, Sequence
-from functools import partial
 from typing import Literal, Self
 
 from pydantic import Field, model_validator
@@ -42,7 +41,7 @@ class Goon(Mutable):
     brute: int = Field(default=0, ge=0)
     skulker: int = Field(default=0, ge=0)
     erudite: int = Field(default=0, ge=0)
-    hp: Counter = Field(default_factory=partial(Counter, current=HP_START, maximum=HP_START))
+    hp: Counter = Field(default_factory=lambda: Counter(current=HP_START, maximum=HP_START))
     inventory: int = Field(default=INVENTORY_START, ge=0)
     level: int = Field(default=1, ge=1)
     alive: bool = True

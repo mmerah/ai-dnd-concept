@@ -10,16 +10,9 @@ from breathless_test_support import (
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
 from aidm.engines.core import PLAYER_ID, Person
-from aidm.engines.scenes import (
-    HubDraft,
-    ReturnDraft,
-    SceneDraft,
-    apply_scene,
-    install_scene,
-    opening_canon,
-    render_worldsmith,
-    scene_refusal,
-)
+from aidm.engines.scenes.drafts import HubDraft, ReturnDraft, SceneDraft
+from aidm.engines.scenes.world import scene_refusal
+from aidm.engines.scenes.worldsmith import install_scene, opening_canon
 
 ROLE = "you are the worldsmith"
 
@@ -37,7 +30,7 @@ def _draft(**fields: object) -> SceneDraft[Person]:
 def test_apply_scene_refuses_a_scene_that_lists_the_player() -> None:
     world = small_world().payload.world
     with pytest.raises(ValueError, match="put there by code"):
-        apply_scene(world, _draft(present=("Jax", "mira")))
+        world.apply_scene(_draft(present=("Jax", "mira")))
 
 
 def test_apply_scene_refuses_a_draft_cast_entry_under_player_id() -> None:
@@ -46,13 +39,13 @@ def test_apply_scene_refuses_a_draft_cast_entry_under_player_id() -> None:
         cast={PLAYER_ID: Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)}
     )
     with pytest.raises(ValueError, match="rewrites the player"):
-        apply_scene(world, draft)
+        world.apply_scene(draft)
 
 
 def test_apply_scene_refuses_hiding_someone_met() -> None:
     world = small_world().payload.world
     with pytest.raises(ValueError, match="already met"):
-        apply_scene(world, _draft(hidden=("mira",)))
+        world.apply_scene(_draft(hidden=("mira",)))
 
 
 def test_the_opening_needs_a_cast_member() -> None:
@@ -112,12 +105,8 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
 
 
 def test_render_worldsmith_lists_the_player_first() -> None:
-    prompt = render_worldsmith(
-        small_world().payload.world,
-        "Explore the alley.",
-        "guidance text",
-        SceneDraft[Person],
-        role=ROLE,
+    prompt = small_world().payload.world.render_worldsmith(
+        "Explore the alley.", "guidance text", SceneDraft[Person], role=ROLE
     )
     assert prompt.index("Jax[player]") < prompt.index("Mira[mira]")
 

@@ -10,8 +10,8 @@ from aidm.engines.breathless.creation import Pack
 from aidm.engines.breathless.tools import (
     ChangeStress,
     Check,
+    Complications,
     LootCheck,
-    catch_breath,
     change_stress,
     check,
     loot_check,
@@ -23,7 +23,7 @@ from aidm.engines.breathless.tools import test_luck as roll_luck
 from aidm.engines.breathless.world import Item, stepped
 from aidm.engines.core import PLAYER_ID, load_packs
 from aidm.engines.hub import JOB_DONE
-from aidm.engines.scenes import NextScene, player_over
+from aidm.engines.scenes.world import SCENE_LEFT, NextScene, player_over
 
 PACKS_DIR = Path(__file__).parents[2] / "src" / "aidm" / "engines" / "breathless" / "packs"
 PACKS = load_packs((PACKS_DIR,), Pack)
@@ -86,7 +86,7 @@ def test_catch_breath_resets_worn_loot_and_stunt_but_keeps_stress_and_item_dice(
     player.stress.current = 2
     player.items[WRENCH].die = 6
 
-    facts = catch_breath(PACKS, draft, NoArgs(), Random(0))
+    facts = Complications(PACKS).catch_breath(draft, NoArgs(), Random(0))
 
     assert player.worn == player.skills
     assert player.loot == 12
@@ -211,3 +211,15 @@ def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() ->
     at_hub.payload.world.runs = [at_hub.payload.world.runs[0]]
     with pytest.raises(ValueError, match="no job is open here"):
         _ = next_scene(at_hub, NextScene(job_done=True), Random(0))
+
+
+def test_next_scene_with_pursuit_settles_the_run_and_leaves_a_go_on_row() -> None:
+    draft = hub_world()
+    world = draft.payload.world
+    facts = next_scene(draft, NextScene(pursuit="the control deck"), Random(0))
+    assert world.run.settled
+    assert world.run.pursuit == "the control deck"
+    assert SCENE_LEFT in facts
+    assert any(
+        row.label == "Go on" and row.intent == "the control deck" for row in world.scene_rows()
+    )

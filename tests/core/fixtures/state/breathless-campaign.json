@@ -37,7 +37,8 @@
           "settled": false,
           "spent": "",
           "job_done": false,
-          "recap": ""
+          "recap": "",
+          "pursuit": ""
         }
       ],
       "source": "An old rail depot turned safe house, its gate log deciding who eats and who doesn't.",

@@ -72,6 +72,8 @@ Every scene has one question, given to you as THE QUESTION THIS SCENE SETTLES. P
 
 When it is settled, call `next_scene` once. The Narrator then closes the scene and asks the player what they want to pursue. Do not decide for them, do not offer them a list, and do not describe the next place.
 
+A scene is one place. When the player leaves it for good with the question open — through a grate, out a door, off the map — call `next_scene` with `pursuit`: where they are going, in their own words. Play the leaving, never the arrival; the worldsmith writes where they land.
+
 The player is not forced to leave. They may keep playing here, and you keep playing with them; the scene stays open until they say where they are going. Their answer is what the next scene is built from.
 
 `next_scene` does not end the turn. Finish what the player's action caused, then exit.

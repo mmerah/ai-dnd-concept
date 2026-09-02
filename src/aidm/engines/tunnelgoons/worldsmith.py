@@ -2,7 +2,7 @@ import json
 from collections.abc import Sequence
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from aidm.core.entities import CheckedEntityId, EngineId, EntityId, Frozen, Slug
 from aidm.core.facts import Fact
@@ -71,11 +71,6 @@ class ReturnDraft(Frozen):
     offers: tuple[Offer, ...] = Field(min_length=BOARD_MIN, max_length=BOARD_MAX)
 
 
-def opening_draft(_kind: ScenarioKind) -> type[MapDraft]:
-    """One map serves both kinds: a campaign's hub is a place on it."""
-    return MapDraft
-
-
 def map_refusal(draft: MapDraft) -> str | None:
     unmet = _map_unmet(draft) + _board_unmet(draft)
     return None if not unmet else "the map needs " + "; ".join(unmet)
@@ -113,7 +108,7 @@ def attach(world: TunnelWorld, draft: MapDraft, *, known: bool) -> None:
     _append_way(world.ways, draft.start, anchor_id, known)
 
 
-def install_extension(state: TunnelGoonsGame, written: BaseModel) -> tuple[Fact, ...]:
+def install_extension(state: TunnelGoonsGame, written: MapDraft | ReturnDraft) -> tuple[Fact, ...]:
     world = state.payload.world
     if isinstance(written, ReturnDraft):
         world.visit.debrief = Debrief(text=written.debrief, finished=world.job_done)
@@ -121,7 +116,7 @@ def install_extension(state: TunnelGoonsGame, written: BaseModel) -> tuple[Fact,
         world.job_done = False
         world.board = written.offers
         return (job_closed(world.jobs()[-1]),)
-    if isinstance(written, MapDraft) and world.at_hub:
+    if world.at_hub:
         if (refused := job_refusal(written, world)) is not None:
             raise ValueError(refused)
         tavern = world.current
@@ -131,19 +126,17 @@ def install_extension(state: TunnelGoonsGame, written: BaseModel) -> tuple[Fact,
         trace = f"a way opens from {tavern.name} to {start.name}"
         card = f"A way opens: {start.name}"
         return (Fact(kind="job_taken", told=True, trace=trace, card=card),)
-    if isinstance(written, MapDraft):
-        if (refused := extension_refusal(written, world)) is not None:
-            raise ValueError(refused)
-        anchor = world.current.name
-        attach(world, written, known=False)
-        trace = f"a hidden region opens beyond {anchor}"
-        return (Fact(kind="region_added", trace=trace, told=False),)
-    raise ValueError("Tunnel Goons received an incompatible map")
+    if (refused := extension_refusal(written, world)) is not None:
+        raise ValueError(refused)
+    anchor = world.current.name
+    attach(world, written, known=False)
+    trace = f"a hidden region opens beyond {anchor}"
+    return (Fact(kind="region_added", trace=trace, told=False),)
 
 
 async def write_extension(
     state: TunnelGoonsGame, intent: str, answer: WorldsmithAnswer
-) -> BaseModel:
+) -> MapDraft | ReturnDraft:
     world = state.payload.world
     if world.at_hub and intent == REPORT_IN:
         if not world.job_open:
@@ -154,17 +147,11 @@ async def write_extension(
 
     bar = job_refusal if world.at_hub else extension_refusal
     prompt = _render_job(world, intent) if world.at_hub else _render_extension(world, intent)
-
-    def refusal(written: BaseModel) -> str | None:
-        if not isinstance(written, MapDraft):
-            raise ValueError("Tunnel Goons received an incompatible map")
-        return bar(written, world)
-
-    return await answer(prompt, MapDraft, refusal)
+    return await answer(prompt, MapDraft, lambda written: bar(written, world))
 
 
 def render_map(source: str, picks: Sequence[Slug], kind: ScenarioKind) -> str:
-    """`Authoring.prompt`; `picks` stays unused — Tunnel Goons ships no packs to pick from."""
+    """One map serves both kinds; `picks` stays unused — Tunnel Goons ships no packs to pick."""
     map_so_far = TAVERN_ASK if kind == "campaign" else "(no map yet — write the opening map)"
     return sections(
         (
@@ -180,12 +167,10 @@ def build_scenario(
     title: str,
     premise: str,
     packs: tuple[Slug, ...],
-    written: BaseModel,
+    written: MapDraft,
     source: str,
     kind: ScenarioKind,
 ) -> AnyScenario:
-    if not isinstance(written, MapDraft):
-        raise ValueError("Tunnel Goons received an incompatible map")
     bar = hub_refusal if kind == "campaign" else map_refusal
     if (refused := bar(written)) is not None:
         raise ValueError(refused)

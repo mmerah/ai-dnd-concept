@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from functools import partial
+from dataclasses import dataclass
 from random import Random
 from typing import Literal, Self
 
@@ -24,19 +24,7 @@ from aidm.engines.breathless.world import (
     stepped,
 )
 from aidm.engines.core import CHANGE_WORLD, PLAYER_DEAD, counter_fact, entity_fact, sentence
-from aidm.engines.scenes import (
-    NEXT_SCENE,
-    Enter,
-    Kill,
-    Leave,
-    NextScene,
-    Reveal,
-    enter,
-    kill,
-    leave,
-    reveal_hidden,
-    settle,
-)
+from aidm.engines.scenes.world import NEXT_SCENE, Enter, Kill, Leave, NextScene, Reveal
 
 SRD_PACK: Slug = "srd"
 SWAP = "swap-"
@@ -117,6 +105,35 @@ class TestLuck(Frozen):
     die: Die = Field(description="Which die to roll, picked by the odds.")
 
 
+@dataclass(frozen=True, slots=True)
+class Complications:
+    """The rules that read the table sets: catching breath draws from the SRD's table."""
+
+    packs: Mapping[str, Pack]
+
+    def catch_breath(self, draft: BreathlessGame, _args: NoArgs, rng: Random) -> list[Fact]:
+        world = draft.payload.world
+        player = world.player
+        if not player.alive:
+            raise ValueError(PLAYER_DEAD)
+        player.worn = dict(player.skills)
+        player.loot = LOOT_START
+        player.stunted = False
+
+        rolled, dice_fact = roll((12,), "a new complication", rng)
+        text = complications_of(self.packs)[rolled[0] - 1]
+        draft.notes = (
+            *draft.notes,
+            f"Catching breath brings a new complication. The SRD's table suggests: {text} Bring it "
+            "in through the story, or one that fits better.",
+        )
+        trace = f"{world.label(player)} catches their breath: skills and loot die restored"
+        fact = entity_fact(
+            player, "breath_caught", trace, card="Caught breath — skills and loot die restored"
+        )
+        return [dice_fact, fact]
+
+
 def outcome(face: int) -> str:
     if face <= 2:
         return "fail"
@@ -129,13 +146,13 @@ def apply_change(world: BreathlessWorld, change: WorldChange) -> list[Fact]:
     """Every arm settles its own deterministic consequences, so a call leaves nothing half-done."""
     match change:
         case Reveal():
-            return reveal_hidden(world, change.entity_id)
+            return world.reveal_hidden(change.entity_id)
         case Enter():
-            return enter(world, change.entity_id)
+            return world.enter(change.entity_id)
         case Leave():
-            return leave(world, change.entity_id)
+            return world.leave(change.entity_id)
         case Kill():
-            return kill(world, change.entity_id)
+            return world.kill(change.entity_id)
         case DropItem():
             return _drop_item(world, change.item_id)
 
@@ -145,7 +162,7 @@ def change_world(draft: BreathlessGame, args: ChangeWorld, _rng: Random) -> list
 
 
 def next_scene(draft: BreathlessGame, args: NextScene, _rng: Random) -> tuple[Fact, ...]:
-    return settle(draft.payload.world, args.job_done)
+    return draft.payload.world.settle(args.job_done, args.pursuit)
 
 
 def check(draft: BreathlessGame, args: Check, rng: Random) -> list[Fact]:
@@ -211,31 +228,6 @@ def complications_of(packs: Mapping[str, Pack]) -> tuple[str, ...]:
     return srd.complications
 
 
-def catch_breath(
-    packs: Mapping[str, Pack], draft: BreathlessGame, _args: NoArgs, rng: Random
-) -> list[Fact]:
-    world = draft.payload.world
-    player = world.player
-    if not player.alive:
-        raise ValueError(PLAYER_DEAD)
-    player.worn = dict(player.skills)
-    player.loot = LOOT_START
-    player.stunted = False
-
-    rolled, dice_fact = roll((12,), "a new complication", rng)
-    text = complications_of(packs)[rolled[0] - 1]
-    draft.notes = (
-        *draft.notes,
-        f"Catching breath brings a new complication. The SRD's table suggests: {text} Bring it "
-        "in through the story, or one that fits better.",
-    )
-    trace = f"{world.label(player)} catches their breath: skills and loot die restored"
-    fact = entity_fact(
-        player, "breath_caught", trace, card="Caught breath — skills and loot die restored"
-    )
-    return [dice_fact, fact]
-
-
 def change_stress(draft: BreathlessGame, args: ChangeStress, _rng: Random) -> list[Fact]:
     if args.amount == 0:
         raise ValueError("change_stress needs a non-zero amount")
@@ -296,6 +288,7 @@ def test_luck(_draft: BreathlessGame, args: TestLuck, rng: Random) -> tuple[Fact
 
 
 def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[BreathlessGame], ...]:
+    complications = Complications(packs)
     return (
         master_tool(
             "change_world", CHANGE_WORLD, ChangeWorld, change_world, during_suspension=True
@@ -317,7 +310,7 @@ def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[BreathlessGame], ...]:
             "Let the player catch their breath: skills, loot die and the stunt reset, at the "
             "cost of a new complication.",
             NoArgs,
-            partial(catch_breath, packs),
+            complications.catch_breath,
         ),
         master_tool(
             "change_stress",

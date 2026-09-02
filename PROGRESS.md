@@ -184,3 +184,80 @@ review findings and why, anything known and accepted.
   runs first; only direct `opening_canon` calls reach it. Phase 6's dead-code pass.
 - `src` lands 29 lines over the target: the bar's five checks and the opening cost about 130 lines
   where the plan counted 100; nothing was padded (PLAN rule 5).
+
+## Phase 5 — the seam as classes
+
+- `src` lines: 9,613 before, 9,557 after (target about 9,440; 117 over, nothing padded, PLAN rule 5).
+  Tests: 475 before, 477 after.
+- Goldens: as the phase intro says, the four `prompts/<engine>/narrator.txt` (the two length
+  lines), the three scene engines' `schemas/<engine>/master_tools.json` (`next_scene.pursuit`),
+  `prompts/<engine>/master.txt` (the "A scene is one place" paragraph), and `state/` and `save/`
+  where every scene run gains `"pursuit": ""`. Beyond that list: `prompts/{breathless,twentyfourxx}/picture.txt`,
+  a third `narrator.txt` line and a `state/` line in those two engines, all carrying the
+  Drowned Road and Silent Relay questions 5.5 rewrites. Tunnel Goons `schemas/`, `state/`,
+  `save/` and every `turn/` fixture unchanged.
+- Reviews: two Fable reviewers (the maintainer's call for this phase; no `codex` on the machine),
+  then a Fable implementer for the fold's second round (the partials, one more cut pass).
+- Smoke: `uv run aidm` starts and the home page serves; a turn needs a spawned CLI the
+  container lacks, so opening a game in each engine and reading the opening against the four
+  questions (5.4) is manual.
+- Implemented as two sequential parts: 5.1–5.3 (opus), then 5.4–5.5 (sonnet), since the second
+  edits `engines/scenes/world.py`, which the first creates.
+
+### Decisions off-plan
+
+- Layout: the scene package has a fourth module, `engines/scenes/drafts.py`, holding the five
+  drafts with `MIN_SITUATION` and `MIN_RECAP`: they are the worldsmith's answer schema, not the
+  world, and `world.py` and `worldsmith.py` both need them. The bar, `worldsmith_prompt`,
+  `scene_history`, `entity_line` and `SURPRISE` live in `world.py`, not `worldsmith.py`/`views.py`:
+  5.3 makes `apply_scene`, `merged_cast`, `render_worldsmith` and `here_lines` methods of
+  `SceneWorld`, and importing them from the other modules would cycle. `worldsmith.py` keeps
+  `CROSSING`, `opening_draft`, `opening_canon`, `write_next`, `install_scene`, `render_opening`,
+  `build_scenario`; `views.py` keeps `trail_panel`, `narrator_view`, `player_view`.
+- The base `Pack` and one shared `pack_options(packs)` sit in `engines/core.py` beside
+  `load_packs`, not in `scenes/engine.py`: the three `creation.py` need them and must not import
+  the lifecycle module (review). The three per-engine `pack_options` copies are gone.
+- `_Worldsmith(spawner)` is a frozen dataclass in `app/runtime.py`, the one `WorldsmithAnswer`
+  the platform hands an engine; `GameService._grow` and `Runtime.new_scenario` share it. A review
+  moved it to `app/spawn.py` to keep `BaseModel` out of `runtime.py`; the maintainer moved it back:
+  `spawn.py` starts processes, and the generic bound `M: BaseModel` is not the untyped draft PLAN
+  5.2's grep was written against.
+- `authored(worldsmith, prompt, model, build, playable)` in `engines/seam.py` is the one place an
+  unbuildable opening is turned into a refusal (review); both `author` call it.
+- `SceneEngine.known`, `record`, `history` hold their bodies; the module functions had no other
+  caller (review). `way_open` and `player_over` stay module functions: tests and `views.py` call them.
+- `_scene` became `scene_of`, since `worldsmith.py` calls it across the module boundary.
+- `build_scenario` lost its `cast_type` once the typed `WorldsmithAnswer` made `_is_draft` moot.
+- `new_game`'s refusals read `self.title`: "BREATHLESS received ..." and "LONER 3E received ...".
+- Every remaining `partial` in `engines/` went too (the maintainer's call mid-phase). The four
+  resolvers that read the table sets are bound methods of one frozen dataclass per engine holding
+  `packs`: 24XX `Skills.attempt`/`job_done`, Breathless `Complications.catch_breath`, Loner
+  `Oracle.resolve_question`; `tools(packs)` builds the one instance, so `self` carries the packs
+  as the phase's principle says. The four `default_factory=partial(Counter, ...)` are
+  `lambda: Counter(...)`: pydantic wants a zero-argument factory, so a named `Counter` factory
+  would still sit inside a lambda. `grep -rn "partial(" src/aidm/engines` is empty. About 36
+  test call sites moved with the shape (PLAN rule 2).
+- `SceneWorld.settle(job_done, pursuit)` has no default: every caller passes both (cut pass).
+- `test_authoring_build_raises_on_an_unmet_bar` became
+  `test_authoring_raises_when_the_worldsmith_never_meets_the_bar`: it now runs `engine.author`
+  with a scripted worldsmith.
+
+### Refuted findings
+
+- None outright. Both reviewers called the eight `partial` → lambda rewrites spelling churn; the
+  maintainer kept the fold and had the resolver four done properly (bound methods, above). The
+  `Counter` four stay lambdas by the pydantic argument above. Tunnel Goons's `world.py` changed
+  one line for it against brief-A's "do not change".
+
+### Known and accepted
+
+- `src` lands 117 over the target: `Engine` declares fifteen abstract methods (`seam.py` 133
+  lines), and each engine answers them one signature-bearing line each, so the three scene
+  `engine.py` are 73/71/84 lines against "under 60" and Tunnel Goons's 144 against "about 100".
+- `grep -n BaseModel src/aidm/engines/seam.py` hits `new_game`'s return, the import and the
+  `authored[M: BaseModel]` bound; `src/aidm/app/runtime.py` hits the import and `_Worldsmith`'s
+  bound: generic bounds, not an untyped draft.
+- `scene_unmet` and `scene_refusal` keep their `[C: Person, P: Person]` headers: they take a draft
+  and an optional world, and are not among the fourteen verbs 5.3 moves.
+- 5.4 is prose: play one opening per engine and read it against where am I, what do I see, what
+  am I here to do, what could I do first.

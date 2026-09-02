@@ -13,7 +13,7 @@ from aidm.engines.breathless.world import (
 )
 from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.hub import Offer
-from aidm.engines.scenes import Scene, SceneRun
+from aidm.engines.scenes.world import Scene, SceneRun
 
 MIRA = EntityId("mira")
 DAX = EntityId("dax")

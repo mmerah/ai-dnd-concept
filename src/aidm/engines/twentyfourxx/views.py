@@ -1,7 +1,7 @@
-from aidm.core.views import Panel, PanelRow, PlayerView, Rows
-from aidm.engines import scenes
+from aidm.core.views import Rows
 from aidm.engines.core import party_rows
 from aidm.engines.hub import master_tail, question_heading
+from aidm.engines.scenes.world import entity_line
 from aidm.engines.twentyfourxx.world import Item, TwentyfourxxGame
 
 
@@ -29,20 +29,12 @@ def master_sections(state: TwentyfourxxGame) -> Rows:
     return (
         ("SCENE", f"{scene.title}\n{scene.situation}"),
         (question_heading(world.at_hub), scene.question),
-        ("YOU PLAY FOR", scenes.entity_line(world.player)),
+        ("YOU PLAY FOR", entity_line(world.player)),
         ("GEAR", "\n".join(gear_lines) or "- (none)"),
-        ("HERE WITH THE PLAYER", scenes.here_lines(world)),
+        ("HERE WITH THE PLAYER", world.here_lines()),
         *party_rows(world.members()),
-        ("HIDDEN HERE (the player has not found these)", scenes.hidden_lines(world)),
+        ("HIDDEN HERE (the player has not found these)", world.hidden_lines()),
         ("THE SCENE'S SECRET (never narrate this)", scene.secret or "(none)"),
-        *scenes.recap_rows(world),
+        *world.recap_rows(),
         *master_tail(world.hub, world.at_hub, world.board, world.jobs(), world.job),
     )
-
-
-def player_view(state: TwentyfourxxGame) -> PlayerView:
-    gear_rows = tuple(
-        PanelRow(label=item.name, detail=gear_detail(item))
-        for item in state.payload.world.player.items.values()
-    )
-    return scenes.player_view(state, (Panel(title="Gear", rows=gear_rows),))

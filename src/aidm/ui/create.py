@@ -143,12 +143,12 @@ def scenario_page(runtime: Runtime) -> None:
         title = ui.input(label="Title").classes("w-full").props("outlined")
         packs = (
             ui.select(
-                options={one.id: one.label for one in engine.packs},
-                value=[one.id for one in engine.packs],
+                options={one.id: one.label for one in engine.pack_options()},
+                value=[one.id for one in engine.pack_options()],
                 label="Table sets",
                 multiple=True,
             ).classes("w-full")
-            if engine.packs
+            if engine.pack_options()
             else None
         )
         character = ui.select(

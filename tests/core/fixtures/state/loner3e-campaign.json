@@ -37,7 +37,8 @@
           "settled": false,
           "spent": "",
           "job_done": false,
-          "recap": ""
+          "recap": "",
+          "pursuit": ""
         }
       ],
       "source": "A relic-hunters' guild hall, a board of jobs, and whatever Kael can pry loose from what the world sealed away.",

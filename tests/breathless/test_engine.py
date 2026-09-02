@@ -1,9 +1,8 @@
 import pytest
-from core_test_support import BREATHLESS, game, updated
+from core_test_support import BREATHLESS, ENGINES_BUILT, game, updated
 
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import ScenarioMeta
-from aidm.engines.breathless.engine import new_game
 from aidm.engines.breathless.tools import SRD_PACK
 from aidm.engines.breathless.world import (
     STARTING_ITEM,
@@ -12,9 +11,10 @@ from aidm.engines.breathless.world import (
     BreathlessGame,
     BreathlessScenarioFile,
 )
-from aidm.engines.core import PLAYER_ID, AnyEngine, Person
+from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.hub import Offer
-from aidm.engines.scenes import Scene, SceneCanon, SceneScenario
+from aidm.engines.scenes.world import Scene, SceneCanon, SceneScenario
+from aidm.engines.seam import AnyEngine
 
 FIRE_AXE = EntityId("fire-axe")
 
@@ -103,4 +103,4 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
         ),
     )
     with pytest.raises(ValueError, match="the player is in the cast"):
-        new_game(scenario, character)
+        ENGINES_BUILT[BREATHLESS].new_game(scenario, character)

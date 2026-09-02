@@ -11,7 +11,7 @@ from aidm.core.model import AnyGame
 from aidm.core.play import Answer, Line, Narration, SpokenLine
 from aidm.core.tools import NoArgs, Play, apply_to_draft
 from aidm.core.views import NarratorView
-from aidm.engines.core import AnyEngine
+from aidm.engines.seam import AnyEngine
 from aidm.turn.context import render_picture
 
 RULES_WAIT = "the rules now wait on the player's decision"

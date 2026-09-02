@@ -1,7 +1,7 @@
 from random import Random
 
 from core_test_support import initialized, loner_sheet
-from loner3e_test_support import PACKS
+from loner3e_test_support import ORACLE
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import cards
@@ -11,7 +11,6 @@ from aidm.engines.loner3e.tools import (
     RestoreLuck,
     apply_restore_luck,
     outcome_for,
-    resolve_question,
 )
 from aidm.engines.loner3e.world import TIES_PER_TWIST
 
@@ -30,7 +29,7 @@ def _seal(**args: object) -> Question:
 
 def test_a_neutral_question_shows_one_chance_die_and_one_risk_die() -> None:
     _, state = initialized()
-    facts = resolve_question(PACKS, state.draft(), _seal(), Random(0))
+    facts = ORACLE.resolve_question(state.draft(), _seal(), Random(0))
 
     (oracle,) = cards(facts)
     assert [die.label for die in oracle.dice] == ["Chance", "Risk"]
@@ -41,8 +40,8 @@ def test_a_neutral_question_shows_one_chance_die_and_one_risk_die() -> None:
 
 def test_advantage_rolls_two_chance_dice() -> None:
     _, state = initialized()
-    facts = resolve_question(
-        PACKS, state.draft(), _seal(position="advantage", edge="Relic Hunter"), Random(0)
+    facts = ORACLE.resolve_question(
+        state.draft(), _seal(position="advantage", edge="Relic Hunter"), Random(0)
     )
 
     (oracle,) = cards(facts)
@@ -53,7 +52,7 @@ def test_advantage_rolls_two_chance_dice() -> None:
 
 def test_disadvantage_rolls_two_risk_dice() -> None:
     _, state = initialized()
-    facts = resolve_question(PACKS, state.draft(), _seal(position="disadvantage"), Random(0))
+    facts = ORACLE.resolve_question(state.draft(), _seal(position="disadvantage"), Random(0))
 
     (oracle,) = cards(facts)
     assert len(oracle.dice[0].rolled) == 1
@@ -62,7 +61,7 @@ def test_disadvantage_rolls_two_risk_dice() -> None:
 
 def test_the_six_way_outcome_is_mapped_onto_the_card() -> None:
     _, state = initialized()
-    facts = resolve_question(PACKS, state.draft(), _seal(), Random(0))
+    facts = ORACLE.resolve_question(state.draft(), _seal(), Random(0))
 
     (oracle,) = cards(facts)
     chance, risk = max(oracle.dice[0].rolled), max(oracle.dice[1].rolled)
@@ -79,7 +78,7 @@ def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
     )
 
     for seed in range(200):
-        facts = resolve_question(PACKS, weakened.draft(), duel, Random(seed))
+        facts = ORACLE.resolve_question(weakened.draft(), duel, Random(seed))
         (oracle,) = cards(facts)
         if outcome_for(max(oracle.dice[0].rolled), max(oracle.dice[1].rolled)).harm > 0:
             break
@@ -100,7 +99,7 @@ def test_a_twist_card_lands_only_once_a_twist_fires() -> None:
     primed = draft.committed()
 
     for seed in range(200):
-        facts = resolve_question(PACKS, primed.draft(), _seal(), Random(seed))
+        facts = ORACLE.resolve_question(primed.draft(), _seal(), Random(seed))
         landed = cards(facts)
         if len(landed) == 2:
             break

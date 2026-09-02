@@ -2,7 +2,7 @@ from random import Random
 
 import pytest
 from core_test_support import initialized, loner_sheet, updated
-from loner3e_test_support import PACKS, TWISTS, hub_world
+from loner3e_test_support import ORACLE, TWISTS, hub_world
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import cards
@@ -19,12 +19,11 @@ from aidm.engines.loner3e.tools import (
     defeat_note,
     next_scene,
     outcome_for,
-    resolve_question,
     twist_note,
     twist_pairing,
 )
 from aidm.engines.loner3e.world import LUCK_MAX, TIES_PER_TWIST
-from aidm.engines.scenes import NextScene
+from aidm.engines.scenes.world import NextScene
 
 FOE = EntityId("mara")
 MAP = EntityId("vault-map")
@@ -72,7 +71,7 @@ def test_a_question_puts_two_dice_to_the_answer_and_costs_no_luck_on_its_own() -
     _, state = initialized()
     draft = state.draft()
 
-    facts = resolve_question(PACKS, draft, _seal(), Random(17))
+    facts = ORACLE.resolve_question(draft, _seal(), Random(17))
 
     assert [fact.kind for fact in facts] == ["dice_rolled", "dice_rolled", "question_answered"]
     assert loner_sheet(draft, PLAYER_ID).luck.current == LUCK_MAX
@@ -83,9 +82,9 @@ def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> Non
 
     elsewhere = _seal(opponent_id="cloister-rat")
     with pytest.raises(ValueError, match="is not here with the player"):
-        _ = resolve_question(PACKS, state.draft(), elsewhere, Random(0))
+        _ = ORACLE.resolve_question(state.draft(), elsewhere, Random(0))
     with pytest.raises(ValueError, match="their own opposition"):
-        _ = resolve_question(PACKS, state.draft(), _seal(opponent_id=PLAYER_ID), Random(0))
+        _ = ORACLE.resolve_question(state.draft(), _seal(opponent_id=PLAYER_ID), Random(0))
 
 
 def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
@@ -97,7 +96,7 @@ def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
         edge="Never Walks Away",
     )
 
-    facts = resolve_question(PACKS, state.draft(), action, Random(1))
+    facts = ORACLE.resolve_question(state.draft(), action, Random(1))
 
     (oracle,) = cards(facts)
     assert oracle.card.startswith("Oracle — Disadvantage (Never Walks Away) → ")
@@ -113,7 +112,7 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     action = Question(actor_id=PLAYER_ID, question="Does he slip past unheard?")
     for seed in range(200):
         draft = primed.draft()
-        facts = resolve_question(PACKS, draft, action, Random(seed))
+        facts = ORACLE.resolve_question(draft, action, Random(seed))
         if any(fact.kind == "twist_due" for fact in facts):
             break
     else:
@@ -131,7 +130,7 @@ def test_a_tie_ticks_the_twist_only_outside_a_conflict() -> None:
 
     for seed in range(200):
         duel_draft = state.draft()
-        facts = resolve_question(PACKS, duel_draft, _duel(), Random(seed))
+        facts = ORACLE.resolve_question(duel_draft, _duel(), Random(seed))
         (oracle,) = cards(facts)
         if max(oracle.dice[0].rolled) == max(oracle.dice[1].rolled):
             break
@@ -140,7 +139,7 @@ def test_a_tie_ticks_the_twist_only_outside_a_conflict() -> None:
     assert duel_draft.payload.twist.current == 0
 
     solo_draft = state.draft()
-    _ = resolve_question(PACKS, solo_draft, _seal(), Random(seed))
+    _ = ORACLE.resolve_question(solo_draft, _seal(), Random(seed))
     assert solo_draft.payload.twist.current == 1
 
 
@@ -160,7 +159,7 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
 
     for seed in range(200):
         draft = state.draft()
-        facts = resolve_question(PACKS, draft, _duel(), Random(seed))
+        facts = ORACLE.resolve_question(draft, _duel(), Random(seed))
         (oracle,) = cards(facts)
         harm = outcome_for(max(oracle.dice[0].rolled), max(oracle.dice[1].rolled)).harm
         loser, held = (FOE, PLAYER_ID) if harm > 0 else (PLAYER_ID, FOE)
@@ -180,7 +179,7 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
 
     for seed in range(200):
         draft = hurt.draft()
-        facts = resolve_question(PACKS, draft, _duel(), Random(seed))
+        facts = ORACLE.resolve_question(draft, _duel(), Random(seed))
         (oracle,) = cards(facts)
         if outcome_for(max(oracle.dice[0].rolled), max(oracle.dice[1].rolled)).harm > 0:
             break
@@ -199,7 +198,7 @@ def test_an_exchange_both_sides_survive_hands_the_next_key_action_to_the_player(
     _, state = initialized()
     draft = state.draft()
 
-    _ = resolve_question(PACKS, draft, _duel(), Random(0))
+    _ = ORACLE.resolve_question(draft, _duel(), Random(0))
 
     decision = draft.pending
     assert decision is not None
@@ -215,11 +214,11 @@ def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
 
     # The map is hidden in this scene, so nothing can be rolled against it yet.
     with pytest.raises(ValueError, match="is not here with the player"):
-        _ = resolve_question(PACKS, state.draft(), _seal(opponent_id=MAP), Random(0))
+        _ = ORACLE.resolve_question(state.draft(), _seal(opponent_id=MAP), Random(0))
 
     draft = state.draft()
     _ = apply_change(draft.payload.world, Reveal(verb="reveal", entity_id=MAP))
-    facts = resolve_question(PACKS, draft, _seal(opponent_id=MAP), Random(0))
+    facts = ORACLE.resolve_question(draft, _seal(opponent_id=MAP), Random(0))
 
     assert any(fact.kind == "question_answered" for fact in facts)
     resisted = draft.payload.world.require(MAP).luck.current
@@ -244,7 +243,7 @@ def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
     spent = draft.committed()
 
     with pytest.raises(ValueError, match="already out of luck"):
-        _ = resolve_question(PACKS, spent.draft(), _duel(), Random(0))
+        _ = ORACLE.resolve_question(spent.draft(), _duel(), Random(0))
 
 
 def test_restoring_luck_that_is_already_full_is_a_quiet_no_op() -> None:

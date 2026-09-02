@@ -6,9 +6,10 @@ from core_test_support import ENGINES_BUILT, LONER3E, SCENARIOS, loner_sheet, up
 from aidm.core.creation import Picks
 from aidm.core.entities import EngineId
 from aidm.core.io import load_character, read_scenario, write_character
-from aidm.engines.core import PLAYER_ID, AnyEngine
+from aidm.engines.core import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame
 from aidm.engines.registry import begin_game
+from aidm.engines.seam import AnyEngine
 
 OTHER = EngineId("ruleless")
 

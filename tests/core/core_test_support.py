@@ -18,7 +18,7 @@ from aidm.core.facts import Fact
 from aidm.core.io import load_character, read_scenario, read_scenarios
 from aidm.core.model import AnyGame, ScenarioKind
 from aidm.core.play import Answer, Speaker
-from aidm.engines.core import PLAYER_ID, AnyEngine
+from aidm.engines.core import PLAYER_ID
 from aidm.engines.loner3e.world import (
     Loner3eCharacterFile,
     Loner3eGame,
@@ -26,6 +26,7 @@ from aidm.engines.loner3e.world import (
     LonerCharacter,
 )
 from aidm.engines.registry import begin_game, build_engines
+from aidm.engines.seam import AnyEngine
 from aidm.turn.run import TurnStep
 
 # One tool call as a scripted game master makes it.
@@ -45,6 +46,7 @@ LONER3E = EngineId("loner3e")
 TUNNELGOONS = EngineId("tunnelgoons")
 BREATHLESS = EngineId("breathless")
 TWENTYFOURXX = EngineId("twentyfourxx")
+LONER3E_PACKS = REPOSITORY_ROOT / "packs" / "loner3e"
 ENGINES_BUILT = build_engines(REPOSITORY_ROOT / "packs")
 ENGINE_IDS = tuple(ENGINES_BUILT)
 SCENARIO_MODELS = {engine_id: engine.scenario for engine_id, engine in ENGINES_BUILT.items()}

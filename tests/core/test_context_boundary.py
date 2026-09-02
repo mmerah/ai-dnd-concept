@@ -2,8 +2,8 @@ from core_test_support import ENGINES_BUILT, LONER3E, initialized, with_entity
 
 from aidm.core.entities import EntityId
 from aidm.core.views import NarratorView
-from aidm.engines.core import AnyEngine
 from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter
+from aidm.engines.seam import AnyEngine
 from aidm.turn.context import ANSWERED_BY_OPTION, render_narrator, render_picture
 
 SECRET = EntityId("hidden-actor")

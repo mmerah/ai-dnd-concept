@@ -1,34 +1,15 @@
-from collections.abc import Awaitable, Callable, Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from random import Random
-from typing import Any, Literal, Protocol, Self
+from typing import Literal, Protocol, Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import (
-    CheckedEntityId,
-    EngineId,
-    EntityId,
-    Frozen,
-    Mutable,
-    Slug,
-    require_unique,
-)
+from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, require_unique
 from aidm.core.facts import DiceEvent, Fact, roll
-from aidm.core.io import ENCODING, decoded
-from aidm.core.model import (
-    AnyCharacter,
-    AnyScenario,
-    EngineHeader,
-    Game,
-    ScenarioKind,
-    WorldsmithAnswer,
-)
-from aidm.core.play import DecisionOption, Exchange, PendingOption, SpokenLine
-from aidm.core.tools import Known, MasterTool, Validate
-from aidm.core.views import NarratorView, Panel, PanelRow, PlayerView, Rows
+from aidm.core.io import ENCODING
+from aidm.core.play import DecisionOption
+from aidm.core.views import Panel, PanelRow, Rows
 
 PLAYER_ID = EntityId("player")
 PLAYER_DEAD = "the player is dead; they take no further part."
@@ -67,6 +48,12 @@ class Person(Mutable):
         return "" if self.alive else "alive"
 
 
+class Pack(Frozen):
+    """What every table set carries; an engine's own `Pack` extends it."""
+
+    name: str
+
+
 class JoinParty(Frozen):
     """A character here starts travelling with the player."""
 
@@ -95,74 +82,6 @@ class Counter(Mutable):
 
     def clamped(self, value: int) -> int:
         return min(max(value, 0), self.maximum)
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class Authoring:
-    answer: Callable[[ScenarioKind], type[BaseModel]]
-    prompt: Callable[[str, Sequence[Slug], ScenarioKind], str]
-    build: Callable[[str, str, tuple[Slug, ...], BaseModel, str, ScenarioKind], AnyScenario]
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class Transition[G: Game[Any]]:
-    """How the world grows: when it is offered, how it is written, how it installs."""
-
-    ready: Callable[[G], bool]
-    write: Callable[[G, str, WorldsmithAnswer], Awaitable[BaseModel]]
-    install: Callable[[G, BaseModel], tuple[Fact, ...]]
-    arrival_brief: Callable[[str], str] | None
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class Engine[G: Game[Any]]:
-    """The seam joining an engine's rules to the platform."""
-
-    id: EngineId
-    title: str
-    art_style: str
-    instructions: str
-    packs: tuple[DecisionOption, ...]
-    game: type[G]
-    scenario: type[AnyScenario]
-    character: type[AnyCharacter]
-    creation_steps: Callable[[Picks], tuple[CreationStep, ...]]
-    create_character: Callable[[str, str, Picks], AnyCharacter]
-    preview_character: Callable[[AnyCharacter], Rows]
-    tools: tuple[MasterTool[G], ...]
-    validate: Validate[G]
-    new_game: Callable[[AnyScenario, AnyCharacter], BaseModel]
-    over: Callable[[G], str | None]
-    known: Known[G]
-    record: Callable[[G, str, tuple[SpokenLine, ...], Sequence[Fact]], tuple[str, ...]]
-    history: Callable[[G], tuple[Exchange, ...]]
-    master_sections: Callable[[G], Rows]
-    narrator_view: Callable[[G], NarratorView]
-    player_view: Callable[[G], PlayerView]
-    authoring: Authoring
-    transition: Transition[G]
-
-    def __post_init__(self) -> None:
-        require_unique(f"tool names of the {self.id!r} engine", (one.name for one in self.tools))
-
-    def restored(self, raw: str) -> G:
-        value = decoded(raw)
-        if (header := EngineHeader.model_validate(value)).engine != self.id:
-            raise ValueError(f"the save plays {header.engine!r}, not {self.id!r}")
-        state = self.game.model_validate(value)
-        self.validate(state)
-        return state
-
-    def answer(self, draft: G, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
-        found = next((one for one in self.tools if one.name == chosen.name), None)
-        if found is None:
-            raise ValueError(
-                f"the {self.id!r} engine has no tool {chosen.name!r} to play option {chosen.id!r}"
-            )
-        return found.call(draft, chosen.args, rng)
-
-
-type AnyEngine = Engine[Any]
 
 
 def sentence(text: str) -> str:
@@ -288,6 +207,11 @@ def keep_highest(
         label=label, faces=tuple(faces), rolled=rolled, highlight=(rolled.index(kept),)
     )
     return kept, event, fact
+
+
+def pack_options(packs: Mapping[str, Pack]) -> tuple[DecisionOption, ...]:
+    """The create page's table sets, and the first step of every scene engine's creation."""
+    return tuple(DecisionOption(id=key, label=one.name) for key, one in packs.items())
 
 
 def load_packs[P: BaseModel](directories: Sequence[Path], model: type[P]) -> dict[str, P]:
