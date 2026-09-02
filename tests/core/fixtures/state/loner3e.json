@@ -27,7 +27,6 @@
             "job": ""
           },
           "present": [
-            "player",
             "mara"
           ],
           "hidden": [
@@ -48,6 +47,7 @@
           "name": "Mara",
           "brief": "The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.",
           "known": true,
+          "alive": true,
           "concept": "A Cautious Scribe",
           "skills": [
             "Reads a Faded Hand",
@@ -66,14 +66,14 @@
           "luck": {
             "current": 6,
             "maximum": 6
-          },
-          "alive": true
+          }
         },
         "vault-map": {
           "id": "vault-map",
           "name": "the vault map",
           "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny. Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.",
           "known": false,
+          "alive": true,
           "concept": "",
           "skills": [],
           "frailties": [],
@@ -85,14 +85,14 @@
           "luck": {
             "current": 6,
             "maximum": 6
-          },
-          "alive": true
+          }
         },
         "tomas": {
           "id": "tomas",
           "name": "Brother Tomas",
           "brief": "A deaf old porter who sweeps the cloister and knows almost nothing about the vault.",
           "known": false,
+          "alive": true,
           "concept": "A Deaf Old Porter",
           "skills": [
             "Knows Every Door"
@@ -110,14 +110,14 @@
           "luck": {
             "current": 6,
             "maximum": 6
-          },
-          "alive": true
+          }
         },
         "elena": {
           "id": "elena",
           "name": "Elena",
           "brief": "The vault's former archivist; she alone remembers the sealing rite, and she names a price before she gives it up. She catalogued the vault ledgers beside Mara for two winters, until the night she went below alone and never came back up. The rite is in her head and nowhere else.",
           "known": false,
+          "alive": true,
           "concept": "A Ruined Archivist",
           "skills": [
             "Knows the Old Rites",
@@ -136,14 +136,14 @@
           "luck": {
             "current": 6,
             "maximum": 6
-          },
-          "alive": true
+          }
         },
         "cloister-rat": {
           "id": "cloister-rat",
           "name": "a bloated rat",
           "brief": "It has grown fat on the dead garden and does not run from a lantern.",
           "known": false,
+          "alive": true,
           "concept": "A Bloated Cloister Rat",
           "skills": [
             "Slips Into the Walls",
@@ -160,40 +160,38 @@
           "luck": {
             "current": 6,
             "maximum": 6
-          },
-          "alive": true
-        },
-        "player": {
-          "id": "player",
-          "name": "Kael",
-          "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
-          "known": true,
-          "concept": "A Wary Relic-Hunter",
-          "skills": [
-            "Reads Old Stonework",
-            "Quiet Hands"
-          ],
-          "frailties": [
-            "Never Walks Away"
-          ],
-          "gear": [
-            "Pry Bar",
-            "Chalk and Wire",
-            "A Guttering Lantern"
-          ],
-          "conditions": [],
-          "goal": "Find what has been sealed away, and open it",
-          "motive": "Whatever was worth sealing is worth more unsealed",
-          "nemesis": "",
-          "luck": {
-            "current": 6,
-            "maximum": 6
-          },
-          "alive": true
+          }
         }
       },
-      "companions": [],
-      "player_id": "player"
+      "player": {
+        "id": "player",
+        "name": "Kael",
+        "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
+        "known": true,
+        "alive": true,
+        "concept": "A Wary Relic-Hunter",
+        "skills": [
+          "Reads Old Stonework",
+          "Quiet Hands"
+        ],
+        "frailties": [
+          "Never Walks Away"
+        ],
+        "gear": [
+          "Pry Bar",
+          "Chalk and Wire",
+          "A Guttering Lantern"
+        ],
+        "conditions": [],
+        "goal": "Find what has been sealed away, and open it",
+        "motive": "Whatever was worth sealing is worth more unsealed",
+        "nemesis": "",
+        "luck": {
+          "current": 6,
+          "maximum": 6
+        }
+      },
+      "party": []
     },
     "twist": {
       "current": 0,

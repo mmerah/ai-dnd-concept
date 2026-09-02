@@ -1,13 +1,21 @@
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
-from typing import Any, Protocol, Self
+from typing import Any, Literal, Protocol, Self
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, EntityId, Mutable, Slug, require_unique
+from aidm.core.entities import (
+    CheckedEntityId,
+    EngineId,
+    EntityId,
+    Frozen,
+    Mutable,
+    Slug,
+    require_unique,
+)
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.io import ENCODING, decoded
 from aidm.core.model import (
@@ -20,10 +28,15 @@ from aidm.core.model import (
 )
 from aidm.core.play import DecisionOption, Exchange, PendingOption, SpokenLine
 from aidm.core.tools import MasterTool, Validate
-from aidm.core.views import NarratorView, PlayerView, Rows
+from aidm.core.views import NarratorView, Panel, PanelRow, PlayerView, Rows
 
 PLAYER_ID = EntityId("player")
 TAIL_EXCHANGES = 3
+PLAYER_DEAD = "the player is dead; they take no further part."
+CHANGE_WORLD = (
+    "Apply one settled world change to match the story. Set `verb` to pick the change and fill "
+    "that verb's own fields. One call makes one change."
+)
 
 
 class Entity(Protocol):
@@ -35,6 +48,38 @@ class Entity(Protocol):
     def name(self) -> str: ...
 
     known: bool
+
+
+class Person(Mutable):
+    """Every cast entry and every player sheet."""
+
+    id: CheckedEntityId
+    name: str
+    brief: str
+    known: bool = False
+    alive: bool = True
+
+    def rows(self) -> Rows:
+        """The sheet, as the master's entity line prints it."""
+        return ()
+
+    def unwritten(self) -> str:
+        """What the worldsmith may not write into a fresh cast member; empty when nothing."""
+        return "" if self.alive else "alive"
+
+
+class JoinParty(Frozen):
+    """A character here starts travelling with the player."""
+
+    verb: Literal["join_party"]
+    entity_id: CheckedEntityId = Field(description="Exact id of who is joining.")
+
+
+class LeaveParty(Frozen):
+    """A companion stops travelling with the player."""
+
+    verb: Literal["leave_party"]
+    entity_id: CheckedEntityId = Field(description="Exact id of the companion leaving.")
 
 
 class Counter(Mutable):
@@ -122,6 +167,56 @@ type AnyEngine = Engine[Any]
 
 def told_tail(exchanges: Sequence[Exchange]) -> str:
     return "\n".join(f"> {one.prompt}\n{one.narration}" for one in exchanges[-TAIL_EXCHANGES:])
+
+
+def sentence(text: str) -> str:
+    return text[:1].upper() + text[1:]
+
+
+def join_party(party: list[EntityId], one: Person) -> Fact:
+    if one.id in party:
+        raise ValueError(f"{one.name} already travels with the player")
+    party.append(one.id)
+    return entity_fact(
+        one,
+        "party_joined",
+        f"{one.name}[{one.id}] travels with the player",
+        card=f"{one.name} joins your party",
+    )
+
+
+def leave_party(party: list[EntityId], one: Person) -> Fact:
+    if one.id not in party:
+        raise ValueError(f"{one.name} does not travel with the player")
+    party.remove(one.id)
+    return entity_fact(
+        one,
+        "party_left",
+        f"{one.name}[{one.id}] no longer travels with the player",
+        card=f"{one.name} leaves your party",
+    )
+
+
+def check_party(party: Sequence[EntityId], cast: Mapping[EntityId, Person]) -> None:
+    require_unique("party", party)
+    for one in party:
+        if one not in cast:
+            raise ValueError(f"{one!r} travels with the player but is not in the cast")
+        if not cast[one].alive:
+            raise ValueError(f"{one!r} is dead and cannot travel with the player")
+
+
+def party_rows(members: Sequence[Person]) -> Rows:
+    if not members:
+        return ()
+    return (("THE PARTY (led by the player)", "\n".join(f"- {m.name}[{m.id}]" for m in members)),)
+
+
+def party_panel(members: Sequence[Person]) -> tuple[Panel, ...]:
+    if not members:
+        return ()
+    rows = tuple(PanelRow(label=m.name, detail=m.brief, icon_id=m.id) for m in members)
+    return (Panel(title="Party", rows=rows),)
 
 
 def pool(counter: Counter) -> str:

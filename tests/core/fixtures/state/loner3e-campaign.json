@@ -27,7 +27,6 @@
             "job": ""
           },
           "present": [
-            "player",
             "orsa-vane",
             "castor-wren"
           ],
@@ -62,6 +61,7 @@
           "name": "Orsa Vane",
           "brief": "Keeper of the Buried Bell's board; she knows every crew working the buried city and what each of them owes.",
           "known": true,
+          "alive": true,
           "concept": "The Guild's Keeper",
           "skills": [
             "Reads Every Ledger",
@@ -80,14 +80,14 @@
           "luck": {
             "current": 6,
             "maximum": 6
-          },
-          "alive": true
+          }
         },
         "castor-wren": {
           "id": "castor-wren",
           "name": "Castor Wren",
           "brief": "A retired relic-hunter who trades old rumours for drinks at the long table; the road took his leg two years back.",
           "known": true,
+          "alive": true,
           "concept": "A Retired Relic-Hunter",
           "skills": [
             "Reads a Room",
@@ -106,14 +106,14 @@
           "luck": {
             "current": 6,
             "maximum": 6
-          },
-          "alive": true
+          }
         },
         "hooded-stranger": {
           "id": "hooded-stranger",
           "name": "a hooded stranger",
           "brief": "Sits by the door with a drink he has not touched, watching the board and who takes what off it.",
           "known": false,
+          "alive": true,
           "concept": "",
           "skills": [],
           "frailties": [],
@@ -125,40 +125,38 @@
           "luck": {
             "current": 6,
             "maximum": 6
-          },
-          "alive": true
-        },
-        "player": {
-          "id": "player",
-          "name": "Kael",
-          "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
-          "known": true,
-          "concept": "A Wary Relic-Hunter",
-          "skills": [
-            "Reads Old Stonework",
-            "Quiet Hands"
-          ],
-          "frailties": [
-            "Never Walks Away"
-          ],
-          "gear": [
-            "Pry Bar",
-            "Chalk and Wire",
-            "A Guttering Lantern"
-          ],
-          "conditions": [],
-          "goal": "Find what has been sealed away, and open it",
-          "motive": "Whatever was worth sealing is worth more unsealed",
-          "nemesis": "",
-          "luck": {
-            "current": 6,
-            "maximum": 6
-          },
-          "alive": true
+          }
         }
       },
-      "companions": [],
-      "player_id": "player"
+      "player": {
+        "id": "player",
+        "name": "Kael",
+        "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
+        "known": true,
+        "alive": true,
+        "concept": "A Wary Relic-Hunter",
+        "skills": [
+          "Reads Old Stonework",
+          "Quiet Hands"
+        ],
+        "frailties": [
+          "Never Walks Away"
+        ],
+        "gear": [
+          "Pry Bar",
+          "Chalk and Wire",
+          "A Guttering Lantern"
+        ],
+        "conditions": [],
+        "goal": "Find what has been sealed away, and open it",
+        "motive": "Whatever was worth sealing is worth more unsealed",
+        "nemesis": "",
+        "luck": {
+          "current": 6,
+          "maximum": 6
+        }
+      },
+      "party": []
     },
     "twist": {
       "current": 0,

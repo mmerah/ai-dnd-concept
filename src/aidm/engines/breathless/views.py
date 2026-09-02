@@ -9,34 +9,29 @@ from aidm.core.views import (
     Subject,
     speaker_of,
 )
-from aidm.engines.breathless.world import (
-    BreathlessGame,
-    Npc,
-    Survivor,
-    player_over,
-)
+from aidm.engines.breathless.world import BreathlessGame
+from aidm.engines.core import Person
 from aidm.engines.hub import board_panel, jobs_panel, master_tail, question_heading
-from aidm.engines.scenes import scene_rows, trail_panel
+from aidm.engines.scenes import player_over, scene_rows, trail_panel
 
 
-def subject_of(one: Survivor | Npc) -> Subject:
+def subject_of(one: Person) -> Subject:
     return Subject(id=one.id, name=one.name, brief=one.brief)
 
 
-def entity_line(one: Survivor | Npc, *, detail: str = "") -> str:
+def entity_line(one: Person, *, detail: str = "") -> str:
     line = f"- {one.name}[{one.id}] — {one.brief}"
     if not one.alive:
         line += " (dead)"
     parts = [line]
-    if isinstance(one, Survivor):
-        if sheet := "; ".join(f"{label.lower()}: {value}" for label, value in one.rows()):
-            parts.append(f"  {sheet}")
+    if sheet := "; ".join(f"{label.lower()}: {value}" for label, value in one.rows()):
+        parts.append(f"  {sheet}")
     if detail:
         parts.append(f"  {detail}")
     return "\n".join(parts)
 
 
-def entity_lines(entities: Iterable[Survivor | Npc]) -> str:
+def entity_lines(entities: Iterable[Person]) -> str:
     return "\n".join(entity_line(one) for one in entities) or "- (none)"
 
 
@@ -114,5 +109,5 @@ def master_sections(state: BreathlessGame) -> Rows:
     )
 
 
-def _entity_row(one: Survivor | Npc) -> PanelRow:
+def _entity_row(one: Person) -> PanelRow:
     return PanelRow(label=one.name, detail=one.brief, icon_id=one.id)

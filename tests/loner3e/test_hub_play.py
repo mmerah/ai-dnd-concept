@@ -55,7 +55,7 @@ def test_install_scene_on_a_finished_return_swaps_board_notes_job_keeps_companio
     world = game.payload.world
     scout = EntityId("scout")
     world.cast[scout] = LonerCharacter(id=scout, name="Scout", brief="A hired scout", known=True)
-    world.companions = [scout]
+    world.party = [scout]
     world.run.job_done = True
 
     facts = install_scene(game, _return_draft())

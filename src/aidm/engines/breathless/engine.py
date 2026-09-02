@@ -1,5 +1,3 @@
-from collections.abc import Mapping
-from copy import deepcopy
 from functools import partial
 from pathlib import Path
 
@@ -20,13 +18,7 @@ from aidm.engines.breathless.world import (
     BreathlessGame,
     BreathlessScenarioFile,
     BreathlessState,
-    BreathlessWorld,
-    history,
-    known,
-    player_over,
     player_survivor,
-    record,
-    way_open,
 )
 from aidm.engines.breathless.worldsmith import (
     build_scenario,
@@ -35,41 +27,27 @@ from aidm.engines.breathless.worldsmith import (
     render_opening,
     write_next,
 )
-from aidm.engines.core import PLAYER_ID, Authoring, Engine, Transition, load_packs
-from aidm.engines.hub import check_kind
-from aidm.engines.scenes import SceneRun, arrival_brief
+from aidm.engines.core import Authoring, Engine, Transition, load_packs
+from aidm.engines.scenes import (
+    arrival_brief,
+    check_game,
+    history,
+    known,
+    new_world,
+    player_over,
+    record,
+    way_open,
+)
 
 ENGINE_DIR = Path(__file__).parent
 
 
 def new_game(scenario: AnyScenario, character: AnyCharacter) -> BreathlessState:
-    """The player is added by code and never authored, so no scenario can claim their id."""
     if not isinstance(scenario, BreathlessScenarioFile):
         raise ValueError("Breathless received an incompatible scenario")
     if not isinstance(character, BreathlessCharacterFile):
         raise ValueError("Breathless received an incompatible character")
-    canon = deepcopy(scenario.payload.world)
-    if PLAYER_ID in canon.cast:
-        raise ValueError(f"an entity claims the reserved player id {PLAYER_ID!r}")
-    world = BreathlessWorld(
-        cast=canon.cast,
-        player=player_survivor(character),
-        runs=[
-            SceneRun(scene=canon.opening, present=list(canon.present), hidden=list(canon.hidden))
-        ],
-        source=canon.source,
-        hub=canon.hub,
-        board=canon.board,
-    )
-    return BreathlessState(world=world)
-
-
-def check_game(packs: Mapping[str, Pack], state: BreathlessGame) -> None:
-    if not state.packs:
-        raise ValueError("a Breathless game needs at least one table set")
-    if missing := sorted(set(state.packs) - set(packs)):
-        raise ValueError(f"the game names packs not installed: {missing}")
-    check_kind(state.scenario.kind, state.payload.world.hub)
+    return BreathlessState(world=new_world(scenario.payload.world, player_survivor(character)))
 
 
 def build(user_packs: Path) -> Engine[BreathlessGame]:

@@ -116,7 +116,7 @@ async def test_the_master_reacts_in_run_to_its_own_earlier_tool_call(tmp_path: P
         changed("join_party", entity_id="tomas"),
     )
 
-    assert state.payload.world.companions == ["tomas"]
+    assert state.payload.world.party == ["tomas"]
 
 
 async def test_an_illegal_tool_call_is_refused_with_the_reason(tmp_path: Path) -> None:

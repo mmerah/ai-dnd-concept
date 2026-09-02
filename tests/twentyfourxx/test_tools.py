@@ -8,7 +8,7 @@ from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
 from aidm.engines.core import PLAYER_ID, load_packs
 from aidm.engines.hub import JOB_DONE
-from aidm.engines.scenes import NextScene
+from aidm.engines.scenes import NextScene, player_over
 from aidm.engines.twentyfourxx.creation import Pack
 from aidm.engines.twentyfourxx.tools import (
     Attempt,
@@ -23,7 +23,7 @@ from aidm.engines.twentyfourxx.tools import (
 )
 from aidm.engines.twentyfourxx.tools import TestLuck as LuckTest
 from aidm.engines.twentyfourxx.tools import test_luck as roll_luck
-from aidm.engines.twentyfourxx.world import STARTING_CREDITS, TwentyfourxxGame, player_over
+from aidm.engines.twentyfourxx.world import STARTING_CREDITS, TwentyfourxxGame
 
 PACKS_DIR = Path(__file__).parents[2] / "src" / "aidm" / "engines" / "twentyfourxx" / "packs"
 PACKS = load_packs((PACKS_DIR,), Pack)

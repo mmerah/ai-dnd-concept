@@ -19,49 +19,27 @@ from aidm.engines.breathless.world import (
     BreathlessWorld,
     Die,
     Item,
-    Npc,
     Skill,
     Survivor,
     stepped,
 )
-from aidm.engines.core import PLAYER_ID, counter_fact, entity_fact
-from aidm.engines.scenes import NEXT_SCENE, NextScene, settle
-
-CHANGE_WORLD = (
-    "Apply one settled world change to match the story. Set `verb` to pick the change and fill "
-    "that verb's own fields. One call makes one change."
+from aidm.engines.core import CHANGE_WORLD, PLAYER_DEAD, counter_fact, entity_fact, sentence
+from aidm.engines.scenes import (
+    NEXT_SCENE,
+    Enter,
+    Kill,
+    Leave,
+    NextScene,
+    Reveal,
+    enter,
+    kill,
+    leave,
+    reveal_hidden,
+    settle,
 )
+
 SRD_PACK: Slug = "srd"
 SWAP = "swap-"
-_PLAYER_DEAD = "the player is dead; they take no further part."
-
-
-class Reveal(Frozen):
-    """Make a hidden entity known when the player notices, finds, or reaches it."""
-
-    verb: Literal["reveal"]
-    entity_id: CheckedEntityId = Field(description="Exact id of an entity listed as hidden here.")
-
-
-class Enter(Frozen):
-    """Bring a cast member into the current scene."""
-
-    verb: Literal["enter"]
-    entity_id: CheckedEntityId = Field(description="Exact id of a cast member not already here.")
-
-
-class Leave(Frozen):
-    """Take a cast member out of the current scene."""
-
-    verb: Literal["leave"]
-    entity_id: CheckedEntityId = Field(description="Exact id of someone here.")
-
-
-class Kill(Frozen):
-    """Record that someone here has died."""
-
-    verb: Literal["kill"]
-    entity_id: CheckedEntityId = Field(description="Exact id of who here died.")
 
 
 class DropItem(Frozen):
@@ -149,36 +127,15 @@ def outcome(face: int) -> str:
 
 def apply_change(world: BreathlessWorld, change: WorldChange) -> list[Fact]:
     """Every arm settles its own deterministic consequences, so a call leaves nothing half-done."""
-    run = world.run
     match change:
         case Reveal():
-            one = world.require(change.entity_id)
-            if change.entity_id not in run.hidden:
-                raise ValueError(f"{change.entity_id!r} is not hidden here")
-            run.hidden.remove(one.id)
-            run.present.append(one.id)
-            return _reveal(world, one)
+            return reveal_hidden(world, change.entity_id)
         case Enter():
-            if change.entity_id == PLAYER_ID:
-                raise ValueError("the player is in every scene; move the story on instead")
-            one = world.require(change.entity_id)
-            if one.id in run.present:
-                raise ValueError(f"{one.name} is already here")
-            if one.id in run.hidden:
-                raise ValueError(f"{one.name} is hidden here; reveal them instead")
-            run.present.append(one.id)
-            seen = world.reveal(one)
-            trace = f"{world.label(one)} arrives"
-            return [*seen, entity_fact(one, "entity_entered", trace, card=f"{one.name} arrives")]
+            return enter(world, change.entity_id)
         case Leave():
-            if change.entity_id == PLAYER_ID:
-                raise ValueError("the player is in every scene; move the story on instead")
-            one = world.require_here(change.entity_id)
-            run.present.remove(one.id)
-            trace = f"{world.label(one)} leaves"
-            return [entity_fact(one, "entity_left", trace, card=f"{one.name} leaves")]
+            return leave(world, change.entity_id)
         case Kill():
-            return _kill(world, change.entity_id)
+            return kill(world, change.entity_id)
         case DropItem():
             return _drop_item(world, change.item_id)
 
@@ -194,7 +151,7 @@ def next_scene(draft: BreathlessGame, args: NextScene, _rng: Random) -> tuple[Fa
 def check(draft: BreathlessGame, args: Check, rng: Random) -> list[Fact]:
     player = draft.payload.world.player
     if not player.alive:
-        raise ValueError(_PLAYER_DEAD)
+        raise ValueError(PLAYER_DEAD)
 
     item: Item | None = None
     if args.skill is not None:
@@ -227,7 +184,7 @@ def check(draft: BreathlessGame, args: Check, rng: Random) -> list[Fact]:
             item.die = stepped(die)
 
     trace = f"{args.what} — {label} d{die} [{face}] -> {result}"
-    card = f"{args.what} — {_sentence(label)} d{die} → {result}"
+    card = f"{args.what} — {sentence(label)} d{die} → {result}"
     event = DiceEvent(label=f"d{die}", faces=(die,), rolled=rolled)
     facts = [
         dice_fact,
@@ -260,7 +217,7 @@ def catch_breath(
     world = draft.payload.world
     player = world.player
     if not player.alive:
-        raise ValueError(_PLAYER_DEAD)
+        raise ValueError(PLAYER_DEAD)
     player.worn = dict(player.skills)
     player.loot = LOOT_START
     player.stunted = False
@@ -283,7 +240,7 @@ def change_stress(draft: BreathlessGame, args: ChangeStress, _rng: Random) -> li
     if args.amount == 0:
         raise ValueError("change_stress needs a non-zero amount")
     player = draft.payload.world.player
-    return counter_fact(player, player.stress, args.amount, "Stress", args.why, PLAYER_ID)
+    return counter_fact(player, player.stress, args.amount, "Stress", args.why, player.id)
 
 
 def use_med_kit(draft: BreathlessGame, _args: NoArgs, _rng: Random) -> list[Fact]:
@@ -291,7 +248,7 @@ def use_med_kit(draft: BreathlessGame, _args: NoArgs, _rng: Random) -> list[Fact
     if not player.med_kit:
         raise ValueError("the player holds no med kit")
     player.med_kit = False
-    facts = counter_fact(player, player.stress, -MED_KIT_CLEARS, "Stress", "the med kit", PLAYER_ID)
+    facts = counter_fact(player, player.stress, -MED_KIT_CLEARS, "Stress", "the med kit", player.id)
     used = f"{player.name} uses the med kit"
     facts.append(entity_fact(player, "med_kit_used", used, card="Med kit used"))
     return facts
@@ -391,26 +348,6 @@ def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[BreathlessGame], ...]:
     )
 
 
-def _reveal(world: BreathlessWorld, one: Survivor | Npc) -> list[Fact]:
-    """The discovery itself, distinct from the standalone `reveal` verb's card."""
-    facts = world.reveal(one)
-    if not facts:
-        raise ValueError(f"the player has already met {one.name}")
-    return [facts[0].model_copy(update={"card": _sentence(f"{one.name} discovered")})]
-
-
-def _kill(world: BreathlessWorld, entity_id: EntityId) -> list[Fact]:
-    one = world.require_here(entity_id)
-    if not one.alive:
-        raise ValueError(f"{one.name} is already dead")
-    facts = world.reveal(one)
-    one.alive = False
-    card = "You are dead" if one.id == PLAYER_ID else f"{one.name} is dead"
-    trace = f"{world.label(one)} is dead"
-    facts.append(entity_fact(one, "actor_killed", trace, card=card))
-    return facts
-
-
 def _drop_item(world: BreathlessWorld, item_id: EntityId) -> list[Fact]:
     player = world.player
     item = player.items.get(item_id)
@@ -480,7 +417,3 @@ def _take_loot(player: Survivor, item: str, granted: Die, choice: str) -> Fact:
     else:
         raise ValueError(f"{choice!r} is not a valid loot choice")
     return entity_fact(player, "loot_taken", card, card=card)
-
-
-def _sentence(text: str) -> str:
-    return text[:1].upper() + text[1:]

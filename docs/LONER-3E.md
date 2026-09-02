@@ -75,8 +75,8 @@ a rule of this one.
    frailties and gear in that pack are written for this repo; Loner 3e publishes no such tables.
    Only the twist subject and action columns are the SRD's, and the pack's `license` line already
    says so.
-5. **Companions.** The solo SRD has no party; here `join_party` and `leave_party` mark who
-   travels with the player, and companions follow into the next scene. Post-game growth is the
+5. **The party.** The solo SRD has no party; here `join_party` and `leave_party` mark who
+   travels with the player, and the party follows into the next scene. Post-game growth is the
    SRD's own step, written with `change_tags` and `drive` when the adventure closes — per job in
    a campaign, from the note a finished job's return appends: no advance is counted or owed.
 

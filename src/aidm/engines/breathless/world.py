@@ -1,24 +1,13 @@
-from collections.abc import Iterator, Sequence
 from functools import partial
 from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Mutable, Slug, slug
-from aidm.core.facts import Fact
+from aidm.core.entities import EntityId, Mutable, slug
 from aidm.core.model import Character, Game, Scenario
-from aidm.core.play import Exchange, SpokenLine
 from aidm.core.views import Rows
-from aidm.engines.core import PLAYER_ID, Counter, check_filing, labeled, pool, reveal
-from aidm.engines.hub import Offer
-from aidm.engines.scenes import (
-    Scene,
-    SceneRun,
-    SceneWorld,
-    check_hub,
-    check_named,
-    record_exchange,
-)
+from aidm.engines.core import PLAYER_ID, Counter, Person, pool
+from aidm.engines.scenes import SceneScenario, SceneState, SceneWorld
 
 type Die = Literal[4, 6, 8, 10, 12]
 LADDER: tuple[Die, ...] = (4, 6, 8, 10, 12)
@@ -37,13 +26,9 @@ class Item(Mutable):
     die: Die
 
 
-class Survivor(Mutable):
+class Survivor(Person):
     """The played character: the only one with dice."""
 
-    id: CheckedEntityId
-    name: str
-    brief: str
-    known: bool = True
     pronouns: str = ""
     job: str = ""
     skills: dict[Skill, Die] = Field(default_factory=dict)  # as created
@@ -53,7 +38,6 @@ class Survivor(Mutable):
     loot: Die = LOOT_START
     stress: Counter = Field(default_factory=partial(Counter, current=0, maximum=STRESS_MAX))
     stunted: bool = False
-    alive: bool = True
 
     @model_validator(mode="after")
     def _filled_out(self) -> Self:
@@ -88,102 +72,8 @@ class Survivor(Mutable):
         )
 
 
-class Npc(Mutable):
-    """Everyone else, exactly as the SRD leaves them: no dice."""
-
-    id: CheckedEntityId
-    name: str
-    brief: str
-    known: bool = False
-    alive: bool = True
-
-
-class SceneCanon(Mutable):
-    """A scenario as authored: its opening scene and cast, with no player in it yet."""
-
-    cast: dict[EntityId, Npc] = Field(default_factory=dict)
-    opening: Scene
-    present: list[CheckedEntityId] = Field(default_factory=list)
-    hidden: list[CheckedEntityId] = Field(default_factory=list)
-    source: str = ""
-    hub: Slug | None = None
-    board: tuple[Offer, ...] = ()
-
-    @model_validator(mode="after")
-    def _playable_canon(self) -> Self:
-        check_filing(self.cast)
-        check_named(self.present, self.hidden, self.cast)
-        check_hub(self.hub, self.board, (SceneRun(scene=self.opening),))
-        return self
-
-
-class BreathlessWorld(SceneWorld):
-    """The world as a sequence of scenes: the player is a sheet, never a cast entry."""
-
-    cast: dict[EntityId, Npc] = Field(default_factory=dict)
-    player: Survivor
-
-    @model_validator(mode="after")
-    def _consistent(self) -> Self:
-        check_filing(self.cast)
-        check_named(self.run.present, self.run.hidden, self.cast)
-        if not self.player.known:
-            raise ValueError("the player is unknown to themselves")
-        if self.player.id != PLAYER_ID:
-            raise ValueError(f"the player must be filed as {PLAYER_ID!r}")
-        if PLAYER_ID in (*self.run.present, *self.run.hidden):
-            raise ValueError("the player is in every scene and is never listed in it")
-        return self
-
-    def require(self, entity_id: EntityId) -> Survivor | Npc:
-        if entity_id == PLAYER_ID:
-            return self.player
-        one = self.cast.get(entity_id)
-        if one is None:
-            raise ValueError(f"unknown id {entity_id!r}. Use only ids you were shown.")
-        return one
-
-    def require_here(self, entity_id: EntityId) -> Survivor | Npc:
-        one = self.require(entity_id)
-        if one.id == PLAYER_ID:
-            return one
-        if one.id not in self.run.present:
-            raise ValueError(
-                f"{one.name} is not here with the player, so nothing can happen to them"
-            )
-        return one
-
-    def require_alive_here(self, entity_id: EntityId) -> Survivor | Npc:
-        one = self.require(entity_id)
-        if not one.alive:
-            raise ValueError(f"{one.name} is dead; they take no further part.")
-        if one.id == PLAYER_ID:
-            return one
-        if one.id not in self.run.present:
-            raise ValueError(
-                f"{entity_id!r} is not here with the player. "
-                "Bring them here first, or act on who is here."
-            )
-        return one
-
-    def here(self) -> Iterator[Survivor | Npc]:
-        yield self.player
-        for entity_id in self.run.present:
-            yield self.cast[entity_id]
-
-    def label(self, entity: Survivor | Npc) -> str:
-        return labeled(entity, PLAYER_ID)
-
-    def reveal(self, entity: Survivor | Npc) -> list[Fact]:
-        return reveal(entity, PLAYER_ID)
-
-
-class BreathlessState(Mutable):
-    world: BreathlessWorld
-
-
-class BreathlessScenario(Mutable):
-    world: SceneCanon
+BreathlessWorld = SceneWorld[Person, Survivor]
+BreathlessState = SceneState[Person, Survivor]
 
 
 class BreathlessCharacter(Mutable):
@@ -203,7 +93,7 @@ class BreathlessGame(Game[BreathlessState]):
     pass
 
 
-class BreathlessScenarioFile(Scenario[BreathlessScenario]):
+class BreathlessScenarioFile(Scenario[SceneScenario[Person]]):
     pass
 
 
@@ -214,40 +104,6 @@ class BreathlessCharacterFile(Character[BreathlessCharacter]):
 def stepped(die: Die) -> Die:
     """One step down the ladder, floored at d4."""
     return LADDER[max(LADDER.index(die) - 1, 0)]
-
-
-def known(state: BreathlessGame, entity_id: EntityId) -> bool | None:
-    if entity_id == PLAYER_ID:
-        return True
-    one = state.payload.world.cast.get(entity_id)
-    return None if one is None else one.known
-
-
-def record(
-    state: BreathlessGame, prompt: str, lines: tuple[SpokenLine, ...], facts: Sequence[Fact]
-) -> tuple[str, ...]:
-    world = state.payload.world
-    return record_exchange(
-        world,
-        prompt,
-        lines,
-        facts,
-        "" if state.pending is None else state.pending.prompt,
-        someone_dead=any(not one.alive for one in world.here()),
-    )
-
-
-def history(state: BreathlessGame) -> tuple[Exchange, ...]:
-    return state.payload.world.exchanges()
-
-
-def way_open(state: BreathlessGame) -> bool:
-    world = state.payload.world
-    return world.run.settled or world.at_hub
-
-
-def player_over(state: BreathlessGame) -> str | None:
-    return "You died." if not state.payload.world.player.alive else None
 
 
 def player_survivor(character: BreathlessCharacterFile) -> Survivor:

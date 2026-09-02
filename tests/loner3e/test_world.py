@@ -100,14 +100,14 @@ def _next_scene(
     )
 
 
-def test_the_player_and_the_companions_follow_into_the_next_scene() -> None:
+def test_the_party_follows_into_the_next_scene() -> None:
     _, state = initialized()
     draft = state.draft()
     _ = changed(draft, "join_party", entity_id=MARA)
     apply_scene(draft.payload.world, _next_scene(present=()))
     here = draft.payload.world.run.present
-    # The player is added by code; Mara comes along because she travels with the party.
-    assert PLAYER_ID in here and MARA in here
+    # Mara comes along because she travels with the player; the player is never listed.
+    assert MARA in here and PLAYER_ID not in here
     assert [run.scene.place for run in draft.payload.world.runs[:-1]] == ["abbots-study"]
     assert draft.payload.world.run.spent == ""
     _ = draft.committed()
@@ -120,7 +120,7 @@ def test_someone_left_behind_is_refilled_when_the_scene_moves_on() -> None:
 
     facts = install_scene(draft, _next_scene(present=(), hidden=(TOMAS,)))
 
-    assert MARA not in draft.payload.world.companions
+    assert MARA not in draft.payload.world.party
     assert draft.payload.world.require(MARA).luck.current == LUCK_MAX
     assert any(fact.kind == "counter_changed" for fact in facts)
 
@@ -130,7 +130,7 @@ def test_an_id_the_worldsmith_got_wrong_resolves_by_name_before_it_is_refused() 
     draft = state.draft()
     # The probe's failure: the worldsmith writes a display name where an exact id was asked for.
     apply_scene(draft.payload.world, _next_scene(present=("Mara",)))
-    assert draft.payload.world.run.present == [PLAYER_ID, MARA]
+    assert draft.payload.world.run.present == [MARA]
     with pytest.raises(ValueError, match="no such id or name"):
         apply_scene(state.draft().payload.world, _next_scene(present=(EntityId("nobody"),)))
 
@@ -223,12 +223,20 @@ def test_a_corpse_takes_no_further_part() -> None:
     assert "dead" in refused(draft, "drive", entity_id=MARA, goal="Survive")
 
 
+def test_the_players_death_cards_you_are_dead() -> None:
+    _, state = initialized()
+    draft = state.draft()
+    facts = changed_facts(draft, "kill", entity_id=PLAYER_ID)
+    assert [fact.card for fact in facts if fact.card] == ["You are dead"]
+    assert not draft.payload.world.player.alive
+
+
 def test_a_companion_stops_travelling_and_a_stranger_never_started() -> None:
     _, state = initialized()
     draft = state.draft()
     _ = changed(draft, "join_party", entity_id=MARA)
     assert changed(draft, "leave_party", entity_id=MARA)
-    assert MARA not in draft.payload.world.companions
+    assert MARA not in draft.payload.world.party
     assert "does not travel" in refused(draft, "leave_party", entity_id=MARA)
 
 
@@ -244,12 +252,13 @@ def test_a_fact_about_someone_unmet_reaches_neither_player_nor_narrator() -> Non
     assert not cards(landed)
 
 
-def test_the_player_is_in_every_scene_and_never_hidden_in_one() -> None:
+def test_the_player_is_in_every_scene_and_is_never_listed_in_one() -> None:
     _, state = initialized()
     draft = state.draft()
     apply_scene(draft.payload.world, _next_scene(present=("kael",), hidden=("Kael", TOMAS)))
-    assert PLAYER_ID in draft.payload.world.run.present
-    assert PLAYER_ID not in draft.payload.world.run.hidden
+    run = draft.payload.world.run
+    assert PLAYER_ID not in run.present and PLAYER_ID not in run.hidden
+    assert TOMAS in run.hidden
     _ = draft.committed()
 
 

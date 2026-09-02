@@ -8,12 +8,11 @@ from aidm.engines.breathless.world import (
     BreathlessCharacterFile,
     BreathlessWorld,
     Item,
-    Npc,
     Survivor,
     player_survivor,
     stepped,
 )
-from aidm.engines.core import PLAYER_ID
+from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.scenes import Scene, SceneRun
 
 MIRA = EntityId("mira")
@@ -71,9 +70,9 @@ def test_two_d10_skills_are_refused() -> None:
         )
 
 
-def test_player_id_in_present_is_refused() -> None:
-    decoy = Npc(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
-    with pytest.raises(ValueError, match="never listed"):
+def test_a_cast_that_holds_the_player_is_refused() -> None:
+    decoy = Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
+    with pytest.raises(ValueError, match="the player is in the cast"):
         BreathlessWorld(
             cast={PLAYER_ID: decoy},
             player=_player(),
@@ -87,7 +86,7 @@ def test_require_returns_the_player_for_player_id() -> None:
 
 
 def test_here_yields_the_player_first_then_present_cast() -> None:
-    mira = Npc(id=MIRA, name="Mira", brief="A neighbor", known=True)
+    mira = Person(id=MIRA, name="Mira", brief="A neighbor", known=True)
     world = BreathlessWorld(
         cast={MIRA: mira},
         player=_player(),

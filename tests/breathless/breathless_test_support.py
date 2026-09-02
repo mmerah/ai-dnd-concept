@@ -9,10 +9,9 @@ from aidm.engines.breathless.world import (
     BreathlessState,
     BreathlessWorld,
     Item,
-    Npc,
     Survivor,
 )
-from aidm.engines.core import PLAYER_ID
+from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.hub import Offer
 from aidm.engines.scenes import Scene, SceneRun
 
@@ -41,8 +40,8 @@ JOB = (
 
 def small_world() -> BreathlessGame:
     """One player, one known NPC present, one hidden NPC, a Wrench in the backpack."""
-    mira = Npc(id=MIRA, name="Mira", brief="A neighbor", known=True)
-    dax = Npc(id=DAX, name="Dax", brief="A looter", known=False)
+    mira = Person(id=MIRA, name="Mira", brief="A neighbor", known=True)
+    dax = Person(id=DAX, name="Dax", brief="A looter", known=False)
     world = BreathlessWorld(
         cast={MIRA: mira, DAX: dax},
         player=_player(),
@@ -59,7 +58,7 @@ def small_world() -> BreathlessGame:
 
 def hub_world() -> BreathlessGame:
     """A campaign world: a hub run with a known keeper, then one job run away from it."""
-    keeper = Npc(id=KEEPER, name="Keeper", brief="Runs the camp", known=True)
+    keeper = Person(id=KEEPER, name="Keeper", brief="Runs the camp", known=True)
     hub_run = SceneRun(scene=_hub_scene(), present=[KEEPER])
     job_run = SceneRun(scene=_job_scene())
     world = BreathlessWorld(
