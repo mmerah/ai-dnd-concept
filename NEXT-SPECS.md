@@ -1,7 +1,7 @@
 # NEXT-SPECS — after the hub
 
 Tracks A through F of the 2026-09-02 brainstorm became `PLAN.md` and were cut from this file.
-What stays: the maintainer's decisions, Track R (the seam, from `REFACTOR-PROPOSAL.md`), Track G
+What stays: the maintainer's decisions, Track R (the seam refactor), Track G
 (the party, then crews), and what was left in `IDEAS.md` or refused. Track R becomes its own
 `PLAN.md` when PLAN.md's six phases have landed; Track G follows it, written when the campaign
 has been played through once with the recap. Counts and names below are as written on
@@ -44,11 +44,17 @@ once; saves carry no version; no abstraction until two things need it; no buildi
 
 ---
 
-## Track R — the seam, made smaller (`REFACTOR-PROPOSAL.md`)
+## Track R — the seam, made smaller
+
+An outside review of the code (2026-09-02) made four proposals: an engine object with a
+`SceneEngine` base class in place of the `Engine` callback record; one flat scene draft in
+place of the five draft classes; one `advance()` transaction in place of `ready → write →
+install → arrival_brief`; and the master as its own worldsmith. This track keeps the first as
+a factory and the third as written, and refuses the other two with the reason below.
 
 No behaviour change, no prompt change, no golden moves: `prompts/`, `schemas/`, `turn/`,
 `state/` and `save/` are the track's invariant, and a phase that moves one has a bug. Read on
-2026-09-02 against the code after Phase 3, where the three `engine.py` are 84–86 lines of the
+2026-09-02 against the code after Phase 4, where the three `engine.py` are 87–90 lines of the
 same wiring, the three scene `worldsmith.py` are 42–50 lines binding a cast type and four
 strings, and `GameService` runs `ready → write → install → arrival_brief` as a second state
 machine after the turn (`_grow`, `_write`, `_install`, about 55 lines). Two phases, R.1 then
@@ -61,7 +67,7 @@ R.2, about two hours of agent time each. `src` from Phase 6's 9,735 to about 9,4
    the platform reads by attribute and the tests rewire with `dataclasses.replace`; a
    `SceneEngine` base class would move behaviour onto objects, against "write pure functions",
    and its overridable surface is the abstraction `CLAUDE.md` says not to add.
-2. **Proposal 2, one flat draft, is refused** (reason below). No R.3.
+2. **One flat draft is refused** (reason below). No R.3.
 
 ### R.1 One transaction: `advance` and `author`
 
@@ -121,11 +127,11 @@ The platform asks the engine two things of the worldsmith and stops knowing thei
 
 ### R.2 One scene engine
 
-After R.1, a scene `engine.py` wires 25 fields (Phase 4's `art_style` counted), of which
+After R.1, a scene `engine.py` wires 25 fields, of which
 eight are the same `scenes` function in all three (`validate`, `known`, `record`, `history`,
 `narrator_view`, `over`, `ready`, `arrival_brief`), two come from a wrapper that binds four
 strings, `packs` is the same two-line `pack_options` in all three, and `new_game` is two
-`isinstance` checks around `new_world`. The proposal's litmus, "a fifth scene engine is its
+`isinstance` checks around `new_world`. The review's litmus, "a fifth scene engine is its
 state model, its creation, its tools and its sections", is what this phase buys.
 
 - **`engines/scenes/engine.py`** (a new file in the Phase 5 package):
@@ -179,19 +185,19 @@ state model, its creation, its tools and its sections", is what this phase buys.
 
 ### Refused, with the reason
 
-- **Proposal 4, the master as worldsmith**: the maintainer's note in `REFACTOR-PROPOSAL.md`
-  stands. Authoring is a second profession; scenario creation needs the role anyway; the
+- **The master as worldsmith**: the maintainer's call. The worldsmith is useful for authoring,
+  and removing it would make the master do too much. Authoring is a second profession; scenario creation needs the role anyway; the
   fifteen-tool cap is the master's attention budget.
-- **Proposal 2, one flat draft with optional `recap`, `job`, `offers`, `debrief`**: the five
+- **One flat draft with optional `recap`, `job`, `offers`, `debrief`**: the five
   classes are the schema the worldsmith answers in, and pydantic enforces which fields a
   crossing, a job or a return owes; a flat draft moves that demand into prose descriptions and
   the bar, the schema the model reads grows fields it must leave empty, and the eight
   `isinstance` sites become eight `if draft.offers` sites. The ugliest piece, `_is_draft`,
-  goes with R.1's typed answer, which is what the proposal was reacting to. A return closing a
+  goes with R.1's typed answer, which is what the review was reacting to. A return closing a
   job is a domain distinction, not a leaked output shape.
 - **A class hierarchy for R.2**: decision 1.
-- **A generic "role" abstraction over master, narrator and worldsmith**: the proposal's own
-  second response refuses it, and so does this track. Nothing in R touches `Turn`, `Fact`,
+- **A generic "role" abstraction over master, narrator and worldsmith**: the review refused
+  it too, and so does this track. Nothing in R touches `Turn`, `Fact`,
   `Game.draft/committed` or `NarratorView`.
 
 ---
