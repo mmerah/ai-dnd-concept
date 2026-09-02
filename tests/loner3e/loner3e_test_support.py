@@ -10,7 +10,7 @@ from core_test_support import (
     scenario,
 )
 
-from aidm.app.runtime import Conversations, GameService, LaunchTarget
+from aidm.app.runtime import GameService, LaunchTarget
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.io import FileStore
 from aidm.core.model import ScenarioMeta
@@ -82,7 +82,6 @@ def loner3e_session(directory: Path) -> GameService:
         engine=engine,
         spawner=spawner,
         store=store,
-        sessions=Conversations(spawner, store, settings),
         settings=settings,
         rng=Random(1),
     )

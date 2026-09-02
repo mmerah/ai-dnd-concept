@@ -44,10 +44,6 @@ class FileStore:
     def save(self, slug: str, state: AnyGame) -> None:
         write_text(self._save_path(slug), state.model_dump_json(indent=2))
 
-    def sessions_path(self, slug: str) -> Path:
-        """Under a dot directory, so `slugs` can never list a sidecar as a save."""
-        return _safe_path(self.directory / ".sessions", slug, ".json")
-
     def media_dir(self, slug: str) -> Path:
         return _safe_path(self.directory, slug, ".media")
 

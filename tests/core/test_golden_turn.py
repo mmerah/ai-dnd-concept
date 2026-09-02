@@ -9,7 +9,6 @@ from golden_test_support import FIXTURES, dumped, golden, golden_json
 from golden_turn_support import NARRATION
 
 from aidm.core.entities import EngineId
-from aidm.core.facts import Fact
 from aidm.core.model import AnyGame
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
@@ -32,15 +31,14 @@ async def test_a_scripted_turn_renders_and_records_unchanged(
 ) -> None:
     table = opened_for(tmp_path, engine_id, rng=Random(SEED))
     table.service.commit(_behind(engine_id, table.state))
-    facts: list[Fact] = []
 
-    await played(table, PROMPT, *_script(engine_id), narration=NARRATION, on_fact=facts.append)
+    await played(table, PROMPT, *_script(engine_id), narration=NARRATION)
 
     golden(FIXTURES / "prompts" / engine_id / "master.txt", table.spawner.prompt("master"))
     golden(FIXTURES / "prompts" / engine_id / "narrator.txt", table.spawner.prompt("narrator"))
-    golden(FIXTURES / "prompts" / engine_id / "picture.txt", table.answers[0])
     # The prompts live in their own fixtures; these are everything else the turn produced.
     golden_json(
-        FIXTURES / "turn" / f"{engine_id}.json", [fact.model_dump(mode="json") for fact in facts]
+        FIXTURES / "turn" / f"{engine_id}.json",
+        [fact.model_dump(mode="json") for fact in table.facts],
     )
     golden(FIXTURES / "save" / f"{engine_id}.json", dumped(table.service.state))

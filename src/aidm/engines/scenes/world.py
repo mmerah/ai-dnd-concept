@@ -365,9 +365,6 @@ class SceneWorld[C: Person, P: Person](Mutable):
         }
 
     def apply_scene(self, draft: SceneDraft[C]) -> None:
-        """The bar ran on the turn's snapshot already; here it is the safety net."""
-        if (refused := scene_refusal(draft, self)) is not None:
-            raise ValueError(refused)
         finished = self.job_done  # the master's verdict on the job the return is closing
         self.cast = self.merged_cast(draft)
         everyone: Mapping[EntityId, Entity] = {self.player.id: self.player, **self.cast}

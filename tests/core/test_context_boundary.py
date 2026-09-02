@@ -4,7 +4,7 @@ from aidm.core.entities import EntityId
 from aidm.core.views import NarratorView
 from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter
 from aidm.engines.seam import AnyEngine
-from aidm.turn.context import ANSWERED_BY_OPTION, render_narrator, render_picture
+from aidm.turn.context import ANSWERED_BY_OPTION, render_master, render_narrator
 
 SECRET = EntityId("hidden-actor")
 
@@ -28,13 +28,14 @@ def _engine() -> AnyEngine:
     return ENGINES_BUILT[LONER3E]
 
 
-def _master_prompt(held: Loner3eGame, prompt: str, *, resumed: str = "") -> str:
-    return render_picture(
+def _master_prompt(held: Loner3eGame, prompt: str, *, notes: tuple[str, ...] = ()) -> str:
+    return render_master(
+        _engine().instructions,
         _engine().master_sections(held),
         held,
         _engine().history(held),
         prompt,
-        resumed=resumed,
+        notes=notes,
     )
 
 
@@ -101,9 +102,12 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_read() -> None:
 
 
 def test_a_chosen_option_is_not_shown_as_the_players_own_words() -> None:
-    resumed = "asked: A hit is coming.\nthe player chose: Take the hit\n- the hit lands in full"
+    note = (
+        'The rules paused play to ask the player: "A hit is coming." They chose: Take the hit. '
+        "Already resolved:\n- the hit lands in full"
+    )
 
-    master = _master_prompt(_state(), "Take the hit", resumed=resumed)
+    master = _master_prompt(_state(), ANSWERED_BY_OPTION, notes=(note,))
 
     assert master.count("Take the hit") == 1
     assert master.endswith(f"PLAYER ACTION:\n{ANSWERED_BY_OPTION}")

@@ -5,8 +5,6 @@ The tools carry the whole game. Do not read, search or run anything in the repos
 
 ## Run the turn
 
-Call `start_turn` first. It opens the turn and hands back the whole picture: the world as it stands, the notes from the rules and the recent play. If you lose that picture, `scene` gives it back.
-
 Read the player's whole action first. Apply each part in story order, one tool call at a time.
 
 Tools are the only way to change the world. Read each result before continuing: it tells you what changed and may include a new instruction. The engine rolls dice, pays costs, and chooses outcomes. Use its result; do not choose or report a roll yourself.
@@ -103,6 +101,46 @@ A scene is one place. When the player leaves it for good with the question open 
 The player is not forced to leave. They may keep playing here, and you keep playing with them; the scene stays open until they say where they are going. Their answer is what the next scene is built from.
 
 `next_scene` does not end the turn. Finish what the player's action caused, then exit.
+
+SCENARIO:
+The Silent Relay
+Relay station QV-9 stopped answering six days ago, and Kael is the operator sent to bring its beacon back online before the next convoy jumps in blind.
+
+RECENT PLAY (this is turn 1):
+> I look around the docking ring before going further.
+[at The Docking Ring] Vessa Rune watches you from the airlock.
+
+SCENE:
+The Docking Ring
+QV-9's docking ring hums with full power, yet every comm panel down the corridor sits dark and silent. Vessa Rune waits at the airlock with her override key already drawn, and Harl Odum's salvage skiff sits clamped to the outer berth, its hatch cycling open before Kael has even hailed it.
+
+THE QUESTION THIS SCENE SETTLES:
+Can Kael get through Vessa's airlock and into the station, and on whose terms?
+
+YOU PLAY FOR:
+- Kael[player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
+  specialty: Sneak; origin: Human; skills: Stealth d12, Climbing d8, Piloting d8; credits: ₡2
+
+GEAR:
+- Comm[comm]
+- Climbing gear[climbing-gear]
+- Night vision goggles[night-vision-goggles]
+
+HERE WITH THE PLAYER:
+- Vessa Rune[vessa-rune] — QV-9's keeper for eleven years, she knows every corridor by feel and won't say why she hasn't left the docking ring in six days; her override codes can lock Kael out of the whole station.
+- Harl Odum[harl-odum] — A salvage pilot who claims he only just made port, though his skiff has sat cold at the outer berth since before the relay went dark; his cutting torch opens more than hull plate.
+
+HIDDEN HERE (the player has not found these):
+- Warden Six[warden-six] — QV-9's maintenance android, still carrying out a shutdown order it was never told to stand down from; its manipulator arms can crush a suit seal without meaning to kill.
+
+THE SCENE'S SECRET (never narrate this):
+Six days ago Vessa Rune ordered the station's maintenance android to seal the relay compartment and cut the beacon rather than risk a corrupted signal reaching the convoy; it has followed that order against everyone since, herself included.
+
+NOTES FROM THE RULES:
+- (none)
+
+WAITING ON THE PLAYER:
+- (nothing; the turn is yours to run)
 
 PLAYER ACTION:
 I lever up the loose flagstone and listen at the vault door.

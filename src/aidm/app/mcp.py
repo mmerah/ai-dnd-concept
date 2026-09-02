@@ -7,7 +7,7 @@ from pydantic import JsonValue, TypeAdapter
 from aidm.app.runtime import Runtime
 from aidm.core.model import AnyGame
 from aidm.core.tools import MasterTool, schema_of
-from aidm.turn.run import NO_TURN, TurnTool
+from aidm.turn.run import NO_TURN
 
 SERVER_NAME = "aidm"
 MOUNT_PATH = "/mcp"
@@ -68,7 +68,7 @@ def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
     return Server(SERVER_NAME, on_list_tools=on_list_tools, on_call_tool=on_call_tool)
 
 
-def _published(tool: TurnTool | MasterTool[AnyGame]) -> types.Tool:
+def _published(tool: MasterTool[AnyGame]) -> types.Tool:
     return types.Tool(
         name=tool.name, description=tool.description, input_schema=schema_of(tool.args)
     )

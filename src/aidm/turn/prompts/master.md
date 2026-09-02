@@ -4,8 +4,6 @@ The tools carry the whole game. Do not read, search or run anything in the repos
 
 ## Run the turn
 
-Call `start_turn` first. It opens the turn and hands back the whole picture: the world as it stands, the notes from the rules and the recent play. If you lose that picture, `scene` gives it back.
-
 Read the player's whole action first. Apply each part in story order, one tool call at a time.
 
 Tools are the only way to change the world. Read each result before continuing: it tells you what changed and may include a new instruction. The engine rolls dice, pays costs, and chooses outcomes. Use its result; do not choose or report a roll yourself.

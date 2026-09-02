@@ -1,4 +1,3 @@
-import pytest
 from breathless_test_support import (
     HUB_PLACE,
     HUB_SITUATION,
@@ -27,25 +26,22 @@ def _draft(**fields: object) -> SceneDraft[Person]:
     return SceneDraft[Person].model_validate({**base, **fields})
 
 
-def test_apply_scene_refuses_a_scene_that_lists_the_player() -> None:
+def test_the_bar_refuses_a_scene_that_lists_the_player() -> None:
     world = small_world().payload.world
-    with pytest.raises(ValueError, match="put there by code"):
-        world.apply_scene(_draft(present=("Jax", "mira")))
+    assert "put there by code" in (scene_refusal(_draft(present=("Jax", "mira")), world) or "")
 
 
-def test_apply_scene_refuses_a_draft_cast_entry_under_player_id() -> None:
+def test_the_bar_refuses_a_draft_cast_entry_under_player_id() -> None:
     world = small_world().payload.world
     draft = _draft(
         cast={PLAYER_ID: Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)}
     )
-    with pytest.raises(ValueError, match="rewrites the player"):
-        world.apply_scene(draft)
+    assert "rewrites the player" in (scene_refusal(draft, world) or "")
 
 
-def test_apply_scene_refuses_hiding_someone_met() -> None:
+def test_the_bar_refuses_hiding_someone_met() -> None:
     world = small_world().payload.world
-    with pytest.raises(ValueError, match="already met"):
-        world.apply_scene(_draft(hidden=("mira",)))
+    assert "already met" in (scene_refusal(_draft(hidden=("mira",)), world) or "")
 
 
 def test_the_opening_needs_a_cast_member() -> None:

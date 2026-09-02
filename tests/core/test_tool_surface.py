@@ -1,6 +1,7 @@
 import asyncio
 import json
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from random import Random
 
@@ -8,6 +9,7 @@ import pytest
 from core_test_support import (
     LONER3E,
     LONER3E_PACKS,
+    ScriptedSpawner,
     change_args,
     changed,
     narrated,
@@ -23,7 +25,8 @@ from pydantic import BaseModel, JsonValue
 import aidm.app.spawn as spawn_module
 from aidm.app.launch import LaunchTarget
 from aidm.app.mcp import call, offered
-from aidm.app.spawn import CliSpawner, final_message
+from aidm.app.spawn import CliSpawner, RunResult, final_message
+from aidm.config import Role
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.facts import Fact
 from aidm.core.model import WorldsmithAnswer
@@ -34,7 +37,20 @@ from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter
 from aidm.engines.scenes.drafts import SceneDraft
 from aidm.engines.scenes.world import scene_refusal
 from aidm.engines.scenes.worldsmith import install_scene
-from aidm.turn.run import ALREADY_OPEN, NO_TURN, START_FIRST, TURN_TOOLS, Turn
+from aidm.turn.run import NO_TURN, Turn
+
+
+@dataclass(frozen=True, slots=True)
+class _Watched:
+    """The scripted spawner, with a look at the game before each worldsmith spawn."""
+
+    inner: ScriptedSpawner
+    seen: Callable[[], None]
+
+    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
+        if role == "worldsmith":
+            self.seen()
+        return await self.inner.run(role, prompt, session)
 
 
 class _SilentEngine(Loner3eEngine):
@@ -89,39 +105,12 @@ def _bare_scene(**changes: object) -> str:
     return json.dumps(A_SCENE | changes)
 
 
-def test_the_surface_publishes_turn_and_engine_tools(tmp_path: Path) -> None:
-    table = opened(tmp_path)
-
-    names = [tool.name for tool in offered(table.runtime)]
-
-    assert names[:2] == ["start_turn", "scene"]
-    assert {"change_world", "roll_question"} <= set(names)
-    assert "end_turn" not in names
-
-
 def test_no_tool_runs_before_a_turn_is_open(tmp_path: Path) -> None:
     table = opened(tmp_path)
 
+    assert offered(table.runtime) == []
     with pytest.raises(ValueError, match=NO_TURN):
-        _ = call(table.runtime, "scene", {})
-
-
-async def test_the_legality_table_says_what_to_do_instead(tmp_path: Path) -> None:
-    table = opened(tmp_path)
-
-    def script() -> None:
-        _ = table.call("change_world", change_args("reveal", entity_id=VAULT_MAP))
-        _ = table.call("start_turn", {})
-        _ = table.call("start_turn", {})
-        _ = table.call("scene", {"junk": 1})
-
-    table.spawner.turns.append(script)
-    table.spawner.answers["narrator"] = [narrated("Dust hangs.")]
-    await table.service.play("I look around.")
-
-    assert table.refusals[0] == START_FIRST
-    assert table.refusals[1] == ALREADY_OPEN
-    assert "junk" in table.refusals[2]
+        _ = call(table.runtime, "change_world", {})
 
 
 async def test_a_second_game_in_flight_refuses_the_call_rather_than_routing_it(
@@ -134,9 +123,8 @@ async def test_a_second_game_in_flight_refuses_the_call_rather_than_routing_it(
     )
 
     def script() -> None:
-        _ = table.call("start_turn", {})
         other.turn = table.service.turn
-        _ = table.call("scene", {})
+        _ = table.call("change_world", change_args("reveal", entity_id=VAULT_MAP))
 
     table.spawner.turns.append(script)
     table.spawner.answers["narrator"] = [narrated("Dust hangs.")]
@@ -153,7 +141,7 @@ async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(
     table = opened(tmp_path)
 
     def script() -> None:
-        _ = table.call("start_turn", {})
+        _ = table.call("change_world", change_args("reveal", entity_id=VAULT_MAP) | {"junk": 1})
         _ = table.call("change_world", change_args("reveal", entity_id=VAULT_MAP))
         turn = table.service.turn
         assert turn is not None
@@ -163,6 +151,7 @@ async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(
     table.spawner.answers["narrator"] = [narrated("A chart, under the stone.")]
     await table.service.play("I lever up the flagstone.")
 
+    assert "not permitted" in table.refusals[0]
     assert landed == [1]
     saved = table.saved()
     assert saved.payload.world.require(VAULT_MAP).known
@@ -253,12 +242,23 @@ async def test_a_transition_without_an_arrival_brief_extends_on_a_lineless_excha
     tmp_path: Path,
 ) -> None:
     table = opened(tmp_path)
-    table.service.engine = _SilentEngine(LONER3E_PACKS)
+    shown: list[str] = []
+
+    class Watching(_SilentEngine):
+        async def advance(
+            self, draft: Loner3eGame, intent: str, worldsmith: WorldsmithAnswer
+        ) -> tuple[Fact, ...]:
+            shown.append(table.service.intent)
+            return await super().advance(draft, intent, worldsmith)
+
+    table.service.engine = Watching(LONER3E_PACKS)
     before = table.state.turn
     runs = len(table.state.payload.world.runs)
 
     await table.service.play("Out into the cloister walk.", moving_on=True)
 
+    # The page has no turn to read the bubble from here, so the service holds the words.
+    assert (shown, table.service.intent) == (["Out into the cloister walk."], "")
     assert table.state.turn == before + 1
     assert len(table.state.payload.world.runs) == runs + 1
     new_run = table.state.payload.world.runs[-1]
@@ -398,24 +398,22 @@ async def test_the_players_own_answer_is_the_brief_and_the_crossing_lands_in_tha
     assert "before Tomas hears the door" in table.spawner.prompt("worldsmith")
 
 
-async def test_the_page_is_told_to_refresh_before_the_worldsmith_is_asked(tmp_path: Path) -> None:
+async def test_the_turn_is_filed_before_the_worldsmith_is_asked(tmp_path: Path) -> None:
     """The turn's own narration must reach the player while the slow write runs."""
     table = opened(tmp_path)
+    filed: list[int] = []
+    table.service.spawner = _Watched(
+        table.spawner, lambda: filed.append(len(table.service.engine.history(table.service.state)))
+    )
     table.spawner.answers["worldsmith"] = [_scene()]
-    order: list[str] = []
 
     _ = await played(table, "I go.", the_way_on())
+    before = len(table.service.engine.history(table.service.state))
     table.spawner.turns.append(table.plays(()))
     table.spawner.answers["narrator"] = [narrated("You pull the door to."), narrated("Rain.")]
-    await table.service.play(
-        "Out into the cloister walk.",
-        on_step=order.append,
-        moving_on=True,
-        on_commit=lambda: order.append("commit"),
-    )
+    await table.service.play("Out into the cloister walk.", moving_on=True)
 
-    assert order.count("commit") == 1
-    assert order.index("commit") < order.index("worldsmith")
+    assert filed == [before + 1]
 
 
 async def test_a_scene_the_world_has_outgrown_is_dropped_rather_than_killing_the_turn(
@@ -543,7 +541,7 @@ def test_the_surface_publishes_for_the_engine_whose_turn_is_in_flight(tmp_path: 
     assert "roll_question" in [one.name for one in table.runtime.published_tools()]
 
     table.service.turn = None
-    assert [one.name for one in table.runtime.published_tools()] == [one.name for one in TURN_TOOLS]
+    assert [one.name for one in table.runtime.published_tools()] == []
 
 
 # What `codex exec --json` actually printed, banner line and all.

@@ -23,7 +23,7 @@ from aidm.engines.breathless.world import (
     Survivor,
     stepped,
 )
-from aidm.engines.core import CHANGE_WORLD, PLAYER_DEAD, counter_fact, entity_fact, sentence
+from aidm.engines.core import CHANGE_WORLD, counter_fact, entity_fact, sentence
 from aidm.engines.scenes.world import NEXT_SCENE, Enter, Kill, Leave, NextScene, Reveal
 
 SRD_PACK: Slug = "srd"
@@ -111,8 +111,6 @@ class Complications:
     def catch_breath(self, draft: BreathlessGame, _args: NoArgs, rng: Random) -> list[Fact]:
         world = draft.payload.world
         player = world.player
-        if not player.alive:
-            raise ValueError(PLAYER_DEAD)
         player.worn = dict(player.skills)
         player.loot = LOOT_START
         player.stunted = False
@@ -164,8 +162,6 @@ def next_scene(draft: BreathlessGame, args: NextScene, _rng: Random) -> tuple[Fa
 
 def check(draft: BreathlessGame, args: Check, rng: Random) -> list[Fact]:
     player = draft.payload.world.player
-    if not player.alive:
-        raise ValueError(PLAYER_DEAD)
 
     item: Item | None = None
     if args.skill is not None:
@@ -287,9 +283,7 @@ def test_luck(_draft: BreathlessGame, args: TestLuck, rng: Random) -> tuple[Fact
 def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[BreathlessGame], ...]:
     complications = Complications(packs)
     return (
-        master_tool(
-            "change_world", CHANGE_WORLD, ChangeWorld, change_world, during_suspension=True
-        ),
+        master_tool("change_world", CHANGE_WORLD, ChangeWorld, change_world),
         master_tool(
             "next_scene",
             NEXT_SCENE,

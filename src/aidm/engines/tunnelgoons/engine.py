@@ -3,7 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, EntityId, Slug
+from aidm.core.entities import EngineId, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import AnyCharacter, AnyScenario, ScenarioKind, WorldsmithAnswer
 from aidm.core.play import Exchange, SpokenLine
@@ -22,7 +22,6 @@ from aidm.engines.tunnelgoons.world import (
     TunnelWorld,
     Visit,
     history,
-    known,
     player_goon,
     player_over,
     record,
@@ -88,9 +87,6 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
 
     def over(self, state: TunnelGoonsGame) -> str | None:
         return player_over(state)
-
-    def known(self, state: TunnelGoonsGame, entity_id: EntityId) -> bool | None:
-        return known(state, entity_id)
 
     def record(
         self,

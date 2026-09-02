@@ -70,7 +70,7 @@ def test_settings_are_not_reloaded_under_a_turn_in_flight(tmp_path: Path) -> Non
         LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
     )
     assert runtime.busy_refusal() is None
-    session.busy = True
+    session.phase = "master"
     assert runtime.busy_refusal() == "A turn is in flight in 'poc'."
 
 

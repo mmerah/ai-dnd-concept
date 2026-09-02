@@ -144,7 +144,8 @@ and no crew (its "the cast carries no dice" stands until 24XX has played). G is 
 level); the player is an `Npc` whose sheet the validator requires. A sheeted member is a goon:
 `ActionRoll.actor_id`, `rest` heals the party, `level_up` opens one decision per living goon in
 turn (the option args carry `actor_id`; answering one opens the next), `take_lead` swaps
-objects as 24XX. `Dungeon._consistent`'s item-holder check reads the party. 11 → 12.
+objects as 24XX. This re-adds the re-suspension path PLAN Phase 1 deleted: a tool that may run
+while the rules wait, and a turn that knows it opened suspended. `Dungeon._consistent`'s item-holder check reads the party. 11 → 12.
 `docs/TUNNEL-GOONS.md`: the "one goon" paragraph under "what the app adds" is rewritten;
 deviation 1 (the level-up cadence) stays.
 

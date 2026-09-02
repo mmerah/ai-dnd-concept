@@ -87,13 +87,12 @@ def test_apply_scene_lands_new_cast() -> None:
     assert stranger in world.cast
 
 
-def test_apply_scene_refuses_a_draft_cast_entry_under_player_id() -> None:
+def test_the_bar_refuses_a_draft_cast_entry_under_player_id() -> None:
     world = small_world().payload.world
     draft = _draft(
         cast={PLAYER_ID: Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)}
     )
-    with pytest.raises(ValueError, match="rewrites the player"):
-        world.apply_scene(draft)
+    assert "rewrites the player" in (scene_refusal(draft, world) or "")
 
 
 def test_apply_scene_re_files_an_existing_cast_member_as_a_new_brief_alone() -> None:
@@ -108,7 +107,7 @@ def test_apply_scene_re_files_an_existing_cast_member_as_a_new_brief_alone() -> 
     assert (world.cast[KESTREL].name, world.cast[KESTREL].brief) == ("Kestrel", "rewritten")
 
 
-def test_apply_scene_refuses_a_misfiled_cast_entry() -> None:
+def test_the_bar_refuses_a_misfiled_cast_entry() -> None:
     world = small_world().payload.world
     stranger = EntityId("stranger")
     other = EntityId("other")
@@ -116,8 +115,7 @@ def test_apply_scene_refuses_a_misfiled_cast_entry() -> None:
         present=("stranger",),
         cast={stranger: Person(id=other, name="A Stranger", brief="filed wrongly")},
     )
-    with pytest.raises(ValueError, match="is filed under"):
-        world.apply_scene(draft)
+    assert "is filed under" in (scene_refusal(draft, world) or "")
 
 
 def test_the_bar_refuses_present_hidden_overlap() -> None:
@@ -197,10 +195,11 @@ def test_a_hidden_multi_word_name_in_situation_is_refused() -> None:
     )
 
 
-def test_apply_scene_refuses_a_scene_that_lists_the_player() -> None:
+def test_the_bar_refuses_a_scene_that_lists_the_player() -> None:
     world = small_world().payload.world
-    with pytest.raises(ValueError, match="put there by code"):
-        world.apply_scene(_draft(present=("kestrel", "player")))
+    assert "put there by code" in (
+        scene_refusal(_draft(present=("kestrel", "player")), world) or ""
+    )
 
 
 def test_the_bar_refuses_a_scene_that_lists_the_player_or_the_party() -> None:

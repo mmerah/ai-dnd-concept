@@ -277,11 +277,9 @@ def tools() -> tuple[MasterTool[TunnelGoonsGame], ...]:
         "finished."
     )
     return (
-        master_tool(
-            "change_world", CHANGE_WORLD, ChangeWorld, change_world, during_suspension=True
-        ),
+        master_tool("change_world", CHANGE_WORLD, ChangeWorld, change_world),
         master_tool("move", move_desc, Move, move),
-        master_tool("unlock_way", unlock_desc, UnlockWay, unlock_way, during_suspension=True),
+        master_tool("unlock_way", unlock_desc, UnlockWay, unlock_way),
         master_tool("action_roll", roll_desc, ActionRoll, action_roll),
         master_tool("rest", rest_desc, NoArgs, rest),
         master_tool("level_up", level_desc, LevelUp, level_up),

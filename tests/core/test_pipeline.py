@@ -16,7 +16,7 @@ from aidm.core.facts import Fact, cards
 from aidm.core.model import AnyGame
 from aidm.engines.core import PLAYER_ID
 from aidm.engines.loner3e.tools import outcome_for
-from aidm.turn.run import Turn, TurnStep
+from aidm.turn.run import Turn
 
 MAP = EntityId("vault-map")
 FOUND = changed("reveal", entity_id="vault-map")
@@ -26,8 +26,6 @@ ASKED = tool_call("roll_question", actor_id=PLAYER_ID, question="Does the door g
 
 async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_path: Path) -> None:
     table = opened(tmp_path)
-    steps: list[TurnStep] = []
-    facts: list[Fact] = []
 
     state = await played(
         table,
@@ -35,12 +33,10 @@ async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_pat
         FOUND,
         TAKEN,
         narration="A creased chart slides into your hand.",
-        on_step=steps.append,
-        on_fact=facts.append,
     )
 
-    assert tuple(steps) == ("master", "narrator")
-    assert [fact.kind for fact in facts] == ["entity_discovered", "tags_changed"]
+    assert [role for role, _ in table.spawner.prompts] == ["master", "narrator"]
+    assert [fact.kind for fact in table.facts] == ["entity_discovered", "tags_changed"]
     assert "the vault map" in state.payload.world.player.gear
     narrator = table.spawner.prompt("narrator")
     assert "Elena" not in narrator
@@ -50,9 +46,8 @@ async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_pat
     assert state.payload.world.exchanges()[-1].prompt == "I search beneath the desk."
 
 
-async def test_on_fact_reports_the_visible_facts_in_resolver_order(tmp_path: Path) -> None:
+async def test_the_turn_holds_its_facts_in_resolver_order(tmp_path: Path) -> None:
     table = opened(tmp_path)
-    fired: list[Fact] = []
 
     state = await played(
         table,
@@ -60,11 +55,10 @@ async def test_on_fact_reports_the_visible_facts_in_resolver_order(tmp_path: Pat
         FOUND,
         TAKEN,
         changed("change_tags", entity_id="player", kind="condition", gained=["Listening"]),
-        on_fact=fired.append,
     )
 
     landed = ["The vault map discovered", "Took the vault map", "Now: Listening"]
-    assert [fact.card for fact in cards(fired)] == landed
+    assert [fact.card for fact in cards(table.facts)] == landed
     assert [fact.card for fact in state.payload.world.exchanges()[-1].facts] == landed
 
 
@@ -82,7 +76,6 @@ async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: 
 
 async def test_the_engine_rolls_the_outcome_the_facts_then_record(tmp_path: Path) -> None:
     table = opened(tmp_path, rng=Random(2))
-    fired: list[Fact] = []
 
     state = await played(
         table,
@@ -93,9 +86,9 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record(tmp_path: Path
             question="Does the door give before the whispering finds him?",
         ),
         narration="You falter.",
-        on_fact=fired.append,
     )
 
+    fired = table.facts
     answer = next(fact for fact in fired if fact.kind == "question_answered")
     chance, risk = answer.dice
     rolled = [fact.trace for fact in fired if fact.kind == "dice_rolled"]
@@ -178,7 +171,6 @@ async def test_a_master_that_crashes_after_applying_still_commits_what_it_applie
     table = opened(tmp_path)
 
     def crash() -> None:
-        _ = table.call("start_turn", {})
         _ = table.call(*FOUND)
         raise OSError("the game master exploded")
 
@@ -191,13 +183,14 @@ async def test_a_master_that_crashes_after_applying_still_commits_what_it_applie
     assert table.service.state.payload.world.require(MAP).known
 
 
-async def test_a_resumed_master_is_not_run_again_once_a_tool_has_landed(tmp_path: Path) -> None:
-    """A cold retry would replay the prompt and apply the same mutation twice."""
+async def test_a_master_that_crashed_after_a_tool_landed_is_not_spawned_again(
+    tmp_path: Path,
+) -> None:
+    """A second spawn would replay the prompt and apply the same mutation twice."""
     table = opened(tmp_path)
     _ = await played(table, "I look around.")
 
     def crash() -> None:
-        _ = table.call("start_turn", {})
         _ = table.call(*FOUND)
         raise OSError("the game master exploded")
 
@@ -210,7 +203,7 @@ async def test_a_resumed_master_is_not_run_again_once_a_tool_has_landed(tmp_path
     assert [role for role, _ in table.spawner.prompts[spawned:]].count("master") == 1
 
 
-async def test_a_resumed_master_that_landed_nothing_is_tried_again_cold(tmp_path: Path) -> None:
+async def test_a_master_that_landed_nothing_is_spawned_once_more(tmp_path: Path) -> None:
     table = opened(tmp_path)
     _ = await played(table, "I look around.")
 
@@ -223,7 +216,10 @@ async def test_a_resumed_master_that_landed_nothing_is_tried_again_cold(tmp_path
     with pytest.raises(OSError, match="never started"):
         await table.service.play("I take the map.")
 
-    assert [session for _, session in table.spawner.resumed[spawned:]] == ["master-1", None]
+    assert [session for role, session in table.spawner.resumed[spawned:] if role == "master"] == [
+        None,
+        None,
+    ]
 
 
 async def test_a_turn_that_applied_nothing_and_failed_is_refused(tmp_path: Path) -> None:
@@ -233,7 +229,7 @@ async def test_a_turn_that_applied_nothing_and_failed_is_refused(tmp_path: Path)
     def crash() -> None:
         raise OSError("the game master never started")
 
-    table.spawner.turns.append(crash)
+    table.spawner.turns += [crash, crash]
 
     with pytest.raises(OSError, match="never started"):
         await table.service.play("I take the map.")
@@ -243,11 +239,10 @@ async def test_a_turn_that_applied_nothing_and_failed_is_refused(tmp_path: Path)
 
 async def test_two_rolls_in_one_turn_do_not_read_the_same_dice(tmp_path: Path) -> None:
     table = opened(tmp_path, rng=Random(1))
-    facts: list[Fact] = []
 
-    _ = await played(table, "I try the door twice.", ASKED, ASKED, on_fact=facts.append)
+    _ = await played(table, "I try the door twice.", ASKED, ASKED)
 
-    first, second = (fact.dice for fact in facts if fact.kind == "question_answered")
+    first, second = (fact.dice for fact in table.facts if fact.kind == "question_answered")
     assert first != second
 
 
