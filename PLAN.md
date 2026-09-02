@@ -1,7 +1,7 @@
 # PLAN — after the hub
 
-Five phases, in order: one scene engine written once (two phases), the scene recap with the
-campaign refinements, the audit with the docs, then voices. Self-standing: an implementer needs
+Six phases, in order: one scene engine written once (two phases), the scene recap with the
+campaign refinements, the play issues, the audit with the docs, then voices. Self-standing: an implementer needs
 this file, `CLAUDE.md` and the code. `NEXT-SPECS.md` stays for Track G's own plan later.
 
 ## How to work
@@ -36,7 +36,7 @@ uv run basedpyright
 7. **One commit per phase.** Never leave two versions of one thing alive at a commit.
 8. **Review each phase adversarially against its staged diff before the commit.**
 9. **Verify a rule against the SRD page before you build on it.** No phase here changes a rule.
-   Phase 5 verified its endpoint on 2026-09-02: OpenRouter `POST /api/v1/audio/speech` takes
+   Phase 6 verified its endpoint on 2026-09-02: OpenRouter `POST /api/v1/audio/speech` takes
    `{model, input, voice, response_format}`, `response_format` is `mp3` or `pcm`, and the reply
    is raw audio bytes; Gemini TTS emits 24 kHz 16-bit mono PCM.
 
@@ -46,8 +46,11 @@ uv run basedpyright
 | 1 — one scene world | `Person`, `SceneWorld[C, P]`, the party, the world arms | 9,950 |
 | 2 — one worldsmith, one view | the drafts, the bar, the crossing, the panels, once | 9,550 |
 | 3 — the recap and the refinements | `NextDraft.recap`, `Job.job`, resume at the end, the save card | 9,625 |
-| 4 — the audit and the docs | dead code, layout, `VISION.md` gone | 9,600 |
-| 5 — voices | `SpeechConfig`, `app/speech.py`, `ui.audio` | 9,780 |
+| 4 — the play issues | the brief rewrite, one bar, the opening told, the rules named, engine art, the dice | 9,580 |
+| 5 — the audit and the docs | dead code, layout, `VISION.md` gone | 9,555 |
+| 6 — voices | `SpeechConfig`, `app/speech.py`, `ui.audio` | 9,735 |
+
+Phase 3 landed at 9,480, under its row; the rows after it count from there.
 
 The caps stand: 2,000 Python lines per engine; fifteen game-master tools counted as tools plus
 `change_world` arms, the two party arms not counted. No phase adds a tool or an arm.
@@ -110,7 +113,7 @@ def party_panel(members: Sequence[Person]) -> tuple[Panel, ...]:
 
 `Person` lives here, not in `scenes.py`, so the party functions take it instead of a second
 protocol. `TAIL_EXCHANGES` and `told_tail` move only in Phase 3; `Counter.clamped` goes in
-Phase 4.
+Phase 5.
 
 ### 1.2 `engines/scenes.py`: the world
 
@@ -385,7 +388,7 @@ the `CLAUDE.md` exception covers beside the bounds.
 BaseModel, str, ScenarioKind], AnyScenario]` (title, premise, packs, written, source, kind),
 Tunnel Goons' `build_scenario` drops the parameter too, and `Runtime.new_scenario` applies it
 once on the built file: `write_scenario(..., as_scenario(written).model_copy(update={"art_style":
-art_style}), document)`. Phase 5 adds `voice` to that same update.
+art_style}), document)`. Phase 6 adds `voice` to that same update.
 
 ### 2.3 `engines/scenes.py`: the views
 
@@ -566,11 +569,228 @@ save with its last scene title. `src` about 9,625.
 
 ---
 
-## Phase 4 — the audit and the docs
+## Phase 4 — the play issues
+
+Six things seen in play, fixed together. Each is restated here so the phase stands on its
+own; `ISSUES.md` is deleted at the end. **Split**: A (opus: 4.1–4.3) then B (sonnet: 4.4–4.6),
+sequential, since both touch `ui/game.py` and `app/runtime.py`. About two hours of agent time
+for A, one for B.
+
+What was seen, and its cause:
+
+1. A job taken from the hub ended in `the written world no longer fits: the scene rewrites
+   'sil-marrow', who is already in the cast`, the player still at the hub, the reason in the log and a grey sidebar
+   line. The worldsmith re-files a hub regular under `cast` because the `cast` field carries no
+   description and `TAKE_BRIEF` says "anyone from the hub's cast the player names is present".
+   The refusal lives in `apply_scene`, at install, after the worldsmith has answered; the bar
+   the one retry sees (`scene_unmet`) never checks it. "Already met", "both present and
+   hidden" and "filed under" are install-only refusals too. The retry is the agentic loop
+   (`answered`, one re-prompt, `CLAUDE.md`); these refusals sit outside it.
+2. The home page names a scenario and a save by title only; the rules they play are not shown.
+3. A 24XX game is drawn as painterly fantasy: the style falls back to `MediaConfig.style`.
+4. A turn's narration reaches the page only after the worldsmith has finished: `play` commits
+   the turn, then awaits the crossing before returning, and `_send` refreshes after `play`.
+5. A new game, a new job and a return home drop the player in: nothing is narrated at the
+   opening, the situation is a grey line in the header, the stake is in the sidebar, the open
+   job's terms reach the master and never the player, and the "New scene" card holds a title.
+6. The dice land as static cards.
+
+### 4.1 One bar, and the worldsmith may rewrite a brief
+
+`engines/scenes.py`. A cast member's name and sheet are the rules'; their `brief` is the
+worldsmith's, and may change between scenes (a scar, a new post, a changed loyalty):
+
+```python
+class SceneDraft[C: Person](Frozen):
+    situation: str = Field(
+        min_length=MIN_SITUATION,
+        description="What the player sees and knows on arrival: where they are, why they are "
+        "here, what is in front of them. Read to the player, so it holds nothing hidden.",
+    )
+    cast: dict[EntityId, C] = Field(
+        default_factory=dict,
+        description="New people and things, filed under their own id. An id already in THE "
+        "WHOLE CAST re-files that person: their `brief` is rewritten and nothing else; their "
+        "name and their sheet stay as the rules hold them.",
+    )
+
+
+def merged_cast[C: Person, P: Person](world: SceneWorld[C, P], draft: SceneDraft[C]) -> dict[EntityId, C]:
+    """A re-filed member keeps the world's entry with the draft's brief."""
+    return {
+        **world.cast,
+        **{
+            one: held.model_copy(update={"brief": written.brief})
+            if (held := world.cast.get(one)) is not None
+            else written
+            for one, written in draft.cast.items()
+        },
+    }
+```
+
+`scene_unmet` takes every refusal `apply_scene` made alone, in this order after the followers
+check: `world.player.id in draft.cast` → "a cast that does not re-file the player"; an entry
+whose `id` is not its key → `f"cast entries filed under their own id: {[f'{key} holds {held.id}']}"`;
+`cast_unmet` as today over `everyone = {player.id: player, **merged_cast(world, draft)}`
+(`dict(draft.cast)` at the opening); `present` and `hidden` resolved through `resolved_id`
+with strays skipped (`cast_unmet` names them) that overlap → `f"nobody listed as both present
+and hidden: {overlap}"`; resolved `hidden` whom `everyone` holds as known → `f"a hidden list
+without {met}, whom the player has already met"` (a re-filed member's `known` is the world's,
+which is why the merge happens before the check); `unwritten()` over the draft's new entries
+only, since a re-filed sheet is dropped; then `hub_unmet`.
+
+`apply_scene` opens with `if (refused := scene_refusal(draft, world)) is not None: raise
+ValueError(refused)` and loses its own checks; its body is `world.cast = merged_cast(world,
+draft)`, resolve, mark known, recap, append. The bar is one function, run by the retry loop on
+the turn's snapshot and by the install on the live draft: the install refuses only what the
+turn itself changed after the write began (the outgrown-scene test keeps that case).
+
+The three `worldsmith.md`, after "may then be named in `present` or `hidden`.": "Someone
+already in THE WHOLE CAST may be filed again to rewrite their `brief`; their name and their
+sheet are the rules' and do not change."
+
+`ui/game.py`: after `session.play` returns in `_send`, `if session.write_failure:
+ui.notify(NO_WAY_ON, type="warning")`, `NO_WAY_ON` imported from `panels.py`, which keeps its
+sidebar line. Tests: `test_invalid_actor_from_crossing_is_rejected_before_commit` becomes "a
+re-filed cast member takes the new brief and keeps their name and sheet" (Mara's name stays
+`Mara`, her brief is the draft's); the install-only refusals in `test_tool_surface.py` become
+bar tests (the retry sees the refusal: `write_failure` still holds it, through `answered`'s
+"answered nothing usable").
+
+### 4.2 The player knows where they are
+
+- `install_scene`'s card carries the scene:
+  `"\n".join((f"{label}: {title}", situation, f"At stake: {question}", *([f"The job: {job}"] if JobDraft)))`.
+  The chat draws the headline bold and each further line small, as `_card` does today.
+- `scene_rows`: after the question row, `PanelRow(label="The job", detail=world.job)` when
+  `world.job` is set. Tunnel Goons: nothing, its job is a name.
+- The opening is narrated. `app/runtime.py`, beside `CROSSED`:
+
+```python
+BEGUN = "(the story begins)"
+OPENING = (
+    "The story begins here; the player has read nothing yet. Write the opening: who they are "
+    "(WHO IS HERE names them first), where they stand, what is in front of them, and what pulls "
+    "at them, from WHAT THIS SCENE IS ABOUT. They have not acted, so settle nothing."
+)
+
+class GameService:
+    def unopened(self) -> bool:
+        """No exchange yet: nobody has told the player where they stand."""
+        return not self.busy and not self.engine.history(self.state)
+
+    async def open(self, on_step: Callable[[TurnStep], None] | None = None) -> None:
+        """A narrator that fails leaves the premise to do its work; a reload mid-opening is a no-op."""
+        if not self.unopened():
+            return
+        announce = partial(self._announce, on_step=on_step)
+        self.busy = True
+        try:
+            draft = self.state.draft()
+            announce("narrator")
+            lines = await self._narrate(draft, (), OPENING, fatal=False)
+            if lines:
+                view = self.engine.narrator_view(draft)
+                self.commit(close_segment(self.engine, view, draft, BEGUN, lines, ()))
+            self.illustrate(_latest_narration(self.engine, self.state))
+        finally:
+            self.step, self.busy = None, False
+```
+
+  `restart()` no longer illustrates: the page opens the game again. The opening costs a turn,
+  as a crossing does (`close_segment`); the journal lists it as "turn 1: (the story begins)".
+- `ui/game.py`: `_send`'s body becomes `_run(view, bubble, lambda: session.play(...))`, where
+  `_run(view, bubble: str | None, playing: Callable[[], Awaitable[None]])` is today's `_send`
+  from `view.live_prompt = bubble` to the final `_scroll`, plus the 4.1 toast. `_open(view)` is
+  `_run(view, None, lambda: session.open(on_step=...))`. `game_page` replaces
+  `session.illustrate()` with `if session.unopened(): ui.timer(0.1, lambda: _open(view),
+  once=True) else: session.illustrate()`. `restart` becomes async and ends with `await
+  _open(view)`.
+
+### 4.3 The narration shows while the worldsmith works
+
+`GameService.play` gains `on_commit: Callable[[], None] | None = None`, called right after
+the first `self.commit(state)`, before `_grow`. `ui/game.py` gains `on_commit(view)` beside
+`on_step` and `on_fact`: `view.live_prompt, view.live_facts = None, []`, then `chat.refresh()`,
+`live_turn.refresh()`, `_scroll(view)`. `_run` passes it. `extend` does not take it: nothing is
+committed before its write. About 12 lines.
+
+### 4.4 The home page names the rules
+
+`SaveOption.engine: EngineId`, set from `game.engine` in `load_catalog`. `home_page` builds
+`rules = {engine_id: engine.title for engine_id, engine in runtime.engines.items()}` once and
+passes it to `_new_game` and `_saved_games`: the scenario select's options read
+`f"{entry.title} · {rules[entry.engine]}"`; `_saved_card` draws `ui.badge(rules[saved.engine]).props("outline")`
+in a row with the campaign badge. The character select is unchanged: it already lists the
+rules' own characters.
+
+### 4.5 The engine's art
+
+`Engine.art_style: str` after `title`, one line per `build()`:
+
+- 24XX: "Clean science-fiction illustration: hard light, neon on steel, lived-in technology,
+  no text or lettering."
+- Breathless: "Grim survival-horror illustration: dim, desaturated, wet surfaces, no text or
+  lettering."
+- Loner 3e: "Painterly illustration, muted colours, no text or lettering."
+- Tunnel Goons: "Old-school fantasy illustration in black ink, cross-hatched, no text or
+  lettering."
+
+`MediaConfig.style` is deleted: with every engine carrying one, it would never be read.
+`tests/ui/test_settings.py`'s round-trip keeps its quoted-string case on another string
+field (`media.model`). `open_illustrator(settings, target, scenario, character, store, *,
+style: str)` takes the resolved style; `Runtime._open` passes `scenario.art_style or
+engine.art_style`. `ui/create.py`'s art style input reads `placeholder=f"Leave empty for:
+{engine.art_style}"`, so the player sees what an empty box gives.
+
+### 4.6 The dice tumble
+
+`ui/theme.py`: `game-die-land` and its `.game-die` animation go; in their place:
+
+```css
+.game-die-live { animation: game-die-tumble 600ms cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes game-die-tumble {
+  from { opacity: 0; transform: perspective(240px) rotateX(-220deg) rotateY(160deg) scale(.5); }
+  60% { opacity: 1; transform: perspective(240px) rotateX(20deg) rotateY(-15deg) scale(1.08); }
+  to { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .game-die-live { animation: none; } }
+```
+
+`_card(fact, *, live: bool = False)` hands `live` to `_dice_group`, which adds `game-die-live`
+when set. `live_turn` renders `_card(fact, live=True)`; `chat` renders still, so a refresh no
+longer replays every roll in the history. Real 3D dice go to `IDEAS.md` (4.7).
+
+### 4.7 Docs
+
+- `CLAUDE.md`, design decisions, after the narrator line: "The worldsmith writes new cast
+  entries and rewrites a brief; a name and a sheet are the rules'. The scene bar and the
+  install share one refusal list, so the worldsmith's one retry sees every refusal." And after
+  "A bad model answer...": "The narrator opens every game with a passage before the player acts."
+- `README.md`, under the three roles: "The narrator opens the game with who the player is and
+  where they stand; the player acts from there."
+- `IDEAS.md`: add "17: Real 3D dice: a physics canvas; the CSS tumble is the cheap version."
+- Delete `ISSUES.md`. `PROGRESS.md` gains this phase's entry.
+
+### Done when
+
+Green; every golden unchanged (no fixture holds a `scene_opened` card, and the draft schemas
+render only in the worldsmith prompt, which has no golden). A draft that re-files Mara with a
+new brief lands with her name and sheet intact; a draft that hides someone the player has met
+is refused by the bar and the retry sees it; a write that still fails toasts. A new game opens
+on a narrator passage filed as "(the story begins)" before the player acts, and restart does
+it again; a turn's narration shows while the worldsmith works; the New scene card carries the
+situation, the stake and the job; the sidebar shows the open job. The home page names each
+scenario's and each save's rules; a 24XX game with no scenario style is drawn in the engine's;
+live dice tumble and the history stands still. `src` about 9,580.
+
+---
+
+## Phase 5 — the audit and the docs
 
 No behaviour change. **One implementer, sonnet.**
 
-### 4.1 Cuts and layout
+### 5.1 Cuts and layout
 
 - Delete the `hint` on Tunnel Goons' three ability steps (a step with options never shows it).
 - `core/views.py`: `sections()` after the classes. `ui/game.py`: `on_fact` above the private
@@ -590,7 +810,7 @@ No behaviour change. **One implementer, sonnet.**
   `engines/seam.py`, leaving `core.py` the world toolkit. Imports cost about 40 lines; nothing
   else moves with them.
 
-### 4.2 `CLAUDE.md`
+### 5.2 `CLAUDE.md`
 
 The engine line reads: "An engine is self-contained under `engines/<id>/`, under 2,000 lines,
 with at most fifteen game-master tools, counted as tools plus `change_world` arms, the two
@@ -603,7 +823,7 @@ world through tools only; a rule may leave a decision the player answers next tu
 narrator receives revealed canon only; the exchange is recorded and the whole draft is
 validated and committed; then the engine's transition may offer the way on."
 
-### 4.3 `VISION.md` is deleted
+### 5.3 `VISION.md` is deleted
 
 Move first, then delete: content paths (characters, scenarios, saves) and "play costs the
 subscription; illustration is the exception" into `README.md` (one short paragraph under "Start
@@ -611,7 +831,7 @@ the app"); Maze Rats (`2c3e8a5`, `62f95c6`) and the Pokémon–Showdown boundary
 as two items. Then delete `VISION.md`, its line in `README.md`'s "Project information", and its
 `extend-exclude` entry in `pyproject.toml`. `grep -r VISION` finds nothing.
 
-### 4.4 `README.md`, `IDEAS.md`, `COMPETITOR-RESEARCH.md`
+### 5.4 `README.md`, `IDEAS.md`, `COMPETITOR-RESEARCH.md`
 
 - `README.md` gains one architecture paragraph beside the campaign paragraph: the three roles
   as spawned CLIs returning typed proposals, the engine seam (one dataclass of typed callables,
@@ -622,11 +842,11 @@ as two items. Then delete `VISION.md`, its line in `README.md`'s "Project inform
   done by this phase; keep 4's eval loop, 11, 13, 16; add moving home with its sketch
   (`SceneWorld.hubs` tuple, `at_hub = place == hubs[-1]`, a `MOVE_HOME` row, `HubDraft`
   reused, a "New home: <title>" card, about 70 lines, no SRD prints it) and the two items from
-  4.3.
+  5.3.
 - `docs/COMPETITOR-RESEARCH.md`: one dated note at the top: the "ours" columns, `ROADMAP.md`,
   "code mode" and `.agents/skills` are stale.
 
-### 4.5 Engine docs, one shape
+### 5.5 Engine docs, one shape
 
 The four `docs/<ENGINE>.md` already share one heading order; only `docs/LONER-3E.md` lacks
 `## The tools`. Add it between "Pack sources" and "Deviations", one line per tool as the other
@@ -636,18 +856,18 @@ three write them: `change_world` (its eight arms named), `next_scene`, `roll_que
 ### Done when
 
 Green; every golden unchanged. No document holds rules text; `grep -r VISION` finds nothing;
-`src` about 9,600.
+`src` about 9,555.
 
 ---
 
-## Phase 5 — voices
+## Phase 6 — voices
 
 Narration and dialogue read aloud, generated after the turn commits, cached beside the art,
 played under the newest exchange. Off by default. The narrator's voice is the scenario's, as its
-art style is. **Split**: A (sonnet: 5.1–5.3, config and the reader) then B (sonnet: 5.4–5.5,
+art style is. **Split**: A (sonnet: 6.1–6.3, config and the reader) then B (sonnet: 6.4–6.5,
 the service and the page).
 
-### 5.1 `config.py`
+### 6.1 `config.py`
 
 ```python
 ProviderName = Literal["openrouter", "local", "kokoro"]
@@ -679,14 +899,14 @@ class Settings(BaseSettings):
 `local` is Ollama's port and serves no speech, hence `kokoro`. The settings page renders all of
 it unchanged.
 
-### 5.2 The scenario's voice
+### 6.2 The scenario's voice
 
 `Scenario.voice: str = ""` in `core/model.py` beside `art_style`. `Runtime.new_scenario`
 takes `voice: str` beside `art_style` and adds it to the `model_copy(update=...)` Phase 2
 left there; `Authoring.build` does not change. `ui/create.py`: an input "Narrator voice" with
 placeholder "Leave empty for the default voice" under the art style input, passed as `voice=`.
 
-### 5.3 `app/media.py` shares, `app/speech.py` reads
+### 6.3 `app/media.py` shares, `app/speech.py` reads
 
 In `media.py`, make module functions of the two things both files use: `claim(generating:
 set[str], key) -> bool` (synchronous, as today's comment says) and `post_bearer(provider, path,
@@ -730,7 +950,7 @@ def speech_body(model: str, voice: str, text: str) -> dict[str, str]
 The request body, `voice_of`, `clip_key` and the wav wrap are the tested functions; no test
 spawns or posts anything.
 
-### 5.4 `app/runtime.py`
+### 6.4 `app/runtime.py`
 
 `GameService.reader: Reader | None = None`, set by `_open` through `open_reader`. Add
 `speak()`: like `illustrate`, a retained `create_task(self.reader.read(history[-1]))` over
@@ -740,7 +960,7 @@ commits inside that same `play`, so `_install` needs no hook. `newest_clip() -> 
 and `clip_pending() -> bool` read the last exchange. Cards, situations and debriefs are not
 spoken; a resumed game generates nothing for old exchanges.
 
-### 5.5 `ui/game.py`
+### 6.5 `ui/game.py`
 
 `chat` takes the `GameView` (it needs the session and one flag). After an exchange's lines,
 when `session.reader is not None` and `session.reader.clip(exchange)` is a path:
@@ -753,7 +973,7 @@ store it, set `autoplay_clip` to the clip when it is a path, and `chat.refresh()
 clears `autoplay_clip` before `refresh_all`, so the previous clip does not restart at the next
 turn. The 3-second timer runs when `media` or `reader` is set. About 25 lines.
 
-### 5.6 `IDEAS.md`
+### 6.6 `IDEAS.md`
 
 Item 1 (sounds and voices) is done: delete it.
 
@@ -762,4 +982,4 @@ Item 1 (sounds and voices) is done: delete it.
 Green; every golden unchanged. With `SPEECH__ENABLED=true` and a key, a turn's narration plays
 within seconds of the text in the scenario's voice, or the settings' when it names none; the
 wav is reused on reload; with the provider down, the turn is unaffected and one warning logs.
-`src` about 9,780.
+`src` about 9,735.
