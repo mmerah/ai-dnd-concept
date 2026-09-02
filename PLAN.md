@@ -114,7 +114,8 @@ Rules:
 | 2b — the shape, refined | about 9,990 |
 | 3 — Breathless and Loner | about 10,200 |
 | 4 — Tunnel Goons | about 10,350 |
-| 5 — the enduring documents | about 10,350 |
+| 4b — the shared hub code, once | about 10,250 |
+| 5 — the enduring documents | about 10,250 |
 
 Targets are targets. The caps stand: 2,000 Python lines per engine, fifteen game-master tools
 (tools plus `change_world` arms; 24XX is at fifteen). No phase adds a tool.
@@ -156,7 +157,9 @@ Targets are targets. The caps stand: 2,000 Python lines per engine, fifteen game
    `scenes.py`, written in Phase 1: the models, the walk, the rows, the ledger, the card, the
    checks, the fixed intents and the prompt briefs. `hub.py` imports `core`; `scenes.py` and
    every engine import `hub.py`. Anything bound to an engine's world type stays in the engine:
-   no type parameter, protocol or callback is added to move it.
+   no type parameter, protocol or callback is added to move it. Shared code takes plain values
+   — `hub`, `runs`, a draft's fields — never a world, and what the engines copy from each other
+   moves there: `scenes.py` exists for exactly that, and Phase 4b does it once.
 8. **The return is its own model.** Scene engines answer a return with `HubDraft(SceneDraft)`,
    Tunnel Goons with `ReturnDraft`. Both carry `debrief: Debrief` (the model writes `text` and
    `finished` together; nothing is reassembled) and `offers`. `ReturnDraft` bounds `offers` to
@@ -743,6 +746,61 @@ class ReturnDraft(Frozen):
 
 **Done when:** green; the tavern hands out a dungeon, the player walks it and back, "Report in"
 lands the card; engine at about 1,420 lines; `src` about 10,350.
+
+---
+
+## Phase 4b — the shared hub code, once
+
+Phase 3's reviews found the hub code a third identical copy across the scene engines, and Phase 4
+makes a fourth of the world-free part. Move it once, after Tunnel Goons shows what it shares. One
+implementer. Nothing the player sees changes; the golden fixtures do not change.
+
+### 4b.1 `engines/hub.py` — world-free, read by all four engines
+
+```python
+MIN_JOB = 80
+ONE_SHOT_OPENING = "Write the opening scene of this adventure: ..."   # the three engines' text, verbatim
+
+
+def heading(job: str, title: str) -> str: ...          # title when job in ("", title) else f"{job} — {title}"
+def hub_sections(hub_title, hub, board, jobs, *, at_hub: bool, returning: bool) -> Rows: ...
+                                                        # picks the moment itself; `Moment` and `BRIEFS` stay private
+def hub_unmet(
+    job: str, place: Slug, offers: Sequence[Offer], hub: Slug | None, *, taking: bool, returning: bool
+) -> list[str]: ...                                     # the tail of every `_scene_unmet`, verbatim
+def question_heading(at_hub: bool) -> str: ...         # WHAT THIS PLACE IS ABOUT | THE QUESTION THIS SCENE SETTLES
+def master_tail(hub, at_hub, board, jobs, job: str) -> Rows: ...   # THE JOB, JOBS SO FAR, THE BOARD, as appended today
+def board_panel(at_hub, board) -> tuple[Panel, ...]: ...           # `Board` at the hub, else ()
+def jobs_panel(hub, jobs) -> tuple[Panel, ...]: ...               # `Jobs` in a campaign, else ()
+```
+
+### 4b.2 `engines/scenes.py` — bound to `SceneRun`, read by the three scene engines
+
+```python
+def job_runs(hub, runs) -> list[SceneRun]: ...         # runs[job_start(hub, stops_of(runs)):]
+def jobs(hub, runs) -> tuple[Job, ...]: ...             # closed_jobs(hub, stops_of(runs))
+def filed_exchanges(hub, runs) -> tuple[Exchange, ...]: ...   # the three `exchanges()` bodies, verbatim, via `heading`
+def spent_note(run, *, at_hub: bool, someone_dead: bool) -> tuple[str, ...]: ...   # `record`'s tail
+def scene_rows(question, hub, *, at_hub: bool, settled: bool) -> tuple[PanelRow, ...]: ...
+                                                        # the question, then HUB_ROW, or "Way on" and HOME_ROW
+```
+
+### 4b.3 The engines
+
+- Each scene world keeps `at_hub` (one line, read on every path) and loses `stops()`,
+  `job_runs()`, `jobs()` and `exchanges()`; call sites call the `scenes.py` functions with
+  `(world.hub, world.runs)`. Tunnel Goons keeps `at_hub` and `stops()` (it maps visits).
+- `_scene_unmet` ends with `unmet.extend(hub_unmet(...))`; `record` ends with `spent_note(...)`;
+  `render_worldsmith` passes `at_hub=` and `returning=` to `hub_sections`; `render_opening` reads
+  `ONE_SHOT_OPENING` from `hub.py`; `player_view` and `master_sections` (all four engines) use
+  `scene_rows`, `board_panel`, `jobs_panel`, `question_heading` and `master_tail`.
+- What stays in the engine, on purpose: `SceneDraft`/`HubDraft` (the cast type differs),
+  `install_scene`'s `HubDraft` branch (the note differs), `check_game` (the message differs),
+  `CAMPAIGN_OPENING` (the hub differs per SRD).
+- Tests: `tests/core/test_hub.py` gains one test per new `hub.py` function; the `scenes.py`
+  functions are covered by the engines' existing tests once they call them. No fixture changes.
+
+**Done when:** green; no fixture moved; `src` about 10,250; each engine at least 60 lines lighter.
 
 ---
 
