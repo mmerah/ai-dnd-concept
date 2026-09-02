@@ -313,7 +313,7 @@ Same phase as Track E, after Phase 5 has deleted `HUB-SPECS.md`, `PLAN.md` and `
    `IDEAS.md`. Then `README.md`'s link and `pyproject.toml`'s `extend-exclude` entries.
 2. **`README.md`** gains one architecture paragraph (the three roles, the seam, the one-way
    imports) beside the campaign paragraph Phase 5 wrote.
-3. **`IDEAS.md`**: delete 15 (done), 12 (item 1 targets a skill that no longer exists, item 2 is
+3. **`IDEAS.md`**: delete 12 (item 1 targets a skill that no longer exists, item 2 is
    D.2), 3 and 9 (refused by the non-goals), the built-in half of 4; fold 5, 6, 7, 8, 14 into one
    "audit" line that Track E closes; keep 4's eval loop, 11, 13, moving home (D.5).
 4. **`COMPETITOR-RESEARCH.md`** stays as the reference to other projects; one dated note at the
