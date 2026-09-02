@@ -71,10 +71,10 @@ review findings and why, anything known and accepted.
   `install_scene` keeps PLAN 2.2's one `SceneDraft[Any]`.
 - The bar refuses a draft that names the party (PLAN 2.1), and `cast_unmet` demanded "one
   existing cast member brought back" from a cast that could be the party alone: with every cast
-  member travelling, no draft could pass. The party now satisfies that demand: `cast_unmet`'s
-  `opening` keyword became `needs_return`, false at the opening and false when the party is
-  non-empty. The stricter reading (skip the demand only when nobody else could come back) was
-  not taken; see the phase report.
+  member travelling, no draft could pass. The demand now stands only while someone outside the
+  party could come back: `cast_unmet`'s `opening` keyword became `needs_return`, false at the
+  opening and false when every cast member travels with the player. The maintainer chose this
+  over "a party satisfies the demand".
 - `install_scene`'s trace reads "the player travelling with A, B": number-neutral, since the
   brief's "and A travel there" was wrong for one companion.
 - `subject_of` is private to `scenes.py`; Tunnel Goons keeps its own.

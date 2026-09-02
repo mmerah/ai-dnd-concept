@@ -157,14 +157,19 @@ def test_the_next_scene_needs_one_brought_back() -> None:
     )
 
 
-def test_a_party_counts_as_what_the_next_scene_brings_back() -> None:
+def test_nothing_is_owed_back_once_the_whole_cast_travels_with_the_player() -> None:
     world = small_world().payload.world
-    world.party = [KESTREL]
     stranger = EntityId("stranger")
     draft = _draft(
         hidden=(stranger,),
         cast={stranger: Person(id=stranger, name="A Stranger", brief="unknown to the world")},
     )
+    world.party = [KESTREL]
+    assert scene_refusal(draft, world) == (
+        "the scene needs at least one existing cast member brought back"
+    )
+    world.cast[SABLE].known = True
+    world.party = [KESTREL, SABLE]
     assert scene_refusal(draft, world) is None
 
 
