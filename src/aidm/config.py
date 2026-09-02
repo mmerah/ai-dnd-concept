@@ -45,7 +45,6 @@ class MediaConfig(BaseModel):
     icon_ratio: str = "1:1"
     timeout: float = Field(default=180.0, gt=0.0)
     max_references: int = Field(default=4, ge=0)
-    style: str = "Painterly fantasy illustration, muted colours, no text or lettering."
 
 
 class Roles(BaseModel):

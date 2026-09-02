@@ -68,6 +68,9 @@ def build() -> Engine[TunnelGoonsGame]:
     return Engine(
         id=EngineId("tunnelgoons"),
         title="TUNNEL GOONS",
+        art_style=(
+            "Old-school fantasy illustration in black ink, cross-hatched, no text or lettering."
+        ),
         instructions=(ENGINE_DIR / "rules.md").read_text(encoding=ENCODING),
         packs=(),
         game=TunnelGoonsGame,

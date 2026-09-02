@@ -261,7 +261,7 @@ async def test_a_transition_without_an_arrival_brief_extends_on_a_lineless_excha
     exchange = new_run.exchanges[0]
     assert exchange.lines == ()
     assert exchange.prompt == "Out into the cloister walk."
-    assert any(fact.card == "New scene: The Cloister Walk" for fact in exchange.facts)
+    assert any(fact.card.startswith("New scene: The Cloister Walk") for fact in exchange.facts)
     assert not any(role == "master" for role, _ in table.spawner.prompts)
 
 
@@ -384,12 +384,32 @@ async def test_the_players_own_answer_is_the_brief_and_the_crossing_lands_in_tha
     assert "before Tomas hears the door" in table.spawner.prompt("worldsmith")
 
 
+async def test_the_page_is_told_to_refresh_before_the_worldsmith_is_asked(tmp_path: Path) -> None:
+    """The turn's own narration must reach the player while the slow write runs."""
+    table = opened(tmp_path)
+    table.spawner.answers["worldsmith"] = [_scene()]
+    order: list[str] = []
+
+    _ = await played(table, "I go.", the_way_on())
+    table.spawner.turns.append(table.plays(()))
+    table.spawner.answers["narrator"] = [narrated("You pull the door to."), narrated("Rain.")]
+    await table.service.play(
+        "Out into the cloister walk.",
+        on_step=order.append,
+        moving_on=True,
+        on_commit=lambda: order.append("commit"),
+    )
+
+    assert order.count("commit") == 1
+    assert order.index("commit") < order.index("worldsmith")
+
+
 async def test_a_scene_the_world_has_outgrown_is_dropped_rather_than_killing_the_turn(
     tmp_path: Path,
 ) -> None:
-    """The write reads a copy taken as the turn opened, so the turn itself can undo its scene."""
+    """The bar sees the turn's own changes."""
     table = opened(tmp_path)
-    table.spawner.answers["worldsmith"] = [_scene()]
+    table.spawner.answers["worldsmith"] = [_scene(), _scene()]
 
     _ = await played(table, "I go.", the_way_on())
     state = await played(

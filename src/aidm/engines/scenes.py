@@ -333,11 +333,20 @@ class SceneDraft[C: Person](Frozen):
     place: Slug
     title: str
     question: str = Field(min_length=10)
-    situation: str = Field(min_length=MIN_SITUATION)
+    situation: str = Field(
+        min_length=MIN_SITUATION,
+        description="What the player sees and knows on arrival: where they are, why they are "
+        "here, what is in front of them. Read to the player, so it holds nothing hidden.",
+    )
     present: tuple[str, ...] = ()
     hidden: tuple[str, ...] = ()
     secret: str = ""
-    cast: dict[EntityId, C] = Field(default_factory=dict)
+    cast: dict[EntityId, C] = Field(
+        default_factory=dict,
+        description="New people and things, filed under their own id. An id already in THE "
+        "WHOLE CAST re-files that person: their `brief` is rewritten and nothing else; their "
+        "name and their sheet stay as the rules hold them.",
+    )
 
 
 class NextDraft[C: Person](SceneDraft[C]):
@@ -694,6 +703,8 @@ def check_hub(hub: Slug | None, board: Sequence[Offer], runs: Sequence[SceneRun]
 
 def scene_rows[C: Person, P: Person](world: SceneWorld[C, P]) -> tuple[PanelRow, ...]:
     rows = [PanelRow(label=world.current.question, detail="")]
+    if world.job:
+        rows.append(PanelRow(label="The job", detail=world.job))
     if world.at_hub:
         rows.append(HUB_ROW)
     elif world.run.settled:
@@ -719,10 +730,13 @@ def opening_draft[C: Person](cast_type: type[C], kind: ScenarioKind) -> type[Sce
 def scene_unmet[C: Person, P: Person](
     draft: SceneDraft[C], world: SceneWorld[C, P] | None
 ) -> list[str]:
-    """No world means the opening: nobody exists yet, and no id can be the player's."""
+    """The one bar: every refusal the install would make, so the worldsmith's retry sees them all.
+    No world means the opening: nobody exists yet, and no id can be the player's."""
     held: Mapping[EntityId, C] = {} if world is None else world.cast
     everyone: Mapping[EntityId, Entity] = (
-        dict(draft.cast) if world is None else {world.player.id: world.player, **held, **draft.cast}
+        dict(draft.cast)
+        if world is None
+        else {world.player.id: world.player, **merged_cast(world, draft)}
     )
     followers = () if world is None else (world.player.id, *world.party)
     others = (*draft.present, *draft.hidden)
@@ -732,12 +746,28 @@ def scene_unmet[C: Person, P: Person](
             "a scene that does not list the player or the party; "
             f"they are put there by code: {named}"
         )
+    if world is not None and world.player.id in draft.cast:
+        unmet.append("a cast that never rewrites the player")
+    if misfiled := [
+        f"{one.id!r} is filed under {key!r}" for key, one in draft.cast.items() if key != one.id
+    ]:
+        unmet.append("cast entries under their own id: " + "; ".join(misfiled))
     # Nothing can be brought back once everyone left behind travels with the player.
     needs_return = world is not None and bool(set(world.cast) - set(world.party))
     unmet.extend(
         cast_unmet(others, draft.hidden, draft.situation, everyone, held, needs_return=needs_return)
     )
-    if broken := [f"{eid}: {why}" for eid, one in draft.cast.items() if (why := one.unwritten())]:
+    present = [one for name in draft.present if (one := resolved_id(name, everyone)) is not None]
+    hidden = [one for name in draft.hidden if (one := resolved_id(name, everyone)) is not None]
+    if overlap := sorted(set(present) & set(hidden)):
+        unmet.append(f"nobody listed as both present and hidden: {overlap}")
+    if met := sorted(one for one in set(hidden) - set(followers) if everyone[one].known):
+        unmet.append(f"a hidden list without {met}, whom the player has already met")
+    if broken := [
+        f"{eid}: {why}"
+        for eid, one in draft.cast.items()
+        if eid not in held and (why := one.unwritten())
+    ]:
         unmet.append(f"cast members as the worldsmith may write them: {broken}")
     unmet.extend(
         hub_unmet(
@@ -775,32 +805,32 @@ def opening_canon[C: Person](draft: SceneDraft[C], source: str) -> SceneCanon[C]
     )
 
 
+def merged_cast[C: Person, P: Person](
+    world: SceneWorld[C, P], draft: SceneDraft[C]
+) -> dict[EntityId, C]:
+    """A re-filed member keeps the world's entry with the draft's brief."""
+    return {
+        **world.cast,
+        **{
+            one: held.model_copy(update={"brief": written.brief})
+            if (held := world.cast.get(one)) is not None
+            else written
+            for one, written in draft.cast.items()
+        },
+    }
+
+
 def apply_scene[C: Person, P: Person](world: SceneWorld[C, P], draft: SceneDraft[C]) -> None:
-    """Every refusal lands before the first write: a rejected scene leaves the world alone."""
-    for one, held in draft.cast.items():
-        if one == world.player.id:
-            raise ValueError("the scene rewrites the player")
-        if one in world.cast:
-            raise ValueError(f"the scene rewrites {one!r}, who is already in the cast")
-        if one != held.id:
-            raise ValueError(f"entity {held.id!r} is filed under {one!r}")
-    cast: dict[EntityId, C] = {**world.cast, **draft.cast}
-    everyone: Mapping[EntityId, Entity] = {world.player.id: world.player, **cast}
-    followers = (world.player.id, *world.party)
+    """The bar ran on the turn's snapshot already; here it is the safety net."""
+    if (refused := scene_refusal(draft, world)) is not None:
+        raise ValueError(refused)
+    finished = world.job_done  # the master's verdict on the job the return is closing
+    world.cast = merged_cast(world, draft)
+    everyone: Mapping[EntityId, Entity] = {world.player.id: world.player, **world.cast}
     present = resolve_ids(draft.present, everyone, "present")
     hidden = resolve_ids(draft.hidden, everyone, "hidden")
-    if named := sorted(one for one in (*present, *hidden) if one in followers):
-        raise ValueError(
-            f"the scene lists {named}, who are in every scene and are put there by code"
-        )
-    if overlap := sorted(set(present) & set(hidden)):
-        raise ValueError(f"the scene lists {overlap} as both present and hidden")
-    if met := sorted(one for one in hidden if cast[one].known):
-        raise ValueError(f"the scene hides {met}, whom the player has already met")
-    finished = world.job_done  # the master's verdict on the job the return is closing
-    world.cast = cast
     for one in present:
-        cast[one].known = True
+        world.cast[one].known = True
     if isinstance(draft, NextDraft):
         world.run.recap = draft.recap
     world.runs.append(
@@ -846,7 +876,14 @@ def install_scene[S: SceneState[Any, Any]](
     if came := [one.name for one in world.members()]:
         trace += f", the player travelling with {', '.join(came)}"
     label = "Home" if isinstance(written, ReturnDraft) else "New scene"
-    opened = Fact(kind="scene_opened", trace=trace, told=True, card=f"{label}: {written.title}")
+    card = "\n".join(
+        (
+            f"{label}: {written.title}",
+            f"At stake: {written.question}",
+            *([f"The job: {written.job}"] if isinstance(written, JobDraft) else []),
+        )
+    )
+    opened = Fact(kind="scene_opened", trace=trace, told=True, card=card)
     if isinstance(written, ReturnDraft):
         world.board = written.offers
         job = world.jobs()[-1]

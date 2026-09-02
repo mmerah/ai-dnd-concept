@@ -13,3 +13,4 @@
 - [] 13: Pack authoring: write a pack (skills, gear, tables) through the authoring loop, then a scenario or character that plays with it.
 - [] 14: The docs for each engine: have a template/format for each? Engines that are not implemented have the sections content as "unimplemented"?
 - [] 16: Non-solo play, with NPCs first. The player leads a small crew: crew members can roll, get hurt, and share things like the 24XX ship. Today only the player rolls and no companion is gained, so it needs its own plan. It would also close most 24XX deviations in `docs/24XX.md`: an ally who helps rolls their own die, the crew's shared ship and its systems come in, and a dead operator can be replaced by a crew member instead of ending the game.
+- [] 17: Real 3D dice: a physics canvas; the CSS tumble is the cheap version.

@@ -57,7 +57,7 @@ def test_install_scene_on_a_finished_return_swaps_board_notes_job_keeps_companio
     world = game.payload.world
     assert [offer.title for offer in world.board] == ["Job 1", "Job 2"]
     assert [fact.kind for fact in facts] == ["job_closed", "scene_opened"]
-    assert any(fact.card == "Home: Back at the Guild Hall" for fact in facts)
+    assert any(fact.card.startswith("Home: Back at the Guild Hall") for fact in facts)
     assert any("The Sealed Cairn" in note for note in game.notes)
     assert scout in world.run.present
 

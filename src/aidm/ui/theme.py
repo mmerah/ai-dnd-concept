@@ -49,7 +49,6 @@ body, body.body--dark, .nicegui-content, .q-page {
   min-width: 2.4rem;
   padding: .2rem .4rem;
   align-items: center;
-  animation: game-die-land 300ms ease-out;
 }
 
 .game-die-face { font-size: .6rem; color: var(--game-muted); text-transform: uppercase; }
@@ -58,14 +57,13 @@ body, body.body--dark, .nicegui-content, .q-page {
 
 .game-die-kept { border-color: var(--game-accent); box-shadow: 0 0 0 1px var(--game-accent); }
 
-@keyframes game-die-land {
-  from { opacity: 0; transform: scale(.6) translateY(-6px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+.game-die-live { animation: game-die-tumble 600ms cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes game-die-tumble {
+  from { opacity: 0; transform: perspective(240px) rotateX(-220deg) rotateY(160deg) scale(.5); }
+  60% { opacity: 1; transform: perspective(240px) rotateX(20deg) rotateY(-15deg) scale(1.08); }
+  to { transform: none; }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .game-die { animation: none; }
-}
+@media (prefers-reduced-motion: reduce) { .game-die-live { animation: none; } }
 
 .game-composer {
   background: var(--game-surface-raised);

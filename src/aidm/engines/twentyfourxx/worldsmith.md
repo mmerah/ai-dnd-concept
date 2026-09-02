@@ -13,7 +13,7 @@ Every scene must have all of these:
 
 Put something in `hidden` when the scene has something worth finding. It is not required. Never name a hidden entity in `situation`: the player reads that, and naming it there hands them the find.
 
-Never name the player: they are put into the scene by code. Name everyone else by their exact id. A new person or thing goes in `cast`, filed under its own id, and may then be named in `present` or `hidden`.
+Never name the player: they are put into the scene by code. Name everyone else by their exact id. A new person or thing goes in `cast`, filed under its own id, and may then be named in `present` or `hidden`. Someone already in THE WHOLE CAST may be filed again to rewrite their `brief`; their name and their sheet are the rules' and do not change.
 
 The scene's `secret` is what the `question` does not say: how it settles, what it costs, or what somebody here will not admit. Never restate the question in it. It is for the game master alone and is never read to the player.
 

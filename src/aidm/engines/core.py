@@ -120,6 +120,7 @@ class Engine[G: Game[Any]]:
 
     id: EngineId
     title: str
+    art_style: str
     instructions: str
     packs: tuple[DecisionOption, ...]
     game: type[G]

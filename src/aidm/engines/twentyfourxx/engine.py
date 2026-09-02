@@ -52,6 +52,10 @@ def build(user_packs: Path) -> Engine[TwentyfourxxGame]:
     return Engine(
         id=EngineId("twentyfourxx"),
         title="24XX",
+        art_style=(
+            "Clean science-fiction illustration: hard light, neon on steel, lived-in "
+            "technology, no text or lettering."
+        ),
         instructions=(ENGINE_DIR / "rules.md").read_text(encoding=ENCODING),
         packs=pack_options(packs),
         game=TwentyfourxxGame,

@@ -3,18 +3,26 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-from core_test_support import initialized, with_entity
+from core_test_support import CHARACTERS, SCENARIOS, EnvFileFreeSettings, initialized, with_entity
 from pydantic import SecretStr
 
-from aidm.app.media import GeneratedImage, Illustrator, illustration_request, scene_key
-from aidm.config import MediaConfig, ProviderConfig
+from aidm.app.launch import LaunchTarget
+from aidm.app.media import (
+    GeneratedImage,
+    Illustrator,
+    illustration_request,
+    open_illustrator,
+    scene_key,
+)
+from aidm.config import MediaConfig, ProviderConfig, Providers
 from aidm.core.entities import EntityId
+from aidm.core.io import FileStore
 from aidm.core.views import NarratorView
 from aidm.engines.core import AnyEngine
 from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter
 
 NARRATION = "The door groans open."
-STYLE = MediaConfig().style
+STYLE = "Painterly fantasy illustration, muted colours, no text or lettering."
 
 
 def _illustrator(tmp_path: Path) -> Illustrator:
@@ -116,3 +124,29 @@ async def test_concurrent_illustrations_of_one_scene_generate_it_once(
     # Every other prompt is an icon: a repeat is a second bill for the same picture.
     assert len(prompts) == len(set(prompts))
     assert illustrator.generating == set()
+
+
+def test_open_illustrator_takes_the_passed_style_and_is_none_when_media_is_off(
+    tmp_path: Path,
+) -> None:
+    target = LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
+    store = FileStore(tmp_path)
+    on = EnvFileFreeSettings(
+        saves_dir=tmp_path,
+        scenarios_dir=SCENARIOS,
+        characters_dir=CHARACTERS,
+        media=MediaConfig(enabled=True),
+        providers=Providers(
+            openrouter=ProviderConfig(
+                base_url="https://example.invalid/v1", api_key=SecretStr("test")
+            )
+        ),
+    )
+    illustrator = open_illustrator(on, target, store, style="woodcut")
+    assert illustrator is not None
+    assert illustrator.style == "woodcut"
+
+    off = EnvFileFreeSettings(
+        saves_dir=tmp_path, scenarios_dir=SCENARIOS, characters_dir=CHARACTERS
+    )
+    assert open_illustrator(off, target, store, style="woodcut") is None

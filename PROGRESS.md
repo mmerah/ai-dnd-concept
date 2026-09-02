@@ -140,3 +140,47 @@ review findings and why, anything known and accepted.
 - `load_catalog` decodes each save twice (the header, then `Engine.restored`); the home page
   reads N whole games where it read N headers. `Engine` is outside this phase.
 - `src` lands 145 lines under the target: the recap and the terms cost about 60 lines, not 200.
+
+## Phase 4 — the play issues
+
+- `src` lines: 9,480 before, 9,609 after (target about 9,580). Tests: 469 before, 475 after.
+- Goldens: every fixture unchanged, as the phase's Done when says (a regen run moved nothing).
+- Reviews: Fable reviewer and a second Opus reviewer (no `codex` on the machine).
+- Smoke: `uv run aidm` starts and the home page serves, naming the four rules in its scenario
+  select; a turn needs a spawned CLI the container lacks, so that check is manual.
+- `uv run ruff format --check` reports `REFACTOR-PROPOSAL.md`, committed before this phase and
+  outside it; every file the phase touched formats clean.
+
+### Decisions off-plan
+
+- `open()` forgets the role sessions when the narrator answers nothing, as `play` does on a
+  failed turn: a resumed narrator must not remember an opening that never landed (review).
+- `_open` returns at once when the game is no longer unopened, so a second tab's timer cannot
+  run the page reset over an opening in flight (review). `_run` no longer nulls `session.step`:
+  `play`, `extend` and `open` each do it in their own `finally`.
+- The bar refuses an unknown id before `resolve_ids` does, so `tests/loner3e/test_world.py`'s
+  "no such id or name" match became "these name nobody"; three card asserts in Breathless and
+  Loner tests read the new `At stake:` line. `tests/core/test_scenes.py`'s recap test gives its
+  world a cast member, since `apply_scene` now runs the bar.
+- The `apply_scene`-level overlap and hidden-but-met tests became bar-level tests
+  (`scene_refusal`), one per rule; `apply_scene`'s raising keeps the player-id and misfiling tests.
+
+### Refuted findings
+
+- "The opening exchange shows as a player-sent bubble reading `(the story begins)`": PLAN 4.2
+  prescribes the chronicle line and no chat change; the crossing's `(the story moves on)` has
+  drawn the same way since it landed. Handed to the maintainer as a call.
+- "The newest live card re-tumbles on every `live_turn` refresh, one per step": PLAN 4.6 says
+  "every step and fact refreshes it, so only the newest card tumbles"; tracking a seen fact on
+  `GameView` is not in the plan. Handed to the maintainer as a call.
+- "Rename `on_commit` to `_on_commit`": PLAN 4.3 names it beside `on_step` and `on_fact`; it now
+  sits beside `on_step` in the public block. `on_fact`'s placement is PLAN 5.1's.
+- "`apply_scene` builds the merged cast twice": PLAN 4.1 makes the install a safety net that
+  re-runs the one bar; its docstring says so, and the merge is one comprehension over the cast.
+
+### Known and accepted
+
+- `resolve_ids`' raise is unreachable from `apply_scene` and `build_scenario` now that the bar
+  runs first; only direct `opening_canon` calls reach it. Phase 5's dead-code pass.
+- `src` lands 29 lines over the target: the bar's five checks and the opening cost about 130 lines
+  where the plan counted 100; nothing was padded (PLAN rule 5).

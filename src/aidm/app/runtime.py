@@ -48,8 +48,14 @@ from .spawn import CliSpawner, Spawner, answered
 
 LOGGER = logging.getLogger(__name__)
 
-# What the arrival is filed under in the chronicle: the player took no action in it.
+# What a turn nobody played is filed under in the chronicle: the crossing, and the opening.
 CROSSED = "(the story moves on)"
+BEGUN = "(the story begins)"
+OPENING = (
+    "The story begins here; the player has read nothing yet. Write the opening: who they are "
+    "(WHO IS HERE names them first), where they stand, what is in front of them, and what pulls "
+    "at them, from WHAT THIS SCENE IS ABOUT. They have not acted, so settle nothing."
+)
 
 
 @dataclass
@@ -85,6 +91,31 @@ class GameService:
     def slug(self) -> str:
         return self.target.slug
 
+    def unopened(self) -> bool:
+        """No exchange yet: nobody has told the player where they stand."""
+        return not self.busy and not self.engine.history(self.state)
+
+    async def open(self, on_step: Callable[[TurnStep], None] | None = None) -> None:
+        """A narrator that fails leaves the premise to do its work; a reload mid-opening is a
+        no-op."""
+        if not self.unopened():
+            return
+        announce = partial(self._announce, on_step=on_step)
+        self.busy = True
+        try:
+            draft = self.state.draft()
+            announce("narrator")
+            lines = await self._narrate(draft, (), OPENING, fatal=False)
+            if lines:
+                view = self.engine.narrator_view(draft)
+                self.commit(close_segment(self.engine, view, draft, BEGUN, lines, ()))
+            else:
+                # As in `play`: a narrator that remembers an opening that never landed is dropped.
+                self.sessions.forget(self.slug)
+            self.illustrate(_latest_narration(self.engine, self.state))
+        finally:
+            self.step, self.busy = None, False
+
     async def play(
         self,
         action: str | Answer,
@@ -92,6 +123,7 @@ class GameService:
         on_fact: Callable[[Fact], None] | None = None,
         *,
         moving_on: bool = False,
+        on_commit: Callable[[], None] | None = None,
     ) -> None:
         """`moving_on` is the player taking the way on, so `action` is what they mean to pursue."""
         arrival_brief = self.engine.transition.arrival_brief
@@ -116,6 +148,8 @@ class GameService:
             # Cleared before arrival: the tool surface must not reach a turn nobody plays.
             self.turn, self.step = None, None
             self.commit(state)
+            if on_commit is not None:
+                on_commit()
             self.illustrate(_latest_narration(self.engine, state))
             # The player named where they go; the worldsmith writes it once the turn is safe.
             if moving_on and arrival_brief is not None and self.engine.over(state) is None:
@@ -294,7 +328,7 @@ class GameService:
         self.store.discard(self.slug)
         self.sessions.forget(self.slug)
         self.state = opening
-        self.illustrate()
+        self.write_failure = ""
 
     def commit(self, state: AnyGame) -> None:
         self.store.save(self.slug, state)
@@ -449,7 +483,9 @@ class Runtime:
             store=store,
             sessions=Conversations(self.spawner, store, settings),
             settings=settings,
-            media=open_illustrator(settings, target, scenario, character, store),
+            media=open_illustrator(
+                settings, target, store, style=scenario.art_style or engine.art_style
+            ),
         )
 
 

@@ -1,8 +1,0 @@
-- Amber Tap -> Took the "The Quiet Contract". WARNING aidm.app.runtime: the written world no longer fits: the scene rewrites 'sil-marrow', who is already in the cast
-- Tried then Buried Bell -> Took "The Sealed Cairn" -> WARNING aidm.app.runtime: the written world no longer fits: the scene rewrites 'hooded-stranger', who is already in the cast
-- Why is the worldsmith not better guided? Why error out and done? Isn't it supposed to be an agentic loop? Why is it "rewriting" to begin with??? Also, can't it rewrite cast? What if we finish a job and go on another and the worldsmith makes an npc come back but with different "Stuff" (either stat or gear or tag or whatever)?
-- From UI Home Page, don't know what scenario is what engine. Same for the saves.
-- Art style for 24XX stuff makes no sesne, it's old school instead of futuristic. At least when I plaed Amber Tap
-- Nrrator outputs something but is not displayed until the worldsmith is finished
-- Generally on any new scene (e.g. opening scene), we are dropped and don't know what's going on, what's happening, what's your objective, who you are, why are you here, .... For example when you start a new scenario/job/arrive in the hub as you start scnearios (any)
-- 3D animation for the dices would be nice visual

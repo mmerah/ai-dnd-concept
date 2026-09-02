@@ -2,6 +2,7 @@ import pytest
 
 from aidm.core.entities import EntityId
 from aidm.core.play import Exchange
+from aidm.core.views import PanelRow
 from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.hub import HOME_ROW, HUB_ROW, Debrief, Job, Offer
 from aidm.engines.scenes import (
@@ -27,6 +28,7 @@ MARA = EntityId("mara")
 SITUATION = "A long enough situation to satisfy the minimum length the model demands, twice over."
 RECAP = "A long enough recap to satisfy the minimum length the model demands for what happened."
 DONE = Debrief(text="Finished the job.", finished=True)
+JOB = "Count the crates and haul them clear before the shift change; she pays on drop."
 BOARD = (Offer(title="A", pitch="Do a"), Offer(title="B", pitch="Do b"))
 
 
@@ -155,6 +157,16 @@ def test_scene_rows_shows_the_hub_row_and_the_way_on_and_home_rows_when_settled(
     assert HOME_ROW not in scene_rows(one_shot)
 
 
+def test_scene_rows_lists_the_open_job_under_the_question() -> None:
+    away = _run("a1", "A1")
+    away.scene = away.scene.model_copy(update={"job": JOB})
+    world = SceneWorld[Person, Person](
+        player=PLAYER, runs=[_run(HUB, "Hub"), away], hub=HUB, board=BOARD
+    )
+
+    assert scene_rows(world)[1] == PanelRow(label="The job", detail=JOB)
+
+
 def _travelling() -> SceneWorld[Person, Person]:
     """The player, one companion in the cast, and a scene the pair stand in."""
     mara = Person(id=MARA, name="Mara", brief="A guide", known=True)
@@ -188,9 +200,15 @@ def test_a_party_member_who_is_not_in_this_scene_is_refused() -> None:
 
 
 def test_apply_scene_with_a_next_draft_stamps_the_recap_on_the_run_left() -> None:
-    world = SceneWorld[Person, Person](player=PLAYER, runs=[_run("a1", "A1")])
+    world = _travelling()
+    world.party = []
     draft = NextDraft[Person](
-        place="a2", title="A2", question="What happens next here?", situation=SITUATION, recap=RECAP
+        place="a2",
+        title="A2",
+        question="What happens next here?",
+        situation=SITUATION,
+        present=(MARA,),
+        recap=RECAP,
     )
 
     apply_scene(world, draft)
