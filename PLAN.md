@@ -1,8 +1,9 @@
 # PLAN — after the hub
 
-Six phases, in order: one scene engine written once (two phases), the scene recap with the
-campaign refinements, the play issues, the audit with the docs, then voices. Self-standing: an implementer needs
-this file, `CLAUDE.md` and the code. `NEXT-SPECS.md` stays for Track G's own plan later.
+Seven phases, in order: one scene engine written once (two phases), the scene recap with the
+campaign refinements, the play issues, the seam as classes, the audit with the docs, then
+voices. Self-standing: an implementer needs this file, `CLAUDE.md` and the code.
+`NEXT-SPECS.md` stays for Track G's own plan later.
 
 ## How to work
 
@@ -36,7 +37,7 @@ uv run basedpyright
 7. **One commit per phase.** Never leave two versions of one thing alive at a commit.
 8. **Review each phase adversarially against its staged diff before the commit.**
 9. **Verify a rule against the SRD page before you build on it.** No phase here changes a rule.
-   Phase 6 verified its endpoint on 2026-09-02: OpenRouter `POST /api/v1/audio/speech` takes
+   Phase 7 verified its endpoint on 2026-09-02: OpenRouter `POST /api/v1/audio/speech` takes
    `{model, input, voice, response_format}`, `response_format` is `mp3` or `pcm`, and the reply
    is raw audio bytes; Gemini TTS emits 24 kHz 16-bit mono PCM.
 
@@ -47,10 +48,12 @@ uv run basedpyright
 | 2 — one worldsmith, one view | the drafts, the bar, the crossing, the panels, once | 9,550 |
 | 3 — the recap and the refinements | `NextDraft.recap`, `Job.job`, resume at the end, the save card | 9,625 |
 | 4 — the play issues | the brief rewrite, one bar, the opening told, the rules named, engine art, the dice | 9,580 |
-| 5 — the audit and the docs | dead code, layout, `VISION.md` gone | 9,555 |
-| 6 — voices | `SpeechConfig`, `app/speech.py`, `ui.audio` | 9,735 |
+| 5 — the seam as classes | `Engine` abstract, `SceneEngine`, `advance`/`author`, the world's verbs, the opening told plainly | 9,415 |
+| 6 — the audit and the docs | dead code, layout, `VISION.md` gone | 9,390 |
+| 7 — voices | `SpeechConfig`, `app/speech.py`, `ui.audio` | 9,570 |
 
-Phase 3 landed at 9,480, under its row; the rows after it count from there.
+Phase 3 landed at 9,480, under its row; Phase 4 at 9,613, 29 over its row; the rows after it
+count from there.
 
 The caps stand: 2,000 Python lines per engine; fifteen game-master tools counted as tools plus
 `change_world` arms, the two party arms not counted. No phase adds a tool or an arm.
@@ -113,7 +116,7 @@ def party_panel(members: Sequence[Person]) -> tuple[Panel, ...]:
 
 `Person` lives here, not in `scenes.py`, so the party functions take it instead of a second
 protocol. `TAIL_EXCHANGES` and `told_tail` move only in Phase 3; `Counter.clamped` goes in
-Phase 5.
+Phase 6.
 
 ### 1.2 `engines/scenes.py`: the world
 
@@ -388,7 +391,7 @@ the `CLAUDE.md` exception covers beside the bounds.
 BaseModel, str, ScenarioKind], AnyScenario]` (title, premise, packs, written, source, kind),
 Tunnel Goons' `build_scenario` drops the parameter too, and `Runtime.new_scenario` applies it
 once on the built file: `write_scenario(..., as_scenario(written).model_copy(update={"art_style":
-art_style}), document)`. Phase 6 adds `voice` to that same update.
+art_style}), document)`. Phase 7 adds `voice` to that same update.
 
 ### 2.3 `engines/scenes.py`: the views
 
@@ -792,44 +795,349 @@ live dice tumble and the history stands still. `src` about 9,580.
 
 ---
 
-## Phase 5 — the audit and the docs
+## Phase 5 — the seam as classes
+
+Two outside readings of the code on 2026-09-02. The first proposed an engine object with a
+`SceneEngine` base in place of the `Engine` callback record, one flat scene draft in place of
+the five draft classes, one `advance()` transaction in place of `ready → write → install →
+arrival_brief`, and the master as its own worldsmith. The second counted what the first was
+reacting to, against the code after Phase 4: 19 callables wired into `Engine`, `Authoring` and
+`Transition`; 45 `partial(...)` binding packs, cast types and ids at wiring time, because there
+is no `self` to carry them; three scene `worldsmith.py` of 42–50 lines that only forward a cast
+type and four strings; `GameService` running `ready → write → install → arrival_brief` as a
+second state machine after the turn (`_grow`, `_write`, `_install`, about 55 lines); and in
+`engines/scenes.py` one object split across two styles, `world.require()`, `world.here()`,
+`world.jobs()` methods beside `enter(world, id)`, `kill(world, id)`, `settle(world, done)`,
+`apply_scene(world, draft)` free functions on the same object, about fourteen of them, the line
+between the two drawn nowhere.
+
+This phase keeps the first proposal as a class and the third as written, and moves the fourteen.
+It is not a rewrite: the value models, `Fact`, `apply_to_draft`, `Game.draft/committed`,
+`NarratorView`, `Turn`, the resolvers as `(draft, args, rng) -> facts` and the Protocols in
+`app/spawn.py` are the right shape and none of them moves. The maintainer's decisions
+(2026-09-02): `Engine` is an abstract class, `SceneEngine` its one concrete base, each engine a
+subclass; "write pure functions" stands, since a method that reads `self.packs` and its `state`
+argument and writes nothing is as pure as the function that took both as parameters, and the
+overridable surface is what the three engines differ on today, counted in 5.1, not a set built
+for later; the five drafts stay, because they are the schema the worldsmith answers in and a
+`match` on a frozen model is a match on a domain distinction; the master stays a player of the
+world and the worldsmith its author.
+
+Four steps, one commit; each step is green on its own. **One implementer, opus**: the base
+changes shape, so all four engines move in the same step. 5.1 to 5.3 change no behaviour, no
+prompt and no golden: `prompts/`, `schemas/`, `turn/`, `state/` and `save/` are their invariant,
+and a step that moves one has a bug. 5.3 is the first to cut if the phase runs past its target
+(rule 5); 5.4 stands whatever is cut. Fixtures that may change: the four
+`prompts/<engine>/narrator.txt`, two lines each, in 5.4 only.
+
+### 5.1 The object
+
+`Engine` becomes a class whose methods are today's callables, one to one, under today's names;
+`Authoring` and `Transition` fold into it as seven methods that 5.2 makes three. Every `partial`
+in `engines/` goes, because `self` carries what it bound. The layout moves first, so the class
+lands in its file: `engines/scenes.py` becomes a package mirroring the engines' own file shape,
+a pure move, `engines/scenes/world.py` (the models, the arms, the seam functions),
+`engines/scenes/worldsmith.py` (the drafts, the bar, the crossing), `engines/scenes/views.py`
+(the lines, the panels); `Engine`, `Authoring`, `Transition` and `AnyEngine` move from
+`engines/core.py` to `engines/seam.py`, leaving `core.py` the world toolkit. Imports cost about
+40 lines; nothing else moves with them.
+
+- **`engines/seam.py`.**
+  ```python
+  class Engine[G: Game[Any]](ABC):
+      """The seam joining an engine's rules to the platform; a subclass answers for one engine."""
+
+      # Declared, not `ClassVar`: `type[G]` cannot be one, and a test sets them on its own instance.
+      id: EngineId
+      title: str
+      art_style: str
+      directory: Path                  # rules.md; a scene engine's worldsmith.md and packs/
+      game: type[G]
+      scenario: type[AnyScenario]
+      character: type[AnyCharacter]
+      # The narrator's brief for the arrival, `{pursuit}` the player's words; None when the world
+      # is extended without a turn, as Tunnel Goons grows its map.
+      crossing: str | None = None
+
+      def __init__(self) -> None:
+          self.instructions = (self.directory / "rules.md").read_text(encoding=ENCODING)
+          self.tools = self.master_tools()
+          require_unique(f"tool names of the {self.id!r} engine", (one.name for one in self.tools))
+
+      def pack_options(self) -> tuple[DecisionOption, ...]:
+          return ()
+
+      @abstractmethod
+      def master_tools(self) -> tuple[MasterTool[G], ...]: ...
+      # creation_steps, create_character, preview_character, validate, new_game, over, known,
+      # record, history, master_sections, narrator_view, player_view: abstract, today's signatures.
+      # opening_draft, opening_prompt, build_scenario, ready, write, install: abstract, the
+      # `Authoring` and `Transition` signatures, until 5.2.
+      # restored, answer: as today.
+  ```
+  `AnyEngine = Engine[Any]` stays: `Game[P]` is invariant, and the platform holds any engine.
+  `Engine.packs` (the option tuple the create page reads) is renamed `pack_options()`, so an
+  engine's loaded table sets can be `self.packs` as every module calls them; `ui/create.py`
+  changes two lines.
+- **`engines/scenes/engine.py`**, the new file.
+  ```python
+  class Pack(Frozen):
+      """What every table set carries; an engine's own `Pack` extends it."""
+      name: str
+
+  class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
+      """The scene lifecycle, once; a subclass says what its rules add."""
+
+      cast: type[C]
+      pack: type[K]
+      hub_phrase: str                  # what CAMPAIGN_OPENING asks this engine's hub to be
+      finished_note: str = ""          # the note a finished job leaves for the next turn
+      crossing = CROSSING
+
+      def __init__(self, user_packs: Path) -> None:
+          self.packs = load_packs((self.directory / "packs", user_packs), self.pack)
+          self.role = (self.directory / "worldsmith.md").read_text(encoding=ENCODING)
+          super().__init__()           # last: `master_tools` reads the packs
+
+      def world(self, state: G) -> SceneWorld[C, P]:
+          return state.payload.world   # the one place `G: Game[Any]` is narrowed to the scene world
+
+      # Abstract, what the three differ on: guidance(picks, *, campaign), new_state(canon,
+      # character), master_sections(state).
+      # Hooks with a default: panels(state) -> () (24XX Gear, Breathless Backpack);
+      # leaving(state) -> () (Loner: close_conflicts, before the install as the wrapper does today).
+      # Implemented once: pack_options from K.name; validate = check_game(self.packs, state);
+      # known, record, history, over, ready, narrator_view: today's functions; player_view =
+      # scenes.player_view(state, self.panels(state)); new_game: the two "received an
+      # incompatible ..." checks against self.scenario and self.character with self.title in the
+      # message, then self.new_state(scenario.payload.world, character); opening_draft,
+      # opening_prompt, build_scenario, write, install: today's three worldsmith.py wrappers,
+      # with self.cast, self.role, self.hub_phrase, self.finished_note and
+      # self.guidance(..., campaign=...) where the wrappers bound them.
+  ```
+  `G: Game[Any]` is `Engine`'s own bound and adds no `Any`; a bound may not name another type
+  parameter, which is why `G` is not `Game[SceneState[C, P]]` and `world()` narrows in one
+  place. `MasterTool[G]` is invariant, which is why the class is generic on the game and not on
+  the state. `guidance` takes `campaign` because 24XX joins its board guidance on every campaign
+  write and opening, and nothing else differs between the three `write_next`. The three
+  `player_*` builders widen their parameter to `Character[<Engine>Character]`, one line each,
+  so `new_state` takes the `AnyCharacter` the base has checked. The three engine `Pack`s extend
+  this one; their `pack_options` go.
+- **Each scene engine.** `engine.py` is the subclass, about 55 lines:
+  ```python
+  class Loner3eEngine(SceneEngine[LonerCharacter, LonerCharacter, Loner3eGame, Pack]):
+      id = EngineId("loner3e")
+      title = "LONER 3E"
+      art_style = "Painterly illustration, muted colours, no text or lettering."
+      directory = Path(__file__).parent
+      game = Loner3eGame
+      scenario = Loner3eScenarioFile
+      character = Loner3eCharacterFile
+      cast = LonerCharacter
+      pack = Pack
+      hub_phrase = "a guild hall or a ship, whoever keeps it and the regulars"
+      finished_note = GROWTH_NOTE
+
+      def master_tools(self) -> tuple[MasterTool[Loner3eGame], ...]:
+          return tools(self.packs)
+
+      def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
+          return guidance(self.packs, picks)
+
+      def new_state(
+          self, canon: SceneCanon[LonerCharacter], character: AnyCharacter
+      ) -> Loner3eState:
+          return Loner3eState(world=new_world(canon, player_character(character)))
+
+      def master_sections(self, state: Loner3eGame) -> Rows:
+          return master_sections(self.packs, state)
+
+      def leaving(self, state: Loner3eGame) -> tuple[Fact, ...]:
+          return close_conflicts(state)
+
+      # creation_steps, create_character, preview_character: one line each into creation.py
+  ```
+  `worldsmith.py` is deleted in all three: `WORLDSMITH` is read by the base, `HUB_PHRASE`,
+  `GROWTH_NOTE`/`JOB_DONE_NOTE` and `BOARD_GUIDANCE` move into `engine.py`'s constants block.
+  `creation.py`, `tools.py`, `world.py` do not change; `views.py` keeps `master_sections` and
+  the gear lines and loses `player_view` where it only passed a panel.
+- **Tunnel Goons.** `class TunnelGoonsEngine(Engine[TunnelGoonsGame])` in its `engine.py`:
+  `new_game` and `validate` move in as methods (`validate` is the method's name, so the
+  `check_game` rename the audit planned is moot), the other fifteen delegate one line each to
+  `world.py`, `tools.py`, `views.py`, `worldsmith.py` and `creation.py`, which do not change.
+  About today's 100 lines, none of them wiring.
+- **`engines/registry.py`.** `build_engines` is `(Loner3eEngine(packs_dir / "loner3e"),
+  TunnelGoonsEngine(), ...)`. Nothing else in the registry changes.
+- **`app/runtime.py`.** `engine.transition.x` reads `engine.x`; `engine.authoring.x` reads
+  `engine.x`; `arrival_brief is None` reads `self.engine.crossing is None` and
+  `arrival_brief(turn.prompt)` reads `self.engine.crossing.format(pursuit=turn.prompt)`. No line
+  of `_grow`, `_write`, `_install` or `new_scenario` changes otherwise.
+- **`CLAUDE.md`.** The code rules gain one line after "Write pure functions": "State models and
+  engines own the methods that read or mutate them; a method that writes nothing outside its
+  arguments is pure." The `Any` line reads "a class or function generic on the game state".
+  The engine line: "An engine is self-contained under `engines/<id>/`, under 2,000 lines, with
+  at most fifteen game-master tools, counted as tools plus `change_world` arms, the two shared
+  party arms not counted; twenty in all for an engine whose SRD plays a crew, named in its
+  `docs/<ENGINE>.md`. Every engine subclasses `Engine` in `engines/seam.py`; the three scene
+  engines subclass `SceneEngine` in `engines/scenes/engine.py`; all four share the hub in
+  `engines/hub.py`." `docs/<ENGINE>.md` name the engine class where they name the wiring file.
+- **Tests.** The four `dataclasses.replace(...)` calls (`test_launcher.py` and
+  `test_tool_surface.py` for `id`, `test_decisions.py` and `test_tool_surface.py` for `tools`)
+  build a `Loner3eEngine(PACKS)` of their own and set the attribute; the transition test
+  subclasses `Loner3eEngine` with `ready` returning True, `crossing = None` and a scripted
+  `write`; `test_engine.py` in each engine reads `new_game` off the engine, not the module. A
+  test that a fifth `SceneEngine` subclass with a bare `Person` cast, the base `Pack` and no
+  tools builds a playable engine is the one new behaviour test: the review's litmus, "a fifth
+  scene engine is its state model, its creation, its tools and its sections", is what this
+  step buys. No test of prose or wiring is added.
+- **Step done when.** Green; every golden unchanged; `grep -rn "partial(" src/aidm/engines`
+  finds nothing; no scene `worldsmith.py` exists; the three scene `engine.py` under 60 lines.
+  About -120 lines, the 40 of imports counted.
+
+### 5.2 The transaction
+
+The platform asks the engine two things of the worldsmith and stops knowing their stages.
+
+- **`core/model.py`.** `WorldsmithAnswer` becomes a `Protocol` in the classes block with a
+  generic call, `async def __call__[M: BaseModel](self, prompt: str, model: type[M], refusal:
+  Callable[[M], str | None]) -> M`; `CheckAnswer` goes. `app/spawn.py`'s `answered` is already
+  generic, so the engine's answer is typed end to end: `_is_draft`, its
+  `__pydantic_generic_metadata__` read and `install_scene`'s `SceneDraft[Any]` go.
+- **`engines/seam.py`.** The seven seam methods become three, beside `crossing`:
+  ```python
+  @abstractmethod
+  async def author(
+      self,
+      title: str,
+      premise: str,
+      source: str,
+      packs: Sequence[Slug],
+      kind: ScenarioKind,
+      worldsmith: WorldsmithAnswer,
+      playable: Callable[[AnyScenario], str | None],
+  ) -> AnyScenario: ...
+  @abstractmethod
+  def ready(self, state: G) -> bool: ...
+  @abstractmethod
+  async def advance(
+      self, draft: G, intent: str, worldsmith: WorldsmithAnswer
+  ) -> tuple[Fact, ...]: ...
+  ```
+  `advance` writes, then installs on the draft it is given, and raises `ValueError` both when
+  nothing usable was written and when the written world no longer fits; the platform never
+  holds the written model. `author`'s refusal is the engine's bar on the draft, else the built
+  file's `playable(...)`, with the build and the check inside today's `except ValueError ->
+  str`, so a file that will not build is re-prompted once as it is today; `title` and `premise`
+  are its parameters because each engine's premise fallback is its own (`situation`; Tunnel
+  Goons the start's description).
+- **`engines/scenes/engine.py`.** `SceneEngine` implements both once and no subclass overrides
+  them: `advance` is `write_next` then `self.leaving(draft)` then `install_scene(draft, written,
+  finished_note=self.finished_note)`, in that order as the Loner wrapper runs it today; `author`
+  is `render_opening`, the draft type from `opening_draft(self.cast, kind)`, the refusal
+  composing `scene_refusal` and `playable`, then `build_scenario`. `opening_draft`,
+  `opening_prompt`, `build_scenario`, `write` and `install` leave the class.
+  `engines/scenes/worldsmith.py`'s `install_scene(state, draft: SceneDraft[C], *,
+  finished_note)` stays a typed module function: ten tests install a hand-built draft with no
+  worldsmith. Tunnel Goons: `write_extension` + `install_extension` become its `advance`;
+  `render_map` + `opening_draft` + `build_scenario` become its `author`; the `MapDraft |
+  ReturnDraft` union is typed, no `BaseModel` left.
+- **`app/runtime.py`.** `_write` and `_install` fold into `_grow`: `draft = self.state.draft()`;
+  `try: facts = await self.engine.advance(draft, intent, self._ask); self.engine.validate(draft)`
+  `except (OSError, ValueError)` sets `write_failure`, logs once, returns; then today's tail
+  (silent commit, or the narrated crossing through `close_segment`). `_ask` is one method over
+  `answered("worldsmith", ...)`. `new_scenario` becomes `written = await engine.author(title,
+  premise, source, packs, kind, self._ask, playable)` then `write_scenario(...,
+  written.model_copy(update={...}))` with the same `update` dict (art style; Phase 7's voice),
+  where `playable` runs `begin_game`. The UI's `transition_available` reads `engine.ready`.
+- **Tests.** The transition test's subclass overrides `advance` in place of `write`;
+  `test_authoring_build_raises_on_an_unmet_bar` becomes a scripted worldsmith that
+  `engine.author` refuses on the bar; the four `test_worldsmith.py` call `engine.advance` and
+  `engine.author` where they called the pairs, and `tests/loner3e/test_world.py` and
+  `test_hub_play.py` keep calling `install_scene`. No test of prose or wiring is added.
+- **Step done when.** Green; every golden unchanged; `grep -n BaseModel
+  src/aidm/engines/seam.py` hits `new_game`'s return and the import only, and
+  `src/aidm/app/runtime.py` not at all; a failed write and an install that no longer fits both
+  leave the state untouched and set `write_failure`. About -70 lines.
+
+### 5.3 The world's verbs
+
+A pure move, and the first to cut.
+
+- **`engines/scenes/world.py`.** The functions whose first parameter is `world: SceneWorld[C,
+  P]` become methods of `SceneWorld`: `reveal_hidden`, `enter`, `leave`, `kill`, `settle`,
+  `record_exchange`, `apply_scene`, `merged_cast`, `hub_rows`, `recap_rows`, `scene_rows`,
+  `here_lines`, `hidden_lines`, `render_worldsmith`. Each loses its `[C: Person, P: Person]`
+  header and reads `self` where it read `world`; nothing else in a body changes. `SceneWorld`
+  goes from eighteen methods and properties to about thirty-two; `engines/scenes/views.py`
+  keeps `entity_line`, `trail_panel`, `narrator_view` and `player_view`, which take a `Person`,
+  runs or a state.
+- **Callers.** `enter(world, change.entity_id)` reads `world.enter(change.entity_id)` in the
+  three `tools.py`; `here_lines(world)` reads `world.here_lines()` in the three `views.py`;
+  about thirty-five test call sites the same way. The drafts are left alone, and Tunnel Goons
+  is left alone: `TunnelWorld` already owns its verbs.
+- **Step done when.** Green; every golden unchanged; `grep -n "world: SceneWorld"
+  src/aidm/engines/scenes/world.py` finds only `new_world`'s return; no
+  `def .*\[C: Person, P: Person\]` remains outside the models. About -15 lines.
+
+### 5.4 The opening, told plainly
+
+The phase's one prompt change; no refactor step touches it. Played on 2026-09-02, the opening
+reads as mood: the player closes it not knowing what they are there to do or what they could do
+first. The narrator's inputs hold all four answers already (WHO IS HERE, SCENE, WHAT THIS SCENE
+IS ABOUT); the brief asks for them in an order, and the length cap gives the room. The opening
+is always the first scene, so no job exists yet: what they are here to do is the scene's
+question, and at a hub it is the board, which the panel holds and the prose points at without
+listing, since the narrator never sees the offers.
+
+- **`app/runtime.py`.** `OPENING` becomes: "The story begins here; the player has read nothing
+  yet. Tell them, in the fiction and in this order: who they are (WHO IS HERE names them first)
+  and where they stand; what is in front of them, the situation as they see it now; what they
+  are here to do, from WHAT THIS SCENE IS ABOUT, said as the thing pulling at them; and two or
+  three things they could plainly do first, offered by the place and the people, in prose, never
+  as a list. Six to eight sentences. They have not acted, so settle nothing."
+- **`turn/prompts/narrator.md`.** The first line reads "Write 2-4 vivid sentences, or the length
+  PLAYER ACTION asks for, in second person and present tense." **`core/play.py`.**
+  `Narration.lines`' description reads "All narration and dialogue in order; 2-4 sentences, or
+  the length PLAYER ACTION asks for." Both, so the schema the model reads does not contradict
+  the brief. The four `prompts/<engine>/narrator.txt` change those two lines and nothing else.
+- **No new test**: prose. Play one opening per engine and read it against the four questions:
+  where am I, what do I see, what am I here to do, what could I do first.
+
+### Done when
+
+Green; every golden unchanged but the two narrator lines; `uv run aidm` opens a game in each
+engine and the opening answers the four questions; `grep -rn "partial(" src/aidm/engines` finds
+nothing; `README.md` and `docs/` name `Engine` and `SceneEngine` where they named the wiring
+file; `PROGRESS.md` holds the phase's entry with both counts. `src` about 9,415.
+
+---
+
+## Phase 6 — the audit and the docs
 
 No behaviour change. **One implementer, sonnet.**
 
-### 5.1 Cuts and layout
+### 6.1 Cuts and layout
 
 - Delete the `hint` on Tunnel Goons' three ability steps (a step with options never shows it).
 - `core/views.py`: `sections()` after the classes. `ui/game.py`: `on_fact` above the private
-  functions. `core/model.py`: `CheckAnswer`, `WorldsmithAnswer`, `AnyScenario`, `AnyCharacter`,
+  functions. `core/model.py`: `AnyScenario`, `AnyCharacter`,
   `AnyGame` into the constants block under `ScenarioKind` (`type` aliases are lazy).
-  `engines/core.py`: `AnyEngine` likewise. The `WorldChange` unions, `DRIVERS`, `TURN_TOOLS`
+  `engines/seam.py`: `AnyEngine` likewise. The `WorldChange` unions, `DRIVERS`, `TURN_TOOLS`
   and Tunnel Goons' `Entity` alias must follow their classes: one comment each says so.
-- Tunnel Goons `validate` → `check_game`. `twentyfourxx.creation.guidance`: one comment,
-  "kept for `partial` parity with the other engines".
 - Inline `Counter.clamped` into `adjust`, its one user; `tests/loner3e/test_counters.py`
   loses its two `clamped` asserts.
 - Trim every docstring past one line where the code says the what.
-- `engines/scenes.py` becomes a package mirroring the engines' own file shape, a pure move:
-  `engines/scenes/world.py` (the models, the arms, the seam functions), `engines/scenes/worldsmith.py`
-  (the drafts, the bar, the crossing), `engines/scenes/views.py` (the lines, the panels).
-  `Engine`, `Authoring`, `Transition` and `AnyEngine` move from `engines/core.py` to
-  `engines/seam.py`, leaving `core.py` the world toolkit. Imports cost about 40 lines; nothing
-  else moves with them.
 
-### 5.2 `CLAUDE.md`
+### 6.2 `CLAUDE.md`
 
-The engine line reads: "An engine is self-contained under `engines/<id>/`, under 2,000 lines,
-with at most fifteen game-master tools, counted as tools plus `change_world` arms, the two
-shared party arms not counted; twenty in all for an engine whose SRD plays a crew, named in its
-`docs/<ENGINE>.md`. The scene engines share the scene lifecycle in `engines/scenes/`; all
-four share the hub in `engines/hub.py`." Design decisions gain two lines: "Non-goals: a shared
+The engine line is Phase 5.1's. Design decisions gain two lines: "Non-goals: a shared
 world layer, save migration, a built-in turn loop and its state keeper, retrieval over source
 documents." and "A turn: the master is spawned with the rules and the action and changes the
 world through tools only; a rule may leave a decision the player answers next turn; the
 narrator receives revealed canon only; the exchange is recorded and the whole draft is
 validated and committed; then the engine's transition may offer the way on."
 
-### 5.3 `VISION.md` is deleted
+### 6.3 `VISION.md` is deleted
 
 Move first, then delete: content paths (characters, scenarios, saves) and "play costs the
 subscription; illustration is the exception" into `README.md` (one short paragraph under "Start
@@ -837,11 +1145,12 @@ the app"); Maze Rats (`2c3e8a5`, `62f95c6`) and the Pokémon–Showdown boundary
 as two items. Then delete `VISION.md`, its line in `README.md`'s "Project information", and its
 `extend-exclude` entry in `pyproject.toml`. `grep -r VISION` finds nothing.
 
-### 5.4 `README.md`, `IDEAS.md`, `COMPETITOR-RESEARCH.md`
+### 6.4 `README.md`, `IDEAS.md`, `COMPETITOR-RESEARCH.md`
 
 - `README.md` gains one architecture paragraph beside the campaign paragraph: the three roles
-  as spawned CLIs returning typed proposals, the engine seam (one dataclass of typed callables,
-  the registry the one composition point), imports one way `core <- engines <- turn <- app <-
+  as spawned CLIs returning typed proposals, the engine seam (`Engine` an abstract class,
+  `SceneEngine` the base of the three scene engines, the registry the one composition point),
+  imports one way `core <- engines <- turn <- app <-
   ui`.
 - `IDEAS.md`: delete 3 and 9 (refused non-goals) and the built-in half of 4; fold 5, 6, 7, 8,
   14 into one line "audit: consistency, dead code, docstrings, one doc shape per engine", marked
@@ -852,7 +1161,7 @@ as two items. Then delete `VISION.md`, its line in `README.md`'s "Project inform
 - `docs/COMPETITOR-RESEARCH.md`: one dated note at the top: the "ours" columns, `ROADMAP.md`,
   "code mode" and `.agents/skills` are stale.
 
-### 5.5 Engine docs, one shape
+### 6.5 Engine docs, one shape
 
 The four `docs/<ENGINE>.md` already share one heading order; only `docs/LONER-3E.md` lacks
 `## The tools`. Add it between "Pack sources" and "Deviations", one line per tool as the other
@@ -862,18 +1171,18 @@ three write them: `change_world` (its eight arms named), `next_scene`, `roll_que
 ### Done when
 
 Green; every golden unchanged. No document holds rules text; `grep -r VISION` finds nothing;
-`src` about 9,555.
+`src` about 9,390.
 
 ---
 
-## Phase 6 — voices
+## Phase 7 — voices
 
 Narration and dialogue read aloud, generated after the turn commits, cached beside the art,
 played under the newest exchange. Off by default. The narrator's voice is the scenario's, as its
-art style is. **Split**: A (sonnet: 6.1–6.3, config and the reader) then B (sonnet: 6.4–6.5,
+art style is. **Split**: A (sonnet: 7.1–7.3, config and the reader) then B (sonnet: 7.4–7.5,
 the service and the page).
 
-### 6.1 `config.py`
+### 7.1 `config.py`
 
 ```python
 ProviderName = Literal["openrouter", "local", "kokoro"]
@@ -905,14 +1214,14 @@ class Settings(BaseSettings):
 `local` is Ollama's port and serves no speech, hence `kokoro`. The settings page renders all of
 it unchanged.
 
-### 6.2 The scenario's voice
+### 7.2 The scenario's voice
 
 `Scenario.voice: str = ""` in `core/model.py` beside `art_style`. `Runtime.new_scenario`
 takes `voice: str` beside `art_style` and adds it to the `model_copy(update=...)` Phase 2
 left there; `Authoring.build` does not change. `ui/create.py`: an input "Narrator voice" with
 placeholder "Leave empty for the default voice" under the art style input, passed as `voice=`.
 
-### 6.3 `app/media.py` shares, `app/speech.py` reads
+### 7.3 `app/media.py` shares, `app/speech.py` reads
 
 In `media.py`, make module functions of the two things both files use: `claim(generating:
 set[str], key) -> bool` (synchronous, as today's comment says) and `post_bearer(provider, path,
@@ -956,7 +1265,7 @@ def speech_body(model: str, voice: str, text: str) -> dict[str, str]
 The request body, `voice_of`, `clip_key` and the wav wrap are the tested functions; no test
 spawns or posts anything.
 
-### 6.4 `app/runtime.py`
+### 7.4 `app/runtime.py`
 
 `GameService.reader: Reader | None = None`, set by `_open` through `open_reader`. Add
 `speak()`: like `illustrate`, a retained `create_task(self.reader.read(history[-1]))` over
@@ -966,7 +1275,7 @@ commits inside that same `play`, so `_install` needs no hook. `newest_clip() -> 
 and `clip_pending() -> bool` read the last exchange. Cards, situations and debriefs are not
 spoken; a resumed game generates nothing for old exchanges.
 
-### 6.5 `ui/game.py`
+### 7.5 `ui/game.py`
 
 `chat` takes the `GameView` (it needs the session and one flag). After an exchange's lines,
 when `session.reader is not None` and `session.reader.clip(exchange)` is a path:
@@ -979,7 +1288,7 @@ store it, set `autoplay_clip` to the clip when it is a path, and `chat.refresh()
 clears `autoplay_clip` before `refresh_all`, so the previous clip does not restart at the next
 turn. The 3-second timer runs when `media` or `reader` is set. About 25 lines.
 
-### 6.6 `IDEAS.md`
+### 7.6 `IDEAS.md`
 
 Item 1 (sounds and voices) is done: delete it.
 
@@ -988,4 +1297,4 @@ Item 1 (sounds and voices) is done: delete it.
 Green; every golden unchanged. With `SPEECH__ENABLED=true` and a key, a turn's narration plays
 within seconds of the text in the scenario's voice, or the settings' when it names none; the
 wav is reused on reload; with the provider down, the turn is unaffected and one warning logs.
-`src` about 9,735.
+`src` about 9,570.
