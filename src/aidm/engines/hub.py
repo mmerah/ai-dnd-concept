@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import Literal
 
 from pydantic import Field
 
@@ -14,24 +15,41 @@ HOME_ROW = PanelRow(
     label="Go home", detail="Back to base; the job closes on a card.", intent=GO_HOME
 )
 HUB_ROW = PanelRow(label="Take a job from the board, or name where you go.", detail="")
-HUB_BRIEF = (
-    "The hub is {title} ({place}). Anyone from its cast the player names in WHAT COMES NEXT is "
-    "present in the scene you write. An offer taken again opens at the place its JOBS SO FAR "
-    "line names, with its cast. Never place a scene at {place}: home is reached by going home."
+type Moment = Literal["taking", "away", "returning"]  # where the worldsmith writes from
+TAKE_JOB = 'I take the job "{title}".'  # what an offer's button plays
+HUB_QUESTION = (
+    "The hub's `question` is what keeps the player coming back, never something to settle."
+)
+JOB_ASK = "who wants what done, what done looks like, what it pays"
+TAKE_BRIEF = (
+    "The player is leaving {title} ({place}) on a job. WHAT COMES NEXT is the job they take: an "
+    "offer by its title, whose pitch THE BOARD holds, or their own words. Write the job's first "
+    f"scene away from {{place}}, titled after the offer, and its `job`: {JOB_ASK}. Anyone from "
+    "the hub's cast the player names is present. An offer taken before opens at the place its "
+    "JOBS SO FAR line names, with its cast."
+)
+AWAY_BRIEF = (
+    "The hub is {title} ({place}). Never place a scene at {place}: home is reached by going home."
 )
 # Shared by the scene engines and Tunnel Goons; `hub_sections` prepends the scene sentence.
 RETURN_BRIEF = (
     "The player is home at {title} ({place}). `debrief.text` is one paragraph on the job they "
     "just left, written for the player; `debrief.finished` is true only when that job was "
     "completed. Return the whole board in `offers`: keep, drop or add, two or three in all. A job "
-    "left open normally stays on the board, so the player can take it again."
+    "left open normally stays on the board, so the player can take it again. A new offer may grow "
+    "from JOBS SO FAR: a debt, a job left open, someone met."
 )
-WRITE_HUB_SCENE = "Write the hub scene there. "
+WRITE_HUB_SCENE = "Write the hub scene there. " + HUB_QUESTION + " "
+BRIEFS: dict[Moment, str] = {
+    "taking": TAKE_BRIEF,
+    "away": AWAY_BRIEF,
+    "returning": WRITE_HUB_SCENE + RETURN_BRIEF,
+}
 
 
 class Offer(Frozen):
     title: str = Field(min_length=1)
-    pitch: str = Field(min_length=1)  # the job in the player's words; played as their action
+    pitch: str = Field(min_length=1)  # the board's words, as the fixer posts it
 
 
 class Debrief(Frozen):
@@ -103,7 +121,8 @@ def closed_jobs(hub: Slug | None, stops: Sequence[Stop]) -> tuple[Job, ...]:
 
 def board_rows(board: Sequence[Offer]) -> tuple[PanelRow, ...]:
     return tuple(
-        PanelRow(label=offer.title, detail=offer.pitch, intent=offer.pitch) for offer in board
+        PanelRow(label=offer.title, detail=offer.pitch, intent=TAKE_JOB.format(title=offer.title))
+        for offer in board
     )
 
 
@@ -131,10 +150,9 @@ def ledger(jobs: Sequence[Job]) -> str:
 
 
 def hub_sections(
-    hub_title: str, hub: Slug, board: Sequence[Offer], jobs: Sequence[Job], *, returning: bool
+    hub_title: str, hub: Slug, board: Sequence[Offer], jobs: Sequence[Job], *, moment: Moment
 ) -> Rows:
-    template = WRITE_HUB_SCENE + RETURN_BRIEF if returning else HUB_BRIEF
-    brief = template.format(title=hub_title, place=hub)
+    brief = BRIEFS[moment].format(title=hub_title, place=hub)
     return (
         ("JOBS SO FAR", ledger(jobs)),
         ("THE BOARD", board_lines(board)),

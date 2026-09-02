@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from twentyfourxx_test_support import (
     HUB_PLACE,
     HUB_SITUATION,
+    JOB,
     JOB_PLACE,
     KESTREL,
     SABLE,
@@ -293,3 +294,41 @@ def test_render_worldsmith_returning_has_the_hub_draft_schema_and_board_guidance
     prompt = render_worldsmith(world, GO_HOME, "guidance text", returning=True)
     assert '"debrief"' in prompt
     assert BOARD_GUIDANCE in prompt
+
+
+def test_render_worldsmith_prints_the_job_line_for_the_job_run() -> None:
+    prompt = render_worldsmith(hub_world().payload.world, "I look around.", "guidance text")
+    assert f"the job: {JOB}" in prompt
+
+
+def test_install_scene_on_a_hub_draft_lands_a_home_card() -> None:
+    game = hub_world()
+    facts = install_scene(game, _hub_draft(finished=True))
+    assert any(fact.card == "Home: Back at the Amber Tap" for fact in facts)
+
+
+def test_a_take_written_at_the_hub_without_a_job_is_refused() -> None:
+    game = hub_world()
+    install_scene(game, _hub_draft(finished=True))
+    world = game.payload.world
+    draft = _draft(place=JOB_PLACE, present=("fixer",))
+    assert scene_refusal(draft, world) == (
+        "the scene needs a `job` of a short paragraph: who wants what done, what done looks "
+        "like, what it pays"
+    )
+
+
+def test_a_later_job_scene_carrying_a_job_is_refused() -> None:
+    world = hub_world().payload.world
+    draft = _draft(place=JOB_PLACE, present=("fixer",), job=JOB)
+    assert scene_refusal(draft, world) == (
+        "the scene needs no `job`: only the scene that leaves the hub carries it"
+    )
+
+
+def test_render_worldsmith_at_the_hub_has_the_take_brief() -> None:
+    game = hub_world()
+    install_scene(game, _hub_draft(finished=True))
+    world = game.payload.world
+    prompt = render_worldsmith(world, "I look at the board.", "guidance text")
+    assert "WHAT COMES NEXT is the job they take" in prompt

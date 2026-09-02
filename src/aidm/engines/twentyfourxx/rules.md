@@ -59,7 +59,9 @@ job called on and pays out its credits.
 The hub is always open, so `next_scene` is never needed there and the spent note never fires;
 play the hub as any scene — talk, trade, rest — and never push the player out. The board is the
 player's to take from the page, so do not choose for them. When NOTES FROM THE RULES says a job
-closed and was completed, call `job_done` once with the skill the player names.
+closed and was completed, call `job_done` once with the skill the player names. THE JOB is what
+the player walked out on. At the hub WHAT THIS PLACE IS ABOUT replaces the scene's question:
+nothing settles there.
 
 ## Let the player choose where the story goes
 

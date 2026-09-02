@@ -18,7 +18,7 @@ Two kinds of scenario, both folders under `scenarios/`, both on the home page:
 | opens on | the adventure's first scene or place | the hub, with a board of offers |
 | ends when | the story ends, or death | death only |
 | the worldsmith writes | the next scene or region | the next job's opening, and the return home |
-| the player sees | today's page | today's page plus offer buttons, a "Go home" or "Report in" button, a `Jobs done` panel, chapter headings |
+| the player sees | today's page | today's page plus offer buttons, a "Go home" or "Report in" button, a `Jobs` panel, chapter headings |
 
 Two words, two levels. A **campaign** is the scenario kind. A **job** is one outing between two
 hub visits. "Job" is the design and code word; an engine's text may use its SRD's word.
@@ -28,16 +28,18 @@ How it plays, in a scene engine:
 1. A campaign opens at the hub. The board already holds two or three offers. The hub is a scene:
    the player talks, shops, rests; every master tool works there. The hub is always open: the
    way on is offered without the scene being settled, and the spent note never fires there.
-2. The player clicks an offer. Its pitch is the intent; the worldsmith writes the job's opening
-   scene from it, the existing bar applies, the arrival is narrated. Free text plus Move on still
-   works at the hub, for a job with a twist or for going somewhere else.
+2. The player clicks an offer. Its button plays `TAKE_JOB` with the offer's title; the worldsmith
+   reads the pitch off the board and writes the job's opening scene from it, the existing bar
+   applies, the arrival is narrated. Free text plus Move on still works at the hub, for a job
+   with a twist or for work the player names themselves: every scene that leaves the hub opens
+   a job, and the worldsmith writes its `job` from the player's words.
 3. The job runs as scenes run today. The master's picture and the narrator's view do not change.
    The sidebar's `Trail` lists this job's scenes only.
 4. When a job scene is settled the sidebar offers "Go home" beside the way on. Clicking it is
    Move on with a fixed intent. The worldsmith writes the hub scene, a one-paragraph debrief of
    the job just left, whether it was finished, and the new board: keep, drop, add.
 5. On install: a "Job done" or "Job left open" card carrying the debrief, then the arrival
-   narration. The board panel shows the new offers; `Jobs done` gains a line. When the job was
+   narration. The board panel shows the new offers; `Jobs` gains a line. When the job was
    finished and the SRD prints a between-jobs step, a note tells the master it applies.
 6. An open job stays on the board, so the player can take it again: a new opening scene, the
    same place slug and cast, so the art and the faces return.
@@ -109,9 +111,10 @@ Rules:
 | start (`c9efa13`) | 9,548 |
 | 1 — the seam and `engines/hub.py` | about 9,720 |
 | 2 — 24XX | about 9,870 |
-| 3 — Breathless and Loner | about 10,140 |
-| 4 — Tunnel Goons | about 10,290 |
-| 5 — the enduring documents | about 10,290 |
+| 2b — the shape, refined | about 9,990 |
+| 3 — Breathless and Loner | about 10,200 |
+| 4 — Tunnel Goons | about 10,350 |
+| 5 — the enduring documents | about 10,350 |
 
 Targets are targets. The caps stand: 2,000 Python lines per engine, fifteen game-master tools
 (tools plus `change_world` arms; 24XX is at fifteen). No phase adds a tool.
@@ -142,7 +145,13 @@ Targets are targets. The caps stand: 2,000 Python lines per engine, fifteen game
    (scene engines) and `Visit.debrief` (Tunnel Goons), `None` everywhere else. A job is derived
    by one walk over `Stop{place, title, debrief}` triples; a job's title and place are those of
    the first stop after leaving the hub, and the ledger names both, so the worldsmith can reopen
-   a job at its place and the art cache hits. Nothing else is stored, nothing is indexed.
+   a job at its place and the art cache hits. The worldsmith titles that first scene after the
+   offer taken, so the ledger names what the player clicked. In the scene engines that scene
+   also carries `job`, a short paragraph on the job as taken (who wants what done, what done
+   looks like, what it pays); the master reads it as `THE JOB`, and every later scene's
+   worldsmith sees it in `SCENES SO FAR`. A one-shot's `meta.premise` plays that part already,
+   and Tunnel Goons' job is a visible map, so neither has it. Nothing else is stored, nothing is
+   indexed.
 7. **The shared hub code lives in `engines/hub.py`**, a flat module beside `core.py` and
    `scenes.py`, written in Phase 1: the models, the walk, the rows, the ledger, the card, the
    checks, the fixed intents and the prompt briefs. `hub.py` imports `core`; `scenes.py` and
@@ -162,8 +171,9 @@ Targets are targets. The caps stand: 2,000 Python lines per engine, fifteen game
    typed "go home" in a job is a job scene like any other; if the worldsmith places it at the
    hub, the bar refuses it ("home is reached by going home") and the player uses the button.
    An intent is played as the PLAYER ACTION of a full turn before the crossing, shown as the
-   player's bubble and quoted to the narrator, so an offer's `pitch` is written in the player's
-   own words ("I take the Deck 9 crate run."), never the fixer's.
+   player's bubble and quoted to the narrator. An offer's button plays `TAKE_JOB = 'I take the
+   job "{title}".'`, so `pitch` is the board's own words, as the fixer posts it ("Crates off
+   Deck 9, no manifest, half up front."); the worldsmith finds it on `THE BOARD` by title.
 10. **The way on stays the scene's.** `Transition.ready` is `way_open = run.settled or at_hub`.
     The "Go home" row shows only when the way is open, so pressing it never raises "no
     transition from here". Leaving a job means settling its current scene first, as leaving any
@@ -177,7 +187,8 @@ Targets are targets. The caps stand: 2,000 Python lines per engine, fifteen game
     nothing is invented. An unfinished job appends no note. Reputation is prose: no counter; the
     ledger and the sheet are what the worldsmith reads to decide which offers fit.
 13. **Two cards on a return.** `job_closed` ("Job done: <title>" or "Job left open: <title>",
-    then the debrief on its own line) and the engine's usual opening card. Tunnel Goons' job
+    then the debrief on its own line) and the engine's opening card reading "Home: <the return
+    scene's title>" instead of "New scene: ...". Tunnel Goons' job
     take is one told card, "A way opens: <region start>", so the player sees the map grew. A
     silent install's exchange is filed under the intent that caused it, not "(the story moves
     on)"; that heading stays the narrated crossing's.
@@ -477,7 +488,7 @@ class HubDraft(SceneDraft):
 - `player_view`: `This scene` rows are the question, then `HUB_ROW` at the hub, else when settled
   the "Way on" row and, in a campaign, `HOME_ROW`. Panels, in order: `Character`, `Gear`, `This
   scene`, `Board` (campaign, at the hub only: `board_rows(world.board)`), `Here`, `Trail`
-  (`job_runs()`), `Jobs done` (campaign: `jobs_rows(closed_jobs(...))`).
+  (`job_runs()`), `Jobs` (campaign: `jobs_rows(closed_jobs(...))`).
 - `master_sections`: after `THE SCENE'S SECRET`, `("JOBS SO FAR", ledger(...))` in a campaign
   and `("THE BOARD", board_lines(...))` at the hub.
 - `rules.md`, a `## Campaigns` section before the scene rules: the hub is always open, so
@@ -500,7 +511,7 @@ class HubDraft(SceneDraft):
   `answer` records the model it was given); a job scene placed at the hub is refused;
   `install_scene` on a return swaps the board, lands the two cards, and the note only when
   finished; `player_view` shows the board at the hub, "Go home" only when settled in a job, and
-  `Jobs done` after a return; `exchanges()` heads a job scene `<job> — <scene>`.
+  `Jobs` after a return; `exchanges()` heads a job scene `<job> — <scene>`.
 - Checked together: the scenario, then regen (`state/twentyfourxx-campaign.json` appears).
 - `docs/24XX.md`: deviation 3 becomes "the d6 job-finding setup is prompt guidance for a
   campaign's board, not a roll; the d20 detail tables stay unmodelled"; the reading "a job is
@@ -513,13 +524,98 @@ class HubDraft(SceneDraft):
 
 ---
 
+## Phase 2b — the shape, refined
+
+What playing Phase 2 taught, fixed once in the shared code and 24XX before Phases 3 and 4 copy
+it three times. One implementer. Nothing in `core`, `turn`, `app` or `ui` changes.
+
+### 2b.1 `engines/hub.py`
+
+```python
+type Moment = Literal["taking", "away", "returning"]   # where the worldsmith writes from
+TAKE_JOB = 'I take the job "{title}".'                  # what an offer's button plays
+HUB_QUESTION = (
+    "The hub's `question` is what keeps the player coming back, never something to settle."
+)
+TAKE_BRIEF = (
+    "The player is leaving {title} ({place}) on a job. WHAT COMES NEXT is the job they take: an "
+    "offer by its title, whose pitch THE BOARD holds, or their own words. Write the job's first "
+    "scene away from {place}, titled after the offer, and its `job`: who wants what done, what "
+    "done looks like, what it pays. Anyone from the hub's cast the player names is present. An "
+    "offer taken before opens at the place its JOBS SO FAR line names, with its cast."
+)
+JOB_ASK = "who wants what done, what done looks like, what it pays"   # in TAKE_BRIEF and the bar
+AWAY_BRIEF = "The hub is {title} ({place}). Never place a scene at {place}: home is reached by going home."
+RETURN_BRIEF = (... as today, plus:)
+    " A new offer may grow from JOBS SO FAR: a debt, a job left open, someone met."
+WRITE_HUB_SCENE = "Write the hub scene there. " + HUB_QUESTION + " "
+
+class Offer(Frozen):
+    title: str = Field(min_length=1)
+    pitch: str = Field(min_length=1)   # the board's words, as the fixer posts it
+```
+
+- `board_rows`: `intent=TAKE_JOB.format(title=offer.title)`; `detail` stays the pitch.
+- `hub_sections(hub_title, hub, board, jobs, *, moment: Moment)`: the brief is `TAKE_BRIEF`,
+  `AWAY_BRIEF` or `WRITE_HUB_SCENE + RETURN_BRIEF` by moment (a module-level `BRIEFS: dict[Moment,
+  str]`); `JOBS SO FAR` and `THE BOARD` stay.
+- Tests in `tests/core/test_hub.py`: `board_rows` plays `TAKE_JOB`; `hub_sections` picks the
+  brief by moment.
+
+### 2b.2 `engines/scenes.py`
+
+```python
+class Scene(Frozen):
+    ...
+    job: str = ""    # the job as taken; on the scene that leaves the hub only
+```
+
+`scene_history` prints `the job: <job>` after the question line when `job` is set.
+
+### 2b.3 24XX
+
+- `SceneDraft.job: str = ""`; `_scene` copies it. `MIN_JOB = 80`.
+- `_scene_unmet`: `taking = world is not None and world.at_hub` (never with `hub`: a hub write is
+  a job write). Taking: `len(draft.job) < MIN_JOB` is unmet, "a `job` of a short paragraph: who
+  wants what done, what done looks like, what it pays". Otherwise `draft.job` non-empty is
+  unmet, "no `job`: only the scene that leaves the hub carries it".
+- `render_worldsmith(..., returning)`: `moment = "returning" if returning else "taking" if
+  world.at_hub else "away"`, passed to `hub_sections`.
+- `BOARD_GUIDANCE` loses its recipe sentence: "The SRD's job-finding setup is the board's range,
+  not a recipe: 1–2 nothing, owe somebody to get in on a job; 3–4 found a job, but something
+  seems off; 5–6 a choice between two jobs."
+- `CAMPAIGN_OPENING` ends with `HUB_QUESTION`.
+- `install_scene`: a `HubDraft`'s opened card reads `f"Home: {written.title}"`.
+- `master_sections`: the heading is `WHAT THIS PLACE IS ABOUT` at the hub, `THE QUESTION THIS
+  SCENE SETTLES` elsewhere; `("THE JOB", job)` after `THE SCENE'S SECRET` when `job = next((run.
+  scene.job for run in world.job_runs() if run.scene.job), "")` is set.
+- `player_view`: the `Jobs done` panel becomes `Jobs`.
+- `worldsmith.md`: the `offers` line reads "a `pitch` as the board posts it — 'Crates off Deck 9,
+  no manifest, half up front.' — enough to walk out on"; one new line: "`job` goes on the scene
+  that leaves the hub only: a short paragraph on the job as taken — who wants what done, what
+  done looks like, what it pays. Title that scene after the offer taken."
+- `rules.md ## Campaigns` gains: "THE JOB is what the player walked out on. At the hub WHAT THIS
+  PLACE IS ABOUT replaces the scene's question: nothing settles there."
+- `scenarios/amber-tap`: the three pitches in the fixer's voice.
+- Tests: a take without `job` is refused and a later scene with one is refused; `scene_history`
+  prints the job; `master_sections` has `THE JOB` in a job and the hub heading at the hub; the
+  return's card is `Home: ...`; the hub test's board rows play `TAKE_JOB`.
+- Regen: every scene engine's `state/`, `save/` and `turn/` fixtures gain `"job": ""` per scene;
+  `twentyfourxx-campaign.json` carries the new pitches; `master.txt` changes by the `rules.md`
+  line. Nothing else.
+
+**Done when:** green; the board buttons play `TAKE_JOB`; a job's first scene carries `job` and
+the master reads `THE JOB`; `src` about 9,990.
+
+---
+
 ## Phase 3 — Breathless and Loner
 
 Copy Phase 2 into both. **Split:** parallel, A Breathless, B Loner; they share no file.
 
 ### 3.1 Breathless (A)
 
-Exactly 2.1–2.4 with Breathless' types. Differences: no `BOARD_GUIDANCE` (the SRD prints no job
+Exactly 2.1–2.4 as refined by 2b, with Breathless' types. Differences: no `BOARD_GUIDANCE` (the SRD prints no job
 table); no note on a finished job (the SRD prints no between-runs step), so `install_scene`
 appends nothing to `state.notes`; `rules.md`'s `## Campaigns` says the return is the camp and
 nothing is owed. Content: a camp or safe house as the hub, the pack's `missions` as the offers'
@@ -527,7 +623,7 @@ vocabulary. `docs/BREATHLESS.md` gains one reading: a campaign's between-runs st
 
 ### 3.2 Loner (B)
 
-Exactly 2.1–2.4 with Loner's types (`cast: dict[EntityId, LonerCharacter]`, `player_id`).
+Exactly 2.1–2.4 as refined by 2b, with Loner's types (`cast: dict[EntityId, LonerCharacter]`, `player_id`).
 Differences: companions come home as they go anywhere (`apply_scene` keeps followers already);
 `close_conflicts` runs before the move as it does now; the note is `GROWTH_NOTE = "The job
 {title} is closed and was completed. The adventure's end applies: ask what the character
@@ -537,7 +633,7 @@ hall as the hub, packs as the one-shot's. `docs/LONER-3E.md` deviation 5's growt
 job in a campaign.
 
 **Done when:** green; both campaigns play a job and a return; each engine under about 1,560
-lines; `src` about 10,140.
+lines; `src` about 10,200.
 
 ---
 
@@ -626,7 +722,7 @@ class ReturnDraft(Frozen):
 
 - `player_view`: `Board` panel at the hub — `(REPORT_ROW,)` when `open_job` is not `None`, else
   `board_rows(world.board)`: a job is reported before the next is taken, so none is dropped
-  from the ledger; `Trail` from `job_start`; `Jobs done` in a campaign.
+  from the ledger; `Trail` from `job_start`; `Jobs` in a campaign.
 - `master_sections`: `JOBS SO FAR` in a campaign, `THE BOARD` at the hub.
 - `rules.md`, `## Campaigns`: the tavern is home; the player takes work from the page; a job is
   a dungeon hung off the tavern; there is no teleport home — the player walks, and you may cover
@@ -646,7 +742,7 @@ class ReturnDraft(Frozen):
 - `docs/TUNNEL-GOONS.md`: deviation 1 says per adventure in a one-shot, per job in a campaign.
 
 **Done when:** green; the tavern hands out a dungeon, the player walks it and back, "Report in"
-lands the card; engine at about 1,420 lines; `src` about 10,290.
+lands the card; engine at about 1,420 lines; `src` about 10,350.
 
 ---
 

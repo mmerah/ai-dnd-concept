@@ -45,6 +45,7 @@ class Scene(Frozen):
     # What `question` does not say: never narrated, never in a view.
     secret: str = ""
     debrief: Debrief | None = None  # the hub's word on the job just left; hub runs after the first
+    job: str = ""  # the job as taken; on the scene that leaves the hub only
 
 
 class SceneRun(Mutable):
@@ -122,6 +123,7 @@ def scene_history(runs: Sequence[SceneRun]) -> str:
             (
                 f"SCENE {number}: {run.scene.title} ({run.scene.place})",
                 f"the question: {run.scene.question}",
+                *([f"the job: {run.scene.job}"] if run.scene.job else []),
                 run.scene.situation,
                 "what happened: " + (told_tail(run) or "(nothing yet)"),
             )

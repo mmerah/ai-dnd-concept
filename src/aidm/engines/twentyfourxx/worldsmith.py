@@ -15,6 +15,8 @@ from aidm.engines.hub import (
     BOARD_MAX,
     BOARD_MIN,
     GO_HOME,
+    HUB_QUESTION,
+    JOB_ASK,
     Debrief,
     Offer,
     hub_sections,
@@ -42,11 +44,11 @@ from aidm.engines.twentyfourxx.world import (
 )
 
 MIN_SITUATION = 80
+MIN_JOB = 80
 WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
 BOARD_GUIDANCE = (
-    "The SRD's job-finding setup, as guidance for the board: 1–2 nothing, owe somebody to get in "
-    "on a job; 3–4 found a job, but something seems off; 5–6 a choice between two jobs. Let the "
-    "offers carry that range: one that costs a favour, one where something is off, a plain choice."
+    "The SRD's job-finding setup is the board's range, not a recipe: 1–2 nothing, owe somebody to "
+    "get in on a job; 3–4 found a job, but something seems off; 5–6 a choice between two jobs."
 )
 # Read by the next turn, which is usually the next offer click: the note must stand on its own.
 JOB_DONE_NOTE = (
@@ -59,7 +61,8 @@ ONE_SHOT_OPENING = (
 )
 CAMPAIGN_OPENING = (
     "Write the opening of this campaign: the hub the player keeps coming back to — one place, "
-    "the fixer and the regulars — and a board of two or three `offers`. Nothing has happened yet."
+    "the fixer and the regulars — and a board of two or three `offers`. Nothing has happened yet. "
+    + HUB_QUESTION
 )
 
 
@@ -74,6 +77,7 @@ class SceneDraft(Frozen):
     present: tuple[str, ...] = ()
     hidden: tuple[str, ...] = ()
     secret: str = ""
+    job: str = ""  # the job as taken; on the scene that leaves the hub only
     cast: dict[EntityId, Npc] = Field(default_factory=dict)
     offers: tuple[Offer, ...] = ()  # the board; only a hub scene fills it
 
@@ -151,7 +155,8 @@ def install_scene(state: TwentyfourxxGame, written: BaseModel) -> tuple[Fact, ..
     world = state.payload.world
     apply_scene(world, written.model_copy(deep=True))
     trace = f"the story moves to {written.title}"
-    opened = Fact(kind="scene_opened", trace=trace, told=True, card=f"New scene: {written.title}")
+    label = "Home" if isinstance(written, HubDraft) else "New scene"
+    opened = Fact(kind="scene_opened", trace=trace, told=True, card=f"{label}: {written.title}")
     if isinstance(written, HubDraft):
         world.board = written.offers
         job = world.jobs()[-1]
@@ -173,7 +178,11 @@ def render_worldsmith(
     hub: Rows = ()
     if world.hub is not None:
         hub = hub_sections(
-            world.runs[0].scene.title, world.hub, world.board, world.jobs(), returning=returning
+            world.runs[0].scene.title,
+            world.hub,
+            world.board,
+            world.jobs(),
+            moment="returning" if returning else "taking" if world.at_hub else "away",
         )
     return _worldsmith(
         source=world.source,
@@ -264,6 +273,7 @@ def _scene(draft: SceneDraft) -> Scene:
         question=draft.question,
         situation=draft.situation,
         secret=draft.secret,
+        job=draft.job,
         debrief=draft.debrief if isinstance(draft, HubDraft) else None,
     )
 
@@ -291,6 +301,11 @@ def _scene_unmet(
         unmet.append(f"a situation that does not name what is hidden: {told}")
     if broken := sorted(eid for eid, one in draft.cast.items() if not one.alive):
         unmet.append(f"cast members as the worldsmith may write them: alive: {broken}")
+    taking = world is not None and world.at_hub
+    if taking and len(draft.job) < MIN_JOB:
+        unmet.append(f"a `job` of a short paragraph: {JOB_ASK}")
+    if not taking and draft.job:
+        unmet.append("no `job`: only the scene that leaves the hub carries it")
     if hub:
         if world is not None and draft.place != world.hub:
             unmet.append(f"the hub's place {world.hub!r}: this scene is home")

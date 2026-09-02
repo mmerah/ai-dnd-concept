@@ -84,7 +84,8 @@
             "question": "Can they reach the causeway and cross it before the tide takes it back?",
             "situation": "The Bell House stands at the causeway's landward end, its rope still swinging from the second peal. Ovid Sarn watches the flats through a cracked window while Ivo Casks paces by the door, and out past the mudflats the chapel lamp waits a mile off across water already climbing your boots.",
             "secret": "Ovid rings the bell twice to mark the crossing window, never as a call for help; a third ring means something is already out on the causeway.",
-            "debrief": null
+            "debrief": null,
+            "job": ""
           },
           "present": [
             "ovid-sarn",
