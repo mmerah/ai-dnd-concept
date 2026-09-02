@@ -8,9 +8,9 @@ from aidm.core.entities import CheckedEntityId, EngineId, EntityId, Frozen, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyScenario, ScenarioKind, ScenarioMeta, WorldsmithAnswer
+from aidm.core.play import Exchange
 from aidm.core.tools import schema_of
 from aidm.core.views import Rows, sections
-from aidm.engines.core import told_tail
 from aidm.engines.hub import (
     BOARD_MAX,
     BOARD_MIN,
@@ -39,6 +39,7 @@ from aidm.engines.tunnelgoons.world import (
 
 MIN_PLACES = 4
 MIN_EXTENSION_PLACES = 2
+TAIL_EXCHANGES = 3
 WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
 TAVERN_ASK = (
     "(no map yet — write the tavern: one known place, its keeper and regulars as npcs, no ways "
@@ -315,10 +316,14 @@ def _render_job(world: TunnelWorld, intent: str) -> str:
     )
 
 
+def _told_tail(exchanges: Sequence[Exchange]) -> str:
+    return "\n".join(f"> {one.prompt}\n{one.narration}" for one in exchanges[-TAIL_EXCHANGES:])
+
+
 def _render_return(world: TunnelWorld) -> str:
     this_job = "\n\n".join(
         f"{world.require_place(visit.place).name}[{visit.place}]\n"
-        + (told_tail(visit.exchanges) or "(nothing said)")
+        + (_told_tail(visit.exchanges) or "(nothing said)")
         for visit in world.job_visits()
     )
     return sections(

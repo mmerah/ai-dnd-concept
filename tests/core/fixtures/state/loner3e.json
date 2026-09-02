@@ -35,7 +35,8 @@
           "exchanges": [],
           "settled": false,
           "spent": "",
-          "job_done": false
+          "job_done": false,
+          "recap": ""
         }
       ],
       "source": "",

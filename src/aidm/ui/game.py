@@ -279,6 +279,7 @@ def game_page(runtime: Runtime, session: GameService) -> None:
             way_on_panel(view)
             composer(view)
             view.transcript = transcript
+            ui.timer(0.5, lambda: transcript.scroll_to(percent=1.0), once=True)
         with splitter.after, ui.column().classes("w-full h-full").style("gap: 0"):
             with ui.tabs().classes("w-full") as tabs:
                 scene_tab = ui.tab("scene")

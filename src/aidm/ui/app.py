@@ -140,9 +140,10 @@ def _saved_card(saved: SaveOption) -> None:
         with ui.row().classes("w-full items-center").style("gap: 1rem"):
             with ui.column().classes("col").style("gap: 0.25rem"):
                 ui.label(saved.scenario_title).classes("text-h6 font-bold")
-                ui.label(f"{saved.character_title} · turn {saved.turn}").classes(
-                    "text-sm opacity-70"
-                )
+                ui.label(
+                    f"{saved.character_title} · turn {saved.turn}"
+                    + (f" · {saved.where}" if saved.where else "")
+                ).classes("text-sm opacity-70")
                 if saved.kind == "campaign":
                     ui.badge("campaign").props("outline")
             ui.button(

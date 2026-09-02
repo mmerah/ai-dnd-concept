@@ -96,3 +96,47 @@ review findings and why, anything known and accepted.
 - `scenes.py` is 995 lines against "about 700": the file was 620 before the move and the PLAN's
   own function list adds about 370. Phase 4 splits it into a package.
 - The three engines land under their "about 1,050" targets; nothing was padded (PLAN rule 5).
+
+## Phase 3 — the recap and the refinements
+
+- `src` lines: 9,419 before, 9,480 after (target about 9,625; nothing padded, PLAN rule 5).
+  Tests: 463 before, 469 after.
+- Goldens: the nine `state/` and `save/` fixtures of 24XX, Breathless and Loner gain
+  `"recap": ""` per run, as the phase's Done when says. `prompts/`, `schemas/`, `turn/` and
+  every Tunnel Goons fixture unchanged.
+- Reviews: Fable reviewer and a second Opus reviewer (no `codex` on the machine).
+- Smoke: `uv run aidm` starts and the home page serves; a turn needs a spawned CLI the
+  container lacks, so that check is manual.
+
+### Decisions off-plan
+
+- `scene_history` prints a run through a private `_told(run)`: the recap branch and the
+  exchange branch, so the comprehension stays one expression.
+- `told_tail` lands in `tunnelgoons/worldsmith.py` as the private `_told_tail`; the constant
+  keeps its name `TAIL_EXCHANGES`.
+- The launcher test "a save that lists but will not open still reaches the player" is replaced
+  by "a save that fails to restore is skipped, not listed": its premise (the payload is read only
+  when the game opens) is what PLAN 3.5 changes.
+- `tests/core/test_tool_surface.py` keeps its `A_SCENE` without a recap; `_scene` adds `RECAP`
+  for the drafts written in play and `_bare_scene` validates an opening against `SceneDraft`.
+
+### Refuted findings
+
+- "The `ui.timer(0.5, ...)` in `game_page` duplicates `_scroll` and carries a magic number":
+  PLAN 3.4 prescribes that exact line.
+- "`_told` prints every exchange of the open run, uncapped, where the worldsmith prompt held
+  three": PLAN 3.1 says a run without a recap prints every exchange; the recap bounds every
+  closed run, and the open run is the one the worldsmith must read whole. Known and accepted
+  below.
+- "`IDEAS.md` item 12 is deleted though a session recap on resume did not land": PLAN 3.6 says
+  delete item 12, its second half being 3.4 (resume at the end).
+- "The home page now restores every save in full on every load": PLAN 3.5 prescribes
+  `engines[game.engine].restored(raw)` in `load_catalog`. Known and accepted below.
+
+### Known and accepted
+
+- A scene played far past `SCENE_TURN_CAP` puts all of its exchanges into the worldsmith prompt
+  at the crossing; only that one run is unbounded, and only until it is recapped.
+- `load_catalog` decodes each save twice (the header, then `Engine.restored`); the home page
+  reads N whole games where it read N headers. `Engine` is outside this phase.
+- `src` lands 145 lines under the target: the recap and the terms cost about 60 lines, not 200.

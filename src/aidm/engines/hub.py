@@ -41,7 +41,7 @@ TAKE_BRIEF = (
     "offer by its title, whose pitch THE BOARD holds, or their own words. Write the job's first "
     "scene away from {place}, titled after the offer, and its `job`: who wants what done, what "
     "done looks like, what it pays. Anyone from the hub's cast the player names is present. An "
-    "offer taken before opens at the place its JOBS SO FAR line names, with its cast."
+    "offer taken before opens at the place its JOBS SO FAR line names, with its cast and its terms."
 )
 AWAY_BRIEF = (
     "The hub is {title} ({place}). Never place a scene at {place}: home is reached by going home."
@@ -74,12 +74,14 @@ class Stop(Frozen):
     place: Slug
     title: str
     debrief: Debrief | None = None
+    job: str = ""  # the terms as the scene that left the hub wrote them; empty for Tunnel Goons
 
 
 class Job(Frozen):
     title: str
     place: Slug
     debrief: Debrief
+    job: str = ""
 
 
 def check_kind(kind: ScenarioKind, hub: Slug | None) -> None:
@@ -124,7 +126,14 @@ def closed_jobs(hub: Slug | None, stops: Sequence[Stop]) -> tuple[Job, ...]:
         job_stop = next((step for step in range(since_debrief + 1, index) if titles[step]), None)
         if job_stop is None:
             raise ValueError("a debrief with no job before it")
-        jobs.append(Job(title=titles[job_stop], place=stops[job_stop].place, debrief=stop.debrief))
+        jobs.append(
+            Job(
+                title=titles[job_stop],
+                place=stops[job_stop].place,
+                debrief=stop.debrief,
+                job=stops[job_stop].job,
+            )
+        )
         since_debrief = index
     return tuple(jobs)
 
@@ -143,11 +152,13 @@ def board_lines(board: Sequence[Offer]) -> str:
 def ledger(jobs: Sequence[Job]) -> str:
     if not jobs:
         return "(none yet)"
-    return "\n".join(
-        f"- {job.title} ({job.place}): {job.debrief.text}"
-        + ("" if job.debrief.finished else OPEN_SUFFIX)
-        for job in jobs
-    )
+    lines: list[str] = []
+    for job in jobs:
+        open_suffix = "" if job.debrief.finished else OPEN_SUFFIX
+        lines.append(f"- {job.title} ({job.place}): {job.debrief.text}{open_suffix}")
+        if open_suffix and job.job:
+            lines.append(f"  the job: {job.job}")
+    return "\n".join(lines)
 
 
 def hub_sections(

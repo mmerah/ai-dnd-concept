@@ -19,6 +19,7 @@ from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.hub import GO_HOME, TAKE_JOB
 from aidm.engines.scenes import (
     JobDraft,
+    NextDraft,
     ReturnDraft,
     SceneDraft,
     apply_scene,
@@ -311,7 +312,25 @@ def _return_draft(*, offers: int = 2) -> ReturnDraft[Person]:
 
 def _job_draft() -> JobDraft[Person]:
     away = _draft(place=JOB_PLACE, present=("fixer",)).model_dump()
-    return JobDraft[Person].model_validate({**away, "job": JOB})
+    return JobDraft[Person].model_validate(
+        {
+            **away,
+            "job": JOB,
+            "recap": "Kael left the Amber Tap with the job in hand and made straight for the "
+            "dock, the fixer's directions still fresh.",
+        }
+    )
+
+
+def _next_draft(**fields: object) -> NextDraft[Person]:
+    base = _draft(**fields).model_dump()
+    return NextDraft[Person].model_validate(
+        {
+            **base,
+            "recap": "Kael slipped past the night crew, found nothing worth taking, and moved "
+            "on before the lights came back up.",
+        }
+    )
 
 
 async def test_write_next_picks_the_draft_the_moment_calls_for() -> None:
@@ -325,7 +344,7 @@ async def test_write_next_picks_the_draft_the_moment_calls_for() -> None:
         elif model is JobDraft[Person]:
             written = _job_draft()
         else:
-            written = _draft(present=("fixer",))
+            written = _next_draft(present=("fixer",))
         assert refusal(written) is None
         return written
 
@@ -333,7 +352,7 @@ async def test_write_next_picks_the_draft_the_moment_calls_for() -> None:
     assert recorded[-1] is ReturnDraft[Person]
 
     _ = await write_next({}, game, "I look around the warehouse.", answer)
-    assert recorded[-1] is SceneDraft[Person]
+    assert recorded[-1] is NextDraft[Person]
 
     _ = game.payload.world.runs.pop()  # home again: the next scene is the one that leaves
     _ = await write_next({}, game, TAKE_JOB.format(title="Job One"), answer)

@@ -7,13 +7,17 @@ from aidm.engines.hub import HOME_ROW, HUB_ROW, Debrief, Job, Offer
 from aidm.engines.scenes import (
     SCENE_TURN_CAP,
     SPENT_NOTE,
+    NextDraft,
     Scene,
     SceneRun,
     SceneWorld,
+    apply_scene,
     check_hub,
     kill,
     leave,
+    recap_rows,
     record_exchange,
+    scene_history,
     scene_rows,
 )
 
@@ -21,6 +25,7 @@ HUB = "hub"
 PLAYER = Person(id=PLAYER_ID, name="Player", brief="", known=True)
 MARA = EntityId("mara")
 SITUATION = "A long enough situation to satisfy the minimum length the model demands, twice over."
+RECAP = "A long enough recap to satisfy the minimum length the model demands for what happened."
 DONE = Debrief(text="Finished the job.", finished=True)
 BOARD = (Offer(title="A", pitch="Do a"), Offer(title="B", pitch="Do b"))
 
@@ -180,3 +185,47 @@ def test_a_party_member_who_is_not_in_this_scene_is_refused() -> None:
         _ = SceneWorld[Person, Person](
             player=PLAYER, cast=world.cast, runs=world.runs, party=[MARA]
         )
+
+
+def test_apply_scene_with_a_next_draft_stamps_the_recap_on_the_run_left() -> None:
+    world = SceneWorld[Person, Person](player=PLAYER, runs=[_run("a1", "A1")])
+    draft = NextDraft[Person](
+        place="a2", title="A2", question="What happens next here?", situation=SITUATION, recap=RECAP
+    )
+
+    apply_scene(world, draft)
+
+    assert world.runs[0].recap == RECAP
+    assert world.runs[-1].recap == ""
+
+
+def test_scene_history_prints_the_recap_in_place_of_the_situation_and_exchanges() -> None:
+    recapped = _run("a1", "A1")
+    recapped.exchanges = [Exchange(prompt="dropped", lines=())]
+    recapped.recap = RECAP
+    open_run = _run("a2", "A2")
+    open_run.exchanges = [Exchange(prompt="p1", lines=()), Exchange(prompt="p2", lines=())]
+
+    history = scene_history([recapped, open_run])
+
+    assert f"what happened: {RECAP}" in history
+    assert "dropped" not in history
+    assert SITUATION not in history.split("\n\n")[0]
+    assert "> p1" in history
+    assert "> p2" in history
+
+
+def test_recap_rows_is_empty_with_no_recap_and_names_the_scene_earlier_in_this_job() -> None:
+    no_recap = SceneWorld[Person, Person](
+        player=PLAYER, runs=[_run(HUB, "Hub"), _run("a1", "A1")], hub=HUB, board=BOARD
+    )
+    assert recap_rows(no_recap) == ()
+
+    recapped = _run("a1", "A1")
+    recapped.recap = RECAP
+    with_recap = SceneWorld[Person, Person](
+        player=PLAYER, runs=[_run(HUB, "Hub"), recapped], hub=HUB, board=BOARD
+    )
+    ((title, body),) = recap_rows(with_recap)
+    assert title == "EARLIER IN THIS JOB"
+    assert f"A1: {RECAP}" in body
