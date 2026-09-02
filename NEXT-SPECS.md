@@ -175,6 +175,12 @@ failures only log).
 - `config.py`: `SpeechConfig(enabled=False, provider: ProviderName = "openrouter",
   model="openai/gpt-4o-mini-tts", voice="alloy", timeout=60.0)`; `Settings.speech`;
   `_keys_present` also checks the speech provider's key. The settings page renders it for free.
+- The narrator's voice is the scenario's, as its art style is: `Scenario.voice: str = ""` on
+  the envelope (`core/model.py`, beside `art_style`), an input on the create page ("Narrator
+  voice, leave empty for the default"), passed through `Authoring.build` with `art_style`;
+  `open_reader` takes `scenario.voice or settings.speech.voice`, as `open_illustrator` takes the
+  style. The voice names are the provider's (`alloy`, `ash`, `coral`, `onyx`, `sage`… for the
+  OpenAI models); the setting is a string, never a `Literal`, since every model ships its own.
 - Endpoint: `POST {base_url}/audio/speech` with `{model, input, voice, response_format}`; the
   reply is raw audio bytes. OpenRouter serves it (documented at
   `openrouter.ai/docs/guides/overview/multimodal/tts`, OpenAI-compatible, priced per character);
@@ -193,8 +199,9 @@ failures only log).
   only on older ones; the 3-second `poll_art` timer also watches for the clip. About 15 lines.
 
 **Done when.** With `SPEECH__ENABLED=true` and a key, a turn's narration plays within seconds of
-the text; the file is reused on reload; with the provider down, the turn is unaffected and one
-warning logs. About +180 lines `src`. No test spawns anything; the request builder and the cache
+the text in the scenario's voice, or the settings' when it names none; the file is reused on
+reload; with the provider down, the turn is unaffected and one warning logs. About +190 lines
+`src`. No test spawns anything; the request builder and the cache
 key are the tested functions.
 
 **Open.** The per-character price of `gpt-4o-mini-tts` versus `google/gemini-2.5-flash-preview-tts`
