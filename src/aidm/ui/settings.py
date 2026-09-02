@@ -1,7 +1,6 @@
 import os
 from collections.abc import Callable
 from pathlib import Path
-from types import UnionType
 from typing import Literal, Protocol, get_args, get_origin
 
 from nicegui import ui
@@ -74,7 +73,7 @@ def _label(path: tuple[str, ...], field: FieldInfo) -> str:
 
 
 def _widget(label: str, field: FieldInfo, value: object) -> Box:
-    bare = _without_none(field.annotation)
+    bare = field.annotation
     if bare is SecretStr:
         # Never read a stored key back into the DOM; blank means "leave the stored key alone".
         placeholder = "set — type to replace" if value else "not set"
@@ -88,12 +87,6 @@ def _widget(label: str, field: FieldInfo, value: object) -> Box:
         number = value if isinstance(value, int | float) else None
         return ui.number(label, value=number).classes("w-full")
     return ui.input(label, value=_text(value)).classes("w-full")
-
-
-def _without_none(annotation: object) -> object:
-    if isinstance(annotation, UnionType):
-        return next(arg for arg in get_args(annotation) if arg is not type(None))
-    return annotation
 
 
 def _text(value: object) -> str:

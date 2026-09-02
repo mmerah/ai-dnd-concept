@@ -583,13 +583,19 @@ No behaviour change. **One implementer, sonnet.**
 - Inline `Counter.clamped` into `adjust`, its one user; `tests/loner3e/test_counters.py`
   loses its two `clamped` asserts.
 - Trim every docstring past one line where the code says the what.
+- `engines/scenes.py` becomes a package mirroring the engines' own file shape, a pure move:
+  `engines/scenes/world.py` (the models, the arms, the seam functions), `engines/scenes/worldsmith.py`
+  (the drafts, the bar, the crossing), `engines/scenes/views.py` (the lines, the panels).
+  `Engine`, `Authoring`, `Transition` and `AnyEngine` move from `engines/core.py` to
+  `engines/seam.py`, leaving `core.py` the world toolkit. Imports cost about 40 lines; nothing
+  else moves with them.
 
 ### 4.2 `CLAUDE.md`
 
 The engine line reads: "An engine is self-contained under `engines/<id>/`, under 2,000 lines,
 with at most fifteen game-master tools, counted as tools plus `change_world` arms, the two
 shared party arms not counted; twenty in all for an engine whose SRD plays a crew, named in its
-`docs/<ENGINE>.md`. The scene engines share the scene lifecycle in `engines/scenes.py`; all
+`docs/<ENGINE>.md`. The scene engines share the scene lifecycle in `engines/scenes/`; all
 four share the hub in `engines/hub.py`." Design decisions gain two lines: "Non-goals: a shared
 world layer, save migration, a built-in turn loop and its state keeper, retrieval over source
 documents." and "A turn: the master is spawned with the rules and the action and changes the

@@ -1,7 +1,8 @@
 from twentyfourxx_test_support import LOCKPICKS, small_world
 
 from aidm.core.views import PanelRow
-from aidm.engines.twentyfourxx.views import gear_detail, master_sections, narrator_view, player_view
+from aidm.engines.scenes import narrator_view
+from aidm.engines.twentyfourxx.views import gear_detail, master_sections, player_view
 from aidm.engines.twentyfourxx.world import Item
 
 

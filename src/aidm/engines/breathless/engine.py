@@ -12,7 +12,7 @@ from aidm.engines.breathless.creation import (
     preview_character,
 )
 from aidm.engines.breathless.tools import tools
-from aidm.engines.breathless.views import master_sections, narrator_view, player_view
+from aidm.engines.breathless.views import master_sections, player_view
 from aidm.engines.breathless.world import (
     BreathlessCharacterFile,
     BreathlessGame,
@@ -20,20 +20,17 @@ from aidm.engines.breathless.world import (
     BreathlessState,
     player_survivor,
 )
-from aidm.engines.breathless.worldsmith import (
-    build_scenario,
-    install_scene,
-    opening_draft,
-    render_opening,
-    write_next,
-)
-from aidm.engines.core import Authoring, Engine, Transition, load_packs
+from aidm.engines.breathless.worldsmith import install_scene, render_opening, write_next
+from aidm.engines.core import Authoring, Engine, Person, Transition, load_packs
 from aidm.engines.scenes import (
     arrival_brief,
+    build_scenario,
     check_game,
     history,
     known,
+    narrator_view,
     new_world,
+    opening_draft,
     player_over,
     record,
     way_open,
@@ -74,9 +71,9 @@ def build(user_packs: Path) -> Engine[BreathlessGame]:
         player_view=player_view,
         over=player_over,
         authoring=Authoring(
-            answer=opening_draft,
+            answer=partial(opening_draft, Person),
             prompt=partial(render_opening, packs),
-            build=build_scenario,
+            build=partial(build_scenario, BreathlessScenarioFile, EngineId("breathless"), Person),
         ),
         transition=Transition(
             ready=way_open,

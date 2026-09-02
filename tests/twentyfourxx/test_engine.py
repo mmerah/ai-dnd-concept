@@ -17,13 +17,13 @@ from aidm.engines.core import PLAYER_ID, AnyEngine, Person
 from aidm.engines.hub import Offer
 from aidm.engines.scenes import Scene, SceneCanon, SceneScenario
 from aidm.engines.twentyfourxx.engine import new_game
-from aidm.engines.twentyfourxx.tools import SRD_PACK
 from aidm.engines.twentyfourxx.world import (
     TwentyfourxxCharacterFile,
     TwentyfourxxGame,
     TwentyfourxxScenarioFile,
 )
 
+SRD_PACK = "srd"
 COMM = EntityId("comm")
 CLIMBING_GEAR = EntityId("climbing-gear")
 NIGHT_VISION_GOGGLES = EntityId("night-vision-goggles")

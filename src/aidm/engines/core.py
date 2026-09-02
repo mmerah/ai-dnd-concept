@@ -27,7 +27,7 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption, Exchange, PendingOption, SpokenLine
-from aidm.core.tools import MasterTool, Validate
+from aidm.core.tools import Known, MasterTool, Validate
 from aidm.core.views import NarratorView, Panel, PanelRow, PlayerView, Rows
 
 PLAYER_ID = EntityId("player")
@@ -102,7 +102,7 @@ class Counter(Mutable):
 class Authoring:
     answer: Callable[[ScenarioKind], type[BaseModel]]
     prompt: Callable[[str, Sequence[Slug], ScenarioKind], str]
-    build: Callable[[str, str, str, tuple[Slug, ...], BaseModel, str, ScenarioKind], AnyScenario]
+    build: Callable[[str, str, tuple[Slug, ...], BaseModel, str, ScenarioKind], AnyScenario]
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -133,7 +133,7 @@ class Engine[G: Game[Any]]:
     validate: Validate[G]
     new_game: Callable[[AnyScenario, AnyCharacter], BaseModel]
     over: Callable[[G], str | None]
-    known: Callable[[G, EntityId], bool | None]
+    known: Known[G]
     record: Callable[[G, str, tuple[SpokenLine, ...], Sequence[Fact]], tuple[str, ...]]
     history: Callable[[G], tuple[Exchange, ...]]
     master_sections: Callable[[G], Rows]

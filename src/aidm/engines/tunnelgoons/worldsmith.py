@@ -178,7 +178,6 @@ def render_map(source: str, picks: Sequence[Slug], kind: ScenarioKind) -> str:
 def build_scenario(
     title: str,
     premise: str,
-    art_style: str,
     packs: tuple[Slug, ...],
     written: BaseModel,
     source: str,
@@ -195,7 +194,6 @@ def build_scenario(
         ),
         engine=EngineId("tunnelgoons"),
         packs=packs,
-        art_style=art_style,
         payload=TunnelGoonsScenario(world=opening_canon(written, source, kind)),
     )
 
@@ -220,7 +218,7 @@ def _map_unmet(draft: MapDraft) -> list[str]:
         unmet.append("at least one way starting locked")
     if not _has_hidden_thing(draft):
         unmet.append("at least one hidden npc or item")
-    if not has_shortcut(draft.ways, places):
+    if not has_shortcut(draft.ways):
         unmet.append("a shortcut with an alternate route")
     return unmet
 
@@ -240,7 +238,7 @@ def _start_unmet(draft: MapDraft) -> list[str]:
     else:
         if not places[draft.start].known:
             unmet.append("the starting place known to the player")
-        if missing := sorted(set(places) - walk(draft.ways, draft.start, places)):
+        if missing := sorted(set(places) - walk(draft.ways, draft.start)):
             unmet.append(f"places no walk of ways reaches from {draft.start!r}: {missing}")
     return unmet
 
@@ -258,7 +256,7 @@ def _extension_unmet(draft: MapDraft) -> list[str]:
     else:
         if places[draft.start].known:
             unmet.append("a starting place hidden from the player")
-        if missing := sorted(set(places) - walk(draft.ways, draft.start, places)):
+        if missing := sorted(set(places) - walk(draft.ways, draft.start)):
             unmet.append(f"places no walk of ways reaches from {draft.start!r}: {missing}")
     if not any(way for leaving in draft.ways.values() for way in leaving):
         unmet.append("ways connecting the new places")

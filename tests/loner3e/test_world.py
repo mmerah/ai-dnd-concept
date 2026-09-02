@@ -7,14 +7,16 @@ from aidm.core.play import Exchange
 from aidm.engines.core import PLAYER_ID
 from aidm.engines.loner3e.tools import ChangeWorld, apply_change
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, LonerCharacter
-from aidm.engines.loner3e.worldsmith import (
+from aidm.engines.loner3e.worldsmith import install_scene
+from aidm.engines.scenes import (
     MIN_SITUATION,
+    SCENE_TURN_CAP,
+    SPENT_NOTE,
     SceneDraft,
     apply_scene,
-    install_scene,
+    record_exchange,
     scene_refusal,
 )
-from aidm.engines.scenes import SCENE_TURN_CAP, SPENT_NOTE, record_exchange
 
 MAP = EntityId("vault-map")
 MARA = EntityId("mara")
@@ -89,8 +91,8 @@ def test_a_scene_nobody_ends_is_ended_by_the_cap() -> None:
 
 def _next_scene(
     present: tuple[str, ...] = (MARA,), hidden: tuple[str, ...] = (TOMAS,)
-) -> SceneDraft:
-    return SceneDraft(
+) -> SceneDraft[LonerCharacter]:
+    return SceneDraft[LonerCharacter](
         place="cloister",
         title="The Cloister",
         question="Does the cloister walk still reach the stair?",
@@ -160,7 +162,7 @@ def test_a_one_word_name_is_a_word_the_situation_may_use() -> None:
 
 def test_the_scene_bar_names_what_a_thin_scene_is_missing() -> None:
     _, state = initialized()
-    thin = SceneDraft(
+    thin = SceneDraft[LonerCharacter](
         place="nowhere",
         title="Nowhere",
         question="Is there anything here at all?",
@@ -177,7 +179,7 @@ def test_the_scene_bar_names_what_a_thin_scene_is_missing() -> None:
         update={"cast": {ghost: LonerCharacter(id=ghost, name="Ghost", brief="", alive=False)}}
     )
     assert scene_refusal(broken, state.payload.world) == (
-        "the scene needs cast members as the worldsmith may write them: alive, full luck: ['ghost']"
+        "the scene needs cast members as the worldsmith may write them: ['ghost: alive']"
     )
 
 
@@ -255,11 +257,8 @@ def test_a_fact_about_someone_unmet_reaches_neither_player_nor_narrator() -> Non
 def test_the_player_is_in_every_scene_and_is_never_listed_in_one() -> None:
     _, state = initialized()
     draft = state.draft()
-    apply_scene(draft.payload.world, _next_scene(present=("kael",), hidden=("Kael", TOMAS)))
-    run = draft.payload.world.run
-    assert PLAYER_ID not in run.present and PLAYER_ID not in run.hidden
-    assert TOMAS in run.hidden
-    _ = draft.committed()
+    with pytest.raises(ValueError, match="put there by code"):
+        apply_scene(draft.payload.world, _next_scene(present=("kael",), hidden=("Kael", TOMAS)))
 
 
 def test_a_scene_that_hides_someone_already_met_is_refused_whole() -> None:

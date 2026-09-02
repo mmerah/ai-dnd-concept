@@ -4,7 +4,7 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.creation import CreationStep, Picks, check_picks, picked
+from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked
 from aidm.core.entities import EngineId, Frozen, Slug, slug
 from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption
@@ -101,7 +101,3 @@ def guidance(packs: Mapping[str, Pack], selected_ids: Sequence[Slug]) -> str:
         for one in selected_ids
     }
     return f"{_AUTHORING}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"
-
-
-def other_than(options: Sequence[DecisionOption], taken: str) -> tuple[DecisionOption, ...]:
-    return tuple(option for option in options if option.id != taken)

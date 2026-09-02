@@ -33,3 +33,7 @@ def check_picks(steps: Sequence[CreationStep], picks: Picks) -> None:
             raise ValueError(f"{step.id!r} takes at most {ANSWER_MAX} characters")
         if step.options and answer not in {option.id for option in step.options}:
             raise ValueError(f"{step.id!r} offers no {answer!r}")
+
+
+def other_than(options: Sequence[DecisionOption], taken: str) -> tuple[DecisionOption, ...]:
+    return tuple(option for option in options if option.id != taken)
