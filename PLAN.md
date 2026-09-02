@@ -48,9 +48,9 @@ uv run basedpyright
 | 2 — one worldsmith, one view | the drafts, the bar, the crossing, the panels, once | 9,550 |
 | 3 — the recap and the refinements | `NextDraft.recap`, `Job.job`, resume at the end, the save card | 9,625 |
 | 4 — the play issues | the brief rewrite, one bar, the opening told, the rules named, engine art, the dice | 9,580 |
-| 5 — the seam as classes | `Engine` abstract, `SceneEngine`, `advance`/`author`, the world's verbs, the opening told plainly | 9,415 |
-| 6 — the audit and the docs | dead code, layout, `VISION.md` gone | 9,390 |
-| 7 — voices | `SpeechConfig`, `app/speech.py`, `ui.audio` | 9,570 |
+| 5 — the seam as classes | `Engine` abstract, `SceneEngine`, `advance`/`author`, the world's verbs, the opening told plainly, a scene is one place | 9,440 |
+| 6 — the audit and the docs | dead code, layout, `VISION.md` gone | 9,415 |
+| 7 — voices | `SpeechConfig`, `app/speech.py`, `ui.audio` | 9,595 |
 
 Phase 3 landed at 9,480, under its row; Phase 4 at 9,613, 29 over its row; the rows after it
 count from there.
@@ -823,12 +823,14 @@ for later; the five drafts stay, because they are the schema the worldsmith answ
 `match` on a frozen model is a match on a domain distinction; the master stays a player of the
 world and the worldsmith its author.
 
-Four steps, one commit; each step is green on its own. **One implementer, opus**: the base
+Five steps, one commit; each step is green on its own. **One implementer, opus**: the base
 changes shape, so all four engines move in the same step. 5.1 to 5.3 change no behaviour, no
 prompt and no golden: `prompts/`, `schemas/`, `turn/`, `state/` and `save/` are their invariant,
 and a step that moves one has a bug. 5.3 is the first to cut if the phase runs past its target
-(rule 5); 5.4 stands whatever is cut. Fixtures that may change: the four
-`prompts/<engine>/narrator.txt`, two lines each, in 5.4 only.
+(rule 5); 5.4 and 5.5 stand whatever is cut. Fixtures that may change: the four
+`prompts/<engine>/narrator.txt`, two lines each, in 5.4; in 5.5, the three scene engines'
+`schemas/<engine>/master_tools.json` (one field on `next_scene`), `prompts/<engine>/master.txt`
+(one paragraph), and `state/` and `save/` where every run gains `"pursuit": ""`.
 
 ### 5.1 The object
 
@@ -1103,12 +1105,65 @@ listing, since the narrator never sees the offers.
 - **No new test**: prose. Play one opening per engine and read it against the four questions:
   where am I, what do I see, what am I here to do, what could I do first.
 
+### 5.5 A scene is one place
+
+Played on 2026-09-02 in Silent Relay: the player left the docking ring through a maintenance
+grate and the master never changed scene. It was right not to: the scene's question, "Can Kael
+reach the control deck and find out why the relay went dark?", is the whole adventure's, not
+the docking ring's, and `next_scene` only knows one reason to close a scene, the question
+settled. Two fixes, one at each end. The master gets a second reason: the player left. The
+worldsmith is told what an opening is: one place, a question that settles in it, and a cast
+larger than the scene. The bar requires neither a hidden thing nor the whole cast in the
+opening; every shipped opening has exactly one hidden and everyone present because
+`ONE_SHOT_OPENING` asks for "what is waiting to be found" and the cast is written for the one
+scene that exists. The brief changes; the bar does not.
+
+- **`engines/scenes/world.py`.** `NextScene.pursuit: str = ""`, described "Set when the player
+  has left this place for good with its question open: where they are going, in their own
+  words. Empty when the question settled here." `SceneRun.pursuit: str = ""`, the same
+  words, filed by `settle`. `settle(world, job_done, pursuit="")` sets `run.settled` and
+  `run.pursuit`; its facts are `SCENE_LEFT` in place of `SCENE_SETTLED` when `pursuit` is set:
+  told, trace "the player has left this place; close the scene on their going and describe
+  nothing of where they arrive: the page carries them on". `job_done` may ride either.
+  `scene_rows`: when `run.settled` and `run.pursuit`, `PanelRow(label="Go on",
+  detail=run.pursuit, intent=run.pursuit)` in place of the "Way on" row, so one click plays
+  the move on with the pursuit as its intent, as the board's rows play `TAKE_JOB` today; the
+  home row stays. Nothing else changes: the crossing, the recap and the worldsmith's WHAT
+  COMES NEXT already take the intent the button sends.
+- **`rules.md`**, the three scene engines, in "Let the player choose where the story goes"
+  after the settled paragraph: "A scene is one place. When the player leaves it for good with
+  the question open — through a grate, out a door, off the map — call `next_scene` with
+  `pursuit`: where they are going, in their own words. Play the leaving, never the arrival;
+  the worldsmith writes where they land." `docs/<ENGINE>.md`'s `next_scene` line gains "or
+  that the player left it".
+- **`engines/hub.py`.** `ONE_SHOT_OPENING` becomes: "Write the opening scene of this
+  adventure: the one place the player starts in, who is there, and a `question` that settles
+  in that place. A scene ends when the player leaves it, so a question about somewhere farther
+  on belongs to a later scene. `cast` is the adventure's people and things, not the scene's:
+  write who is met here and who the player will meet farther in, and list under `present` and
+  `hidden` only who is here now. `hidden` is for something worth finding here; it is not
+  required." `CAMPAIGN_OPENING` is untouched: a hub settles nothing.
+- **The shipped one-shots.** `scenarios/silent-relay/world.json`'s opening question becomes
+  "Can Kael get through Vessa's airlock and into the station, and on whose terms?";
+  `scenarios/drowned-road/world.json`'s becomes "Can Kael get out of the Bell House and onto
+  the causeway before Ovid rings the third bell?". Secrets, cast and situations stay.
+  Whispering Vault's question already settles in its room; the campaigns open at a hub.
+- **Tests.** One behaviour test beside `test_next_scene_with_job_done_settles_the_job...` in
+  `tests/breathless/test_tools.py`: `next_scene` with `pursuit` settles the run, files the
+  pursuit, lands `SCENE_LEFT`, and `scene_rows` shows the "Go on" row with that intent.
+  `test_scene_rows_shows_the_hub_row_and_the_way_on_and_home_rows_when_settled` gains the
+  case. No test of prose.
+- **Step done when.** Green; the fixtures named in the phase intro change and nothing else;
+  in Silent Relay, "I crawl through the maintenance grate toward the control deck" closes the
+  docking ring on a `next_scene` with `pursuit` and the panel offers "Go on". About +25
+  lines, one hour.
+
 ### Done when
 
-Green; every golden unchanged but the two narrator lines; `uv run aidm` opens a game in each
-engine and the opening answers the four questions; `grep -rn "partial(" src/aidm/engines` finds
+Green; every golden unchanged but the lines 5.4 and 5.5 name; `uv run aidm` opens a game in
+each engine and the opening answers the four questions; `grep -rn "partial(" src/aidm/engines` finds
 nothing; `README.md` and `docs/` name `Engine` and `SceneEngine` where they named the wiring
-file; `PROGRESS.md` holds the phase's entry with both counts. `src` about 9,415.
+file; `PROGRESS.md` holds the phase's entry with both counts. `src` about 9,440.
 
 ---
 
@@ -1171,7 +1226,7 @@ three write them: `change_world` (its eight arms named), `next_scene`, `roll_que
 ### Done when
 
 Green; every golden unchanged. No document holds rules text; `grep -r VISION` finds nothing;
-`src` about 9,390.
+`src` about 9,415.
 
 ---
 
@@ -1297,4 +1352,4 @@ Item 1 (sounds and voices) is done: delete it.
 Green; every golden unchanged. With `SPEECH__ENABLED=true` and a key, a turn's narration plays
 within seconds of the text in the scenario's voice, or the settings' when it names none; the
 wav is reused on reload; with the provider down, the turn is unaffected and one warning logs.
-`src` about 9,570.
+`src` about 9,595.
