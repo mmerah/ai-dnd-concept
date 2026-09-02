@@ -1,258 +1,432 @@
-# PROPOSALS — conceptual simplification (round 1, 2026-09-02)
+# PROPOSALS — conceptual simplification (round 2, 2026-09-02)
 
-Six independent reads of the whole of `src/aidm` (the lead and five reviewers, each with a
-different emphasis: turn pipeline, seam and world models, information flow, edges, contrarian).
-Each built an inventory of every concept (40 to 60 nouns, depending on how they counted) and gave
-a verdict per concept. This file keeps only what at least one reviewer proposed as a change, merged
-and ranked by how many of the six landed on it. Each entry is written so it can become a spec:
-what exists, what replaces it, what is deleted, what is lost, and the one decision it needs.
+Round 1: six independent reads of `src/aidm` (the lead and five reviewers, each with a
+different emphasis) inventoried every concept and gave a verdict per concept; what at least one
+proposed as a change became P1 to P11 plus a tier of single-voice ideas. Round 2: three
+adversarial reviewers attacked the file for correctness (file:line evidence), coverage (every
+engine, role, page, Track G) and over-engineering (is the replacement smaller than what it
+replaces), and each listed simplifications the round had missed. This file is round 2's result:
+every proposal corrected, two dropped, one shrunk, and the missed ones added as M1 to M8.
 
-"Votes" is how many of the six proposed it independently. Line counts are estimates.
+Each entry is written to become a spec: what exists, what replaces it, what is deleted, what is
+lost, which goldens move, and the one decision it needs. Line counts were recounted with `wc` and
+`grep` in round 2; round 1's were about twice too high on P1, P2 and P5.
 
-## Tier 1 — consensus (five or six of six)
+## Standing corrections from round 2
+
+- The narrator never receives a recap. `NextDraft.recap` "may name the secret"
+  (`drafts.py:36`). Every history proposal has a narrator variant that prints revealed
+  narration only, without the `> prompt` lines, or the `BEGUN`/`CROSSED` markers would read as
+  the player's words.
+- Track G is next. P3 deletes the chain G.3 needs (one level-up decision per goon, "answering one
+  opens the next"); P6 deletes the runtime net G.2 and G.3 add about fifteen `entity_fact` sites
+  behind; P5's shared `kill` arm meets G.2's succession. Each says so below; none is blocked.
+- NEXT-SPECS decision 2 says `recent_exchanges` stays at 20. P1 deletes the setting and keeps
+  20 as a constant cap; that is a change to a recorded decision and is flagged.
+- Anything that changes a stored shape stales saves, which the design allows, and also rewrites
+  the shipped `scenarios/*/world.json` (eight files) and the fixtures under `tests/core/fixtures`
+  where named. "Saves go stale" alone was too cheap a sentence in round 1.
+
+## Tier 1 — consensus, corrected
 
 ### P1. One history, one renderer, scene by scene
 
-Votes: 6/6. About −150 lines and one setting.
+Round 1: 6/6. Round 2: sound with fixes. About −50 lines net (not −150), −5 concepts. One day.
+Do after P4, which rewrites the same `render_picture`.
 
 Today the same exchanges are rendered four ways: the master's RECENT PLAY (last
 `recent_exchanges`, with a `[at where]` tag), the narrator's WHAT THE PLAYER HAS READ (last N
-narrations, no prompts, no place), the worldsmith's SCENES SO FAR (per scene: recap if closed, all
-exchanges if open), and Tunnel Goons' return prompt (last three per visit). `Exchange.where` is
-excluded from the save and recomputed by the job walk on every read, with a `model_copy` per
-exchange, five or six times a turn.
+narrations), the worldsmith's SCENES SO FAR (`scene_history(job_runs())`: recap if closed, all
+exchanges if open, scoped to the open job) and Tunnel Goons' return prompt (every visit of the
+job, last three exchanges each). `Exchange.where` is excluded from the save and rebuilt by the job
+walk with a `model_copy` per exchange on every read (`scenes/world.py:209`,
+`tunnelgoons/world.py:273`), five or six times a turn.
 
-Proposal: the engine's `history()` returns the scenes themselves, each a frozen record with a
-title, a recap (empty while open) and its exchanges; exchanges already live inside `SceneRun` and
-`Visit`, so the "where" is the nesting, not a field. One function renders it for every role: a
-`SCENE: title` heading per scene, the current and the previous scene printed whole
-(`> prompt` then narration), every older scene as its recap. The narrator's variant prints
-revealed text only and never a recap, because `NextDraft.recap` is specified to "name the secret".
-The chat's heading loop and the launcher's "where" both read the last scene's title.
+Proposal: the engine's `history()` keeps returning the flat exchanges (`unopened`, `_newest`,
+`_latest_narration`, the journal, `Reader.clip` and `test_store` need it) and gains `scenes()`:
+a frozen record per scene with `title`, `question`, `recap` (empty while open or where none was
+written) and `exchanges`. Scene engines map runs; Tunnel Goons builds one per visit, resolving
+the title through the world. One function renders it for every role: a `SCENE: title` heading
+per scene; the current and the previous scene printed whole, capped at 20 exchanges each
+(the hub scene and Tunnel Goons have no turn cap, so "whole" must be bounded); every older scene
+as its recap, or where it has none (the scene the player came home from, since `ReturnDraft` is
+a `HubDraft` and writes no recap; every Tunnel Goons visit; the opening before it is left) as its
+title and last three exchanges, which is what `_told_tail` does today. The window is the current
+job (`job_runs()`, `job_visits()`); older jobs reach the master and the worldsmith through the
+ledger, as `recap_rows` and `master_tail` do now. The narrator's variant prints narration only,
+scene-bounded, never a recap. The chat's heading loop and the launcher's "where" read the last
+record's title. `question` is on the record because SCENES SO FAR is the only place the
+worldsmith sees the current scene's question.
 
 Deleted: `_recent`, `_recent_exchange`, `told_passages`, `scene_history`, `_told`,
-`recap_rows`, `_told_tail`, `TAIL_EXCHANGES`, `hub.heading`, `Exchange.where`, both
+`recap_rows`, `_told_tail`, `TAIL_EXCHANGES`, `hub.heading`, `Exchange.where` and both
 `exchanges()` stampers, `Settings.recent_exchanges`, `Turn.recent` and the `recent` argument
-threaded through `GameService.play`, `Turn.begin` and `render_picture`.
+threaded through `GameService.play`, `Turn.begin` and `render_picture`, `GameService.settings`
+(its only two uses), `NarratorView.art_prompt` (both builders are title + situation + subjects;
+`media.py` builds it).
 
-Lost: the master's flat "last 20 across scenes" window becomes "this scene and the last one".
-The recap the worldsmith writes on the crossing is the only compaction; that is the maintainer's
-seed, and it is already built. Tunnel Goons has no crossing and so no recap: its history is
-bounded by the job (`job_visits`) instead.
+Lost: the master's flat "last 20 across scenes" becomes "this scene and the last one, then
+recaps"; the recap the worldsmith writes on the crossing is the compaction, as the seed asked.
 
-Decision: none. Goldens regenerate.
+Goldens: `prompts/*/picture.txt`, `narrator.txt`; `test_scenes.py:57`,
+`test_launcher.py:171-181`, `test_settings.py:28` read what goes.
 
-### P2. Jobs are stored, not derived from the trail
+Decision: keeping 20 as a constant reverses NEXT-SPECS decision 2's "setting"; the number
+stays.
 
-Votes: 5/6. About −150 lines; `test_hub.py` shrinks by a third.
+### P2. Jobs are one stored list
+
+Round 1: 5/6. Round 2: broken as written for Tunnel Goons; sound as one list. About −80 lines
+net (not −150); seven of `test_hub.py`'s 22 tests go. One day. Do with M8 or not at all.
 
 Today a job is a pattern over the scene list: `Scene.debrief` and `Scene.job` (scenes) or
-`Visit.job` and `Visit.debrief` plus `TunnelWorld.job_done` (Tunnel Goons) are read into a
-`Stop` adapter, then `job_titles`, `job_start` and `closed_jobs` rebuild the ledger on every
-read, and two `check_hub` validators police the placement ("a hub run right after a hub run",
-"a debrief with no job before it").
+`Visit.job`, `Visit.debrief` and `TunnelWorld.job_done` (Tunnel Goons) are read into a `Stop`
+adapter, then `job_titles`, `job_start` and `closed_jobs` rebuild the ledger on every read, and
+two `check_hub` validators police placement. The verdict lives in five places
+(`NextScene.job_done`, `SceneRun.job_done`, `SceneWorld.job_done`, `TunnelWorld.job_done`,
+`Debrief.finished`), and 24XX has a tool also named `job_done` that means the SRD's after-job
+step, not the verdict.
 
-Proposal: `world.jobs: list[Job]` appended at the return install, and `world.open_job: str` set
-when the job scene installs and cleared at the return. The ledger is the list. The scene keeps
-its title and question only.
+Proposal: `world.jobs: list[Job]`, one list, no second field. `Job` carries `title`, `place`,
+`terms`, `started` (the index of the first run or visit away from the hub; `None` until the
+player walks out, which is Tunnel Goons' "a stamp still sitting at the hub is not yet taken",
+`tunnelgoons/world.py:317`), `finished` (set by `next_scene(job_done)` or `level_up`) and
+`debrief: Debrief | None`. The open job is `jobs[-1]` while its debrief is `None` and it has
+started. `job_runs()` and `job_visits()` stay as `runs[jobs[-1].started:]`; mid-job tavern
+visits (`test_hub.py:49-56`) are allowed by that. The scene keeps title, question, situation and
+secret only. Rename 24XX's `job_done` tool `after_job` so the master reads one word for the
+verdict.
 
-Deleted: `Stop`, `job_titles`, `job_start`, `closed_jobs`, `heading`, `Scene.debrief`,
-`Scene.job`, `Visit.job`, `Visit.debrief`, `stops()`, the placement arms of both `check_hub`.
+Deleted: `Stop`, `job_titles`, `job_start`, `closed_jobs`, `heading`, `stops()`,
+`Scene.debrief`, `Scene.job`, `Visit.job`, `Visit.debrief`, the three `job_done` flags and the
+`job` property, `job_open()`, the placement arms and the "job with no hub" arms of both
+`check_hub`. G.2's `JobDone.raises` "one call per job" gets a `raised` flag on the same record
+later.
 
-Lost: one derived source of truth becomes an append-only list written at one site; a five-line
-validator still checks it. Saves go stale, which the design allows.
+Lost: one derived source of truth becomes an append-only list written at two sites (job
+install, return install) plus one `started` write on the first move out; a five-line validator
+still checks it.
 
-Decision: none.
+Goldens: `fixtures/state/*.json` (eight) and `fixtures/save/*.json` (four) carry `debrief`
+and `job`; the shipped scenarios do not.
 
-## Tier 2 — majority (three or four of six)
+Decision: the tool rename touches `docs/24XX.md` and Track G.2.
 
-### P3. Delete the dead suspension path
+## Tier 2 — majority, corrected
 
-Votes: 4/6. About −25 lines. Twenty minutes.
+### P3. Delete the dead suspension path; fold `resumed` into a note
 
-`during_suspension` (five registrations) and `Turn.suspended_at_start` exist so a world change
-can land in a turn whose option answer re-suspended. `consume_answer` clears `pending` on every
-input, so the flag matters only when an option's own resolution opens a new decision, and no
-shipped tool does that (`test_decisions` builds a synthetic chain to reach it). Two reviewers also
-fold `Turn.resumed` and the "THE PLAYER'S DECISION, ALREADY RESOLVED" section into the notes
-channel, which already carries the text-answer case.
+Round 1: 4/6. Round 2: sound; best ratio in the file. About −35 lines, −3 concepts. Half an
+hour.
 
-Lost: nothing shipping. Track G's succession chain can re-add it when it needs it.
+`during_suspension` (nine mentions, six files) and `Turn.suspended_at_start` exist so a world
+change can land in a turn whose option answer re-suspended. `consume_answer` clears `pending`
+on every input (`run.py:195`); the flag matters only when an option's own resolution opens a
+new decision, and no shipped resolver does that (loot options resolve flat, a level-up option
+arrives with both args, the Loner conflict decision is text-only). Only the synthetic
+`CHAIN_THE_HIT` in `test_decisions.py:39` reaches it. `Turn.resumed` and the "THE PLAYER'S
+DECISION, ALREADY RESOLVED" section are a second channel for what the notes already carry in the
+text-answer case; `consume_answer` runs before `turn.notes` is read, so a note lands this turn.
+`ANSWERED_BY_OPTION` stays as PLAYER ACTION, or `test_context_boundary.py:103` breaks.
 
-Decision: none.
+Lost: nothing shipping. G.3's level-up chain ("answering one opens the next") is exactly the case
+this deletes for; record in NEXT-SPECS that G.3 re-adds a re-suspension path when it needs it.
+
+Goldens: `picture.txt` (the section goes).
 
 ### P4. Cold spawns: no session resume, no `start_turn`
 
-Votes: 4/6 (two keep). About −250 lines. Reverses a CLAUDE.md decision.
+Round 1: 4/6. Round 2: sound with fixes; the strongest argument was missing. About −180 source
+lines and `test_session.py`, −9 concepts. One day. Reverses a CLAUDE.md decision.
 
-Today `Conversations` keeps a `.sessions` sidecar with a fingerprint per role, retries cold when a
-resumed role fails, and is forgotten on every failure path. Because the master is resumed, its
-spawn prompt holds no world, and it must call `start_turn` over MCP to get the picture; `scene`
-exists to recover after mid-turn compaction; `started`, `START_FIRST` and `ALREADY_OPEN` police
-the order. Codex already runs the master cold (a resumed thread refuses MCP), and the worldsmith
-is always cold. Under Claude resume the master's real context grows by one whole picture per
-turn, which is the compaction problem the `scene` tool exists to survive. The narrator gets its
-history twice, once by resume and once as WHAT THE PLAYER HAS READ.
+Today `Conversations` keeps a `.sessions` sidecar with a fingerprint per role, retries cold when
+a resumed role fails, and is forgotten on every failure path. Because the master is resumed, its
+spawn prompt holds no world, and it calls `start_turn` over MCP to get the picture; `scene`
+recovers after mid-turn compaction; `started`, `START_FIRST` and `ALREADY_OPEN` police the
+order. The missing argument: `render_master` sends YOUR ROLE and THE RULES OF THIS GAME on every
+resumed turn (`context.py:24-32`), so a resumed master's transcript at turn N is the cold prompt
+plus N−1 stale copies of the rules and N−1 pictures with their tool traffic. Cold is fewer tokens
+from turn 2 onward, and the ROLE + RULES prefix is the same bytes every spawn, so prompt-cache
+reads are available cold too. The narrator gets its history twice, once by resume and once as
+WHAT THE PLAYER HAS READ. Codex already runs the master cold.
 
-Proposal: every spawn is cold; the picture is the spawn prompt. `answered` keeps its own
-within-retry session. P1's "no limit" is only safe once this lands.
+Proposal: every spawn is cold; the picture is the spawn prompt. `answered` keeps its
+within-retry session (`RunResult.session`), which is the CLI's concept and saves re-sending a
+30k-token worldsmith prompt on a refusal. Keep `nothing_landed`: `_act`'s except branch decides
+raise-versus-commit with it (`runtime.py:210`, two pipeline tests). Keep one cold retry of the
+master when nothing landed; today `cold_retry` is its only retry.
 
-Deleted: `app/sessions.py`, `FileStore.sessions_path`, `cold_retry`, `nothing_landed`, four
-`forget` calls, `TurnTool`, `TURN_TOOLS`, `start_turn`, `scene`, `Turn.started`, the two
-constants, the `render_master`/`render_picture` split, the Codex master special case. One class
-of bug goes with it: a role that remembers a turn that was thrown away.
+Deleted: `app/sessions.py`, `FileStore.sessions_path`, the `cold_retry` argument, four `forget`
+calls, `TurnTool`, `TURN_TOOLS`, `start_turn`, `scene`, `Turn.started`, the two constants, the
+`render_master`/`render_picture` split, the Codex master special case, `master.md`'s first
+paragraph. `published_tools()` returns `()` with no turn open (`test_tool_surface.py:546`).
+One class of bug goes with it: a role that remembers a turn that was thrown away.
 
-Lost: prompt-cache hits on the rules, and the master's chain of reasoning across turns. Cost per
-turn is unmeasured in both directions.
+Lost: the master's own refusals and intentions from the prior turn (it may repeat a bad id once);
+`Game.notes` survives. Stale `saves/.sessions/*.json` on disk are harmless.
 
-Decision: the maintainer's. Measure five turns cold against five resumed before committing.
+Goldens: `master.txt` (four), `picture.txt`.
 
-### P5. Fold the three scene engines' duplicates into `SceneEngine`
+Decision: the maintainer's, because CLAUDE.md says "the app resumes its session each turn when
+the CLI allows it". The over-engineering reviewer holds no measurement is needed; the
+correctness reviewer holds the cache claim is doubtful either way. Either way the decision is
+about memory, not tokens.
 
-Votes: 4/6. About −250 lines, two prompt files. No behaviour change; tool goldens unchanged.
+### P5. Three zero-hook chores in the scene engines (was: fold into `SceneEngine`)
 
-`master_sections` is written three times and differs by one sheet row. `breathless/worldsmith.md`
-and `twentyfourxx/worldsmith.md` are byte-identical; Loner adds two sentences; each engine also
-carries an `_AUTHORING` string. The `Reveal | Enter | Leave | Kill` dispatch and the
-`change_world`/`next_scene` registration are copied three times. `CHANGE_WORLD` is redefined
-verbatim in Tunnel Goons. Both `record` implementations build the same `Exchange`.
+Round 1: 4/6. Round 2: over-engineered; the hook version re-proposed the `SceneRules` surface
+NEXT-SPECS refused. About −60 lines. Two hours.
 
-Proposal: `SceneEngine.master_sections` with a `sheet_rows()` hook beside the existing
-`panels()` hook; one `scenes/worldsmith.md` plus an engine `authoring` attribute;
-`SceneWorld.apply_shared(change)` for the four common arms with the engine's `apply_change`
-falling through to its own; `SceneEngine.master_tools` building the two shared tools around the
-engine's `world_change` union and `rules_tools()`; the platform builds the `Exchange` in
-`close_segment` and the engine appends it. This is deduplication, not the arm flattening that
-NEXT-SPECS refused.
+`breathless/worldsmith.md` and `twentyfourxx/worldsmith.md` are byte-identical; Loner's adds one
+rule and replaces one paragraph, both restating its `_AUTHORING`, which the prompt already
+carries under ENGINE GUIDANCE. `CHANGE_WORLD` is redefined verbatim in Tunnel Goons. Both
+`record` implementations build the same `Exchange`. The three `master_sections` differ by one
+section each in different positions (Loner's glossary sits between HIDDEN and SECRET; GEAR and
+BACKPACK follow YOU PLAY FOR), so one hook cannot hold them without moving a section; the shared
+arm dispatch is eight lines each and a generic `ChangeWorld` over a per-engine union would need
+a runtime-parametrised discriminator with the `master_tools.json` goldens required not to move.
 
-Decision: none.
+Proposal: (a) one `scenes/worldsmith.md`, Loner's two sentences into its `_AUTHORING`; (b)
+Tunnel Goons imports `CHANGE_WORLD` from `engines.core`; (c) `close_segment` builds the
+`Exchange` and `Engine.record(state, exchange)` appends it. Leave `master_sections` and the
+dispatch: twenty readable lines in the engine's own file is what "self-contained under
+`engines/<id>/`" means.
+
+Goldens: none for (b) and (c); worldsmith prompt goldens for (a).
 
 ### P6. Delete the guards that duplicate a gate already in code
 
-Votes: 3/6. About −40 lines.
+Round 1: 3/6. Round 2: sound with fixes; the bolder "derive `told` centrally" rests on a false
+count (`narrate=` has one call site, `tunnelgoons/tools.py:180`). About −55 lines, −2
+concepts, plus M-style: eight `PLAYER_DEAD` guards.
 
-`entity_fact` already sets `told = narrate and entity.known`; the `apply_to_draft` check "a told
-fact names an entity the player has not met" and the `Engine.known` abstract method it needs (three
-implementations) can fire only on a hand-built `Fact`, and every hand-built one has no
-`entity_id`. `apply_scene` re-runs `scene_refusal` and `merged_cast` on the same draft
-`write_next` just ran them on, in the same coroutine.
+`entity_fact` computes `told` from `known` at all 41 sites and every `reveal` precedes it; all
+fourteen hand-built `Fact(...)` sites carry no `entity_id`. So the `apply_to_draft` check "a
+told fact names an entity the player has not met" is unreachable in shipped code, and
+`Engine.known` (two implementations) exists for it. `apply_scene` re-runs `scene_refusal` on
+the same object in the same coroutine as `write_next` (only Loner's `close_conflicts` runs
+between, and it refills luck). Eight `if not player.alive: raise ValueError(PLAYER_DEAD)` sites
+are dead too: `Turn.call` refuses every tool once `engine.over()` (`run.py:84`) and
+`consume_answer` refuses first.
 
-Lost: a guard against a future engine bug. `test_integrity_boundaries` loses two cases.
+Deleted: the loop in `apply_to_draft`, `Known`, `Engine.known` and both implementations, the
+second bar in `apply_scene` (not `merged_cast`, which is the write), the eight guards and the
+constant.
 
-Decision: none.
+Lost: the runtime net for a future engine bug. Track G adds about fifteen `entity_fact` sites
+(`actor_id`, `take_lead`) whose reveal-before-tell order the gate is the only check for.
+Six tests call `apply_scene` directly for the refusal and one pins "refused before the first
+write" (`loner3e/test_world.py:261`, `breathless/test_worldsmith.py:30`,
+`twentyfourxx/test_worldsmith.py:90, 200`); they move up to `write_next`, or the failure
+surfaces at `committed()` as a pydantic error with the state still safe.
 
-### P7. The launcher reads headers, not saves
+Decision: before or after Track G. After is safer; before is smaller.
 
-Votes: 3/6. Falls out of P1 and P2.
+## Tier 3 — split, corrected
 
-`load_catalog` fully restores and validates every save to print one "where" string on a card.
-With the scene title on the last scene record (P1), `SaveHeader` plus one field serves the home
-page. Stale saves fail on open instead of being skipped on the home page; the design already says
-a stale save is invalid.
+### P8. The payload is the world (half of it)
 
-## Tier 3 — split (two of six); worth a spec if the maintainer agrees
+Round 1: 2/6. Round 2: keep the wrapper deletion, drop the empty-class replacement. About −60
+lines. Half a day.
 
-### P8. The payload is the world
+`SceneState`/`SceneScenario` and `TunnelGoonsState`/`TunnelGoonsScenario` wrap one field each
+(eight lines) and cost fifty `.payload.world` hops; the state wrapper exists for Loner's `twist`
+alone, and G.2 wants a 24XX world subclass for the ship anyway. Delete the four wrappers;
+`twist` moves onto a `LonerWorld` subclass; `new_state` is already `new_world(canon,
+player_X(character))` in all three engines, so no new hook. The twelve empty
+`XGame`/`XScenarioFile`/`XCharacterFile` classes stay: pyright rejects `isinstance` on a
+parametrised generic, and 24XX and Breathless share `Scenario[SceneScenario[Person]]`, so the
+class is the only tag.
 
-Votes: 2/6. About −60 lines and six wrapper classes.
+Goldens: eight `scenarios/*/world.json`, twelve fixtures, seven generics typed on `SceneState`
+(`check_game`, `way_open`, `player_over`, `narrator_view`, `player_view`, `install_scene`,
+`build_scenario`).
 
-`SceneState`/`SceneScenario` and `TunnelGoonsState`/`TunnelGoonsScenario` wrap one field each, so
-every read is `state.payload.world`; the state wrapper exists for Loner's `twist` alone. Twelve
-empty `XGame`/`XScenarioFile`/`XCharacterFile` classes exist so `isinstance` narrows in
-`new_game` and `preview_character`, which `begin_game`'s engine-id check already guards.
+### P9. Poll instead of callbacks; one phase instead of three flags
 
-Proposal: the payload is the world; Loner's `twist` lives on its world subclass; a
-`player_of(character)` hook on `SceneEngine` makes `preview_character` and `new_state` shared;
-parametrised aliases replace the empty classes. Risk: pyright narrowing on parametrised pydantic
-generics; try one engine first.
+Round 1: 2/6 (+1 missed proposal folded in). About −60 lines. Half a day. After P4.
 
-### P9. Poll instead of callbacks in the game page
+`on_step`, `on_fact` and `on_commit` thread through `runtime.py`, `run.py` and `game.py`;
+`_announce` already writes `session.step`, and the page runs a one-second timer. Poll
+`(session.step, len(turn.facts), len(history))` against a stored triple; `live_prompt` is
+`session.turn.prompt`; the ticker restarts on a step edge. `GameService.busy`, `step` and
+`turn` encode one state machine three ways (`extend` sets `busy` without `step`; `play` clears
+`turn` before commit): one `phase: TurnStep | None`, `busy` is `phase is not None`.
 
-Votes: 2/6. About −60 lines.
+Deleted: the three callback parameters through `play`/`open`/`extend`, `Turn.on_fact` (turn stops
+importing a UI callable), `GameView.live_prompt/live_facts/step_started/ticker`, `_announce`,
+`busy`, the three-way clears in four `finally` blocks.
 
-`on_step`, `on_fact` and `on_commit` thread through `runtime.py`, `run.py` and `game.py` to do
-what the page's one-second timer already can by reading `session.step`, `session.turn.facts` and
-`len(history)`. `GameView` drops `live_prompt`, `live_facts`, `step_started` and `ticker`;
-`Turn` stops knowing about the UI. Lost: sub-second card arrival.
+Lost: sub-second card arrival. `test_golden_turn.py:34` captures untold facts through
+`on_fact` and `Exchange.facts` is `cards()` only, so the fixture needs a new source; "the page is
+told to refresh before the worldsmith is asked" becomes "the save is on disk when the worldsmith
+is spawned".
 
-### P10. Fewer settings knobs
+### P10. Delete the settings page, keep the guards
 
-Votes: 2/6 on the knobs; 1/6 on deleting the page.
+Round 1: 2/6 on knobs, 1/6 on the page. Round 2: the knobs are not concepts (each read at one
+site; moving nine lines to constants scatters them); the page is the concept. About −280 lines,
+−4 concepts. Half a day.
 
-`recent_exchanges` (gone with P1), `scene_ratio`, `icon_ratio`, `max_references`,
-`sample_rate`, `voices`, `source_max_chars`, per-role `effort` and `timeout`, `server_port`
-(hard-coded in two other files anyway) and the four directories become constants; `Providers`
-collapses to one `ProviderConfig`. The reflective settings page costs nothing per knob and stays
-unless the maintainer wants `.env` edited by hand only, in which case `ui/settings.py`,
-`save_settings`, `reload_settings`, `play_refusal` and `busy_refusal` go too (about −300 lines).
+Proposal: delete `ui/settings.py`, `test_settings.py`, `save_settings`, `env_key`,
+`reload_settings`, `play_refusal`, `refuse_play`, `apply_settings`. Settings become "edit
+`.env`, restart", which the page already says of the port. Keep `busy_refusal`: it is what stops
+a second tab on another save starting a turn while one is in flight on the shared MCP surface
+(`playing()` raises on two), not a settings helper. Keep `Providers` as two: media on local
+beside speech on OpenRouter is NEXT-SPECS decision 3. `recent_exchanges` goes with P1.
 
-### P11. Small merges
+Lost: masked key entry in a browser; live reload.
 
-Votes: 2/6 each.
+Decision: the maintainer's; it removes a page they use.
 
-- `Fact.kind` is read on one line (Loner's `conflict_lost` check); delete the field.
-- `Speaker` merges into `Subject` (add `alive`); `NarratorView.speakers` and `speaker_of` go.
-- `NarratorView.art_prompt` is `title + situation + subjects`; `media.py` builds it.
-- `_Worldsmith`, `WorldsmithAnswer` and `authored()` collapse to one `partial` passed as the
-  answer function.
-- Two slug grammars (`Slug` and `_SAVE_SLUG_PATTERN`) become one.
+### P7 and P11: dropped
 
-## Tier 4 — single voice; recorded, not recommended yet
+P7 (launcher reads headers) needs a denormalised title on core `Game` written at every commit,
+which is core learning a world fact, and it strands a player behind an unopenable save with no
+delete path (restart lives on the game page). Under P1 the choice is a ten-minute edit: drop
+`SaveOption.where` from the card, or leave the restore (fewer than ten saves per render). P11's
+merges are churn or broken: unifying the slug grammars hides every existing save
+(`scenario--character` is refused by `Slug`; `FileStore.slugs()` would list none); merging
+`Speaker` into `Subject` stores `brief` per line in every save and, with `alive`, changes which
+NPCs may speak in three engines; `Fact.kind` is written at 55 sites and asserted in about 45
+test lines; `_Worldsmith` reorders positionals, which a `partial` cannot, and `authored()` is
+the bar loop, not glue. `art_prompt` moved into P1.
 
-- **Packs stop being a player choice** (lead). Three engines ship one table set each (Loner two).
-  The creation step, the scenario multiselect, `Game.packs`, `Scenario.packs`, `check_game`'s
-  pack rules, `packs_dir` and `pack_options` serve a pack authoring feature that is still IDEAS 13.
-  Four reviewers keep packs.
-- **Source text is not stored in every save** (lead). `SceneCanon`, `SceneWorld`, `MapCanon`
-  and `TunnelWorld` each carry the whole source document, up to 120k characters, into every
-  save; the file is already copied to `scenarios/<id>/source.*`. Read it at prompt time. One
-  reviewer proposed the opposite: delete the file copy, which nothing reads.
-- **`ScenarioMeta.kind` duplicates `hub is not None`** (lead); `check_kind` exists to keep them
-  in sync. Delete `kind`.
-- **Character creation flow deleted** (edges reviewer). About 350 lines of dynamic form engine
-  serve one shipped character; characters become hand-written JSON. Two reviewers keep it as an
-  SRD-faithful feature.
-- **Media: scene art only, no icon generation; speech: one voice; one CLI driver** (edges
-  reviewer). Each is a real feature loss and needs the maintainer's word.
-- **`Exchange.decision` deleted** (edges reviewer). Used once, to print "Paused: …" on old
-  exchanges.
-- **Tool-written notes become untold facts** (pipeline reviewer). They reach the master through
-  the tool answer already; `Game.notes` would mean only "for the next picture".
-- **The spent note becomes a master row** (seam reviewer). Then `record` returns nothing.
-- **Tunnel Goons as a scene engine** (contrarian). A room is a scene whose place is the art key
-  and whose ways are `PanelRow.intent` rows, as offers are. Tunnel Goons alone forces
-  `crossing: str | None`, `ready()`, `GameService.extend`, the silent branch in `_grow`, the
-  untold `region_added` fact, its own `check_hub`, `job_open`, `ReturnDraft`, `_render_return`
-  and `_told_tail`. Highest value, highest risk; a blank-page choice, not a refactor.
+## Tier M — missed in round 1, found in round 2
+
+Ranked by concepts removed per day. None has a vote count; each was found by one adversarial
+reviewer and checked by the lead.
+
+### M1. `SceneRun.hidden` is derived from `known`
+
+About −30 lines, −2 concepts (a second store, and the invariant between the stores). Half a
+day.
+
+`check_named` (`scenes/world.py:538`) enforces hidden ⟹ `known=False` and present ⟹
+`known=True`, so `hidden` is exactly "listed here and not known". One `here: list[EntityId]` on
+`SceneRun` and `SceneCanon`; `present` and `hidden` become filters over `cast[x].known`. The
+draft keeps `present`/`hidden` as the worldsmith's vocabulary; install marks `present` known.
+Tunnel Goons already works this way (`Npc.known` + `at(place)`).
+
+Deleted: two fields, the two consistency arms of `check_named`, `reveal_hidden`'s list move,
+`enter`'s "hidden here; reveal them instead" branch, the present/hidden overlap check in
+`_consistent`.
+
+### M2. One run status; no spent note
+
+About −30 lines, −3 concepts. Two hours.
+
+`SceneRun.settled`, `.pursuit` and `.spent` (`pursuit` implies `settled`), two facts
+(`SCENE_SETTLED`/`SCENE_LEFT`), three branches in `scene_rows`, `SPENT_NOTE`,
+`SCENE_TURN_CAP` and the `someone_dead` keyword threaded through `record` are three heuristics
+nudging the master toward `next_scene`; the master reads "(dead)" in HERE, the exchange count in
+the history, and has the tool. `left: str | None` (`None` open, `""` settled here, text when
+left for elsewhere) replaces `settled`/`pursuit`; the spent note is deleted, not moved to a row.
+Loner's `run.spent = "the conflict … is settled"` (`loner3e/tools.py:400`) becomes nothing.
+
+Lost: an unmeasured nudge; `test_tool_surface.py:323` guards a defect the deletion also
+removes.
+
+### M3. The write failure is a card, not a flag
+
+About −15 lines, −1 concept. One hour.
+
+`GameService.write_failure` is read only by truthiness (`ui/panels.py:35`, `ui/game.py:431`),
+its text goes to the log, and it is lost on reload. `_grow` files a told fact "The way on could
+not be written" on the exchange it would have appended. Deleted: the field, `NO_WAY_ON` in two
+places, four assertions.
+
+### M4. Media has no "pending" state
+
+About −25 lines, −1 concept. One hour.
+
+`Illustrator.scene_pending`, `Reader.pending`, `GameService.scene_pending`/`clip_pending`,
+`GameView.shown_art`/`shown_clip`, the skeleton branch in `_scene_art` and `poll_media`'s
+diffing exist to show a grey box while art generates. `generating` (the claim set) stays; it
+prevents paying twice. The three-second poll compares the cached path only. Lost: the loading
+skeleton.
+
+### M5. `LaunchTarget.slug` is derived
+
+About −8 lines, −1 concept. One hour.
+
+`slug = f"{scenario_id}--{character_id}"` (`launch.py:62`) and the route
+`/game/{slug}/{scenario}/{character}` carry the slug beside its two parts. A property and a
+two-segment route; the reconstruction at `launch.py:120` goes. This is also the answer to P11's
+slug question: the two grammars encode one real difference, and a comment says so.
+
+### M6. One board rule
+
+About −20 lines. One hour.
+
+Two-or-three offers is enforced in `check_board`, `HubDraft.offers`, Tunnel Goons'
+`ReturnDraft.offers`, `_hub_unmet` and the canon's validator. One `Board` annotated type with
+the bounds on the world, the canon and the drafts; `check_board` keeps only "no board without a
+hub".
+
+### M7. Character, Here and Trail panels built once
+
+About −40 lines. Two hours.
+
+`scenes/views.py` and `tunnelgoons/views.py` each build the three from `rows()`, `here()` and a
+run or visit list. `engines/core.py` gains the three builders beside `party_panel`. The only
+alternative is Tunnel Goons as a scene engine, which stays refused.
+
+### M8. `Scene` folds into `SceneRun`
+
+About −35 lines, −1 class. Half a day. Only with P2; rule-shaped cost.
+
+Under P2 `Scene` is (place, title, question, situation, secret). `SceneCanon` carries
+`opening: Scene` beside `present`/`hidden`, which is a `SceneRun` spelled as three fields;
+`check_hub` builds a `SceneRun` to check it and `new_world` rebuilds it. Deleting `Scene` loses
+the frozen/mutable split between a scene's text and its run state, which CLAUDE.md's "value
+models are frozen" would no longer say in the type.
+
+## Recorded, not recommended
+
+- Packs not a player choice (lead, round 1): sound; user packs under `packs_dir` already work.
+- Source text out of saves: drop it from the world only, keep it on the canon; the stored text is
+  `given_text`'s combined string and `meta.premise` is overwritten when empty, so it cannot be
+  rebuilt from file plus meta. Nothing reads `scenarios/<id>/source.*`.
+- Delete `ScenarioMeta.kind`: it is the only world-shape-free place the launcher badge can read;
+  keep it.
+- Delete character creation: conflicts with G.2's android case; keep.
+- Tool-written notes as untold facts: broken. `SPENT_NOTE`, `finished_note`, the text-answer
+  note, `defeat_note` and the loot notes steer the next picture, and facts are not carried
+  forward (only `cards()` are filed).
+- Media scene-art only, one speech voice, one CLI driver, delete `Exchange.decision`: real
+  feature losses; the maintainer's word each.
+- Tunnel Goons as a scene engine: a room change is a master `move` in seconds; as a scene it
+  becomes a worldsmith crossing in minutes.
 
 ## Doc fixes (no code)
 
-- CLAUDE.md says "a role returns typed proposals only". It is true of the narrator and the
-  worldsmith and false of the master, whose tools mutate a transactional draft; what protects
-  state is `_apply` (candidate copy, rng copy, `committed()` revalidation). Say that instead.
-- If P4 lands, CLAUDE.md's "the app resumes its session each turn when the CLI allows it" is
-  reversed.
-- `NarratorView.party` and the `JoinParty`/`LeaveParty` registration in 24XX and Breathless are
-  Track G.1, not a gap; one reviewer read the platform share as half-built. Note it in NEXT-SPECS.
+- CLAUDE.md "a role returns typed proposals only" is true of the narrator and the worldsmith and
+  false of the master, whose tools mutate a transactional draft; what protects state is `_apply`
+  (candidate copy, rng copy, `committed()` revalidation). Say that.
+- If P4 lands, reverse "the app resumes its session each turn when the CLI allows it".
+- NEXT-SPECS: G.3 re-adds a re-suspension path (P3); decision 2's number stays as a constant
+  (P1); `JobDone.raises` gets `raised` on the job record (P2); the `Kill` arm stays per engine
+  because of succession (P5).
+- `NarratorView.party` and the party arms in 24XX and Breathless are Track G.1, not a gap.
 
-## Where the six disagreed with the seed examples
+## Where the reviewers disagreed with the seed examples (unchanged from round 1)
 
 - "Context only needs the hidden/revealed split": the split is already the narrator's whole
-  input (`NarratorView` has no field for a secret; `Fact.told` gates evidence). What is fat is
-  the history rendered four ways (P1) and the picture delivered through a tool because of resume
-  (P4), not the sections.
-- "Everyone gets the narrator's full history": everyone except the narrator gets the recaps; the
-  narrator gets revealed text only, because a recap may name the secret.
-- "Compaction when a scene is two scenes away": the recap is written on the crossing, so
-  compaction at one scene old is free today. Showing the previous scene raw as well costs tokens
-  and buys little; P1 keeps it because the maintainer asked, and it is one integer to change.
-- "Tag each message with its scene": already true structurally (exchanges live inside the
-  scene); P1 exposes the nesting instead of stamping a field.
+  input; the fat is the history rendered four ways (P1) and the picture delivered through a tool
+  because of resume (P4).
+- "Everyone gets the narrator's full history": everyone except the narrator gets the recaps.
+- "Compaction when a scene is two scenes away": the recap is written on the crossing, so one
+  scene old is free; P1 keeps the previous scene whole because the maintainer asked, capped.
+- "Tag each message with its scene": already true structurally; P1 exposes the nesting.
 
-## Suggested order
+## Suggested order (by concepts removed per day, with dependencies)
 
-1. P3 (twenty minutes, warms up the tests).
-2. P1 with P7 (one day; the seed, done).
-3. P2 (one day; `test_hub` rewrite).
-4. P5 and P6 (one day together; pure deletion).
-5. P4 after a measurement (two days including it), then P8 to P11 as small follow-ups.
+1. P3 (half an hour; touches `run.py` where P4 lands next).
+2. P4 after the maintainer's yes (one day; deletes the reason P1's window was unsafe and
+   rewrites the prompt P1 then edits).
+3. P10 after the maintainer's yes (half a day; pure deletion).
+4. P1 with the `art_prompt` fold (one day).
+5. P2 with M8 (one day; `test_hub` rewrite).
+6. Half-day chores in any order: P8, P9, P6 (or after Track G), P5, M1, M2.
+7. One-hour chores: M3, M4, M5, M6, M7.
