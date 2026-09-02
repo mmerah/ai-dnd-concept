@@ -22,6 +22,7 @@ def master_sections(state: BreathlessGame) -> Rows:
         *party_rows(world.members()),
         ("HIDDEN HERE (the player has not found these)", scenes.hidden_lines(world)),
         ("THE SCENE'S SECRET (never narrate this)", scene.secret or "(none)"),
+        *scenes.recap_rows(world),
         *master_tail(world.hub, world.at_hub, world.board, world.jobs(), world.job),
     )
 

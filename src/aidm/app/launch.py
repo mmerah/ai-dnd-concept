@@ -34,6 +34,7 @@ class SaveOption(Frozen):
     character_title: str
     turn: int
     kind: ScenarioKind
+    where: str
 
 
 class LauncherCatalog(Frozen):
@@ -97,6 +98,14 @@ def load_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> L
         if played_by.get(game.scenario_id) != game.engine or title is None:
             LOGGER.warning("skipping save %r: its engine, scenario or character is gone", slug)
             continue
+        engine = engines[game.engine]
+        try:
+            state = engine.restored(raw)
+        except ValueError as stale:
+            LOGGER.warning("skipping save %r: %s", slug, stale)
+            continue
+        history = engine.history(state)
+        where = history[-1].where if history else ""
         saves.append(
             SaveOption(
                 target=LaunchTarget(
@@ -106,6 +115,7 @@ def load_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> L
                 character_title=title,
                 turn=game.turn,
                 kind=game.scenario.kind,
+                where=where,
             )
         )
     return LauncherCatalog(scenarios=scenarios, characters=characters, saves=tuple(saves))

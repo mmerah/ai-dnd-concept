@@ -20,6 +20,7 @@ from aidm.engines.hub import (
     job_start,
     job_titles,
     jobs_panel,
+    ledger,
     master_tail,
     place_unmet,
     question_heading,
@@ -237,3 +238,32 @@ def test_jobs_panel_is_shown_only_when_there_is_a_job() -> None:
     (panel,) = jobs_panel((job,))
     assert panel.title == "Jobs"
     assert len(panel.rows) == 1
+
+
+def test_closed_jobs_carries_the_terms_the_leaving_scene_wrote() -> None:
+    stops = (
+        Stop(place=HUB, title="Hub"),
+        Stop(place="a1", title="A1", job="Clear the warehouse by dawn."),
+        Stop(place=HUB, title="Hub", debrief=DONE_A),
+    )
+
+    assert closed_jobs(HUB, stops) == (
+        Job(title="A1", place="a1", debrief=DONE_A, job="Clear the warehouse by dawn."),
+    )
+
+
+def test_ledger_shows_the_job_line_only_under_an_open_job_with_terms() -> None:
+    open_with_terms = Job(
+        title="A1",
+        place="a1",
+        debrief=Debrief(text="Ran out of time.", finished=False),
+        job="Clear the warehouse by dawn.",
+    )
+    finished_with_terms = Job(title="B1", place="b1", debrief=DONE_B, job="Escort the courier.")
+    open_no_terms = Job(
+        title="C1", place="c1", debrief=Debrief(text="Ran out of time.", finished=False)
+    )
+
+    assert "  the job: Clear the warehouse by dawn." in ledger((open_with_terms,))
+    assert "  the job:" not in ledger((finished_with_terms,))
+    assert "  the job:" not in ledger((open_no_terms,))

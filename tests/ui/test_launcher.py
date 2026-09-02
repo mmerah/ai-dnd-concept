@@ -148,17 +148,31 @@ def test_a_save_whose_origin_is_gone_is_not_listed(tmp_path: Path, change: dict[
     assert not load_catalog(settings, ENGINES_BUILT).saves
 
 
-def test_a_save_that_lists_but_will_not_open_still_reaches_the_player(tmp_path: Path) -> None:
-    """The header is what the launcher reads; the payload is only read when the game opens."""
+def test_a_save_that_fails_to_restore_is_skipped_not_listed(tmp_path: Path) -> None:
+    """A stale save is invalid outright: the catalog skips it rather than listing it unopenable."""
     settings = ui_settings(tmp_path)
-    raw = _opening_state(settings).model_dump(mode="json")
-    raw["payload"]["world"]["cast"]["ghost"] = {"name": "Ghost"}
-    _ = (tmp_path / "unopenable.json").write_text(json.dumps(raw), encoding=ENCODING)
+    state = _opening_state(settings)
+    FileStore(tmp_path).save("good", state)
+    broken = state.model_dump(mode="json")
+    broken["payload"]["world"]["cast"]["ghost"] = {"name": "Ghost"}
+    _ = (tmp_path / "unopenable.json").write_text(json.dumps(broken), encoding=ENCODING)
 
-    (save,) = load_catalog(settings, ENGINES_BUILT).saves
+    catalog = load_catalog(settings, ENGINES_BUILT)
 
-    with pytest.raises(ValueError):
-        _ = Runtime(settings, ScriptedSpawner()).session(save.target)
+    assert [save.target.slug for save in catalog.saves] == ["good"]
+
+
+def test_the_catalog_reports_where_a_save_left_off(tmp_path: Path) -> None:
+    settings = ui_settings(tmp_path)
+    dumped = _opening_state(settings).model_dump(mode="json")
+    dumped["payload"]["world"]["runs"][0]["exchanges"] = [
+        {"prompt": "Look around.", "lines": [{"speaker": None, "text": "You wait."}]}
+    ]
+    _ = (tmp_path / "underway.json").write_text(json.dumps(dumped), encoding=ENCODING)
+
+    (saved,) = load_catalog(settings, ENGINES_BUILT).saves
+
+    assert saved.where == "The Abbot's Study"
 
 
 def test_a_save_the_app_cannot_read_does_not_hide_the_others(tmp_path: Path) -> None:

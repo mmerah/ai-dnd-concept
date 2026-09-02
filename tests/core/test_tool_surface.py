@@ -48,9 +48,18 @@ A_SCENE = {
     "question": "Can you reach the chapter house before the lantern gives you away?",
     "secret": "Tomas is listening from the chapter house door.",
 }
+RECAP = (
+    "The player left the abbot's study behind, lantern shuttered, and made for the cloister "
+    "walk with Mara close behind them."
+)
 
 
 def _scene(**changes: object) -> str:
+    return json.dumps(A_SCENE | {"recap": RECAP} | changes)
+
+
+def _bare_scene(**changes: object) -> str:
+    """An authored opening validates against `SceneDraft`, which carries no recap."""
     return json.dumps(A_SCENE | changes)
 
 
@@ -226,7 +235,7 @@ async def test_a_transition_without_an_arrival_brief_extends_on_a_lineless_excha
     async def write(
         state: Loner3eGame, _intent: str, _answer: WorldsmithAnswer
     ) -> SceneDraft[LonerCharacter]:
-        written = SceneDraft[LonerCharacter].model_validate_json(_scene())
+        written = SceneDraft[LonerCharacter].model_validate_json(_bare_scene())
         if (refused := scene_refusal(written, state.payload.world)) is not None:
             raise ValueError(refused)
         return written
@@ -258,7 +267,8 @@ async def test_a_transition_without_an_arrival_brief_extends_on_a_lineless_excha
 
 def test_authoring_build_raises_on_an_unmet_bar(tmp_path: Path) -> None:
     table = opened(tmp_path)
-    scene = SceneDraft[LonerCharacter].model_validate(json.loads(_scene(present=[], hidden=[])))
+    thin = json.loads(_bare_scene(present=[], hidden=[]))
+    scene = SceneDraft[LonerCharacter].model_validate(thin)
 
     with pytest.raises(ValueError, match="the scene needs"):
         _ = table.service.engine.authoring.build("T", "p", table.state.packs, scene, "", "one-shot")

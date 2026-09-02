@@ -45,7 +45,6 @@ from aidm.engines.core import (
     party_panel,
     reveal,
     sentence,
-    told_tail,
 )
 from aidm.engines.hub import (
     BOARD_MAX,
@@ -76,6 +75,7 @@ from aidm.engines.hub import (
 
 SCENE_TURN_CAP = 12
 MIN_SITUATION = 80  # what the worldsmith owes a scene; an authored `Scene` is held to less
+MIN_RECAP = 60
 SPENT_NOTE = "This scene looks spent — {reason}. If its question is settled, call `next_scene`."
 NEXT_SCENE = (
     "Say this scene's question is settled. The player is then asked what they want to pursue, "
@@ -129,6 +129,7 @@ class SceneRun(Mutable):
     spent: str = ""
     # The master's word: settling this scene finished the job the player walked out on.
     job_done: bool = False
+    recap: str = ""  # written when the player left
 
 
 class NextScene(Frozen):
@@ -215,7 +216,12 @@ class SceneWorld[C: Person, P: Person](Mutable):
 
     def stops(self) -> tuple[Stop, ...]:
         return tuple(
-            Stop(place=run.scene.place, title=run.scene.title, debrief=run.scene.debrief)
+            Stop(
+                place=run.scene.place,
+                title=run.scene.title,
+                debrief=run.scene.debrief,
+                job=run.scene.job,
+            )
             for run in self.runs
         )
 
@@ -334,8 +340,19 @@ class SceneDraft[C: Person](Frozen):
     cast: dict[EntityId, C] = Field(default_factory=dict)
 
 
-class JobDraft[C: Person](SceneDraft[C]):
-    """The scene that leaves the hub."""
+class NextDraft[C: Person](SceneDraft[C]):
+    """A scene written in play, away from a return."""
+
+    recap: str = Field(
+        min_length=MIN_RECAP,
+        description="One paragraph on the scene the player is leaving: what they did, what it "
+        "cost, what they learned, what they missed. Read by the game master and by you, never "
+        "by the player, so it may name the secret.",
+    )
+
+
+class JobDraft[C: Person](NextDraft[C]):
+    """The scene that leaves the hub: its recap is the hub visit."""
 
     job: str = Field(min_length=MIN_JOB)
 
@@ -635,12 +652,20 @@ def scene_history(runs: Sequence[SceneRun]) -> str:
                 f"SCENE {number}: {run.scene.title} ({run.scene.place})",
                 f"the question: {run.scene.question}",
                 *([f"the job: {run.scene.job}"] if run.scene.job else []),
-                run.scene.situation,
-                "what happened: " + (told_tail(run.exchanges) or "(nothing yet)"),
+                *_told(run),
             )
         )
         for number, run in enumerate(runs, start=1)
     )
+
+
+def recap_rows[C: Person, P: Person](world: SceneWorld[C, P]) -> Rows:
+    """The master reads the job so far as the worldsmith told it, never the raw exchanges."""
+    told = [run for run in world.job_runs() if run.recap]
+    if not told:
+        return ()
+    title = "EARLIER IN THIS JOB" if world.hub is not None else "EARLIER IN THIS ADVENTURE"
+    return ((title, "\n".join(f"- {run.scene.title}: {run.recap}" for run in told)),)
 
 
 def check_hub(hub: Slug | None, board: Sequence[Offer], runs: Sequence[SceneRun]) -> None:
@@ -776,6 +801,8 @@ def apply_scene[C: Person, P: Person](world: SceneWorld[C, P], draft: SceneDraft
     world.cast = cast
     for one in present:
         cast[one].known = True
+    if isinstance(draft, NextDraft):
+        world.run.recap = draft.recap
     world.runs.append(
         SceneRun(scene=_scene(draft, finished), present=[*world.party, *present], hidden=hidden)
     )
@@ -796,7 +823,7 @@ async def write_next[C: Person, P: Person](
         if returning
         else JobDraft[cast_type]
         if world.at_hub
-        else SceneDraft[cast_type]
+        else NextDraft[cast_type]
     )
 
     def refusal(written: BaseModel) -> str | None:
@@ -968,6 +995,14 @@ def player_view[S: SceneState[Any, Any]](
         prompt=state.pending,
         over=player_over(state),
     )
+
+
+def _told(run: SceneRun) -> tuple[str, ...]:
+    """The recap bounds a closed run, so the open run is the only one printed whole."""
+    if run.recap:
+        return (f"what happened: {run.recap}",)
+    exchanges = "\n".join(f"> {one.prompt}\n{one.narration}" for one in run.exchanges)
+    return (run.scene.situation, "what happened: " + (exchanges or "(nothing yet)"))
 
 
 def _is_draft[C: Person](written: BaseModel, model: type[SceneDraft[C]]) -> TypeIs[SceneDraft[C]]:

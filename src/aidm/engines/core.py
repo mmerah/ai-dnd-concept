@@ -31,7 +31,6 @@ from aidm.core.tools import Known, MasterTool, Validate
 from aidm.core.views import NarratorView, Panel, PanelRow, PlayerView, Rows
 
 PLAYER_ID = EntityId("player")
-TAIL_EXCHANGES = 3
 PLAYER_DEAD = "the player is dead; they take no further part."
 CHANGE_WORLD = (
     "Apply one settled world change to match the story. Set `verb` to pick the change and fill "
@@ -163,10 +162,6 @@ class Engine[G: Game[Any]]:
 
 
 type AnyEngine = Engine[Any]
-
-
-def told_tail(exchanges: Sequence[Exchange]) -> str:
-    return "\n".join(f"> {one.prompt}\n{one.narration}" for one in exchanges[-TAIL_EXCHANGES:])
 
 
 def sentence(text: str) -> str:
