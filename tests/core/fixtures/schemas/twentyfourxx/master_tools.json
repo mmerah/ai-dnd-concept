@@ -386,7 +386,7 @@
   },
   {
     "name": "job_done",
-    "description": "Once per adventure, when the player's own words close out the job: raise the named skill and pay out its credits.",
+    "description": "Once per job, when the player's own words close out the job: raise the named skill and pay out its credits.",
     "parameters": {
       "additionalProperties": false,
       "properties": {

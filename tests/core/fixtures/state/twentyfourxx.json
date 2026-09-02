@@ -97,7 +97,9 @@
           "spent": ""
         }
       ],
-      "source": "# The Silent Relay\n\nRelay station QV-9 sits on the convoy line three jumps out from the nearest yard, its beacon the only thing keeping ships from translating in blind.\n\n> Six days dark and still drawing power. Something on that station chose the silence.\n\nThe docking ring holds atmosphere and gravity; whatever cut the beacon left the rest of QV-9 running.\n\np. 1\n"
+      "source": "# The Silent Relay\n\nRelay station QV-9 sits on the convoy line three jumps out from the nearest yard, its beacon the only thing keeping ships from translating in blind.\n\n> Six days dark and still drawing power. Something on that station chose the silence.\n\nThe docking ring holds atmosphere and gravity; whatever cut the beacon left the rest of QV-9 running.\n\np. 1\n",
+      "hub": null,
+      "board": []
     }
   }
 }

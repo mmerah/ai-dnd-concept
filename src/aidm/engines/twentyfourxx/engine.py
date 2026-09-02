@@ -29,7 +29,7 @@ from aidm.engines.twentyfourxx.world import (
     player_operator,
     player_over,
     record,
-    settled,
+    way_open,
 )
 from aidm.engines.twentyfourxx.worldsmith import (
     SceneDraft,
@@ -58,16 +58,18 @@ def new_game(scenario: AnyScenario, character: AnyCharacter) -> TwentyfourxxStat
             SceneRun(scene=canon.opening, present=list(canon.present), hidden=list(canon.hidden))
         ],
         source=canon.source,
+        hub=canon.hub,
+        board=canon.board,
     )
     return TwentyfourxxState(world=world)
 
 
-def check_packs(packs: Mapping[str, Pack], state: TwentyfourxxGame) -> None:
+def check_game(packs: Mapping[str, Pack], state: TwentyfourxxGame) -> None:
     if not state.packs:
         raise ValueError("a 24XX game needs at least one table set")
     if missing := sorted(set(state.packs) - set(packs)):
         raise ValueError(f"the game names packs not installed: {missing}")
-    check_kind(state.scenario.kind, None)
+    check_kind(state.scenario.kind, state.payload.world.hub)
 
 
 def build(user_packs: Path) -> Engine[TwentyfourxxGame]:
@@ -84,7 +86,7 @@ def build(user_packs: Path) -> Engine[TwentyfourxxGame]:
         creation_steps=partial(creation_steps, packs),
         create_character=partial(create_character, packs),
         preview_character=preview_character,
-        validate=partial(check_packs, packs),
+        validate=partial(check_game, packs),
         new_game=new_game,
         known=known,
         record=record,
@@ -99,7 +101,7 @@ def build(user_packs: Path) -> Engine[TwentyfourxxGame]:
             build=build_scenario,
         ),
         transition=Transition(
-            ready=settled,
+            ready=way_open,
             write=partial(write_next, packs),
             install=install_scene,
             arrival_brief=arrival_brief,
