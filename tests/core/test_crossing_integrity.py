@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from core_test_support import changed, opened, played, the_way_on
+from core_test_support import changed, loner_sheet, opened, played, the_way_on
 
 from aidm.core.entities import EntityId
 from aidm.engines.core import PLAYER_ID
@@ -44,24 +44,32 @@ async def test_crossing_keeps_a_drive_set_after_the_worldsmith_snapshot(
     assert state.payload.world.player.goal == "Get the vault map out safely"
 
 
-async def test_invalid_actor_from_crossing_is_rejected_before_commit(tmp_path: Path) -> None:
-    """A cast id already in the world only clashes once merged: soft checks let it through."""
+async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_and_sheet(
+    tmp_path: Path,
+) -> None:
+    """The brief is the worldsmith's between scenes; the name and the sheet are the rules'."""
     table = opened(tmp_path)
+    before = loner_sheet(table.state, EntityId("mara"))
     table.spawner.answers["worldsmith"] = [
         _scene(
             cast={
                 "mara": {
                     "id": "mara",
                     "name": "Another Mara",
-                    "brief": "Filed under an id the world already holds.",
+                    "brief": "Waiting under the arcade with the lantern shuttered.",
                 }
             },
         )
     ]
 
     _ = await played(table, "I have what I came for.", the_way_on())
-    state = await played(table, "Out into the cloister walk.", moving_on=True)
+    state = await played(
+        table, "Out into the cloister walk.", arrival="Rain takes the arcade.", moving_on=True
+    )
 
-    assert state.payload.world.current.title == "The Abbot's Study"
-    assert state.payload.world.require(EntityId("mara")).name == "Mara"
-    assert "already in the cast" in table.service.write_failure
+    mara = state.payload.world.require(EntityId("mara"))
+    assert state.payload.world.current.title == "The Cloister Walk"
+    assert mara.name == "Mara"
+    assert mara.brief == "Waiting under the arcade with the lantern shuttered."
+    assert (mara.concept, mara.skills) == (before.concept, before.skills)
+    assert table.service.write_failure == ""

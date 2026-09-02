@@ -120,13 +120,16 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path)
     FileStore(tmp_path).save("old-game", _opening_state(settings))
 
-    (saved,) = load_catalog(settings, ENGINES_BUILT).saves
+    catalog = load_catalog(settings, ENGINES_BUILT)
+    (saved,) = catalog.saves
 
-    assert (saved.scenario_title, saved.character_title, saved.turn) == (
+    assert (saved.scenario_title, saved.character_title, saved.turn, saved.rules) == (
         "The Whispering Vault",
         "Kael",
         0,
+        "LONER 3E",
     )
+    assert catalog.scenario("whispering-vault").rules == "LONER 3E"
     assert saved.target.model_dump() == {
         "slug": "old-game",
         "scenario_id": "whispering-vault",

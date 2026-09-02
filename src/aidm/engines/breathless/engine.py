@@ -52,6 +52,10 @@ def build(user_packs: Path) -> Engine[BreathlessGame]:
     return Engine(
         id=EngineId("breathless"),
         title="BREATHLESS",
+        art_style=(
+            "Grim survival-horror illustration: dim, desaturated, wet surfaces, "
+            "no text or lettering."
+        ),
         instructions=(ENGINE_DIR / "rules.md").read_text(encoding=ENCODING),
         packs=pack_options(packs),
         game=BreathlessGame,

@@ -167,7 +167,7 @@ def scenario_page(runtime: Runtime) -> None:
             .props("outlined autogrow")
         )
         style = (
-            ui.input(label="Art style", placeholder="Leave empty for the default style")
+            ui.input(label="Art style", placeholder=f"Leave empty for: {engine.art_style}")
             .classes("w-full")
             .props("outlined")
         )

@@ -15,6 +15,7 @@ class CatalogEntry(Frozen):
     engine: EngineId
     title: str
     subtitle: str
+    rules: str
     kind: ScenarioKind = "one-shot"
 
 
@@ -35,6 +36,7 @@ class SaveOption(Frozen):
     turn: int
     kind: ScenarioKind
     where: str
+    rules: str
 
 
 class LauncherCatalog(Frozen):
@@ -72,12 +74,19 @@ def load_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> L
             engine=scenario.engine,
             title=scenario.meta.title,
             subtitle=scenario.meta.premise,
+            rules=engines[scenario.engine].title,
             kind=scenario.meta.kind,
         )
         for name, scenario in read_scenarios(settings.scenarios_dir, scenario_models)
     )
     characters = tuple(
-        CatalogEntry(id=name, engine=engine, title=character.name, subtitle=character.brief)
+        CatalogEntry(
+            id=name,
+            engine=engine,
+            title=character.name,
+            subtitle=character.brief,
+            rules=engines[engine].title,
+        )
         for name, engine, character in read_characters(settings.characters_dir, character_models)
     )
     titles = {(entry.id, entry.engine): entry.title for entry in characters}
@@ -116,6 +125,7 @@ def load_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> L
                 turn=game.turn,
                 kind=game.scenario.kind,
                 where=where,
+                rules=engine.title,
             )
         )
     return LauncherCatalog(scenarios=scenarios, characters=characters, saves=tuple(saves))

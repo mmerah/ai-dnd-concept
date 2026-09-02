@@ -106,7 +106,7 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
             kind="scene_opened",
             trace="the story moves to The Alley",
             told=True,
-            card="New scene: The Alley",
+            card="New scene: The Alley\nAt stake: Can they lose the mob in the alley?",
         ),
     )
 
@@ -164,7 +164,7 @@ def test_install_scene_on_a_return_swaps_the_board_and_notes_nothing() -> None:
 def test_install_scene_on_a_hub_draft_lands_a_home_card() -> None:
     game = hub_world()
     facts = install_scene(game, _return_draft(), finished_note="")
-    assert any(fact.card == "Home: Back at the Camp" for fact in facts)
+    assert any(fact.card.startswith("Home: Back at the Camp") for fact in facts)
 
 
 def _opening(**fields: object) -> SceneDraft[Person]:

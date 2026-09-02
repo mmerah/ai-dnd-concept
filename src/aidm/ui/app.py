@@ -82,7 +82,7 @@ def _new_game(catalog: LauncherCatalog) -> None:
         def form() -> None:
             scenario = catalog.scenario(scenario_id)
             ui.select(
-                options={entry.id: entry.title for entry in catalog.scenarios},
+                options={entry.id: f"{entry.title} · {entry.rules}" for entry in catalog.scenarios},
                 value=scenario_id,
                 label="Scenario",
                 on_change=choose_scenario,
@@ -144,8 +144,10 @@ def _saved_card(saved: SaveOption) -> None:
                     f"{saved.character_title} · turn {saved.turn}"
                     + (f" · {saved.where}" if saved.where else "")
                 ).classes("text-sm opacity-70")
-                if saved.kind == "campaign":
-                    ui.badge("campaign").props("outline")
+                with ui.row().style("gap: 0.5rem"):
+                    ui.badge(saved.rules).props("outline")
+                    if saved.kind == "campaign":
+                        ui.badge("campaign").props("outline")
             ui.button(
                 "Resume",
                 icon="play_arrow",

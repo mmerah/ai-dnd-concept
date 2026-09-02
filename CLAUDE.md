@@ -38,6 +38,7 @@ Tests run offline. They are deterministic.
 - The engine owns the world. `core`, `turn`, `app` and `ui` know no world shape. The registry is the one place that connects them.
 - An engine is self-contained in its own package, under 2,000 lines, with at most fifteen game-master tools, world verbs included, one per SRD procedure. The scene engines share one scene lifecycle; all four share one hub.
 - The narrator writes the story text; the worldsmith's scene titles, offers and debrief reach the player on cards and panels. The narrator's input holds revealed facts only. Hidden facts have no path into it.
+- The worldsmith writes new cast entries and rewrites a brief; a name and a sheet are the rules'. The scene bar and the install share one refusal list, so the worldsmith's one retry sees every refusal.
 - A bad model answer is re-prompted once with the error, then raises.
 - Saves have no version field. A stale save is invalid.
 - Only `turn`, `app`, and `ui` read the settings.

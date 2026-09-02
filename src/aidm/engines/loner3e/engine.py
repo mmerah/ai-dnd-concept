@@ -54,6 +54,7 @@ def build(user_packs: Path) -> Engine[Loner3eGame]:
     return Engine(
         id=EngineId("loner3e"),
         title="LONER 3E",
+        art_style="Painterly illustration, muted colours, no text or lettering.",
         instructions=(ENGINE_DIR / "rules.md").read_text(encoding=ENCODING),
         packs=pack_options(packs),
         game=Loner3eGame,

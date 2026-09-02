@@ -24,14 +24,14 @@ def test_only_a_real_edit_is_written(tmp_path: Path) -> None:
         {
             ("providers", "openrouter", "api_key"): FakeBox(""),
             ("media", "enabled"): FakeBox(True),
-            ("media", "style"): FakeBox(None),
+            ("media", "model"): FakeBox(None),
             ("recent_exchanges",): FakeBox(20.0),
             ("roles", "narrator", "timeout"): FakeBox(90.0),
         },
     )
     assert changed == {
         ("media", "enabled"): "true",
-        ("media", "style"): None,
+        ("media", "model"): None,
         ("roles", "narrator", "timeout"): "90",
     }
 
@@ -47,19 +47,19 @@ def test_a_saved_key_reads_back_and_the_rest_of_the_file_survives(
 ) -> None:
     env = tmp_path / ".env"
     _ = env.write_text("# keep me\nPROVIDERS__OPENROUTER__API_KEY=test\nMEDIA__ENABLED=true\n")
-    for shadowing in ("ROLES__NARRATOR__TIMEOUT", "MEDIA__STYLE", "MEDIA__ENABLED"):
+    for shadowing in ("ROLES__NARRATOR__TIMEOUT", "MEDIA__MODEL", "MEDIA__ENABLED"):
         monkeypatch.delenv(shadowing, raising=False)
     monkeypatch.chdir(tmp_path)
     save_settings(
         {
             ("roles", "narrator", "timeout"): "90",
-            ("media", "style"): 'it is "grim"',
+            ("media", "model"): 'it is "grim"',
             ("media", "enabled"): None,
         }
     )
     reread = load_settings()
     assert reread.roles.narrator.timeout == 90
-    assert reread.media.style == 'it is "grim"'
+    assert reread.media.model == 'it is "grim"'
     assert reread.media.enabled is False
     assert "# keep me" in env.read_text(encoding="utf-8")
 

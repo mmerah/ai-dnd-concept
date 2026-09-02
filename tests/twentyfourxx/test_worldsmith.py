@@ -103,14 +103,16 @@ def test_apply_scene_refuses_a_draft_cast_entry_under_player_id() -> None:
         apply_scene(world, draft)
 
 
-def test_apply_scene_refuses_rewriting_an_existing_cast_member() -> None:
+def test_apply_scene_re_files_an_existing_cast_member_as_a_new_brief_alone() -> None:
     world = small_world().payload.world
     draft = _draft(
         present=("kestrel",),
-        cast={KESTREL: Person(id=KESTREL, name="Kestrel", brief="rewritten")},
+        cast={KESTREL: Person(id=KESTREL, name="Another Kestrel", brief="rewritten")},
     )
-    with pytest.raises(ValueError, match="already in the cast"):
-        apply_scene(world, draft)
+
+    apply_scene(world, draft)
+
+    assert (world.cast[KESTREL].name, world.cast[KESTREL].brief) == ("Kestrel", "rewritten")
 
 
 def test_apply_scene_refuses_a_misfiled_cast_entry() -> None:
@@ -125,16 +127,18 @@ def test_apply_scene_refuses_a_misfiled_cast_entry() -> None:
         apply_scene(world, draft)
 
 
-def test_apply_scene_refuses_present_hidden_overlap() -> None:
+def test_the_bar_refuses_present_hidden_overlap() -> None:
     world = small_world().payload.world
-    with pytest.raises(ValueError, match="both present and hidden"):
-        apply_scene(world, _draft(present=("kestrel",), hidden=("kestrel",)))
+    assert scene_refusal(_draft(present=("sable",), hidden=("sable",)), world) == (
+        "the scene needs nobody listed as both present and hidden: ['sable']"
+    )
 
 
-def test_apply_scene_refuses_hiding_someone_met() -> None:
+def test_the_bar_refuses_hiding_someone_the_player_has_met() -> None:
     world = small_world().payload.world
-    with pytest.raises(ValueError, match="already met"):
-        apply_scene(world, _draft(hidden=("kestrel",)))
+    assert scene_refusal(_draft(hidden=("kestrel",)), world) == (
+        "the scene needs a hidden list without ['kestrel'], whom the player has already met"
+    )
 
 
 def test_the_opening_needs_a_cast_member() -> None:
@@ -244,7 +248,8 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
             kind="scene_opened",
             trace="the story moves to The Bay Office",
             told=True,
-            card="New scene: The Bay Office",
+            card="New scene: The Bay Office\n"
+            "At stake: Can they slip past the night crew before the lights return?",
         ),
     )
 
@@ -410,7 +415,16 @@ def test_render_worldsmith_prints_the_job_line_for_the_job_run() -> None:
     assert f"the job: {JOB}" in prompt
 
 
+def test_the_scene_card_carries_the_stake_and_a_job_draft_its_terms() -> None:
+    facts = install_scene(hub_world(), _job_draft())
+    assert facts[0].card == (
+        "New scene: The Bay Office\n"
+        "At stake: Can they slip past the night crew before the lights return?\n"
+        f"The job: {JOB}"
+    )
+
+
 def test_install_scene_on_a_hub_draft_lands_a_home_card() -> None:
     game = hub_world()
     facts = install_scene(game, _return_draft())
-    assert any(fact.card == "Home: Back at the Amber Tap" for fact in facts)
+    assert any(fact.card.startswith("Home: Back at the Amber Tap") for fact in facts)

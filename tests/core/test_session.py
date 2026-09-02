@@ -1,11 +1,18 @@
 from pathlib import Path
 
 import pytest
-from core_test_support import ScriptedSpawner, offline_settings, opened, played, updated
+from core_test_support import (
+    ScriptedSpawner,
+    narrated,
+    offline_settings,
+    opened,
+    played,
+    updated,
+)
 from loner3e_test_support import TARGET
 from loner3e_test_support import loner3e_session as session
 
-from aidm.app.runtime import Runtime
+from aidm.app.runtime import BEGUN, Runtime
 from aidm.core.io import FileStore
 from aidm.core.model import AnyGame, ScenarioMeta
 
@@ -68,6 +75,30 @@ def test_one_open_game_per_slug_and_it_keeps_the_origin_it_was_opened_with(tmp_p
     assert runtime.session(updated(TARGET, slug="second")).engine is opened.engine
     with pytest.raises(ValueError, match="open session 'poc' plays"):
         runtime.session(updated(TARGET, character_id="someone-else"))
+
+
+async def test_the_opening_is_narrated_once_and_costs_a_turn(tmp_path: Path) -> None:
+    table = opened(tmp_path)
+    table.spawner.answers["narrator"] = [narrated("The abbot's study holds its breath.")]
+
+    await table.service.open()
+
+    history = table.service.engine.history(table.service.state)
+    assert [exchange.prompt for exchange in history] == [BEGUN]
+    assert table.service.state.turn == 1
+
+    await table.service.open()
+    assert len(table.service.engine.history(table.service.state)) == 1
+
+
+async def test_an_opening_the_narrator_will_not_write_commits_nothing(tmp_path: Path) -> None:
+    """The premise still stands in for it; a page reload asks again."""
+    table = opened(tmp_path)
+
+    await table.service.open()
+
+    assert table.service.engine.history(table.service.state) == ()
+    assert (table.service.state.turn, table.service.busy) == (0, False)
 
 
 async def test_a_failed_commit_still_frees_the_game(tmp_path: Path) -> None:

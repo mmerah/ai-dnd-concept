@@ -133,7 +133,7 @@ def test_an_id_the_worldsmith_got_wrong_resolves_by_name_before_it_is_refused() 
     # The probe's failure: the worldsmith writes a display name where an exact id was asked for.
     apply_scene(draft.payload.world, _next_scene(present=("Mara",)))
     assert draft.payload.world.run.present == [MARA]
-    with pytest.raises(ValueError, match="no such id or name"):
+    with pytest.raises(ValueError, match="these name nobody"):
         apply_scene(state.draft().payload.world, _next_scene(present=(EntityId("nobody"),)))
 
 

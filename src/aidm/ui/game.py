@@ -1,5 +1,6 @@
 import logging
 from asyncio import get_running_loop
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
@@ -13,7 +14,7 @@ from aidm.core.play import Answer, Speaker
 from aidm.core.views import speaker_of
 from aidm.turn.run import TurnStep
 
-from .panels import journal_panel, scene_sidebar
+from .panels import NO_WAY_ON, journal_panel, scene_sidebar
 from .widgets import (
     avatar,
     decision_widget,
@@ -117,7 +118,7 @@ def live_turn(view: GameView) -> None:
     if view.live_prompt is not None:
         _bubble(session, speaker_of(session.player_view().player), view.live_prompt, sent=True)
     for fact in view.live_facts:
-        _card(fact)
+        _card(fact, live=fact is view.live_facts[-1])
     view.ticker = None
     if session.step is not None:
         elapsed = 0.0 if view.step_started is None else monotonic() - view.step_started
@@ -130,6 +131,14 @@ def on_step(view: GameView, step: TurnStep) -> None:
     live_turn.refresh()
     if view.composer is not None:
         view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
+
+
+def on_commit(view: GameView) -> None:
+    """The turn is filed; the page shows its narration before the worldsmith is asked."""
+    view.live_prompt, view.live_facts = None, []
+    chat.refresh()
+    live_turn.refresh()
+    _scroll(view)
 
 
 def tick_elapsed(view: GameView) -> None:
@@ -252,18 +261,22 @@ def composer(view: GameView) -> None:
     view.composer = box
 
 
-def restart(view: GameView) -> None:
+async def restart(view: GameView) -> None:
     session = view.session
     if refuse_play(view):
         return
     session.restart()
     view.live_prompt, view.live_facts = None, []
     refresh_all()
+    await _open(view)
 
 
 def game_page(runtime: Runtime, session: GameService) -> None:
-    session.illustrate()
     view = GameView(runtime, session)
+    if session.unopened():
+        ui.timer(0.1, lambda: _open(view), once=True)
+    else:
+        session.illustrate()
     with page_header(session.state.scenario.title, session.engine.title):
         ui.space()
         ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")
@@ -304,7 +317,7 @@ def _scene_art(session: GameService) -> None:
         ui.skeleton().classes("rounded-borders").style(_ART_BOX)
 
 
-def _card(fact: Fact) -> None:
+def _card(fact: Fact, *, live: bool = False) -> None:
     headline, *detail = fact.card.split("\n")
     with ui.column().classes("game-card w-full").style("gap: 0.3rem"):
         ui.label(headline).classes("text-sm font-bold")
@@ -313,17 +326,21 @@ def _card(fact: Fact) -> None:
         if fact.dice:
             with ui.row().classes("items-start").style("gap: 1rem"):
                 for group in fact.dice:
-                    _dice_group(group)
+                    _dice_group(group, live=live)
 
 
-def _dice_group(die: DiceEvent) -> None:
+def _dice_group(die: DiceEvent, *, live: bool) -> None:
     with ui.column().style("gap: 0.2rem"):
         ui.label(die.label).classes("text-xs opacity-60")
         with ui.row().classes("no-wrap").style("gap: 0.3rem"):
             for index, (face, value) in enumerate(zip(die.faces, die.rolled, strict=True)):
                 with (
                     ui.column()
-                    .classes("game-die" + (" game-die-kept" if index in die.highlight else ""))
+                    .classes(
+                        "game-die"
+                        + (" game-die-kept" if index in die.highlight else "")
+                        + (" game-die-live" if live else "")
+                    )
                     .style("gap: 0")
                 ):
                     ui.label(f"d{face}").classes("game-die-face")
@@ -382,26 +399,44 @@ def _scroll(view: GameView) -> None:
         get_running_loop().call_later(0.1, lambda: transcript.scroll_to(percent=1.0))
 
 
-async def _send(
-    view: GameView, player_input: str | Answer, bubble: str, *, moving_on: bool = False
-) -> None:
+async def _run(view: GameView, bubble: str | None, playing: Callable[[], Awaitable[None]]) -> None:
     session = view.session
     view.live_prompt, view.live_facts = bubble, []
     live_turn.refresh()
     _scroll(view)
     async with working():
-        await session.play(
-            player_input,
-            on_step=lambda step: on_step(view, step),
-            on_fact=lambda fact: on_fact(view, fact),
-            moving_on=moving_on,
-        )
-    session.step = None
+        await playing()
+    if session.write_failure:
+        ui.notify(NO_WAY_ON, type="warning")
     view.live_prompt, view.live_facts, view.step_started = None, [], None
     if view.composer is not None:
         view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
     refresh_all()
     _scroll(view)
+
+
+async def _open(view: GameView) -> None:
+    # A second tab's timer must not run the page reset over an opening already in flight.
+    if not view.session.unopened():
+        return
+    await _run(view, None, lambda: view.session.open(on_step=lambda step: on_step(view, step)))
+
+
+async def _send(
+    view: GameView, player_input: str | Answer, bubble: str, *, moving_on: bool = False
+) -> None:
+    session = view.session
+    await _run(
+        view,
+        bubble,
+        lambda: session.play(
+            player_input,
+            on_step=lambda step: on_step(view, step),
+            on_fact=lambda fact: on_fact(view, fact),
+            moving_on=moving_on,
+            on_commit=lambda: on_commit(view),
+        ),
+    )
 
 
 def _can_type(session: GameService, busy: bool) -> bool:
