@@ -1,7 +1,7 @@
 import pytest
 from core_test_support import EnvFileFreeSettings
 
-from aidm.config import MediaConfig
+from aidm.config import MediaConfig, SpeechConfig
 
 
 def test_a_role_carries_its_own_model_and_inherits_nothing(
@@ -16,3 +16,8 @@ def test_a_role_carries_its_own_model_and_inherits_nothing(
 def test_illustration_without_a_key_is_refused() -> None:
     with pytest.raises(ValueError, match="no api_key"):
         _ = EnvFileFreeSettings(media=MediaConfig(enabled=True))
+
+
+def test_speech_without_a_key_is_refused() -> None:
+    with pytest.raises(ValueError, match="no api_key"):
+        _ = EnvFileFreeSettings(speech=SpeechConfig(enabled=True))

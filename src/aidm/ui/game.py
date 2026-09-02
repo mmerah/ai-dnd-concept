@@ -48,6 +48,8 @@ class GameView:
     runtime: Runtime
     session: GameService
     shown_art: tuple[Path | None, bool] = (None, False)
+    shown_clip: tuple[Path | None, bool] = (None, False)
+    autoplay_clip: Path | None = None
     # Both are built by the page below this view, and the panels reach them through it.
     composer: ui.input | None = None
     transcript: ui.scroll_area | None = None
@@ -91,7 +93,8 @@ def scene_header(session: GameService) -> None:
 
 
 @ui.refreshable
-def chat(session: GameService) -> None:
+def chat(view: GameView) -> None:
+    session = view.session
     history = session.engine.history(session.state)
     if not history:
         ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
@@ -114,6 +117,11 @@ def chat(session: GameService) -> None:
             _bubble(session, line.speaker, line.text, sent=False)
         if exchange.decision and exchange is not last:
             ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
+    # The newest clip only: every `ui.audio` registers a route, and a refresh rebuilds them all.
+    if history and session.reader is not None and (clip := session.reader.clip(history[-1])):
+        ui.audio(clip, autoplay=clip == view.autoplay_clip)
+        # Consumed by this render: a later refresh of the same turn must not restart it.
+        view.autoplay_clip = None
 
 
 @ui.refreshable
@@ -160,12 +168,19 @@ def tick_elapsed(view: GameView) -> None:
         ticker.set_text(_clock(monotonic() - started))
 
 
-def poll_art(view: GameView) -> None:
-    """The illustration is generated after the turn commits, so the page watches for it to land."""
-    shown = (view.session.scene_art(), view.session.scene_pending())
+def poll_media(view: GameView) -> None:
+    """The illustration and the clip are both generated after the turn commits and watched for."""
+    session = view.session
+    shown = (session.scene_art(), session.scene_pending())
     if shown != view.shown_art:
         view.shown_art = shown
         scene_header.refresh()
+    clip = (session.newest_clip(), session.clip_pending())
+    if clip != view.shown_clip:
+        view.shown_clip = clip
+        if clip[0] is not None:
+            view.autoplay_clip = clip[0]
+        chat.refresh()
 
 
 def refuse_play(view: GameView) -> bool:
@@ -298,7 +313,7 @@ def game_page(runtime: Runtime, session: GameService) -> None:
         with splitter.before, ui.column().classes("w-full h-full p-4").style("gap: 0.5rem"):
             scene_header(session)
             with ui.scroll_area().classes("w-full flex-grow game-transcript") as transcript:
-                chat(session)
+                chat(view)
                 live_turn(view)
             decision_panel(view)
             way_on_panel(view)
@@ -315,9 +330,12 @@ def game_page(runtime: Runtime, session: GameService) -> None:
                 with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
                     journal_panel(session)
 
+    # A cached clip never autoplays on a page load, only one landing after.
+    view.shown_clip = (session.newest_clip(), session.clip_pending())
+
     ui.timer(1.0, lambda: tick_elapsed(view))
-    if session.media is not None:
-        ui.timer(3.0, lambda: poll_art(view))
+    if session.media is not None or session.reader is not None:
+        ui.timer(3.0, lambda: poll_media(view))
 
 
 def _scene_art(session: GameService) -> None:

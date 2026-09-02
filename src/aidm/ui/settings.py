@@ -47,9 +47,13 @@ def settings_page(settings: Settings, apply: Callable[[], str | None]) -> None:
 
 
 def _shown(model: BaseModel) -> list[tuple[str, FieldInfo, object]]:
-    """A directory is left out: repointing one hides the save library from a running app."""
+    """A directory is left out (repointing one hides the save library); a tuple has no widget."""
     fields = type(model).model_fields.items()
-    return [(n, f, getattr(model, n)) for n, f in fields if not isinstance(getattr(model, n), Path)]
+    return [
+        (n, f, getattr(model, n))
+        for n, f in fields
+        if not isinstance(getattr(model, n), Path | tuple)
+    ]
 
 
 def _render(value: object, field: FieldInfo, path: tuple[str, ...]) -> Boxes:

@@ -1,6 +1,6 @@
 import logging
 from base64 import b64decode, b64encode
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from hashlib import sha1
 from pathlib import Path
@@ -53,16 +53,9 @@ class Illustrator:
                 return found
         return None
 
-    def _claim(self, key: str) -> bool:
-        # Synchronous: an await between the read and the write would let two callers both pay.
-        if key in self.generating:
-            return False
-        self.generating.add(key)
-        return True
-
     async def illustrate(self, scene: NarratorView, player: Subject, narration: str) -> None:
         key = scene_key(scene)
-        drawing = _existing(self.saves, key) is None and self._claim(key)
+        drawing = _existing(self.saves, key) is None and claim(self.generating, key)
         # The chat avatar wants the player's icon even when this scene's art is already cached.
         _ = await self._drawn_icon(player)
         if not drawing:
@@ -92,15 +85,15 @@ class Illustrator:
         if found is not None:
             return found
         # An entity id is `[a-z0-9_-]+`, so the colon keeps icon claims off the scene keys.
-        claim = f"icon:{subject.id}"
-        if not self._claim(claim):
+        claim_key = f"icon:{subject.id}"
+        if not claim(self.generating, claim_key):
             return None
         try:
             generated = await self._generate(
                 _icon_request(subject, self.style), self.config.icon_ratio
             )
         finally:
-            self.generating.discard(claim)
+            self.generating.discard(claim_key)
         if generated is None:
             return None
         # Authored directories stay authored: a drawn icon is the save's own.
@@ -112,28 +105,27 @@ class Illustrator:
         self, prompt: str, ratio: str, references: Sequence[Path] = ()
     ) -> GeneratedImage | None:
         """A failed generation costs a log line and nothing else: media is outside the game."""
-        content: list[dict[str, object]] = [{"type": "text", "text": prompt}]
-        content.extend(
+        parts: list[dict[str, object]] = [{"type": "text", "text": prompt}]
+        parts.extend(
             {"type": "image_url", "image_url": {"url": _data_uri(path)}} for path in references
         )
         try:
-            async with AsyncClient(timeout=self.config.timeout) as client:
-                reply = await client.post(
-                    f"{self.provider.base_url}/chat/completions",
-                    headers={"Authorization": f"Bearer {self.provider.api_key.get_secret_value()}"},
-                    json={
-                        "model": self.config.model,
-                        "modalities": ["image", "text"],
-                        "image_config": {"aspect_ratio": ratio},
-                        "messages": [{"role": "user", "content": content}],
-                    },
-                )
-                _ = reply.raise_for_status()
-                url = _ImageReply.model_validate_json(reply.content).url()
-                if url is None:
-                    LOGGER.warning("image reply held no image")
-                    return None
-                return _decode(url)
+            content = await post_bearer(
+                self.provider,
+                "/chat/completions",
+                {
+                    "model": self.config.model,
+                    "modalities": ["image", "text"],
+                    "image_config": {"aspect_ratio": ratio},
+                    "messages": [{"role": "user", "content": parts}],
+                },
+                self.config.timeout,
+            )
+            url = _ImageReply.model_validate_json(content).url()
+            if url is None:
+                LOGGER.warning("image reply held no image")
+                return None
+            return _decode(url)
         except Exception:
             LOGGER.exception("image generation failed")
             return None
@@ -167,6 +159,28 @@ class _ImageReply(BaseModel):
     def url(self) -> str | None:
         images = self.choices[0].message.images if self.choices else ()
         return images[0].image_url.url if images else None
+
+
+def claim(generating: set[str], key: str) -> bool:
+    # Synchronous: an await between the read and the write would let two callers both pay.
+    if key in generating:
+        return False
+    generating.add(key)
+    return True
+
+
+async def post_bearer(
+    provider: ProviderConfig, path: str, body: Mapping[str, object], timeout: float
+) -> bytes:
+    """One bearer POST; the caller parses the bytes, since one reply is JSON, another audio."""
+    async with AsyncClient(timeout=timeout) as client:
+        reply = await client.post(
+            f"{provider.base_url}{path}",
+            headers={"Authorization": f"Bearer {provider.api_key.get_secret_value()}"},
+            json=body,
+        )
+        _ = reply.raise_for_status()
+        return reply.content
 
 
 def open_illustrator(

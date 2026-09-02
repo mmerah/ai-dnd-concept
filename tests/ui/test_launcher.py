@@ -236,6 +236,7 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
         ("srd",),
         "kael",
         art_style="woodcut",
+        voice="",
         kind="one-shot",
     )
 
@@ -276,6 +277,7 @@ async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: P
             ("srd",),
             "kael",
             art_style="",
+            voice="",
             kind="one-shot",
         )
 
@@ -288,7 +290,15 @@ async def test_a_scenario_written_from_a_document_keeps_it_beside_the_world(tmp_
     runtime = Runtime(ui_settings(tmp_path, scenarios), spawner)
 
     name = await runtime.new_scenario(
-        LONER3E, "The Sunken Bell", "", SOURCE_MD, ("srd",), "kael", art_style="", kind="one-shot"
+        LONER3E,
+        "The Sunken Bell",
+        "",
+        SOURCE_MD,
+        ("srd",),
+        "kael",
+        art_style="",
+        voice="",
+        kind="one-shot",
     )
 
     assert (scenarios / name / "source.md").is_file()
