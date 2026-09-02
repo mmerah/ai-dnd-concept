@@ -48,7 +48,7 @@ You need `uv` and an AI command-line program (Claude, Codex). The default settin
 
 Open Settings in the app to change the AI commands or other settings.
 
-Characters live one file per engine, under `characters/<id>/<engine>.json`. Scenarios live under `scenarios/<id>/world.json`, the engine's starting world, with the engine's own packs as tables. Saves are strict and engine-typed, with no version field, so a stale save is invalid. Play costs the subscription the player already has; illustration is the one exception, optional, off by default, with its own image key.
+Characters live one file per engine, under `characters/<id>/<engine>.json`. Scenarios live under `scenarios/<id>/world.json`, the engine's starting world, with the engine's own packs as tables. Saves are strict and engine-typed, with no version field, so a stale save is invalid. Play costs the subscription the player already has; illustration and speech are the exceptions, optional, off by default, with their own provider key.
 
 ## Project information
 

@@ -6,7 +6,7 @@ from dotenv import set_key, unset_key
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ProviderName = Literal["openrouter", "local"]
+ProviderName = Literal["openrouter", "local", "kokoro"]
 # Each role is a one-shot CLI the app spawns, so a role is only a name and how to spawn it.
 Role = Literal["master", "narrator", "worldsmith"]
 CliProvider = Literal["claude", "codex"]
@@ -47,6 +47,24 @@ class MediaConfig(BaseModel):
     max_references: int = Field(default=4, ge=0)
 
 
+class SpeechConfig(BaseModel):
+    """Speech is optional presentation, so failures only log and the default is off."""
+
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool = False
+    provider: ProviderName = "openrouter"
+    model: str = "google/gemini-3.1-flash-tts-preview"
+    # The narrator's, when the scenario names none.
+    voice: str = "Kore"
+    # The pool dialogue draws from.
+    voices: tuple[str, ...] = Field(
+        default=("Kore", "Puck", "Charon", "Zephyr", "Fenrir"), min_length=1
+    )
+    sample_rate: int = Field(default=24_000, gt=0)
+    timeout: float = Field(default=60.0, gt=0.0)
+
+
 class Roles(BaseModel):
     master: RoleConfig = RoleConfig(model="opus", effort="high")
     narrator: RoleConfig = RoleConfig(model="sonnet", effort="low", timeout=120.0)
@@ -72,6 +90,11 @@ class Providers(BaseModel):
         base_url="http://localhost:11434/v1",
         api_key=SecretStr("none"),
     )
+    # `local` is Ollama's port and serves no speech, hence a second local provider.
+    kokoro: ProviderConfig = ProviderConfig(
+        base_url="http://localhost:8880/v1",
+        api_key=SecretStr("none"),
+    )
 
     def for_name(self, name: ProviderName) -> ProviderConfig:
         match name:
@@ -79,6 +102,8 @@ class Providers(BaseModel):
                 return self.openrouter
             case "local":
                 return self.local
+            case "kokoro":
+                return self.kokoro
 
 
 class Settings(BaseSettings):
@@ -92,6 +117,7 @@ class Settings(BaseSettings):
     providers: Providers = Providers()
     roles: Roles = Roles()
     media: MediaConfig = MediaConfig()
+    speech: SpeechConfig = SpeechConfig()
     # How many past exchanges a role is shown; every role reads the same depth.
     recent_exchanges: int = Field(default=20, ge=1)
     # This ~30k-token ceiling admits a 76-page adventure without swallowing the context.
@@ -108,6 +134,8 @@ class Settings(BaseSettings):
     def _keys_present(self) -> Self:
         if self.media.enabled and not self.providers.for_name(self.media.provider).api_key:
             raise ValueError(f"media uses provider {self.media.provider!r}, which has no api_key")
+        if self.speech.enabled and not self.providers.for_name(self.speech.provider).api_key:
+            raise ValueError(f"speech uses provider {self.speech.provider!r}, which has no api_key")
         return self
 
 

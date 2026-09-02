@@ -1,6 +1,5 @@
 ## Ideas (in no particular order)
 
-- [] 1: Sounds/Voices. app/media.py is the template.
 - [] 3: RAG? Scenario ingestion. .pdf -> source.md in scenario/<id>/ folder, then RAG on it? Leaning skip: the source cap already swallows a 76-page adventure whole, and there is no embedding provider in the stack.
 - [] 4: Re-implement a builtin mode and Re-implement an eval (see history)
 - [x] 5: Multiple refactors: ponytail-audit, no change in behavior, improvements in consistency in the codebase, removing useless ceremony, SOLID/DRY/KISS, type safety, fail fast.

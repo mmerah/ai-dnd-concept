@@ -46,6 +46,7 @@ class Scenario[P: BaseModel](Frozen):
     engine: EngineId
     packs: tuple[Slug, ...] = ()
     art_style: str = ""
+    voice: str = ""
     payload: P
 
     @model_validator(mode="after")

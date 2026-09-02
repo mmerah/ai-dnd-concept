@@ -13,7 +13,7 @@ from aidm.core.entities import EngineId, EntityId, Slug, require_unique, slug
 from aidm.core.facts import Fact, cards, traced
 from aidm.core.io import FileStore, load_character, read_scenario, write_scenario
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioKind
-from aidm.core.play import Answer, Line, Narration
+from aidm.core.play import Answer, Exchange, Line, Narration
 from aidm.core.source import given_text
 from aidm.core.tools import MasterTool
 from aidm.core.views import NarratorView, PlayerView
@@ -26,6 +26,7 @@ from .launch import LaunchTarget
 from .media import Illustrator, open_illustrator
 from .sessions import Conversations
 from .spawn import CliSpawner, Spawner, answered
+from .speech import Reader, open_reader
 
 LOGGER = logging.getLogger(__name__)
 
@@ -67,6 +68,7 @@ class GameService:
     sessions: Conversations
     settings: Settings
     media: Illustrator | None = None
+    reader: Reader | None = None
     rng: Random = field(default_factory=Random)
     # A plain attribute, not a property: the play page binds its widgets to it.
     busy: bool = False
@@ -75,7 +77,7 @@ class GameService:
     turn: Turn | None = None
     # Why the last scene write failed or would not fit; empty when none has.
     write_failure: str = ""
-    _illustrations: set[Task[None]] = field(default_factory=set, repr=False)
+    _background: set[Task[None]] = field(default_factory=set, repr=False)
     state: AnyGame = field(init=False)
 
     def __post_init__(self) -> None:
@@ -110,6 +112,7 @@ class GameService:
                 # As in `play`: a narrator that remembers an opening that never landed is dropped.
                 self.sessions.forget(self.slug)
             self.illustrate(_latest_narration(self.engine, self.state))
+            self.speak()
         finally:
             self.step, self.busy = None, False
 
@@ -148,10 +151,12 @@ class GameService:
             if on_commit is not None:
                 on_commit()
             self.illustrate(_latest_narration(self.engine, state))
+            self.speak()
             # The player named where they go; the worldsmith writes it once the turn is safe.
             if moving_on and crossing is not None and self.engine.over(state) is None:
                 await self._grow(turn.prompt, announce, crossing.format(pursuit=turn.prompt))
                 self.illustrate(_latest_narration(self.engine, self.state))
+                self.speak()
         except BaseException:
             # The turn is thrown away, so a role that remembers playing it must be too.
             self.sessions.forget(self.slug)
@@ -277,15 +282,37 @@ class GameService:
     def icon(self, entity_id: EntityId) -> Path | None:
         return None if self.media is None else self.media.icon(entity_id)
 
+    def newest_clip(self) -> Path | None:
+        newest = self._newest()
+        return None if self.reader is None or newest is None else self.reader.clip(newest)
+
+    def clip_pending(self) -> bool:
+        newest = self._newest()
+        return self.reader is not None and newest is not None and self.reader.pending(newest)
+
     def illustrate(self, narration: str = "") -> None:
-        """Retain background tasks because asyncio may collect unreferenced tasks early."""
         if self.media is None:
             return
         task = create_task(
             self.media.illustrate(self.scene(), self.player_view().player, narration)
         )
-        self._illustrations.add(task)
-        task.add_done_callback(self._illustrations.discard)
+        self._retain(task)
+
+    def speak(self) -> None:
+        """The newest exchange is read after it commits; old ones are never generated."""
+        newest = self._newest()
+        if self.reader is None or newest is None:
+            return
+        self._retain(create_task(self.reader.read(newest)))
+
+    def _newest(self) -> Exchange | None:
+        history = self.engine.history(self.state)
+        return history[-1] if history else None
+
+    def _retain(self, task: Task[None]) -> None:
+        """Retain background tasks because asyncio may collect unreferenced tasks early."""
+        self._background.add(task)
+        task.add_done_callback(self._background.discard)
 
     def restart(self) -> None:
         opening = self._begun()
@@ -375,6 +402,7 @@ class Runtime:
         character_id: Slug,
         *,
         art_style: str,
+        voice: str,
         kind: ScenarioKind,
     ) -> Slug:
         """One worldsmith call authors the engine's complete opening world."""
@@ -398,7 +426,7 @@ class Runtime:
         write_scenario(
             self.settings.scenarios_dir,
             name,
-            written.model_copy(update={"art_style": art_style}),
+            written.model_copy(update={"art_style": art_style, "voice": voice}),
             document,
         )
         LOGGER.info("scenario written: slug=%s title=%r", name, title)
@@ -443,6 +471,7 @@ class Runtime:
             media=open_illustrator(
                 settings, target, store, style=scenario.art_style or engine.art_style
             ),
+            reader=open_reader(settings, store, target.slug, scenario),
         )
 
 

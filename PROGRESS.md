@@ -315,3 +315,56 @@ review findings and why, anything known and accepted.
   it; the tests' `NIGHT_VISION_GOGGLES` is a 24XX item.
 - `src` lands 120 over the row: the row counted a dead-code pass that found nothing beyond
   `Counter.clamped` and the hint.
+
+## Phase 7 — voices
+
+- `src` lines: 9,535 before, 9,749 after (PLAN row 9,595 counts from Phase 6's row of 9,415,
+  which landed 120 over; the row's +180 lands as +214, `speech.py` at 114 of it). Tests: 477
+  before, 485 after (eight new: the speech refusal in `test_config.py`, seven in
+  `test_speech.py`).
+- Goldens: every fixture unchanged (a regen run after part A moved nothing; part B and the fold
+  touched no fixture-producing code).
+- Reviews: Fable reviewer and a second Opus reviewer (no `codex` on the machine).
+- Smoke: `uv run aidm` starts and the home page serves with speech off (the default). A spoken
+  turn needs a key and a spawned CLI the container lacks, so that check is manual.
+
+### Decisions off-plan
+
+- `ui/settings.py` changed one line against PLAN 7.1's "the settings page renders all of it
+  unchanged": `SpeechConfig.voices` is the first tuple field in `Settings`, and the page has no
+  widget for one. Rendered as `str(tuple)`, every Save compared a string to a tuple, put the
+  string into `merged`, and `Settings.model_validate` refused it, so no key on any tab could be
+  saved. `_shown` now leaves a tuple out as it leaves a directory out; `voices` is set from
+  `.env` as a JSON list (`SPEECH__VOICES='["Kore","Puck"]'`).
+- The chat plays the newest exchange's clip only, not one under every exchange with a cached
+  clip: each `ui.audio` registers a route and `chat.refresh()` rebuilds them all, so a long game
+  would accumulate routes per turn. PLAN 7.5's "after an exchange's lines" is read with its
+  goal, "played under the newest exchange".
+- `autoplay_clip` is consumed by the render that used it (`chat` clears it after drawing the
+  audio), not by `_send` before `refresh_all` as PLAN 7.5 says: on a moving-on turn the clip
+  lands during the worldsmith's write, the poll autoplays it, and the turn's final `refresh_all`
+  would have restarted it.
+- `speak()` is also called after the opening's `illustrate()` in `GameService.open`, not only
+  after the two calls in `play`: the opening is the first narration the player reads.
+- The clip is written to a `.part` file and moved into place, so a write that dies half-way
+  never caches a broken wav that `clip()` would serve forever.
+- `GameService._illustrations` is `_background`, since it now retains speech tasks too;
+  `newest_clip`, `clip_pending` and `speak` share `_newest()`. `poll_art` is `poll_media`.
+- `README.md`'s cost line names illustration and speech as the two exceptions.
+- `tests/ui/test_launcher.py`'s three `new_scenario` calls gained `voice=""`: the keyword is
+  required, as `art_style` is.
+
+### Refuted findings
+
+- "`Providers.kokoro` has no user in the tree; drop it or record the exception": PLAN 7.1 adds
+  it because `local` is Ollama's port and serves no speech; `speech.provider = "kokoro"` selects
+  it. Recorded here as the plan's choice.
+- "Inline `speech_body` into `read`'s one call site": PLAN 7.3 names `speech_body` as one of the
+  four tested functions.
+
+### Known and accepted
+
+- `Reader.read` posts one request per line, in series; a five-line exchange is five round
+  trips. Parallel posts would reorder nothing but were not asked for.
+- The clip is one wav per exchange; a re-read of an old exchange after the voice pool changes is
+  a new key, so the old file stays on disk unused.

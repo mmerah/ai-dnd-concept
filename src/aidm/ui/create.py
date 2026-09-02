@@ -173,6 +173,11 @@ def scenario_page(runtime: Runtime) -> None:
             .classes("w-full")
             .props("outlined")
         )
+        voice = (
+            ui.input(label="Narrator voice", placeholder="Leave empty for the default voice")
+            .classes("w-full")
+            .props("outlined")
+        )
         ui.label("Or upload the adventure itself.").classes("text-sm opacity-70 q-mt-md")
         _ = (
             ui.upload(on_upload=took, max_files=1, auto_upload=True)
@@ -197,6 +202,7 @@ def scenario_page(runtime: Runtime) -> None:
                     packs.value if packs is not None else (),
                     character.value,
                     art_style=(style.value or "").strip(),
+                    voice=(voice.value or "").strip(),
                     kind=kind,
                 )
                 opened = launch_target(
