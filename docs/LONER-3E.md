@@ -49,6 +49,18 @@ S. John Ross for [Risus](https://www.risusrpg.com/); the Adventure Maker setup i
 the site-wide footer "© 2021-2026 Roberto Bisceglie" — while the site index declares CC BY-SA 4.0.
 It is treated as covered by the site's licence. One email to the publisher would settle it.
 
+## The tools
+
+- `change_world` — its eight arms: reveal someone found, bring a cast member in or out of the
+  scene, change an actor's gear or condition tags, set an actor's goal, motive or nemesis
+  (`drive`), record a death, and have someone join or leave the player's party.
+- `next_scene` — say the scene's question is settled, or that the player left it; the player is
+  then asked what they pursue.
+- `roll_question` — Chance against Risk for one closed dramatic question; an advantage or
+  disadvantage adds one die to that side; a tie outside a conflict counts on the Twist Counter and
+  may roll a twist; in a conflict the losing side's Luck pays.
+- `restore_luck` — refill an actor's Luck once their conflict is behind them.
+
 ## Deviations in this repo
 
 Every divergence between `src/aidm/engines/loner3e/` and the official rules, with the reason it

@@ -2,6 +2,10 @@
 
 Date: 2026-08-28. Ten AI game master projects checked. Sources at the end.
 
+Note, 2026-09-02: the "ours" columns, `ROADMAP.md`, "code mode" and `.agents/skills` below are
+stale; the app now spawns CLIs, has no code mode and no playing skill (`.agents/skills` holds
+development skills only).
+
 ## Where this project stands
 
 | | claude-dnd-skill (148 stars) | ai-dnd-demo (ours, 2025) | aidm (ours, now) |

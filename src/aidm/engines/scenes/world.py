@@ -337,8 +337,7 @@ class SceneWorld[C: Person, P: Person](Mutable):
         *,
         someone_dead: bool,
     ) -> tuple[str, ...]:
-        """Files the turn, then says whether the scene looks spent — deliberately blunt: the note
-        catches only what no reading of the fiction can miss."""
+        """Deliberately blunt: the note catches only what no reading of the fiction can miss."""
         run = self.run
         run.exchanges.append(
             Exchange(prompt=prompt, lines=lines, facts=cards(facts), decision=decision)
@@ -641,8 +640,7 @@ def hub_unmet(
 def scene_unmet[C: Person, P: Person](
     draft: SceneDraft[C], world: SceneWorld[C, P] | None
 ) -> list[str]:
-    """The one bar: every refusal the install would make, so the worldsmith's retry sees them all.
-    No world means the opening: nobody exists yet, and no id can be the player's."""
+    """The one bar: every refusal the install makes, so the worldsmith's one retry sees them all."""
     held: Mapping[EntityId, C] = {} if world is None else world.cast
     everyone: Mapping[EntityId, Entity] = (
         dict(draft.cast)

@@ -21,7 +21,7 @@ LOGGER = logging.getLogger(__name__)
 
 def character_page(runtime: Runtime) -> None:
     engine_id = runtime.default_engine()
-    with page_header("New character", runtime.engines[engine_id].title):
+    with page_header("New character"):
         pass
     picks: dict[Slug, str] = {}
 
@@ -63,7 +63,7 @@ def character_page(runtime: Runtime) -> None:
                     # Refreshing per keystroke would take the focus away mid-word.
                     written.classes("w-full").props("outlined").on("blur", lambda: form.refresh())
                     return
-                ui.select(
+                chosen = ui.select(
                     options={
                         option.id: f"{option.label} — {option.detail}"
                         if option.detail
@@ -74,6 +74,8 @@ def character_page(runtime: Runtime) -> None:
                     label=step.prompt,
                     on_change=partial(choose, step.id),
                 ).classes("w-full")
+                if step.hint:
+                    chosen.props(f'hint="{step.hint}"')
 
             def create() -> None:
                 title = (name.value or "").strip()
@@ -119,7 +121,7 @@ def scenario_page(runtime: Runtime) -> None:
     """A premise or a document, one worldsmith call, and the game opens on the scene it wrote."""
     catalog = load_catalog(runtime.settings, runtime.engines)
     engine_id = runtime.default_engine()
-    with page_header("New scenario", runtime.engines[engine_id].title):
+    with page_header("New scenario"):
         pass
     document: Path | None = None
 
@@ -225,8 +227,6 @@ def scenario_page(runtime: Runtime) -> None:
 def _engine_select(
     runtime: Runtime, chosen: EngineId, on_change: Callable[[ValueChangeEventArguments[str]], None]
 ) -> None:
-    if len(runtime.engines) < 2:
-        return
     ui.select(
         options={one.id: one.title for one in runtime.engines.values()},
         value=chosen,

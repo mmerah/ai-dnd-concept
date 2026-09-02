@@ -22,6 +22,8 @@ from aidm.core.play import DecisionOption, Exchange, PendingOption, SpokenLine
 from aidm.core.tools import MasterTool
 from aidm.core.views import NarratorView, PlayerView, Rows
 
+type AnyEngine = Engine[Any]
+
 
 class Engine[G: Game[Any]](ABC):
     """The seam joining an engine's rules to the platform; a subclass answers for one engine."""
@@ -110,9 +112,6 @@ class Engine[G: Game[Any]](ABC):
         self, draft: G, intent: str, worldsmith: WorldsmithAnswer
     ) -> tuple[Fact, ...]:
         """Write the world on, then install it on `draft`; raise when either will not hold."""
-
-
-type AnyEngine = Engine[Any]
 
 
 async def authored[M: BaseModel](

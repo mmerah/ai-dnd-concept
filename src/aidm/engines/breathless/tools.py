@@ -28,6 +28,7 @@ from aidm.engines.scenes.world import NEXT_SCENE, Enter, Kill, Leave, NextScene,
 
 SRD_PACK: Slug = "srd"
 SWAP = "swap-"
+type WorldChange = Reveal | Enter | Leave | Kill | DropItem
 
 
 class DropItem(Frozen):
@@ -35,10 +36,6 @@ class DropItem(Frozen):
 
     verb: Literal["drop_item"]
     item_id: CheckedEntityId = Field(description="Exact id of an item the player carries.")
-
-
-# A plain alias, not `type`: the union must flatten so the discriminator sees every arm.
-WorldChange = Reveal | Enter | Leave | Kill | DropItem
 
 
 class ChangeWorld(Frozen):

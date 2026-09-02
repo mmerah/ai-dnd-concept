@@ -131,6 +131,7 @@ class TurnTool:
     args: type[BaseModel] = NoArgs
 
 
+# Built from the classes above, so it follows them rather than sitting in the constants block.
 TURN_TOOLS: tuple[TurnTool, ...] = (
     TurnTool(
         "start_turn",

@@ -145,6 +145,14 @@ def on_commit(view: GameView) -> None:
     _scroll(view)
 
 
+def on_fact(view: GameView, fact: Fact) -> None:
+    if not (fact.told and fact.card):
+        return
+    view.live_facts.append(fact)
+    live_turn.refresh()
+    _scroll(view)
+
+
 def tick_elapsed(view: GameView) -> None:
     """The timer lives on the page, not in the refreshable."""
     ticker, started = view.ticker, view.step_started
@@ -387,14 +395,6 @@ def _composer_placeholder(view: GameView) -> str:
             return "Choose an option above."
         return "The game is waiting on your answer."
     return "What do you do?"
-
-
-def on_fact(view: GameView, fact: Fact) -> None:
-    if not (fact.told and fact.card):
-        return
-    view.live_facts.append(fact)
-    live_turn.refresh()
-    _scroll(view)
 
 
 def _scroll(view: GameView) -> None:

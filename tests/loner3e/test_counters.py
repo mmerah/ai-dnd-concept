@@ -15,15 +15,11 @@ def _state() -> Loner3eGame:
     return state
 
 
-def test_counter_rejects_current_outside_its_bounds_and_clamps_in_both_directions() -> None:
+def test_counter_rejects_current_outside_its_bounds() -> None:
     with pytest.raises(ValidationError, match="below zero"):
         Counter(current=-1, maximum=10)
     with pytest.raises(ValidationError, match="above maximum"):
         Counter(current=11, maximum=10)
-
-    held = Counter(current=5, maximum=10)
-    assert held.clamped(-5) == 0
-    assert held.clamped(50) == 10
 
 
 def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> None:

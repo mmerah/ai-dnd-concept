@@ -80,9 +80,6 @@ class Counter(Mutable):
             raise ValueError(f"{self.current} is above maximum {self.maximum}")
         return self
 
-    def clamped(self, value: int) -> int:
-        return min(max(value, 0), self.maximum)
-
 
 def sentence(text: str) -> str:
     return text[:1].upper() + text[1:]
@@ -141,7 +138,7 @@ def pool(counter: Counter) -> str:
 def adjust(counter: Counter, amount: int) -> int:
     """Move a bounded pool and say how far it moved; a clamp can land short of `amount`."""
     before = counter.current
-    counter.current = counter.clamped(before + amount)
+    counter.current = min(max(before + amount, 0), counter.maximum)
     return counter.current - before
 
 
