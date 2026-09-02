@@ -27,6 +27,13 @@ lost, which goldens move, and the one decision it needs. Line counts were recoun
   the shipped `scenarios/*/world.json` (eight files) and the fixtures under `tests/core/fixtures`
   where named. "Saves go stale" alone was too cheap a sentence in round 1.
 
+## Decisions taken (maintainer, 2026-09-02)
+
+- P4 cold spawns: yes. CLAUDE.md's "the app resumes its session each turn" is reversed when
+  it lands.
+- P10 delete the settings page: no. The page stays; the proposal is removed from this file.
+- P6 delete the duplicated guards: yes, now, before Track G.
+
 ## Tier 1 — consensus, corrected
 
 ### P1. One history, one renderer, scene by scene
@@ -167,10 +174,9 @@ Lost: the master's own refusals and intentions from the prior turn (it may repea
 
 Goldens: `master.txt` (four), `picture.txt`.
 
-Decision: the maintainer's, because CLAUDE.md says "the app resumes its session each turn when
-the CLI allows it". The over-engineering reviewer holds no measurement is needed; the
-correctness reviewer holds the cache claim is doubtful either way. Either way the decision is
-about memory, not tokens.
+Decision: taken, yes. The over-engineering reviewer held no measurement is needed; the
+correctness reviewer held the cache claim is doubtful either way; the maintainer decided on
+memory, not tokens.
 
 ### P5. Three zero-hook chores in the scene engines (was: fold into `SceneEngine`)
 
@@ -220,7 +226,7 @@ write" (`loner3e/test_world.py:261`, `breathless/test_worldsmith.py:30`,
 `twentyfourxx/test_worldsmith.py:90, 200`); they move up to `write_next`, or the failure
 surfaces at `committed()` as a pydantic error with the state still safe.
 
-Decision: before or after Track G. After is safer; before is smaller.
+Decision: taken, now. Track G re-checks its new `entity_fact` sites in its own tests.
 
 ## Tier 3 — split, corrected
 
@@ -262,27 +268,12 @@ Lost: sub-second card arrival. `test_golden_turn.py:34` captures untold facts th
 told to refresh before the worldsmith is asked" becomes "the save is on disk when the worldsmith
 is spawned".
 
-### P10. Delete the settings page, keep the guards
+### P7, P10 and P11: dropped
 
-Round 1: 2/6 on knobs, 1/6 on the page. Round 2: the knobs are not concepts (each read at one
-site; moving nine lines to constants scatters them); the page is the concept. About −280 lines,
-−4 concepts. Half a day.
-
-Proposal: delete `ui/settings.py`, `test_settings.py`, `save_settings`, `env_key`,
-`reload_settings`, `play_refusal`, `refuse_play`, `apply_settings`. Settings become "edit
-`.env`, restart", which the page already says of the port. Keep `busy_refusal`: it is what stops
-a second tab on another save starting a turn while one is in flight on the shared MCP surface
-(`playing()` raises on two), not a settings helper. Keep `Providers` as two: media on local
-beside speech on OpenRouter is NEXT-SPECS decision 3. `recent_exchanges` goes with P1.
-
-Lost: masked key entry in a browser; live reload.
-
-Decision: the maintainer's; it removes a page they use.
-
-### P7 and P11: dropped
-
-P7 (launcher reads headers) needs a denormalised title on core `Game` written at every commit,
-which is core learning a world fact, and it strands a player behind an unopenable save with no
+P10 (delete the settings page): the maintainer keeps the page; the knobs it edits are read at
+one site each and are not concepts, so nothing of P10 survives except `busy_refusal` staying
+what it is, the guard on the shared MCP surface. P7 (launcher reads headers) needs a
+denormalised title on core `Game` written at every commit, which is core learning a world fact, and it strands a player behind an unopenable save with no
 delete path (restart lives on the game page). Under P1 the choice is a ten-minute edit: drop
 `SaveOption.where` from the card, or leave the restore (fewer than ten saves per render). P11's
 merges are churn or broken: unifying the slug grammars hides every existing save
@@ -404,7 +395,8 @@ models are frozen" would no longer say in the type.
 - CLAUDE.md "a role returns typed proposals only" is true of the narrator and the worldsmith and
   false of the master, whose tools mutate a transactional draft; what protects state is `_apply`
   (candidate copy, rng copy, `committed()` revalidation). Say that.
-- If P4 lands, reverse "the app resumes its session each turn when the CLI allows it".
+- P4 reverses "the app resumes its session each turn when the CLI allows it"; edit the line in
+  the P4 phase.
 - NEXT-SPECS: G.3 re-adds a re-suspension path (P3); decision 2's number stays as a constant
   (P1); `JobDone.raises` gets `raised` on the job record (P2); the `Kill` arm stays per engine
   because of succession (P5).
@@ -423,10 +415,9 @@ models are frozen" would no longer say in the type.
 ## Suggested order (by concepts removed per day, with dependencies)
 
 1. P3 (half an hour; touches `run.py` where P4 lands next).
-2. P4 after the maintainer's yes (one day; deletes the reason P1's window was unsafe and
-   rewrites the prompt P1 then edits).
-3. P10 after the maintainer's yes (half a day; pure deletion).
-4. P1 with the `art_prompt` fold (one day).
-5. P2 with M8 (one day; `test_hub` rewrite).
-6. Half-day chores in any order: P8, P9, P6 (or after Track G), P5, M1, M2.
-7. One-hour chores: M3, M4, M5, M6, M7.
+2. P4 (one day; deletes the reason P1's window was unsafe and rewrites the prompt P1 then
+   edits).
+3. P1 with the `art_prompt` fold (one day).
+4. P2 with M8 (one day; `test_hub` rewrite).
+5. Half-day chores in any order: P6, P8, P9, P5, M1, M2.
+6. One-hour chores: M3, M4, M5, M6, M7.
