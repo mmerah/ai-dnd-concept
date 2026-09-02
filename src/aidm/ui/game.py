@@ -8,7 +8,7 @@ from time import monotonic
 
 from nicegui import ui
 
-from aidm.app.runtime import GameService, Runtime
+from aidm.app.runtime import BEGUN, CROSSED, GameService, Runtime
 from aidm.core.facts import DiceEvent, Fact
 from aidm.core.play import Answer, Speaker
 from aidm.core.views import speaker_of
@@ -103,7 +103,11 @@ def chat(session: GameService) -> None:
         if exchange.where and exchange.where != heading:
             heading = exchange.where
             ui.label(heading).classes("w-full text-center text-xs uppercase opacity-50 q-mt-md")
-        _bubble(session, player, exchange.prompt, sent=True)
+        if exchange.prompt in (BEGUN, CROSSED):
+            # A turn nobody played: the story's own marker, never the player's words.
+            ui.label(exchange.prompt).classes("w-full text-center text-xs italic opacity-60")
+        else:
+            _bubble(session, player, exchange.prompt, sent=True)
         for fact in exchange.facts:
             _card(fact)
         for line in exchange.lines:
