@@ -1,8 +1,18 @@
 import pytest
-from twentyfourxx_test_support import KESTREL, SABLE, small_world
+from twentyfourxx_test_support import (
+    JOB_PLACE,
+    JOB_SITUATION,
+    KESTREL,
+    SABLE,
+    hub_world,
+    small_world,
+)
 
 from aidm.core.entities import EngineId, EntityId
+from aidm.core.play import Exchange
 from aidm.engines.core import PLAYER_ID
+from aidm.engines.hub import Debrief
+from aidm.engines.scenes import Scene, SceneRun
 from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
     Item,
@@ -13,6 +23,8 @@ from aidm.engines.twentyfourxx.world import (
     TwentyfourxxWorld,
     player_operator,
     raised,
+    record,
+    way_open,
 )
 
 
@@ -94,6 +106,65 @@ def test_require_alive_here_refuses_dead_cast_member() -> None:
     world.cast[KESTREL].alive = False
     with pytest.raises(ValueError):
         world.require_alive_here(KESTREL)
+
+
+def test_world_refuses_a_debrief_on_a_run_away_from_the_hub() -> None:
+    game = hub_world()
+    world = game.payload.world
+    scene = world.runs[1].scene.model_copy(update={"debrief": Debrief(text="Done.", finished=True)})
+    bad_run = world.runs[1].model_copy(update={"scene": scene})
+    with pytest.raises(ValueError):
+        TwentyfourxxWorld(
+            cast=world.cast,
+            player=world.player,
+            runs=[world.runs[0], bad_run],
+            hub=world.hub,
+            board=world.board,
+        )
+
+
+def test_world_refuses_a_first_run_away_from_the_hub() -> None:
+    game = hub_world()
+    world = game.payload.world
+    with pytest.raises(ValueError):
+        TwentyfourxxWorld(
+            cast=world.cast,
+            player=world.player,
+            runs=[world.runs[1]],
+            hub=world.hub,
+            board=world.board,
+        )
+
+
+def test_way_open_is_true_at_an_unsettled_hub() -> None:
+    game = hub_world()
+    game.payload.world.runs = [game.payload.world.runs[0]]
+    assert way_open(game)
+
+
+def test_record_returns_no_spent_note_at_the_hub() -> None:
+    game = hub_world()
+    game.payload.world.runs = [game.payload.world.runs[0]]
+    notes: tuple[str, ...] = ()
+    for _ in range(13):
+        notes = record(game, "do something", (), ())
+    assert notes == ()
+
+
+def test_exchanges_heads_a_jobs_later_scene() -> None:
+    game = hub_world()
+    world = game.payload.world
+    later = SceneRun(
+        scene=Scene(
+            place=JOB_PLACE,
+            title="Deeper In",
+            question="Can Kael get further into the warehouse?",
+            situation=JOB_SITUATION,
+        ),
+        exchanges=[Exchange(prompt="p", lines=(), decision="", where="")],
+    )
+    world.runs.append(later)
+    assert world.exchanges()[-1].where == "The Dock Run — Deeper In"
 
 
 def test_player_operator_slugs_duplicate_kit_names_in_order() -> None:

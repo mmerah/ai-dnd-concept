@@ -3,13 +3,22 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, slug
+from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Slug, slug
 from aidm.core.facts import Fact, cards
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import Exchange, SpokenLine
 from aidm.core.views import Rows
 from aidm.engines.core import PLAYER_ID, check_filing, labeled, reveal
-from aidm.engines.scenes import SPENT_NOTE, Scene, SceneRun, check_named, scene_spent
+from aidm.engines.hub import Job, Offer, Stop, closed_jobs, job_start, job_titles
+from aidm.engines.scenes import (
+    SPENT_NOTE,
+    Scene,
+    SceneRun,
+    check_hub,
+    check_named,
+    scene_spent,
+    stops_of,
+)
 
 type SkillDie = Literal[8, 10, 12]
 LADDER: tuple[SkillDie, ...] = (8, 10, 12)
@@ -92,11 +101,14 @@ class SceneCanon(Mutable):
     present: list[CheckedEntityId] = Field(default_factory=list)
     hidden: list[CheckedEntityId] = Field(default_factory=list)
     source: str = ""
+    hub: Slug | None = None
+    board: tuple[Offer, ...] = ()
 
     @model_validator(mode="after")
     def _playable_canon(self) -> Self:
         check_filing(self.cast)
         check_named(self.present, self.hidden, self.cast)
+        check_hub(self.hub, self.board, (SceneRun(scene=self.opening),))
         return self
 
 
@@ -107,6 +119,8 @@ class TwentyfourxxWorld(Mutable):
     player: Operator
     runs: list[SceneRun] = Field(min_length=1)
     source: str = ""
+    hub: Slug | None = None
+    board: tuple[Offer, ...] = ()
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -118,7 +132,21 @@ class TwentyfourxxWorld(Mutable):
             raise ValueError(f"the player must be filed as {PLAYER_ID!r}")
         if PLAYER_ID in (*self.run.present, *self.run.hidden):
             raise ValueError("the player is in every scene and is never listed in it")
+        check_hub(self.hub, self.board, self.runs)
         return self
+
+    @property
+    def at_hub(self) -> bool:
+        return self.hub is not None and self.current.place == self.hub
+
+    def stops(self) -> tuple[Stop, ...]:
+        return stops_of(self.runs)
+
+    def job_runs(self) -> list[SceneRun]:
+        return self.runs[job_start(self.hub, self.stops()) :]
+
+    def jobs(self) -> tuple[Job, ...]:
+        return closed_jobs(self.hub, self.stops())
 
     def require(self, entity_id: EntityId) -> Operator | Npc:
         if entity_id == PLAYER_ID:
@@ -160,11 +188,16 @@ class TwentyfourxxWorld(Mutable):
         return self.run.scene
 
     def exchanges(self) -> tuple[Exchange, ...]:
-        return tuple(
-            one if one.where else one.model_copy(update={"where": run.scene.title})
-            for run in self.runs
-            for one in run.exchanges
-        )
+        filed: list[Exchange] = []
+        for run, job in zip(self.runs, job_titles(self.hub, self.stops()), strict=True):
+            where = (
+                run.scene.title if job in ("", run.scene.title) else f"{job} — {run.scene.title}"
+            )
+            filed.extend(
+                one if one.where else one.model_copy(update={"where": where})
+                for one in run.exchanges
+            )
+        return tuple(filed)
 
     def here(self) -> Iterator[Operator | Npc]:
         yield self.player
@@ -241,7 +274,7 @@ def record(
             decision="" if state.pending is None else state.pending.prompt,
         )
     )
-    if world.run.settled or len(world.run.exchanges) <= 1:
+    if world.run.settled or world.at_hub or len(world.run.exchanges) <= 1:
         return ()
     reason = scene_spent(world.run, any(not one.alive for one in world.here()))
     return () if reason is None else (SPENT_NOTE.format(reason=reason),)
@@ -251,8 +284,9 @@ def history(state: TwentyfourxxGame) -> tuple[Exchange, ...]:
     return state.payload.world.exchanges()
 
 
-def settled(state: TwentyfourxxGame) -> bool:
-    return state.payload.world.run.settled
+def way_open(state: TwentyfourxxGame) -> bool:
+    world = state.payload.world
+    return world.run.settled or world.at_hub
 
 
 def player_over(state: TwentyfourxxGame) -> str | None:

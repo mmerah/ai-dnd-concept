@@ -33,3 +33,29 @@ that the plan did not say.
   PLAN 1.2 and 2.1 name that signature, so it was kept.
 - Known and accepted: `uv run aidm` serves the home page; a played turn needs the real CLIs and
   was not smoke-tested in the remote container (the scripted-spawner tests cover the turn).
+
+## Phase 2 — 24XX
+
+- `src` lines: 9,801 before, 9,929 after (target about 9,870, which assumed Phase 1 at 9,720).
+  The engine grew 1,450 → 1,578 (target about 1,580; cap 2,000).
+- One implementer, as planned. Content: `scenarios/amber-tap` (the hub is the bar itself).
+- Off-plan decisions:
+  - `TwentyfourxxWorld.jobs()` beside `job_runs()`: four call sites walked
+    `closed_jobs(hub, stops())` by hand.
+  - `SceneCanon`'s validator calls `check_hub` on a one-run tuple instead of the three checks
+    PLAN 2.1 spells out; they are the same checks.
+  - The `Jobs done` panel is on every campaign sidebar, empty before the first return (the
+    sidebar renders "nothing"); `Board` shows at the hub only.
+  - `_with_board(guidance)` joins `BOARD_GUIDANCE` for both the opening and the return.
+  - `tests/twentyfourxx/test_worldsmith.py`'s `opening_canon` call gained `kind="one-shot"`.
+- Reviews: Fable reviewer and an Opus reviewer (no `codex` on the machine). Fixed: the false
+  comment on `SceneDraft.offers`, a double negative in `_scene_unmet`, two `result` locals, the
+  duplicated guidance join, the repeated `closed_jobs` walk, the panel list built by `append`, the
+  canon validator cut.
+- Settled decision 8 changed on the maintainer's call: `HubDraft` no longer re-declares `offers`
+  as required and bounded (the pydantic pyright plugin refuses a required override of a defaulted
+  field, and `Field(...)` does not help); `_scene_unmet` checks the two-to-three count on every
+  hub draft instead. Both reviewers asked for this; PLAN.md 8 and 2.2 now say so. Tunnel Goons'
+  `ReturnDraft` keeps the structural bound: it inherits nothing.
+- Known and accepted: `uv run aidm` serves the home page (HTTP 200); a played campaign turn needs
+  the real CLIs and was not smoke-tested in the remote container.

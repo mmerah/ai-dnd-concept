@@ -51,8 +51,15 @@ passage. `repair_item` fixes broken gear.
 
 ## Job done
 
-Call `job_done` when the player's own words close out the job: it raises the skill the job
-called on and pays out its credits.
+Call `job_done` once per job, when the player's own words close it out: it raises the skill the
+job called on and pays out its credits.
+
+## Campaigns
+
+The hub is always open, so `next_scene` is never needed there and the spent note never fires;
+play the hub as any scene — talk, trade, rest — and never push the player out. The board is the
+player's to take from the page, so do not choose for them. When NOTES FROM THE RULES says a job
+closed and was completed, call `job_done` once with the skill the player names.
 
 ## Let the player choose where the story goes
 

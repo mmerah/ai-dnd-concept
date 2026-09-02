@@ -1,0 +1,68 @@
+{
+  "meta": {
+    "title": "The Amber Tap",
+    "premise": "Kael runs jobs out of a dockside bar called the Amber Tap, taking whatever the fixer's board turns up and coming home to spend the credits before the next one.",
+    "kind": "campaign"
+  },
+  "engine": "twentyfourxx",
+  "packs": [
+    "srd"
+  ],
+  "payload": {
+    "world": {
+      "hub": "amber-tap",
+      "board": [
+        {
+          "title": "The Debt to Ruiz",
+          "pitch": "I take the job Tomas asked as a favour, no questions."
+        },
+        {
+          "title": "The Quiet Contract",
+          "pitch": "I take the shipment run that pays too well for what it says it is."
+        },
+        {
+          "title": "Deck 9 Crate Run",
+          "pitch": "I take the Deck 9 crate run."
+        }
+      ],
+      "opening": {
+        "place": "amber-tap",
+        "title": "The Amber Tap",
+        "question": "What job does Kael take off the board tonight, or why are they still just drinking?",
+        "situation": "The Amber Tap smells of recycled air and cheap synth-whiskey, its walls papered with job flyers gone soft at the corners. Dessa Korr leans on the bar's far end with a data-slate already scrolling, and Tomas Ruiz keeps pouring without waiting to be asked twice.",
+        "secret": "Dessa Korr skims a cut off every job she boards before Kael ever sees the offer, and the regular working the corner booth is the only one at the Tap who has noticed."
+      },
+      "present": [
+        "dessa-korr",
+        "tomas-ruiz"
+      ],
+      "hidden": [
+        "sil-marrow"
+      ],
+      "cast": {
+        "dessa-korr": {
+          "id": "dessa-korr",
+          "name": "Dessa Korr",
+          "brief": "The fixer who works the Amber Tap's board; she knows every crew on dock and what each of them owes.",
+          "known": true,
+          "alive": true
+        },
+        "tomas-ruiz": {
+          "id": "tomas-ruiz",
+          "name": "Tomas Ruiz",
+          "brief": "Runs the bar and half the favours owed on this dock; he pours first and asks after.",
+          "known": true,
+          "alive": true
+        },
+        "sil-marrow": {
+          "id": "sil-marrow",
+          "name": "Sil Marrow",
+          "brief": "A regular who never takes a job off the board, only watches who does and writes something down.",
+          "known": false,
+          "alive": true
+        }
+      },
+      "source": "A dockside bar, a fixer's board, and whatever job pays the rent this week."
+    }
+  }
+}

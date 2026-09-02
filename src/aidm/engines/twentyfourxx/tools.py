@@ -383,7 +383,7 @@ def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[TwentyfourxxGame], ...]
         ),
         master_tool(
             "job_done",
-            "Once per adventure, when the player's own words close out the job: raise the named "
+            "Once per job, when the player's own words close out the job: raise the named "
             "skill and pay out its credits.",
             JobDone,
             partial(job_done, packs),

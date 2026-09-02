@@ -150,9 +150,12 @@ Targets are targets. The caps stand: 2,000 Python lines per engine, fifteen game
    no type parameter, protocol or callback is added to move it.
 8. **The return is its own model.** Scene engines answer a return with `HubDraft(SceneDraft)`,
    Tunnel Goons with `ReturnDraft`. Both carry `debrief: Debrief` (the model writes `text` and
-   `finished` together; nothing is reassembled) and `offers` of two or three, all structural;
-   the bar checks only the place. A `SceneDraft` has no debrief field, so a debrief anywhere
-   else is refused by `extra="forbid"`.
+   `finished` together; nothing is reassembled) and `offers`. `ReturnDraft` bounds `offers` to
+   two or three structurally; `HubDraft` inherits `SceneDraft.offers` unchanged (a required
+   override of a defaulted field needs a pyright suppression), so the scene engines' bar checks
+   the count on every hub draft, the opening and the return alike, and the place on a return.
+   A `SceneDraft` has no debrief field, so a debrief anywhere else is refused by
+   `extra="forbid"`.
 9. **Home is a fixed intent.** `GO_HOME = "Go home."` (scene engines) and `REPORT_IN = "Report
    in."` (Tunnel Goons) are the exact strings the sidebar rows send and `write` matches on, and
    only away from the hub: at the hub every intent, `GO_HOME` typed included, is a job write. A
@@ -434,18 +437,17 @@ JOB_DONE_NOTE = (
 
 class SceneDraft(Frozen):
     ...                                          # as today, plus:
-    offers: tuple[Offer, ...] = ()               # the board; a campaign's opening hub only
+    offers: tuple[Offer, ...] = ()               # the board; only a hub scene fills it
 
 class HubDraft(SceneDraft):
-    offers: tuple[Offer, ...] = Field(min_length=BOARD_MIN, max_length=BOARD_MAX)
     debrief: Debrief
 ```
 
 - `scene_refusal(draft, world=None, *, hub=False)` and `_scene_unmet(draft, world, *, hub)`:
-  `hub` means this draft is the hub scene. `hub` with a world: `world.hub` is set and
-  `draft.place == world.hub`; `hub` without a world (the campaign opening): `BOARD_MIN <=
-  len(offers) <= BOARD_MAX`. Not `hub`: `offers == ()`, and with a world hub `draft.place !=
-  world.hub` ("home is reached by going home"). The existing checks stay.
+  `hub` means this draft is the hub scene. `hub`: `BOARD_MIN <= len(offers) <= BOARD_MAX`, and
+  with a world (the return) `draft.place == world.hub`. Not `hub`: `offers == ()`, and with a
+  world hub `draft.place != world.hub` ("home is reached by going home"). The existing checks
+  stay.
 - `opening_canon(draft, source, kind)`: `hub = draft.place` and `board = draft.offers` for a
   campaign.
 - `_scene(draft)`: `debrief=draft.debrief` for a `HubDraft`, else `None`.
