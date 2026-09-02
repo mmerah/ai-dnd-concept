@@ -261,3 +261,57 @@ review findings and why, anything known and accepted.
   and an optional world, and are not among the fourteen verbs 5.3 moves.
 - 5.4 is prose: play one opening per engine and read it against where am I, what do I see, what
   am I here to do, what could I do first.
+
+## Phase 6 — the audit and the docs
+
+- `src` lines: 9,557 before, 9,535 after (target about 9,415; 120 over, nothing padded, PLAN
+  rule 5: the cuts the phase names cost twelve lines, and no dead code beyond them was found).
+  Tests: 477 before, 477 after (one renamed, none added).
+- Goldens: every fixture unchanged, as the phase's Done when says (a regen run moved nothing).
+- Reviews: Fable reviewer and a second Opus reviewer (no `codex` on the machine).
+- Smoke: `uv run aidm` starts and the home page serves; the create page shows "3 points across
+  the three" under each Tunnel Goons ability select (Playwright); a turn needs a spawned CLI the
+  container lacks, so that check is manual.
+
+### Decisions off-plan
+
+- Every alias is a lazy `type` alias in its constants block; none follows its classes with a
+  comment (PLAN 6.1 kept the four `WorldChange` unions and Tunnel Goons' `Entity` plain). A review
+  showed `Entity` is used in annotations only, and the four unions were tried as `type` aliases:
+  full suite green, basedpyright clean, every `schemas/` golden unchanged, so the "must flatten
+  for the discriminator" reason was stale. `DRIVERS` and `TURN_TOOLS` are instances and keep
+  their one comment each. The maintainer chose this over the plan's letter.
+- The create page shows a step's `hint` under a select (Quasar's `hint` prop), so Tunnel Goons'
+  three ability steps keep "3 points across the three" and the player reads the budget before
+  the submit refusal. PLAN 6.1 deleted the hint because an options step never showed it; the
+  maintainer chose showing it over hiding the budget. One assert added.
+- The two create pages carry no engine badge in the header: it was set once from the default
+  engine and read "LONER 3E" after the player chose Tunnel Goons. The Rules select is the one
+  place that names the engine, and it now shows with one engine installed too.
+- PLAN 6.4's "the two items from 5.3" are Maze Rats and Pokémon–Showdown from 6.3: the number is
+  stale from the renumbering that made Track R Phase 5. They are `IDEAS.md` 18 and 19.
+- `CLAUDE.md` is unchanged: the maintainer struck PLAN 6.2's two bullets as useless.
+- `IDEAS.md` deletes nothing: the maintainer keeps every item and marks 5, 6, 7, 8 and 14 done,
+  against PLAN 6.4's prune; 18, 19 and 20 are the new items.
+- Reviews found and fixed two factual errors in the new doc text: `README.md` named
+  `engines/hub.py` as the registry (it is `engines/registry.py`), and the competitor note said
+  `.agents/` was gone (`.agents/skills` holds two development skills; the playing skill is gone).
+  `docs/LONER-3E.md`'s `roll_question` line now says a tie counts on the Twist Counter only outside
+  a conflict, as `tools.py` has it.
+
+### Refuted findings
+
+- "`README.md`'s architecture paragraph repeats the roles paragraph": PLAN 6.4 names the three
+  roles as spawned CLIs returning typed proposals as the paragraph's first content; the sentences
+  were split short instead.
+- "Delete the `DRIVERS` and `TURN_TOOLS` comments; the code shows the evaluation order": PLAN 6.1
+  says one comment each says they must follow their classes.
+- "`grep -rn clamped src tests` is not empty": the four hits are the word in fixture prose
+  ("skiff sits clamped"); `clamped\(` finds nothing.
+
+### Known and accepted
+
+- `grep -r VISION.md` finds `PLAN.md` and `NEXT-SPECS.md`, both records of the decision to delete
+  it; the tests' `NIGHT_VISION_GOGGLES` is a 24XX item.
+- `src` lands 120 over the row: the row counted a dead-code pass that found nothing beyond
+  `Counter.clamped` and the hint.

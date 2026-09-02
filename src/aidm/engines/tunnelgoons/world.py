@@ -28,6 +28,7 @@ HP_START = 10
 INVENTORY_START = 8
 ABILITY_POINTS = 3
 STARTING_ITEMS = 3
+type Entity = Goon | Npc | Item | Place
 
 
 class Goon(Mutable):
@@ -108,10 +109,6 @@ class Visit(Mutable):
     exchanges: list[Exchange] = Field(default_factory=list)
     job: str = ""  # the open job's title, stamped on every visit while one is open
     debrief: Debrief | None = None  # the tavern's word on the job just reported
-
-
-# A plain alias, not `type`: it names the four kinds a validator or a card line matches on.
-Entity = Goon | Npc | Item | Place
 
 
 class Dungeon(Mutable):

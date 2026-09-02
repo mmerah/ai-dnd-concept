@@ -8,6 +8,9 @@ from aidm.core.entities import EngineId, Frozen, Mutable, Slug, require_unique
 from aidm.core.play import PendingDecision
 
 type ScenarioKind = Literal["one-shot", "campaign"]
+type AnyScenario = Scenario[Any]
+type AnyCharacter = Character[Any]
+type AnyGame = Game[Any]
 
 
 class ScenarioMeta(Frozen):
@@ -94,8 +97,3 @@ class Game[P: BaseModel](Mutable):
     def committed(self) -> Self:
         """Dumping runs no validator, so the dump is validated back: that is the commit gate."""
         return type(self).model_validate(self.model_dump(round_trip=True))
-
-
-type AnyScenario = Scenario[Any]
-type AnyCharacter = Character[Any]
-type AnyGame = Game[Any]

@@ -23,6 +23,10 @@ from aidm.engines.twentyfourxx.world import (
     raised,
 )
 
+type WorldChange = (
+    Reveal | Enter | Leave | Kill | ChangeHindrances | GainItem | DropItem | RepairItem | Spend
+)
+
 
 class ChangeHindrances(Frozen):
     """Record hindrances the player picks up, sheds, or both at once."""
@@ -79,12 +83,6 @@ class Spend(Frozen):
     verb: Literal["spend"]
     amount: int = Field(gt=0, description="Credits spent.")
     why: str = Field(min_length=1, description="What the credits pay for, in a few words.")
-
-
-# A plain alias, not `type`: the union must flatten so the discriminator sees every arm.
-WorldChange = (
-    Reveal | Enter | Leave | Kill | ChangeHindrances | GainItem | DropItem | RepairItem | Spend
-)
 
 
 class ChangeWorld(Frozen):

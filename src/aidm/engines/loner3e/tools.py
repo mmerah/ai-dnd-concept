@@ -39,6 +39,7 @@ BUT_AT = 3  # both dice 3 or under softens it to -but
 SRD_PACK: Slug = "srd"
 
 type Position = Literal["advantage", "neutral", "disadvantage"]
+type WorldChange = Reveal | Enter | Leave | ChangeTags | Drive | Kill | JoinParty | LeaveParty
 
 
 class ChangeTags(Frozen):
@@ -71,10 +72,6 @@ class Drive(Frozen):
     nemesis: str = Field(
         default="", description="Who or what stands in their way. Empty keeps the current nemesis."
     )
-
-
-# A plain alias, not `type`: the union must flatten so the discriminator sees every arm.
-WorldChange = Reveal | Enter | Leave | ChangeTags | Drive | Kill | JoinParty | LeaveParty
 
 
 class ChangeWorld(Frozen):

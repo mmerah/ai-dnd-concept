@@ -6,10 +6,6 @@ from aidm.core.play import PendingDecision, Speaker
 type Rows = tuple[tuple[str, str], ...]
 
 
-def sections(parts: Iterable[tuple[str, str]]) -> str:
-    return "\n\n".join(f"{name}:\n{body.strip()}" for name, body in parts)
-
-
 class Subject(Frozen):
     id: CheckedEntityId
     name: str
@@ -51,6 +47,10 @@ class PlayerView(Frozen):
     panels: tuple[Panel, ...]
     prompt: PendingDecision | None
     over: str | None
+
+
+def sections(parts: Iterable[tuple[str, str]]) -> str:
+    return "\n\n".join(f"{name}:\n{body.strip()}" for name, body in parts)
 
 
 def speaker_of(subject: Subject) -> Speaker:

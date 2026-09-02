@@ -130,6 +130,7 @@ class CodexDriver:
         return RunResult(final_message(output), _string(events, "thread_id"))
 
 
+# Built from the classes above, so it follows them rather than sitting in the constants block.
 DRIVERS: Mapping[CliProvider, Driver] = {"claude": ClaudeDriver(), "codex": CodexDriver()}
 
 

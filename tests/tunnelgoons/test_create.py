@@ -28,6 +28,7 @@ def test_creation_steps_cover_the_abilities_and_the_three_items() -> None:
         "item-2",
         "item-3",
     ]
+    assert steps[0].hint == "3 points across the three"
     assert steps[-1].hint == ", ".join(STARTING_ITEM_LIST)
 
 

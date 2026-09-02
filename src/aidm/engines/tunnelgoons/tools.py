@@ -37,6 +37,7 @@ _LEVEL_OPTIONS: tuple[PendingOption, ...] = tuple(
     for ability in ABILITIES
     for boost in ("health", "inventory")
 )
+type WorldChange = Reveal | MoveItem | Kill
 
 
 class Reveal(Frozen):
@@ -55,10 +56,6 @@ class MoveItem(Frozen):
 class Kill(Frozen):
     verb: Literal["kill"]
     entity_id: CheckedEntityId = Field(description="Exact id of an npc here.")
-
-
-# A plain alias, not `type`: the union must flatten so the discriminator sees every arm.
-WorldChange = Reveal | MoveItem | Kill
 
 
 class ChangeWorld(Frozen):

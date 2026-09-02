@@ -94,8 +94,7 @@ class GameService:
         return not self.busy and not self.engine.history(self.state)
 
     async def open(self, on_step: Callable[[TurnStep], None] | None = None) -> None:
-        """A narrator that fails leaves the premise to do its work; a reload mid-opening is a
-        no-op."""
+        """A failed narrator leaves the premise to do its work; a reload mid-opening is a no-op."""
         if not self.unopened():
             return
         announce = partial(self._announce, on_step=on_step)

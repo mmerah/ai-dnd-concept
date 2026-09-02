@@ -9,8 +9,7 @@ MIN_RECAP = 60
 
 
 class SceneDraft[C: Person](Frozen):
-    """What the worldsmith returns. Ids arrive as free text so a wrong one can be matched against
-    a cast name before it is refused; code owns the scene id and never asks for the player."""
+    """Ids arrive as free text so a wrong one can match a cast name before it is refused."""
 
     place: Slug
     title: str
