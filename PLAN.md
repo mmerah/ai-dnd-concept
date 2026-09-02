@@ -579,8 +579,8 @@ for A, one for B.
 What was seen, and its cause:
 
 1. A job taken from the hub ended in `the written world no longer fits: the scene rewrites
-   'sil-marrow', who is already in the cast`, the player still at the hub, the reason in the log and a grey sidebar
-   line. The worldsmith re-files a hub regular under `cast` because the `cast` field carries no
+   'sil-marrow', who is already in the cast`, the player still at the hub, the reason in the
+   log and a grey sidebar line. The worldsmith re-files a hub regular under `cast` because the `cast` field carries no
    description and `TAKE_BRIEF` says "anyone from the hub's cast the player names is present".
    The refusal lives in `apply_scene`, at install, after the worldsmith has answered; the bar
    the one retry sees (`scene_unmet`) never checks it. "Already met", "both present and
