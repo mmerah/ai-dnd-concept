@@ -22,6 +22,8 @@ Breathless is a survival game in scenes. Every roll wears the die down. Catching
 
 24XX is a science-fiction game in scenes. One skill die meets three outcome bands. Harm is a hindrance, gear breaks to soften a hit, and a finished job raises a skill.
 
+The create page lets the player choose a one-shot or a campaign. A campaign opens at a home base with a board of jobs to choose from. A job is one outing away from home. Coming home closes the job on a card with a debrief, and the board moves on. Played jobs pile up in a Jobs panel the player can look back through. A campaign ends only when the character dies. Where the rulebook prints a step for between jobs, the game master still runs it.
+
 ## Start the app
 
 You need `uv` and an AI command-line program (Claude, Codex). The default settings use the `claude` command.
