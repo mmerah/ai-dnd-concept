@@ -27,9 +27,8 @@ from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import WorldsmithAnswer
 from aidm.core.play import Narration, narration_text
 from aidm.engines.core import PLAYER_ID, Transition
-from aidm.engines.loner3e import worldsmith
-from aidm.engines.loner3e.world import Loner3eGame
-from aidm.engines.loner3e.worldsmith import SceneDraft
+from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter
+from aidm.engines.scenes import SceneDraft, scene_refusal
 from aidm.turn.run import ALREADY_OPEN, NO_TURN, START_FIRST, TURN_TOOLS, Turn
 
 VAULT_MAP = EntityId("vault-map")
@@ -224,9 +223,11 @@ async def test_a_transition_without_an_arrival_brief_extends_on_a_lineless_excha
     def ready(_state: Loner3eGame) -> bool:
         return True
 
-    async def write(state: Loner3eGame, _intent: str, _answer: WorldsmithAnswer) -> SceneDraft:
-        written = SceneDraft.model_validate_json(_scene())
-        if (refused := worldsmith.scene_refusal(written, state.payload.world)) is not None:
+    async def write(
+        state: Loner3eGame, _intent: str, _answer: WorldsmithAnswer
+    ) -> SceneDraft[LonerCharacter]:
+        written = SceneDraft[LonerCharacter].model_validate_json(_scene())
+        if (refused := scene_refusal(written, state.payload.world)) is not None:
             raise ValueError(refused)
         return written
 
@@ -257,12 +258,10 @@ async def test_a_transition_without_an_arrival_brief_extends_on_a_lineless_excha
 
 def test_authoring_build_raises_on_an_unmet_bar(tmp_path: Path) -> None:
     table = opened(tmp_path)
-    scene = SceneDraft.model_validate(json.loads(_scene(present=[], hidden=[])))
+    scene = SceneDraft[LonerCharacter].model_validate(json.loads(_scene(present=[], hidden=[])))
 
     with pytest.raises(ValueError, match="the scene needs"):
-        _ = table.service.engine.authoring.build(
-            "T", "p", "", table.state.packs, scene, "", "one-shot"
-        )
+        _ = table.service.engine.authoring.build("T", "p", table.state.packs, scene, "", "one-shot")
 
 
 async def test_a_turn_that_dies_after_asking_to_move_takes_its_write_with_it(
@@ -450,7 +449,8 @@ async def test_the_worldsmith_is_shown_the_source_the_cast_and_what_actually_hap
     assert "Out into the cloister walk." in prompt
     # What the scene was authored as is not what the scene became; the next one follows the second.
     assert "A flagstone sits proud of its neighbours." in prompt
-    assert json.dumps(SceneDraft.model_json_schema()["properties"]["place"]["title"]) not in prompt
+    schema = SceneDraft[LonerCharacter].model_json_schema()
+    assert json.dumps(schema["properties"]["place"]["title"]) not in prompt
 
 
 async def test_abandoning_a_spawn_kills_the_process_group_it_started(

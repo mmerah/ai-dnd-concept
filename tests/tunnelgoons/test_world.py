@@ -41,12 +41,12 @@ def test_a_visit_off_the_player_is_refused() -> None:
 
 def test_walk_reaches_every_place_along_the_ways() -> None:
     world = small_world().payload.world
-    assert walk(world.ways, START, world.places) == set(world.places)
+    assert walk(world.ways, START) == set(world.places)
 
 
 def test_has_shortcut_finds_the_alternate_route_to_the_vault() -> None:
     world = small_world().payload.world
-    assert has_shortcut(world.ways, world.places)
+    assert has_shortcut(world.ways)
 
 
 def test_frontier_counts_the_one_unknown_place_past_a_known_one() -> None:

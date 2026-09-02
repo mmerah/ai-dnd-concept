@@ -4,7 +4,7 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.creation import CreationStep, Picks, check_picks, picked
+from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked
 from aidm.core.entities import EngineId, Frozen, Slug, slug
 from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption
@@ -113,10 +113,6 @@ def preview_character(character: AnyCharacter) -> Rows:
 
 def find_entry(entries: Sequence[DecisionOption], chosen: str) -> DecisionOption:
     return next(entry for entry in entries if entry.id == chosen)
-
-
-def other_than(options: Sequence[DecisionOption], taken: str) -> tuple[DecisionOption, ...]:
-    return tuple(option for option in options if option.id != taken)
 
 
 def pack_options(packs: Mapping[str, Pack]) -> tuple[DecisionOption, ...]:

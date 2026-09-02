@@ -2,28 +2,22 @@ from loner3e_test_support import HUB_PLACE, HUB_SITUATION, KEEPER, hub_world
 
 from aidm.core.entities import EntityId
 from aidm.engines.loner3e.world import LonerCharacter
-from aidm.engines.loner3e.worldsmith import (
-    HubDraft,
-    ReturnDraft,
-    SceneDraft,
-    install_scene,
-    opening_canon,
-    scene_refusal,
-)
+from aidm.engines.loner3e.worldsmith import install_scene
+from aidm.engines.scenes import HubDraft, ReturnDraft, SceneDraft, opening_canon, scene_refusal
 
 
-def _draft(**fields: object) -> SceneDraft:
+def _draft(**fields: object) -> SceneDraft[LonerCharacter]:
     base = {
         "place": "deeper-in",
         "title": "Deeper In",
         "question": "Can Kael get further into the cairn before dawn?",
         "situation": HUB_SITUATION,
     }
-    return SceneDraft.model_validate({**base, **fields})
+    return SceneDraft[LonerCharacter].model_validate({**base, **fields})
 
 
-def _return_draft(*, offers: int = 2) -> ReturnDraft:
-    return ReturnDraft.model_validate(
+def _return_draft(*, offers: int = 2) -> ReturnDraft[LonerCharacter]:
+    return ReturnDraft[LonerCharacter].model_validate(
         {
             "place": HUB_PLACE,
             "title": "Back at the Guild Hall",
@@ -75,7 +69,7 @@ def test_install_scene_on_an_open_return_skips_the_growth_note() -> None:
     assert game.notes == ()
 
 
-def _opening(**fields: object) -> SceneDraft:
+def _opening(**fields: object) -> SceneDraft[LonerCharacter]:
     return _draft(
         place=HUB_PLACE,
         present=("keeper",),
@@ -89,7 +83,8 @@ def _opening(**fields: object) -> SceneDraft:
 def test_opening_canon_sets_the_hub_and_board_for_a_campaign_only() -> None:
     offers = [{"title": "A", "pitch": "Take A."}, {"title": "B", "pitch": "Take B."}]
     campaign = opening_canon(
-        HubDraft.model_validate({**_opening().model_dump(), "offers": offers}), source=""
+        HubDraft[LonerCharacter].model_validate({**_opening().model_dump(), "offers": offers}),
+        source="",
     )
     assert campaign.hub == HUB_PLACE
     assert [offer.title for offer in campaign.board] == ["A", "B"]

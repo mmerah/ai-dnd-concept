@@ -2,7 +2,6 @@ import pytest
 from breathless_test_support import (
     HUB_PLACE,
     HUB_SITUATION,
-    MIRA,
     SITUATION,
     hub_world,
     small_world,
@@ -10,7 +9,8 @@ from breathless_test_support import (
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
-from aidm.engines.breathless.worldsmith import (
+from aidm.engines.core import PLAYER_ID, Person
+from aidm.engines.scenes import (
     HubDraft,
     ReturnDraft,
     SceneDraft,
@@ -20,24 +20,24 @@ from aidm.engines.breathless.worldsmith import (
     render_worldsmith,
     scene_refusal,
 )
-from aidm.engines.core import PLAYER_ID, Person
+
+ROLE = "you are the worldsmith"
 
 
-def _draft(**fields: object) -> SceneDraft:
+def _draft(**fields: object) -> SceneDraft[Person]:
     base = {
         "place": "alley",
         "title": "The Alley",
         "question": "Can they lose the mob in the alley?",
         "situation": SITUATION,
     }
-    return SceneDraft.model_validate({**base, **fields})
+    return SceneDraft[Person].model_validate({**base, **fields})
 
 
-def test_apply_scene_drops_the_player_from_present() -> None:
+def test_apply_scene_refuses_a_scene_that_lists_the_player() -> None:
     world = small_world().payload.world
-    apply_scene(world, _draft(present=("Jax", "mira")))
-    assert PLAYER_ID not in world.run.present
-    assert MIRA in world.run.present
+    with pytest.raises(ValueError, match="put there by code"):
+        apply_scene(world, _draft(present=("Jax", "mira")))
 
 
 def test_apply_scene_refuses_a_draft_cast_entry_under_player_id() -> None:
@@ -78,7 +78,7 @@ def test_a_dead_draft_cast_member_is_refused() -> None:
         present=("mira",), cast={ghost: Person(id=ghost, name="Ghost", brief="", alive=False)}
     )
     assert scene_refusal(draft, world) == (
-        "the scene needs cast members as the worldsmith may write them: alive: ['ghost']"
+        "the scene needs cast members as the worldsmith may write them: ['ghost: alive']"
     )
 
 
@@ -99,7 +99,7 @@ def test_a_hidden_multi_word_name_in_situation_is_refused() -> None:
 
 def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
     game = small_world()
-    facts = install_scene(game, _draft(present=("mira",)))
+    facts = install_scene(game, _draft(present=("mira",)), finished_note="")
     assert len(game.payload.world.runs) == 2
     assert facts == (
         Fact(
@@ -113,13 +113,17 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
 
 def test_render_worldsmith_lists_the_player_first() -> None:
     prompt = render_worldsmith(
-        small_world().payload.world, "Explore the alley.", "guidance text", SceneDraft
+        small_world().payload.world,
+        "Explore the alley.",
+        "guidance text",
+        SceneDraft[Person],
+        role=ROLE,
     )
     assert prompt.index("Jax[player]") < prompt.index("Mira[mira]")
 
 
-def _return_draft(*, offers: int = 2) -> ReturnDraft:
-    return ReturnDraft.model_validate(
+def _return_draft(*, offers: int = 2) -> ReturnDraft[Person]:
+    return ReturnDraft[Person].model_validate(
         {
             "place": HUB_PLACE,
             "title": "Back at the Camp",
@@ -150,7 +154,7 @@ def test_install_scene_on_a_return_swaps_the_board_and_notes_nothing() -> None:
     for finished in (True, False):
         game = hub_world()
         game.payload.world.run.job_done = finished
-        facts = install_scene(game, _return_draft())
+        facts = install_scene(game, _return_draft(), finished_note="")
         world = game.payload.world
         assert [offer.title for offer in world.board] == ["Job 1", "Job 2"]
         assert [fact.kind for fact in facts] == ["job_closed", "scene_opened"]
@@ -159,11 +163,11 @@ def test_install_scene_on_a_return_swaps_the_board_and_notes_nothing() -> None:
 
 def test_install_scene_on_a_hub_draft_lands_a_home_card() -> None:
     game = hub_world()
-    facts = install_scene(game, _return_draft())
+    facts = install_scene(game, _return_draft(), finished_note="")
     assert any(fact.card == "Home: Back at the Camp" for fact in facts)
 
 
-def _opening(**fields: object) -> SceneDraft:
+def _opening(**fields: object) -> SceneDraft[Person]:
     return _draft(
         place=HUB_PLACE,
         present=("keeper",),
@@ -175,7 +179,7 @@ def _opening(**fields: object) -> SceneDraft:
 def test_opening_canon_sets_the_hub_and_board_for_a_campaign_only() -> None:
     offers = [{"title": "A", "pitch": "Take A."}, {"title": "B", "pitch": "Take B."}]
     campaign = opening_canon(
-        HubDraft.model_validate({**_opening().model_dump(), "offers": offers}), source=""
+        HubDraft[Person].model_validate({**_opening().model_dump(), "offers": offers}), source=""
     )
     assert campaign.hub == HUB_PLACE
     assert [offer.title for offer in campaign.board] == ["A", "B"]

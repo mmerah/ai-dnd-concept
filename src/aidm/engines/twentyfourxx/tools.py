@@ -35,8 +35,6 @@ from aidm.engines.twentyfourxx.world import (
     raised,
 )
 
-SRD_PACK = "srd"
-
 
 class ChangeHindrances(Frozen):
     """Record hindrances the player picks up, sheds, or both at once."""

@@ -1,16 +1,40 @@
 import json
 from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from copy import deepcopy
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, TypeIs
 
 from pydantic import BaseModel, Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Slug, require_unique
+from aidm.core.entities import (
+    CheckedEntityId,
+    EngineId,
+    EntityId,
+    Frozen,
+    Mutable,
+    Slug,
+    require_unique,
+)
 from aidm.core.facts import Fact, cards
-from aidm.core.model import Game
+from aidm.core.model import (
+    AnyScenario,
+    Game,
+    Scenario,
+    ScenarioKind,
+    ScenarioMeta,
+    WorldsmithAnswer,
+)
 from aidm.core.play import Exchange, SpokenLine
 from aidm.core.tools import schema_of
-from aidm.core.views import Panel, PanelRow, Rows, sections
+from aidm.core.views import (
+    NarratorView,
+    Panel,
+    PanelRow,
+    PlayerView,
+    Rows,
+    Subject,
+    sections,
+    speaker_of,
+)
 from aidm.engines.core import (
     Entity,
     Person,
@@ -18,25 +42,35 @@ from aidm.engines.core import (
     check_party,
     entity_fact,
     labeled,
+    party_panel,
     reveal,
     sentence,
     told_tail,
 )
 from aidm.engines.hub import (
+    BOARD_MAX,
+    BOARD_MIN,
+    CAMPAIGN_OPENING,
+    GO_HOME,
     HOME_ROW,
     HUB_ROW,
     JOB_DONE,
+    MIN_JOB,
+    ONE_SHOT_OPENING,
     Debrief,
     Job,
     Offer,
     Stop,
+    board_panel,
     check_board,
     check_kind,
     closed_jobs,
     heading,
     hub_sections,
+    job_closed,
     job_start,
     job_titles,
+    jobs_panel,
     place_unmet,
 )
 
@@ -286,6 +320,38 @@ class Kill(Frozen):
     entity_id: CheckedEntityId = Field(description="Exact id of who here died.")
 
 
+class SceneDraft[C: Person](Frozen):
+    """What the worldsmith returns. Ids arrive as free text so a wrong one can be matched against
+    a cast name before it is refused; code owns the scene id and never asks for the player."""
+
+    place: Slug
+    title: str
+    question: str = Field(min_length=10)
+    situation: str = Field(min_length=MIN_SITUATION)
+    present: tuple[str, ...] = ()
+    hidden: tuple[str, ...] = ()
+    secret: str = ""
+    cast: dict[EntityId, C] = Field(default_factory=dict)
+
+
+class JobDraft[C: Person](SceneDraft[C]):
+    """The scene that leaves the hub."""
+
+    job: str = Field(min_length=MIN_JOB)
+
+
+class HubDraft[C: Person](SceneDraft[C]):
+    """The campaign's opening: the hub and its board."""
+
+    offers: tuple[Offer, ...] = Field(min_length=BOARD_MIN, max_length=BOARD_MAX)
+
+
+class ReturnDraft[C: Person](HubDraft[C]):
+    """The return home: the debrief is the paragraph; the verdict is the master's."""
+
+    debrief: str = Field(min_length=1)
+
+
 def new_world[C: Person, P: Person](canon: SceneCanon[C], player: P) -> SceneWorld[C, P]:
     """The player is added by code and never authored, so no scenario can claim their id."""
     canon = deepcopy(canon)
@@ -527,13 +593,13 @@ def cast_unmet(
     known: Mapping[EntityId, Entity],
     held: Mapping[EntityId, Entity],
     *,
-    opening: bool,
+    needs_return: bool,
 ) -> list[str]:
     """The cast a scene owes, whatever the engine's own people are made of."""
     unmet: list[str] = []
     if not others:
         unmet.append("at least one cast member besides the player")
-    if not opening and not any(resolved_id(one, held) is not None for one in others):
+    if needs_return and not any(resolved_id(one, held) is not None for one in others):
         unmet.append("at least one existing cast member brought back")
     if stray := sorted(one for one in others if resolved_id(one, known) is None):
         unmet.append(f"ids that exist; these name nobody: {stray}")
@@ -617,4 +683,313 @@ def scene_rows[C: Person, P: Person](world: SceneWorld[C, P]) -> tuple[PanelRow,
 def trail_panel(runs: Sequence[SceneRun]) -> Panel:
     return Panel(
         title="Trail", rows=tuple(PanelRow(label=one.scene.title, detail="") for one in runs)
+    )
+
+
+def opening_draft[C: Person](cast_type: type[C], kind: ScenarioKind) -> type[SceneDraft[C]]:
+    """Pydantic parametrizes the subscript at runtime, so `isinstance` still narrows the result."""
+    return HubDraft[cast_type] if kind == "campaign" else SceneDraft[cast_type]
+
+
+def scene_unmet[C: Person, P: Person](
+    draft: SceneDraft[C], world: SceneWorld[C, P] | None
+) -> list[str]:
+    """No world means the opening: nobody exists yet, and no id can be the player's."""
+    held: Mapping[EntityId, C] = {} if world is None else world.cast
+    everyone: Mapping[EntityId, Entity] = (
+        dict(draft.cast) if world is None else {world.player.id: world.player, **held, **draft.cast}
+    )
+    followers = () if world is None else (world.player.id, *world.party)
+    others = (*draft.present, *draft.hidden)
+    unmet: list[str] = []
+    if named := sorted(one for one in others if resolved_id(one, everyone) in followers):
+        unmet.append(
+            "a scene that does not list the player or the party; "
+            f"they are put there by code: {named}"
+        )
+    # The party is already something established in the scene; with one, nothing more is owed.
+    needs_return = world is not None and not world.party
+    unmet.extend(
+        cast_unmet(others, draft.hidden, draft.situation, everyone, held, needs_return=needs_return)
+    )
+    if broken := [f"{eid}: {why}" for eid, one in draft.cast.items() if (why := one.unwritten())]:
+        unmet.append(f"cast members as the worldsmith may write them: {broken}")
+    unmet.extend(
+        hub_unmet(
+            draft.place,
+            None if world is None else world.hub,
+            debrief=draft.debrief if isinstance(draft, ReturnDraft) else None,
+            held=held,
+            known=everyone,
+        )
+    )
+    return unmet
+
+
+def scene_refusal[C: Person, P: Person](
+    draft: SceneDraft[C], world: SceneWorld[C, P] | None = None
+) -> str | None:
+    unmet = scene_unmet(draft, world)
+    return None if not unmet else "the scene needs " + "; ".join(unmet)
+
+
+def opening_canon[C: Person](draft: SceneDraft[C], source: str) -> SceneCanon[C]:
+    cast = draft.cast
+    present = resolve_ids(draft.present, cast, "present")
+    for one in present:
+        cast[one].known = True
+    hub, board = (draft.place, draft.offers) if isinstance(draft, HubDraft) else (None, ())
+    return SceneCanon(
+        cast=cast,
+        opening=_scene(draft, False),
+        present=present,
+        hidden=resolve_ids(draft.hidden, cast, "hidden"),
+        source=source,
+        hub=hub,
+        board=board,
+    )
+
+
+def apply_scene[C: Person, P: Person](world: SceneWorld[C, P], draft: SceneDraft[C]) -> None:
+    """Every refusal lands before the first write: a rejected scene leaves the world alone."""
+    for one, held in draft.cast.items():
+        if one == world.player.id:
+            raise ValueError("the scene rewrites the player")
+        if one in world.cast:
+            raise ValueError(f"the scene rewrites {one!r}, who is already in the cast")
+        if one != held.id:
+            raise ValueError(f"entity {held.id!r} is filed under {one!r}")
+    cast: dict[EntityId, C] = {**world.cast, **draft.cast}
+    everyone: Mapping[EntityId, Entity] = {world.player.id: world.player, **cast}
+    followers = (world.player.id, *world.party)
+    present = resolve_ids(draft.present, everyone, "present")
+    hidden = resolve_ids(draft.hidden, everyone, "hidden")
+    if named := sorted(one for one in (*present, *hidden) if one in followers):
+        raise ValueError(
+            f"the scene lists {named}, who are in every scene and are put there by code"
+        )
+    if overlap := sorted(set(present) & set(hidden)):
+        raise ValueError(f"the scene lists {overlap} as both present and hidden")
+    if met := sorted(one for one in hidden if cast[one].known):
+        raise ValueError(f"the scene hides {met}, whom the player has already met")
+    finished = world.job_done  # the master's verdict on the job the return is closing
+    world.cast = cast
+    for one in present:
+        cast[one].known = True
+    world.runs.append(
+        SceneRun(scene=_scene(draft, finished), present=[*world.party, *present], hidden=hidden)
+    )
+
+
+async def write_next[C: Person, P: Person](
+    world: SceneWorld[C, P],
+    intent: str,
+    answer: WorldsmithAnswer,
+    *,
+    cast_type: type[C],
+    role: str,
+    guidance: str,
+) -> BaseModel:
+    returning = world.hub is not None and not world.at_hub and intent == GO_HOME
+    model: type[SceneDraft[C]] = (
+        ReturnDraft[cast_type]
+        if returning
+        else JobDraft[cast_type]
+        if world.at_hub
+        else SceneDraft[cast_type]
+    )
+
+    def refusal(written: BaseModel) -> str | None:
+        if not _is_draft(written, model):
+            raise ValueError("the worldsmith returned an incompatible scene")
+        return scene_refusal(written, world)
+
+    prompt = render_worldsmith(world, intent, guidance, model, role=role)
+    return await answer(prompt, model, refusal)
+
+
+def install_scene[S: SceneState[Any, Any]](
+    state: Game[S], written: BaseModel, *, finished_note: str
+) -> tuple[Fact, ...]:
+    if not _is_draft(written, SceneDraft[Any]):
+        raise ValueError(f"{state.engine!r} received an incompatible scene")
+    world = state.payload.world
+    apply_scene(world, written.model_copy(deep=True))
+    trace = f"the story moves to {written.title}"
+    if came := [one.name for one in world.members()]:
+        trace += f", the player travelling with {', '.join(came)}"
+    label = "Home" if isinstance(written, ReturnDraft) else "New scene"
+    opened = Fact(kind="scene_opened", trace=trace, told=True, card=f"{label}: {written.title}")
+    if isinstance(written, ReturnDraft):
+        world.board = written.offers
+        job = world.jobs()[-1]
+        if job.debrief.finished and finished_note:
+            state.notes = (*state.notes, finished_note.format(title=job.title))
+        return (job_closed(job), opened)
+    return (opened,)
+
+
+def render_worldsmith[C: Person, P: Person](
+    world: SceneWorld[C, P], intent: str, guidance: str, answer: type[SceneDraft[C]], *, role: str
+) -> str:
+    # The worldsmith must know who follows the player out of the scene.
+    cast = "\n".join(
+        (
+            entity_line(world.player, detail=world.last_seen(world.player.id)),
+            *(
+                entity_line(
+                    one,
+                    detail="travels with the player"
+                    if one.id in world.party
+                    else world.last_seen(one.id),
+                )
+                for one in world.cast.values()
+            ),
+        )
+    )
+    return worldsmith_prompt(
+        role,
+        source=world.source,
+        history=scene_history(world.job_runs()),
+        cast=cast,
+        guidance=guidance,
+        intent=intent,
+        answer=answer,
+        hub=hub_rows(world, returning=issubclass(answer, ReturnDraft)),
+    )
+
+
+def render_opening[C: Person](
+    cast_type: type[C], role: str, source: str, guidance: str, kind: ScenarioKind, hub_phrase: str
+) -> str:
+    return worldsmith_prompt(
+        role,
+        source=source,
+        history="(no scenes yet — write the opening)",
+        cast="(no cast yet — write the people and things this scene needs)",
+        guidance=guidance,
+        intent=CAMPAIGN_OPENING.format(hub=hub_phrase) if kind == "campaign" else ONE_SHOT_OPENING,
+        answer=opening_draft(cast_type, kind),
+    )
+
+
+def build_scenario[C: Person](
+    file_type: type[Scenario[SceneScenario[C]]],
+    engine_id: EngineId,
+    cast_type: type[C],
+    title: str,
+    premise: str,
+    packs: tuple[Slug, ...],
+    written: BaseModel,
+    source: str,
+    kind: ScenarioKind,
+) -> AnyScenario:
+    if not _is_draft(written, SceneDraft[cast_type]):
+        raise ValueError(f"{engine_id} received an incompatible scene")
+    if (refused := scene_refusal(written)) is not None:
+        raise ValueError(refused)
+    return file_type(
+        meta=ScenarioMeta(title=title, premise=premise or written.situation, kind=kind),
+        engine=engine_id,
+        packs=packs,
+        payload=SceneScenario(world=opening_canon(written, source)),
+    )
+
+
+def entity_line(one: Person, *, detail: str = "") -> str:
+    line = f"- {one.name}[{one.id}] — {one.brief}"
+    if not one.alive:
+        line += " (dead)"
+    parts = [line]
+    if sheet := "; ".join(f"{label.lower()}: {value}" for label, value in one.rows()):
+        parts.append(f"  {sheet}")
+    if detail:
+        parts.append(f"  {detail}")
+    return "\n".join(parts)
+
+
+def here_lines[C: Person, P: Person](world: SceneWorld[C, P]) -> str:
+    lines = "\n".join(entity_line(one) for one in world.here() if one.id != world.player.id)
+    return lines or "- (none)"
+
+
+def hidden_lines[C: Person, P: Person](world: SceneWorld[C, P]) -> str:
+    return "\n".join(entity_line(world.require(one)) for one in world.run.hidden) or "- (none)"
+
+
+def narrator_view[S: SceneState[Any, Any]](state: Game[S]) -> NarratorView:
+    world = state.payload.world
+    scene = world.current
+    here = [one for one in world.here() if one.known]
+    return NarratorView(
+        place=scene.place,
+        title=scene.title,
+        focus=scene.question,
+        situation=scene.situation,
+        art_prompt="\n".join(
+            (
+                f"The place: {scene.title} — {scene.situation}",
+                *(f"Present: {one.name} — {one.brief}" for one in here),
+            )
+        ),
+        subjects=tuple(_subject_of(one) for one in here),
+        speakers=tuple(speaker_of(_subject_of(one)) for one in here),
+    )
+
+
+def player_view[S: SceneState[Any, Any]](
+    state: Game[S], extra: tuple[Panel, ...] = ()
+) -> PlayerView:
+    world = state.payload.world
+    player = world.player
+    here_rows = (
+        PanelRow(label=f"{player.name} (you)", detail=player.brief, icon_id=player.id),
+        *(
+            PanelRow(label=one.name, detail=one.brief, icon_id=one.id)
+            for one in world.here()
+            if one.known and one.id != player.id
+        ),
+    )
+    return PlayerView(
+        player=_subject_of(player),
+        panels=(
+            Panel(
+                title="Character",
+                rows=tuple(PanelRow(label=label, detail=detail) for label, detail in player.rows()),
+            ),
+            *extra,
+            Panel(title="This scene", rows=scene_rows(world)),
+            *board_panel(world.at_hub, world.board),
+            *party_panel(world.members()),
+            Panel(title="Here", rows=here_rows),
+            trail_panel(world.job_runs()),
+            *jobs_panel(world.jobs()),
+        ),
+        prompt=state.pending,
+        over=player_over(state),
+    )
+
+
+def _is_draft[C: Person](written: BaseModel, model: type[SceneDraft[C]]) -> TypeIs[SceneDraft[C]]:
+    """`isinstance` takes no parametrized class, and pydantic parametrizes by copying, not
+    subclassing, so the check is against the origin the type argument was applied to."""
+    origin = model.__pydantic_generic_metadata__["origin"] or model
+    return issubclass(type(written), origin)
+
+
+def _subject_of(one: Person) -> Subject:
+    return Subject(id=one.id, name=one.name, brief=one.brief)
+
+
+def _scene[C: Person](draft: SceneDraft[C], finished: bool) -> Scene:
+    return Scene(
+        place=draft.place,
+        title=draft.title,
+        question=draft.question,
+        situation=draft.situation,
+        secret=draft.secret,
+        job=draft.job if isinstance(draft, JobDraft) else "",
+        debrief=Debrief(text=draft.debrief, finished=finished)
+        if isinstance(draft, ReturnDraft)
+        else None,
     )

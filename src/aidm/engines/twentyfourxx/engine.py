@@ -4,13 +4,16 @@ from pathlib import Path
 from aidm.core.entities import EngineId
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, AnyScenario
-from aidm.engines.core import Authoring, Engine, Transition, load_packs
+from aidm.engines.core import Authoring, Engine, Person, Transition, load_packs
 from aidm.engines.scenes import (
     arrival_brief,
+    build_scenario,
     check_game,
     history,
     known,
+    narrator_view,
     new_world,
+    opening_draft,
     player_over,
     record,
     way_open,
@@ -23,7 +26,7 @@ from aidm.engines.twentyfourxx.creation import (
     preview_character,
 )
 from aidm.engines.twentyfourxx.tools import tools
-from aidm.engines.twentyfourxx.views import master_sections, narrator_view, player_view
+from aidm.engines.twentyfourxx.views import master_sections, player_view
 from aidm.engines.twentyfourxx.world import (
     TwentyfourxxCharacterFile,
     TwentyfourxxGame,
@@ -31,13 +34,7 @@ from aidm.engines.twentyfourxx.world import (
     TwentyfourxxState,
     player_operator,
 )
-from aidm.engines.twentyfourxx.worldsmith import (
-    build_scenario,
-    install_scene,
-    opening_draft,
-    render_opening,
-    write_next,
-)
+from aidm.engines.twentyfourxx.worldsmith import install_scene, render_opening, write_next
 
 ENGINE_DIR = Path(__file__).parent
 
@@ -74,9 +71,11 @@ def build(user_packs: Path) -> Engine[TwentyfourxxGame]:
         player_view=player_view,
         over=player_over,
         authoring=Authoring(
-            answer=opening_draft,
+            answer=partial(opening_draft, Person),
             prompt=partial(render_opening, packs),
-            build=build_scenario,
+            build=partial(
+                build_scenario, TwentyfourxxScenarioFile, EngineId("twentyfourxx"), Person
+            ),
         ),
         transition=Transition(
             ready=way_open,

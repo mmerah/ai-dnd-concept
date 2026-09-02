@@ -412,25 +412,22 @@ def frontier(world: Dungeon) -> int:
     )
 
 
-def walk(
-    ways: dict[EntityId, tuple[Way, ...]], start: EntityId, places: dict[EntityId, Place]
-) -> set[EntityId]:
+def walk(ways: dict[EntityId, tuple[Way, ...]], start: EntityId) -> set[EntityId]:
     reached = {start}
     pending = [start]
     while pending:
         current = pending.pop()
         for way in ways.get(current, ()):
-            if way.to not in reached and way.to in places:
+            if way.to not in reached:
                 reached.add(way.to)
                 pending.append(way.to)
     return reached
 
 
-def has_shortcut(ways: dict[EntityId, tuple[Way, ...]], places: dict[EntityId, Place]) -> bool:
+def has_shortcut(ways: dict[EntityId, tuple[Way, ...]]) -> bool:
     """A shortcut is an edge whose destination remains reachable after that edge is removed."""
     return any(
-        direct.to
-        in walk({**ways, start: tuple(w for w in leaving if w is not direct)}, start, places)
+        direct.to in walk({**ways, start: tuple(w for w in leaving if w is not direct)}, start)
         for start, leaving in ways.items()
         for direct in leaving
     )

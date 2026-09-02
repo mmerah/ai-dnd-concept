@@ -1,8 +1,9 @@
 from breathless_test_support import DAX, small_world
 
 from aidm.core.views import PanelRow
-from aidm.engines.breathless.views import entity_line, master_sections, narrator_view, player_view
+from aidm.engines.breathless.views import master_sections, player_view
 from aidm.engines.core import Person
+from aidm.engines.scenes import entity_line, narrator_view
 
 
 def test_the_player_views_backpack_panel_lists_items_and_the_med_kit() -> None:

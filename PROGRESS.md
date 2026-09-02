@@ -50,3 +50,49 @@ review findings and why, anything known and accepted.
   `tags_of`/`set_tags`). Not padded (PLAN rule 5); Phase 4's layout audit may move them.
 - `uv run aidm` on shutdown by SIGTERM logs an MCP "cancel scope" RuntimeError; `app/` is
   untouched by this phase.
+
+## Phase 2 — one worldsmith, one view
+
+- `src` lines: 9,969 before, 9,419 after (target about 9,550). Tests: 458 before, 463 after.
+  `scenes.py` 620 → 995; 24XX 1,224 → 922, Breathless 1,106 → 805, Loner 1,182 → 865.
+- Goldens: every fixture unchanged, as the phase's Done when says.
+- Reviews: Fable reviewer and a second Opus reviewer (no `codex` on the machine).
+- Smoke: `uv run aidm` starts and the home page serves; a turn needs a spawned CLI the
+  container lacks, so that check is manual.
+
+### Decisions off-plan
+
+- basedpyright refuses `isinstance(written, model)` on a parametrized draft class and narrows
+  `isinstance(written, SceneDraft)` to `SceneDraft[Unknown]`, so the brief's spellings did not
+  type-check. One private `TypeIs` guard, `_is_draft(written, model)`, restores the wrong-subclass
+  refusal in `write_next` and narrows without `typing.cast`; it checks against the class the type
+  argument was applied to, since pydantic parametrizes by copying, not subclassing.
+  `build_scenario` takes a `cast_type` to name its draft, as `write_next` and `render_opening` do;
+  `install_scene` keeps PLAN 2.2's one `SceneDraft[Any]`.
+- The bar refuses a draft that names the party (PLAN 2.1), and `cast_unmet` demanded "one
+  existing cast member brought back" from a cast that could be the party alone: with every cast
+  member travelling, no draft could pass. The party now satisfies that demand: `cast_unmet`'s
+  `opening` keyword became `needs_return`, false at the opening and false when the party is
+  non-empty. The stricter reading (skip the demand only when nobody else could come back) was
+  not taken; see the phase report.
+- `install_scene`'s trace reads "the player travelling with A, B": number-neutral, since the
+  brief's "and A travel there" was wrong for one companion.
+- `subject_of` is private to `scenes.py`; Tunnel Goons keeps its own.
+- The three `views.py` import `scenes` as a module and call `scenes.entity_line` and friends.
+
+### Refuted findings
+
+- "The staged `PLAN.md` edit is not part of this phase": the maintainer asked for it in this
+  session (the Phase 4 split of `scenes.py` and `engines/seam.py`); one commit per phase.
+- "Loner's master prompt now prints `(dead)`": PLAN 2.3 defines the one `entity_line` with it.
+- "Fold `scene_unmet` into `scene_refusal`": PLAN 2.1 names both.
+- "Replace the 24XX and Breathless `install_scene` wrappers with `partial`": PLAN 2.4 prescribes
+  the wrapper, and the three engines' wiring files read alike.
+- "Delete the Breathless and Loner tests that run the shared functions through their fixtures":
+  this phase's test rule is green plus one test per new behaviour; the audit is Phase 4.
+
+### Known and accepted
+
+- `scenes.py` is 995 lines against "about 700": the file was 620 before the move and the PLAN's
+  own function list adds about 370. Phase 4 splits it into a package.
+- The three engines land under their "about 1,050" targets; nothing was padded (PLAN rule 5).

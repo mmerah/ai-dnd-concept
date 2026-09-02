@@ -388,9 +388,7 @@ class Runtime:
         name = slug(title, self._scenario_ids())
 
         def as_scenario(written: BaseModel) -> AnyScenario:
-            return engine.authoring.build(
-                title, premise, art_style, tuple(packs), written, source, kind
-            )
+            return engine.authoring.build(title, premise, tuple(packs), written, source, kind)
 
         def refusal(written: BaseModel) -> str | None:
             try:
@@ -406,7 +404,12 @@ class Runtime:
             refusal,
             partial(self.spawner.run, "worldsmith"),
         )
-        write_scenario(self.settings.scenarios_dir, name, as_scenario(written), document)
+        write_scenario(
+            self.settings.scenarios_dir,
+            name,
+            as_scenario(written).model_copy(update={"art_style": art_style}),
+            document,
+        )
         LOGGER.info("scenario written: slug=%s title=%r", name, title)
         return name
 

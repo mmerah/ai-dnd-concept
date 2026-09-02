@@ -13,28 +13,27 @@ from aidm.engines.loner3e.creation import (
     preview_character,
 )
 from aidm.engines.loner3e.tools import tools
-from aidm.engines.loner3e.views import master_sections, narrator_view, player_view
+from aidm.engines.loner3e.views import master_sections
 from aidm.engines.loner3e.world import (
     Loner3eCharacterFile,
     Loner3eGame,
     Loner3eScenarioFile,
     Loner3eState,
+    LonerCharacter,
     player_character,
 )
-from aidm.engines.loner3e.worldsmith import (
-    build_scenario,
-    install_scene,
-    opening_draft,
-    render_opening,
-    write_next,
-)
+from aidm.engines.loner3e.worldsmith import install_scene, render_opening, write_next
 from aidm.engines.scenes import (
     arrival_brief,
+    build_scenario,
     check_game,
     history,
     known,
+    narrator_view,
     new_world,
+    opening_draft,
     player_over,
+    player_view,
     record,
     way_open,
 )
@@ -74,9 +73,9 @@ def build(user_packs: Path) -> Engine[Loner3eGame]:
         player_view=player_view,
         over=player_over,
         authoring=Authoring(
-            answer=opening_draft,
+            answer=partial(opening_draft, LonerCharacter),
             prompt=partial(render_opening, packs),
-            build=build_scenario,
+            build=partial(build_scenario, Loner3eScenarioFile, EngineId("loner3e"), LonerCharacter),
         ),
         transition=Transition(
             ready=way_open,
