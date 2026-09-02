@@ -174,13 +174,13 @@ review findings and why, anything known and accepted.
   "every step and fact refreshes it, so only the newest card tumbles"; tracking a seen fact on
   `GameView` is not in the plan. Handed to the maintainer as a call.
 - "Rename `on_commit` to `_on_commit`": PLAN 4.3 names it beside `on_step` and `on_fact`; it now
-  sits beside `on_step` in the public block. `on_fact`'s placement is PLAN 5.1's.
+  sits beside `on_step` in the public block. `on_fact`'s placement is PLAN 6.1's.
 - "`apply_scene` builds the merged cast twice": PLAN 4.1 makes the install a safety net that
   re-runs the one bar; its docstring says so, and the merge is one comprehension over the cast.
 
 ### Known and accepted
 
 - `resolve_ids`' raise is unreachable from `apply_scene` and `build_scenario` now that the bar
-  runs first; only direct `opening_canon` calls reach it. Phase 5's dead-code pass.
+  runs first; only direct `opening_canon` calls reach it. Phase 6's dead-code pass.
 - `src` lands 29 lines over the target: the bar's five checks and the opening cost about 130 lines
   where the plan counted 100; nothing was padded (PLAN rule 5).
