@@ -84,3 +84,35 @@ that the plan did not say.
 - Refuted: fold `WRITE_HUB_SCENE` into `RETURN_BRIEF` as its only user. PLAN 4.3 has Tunnel
   Goons' `_render_return` use `RETURN_BRIEF` bare, so the split gains its second user in Phase 4.
 - Known and accepted: `turn/` fixtures did not change; they hold facts, not scenes.
+
+## Phase 3 — Breathless and Loner
+
+- `src` lines: 9,970 before, 10,227 after (target about 10,200). Breathless 1,343 → 1,468,
+  Loner 1,407 → 1,539 (target under about 1,560 each).
+- Split as planned: A (Breathless) and B (Loner) in parallel, one working tree, both running the
+  regen; the orchestrator's final regen moved nothing beyond their own fixtures. Content:
+  `scenarios/waystation` (a rail depot turned safe house) and `scenarios/buried-bell` (a
+  relic-hunters' guild hall), both played by Kael.
+- Off-plan decisions:
+  - Loner gets no `BOARD_GUIDANCE`. PLAN 3.2 lists that difference for Breathless only, but the
+    constant quotes 24XX's SRD job-finding table and rule 10 says verify against the SRD: Loner's
+    prints none.
+  - Loner's worldsmith and view tests live in a new `tests/loner3e/test_hub_play.py`; the engine
+    had no `test_worldsmith.py` or `test_views.py` to extend.
+  - Loner's `install_scene` on a return yields `(*closed, job_closed, opened)`: the conflicts
+    closed before the move keep their place ahead of the job card.
+- Reviews: Fable reviewer and an Opus reviewer (no `codex` on the machine). Fixed: the
+  Waystation hub `question` had a settleable second clause; the single-use `campaign` local in
+  both `render_opening`s; `loner3e_test_support.py`'s public function after its private ones;
+  one `opening_canon` campaign test per engine (the authoring path had none).
+- Awaiting the maintainer's call, kept as is: both reviewers note the hub code is now a third
+  identical copy across the scene engines (`_scene_unmet`'s hub tail, `render_worldsmith`'s hub
+  block, `install_scene`'s `HubDraft` branch, `master_sections`' tail, the two optional panels,
+  `at_hub`/`stops`/`job_runs`/`jobs`/`exchanges`, plus `MIN_JOB` and `ONE_SHOT_OPENING`). Kept
+  because settled 7 keeps anything bound to an engine's world type in the engine with no type
+  parameter, protocol or callback, and `hub.py`/`scenes.py` are outside this phase. The pure
+  pieces (the `where` heading expression, `MIN_JOB`, `ONE_SHOT_OPENING`) could move to `hub.py`
+  without touching settled 7; a candidate for after Phase 4, when Tunnel Goons shows what it
+  shares.
+- Known and accepted: `uv run aidm` serves the home page (HTTP 200); a played campaign turn
+  needs the real CLIs and was not smoke-tested in the remote container.

@@ -51,9 +51,18 @@ Use `restore_luck` after a conflict ends another way and the character has had a
 
 After enough tied rolls, the engine returns a twist subject and action. Treat the pair as a complication arriving this turn, and apply any lasting changes with tools. Keep the pair; do not reroll it.
 
-When the whole adventure closes, ask the player what their character learned. Then write it once: `change_tags` for a new or changed skill, gear or frailty; `drive` for a new nemesis. Do not grow skills or frailties before the adventure closes.
+When the whole adventure closes, ask the player what their character learned. Then write it once: `change_tags` for a new or changed skill, gear or frailty; `drive` for a new nemesis. Do not grow skills or frailties before the adventure closes. In a campaign, NOTES FROM THE RULES names when a job's end counts as the adventure's.
 
 Match the turn's mood: Dramatic raises pressure, Quiet gives space to recover or plan, and Meanwhile lets the wider world move. Use the mood the story has earned.
+
+## Campaigns
+
+The hub is always open, so `next_scene` is never needed there and the spent note never fires;
+play the hub as any scene — talk, trade, rest — and never push the player out. The board is
+the player's to take from the page, so do not choose for them. When NOTES FROM THE RULES says
+a job closed and was completed, the adventure's end applies: ask what the character learned,
+then write it once with `change_tags` and `drive`. THE JOB is what the player walked out on.
+At the hub WHAT THIS PLACE IS ABOUT replaces the scene's question: nothing settles there.
 
 ## Let the player choose where the story goes
 

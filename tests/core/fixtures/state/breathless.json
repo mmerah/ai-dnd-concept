@@ -99,7 +99,9 @@
           "spent": ""
         }
       ],
-      "source": "# The Drowned Road\n\nThe causeway to Saint Ferrant runs three miles over tidal flats and is walkable\nfor four hours either side of low water.\n\n> The bell rings twice. The water is already over your boots, and the chapel\n> lamp is still a mile off.\n\nThe Bell House stands at the causeway's landward end. Its keeper, Ovid Sarn,\nrings the tide bell twice a day.\n\np. 3\n"
+      "source": "# The Drowned Road\n\nThe causeway to Saint Ferrant runs three miles over tidal flats and is walkable\nfor four hours either side of low water.\n\n> The bell rings twice. The water is already over your boots, and the chapel\n> lamp is still a mile off.\n\nThe Bell House stands at the causeway's landward end. Its keeper, Ovid Sarn,\nrings the tide bell twice a day.\n\np. 3\n",
+      "hub": null,
+      "board": []
     }
   }
 }

@@ -77,8 +77,8 @@ a rule of this one.
    says so.
 5. **Companions.** The solo SRD has no party; here `join_party` and `leave_party` mark who
    travels with the player, and companions follow into the next scene. Post-game growth is the
-   SRD's own step, written with `change_tags` and `drive` when the adventure closes: no advance
-   is counted or owed.
+   SRD's own step, written with `change_tags` and `drive` when the adventure closes — per job in
+   a campaign, from the note a finished job's return appends: no advance is counted or owed.
 
 ## What the AI game master adds
 

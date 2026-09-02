@@ -296,7 +296,9 @@
       ],
       "companions": [],
       "player_id": "player",
-      "source": ""
+      "source": "",
+      "hub": null,
+      "board": []
     },
     "twist": {
       "current": 0,

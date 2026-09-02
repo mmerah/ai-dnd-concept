@@ -1,13 +1,14 @@
 from random import Random
 
 import pytest
-from core_test_support import initialized, loner_sheet
+from core_test_support import initialized, loner_sheet, updated
 from loner3e_test_support import PACKS, TWISTS
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import cards
 from aidm.core.play import PendingDecision
 from aidm.engines.core import PLAYER_ID, Counter
+from aidm.engines.hub import Offer
 from aidm.engines.loner3e.tools import (
     Question,
     RestoreLuck,
@@ -248,3 +249,30 @@ def test_restoring_luck_that_is_already_full_is_a_quiet_no_op() -> None:
     _, state = initialized()
 
     assert apply_restore_luck(state.draft(), RestoreLuck(actor_id=PLAYER_ID), Random(0)) == []
+
+
+def test_check_game_refuses_a_campaign_meta_with_no_hub() -> None:
+    engine, state = initialized()
+    campaign_meta = state.scenario.model_copy(update={"kind": "campaign"})
+    with pytest.raises(ValueError, match="campaign"):
+        engine.validate(updated(state, scenario=campaign_meta))
+
+
+def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
+    engine, state = initialized()
+    world = state.payload.world
+    hub_payload = state.payload.model_copy(
+        update={
+            "world": world.model_copy(
+                update={
+                    "hub": world.run.scene.place,
+                    "board": (
+                        Offer(title="Job One", pitch="I take job one."),
+                        Offer(title="Job Two", pitch="I take job two."),
+                    ),
+                }
+            )
+        }
+    )
+    with pytest.raises(ValueError, match="one-shot"):
+        engine.validate(updated(state, payload=hub_payload))

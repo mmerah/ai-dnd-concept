@@ -1,12 +1,21 @@
 import pytest
 from core_test_support import initialized
+from loner3e_test_support import JOB_PLACE, hub_world
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact, cards
 from aidm.core.play import Exchange
 from aidm.engines.core import PLAYER_ID
+from aidm.engines.hub import Debrief
 from aidm.engines.loner3e.tools import ChangeWorld, apply_change
-from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, LonerCharacter
+from aidm.engines.loner3e.world import (
+    LUCK_MAX,
+    Loner3eGame,
+    LonerCharacter,
+    LonerWorld,
+    record,
+    way_open,
+)
 from aidm.engines.loner3e.worldsmith import (
     MIN_SITUATION,
     SceneDraft,
@@ -14,7 +23,7 @@ from aidm.engines.loner3e.worldsmith import (
     install_scene,
     scene_refusal,
 )
-from aidm.engines.scenes import SCENE_TURN_CAP, scene_spent
+from aidm.engines.scenes import SCENE_TURN_CAP, Scene, SceneRun, scene_spent
 
 MAP = EntityId("vault-map")
 MARA = EntityId("mara")
@@ -327,3 +336,64 @@ def test_drive_writes_what_play_revealed() -> None:
     _ = changed(draft, "kill", entity_id=MARA)
     assert "dead" in refused(draft, "drive", entity_id=MARA, motive="Survive")
     _ = draft.committed()
+
+
+def test_world_refuses_a_debrief_on_a_run_away_from_the_hub() -> None:
+    game = hub_world()
+    world = game.payload.world
+    scene = world.runs[1].scene.model_copy(update={"debrief": Debrief(text="Done.", finished=True)})
+    bad_run = world.runs[1].model_copy(update={"scene": scene})
+    with pytest.raises(ValueError):
+        LonerWorld(
+            cast=world.cast,
+            runs=[world.runs[0], bad_run],
+            player_id=world.player_id,
+            hub=world.hub,
+            board=world.board,
+        )
+
+
+def test_world_refuses_a_first_run_away_from_the_hub() -> None:
+    game = hub_world()
+    world = game.payload.world
+    with pytest.raises(ValueError):
+        LonerWorld(
+            cast=world.cast,
+            runs=[world.runs[1]],
+            player_id=world.player_id,
+            hub=world.hub,
+            board=world.board,
+        )
+
+
+def test_way_open_is_true_at_an_unsettled_hub() -> None:
+    game = hub_world()
+    game.payload.world.runs = [game.payload.world.runs[0]]
+    assert way_open(game)
+
+
+def test_record_returns_no_spent_note_at_the_hub() -> None:
+    game = hub_world()
+    game.payload.world.runs = [game.payload.world.runs[0]]
+    notes: tuple[str, ...] = ()
+    for _ in range(13):
+        notes = record(game, "do something", (), ())
+    assert notes == ()
+
+
+def test_exchanges_heads_a_jobs_later_scene() -> None:
+    game = hub_world()
+    world = game.payload.world
+    later = SceneRun(
+        scene=Scene(
+            place=JOB_PLACE,
+            title="Deeper In",
+            question="Can Kael get further into the cairn?",
+            situation=(
+                "The passage narrows and the air turns cold, stone dust settling on every surface."
+            ),
+        ),
+        exchanges=[Exchange(prompt="p", lines=(), decision="", where="")],
+    )
+    world.runs.append(later)
+    assert world.exchanges()[-1].where == "The Sealed Cairn — Deeper In"
