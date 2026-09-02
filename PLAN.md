@@ -629,21 +629,22 @@ def merged_cast[C: Person, P: Person](world: SceneWorld[C, P], draft: SceneDraft
 ```
 
 `scene_unmet` takes every refusal `apply_scene` made alone, in this order after the followers
-check: `world.player.id in draft.cast` → "a cast that does not re-file the player"; an entry
-whose `id` is not its key → `f"cast entries filed under their own id: {[f'{key} holds {held.id}']}"`;
+check: `world.player.id in draft.cast` → "a cast that never rewrites the player"; an entry
+whose `id` is not its key → `f"cast entries under their own id: {held.id!r} is filed under {key!r}"`;
 `cast_unmet` as today over `everyone = {player.id: player, **merged_cast(world, draft)}`
 (`dict(draft.cast)` at the opening); `present` and `hidden` resolved through `resolved_id`
 with strays skipped (`cast_unmet` names them) that overlap → `f"nobody listed as both present
 and hidden: {overlap}"`; resolved `hidden` whom `everyone` holds as known → `f"a hidden list
-without {met}, whom the player has already met"` (a re-filed member's `known` is the world's,
-which is why the merge happens before the check); `unwritten()` over the draft's new entries
+without {met}, whom the player has already met"`, the followers left out since their check
+named them (a re-filed member's `known` is the world's, which is why the merge happens before
+the check); `unwritten()` over the draft's new entries
 only, since a re-filed sheet is dropped; then `hub_unmet`.
 
 `apply_scene` opens with `if (refused := scene_refusal(draft, world)) is not None: raise
 ValueError(refused)` and loses its own checks; its body is `world.cast = merged_cast(world,
-draft)`, resolve, mark known, recap, append. The bar is one function, run by the retry loop on
-the turn's snapshot and by the install on the live draft: the install refuses only what the
-turn itself changed after the write began (the outgrown-scene test keeps that case).
+draft)`, resolve, mark known, recap, append. The bar is one function: the retry loop runs it
+on the snapshot `_grow` takes, which is the committed turn, so the worldsmith already sees the
+turn's own changes; the install runs it again as a safety net that no test reaches.
 
 The three `worldsmith.md`, after "may then be named in `present` or `hidden`.": "Someone
 already in THE WHOLE CAST may be filed again to rewrite their `brief`; their name and their
@@ -651,17 +652,22 @@ sheet are the rules' and do not change."
 
 `ui/game.py`: after `session.play` returns in `_send`, `if session.write_failure:
 ui.notify(NO_WAY_ON, type="warning")`, `NO_WAY_ON` imported from `panels.py`, which keeps its
-sidebar line. Tests: `test_invalid_actor_from_crossing_is_rejected_before_commit` becomes "a
+sidebar line. `restart()` clears `write_failure`, or the toast fires on a fresh game after a
+failed crossing. Tests: `test_invalid_actor_from_crossing_is_rejected_before_commit` becomes "a
 re-filed cast member takes the new brief and keeps their name and sheet" (Mara's name stays
-`Mara`, her brief is the draft's); the install-only refusals in `test_tool_surface.py` become
-bar tests (the retry sees the refusal: `write_failure` still holds it, through `answered`'s
-"answered nothing usable").
+`Mara`, her brief is the draft's), and `tests/twentyfourxx/test_worldsmith.py`'s "already in
+the cast" case becomes the same rule at the `apply_scene` level. The outgrown-scene test in
+`test_tool_surface.py` scripts two answers, `[_scene(), _scene()]`, and keeps its "already
+met" assert: the bar refuses both, and `answered`'s "answered nothing usable" carries the
+last refusal into `write_failure`; its docstring becomes "the bar sees the turn's own
+changes". The `match=` strings "rewrites the player" and "is filed under" still hold.
 
 ### 4.2 The player knows where they are
 
-- `install_scene`'s card carries the scene:
-  `"\n".join((f"{label}: {title}", situation, f"At stake: {question}", *([f"The job: {job}"] if JobDraft)))`.
-  The chat draws the headline bold and each further line small, as `_card` does today.
+- `install_scene`'s card carries what the chat has no other path to:
+  `"\n".join((f"{label}: {title}", f"At stake: {question}", *([f"The job: {job}"] if JobDraft)))`.
+  Not the situation: the header shows it. The chat draws the headline bold and each further
+  line small, as `_card` does today.
 - `scene_rows`: after the question row, `PanelRow(label="The job", detail=world.job)` when
   `world.job` is set. Tunnel Goons: nothing, its job is a name.
 - The opening is narrated. `app/runtime.py`, beside `CROSSED`:
@@ -717,10 +723,9 @@ committed before its write. About 12 lines.
 
 ### 4.4 The home page names the rules
 
-`SaveOption.engine: EngineId`, set from `game.engine` in `load_catalog`. `home_page` builds
-`rules = {engine_id: engine.title for engine_id, engine in runtime.engines.items()}` once and
-passes it to `_new_game` and `_saved_games`: the scenario select's options read
-`f"{entry.title} · {rules[entry.engine]}"`; `_saved_card` draws `ui.badge(rules[saved.engine]).props("outline")`
+`CatalogEntry.rules: str` and `SaveOption.rules: str`, the engine's title, set in
+`load_catalog`, which holds `engines`. The scenario select's options read
+`f"{entry.title} · {entry.rules}"`; `_saved_card` draws `ui.badge(saved.rules).props("outline")`
 in a row with the campaign badge. The character select is unchanged: it already lists the
 rules' own characters.
 
@@ -737,10 +742,11 @@ rules' own characters.
   lettering."
 
 `MediaConfig.style` is deleted: with every engine carrying one, it would never be read.
-`tests/ui/test_settings.py`'s round-trip keeps its quoted-string case on another string
-field (`media.model`). `open_illustrator(settings, target, scenario, character, store, *,
-style: str)` takes the resolved style; `Runtime._open` passes `scenario.art_style or
-engine.art_style`. `ui/create.py`'s art style input reads `placeholder=f"Leave empty for:
+`tests/ui/test_settings.py` boxes and round-trips `("media", "style")` in two tests: both move
+to `("media", "model")`, the quoted-string case included. `tests/core/test_media.py`'s
+`STYLE = MediaConfig().style` becomes a literal. `open_illustrator(settings, target, store,
+*, style: str)` takes the resolved style, and drops `scenario` and `character`, which it no
+longer reads; `Runtime._open` passes `scenario.art_style or engine.art_style`. `ui/create.py`'s art style input reads `placeholder=f"Leave empty for:
 {engine.art_style}"`, so the player sees what an empty box gives.
 
 ### 4.6 The dice tumble
@@ -758,15 +764,15 @@ engine.art_style`. `ui/create.py`'s art style input reads `placeholder=f"Leave e
 ```
 
 `_card(fact, *, live: bool = False)` hands `live` to `_dice_group`, which adds `game-die-live`
-when set. `live_turn` renders `_card(fact, live=True)`; `chat` renders still, so a refresh no
+when set. `live_turn` renders `_card(fact, live=fact is view.live_facts[-1])`: every step and
+fact refreshes it, so only the newest card tumbles; `chat` renders still, so a refresh no
 longer replays every roll in the history. Real 3D dice go to `IDEAS.md` (4.7).
 
 ### 4.7 Docs
 
 - `CLAUDE.md`, design decisions, after the narrator line: "The worldsmith writes new cast
   entries and rewrites a brief; a name and a sheet are the rules'. The scene bar and the
-  install share one refusal list, so the worldsmith's one retry sees every refusal." And after
-  "A bad model answer...": "The narrator opens every game with a passage before the player acts."
+  install share one refusal list, so the worldsmith's one retry sees every refusal."
 - `README.md`, under the three roles: "The narrator opens the game with who the player is and
   where they stand; the player acts from there."
 - `IDEAS.md`: add "17: Real 3D dice: a physics canvas; the CSS tumble is the cheap version."
@@ -780,7 +786,7 @@ new brief lands with her name and sheet intact; a draft that hides someone the p
 is refused by the bar and the retry sees it; a write that still fails toasts. A new game opens
 on a narrator passage filed as "(the story begins)" before the player acts, and restart does
 it again; a turn's narration shows while the worldsmith works; the New scene card carries the
-situation, the stake and the job; the sidebar shows the open job. The home page names each
+stake and the job; the sidebar shows the open job. The home page names each
 scenario's and each save's rules; a 24XX game with no scenario style is drawn in the engine's;
 live dice tumble and the history stands still. `src` about 9,580.
 
