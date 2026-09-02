@@ -4,20 +4,19 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Slug, slug
-from aidm.core.facts import Fact, cards
+from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import Exchange, SpokenLine
 from aidm.core.views import Rows
 from aidm.engines.core import PLAYER_ID, check_filing, labeled, reveal
-from aidm.engines.hub import Job, Offer, Stop, closed_jobs, job_start, job_titles
+from aidm.engines.hub import Offer
 from aidm.engines.scenes import (
-    SPENT_NOTE,
     Scene,
     SceneRun,
+    SceneWorld,
     check_hub,
     check_named,
-    scene_spent,
-    stops_of,
+    record_exchange,
 )
 
 type SkillDie = Literal[8, 10, 12]
@@ -112,15 +111,11 @@ class SceneCanon(Mutable):
         return self
 
 
-class TwentyfourxxWorld(Mutable):
+class TwentyfourxxWorld(SceneWorld):
     """The world as a sequence of scenes: the player is a sheet, never a cast entry."""
 
     cast: dict[EntityId, Npc] = Field(default_factory=dict)
     player: Operator
-    runs: list[SceneRun] = Field(min_length=1)
-    source: str = ""
-    hub: Slug | None = None
-    board: tuple[Offer, ...] = ()
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -132,21 +127,7 @@ class TwentyfourxxWorld(Mutable):
             raise ValueError(f"the player must be filed as {PLAYER_ID!r}")
         if PLAYER_ID in (*self.run.present, *self.run.hidden):
             raise ValueError("the player is in every scene and is never listed in it")
-        check_hub(self.hub, self.board, self.runs)
         return self
-
-    @property
-    def at_hub(self) -> bool:
-        return self.hub is not None and self.current.place == self.hub
-
-    def stops(self) -> tuple[Stop, ...]:
-        return stops_of(self.runs)
-
-    def job_runs(self) -> list[SceneRun]:
-        return self.runs[job_start(self.hub, self.stops()) :]
-
-    def jobs(self) -> tuple[Job, ...]:
-        return closed_jobs(self.hub, self.stops())
 
     def require(self, entity_id: EntityId) -> Operator | Npc:
         if entity_id == PLAYER_ID:
@@ -179,26 +160,6 @@ class TwentyfourxxWorld(Mutable):
             )
         return one
 
-    @property
-    def run(self) -> SceneRun:
-        return self.runs[-1]
-
-    @property
-    def current(self) -> Scene:
-        return self.run.scene
-
-    def exchanges(self) -> tuple[Exchange, ...]:
-        filed: list[Exchange] = []
-        for run, job in zip(self.runs, job_titles(self.hub, self.stops()), strict=True):
-            where = (
-                run.scene.title if job in ("", run.scene.title) else f"{job} — {run.scene.title}"
-            )
-            filed.extend(
-                one if one.where else one.model_copy(update={"where": where})
-                for one in run.exchanges
-            )
-        return tuple(filed)
-
     def here(self) -> Iterator[Operator | Npc]:
         yield self.player
         for entity_id in self.run.present:
@@ -209,13 +170,6 @@ class TwentyfourxxWorld(Mutable):
 
     def reveal(self, entity: Operator | Npc) -> list[Fact]:
         return reveal(entity, PLAYER_ID)
-
-    def last_seen(self, entity_id: EntityId) -> str:
-        """Scan backwards for the scene that held them, so nothing the story dropped is lost."""
-        for run in reversed(self.runs):
-            if entity_id in (*run.present, *run.hidden):
-                return run.scene.title
-        return ""
 
 
 class TwentyfourxxCharacter(Mutable):
@@ -266,18 +220,14 @@ def record(
     state: TwentyfourxxGame, prompt: str, lines: tuple[SpokenLine, ...], facts: Sequence[Fact]
 ) -> tuple[str, ...]:
     world = state.payload.world
-    world.run.exchanges.append(
-        Exchange(
-            prompt=prompt,
-            lines=lines,
-            facts=cards(facts),
-            decision="" if state.pending is None else state.pending.prompt,
-        )
+    return record_exchange(
+        world,
+        prompt,
+        lines,
+        facts,
+        "" if state.pending is None else state.pending.prompt,
+        someone_dead=any(not one.alive for one in world.here()),
     )
-    if world.run.settled or world.at_hub or len(world.run.exchanges) <= 1:
-        return ()
-    reason = scene_spent(world.run, any(not one.alive for one in world.here()))
-    return () if reason is None else (SPENT_NOTE.format(reason=reason),)
 
 
 def history(state: TwentyfourxxGame) -> tuple[Exchange, ...]:

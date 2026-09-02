@@ -16,11 +16,12 @@ from aidm.core.entities import EngineId, EntityId
 from aidm.core.facts import Fact
 from aidm.core.model import CheckAnswer
 from aidm.engines.core import PLAYER_ID
-from aidm.engines.hub import GO_HOME
+from aidm.engines.hub import GO_HOME, TAKE_JOB
 from aidm.engines.twentyfourxx.world import Npc
 from aidm.engines.twentyfourxx.worldsmith import (
     BOARD_GUIDANCE,
-    HubDraft,
+    JobDraft,
+    ReturnDraft,
     SceneDraft,
     apply_scene,
     build_scenario,
@@ -181,7 +182,9 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
 
 
 def test_render_worldsmith_lists_the_player_first() -> None:
-    prompt = render_worldsmith(small_world().payload.world, "Explore the bay.", "guidance text")
+    prompt = render_worldsmith(
+        small_world().payload.world, "Explore the bay.", "guidance text", SceneDraft
+    )
     assert prompt.index("Rook[player]") < prompt.index("Kestrel[kestrel]")
 
 
@@ -191,7 +194,7 @@ def test_opening_canon_marks_present_known() -> None:
         present=(stranger,),
         cast={stranger: Npc(id=stranger, name="A Stranger", brief="new to the world")},
     )
-    canon = opening_canon(draft, source="", kind="one-shot")
+    canon = opening_canon(draft, source="")
     assert canon.cast[stranger].known is True
 
 
@@ -210,8 +213,8 @@ def test_build_scenario_stamps_the_engine_id() -> None:
     assert scenario.engine == EngineId("twentyfourxx")
 
 
-def _hub_draft(*, finished: bool, offers: int = 2) -> HubDraft:
-    return HubDraft.model_validate(
+def _return_draft(*, offers: int = 2) -> ReturnDraft:
+    return ReturnDraft.model_validate(
         {
             "place": HUB_PLACE,
             "title": "Back at the Amber Tap",
@@ -222,54 +225,57 @@ def _hub_draft(*, finished: bool, offers: int = 2) -> HubDraft:
                 {"title": f"Job {number}", "pitch": f"I take job {number}."}
                 for number in range(1, offers + 1)
             ],
-            "debrief": {"text": "The crates are cleared and paid for.", "finished": finished},
+            "debrief": "The crates are cleared and paid for.",
         }
     )
 
 
-async def test_write_next_asks_for_hub_draft_only_on_go_home_away_from_the_hub() -> None:
+def _job_draft() -> JobDraft:
+    away = _draft(place=JOB_PLACE, present=("fixer",)).model_dump()
+    return JobDraft.model_validate({**away, "job": JOB})
+
+
+async def test_write_next_picks_the_draft_the_moment_calls_for() -> None:
     game = hub_world()
     recorded: list[type[BaseModel]] = []
 
     async def answer(prompt: str, model: type[BaseModel], refusal: CheckAnswer) -> BaseModel:
         recorded.append(model)
-        written = _hub_draft(finished=True) if model is HubDraft else _draft(present=("fixer",))
+        if model is ReturnDraft:
+            written: SceneDraft = _return_draft()
+        elif model is JobDraft:
+            written = _job_draft()
+        else:
+            written = _draft(present=("fixer",))
         assert refusal(written) is None
         return written
 
     _ = await write_next({}, game, GO_HOME, answer)
-    assert recorded[-1] is HubDraft
+    assert recorded[-1] is ReturnDraft
 
     _ = await write_next({}, game, "I look around the warehouse.", answer)
     assert recorded[-1] is SceneDraft
 
+    _ = game.payload.world.runs.pop()  # home again: the next scene is the one that leaves
+    _ = await write_next({}, game, TAKE_JOB.format(title="Job One"), answer)
+    assert recorded[-1] is JobDraft
 
-def test_a_job_scene_placed_at_the_hub_is_refused() -> None:
+
+def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> None:
     world = hub_world().payload.world
-    draft = _draft(place=HUB_PLACE, present=("fixer",))
+    stranger = EntityId("stranger")
+    world.cast[stranger] = Npc(id=stranger, name="Old Man Riley", brief="", known=False)
+    draft = _return_draft().model_copy(update={"debrief": "Old Man Riley saw them off with a nod."})
     assert scene_refusal(draft, world) == (
-        "the scene needs a place away from the hub: home is reached by going home"
+        "the scene needs a debrief that does not name what the player has not met: "
+        "['Old Man Riley']"
     )
-
-
-def test_a_return_with_one_offer_is_refused() -> None:
-    world = hub_world().payload.world
-    assert scene_refusal(_hub_draft(finished=True, offers=1), world, hub=True) == (
-        "the scene needs a board of 2 to 3 offers"
-    )
-
-
-def test_a_scene_draft_with_offers_is_refused_off_the_hub() -> None:
-    world = hub_world().payload.world
-    draft = _draft(
-        place=JOB_PLACE, present=("fixer",), offers=[{"title": "A", "pitch": "I take A."}]
-    )
-    assert scene_refusal(draft, world) == "the scene needs no offers: only the hub has a board"
 
 
 def test_install_scene_on_a_finished_hub_draft_swaps_the_board_and_notes_the_job() -> None:
     game = hub_world()
-    facts = install_scene(game, _hub_draft(finished=True))
+    game.payload.world.run.job_done = True
+    facts = install_scene(game, _return_draft())
     world = game.payload.world
     assert [offer.title for offer in world.board] == ["Job 1", "Job 2"]
     assert [fact.kind for fact in facts] == ["job_closed", "scene_opened"]
@@ -278,57 +284,25 @@ def test_install_scene_on_a_finished_hub_draft_swaps_the_board_and_notes_the_job
 
 def test_install_scene_on_an_open_hub_draft_skips_the_note() -> None:
     game = hub_world()
-    facts = install_scene(game, _hub_draft(finished=False))
+    facts = install_scene(game, _return_draft())
     assert [fact.kind for fact in facts] == ["job_closed", "scene_opened"]
     assert game.notes == ()
 
 
-def test_render_worldsmith_in_a_campaign_has_the_hub_section() -> None:
+def test_render_worldsmith_returning_adds_board_guidance() -> None:
     world = hub_world().payload.world
-    prompt = render_worldsmith(world, "I look around the bar.", "guidance text")
-    assert "THE HUB" in prompt
-
-
-def test_render_worldsmith_returning_has_the_hub_draft_schema_and_board_guidance() -> None:
-    world = hub_world().payload.world
-    prompt = render_worldsmith(world, GO_HOME, "guidance text", returning=True)
-    assert '"debrief"' in prompt
+    prompt = render_worldsmith(world, GO_HOME, "guidance text", ReturnDraft)
     assert BOARD_GUIDANCE in prompt
 
 
 def test_render_worldsmith_prints_the_job_line_for_the_job_run() -> None:
-    prompt = render_worldsmith(hub_world().payload.world, "I look around.", "guidance text")
+    prompt = render_worldsmith(
+        hub_world().payload.world, "I look around.", "guidance text", SceneDraft
+    )
     assert f"the job: {JOB}" in prompt
 
 
 def test_install_scene_on_a_hub_draft_lands_a_home_card() -> None:
     game = hub_world()
-    facts = install_scene(game, _hub_draft(finished=True))
+    facts = install_scene(game, _return_draft())
     assert any(fact.card == "Home: Back at the Amber Tap" for fact in facts)
-
-
-def test_a_take_written_at_the_hub_without_a_job_is_refused() -> None:
-    game = hub_world()
-    install_scene(game, _hub_draft(finished=True))
-    world = game.payload.world
-    draft = _draft(place=JOB_PLACE, present=("fixer",))
-    assert scene_refusal(draft, world) == (
-        "the scene needs a `job` of a short paragraph: who wants what done, what done looks "
-        "like, what it pays"
-    )
-
-
-def test_a_later_job_scene_carrying_a_job_is_refused() -> None:
-    world = hub_world().payload.world
-    draft = _draft(place=JOB_PLACE, present=("fixer",), job=JOB)
-    assert scene_refusal(draft, world) == (
-        "the scene needs no `job`: only the scene that leaves the hub carries it"
-    )
-
-
-def test_render_worldsmith_at_the_hub_has_the_take_brief() -> None:
-    game = hub_world()
-    install_scene(game, _hub_draft(finished=True))
-    world = game.payload.world
-    prompt = render_worldsmith(world, "I look at the board.", "guidance text")
-    assert "WHAT COMES NEXT is the job they take" in prompt

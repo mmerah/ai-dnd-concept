@@ -24,10 +24,10 @@ from aidm.engines.tunnelgoons.world import (
     starting_items,
 )
 from aidm.engines.tunnelgoons.worldsmith import (
-    MapDraft,
     build_scenario,
     install_extension,
     map_exhausted,
+    opening_draft,
     render_map,
     write_extension,
 )
@@ -85,7 +85,7 @@ def build() -> Engine[TunnelGoonsGame]:
         player_view=player_view,
         over=player_over,
         authoring=Authoring(
-            answer=MapDraft,
+            answer=opening_draft,
             prompt=render_map,
             build=build_scenario,
         ),

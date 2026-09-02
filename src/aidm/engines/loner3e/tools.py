@@ -9,7 +9,7 @@ from pydantic import Field
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Slug, require_unique
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.play import DecisionOption, PendingDecision
-from aidm.core.tools import MasterTool, NoArgs, master_tool
+from aidm.core.tools import MasterTool, master_tool
 from aidm.engines.core import Counter, counter_fact, entity_fact, keep_highest
 from aidm.engines.loner3e.creation import Pack
 from aidm.engines.loner3e.world import (
@@ -22,7 +22,7 @@ from aidm.engines.loner3e.world import (
     set_tags,
     tags_of,
 )
-from aidm.engines.scenes import SCENE_SETTLED
+from aidm.engines.scenes import NEXT_SCENE, NextScene, settle
 
 AND_AT = 4  # both dice 4+ sharpens the answer to -and
 BUT_AT = 3  # both dice 3 or under softens it to -but
@@ -200,12 +200,8 @@ def change_world(draft: Loner3eGame, args: ChangeWorld, _rng: Random) -> list[Fa
     return apply_change(draft.payload.world, args.change)
 
 
-def next_scene(draft: Loner3eGame, _args: NoArgs, _rng: Random) -> tuple[Fact, ...]:
-    world = draft.payload.world
-    if world.run.settled:
-        raise ValueError("this scene is already settled; the player has the way on")
-    world.run.settled = True
-    return (SCENE_SETTLED,)
+def next_scene(draft: Loner3eGame, args: NextScene, _rng: Random) -> tuple[Fact, ...]:
+    return settle(draft.payload.world, args.job_done)
 
 
 def twist_table(packs: Mapping[str, Pack]) -> tuple[tuple[str, str], ...]:
@@ -341,9 +337,8 @@ def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[Loner3eGame], ...]:
         ),
         master_tool(
             "next_scene",
-            "Say this scene's question is settled. The player is then asked what they want to "
-            "pursue, and their own words build the next scene. Do not answer for them.",
-            NoArgs,
+            NEXT_SCENE,
+            NextScene,
             next_scene,
         ),
         master_tool(

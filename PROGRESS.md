@@ -130,3 +130,38 @@ that the plan did not say.
   player-facing prose).
 - Known and accepted: `uv run aidm` serves the home page (HTTP 200); a played campaign turn
   needs the real CLIs and was not smoke-tested in the remote container.
+
+## Phase 3b — the shared hub code, once
+
+- `src` lines: 10,227 before, 10,115 after (target about 10,100). 24XX 1,599 → 1,460,
+  Breathless 1,468 → 1,341, Loner 1,539 → 1,418; `hub.py` 171 → 216,
+  `scenes.py` 164 → 385. (PLAN's 24XX baseline of 1,578 was stale; the tree held 1,599.)
+- Split as A (opus: all of `src/`, content, regen) then B (sonnet: tests). Reviews: Fable reviewer
+  and an Opus reviewer (no `codex` on the machine), both told to hunt for cuts on the maintainer's
+  request.
+- Off-plan decisions:
+  - `SceneWorld.job_done` and `SceneWorld.job` properties: PLAN 3b.3 and 3b.5 wrote both walks
+    inline, three times each.
+  - `opening_canon(draft, source)` loses `kind`: a `HubDraft` is the campaign; `check_kind` in
+    `check_game` still refuses a mismatch through the runtime's refusal.
+  - `render_worldsmith(world, intent, guidance, answer)` takes the draft type `write_next`
+    picked and derives `returning` from it.
+  - The fixture regen reorders the world's keys in `state/` and `save/` (the base class's fields
+    come first). A consequence of settled 7.
+  - There are no worldsmith prompt or schema fixtures (PLAN 3b.7 expected some to lose `job` and
+    `offers`); the one-shot schema was checked by hand instead.
+- Folded from the reviews, beyond PLAN 3b.1–3b.2, all taking `SceneWorld` or plain values
+  (settled 7): `worldsmith_prompt`, `hub_rows`, `settle` + `NEXT_SCENE`, `record_exchange`
+  (`spent_note` and `scene_spent` folded in), `cast_unmet`, `hub_unmet`, `trail_panel`,
+  `scene_rows(world)`, `MIN_SITUATION` in `scenes.py`, `last_seen` returning the prompt's own
+  line; `check_hub` refuses `job_done` where no job is open. Cut from `hub.py`: `Moment`,
+  `BRIEFS`, `JOB_ASK` (its second user, the bar, is structural now; both reverse Phase 2b
+  off-plan decisions), `open_job` (no caller; Phase 4 stamps `Visit.job` instead), `jobs_rows`
+  (inlined into `jobs_panel`), `stops_of`. `hub_sections`' `finished` is a required keyword.
+- Decided against PLAN's letter, awaiting the maintainer's call: the `job_done` sentence PLAN 3b.4
+  adds to `next_scene`'s tool description lives on the `NextScene.job_done` field description
+  only, since the schema printed it twice; `master_tools.json` carries it once.
+- Refuted from the fold: merging "Write the hub scene there." into `RETURN_BRIEF` (Phase 2b's
+  refutation stands: PLAN 4.3 uses `RETURN_BRIEF` bare). `WRITE_HUB_SCENE` stays.
+- Known and accepted: `uv run aidm` serves the home page (HTTP 200); a played campaign turn needs
+  the real CLIs and was not smoke-tested in the remote container.

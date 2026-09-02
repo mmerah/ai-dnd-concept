@@ -1,4 +1,3 @@
-import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
@@ -8,34 +7,34 @@ from aidm.core.entities import EngineId, EntityId, Frozen, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyScenario, ScenarioKind, ScenarioMeta, WorldsmithAnswer
-from aidm.core.tools import schema_of
-from aidm.core.views import Rows, sections
 from aidm.engines.core import PLAYER_ID, Entity
 from aidm.engines.hub import (
     BOARD_MAX,
     BOARD_MIN,
+    CAMPAIGN_OPENING,
     GO_HOME,
-    HUB_QUESTION,
-    JOB_ASK,
+    MIN_JOB,
+    ONE_SHOT_OPENING,
     Debrief,
     Offer,
-    hub_sections,
     job_closed,
 )
 from aidm.engines.scenes import (
-    SURPRISE,
+    MIN_SITUATION,
     Scene,
     SceneRun,
-    named_in,
+    cast_unmet,
+    hub_rows,
+    hub_unmet,
     resolve_ids,
     resolved_id,
     scene_history,
+    worldsmith_prompt,
 )
 from aidm.engines.twentyfourxx.creation import Pack, guidance
 from aidm.engines.twentyfourxx.views import entity_line
 from aidm.engines.twentyfourxx.world import (
     Npc,
-    Operator,
     SceneCanon,
     TwentyfourxxGame,
     TwentyfourxxScenario,
@@ -43,8 +42,7 @@ from aidm.engines.twentyfourxx.world import (
     TwentyfourxxWorld,
 )
 
-MIN_SITUATION = 80
-MIN_JOB = 80
+HUB_PHRASE = "the fixer and the regulars"  # what `CAMPAIGN_OPENING` asks this engine's hub to be
 WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
 BOARD_GUIDANCE = (
     "The SRD's job-finding setup is the board's range, not a recipe: 1–2 nothing, owe somebody to "
@@ -54,15 +52,6 @@ BOARD_GUIDANCE = (
 JOB_DONE_NOTE = (
     "The job {title} is closed and was completed. The SRD's after-a-job step applies: call "
     "`job_done` once, with the skill the player names, else the skill the job called on."
-)
-ONE_SHOT_OPENING = (
-    "Write the opening scene of this adventure: where the player starts, who is there, "
-    "and what is waiting to be found."
-)
-CAMPAIGN_OPENING = (
-    "Write the opening of this campaign: the hub the player keeps coming back to — one place, "
-    "the fixer and the regulars — and a board of two or three `offers`. Nothing has happened yet. "
-    + HUB_QUESTION
 )
 
 
@@ -77,31 +66,45 @@ class SceneDraft(Frozen):
     present: tuple[str, ...] = ()
     hidden: tuple[str, ...] = ()
     secret: str = ""
-    job: str = ""  # the job as taken; on the scene that leaves the hub only
     cast: dict[EntityId, Npc] = Field(default_factory=dict)
-    offers: tuple[Offer, ...] = ()  # the board; only a hub scene fills it
+
+
+class JobDraft(SceneDraft):
+    """The scene that leaves the hub."""
+
+    job: str = Field(min_length=MIN_JOB)
 
 
 class HubDraft(SceneDraft):
-    debrief: Debrief
+    """The campaign's opening: the hub and its board."""
+
+    offers: tuple[Offer, ...] = Field(min_length=BOARD_MIN, max_length=BOARD_MAX)
 
 
-def scene_refusal(
-    draft: SceneDraft, world: TwentyfourxxWorld | None = None, *, hub: bool = False
-) -> str | None:
-    missing = _scene_unmet(draft, world, hub=hub)
+class ReturnDraft(HubDraft):
+    """The return home: the debrief is the paragraph; the verdict is the master's."""
+
+    debrief: str = Field(min_length=1)
+
+
+def opening_draft(kind: ScenarioKind) -> type[SceneDraft]:
+    return HubDraft if kind == "campaign" else SceneDraft
+
+
+def scene_refusal(draft: SceneDraft, world: TwentyfourxxWorld | None = None) -> str | None:
+    missing = _scene_unmet(draft, world)
     return None if not missing else "the scene needs " + "; ".join(missing)
 
 
-def opening_canon(draft: SceneDraft, source: str, kind: ScenarioKind) -> SceneCanon:
+def opening_canon(draft: SceneDraft, source: str) -> SceneCanon:
     cast = draft.cast
     present = resolve_ids(draft.present, cast, "present")
     for one in present:
         cast[one].known = True
-    hub, board = (draft.place, draft.offers) if kind == "campaign" else (None, ())
+    hub, board = (draft.place, draft.offers) if isinstance(draft, HubDraft) else (None, ())
     return SceneCanon(
         cast=cast,
-        opening=_scene(draft),
+        opening=_scene(draft, False),
         present=present,
         hidden=resolve_ids(draft.hidden, cast, "hidden"),
         source=source,
@@ -127,10 +130,11 @@ def apply_scene(world: TwentyfourxxWorld, draft: SceneDraft) -> None:
         raise ValueError(f"the scene lists {overlap} as both present and hidden")
     if met := sorted(one for one in hidden if cast[one].known):
         raise ValueError(f"the scene hides {met}, whom the player has already met")
+    finished = world.job_done  # the master's verdict on the job the return is closing
     world.cast = cast
     for one in present:
         cast[one].known = True
-    world.runs.append(SceneRun(scene=_scene(draft), present=present, hidden=hidden))
+    world.runs.append(SceneRun(scene=_scene(draft, finished), present=present, hidden=hidden))
 
 
 async def write_next(
@@ -138,14 +142,14 @@ async def write_next(
 ) -> BaseModel:
     world = state.payload.world
     returning = world.hub is not None and not world.at_hub and intent == GO_HOME
-    model: type[SceneDraft] = HubDraft if returning else SceneDraft
+    model: type[SceneDraft] = ReturnDraft if returning else JobDraft if world.at_hub else SceneDraft
 
     def refusal(written: BaseModel) -> str | None:
         if not isinstance(written, model):
             raise ValueError("24XX received an incompatible scene")
-        return scene_refusal(written, world, hub=returning)
+        return scene_refusal(written, world)
 
-    prompt = render_worldsmith(world, intent, guidance(packs, state.packs), returning=returning)
+    prompt = render_worldsmith(world, intent, guidance(packs, state.packs), model)
     return await answer(prompt, model, refusal)
 
 
@@ -155,9 +159,9 @@ def install_scene(state: TwentyfourxxGame, written: BaseModel) -> tuple[Fact, ..
     world = state.payload.world
     apply_scene(world, written.model_copy(deep=True))
     trace = f"the story moves to {written.title}"
-    label = "Home" if isinstance(written, HubDraft) else "New scene"
+    label = "Home" if isinstance(written, ReturnDraft) else "New scene"
     opened = Fact(kind="scene_opened", trace=trace, told=True, card=f"{label}: {written.title}")
-    if isinstance(written, HubDraft):
+    if isinstance(written, ReturnDraft):
         world.board = written.offers
         job = world.jobs()[-1]
         if job.debrief.finished:
@@ -167,31 +171,24 @@ def install_scene(state: TwentyfourxxGame, written: BaseModel) -> tuple[Fact, ..
 
 
 def render_worldsmith(
-    world: TwentyfourxxWorld, intent: str, guidance: str, *, returning: bool = False
+    world: TwentyfourxxWorld, intent: str, guidance: str, answer: type[SceneDraft]
 ) -> str:
+    returning = issubclass(answer, ReturnDraft)
     cast = "\n".join(
         (
-            entity_line(world.player, detail=_where(world, world.player)),
-            *(entity_line(one, detail=_where(world, one)) for one in world.cast.values()),
+            entity_line(world.player, detail=world.last_seen(world.player.id)),
+            *(entity_line(one, detail=world.last_seen(one.id)) for one in world.cast.values()),
         )
     )
-    hub: Rows = ()
-    if world.hub is not None:
-        hub = hub_sections(
-            world.runs[0].scene.title,
-            world.hub,
-            world.board,
-            world.jobs(),
-            moment="returning" if returning else "taking" if world.at_hub else "away",
-        )
-    return _worldsmith(
+    return worldsmith_prompt(
+        WORLDSMITH,
         source=world.source,
         history=scene_history(world.job_runs()),
         cast=cast,
-        guidance=_with_board(guidance) if returning else guidance,
+        guidance="\n\n".join((guidance, BOARD_GUIDANCE)) if returning else guidance,
         intent=intent,
-        answer=HubDraft if returning else SceneDraft,
-        hub=hub,
+        answer=answer,
+        hub=hub_rows(world, returning=returning),
     )
 
 
@@ -200,13 +197,14 @@ def render_opening(
 ) -> str:
     campaign = kind == "campaign"
     scene_guidance = guidance(packs, picks)
-    return _worldsmith(
+    return worldsmith_prompt(
+        WORLDSMITH,
         source=source,
         history="(no scenes yet — write the opening)",
         cast="(no cast yet — write the people and things this scene needs)",
-        guidance=_with_board(scene_guidance) if campaign else scene_guidance,
-        intent=CAMPAIGN_OPENING if campaign else ONE_SHOT_OPENING,
-        answer=SceneDraft,
+        guidance="\n\n".join((scene_guidance, BOARD_GUIDANCE)) if campaign else scene_guidance,
+        intent=CAMPAIGN_OPENING.format(hub=HUB_PHRASE) if campaign else ONE_SHOT_OPENING,
+        answer=opening_draft(kind),
     )
 
 
@@ -221,66 +219,32 @@ def build_scenario(
 ) -> AnyScenario:
     if not isinstance(written, SceneDraft):
         raise ValueError("24XX received an incompatible scene")
-    if (refused := scene_refusal(written, hub=(kind == "campaign"))) is not None:
+    if (refused := scene_refusal(written)) is not None:
         raise ValueError(refused)
     return TwentyfourxxScenarioFile(
         meta=ScenarioMeta(title=title, premise=premise or written.situation, kind=kind),
         engine=EngineId("twentyfourxx"),
         packs=packs,
         art_style=art_style,
-        payload=TwentyfourxxScenario(world=opening_canon(written, source, kind)),
+        payload=TwentyfourxxScenario(world=opening_canon(written, source)),
     )
 
 
-def _worldsmith(
-    *,
-    source: str,
-    history: str,
-    cast: str,
-    guidance: str,
-    intent: str,
-    answer: type[BaseModel],
-    hub: Rows = (),
-) -> str:
-    return sections(
-        (
-            ("YOUR ROLE", WORLDSMITH),
-            ("SOURCE MATERIAL", source or "(none — write from the cast)"),
-            ("SCENES SO FAR", history),
-            *hub,
-            ("THE WHOLE CAST", cast),
-            ("ENGINE GUIDANCE", guidance),
-            ("WHAT COMES NEXT", intent),
-            ("STANDING INSTRUCTION", SURPRISE),
-            ("ANSWER WITH", json.dumps(schema_of(answer), indent=2, ensure_ascii=False)),
-        )
-    )
-
-
-def _with_board(guidance: str) -> str:
-    return "\n\n".join((guidance, BOARD_GUIDANCE))
-
-
-def _where(world: TwentyfourxxWorld, one: Operator | Npc) -> str:
-    seen = world.last_seen(one.id)
-    return f"last seen in: {seen}" if seen else ""
-
-
-def _scene(draft: SceneDraft) -> Scene:
+def _scene(draft: SceneDraft, finished: bool) -> Scene:
     return Scene(
         place=draft.place,
         title=draft.title,
         question=draft.question,
         situation=draft.situation,
         secret=draft.secret,
-        job=draft.job,
-        debrief=draft.debrief if isinstance(draft, HubDraft) else None,
+        job=draft.job if isinstance(draft, JobDraft) else "",
+        debrief=Debrief(text=draft.debrief, finished=finished)
+        if isinstance(draft, ReturnDraft)
+        else None,
     )
 
 
-def _scene_unmet(
-    draft: SceneDraft, world: TwentyfourxxWorld | None = None, *, hub: bool = False
-) -> list[str]:
+def _scene_unmet(draft: SceneDraft, world: TwentyfourxxWorld | None = None) -> list[str]:
     """No world means the opening: nobody exists yet, and no id can be the player's."""
     held = {} if world is None else world.cast
     known: Mapping[EntityId, Entity] = (
@@ -289,31 +253,16 @@ def _scene_unmet(
     others = [
         one for one in (*draft.present, *draft.hidden) if resolved_id(one, known) != PLAYER_ID
     ]
-    unmet: list[str] = []
-    if not others:
-        unmet.append("at least one cast member besides the player")
-    if world is not None and not any(resolved_id(one, held) is not None for one in others):
-        unmet.append("at least one existing cast member brought back")
-    if stray := sorted(one for one in others if resolved_id(one, known) is None):
-        unmet.append(f"ids that exist; these name nobody: {stray}")
-    # `situation` is read to the player, so naming a hidden entity there hands them the find.
-    if told := sorted(named_in(draft.situation, draft.hidden, known)):
-        unmet.append(f"a situation that does not name what is hidden: {told}")
+    unmet = cast_unmet(others, draft.hidden, draft.situation, known, held, opening=world is None)
     if broken := sorted(eid for eid, one in draft.cast.items() if not one.alive):
         unmet.append(f"cast members as the worldsmith may write them: alive: {broken}")
-    taking = world is not None and world.at_hub
-    if taking and len(draft.job) < MIN_JOB:
-        unmet.append(f"a `job` of a short paragraph: {JOB_ASK}")
-    if not taking and draft.job:
-        unmet.append("no `job`: only the scene that leaves the hub carries it")
-    if hub:
-        if world is not None and draft.place != world.hub:
-            unmet.append(f"the hub's place {world.hub!r}: this scene is home")
-        if not BOARD_MIN <= len(draft.offers) <= BOARD_MAX:
-            unmet.append(f"a board of {BOARD_MIN} to {BOARD_MAX} offers")
-    else:
-        if draft.offers:
-            unmet.append("no offers: only the hub has a board")
-        if world is not None and world.hub is not None and draft.place == world.hub:
-            unmet.append("a place away from the hub: home is reached by going home")
+    unmet.extend(
+        hub_unmet(
+            draft.place,
+            None if world is None else world.hub,
+            debrief=draft.debrief if isinstance(draft, ReturnDraft) else None,
+            held=held,
+            known=known,
+        )
+    )
     return unmet

@@ -9,14 +9,8 @@ from aidm.core.views import (
     Subject,
     speaker_of,
 )
-from aidm.engines.hub import (
-    HOME_ROW,
-    HUB_ROW,
-    board_lines,
-    board_rows,
-    jobs_rows,
-    ledger,
-)
+from aidm.engines.hub import board_panel, jobs_panel, master_tail, question_heading
+from aidm.engines.scenes import scene_rows, trail_panel
 from aidm.engines.twentyfourxx.world import (
     Item,
     Npc,
@@ -81,15 +75,6 @@ def narrator_view(state: TwentyfourxxGame) -> NarratorView:
 def player_view(state: TwentyfourxxGame) -> PlayerView:
     world = state.payload.world
     player = world.player
-    scene_rows = [PanelRow(label=world.current.question, detail="")]
-    if world.at_hub:
-        scene_rows.append(HUB_ROW)
-    elif world.run.settled:
-        scene_rows.append(
-            PanelRow(label="Way on", detail="Keep playing, or name where you go and move on.")
-        )
-        if world.hub is not None:
-            scene_rows.append(HOME_ROW)
     gear_rows = [
         PanelRow(label=item.name, detail=gear_detail(item)) for item in player.items.values()
     ]
@@ -97,8 +82,6 @@ def player_view(state: TwentyfourxxGame) -> PlayerView:
         PanelRow(label=f"{player.name} (you)", detail=player.brief, icon_id=player.id),
         *(_entity_row(one) for one in world.here() if one.known and one.id != player.id),
     ]
-    board = (Panel(title="Board", rows=board_rows(world.board)),) if world.at_hub else ()
-    jobs = (Panel(title="Jobs", rows=jobs_rows(world.jobs())),) if world.hub else ()
     return PlayerView(
         player=subject_of(player),
         panels=(
@@ -107,14 +90,11 @@ def player_view(state: TwentyfourxxGame) -> PlayerView:
                 rows=tuple(PanelRow(label=label, detail=detail) for label, detail in player.rows()),
             ),
             Panel(title="Gear", rows=tuple(gear_rows)),
-            Panel(title="This scene", rows=tuple(scene_rows)),
-            *board,
+            Panel(title="This scene", rows=scene_rows(world)),
+            *board_panel(world.at_hub, world.board),
             Panel(title="Here", rows=tuple(here_rows)),
-            Panel(
-                title="Trail",
-                rows=tuple(PanelRow(label=one.scene.title, detail="") for one in world.job_runs()),
-            ),
-            *jobs,
+            trail_panel(world.job_runs()),
+            *jobs_panel(world.jobs()),
         ),
         prompt=state.pending,
         over=player_over(state),
@@ -132,32 +112,19 @@ def master_sections(state: TwentyfourxxGame) -> Rows:
         if detail := gear_detail(item):
             line += f" — {detail}"
         gear_lines.append(line)
-    question_heading = (
-        "WHAT THIS PLACE IS ABOUT" if world.at_hub else "THE QUESTION THIS SCENE SETTLES"
-    )
-    sections: list[tuple[str, str]] = [
+    return (
         ("SCENE", f"{scene.title}\n{scene.situation}"),
-        (question_heading, scene.question),
+        (question_heading(world.at_hub), scene.question),
         ("YOU PLAY FOR", entity_line(player)),
         ("GEAR", "\n".join(gear_lines) or "- (none)"),
-        (
-            "HERE WITH THE PLAYER",
-            entity_lines(one for one in world.here() if one.id != player.id),
-        ),
+        ("HERE WITH THE PLAYER", entity_lines(one for one in world.here() if one.id != player.id)),
         (
             "HIDDEN HERE (the player has not found these)",
             entity_lines(world.require(one) for one in world.run.hidden),
         ),
         ("THE SCENE'S SECRET (never narrate this)", scene.secret or "(none)"),
-    ]
-    job = next((run.scene.job for run in world.job_runs() if run.scene.job), "")
-    if job:
-        sections.append(("THE JOB", job))
-    if world.hub is not None:
-        sections.append(("JOBS SO FAR", ledger(world.jobs())))
-    if world.at_hub:
-        sections.append(("THE BOARD", board_lines(world.board)))
-    return tuple(sections)
+        *master_tail(world.hub, world.at_hub, world.board, world.jobs(), world.job),
+    )
 
 
 def _entity_row(one: Operator | Npc) -> PanelRow:

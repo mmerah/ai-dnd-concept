@@ -15,6 +15,138 @@
   "notes": [],
   "payload": {
     "world": {
+      "runs": [
+        {
+          "scene": {
+            "place": "vault-stair",
+            "title": "The Vault Stair",
+            "question": "Is there a way past the vault door from the stair?",
+            "situation": "A short flight of steps ends at an iron door, sealed, the abbey's dust undisturbed on its sill.",
+            "secret": "",
+            "debrief": null,
+            "job": ""
+          },
+          "present": [
+            "player"
+          ],
+          "hidden": [],
+          "exchanges": [
+            {
+              "prompt": "I try the vault door.",
+              "lines": [
+                {
+                  "speaker": null,
+                  "text": "The iron handle does not turn."
+                }
+              ],
+              "facts": [],
+              "decision": ""
+            }
+          ],
+          "settled": false,
+          "spent": "",
+          "job_done": false
+        },
+        {
+          "scene": {
+            "place": "abbots-study",
+            "title": "The Abbot's Study",
+            "question": "Can you get the way down to the vault out of this room, and out of Mara?",
+            "situation": "The only lit room left in the abbey: ledgers stacked to the beams, candle stubs gone cold, and Mara still cataloguing books nobody will read. A flagstone under the desk sits a finger proud of its neighbours.",
+            "secret": "The map is under the loose flagstone, and Mara knows it; she will not volunteer it while the ledgers are unfinished.",
+            "debrief": null,
+            "job": ""
+          },
+          "present": [
+            "player",
+            "mara",
+            "vault-map"
+          ],
+          "hidden": [],
+          "exchanges": [
+            {
+              "prompt": "I look for another way in.",
+              "lines": [
+                {
+                  "speaker": null,
+                  "text": "A flagstone by the wall sits proud of its neighbours."
+                }
+              ],
+              "facts": [],
+              "decision": ""
+            },
+            {
+              "prompt": "I lever up the loose flagstone and listen at the vault door.",
+              "lines": [
+                {
+                  "speaker": null,
+                  "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
+                }
+              ],
+              "facts": [
+                {
+                  "kind": "entity_discovered",
+                  "trace": "learned of the vault map[vault-map]",
+                  "told": true,
+                  "entity_id": "vault-map",
+                  "card": "The vault map discovered",
+                  "dice": []
+                },
+                {
+                  "kind": "question_answered",
+                  "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
+                  "told": true,
+                  "entity_id": "player",
+                  "card": "Oracle — Advantage (Quiet Hands) → yes-and",
+                  "dice": [
+                    {
+                      "label": "Chance",
+                      "faces": [
+                        6,
+                        6
+                      ],
+                      "rolled": [
+                        4,
+                        5
+                      ],
+                      "highlight": [
+                        1
+                      ]
+                    },
+                    {
+                      "label": "Risk",
+                      "faces": [
+                        6
+                      ],
+                      "rolled": [
+                        4
+                      ],
+                      "highlight": [
+                        0
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "kind": "tags_changed",
+                  "trace": "the player Kael[player] condition +Listening",
+                  "told": true,
+                  "entity_id": "player",
+                  "card": "Now: Listening",
+                  "dice": []
+                }
+              ],
+              "decision": ""
+            }
+          ],
+          "settled": false,
+          "spent": "",
+          "job_done": false
+        }
+      ],
+      "source": "",
+      "hub": null,
+      "board": [],
       "cast": {
         "mara": {
           "id": "mara",
@@ -167,138 +299,8 @@
           "alive": true
         }
       },
-      "runs": [
-        {
-          "scene": {
-            "place": "vault-stair",
-            "title": "The Vault Stair",
-            "question": "Is there a way past the vault door from the stair?",
-            "situation": "A short flight of steps ends at an iron door, sealed, the abbey's dust undisturbed on its sill.",
-            "secret": "",
-            "debrief": null,
-            "job": ""
-          },
-          "present": [
-            "player"
-          ],
-          "hidden": [],
-          "exchanges": [
-            {
-              "prompt": "I try the vault door.",
-              "lines": [
-                {
-                  "speaker": null,
-                  "text": "The iron handle does not turn."
-                }
-              ],
-              "facts": [],
-              "decision": ""
-            }
-          ],
-          "settled": false,
-          "spent": ""
-        },
-        {
-          "scene": {
-            "place": "abbots-study",
-            "title": "The Abbot's Study",
-            "question": "Can you get the way down to the vault out of this room, and out of Mara?",
-            "situation": "The only lit room left in the abbey: ledgers stacked to the beams, candle stubs gone cold, and Mara still cataloguing books nobody will read. A flagstone under the desk sits a finger proud of its neighbours.",
-            "secret": "The map is under the loose flagstone, and Mara knows it; she will not volunteer it while the ledgers are unfinished.",
-            "debrief": null,
-            "job": ""
-          },
-          "present": [
-            "player",
-            "mara",
-            "vault-map"
-          ],
-          "hidden": [],
-          "exchanges": [
-            {
-              "prompt": "I look for another way in.",
-              "lines": [
-                {
-                  "speaker": null,
-                  "text": "A flagstone by the wall sits proud of its neighbours."
-                }
-              ],
-              "facts": [],
-              "decision": ""
-            },
-            {
-              "prompt": "I lever up the loose flagstone and listen at the vault door.",
-              "lines": [
-                {
-                  "speaker": null,
-                  "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
-                }
-              ],
-              "facts": [
-                {
-                  "kind": "entity_discovered",
-                  "trace": "learned of the vault map[vault-map]",
-                  "told": true,
-                  "entity_id": "vault-map",
-                  "card": "The vault map discovered",
-                  "dice": []
-                },
-                {
-                  "kind": "question_answered",
-                  "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
-                  "told": true,
-                  "entity_id": "player",
-                  "card": "Oracle — Advantage (Quiet Hands) → yes-and",
-                  "dice": [
-                    {
-                      "label": "Chance",
-                      "faces": [
-                        6,
-                        6
-                      ],
-                      "rolled": [
-                        4,
-                        5
-                      ],
-                      "highlight": [
-                        1
-                      ]
-                    },
-                    {
-                      "label": "Risk",
-                      "faces": [
-                        6
-                      ],
-                      "rolled": [
-                        4
-                      ],
-                      "highlight": [
-                        0
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "kind": "tags_changed",
-                  "trace": "the player Kael[player] condition +Listening",
-                  "told": true,
-                  "entity_id": "player",
-                  "card": "Now: Listening",
-                  "dice": []
-                }
-              ],
-              "decision": ""
-            }
-          ],
-          "settled": false,
-          "spent": ""
-        }
-      ],
       "companions": [],
-      "player_id": "player",
-      "source": "",
-      "hub": null,
-      "board": []
+      "player_id": "player"
     },
     "twist": {
       "current": 0,

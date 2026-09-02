@@ -15,67 +15,6 @@
   "notes": [],
   "payload": {
     "world": {
-      "cast": {
-        "ovid-sarn": {
-          "id": "ovid-sarn",
-          "name": "Ovid Sarn",
-          "brief": "The Bell House's keeper, who rings the tide bell twice a day and reads the flats better than anyone left alive.",
-          "known": true,
-          "alive": true
-        },
-        "ivo-casks": {
-          "id": "ivo-casks",
-          "name": "Ivo Casks",
-          "brief": "A supply runner pinned here by the tide, itching to make the crossing before the flats fill up with Crawlers.",
-          "known": true,
-          "alive": true
-        },
-        "drowned-marta": {
-          "id": "drowned-marta",
-          "name": "Drowned Marta",
-          "brief": "Once the causeway's toll-keeper, now a Crawler that answers the bell the same as anyone still starving.",
-          "known": true,
-          "alive": true
-        }
-      },
-      "player": {
-        "id": "player",
-        "name": "Kael",
-        "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
-        "known": true,
-        "pronouns": "he/him",
-        "job": "Park Ranger",
-        "skills": {
-          "think": 10,
-          "sneak": 8,
-          "bash": 6,
-          "dash": 4,
-          "shoot": 4,
-          "sway": 4
-        },
-        "worn": {
-          "bash": 6,
-          "dash": 4,
-          "sneak": 8,
-          "shoot": 4,
-          "think": 8,
-          "sway": 4
-        },
-        "items": {
-          "fire-axe": {
-            "name": "Fire Axe",
-            "die": 10
-          }
-        },
-        "med_kit": false,
-        "loot": 12,
-        "stress": {
-          "current": 1,
-          "maximum": 4
-        },
-        "stunted": false,
-        "alive": true
-      },
       "runs": [
         {
           "scene": {
@@ -154,12 +93,74 @@
             }
           ],
           "settled": false,
-          "spent": ""
+          "spent": "",
+          "job_done": false
         }
       ],
       "source": "# The Drowned Road\n\nThe causeway to Saint Ferrant runs three miles over tidal flats and is walkable\nfor four hours either side of low water.\n\n> The bell rings twice. The water is already over your boots, and the chapel\n> lamp is still a mile off.\n\nThe Bell House stands at the causeway's landward end. Its keeper, Ovid Sarn,\nrings the tide bell twice a day.\n\np. 3\n",
       "hub": null,
-      "board": []
+      "board": [],
+      "cast": {
+        "ovid-sarn": {
+          "id": "ovid-sarn",
+          "name": "Ovid Sarn",
+          "brief": "The Bell House's keeper, who rings the tide bell twice a day and reads the flats better than anyone left alive.",
+          "known": true,
+          "alive": true
+        },
+        "ivo-casks": {
+          "id": "ivo-casks",
+          "name": "Ivo Casks",
+          "brief": "A supply runner pinned here by the tide, itching to make the crossing before the flats fill up with Crawlers.",
+          "known": true,
+          "alive": true
+        },
+        "drowned-marta": {
+          "id": "drowned-marta",
+          "name": "Drowned Marta",
+          "brief": "Once the causeway's toll-keeper, now a Crawler that answers the bell the same as anyone still starving.",
+          "known": true,
+          "alive": true
+        }
+      },
+      "player": {
+        "id": "player",
+        "name": "Kael",
+        "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
+        "known": true,
+        "pronouns": "he/him",
+        "job": "Park Ranger",
+        "skills": {
+          "think": 10,
+          "sneak": 8,
+          "bash": 6,
+          "dash": 4,
+          "shoot": 4,
+          "sway": 4
+        },
+        "worn": {
+          "bash": 6,
+          "dash": 4,
+          "sneak": 8,
+          "shoot": 4,
+          "think": 8,
+          "sway": 4
+        },
+        "items": {
+          "fire-axe": {
+            "name": "Fire Axe",
+            "die": 10
+          }
+        },
+        "med_kit": false,
+        "loot": 12,
+        "stress": {
+          "current": 1,
+          "maximum": 4
+        },
+        "stunted": false,
+        "alive": true
+      }
     }
   }
 }

@@ -159,7 +159,13 @@
     "description": "Say this scene's question is settled. The player is then asked what they want to pursue, and their own words build the next scene. Do not answer for them.",
     "parameters": {
       "additionalProperties": false,
-      "properties": {},
+      "properties": {
+        "job_done": {
+          "default": false,
+          "description": "A campaign only: settling this scene also finishes the job the player walked out on.",
+          "type": "boolean"
+        }
+      },
       "type": "object"
     }
   },

@@ -38,6 +38,11 @@ class MapDraft(Dungeon):
     start: CheckedEntityId
 
 
+def opening_draft(_kind: ScenarioKind) -> type[MapDraft]:
+    """One map serves both kinds: a campaign's hub is a place on it."""
+    return MapDraft
+
+
 def map_refusal(draft: MapDraft) -> str | None:
     unmet = _map_unmet(draft)
     return None if not unmet else "the map needs " + "; ".join(unmet)

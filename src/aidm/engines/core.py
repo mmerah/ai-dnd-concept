@@ -54,7 +54,7 @@ class Counter(Mutable):
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Authoring:
-    answer: type[BaseModel]
+    answer: Callable[[ScenarioKind], type[BaseModel]]
     prompt: Callable[[str, Sequence[Slug], ScenarioKind], str]
     build: Callable[[str, str, str, tuple[Slug, ...], BaseModel, str, ScenarioKind], AnyScenario]
 

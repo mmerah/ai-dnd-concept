@@ -15,6 +15,47 @@
   "notes": [],
   "payload": {
     "world": {
+      "runs": [
+        {
+          "scene": {
+            "place": "buried-bell",
+            "title": "The Buried Bell",
+            "question": "The Bell owes the town its rent at the thaw, and Orsa's ledger shows Kael's finds have not yet covered his seat at the long table.",
+            "situation": "The guild hall smells of tallow and old paper, its long table scarred by a hundred maps traced and retraced. Orsa Vane stands behind the board with a ledger open, and Castor Wren nurses a drink at the corner of the table, one boot up on the bench where his other leg should be.",
+            "secret": "Castor Wren sold his map to the Sealed Cairn twice — once to Orsa for the board, once to the hooded stranger by the door, who is waiting to see who takes the job so he can follow them out.",
+            "debrief": null,
+            "job": ""
+          },
+          "present": [
+            "player",
+            "orsa-vane",
+            "castor-wren"
+          ],
+          "hidden": [
+            "hooded-stranger"
+          ],
+          "exchanges": [],
+          "settled": false,
+          "spent": "",
+          "job_done": false
+        }
+      ],
+      "source": "A relic-hunters' guild hall, a board of jobs, and whatever Kael can pry loose from what the world sealed away.",
+      "hub": "buried-bell",
+      "board": [
+        {
+          "title": "The Sealed Cairn",
+          "pitch": "A hill cairn out past the millpond, never opened — whatever is inside, it pays double just to look."
+        },
+        {
+          "title": "The Drowned Archive",
+          "pitch": "An old archive gone under the river ice last winter, records worth more than the silver that will pay for them."
+        },
+        {
+          "title": "The Widow's Debt",
+          "pitch": "A widow at the edge of town wants something of her husband's back from wherever he sold it — she pays in his old maps."
+        }
+      ],
       "cast": {
         "orsa-vane": {
           "id": "orsa-vane",
@@ -116,48 +157,8 @@
           "alive": true
         }
       },
-      "runs": [
-        {
-          "scene": {
-            "place": "buried-bell",
-            "title": "The Buried Bell",
-            "question": "What keeps Kael coming back to the Buried Bell, when the road always calls him out again?",
-            "situation": "The guild hall smells of tallow and old paper, its long table scarred by a hundred maps traced and retraced. Orsa Vane stands behind the board with a ledger open, and Castor Wren nurses a drink at the corner of the table, one boot up on the bench where his other leg should be.",
-            "secret": "Orsa skims a quiet percentage off every job she boards before it ever reaches the wall, and the hooded stranger by the door has been counting exactly how much stays in her books.",
-            "debrief": null,
-            "job": ""
-          },
-          "present": [
-            "player",
-            "orsa-vane",
-            "castor-wren"
-          ],
-          "hidden": [
-            "hooded-stranger"
-          ],
-          "exchanges": [],
-          "settled": false,
-          "spent": ""
-        }
-      ],
       "companions": [],
-      "player_id": "player",
-      "source": "A relic-hunters' guild hall, a board of jobs, and whatever Kael can pry loose from what the world sealed away.",
-      "hub": "buried-bell",
-      "board": [
-        {
-          "title": "The Sealed Cairn",
-          "pitch": "A hill cairn out past the millpond, never opened — whatever is inside, it pays double just to look."
-        },
-        {
-          "title": "The Drowned Archive",
-          "pitch": "An old archive gone under the river ice last winter, records worth more than the silver that will pay for them."
-        },
-        {
-          "title": "The Widow's Debt",
-          "pitch": "A widow at the edge of town wants something of her husband's back from wherever he sold it — she pays in his old maps."
-        }
-      ]
+      "player_id": "player"
     },
     "twist": {
       "current": 0,

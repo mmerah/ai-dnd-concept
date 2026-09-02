@@ -1,20 +1,28 @@
+from functools import partial
+
 import pytest
 
+from aidm.core.views import Panel
 from aidm.engines.hub import (
     TAKE_JOB,
     Debrief,
     Job,
     Offer,
     Stop,
+    board_panel,
     board_rows,
     check_board,
     check_kind,
     closed_jobs,
+    heading,
     hub_sections,
     job_closed,
     job_start,
     job_titles,
-    open_job,
+    jobs_panel,
+    master_tail,
+    place_unmet,
+    question_heading,
 )
 from aidm.engines.scenes import Scene, SceneRun, check_hub
 
@@ -47,7 +55,7 @@ def _tunnel_goons_stops() -> tuple[Stop, ...]:
     )
 
 
-def test_the_job_walk_reads_titles_closed_jobs_open_job_and_start() -> None:
+def test_the_job_walk_reads_titles_closed_jobs_and_start() -> None:
     stops = _stops()
 
     assert job_titles(HUB, stops) == ("", "A1", "A1", "", "B1", "", "C1")
@@ -55,16 +63,14 @@ def test_the_job_walk_reads_titles_closed_jobs_open_job_and_start() -> None:
         Job(title="A1", place="a1", debrief=DONE_A),
         Job(title="B1", place="b1", debrief=DONE_B),
     )
-    assert open_job(HUB, stops) == "C1"
-    assert job_start(HUB, stops) == 5
+    assert job_start(stops) == 5
 
 
 def test_the_job_walk_on_tunnel_goons_stops() -> None:
     stops = _tunnel_goons_stops()
 
     assert closed_jobs("tavern", stops) == (Job(title="A", place="a", debrief=DONE_TAVERN),)
-    assert open_job("tavern", stops) is None
-    assert job_start("tavern", stops) == 4
+    assert job_start(stops) == 4
 
 
 def test_check_board_refuses_a_board_with_the_wrong_shape() -> None:
@@ -101,7 +107,7 @@ def test_job_closed_names_a_finished_job() -> None:
     fact = job_closed(job)
 
     assert fact.card == "Job done: A1\nFinished the job."
-    assert fact.trace == "the job A1 closed (done): Finished the job."
+    assert fact.trace == "the job A1 closed (done)"
 
 
 def test_job_closed_names_a_job_left_open() -> None:
@@ -110,7 +116,7 @@ def test_job_closed_names_a_job_left_open() -> None:
     fact = job_closed(job)
 
     assert fact.card == "Job left open: A1\nRan out of time."
-    assert fact.trace == "the job A1 closed (left open): Ran out of time."
+    assert fact.trace == "the job A1 closed (left open)"
 
 
 def _run(place: str, debrief: Debrief | None = None) -> SceneRun:
@@ -153,10 +159,81 @@ def test_board_rows_plays_take_job_with_the_title_and_keeps_the_pitch() -> None:
 
 
 def test_hub_sections_picks_the_brief_by_moment() -> None:
-    taking = dict(hub_sections("The Amber Tap", HUB, (), (), moment="taking"))
-    away = dict(hub_sections("The Amber Tap", HUB, (), (), moment="away"))
-    returning = dict(hub_sections("The Amber Tap", HUB, (), (), moment="returning"))
+    rows = partial(hub_sections, "The Amber Tap", HUB, (), (), finished=False)
+    taking = dict(rows(at_hub=True, returning=False))
+    away = dict(rows(at_hub=False, returning=False))
+    returning = dict(rows(at_hub=False, returning=True))
 
     assert taking["THE HUB"].startswith("The player is leaving The Amber Tap")
     assert away["THE HUB"].startswith("The hub is The Amber Tap")
     assert returning["THE HUB"].startswith("Write the hub scene there.")
+    assert "THE VERDICT" not in taking
+    assert "THE VERDICT" not in away
+
+
+def test_hub_sections_returning_adds_the_verdict_by_finished() -> None:
+    rows = partial(hub_sections, "The Amber Tap", HUB, (), (), at_hub=False, returning=True)
+    open_verdict = dict(rows(finished=False))
+    finished_verdict = dict(rows(finished=True))
+
+    assert open_verdict["THE VERDICT"] == "left open"
+    assert finished_verdict["THE VERDICT"] == "finished"
+
+
+def test_heading_prefixes_the_job_only_when_it_differs_from_the_title() -> None:
+    assert heading("", "A1") == "A1"
+    assert heading("A1", "A1") == "A1"
+    assert heading("A1", "A2") == "A1 — A2"
+
+
+def test_place_unmet_refuses_the_wrong_place_for_the_moment() -> None:
+    assert place_unmet(HUB, HUB, returning=False) == (
+        "a place away from the hub: home is reached by going home"
+    )
+    assert place_unmet("a1", HUB, returning=True) == (
+        f"the hub's place {HUB!r}: this scene is home"
+    )
+
+
+def test_place_unmet_allows_the_hub_returning_away_and_the_opening_with_no_hub() -> None:
+    assert place_unmet(HUB, HUB, returning=True) is None
+    assert place_unmet("a1", HUB, returning=False) is None
+    assert place_unmet("a1", None, returning=False) is None
+
+
+def test_question_heading_switches_by_at_hub() -> None:
+    assert question_heading(True) == "WHAT THIS PLACE IS ABOUT"
+    assert question_heading(False) == "THE QUESTION THIS SCENE SETTLES"
+
+
+def test_master_tail_shows_the_job_away_and_the_board_at_the_hub() -> None:
+    jobs = (Job(title="A1", place="a1", debrief=DONE_A),)
+    board = (Offer(title="B", pitch="Do b"),)
+
+    away = dict(master_tail(HUB, False, board, jobs, "Clear the warehouse"))
+    assert away["THE JOB"] == "Clear the warehouse"
+    assert "A1" in away["JOBS SO FAR"]
+    assert "THE BOARD" not in away
+
+    at_hub = dict(master_tail(HUB, True, board, jobs, ""))
+    assert "THE JOB" not in at_hub
+    assert "B" in at_hub["THE BOARD"]
+
+    one_shot = dict(master_tail(None, False, (), (), ""))
+    assert one_shot == {}
+
+
+def test_board_panel_is_shown_only_at_the_hub() -> None:
+    offer = Offer(title="A", pitch="Do a")
+
+    assert board_panel(True, (offer,)) == (Panel(title="Board", rows=board_rows((offer,))),)
+    assert board_panel(False, (offer,)) == ()
+
+
+def test_jobs_panel_is_shown_only_when_there_is_a_job() -> None:
+    assert jobs_panel(()) == ()
+
+    job = Job(title="A1", place="a1", debrief=DONE_A)
+    (panel,) = jobs_panel((job,))
+    assert panel.title == "Jobs"
+    assert len(panel.rows) == 1
