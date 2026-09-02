@@ -318,8 +318,8 @@ review findings and why, anything known and accepted.
 
 ## Phase 7 — voices
 
-- `src` lines: 9,535 before, 9,749 after (PLAN row 9,595 counts from Phase 6's row of 9,415,
-  which landed 120 over; the row's +180 lands as +214, `speech.py` at 114 of it). Tests: 477
+- `src` lines: 9,535 before, 9,742 after (PLAN row 9,595 counts from Phase 6's row of 9,415,
+  which landed 120 over; the row's +180 lands as +207, `speech.py` at 114 of it). Tests: 477
   before, 485 after (eight new: the speech refusal in `test_config.py`, seven in
   `test_speech.py`).
 - Goldens: every fixture unchanged (a regen run after part A moved nothing; part B and the fold
@@ -353,12 +353,11 @@ review findings and why, anything known and accepted.
 - `README.md`'s cost line names illustration and speech as the two exceptions.
 - `tests/ui/test_launcher.py`'s three `new_scenario` calls gained `voice=""`: the keyword is
   required, as `art_style` is.
+- No `kokoro` provider: the maintainer struck PLAN 7.1's third `ProviderName`. Speech reads the
+  same two providers media does; a local speech server is `local` with its `base_url` repointed.
 
 ### Refuted findings
 
-- "`Providers.kokoro` has no user in the tree; drop it or record the exception": PLAN 7.1 adds
-  it because `local` is Ollama's port and serves no speech; `speech.provider = "kokoro"` selects
-  it. Recorded here as the plan's choice.
 - "Inline `speech_body` into `read`'s one call site": PLAN 7.3 names `speech_body` as one of the
   four tested functions.
 
