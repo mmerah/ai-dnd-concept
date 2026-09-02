@@ -58,6 +58,7 @@ def test_illustration_request_names_the_scene_and_no_unrevealed_canon() -> None:
     request = illustration_request(_scene(engine, state), NARRATION, STYLE)
     assert state.payload.world.current.title in request
     assert "Brass Warden" in request
+    assert "A brass warden." in request
     assert NARRATION in request
     assert "Pale Watcher" not in request
 
@@ -129,7 +130,7 @@ async def test_concurrent_illustrations_of_one_scene_generate_it_once(
 def test_open_illustrator_takes_the_passed_style_and_is_none_when_media_is_off(
     tmp_path: Path,
 ) -> None:
-    target = LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
+    target = LaunchTarget(scenario_id="whispering-vault", character_id="kael")
     store = FileStore(tmp_path)
     on = EnvFileFreeSettings(
         saves_dir=tmp_path,

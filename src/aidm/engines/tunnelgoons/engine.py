@@ -6,7 +6,7 @@ from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import AnyCharacter, AnyScenario, ScenarioKind, WorldsmithAnswer
-from aidm.core.play import Exchange, SpokenLine
+from aidm.core.play import Exchange, SceneRecord
 from aidm.core.tools import MasterTool
 from aidm.core.views import NarratorView, PlayerView, Rows
 from aidm.engines.hub import check_kind
@@ -88,17 +88,14 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
     def over(self, state: TunnelGoonsGame) -> str | None:
         return player_over(state)
 
-    def record(
-        self,
-        state: TunnelGoonsGame,
-        prompt: str,
-        lines: tuple[SpokenLine, ...],
-        facts: Sequence[Fact],
-    ) -> tuple[str, ...]:
-        return record(state, prompt, lines, facts)
+    def record(self, state: TunnelGoonsGame, exchange: Exchange) -> None:
+        record(state, exchange)
 
     def history(self, state: TunnelGoonsGame) -> tuple[Exchange, ...]:
         return history(state)
+
+    def scenes(self, state: TunnelGoonsGame) -> tuple[SceneRecord, ...]:
+        return state.payload.world.scenes()
 
     def master_sections(self, state: TunnelGoonsGame) -> Rows:
         return master_sections(state)

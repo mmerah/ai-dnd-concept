@@ -71,7 +71,7 @@ Fields and tools that exist for the app around the rules, not the rules themselv
   narrator.
 - `alive` and `kill` — the SRD leaves being taken out or dying to the table; the gate needs a flag,
   and a vulnerable player's failed dangerous check hands the master that ruling as a note.
-- `next_scene`, `settled` and the turn cap — a scene nobody ends is ended for them.
+- `next_scene` and `left` — `settle`'s answer is the only end a scene has.
 - The loot decision is the player's, asked through the app; the master leaves `granted` and
   `choice` null.
 

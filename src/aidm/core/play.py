@@ -88,13 +88,22 @@ class Exchange(Frozen):
     prompt: str
     lines: tuple[SpokenLine, ...]
     facts: tuple[Fact, ...] = ()
-    where: str = Field(default="", exclude=True)
     # The suspending decision's prompt: the pause has to survive after `Game.pending` clears.
     decision: str = ""
 
     @property
     def narration(self) -> str:
         return narration_text(self.lines)
+
+
+class SceneRecord(Frozen):
+    """One scene as every role reads it back; `recap` is empty while open or where none was
+    written."""
+
+    title: str
+    question: str
+    recap: str = ""
+    exchanges: tuple[Exchange, ...] = ()
 
 
 def narration_text(lines: Sequence[Line | SpokenLine]) -> str:

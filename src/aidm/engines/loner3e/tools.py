@@ -395,7 +395,6 @@ def _strike(
     if hit.luck.current != 0:
         return facts
     draft.notes = (*draft.notes, defeat_note(hit.name))
-    draft.payload.world.run.spent = f"the conflict with {hit.name} is settled"
     lost = f"{hit.name} is out of luck"
     facts.append(entity_fact(hit, "conflict_lost", lost, card=lost))
     # SRD: luck resets after conflicts, and a side at 0 is the only end the engine sees.

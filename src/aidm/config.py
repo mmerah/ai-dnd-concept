@@ -111,8 +111,6 @@ class Settings(BaseSettings):
     roles: Roles = Roles()
     media: MediaConfig = MediaConfig()
     speech: SpeechConfig = SpeechConfig()
-    # How many past exchanges a role is shown; every role reads the same depth.
-    recent_exchanges: int = Field(default=20, ge=1)
     # This ~30k-token ceiling admits a 76-page adventure without swallowing the context.
     source_max_chars: int = Field(default=120_000, ge=1)
     # `.mcp.json` and `.codex/config.toml` hard-code this port: change all three together.

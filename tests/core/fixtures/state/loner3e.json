@@ -33,11 +33,9 @@
             "vault-map"
           ],
           "exchanges": [],
-          "settled": false,
-          "spent": "",
+          "left": null,
           "job_done": false,
-          "recap": "",
-          "pursuit": ""
+          "recap": ""
         }
       ],
       "source": "",

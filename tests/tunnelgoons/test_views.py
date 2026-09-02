@@ -15,7 +15,6 @@ from aidm.engines.tunnelgoons.world import Item, Visit
 
 def test_narrator_view_names_nothing_unknown_here() -> None:
     view = narrator_view(small_world())
-    assert "Robo Mantis" not in view.art_prompt
     assert all(subject.name != "Robo Mantis" for subject in view.subjects)
 
 

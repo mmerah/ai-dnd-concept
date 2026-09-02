@@ -25,7 +25,6 @@ def test_only_a_real_edit_is_written(tmp_path: Path) -> None:
             ("providers", "openrouter", "api_key"): FakeBox(""),
             ("media", "enabled"): FakeBox(True),
             ("media", "model"): FakeBox(None),
-            ("recent_exchanges",): FakeBox(20.0),
             ("roles", "narrator", "timeout"): FakeBox(90.0),
         },
     )
@@ -66,20 +65,16 @@ def test_a_saved_key_reads_back_and_the_rest_of_the_file_survives(
 
 def test_settings_are_not_reloaded_under_a_turn_in_flight(tmp_path: Path) -> None:
     runtime = Runtime(ui_settings(saves_dir=tmp_path), ScriptedSpawner())
-    session = runtime.session(
-        LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
-    )
+    session = runtime.session(LaunchTarget(scenario_id="whispering-vault", character_id="kael"))
     assert runtime.busy_refusal() is None
     session.phase = "master"
-    assert runtime.busy_refusal() == "A turn is in flight in 'poc'."
+    assert runtime.busy_refusal() == "A turn is in flight in 'whispering-vault--kael'."
 
 
 def test_a_page_still_holding_a_dropped_session_may_not_play_it(tmp_path: Path) -> None:
     """The reload drops every session, and a tab that kept one would open a second writer."""
     runtime = Runtime(ui_settings(saves_dir=tmp_path), ScriptedSpawner())
-    session = runtime.session(
-        LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
-    )
+    session = runtime.session(LaunchTarget(scenario_id="whispering-vault", character_id="kael"))
     assert runtime.play_refusal(session) is None
 
     runtime.reload_settings()

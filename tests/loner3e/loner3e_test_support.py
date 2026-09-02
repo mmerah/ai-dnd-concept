@@ -6,7 +6,6 @@ from core_test_support import (
     LONER3E,
     ScriptedSpawner,
     character,
-    offline_settings,
     scenario,
 )
 
@@ -22,7 +21,7 @@ from aidm.engines.loner3e.tools import Oracle, twist_table
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eState, LonerCharacter, LonerWorld
 from aidm.engines.scenes.world import Scene, SceneRun
 
-TARGET = LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
+TARGET = LaunchTarget(scenario_id="whispering-vault", character_id="kael")
 PACKS = load_packs((Loner3eEngine.directory / "packs",), Pack)
 TWISTS = twist_table(PACKS)
 ORACLE = Oracle(PACKS)
@@ -71,7 +70,6 @@ def hub_world() -> Loner3eGame:
 
 
 def loner3e_session(directory: Path) -> GameService:
-    settings = offline_settings()
     engine = ENGINES_BUILT[LONER3E]
     spawner = ScriptedSpawner()
     store = FileStore(directory)
@@ -82,7 +80,6 @@ def loner3e_session(directory: Path) -> GameService:
         engine=engine,
         spawner=spawner,
         store=store,
-        settings=settings,
         rng=Random(1),
     )
 

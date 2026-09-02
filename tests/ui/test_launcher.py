@@ -32,7 +32,7 @@ INSTALLED = {**ENGINES_BUILT, MIRROR: _MIRRORED}
 
 def _opening_state(settings: Settings) -> Loner3eGame:
     """The launcher reads saves, so a test needs a state a real game would have written."""
-    target = LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
+    target = LaunchTarget(scenario_id="whispering-vault", character_id="kael")
     state = Runtime(settings, ScriptedSpawner()).session(target).state
     if not isinstance(state, Loner3eGame):
         raise AssertionError("the Loner service holds another game type")
@@ -66,7 +66,6 @@ def test_the_catalog_pairs_a_scenario_with_a_character(tmp_path: Path) -> None:
         ("kael", TWENTYFOURXX),
     ]
     assert launch_target(catalog, "whispering-vault", "kael").model_dump() == {
-        "slug": "whispering-vault--kael",
         "scenario_id": "whispering-vault",
         "character_id": "kael",
     }
@@ -105,7 +104,7 @@ def test_a_character_is_offered_only_to_the_rules_it_is_written_for(tmp_path: Pa
 
 
 def test_a_save_whose_engine_is_not_the_scenarios_is_not_listed(tmp_path: Path) -> None:
-    FileStore(tmp_path).save("old-game", _opening_state(ui_settings(tmp_path)))
+    FileStore(tmp_path).save("whispering-vault--kael", _opening_state(ui_settings(tmp_path)))
 
     catalog = load_catalog(ui_settings(tmp_path, _declaring(tmp_path, MIRROR)), INSTALLED)
 
@@ -121,7 +120,7 @@ def test_a_save_whose_engine_is_not_the_scenarios_is_not_listed(tmp_path: Path) 
 
 def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path)
-    FileStore(tmp_path).save("old-game", _opening_state(settings))
+    FileStore(tmp_path).save("whispering-vault--kael", _opening_state(settings))
 
     catalog = load_catalog(settings, ENGINES_BUILT)
     (saved,) = catalog.saves
@@ -134,10 +133,19 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     )
     assert catalog.scenario("whispering-vault").rules == "LONER 3E"
     assert saved.target.model_dump() == {
-        "slug": "old-game",
         "scenario_id": "whispering-vault",
         "character_id": "kael",
     }
+
+
+def test_a_save_filed_under_another_stem_is_not_listed(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    settings = ui_settings(tmp_path)
+    FileStore(tmp_path).save("old-game", _opening_state(settings))
+
+    assert not load_catalog(settings, ENGINES_BUILT).saves
+    assert "filed under another name" in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -158,23 +166,20 @@ def test_a_save_that_fails_to_restore_is_skipped_not_listed(tmp_path: Path) -> N
     """A stale save is invalid outright: the catalog skips it rather than listing it unopenable."""
     settings = ui_settings(tmp_path)
     state = _opening_state(settings)
-    FileStore(tmp_path).save("good", state)
+    FileStore(tmp_path).save("whispering-vault--kael", state)
     broken = state.model_dump(mode="json")
     broken["payload"]["world"]["cast"]["ghost"] = {"name": "Ghost"}
     _ = (tmp_path / "unopenable.json").write_text(json.dumps(broken), encoding=ENCODING)
 
     catalog = load_catalog(settings, ENGINES_BUILT)
 
-    assert [save.target.slug for save in catalog.saves] == ["good"]
+    assert [save.target.slug for save in catalog.saves] == ["whispering-vault--kael"]
 
 
 def test_the_catalog_reports_where_a_save_left_off(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path)
     dumped = _opening_state(settings).model_dump(mode="json")
-    dumped["payload"]["world"]["runs"][0]["exchanges"] = [
-        {"prompt": "Look around.", "lines": [{"speaker": None, "text": "You wait."}]}
-    ]
-    _ = (tmp_path / "underway.json").write_text(json.dumps(dumped), encoding=ENCODING)
+    _ = (tmp_path / "whispering-vault--kael.json").write_text(json.dumps(dumped), encoding=ENCODING)
 
     (saved,) = load_catalog(settings, ENGINES_BUILT).saves
 
@@ -184,14 +189,14 @@ def test_the_catalog_reports_where_a_save_left_off(tmp_path: Path) -> None:
 def test_a_save_the_app_cannot_read_does_not_hide_the_others(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path)
     state = _opening_state(settings)
-    FileStore(tmp_path).save("good", state)
+    FileStore(tmp_path).save("whispering-vault--kael", state)
     _ = (tmp_path / "broken.json").write_text("{not json", encoding=ENCODING)
     stale: dict[str, JsonValue] = json.loads(state.model_dump_json()) | {"turn": -1}
     _ = (tmp_path / "stale.json").write_text(json.dumps(stale), encoding=ENCODING)
 
     catalog = load_catalog(settings, ENGINES_BUILT)
 
-    assert [save.target.slug for save in catalog.saves] == ["good"]
+    assert [save.target.slug for save in catalog.saves] == ["whispering-vault--kael"]
 
 
 SOURCE_MD = REPOSITORY_ROOT / "tests/core/fixtures/source/drowned-road.md"

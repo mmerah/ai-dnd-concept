@@ -32,9 +32,6 @@ class Reader:
         path = self._path(self._key(exchange))
         return path if path.is_file() else None
 
-    def pending(self, exchange: Exchange) -> bool:
-        return self._key(exchange) in self.generating
-
     async def read(self, exchange: Exchange) -> None:
         """A failed generation costs a log line and nothing else: speech is outside the game."""
         requests = requests_of(exchange, self.voice, self.config.voices)
@@ -66,7 +63,6 @@ class Reader:
         except Exception:
             LOGGER.exception("speech generation failed")
         finally:
-            # After the write, so `pending` covers generation for the file's whole lifetime.
             self.generating.discard(key)
 
     def _key(self, exchange: Exchange) -> str:

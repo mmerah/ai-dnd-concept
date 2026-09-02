@@ -1,6 +1,7 @@
 from core_test_support import ENGINES_BUILT, LONER3E, initialized, with_entity
 
 from aidm.core.entities import EntityId
+from aidm.core.play import Exchange, SceneRecord, SpokenLine
 from aidm.core.views import NarratorView
 from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter
 from aidm.engines.seam import AnyEngine
@@ -33,7 +34,7 @@ def _master_prompt(held: Loner3eGame, prompt: str, *, notes: tuple[str, ...] = (
         _engine().instructions,
         _engine().master_sections(held),
         held,
-        _engine().history(held),
+        _engine().scenes(held),
         prompt,
         notes=notes,
     )
@@ -48,7 +49,6 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
         "place",
         "title",
         "situation",
-        "art_prompt",
         "focus",
         "subjects",
         "speakers",
@@ -80,6 +80,7 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:
         _engine().narrator_view(held),
         evidence="- the map was found",
         prompt="What does Mara say?",
+        scenes=(),
     )
 
     assert "Mara" in prompt
@@ -95,7 +96,13 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_read() -> None:
         _engine().narrator_view(held),
         evidence="- the map was found",
         prompt="What does Mara say?",
-        passages=("Water drips.",),
+        scenes=(
+            SceneRecord(
+                title="t",
+                question="q",
+                exchanges=(Exchange(prompt="p", lines=(SpokenLine(text="Water drips."),)),),
+            ),
+        ),
     )
 
     assert "Water drips." in prompt

@@ -6,11 +6,11 @@ from typing import Any, Literal, Self
 from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Slug, require_unique
-from aidm.core.facts import Fact, cards
+from aidm.core.facts import Fact
 from aidm.core.model import Game
-from aidm.core.play import Exchange, SpokenLine
+from aidm.core.play import Exchange, SceneRecord
 from aidm.core.tools import schema_of
-from aidm.core.views import PanelRow, Rows, sections
+from aidm.core.views import PanelRow, Rows, render_history, sections
 from aidm.engines.core import (
     Entity,
     Person,
@@ -32,16 +32,11 @@ from aidm.engines.hub import (
     check_board,
     check_kind,
     closed_jobs,
-    heading,
     hub_sections,
     job_start,
-    job_titles,
     place_unmet,
 )
 from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft, SceneDraft
-
-SCENE_TURN_CAP = 12
-SPENT_NOTE = "This scene looks spent — {reason}. If its question is settled, call `next_scene`."
 
 NEXT_SCENE = (
     "Say this scene's question is settled. The player is then asked what they want to pursue, "
@@ -92,14 +87,11 @@ class SceneRun(Mutable):
     present: list[CheckedEntityId] = Field(default_factory=list)
     hidden: list[CheckedEntityId] = Field(default_factory=list)
     exchanges: list[Exchange] = Field(default_factory=list)
-    # The game master has called the question answered; the player may move on, or play on.
-    settled: bool = False
-    # Why the scene looks finished already, written by the rule that settled it.
-    spent: str = ""
+    # None while open; "" once settled here; the player's words when they left for elsewhere
+    left: str | None = None
     # The master's word: settling this scene finished the job the player walked out on.
     job_done: bool = False
     recap: str = ""  # written when the player left
-    pursuit: str = ""  # where the player went, leaving with the question open; empty if it settled
 
 
 class NextScene(Frozen):
@@ -207,14 +199,18 @@ class SceneWorld[C: Person, P: Person](Mutable):
         return closed_jobs(self.hub, self.stops())
 
     def exchanges(self) -> tuple[Exchange, ...]:
-        filed: list[Exchange] = []
-        for run, job in zip(self.runs, job_titles(self.hub, self.stops()), strict=True):
-            where = heading(job, run.scene.title)
-            filed.extend(
-                one if one.where else one.model_copy(update={"where": where})
-                for one in run.exchanges
+        return tuple(one for run in self.runs for one in run.exchanges)
+
+    def scenes(self) -> tuple[SceneRecord, ...]:
+        return tuple(
+            SceneRecord(
+                title=run.scene.title,
+                question=run.scene.question,
+                recap=run.recap,
+                exchanges=tuple(run.exchanges),
             )
-        return tuple(filed)
+            for run in self.job_runs()
+        )
 
     def last_seen(self, entity_id: EntityId) -> str:
         """The prompt's own line; scanning back keeps what the story dropped from being lost."""
@@ -318,39 +314,14 @@ class SceneWorld[C: Person, P: Person](Mutable):
         return facts
 
     def settle(self, job_done: bool, pursuit: str) -> tuple[Fact, ...]:
-        if self.run.settled:
+        if self.run.left is not None:
             raise ValueError("this scene is already settled; the player has the way on")
         if job_done and (self.hub is None or self.at_hub):
             raise ValueError("no job is open here")
-        self.run.settled = True
+        self.run.left = pursuit
         self.run.job_done = job_done
-        self.run.pursuit = pursuit
         settled = SCENE_LEFT if pursuit else SCENE_SETTLED
         return (settled, JOB_DONE) if job_done else (settled,)
-
-    def record_exchange(
-        self,
-        prompt: str,
-        lines: tuple[SpokenLine, ...],
-        facts: Sequence[Fact],
-        decision: str,
-        *,
-        someone_dead: bool,
-    ) -> tuple[str, ...]:
-        """Deliberately blunt: the note catches only what no reading of the fiction can miss."""
-        run = self.run
-        run.exchanges.append(
-            Exchange(prompt=prompt, lines=lines, facts=cards(facts), decision=decision)
-        )
-        if run.settled or self.at_hub or len(run.exchanges) <= 1:
-            return ()
-        capped = len(run.exchanges) >= SCENE_TURN_CAP
-        reason = (
-            run.spent
-            or ("someone here is dead" if someone_dead else "")
-            or (f"{SCENE_TURN_CAP} turns have passed here" if capped else "")
-        )
-        return (SPENT_NOTE.format(reason=reason),) if reason else ()
 
     def merged_cast(self, draft: SceneDraft[C]) -> dict[EntityId, C]:
         """A re-filed member keeps the world's entry with the draft's brief."""
@@ -395,25 +366,15 @@ class SceneWorld[C: Person, P: Person](Mutable):
             finished=self.job_done,
         )
 
-    def recap_rows(self) -> Rows:
-        """The master reads the job so far as the worldsmith told it, never the raw exchanges."""
-        told = [run for run in self.job_runs() if run.recap]
-        if not told:
-            return ()
-        title = "EARLIER IN THIS JOB" if self.hub is not None else "EARLIER IN THIS ADVENTURE"
-        return ((title, "\n".join(f"- {run.scene.title}: {run.recap}" for run in told)),)
-
     def scene_rows(self) -> tuple[PanelRow, ...]:
         rows = [PanelRow(label=self.current.question, detail="")]
         if self.job:
             rows.append(PanelRow(label="The job", detail=self.job))
         if self.at_hub:
             rows.append(HUB_ROW)
-        elif self.run.settled:
-            if self.run.pursuit:
-                rows.append(
-                    PanelRow(label="Go on", detail=self.run.pursuit, intent=self.run.pursuit)
-                )
+        elif (left := self.run.left) is not None:
+            if left:
+                rows.append(PanelRow(label="Go on", detail=left, intent=left))
             else:
                 rows.append(
                     PanelRow(
@@ -452,12 +413,15 @@ class SceneWorld[C: Person, P: Person](Mutable):
         return worldsmith_prompt(
             role,
             source=self.source,
-            history=scene_history(self.job_runs()),
+            history=render_history(self.scenes()),
             cast=cast,
             guidance=guidance,
             intent=intent,
             answer=answer,
-            hub=self.hub_rows(returning=issubclass(answer, ReturnDraft)),
+            hub=(
+                *((("THE JOB", self.job),) if self.job else ()),
+                *self.hub_rows(returning=issubclass(answer, ReturnDraft)),
+            ),
         )
 
 
@@ -518,7 +482,7 @@ def check_game[S: SceneState[Any, Any]](packs: Collection[str], state: Game[S]) 
 
 def way_open[S: SceneState[Any, Any]](state: Game[S]) -> bool:
     world = state.payload.world
-    return world.run.settled or world.at_hub
+    return world.run.left is not None or world.at_hub
 
 
 def player_over[S: SceneState[Any, Any]](state: Game[S]) -> str | None:
@@ -720,20 +684,6 @@ def worldsmith_prompt(
     )
 
 
-def scene_history(runs: Sequence[SceneRun]) -> str:
-    return "\n\n".join(
-        "\n".join(
-            (
-                f"SCENE {number}: {run.scene.title} ({run.scene.place})",
-                f"the question: {run.scene.question}",
-                *([f"the job: {run.scene.job}"] if run.scene.job else []),
-                *_told(run),
-            )
-        )
-        for number, run in enumerate(runs, start=1)
-    )
-
-
 def entity_line(one: Person, *, detail: str = "") -> str:
     line = f"- {one.name}[{one.id}] — {one.brief}"
     if not one.alive:
@@ -758,11 +708,3 @@ def scene_of[C: Person](draft: SceneDraft[C], finished: bool) -> Scene:
         if isinstance(draft, ReturnDraft)
         else None,
     )
-
-
-def _told(run: SceneRun) -> tuple[str, ...]:
-    """The recap bounds a closed run, so the open run is the only one printed whole."""
-    if run.recap:
-        return (f"what happened: {run.recap}",)
-    exchanges = "\n".join(f"> {one.prompt}\n{one.narration}" for one in run.exchanges)
-    return (run.scene.situation, "what happened: " + (exchanges or "(nothing yet)"))

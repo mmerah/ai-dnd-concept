@@ -20,13 +20,16 @@ class CatalogEntry(Frozen):
 
 
 class LaunchTarget(Frozen):
-    slug: str
     scenario_id: Slug
     character_id: Slug
 
     @property
+    def slug(self) -> str:
+        return f"{self.scenario_id}--{self.character_id}"
+
+    @property
     def path(self) -> str:
-        return f"/game/{self.slug}/{self.scenario_id}/{self.character_id}"
+        return f"/game/{self.scenario_id}/{self.character_id}"
 
 
 class SaveOption(Frozen):
@@ -58,11 +61,7 @@ def launch_target(catalog: LauncherCatalog, scenario_id: Slug, character_id: Slu
     engine = catalog.scenario(scenario_id).engine
     if character_id not in {entry.id for entry in catalog.characters_for(engine)}:
         raise ValueError(f"no character {character_id!r} is written for the {engine!r} rules")
-    return LaunchTarget(
-        slug=f"{scenario_id}--{character_id}",
-        scenario_id=scenario_id,
-        character_id=character_id,
-    )
+    return LaunchTarget(scenario_id=scenario_id, character_id=character_id)
 
 
 def load_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> LauncherCatalog:
@@ -113,13 +112,15 @@ def load_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> L
         except ValueError as stale:
             LOGGER.warning("skipping save %r: %s", slug, stale)
             continue
-        history = engine.history(state)
-        where = history[-1].where if history else ""
+        target = LaunchTarget(scenario_id=game.scenario_id, character_id=game.character_id)
+        if slug != target.slug:
+            LOGGER.warning("skipping save %r: filed under another name", slug)
+            continue
+        scenes = engine.scenes(state)
+        where = scenes[-1].title if scenes else ""
         saves.append(
             SaveOption(
-                target=LaunchTarget(
-                    slug=slug, scenario_id=game.scenario_id, character_id=game.character_id
-                ),
+                target=target,
                 scenario_title=game.scenario.title,
                 character_title=title,
                 turn=game.turn,
