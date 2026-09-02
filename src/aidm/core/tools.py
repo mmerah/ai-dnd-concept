@@ -5,14 +5,13 @@ from typing import Any
 
 from pydantic import BaseModel, JsonValue
 
-from aidm.core.entities import EntityId, Frozen
+from aidm.core.entities import Frozen
 from aidm.core.facts import Fact
 from aidm.core.model import Game
 
 # The rng is a parameter so a trial run against a throwaway copy cannot consume the turn's dice.
 type Play[G: Game[Any]] = Callable[[G, Random], tuple[Fact, ...]]
 type Validate[G: Game[Any]] = Callable[[G], None]
-type Known[G: Game[Any]] = Callable[[G, EntityId], bool | None]
 
 
 class NoArgs(Frozen):
@@ -25,8 +24,6 @@ class MasterTool[G: Game[Any]]:
     description: str
     args: type[BaseModel]
     call: Callable[[G, Mapping[str, JsonValue], Random], tuple[Fact, ...]]
-    # World tools may still run in a turn that opened suspended; engine mechanics may not.
-    during_suspension: bool = False
 
 
 def master_tool[G: Game[Any], A: BaseModel](
@@ -34,8 +31,6 @@ def master_tool[G: Game[Any], A: BaseModel](
     description: str,
     args: type[A],
     resolve: Callable[[G, A, Random], Sequence[Fact]],
-    *,
-    during_suspension: bool = False,
 ) -> MasterTool[G]:
     if bare := [key for key, one in args.model_fields.items() if not one.description]:
         raise ValueError(f"{name} parameters the model reads carry no description: {bare}")
@@ -43,12 +38,11 @@ def master_tool[G: Game[Any], A: BaseModel](
     def call(draft: G, raw: Mapping[str, JsonValue], rng: Random) -> tuple[Fact, ...]:
         return tuple(resolve(draft, args.model_validate(raw), rng))
 
-    return MasterTool(name, description, args, call, during_suspension)
+    return MasterTool(name, description, args, call)
 
 
 def apply_to_draft[G: Game[Any]](
     validate: Validate[G],
-    known: Known[G],
     draft: G,
     play: Play[G],
     rng: Random,
@@ -58,14 +52,6 @@ def apply_to_draft[G: Game[Any]](
     landed = play(draft, rng)
     if before is not None and draft.pending is not before:
         raise ValueError("the rules already wait on a decision; they take one at a time")
-    for fact in landed:
-        if not fact.told or fact.entity_id is None:
-            continue
-        seen = known(draft, fact.entity_id)
-        if seen is None:
-            raise ValueError(f"a told fact names {fact.entity_id!r}, which the world does not hold")
-        if not seen:
-            raise ValueError(f"a told fact names {fact.entity_id!r}, whom the player has not met")
     validate(draft)
     return landed
 

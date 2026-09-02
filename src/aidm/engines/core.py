@@ -12,7 +12,6 @@ from aidm.core.play import DecisionOption
 from aidm.core.views import Panel, PanelRow, Rows
 
 PLAYER_ID = EntityId("player")
-PLAYER_DEAD = "the player is dead; they take no further part."
 CHANGE_WORLD = (
     "Apply one settled world change to match the story. Set `verb` to pick the change and fill "
     "that verb's own fields. One call makes one change."

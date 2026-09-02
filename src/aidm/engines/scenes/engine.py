@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from aidm.core.entities import EntityId, Slug
+from aidm.core.entities import Slug
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, AnyScenario, Game, ScenarioKind, WorldsmithAnswer
@@ -67,13 +67,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
 
     def over(self, state: G) -> str | None:
         return player_over(state)
-
-    def known(self, state: G, entity_id: EntityId) -> bool | None:
-        world = self.world(state)
-        if entity_id == world.player.id:
-            return True
-        one = world.cast.get(entity_id)
-        return None if one is None else one.known
 
     def record(
         self, state: G, prompt: str, lines: tuple[SpokenLine, ...], facts: Sequence[Fact]

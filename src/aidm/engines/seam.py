@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, EntityId, Slug, require_unique
+from aidm.core.entities import EngineId, Slug, require_unique
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING, decoded
 from aidm.core.model import (
@@ -80,8 +80,6 @@ class Engine[G: Game[Any]](ABC):
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> BaseModel: ...
     @abstractmethod
     def over(self, state: G) -> str | None: ...
-    @abstractmethod
-    def known(self, state: G, entity_id: EntityId) -> bool | None: ...
     @abstractmethod
     def record(
         self, state: G, prompt: str, lines: tuple[SpokenLine, ...], facts: Sequence[Fact]

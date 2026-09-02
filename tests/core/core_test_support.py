@@ -27,7 +27,6 @@ from aidm.engines.loner3e.world import (
 )
 from aidm.engines.registry import begin_game, build_engines
 from aidm.engines.seam import AnyEngine
-from aidm.turn.run import TurnStep
 
 # One tool call as a scripted game master makes it.
 type Call = tuple[str, dict[str, JsonValue]]
@@ -196,6 +195,7 @@ class Table[G: AnyGame]:
     state_type: type[G]
     refusals: list[str] = field(default_factory=list)
     answers: list[str] = field(default_factory=list)
+    facts: list[Fact] = field(default_factory=list)
 
     def call(self, name: str, args: dict[str, JsonValue]) -> str:
         """What the server does: a refusal is an error result the CLI reads and carries on from."""
@@ -207,10 +207,13 @@ class Table[G: AnyGame]:
         self.answers.append(answered)
         return answered
 
-    def plays(self, calls: Sequence[Call], *, start: bool = True) -> Callable[[], None]:
+    def plays(self, calls: Sequence[Call]) -> Callable[[], None]:
         def run() -> None:
-            for name, args in (("start_turn", {}), *calls) if start else calls:
+            for name, args in calls:
                 _ = self.call(name, args)
+            # Snapshotted here: the service drops the turn once it is filed.
+            if (turn := self.service.turn) is not None:
+                self.facts = list(turn.facts)
 
         return run
 
@@ -295,17 +298,14 @@ async def played[G: AnyGame](
     *calls: Call,
     narration: str = "You wait.",
     arrival: str | None = None,
-    start: bool = True,
     moving_on: bool = False,
-    on_step: Callable[[TurnStep], None] | None = None,
-    on_fact: Callable[[Fact], None] | None = None,
 ) -> G:
     """One turn, with the game master's tool calls scripted and the narrator's answer canned."""
-    table.spawner.turns.append(table.plays(calls, start=start))
+    table.spawner.turns.append(table.plays(calls))
     canned = table.spawner.answers.setdefault("narrator", [])
     canned.append(narrated(narration))
     # The crossing is its own narrator spawn, so a turn that installs a scene answers twice.
     if arrival is not None:
         canned.append(narrated(arrival))
-    await table.service.play(action, on_step=on_step, on_fact=on_fact, moving_on=moving_on)
+    await table.service.play(action, moving_on=moving_on)
     return table.state

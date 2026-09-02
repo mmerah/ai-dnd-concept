@@ -8,7 +8,7 @@ from pydantic import Field, model_validator
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.tools import MasterTool, master_tool
-from aidm.engines.core import CHANGE_WORLD, PLAYER_DEAD, entity_fact, keep_highest, sentence
+from aidm.engines.core import CHANGE_WORLD, entity_fact, keep_highest, sentence
 from aidm.engines.scenes.world import NEXT_SCENE, Enter, Kill, Leave, NextScene, Reveal
 from aidm.engines.twentyfourxx.creation import Pack
 from aidm.engines.twentyfourxx.world import (
@@ -134,8 +134,6 @@ class Skills:
     def attempt(self, draft: TwentyfourxxGame, args: Attempt, rng: Random) -> list[Fact]:
         world = draft.payload.world
         player = world.player
-        if not player.alive:
-            raise ValueError(PLAYER_DEAD)
 
         if args.skill:
             label = self._resolve_skill(player, args.skill)
@@ -189,8 +187,6 @@ class Skills:
     def job_done(self, draft: TwentyfourxxGame, args: JobDone, rng: Random) -> list[Fact]:
         world = draft.payload.world
         player = world.player
-        if not player.alive:
-            raise ValueError(PLAYER_DEAD)
         label = self._resolve_skill(player, args.skill)
         new_die = raised(player.skills.get(label))
         player.skills[label] = new_die
@@ -287,8 +283,6 @@ def test_luck(_draft: TwentyfourxxGame, args: TestLuck, rng: Random) -> tuple[Fa
 def defend(draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
     world = draft.payload.world
     player = world.player
-    if not player.alive:
-        raise ValueError(PLAYER_DEAD)
     item = player.items.get(args.item_id)
     if item is None:
         raise ValueError(f"{args.item_id!r} is not among the player's items")
@@ -306,9 +300,7 @@ def defend(draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
 def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[TwentyfourxxGame], ...]:
     skills = Skills(packs)
     return (
-        master_tool(
-            "change_world", CHANGE_WORLD, ChangeWorld, change_world, during_suspension=True
-        ),
+        master_tool("change_world", CHANGE_WORLD, ChangeWorld, change_world),
         master_tool(
             "next_scene",
             NEXT_SCENE,

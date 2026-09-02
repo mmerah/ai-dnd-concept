@@ -13,7 +13,7 @@ from aidm.core.tools import MasterTool, NoArgs, apply_to_draft, master_tool
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
 from aidm.engines.seam import AnyEngine
-from aidm.turn.run import RULES_WAIT, Turn, TurnStep, consume_answer
+from aidm.turn.run import RULES_WAIT, Turn, consume_answer
 
 
 class Broken(Frozen):
@@ -24,17 +24,18 @@ def _turned(item: str) -> tuple[Fact, ...]:
     return (Fact(kind="defence_turned", trace=f"{item} broke to turn the hit", told=True),)
 
 
-def _chained(draft: AnyGame, item: str) -> tuple[Fact, ...]:
-    _loner(draft).pending = DECISION
-    return _turned(item)
-
-
 TURN_THE_HIT: MasterTool[Loner3eGame] = master_tool(
     "turn_the_hit",
     "Break something to turn the hit.",
     Broken,
     lambda _draft, one, _rng: _turned(one.item),
 )
+
+
+def _chained(draft: AnyGame, item: str) -> tuple[Fact, ...]:
+    _loner(draft).pending = DECISION
+    return _turned(item)
+
 
 CHAIN_THE_HIT: MasterTool[Loner3eGame] = master_tool(
     "chain_the_hit",
@@ -110,25 +111,23 @@ def test_an_answer_is_a_chosen_option_or_written_text_but_never_both_nor_neither
 
 async def test_a_suspending_resolver_ends_the_run_and_records_the_pause(tmp_path: Path) -> None:
     table = _deciding(tmp_path)
-    steps: list[TurnStep] = []
 
-    state = await played(table, "I charge the guard.", tool_call("strike"), on_step=steps.append)
+    state = await played(table, "I charge the guard.", tool_call("strike"))
 
     assert any(RULES_WAIT in answer for answer in table.answers)
     assert state.pending == DECISION
     assert state.payload.world.exchanges()[-1].decision == DECISION.prompt
-    assert steps == ["master", "narrator"]
+    assert [role for role, _ in table.spawner.prompts] == ["master", "narrator"]
 
 
 async def test_a_hand_back_that_moved_no_fiction_gets_no_prose(tmp_path: Path) -> None:
     table = _deciding(tmp_path, narrate=False)
-    steps: list[TurnStep] = []
     table.spawner.turns.append(table.plays((tool_call("strike"),)))
 
-    await table.service.play("I charge the guard.", on_step=steps.append)
+    await table.service.play("I charge the guard.")
 
     state = table.service.state
-    assert steps == ["master"]
+    assert [role for role, _ in table.spawner.prompts] == ["master"]
     assert state.payload.world.exchanges()[-1].lines == ()
     assert state.payload.world.exchanges()[-1].narration == ""
 
@@ -138,26 +137,24 @@ async def test_a_closed_answer_resolves_in_engine_code_before_the_master_continu
 ) -> None:
     table = _deciding(tmp_path)
     _suspend(table)
-    facts: list[Fact] = []
 
-    state = await played(table, Answer(option_id="lantern"), on_fact=facts.append)
+    state = await played(table, Answer(option_id="lantern"))
 
-    assert [fact.kind for fact in facts] == ["defence_turned"]
-    assert "lantern broke to turn the hit" in table.answers[0]
+    assert [fact.kind for fact in table.facts] == ["defence_turned"]
+    assert "lantern broke to turn the hit" in table.spawner.prompt("master")
     assert state.payload.world.exchanges()[-1].prompt == "Break the lantern"
     assert state.pending is None
 
 
-async def test_a_re_suspended_continuation_keeps_the_rules_waiting(tmp_path: Path) -> None:
+async def test_an_answer_that_re_suspends_spawns_no_master(tmp_path: Path) -> None:
+    """Every tool would be refused while the rules wait, so the spawn would play nothing."""
     table = _deciding(tmp_path)
     _suspend(table, CHAINING)
 
     state = await played(table, Answer(option_id="lantern"))
 
     assert state.pending == DECISION
-    # A re-suspension has no tool answer to carry the wait, so the picture has to end on it.
-    resolved = table.answers[0].split("\n\nPLAYER ACTION:")[0]
-    assert resolved.endswith(f"- {RULES_WAIT}")
+    assert [role for role, _ in table.spawner.prompts] == ["narrator"]
 
 
 async def test_an_option_the_decision_never_offered_raises(tmp_path: Path) -> None:
@@ -176,7 +173,7 @@ def test_a_change_may_run_on_a_state_already_suspended_on_a_decision(tmp_path: P
         return ()
 
     draft = _pending(state).draft()
-    _ = apply_to_draft(engine.validate, engine.known, draft, nothing, Random(0))
+    _ = apply_to_draft(engine.validate, draft, nothing, Random(0))
     suspended = draft.committed()
     assert suspended.pending == DECISION
 
@@ -187,7 +184,6 @@ def test_a_second_decision_is_refused_while_one_is_already_open(tmp_path: Path) 
     with pytest.raises(ValueError, match="one at a time"):
         _ = apply_to_draft(
             engine.validate,
-            engine.known,
             draft,
             lambda draft, _rng: _hit(draft, narrate=False),
             Random(0),

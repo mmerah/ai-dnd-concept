@@ -285,9 +285,7 @@ def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[Loner3eGame], ...]:
     """Four tools: two world tools, then the two SRD procedures that roll or reset."""
     oracle = Oracle(packs)
     return (
-        master_tool(
-            "change_world", CHANGE_WORLD, ChangeWorld, change_world, during_suspension=True
-        ),
+        master_tool("change_world", CHANGE_WORLD, ChangeWorld, change_world),
         master_tool(
             "next_scene",
             NEXT_SCENE,

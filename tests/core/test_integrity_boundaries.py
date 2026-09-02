@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-from random import Random
 
 import pytest
 from core_test_support import (
@@ -18,14 +17,11 @@ from core_test_support import (
 from pydantic import ValidationError
 
 from aidm.core.entities import EngineId, EntityId
-from aidm.core.facts import Fact
 from aidm.core.io import load_character, read_scenario
-from aidm.core.tools import apply_to_draft
 from aidm.engines.core import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, LonerWorld
 
 MARA = EntityId("mara")
-ELENA = EntityId("elena")
 OTHER = EngineId("ruleless")
 
 
@@ -145,33 +141,6 @@ def test_a_rules_mutation_lands_on_the_commit_and_nowhere_else() -> None:
 
     assert _luck(committed) == 1
     assert _luck(state) == LUCK_MAX
-
-
-def test_a_told_fact_about_an_unmet_or_unknown_entity_is_refused() -> None:
-    engine, state = initialized()
-    leak = Fact(kind="entity_moved", trace="Elena moved", told=True, entity_id=ELENA)
-
-    with pytest.raises(ValueError, match="has not met"):
-        _ = apply_to_draft(
-            engine.validate,
-            engine.known,
-            state.draft(),
-            lambda _draft, _rng: (leak,),
-            Random(0),
-        )
-
-    nobody = Fact(
-        kind="entity_moved", trace="a ghost moved", told=True, entity_id=EntityId("ghost")
-    )
-
-    with pytest.raises(ValueError, match="does not hold"):
-        _ = apply_to_draft(
-            engine.validate,
-            engine.known,
-            state.draft(),
-            lambda _draft, _rng: (nobody,),
-            Random(0),
-        )
 
 
 def test_a_save_whose_payload_the_engine_rejects_is_refused() -> None:

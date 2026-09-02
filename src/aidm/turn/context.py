@@ -21,44 +21,27 @@ MASTER = (_PROMPTS_DIR / "master.md").read_text(encoding=ENCODING)
 NARRATOR = (_PROMPTS_DIR / "narrator.md").read_text(encoding=ENCODING)
 
 
-def render_master(instructions: str, action: str) -> str:
-    """The spawn prompt: the rules, and the action. `start_turn` hands back the picture."""
+def render_master(
+    instructions: str,
+    engine_sections: Sequence[tuple[str, str]],
+    state: AnyGame,
+    history: Sequence[Exchange],
+    action: str,
+    *,
+    notes: Sequence[str] = (),
+    recent: int = 0,
+) -> str:
+    """The whole spawn prompt: every spawn is cold, so the picture rides in it."""
     return sections(
         (
             ("YOUR ROLE", MASTER),
             ("THE RULES OF THIS GAME", instructions),
-            ("PLAYER ACTION", action),
-        )
-    )
-
-
-def render_picture(
-    engine_sections: Sequence[tuple[str, str]],
-    state: AnyGame,
-    history: Sequence[Exchange],
-    prompt: str,
-    *,
-    resumed: str = "",
-    notes: Sequence[str] = (),
-    recent: int = 0,
-) -> str:
-    """What `start_turn` and `scene` hand back; the engine states every section of the world."""
-    ending = (
-        (
-            ("THE PLAYER'S DECISION, ALREADY RESOLVED", resumed),
-            ("PLAYER ACTION", ANSWERED_BY_OPTION),
-        )
-        if resumed
-        else (("PLAYER ACTION", prompt),)
-    )
-    return sections(
-        (
             ("SCENARIO", f"{state.scenario.title}\n{state.scenario.premise}"),
             (f"RECENT PLAY (this is turn {state.turn + 1})", _recent(history, recent)),
             *engine_sections,
             ("NOTES FROM THE RULES", "\n".join(f"- {note}" for note in notes) or "- (none)"),
             ("WAITING ON THE PLAYER", _waiting(state.pending)),
-            *ending,
+            ("PLAYER ACTION", action),
         )
     )
 

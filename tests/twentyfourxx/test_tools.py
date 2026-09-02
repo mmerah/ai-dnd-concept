@@ -134,13 +134,6 @@ def test_risking_death_kills_on_disaster_and_maims_on_setback_not_doubled() -> N
     assert any(fact.card == "You are dead" for fact in facts)
 
 
-def test_attempt_refused_when_dead() -> None:
-    draft = small_world().draft()
-    draft.payload.world.player.alive = False
-    with pytest.raises(ValueError, match="dead"):
-        _ = SKILLS.attempt(draft, Attempt(what="Slip past", skill="Stealth"), Random(0))
-
-
 def test_luck_facts_are_untold() -> None:
     draft = small_world().draft()
     dice_fact, luck_fact = roll_luck(draft, LuckTest(question="Is anyone home?"), Random(0))

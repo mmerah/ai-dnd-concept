@@ -1,7 +1,7 @@
 import logging
 from asyncio import get_running_loop
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from time import monotonic
@@ -9,7 +9,7 @@ from time import monotonic
 from nicegui import ui
 
 from aidm.app.runtime import BEGUN, CROSSED, GameService, Runtime
-from aidm.core.facts import DiceEvent, Fact
+from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import Answer, Speaker
 from aidm.core.views import speaker_of
 from aidm.turn.run import TurnStep
@@ -53,9 +53,8 @@ class GameView:
     # Both are built by the page below this view, and the panels reach them through it.
     composer: ui.input | None = None
     transcript: ui.scroll_area | None = None
-    # The turn in flight, owned by the view, never by game state; cleared on success or failure.
-    live_prompt: str | None = None
-    live_facts: list[Fact] = field(default_factory=list)
+    # What the last poll read: the phase, the facts landed, the exchanges filed.
+    seen: tuple[TurnStep | None, int, int] = (None, 0, 0)
     step_started: float | None = None
     ticker: ui.label | None = None
 
@@ -127,42 +126,31 @@ def chat(view: GameView) -> None:
 @ui.refreshable
 def live_turn(view: GameView) -> None:
     session = view.session
-    if view.live_prompt is not None:
-        _bubble(session, speaker_of(session.player_view().player), view.live_prompt, sent=True)
-    for fact in view.live_facts:
-        _card(fact, live=fact is view.live_facts[-1])
+    turn = session.turn
+    if turn is not None:
+        _bubble(session, speaker_of(session.player_view().player), turn.prompt, sent=True)
+        shown = cards(turn.facts)
+        for fact in shown:
+            _card(fact, live=fact is shown[-1])
+    elif session.intent:
+        _bubble(session, speaker_of(session.player_view().player), session.intent, sent=True)
     view.ticker = None
-    if session.step is not None:
+    if session.phase is not None:
         elapsed = 0.0 if view.step_started is None else monotonic() - view.step_started
-        view.ticker = _inline_status(session.step, elapsed)
+        view.ticker = _inline_status(session.phase, elapsed)
 
 
-def on_step(view: GameView, step: TurnStep) -> None:
-    view.session.step = step
-    view.step_started = monotonic()
-    live_turn.refresh()
-    if view.composer is not None:
-        view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
-
-
-def on_commit(view: GameView) -> None:
-    """The turn is filed; the page shows its narration before the worldsmith is asked."""
-    view.live_prompt, view.live_facts = None, []
-    chat.refresh()
-    live_turn.refresh()
-    _scroll(view)
-
-
-def on_fact(view: GameView, fact: Fact) -> None:
-    if not (fact.told and fact.card):
-        return
-    view.live_facts.append(fact)
-    live_turn.refresh()
-    _scroll(view)
-
-
-def tick_elapsed(view: GameView) -> None:
-    """The timer lives on the page, not in the refreshable."""
+def poll_turn(view: GameView) -> None:
+    """The page reads the turn once a second; the turn never calls the page."""
+    now = _observed(view.session)
+    if now[0] != view.seen[0]:
+        view.step_started = None if now[0] is None else monotonic()
+    if now != view.seen:
+        view.seen = now
+        if view.composer is not None:
+            view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
+        refresh_all()
+        _scroll(view)
     ticker, started = view.ticker, view.step_started
     if ticker is not None and started is not None and not ticker.is_deleted:
         ticker.set_text(_clock(monotonic() - started))
@@ -201,7 +189,7 @@ async def submit(view: GameView, box: ui.input, moving_on: bool = False) -> None
     # Quasar never saw the typed value change, so only an explicit push empties the composer.
     _ = box.run_method("updateValue")
     typed_input = typed if session.player_view().prompt is None else Answer(text=typed)
-    await _send(view, typed_input, typed, moving_on=moving_on)
+    await _send(view, typed_input, moving_on=moving_on)
 
 
 async def move_on(view: GameView, intent: str) -> None:
@@ -211,7 +199,7 @@ async def move_on(view: GameView, intent: str) -> None:
     if pending is not None and not pending.allows_text:
         ui.notify("Choose an option above.", type="warning")
         return
-    await _send(view, intent if pending is None else Answer(text=intent), intent, moving_on=True)
+    await _send(view, intent if pending is None else Answer(text=intent), moving_on=True)
 
 
 @ui.refreshable
@@ -235,12 +223,10 @@ def decision_panel(view: GameView) -> None:
     if pending is None:
         return
 
-    labels = {option.id: option.label for option in pending.options}
-
     async def answer(option_id: str) -> None:
         if refuse_play(view):
             return
-        await _send(view, Answer(option_id=option_id), labels[option_id])
+        await _send(view, Answer(option_id=option_id))
 
     with ui.column().classes("game-card game-decision w-full").style("gap: 0.5rem"):
         with ui.row().classes("items-center no-wrap").style("gap: 0.4rem"):
@@ -256,15 +242,15 @@ def decision_panel(view: GameView) -> None:
 def composer(view: GameView) -> None:
     session = view.session
     with ui.row().classes("w-full no-wrap items-end game-composer q-pa-sm").style("gap: 0.5rem"):
-        # `busy` is only the source NiceGUI needs: it re-runs every backward on its 0.1s poll.
+        # `phase` is only the source NiceGUI needs: it re-runs every backward on its 0.1s poll.
         ui.label("").classes("text-xs self-center").style(
             "color: var(--game-danger)"
-        ).bind_text_from(session, "busy", backward=lambda _: session.player_view().over or "")
+        ).bind_text_from(session, "phase", backward=lambda _: session.player_view().over or "")
         box = (
             ui.input(placeholder=_composer_placeholder(view))
             .classes("flex-grow")
             .props("outlined autogrow type=textarea borderless")
-            .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
+            .bind_enabled_from(session, "phase", backward=partial(_can_type, session))
         )
         # Enter sends; without the prevent the browser also leaves its newline behind.
         box.on(
@@ -275,14 +261,14 @@ def composer(view: GameView) -> None:
         _ = (
             ui.button(icon="send", on_click=lambda: submit(view, box))
             .props("round flat")
-            .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
+            .bind_enabled_from(session, "phase", backward=partial(_can_type, session))
         )
         _ = (
             ui.button("Move on", icon="arrow_forward", on_click=lambda: submit(view, box, True))
             .props("no-caps outline dense")
-            .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
+            .bind_enabled_from(session, "phase", backward=partial(_can_type, session))
             .bind_visibility_from(
-                session, "busy", backward=lambda _: session.transition_available()
+                session, "phase", backward=lambda _: session.transition_available()
             )
         )
     view.composer = box
@@ -293,7 +279,7 @@ async def restart(view: GameView) -> None:
     if refuse_play(view):
         return
     session.restart()
-    view.live_prompt, view.live_facts = None, []
+    view.seen = _observed(session)
     refresh_all()
     await _open(view)
 
@@ -332,8 +318,9 @@ def game_page(runtime: Runtime, session: GameService) -> None:
 
     # A cached clip never autoplays on a page load, only one landing after.
     view.shown_clip = (session.newest_clip(), session.clip_pending())
+    view.seen = _observed(session)
 
-    ui.timer(1.0, lambda: tick_elapsed(view))
+    ui.timer(1.0, lambda: poll_turn(view))
     if session.media is not None or session.reader is not None:
         ui.timer(3.0, lambda: poll_media(view))
 
@@ -404,9 +391,9 @@ def _clock(seconds: float) -> str:
 
 
 def _composer_placeholder(view: GameView) -> str:
-    step = view.session.step
-    if step is not None:
-        return f"{_STEP_COPY[step][0]} is working..."
+    phase = view.session.phase
+    if phase is not None:
+        return f"{_STEP_COPY[phase][0]} is working..."
     pending = view.session.player_view().prompt
     if pending is not None:
         if not pending.allows_text:
@@ -415,53 +402,43 @@ def _composer_placeholder(view: GameView) -> str:
     return "What do you do?"
 
 
+def _observed(session: GameService) -> tuple[TurnStep | None, int, int]:
+    """The phase, the facts landed, the exchanges filed: what a render depends on."""
+    turn = session.turn
+    return (
+        session.phase,
+        0 if turn is None else len(turn.facts),
+        len(session.engine.history(session.state)),
+    )
+
+
 def _scroll(view: GameView) -> None:
     if (transcript := view.transcript) is not None:
         # A method call on an existing element needs no NiceGUI slot; `ui.timer` here would.
         get_running_loop().call_later(0.1, lambda: transcript.scroll_to(percent=1.0))
 
 
-async def _run(view: GameView, bubble: str | None, playing: Callable[[], Awaitable[None]]) -> None:
-    session = view.session
-    view.live_prompt, view.live_facts = bubble, []
-    live_turn.refresh()
-    _scroll(view)
+async def _run(view: GameView, playing: Callable[[], Awaitable[None]]) -> None:
     async with working():
         await playing()
-    if session.write_failure:
+    if view.session.write_failure:
         ui.notify(NO_WAY_ON, type="warning")
-    view.live_prompt, view.live_facts, view.step_started = None, [], None
-    if view.composer is not None:
-        view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
-    refresh_all()
-    _scroll(view)
+    poll_turn(view)
 
 
 async def _open(view: GameView) -> None:
     # A second tab's timer must not run the page reset over an opening already in flight.
     if not view.session.unopened():
         return
-    await _run(view, None, lambda: view.session.open(on_step=lambda step: on_step(view, step)))
+    await _run(view, view.session.open)
 
 
-async def _send(
-    view: GameView, player_input: str | Answer, bubble: str, *, moving_on: bool = False
-) -> None:
+async def _send(view: GameView, player_input: str | Answer, *, moving_on: bool = False) -> None:
     session = view.session
-    await _run(
-        view,
-        bubble,
-        lambda: session.play(
-            player_input,
-            on_step=lambda step: on_step(view, step),
-            on_fact=lambda fact: on_fact(view, fact),
-            moving_on=moving_on,
-            on_commit=lambda: on_commit(view),
-        ),
-    )
+    await _run(view, lambda: session.play(player_input, moving_on=moving_on))
 
 
-def _can_type(session: GameService, busy: bool) -> bool:
+def _can_type(session: GameService, phase: TurnStep | None) -> bool:
     player = session.player_view()
     typed = player.prompt is None or player.prompt.allows_text
-    return not busy and typed and player.over is None
+    return phase is None and typed and player.over is None

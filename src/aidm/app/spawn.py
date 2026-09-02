@@ -101,9 +101,7 @@ class CodexDriver:
     def command(
         self, role: Role, config: RoleConfig, session: str | None, url: str
     ) -> Sequence[str]:
-        # Measured: a resumed thread refuses every MCP call, so the master always starts cold.
-        carried = None if role == "master" else session
-        argv = ["codex", "exec", *(() if carried is None else ("resume", carried))]
+        argv = ["codex", "exec", *(() if session is None else ("resume", session))]
         argv += [
             "--json",
             "--model",
@@ -160,7 +158,6 @@ class CliSpawner:
             config.provider,
             config.model,
             config.effort,
-            # Read off the command, because a driver may refuse to carry a session on.
             "resumed" if "resume" in argv or "--resume" in argv else "cold",
             monotonic() - started,
         )

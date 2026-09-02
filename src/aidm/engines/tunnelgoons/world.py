@@ -342,11 +342,6 @@ def check_hub(
     closed_jobs(hub, stops)
 
 
-def known(state: TunnelGoonsGame, entity_id: EntityId) -> bool | None:
-    one = state.payload.world.entity(entity_id)
-    return None if one is None else one.known
-
-
 def record(
     state: TunnelGoonsGame, prompt: str, lines: tuple[SpokenLine, ...], facts: Sequence[Fact]
 ) -> tuple[str, ...]:
