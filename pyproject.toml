@@ -49,7 +49,7 @@ reportUnannotatedClassAttribute = false # pydantic's `model_config` is unannotat
 
 [tool.ruff]
 line-length = 100
-extend-exclude = [".agents", "VISION.md", "NEXT-SPECS.md"] # ruff 0.16 formats md code blocks
+extend-exclude = [".agents", "VISION.md", "NEXT-SPECS.md", "PLAN.md"] # ruff 0.16 formats md code blocks
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
