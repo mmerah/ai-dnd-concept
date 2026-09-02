@@ -34,11 +34,9 @@
             "sil-marrow"
           ],
           "exchanges": [],
-          "settled": false,
-          "spent": "",
+          "left": null,
           "job_done": false,
-          "recap": "",
-          "pursuit": ""
+          "recap": ""
         }
       ],
       "source": "A dockside bar, a fixer's board, and whatever job pays the rent this week.",

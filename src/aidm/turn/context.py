@@ -6,9 +6,9 @@ from pydantic import BaseModel
 
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyGame
-from aidm.core.play import Exchange, Narration, PendingDecision
+from aidm.core.play import Narration, PendingDecision, SceneRecord
 from aidm.core.tools import schema_of
-from aidm.core.views import NarratorView, sections
+from aidm.core.views import NarratorView, render_history, sections, told_narration
 
 ANSWERED_BY_OPTION = (
     "The player chose the option above and the rules have applied it. Develop what it caused; "
@@ -25,11 +25,10 @@ def render_master(
     instructions: str,
     engine_sections: Sequence[tuple[str, str]],
     state: AnyGame,
-    history: Sequence[Exchange],
+    scenes: Sequence[SceneRecord],
     action: str,
     *,
     notes: Sequence[str] = (),
-    recent: int = 0,
 ) -> str:
     """The whole spawn prompt: every spawn is cold, so the picture rides in it."""
     return sections(
@@ -37,7 +36,7 @@ def render_master(
             ("YOUR ROLE", MASTER),
             ("THE RULES OF THIS GAME", instructions),
             ("SCENARIO", f"{state.scenario.title}\n{state.scenario.premise}"),
-            (f"RECENT PLAY (this is turn {state.turn + 1})", _recent(history, recent)),
+            (f"RECENT PLAY (this is turn {state.turn + 1})", render_history(scenes)),
             *engine_sections,
             ("NOTES FROM THE RULES", "\n".join(f"- {note}" for note in notes) or "- (none)"),
             ("WAITING ON THE PLAYER", _waiting(state.pending)),
@@ -47,13 +46,13 @@ def render_master(
 
 
 def render_narrator(
-    view: NarratorView, *, evidence: str, prompt: str, passages: Sequence[str] = ()
+    view: NarratorView, *, evidence: str, prompt: str, scenes: Sequence[SceneRecord]
 ) -> str:
     """Only the narrator view reaches this, so hidden canon has no path into the prose."""
     return sections(
         (
             ("YOUR ROLE", NARRATOR),
-            ("WHAT THE PLAYER HAS READ", "\n\n".join(passages) or "(nothing yet)"),
+            ("WHAT THE PLAYER HAS READ", "\n\n".join(told_narration(scenes)) or "(nothing yet)"),
             ("SCENE", f"{view.title}\n{view.situation}"),
             ("WHAT THIS SCENE IS ABOUT", view.focus),
             (
@@ -67,23 +66,8 @@ def render_narrator(
     )
 
 
-def told_passages(history: Sequence[Exchange], limit: int) -> tuple[str, ...]:
-    """What the player has already read, so continuity costs the narrator no hidden canon."""
-    return tuple(one.narration for one in history[-limit:] if one.narration)
-
-
 def _shape(model: type[BaseModel]) -> str:
     return json.dumps(schema_of(model), indent=2, ensure_ascii=False)
-
-
-def _recent(history: Sequence[Exchange], limit: int) -> str:
-    told = [_recent_exchange(one) for one in history]
-    return "\n\n".join(told[-limit:]) or "(the game has not started yet)"
-
-
-def _recent_exchange(exchange: Exchange) -> str:
-    location = f"[at {exchange.where}] " if exchange.where else ""
-    return f"> {exchange.prompt}\n{location}{exchange.narration}"
 
 
 def _waiting(pending: PendingDecision | None) -> str:

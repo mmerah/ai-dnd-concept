@@ -4,22 +4,12 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Mutable, require_unique, slug
-from aidm.core.facts import Fact, cards
+from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
-from aidm.core.play import Exchange, SpokenLine
+from aidm.core.play import Exchange, SceneRecord
 from aidm.core.views import Rows
 from aidm.engines.core import PLAYER_ID, Counter, check_filing, labeled, pool, reveal
-from aidm.engines.hub import (
-    Debrief,
-    Job,
-    Offer,
-    Stop,
-    check_board,
-    closed_jobs,
-    heading,
-    job_start,
-    job_titles,
-)
+from aidm.engines.hub import Debrief, Job, Offer, Stop, check_board, closed_jobs, job_start
 
 Ability = Literal["brute", "skulker", "erudite"]
 ABILITIES: tuple[Ability, ...] = ("brute", "skulker", "erudite")
@@ -271,14 +261,18 @@ class TunnelWorld(Dungeon):
         return reveal(one, self.player.id)
 
     def exchanges(self) -> tuple[Exchange, ...]:
-        filed: list[Exchange] = []
-        for visit, job in zip(self.visits, job_titles(self.hub, self.stops()), strict=True):
-            where = heading(job, self.require_place(visit.place).name)
-            filed.extend(
-                one if one.where else one.model_copy(update={"where": where})
-                for one in visit.exchanges
+        return tuple(one for visit in self.visits for one in visit.exchanges)
+
+    def scenes(self) -> tuple[SceneRecord, ...]:
+        records: list[SceneRecord] = []
+        for visit in self.job_visits():
+            place = self.require_place(visit.place)
+            records.append(
+                SceneRecord(
+                    title=place.name, question=place.brief, exchanges=tuple(visit.exchanges)
+                )
             )
-        return tuple(filed)
+        return tuple(records)
 
 
 class TunnelGoonsState(Mutable):
@@ -342,19 +336,8 @@ def check_hub(
     closed_jobs(hub, stops)
 
 
-def record(
-    state: TunnelGoonsGame, prompt: str, lines: tuple[SpokenLine, ...], facts: Sequence[Fact]
-) -> tuple[str, ...]:
-    world = state.payload.world
-    world.visit.exchanges.append(
-        Exchange(
-            prompt=prompt,
-            lines=lines,
-            facts=cards(facts),
-            decision="" if state.pending is None else state.pending.prompt,
-        )
-    )
-    return ()
+def record(state: TunnelGoonsGame, exchange: Exchange) -> None:
+    state.payload.world.visit.exchanges.append(exchange)
 
 
 def history(state: TunnelGoonsGame) -> tuple[Exchange, ...]:

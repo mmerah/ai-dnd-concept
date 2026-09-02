@@ -7,13 +7,10 @@ from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.hub import HOME_ROW, HUB_ROW, Debrief, Job, Offer
 from aidm.engines.scenes.drafts import NextDraft
 from aidm.engines.scenes.world import (
-    SCENE_TURN_CAP,
-    SPENT_NOTE,
     Scene,
     SceneRun,
     SceneWorld,
     check_hub,
-    scene_history,
 )
 
 HUB = "hub"
@@ -34,7 +31,7 @@ def _run(place: str, title: str, *, debrief: Debrief | None = None, told: bool =
         situation=SITUATION,
         debrief=debrief,
     )
-    exchanges = [Exchange(prompt="p", lines=())] if told else []
+    exchanges = [Exchange(prompt=title, lines=())] if told else []
     return SceneRun(scene=scene, exchanges=exchanges)
 
 
@@ -54,13 +51,7 @@ def test_the_job_walk_reads_job_runs_jobs_and_exchange_headings() -> None:
 
     assert world.job_runs() == world.runs[3:]
     assert world.jobs() == (Job(title="A1", place="a1", debrief=DONE),)
-    assert [exchange.where for exchange in world.exchanges()] == [
-        "Hub",
-        "A1",
-        "A1 — A2",
-        "Hub",
-        "B1",
-    ]
+    assert [exchange.prompt for exchange in world.exchanges()] == ["Hub", "A1", "A2", "Hub", "B1"]
 
 
 def test_job_done_is_true_when_any_run_of_the_open_job_has_it() -> None:
@@ -99,39 +90,6 @@ def test_check_hub_refuses_a_job_done_where_no_job_is_open() -> None:
         check_hub(None, (), [one_shot])
 
 
-def test_record_exchange_files_the_turn_and_stays_silent_at_the_hub_and_when_settled() -> None:
-    at_hub = SceneWorld[Person, Person](
-        player=PLAYER, runs=[_run(HUB, "Hub", told=True)], hub=HUB, board=BOARD
-    )
-    at_hub.run.spent = "the door is barred"
-    assert at_hub.record_exchange("p", (), (), "", someone_dead=False) == ()
-    assert [one.prompt for one in at_hub.run.exchanges] == ["p", "p"]
-
-    settled = SceneWorld[Person, Person](player=PLAYER, runs=[_run("a1", "A1", told=True)])
-    settled.run.spent = "the door is barred"
-    settled.run.settled = True
-    assert settled.record_exchange("p", (), (), "", someone_dead=False) == ()
-
-    opening = SceneWorld[Person, Person](player=PLAYER, runs=[_run("a1", "A1")])
-    opening.run.spent = "the door is barred"
-    assert opening.record_exchange("p", (), (), "", someone_dead=False) == ()
-
-
-def test_record_exchange_names_the_run_the_dead_or_the_turn_cap_as_the_spent_reason() -> None:
-    def note(*, spent: str = "", someone_dead: bool = False, turns: int = 1) -> tuple[str, ...]:
-        world = SceneWorld[Person, Person](player=PLAYER, runs=[_run("a1", "A1")])
-        world.run.exchanges = [Exchange(prompt="p", lines=()) for _ in range(turns)]
-        world.run.spent = spent
-        return world.record_exchange("p", (), (), "", someone_dead=someone_dead)
-
-    assert note(spent="the door is barred") == (SPENT_NOTE.format(reason="the door is barred"),)
-    assert note(someone_dead=True) == (SPENT_NOTE.format(reason="someone here is dead"),)
-    assert note(turns=SCENE_TURN_CAP - 1) == (
-        SPENT_NOTE.format(reason=f"{SCENE_TURN_CAP} turns have passed here"),
-    )
-    assert note() == ()
-
-
 def test_scene_rows_shows_the_hub_row_and_the_way_on_and_home_rows_when_settled() -> None:
     at_hub = SceneWorld[Person, Person](
         player=PLAYER, runs=[_run(HUB, "Hub")], hub=HUB, board=BOARD
@@ -141,18 +99,17 @@ def test_scene_rows_shows_the_hub_row_and_the_way_on_and_home_rows_when_settled(
     campaign = SceneWorld[Person, Person](
         player=PLAYER, runs=[_run(HUB, "Hub"), _run("a1", "A1")], hub=HUB, board=BOARD
     )
-    campaign.run.settled = True
+    campaign.run.left = ""
     settled = campaign.scene_rows()
     assert any(row.label == "Way on" for row in settled)
     assert settled[-1] == HOME_ROW
 
     one_shot = SceneWorld[Person, Person](player=PLAYER, runs=[_run("a1", "A1")])
-    one_shot.run.settled = True
+    one_shot.run.left = ""
     assert HOME_ROW not in one_shot.scene_rows()
 
     pursuing = SceneWorld[Person, Person](player=PLAYER, runs=[_run("a1", "A1")])
-    pursuing.run.settled = True
-    pursuing.run.pursuit = "the maintenance grate"
+    pursuing.run.left = "the maintenance grate"
     pursued = pursuing.scene_rows()
     assert any(
         row
@@ -220,35 +177,3 @@ def test_apply_scene_with_a_next_draft_stamps_the_recap_on_the_run_left() -> Non
 
     assert world.runs[0].recap == RECAP
     assert world.runs[-1].recap == ""
-
-
-def test_scene_history_prints_the_recap_in_place_of_the_situation_and_exchanges() -> None:
-    recapped = _run("a1", "A1")
-    recapped.exchanges = [Exchange(prompt="dropped", lines=())]
-    recapped.recap = RECAP
-    open_run = _run("a2", "A2")
-    open_run.exchanges = [Exchange(prompt="p1", lines=()), Exchange(prompt="p2", lines=())]
-
-    history = scene_history([recapped, open_run])
-
-    assert f"what happened: {RECAP}" in history
-    assert "dropped" not in history
-    assert SITUATION not in history.split("\n\n")[0]
-    assert "> p1" in history
-    assert "> p2" in history
-
-
-def test_recap_rows_is_empty_with_no_recap_and_names_the_scene_earlier_in_this_job() -> None:
-    no_recap = SceneWorld[Person, Person](
-        player=PLAYER, runs=[_run(HUB, "Hub"), _run("a1", "A1")], hub=HUB, board=BOARD
-    )
-    assert no_recap.recap_rows() == ()
-
-    recapped = _run("a1", "A1")
-    recapped.recap = RECAP
-    with_recap = SceneWorld[Person, Person](
-        player=PLAYER, runs=[_run(HUB, "Hub"), recapped], hub=HUB, board=BOARD
-    )
-    ((title, body),) = with_recap.recap_rows()
-    assert title == "EARLIER IN THIS JOB"
-    assert f"A1: {RECAP}" in body

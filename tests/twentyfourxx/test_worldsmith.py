@@ -401,7 +401,7 @@ def test_render_worldsmith_prints_the_job_line_for_the_job_run() -> None:
     prompt = hub_world().payload.world.render_worldsmith(
         "I look around.", "guidance text", SceneDraft[Person], role=WORLDSMITH
     )
-    assert f"the job: {JOB}" in prompt
+    assert f"THE JOB:\n{JOB}" in prompt
 
 
 def test_the_scene_card_carries_the_stake_and_a_job_draft_its_terms() -> None:

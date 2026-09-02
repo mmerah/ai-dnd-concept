@@ -14,7 +14,7 @@ from aidm.core.play import Answer, Speaker
 from aidm.core.views import speaker_of
 from aidm.turn.run import TurnStep
 
-from .panels import NO_WAY_ON, journal_panel, scene_sidebar
+from .panels import journal_panel, scene_sidebar
 from .widgets import (
     avatar,
     decision_widget,
@@ -47,8 +47,8 @@ LOGGER = logging.getLogger(__name__)
 class GameView:
     runtime: Runtime
     session: GameService
-    shown_art: tuple[Path | None, bool] = (None, False)
-    shown_clip: tuple[Path | None, bool] = (None, False)
+    shown_art: Path | None = None
+    shown_clip: Path | None = None
     autoplay_clip: Path | None = None
     # Both are built by the page below this view, and the panels reach them through it.
     composer: ui.input | None = None
@@ -100,11 +100,7 @@ def chat(view: GameView) -> None:
     # The live decision widget sits directly below the last exchange, so it needs no pause line.
     last = history[-1] if history and session.state.pending is not None else None
     player = speaker_of(session.player_view().player)
-    heading = ""
     for exchange in history:
-        if exchange.where and exchange.where != heading:
-            heading = exchange.where
-            ui.label(heading).classes("w-full text-center text-xs uppercase opacity-50 q-mt-md")
         if exchange.prompt in (BEGUN, CROSSED):
             # A turn nobody played: the story's own marker, never the player's words.
             ui.label(exchange.prompt).classes("w-full text-center text-xs italic opacity-60")
@@ -159,15 +155,15 @@ def poll_turn(view: GameView) -> None:
 def poll_media(view: GameView) -> None:
     """The illustration and the clip are both generated after the turn commits and watched for."""
     session = view.session
-    shown = (session.scene_art(), session.scene_pending())
-    if shown != view.shown_art:
-        view.shown_art = shown
+    art = session.scene_art()
+    if art != view.shown_art:
+        view.shown_art = art
         scene_header.refresh()
-    clip = (session.newest_clip(), session.clip_pending())
+    clip = session.newest_clip()
     if clip != view.shown_clip:
         view.shown_clip = clip
-        if clip[0] is not None:
-            view.autoplay_clip = clip[0]
+        if clip is not None:
+            view.autoplay_clip = clip
         chat.refresh()
 
 
@@ -317,7 +313,7 @@ def game_page(runtime: Runtime, session: GameService) -> None:
                     journal_panel(session)
 
     # A cached clip never autoplays on a page load, only one landing after.
-    view.shown_clip = (session.newest_clip(), session.clip_pending())
+    view.shown_clip = session.newest_clip()
     view.seen = _observed(session)
 
     ui.timer(1.0, lambda: poll_turn(view))
@@ -330,8 +326,6 @@ def _scene_art(session: GameService) -> None:
     if art is not None:
         # `contain` letterboxes a frame drawn at another ratio instead of cropping its subject.
         ui.image(art).props("fit=contain").classes("rounded-borders").style(_ART_BOX)
-    elif session.scene_pending():
-        ui.skeleton().classes("rounded-borders").style(_ART_BOX)
 
 
 def _card(fact: Fact, *, live: bool = False) -> None:
@@ -421,8 +415,6 @@ def _scroll(view: GameView) -> None:
 async def _run(view: GameView, playing: Callable[[], Awaitable[None]]) -> None:
     async with working():
         await playing()
-    if view.session.write_failure:
-        ui.notify(NO_WAY_ON, type="warning")
     poll_turn(view)
 
 

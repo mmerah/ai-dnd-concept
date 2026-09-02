@@ -284,9 +284,7 @@ def _opened[G: AnyGame](
     selected_engine = ENGINES_BUILT[engine_id] if engine is None else engine
     runtime.engines[engine_id] = selected_engine
     scenario_id = scenario_for(engine_id)
-    service = runtime.session(
-        LaunchTarget(slug=f"{scenario_id}--kael", scenario_id=scenario_id, character_id="kael")
-    )
+    service = runtime.session(LaunchTarget(scenario_id=scenario_id, character_id="kael"))
     if rng is not None:
         service.rng = rng
     return Table(runtime=runtime, service=service, spawner=spawner, state_type=state_type)

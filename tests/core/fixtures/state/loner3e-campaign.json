@@ -34,11 +34,9 @@
             "hooded-stranger"
           ],
           "exchanges": [],
-          "settled": false,
-          "spent": "",
+          "left": null,
           "job_done": false,
-          "recap": "",
-          "pursuit": ""
+          "recap": ""
         }
       ],
       "source": "A relic-hunters' guild hall, a board of jobs, and whatever Kael can pry loose from what the world sealed away.",

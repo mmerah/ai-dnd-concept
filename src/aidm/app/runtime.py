@@ -19,7 +19,7 @@ from aidm.core.tools import MasterTool
 from aidm.core.views import NarratorView, PlayerView
 from aidm.engines.registry import begin_game, build_engines
 from aidm.engines.seam import AnyEngine
-from aidm.turn.context import render_narrator, told_passages
+from aidm.turn.context import render_narrator
 from aidm.turn.run import Turn, TurnStep, close_segment, narration_refusal
 
 from .launch import LaunchTarget
@@ -32,6 +32,12 @@ LOGGER = logging.getLogger(__name__)
 # What a turn nobody played is filed under in the chronicle: the crossing, and the opening.
 CROSSED = "(the story moves on)"
 BEGUN = "(the story begins)"
+UNWRITTEN = Fact(
+    kind="way_unwritten",
+    told=True,
+    trace="the way on could not be written",
+    card="The way on could not be written. You are still where you were.",
+)
 OPENING = (
     "The story begins here; the player has read nothing yet. Tell them, in the fiction and in "
     "this order: who they are (WHO IS HERE names them first) and where they stand; what is in "
@@ -64,7 +70,6 @@ class GameService:
     engine: AnyEngine
     spawner: Spawner
     store: FileStore
-    settings: Settings
     media: Illustrator | None = None
     reader: Reader | None = None
     rng: Random = field(default_factory=Random)
@@ -74,8 +79,6 @@ class GameService:
     intent: str = ""
     # The turn in flight; the tool surface reaches the live game through it.
     turn: Turn | None = None
-    # Why the last scene write failed or would not fit; empty when none has.
-    write_failure: str = ""
     _background: set[Task[None]] = field(default_factory=set, repr=False)
     state: AnyGame = field(init=False)
 
@@ -122,8 +125,8 @@ class GameService:
             return
         if moving_on and not self.engine.ready(self.state):
             raise ValueError("the world offers no transition from here")
-        turn = Turn.begin(self.engine, self.state, action, self.rng, self.settings.recent_exchanges)
-        self.turn, self.phase, self.write_failure = turn, "master", ""
+        turn = Turn.begin(self.engine, self.state, action, self.rng)
+        self.turn, self.phase = turn, "master"
         try:
             # An answer that re-suspended leaves every tool refused: nothing for a master to do.
             if turn.draft.pending is None:
@@ -158,7 +161,7 @@ class GameService:
             intent_text = intent.text
         else:
             intent_text = intent
-        self.intent, self.write_failure = intent_text, ""
+        self.intent = intent_text
         try:
             await self._grow(intent_text, None)
         finally:
@@ -198,9 +201,7 @@ class GameService:
                     view,
                     evidence=traced(facts, told_only=True),
                     prompt=prompt,
-                    passages=told_passages(
-                        self.engine.history(draft), self.settings.recent_exchanges
-                    ),
+                    scenes=self.engine.scenes(draft),
                 ),
                 Narration,
                 lambda written: narration_refusal(view, written),
@@ -222,8 +223,13 @@ class GameService:
             self.engine.validate(draft)
         except (OSError, ValueError) as failed:
             # Dropping the write costs a scene; raising costs the turn that was already played.
-            self.write_failure = str(failed)
             LOGGER.warning("the world did not grow: %s", failed)
+            # A fresh draft: the failed one may hold the half-installed scene.
+            draft = self.state.draft()
+            # The turn already filed the player's words when a crossing was asked for.
+            prompt = intent if brief is None else CROSSED
+            view = self.engine.narrator_view(draft)
+            self.commit(close_segment(self.engine, view, draft, prompt, (), (UNWRITTEN,)))
             return
         if brief is None and not cards(facts):
             self.commit(draft.committed())
@@ -247,19 +253,12 @@ class GameService:
     def scene_art(self) -> Path | None:
         return None if self.media is None else self.media.scene_art(self.scene())
 
-    def scene_pending(self) -> bool:
-        return self.media is not None and self.media.scene_pending(self.scene())
-
     def icon(self, entity_id: EntityId) -> Path | None:
         return None if self.media is None else self.media.icon(entity_id)
 
     def newest_clip(self) -> Path | None:
         newest = self._newest()
         return None if self.reader is None or newest is None else self.reader.clip(newest)
-
-    def clip_pending(self) -> bool:
-        newest = self._newest()
-        return self.reader is not None and newest is not None and self.reader.pending(newest)
 
     def illustrate(self, narration: str = "") -> None:
         if self.media is None:
@@ -289,7 +288,6 @@ class GameService:
         opening = self._begun()
         self.store.discard(self.slug)
         self.state = opening
-        self.write_failure = ""
 
     def commit(self, state: AnyGame) -> None:
         self.store.save(self.slug, state)
@@ -407,8 +405,6 @@ class Runtime:
         """Memoised: a page render must not rebuild the game and drop the turn in flight."""
         held = self._sessions.get(target.slug)
         if held is not None:
-            if held.target != target:
-                raise ValueError(f"open session {target.slug!r} plays {held.target}, not {target}")
             return held
         opened = self._open(target)
         self._sessions[target.slug] = opened
@@ -433,7 +429,6 @@ class Runtime:
             engine=engine,
             spawner=self.spawner,
             store=store,
-            settings=settings,
             media=open_illustrator(
                 settings, target, store, style=scenario.art_style or engine.art_style
             ),

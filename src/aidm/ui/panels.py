@@ -7,8 +7,6 @@ from aidm.app.runtime import GameService
 
 from .widgets import entity_row, heading, labeled_value
 
-NO_WAY_ON = "The way on could not be written. You are still where you were."
-
 
 @ui.refreshable
 def scene_sidebar(session: GameService, move_on: Callable[[str], Awaitable[None]]) -> None:
@@ -32,8 +30,6 @@ def scene_sidebar(session: GameService, move_on: Callable[[str], Awaitable[None]
                         labeled_value(row.label, row.detail)
                     else:
                         ui.label(row.label).classes("text-sm mt-1")
-        if session.write_failure:
-            ui.label(NO_WAY_ON).classes("text-xs text-warning mt-1")
 
 
 @ui.refreshable

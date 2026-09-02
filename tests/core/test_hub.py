@@ -14,7 +14,6 @@ from aidm.engines.hub import (
     check_board,
     check_kind,
     closed_jobs,
-    heading,
     hub_sections,
     job_closed,
     job_start,
@@ -179,12 +178,6 @@ def test_hub_sections_returning_adds_the_verdict_by_finished() -> None:
 
     assert open_verdict["THE VERDICT"] == "left open"
     assert finished_verdict["THE VERDICT"] == "finished"
-
-
-def test_heading_prefixes_the_job_only_when_it_differs_from_the_title() -> None:
-    assert heading("", "A1") == "A1"
-    assert heading("A1", "A1") == "A1"
-    assert heading("A1", "A2") == "A1 — A2"
 
 
 def test_place_unmet_refuses_the_wrong_place_for_the_moment() -> None:

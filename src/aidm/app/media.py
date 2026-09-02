@@ -41,10 +41,6 @@ class Illustrator:
     def scene_art(self, scene: NarratorView) -> Path | None:
         return _existing(self.saves, scene_key(scene))
 
-    def scene_pending(self, scene: NarratorView) -> bool:
-        """Only in-flight scenes wait; missing inactive scenes have failed."""
-        return scene_key(scene) in self.generating
-
     def icon(self, entity_id: EntityId) -> Path | None:
         """What the chat shows as an avatar: a cached icon only, never a generation."""
         for directory in (*self.icon_dirs, self.saves / ICON_DIR):
@@ -215,7 +211,8 @@ def illustration_request(
     lines = [
         "Draw one wide, borderless view of this place from the eye level of someone there. "
         "Show a single scene, not a portrait or comic panel.",
-        scene.art_prompt,
+        f"The place: {scene.title} — {scene.situation}",
+        *(f"Present: {one.name} — {one.brief}" for one in scene.subjects),
     ]
     if narration:
         lines.append(f"What just happened: {narration}")

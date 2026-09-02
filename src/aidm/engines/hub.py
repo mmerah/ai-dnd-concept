@@ -115,11 +115,6 @@ def job_start(stops: Sequence[Stop]) -> int:
     return debriefed[-1] if debriefed else 0
 
 
-def heading(job: str, title: str) -> str:
-    """The exchange's `where`: the scene's title, headed by its job's."""
-    return title if job in ("", title) else f"{job} — {title}"
-
-
 def closed_jobs(hub: Slug | None, stops: Sequence[Stop]) -> tuple[Job, ...]:
     titles = job_titles(hub, stops)
     jobs: list[Job] = []

@@ -35,6 +35,5 @@ def master_sections(state: TwentyfourxxGame) -> Rows:
         *party_rows(world.members()),
         ("HIDDEN HERE (the player has not found these)", world.hidden_lines()),
         ("THE SCENE'S SECRET (never narrate this)", scene.secret or "(none)"),
-        *world.recap_rows(),
         *master_tail(world.hub, world.at_hub, world.board, world.jobs(), world.job),
     )

@@ -21,6 +21,7 @@ ENCODING = "utf-8"
 WORLD_FILE = "world.json"
 SOURCE_STEM = "source"
 SOURCE_SUFFIXES = (".md", ".txt", ".pdf")
+# Two content ids joined by `--`: a save name is not a `Slug`.
 _SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9-]*"
 
 LOGGER = logging.getLogger(__name__)

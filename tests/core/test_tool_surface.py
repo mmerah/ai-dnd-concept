@@ -25,6 +25,7 @@ from pydantic import BaseModel, JsonValue
 import aidm.app.spawn as spawn_module
 from aidm.app.launch import LaunchTarget
 from aidm.app.mcp import call, offered
+from aidm.app.runtime import CROSSED
 from aidm.app.spawn import CliSpawner, RunResult, final_message
 from aidm.config import Role
 from aidm.core.entities import EngineId, EntityId
@@ -119,7 +120,7 @@ async def test_a_second_game_in_flight_refuses_the_call_rather_than_routing_it(
     """Two tabs, two saves: a tool call belongs to one turn, and guessing would play the wrong."""
     table = opened(tmp_path)
     other = table.runtime.session(
-        LaunchTarget(slug="rival", scenario_id=scenario_for(LONER3E), character_id="kael")
+        LaunchTarget(scenario_id=scenario_for(LONER3E, "campaign"), character_id="kael")
     )
 
     def script() -> None:
@@ -208,7 +209,7 @@ async def test_next_scene_asks_the_player_and_writes_nothing_yet(tmp_path: Path)
     assert state.turn == 1
     # An offer, not a decision: nothing waits on the player and the scene is still playable.
     assert state.pending is None
-    assert state.payload.world.run.settled
+    assert state.payload.world.run.left is not None
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 
 
@@ -226,7 +227,7 @@ async def test_the_offer_does_not_close_the_scene_or_stop_the_player(tmp_path: P
     )
 
     assert state.payload.world.current.title == "The Abbot's Study"
-    assert state.payload.world.run.settled
+    assert state.payload.world.run.left is not None
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 
     state = await played(
@@ -320,28 +321,6 @@ async def test_a_player_who_died_moving_on_does_not_arrive(tmp_path: Path) -> No
     assert table.service.engine.over(state) is not None
 
 
-async def test_the_spent_note_never_reaches_the_scene_it_is_not_about(tmp_path: Path) -> None:
-    """The original defect: the master read 'this scene looks spent' beside a brand-new scene."""
-    table = opened(tmp_path)
-    table.spawner.answers["worldsmith"] = [_scene()]
-
-    _ = await played(table, "I have what I came for.", the_way_on())
-    state = await played(
-        table,
-        "Out into the cloister walk.",
-        changed("kill", entity_id=MARA),
-        arrival="Rain takes the arcade.",
-        moving_on=True,
-    )
-
-    assert state.payload.world.current.title == "The Cloister Walk"
-    assert not any("looks spent" in note for note in state.notes)
-
-    # The body came with them: the note it earns is this scene's second exchange, not its first.
-    state = await played(table, "I look at what she wrote.", narration="Ledgers, nothing more.")
-    assert any("looks spent" in note for note in state.notes)
-
-
 async def test_the_way_on_is_offered_once(tmp_path: Path) -> None:
     """Offering again would move the player out of a scene they have not played yet."""
     table = opened(tmp_path)
@@ -358,7 +337,7 @@ async def test_the_way_on_is_offered_once(tmp_path: Path) -> None:
 
     assert "already settled" in table.refusals[-1]
     assert state.payload.world.current.title == "The Cloister Walk"
-    assert not state.payload.world.run.settled
+    assert state.payload.world.run.left is None
 
 
 async def test_a_crossing_the_narrator_will_not_write_still_keeps_the_scene(
@@ -417,7 +396,7 @@ async def test_the_turn_is_filed_before_the_worldsmith_is_asked(tmp_path: Path) 
 
 
 async def test_a_scene_the_world_has_outgrown_is_dropped_rather_than_killing_the_turn(
-    tmp_path: Path,
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     """The bar sees the turn's own changes."""
     table = opened(tmp_path)
@@ -431,19 +410,25 @@ async def test_a_scene_the_world_has_outgrown_is_dropped_rather_than_killing_the
         moving_on=True,
     )
 
-    assert "already met" in table.service.write_failure
+    assert "already met" in caplog.text
+    unwritten = table.service.engine.history(state)[-1]
+    assert unwritten.prompt == CROSSED  # the turn filed the player's words already
+    assert unwritten.facts[0].kind == "way_unwritten"
     assert state.payload.world.current.title == "The Abbot's Study"
 
 
-async def test_the_scene_bar_refuses_a_thin_scene(tmp_path: Path) -> None:
+async def test_the_scene_bar_refuses_a_thin_scene(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
     table = opened(tmp_path)
     thin = _scene(present=[], hidden=[])
     table.spawner.answers["worldsmith"] = [thin, thin]
 
     _ = await played(table, "I go.", the_way_on())
-    _ = await played(table, "Out into the cloister walk.", moving_on=True)
+    state = await played(table, "Out into the cloister walk.", moving_on=True)
 
-    assert "besides the player" in table.service.write_failure
+    assert "besides the player" in caplog.text
+    assert table.service.engine.history(state)[-1].facts[0].kind == "way_unwritten"
     assert table.service.state.payload.world.current.title == "The Abbot's Study"
 
 
@@ -456,19 +441,22 @@ async def test_a_scene_with_nothing_hidden_in_it_is_allowed(tmp_path: Path) -> N
         table, "Out into the cloister walk.", arrival="The rain has the arcade.", moving_on=True
     )
 
-    assert table.service.write_failure == ""
+    assert all(
+        fact.kind != "way_unwritten" for fact in table.service.engine.history(state)[-1].facts
+    )
     assert state.payload.world.current.title == "The Cloister Walk"
 
 
 async def test_a_worldsmith_that_fails_leaves_the_scene_unchanged_and_says_why(
-    tmp_path: Path,
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     table = opened(tmp_path)
 
     _ = await played(table, "I go.", the_way_on())
-    _ = await played(table, "Out into the cloister walk.", moving_on=True)
+    state = await played(table, "Out into the cloister walk.", moving_on=True)
 
-    assert "no answer left" in table.service.write_failure
+    assert "no answer left" in caplog.text
+    assert table.service.engine.history(state)[-1].facts[0].kind == "way_unwritten"
     assert table.service.state.payload.world.current.title == "The Abbot's Study"
 
 
@@ -536,7 +524,7 @@ def test_the_surface_publishes_for_the_engine_whose_turn_is_in_flight(tmp_path: 
     # First of the installed engines, so reading the engines instead of the turn would show it.
     table.runtime.engines = {toolless.id: toolless, **table.runtime.engines}
     state = table.service.state
-    table.service.turn = Turn.begin(table.service.engine, state, "I look.", Random(0), 1)
+    table.service.turn = Turn.begin(table.service.engine, state, "I look.", Random(0))
 
     assert "roll_question" in [one.name for one in table.runtime.published_tools()]
 

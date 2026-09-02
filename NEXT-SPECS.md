@@ -15,7 +15,7 @@ on 2026-09-02; the code after Phase 2 is the reference for the party helpers Tra
    Loner's player leaves the cast and lives as `world.player`, as in 24XX and Breathless; Loner
    saves go stale, which the design allows.
 2. **Memory is a recap the worldsmith writes on the crossing.** No summarizer role. The
-   platform's `recent_exchanges` stays at 20.
+   window is `SCENE_EXCHANGES` in `core/views.py`, 20, a constant and not a setting.
 3. **Voices are an HTTP provider on the illustration pattern**: off by default, the OpenRouter
    key the player already has, a local server if they run one, and the narrator's voice chosen
    per scenario as its art style is. No in-process model.

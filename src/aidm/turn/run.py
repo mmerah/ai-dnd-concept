@@ -6,9 +6,9 @@ from typing import Literal, Self
 
 from pydantic import JsonValue, ValidationError
 
-from aidm.core.facts import NOTHING, Fact, traced
+from aidm.core.facts import NOTHING, Fact, cards, traced
 from aidm.core.model import AnyGame
-from aidm.core.play import Answer, Line, Narration, SpokenLine
+from aidm.core.play import Answer, Exchange, Line, Narration, SpokenLine
 from aidm.core.tools import Play, apply_to_draft
 from aidm.core.views import NarratorView
 from aidm.engines.seam import AnyEngine
@@ -33,8 +33,6 @@ class Turn:
     # What the master reads as PLAYER ACTION: the prompt, or the marker for a chosen option.
     action: str = ""
     notes: tuple[str, ...] = ()
-    # Injected, so `turn` reads no settings itself.
-    recent: int = 0
 
     @classmethod
     def begin(
@@ -43,9 +41,8 @@ class Turn:
         state: AnyGame,
         player_input: str | Answer,
         rng: Random,
-        recent: int,
     ) -> Self:
-        turn = cls(engine=engine, draft=state.draft(), rng=rng, recent=recent)
+        turn = cls(engine=engine, draft=state.draft(), rng=rng)
         turn.prompt, turn.action = consume_answer(turn, player_input)
         # Notes are read once; a note a tool writes after this steers the next turn.
         turn.notes, turn.draft.notes = turn.draft.notes, ()
@@ -56,10 +53,9 @@ class Turn:
             self.engine.instructions,
             self.engine.master_sections(self.draft),
             self.draft,
-            self.engine.history(self.draft),
+            self.engine.scenes(self.draft),
             self.action,
             notes=(*self.notes, *self.draft.notes),
-            recent=self.recent,
         )
 
     def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
@@ -132,8 +128,13 @@ def close_segment(
     lines: tuple[Line, ...],
     facts: tuple[Fact, ...],
 ) -> AnyGame:
-    notes = engine.record(draft, prompt, _spoken(view, lines), facts)
-    draft.notes = (*draft.notes, *notes)
+    exchange = Exchange(
+        prompt=prompt,
+        lines=_spoken(view, lines),
+        facts=cards(facts),
+        decision="" if draft.pending is None else draft.pending.prompt,
+    )
+    engine.record(draft, exchange)
     draft.turn += 1
     return draft.committed()
 

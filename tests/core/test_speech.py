@@ -101,7 +101,6 @@ async def test_read_writes_a_wav_and_caches_it(
         assert wav.getsampwidth() == 2
         assert wav.getframerate() == reader.config.sample_rate
         assert wav.readframes(wav.getnframes()) == chunks["first"] + chunks["second"]
-    assert reader.pending(exchange) is False
     assert len(bodies) == 2
     assert bodies[0]["voice"] == requests[0][0] == NARRATOR
     assert bodies[1]["voice"] == requests[1][0]
@@ -125,11 +124,10 @@ async def test_read_leaves_no_file_when_generation_raises(
     await reader.read(exchange)
 
     assert reader.clip(exchange) is None
-    assert reader.pending(exchange) is False
 
 
 def test_open_reader_is_none_when_off_and_takes_the_scenarios_voice(tmp_path: Path) -> None:
-    target = LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
+    target = LaunchTarget(scenario_id="whispering-vault", character_id="kael")
     store = FileStore(tmp_path)
     on = EnvFileFreeSettings(
         saves_dir=tmp_path,
@@ -184,4 +182,3 @@ async def test_speak_reads_and_caches_the_newest_committed_exchange(
     exchange = session.engine.history(session.state)[-1]
     assert session.newest_clip() == session.reader.clip(exchange)
     assert session.newest_clip() is not None
-    assert session.clip_pending() is False

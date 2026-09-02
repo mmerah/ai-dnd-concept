@@ -108,11 +108,17 @@ The Whispering Vault
 The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit.
 
 RECENT PLAY (this is turn 1):
+SCENE: The Vault Stair
+Is there a way past the vault door from the stair?
+
 > I try the vault door.
-[at The Vault Stair] The iron handle does not turn.
+The iron handle does not turn.
+
+SCENE: The Abbot's Study
+Can you get the way down to the vault out of this room, and out of Mara?
 
 > I look for another way in.
-[at The Abbot's Study] A flagstone by the wall sits proud of its neighbours.
+A flagstone by the wall sits proud of its neighbours.
 
 SCENE:
 The Abbot's Study

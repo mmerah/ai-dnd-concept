@@ -37,16 +37,11 @@ def narrator_view(state: TunnelGoonsGame) -> NarratorView:
         )
     )
     subjects = tuple(subject_of(one) for one in here)
-    art = (
-        f"The place: {place.name} — {place.description}",
-        *(f"Present: {one.name} — {one.brief}" for one in here),
-    )
     return NarratorView(
         place=place.id,
         title=place.name,
         focus=place.brief,
         situation=place.description,
-        art_prompt="\n".join(art),
         subjects=subjects,
         # A corpse may stay a subject in the room; it does not speak.
         speakers=tuple(speaker_of(subject_of(one)) for one in here if one.alive),

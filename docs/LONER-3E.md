@@ -100,7 +100,7 @@ its keep for a reason the SRD has no need of.
 - `known`, `hidden` and the scene `secret` — the told-fact gate: no unknown name reaches the
   narrator.
 - `alive` and `kill` — the SRD leaves death to narration; the gate needs a flag.
-- `next_scene`, `settled` and the turn cap — a scene nobody ends is ended for them.
+- `next_scene` and `left` — `settle`'s answer is the only end a scene has.
 - No mood roll — the SRD offers it "when unsure"; the game master holds that judgment.
 
 ## Where the rules live

@@ -18,7 +18,7 @@ from aidm.core.model import (
     ScenarioKind,
     WorldsmithAnswer,
 )
-from aidm.core.play import DecisionOption, Exchange, PendingOption, SpokenLine
+from aidm.core.play import DecisionOption, Exchange, PendingOption, SceneRecord
 from aidm.core.tools import MasterTool
 from aidm.core.views import NarratorView, PlayerView, Rows
 
@@ -81,11 +81,11 @@ class Engine[G: Game[Any]](ABC):
     @abstractmethod
     def over(self, state: G) -> str | None: ...
     @abstractmethod
-    def record(
-        self, state: G, prompt: str, lines: tuple[SpokenLine, ...], facts: Sequence[Fact]
-    ) -> tuple[str, ...]: ...
+    def record(self, state: G, exchange: Exchange) -> None: ...
     @abstractmethod
     def history(self, state: G) -> tuple[Exchange, ...]: ...
+    @abstractmethod
+    def scenes(self, state: G) -> tuple[SceneRecord, ...]: ...
     @abstractmethod
     def master_sections(self, state: G) -> Rows: ...
     @abstractmethod

@@ -178,20 +178,12 @@ def _register_pages(runtime: Runtime) -> None:
     def _index() -> None:  # pyright: ignore[reportUnusedFunction]
         home_page(runtime)
 
-    @ui.page("/game/{slug}/{scenario}/{character}")
-    def _game(  # pyright: ignore[reportUnusedFunction]
-        slug: str,
-        scenario: str,
-        character: str,
-    ) -> None:
+    @ui.page("/game/{scenario}/{character}")
+    def _game(scenario: str, character: str) -> None:  # pyright: ignore[reportUnusedFunction]
         game_page(
             runtime,
             runtime.session(
-                LaunchTarget(
-                    slug=slug,
-                    scenario_id=content_id(scenario),
-                    character_id=content_id(character),
-                )
+                LaunchTarget(scenario_id=content_id(scenario), character_id=content_id(character))
             ),
         )
 

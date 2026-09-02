@@ -144,7 +144,7 @@ async def test_a_later_call_in_one_turn_sees_the_earlier_calls_draft(
         table, "I close the book.", tool_call("next_scene"), tool_call("next_scene")
     )
 
-    assert state.payload.world.run.settled
+    assert state.payload.world.run.left is not None
     assert any("already settled" in one for one in table.refusals)
 
 
@@ -248,7 +248,7 @@ async def test_two_rolls_in_one_turn_do_not_read_the_same_dice(tmp_path: Path) -
 
 def test_a_refused_call_leaves_the_turn_the_dice_it_had() -> None:
     engine, state = initialized()
-    turn = Turn.begin(engine, state, "I try the door.", Random(1), 1)
+    turn = Turn.begin(engine, state, "I try the door.", Random(1))
     before = turn.rng.getstate()
 
     with pytest.raises(ValueError, match="the rules said no"):

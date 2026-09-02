@@ -203,7 +203,7 @@ def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() ->
     draft = hub_world()
     world = draft.payload.world
     facts = next_scene(draft, NextScene(job_done=True), Random(0))
-    assert world.run.settled
+    assert world.run.left is not None
     assert world.run.job_done
     assert JOB_DONE in facts
 
@@ -217,8 +217,7 @@ def test_next_scene_with_pursuit_settles_the_run_and_leaves_a_go_on_row() -> Non
     draft = hub_world()
     world = draft.payload.world
     facts = next_scene(draft, NextScene(pursuit="the control deck"), Random(0))
-    assert world.run.settled
-    assert world.run.pursuit == "the control deck"
+    assert world.run.left == "the control deck"
     assert SCENE_LEFT in facts
     assert any(
         row.label == "Go on" and row.intent == "the control deck" for row in world.scene_rows()

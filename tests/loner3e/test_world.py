@@ -3,13 +3,12 @@ from core_test_support import initialized
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact, cards
-from aidm.core.play import Exchange
 from aidm.engines.core import PLAYER_ID
 from aidm.engines.loner3e.engine import GROWTH_NOTE
 from aidm.engines.loner3e.tools import ChangeWorld, apply_change, close_conflicts
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, LonerCharacter
 from aidm.engines.scenes.drafts import MIN_SITUATION, SceneDraft
-from aidm.engines.scenes.world import SCENE_TURN_CAP, SPENT_NOTE, scene_refusal
+from aidm.engines.scenes.world import scene_refusal
 from aidm.engines.scenes.worldsmith import install_scene
 
 MAP = EntityId("vault-map")
@@ -29,12 +28,6 @@ def changed_facts(draft: Loner3eGame, verb: str, **fields: object) -> list[Fact]
 
 def changed(draft: Loner3eGame, verb: str, **fields: object) -> list[str]:
     return [fact.trace for fact in changed_facts(draft, verb, **fields)]
-
-
-def _carded(turns: int) -> tuple[Exchange, ...]:
-    """Turns that each landed something, so only the cap can end the scene."""
-    card = Fact(kind="tags_changed", trace="something happened", told=True, card="Something")
-    return tuple(Exchange(prompt="I press on.", lines=(), facts=(card,)) for _ in range(turns))
 
 
 def refused(draft: Loner3eGame, verb: str, **fields: object) -> str:
@@ -64,25 +57,6 @@ def test_an_actor_who_is_not_here_cannot_be_acted_on() -> None:
     assert "not here" in refused(state.draft(), "kill", entity_id=TOMAS)
 
 
-def test_finding_everything_here_does_not_end_the_scene() -> None:
-    """`hidden` is content, not a clock: the scene's own question is what ends it."""
-    _, state = initialized()
-    draft = state.draft()
-    _ = changed(draft, "reveal", entity_id=MAP)
-    assert not draft.payload.world.run.hidden
-    draft.payload.world.run.exchanges.append(Exchange(prompt="I look around.", lines=()))
-    assert _spent(draft) == ()
-
-
-def test_a_scene_nobody_ends_is_ended_by_the_cap() -> None:
-    _, state = initialized()
-    draft = state.draft()
-    idle = Exchange(prompt="I wait.", lines=())
-    draft.payload.world.run.exchanges = [idle for _ in range(SCENE_TURN_CAP - 1)]
-    assert _spent(draft) != ()
-    assert not state.payload.world.run.exchanges  # the draft's turns never reached the state
-
-
 def _next_scene(
     present: tuple[str, ...] = (MARA,), hidden: tuple[str, ...] = (TOMAS,)
 ) -> SceneDraft[LonerCharacter]:
@@ -105,7 +79,6 @@ def test_the_party_follows_into_the_next_scene() -> None:
     # Mara comes along because she travels with the player; the player is never listed.
     assert MARA in here and PLAYER_ID not in here
     assert [run.scene.place for run in draft.payload.world.runs[:-1]] == ["abbots-study"]
-    assert draft.payload.world.run.spent == ""
     _ = draft.committed()
 
 
@@ -265,13 +238,6 @@ def test_a_scene_that_hides_someone_already_met_is_refused_whole() -> None:
     assert "already met" in (scene_refusal(scene, draft.payload.world) or "")
 
 
-def test_the_turn_cap_ends_a_scene_that_kept_landing_things() -> None:
-    _, state = initialized()
-    draft = state.draft()
-    draft.payload.world.run.exchanges = list(_carded(SCENE_TURN_CAP - 1))
-    assert _spent(draft) == (SPENT_NOTE.format(reason=f"{SCENE_TURN_CAP} turns have passed here"),)
-
-
 def test_change_tags_edits_one_list_and_refuses_what_it_cannot_move() -> None:
     _, state = initialized()
     draft = state.draft()
@@ -324,11 +290,3 @@ def test_drive_writes_what_play_revealed() -> None:
     _ = changed(draft, "kill", entity_id=MARA)
     assert "dead" in refused(draft, "drive", entity_id=MARA, motive="Survive")
     _ = draft.committed()
-
-
-def _spent(draft: Loner3eGame) -> tuple[str, ...]:
-    """One more turn here, and what the master is told about the scene looking finished."""
-    world = draft.payload.world
-    return world.record_exchange(
-        "I wait.", (), (), "", someone_dead=any(not one.alive for one in world.here())
-    )

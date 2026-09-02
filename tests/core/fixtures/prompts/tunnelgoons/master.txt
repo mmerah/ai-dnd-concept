@@ -63,8 +63,11 @@ The Buried Keep
 A garrison keep collapsed into its own tunnels two winters back, and something down there still moves through the dark.
 
 RECENT PLAY (this is turn 1):
+SCENE: The Collapsed Archway
+Where the tunnels begin
+
 > I look around the archway before going further.
-[at The Collapsed Archway] Grix waves you toward the corridor, impatient.
+Grix waves you toward the corridor, impatient.
 
 CURRENT PLACE:
 The Collapsed Archway[entrance]

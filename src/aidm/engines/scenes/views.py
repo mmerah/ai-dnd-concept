@@ -23,12 +23,6 @@ def narrator_view[S: SceneState[Any, Any]](state: Game[S]) -> NarratorView:
         title=scene.title,
         focus=scene.question,
         situation=scene.situation,
-        art_prompt="\n".join(
-            (
-                f"The place: {scene.title} — {scene.situation}",
-                *(f"Present: {one.name} — {one.brief}" for one in here),
-            )
-        ),
         subjects=tuple(_subject_of(one) for one in here),
         speakers=tuple(speaker_of(_subject_of(one)) for one in here),
     )

@@ -9,7 +9,7 @@ from aidm.core.entities import Slug
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, AnyScenario, Game, ScenarioKind, WorldsmithAnswer
-from aidm.core.play import DecisionOption, Exchange, SpokenLine
+from aidm.core.play import DecisionOption, Exchange, SceneRecord
 from aidm.core.views import NarratorView, Panel, PlayerView
 from aidm.engines.core import Pack, Person, load_packs, pack_options
 from aidm.engines.scenes.drafts import SceneDraft
@@ -68,20 +68,14 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
     def over(self, state: G) -> str | None:
         return player_over(state)
 
-    def record(
-        self, state: G, prompt: str, lines: tuple[SpokenLine, ...], facts: Sequence[Fact]
-    ) -> tuple[str, ...]:
-        world = self.world(state)
-        return world.record_exchange(
-            prompt,
-            lines,
-            facts,
-            "" if state.pending is None else state.pending.prompt,
-            someone_dead=any(not one.alive for one in world.here()),
-        )
+    def record(self, state: G, exchange: Exchange) -> None:
+        self.world(state).run.exchanges.append(exchange)
 
     def history(self, state: G) -> tuple[Exchange, ...]:
         return self.world(state).exchanges()
+
+    def scenes(self, state: G) -> tuple[SceneRecord, ...]:
+        return self.world(state).scenes()
 
     def narrator_view(self, state: G) -> NarratorView:
         return narrator_view(state)
