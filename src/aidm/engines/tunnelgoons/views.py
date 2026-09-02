@@ -10,6 +10,7 @@ from aidm.core.views import (
     speaker_of,
 )
 from aidm.engines.core import pool
+from aidm.engines.hub import board_rows, jobs_panel, master_tail
 from aidm.engines.tunnelgoons.world import (
     Goon,
     Item,
@@ -18,6 +19,9 @@ from aidm.engines.tunnelgoons.world import (
     TunnelWorld,
     player_over,
 )
+
+REPORT_IN = "Report in."
+REPORT_ROW = PanelRow(label="Report in", detail="Tell the tavern how it went.", intent=REPORT_IN)
 
 
 def subject_of(one: Goon | Npc) -> Subject:
@@ -82,13 +86,24 @@ def player_view(state: TunnelGoonsGame) -> PlayerView:
                     if way.known
                 ),
             ),
+            *(
+                (
+                    Panel(
+                        title="Board",
+                        rows=(REPORT_ROW,) if world.job_open else board_rows(world.board),
+                    ),
+                )
+                if world.at_hub
+                else ()
+            ),
             Panel(
                 title="Trail",
                 rows=tuple(
                     PanelRow(label=world.require_place(v.place).name, detail="")
-                    for v in world.visits
+                    for v in world.job_visits()
                 ),
             ),
+            *jobs_panel(world.jobs()),
         ),
         prompt=state.pending,
         over=player_over(state),
@@ -107,6 +122,7 @@ def master_sections(state: TunnelGoonsGame) -> Rows:
         ("HERE WITH THE PLAYER", _place_lines(world, known=True)),
         ("HIDDEN HERE (the player has not found these)", _place_lines(world, known=False)),
         ("WAYS OUT", _ways_lines(world)),
+        *master_tail(world.hub, world.at_hub, world.board, world.jobs(), ""),
     )
 
 

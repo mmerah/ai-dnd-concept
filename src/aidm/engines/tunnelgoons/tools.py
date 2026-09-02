@@ -160,7 +160,7 @@ def move(draft: TunnelGoonsGame, args: Move, _rng: Random) -> list[Fact]:
     world.player.place = destination.id
     for npc in coming:
         npc.place = destination.id
-    world.visits.append(Visit(place=destination.id))
+    world.visits.append(Visit(place=destination.id, job=world.visit.job))
     trace = f"the player arrives at {world.label(destination)}"
     if coming:
         names = " and ".join(npc.name for npc in coming)
@@ -248,7 +248,8 @@ def level_up(draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
         return []
     if args.ability is None or args.boost is None:
         raise ValueError("level_up takes both an ability and a boost, or neither")
-    player = draft.payload.world.player
+    world = draft.payload.world
+    player = world.player
     match args.ability:
         case "brute":
             player.brute += 1
@@ -262,6 +263,8 @@ def level_up(draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
     else:
         player.inventory += 1
     player.level += 1
+    if world.job_open:
+        world.job_done = True
     card = f"Level {player.level}: {args.ability.capitalize()} +1, {args.boost.capitalize()} +1"
     return [entity_fact(player, "levelled_up", card, card=card)]
 
@@ -272,7 +275,9 @@ def tools() -> tuple[MasterTool[TunnelGoonsGame], ...]:
     roll_desc = "Roll 2d6 plus an ability and helpful items against a Difficulty Score or an npc."
     rest_desc = "Spend the night in a safe spot to heal the player's Health to full."
     level_desc = (
-        "Raise one ability and either Health or Inventory Score by 1 at an adventure's end."
+        "Raise one ability and either Health or Inventory Score by 1 at an adventure's end. In a "
+        "campaign, call it when the job's dungeon is done; the tavern then closes the job as "
+        "finished."
     )
     return (
         master_tool(

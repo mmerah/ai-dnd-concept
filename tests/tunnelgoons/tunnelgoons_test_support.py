@@ -4,6 +4,7 @@ from aidm.core.entities import EngineId, EntityId
 from aidm.core.facts import Fact
 from aidm.core.model import ScenarioMeta
 from aidm.engines.core import PLAYER_ID, Counter
+from aidm.engines.hub import Offer
 from aidm.engines.tunnelgoons.tools import ChangeWorld, apply_change
 from aidm.engines.tunnelgoons.world import (
     Goon,
@@ -27,9 +28,15 @@ ROPE = EntityId("rope")
 TORCH = EntityId("torch")
 KEY = EntityId("key")
 LANTERN = EntityId("lantern")
+TAVERN = EntityId("tavern")
 
 
-def small_world() -> TunnelGoonsGame:
+def _map_pieces() -> tuple[
+    dict[EntityId, Place],
+    dict[EntityId, tuple[Way, ...]],
+    dict[EntityId, Npc],
+    dict[EntityId, Item],
+]:
     """A line of four places, a start->vault shortcut, and hall->vault locked."""
     places = {
         START: Place(
@@ -67,16 +74,6 @@ def small_world() -> TunnelGoonsGame:
         VAULT: (Way(to=HALL, known=False), Way(to=CRYPT, known=False), Way(to=START, known=False)),
         CRYPT: (Way(to=VAULT, known=False),),
     }
-    player = Goon(
-        id=PLAYER_ID,
-        name="Kael",
-        brief="A wiry scavenger",
-        known=True,
-        place=START,
-        brute=1,
-        skulker=1,
-        erudite=1,
-    )
     mira = Npc(
         id=MIRA,
         name="Mira",
@@ -99,18 +96,79 @@ def small_world() -> TunnelGoonsGame:
         KEY: Item(id=KEY, name="Key", brief="A tarnished key", known=False, on=HALL),
         LANTERN: Item(id=LANTERN, name="Lantern", brief="A dented lantern", known=True, on=START),
     }
+    return places, ways, {mira.id: mira, mantis.id: mantis}, items
+
+
+def _kael(place: EntityId) -> Goon:
+    return Goon(
+        id=PLAYER_ID,
+        name="Kael",
+        brief="A wiry scavenger",
+        known=True,
+        place=place,
+        brute=1,
+        skulker=1,
+        erudite=1,
+    )
+
+
+def small_world() -> TunnelGoonsGame:
+    """A one-shot game: the player stands at the start of the four-place dungeon."""
+    places, ways, npcs, items = _map_pieces()
     world = TunnelWorld(
         places=places,
         ways=ways,
-        npcs={mira.id: mira, mantis.id: mantis},
+        npcs=npcs,
         items=items,
-        player=player,
+        player=_kael(START),
         visits=[Visit(place=START)],
     )
     return TunnelGoonsGame(
         scenario_id="test",
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="A test dungeon."),
+        engine=EngineId("tunnelgoons"),
+        payload=TunnelGoonsState(world=world),
+    )
+
+
+def hub_world(*, with_map: bool = True) -> TunnelGoonsGame:
+    """A campaign game: a tavern hub the player starts at, plus the dungeon unless bare."""
+    tavern = Place(
+        id=TAVERN,
+        name="Tavern",
+        brief="Where jobs are taken",
+        known=True,
+        description="A dim taproom, its board thick with offers.",
+    )
+    if with_map:
+        places, ways, npcs, items = _map_pieces()
+        places = {**places, TAVERN: tavern}
+        ways = {
+            **ways,
+            TAVERN: (Way(to=START, known=True),),
+            START: (*ways[START], Way(to=TAVERN, known=True)),
+        }
+    else:
+        places, ways, npcs, items = {TAVERN: tavern}, {}, {}, {}
+    board = (
+        Offer(title="Crates off Deck 9", pitch="No manifest, half up front."),
+        Offer(title="A Debt Called In", pitch="Someone remembers what you owe."),
+    )
+    world = TunnelWorld(
+        places=places,
+        ways=ways,
+        npcs=npcs,
+        items=items,
+        player=_kael(TAVERN),
+        visits=[Visit(place=TAVERN)],
+        hub=TAVERN,
+        board=board,
+    )
+    return TunnelGoonsGame(
+        scenario_id="test",
+        character_id="kael",
+        scenario=ScenarioMeta(title="Test Campaign", premise="A test campaign.", kind="campaign"),
         engine=EngineId("tunnelgoons"),
         payload=TunnelGoonsState(world=world),
     )

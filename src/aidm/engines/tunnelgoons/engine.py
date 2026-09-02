@@ -26,9 +26,9 @@ from aidm.engines.tunnelgoons.world import (
 from aidm.engines.tunnelgoons.worldsmith import (
     build_scenario,
     install_extension,
-    map_exhausted,
     opening_draft,
     render_map,
+    way_open,
     write_extension,
 )
 
@@ -52,6 +52,8 @@ def new_game(scenario: AnyScenario, character: AnyCharacter) -> TunnelGoonsState
         player=player,
         visits=[Visit(place=canon.start)],
         source=canon.source,
+        hub=canon.hub,
+        board=canon.board,
     )
     return TunnelGoonsState(world=world)
 
@@ -59,7 +61,7 @@ def new_game(scenario: AnyScenario, character: AnyCharacter) -> TunnelGoonsState
 def validate(state: TunnelGoonsGame) -> None:
     if state.packs:
         raise ValueError("Tunnel Goons has no table sets")
-    check_kind(state.scenario.kind, None)
+    check_kind(state.scenario.kind, state.payload.world.hub)
 
 
 def build() -> Engine[TunnelGoonsGame]:
@@ -90,7 +92,7 @@ def build() -> Engine[TunnelGoonsGame]:
             build=build_scenario,
         ),
         transition=Transition(
-            ready=map_exhausted,
+            ready=way_open,
             write=write_extension,
             install=install_extension,
             arrival_brief=None,

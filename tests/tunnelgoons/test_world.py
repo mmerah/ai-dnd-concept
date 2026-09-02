@@ -1,7 +1,9 @@
 import pytest
-from tunnelgoons_test_support import HALL, MIRA, START, small_world
+from core_test_support import updated
+from tunnelgoons_test_support import HALL, MIRA, START, TAVERN, hub_world, small_world
 
 from aidm.core.entities import EntityId
+from aidm.engines.hub import Debrief
 from aidm.engines.tunnelgoons.world import Item, Visit, Way, frontier, has_shortcut, walk
 
 GHOST = EntityId("ghost")
@@ -50,3 +52,22 @@ def test_has_shortcut_finds_the_alternate_route_to_the_vault() -> None:
 def test_frontier_counts_the_one_unknown_place_past_a_known_one() -> None:
     world = small_world().payload.world
     assert frontier(world) == 1
+
+
+def test_a_debrief_on_a_visit_away_from_the_hub_is_refused() -> None:
+    world = hub_world().payload.world
+    with pytest.raises(ValueError, match="debrief away from the hub"):
+        _ = updated(
+            world,
+            visits=[
+                Visit(place=TAVERN),
+                Visit(place=START, debrief=Debrief(text="Job's done.", finished=True)),
+                Visit(place=TAVERN),
+            ],
+        )
+
+
+def test_a_job_stamp_with_no_hub_is_refused() -> None:
+    world = small_world().payload.world
+    with pytest.raises(ValueError, match="job with no hub"):
+        _ = updated(world, visits=[Visit(place=START, job="Bandits")])

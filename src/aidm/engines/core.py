@@ -23,6 +23,7 @@ from aidm.core.tools import MasterTool, Validate
 from aidm.core.views import NarratorView, PlayerView, Rows
 
 PLAYER_ID = EntityId("player")
+TAIL_EXCHANGES = 3
 
 
 class Entity(Protocol):
@@ -117,6 +118,10 @@ class Engine[G: Game[Any]]:
 
 
 type AnyEngine = Engine[Any]
+
+
+def told_tail(exchanges: Sequence[Exchange]) -> str:
+    return "\n".join(f"> {one.prompt}\n{one.narration}" for one in exchanges[-TAIL_EXCHANGES:])
 
 
 def pool(counter: Counter) -> str:

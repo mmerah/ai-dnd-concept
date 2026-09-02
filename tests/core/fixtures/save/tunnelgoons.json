@@ -219,7 +219,9 @@
               "facts": [],
               "decision": ""
             }
-          ]
+          ],
+          "job": "",
+          "debrief": null
         },
         {
           "place": "cellar",
@@ -273,10 +275,15 @@
               ],
               "decision": ""
             }
-          ]
+          ],
+          "job": "",
+          "debrief": null
         }
       ],
-      "source": ""
+      "source": "",
+      "hub": null,
+      "board": [],
+      "job_done": false
     }
   }
 }
