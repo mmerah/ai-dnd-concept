@@ -9,7 +9,7 @@ from aidm.core.facts import Fact, cards
 from aidm.core.play import Exchange, SpokenLine
 from aidm.core.tools import schema_of
 from aidm.core.views import Panel, PanelRow, Rows, sections
-from aidm.engines.core import Entity
+from aidm.engines.core import Entity, told_tail
 from aidm.engines.hub import (
     HOME_ROW,
     HUB_ROW,
@@ -28,7 +28,6 @@ from aidm.engines.hub import (
 )
 
 SCENE_TURN_CAP = 12
-TAIL_EXCHANGES = 3
 MIN_SITUATION = 80  # what the worldsmith owes a scene; an authored `Scene` is held to less
 SPENT_NOTE = "This scene looks spent — {reason}. If its question is settled, call `next_scene`."
 NEXT_SCENE = (
@@ -331,15 +330,11 @@ def scene_history(runs: Sequence[SceneRun]) -> str:
                 f"the question: {run.scene.question}",
                 *([f"the job: {run.scene.job}"] if run.scene.job else []),
                 run.scene.situation,
-                "what happened: " + (told_tail(run) or "(nothing yet)"),
+                "what happened: " + (told_tail(run.exchanges) or "(nothing yet)"),
             )
         )
         for number, run in enumerate(runs, start=1)
     )
-
-
-def told_tail(run: SceneRun) -> str:
-    return "\n".join(f"> {one.prompt}\n{one.narration}" for one in run.exchanges[-TAIL_EXCHANGES:])
 
 
 def check_hub(hub: Slug | None, board: Sequence[Offer], runs: Sequence[SceneRun]) -> None:

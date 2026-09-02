@@ -11,8 +11,10 @@ from tunnelgoons_test_support import (
     MIRA,
     ROPE,
     START,
+    TAVERN,
     VAULT,
     changed,
+    hub_world,
     refused,
     small_world,
 )
@@ -197,6 +199,21 @@ def test_level_up_with_both_raises_the_ability_and_the_boost_and_the_level() -> 
     assert world.player.brute == 2
     assert world.player.level == before + 1
     assert any(fact.kind == "levelled_up" for fact in facts)
+
+
+def test_level_up_sets_job_done_only_when_a_job_is_open() -> None:
+    stamped = hub_world().draft()
+    stamped.payload.world.visits = [
+        Visit(place=TAVERN, job="Bandits"),
+        Visit(place=START, job="Bandits"),
+        Visit(place=TAVERN, job="Bandits"),
+    ]
+    _ = level_up(stamped, LevelUp(ability="brute", boost="health"), Random(0))
+    assert stamped.payload.world.job_done
+
+    unstamped = small_world().draft()
+    _ = level_up(unstamped, LevelUp(ability="brute", boost="health"), Random(0))
+    assert not unstamped.payload.world.job_done
 
 
 def test_level_up_with_one_argument_is_refused() -> None:

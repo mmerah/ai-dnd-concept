@@ -207,10 +207,15 @@
       "visits": [
         {
           "place": "entrance",
-          "exchanges": []
+          "exchanges": [],
+          "job": "",
+          "debrief": null
         }
       ],
-      "source": ""
+      "source": "",
+      "hub": null,
+      "board": [],
+      "job_done": false
     }
   }
 }

@@ -1,0 +1,68 @@
+{
+  "meta": {
+    "title": "The Salt Lantern",
+    "premise": "The Salt Lantern is the last warm room before the old salt-mine tunnels swallow the light, and Sella Holt keeps a board of what's owed to whoever goes down and comes back.",
+    "kind": "campaign"
+  },
+  "engine": "tunnelgoons",
+  "packs": [],
+  "art_style": "",
+  "payload": {
+    "world": {
+      "places": {
+        "salt-lantern": {
+          "id": "salt-lantern",
+          "name": "The Salt Lantern",
+          "brief": "A tavern built over the old mine head",
+          "known": true,
+          "description": "The Salt Lantern sits over the boarded mine head, its floor gritty with tracked-in salt and its lanterns turned low against the damp. A corkboard by the door carries the week's jobs in a dozen hands; Sella Holt works the taps without looking up, and Convoy Thess holds his usual stool at the end of the bar."
+        }
+      },
+      "ways": {},
+      "npcs": {
+        "sella-holt": {
+          "id": "sella-holt",
+          "name": "Sella Holt",
+          "brief": "Keeps the Salt Lantern and the board; she's buried three husbands and a mine crew, and outlasted all of them.",
+          "known": true,
+          "place": "salt-lantern",
+          "hp": { "current": 10, "maximum": 10 }
+        },
+        "convoy-thess": {
+          "id": "convoy-thess",
+          "name": "Convoy Thess",
+          "brief": "A one-eyed regular who quit the tunnels years back and now just watches who takes what off the board.",
+          "known": true,
+          "place": "salt-lantern",
+          "hp": { "current": 8, "maximum": 8 }
+        }
+      },
+      "items": {
+        "cracked-lantern": {
+          "id": "cracked-lantern",
+          "name": "Cracked Mine Lantern",
+          "brief": "Pulled from the shaft years ago; the glass is starred but it still holds a flame.",
+          "known": true,
+          "on": "salt-lantern"
+        }
+      },
+      "start": "salt-lantern",
+      "hub": "salt-lantern",
+      "source": "",
+      "board": [
+        {
+          "title": "The Flooded Chapel",
+          "pitch": "Water's moving in the old chapel shaft where nothing should be moving it. Bring back whatever's stirring it, and half of whatever else you find is yours."
+        },
+        {
+          "title": "Pell's Debt",
+          "pitch": "Pell owes the collector three casks of salt he doesn't have. Clear the wormlord out of his cellar tunnel and I'll call the debt settled myself."
+        },
+        {
+          "title": "The Whistling Stair",
+          "pitch": "The old well-stair's been whistling at night and nobody's gone down to look. First pick of whatever's down there, plus what the board usually pays."
+        }
+      ]
+    }
+  }
+}

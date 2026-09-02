@@ -10,6 +10,17 @@ from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import Exchange, SpokenLine
 from aidm.core.views import Rows
 from aidm.engines.core import PLAYER_ID, Counter, check_filing, labeled, pool, reveal
+from aidm.engines.hub import (
+    Debrief,
+    Job,
+    Offer,
+    Stop,
+    check_board,
+    closed_jobs,
+    heading,
+    job_start,
+    job_titles,
+)
 
 Ability = Literal["brute", "skulker", "erudite"]
 ABILITIES: tuple[Ability, ...] = ("brute", "skulker", "erudite")
@@ -96,6 +107,8 @@ class Way(Mutable):
 class Visit(Mutable):
     place: CheckedEntityId
     exchanges: list[Exchange] = Field(default_factory=list)
+    job: str = ""  # the open job's title, stamped on every visit while one is open
+    debrief: Debrief | None = None  # the tavern's word on the job just reported
 
 
 # A plain alias, not `type`: it names the four kinds a validator or a card line matches on.
@@ -168,11 +181,16 @@ class MapCanon(Dungeon):
 
     start: CheckedEntityId
     source: str = ""
+    hub: CheckedEntityId | None = None
+    board: tuple[Offer, ...] = ()
 
     @model_validator(mode="after")
     def _startable(self) -> Self:
         if not self.require_place(self.start).known:
             raise ValueError("the starting place must be known to the player")
+        check_board(self.hub, self.board)
+        if self.hub is not None and self.hub != self.start:
+            raise ValueError(f"hub {self.hub!r} is not the starting place {self.start!r}")
         return self
 
 
@@ -180,6 +198,9 @@ class TunnelWorld(Dungeon):
     player: Goon
     visits: list[Visit] = Field(min_length=1)
     source: str = ""
+    hub: CheckedEntityId | None = None
+    board: tuple[Offer, ...] = ()
+    job_done: bool = False  # the master's word, set by `level_up` while a job is open
 
     @model_validator(mode="after")
     def _playable(self) -> Self:
@@ -189,6 +210,9 @@ class TunnelWorld(Dungeon):
             _ = self.require_place(visit.place)
         if self.visits[-1].place != self.player.place:
             raise ValueError("the last visit is not where the player stands")
+        if self.hub is not None:
+            _ = self.require_place(self.hub)
+        check_hub(self.hub, self.board, self.stops(), self.job_done)
         return self
 
     @property
@@ -198,6 +222,25 @@ class TunnelWorld(Dungeon):
     @property
     def visit(self) -> Visit:
         return self.visits[-1]
+
+    @property
+    def at_hub(self) -> bool:
+        return self.hub is not None and self.player.place == self.hub
+
+    @property
+    def job_open(self) -> bool:
+        return job_open(self.hub, self.stops())
+
+    def stops(self) -> tuple[Stop, ...]:
+        return tuple(
+            Stop(place=visit.place, title=visit.job, debrief=visit.debrief) for visit in self.visits
+        )
+
+    def job_visits(self) -> list[Visit]:
+        return self.visits[job_start(self.stops()) :]
+
+    def jobs(self) -> tuple[Job, ...]:
+        return closed_jobs(self.hub, self.stops())
 
     def entity(self, entity_id: EntityId) -> Entity | None:
         return self.player if entity_id == self.player.id else super().entity(entity_id)
@@ -232,13 +275,14 @@ class TunnelWorld(Dungeon):
         return reveal(one, self.player.id)
 
     def exchanges(self) -> tuple[Exchange, ...]:
-        return tuple(
-            one
-            if one.where
-            else one.model_copy(update={"where": self.require_place(visit.place).name})
-            for visit in self.visits
-            for one in visit.exchanges
-        )
+        filed: list[Exchange] = []
+        for visit, job in zip(self.visits, job_titles(self.hub, self.stops()), strict=True):
+            where = heading(job, self.require_place(visit.place).name)
+            filed.extend(
+                one if one.where else one.model_copy(update={"where": where})
+                for one in visit.exchanges
+            )
+        return tuple(filed)
 
 
 class TunnelGoonsState(Mutable):
@@ -272,6 +316,34 @@ class TunnelGoonsScenarioFile(Scenario[TunnelGoonsScenario]):
 
 class TunnelGoonsCharacterFile(Character[TunnelGoonsCharacter]):
     pass
+
+
+def job_open(hub: EntityId | None, stops: Sequence[Stop]) -> bool:
+    """A job is open once it has been walked: a stamp still sitting at the hub is not yet taken."""
+    return any(stop.title and stop.place != hub for stop in stops[job_start(stops) :])
+
+
+def check_hub(
+    hub: EntityId | None, board: Sequence[Offer], stops: Sequence[Stop], job_done: bool
+) -> None:
+    check_board(hub, board)
+    if hub is None:
+        for index, stop in enumerate(stops):
+            if stop.title:
+                raise ValueError(f"visit {index} has a job with no hub")
+            if stop.debrief is not None:
+                raise ValueError(f"visit {index} has a debrief with no hub")
+        if job_done:
+            raise ValueError("a job done with no hub")
+        return
+    if stops[0].place != hub or stops[0].debrief is not None:
+        raise ValueError(f"visit 0 does not open at hub {hub!r} with no debrief")
+    for index, stop in enumerate(stops):
+        if stop.debrief is not None and stop.place != hub:
+            raise ValueError(f"visit {index} has a debrief away from the hub")
+    if job_done and not job_open(hub, stops):
+        raise ValueError("a job done with no job open")
+    closed_jobs(hub, stops)
 
 
 def known(state: TunnelGoonsGame, entity_id: EntityId) -> bool | None:

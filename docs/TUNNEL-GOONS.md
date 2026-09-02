@@ -48,11 +48,11 @@ None. The starting item list is in the SRD's character creation.
 - `unlock_way` — open a locked way once the story has dealt with it.
 - `action_roll` — 2d6 plus an ability and helpful items, against a Difficulty Score or an npc.
 - `rest` — heal the player to full Health in a safe spot.
-- `level_up` — raise one ability and either Health or Inventory by 1, once at the adventure's end.
+- `level_up` — raise one ability and either Health or Inventory by 1, once per adventure in a one-shot, once per job in a campaign.
 
 ## Deviations in this repo
 
-1. Levelling up is an end-of-adventure step the master calls once. The SRD page says "every 2 game sessions", the 1.1 PDF "at the end of a game session"; an adventure is the closest thing this app has to a session.
+1. Levelling up is an end-of-adventure step the master calls once per adventure in a one-shot and once per job in a campaign. The SRD page says "every 2 game sessions", the 1.1 PDF "at the end of a game session"; an adventure is the closest thing this app has to a session.
 
 ## What the AI game master adds
 

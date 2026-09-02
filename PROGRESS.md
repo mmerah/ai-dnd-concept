@@ -165,3 +165,47 @@ that the plan did not say.
   refutation stands: PLAN 4.3 uses `RETURN_BRIEF` bare). `WRITE_HUB_SCENE` stays.
 - Known and accepted: `uv run aidm` serves the home page (HTTP 200); a played campaign turn needs
   the real CLIs and was not smoke-tested in the remote container.
+
+## Phase 4 — Tunnel Goons
+
+- `src` lines: 10,115 before, 10,341 after (target about 10,250). The engine 1,285 → 1,511 (target
+  about 1,420; cap 2,000). The overage is `worldsmith.py` (224 → 355): the return and job prompts,
+  `ReturnDraft`, the three bars and the three-branch `install_extension` PLAN 4.3 names. `told_tail`
+  moved to `core.py` (a wash).
+- Split as A (sonnet: source, content, docs, regen) then B (sonnet: tests). Content:
+  `scenarios/salt-lantern` (the tavern is the hub; Kael plays it). No new tool; `tools()` returns six.
+- Off-plan decisions:
+  - `REPORT_IN` and `REPORT_ROW` live in `views.py`, not `worldsmith.py`: `worldsmith.py` imports
+    `views.py` for `entity_line`, and `views.py` needs the row.
+  - "A job is open" means a walked job: `job_open(hub, stops)` in `world.py` is true only when a
+    visit since `job_start` carries a job away from the hub. PLAN 4.3 and 4.4 read `visits[-1].job`;
+    both reviewers showed that "Report in" pressed right after a take, before leaving, then failed
+    after the worldsmith call ("a debrief with no job before it"). `REPORT_ROW`, the `REPORT_IN`
+    guard, `level_up`'s verdict and `check_hub`'s "a job done with no job open" all read `job_open`.
+  - A job write at the tavern with a walked job open is refused before any prompt ("report the open
+    job first"): a typed intent there would re-stamp the visit and the second job would never reach
+    the ledger. PLAN 4.4 relied on the sidebar alone.
+  - The world validator does not require `visits[0]` to carry no job, nor a debriefed visit to carry
+    one (PLAN 4.2's letter): the first take stamps `visits[0].job` where the player stands, and a
+    report clears the job on the visit it debriefs. It holds `visits[0]` at the hub with no debrief,
+    debriefs at the hub only, `job_done` only with a job open, and `closed_jobs` walking clean.
+  - `TunnelWorld.jobs()` and `job_visits()` beside `stops()` (four and two call sites);
+    `check_hub(hub, board, stops, job_done)` takes the stops the world already builds.
+  - `attach` runs no bar; `write_extension` and `install_extension` each refuse first.
+  - `opening_canon(draft, source, kind)` gains `kind`: the hub is the start only for a campaign.
+  - `tests/tunnelgoons/test_worldsmith.py`'s renamed calls (`attach`, `way_open`,
+    `extension_refusal`) were updated in part A so the suite stayed green between parts.
+- Reviews: Fable reviewer and an Opus reviewer (no `codex` on the machine), both told to hunt for
+  cuts. Fixed: the walked-job predicate (both), the re-stamp refusal (Opus), the three closures in
+  `write_extension` and the unreachable `ReturnDraft` isinstance (both), `_start_unmet` shared by the
+  map and tavern bars (both), `stops_of` deleted (both), `hub_world(with_map=...)` and `_kael(place)`
+  in the test support, the `RETURN` constant, two stale test names (Opus).
+- Refuted: dropping the second bar run inside `install_extension` because `write_extension`'s
+  refusal already ran (Fable cut). `install` is a public `Transition` seam called by the runtime and
+  directly by tests with drafts that never passed `write`, and the pre-phase `install_extension` ran
+  the same bar through `apply_extension`; the check is pure and keeps `attach` safe for any caller.
+- Awaiting the maintainer's call: the walked-job predicate and the re-stamp refusal change PLAN
+  4.3/4.4's letter (`visits[-1].job`); both are recorded above and in the tests.
+- Known and accepted: `uv run aidm` serves the home page (HTTP 200) listing The Salt Lantern with
+  the campaign badge; a played campaign turn needs the real CLIs and was not smoke-tested in the
+  remote container. The tests cover the take, the walk, the report and the verdict.
