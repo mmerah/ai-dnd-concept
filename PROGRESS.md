@@ -112,8 +112,21 @@ that the plan did not say.
   because settled 7 keeps anything bound to an engine's world type in the engine with no type
   parameter, protocol or callback, and `hub.py`/`scenes.py` are outside this phase. The pure
   pieces (the `where` heading expression, `MIN_JOB`, `ONE_SHOT_OPENING`) could move to `hub.py`
-  without touching settled 7. The maintainer agreed with the reviewers: PLAN.md Phase 4b moves
-  all of it into `hub.py` and `scenes.py` once Tunnel Goons shows what it shares, and settled 7
-  now says shared code takes plain values, never a world.
+  without touching settled 7. The maintainer agreed with the reviewers: PLAN.md Phase 3b, before
+  Tunnel Goons, moves all of it into a `SceneWorld` base class in `scenes.py` and world-free
+  functions in `hub.py`; settled 7 now allows exactly that base class.
+- Direction check after the phase (a Fable reviewer, ignoring every settled decision; report in
+  the session's `/tmp/phase-3/direction.md`, outcomes in PLAN.md). Adopted, into Phase 3b: the
+  base class before Phase 4; structural drafts (`SceneDraft`, `JobDraft`, `HubDraft`,
+  `ReturnDraft`) in place of the bar's mode flags; debrief hygiene (hidden names checked, the
+  card not re-told, second person, hub questions as standing pressure, one duplicate secret);
+  the small cuts. Adopted with a change: job completion is the game master's verdict
+  (`next_scene` with `job_done`; Tunnel Goons' `level_up`), not the worldsmith's guess and not
+  the player's button, since the master holds the job's history. Adopted into Phase 4: the job
+  stamp on visits (a stroll into an old dungeon opens no job), the debrief on the current tavern
+  visit. Refused by the maintainer: buttons that skip the master turn to halve the spawns;
+  latency has not been the problem, and the fixer's reply and one consistent turn shape are
+  worth more. Also refused: a code-written debrief for Tunnel Goons (code would write
+  player-facing prose).
 - Known and accepted: `uv run aidm` serves the home page (HTTP 200); a played campaign turn
   needs the real CLIs and was not smoke-tested in the remote container.
