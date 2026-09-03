@@ -9,7 +9,7 @@ from aidm.core.views import (
     Subject,
     speaker_of,
 )
-from aidm.engines.core import pool
+from aidm.engines.core import character_panel, here_panel, pool, trail_panel
 from aidm.engines.hub import board_rows, jobs_panel, master_tail
 from aidm.engines.tunnelgoons.world import (
     Goon,
@@ -52,17 +52,15 @@ def player_view(state: TunnelGoonsGame) -> PlayerView:
     world = state.payload
     player = world.player
     ways = world.ways.get(world.current.id, ())
+    me = subject_of(player)
     return PlayerView(
-        player=subject_of(player),
+        player=me,
         panels=(
-            Panel(
-                title="Character",
-                rows=tuple(
-                    PanelRow(label=label, detail=detail)
-                    for label, detail in _character_rows(world, player)
-                ),
+            character_panel(_character_rows(world, player)),
+            here_panel(
+                me,
+                (subject_of(one) for one in world.at(world.current.id) if one.known),
             ),
-            Panel(title="Here", rows=tuple(_here_rows(world, player))),
             Panel(
                 title="Carrying",
                 rows=tuple(
@@ -91,13 +89,7 @@ def player_view(state: TunnelGoonsGame) -> PlayerView:
                 if world.at_hub
                 else ()
             ),
-            Panel(
-                title="Trail",
-                rows=tuple(
-                    PanelRow(label=world.require_place(v.place).name, detail="")
-                    for v in world.job_visits()
-                ),
-            ),
+            trail_panel(world.require_place(v.place).name for v in world.job_visits()),
             *jobs_panel(world.closed_jobs()),
         ),
         prompt=state.pending,
@@ -143,16 +135,6 @@ def _character_rows(world: TunnelWorld, player: Goon) -> Rows:
         (label, f"{carried}/{player.inventory}") if label == "Inventory" else (label, value)
         for label, value in player.rows()
     )
-
-
-def _here_rows(world: TunnelWorld, player: Goon) -> list[PanelRow]:
-    rows = [PanelRow(label=f"{player.name} (you)", detail=player.brief, icon_id=player.id)]
-    rows.extend(
-        PanelRow(label=one.name, detail=one.brief, icon_id=one.id)
-        for one in world.at(world.current.id)
-        if one.known
-    )
-    return rows
 
 
 def _place_lines(world: TunnelWorld, *, known: bool) -> str:

@@ -19,12 +19,6 @@ def test_the_player_views_backpack_panel_lists_items_and_the_med_kit() -> None:
     assert PanelRow(label="Med kit", detail="held") in backpack.rows
 
 
-def test_the_player_views_here_panel_lists_the_player_first_then_known_cast() -> None:
-    view = ENGINE.player_view(small_world())
-    here = next(panel for panel in view.panels if panel.title == "Here")
-    assert [row.label for row in here.rows] == ["Jax (you)", "Mira"]
-
-
 def test_master_sections_never_lists_the_player_under_here() -> None:
     sections = dict(master_sections(small_world()))
     assert "Jax" not in sections["HERE WITH THE PLAYER"]

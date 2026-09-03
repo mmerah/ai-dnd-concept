@@ -21,6 +21,7 @@ from aidm.core.model import AnyScenario, WorldsmithAnswer
 from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.hub import GO_HOME, TAKE_JOB
 from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft, SceneDraft
+from aidm.engines.scenes.engine import WORLDSMITH
 from aidm.engines.scenes.world import scene_refusal
 from aidm.engines.scenes.worldsmith import build_scenario, install_scene, opening_canon, write_next
 from aidm.engines.twentyfourxx.engine import BOARD_GUIDANCE, JOB_DONE_NOTE, TwentyfourxxEngine
@@ -28,7 +29,6 @@ from aidm.engines.twentyfourxx.world import TwentyfourxxGame, TwentyfourxxScenar
 
 TWENTYFOURXX = EngineId("twentyfourxx")
 ENGINE = TwentyfourxxEngine(REPOSITORY_ROOT / "packs" / "twentyfourxx")
-WORLDSMITH = ENGINE.role
 GUIDANCE = "guidance text"
 
 
