@@ -364,3 +364,25 @@ pinned, `test_turn.py`/`test_master_tools.py`/`test_game_service.py`, the crossi
   pages serve 200 on the staged tree. Per-tab refresh rests on `refreshable_method` refreshing
   only the instance's targets; the composer's state on `_set_composer` from `poll_turn` and
   `_run`; the live play is still owed.
+
+## After the plan — the engine layout
+
+`src` lines: 8,580 at start (`f04b79d`), 8,569 at end. Tests: 468 to 468. Every golden
+byte-identical; `scenarios/` and `characters/` untouched.
+
+The two deviations the phases left standing, and one layout ask, closed together:
+
+1. **Every engine has the same files**: `engine.py`, `tools.py`, `world.py`, `worldsmith.py`,
+   `rules.md`, plus `packs/` where the SRD ships table sets and `worldsmith.md` where the engine
+   has its own worldsmith prompt (the three scene engines share `scenes/worldsmith.md`). The
+   scene engines' `creation.py` (the `Pack` model and `AUTHORING`) is `worldsmith.py`: it is the
+   authored content the worldsmith writes from and the create page picks from.
+2. **`tunnelgoons/views.py` is gone.** `place_lines(*, known)` and `ways_lines()` are
+   `TunnelGoonsWorld` methods beside `line()`, as CLAUDE.md's method rule says; `REPORT_IN` and
+   `REPORT_ROW` sit in `tunnelgoons/engine.py`, their one reader; `lines_of` is
+   `core/views.py::lines_of`, now read by every "one item per line, or `- (none)`" prompt list
+   (the scene engine, 24XX gear, the Breathless backpack, the master and narrator prompts).
+3. **`opening_canon(draft, source)` is a `SceneEngine` method.** It parametrizes
+   `SceneCanon[self.cast]`, so the `cast_type` parameter Phase 1 added is gone; nothing else
+   knows the cast type at that point. Tunnel Goons' `opening_canon(draft, source, kind)` stays a
+   free function: it reads no engine state.

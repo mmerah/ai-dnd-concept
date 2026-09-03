@@ -7,8 +7,7 @@ from support.tunnelgoons import START, TAVERN, hub_world, small_world
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.engines.hub import Job, Offer
-from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
-from aidm.engines.tunnelgoons.views import REPORT_IN
+from aidm.engines.tunnelgoons.engine import REPORT_IN, TunnelGoonsEngine
 from aidm.engines.tunnelgoons.world import Item, Place, TunnelGoonsGame, Visit, Way
 from aidm.engines.tunnelgoons.worldsmith import (
     MapDraft,

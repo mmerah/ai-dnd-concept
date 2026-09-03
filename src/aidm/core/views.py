@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal
 from aidm.core.play import (
@@ -101,6 +101,11 @@ class PlayerView(Frozen):
 
 def sections(parts: Sections) -> str:
     return "\n\n".join(f"{name}:\n{body.strip()}" for name, body in parts)
+
+
+def lines_of(parts: Iterable[str]) -> str:
+    """A prompt list, one item per line; an empty one still says so."""
+    return "\n".join(parts) or "- (none)"
 
 
 def render_history(scenes: Sequence[SceneRecord]) -> str:

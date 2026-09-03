@@ -10,7 +10,6 @@ from aidm.core.play import PendingDecision
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Sections
 from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, SRD_PACK, keep_highest
-from aidm.engines.loner3e.creation import AUTHORING, Pack
 from aidm.engines.loner3e.tools import (
     ChangeTags,
     ChangeWorld,
@@ -35,6 +34,7 @@ from aidm.engines.loner3e.world import (
     Loner3eSheet,
     Loner3eWorld,
 )
+from aidm.engines.loner3e.worldsmith import AUTHORING, Pack
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import (
     NEXT_SCENE,

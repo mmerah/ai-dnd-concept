@@ -19,7 +19,7 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption, Exchange, SceneRecord
-from aidm.core.views import NarratorView, Panel, PlayerView, Sections, render_history
+from aidm.core.views import NarratorView, Panel, PlayerView, Sections, lines_of, render_history
 from aidm.engines.base import (
     Pack,
     Person,
@@ -32,15 +32,15 @@ from aidm.engines.hub import (
     CAMPAIGN_OPENING,
     GO_HOME,
     ONE_SHOT_OPENING,
+    Campaign,
     check_kind,
     question_heading,
 )
 from aidm.engines.scenes.drafts import HubDraft, JobDraft, NextDraft, ReturnDraft, SceneDraft
 from aidm.engines.scenes.tools import Enter, Kill, Leave, NextScene, Reveal, SharedChange
-from aidm.engines.scenes.world import SceneCanon, SceneWorld
+from aidm.engines.scenes.world import SceneCanon, SceneWorld, resolve_ids, run_of
 from aidm.engines.scenes.worldsmith import (
     CROSSING,
-    opening_canon,
     scene_refusal,
     worldsmith_prompt,
 )
@@ -180,13 +180,10 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
         return self.world(draft).settle(args.job_done, args.pursuit)
 
     def here_lines(self, world: SceneWorld[C, P]) -> str:
-        lines = "\n".join(member.line() for member in world.here() if member.id != world.player.id)
-        return lines or "- (none)"
+        return lines_of(member.line() for member in world.here() if member.id != world.player.id)
 
     def hidden_lines(self, world: SceneWorld[C, P]) -> str:
-        return (
-            "\n".join(world.require(entity_id).line() for entity_id in world.hidden()) or "- (none)"
-        )
+        return lines_of(world.require(entity_id).line() for entity_id in world.hidden())
 
     def render_next(self, draft: G, intent: str, answer: type[SceneDraft[C]]) -> str:
         world = self.world(draft)
@@ -247,7 +244,24 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             meta=meta.with_premise(draft.situation),
             engine=self.id,
             packs=packs,
-            payload=opening_canon(draft, source, self.cast),
+            payload=self.opening_canon(draft, source),
+        )
+
+    def opening_canon(self, draft: SceneDraft[C], source: str) -> SceneCanon[C]:
+        """Parametrized on the engine's cast, so the canon revalidates as its own people."""
+        cast = draft.cast
+        present = resolve_ids(draft.present, cast, "present")
+        hidden = resolve_ids(draft.hidden, cast, "hidden")
+        for entity_id in present:
+            cast[entity_id].known = True
+        campaign = (
+            Campaign(place=draft.place, board=draft.offers) if isinstance(draft, HubDraft) else None
+        )
+        return SceneCanon[self.cast](
+            cast=cast,
+            opening=run_of(draft, [*present, *hidden]),
+            source=source,
+            campaign=campaign,
         )
 
     async def write_next(

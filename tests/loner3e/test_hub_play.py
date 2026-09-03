@@ -5,7 +5,7 @@ from aidm.core.entities import EntityId
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eSheet
 from aidm.engines.scenes.drafts import HubDraft, ReturnDraft, SceneDraft
-from aidm.engines.scenes.worldsmith import opening_canon, scene_refusal
+from aidm.engines.scenes.worldsmith import scene_refusal
 
 ENGINE = Loner3eEngine()
 
@@ -86,12 +86,10 @@ def _opening(**fields: object) -> SceneDraft[Loner3eSheet]:
 def test_opening_canon_sets_the_hub_and_board_for_a_campaign_only() -> None:
     offers = [{"title": "A", "pitch": "Take A."}, {"title": "B", "pitch": "Take B."}]
     campaign = the_campaign(
-        opening_canon(
-            HubDraft[Loner3eSheet].model_validate({**_opening().model_dump(), "offers": offers}),
-            "",
-            Loner3eSheet,
+        ENGINE.opening_canon(
+            HubDraft[Loner3eSheet].model_validate({**_opening().model_dump(), "offers": offers}), ""
         ).campaign
     )
     assert campaign.place == HUB_PLACE
     assert [offer.title for offer in campaign.board] == ["A", "B"]
-    assert opening_canon(_opening(), "", Loner3eSheet).campaign is None
+    assert ENGINE.opening_canon(_opening(), "").campaign is None

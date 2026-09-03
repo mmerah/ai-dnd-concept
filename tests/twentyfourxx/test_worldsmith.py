@@ -21,7 +21,7 @@ from aidm.core.model import AnyScenario, ScenarioMeta, WorldsmithAnswer
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.hub import GO_HOME, TAKE_JOB
 from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft, SceneDraft
-from aidm.engines.scenes.worldsmith import opening_canon, scene_refusal
+from aidm.engines.scenes.worldsmith import scene_refusal
 from aidm.engines.twentyfourxx.engine import BOARD_GUIDANCE, TwentyfourxxEngine
 from aidm.engines.twentyfourxx.world import TwentyfourxxGame
 
@@ -257,7 +257,7 @@ def test_opening_canon_marks_present_known() -> None:
         present=(stranger,),
         cast={stranger: Person(id=stranger, name="A Stranger", brief="new to the world")},
     )
-    canon = opening_canon(draft, "", Person)
+    canon = ENGINE.opening_canon(draft, "")
     assert canon.cast[stranger].known is True
 
 
