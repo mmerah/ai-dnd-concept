@@ -22,6 +22,7 @@ from tunnelgoons_test_support import (
 from aidm.core.entities import EntityId
 from aidm.core.tools import NoArgs
 from aidm.engines.core import PLAYER_ID
+from aidm.engines.hub import Job
 from aidm.engines.tunnelgoons.tools import (
     ActionRoll,
     LevelUp,
@@ -46,7 +47,7 @@ def _total(card: str) -> int:
 
 def test_the_roll_adds_ability_and_items_and_penalizes_brute_and_skulker_over_inventory() -> None:
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
     world.player.skulker = 2
     world.player.inventory = 1  # carrying rope + torch (2) is 1 over
     facts = action_roll(
@@ -61,7 +62,7 @@ def test_the_roll_adds_ability_and_items_and_penalizes_brute_and_skulker_over_in
 
 def test_erudite_rolls_are_not_penalized_for_over_inventory() -> None:
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
     world.player.erudite = 2
     world.player.inventory = 1
     facts = action_roll(
@@ -74,7 +75,7 @@ def test_erudite_rolls_are_not_penalized_for_over_inventory() -> None:
 
 def test_a_roll_against_an_npc_that_hits_can_slay_it() -> None:
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
     world.npcs[MANTIS].place = START
     world.player.brute = 10  # min total 12 always beats DS 4
     facts = action_roll(
@@ -90,7 +91,7 @@ def test_a_roll_against_an_npc_that_hits_can_slay_it() -> None:
 
 def test_a_miss_against_an_npc_can_kill_the_player() -> None:
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
     world.npcs[MANTIS].place = START
     world.npcs[MANTIS].hp.maximum = 20
     world.npcs[MANTIS].hp.current = 20  # max total 12 never beats DS 20
@@ -110,7 +111,7 @@ def test_a_miss_against_an_npc_can_kill_the_player() -> None:
 def test_a_roll_against_an_npc_wounds_nobody_unless_it_is_dangerous() -> None:
     """SRD: only a dangerous action turns the margin into damage; talk against a DS does not."""
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
     world.npcs[MANTIS].place = START
     facts = action_roll(
         draft, ActionRoll(what="Talk it down", ability="erudite", against=MANTIS), Random(3)
@@ -122,7 +123,7 @@ def test_a_roll_against_an_npc_wounds_nobody_unless_it_is_dangerous() -> None:
 
 def test_dangerous_hurts_only_on_a_miss() -> None:
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
     world.player.erudite = 12  # min total 14 always beats DS 8
     before = world.player.hp.current
     facts = action_roll(
@@ -134,7 +135,7 @@ def test_dangerous_hurts_only_on_a_miss() -> None:
     assert not any(fact.kind == "counter_changed" for fact in facts)
 
     draft2 = small_world().draft()
-    world2 = draft2.payload.world
+    world2 = draft2.payload
     world2.player.inventory = 0
     world2.items.update(
         {
@@ -176,7 +177,7 @@ def test_an_item_not_in_the_players_hands_is_refused() -> None:
 
 def test_rest_heals_the_player() -> None:
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
     world.player.hp.current = 4
     facts = rest(draft, NoArgs(), Random(0))
     assert world.player.hp.current == world.player.hp.maximum
@@ -193,7 +194,7 @@ def test_level_up_with_no_args_opens_the_six_option_decision() -> None:
 
 def test_level_up_with_both_raises_the_ability_and_the_boost_and_the_level() -> None:
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
     before = world.player.level
     facts = level_up(draft, LevelUp(ability="brute", boost="health"), Random(0))
     assert world.player.brute == 2
@@ -203,17 +204,18 @@ def test_level_up_with_both_raises_the_ability_and_the_boost_and_the_level() -> 
 
 def test_level_up_sets_job_done_only_when_a_job_is_open() -> None:
     stamped = hub_world().draft()
-    stamped.payload.world.visits = [
-        Visit(place=TAVERN, job="Bandits"),
-        Visit(place=START, job="Bandits"),
-        Visit(place=TAVERN, job="Bandits"),
+    stamped.payload.visits = [
+        Visit(place=TAVERN),
+        Visit(place=START),
+        Visit(place=TAVERN),
     ]
+    stamped.payload.jobs = [Job(title="Bandits", place=START, started=1)]
     _ = level_up(stamped, LevelUp(ability="brute", boost="health"), Random(0))
-    assert stamped.payload.world.job_done
+    assert stamped.payload.jobs[-1].finished
 
     unstamped = small_world().draft()
     _ = level_up(unstamped, LevelUp(ability="brute", boost="health"), Random(0))
-    assert not unstamped.payload.world.job_done
+    assert unstamped.payload.jobs == []
 
 
 def test_level_up_with_one_argument_is_refused() -> None:
@@ -222,9 +224,23 @@ def test_level_up_with_one_argument_is_refused() -> None:
         _ = level_up(draft, LevelUp(ability="brute"), Random(0))
 
 
+def test_a_tavern_visit_mid_job_keeps_the_job_open() -> None:
+    draft = hub_world().draft()
+    world = draft.payload
+    world.jobs = [Job(title="Bandits", place=START)]
+
+    _ = move(draft, Move(to_id=START), Random(0))
+    assert world.jobs[-1].started == 1
+    assert world.job_open
+
+    _ = move(draft, Move(to_id=TAVERN), Random(0))
+    assert world.job_open
+    assert world.jobs[-1].started == 1
+
+
 def test_move_refuses_a_locked_way() -> None:
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
     world.player.place = HALL
     world.visits.append(Visit(place=HALL))
     with pytest.raises(ValueError, match="locked"):
@@ -239,7 +255,7 @@ def test_move_refuses_when_there_is_no_way() -> None:
 
 def test_move_reveals_the_destination_and_adds_a_visit() -> None:
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
     before = len(world.visits)
     facts = move(draft, Move(to_id=VAULT), Random(0))
     assert world.player.place == VAULT
@@ -250,7 +266,7 @@ def test_move_reveals_the_destination_and_adds_a_visit() -> None:
 
 def test_move_with_ids_brings_an_npc_here_and_refuses_one_standing_elsewhere() -> None:
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
     facts = move(draft, Move(to_id=VAULT, with_ids=(MIRA,)), Random(0))
     assert world.npcs[MIRA].place == VAULT
     assert any("Mira" in fact.trace for fact in facts if fact.kind == "arrived")
@@ -262,7 +278,7 @@ def test_move_with_ids_brings_an_npc_here_and_refuses_one_standing_elsewhere() -
 
 def test_unlock_way_then_move_passes() -> None:
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
     world.player.place = HALL
     world.visits.append(Visit(place=HALL))
     _ = unlock_way(draft, UnlockWay(to_id=VAULT), Random(0))
@@ -273,7 +289,7 @@ def test_unlock_way_then_move_passes() -> None:
 
 def test_move_item_to_the_player_to_an_npc_here_and_to_the_place() -> None:
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
 
     _ = changed(draft, "move_item", item_id=LANTERN, to=MIRA)
     assert world.items[LANTERN].on == MIRA
@@ -287,7 +303,7 @@ def test_move_item_to_the_player_to_an_npc_here_and_to_the_place() -> None:
 
 def test_move_item_refuses_a_holder_the_player_has_not_met() -> None:
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
     world.npcs[MANTIS].place = START
     with pytest.raises(ValueError, match="has not met"):
         _ = changed(draft, "move_item", item_id=LANTERN, to=MANTIS)
@@ -295,7 +311,7 @@ def test_move_item_refuses_a_holder_the_player_has_not_met() -> None:
 
 def test_kill_drops_an_npcs_items_loose() -> None:
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
     blade = EntityId("mira-blade")
     world.items[blade] = Item(id=blade, name="Blade", brief="Mira's blade", known=True, on=MIRA)
 
@@ -307,7 +323,7 @@ def test_kill_drops_an_npcs_items_loose() -> None:
 
 def test_reveal_only_what_is_here_and_unknown() -> None:
     draft = small_world().draft()
-    world = draft.payload.world
+    world = draft.payload
 
     assert "not here" in refused(draft, "reveal", entity_id=KEY)
     assert "already" in refused(draft, "reveal", entity_id=LANTERN)

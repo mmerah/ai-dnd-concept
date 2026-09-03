@@ -1,13 +1,14 @@
+from collections.abc import Sequence
+
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import ScenarioMeta
 from aidm.engines.core import PLAYER_ID, Person
-from aidm.engines.hub import Offer
-from aidm.engines.scenes.world import Scene, SceneRun
+from aidm.engines.hub import Job, Offer
+from aidm.engines.scenes.world import SceneRun
 from aidm.engines.twentyfourxx.world import (
     Item,
     Operator,
     TwentyfourxxGame,
-    TwentyfourxxState,
     TwentyfourxxWorld,
 )
 
@@ -33,22 +34,22 @@ def small_world() -> TwentyfourxxGame:
     world = TwentyfourxxWorld(
         cast={KESTREL: kestrel, SABLE: sable},
         player=_player(),
-        runs=[SceneRun(scene=_scene(), present=[KESTREL], hidden=[SABLE])],
+        runs=[_scene(here=[KESTREL, SABLE])],
     )
     return TwentyfourxxGame(
         scenario_id="loading-bay",
         character_id="rook",
         scenario=ScenarioMeta(title="Loading Bay", premise="A cargo job gone quiet."),
         engine=EngineId("twentyfourxx"),
-        payload=TwentyfourxxState(world=world),
+        payload=world,
     )
 
 
 def hub_world() -> TwentyfourxxGame:
     """A campaign world: a hub run with a known fixer, then one job run away from it."""
     fixer = Person(id=FIXER, name="Fixer", brief="Runs the board", known=True)
-    hub_run = SceneRun(scene=_hub_scene(), present=[FIXER])
-    job_run = SceneRun(scene=_job_scene())
+    hub_run = _hub_scene(here=[FIXER])
+    job_run = _job_scene()
     world = TwentyfourxxWorld(
         cast={FIXER: fixer},
         player=_player(),
@@ -58,41 +59,44 @@ def hub_world() -> TwentyfourxxGame:
             Offer(title="Job One", pitch="I take job one."),
             Offer(title="Job Two", pitch="I take job two."),
         ),
+        jobs=[Job(title="The Dock Run", place=JOB_PLACE, terms=JOB, started=1)],
     )
     return TwentyfourxxGame(
         scenario_id="amber-tap",
         character_id="rook",
         scenario=ScenarioMeta(title="The Amber Tap", premise="A hub campaign.", kind="campaign"),
         engine=EngineId("twentyfourxx"),
-        payload=TwentyfourxxState(world=world),
+        payload=world,
     )
 
 
-def _scene() -> Scene:
-    return Scene(
+def _scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
+    return SceneRun(
         place="loading-bay",
         title="The Loading Bay",
         question="Can they reach the cargo before the lights come back?",
         situation=SITUATION,
+        here=list(here),
     )
 
 
-def _hub_scene() -> Scene:
-    return Scene(
+def _hub_scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
+    return SceneRun(
         place=HUB_PLACE,
         title="The Amber Tap",
         question="What job does Kael take off the board tonight?",
         situation=HUB_SITUATION,
+        here=list(here),
     )
 
 
-def _job_scene() -> Scene:
-    return Scene(
+def _job_scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
+    return SceneRun(
         place=JOB_PLACE,
         title="The Dock Run",
         question="Can Kael clear the warehouse before the shift change?",
         situation=JOB_SITUATION,
-        job=JOB,
+        here=list(here),
     )
 
 

@@ -7,108 +7,148 @@
   "packs": [],
   "art_style": "",
   "payload": {
-    "world": {
-      "places": {
-        "entrance": {
-          "id": "entrance",
-          "name": "The Collapsed Archway",
-          "brief": "Where the tunnels begin",
-          "known": true,
-          "description": "A collapsed archway lets grey light down into the tunnels below."
+    "places": {
+      "entrance": {
+        "id": "entrance",
+        "name": "The Collapsed Archway",
+        "brief": "Where the tunnels begin",
+        "known": true,
+        "description": "A collapsed archway lets grey light down into the tunnels below."
+      },
+      "corridor": {
+        "id": "corridor",
+        "name": "The Root Corridor",
+        "brief": "A narrow way in",
+        "known": true,
+        "description": "A narrow corridor, roots pushing through the earthen walls."
+      },
+      "storeroom": {
+        "id": "storeroom",
+        "name": "The Old Storeroom",
+        "brief": "Rotten crates and shelves",
+        "known": true,
+        "description": "Shelves of rotten crates line a low stone room."
+      },
+      "cellar": {
+        "id": "cellar",
+        "name": "The Flooded Cellar",
+        "brief": "A drowned room",
+        "known": false,
+        "description": "A flooded cellar, water black in the lantern light."
+      },
+      "sealed-cell": {
+        "id": "sealed-cell",
+        "name": "The Sealed Cell",
+        "brief": "An iron-bound door",
+        "known": false,
+        "description": "A cramped cell, its door bound in rusted iron."
+      }
+    },
+    "ways": {
+      "entrance": [
+        {
+          "to": "corridor",
+          "known": true
         },
-        "corridor": {
-          "id": "corridor",
-          "name": "The Root Corridor",
-          "brief": "A narrow way in",
-          "known": true,
-          "description": "A narrow corridor, roots pushing through the earthen walls."
+        {
+          "to": "cellar",
+          "known": false
+        }
+      ],
+      "corridor": [
+        {
+          "to": "entrance",
+          "known": true
         },
-        "storeroom": {
-          "id": "storeroom",
-          "name": "The Old Storeroom",
-          "brief": "Rotten crates and shelves",
-          "known": true,
-          "description": "Shelves of rotten crates line a low stone room."
+        {
+          "to": "storeroom",
+          "known": true
         },
-        "cellar": {
-          "id": "cellar",
-          "name": "The Flooded Cellar",
-          "brief": "A drowned room",
+        {
+          "to": "cellar",
+          "known": false
+        }
+      ],
+      "storeroom": [
+        {
+          "to": "corridor",
+          "known": true
+        },
+        {
+          "to": "sealed-cell",
           "known": false,
-          "description": "A flooded cellar, water black in the lantern light."
+          "locked": true
+        }
+      ],
+      "cellar": [
+        {
+          "to": "entrance",
+          "known": false
         },
-        "sealed-cell": {
-          "id": "sealed-cell",
-          "name": "The Sealed Cell",
-          "brief": "An iron-bound door",
-          "known": false,
-          "description": "A cramped cell, its door bound in rusted iron."
+        {
+          "to": "corridor",
+          "known": false
+        }
+      ],
+      "sealed-cell": [
+        {
+          "to": "storeroom",
+          "known": false
+        }
+      ]
+    },
+    "npcs": {
+      "grix": {
+        "id": "grix",
+        "name": "Grix",
+        "brief": "A jumpy scavenger who got this far and no further.",
+        "known": true,
+        "place": "entrance",
+        "hp": {
+          "current": 6,
+          "maximum": 6
         }
       },
-      "ways": {
-        "entrance": [
-          { "to": "corridor", "known": true },
-          { "to": "cellar", "known": false }
-        ],
-        "corridor": [
-          { "to": "entrance", "known": true },
-          { "to": "storeroom", "known": true },
-          { "to": "cellar", "known": false }
-        ],
-        "storeroom": [
-          { "to": "corridor", "known": true },
-          { "to": "sealed-cell", "known": false, "locked": true }
-        ],
-        "cellar": [
-          { "to": "entrance", "known": false },
-          { "to": "corridor", "known": false }
-        ],
-        "sealed-cell": [{ "to": "storeroom", "known": false }]
-      },
-      "npcs": {
-        "grix": {
-          "id": "grix",
-          "name": "Grix",
-          "brief": "A jumpy scavenger who got this far and no further.",
-          "known": true,
-          "place": "entrance",
-          "hp": { "current": 6, "maximum": 6 }
-        },
-        "crawler": {
-          "id": "crawler",
-          "name": "Root Crawler",
-          "brief": "A many-legged thing tangled in the corridor roots.",
-          "known": true,
-          "place": "corridor",
-          "hp": { "current": 6, "maximum": 6 }
-        },
-        "lurker": {
-          "id": "lurker",
-          "name": "Cellar Lurker",
-          "brief": "Something pale that surfaces only when the water stills.",
-          "known": false,
-          "place": "cellar",
-          "hp": { "current": 5, "maximum": 5 }
+      "crawler": {
+        "id": "crawler",
+        "name": "Root Crawler",
+        "brief": "A many-legged thing tangled in the corridor roots.",
+        "known": true,
+        "place": "corridor",
+        "hp": {
+          "current": 6,
+          "maximum": 6
         }
       },
-      "items": {
-        "tarnished-flask": {
-          "id": "tarnished-flask",
-          "name": "Tarnished Flask",
-          "brief": "Sealed with wax, sloshing faintly.",
-          "known": false,
-          "on": "sealed-cell"
-        },
-        "rope-coil": {
-          "id": "rope-coil",
-          "name": "Coil of Rope",
-          "brief": "Rope, dry and strong.",
-          "known": true,
-          "on": "storeroom"
+      "lurker": {
+        "id": "lurker",
+        "name": "Cellar Lurker",
+        "brief": "Something pale that surfaces only when the water stills.",
+        "known": false,
+        "place": "cellar",
+        "hp": {
+          "current": 5,
+          "maximum": 5
         }
+      }
+    },
+    "items": {
+      "tarnished-flask": {
+        "id": "tarnished-flask",
+        "name": "Tarnished Flask",
+        "brief": "Sealed with wax, sloshing faintly.",
+        "known": false,
+        "on": "sealed-cell"
       },
-      "start": "entrance",
-      "source": ""
-    }
+      "rope-coil": {
+        "id": "rope-coil",
+        "name": "Coil of Rope",
+        "brief": "Rope, dry and strong.",
+        "known": true,
+        "on": "storeroom"
+      }
+    },
+    "start": "entrance",
+    "source": ""
   }
 }

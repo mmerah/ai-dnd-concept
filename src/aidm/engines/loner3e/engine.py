@@ -20,8 +20,8 @@ from aidm.engines.loner3e.world import (
     Loner3eCharacterFile,
     Loner3eGame,
     Loner3eScenarioFile,
-    Loner3eState,
     LonerCharacter,
+    LonerWorld,
     player_character,
 )
 from aidm.engines.scenes.engine import SceneEngine
@@ -63,8 +63,8 @@ class Loner3eEngine(SceneEngine[LonerCharacter, LonerCharacter, Loner3eGame, Pac
     def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
         return guidance(self.packs, picks)
 
-    def new_state(self, canon: SceneCanon[LonerCharacter], character: AnyCharacter) -> Loner3eState:
-        return Loner3eState(world=new_world(canon, player_character(character)))
+    def new_state(self, canon: SceneCanon[LonerCharacter], character: AnyCharacter) -> LonerWorld:
+        return new_world(LonerWorld, canon, player_character(character))
 
     def master_sections(self, state: Loner3eGame) -> Rows:
         return master_sections(self.packs, state)

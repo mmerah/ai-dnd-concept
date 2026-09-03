@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from tunnelgoons_test_support import START, TAVERN, hub_world, small_world
 
 from aidm.core.entities import EntityId
-from aidm.engines.hub import Debrief, Offer
+from aidm.engines.hub import Job, Offer
 from aidm.engines.tunnelgoons.views import REPORT_IN
 from aidm.engines.tunnelgoons.world import Item, Place, TunnelGoonsGame, Visit, Way
 from aidm.engines.tunnelgoons.worldsmith import (
@@ -65,7 +65,7 @@ def test_the_map_bar_names_each_missing_thing_on_a_thin_draft() -> None:
 
 
 def test_the_shipped_scenario_passes_the_map_bar() -> None:
-    canon = _tunnelgoons_game().payload.world
+    canon = _tunnelgoons_game().payload
     draft = MapDraft(
         places=canon.places,
         ways=canon.ways,
@@ -78,7 +78,7 @@ def test_the_shipped_scenario_passes_the_map_bar() -> None:
 
 def test_attach_joins_at_the_current_place_and_the_world_validates() -> None:
     state = small_world()
-    world = state.payload.world
+    world = state.payload
     anchor = world.player.place
 
     attach(world, _region(), known=False)
@@ -104,7 +104,7 @@ def test_a_region_reusing_an_id_already_in_the_world_is_refused() -> None:
         }
     )
 
-    refused = extension_refusal(reused, state.payload.world)
+    refused = extension_refusal(reused, state.payload)
     assert refused is not None
     assert "not already in the world" in refused
 
@@ -114,21 +114,21 @@ def test_way_open_is_false_on_the_shipped_map_and_true_once_every_place_is_known
     assert not way_open(state)
 
     draft = state.draft()
-    for place in draft.payload.world.places.values():
+    for place in draft.payload.places.values():
         place.known = True
     assert way_open(draft.committed())
 
 
 def test_install_extension_on_a_game_from_the_engine() -> None:
     draft = _tunnelgoons_game().draft()
-    anchor = draft.payload.world.player.place
+    anchor = draft.payload.player.place
 
     facts = install_extension(draft, _region())
 
     assert [fact.kind for fact in facts] == ["region_added"]
     assert not facts[0].told
-    assert FAR_HALL in draft.payload.world.places
-    assert draft.payload.world.way(anchor, FAR_HALL) is not None
+    assert FAR_HALL in draft.payload.places
+    assert draft.payload.way(anchor, FAR_HALL) is not None
 
 
 RETURN = ReturnDraft(
@@ -144,7 +144,7 @@ def test_way_open_at_the_hub_with_the_map_unwalked_but_not_on_a_one_shot() -> No
 
 def test_attach_known_appends_known_ways_and_unknown_appends_unknown_both_directions() -> None:
     known_state = small_world()
-    known_world = known_state.payload.world
+    known_world = known_state.payload
     anchor = known_world.player.place
     attach(known_world, _region(), known=True)
     out_known = known_world.way(anchor, FAR_HALL)
@@ -153,7 +153,7 @@ def test_attach_known_appends_known_ways_and_unknown_appends_unknown_both_direct
     assert in_known is not None and in_known.known
 
     unknown_state = small_world()
-    unknown_world = unknown_state.payload.world
+    unknown_world = unknown_state.payload
     attach(unknown_world, _region(), known=False)
     out_unknown = unknown_world.way(anchor, FAR_HALL)
     in_unknown = unknown_world.way(FAR_HALL, anchor)
@@ -163,15 +163,16 @@ def test_attach_known_appends_known_ways_and_unknown_appends_unknown_both_direct
 
 def _walked_job_visits() -> list[Visit]:
     return [
-        Visit(place=TAVERN, job="Bandits"),
-        Visit(place=START, job="Bandits"),
-        Visit(place=TAVERN, job="Bandits"),
+        Visit(place=TAVERN),
+        Visit(place=START),
+        Visit(place=TAVERN),
     ]
 
 
 async def test_write_extension_picks_return_draft_on_report_in_with_a_job_open() -> None:
     state = hub_world()
-    state.payload.world.visits = _walked_job_visits()
+    state.payload.visits = _walked_job_visits()
+    state.payload.jobs = [Job(title="Bandits", place=START, started=1)]
     recorded: list[type[BaseModel]] = []
 
     async def answer[M: BaseModel](
@@ -198,14 +199,15 @@ async def test_write_extension_refuses_report_in_with_no_job_open() -> None:
         _ = await write_extension(unwalked, REPORT_IN, answer)
 
     stamped_not_walked = hub_world()
-    stamped_not_walked.payload.world.visit.job = "Bandits"
+    stamped_not_walked.payload.jobs = [Job(title="Bandits", place=START)]
     with pytest.raises(ValueError, match="no job is open to report"):
         _ = await write_extension(stamped_not_walked, REPORT_IN, answer)
 
 
 async def test_write_extension_refuses_a_walked_job_open_with_another_intent() -> None:
     state = hub_world()
-    state.payload.world.visits = _walked_job_visits()
+    state.payload.visits = _walked_job_visits()
+    state.payload.jobs = [Job(title="Bandits", place=START, started=1)]
 
     async def answer[M: BaseModel](
         prompt: str, model: type[M], refusal: Callable[[M], str | None]
@@ -233,16 +235,15 @@ async def test_write_extension_asks_for_map_draft_away_or_at_the_hub_otherwise()
 
 def test_install_extension_on_a_return_draft_closes_the_job() -> None:
     state = hub_world()
-    world = state.payload.world
+    world = state.payload
     world.visits = _walked_job_visits()
-    world.job_done = True
+    world.jobs = [Job(title="Bandits", place=START, started=1)]
+    world.jobs[-1].finished = True
 
     facts = install_extension(state, RETURN)
 
-    visit = world.visit
-    assert visit.debrief == Debrief(text=RETURN.debrief, finished=True)
-    assert visit.job == ""
-    assert not world.job_done
+    assert world.jobs[-1].debrief == RETURN.debrief
+    assert world.jobs[-1].finished
     assert world.board == RETURN.offers
     assert [fact.kind for fact in facts] == ["job_closed"]
     assert facts[0].told
@@ -251,8 +252,8 @@ def test_install_extension_on_a_return_draft_closes_the_job() -> None:
 
 def test_install_extension_on_a_map_draft_at_the_hub_takes_the_job() -> None:
     state = hub_world(with_map=False)
-    world = state.payload.world
-    canon = _tunnelgoons_game().payload.world
+    world = state.payload
+    canon = _tunnelgoons_game().payload
     written = MapDraft(
         places=canon.places,
         ways=canon.ways,
@@ -270,19 +271,19 @@ def test_install_extension_on_a_map_draft_at_the_hub_takes_the_job() -> None:
     way = world.way(TAVERN, written.start)
     assert way is not None
     assert way.known
-    assert world.visit.job == start_name
+    assert world.jobs[-1] == Job(title=start_name, place=written.start)
 
 
 def test_hub_refusal_needs_a_two_or_three_offer_board_and_passes_the_shipped_campaign() -> None:
-    thin_board = THIN.model_copy(update={"board": (Offer(title="Only", pitch="p"),)})
+    thin_board = THIN.model_copy(update={"board": None})
     refused = hub_refusal(thin_board)
     assert refused is not None
-    assert "board" in refused
+    assert "two or three offers" in refused
 
     _, campaign_state = game(TUNNELGOONS, "campaign")
     if not isinstance(campaign_state, TunnelGoonsGame):
         raise AssertionError("the Tunnel Goons engine began another game type")
-    canon = campaign_state.payload.world
+    canon = campaign_state.payload
     draft = MapDraft(
         places=canon.places,
         ways=canon.ways,
@@ -295,7 +296,9 @@ def test_hub_refusal_needs_a_two_or_three_offer_board_and_passes_the_shipped_cam
 
 
 def test_map_refusal_refuses_a_one_shot_draft_carrying_a_board() -> None:
-    with_board = THIN.model_copy(update={"board": (Offer(title="Only", pitch="p"),)})
+    with_board = THIN.model_copy(
+        update={"board": (Offer(title="Only", pitch="p"), Offer(title="Other", pitch="p2"))}
+    )
     refused = map_refusal(with_board)
     assert refused is not None
     assert "no `board`" in refused

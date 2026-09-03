@@ -11,7 +11,7 @@ from aidm.core.views import Rows
 from aidm.engines.core import PLAYER_ID, Pack, Person
 from aidm.engines.registry import begin_game
 from aidm.engines.scenes.engine import SceneEngine
-from aidm.engines.scenes.world import Scene, SceneCanon, SceneScenario, SceneState, new_world
+from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld, new_world
 
 FIFTH = EngineId("fifth")
 KEEPER = EntityId("keeper")
@@ -20,7 +20,7 @@ SITUATION = (
 )
 
 
-class FifthState(SceneState[Person, Person]):
+class FifthState(SceneWorld[Person, Person]):
     pass
 
 
@@ -28,7 +28,7 @@ class FifthGame(Game[FifthState]):
     pass
 
 
-class FifthScenarioFile(Scenario[SceneScenario[Person]]):
+class FifthScenarioFile(Scenario[SceneCanon[Person]]):
     pass
 
 
@@ -72,10 +72,10 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, Pack]):
 
     def new_state(self, canon: SceneCanon[Person], character: AnyCharacter) -> FifthState:
         player = Person(id=PLAYER_ID, name=character.name, brief=character.brief, known=True)
-        return FifthState(world=new_world(canon, player))
+        return new_world(FifthState, canon, player)
 
     def master_sections(self, state: FifthGame) -> Rows:
-        return (("SCENE", self.world(state).current.title),)
+        return (("SCENE", self.world(state).run.title),)
 
 
 def _installed(tmp_path: Path) -> FifthEngine:
@@ -93,17 +93,15 @@ def _scenario() -> FifthScenarioFile:
         meta=ScenarioMeta(title="The Taproom", premise="A quiet night that will not stay quiet."),
         engine=FIFTH,
         packs=("srd",),
-        payload=SceneScenario(
-            world=SceneCanon(
-                cast={KEEPER: keeper},
-                opening=Scene(
-                    place="taproom",
-                    title="The Taproom",
-                    question="Who is asking after Wren?",
-                    situation=SITUATION,
-                ),
-                present=[KEEPER],
-            )
+        payload=SceneCanon(
+            cast={KEEPER: keeper},
+            opening=SceneRun(
+                place="taproom",
+                title="The Taproom",
+                question="Who is asking after Wren?",
+                situation=SITUATION,
+                here=[KEEPER],
+            ),
         ),
     )
 

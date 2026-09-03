@@ -23,7 +23,7 @@ from aidm.engines.twentyfourxx.world import (
     TwentyfourxxCharacterFile,
     TwentyfourxxGame,
     TwentyfourxxScenarioFile,
-    TwentyfourxxState,
+    TwentyfourxxWorld,
     player_operator,
 )
 
@@ -34,7 +34,7 @@ BOARD_GUIDANCE = (
 # Read by the next turn, which is usually the next offer click: the note must stand on its own.
 JOB_DONE_NOTE = (
     "The job {title} is closed and was completed. The SRD's after-a-job step applies: call "
-    "`job_done` once, with the skill the player names, else the skill the job called on."
+    "`after_job` once, with the skill the player names, else the skill the job called on."
 )
 
 
@@ -70,8 +70,8 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
         told = guidance(self.packs, picks)
         return "\n\n".join((told, BOARD_GUIDANCE)) if campaign else told
 
-    def new_state(self, canon: SceneCanon[Person], character: AnyCharacter) -> TwentyfourxxState:
-        return TwentyfourxxState(world=new_world(canon, player_operator(character)))
+    def new_state(self, canon: SceneCanon[Person], character: AnyCharacter) -> TwentyfourxxWorld:
+        return new_world(TwentyfourxxWorld, canon, player_operator(character))
 
     def master_sections(self, state: TwentyfourxxGame) -> Rows:
         return master_sections(state)

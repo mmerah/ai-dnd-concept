@@ -49,7 +49,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
         super().__init__()  # last: `master_tools` reads the packs
 
     def world(self, state: G) -> SceneWorld[C, P]:
-        return state.payload.world  # the one place `G: Game[Any]` is narrowed to the scene world
+        return state.payload  # the one place `G: Game[Any]` is narrowed to the scene world
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
         return pack_options(self.packs)
@@ -62,7 +62,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             raise ValueError(f"{self.title} received an incompatible scenario")
         if not isinstance(character, self.character):
             raise ValueError(f"{self.title} received an incompatible character")
-        canon: SceneCanon[C] = scenario.payload.world
+        canon: SceneCanon[C] = scenario.payload
         return self.new_state(canon, character)
 
     def over(self, state: G) -> str | None:

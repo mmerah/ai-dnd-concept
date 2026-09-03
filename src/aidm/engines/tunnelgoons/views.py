@@ -29,7 +29,7 @@ def subject_of(one: Goon | Npc) -> Subject:
 
 
 def narrator_view(state: TunnelGoonsGame) -> NarratorView:
-    world = state.payload.world
+    world = state.payload
     place = world.current
     here = tuple(
         sorted(
@@ -49,7 +49,7 @@ def narrator_view(state: TunnelGoonsGame) -> NarratorView:
 
 
 def player_view(state: TunnelGoonsGame) -> PlayerView:
-    world = state.payload.world
+    world = state.payload
     player = world.player
     ways = world.ways.get(world.current.id, ())
     return PlayerView(
@@ -98,7 +98,7 @@ def player_view(state: TunnelGoonsGame) -> PlayerView:
                     for v in world.job_visits()
                 ),
             ),
-            *jobs_panel(world.jobs()),
+            *jobs_panel(world.closed_jobs()),
         ),
         prompt=state.pending,
         over=player_over(state),
@@ -107,7 +107,7 @@ def player_view(state: TunnelGoonsGame) -> PlayerView:
 
 def master_sections(state: TunnelGoonsGame) -> Rows:
     """Every section stated, hidden canon included: the game master reads all of it."""
-    world = state.payload.world
+    world = state.payload
     place = world.current
     player = world.player
     return (
@@ -117,7 +117,7 @@ def master_sections(state: TunnelGoonsGame) -> Rows:
         ("HERE WITH THE PLAYER", _place_lines(world, known=True)),
         ("HIDDEN HERE (the player has not found these)", _place_lines(world, known=False)),
         ("WAYS OUT", _ways_lines(world)),
-        *master_tail(world.hub, world.at_hub, world.board, world.jobs(), ""),
+        *master_tail(world.hub, world.at_hub, world.board, world.closed_jobs(), None),
     )
 
 

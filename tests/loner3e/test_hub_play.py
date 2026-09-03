@@ -36,7 +36,7 @@ def _return_draft(*, offers: int = 2) -> ReturnDraft[LonerCharacter]:
 
 
 def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> None:
-    world = hub_world().payload.world
+    world = hub_world().payload
     stranger = EntityId("stranger")
     world.cast[stranger] = LonerCharacter(id=stranger, name="Old Man Riley", brief="", known=False)
     draft = _return_draft().model_copy(update={"debrief": "Old Man Riley saw them off with a nod."})
@@ -48,20 +48,20 @@ def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> Non
 
 def test_install_scene_on_a_finished_return_swaps_board_notes_job_keeps_companion() -> None:
     game = hub_world()
-    world = game.payload.world
+    world = game.payload
     scout = EntityId("scout")
     world.cast[scout] = LonerCharacter(id=scout, name="Scout", brief="A hired scout", known=True)
     world.party = [scout]
-    world.run.job_done = True
+    world.jobs[-1].finished = True
 
     facts = install_scene(game, _return_draft(), finished_note=GROWTH_NOTE)
 
-    world = game.payload.world
+    world = game.payload
     assert [offer.title for offer in world.board] == ["Job 1", "Job 2"]
     assert [fact.kind for fact in facts] == ["job_closed", "scene_opened"]
     assert any(fact.card.startswith("Home: Back at the Guild Hall") for fact in facts)
     assert any("The Sealed Cairn" in note for note in game.notes)
-    assert scout in world.run.present
+    assert scout in world.present()
 
 
 def test_install_scene_on_an_open_return_skips_the_growth_note() -> None:

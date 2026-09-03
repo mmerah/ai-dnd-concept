@@ -130,11 +130,11 @@ def apply_change(world: TunnelWorld, change: WorldChange) -> list[Fact]:
 
 
 def change_world(draft: TunnelGoonsGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-    return apply_change(draft.payload.world, args.change)
+    return apply_change(draft.payload, args.change)
 
 
 def move(draft: TunnelGoonsGame, args: Move, _rng: Random) -> list[Fact]:
-    world = draft.payload.world
+    world = draft.payload
     here, destination, way = _here_and_way(world, args.to_id)
     if way is None:
         options = ", ".join(world.require_place(one.to).name for one in world.ways.get(here.id, ()))
@@ -157,7 +157,10 @@ def move(draft: TunnelGoonsGame, args: Move, _rng: Random) -> list[Fact]:
     world.player.place = destination.id
     for npc in coming:
         npc.place = destination.id
-    world.visits.append(Visit(place=destination.id, job=world.visit.job))
+    world.visits.append(Visit(place=destination.id))
+    job = world.open_job()
+    if job is not None and job.started is None and destination.id != world.hub:
+        job.started = len(world.visits) - 1
     trace = f"the player arrives at {world.label(destination)}"
     if coming:
         names = " and ".join(npc.name for npc in coming)
@@ -168,7 +171,7 @@ def move(draft: TunnelGoonsGame, args: Move, _rng: Random) -> list[Fact]:
 
 
 def unlock_way(draft: TunnelGoonsGame, args: UnlockWay, _rng: Random) -> list[Fact]:
-    world = draft.payload.world
+    world = draft.payload
     here, destination, way = _here_and_way(world, args.to_id)
     if way is None:
         raise ValueError(f"no way leads from {here.name} to {destination.name}")
@@ -181,7 +184,7 @@ def unlock_way(draft: TunnelGoonsGame, args: UnlockWay, _rng: Random) -> list[Fa
 
 
 def action_roll(draft: TunnelGoonsGame, args: ActionRoll, rng: Random) -> list[Fact]:
-    world = draft.payload.world
+    world = draft.payload
     player = world.player
     items = _carried_items(world, player, args.items)
     npc = world.require_npc_here(args.against) if args.against is not None else None
@@ -224,7 +227,7 @@ def action_roll(draft: TunnelGoonsGame, args: ActionRoll, rng: Random) -> list[F
 
 
 def rest(draft: TunnelGoonsGame, _args: NoArgs, _rng: Random) -> list[Fact]:
-    world = draft.payload.world
+    world = draft.payload
     player = world.player
     facts = counter_fact(
         player, player.hp, player.hp.maximum - player.hp.current, "Health", "resting", player.id
@@ -245,7 +248,7 @@ def level_up(draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
         return []
     if args.ability is None or args.boost is None:
         raise ValueError("level_up takes both an ability and a boost, or neither")
-    world = draft.payload.world
+    world = draft.payload
     player = world.player
     match args.ability:
         case "brute":
@@ -260,8 +263,8 @@ def level_up(draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
     else:
         player.inventory += 1
     player.level += 1
-    if world.job_open:
-        world.job_done = True
+    if (job := world.open_job()) is not None and job.started is not None:
+        job.finished = True
     card = f"Level {player.level}: {args.ability.capitalize()} +1, {args.boost.capitalize()} +1"
     return [entity_fact(player, "levelled_up", card, card=card)]
 

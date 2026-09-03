@@ -18,7 +18,6 @@ from aidm.engines.tunnelgoons.world import (
     TunnelGoonsCharacterFile,
     TunnelGoonsGame,
     TunnelGoonsScenarioFile,
-    TunnelGoonsState,
     TunnelWorld,
     Visit,
     history,
@@ -61,18 +60,18 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
     def validate(self, state: TunnelGoonsGame) -> None:
         if state.packs:
             raise ValueError("Tunnel Goons has no table sets")
-        check_kind(state.scenario.kind, state.payload.world.hub)
+        check_kind(state.scenario.kind, state.payload.hub)
 
-    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> TunnelGoonsState:
+    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> TunnelWorld:
         if not isinstance(scenario, TunnelGoonsScenarioFile):
             raise ValueError("Tunnel Goons received an incompatible scenario")
         if not isinstance(character, TunnelGoonsCharacterFile):
             raise ValueError("Tunnel Goons received an incompatible character")
-        canon = deepcopy(scenario.payload.world)
+        canon = deepcopy(scenario.payload)
         player = player_goon(character, canon.start)
         taken = (*canon.places, *canon.npcs, *canon.items)
         items = starting_items(character, taken)
-        world = TunnelWorld(
+        return TunnelWorld(
             places=canon.places,
             ways=canon.ways,
             npcs=canon.npcs,
@@ -83,7 +82,6 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
             hub=canon.hub,
             board=canon.board,
         )
-        return TunnelGoonsState(world=world)
 
     def over(self, state: TunnelGoonsGame) -> str | None:
         return player_over(state)
@@ -95,7 +93,7 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
         return history(state)
 
     def scenes(self, state: TunnelGoonsGame) -> tuple[SceneRecord, ...]:
-        return state.payload.world.scenes()
+        return state.payload.scenes()
 
     def master_sections(self, state: TunnelGoonsGame) -> Rows:
         return master_sections(state)

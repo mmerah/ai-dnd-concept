@@ -168,7 +168,7 @@ def test_a_save_that_fails_to_restore_is_skipped_not_listed(tmp_path: Path) -> N
     state = _opening_state(settings)
     FileStore(tmp_path).save("whispering-vault--kael", state)
     broken = state.model_dump(mode="json")
-    broken["payload"]["world"]["cast"]["ghost"] = {"name": "Ghost"}
+    broken["payload"]["cast"]["ghost"] = {"name": "Ghost"}
     _ = (tmp_path / "unopenable.json").write_text(json.dumps(broken), encoding=ENCODING)
 
     catalog = load_catalog(settings, ENGINES_BUILT)
@@ -252,9 +252,9 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
     catalog = load_catalog(settings, runtime.engines)
     state = runtime.session(launch_target(catalog, name, "kael")).state
     assert (name, state.turn) == ("the-sunken-bell", 0)
-    assert state.payload.world.current.title == "The Bell Under the Water"
-    assert state.payload.world.player.name == "Kael"
-    assert state.payload.world.source.startswith("PREMISE:")
+    assert state.payload.run.title == "The Bell Under the Water"
+    assert state.payload.player.name == "Kael"
+    assert state.payload.source.startswith("PREMISE:")
     world = json.loads((settings.scenarios_dir / name / "world.json").read_text(encoding=ENCODING))
     assert world["art_style"] == "woodcut"
 
@@ -310,6 +310,6 @@ async def test_a_scenario_written_from_a_document_keeps_it_beside_the_world(tmp_
     state = runtime.session(
         launch_target(load_catalog(runtime.settings, runtime.engines), name, "kael")
     ).state
-    assert state.payload.world.source.startswith("SOURCE DOCUMENT:")
+    assert state.payload.source.startswith("SOURCE DOCUMENT:")
     # The premise the player never wrote is the scene's own words.
     assert state.scenario.premise == _OPENING["situation"]

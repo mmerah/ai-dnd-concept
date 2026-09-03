@@ -18,8 +18,8 @@ def gear_detail(item: Item) -> str:
 
 def master_sections(state: TwentyfourxxGame) -> Rows:
     """Every section stated, hidden canon included: the game master reads all of it."""
-    world = state.payload.world
-    scene = world.current
+    world = state.payload
+    scene = world.run
     gear_lines: list[str] = []
     for key, item in world.player.items.items():
         line = f"- {item.name}[{key}]"
@@ -35,5 +35,5 @@ def master_sections(state: TwentyfourxxGame) -> Rows:
         *party_rows(world.members()),
         ("HIDDEN HERE (the player has not found these)", world.hidden_lines()),
         ("THE SCENE'S SECRET (never narrate this)", scene.secret or "(none)"),
-        *master_tail(world.hub, world.at_hub, world.board, world.jobs(), world.job),
+        *master_tail(world.hub, world.at_hub, world.board, world.closed_jobs(), world.open_job()),
     )

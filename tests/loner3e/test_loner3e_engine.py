@@ -189,7 +189,7 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     assert loner_sheet(draft, FOE).luck.current == 10
     assert loner_sheet(draft, PLAYER_ID).luck.current == LUCK_MAX
     assert any(fact.kind == "conflict_lost" for fact in facts)
-    assert defeat_note(draft.payload.world.require(FOE).name) in draft.notes
+    assert defeat_note(draft.payload.require(FOE).name) in draft.notes
     # The conflict is over, so the defeat note steers the same run instead of handing control back.
     assert draft.pending is None
 
@@ -202,8 +202,8 @@ def test_an_exchange_both_sides_survive_hands_the_next_key_action_to_the_player(
 
     decision = draft.pending
     assert decision is not None
-    foe = draft.payload.world.require(FOE)
-    expected = conflict_prompt(draft.payload.world, draft.payload.world.player, foe)
+    foe = draft.payload.require(FOE)
+    expected = conflict_prompt(draft.payload, draft.payload.player, foe)
     assert (decision.kind, decision.prompt) == ("conflict", expected)
     assert foe.name in decision.prompt
     assert decision.options == ()
@@ -217,11 +217,11 @@ def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
         _ = ORACLE.resolve_question(state.draft(), _seal(opponent_id=MAP), Random(0))
 
     draft = state.draft()
-    _ = apply_change(draft.payload.world, Reveal(verb="reveal", entity_id=MAP))
+    _ = apply_change(draft.payload, Reveal(verb="reveal", entity_id=MAP))
     facts = ORACLE.resolve_question(draft, _seal(opponent_id=MAP), Random(0))
 
     assert any(fact.kind == "question_answered" for fact in facts)
-    resisted = draft.payload.world.require(MAP).luck.current
+    resisted = draft.payload.require(MAP).luck.current
     assert min(resisted, loner_sheet(draft, PLAYER_ID).luck.current) < LUCK_MAX
 
 
@@ -254,14 +254,14 @@ def test_restoring_luck_that_is_already_full_is_a_quiet_no_op() -> None:
 
 def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() -> None:
     draft = hub_world()
-    world = draft.payload.world
+    world = draft.payload
     facts = next_scene(draft, NextScene(job_done=True), Random(0))
     assert world.run.left is not None
-    assert world.run.job_done
+    assert world.jobs[-1].finished
     assert JOB_DONE in facts
 
     at_hub = hub_world()
-    at_hub.payload.world.runs = [at_hub.payload.world.runs[0]]
+    at_hub.payload.runs = [at_hub.payload.runs[0]]
     with pytest.raises(ValueError, match="no job is open here"):
         _ = next_scene(at_hub, NextScene(job_done=True), Random(0))
 
@@ -275,18 +275,14 @@ def test_check_game_refuses_a_campaign_meta_with_no_hub() -> None:
 
 def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
     engine, state = initialized()
-    world = state.payload.world
-    hub_payload = state.payload.model_copy(
+    world = state.payload
+    hub_payload = world.model_copy(
         update={
-            "world": world.model_copy(
-                update={
-                    "hub": world.run.scene.place,
-                    "board": (
-                        Offer(title="Job One", pitch="I take job one."),
-                        Offer(title="Job Two", pitch="I take job two."),
-                    ),
-                }
-            )
+            "hub": world.run.place,
+            "board": (
+                Offer(title="Job One", pitch="I take job one."),
+                Offer(title="Job Two", pitch="I take job two."),
+            ),
         }
     )
     with pytest.raises(ValueError, match="one-shot"):

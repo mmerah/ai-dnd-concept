@@ -41,7 +41,7 @@ async def test_crossing_keeps_a_drive_set_after_the_worldsmith_snapshot(
         moving_on=True,
     )
 
-    assert state.payload.world.player.goal == "Get the vault map out safely"
+    assert state.payload.player.goal == "Get the vault map out safely"
 
 
 async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_and_sheet(
@@ -67,8 +67,8 @@ async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_a
         table, "Out into the cloister walk.", arrival="Rain takes the arcade.", moving_on=True
     )
 
-    mara = state.payload.world.require(EntityId("mara"))
-    assert state.payload.world.current.title == "The Cloister Walk"
+    mara = state.payload.require(EntityId("mara"))
+    assert state.payload.run.title == "The Cloister Walk"
     assert mara.name == "Mara"
     assert mara.brief == "Waiting under the arcade with the lantern shuttered."
     assert (mara.concept, mara.skills) == (before.concept, before.skills)

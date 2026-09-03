@@ -6,7 +6,7 @@ from aidm.core.entities import EntityId, Mutable, slug
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
 from aidm.engines.core import PLAYER_ID, Counter, Person, pool
-from aidm.engines.scenes.world import SceneScenario, SceneState, SceneWorld
+from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
 type Die = Literal[4, 6, 8, 10, 12]
 LADDER: tuple[Die, ...] = (4, 6, 8, 10, 12)
@@ -72,7 +72,6 @@ class Survivor(Person):
 
 
 BreathlessWorld = SceneWorld[Person, Survivor]
-BreathlessState = SceneState[Person, Survivor]
 
 
 class BreathlessCharacter(Mutable):
@@ -88,11 +87,11 @@ class BreathlessCharacter(Mutable):
         return self
 
 
-class BreathlessGame(Game[BreathlessState]):
+class BreathlessGame(Game[BreathlessWorld]):
     pass
 
 
-class BreathlessScenarioFile(Scenario[SceneScenario[Person]]):
+class BreathlessScenarioFile(Scenario[SceneCanon[Person]]):
     pass
 
 

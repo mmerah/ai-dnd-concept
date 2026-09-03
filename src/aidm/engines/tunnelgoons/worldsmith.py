@@ -11,12 +11,10 @@ from aidm.core.model import AnyScenario, ScenarioKind, ScenarioMeta, WorldsmithA
 from aidm.core.tools import schema_of
 from aidm.core.views import Rows, render_history, sections
 from aidm.engines.hub import (
-    BOARD_MAX,
-    BOARD_MIN,
     OFFER_ASK,
     RETURN_BRIEF,
-    Debrief,
-    Offer,
+    Board,
+    Job,
     board_lines,
     job_closed,
     ledger,
@@ -27,7 +25,6 @@ from aidm.engines.tunnelgoons.world import (
     MapCanon,
     Place,
     TunnelGoonsGame,
-    TunnelGoonsScenario,
     TunnelGoonsScenarioFile,
     TunnelWorld,
     Way,
@@ -59,14 +56,14 @@ class MapDraft(Dungeon):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     start: CheckedEntityId
-    board: tuple[Offer, ...] = ()  # a campaign's opening tavern only
+    board: Board | None = None  # a campaign's opening tavern only
 
 
 class ReturnDraft(Frozen):
-    """The report at the tavern: the paragraph; `finished` is `world.job_done`."""
+    """The report at the tavern: the paragraph; `finished` is the open job's."""
 
     debrief: str = Field(min_length=1)
-    offers: tuple[Offer, ...] = Field(min_length=BOARD_MIN, max_length=BOARD_MAX)
+    offers: Board
 
 
 def map_refusal(draft: MapDraft) -> str | None:
@@ -91,7 +88,12 @@ def extension_refusal(draft: MapDraft, world: TunnelWorld) -> str | None:
 
 def opening_canon(draft: MapDraft, source: str, kind: ScenarioKind) -> MapCanon:
     return MapCanon.model_validate(
-        {**draft.model_dump(), "source": source, "hub": draft.start if kind == "campaign" else None}
+        {
+            **draft.model_dump(),
+            "source": source,
+            "hub": draft.start if kind == "campaign" else None,
+            "board": draft.board or (),
+        }
     )
 
 
@@ -107,20 +109,23 @@ def attach(world: TunnelWorld, draft: MapDraft, *, known: bool) -> None:
 
 
 def install_extension(state: TunnelGoonsGame, written: MapDraft | ReturnDraft) -> tuple[Fact, ...]:
-    world = state.payload.world
+    world = state.payload
     if isinstance(written, ReturnDraft):
-        world.visit.debrief = Debrief(text=written.debrief, finished=world.job_done)
-        world.visit.job = ""
-        world.job_done = False
+        job = world.open_job()
+        if job is None or job.started is None:
+            raise ValueError("no job is open to report")
+        job.debrief = written.debrief
         world.board = written.offers
-        return (job_closed(world.jobs()[-1]),)
+        return (job_closed(job),)
     if world.at_hub:
         if (refused := job_refusal(written, world)) is not None:
             raise ValueError(refused)
         tavern = world.current
         attach(world, written, known=True)
         start = written.places[written.start]
-        world.visit.job = start.name
+        if (job := world.open_job()) is not None and job.started is None:
+            world.jobs.pop()
+        world.jobs.append(Job(title=start.name, place=written.start))
         trace = f"a way opens from {tavern.name} to {start.name}"
         card = f"A way opens: {start.name}"
         return (Fact(kind="job_taken", told=True, trace=trace, card=card),)
@@ -135,7 +140,7 @@ def install_extension(state: TunnelGoonsGame, written: MapDraft | ReturnDraft) -
 async def write_extension(
     state: TunnelGoonsGame, intent: str, answer: WorldsmithAnswer
 ) -> MapDraft | ReturnDraft:
-    world = state.payload.world
+    world = state.payload
     if world.at_hub and intent == REPORT_IN:
         if not world.job_open:
             raise ValueError("no job is open to report")
@@ -178,12 +183,12 @@ def build_scenario(
         ),
         engine=EngineId("tunnelgoons"),
         packs=packs,
-        payload=TunnelGoonsScenario(world=opening_canon(written, source, kind)),
+        payload=opening_canon(written, source, kind),
     )
 
 
 def way_open(state: TunnelGoonsGame) -> bool:
-    world = state.payload.world
+    world = state.payload
     return world.at_hub or frontier(world) == 0
 
 
@@ -209,8 +214,8 @@ def _map_unmet(draft: MapDraft) -> list[str]:
 
 def _hub_unmet(draft: MapDraft) -> list[str]:
     unmet = _start_unmet(draft)
-    if not BOARD_MIN <= len(draft.board) <= BOARD_MAX:
-        unmet.append(f"a `board` of two or three offers; it has {len(draft.board)}")
+    if draft.board is None:
+        unmet.append("a `board` of two or three offers")
     return unmet
 
 
@@ -258,7 +263,7 @@ def _overlap_unmet(draft: MapDraft, world: TunnelWorld) -> list[str]:
 
 
 def _board_unmet(draft: MapDraft) -> list[str]:
-    if draft.board:
+    if draft.board is not None:
         return ["no `board`: only a campaign's opening tavern carries one"]
     return []
 
@@ -292,7 +297,7 @@ def _render_job(world: TunnelWorld, intent: str) -> str:
         world,
         intent,
         (
-            ("JOBS SO FAR", ledger(world.jobs())),
+            ("JOBS SO FAR", ledger(world.closed_jobs())),
             ("THE BOARD", board_lines(world.board)),
             ("THE HUB", JOB_BRIEF.format(title=world.current.name, place=world.hub)),
         ),
@@ -300,15 +305,17 @@ def _render_job(world: TunnelWorld, intent: str) -> str:
 
 
 def _render_return(world: TunnelWorld) -> str:
+    job = world.open_job()
+    verdict = "finished" if job is not None and job.finished else "left open"
     return sections(
         (
             ("YOUR ROLE", WORLDSMITH),
             ("SOURCE MATERIAL", world.source or "(none — write from the setting)"),
             ("MAP SO FAR", _map_so_far(world)),
-            ("JOBS SO FAR", ledger(world.jobs())),
+            ("JOBS SO FAR", ledger(world.closed_jobs())),
             ("THIS JOB", render_history(world.scenes())),
             ("THE BOARD", board_lines(world.board)),
-            ("THE VERDICT", "finished" if world.job_done else "left open"),
+            ("THE VERDICT", verdict),
             ("THE PLAYER", entity_line(world, world.player)),
             ("WHAT COMES NEXT", RETURN_BRIEF.format(title=world.current.name, place=world.hub)),
             ("ANSWER WITH", json.dumps(schema_of(ReturnDraft), indent=2, ensure_ascii=False)),

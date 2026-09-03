@@ -27,12 +27,12 @@ def _draft(**fields: object) -> SceneDraft[Person]:
 
 
 def test_the_bar_refuses_a_scene_that_lists_the_player() -> None:
-    world = small_world().payload.world
+    world = small_world().payload
     assert "put there by code" in (scene_refusal(_draft(present=("Jax", "mira")), world) or "")
 
 
 def test_the_bar_refuses_a_draft_cast_entry_under_player_id() -> None:
-    world = small_world().payload.world
+    world = small_world().payload
     draft = _draft(
         cast={PLAYER_ID: Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)}
     )
@@ -40,7 +40,7 @@ def test_the_bar_refuses_a_draft_cast_entry_under_player_id() -> None:
 
 
 def test_the_bar_refuses_hiding_someone_met() -> None:
-    world = small_world().payload.world
+    world = small_world().payload
     assert "already met" in (scene_refusal(_draft(hidden=("mira",)), world) or "")
 
 
@@ -49,7 +49,7 @@ def test_the_opening_needs_a_cast_member() -> None:
 
 
 def test_the_next_scene_needs_one_brought_back() -> None:
-    world = small_world().payload.world
+    world = small_world().payload
     stranger = EntityId("stranger")
     draft = _draft(
         hidden=(stranger,),
@@ -61,7 +61,7 @@ def test_the_next_scene_needs_one_brought_back() -> None:
 
 
 def test_a_dead_draft_cast_member_is_refused() -> None:
-    world = small_world().payload.world
+    world = small_world().payload
     ghost = EntityId("ghost")
     draft = _draft(
         present=("mira",), cast={ghost: Person(id=ghost, name="Ghost", brief="", alive=False)}
@@ -72,7 +72,7 @@ def test_a_dead_draft_cast_member_is_refused() -> None:
 
 
 def test_a_hidden_multi_word_name_in_situation_is_refused() -> None:
-    world = small_world().payload.world
+    world = small_world().payload
     stalker = EntityId("stalker")
     told = f"{SITUATION} Old Man Riley waits by the dumpster."
     draft = _draft(
@@ -89,7 +89,7 @@ def test_a_hidden_multi_word_name_in_situation_is_refused() -> None:
 def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
     game = small_world()
     facts = install_scene(game, _draft(present=("mira",)), finished_note="")
-    assert len(game.payload.world.runs) == 2
+    assert len(game.payload.runs) == 2
     assert facts == (
         Fact(
             kind="scene_opened",
@@ -101,7 +101,7 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
 
 
 def test_render_worldsmith_lists_the_player_first() -> None:
-    prompt = small_world().payload.world.render_worldsmith(
+    prompt = small_world().payload.render_worldsmith(
         "Explore the alley.", "guidance text", SceneDraft[Person], role=ROLE
     )
     assert prompt.index("Jax[player]") < prompt.index("Mira[mira]")
@@ -125,7 +125,7 @@ def _return_draft(*, offers: int = 2) -> ReturnDraft[Person]:
 
 
 def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> None:
-    world = hub_world().payload.world
+    world = hub_world().payload
     stranger = EntityId("stranger")
     world.cast[stranger] = Person(id=stranger, name="Old Man Riley", brief="", known=False)
     draft = _return_draft().model_copy(update={"debrief": "Old Man Riley saw them off with a nod."})
@@ -138,9 +138,9 @@ def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> Non
 def test_install_scene_on_a_return_swaps_the_board_and_notes_nothing() -> None:
     for finished in (True, False):
         game = hub_world()
-        game.payload.world.run.job_done = finished
+        game.payload.jobs[-1].finished = finished
         facts = install_scene(game, _return_draft(), finished_note="")
-        world = game.payload.world
+        world = game.payload
         assert [offer.title for offer in world.board] == ["Job 1", "Job 2"]
         assert [fact.kind for fact in facts] == ["job_closed", "scene_opened"]
         assert game.notes == ()

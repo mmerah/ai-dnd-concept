@@ -110,9 +110,10 @@ and no crew (its "the cast carries no dice" stands until 24XX has played). G is 
   when the fiction puts it on them. `Defend`, `ChangeHindrances`, `GainItem`, `DropItem`,
   `RepairItem`, `Spend` gain `actor_id` defaulting to the player: gear and credits are per
   operator, as the SRD keeps them.
-- **After a job.** `JobDone.raises: tuple[Raise(actor_id, skill), ...]` covers the player and
+- **After a job.** `AfterJob.raises: tuple[Raise(actor_id, skill), ...]` covers the player and
   every living sheeted party member, refused when one is missing or a stranger is named; each
-  raises the named skill and rolls their own d6 credits. One call per job.
+  raises the named skill and rolls their own d6 credits. One call per job: a `raised: bool` on
+  the `Job` record refuses the second.
 - **The ship is gear.** `world.ship: dict[EntityId, Item] | None` over the seven printed
   functions (an `Item` breaks and is repaired already), plus `world.upgraded: set[str]`; the
   worldsmith answers `ship: bool` on the opening draft and code builds the seven; after PLAN
@@ -155,7 +156,7 @@ deviation 1 (the level-up cadence) stays.
    Goons, `TunnelWorld.party` and `move`, the shared `rules.md` paragraph; goldens:
    `narrator.txt` gains the YOUR PARTY line, `master.txt` the paragraph, `master_tools.json`
    the two arms, nothing else.
-2. 24XX: `Sheet`, `actor_id` on the tools, `helped_by`, `JobDone.raises`, the android case, the
+2. 24XX: `Sheet`, `actor_id` on the tools, `helped_by`, `AfterJob.raises`, the android case, the
    panel rows, `rules.md`, `_AUTHORING`, `worldsmith.md`, `docs/24XX.md`.
 3. 24XX: the ship and succession; `scenarios/amber-tap` gains a sheeted regular and a ship.
 4. Tunnel Goons: G.3.
@@ -164,7 +165,7 @@ deviation 1 (the level-up cadence) stays.
 **Done when.** In every engine a named NPC joins, walks into the next scene and is read as the
 party by all three roles; a hired regular rolls beside Kael and the highest die counts; Kael dies
 on a `risking_death` disaster and the page asks who leads; the new lead plays the return home
-and `job_done` raises both survivors; the hull breaks to defend; 24XX at most 1,600 lines after
+and `after_job` raises both survivors; the hull breaks to defend; 24XX at most 1,600 lines after
 Track A, nineteen verbs. About +600 lines across `core/views.py`, `turn/context.py`, 24XX and
 Tunnel Goons.
 

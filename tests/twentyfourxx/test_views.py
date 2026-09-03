@@ -39,9 +39,7 @@ def test_player_view_gear_panel_lists_items() -> None:
 
 def test_master_sections_shows_hidden_entities_and_the_secret() -> None:
     game = small_world()
-    game.payload.world.run.scene = game.payload.world.current.model_copy(
-        update={"secret": "Sable already took the cargo."}
-    )
+    game.payload.run.secret = "Sable already took the cargo."
     sections = dict(master_sections(game))
     assert "Sable" in sections["HIDDEN HERE (the player has not found these)"]
     assert sections["THE SCENE'S SECRET (never narrate this)"] == "Sable already took the cargo."
@@ -49,7 +47,7 @@ def test_master_sections_shows_hidden_entities_and_the_secret() -> None:
 
 def test_master_sections_gear_shows_none_for_empty_gear() -> None:
     game = small_world()
-    game.payload.world.player.items = {}
+    game.payload.player.items = {}
     sections = dict(master_sections(game))
     assert sections["GEAR"] == "- (none)"
 

@@ -13,17 +13,18 @@ from aidm.engines.breathless.world import (
     stepped,
 )
 from aidm.engines.core import PLAYER_ID, Person
-from aidm.engines.scenes.world import Scene, SceneRun
+from aidm.engines.scenes.world import SceneRun
 
 MIRA = EntityId("mira")
 
 
-def _scene() -> Scene:
-    return Scene(
+def _scene(*, here: list[EntityId] | None = None) -> SceneRun:
+    return SceneRun(
         place="diner",
         title="The Diner",
         question="Can they reach the back door?",
         situation="Booths overturned, glass everywhere, the front door barred shut.",
+        here=here or [],
     )
 
 
@@ -32,7 +33,7 @@ def _player() -> Survivor:
 
 
 def _world() -> BreathlessWorld:
-    return BreathlessWorld(cast={}, player=_player(), runs=[SceneRun(scene=_scene())])
+    return BreathlessWorld(cast={}, player=_player(), runs=[_scene()])
 
 
 def test_missing_skills_fill_with_d4_and_worn_mirrors_skills() -> None:
@@ -76,7 +77,7 @@ def test_a_cast_that_holds_the_player_is_refused() -> None:
         BreathlessWorld(
             cast={PLAYER_ID: decoy},
             player=_player(),
-            runs=[SceneRun(scene=_scene(), present=[PLAYER_ID])],
+            runs=[_scene(here=[PLAYER_ID])],
         )
 
 
@@ -90,7 +91,7 @@ def test_here_yields_the_player_first_then_present_cast() -> None:
     world = BreathlessWorld(
         cast={MIRA: mira},
         player=_player(),
-        runs=[SceneRun(scene=_scene(), present=[MIRA])],
+        runs=[_scene(here=[MIRA])],
     )
     assert list(world.here()) == [world.player, mira]
 

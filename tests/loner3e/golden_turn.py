@@ -5,7 +5,7 @@ from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, SpokenLine
 from aidm.engines.core import PLAYER_ID
 from aidm.engines.loner3e.world import Loner3eGame
-from aidm.engines.scenes.world import Scene, SceneRun
+from aidm.engines.scenes.world import SceneRun
 
 SCRIPT: tuple[Call, ...] = (
     changed("reveal", entity_id="vault-map"),
@@ -25,19 +25,17 @@ def behind(state: AnyGame) -> AnyGame:
     if not isinstance(state, Loner3eGame):
         raise AssertionError(f"unsupported golden engine state: {type(state).__name__}")
     draft = state.draft()
-    draft.payload.world.runs.insert(
+    draft.payload.runs.insert(
         0,
         SceneRun(
-            scene=Scene(
-                place="vault-stair",
-                title="The Vault Stair",
-                question="Is there a way past the vault door from the stair?",
-                situation=(
-                    "A short flight of steps ends at an iron door, sealed, "
-                    "the abbey's dust undisturbed on its sill."
-                ),
+            place="vault-stair",
+            title="The Vault Stair",
+            question="Is there a way past the vault door from the stair?",
+            situation=(
+                "A short flight of steps ends at an iron door, sealed, "
+                "the abbey's dust undisturbed on its sill."
             ),
-            present=[PLAYER_ID],
+            here=[PLAYER_ID],
             exchanges=[
                 Exchange(
                     prompt="I try the vault door.",
@@ -46,7 +44,7 @@ def behind(state: AnyGame) -> AnyGame:
             ],
         ),
     )
-    draft.payload.world.run.exchanges = [
+    draft.payload.run.exchanges = [
         Exchange(
             prompt="I look for another way in.",
             lines=(SpokenLine(text="A flagstone by the wall sits proud of its neighbours."),),

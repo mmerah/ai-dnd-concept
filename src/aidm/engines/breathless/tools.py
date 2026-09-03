@@ -109,7 +109,7 @@ class Complications:
     packs: Mapping[str, Pack]
 
     def catch_breath(self, draft: BreathlessGame, _args: NoArgs, rng: Random) -> list[Fact]:
-        world = draft.payload.world
+        world = draft.payload
         player = world.player
         player.worn = dict(player.skills)
         player.loot = LOOT_START
@@ -153,15 +153,15 @@ def apply_change(world: BreathlessWorld, change: WorldChange) -> list[Fact]:
 
 
 def change_world(draft: BreathlessGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-    return apply_change(draft.payload.world, args.change)
+    return apply_change(draft.payload, args.change)
 
 
 def next_scene(draft: BreathlessGame, args: NextScene, _rng: Random) -> tuple[Fact, ...]:
-    return draft.payload.world.settle(args.job_done, args.pursuit)
+    return draft.payload.settle(args.job_done, args.pursuit)
 
 
 def check(draft: BreathlessGame, args: Check, rng: Random) -> list[Fact]:
-    player = draft.payload.world.player
+    player = draft.payload.player
 
     item: Item | None = None
     if args.skill is not None:
@@ -224,12 +224,12 @@ def complications_of(packs: Mapping[str, Pack]) -> tuple[str, ...]:
 def change_stress(draft: BreathlessGame, args: ChangeStress, _rng: Random) -> list[Fact]:
     if args.amount == 0:
         raise ValueError("change_stress needs a non-zero amount")
-    player = draft.payload.world.player
+    player = draft.payload.player
     return counter_fact(player, player.stress, args.amount, "Stress", args.why, player.id)
 
 
 def use_med_kit(draft: BreathlessGame, _args: NoArgs, _rng: Random) -> list[Fact]:
-    player = draft.payload.world.player
+    player = draft.payload.player
     if not player.med_kit:
         raise ValueError("the player holds no med kit")
     player.med_kit = False
@@ -267,7 +267,7 @@ def loot_options(player: Survivor, item: str, granted: Die) -> tuple[PendingOpti
 
 
 def loot_check(draft: BreathlessGame, args: LootCheck, rng: Random) -> list[Fact]:
-    player = draft.payload.world.player
+    player = draft.payload.player
     if args.granted is None or args.choice is None:
         return _roll_loot(draft, player, args.item, rng)
     return [_take_loot(player, args.item, args.granted, args.choice)]

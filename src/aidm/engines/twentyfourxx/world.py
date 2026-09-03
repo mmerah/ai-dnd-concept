@@ -6,7 +6,7 @@ from aidm.core.entities import EntityId, Frozen, Mutable, slug
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
 from aidm.engines.core import PLAYER_ID, Person
-from aidm.engines.scenes.world import SceneScenario, SceneState, SceneWorld
+from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
 type SkillDie = Literal[8, 10, 12]
 LADDER: tuple[SkillDie, ...] = (8, 10, 12)
@@ -67,7 +67,6 @@ class Operator(Person):
 
 
 TwentyfourxxWorld = SceneWorld[Person, Operator]
-TwentyfourxxState = SceneState[Person, Operator]
 
 
 class TwentyfourxxCharacter(Mutable):
@@ -78,11 +77,11 @@ class TwentyfourxxCharacter(Mutable):
     items: tuple[Kit, ...]  # the comm, the specialty kit, Muscle's weapon
 
 
-class TwentyfourxxGame(Game[TwentyfourxxState]):
+class TwentyfourxxGame(Game[TwentyfourxxWorld]):
     pass
 
 
-class TwentyfourxxScenarioFile(Scenario[SceneScenario[Person]]):
+class TwentyfourxxScenarioFile(Scenario[SceneCanon[Person]]):
     pass
 
 

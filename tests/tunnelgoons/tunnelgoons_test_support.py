@@ -12,7 +12,6 @@ from aidm.engines.tunnelgoons.world import (
     Npc,
     Place,
     TunnelGoonsGame,
-    TunnelGoonsState,
     TunnelWorld,
     Visit,
     Way,
@@ -128,7 +127,7 @@ def small_world() -> TunnelGoonsGame:
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="A test dungeon."),
         engine=EngineId("tunnelgoons"),
-        payload=TunnelGoonsState(world=world),
+        payload=world,
     )
 
 
@@ -170,13 +169,13 @@ def hub_world(*, with_map: bool = True) -> TunnelGoonsGame:
         character_id="kael",
         scenario=ScenarioMeta(title="Test Campaign", premise="A test campaign.", kind="campaign"),
         engine=EngineId("tunnelgoons"),
-        payload=TunnelGoonsState(world=world),
+        payload=world,
     )
 
 
 def changed_facts(draft: TunnelGoonsGame, verb: str, **fields: object) -> list[Fact]:
     change = ChangeWorld.model_validate({"change": {"verb": verb, **fields}})
-    return apply_change(draft.payload.world, change.change)
+    return apply_change(draft.payload, change.change)
 
 
 def changed(draft: TunnelGoonsGame, verb: str, **fields: object) -> list[str]:

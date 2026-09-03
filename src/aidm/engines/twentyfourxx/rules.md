@@ -51,7 +51,7 @@ passage. `repair_item` fixes broken gear.
 
 ## Job done
 
-Call `job_done` once per job, when the player's own words close it out: it raises the skill the
+Call `after_job` once per job, when the player's own words close it out: it raises the skill the
 job called on and pays out its credits.
 
 ## Campaigns
@@ -61,7 +61,7 @@ trade, rest — and never push the player out. The board is the player's to take
 not choose for them. When the story and the player's own words close the job, call `next_scene` with
 `job_done`; settled without it, the job stays open, and the player may go home either way. The SRD's
 after-a-job step is yours to fire when NOTES FROM THE RULES says the job closed and was completed:
-`job_done` once, with the skill the player names. `Go home.` and `I take the job "…".` are the
+`after_job` once, with the skill the player names. `Go home.` and `I take the job "…".` are the
 page's own words for leaving: play the goodbye in one call or none, then exit. THE JOB is what the
 player walked out on. At the hub WHAT THIS PLACE IS ABOUT replaces the scene's question: nothing
 settles there.

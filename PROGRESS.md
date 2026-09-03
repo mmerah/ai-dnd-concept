@@ -122,3 +122,87 @@ review findings and why, anything known and accepted.
   Awaiting the maintainer's call.
 - "`src` is 77 over the target" (Fable #3): no named cut is missing; the count is recorded, not
   padded.
+
+## Phase 3 — the world
+
+- `src` lines: 9,348 before, 9,257 after (target about 9,050; every cut PLAN names is taken,
+  and the fold added the checks below); `engines/scenes/world.py` 666 (target under 600).
+  Tests: 472 after (472 before).
+- Goldens: every `state/*.json` and `save/*.json` holds `payload` as the world with no `world`
+  key, `"jobs": []` after `board`; the six scene fixtures' runs carry `place`, `title`,
+  `question`, `situation`, `secret`, `here`, `exchanges`, `left`, `recap`; the Tunnel Goons
+  visits carry `place` and `exchanges` and the world no `job_done`; `loner3e*.json` carry `twist`
+  last; `schemas/twentyfourxx/master_tools.json` and `prompts/twentyfourxx/master.txt` say
+  `after_job`. The other `master.txt`, every `narrator.txt` and `turn/*.json` unchanged. The
+  eight `scenarios/*/world.json` were rewritten by scratchpad scripts (`payload` is the canon;
+  `opening.here` is `present` then `hidden`); `json.dump` re-indented their inline arrays.
+- Smoke (headless, no model credentials in the container; a live turn was not played, and the
+  game page was not rendered): every shipped scenario begins a game and renders the three
+  views; the four save fixtures restore; a 24XX campaign takes a job (`install_scene` with a
+  `JobDraft`, THE JOB in the master's sections), `settle(True, "")` finishes it, the return
+  closes it, the ledger lists it and the note is filed; `enter` on someone hidden here is
+  refused "already here" and `reveal_hidden` makes them present; a Tunnel Goons job taken,
+  walked, visited home mid-job (still open) and reported "left open" shows in the ledger, and a
+  job taken but not walked is swapped by taking another.
+- Implemented by three Sonnet implementers in sequence (A: 3.1, B: 3.2, C: 3.3 and 3.4),
+  briefs in `/tmp/phase-3/`. Reviews: the Fable reviewer and a second Opus reviewer (no
+  `codex` on the machine); the fold is recorded below.
+- PLAN's done-when grep still finds `Counter.current`, `TunnelWorld.current` (3.2 deletes the
+  scene world's `current` only) and the prose "Stop here" in `turn/prompts/master.md`.
+
+### Decisions off-plan
+
+- `TunnelWorld.job_open` is an open job **with** `started` (PLAN 3.1.4 wrote `open_job() is not
+  None`): a job taken at the tavern but not yet walked would otherwise block every other intent
+  ("report the open job first") while its report is refused at commit (`check_jobs`: a debrief
+  needs `started`), and PLAN's own "taking a job pops a last job whose `started` is `None`"
+  would be unreachable. `install_extension`'s return branch refuses "no job is open to report"
+  for an unwalked job too, so the refusal lands at the tool, not at commit (Opus #7).
+- `job_runs()`/`job_visits()` start at the open job's `started`, the first run away from the
+  hub, as PLAN 3.1.2 spells it: the hub run in which the job was taken is no longer in RECENT
+  PLAY, SCENES SO FAR or the Trail during the job (the old walk started at the last debriefed
+  hub run). Known and accepted; PLAN's literal text.
+- `new_world[W: SceneWorld[Any, Any]](world_type: type[W], canon: SceneCanon[Any], player: Person) -> W`
+  (PLAN 3.3.1 wrote `type[SceneWorld[C, P]] -> SceneWorld[C, P]`): the literal shape cannot
+  return `LonerWorld` or the seam test's subclass, so part C had `cast(...)` at two call sites;
+  both reviewers asked for the signature to carry the subclass instead. Their spelling
+  (`W: SceneWorld[C, P]`) is one basedpyright rejects, and `C`/`P` used once each are refused
+  too, so the world-generic `Any` bound CLAUDE.md allows is the one left.
+- `check_jobs(hub, jobs, walked)` refuses a `started` past the runs or visits (both reviewers:
+  a stale index made `job_runs()` silently empty). `SceneCanon` refuses an opening with
+  `exchanges`, `left` or `recap` (both reviewers: `opening` is a `SceneRun` now). `check_hub`
+  refuses hub runs after the first that the closed jobs do not account for (Fable #3: every
+  return closes exactly one job; PLAN 3.1.2 had dropped every run-to-job rule).
+- The stored boards (`SceneCanon`, `SceneWorld`, `MapCanon`, `TunnelWorld`) are typed
+  `Board | tuple[()]` (Opus #1): PLAN 3.4.1 relaxed `check_board` to the no-hub case, which left
+  a one-offer campaign file loadable; the rule still lives once, on the `Board` type, and the
+  file boundary keeps it.
+- `hub.py` gains `open_job_of`, `closed_jobs_of` and `since_start` and the two worlds' six job
+  methods are one-liners over them (Opus #2: PLAN 3.1.4's "as the scene world's" made two
+  copies; two worlds need it). `move`, `level_up` and `install_extension` read `open_job()`
+  instead of re-deriving it from `jobs[-1]` (both reviewers). `SceneWorld.job_terms()` serves
+  `scene_rows` and `render_worldsmith` (Opus cut). `scenes/views.py` drops the dead `known`
+  filters over `here()` (both). `run_of(draft, here)` takes the list and passes it through.
+- `tests/core/test_scenes.py` 76 to 90 tested shapes 3.1 deletes (a debrief on a run,
+  `job_done` on a run) and are rewritten on the nearest surviving rule: `check_hub` refusing an
+  opening away from the hub, and `settle` refusing `job_done` with no job open.
+- Three tests of the "hidden but known / already met" rule 3.2 removes are deleted
+  (`tests/loner3e/test_world.py` two, `tests/twentyfourxx/test_world.py` one); the boundary the
+  third guarded is now `require_here`'s refusal of an unmet entity, tested as
+  `test_someone_hidden_here_cannot_be_acted_on_before_the_reveal`. PLAN 3.2.4's "set `known`
+  on the entity" would have made that fact told.
+- `NEXT-SPECS.md` line 159 (G.4's phase list) says `AfterJob.raises` too; PLAN 3.4.4 named G.2
+  and the done-when only. `with_entity`'s docstring says `known` alone decides.
+
+### Refuted findings
+
+- "Add a Tunnel Goons test that a fact about an unmet npc here is not told" (Opus #5): every
+  Tunnel Goons tool that admits an npc through `require_npc_here` (`action_roll`, `kill`)
+  calls `world.reveal(npc)` before it files a fact, so no such fact exists to test.
+- "Inline `check_hub`" (Opus cut): `SceneCanon` and `SceneWorld` both call it, and the fold
+  gave it a fourth rule. "Drop the `job_done` property" (Opus cut): PLAN 3.1.2 names it. "Fold
+  `check_board` into `check_jobs`" (Opus cut): `MapCanon` has a board and no jobs; PLAN 3.4.1
+  names it.
+- "`src` is over the target" (both): no named cut is missing; recorded, not padded. The
+  `Board` annotations, `check_jobs`'s bound, the opening check and the hub-run rule are the
+  fold's additions.

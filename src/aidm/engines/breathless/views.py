@@ -7,8 +7,8 @@ from aidm.engines.scenes.world import entity_line
 
 def master_sections(state: BreathlessGame) -> Rows:
     """Every section stated, hidden canon included: the game master reads all of it."""
-    world = state.payload.world
-    scene = world.current
+    world = state.payload
+    scene = world.run
     player = world.player
     backpack_lines = [f"- {item.name}[{key}] — d{item.die}" for key, item in player.items.items()]
     if player.med_kit:
@@ -22,5 +22,5 @@ def master_sections(state: BreathlessGame) -> Rows:
         *party_rows(world.members()),
         ("HIDDEN HERE (the player has not found these)", world.hidden_lines()),
         ("THE SCENE'S SECRET (never narrate this)", scene.secret or "(none)"),
-        *master_tail(world.hub, world.at_hub, world.board, world.jobs(), world.job),
+        *master_tail(world.hub, world.at_hub, world.board, world.closed_jobs(), world.open_job()),
     )
