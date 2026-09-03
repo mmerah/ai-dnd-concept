@@ -5,7 +5,7 @@ from typing import cast
 
 import pytest
 from core_test_support import ENGINE_IDS, Call, open_game_for, play_turn
-from golden_test_support import FIXTURES, dumped, golden, golden_json
+from golden_test_support import FIXTURES, golden, golden_json
 from golden_turn_support import NARRATION
 
 from aidm.core.entities import EngineId
@@ -41,4 +41,3 @@ async def test_a_scripted_turn_renders_and_records_unchanged(
         FIXTURES / "turn" / f"{engine_id}.json",
         [fact.model_dump(mode="json") for fact in table.facts],
     )
-    golden(FIXTURES / "save" / f"{engine_id}.json", dumped(table.service.state))

@@ -1,10 +1,10 @@
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Sequence
 from copy import deepcopy
 from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, picked
-from aidm.core.entities import EngineId, EntityId, Refusal, Slug, parse, slug
+from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, AnyScenario, ScenarioKind, ScenarioMeta, WorldsmithAnswer
@@ -21,17 +21,7 @@ from aidm.core.views import (
     sections,
 )
 from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, character_panel, here_panel, trail_panel
-from aidm.engines.hub import (
-    RETURN_BRIEF,
-    Job,
-    board_lines,
-    board_rows,
-    check_kind,
-    job_closed,
-    jobs_panel,
-    ledger,
-    master_tail,
-)
+from aidm.engines.hub import RETURN_BRIEF, Campaign, Job, check_kind
 from aidm.engines.seam import Engine
 from aidm.engines.tunnelgoons.tools import (
     LEVEL_OPTIONS,
@@ -50,12 +40,11 @@ from aidm.engines.tunnelgoons.world import (
     ABILITIES,
     ABILITY_POINTS,
     STARTING_ITEMS,
+    Ability,
     Goon,
-    Item,
     Place,
-    TunnelGoonsCharacterFile,
+    TunnelGoonsCharacter,
     TunnelGoonsGame,
-    TunnelGoonsPayload,
     TunnelGoonsScenario,
     TunnelGoonsWorld,
     Visit,
@@ -104,7 +93,7 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
     directory = Path(__file__).parent
     game = TunnelGoonsGame
     scenario = TunnelGoonsScenario
-    character = TunnelGoonsCharacterFile
+    character = TunnelGoonsCharacter
     worldsmith: str
 
     def __init__(self) -> None:
@@ -162,71 +151,43 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
         )
         return (*ability_steps, *item_steps)
 
-    def create_character(self, name: str, brief: str, picks: Picks) -> TunnelGoonsCharacterFile:
+    def create_character(self, name: str, brief: str, picks: Picks) -> TunnelGoonsCharacter:
         check_picks(self.creation_steps(picks), picks)
-        # The ability split is the sheet's own rule, so the picks are parsed as a boundary.
-        payload = parse(
-            TunnelGoonsPayload,
-            {
-                "brute": int(picked(picks, "brute")),
-                "skulker": int(picked(picks, "skulker")),
-                "erudite": int(picked(picks, "erudite")),
-                "items": tuple(picked(picks, f"item-{n}") for n in range(1, STARTING_ITEMS + 1)),
-            },
+        abilities: dict[Ability, int] = {
+            ability: int(picked(picks, ability)) for ability in ABILITIES
+        }
+        if sum(abilities.values()) != ABILITY_POINTS:
+            raise Refusal(f"the three abilities share exactly {ABILITY_POINTS} points")
+        sheet = Goon(
+            id=PLAYER_ID,
+            name=name,
+            brief=brief,
+            known=True,
+            abilities=abilities,
+            kit=tuple(picked(picks, f"item-{n}") for n in range(1, STARTING_ITEMS + 1)),
         )
-        return TunnelGoonsCharacterFile(
-            id=slug(name, ()), engine=self.id, name=name, brief=brief, payload=payload
-        )
+        return TunnelGoonsCharacter(id=slug(name, ()), engine=self.id, payload=sheet)
 
     def preview_character(self, character: AnyCharacter) -> Rows:
-        own = self._own(character)
-        goon = self.player_of(own, EntityId("nowhere"))
-        return (*goon.rows(), ("Items", ", ".join(own.payload.items)))
+        sheet = self.player_of(character)
+        return (*sheet.rows(), ("Items", ", ".join(sheet.kit)))
 
-    def player_of(self, character: AnyCharacter, place: EntityId) -> Goon:
-        """The played character as the world holds them; `new_game` and the preview share it."""
-        payload = self._own(character).payload
-        return Goon(
-            id=PLAYER_ID,
-            name=character.name,
-            brief=character.brief,
-            known=True,
-            place=place,
-            brute=payload.brute,
-            skulker=payload.skulker,
-            erudite=payload.erudite,
-        )
-
-    def _own(self, character: AnyCharacter) -> TunnelGoonsCharacterFile:
-        if not isinstance(character, TunnelGoonsCharacterFile):
-            raise Refusal(f"{self.title} received an incompatible character")
-        return character
-
-    def starting_items(
-        self, character: TunnelGoonsCharacterFile, taken: Iterable[str]
-    ) -> tuple[Item, ...]:
-        made = list(taken)
-        items: list[Item] = []
-        for name in character.payload.items:
-            item_id = EntityId(slug(name, made))
-            made.append(item_id)
-            items.append(Item(id=item_id, name=name, brief="", known=True, on=PLAYER_ID))
-        return tuple(items)
+    def player_of(self, character: AnyCharacter) -> Goon:
+        self.check_character(character)
+        return deepcopy(character.payload)
 
     def validate(self, state: TunnelGoonsGame) -> None:
         if state.packs:
             raise Refusal("Tunnel Goons has no table sets")
-        check_kind(state.scenario.kind, state.payload.hub)
+        check_kind(state.scenario.kind, state.payload.campaign)
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> TunnelGoonsWorld:
         if not isinstance(scenario, TunnelGoonsScenario):
             raise Refusal(f"{self.title} received an incompatible scenario")
-        if not isinstance(character, TunnelGoonsCharacterFile):
-            raise Refusal(f"{self.title} received an incompatible character")
         canon = deepcopy(scenario.payload)
-        player = self.player_of(character, canon.start)
+        player = self.player_of(character)
         taken = (*canon.places, *canon.npcs, *canon.items)
-        items = self.starting_items(character, taken)
+        items = player.starting_items(taken)
         return TunnelGoonsWorld(
             places=canon.places,
             ways=canon.ways,
@@ -235,8 +196,7 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
             player=player,
             visits=[Visit(place=canon.start)],
             source=canon.source,
-            hub=canon.hub,
-            board=canon.board,
+            campaign=canon.campaign,
         )
 
     def over(self, state: TunnelGoonsGame) -> str | None:
@@ -263,7 +223,7 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
             ("HERE WITH THE PLAYER", place_lines(world, known=True)),
             ("HIDDEN HERE (the player has not found these)", place_lines(world, known=False)),
             ("WAYS OUT", ways_lines(world)),
-            *master_tail(world.hub, world.at_hub, world.board, world.closed_jobs(), None),
+            *(() if world.campaign is None else world.campaign.tail(at_hub=world.at_hub)),
         )
 
     def narrator_view(self, state: TunnelGoonsGame) -> NarratorView:
@@ -288,6 +248,7 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
     def player_view(self, state: TunnelGoonsGame) -> PlayerView:
         world = state.payload
         player = world.player
+        campaign = world.campaign
         ways = world.ways.get(world.current.id, ())
         me = player.subject()
         return PlayerView(
@@ -317,14 +278,16 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
                     (
                         Panel(
                             title="Board",
-                            rows=(REPORT_ROW,) if world.job_open else board_rows(world.board),
+                            rows=(REPORT_ROW,)
+                            if world.walked_job() is not None
+                            else campaign.board_rows(),
                         ),
                     )
-                    if world.at_hub
+                    if campaign is not None and world.at_hub
                     else ()
                 ),
                 trail_panel(world.require_place(v.place).name for v in world.job_visits()),
-                *jobs_panel(world.closed_jobs()),
+                *(() if campaign is None else campaign.jobs_panel()),
             ),
             prompt=state.pending,
             over=self.over(state),
@@ -332,18 +295,16 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
 
     async def author(
         self,
-        title: str,
-        premise: str,
+        meta: ScenarioMeta,
         source: str,
         packs: Sequence[Slug],
-        kind: ScenarioKind,
         worldsmith: WorldsmithAnswer,
         playable: Callable[[AnyScenario], str | None],
     ) -> AnyScenario:
         def built(written: MapDraft) -> AnyScenario:
-            return self.build_scenario(title, premise, tuple(packs), written, source, kind)
+            return self.build_scenario(meta, tuple(packs), written, source)
 
-        prompt = self.render_map(source, kind)
+        prompt = self.render_map(source, meta.kind)
         return await self.compose(worldsmith, prompt, MapDraft, built, playable)
 
     def ready(self, state: TunnelGoonsGame) -> bool:
@@ -389,7 +350,7 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
         if args.ability in ("brute", "skulker"):
             penalty = max(0, len(list(world.carried(player.id))) - player.inventory)
         rolled, dice_fact = roll((6, 6), f"{args.what} — {args.ability}", rng)
-        total = sum(rolled) + player.ability(args.ability) + len(items) - penalty
+        total = sum(rolled) + player.abilities[args.ability] + len(items) - penalty
         success = total >= ds
         margin = total - ds
         outcome = "success" if success else "failure"
@@ -434,20 +395,14 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
             raise Refusal("level_up takes both an ability and a boost, or neither")
         world = draft.payload
         player = world.player
-        match args.ability:
-            case "brute":
-                player.brute += 1
-            case "skulker":
-                player.skulker += 1
-            case "erudite":
-                player.erudite += 1
+        player.abilities[args.ability] += 1
         if args.boost == "health":
             player.hp.maximum += 1
             player.hp.current += 1
         else:
             player.inventory += 1
         player.level += 1
-        if (job := world.open_job()) is not None and job.started is not None:
+        if (job := world.walked_job()) is not None:
             job.finished = True
         card = f"Level {player.level}: {args.ability.capitalize()} +1, {args.boost.capitalize()} +1"
         return [player.fact("levelled_up", card, card=card)]
@@ -477,31 +432,32 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
             )
         )
 
-    def render_job(self, world: TunnelGoonsWorld, intent: str) -> str:
+    def render_job(self, world: TunnelGoonsWorld, campaign: Campaign, intent: str) -> str:
         return self.render_extension(
             world,
             intent,
             (
-                ("JOBS SO FAR", ledger(world.closed_jobs())),
-                ("THE BOARD", board_lines(world.board)),
-                ("THE HUB", JOB_BRIEF.format(title=world.current.name, place=world.hub)),
+                ("JOBS SO FAR", campaign.ledger()),
+                ("THE BOARD", campaign.board_lines()),
+                ("THE HUB", JOB_BRIEF.format(title=world.current.name, place=campaign.place)),
             ),
         )
 
-    def render_return(self, world: TunnelGoonsWorld) -> str:
-        job = world.open_job()
-        verdict = "finished" if job is not None and job.finished else "left open"
+    def render_return(self, world: TunnelGoonsWorld, campaign: Campaign) -> str:
         return sections(
             (
                 ("YOUR ROLE", self.worldsmith),
                 ("SOURCE MATERIAL", world.source or "(none — write from the setting)"),
                 ("MAP SO FAR", self.map_so_far(world)),
-                ("JOBS SO FAR", ledger(world.closed_jobs())),
+                ("JOBS SO FAR", campaign.ledger()),
                 ("THIS JOB", render_history(world.scenes())),
-                ("THE BOARD", board_lines(world.board)),
-                ("THE VERDICT", verdict),
+                ("THE BOARD", campaign.board_lines()),
+                ("THE VERDICT", "finished" if campaign.finished else "left open"),
                 ("THE PLAYER", world.line(world.player)),
-                ("WHAT COMES NEXT", RETURN_BRIEF.format(title=world.current.name, place=world.hub)),
+                (
+                    "WHAT COMES NEXT",
+                    RETURN_BRIEF.format(title=world.current.name, place=campaign.place),
+                ),
                 ("ANSWER WITH", schema_text(ReturnDraft)),
             )
         )
@@ -527,39 +483,42 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
         self, draft: TunnelGoonsGame, intent: str, worldsmith: WorldsmithAnswer
     ) -> MapDraft | ReturnDraft:
         world = draft.payload
-        if world.at_hub and intent == REPORT_IN:
-            if not world.job_open:
-                raise Refusal("no job is open to report")
-            return await worldsmith(self.render_return(world), ReturnDraft, lambda _written: None)
-        if world.at_hub and world.job_open:
-            raise Refusal("report the open job first")
-
-        bar = job_refusal if world.at_hub else extension_refusal
-        prompt = (
-            self.render_job(world, intent) if world.at_hub else self.render_extension(world, intent)
-        )
-        return await worldsmith(prompt, MapDraft, lambda written: bar(written, world))
+        campaign = world.campaign
+        if campaign is not None and world.at_hub:
+            walked = world.walked_job()
+            if intent == REPORT_IN:
+                if walked is None:
+                    raise Refusal("no job is open to report")
+                prompt = self.render_return(world, campaign)
+                return await worldsmith(prompt, ReturnDraft, lambda _written: None)
+            if walked is not None:
+                raise Refusal("report the open job first")
+            prompt = self.render_job(world, campaign, intent)
+            return await worldsmith(prompt, MapDraft, lambda written: job_refusal(written, world))
+        prompt = self.render_extension(world, intent)
+        return await worldsmith(prompt, MapDraft, lambda written: extension_refusal(written, world))
 
     def install_extension(
         self, draft: TunnelGoonsGame, written: MapDraft | ReturnDraft
     ) -> list[Fact]:
         world = draft.payload
+        campaign = world.campaign
         if isinstance(written, ReturnDraft):
-            job = world.open_job()
-            if job is None or job.started is None:
+            job = world.walked_job()
+            if campaign is None or job is None:
                 raise Refusal("no job is open to report")
             job.debrief = written.debrief
-            world.board = written.offers
-            return [job_closed(job)]
-        if world.at_hub:
+            campaign.board = written.offers
+            return [job.closed()]
+        if campaign is not None and world.at_hub:
             if (refused := job_refusal(written, world)) is not None:
                 raise Refusal(refused)
             tavern = world.current
             world.attach(written, written.start, known=True)
             start = written.places[written.start]
-            if (job := world.open_job()) is not None and job.started is None:
-                world.jobs.pop()
-            world.jobs.append(Job(title=start.name, place=written.start))
+            if (job := campaign.open_job()) is not None and job.started is None:
+                campaign.jobs.pop()
+            campaign.jobs.append(Job(title=start.name, place=written.start))
             trace = f"a way opens from {tavern.name} to {start.name}"
             card = f"A way opens: {start.name}"
             return [Fact(kind="job_taken", told=True, trace=trace, card=card)]
@@ -571,22 +530,14 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
         return [Fact(kind="region_added", trace=trace, told=False)]
 
     def build_scenario(
-        self,
-        title: str,
-        premise: str,
-        packs: tuple[Slug, ...],
-        written: MapDraft,
-        source: str,
-        kind: ScenarioKind,
+        self, meta: ScenarioMeta, packs: tuple[Slug, ...], written: MapDraft, source: str
     ) -> AnyScenario:
-        bar = hub_refusal if kind == "campaign" else map_refusal
+        bar = hub_refusal if meta.kind == "campaign" else map_refusal
         if (refused := bar(written)) is not None:
             raise Refusal(refused)
         return TunnelGoonsScenario(
-            meta=ScenarioMeta(
-                title=title, premise=premise or written.places[written.start].description, kind=kind
-            ),
+            meta=meta.with_premise(written.places[written.start].description),
             engine=self.id,
             packs=packs,
-            payload=opening_canon(written, source, kind),
+            payload=opening_canon(written, source, meta.kind),
         )

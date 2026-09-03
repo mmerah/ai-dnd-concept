@@ -1,7 +1,7 @@
 from random import Random
 
 import pytest
-from core_test_support import change, refused
+from core_test_support import change, refused, the_campaign
 from twentyfourxx_test_support import KESTREL, LOCKPICKS, hub_world, small_world
 
 from aidm.core.entities import EntityId
@@ -210,7 +210,7 @@ def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() ->
     world = draft.payload
     facts = ENGINE.next_scene(draft, NextScene(job_done=True), Random(0))
     assert world.run.left is not None
-    assert world.jobs[-1].finished
+    assert the_campaign(world.campaign).jobs[-1].finished
     assert JOB_DONE in facts
 
     at_hub = hub_world()

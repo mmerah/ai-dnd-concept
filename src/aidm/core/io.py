@@ -1,7 +1,7 @@
 import json
 import logging
 import shutil
-from collections.abc import Iterator, Mapping
+from collections.abc import Collection, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
@@ -85,21 +85,22 @@ def read_scenarios(
 
 
 def read_characters(
-    directory: Path, models: Mapping[EngineId, type[AnyCharacter]]
-) -> Iterator[tuple[Slug, EngineId, AnyCharacter]]:
+    directory: Path, engines: Collection[EngineId]
+) -> Iterator[tuple[Slug, EngineId, CharacterHeader]]:
     """One entry per character and engine written, so a shared id never names one engine's rules."""
     for path in sorted(directory.iterdir()):
-        for engine, model in models.items():
-            if not (path / f"{engine}.json").is_file():
+        name = content_id(path.name)
+        for engine in engines:
+            file = path / f"{engine}.json"
+            if not file.is_file():
                 continue
             try:
-                yield (
-                    content_id(path.name),
-                    engine,
-                    read_character(directory, path.name, engine, model),
-                )
+                header = _read(file, CharacterHeader)
+                _check_filed(header.id, header.engine, name, engine)
             except Refusal as unreadable:
                 LOGGER.warning("skipping character %r: %s", path.name, unreadable)
+                continue
+            yield name, engine, header
 
 
 def read_scenario(
@@ -118,10 +119,7 @@ def read_character(
     directory: Path, name: Slug, engine: EngineId, model: type[AnyCharacter]
 ) -> AnyCharacter:
     character = _read(directory / content_id(name) / f"{engine}.json", model)
-    if character.engine != engine:
-        raise Refusal(f"the character plays {character.engine!r}, not {engine!r}")
-    if character.id != content_id(name):
-        raise Refusal(f"character {character.id!r} is filed under {content_id(name)!r}")
+    _check_filed(character.id, character.engine, content_id(name), engine)
     return character
 
 
@@ -132,8 +130,10 @@ def write_character(directory: Path, character: AnyCharacter) -> None:
         raise Refusal(f"character {character.id!r} already exists")
     # One folder is one person played by several engines, so any sibling settles who that is.
     sibling = next(folder.glob("*.json"), None)
-    if sibling is not None and (held := _read(sibling, CharacterHeader)).name != character.name:
-        raise Refusal(f"character {character.id!r} is {held.name!r}, not {character.name!r}")
+    if sibling is not None:
+        held, named = _read(sibling, CharacterHeader).payload.name, character.payload.name
+        if held != named:
+            raise Refusal(f"character {character.id!r} is {held!r}, not {named!r}")
     write_text(path, character.model_dump_json(indent=2))
 
 
@@ -162,6 +162,13 @@ def _read_text(path: Path) -> str:
 
 def _read[T: BaseModel](path: Path, model: type[T]) -> T:
     return parse(model, decode(_read_text(path)))
+
+
+def _check_filed(character_id: str, plays: EngineId, name: Slug, engine: EngineId) -> None:
+    if plays != engine:
+        raise Refusal(f"the character plays {plays!r}, not {engine!r}")
+    if character_id != name:
+        raise Refusal(f"character {character_id!r} is filed under {name!r}")
 
 
 def _unique_keys(pairs: list[tuple[str, JsonValue]]) -> dict[str, JsonValue]:

@@ -12,7 +12,7 @@ from aidm.app.runtime import Runtime
 from aidm.core.creation import CreationStep, picked
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.io import SOURCE_SUFFIXES, write_character
-from aidm.core.model import ScenarioKind
+from aidm.core.model import ScenarioKind, ScenarioMeta
 from aidm.ui.widgets import labeled_value, page_header
 
 LOGGER = logging.getLogger(__name__)
@@ -192,17 +192,20 @@ def scenario_page(runtime: Runtime) -> None:
                 return
             button.props("loading")
             kind: ScenarioKind = "campaign" if kind_toggle.value == "campaign" else "one-shot"
+            meta = ScenarioMeta(
+                title=chosen,
+                premise=told,
+                kind=kind,
+                art_style=(style.value or "").strip(),
+                voice=(voice.value or "").strip(),
+            )
             try:
                 name = await runtime.new_scenario(
                     engine_id,
-                    chosen,
-                    told,
+                    meta,
                     document,
                     packs.value if packs is not None else (),
                     character.value,
-                    art_style=(style.value or "").strip(),
-                    voice=(voice.value or "").strip(),
-                    kind=kind,
                 )
                 opened = LaunchTarget(scenario_id=name, character_id=character.value)
             except (OSError, Refusal) as refused:

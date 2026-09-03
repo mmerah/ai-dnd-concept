@@ -192,3 +192,90 @@ restoring once inside the skip, `Engine.crossing(pursuit)`, `packs_dir` gone.
   game pages (`whispering-vault`, `amber-tap`, `buried-bell`, `salt-lantern`) serve 200. The
   turn, the option answer and the crossing are covered by `tests/core/test_pipeline.py`,
   `test_decisions.py` and `test_tool_surface.py`; the live play is still owed.
+
+## Phase 3 — the shapes
+
+`src` lines: 8,719 at start (`15037a2`), 8,493 at the end of the implementation and 8,502 after
+the fold; the target was about 8,540. Tests: 477 to 467 (the golden state test and its eight fixtures deleted with the goldens, the three
+"board/job with no hub" tests deleted as unrepresentable, the Breathless `_filled_out` and
+payload tests deleted with the validator, seven tests added: `Campaign.since_start`, a canon with
+jobs walked or opening away from the hub, a sheet short of six skills, a sheet rated off the
+creation spread, a preview of a sheet that is not the player's, the player standing at the last
+visit, a campaign opening without a board refused). Goldens: `prompts/*`, `schemas/*`,
+`turn/*` byte-identical; `state/` and `save/` gone. `engines/<id>/` sizes: loner3e 616,
+tunnelgoons 1,256, breathless 607, twentyfourxx 698, scenes 998. Tool counts unchanged.
+
+What landed: §3.1 the goldens trimmed; §3.2 `Campaign` on `engines/hub.py` with every hub helper
+as a method, `campaign: Campaign | None` on both canons and both worlds, `Job.closed()`; §3.3
+`Loner3eSheet.tags`/`tagged`, `Goon.abilities`; §3.4 `Character[P]` as `id`/`engine`/`payload`,
+`Named`, `CharacterHeader.payload`, `read_characters` reading headers, `Engine.check_character`
+and the concrete `preview_character`, the four `*Payload` models and `player_*` builders gone,
+`Survivor.skills`/`worn` exactly six, `Goon.kit`, `TunnelGoonsWorld.current` off the last visit;
+§3.5 `ScenarioMeta.art_style`/`voice`/`with_premise`, `Engine.author(meta, ...)`,
+`Runtime.new_scenario(engine_id, meta, ...)`. The eight `scenarios/*/world.json` and the four
+`characters/kael/*.json` rewritten by throwaway scripts in `/tmp/phase-3/`.
+
+### Decisions made off-plan
+
+1. **`SerializeAsAny` dropped from `Game.payload`** (Phase 2's deferred item, §3.4): every
+   `Game[P]` subclass binds `P` to the exact world it holds, and no caller passes a subclass;
+   the suite is green without it and the goldens are unchanged.
+2. **`TAG_KINDS` not kept** (§3.3.1 names it): nothing read it — the four sheet rows carry
+   their own labels. A constant with no reader is dead code.
+3. **`Goon.abilities` values are `Annotated[int, Field(ge=0)]`**: the three fields it replaces
+   carried `ge=0`; a rename keeps its constraint.
+4. **`TunnelGoonsWorld.walked_job() -> Job | None`** replaces `job_open`: `level_up`,
+   `write_extension` and `install_extension` need the walked open job itself, not a bool and
+   a second narrowing; every caller reads `walked_job()`.
+5. **`Campaign.job_row()` holds the THE JOB row** once, read by both `sections` and `tail`;
+   `render_next` passes `campaign.sections(...)` straight into the prompt.
+6. **`TunnelGoonsEngine.render_job` and `render_return` take the `Campaign`** after
+   `write_extension` narrows it once; §3.2.3 says "read `world.campaign`", and a `None` check
+   inside each render would be a second narrowing of the same value.
+7. **`core/io.py::_check_filed`** holds the two filing refusals `read_character` and the new
+   `read_characters` share.
+8. **`tunnelgoons/worldsmith.py::opening_canon`** refuses a campaign draft with no board
+   (`Refusal("a campaign's opening needs a board")`) rather than falling through to a one-shot
+   canon: `hub_refusal` bars it first, and a bar that is not repeated is a silent fallthrough.
+9. **`twentyfourxx/engine.py::starting_items(kits)`** is a module function: it is the one
+   piece of `player_operator` that was not a field copy, and `create_character` is its only
+   caller. Tunnel Goons' twin is `Goon.starting_items(taken)`: it reads the goon's own `kit`.
+11. **`Survivor._rated_spread`** keeps the "three d4, one d6, one d8, one d10" bar the deleted
+    `BreathlessPayload` carried: a hand-written `breathless.json` is a file boundary, and
+    `skills` is never written in play (`worn` is).
+10. **`tests/core/core_test_support.py::the_campaign`** narrows a world's `campaign` once for
+    the tests that built it.
+
+### Refuted findings and why
+
+- `write_character` reads `character.payload.name` through `Character[Any]` (self-review):
+  the sanctioned bound (CLAUDE.md: `core` knows no world shape; `Named` is the header's view
+  of the sheet).
+- The self-review's refutation of a bar in `opening_canon` was overturned by the Fable review
+  (decision 8).
+
+### Known and accepted
+
+- The line count is 47 under the plan's estimate. Nothing padded, nothing invented.
+- `Goon.kit` rides in every save as a record of the start (PLAN §3.4.6 says so).
+- A save or a character file from before this commit is stale and is skipped with a warning;
+  no migration (CLAUDE.md).
+- The done-when grep `\.hub\b` still matches the `from aidm.engines.hub import` lines and
+  `place_unmet`'s `hub` parameter; no field named `hub` remains.
+- Reviews: the implementing session had no `Agent` tool and no `codex`; it ran
+  `.claude/prompts/review.md` over the staged diff itself (`/tmp/phase-3/review-self.md`) and
+  fixed four of its six findings (decisions 2 and 4, a comment on `install`'s guard,
+  `check_kind`'s message). The orchestrator then ran two independent `reviewer` agents (Fable
+  and Opus) and folded both. Fixed from them: the Loner worldsmith guidance says `tags` by
+  kind; `read_characters` takes a `Collection`; `opening_canon` refuses (decision 8);
+  `Goon.starting_items` (decision 9); `Campaign.job_row` (decision 5); `job_open` deleted
+  (decision 4); `read_characters` binds the file and the name once; `Survivor._rated_spread`
+  (decision 11); the report-in guard binds `walked_job()` once; `SceneEngine.hub_rows` inlined
+  into `render_next`.
+- **Unmet done-when:** PLAN's Phase 3 asks `uv run aidm` to create and preview a character in
+  every engine, take, play and close a campaign job, and skip a pre-phase save with a warning.
+  This machine has no CLI roles, so only the pages were smoked: `/`, `/settings`, `/create`,
+  `/scenario` and the eight game pages serve 200 on the staged tree. The create path is covered
+  by `tests/*/test_create.py`, the job cycle by `test_hub_play.py`, the `*_worldsmith.py` tests
+  and `tests/core/test_hub.py`, the stale save by `tests/ui/test_launcher.py`; the live play is
+  still owed.

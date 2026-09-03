@@ -19,6 +19,7 @@ from aidm.app.runtime import Runtime
 from aidm.config import Settings
 from aidm.core.entities import EngineId
 from aidm.core.io import ENCODING, FileStore
+from aidm.core.model import ScenarioMeta
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
 
@@ -241,17 +242,10 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
     spawner = ScriptedSpawner(answers={"worldsmith": [thin, json.dumps(_OPENING)]})
     runtime = Runtime(settings, spawner)
 
-    name = await runtime.new_scenario(
-        LONER3E,
-        "The Sunken Bell",
-        "The tide took the lower town.",
-        None,
-        ("srd",),
-        "kael",
-        art_style="woodcut",
-        voice="",
-        kind="one-shot",
+    meta = ScenarioMeta(
+        title="The Sunken Bell", premise="The tide took the lower town.", art_style="woodcut"
     )
+    name = await runtime.new_scenario(LONER3E, meta, None, ("srd",), "kael")
 
     # The scene bar refuses the first answer, and the reason goes back with the re-prompt.
     assert "besides the player" in spawner.prompts[1][1]
@@ -264,7 +258,7 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
     assert state.payload.player.name == "Kael"
     assert state.payload.source.startswith("PREMISE:")
     world = json.loads((settings.scenarios_dir / name / "world.json").read_text(encoding=ENCODING))
-    assert world["art_style"] == "woodcut"
+    assert world["meta"]["art_style"] == "woodcut"
 
 
 async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: Path) -> None:
@@ -284,14 +278,10 @@ async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: P
     with pytest.raises(ValueError, match="filed under"):
         _ = await runtime.new_scenario(
             LONER3E,
-            "The Sunken Bell",
-            "The tide.",
+            ScenarioMeta(title="The Sunken Bell", premise="The tide."),
             None,
             ("srd",),
             "kael",
-            art_style="",
-            voice="",
-            kind="one-shot",
         )
 
     assert not scenarios.exists()
@@ -303,15 +293,7 @@ async def test_a_scenario_written_from_a_document_keeps_it_beside_the_world(tmp_
     runtime = Runtime(ui_settings(tmp_path, scenarios), spawner)
 
     name = await runtime.new_scenario(
-        LONER3E,
-        "The Sunken Bell",
-        "",
-        SOURCE_MD,
-        ("srd",),
-        "kael",
-        art_style="",
-        voice="",
-        kind="one-shot",
+        LONER3E, ScenarioMeta(title="The Sunken Bell", premise=""), SOURCE_MD, ("srd",), "kael"
     )
 
     assert (scenarios / name / "source.md").is_file()

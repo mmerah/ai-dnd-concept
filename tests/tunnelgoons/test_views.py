@@ -1,8 +1,9 @@
+from core_test_support import the_campaign
 from tunnelgoons_test_support import HALL, MIRA, START, TAVERN, hub_world, small_world
 
 from aidm.core.entities import EntityId
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.hub import Job, board_rows
+from aidm.engines.hub import Job
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 from aidm.engines.tunnelgoons.views import REPORT_ROW
 from aidm.engines.tunnelgoons.world import Item, Visit
@@ -39,7 +40,6 @@ def test_player_view_has_the_five_panels_in_order_and_here_carries_icons() -> No
 def test_master_sections_names_the_hidden_npc_and_the_locked_way() -> None:
     state = small_world()
     world = state.payload
-    world.player.place = HALL
     world.visits.append(Visit(place=HALL))
     sections = dict(ENGINE.master_sections(state))
     assert "Robo Mantis" in sections["HIDDEN HERE (the player has not found these)"]
@@ -65,16 +65,15 @@ def test_a_stroll_with_no_job_open_shows_the_board_not_report_in() -> None:
     view = ENGINE.player_view(state)
 
     board = next(panel for panel in view.panels if panel.title == "Board")
-    assert board.rows == board_rows(world.board)
+    assert board.rows == the_campaign(world.campaign).board_rows()
     assert not any(panel.title == "Jobs" for panel in view.panels)
-    assert world.closed_jobs() == ()
 
 
 def test_a_job_open_at_the_hub_shows_only_report_in_on_the_board() -> None:
     state = hub_world()
     world = state.payload
     world.visits = [Visit(place=TAVERN), Visit(place=START), Visit(place=TAVERN)]
-    world.jobs = [Job(title="Bandits", place=START, started=1)]
+    the_campaign(world.campaign).jobs = [Job(title="Bandits", place=START, started=1)]
 
     view = ENGINE.player_view(state)
 

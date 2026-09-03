@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.hub import Job, Offer
+from aidm.engines.hub import Campaign, Job, Offer
 from aidm.engines.scenes.world import SceneRun
 from aidm.engines.twentyfourxx.world import (
     Item,
@@ -54,12 +54,14 @@ def hub_world() -> TwentyfourxxGame:
         cast={FIXER: fixer},
         player=_player(),
         runs=[hub_run, job_run],
-        hub=HUB_PLACE,
-        board=(
-            Offer(title="Job One", pitch="I take job one."),
-            Offer(title="Job Two", pitch="I take job two."),
+        campaign=Campaign(
+            place=HUB_PLACE,
+            board=(
+                Offer(title="Job One", pitch="I take job one."),
+                Offer(title="Job Two", pitch="I take job two."),
+            ),
+            jobs=[Job(title="The Dock Run", place=JOB_PLACE, terms=JOB, started=1)],
         ),
-        jobs=[Job(title="The Dock Run", place=JOB_PLACE, terms=JOB, started=1)],
     )
     return TwentyfourxxGame(
         scenario_id="amber-tap",

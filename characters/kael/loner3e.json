@@ -1,13 +1,26 @@
 {
   "id": "kael",
   "engine": "loner3e",
-  "name": "Kael",
-  "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
   "payload": {
+    "id": "player",
+    "name": "Kael",
+    "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
+    "known": true,
     "concept": "A Wary Relic-Hunter",
-    "skills": ["Reads Old Stonework", "Quiet Hands"],
-    "frailties": ["Never Walks Away"],
-    "gear": ["Pry Bar", "Chalk and Wire", "A Guttering Lantern"],
+    "tags": {
+      "skill": [
+        "Reads Old Stonework",
+        "Quiet Hands"
+      ],
+      "frailty": [
+        "Never Walks Away"
+      ],
+      "gear": [
+        "Pry Bar",
+        "Chalk and Wire",
+        "A Guttering Lantern"
+      ]
+    },
     "goal": "Find what has been sealed away, and open it",
     "motive": "Whatever was worth sealing is worth more unsealed"
   }

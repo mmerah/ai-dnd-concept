@@ -6,15 +6,25 @@ from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.breathless.world import (
     BreathlessGame,
     BreathlessWorld,
+    Die,
     Item,
+    Skill,
     Survivor,
 )
-from aidm.engines.hub import Job, Offer
+from aidm.engines.hub import Campaign, Job, Offer
 from aidm.engines.scenes.world import SceneRun
 
 MIRA = EntityId("mira")
 DAX = EntityId("dax")
 WRENCH = EntityId("wrench")
+SKILLS_RATED: dict[Skill, Die] = {
+    "bash": 6,
+    "dash": 4,
+    "sneak": 8,
+    "shoot": 4,
+    "think": 10,
+    "sway": 4,
+}
 SITUATION = (
     "Booths lie overturned and glass covers the floor of the diner, the front door barred "
     "shut against the mob still pounding just outside in the street."
@@ -62,12 +72,14 @@ def hub_world() -> BreathlessGame:
         cast={KEEPER: keeper},
         player=_player(),
         runs=[hub_run, job_run],
-        hub=HUB_PLACE,
-        board=(
-            Offer(title="Job One", pitch="I take job one."),
-            Offer(title="Job Two", pitch="I take job two."),
+        campaign=Campaign(
+            place=HUB_PLACE,
+            board=(
+                Offer(title="Job One", pitch="I take job one."),
+                Offer(title="Job Two", pitch="I take job two."),
+            ),
+            jobs=[Job(title="The Pharmacy Run", place=JOB_PLACE, terms=JOB, started=1)],
         ),
-        jobs=[Job(title="The Pharmacy Run", place=JOB_PLACE, terms=JOB, started=1)],
     )
     return BreathlessGame(
         scenario_id="the-camp",
@@ -94,7 +106,8 @@ def _player() -> Survivor:
         name="Jax",
         brief="A wiry mechanic",
         known=True,
-        skills={"think": 10, "sneak": 8, "bash": 6},
+        skills=SKILLS_RATED,
+        worn=dict(SKILLS_RATED),
         items={WRENCH: Item(name="Wrench", die=10)},
     )
 

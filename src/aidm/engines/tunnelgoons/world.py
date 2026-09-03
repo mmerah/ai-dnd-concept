@@ -1,23 +1,15 @@
-from collections.abc import Iterator
-from typing import Literal, Self
+from collections.abc import Iterable, Iterator
+from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Mutable, Refusal, require_unique
+from aidm.core.entities import CheckedEntityId, EntityId, Mutable, Refusal, require_unique, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import Exchange, SceneRecord
 from aidm.core.views import Rows
 from aidm.engines.base import PLAYER_ID, Counter, Person, Thing, check_filing
-from aidm.engines.hub import (
-    Board,
-    Job,
-    check_board,
-    check_jobs,
-    closed_jobs_of,
-    open_job_of,
-    since_start,
-)
+from aidm.engines.hub import Campaign, Job
 
 Ability = Literal["brute", "skulker", "erudite"]
 ABILITIES: tuple[Ability, ...] = ("brute", "skulker", "erudite")
@@ -27,37 +19,6 @@ INVENTORY_START = 8
 ABILITY_POINTS = 3
 STARTING_ITEMS = 3
 type Entity = Goon | Npc | Item | Place
-
-
-class Goon(Person):
-    """The played character: the only one with abilities, and the only one who rolls."""
-
-    place: CheckedEntityId
-    brute: int = Field(default=0, ge=0)
-    skulker: int = Field(default=0, ge=0)
-    erudite: int = Field(default=0, ge=0)
-    hp: Counter = Field(default_factory=lambda: Counter(current=HP_START, maximum=HP_START))
-    inventory: int = Field(default=INVENTORY_START, ge=0)
-    level: int = Field(default=1, ge=1)
-
-    def ability(self, name: Ability) -> int:
-        match name:
-            case "brute":
-                return self.brute
-            case "skulker":
-                return self.skulker
-            case "erudite":
-                return self.erudite
-
-    def rows(self) -> Rows:
-        return (
-            ("Brute", str(self.brute)),
-            ("Skulker", str(self.skulker)),
-            ("Erudite", str(self.erudite)),
-            ("Health", str(self.hp)),
-            ("Inventory", str(self.inventory)),
-            ("Level", str(self.level)),
-        )
 
 
 class Npc(Person):
@@ -70,6 +31,37 @@ class Npc(Person):
 
 class Item(Thing):
     on: CheckedEntityId
+
+
+class Goon(Person):
+    """The played character: the only one with abilities, and the only one who rolls."""
+
+    abilities: dict[Ability, Annotated[int, Field(ge=0)]] = Field(
+        default_factory=lambda: dict.fromkeys(ABILITIES, 0), min_length=3, max_length=3
+    )
+    hp: Counter = Field(default_factory=lambda: Counter(current=HP_START, maximum=HP_START))
+    inventory: int = Field(default=INVENTORY_START, ge=0)
+    level: int = Field(default=1, ge=1)
+    # The starting items by name; `new_game` files them as `Item`s on the player.
+    kit: tuple[str, ...] = Field(min_length=STARTING_ITEMS, max_length=STARTING_ITEMS)
+
+    def rows(self) -> Rows:
+        return (
+            *((ability.capitalize(), str(self.abilities[ability])) for ability in ABILITIES),
+            ("Health", str(self.hp)),
+            ("Inventory", str(self.inventory)),
+            ("Level", str(self.level)),
+        )
+
+    def starting_items(self, taken: Iterable[str]) -> tuple[Item, ...]:
+        """The kit filed as `Item`s on the player, with ids clear of every id already taken."""
+        made = list(taken)
+        items: list[Item] = []
+        for name in self.kit:
+            item_id = EntityId(slug(name, made))
+            made.append(item_id)
+            items.append(Item(id=item_id, name=name, brief="", known=True, on=PLAYER_ID))
+        return tuple(items)
 
 
 class Place(Thing):
@@ -181,16 +173,19 @@ class MapCanon(Dungeon):
 
     start: CheckedEntityId
     source: str = ""
-    hub: CheckedEntityId | None = None
-    board: Board | tuple[()] = ()
+    campaign: Campaign | None = None
 
     @model_validator(mode="after")
     def _startable(self) -> Self:
         if not self.require_place(self.start).known:
             raise Refusal("the starting place must be known to the player")
-        check_board(self.hub, self.board)
-        if self.hub is not None and self.hub != self.start:
-            raise Refusal(f"hub {self.hub!r} is not the starting place {self.start!r}")
+        if self.campaign is not None:
+            if self.campaign.place != self.start:
+                raise Refusal(
+                    f"hub {self.campaign.place!r} is not the starting place {self.start!r}"
+                )
+            if self.campaign.jobs:
+                raise Refusal("an opening with jobs walked")
         return self
 
 
@@ -198,9 +193,7 @@ class TunnelGoonsWorld(Dungeon):
     player: Goon
     visits: list[Visit] = Field(min_length=1)
     source: str = ""
-    hub: CheckedEntityId | None = None
-    board: Board | tuple[()] = ()
-    jobs: list[Job] = Field(default_factory=list)
+    campaign: Campaign | None = None
 
     @model_validator(mode="after")
     def _playable(self) -> Self:
@@ -208,19 +201,16 @@ class TunnelGoonsWorld(Dungeon):
             raise Refusal("the player is unknown to themselves")
         for visit in self.visits:
             self.require_place(visit.place)
-        if self.visits[-1].place != self.player.place:
-            raise Refusal("the last visit is not where the player stands")
-        if self.hub is not None:
-            self.require_place(self.hub)
-        check_board(self.hub, self.board)
-        check_jobs(self.hub, self.jobs, len(self.visits))
-        if self.hub is not None and self.visits[0].place != self.hub:
-            raise Refusal(f"visit 0 does not open at hub {self.hub!r}")
+        if (campaign := self.campaign) is not None:
+            self.require_place(EntityId(campaign.place))
+            campaign.check_walked(len(self.visits))
+            if self.visits[0].place != campaign.place:
+                raise Refusal(f"visit 0 does not open at hub {campaign.place!r}")
         return self
 
     @property
     def current(self) -> Place:
-        return self.places[self.player.place]
+        return self.places[self.visits[-1].place]
 
     @property
     def visit(self) -> Visit:
@@ -228,22 +218,15 @@ class TunnelGoonsWorld(Dungeon):
 
     @property
     def at_hub(self) -> bool:
-        return self.hub is not None and self.player.place == self.hub
+        return self.campaign is not None and self.current.id == self.campaign.place
 
-    def open_job(self) -> Job | None:
-        return open_job_of(self.jobs)
-
-    def closed_jobs(self) -> tuple[Job, ...]:
-        return closed_jobs_of(self.jobs)
-
-    @property
-    def job_open(self) -> bool:
-        # A job taken at the tavern but not yet walked can still be swapped for another.
-        job = self.open_job()
-        return job is not None and job.started is not None
+    def walked_job(self) -> Job | None:
+        """The open job once walked; one taken at the tavern but not walked can still be swapped."""
+        job = None if self.campaign is None else self.campaign.open_job()
+        return job if job is not None and job.started is not None else None
 
     def job_visits(self) -> list[Visit]:
-        return since_start(self.visits, self.open_job(), campaign=self.hub is not None)
+        return self.visits if self.campaign is None else self.campaign.since_start(self.visits)
 
     def entity(self, entity_id: EntityId) -> Entity | None:
         return self.player if entity_id == self.player.id else super().entity(entity_id)
@@ -258,7 +241,7 @@ class TunnelGoonsWorld(Dungeon):
             raise Refusal(f"unknown id {entity_id!r}. Use only ids you were shown.")
         if not npc.alive:
             raise Refusal(f"{npc.name} is dead; they take no further part.")
-        if npc.place != self.player.place:
+        if npc.place != self.current.id:
             raise Refusal(f"{npc.name} is not here with the player")
         return npc
 
@@ -306,13 +289,13 @@ class TunnelGoonsWorld(Dungeon):
             if npc_id == self.player.id:
                 raise Refusal("the player already comes along")
             coming.append(self.require_npc_here(npc_id))
-        self.player.place = destination.id
         for npc in coming:
             npc.place = destination.id
         self.visits.append(Visit(place=destination.id))
-        job = self.open_job()
-        if job is not None and job.started is None and destination.id != self.hub:
-            job.started = len(self.visits) - 1
+        if (campaign := self.campaign) is not None and destination.id != campaign.place:
+            job = campaign.open_job()
+            if job is not None and job.started is None:
+                job.started = len(self.visits) - 1
         trace = f"the player arrives at {destination.label}"
         if coming:
             names = " and ".join(npc.name for npc in coming)
@@ -428,19 +411,6 @@ class TunnelGoonsWorld(Dungeon):
         return tuple(records)
 
 
-class TunnelGoonsPayload(Mutable):
-    brute: int = Field(ge=0)
-    skulker: int = Field(ge=0)
-    erudite: int = Field(ge=0)
-    items: tuple[str, ...] = Field(min_length=STARTING_ITEMS, max_length=STARTING_ITEMS)
-
-    @model_validator(mode="after")
-    def _shares_ability_points(self) -> Self:
-        if self.brute + self.skulker + self.erudite != ABILITY_POINTS:
-            raise Refusal(f"the three abilities share exactly {ABILITY_POINTS} points")
-        return self
-
-
 class TunnelGoonsGame(Game[TunnelGoonsWorld]):
     pass
 
@@ -449,7 +419,7 @@ class TunnelGoonsScenario(Scenario[MapCanon]):
     pass
 
 
-class TunnelGoonsCharacterFile(Character[TunnelGoonsPayload]):
+class TunnelGoonsCharacter(Character[Goon]):
     pass
 
 

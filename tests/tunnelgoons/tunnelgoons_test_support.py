@@ -1,7 +1,7 @@
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Counter
-from aidm.engines.hub import Offer
+from aidm.engines.hub import Campaign, Offer
 from aidm.engines.tunnelgoons.world import (
     Goon,
     Item,
@@ -94,16 +94,14 @@ def _map_pieces() -> tuple[
     return places, ways, {mira.id: mira, mantis.id: mantis}, items
 
 
-def _kael(place: EntityId) -> Goon:
+def _kael() -> Goon:
     return Goon(
         id=PLAYER_ID,
         name="Kael",
         brief="A wiry scavenger",
         known=True,
-        place=place,
-        brute=1,
-        skulker=1,
-        erudite=1,
+        abilities={"brute": 1, "skulker": 1, "erudite": 1},
+        kit=("Rope", "Torch", "Lantern"),
     )
 
 
@@ -115,7 +113,7 @@ def small_world() -> TunnelGoonsGame:
         ways=ways,
         npcs=npcs,
         items=items,
-        player=_kael(START),
+        player=_kael(),
         visits=[Visit(place=START)],
     )
     return TunnelGoonsGame(
@@ -155,10 +153,9 @@ def hub_world(*, with_map: bool = True) -> TunnelGoonsGame:
         ways=ways,
         npcs=npcs,
         items=items,
-        player=_kael(TAVERN),
+        player=_kael(),
         visits=[Visit(place=TAVERN)],
-        hub=TAVERN,
-        board=board,
+        campaign=Campaign(place=TAVERN, board=board),
     )
     return TunnelGoonsGame(
         scenario_id="test",

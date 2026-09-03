@@ -9,7 +9,7 @@ from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Panel, PanelRow, Rows, Sections
-from aidm.engines.base import CHANGE_WORLD, Person, keep_highest, sentence
+from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, Person, keep_highest, sentence
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, Enter, Kill, Leave, NextScene, Reveal
 from aidm.engines.twentyfourxx.creation import AUTHORING, Pack
@@ -36,12 +36,10 @@ from aidm.engines.twentyfourxx.world import (
     Kit,
     Operator,
     SkillDie,
-    TwentyfourxxCharacterFile,
+    TwentyfourxxCharacter,
     TwentyfourxxGame,
-    TwentyfourxxPayload,
     TwentyfourxxScenario,
     TwentyfourxxWorld,
-    player_operator,
     raised,
 )
 
@@ -66,7 +64,7 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
     directory = Path(__file__).parent
     game = TwentyfourxxGame
     scenario = TwentyfourxxScenario
-    character = TwentyfourxxCharacterFile
+    character = TwentyfourxxCharacter
     cast = Person
     pack = Pack
     world_type = TwentyfourxxWorld
@@ -153,7 +151,7 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
             )
         return tuple(steps)
 
-    def create_character(self, name: str, brief: str, picks: Picks) -> TwentyfourxxCharacterFile:
+    def create_character(self, name: str, brief: str, picks: Picks) -> TwentyfourxxCharacter:
         check_picks(self.creation_steps(picks), picks)
         pack = self.packs[picked(picks, "pack")]
         specialty = chosen_option(pack.specialties, picked(picks, "specialty"))
@@ -181,33 +179,23 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
             body = chosen_option(origin.choice, picked(picks, "body"))
             traits = (*traits, body.label)
 
-        items = pack.starting_kit + specialty.kit + ((weapon,) if weapon is not None else ())
-
-        payload = TwentyfourxxPayload(
+        kits = pack.starting_kit + specialty.kit + ((weapon,) if weapon is not None else ())
+        sheet = Operator(
+            id=PLAYER_ID,
+            name=name,
+            brief=brief,
+            known=True,
             specialty=specialty.label,
             origin=origin.label,
             traits=traits,
             skills=skills,
-            items=items,
+            items=starting_items(kits),
         )
-        return TwentyfourxxCharacterFile(
-            id=slug(name, ()), engine=self.id, name=name, brief=brief, payload=payload
-        )
+        return TwentyfourxxCharacter(id=slug(name, ()), engine=self.id, payload=sheet)
 
     def preview_character(self, character: AnyCharacter) -> Rows:
-        own = self._own(character)
-        return (
-            *player_operator(own).rows(),
-            ("Gear", ", ".join(kit.name for kit in own.payload.items)),
-        )
-
-    def player_of(self, character: AnyCharacter) -> Operator:
-        return player_operator(self._own(character))
-
-    def _own(self, character: AnyCharacter) -> TwentyfourxxCharacterFile:
-        if not isinstance(character, TwentyfourxxCharacterFile):
-            raise Refusal(f"{self.title} received an incompatible character")
-        return character
+        sheet = self.player_of(character)
+        return (*sheet.rows(), ("Gear", ", ".join(item.name for item in sheet.items.values())))
 
     def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
         """This pack holds creation tables, not setting vocabulary: the preamble alone suffices."""
@@ -428,6 +416,17 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
         card = f"₡{change.amount} spent — {change.why}"
         trace = f"{player.label} spends ₡{change.amount} — {change.why}"
         return [player.fact("credits_spent", trace, card=card)]
+
+
+def starting_items(kits: Sequence[Kit]) -> dict[EntityId, Item]:
+    """Filed by name in order, a duplicate name taking the next free slug."""
+    taken: list[str] = []
+    items: dict[EntityId, Item] = {}
+    for kit in kits:
+        key = slug(kit.name, taken)
+        taken.append(key)
+        items[EntityId(key)] = Item(name=kit.name, bulky=kit.bulky, breaks=kit.breaks)
+    return items
 
 
 def gear_detail(item: Item) -> str:

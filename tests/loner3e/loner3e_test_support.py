@@ -15,7 +15,7 @@ from aidm.core.entities import EngineId, EntityId
 from aidm.core.io import FileStore
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.hub import Job, Offer
+from aidm.engines.hub import Campaign, Job, Offer
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet, Loner3eWorld
 from aidm.engines.scenes.world import SceneRun
@@ -49,12 +49,14 @@ def hub_world() -> Loner3eGame:
         cast={KEEPER: keeper},
         player=_player(),
         runs=[hub_run, job_run],
-        hub=HUB_PLACE,
-        board=(
-            Offer(title="Job One", pitch="I take job one."),
-            Offer(title="Job Two", pitch="I take job two."),
+        campaign=Campaign(
+            place=HUB_PLACE,
+            board=(
+                Offer(title="Job One", pitch="I take job one."),
+                Offer(title="Job Two", pitch="I take job two."),
+            ),
+            jobs=[Job(title="The Sealed Cairn", place=JOB_PLACE, terms=JOB, started=1)],
         ),
-        jobs=[Job(title="The Sealed Cairn", place=JOB_PLACE, terms=JOB, started=1)],
     )
     return Loner3eGame(
         scenario_id="guild-hall",
@@ -107,9 +109,11 @@ def _player() -> Loner3eSheet:
         brief="A wary relic-hunter",
         known=True,
         concept="A Wary Relic-Hunter",
-        skills=("Reads Old Stonework",),
-        frailties=("Never Walks Away",),
-        gear=("Pry Bar",),
+        tags={
+            "skill": ["Reads Old Stonework"],
+            "frailty": ["Never Walks Away"],
+            "gear": ["Pry Bar"],
+        },
         goal="Find what has been sealed away",
         motive="Whatever was worth sealing is worth more unsealed",
     )

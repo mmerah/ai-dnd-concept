@@ -2,10 +2,10 @@ from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.entities import EntityId, Frozen, Mutable, Refusal, slug
+from aidm.core.entities import EntityId, Frozen, Mutable, Refusal
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
-from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.base import Person
 from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
 type SkillDie = Literal[8, 10, 12]
@@ -69,14 +69,6 @@ class Operator(Person):
 TwentyfourxxWorld = SceneWorld[Person, Operator]
 
 
-class TwentyfourxxPayload(Mutable):
-    specialty: str
-    origin: str
-    traits: tuple[str, ...] = ()
-    skills: dict[str, SkillDie]
-    items: tuple[Kit, ...]  # the comm, the specialty kit, Muscle's weapon
-
-
 class TwentyfourxxGame(Game[TwentyfourxxWorld]):
     pass
 
@@ -85,7 +77,7 @@ class TwentyfourxxScenario(Scenario[SceneCanon[Person]]):
     pass
 
 
-class TwentyfourxxCharacterFile(Character[TwentyfourxxPayload]):
+class TwentyfourxxCharacter(Character[Operator]):
     pass
 
 
@@ -96,25 +88,3 @@ def raised(current: SkillDie | None) -> SkillDie:
     if current == LADDER[-1]:
         raise Refusal("the skill is already at d12")
     return LADDER[LADDER.index(current) + 1]
-
-
-def player_operator(character: Character[TwentyfourxxPayload]) -> Operator:
-    """The played character as the world holds them; `new_game` and `preview_character` share it."""
-    payload = character.payload
-    taken: list[str] = []
-    items: dict[EntityId, Item] = {}
-    for kit in payload.items:
-        key = slug(kit.name, taken)
-        taken.append(key)
-        items[EntityId(key)] = Item(name=kit.name, bulky=kit.bulky, breaks=kit.breaks)
-    return Operator(
-        id=PLAYER_ID,
-        name=character.name,
-        brief=character.brief,
-        known=True,
-        specialty=payload.specialty,
-        origin=payload.origin,
-        traits=payload.traits,
-        skills=payload.skills,
-        items=items,
-    )

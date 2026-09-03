@@ -1,14 +1,14 @@
 from random import Random
 
 import pytest
-from core_test_support import initialized, loner_sheet, updated
+from core_test_support import initialized, loner_sheet, the_campaign, updated
 from loner3e_test_support import ENGINE, hub_world
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import cards
 from aidm.core.play import PendingDecision
 from aidm.engines.base import PLAYER_ID, Counter
-from aidm.engines.hub import JOB_DONE, Offer
+from aidm.engines.hub import JOB_DONE, Campaign, Offer
 from aidm.engines.loner3e.tools import (
     Question,
     RestoreLuck,
@@ -254,7 +254,7 @@ def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() ->
     world = draft.payload
     facts = ENGINE.next_scene(draft, NextScene(job_done=True), Random(0))
     assert world.run.left is not None
-    assert world.jobs[-1].finished
+    assert the_campaign(world.campaign).jobs[-1].finished
     assert JOB_DONE in facts
 
     at_hub = hub_world()
@@ -275,11 +275,13 @@ def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
     world = state.payload
     hub_payload = world.model_copy(
         update={
-            "hub": world.run.place,
-            "board": (
-                Offer(title="Job One", pitch="I take job one."),
-                Offer(title="Job Two", pitch="I take job two."),
-            ),
+            "campaign": Campaign(
+                place=world.run.place,
+                board=(
+                    Offer(title="Job One", pitch="I take job one."),
+                    Offer(title="Job Two", pitch="I take job two."),
+                ),
+            )
         }
     )
     with pytest.raises(ValueError, match="one-shot"):

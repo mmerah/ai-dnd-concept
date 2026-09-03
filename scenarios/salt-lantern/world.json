@@ -6,8 +6,25 @@
   },
   "engine": "tunnelgoons",
   "packs": [],
-  "art_style": "",
   "payload": {
+    "campaign": {
+      "place": "salt-lantern",
+      "board": [
+        {
+          "title": "The Flooded Chapel",
+          "pitch": "Water's moving in the old chapel shaft where nothing should be moving it. Bring back whatever's stirring it, and half of whatever else you find is yours."
+        },
+        {
+          "title": "Pell's Debt",
+          "pitch": "Pell owes the collector three casks of salt he doesn't have. Clear the wormlord out of his cellar tunnel and I'll call the debt settled myself."
+        },
+        {
+          "title": "The Whistling Stair",
+          "pitch": "The old well-stair's been whistling at night and nobody's gone down to look. First pick of whatever's down there, plus what the board usually pays."
+        }
+      ],
+      "jobs": []
+    },
     "places": {
       "salt-lantern": {
         "id": "salt-lantern",
@@ -52,21 +69,6 @@
       }
     },
     "start": "salt-lantern",
-    "hub": "salt-lantern",
-    "source": "",
-    "board": [
-      {
-        "title": "The Flooded Chapel",
-        "pitch": "Water's moving in the old chapel shaft where nothing should be moving it. Bring back whatever's stirring it, and half of whatever else you find is yours."
-      },
-      {
-        "title": "Pell's Debt",
-        "pitch": "Pell owes the collector three casks of salt he doesn't have. Clear the wormlord out of his cellar tunnel and I'll call the debt settled myself."
-      },
-      {
-        "title": "The Whistling Stair",
-        "pitch": "The old well-stair's been whistling at night and nobody's gone down to look. First pick of whatever's down there, plus what the board usually pays."
-      }
-    ]
+    "source": ""
   }
 }

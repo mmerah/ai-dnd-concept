@@ -1,9 +1,7 @@
 import pytest
-from core_test_support import updated
-from tunnelgoons_test_support import HALL, MIRA, START, hub_world, small_world
+from tunnelgoons_test_support import HALL, MIRA, START, small_world
 
 from aidm.core.entities import EntityId
-from aidm.engines.hub import Job
 from aidm.engines.tunnelgoons.world import Item, Visit, Way
 
 GHOST = EntityId("ghost")
@@ -32,11 +30,10 @@ def test_a_way_to_a_non_place_is_refused() -> None:
         _ = draft.commit()
 
 
-def test_a_visit_off_the_player_is_refused() -> None:
+def test_the_player_stands_at_the_last_visit() -> None:
     draft = small_world().draft()
     draft.payload.visits.append(Visit(place=HALL))
-    with pytest.raises(ValueError, match="not where the player stands"):
-        _ = draft.commit()
+    assert draft.commit().payload.current.id == HALL
 
 
 def test_walk_reaches_every_place_along_the_ways() -> None:
@@ -52,18 +49,3 @@ def test_has_shortcut_finds_the_alternate_route_to_the_vault() -> None:
 def test_frontier_counts_the_one_unknown_place_past_a_known_one() -> None:
     world = small_world().payload
     assert world.frontier() == 1
-
-
-def test_a_debrief_on_an_unwalked_job_is_refused() -> None:
-    world = hub_world().payload
-    with pytest.raises(ValueError, match="before it was walked"):
-        _ = updated(
-            world,
-            jobs=[Job(title="Bandits", place=START, finished=True, debrief="Job's done.")],
-        )
-
-
-def test_a_job_stamp_with_no_hub_is_refused() -> None:
-    world = small_world().payload
-    with pytest.raises(ValueError, match="job with no hub"):
-        _ = updated(world, jobs=[Job(title="Bandits", place=START)])

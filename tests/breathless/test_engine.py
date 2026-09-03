@@ -6,12 +6,15 @@ from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, SRD_PACK, Person
 from aidm.engines.breathless.world import (
     STARTING_ITEM,
-    BreathlessCharacterFile,
+    BreathlessCharacter,
     BreathlessGame,
-    BreathlessPayload,
     BreathlessScenario,
+    Die,
+    Item,
+    Skill,
+    Survivor,
 )
-from aidm.engines.hub import Offer
+from aidm.engines.hub import Campaign, Offer
 from aidm.engines.scenes.world import SceneCanon, SceneRun
 from aidm.engines.seam import AnyEngine
 
@@ -51,11 +54,13 @@ def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
     world = state.payload
     hub_payload = world.model_copy(
         update={
-            "hub": world.run.place,
-            "board": (
-                Offer(title="Job One", pitch="I take job one."),
-                Offer(title="Job Two", pitch="I take job two."),
-            ),
+            "campaign": Campaign(
+                place=world.run.place,
+                board=(
+                    Offer(title="Job One", pitch="I take job one."),
+                    Offer(title="Job Two", pitch="I take job two."),
+                ),
+            )
         }
     )
     with pytest.raises(ValueError, match="one-shot"):
@@ -83,16 +88,27 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
             ),
         ),
     )
-    character = BreathlessCharacterFile(
+    skills: dict[Skill, Die] = {
+        "bash": 6,
+        "dash": 4,
+        "sneak": 8,
+        "shoot": 4,
+        "think": 10,
+        "sway": 4,
+    }
+    character = BreathlessCharacter(
         id="kael",
         engine=EngineId("breathless"),
-        name="Kael",
-        brief="A wary ranger.",
-        payload=BreathlessPayload(
+        payload=Survivor(
+            id=PLAYER_ID,
+            name="Kael",
+            brief="A wary ranger.",
+            known=True,
             pronouns="he/him",
             job="Park Ranger",
-            skills={"think": 10, "sneak": 8, "bash": 6},
-            item="Fire Axe",
+            skills=skills,
+            worn=skills,
+            items={FIRE_AXE: Item(name="Fire Axe", die=STARTING_ITEM)},
         ),
     )
     with pytest.raises(ValueError, match="the player is in the cast"):

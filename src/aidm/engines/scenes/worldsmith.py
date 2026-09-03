@@ -6,7 +6,7 @@ from aidm.core.entities import EntityId
 from aidm.core.tools import schema_text
 from aidm.core.views import Sections, sections
 from aidm.engines.base import Person, Thing
-from aidm.engines.hub import place_unmet
+from aidm.engines.hub import Campaign, place_unmet
 from aidm.engines.scenes.drafts import HubDraft, ReturnDraft, SceneDraft
 from aidm.engines.scenes.world import SceneCanon, SceneWorld, resolve_ids, resolved_id, run_of
 
@@ -33,13 +33,14 @@ def opening_canon[C: Person](
     hidden = resolve_ids(draft.hidden, cast, "hidden")
     for one in present:
         cast[one].known = True
-    hub, board = (draft.place, draft.offers) if isinstance(draft, HubDraft) else (None, ())
+    campaign = (
+        Campaign(place=draft.place, board=draft.offers) if isinstance(draft, HubDraft) else None
+    )
     return SceneCanon[cast_type](
         cast=cast,
         opening=run_of(draft, [*present, *hidden]),
         source=source,
-        hub=hub,
-        board=board,
+        campaign=campaign,
     )
 
 
@@ -152,7 +153,7 @@ def _hub_unmet[C: Person, P: Person](
     draft: SceneDraft[C], world: SceneWorld[C, P] | None
 ) -> list[str]:
     """A debrief means a return: it is home, and it is read to the player."""
-    hub = None if world is None else world.hub
+    hub = None if world is None or world.campaign is None else world.campaign.place
     debrief = draft.debrief if isinstance(draft, ReturnDraft) else None
     unmet: list[str] = []
     if (misplaced := place_unmet(draft.place, hub, returning=debrief is not None)) is not None:

@@ -6,11 +6,10 @@ from random import Random
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, other_than, picked
 from aidm.core.entities import EngineId, Refusal, Slug, require_unique, slug
 from aidm.core.facts import DiceEvent, Fact, roll
-from aidm.core.model import AnyCharacter
 from aidm.core.play import PendingDecision
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import Rows, Sections
-from aidm.engines.base import CHANGE_WORLD, SRD_PACK, keep_highest
+from aidm.core.views import Sections
+from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, SRD_PACK, keep_highest
 from aidm.engines.loner3e.creation import AUTHORING, Pack
 from aidm.engines.loner3e.tools import (
     ChangeTags,
@@ -30,15 +29,11 @@ from aidm.engines.loner3e.tools import (
 from aidm.engines.loner3e.world import (
     DIE_FACE,
     LUCK_MAX,
-    Loner3eCharacterFile,
+    Loner3eCharacter,
     Loner3eGame,
-    Loner3ePayload,
     Loner3eScenario,
     Loner3eSheet,
     Loner3eWorld,
-    player_character,
-    set_tags,
-    tags_of,
 )
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import (
@@ -67,7 +62,7 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
     directory = Path(__file__).parent
     game = Loner3eGame
     scenario = Loner3eScenario
-    character = Loner3eCharacterFile
+    character = Loner3eCharacter
     cast = Loner3eSheet
     pack = Pack
     world_type = Loner3eWorld
@@ -124,32 +119,29 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
             ),
         )
 
-    def create_character(self, name: str, brief: str, picks: Picks) -> Loner3eCharacterFile:
+    def create_character(self, name: str, brief: str, picks: Picks) -> Loner3eCharacter:
         check_picks(self.creation_steps(picks), picks)
         pack = self.packs[picked(picks, "pack")]
-        payload = Loner3ePayload(
+        sheet = Loner3eSheet(
+            id=PLAYER_ID,
+            name=name,
+            brief=brief,
+            known=True,
             concept=picked(picks, "concept"),
+            tags={
+                "skill": [
+                    chosen_option(pack.skills, picked(picks, f"skill-{one}")).label
+                    for one in (1, 2)
+                ],
+                "frailty": [chosen_option(pack.frailties, picked(picks, "frailty")).label],
+                "gear": [
+                    chosen_option(pack.gear, picked(picks, f"gear-{one}")).label for one in (1, 2)
+                ],
+            },
             goal=picked(picks, "goal"),
             motive=picked(picks, "motive"),
-            skills=tuple(
-                chosen_option(pack.skills, picked(picks, f"skill-{one}")).label for one in (1, 2)
-            ),
-            frailties=(chosen_option(pack.frailties, picked(picks, "frailty")).label,),
-            gear=tuple(
-                chosen_option(pack.gear, picked(picks, f"gear-{one}")).label for one in (1, 2)
-            ),
         )
-        return Loner3eCharacterFile(
-            id=slug(name, ()), engine=self.id, name=name, brief=brief, payload=payload
-        )
-
-    def preview_character(self, character: AnyCharacter) -> Rows:
-        return self.player_of(character).rows()
-
-    def player_of(self, character: AnyCharacter) -> Loner3eSheet:
-        if not isinstance(character, Loner3eCharacterFile):
-            raise Refusal(f"{self.title} received an incompatible character")
-        return player_character(character)
+        return Loner3eCharacter(id=slug(name, ()), engine=self.id, payload=sheet)
 
     def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
         """Defaults restate rules the guidance already carries; dropping them halves the prompt."""
@@ -172,7 +164,7 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
             tuple(
                 entry for pack in chosen for entry in (*pack.skills, *pack.frailties, *pack.gear)
             ),
-            (*one.skills, *one.frailties, *one.gear),
+            (*one.tagged("skill"), *one.tagged("frailty"), *one.tagged("gear")),
         )
 
     def twist_table(self) -> tuple[tuple[str, str], ...]:
@@ -263,16 +255,14 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
         if not change.gained and not change.lost:
             raise Refusal("change_tags needs at least one gained or lost tag")
         require_unique(f"{change.kind} tags", (*change.gained, *change.lost))
-        current = tags_of(one, change.kind)
+        current = one.tagged(change.kind)
         if held := [tag for tag in change.gained if tag in current]:
             raise Refusal(f"{one.name} already carries the {change.kind} {held[0]!r}")
         if missing := [tag for tag in change.lost if tag not in current]:
             raise Refusal(f"{one.name} carries no {change.kind} {missing[0]!r}")
-        set_tags(
-            one,
-            change.kind,
-            tuple(tag for tag in (*current, *change.gained) if tag not in change.lost),
-        )
+        one.tags[change.kind] = [
+            tag for tag in (*current, *change.gained) if tag not in change.lost
+        ]
         deltas = (*(f"+{tag}" for tag in change.gained), *(f"-{tag}" for tag in change.lost))
         trace = f"{one.label} {change.kind} " + ", ".join(deltas)
         parts: list[str] = []

@@ -2,7 +2,7 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import Any, Literal, Protocol, Self
 
-from pydantic import BaseModel, Field, SerializeAsAny, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.entities import (
     EngineId,
@@ -26,6 +26,18 @@ class ScenarioMeta(Frozen):
     title: str
     premise: str
     kind: ScenarioKind = "one-shot"
+    art_style: str = ""  # empty: the engine's own
+    voice: str = ""  # empty: the settings' narrator voice
+
+    def with_premise(self, fallback: str) -> Self:
+        """The opening's own words stand in for a premise the player never wrote."""
+        return type(self)(
+            title=self.title,
+            premise=self.premise or fallback,
+            kind=self.kind,
+            art_style=self.art_style,
+            voice=self.voice,
+        )
 
 
 class EngineHeader(Loose):
@@ -34,9 +46,16 @@ class EngineHeader(Loose):
     engine: EngineId
 
 
+class Named(Loose):
+    """What every sheet shows the launcher: who this is, in a name and a line."""
+
+    name: str
+    brief: str = ""
+
+
 class CharacterHeader(EngineHeader):
     id: Slug
-    name: str
+    payload: Named
 
 
 class Scenario[P: BaseModel](Frozen):
@@ -45,8 +64,6 @@ class Scenario[P: BaseModel](Frozen):
     meta: ScenarioMeta
     engine: EngineId
     packs: tuple[Slug, ...] = ()
-    art_style: str = ""
-    voice: str = ""
     payload: P
 
     @model_validator(mode="after")
@@ -56,12 +73,10 @@ class Scenario[P: BaseModel](Frozen):
 
 
 class Character[P: BaseModel](Frozen):
-    """`characters/<id>/<engine>.json`: who they are and the payload this engine plays them by."""
+    """`characters/<id>/<engine>.json`: the envelope around the sheet this engine plays them by."""
 
     id: Slug
     engine: EngineId
-    name: str
-    brief: str
     payload: P
 
 
@@ -84,7 +99,7 @@ class Game[P: BaseModel](Mutable):
     turn: int = Field(default=0, ge=0)
     pending: PendingDecision | None = None
     notes: list[str] = Field(default_factory=list)
-    payload: SerializeAsAny[P]
+    payload: P
 
     @model_validator(mode="after")
     def _playable_game(self) -> Self:

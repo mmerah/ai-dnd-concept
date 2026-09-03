@@ -9,21 +9,24 @@
     "srd"
   ],
   "payload": {
-    "hub": "waystation",
-    "board": [
-      {
-        "title": "The Sick Room",
-        "pitch": "Someone in the east wing is running a fever no one will name — whoever finds what's wrong gets first pick of the medicine cabinet."
-      },
-      {
-        "title": "The Supply Drop",
-        "pitch": "A drop from before the quiet went out over the old band an hour ago, west past the rail yard — whoever gets there first gets to split it."
-      },
-      {
-        "title": "The Sanctuary Rumor",
-        "pitch": "A runner swears there's a sanctuary full of survivors clear across the city, gate guarded and lit — worth checking before word spreads and the road fills up."
-      }
-    ],
+    "campaign": {
+      "place": "waystation",
+      "board": [
+        {
+          "title": "The Sick Room",
+          "pitch": "Someone in the east wing is running a fever no one will name — whoever finds what's wrong gets first pick of the medicine cabinet."
+        },
+        {
+          "title": "The Supply Drop",
+          "pitch": "A drop from before the quiet went out over the old band an hour ago, west past the rail yard — whoever gets there first gets to split it."
+        },
+        {
+          "title": "The Sanctuary Rumor",
+          "pitch": "A runner swears there's a sanctuary full of survivors clear across the city, gate guarded and lit — worth checking before word spreads and the road fills up."
+        }
+      ],
+      "jobs": []
+    },
     "opening": {
       "place": "waystation",
       "title": "The Waystation",

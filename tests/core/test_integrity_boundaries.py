@@ -45,7 +45,7 @@ def test_a_doubled_key_in_a_character_file_is_refused(tmp_path: Path) -> None:
     written = character()
     folder = tmp_path / written.id
     folder.mkdir()
-    doubled = written.model_dump_json().replace('{"id"', '{"name": "Other", "id"', 1)
+    doubled = written.model_dump_json().replace('{"id"', '{"engine": "other", "id"', 1)
     _ = (folder / f"{written.engine}.json").write_text(doubled, encoding="utf-8")
     with pytest.raises(ValueError, match="duplicate keys"):
         _ = read_character(tmp_path, written.id, written.engine, ENGINES_BUILT[LONER3E].character)

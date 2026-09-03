@@ -129,10 +129,9 @@ def test_a_character_written_for_two_engines_is_read_once_for_each(tmp_path: Pat
     write_character(tmp_path, written)
     write_character(tmp_path, updated(written, engine=MIRROR))
 
-    models = {
-        LONER3E: ENGINES_BUILT[LONER3E].character,
-        MIRROR: ENGINES_BUILT[LONER3E].character,
-    }
-    rows = [(name, engine) for name, engine, _ in read_characters(tmp_path, models)]
+    rows = [
+        (name, engine, header.payload.name)
+        for name, engine, header in read_characters(tmp_path, (LONER3E, MIRROR))
+    ]
 
-    assert rows == [("kael", LONER3E), ("kael", MIRROR)]
+    assert rows == [("kael", LONER3E, "Kael"), ("kael", MIRROR, "Kael")]

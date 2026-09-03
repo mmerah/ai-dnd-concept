@@ -71,7 +71,6 @@ def launch_target(catalog: LauncherCatalog, scenario_id: Slug, character_id: Slu
 
 def read_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> LauncherCatalog:
     scenario_models = {engine_id: engine.scenario for engine_id, engine in engines.items()}
-    character_models = {engine_id: engine.character for engine_id, engine in engines.items()}
     scenarios = tuple(
         CatalogEntry(
             id=name,
@@ -87,11 +86,11 @@ def read_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> L
         CatalogEntry(
             id=name,
             engine=engine,
-            title=character.name,
-            subtitle=character.brief,
+            title=header.payload.name,
+            subtitle=header.payload.brief,
             rules=engines[engine].title,
         )
-        for name, engine, character in read_characters(settings.characters_dir, character_models)
+        for name, engine, header in read_characters(settings.characters_dir, engines)
     )
     titles = {(entry.id, entry.engine): entry.title for entry in characters}
     played_by = {entry.id: entry.engine for entry in scenarios}

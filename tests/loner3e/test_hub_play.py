@@ -1,3 +1,4 @@
+from core_test_support import the_campaign
 from loner3e_test_support import HUB_PLACE, HUB_SITUATION, KEEPER, hub_world
 
 from aidm.core.entities import EntityId
@@ -53,12 +54,13 @@ def test_install_scene_on_a_finished_return_swaps_board_notes_job_keeps_companio
     scout = EntityId("scout")
     world.cast[scout] = Loner3eSheet(id=scout, name="Scout", brief="A hired scout", known=True)
     world.party = [scout]
-    world.jobs[-1].finished = True
+    campaign = the_campaign(world.campaign)
+    campaign.jobs[-1].finished = True
 
     facts = ENGINE.install(game, _return_draft())
 
     world = game.payload
-    assert [offer.title for offer in world.board] == ["Job 1", "Job 2"]
+    assert [offer.title for offer in campaign.board] == ["Job 1", "Job 2"]
     assert [fact.kind for fact in facts] == ["job_closed", "scene_opened"]
     assert any(fact.card.startswith("Home: Back at the Guild Hall") for fact in facts)
     assert any("The Sealed Cairn" in note for note in game.notes)
@@ -83,11 +85,13 @@ def _opening(**fields: object) -> SceneDraft[Loner3eSheet]:
 
 def test_opening_canon_sets_the_hub_and_board_for_a_campaign_only() -> None:
     offers = [{"title": "A", "pitch": "Take A."}, {"title": "B", "pitch": "Take B."}]
-    campaign = opening_canon(
-        HubDraft[Loner3eSheet].model_validate({**_opening().model_dump(), "offers": offers}),
-        "",
-        Loner3eSheet,
+    campaign = the_campaign(
+        opening_canon(
+            HubDraft[Loner3eSheet].model_validate({**_opening().model_dump(), "offers": offers}),
+            "",
+            Loner3eSheet,
+        ).campaign
     )
-    assert campaign.hub == HUB_PLACE
+    assert campaign.place == HUB_PLACE
     assert [offer.title for offer in campaign.board] == ["A", "B"]
-    assert opening_canon(_opening(), "", Loner3eSheet).hub is None
+    assert opening_canon(_opening(), "", Loner3eSheet).campaign is None

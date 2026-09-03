@@ -16,19 +16,7 @@ from aidm.core.facts import Fact
 from aidm.core.play import Exchange, SceneRecord
 from aidm.core.views import Panel, PanelRow, Sections
 from aidm.engines.base import Person, Thing, check_filing, sentence
-from aidm.engines.hub import (
-    HOME_ROW,
-    HUB_ROW,
-    JOB_DONE,
-    Board,
-    Job,
-    Offer,
-    check_board,
-    check_jobs,
-    closed_jobs_of,
-    open_job_of,
-    since_start,
-)
+from aidm.engines.hub import HOME_ROW, HUB_ROW, JOB_DONE, Campaign, Job
 from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft, SceneDraft
 
 SCENE_SETTLED = Fact(
@@ -71,8 +59,7 @@ class SceneCanon[C: Person](Mutable):
     cast: dict[EntityId, C] = Field(default_factory=dict)
     opening: SceneRun
     source: str = ""
-    hub: Slug | None = None
-    board: Board | tuple[()] = ()
+    campaign: Campaign | None = None
 
     @model_validator(mode="after")
     def _playable_canon(self) -> Self:
@@ -81,7 +68,11 @@ class SceneCanon[C: Person](Mutable):
         opening = self.opening
         if opening.exchanges or opening.left is not None or opening.recap:
             raise Refusal("an opening with play in it")
-        check_hub(self.hub, self.board, (self.opening,), ())
+        if self.campaign is not None:
+            if self.campaign.jobs:
+                raise Refusal("an opening with jobs walked")
+            if opening.place != self.campaign.place:
+                raise Refusal(f"the opening is not at hub {self.campaign.place!r}")
         return self
 
 
@@ -90,16 +81,21 @@ class SceneWorld[C: Person, P: Person](Mutable):
 
     runs: list[SceneRun] = Field(min_length=1)
     source: str = ""
-    hub: Slug | None = None
-    board: Board | tuple[()] = ()
-    jobs: list[Job] = Field(default_factory=list)
+    campaign: Campaign | None = None
     cast: dict[EntityId, C] = Field(default_factory=dict)
     player: P
     party: list[EntityId] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
-        check_hub(self.hub, self.board, self.runs, self.jobs)
+        if (campaign := self.campaign) is not None:
+            campaign.check_walked(len(self.runs))
+            if self.runs[0].place != campaign.place:
+                raise Refusal(f"run 0 does not open at hub {campaign.place!r}")
+            # Every hub run after the first is a return, and a return closes exactly one job.
+            returns = sum(run.place == campaign.place for run in self.runs[1:])
+            if returns != len(campaign.closed_jobs()):
+                raise Refusal("hub runs after the first and closed jobs disagree")
         check_filing(self.cast)
         check_named(self.run.here, self.cast)
         if not self.player.known:
@@ -129,8 +125,7 @@ class SceneWorld[C: Person, P: Person](Mutable):
             player=player,
             runs=[canon.opening],
             source=canon.source,
-            hub=canon.hub,
-            board=canon.board,
+            campaign=canon.campaign,
         )
 
     @property
@@ -139,7 +134,7 @@ class SceneWorld[C: Person, P: Person](Mutable):
 
     @property
     def at_hub(self) -> bool:
-        return self.hub is not None and self.run.place == self.hub
+        return self.campaign is not None and self.run.place == self.campaign.place
 
     def present(self) -> list[EntityId]:
         return [one for one in self.run.here if self.cast[one].known]
@@ -147,23 +142,8 @@ class SceneWorld[C: Person, P: Person](Mutable):
     def hidden(self) -> list[EntityId]:
         return [one for one in self.run.here if not self.cast[one].known]
 
-    def open_job(self) -> Job | None:
-        return open_job_of(self.jobs)
-
-    def closed_jobs(self) -> tuple[Job, ...]:
-        return closed_jobs_of(self.jobs)
-
-    def job_terms(self) -> str:
-        job = self.open_job()
-        return job.terms if job is not None else ""
-
-    @property
-    def job_done(self) -> bool:
-        job = self.open_job()
-        return job is not None and job.finished
-
     def job_runs(self) -> list[SceneRun]:
-        return since_start(self.runs, self.open_job(), campaign=self.hub is not None)
+        return self.runs if self.campaign is None else self.campaign.since_start(self.runs)
 
     def exchanges(self) -> tuple[Exchange, ...]:
         return tuple(one for run in self.runs for one in run.exchanges)
@@ -284,7 +264,7 @@ class SceneWorld[C: Person, P: Person](Mutable):
         if self.run.left is not None:
             raise Refusal("this scene is already settled; the player has the way on")
         if job_done:
-            job = self.open_job()
+            job = None if self.campaign is None else self.campaign.open_job()
             if job is None or self.at_hub:
                 raise Refusal("no job is open here")
             job.finished = True
@@ -313,16 +293,25 @@ class SceneWorld[C: Person, P: Person](Mutable):
             self.cast[one].known = True
         if isinstance(draft, NextDraft):
             self.run.recap = draft.recap
-        if isinstance(draft, JobDraft):
-            self.jobs.append(
-                Job(title=draft.title, place=draft.place, terms=draft.job, started=len(self.runs))
-            )
-        elif isinstance(draft, ReturnDraft):
-            job = self.open_job()
-            if job is None:
-                raise Refusal("no job is open to close")
-            job.debrief = draft.debrief
-            self.board = draft.offers
+        if isinstance(draft, JobDraft | ReturnDraft):
+            campaign = self.campaign
+            if campaign is None:
+                raise Refusal("a one-shot has no hub to take a job from or return to")
+            if isinstance(draft, JobDraft):
+                campaign.jobs.append(
+                    Job(
+                        title=draft.title,
+                        place=draft.place,
+                        terms=draft.job,
+                        started=len(self.runs),
+                    )
+                )
+            else:
+                job = campaign.open_job()
+                if job is None:
+                    raise Refusal("no job is open to close")
+                job.debrief = draft.debrief
+                campaign.board = draft.offers
         self.runs.append(run_of(draft, [*self.party, *present, *hidden]))
 
     def party_rows(self) -> Sections:
@@ -341,7 +330,7 @@ class SceneWorld[C: Person, P: Person](Mutable):
 
     def scene_rows(self) -> tuple[PanelRow, ...]:
         rows = [PanelRow(label=self.run.question, detail="")]
-        if terms := self.job_terms():
+        if self.campaign is not None and (terms := self.campaign.terms()):
             rows.append(PanelRow(label="The job", detail=terms))
         if self.at_hub:
             rows.append(HUB_ROW)
@@ -354,7 +343,7 @@ class SceneWorld[C: Person, P: Person](Mutable):
                         label="Way on", detail="Keep playing, or name where you go and move on."
                     )
                 )
-            if self.hub is not None:
+            if self.campaign is not None:
                 rows.append(HOME_ROW)
         return tuple(rows)
 
@@ -364,20 +353,6 @@ def check_named(here: Sequence[EntityId], cast: Mapping[EntityId, Thing]) -> Non
     for who in here:
         if who not in cast:
             raise Refusal(f"scene names {who!r}, who is not in the cast")
-
-
-def check_hub(
-    hub: Slug | None, board: Sequence[Offer], runs: Sequence[SceneRun], jobs: Sequence[Job]
-) -> None:
-    check_board(hub, board)
-    check_jobs(hub, jobs, len(runs))
-    if hub is None:
-        return
-    if runs[0].place != hub:
-        raise Refusal(f"run 0 does not open at hub {hub!r}")
-    # Every hub run after the first is a return, and a return closes exactly one job.
-    if sum(run.place == hub for run in runs[1:]) != len(closed_jobs_of(jobs)):
-        raise Refusal("hub runs after the first and closed jobs disagree")
 
 
 def resolved_id(wanted: str, cast: Mapping[EntityId, Thing]) -> EntityId | None:
