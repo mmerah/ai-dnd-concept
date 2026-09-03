@@ -386,3 +386,74 @@ The two deviations the phases left standing, and one layout ask, closed together
    `SceneCanon[self.cast]`, so the `cast_type` parameter Phase 1 added is gone; nothing else
    knows the cast type at that point. Tunnel Goons' `opening_canon(draft, source, kind)` stays a
    free function: it reads no engine state.
+
+## Phase 5 — the rooms
+
+`src` lines: 8,569 at start (`66dab35`), 8,660 at the end of the implementation and 8,659 after
+the fold; the target was 8,580 to 8,680. Tests: 468 to 469 (`tests/core/test_rooms.py`,
+the sixth engine). Goldens: `prompts/*`, `schemas/*`, `turn/*` byte-identical after
+`AIDM_GOLDEN_REGEN=1`; `scenarios/` and `characters/` untouched. `engines/<id>/` sizes: rooms 977,
+tunnelgoons 372, scenes 1,017, loner3e 622, breathless 607, twentyfourxx 698. Tool counts
+unchanged (Tunnel Goons: 6 tools, 3 `change_world` arms, now `engines/rooms/tools.py`'s).
+
+What landed: §5.1 `rooms/world.py` (`Dweller`, `Item`, `Place`, `Way`, `Visit`, `Dungeon[N]`,
+`RoomCanon[N]`, `RoomWorld[N, P]` with `begin`, `sheet_rows()` and the one `line`); §5.2
+`rooms/drafts.py` (`MapDraft[N]`, `ReturnDraft`), `rooms/tools.py` (the five models,
+`SharedChange`), `rooms/worldsmith.py` (the constants, the four bars generic over `N`),
+`rooms/worldsmith.md` without the `hp` sentence; §5.3 `RoomEngine[N, P, G]` with every moved
+method, `world`, `map_draft`, `starting_items`, `opening_canon`, `shared_change`, the abstract
+`guidance` read into ENGINE GUIDANCE before ANSWER WITH on the three worldsmith prompts; §5.4
+`tunnelgoons/` as `Npc(Dweller)`, `Goon`, `TunnelGoonsWorld(RoomWorld[Npc, Goon])`, `ChangeWorld`
+over `SharedChange`, `AUTHORING`, `TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame])`;
+`tunnelgoons/worldsmith.md` deleted; §5.5 the sixth-engine test, the CLAUDE.md bullet, the
+docs line.
+
+### Decisions made off-plan
+
+1. **`Dungeon.entity` and `RoomWorld.entity` return `Person | Item | Place | None`, `require`
+   returns `Person | Item | Place`** (§5.1.2 spelled `N | Item | Place` on the base and
+   `P | N | Item | Place` on the world): an override that widens the base's union is a
+   basedpyright `reportIncompatibleMethodOverride` (measured; the old `Entity` alias hid it by
+   naming `Goon` in the base). `Person | Item | Place` admits both and is exact, where the
+   implementation's first `Thing` admitted a scene engine's cast (Fable review). Every caller
+   narrows with `isinstance` or reads what every entity has.
+2. **`job_refusal` and `extension_refusal` take `world: Dungeon[N]`**, not §5.2.3's
+   `RoomWorld[N, Any]`: the one reader, `_overlap_unmet`, reads `places`, `npcs` and `items`,
+   so the base is the exact type and the phase adds no `Any` at all (Fable review; the plan's
+   allowance was a ceiling, not a quota).
+3. **`render_map`'s docstring** says "a room engine ships no packs to pick" where the moved text
+   named Tunnel Goons: the base is engine-free.
+4. **`engines/seam.py:36`**, the `directory` comment, no longer names a Tunnel Goons
+   `worldsmith.md` that the phase deletes.
+5. `map_draft` and `opening_canon` carry the one-line docstring `SceneEngine.opening_draft` and
+   `opening_canon` carry, since the runtime subscript's reason is not visible in the code.
+6. **`render_return` carries no ENGINE GUIDANCE** (§5.3.5 named it with the other two): a
+   `ReturnDraft` is a debrief and a board, with no npc in it, so the one guidance a room
+   engine ships today would be dead text there (Opus review). `render_map` and
+   `render_extension` keep it, and `tests/tunnelgoons/test_worldsmith.py` asserts the
+   `AUTHORING` text reaches both prompts, since no golden holds a worldsmith prompt.
+
+### Refuted findings and why
+
+- None from the self-review; its findings 2, 3 and 5 were fixed, 1 and 4 are decisions 1 and 2.
+
+### Known and accepted
+
+- The line count is 21 under the plan's ceiling and 79 over its floor: the generic parameters,
+  `begin`, the hooks and the three ENGINE GUIDANCE lines. Nothing padded, nothing invented.
+- The done-when grep `Any` over `engines/rooms` matches `engine.py`'s one
+  `from typing import Any` (the `Game[Any]` bound), `AnyCharacter`, `AnyScenario` and the word
+  "Anyone" in `Dweller`'s docstring; no other `Any` exists there.
+- `RoomEngine.validate` refuses `"TUNNEL GOONS has no table sets"` (the engine's `title`), where
+  the old message read "Tunnel Goons"; no test or golden held the old text.
+- The Tunnel Goons worldsmith prompts gain an ENGINE GUIDANCE section (`AUTHORING`, the `hp`
+  sentence) between the intent and ANSWER WITH; no golden holds a worldsmith prompt.
+- Reviews: the implementing session had no `Agent` tool and no `codex`; it ran
+  `.claude/prompts/review.md` over the staged diff itself (`/tmp/phase-5/review-self.md`). The
+  orchestrator runs two independent `reviewer` agents and folds both after this entry.
+- **Unmet done-when:** PLAN's Phase 5 asks `uv run aidm` to open a Tunnel Goons game, play a
+  turn and take a campaign job. This machine has no CLI roles, so only the pages were smoked:
+  `/`, `/settings`, `/create`, `/scenario` and the eight game pages serve 200 on the staged
+  tree. The turn and the job are covered by `tests/tunnelgoons/test_tools.py`,
+  `test_worldsmith.py`, `test_views.py` and `tests/core/test_hub_play.py`; the live play is
+  still owed.

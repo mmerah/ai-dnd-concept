@@ -33,7 +33,7 @@ class Engine[G: Game[Any]](ABC):
     id: EngineId
     title: str
     art_style: str
-    directory: Path  # rules.md; a scene engine's packs/; Tunnel Goons' worldsmith.md
+    directory: Path  # rules.md; a scene engine's packs/
     game: type[G]
     scenario: type[AnyScenario]
     character: type[AnyCharacter]

@@ -7,16 +7,13 @@ from support.tunnelgoons import START, TAVERN, hub_world, small_world
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.engines.hub import Job, Offer
-from aidm.engines.tunnelgoons.engine import REPORT_IN, TunnelGoonsEngine
-from aidm.engines.tunnelgoons.world import Item, Place, TunnelGoonsGame, Visit, Way
-from aidm.engines.tunnelgoons.worldsmith import (
-    MapDraft,
-    ReturnDraft,
-    extension_refusal,
-    hub_refusal,
-    map_refusal,
-    opening_canon,
-)
+from aidm.engines.rooms.drafts import MapDraft, ReturnDraft
+from aidm.engines.rooms.engine import REPORT_IN
+from aidm.engines.rooms.world import Item, Place, Visit, Way
+from aidm.engines.rooms.worldsmith import extension_refusal, hub_refusal, map_refusal
+from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
+from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsGame
+from aidm.engines.tunnelgoons.worldsmith import AUTHORING
 
 ENGINE = TunnelGoonsEngine()
 
@@ -26,7 +23,7 @@ FAR_VAULT = EntityId("far-vault")
 FAR_ITEM = EntityId("far-item")
 HALL = EntityId("hall")
 
-THIN = MapDraft(
+THIN = MapDraft[Npc](
     places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
     start=ONLY,
 )
@@ -39,8 +36,8 @@ def _tunnelgoons_game() -> TunnelGoonsGame:
     return state
 
 
-def _region() -> MapDraft:
-    return MapDraft(
+def _region() -> MapDraft[Npc]:
+    return MapDraft[Npc](
         places={
             FAR_HALL: Place(id=FAR_HALL, name="Far Hall", brief="b", known=False, description="d"),
             FAR_VAULT: Place(
@@ -65,7 +62,7 @@ def test_the_map_bar_names_each_missing_thing_on_a_thin_draft() -> None:
 
 def test_the_shipped_scenario_passes_the_map_bar() -> None:
     canon = _tunnelgoons_game().payload
-    draft = MapDraft(
+    draft = MapDraft[Npc](
         places=canon.places,
         ways=canon.ways,
         npcs=canon.npcs,
@@ -221,17 +218,21 @@ async def test_write_extension_refuses_a_walked_job_open_with_another_intent() -
 
 async def test_write_extension_asks_for_map_draft_away_or_at_the_hub_otherwise() -> None:
     recorded: list[type[BaseModel]] = []
+    prompts: list[str] = []
 
     async def answer[M: BaseModel](
         prompt: str, model: type[M], refusal: Callable[[M], str | None]
     ) -> M:
         recorded.append(model)
+        prompts.append(prompt)
         return model.model_validate(THIN.model_dump())
 
     _ = await ENGINE.write_extension(hub_world(), "Nose around the docks.", answer)
     _ = await ENGINE.write_extension(small_world(), "Push north.", answer)
 
-    assert recorded == [MapDraft, MapDraft]
+    assert recorded == [MapDraft[Npc], MapDraft[Npc]]
+    # The `hp` rule reaches the worldsmith only through the engine's guidance.
+    assert all(AUTHORING in prompt for prompt in prompts)
 
 
 def test_install_extension_on_a_return_draft_closes_the_job() -> None:
@@ -255,7 +256,7 @@ def test_install_extension_on_a_map_draft_at_the_hub_takes_the_job() -> None:
     state = hub_world(with_map=False)
     world = state.payload
     canon = _tunnelgoons_game().payload
-    extension = MapDraft(
+    extension = MapDraft[Npc](
         places=canon.places,
         ways=canon.ways,
         npcs=canon.npcs,
@@ -285,7 +286,7 @@ def test_hub_refusal_needs_a_two_or_three_offer_board_and_passes_the_shipped_cam
     if not isinstance(campaign_state, TunnelGoonsGame):
         raise AssertionError("the Tunnel Goons engine began another game type")
     canon = campaign_state.payload
-    draft = MapDraft(
+    draft = MapDraft[Npc](
         places=canon.places,
         ways=canon.ways,
         npcs=canon.npcs,
@@ -307,4 +308,4 @@ def test_map_refusal_refuses_a_one_shot_draft_carrying_a_board() -> None:
 
 def test_opening_canon_refuses_a_campaign_draft_without_a_board() -> None:
     with pytest.raises(Refusal, match="needs a board"):
-        opening_canon(_region(), "source", "campaign")
+        ENGINE.opening_canon(_region(), "source", "campaign")

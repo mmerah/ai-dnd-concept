@@ -22,9 +22,10 @@ from aidm.core.entities import EntityId, Refusal
 from aidm.core.tools import NoArgs
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.hub import Job
+from aidm.engines.rooms.tools import Move, UnlockWay
+from aidm.engines.rooms.world import Item, Visit
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
-from aidm.engines.tunnelgoons.tools import ActionRoll, LevelUp, Move, UnlockWay
-from aidm.engines.tunnelgoons.world import Item, Visit
+from aidm.engines.tunnelgoons.tools import ActionRoll, LevelUp
 
 ENGINE = TunnelGoonsEngine()
 TOTAL_RE = re.compile(r"(-?\d+) vs DS")
