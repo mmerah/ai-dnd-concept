@@ -360,7 +360,21 @@ resolver taking `(draft, args, rng)`, so a trial run cannot consume the turn's d
 as a predicate; `Fact` and every proposal staying `Frozen`; small pure helpers over scalars
 (`stepped`, `raised`, `slug`, `outcome_for`).
 
-### Proposed replacement (merged from the six drafts)
+### Decided 2026-09-03: minimal edit, not a rewrite
+
+The maintainer chose to drop the functional-programming part only. Applied to CLAUDE.md in the
+same commit as this note: the two bullets above became
+
+- A class owns its state and the methods that read or change it. A function whose first argument
+  is one of our objects is a method; a free function is for what has no owner.
+- Side effects live at the edges (files, network, UI). Rules code changes only the draft it is
+  handed and rolls only the `Random` it is handed.
+
+One more bullet lands with the code that makes it true (D2): "A message a role or the player is
+meant to read is a `Refusal`; any other exception is a bug and is not caught." Everything else
+in the merged draft below stays here as reference, not as a rule.
+
+### The six reviewers' merged draft (reference only, superseded by the decision above)
 
 ```markdown
 ## Code
@@ -424,7 +438,20 @@ there (D): "The page polls the service; the service never calls the page." and, 
 
 ## 5. Decisions for the brainstorming rounds
 
-Ranked by how much downstream work each unlocks.
+**Decided by the maintainer, 2026-09-03:**
+
+| # | Decision |
+|---|----------|
+| D1 | Sub-model: `world.campaign: Campaign \| None` (shape (a)). No `World` base class. |
+| D2 | `Refusal(ValueError)`; the `*_unmet` bars keep returning lists and raise `Refusal` at the end. |
+| D3 | Character payload becomes the sheet type for all four engines (character-file format change). |
+| D4 | Trim the goldens: drop `state/*.json` and `save/*.json`, keep prompts + schemas + turn facts. |
+| D5 | Keep the twelve empty subclasses. |
+| D6 | Participles → verbs and one stem per engine in one early commit; the `one` sweep last, file by file. |
+| D7 | Fix the `ENGINES` tuple now; `import-linter` decided separately. |
+| D8 | Drop `player_id` threading now; a world method returns when Track G.2 needs it. |
+
+The original questions follow for the record.
 
 **D1. Campaign shape: sub-model or World base class?** (P4)
 `world.campaign: Campaign | None` (A, B, C, E) keeps `SceneWorld` and `TunnelWorld` unrelated

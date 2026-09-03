@@ -20,9 +20,10 @@ Tests run offline. They are deterministic.
 
 ## Code
 
-- Write pure functions. Put side effects at the edges (files, network, UI).
-- State models and engines own the methods that read or mutate them; a method that writes nothing
-  outside its arguments is pure.
+- A class owns its state and the methods that read or change it. A function whose first argument
+  is one of our objects is a method; a free function is for what has no owner.
+- Side effects live at the edges (files, network, UI). Rules code changes only the draft it is
+  handed and rolls only the `Random` it is handed.
 - State models are mutable. Value models are frozen.
 - Do not use `Any`. Use exact types. The one exception: a class or function generic on the game
   state, where `Game[P]`'s invariance makes `Any` the only spelling of the bound.
