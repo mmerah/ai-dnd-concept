@@ -12,7 +12,7 @@ ENGINE = ENGINES_BUILT[BREATHLESS]
 
 def test_the_player_views_backpack_panel_lists_items_and_the_med_kit() -> None:
     game = small_world()
-    game.payload.world.player.med_kit = True
+    game.payload.player.med_kit = True
     view = ENGINE.player_view(game)
     backpack = next(panel for panel in view.panels if panel.title == "Backpack")
     assert PanelRow(label="Wrench", detail="d10") in backpack.rows
@@ -33,7 +33,7 @@ def test_master_sections_never_lists_the_player_under_here() -> None:
 
 def test_master_sections_lists_the_backpack() -> None:
     game = small_world()
-    game.payload.world.player.med_kit = True
+    game.payload.player.med_kit = True
     sections = dict(master_sections(game))
     assert sections["BACKPACK"] == "- Wrench[wrench] — d10\n- med kit"
 

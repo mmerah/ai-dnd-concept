@@ -11,8 +11,8 @@ from aidm.engines.scenes.world import entity_line
 
 def master_sections(packs: Mapping[str, Pack], state: Loner3eGame) -> Rows:
     """Every section stated, hidden canon included: the game master reads all of it."""
-    world = state.payload.world
-    scene = world.current
+    world = state.payload
+    scene = world.run
     glossary: dict[str, str] = {}
     for one in world.here():
         glossary.update(meanings(packs, state.packs, one))
@@ -27,5 +27,5 @@ def master_sections(packs: Mapping[str, Pack], state: Loner3eGame) -> Rows:
         ("HIDDEN HERE (the player has not found these)", world.hidden_lines()),
         *spelled,
         ("THE SCENE'S SECRET (never narrate this)", scene.secret or "(none)"),
-        *master_tail(world.hub, world.at_hub, world.board, world.jobs(), world.job),
+        *master_tail(world.hub, world.at_hub, world.board, world.closed_jobs(), world.open_job()),
     )

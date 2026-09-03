@@ -6,7 +6,7 @@ from aidm.core.entities import Mutable
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
 from aidm.engines.core import PLAYER_ID, Counter, Person, pool
-from aidm.engines.scenes.world import SceneScenario, SceneState, SceneWorld
+from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
 LUCK_MAX = 6
 DIE_FACE = 6  # every roll in the game is one d6, and every table is six rows
@@ -55,12 +55,7 @@ class LonerCharacter(Person):
         return ", ".join(missing)
 
 
-LonerWorld = SceneWorld[LonerCharacter, LonerCharacter]
-
-
-class Loner3eState(SceneState[LonerCharacter, LonerCharacter]):
-    """The save payload: the scene world, plus the counter the SRD keeps beside it."""
-
+class LonerWorld(SceneWorld[LonerCharacter, LonerCharacter]):
     # The played character's tally paces the whole game, so no sheet carries one.
     twist: Counter = Field(default_factory=lambda: Counter(current=0, maximum=TIES_PER_TWIST))
 
@@ -74,11 +69,11 @@ class Loner3eCharacter(Mutable):
     motive: str = ""
 
 
-class Loner3eGame(Game[Loner3eState]):
+class Loner3eGame(Game[LonerWorld]):
     pass
 
 
-class Loner3eScenarioFile(Scenario[SceneScenario[LonerCharacter]]):
+class Loner3eScenarioFile(Scenario[SceneCanon[LonerCharacter]]):
     pass
 
 

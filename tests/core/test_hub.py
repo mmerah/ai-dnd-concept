@@ -5,72 +5,25 @@ import pytest
 from aidm.core.views import Panel
 from aidm.engines.hub import (
     TAKE_JOB,
-    Debrief,
     Job,
     Offer,
-    Stop,
     board_panel,
     board_rows,
     check_board,
+    check_jobs,
     check_kind,
-    closed_jobs,
     hub_sections,
     job_closed,
-    job_start,
-    job_titles,
     jobs_panel,
     ledger,
     master_tail,
     place_unmet,
     question_heading,
 )
-from aidm.engines.scenes.world import Scene, SceneRun, check_hub
 
 HUB = "hub"
-DONE = Debrief(text="Finished the job.", finished=True)
-DONE_A = Debrief(text="Finished A", finished=True)
-DONE_B = Debrief(text="Finished B", finished=True)
-DONE_TAVERN = Debrief(text="Done", finished=True)
-
-
-def _stops() -> tuple[Stop, ...]:
-    return (
-        Stop(place=HUB, title="Hub"),
-        Stop(place="a1", title="A1"),
-        Stop(place="a2", title="A2"),
-        Stop(place=HUB, title="Hub", debrief=DONE_A),
-        Stop(place="b1", title="B1"),
-        Stop(place=HUB, title="Hub", debrief=DONE_B),
-        Stop(place="c1", title="C1"),
-    )
-
-
-def _tunnel_goons_stops() -> tuple[Stop, ...]:
-    return (
-        Stop(place="tavern", title="Tavern"),
-        Stop(place="a", title="A"),
-        Stop(place="b", title="B"),
-        Stop(place="tavern", title="Tavern"),
-        Stop(place="tavern", title="Tavern", debrief=DONE_TAVERN),
-    )
-
-
-def test_the_job_walk_reads_titles_closed_jobs_and_start() -> None:
-    stops = _stops()
-
-    assert job_titles(HUB, stops) == ("", "A1", "A1", "", "B1", "", "C1")
-    assert closed_jobs(HUB, stops) == (
-        Job(title="A1", place="a1", debrief=DONE_A),
-        Job(title="B1", place="b1", debrief=DONE_B),
-    )
-    assert job_start(stops) == 5
-
-
-def test_the_job_walk_on_tunnel_goons_stops() -> None:
-    stops = _tunnel_goons_stops()
-
-    assert closed_jobs("tavern", stops) == (Job(title="A", place="a", debrief=DONE_TAVERN),)
-    assert job_start(stops) == 4
+DONE_A = Job(title="A1", place="a1", started=1, finished=True, debrief="Finished A")
+DONE_B = Job(title="B1", place="b1", started=3, finished=True, debrief="Finished B")
 
 
 def test_check_board_refuses_a_board_with_the_wrong_shape() -> None:
@@ -78,17 +31,6 @@ def test_check_board_refuses_a_board_with_the_wrong_shape() -> None:
 
     with pytest.raises(ValueError):
         check_board(None, (offer,))
-    with pytest.raises(ValueError):
-        check_board(HUB, (offer,))
-    with pytest.raises(ValueError):
-        check_board(HUB, (offer, offer, offer, offer))
-
-
-def test_check_board_accepts_two_or_three_offers_at_a_hub() -> None:
-    offer = Offer(title="A job", pitch="Do the thing")
-
-    check_board(HUB, (offer, offer))
-    check_board(HUB, (offer, offer, offer))
 
 
 def test_check_kind_refuses_a_kind_and_hub_mismatch() -> None:
@@ -101,8 +43,35 @@ def test_check_kind_refuses_a_kind_and_hub_mismatch() -> None:
     check_kind("one-shot", None)
 
 
+def test_check_jobs_refuses_a_job_with_no_hub() -> None:
+    with pytest.raises(ValueError, match="job with no hub"):
+        check_jobs(None, [Job(title="A1", place="a1")], 1)
+
+
+def test_check_jobs_refuses_an_earlier_job_without_a_debrief() -> None:
+    with pytest.raises(ValueError, match="has no debrief and is not the last"):
+        check_jobs(
+            HUB,
+            [
+                Job(title="A1", place="a1", started=1, finished=True),
+                Job(title="B1", place="b1", started=3),
+            ],
+            4,
+        )
+
+
+def test_check_jobs_refuses_a_debrief_on_an_unwalked_job() -> None:
+    with pytest.raises(ValueError, match="before it was walked"):
+        check_jobs(HUB, [Job(title="A1", place="a1", finished=True, debrief="Done.")], 1)
+
+
+def test_check_jobs_refuses_a_job_started_past_the_walk() -> None:
+    with pytest.raises(ValueError, match="started past the walk"):
+        check_jobs(HUB, [Job(title="A1", place="a1", started=2)], 2)
+
+
 def test_job_closed_names_a_finished_job() -> None:
-    job = Job(title="A1", place="a1", debrief=DONE)
+    job = Job(title="A1", place="a1", started=1, finished=True, debrief="Finished the job.")
 
     fact = job_closed(job)
 
@@ -111,41 +80,12 @@ def test_job_closed_names_a_finished_job() -> None:
 
 
 def test_job_closed_names_a_job_left_open() -> None:
-    job = Job(title="A1", place="a1", debrief=Debrief(text="Ran out of time.", finished=False))
+    job = Job(title="A1", place="a1", started=1, debrief="Ran out of time.")
 
     fact = job_closed(job)
 
     assert fact.card == "Job left open: A1\nRan out of time."
     assert fact.trace == "the job A1 closed (left open)"
-
-
-def _run(place: str, debrief: Debrief | None = None) -> SceneRun:
-    scene = Scene(
-        place=place,
-        title="A scene",
-        question="What happens next here?",
-        situation="A long enough situation to satisfy the minimum length the model demands.",
-        debrief=debrief,
-    )
-    return SceneRun(scene=scene)
-
-
-def test_check_hub_refuses_a_debrief_with_no_hub() -> None:
-    with pytest.raises(ValueError):
-        check_hub(None, (), (_run("somewhere", DONE),))
-
-
-def test_check_hub_refuses_a_hub_run_right_after_a_hub_run() -> None:
-    board = (Offer(title="A", pitch="Do a"), Offer(title="B", pitch="Do b"))
-
-    with pytest.raises(ValueError):
-        check_hub(HUB, board, (_run(HUB), _run(HUB, DONE)))
-
-
-def test_check_hub_accepts_a_job_between_two_hub_visits() -> None:
-    board = (Offer(title="A", pitch="Do a"), Offer(title="B", pitch="Do b"))
-
-    check_hub(HUB, board, (_run(HUB), _run("a1"), _run(HUB, DONE)))
 
 
 def test_board_rows_plays_take_job_with_the_title_and_keeps_the_pitch() -> None:
@@ -201,19 +141,20 @@ def test_question_heading_switches_by_at_hub() -> None:
 
 
 def test_master_tail_shows_the_job_away_and_the_board_at_the_hub() -> None:
-    jobs = (Job(title="A1", place="a1", debrief=DONE_A),)
+    jobs = (DONE_A,)
     board = (Offer(title="B", pitch="Do b"),)
+    open_job = Job(title="A2", place="a2", terms="Clear the warehouse", started=1)
 
-    away = dict(master_tail(HUB, False, board, jobs, "Clear the warehouse"))
+    away = dict(master_tail(HUB, False, board, jobs, open_job))
     assert away["THE JOB"] == "Clear the warehouse"
     assert "A1" in away["JOBS SO FAR"]
     assert "THE BOARD" not in away
 
-    at_hub = dict(master_tail(HUB, True, board, jobs, ""))
+    at_hub = dict(master_tail(HUB, True, board, jobs, None))
     assert "THE JOB" not in at_hub
     assert "B" in at_hub["THE BOARD"]
 
-    one_shot = dict(master_tail(None, False, (), (), ""))
+    one_shot = dict(master_tail(None, False, (), (), None))
     assert one_shot == {}
 
 
@@ -227,35 +168,28 @@ def test_board_panel_is_shown_only_at_the_hub() -> None:
 def test_jobs_panel_is_shown_only_when_there_is_a_job() -> None:
     assert jobs_panel(()) == ()
 
-    job = Job(title="A1", place="a1", debrief=DONE_A)
-    (panel,) = jobs_panel((job,))
+    (panel,) = jobs_panel((DONE_A,))
     assert panel.title == "Jobs"
     assert len(panel.rows) == 1
-
-
-def test_closed_jobs_carries_the_terms_the_leaving_scene_wrote() -> None:
-    stops = (
-        Stop(place=HUB, title="Hub"),
-        Stop(place="a1", title="A1", job="Clear the warehouse by dawn."),
-        Stop(place=HUB, title="Hub", debrief=DONE_A),
-    )
-
-    assert closed_jobs(HUB, stops) == (
-        Job(title="A1", place="a1", debrief=DONE_A, job="Clear the warehouse by dawn."),
-    )
 
 
 def test_ledger_shows_the_job_line_only_under_an_open_job_with_terms() -> None:
     open_with_terms = Job(
         title="A1",
         place="a1",
-        debrief=Debrief(text="Ran out of time.", finished=False),
-        job="Clear the warehouse by dawn.",
+        started=1,
+        debrief="Ran out of time.",
+        terms="Clear the warehouse by dawn.",
     )
-    finished_with_terms = Job(title="B1", place="b1", debrief=DONE_B, job="Escort the courier.")
-    open_no_terms = Job(
-        title="C1", place="c1", debrief=Debrief(text="Ran out of time.", finished=False)
+    finished_with_terms = Job(
+        title="B1",
+        place="b1",
+        started=1,
+        finished=True,
+        debrief="Finished B",
+        terms="Escort the courier.",
     )
+    open_no_terms = Job(title="C1", place="c1", started=1, debrief="Ran out of time.")
 
     assert "  the job: Clear the warehouse by dawn." in ledger((open_with_terms,))
     assert "  the job:" not in ledger((finished_with_terms,))

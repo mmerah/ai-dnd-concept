@@ -14,109 +14,101 @@
   "pending": null,
   "notes": [],
   "payload": {
-    "world": {
-      "runs": [
-        {
-          "scene": {
-            "place": "waystation",
-            "title": "The Waystation",
-            "question": "Rations at the Waystation run three days short of the month, and Harlan's gate log says who has earned their bunk.",
-            "situation": "The Waystation fills an old rail depot behind a fence of scavenged sheet metal, its yard lit by a single working floodlight. Harlan Voss counts the gate log by lantern light while Dee Okafor stacks crates against a wall nobody trusts anymore.",
-            "secret": "Harlan trades names off the gate log to a scavenger crew outside for extra rations, and Mara Fenn has seen him do it twice.",
-            "debrief": null,
-            "job": ""
-          },
-          "present": [
-            "harlan-voss",
-            "dee-okafor"
-          ],
-          "hidden": [
-            "mara-fenn"
-          ],
-          "exchanges": [],
-          "left": null,
-          "job_done": false,
-          "recap": ""
-        }
-      ],
-      "source": "An old rail depot turned safe house, its gate log deciding who eats and who doesn't.",
-      "hub": "waystation",
-      "board": [
-        {
-          "title": "The Sick Room",
-          "pitch": "Someone in the east wing is running a fever no one will name — whoever finds what's wrong gets first pick of the medicine cabinet."
-        },
-        {
-          "title": "The Supply Drop",
-          "pitch": "A drop from before the quiet went out over the old band an hour ago, west past the rail yard — whoever gets there first gets to split it."
-        },
-        {
-          "title": "The Sanctuary Rumor",
-          "pitch": "A runner swears there's a sanctuary full of survivors clear across the city, gate guarded and lit — worth checking before word spreads and the road fills up."
-        }
-      ],
-      "cast": {
-        "harlan-voss": {
-          "id": "harlan-voss",
-          "name": "Harlan Voss",
-          "brief": "Keeps the Waystation's gate locked and its ledger straight; nobody gets in or out without his say.",
-          "known": true,
-          "alive": true
-        },
-        "dee-okafor": {
-          "id": "dee-okafor",
-          "name": "Dee Okafor",
-          "brief": "A regular who trades salvage for a bunk and never asks where anyone's been.",
-          "known": true,
-          "alive": true
-        },
-        "mara-fenn": {
-          "id": "mara-fenn",
-          "name": "Mara Fenn",
-          "brief": "Watches the gate from the rafters and says nothing to anyone who hasn't proven themselves.",
-          "known": false,
-          "alive": true
-        }
+    "runs": [
+      {
+        "place": "waystation",
+        "title": "The Waystation",
+        "question": "Rations at the Waystation run three days short of the month, and Harlan's gate log says who has earned their bunk.",
+        "situation": "The Waystation fills an old rail depot behind a fence of scavenged sheet metal, its yard lit by a single working floodlight. Harlan Voss counts the gate log by lantern light while Dee Okafor stacks crates against a wall nobody trusts anymore.",
+        "secret": "Harlan trades names off the gate log to a scavenger crew outside for extra rations, and Mara Fenn has seen him do it twice.",
+        "here": [
+          "harlan-voss",
+          "dee-okafor",
+          "mara-fenn"
+        ],
+        "exchanges": [],
+        "left": null,
+        "recap": ""
+      }
+    ],
+    "source": "An old rail depot turned safe house, its gate log deciding who eats and who doesn't.",
+    "hub": "waystation",
+    "board": [
+      {
+        "title": "The Sick Room",
+        "pitch": "Someone in the east wing is running a fever no one will name — whoever finds what's wrong gets first pick of the medicine cabinet."
       },
-      "player": {
-        "id": "player",
-        "name": "Kael",
-        "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
+      {
+        "title": "The Supply Drop",
+        "pitch": "A drop from before the quiet went out over the old band an hour ago, west past the rail yard — whoever gets there first gets to split it."
+      },
+      {
+        "title": "The Sanctuary Rumor",
+        "pitch": "A runner swears there's a sanctuary full of survivors clear across the city, gate guarded and lit — worth checking before word spreads and the road fills up."
+      }
+    ],
+    "jobs": [],
+    "cast": {
+      "harlan-voss": {
+        "id": "harlan-voss",
+        "name": "Harlan Voss",
+        "brief": "Keeps the Waystation's gate locked and its ledger straight; nobody gets in or out without his say.",
         "known": true,
-        "alive": true,
-        "pronouns": "he/him",
-        "job": "Park Ranger",
-        "skills": {
-          "think": 10,
-          "sneak": 8,
-          "bash": 6,
-          "dash": 4,
-          "shoot": 4,
-          "sway": 4
-        },
-        "worn": {
-          "bash": 6,
-          "dash": 4,
-          "sneak": 8,
-          "shoot": 4,
-          "think": 10,
-          "sway": 4
-        },
-        "items": {
-          "fire-axe": {
-            "name": "Fire Axe",
-            "die": 10
-          }
-        },
-        "med_kit": false,
-        "loot": 12,
-        "stress": {
-          "current": 0,
-          "maximum": 4
-        },
-        "stunted": false
+        "alive": true
       },
-      "party": []
-    }
+      "dee-okafor": {
+        "id": "dee-okafor",
+        "name": "Dee Okafor",
+        "brief": "A regular who trades salvage for a bunk and never asks where anyone's been.",
+        "known": true,
+        "alive": true
+      },
+      "mara-fenn": {
+        "id": "mara-fenn",
+        "name": "Mara Fenn",
+        "brief": "Watches the gate from the rafters and says nothing to anyone who hasn't proven themselves.",
+        "known": false,
+        "alive": true
+      }
+    },
+    "player": {
+      "id": "player",
+      "name": "Kael",
+      "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
+      "known": true,
+      "alive": true,
+      "pronouns": "he/him",
+      "job": "Park Ranger",
+      "skills": {
+        "think": 10,
+        "sneak": 8,
+        "bash": 6,
+        "dash": 4,
+        "shoot": 4,
+        "sway": 4
+      },
+      "worn": {
+        "bash": 6,
+        "dash": 4,
+        "sneak": 8,
+        "shoot": 4,
+        "think": 10,
+        "sway": 4
+      },
+      "items": {
+        "fire-axe": {
+          "name": "Fire Axe",
+          "die": 10
+        }
+      },
+      "med_kit": false,
+      "loot": 12,
+      "stress": {
+        "current": 0,
+        "maximum": 4
+      },
+      "stunted": false
+    },
+    "party": []
   }
 }

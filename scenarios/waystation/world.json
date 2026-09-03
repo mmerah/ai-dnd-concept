@@ -9,60 +9,56 @@
     "srd"
   ],
   "payload": {
-    "world": {
-      "hub": "waystation",
-      "board": [
-        {
-          "title": "The Sick Room",
-          "pitch": "Someone in the east wing is running a fever no one will name — whoever finds what's wrong gets first pick of the medicine cabinet."
-        },
-        {
-          "title": "The Supply Drop",
-          "pitch": "A drop from before the quiet went out over the old band an hour ago, west past the rail yard — whoever gets there first gets to split it."
-        },
-        {
-          "title": "The Sanctuary Rumor",
-          "pitch": "A runner swears there's a sanctuary full of survivors clear across the city, gate guarded and lit — worth checking before word spreads and the road fills up."
-        }
-      ],
-      "opening": {
-        "place": "waystation",
-        "title": "The Waystation",
-        "question": "Rations at the Waystation run three days short of the month, and Harlan's gate log says who has earned their bunk.",
-        "situation": "The Waystation fills an old rail depot behind a fence of scavenged sheet metal, its yard lit by a single working floodlight. Harlan Voss counts the gate log by lantern light while Dee Okafor stacks crates against a wall nobody trusts anymore.",
-        "secret": "Harlan trades names off the gate log to a scavenger crew outside for extra rations, and Mara Fenn has seen him do it twice."
+    "hub": "waystation",
+    "board": [
+      {
+        "title": "The Sick Room",
+        "pitch": "Someone in the east wing is running a fever no one will name — whoever finds what's wrong gets first pick of the medicine cabinet."
       },
-      "present": [
+      {
+        "title": "The Supply Drop",
+        "pitch": "A drop from before the quiet went out over the old band an hour ago, west past the rail yard — whoever gets there first gets to split it."
+      },
+      {
+        "title": "The Sanctuary Rumor",
+        "pitch": "A runner swears there's a sanctuary full of survivors clear across the city, gate guarded and lit — worth checking before word spreads and the road fills up."
+      }
+    ],
+    "opening": {
+      "place": "waystation",
+      "title": "The Waystation",
+      "question": "Rations at the Waystation run three days short of the month, and Harlan's gate log says who has earned their bunk.",
+      "situation": "The Waystation fills an old rail depot behind a fence of scavenged sheet metal, its yard lit by a single working floodlight. Harlan Voss counts the gate log by lantern light while Dee Okafor stacks crates against a wall nobody trusts anymore.",
+      "secret": "Harlan trades names off the gate log to a scavenger crew outside for extra rations, and Mara Fenn has seen him do it twice.",
+      "here": [
         "harlan-voss",
-        "dee-okafor"
-      ],
-      "hidden": [
+        "dee-okafor",
         "mara-fenn"
-      ],
-      "cast": {
-        "harlan-voss": {
-          "id": "harlan-voss",
-          "name": "Harlan Voss",
-          "brief": "Keeps the Waystation's gate locked and its ledger straight; nobody gets in or out without his say.",
-          "known": true,
-          "alive": true
-        },
-        "dee-okafor": {
-          "id": "dee-okafor",
-          "name": "Dee Okafor",
-          "brief": "A regular who trades salvage for a bunk and never asks where anyone's been.",
-          "known": true,
-          "alive": true
-        },
-        "mara-fenn": {
-          "id": "mara-fenn",
-          "name": "Mara Fenn",
-          "brief": "Watches the gate from the rafters and says nothing to anyone who hasn't proven themselves.",
-          "known": false,
-          "alive": true
-        }
+      ]
+    },
+    "cast": {
+      "harlan-voss": {
+        "id": "harlan-voss",
+        "name": "Harlan Voss",
+        "brief": "Keeps the Waystation's gate locked and its ledger straight; nobody gets in or out without his say.",
+        "known": true,
+        "alive": true
       },
-      "source": "An old rail depot turned safe house, its gate log deciding who eats and who doesn't."
-    }
+      "dee-okafor": {
+        "id": "dee-okafor",
+        "name": "Dee Okafor",
+        "brief": "A regular who trades salvage for a bunk and never asks where anyone's been.",
+        "known": true,
+        "alive": true
+      },
+      "mara-fenn": {
+        "id": "mara-fenn",
+        "name": "Mara Fenn",
+        "brief": "Watches the gate from the rafters and says nothing to anyone who hasn't proven themselves.",
+        "known": false,
+        "alive": true
+      }
+    },
+    "source": "An old rail depot turned safe house, its gate log deciding who eats and who doesn't."
   }
 }

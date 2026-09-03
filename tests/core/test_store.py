@@ -32,7 +32,7 @@ MIRROR = EngineId("mirror")
 def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
     engine, state = initialized()
     draft = state.draft()
-    draft.payload.world.run.exchanges = [
+    draft.payload.run.exchanges = [
         Exchange(
             prompt="I take the map.",
             lines=(),
@@ -53,7 +53,7 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
     reloaded = store.load("roundtrip")
 
     assert reloaded is not None
-    assert engine.restored(reloaded).payload.world.exchanges() == saved.payload.world.exchanges()
+    assert engine.restored(reloaded).payload.exchanges() == saved.payload.exchanges()
 
 
 @pytest.mark.parametrize("slug", ("../escape", "/absolute", "bad slug", ""))

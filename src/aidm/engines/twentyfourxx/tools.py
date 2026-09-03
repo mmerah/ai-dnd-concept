@@ -119,7 +119,7 @@ class Defend(Frozen):
     )
 
 
-class JobDone(Frozen):
+class AfterJob(Frozen):
     skill: str = Field(
         min_length=1, description="The skill the job called on, named by the player, to raise."
     )
@@ -132,7 +132,7 @@ class Skills:
     packs: Mapping[str, Pack]
 
     def attempt(self, draft: TwentyfourxxGame, args: Attempt, rng: Random) -> list[Fact]:
-        world = draft.payload.world
+        world = draft.payload
         player = world.player
 
         if args.skill:
@@ -184,8 +184,8 @@ class Skills:
 
         return facts
 
-    def job_done(self, draft: TwentyfourxxGame, args: JobDone, rng: Random) -> list[Fact]:
-        world = draft.payload.world
+    def after_job(self, draft: TwentyfourxxGame, args: AfterJob, rng: Random) -> list[Fact]:
+        world = draft.payload
         player = world.player
         label = self._resolve_skill(player, args.skill)
         new_die = raised(player.skills.get(label))
@@ -260,11 +260,11 @@ def apply_change(world: TwentyfourxxWorld, change: WorldChange) -> list[Fact]:
 
 
 def change_world(draft: TwentyfourxxGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-    return apply_change(draft.payload.world, args.change)
+    return apply_change(draft.payload, args.change)
 
 
 def next_scene(draft: TwentyfourxxGame, args: NextScene, _rng: Random) -> tuple[Fact, ...]:
-    return draft.payload.world.settle(args.job_done, args.pursuit)
+    return draft.payload.settle(args.job_done, args.pursuit)
 
 
 def test_luck(_draft: TwentyfourxxGame, args: TestLuck, rng: Random) -> tuple[Fact, ...]:
@@ -281,7 +281,7 @@ def test_luck(_draft: TwentyfourxxGame, args: TestLuck, rng: Random) -> tuple[Fa
 
 
 def defend(draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
-    world = draft.payload.world
+    world = draft.payload
     player = world.player
     item = player.items.get(args.item_id)
     if item is None:
@@ -330,11 +330,11 @@ def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[TwentyfourxxGame], ...]
             defend,
         ),
         master_tool(
-            "job_done",
-            "Once per job, when the player's own words close out the job: raise the named "
-            "skill and pay out its credits.",
-            JobDone,
-            skills.job_done,
+            "after_job",
+            "The SRD's after-a-job step, once per job, when the player's own words close it: "
+            "raise the named skill and pay out its credits.",
+            AfterJob,
+            skills.after_job,
         ),
     )
 

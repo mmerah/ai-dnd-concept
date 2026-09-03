@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from pathlib import Path
 from random import Random
 
@@ -14,12 +15,12 @@ from aidm.core.entities import EngineId, EntityId
 from aidm.core.io import FileStore
 from aidm.core.model import ScenarioMeta
 from aidm.engines.core import PLAYER_ID, load_packs
-from aidm.engines.hub import Offer
+from aidm.engines.hub import Job, Offer
 from aidm.engines.loner3e.creation import Pack
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.tools import Oracle, twist_table
-from aidm.engines.loner3e.world import Loner3eGame, Loner3eState, LonerCharacter, LonerWorld
-from aidm.engines.scenes.world import Scene, SceneRun
+from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter, LonerWorld
+from aidm.engines.scenes.world import SceneRun
 
 TARGET = LaunchTarget(scenario_id="whispering-vault", character_id="kael")
 PACKS = load_packs((Loner3eEngine.directory / "packs",), Pack)
@@ -48,8 +49,8 @@ def hub_world() -> Loner3eGame:
     keeper = LonerCharacter(
         id=KEEPER, name="Keeper", brief="Runs the guild hall's board", known=True
     )
-    hub_run = SceneRun(scene=_hub_scene(), present=[KEEPER])
-    job_run = SceneRun(scene=_job_scene())
+    hub_run = _hub_scene(here=[KEEPER])
+    job_run = _job_scene()
     world = LonerWorld(
         cast={KEEPER: keeper},
         player=_player(),
@@ -59,13 +60,14 @@ def hub_world() -> Loner3eGame:
             Offer(title="Job One", pitch="I take job one."),
             Offer(title="Job Two", pitch="I take job two."),
         ),
+        jobs=[Job(title="The Sealed Cairn", place=JOB_PLACE, terms=JOB, started=1)],
     )
     return Loner3eGame(
         scenario_id="guild-hall",
         character_id="kael",
         scenario=ScenarioMeta(title="The Guild Hall", premise="A hub campaign.", kind="campaign"),
         engine=EngineId("loner3e"),
-        payload=Loner3eState(world=world),
+        payload=world,
     )
 
 
@@ -84,22 +86,23 @@ def loner3e_session(directory: Path) -> GameService:
     )
 
 
-def _hub_scene() -> Scene:
-    return Scene(
+def _hub_scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
+    return SceneRun(
         place=HUB_PLACE,
         title="The Guild Hall",
         question="What keeps Kael coming back to the guild hall tonight?",
         situation=HUB_SITUATION,
+        here=list(here),
     )
 
 
-def _job_scene() -> Scene:
-    return Scene(
+def _job_scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
+    return SceneRun(
         place=JOB_PLACE,
         title="The Sealed Cairn",
         question="Can Kael break the cairn's seal before whatever is inside wakes?",
         situation=JOB_SITUATION,
-        job=JOB,
+        here=list(here),
     )
 
 

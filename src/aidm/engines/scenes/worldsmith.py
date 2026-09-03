@@ -15,11 +15,9 @@ from aidm.engines.hub import CAMPAIGN_OPENING, GO_HOME, ONE_SHOT_OPENING, job_cl
 from aidm.engines.scenes.drafts import HubDraft, JobDraft, NextDraft, ReturnDraft, SceneDraft
 from aidm.engines.scenes.world import (
     SceneCanon,
-    SceneScenario,
-    SceneState,
     SceneWorld,
     resolve_ids,
-    scene_of,
+    run_of,
     scene_refusal,
     worldsmith_prompt,
 )
@@ -41,14 +39,13 @@ def opening_draft[C: Person](cast_type: type[C], kind: ScenarioKind) -> type[Sce
 def opening_canon[C: Person](draft: SceneDraft[C], source: str) -> SceneCanon[C]:
     cast = draft.cast
     present = resolve_ids(draft.present, cast, "present")
+    hidden = resolve_ids(draft.hidden, cast, "hidden")
     for one in present:
         cast[one].known = True
     hub, board = (draft.place, draft.offers) if isinstance(draft, HubDraft) else (None, ())
     return SceneCanon(
         cast=cast,
-        opening=scene_of(draft, False),
-        present=present,
-        hidden=resolve_ids(draft.hidden, cast, "hidden"),
+        opening=run_of(draft, [*present, *hidden]),
         source=source,
         hub=hub,
         board=board,
@@ -77,10 +74,10 @@ async def write_next[C: Person, P: Person](
     return await answer(prompt, model, lambda written: scene_refusal(written, world))
 
 
-def install_scene[C: Person, S: SceneState[Any, Any]](
-    state: Game[S], written: SceneDraft[C], *, finished_note: str
+def install_scene[C: Person, W: SceneWorld[Any, Any]](
+    state: Game[W], written: SceneDraft[C], *, finished_note: str
 ) -> tuple[Fact, ...]:
-    world = state.payload.world
+    world = state.payload
     world.apply_scene(written.model_copy(deep=True))
     trace = f"the story moves to {written.title}"
     if came := [one.name for one in world.members()]:
@@ -96,8 +93,8 @@ def install_scene[C: Person, S: SceneState[Any, Any]](
     opened = Fact(kind="scene_opened", trace=trace, told=True, card=card)
     if isinstance(written, ReturnDraft):
         world.board = written.offers
-        job = world.jobs()[-1]
-        if job.debrief.finished and finished_note:
+        job = world.jobs[-1]
+        if job.finished and finished_note:
             state.notes = (*state.notes, finished_note.format(title=job.title))
         return (job_closed(job), opened)
     return (opened,)
@@ -118,7 +115,7 @@ def render_opening[C: Person](
 
 
 def build_scenario[C: Person](
-    file_type: type[Scenario[SceneScenario[C]]],
+    file_type: type[Scenario[SceneCanon[C]]],
     engine_id: EngineId,
     title: str,
     premise: str,
@@ -133,5 +130,5 @@ def build_scenario[C: Person](
         meta=ScenarioMeta(title=title, premise=premise or written.situation, kind=kind),
         engine=engine_id,
         packs=packs,
-        payload=SceneScenario(world=opening_canon(written, source)),
+        payload=opening_canon(written, source),
     )

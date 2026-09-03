@@ -15,7 +15,7 @@ def _tunnelgoons_game() -> tuple[AnyEngine, TunnelGoonsGame]:
 def test_the_shipped_game_begins_on_the_maps_start_with_the_starting_items() -> None:
     _, state = _tunnelgoons_game()
     assert state.packs == ()
-    world = state.payload.world
+    world = state.payload
     assert world.visits[0].place == world.player.place
     assert {item.name for item in world.carried(world.player.id)} == {
         "Pry Bar (melee weapon)",

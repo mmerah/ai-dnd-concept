@@ -16,7 +16,7 @@ def behind(state: AnyGame) -> AnyGame:
     if not isinstance(state, BreathlessGame):
         raise AssertionError(f"unsupported golden engine state: {type(state).__name__}")
     draft = state.draft()
-    draft.payload.world.runs[0].exchanges.append(
+    draft.payload.runs[0].exchanges.append(
         Exchange(
             prompt="I look around the Bell House before going further.",
             lines=(SpokenLine(text="Ovid Sarn watches you from the cracked window."),),

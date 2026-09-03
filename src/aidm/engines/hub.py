@@ -1,8 +1,9 @@
 from collections.abc import Sequence
+from typing import Annotated
 
 from pydantic import Field
 
-from aidm.core.entities import Frozen, Slug
+from aidm.core.entities import Frozen, Mutable, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import ScenarioKind
 from aidm.core.views import Panel, PanelRow, Rows
@@ -67,25 +68,16 @@ class Offer(Frozen):
     pitch: str = Field(min_length=1)  # the board's words, as the fixer posts it
 
 
-class Debrief(Frozen):
-    text: str = Field(min_length=1)
-    finished: bool
+type Board = Annotated[tuple[Offer, ...], Field(min_length=BOARD_MIN, max_length=BOARD_MAX)]
 
 
-class Stop(Frozen):
-    """One run or visit, as the job walk reads it; the engine maps its own shape to this."""
-
-    place: Slug
-    title: str
-    debrief: Debrief | None = None
-    job: str = ""  # the terms as the scene that left the hub wrote them; empty for Tunnel Goons
-
-
-class Job(Frozen):
+class Job(Mutable):
     title: str
     place: Slug
-    debrief: Debrief
-    job: str = ""
+    terms: str = ""  # as the scene that left the hub wrote them; empty for Tunnel Goons
+    started: int | None = None  # index of the first run or visit away from the hub
+    finished: bool = False  # the master's verdict
+    debrief: str | None = None  # the hub's word on the return; the job is closed once set
 
 
 def check_kind(kind: ScenarioKind, hub: Slug | None) -> None:
@@ -94,47 +86,37 @@ def check_kind(kind: ScenarioKind, hub: Slug | None) -> None:
 
 
 def check_board(hub: Slug | None, board: Sequence[Offer]) -> None:
-    if hub is None:
-        if board:
-            raise ValueError("a board with no hub")
-    elif not BOARD_MIN <= len(board) <= BOARD_MAX:
-        raise ValueError(f"a board of {len(board)} offers at hub {hub!r}")
+    if hub is None and board:
+        raise ValueError("a board with no hub")
 
 
-def job_titles(hub: Slug | None, stops: Sequence[Stop]) -> tuple[str, ...]:
-    titles: list[str] = []
-    since = ""
-    for stop in stops:
-        since = "" if hub is None or stop.place == hub else since or stop.title
-        titles.append(since)
-    return tuple(titles)
+def check_jobs(hub: Slug | None, jobs: Sequence[Job], walked: int) -> None:
+    if hub is None and jobs:
+        raise ValueError("a job with no hub")
+    for index, job in enumerate(jobs):
+        if index < len(jobs) - 1 and job.debrief is None:
+            raise ValueError(f"job {index} has no debrief and is not the last")
+        if (job.debrief is not None or job.finished) and job.started is None:
+            raise ValueError(f"job {index} is closed or finished before it was walked")
+        if job.started is not None and job.started >= walked:
+            raise ValueError(f"job {index} started past the walk")
 
 
-def job_start(stops: Sequence[Stop]) -> int:
-    debriefed = [index for index, stop in enumerate(stops) if stop.debrief is not None]
-    return debriefed[-1] if debriefed else 0
+def open_job_of(jobs: Sequence[Job]) -> Job | None:
+    """The last job while its `debrief` is `None`."""
+    last = jobs[-1] if jobs else None
+    return last if last is not None and last.debrief is None else None
 
 
-def closed_jobs(hub: Slug | None, stops: Sequence[Stop]) -> tuple[Job, ...]:
-    titles = job_titles(hub, stops)
-    jobs: list[Job] = []
-    since_debrief = -1
-    for index, stop in enumerate(stops):
-        if stop.debrief is None:
-            continue
-        job_stop = next((step for step in range(since_debrief + 1, index) if titles[step]), None)
-        if job_stop is None:
-            raise ValueError("a debrief with no job before it")
-        jobs.append(
-            Job(
-                title=titles[job_stop],
-                place=stops[job_stop].place,
-                debrief=stop.debrief,
-                job=stops[job_stop].job,
-            )
-        )
-        since_debrief = index
-    return tuple(jobs)
+def closed_jobs_of(jobs: Sequence[Job]) -> tuple[Job, ...]:
+    return tuple(job for job in jobs if job.debrief is not None)
+
+
+def since_start[T](walked: list[T], job: Job | None, *, campaign: bool) -> list[T]:
+    """The open job's runs or visits; all of a one-shot's; the hub's last when none is open."""
+    if job is not None and job.started is not None:
+        return walked[job.started :]
+    return walked[-1:] if campaign else walked
 
 
 def board_rows(board: Sequence[Offer]) -> tuple[PanelRow, ...]:
@@ -153,10 +135,10 @@ def ledger(jobs: Sequence[Job]) -> str:
         return "(none yet)"
     lines: list[str] = []
     for job in jobs:
-        open_suffix = "" if job.debrief.finished else OPEN_SUFFIX
-        lines.append(f"- {job.title} ({job.place}): {job.debrief.text}{open_suffix}")
-        if open_suffix and job.job:
-            lines.append(f"  the job: {job.job}")
+        open_suffix = "" if job.finished else OPEN_SUFFIX
+        lines.append(f"- {job.title} ({job.place}): {job.debrief or ''}{open_suffix}")
+        if open_suffix and job.terms:
+            lines.append(f"  the job: {job.terms}")
     return "\n".join(lines)
 
 
@@ -192,10 +174,14 @@ def question_heading(at_hub: bool) -> str:
 
 
 def master_tail(
-    hub: Slug | None, at_hub: bool, board: Sequence[Offer], jobs: Sequence[Job], job: str
+    hub: Slug | None,
+    at_hub: bool,
+    board: Sequence[Offer],
+    jobs: Sequence[Job],
+    open_job: Job | None,
 ) -> Rows:
     return (
-        *((("THE JOB", job),) if job else ()),
+        *((("THE JOB", open_job.terms),) if open_job is not None and open_job.terms else ()),
         *((("JOBS SO FAR", ledger(jobs)),) if hub is not None else ()),
         *((("THE BOARD", board_lines(board)),) if at_hub else ()),
     )
@@ -207,17 +193,15 @@ def board_panel(at_hub: bool, board: Sequence[Offer]) -> tuple[Panel, ...]:
 
 def jobs_panel(jobs: Sequence[Job]) -> tuple[Panel, ...]:
     rows = tuple(
-        PanelRow(
-            label=job.title + ("" if job.debrief.finished else OPEN_SUFFIX), detail=job.debrief.text
-        )
+        PanelRow(label=job.title + ("" if job.finished else OPEN_SUFFIX), detail=job.debrief or "")
         for job in jobs
     )
     return (Panel(title="Jobs", rows=rows),) if jobs else ()
 
 
 def job_closed(job: Job) -> Fact:
-    title, text = job.title, job.debrief.text
-    label = "done" if job.debrief.finished else "left open"
+    title, text = job.title, job.debrief or ""
+    label = "done" if job.finished else "left open"
     return Fact(
         kind="job_closed",
         told=True,

@@ -14,292 +14,279 @@
   "pending": null,
   "notes": [],
   "payload": {
-    "world": {
-      "runs": [
-        {
-          "scene": {
-            "place": "vault-stair",
-            "title": "The Vault Stair",
-            "question": "Is there a way past the vault door from the stair?",
-            "situation": "A short flight of steps ends at an iron door, sealed, the abbey's dust undisturbed on its sill.",
-            "secret": "",
-            "debrief": null,
-            "job": ""
-          },
-          "present": [
-            "player"
-          ],
-          "hidden": [],
-          "exchanges": [
-            {
-              "prompt": "I try the vault door.",
-              "lines": [
-                {
-                  "speaker": null,
-                  "text": "The iron handle does not turn."
-                }
-              ],
-              "facts": [],
-              "decision": ""
-            }
-          ],
-          "left": null,
-          "job_done": false,
-          "recap": ""
-        },
-        {
-          "scene": {
-            "place": "abbots-study",
-            "title": "The Abbot's Study",
-            "question": "Can you get the way down to the vault out of this room, and out of Mara?",
-            "situation": "The only lit room left in the abbey: ledgers stacked to the beams, candle stubs gone cold, and Mara still cataloguing books nobody will read. A flagstone under the desk sits a finger proud of its neighbours.",
-            "secret": "The map is under the loose flagstone, and Mara knows it; she will not volunteer it while the ledgers are unfinished.",
-            "debrief": null,
-            "job": ""
-          },
-          "present": [
-            "mara",
-            "vault-map"
-          ],
-          "hidden": [],
-          "exchanges": [
-            {
-              "prompt": "I look for another way in.",
-              "lines": [
-                {
-                  "speaker": null,
-                  "text": "A flagstone by the wall sits proud of its neighbours."
-                }
-              ],
-              "facts": [],
-              "decision": ""
-            },
-            {
-              "prompt": "I lever up the loose flagstone and listen at the vault door.",
-              "lines": [
-                {
-                  "speaker": null,
-                  "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
-                }
-              ],
-              "facts": [
-                {
-                  "kind": "entity_discovered",
-                  "trace": "learned of the vault map[vault-map]",
-                  "told": true,
-                  "entity_id": "vault-map",
-                  "card": "The vault map discovered",
-                  "dice": []
-                },
-                {
-                  "kind": "question_answered",
-                  "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
-                  "told": true,
-                  "entity_id": "player",
-                  "card": "Oracle — Advantage (Quiet Hands) → yes-and",
-                  "dice": [
-                    {
-                      "label": "Chance",
-                      "faces": [
-                        6,
-                        6
-                      ],
-                      "rolled": [
-                        4,
-                        5
-                      ],
-                      "highlight": [
-                        1
-                      ]
-                    },
-                    {
-                      "label": "Risk",
-                      "faces": [
-                        6
-                      ],
-                      "rolled": [
-                        4
-                      ],
-                      "highlight": [
-                        0
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "kind": "tags_changed",
-                  "trace": "the player Kael[player] condition +Listening",
-                  "told": true,
-                  "entity_id": "player",
-                  "card": "Now: Listening",
-                  "dice": []
-                }
-              ],
-              "decision": ""
-            }
-          ],
-          "left": null,
-          "job_done": false,
-          "recap": ""
-        }
-      ],
-      "source": "",
-      "hub": null,
-      "board": [],
-      "cast": {
-        "mara": {
-          "id": "mara",
-          "name": "Mara",
-          "brief": "The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.",
-          "known": true,
-          "alive": true,
-          "concept": "A Cautious Scribe",
-          "skills": [
-            "Reads a Faded Hand",
-            "Knows the Catalogue"
-          ],
-          "frailties": [
-            "Slow to Trust"
-          ],
-          "gear": [
-            "Ledger and Ink"
-          ],
-          "conditions": [],
-          "goal": "Finish the catalogue before anyone strips the abbey",
-          "motive": "It is the last thing the abbot asked of her",
-          "nemesis": "",
-          "luck": {
-            "current": 6,
-            "maximum": 6
+    "runs": [
+      {
+        "place": "vault-stair",
+        "title": "The Vault Stair",
+        "question": "Is there a way past the vault door from the stair?",
+        "situation": "A short flight of steps ends at an iron door, sealed, the abbey's dust undisturbed on its sill.",
+        "secret": "",
+        "here": [
+          "player"
+        ],
+        "exchanges": [
+          {
+            "prompt": "I try the vault door.",
+            "lines": [
+              {
+                "speaker": null,
+                "text": "The iron handle does not turn."
+              }
+            ],
+            "facts": [],
+            "decision": ""
           }
-        },
-        "vault-map": {
-          "id": "vault-map",
-          "name": "the vault map",
-          "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny. Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.",
-          "known": true,
-          "alive": true,
-          "concept": "",
-          "skills": [],
-          "frailties": [],
-          "gear": [],
-          "conditions": [],
-          "goal": "",
-          "motive": "",
-          "nemesis": "",
-          "luck": {
-            "current": 6,
-            "maximum": 6
-          }
-        },
-        "tomas": {
-          "id": "tomas",
-          "name": "Brother Tomas",
-          "brief": "A deaf old porter who sweeps the cloister and knows almost nothing about the vault.",
-          "known": false,
-          "alive": true,
-          "concept": "A Deaf Old Porter",
-          "skills": [
-            "Knows Every Door"
-          ],
-          "frailties": [
-            "Hears Almost Nothing"
-          ],
-          "gear": [
-            "Twig Broom"
-          ],
-          "conditions": [],
-          "goal": "",
-          "motive": "",
-          "nemesis": "",
-          "luck": {
-            "current": 6,
-            "maximum": 6
-          }
-        },
-        "elena": {
-          "id": "elena",
-          "name": "Elena",
-          "brief": "The vault's former archivist; she alone remembers the sealing rite, and she names a price before she gives it up. She catalogued the vault ledgers beside Mara for two winters, until the night she went below alone and never came back up. The rite is in her head and nowhere else.",
-          "known": false,
-          "alive": true,
-          "concept": "A Ruined Archivist",
-          "skills": [
-            "Knows the Old Rites",
-            "Names Her Price"
-          ],
-          "frailties": [
-            "Flinches at the Dark"
-          ],
-          "gear": [
-            "Hooded Lantern"
-          ],
-          "conditions": [],
-          "goal": "Be paid for the sealing rite",
-          "motive": "Two winters below earned her that much",
-          "nemesis": "",
-          "luck": {
-            "current": 6,
-            "maximum": 6
-          }
-        },
-        "cloister-rat": {
-          "id": "cloister-rat",
-          "name": "a bloated rat",
-          "brief": "It has grown fat on the dead garden and does not run from a lantern.",
-          "known": false,
-          "alive": true,
-          "concept": "A Bloated Cloister Rat",
-          "skills": [
-            "Slips Into the Walls",
-            "Bites and Holds On"
-          ],
-          "frailties": [
-            "Does Not Run"
-          ],
-          "gear": [],
-          "conditions": [],
-          "goal": "",
-          "motive": "",
-          "nemesis": "",
-          "luck": {
-            "current": 6,
-            "maximum": 6
-          }
-        }
+        ],
+        "left": null,
+        "recap": ""
       },
-      "player": {
-        "id": "player",
-        "name": "Kael",
-        "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
+      {
+        "place": "abbots-study",
+        "title": "The Abbot's Study",
+        "question": "Can you get the way down to the vault out of this room, and out of Mara?",
+        "situation": "The only lit room left in the abbey: ledgers stacked to the beams, candle stubs gone cold, and Mara still cataloguing books nobody will read. A flagstone under the desk sits a finger proud of its neighbours.",
+        "secret": "The map is under the loose flagstone, and Mara knows it; she will not volunteer it while the ledgers are unfinished.",
+        "here": [
+          "mara",
+          "vault-map"
+        ],
+        "exchanges": [
+          {
+            "prompt": "I look for another way in.",
+            "lines": [
+              {
+                "speaker": null,
+                "text": "A flagstone by the wall sits proud of its neighbours."
+              }
+            ],
+            "facts": [],
+            "decision": ""
+          },
+          {
+            "prompt": "I lever up the loose flagstone and listen at the vault door.",
+            "lines": [
+              {
+                "speaker": null,
+                "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
+              }
+            ],
+            "facts": [
+              {
+                "kind": "entity_discovered",
+                "trace": "learned of the vault map[vault-map]",
+                "told": true,
+                "entity_id": "vault-map",
+                "card": "The vault map discovered",
+                "dice": []
+              },
+              {
+                "kind": "question_answered",
+                "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
+                "told": true,
+                "entity_id": "player",
+                "card": "Oracle — Advantage (Quiet Hands) → yes-and",
+                "dice": [
+                  {
+                    "label": "Chance",
+                    "faces": [
+                      6,
+                      6
+                    ],
+                    "rolled": [
+                      4,
+                      5
+                    ],
+                    "highlight": [
+                      1
+                    ]
+                  },
+                  {
+                    "label": "Risk",
+                    "faces": [
+                      6
+                    ],
+                    "rolled": [
+                      4
+                    ],
+                    "highlight": [
+                      0
+                    ]
+                  }
+                ]
+              },
+              {
+                "kind": "tags_changed",
+                "trace": "the player Kael[player] condition +Listening",
+                "told": true,
+                "entity_id": "player",
+                "card": "Now: Listening",
+                "dice": []
+              }
+            ],
+            "decision": ""
+          }
+        ],
+        "left": null,
+        "recap": ""
+      }
+    ],
+    "source": "",
+    "hub": null,
+    "board": [],
+    "jobs": [],
+    "cast": {
+      "mara": {
+        "id": "mara",
+        "name": "Mara",
+        "brief": "The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.",
         "known": true,
         "alive": true,
-        "concept": "A Wary Relic-Hunter",
+        "concept": "A Cautious Scribe",
         "skills": [
-          "Reads Old Stonework",
-          "Quiet Hands"
+          "Reads a Faded Hand",
+          "Knows the Catalogue"
         ],
         "frailties": [
-          "Never Walks Away"
+          "Slow to Trust"
         ],
         "gear": [
-          "Pry Bar",
-          "Chalk and Wire",
-          "A Guttering Lantern"
+          "Ledger and Ink"
         ],
-        "conditions": [
-          "Listening"
-        ],
-        "goal": "Find what has been sealed away, and open it",
-        "motive": "Whatever was worth sealing is worth more unsealed",
+        "conditions": [],
+        "goal": "Finish the catalogue before anyone strips the abbey",
+        "motive": "It is the last thing the abbot asked of her",
         "nemesis": "",
         "luck": {
           "current": 6,
           "maximum": 6
         }
       },
-      "party": []
+      "vault-map": {
+        "id": "vault-map",
+        "name": "the vault map",
+        "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny. Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.",
+        "known": true,
+        "alive": true,
+        "concept": "",
+        "skills": [],
+        "frailties": [],
+        "gear": [],
+        "conditions": [],
+        "goal": "",
+        "motive": "",
+        "nemesis": "",
+        "luck": {
+          "current": 6,
+          "maximum": 6
+        }
+      },
+      "tomas": {
+        "id": "tomas",
+        "name": "Brother Tomas",
+        "brief": "A deaf old porter who sweeps the cloister and knows almost nothing about the vault.",
+        "known": false,
+        "alive": true,
+        "concept": "A Deaf Old Porter",
+        "skills": [
+          "Knows Every Door"
+        ],
+        "frailties": [
+          "Hears Almost Nothing"
+        ],
+        "gear": [
+          "Twig Broom"
+        ],
+        "conditions": [],
+        "goal": "",
+        "motive": "",
+        "nemesis": "",
+        "luck": {
+          "current": 6,
+          "maximum": 6
+        }
+      },
+      "elena": {
+        "id": "elena",
+        "name": "Elena",
+        "brief": "The vault's former archivist; she alone remembers the sealing rite, and she names a price before she gives it up. She catalogued the vault ledgers beside Mara for two winters, until the night she went below alone and never came back up. The rite is in her head and nowhere else.",
+        "known": false,
+        "alive": true,
+        "concept": "A Ruined Archivist",
+        "skills": [
+          "Knows the Old Rites",
+          "Names Her Price"
+        ],
+        "frailties": [
+          "Flinches at the Dark"
+        ],
+        "gear": [
+          "Hooded Lantern"
+        ],
+        "conditions": [],
+        "goal": "Be paid for the sealing rite",
+        "motive": "Two winters below earned her that much",
+        "nemesis": "",
+        "luck": {
+          "current": 6,
+          "maximum": 6
+        }
+      },
+      "cloister-rat": {
+        "id": "cloister-rat",
+        "name": "a bloated rat",
+        "brief": "It has grown fat on the dead garden and does not run from a lantern.",
+        "known": false,
+        "alive": true,
+        "concept": "A Bloated Cloister Rat",
+        "skills": [
+          "Slips Into the Walls",
+          "Bites and Holds On"
+        ],
+        "frailties": [
+          "Does Not Run"
+        ],
+        "gear": [],
+        "conditions": [],
+        "goal": "",
+        "motive": "",
+        "nemesis": "",
+        "luck": {
+          "current": 6,
+          "maximum": 6
+        }
+      }
     },
+    "player": {
+      "id": "player",
+      "name": "Kael",
+      "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
+      "known": true,
+      "alive": true,
+      "concept": "A Wary Relic-Hunter",
+      "skills": [
+        "Reads Old Stonework",
+        "Quiet Hands"
+      ],
+      "frailties": [
+        "Never Walks Away"
+      ],
+      "gear": [
+        "Pry Bar",
+        "Chalk and Wire",
+        "A Guttering Lantern"
+      ],
+      "conditions": [
+        "Listening"
+      ],
+      "goal": "Find what has been sealed away, and open it",
+      "motive": "Whatever was worth sealing is worth more unsealed",
+      "nemesis": "",
+      "luck": {
+        "current": 6,
+        "maximum": 6
+      }
+    },
+    "party": [],
     "twist": {
       "current": 0,
       "maximum": 3

@@ -5,19 +5,17 @@ from aidm.core.model import Game
 from aidm.core.views import NarratorView, Panel, PanelRow, PlayerView, Subject, speaker_of
 from aidm.engines.core import Person, party_panel
 from aidm.engines.hub import board_panel, jobs_panel
-from aidm.engines.scenes.world import SceneRun, SceneState, player_over
+from aidm.engines.scenes.world import SceneRun, SceneWorld, player_over
 
 
 def trail_panel(runs: Sequence[SceneRun]) -> Panel:
-    return Panel(
-        title="Trail", rows=tuple(PanelRow(label=one.scene.title, detail="") for one in runs)
-    )
+    return Panel(title="Trail", rows=tuple(PanelRow(label=one.title, detail="") for one in runs))
 
 
-def narrator_view[S: SceneState[Any, Any]](state: Game[S]) -> NarratorView:
-    world = state.payload.world
-    scene = world.current
-    here = [one for one in world.here() if one.known]
+def narrator_view[W: SceneWorld[Any, Any]](state: Game[W]) -> NarratorView:
+    world = state.payload
+    scene = world.run
+    here = list(world.here())
     return NarratorView(
         place=scene.place,
         title=scene.title,
@@ -28,15 +26,15 @@ def narrator_view[S: SceneState[Any, Any]](state: Game[S]) -> NarratorView:
     )
 
 
-def player_view[S: SceneState[Any, Any]](state: Game[S], extra: tuple[Panel, ...]) -> PlayerView:
-    world = state.payload.world
+def player_view[W: SceneWorld[Any, Any]](state: Game[W], extra: tuple[Panel, ...]) -> PlayerView:
+    world = state.payload
     player = world.player
     here_rows = (
         PanelRow(label=f"{player.name} (you)", detail=player.brief, icon_id=player.id),
         *(
             PanelRow(label=one.name, detail=one.brief, icon_id=one.id)
             for one in world.here()
-            if one.known and one.id != player.id
+            if one.id != player.id
         ),
     )
     return PlayerView(
@@ -52,7 +50,7 @@ def player_view[S: SceneState[Any, Any]](state: Game[S], extra: tuple[Panel, ...
             *party_panel(world.members()),
             Panel(title="Here", rows=here_rows),
             trail_panel(world.job_runs()),
-            *jobs_panel(world.jobs()),
+            *jobs_panel(world.closed_jobs()),
         ),
         prompt=state.pending,
         over=player_over(state),

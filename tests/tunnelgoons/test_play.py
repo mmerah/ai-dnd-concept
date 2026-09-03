@@ -57,7 +57,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
             dangerous=True,
         ),
     )
-    world = state.payload.world
+    world = state.payload
     assert world.player.place == "corridor"
     assert world.npcs["crawler"].alive
     assert world.player.hp.current == world.player.hp.maximum - MARGIN
@@ -70,7 +70,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
         tool_call("move", to_id="sealed-cell"),
         tool_call("rest"),
     )
-    world = state.payload.world
+    world = state.payload
     assert world.player.place == "sealed-cell"
     assert world.player.hp.current == world.player.hp.maximum
 
@@ -83,11 +83,11 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
     )
     assert table.service.transition_available()
 
-    before_turn, before_place = state.turn, state.payload.world.player.place
+    before_turn, before_place = state.turn, state.payload.player.place
     table.spawner.answers["worldsmith"] = [json.dumps(REGION)]
     await table.service.play("Deeper in.", moving_on=True)
 
     after = table.state
     assert after.turn == before_turn
-    assert after.payload.world.player.place == before_place
-    assert set(REGION["places"]) <= set(after.payload.world.places)
+    assert after.payload.player.place == before_place
+    assert set(REGION["places"]) <= set(after.payload.places)

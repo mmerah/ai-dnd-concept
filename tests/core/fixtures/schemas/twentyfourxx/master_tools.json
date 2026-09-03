@@ -396,8 +396,8 @@
     }
   },
   {
-    "name": "job_done",
-    "description": "Once per job, when the player's own words close out the job: raise the named skill and pay out its credits.",
+    "name": "after_job",
+    "description": "The SRD's after-a-job step, once per job, when the player's own words close it: raise the named skill and pay out its credits.",
     "parameters": {
       "additionalProperties": false,
       "properties": {

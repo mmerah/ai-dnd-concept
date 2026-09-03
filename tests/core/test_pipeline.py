@@ -37,13 +37,13 @@ async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_pat
 
     assert [role for role, _ in table.spawner.prompts] == ["master", "narrator"]
     assert [fact.kind for fact in table.facts] == ["entity_discovered", "tags_changed"]
-    assert "the vault map" in state.payload.world.player.gear
+    assert "the vault map" in state.payload.player.gear
     narrator = table.spawner.prompt("narrator")
     assert "Elena" not in narrator
     # The sheets are the game master's: no tag the engine rolls by reaches the narrator.
     assert "concept" not in narrator
     assert state.turn == 1
-    assert state.payload.world.exchanges()[-1].prompt == "I search beneath the desk."
+    assert state.payload.exchanges()[-1].prompt == "I search beneath the desk."
 
 
 async def test_the_turn_holds_its_facts_in_resolver_order(tmp_path: Path) -> None:
@@ -59,7 +59,7 @@ async def test_the_turn_holds_its_facts_in_resolver_order(tmp_path: Path) -> Non
 
     landed = ["The vault map discovered", "Took the vault map", "Now: Listening"]
     assert [fact.card for fact in cards(table.facts)] == landed
-    assert [fact.card for fact in state.payload.world.exchanges()[-1].facts] == landed
+    assert [fact.card for fact in state.payload.exchanges()[-1].facts] == landed
 
 
 async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: Path) -> None:
@@ -71,7 +71,7 @@ async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: 
         await table.service.play("I take the map.")
 
     assert table.service.state.model_dump_json() == before
-    assert table.service.state.payload.world.exchanges() == ()
+    assert table.service.state.payload.exchanges() == ()
 
 
 async def test_the_engine_rolls_the_outcome_the_facts_then_record(tmp_path: Path) -> None:
@@ -109,7 +109,7 @@ async def test_the_master_reacts_in_run_to_its_own_earlier_tool_call(tmp_path: P
         changed("join_party", entity_id="tomas"),
     )
 
-    assert state.payload.world.party == ["tomas"]
+    assert state.payload.party == ["tomas"]
 
 
 async def test_an_illegal_tool_call_is_refused_with_the_reason(tmp_path: Path) -> None:
@@ -117,7 +117,7 @@ async def test_an_illegal_tool_call_is_refused_with_the_reason(tmp_path: Path) -
 
     state = await played(table, "I wait.", changed("reveal", entity_id="nowhere"), FOUND)
 
-    assert state.payload.world.require(MAP).known
+    assert state.payload.require(MAP).known
     assert any("unknown id 'nowhere'" in one for one in table.refusals)
 
 
@@ -131,7 +131,7 @@ async def test_a_call_its_own_fields_refuse_does_not_kill_the_turn(tmp_path: Pat
         changed("drive", entity_id=PLAYER_ID, goal="Find the way down."),
     )
 
-    assert state.payload.world.player.goal == "Find the way down."
+    assert state.payload.player.goal == "Find the way down."
     assert any("goal, a motive or a nemesis" in one for one in table.refusals)
 
 
@@ -144,7 +144,7 @@ async def test_a_later_call_in_one_turn_sees_the_earlier_calls_draft(
         table, "I close the book.", tool_call("next_scene"), tool_call("next_scene")
     )
 
-    assert state.payload.world.run.left is not None
+    assert state.payload.run.left is not None
     assert any("already settled" in one for one in table.refusals)
 
 
@@ -161,7 +161,7 @@ async def test_a_line_spoken_by_someone_not_here_is_re_prompted_with_the_id(
     await table.service.play("I wait.")
 
     assert any("elena" in prompt for role, prompt in table.spawner.prompts if role == "narrator")
-    assert table.service.state.payload.world.exchanges()[-1].narration == "The door settles."
+    assert table.service.state.payload.exchanges()[-1].narration == "The door settles."
 
 
 async def test_a_master_that_crashes_after_applying_still_commits_what_it_applied(
@@ -180,7 +180,7 @@ async def test_a_master_that_crashes_after_applying_still_commits_what_it_applie
     await table.service.play("I take the map and read it.")
 
     assert table.service.state.turn == 1
-    assert table.service.state.payload.world.require(MAP).known
+    assert table.service.state.payload.require(MAP).known
 
 
 async def test_a_master_that_crashed_after_a_tool_landed_is_not_spawned_again(

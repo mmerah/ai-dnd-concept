@@ -58,16 +58,15 @@ def updated[T: BaseModel](model: T, **changes: object) -> T:
 
 
 def with_entity(state: Loner3eGame, entity: LonerCharacter) -> Loner3eGame:
-    """Added to the cast and to the scene: present must be known, so an unmet one is hidden."""
+    """Added to the cast and to the scene; `known` alone decides present or hidden."""
     draft = state.draft()
-    draft.payload.world.cast[entity.id] = entity
-    run = draft.payload.world.run
-    (run.present if entity.known else run.hidden).append(entity.id)
+    draft.payload.cast[entity.id] = entity
+    draft.payload.run.here.append(entity.id)
     return draft.committed()
 
 
 def loner_sheet(state: Loner3eGame, entity_id: EntityId) -> LonerCharacter:
-    return state.payload.world.require(entity_id)
+    return state.payload.require(entity_id)
 
 
 def scenario() -> Loner3eScenarioFile:

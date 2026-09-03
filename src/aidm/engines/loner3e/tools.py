@@ -124,7 +124,7 @@ class Oracle:
     def resolve_question(
         self, draft: Loner3eGame, action: Question, rng: Random
     ) -> tuple[Fact, ...]:
-        world = draft.payload.world
+        world = draft.payload
         actor = world.require_alive_here(action.actor_id)
         facts = world.reveal(actor)
         opponent: LonerCharacter | None = None
@@ -195,11 +195,11 @@ def apply_change(world: LonerWorld, change: WorldChange) -> list[Fact]:
 
 
 def change_world(draft: Loner3eGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-    return apply_change(draft.payload.world, args.change)
+    return apply_change(draft.payload, args.change)
 
 
 def next_scene(draft: Loner3eGame, args: NextScene, _rng: Random) -> tuple[Fact, ...]:
-    return draft.payload.world.settle(args.job_done, args.pursuit)
+    return draft.payload.settle(args.job_done, args.pursuit)
 
 
 def twist_table(packs: Mapping[str, Pack]) -> tuple[tuple[str, str], ...]:
@@ -222,8 +222,8 @@ def outcome_for(chance: int, risk: int) -> Outcome:
 
 
 def apply_restore_luck(draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
-    actor = draft.payload.world.require_alive_here(args.actor_id)
-    facts = draft.payload.world.reveal(actor)
+    actor = draft.payload.require_alive_here(args.actor_id)
+    facts = draft.payload.reveal(actor)
     # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
     facts.extend(_refill(draft, actor, "the conflict is behind them"))
     return facts
@@ -232,7 +232,7 @@ def apply_restore_luck(draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> l
 def close_conflicts(draft: Loner3eGame) -> tuple[Fact, ...]:
     """A scene ends its conflicts so nobody carries a spent pool on; the dead keep theirs."""
     facts: list[Fact] = []
-    for one in draft.payload.world.here():
+    for one in draft.payload.here():
         if one.alive and one.luck.current < LUCK_MAX:
             facts.extend(_refill(draft, one, "the scene is over"))
     return tuple(facts)
@@ -362,7 +362,7 @@ def _shortfall(pool: Counter) -> int:
 
 def _refill(draft: Loner3eGame, side: LonerCharacter, why: str) -> list[Fact]:
     return counter_fact(
-        side, side.luck, _shortfall(side.luck), "Luck", why, draft.payload.world.player.id
+        side, side.luck, _shortfall(side.luck), "Luck", why, draft.payload.player.id
     )
 
 
@@ -391,7 +391,7 @@ def _strike(
     harm = outcome.harm
     hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
     why = f"{striker.name} gets the better of the exchange"
-    facts = counter_fact(hit, hit.luck, -abs(harm), "Luck", why, draft.payload.world.player.id)
+    facts = counter_fact(hit, hit.luck, -abs(harm), "Luck", why, draft.payload.player.id)
     if hit.luck.current != 0:
         return facts
     draft.notes = (*draft.notes, defeat_note(hit.name))

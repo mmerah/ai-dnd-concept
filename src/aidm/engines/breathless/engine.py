@@ -19,7 +19,7 @@ from aidm.engines.breathless.world import (
     BreathlessCharacterFile,
     BreathlessGame,
     BreathlessScenarioFile,
-    BreathlessState,
+    BreathlessWorld,
     Survivor,
     player_survivor,
 )
@@ -57,8 +57,8 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
     def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
         return guidance(self.packs, picks)
 
-    def new_state(self, canon: SceneCanon[Person], character: AnyCharacter) -> BreathlessState:
-        return BreathlessState(world=new_world(canon, player_survivor(character)))
+    def new_state(self, canon: SceneCanon[Person], character: AnyCharacter) -> BreathlessWorld:
+        return new_world(BreathlessWorld, canon, player_survivor(character))
 
     def master_sections(self, state: BreathlessGame) -> Rows:
         return master_sections(state)

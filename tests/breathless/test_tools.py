@@ -31,7 +31,7 @@ PACKS = load_packs((PACKS_DIR,), Pack)
 
 def test_check_on_a_skill_wears_it() -> None:
     draft = small_world().draft()
-    player = draft.payload.world.player
+    player = draft.payload.player
     facts = check(draft, Check(what="Force the door", skill="bash"), Random(0))
     assert player.worn["bash"] == stepped(6)
     assert any(fact.kind == "checked" for fact in facts)
@@ -39,14 +39,14 @@ def test_check_on_a_skill_wears_it() -> None:
 
 def test_check_at_d4_stays_d4() -> None:
     draft = small_world().draft()
-    player = draft.payload.world.player
+    player = draft.payload.player
     _ = check(draft, Check(what="Spot a way through", skill="dash"), Random(1))
     assert player.worn["dash"] == 4
 
 
 def test_an_item_reduced_to_d4_is_gone() -> None:
     draft = small_world().draft()
-    player = draft.payload.world.player
+    player = draft.payload.player
     player.items[WRENCH].die = 6
     facts = check(draft, Check(what="Swing the axe", item_id=WRENCH), Random(0))
     assert WRENCH not in player.items
@@ -55,7 +55,7 @@ def test_an_item_reduced_to_d4_is_gone() -> None:
 
 def test_stunt_refused_twice() -> None:
     draft = small_world().draft()
-    player = draft.payload.world.player
+    player = draft.payload.player
     _ = check(draft, Check(what="Leap the gap", stunt=True), Random(0))
     assert player.stunted
     with pytest.raises(ValueError, match="catches their breath"):
@@ -71,7 +71,7 @@ def test_check_needs_exactly_one_of_skill_item_or_stunt() -> None:
 
 def test_vulnerable_fail_leaves_a_note() -> None:
     draft = small_world().draft()
-    player = draft.payload.world.player
+    player = draft.payload.player
     player.stress.current = 4
     _ = check(draft, Check(what="Force the door", skill="bash", dangerous=True), Random(2))
     assert any("vulnerable" in note for note in draft.notes)
@@ -79,7 +79,7 @@ def test_vulnerable_fail_leaves_a_note() -> None:
 
 def test_catch_breath_resets_worn_loot_and_stunt_but_keeps_stress_and_item_dice() -> None:
     draft = small_world().draft()
-    player = draft.payload.world.player
+    player = draft.payload.player
     player.worn["bash"] = 4
     player.loot = 6
     player.stunted = True
@@ -108,7 +108,7 @@ def test_use_med_kit_refused_without_a_kit() -> None:
 
 def test_use_med_kit_clears_two_stress() -> None:
     draft = small_world().draft()
-    player = draft.payload.world.player
+    player = draft.payload.player
     player.med_kit = True
     player.stress.current = 3
     facts = use_med_kit(draft, NoArgs(), Random(0))
@@ -140,7 +140,7 @@ def test_loot_on_an_item_with_room_offers_take() -> None:
 
 def test_loot_on_an_item_with_a_full_backpack_offers_swaps() -> None:
     draft = small_world().draft()
-    player = draft.payload.world.player
+    player = draft.payload.player
     player.items[EntityId("rope")] = Item(name="Rope", die=6)
     player.items[EntityId("torch")] = Item(name="Torch", die=6)
     assert len(player.items) == 3
@@ -163,7 +163,7 @@ def test_loot_at_d10_or_better_also_offers_a_med_kit() -> None:
 
 def test_loot_replay_applies_the_chosen_option() -> None:
     draft = small_world().draft()
-    player = draft.payload.world.player
+    player = draft.payload.player
     facts = loot_check(draft, LootCheck(item="Machete", granted=8, choice="take"), Random(0))
     key = EntityId("machete")
     assert player.items[key] == Item(name="Machete", die=8)
@@ -188,7 +188,7 @@ def test_leave_and_enter_on_the_player_are_refused() -> None:
 def test_kill_on_the_player_ends_the_game() -> None:
     draft = small_world().draft()
     facts = changed_facts(draft, "kill", entity_id=PLAYER_ID)
-    assert not draft.payload.world.player.alive
+    assert not draft.payload.player.alive
     assert player_over(draft) == "You died."
     assert any(fact.card == "You are dead" for fact in facts)
 
@@ -196,26 +196,26 @@ def test_kill_on_the_player_ends_the_game() -> None:
 def test_drop_item_removes_the_key() -> None:
     draft = small_world().draft()
     _ = changed_facts(draft, "drop_item", item_id=WRENCH)
-    assert WRENCH not in draft.payload.world.player.items
+    assert WRENCH not in draft.payload.player.items
 
 
 def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() -> None:
     draft = hub_world()
-    world = draft.payload.world
+    world = draft.payload
     facts = next_scene(draft, NextScene(job_done=True), Random(0))
     assert world.run.left is not None
-    assert world.run.job_done
+    assert world.jobs[-1].finished
     assert JOB_DONE in facts
 
     at_hub = hub_world()
-    at_hub.payload.world.runs = [at_hub.payload.world.runs[0]]
+    at_hub.payload.runs = [at_hub.payload.runs[0]]
     with pytest.raises(ValueError, match="no job is open here"):
         _ = next_scene(at_hub, NextScene(job_done=True), Random(0))
 
 
 def test_next_scene_with_pursuit_settles_the_run_and_leaves_a_go_on_row() -> None:
     draft = hub_world()
-    world = draft.payload.world
+    world = draft.payload
     facts = next_scene(draft, NextScene(pursuit="the control deck"), Random(0))
     assert world.run.left == "the control deck"
     assert SCENE_LEFT in facts

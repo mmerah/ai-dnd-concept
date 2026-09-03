@@ -55,8 +55,8 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
     }
     dumped = str(narrator.model_dump())
     assert "The Secret" not in dumped
-    assert held.payload.world.current.secret not in dumped
-    assert held.payload.world.current.secret in str(master)
+    assert held.payload.run.secret not in dumped
+    assert held.payload.run.secret in str(master)
 
 
 def test_the_master_is_shown_the_hidden_canon_and_the_tags_in_play() -> None:
@@ -86,7 +86,7 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:
     assert "Mara" in prompt
     assert "The Secret" not in prompt
     assert "hidden-actor" not in prompt
-    assert held.payload.world.current.secret not in prompt
+    assert held.payload.run.secret not in prompt
 
 
 def test_the_narrator_prompt_carries_only_what_the_player_has_read() -> None:

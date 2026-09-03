@@ -2,7 +2,7 @@ from pydantic import Field
 
 from aidm.core.entities import EntityId, Frozen, Slug
 from aidm.engines.core import Person
-from aidm.engines.hub import BOARD_MAX, BOARD_MIN, MIN_JOB, Offer
+from aidm.engines.hub import MIN_JOB, Board
 
 MIN_SITUATION = 80  # what the worldsmith owes a scene; an authored `Scene` is held to less
 MIN_RECAP = 60
@@ -50,7 +50,7 @@ class JobDraft[C: Person](NextDraft[C]):
 class HubDraft[C: Person](SceneDraft[C]):
     """The campaign's opening: the hub and its board."""
 
-    offers: tuple[Offer, ...] = Field(min_length=BOARD_MIN, max_length=BOARD_MAX)
+    offers: Board
 
 
 class ReturnDraft[C: Person](HubDraft[C]):

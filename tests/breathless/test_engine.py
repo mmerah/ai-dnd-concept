@@ -13,7 +13,7 @@ from aidm.engines.breathless.world import (
 )
 from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.hub import Offer
-from aidm.engines.scenes.world import Scene, SceneCanon, SceneScenario
+from aidm.engines.scenes.world import SceneCanon, SceneRun
 from aidm.engines.seam import AnyEngine
 
 FIRE_AXE = EntityId("fire-axe")
@@ -29,9 +29,9 @@ def _breathless_game() -> tuple[AnyEngine, BreathlessGame]:
 def test_the_shipped_game_begins_with_the_srd_pack_and_the_players_item() -> None:
     _, state = _breathless_game()
     assert state.packs == (SRD_PACK,)
-    world = state.payload.world
+    world = state.payload
     assert world.player.items[FIRE_AXE].die == STARTING_ITEM
-    assert PLAYER_ID not in world.run.present
+    assert PLAYER_ID not in world.present()
 
 
 def test_a_scenario_with_no_packs_is_refused_by_check_packs() -> None:
@@ -49,18 +49,14 @@ def test_check_game_refuses_a_campaign_meta_with_no_hub() -> None:
 
 def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
     engine, state = _breathless_game()
-    world = state.payload.world
-    hub_payload = state.payload.model_copy(
+    world = state.payload
+    hub_payload = world.model_copy(
         update={
-            "world": world.model_copy(
-                update={
-                    "hub": world.run.scene.place,
-                    "board": (
-                        Offer(title="Job One", pitch="I take job one."),
-                        Offer(title="Job Two", pitch="I take job two."),
-                    ),
-                }
-            )
+            "hub": world.run.place,
+            "board": (
+                Offer(title="Job One", pitch="I take job one."),
+                Offer(title="Job Two", pitch="I take job two."),
+            ),
         }
     )
     with pytest.raises(ValueError, match="one-shot"):
@@ -78,16 +74,14 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
         meta=ScenarioMeta(title="Test", premise="A test scenario."),
         engine=EngineId("breathless"),
         packs=(SRD_PACK,),
-        payload=SceneScenario(
-            world=SceneCanon(
-                cast={PLAYER_ID: decoy},
-                opening=Scene(
-                    place="alley",
-                    title="The Alley",
-                    question="Can they lose the mob in the alley?",
-                    situation="A" * 80,
-                ),
-            )
+        payload=SceneCanon(
+            cast={PLAYER_ID: decoy},
+            opening=SceneRun(
+                place="alley",
+                title="The Alley",
+                question="Can they lose the mob in the alley?",
+                situation="A" * 80,
+            ),
         ),
     )
     character = BreathlessCharacterFile(

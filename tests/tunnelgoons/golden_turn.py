@@ -22,7 +22,7 @@ def behind(state: AnyGame) -> AnyGame:
     if not isinstance(state, TunnelGoonsGame):
         raise AssertionError(f"unsupported golden engine state: {type(state).__name__}")
     draft = state.draft()
-    draft.payload.world.visits[0].exchanges.append(
+    draft.payload.visits[0].exchanges.append(
         Exchange(
             prompt="I look around the archway before going further.",
             lines=(SpokenLine(text="Grix waves you toward the corridor, impatient."),),
