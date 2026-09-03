@@ -50,6 +50,8 @@ None. The starting item list is in the SRD's character creation.
 - `rest` — heal the player to full Health in a safe spot.
 - `level_up` — raise one ability and either Health or Inventory by 1, once per adventure in a one-shot, once per job in a campaign.
 
+The three `change_world` arms are `engines/rooms/tools.py`'s, shared by every room engine, and count here as before.
+
 ## Deviations in this repo
 
 1. Levelling up is an end-of-adventure step the master calls once per adventure in a one-shot and once per job in a campaign. The SRD page says "every 2 game sessions", the 1.1 PDF "at the end of a game session"; an adventure is the closest thing this app has to a session.

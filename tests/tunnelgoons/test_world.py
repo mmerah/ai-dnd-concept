@@ -2,7 +2,7 @@ import pytest
 from support.tunnelgoons import HALL, MIRA, START, small_world
 
 from aidm.core.entities import EntityId, Refusal
-from aidm.engines.tunnelgoons.world import Item, Visit, Way
+from aidm.engines.rooms.world import Item, Visit, Way
 
 GHOST = EntityId("ghost")
 

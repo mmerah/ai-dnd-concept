@@ -8,7 +8,7 @@ For a campaign's opening, write the tavern: one known place, its keeper and regu
 
 For a job, write a whole dungeon by the opening map's bar, joining the map at the tavern. Its start is known and named after the offer taken. Write only new ids.
 
-Every npc needs `hp`: its Difficulty Score and its Health at once, graded as the rules grade a Difficulty Score: 8 easy, 10 moderate, 12 hard. Never name the player: they are put on the map by code. Ids are slugs.
+Never name the player: they are put on the map by code. Ids are slugs.
 
 Everything you need is below. Do not read, search or run anything in the repository.
 

@@ -1,9 +1,10 @@
-from typing import Literal, Self
+from typing import Self
 
 from pydantic import Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, Frozen, Refusal
 from aidm.core.play import PendingOption
+from aidm.engines.rooms.tools import SharedChange
 from aidm.engines.tunnelgoons.world import ABILITIES, Ability, Boost
 
 LEVEL_OPTIONS: tuple[PendingOption, ...] = tuple(
@@ -18,43 +19,11 @@ LEVEL_OPTIONS: tuple[PendingOption, ...] = tuple(
 )
 
 
-class Reveal(Frozen):
-    verb: Literal["reveal"]
-    entity_id: CheckedEntityId = Field(
-        description="Exact id of something hidden here: an npc or an item."
-    )
-
-
-class MoveItem(Frozen):
-    verb: Literal["move_item"]
-    item_id: CheckedEntityId = Field(description="Exact id of an item here or carried.")
-    to: CheckedEntityId = Field(description="Exact id of the player, an npc here, or this place.")
-
-
-class Kill(Frozen):
-    verb: Literal["kill"]
-    entity_id: CheckedEntityId = Field(description="Exact id of an npc here.")
-
-
-type WorldChange = Reveal | MoveItem | Kill
-
-
 class ChangeWorld(Frozen):
-    change: WorldChange = Field(
+    change: SharedChange = Field(
         discriminator="verb",
         description="The one world change to apply; `verb` picks the change.",
     )
-
-
-class Move(Frozen):
-    to_id: CheckedEntityId = Field(description="Exact id of the place to move to.")
-    with_ids: tuple[CheckedEntityId, ...] = Field(
-        default=(), description="Exact ids of living NPCs here who come along."
-    )
-
-
-class UnlockWay(Frozen):
-    to_id: CheckedEntityId = Field(description="Exact id of the locked way's destination.")
 
 
 class ActionRoll(Frozen):
