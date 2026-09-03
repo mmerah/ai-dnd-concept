@@ -11,7 +11,6 @@ from aidm.core.model import Game
 
 # The rng is a parameter so a trial run against a throwaway copy cannot consume the turn's dice.
 type Play[G: Game[Any]] = Callable[[G, Random], tuple[Fact, ...]]
-type Validate[G: Game[Any]] = Callable[[G], None]
 
 
 class NoArgs(Frozen):
@@ -39,21 +38,6 @@ def master_tool[G: Game[Any], A: BaseModel](
         return tuple(resolve(draft, args.model_validate(raw), rng))
 
     return MasterTool(name, description, args, call)
-
-
-def apply_to_draft[G: Game[Any]](
-    validate: Validate[G],
-    draft: G,
-    play: Play[G],
-    rng: Random,
-) -> tuple[Fact, ...]:
-    """Every mutation runs this sequence, so no caller can skip the engine's own gate."""
-    before = draft.pending
-    landed = play(draft, rng)
-    if before is not None and draft.pending is not before:
-        raise ValueError("the rules already wait on a decision; they take one at a time")
-    validate(draft)
-    return landed
 
 
 def schema_of(args: type[BaseModel]) -> dict[str, JsonValue]:

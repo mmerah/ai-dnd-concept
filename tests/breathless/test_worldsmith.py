@@ -13,8 +13,6 @@ from aidm.engines.scenes.drafts import HubDraft, ReturnDraft, SceneDraft
 from aidm.engines.scenes.world import scene_refusal
 from aidm.engines.scenes.worldsmith import install_scene, opening_canon
 
-ROLE = "you are the worldsmith"
-
 
 def _draft(**fields: object) -> SceneDraft[Person]:
     base = {
@@ -102,7 +100,7 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
 
 def test_render_worldsmith_lists_the_player_first() -> None:
     prompt = small_world().payload.render_worldsmith(
-        "Explore the alley.", "guidance text", SceneDraft[Person], role=ROLE
+        "Explore the alley.", "guidance text", SceneDraft[Person]
     )
     assert prompt.index("Jax[player]") < prompt.index("Mira[mira]")
 

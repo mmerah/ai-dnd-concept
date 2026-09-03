@@ -89,7 +89,6 @@ A_SCENE = {
     "present": ["mara"],
     "hidden": ["tomas"],
     "question": "Can you reach the chapter house before the lantern gives you away?",
-    "secret": "Tomas is listening from the chapter house door.",
 }
 RECAP = (
     "The player left the abbot's study behind, lantern shuttered, and made for the cloister "

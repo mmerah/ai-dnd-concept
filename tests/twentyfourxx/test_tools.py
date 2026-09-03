@@ -140,7 +140,6 @@ def test_luck_facts_are_untold() -> None:
     assert not dice_fact.told
     assert not luck_fact.told
     assert luck_fact.card == ""
-    assert luck_fact.entity_id is None
 
 
 def test_defend_breaks_the_item_and_adds_the_hindrance_refused_when_broken() -> None:

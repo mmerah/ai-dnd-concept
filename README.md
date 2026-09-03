@@ -26,7 +26,7 @@ Breathless is a survival game in scenes. Every roll wears the die down. Catching
 
 The create page lets the player choose a one-shot or a campaign. A campaign opens at a home base with a board of jobs to choose from. A job is one outing away from home. Coming home closes the job on a card with a debrief, and the board moves on. Played jobs pile up in a Jobs panel the player can look back through. A campaign ends only when the character dies. Where the rulebook prints a step for between jobs, the game master still runs it. The worldsmith writes a recap of each scene the player leaves, so a long job keeps its start.
 
-The three roles are spawned command-line programs. The narrator and the worldsmith return typed proposals; the master plays through tools, and only Python code changes state or rolls dice. The engine seam is `Engine`, an abstract class in `engines/seam.py`. `SceneEngine` is the base of the three scene engines. The registry in `engines/registry.py` is the one place that joins an engine to the app. Imports flow one way, `core <- engines <- turn <- app <- ui`, so nothing above the engines knows a world shape.
+The three roles are spawned command-line programs. The narrator and the worldsmith return typed proposals; the master plays through tools, and only Python code changes state or rolls dice. The engine seam is `Engine`, an abstract class every engine subclasses. `SceneEngine` is the base of the three scene engines. The registry is the one place that joins an engine to the app. Imports flow one way, `core <- engines <- turn <- app <- ui`, so nothing above the engines knows a world shape.
 
 ## Start the app
 

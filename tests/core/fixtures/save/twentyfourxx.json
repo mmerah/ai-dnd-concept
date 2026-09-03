@@ -20,7 +20,6 @@
         "title": "The Docking Ring",
         "question": "Can Kael get through Vessa's airlock and into the station, and on whose terms?",
         "situation": "QV-9's docking ring hums with full power, yet every comm panel down the corridor sits dark and silent. Vessa Rune waits at the airlock with her override key already drawn, and Harl Odum's salvage skiff sits clamped to the outer berth, its hatch cycling open before Kael has even hailed it.",
-        "secret": "Six days ago Vessa Rune ordered the station's maintenance android to seal the relay compartment and cut the beacon rather than risk a corrupted signal reaching the convoy; it has followed that order against everyone since, herself included.",
         "here": [
           "vessa-rune",
           "harl-odum",
@@ -51,7 +50,6 @@
                 "kind": "entity_discovered",
                 "trace": "learned of Warden Six[warden-six]",
                 "told": true,
-                "entity_id": "warden-six",
                 "card": "Warden Six discovered",
                 "dice": []
               },
@@ -59,7 +57,6 @@
                 "kind": "attempted",
                 "trace": "Slip along the dark gantry — Stealth d12 [8] -> success",
                 "told": true,
-                "entity_id": "player",
                 "card": "Slip along the dark gantry — Stealth d12 → success",
                 "dice": [
                   {
@@ -78,7 +75,6 @@
                 "kind": "credits_spent",
                 "trace": "the player Kael[player] spends ₡1 — Harl's docking logs",
                 "told": true,
-                "entity_id": "player",
                 "card": "₡1 spent — Harl's docking logs",
                 "dice": []
               }

@@ -9,7 +9,7 @@ from pydantic import JsonValue, ValidationError
 from aidm.core.facts import NOTHING, Fact, cards, traced
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, Exchange, Line, Narration, SpokenLine
-from aidm.core.tools import Play, apply_to_draft
+from aidm.core.tools import Play
 from aidm.core.views import NarratorView
 from aidm.engines.seam import AnyEngine
 from aidm.turn.context import ANSWERED_BY_OPTION, render_master
@@ -197,7 +197,11 @@ def _apply(turn: Turn, play: Play[AnyGame]) -> tuple[Fact, ...]:
     """One execution against a candidate; a refused call leaves the draft and the dice alone."""
     candidate, dice = turn.draft.draft(), deepcopy(turn.rng)
     try:
-        landed = apply_to_draft(turn.engine.validate, candidate, play, dice)
+        before = candidate.pending
+        landed = play(candidate, dice)
+        if before is not None and candidate.pending is not before:
+            raise ValueError("the rules already wait on a decision; they take one at a time")
+        turn.engine.validate(candidate)
         committed = candidate.committed()
     except ValidationError as broken:
         raise ValueError(

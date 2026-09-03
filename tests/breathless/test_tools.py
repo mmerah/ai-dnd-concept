@@ -176,7 +176,6 @@ def test_luck_facts_are_untold() -> None:
     assert not dice_fact.told
     assert not luck_fact.told
     assert luck_fact.card == ""
-    assert luck_fact.entity_id is None
 
 
 def test_leave_and_enter_on_the_player_are_refused() -> None:

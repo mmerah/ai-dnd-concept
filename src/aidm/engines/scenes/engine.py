@@ -7,7 +7,6 @@ from pydantic import BaseModel
 
 from aidm.core.entities import Slug
 from aidm.core.facts import Fact
-from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, AnyScenario, Game, ScenarioKind, WorldsmithAnswer
 from aidm.core.play import DecisionOption, Exchange, SceneRecord
 from aidm.core.views import NarratorView, Panel, PlayerView
@@ -30,8 +29,6 @@ from aidm.engines.scenes.worldsmith import (
     write_next,
 )
 from aidm.engines.seam import Engine, authored
-
-WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
 
 
 class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
@@ -100,7 +97,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
 
         prompt = render_opening(
             self.cast,
-            WORLDSMITH,
             source,
             self.guidance(packs, campaign=kind == "campaign"),
             kind,
@@ -120,7 +116,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             intent,
             worldsmith,
             cast_type=self.cast,
-            role=WORLDSMITH,
             guidance=self.guidance(draft.packs, campaign=world.hub is not None),
         )
         # The engine's own closing reads the scene being left, so it runs before the install.

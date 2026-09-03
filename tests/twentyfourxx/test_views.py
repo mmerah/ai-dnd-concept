@@ -37,12 +37,10 @@ def test_player_view_gear_panel_lists_items() -> None:
     assert PanelRow(label="Lockpick set", detail="") in gear.rows
 
 
-def test_master_sections_shows_hidden_entities_and_the_secret() -> None:
+def test_master_sections_shows_hidden_entities() -> None:
     game = small_world()
-    game.payload.run.secret = "Sable already took the cargo."
     sections = dict(master_sections(game))
     assert "Sable" in sections["HIDDEN HERE (the player has not found these)"]
-    assert sections["THE SCENE'S SECRET (never narrate this)"] == "Sable already took the cargo."
 
 
 def test_master_sections_gear_shows_none_for_empty_gear() -> None:

@@ -20,10 +20,8 @@ from aidm.engines.tunnelgoons.world import (
     TunnelGoonsScenarioFile,
     TunnelWorld,
     Visit,
-    history,
     player_goon,
     player_over,
-    record,
     starting_items,
 )
 from aidm.engines.tunnelgoons.worldsmith import (
@@ -87,10 +85,10 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
         return player_over(state)
 
     def record(self, state: TunnelGoonsGame, exchange: Exchange) -> None:
-        record(state, exchange)
+        state.payload.visit.exchanges.append(exchange)
 
     def history(self, state: TunnelGoonsGame) -> tuple[Exchange, ...]:
-        return history(state)
+        return state.payload.exchanges()
 
     def scenes(self, state: TunnelGoonsGame) -> tuple[SceneRecord, ...]:
         return state.payload.scenes()

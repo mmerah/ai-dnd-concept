@@ -4,7 +4,7 @@ from typing import Self
 
 from pydantic import model_validator
 
-from aidm.core.entities import EntityId, Frozen
+from aidm.core.entities import Frozen
 
 NOTHING = "- (nothing changed)"
 
@@ -34,7 +34,6 @@ class Fact(Frozen):
     kind: str
     trace: str
     told: bool = False
-    entity_id: EntityId | None = None
     card: str = ""
     dice: tuple[DiceEvent, ...] = ()
 

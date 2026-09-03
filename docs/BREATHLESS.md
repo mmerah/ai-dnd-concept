@@ -67,8 +67,7 @@ runs, so a finished run's return appends no note and nothing is owed.
 
 Fields and tools that exist for the app around the rules, not the rules themselves.
 
-- `known`, `hidden` and the scene `secret` — the told-fact gate: no unknown name reaches the
-  narrator.
+- `known` and `hidden` — the told-fact gate: no unknown name reaches the narrator.
 - `alive` and `kill` — the SRD leaves being taken out or dying to the table; the gate needs a flag,
   and a vulnerable player's failed dangerous check hands the master that ruling as a note.
 - `next_scene` and `left` — `settle`'s answer is the only end a scene has.

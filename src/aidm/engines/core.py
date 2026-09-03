@@ -199,7 +199,6 @@ def entity_fact(
         kind=kind,
         trace=trace,
         told=narrate and entity.known,
-        entity_id=entity.id,
         card=card,
         dice=dice,
     )

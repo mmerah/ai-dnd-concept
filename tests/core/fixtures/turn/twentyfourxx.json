@@ -3,7 +3,6 @@
     "kind": "entity_discovered",
     "trace": "learned of Warden Six[warden-six]",
     "told": true,
-    "entity_id": "warden-six",
     "card": "Warden Six discovered",
     "dice": []
   },
@@ -11,7 +10,6 @@
     "kind": "dice_rolled",
     "trace": "Slip along the dark gantry — Stealth: 1d12 [8]",
     "told": false,
-    "entity_id": null,
     "card": "",
     "dice": []
   },
@@ -19,7 +17,6 @@
     "kind": "attempted",
     "trace": "Slip along the dark gantry — Stealth d12 [8] -> success",
     "told": true,
-    "entity_id": "player",
     "card": "Slip along the dark gantry — Stealth d12 → success",
     "dice": [
       {
@@ -38,7 +35,6 @@
     "kind": "credits_spent",
     "trace": "the player Kael[player] spends ₡1 — Harl's docking logs",
     "told": true,
-    "entity_id": "player",
     "card": "₡1 spent — Harl's docking logs",
     "dice": []
   }
