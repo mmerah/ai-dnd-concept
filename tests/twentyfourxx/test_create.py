@@ -97,7 +97,7 @@ def test_items_land_in_order_comm_kit_weapon() -> None:
         "increase-3": "running",
     }
     character = ENGINE.create_character("Rook", "A quiet operator", picks)
-    assert [kit.name for kit in character.payload.items] == ["Comm", "Firearm"]
+    assert [item.name for item in character.payload.items.values()] == ["Comm", "Firearm"]
 
 
 def test_preview_character_ends_with_gear_row() -> None:
@@ -115,8 +115,16 @@ def test_preview_character_ends_with_gear_row() -> None:
 
 
 def test_preview_character_refuses_foreign_character_type() -> None:
-    foreign = Character(
-        id="x", engine=EngineId("other"), name="X", brief="Y", payload=_OtherPayload()
-    )
+    foreign = Character(id="x", engine=EngineId("other"), payload=_OtherPayload())
     with pytest.raises(ValueError):
         ENGINE.preview_character(foreign)
+
+
+def test_preview_character_refuses_a_sheet_that_is_not_the_players() -> None:
+    picks = {"pack": "srd", "specialty": "sneak", "origin": "alien", "trait-1": "a", "trait-2": "b"}
+    character = ENGINE.create_character("Rook", "A quiet operator", picks)
+    stranger = character.model_copy(
+        update={"payload": character.payload.model_copy(update={"id": "rook"})}
+    )
+    with pytest.raises(ValueError, match="the player's"):
+        ENGINE.preview_character(stranger)

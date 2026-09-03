@@ -1,8 +1,8 @@
 from pydantic import Field
 
-from aidm.core.entities import CheckedEntityId, Frozen
+from aidm.core.entities import CheckedEntityId, Frozen, Refusal
 from aidm.core.model import ScenarioKind
-from aidm.engines.hub import OFFER_ASK, Board
+from aidm.engines.hub import OFFER_ASK, Board, Campaign
 from aidm.engines.tunnelgoons.world import Dungeon, MapCanon, TunnelGoonsWorld
 
 MIN_PLACES = 4
@@ -56,6 +56,11 @@ def extension_refusal(draft: MapDraft, world: TunnelGoonsWorld) -> str | None:
 
 
 def opening_canon(draft: MapDraft, source: str, kind: ScenarioKind) -> MapCanon:
+    campaign = None
+    if kind == "campaign":
+        if draft.board is None:
+            raise Refusal("a campaign's opening needs a board")
+        campaign = Campaign(place=draft.start, board=draft.board)
     return MapCanon(
         places=draft.places,
         ways=draft.ways,
@@ -63,8 +68,7 @@ def opening_canon(draft: MapDraft, source: str, kind: ScenarioKind) -> MapCanon:
         items=draft.items,
         start=draft.start,
         source=source,
-        hub=draft.start if kind == "campaign" else None,
-        board=draft.board or (),
+        campaign=campaign,
     )
 
 

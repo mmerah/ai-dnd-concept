@@ -225,7 +225,7 @@ def test_change_tags_edits_one_list_and_refuses_what_it_cannot_move() -> None:
     assert "at least one" in refused(draft, "change_tags", entity_id=PLAYER_ID, kind="gear")
 
     traces = changed(draft, "change_tags", entity_id=PLAYER_ID, kind="gear", gained=["Rusty Key"])
-    assert "Rusty Key" in draft.payload.player.gear
+    assert "Rusty Key" in draft.payload.player.tagged("gear")
     assert traces[0].endswith("gear +Rusty Key")
 
     assert "already carries" in refused(
@@ -235,13 +235,13 @@ def test_change_tags_edits_one_list_and_refuses_what_it_cannot_move() -> None:
     traces = changed(
         draft, "change_tags", entity_id=PLAYER_ID, kind="condition", gained=["Listening"]
     )
-    assert "Listening" in draft.payload.player.conditions
+    assert "Listening" in draft.payload.player.tagged("condition")
     assert traces[0].endswith("condition +Listening")
 
     traces = changed(
         draft, "change_tags", entity_id=PLAYER_ID, kind="condition", lost=["Listening"]
     )
-    assert "Listening" not in draft.payload.player.conditions
+    assert "Listening" not in draft.payload.player.tagged("condition")
     assert traces[0].endswith("condition -Listening")
 
     assert "carries no condition" in refused(

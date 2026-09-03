@@ -1,6 +1,7 @@
 from collections.abc import Callable
 
 import pytest
+from core_test_support import the_campaign
 from pydantic import BaseModel
 from twentyfourxx_test_support import (
     HUB_PLACE,
@@ -16,7 +17,7 @@ from twentyfourxx_test_support import (
 
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.facts import Fact
-from aidm.core.model import AnyScenario, WorldsmithAnswer
+from aidm.core.model import AnyScenario, ScenarioMeta, WorldsmithAnswer
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.hub import GO_HOME, TAKE_JOB
 from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft, SceneDraft
@@ -46,7 +47,7 @@ def _draft(**fields: object) -> SceneDraft[Person]:
 
 
 def _built(written: SceneDraft[Person]) -> AnyScenario:
-    return ENGINE.build_scenario("Loading Bay", "", (), written, "", "one-shot")
+    return ENGINE.build_scenario(ScenarioMeta(title="Loading Bay", premise=""), (), written, "")
 
 
 def test_apply_scene_resolves_present_by_name() -> None:
@@ -356,10 +357,10 @@ def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> Non
 
 def test_install_scene_on_a_finished_hub_draft_swaps_the_board_and_notes_the_job() -> None:
     game = hub_world()
-    game.payload.jobs[-1].finished = True
+    campaign = the_campaign(game.payload.campaign)
+    campaign.jobs[-1].finished = True
     facts = ENGINE.install(game, _return_draft())
-    world = game.payload
-    assert [offer.title for offer in world.board] == ["Job 1", "Job 2"]
+    assert [offer.title for offer in campaign.board] == ["Job 1", "Job 2"]
     assert [fact.kind for fact in facts] == ["job_closed", "scene_opened"]
     assert any("The Dock Run" in note for note in game.notes)
 

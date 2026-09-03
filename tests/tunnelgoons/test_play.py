@@ -60,7 +60,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
         ),
     )
     world = state.payload
-    assert world.player.place == "corridor"
+    assert world.current.id == "corridor"
     assert world.npcs["crawler"].alive
     assert world.player.hp.current == world.player.hp.maximum - MARGIN
 
@@ -73,7 +73,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
         tool_call("rest"),
     )
     world = state.payload
-    assert world.player.place == "sealed-cell"
+    assert world.current.id == "sealed-cell"
     assert world.player.hp.current == world.player.hp.maximum
 
     state = await play_turn(
@@ -85,11 +85,11 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
     )
     assert table.service.engine.ready(table.service.state)
 
-    before_turn, before_place = state.turn, state.payload.player.place
+    before_turn, before_place = state.turn, state.payload.current.id
     table.spawner.answers["worldsmith"] = [json.dumps(REGION)]
     await table.service.play(Answer(text="Deeper in."), moving_on=True)
 
     after = table.state
     assert after.turn == before_turn
-    assert after.payload.player.place == before_place
+    assert after.payload.current.id == before_place
     assert set(REGION["places"]) <= set(after.payload.places)

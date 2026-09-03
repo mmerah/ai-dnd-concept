@@ -19,6 +19,7 @@ from aidm.app.speech import (
 from aidm.config import ProviderConfig, Providers, SpeechConfig
 from aidm.core.entities import EntityId
 from aidm.core.io import FileStore
+from aidm.core.model import ScenarioMeta
 from aidm.core.play import Exchange, Line, Speaker, SpokenLine
 
 NARRATOR = "Kore"
@@ -139,7 +140,9 @@ def test_open_reader_is_none_when_off_and_takes_the_scenarios_voice(tmp_path: Pa
             )
         ),
     )
-    voiced = scenario().model_copy(update={"voice": "Puck"})
+    voiced = scenario().model_copy(
+        update={"meta": ScenarioMeta(title="V", premise="p", voice="Puck")}
+    )
     reader = open_reader(on, store, target.slug, voiced)
     assert reader is not None
     assert reader.voice == "Puck"

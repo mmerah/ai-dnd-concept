@@ -2,7 +2,7 @@ import re
 from random import Random
 
 import pytest
-from core_test_support import change, refused
+from core_test_support import change, refused, the_campaign
 from tunnelgoons_test_support import (
     CRYPT,
     HALL,
@@ -39,7 +39,7 @@ def _total(card: str) -> int:
 def test_the_roll_adds_ability_and_items_and_penalizes_brute_and_skulker_over_inventory() -> None:
     draft = small_world().draft()
     world = draft.payload
-    world.player.skulker = 2
+    world.player.abilities["skulker"] = 2
     world.player.inventory = 1  # carrying rope + torch (2) is 1 over
     facts = ENGINE.action_roll(
         draft,
@@ -48,27 +48,27 @@ def test_the_roll_adds_ability_and_items_and_penalizes_brute_and_skulker_over_in
     )
     rolled = next(fact for fact in facts if fact.kind == "action_rolled")
     dice = rolled.dice[0].rolled
-    assert _total(rolled.card) == sum(dice) + world.player.skulker + 1 - 1
+    assert _total(rolled.card) == sum(dice) + world.player.abilities["skulker"] + 1 - 1
 
 
 def test_erudite_rolls_are_not_penalized_for_over_inventory() -> None:
     draft = small_world().draft()
     world = draft.payload
-    world.player.erudite = 2
+    world.player.abilities["erudite"] = 2
     world.player.inventory = 1
     facts = ENGINE.action_roll(
         draft, ActionRoll(what="Read the runes", ability="erudite", difficulty=8), Random(2)
     )
     rolled = next(fact for fact in facts if fact.kind == "action_rolled")
     dice = rolled.dice[0].rolled
-    assert _total(rolled.card) == sum(dice) + world.player.erudite
+    assert _total(rolled.card) == sum(dice) + world.player.abilities["erudite"]
 
 
 def test_a_roll_against_an_npc_that_hits_can_slay_it() -> None:
     draft = small_world().draft()
     world = draft.payload
     world.npcs[MANTIS].place = START
-    world.player.brute = 10  # min total 12 always beats DS 4
+    world.player.abilities["brute"] = 10  # min total 12 always beats DS 4
     facts = ENGINE.action_roll(
         draft,
         ActionRoll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
@@ -85,7 +85,7 @@ def test_an_npc_killed_by_a_roll_drops_what_it_carried_here() -> None:
     world = draft.payload
     world.npcs[MANTIS].place = START
     world.items[KEY].on = MANTIS
-    world.player.brute = 10  # min total 12 always beats DS 4
+    world.player.abilities["brute"] = 10  # min total 12 always beats DS 4
     facts = ENGINE.action_roll(
         draft,
         ActionRoll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
@@ -101,7 +101,7 @@ def test_a_miss_against_an_npc_can_kill_the_player() -> None:
     world.npcs[MANTIS].place = START
     world.npcs[MANTIS].hp.maximum = 20
     world.npcs[MANTIS].hp.current = 20  # max total 12 never beats DS 20
-    world.player.brute = 0
+    world.player.abilities["brute"] = 0
     world.player.hp.current = 1
     facts = ENGINE.action_roll(
         draft,
@@ -130,7 +130,7 @@ def test_a_roll_against_an_npc_wounds_nobody_unless_it_is_dangerous() -> None:
 def test_dangerous_hurts_only_on_a_miss() -> None:
     draft = small_world().draft()
     world = draft.payload
-    world.player.erudite = 12  # min total 14 always beats DS 8
+    world.player.abilities["erudite"] = 12  # min total 14 always beats DS 8
     before = world.player.hp.current
     facts = ENGINE.action_roll(
         draft,
@@ -203,7 +203,7 @@ def test_level_up_with_both_raises_the_ability_and_the_boost_and_the_level() -> 
     world = draft.payload
     before = world.player.level
     facts = ENGINE.level_up(draft, LevelUp(ability="brute", boost="health"), Random(0))
-    assert world.player.brute == 2
+    assert world.player.abilities["brute"] == 2
     assert world.player.level == before + 1
     assert any(fact.kind == "levelled_up" for fact in facts)
 
@@ -215,13 +215,14 @@ def test_level_up_sets_job_done_only_when_a_job_is_open() -> None:
         Visit(place=START),
         Visit(place=TAVERN),
     ]
-    stamped.payload.jobs = [Job(title="Bandits", place=START, started=1)]
+    campaign = the_campaign(stamped.payload.campaign)
+    campaign.jobs = [Job(title="Bandits", place=START, started=1)]
     _ = ENGINE.level_up(stamped, LevelUp(ability="brute", boost="health"), Random(0))
-    assert stamped.payload.jobs[-1].finished
+    assert campaign.jobs[-1].finished
 
     unstamped = small_world().draft()
     _ = ENGINE.level_up(unstamped, LevelUp(ability="brute", boost="health"), Random(0))
-    assert unstamped.payload.jobs == []
+    assert unstamped.payload.campaign is None
 
 
 def test_level_up_with_one_argument_is_refused() -> None:
@@ -233,21 +234,21 @@ def test_level_up_with_one_argument_is_refused() -> None:
 def test_a_tavern_visit_mid_job_keeps_the_job_open() -> None:
     draft = hub_world().draft()
     world = draft.payload
-    world.jobs = [Job(title="Bandits", place=START)]
+    campaign = the_campaign(world.campaign)
+    campaign.jobs = [Job(title="Bandits", place=START)]
 
     _ = ENGINE.move(draft, Move(to_id=START), Random(0))
-    assert world.jobs[-1].started == 1
-    assert world.job_open
+    assert campaign.jobs[-1].started == 1
+    assert world.walked_job() is not None
 
     _ = ENGINE.move(draft, Move(to_id=TAVERN), Random(0))
-    assert world.job_open
-    assert world.jobs[-1].started == 1
+    assert world.walked_job() is not None
+    assert campaign.jobs[-1].started == 1
 
 
 def test_move_refuses_a_locked_way() -> None:
     draft = small_world().draft()
     world = draft.payload
-    world.player.place = HALL
     world.visits.append(Visit(place=HALL))
     with pytest.raises(ValueError, match="locked"):
         _ = ENGINE.move(draft, Move(to_id=VAULT), Random(0))
@@ -264,7 +265,7 @@ def test_move_reveals_the_destination_and_adds_a_visit() -> None:
     world = draft.payload
     before = len(world.visits)
     facts = ENGINE.move(draft, Move(to_id=VAULT), Random(0))
-    assert world.player.place == VAULT
+    assert world.current.id == VAULT
     assert world.places[VAULT].known
     assert len(world.visits) == before + 1
     assert any(fact.kind == "arrived" for fact in facts)
@@ -285,11 +286,10 @@ def test_move_with_ids_brings_an_npc_here_and_refuses_one_standing_elsewhere() -
 def test_unlock_way_then_move_passes() -> None:
     draft = small_world().draft()
     world = draft.payload
-    world.player.place = HALL
     world.visits.append(Visit(place=HALL))
     _ = ENGINE.unlock_way(draft, UnlockWay(to_id=VAULT), Random(0))
     facts = ENGINE.move(draft, Move(to_id=VAULT), Random(0))
-    assert world.player.place == VAULT
+    assert world.current.id == VAULT
     assert any(fact.kind == "arrived" for fact in facts)
 
 

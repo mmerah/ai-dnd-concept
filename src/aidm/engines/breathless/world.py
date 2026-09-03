@@ -2,16 +2,17 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import EntityId, Mutable, Refusal, slug
+from aidm.core.entities import EntityId, Mutable, Refusal
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
-from aidm.engines.base import PLAYER_ID, Counter, Person
+from aidm.engines.base import Counter, Person
 from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
 type Die = Literal[4, 6, 8, 10, 12]
 LADDER: tuple[Die, ...] = (4, 6, 8, 10, 12)
 type Skill = Literal["bash", "dash", "sneak", "shoot", "think", "sway"]
 SKILLS: tuple[Skill, ...] = ("bash", "dash", "sneak", "shoot", "think", "sway")
+SKILL_SPREAD = [4, 4, 4, 6, 8, 10]
 STRESS_MAX = 4  # vulnerable at 4
 CARRY = 3  # items beside the med kit
 LOOT_START: Die = 12
@@ -30,8 +31,8 @@ class Survivor(Person):
 
     pronouns: str = ""
     job: str = ""
-    skills: dict[Skill, Die] = Field(default_factory=dict)  # as created
-    worn: dict[Skill, Die] = Field(default_factory=dict)  # where each stands now
+    skills: dict[Skill, Die] = Field(min_length=6, max_length=6)  # as created
+    worn: dict[Skill, Die] = Field(min_length=6, max_length=6)  # where each stands now
     items: dict[EntityId, Item] = Field(default_factory=dict)  # the backpack
     med_kit: bool = False
     loot: Die = LOOT_START
@@ -39,11 +40,9 @@ class Survivor(Person):
     stunted: bool = False
 
     @model_validator(mode="after")
-    def _filled_out(self) -> Self:
-        for skill in SKILLS:
-            self.skills.setdefault(skill, 4)
-        for skill in SKILLS:
-            self.worn.setdefault(skill, self.skills[skill])
+    def _rated_spread(self) -> Self:
+        if sorted(self.skills.values()) != SKILL_SPREAD:
+            raise Refusal("skills as created: three d4, one d6, one d8, one d10")
         return self
 
     @property
@@ -74,19 +73,6 @@ class Survivor(Person):
 BreathlessWorld = SceneWorld[Person, Survivor]
 
 
-class BreathlessPayload(Mutable):
-    pronouns: str
-    job: str
-    skills: dict[Skill, Die]
-    item: str  # the one starting d10 item
-
-    @model_validator(mode="after")
-    def _three_skills(self) -> Self:
-        if len(self.skills) != 3 or sorted(self.skills.values()) != [6, 8, 10]:
-            raise Refusal("three skills: one d10, one d8, one d6")
-        return self
-
-
 class BreathlessGame(Game[BreathlessWorld]):
     pass
 
@@ -95,25 +81,10 @@ class BreathlessScenario(Scenario[SceneCanon[Person]]):
     pass
 
 
-class BreathlessCharacterFile(Character[BreathlessPayload]):
+class BreathlessCharacter(Character[Survivor]):
     pass
 
 
 def stepped(die: Die) -> Die:
     """One step down the ladder, floored at d4."""
     return LADDER[max(LADDER.index(die) - 1, 0)]
-
-
-def player_survivor(character: Character[BreathlessPayload]) -> Survivor:
-    """The played character as the world holds them; `new_game` and `preview_character` share it."""
-    payload = character.payload
-    return Survivor(
-        id=PLAYER_ID,
-        name=character.name,
-        brief=character.brief,
-        known=True,
-        pronouns=payload.pronouns,
-        job=payload.job,
-        skills=payload.skills,
-        items={EntityId(slug(payload.item, ())): Item(name=payload.item, die=STARTING_ITEM)},
-    )

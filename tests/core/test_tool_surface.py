@@ -29,7 +29,7 @@ from aidm.app.spawn import CliSpawner, RunResult, final_message
 from aidm.config import Role
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.facts import Fact
-from aidm.core.model import WorldsmithAnswer
+from aidm.core.model import ScenarioMeta, WorldsmithAnswer
 from aidm.core.play import Answer, Narration, narration_text
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.engine import Loner3eEngine
@@ -280,7 +280,7 @@ async def test_authoring_raises_when_the_worldsmith_never_meets_the_bar(tmp_path
 
     with pytest.raises(ValueError, match="the scene needs"):
         _ = await table.service.engine.author(
-            "T", "p", "", table.state.packs, "one-shot", answer, lambda _built: None
+            ScenarioMeta(title="T", premise="p"), "", table.state.packs, answer, lambda _built: None
         )
 
 

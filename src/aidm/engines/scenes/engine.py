@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
+from copy import deepcopy
 from pathlib import Path
 from random import Random
 from typing import Any
@@ -31,12 +32,7 @@ from aidm.engines.hub import (
     CAMPAIGN_OPENING,
     GO_HOME,
     ONE_SHOT_OPENING,
-    board_panel,
     check_kind,
-    hub_sections,
-    job_closed,
-    jobs_panel,
-    master_tail,
     question_heading,
 )
 from aidm.engines.scenes.drafts import HubDraft, JobDraft, NextDraft, ReturnDraft, SceneDraft
@@ -84,13 +80,17 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             raise Refusal(f"a {state.engine!r} game needs at least one table set")
         if missing := sorted(set(state.packs) - set(self.packs)):
             raise Refusal(f"the game names packs not installed: {missing}")
-        check_kind(state.scenario.kind, self.world(state).hub)
+        check_kind(state.scenario.kind, self.world(state).campaign)
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> BaseModel:
         if not isinstance(scenario, self.scenario):
             raise Refusal(f"{self.title} received an incompatible scenario")
         canon: SceneCanon[C] = scenario.payload
         return self.world_type.begin(canon, self.player_of(character))
+
+    def player_of(self, character: AnyCharacter) -> P:
+        self.check_character(character)
+        return deepcopy(character.payload)
 
     def over(self, state: G) -> str | None:
         return "You died." if not self.world(state).player.alive else None
@@ -117,9 +117,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             *world.party_rows(),
             ("HIDDEN HERE (the player has not found these)", self.hidden_lines(world)),
             *self.glossary(state),
-            *master_tail(
-                world.hub, world.at_hub, world.board, world.closed_jobs(), world.open_job()
-            ),
+            *(() if world.campaign is None else world.campaign.tail(at_hub=world.at_hub)),
         )
 
     def sheet_sections(self, state: G) -> Sections:
@@ -146,6 +144,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
     def player_view(self, state: G) -> PlayerView:
         world = self.world(state)
         player = world.player
+        campaign = world.campaign
         me = player.subject()
         return PlayerView(
             player=me,
@@ -153,11 +152,11 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
                 character_panel(player.rows()),
                 *self.panels(state),
                 Panel(title="This scene", rows=world.scene_rows()),
-                *board_panel(world.at_hub, world.board),
+                *(() if campaign is None else campaign.board_panel(at_hub=world.at_hub)),
                 *world.party_panel(),
                 here_panel(me, (one.subject() for one in world.here() if one.id != player.id)),
                 trail_panel(run.title for run in world.job_runs()),
-                *jobs_panel(world.closed_jobs()),
+                *(() if campaign is None else campaign.jobs_panel()),
             ),
             prompt=state.pending,
             over=self.over(state),
@@ -185,19 +184,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
     def hidden_lines(self, world: SceneWorld[C, P]) -> str:
         return "\n".join(world.require(one).line() for one in world.hidden()) or "- (none)"
 
-    def hub_rows(self, world: SceneWorld[C, P], *, returning: bool) -> Sections:
-        if world.hub is None:
-            return ()
-        return hub_sections(
-            world.runs[0].title,
-            world.hub,
-            world.board,
-            world.closed_jobs(),
-            at_hub=world.at_hub,
-            returning=returning,
-            finished=world.job_done,
-        )
-
     def render_next(self, draft: G, intent: str, answer: type[SceneDraft[C]]) -> str:
         world = self.world(draft)
         # The worldsmith must know who follows the player out of the scene.
@@ -219,12 +205,15 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             source=world.source,
             history=render_history(world.scenes()),
             cast=cast,
-            guidance=self.guidance(draft.packs, campaign=world.hub is not None),
+            guidance=self.guidance(draft.packs, campaign=world.campaign is not None),
             intent=intent,
             answer=answer,
-            hub=(
-                *((("THE JOB", terms),) if (terms := world.job_terms()) else ()),
-                *self.hub_rows(world, returning=issubclass(answer, ReturnDraft)),
+            hub=()
+            if world.campaign is None
+            else world.campaign.sections(
+                world.runs[0].title,
+                at_hub=world.at_hub,
+                returning=issubclass(answer, ReturnDraft),
             ),
         )
 
@@ -246,18 +235,12 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
         )
 
     def build_scenario(
-        self,
-        title: str,
-        premise: str,
-        packs: tuple[Slug, ...],
-        written: SceneDraft[C],
-        source: str,
-        kind: ScenarioKind,
+        self, meta: ScenarioMeta, packs: tuple[Slug, ...], written: SceneDraft[C], source: str
     ) -> AnyScenario:
         if (refused := scene_refusal(written)) is not None:
             raise Refusal(refused)
         return self.scenario(
-            meta=ScenarioMeta(title=title, premise=premise or written.situation, kind=kind),
+            meta=meta.with_premise(written.situation),
             engine=self.id,
             packs=packs,
             payload=opening_canon(written, source, self.cast),
@@ -267,7 +250,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
         self, draft: G, intent: str, worldsmith: WorldsmithAnswer
     ) -> SceneDraft[C]:
         world = self.world(draft)
-        returning = world.hub is not None and not world.at_hub and intent == GO_HOME
+        returning = world.campaign is not None and not world.at_hub and intent == GO_HOME
         model: type[SceneDraft[C]] = (
             ReturnDraft[self.cast]
             if returning
@@ -293,26 +276,26 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             )
         )
         opened = Fact(kind="scene_opened", trace=trace, told=True, card=card)
-        if isinstance(written, ReturnDraft):
-            job = world.jobs[-1]
+        # `apply_scene` has refused a return with no campaign, so the narrowing is for the types.
+        if isinstance(written, ReturnDraft) and world.campaign is not None:
+            job = world.campaign.jobs[-1]
             if job.finished and self.finished_note:
                 draft.note(self.finished_note.format(title=job.title))
-            return [job_closed(job), opened]
+            return [job.closed(), opened]
         return [opened]
 
     async def author(
         self,
-        title: str,
-        premise: str,
+        meta: ScenarioMeta,
         source: str,
         packs: Sequence[Slug],
-        kind: ScenarioKind,
         worldsmith: WorldsmithAnswer,
         playable: Callable[[AnyScenario], str | None],
     ) -> AnyScenario:
         def built(written: SceneDraft[C]) -> AnyScenario:
-            return self.build_scenario(title, premise, tuple(packs), written, source, kind)
+            return self.build_scenario(meta, tuple(packs), written, source)
 
+        kind = meta.kind
         guidance = self.guidance(packs, campaign=kind == "campaign")
         prompt = self.render_opening(source, guidance, kind)
         return await self.compose(worldsmith, prompt, self.opening_draft(kind), built, playable)
@@ -336,5 +319,3 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
 
     @abstractmethod
     def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str: ...
-    @abstractmethod
-    def player_of(self, character: AnyCharacter) -> P: ...

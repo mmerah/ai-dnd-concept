@@ -9,7 +9,7 @@ from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
 from aidm.core.play import DecisionOption
 from aidm.core.tools import MasterTool
-from aidm.core.views import Rows, Sections
+from aidm.core.views import Sections
 from aidm.engines.base import PLAYER_ID, Pack, Person
 from aidm.engines.registry import begin_game
 from aidm.engines.scenes.engine import SceneEngine
@@ -34,7 +34,7 @@ class FifthScenario(Scenario[SceneCanon[Person]]):
     pass
 
 
-class FifthCharacterFile(Character[Person]):
+class FifthCharacter(Character[Person]):
     pass
 
 
@@ -46,7 +46,7 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, Pack]):
     art_style = "Ink."
     game = FifthGame
     scenario = FifthScenario
-    character = FifthCharacterFile
+    character = FifthCharacter
     cast = Person
     pack = Pack
     world_type = FifthState
@@ -59,22 +59,14 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, Pack]):
         return (CreationStep(id="pack", prompt="Choose a table set", options=self.pack_options()),)
 
     def create_character(self, name: str, brief: str, picks: Picks) -> AnyCharacter:
-        return FifthCharacterFile(
+        return FifthCharacter(
             id=slug(name, ()),
             engine=FIFTH,
-            name=name,
-            brief=brief,
             payload=Person(id=PLAYER_ID, name=name, brief=brief, known=True),
         )
 
-    def preview_character(self, character: AnyCharacter) -> Rows:
-        return (("Name", character.name),)
-
     def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
         return "Write the taproom plainly."
-
-    def player_of(self, character: AnyCharacter) -> Person:
-        return Person(id=PLAYER_ID, name=character.name, brief=character.brief, known=True)
 
     def master_sections(self, state: FifthGame) -> Sections:
         return (("SCENE", self.world(state).run.title),)

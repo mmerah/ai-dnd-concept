@@ -1,11 +1,11 @@
 from collections.abc import Callable
 
 import pytest
-from core_test_support import TUNNELGOONS, game
+from core_test_support import TUNNELGOONS, game, the_campaign
 from pydantic import BaseModel
 from tunnelgoons_test_support import START, TAVERN, hub_world, small_world
 
-from aidm.core.entities import EntityId
+from aidm.core.entities import EntityId, Refusal
 from aidm.engines.hub import Job, Offer
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 from aidm.engines.tunnelgoons.views import REPORT_IN
@@ -16,6 +16,7 @@ from aidm.engines.tunnelgoons.worldsmith import (
     extension_refusal,
     hub_refusal,
     map_refusal,
+    opening_canon,
 )
 
 ENGINE = TunnelGoonsEngine()
@@ -70,7 +71,7 @@ def test_the_shipped_scenario_passes_the_map_bar() -> None:
         ways=canon.ways,
         npcs=canon.npcs,
         items=canon.items,
-        start=canon.player.place,
+        start=canon.current.id,
     )
     assert map_refusal(draft) is None
 
@@ -78,7 +79,7 @@ def test_the_shipped_scenario_passes_the_map_bar() -> None:
 def test_attach_joins_at_the_current_place_and_the_world_validates() -> None:
     state = small_world()
     world = state.payload
-    anchor = world.player.place
+    anchor = world.current.id
 
     region = _region()
     world.attach(region, region.start, known=False)
@@ -121,7 +122,7 @@ def test_way_open_is_false_on_the_shipped_map_and_true_once_every_place_is_known
 
 def test_install_extension_on_a_game_from_the_engine() -> None:
     draft = _tunnelgoons_game().draft()
-    anchor = draft.payload.player.place
+    anchor = draft.payload.current.id
 
     facts = ENGINE.install_extension(draft, _region())
 
@@ -145,7 +146,7 @@ def test_way_open_at_the_hub_with_the_map_unwalked_but_not_on_a_one_shot() -> No
 def test_attach_known_appends_known_ways_and_unknown_appends_unknown_both_directions() -> None:
     known_state = small_world()
     known_world = known_state.payload
-    anchor = known_world.player.place
+    anchor = known_world.current.id
     region = _region()
     known_world.attach(region, region.start, known=True)
     out_known = known_world.way(anchor, FAR_HALL)
@@ -173,7 +174,7 @@ def _walked_job_visits() -> list[Visit]:
 async def test_write_extension_picks_return_draft_on_report_in_with_a_job_open() -> None:
     state = hub_world()
     state.payload.visits = _walked_job_visits()
-    state.payload.jobs = [Job(title="Bandits", place=START, started=1)]
+    the_campaign(state.payload.campaign).jobs = [Job(title="Bandits", place=START, started=1)]
     recorded: list[type[BaseModel]] = []
 
     async def answer[M: BaseModel](
@@ -200,7 +201,7 @@ async def test_write_extension_refuses_report_in_with_no_job_open() -> None:
         _ = await ENGINE.write_extension(unwalked, REPORT_IN, answer)
 
     stamped_not_walked = hub_world()
-    stamped_not_walked.payload.jobs = [Job(title="Bandits", place=START)]
+    the_campaign(stamped_not_walked.payload.campaign).jobs = [Job(title="Bandits", place=START)]
     with pytest.raises(ValueError, match="no job is open to report"):
         _ = await ENGINE.write_extension(stamped_not_walked, REPORT_IN, answer)
 
@@ -208,7 +209,7 @@ async def test_write_extension_refuses_report_in_with_no_job_open() -> None:
 async def test_write_extension_refuses_a_walked_job_open_with_another_intent() -> None:
     state = hub_world()
     state.payload.visits = _walked_job_visits()
-    state.payload.jobs = [Job(title="Bandits", place=START, started=1)]
+    the_campaign(state.payload.campaign).jobs = [Job(title="Bandits", place=START, started=1)]
 
     async def answer[M: BaseModel](
         prompt: str, model: type[M], refusal: Callable[[M], str | None]
@@ -238,14 +239,14 @@ def test_install_extension_on_a_return_draft_closes_the_job() -> None:
     state = hub_world()
     world = state.payload
     world.visits = _walked_job_visits()
-    world.jobs = [Job(title="Bandits", place=START, started=1)]
-    world.jobs[-1].finished = True
+    campaign = the_campaign(world.campaign)
+    campaign.jobs = [Job(title="Bandits", place=START, started=1, finished=True)]
 
     facts = ENGINE.install_extension(state, RETURN)
 
-    assert world.jobs[-1].debrief == RETURN.debrief
-    assert world.jobs[-1].finished
-    assert world.board == RETURN.offers
+    assert campaign.jobs[-1].debrief == RETURN.debrief
+    assert campaign.jobs[-1].finished
+    assert campaign.board == RETURN.offers
     assert [fact.kind for fact in facts] == ["job_closed"]
     assert facts[0].told
     assert facts[0].card.startswith("Job done: Bandits")
@@ -260,7 +261,7 @@ def test_install_extension_on_a_map_draft_at_the_hub_takes_the_job() -> None:
         ways=canon.ways,
         npcs=canon.npcs,
         items=canon.items,
-        start=canon.player.place,
+        start=canon.current.id,
     )
 
     facts = ENGINE.install_extension(state, written)
@@ -272,7 +273,7 @@ def test_install_extension_on_a_map_draft_at_the_hub_takes_the_job() -> None:
     way = world.way(TAVERN, written.start)
     assert way is not None
     assert way.known
-    assert world.jobs[-1] == Job(title=start_name, place=written.start)
+    assert the_campaign(world.campaign).jobs[-1] == Job(title=start_name, place=written.start)
 
 
 def test_hub_refusal_needs_a_two_or_three_offer_board_and_passes_the_shipped_campaign() -> None:
@@ -290,8 +291,8 @@ def test_hub_refusal_needs_a_two_or_three_offer_board_and_passes_the_shipped_cam
         ways=canon.ways,
         npcs=canon.npcs,
         items=canon.items,
-        start=canon.player.place,
-        board=canon.board,
+        start=canon.current.id,
+        board=the_campaign(canon.campaign).board,
     )
     assert hub_refusal(draft) is None
 
@@ -303,3 +304,8 @@ def test_map_refusal_refuses_a_one_shot_draft_carrying_a_board() -> None:
     refused = map_refusal(with_board)
     assert refused is not None
     assert "no `board`" in refused
+
+
+def test_opening_canon_refuses_a_campaign_draft_without_a_board() -> None:
+    with pytest.raises(Refusal, match="needs a board"):
+        opening_canon(_region(), "source", "campaign")

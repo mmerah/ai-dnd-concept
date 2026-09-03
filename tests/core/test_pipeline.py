@@ -38,7 +38,7 @@ async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_pat
 
     assert [role for role, _ in table.spawner.prompts] == ["master", "narrator"]
     assert [fact.kind for fact in table.facts] == ["entity_discovered", "tags_changed"]
-    assert "the vault map" in state.payload.player.gear
+    assert "the vault map" in state.payload.player.tagged("gear")
     narrator = table.spawner.prompt("narrator")
     assert "Elena" not in narrator
     # The sheets are the game master's: no tag the engine rolls by reaches the narrator.

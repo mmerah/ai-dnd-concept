@@ -14,7 +14,7 @@ from aidm.config import Role, Settings, read_settings
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.facts import Fact, cards, traced
 from aidm.core.io import FileStore, read_character, read_scenario, write_scenario
-from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioKind, WorldsmithAnswer
+from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioMeta, WorldsmithAnswer
 from aidm.core.play import Answer, Exchange, Line, Narration
 from aidm.core.source import given_text
 from aidm.core.tools import MasterTool
@@ -330,23 +330,18 @@ class Runtime:
     async def new_scenario(
         self,
         engine_id: EngineId,
-        title: str,
-        premise: str,
+        meta: ScenarioMeta,
         document: Path | None,
         packs: Sequence[Slug],
         character_id: Slug,
-        *,
-        art_style: str,
-        voice: str,
-        kind: ScenarioKind,
     ) -> Slug:
         """One worldsmith call authors the engine's complete opening world."""
         engine = self.engines[engine_id]
         character = read_character(
             self.settings.characters_dir, character_id, engine.id, engine.character
         )
-        source = given_text(premise, document, self.settings.source_max_chars)
-        name = slug(title, self._scenario_ids())
+        source = given_text(meta.premise, document, self.settings.source_max_chars)
+        name = slug(meta.title, self._scenario_ids())
 
         def playable(built: AnyScenario) -> str | None:
             try:
@@ -355,16 +350,9 @@ class Runtime:
                 return str(unplayable)
             return None
 
-        written = await engine.author(
-            title, premise, source, packs, kind, _worldsmith(self.spawner), playable
-        )
-        write_scenario(
-            self.settings.scenarios_dir,
-            name,
-            written.model_copy(update={"art_style": art_style, "voice": voice}),
-            document,
-        )
-        LOGGER.info("scenario written: slug=%s title=%r", name, title)
+        written = await engine.author(meta, source, packs, _worldsmith(self.spawner), playable)
+        write_scenario(self.settings.scenarios_dir, name, written, document)
+        LOGGER.info("scenario written: slug=%s title=%r", name, meta.title)
         return name
 
     def _scenario_ids(self) -> tuple[str, ...]:
@@ -400,7 +388,7 @@ class Runtime:
             spawner=self.spawner,
             store=store,
             media=open_illustrator(
-                settings, target, store, style=scenario.art_style or engine.art_style
+                settings, target, store, style=scenario.meta.art_style or engine.art_style
             ),
             reader=open_reader(settings, store, target.slug, scenario),
         )

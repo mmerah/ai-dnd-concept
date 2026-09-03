@@ -70,7 +70,7 @@ async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_a
     assert state.payload.run.title == "The Cloister Walk"
     assert mara.name == "Mara"
     assert mara.brief == "Waiting under the arcade with the lantern shuttered."
-    assert (mara.concept, mara.skills) == (before.concept, before.skills)
+    assert (mara.concept, mara.tags) == (before.concept, before.tags)
     assert all(
         fact.kind != "way_unwritten" for fact in table.service.engine.history(state)[-1].facts
     )

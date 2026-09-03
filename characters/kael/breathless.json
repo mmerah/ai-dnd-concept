@@ -1,16 +1,34 @@
 {
   "id": "kael",
   "engine": "breathless",
-  "name": "Kael",
-  "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
   "payload": {
+    "id": "player",
+    "name": "Kael",
+    "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
+    "known": true,
     "pronouns": "he/him",
     "job": "Park Ranger",
     "skills": {
-      "think": 10,
+      "bash": 6,
+      "dash": 4,
       "sneak": 8,
-      "bash": 6
+      "shoot": 4,
+      "think": 10,
+      "sway": 4
     },
-    "item": "Fire Axe"
+    "worn": {
+      "bash": 6,
+      "dash": 4,
+      "sneak": 8,
+      "shoot": 4,
+      "think": 10,
+      "sway": 4
+    },
+    "items": {
+      "fire-axe": {
+        "name": "Fire Axe",
+        "die": 10
+      }
+    }
   }
 }

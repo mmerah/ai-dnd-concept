@@ -14,11 +14,11 @@ from aidm.core.entities import EntityId
 from aidm.core.io import read_character, read_scenario
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.hub import Offer
+from aidm.engines.hub import Campaign, Offer
 from aidm.engines.scenes.world import SceneCanon, SceneRun
 from aidm.engines.seam import AnyEngine
 from aidm.engines.twentyfourxx.world import (
-    TwentyfourxxCharacterFile,
+    TwentyfourxxCharacter,
     TwentyfourxxGame,
     TwentyfourxxScenario,
 )
@@ -69,11 +69,13 @@ def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
     world = state.payload
     hub_payload = world.model_copy(
         update={
-            "hub": world.run.place,
-            "board": (
-                Offer(title="Job One", pitch="I take job one."),
-                Offer(title="Job Two", pitch="I take job two."),
-            ),
+            "campaign": Campaign(
+                place=world.run.place,
+                board=(
+                    Offer(title="Job One", pitch="I take job one."),
+                    Offer(title="Job Two", pitch="I take job two."),
+                ),
+            )
         }
     )
     with pytest.raises(ValueError, match="one-shot"):
@@ -101,13 +103,13 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
             ),
         ),
     )
-    character = read_character(CHARACTERS, "kael", TWENTYFOURXX, TwentyfourxxCharacterFile)
+    character = read_character(CHARACTERS, "kael", TWENTYFOURXX, TwentyfourxxCharacter)
     with pytest.raises(ValueError, match="the player is in the cast"):
         ENGINES_BUILT[TWENTYFOURXX].new_game(scenario, character)
 
 
 def test_a_foreign_scenario_is_refused_by_new_game() -> None:
-    character = read_character(CHARACTERS, "kael", TWENTYFOURXX, TwentyfourxxCharacterFile)
+    character = read_character(CHARACTERS, "kael", TWENTYFOURXX, TwentyfourxxCharacter)
     foreign_scenario = read_scenario(SCENARIOS, "drowned-road", SCENARIO_MODELS)
     with pytest.raises(ValueError, match="incompatible scenario"):
         ENGINES_BUILT[TWENTYFOURXX].new_game(foreign_scenario, character)

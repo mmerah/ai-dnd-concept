@@ -36,9 +36,11 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
         raise AssertionError("the Loner engine began another game type")
     made = loner_sheet(state, PLAYER_ID)
     assert made.concept == "A wandering scribe who counts doors"
-    assert made.skills == ("Quiet Hands", "Reads Old Stonework")
-    assert made.frailties == ("Never Walks Away",)
-    assert made.gear == ("Pry Bar", "Chalk and Wire")
+    assert made.tags == {
+        "skill": ["Quiet Hands", "Reads Old Stonework"],
+        "frailty": ["Never Walks Away"],
+        "gear": ["Pry Bar", "Chalk and Wire"],
+    }
     assert made.luck.current == LUCK_MAX
 
 
@@ -66,12 +68,13 @@ def test_one_folder_holds_one_person_across_engines(tmp_path: Path) -> None:
     fen = engine.create_character("Fen", "A wandering scribe.", _answered(engine, {"pack": "srd"}))
     write_character(tmp_path, fen)
 
+    mira = updated(fen, engine=OTHER, payload=updated(fen.payload, name="Mira"))
     with pytest.raises(ValueError, match="is 'Fen', not 'Mira'"):
-        write_character(tmp_path, updated(fen, engine=OTHER, name="Mira"))
+        write_character(tmp_path, mira)
 
     write_character(tmp_path, updated(fen, engine=OTHER))
     engine = ENGINES_BUILT[LONER3E]
-    assert read_character(tmp_path, "fen", engine.id, engine.character).name == "Fen"
+    assert read_character(tmp_path, "fen", engine.id, engine.character).payload.name == "Fen"
 
 
 def _answered(engine: AnyEngine, chosen: Picks) -> Picks:

@@ -5,6 +5,7 @@ from breathless_test_support import (
     hub_world,
     small_world,
 )
+from core_test_support import the_campaign
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
@@ -136,10 +137,10 @@ def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> Non
 def test_install_scene_on_a_return_swaps_the_board_and_notes_nothing() -> None:
     for finished in (True, False):
         game = hub_world()
-        game.payload.jobs[-1].finished = finished
+        campaign = the_campaign(game.payload.campaign)
+        campaign.jobs[-1].finished = finished
         facts = ENGINE.install(game, _return_draft())
-        world = game.payload
-        assert [offer.title for offer in world.board] == ["Job 1", "Job 2"]
+        assert [offer.title for offer in campaign.board] == ["Job 1", "Job 2"]
         assert [fact.kind for fact in facts] == ["job_closed", "scene_opened"]
         assert game.notes == []
 
@@ -161,9 +162,13 @@ def _opening(**fields: object) -> SceneDraft[Person]:
 
 def test_opening_canon_sets_the_hub_and_board_for_a_campaign_only() -> None:
     offers = [{"title": "A", "pitch": "Take A."}, {"title": "B", "pitch": "Take B."}]
-    campaign = opening_canon(
-        HubDraft[Person].model_validate({**_opening().model_dump(), "offers": offers}), "", Person
+    campaign = the_campaign(
+        opening_canon(
+            HubDraft[Person].model_validate({**_opening().model_dump(), "offers": offers}),
+            "",
+            Person,
+        ).campaign
     )
-    assert campaign.hub == HUB_PLACE
+    assert campaign.place == HUB_PLACE
     assert [offer.title for offer in campaign.board] == ["A", "B"]
-    assert opening_canon(_opening(), "", Person).hub is None
+    assert opening_canon(_opening(), "", Person).campaign is None

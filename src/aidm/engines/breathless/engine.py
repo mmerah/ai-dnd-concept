@@ -9,7 +9,7 @@ from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import AnyCharacter
 from aidm.core.tools import MasterTool, NoArgs, master_tool
 from aidm.core.views import Panel, PanelRow, Rows, Sections
-from aidm.engines.base import CHANGE_WORLD, SRD_PACK, Person, sentence
+from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, SRD_PACK, Person, sentence
 from aidm.engines.breathless.creation import AUTHORING, Pack
 from aidm.engines.breathless.tools import (
     ChangeStress,
@@ -27,17 +27,16 @@ from aidm.engines.breathless.world import (
     LOOT_START,
     MED_KIT_CLEARS,
     SKILLS,
+    STARTING_ITEM,
     STUNT_DIE,
-    BreathlessCharacterFile,
+    BreathlessCharacter,
     BreathlessGame,
-    BreathlessPayload,
     BreathlessScenario,
     BreathlessWorld,
     Die,
     Item,
     Skill,
     Survivor,
-    player_survivor,
     stepped,
 )
 from aidm.engines.scenes.engine import SceneEngine
@@ -55,7 +54,7 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
     directory = Path(__file__).parent
     game = BreathlessGame
     scenario = BreathlessScenario
-    character = BreathlessCharacterFile
+    character = BreathlessCharacter
     cast = Person
     pack = Pack
     world_type = BreathlessWorld
@@ -128,29 +127,27 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
             CreationStep(id="item", prompt="Your one item", hint=", ".join(pack.weapons[:3])),
         )
 
-    def create_character(self, name: str, brief: str, picks: Picks) -> BreathlessCharacterFile:
+    def create_character(self, name: str, brief: str, picks: Picks) -> BreathlessCharacter:
         check_picks(self.creation_steps(picks), picks)
-        payload = BreathlessPayload(
+        skills: dict[Skill, Die] = dict.fromkeys(SKILLS, 4)
+        skills.update({_skill(picked(picks, f"skill-d{die}")): die for die in STARTING_DICE})
+        item = picked(picks, "item")
+        sheet = Survivor(
+            id=PLAYER_ID,
+            name=name,
+            brief=brief,
+            known=True,
             pronouns=picked(picks, "pronouns"),
             job=picked(picks, "job"),
-            skills={_skill(picked(picks, f"skill-d{die}")): die for die in STARTING_DICE},
-            item=picked(picks, "item"),
+            skills=skills,
+            worn=dict(skills),
+            items={EntityId(slug(item, ())): Item(name=item, die=STARTING_ITEM)},
         )
-        return BreathlessCharacterFile(
-            id=slug(name, ()), engine=self.id, name=name, brief=brief, payload=payload
-        )
+        return BreathlessCharacter(id=slug(name, ()), engine=self.id, payload=sheet)
 
     def preview_character(self, character: AnyCharacter) -> Rows:
-        own = self._own(character)
-        return (*player_survivor(own).rows(), ("Backpack", own.payload.item))
-
-    def player_of(self, character: AnyCharacter) -> Survivor:
-        return player_survivor(self._own(character))
-
-    def _own(self, character: AnyCharacter) -> BreathlessCharacterFile:
-        if not isinstance(character, BreathlessCharacterFile):
-            raise Refusal(f"{self.title} received an incompatible character")
-        return character
+        sheet = self.player_of(character)
+        return (*sheet.rows(), ("Backpack", ", ".join(item.name for item in sheet.items.values())))
 
     def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
         """Defaults restate rules the guidance already carries; dropping them halves the prompt."""

@@ -20,8 +20,9 @@ from aidm.core.io import read_character, read_scenario, read_scenarios
 from aidm.core.model import AnyGame, ScenarioKind
 from aidm.core.play import Answer, Speaker
 from aidm.engines.base import PLAYER_ID
+from aidm.engines.hub import Campaign
 from aidm.engines.loner3e.world import (
-    Loner3eCharacterFile,
+    Loner3eCharacter,
     Loner3eGame,
     Loner3eScenario,
     Loner3eSheet,
@@ -76,10 +77,10 @@ def scenario() -> Loner3eScenario:
     return loaded
 
 
-def character() -> Loner3eCharacterFile:
+def character() -> Loner3eCharacter:
     engine = ENGINES_BUILT[LONER3E]
     loaded = read_character(CHARACTERS, "kael", engine.id, engine.character)
-    if not isinstance(loaded, Loner3eCharacterFile):
+    if not isinstance(loaded, Loner3eCharacter):
         raise AssertionError("the Loner character parsed as another engine")
     return loaded
 
@@ -126,6 +127,12 @@ def initialized() -> tuple[AnyEngine, Loner3eGame]:
     if not isinstance(state, Loner3eGame):
         raise AssertionError("the Loner engine began another game type")
     return engine, state
+
+
+def the_campaign(campaign: Campaign | None) -> Campaign:
+    """The campaign a test built the world with, narrowed once."""
+    assert campaign is not None
+    return campaign
 
 
 def change_args(verb: str, **fields: JsonValue) -> dict[str, JsonValue]:

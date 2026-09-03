@@ -1,7 +1,6 @@
-from collections.abc import Sequence
-from typing import Annotated
+from typing import Annotated, Self
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import Fact
@@ -51,7 +50,7 @@ TAKE_BRIEF = (
 AWAY_BRIEF = (
     "The hub is {title} ({place}). Never place a scene at {place}: home is reached by going home."
 )
-# Shared by the scene engines and Tunnel Goons; `hub_sections` prepends the scene sentence.
+# Shared by the scene engines and Tunnel Goons; `Campaign.sections` prepends the scene sentence.
 RETURN_BRIEF = (
     "The player is home at {title} ({place}). `debrief` is one paragraph on the job they just "
     "left, in the second person and the present tense, as the narrator writes; THE VERDICT says "
@@ -79,86 +78,127 @@ class Job(Mutable):
     finished: bool = False  # the master's verdict
     debrief: str | None = None  # the hub's word on the return; the job is closed once set
 
-
-def check_kind(kind: ScenarioKind, hub: Slug | None) -> None:
-    if (kind == "campaign") != (hub is not None):
-        raise Refusal(f"a {kind} scenario with hub {hub!r}")
-
-
-def check_board(hub: Slug | None, board: Sequence[Offer]) -> None:
-    if hub is None and board:
-        raise Refusal("a board with no hub")
-
-
-def check_jobs(hub: Slug | None, jobs: Sequence[Job], walked: int) -> None:
-    if hub is None and jobs:
-        raise Refusal("a job with no hub")
-    for index, job in enumerate(jobs):
-        if index < len(jobs) - 1 and job.debrief is None:
-            raise Refusal(f"job {index} has no debrief and is not the last")
-        if (job.debrief is not None or job.finished) and job.started is None:
-            raise Refusal(f"job {index} is closed or finished before it was walked")
-        if job.started is not None and job.started >= walked:
-            raise Refusal(f"job {index} started past the walk")
+    def closed(self) -> Fact:
+        label = "done" if self.finished else "left open"
+        return Fact(
+            kind="job_closed",
+            told=True,
+            card=f"Job {label}: {self.title}\n{self.debrief or ''}",
+            trace=f"the job {self.title} closed ({label})",
+        )
 
 
-def open_job_of(jobs: Sequence[Job]) -> Job | None:
-    """The last job while its `debrief` is `None`."""
-    last = jobs[-1] if jobs else None
-    return last if last is not None and last.debrief is None else None
+class Campaign(Mutable):
+    """The hub the player comes back to, its board, and the jobs walked from it."""
+
+    place: Slug
+    board: Board
+    jobs: list[Job] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _jobs_in_order(self) -> Self:
+        for index, job in enumerate(self.jobs):
+            if index < len(self.jobs) - 1 and job.debrief is None:
+                raise Refusal(f"job {index} has no debrief and is not the last")
+            if (job.debrief is not None or job.finished) and job.started is None:
+                raise Refusal(f"job {index} is closed or finished before it was walked")
+        return self
+
+    def check_walked(self, walked: int) -> None:
+        for index, job in enumerate(self.jobs):
+            if job.started is not None and job.started >= walked:
+                raise Refusal(f"job {index} started past the walk")
+
+    def open_job(self) -> Job | None:
+        """The last job while its `debrief` is `None`."""
+        last = self.jobs[-1] if self.jobs else None
+        return last if last is not None and last.debrief is None else None
+
+    def closed_jobs(self) -> tuple[Job, ...]:
+        return tuple(job for job in self.jobs if job.debrief is not None)
+
+    @property
+    def finished(self) -> bool:
+        job = self.open_job()
+        return job is not None and job.finished
+
+    def terms(self) -> str:
+        job = self.open_job()
+        return job.terms if job is not None else ""
+
+    def since_start[T](self, walked: list[T]) -> list[T]:
+        """The open job's runs or visits; the hub's last when none is open."""
+        job = self.open_job()
+        if job is not None and job.started is not None:
+            return walked[job.started :]
+        return walked[-1:]
+
+    def ledger(self) -> str:
+        closed = self.closed_jobs()
+        if not closed:
+            return "(none yet)"
+        lines: list[str] = []
+        for job in closed:
+            open_suffix = "" if job.finished else OPEN_SUFFIX
+            lines.append(f"- {job.title} ({job.place}): {job.debrief or ''}{open_suffix}")
+            if open_suffix and job.terms:
+                lines.append(f"  the job: {job.terms}")
+        return "\n".join(lines)
+
+    def board_rows(self) -> tuple[PanelRow, ...]:
+        return tuple(
+            PanelRow(
+                label=offer.title, detail=offer.pitch, intent=TAKE_JOB.format(title=offer.title)
+            )
+            for offer in self.board
+        )
+
+    def board_lines(self) -> str:
+        return "\n".join(f"- {offer.title}: {offer.pitch}" for offer in self.board)
+
+    def sections(self, hub_title: str, *, at_hub: bool, returning: bool) -> Sections:
+        brief = (
+            WRITE_HUB_SCENE + RETURN_BRIEF if returning else TAKE_BRIEF if at_hub else AWAY_BRIEF
+        )
+        return (
+            *self.job_row(),
+            ("JOBS SO FAR", self.ledger()),
+            ("THE BOARD", self.board_lines()),
+            ("THE HUB", brief.format(title=hub_title, place=self.place)),
+            *(
+                (("THE VERDICT", "finished" if self.finished else "left open"),)
+                if returning
+                else ()
+            ),
+        )
+
+    def job_row(self) -> Sections:
+        terms = self.terms()
+        return (("THE JOB", terms),) if terms else ()
+
+    def tail(self, *, at_hub: bool) -> Sections:
+        return (
+            *self.job_row(),
+            ("JOBS SO FAR", self.ledger()),
+            *((("THE BOARD", self.board_lines()),) if at_hub else ()),
+        )
+
+    def board_panel(self, *, at_hub: bool) -> tuple[Panel, ...]:
+        return (Panel(title="Board", rows=self.board_rows()),) if at_hub else ()
+
+    def jobs_panel(self) -> tuple[Panel, ...]:
+        rows = tuple(
+            PanelRow(
+                label=job.title + ("" if job.finished else OPEN_SUFFIX), detail=job.debrief or ""
+            )
+            for job in self.closed_jobs()
+        )
+        return (Panel(title="Jobs", rows=rows),) if rows else ()
 
 
-def closed_jobs_of(jobs: Sequence[Job]) -> tuple[Job, ...]:
-    return tuple(job for job in jobs if job.debrief is not None)
-
-
-def since_start[T](walked: list[T], job: Job | None, *, campaign: bool) -> list[T]:
-    """The open job's runs or visits; all of a one-shot's; the hub's last when none is open."""
-    if job is not None and job.started is not None:
-        return walked[job.started :]
-    return walked[-1:] if campaign else walked
-
-
-def board_rows(board: Sequence[Offer]) -> tuple[PanelRow, ...]:
-    return tuple(
-        PanelRow(label=offer.title, detail=offer.pitch, intent=TAKE_JOB.format(title=offer.title))
-        for offer in board
-    )
-
-
-def board_lines(board: Sequence[Offer]) -> str:
-    return "\n".join(f"- {offer.title}: {offer.pitch}" for offer in board)
-
-
-def ledger(jobs: Sequence[Job]) -> str:
-    if not jobs:
-        return "(none yet)"
-    lines: list[str] = []
-    for job in jobs:
-        open_suffix = "" if job.finished else OPEN_SUFFIX
-        lines.append(f"- {job.title} ({job.place}): {job.debrief or ''}{open_suffix}")
-        if open_suffix and job.terms:
-            lines.append(f"  the job: {job.terms}")
-    return "\n".join(lines)
-
-
-def hub_sections(
-    hub_title: str,
-    hub: Slug,
-    board: Sequence[Offer],
-    jobs: Sequence[Job],
-    *,
-    at_hub: bool,
-    returning: bool,
-    finished: bool,
-) -> Sections:
-    brief = WRITE_HUB_SCENE + RETURN_BRIEF if returning else TAKE_BRIEF if at_hub else AWAY_BRIEF
-    return (
-        ("JOBS SO FAR", ledger(jobs)),
-        ("THE BOARD", board_lines(board)),
-        ("THE HUB", brief.format(title=hub_title, place=hub)),
-        *((("THE VERDICT", "finished" if finished else "left open"),) if returning else ()),
-    )
+def check_kind(kind: ScenarioKind, campaign: Campaign | None) -> None:
+    if (kind == "campaign") != (campaign is not None):
+        raise Refusal(f"a {kind} scenario {'with' if campaign else 'without'} a hub")
 
 
 def place_unmet(place: Slug, hub: Slug | None, *, returning: bool) -> str | None:
@@ -171,40 +211,3 @@ def place_unmet(place: Slug, hub: Slug | None, *, returning: bool) -> str | None
 
 def question_heading(at_hub: bool) -> str:
     return "WHAT THIS PLACE IS ABOUT" if at_hub else "THE QUESTION THIS SCENE SETTLES"
-
-
-def master_tail(
-    hub: Slug | None,
-    at_hub: bool,
-    board: Sequence[Offer],
-    jobs: Sequence[Job],
-    open_job: Job | None,
-) -> Sections:
-    return (
-        *((("THE JOB", open_job.terms),) if open_job is not None and open_job.terms else ()),
-        *((("JOBS SO FAR", ledger(jobs)),) if hub is not None else ()),
-        *((("THE BOARD", board_lines(board)),) if at_hub else ()),
-    )
-
-
-def board_panel(at_hub: bool, board: Sequence[Offer]) -> tuple[Panel, ...]:
-    return (Panel(title="Board", rows=board_rows(board)),) if at_hub else ()
-
-
-def jobs_panel(jobs: Sequence[Job]) -> tuple[Panel, ...]:
-    rows = tuple(
-        PanelRow(label=job.title + ("" if job.finished else OPEN_SUFFIX), detail=job.debrief or "")
-        for job in jobs
-    )
-    return (Panel(title="Jobs", rows=rows),) if jobs else ()
-
-
-def job_closed(job: Job) -> Fact:
-    title, text = job.title, job.debrief or ""
-    label = "done" if job.finished else "left open"
-    return Fact(
-        kind="job_closed",
-        told=True,
-        card=f"Job {label}: {title}\n{text}",
-        trace=f"the job {title} closed ({label})",
-    )

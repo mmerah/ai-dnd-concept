@@ -9,21 +9,24 @@
     "srd"
   ],
   "payload": {
-    "hub": "amber-tap",
-    "board": [
-      {
-        "title": "The Debt to Ruiz",
-        "pitch": "Tomas needs a debt collected quiet, no questions — no pay, but he wipes what you owe him."
-      },
-      {
-        "title": "The Quiet Contract",
-        "pitch": "Sealed manifest to Deck 3 by dawn, hands off the cargo — double the going rate."
-      },
-      {
-        "title": "Deck 9 Crate Run",
-        "pitch": "Crates off Deck 9, no manifest, half up front."
-      }
-    ],
+    "campaign": {
+      "place": "amber-tap",
+      "board": [
+        {
+          "title": "The Debt to Ruiz",
+          "pitch": "Tomas needs a debt collected quiet, no questions — no pay, but he wipes what you owe him."
+        },
+        {
+          "title": "The Quiet Contract",
+          "pitch": "Sealed manifest to Deck 3 by dawn, hands off the cargo — double the going rate."
+        },
+        {
+          "title": "Deck 9 Crate Run",
+          "pitch": "Crates off Deck 9, no manifest, half up front."
+        }
+      ],
+      "jobs": []
+    },
     "opening": {
       "place": "amber-tap",
       "title": "The Amber Tap",

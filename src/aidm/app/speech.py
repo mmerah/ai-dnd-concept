@@ -81,7 +81,7 @@ def open_reader(
         config=settings.speech,
         provider=settings.providers.for_name(settings.speech.provider),
         saves=store.media_dir(slug) / SPEECH_DIR,
-        voice=scenario.voice or settings.speech.voice,
+        voice=scenario.meta.voice or settings.speech.voice,
     )
 
 

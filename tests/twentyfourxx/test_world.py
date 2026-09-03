@@ -2,17 +2,15 @@ import pytest
 from core_test_support import ENGINES_BUILT, TWENTYFOURXX
 from twentyfourxx_test_support import KESTREL, hub_world, small_world
 
-from aidm.core.entities import EngineId, EntityId
+from aidm.core.entities import EntityId
 from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.twentyfourxx.engine import starting_items
 from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
     Item,
     Kit,
     Operator,
-    TwentyfourxxCharacterFile,
-    TwentyfourxxPayload,
     TwentyfourxxWorld,
-    player_operator,
     raised,
 )
 
@@ -102,19 +100,7 @@ def test_way_open_is_true_at_an_unsettled_hub() -> None:
     assert ENGINES_BUILT[TWENTYFOURXX].ready(game) is True
 
 
-def test_player_operator_slugs_duplicate_kit_names_in_order() -> None:
-    character = TwentyfourxxCharacterFile(
-        id="rook",
-        engine=EngineId("twentyfourxx"),
-        name="Rook",
-        brief="A quiet operator",
-        payload=TwentyfourxxPayload(
-            specialty="Sneak",
-            origin="Human",
-            skills={"Stealth": 10},
-            items=(Kit(name="Comm"), Kit(name="Comm")),
-        ),
-    )
-    operator = player_operator(character)
-    assert list(operator.items.keys()) == [EntityId("comm"), EntityId("comm-2")]
-    assert [item.name for item in operator.items.values()] == ["Comm", "Comm"]
+def test_starting_items_slug_duplicate_kit_names_in_order() -> None:
+    items = starting_items((Kit(name="Comm"), Kit(name="Comm")))
+    assert list(items.keys()) == [EntityId("comm"), EntityId("comm-2")]
+    assert [item.name for item in items.values()] == ["Comm", "Comm"]

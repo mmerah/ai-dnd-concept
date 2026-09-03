@@ -2,10 +2,9 @@ from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.entities import Mutable
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
-from aidm.engines.base import PLAYER_ID, Counter, Person
+from aidm.engines.base import Counter, Person
 from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
 LUCK_MAX = 6
@@ -19,25 +18,25 @@ class Loner3eSheet(Person):
     """SRD "Everything is a Character": a person, an object, a vehicle or a curse alike."""
 
     concept: str = ""
-    skills: tuple[str, ...] = ()
-    frailties: tuple[str, ...] = ()
-    gear: tuple[str, ...] = ()
-    conditions: tuple[str, ...] = ()
+    tags: dict[TagKind, list[str]] = Field(default_factory=dict)
     # Living characters only; the SRD gives none to an object, a vehicle or a curse.
     goal: str = ""
     motive: str = ""
     nemesis: str = ""
     luck: Counter = Field(default_factory=lambda: Counter(current=LUCK_MAX, maximum=LUCK_MAX))
 
+    def tagged(self, kind: TagKind) -> list[str]:
+        return self.tags.get(kind, [])
+
     def rows(self) -> Rows:
         return tuple(
             (label, value)
             for label, value in (
                 ("Concept", self.concept),
-                ("Skills", ", ".join(self.skills)),
-                ("Frailties", ", ".join(self.frailties)),
-                ("Gear", ", ".join(self.gear)),
-                ("Conditions", ", ".join(self.conditions)),
+                ("Skills", ", ".join(self.tagged("skill"))),
+                ("Frailties", ", ".join(self.tagged("frailty"))),
+                ("Gear", ", ".join(self.tagged("gear"))),
+                ("Conditions", ", ".join(self.tagged("condition"))),
                 ("Goal", self.goal),
                 ("Motive", self.motive),
                 ("Nemesis", self.nemesis),
@@ -60,15 +59,6 @@ class Loner3eWorld(SceneWorld[Loner3eSheet, Loner3eSheet]):
     twist: Counter = Field(default_factory=lambda: Counter(current=0, maximum=TIES_PER_TWIST))
 
 
-class Loner3ePayload(Mutable):
-    concept: str = ""
-    skills: tuple[str, ...] = ()
-    frailties: tuple[str, ...] = ()
-    gear: tuple[str, ...] = ()
-    goal: str = ""
-    motive: str = ""
-
-
 class Loner3eGame(Game[Loner3eWorld]):
     pass
 
@@ -77,46 +67,5 @@ class Loner3eScenario(Scenario[SceneCanon[Loner3eSheet]]):
     pass
 
 
-class Loner3eCharacterFile(Character[Loner3ePayload]):
+class Loner3eCharacter(Character[Loner3eSheet]):
     pass
-
-
-def player_character(character: Character[Loner3ePayload]) -> Loner3eSheet:
-    """The played character as the world holds them; `new_game` and `preview_character` share it."""
-    payload = character.payload
-    return Loner3eSheet(
-        id=PLAYER_ID,
-        name=character.name,
-        brief=character.brief,
-        known=True,
-        concept=payload.concept,
-        skills=payload.skills,
-        frailties=payload.frailties,
-        gear=payload.gear,
-        goal=payload.goal,
-        motive=payload.motive,
-    )
-
-
-def tags_of(one: Loner3eSheet, kind: TagKind) -> tuple[str, ...]:
-    match kind:
-        case "skill":
-            return one.skills
-        case "frailty":
-            return one.frailties
-        case "gear":
-            return one.gear
-        case "condition":
-            return one.conditions
-
-
-def set_tags(one: Loner3eSheet, kind: TagKind, tags: tuple[str, ...]) -> None:
-    match kind:
-        case "skill":
-            one.skills = tags
-        case "frailty":
-            one.frailties = tags
-        case "gear":
-            one.gear = tags
-        case "condition":
-            one.conditions = tags

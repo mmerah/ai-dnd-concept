@@ -15,12 +15,13 @@ from aidm.core.model import (
     AnyScenario,
     EngineHeader,
     Game,
-    ScenarioKind,
+    ScenarioMeta,
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption, Exchange, Line, PendingOption, SceneRecord
 from aidm.core.tools import MasterTool
 from aidm.core.views import NarratorView, PlayerView, Rows, Sections
+from aidm.engines.base import PLAYER_ID, Person
 
 type AnyEngine = Engine[Any]
 
@@ -51,6 +52,16 @@ class Engine[G: Game[Any]](ABC):
     def crossing(self, pursuit: str) -> str | None:
         """The narrator's brief for the arrival; None where the world grows without a turn."""
         return None
+
+    def check_character(self, character: AnyCharacter) -> None:
+        """The file is this engine's and its sheet is the player's."""
+        if not isinstance(character, self.character):
+            raise Refusal(f"{self.title} received an incompatible character")
+        if character.payload.id != PLAYER_ID or not character.payload.known:
+            raise Refusal("a character sheet is the player's: id 'player', known")
+
+    def preview_character(self, character: AnyCharacter) -> Rows:
+        return self.player_of(character).rows()
 
     def restore(self, raw: str) -> G:
         value = decode(raw)
@@ -110,7 +121,7 @@ class Engine[G: Game[Any]](ABC):
     @abstractmethod
     def create_character(self, name: str, brief: str, picks: Picks) -> AnyCharacter: ...
     @abstractmethod
-    def preview_character(self, character: AnyCharacter) -> Rows: ...
+    def player_of(self, character: AnyCharacter) -> Person: ...
     @abstractmethod
     def validate(self, state: G) -> None: ...
     @abstractmethod
@@ -132,11 +143,9 @@ class Engine[G: Game[Any]](ABC):
     @abstractmethod
     async def author(
         self,
-        title: str,
-        premise: str,
+        meta: ScenarioMeta,
         source: str,
         packs: Sequence[Slug],
-        kind: ScenarioKind,
         worldsmith: WorldsmithAnswer,
         playable: Callable[[AnyScenario], str | None],
     ) -> AnyScenario: ...

@@ -6,14 +6,9 @@ from aidm.core.entities import EntityId
 from aidm.core.play import Exchange
 from aidm.core.views import PanelRow
 from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.hub import HOME_ROW, HUB_ROW, Job, Offer
+from aidm.engines.hub import HOME_ROW, HUB_ROW, Campaign, Job, Offer
 from aidm.engines.scenes.drafts import NextDraft
-from aidm.engines.scenes.world import (
-    SceneCanon,
-    SceneRun,
-    SceneWorld,
-    check_hub,
-)
+from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld
 
 HUB = "hub"
 PLAYER = Person(id=PLAYER_ID, name="Player", brief="", known=True)
@@ -23,6 +18,10 @@ RECAP = "A long enough recap to satisfy the minimum length the model demands for
 DONE = "Finished the job."
 JOB = "Count the crates and haul them clear before the shift change; she pays on drop."
 BOARD = (Offer(title="A", pitch="Do a"), Offer(title="B", pitch="Do b"))
+
+
+def _campaign(*jobs: Job) -> Campaign:
+    return Campaign(place=HUB, board=BOARD, jobs=list(jobs))
 
 
 def _run(place: str, title: str, *, told: bool = False, here: Sequence[EntityId] = ()) -> SceneRun:
@@ -47,56 +46,48 @@ def test_the_job_walk_reads_job_runs_jobs_and_exchange_headings() -> None:
             _run(HUB, "Hub", told=True),
             _run("b1", "B1", told=True),
         ],
-        hub=HUB,
-        board=BOARD,
-        jobs=[
+        campaign=_campaign(
             Job(title="A1", place="a1", started=1, finished=True, debrief=DONE),
             Job(title="B1", place="b1", started=4),
-        ],
+        ),
     )
 
     assert world.job_runs() == world.runs[4:]
-    assert world.closed_jobs() == (
-        Job(title="A1", place="a1", started=1, finished=True, debrief=DONE),
-    )
     assert [exchange.prompt for exchange in world.exchanges()] == ["Hub", "A1", "A2", "Hub", "B1"]
 
 
-def test_job_done_reads_the_open_jobs_finished() -> None:
-    world = SceneWorld[Person, Person](
-        player=PLAYER,
-        runs=[
-            _run(HUB, "Hub"),
-            _run("a1", "A1"),
-            _run(HUB, "Hub"),
-            _run("b1", "B1"),
-        ],
-        hub=HUB,
-        board=BOARD,
-        jobs=[
-            Job(title="A1", place="a1", started=1, finished=True, debrief=DONE),
-            Job(title="B1", place="b1", started=3),
-        ],
+def test_a_finished_verdict_reads_the_open_job_not_a_closed_one() -> None:
+    campaign = _campaign(
+        Job(title="A1", place="a1", started=1, finished=True, debrief=DONE),
+        Job(title="B1", place="b1", started=3),
     )
-    assert world.job_done is False  # the finished job above is already closed
+    assert campaign.finished is False  # the finished job above is already closed
 
-    world.jobs[-1].finished = True
-    assert world.job_done is True
+    campaign.jobs[-1].finished = True
+    assert campaign.finished is True
 
 
-def test_check_hub_refuses_an_opening_away_from_the_hub() -> None:
+def test_a_world_opening_away_from_the_hub_is_refused() -> None:
     with pytest.raises(ValueError, match="does not open at hub"):
-        check_hub(HUB, BOARD, [_run("a1", "A1")], [])
+        _ = SceneWorld[Person, Person](player=PLAYER, runs=[_run("a1", "A1")], campaign=_campaign())
 
 
-def test_check_hub_refuses_a_hub_run_no_closed_job_explains() -> None:
+def test_a_hub_run_with_no_closed_job_to_explain_it_is_refused() -> None:
     with pytest.raises(ValueError, match="closed jobs disagree"):
-        check_hub(
-            HUB,
-            BOARD,
-            [_run(HUB, "Hub"), _run("a1", "A1"), _run(HUB, "Hub")],
-            [Job(title="A1", place="a1", started=1)],
+        _ = SceneWorld[Person, Person](
+            player=PLAYER,
+            runs=[_run(HUB, "Hub"), _run("a1", "A1"), _run(HUB, "Hub")],
+            campaign=_campaign(Job(title="A1", place="a1", started=1)),
         )
+
+
+def test_a_canon_with_jobs_walked_or_opening_away_from_the_hub_is_refused() -> None:
+    with pytest.raises(ValueError, match="jobs walked"):
+        _ = SceneCanon[Person](
+            opening=_run(HUB, "Hub"), campaign=_campaign(Job(title="A1", place="a1", started=1))
+        )
+    with pytest.raises(ValueError, match="not at hub"):
+        _ = SceneCanon[Person](opening=_run("a1", "A1"), campaign=_campaign())
 
 
 def test_a_canon_opening_with_play_in_it_is_refused() -> None:
@@ -105,16 +96,9 @@ def test_a_canon_opening_with_play_in_it_is_refused() -> None:
         _ = SceneCanon[Person](opening=played)
 
 
-def test_a_stored_board_of_one_offer_is_refused() -> None:
-    with pytest.raises(ValueError, match="board"):
-        _ = SceneWorld[Person, Person](
-            player=PLAYER, runs=[_run(HUB, "Hub")], hub=HUB, board=BOARD[:1]
-        )
-
-
 def test_settle_refuses_a_job_done_where_no_job_is_open() -> None:
     at_hub = SceneWorld[Person, Person](
-        player=PLAYER, runs=[_run(HUB, "Hub")], hub=HUB, board=BOARD
+        player=PLAYER, runs=[_run(HUB, "Hub")], campaign=_campaign()
     )
     with pytest.raises(ValueError, match="no job is open here"):
         _ = at_hub.settle(True, "")
@@ -126,12 +110,12 @@ def test_settle_refuses_a_job_done_where_no_job_is_open() -> None:
 
 def test_scene_rows_shows_the_hub_row_and_the_way_on_and_home_rows_when_settled() -> None:
     at_hub = SceneWorld[Person, Person](
-        player=PLAYER, runs=[_run(HUB, "Hub")], hub=HUB, board=BOARD
+        player=PLAYER, runs=[_run(HUB, "Hub")], campaign=_campaign()
     )
     assert at_hub.scene_rows()[-1] == HUB_ROW
 
     campaign = SceneWorld[Person, Person](
-        player=PLAYER, runs=[_run(HUB, "Hub"), _run("a1", "A1")], hub=HUB, board=BOARD
+        player=PLAYER, runs=[_run(HUB, "Hub"), _run("a1", "A1")], campaign=_campaign()
     )
     campaign.run.left = ""
     settled = campaign.scene_rows()
@@ -157,9 +141,7 @@ def test_scene_rows_lists_the_open_job_under_the_question() -> None:
     world = SceneWorld[Person, Person](
         player=PLAYER,
         runs=[_run(HUB, "Hub"), _run("a1", "A1")],
-        hub=HUB,
-        board=BOARD,
-        jobs=[Job(title="A1", place="a1", terms=JOB, started=1)],
+        campaign=_campaign(Job(title="A1", place="a1", terms=JOB, started=1)),
     )
 
     assert world.scene_rows()[1] == PanelRow(label="The job", detail=JOB)
