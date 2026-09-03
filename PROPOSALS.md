@@ -4,7 +4,8 @@ Six issues seen in the role trace of 2026-09-03 (four campaigns played through t
 with scripted roles). Each entry: what the code does today, verified; the options; a
 recommendation; the questions to settle together. High level by design: a settled entry becomes
 a plan phase. Decisions (maintainer, 2026-09-03): 1A, 2A with the caution below, 3A, 4A, 5A, 6A.
-The open questions under each entry are still open.
+The open questions under each entry were answered the same day; each entry ends with the
+answer.
 
 ## The rule the recommendations follow
 
@@ -50,9 +51,9 @@ narration alone, and JOBS SO FAR = one debrief paragraph.
   a long job pushes its own start out again.
 
 **Decision: A.** The hub and the earlier jobs are the campaign's memory, and the master
-deciding a hub turn without the job it just closed is the case the trace caught. Open question:
-whether the worldsmith reads the same depths or the whole thing unwindowed when it writes the
-next scene (it has 900 s and the most to gain from the earlier jobs' cast and debts).
+deciding a hub turn without the job it just closed is the case the trace caught. Answered: the
+worldsmith reads the same three depths as every other role. It is the whole campaign either
+way; only the far scenes are shorter, and one renderer serves all three roles.
 
 ## 2. Jobs so far is a debrief for the player, not a memory for the master — settled: A
 
@@ -83,8 +84,9 @@ window.
   ledger.
 
 **Decision: A.** The summary is written by the role that reads everything, from everything.
-Question: whether the summary is one paragraph or a fixed shape (done, undone, people, debts,
-hidden), which the ledger and proposal 3 could then read field by field.
+Answered: one paragraph, not a fixed shape. The field's description lists what it should cover
+(done, undone, people and how it stands with them, debts, what is still hidden); the ledger
+prints it whole.
 
 **Caution, to be written into the code where the return draft is defined: the worldsmith's
 double duty at the return is dangerous.** One spawn writes for two readers at once: the
@@ -130,8 +132,8 @@ longer the job's. Same ledger behaviour.
   A holds.
 
 **Decision: A,** and C as the follow-up once A is played. B keeps a split the player does
-not see. Question: should the board mark an offer "left open" so the player knows it is a
-return, and should the offer's pitch be rewritten by the return draft to say where it stands.
+not see. Answered: the board marks an offer "left open" (the same suffix the Jobs panel
+uses), so the player knows it is a return; the pitch is not rewritten.
 
 ## 4. The crossing narrator reads nothing on a job's first scene and on the return — settled: A
 
@@ -207,10 +209,13 @@ through tools that mutate the draft.
 
 **Decision: A,** with B as the `later: true` flag on the same tool rather than a second
 tool. A master that needs someone now should get them now, written by the role that writes
-people, with the whole cast and history in front of it. Questions: the cap is raised by one
-for a platform tool, or `commission` is counted apart from engine tools; what the master may
-commission besides people (a rumour is a cast entry with no body; a place is a scene write); how
-a commission is refused when it contradicts the arc.
+people, with the whole cast and history in front of it. Answered: the cap rises by one for
+`commission`, a platform tool every engine carries, so the count reads "fifteen engine tools
+plus `commission`"; the master may commission any entity the engine finds useful, and each
+engine names its kinds and their draft models (a scene engine: a cast entry, which covers a
+person, a thing or a rumour; Tunnel Goons: an npc, an item or a region). Still open, for the
+plan: how a commission is refused when it contradicts the arc, and whether the worldsmith or the
+bar decides that.
 
 ## What to settle first
 
