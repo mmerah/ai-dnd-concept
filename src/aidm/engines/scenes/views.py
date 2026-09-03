@@ -1,15 +1,10 @@
-from collections.abc import Sequence
 from typing import Any
 
 from aidm.core.model import Game
-from aidm.core.views import NarratorView, Panel, PanelRow, PlayerView, Subject, speaker_of
-from aidm.engines.core import Person, party_panel
+from aidm.core.views import NarratorView, Panel, PlayerView, Subject, speaker_of
+from aidm.engines.core import Person, character_panel, here_panel, party_panel, trail_panel
 from aidm.engines.hub import board_panel, jobs_panel
-from aidm.engines.scenes.world import SceneRun, SceneWorld, player_over
-
-
-def trail_panel(runs: Sequence[SceneRun]) -> Panel:
-    return Panel(title="Trail", rows=tuple(PanelRow(label=one.title, detail="") for one in runs))
+from aidm.engines.scenes.world import SceneWorld, player_over
 
 
 def narrator_view[W: SceneWorld[Any, Any]](state: Game[W]) -> NarratorView:
@@ -29,27 +24,20 @@ def narrator_view[W: SceneWorld[Any, Any]](state: Game[W]) -> NarratorView:
 def player_view[W: SceneWorld[Any, Any]](state: Game[W], extra: tuple[Panel, ...]) -> PlayerView:
     world = state.payload
     player = world.player
-    here_rows = (
-        PanelRow(label=f"{player.name} (you)", detail=player.brief, icon_id=player.id),
-        *(
-            PanelRow(label=one.name, detail=one.brief, icon_id=one.id)
-            for one in world.here()
-            if one.id != player.id
-        ),
-    )
+    me = _subject_of(player)
     return PlayerView(
-        player=_subject_of(player),
+        player=me,
         panels=(
-            Panel(
-                title="Character",
-                rows=tuple(PanelRow(label=label, detail=detail) for label, detail in player.rows()),
-            ),
+            character_panel(player.rows()),
             *extra,
             Panel(title="This scene", rows=world.scene_rows()),
             *board_panel(world.at_hub, world.board),
             *party_panel(world.members()),
-            Panel(title="Here", rows=here_rows),
-            trail_panel(world.job_runs()),
+            here_panel(
+                me,
+                (_subject_of(one) for one in world.here() if one.id != player.id),
+            ),
+            trail_panel(run.title for run in world.job_runs()),
             *jobs_panel(world.closed_jobs()),
         ),
         prompt=state.pending,

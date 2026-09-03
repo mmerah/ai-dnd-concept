@@ -1,4 +1,4 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from random import Random
 from typing import Literal, Protocol, Self
@@ -9,7 +9,7 @@ from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, requi
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.io import ENCODING
 from aidm.core.play import DecisionOption
-from aidm.core.views import Panel, PanelRow, Rows
+from aidm.core.views import Panel, PanelRow, Rows, Subject
 
 PLAYER_ID = EntityId("player")
 CHANGE_WORLD = (
@@ -128,6 +128,25 @@ def party_panel(members: Sequence[Person]) -> tuple[Panel, ...]:
         return ()
     rows = tuple(PanelRow(label=m.name, detail=m.brief, icon_id=m.id) for m in members)
     return (Panel(title="Party", rows=rows),)
+
+
+def character_panel(rows: Rows) -> Panel:
+    return Panel(
+        title="Character",
+        rows=tuple(PanelRow(label=label, detail=detail) for label, detail in rows),
+    )
+
+
+def here_panel(player: Subject, others: Iterable[Subject]) -> Panel:
+    rows = (
+        PanelRow(label=f"{player.name} (you)", detail=player.brief, icon_id=player.id),
+        *(PanelRow(label=one.name, detail=one.brief, icon_id=one.id) for one in others),
+    )
+    return Panel(title="Here", rows=rows)
+
+
+def trail_panel(titles: Iterable[str]) -> Panel:
+    return Panel(title="Trail", rows=tuple(PanelRow(label=title, detail="") for title in titles))
 
 
 def pool(counter: Counter) -> str:

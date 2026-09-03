@@ -80,7 +80,6 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, Pack]):
 
 def _installed(tmp_path: Path) -> FifthEngine:
     (tmp_path / "rules.md").write_text("Roll high.", encoding=ENCODING)
-    (tmp_path / "worldsmith.md").write_text("You write the world.", encoding=ENCODING)
     (tmp_path / "packs").mkdir()
     (tmp_path / "packs" / "srd.json").write_text('{"name": "The SRD"}', encoding=ENCODING)
     FifthEngine.directory = tmp_path

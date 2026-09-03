@@ -206,3 +206,64 @@ review findings and why, anything known and accepted.
 - "`src` is over the target" (both): no named cut is missing; recorded, not padded. The
   `Board` annotations, `check_jobs`'s bound, the opening check and the hub-run rule are the
   fold's additions.
+
+## Phase 4 — the chores
+
+- `src` lines: 9,257 before, 9,243 after (target about 8,960). PLAN's table expected about 90
+  fewer lines from this phase; 49 of the lines it deletes are the three `worldsmith.md`, which
+  the `.py` count never held, and the three panel builders replace about 35 duplicated lines
+  with 22 shared ones. No named cut is missing; recorded, not padded. Tests: 472 after (472
+  before: one `here_panel` test added, one wiring test removed in the fold).
+- Goldens: every fixture unchanged. The 24XX and Breathless worldsmith prompts lose the "cast
+  carries no dice" paragraph; the Loner prompt carries "Every scene bears on the player's
+  `goal`, or brings their `nemesis` nearer." and "Give a door or a storm the `skills` and
+  `frailties` it resists with." in `_AUTHORING`, so they reach every scene write and the
+  opening through `guidance()`.
+- Smoke (headless, no model credentials in the container; a live turn was not played): the four
+  save fixtures restore and every engine's sidebar lists Character first, then Here with the
+  player as "(you)" and an icon id on every row, then Trail; `game_page` builds under a NiceGUI
+  client for 24XX and Tunnel Goons with no traceback; the shared `WORLDSMITH` holds neither
+  deleted paragraph and Loner's `guidance()` holds both moved sentences.
+- Implemented by one Sonnet implementer (brief in `/tmp/phase-4/`). Reviews: the Fable
+  reviewer and a second Opus reviewer (no `codex` on the machine); the fold is recorded below.
+
+### Decisions off-plan
+
+- `engines/seam.py`'s `directory` comment says "rules.md; a scene engine's packs/; Tunnel
+  Goons' worldsmith.md": the scene engines no longer read a `worldsmith.md` from it.
+- `NEXT-SPECS.md`'s refusal of a `SceneRules` record no longer names `role` among what
+  `SceneEngine` carries on `self` (both reviewers: this phase deleted it).
+- Both `player_view`s bind the player's `Subject` once and pass it to `PlayerView.player` and
+  `here_panel` (both reviewers). `here_panel` has no docstring: "(you)" is on the next line and
+  the icon id's reason is the comment on `PanelRow.icon_id` (both).
+- `tests/breathless/test_views.py::test_the_player_views_here_panel_lists_the_player_first_then_known_cast`
+  is deleted (both reviewers): with the panel built once, it asserted `here_panel`'s own test
+  through a view; `tests/core/test_views.py` keeps the scene view's Here membership, icon ids
+  and the hidden entity's absence.
+- PLAN's done-when `ls src/aidm/engines/*/worldsmith.md` lists `scenes` and `tunnelgoons`: the
+  shared file PLAN 4.1.1 creates sits under `engines/scenes/`, which the glob matches. Its
+  grep checks hold.
+
+### Refuted findings
+
+- "Delete the `role` parameter of `write_next` and `render_opening`; move `WORLDSMITH` into
+  `scenes/worldsmith.py`" (Opus cut): PLAN 4.1.1 spells the shape as the engine's constant that
+  "`author` and `advance` pass"; one value at one call site makes it a pass-through, so it is a
+  cut. Awaiting the maintainer's call.
+- "One `subject_of` in `engines/core.py` for both views" (Opus cut): `Goon` and `Npc` are
+  `Mutable`, not `Person`, and the `Entity` protocol has no `brief`, so the shared function
+  needs a new protocol for one three-field constructor. Awaiting the maintainer's call.
+
+## The plan, closed
+
+- `src` lines: 9,742 at `4fa8d4f`, 9,243 after phase 4 (PLAN's table: 8,960). Every cut PLAN
+  names is taken; the gap is PLAN's estimates (phase 2 about 80, phase 3 about 200 including
+  the fold's checks, phase 4 the `.md` lines), recorded per phase above. `engines/scenes/world.py`
+  is 666 lines (PLAN: under 600). Tests: 472.
+- Cuts deferred across the four phases, each awaiting the maintainer's call: `render_master`'s
+  `recent` default (phase 1), inlining `apply_to_draft` and dropping `Fact.entity_id` (phase 1),
+  inlining Tunnel Goons' module `record` (phase 2), the `role` parameter and a shared
+  `subject_of` (phase 4).
+- Known and accepted: `job_runs()`/`job_visits()` start at the open job's `started` (phase 3);
+  the phase 3 done-when grep still finds `Counter.current`, `TunnelWorld.current` and the prose
+  "Stop here"; the phase 4 `ls` lists `scenes` beside `tunnelgoons`.

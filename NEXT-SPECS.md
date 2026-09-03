@@ -74,7 +74,8 @@ and no crew (its "the cast carries no dice" stands until 24XX has played). G is 
   ...]`, the player first then who travels with them, with a validator `party ⊆ subjects` (who
   the player is, not a world shape); `render_narrator` prints `YOUR PARTY: you are <name>; with
   you: <names or nobody>`. The `Illustrator` takes the player from it. Nothing else in `core`,
-  `turn`, `app` or `ui` changes: the panel is a `Panel`, the arms are `change_world` arms.
+  `turn`, `app` or `ui` changes: the panel is a `Panel`, the arms are `change_world` arms. Not a
+  gap today: `NarratorView.party` and the two arms in 24XX and Breathless land here.
 - **Registration.** 24XX and Breathless register `JoinParty`/`LeaveParty` (15 → 17, 12 → 14,
   the pair not counted per decision 4); Tunnel Goons gets `TunnelWorld.party: list[EntityId]`
   through Track A's `check_party`/`join_party`/`leave_party`, `move` carries the party with
@@ -206,5 +207,7 @@ forbids volunteered member actions.
   a return owes; a flat draft moves that demand into prose and the bar, and the seven
   `isinstance` sites become seven `if draft.offers` sites.
 - A `SceneRules` record and a `scene_engine` factory in place of `SceneEngine` (PLAN 5.1): the
-  same surface, with a `partial` per field where the class carries `packs`, `cast` and `role`
-  on `self`.
+  same surface, with a `partial` per field where the class carries `packs` and `cast` on
+  `self`.
+- Folding the `Kill` arm into `engines/core.py`: 24XX's succession (G.2) changes what a kill
+  does, so the arm stays per engine.

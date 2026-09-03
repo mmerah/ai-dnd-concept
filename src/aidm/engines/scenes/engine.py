@@ -31,6 +31,8 @@ from aidm.engines.scenes.worldsmith import (
 )
 from aidm.engines.seam import Engine, authored
 
+WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
+
 
 class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
     """The scene lifecycle, once; a subclass says what its rules add."""
@@ -41,11 +43,9 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
     finished_note: str = ""  # the note a finished job leaves for the next turn
     crossing = CROSSING
     packs: dict[str, K]
-    role: str
 
     def __init__(self, user_packs: Path) -> None:
         self.packs = load_packs((self.directory / "packs", user_packs), self.pack)
-        self.role = (self.directory / "worldsmith.md").read_text(encoding=ENCODING)
         super().__init__()  # last: `master_tools` reads the packs
 
     def world(self, state: G) -> SceneWorld[C, P]:
@@ -100,7 +100,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
 
         prompt = render_opening(
             self.cast,
-            self.role,
+            WORLDSMITH,
             source,
             self.guidance(packs, campaign=kind == "campaign"),
             kind,
@@ -120,7 +120,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             intent,
             worldsmith,
             cast_type=self.cast,
-            role=self.role,
+            role=WORLDSMITH,
             guidance=self.guidance(draft.packs, campaign=world.hub is not None),
         )
         # The engine's own closing reads the scene being left, so it runs before the install.

@@ -7,7 +7,7 @@ from aidm.core.entities import CheckedEntityId, EntityId, Frozen, require_unique
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.tools import MasterTool, NoArgs, master_tool
-from aidm.engines.core import counter_fact, entity_fact, pool
+from aidm.engines.core import CHANGE_WORLD, counter_fact, entity_fact, pool
 from aidm.engines.tunnelgoons.world import (
     ABILITIES,
     Ability,
@@ -20,11 +20,6 @@ from aidm.engines.tunnelgoons.world import (
     TunnelWorld,
     Visit,
     Way,
-)
-
-CHANGE_WORLD = (
-    "Apply one settled world change to match the story. Set `verb` to pick the change and fill "
-    "that verb's own fields. One call makes one change."
 )
 
 _LEVEL_OPTIONS: tuple[PendingOption, ...] = tuple(

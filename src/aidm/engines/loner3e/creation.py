@@ -24,6 +24,8 @@ _AUTHORING = (
     "`concept` and any fitting `skills`, `frailties` or `gear`, and rolls with luck of its own. "
     "Living characters may carry a `goal`, a `motive` and a `nemesis`; objects, vehicles and "
     "curses do not. "
+    "Every scene bears on the player's `goal`, or brings their `nemesis` nearer. "
+    "Give a door or a storm the `skills` and `frailties` it resists with. "
     "Loner tags are freeform descriptions: use selected pack entries when they fit and invent "
     "scenario-specific tags when they are clearer. Only a pack tag carries a meaning the game "
     "master can look up, so an invented tag that does not say what it does needs one sentence "
