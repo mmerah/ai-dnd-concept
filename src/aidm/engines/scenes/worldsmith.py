@@ -6,9 +6,9 @@ from aidm.core.entities import EntityId
 from aidm.core.tools import schema_text
 from aidm.core.views import Sections, sections
 from aidm.engines.base import Person, Thing
-from aidm.engines.hub import Campaign, place_unmet
-from aidm.engines.scenes.drafts import HubDraft, ReturnDraft, SceneDraft
-from aidm.engines.scenes.world import SceneCanon, SceneWorld, resolve_ids, resolved_id, run_of
+from aidm.engines.hub import place_unmet
+from aidm.engines.scenes.drafts import ReturnDraft, SceneDraft
+from aidm.engines.scenes.world import SceneWorld, resolved_id
 
 CROSSING = (
     "The player is leaving WHAT THE PLAYER HAS READ for the place in SCENE. They asked for this: "
@@ -22,26 +22,6 @@ SURPRISE = (
     "have stopped thinking about. Surprise by recombining what exists, never by inventing what "
     "the source would not hold."
 )
-
-
-def opening_canon[C: Person](
-    draft: SceneDraft[C], source: str, cast_type: type[C]
-) -> SceneCanon[C]:
-    """Parametrized at runtime, so the cast revalidates as the engine's own people."""
-    cast = draft.cast
-    present = resolve_ids(draft.present, cast, "present")
-    hidden = resolve_ids(draft.hidden, cast, "hidden")
-    for entity_id in present:
-        cast[entity_id].known = True
-    campaign = (
-        Campaign(place=draft.place, board=draft.offers) if isinstance(draft, HubDraft) else None
-    )
-    return SceneCanon[cast_type](
-        cast=cast,
-        opening=run_of(draft, [*present, *hidden]),
-        source=source,
-        campaign=campaign,
-    )
 
 
 def scene_refusal[C: Person, P: Person](

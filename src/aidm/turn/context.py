@@ -6,7 +6,7 @@ from aidm.core.io import ENCODING
 from aidm.core.model import AnyGame
 from aidm.core.play import Narration, PendingDecision, SceneRecord
 from aidm.core.tools import schema_text
-from aidm.core.views import NarratorView, render_history, sections, told_narration
+from aidm.core.views import NarratorView, lines_of, render_history, sections, told_narration
 
 ANSWERED_BY_OPTION = (
     "The player chose the option above and the rules have applied it. Develop what it caused; "
@@ -33,7 +33,7 @@ def render_master(
             ("SCENARIO", f"{state.scenario.title}\n{state.scenario.premise}"),
             (f"RECENT PLAY (this is turn {state.turn + 1})", render_history(scenes)),
             *engine_sections,
-            ("NOTES FROM THE RULES", "\n".join(f"- {note}" for note in notes) or "- (none)"),
+            ("NOTES FROM THE RULES", lines_of(f"- {note}" for note in notes)),
             ("WAITING ON THE PLAYER", _waiting(state.pending)),
             ("PLAYER ACTION", action),
         )
@@ -52,8 +52,7 @@ def render_narrator(
             ("WHAT THIS SCENE IS ABOUT", view.focus),
             (
                 "WHO IS HERE",
-                "\n".join(f"- {subject.name} — {subject.brief}" for subject in view.subjects)
-                or "- (none)",
+                lines_of(f"- {subject.name} — {subject.brief}" for subject in view.subjects),
             ),
             ("WHAT HAPPENED", evidence),
             ("PLAYER ACTION", prompt),

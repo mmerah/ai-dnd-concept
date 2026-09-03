@@ -8,9 +8,8 @@ from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import AnyCharacter
 from aidm.core.tools import MasterTool, NoArgs, master_tool
-from aidm.core.views import Panel, PanelRow, Rows, Sections
+from aidm.core.views import Panel, PanelRow, Rows, Sections, lines_of
 from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, SRD_PACK, Person, sentence
-from aidm.engines.breathless.creation import AUTHORING, Pack
 from aidm.engines.breathless.tools import (
     ChangeStress,
     ChangeWorld,
@@ -39,6 +38,7 @@ from aidm.engines.breathless.world import (
     Survivor,
     stepped,
 )
+from aidm.engines.breathless.worldsmith import AUTHORING, Pack
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, Enter, Kill, Leave, NextScene, Reveal
 
@@ -164,7 +164,7 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
         lines = [f"- {item.name}[{key}] — d{item.die}" for key, item in player.items.items()]
         if player.med_kit:
             lines.append("- med kit")
-        return (("BACKPACK", "\n".join(lines) or "- (none)"),)
+        return (("BACKPACK", lines_of(lines)),)
 
     def panels(self, state: BreathlessGame) -> tuple[Panel, ...]:
         player = self.world(state).player

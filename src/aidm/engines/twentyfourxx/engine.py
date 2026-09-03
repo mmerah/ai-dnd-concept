@@ -8,11 +8,10 @@ from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import Panel, PanelRow, Rows, Sections
+from aidm.core.views import Panel, PanelRow, Rows, Sections, lines_of
 from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, Person, keep_highest, sentence
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, Enter, Kill, Leave, NextScene, Reveal
-from aidm.engines.twentyfourxx.creation import AUTHORING, Pack
 from aidm.engines.twentyfourxx.tools import (
     AfterJob,
     Attempt,
@@ -42,6 +41,7 @@ from aidm.engines.twentyfourxx.world import (
     TwentyfourxxWorld,
     raised,
 )
+from aidm.engines.twentyfourxx.worldsmith import AUTHORING, Pack
 
 BOARD_GUIDANCE = (
     "The SRD's job-finding setup is the board's range, not a recipe: 1–2 nothing, owe somebody to "
@@ -208,7 +208,7 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
             if detail := gear_detail(item):
                 line += f" — {detail}"
             lines.append(line)
-        return (("GEAR", "\n".join(lines) or "- (none)"),)
+        return (("GEAR", lines_of(lines)),)
 
     def panels(self, state: TwentyfourxxGame) -> tuple[Panel, ...]:
         rows = tuple(

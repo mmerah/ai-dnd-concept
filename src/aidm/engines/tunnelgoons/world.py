@@ -7,7 +7,7 @@ from aidm.core.entities import CheckedEntityId, EntityId, Mutable, Refusal, requ
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import Exchange, SceneRecord
-from aidm.core.views import Rows
+from aidm.core.views import Rows, lines_of
 from aidm.engines.base import PLAYER_ID, Counter, Person, Thing, check_filing
 from aidm.engines.hub import Campaign, Job
 
@@ -398,6 +398,21 @@ class TunnelGoonsWorld(Dungeon):
         if isinstance(entity, Goon | Npc) and not entity.alive:
             line += " (dead)"
         return f"{line}\n  {sheet}" if sheet else line
+
+    def place_lines(self, *, known: bool) -> str:
+        """Who stands and what lies at the current place, the found or the hidden half."""
+        npcs_here = [npc for npc in self.at(self.current.id) if npc.known == known]
+        holders = (self.current.id, *(npc.id for npc in self.at(self.current.id)))
+        items = (item for holder in holders for item in self.carried(holder) if item.known == known)
+        return lines_of(self.line(entity) for entity in (*npcs_here, *items))
+
+    def ways_lines(self) -> str:
+        return lines_of(
+            f"- {self.require_place(way.to).name}[{way.to}] — "
+            + ("known" if way.known else "unknown")
+            + ("; locked" if way.locked else "")
+            for way in self.ways.get(self.current.id, ())
+        )
 
     def sheet_rows(self, goon: Goon) -> Rows:
         carried = len(list(self.carried(goon.id)))

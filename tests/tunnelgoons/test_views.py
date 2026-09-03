@@ -4,8 +4,7 @@ from support.tunnelgoons import HALL, MIRA, START, TAVERN, hub_world, small_worl
 from aidm.core.entities import EntityId
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.hub import Job
-from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
-from aidm.engines.tunnelgoons.views import REPORT_ROW
+from aidm.engines.tunnelgoons.engine import REPORT_ROW, TunnelGoonsEngine
 from aidm.engines.tunnelgoons.world import Item, Visit
 
 ENGINE = TunnelGoonsEngine()

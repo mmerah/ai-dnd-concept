@@ -135,7 +135,7 @@ and no crew (its "the cast carries no dice" stands until 24XX has played). G is 
 - **Counts.** Arms: `join_party`, `leave_party` (G.1), `take_lead`, `ship_upgrade`. 24XX goes
   15 → 19.
 - **Views and prompts.** The `Party` panel shows a sheeted member's `rows()`; the master's `THE
-  PARTY` prints sheets; `creation.py AUTHORING` ("the cast carries no dice") and the `attempt`
+  PARTY` prints sheets; `worldsmith.py AUTHORING` ("the cast carries no dice") and the `attempt`
   description are rewritten; `worldsmith.md` says a sheet is for someone who could plausibly be
   hired, at most one per scene. `docs/24XX.md`: deviations 1, 2, 4 close; 5 splits into "the
   priced gear table is not transcribed" (stays) and the ship (closes).

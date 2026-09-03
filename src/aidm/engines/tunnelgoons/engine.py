@@ -17,6 +17,7 @@ from aidm.core.views import (
     PlayerView,
     Rows,
     Sections,
+    lines_of,
     render_history,
     sections,
 )
@@ -35,7 +36,6 @@ from aidm.engines.tunnelgoons.tools import (
     UnlockWay,
     WorldChange,
 )
-from aidm.engines.tunnelgoons.views import REPORT_IN, REPORT_ROW, lines_of, place_lines, ways_lines
 from aidm.engines.tunnelgoons.world import (
     ABILITIES,
     ABILITY_POINTS,
@@ -60,6 +60,9 @@ from aidm.engines.tunnelgoons.worldsmith import (
     map_refusal,
     opening_canon,
 )
+
+REPORT_IN = "Report in."
+REPORT_ROW = PanelRow(label="Report in", detail="Tell the tavern how it went.", intent=REPORT_IN)
 
 STARTING_ITEM_LIST: tuple[str, ...] = (
     "Melee Weapon (specify)",
@@ -220,9 +223,9 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
             ("CURRENT PLACE", f"{place.name}[{place.id}]\n{place.description}"),
             ("YOU PLAY FOR", world.line(player)),
             ("CARRYING", lines_of(world.line(item) for item in world.carried(player.id))),
-            ("HERE WITH THE PLAYER", place_lines(world, known=True)),
-            ("HIDDEN HERE (the player has not found these)", place_lines(world, known=False)),
-            ("WAYS OUT", ways_lines(world)),
+            ("HERE WITH THE PLAYER", world.place_lines(known=True)),
+            ("HIDDEN HERE (the player has not found these)", world.place_lines(known=False)),
+            ("WAYS OUT", world.ways_lines()),
             *(() if world.campaign is None else world.campaign.tail(at_hub=world.at_hub)),
         )
 

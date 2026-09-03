@@ -6,7 +6,7 @@ from aidm.core.facts import Fact
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.breathless.engine import BreathlessEngine
 from aidm.engines.scenes.drafts import HubDraft, ReturnDraft, SceneDraft
-from aidm.engines.scenes.worldsmith import opening_canon, scene_refusal
+from aidm.engines.scenes.worldsmith import scene_refusal
 
 ENGINE = BreathlessEngine()
 
@@ -157,12 +157,10 @@ def _opening(**fields: object) -> SceneDraft[Person]:
 def test_opening_canon_sets_the_hub_and_board_for_a_campaign_only() -> None:
     offers = [{"title": "A", "pitch": "Take A."}, {"title": "B", "pitch": "Take B."}]
     campaign = the_campaign(
-        opening_canon(
-            HubDraft[Person].model_validate({**_opening().model_dump(), "offers": offers}),
-            "",
-            Person,
+        ENGINE.opening_canon(
+            HubDraft[Person].model_validate({**_opening().model_dump(), "offers": offers}), ""
         ).campaign
     )
     assert campaign.place == HUB_PLACE
     assert [offer.title for offer in campaign.board] == ["A", "B"]
-    assert opening_canon(_opening(), "", Person).campaign is None
+    assert ENGINE.opening_canon(_opening(), "").campaign is None
