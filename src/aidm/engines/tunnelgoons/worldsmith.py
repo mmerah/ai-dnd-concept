@@ -149,4 +149,4 @@ def _board_unmet(draft: MapDraft) -> list[str]:
 
 
 def _has_hidden_thing(draft: MapDraft) -> bool:
-    return any(not one.known for one in (*draft.npcs.values(), *draft.items.values()))
+    return any(not entity.known for entity in (*draft.npcs.values(), *draft.items.values()))

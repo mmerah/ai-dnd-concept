@@ -16,7 +16,7 @@ CheckedEntityId = Annotated[EntityId, Field(pattern=rf"^{SLUG_PATTERN}$", max_le
 
 
 class Frozen(BaseModel):
-    """A value nothing owns: a fact, a direction, or an authored record."""
+    """Frozen and compared by fields; every model answer and fact is one."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 

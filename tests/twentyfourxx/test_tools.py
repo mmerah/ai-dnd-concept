@@ -1,10 +1,10 @@
 from random import Random
 
 import pytest
-from core_test_support import change, refused, the_campaign
-from twentyfourxx_test_support import KESTREL, LOCKPICKS, hub_world, small_world
+from support.table import change, refused, the_campaign
+from support.twentyfourxx import KESTREL, LOCKPICKS, hub_world, small_world
 
-from aidm.core.entities import EntityId
+from aidm.core.entities import EntityId, Refusal
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.hub import JOB_DONE
 from aidm.engines.scenes.tools import NextScene
@@ -46,7 +46,7 @@ def test_attempt_pack_label_not_on_sheet_rolls_d6() -> None:
 
 def test_attempt_unknown_skill_refused_with_both_lists() -> None:
     draft = small_world().draft()
-    with pytest.raises(ValueError) as raised:
+    with pytest.raises(Refusal) as raised:
         _ = ENGINE.attempt(draft, Attempt(what="Try", skill="Nonexistent"), Random(0))
     assert "Stealth" in str(raised.value)
     assert "Climbing" in str(raised.value)
@@ -123,7 +123,7 @@ def test_defend_breaks_the_item_and_adds_the_hindrance_refused_when_broken() -> 
     assert "fingers cut" in player.hindrances
     assert any(fact.card == "Lockpick set breaks — fingers cut" for fact in facts)
 
-    with pytest.raises(ValueError, match="already broken"):
+    with pytest.raises(Refusal, match="already broken"):
         _ = ENGINE.defend(
             draft, Defend(item_id=LOCKPICKS, hindrance="fingers cut again"), Random(0)
         )
@@ -184,7 +184,7 @@ def test_after_job_raises_a_skill_enters_a_new_one_refuses_at_d12_adds_credits()
     _ = ENGINE.after_job(draft, AfterJob(skill="Climbing"), Random(1))
     assert player.skills["Climbing"] == 8
 
-    with pytest.raises(ValueError, match="d12"):
+    with pytest.raises(Refusal, match="d12"):
         _ = ENGINE.after_job(draft, AfterJob(skill="Stealth"), Random(0))
 
 
@@ -201,7 +201,7 @@ def test_next_scene_settles_and_refuses_a_second_call() -> None:
     facts = ENGINE.next_scene(draft, NextScene(), Random(0))
     assert draft.payload.run.left is not None
     assert facts[0].kind == "scene_settled"
-    with pytest.raises(ValueError, match="already settled"):
+    with pytest.raises(Refusal, match="already settled"):
         _ = ENGINE.next_scene(draft, NextScene(), Random(0))
 
 
@@ -215,7 +215,7 @@ def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() ->
 
     at_hub = hub_world()
     at_hub.payload.runs = [at_hub.payload.runs[0]]
-    with pytest.raises(ValueError, match="no job is open here"):
+    with pytest.raises(Refusal, match="no job is open here"):
         _ = ENGINE.next_scene(at_hub, NextScene(job_done=True), Random(0))
 
 

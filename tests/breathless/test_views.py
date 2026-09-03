@@ -1,5 +1,5 @@
-from breathless_test_support import DAX, small_world
-from core_test_support import BREATHLESS, ENGINES_BUILT
+from support.breathless import DAX, small_world
+from support.table import BREATHLESS, ENGINES_BUILT
 
 from aidm.core.views import PanelRow
 from aidm.engines.base import Person

@@ -43,8 +43,8 @@ class Engine[G: Game[Any]](ABC):
     def __init__(self) -> None:
         self.instructions = (self.directory / "rules.md").read_text(encoding=ENCODING)
         tools = self.master_tools()
-        require_unique(f"tool names of the {self.id!r} engine", (one.name for one in tools))
-        self.tools = {one.name: one for one in tools}
+        require_unique(f"tool names of the {self.id!r} engine", (tool.name for tool in tools))
+        self.tools = {tool.name: tool for tool in tools}
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
         return ()
@@ -90,17 +90,17 @@ class Engine[G: Game[Any]](ABC):
         """The build runs the engine's bar, so an unbuildable opening is re-prompted, not raised."""
         built: AnyScenario | None = None
 
-        def refusal(written: M) -> str | None:
+        def refusal(answer: M) -> str | None:
             nonlocal built
             try:
-                built = build(written)
+                built = build(answer)
             except Refusal as unbuildable:
                 return str(unbuildable)
             return playable(built)
 
-        written = await worldsmith(prompt, model, refusal)
+        answer = await worldsmith(prompt, model, refusal)
         # The accepted answer was built by its own check; one never checked is built here.
-        return build(written) if built is None else built
+        return build(answer) if built is None else built
 
     def close(self, draft: G, prompt: str, lines: tuple[Line, ...], facts: tuple[Fact, ...]) -> G:
         """File the exchange, count the turn, commit."""

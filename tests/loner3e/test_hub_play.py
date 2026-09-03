@@ -1,5 +1,5 @@
-from core_test_support import the_campaign
-from loner3e_test_support import HUB_PLACE, HUB_SITUATION, KEEPER, hub_world
+from support.loner import HUB_PLACE, HUB_SITUATION, KEEPER, hub_world
+from support.table import the_campaign
 
 from aidm.core.entities import EntityId
 from aidm.engines.loner3e.engine import Loner3eEngine

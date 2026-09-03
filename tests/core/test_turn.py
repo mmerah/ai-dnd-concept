@@ -1,17 +1,12 @@
+import json
 from pathlib import Path
 from random import Random
 
 import pytest
-from core_test_support import (
-    changed,
-    initialized,
-    narrated,
-    open_game,
-    play_turn,
-    tool_call,
-)
+from support.loner import initialized, loner_sheet, open_game
+from support.table import changed, narrated, play_turn, the_way_on, tool_call
 
-from aidm.core.entities import EntityId
+from aidm.core.entities import EntityId, Refusal
 from aidm.core.facts import Fact, cards
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer
@@ -23,6 +18,24 @@ MAP = EntityId("vault-map")
 FOUND = changed("reveal", entity_id="vault-map")
 TAKEN = changed("change_tags", entity_id=PLAYER_ID, kind="gear", gained=["the vault map"])
 ASKED = tool_call("roll_question", actor_id=PLAYER_ID, question="Does the door give?")
+
+
+def _scene(**changes: object) -> str:
+    scene: dict[str, object] = {
+        "place": "cloister-walk",
+        "title": "The Cloister Walk",
+        "situation": (
+            "Rain drums the open arcade and the flagstones run black with it, and Mara waits "
+            "at the far end with the lantern shuttered to a slit."
+        ),
+        "present": ["mara"],
+        "hidden": [],
+        "question": "Can you reach the chapter house before the lantern gives you away?",
+        "recap": "The player left the abbot's study behind, lantern shuttered, and made for the "
+        "cloister walk with Mara close behind them.",
+    }
+    scene.update(changes)
+    return json.dumps(scene)
 
 
 async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_path: Path) -> None:
@@ -58,9 +71,9 @@ async def test_the_turn_holds_its_facts_in_resolver_order(tmp_path: Path) -> Non
         changed("change_tags", entity_id="player", kind="condition", gained=["Listening"]),
     )
 
-    landed = ["The vault map discovered", "Took the vault map", "Now: Listening"]
-    assert [fact.card for fact in cards(table.facts)] == landed
-    assert [fact.card for fact in state.payload.exchanges()[-1].facts] == landed
+    expected = ["The vault map discovered", "Took the vault map", "Now: Listening"]
+    assert [fact.card for fact in cards(table.facts)] == expected
+    assert [fact.card for fact in state.payload.exchanges()[-1].facts] == expected
 
 
 async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: Path) -> None:
@@ -68,7 +81,7 @@ async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: 
     before = table.service.state.model_dump_json()
     table.spawner.turns.append(table.plays((FOUND, TAKEN)))
 
-    with pytest.raises(ValueError, match="no answer left"):
+    with pytest.raises(Refusal, match="no answer left"):
         await table.service.play(Answer(text="I take the map."))
 
     assert table.service.state.model_dump_json() == before
@@ -119,7 +132,7 @@ async def test_an_illegal_tool_call_is_refused_with_the_reason(tmp_path: Path) -
     state = await play_turn(table, "I wait.", changed("reveal", entity_id="nowhere"), FOUND)
 
     assert state.payload.require(MAP).known
-    assert any("unknown id 'nowhere'" in one for one in table.refusals)
+    assert any("unknown id 'nowhere'" in refusal for refusal in table.refusals)
 
 
 async def test_a_call_its_own_fields_refuse_does_not_kill_the_turn(tmp_path: Path) -> None:
@@ -133,7 +146,7 @@ async def test_a_call_its_own_fields_refuse_does_not_kill_the_turn(tmp_path: Pat
     )
 
     assert state.payload.player.goal == "Find the way down."
-    assert any("goal, a motive or a nemesis" in one for one in table.refusals)
+    assert any("goal, a motive or a nemesis" in refusal for refusal in table.refusals)
 
 
 async def test_a_later_call_in_one_turn_sees_the_earlier_calls_draft(
@@ -146,7 +159,7 @@ async def test_a_later_call_in_one_turn_sees_the_earlier_calls_draft(
     )
 
     assert state.payload.run.left is not None
-    assert any("already settled" in one for one in table.refusals)
+    assert any("already settled" in refusal for refusal in table.refusals)
 
 
 async def test_a_line_spoken_by_someone_not_here_is_re_prompted_with_the_id(
@@ -262,3 +275,54 @@ def _rolls_then_refuses(draft: AnyGame, rng: Random) -> tuple[Fact, ...]:
     del draft
     _ = rng.random()
     raise ValueError("the rules said no")
+
+
+async def test_crossing_keeps_a_drive_set_after_the_worldsmith_snapshot(
+    tmp_path: Path,
+) -> None:
+    table = open_game(tmp_path)
+    table.spawner.answers["worldsmith"] = [_scene()]
+
+    _ = await play_turn(table, "I have what I came for.", the_way_on())
+    state = await play_turn(
+        table,
+        "Out into the cloister walk.",
+        changed("drive", entity_id=PLAYER_ID, goal="Get the vault map out safely"),
+        arrival="Rain takes the arcade.",
+        moving_on=True,
+    )
+
+    assert state.payload.player.goal == "Get the vault map out safely"
+
+
+async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_and_sheet(
+    tmp_path: Path,
+) -> None:
+    """The brief is the worldsmith's between scenes; the name and the sheet are the rules'."""
+    table = open_game(tmp_path)
+    before = loner_sheet(table.state, EntityId("mara"))
+    table.spawner.answers["worldsmith"] = [
+        _scene(
+            cast={
+                "mara": {
+                    "id": "mara",
+                    "name": "Another Mara",
+                    "brief": "Waiting under the arcade with the lantern shuttered.",
+                }
+            },
+        )
+    ]
+
+    _ = await play_turn(table, "I have what I came for.", the_way_on())
+    state = await play_turn(
+        table, "Out into the cloister walk.", arrival="Rain takes the arcade.", moving_on=True
+    )
+
+    mara = state.payload.require(EntityId("mara"))
+    assert state.payload.run.title == "The Cloister Walk"
+    assert mara.name == "Mara"
+    assert mara.brief == "Waiting under the arcade with the lantern shuttered."
+    assert (mara.concept, mara.tags) == (before.concept, before.tags)
+    assert all(
+        fact.kind != "way_unwritten" for fact in table.service.engine.history(state)[-1].facts
+    )

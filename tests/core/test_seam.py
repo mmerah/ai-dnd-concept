@@ -121,16 +121,16 @@ async def test_compose_builds_the_accepted_answer_once(tmp_path: Path) -> None:
     engine = _installed(tmp_path)
     builds: list[DecisionOption] = []
 
-    def build(written: DecisionOption) -> FifthScenario:
-        builds.append(written)
+    def build(option: DecisionOption) -> FifthScenario:
+        builds.append(option)
         return _scenario()
 
     async def worldsmith[M: BaseModel](
         prompt: str, model: type[M], refusal: Callable[[M], str | None]
     ) -> M:
-        written = model.model_validate({"id": "srd", "label": "The SRD"})
-        assert refusal(written) is None
-        return written
+        option = model.model_validate({"id": "srd", "label": "The SRD"})
+        assert refusal(option) is None
+        return option
 
     await engine.compose(worldsmith, "write", DecisionOption, build, lambda _: None)
     assert len(builds) == 1

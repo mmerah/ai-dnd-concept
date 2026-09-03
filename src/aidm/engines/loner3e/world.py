@@ -48,8 +48,11 @@ class Loner3eSheet(Person):
     def unwritten(self) -> str:
         missing = [
             why
-            for why, held in (("alive", self.alive), ("full luck", self.luck.current == LUCK_MAX))
-            if not held
+            for why, satisfied in (
+                ("alive", self.alive),
+                ("full luck", self.luck.current == LUCK_MAX),
+            )
+            if not satisfied
         ]
         return ", ".join(missing)
 

@@ -130,12 +130,12 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
             concept=picked(picks, "concept"),
             tags={
                 "skill": [
-                    chosen_option(pack.skills, picked(picks, f"skill-{one}")).label
-                    for one in (1, 2)
+                    chosen_option(pack.skills, picked(picks, f"skill-{slot}")).label
+                    for slot in (1, 2)
                 ],
                 "frailty": [chosen_option(pack.frailties, picked(picks, "frailty")).label],
                 "gear": [
-                    chosen_option(pack.gear, picked(picks, f"gear-{one}")).label for one in (1, 2)
+                    chosen_option(pack.gear, picked(picks, f"gear-{slot}")).label for slot in (1, 2)
                 ],
             },
             goal=picked(picks, "goal"),
@@ -146,25 +146,28 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
     def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
         """Defaults restate rules the guidance already carries; dropping them halves the prompt."""
         selected = {
-            one: self.packs[one].model_dump(mode="json", exclude_defaults=True) for one in picks
+            pack_id: self.packs[pack_id].model_dump(mode="json", exclude_defaults=True)
+            for pack_id in picks
         }
         return f"{AUTHORING}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"
 
     def glossary(self, state: Loner3eGame) -> Sections:
         spelled: dict[str, str] = {}
-        for one in self.world(state).here():
-            spelled.update(self.meanings(state.packs, one))
+        for member in self.world(state).here():
+            spelled.update(self.meanings(state.packs, member))
         lines = "\n".join(f"- {tag}: {detail}" for tag, detail in spelled.items())
         return (("WHAT THE TAGS IN PLAY MEAN", lines),) if spelled else ()
 
-    def meanings(self, selected: Sequence[Slug], one: Loner3eSheet) -> tuple[tuple[str, str], ...]:
+    def meanings(
+        self, selected: Sequence[Slug], sheet: Loner3eSheet
+    ) -> tuple[tuple[str, str], ...]:
         chosen = tuple(self.packs[pack_id] for pack_id in selected)
         # The concept's pack blurb is generic where the entity's own brief is not: skip it.
         return pack_meanings(
             tuple(
                 entry for pack in chosen for entry in (*pack.skills, *pack.frailties, *pack.gear)
             ),
-            (*one.tagged("skill"), *one.tagged("frailty"), *one.tagged("gear")),
+            (*sheet.tagged("skill"), *sheet.tagged("frailty"), *sheet.tagged("gear")),
         )
 
     def twist_table(self) -> tuple[tuple[str, str], ...]:
@@ -177,9 +180,9 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
     def leaving(self, state: Loner3eGame) -> tuple[Fact, ...]:
         """A scene ends its conflicts so nobody carries a spent pool on; the dead keep theirs."""
         facts: list[Fact] = []
-        for one in self.world(state).here():
-            if one.alive and one.luck.current < LUCK_MAX:
-                facts.extend(_refill(one, "the scene is over"))
+        for member in self.world(state).here():
+            if member.alive and member.luck.current < LUCK_MAX:
+                facts.extend(_refill(member, "the scene is over"))
         return tuple(facts)
 
     def apply_change(self, world: Loner3eWorld, change: WorldChange) -> list[Fact]:
@@ -251,20 +254,20 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
         facts.extend(_refill(actor, "the conflict is behind them"))
         return facts
 
-    def change_tags(self, one: Loner3eSheet, change: ChangeTags) -> list[Fact]:
+    def change_tags(self, sheet: Loner3eSheet, change: ChangeTags) -> list[Fact]:
         if not change.gained and not change.lost:
             raise Refusal("change_tags needs at least one gained or lost tag")
         require_unique(f"{change.kind} tags", (*change.gained, *change.lost))
-        current = one.tagged(change.kind)
-        if held := [tag for tag in change.gained if tag in current]:
-            raise Refusal(f"{one.name} already carries the {change.kind} {held[0]!r}")
+        current = sheet.tagged(change.kind)
+        if carried := [tag for tag in change.gained if tag in current]:
+            raise Refusal(f"{sheet.name} already carries the {change.kind} {carried[0]!r}")
         if missing := [tag for tag in change.lost if tag not in current]:
-            raise Refusal(f"{one.name} carries no {change.kind} {missing[0]!r}")
-        one.tags[change.kind] = [
+            raise Refusal(f"{sheet.name} carries no {change.kind} {missing[0]!r}")
+        sheet.tags[change.kind] = [
             tag for tag in (*current, *change.gained) if tag not in change.lost
         ]
         deltas = (*(f"+{tag}" for tag in change.gained), *(f"-{tag}" for tag in change.lost))
-        trace = f"{one.label} {change.kind} " + ", ".join(deltas)
+        trace = f"{sheet.label} {change.kind} " + ", ".join(deltas)
         parts: list[str] = []
         if change.gained:
             took = ", ".join(change.gained)
@@ -272,24 +275,24 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
         if change.lost:
             lost = ", ".join(change.lost)
             parts.append(f"Lost {lost}" if change.kind == "gear" else f"No longer: {lost}")
-        return [one.fact("tags_changed", trace, card="; ".join(parts))]
+        return [sheet.fact("tags_changed", trace, card="; ".join(parts))]
 
-    def drive(self, one: Loner3eSheet, change: Drive) -> list[Fact]:
+    def drive(self, sheet: Loner3eSheet, change: Drive) -> list[Fact]:
         if not change.goal and not change.motive and not change.nemesis:
             raise Refusal("drive needs a goal, a motive or a nemesis to set")
         parts: list[str] = []
         if change.goal:
-            one.goal = change.goal
+            sheet.goal = change.goal
             parts.append(f"goal: {change.goal}")
         if change.motive:
-            one.motive = change.motive
+            sheet.motive = change.motive
             parts.append(f"motive: {change.motive}")
         if change.nemesis:
-            one.nemesis = change.nemesis
+            sheet.nemesis = change.nemesis
             parts.append(f"nemesis: {change.nemesis}")
-        trace = f"{one.label} " + "; ".join(parts)
-        card = f"{one.name}: {change.goal}" if change.goal else ""
-        return [one.fact("drive_set", trace, card=card)]
+        trace = f"{sheet.label} " + "; ".join(parts)
+        card = f"{sheet.name}: {change.goal}" if change.goal else ""
+        return [sheet.fact("drive_set", trace, card=card)]
 
     def _twist(self, draft: Loner3eGame, actor: Loner3eSheet, rng: Random) -> list[Fact]:
         """The SRD's table is rolled here so the dice trace; the model only reads the pairing."""

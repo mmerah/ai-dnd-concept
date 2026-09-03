@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from aidm.core.entities import Refusal
 from aidm.core.source import whole_text
 
 FIXTURES = Path(__file__).parent / "fixtures" / "source"
@@ -31,5 +32,5 @@ def test_whole_text_refuses_a_document_too_large_to_hand_to_a_model_whole(tmp_pa
 
     big = tmp_path / "big.md"
     big.write_text("a" * (MAX_CHARS + 1), encoding="utf-8")
-    with pytest.raises(ValueError, match="too large"):
+    with pytest.raises(Refusal, match="too large"):
         _ = whole_text(big, MAX_CHARS)

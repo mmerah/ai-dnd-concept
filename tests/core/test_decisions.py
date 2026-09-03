@@ -2,8 +2,9 @@ from pathlib import Path
 from random import Random
 
 import pytest
-from core_test_support import Table, open_game, play_turn, tool_call
 from pydantic import Field, ValidationError
+from support.loner import open_game
+from support.table import Table, play_turn, tool_call
 
 from aidm.core.entities import Frozen, Refusal
 from aidm.core.facts import Fact
@@ -28,7 +29,7 @@ TURN_THE_HIT: MasterTool[Loner3eGame] = master_tool(
     "turn_the_hit",
     "Break something to turn the hit.",
     Broken,
-    lambda _draft, one, _rng: _turned(one.item),
+    lambda _draft, args, _rng: _turned(args.item),
 )
 
 
@@ -41,7 +42,7 @@ CHAIN_THE_HIT: MasterTool[Loner3eGame] = master_tool(
     "chain_the_hit",
     "Break something and leave the rules waiting on the same decision again.",
     Broken,
-    lambda draft, one, _rng: _chained(draft, one.item),
+    lambda draft, args, _rng: _chained(draft, args.item),
 )
 
 
@@ -89,7 +90,7 @@ def _strike_tool(*, narrate: bool) -> MasterTool[Loner3eGame]:
 def _engine(*, narrate: bool = True) -> AnyEngine:
     engine = Loner3eEngine()
     tools = (_strike_tool(narrate=narrate), TURN_THE_HIT, CHAIN_THE_HIT)
-    engine.tools = {one.name: one for one in tools}
+    engine.tools = {tool.name: tool for tool in tools}
     return engine
 
 
@@ -162,7 +163,7 @@ async def test_an_option_the_decision_never_offered_raises(tmp_path: Path) -> No
     table = _deciding(tmp_path)
     _suspend(table)
 
-    with pytest.raises(ValueError, match="offers no option 'vest'"):
+    with pytest.raises(Refusal, match="offers no option 'vest'"):
         _ = await play_turn(table, Answer(option_id="vest"))
 
 
@@ -182,7 +183,7 @@ def test_a_second_decision_is_refused_while_one_is_already_open(tmp_path: Path) 
     engine, state = _engine(), open_game(tmp_path).service.state
     turn = Turn(engine=engine, draft=_pending(state).draft(), rng=Random(0))
 
-    with pytest.raises(ValueError, match="one at a time"):
+    with pytest.raises(Refusal, match="one at a time"):
         _ = turn._apply(lambda draft, _rng: _hit(draft, narrate=False))  # pyright: ignore[reportPrivateUsage]
 
 
@@ -200,7 +201,7 @@ def test_an_option_whose_call_names_no_tool_or_carries_args_it_rejects_is_refuse
 
     assert engine.restore(suspended.model_dump_json()).pending == DECISION
 
-    with pytest.raises(ValueError, match="no tool 'spend_momentum' to play option 'lantern'"):
+    with pytest.raises(Refusal, match="no tool 'spend_momentum' to play option 'lantern'"):
         _ = engine.answer(draft, _option(name="spend_momentum"), Random(0))
     with pytest.raises(Refusal, match="item: Field required"):
         _ = engine.answer(draft, _option(args={"nothing": "of theirs"}), Random(0))
@@ -212,7 +213,7 @@ def test_a_decision_whose_options_are_the_whole_pick_refuses_an_answer_in_words(
     engine, state = _engine(), open_game(tmp_path).service.state
     closed = DECISION.model_copy(update={"allows_text": False})
 
-    with pytest.raises(ValueError, match="takes one of its options, not words"):
+    with pytest.raises(Refusal, match="takes one of its options, not words"):
         Turn(engine=engine, draft=_pending(state, closed).draft(), rng=Random(0)).consume(
             Answer(text="I dive aside")
         )

@@ -73,7 +73,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
         """The create page's table sets, and the first step of every scene engine's creation."""
-        return tuple(DecisionOption(id=key, label=one.name) for key, one in self.packs.items())
+        return tuple(DecisionOption(id=key, label=pack.name) for key, pack in self.packs.items())
 
     def validate(self, state: G) -> None:
         if not state.packs:
@@ -137,8 +137,8 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             title=scene.title,
             focus=scene.question,
             situation=scene.situation,
-            subjects=tuple(one.subject() for one in here),
-            speakers=tuple(one.subject().speaker() for one in here),
+            subjects=tuple(member.subject() for member in here),
+            speakers=tuple(member.subject().speaker() for member in here),
         )
 
     def player_view(self, state: G) -> PlayerView:
@@ -154,7 +154,9 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
                 Panel(title="This scene", rows=world.scene_rows()),
                 *(() if campaign is None else campaign.board_panel(at_hub=world.at_hub)),
                 *world.party_panel(),
-                here_panel(me, (one.subject() for one in world.here() if one.id != player.id)),
+                here_panel(
+                    me, (member.subject() for member in world.here() if member.id != player.id)
+                ),
                 trail_panel(run.title for run in world.job_runs()),
                 *(() if campaign is None else campaign.jobs_panel()),
             ),
@@ -178,11 +180,13 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
         return self.world(draft).settle(args.job_done, args.pursuit)
 
     def here_lines(self, world: SceneWorld[C, P]) -> str:
-        lines = "\n".join(one.line() for one in world.here() if one.id != world.player.id)
+        lines = "\n".join(member.line() for member in world.here() if member.id != world.player.id)
         return lines or "- (none)"
 
     def hidden_lines(self, world: SceneWorld[C, P]) -> str:
-        return "\n".join(world.require(one).line() for one in world.hidden()) or "- (none)"
+        return (
+            "\n".join(world.require(entity_id).line() for entity_id in world.hidden()) or "- (none)"
+        )
 
     def render_next(self, draft: G, intent: str, answer: type[SceneDraft[C]]) -> str:
         world = self.world(draft)
@@ -191,12 +195,12 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             (
                 world.player.line(detail=world.last_seen(world.player.id)),
                 *(
-                    one.line(
+                    entry.line(
                         detail="travels with the player"
-                        if one.id in world.party
-                        else world.last_seen(one.id)
+                        if entry.id in world.party
+                        else world.last_seen(entry.id)
                     )
-                    for one in world.cast.values()
+                    for entry in world.cast.values()
                 ),
             )
         )
@@ -235,15 +239,15 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
         )
 
     def build_scenario(
-        self, meta: ScenarioMeta, packs: tuple[Slug, ...], written: SceneDraft[C], source: str
+        self, meta: ScenarioMeta, packs: tuple[Slug, ...], draft: SceneDraft[C], source: str
     ) -> AnyScenario:
-        if (refused := scene_refusal(written)) is not None:
+        if (refused := scene_refusal(draft)) is not None:
             raise Refusal(refused)
         return self.scenario(
-            meta=meta.with_premise(written.situation),
+            meta=meta.with_premise(draft.situation),
             engine=self.id,
             packs=packs,
-            payload=opening_canon(written, source, self.cast),
+            payload=opening_canon(draft, source, self.cast),
         )
 
     async def write_next(
@@ -259,25 +263,25 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             else NextDraft[self.cast]
         )
         prompt = self.render_next(draft, intent, model)
-        return await worldsmith(prompt, model, lambda written: scene_refusal(written, world))
+        return await worldsmith(prompt, model, lambda answer: scene_refusal(answer, world))
 
-    def install(self, draft: G, written: SceneDraft[C]) -> list[Fact]:
+    def install(self, draft: G, scene: SceneDraft[C]) -> list[Fact]:
         world = self.world(draft)
-        world.apply_scene(written.model_copy(deep=True))
-        trace = f"the story moves to {written.title}"
-        if came := [one.name for one in world.members()]:
-            trace += f", the player travelling with {', '.join(came)}"
-        label = "Home" if isinstance(written, ReturnDraft) else "New scene"
+        world.apply_scene(scene.model_copy(deep=True))
+        trace = f"the story moves to {scene.title}"
+        if travelling := [member.name for member in world.members()]:
+            trace += f", the player travelling with {', '.join(travelling)}"
+        label = "Home" if isinstance(scene, ReturnDraft) else "New scene"
         card = "\n".join(
             (
-                f"{label}: {written.title}",
-                f"At stake: {written.question}",
-                *([f"The job: {written.job}"] if isinstance(written, JobDraft) else []),
+                f"{label}: {scene.title}",
+                f"At stake: {scene.question}",
+                *([f"The job: {scene.job}"] if isinstance(scene, JobDraft) else []),
             )
         )
         opened = Fact(kind="scene_opened", trace=trace, told=True, card=card)
         # `apply_scene` has refused a return with no campaign, so the narrowing is for the types.
-        if isinstance(written, ReturnDraft) and world.campaign is not None:
+        if isinstance(scene, ReturnDraft) and world.campaign is not None:
             job = world.campaign.jobs[-1]
             if job.finished and self.finished_note:
                 draft.note(self.finished_note.format(title=job.title))
@@ -292,8 +296,8 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
         worldsmith: WorldsmithAnswer,
         playable: Callable[[AnyScenario], str | None],
     ) -> AnyScenario:
-        def built(written: SceneDraft[C]) -> AnyScenario:
-            return self.build_scenario(meta, tuple(packs), written, source)
+        def built(draft: SceneDraft[C]) -> AnyScenario:
+            return self.build_scenario(meta, tuple(packs), draft, source)
 
         kind = meta.kind
         guidance = self.guidance(packs, campaign=kind == "campaign")
@@ -307,9 +311,9 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
     async def advance(
         self, draft: G, intent: str, worldsmith: WorldsmithAnswer
     ) -> tuple[Fact, ...]:
-        written = await self.write_next(draft, intent, worldsmith)
+        scene = await self.write_next(draft, intent, worldsmith)
         # The engine's own closing reads the scene being left, so it runs before the install.
-        return (*self.leaving(draft), *self.install(draft, written))
+        return (*self.leaving(draft), *self.install(draft, scene))
 
     def panels(self, state: G) -> tuple[Panel, ...]:
         return ()

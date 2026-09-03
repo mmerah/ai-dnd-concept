@@ -152,10 +152,10 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
     def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
         """Defaults restate rules the guidance already carries; dropping them halves the prompt."""
         selected = {
-            one: self.packs[one].model_dump(
+            pack_id: self.packs[pack_id].model_dump(
                 mode="json", include={"locations", "complications", "missions"}
             )
-            for one in picks
+            for pack_id in picks
         }
         return f"{AUTHORING}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"
 

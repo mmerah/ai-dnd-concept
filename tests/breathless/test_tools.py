@@ -1,10 +1,10 @@
 from random import Random
 
 import pytest
-from breathless_test_support import WRENCH, hub_world, small_world
-from core_test_support import change, refused, the_campaign
+from support.breathless import WRENCH, hub_world, small_world
+from support.table import change, refused, the_campaign
 
-from aidm.core.entities import EntityId
+from aidm.core.entities import EntityId, Refusal
 from aidm.core.tools import NoArgs
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.engine import BreathlessEngine
@@ -47,7 +47,7 @@ def test_stunt_refused_twice() -> None:
     player = draft.payload.player
     _ = ENGINE.check(draft, Check(what="Leap the gap", stunt=True), Random(0))
     assert player.stunted
-    with pytest.raises(ValueError, match="catches their breath"):
+    with pytest.raises(Refusal, match="catches their breath"):
         _ = ENGINE.check(draft, Check(what="Leap again", stunt=True), Random(0))
 
 
@@ -91,7 +91,7 @@ def test_catch_breath_resets_worn_loot_and_stunt_but_keeps_stress_and_item_dice(
 
 def test_use_med_kit_refused_without_a_kit() -> None:
     draft = small_world().draft()
-    with pytest.raises(ValueError, match="holds no med kit"):
+    with pytest.raises(Refusal, match="holds no med kit"):
         _ = ENGINE.use_med_kit(draft, NoArgs(), Random(0))
 
 
@@ -108,7 +108,7 @@ def test_use_med_kit_clears_two_stress() -> None:
 
 def test_change_stress_refuses_a_zero_amount() -> None:
     draft = small_world().draft()
-    with pytest.raises(ValueError, match="non-zero"):
+    with pytest.raises(Refusal, match="non-zero"):
         _ = ENGINE.change_stress(draft, ChangeStress(amount=0, why="nothing"), Random(0))
 
 
@@ -202,7 +202,7 @@ def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() ->
 
     at_hub = hub_world()
     at_hub.payload.runs = [at_hub.payload.runs[0]]
-    with pytest.raises(ValueError, match="no job is open here"):
+    with pytest.raises(Refusal, match="no job is open here"):
         _ = ENGINE.next_scene(at_hub, NextScene(job_done=True), Random(0))
 
 

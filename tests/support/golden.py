@@ -5,7 +5,7 @@ from itertools import islice
 from pathlib import Path
 
 ENCODING = "utf-8"
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[1] / "core" / "fixtures"
 REGENERATE = os.environ.get("AIDM_GOLDEN_REGEN") == "1"
 DIFF_LINES = 40
 

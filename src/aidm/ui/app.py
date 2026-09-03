@@ -40,7 +40,12 @@ def home_page(runtime: Runtime) -> None:
             ui.label("Choose a scenario, then a character written for its rules.").classes(
                 "text-body1 opacity-70"
             )
-            _new_game(catalog)
+            with ui.card().classes("w-full q-pa-lg"):
+                ui.label("New or current game").classes("text-h6 font-bold")
+                if catalog.scenarios:
+                    LaunchForm(catalog).form()
+                else:
+                    ui.label("No playable scenario was found.").classes("text-negative")
             _new_content()
             _saved_games(catalog)
 
@@ -58,60 +63,58 @@ def start() -> None:
     )
 
 
-def _new_game(catalog: LauncherCatalog) -> None:
-    with ui.card().classes("w-full q-pa-lg"):
-        ui.label("New or current game").classes("text-h6 font-bold")
-        if not catalog.scenarios:
-            ui.label("No playable scenario was found.").classes("text-negative")
+class LaunchForm:
+    """The scenario picked first, then a character written for its rules."""
+
+    def __init__(self, catalog: LauncherCatalog) -> None:
+        self.catalog = catalog
+        self.scenario_id: Slug = catalog.scenarios[0].id
+        self.character_id: Slug | None = None
+
+    def choose_scenario(self, event: ValueChangeEventArguments[str]) -> None:
+        self.scenario_id = content_id(event.value)
+        self.form.refresh()
+
+    def choose_character(self, event: ValueChangeEventArguments[str]) -> None:
+        self.character_id = content_id(event.value)
+        self.form.refresh()
+
+    @ui.refreshable_method
+    def form(self) -> None:
+        catalog = self.catalog
+        scenario = catalog.scenario(self.scenario_id)
+        ui.select(
+            options={entry.id: f"{entry.title} · {entry.rules}" for entry in catalog.scenarios},
+            value=self.scenario_id,
+            label="Scenario",
+            on_change=self.choose_scenario,
+        ).classes("w-full")
+        ui.label(scenario.subtitle).classes("text-sm opacity-70")
+        if scenario.kind == "campaign":
+            ui.badge("campaign").props("outline")
+        characters = {
+            entry.id: f"{entry.title} — {entry.subtitle}"
+            for entry in catalog.characters_for(scenario.engine)
+        }
+        chosen = (
+            self.character_id if self.character_id in characters else next(iter(characters), None)
+        )
+        ui.select(
+            options=characters,
+            value=chosen,
+            label="Character",
+            on_change=self.choose_character,
+        ).classes("w-full")
+        if chosen is None:
+            ui.label("No character is written for these rules.").classes("text-negative")
             return
-        scenario_id = catalog.scenarios[0].id
-        character_id: Slug | None = None
-
-        def choose_scenario(event: ValueChangeEventArguments[str]) -> None:
-            nonlocal scenario_id
-            scenario_id = content_id(event.value)
-            form.refresh()
-
-        def choose_character(event: ValueChangeEventArguments[str]) -> None:
-            nonlocal character_id
-            character_id = content_id(event.value)
-            form.refresh()
-
-        @ui.refreshable
-        def form() -> None:
-            scenario = catalog.scenario(scenario_id)
-            ui.select(
-                options={entry.id: f"{entry.title} · {entry.rules}" for entry in catalog.scenarios},
-                value=scenario_id,
-                label="Scenario",
-                on_change=choose_scenario,
-            ).classes("w-full")
-            ui.label(scenario.subtitle).classes("text-sm opacity-70")
-            if scenario.kind == "campaign":
-                ui.badge("campaign").props("outline")
-            written = {
-                entry.id: f"{entry.title} — {entry.subtitle}"
-                for entry in catalog.characters_for(scenario.engine)
-            }
-            chosen = character_id if character_id in written else next(iter(written), None)
-            ui.select(
-                options=written,
-                value=chosen,
-                label="Character",
-                on_change=choose_character,
-            ).classes("w-full")
-            if chosen is None:
-                ui.label("No character is written for these rules.").classes("text-negative")
-                return
-            target = launch_target(catalog, scenario_id, chosen)
-            started = any(save.target.slug == target.slug for save in catalog.saves)
-            ui.button(
-                "Continue game" if started else "Start game",
-                icon="play_arrow",
-                on_click=partial(_open_game, target),
-            ).props("color=primary").classes("q-mt-md")
-
-        form()
+        target = launch_target(catalog, self.scenario_id, chosen)
+        started = any(save.target.slug == target.slug for save in catalog.saves)
+        ui.button(
+            "Continue game" if started else "Start game",
+            icon="play_arrow",
+            on_click=partial(_open_game, target),
+        ).props("color=primary").classes("q-mt-md")
 
 
 def _new_content() -> None:

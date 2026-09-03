@@ -1,5 +1,5 @@
 import pytest
-from core_test_support import EnvFileFreeSettings
+from support.table import EnvFileFreeSettings
 
 from aidm.config import MediaConfig, SpeechConfig
 

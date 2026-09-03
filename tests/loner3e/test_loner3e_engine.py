@@ -1,10 +1,10 @@
 from random import Random
 
 import pytest
-from core_test_support import initialized, loner_sheet, the_campaign, updated
-from loner3e_test_support import ENGINE, hub_world
+from support.loner import ENGINE, hub_world, initialized, loner_sheet
+from support.table import the_campaign, updated
 
-from aidm.core.entities import EntityId
+from aidm.core.entities import EntityId, Refusal
 from aidm.core.facts import cards
 from aidm.core.play import PendingDecision
 from aidm.engines.base import PLAYER_ID, Counter
@@ -78,9 +78,9 @@ def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> Non
     _, state = initialized()
 
     elsewhere = _seal(opponent_id="cloister-rat")
-    with pytest.raises(ValueError, match="is not here with the player"):
+    with pytest.raises(Refusal, match="is not here with the player"):
         _ = ENGINE.resolve_question(state.draft(), elsewhere, Random(0))
-    with pytest.raises(ValueError, match="their own opposition"):
+    with pytest.raises(Refusal, match="their own opposition"):
         _ = ENGINE.resolve_question(state.draft(), _seal(opponent_id=PLAYER_ID), Random(0))
 
 
@@ -107,13 +107,9 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     primed = draft.commit()
 
     action = Question(actor_id=PLAYER_ID, question="Does he slip past unheard?")
-    for seed in range(200):
-        draft = primed.draft()
-        facts = ENGINE.resolve_question(draft, action, Random(seed))
-        if any(fact.kind == "twist_due" for fact in facts):
-            break
-    else:
-        raise AssertionError("no seed under 200 tied the dice")
+    draft = primed.draft()
+    # Seed 0 rolls chance 4 against risk 4: the tie that ticks the twist over.
+    facts = ENGINE.resolve_question(draft, action, Random(0))
 
     _, twist = cards(facts)
     subject, action_name = twist.card.removeprefix("Twist — ").split(" / ")
@@ -125,18 +121,15 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
 def test_a_tie_ticks_the_twist_only_outside_a_conflict() -> None:
     _, state = initialized()
 
-    for seed in range(200):
-        duel_draft = state.draft()
-        facts = ENGINE.resolve_question(duel_draft, _duel(), Random(seed))
-        (oracle,) = cards(facts)
-        if max(oracle.dice[0].rolled) == max(oracle.dice[1].rolled):
-            break
-    else:
-        raise AssertionError("no seed under 200 tied the dice")
+    # Seed 0 rolls chance 4 against risk 4: a tie, in and out of a conflict.
+    duel_draft = state.draft()
+    facts = ENGINE.resolve_question(duel_draft, _duel(), Random(0))
+    (oracle, *_) = cards(facts)
+    assert max(oracle.dice[0].rolled) == max(oracle.dice[1].rolled)
     assert duel_draft.payload.twist.current == 0
 
     solo_draft = state.draft()
-    _ = ENGINE.resolve_question(solo_draft, _seal(), Random(seed))
+    _ = ENGINE.resolve_question(solo_draft, _seal(), Random(0))
     assert solo_draft.payload.twist.current == 1
 
 
@@ -154,14 +147,15 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
         "no-and",
     }
 
-    for seed in range(200):
+    # Seed 0 rolls a 4-4 tie, a yes-but that costs the foe; seed 1 rolls 2 against 5, a no.
+    for seed in (0, 1):
         draft = state.draft()
         facts = ENGINE.resolve_question(draft, _duel(), Random(seed))
         (oracle,) = cards(facts)
         harm = outcome_for(max(oracle.dice[0].rolled), max(oracle.dice[1].rolled)).harm
-        loser, held = (FOE, PLAYER_ID) if harm > 0 else (PLAYER_ID, FOE)
+        loser, unharmed = (FOE, PLAYER_ID) if harm > 0 else (PLAYER_ID, FOE)
         assert loner_sheet(draft, loser).luck.current == LUCK_MAX - abs(harm)
-        assert loner_sheet(draft, held).luck.current == LUCK_MAX
+        assert loner_sheet(draft, unharmed).luck.current == LUCK_MAX
         # SRD: the Twist Counter does not apply to Harm & Luck, so a conflict tie never ticks it.
         assert not any(fact.kind == "twist_due" for fact in facts)
         assert draft.payload.twist.current == 0
@@ -174,14 +168,9 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     loner_sheet(draft, FOE).luck = Counter(current=1, maximum=10)
     hurt = draft.commit()
 
-    for seed in range(200):
-        draft = hurt.draft()
-        facts = ENGINE.resolve_question(draft, _duel(), Random(seed))
-        (oracle,) = cards(facts)
-        if outcome_for(max(oracle.dice[0].rolled), max(oracle.dice[1].rolled)).harm > 0:
-            break
-    else:
-        raise AssertionError("no seed under 200 answered yes")
+    draft = hurt.draft()
+    # Seed 0 rolls chance 4 against risk 4: a yes-but, one luck off the foe's last point.
+    facts = ENGINE.resolve_question(draft, _duel(), Random(0))
 
     assert loner_sheet(draft, FOE).luck.current == 10
     assert loner_sheet(draft, PLAYER_ID).luck.current == LUCK_MAX
@@ -210,7 +199,7 @@ def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
     _, state = initialized()
 
     # The map is hidden in this scene, so nothing can be rolled against it yet.
-    with pytest.raises(ValueError, match="is not here with the player"):
+    with pytest.raises(Refusal, match="is not here with the player"):
         _ = ENGINE.resolve_question(state.draft(), _seal(opponent_id=MAP), Random(0))
 
     draft = state.draft()
@@ -239,7 +228,7 @@ def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
     loner_sheet(draft, FOE).luck.current = 0
     spent = draft.commit()
 
-    with pytest.raises(ValueError, match="already out of luck"):
+    with pytest.raises(Refusal, match="already out of luck"):
         _ = ENGINE.resolve_question(spent.draft(), _duel(), Random(0))
 
 
@@ -259,14 +248,14 @@ def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() ->
 
     at_hub = hub_world()
     at_hub.payload.runs = [at_hub.payload.runs[0]]
-    with pytest.raises(ValueError, match="no job is open here"):
+    with pytest.raises(Refusal, match="no job is open here"):
         _ = ENGINE.next_scene(at_hub, NextScene(job_done=True), Random(0))
 
 
 def test_check_game_refuses_a_campaign_meta_with_no_hub() -> None:
     engine, state = initialized()
     campaign_meta = state.scenario.model_copy(update={"kind": "campaign"})
-    with pytest.raises(ValueError, match="campaign"):
+    with pytest.raises(Refusal, match="campaign"):
         engine.validate(updated(state, scenario=campaign_meta))
 
 
@@ -284,5 +273,5 @@ def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
             )
         }
     )
-    with pytest.raises(ValueError, match="one-shot"):
+    with pytest.raises(Refusal, match="one-shot"):
         engine.validate(updated(state, payload=hub_payload))

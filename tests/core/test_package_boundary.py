@@ -70,7 +70,7 @@ def test_packages_import_only_in_the_allowed_direction(
     imports = {
         name
         for name in _imports(package)
-        if not any(name == one or name.startswith(f"{one}.") for one in allowed)
+        if not any(name == prefix or name.startswith(f"{prefix}.") for prefix in allowed)
     }
     violations = {
         name

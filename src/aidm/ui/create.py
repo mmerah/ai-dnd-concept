@@ -7,7 +7,7 @@ from tempfile import mkdtemp
 from nicegui import ui
 from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
-from aidm.app.launch import LaunchTarget, read_catalog
+from aidm.app.launch import LauncherCatalog, LaunchTarget, read_catalog
 from aidm.app.runtime import Runtime
 from aidm.core.creation import CreationStep, picked
 from aidm.core.entities import EngineId, Refusal, Slug
@@ -18,223 +18,245 @@ from aidm.ui.widgets import labeled_value, page_header
 LOGGER = logging.getLogger(__name__)
 
 
-def character_page(runtime: Runtime) -> None:
-    engine_id = runtime.default_engine()
-    with page_header("New character"):
-        pass
-    picks: dict[Slug, str] = {}
+class CharacterForm:
+    """The engine's creation steps, answered one at a time, previewed as the sheet they make."""
 
-    with ui.column().classes("w-full q-pa-lg items-center"):
-        with ui.card().classes("q-pa-lg").style("width: min(60rem, 100%)"):
+    def __init__(self, runtime: Runtime) -> None:
+        self.runtime = runtime
+        self.engine_id = runtime.default_engine()
+        self.picks: dict[Slug, str] = {}
+        self.name: ui.input
+        self.brief: ui.input
 
-            def choose_engine(event: ValueChangeEventArguments[str]) -> None:
-                nonlocal engine_id
-                engine_id = EngineId(event.value)
-                # The steps come from the engine, so an answer to the old ones means nothing.
-                picks.clear()
-                form.refresh()
+    def build(self) -> None:
+        with page_header("New character"):
+            pass
+        with ui.column().classes("w-full q-pa-lg items-center"):
+            with ui.card().classes("q-pa-lg").style("width: min(60rem, 100%)"):
+                _engine_select(self.runtime, self.engine_id, self.choose_engine)
+                self.name = ui.input(label="Name").classes("w-full").props("outlined")
+                self.brief = (
+                    ui.input(label="Brief", placeholder="Who are they, in one sentence?")
+                    .classes("w-full")
+                    .props("outlined")
+                )
+                self.form()
 
-            _engine_select(runtime, engine_id, choose_engine)
-            name = ui.input(label="Name").classes("w-full").props("outlined")
-            brief = (
-                ui.input(label="Brief", placeholder="Who are they, in one sentence?")
-                .classes("w-full")
-                .props("outlined")
+    def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
+        self.engine_id = EngineId(event.value)
+        # The steps come from the engine, so an answer to the old ones means nothing.
+        self.picks.clear()
+        self.form.refresh()
+
+    def write(self, step_id: Slug, event: ValueChangeEventArguments[str | None]) -> None:
+        self.picks[step_id] = (event.value or "").strip()
+
+    def choose(self, step_id: Slug, event: ValueChangeEventArguments[str]) -> None:
+        self.picks[step_id] = event.value
+        _drop_stale(self.runtime.engines[self.engine_id].creation_steps(self.picks), self.picks)
+        self.form.refresh()
+
+    def field(self, step: CreationStep) -> None:
+        given = picked(self.picks, step.id)
+        if not step.options:
+            typed = ui.input(
+                label=step.prompt,
+                placeholder=step.hint or "In your own words",
+                value=given,
+                on_change=partial(self.write, step.id),
             )
+            # Refreshing per keystroke would take the focus away mid-word.
+            typed.classes("w-full").props("outlined").on("blur", self.form.refresh)
+            return
+        chosen = ui.select(
+            options={
+                option.id: f"{option.label} — {option.detail}" if option.detail else option.label
+                for option in step.options
+            },
+            value=given or None,
+            label=step.prompt,
+            on_change=partial(self.choose, step.id),
+        ).classes("w-full")
+        if step.hint:
+            chosen.props(f'hint="{step.hint}"')
 
-            def write(step_id: Slug, event: ValueChangeEventArguments[str | None]) -> None:
-                picks[step_id] = (event.value or "").strip()
+    def create(self) -> None:
+        title = (self.name.value or "").strip()
+        if not title:
+            ui.notify("Name the character.", type="warning")
+            return
+        try:
+            made = self.runtime.engines[self.engine_id].create_character(
+                title, (self.brief.value or "").strip(), self.picks
+            )
+            write_character(self.runtime.settings.characters_dir, made)
+        except Refusal as refused:
+            ui.notify(str(refused), type="negative")
+            return
+        LOGGER.info("character created: slug=%s engine=%s", made.id, made.engine)
+        ui.navigate.to("/")
 
-            def choose(step_id: Slug, event: ValueChangeEventArguments[str]) -> None:
-                picks[step_id] = event.value
-                _drop_stale(runtime.engines[engine_id].creation_steps(picks), picks)
-                form.refresh()
-
-            def field(step: CreationStep) -> None:
-                given = picked(picks, step.id)
-                if not step.options:
-                    written = ui.input(
-                        label=step.prompt,
-                        placeholder=step.hint or "In your own words",
-                        value=given,
-                        on_change=partial(write, step.id),
-                    )
-                    # Refreshing per keystroke would take the focus away mid-word.
-                    written.classes("w-full").props("outlined").on("blur", lambda: form.refresh())
-                    return
-                chosen = ui.select(
-                    options={
-                        option.id: f"{option.label} — {option.detail}"
-                        if option.detail
-                        else option.label
-                        for option in step.options
-                    },
-                    value=given or None,
-                    label=step.prompt,
-                    on_change=partial(choose, step.id),
-                ).classes("w-full")
-                if step.hint:
-                    chosen.props(f'hint="{step.hint}"')
-
-            def create() -> None:
-                title = (name.value or "").strip()
-                if not title:
-                    ui.notify("Name the character.", type="warning")
-                    return
-                try:
-                    made = runtime.engines[engine_id].create_character(
-                        title, (brief.value or "").strip(), picks
-                    )
-                    write_character(runtime.settings.characters_dir, made)
-                except Refusal as refused:
-                    ui.notify(str(refused), type="negative")
-                    return
-                LOGGER.info("character created: slug=%s engine=%s", made.id, made.engine)
-                ui.navigate.to("/")
-
-            @ui.refreshable
-            def form() -> None:
-                engine = runtime.engines[engine_id]
-                for step in engine.creation_steps(picks):
-                    field(step)
-                try:
-                    preview = engine.preview_character(
-                        engine.create_character(
-                            (name.value or "").strip() or "Unnamed",
-                            (brief.value or "").strip(),
-                            picks,
-                        )
-                    )
-                except Refusal as refused:
-                    ui.label(f"Not ready yet: {refused}").classes("text-sm opacity-50")
-                    return
-                ui.separator().classes("q-my-sm")
-                for label, text in preview:
-                    labeled_value(label, text)
-                ui.button("Create", icon="person_add", on_click=create).props("color=primary")
-
-            form()
+    @ui.refreshable_method
+    def form(self) -> None:
+        engine = self.runtime.engines[self.engine_id]
+        for step in engine.creation_steps(self.picks):
+            self.field(step)
+        try:
+            preview = engine.preview_character(
+                engine.create_character(
+                    (self.name.value or "").strip() or "Unnamed",
+                    (self.brief.value or "").strip(),
+                    self.picks,
+                )
+            )
+        except Refusal as refused:
+            ui.label(f"Not ready yet: {refused}").classes("text-sm opacity-50")
+            return
+        ui.separator().classes("q-my-sm")
+        for label, text in preview:
+            labeled_value(label, text)
+        ui.button("Create", icon="person_add", on_click=self.create).props("color=primary")
 
 
-def scenario_page(runtime: Runtime) -> None:
+class ScenarioForm:
     """A premise or a document, one worldsmith call, and the game opens on the scene it wrote."""
-    catalog = read_catalog(runtime.settings, runtime.engines)
-    engine_id = runtime.default_engine()
-    with page_header("New scenario"):
-        pass
-    document: Path | None = None
 
-    async def took(event: UploadEventArguments) -> None:
-        nonlocal document
+    def __init__(self, runtime: Runtime, catalog: LauncherCatalog) -> None:
+        self.runtime = runtime
+        self.catalog = catalog
+        self.engine_id = runtime.default_engine()
+        self.document: Path | None = None
+        self.title: ui.input
+        self.packs: ui.select | None = None
+        self.character: ui.select
+        self.kind_toggle: ui.toggle
+        self.premise: ui.textarea
+        self.style: ui.input
+        self.voice: ui.input
+        self.button: ui.button
+
+    def build(self) -> None:
+        with page_header("New scenario"):
+            pass
+        with ui.column().classes("w-full q-pa-lg items-center"):
+            with ui.card().classes("q-pa-lg").style("width: min(60rem, 100%)"):
+                _engine_select(self.runtime, self.engine_id, self.choose_engine)
+                self.form()
+
+    async def took(self, event: UploadEventArguments) -> None:
         # The source reader opens a path, and a PDF cannot be parsed from bytes.
         path = Path(mkdtemp()) / Path(event.file.name).name
         await event.file.save(path)
-        document = path
+        self.document = path
         ui.notify(f"Read {event.file.name}.")
 
-    def choose_engine(event: ValueChangeEventArguments[str]) -> None:
-        nonlocal engine_id
-        engine_id = EngineId(event.value)
-        form.refresh()
+    def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
+        self.engine_id = EngineId(event.value)
+        self.form.refresh()
 
-    @ui.refreshable
-    def form() -> None:
-        engine = runtime.engines[engine_id]
-        written = catalog.characters_for(engine_id)
-        title = ui.input(label="Title").classes("w-full").props("outlined")
-        packs = (
+    @ui.refreshable_method
+    def form(self) -> None:
+        engine = self.runtime.engines[self.engine_id]
+        characters = self.catalog.characters_for(self.engine_id)
+        self.title = ui.input(label="Title").classes("w-full").props("outlined")
+        self.packs = (
             ui.select(
-                options={one.id: one.label for one in engine.pack_options()},
-                value=[one.id for one in engine.pack_options()],
+                options={pack.id: pack.label for pack in engine.pack_options()},
+                value=[pack.id for pack in engine.pack_options()],
                 label="Table sets",
                 multiple=True,
             ).classes("w-full")
             if engine.pack_options()
             else None
         )
-        character = ui.select(
-            options={one.id: f"{one.title} — {one.subtitle}" for one in written},
-            value=written[0].id if written else None,
+        self.character = ui.select(
+            options={entry.id: f"{entry.title} — {entry.subtitle}" for entry in characters},
+            value=characters[0].id if characters else None,
             label="Character",
         ).classes("w-full")
-        kind_toggle = ui.toggle({"one-shot": "One-shot", "campaign": "Campaign"}, value="one-shot")
+        self.kind_toggle = ui.toggle(
+            {"one-shot": "One-shot", "campaign": "Campaign"}, value="one-shot"
+        )
         ui.label(
             "A campaign opens at a home base with a board of jobs. "
             "Say where home is and who runs it."
         ).classes("text-sm opacity-70")
-        premise = (
+        self.premise = (
             ui.textarea(label="Premise", placeholder="What is this adventure about?")
             .classes("w-full")
             .props("outlined autogrow")
         )
-        style = (
+        self.style = (
             ui.input(label="Art style", placeholder=f"Leave empty for: {engine.art_style}")
             .classes("w-full")
             .props("outlined")
         )
-        voice = (
+        self.voice = (
             ui.input(label="Narrator voice", placeholder="Leave empty for the default voice")
             .classes("w-full")
             .props("outlined")
         )
         ui.label("Or upload the adventure itself.").classes("text-sm opacity-70 q-mt-md")
         (
-            ui.upload(on_upload=took, max_files=1, auto_upload=True)
+            ui.upload(on_upload=self.took, max_files=1, auto_upload=True)
             .props(f'accept="{",".join(SOURCE_SUFFIXES)}"')
             .classes("w-full")
         )
-
-        async def write() -> None:
-            chosen = (title.value or "").strip()
-            told = (premise.value or "").strip()
-            if not chosen or not (told or document) or character.value is None:
-                ui.notify("A title, a character, and a premise or a document.", type="warning")
-                return
-            button.props("loading")
-            kind: ScenarioKind = "campaign" if kind_toggle.value == "campaign" else "one-shot"
-            meta = ScenarioMeta(
-                title=chosen,
-                premise=told,
-                kind=kind,
-                art_style=(style.value or "").strip(),
-                voice=(voice.value or "").strip(),
-            )
-            try:
-                name = await runtime.new_scenario(
-                    engine_id,
-                    meta,
-                    document,
-                    packs.value if packs is not None else (),
-                    character.value,
-                )
-                opened = LaunchTarget(scenario_id=name, character_id=character.value)
-            except (OSError, Refusal) as refused:
-                ui.notify(str(refused), type="negative", multi_line=True)
-                return
-            finally:
-                button.props(remove="loading")
-            LOGGER.info("scenario created: slug=%s", name)
-            ui.navigate.to(opened.path)
-
-        button = ui.button("Write the opening", icon="auto_stories", on_click=write).props(
-            "color=primary"
-        )
+        self.button = ui.button(
+            "Write the opening", icon="auto_stories", on_click=self.write
+        ).props("color=primary")
         ui.label("Writing takes several minutes.").classes("text-xs opacity-60")
-        if not written:
-            button.disable()
+        if not characters:
+            self.button.disable()
             ui.label("Make a character first.").classes("text-sm text-negative")
 
-    with ui.column().classes("w-full q-pa-lg items-center"):
-        with ui.card().classes("q-pa-lg").style("width: min(60rem, 100%)"):
-            _engine_select(runtime, engine_id, choose_engine)
-            form()
+    async def write(self) -> None:
+        title = (self.title.value or "").strip()
+        premise = (self.premise.value or "").strip()
+        character_id = self.character.value
+        if not title or not (premise or self.document) or character_id is None:
+            ui.notify("A title, a character, and a premise or a document.", type="warning")
+            return
+        self.button.props("loading")
+        kind: ScenarioKind = "campaign" if self.kind_toggle.value == "campaign" else "one-shot"
+        meta = ScenarioMeta(
+            title=title,
+            premise=premise,
+            kind=kind,
+            art_style=(self.style.value or "").strip(),
+            voice=(self.voice.value or "").strip(),
+        )
+        try:
+            name = await self.runtime.new_scenario(
+                self.engine_id,
+                meta,
+                self.document,
+                self.packs.value if self.packs is not None else (),
+                character_id,
+            )
+            opened = LaunchTarget(scenario_id=name, character_id=character_id)
+        except (OSError, Refusal) as refused:
+            ui.notify(str(refused), type="negative", multi_line=True)
+            return
+        finally:
+            self.button.props(remove="loading")
+        LOGGER.info("scenario created: slug=%s", name)
+        ui.navigate.to(opened.path)
+
+
+def character_page(runtime: Runtime) -> None:
+    CharacterForm(runtime).build()
+
+
+def scenario_page(runtime: Runtime) -> None:
+    ScenarioForm(runtime, read_catalog(runtime.settings, runtime.engines)).build()
 
 
 def _engine_select(
     runtime: Runtime, chosen: EngineId, on_change: Callable[[ValueChangeEventArguments[str]], None]
 ) -> None:
     ui.select(
-        options={one.id: one.title for one in runtime.engines.values()},
+        options={engine.id: engine.title for engine in runtime.engines.values()},
         value=chosen,
         label="Rules",
         on_change=on_change,
@@ -244,5 +266,5 @@ def _engine_select(
 def _drop_stale(steps: tuple[CreationStep, ...], picks: dict[Slug, str]) -> None:
     """A new pack, or a skill moved onto its twin, can leave an answer its step no longer offers."""
     for step in steps:
-        if step.options and picked(picks, step.id) not in {one.id for one in step.options}:
+        if step.options and picked(picks, step.id) not in {option.id for option in step.options}:
             picks.pop(step.id, None)

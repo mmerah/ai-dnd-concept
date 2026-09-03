@@ -95,9 +95,9 @@ class Dungeon(Mutable):
         check_filing(self.npcs)
         check_filing(self.items)
         require_unique("ids across places, npcs and items", (*self.places, *self.npcs, *self.items))
-        for one in self.npcs.values():
-            if one.place not in self.places:
-                raise Refusal(f"{one.name} is in no place: {one.place!r}")
+        for npc in self.npcs.values():
+            if npc.place not in self.places:
+                raise Refusal(f"{npc.name} is in no place: {npc.place!r}")
         # An authored item may already start `on` the player, who exists in no dict here.
         holders = {*self.npcs, *self.places, PLAYER_ID}
         for item in self.items.values():
@@ -120,26 +120,26 @@ class Dungeon(Mutable):
         return self.places.get(entity_id) or self.npcs.get(entity_id) or self.items.get(entity_id)
 
     def require(self, entity_id: EntityId) -> Entity:
-        one = self.entity(entity_id)
-        if one is None:
+        entity = self.entity(entity_id)
+        if entity is None:
             raise Refusal(f"unknown id {entity_id!r}. Use only ids you were shown.")
-        return one
+        return entity
 
     def require_place(self, entity_id: EntityId) -> Place:
-        one = self.require(entity_id)
-        if not isinstance(one, Place):
+        entity = self.require(entity_id)
+        if not isinstance(entity, Place):
             raise Refusal(f"{entity_id!r} is not a place")
-        return one
+        return entity
 
     def way(self, from_id: EntityId, to_id: EntityId) -> Way | None:
-        return next((one for one in self.ways.get(from_id, ()) if one.to == to_id), None)
+        return next((way for way in self.ways.get(from_id, ()) if way.to == to_id), None)
 
     def at(self, place_id: EntityId) -> Iterator[Npc]:
-        return (one for one in self.npcs.values() if one.place == place_id)
+        return (npc for npc in self.npcs.values() if npc.place == place_id)
 
     def carried(self, holder_id: EntityId) -> Iterator[Item]:
         """A place holds what lies loose in it, the same way an npc holds what it carries."""
-        return (one for one in self.items.values() if one.on == holder_id)
+        return (item for item in self.items.values() if item.on == holder_id)
 
     def frontier(self) -> int:
         """Count distinct unknown places reachable through ways out of known places."""
@@ -249,7 +249,7 @@ class TunnelGoonsWorld(Dungeon):
         item = self.require(item_id)
         if not isinstance(item, Item):
             raise Refusal(f"{item_id!r} is not an item")
-        holders = {self.current.id, *(one.id for one in self.here())}
+        holders = {self.current.id, *(entity.id for entity in self.here())}
         if item.on not in holders:
             raise Refusal(f"{item.name} is not here with the player")
         return item
@@ -270,7 +270,7 @@ class TunnelGoonsWorld(Dungeon):
         way = self.way(here.id, destination.id)
         if way is None:
             options = ", ".join(
-                self.require_place(one.to).name for one in self.ways.get(here.id, ())
+                self.require_place(other.to).name for other in self.ways.get(here.id, ())
             )
             raise Refusal(
                 f"no way leads from {here.name} to {destination.name}; ways out: "
@@ -318,23 +318,31 @@ class TunnelGoonsWorld(Dungeon):
         return [here.fact("way_unlocked", trace, narrate=way.known and here.known, card=card)]
 
     def reveal_hidden(self, entity_id: EntityId) -> list[Fact]:
-        one = self.require(entity_id)
+        entity = self.require(entity_id)
         holders = {self.current.id, *(member.id for member in self.here())}
-        location = one.place if isinstance(one, Npc) else one.on if isinstance(one, Item) else None
+        location = (
+            entity.place
+            if isinstance(entity, Npc)
+            else entity.on
+            if isinstance(entity, Item)
+            else None
+        )
         if location not in holders:
-            raise Refusal(f"{one.name} is not here with the player")
-        found = "found" if isinstance(one, Item) else "discovered"
-        if one.known:
-            raise Refusal(f"the player has already {found} {one.name}")
-        one.known = True
+            raise Refusal(f"{entity.name} is not here with the player")
+        found = "found" if isinstance(entity, Item) else "discovered"
+        if entity.known:
+            raise Refusal(f"the player has already {found} {entity.name}")
+        entity.known = True
         return [
-            one.fact("entity_discovered", f"learned of {one.label}", card=f"{one.name} {found}")
+            entity.fact(
+                "entity_discovered", f"learned of {entity.label}", card=f"{entity.name} {found}"
+            )
         ]
 
     def move_item(self, item_id: EntityId, to: EntityId) -> list[Fact]:
         item = self.require_item_here(item_id)
         if to != self.player.id and to != self.current.id:
-            npc = next((one for one in self.here() if one.id == to and one.alive), None)
+            npc = next((other for other in self.here() if other.id == to and other.alive), None)
             if npc is None:
                 raise Refusal(
                     f"{to!r} cannot hold {item.name}; give the player, a living npc here, or "
@@ -351,18 +359,18 @@ class TunnelGoonsWorld(Dungeon):
         trace = f"{item.label} moves to {holder.label}"
         return [*facts, item.fact("entity_moved", trace, card=card)]
 
-    def kill(self, one: Goon | Npc) -> list[Fact]:
+    def kill(self, actor: Goon | Npc) -> list[Fact]:
         """Whatever the dead carried lies loose where they fell, the player's kit included."""
-        facts = one.reveal()
-        one.alive = False
-        dropped = list(self.carried(one.id))
+        facts = actor.reveal()
+        actor.alive = False
+        dropped = list(self.carried(actor.id))
         for item in dropped:
             item.on = self.current.id
         if dropped:
             fell = ", ".join(item.label for item in dropped) + " fell loose here"
             facts.append(Fact(kind="items_dropped", trace=fell))
-        card = "You are dead" if one.id == self.player.id else f"{one.name} is dead"
-        facts.append(one.fact("actor_killed", f"{one.label} is dead", card=card))
+        card = "You are dead" if actor.id == self.player.id else f"{actor.name} is dead"
+        facts.append(actor.fact("actor_killed", f"{actor.label} is dead", card=card))
         return facts
 
     def attach(self, region: Dungeon, start: EntityId, *, known: bool) -> None:
@@ -376,16 +384,18 @@ class TunnelGoonsWorld(Dungeon):
         self.add_way(anchor_id, start, known=known)
         self.add_way(start, anchor_id, known=known)
 
-    def line(self, one: Goon | Npc | Item) -> str:
+    def line(self, entity: Goon | Npc | Item) -> str:
         """One card line, its sheet shaped by what kind of entity it names."""
-        line = f"- {one.name}[{one.id}]" + (f" — {one.brief}" if one.brief else "")
-        if isinstance(one, Goon):
-            sheet = "; ".join(f"{label.lower()}: {value}" for label, value in self.sheet_rows(one))
-        elif isinstance(one, Npc):
-            sheet = f"health: {one.hp} (its Difficulty Score)"
+        line = f"- {entity.name}[{entity.id}]" + (f" — {entity.brief}" if entity.brief else "")
+        if isinstance(entity, Goon):
+            sheet = "; ".join(
+                f"{label.lower()}: {value}" for label, value in self.sheet_rows(entity)
+            )
+        elif isinstance(entity, Npc):
+            sheet = f"health: {entity.hp} (its Difficulty Score)"
         else:
             sheet = ""
-        if isinstance(one, Goon | Npc) and not one.alive:
+        if isinstance(entity, Goon | Npc) and not entity.alive:
             line += " (dead)"
         return f"{line}\n  {sheet}" if sheet else line
 
@@ -397,7 +407,7 @@ class TunnelGoonsWorld(Dungeon):
         )
 
     def exchanges(self) -> tuple[Exchange, ...]:
-        return tuple(one for visit in self.visits for one in visit.exchanges)
+        return tuple(exchange for visit in self.visits for exchange in visit.exchanges)
 
     def scenes(self) -> tuple[SceneRecord, ...]:
         records: list[SceneRecord] = []

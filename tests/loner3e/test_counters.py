@@ -1,6 +1,6 @@
 import pytest
-from core_test_support import initialized
 from pydantic import ValidationError
+from support.loner import initialized
 
 from aidm.core.entities import EntityId
 from aidm.engines.base import Counter

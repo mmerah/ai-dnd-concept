@@ -1,4 +1,4 @@
-from core_test_support import initialized, with_entity
+from support.loner import initialized, with_entity
 
 from aidm.core.entities import EntityId
 from aidm.core.play import Exchange, SceneRecord, SpokenLine
@@ -38,7 +38,7 @@ def test_everyone_known_and_present_may_speak() -> None:
 
     view = engine.narrator_view(with_entity(state, OBJECT))
 
-    assert OBJECT.id in {one.id for one in view.speakers}
+    assert OBJECT.id in {speaker.id for speaker in view.speakers}
 
 
 def test_the_player_view_panels_carry_icon_ids_for_who_is_here() -> None:
@@ -111,8 +111,8 @@ def test_told_narration_holds_narration_with_no_prompt_or_recap() -> None:
     recent_b = SceneRecord(title="A2", question="q2", exchanges=(_told("p2"),))
     scenes = [older, recent_a, recent_b]
 
-    told = told_narration(scenes)
+    narrated = told_narration(scenes)
 
-    assert told == ("p1 happens.", "p2 happens.")
-    assert not any("dropped" in one for one in told)
-    assert not any("What happened before." in one for one in told)
+    assert narrated == ("p1 happens.", "p2 happens.")
+    assert not any("dropped" in text for text in narrated)
+    assert not any("What happened before." in text for text in narrated)

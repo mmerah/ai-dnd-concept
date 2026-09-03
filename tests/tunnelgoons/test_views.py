@@ -1,5 +1,5 @@
-from core_test_support import the_campaign
-from tunnelgoons_test_support import HALL, MIRA, START, TAVERN, hub_world, small_world
+from support.table import the_campaign
+from support.tunnelgoons import HALL, MIRA, START, TAVERN, hub_world, small_world
 
 from aidm.core.entities import EntityId
 from aidm.engines.base import PLAYER_ID

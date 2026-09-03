@@ -60,12 +60,12 @@ class Turn:
             return
         if consumed is None:
             raise Refusal(f"no decision is open, so option {chosen!r} answers nothing")
-        option = next((one for one in consumed.options if one.id == chosen), None)
+        option = next((offered for offered in consumed.options if offered.id == chosen), None)
         if option is None:
             raise Refusal(f"the {consumed.kind!r} decision offers no option {chosen!r}")
         # A refusal raises: the engine enumerated the option, so it is never model error.
-        landed = self._apply(lambda copy, dice: engine.answer(copy, option, dice))
-        traces = traced(landed)
+        facts = self._apply(lambda copy, dice: engine.answer(copy, option, dice))
+        traces = traced(facts)
         # An answer that re-suspended has no tool answer to carry the wait, so the note says it.
         if self.draft.pending is not None:
             traces += f"\n- {RULES_WAIT}"
@@ -105,8 +105,8 @@ class Turn:
         """What the call changed, as the game master reads it back."""
         already_pending = len(self.draft.notes)
         decided_before = self.draft.pending
-        landed = self._apply(play)
-        lines = [f"- {fact.trace}" for fact in landed]
+        facts = self._apply(play)
+        lines = [f"- {fact.trace}" for fact in facts]
         lines.extend(f"- {note}" for note in self.draft.notes[already_pending:])
         if decided_before is None and self.draft.pending is not None:
             lines.append(f"- {RULES_WAIT}")
@@ -119,11 +119,11 @@ class Turn:
         """One execution against a candidate; a refused call leaves the draft and the dice alone."""
         candidate, dice = self.draft.draft(), deepcopy(self.rng)
         before = candidate.pending
-        landed = play(candidate, dice)
+        facts = play(candidate, dice)
         if before is not None and candidate.pending is not before:
             raise Refusal("the rules already wait on a decision; they take one at a time")
         self.engine.validate(candidate)
         self.draft = candidate.commit()
         self.rng.setstate(dice.getstate())
-        self.facts.extend(landed)
-        return landed
+        self.facts.extend(facts)
+        return facts

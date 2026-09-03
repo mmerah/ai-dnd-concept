@@ -30,6 +30,6 @@ class Pack(ScenePack):
 
     @model_validator(mode="after")
     def _six_srd_skills(self) -> Self:
-        if {one.id for one in self.skills} != set(SKILLS):
+        if {skill.id for skill in self.skills} != set(SKILLS):
             raise Refusal("the six SRD skills, by id")
         return self

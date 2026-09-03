@@ -46,7 +46,7 @@ def test_a_sum_not_equal_to_three_is_refused() -> None:
 def test_a_missing_item_is_refused() -> None:
     bad = dict(PICKS)
     del bad["item-2"]
-    with pytest.raises(ValueError, match="unanswered"):
+    with pytest.raises(Refusal, match="unanswered"):
         _ = ENGINE.create_character("Kael", "A wiry scavenger", bad)
 
 

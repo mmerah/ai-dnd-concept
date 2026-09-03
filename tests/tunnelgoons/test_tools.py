@@ -2,8 +2,8 @@ import re
 from random import Random
 
 import pytest
-from core_test_support import change, refused, the_campaign
-from tunnelgoons_test_support import (
+from support.table import change, refused, the_campaign
+from support.tunnelgoons import (
     CRYPT,
     HALL,
     KEY,
@@ -18,7 +18,7 @@ from tunnelgoons_test_support import (
     small_world,
 )
 
-from aidm.core.entities import EntityId
+from aidm.core.entities import EntityId, Refusal
 from aidm.core.tools import NoArgs
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.hub import Job
@@ -173,7 +173,7 @@ def test_neither_or_both_of_difficulty_and_against_is_refused() -> None:
 
 def test_an_item_not_in_the_players_hands_is_refused() -> None:
     draft = small_world().draft()
-    with pytest.raises(ValueError, match="not in the player's hands"):
+    with pytest.raises(Refusal, match="not in the player's hands"):
         _ = ENGINE.action_roll(
             draft,
             ActionRoll(what="Pick lock", ability="skulker", items=(KEY,), difficulty=8),
@@ -227,7 +227,7 @@ def test_level_up_sets_job_done_only_when_a_job_is_open() -> None:
 
 def test_level_up_with_one_argument_is_refused() -> None:
     draft = small_world().draft()
-    with pytest.raises(ValueError, match="takes both"):
+    with pytest.raises(Refusal, match="takes both"):
         _ = ENGINE.level_up(draft, LevelUp(ability="brute"), Random(0))
 
 
@@ -250,13 +250,13 @@ def test_move_refuses_a_locked_way() -> None:
     draft = small_world().draft()
     world = draft.payload
     world.visits.append(Visit(place=HALL))
-    with pytest.raises(ValueError, match="locked"):
+    with pytest.raises(Refusal, match="locked"):
         _ = ENGINE.move(draft, Move(to_id=VAULT), Random(0))
 
 
 def test_move_refuses_when_there_is_no_way() -> None:
     draft = small_world().draft()
-    with pytest.raises(ValueError, match="no way leads"):
+    with pytest.raises(Refusal, match="no way leads"):
         _ = ENGINE.move(draft, Move(to_id=CRYPT), Random(0))
 
 
@@ -279,7 +279,7 @@ def test_move_with_ids_brings_an_npc_here_and_refuses_one_standing_elsewhere() -
     assert any("Mira" in fact.trace for fact in facts if fact.kind == "arrived")
 
     elsewhere = small_world().draft()
-    with pytest.raises(ValueError, match="not here"):
+    with pytest.raises(Refusal, match="not here"):
         _ = ENGINE.move(elsewhere, Move(to_id=VAULT, with_ids=(MANTIS,)), Random(0))
 
 
@@ -311,7 +311,7 @@ def test_move_item_refuses_a_holder_the_player_has_not_met() -> None:
     draft = small_world().draft()
     world = draft.payload
     world.npcs[MANTIS].place = START
-    with pytest.raises(ValueError, match="has not met"):
+    with pytest.raises(Refusal, match="has not met"):
         _ = change(ENGINE, draft, "move_item", item_id=LANTERN, to=MANTIS)
 
 

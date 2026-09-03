@@ -3,9 +3,9 @@ from asyncio import gather
 from pathlib import Path
 
 import pytest
-from core_test_support import CHARACTERS, SCENARIOS, EnvFileFreeSettings, scenario
-from loner3e_test_support import loner3e_session
 from pydantic import SecretStr
+from support.loner import loner3e_session, scenario
+from support.table import CHARACTERS, SCENARIOS, EnvFileFreeSettings
 
 from aidm.app.launch import LaunchTarget
 from aidm.app.speech import (

@@ -4,9 +4,9 @@ from random import Random
 from typing import cast
 
 import pytest
-from core_test_support import ENGINE_IDS, Call, open_game_for, play_turn
-from golden_test_support import FIXTURES, golden, golden_json
-from golden_turn_support import NARRATION
+from support.golden import FIXTURES, golden, golden_json
+from support.golden_turn import NARRATION
+from support.table import ENGINE_IDS, Call, open_game_for, play_turn
 
 from aidm.core.entities import EngineId
 from aidm.core.model import AnyGame

@@ -231,8 +231,8 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
         place = world.current
         here = tuple(
             sorted(
-                (one for one in world.here() if one.known),
-                key=lambda one: one.id != world.player.id,
+                (entity for entity in world.here() if entity.known),
+                key=lambda entity: entity.id != world.player.id,
             )
         )
         return NarratorView(
@@ -240,9 +240,9 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
             title=place.name,
             focus=place.brief,
             situation=place.description,
-            subjects=tuple(one.subject() for one in here),
+            subjects=tuple(entity.subject() for entity in here),
             # A corpse may stay a subject in the room; it does not speak.
-            speakers=tuple(one.subject().speaker() for one in here if one.alive),
+            speakers=tuple(entity.subject().speaker() for entity in here if entity.alive),
         )
 
     def player_view(self, state: TunnelGoonsGame) -> PlayerView:
@@ -255,7 +255,9 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
             player=me,
             panels=(
                 character_panel(world.sheet_rows(player)),
-                here_panel(me, (one.subject() for one in world.at(world.current.id) if one.known)),
+                here_panel(
+                    me, (entity.subject() for entity in world.at(world.current.id) if entity.known)
+                ),
                 Panel(
                     title="Carrying",
                     rows=tuple(
@@ -301,8 +303,8 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
         worldsmith: WorldsmithAnswer,
         playable: Callable[[AnyScenario], str | None],
     ) -> AnyScenario:
-        def built(written: MapDraft) -> AnyScenario:
-            return self.build_scenario(meta, tuple(packs), written, source)
+        def built(draft: MapDraft) -> AnyScenario:
+            return self.build_scenario(meta, tuple(packs), draft, source)
 
         prompt = self.render_map(source, meta.kind)
         return await self.compose(worldsmith, prompt, MapDraft, built, playable)
@@ -469,9 +471,9 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
         lines: list[str] = []
         for place in seen.values():
             known_ways = ", ".join(
-                world.require_place(one.to).name
-                for one in world.ways.get(place.id, ())
-                if one.known
+                world.require_place(way.to).name
+                for way in world.ways.get(place.id, ())
+                if way.known
             )
             lines.append(
                 f"{place.name}[{place.id}] — {place.description}\n"
@@ -494,50 +496,50 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
             if walked is not None:
                 raise Refusal("report the open job first")
             prompt = self.render_job(world, campaign, intent)
-            return await worldsmith(prompt, MapDraft, lambda written: job_refusal(written, world))
+            return await worldsmith(prompt, MapDraft, lambda answer: job_refusal(answer, world))
         prompt = self.render_extension(world, intent)
-        return await worldsmith(prompt, MapDraft, lambda written: extension_refusal(written, world))
+        return await worldsmith(prompt, MapDraft, lambda answer: extension_refusal(answer, world))
 
     def install_extension(
-        self, draft: TunnelGoonsGame, written: MapDraft | ReturnDraft
+        self, draft: TunnelGoonsGame, extension: MapDraft | ReturnDraft
     ) -> list[Fact]:
         world = draft.payload
         campaign = world.campaign
-        if isinstance(written, ReturnDraft):
+        if isinstance(extension, ReturnDraft):
             job = world.walked_job()
             if campaign is None or job is None:
                 raise Refusal("no job is open to report")
-            job.debrief = written.debrief
-            campaign.board = written.offers
+            job.debrief = extension.debrief
+            campaign.board = extension.offers
             return [job.closed()]
         if campaign is not None and world.at_hub:
-            if (refused := job_refusal(written, world)) is not None:
+            if (refused := job_refusal(extension, world)) is not None:
                 raise Refusal(refused)
             tavern = world.current
-            world.attach(written, written.start, known=True)
-            start = written.places[written.start]
+            world.attach(extension, extension.start, known=True)
+            start = extension.places[extension.start]
             if (job := campaign.open_job()) is not None and job.started is None:
                 campaign.jobs.pop()
-            campaign.jobs.append(Job(title=start.name, place=written.start))
+            campaign.jobs.append(Job(title=start.name, place=extension.start))
             trace = f"a way opens from {tavern.name} to {start.name}"
             card = f"A way opens: {start.name}"
             return [Fact(kind="job_taken", told=True, trace=trace, card=card)]
-        if (refused := extension_refusal(written, world)) is not None:
+        if (refused := extension_refusal(extension, world)) is not None:
             raise Refusal(refused)
         anchor = world.current.name
-        world.attach(written, written.start, known=False)
+        world.attach(extension, extension.start, known=False)
         trace = f"a hidden region opens beyond {anchor}"
         return [Fact(kind="region_added", trace=trace, told=False)]
 
     def build_scenario(
-        self, meta: ScenarioMeta, packs: tuple[Slug, ...], written: MapDraft, source: str
+        self, meta: ScenarioMeta, packs: tuple[Slug, ...], draft: MapDraft, source: str
     ) -> AnyScenario:
         bar = hub_refusal if meta.kind == "campaign" else map_refusal
-        if (refused := bar(written)) is not None:
+        if (refused := bar(draft)) is not None:
             raise Refusal(refused)
         return TunnelGoonsScenario(
-            meta=meta.with_premise(written.places[written.start].description),
+            meta=meta.with_premise(draft.places[draft.start].description),
             engine=self.id,
             packs=packs,
-            payload=opening_canon(written, source, meta.kind),
+            payload=opening_canon(draft, source, meta.kind),
         )

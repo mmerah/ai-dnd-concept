@@ -1,6 +1,7 @@
 import pytest
-from core_test_support import TUNNELGOONS, game, updated
+from support.table import TUNNELGOONS, game, updated
 
+from aidm.core.entities import Refusal
 from aidm.engines.seam import AnyEngine
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 
@@ -26,7 +27,7 @@ def test_the_shipped_game_begins_on_the_maps_start_with_the_starting_items() -> 
 
 def test_a_scenario_with_a_pack_is_refused_by_validate() -> None:
     engine, state = _tunnelgoons_game()
-    with pytest.raises(ValueError, match="no table sets"):
+    with pytest.raises(Refusal, match="no table sets"):
         engine.validate(updated(state, packs=("srd",)))
 
 

@@ -1,18 +1,12 @@
 from pathlib import Path
 
 import pytest
-from core_test_support import (
-    ScriptedSpawner,
-    narrated,
-    offline_settings,
-    open_game,
-    play_turn,
-    updated,
-)
-from loner3e_test_support import TARGET
-from loner3e_test_support import loner3e_session as session
+from support.loner import TARGET, open_game
+from support.loner import loner3e_session as session
+from support.table import ScriptedSpawner, narrated, offline_settings, play_turn, updated
 
 from aidm.app.runtime import BEGUN, Runtime
+from aidm.core.entities import Refusal
 from aidm.core.io import FileStore
 from aidm.core.model import AnyGame, ScenarioMeta
 
@@ -63,7 +57,7 @@ def test_resume_refuses_a_save_that_is_not_this_game(
     game = session(tmp_path)
     FileStore(tmp_path).save(TARGET.slug, game.state.model_copy(update=change).commit())
 
-    with pytest.raises(ValueError, match=message):
+    with pytest.raises(Refusal, match=message):
         session(tmp_path)
 
 

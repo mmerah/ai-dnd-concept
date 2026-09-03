@@ -2,23 +2,34 @@ from collections.abc import Sequence
 from pathlib import Path
 from random import Random
 
-from core_test_support import (
-    ENGINES_BUILT,
-    LONER3E,
-    ScriptedSpawner,
-    character,
-    scenario,
-)
-
 from aidm.app.runtime import GameService, LaunchTarget
+from aidm.config import Settings
 from aidm.core.entities import EngineId, EntityId
-from aidm.core.io import FileStore
+from aidm.core.io import FileStore, read_character, read_scenario
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.hub import Campaign, Job, Offer
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet, Loner3eWorld
+from aidm.engines.loner3e.world import (
+    Loner3eCharacter,
+    Loner3eGame,
+    Loner3eScenario,
+    Loner3eSheet,
+    Loner3eWorld,
+)
 from aidm.engines.scenes.world import SceneRun
+from aidm.engines.seam import AnyEngine
+from support.table import (
+    CHARACTERS,
+    ENGINES_BUILT,
+    LONER3E,
+    SCENARIO_MODELS,
+    SCENARIOS,
+    ScriptedSpawner,
+    Table,
+    game,
+    open_table,
+)
 
 TARGET = LaunchTarget(scenario_id="whispering-vault", character_id="kael")
 ENGINE = Loner3eEngine()
@@ -38,6 +49,57 @@ JOB = (
     "silver."
 )
 KEEPER = EntityId("keeper")
+
+
+def with_entity(state: Loner3eGame, entity: Loner3eSheet) -> Loner3eGame:
+    """Added to the cast and to the scene; `known` alone decides present or hidden."""
+    draft = state.draft()
+    draft.payload.cast[entity.id] = entity
+    draft.payload.run.here.append(entity.id)
+    return draft.commit()
+
+
+def loner_sheet(state: Loner3eGame, entity_id: EntityId) -> Loner3eSheet:
+    return state.payload.require(entity_id)
+
+
+def scenario() -> Loner3eScenario:
+    loaded = read_scenario(SCENARIOS, "whispering-vault", SCENARIO_MODELS)
+    if not isinstance(loaded, Loner3eScenario):
+        raise AssertionError("the Loner scenario parsed as another engine")
+    return loaded
+
+
+def character() -> Loner3eCharacter:
+    engine = ENGINES_BUILT[LONER3E]
+    loaded = read_character(CHARACTERS, "kael", engine.id, engine.character)
+    if not isinstance(loaded, Loner3eCharacter):
+        raise AssertionError("the Loner character parsed as another engine")
+    return loaded
+
+
+def initialized() -> tuple[AnyEngine, Loner3eGame]:
+    engine, state = game(LONER3E)
+    if not isinstance(state, Loner3eGame):
+        raise AssertionError("the Loner engine began another game type")
+    return engine, state
+
+
+def open_game(
+    saves: Path,
+    *,
+    rng: Random | None = None,
+    settings: Settings | None = None,
+    engine: AnyEngine | None = None,
+) -> Table[Loner3eGame]:
+    return open_table(
+        saves,
+        rng=rng,
+        settings=settings,
+        engine=engine,
+        engine_id=LONER3E,
+        state_type=Loner3eGame,
+    )
 
 
 def hub_world() -> Loner3eGame:
