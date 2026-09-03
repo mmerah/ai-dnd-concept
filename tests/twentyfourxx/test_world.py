@@ -1,9 +1,9 @@
 import pytest
+from core_test_support import ENGINES_BUILT, TWENTYFOURXX
 from twentyfourxx_test_support import KESTREL, hub_world, small_world
 
 from aidm.core.entities import EngineId, EntityId
 from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.scenes.world import way_open
 from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
     Item,
@@ -94,10 +94,12 @@ def test_require_alive_here_refuses_dead_cast_member() -> None:
 
 def test_way_open_is_true_at_an_unsettled_hub() -> None:
     game = hub_world()
-    assert way_open(game) is False  # away on a job, with the scene's question still open
+    assert (
+        ENGINES_BUILT[TWENTYFOURXX].ready(game) is False
+    )  # away on a job, with the scene's question still open
 
     _ = game.payload.runs.pop()  # home again, where the way on is always open
-    assert way_open(game) is True
+    assert ENGINES_BUILT[TWENTYFOURXX].ready(game) is True
 
 
 def test_player_operator_slugs_duplicate_kit_names_in_order() -> None:

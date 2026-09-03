@@ -130,12 +130,12 @@ and no crew (its "the cast carries no dice" stands until 24XX has played). G is 
   such member with name="change_world", args={"change": {"verb": "take_lead", "actor_id":
   ...}}, allows_text=False)` instead of ending the game; `take_lead` swaps the objects: the
   chosen member becomes `world.player` and the dead one goes into `cast`, both keeping their
-  ids, and is refused while the player lives. `player_over` fires only when the player and every
+  ids, and is refused while the player lives. `Engine.over` fires only when the player and every
   sheeted member are dead. `NarratorView.party` carries the new "you" with no further change.
 - **Counts.** Arms: `join_party`, `leave_party` (G.1), `take_lead`, `ship_upgrade`. 24XX goes
   15 → 19.
 - **Views and prompts.** The `Party` panel shows a sheeted member's `rows()`; the master's `THE
-  PARTY` prints sheets; `creation.py _AUTHORING` ("the cast carries no dice") and the `attempt`
+  PARTY` prints sheets; `creation.py AUTHORING` ("the cast carries no dice") and the `attempt`
   description are rewritten; `worldsmith.md` says a sheet is for someone who could plausibly be
   hired, at most one per scene. `docs/24XX.md`: deviations 1, 2, 4 close; 5 splits into "the
   priced gear table is not transcribed" (stays) and the ship (closes).
@@ -158,7 +158,7 @@ deviation 1 (the level-up cadence) stays.
    `narrator.txt` gains the YOUR PARTY line, `master.txt` the paragraph, `master_tools.json`
    the two arms, nothing else.
 2. 24XX: `Sheet`, `actor_id` on the tools, `helped_by`, `AfterJob.raises`, the android case, the
-   panel rows, `rules.md`, `_AUTHORING`, `worldsmith.md`, `docs/24XX.md`.
+   panel rows, `rules.md`, `AUTHORING`, `worldsmith.md`, `docs/24XX.md`.
 3. 24XX: the ship and succession; `scenarios/amber-tap` gains a sheeted regular and a ship.
 4. Tunnel Goons: G.3.
 5. Docs; `IDEAS.md` 16 leaves.

@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from random import Random
@@ -47,6 +48,10 @@ def schema_of(args: type[BaseModel]) -> dict[str, JsonValue]:
     # The tool already names itself; the argument class name would be a second, wrong name.
     schema.pop("title", None)
     return schema
+
+
+def schema_text(model: type[BaseModel]) -> str:
+    return json.dumps(schema_of(model), indent=2, ensure_ascii=False)
 
 
 def _drop_property_titles(node: JsonValue) -> None:

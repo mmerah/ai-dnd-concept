@@ -1,13 +1,11 @@
-import json
 from collections.abc import Sequence
+from functools import cache
 from pathlib import Path
-
-from pydantic import BaseModel
 
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyGame
 from aidm.core.play import Narration, PendingDecision, SceneRecord
-from aidm.core.tools import schema_of
+from aidm.core.tools import schema_text
 from aidm.core.views import NarratorView, render_history, sections, told_narration
 
 ANSWERED_BY_OPTION = (
@@ -16,9 +14,6 @@ ANSWERED_BY_OPTION = (
 )
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
-
-MASTER = (_PROMPTS_DIR / "master.md").read_text(encoding=ENCODING)
-NARRATOR = (_PROMPTS_DIR / "narrator.md").read_text(encoding=ENCODING)
 
 
 def render_master(
@@ -33,7 +28,7 @@ def render_master(
     """The whole spawn prompt: every spawn is cold, so the picture rides in it."""
     return sections(
         (
-            ("YOUR ROLE", MASTER),
+            ("YOUR ROLE", _prompt("master")),
             ("THE RULES OF THIS GAME", instructions),
             ("SCENARIO", f"{state.scenario.title}\n{state.scenario.premise}"),
             (f"RECENT PLAY (this is turn {state.turn + 1})", render_history(scenes)),
@@ -51,7 +46,7 @@ def render_narrator(
     """Only the narrator view reaches this, so hidden canon has no path into the prose."""
     return sections(
         (
-            ("YOUR ROLE", NARRATOR),
+            ("YOUR ROLE", _prompt("narrator")),
             ("WHAT THE PLAYER HAS READ", "\n\n".join(told_narration(scenes)) or "(nothing yet)"),
             ("SCENE", f"{view.title}\n{view.situation}"),
             ("WHAT THIS SCENE IS ABOUT", view.focus),
@@ -61,13 +56,14 @@ def render_narrator(
             ),
             ("WHAT HAPPENED", evidence),
             ("PLAYER ACTION", prompt),
-            ("ANSWER WITH", _shape(Narration)),
+            ("ANSWER WITH", schema_text(Narration)),
         )
     )
 
 
-def _shape(model: type[BaseModel]) -> str:
-    return json.dumps(schema_of(model), indent=2, ensure_ascii=False)
+@cache
+def _prompt(name: str) -> str:
+    return (_PROMPTS_DIR / f"{name}.md").read_text(encoding=ENCODING)
 
 
 def _waiting(pending: PendingDecision | None) -> str:

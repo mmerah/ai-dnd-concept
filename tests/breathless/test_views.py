@@ -3,9 +3,6 @@ from core_test_support import BREATHLESS, ENGINES_BUILT
 
 from aidm.core.views import PanelRow
 from aidm.engines.base import Person
-from aidm.engines.breathless.views import master_sections
-from aidm.engines.scenes.views import narrator_view
-from aidm.engines.scenes.world import entity_line
 
 ENGINE = ENGINES_BUILT[BREATHLESS]
 
@@ -20,7 +17,7 @@ def test_the_player_views_backpack_panel_lists_items_and_the_med_kit() -> None:
 
 
 def test_master_sections_never_lists_the_player_under_here() -> None:
-    sections = dict(master_sections(small_world()))
+    sections = dict(ENGINE.master_sections(small_world()))
     assert "Jax" not in sections["HERE WITH THE PLAYER"]
     assert "Mira" in sections["HERE WITH THE PLAYER"]
 
@@ -28,16 +25,16 @@ def test_master_sections_never_lists_the_player_under_here() -> None:
 def test_master_sections_lists_the_backpack() -> None:
     game = small_world()
     game.payload.player.med_kit = True
-    sections = dict(master_sections(game))
+    sections = dict(ENGINE.master_sections(game))
     assert sections["BACKPACK"] == "- Wrench[wrench] — d10\n- med kit"
 
 
 def test_narrator_view_lists_only_known_entities_player_first() -> None:
-    view = narrator_view(small_world())
+    view = ENGINE.narrator_view(small_world())
     assert [subject.name for subject in view.subjects] == ["Jax", "Mira"]
 
 
 def test_entity_line_marks_a_dead_one_after_the_brief() -> None:
     dead = Person(id=DAX, name="Dax", brief="A looter", known=True, alive=False)
-    line = entity_line(dead)
+    line = dead.line()
     assert line.startswith("- Dax[dax] — A looter (dead)")

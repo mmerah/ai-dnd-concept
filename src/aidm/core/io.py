@@ -40,7 +40,7 @@ class FileStore:
 
     def load(self, slug: str) -> str | None:
         path = self._save_path(slug)
-        return path.read_text(encoding=ENCODING) if path.exists() else None
+        return _read_text(path) if path.is_file() else None
 
     def save(self, slug: str, state: AnyGame) -> None:
         write_text(self._save_path(slug), state.model_dump_json(indent=2))

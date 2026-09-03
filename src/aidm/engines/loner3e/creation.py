@@ -1,24 +1,13 @@
-import json
-from collections.abc import Mapping, Sequence
 from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked
-from aidm.core.entities import EngineId, Refusal, Slug, slug
-from aidm.core.model import AnyCharacter
+from aidm.core.entities import Refusal
 from aidm.core.play import DecisionOption
-from aidm.core.views import Rows
 from aidm.engines.base import Pack as ScenePack
-from aidm.engines.base import pack_options
-from aidm.engines.loner3e.world import (
-    DIE_FACE,
-    Loner3eCharacterFile,
-    Loner3ePayload,
-    player_character,
-)
+from aidm.engines.loner3e.world import DIE_FACE
 
-_AUTHORING = (
+AUTHORING = (
     "LONER 3E AUTHORING\n"
     "Every character — a person, an object, a vehicle or a curse alike — has a one-line "
     "`concept` and any fitting `skills`, `frailties` or `gear`, and rolls with luck of its own. "
@@ -53,74 +42,3 @@ class Pack(ScenePack):
             if column is not None and len(column) != DIE_FACE:
                 raise Refusal("a twist column is one d6: exactly six entries")
         return self
-
-
-def creation_steps(packs: Mapping[str, Pack], picks: Picks) -> tuple[CreationStep, ...]:
-    first = CreationStep(
-        id="pack", prompt="Choose a character table set", options=pack_options(packs)
-    )
-    pack = packs.get(picked(picks, "pack"))
-    if pack is None:
-        return (first,)
-    return (
-        first,
-        CreationStep(
-            id="concept",
-            prompt="Write a one-line concept",
-            hint=", ".join(entry.label for entry in pack.concepts[:3]),
-        ),
-        CreationStep(id="goal", prompt="What does your character want?"),
-        CreationStep(id="motive", prompt="Why do they want it?"),
-        CreationStep(id="skill-1", prompt="Choose skill 1", options=pack.skills),
-        CreationStep(
-            id="skill-2",
-            prompt="Choose skill 2",
-            options=other_than(pack.skills, picked(picks, "skill-1")),
-        ),
-        CreationStep(id="frailty", prompt="Choose a frailty", options=pack.frailties),
-        CreationStep(id="gear-1", prompt="Choose gear 1", options=pack.gear),
-        CreationStep(
-            id="gear-2",
-            prompt="Choose gear 2",
-            options=other_than(pack.gear, picked(picks, "gear-1")),
-        ),
-    )
-
-
-def create_character(
-    packs: Mapping[str, Pack], name: str, brief: str, picks: Picks
-) -> Loner3eCharacterFile:
-    check_picks(creation_steps(packs, picks), picks)
-    chosen = picked(picks, "pack")
-    pack = packs[chosen]
-    payload = Loner3ePayload(
-        concept=picked(picks, "concept"),
-        goal=picked(picks, "goal"),
-        motive=picked(picks, "motive"),
-        skills=tuple(
-            find_entry(pack.skills, picked(picks, f"skill-{one}")).label for one in (1, 2)
-        ),
-        frailties=(find_entry(pack.frailties, picked(picks, "frailty")).label,),
-        gear=tuple(find_entry(pack.gear, picked(picks, f"gear-{one}")).label for one in (1, 2)),
-    )
-    return Loner3eCharacterFile(
-        id=slug(name, ()), engine=EngineId("loner3e"), name=name, brief=brief, payload=payload
-    )
-
-
-def preview_character(character: AnyCharacter) -> Rows:
-    if not isinstance(character, Loner3eCharacterFile):
-        raise Refusal("Loner 3E received an incompatible character")
-    return player_character(character).rows()
-
-
-def find_entry(entries: Sequence[DecisionOption], chosen: str) -> DecisionOption:
-    return next(entry for entry in entries if entry.id == chosen)
-
-
-def guidance(packs: Mapping[str, Pack], selected_ids: Sequence[Slug]) -> str:
-    """Defaults restate rules the guidance already carries; dropping them halves the prompt."""
-    selected = {
-        one: packs[one].model_dump(mode="json", exclude_defaults=True) for one in selected_ids
-    }
-    return f"{_AUTHORING}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"

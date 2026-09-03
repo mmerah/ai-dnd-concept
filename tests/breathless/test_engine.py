@@ -3,8 +3,7 @@ from core_test_support import BREATHLESS, ENGINES_BUILT, game, updated
 
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import ScenarioMeta
-from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.breathless.tools import SRD_PACK
+from aidm.engines.base import PLAYER_ID, SRD_PACK, Person
 from aidm.engines.breathless.world import (
     STARTING_ITEM,
     BreathlessCharacterFile,

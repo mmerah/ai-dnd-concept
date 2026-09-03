@@ -1,5 +1,7 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
+
+from pydantic import BaseModel
 
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, EntityId, Slug, slug
@@ -7,11 +9,11 @@ from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
 from aidm.core.play import DecisionOption
 from aidm.core.tools import MasterTool
-from aidm.core.views import Rows
+from aidm.core.views import Rows, Sections
 from aidm.engines.base import PLAYER_ID, Pack, Person
 from aidm.engines.registry import begin_game
 from aidm.engines.scenes.engine import SceneEngine
-from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld, new_world
+from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld
 
 FIFTH = EngineId("fifth")
 KEEPER = EntityId("keeper")
@@ -47,6 +49,7 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, Pack]):
     character = FifthCharacterFile
     cast = Person
     pack = Pack
+    world_type = FifthState
     hub_phrase = "a taproom and its regulars"
 
     def master_tools(self) -> tuple[MasterTool[FifthGame], ...]:
@@ -70,11 +73,10 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, Pack]):
     def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
         return "Write the taproom plainly."
 
-    def new_state(self, canon: SceneCanon[Person], character: AnyCharacter) -> FifthState:
-        player = Person(id=PLAYER_ID, name=character.name, brief=character.brief, known=True)
-        return new_world(FifthState, canon, player)
+    def player_of(self, character: AnyCharacter) -> Person:
+        return Person(id=PLAYER_ID, name=character.name, brief=character.brief, known=True)
 
-    def master_sections(self, state: FifthGame) -> Rows:
+    def master_sections(self, state: FifthGame) -> Sections:
         return (("SCENE", self.world(state).run.title),)
 
 
@@ -83,7 +85,7 @@ def _installed(tmp_path: Path) -> FifthEngine:
     (tmp_path / "packs").mkdir()
     (tmp_path / "packs" / "srd.json").write_text('{"name": "The SRD"}', encoding=ENCODING)
     FifthEngine.directory = tmp_path
-    return FifthEngine(tmp_path / "user-packs")
+    return FifthEngine()
 
 
 def _scenario() -> FifthScenario:
@@ -121,3 +123,22 @@ def test_a_fifth_scene_engine_begins_a_playable_game(tmp_path: Path) -> None:
         "Wren (you)",
         "Keeper",
     ]
+
+
+async def test_compose_builds_the_accepted_answer_once(tmp_path: Path) -> None:
+    engine = _installed(tmp_path)
+    builds: list[DecisionOption] = []
+
+    def build(written: DecisionOption) -> FifthScenario:
+        builds.append(written)
+        return _scenario()
+
+    async def worldsmith[M: BaseModel](
+        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
+        written = model.model_validate({"id": "srd", "label": "The SRD"})
+        assert refusal(written) is None
+        return written
+
+    await engine.compose(worldsmith, "write", DecisionOption, build, lambda _: None)
+    assert len(builds) == 1

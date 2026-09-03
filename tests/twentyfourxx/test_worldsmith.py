@@ -1,7 +1,6 @@
 from collections.abc import Callable
 
 import pytest
-from core_test_support import REPOSITORY_ROOT
 from pydantic import BaseModel
 from twentyfourxx_test_support import (
     HUB_PLACE,
@@ -21,21 +20,19 @@ from aidm.core.model import AnyScenario, WorldsmithAnswer
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.hub import GO_HOME, TAKE_JOB
 from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft, SceneDraft
-from aidm.engines.scenes.world import scene_refusal
-from aidm.engines.scenes.worldsmith import build_scenario, install_scene, opening_canon, write_next
-from aidm.engines.twentyfourxx.engine import BOARD_GUIDANCE, JOB_DONE_NOTE, TwentyfourxxEngine
-from aidm.engines.twentyfourxx.world import TwentyfourxxGame, TwentyfourxxScenario
+from aidm.engines.scenes.worldsmith import opening_canon, scene_refusal
+from aidm.engines.twentyfourxx.engine import BOARD_GUIDANCE, TwentyfourxxEngine
+from aidm.engines.twentyfourxx.world import TwentyfourxxGame
 
 TWENTYFOURXX = EngineId("twentyfourxx")
-ENGINE = TwentyfourxxEngine(REPOSITORY_ROOT / "packs" / "twentyfourxx")
-GUIDANCE = "guidance text"
+ENGINE = TwentyfourxxEngine()
 
 
 async def _written(
     game: TwentyfourxxGame, intent: str, answer: WorldsmithAnswer
 ) -> SceneDraft[Person]:
     """The write alone: these tests read the model asked for, and install nothing."""
-    return await write_next(game.payload, intent, answer, cast_type=Person, guidance=GUIDANCE)
+    return await ENGINE.write_next(game, intent, answer)
 
 
 def _draft(**fields: object) -> SceneDraft[Person]:
@@ -49,17 +46,7 @@ def _draft(**fields: object) -> SceneDraft[Person]:
 
 
 def _built(written: SceneDraft[Person]) -> AnyScenario:
-    return build_scenario(
-        TwentyfourxxScenario,
-        TWENTYFOURXX,
-        "Loading Bay",
-        "",
-        (),
-        written,
-        "",
-        "one-shot",
-        Person,
-    )
+    return ENGINE.build_scenario("Loading Bay", "", (), written, "", "one-shot")
 
 
 def test_apply_scene_resolves_present_by_name() -> None:
@@ -230,7 +217,7 @@ def test_apply_scene_puts_the_party_first_in_the_new_run() -> None:
 def test_install_scene_names_who_travelled_in_the_trace() -> None:
     game = small_world()
     game.payload.party = [KESTREL]
-    facts = install_scene(game, _draft(present=("sable",)), finished_note=JOB_DONE_NOTE)
+    facts = ENGINE.install(game, _draft(present=("sable",)))
     assert facts[0].trace == (
         "the story moves to The Bay Office, the player travelling with Kestrel"
     )
@@ -238,7 +225,7 @@ def test_install_scene_names_who_travelled_in_the_trace() -> None:
 
 def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
     game = small_world()
-    facts = install_scene(game, _draft(present=("kestrel",)), finished_note=JOB_DONE_NOTE)
+    facts = ENGINE.install(game, _draft(present=("kestrel",)))
     assert len(game.payload.runs) == 2
     assert facts == [
         Fact(
@@ -252,16 +239,14 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
 
 
 def test_render_worldsmith_lists_the_player_first() -> None:
-    prompt = small_world().payload.render_worldsmith(
-        "Explore the bay.", "guidance text", SceneDraft[Person]
-    )
+    prompt = ENGINE.render_next(small_world(), "Explore the bay.", SceneDraft[Person])
     assert prompt.index("Rook[player]") < prompt.index("Kestrel[kestrel]")
 
 
 def test_render_worldsmith_says_who_travels_with_the_player() -> None:
-    world = small_world().payload
-    world.party = [KESTREL]
-    prompt = world.render_worldsmith("Explore the bay.", "guidance text", SceneDraft[Person])
+    game = small_world()
+    game.payload.party = [KESTREL]
+    prompt = ENGINE.render_next(game, "Explore the bay.", SceneDraft[Person])
     assert "travels with the player" in prompt
 
 
@@ -372,7 +357,7 @@ def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> Non
 def test_install_scene_on_a_finished_hub_draft_swaps_the_board_and_notes_the_job() -> None:
     game = hub_world()
     game.payload.jobs[-1].finished = True
-    facts = install_scene(game, _return_draft(), finished_note=JOB_DONE_NOTE)
+    facts = ENGINE.install(game, _return_draft())
     world = game.payload
     assert [offer.title for offer in world.board] == ["Job 1", "Job 2"]
     assert [fact.kind for fact in facts] == ["job_closed", "scene_opened"]
@@ -381,9 +366,9 @@ def test_install_scene_on_a_finished_hub_draft_swaps_the_board_and_notes_the_job
 
 def test_install_scene_on_an_open_hub_draft_skips_the_note() -> None:
     game = hub_world()
-    facts = install_scene(game, _return_draft(), finished_note=JOB_DONE_NOTE)
+    facts = ENGINE.install(game, _return_draft())
     assert [fact.kind for fact in facts] == ["job_closed", "scene_opened"]
-    assert game.notes == ()
+    assert game.notes == []
 
 
 async def test_write_next_gives_the_board_guidance_on_every_campaign_write() -> None:
@@ -401,14 +386,12 @@ async def test_write_next_gives_the_board_guidance_on_every_campaign_write() -> 
 
 
 def test_render_worldsmith_prints_the_job_line_for_the_job_run() -> None:
-    prompt = hub_world().payload.render_worldsmith(
-        "I look around.", "guidance text", SceneDraft[Person]
-    )
+    prompt = ENGINE.render_next(hub_world(), "I look around.", SceneDraft[Person])
     assert f"THE JOB:\n{JOB}" in prompt
 
 
 def test_the_scene_card_carries_the_stake_and_a_job_draft_its_terms() -> None:
-    facts = install_scene(hub_world(), _job_draft(), finished_note=JOB_DONE_NOTE)
+    facts = ENGINE.install(hub_world(), _job_draft())
     assert facts[0].card == (
         "New scene: The Bay Office\n"
         "At stake: Can they slip past the night crew before the lights return?\n"
@@ -418,5 +401,5 @@ def test_the_scene_card_carries_the_stake_and_a_job_draft_its_terms() -> None:
 
 def test_install_scene_on_a_hub_draft_lands_a_home_card() -> None:
     game = hub_world()
-    facts = install_scene(game, _return_draft(), finished_note=JOB_DONE_NOTE)
+    facts = ENGINE.install(game, _return_draft())
     assert any(fact.card.startswith("Home: Back at the Amber Tap") for fact in facts)

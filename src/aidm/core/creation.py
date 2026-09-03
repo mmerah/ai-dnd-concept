@@ -37,3 +37,14 @@ def check_picks(steps: Sequence[CreationStep], picks: Picks) -> None:
 
 def other_than(options: Sequence[DecisionOption], taken: str) -> tuple[DecisionOption, ...]:
     return tuple(option for option in options if option.id != taken)
+
+
+def option_of[T: DecisionOption](options: Sequence[T], chosen: str) -> T | None:
+    return next((option for option in options if option.id == chosen), None)
+
+
+def chosen_option[T: DecisionOption](options: Sequence[T], chosen: str) -> T:
+    found = option_of(options, chosen)
+    if found is None:
+        raise Refusal(f"no option {chosen!r}")
+    return found

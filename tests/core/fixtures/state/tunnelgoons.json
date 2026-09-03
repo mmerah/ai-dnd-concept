@@ -117,36 +117,36 @@
         "name": "Grix",
         "brief": "A jumpy scavenger who got this far and no further.",
         "known": true,
+        "alive": true,
         "place": "entrance",
         "hp": {
           "current": 6,
           "maximum": 6
-        },
-        "alive": true
+        }
       },
       "crawler": {
         "id": "crawler",
         "name": "Root Crawler",
         "brief": "A many-legged thing tangled in the corridor roots.",
         "known": true,
+        "alive": true,
         "place": "corridor",
         "hp": {
           "current": 6,
           "maximum": 6
-        },
-        "alive": true
+        }
       },
       "lurker": {
         "id": "lurker",
         "name": "Cellar Lurker",
         "brief": "Something pale that surfaces only when the water stills.",
         "known": false,
+        "alive": true,
         "place": "cellar",
         "hp": {
           "current": 5,
           "maximum": 5
-        },
-        "alive": true
+        }
       }
     },
     "items": {
@@ -191,6 +191,7 @@
       "name": "Kael",
       "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
       "known": true,
+      "alive": true,
       "place": "entrance",
       "brute": 1,
       "skulker": 2,
@@ -200,8 +201,7 @@
         "maximum": 10
       },
       "inventory": 8,
-      "level": 1,
-      "alive": true
+      "level": 1
     },
     "visits": [
       {

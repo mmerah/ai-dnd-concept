@@ -1,34 +1,15 @@
-from collections.abc import Mapping
-from dataclasses import dataclass
 from random import Random
 from typing import Literal, Self
 
 from pydantic import Field, JsonValue, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal, Slug, slug
+from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.play import PendingDecision, PendingOption
-from aidm.core.tools import MasterTool, NoArgs, master_tool
-from aidm.engines.base import CHANGE_WORLD, counter_fact, entity_fact, sentence
-from aidm.engines.breathless.creation import Pack
-from aidm.engines.breathless.world import (
-    CARRY,
-    LOOT_START,
-    MED_KIT_CLEARS,
-    STUNT_DIE,
-    BreathlessGame,
-    BreathlessWorld,
-    Die,
-    Item,
-    Skill,
-    Survivor,
-    stepped,
-)
-from aidm.engines.scenes.world import NEXT_SCENE, Enter, Kill, Leave, NextScene, Reveal
+from aidm.engines.breathless.world import CARRY, BreathlessGame, Die, Item, Skill, Survivor, stepped
+from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
 
-SRD_PACK: Slug = "srd"
 SWAP = "swap-"
-type WorldChange = Reveal | Enter | Leave | Kill | DropItem
 
 
 class DropItem(Frozen):
@@ -36,6 +17,9 @@ class DropItem(Frozen):
 
     verb: Literal["drop_item"]
     item_id: CheckedEntityId = Field(description="Exact id of an item the player carries.")
+
+
+type WorldChange = Reveal | Enter | Leave | Kill | DropItem
 
 
 class ChangeWorld(Frozen):
@@ -102,141 +86,12 @@ class TestLuck(Frozen):
     die: Die = Field(description="Which die to roll, picked by the odds.")
 
 
-@dataclass(frozen=True, slots=True)
-class Complications:
-    """The rules that read the table sets: catching breath draws from the SRD's table."""
-
-    packs: Mapping[str, Pack]
-
-    def catch_breath(self, draft: BreathlessGame, _args: NoArgs, rng: Random) -> list[Fact]:
-        world = draft.payload
-        player = world.player
-        player.worn = dict(player.skills)
-        player.loot = LOOT_START
-        player.stunted = False
-
-        rolled, dice_fact = roll((12,), "a new complication", rng)
-        text = complications_of(self.packs)[rolled[0] - 1]
-        draft.notes = (
-            *draft.notes,
-            f"Catching breath brings a new complication. The SRD's table suggests: {text} Bring it "
-            "in through the story, or one that fits better.",
-        )
-        trace = f"{world.label(player)} catches their breath: skills and loot die restored"
-        fact = entity_fact(
-            player, "breath_caught", trace, card="Caught breath — skills and loot die restored"
-        )
-        return [dice_fact, fact]
-
-
 def outcome(face: int) -> str:
     if face <= 2:
         return "fail"
     if face <= 4:
         return "success-but"
     return "success"
-
-
-def apply_change(world: BreathlessWorld, change: WorldChange) -> list[Fact]:
-    """Every arm settles its own deterministic consequences, so a call leaves nothing half-done."""
-    match change:
-        case Reveal():
-            return world.reveal_hidden(change.entity_id)
-        case Enter():
-            return world.enter(change.entity_id)
-        case Leave():
-            return world.leave(change.entity_id)
-        case Kill():
-            return world.kill(change.entity_id)
-        case DropItem():
-            return _drop_item(world, change.item_id)
-
-
-def change_world(draft: BreathlessGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-    return apply_change(draft.payload, args.change)
-
-
-def next_scene(draft: BreathlessGame, args: NextScene, _rng: Random) -> list[Fact]:
-    return draft.payload.settle(args.job_done, args.pursuit)
-
-
-def check(draft: BreathlessGame, args: Check, rng: Random) -> list[Fact]:
-    player = draft.payload.player
-
-    item: Item | None = None
-    if args.skill is not None:
-        die = player.worn[args.skill]
-        label = args.skill
-    elif args.item_id is not None:
-        item = player.items.get(args.item_id)
-        if item is None:
-            raise Refusal(f"{args.item_id!r} is not among the player's items")
-        die = item.die
-        label = item.name
-    else:
-        if player.stunted:
-            raise Refusal("the stunt is spent until the player catches their breath")
-        die = STUNT_DIE
-        label = "stunt"
-        player.stunted = True
-
-    rolled, dice_fact = roll((die,), f"{args.what} — {label}", rng)
-    face = rolled[0]
-    result = outcome(face)
-
-    if args.skill is not None:
-        player.worn[args.skill] = stepped(die)
-    elif item is not None and args.item_id is not None:
-        # SRD: "When reduced to a d4, the item either breaks, gets lost, or fades away".
-        if stepped(die) == 4:
-            del player.items[args.item_id]
-        else:
-            item.die = stepped(die)
-
-    trace = f"{args.what} — {label} d{die} [{face}] -> {result}"
-    card = f"{args.what} — {sentence(label)} d{die} → {result}"
-    event = DiceEvent(label=f"d{die}", faces=(die,), rolled=rolled)
-    facts = [
-        dice_fact,
-        entity_fact(player, "checked", trace, card=card, dice=(event,)),
-    ]
-    if item is not None and stepped(die) == 4:
-        gone = f"{item.name} is gone"
-        facts.append(entity_fact(player, "item_gone", gone, card=gone))
-
-    if args.dangerous and result == "fail" and player.vulnerable:
-        draft.notes = (
-            *draft.notes,
-            "The player is vulnerable and this dangerous check failed: rule whether they are "
-            "taken out of the scene or dead. Death is `change_world` `kill` on the player.",
-        )
-    return facts
-
-
-def complications_of(packs: Mapping[str, Pack]) -> tuple[str, ...]:
-    """Always the SRD's own table: no other pack publishes one."""
-    srd = packs.get(SRD_PACK)
-    if srd is None:
-        raise Refusal("the SRD table set with its complications is not installed")
-    return srd.complications
-
-
-def change_stress(draft: BreathlessGame, args: ChangeStress, _rng: Random) -> list[Fact]:
-    if args.amount == 0:
-        raise Refusal("change_stress needs a non-zero amount")
-    player = draft.payload.player
-    return counter_fact(player, player.stress, args.amount, "Stress", args.why, player.id)
-
-
-def use_med_kit(draft: BreathlessGame, _args: NoArgs, _rng: Random) -> list[Fact]:
-    player = draft.payload.player
-    if not player.med_kit:
-        raise Refusal("the player holds no med kit")
-    player.med_kit = False
-    facts = counter_fact(player, player.stress, -MED_KIT_CLEARS, "Stress", "the med kit", player.id)
-    used = f"{player.name} uses the med kit"
-    facts.append(entity_fact(player, "med_kit_used", used, card="Med kit used"))
-    return facts
 
 
 def loot_options(player: Survivor, item: str, granted: Die) -> tuple[PendingOption, ...]:
@@ -266,120 +121,7 @@ def loot_options(player: Survivor, item: str, granted: Die) -> tuple[PendingOpti
     return tuple(options)
 
 
-def loot_check(draft: BreathlessGame, args: LootCheck, rng: Random) -> list[Fact]:
-    player = draft.payload.player
-    if args.granted is None or args.choice is None:
-        return _roll_loot(draft, player, args.item, rng)
-    return [_take_loot(player, args.item, args.granted, args.choice)]
-
-
-def test_luck(_draft: BreathlessGame, args: TestLuck, rng: Random) -> list[Fact]:
-    rolled, dice_fact = roll((args.die,), args.question, rng)
-    result = outcome(rolled[0])
-    trace = f"{args.question} — d{args.die} [{rolled[0]}] -> {result}"
-    return [dice_fact, Fact(kind="luck_tested", trace=trace)]
-
-
-def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[BreathlessGame], ...]:
-    complications = Complications(packs)
-    return (
-        master_tool("change_world", CHANGE_WORLD, ChangeWorld, change_world),
-        master_tool(
-            "next_scene",
-            NEXT_SCENE,
-            NextScene,
-            next_scene,
-        ),
-        master_tool(
-            "check",
-            "Roll a check for an action with a real cost, on a skill, a carried item, or a stunt.",
-            Check,
-            check,
-        ),
-        master_tool(
-            "catch_breath",
-            "Let the player catch their breath: skills, loot die and the stunt reset, at the "
-            "cost of a new complication.",
-            NoArgs,
-            complications.catch_breath,
-        ),
-        master_tool(
-            "change_stress",
-            "A complication costs the player stress; laying low somewhere secure clears an "
-            "amount at your discretion. Never a stand-in for `use_med_kit`.",
-            ChangeStress,
-            change_stress,
-        ),
-        master_tool(
-            "use_med_kit",
-            "Spend the player's med kit to clear 2 stress.",
-            NoArgs,
-            use_med_kit,
-        ),
-        master_tool(
-            "loot_check",
-            "Scavenge for an item. Leave `granted` and `choice` null; the engine fills them once "
-            "the player answers.",
-            LootCheck,
-            loot_check,
-        ),
-        master_tool(
-            "test_luck",
-            "Roll a die to answer a question about the world where nobody is acting.",
-            TestLuck,
-            test_luck,
-        ),
-    )
-
-
-def _drop_item(world: BreathlessWorld, item_id: EntityId) -> list[Fact]:
-    player = world.player
-    item = player.items.get(item_id)
-    if item is None:
-        raise Refusal(f"{item_id!r} is not among the player's items")
-    del player.items[item_id]
-    trace = f"{world.label(player)} drops {item.name}"
-    return [entity_fact(player, "item_dropped", trace, card=f"Dropped {item.name}")]
-
-
-def _roll_loot(draft: BreathlessGame, player: Survivor, item: str, rng: Random) -> list[Fact]:
-    before = player.loot
-    rolled, dice_fact = roll((before,), f"scavenging — {item}", rng)
-    face = rolled[0]
-    player.loot = stepped(before)
-
-    found: Die | None = None
-    if face <= 2:
-        draft.notes = (*draft.notes, "The scavenge turns up trouble right here; nothing is found.")
-    elif face <= 4:
-        draft.notes = (*draft.notes, "The scavenge finds nothing, and trouble is coming.")
-    elif face <= 6:
-        found = 6
-    elif face <= 8:
-        found = 8
-    elif face <= 10:
-        found = 10
-    else:
-        found = 12
-
-    result = f"found {item} (d{found})" if found is not None else "nothing"
-    trace = f"scavenging — loot d{before} [{face}] -> {found or 'nothing'}"
-    card = f"Scavenge — d{before} → {result}"
-    event = DiceEvent(label=f"d{before}", faces=(before,), rolled=rolled)
-    fact = entity_fact(player, "loot_checked", trace, card=card, dice=(event,))
-    facts = [dice_fact, fact]
-
-    if found is not None:
-        draft.pending = PendingDecision(
-            kind="loot",
-            prompt=f"You found {item} (d{found}). Take it?",
-            options=loot_options(player, item, found),
-            allows_text=False,
-        )
-    return facts
-
-
-def _take_loot(player: Survivor, item: str, granted: Die, choice: str) -> Fact:
+def take_loot(player: Survivor, item: str, granted: Die, choice: str) -> Fact:
     if choice == "take":
         if len(player.items) >= CARRY:
             raise Refusal("the backpack is full; swap for something carried instead")
@@ -400,4 +142,42 @@ def _take_loot(player: Survivor, item: str, granted: Die, choice: str) -> Fact:
         card = f"Swapped {old.name} for {item} (d{granted})"
     else:
         raise Refusal(f"{choice!r} is not a valid loot choice")
-    return entity_fact(player, "loot_taken", card, card=card)
+    return player.fact("loot_taken", card, card=card)
+
+
+def roll_loot(draft: BreathlessGame, item: str, rng: Random) -> list[Fact]:
+    player = draft.payload.player
+    before = player.loot
+    rolled, dice_fact = roll((before,), f"scavenging — {item}", rng)
+    face = rolled[0]
+    player.loot = stepped(before)
+
+    found: Die | None = None
+    if face <= 2:
+        draft.note("The scavenge turns up trouble right here; nothing is found.")
+    elif face <= 4:
+        draft.note("The scavenge finds nothing, and trouble is coming.")
+    elif face <= 6:
+        found = 6
+    elif face <= 8:
+        found = 8
+    elif face <= 10:
+        found = 10
+    else:
+        found = 12
+
+    result = f"found {item} (d{found})" if found is not None else "nothing"
+    trace = f"scavenging — loot d{before} [{face}] -> {found or 'nothing'}"
+    card = f"Scavenge — d{before} → {result}"
+    event = DiceEvent(label=f"d{before}", faces=(before,), rolled=rolled)
+    fact = player.fact("loot_checked", trace, card=card, dice=(event,))
+    facts = [dice_fact, fact]
+
+    if found is not None:
+        draft.pending = PendingDecision(
+            kind="loot",
+            prompt=f"You found {item} (d{found}). Take it?",
+            options=loot_options(player, item, found),
+            allows_text=False,
+        )
+    return facts

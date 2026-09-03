@@ -7,7 +7,6 @@ from core_test_support import (
     BREATHLESS,
     ENGINES_BUILT,
     LONER3E,
-    LONER3E_PACKS,
     TUNNELGOONS,
     TWENTYFOURXX,
     ScriptedSpawner,
@@ -24,7 +23,7 @@ from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
 
 MIRROR = EngineId("mirror")
-_MIRRORED = Loner3eEngine(LONER3E_PACKS)
+_MIRRORED = Loner3eEngine()
 _MIRRORED.id = MIRROR
 # A second engine installed, so the engine the launcher pairs on is observable at all.
 INSTALLED = {**ENGINES_BUILT, MIRROR: _MIRRORED}
@@ -193,6 +192,19 @@ def test_a_save_the_app_cannot_read_does_not_hide_the_others(tmp_path: Path) -> 
     catalog = read_catalog(settings, ENGINES_BUILT)
 
     assert [save.target.slug for save in catalog.saves] == ["whispering-vault--kael"]
+
+
+def test_a_save_that_is_not_utf8_is_skipped_not_raised(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    settings = ui_settings(tmp_path)
+    FileStore(tmp_path).save("whispering-vault--kael", _opening_state(settings))
+    _ = (tmp_path / "binary.json").write_bytes(b"\xff\xfe not text")
+
+    catalog = read_catalog(settings, ENGINES_BUILT)
+
+    assert [save.target.slug for save in catalog.saves] == ["whispering-vault--kael"]
+    assert "skipping save 'binary'" in caplog.text
 
 
 SOURCE_MD = REPOSITORY_ROOT / "tests/core/fixtures/source/drowned-road.md"

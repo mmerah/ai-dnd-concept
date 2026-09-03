@@ -7,7 +7,7 @@ from tempfile import mkdtemp
 from nicegui import ui
 from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
-from aidm.app.launch import launch_target, read_catalog
+from aidm.app.launch import LaunchTarget, read_catalog
 from aidm.app.runtime import Runtime
 from aidm.core.creation import CreationStep, picked
 from aidm.core.entities import EngineId, Refusal, Slug
@@ -204,9 +204,7 @@ def scenario_page(runtime: Runtime) -> None:
                     voice=(voice.value or "").strip(),
                     kind=kind,
                 )
-                opened = launch_target(
-                    read_catalog(runtime.settings, runtime.engines), name, character.value
-                )
+                opened = LaunchTarget(scenario_id=name, character_id=character.value)
             except (OSError, Refusal) as refused:
                 ui.notify(str(refused), type="negative", multi_line=True)
                 return

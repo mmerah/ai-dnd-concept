@@ -1,26 +1,14 @@
-from typing import Any
+from collections.abc import Iterable, Mapping
 
-from aidm.core.entities import EngineId, Refusal, Slug
-from aidm.core.facts import Fact
-from aidm.core.model import (
-    AnyScenario,
-    Game,
-    Scenario,
-    ScenarioKind,
-    ScenarioMeta,
-    WorldsmithAnswer,
-)
-from aidm.engines.base import Person
-from aidm.engines.hub import CAMPAIGN_OPENING, GO_HOME, ONE_SHOT_OPENING, job_closed
-from aidm.engines.scenes.drafts import HubDraft, JobDraft, NextDraft, ReturnDraft, SceneDraft
-from aidm.engines.scenes.world import (
-    SceneCanon,
-    SceneWorld,
-    resolve_ids,
-    run_of,
-    scene_refusal,
-    worldsmith_prompt,
-)
+from pydantic import BaseModel
+
+from aidm.core.entities import EntityId
+from aidm.core.tools import schema_text
+from aidm.core.views import Sections, sections
+from aidm.engines.base import Person, Thing
+from aidm.engines.hub import place_unmet
+from aidm.engines.scenes.drafts import HubDraft, ReturnDraft, SceneDraft
+from aidm.engines.scenes.world import SceneCanon, SceneWorld, resolve_ids, resolved_id, run_of
 
 CROSSING = (
     "The player is leaving WHAT THE PLAYER HAS READ for the place in SCENE. They asked for this: "
@@ -29,11 +17,11 @@ CROSSING = (
     "in the fewest words that make it real, and end on what they see first. WHAT HAPPENED names "
     "anyone who travelled with them. They have not acted in the new place yet, so settle nothing."
 )
-
-
-def opening_draft[C: Person](cast_type: type[C], kind: ScenarioKind) -> type[SceneDraft[C]]:
-    """Pydantic parametrizes the subscript at runtime, so the cast type reaches the schema."""
-    return HubDraft[cast_type] if kind == "campaign" else SceneDraft[cast_type]
+SURPRISE = (
+    "Surprise the player. Turn an established fact against them, or bring back something they "
+    "have stopped thinking about. Surprise by recombining what exists, never by inventing what "
+    "the source would not hold."
+)
 
 
 def opening_canon[C: Person](
@@ -55,82 +43,122 @@ def opening_canon[C: Person](
     )
 
 
-async def write_next[C: Person, P: Person](
-    world: SceneWorld[C, P],
-    intent: str,
-    answer: WorldsmithAnswer,
-    *,
-    cast_type: type[C],
-    guidance: str,
-) -> SceneDraft[C]:
-    returning = world.hub is not None and not world.at_hub and intent == GO_HOME
-    model: type[SceneDraft[C]] = (
-        ReturnDraft[cast_type]
-        if returning
-        else JobDraft[cast_type]
-        if world.at_hub
-        else NextDraft[cast_type]
+def scene_refusal[C: Person, P: Person](
+    draft: SceneDraft[C], world: SceneWorld[C, P] | None = None
+) -> str | None:
+    unmet = scene_unmet(draft, world)
+    return None if not unmet else "the scene needs " + "; ".join(unmet)
+
+
+def scene_unmet[C: Person, P: Person](
+    draft: SceneDraft[C], world: SceneWorld[C, P] | None
+) -> list[str]:
+    """The one bar: every refusal the install makes, so the worldsmith's one retry sees them all."""
+    held: Mapping[EntityId, C] = {} if world is None else world.cast
+    everyone: Mapping[EntityId, Thing] = (
+        dict(draft.cast)
+        if world is None
+        else {world.player.id: world.player, **world.merged_cast(draft)}
     )
+    followers = () if world is None else (world.player.id, *world.party)
+    others = (*draft.present, *draft.hidden)
+    unmet: list[str] = []
+    if named := sorted(one for one in others if resolved_id(one, everyone) in followers):
+        unmet.append(
+            "a scene that does not list the player or the party; "
+            f"they are put there by code: {named}"
+        )
+    if world is not None and world.player.id in draft.cast:
+        unmet.append("a cast that never rewrites the player")
+    if misfiled := [
+        f"{one.id!r} is filed under {key!r}" for key, one in draft.cast.items() if key != one.id
+    ]:
+        unmet.append("cast entries under their own id: " + "; ".join(misfiled))
+    # Nothing can be brought back once everyone left behind travels with the player.
+    needs_return = world is not None and bool(set(world.cast) - set(world.party))
+    unmet.extend(_cast_unmet(draft, everyone, held, needs_return=needs_return))
+    present = [one for name in draft.present if (one := resolved_id(name, everyone)) is not None]
+    hidden = [one for name in draft.hidden if (one := resolved_id(name, everyone)) is not None]
+    if overlap := sorted(set(present) & set(hidden)):
+        unmet.append(f"nobody listed as both present and hidden: {overlap}")
+    if met := sorted(one for one in set(hidden) - set(followers) if everyone[one].known):
+        unmet.append(f"a hidden list without {met}, whom the player has already met")
+    if broken := [
+        f"{eid}: {why}"
+        for eid, one in draft.cast.items()
+        if eid not in held and (why := one.unwritten())
+    ]:
+        unmet.append(f"cast members as the worldsmith may write them: {broken}")
+    unmet.extend(_hub_unmet(draft, world))
+    return unmet
 
-    prompt = world.render_worldsmith(intent, guidance, model)
-    return await answer(prompt, model, lambda written: scene_refusal(written, world))
+
+def named_in(situation: str, hidden: Iterable[str], cast: Mapping[EntityId, Thing]) -> list[str]:
+    """Multi-word names only: a prop called `Bell` shares its word with any bell tower."""
+    said = situation.casefold()
+    found = (cast[one] for wanted in hidden if (one := resolved_id(wanted, cast)) is not None)
+    return [one.name for one in found if " " in one.name.strip() and one.name.casefold() in said]
 
 
-def install_scene[C: Person, W: SceneWorld[Any, Any]](
-    state: Game[W], written: SceneDraft[C], *, finished_note: str
-) -> list[Fact]:
-    world = state.payload
-    world.apply_scene(written.model_copy(deep=True))
-    trace = f"the story moves to {written.title}"
-    if came := [one.name for one in world.members()]:
-        trace += f", the player travelling with {', '.join(came)}"
-    label = "Home" if isinstance(written, ReturnDraft) else "New scene"
-    card = "\n".join(
+def worldsmith_prompt(
+    role: str,
+    *,
+    source: str,
+    history: str,
+    cast: str,
+    guidance: str,
+    intent: str,
+    answer: type[BaseModel],
+    hub: Sections = (),
+) -> str:
+    return sections(
         (
-            f"{label}: {written.title}",
-            f"At stake: {written.question}",
-            *([f"The job: {written.job}"] if isinstance(written, JobDraft) else []),
+            ("YOUR ROLE", role),
+            ("SOURCE MATERIAL", source or "(none — write from the cast)"),
+            ("SCENES SO FAR", history),
+            *hub,
+            ("THE WHOLE CAST", cast),
+            ("ENGINE GUIDANCE", guidance),
+            ("WHAT COMES NEXT", intent),
+            ("STANDING INSTRUCTION", SURPRISE),
+            ("ANSWER WITH", schema_text(answer)),
         )
     )
-    opened = Fact(kind="scene_opened", trace=trace, told=True, card=card)
-    if isinstance(written, ReturnDraft):
-        world.board = written.offers
-        job = world.jobs[-1]
-        if job.finished and finished_note:
-            state.notes = (*state.notes, finished_note.format(title=job.title))
-        return [job_closed(job), opened]
-    return [opened]
 
 
-def render_opening[C: Person](
-    cast_type: type[C], source: str, guidance: str, kind: ScenarioKind, hub_phrase: str
-) -> str:
-    return worldsmith_prompt(
-        source=source,
-        history="(no scenes yet — write the opening)",
-        cast="(no cast yet — write the people and things this scene needs)",
-        guidance=guidance,
-        intent=CAMPAIGN_OPENING.format(hub=hub_phrase) if kind == "campaign" else ONE_SHOT_OPENING,
-        answer=opening_draft(cast_type, kind),
-    )
+def _cast_unmet[C: Person](
+    draft: SceneDraft[C],
+    everyone: Mapping[EntityId, Thing],
+    held: Mapping[EntityId, Thing],
+    *,
+    needs_return: bool,
+) -> list[str]:
+    """The cast a scene owes, whatever the engine's own people are made of."""
+    others = (*draft.present, *draft.hidden)
+    unmet: list[str] = []
+    if not others:
+        unmet.append("at least one cast member besides the player")
+    if needs_return and not any(resolved_id(one, held) is not None for one in others):
+        unmet.append("at least one existing cast member brought back")
+    if stray := sorted(one for one in others if resolved_id(one, everyone) is None):
+        unmet.append(f"ids that exist; these name nobody: {stray}")
+    # `situation` is read to the player, so naming a hidden entity there hands them the find.
+    if told := sorted(named_in(draft.situation, draft.hidden, everyone)):
+        unmet.append(f"a situation that does not name what is hidden: {told}")
+    return unmet
 
 
-def build_scenario[C: Person](
-    file_type: type[Scenario[SceneCanon[C]]],
-    engine_id: EngineId,
-    title: str,
-    premise: str,
-    packs: tuple[Slug, ...],
-    written: SceneDraft[C],
-    source: str,
-    kind: ScenarioKind,
-    cast_type: type[C],
-) -> AnyScenario:
-    if (refused := scene_refusal(written)) is not None:
-        raise Refusal(refused)
-    return file_type(
-        meta=ScenarioMeta(title=title, premise=premise or written.situation, kind=kind),
-        engine=engine_id,
-        packs=packs,
-        payload=opening_canon(written, source, cast_type),
-    )
+def _hub_unmet[C: Person, P: Person](
+    draft: SceneDraft[C], world: SceneWorld[C, P] | None
+) -> list[str]:
+    """A debrief means a return: it is home, and it is read to the player."""
+    hub = None if world is None else world.hub
+    debrief = draft.debrief if isinstance(draft, ReturnDraft) else None
+    unmet: list[str] = []
+    if (misplaced := place_unmet(draft.place, hub, returning=debrief is not None)) is not None:
+        unmet.append(misplaced)
+    if debrief is not None and world is not None:
+        strangers = [eid for eid, one in world.cast.items() if not one.known]
+        if named := sorted(named_in(debrief, strangers, world.cast)):
+            unmet.append(f"a debrief that does not name what the player has not met: {named}")
+    return unmet

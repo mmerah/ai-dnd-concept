@@ -9,9 +9,11 @@ from breathless_test_support import (
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
 from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.breathless.engine import BreathlessEngine
 from aidm.engines.scenes.drafts import HubDraft, ReturnDraft, SceneDraft
-from aidm.engines.scenes.world import scene_refusal
-from aidm.engines.scenes.worldsmith import install_scene, opening_canon
+from aidm.engines.scenes.worldsmith import opening_canon, scene_refusal
+
+ENGINE = BreathlessEngine()
 
 
 def _draft(**fields: object) -> SceneDraft[Person]:
@@ -86,7 +88,7 @@ def test_a_hidden_multi_word_name_in_situation_is_refused() -> None:
 
 def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
     game = small_world()
-    facts = install_scene(game, _draft(present=("mira",)), finished_note="")
+    facts = ENGINE.install(game, _draft(present=("mira",)))
     assert len(game.payload.runs) == 2
     assert facts == [
         Fact(
@@ -99,9 +101,7 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
 
 
 def test_render_worldsmith_lists_the_player_first() -> None:
-    prompt = small_world().payload.render_worldsmith(
-        "Explore the alley.", "guidance text", SceneDraft[Person]
-    )
+    prompt = ENGINE.render_next(small_world(), "Explore the alley.", SceneDraft[Person])
     assert prompt.index("Jax[player]") < prompt.index("Mira[mira]")
 
 
@@ -137,16 +137,16 @@ def test_install_scene_on_a_return_swaps_the_board_and_notes_nothing() -> None:
     for finished in (True, False):
         game = hub_world()
         game.payload.jobs[-1].finished = finished
-        facts = install_scene(game, _return_draft(), finished_note="")
+        facts = ENGINE.install(game, _return_draft())
         world = game.payload
         assert [offer.title for offer in world.board] == ["Job 1", "Job 2"]
         assert [fact.kind for fact in facts] == ["job_closed", "scene_opened"]
-        assert game.notes == ()
+        assert game.notes == []
 
 
 def test_install_scene_on_a_hub_draft_lands_a_home_card() -> None:
     game = hub_world()
-    facts = install_scene(game, _return_draft(), finished_note="")
+    facts = ENGINE.install(game, _return_draft())
     assert any(fact.card.startswith("Home: Back at the Camp") for fact in facts)
 
 

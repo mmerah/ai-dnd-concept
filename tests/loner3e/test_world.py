@@ -1,15 +1,14 @@
 import pytest
-from core_test_support import initialized
+from core_test_support import change, initialized
+from core_test_support import refused as change_refused
+from loner3e_test_support import ENGINE
+from pydantic import JsonValue
 
 from aidm.core.entities import EntityId
-from aidm.core.facts import Fact
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.loner3e.engine import GROWTH_NOTE
-from aidm.engines.loner3e.tools import ChangeWorld, apply_change, close_conflicts
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, Loner3eSheet
 from aidm.engines.scenes.drafts import MIN_SITUATION, SceneDraft
-from aidm.engines.scenes.world import scene_refusal
-from aidm.engines.scenes.worldsmith import install_scene
+from aidm.engines.scenes.worldsmith import scene_refusal
 
 MAP = EntityId("vault-map")
 MARA = EntityId("mara")
@@ -21,19 +20,12 @@ SITUATION = (
 )
 
 
-def changed_facts(draft: Loner3eGame, verb: str, **fields: object) -> list[Fact]:
-    change = ChangeWorld.model_validate({"change": {"verb": verb, **fields}})
-    return apply_change(draft.payload, change.change)
+def changed(draft: Loner3eGame, verb: str, **fields: JsonValue) -> list[str]:
+    return [fact.trace for fact in change(ENGINE, draft, verb, **fields)]
 
 
-def changed(draft: Loner3eGame, verb: str, **fields: object) -> list[str]:
-    return [fact.trace for fact in changed_facts(draft, verb, **fields)]
-
-
-def refused(draft: Loner3eGame, verb: str, **fields: object) -> str:
-    with pytest.raises(ValueError) as raised:
-        _ = changed(draft, verb, **fields)
-    return str(raised.value)
+def refused(draft: Loner3eGame, verb: str, **fields: JsonValue) -> str:
+    return change_refused(ENGINE, draft, verb, **fields)
 
 
 def test_reveal_moves_a_hidden_entity_into_the_scene_and_tells_the_player() -> None:
@@ -98,8 +90,8 @@ def test_someone_left_behind_is_refilled_when_the_scene_moves_on() -> None:
     draft.payload.require(MARA).luck.current = LUCK_MAX - 2
 
     facts = (
-        *close_conflicts(draft),
-        *install_scene(draft, _next_scene(present=(), hidden=(TOMAS,)), finished_note=GROWTH_NOTE),
+        *ENGINE.leaving(draft),
+        *ENGINE.install(draft, _next_scene(present=(), hidden=(TOMAS,))),
     )
 
     assert MARA not in draft.payload.party
@@ -198,7 +190,7 @@ def test_a_corpse_takes_no_further_part() -> None:
 def test_the_players_death_cards_you_are_dead() -> None:
     _, state = initialized()
     draft = state.draft()
-    facts = changed_facts(draft, "kill", entity_id=PLAYER_ID)
+    facts = change(ENGINE, draft, "kill", entity_id=PLAYER_ID)
     assert [fact.card for fact in facts if fact.card] == ["You are dead"]
     assert not draft.payload.player.alive
 

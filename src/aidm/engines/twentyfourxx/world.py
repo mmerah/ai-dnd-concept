@@ -45,7 +45,7 @@ class Operator(Person):
     skills: dict[str, SkillDie] = Field(default_factory=dict)  # keyed by the pack label
     credits: int = Field(default=STARTING_CREDITS, ge=0)
     items: dict[EntityId, Item] = Field(default_factory=dict)
-    hindrances: tuple[str, ...] = ()  # the SRD's word: injuries and the like
+    hindrances: list[str] = Field(default_factory=list)  # the SRD's word: injuries and the like
 
     def die(self, skill: str) -> int:
         return self.skills.get(skill, DEFAULT_DIE)

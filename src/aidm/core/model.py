@@ -34,13 +34,6 @@ class EngineHeader(Loose):
     engine: EngineId
 
 
-class SaveHeader(EngineHeader):
-    scenario_id: Slug
-    character_id: Slug
-    scenario: ScenarioMeta
-    turn: int = Field(ge=0)
-
-
 class CharacterHeader(EngineHeader):
     id: Slug
     name: str
@@ -90,13 +83,16 @@ class Game[P: BaseModel](Mutable):
     packs: tuple[Slug, ...] = ()
     turn: int = Field(default=0, ge=0)
     pending: PendingDecision | None = None
-    notes: tuple[str, ...] = ()
+    notes: list[str] = Field(default_factory=list)
     payload: SerializeAsAny[P]
 
     @model_validator(mode="after")
     def _playable_game(self) -> Self:
         require_unique("game pack ids", self.packs)
         return self
+
+    def note(self, text: str) -> None:
+        self.notes.append(text)
 
     def draft(self) -> Self:
         """A working copy a resolution mutates; a failed turn never replaces the committed state."""

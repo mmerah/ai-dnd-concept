@@ -5,6 +5,7 @@ from functools import partial
 from pathlib import Path
 from random import Random
 
+import pytest
 from pydantic import BaseModel, JsonValue
 from pydantic_settings import SettingsConfigDict
 
@@ -45,8 +46,7 @@ LONER3E = EngineId("loner3e")
 TUNNELGOONS = EngineId("tunnelgoons")
 BREATHLESS = EngineId("breathless")
 TWENTYFOURXX = EngineId("twentyfourxx")
-LONER3E_PACKS = REPOSITORY_ROOT / "packs" / "loner3e"
-ENGINES_BUILT = build_engines(REPOSITORY_ROOT / "packs")
+ENGINES_BUILT = build_engines()
 ENGINE_IDS = tuple(ENGINES_BUILT)
 SCENARIO_MODELS = {engine_id: engine.scenario for engine_id, engine in ENGINES_BUILT.items()}
 KAEL = Speaker(name="Kael", id=PLAYER_ID)
@@ -134,6 +134,17 @@ def change_args(verb: str, **fields: JsonValue) -> dict[str, JsonValue]:
 
 def changed(verb: str, **fields: JsonValue) -> Call:
     return "change_world", change_args(verb, **fields)
+
+
+def change(engine: AnyEngine, draft: AnyGame, verb: str, **fields: JsonValue) -> list[Fact]:
+    return list(engine.tools["change_world"].call(draft, change_args(verb, **fields), Random(0)))
+
+
+def refused(engine: AnyEngine, draft: AnyGame, verb: str, **fields: JsonValue) -> str:
+    """The refusal's text, from `pytest.raises(Refusal)`."""
+    with pytest.raises(Refusal) as raised:
+        _ = change(engine, draft, verb, **fields)
+    return str(raised.value)
 
 
 def tool_call(name: str, **args: JsonValue) -> Call:
@@ -304,5 +315,6 @@ async def play_turn[G: AnyGame](
     # The crossing is its own narrator spawn, so a turn that installs a scene answers twice.
     if arrival is not None:
         canned.append(narrated(arrival))
-    await table.service.play(action, moving_on=moving_on)
+    answer = Answer(text=action) if isinstance(action, str) else action
+    await table.service.play(answer, moving_on=moving_on)
     return table.state

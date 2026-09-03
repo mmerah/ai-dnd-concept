@@ -6,7 +6,7 @@ from pydantic import Field
 from aidm.core.entities import Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import ScenarioKind
-from aidm.core.views import Panel, PanelRow, Rows
+from aidm.core.views import Panel, PanelRow, Sections
 
 BOARD_MIN, BOARD_MAX = 2, 3
 MIN_JOB = 80
@@ -151,7 +151,7 @@ def hub_sections(
     at_hub: bool,
     returning: bool,
     finished: bool,
-) -> Rows:
+) -> Sections:
     brief = WRITE_HUB_SCENE + RETURN_BRIEF if returning else TAKE_BRIEF if at_hub else AWAY_BRIEF
     return (
         ("JOBS SO FAR", ledger(jobs)),
@@ -179,7 +179,7 @@ def master_tail(
     board: Sequence[Offer],
     jobs: Sequence[Job],
     open_job: Job | None,
-) -> Rows:
+) -> Sections:
     return (
         *((("THE JOB", open_job.terms),) if open_job is not None and open_job.terms else ()),
         *((("JOBS SO FAR", ledger(jobs)),) if hub is not None else ()),
