@@ -3,11 +3,19 @@
 Six issues seen in the role trace of 2026-09-03 (four campaigns played through the real code
 with scripted roles). Each entry: what the code does today, verified; the options; a
 recommendation; the questions to settle together. High level by design: a settled entry becomes
-a `PLAN.md` phase. Nothing here is decided.
+a plan phase. Nothing here is decided except where marked.
 
-Counts that bound every option: the tool cap is fifteen per engine (tools plus `change_world`
-arms, party arms not counted) and 24XX sits at fifteen today, Breathless at thirteen; the master
-spawn times out at 300 s, the worldsmith at 900 s; an engine stays under 2,000 lines.
+## The rule the recommendations follow
+
+**A role decides only from what it reads, so what it reads must be whole and true.** A prompt
+that leaves something out to be shorter or faster makes the role guess, and a guess is a
+wrong decision made politely. Prompt size and spawn time are costs to note, never a reason to
+pick an option. Where two options differ only in how much a role knows, the one that knows more
+wins.
+
+Facts that bound every option: the tool cap is fifteen per engine (tools plus `change_world`
+arms, party arms not counted), 24XX sits at fifteen today and Breathless at thirteen; the master
+spawn times out at 300 s and the worldsmith at 900 s; an engine stays under 2,000 lines.
 
 ## 1. Recent play is the current job only, and the hub is not a job
 
@@ -28,19 +36,22 @@ narration alone, and JOBS SO FAR = one debrief paragraph.
 
 **Options.**
 
-- A. **Hub visits are one running scene.** `job_runs()` for a hub visit returns every hub run
-  plus the job runs between them as recaps (option 3 below writes those recaps). The hub reads
-  like a scene the player keeps coming back to; a job reads like an excursion. Cheap: one
-  method, no new shape.
-- B. **A fixed window of N runs regardless of jobs.** Simplest, but a long job would push its
-  own start out again, which the current rule exists to prevent.
-- C. **Keep the window, add a "LAST TIME AT HOME" section** at the hub: the previous hub visit's
-  recap. Least change, least memory.
+- A. **The whole campaign is the history, told at three depths.** `scenes()` returns every run
+  since the campaign began: the current scene and the one before it whole (the existing
+  `SCENE_EXCHANGES` window), every other scene of the current job as its recap, every closed
+  job as one block (its summary from proposal 2, then its scenes' titles) and every hub visit as
+  its recap. Nothing that happened is absent; only the depth changes with distance. One
+  renderer, `render_history`, gains a third depth.
+- B. **Hub visits are one running scene.** `job_runs()` for a hub visit returns every hub run
+  plus the jobs between them as their summaries. Whole at the hub, but on a job the hub visits
+  and the earlier jobs still drop out.
+- C. **A fixed window of N runs regardless of jobs.** Simplest, and the one that loses the most:
+  a long job pushes its own start out again.
 
-**Recommendation.** A. It uses `render_history`'s existing recap path and gives every role the
-same picture. Open question: does the hub's own run get a recap when the player leaves it (today
-`JobDraft.recap` is that, filed on the hub run, so yes for scene engines; Tunnel Goons has no
-recaps at all, see 3).
+**Recommendation.** A. The hub and the earlier jobs are the campaign's memory, and the master
+deciding a hub turn without the job it just closed is the case the trace caught. Open question:
+whether the worldsmith reads the same depths or the whole thing unwindowed when it writes the
+next scene (it has 900 s and the most to gain from the earlier jobs' cast and debts).
 
 ## 2. Jobs so far is a debrief for the player, not a memory for the master
 
@@ -49,25 +60,30 @@ paragraph the worldsmith writes in the second person for the player's card), "(l
 the terms. The scene recaps written during the job (`NextDraft.recap`) exist on the runs but no
 role reads them once the job closes. The last scene of a job never gets a recap: `ReturnDraft`
 has no `recap` field, and Tunnel Goons writes none anywhere. So a closed job survives as one
-player-facing paragraph.
+player-facing paragraph, written by a role that reads the job through the same two-scene
+window.
 
 **Options.**
 
-- A. **The worldsmith writes the job's summary at the return**, as it writes the debrief: a
-  `summary` field on both `ReturnDraft`s, master-facing (third person, the facts, what was left
-  undone, who was met, what is owed), stored on `Job`, printed in JOBS SO FAR instead of the
-  debrief. The debrief stays the card. One more field, no new spawn; the return prompt already
-  holds THIS JOB / SCENES SO FAR whole.
-- B. **A narrator spawn summarises every exchange of the job at the close.** Accurate to what
-  the player read, but the narrator's input is the told half only and a second spawn on every
-  return costs a minute. The maintainer decided "no summarizer role" on 2026-09-02
-  (`NEXT-SPECS.md` decision 2); this reopens it.
+- A. **The worldsmith writes the job's summary at the return, from the whole job.** A
+  `summary` field on both `ReturnDraft`s, master-facing (third person; what was done, what was
+  left undone, who was met and how it stands with them, what is owed, what was learned and what
+  is still hidden), stored on `Job`, read by the master and the worldsmith. The return prompt
+  carries the whole job unwindowed under THIS JOB: every scene's exchanges and every fact trace,
+  hidden ones included, since the worldsmith writes hidden canon anyway. The debrief stays the
+  player's card. Each `ReturnDraft` also carries a `recap` for the scene being left, so no scene
+  is ever without one. Tunnel Goons gets recaps per place the same way.
+- B. **A narrator spawn summarises the job at the close.** The narrator reads told facts only,
+  so its summary cannot hold what the player has not found; the master would read a memory with
+  the secrets cut out. The maintainer decided "no summarizer role" on 2026-09-02 (`NEXT-SPECS.md`
+  decision 2); this reopens it for a weaker result.
 - C. **Concatenate the scene recaps** into the ledger line. Free, but the last scene has no
-  recap and the recaps were written for the next scene, not for the ledger.
+  recap, Tunnel Goons has none, and the recaps were written for the next scene, not for the
+  ledger.
 
-**Recommendation.** A, with the `ReturnDraft` also carrying a `recap` for the scene being left
-so option C's gap closes too. Question: how long may the ledger grow before older jobs are cut
-to a line? Ten jobs of one paragraph is about 2,000 words in every master prompt.
+**Recommendation.** A. The summary is written by the role that reads everything, from
+everything. Question: whether the summary is one paragraph or a fixed shape (done, undone,
+people, debts, hidden), which the ledger and proposal 3 could then read field by field.
 
 ## 3. Leaving a job open, and taking it again
 
@@ -86,20 +102,23 @@ longer the job's. Same ledger behaviour.
 
 **Options.**
 
-- A. **A re-taken job is the same `Job`, reopened.** `Job` gains `attempts` (or `runs` indices);
-  `job_runs()` for the reopened job returns the earlier attempt's runs as recaps then the new
-  ones whole. The worldsmith writes a `JobDraft` whose recap is the hub visit, as today, and
-  reads the earlier attempt in SCENES SO FAR. No new prose shape; proposal 2A's summary covers
-  the gap between attempts.
-- B. **Keep new-job-per-attempt, feed the earlier attempt's summary** (2A) to both roles under
-  a "THIS JOB BEFORE" section. Smaller; the ledger keeps one line per attempt.
-- C. **The worldsmith updates instead of rewriting:** for a reopened job, the draft model lets
-  it re-file cast and place with changes. This is the "more agentic worldsmith" reading; it
-  touches the bars (`scene_refusal`, the map bars) and the install.
+- A. **A re-taken job is the same `Job`, reopened.** `Job` records its attempts (the run index
+  each one started at). `job_runs()` for a reopened job returns the earlier attempt's runs at
+  their depth (proposal 1) and the new ones whole; the earlier attempt's summary (proposal 2)
+  sits under THE JOB. The worldsmith's `JobDraft` reads the earlier attempt whole in SCENES SO
+  FAR and writes the scene where it picks up. For Tunnel Goons the same region is the job again
+  and the new region joins it, not the tavern.
+- B. **Keep new-job-per-attempt, feed the earlier attempt's summary** under a "THIS JOB BEFORE"
+  section. The ledger keeps one line per attempt and the two attempts stay two jobs to every
+  role, which they are not to the player.
+- C. **The worldsmith updates instead of rewriting:** for a reopened job, the draft lets it
+  re-file cast and places with changes. This is the "more agentic worldsmith" reading; it touches
+  the bars (`scene_refusal`, the map bars) and the install, and it is the natural next step once
+  A holds.
 
-**Recommendation.** B now, A when the summary exists and is read; C only if B's prose proves
-too thin in play. Question: should the board mark an offer "left open" so the player knows it is
-a return?
+**Recommendation.** A, and C as the follow-up once A is played. B keeps a split the player does
+not see. Question: should the board mark an offer "left open" so the player knows it is a
+return, and should the offer's pitch be rewritten by the return draft to say where it stands.
 
 ## 4. The crossing narrator reads nothing on a job's first scene and on the return
 
@@ -112,20 +131,18 @@ scene left is still in the window. The opening spawn (`OPENING`) is correct: not
 
 **Options.**
 
-- A. **Narrate the crossing from the pre-install draft's history.** `_grow` takes the told
-  narration before `advance` and hands it in; `render_narrator` gets a `read` argument instead
-  of computing it. Smallest fix, no shape change.
-- B. **`scenes()` for a run with no exchanges includes the run before it**, so the window never
-  opens empty. Fixes every reader at once but changes RECENT PLAY for the master's first turn in
-  a scene too (arguably right: the master then sees how the player arrived).
-- C. Solved by 1A for the hub side only.
+- A. **`scenes()` never opens on an empty run**: a window that would start on a run with no
+  exchanges includes the run before it. Fixes every reader at once and gives the master the
+  last hub exchanges on a job's first turn, which it should have. Subsumed by 1A, where the
+  earlier runs are always present.
+- B. **Narrate the crossing from the pre-install draft's history.** `_grow` takes the told
+  narration before `advance` and hands it in. Fixes the narrator alone; the master's first turn
+  in the new scene still opens blind.
 
-**Recommendation.** B: one rule in `job_runs()` ("a window never starts on an empty run"),
-which also gives the master the last hub exchanges on a job's first turn. A as the fallback if
-B widens the master's window unacceptably. Also reword CROSSING to name the place left rather
-than a section.
+**Recommendation.** A, and it falls out of 1A. Also reword CROSSING to name the place left
+rather than a section. Do this with proposal 1 in the same phase.
 
-## 5. Does the worldsmith design a job for several scenes?
+## 5. Does the worldsmith design a job for several scenes? — settled: A
 
 **Today.** `ONE_SHOT_OPENING` says the cast is "the adventure's people and things, not the
 scene's: write who is met here and who the player will meet farther in". `TAKE_BRIEF` asks for
@@ -135,23 +152,16 @@ shown; the only forward canon is the cast (with `known=False` entries) and the `
 `SURPRISE` asks to recombine what exists. So a job's shape lives in the worldsmith's head for one
 spawn and in cast briefs after that.
 
-**Options.**
+**Decision (maintainer, 2026-09-03): option A.** A hidden `arc` on the job: `JobDraft.arc` (and
+`SceneDraft.arc` for one-shots), a few lines of what the job holds beyond this scene, master-
+and worldsmith-facing, never the player's. Stored on `Job` (or `SceneCanon`), read by the master
+under THE JOB and by the worldsmith under WHAT COMES NEXT, rewritable by each `NextDraft` so it
+follows play. `TAKE_BRIEF` says the scene is the first of several. The master reads it: it
+decides with the whole picture, and the rule that it narrates nothing already keeps the arc off
+the player's screen.
 
-- A. **A hidden `arc` on the job**: `JobDraft.arc` (and `SceneDraft.arc` for one-shots), two
-  to four lines of what the job holds beyond this scene, master- and worldsmith-facing, never
-  the player's. Stored on `Job` (or `SceneCanon`), printed under THE JOB for the master and
-  under WHAT COMES NEXT for later scene writes, rewritable by each `NextDraft`. One field, one
-  section, both bars unchanged.
-- B. **Instruction only**: tell the worldsmith to write the first scene "as the first of
-  several" and to file the later cast now. Free, and probably what the opening already does;
-  nothing carries the plan between spawns.
-- C. **Author the whole job up front** (several scenes), as Tunnel Goons authors the whole
-  dungeon. Costs minutes per job and fights "the player's own words build the next scene".
-
-**Recommendation.** A, with B's sentence in `TAKE_BRIEF`. The arc is also what proposal 6
-needs the game master to read before it asks for anything. Question: does the master see the
-arc, or only the worldsmith? Seeing it lets the master foreshadow; it also tempts it to narrate
-what has not been written.
+Options kept for the record: B, instruction only, carries nothing between spawns; C, author the
+whole job up front, fights "the player's own words build the next scene".
 
 ## 6. A game master who can ask the worldsmith for more
 
@@ -164,34 +174,36 @@ through tools that mutate the draft.
 
 **Options.**
 
-- A. **`commission`: a request, filled at the next scene write.** One shared tool (or a
-  `change_world` arm) with a `brief` and a `kind` (person, thing, rumour, place). It lands as a
-  fact and a note; the next worldsmith prompt carries "THE GAME MASTER ASKED FOR" and the bar
-  requires the request met (a new cast entry whose brief answers it). Nothing spawns mid-turn;
-  no lock held; the narrator says nothing until the thing exists. Costs one tool everywhere:
-  24XX goes to sixteen unless the cap counts platform tools apart from engine tools.
-- B. **`commission` fulfilled now, mid-turn.** The tool returns "waiting on the worldsmith",
-  the turn suspends like a pending decision (`Game.pending` with a `worldsmith` kind), the
-  service spawns the worldsmith with a small `CastDraft` model and the existing refusal bar,
-  installs it, and re-spawns the master with the new entry under HERE / THE WHOLE CAST. The
-  master's spawn never blocks; the player sees a "Worldsmith is working" step in the turn.
-  Larger: a new suspension kind in `Turn`, a new draft model and bar, a re-spawn path.
-- C. **The master writes the entry itself**, a `introduce` arm with name, brief and the sheet
-  fields the rules allow. Fastest and cheapest, but it retires the rule that the worldsmith
-  writes cast and the master's picture is not the source; small models would flood the cast.
+- A. **`commission`, fulfilled now.** The master calls one shared tool with a `brief` and a
+  `kind` (person, thing, rumour, place; for Tunnel Goons a place is a region). The tool answers
+  "waiting on the worldsmith" and the turn suspends the way a pending decision does
+  (`Game.pending` with a `worldsmith` kind, no player input). The service spawns the worldsmith
+  with a small draft model (a cast entry, a rewritten brief, a region) and the existing refusal
+  bar, installs the answer, then re-spawns the master with the new entry under HERE / THE WHOLE
+  CAST and the commission's answer under NOTES FROM THE RULES. The master that continues the
+  turn knows exactly what it asked for and got. The player sees a "Worldsmith is working" step.
+  New: a second suspension kind in `Turn`, a draft model per kind, a re-spawn path in
+  `GameService.play`.
+- B. **`commission`, filled at the next scene write.** The same tool; the request lands as a
+  fact and a note, the next worldsmith prompt carries "THE GAME MASTER ASKED FOR" and the bar
+  requires it met. This is the "save for later" form: the thing exists from the next scene on.
+  It cannot bring anyone into the current scene.
+- C. **The master writes the entry itself**, an `introduce` arm with name, brief and the sheet
+  fields the rules allow. Retires the rule that the worldsmith writes cast; the master's picture
+  becomes a source of canon; small models flood the cast.
 
-**Recommendation.** A first: it fits the seam (a fact, a note, a prompt section, a bar line),
-costs no spawn, and gives the worldsmith a reason for the new entry. B is the same tool with a
-second delivery path, added only if "next scene" proves too late in play. The rewrite-a-brief
-case is already the worldsmith's (an id re-filed in `cast` rewrites the brief); "save for later"
-is the same request with `known=False`. Questions: is the cap raised by one for a platform tool,
-or does `commission` replace something; does a request expire; may the master commission a
-place, which for Tunnel Goons is a region.
+**Recommendation.** A, with B as the `later: true` flag on the same tool rather than a second
+tool. A master that needs someone now should get them now, written by the role that writes
+people, with the whole cast and history in front of it. Questions: the cap is raised by one
+for a platform tool, or `commission` is counted apart from engine tools; what the master may
+commission besides people (a rumour is a cast entry with no body; a place is a scene write); how
+a commission is refused when it contradicts the arc.
 
 ## What to settle first
 
-1. Proposals 1 and 4 change what every role reads and cost no new shape: do them together, one
-   phase, golden prompts regenerated.
-2. Proposal 2A (the summary at the return) and 5A (the arc) are one field each on the return and
-   job drafts; one phase.
-3. Proposal 3 and 6 wait on 2 and 5, and each needs a decision above before it is planned.
+1. Proposals 1 and 4 change what every role reads and share one renderer: one phase, golden
+   prompts regenerated.
+2. Proposals 2A (the summary and the recap on the return) and 5A (the arc, decided) are fields
+   on the return and job drafts and sections in the prompts: one phase, after 1.
+3. Proposal 3A reads 1 and 2; proposal 6A is its own phase (`Turn`, `GameService`, a draft
+   model, the UI step). Both wait on the decisions above.
