@@ -3,11 +3,11 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, require_unique
+from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal, require_unique
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.tools import MasterTool, NoArgs, master_tool
-from aidm.engines.core import CHANGE_WORLD, counter_fact, entity_fact, pool
+from aidm.engines.base import CHANGE_WORLD, counter_fact, entity_fact, pool
 from aidm.engines.tunnelgoons.world import (
     ABILITIES,
     Ability,
@@ -17,7 +17,7 @@ from aidm.engines.tunnelgoons.world import (
     Npc,
     Place,
     TunnelGoonsGame,
-    TunnelWorld,
+    TunnelGoonsWorld,
     Visit,
     Way,
 )
@@ -100,7 +100,7 @@ class ActionRoll(Frozen):
     @model_validator(mode="after")
     def _one_target(self) -> Self:
         if (self.difficulty is None) == (self.against is None):
-            raise ValueError("give a difficulty, or an npc to roll against, not both/neither")
+            raise Refusal("give a difficulty, or an npc to roll against, not both/neither")
         return self
 
 
@@ -113,7 +113,7 @@ class LevelUp(Frozen):
     )
 
 
-def apply_change(world: TunnelWorld, change: WorldChange) -> list[Fact]:
+def apply_change(world: TunnelGoonsWorld, change: WorldChange) -> list[Fact]:
     """Every arm settles its own deterministic consequences, so a call leaves nothing half-done."""
     match change:
         case Reveal():
@@ -121,7 +121,7 @@ def apply_change(world: TunnelWorld, change: WorldChange) -> list[Fact]:
         case MoveItem():
             return _move_item(world, change)
         case Kill():
-            return _kill(world, change)
+            return world.kill(world.require_npc_here(change.entity_id))
 
 
 def change_world(draft: TunnelGoonsGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
@@ -133,11 +133,11 @@ def move(draft: TunnelGoonsGame, args: Move, _rng: Random) -> list[Fact]:
     here, destination, way = _here_and_way(world, args.to_id)
     if way is None:
         options = ", ".join(world.require_place(one.to).name for one in world.ways.get(here.id, ()))
-        raise ValueError(
+        raise Refusal(
             f"no way leads from {here.name} to {destination.name}; ways out: {options or '(none)'}"
         )
     if way.locked:
-        raise ValueError(f"the way to {destination.name} is locked and must be dealt with first")
+        raise Refusal(f"the way to {destination.name} is locked and must be dealt with first")
     way.known = True
     back = world.way(destination.id, here.id)
     if back is not None:
@@ -147,7 +147,7 @@ def move(draft: TunnelGoonsGame, args: Move, _rng: Random) -> list[Fact]:
     coming: list[Npc] = []
     for npc_id in args.with_ids:
         if npc_id == world.player.id:
-            raise ValueError("the player already comes along")
+            raise Refusal("the player already comes along")
         coming.append(world.require_npc_here(npc_id))
     world.player.place = destination.id
     for npc in coming:
@@ -169,9 +169,9 @@ def unlock_way(draft: TunnelGoonsGame, args: UnlockWay, _rng: Random) -> list[Fa
     world = draft.payload
     here, destination, way = _here_and_way(world, args.to_id)
     if way is None:
-        raise ValueError(f"no way leads from {here.name} to {destination.name}")
+        raise Refusal(f"no way leads from {here.name} to {destination.name}")
     if not way.locked:
-        raise ValueError(f"the way from {here.name} to {destination.name} is not locked")
+        raise Refusal(f"the way from {here.name} to {destination.name} is not locked")
     way.locked = False
     trace = f"the way from {world.label(here)} to {world.label(destination)} is unlocked"
     card = f"{destination.name} unlocked"
@@ -186,7 +186,7 @@ def action_roll(draft: TunnelGoonsGame, args: ActionRoll, rng: Random) -> list[F
     facts = list(world.reveal(npc)) if npc is not None else []
     ds = npc.hp.current if npc is not None else args.difficulty
     if ds is None:
-        raise ValueError("give a difficulty, or an npc to roll against")
+        raise Refusal("give a difficulty, or an npc to roll against")
 
     penalty = 0
     if args.ability in ("brute", "skulker"):
@@ -209,15 +209,11 @@ def action_roll(draft: TunnelGoonsGame, args: ActionRoll, rng: Random) -> list[F
     if npc is not None and success:
         facts.extend(counter_fact(npc, npc.hp, -margin, "Health", "the player's action", player.id))
         if npc.hp.current == 0:
-            npc.alive = False
-            slain = f"{world.label(npc)} is slain"
-            facts.append(entity_fact(npc, "npc_slain", slain, card=f"{npc.name} is slain"))
+            facts.extend(world.kill(npc))
     elif not success:
         facts.extend(counter_fact(player, player.hp, margin, "Health", args.what, player.id))
         if player.hp.current == 0:
-            player.alive = False
-            dead = f"{world.label(player)} is dead"
-            facts.append(entity_fact(player, "goon_killed", dead, card="You are dead"))
+            facts.extend(world.kill(player))
     return facts
 
 
@@ -242,7 +238,7 @@ def level_up(draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
         )
         return []
     if args.ability is None or args.boost is None:
-        raise ValueError("level_up takes both an ability and a boost, or neither")
+        raise Refusal("level_up takes both an ability and a boost, or neither")
     world = draft.payload
     player = world.player
     match args.ability:
@@ -284,40 +280,40 @@ def tools() -> tuple[MasterTool[TunnelGoonsGame], ...]:
     )
 
 
-def _here_and_way(world: TunnelWorld, to_id: EntityId) -> tuple[Place, Place, Way | None]:
+def _here_and_way(world: TunnelGoonsWorld, to_id: EntityId) -> tuple[Place, Place, Way | None]:
     here = world.current
     destination = world.require_place(to_id)
     return here, destination, world.way(here.id, destination.id)
 
 
-def _reveal(world: TunnelWorld, change: Reveal) -> list[Fact]:
+def _reveal(world: TunnelGoonsWorld, change: Reveal) -> list[Fact]:
     one = world.require(change.entity_id)
     holders = {world.current.id, *(member.id for member in world.here())}
     location = one.place if isinstance(one, Npc) else one.on if isinstance(one, Item) else None
     if location not in holders:
-        raise ValueError(f"{one.name} is not here with the player")
+        raise Refusal(f"{one.name} is not here with the player")
     found = "found" if isinstance(one, Item) else "discovered"
     if one.known:
-        raise ValueError(f"the player has already {found} {one.name}")
+        raise Refusal(f"the player has already {found} {one.name}")
     one.known = True
     trace = f"learned of {world.label(one)}"
     return [entity_fact(one, "entity_discovered", trace, card=f"{one.name} {found}")]
 
 
-def _move_item(world: TunnelWorld, change: MoveItem) -> list[Fact]:
+def _move_item(world: TunnelGoonsWorld, change: MoveItem) -> list[Fact]:
     item = world.require_item_here(change.item_id)
     to = change.to
     if to != world.player.id and to != world.current.id:
         npc = next((one for one in world.here() if one.id == to and one.alive), None)
         if npc is None:
-            raise ValueError(
+            raise Refusal(
                 f"{to!r} cannot hold {item.name}; give the player, a living npc here, or this place"
             )
     holder = world.require(to)
     if not holder.known:
-        raise ValueError(f"the player has not met {holder.name}; reveal them first")
+        raise Refusal(f"the player has not met {holder.name}; reveal them first")
     if item.on == to:
-        raise ValueError(f"{item.name} is already there")
+        raise Refusal(f"{item.name} is already there")
     facts = world.reveal(item)
     item.on = to
     card = f"Took {item.name}" if to == world.player.id else f"{item.name} → {holder.name}"
@@ -325,34 +321,14 @@ def _move_item(world: TunnelWorld, change: MoveItem) -> list[Fact]:
     return [*facts, entity_fact(item, "entity_moved", trace, card=card)]
 
 
-def _kill(world: TunnelWorld, change: Kill) -> list[Fact]:
-    npc = world.require_npc_here(change.entity_id)
-    facts = world.reveal(npc)
-    npc.alive = False
-    dropped = list(world.carried(npc.id))
-    for item in dropped:
-        item.on = world.current.id
-    if dropped:
-        facts.append(
-            Fact(
-                kind="items_dropped",
-                trace=", ".join(world.label(item) for item in dropped) + " fell loose here",
-            )
-        )
-    facts.append(
-        entity_fact(npc, "actor_killed", f"{world.label(npc)} is dead", card=f"{npc.name} is dead")
-    )
-    return facts
-
-
 def _carried_items(
-    world: TunnelWorld, player: Goon, item_ids: tuple[EntityId, ...]
+    world: TunnelGoonsWorld, player: Goon, item_ids: tuple[EntityId, ...]
 ) -> tuple[Item, ...]:
     require_unique("items", item_ids)
     items: list[Item] = []
     for item_id in item_ids:
         item = world.items.get(item_id)
         if item is None or item.on != player.id:
-            raise ValueError(f"{item_id!r} is not in the player's hands")
+            raise Refusal(f"{item_id!r} is not in the player's hands")
         items.append(item)
     return tuple(items)

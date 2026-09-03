@@ -6,11 +6,11 @@ from dotenv import set_key, unset_key
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ProviderName = Literal["openrouter", "local"]
+type ProviderName = Literal["openrouter", "local"]
 # Each role is a one-shot CLI the app spawns, so a role is only a name and how to spawn it.
-Role = Literal["master", "narrator", "worldsmith"]
-CliProvider = Literal["claude", "codex"]
-Effort = Literal["low", "medium", "high"]
+type Role = Literal["master", "narrator", "worldsmith"]
+type CliProvider = Literal["claude", "codex"]
+type Effort = Literal["low", "medium", "high"]
 ENV_FILE = ".env"
 
 
@@ -130,7 +130,7 @@ class Settings(BaseSettings):
         return self
 
 
-def load_settings() -> Settings:
+def read_settings() -> Settings:
     return Settings.model_validate({})
 
 

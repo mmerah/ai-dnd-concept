@@ -1,18 +1,18 @@
 import pytest
 
 from aidm.core.entities import EngineId, EntityId
+from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.breathless.world import (
     SKILLS,
     STARTING_ITEM,
-    BreathlessCharacter,
     BreathlessCharacterFile,
+    BreathlessPayload,
     BreathlessWorld,
     Item,
     Survivor,
     player_survivor,
     stepped,
 )
-from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.scenes.world import SceneRun
 
 MIRA = EntityId("mira")
@@ -63,7 +63,7 @@ def test_stepped_floors_at_d4() -> None:
 
 def test_two_d10_skills_are_refused() -> None:
     with pytest.raises(ValueError, match="one d10, one d8, one d6"):
-        BreathlessCharacter(
+        BreathlessPayload(
             pronouns="they",
             job="Mechanic",
             skills={"bash": 10, "dash": 10, "sneak": 6},
@@ -102,7 +102,7 @@ def test_player_survivor_files_the_item_under_its_slug_at_d10() -> None:
         engine=EngineId("breathless"),
         name="Jax",
         brief="A wiry mechanic",
-        payload=BreathlessCharacter(
+        payload=BreathlessPayload(
             pronouns="they",
             job="Mechanic",
             skills={"bash": 10, "dash": 8, "sneak": 6},

@@ -14,16 +14,16 @@ from aidm.app.runtime import GameService, LaunchTarget
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.io import FileStore
 from aidm.core.model import ScenarioMeta
-from aidm.engines.core import PLAYER_ID, load_packs
+from aidm.engines.base import PLAYER_ID, read_packs
 from aidm.engines.hub import Job, Offer
 from aidm.engines.loner3e.creation import Pack
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.tools import Oracle, twist_table
-from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter, LonerWorld
+from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet, Loner3eWorld
 from aidm.engines.scenes.world import SceneRun
 
 TARGET = LaunchTarget(scenario_id="whispering-vault", character_id="kael")
-PACKS = load_packs((Loner3eEngine.directory / "packs",), Pack)
+PACKS = read_packs((Loner3eEngine.directory / "packs",), Pack)
 TWISTS = twist_table(PACKS)
 ORACLE = Oracle(PACKS)
 
@@ -46,12 +46,10 @@ KEEPER = EntityId("keeper")
 
 def hub_world() -> Loner3eGame:
     """A campaign world: a hub run with a known keeper, then one job run away from it."""
-    keeper = LonerCharacter(
-        id=KEEPER, name="Keeper", brief="Runs the guild hall's board", known=True
-    )
+    keeper = Loner3eSheet(id=KEEPER, name="Keeper", brief="Runs the guild hall's board", known=True)
     hub_run = _hub_scene(here=[KEEPER])
     job_run = _job_scene()
-    world = LonerWorld(
+    world = Loner3eWorld(
         cast={KEEPER: keeper},
         player=_player(),
         runs=[hub_run, job_run],
@@ -106,8 +104,8 @@ def _job_scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
     )
 
 
-def _player() -> LonerCharacter:
-    return LonerCharacter(
+def _player() -> Loner3eSheet:
+    return Loner3eSheet(
         id=PLAYER_ID,
         name="Kael",
         brief="A wary relic-hunter",

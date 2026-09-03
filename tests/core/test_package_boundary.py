@@ -4,7 +4,12 @@ from pathlib import Path
 import pytest
 
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
-ENGINES = ("aidm.engines.loner3e", "aidm.engines.tunnelgoons", "aidm.engines.breathless")
+ENGINES = (
+    "aidm.engines.loner3e",
+    "aidm.engines.tunnelgoons",
+    "aidm.engines.breathless",
+    "aidm.engines.twentyfourxx",
+)
 # The composition root builds the installed concrete engines.
 ROOTS = {"engines/registry.py"}
 # Flow: core <- engines <- turn <- app <- ui.
@@ -38,18 +43,6 @@ def _source_files(package: str) -> tuple[Path, ...]:
     return files
 
 
-def _package_of(path: Path) -> tuple[str, ...]:
-    return path.relative_to(SOURCE.parent).with_suffix("").parts[:-1]
-
-
-def _absolute(package: tuple[str, ...], node: ast.ImportFrom) -> str:
-    """Resolve relative imports: engines are siblings, so a `from ..sibling` must be seen."""
-    if node.level == 0:
-        return node.module or ""
-    parent = package[: len(package) - node.level + 1]
-    return ".".join((*parent, node.module) if node.module else parent)
-
-
 def _file_imports(path: Path) -> set[str]:
     imports: set[str] = set()
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -57,7 +50,7 @@ def _file_imports(path: Path) -> set[str]:
         if isinstance(node, ast.Import):
             imports.update(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
-            base = _absolute(_package_of(path), node)
+            base = node.module or ""
             imports.add(base)
             # `from package import module` stores the module in aliases, not `node.module`.
             imports.update(f"{base}.{alias.name}" for alias in node.names)

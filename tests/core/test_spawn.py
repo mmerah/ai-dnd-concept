@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from aidm.app.spawn import ClaudeDriver, CodexDriver, RunResult, answered, child_environment
+from aidm.app.spawn import ClaudeDriver, CodexDriver, RunResult, ask, child_environment
 from aidm.config import RoleConfig
 from aidm.core.play import Narration
 
@@ -61,7 +61,7 @@ def test_only_the_master_is_let_out_of_the_sandbox_and_no_role_sees_the_account(
 
 def test_a_claude_reply_that_is_not_json_is_a_broken_run() -> None:
     with pytest.raises(ValueError, match="no JSON result"):
-        _ = ClaudeDriver().parse("I answered in prose.")
+        _ = ClaudeDriver().parse("I ask in prose.")
 
 
 @pytest.mark.parametrize(
@@ -85,11 +85,11 @@ def test_a_driver_reads_the_session_its_cli_reported(
 async def test_a_retry_carries_on_the_refused_attempt_and_sends_only_the_error() -> None:
     asked: list[tuple[str, str | None]] = []
 
-    async def ask(prompt: str, session: str | None) -> RunResult:
+    async def spawn(prompt: str, session: str | None) -> RunResult:
         asked.append((prompt, session))
         return RunResult('{"lines": []}' if session else "not json", "abc-123")
 
-    _ = await answered("narrator", "THE WHOLE BRIEF", Narration, lambda _: None, ask)
+    _ = await ask("narrator", "THE WHOLE BRIEF", Narration, lambda _: None, spawn)
 
     assert asked[0] == ("THE WHOLE BRIEF", None)
     assert asked[1][1] == "abc-123"

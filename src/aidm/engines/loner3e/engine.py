@@ -19,9 +19,9 @@ from aidm.engines.loner3e.views import master_sections
 from aidm.engines.loner3e.world import (
     Loner3eCharacterFile,
     Loner3eGame,
-    Loner3eScenarioFile,
-    LonerCharacter,
-    LonerWorld,
+    Loner3eScenario,
+    Loner3eSheet,
+    Loner3eWorld,
     player_character,
 )
 from aidm.engines.scenes.engine import SceneEngine
@@ -35,15 +35,15 @@ GROWTH_NOTE = (
 )
 
 
-class Loner3eEngine(SceneEngine[LonerCharacter, LonerCharacter, Loner3eGame, Pack]):
+class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
     id = EngineId("loner3e")
     title = "LONER 3E"
     art_style = "Painterly illustration, muted colours, no text or lettering."
     directory = Path(__file__).parent
     game = Loner3eGame
-    scenario = Loner3eScenarioFile
+    scenario = Loner3eScenario
     character = Loner3eCharacterFile
-    cast = LonerCharacter
+    cast = Loner3eSheet
     pack = Pack
     hub_phrase = "a guild hall or a ship, whoever keeps it and the regulars"
     finished_note = GROWTH_NOTE
@@ -63,8 +63,8 @@ class Loner3eEngine(SceneEngine[LonerCharacter, LonerCharacter, Loner3eGame, Pac
     def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
         return guidance(self.packs, picks)
 
-    def new_state(self, canon: SceneCanon[LonerCharacter], character: AnyCharacter) -> LonerWorld:
-        return new_world(LonerWorld, canon, player_character(character))
+    def new_state(self, canon: SceneCanon[Loner3eSheet], character: AnyCharacter) -> Loner3eWorld:
+        return new_world(Loner3eWorld, canon, player_character(character))
 
     def master_sections(self, state: Loner3eGame) -> Rows:
         return master_sections(self.packs, state)

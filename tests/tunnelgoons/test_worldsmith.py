@@ -116,7 +116,7 @@ def test_way_open_is_false_on_the_shipped_map_and_true_once_every_place_is_known
     draft = state.draft()
     for place in draft.payload.places.values():
         place.known = True
-    assert way_open(draft.committed())
+    assert way_open(draft.commit())
 
 
 def test_install_extension_on_a_game_from_the_engine() -> None:

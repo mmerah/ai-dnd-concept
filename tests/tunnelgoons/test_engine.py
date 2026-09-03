@@ -32,4 +32,4 @@ def test_a_scenario_with_a_pack_is_refused_by_validate() -> None:
 
 def test_restored_round_trips() -> None:
     engine, state = _tunnelgoons_game()
-    assert engine.restored(state.model_dump_json()) == state
+    assert engine.restore(state.model_dump_json()) == state

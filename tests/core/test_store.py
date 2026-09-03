@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -17,7 +18,7 @@ from aidm.core.facts import Fact
 from aidm.core.io import (
     ENCODING,
     FileStore,
-    load_character,
+    read_character,
     read_characters,
     read_scenario,
     read_scenarios,
@@ -46,14 +47,14 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
             ),
         ),
     ]
-    saved = draft.committed()
+    saved = draft.commit()
     store = FileStore(tmp_path)
 
     store.save("roundtrip", saved)
     reloaded = store.load("roundtrip")
 
     assert reloaded is not None
-    assert engine.restored(reloaded).payload.exchanges() == saved.payload.exchanges()
+    assert engine.restore(reloaded).payload.exchanges() == saved.payload.exchanges()
 
 
 @pytest.mark.parametrize("slug", ("../escape", "/absolute", "bad slug", ""))
@@ -69,7 +70,7 @@ def test_content_paths_reject_an_unsafe_id(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="invalid content id"):
         read_scenario(tmp_path, "../escape", SCENARIO_MODELS)
     with pytest.raises(ValueError, match="invalid content id"):
-        load_character(tmp_path, "kael/../..", engine.id, engine.character)
+        read_character(tmp_path, "kael/../..", engine.id, engine.character)
 
 
 def test_write_scenario_round_trips_and_refuses_a_duplicate(tmp_path: Path) -> None:
@@ -91,6 +92,36 @@ def test_read_scenarios_skips_a_world_that_fails_to_validate(tmp_path: Path) -> 
     (broken / "world.json").write_text(json.dumps({"meta": {}}), encoding=ENCODING)
 
     assert [slug for slug, _ in read_scenarios(tmp_path, SCENARIO_MODELS)] == ["good"]
+
+
+def test_read_scenarios_skips_a_world_that_is_not_json(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    write_scenario(tmp_path, "good", scenario())
+    broken = tmp_path / "broken"
+    broken.mkdir()
+    (broken / "world.json").write_text("{not json", encoding=ENCODING)
+
+    with caplog.at_level(logging.WARNING, logger="aidm.core.io"):
+        read = [slug for slug, _ in read_scenarios(tmp_path, SCENARIO_MODELS)]
+
+    assert read == ["good"]
+    assert "not JSON" in caplog.text
+
+
+def test_read_scenarios_skips_a_world_that_is_not_utf8(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    write_scenario(tmp_path, "good", scenario())
+    broken = tmp_path / "broken"
+    broken.mkdir()
+    (broken / "world.json").write_bytes(b"\xff\xfe{}")
+
+    with caplog.at_level(logging.WARNING, logger="aidm.core.io"):
+        read = [slug for slug, _ in read_scenarios(tmp_path, SCENARIO_MODELS)]
+
+    assert read == ["good"]
+    assert "is not utf-8" in caplog.text
 
 
 def test_a_character_written_for_two_engines_is_read_once_for_each(tmp_path: Path) -> None:

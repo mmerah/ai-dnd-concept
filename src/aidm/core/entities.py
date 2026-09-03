@@ -3,7 +3,7 @@ from collections import Counter as Tally
 from collections.abc import Iterable
 from typing import Annotated, NewType
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 SLUG_MAX = 64
@@ -24,13 +24,23 @@ class Frozen(BaseModel):
 class Mutable(BaseModel):
     """State a resolution mutates in place; commit revalidates the whole draft once."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", revalidate_instances="always")
+
+
+class Loose(BaseModel):
+    """A foreign shape read for a few of its keys."""
+
+    model_config = ConfigDict(extra="ignore", frozen=True)
+
+
+class Refusal(ValueError):
+    """A message a role or the player is meant to read. Any other exception is a bug."""
 
 
 def content_id(value: str) -> Slug:
     """Narrow a routed id before it names a directory, so `Slug` downstream is a fact."""
     if re.fullmatch(SLUG_PATTERN, value) is None or len(value) > SLUG_MAX:
-        raise ValueError(f"invalid content id {value!r}")
+        raise Refusal(f"invalid content id {value!r}")
     return value
 
 
@@ -41,7 +51,17 @@ def slug(text: str, taken: Iterable[str]) -> Slug:
 
 def require_unique(what: str, ids: Iterable[str]) -> None:
     if found := sorted(name for name, count in Tally(ids).items() if count > 1):
-        raise ValueError(f"duplicate {what}: {found}")
+        raise Refusal(f"duplicate {what}: {found}")
+
+
+def parse[T: BaseModel](model: type[T], value: object) -> T:
+    """Validation at a boundary; a shape the model rejects reads back as a refusal."""
+    try:
+        return model.model_validate(value)
+    except ValidationError as broken:
+        first = broken.errors()[0]
+        where = ".".join(str(part) for part in first["loc"])
+        raise Refusal(f"{where}: {first['msg']}" if where else first["msg"]) from broken
 
 
 def _unused(base: str, taken: Iterable[str]) -> str:

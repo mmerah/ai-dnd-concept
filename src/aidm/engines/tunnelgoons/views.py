@@ -9,14 +9,14 @@ from aidm.core.views import (
     Subject,
     speaker_of,
 )
-from aidm.engines.core import character_panel, here_panel, pool, trail_panel
+from aidm.engines.base import character_panel, here_panel, pool, trail_panel
 from aidm.engines.hub import board_rows, jobs_panel, master_tail
 from aidm.engines.tunnelgoons.world import (
     Goon,
     Item,
     Npc,
     TunnelGoonsGame,
-    TunnelWorld,
+    TunnelGoonsWorld,
     player_over,
 )
 
@@ -113,7 +113,7 @@ def master_sections(state: TunnelGoonsGame) -> Rows:
     )
 
 
-def entity_line(world: TunnelWorld, one: Goon | Npc | Item) -> str:
+def entity_line(world: TunnelGoonsWorld, one: Goon | Npc | Item) -> str:
     """One card line, its sheet shaped by what kind of entity it names."""
     line = f"- {one.name}[{one.id}]" + (f" — {one.brief}" if one.brief else "")
     if isinstance(one, Goon):
@@ -129,7 +129,7 @@ def entity_line(world: TunnelWorld, one: Goon | Npc | Item) -> str:
     return f"{line}\n  {sheet}" if sheet else line
 
 
-def _character_rows(world: TunnelWorld, player: Goon) -> Rows:
+def _character_rows(world: TunnelGoonsWorld, player: Goon) -> Rows:
     carried = len(list(world.carried(player.id)))
     return tuple(
         (label, f"{carried}/{player.inventory}") if label == "Inventory" else (label, value)
@@ -137,14 +137,14 @@ def _character_rows(world: TunnelWorld, player: Goon) -> Rows:
     )
 
 
-def _place_lines(world: TunnelWorld, *, known: bool) -> str:
+def _place_lines(world: TunnelGoonsWorld, *, known: bool) -> str:
     npcs_here = [one for one in world.at(world.current.id) if one.known == known]
     holders = (world.current.id, *(one.id for one in world.at(world.current.id)))
     items = (item for holder in holders for item in world.carried(holder) if item.known == known)
     return _lines(entity_line(world, one) for one in (*npcs_here, *items))
 
 
-def _ways_lines(world: TunnelWorld) -> str:
+def _ways_lines(world: TunnelGoonsWorld) -> str:
     return _lines(
         f"- {world.require_place(way.to).name}[{way.to}] — "
         + ("known" if way.known else "unknown")

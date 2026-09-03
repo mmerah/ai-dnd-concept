@@ -1,5 +1,6 @@
 import pytest
 
+from aidm.core.entities import Refusal
 from aidm.engines.tunnelgoons.creation import (
     STARTING_ITEM_LIST,
     create_character,
@@ -39,8 +40,9 @@ def test_create_character_on_the_legal_path() -> None:
 
 
 def test_a_sum_not_equal_to_three_is_refused() -> None:
-    with pytest.raises(ValueError, match="share exactly 3 points"):
-        _ = create_character("Kael", "A wiry scavenger", dict(PICKS, brute="2"))
+    """Each pick is legal on its own, so only the sheet's own rule can say no, and it must read."""
+    with pytest.raises(Refusal, match="share exactly 3 points"):
+        _ = create_character("Kael", "A wiry scavenger", dict(PICKS, brute="3", skulker="3"))
 
 
 def test_a_missing_item_is_refused() -> None:

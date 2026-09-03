@@ -6,7 +6,7 @@ from aidm.core.entities import EngineId, Slug
 from aidm.core.model import AnyCharacter
 from aidm.core.tools import MasterTool
 from aidm.core.views import Panel, PanelRow, Rows
-from aidm.engines.core import Person
+from aidm.engines.base import Person
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.world import SceneCanon, new_world
 from aidm.engines.twentyfourxx.creation import (
@@ -22,7 +22,7 @@ from aidm.engines.twentyfourxx.world import (
     Operator,
     TwentyfourxxCharacterFile,
     TwentyfourxxGame,
-    TwentyfourxxScenarioFile,
+    TwentyfourxxScenario,
     TwentyfourxxWorld,
     player_operator,
 )
@@ -47,7 +47,7 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
     )
     directory = Path(__file__).parent
     game = TwentyfourxxGame
-    scenario = TwentyfourxxScenarioFile
+    scenario = TwentyfourxxScenario
     character = TwentyfourxxCharacterFile
     cast = Person
     pack = Pack

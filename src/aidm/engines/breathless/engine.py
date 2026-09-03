@@ -6,6 +6,7 @@ from aidm.core.entities import EngineId, Slug
 from aidm.core.model import AnyCharacter
 from aidm.core.tools import MasterTool
 from aidm.core.views import Panel, PanelRow, Rows
+from aidm.engines.base import Person
 from aidm.engines.breathless.creation import (
     Pack,
     create_character,
@@ -18,12 +19,11 @@ from aidm.engines.breathless.views import master_sections
 from aidm.engines.breathless.world import (
     BreathlessCharacterFile,
     BreathlessGame,
-    BreathlessScenarioFile,
+    BreathlessScenario,
     BreathlessWorld,
     Survivor,
     player_survivor,
 )
-from aidm.engines.core import Person
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.world import SceneCanon, new_world
 
@@ -36,7 +36,7 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
     )
     directory = Path(__file__).parent
     game = BreathlessGame
-    scenario = BreathlessScenarioFile
+    scenario = BreathlessScenario
     character = BreathlessCharacterFile
     cast = Person
     pack = Pack

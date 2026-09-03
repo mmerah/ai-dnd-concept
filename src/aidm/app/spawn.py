@@ -9,17 +9,18 @@ from tempfile import TemporaryDirectory
 from time import monotonic
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter, ValidationError
+from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
 
 from aidm.config import CliProvider, Role, RoleConfig, Settings
+from aidm.core.entities import Loose, Refusal
 
 RETRIES = 1
 # The child inherits nothing else: the shell that started the app may hold keys no role should see.
 KEPT_ENV = ("PATH", "HOME", "LANG", "TERM")
-# What `answered` asks of the value it parsed, beyond its own schema; the reason re-prompts.
+# What `ask` asks of the value it parsed, beyond its own schema; the reason re-prompts.
 type Check[T] = Callable[[T], str | None]
 # One spawn: the prompt, and the conversation to carry on, if any.
-type Ask = Callable[[str, str | None], Awaitable["RunResult"]]
+type Spawn = Callable[[str, str | None], Awaitable["RunResult"]]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -46,10 +47,8 @@ class Driver(Protocol):
     def parse(self, output: str) -> RunResult: ...
 
 
-class _ClaudeResult(BaseModel):
+class _ClaudeResult(Loose):
     """What `--output-format json` prints."""
-
-    model_config = ConfigDict(extra="ignore")
 
     result: str
     session_id: str
@@ -88,9 +87,9 @@ class ClaudeDriver:
         try:
             said = _ClaudeResult.model_validate_json(output)
         except ValidationError as broken:
-            raise ValueError(f"claude printed no JSON result: {output[-500:]}") from broken
+            raise Refusal(f"claude printed no JSON result: {output[-500:]}") from broken
         if said.is_error:
-            raise ValueError(f"the run failed: {said.result[-500:]}")
+            raise Refusal(f"the run failed: {said.result[-500:]}")
         return RunResult(said.result, said.session_id)
 
 
@@ -128,7 +127,6 @@ class CodexDriver:
         return RunResult(final_message(output), _string(events, "thread_id"))
 
 
-# Built from the classes above, so it follows them rather than sitting in the constants block.
 DRIVERS: Mapping[CliProvider, Driver] = {"claude": ClaudeDriver(), "codex": CodexDriver()}
 
 
@@ -150,7 +148,7 @@ class CliSpawner:
         started = monotonic()
         # An empty working directory, so a role cannot read this repository even if it tries.
         with TemporaryDirectory(prefix=f"aidm-{role}-") as empty:
-            output = await _spawned(role, argv, prompt, config.timeout, driver.secrets, empty)
+            output = await _spawn(role, argv, prompt, config.timeout, driver.secrets, empty)
         result = driver.parse(output)
         LOGGER.info(
             "%s spawned: provider=%s model=%s effort=%s %s in %.1fs",
@@ -190,18 +188,18 @@ def final_message(output: str) -> str:
     return output
 
 
-async def answered[T: BaseModel](
+async def ask[T: BaseModel](
     role: Role,
     prompt: str,
     expect: type[T],
     check: Check[T],
-    ask: Ask,
+    spawn: Spawn,
 ) -> T:
     """The one retry, shared: a role that fails twice fails its step, loudly."""
     asked, refused, held = prompt, "", None
     for _ in range(RETRIES + 1):
         try:
-            spoken = await ask(asked, held)
+            spoken = await spawn(asked, held)
             held = spoken.session
             answer = expect.model_validate_json(final_message(spoken.text))
             if (refused := check(answer)) is None:
@@ -211,14 +209,14 @@ async def answered[T: BaseModel](
         told = f"Your last answer was refused: {refused}\nAnswer again, fixed."
         # The retry carries on the refused attempt, which has read the prompt already.
         asked = told if held is not None else f"{prompt}\n\n{told}"
-    raise ValueError(f"the {role} answered nothing usable: {refused}")
+    raise Refusal(f"the {role} answered nothing usable: {refused}")
 
 
 def child_environment(secrets: Sequence[str]) -> dict[str, str]:
     return {name: environ[name] for name in (*KEPT_ENV, *secrets) if name in environ}
 
 
-async def _spawned(
+async def _spawn(
     role: Role,
     argv: Sequence[str],
     prompt: str,
@@ -244,7 +242,7 @@ async def _spawned(
         _kill(process)
     output = streamed[0].decode(errors="replace")
     if process.returncode != 0:
-        raise ValueError(f"the {role} exited {process.returncode}: {output[-500:]}")
+        raise Refusal(f"the {role} exited {process.returncode}: {output[-500:]}")
     return output
 
 
@@ -299,7 +297,7 @@ def _found(node: JsonValue, name: str) -> JsonValue | None:
 
 def _decodes(body: str) -> bool:
     try:
-        _ = json.loads(body)
+        json.loads(body)
     except ValueError:
         return False
     return True

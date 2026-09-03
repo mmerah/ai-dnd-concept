@@ -1,6 +1,6 @@
 from aidm.core.entities import EntityId
 from aidm.core.views import Subject
-from aidm.engines.core import here_panel
+from aidm.engines.base import here_panel
 
 
 def test_here_panel_puts_the_player_first_with_icon_ids_on_every_row() -> None:

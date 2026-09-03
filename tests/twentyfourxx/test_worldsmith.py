@@ -18,13 +18,13 @@ from twentyfourxx_test_support import (
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.facts import Fact
 from aidm.core.model import AnyScenario, WorldsmithAnswer
-from aidm.engines.core import PLAYER_ID, Person
+from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.hub import GO_HOME, TAKE_JOB
 from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft, SceneDraft
 from aidm.engines.scenes.world import scene_refusal
 from aidm.engines.scenes.worldsmith import build_scenario, install_scene, opening_canon, write_next
 from aidm.engines.twentyfourxx.engine import BOARD_GUIDANCE, JOB_DONE_NOTE, TwentyfourxxEngine
-from aidm.engines.twentyfourxx.world import TwentyfourxxGame, TwentyfourxxScenarioFile
+from aidm.engines.twentyfourxx.world import TwentyfourxxGame, TwentyfourxxScenario
 
 TWENTYFOURXX = EngineId("twentyfourxx")
 ENGINE = TwentyfourxxEngine(REPOSITORY_ROOT / "packs" / "twentyfourxx")
@@ -50,7 +50,15 @@ def _draft(**fields: object) -> SceneDraft[Person]:
 
 def _built(written: SceneDraft[Person]) -> AnyScenario:
     return build_scenario(
-        TwentyfourxxScenarioFile, TWENTYFOURXX, "Loading Bay", "", (), written, "", "one-shot"
+        TwentyfourxxScenario,
+        TWENTYFOURXX,
+        "Loading Bay",
+        "",
+        (),
+        written,
+        "",
+        "one-shot",
+        Person,
     )
 
 
@@ -232,7 +240,7 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
     game = small_world()
     facts = install_scene(game, _draft(present=("kestrel",)), finished_note=JOB_DONE_NOTE)
     assert len(game.payload.runs) == 2
-    assert facts == (
+    assert facts == [
         Fact(
             kind="scene_opened",
             trace="the story moves to The Bay Office",
@@ -240,7 +248,7 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
             card="New scene: The Bay Office\n"
             "At stake: Can they slip past the night crew before the lights return?",
         ),
-    )
+    ]
 
 
 def test_render_worldsmith_lists_the_player_first() -> None:
@@ -263,7 +271,7 @@ def test_opening_canon_marks_present_known() -> None:
         present=(stranger,),
         cast={stranger: Person(id=stranger, name="A Stranger", brief="new to the world")},
     )
-    canon = opening_canon(draft, source="")
+    canon = opening_canon(draft, "", Person)
     assert canon.cast[stranger].known is True
 
 

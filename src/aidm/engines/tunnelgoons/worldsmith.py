@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pydantic import ConfigDict, Field
 
-from aidm.core.entities import CheckedEntityId, EngineId, EntityId, Frozen, Slug
+from aidm.core.entities import CheckedEntityId, EngineId, EntityId, Frozen, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyScenario, ScenarioKind, ScenarioMeta, WorldsmithAnswer
@@ -25,8 +25,8 @@ from aidm.engines.tunnelgoons.world import (
     MapCanon,
     Place,
     TunnelGoonsGame,
-    TunnelGoonsScenarioFile,
-    TunnelWorld,
+    TunnelGoonsScenario,
+    TunnelGoonsWorld,
     Way,
     frontier,
     has_shortcut,
@@ -76,28 +76,30 @@ def hub_refusal(draft: MapDraft) -> str | None:
     return None if not unmet else "the tavern needs " + "; ".join(unmet)
 
 
-def job_refusal(draft: MapDraft, world: TunnelWorld) -> str | None:
+def job_refusal(draft: MapDraft, world: TunnelGoonsWorld) -> str | None:
     unmet = _map_unmet(draft) + _overlap_unmet(draft, world) + _board_unmet(draft)
     return None if not unmet else "the job's region needs " + "; ".join(unmet)
 
 
-def extension_refusal(draft: MapDraft, world: TunnelWorld) -> str | None:
+def extension_refusal(draft: MapDraft, world: TunnelGoonsWorld) -> str | None:
     unmet = _extension_unmet(draft) + _overlap_unmet(draft, world) + _board_unmet(draft)
     return None if not unmet else "the extension needs " + "; ".join(unmet)
 
 
 def opening_canon(draft: MapDraft, source: str, kind: ScenarioKind) -> MapCanon:
-    return MapCanon.model_validate(
-        {
-            **draft.model_dump(),
-            "source": source,
-            "hub": draft.start if kind == "campaign" else None,
-            "board": draft.board or (),
-        }
+    return MapCanon(
+        places=draft.places,
+        ways=draft.ways,
+        npcs=draft.npcs,
+        items=draft.items,
+        start=draft.start,
+        source=source,
+        hub=draft.start if kind == "campaign" else None,
+        board=draft.board or (),
     )
 
 
-def attach(world: TunnelWorld, draft: MapDraft, *, known: bool) -> None:
+def attach(world: TunnelGoonsWorld, draft: MapDraft, *, known: bool) -> None:
     """No bar runs here: every caller refuses first, so a rejected region leaves the world alone."""
     anchor_id = world.current.id
     world.places.update(draft.places)
@@ -108,18 +110,18 @@ def attach(world: TunnelWorld, draft: MapDraft, *, known: bool) -> None:
     _append_way(world.ways, draft.start, anchor_id, known)
 
 
-def install_extension(state: TunnelGoonsGame, written: MapDraft | ReturnDraft) -> tuple[Fact, ...]:
+def install_extension(state: TunnelGoonsGame, written: MapDraft | ReturnDraft) -> list[Fact]:
     world = state.payload
     if isinstance(written, ReturnDraft):
         job = world.open_job()
         if job is None or job.started is None:
-            raise ValueError("no job is open to report")
+            raise Refusal("no job is open to report")
         job.debrief = written.debrief
         world.board = written.offers
-        return (job_closed(job),)
+        return [job_closed(job)]
     if world.at_hub:
         if (refused := job_refusal(written, world)) is not None:
-            raise ValueError(refused)
+            raise Refusal(refused)
         tavern = world.current
         attach(world, written, known=True)
         start = written.places[written.start]
@@ -128,13 +130,13 @@ def install_extension(state: TunnelGoonsGame, written: MapDraft | ReturnDraft) -
         world.jobs.append(Job(title=start.name, place=written.start))
         trace = f"a way opens from {tavern.name} to {start.name}"
         card = f"A way opens: {start.name}"
-        return (Fact(kind="job_taken", told=True, trace=trace, card=card),)
+        return [Fact(kind="job_taken", told=True, trace=trace, card=card)]
     if (refused := extension_refusal(written, world)) is not None:
-        raise ValueError(refused)
+        raise Refusal(refused)
     anchor = world.current.name
     attach(world, written, known=False)
     trace = f"a hidden region opens beyond {anchor}"
-    return (Fact(kind="region_added", trace=trace, told=False),)
+    return [Fact(kind="region_added", trace=trace, told=False)]
 
 
 async def write_extension(
@@ -143,10 +145,10 @@ async def write_extension(
     world = state.payload
     if world.at_hub and intent == REPORT_IN:
         if not world.job_open:
-            raise ValueError("no job is open to report")
+            raise Refusal("no job is open to report")
         return await answer(_render_return(world), ReturnDraft, lambda _written: None)
     if world.at_hub and world.job_open:
-        raise ValueError("report the open job first")
+        raise Refusal("report the open job first")
 
     bar = job_refusal if world.at_hub else extension_refusal
     prompt = _render_job(world, intent) if world.at_hub else _render_extension(world, intent)
@@ -176,8 +178,8 @@ def build_scenario(
 ) -> AnyScenario:
     bar = hub_refusal if kind == "campaign" else map_refusal
     if (refused := bar(written)) is not None:
-        raise ValueError(refused)
-    return TunnelGoonsScenarioFile(
+        raise Refusal(refused)
+    return TunnelGoonsScenario(
         meta=ScenarioMeta(
             title=title, premise=premise or written.places[written.start].description, kind=kind
         ),
@@ -254,7 +256,7 @@ def _extension_unmet(draft: MapDraft) -> list[str]:
     return unmet
 
 
-def _overlap_unmet(draft: MapDraft, world: TunnelWorld) -> list[str]:
+def _overlap_unmet(draft: MapDraft, world: TunnelGoonsWorld) -> list[str]:
     existing = {*world.places, *world.npcs, *world.items}
     added = {*draft.places, *draft.npcs, *draft.items}
     if overlap := sorted(existing & added):
@@ -278,7 +280,7 @@ def _append_way(
     ways[from_id] = (*ways.get(from_id, ()), Way(to=to_id, known=known))
 
 
-def _render_extension(world: TunnelWorld, intent: str, hub: Rows = ()) -> str:
+def _render_extension(world: TunnelGoonsWorld, intent: str, hub: Rows = ()) -> str:
     return sections(
         (
             ("YOUR ROLE", WORLDSMITH),
@@ -292,7 +294,7 @@ def _render_extension(world: TunnelWorld, intent: str, hub: Rows = ()) -> str:
     )
 
 
-def _render_job(world: TunnelWorld, intent: str) -> str:
+def _render_job(world: TunnelGoonsWorld, intent: str) -> str:
     return _render_extension(
         world,
         intent,
@@ -304,7 +306,7 @@ def _render_job(world: TunnelWorld, intent: str) -> str:
     )
 
 
-def _render_return(world: TunnelWorld) -> str:
+def _render_return(world: TunnelGoonsWorld) -> str:
     job = world.open_job()
     verdict = "finished" if job is not None and job.finished else "left open"
     return sections(
@@ -323,7 +325,7 @@ def _render_return(world: TunnelWorld) -> str:
     )
 
 
-def _map_so_far(world: TunnelWorld) -> str:
+def _map_so_far(world: TunnelGoonsWorld) -> str:
     seen: dict[EntityId, Place] = {}
     for visit in world.visits:
         seen.setdefault(visit.place, world.require_place(visit.place))

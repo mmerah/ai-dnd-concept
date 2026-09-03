@@ -5,6 +5,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import JsonValue, TypeAdapter
 
 from aidm.app.runtime import Runtime
+from aidm.core.entities import Refusal
 from aidm.core.model import AnyGame
 from aidm.core.tools import MasterTool, schema_of
 from aidm.turn.run import NO_TURN
@@ -15,7 +16,7 @@ MOUNT_PATH = "/mcp"
 _ARGUMENTS = TypeAdapter(dict[str, JsonValue])
 
 
-def offered(runtime: Runtime) -> list[types.Tool]:
+def list_tools(runtime: Runtime) -> list[types.Tool]:
     return [_published(one) for one in runtime.published_tools()]
 
 
@@ -23,7 +24,7 @@ def call(runtime: Runtime, name: str, raw: dict[str, JsonValue]) -> str:
     session = runtime.playing()
     turn = None if session is None else session.turn
     if turn is None:
-        raise ValueError(NO_TURN)
+        raise Refusal(NO_TURN)
     return turn.call(name, raw)
 
 
@@ -46,22 +47,21 @@ def endpoint(
 
 def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
     async def on_list_tools(
-        ctx: ServerRequestContext[dict[str, object]], params: types.PaginatedRequestParams | None
+        _ctx: ServerRequestContext[dict[str, object]],
+        _params: types.PaginatedRequestParams | None,
     ) -> types.ListToolsResult:
-        del ctx, params
-        return types.ListToolsResult(tools=offered(runtime))
+        return types.ListToolsResult(tools=list_tools(runtime))
 
     async def on_call_tool(
-        ctx: ServerRequestContext[dict[str, object]], params: types.CallToolRequestParams
+        _ctx: ServerRequestContext[dict[str, object]], params: types.CallToolRequestParams
     ) -> types.CallToolResult:
         """The lock replaces a sequential toolset: a CLI may call several tools at once."""
-        del ctx
         async with runtime.lock:
             try:
                 answered = call(
                     runtime, params.name, _ARGUMENTS.validate_python(params.arguments or {})
                 )
-            except ValueError as refused:
+            except Refusal as refused:
                 return _content(str(refused), error=True)
         return _content(answered)
 

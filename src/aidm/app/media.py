@@ -6,14 +6,13 @@ from hashlib import sha1
 from pathlib import Path
 
 from httpx import AsyncClient
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, JsonValue
 
+from aidm.app.launch import LaunchTarget
 from aidm.config import MediaConfig, ProviderConfig, Settings
-from aidm.core.entities import EntityId
+from aidm.core.entities import EntityId, Loose
 from aidm.core.io import FileStore
 from aidm.core.views import NarratorView, Subject
-
-from .launch import LaunchTarget
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,7 +26,7 @@ class GeneratedImage:
     suffix: str
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class Illustrator:
     """Scene art and entity icons, both cached on disk and never regenerated once written."""
 
@@ -53,7 +52,7 @@ class Illustrator:
         key = scene_key(scene)
         drawing = _existing(self.saves, key) is None and claim(self.generating, key)
         # The chat avatar wants the player's icon even when this scene's art is already cached.
-        _ = await self._drawn_icon(player)
+        await self._drawn_icon(player)
         if not drawing:
             return
         try:
@@ -101,7 +100,7 @@ class Illustrator:
         self, prompt: str, ratio: str, references: Sequence[Path] = ()
     ) -> GeneratedImage | None:
         """A failed generation costs a log line and nothing else: media is outside the game."""
-        parts: list[dict[str, object]] = [{"type": "text", "text": prompt}]
+        parts: list[JsonValue] = [{"type": "text", "text": prompt}]
         parts.extend(
             {"type": "image_url", "image_url": {"url": _data_uri(path)}} for path in references
         )
@@ -135,21 +134,15 @@ class _Image(BaseModel):
     image_url: _ImageUrl
 
 
-class _Message(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
+class _Message(Loose):
     images: tuple[_Image, ...] = ()
 
 
-class _Choice(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
+class _Choice(Loose):
     message: _Message
 
 
-class _ImageReply(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
+class _ImageReply(Loose):
     choices: tuple[_Choice, ...] = ()
 
     def url(self) -> str | None:
@@ -166,7 +159,7 @@ def claim(generating: set[str], key: str) -> bool:
 
 
 async def post_bearer(
-    provider: ProviderConfig, path: str, body: Mapping[str, object], timeout: float
+    provider: ProviderConfig, path: str, body: Mapping[str, JsonValue], timeout: float
 ) -> bytes:
     """One bearer POST; the caller parses the bytes, since one reply is JSON, another audio."""
     async with AsyncClient(timeout=timeout) as client:
@@ -175,7 +168,7 @@ async def post_bearer(
             headers={"Authorization": f"Bearer {provider.api_key.get_secret_value()}"},
             json=body,
         )
-        _ = reply.raise_for_status()
+        reply.raise_for_status()
         return reply.content
 
 
@@ -256,4 +249,4 @@ def _existing(directory: Path, stem: str) -> Path | None:
 
 def _write(path: Path, data: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    _ = path.write_bytes(data)
+    path.write_bytes(data)

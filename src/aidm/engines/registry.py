@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from aidm.core.entities import EngineId, Slug, require_unique
+from aidm.core.entities import EngineId, Refusal, Slug, require_unique
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario
 from aidm.engines.breathless.engine import BreathlessEngine
 from aidm.engines.loner3e.engine import Loner3eEngine
@@ -28,12 +28,12 @@ def begin_game(
     character: AnyCharacter,
 ) -> AnyGame:
     if scenario.engine != engine.id:
-        raise ValueError(
+        raise Refusal(
             f"{scenario_id!r} is authored for the {scenario.engine!r} rules, "
             f"which the {engine.id!r} engine does not play"
         )
     if character.engine != engine.id:
-        raise ValueError(
+        raise Refusal(
             f"{character.id!r} is written for the {character.engine!r} rules, "
             f"which the {engine.id!r} engine does not play"
         )
@@ -46,4 +46,4 @@ def begin_game(
         payload=engine.new_game(scenario, character),
     )
     engine.validate(state)
-    return state.committed()
+    return state.commit()

@@ -1,5 +1,5 @@
 from aidm.core.views import Rows
-from aidm.engines.core import party_rows
+from aidm.engines.base import party_rows
 from aidm.engines.hub import master_tail, question_heading
 from aidm.engines.scenes.world import entity_line
 from aidm.engines.twentyfourxx.world import Item, TwentyfourxxGame

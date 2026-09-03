@@ -5,10 +5,10 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, slug
+from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.tools import MasterTool, master_tool
-from aidm.engines.core import CHANGE_WORLD, entity_fact, keep_highest, sentence
+from aidm.engines.base import CHANGE_WORLD, entity_fact, keep_highest, sentence
 from aidm.engines.scenes.world import NEXT_SCENE, Enter, Kill, Leave, NextScene, Reveal
 from aidm.engines.twentyfourxx.creation import Pack
 from aidm.engines.twentyfourxx.world import (
@@ -42,7 +42,7 @@ class ChangeHindrances(Frozen):
     @model_validator(mode="after")
     def _some_change(self) -> Self:
         if not self.gained and not self.lost:
-            raise ValueError("change_hindrances needs a gained or a lost hindrance")
+            raise Refusal("change_hindrances needs a gained or a lost hindrance")
         return self
 
 
@@ -174,9 +174,7 @@ class Skills:
         ]
 
         if args.risking_death and result == "disaster":
-            player.alive = False
-            death_trace = f"{world.label(player)} is dead"
-            facts.append(entity_fact(player, "actor_killed", death_trace, card="You are dead"))
+            facts.extend(world.kill(player.id))
         elif args.risking_death and result == "setback" and MAIMED not in player.hindrances:
             player.hindrances = (*player.hindrances, MAIMED)
             maimed_trace = f"{world.label(player)} is maimed"
@@ -222,7 +220,7 @@ class Skills:
                 if option.label not in labels:
                     labels.append(option.label)
         sheet = ", ".join(sorted(player.skills)) or "none"
-        raise ValueError(
+        raise Refusal(
             f"{wanted!r} is not a skill on the sheet ({sheet}) or in the packs "
             f"({', '.join(labels)})"
         )
@@ -263,11 +261,11 @@ def change_world(draft: TwentyfourxxGame, args: ChangeWorld, _rng: Random) -> li
     return apply_change(draft.payload, args.change)
 
 
-def next_scene(draft: TwentyfourxxGame, args: NextScene, _rng: Random) -> tuple[Fact, ...]:
+def next_scene(draft: TwentyfourxxGame, args: NextScene, _rng: Random) -> list[Fact]:
     return draft.payload.settle(args.job_done, args.pursuit)
 
 
-def test_luck(_draft: TwentyfourxxGame, args: TestLuck, rng: Random) -> tuple[Fact, ...]:
+def test_luck(_draft: TwentyfourxxGame, args: TestLuck, rng: Random) -> list[Fact]:
     rolled, dice_fact = roll((6,), args.question, rng)
     face = rolled[0]
     if face <= 2:
@@ -277,7 +275,7 @@ def test_luck(_draft: TwentyfourxxGame, args: TestLuck, rng: Random) -> tuple[Fa
     else:
         result = "nothing"
     trace = f"{args.question} — d6 [{face}] -> {result}"
-    return dice_fact, Fact(kind="luck_tested", trace=trace)
+    return [dice_fact, Fact(kind="luck_tested", trace=trace)]
 
 
 def defend(draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
@@ -285,11 +283,11 @@ def defend(draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
     player = world.player
     item = player.items.get(args.item_id)
     if item is None:
-        raise ValueError(f"{args.item_id!r} is not among the player's items")
+        raise Refusal(f"{args.item_id!r} is not among the player's items")
     if item.broken:
-        raise ValueError(f"{item.name} is already broken")
+        raise Refusal(f"{item.name} is already broken")
     if args.hindrance in player.hindrances:
-        raise ValueError(f"{args.hindrance!r} is already among the player's hindrances")
+        raise Refusal(f"{args.hindrance!r} is already among the player's hindrances")
     item.broken_times += 1
     player.hindrances = (*player.hindrances, args.hindrance)
     card = f"{item.name} breaks — {args.hindrance}"
@@ -344,11 +342,11 @@ def _change_hindrances(world: TwentyfourxxWorld, change: ChangeHindrances) -> li
     held = set(player.hindrances)
     for one in change.gained:
         if one in held:
-            raise ValueError(f"{one!r} is already among the player's hindrances")
+            raise Refusal(f"{one!r} is already among the player's hindrances")
         held.add(one)
     for one in change.lost:
         if one not in player.hindrances:
-            raise ValueError(f"{one!r} is not among the player's hindrances")
+            raise Refusal(f"{one!r} is not among the player's hindrances")
     hindrances = [one for one in player.hindrances if one not in change.lost]
     player.hindrances = (*hindrances, *change.gained)
     parts: list[str] = []
@@ -364,7 +362,7 @@ def _change_hindrances(world: TwentyfourxxWorld, change: ChangeHindrances) -> li
 def _gain_item(world: TwentyfourxxWorld, change: GainItem) -> list[Fact]:
     player = world.player
     if change.cost > player.credits:
-        raise ValueError(f"the player has only ₡{player.credits}, not ₡{change.cost}")
+        raise Refusal(f"the player has only ₡{player.credits}, not ₡{change.cost}")
     player.credits -= change.cost
     key = EntityId(slug(change.name, player.items))
     player.items[key] = Item(name=change.name, bulky=change.bulky, breaks=change.breaks)
@@ -378,7 +376,7 @@ def _drop_item(world: TwentyfourxxWorld, item_id: EntityId) -> list[Fact]:
     player = world.player
     item = player.items.get(item_id)
     if item is None:
-        raise ValueError(f"{item_id!r} is not among the player's items")
+        raise Refusal(f"{item_id!r} is not among the player's items")
     del player.items[item_id]
     trace = f"{world.label(player)} drops {item.name}"
     return [entity_fact(player, "item_dropped", trace, card=f"Dropped {item.name}")]
@@ -388,11 +386,11 @@ def _repair_item(world: TwentyfourxxWorld, change: RepairItem) -> list[Fact]:
     player = world.player
     item = player.items.get(change.item_id)
     if item is None:
-        raise ValueError(f"{change.item_id!r} is not among the player's items")
+        raise Refusal(f"{change.item_id!r} is not among the player's items")
     if item.broken_times == 0:
-        raise ValueError(f"{item.name} is not broken")
+        raise Refusal(f"{item.name} is not broken")
     if change.cost > player.credits:
-        raise ValueError(f"the player has only ₡{player.credits}, not ₡{change.cost}")
+        raise Refusal(f"the player has only ₡{player.credits}, not ₡{change.cost}")
     player.credits -= change.cost
     item.broken_times = 0
     card = f"Repaired {item.name}"
@@ -403,7 +401,7 @@ def _repair_item(world: TwentyfourxxWorld, change: RepairItem) -> list[Fact]:
 def _spend(world: TwentyfourxxWorld, change: Spend) -> list[Fact]:
     player = world.player
     if change.amount > player.credits:
-        raise ValueError(f"the player has only ₡{player.credits}, not ₡{change.amount}")
+        raise Refusal(f"the player has only ₡{player.credits}, not ₡{change.amount}")
     player.credits -= change.amount
     card = f"₡{change.amount} spent — {change.why}"
     trace = f"{world.label(player)} spends ₡{change.amount} — {change.why}"

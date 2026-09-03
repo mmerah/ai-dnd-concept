@@ -18,7 +18,7 @@ from aidm.config import MediaConfig, ProviderConfig, Providers
 from aidm.core.entities import EntityId
 from aidm.core.io import FileStore
 from aidm.core.views import NarratorView
-from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter
+from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
 from aidm.engines.seam import AnyEngine
 
 NARRATION = "The door groans open."
@@ -38,7 +38,7 @@ def _illustrator(tmp_path: Path) -> Illustrator:
 def _placed(state: Loner3eGame, name: str, *, known: bool) -> Loner3eGame:
     return with_entity(
         state,
-        LonerCharacter(
+        Loner3eSheet(
             id=EntityId(name.lower().replace(" ", "-")),
             name=name,
             brief=f"A {name.lower()}.",
@@ -70,7 +70,7 @@ def test_scene_key_holds_through_a_change_of_cast_but_not_of_place() -> None:
     assert scene_key(_scene(engine, _placed(state, "Brass Warden", known=True))) == key
     draft = state.draft()
     draft.payload.run.place = "cloister"
-    assert scene_key(_scene(engine, draft.committed())) != key
+    assert scene_key(_scene(engine, draft.commit())) != key
 
 
 def test_an_icon_is_looked_up_in_each_authored_directory_in_order(tmp_path: Path) -> None:

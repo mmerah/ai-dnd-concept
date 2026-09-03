@@ -5,7 +5,7 @@ from loner3e_test_support import ORACLE
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import cards
-from aidm.engines.core import PLAYER_ID
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import (
     Question,
     RestoreLuck,
@@ -72,7 +72,7 @@ def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
     _, state = initialized()
     draft = state.draft()
     loner_sheet(draft, FOE).luck.current = 1
-    weakened = draft.committed()
+    weakened = draft.commit()
     duel = Question(
         actor_id=PLAYER_ID, question="Does he force her back from the door?", opponent_id=FOE
     )
@@ -96,7 +96,7 @@ def test_a_twist_card_lands_only_once_a_twist_fires() -> None:
     _, state = initialized()
     draft = state.draft()
     draft.payload.twist.current = TIES_PER_TWIST - 1
-    primed = draft.committed()
+    primed = draft.commit()
 
     for seed in range(200):
         facts = ORACLE.resolve_question(primed.draft(), _seal(), Random(seed))
@@ -118,7 +118,7 @@ def test_restoring_luck_shows_as_a_counter_card() -> None:
     _, state = initialized()
     draft = state.draft()
     loner_sheet(draft, PLAYER_ID).luck.current = 1
-    spent = draft.committed()
+    spent = draft.commit()
 
     facts = tuple(apply_restore_luck(spent.draft(), RestoreLuck(actor_id=PLAYER_ID), Random(0)))
     (event,) = cards(facts)

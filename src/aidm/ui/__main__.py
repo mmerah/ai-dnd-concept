@@ -1,3 +1,3 @@
-from .app import start
+from aidm.ui.app import start
 
 start()

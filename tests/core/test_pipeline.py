@@ -6,15 +6,15 @@ from core_test_support import (
     changed,
     initialized,
     narrated,
-    opened,
-    played,
+    open_game,
+    play_turn,
     tool_call,
 )
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact, cards
 from aidm.core.model import AnyGame
-from aidm.engines.core import PLAYER_ID
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import outcome_for
 from aidm.turn.run import Turn
 
@@ -25,9 +25,9 @@ ASKED = tool_call("roll_question", actor_id=PLAYER_ID, question="Does the door g
 
 
 async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_path: Path) -> None:
-    table = opened(tmp_path)
+    table = open_game(tmp_path)
 
-    state = await played(
+    state = await play_turn(
         table,
         "I search beneath the desk.",
         FOUND,
@@ -47,9 +47,9 @@ async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_pat
 
 
 async def test_the_turn_holds_its_facts_in_resolver_order(tmp_path: Path) -> None:
-    table = opened(tmp_path)
+    table = open_game(tmp_path)
 
-    state = await played(
+    state = await play_turn(
         table,
         "I take the map and listen.",
         FOUND,
@@ -63,7 +63,7 @@ async def test_the_turn_holds_its_facts_in_resolver_order(tmp_path: Path) -> Non
 
 
 async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: Path) -> None:
-    table = opened(tmp_path)
+    table = open_game(tmp_path)
     before = table.service.state.model_dump_json()
     table.spawner.turns.append(table.plays((FOUND, TAKEN)))
 
@@ -75,9 +75,9 @@ async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: 
 
 
 async def test_the_engine_rolls_the_outcome_the_facts_then_record(tmp_path: Path) -> None:
-    table = opened(tmp_path, rng=Random(2))
+    table = open_game(tmp_path, rng=Random(2))
 
-    state = await played(
+    state = await play_turn(
         table,
         "I plead with the door.",
         tool_call(
@@ -100,9 +100,9 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record(tmp_path: Path
 
 
 async def test_the_master_reacts_in_run_to_its_own_earlier_tool_call(tmp_path: Path) -> None:
-    table = opened(tmp_path)
+    table = open_game(tmp_path)
 
-    state = await played(
+    state = await play_turn(
         table,
         "I call the old porter over.",
         changed("enter", entity_id="tomas"),
@@ -113,18 +113,18 @@ async def test_the_master_reacts_in_run_to_its_own_earlier_tool_call(tmp_path: P
 
 
 async def test_an_illegal_tool_call_is_refused_with_the_reason(tmp_path: Path) -> None:
-    table = opened(tmp_path)
+    table = open_game(tmp_path)
 
-    state = await played(table, "I wait.", changed("reveal", entity_id="nowhere"), FOUND)
+    state = await play_turn(table, "I wait.", changed("reveal", entity_id="nowhere"), FOUND)
 
     assert state.payload.require(MAP).known
     assert any("unknown id 'nowhere'" in one for one in table.refusals)
 
 
 async def test_a_call_its_own_fields_refuse_does_not_kill_the_turn(tmp_path: Path) -> None:
-    table = opened(tmp_path)
+    table = open_game(tmp_path)
 
-    state = await played(
+    state = await play_turn(
         table,
         "I press on.",
         changed("drive", entity_id=PLAYER_ID),
@@ -138,9 +138,9 @@ async def test_a_call_its_own_fields_refuse_does_not_kill_the_turn(tmp_path: Pat
 async def test_a_later_call_in_one_turn_sees_the_earlier_calls_draft(
     tmp_path: Path,
 ) -> None:
-    table = opened(tmp_path)
+    table = open_game(tmp_path)
 
-    state = await played(
+    state = await play_turn(
         table, "I close the book.", tool_call("next_scene"), tool_call("next_scene")
     )
 
@@ -151,7 +151,7 @@ async def test_a_later_call_in_one_turn_sees_the_earlier_calls_draft(
 async def test_a_line_spoken_by_someone_not_here_is_re_prompted_with_the_id(
     tmp_path: Path,
 ) -> None:
-    table = opened(tmp_path)
+    table = open_game(tmp_path)
     table.spawner.answers["narrator"] = [
         narrated("You should not be here.", "elena"),
         narrated("The door settles."),
@@ -168,7 +168,7 @@ async def test_a_master_that_crashes_after_applying_still_commits_what_it_applie
     tmp_path: Path,
 ) -> None:
     """The exit is the only end signal: what it legally applied is the turn."""
-    table = opened(tmp_path)
+    table = open_game(tmp_path)
 
     def crash() -> None:
         _ = table.call(*FOUND)
@@ -187,8 +187,8 @@ async def test_a_master_that_crashed_after_a_tool_landed_is_not_spawned_again(
     tmp_path: Path,
 ) -> None:
     """A second spawn would replay the prompt and apply the same mutation twice."""
-    table = opened(tmp_path)
-    _ = await played(table, "I look around.")
+    table = open_game(tmp_path)
+    _ = await play_turn(table, "I look around.")
 
     def crash() -> None:
         _ = table.call(*FOUND)
@@ -204,8 +204,8 @@ async def test_a_master_that_crashed_after_a_tool_landed_is_not_spawned_again(
 
 
 async def test_a_master_that_landed_nothing_is_spawned_once_more(tmp_path: Path) -> None:
-    table = opened(tmp_path)
-    _ = await played(table, "I look around.")
+    table = open_game(tmp_path)
+    _ = await play_turn(table, "I look around.")
 
     def crash() -> None:
         raise OSError("the game master never started")
@@ -223,7 +223,7 @@ async def test_a_master_that_landed_nothing_is_spawned_once_more(tmp_path: Path)
 
 
 async def test_a_turn_that_applied_nothing_and_failed_is_refused(tmp_path: Path) -> None:
-    table = opened(tmp_path)
+    table = open_game(tmp_path)
     before = table.service.state.model_dump_json()
 
     def crash() -> None:
@@ -238,9 +238,9 @@ async def test_a_turn_that_applied_nothing_and_failed_is_refused(tmp_path: Path)
 
 
 async def test_two_rolls_in_one_turn_do_not_read_the_same_dice(tmp_path: Path) -> None:
-    table = opened(tmp_path, rng=Random(1))
+    table = open_game(tmp_path, rng=Random(1))
 
-    _ = await played(table, "I try the door twice.", ASKED, ASKED)
+    _ = await play_turn(table, "I try the door twice.", ASKED, ASKED)
 
     first, second = (fact.dice for fact in table.facts if fact.kind == "question_answered")
     assert first != second

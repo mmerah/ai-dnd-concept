@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from aidm.core.entities import EngineId
 from aidm.core.model import Character
-from aidm.engines.core import load_packs
+from aidm.engines.base import read_packs
 from aidm.engines.twentyfourxx.creation import (
     Pack,
     create_character,
@@ -16,7 +16,7 @@ from aidm.engines.twentyfourxx.creation import (
 PACKS_DIR = (
     Path(__file__).resolve().parents[2] / "src" / "aidm" / "engines" / "twentyfourxx" / "packs"
 )
-PACKS = load_packs((PACKS_DIR,), Pack)
+PACKS = read_packs((PACKS_DIR,), Pack)
 
 
 class _OtherPayload(BaseModel):

@@ -2,7 +2,7 @@ from typing import Any
 
 from aidm.core.model import Game
 from aidm.core.views import NarratorView, Panel, PlayerView, Subject, speaker_of
-from aidm.engines.core import Person, character_panel, here_panel, party_panel, trail_panel
+from aidm.engines.base import Person, character_panel, here_panel, party_panel, trail_panel
 from aidm.engines.hub import board_panel, jobs_panel
 from aidm.engines.scenes.world import SceneWorld, player_over
 

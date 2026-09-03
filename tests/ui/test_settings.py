@@ -3,12 +3,13 @@ from pathlib import Path
 
 import pytest
 from core_test_support import ScriptedSpawner
+from nicegui import ui
 from ui_test_support import ui_settings
 
 from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import Runtime
-from aidm.config import RoleConfig, Roles, load_settings, save_settings
-from aidm.ui.settings import _changes  # pyright: ignore[reportPrivateUsage]
+from aidm.config import RoleConfig, Roles, read_settings, save_settings
+from aidm.ui.settings import _changes, _widget  # pyright: ignore[reportPrivateUsage]
 
 
 @dataclass(frozen=True)
@@ -56,7 +57,7 @@ def test_a_saved_key_reads_back_and_the_rest_of_the_file_survives(
             ("media", "enabled"): None,
         }
     )
-    reread = load_settings()
+    reread = read_settings()
     assert reread.roles.narrator.timeout == 90
     assert reread.media.model == 'it is "grim"'
     assert reread.media.enabled is False
@@ -84,3 +85,8 @@ def test_a_page_still_holding_a_dropped_session_may_not_play_it(tmp_path: Path) 
         runtime.play_refusal(session)
         == "The settings changed. Reload this page before you play on."
     )
+
+
+def test_an_aliased_literal_field_is_a_dropdown() -> None:
+    field = RoleConfig.model_fields["provider"]
+    assert isinstance(_widget("provider", field, "claude"), ui.select)

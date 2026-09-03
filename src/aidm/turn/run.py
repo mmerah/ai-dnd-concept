@@ -4,8 +4,9 @@ from dataclasses import dataclass, field
 from random import Random
 from typing import Literal, Self
 
-from pydantic import JsonValue, ValidationError
+from pydantic import JsonValue
 
+from aidm.core.entities import Refusal
 from aidm.core.facts import NOTHING, Fact, cards, traced
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, Exchange, Line, Narration, SpokenLine
@@ -61,10 +62,10 @@ class Turn:
     def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
         """The one gate: every published tool is refused, answered or applied here."""
         if (ended := self.engine.over(self.draft)) is not None:
-            raise ValueError(f"{ended} {GAME_OVER}")
+            raise Refusal(f"{ended} {GAME_OVER}")
         found = next((one for one in self.engine.tools if one.name == name), None)
         if found is None:
-            raise ValueError(f"{name!r} is not a tool of the {self.engine.id!r} engine.")
+            raise Refusal(f"{name!r} is not a tool of the {self.engine.id!r} engine.")
         pending = self.draft.pending
         if pending is not None:
             # A plain answer, not a refusal: a retry prompt would tell the model to try again.
@@ -136,7 +137,7 @@ def close_segment(
     )
     engine.record(draft, exchange)
     draft.turn += 1
-    return draft.committed()
+    return draft.commit()
 
 
 def consume_answer(turn: Turn, player_input: str | Answer) -> tuple[str, str]:
@@ -144,11 +145,11 @@ def consume_answer(turn: Turn, player_input: str | Answer) -> tuple[str, str]:
     engine, draft = turn.engine, turn.draft
     chosen = player_input.option_id if isinstance(player_input, Answer) else None
     if (ended := engine.over(draft)) is not None:
-        raise ValueError(f"{ended} The only way on is to restart.")
+        raise Refusal(f"{ended} The only way on is to restart.")
     # Any input consumes the decision, a revision included: it never survives its own answer.
     consumed, draft.pending = draft.pending, None
     if consumed is not None and not consumed.allows_text and chosen is None:
-        raise ValueError(f"the {consumed.kind!r} decision takes one of its options, not words")
+        raise Refusal(f"the {consumed.kind!r} decision takes one of its options, not words")
     if isinstance(player_input, str):
         return player_input, player_input
     if chosen is None:
@@ -160,10 +161,10 @@ def consume_answer(turn: Turn, player_input: str | Answer) -> tuple[str, str]:
             )
         return player_input.text, player_input.text
     if consumed is None:
-        raise ValueError(f"no decision is open, so option {chosen!r} answers nothing")
+        raise Refusal(f"no decision is open, so option {chosen!r} answers nothing")
     option = next((one for one in consumed.options if one.id == chosen), None)
     if option is None:
-        raise ValueError(f"the {consumed.kind!r} decision offers no option {chosen!r}")
+        raise Refusal(f"the {consumed.kind!r} decision offers no option {chosen!r}")
     # A refusal raises: the engine enumerated the option, so it is never model error.
     landed = _apply(turn, lambda copy, dice: engine.answer(copy, option, dice))
     traces = traced(landed)
@@ -187,7 +188,7 @@ def _spoken(view: NarratorView, lines: Sequence[Line]) -> tuple[SpokenLine, ...]
             return SpokenLine(text=line.text)
         who = here.get(line.speaker_id)
         if who is None:
-            raise ValueError(f"nobody here has id {line.speaker_id!r}")
+            raise Refusal(f"nobody here has id {line.speaker_id!r}")
         return SpokenLine(speaker=who, text=line.text)
 
     return tuple(one(line) for line in lines)
@@ -196,18 +197,12 @@ def _spoken(view: NarratorView, lines: Sequence[Line]) -> tuple[SpokenLine, ...]
 def _apply(turn: Turn, play: Play[AnyGame]) -> tuple[Fact, ...]:
     """One execution against a candidate; a refused call leaves the draft and the dice alone."""
     candidate, dice = turn.draft.draft(), deepcopy(turn.rng)
-    try:
-        before = candidate.pending
-        landed = play(candidate, dice)
-        if before is not None and candidate.pending is not before:
-            raise ValueError("the rules already wait on a decision; they take one at a time")
-        turn.engine.validate(candidate)
-        committed = candidate.committed()
-    except ValidationError as broken:
-        raise ValueError(
-            f"the state this leaves is invalid: {broken.errors()[0]['msg']}"
-        ) from broken
-    turn.draft = committed
+    before = candidate.pending
+    landed = play(candidate, dice)
+    if before is not None and candidate.pending is not before:
+        raise Refusal("the rules already wait on a decision; they take one at a time")
+    turn.engine.validate(candidate)
+    turn.draft = candidate.commit()
     turn.rng.setstate(dice.getstate())
     turn.facts.extend(landed)
     return landed

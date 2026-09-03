@@ -1,6 +1,6 @@
 from typing import Any
 
-from aidm.core.entities import EngineId, Slug
+from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import (
     AnyScenario,
@@ -10,7 +10,7 @@ from aidm.core.model import (
     ScenarioMeta,
     WorldsmithAnswer,
 )
-from aidm.engines.core import Person
+from aidm.engines.base import Person
 from aidm.engines.hub import CAMPAIGN_OPENING, GO_HOME, ONE_SHOT_OPENING, job_closed
 from aidm.engines.scenes.drafts import HubDraft, JobDraft, NextDraft, ReturnDraft, SceneDraft
 from aidm.engines.scenes.world import (
@@ -36,14 +36,17 @@ def opening_draft[C: Person](cast_type: type[C], kind: ScenarioKind) -> type[Sce
     return HubDraft[cast_type] if kind == "campaign" else SceneDraft[cast_type]
 
 
-def opening_canon[C: Person](draft: SceneDraft[C], source: str) -> SceneCanon[C]:
+def opening_canon[C: Person](
+    draft: SceneDraft[C], source: str, cast_type: type[C]
+) -> SceneCanon[C]:
+    """Parametrized at runtime, so the cast revalidates as the engine's own people."""
     cast = draft.cast
     present = resolve_ids(draft.present, cast, "present")
     hidden = resolve_ids(draft.hidden, cast, "hidden")
     for one in present:
         cast[one].known = True
     hub, board = (draft.place, draft.offers) if isinstance(draft, HubDraft) else (None, ())
-    return SceneCanon(
+    return SceneCanon[cast_type](
         cast=cast,
         opening=run_of(draft, [*present, *hidden]),
         source=source,
@@ -75,7 +78,7 @@ async def write_next[C: Person, P: Person](
 
 def install_scene[C: Person, W: SceneWorld[Any, Any]](
     state: Game[W], written: SceneDraft[C], *, finished_note: str
-) -> tuple[Fact, ...]:
+) -> list[Fact]:
     world = state.payload
     world.apply_scene(written.model_copy(deep=True))
     trace = f"the story moves to {written.title}"
@@ -95,8 +98,8 @@ def install_scene[C: Person, W: SceneWorld[Any, Any]](
         job = world.jobs[-1]
         if job.finished and finished_note:
             state.notes = (*state.notes, finished_note.format(title=job.title))
-        return (job_closed(job), opened)
-    return (opened,)
+        return [job_closed(job), opened]
+    return [opened]
 
 
 def render_opening[C: Person](
@@ -121,12 +124,13 @@ def build_scenario[C: Person](
     written: SceneDraft[C],
     source: str,
     kind: ScenarioKind,
+    cast_type: type[C],
 ) -> AnyScenario:
     if (refused := scene_refusal(written)) is not None:
-        raise ValueError(refused)
+        raise Refusal(refused)
     return file_type(
         meta=ScenarioMeta(title=title, premise=premise or written.situation, kind=kind),
         engine=engine_id,
         packs=packs,
-        payload=opening_canon(written, source),
+        payload=opening_canon(written, source, cast_type),
     )

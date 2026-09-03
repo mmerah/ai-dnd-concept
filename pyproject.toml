@@ -52,4 +52,7 @@ line-length = 100
 extend-exclude = [".agents", "NEXT-SPECS.md", "PLAN.md"] # ruff 0.16 formats md code blocks
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "UP", "B", "TID252"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"

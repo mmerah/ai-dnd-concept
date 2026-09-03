@@ -2,15 +2,15 @@ import pytest
 from twentyfourxx_test_support import KESTREL, hub_world, small_world
 
 from aidm.core.entities import EngineId, EntityId
-from aidm.engines.core import PLAYER_ID, Person
+from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.scenes.world import way_open
 from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
     Item,
     Kit,
     Operator,
-    TwentyfourxxCharacter,
     TwentyfourxxCharacterFile,
+    TwentyfourxxPayload,
     TwentyfourxxWorld,
     player_operator,
     raised,
@@ -106,7 +106,7 @@ def test_player_operator_slugs_duplicate_kit_names_in_order() -> None:
         engine=EngineId("twentyfourxx"),
         name="Rook",
         brief="A quiet operator",
-        payload=TwentyfourxxCharacter(
+        payload=TwentyfourxxPayload(
             specialty="Sneak",
             origin="Human",
             skills={"Stealth": 10},

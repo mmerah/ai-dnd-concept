@@ -5,7 +5,7 @@ from pydantic import Field
 from aidm.core.entities import Mutable
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
-from aidm.engines.core import PLAYER_ID, Counter, Person, pool
+from aidm.engines.base import PLAYER_ID, Counter, Person, pool
 from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
 LUCK_MAX = 6
@@ -15,7 +15,7 @@ TIES_PER_TWIST = 3
 TagKind = Literal["skill", "frailty", "gear", "condition"]
 
 
-class LonerCharacter(Person):
+class Loner3eSheet(Person):
     """SRD "Everything is a Character": a person, an object, a vehicle or a curse alike."""
 
     concept: str = ""
@@ -55,12 +55,12 @@ class LonerCharacter(Person):
         return ", ".join(missing)
 
 
-class LonerWorld(SceneWorld[LonerCharacter, LonerCharacter]):
+class Loner3eWorld(SceneWorld[Loner3eSheet, Loner3eSheet]):
     # The played character's tally paces the whole game, so no sheet carries one.
     twist: Counter = Field(default_factory=lambda: Counter(current=0, maximum=TIES_PER_TWIST))
 
 
-class Loner3eCharacter(Mutable):
+class Loner3ePayload(Mutable):
     concept: str = ""
     skills: tuple[str, ...] = ()
     frailties: tuple[str, ...] = ()
@@ -69,22 +69,22 @@ class Loner3eCharacter(Mutable):
     motive: str = ""
 
 
-class Loner3eGame(Game[LonerWorld]):
+class Loner3eGame(Game[Loner3eWorld]):
     pass
 
 
-class Loner3eScenarioFile(Scenario[SceneCanon[LonerCharacter]]):
+class Loner3eScenario(Scenario[SceneCanon[Loner3eSheet]]):
     pass
 
 
-class Loner3eCharacterFile(Character[Loner3eCharacter]):
+class Loner3eCharacterFile(Character[Loner3ePayload]):
     pass
 
 
-def player_character(character: Character[Loner3eCharacter]) -> LonerCharacter:
+def player_character(character: Character[Loner3ePayload]) -> Loner3eSheet:
     """The played character as the world holds them; `new_game` and `preview_character` share it."""
     payload = character.payload
-    return LonerCharacter(
+    return Loner3eSheet(
         id=PLAYER_ID,
         name=character.name,
         brief=character.brief,
@@ -98,7 +98,7 @@ def player_character(character: Character[Loner3eCharacter]) -> LonerCharacter:
     )
 
 
-def tags_of(one: LonerCharacter, kind: TagKind) -> tuple[str, ...]:
+def tags_of(one: Loner3eSheet, kind: TagKind) -> tuple[str, ...]:
     match kind:
         case "skill":
             return one.skills
@@ -110,7 +110,7 @@ def tags_of(one: LonerCharacter, kind: TagKind) -> tuple[str, ...]:
             return one.conditions
 
 
-def set_tags(one: LonerCharacter, kind: TagKind, tags: tuple[str, ...]) -> None:
+def set_tags(one: Loner3eSheet, kind: TagKind, tags: tuple[str, ...]) -> None:
     match kind:
         case "skill":
             one.skills = tags

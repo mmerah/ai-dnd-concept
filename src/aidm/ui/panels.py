@@ -4,8 +4,7 @@ from functools import partial
 from nicegui import ui
 
 from aidm.app.runtime import GameService
-
-from .widgets import entity_row, heading, labeled_value
+from aidm.ui.widgets import entity_row, heading, labeled_value
 
 
 @ui.refreshable

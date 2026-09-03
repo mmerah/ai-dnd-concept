@@ -22,4 +22,4 @@ def behind(state: AnyGame) -> AnyGame:
             lines=(SpokenLine(text="Ovid Sarn watches you from the cracked window."),),
         )
     )
-    return draft.committed()
+    return draft.commit()

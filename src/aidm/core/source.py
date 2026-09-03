@@ -4,6 +4,8 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
+from aidm.core.entities import Refusal
+
 MIN_PASSAGE = 24
 _BLANK_LINE = re.compile(r"\n\s*\n")
 _LINE_BREAK_HYPHEN = re.compile(r"(\w)-\s+(\w)")
@@ -23,11 +25,9 @@ def whole_text(path: Path, max_chars: int) -> str:
     )
     text = "\n\n".join(passage for page in pages for passage in _passages(page))
     if not text:
-        raise ValueError(f"{path.name} holds no readable text")
+        raise Refusal(f"{path.name} holds no readable text")
     if len(text) > max_chars:
-        raise ValueError(
-            f"{path.name} is {len(text)} characters, too large to hand to a model whole"
-        )
+        raise Refusal(f"{path.name} is {len(text)} characters, too large to hand to a model whole")
     return text
 
 

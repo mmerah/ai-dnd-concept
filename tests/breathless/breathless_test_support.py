@@ -5,6 +5,7 @@ import pytest
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.facts import Fact
 from aidm.core.model import ScenarioMeta
+from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.breathless.tools import ChangeWorld, apply_change
 from aidm.engines.breathless.world import (
     BreathlessGame,
@@ -12,7 +13,6 @@ from aidm.engines.breathless.world import (
     Item,
     Survivor,
 )
-from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.hub import Job, Offer
 from aidm.engines.scenes.world import SceneRun
 

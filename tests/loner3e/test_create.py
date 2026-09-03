@@ -5,8 +5,8 @@ from core_test_support import ENGINES_BUILT, LONER3E, SCENARIOS, loner_sheet, up
 
 from aidm.core.creation import Picks
 from aidm.core.entities import EngineId
-from aidm.core.io import load_character, read_scenario, write_character
-from aidm.engines.core import PLAYER_ID
+from aidm.core.io import read_character, read_scenario, write_character
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame
 from aidm.engines.registry import begin_game
 from aidm.engines.seam import AnyEngine
@@ -29,7 +29,7 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     }
     created = engine.create_character("Fen", "A wandering scribe with too many questions.", picks)
     write_character(tmp_path, created)
-    character = load_character(tmp_path, "fen", engine.id, engine.character)
+    character = read_character(tmp_path, "fen", engine.id, engine.character)
     scenario = read_scenario(SCENARIOS, "whispering-vault", {engine.id: engine.scenario})
     state = begin_game(engine, "whispering-vault", scenario, character)
     if not isinstance(state, Loner3eGame):
@@ -71,7 +71,7 @@ def test_one_folder_holds_one_person_across_engines(tmp_path: Path) -> None:
 
     write_character(tmp_path, updated(fen, engine=OTHER))
     engine = ENGINES_BUILT[LONER3E]
-    assert load_character(tmp_path, "fen", engine.id, engine.character).name == "Fen"
+    assert read_character(tmp_path, "fen", engine.id, engine.character).name == "Fen"
 
 
 def _answered(engine: AnyEngine, chosen: Picks) -> Picks:

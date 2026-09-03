@@ -3,7 +3,7 @@ from golden_turn_support import LISTENING
 
 from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, SpokenLine
-from aidm.engines.core import PLAYER_ID
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import Loner3eGame
 from aidm.engines.scenes.world import SceneRun
 
@@ -50,4 +50,4 @@ def behind(state: AnyGame) -> AnyGame:
             lines=(SpokenLine(text="A flagstone by the wall sits proud of its neighbours."),),
         )
     ]
-    return draft.committed()
+    return draft.commit()

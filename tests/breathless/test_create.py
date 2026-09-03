@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from aidm.engines.base import read_packs
 from aidm.engines.breathless.creation import (
     Pack,
     create_character,
@@ -7,10 +8,9 @@ from aidm.engines.breathless.creation import (
     preview_character,
 )
 from aidm.engines.breathless.world import BreathlessCharacterFile
-from aidm.engines.core import load_packs
 
 PACKS_DIR = Path(__file__).parents[2] / "src" / "aidm" / "engines" / "breathless" / "packs"
-PACKS = load_packs((PACKS_DIR,), Pack)
+PACKS = read_packs((PACKS_DIR,), Pack)
 SRD = PACKS["srd"]
 
 PICKS = {

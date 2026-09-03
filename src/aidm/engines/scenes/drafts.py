@@ -1,7 +1,7 @@
 from pydantic import Field
 
 from aidm.core.entities import EntityId, Frozen, Slug
-from aidm.engines.core import Person
+from aidm.engines.base import Person
 from aidm.engines.hub import MIN_JOB, Board
 
 MIN_SITUATION = 80  # what the worldsmith owes a scene; an authored `Scene` is held to less

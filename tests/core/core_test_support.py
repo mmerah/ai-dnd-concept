@@ -13,17 +13,17 @@ from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import GameService, Runtime
 from aidm.app.spawn import RunResult
 from aidm.config import Role, Settings
-from aidm.core.entities import EngineId, EntityId, Slug
+from aidm.core.entities import EngineId, EntityId, Refusal, Slug
 from aidm.core.facts import Fact
-from aidm.core.io import load_character, read_scenario, read_scenarios
+from aidm.core.io import read_character, read_scenario, read_scenarios
 from aidm.core.model import AnyGame, ScenarioKind
 from aidm.core.play import Answer, Speaker
-from aidm.engines.core import PLAYER_ID
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import (
     Loner3eCharacterFile,
     Loner3eGame,
-    Loner3eScenarioFile,
-    LonerCharacter,
+    Loner3eScenario,
+    Loner3eSheet,
 )
 from aidm.engines.registry import begin_game, build_engines
 from aidm.engines.seam import AnyEngine
@@ -57,28 +57,28 @@ def updated[T: BaseModel](model: T, **changes: object) -> T:
     return type(model).model_validate(model.model_dump(round_trip=True) | changes)
 
 
-def with_entity(state: Loner3eGame, entity: LonerCharacter) -> Loner3eGame:
+def with_entity(state: Loner3eGame, entity: Loner3eSheet) -> Loner3eGame:
     """Added to the cast and to the scene; `known` alone decides present or hidden."""
     draft = state.draft()
     draft.payload.cast[entity.id] = entity
     draft.payload.run.here.append(entity.id)
-    return draft.committed()
+    return draft.commit()
 
 
-def loner_sheet(state: Loner3eGame, entity_id: EntityId) -> LonerCharacter:
+def loner_sheet(state: Loner3eGame, entity_id: EntityId) -> Loner3eSheet:
     return state.payload.require(entity_id)
 
 
-def scenario() -> Loner3eScenarioFile:
+def scenario() -> Loner3eScenario:
     loaded = read_scenario(SCENARIOS, "whispering-vault", SCENARIO_MODELS)
-    if not isinstance(loaded, Loner3eScenarioFile):
+    if not isinstance(loaded, Loner3eScenario):
         raise AssertionError("the Loner scenario parsed as another engine")
     return loaded
 
 
 def character() -> Loner3eCharacterFile:
     engine = ENGINES_BUILT[LONER3E]
-    loaded = load_character(CHARACTERS, "kael", engine.id, engine.character)
+    loaded = read_character(CHARACTERS, "kael", engine.id, engine.character)
     if not isinstance(loaded, Loner3eCharacterFile):
         raise AssertionError("the Loner character parsed as another engine")
     return loaded
@@ -101,7 +101,7 @@ def game(engine_id: EngineId, kind: ScenarioKind = "one-shot") -> tuple[AnyEngin
     engine = ENGINES_BUILT[engine_id]
     scenario_id = scenario_for(engine_id, kind)
     selected_scenario = read_scenario(SCENARIOS, scenario_id, SCENARIO_MODELS)
-    selected_character = load_character(CHARACTERS, "kael", engine.id, engine.character)
+    selected_character = read_character(CHARACTERS, "kael", engine.id, engine.character)
     begun = begin_game(engine, scenario_id, selected_scenario, selected_character)
     return engine, begun
 
@@ -176,7 +176,7 @@ class ScriptedSpawner:
             return spoke(prompt)
         answers = self.answers.get(role)
         if not answers:
-            raise ValueError(f"the scripted {role} has no answer left")
+            raise Refusal(f"the scripted {role} has no answer left")
         return spoke(answers.pop(0))
 
     def prompt(self, role: Role) -> str:
@@ -200,7 +200,7 @@ class Table[G: AnyGame]:
         """What the server does: a refusal is an error result the CLI reads and carries on from."""
         try:
             answered = mcp.call(self.runtime, name, args)
-        except ValueError as refused:
+        except Refusal as refused:
             self.refusals.append(str(refused))
             answered = str(refused)
         self.answers.append(answered)
@@ -226,20 +226,20 @@ class Table[G: AnyGame]:
     def saved(self) -> G:
         raw = self.service.store.load(self.service.slug)
         assert raw is not None
-        restored = self.service.engine.restored(raw)
+        restored = self.service.engine.restore(raw)
         if not isinstance(restored, self.state_type):
             raise AssertionError(f"the save restored an unexpected {self.state_type.__name__}")
         return restored
 
 
-def opened(
+def open_game(
     saves: Path,
     *,
     rng: Random | None = None,
     settings: Settings | None = None,
     engine: AnyEngine | None = None,
 ) -> Table[Loner3eGame]:
-    return _opened(
+    return _open_game(
         saves,
         rng=rng,
         settings=settings,
@@ -249,7 +249,7 @@ def opened(
     )
 
 
-def opened_for(
+def open_game_for(
     saves: Path,
     engine_id: EngineId,
     *,
@@ -258,7 +258,7 @@ def opened_for(
 ) -> Table[AnyGame]:
     """Open a golden-test table for whichever concrete engine is under test."""
     engine = ENGINES_BUILT[engine_id]
-    return _opened(
+    return _open_game(
         saves,
         rng=rng,
         settings=settings,
@@ -268,7 +268,7 @@ def opened_for(
     )
 
 
-def _opened[G: AnyGame](
+def _open_game[G: AnyGame](
     saves: Path,
     *,
     rng: Random | None,
@@ -289,7 +289,7 @@ def _opened[G: AnyGame](
     return Table(runtime=runtime, service=service, spawner=spawner, state_type=state_type)
 
 
-async def played[G: AnyGame](
+async def play_turn[G: AnyGame](
     table: Table[G],
     action: str | Answer,
     *calls: Call,

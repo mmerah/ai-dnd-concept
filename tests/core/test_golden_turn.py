@@ -4,7 +4,7 @@ from random import Random
 from typing import cast
 
 import pytest
-from core_test_support import ENGINE_IDS, Call, opened_for, played
+from core_test_support import ENGINE_IDS, Call, open_game_for, play_turn
 from golden_test_support import FIXTURES, dumped, golden, golden_json
 from golden_turn_support import NARRATION
 
@@ -29,10 +29,10 @@ def _behind(engine_id: EngineId, state: AnyGame) -> AnyGame:
 async def test_a_scripted_turn_renders_and_records_unchanged(
     engine_id: EngineId, tmp_path: Path
 ) -> None:
-    table = opened_for(tmp_path, engine_id, rng=Random(SEED))
+    table = open_game_for(tmp_path, engine_id, rng=Random(SEED))
     table.service.commit(_behind(engine_id, table.state))
 
-    await played(table, PROMPT, *_script(engine_id), narration=NARRATION)
+    await play_turn(table, PROMPT, *_script(engine_id), narration=NARRATION)
 
     golden(FIXTURES / "prompts" / engine_id / "master.txt", table.spawner.prompt("master"))
     golden(FIXTURES / "prompts" / engine_id / "narrator.txt", table.spawner.prompt("narrator"))

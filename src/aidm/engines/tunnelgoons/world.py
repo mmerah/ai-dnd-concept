@@ -3,12 +3,20 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Mutable, require_unique, slug
+from aidm.core.entities import CheckedEntityId, EntityId, Mutable, Refusal, require_unique, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import Exchange, SceneRecord
 from aidm.core.views import Rows
-from aidm.engines.core import PLAYER_ID, Counter, check_filing, labeled, pool, reveal
+from aidm.engines.base import (
+    PLAYER_ID,
+    Counter,
+    check_filing,
+    entity_fact,
+    labeled,
+    pool,
+    reveal,
+)
 from aidm.engines.hub import (
     Board,
     Job,
@@ -123,23 +131,23 @@ class Dungeon(Mutable):
         require_unique("ids across places, npcs and items", (*self.places, *self.npcs, *self.items))
         for one in self.npcs.values():
             if one.place not in self.places:
-                raise ValueError(f"{one.name} is in no place: {one.place!r}")
+                raise Refusal(f"{one.name} is in no place: {one.place!r}")
         # An authored item may already start `on` the player, who exists in no dict here.
         holders = {*self.npcs, *self.places, PLAYER_ID}
         for item in self.items.values():
             if item.on not in holders:
-                raise ValueError(f"{item.name} is on nothing: {item.on!r}")
+                raise Refusal(f"{item.name} is on nothing: {item.on!r}")
         for from_id, ways in self.ways.items():
             if from_id not in self.places:
-                raise ValueError(f"ways are filed under {from_id!r}, which is not a place")
+                raise Refusal(f"ways are filed under {from_id!r}, which is not a place")
             require_unique(f"ways out of {from_id!r}", (way.to for way in ways))
             for way in ways:
                 if way.to not in self.places:
-                    raise ValueError(
+                    raise Refusal(
                         f"a way from {from_id!r} leads to {way.to!r}, which is not a place"
                     )
                 if way.to == from_id:
-                    raise ValueError(f"a way from {from_id!r} cannot lead back to itself")
+                    raise Refusal(f"a way from {from_id!r} cannot lead back to itself")
         return self
 
     def entity(self, entity_id: EntityId) -> Entity | None:
@@ -148,13 +156,13 @@ class Dungeon(Mutable):
     def require(self, entity_id: EntityId) -> Entity:
         one = self.entity(entity_id)
         if one is None:
-            raise ValueError(f"unknown id {entity_id!r}. Use only ids you were shown.")
+            raise Refusal(f"unknown id {entity_id!r}. Use only ids you were shown.")
         return one
 
     def require_place(self, entity_id: EntityId) -> Place:
         one = self.require(entity_id)
         if not isinstance(one, Place):
-            raise ValueError(f"{entity_id!r} is not a place")
+            raise Refusal(f"{entity_id!r} is not a place")
         return one
 
     def way(self, from_id: EntityId, to_id: EntityId) -> Way | None:
@@ -179,14 +187,14 @@ class MapCanon(Dungeon):
     @model_validator(mode="after")
     def _startable(self) -> Self:
         if not self.require_place(self.start).known:
-            raise ValueError("the starting place must be known to the player")
+            raise Refusal("the starting place must be known to the player")
         check_board(self.hub, self.board)
         if self.hub is not None and self.hub != self.start:
-            raise ValueError(f"hub {self.hub!r} is not the starting place {self.start!r}")
+            raise Refusal(f"hub {self.hub!r} is not the starting place {self.start!r}")
         return self
 
 
-class TunnelWorld(Dungeon):
+class TunnelGoonsWorld(Dungeon):
     player: Goon
     visits: list[Visit] = Field(min_length=1)
     source: str = ""
@@ -197,17 +205,17 @@ class TunnelWorld(Dungeon):
     @model_validator(mode="after")
     def _playable(self) -> Self:
         if not self.player.known:
-            raise ValueError("the player is unknown to themselves")
+            raise Refusal("the player is unknown to themselves")
         for visit in self.visits:
-            _ = self.require_place(visit.place)
+            self.require_place(visit.place)
         if self.visits[-1].place != self.player.place:
-            raise ValueError("the last visit is not where the player stands")
+            raise Refusal("the last visit is not where the player stands")
         if self.hub is not None:
-            _ = self.require_place(self.hub)
+            self.require_place(self.hub)
         check_board(self.hub, self.board)
         check_jobs(self.hub, self.jobs, len(self.visits))
         if self.hub is not None and self.visits[0].place != self.hub:
-            raise ValueError(f"visit 0 does not open at hub {self.hub!r}")
+            raise Refusal(f"visit 0 does not open at hub {self.hub!r}")
         return self
 
     @property
@@ -247,20 +255,20 @@ class TunnelWorld(Dungeon):
     def require_npc_here(self, entity_id: EntityId) -> Npc:
         npc = self.npcs.get(entity_id)
         if npc is None:
-            raise ValueError(f"unknown id {entity_id!r}. Use only ids you were shown.")
+            raise Refusal(f"unknown id {entity_id!r}. Use only ids you were shown.")
         if not npc.alive:
-            raise ValueError(f"{npc.name} is dead; they take no further part.")
+            raise Refusal(f"{npc.name} is dead; they take no further part.")
         if npc.place != self.player.place:
-            raise ValueError(f"{npc.name} is not here with the player")
+            raise Refusal(f"{npc.name} is not here with the player")
         return npc
 
     def require_item_here(self, item_id: EntityId) -> Item:
         item = self.require(item_id)
         if not isinstance(item, Item):
-            raise ValueError(f"{item_id!r} is not an item")
+            raise Refusal(f"{item_id!r} is not an item")
         holders = {self.current.id, *(one.id for one in self.here())}
         if item.on not in holders:
-            raise ValueError(f"{item.name} is not here with the player")
+            raise Refusal(f"{item.name} is not here with the player")
         return item
 
     def label(self, one: Entity) -> str:
@@ -268,6 +276,20 @@ class TunnelWorld(Dungeon):
 
     def reveal(self, one: Entity) -> list[Fact]:
         return reveal(one, self.player.id)
+
+    def kill(self, one: Goon | Npc) -> list[Fact]:
+        """Whatever the dead carried lies loose where they fell, the player's kit included."""
+        facts = self.reveal(one)
+        one.alive = False
+        dropped = list(self.carried(one.id))
+        for item in dropped:
+            item.on = self.current.id
+        if dropped:
+            fell = ", ".join(self.label(item) for item in dropped) + " fell loose here"
+            facts.append(Fact(kind="items_dropped", trace=fell))
+        card = "You are dead" if one.id == self.player.id else f"{one.name} is dead"
+        facts.append(entity_fact(one, "actor_killed", f"{self.label(one)} is dead", card=card))
+        return facts
 
     def exchanges(self) -> tuple[Exchange, ...]:
         return tuple(one for visit in self.visits for one in visit.exchanges)
@@ -284,7 +306,7 @@ class TunnelWorld(Dungeon):
         return tuple(records)
 
 
-class TunnelGoonsCharacter(Mutable):
+class TunnelGoonsPayload(Mutable):
     brute: int = Field(ge=0)
     skulker: int = Field(ge=0)
     erudite: int = Field(ge=0)
@@ -293,19 +315,19 @@ class TunnelGoonsCharacter(Mutable):
     @model_validator(mode="after")
     def _shares_ability_points(self) -> Self:
         if self.brute + self.skulker + self.erudite != ABILITY_POINTS:
-            raise ValueError(f"the three abilities share exactly {ABILITY_POINTS} points")
+            raise Refusal(f"the three abilities share exactly {ABILITY_POINTS} points")
         return self
 
 
-class TunnelGoonsGame(Game[TunnelWorld]):
+class TunnelGoonsGame(Game[TunnelGoonsWorld]):
     pass
 
 
-class TunnelGoonsScenarioFile(Scenario[MapCanon]):
+class TunnelGoonsScenario(Scenario[MapCanon]):
     pass
 
 
-class TunnelGoonsCharacterFile(Character[TunnelGoonsCharacter]):
+class TunnelGoonsCharacterFile(Character[TunnelGoonsPayload]):
     pass
 
 

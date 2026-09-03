@@ -8,7 +8,7 @@ from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMet
 from aidm.core.play import DecisionOption
 from aidm.core.tools import MasterTool
 from aidm.core.views import Rows
-from aidm.engines.core import PLAYER_ID, Pack, Person
+from aidm.engines.base import PLAYER_ID, Pack, Person
 from aidm.engines.registry import begin_game
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld, new_world
@@ -28,7 +28,7 @@ class FifthGame(Game[FifthState]):
     pass
 
 
-class FifthScenarioFile(Scenario[SceneCanon[Person]]):
+class FifthScenario(Scenario[SceneCanon[Person]]):
     pass
 
 
@@ -43,7 +43,7 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, Pack]):
     title = "FIFTH"
     art_style = "Ink."
     game = FifthGame
-    scenario = FifthScenarioFile
+    scenario = FifthScenario
     character = FifthCharacterFile
     cast = Person
     pack = Pack
@@ -86,9 +86,9 @@ def _installed(tmp_path: Path) -> FifthEngine:
     return FifthEngine(tmp_path / "user-packs")
 
 
-def _scenario() -> FifthScenarioFile:
+def _scenario() -> FifthScenario:
     keeper = Person(id=KEEPER, name="Keeper", brief="Keeps the taproom", known=True)
-    return FifthScenarioFile(
+    return FifthScenario(
         meta=ScenarioMeta(title="The Taproom", premise="A quiet night that will not stay quiet."),
         engine=FIFTH,
         packs=("srd",),

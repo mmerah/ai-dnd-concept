@@ -3,22 +3,22 @@ from copy import deepcopy
 from pathlib import Path
 
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, Slug
+from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import AnyCharacter, AnyScenario, ScenarioKind, WorldsmithAnswer
 from aidm.core.play import Exchange, SceneRecord
 from aidm.core.tools import MasterTool
 from aidm.core.views import NarratorView, PlayerView, Rows
 from aidm.engines.hub import check_kind
-from aidm.engines.seam import Engine, authored
+from aidm.engines.seam import Engine, compose
 from aidm.engines.tunnelgoons.creation import create_character, creation_steps, preview_character
 from aidm.engines.tunnelgoons.tools import tools
 from aidm.engines.tunnelgoons.views import master_sections, narrator_view, player_view
 from aidm.engines.tunnelgoons.world import (
     TunnelGoonsCharacterFile,
     TunnelGoonsGame,
-    TunnelGoonsScenarioFile,
-    TunnelWorld,
+    TunnelGoonsScenario,
+    TunnelGoonsWorld,
     Visit,
     player_goon,
     player_over,
@@ -40,7 +40,7 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
     art_style = "Old-school fantasy illustration in black ink, cross-hatched, no text or lettering."
     directory = Path(__file__).parent
     game = TunnelGoonsGame
-    scenario = TunnelGoonsScenarioFile
+    scenario = TunnelGoonsScenario
     character = TunnelGoonsCharacterFile
 
     def master_tools(self) -> tuple[MasterTool[TunnelGoonsGame], ...]:
@@ -57,19 +57,19 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
 
     def validate(self, state: TunnelGoonsGame) -> None:
         if state.packs:
-            raise ValueError("Tunnel Goons has no table sets")
+            raise Refusal("Tunnel Goons has no table sets")
         check_kind(state.scenario.kind, state.payload.hub)
 
-    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> TunnelWorld:
-        if not isinstance(scenario, TunnelGoonsScenarioFile):
-            raise ValueError("Tunnel Goons received an incompatible scenario")
+    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> TunnelGoonsWorld:
+        if not isinstance(scenario, TunnelGoonsScenario):
+            raise Refusal("Tunnel Goons received an incompatible scenario")
         if not isinstance(character, TunnelGoonsCharacterFile):
-            raise ValueError("Tunnel Goons received an incompatible character")
+            raise Refusal("Tunnel Goons received an incompatible character")
         canon = deepcopy(scenario.payload)
         player = player_goon(character, canon.start)
         taken = (*canon.places, *canon.npcs, *canon.items)
         items = starting_items(character, taken)
-        return TunnelWorld(
+        return TunnelGoonsWorld(
             places=canon.places,
             ways=canon.ways,
             npcs=canon.npcs,
@@ -115,9 +115,7 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
         def built(written: MapDraft) -> AnyScenario:
             return build_scenario(title, premise, tuple(packs), written, source, kind)
 
-        return await authored(
-            worldsmith, render_map(source, packs, kind), MapDraft, built, playable
-        )
+        return await compose(worldsmith, render_map(source, packs, kind), MapDraft, built, playable)
 
     def ready(self, state: TunnelGoonsGame) -> bool:
         return way_open(state)
@@ -125,4 +123,4 @@ class TunnelGoonsEngine(Engine[TunnelGoonsGame]):
     async def advance(
         self, draft: TunnelGoonsGame, intent: str, worldsmith: WorldsmithAnswer
     ) -> tuple[Fact, ...]:
-        return install_extension(draft, await write_extension(draft, intent, worldsmith))
+        return tuple(install_extension(draft, await write_extension(draft, intent, worldsmith)))

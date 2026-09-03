@@ -1,15 +1,14 @@
 import os
 from collections.abc import Callable
 from pathlib import Path
-from typing import Literal, Protocol, get_args, get_origin
+from typing import Literal, Protocol, TypeAliasType, get_args, get_origin
 
 from nicegui import ui
 from pydantic import BaseModel, SecretStr, ValidationError
 from pydantic.fields import FieldInfo
 
 from aidm.config import Settings, env_key, save_settings
-
-from .widgets import page_header
+from aidm.ui.widgets import page_header
 
 type Boxes = dict[tuple[str, ...], Box]
 # A cleared box writes no key at all, which is the only way back to a field's own default.
@@ -77,7 +76,7 @@ def _label(path: tuple[str, ...], field: FieldInfo) -> str:
 
 
 def _widget(label: str, field: FieldInfo, value: object) -> Box:
-    bare = field.annotation
+    bare = _unaliased(field.annotation)
     if bare is SecretStr:
         # Never read a stored key back into the DOM; blank means "leave the stored key alone".
         placeholder = "set — type to replace" if value else "not set"
@@ -91,6 +90,11 @@ def _widget(label: str, field: FieldInfo, value: object) -> Box:
         number = value if isinstance(value, int | float) else None
         return ui.number(label, value=number).classes("w-full")
     return ui.input(label, value=_text(value)).classes("w-full")
+
+
+def _unaliased(annotation: object) -> object:
+    """`get_origin` of a PEP 695 alias is `None`, so the alias is read through."""
+    return annotation.__value__ if isinstance(annotation, TypeAliasType) else annotation
 
 
 def _text(value: object) -> str:

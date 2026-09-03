@@ -3,7 +3,7 @@ import pytest
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.facts import Fact
 from aidm.core.model import ScenarioMeta
-from aidm.engines.core import PLAYER_ID, Counter
+from aidm.engines.base import PLAYER_ID, Counter
 from aidm.engines.hub import Offer
 from aidm.engines.tunnelgoons.tools import ChangeWorld, apply_change
 from aidm.engines.tunnelgoons.world import (
@@ -12,7 +12,7 @@ from aidm.engines.tunnelgoons.world import (
     Npc,
     Place,
     TunnelGoonsGame,
-    TunnelWorld,
+    TunnelGoonsWorld,
     Visit,
     Way,
 )
@@ -114,7 +114,7 @@ def _kael(place: EntityId) -> Goon:
 def small_world() -> TunnelGoonsGame:
     """A one-shot game: the player stands at the start of the four-place dungeon."""
     places, ways, npcs, items = _map_pieces()
-    world = TunnelWorld(
+    world = TunnelGoonsWorld(
         places=places,
         ways=ways,
         npcs=npcs,
@@ -154,7 +154,7 @@ def hub_world(*, with_map: bool = True) -> TunnelGoonsGame:
         Offer(title="Crates off Deck 9", pitch="No manifest, half up front."),
         Offer(title="A Debt Called In", pitch="Someone remembers what you owe."),
     )
-    world = TunnelWorld(
+    world = TunnelGoonsWorld(
         places=places,
         ways=ways,
         npcs=npcs,
