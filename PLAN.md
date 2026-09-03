@@ -1,6 +1,7 @@
 # PLAN — the form
 
-Four phases, in order: the ground, the engine is the class, the shapes, the chores. Self-standing:
+Five phases, in order: the ground, the engine is the class, the shapes, the chores, the rooms.
+Self-standing:
 an implementer needs this file, `CLAUDE.md` and the code. `NEXT-SPECS.md` stays for Track G.
 
 ## How to work
@@ -55,6 +56,7 @@ uv run basedpyright
 | 2 — the engine is the class | resolvers, creation and sections as engine methods; shared arms, `next_scene`, sections and the worldsmith flow on `SceneEngine`; `Thing`; methods on `Counter`, `Turn`, the worlds; `player_id` gone; notes a list; the pipeline tidied | 8,720 |
 | 3 — the shapes | `Campaign`, dict-shaped tags and abilities, the payload is the sheet, `ScenarioMeta` carries style and voice, the goldens trimmed; one stale-save commit | 8,540 |
 | 4 — the chores | `GamePage`, `LaunchForm`, `CharacterForm`, `ScenarioForm`, `SettingsForm`; one `tests/support` package; the `one` sweep | 8,520 to 8,600 |
+| 5 — the rooms | `engines/rooms/`: the map world, the drafts, the bars and `RoomEngine`, shared by every room crawler the way `scenes/` is shared by every scene engine; Tunnel Goons subclasses it | 8,580 to 8,680 |
 
 ---
 
@@ -807,3 +809,198 @@ finds nothing. `uv run aidm`: two tabs on one game each refresh their own panels
 enables and disables within a second of the turn; the launcher, create and settings pages
 behave as before. `src` 8,520 to 8,600; a rise of up to 60 over Phase 3 is the class overhead,
 not padding.
+
+---
+
+## Phase 5 — the rooms
+
+One crawler exists today, so this is the one place the plan builds a base ahead of its second
+implementation. The reason is layout, not reuse: after Phase 4 every engine has the same five
+files, and Tunnel Goons alone carries a whole lifecycle (the map world, the drafts, the bars,
+the worldsmith flow, both views) that in the scene engines lives in `scenes/`. `engines/rooms/`
+holds that lifecycle, file for file as `scenes/` does, and `tunnelgoons/` keeps its sheet, its
+rolls and its creation, the size of `breathless/`. The `RoomEngine` docstring says so, so the
+next maintainer knows why a base has one subclass.
+
+Rule 9 bends once here, and only where it must: the Tunnel Goons worldsmith prompt text
+splits between `rooms/worldsmith.md` (the map craft, engine-free) and the engine's
+`AUTHORING` (the `hp` sentence). No golden holds a worldsmith prompt. `prompts/*`,
+`schemas/*` and `turn/*` stay byte-identical: no tool or arm changes, no field description
+changes, and every master section keeps its exact text. `scenarios/*/world.json` and
+`characters/kael/tunnelgoons.json` keep their keys, so they do not change.
+
+Every step moves code verbatim unless a shape below says otherwise. The generic parameter
+`N` is the room engine's npc type, as `C` is the scene engine's cast type; the same
+`revalidate_instances="always"` rule applies, so every model over `N` is parametrized at
+runtime (`MapDraft[self.dweller]`, `RoomCanon[self.dweller]`) exactly as `scenes/` does with
+`self.cast`.
+
+### 5.1 `engines/rooms/world.py`
+
+1. From `tunnelgoons/world.py`, move `Item`, `Place`, `Way`, `Visit` and `_walk` verbatim. Add
+   ```python
+   class Dweller(Person):
+       """Anyone who stands in a place; a room engine's npc adds its own stats."""
+
+       place: CheckedEntityId
+   ```
+2. `class Dungeon[N: Dweller](Mutable)`: the body of today's `Dungeon` with `npcs: dict[EntityId, N]`;
+   `entity` returns `N | Item | Place | None`, `require` returns `N | Item | Place`, `at` yields
+   `N`. Delete the module-level `Entity` alias.
+3. `class RoomCanon[N: Dweller](Dungeon[N])`: today's `MapCanon`, renamed, body verbatim.
+4. `class RoomWorld[N: Dweller, P: Person](Dungeon[N])`: today's `TunnelGoonsWorld` with
+   `player: P`; `here` yields `P | N`; `require_npc_here` returns `N`; `kill(actor: P | N)`;
+   `attach(region: Dungeon[N], start, *, known)`; `entity` returns `P | N | Item | Place | None`.
+   Two changes of shape, so the sheet lines stay the engine's:
+   ```python
+   def sheet_rows(self) -> Rows:
+       """The player's sheet as the master and the panel print it; a rule may amend a row."""
+       return self.player.rows()
+
+   def line(self, entity: P | N | Item) -> str:
+       """One card line; the player's sheet is the world's, everyone else's is their own."""
+       line = f"- {entity.name}[{entity.id}]" + (f" — {entity.brief}" if entity.brief else "")
+       if isinstance(entity, Person) and not entity.alive:
+           line += " (dead)"
+       rows = self.sheet_rows() if entity.id == self.player.id else entity.rows() if isinstance(entity, Person) else ()
+       sheet = "; ".join(f"{label.lower()}: {value}" for label, value in rows)
+       return f"{line}\n  {sheet}" if sheet else line
+   ```
+   and a constructor the engine calls, as `SceneWorld.begin` is:
+   ```python
+   @classmethod
+   def begin(cls, canon: RoomCanon[N], player: P, items: Iterable[Item]) -> Self:
+       """The played character at the canon's start, their starting items filed on them."""
+       canon = deepcopy(canon)
+       return cls(places=canon.places, ways=canon.ways, npcs=canon.npcs,
+                  items={**canon.items, **{item.id: item for item in items}},
+                  player=player, visits=[Visit(place=canon.start)],
+                  source=canon.source, campaign=canon.campaign)
+   ```
+   `place_lines`, `ways_lines`, `exchanges`, `scenes` and every other method move verbatim.
+5. Full check. Nothing imports the module yet; the step is the file.
+
+### 5.2 `engines/rooms/drafts.py`, `tools.py`, `worldsmith.py`, `worldsmith.md`
+
+1. `drafts.py`: `class MapDraft[N: Dweller](Dungeon[N])` (today's `MapDraft`, its two fields
+   verbatim) and `ReturnDraft(Frozen)` verbatim.
+2. `tools.py`: `Reveal`, `MoveItem`, `Kill`, `Move`, `UnlockWay` verbatim, descriptions
+   included, and `type SharedChange = Reveal | MoveItem | Kill`. `ChangeWorld` does not move.
+3. `worldsmith.py`: `MIN_PLACES`, `MIN_EXTENSION_PLACES`, `TAVERN_ASK`, `JOB_BRIEF`, the four
+   `*_refusal` functions and their `_unmet` helpers verbatim, each generic over the draft:
+   `def map_refusal[N: Dweller](draft: MapDraft[N]) -> str | None`; the two that read the
+   world take `world: RoomWorld[N, Any]` (the player type is not read; this is the one `Any`
+   the phase adds, under the `Game[P]` rule's reason). `opening_canon` does not move: it becomes
+   a `RoomEngine` method in 5.3, as `SceneEngine.opening_canon` is.
+4. `worldsmith.md`: today's `tunnelgoons/worldsmith.md` without the sentence that begins
+   "Every npc needs `hp`". Every other sentence verbatim.
+5. Full check.
+
+### 5.3 `engines/rooms/engine.py`
+
+1. ```python
+   class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
+       """The room-crawl lifecycle, once; a subclass says what its rules add.
+
+       One crawler subclasses it today. The split mirrors `scenes/`, so a second one adds only
+       its sheet, its rolls and its creation, and every engine reads the same five files.
+       """
+
+       dweller: type[N]
+       world_type: type[RoomWorld[N, P]]
+       worldsmith: str
+   ```
+   `__init__` reads `Path(__file__).parent / "worldsmith.md"` into `self.worldsmith`, then
+   `super().__init__()`. `REPORT_IN` and `REPORT_ROW` move here from `tunnelgoons/engine.py`.
+2. Move from `TunnelGoonsEngine`, verbatim in text and in section order: `over`, `record`,
+   `history`, `scenes`, `master_sections`, `narrator_view`, `player_view`, `author`, `ready`,
+   `advance`, `move`, `unlock_way`, `render_map`, `render_extension`, `render_job`,
+   `render_return`, `map_so_far`, `write_extension`, `install_extension`, `build_scenario`,
+   with `TunnelGoonsGame` → `G`, `TunnelGoonsWorld` → `RoomWorld[N, P]`, `draft.payload` →
+   `self.world(draft)` where `def world(self, state: G) -> RoomWorld[N, P]: return state.payload`,
+   `TunnelGoonsScenario(` → `self.scenario(`, `MapDraft` as an answer model or a schema →
+   `self.map_draft()` where `def map_draft(self) -> type[MapDraft[N]]: return MapDraft[self.dweller]`.
+   `validate` refuses `f"{self.title} has no table sets"` when `state.packs`, then `check_kind`.
+   `player_of` as today. `apply_change` becomes
+   `shared_change(self, world: RoomWorld[N, P], change: SharedChange) -> list[Fact]`.
+3. `new_game` builds `self.world_type.begin(canon, player, self.starting_items(player, taken))`
+   with `taken = (*canon.places, *canon.npcs, *canon.items)` and the hook
+   `def starting_items(self, player: P, taken: Iterable[str]) -> tuple[Item, ...]: return ()`.
+4. `opening_canon(self, draft: MapDraft[N], source: str, kind: ScenarioKind) -> RoomCanon[N]`:
+   today's free function, returning `RoomCanon[self.dweller](...)`.
+5. `@abstractmethod def guidance(self) -> str`. `render_map`, `render_extension` and
+   `render_return` gain `("ENGINE GUIDANCE", self.guidance())` immediately before
+   `("ANSWER WITH", ...)`; `render_job` passes through `render_extension` and needs nothing.
+6. Full check. Nothing subclasses it yet; the step is the file.
+
+### 5.4 Tunnel Goons as a room engine
+
+1. `tunnelgoons/world.py` keeps `Ability`, `ABILITIES`, `Boost`, the four constants, `Goon`
+   verbatim (`Item` imported from `rooms.world`), and
+   ```python
+   class Npc(Dweller):
+       """Every non-player character, friend or foe: the SRD gives them one shape."""
+
+       # SRD: an NPC's Difficulty Score is also its Health Points, so one counter serves both.
+       hp: Counter
+
+       def rows(self) -> Rows:
+           return (("Health", f"{self.hp} (its Difficulty Score)"),)
+
+
+   class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
+       def sheet_rows(self) -> Rows:
+           carried = len(list(self.carried(self.player.id)))
+           return tuple(
+               (label, f"{carried}/{self.player.inventory}") if label == "Inventory" else (label, value)
+               for label, value in self.player.rows()
+           )
+   ```
+   `TunnelGoonsGame`, `TunnelGoonsScenario(Scenario[RoomCanon[Npc]])`, `TunnelGoonsCharacter`
+   stay. Everything else in the file is gone.
+2. `tunnelgoons/tools.py` keeps `LEVEL_OPTIONS`, `ActionRoll`, `LevelUp`, and
+   `ChangeWorld` with `change: SharedChange = Field(discriminator="verb", description=...)`,
+   the description verbatim. The five moved models and `WorldChange` are gone.
+3. `tunnelgoons/worldsmith.py`: `AUTHORING = "TUNNEL GOONS AUTHORING\n" + ` the `hp` sentence
+   dropped from the prompt in 5.2.4, verbatim.
+4. `tunnelgoons/engine.py`: `class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame])`
+   with `dweller = Npc`, `world_type = TunnelGoonsWorld`; keeps `STARTING_ITEM_LIST`,
+   `POINT_OPTIONS`, `master_tools`, `creation_steps`, `create_character`,
+   `preview_character`, `action_roll`, `rest`, `level_up` verbatim; adds
+   `starting_items(self, player: Goon, taken) -> tuple[Item, ...]: return player.starting_items(taken)`,
+   `change_world(self, draft, args: ChangeWorld, _rng) -> list[Fact]: return self.shared_change(draft.payload, args.change)`
+   and `guidance(self) -> str: return AUTHORING`. Every method 5.3 moved is deleted here.
+   Delete `tunnelgoons/worldsmith.md`.
+5. Imports follow the moves in `tests/tunnelgoons/*` and `tests/support/tunnelgoons.py`
+   (`grep -rln "tunnelgoons.world\|tunnelgoons.worldsmith\|tunnelgoons.tools\|tunnelgoons.engine" tests`
+   lists the eight files); every `MapDraft(` in a test becomes `MapDraft[Npc](`.
+6. Full check, then `AIDM_GOLDEN_REGEN=1 uv run pytest` and `uv run pytest`: every golden
+   byte-identical, or the step is wrong.
+
+### 5.5 The proof, the record
+
+1. `tests/core/test_rooms.py`: a sixth engine, as `tests/core/test_seam.py` builds its fifth —
+   `SixthEngine(RoomEngine[Dweller, Person, SixthGame])` with no tools, a one-line `guidance`
+   and a `create_character` that files a `Person`; a four-place `RoomCanon[Dweller]` scenario
+   with one `Dweller` at the start. One test: `begin_game` returns a `SixthGame`, `master_sections`
+   opens with `("CURRENT PLACE", ...)`, `player_view` lists the known way out, and `move`
+   through it appends a visit. That test is what says the base is engine-free.
+2. `CLAUDE.md`, the engine bullet: "the three scene engines subclass `SceneEngine` in
+   `engines/scenes/engine.py`, Tunnel Goons subclasses `RoomEngine` in `engines/rooms/engine.py`;
+   all four share the hub in `engines/hub.py`."
+3. `docs/TUNNEL-GOONS.md`, under "The tools", one line: the three `change_world` arms are
+   `engines/rooms/tools.py`'s, shared by every room engine, and count here as before.
+4. `PROGRESS.md` entry.
+
+### Done when
+
+Green; every golden byte-identical; `scenarios/` and `characters/` untouched.
+`ls src/aidm/engines/rooms` is `__init__.py drafts.py engine.py tools.py world.py worldsmith.md worldsmith.py`;
+`ls src/aidm/engines/tunnelgoons` is `__init__.py engine.py rules.md tools.py world.py worldsmith.py`.
+`grep -rn "tunnelgoons" src/aidm/engines/rooms` finds nothing;
+`grep -rn "class .*Draft\|def .*_refusal\|def render_\|def install_extension\|def player_view\|def master_sections\|class Dungeon\|class Place\|class Way" src/aidm/engines/tunnelgoons`
+finds nothing; `grep -rn "Any" src/aidm/engines/rooms` finds only the `Game[Any]` bound and the
+two bars' `RoomWorld[N, Any]`. `uv run aidm`: a Tunnel Goons game opens and plays a turn; a
+campaign takes a job. `src` 8,580 to 8,680; `engines/tunnelgoons/` under 450 lines; `engines/rooms/`
+under 1,000.
+
