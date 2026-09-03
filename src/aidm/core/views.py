@@ -55,9 +55,9 @@ class NarratorView(Frozen):
 
     def spoken(self, lines: Sequence[Line]) -> tuple[SpokenLine, ...]:
         """Attribution is denormalized here, so chat and journal never resolve ids through state."""
-        here = {one.id: one for one in self.speakers}
+        here = {speaker.id: speaker for speaker in self.speakers}
 
-        def one(line: Line) -> SpokenLine:
+        def spoken_line(line: Line) -> SpokenLine:
             if line.speaker_id is None:
                 return SpokenLine(text=line.text)
             who = here.get(line.speaker_id)
@@ -65,11 +65,11 @@ class NarratorView(Frozen):
                 raise Refusal(f"nobody here has id {line.speaker_id!r}")
             return SpokenLine(speaker=who, text=line.text)
 
-        return tuple(one(line) for line in lines)
+        return tuple(spoken_line(line) for line in lines)
 
     def speakers_refusal(self, lines: Sequence[Line]) -> str | None:
         """Only the player or someone here speaks; the leak rule holds by check, not trust."""
-        here = {one.id for one in self.speakers}
+        here = {speaker.id for speaker in self.speakers}
         strangers = sorted(
             {
                 line.speaker_id
@@ -84,10 +84,10 @@ class NarratorView(Frozen):
             "them speaks; leave `speaker_id` null for narration."
         )
 
-    def narration_refusal(self, written: Narration) -> str | None:
-        if not written.lines:
+    def narration_refusal(self, narration: Narration) -> str | None:
+        if not narration.lines:
             return "write the narration lines: an empty answer shows the player nothing."
-        return self.speakers_refusal(written.lines)
+        return self.speakers_refusal(narration.lines)
 
 
 class PlayerView(Frozen):
@@ -114,10 +114,10 @@ def render_history(scenes: Sequence[SceneRecord]) -> str:
 def told_narration(scenes: Sequence[SceneRecord]) -> tuple[str, ...]:
     """What the player has already read, so continuity costs the narrator no hidden canon."""
     return tuple(
-        one.narration
+        exchange.narration
         for record in scenes[-2:]
-        for one in record.exchanges[-SCENE_EXCHANGES:]
-        if one.narration
+        for exchange in record.exchanges[-SCENE_EXCHANGES:]
+        if exchange.narration
     )
 
 
@@ -133,4 +133,7 @@ def _block(record: SceneRecord, index: int, total: int) -> str:
 
 
 def _told(exchanges: Sequence[Exchange]) -> str:
-    return "\n\n".join(f"> {one.prompt}\n{one.narration}" for one in exchanges) or "(nothing yet)"
+    return (
+        "\n\n".join(f"> {exchange.prompt}\n{exchange.narration}" for exchange in exchanges)
+        or "(nothing yet)"
+    )

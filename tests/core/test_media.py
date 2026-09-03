@@ -3,8 +3,9 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-from core_test_support import CHARACTERS, SCENARIOS, EnvFileFreeSettings, initialized, with_entity
 from pydantic import SecretStr
+from support.loner import initialized, with_entity
+from support.table import CHARACTERS, SCENARIOS, EnvFileFreeSettings
 
 from aidm.app.launch import LaunchTarget
 from aidm.app.media import (

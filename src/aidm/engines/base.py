@@ -114,10 +114,10 @@ class Counter(Mutable):
 
     def change(self, owner: Thing, amount: int, label: str, why: str) -> list[Fact]:
         """The move as a fact on its owner; a zero move is no fact."""
-        landed = self.adjust(amount)
-        if landed == 0:
+        delta = self.adjust(amount)
+        if delta == 0:
             return []
-        moved = f"{label} {landed:+d} -> {self}"
+        moved = f"{label} {delta:+d} -> {self}"
         card = moved if owner.id == PLAYER_ID else f"{owner.name}: {moved}"
         return [owner.fact("counter_changed", f"{owner.label} {moved} ({why})", card=card)]
 
@@ -136,7 +136,7 @@ def character_panel(rows: Rows) -> Panel:
 def here_panel(player: Subject, others: Iterable[Subject]) -> Panel:
     rows = (
         PanelRow(label=f"{player.name} (you)", detail=player.brief, icon_id=player.id),
-        *(PanelRow(label=one.name, detail=one.brief, icon_id=one.id) for one in others),
+        *(PanelRow(label=other.name, detail=other.brief, icon_id=other.id) for other in others),
     )
     return Panel(title="Here", rows=rows)
 
@@ -146,9 +146,9 @@ def trail_panel(titles: Iterable[str]) -> Panel:
 
 
 def check_filing(pool: Mapping[EntityId, Thing]) -> None:
-    for key, one in pool.items():
-        if key != one.id:
-            raise Refusal(f"entity {one.id!r} is filed under {key!r}")
+    for key, entity in pool.items():
+        if key != entity.id:
+            raise Refusal(f"entity {entity.id!r} is filed under {key!r}")
 
 
 def keep_highest(

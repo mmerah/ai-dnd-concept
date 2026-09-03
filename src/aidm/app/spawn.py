@@ -83,12 +83,12 @@ class ClaudeDriver:
 
     def parse(self, output: str) -> RunResult:
         try:
-            said = _ClaudeResult.model_validate_json(output)
+            result = _ClaudeResult.model_validate_json(output)
         except ValidationError as broken:
             raise Refusal(f"claude printed no JSON result: {output[-500:]}") from broken
-        if said.is_error:
-            raise Refusal(f"the run failed: {said.result[-500:]}")
-        return RunResult(said.result, said.session_id)
+        if result.is_error:
+            raise Refusal(f"the run failed: {result.result[-500:]}")
+        return RunResult(result.result, result.session_id)
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,7 +121,7 @@ class CodexDriver:
         return (*argv, "-c", "sandbox_mode=read-only", "-c", "approval_policy=never")
 
     def parse(self, output: str) -> RunResult:
-        events = [one for line in output.splitlines() if (one := _object(line)) is not None]
+        events = [event for line in output.splitlines() if (event := _object(line)) is not None]
         return RunResult(final_message(output), _string(events, "thread_id"))
 
 
@@ -162,8 +162,8 @@ class CliSpawner:
 
 def final_message(output: str) -> str:
     """The agent's last message: its own event, else the last fence, else the trailing object."""
-    if (said := _last_said(output)) is not None:
-        return said
+    if (text := _last_said(output)) is not None:
+        return text
     fenced = output.rsplit("```", 2)
     if len(fenced) == 3:
         body = fenced[1]
@@ -194,19 +194,19 @@ async def ask[T: BaseModel](
     spawn: Callable[[str, str | None], Awaitable[RunResult]],
 ) -> T:
     """The one retry, shared: a role that fails twice fails its step, loudly."""
-    asked, refused, held = prompt, "", None
+    asked, refused, session = prompt, "", None
     for _ in range(RETRIES + 1):
         try:
-            spoken = await spawn(asked, held)
-            held = spoken.session
+            spoken = await spawn(asked, session)
+            session = spoken.session
             answer = model.model_validate_json(final_message(spoken.text))
             if (refused := refusal(answer)) is None:
                 return answer
         except ValidationError as invalid:
             refused = str(invalid)
-        told = f"Your last answer was refused: {refused}\nAnswer again, fixed."
+        correction = f"Your last answer was refused: {refused}\nAnswer again, fixed."
         # The retry carries on the refused attempt, which has read the prompt already.
-        asked = told if held is not None else f"{prompt}\n\n{told}"
+        asked = correction if session is not None else f"{prompt}\n\n{correction}"
     raise Refusal(f"the {role} answered nothing usable: {refused}")
 
 
@@ -251,11 +251,11 @@ def _claude_mcp(url: str) -> str:
 
 def _last_said(output: str) -> str | None:
     """Two JSON objects on their own lines is an event stream; one is the answer itself."""
-    events = [one for line in output.splitlines() if (one := _object(line)) is not None]
+    events = [event for line in output.splitlines() if (event := _object(line)) is not None]
     if len(events) < 2:
         return None
     # Backwards, because the reasoning and the tool calls carry text of their own and come first.
-    return next((said for one in reversed(events) if (said := _said(one)) is not None), None)
+    return next((text for event in reversed(events) if (text := _said(event)) is not None), None)
 
 
 def _object(line: str) -> JsonValue | None:
@@ -275,14 +275,14 @@ def _said(node: JsonValue) -> str | None:
 
 def _string(events: Sequence[JsonValue], name: str) -> str | None:
     """The first event that names it: a stream announces its thread before it says anything."""
-    found = next((one for event in events if (one := _found(event, name)) is not None), None)
+    found = next((match for event in events if (match := _found(event, name)) is not None), None)
     return found if isinstance(found, str) else None
 
 
 def _found(node: JsonValue, name: str) -> JsonValue | None:
     """An event nests its payload, so a name is searched for at any depth."""
     if isinstance(node, list):
-        return next((one for item in node if (one := _found(item, name)) is not None), None)
+        return next((match for item in node if (match := _found(item, name)) is not None), None)
     if not isinstance(node, dict):
         return None
     for key, value in node.items():

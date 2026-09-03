@@ -7,7 +7,6 @@ from aidm.app.runtime import GameService
 from aidm.ui.widgets import entity_row, heading, labeled_value
 
 
-@ui.refreshable
 def scene_sidebar(session: GameService, move_on: Callable[[str], Awaitable[None]]) -> None:
     view = session.player_view()
     with ui.column().classes("w-full").style("gap: 0.75rem"):
@@ -31,7 +30,6 @@ def scene_sidebar(session: GameService, move_on: Callable[[str], Awaitable[None]
                         ui.label(row.label).classes("text-sm mt-1")
 
 
-@ui.refreshable
 def journal_panel(session: GameService) -> None:
     heading("Chronicle")
     played = session.engine.history(session.state)
@@ -40,5 +38,5 @@ def journal_panel(session: GameService) -> None:
             # A speaker is named, because a bare quote reads as narration without bubbles.
             for line in exchange.lines:
                 who = line.speaker
-                said = line.text if who is None else f"**{who.name}:** {line.text}"
-                ui.markdown(said).classes("text-sm")
+                text = line.text if who is None else f"**{who.name}:** {line.text}"
+                ui.markdown(text).classes("text-sm")

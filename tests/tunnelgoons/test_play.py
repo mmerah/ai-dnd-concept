@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from random import Random
 
-from core_test_support import TUNNELGOONS, open_game_for, play_turn, tool_call
+from support.table import TUNNELGOONS, open_game_for, play_turn, tool_call
 
 from aidm.core.play import Answer
 

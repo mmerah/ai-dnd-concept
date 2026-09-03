@@ -2,14 +2,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from core_test_support import ScriptedSpawner
 from nicegui import ui
-from ui_test_support import ui_settings
+from support.table import ScriptedSpawner
+from support.ui import ui_settings
 
 from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import Runtime
 from aidm.config import RoleConfig, Roles, read_settings, save_settings
-from aidm.ui.settings import _changes, _widget  # pyright: ignore[reportPrivateUsage]
+from aidm.ui.settings import SettingsForm, _widget  # pyright: ignore[reportPrivateUsage]
 
 
 @dataclass(frozen=True)
@@ -20,8 +20,9 @@ class FakeBox:
 def test_only_a_real_edit_is_written(tmp_path: Path) -> None:
     settings = ui_settings(saves_dir=tmp_path)
     settings.roles = Roles(narrator=RoleConfig(model="sonnet"))
-    changed = _changes(
+    form = SettingsForm(
         settings,
+        lambda: None,
         {
             ("providers", "openrouter", "api_key"): FakeBox(""),
             ("media", "enabled"): FakeBox(True),
@@ -29,7 +30,7 @@ def test_only_a_real_edit_is_written(tmp_path: Path) -> None:
             ("roles", "narrator", "timeout"): FakeBox(90.0),
         },
     )
-    assert changed == {
+    assert form.changes() == {
         ("media", "enabled"): "true",
         ("media", "model"): None,
         ("roles", "narrator", "timeout"): "90",
@@ -38,8 +39,10 @@ def test_only_a_real_edit_is_written(tmp_path: Path) -> None:
 
 def test_a_shell_variable_shadows_its_box(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MEDIA__ENABLED", "false")
-    settings = ui_settings(saves_dir=tmp_path)
-    assert _changes(settings, {("media", "enabled"): FakeBox(True)}) == {}
+    form = SettingsForm(
+        ui_settings(saves_dir=tmp_path), lambda: None, {("media", "enabled"): FakeBox(True)}
+    )
+    assert form.changes() == {}
 
 
 def test_a_saved_key_reads_back_and_the_rest_of_the_file_survives(

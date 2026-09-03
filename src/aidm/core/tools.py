@@ -32,7 +32,7 @@ def master_tool[G: Game[Any], A: BaseModel](
     args: type[A],
     resolve: Callable[[G, A, Random], Sequence[Fact]],
 ) -> MasterTool[G]:
-    if bare := [key for key, one in args.model_fields.items() if not one.description]:
+    if bare := [key for key, info in args.model_fields.items() if not info.description]:
         raise ValueError(f"{name} parameters the model reads carry no description: {bare}")
 
     def call(draft: G, raw: Mapping[str, JsonValue], rng: Random) -> tuple[Fact, ...]:

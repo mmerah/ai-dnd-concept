@@ -1,10 +1,10 @@
 import pytest
-from core_test_support import change, initialized
-from core_test_support import refused as change_refused
-from loner3e_test_support import ENGINE
 from pydantic import JsonValue
+from support.loner import ENGINE, initialized
+from support.table import change
+from support.table import refused as change_refused
 
-from aidm.core.entities import EntityId
+from aidm.core.entities import EntityId, Refusal
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, Loner3eSheet
 from aidm.engines.scenes.drafts import MIN_SITUATION, SceneDraft
@@ -105,18 +105,18 @@ def test_an_id_the_worldsmith_got_wrong_resolves_by_name_before_it_is_refused() 
     # The probe's failure: the worldsmith writes a display name where an exact id was asked for.
     draft.payload.apply_scene(_next_scene(present=("Mara",)))
     assert draft.payload.present() == [MARA]
-    with pytest.raises(ValueError, match="no such id or name exists"):
+    with pytest.raises(Refusal, match="no such id or name exists"):
         state.draft().payload.apply_scene(_next_scene(present=(EntityId("nobody"),)))
 
 
 def test_a_situation_that_names_what_it_hides_is_refused() -> None:
     """`situation` is read to the player, so it must not hand them the find."""
     _, state = initialized()
-    told = _next_scene()
+    scene = _next_scene()
     hidden_name = state.payload.require(EntityId(TOMAS)).name
-    told = told.model_copy(update={"situation": f"{SITUATION} {hidden_name} waits in the dark."})
+    scene = scene.model_copy(update={"situation": f"{SITUATION} {hidden_name} waits in the dark."})
 
-    assert scene_refusal(told, state.payload) == (
+    assert scene_refusal(scene, state.payload) == (
         f"the scene needs a situation that does not name what is hidden: ['{hidden_name}']"
     )
 
@@ -126,10 +126,10 @@ def test_a_one_word_name_is_a_word_the_situation_may_use() -> None:
     _, state = initialized()
     draft = state.draft()
     draft.payload.require(EntityId(TOMAS)).name = "Bell"
-    told = _next_scene()
-    told = told.model_copy(update={"situation": f"{SITUATION} The bell tower stands over it."})
+    scene = _next_scene()
+    scene = scene.model_copy(update={"situation": f"{SITUATION} The bell tower stands over it."})
 
-    assert scene_refusal(told, draft.payload) is None
+    assert scene_refusal(scene, draft.payload) is None
 
 
 def test_the_scene_bar_names_what_a_thin_scene_is_missing() -> None:
@@ -175,7 +175,7 @@ def test_the_cast_may_not_name_someone_it_does_not_hold() -> None:
     _, state = initialized()
     draft = state.draft()
     draft.payload.run.here = [EntityId("ghost")]
-    with pytest.raises(ValueError, match="not in the cast"):
+    with pytest.raises(Refusal, match="not in the cast"):
         _ = draft.commit()
 
 

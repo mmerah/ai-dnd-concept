@@ -1,6 +1,6 @@
 import pytest
-from core_test_support import ENGINE_IDS, game
-from golden_test_support import FIXTURES, golden_json
+from support.golden import FIXTURES, golden_json
+from support.table import ENGINE_IDS, game
 
 from aidm.core.entities import EngineId
 from aidm.core.tools import schema_of
@@ -12,7 +12,7 @@ def test_the_master_is_offered_the_same_tools(engine_id: EngineId) -> None:
     golden_json(
         FIXTURES / "schemas" / engine_id / "master_tools.json",
         [
-            {"name": one.name, "description": one.description, "parameters": schema_of(one.args)}
-            for one in engine.tools.values()
+            {"name": tool.name, "description": tool.description, "parameters": schema_of(tool.args)}
+            for tool in engine.tools.values()
         ],
     )

@@ -1,8 +1,6 @@
 import logging
 from asyncio import get_running_loop
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
-from functools import partial
 from pathlib import Path
 from time import monotonic
 
@@ -12,6 +10,7 @@ from aidm.app.runtime import BEGUN, CROSSED, GameService, Runtime
 from aidm.config import Role
 from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import Answer, Speaker
+from aidm.core.views import PlayerView
 from aidm.ui.panels import journal_panel, scene_sidebar
 from aidm.ui.widgets import (
     avatar,
@@ -41,281 +40,307 @@ _STEP_COPY: dict[Role, tuple[str, str]] = {
 LOGGER = logging.getLogger(__name__)
 
 
-@dataclass
-class GameView:
-    runtime: Runtime
-    session: GameService
-    shown_art: Path | None = None
-    shown_clip: Path | None = None
-    autoplay_clip: Path | None = None
-    # Both are built by the page below this view, and the panels reach them through it.
-    composer: ui.input | None = None
-    transcript: ui.scroll_area | None = None
-    # What the last poll read: the phase, the facts landed, the exchanges filed.
-    seen: tuple[Role | None, int, int] = (None, 0, 0)
-    step_started: float | None = None
-    ticker: ui.label | None = None
+class GamePage:
+    """One tab on one game: it polls the service once a second and refreshes its own panels."""
 
+    def __init__(self, runtime: Runtime, session: GameService) -> None:
+        self.runtime = runtime
+        self.session = session
+        self.shown_art: Path | None = None
+        self.shown_clip: Path | None = None
+        self.autoplay_clip: Path | None = None
+        self.transcript: ui.scroll_area
+        # What the last poll read: the phase, the facts landed, the exchanges filed.
+        self.seen: tuple[Role | None, int, int, bool, str | None] = (None, 0, 0, False, None)
+        self.step_started: float | None = None
+        self.ticker: ui.label | None = None
+        # The composer's widgets, built once by `composer` and set by `_set_composer`.
+        self.box: ui.input
+        self.send: ui.button
+        self.move_on_button: ui.button
+        self.over_label: ui.label
 
-def refresh_all() -> None:
-    for panel in (
-        scene_header,
-        chat,
-        live_turn,
-        decision_panel,
-        way_on_panel,
-        scene_sidebar,
-        journal_panel,
-    ):
-        panel.refresh()
-
-
-@ui.refreshable
-def scene_header(session: GameService) -> None:
-    scene = session.engine.narrator_view(session.state)
-    # A quarter of the column at most: the art holds it and the text beside it scrolls.
-    with (
-        ui.row()
-        .classes("w-full items-start no-wrap")
-        .style(f"max-height: {_SCENE_HEIGHT}; overflow: hidden; gap: 0.75rem")
-    ):
-        _scene_art(session)
-        with (
-            ui.column()
-            .classes("flex-grow")
-            .style(f"max-height: {_SCENE_HEIGHT}; overflow-y: auto; gap: 0; min-width: 0")
-        ):
-            ui.label(scene.title).classes("text-h6 font-bold")
-            ui.label(scene.situation).classes("text-sm opacity-70")
-
-
-@ui.refreshable
-def chat(view: GameView) -> None:
-    session = view.session
-    history = session.engine.history(session.state)
-    if not history:
-        ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
-    # The live decision widget sits directly below the last exchange, so it needs no pause line.
-    last = history[-1] if history and session.state.pending is not None else None
-    player = session.player_view().player.speaker()
-    for exchange in history:
-        if exchange.prompt in (BEGUN, CROSSED):
-            # A turn nobody played: the story's own marker, never the player's words.
-            ui.label(exchange.prompt).classes("w-full text-center text-xs italic opacity-60")
+    def build(self) -> None:
+        session = self.session
+        if session.unopened():
+            ui.timer(0.1, self._open, once=True)
         else:
-            _bubble(session, player, exchange.prompt, sent=True)
-        for fact in exchange.facts:
-            _card(fact)
-        for line in exchange.lines:
-            _bubble(session, line.speaker, line.text, sent=False)
-        if exchange.decision and exchange is not last:
-            ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
-    # The newest clip only: every `ui.audio` registers a route, and a refresh rebuilds them all.
-    if history and session.reader is not None and (clip := session.reader.clip(history[-1])):
-        ui.audio(clip, autoplay=clip == view.autoplay_clip)
-        # Consumed by this render: a later refresh of the same turn must not restart it.
-        view.autoplay_clip = None
+            session.illustrate()
+        with page_header(session.state.scenario.title, session.engine.title):
+            ui.space()
+            ui.button("restart", on_click=self.restart).props("flat color=white dense")
 
+        # Account for the header and page padding so the input stays above the fold.
+        with (
+            ui.splitter(value=55).classes("w-full").style("height: calc(100vh - 6rem)") as splitter
+        ):
+            with splitter.before, ui.column().classes("w-full h-full p-4").style("gap: 0.5rem"):
+                self.scene_header()
+                with ui.scroll_area().classes("w-full flex-grow game-transcript") as transcript:
+                    self.chat()
+                    self.live_turn()
+                self.decision_panel()
+                self.way_on_panel()
+                self.composer()
+                self.transcript = transcript
+                ui.timer(0.5, lambda: transcript.scroll_to(percent=1.0), once=True)
+            with splitter.after, ui.column().classes("w-full h-full").style("gap: 0"):
+                with ui.tabs().classes("w-full") as tabs:
+                    scene_tab = ui.tab("scene")
+                    journal_tab = ui.tab("journal")
+                with ui.tab_panels(tabs, value=scene_tab).classes("w-full flex-grow"):
+                    with ui.tab_panel(scene_tab), ui.scroll_area().classes("w-full h-full"):
+                        self.sidebar()
+                    with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
+                        self.journal()
 
-@ui.refreshable
-def live_turn(view: GameView) -> None:
-    session = view.session
-    turn = session.turn
-    if turn is not None:
-        _bubble(session, session.player_view().player.speaker(), turn.prompt, sent=True)
-        shown = cards(turn.facts)
-        for fact in shown:
-            _card(fact, live=fact is shown[-1])
-    elif session.intent:
-        _bubble(session, session.player_view().player.speaker(), session.intent, sent=True)
-    view.ticker = None
-    if session.phase is not None:
-        elapsed = 0.0 if view.step_started is None else monotonic() - view.step_started
-        view.ticker = _inline_status(session.phase, elapsed)
+        # A cached clip never autoplays on a page load, only one landing after.
+        self.shown_clip = session.newest_clip()
+        self.seen = _observed(session)
+        self._set_composer()
 
+        ui.timer(1.0, self.poll_turn)
+        if session.media is not None or session.reader is not None:
+            ui.timer(3.0, self.poll_media)
 
-def poll_turn(view: GameView) -> None:
-    """The page reads the turn once a second; the turn never calls the page."""
-    now = _observed(view.session)
-    if now[0] != view.seen[0]:
-        view.step_started = None if now[0] is None else monotonic()
-    if now != view.seen:
-        view.seen = now
-        if view.composer is not None:
-            view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
-        refresh_all()
-        _scroll(view)
-    ticker, started = view.ticker, view.step_started
-    if ticker is not None and started is not None and not ticker.is_deleted:
-        ticker.set_text(_clock(monotonic() - started))
+    def refresh(self) -> None:
+        self.scene_header.refresh()
+        self.chat.refresh()
+        self.live_turn.refresh()
+        self.decision_panel.refresh()
+        self.way_on_panel.refresh()
+        self.sidebar.refresh()
+        self.journal.refresh()
 
+    @ui.refreshable_method
+    def scene_header(self) -> None:
+        session = self.session
+        scene = session.engine.narrator_view(session.state)
+        # A quarter of the column at most: the art holds it and the text beside it scrolls.
+        with (
+            ui.row()
+            .classes("w-full items-start no-wrap")
+            .style(f"max-height: {_SCENE_HEIGHT}; overflow: hidden; gap: 0.75rem")
+        ):
+            _scene_art(session)
+            with (
+                ui.column()
+                .classes("flex-grow")
+                .style(f"max-height: {_SCENE_HEIGHT}; overflow-y: auto; gap: 0; min-width: 0")
+            ):
+                ui.label(scene.title).classes("text-h6 font-bold")
+                ui.label(scene.situation).classes("text-sm opacity-70")
 
-def poll_media(view: GameView) -> None:
-    """The illustration and the clip are both generated after the turn commits and watched for."""
-    session = view.session
-    art = session.scene_art()
-    if art != view.shown_art:
-        view.shown_art = art
-        scene_header.refresh()
-    clip = session.newest_clip()
-    if clip != view.shown_clip:
-        view.shown_clip = clip
-        if clip is not None:
-            view.autoplay_clip = clip
-        chat.refresh()
+    @ui.refreshable_method
+    def chat(self) -> None:
+        session = self.session
+        history = session.engine.history(session.state)
+        if not history:
+            ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
+        # The live decision widget sits directly below the last exchange, so it needs no pause line.
+        last = history[-1] if history and session.state.pending is not None else None
+        player = session.player_view().player.speaker()
+        for exchange in history:
+            if exchange.prompt in (BEGUN, CROSSED):
+                # A turn nobody played: the story's own marker, never the player's words.
+                ui.label(exchange.prompt).classes("w-full text-center text-xs italic opacity-60")
+            else:
+                _bubble(session, player, exchange.prompt, sent=True)
+            for fact in exchange.facts:
+                _card(fact)
+            for line in exchange.lines:
+                _bubble(session, line.speaker, line.text, sent=False)
+            if exchange.decision and exchange is not last:
+                ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
+        # The newest clip only: every `ui.audio` registers a route, and a refresh rebuilds them all.
+        if history and session.reader is not None and (clip := session.reader.clip(history[-1])):
+            ui.audio(clip, autoplay=clip == self.autoplay_clip)
+            # Consumed by this render: a later refresh of the same turn must not restart it.
+            self.autoplay_clip = None
 
+    @ui.refreshable_method
+    def live_turn(self) -> None:
+        session = self.session
+        turn = session.turn
+        if turn is not None:
+            _bubble(session, session.player_view().player.speaker(), turn.prompt, sent=True)
+            shown = cards(turn.facts)
+            for fact in shown:
+                _card(fact, live=fact is shown[-1])
+        elif session.intent:
+            _bubble(session, session.player_view().player.speaker(), session.intent, sent=True)
+        self.ticker = None
+        if session.phase is not None:
+            elapsed = 0.0 if self.step_started is None else monotonic() - self.step_started
+            self.ticker = _inline_status(session.phase, elapsed)
 
-def refuse_play(view: GameView) -> bool:
-    refusal = view.runtime.play_refusal(view.session)
-    if refusal is None:
-        return False
-    ui.notify(refusal, type="warning")
-    return True
-
-
-async def submit(view: GameView, box: ui.input, moving_on: bool = False) -> None:
-    session = view.session
-    typed = (box.value or "").strip()
-    LOGGER.info("player submitted prompt: non_empty=%s busy=%s", bool(typed), session.busy)
-    if not typed or refuse_play(view):
-        return
-    box.value = ""
-    # Quasar never saw the typed value change, so only an explicit push empties the composer.
-    box.run_method("updateValue")
-    await _send(view, Answer(text=typed), moving_on=moving_on)
-
-
-async def move_on(view: GameView, intent: str) -> None:
-    if refuse_play(view):
-        return
-    pending = view.session.player_view().prompt
-    if pending is not None and not pending.allows_text:
-        ui.notify("Choose an option above.", type="warning")
-        return
-    await _send(view, Answer(text=intent), moving_on=True)
-
-
-@ui.refreshable
-def way_on_panel(view: GameView) -> None:
-    """The banner, not the offer: legible after a reload, once the asking has scrolled away."""
-    if not view.session.engine.ready(view.session.state):
-        return
-    with (
-        ui.row().classes("game-card game-decision w-full items-center no-wrap").style("gap: 0.4rem")
-    ):
-        ui.icon("arrow_forward").classes("game-card-icon")
-        ui.label("there is more beyond here").classes("text-xs font-bold game-outcome")
-        ui.label("keep playing, or say what you pursue and press Move on").classes(
-            "text-xs opacity-60"
-        )
-
-
-@ui.refreshable
-def decision_panel(view: GameView) -> None:
-    pending = view.session.player_view().prompt
-    if pending is None:
-        return
-
-    async def answer(option_id: str) -> None:
-        if refuse_play(view):
+    @ui.refreshable_method
+    def way_on_panel(self) -> None:
+        """The banner, not the offer: legible after a reload, once the asking has scrolled away."""
+        if not self.session.engine.ready(self.session.state):
             return
-        await _send(view, Answer(option_id=option_id))
-
-    with ui.column().classes("game-card game-decision w-full").style("gap: 0.5rem"):
-        with ui.row().classes("items-center no-wrap").style("gap: 0.4rem"):
-            ui.icon("pause_circle").classes("game-card-icon")
-            ui.label(pending.kind).classes("text-xs font-bold game-outcome")
-            ui.label("the game is waiting on you").classes("text-xs opacity-60")
-        decision_widget(pending.prompt, pending.options, answer)
-        if pending.allows_text:
-            pointer = "Or answer" if pending.options else "Answer"
-            ui.label(f"{pointer} in your own words below.").classes("text-xs opacity-60")
-
-
-def composer(view: GameView) -> None:
-    session = view.session
-    with ui.row().classes("w-full no-wrap items-end game-composer q-pa-sm").style("gap: 0.5rem"):
-        # `phase` is only the source NiceGUI needs: it re-runs every backward on its 0.1s poll.
-        ui.label("").classes("text-xs self-center").style(
-            "color: var(--game-danger)"
-        ).bind_text_from(session, "phase", backward=lambda _: session.player_view().over or "")
-        box = (
-            ui.input(placeholder=_composer_placeholder(view))
-            .classes("flex-grow")
-            .props("outlined autogrow type=textarea borderless")
-            .bind_enabled_from(session, "phase", backward=partial(_can_type, session))
-        )
-        # Enter sends; without the prevent the browser also leaves its newline behind.
-        box.on(
-            "keydown.enter",
-            lambda: submit(view, box),
-            js_handler="(e) => { if (e.shiftKey) return; e.preventDefault(); emit(); }",
-        )
-        (
-            ui.button(icon="send", on_click=lambda: submit(view, box))
-            .props("round flat")
-            .bind_enabled_from(session, "phase", backward=partial(_can_type, session))
-        )
-        (
-            ui.button("Move on", icon="arrow_forward", on_click=lambda: submit(view, box, True))
-            .props("no-caps outline dense")
-            .bind_enabled_from(session, "phase", backward=partial(_can_type, session))
-            .bind_visibility_from(
-                session, "phase", backward=lambda _: session.engine.ready(session.state)
+        with (
+            ui.row()
+            .classes("game-card game-decision w-full items-center no-wrap")
+            .style("gap: 0.4rem")
+        ):
+            ui.icon("arrow_forward").classes("game-card-icon")
+            ui.label("there is more beyond here").classes("text-xs font-bold game-outcome")
+            ui.label("keep playing, or say what you pursue and press Move on").classes(
+                "text-xs opacity-60"
             )
-        )
-    view.composer = box
 
+    @ui.refreshable_method
+    def decision_panel(self) -> None:
+        pending = self.session.player_view().prompt
+        if pending is None:
+            return
 
-async def restart(view: GameView) -> None:
-    session = view.session
-    if refuse_play(view):
-        return
-    session.restart()
-    view.seen = _observed(session)
-    refresh_all()
-    await _open(view)
+        async def answer(option_id: str) -> None:
+            if self.refuse_play():
+                return
+            await self._send(Answer(option_id=option_id))
+
+        with ui.column().classes("game-card game-decision w-full").style("gap: 0.5rem"):
+            with ui.row().classes("items-center no-wrap").style("gap: 0.4rem"):
+                ui.icon("pause_circle").classes("game-card-icon")
+                ui.label(pending.kind).classes("text-xs font-bold game-outcome")
+                ui.label("the game is waiting on you").classes("text-xs opacity-60")
+            decision_widget(pending.prompt, pending.options, answer)
+            if pending.allows_text:
+                pointer = "Or answer" if pending.options else "Answer"
+                ui.label(f"{pointer} in your own words below.").classes("text-xs opacity-60")
+
+    @ui.refreshable_method
+    def sidebar(self) -> None:
+        scene_sidebar(self.session, self.move_on)
+
+    @ui.refreshable_method
+    def journal(self) -> None:
+        journal_panel(self.session)
+
+    def composer(self) -> None:
+        with (
+            ui.row().classes("w-full no-wrap items-end game-composer q-pa-sm").style("gap: 0.5rem")
+        ):
+            self.over_label = (
+                ui.label("").classes("text-xs self-center").style("color: var(--game-danger)")
+            )
+            self.box = (
+                ui.input().classes("flex-grow").props("outlined autogrow type=textarea borderless")
+            )
+            # Enter sends; without the prevent the browser also leaves its newline behind.
+            self.box.on(
+                "keydown.enter",
+                self.submit,
+                js_handler="(e) => { if (e.shiftKey) return; e.preventDefault(); emit(); }",
+            )
+            self.send = ui.button(icon="send", on_click=self.submit).props("round flat")
+            self.move_on_button = ui.button(
+                "Move on", icon="arrow_forward", on_click=lambda: self.submit(moving_on=True)
+            ).props("no-caps outline dense")
+
+    def poll_turn(self) -> None:
+        """The page reads the turn once a second; the turn never calls the page."""
+        now = _observed(self.session)
+        if now[0] != self.seen[0]:
+            self.step_started = None if now[0] is None else monotonic()
+        if now != self.seen:
+            self.seen = now
+            self._set_composer()
+            self.refresh()
+            self._scroll()
+        ticker, started = self.ticker, self.step_started
+        if ticker is not None and started is not None and not ticker.is_deleted:
+            ticker.set_text(_clock(monotonic() - started))
+
+    def poll_media(self) -> None:
+        """The illustration and the clip are generated after the turn commits and watched for."""
+        session = self.session
+        art = session.scene_art()
+        if art != self.shown_art:
+            self.shown_art = art
+            self.scene_header.refresh()
+        clip = session.newest_clip()
+        if clip != self.shown_clip:
+            self.shown_clip = clip
+            if clip is not None:
+                self.autoplay_clip = clip
+            self.chat.refresh()
+
+    def refuse_play(self) -> bool:
+        refusal = self.runtime.play_refusal(self.session)
+        if refusal is None:
+            return False
+        ui.notify(refusal, type="warning")
+        return True
+
+    async def submit(self, moving_on: bool = False) -> None:
+        box = self.box
+        typed = (box.value or "").strip()
+        LOGGER.info("player submitted prompt: non_empty=%s busy=%s", bool(typed), self.session.busy)
+        if not typed or self.refuse_play():
+            return
+        box.value = ""
+        # Quasar never saw the typed value change, so only an explicit push empties the composer.
+        box.run_method("updateValue")
+        await self._send(Answer(text=typed), moving_on=moving_on)
+
+    async def move_on(self, intent: str) -> None:
+        if self.refuse_play():
+            return
+        pending = self.session.player_view().prompt
+        if pending is not None and not pending.allows_text:
+            ui.notify("Choose an option above.", type="warning")
+            return
+        await self._send(Answer(text=intent), moving_on=True)
+
+    async def restart(self) -> None:
+        if self.refuse_play():
+            return
+        self.session.restart()
+        self.poll_turn()
+        await self._open()
+
+    def _set_composer(self) -> None:
+        """One `player_view()` sets the four widgets; the poll calls it when the turn moved."""
+        session = self.session
+        player = session.player_view()
+        typing = _can_type(player, session.phase)
+        self.box.set_enabled(typing)
+        self.send.set_enabled(typing)
+        self.move_on_button.set_enabled(typing)
+        self.move_on_button.set_visibility(session.engine.ready(session.state))
+        self.over_label.set_text(player.over or "")
+        self.box.props(f'placeholder="{_placeholder(player, session.phase)}"')
+
+    def _scroll(self) -> None:
+        # A method call on an existing element needs no NiceGUI slot; `ui.timer` here would.
+        get_running_loop().call_later(0.1, lambda: self.transcript.scroll_to(percent=1.0))
+
+    async def _run(self, playing: Callable[[], Awaitable[None]]) -> None:
+        """The composer greys at once, not at the next tick: a second Enter has nothing to hit."""
+        for widget in (self.box, self.send, self.move_on_button):
+            widget.set_enabled(False)
+        try:
+            async with working():
+                await playing()
+        finally:
+            self._set_composer()
+            self.poll_turn()
+
+    async def _open(self) -> None:
+        # A second tab's timer must not run the page reset over an opening already in flight.
+        if not self.session.unopened():
+            return
+        await self._run(self.session.open)
+
+    async def _send(self, answer: Answer, *, moving_on: bool = False) -> None:
+        await self._run(lambda: self.session.play(answer, moving_on=moving_on))
 
 
 def game_page(runtime: Runtime, session: GameService) -> None:
-    view = GameView(runtime, session)
-    if session.unopened():
-        ui.timer(0.1, lambda: _open(view), once=True)
-    else:
-        session.illustrate()
-    with page_header(session.state.scenario.title, session.engine.title):
-        ui.space()
-        ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")
-
-    # Account for the header and page padding so the input stays above the fold.
-    with ui.splitter(value=55).classes("w-full").style("height: calc(100vh - 6rem)") as splitter:
-        with splitter.before, ui.column().classes("w-full h-full p-4").style("gap: 0.5rem"):
-            scene_header(session)
-            with ui.scroll_area().classes("w-full flex-grow game-transcript") as transcript:
-                chat(view)
-                live_turn(view)
-            decision_panel(view)
-            way_on_panel(view)
-            composer(view)
-            view.transcript = transcript
-            ui.timer(0.5, lambda: transcript.scroll_to(percent=1.0), once=True)
-        with splitter.after, ui.column().classes("w-full h-full").style("gap: 0"):
-            with ui.tabs().classes("w-full") as tabs:
-                scene_tab = ui.tab("scene")
-                journal_tab = ui.tab("journal")
-            with ui.tab_panels(tabs, value=scene_tab).classes("w-full flex-grow"):
-                with ui.tab_panel(scene_tab), ui.scroll_area().classes("w-full h-full"):
-                    scene_sidebar(session, partial(move_on, view))
-                with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
-                    journal_panel(session)
-
-    # A cached clip never autoplays on a page load, only one landing after.
-    view.shown_clip = session.newest_clip()
-    view.seen = _observed(session)
-
-    ui.timer(1.0, lambda: poll_turn(view))
-    if session.media is not None or session.reader is not None:
-        ui.timer(3.0, lambda: poll_media(view))
+    GamePage(runtime, session).build()
 
 
 def _scene_art(session: GameService) -> None:
@@ -381,53 +406,29 @@ def _clock(seconds: float) -> str:
     return f"{minutes}:{rest:02d}"
 
 
-def _composer_placeholder(view: GameView) -> str:
-    phase = view.session.phase
-    if phase is not None:
-        return f"{_STEP_COPY[phase][0]} is working..."
-    pending = view.session.player_view().prompt
-    if pending is not None:
-        if not pending.allows_text:
-            return "Choose an option above."
-        return "The game is waiting on your answer."
-    return "What do you do?"
-
-
-def _observed(session: GameService) -> tuple[Role | None, int, int]:
-    """The phase, the facts landed, the exchanges filed: what a render depends on."""
+def _observed(session: GameService) -> tuple[Role | None, int, int, bool, str | None]:
+    """Phase, facts landed, exchanges filed, the way on, the end: what a render reads."""
     turn = session.turn
     return (
         session.phase,
         0 if turn is None else len(turn.facts),
         len(session.engine.history(session.state)),
+        session.engine.ready(session.state),
+        session.player_view().over,
     )
 
 
-def _scroll(view: GameView) -> None:
-    if (transcript := view.transcript) is not None:
-        # A method call on an existing element needs no NiceGUI slot; `ui.timer` here would.
-        get_running_loop().call_later(0.1, lambda: transcript.scroll_to(percent=1.0))
+def _can_type(player: PlayerView, phase: Role | None) -> bool:
+    """The composer opens between turns, unless the game waits on a pick or is over."""
+    prompt = player.prompt
+    return phase is None and (prompt is None or prompt.allows_text) and player.over is None
 
 
-async def _run(view: GameView, playing: Callable[[], Awaitable[None]]) -> None:
-    async with working():
-        await playing()
-    poll_turn(view)
-
-
-async def _open(view: GameView) -> None:
-    # A second tab's timer must not run the page reset over an opening already in flight.
-    if not view.session.unopened():
-        return
-    await _run(view, view.session.open)
-
-
-async def _send(view: GameView, answer: Answer, *, moving_on: bool = False) -> None:
-    session = view.session
-    await _run(view, lambda: session.play(answer, moving_on=moving_on))
-
-
-def _can_type(session: GameService, phase: Role | None) -> bool:
-    player = session.player_view()
-    typed = player.prompt is None or player.prompt.allows_text
-    return phase is None and typed and player.over is None
+def _placeholder(player: PlayerView, phase: Role | None) -> str:
+    if phase is not None:
+        return f"{_STEP_COPY[phase][0]} is working..."
+    if player.prompt is None:
+        return "What do you do?"
+    if player.prompt.allows_text:
+        return "The game is waiting on your answer."
+    return "Choose an option above."

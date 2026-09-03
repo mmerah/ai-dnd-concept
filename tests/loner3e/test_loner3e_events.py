@@ -1,7 +1,6 @@
 from random import Random
 
-from core_test_support import initialized, loner_sheet
-from loner3e_test_support import ENGINE
+from support.loner import ENGINE, initialized, loner_sheet
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import cards
@@ -72,13 +71,9 @@ def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
         actor_id=PLAYER_ID, question="Does he force her back from the door?", opponent_id=FOE
     )
 
-    for seed in range(200):
-        facts = ENGINE.resolve_question(weakened.draft(), duel, Random(seed))
-        (oracle,) = cards(facts)
-        if outcome_for(max(oracle.dice[0].rolled), max(oracle.dice[1].rolled)).harm > 0:
-            break
-    else:
-        raise AssertionError("no seed under 200 dealt the opponent harm")
+    # Seed 0 rolls chance 4 against risk 4: a yes-but, one luck off the foe's last point.
+    facts = ENGINE.resolve_question(weakened.draft(), duel, Random(0))
+    (oracle,) = cards(facts)
 
     assert oracle.card.split("\n")[1:] == [
         "Mara: Luck -1 -> 0/6",
@@ -93,15 +88,10 @@ def test_a_twist_card_lands_only_once_a_twist_fires() -> None:
     draft.payload.twist.current = TIES_PER_TWIST - 1
     primed = draft.commit()
 
-    for seed in range(200):
-        facts = ENGINE.resolve_question(primed.draft(), _seal(), Random(seed))
-        landed = cards(facts)
-        if len(landed) == 2:
-            break
-    else:
-        raise AssertionError("no seed under 200 tied the dice")
+    # Seed 0 rolls chance 4 against risk 4: the tie that ticks the twist over.
+    facts = ENGINE.resolve_question(primed.draft(), _seal(), Random(0))
 
-    oracle, twist = landed
+    oracle, twist = cards(facts)
     assert oracle.card.startswith("Oracle — ")
     subject, action = twist.card.removeprefix("Twist — ").split(" / ")
     assert subject and action

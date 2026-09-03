@@ -1,5 +1,5 @@
 import pytest
-from golden_test_support import REGENERATE
+from support.golden import REGENERATE
 
 
 def pytest_sessionfinish(session: pytest.Session) -> None:

@@ -1,5 +1,5 @@
-from core_test_support import Call, changed, tool_call
-from golden_turn_support import LISTENING
+from support.golden_turn import LISTENING
+from support.table import Call, changed, tool_call
 
 from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, SpokenLine

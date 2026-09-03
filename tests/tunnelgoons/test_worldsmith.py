@@ -1,9 +1,9 @@
 from collections.abc import Callable
 
 import pytest
-from core_test_support import TUNNELGOONS, game, the_campaign
 from pydantic import BaseModel
-from tunnelgoons_test_support import START, TAVERN, hub_world, small_world
+from support.table import TUNNELGOONS, game, the_campaign
+from support.tunnelgoons import START, TAVERN, hub_world, small_world
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.engines.hub import Job, Offer
@@ -181,9 +181,9 @@ async def test_write_extension_picks_return_draft_on_report_in_with_a_job_open()
         prompt: str, model: type[M], refusal: Callable[[M], str | None]
     ) -> M:
         recorded.append(model)
-        written = model.model_validate(RETURN.model_dump())
-        assert refusal(written) is None
-        return written
+        answer = model.model_validate(RETURN.model_dump())
+        assert refusal(answer) is None
+        return answer
 
     _ = await ENGINE.write_extension(state, REPORT_IN, answer)
 
@@ -197,12 +197,12 @@ async def test_write_extension_refuses_report_in_with_no_job_open() -> None:
         raise AssertionError("no answer should be asked for")
 
     unwalked = hub_world()
-    with pytest.raises(ValueError, match="no job is open to report"):
+    with pytest.raises(Refusal, match="no job is open to report"):
         _ = await ENGINE.write_extension(unwalked, REPORT_IN, answer)
 
     stamped_not_walked = hub_world()
     the_campaign(stamped_not_walked.payload.campaign).jobs = [Job(title="Bandits", place=START)]
-    with pytest.raises(ValueError, match="no job is open to report"):
+    with pytest.raises(Refusal, match="no job is open to report"):
         _ = await ENGINE.write_extension(stamped_not_walked, REPORT_IN, answer)
 
 
@@ -216,7 +216,7 @@ async def test_write_extension_refuses_a_walked_job_open_with_another_intent() -
     ) -> M:
         raise AssertionError("no answer should be asked for")
 
-    with pytest.raises(ValueError, match="report the open job first"):
+    with pytest.raises(Refusal, match="report the open job first"):
         _ = await ENGINE.write_extension(state, "Nose around the docks.", answer)
 
 
@@ -256,7 +256,7 @@ def test_install_extension_on_a_map_draft_at_the_hub_takes_the_job() -> None:
     state = hub_world(with_map=False)
     world = state.payload
     canon = _tunnelgoons_game().payload
-    written = MapDraft(
+    extension = MapDraft(
         places=canon.places,
         ways=canon.ways,
         npcs=canon.npcs,
@@ -264,16 +264,16 @@ def test_install_extension_on_a_map_draft_at_the_hub_takes_the_job() -> None:
         start=canon.current.id,
     )
 
-    facts = ENGINE.install_extension(state, written)
+    facts = ENGINE.install_extension(state, extension)
 
-    start_name = written.places[written.start].name
+    start_name = extension.places[extension.start].name
     assert [fact.kind for fact in facts] == ["job_taken"]
     assert facts[0].told
     assert facts[0].card == f"A way opens: {start_name}"
-    way = world.way(TAVERN, written.start)
+    way = world.way(TAVERN, extension.start)
     assert way is not None
     assert way.known
-    assert the_campaign(world.campaign).jobs[-1] == Job(title=start_name, place=written.start)
+    assert the_campaign(world.campaign).jobs[-1] == Job(title=start_name, place=extension.start)
 
 
 def test_hub_refusal_needs_a_two_or_three_offer_board_and_passes_the_shipped_campaign() -> None:

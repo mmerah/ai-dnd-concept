@@ -279,3 +279,88 @@ and the concrete `preview_character`, the four `*Payload` models and `player_*` 
   by `tests/*/test_create.py`, the job cycle by `test_hub_play.py`, the `*_worldsmith.py` tests
   and `tests/core/test_hub.py`, the stale save by `tests/ui/test_launcher.py`; the live play is
   still owed.
+
+## Phase 4 — the chores
+
+`src` lines: 8,502 at start (`1f99a82`), 8,568 at the end of the implementation and 8,580 after
+the fold; the target was 8,520 to 8,600. Tests: 467 to 468 (the two crossing tests moved into
+`test_turn.py`; one test added for the composer's opening rule, `_can_type`). Goldens: `prompts/*`, `schemas/*`, `turn/*` byte-identical; `scenarios/` and
+`characters/` untouched. `engines/<id>/` sizes: loner3e 622, tunnelgoons 1,268, breathless 607,
+twentyfourxx 698, scenes 1,023 (the sweep's longer names wrapped a few lines). Tool counts
+unchanged.
+
+What landed: §4.1 `GamePage` with seven `@ui.refreshable_method` panels and a `refresh()`, the
+composer's four widgets set from one `player_view()` per poll (no `bind_*_from`), `LaunchForm`,
+`CharacterForm`, `ScenarioForm`, `SettingsForm`, `scene_sidebar` and `journal_panel` plain
+functions; §4.2 `tests/support/` (`table`, `loner`, `golden`, `golden_turn`, `breathless`,
+`twentyfourxx`, `tunnelgoons`, `ui`), `pythonpath`/`extraPaths` on `tests`, the six seed hunts
+pinned, `test_turn.py`/`test_master_tools.py`/`test_game_service.py`, the crossing tests in
+`test_turn.py`, 103 `pytest.raises(Refusal)` where the source refuses; §4.3 the sweep over
+`src` and `tests`, `Frozen`'s docstring states the contract.
+
+### Decisions made off-plan
+
+1. **`LaunchForm` is built only over a non-empty catalog**: its `scenario_id` is the first
+   scenario, so `home_page` shows "No playable scenario was found." itself and builds the form
+   otherwise; §4.1.1 placed that refusal inside the form.
+2. **The seed hunt at `test_loner3e_engine.py:160` pins two seeds, not one**: that loop asserted
+   the luck moved off whichever side lost for every seed; seed 0 (a 4-4 tie, the foe loses) and
+   seed 1 (2 against 5, the player loses) keep both sides covered. The other five pin seed 0.
+3. **`open_table` replaces `_open_game`** in `tests/support/table.py`: `support/loner.py`'s
+   `open_game` calls it across modules (Phase 2 decision 4).
+4. **`pytest.raises(ValueError)` stays where the raise is pydantic's** (a `ValidationError`
+   wrapping a validator's `Refusal`, or a plain `ValueError` such as `Runtime.playing`,
+   `storage_slug`, `Settings`' key check, `MasterTool`'s description check): 29 remain. Decided by
+   running the suite with every raise read as `Refusal` and reverting the ones that failed.
+5. **`GamePage.restart` runs `poll_turn()`** instead of setting `seen` and refreshing by hand,
+   so the composer is set on the same path as every other change.
+6. **The sweep's nouns**: `entity`/`entity_id`/`member`/`entry` in the scene worlds,
+   `sheet` for a Loner resolver's subject, `draft` for a worldsmith draft where no game draft
+   is in scope and `scene`/`extension`/`answer` where one is, `session` for a spawn session,
+   `filed` for what a file or the cast already holds, `delta` for a counter move.
+7. **`tunnelgoons/views.py::place_lines`/`ways_lines`** (the Phase 2 refuted item) stay free
+   functions: no Phase 4 step touches that module beyond the sweep.
+8. **The empty-catalog refusal keeps its card**: `home_page` opens the "New or current game"
+   card around both branches and `LaunchForm.build` is gone (decision 1 had dropped the card).
+9. **`GamePage._run` greys the composer before the play and re-sets it in a `finally`**, so a
+   second Enter inside the poll window has nothing to hit and a refused play re-enables.
+10. **`_observed` also samples `engine.ready(state)` and `player_view().over`**: a silent
+    region install commits without an exchange, and the composer reads both.
+11. **`_can_type(player, phase)` and `_placeholder(player, phase)` are module functions** read
+    by `_set_composer`, so the opening rule has a test seam (`tests/ui/test_game.py`).
+12. **`SettingsForm(settings, apply, boxes)`** takes its box map, as the brief spelled; the tests
+    pass theirs in.
+
+### Refuted findings and why
+
+- Self-review: `open_game_for` passes an engine `open_table` would resolve itself — a shape moved
+  verbatim from `core_test_support.py`; no phase step covers it. Left.
+
+### Known and accepted
+
+- The line count is 66 over Phase 3: the four page classes' `__init__`s and `self.` prefixes,
+  and the sweep's longer names wrapping lines. Nothing padded, nothing invented.
+- `GamePage.box`, `send`, `move_on_button`, `over_label` are annotated without a value and set
+  by `composer`, which `build` always calls; no `| None`.
+- The composer is set once per observed change (`phase`, facts landed, exchanges filed) rather
+  than on NiceGUI's 0.1 s binding poll; `_run` polls once more when a play returns, so the
+  composer re-enables within a second of the turn.
+- `uv run aidm` exits with an anyio "cancel scope" traceback on SIGTERM from the MCP session
+  manager's `AsyncExitStack`; measured on `1f99a82` too, so not this phase's.
+- Reviews: the implementing session had no `Agent` tool and no `codex`; it ran
+  `.claude/prompts/review.md` over the staged diff itself (`/tmp/phase-4/review-self.md`) and
+  fixed five of its seven findings (decision 5, the `extension` and `answer` names, the
+  `opening` local). The orchestrator then ran two independent `reviewer` agents (Fable and
+  Opus) and folded both: decisions 8 to 12 above; the `npc`/`way` comprehension names that
+  shadowed a live binding in `tunnelgoons/world.py`; the duel tie asserted explicitly in
+  `test_a_tie_ticks_the_twist_only_outside_a_conflict`; `tests/support/ui.py` reads
+  `REPOSITORY_ROOT`/`SCENARIOS` off `support.table`; the unused `shipped()`/`SHIPPED` deleted;
+  `open_game_for` lets `open_table` resolve the engine; `GamePage.transcript` no longer
+  optional; the placeholder ladder reads the same `player`/`phase` as `_can_type`.
+- **Unmet done-when:** PLAN's Phase 4 asks `uv run aidm` to show two tabs on one game each
+  refreshing their own panels, the composer enabling and disabling within a second of the turn,
+  and the launcher, create and settings pages behaving as before. This machine has no CLI roles,
+  so only the pages were smoked: `/`, `/settings`, `/create`, `/scenario` and the eight game
+  pages serve 200 on the staged tree. Per-tab refresh rests on `refreshable_method` refreshing
+  only the instance's targets; the composer's state on `_set_composer` from `poll_turn` and
+  `_run`; the live play is still owed.

@@ -2,7 +2,7 @@ from collections.abc import Sequence
 
 import pytest
 
-from aidm.core.entities import EntityId
+from aidm.core.entities import EntityId, Refusal
 from aidm.core.play import Exchange
 from aidm.core.views import PanelRow
 from aidm.engines.base import PLAYER_ID, Person
@@ -24,8 +24,10 @@ def _campaign(*jobs: Job) -> Campaign:
     return Campaign(place=HUB, board=BOARD, jobs=list(jobs))
 
 
-def _run(place: str, title: str, *, told: bool = False, here: Sequence[EntityId] = ()) -> SceneRun:
-    exchanges = [Exchange(prompt=title, lines=())] if told else []
+def _run(
+    place: str, title: str, *, played: bool = False, here: Sequence[EntityId] = ()
+) -> SceneRun:
+    exchanges = [Exchange(prompt=title, lines=())] if played else []
     return SceneRun(
         place=place,
         title=title,
@@ -40,11 +42,11 @@ def test_the_job_walk_reads_job_runs_jobs_and_exchange_headings() -> None:
     world = SceneWorld[Person, Person](
         player=PLAYER,
         runs=[
-            _run(HUB, "Hub", told=True),
-            _run("a1", "A1", told=True),
-            _run("a1", "A2", told=True),
-            _run(HUB, "Hub", told=True),
-            _run("b1", "B1", told=True),
+            _run(HUB, "Hub", played=True),
+            _run("a1", "A1", played=True),
+            _run("a1", "A2", played=True),
+            _run(HUB, "Hub", played=True),
+            _run("b1", "B1", played=True),
         ],
         campaign=_campaign(
             Job(title="A1", place="a1", started=1, finished=True, debrief=DONE),
@@ -91,20 +93,20 @@ def test_a_canon_with_jobs_walked_or_opening_away_from_the_hub_is_refused() -> N
 
 
 def test_a_canon_opening_with_play_in_it_is_refused() -> None:
-    played = _run("a1", "A1", told=True)
+    opening = _run("a1", "A1", played=True)
     with pytest.raises(ValueError, match="an opening with play in it"):
-        _ = SceneCanon[Person](opening=played)
+        _ = SceneCanon[Person](opening=opening)
 
 
 def test_settle_refuses_a_job_done_where_no_job_is_open() -> None:
     at_hub = SceneWorld[Person, Person](
         player=PLAYER, runs=[_run(HUB, "Hub")], campaign=_campaign()
     )
-    with pytest.raises(ValueError, match="no job is open here"):
+    with pytest.raises(Refusal, match="no job is open here"):
         _ = at_hub.settle(True, "")
 
     one_shot = SceneWorld[Person, Person](player=PLAYER, runs=[_run("a1", "A1")])
-    with pytest.raises(ValueError, match="no job is open here"):
+    with pytest.raises(Refusal, match="no job is open here"):
         _ = one_shot.settle(True, "")
 
 
@@ -156,7 +158,7 @@ def _travelling() -> SceneWorld[Person, Person]:
 
 def test_a_party_member_leaves_the_scene_only_through_leave_party() -> None:
     world = _travelling()
-    with pytest.raises(ValueError, match="leaves through `leave_party`"):
+    with pytest.raises(Refusal, match="leaves through `leave_party`"):
         _ = world.leave(MARA)
     assert world.present() == [MARA]
 
@@ -201,7 +203,7 @@ def test_entering_someone_hidden_is_refused_reveal_makes_them_present() -> None:
     world = SceneWorld[Person, Person](
         player=PLAYER, cast={MARA: mara}, runs=[_run("a1", "A1", here=[MARA])]
     )
-    with pytest.raises(ValueError, match="already here"):
+    with pytest.raises(Refusal, match="already here"):
         _ = world.enter(MARA)
     _ = world.reveal_hidden(MARA)
     assert MARA in world.present()

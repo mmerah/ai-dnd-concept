@@ -1,4 +1,4 @@
-from core_test_support import changed
+from support.table import changed
 
 NARRATION = "The flagstone lifts. Beyond the door, something shifts its weight and waits."
 

@@ -4,6 +4,7 @@ import pytest
 
 from aidm.app.spawn import ClaudeDriver, CodexDriver, RunResult, ask, child_environment
 from aidm.config import RoleConfig
+from aidm.core.entities import Refusal
 from aidm.core.play import Narration
 
 CODEX_OUTPUT = "\n".join(
@@ -49,7 +50,7 @@ def test_only_the_master_is_let_out_of_the_sandbox_and_no_role_sees_the_account(
     assert "--approve-for-me" in master and "--approve-for-me" not in narrator
     assert "sandbox_mode=read-only" in narrator and "approval_policy=never" in narrator
     assert "mcp_servers.aidm.url=http://localhost:1/mcp/" in master
-    assert not any(one.startswith("mcp_servers") for one in narrator)
+    assert not any(line.startswith("mcp_servers") for line in narrator)
     for argv in (master, narrator):
         # `--ignore-user-config` leaves the account's own MCP servers standing; this removes them.
         assert ["--disable", "apps"] == [
@@ -60,7 +61,7 @@ def test_only_the_master_is_let_out_of_the_sandbox_and_no_role_sees_the_account(
 
 
 def test_a_claude_reply_that_is_not_json_is_a_broken_run() -> None:
-    with pytest.raises(ValueError, match="no JSON result"):
+    with pytest.raises(Refusal, match="no JSON result"):
         _ = ClaudeDriver().parse("I ask in prose.")
 
 
@@ -103,8 +104,8 @@ def test_the_child_environment_holds_nothing_but_the_allowlist(
     monkeypatch.setenv("PATH", "/bin")
     monkeypatch.setenv("ANTHROPIC_API_KEY", "k")
 
-    held = child_environment(ClaudeDriver().secrets)
+    env = child_environment(ClaudeDriver().secrets)
 
-    assert "A_KEY_NO_ROLE_SHOULD_SEE" not in held
-    assert held["PATH"] == "/bin"
-    assert held["ANTHROPIC_API_KEY"] == "k"
+    assert "A_KEY_NO_ROLE_SHOULD_SEE" not in env
+    assert env["PATH"] == "/bin"
+    assert env["ANTHROPIC_API_KEY"] == "k"

@@ -1,4 +1,5 @@
-from core_test_support import ENGINES_BUILT, LONER3E, initialized, with_entity
+from support.loner import initialized, with_entity
+from support.table import ENGINES_BUILT, LONER3E
 
 from aidm.core.entities import EntityId
 from aidm.core.play import Exchange, SceneRecord, SpokenLine
@@ -28,21 +29,21 @@ def _engine() -> AnyEngine:
     return ENGINES_BUILT[LONER3E]
 
 
-def _master_prompt(held: Loner3eGame, prompt: str, *, notes: tuple[str, ...] = ()) -> str:
+def _master_prompt(state: Loner3eGame, prompt: str, *, notes: tuple[str, ...] = ()) -> str:
     return render_master(
         _engine().instructions,
-        _engine().master_sections(held),
-        held,
-        _engine().scenes(held),
+        _engine().master_sections(state),
+        state,
+        _engine().scenes(state),
         prompt,
         notes=notes,
     )
 
 
 def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> None:
-    held = _state()
-    narrator = _engine().narrator_view(held)
-    master = _engine().master_sections(held)
+    state = _state()
+    narrator = _engine().narrator_view(state)
+    master = _engine().master_sections(state)
 
     assert set(NarratorView.model_fields) == {
         "place",
@@ -59,9 +60,9 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
 
 
 def test_the_master_is_shown_the_hidden_canon_and_the_tags_in_play() -> None:
-    held = _state()
+    state = _state()
 
-    master = _master_prompt(held, "I look around.")
+    master = _master_prompt(state, "I look around.")
 
     assert "Kael[player]" in master
     assert "a ledger[ledger]" in master
@@ -73,10 +74,10 @@ def test_the_master_is_shown_the_hidden_canon_and_the_tags_in_play() -> None:
 
 
 def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:
-    held = _state()
+    state = _state()
 
     prompt = render_narrator(
-        _engine().narrator_view(held),
+        _engine().narrator_view(state),
         evidence="- the map was found",
         prompt="What does Mara say?",
         scenes=(),
@@ -89,10 +90,10 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:
 
 
 def test_the_narrator_prompt_carries_only_what_the_player_has_read() -> None:
-    held = _state()
+    state = _state()
 
     prompt = render_narrator(
-        _engine().narrator_view(held),
+        _engine().narrator_view(state),
         evidence="- the map was found",
         prompt="What does Mara say?",
         scenes=(

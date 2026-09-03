@@ -14,19 +14,13 @@ from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import GameService, Runtime
 from aidm.app.spawn import RunResult
 from aidm.config import Role, Settings
-from aidm.core.entities import EngineId, EntityId, Refusal, Slug
+from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import read_character, read_scenario, read_scenarios
 from aidm.core.model import AnyGame, ScenarioKind
 from aidm.core.play import Answer, Speaker
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.hub import Campaign
-from aidm.engines.loner3e.world import (
-    Loner3eCharacter,
-    Loner3eGame,
-    Loner3eScenario,
-    Loner3eSheet,
-)
 from aidm.engines.registry import begin_game, build_engines
 from aidm.engines.seam import AnyEngine
 
@@ -58,33 +52,6 @@ def updated[T: BaseModel](model: T, **changes: object) -> T:
     return type(model).model_validate(model.model_dump(round_trip=True) | changes)
 
 
-def with_entity(state: Loner3eGame, entity: Loner3eSheet) -> Loner3eGame:
-    """Added to the cast and to the scene; `known` alone decides present or hidden."""
-    draft = state.draft()
-    draft.payload.cast[entity.id] = entity
-    draft.payload.run.here.append(entity.id)
-    return draft.commit()
-
-
-def loner_sheet(state: Loner3eGame, entity_id: EntityId) -> Loner3eSheet:
-    return state.payload.require(entity_id)
-
-
-def scenario() -> Loner3eScenario:
-    loaded = read_scenario(SCENARIOS, "whispering-vault", SCENARIO_MODELS)
-    if not isinstance(loaded, Loner3eScenario):
-        raise AssertionError("the Loner scenario parsed as another engine")
-    return loaded
-
-
-def character() -> Loner3eCharacter:
-    engine = ENGINES_BUILT[LONER3E]
-    loaded = read_character(CHARACTERS, "kael", engine.id, engine.character)
-    if not isinstance(loaded, Loner3eCharacter):
-        raise AssertionError("the Loner character parsed as another engine")
-    return loaded
-
-
 def scenario_for(engine_id: EngineId, kind: ScenarioKind = "one-shot") -> Slug:
     """Read off the shipped content rather than tabulated, so a second one fails here loudly."""
     matches = [
@@ -105,28 +72,6 @@ def game(engine_id: EngineId, kind: ScenarioKind = "one-shot") -> tuple[AnyEngin
     selected_character = read_character(CHARACTERS, "kael", engine.id, engine.character)
     begun = begin_game(engine, scenario_id, selected_scenario, selected_character)
     return engine, begun
-
-
-def shipped(engine_id: EngineId) -> tuple[ScenarioKind, ...]:
-    """Which kinds this engine has a shipped scenario for, in the order they are played."""
-    kinds = {
-        scenario.meta.kind
-        for _, scenario in read_scenarios(SCENARIOS, SCENARIO_MODELS)
-        if scenario.engine == engine_id
-    }
-    return tuple(kind for kind in ("one-shot", "campaign") if kind in kinds)
-
-
-SHIPPED: tuple[tuple[EngineId, ScenarioKind], ...] = tuple(
-    (engine_id, kind) for engine_id in ENGINE_IDS for kind in shipped(engine_id)
-)
-
-
-def initialized() -> tuple[AnyEngine, Loner3eGame]:
-    engine, state = game(LONER3E)
-    if not isinstance(state, Loner3eGame):
-        raise AssertionError("the Loner engine began another game type")
-    return engine, state
 
 
 def the_campaign(campaign: Campaign | None) -> Campaign:
@@ -250,23 +195,6 @@ class Table[G: AnyGame]:
         return restored
 
 
-def open_game(
-    saves: Path,
-    *,
-    rng: Random | None = None,
-    settings: Settings | None = None,
-    engine: AnyEngine | None = None,
-) -> Table[Loner3eGame]:
-    return _open_game(
-        saves,
-        rng=rng,
-        settings=settings,
-        engine=engine,
-        engine_id=LONER3E,
-        state_type=Loner3eGame,
-    )
-
-
 def open_game_for(
     saves: Path,
     engine_id: EngineId,
@@ -275,18 +203,17 @@ def open_game_for(
     settings: Settings | None = None,
 ) -> Table[AnyGame]:
     """Open a golden-test table for whichever concrete engine is under test."""
-    engine = ENGINES_BUILT[engine_id]
-    return _open_game(
+    return open_table(
         saves,
         rng=rng,
         settings=settings,
-        engine=engine,
+        engine=None,
         engine_id=engine_id,
-        state_type=engine.game,
+        state_type=ENGINES_BUILT[engine_id].game,
     )
 
 
-def _open_game[G: AnyGame](
+def open_table[G: AnyGame](
     saves: Path,
     *,
     rng: Random | None,

@@ -20,29 +20,90 @@ class Box(Protocol):
     def value(self) -> object: ...
 
 
+class SettingsForm:
+    """One box per `.env` key; saving writes only the boxes whose value moved."""
+
+    def __init__(self, settings: Settings, apply: Callable[[], str | None], boxes: Boxes) -> None:
+        self.settings = settings
+        self.apply = apply
+        self.boxes = boxes
+
+    def build(self) -> None:
+        groups = _shown(self.settings)
+        # In the header, where a panel taller than the last one cannot move it.
+        with page_header("Settings"):
+            ui.space()
+            ui.button("Save", icon="save", on_click=self.save).props("color=primary")
+        with ui.column().classes("w-full q-pa-lg items-center"):
+            with ui.column().style("width: min(56rem, 100%); gap: 1rem"):
+                ui.label(
+                    "Each box is one key in .env. Saving applies it; reopen an open game to pick "
+                    "it up. The server port applies at the next start, and .mcp.json must match it."
+                ).classes("text-sm opacity-70")
+                with ui.row().classes("w-full no-wrap items-start").style("gap: 1rem"):
+                    with ui.tabs().props("vertical dense").classes("w-40") as tabs:
+                        for name, field, _ in groups:
+                            ui.tab(name, label=_label((name,), field))
+                    with ui.tab_panels(tabs, value=groups[0][0]).classes("w-full"):
+                        for name, field, value in groups:
+                            with ui.tab_panel(name):
+                                self.render(value, field, (name,))
+
+    def render(self, value: object, field: FieldInfo, path: tuple[str, ...]) -> None:
+        if not isinstance(value, BaseModel):
+            self.boxes[path] = _widget(_label(path, field), field, value)
+            return
+        for name, nested, nested_value in _shown(value):
+            if isinstance(nested_value, BaseModel):
+                with ui.expansion(_label((*path, name), nested)).classes("w-full").props("dense"):
+                    self.render(nested_value, nested, (*path, name))
+            else:
+                self.render(nested_value, nested, (*path, name))
+
+    def changes(self) -> Changes:
+        changed: Changes = {}
+        for path, box in self.boxes.items():
+            if env_key(path) in os.environ:
+                continue
+            stored = _stored(self.settings, path)
+            typed = box.value
+            if isinstance(stored, SecretStr):
+                # The box starts blank, so only a typed key is a change.
+                if isinstance(typed, str) and typed:
+                    changed[path] = typed
+            elif typed != stored:
+                changed[path] = None if typed is None else _text(typed)
+        return changed
+
+    def save(self) -> None:
+        changed = self.changes()
+        if not changed:
+            ui.notify("Nothing changed.", type="info")
+            return
+        merged = self.settings.model_dump()
+        for path, typed in changed.items():
+            node = merged
+            for part in path[:-1]:
+                node = node[part]
+            node[path[-1]] = typed
+        try:
+            Settings.model_validate(merged)
+        except ValidationError as error:
+            ui.notify(str(error), type="negative", multi_line=True)
+            return
+        save_settings(changed)
+        refusal = self.apply()
+        if refusal is not None:
+            ui.notify(
+                f"{refusal} The keys are written; they apply on the next restart.", type="warning"
+            )
+            return
+        ui.notify(f"Applied {len(changed)} keys.", type="positive")
+        ui.navigate.reload()
+
+
 def settings_page(settings: Settings, apply: Callable[[], str | None]) -> None:
-    boxes: Boxes = {}
-    groups = _shown(settings)
-    # In the header, where a panel taller than the last one cannot move it.
-    with page_header("Settings"):
-        ui.space()
-        ui.button("Save", icon="save", on_click=lambda: _save(settings, boxes, apply)).props(
-            "color=primary"
-        )
-    with ui.column().classes("w-full q-pa-lg items-center"):
-        with ui.column().style("width: min(56rem, 100%); gap: 1rem"):
-            ui.label(
-                "Each box is one key in .env. Saving applies it; reopen an open game to pick "
-                "it up. The server port applies at the next start, and .mcp.json must match it."
-            ).classes("text-sm opacity-70")
-            with ui.row().classes("w-full no-wrap items-start").style("gap: 1rem"):
-                with ui.tabs().props("vertical dense").classes("w-40") as tabs:
-                    for name, field, _ in groups:
-                        ui.tab(name, label=_label((name,), field))
-                with ui.tab_panels(tabs, value=groups[0][0]).classes("w-full"):
-                    for name, field, value in groups:
-                        with ui.tab_panel(name):
-                            boxes |= _render(value, field, (name,))
+    SettingsForm(settings, apply, {}).build()
 
 
 def _shown(model: BaseModel) -> list[tuple[str, FieldInfo, object]]:
@@ -53,19 +114,6 @@ def _shown(model: BaseModel) -> list[tuple[str, FieldInfo, object]]:
         for n, f in fields
         if not isinstance(getattr(model, n), Path | tuple)
     ]
-
-
-def _render(value: object, field: FieldInfo, path: tuple[str, ...]) -> Boxes:
-    if not isinstance(value, BaseModel):
-        return {path: _widget(_label(path, field), field, value)}
-    boxes: Boxes = {}
-    for name, nested, held in _shown(value):
-        if isinstance(held, BaseModel):
-            with ui.expansion(_label((*path, name), nested)).classes("w-full").props("dense"):
-                boxes |= _render(held, nested, (*path, name))
-        else:
-            boxes |= _render(held, nested, (*path, name))
-    return boxes
 
 
 def _label(path: tuple[str, ...], field: FieldInfo) -> str:
@@ -108,50 +156,7 @@ def _text(value: object) -> str:
 
 def _stored(settings: Settings, path: tuple[str, ...]) -> object:
     """A function, not a local: assigning the walk would narrow `stored` back to `Settings`."""
-    held: object = settings
+    node: object = settings
     for part in path:
-        held = getattr(held, part)
-    return held
-
-
-def _changes(settings: Settings, boxes: Boxes) -> Changes:
-    changed: Changes = {}
-    for path, box in boxes.items():
-        if env_key(path) in os.environ:
-            continue
-        stored = _stored(settings, path)
-        typed = box.value
-        if isinstance(stored, SecretStr):
-            # The box starts blank, so only a typed key is a change.
-            if isinstance(typed, str) and typed:
-                changed[path] = typed
-        elif typed != stored:
-            changed[path] = None if typed is None else _text(typed)
-    return changed
-
-
-def _save(settings: Settings, boxes: Boxes, apply: Callable[[], str | None]) -> None:
-    changed = _changes(settings, boxes)
-    if not changed:
-        ui.notify("Nothing changed.", type="info")
-        return
-    merged = settings.model_dump()
-    for path, typed in changed.items():
-        node = merged
-        for part in path[:-1]:
-            node = node[part]
-        node[path[-1]] = typed
-    try:
-        Settings.model_validate(merged)
-    except ValidationError as error:
-        ui.notify(str(error), type="negative", multi_line=True)
-        return
-    save_settings(changed)
-    refusal = apply()
-    if refusal is not None:
-        ui.notify(
-            f"{refusal} The keys are written; they apply on the next restart.", type="warning"
-        )
-        return
-    ui.notify(f"Applied {len(changed)} keys.", type="positive")
-    ui.navigate.reload()
+        node = getattr(node, part)
+    return node

@@ -306,9 +306,9 @@ class Runtime:
 
     def playing(self) -> GameService | None:
         """A second turn in flight has no owner: the tool surface is shared."""
-        in_flight = [one for one in self._sessions.values() if one.turn is not None]
+        in_flight = [session for session in self._sessions.values() if session.turn is not None]
         if len(in_flight) > 1:
-            raise ValueError(f"turns are in flight in {[one.slug for one in in_flight]}")
+            raise ValueError(f"turns are in flight in {[session.slug for session in in_flight]}")
         return in_flight[0] if in_flight else None
 
     def busy_refusal(self) -> str | None:
@@ -350,20 +350,20 @@ class Runtime:
                 return str(unplayable)
             return None
 
-        written = await engine.author(meta, source, packs, _worldsmith(self.spawner), playable)
-        write_scenario(self.settings.scenarios_dir, name, written, document)
+        scenario = await engine.author(meta, source, packs, _worldsmith(self.spawner), playable)
+        write_scenario(self.settings.scenarios_dir, name, scenario, document)
         LOGGER.info("scenario written: slug=%s title=%r", name, meta.title)
         return name
 
     def _scenario_ids(self) -> tuple[str, ...]:
         directory = self.settings.scenarios_dir
-        return tuple(one.name for one in directory.iterdir()) if directory.is_dir() else ()
+        return tuple(entry.name for entry in directory.iterdir()) if directory.is_dir() else ()
 
     def session(self, target: LaunchTarget) -> GameService:
         """Memoised: a page render must not rebuild the game and drop the turn in flight."""
-        held = self._sessions.get(target.slug)
-        if held is not None:
-            return held
+        session = self._sessions.get(target.slug)
+        if session is not None:
+            return session
         opened = self._open(target)
         self._sessions[target.slug] = opened
         return opened

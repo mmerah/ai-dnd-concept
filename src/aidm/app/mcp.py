@@ -17,7 +17,7 @@ _ARGUMENTS = TypeAdapter(dict[str, JsonValue])
 
 
 def list_tools(runtime: Runtime) -> list[types.Tool]:
-    return [_published(one) for one in runtime.published_tools()]
+    return [_published(tool) for tool in runtime.published_tools()]
 
 
 def call(runtime: Runtime, name: str, raw: dict[str, JsonValue]) -> str:

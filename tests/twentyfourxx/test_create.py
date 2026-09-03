@@ -1,7 +1,7 @@
 import pytest
 from pydantic import BaseModel
 
-from aidm.core.entities import EngineId
+from aidm.core.entities import EngineId, Refusal
 from aidm.core.model import Character
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 
@@ -81,7 +81,7 @@ def test_pick_past_d12_is_refused() -> None:
         "increase-2": "stealth",
         "increase-3": "stealth",
     }
-    with pytest.raises(ValueError):
+    with pytest.raises(Refusal):
         ENGINE.create_character("Rook", "A quiet operator", picks)
 
 
@@ -116,7 +116,7 @@ def test_preview_character_ends_with_gear_row() -> None:
 
 def test_preview_character_refuses_foreign_character_type() -> None:
     foreign = Character(id="x", engine=EngineId("other"), payload=_OtherPayload())
-    with pytest.raises(ValueError):
+    with pytest.raises(Refusal):
         ENGINE.preview_character(foreign)
 
 
@@ -126,5 +126,5 @@ def test_preview_character_refuses_a_sheet_that_is_not_the_players() -> None:
     stranger = character.model_copy(
         update={"payload": character.payload.model_copy(update={"id": "rook"})}
     )
-    with pytest.raises(ValueError, match="the player's"):
+    with pytest.raises(Refusal, match="the player's"):
         ENGINE.preview_character(stranger)

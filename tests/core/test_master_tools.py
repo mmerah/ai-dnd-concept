@@ -6,20 +6,20 @@ from pathlib import Path
 from random import Random
 
 import pytest
-from core_test_support import (
+from pydantic import BaseModel, JsonValue
+from support.loner import open_game
+from support.table import (
     LONER3E,
     ScriptedSpawner,
     change_args,
     changed,
     narrated,
     offline_settings,
-    open_game,
     play_turn,
     scenario_for,
     the_way_on,
     updated,
 )
-from pydantic import BaseModel, JsonValue
 
 import aidm.app.spawn as spawn_module
 from aidm.app.launch import LaunchTarget
@@ -27,7 +27,7 @@ from aidm.app.mcp import call, list_tools
 from aidm.app.runtime import CROSSED
 from aidm.app.spawn import CliSpawner, RunResult, final_message
 from aidm.config import Role
-from aidm.core.entities import EngineId, EntityId
+from aidm.core.entities import EngineId, EntityId, Refusal
 from aidm.core.facts import Fact
 from aidm.core.model import ScenarioMeta, WorldsmithAnswer
 from aidm.core.play import Answer, Narration, narration_text
@@ -64,10 +64,10 @@ class _SilentEngine(Loner3eEngine):
     async def advance(
         self, draft: Loner3eGame, intent: str, worldsmith: WorldsmithAnswer
     ) -> tuple[Fact, ...]:
-        written = SceneDraft[Loner3eSheet].model_validate_json(_bare_scene())
-        if (refused := scene_refusal(written, self.world(draft))) is not None:
+        scene = SceneDraft[Loner3eSheet].model_validate_json(_bare_scene())
+        if (refused := scene_refusal(scene, self.world(draft))) is not None:
             raise ValueError(refused)
-        return (*self.leaving(draft), *self.install(draft, written))
+        return (*self.leaving(draft), *self.install(draft, scene))
 
 
 VAULT_MAP = EntityId("vault-map")
@@ -132,7 +132,7 @@ async def test_a_second_game_in_flight_crashes_the_call_rather_than_routing_it(
 async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(
     tmp_path: Path,
 ) -> None:
-    landed: list[int] = []
+    counts: list[int] = []
 
     table = open_game(tmp_path)
 
@@ -141,14 +141,14 @@ async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(
         _ = table.call("change_world", change_args("reveal", entity_id=VAULT_MAP))
         turn = table.service.turn
         assert turn is not None
-        landed.append(len(turn.facts))
+        counts.append(len(turn.facts))
 
     table.spawner.turns.append(script)
     table.spawner.answers["narrator"] = [narrated("A chart, under the stone.")]
     await table.service.play(Answer(text="I lever up the flagstone."))
 
     assert "not permitted" in table.refusals[0]
-    assert landed == [1]
+    assert counts == [1]
     saved = table.saved()
     assert saved.payload.require(VAULT_MAP).known
     assert len(saved.payload.exchanges()[-1].facts) == 1
@@ -169,7 +169,7 @@ async def test_an_open_decision_blocks_every_other_tool_until_the_player_answers
     )
 
     assert state.pending is not None
-    assert any("waiting on the player" in one for one in table.answers)
+    assert any("waiting on the player" in answer for answer in table.answers)
     assert not state.payload.require(VAULT_MAP).known
 
     state = await play_turn(table, "I let it be.", narration="You step back.")
@@ -273,10 +273,10 @@ async def test_authoring_raises_when_the_worldsmith_never_meets_the_bar(tmp_path
     async def answer[M: BaseModel](
         prompt: str, model: type[M], refusal: Callable[[M], str | None]
     ) -> M:
-        written = model.model_validate(thin.model_dump())
-        if (refused := refusal(written)) is not None:
+        answer = model.model_validate(thin.model_dump())
+        if (refused := refusal(answer)) is not None:
             raise ValueError(f"the worldsmith answered nothing usable: {refused}")
-        return written
+        return answer
 
     with pytest.raises(ValueError, match="the scene needs"):
         _ = await table.service.engine.author(
@@ -293,7 +293,7 @@ async def test_a_turn_that_dies_after_asking_to_move_takes_its_write_with_it(
     table.spawner.answers["narrator"] = []
 
     _ = await play_turn(table, "I have what I came for.", the_way_on())
-    with pytest.raises(ValueError):
+    with pytest.raises(Refusal):
         _ = await play_turn(table, "Out into the cloister walk.", moving_on=True, narration="")
     state = await play_turn(table, "I look at the ledgers again.", narration="Dust, and more dust.")
 
@@ -521,10 +521,10 @@ def test_the_surface_publishes_for_the_engine_whose_turn_is_in_flight(tmp_path: 
     state = table.service.state
     table.service.turn = Turn.begin(table.service.engine, state, Answer(text="I look."), Random(0))
 
-    assert "roll_question" in [one.name for one in table.runtime.published_tools()]
+    assert "roll_question" in [tool.name for tool in table.runtime.published_tools()]
 
     table.service.turn = None
-    assert [one.name for one in table.runtime.published_tools()] == []
+    assert [tool.name for tool in table.runtime.published_tools()] == []
 
 
 # What `codex exec --json` actually printed, banner line and all.

@@ -1,5 +1,6 @@
 import pytest
 
+from aidm.core.entities import Refusal
 from aidm.core.views import Panel
 from aidm.engines.hub import (
     TAKE_JOB,
@@ -26,9 +27,9 @@ def test_a_board_of_one_offer_is_refused() -> None:
 
 
 def test_check_kind_refuses_a_kind_and_campaign_mismatch() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(Refusal):
         check_kind("campaign", None)
-    with pytest.raises(ValueError):
+    with pytest.raises(Refusal):
         check_kind("one-shot", _campaign())
 
     check_kind("campaign", _campaign())
@@ -49,7 +50,7 @@ def test_a_debrief_on_an_unwalked_job_is_refused() -> None:
 
 
 def test_check_walked_refuses_a_job_started_past_the_walk() -> None:
-    with pytest.raises(ValueError, match="started past the walk"):
+    with pytest.raises(Refusal, match="started past the walk"):
         _campaign(Job(title="A1", place="a1", started=2)).check_walked(2)
 
 

@@ -107,11 +107,11 @@ class SceneWorld[C: Person, P: Person](Mutable):
         if self.player.id in self.party:
             raise Refusal("the player cannot travel with themselves")
         require_unique("party", self.party)
-        for one in self.party:
-            if one not in self.cast:
-                raise Refusal(f"{one!r} travels with the player but is not in the cast")
-            if not self.cast[one].alive:
-                raise Refusal(f"{one!r} is dead and cannot travel with the player")
+        for member_id in self.party:
+            if member_id not in self.cast:
+                raise Refusal(f"{member_id!r} travels with the player but is not in the cast")
+            if not self.cast[member_id].alive:
+                raise Refusal(f"{member_id!r} is dead and cannot travel with the player")
         if left := sorted(set(self.party) - set(self.run.here)):
             raise Refusal(f"the party is in every scene; {left} are not in this one")
         return self
@@ -137,16 +137,16 @@ class SceneWorld[C: Person, P: Person](Mutable):
         return self.campaign is not None and self.run.place == self.campaign.place
 
     def present(self) -> list[EntityId]:
-        return [one for one in self.run.here if self.cast[one].known]
+        return [entity_id for entity_id in self.run.here if self.cast[entity_id].known]
 
     def hidden(self) -> list[EntityId]:
-        return [one for one in self.run.here if not self.cast[one].known]
+        return [entity_id for entity_id in self.run.here if not self.cast[entity_id].known]
 
     def job_runs(self) -> list[SceneRun]:
         return self.runs if self.campaign is None else self.campaign.since_start(self.runs)
 
     def exchanges(self) -> tuple[Exchange, ...]:
-        return tuple(one for run in self.runs for one in run.exchanges)
+        return tuple(exchange for run in self.runs for exchange in run.exchanges)
 
     def scenes(self) -> tuple[SceneRecord, ...]:
         return tuple(
@@ -167,36 +167,38 @@ class SceneWorld[C: Person, P: Person](Mutable):
         return ""
 
     def members(self) -> list[C]:
-        return [self.cast[one] for one in self.party]
+        return [self.cast[member_id] for member_id in self.party]
 
     def require(self, entity_id: EntityId) -> C | P:
         if entity_id == self.player.id:
             return self.player
-        one = self.cast.get(entity_id)
-        if one is None:
+        entity = self.cast.get(entity_id)
+        if entity is None:
             raise Refusal(f"unknown id {entity_id!r}. Use only ids you were shown.")
-        return one
+        return entity
 
     def require_here(self, entity_id: EntityId) -> C | P:
-        one = self.require(entity_id)
-        if one.id == self.player.id:
-            return one
-        if one.id not in self.run.here or not one.known:
-            raise Refusal(f"{one.name} is not here with the player, so nothing can happen to them")
-        return one
+        entity = self.require(entity_id)
+        if entity.id == self.player.id:
+            return entity
+        if entity.id not in self.run.here or not entity.known:
+            raise Refusal(
+                f"{entity.name} is not here with the player, so nothing can happen to them"
+            )
+        return entity
 
     def require_alive_here(self, entity_id: EntityId) -> C | P:
-        one = self.require(entity_id)
-        if not one.alive:
-            raise Refusal(f"{one.name} is dead; they take no further part.")
-        if one.id == self.player.id:
-            return one
-        if one.id not in self.run.here or not one.known:
+        entity = self.require(entity_id)
+        if not entity.alive:
+            raise Refusal(f"{entity.name} is dead; they take no further part.")
+        if entity.id == self.player.id:
+            return entity
+        if entity.id not in self.run.here or not entity.known:
             raise Refusal(
                 f"{entity_id!r} is not here with the player. "
                 "Bring them here first, or act on who is here."
             )
-        return one
+        return entity
 
     def here(self) -> Iterator[C | P]:
         yield self.player
@@ -205,60 +207,63 @@ class SceneWorld[C: Person, P: Person](Mutable):
 
     def reveal_hidden(self, entity_id: EntityId) -> list[Fact]:
         """The discovery itself, distinct from what `enter` tells about someone walking in."""
-        one = self.require(entity_id)
-        if entity_id not in self.run.here or one.known:
+        entity = self.require(entity_id)
+        if entity_id not in self.run.here or entity.known:
             raise Refusal(f"{entity_id!r} is not hidden here")
-        facts = one.reveal()
-        return [facts[0].model_copy(update={"card": sentence(f"{one.name} discovered")})]
+        facts = entity.reveal()
+        return [facts[0].model_copy(update={"card": sentence(f"{entity.name} discovered")})]
 
     def enter(self, entity_id: EntityId) -> list[Fact]:
         if entity_id == self.player.id:
             raise Refusal("the player is in every scene; move the story on instead")
-        one = self.require(entity_id)
-        if one.id in self.run.here:
-            raise Refusal(f"{one.name} is already here")
-        self.run.here.append(one.id)
-        trace = f"{one.label} arrives"
-        return [*one.reveal(), one.fact("entity_entered", trace, card=f"{one.name} arrives")]
+        entity = self.require(entity_id)
+        if entity.id in self.run.here:
+            raise Refusal(f"{entity.name} is already here")
+        self.run.here.append(entity.id)
+        trace = f"{entity.label} arrives"
+        return [
+            *entity.reveal(),
+            entity.fact("entity_entered", trace, card=f"{entity.name} arrives"),
+        ]
 
     def leave(self, entity_id: EntityId) -> list[Fact]:
         if entity_id == self.player.id:
             raise Refusal("the player is in every scene; move the story on instead")
-        one = self.require_here(entity_id)
-        if one.id in self.party:
-            raise Refusal(f"{one.name} travels with the player and leaves through `leave_party`")
-        self.run.here.remove(one.id)
-        return [one.fact("entity_left", f"{one.label} leaves", card=f"{one.name} leaves")]
+        entity = self.require_here(entity_id)
+        if entity.id in self.party:
+            raise Refusal(f"{entity.name} travels with the player and leaves through `leave_party`")
+        self.run.here.remove(entity.id)
+        return [entity.fact("entity_left", f"{entity.label} leaves", card=f"{entity.name} leaves")]
 
     def kill(self, entity_id: EntityId) -> list[Fact]:
-        one = self.require_here(entity_id)
-        if not one.alive:
-            raise Refusal(f"{one.name} is already dead")
-        facts = one.reveal()
-        if one.id in self.party:
-            self.party.remove(one.id)
-        one.alive = False
-        card = "You are dead" if one.id == self.player.id else f"{one.name} is dead"
-        facts.append(one.fact("actor_killed", f"{one.label} is dead", card=card))
+        entity = self.require_here(entity_id)
+        if not entity.alive:
+            raise Refusal(f"{entity.name} is already dead")
+        facts = entity.reveal()
+        if entity.id in self.party:
+            self.party.remove(entity.id)
+        entity.alive = False
+        card = "You are dead" if entity.id == self.player.id else f"{entity.name} is dead"
+        facts.append(entity.fact("actor_killed", f"{entity.label} is dead", card=card))
         return facts
 
     def join_party(self, entity_id: EntityId) -> list[Fact]:
-        one = self.require_alive_here(entity_id)
-        if one.id in self.party:
-            raise Refusal(f"{one.name} already travels with the player")
-        facts = one.reveal()
-        self.party.append(one.id)
-        trace = f"{one.name}[{one.id}] travels with the player"
-        facts.append(one.fact("party_joined", trace, card=f"{one.name} joins your party"))
+        entity = self.require_alive_here(entity_id)
+        if entity.id in self.party:
+            raise Refusal(f"{entity.name} already travels with the player")
+        facts = entity.reveal()
+        self.party.append(entity.id)
+        trace = f"{entity.name}[{entity.id}] travels with the player"
+        facts.append(entity.fact("party_joined", trace, card=f"{entity.name} joins your party"))
         return facts
 
     def leave_party(self, entity_id: EntityId) -> list[Fact]:
-        one = self.require(entity_id)
-        if one.id not in self.party:
-            raise Refusal(f"{one.name} does not travel with the player")
-        self.party.remove(one.id)
-        trace = f"{one.name}[{one.id}] no longer travels with the player"
-        return [one.fact("party_left", trace, card=f"{one.name} leaves your party")]
+        entity = self.require(entity_id)
+        if entity.id not in self.party:
+            raise Refusal(f"{entity.name} does not travel with the player")
+        self.party.remove(entity.id)
+        trace = f"{entity.name}[{entity.id}] no longer travels with the player"
+        return [entity.fact("party_left", trace, card=f"{entity.name} leaves your party")]
 
     def settle(self, job_done: bool, pursuit: str) -> list[Fact]:
         if self.run.left is not None:
@@ -277,10 +282,10 @@ class SceneWorld[C: Person, P: Person](Mutable):
         return {
             **self.cast,
             **{
-                one: held.model_copy(update={"brief": written.brief})
-                if (held := self.cast.get(one)) is not None
-                else written
-                for one, written in draft.cast.items()
+                entity_id: filed.model_copy(update={"brief": entry.brief})
+                if (filed := self.cast.get(entity_id)) is not None
+                else entry
+                for entity_id, entry in draft.cast.items()
             },
         }
 
@@ -289,8 +294,8 @@ class SceneWorld[C: Person, P: Person](Mutable):
         everyone: Mapping[EntityId, Thing] = {self.player.id: self.player, **self.cast}
         present = resolve_ids(draft.present, everyone, "present")
         hidden = resolve_ids(draft.hidden, everyone, "hidden")
-        for one in present:
-            self.cast[one].known = True
+        for entity_id in present:
+            self.cast[entity_id].known = True
         if isinstance(draft, NextDraft):
             self.run.recap = draft.recap
         if isinstance(draft, JobDraft | ReturnDraft):
@@ -359,7 +364,7 @@ def resolved_id(wanted: str, cast: Mapping[EntityId, Thing]) -> EntityId | None:
     """Ids are the worldsmith's failure mode: an unknown one matches a cast name before refusal."""
     if wanted in cast:
         return EntityId(wanted)
-    matches = [one.id for one in cast.values() if one.name.casefold() == wanted.casefold()]
+    matches = [entry.id for entry in cast.values() if entry.name.casefold() == wanted.casefold()]
     return EntityId(matches[0]) if len(matches) == 1 else None
 
 
@@ -367,10 +372,10 @@ def resolve_ids(
     wanted: Iterable[str], cast: Mapping[EntityId, Thing], where: str
 ) -> list[EntityId]:
     found: list[EntityId] = []
-    for one in wanted:
-        matched = resolved_id(one, cast)
+    for name in wanted:
+        matched = resolved_id(name, cast)
         if matched is None:
-            raise Refusal(f"the scene lists {one!r} as {where}, and no such id or name exists")
+            raise Refusal(f"the scene lists {name!r} as {where}, and no such id or name exists")
         if matched not in found:
             found.append(matched)
     return found

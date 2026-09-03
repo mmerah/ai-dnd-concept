@@ -52,7 +52,8 @@ def render_narrator(
             ("WHAT THIS SCENE IS ABOUT", view.focus),
             (
                 "WHO IS HERE",
-                "\n".join(f"- {one.name} — {one.brief}" for one in view.subjects) or "- (none)",
+                "\n".join(f"- {subject.name} — {subject.brief}" for subject in view.subjects)
+                or "- (none)",
             ),
             ("WHAT HAPPENED", evidence),
             ("PLAYER ACTION", prompt),
@@ -69,7 +70,9 @@ def _prompt(name: str) -> str:
 def _waiting(pending: PendingDecision | None) -> str:
     if pending is None:
         return "- (nothing; the turn is yours to run)"
-    lines = [f"- {one.id}: {one.label} {one.detail}".rstrip() for one in pending.options]
+    lines = [
+        f"- {option.id}: {option.label} {option.detail}".rstrip() for option in pending.options
+    ]
     lines.append(
         "- (the player answers in their own words)"
         if pending.allows_text

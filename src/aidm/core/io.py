@@ -131,9 +131,9 @@ def write_character(directory: Path, character: AnyCharacter) -> None:
     # One folder is one person played by several engines, so any sibling settles who that is.
     sibling = next(folder.glob("*.json"), None)
     if sibling is not None:
-        held, named = _read(sibling, CharacterHeader).payload.name, character.payload.name
-        if held != named:
-            raise Refusal(f"character {character.id!r} is {held!r}, not {named!r}")
+        filed, named = _read(sibling, CharacterHeader).payload.name, character.payload.name
+        if filed != named:
+            raise Refusal(f"character {character.id!r} is {filed!r}, not {named!r}")
     write_text(path, character.model_dump_json(indent=2))
 
 

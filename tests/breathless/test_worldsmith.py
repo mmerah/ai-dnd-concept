@@ -1,11 +1,5 @@
-from breathless_test_support import (
-    HUB_PLACE,
-    HUB_SITUATION,
-    SITUATION,
-    hub_world,
-    small_world,
-)
-from core_test_support import the_campaign
+from support.breathless import HUB_PLACE, HUB_SITUATION, SITUATION, hub_world, small_world
+from support.table import the_campaign
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
@@ -75,9 +69,9 @@ def test_a_dead_draft_cast_member_is_refused() -> None:
 def test_a_hidden_multi_word_name_in_situation_is_refused() -> None:
     world = small_world().payload
     stalker = EntityId("stalker")
-    told = f"{SITUATION} Old Man Riley waits by the dumpster."
+    situation = f"{SITUATION} Old Man Riley waits by the dumpster."
     draft = _draft(
-        situation=told,
+        situation=situation,
         present=("mira",),
         hidden=(stalker,),
         cast={stalker: Person(id=stalker, name="Old Man Riley", brief="")},

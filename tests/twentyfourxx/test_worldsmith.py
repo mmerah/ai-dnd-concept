@@ -1,9 +1,9 @@
 from collections.abc import Callable
 
 import pytest
-from core_test_support import the_campaign
 from pydantic import BaseModel
-from twentyfourxx_test_support import (
+from support.table import the_campaign
+from support.twentyfourxx import (
     HUB_PLACE,
     HUB_SITUATION,
     JOB,
@@ -15,7 +15,7 @@ from twentyfourxx_test_support import (
     small_world,
 )
 
-from aidm.core.entities import EngineId, EntityId
+from aidm.core.entities import EngineId, EntityId, Refusal
 from aidm.core.facts import Fact
 from aidm.core.model import AnyScenario, ScenarioMeta, WorldsmithAnswer
 from aidm.engines.base import PLAYER_ID, Person
@@ -46,8 +46,8 @@ def _draft(**fields: object) -> SceneDraft[Person]:
     return SceneDraft[Person].model_validate({**base, **fields})
 
 
-def _built(written: SceneDraft[Person]) -> AnyScenario:
-    return ENGINE.build_scenario(ScenarioMeta(title="Loading Bay", premise=""), (), written, "")
+def _built(draft: SceneDraft[Person]) -> AnyScenario:
+    return ENGINE.build_scenario(ScenarioMeta(title="Loading Bay", premise=""), (), draft, "")
 
 
 def test_apply_scene_resolves_present_by_name() -> None:
@@ -176,9 +176,9 @@ def test_a_dead_draft_cast_member_is_refused() -> None:
 def test_a_hidden_multi_word_name_in_situation_is_refused() -> None:
     world = small_world().payload
     stalker = EntityId("stalker")
-    told = f"{SITUATION} Old Man Riley waits by the containers."
+    situation = f"{SITUATION} Old Man Riley waits by the containers."
     draft = _draft(
-        situation=told,
+        situation=situation,
         present=("kestrel",),
         hidden=(stalker,),
         cast={stalker: Person(id=stalker, name="Old Man Riley", brief="")},
@@ -262,7 +262,7 @@ def test_opening_canon_marks_present_known() -> None:
 
 
 def test_build_scenario_refuses_an_unmet_draft() -> None:
-    with pytest.raises(ValueError, match="cast member besides the player"):
+    with pytest.raises(Refusal, match="cast member besides the player"):
         _ = _built(_draft())
 
 
@@ -329,9 +329,9 @@ async def test_write_next_picks_the_draft_the_moment_calls_for() -> None:
             chosen = _job_draft()
         else:
             chosen = _next_draft(present=("fixer",))
-        written = model.model_validate(chosen.model_dump())
-        assert refusal(written) is None
-        return written
+        answer = model.model_validate(chosen.model_dump())
+        assert refusal(answer) is None
+        return answer
 
     _ = await _written(game, GO_HOME, answer)
     assert recorded[-1] is ReturnDraft[Person]

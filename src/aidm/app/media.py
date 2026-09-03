@@ -205,7 +205,7 @@ def illustration_request(
         "Draw one wide, borderless view of this place from the eye level of someone there. "
         "Show a single scene, not a portrait or comic panel.",
         f"The place: {scene.title} — {scene.situation}",
-        *(f"Present: {one.name} — {one.brief}" for one in scene.subjects),
+        *(f"Present: {subject.name} — {subject.brief}" for subject in scene.subjects),
     ]
     if narration:
         lines.append(f"What just happened: {narration}")

@@ -1,14 +1,9 @@
 from pathlib import Path
 
-from core_test_support import EnvFileFreeSettings
 from pydantic import SecretStr
 
 from aidm.config import ProviderConfig, Providers, Settings
-
-REPOSITORY_ROOT = Path(__file__).parents[2]
-
-
-SCENARIOS = REPOSITORY_ROOT / "scenarios"
+from support.table import REPOSITORY_ROOT, SCENARIOS, EnvFileFreeSettings
 
 
 def ui_settings(saves_dir: Path, scenarios_dir: Path = SCENARIOS) -> Settings:

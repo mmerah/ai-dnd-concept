@@ -1,5 +1,5 @@
-from core_test_support import ENGINES_BUILT, TWENTYFOURXX
-from twentyfourxx_test_support import LOCKPICKS, small_world
+from support.table import ENGINES_BUILT, TWENTYFOURXX
+from support.twentyfourxx import LOCKPICKS, small_world
 
 from aidm.core.views import PanelRow
 from aidm.engines.twentyfourxx.engine import gear_detail

@@ -1,7 +1,7 @@
 import pytest
-from tunnelgoons_test_support import HALL, MIRA, START, small_world
+from support.tunnelgoons import HALL, MIRA, START, small_world
 
-from aidm.core.entities import EntityId
+from aidm.core.entities import EntityId, Refusal
 from aidm.engines.tunnelgoons.world import Item, Visit, Way
 
 GHOST = EntityId("ghost")
@@ -12,21 +12,21 @@ def test_an_item_on_nothing_is_refused() -> None:
     draft.payload.items[EntityId("stray")] = Item(
         id=EntityId("stray"), name="Stray", brief="Nobody's", known=True, on=GHOST
     )
-    with pytest.raises(ValueError, match="on nothing"):
+    with pytest.raises(Refusal, match="on nothing"):
         _ = draft.commit()
 
 
 def test_an_npc_in_no_place_is_refused() -> None:
     draft = small_world().draft()
     draft.payload.npcs[MIRA].place = GHOST
-    with pytest.raises(ValueError, match="no place"):
+    with pytest.raises(Refusal, match="no place"):
         _ = draft.commit()
 
 
 def test_a_way_to_a_non_place_is_refused() -> None:
     draft = small_world().draft()
     draft.payload.ways[START].append(Way(to=GHOST))
-    with pytest.raises(ValueError, match="not a place"):
+    with pytest.raises(Refusal, match="not a place"):
         _ = draft.commit()
 
 

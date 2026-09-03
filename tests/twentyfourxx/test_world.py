@@ -1,8 +1,8 @@
 import pytest
-from core_test_support import ENGINES_BUILT, TWENTYFOURXX
-from twentyfourxx_test_support import KESTREL, hub_world, small_world
+from support.table import ENGINES_BUILT, TWENTYFOURXX
+from support.twentyfourxx import KESTREL, hub_world, small_world
 
-from aidm.core.entities import EntityId
+from aidm.core.entities import EntityId, Refusal
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.twentyfourxx.engine import starting_items
 from aidm.engines.twentyfourxx.world import (
@@ -31,7 +31,7 @@ def test_raised_steps_up_the_ladder() -> None:
 
 
 def test_raised_refuses_past_d12() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(Refusal):
         raised(12)
 
 
@@ -86,7 +86,7 @@ def test_check_filing_rejects_mis_filed_cast() -> None:
 def test_require_alive_here_refuses_dead_cast_member() -> None:
     world = small_world().payload
     world.cast[KESTREL].alive = False
-    with pytest.raises(ValueError):
+    with pytest.raises(Refusal):
         world.require_alive_here(KESTREL)
 
 

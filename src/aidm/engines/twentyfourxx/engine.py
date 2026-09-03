@@ -277,7 +277,7 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
             event = DiceEvent(label=die_label, faces=(die,), rolled=rolled)
 
         result = outcome(face)
-        shown = ", ".join(str(one) for one in event.rolled)
+        shown = ", ".join(str(value) for value in event.rolled)
         trace = f"{args.what} — {label} {die_label} [{shown}] -> {result}"
         card = f"{args.what} — {sentence(label)} {die_label} → {result}"
         qualifiers = "; ".join(
@@ -352,16 +352,16 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
 
     def change_hindrances(self, world: TwentyfourxxWorld, change: ChangeHindrances) -> list[Fact]:
         player = world.player
-        held = set(player.hindrances)
-        for one in change.gained:
-            if one in held:
-                raise Refusal(f"{one!r} is already among the player's hindrances")
-            held.add(one)
-        for one in change.lost:
-            if one not in player.hindrances:
-                raise Refusal(f"{one!r} is not among the player's hindrances")
-        for one in change.lost:
-            player.hindrances.remove(one)
+        current = set(player.hindrances)
+        for hindrance in change.gained:
+            if hindrance in current:
+                raise Refusal(f"{hindrance!r} is already among the player's hindrances")
+            current.add(hindrance)
+        for hindrance in change.lost:
+            if hindrance not in player.hindrances:
+                raise Refusal(f"{hindrance!r} is not among the player's hindrances")
+        for hindrance in change.lost:
+            player.hindrances.remove(hindrance)
         player.hindrances.extend(change.gained)
         parts: list[str] = []
         if change.gained:

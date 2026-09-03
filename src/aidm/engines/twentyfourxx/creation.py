@@ -46,7 +46,7 @@ class Pack(ScenePack):
     @model_validator(mode="after")
     def _every_pick_told(self) -> Self:
         """A pick's detail is its prompt text, so a pack may not leave it blank."""
-        untold = [one.id for one in (*self.specialties, *self.origins) if not one.detail]
+        untold = [option.id for option in (*self.specialties, *self.origins) if not option.detail]
         if untold:
             raise Refusal(f"no detail for {', '.join(untold)}")
         return self
