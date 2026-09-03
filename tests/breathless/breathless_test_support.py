@@ -1,12 +1,8 @@
 from collections.abc import Sequence
 
-import pytest
-
 from aidm.core.entities import EngineId, EntityId
-from aidm.core.facts import Fact
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.breathless.tools import ChangeWorld, apply_change
 from aidm.engines.breathless.world import (
     BreathlessGame,
     BreathlessWorld,
@@ -80,21 +76,6 @@ def hub_world() -> BreathlessGame:
         engine=EngineId("breathless"),
         payload=world,
     )
-
-
-def changed_facts(draft: BreathlessGame, verb: str, **fields: object) -> list[Fact]:
-    change = ChangeWorld.model_validate({"change": {"verb": verb, **fields}})
-    return apply_change(draft.payload, change.change)
-
-
-def changed(draft: BreathlessGame, verb: str, **fields: object) -> list[str]:
-    return [fact.trace for fact in changed_facts(draft, verb, **fields)]
-
-
-def refused(draft: BreathlessGame, verb: str, **fields: object) -> str:
-    with pytest.raises(ValueError) as raised:
-        _ = changed(draft, verb, **fields)
-    return str(raised.value)
 
 
 def _scene(*, here: Sequence[EntityId] = ()) -> SceneRun:

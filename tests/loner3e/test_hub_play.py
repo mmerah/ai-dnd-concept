@@ -1,11 +1,12 @@
 from loner3e_test_support import HUB_PLACE, HUB_SITUATION, KEEPER, hub_world
 
 from aidm.core.entities import EntityId
-from aidm.engines.loner3e.engine import GROWTH_NOTE
+from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eSheet
 from aidm.engines.scenes.drafts import HubDraft, ReturnDraft, SceneDraft
-from aidm.engines.scenes.world import scene_refusal
-from aidm.engines.scenes.worldsmith import install_scene, opening_canon
+from aidm.engines.scenes.worldsmith import opening_canon, scene_refusal
+
+ENGINE = Loner3eEngine()
 
 
 def _draft(**fields: object) -> SceneDraft[Loner3eSheet]:
@@ -54,7 +55,7 @@ def test_install_scene_on_a_finished_return_swaps_board_notes_job_keeps_companio
     world.party = [scout]
     world.jobs[-1].finished = True
 
-    facts = install_scene(game, _return_draft(), finished_note=GROWTH_NOTE)
+    facts = ENGINE.install(game, _return_draft())
 
     world = game.payload
     assert [offer.title for offer in world.board] == ["Job 1", "Job 2"]
@@ -66,9 +67,9 @@ def test_install_scene_on_a_finished_return_swaps_board_notes_job_keeps_companio
 
 def test_install_scene_on_an_open_return_skips_the_growth_note() -> None:
     game = hub_world()
-    facts = install_scene(game, _return_draft(), finished_note=GROWTH_NOTE)
+    facts = ENGINE.install(game, _return_draft())
     assert [fact.kind for fact in facts] == ["job_closed", "scene_opened"]
-    assert game.notes == ()
+    assert game.notes == []
 
 
 def _opening(**fields: object) -> SceneDraft[Loner3eSheet]:

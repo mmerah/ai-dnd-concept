@@ -3,7 +3,7 @@ from core_test_support import initialized
 from pydantic import ValidationError
 
 from aidm.core.entities import EntityId
-from aidm.engines.base import Counter, counter_fact
+from aidm.engines.base import Counter
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
 
 KAEL = Loner3eSheet(id=EntityId("kael"), name="Kael", brief="", known=True)
@@ -25,11 +25,12 @@ def test_counter_rejects_current_outside_its_bounds() -> None:
 def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> None:
     state = _state()
     KAEL.luck.current = 0
-    (changed,) = counter_fact(KAEL, KAEL.luck, 99, "Luck", "the strain", state.payload.player.id)
+    (changed,) = KAEL.luck.change(KAEL, 99, "Luck", "the strain")
     assert (changed.card, KAEL.luck.current) == ("Kael: Luck +6 -> 6/6", 6)
-    assert counter_fact(KAEL, KAEL.luck, 99, "Luck", "the strain", state.payload.player.id) == []
+    assert KAEL.luck.change(KAEL, 99, "Luck", "the strain") == []
+    assert KAEL.luck.adjust(-2) == -2
 
     player = state.payload.player
     player.luck.current = 0
-    (own,) = counter_fact(player, player.luck, 1, "Luck", "the strain", state.payload.player.id)
+    (own,) = player.luck.change(player, 1, "Luck", "the strain")
     assert own.card == "Luck +1 -> 1/6"

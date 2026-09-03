@@ -19,8 +19,6 @@ RETRIES = 1
 KEPT_ENV = ("PATH", "HOME", "LANG", "TERM")
 # What `ask` asks of the value it parsed, beyond its own schema; the reason re-prompts.
 type Check[T] = Callable[[T], str | None]
-# One spawn: the prompt, and the conversation to carry on, if any.
-type Spawn = Callable[[str, str | None], Awaitable["RunResult"]]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -191,9 +189,9 @@ def final_message(output: str) -> str:
 async def ask[T: BaseModel](
     role: Role,
     prompt: str,
-    expect: type[T],
-    check: Check[T],
-    spawn: Spawn,
+    model: type[T],
+    refusal: Check[T],
+    spawn: Callable[[str, str | None], Awaitable[RunResult]],
 ) -> T:
     """The one retry, shared: a role that fails twice fails its step, loudly."""
     asked, refused, held = prompt, "", None
@@ -201,8 +199,8 @@ async def ask[T: BaseModel](
         try:
             spoken = await spawn(asked, held)
             held = spoken.session
-            answer = expect.model_validate_json(final_message(spoken.text))
-            if (refused := check(answer)) is None:
+            answer = model.model_validate_json(final_message(spoken.text))
+            if (refused := refusal(answer)) is None:
                 return answer
         except ValidationError as invalid:
             refused = str(invalid)

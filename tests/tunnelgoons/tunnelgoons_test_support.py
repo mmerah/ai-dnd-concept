@@ -1,11 +1,7 @@
-import pytest
-
 from aidm.core.entities import EngineId, EntityId
-from aidm.core.facts import Fact
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Counter
 from aidm.engines.hub import Offer
-from aidm.engines.tunnelgoons.tools import ChangeWorld, apply_change
 from aidm.engines.tunnelgoons.world import (
     Goon,
     Item,
@@ -32,7 +28,7 @@ TAVERN = EntityId("tavern")
 
 def _map_pieces() -> tuple[
     dict[EntityId, Place],
-    dict[EntityId, tuple[Way, ...]],
+    dict[EntityId, list[Way]],
     dict[EntityId, Npc],
     dict[EntityId, Item],
 ]:
@@ -68,10 +64,10 @@ def _map_pieces() -> tuple[
         ),
     }
     ways = {
-        START: (Way(to=HALL, known=True), Way(to=VAULT, known=False)),
-        HALL: (Way(to=START, known=True), Way(to=VAULT, known=True, locked=True)),
-        VAULT: (Way(to=HALL, known=False), Way(to=CRYPT, known=False), Way(to=START, known=False)),
-        CRYPT: (Way(to=VAULT, known=False),),
+        START: [Way(to=HALL, known=True), Way(to=VAULT, known=False)],
+        HALL: [Way(to=START, known=True), Way(to=VAULT, known=True, locked=True)],
+        VAULT: [Way(to=HALL, known=False), Way(to=CRYPT, known=False), Way(to=START, known=False)],
+        CRYPT: [Way(to=VAULT, known=False)],
     }
     mira = Npc(
         id=MIRA,
@@ -145,8 +141,8 @@ def hub_world(*, with_map: bool = True) -> TunnelGoonsGame:
         places = {**places, TAVERN: tavern}
         ways = {
             **ways,
-            TAVERN: (Way(to=START, known=True),),
-            START: (*ways[START], Way(to=TAVERN, known=True)),
+            TAVERN: [Way(to=START, known=True)],
+            START: [*ways[START], Way(to=TAVERN, known=True)],
         }
     else:
         places, ways, npcs, items = {TAVERN: tavern}, {}, {}, {}
@@ -171,18 +167,3 @@ def hub_world(*, with_map: bool = True) -> TunnelGoonsGame:
         engine=EngineId("tunnelgoons"),
         payload=world,
     )
-
-
-def changed_facts(draft: TunnelGoonsGame, verb: str, **fields: object) -> list[Fact]:
-    change = ChangeWorld.model_validate({"change": {"verb": verb, **fields}})
-    return apply_change(draft.payload, change.change)
-
-
-def changed(draft: TunnelGoonsGame, verb: str, **fields: object) -> list[str]:
-    return [fact.trace for fact in changed_facts(draft, verb, **fields)]
-
-
-def refused(draft: TunnelGoonsGame, verb: str, **fields: object) -> str:
-    with pytest.raises(ValueError) as raised:
-        _ = changed(draft, verb, **fields)
-    return str(raised.value)

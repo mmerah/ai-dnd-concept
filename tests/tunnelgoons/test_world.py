@@ -4,7 +4,7 @@ from tunnelgoons_test_support import HALL, MIRA, START, hub_world, small_world
 
 from aidm.core.entities import EntityId
 from aidm.engines.hub import Job
-from aidm.engines.tunnelgoons.world import Item, Visit, Way, frontier, has_shortcut, walk
+from aidm.engines.tunnelgoons.world import Item, Visit, Way
 
 GHOST = EntityId("ghost")
 
@@ -27,7 +27,7 @@ def test_an_npc_in_no_place_is_refused() -> None:
 
 def test_a_way_to_a_non_place_is_refused() -> None:
     draft = small_world().draft()
-    draft.payload.ways[START] = (*draft.payload.ways[START], Way(to=GHOST))
+    draft.payload.ways[START].append(Way(to=GHOST))
     with pytest.raises(ValueError, match="not a place"):
         _ = draft.commit()
 
@@ -41,17 +41,17 @@ def test_a_visit_off_the_player_is_refused() -> None:
 
 def test_walk_reaches_every_place_along_the_ways() -> None:
     world = small_world().payload
-    assert walk(world.ways, START) == set(world.places)
+    assert world.reachable(START) == set(world.places)
 
 
 def test_has_shortcut_finds_the_alternate_route_to_the_vault() -> None:
     world = small_world().payload
-    assert has_shortcut(world.ways)
+    assert world.has_shortcut()
 
 
 def test_frontier_counts_the_one_unknown_place_past_a_known_one() -> None:
     world = small_world().payload
-    assert frontier(world) == 1
+    assert world.frontier() == 1
 
 
 def test_a_debrief_on_an_unwalked_job_is_refused() -> None:

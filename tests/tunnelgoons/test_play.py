@@ -4,6 +4,8 @@ from random import Random
 
 from core_test_support import TUNNELGOONS, open_game_for, play_turn, tool_call
 
+from aidm.core.play import Answer
+
 # A miss against the crawler's DS 6 (brute 1 + 2d6[1,1] = 3): the margin lands on the player.
 FIGHT_SEED = 2
 MARGIN = 3
@@ -81,11 +83,11 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
         tool_call("move", to_id="corridor"),
         tool_call("move", to_id="cellar"),
     )
-    assert table.service.transition_available()
+    assert table.service.engine.ready(table.service.state)
 
     before_turn, before_place = state.turn, state.payload.player.place
     table.spawner.answers["worldsmith"] = [json.dumps(REGION)]
-    await table.service.play("Deeper in.", moving_on=True)
+    await table.service.play(Answer(text="Deeper in."), moving_on=True)
 
     after = table.state
     assert after.turn == before_turn

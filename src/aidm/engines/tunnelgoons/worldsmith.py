@@ -1,41 +1,12 @@
-import json
-from collections.abc import Sequence
-from pathlib import Path
+from pydantic import Field
 
-from pydantic import ConfigDict, Field
-
-from aidm.core.entities import CheckedEntityId, EngineId, EntityId, Frozen, Refusal, Slug
-from aidm.core.facts import Fact
-from aidm.core.io import ENCODING
-from aidm.core.model import AnyScenario, ScenarioKind, ScenarioMeta, WorldsmithAnswer
-from aidm.core.tools import schema_of
-from aidm.core.views import Rows, render_history, sections
-from aidm.engines.hub import (
-    OFFER_ASK,
-    RETURN_BRIEF,
-    Board,
-    Job,
-    board_lines,
-    job_closed,
-    ledger,
-)
-from aidm.engines.tunnelgoons.views import REPORT_IN, entity_line
-from aidm.engines.tunnelgoons.world import (
-    Dungeon,
-    MapCanon,
-    Place,
-    TunnelGoonsGame,
-    TunnelGoonsScenario,
-    TunnelGoonsWorld,
-    Way,
-    frontier,
-    has_shortcut,
-    walk,
-)
+from aidm.core.entities import CheckedEntityId, Frozen
+from aidm.core.model import ScenarioKind
+from aidm.engines.hub import OFFER_ASK, Board
+from aidm.engines.tunnelgoons.world import Dungeon, MapCanon, TunnelGoonsWorld
 
 MIN_PLACES = 4
 MIN_EXTENSION_PLACES = 2
-WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
 TAVERN_ASK = (
     "(no map yet — write the tavern: one known place, its keeper and regulars as npcs, no ways "
     "out, and a `board` of two or three offers; " + OFFER_ASK + ")"
@@ -52,8 +23,6 @@ JOB_BRIEF = (
 
 class MapDraft(Dungeon):
     """The worldsmith's complete authored region: the map, and what stands and lies in it."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
 
     start: CheckedEntityId
     board: Board | None = None  # a campaign's opening tavern only
@@ -99,101 +68,6 @@ def opening_canon(draft: MapDraft, source: str, kind: ScenarioKind) -> MapCanon:
     )
 
 
-def attach(world: TunnelGoonsWorld, draft: MapDraft, *, known: bool) -> None:
-    """No bar runs here: every caller refuses first, so a rejected region leaves the world alone."""
-    anchor_id = world.current.id
-    world.places.update(draft.places)
-    world.ways.update(draft.ways)
-    world.npcs.update(draft.npcs)
-    world.items.update(draft.items)
-    _append_way(world.ways, anchor_id, draft.start, known)
-    _append_way(world.ways, draft.start, anchor_id, known)
-
-
-def install_extension(state: TunnelGoonsGame, written: MapDraft | ReturnDraft) -> list[Fact]:
-    world = state.payload
-    if isinstance(written, ReturnDraft):
-        job = world.open_job()
-        if job is None or job.started is None:
-            raise Refusal("no job is open to report")
-        job.debrief = written.debrief
-        world.board = written.offers
-        return [job_closed(job)]
-    if world.at_hub:
-        if (refused := job_refusal(written, world)) is not None:
-            raise Refusal(refused)
-        tavern = world.current
-        attach(world, written, known=True)
-        start = written.places[written.start]
-        if (job := world.open_job()) is not None and job.started is None:
-            world.jobs.pop()
-        world.jobs.append(Job(title=start.name, place=written.start))
-        trace = f"a way opens from {tavern.name} to {start.name}"
-        card = f"A way opens: {start.name}"
-        return [Fact(kind="job_taken", told=True, trace=trace, card=card)]
-    if (refused := extension_refusal(written, world)) is not None:
-        raise Refusal(refused)
-    anchor = world.current.name
-    attach(world, written, known=False)
-    trace = f"a hidden region opens beyond {anchor}"
-    return [Fact(kind="region_added", trace=trace, told=False)]
-
-
-async def write_extension(
-    state: TunnelGoonsGame, intent: str, answer: WorldsmithAnswer
-) -> MapDraft | ReturnDraft:
-    world = state.payload
-    if world.at_hub and intent == REPORT_IN:
-        if not world.job_open:
-            raise Refusal("no job is open to report")
-        return await answer(_render_return(world), ReturnDraft, lambda _written: None)
-    if world.at_hub and world.job_open:
-        raise Refusal("report the open job first")
-
-    bar = job_refusal if world.at_hub else extension_refusal
-    prompt = _render_job(world, intent) if world.at_hub else _render_extension(world, intent)
-    return await answer(prompt, MapDraft, lambda written: bar(written, world))
-
-
-def render_map(source: str, picks: Sequence[Slug], kind: ScenarioKind) -> str:
-    """One map serves both kinds; `picks` stays unused — Tunnel Goons ships no packs to pick."""
-    map_so_far = TAVERN_ASK if kind == "campaign" else "(no map yet — write the opening map)"
-    return sections(
-        (
-            ("YOUR ROLE", WORLDSMITH),
-            ("SOURCE MATERIAL", source or "(none — write from the setting)"),
-            ("MAP SO FAR", map_so_far),
-            ("ANSWER WITH", json.dumps(schema_of(MapDraft), indent=2, ensure_ascii=False)),
-        )
-    )
-
-
-def build_scenario(
-    title: str,
-    premise: str,
-    packs: tuple[Slug, ...],
-    written: MapDraft,
-    source: str,
-    kind: ScenarioKind,
-) -> AnyScenario:
-    bar = hub_refusal if kind == "campaign" else map_refusal
-    if (refused := bar(written)) is not None:
-        raise Refusal(refused)
-    return TunnelGoonsScenario(
-        meta=ScenarioMeta(
-            title=title, premise=premise or written.places[written.start].description, kind=kind
-        ),
-        engine=EngineId("tunnelgoons"),
-        packs=packs,
-        payload=opening_canon(written, source, kind),
-    )
-
-
-def way_open(state: TunnelGoonsGame) -> bool:
-    world = state.payload
-    return world.at_hub or frontier(world) == 0
-
-
 def _map_unmet(draft: MapDraft) -> list[str]:
     places = draft.places
     unmet: list[str] = []
@@ -209,7 +83,7 @@ def _map_unmet(draft: MapDraft) -> list[str]:
         unmet.append("at least one way starting locked")
     if not _has_hidden_thing(draft):
         unmet.append("at least one hidden npc or item")
-    if not has_shortcut(draft.ways):
+    if not draft.has_shortcut():
         unmet.append("a shortcut with an alternate route")
     return unmet
 
@@ -229,7 +103,7 @@ def _start_unmet(draft: MapDraft) -> list[str]:
     else:
         if not places[draft.start].known:
             unmet.append("the starting place known to the player")
-        if missing := sorted(set(places) - walk(draft.ways, draft.start)):
+        if missing := sorted(set(places) - draft.reachable(draft.start)):
             unmet.append(f"places no walk of ways reaches from {draft.start!r}: {missing}")
     return unmet
 
@@ -247,7 +121,7 @@ def _extension_unmet(draft: MapDraft) -> list[str]:
     else:
         if places[draft.start].known:
             unmet.append("a starting place hidden from the player")
-        if missing := sorted(set(places) - walk(draft.ways, draft.start)):
+        if missing := sorted(set(places) - draft.reachable(draft.start)):
             unmet.append(f"places no walk of ways reaches from {draft.start!r}: {missing}")
     if not any(way for leaving in draft.ways.values() for way in leaving):
         unmet.append("ways connecting the new places")
@@ -272,70 +146,3 @@ def _board_unmet(draft: MapDraft) -> list[str]:
 
 def _has_hidden_thing(draft: MapDraft) -> bool:
     return any(not one.known for one in (*draft.npcs.values(), *draft.items.values()))
-
-
-def _append_way(
-    ways: dict[EntityId, tuple[Way, ...]], from_id: EntityId, to_id: EntityId, known: bool
-) -> None:
-    ways[from_id] = (*ways.get(from_id, ()), Way(to=to_id, known=known))
-
-
-def _render_extension(world: TunnelGoonsWorld, intent: str, hub: Rows = ()) -> str:
-    return sections(
-        (
-            ("YOUR ROLE", WORLDSMITH),
-            ("SOURCE MATERIAL", world.source or "(none — write from the setting)"),
-            ("MAP SO FAR", _map_so_far(world)),
-            *hub,
-            ("THE PLAYER", entity_line(world, world.player)),
-            ("WHAT THE PLAYER WANTS TO PURSUE", intent),
-            ("ANSWER WITH", json.dumps(schema_of(MapDraft), indent=2, ensure_ascii=False)),
-        )
-    )
-
-
-def _render_job(world: TunnelGoonsWorld, intent: str) -> str:
-    return _render_extension(
-        world,
-        intent,
-        (
-            ("JOBS SO FAR", ledger(world.closed_jobs())),
-            ("THE BOARD", board_lines(world.board)),
-            ("THE HUB", JOB_BRIEF.format(title=world.current.name, place=world.hub)),
-        ),
-    )
-
-
-def _render_return(world: TunnelGoonsWorld) -> str:
-    job = world.open_job()
-    verdict = "finished" if job is not None and job.finished else "left open"
-    return sections(
-        (
-            ("YOUR ROLE", WORLDSMITH),
-            ("SOURCE MATERIAL", world.source or "(none — write from the setting)"),
-            ("MAP SO FAR", _map_so_far(world)),
-            ("JOBS SO FAR", ledger(world.closed_jobs())),
-            ("THIS JOB", render_history(world.scenes())),
-            ("THE BOARD", board_lines(world.board)),
-            ("THE VERDICT", verdict),
-            ("THE PLAYER", entity_line(world, world.player)),
-            ("WHAT COMES NEXT", RETURN_BRIEF.format(title=world.current.name, place=world.hub)),
-            ("ANSWER WITH", json.dumps(schema_of(ReturnDraft), indent=2, ensure_ascii=False)),
-        )
-    )
-
-
-def _map_so_far(world: TunnelGoonsWorld) -> str:
-    seen: dict[EntityId, Place] = {}
-    for visit in world.visits:
-        seen.setdefault(visit.place, world.require_place(visit.place))
-    lines: list[str] = []
-    for place in seen.values():
-        known_ways = ", ".join(
-            world.require_place(one.to).name for one in world.ways.get(place.id, ()) if one.known
-        )
-        lines.append(
-            f"{place.name}[{place.id}] — {place.description}\n"
-            f"  known ways out: {known_ways or '(none)'}"
-        )
-    return "\n".join(lines)

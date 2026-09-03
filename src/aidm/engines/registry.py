@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from aidm.core.entities import EngineId, Refusal, Slug, require_unique
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario
 from aidm.engines.breathless.engine import BreathlessEngine
@@ -9,14 +7,8 @@ from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 
 
-def build_engines(packs_dir: Path) -> dict[EngineId, AnyEngine]:
-    """User packs sit in a folder named for the engine, beside the ones the package ships."""
-    engines = (
-        Loner3eEngine(packs_dir / "loner3e"),
-        TunnelGoonsEngine(),
-        BreathlessEngine(packs_dir / "breathless"),
-        TwentyfourxxEngine(packs_dir / "twentyfourxx"),
-    )
+def build_engines() -> dict[EngineId, AnyEngine]:
+    engines = (Loner3eEngine(), TunnelGoonsEngine(), BreathlessEngine(), TwentyfourxxEngine())
     require_unique("engine ids", (engine.id for engine in engines))
     return {engine.id: engine for engine in engines}
 

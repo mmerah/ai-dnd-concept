@@ -2,7 +2,7 @@ from pathlib import Path
 from random import Random
 
 import pytest
-from core_test_support import LONER3E_PACKS, Table, open_game, play_turn, tool_call
+from core_test_support import Table, open_game, play_turn, tool_call
 from pydantic import Field, ValidationError
 
 from aidm.core.entities import Frozen, Refusal
@@ -13,12 +13,7 @@ from aidm.core.tools import MasterTool, NoArgs, master_tool
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
 from aidm.engines.seam import AnyEngine
-from aidm.turn.run import (
-    RULES_WAIT,
-    Turn,
-    _apply,  # pyright: ignore[reportPrivateUsage]
-    consume_answer,
-)
+from aidm.turn.run import RULES_WAIT, Turn
 
 
 class Broken(Frozen):
@@ -92,8 +87,9 @@ def _strike_tool(*, narrate: bool) -> MasterTool[Loner3eGame]:
 
 
 def _engine(*, narrate: bool = True) -> AnyEngine:
-    engine = Loner3eEngine(LONER3E_PACKS)
-    engine.tools = (_strike_tool(narrate=narrate), TURN_THE_HIT, CHAIN_THE_HIT)
+    engine = Loner3eEngine()
+    tools = (_strike_tool(narrate=narrate), TURN_THE_HIT, CHAIN_THE_HIT)
+    engine.tools = {one.name: one for one in tools}
     return engine
 
 
@@ -129,7 +125,7 @@ async def test_a_hand_back_that_moved_no_fiction_gets_no_prose(tmp_path: Path) -
     table = _deciding(tmp_path, narrate=False)
     table.spawner.turns.append(table.plays((tool_call("strike"),)))
 
-    await table.service.play("I charge the guard.")
+    await table.service.play(Answer(text="I charge the guard."))
 
     state = table.service.state
     assert [role for role, _ in table.spawner.prompts] == ["master"]
@@ -178,7 +174,7 @@ def test_a_change_may_run_on_a_state_already_suspended_on_a_decision(tmp_path: P
         return ()
 
     turn = Turn(engine=engine, draft=_pending(state).draft(), rng=Random(0))
-    _ = _apply(turn, nothing)
+    _ = turn._apply(nothing)  # pyright: ignore[reportPrivateUsage]
     assert turn.draft.pending == DECISION
 
 
@@ -187,7 +183,7 @@ def test_a_second_decision_is_refused_while_one_is_already_open(tmp_path: Path) 
     turn = Turn(engine=engine, draft=_pending(state).draft(), rng=Random(0))
 
     with pytest.raises(ValueError, match="one at a time"):
-        _ = _apply(turn, lambda draft, _rng: _hit(draft, narrate=False))
+        _ = turn._apply(lambda draft, _rng: _hit(draft, narrate=False))  # pyright: ignore[reportPrivateUsage]
 
 
 def _option(**changes: object) -> PendingOption:
@@ -217,9 +213,8 @@ def test_a_decision_whose_options_are_the_whole_pick_refuses_an_answer_in_words(
     closed = DECISION.model_copy(update={"allows_text": False})
 
     with pytest.raises(ValueError, match="takes one of its options, not words"):
-        _ = consume_answer(
-            Turn(engine=engine, draft=_pending(state, closed).draft(), rng=Random(0)),
-            Answer(text="I dive aside"),
+        Turn(engine=engine, draft=_pending(state, closed).draft(), rng=Random(0)).consume(
+            Answer(text="I dive aside")
         )
 
 

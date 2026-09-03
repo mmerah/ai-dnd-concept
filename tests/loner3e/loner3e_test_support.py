@@ -14,18 +14,14 @@ from aidm.app.runtime import GameService, LaunchTarget
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.io import FileStore
 from aidm.core.model import ScenarioMeta
-from aidm.engines.base import PLAYER_ID, read_packs
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.hub import Job, Offer
-from aidm.engines.loner3e.creation import Pack
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.loner3e.tools import Oracle, twist_table
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet, Loner3eWorld
 from aidm.engines.scenes.world import SceneRun
 
 TARGET = LaunchTarget(scenario_id="whispering-vault", character_id="kael")
-PACKS = read_packs((Loner3eEngine.directory / "packs",), Pack)
-TWISTS = twist_table(PACKS)
-ORACLE = Oracle(PACKS)
+ENGINE = Loner3eEngine()
 
 HUB_PLACE = "guild-hall"
 JOB_PLACE = "sealed-cairn"

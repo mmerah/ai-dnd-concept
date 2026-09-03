@@ -1,45 +1,17 @@
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
-from random import Random
+from collections.abc import Sequence
 from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.entities import CheckedEntityId, Frozen, Refusal, Slug, require_unique
-from aidm.core.facts import DiceEvent, Fact, roll
-from aidm.core.play import DecisionOption, PendingDecision
-from aidm.core.tools import MasterTool, master_tool
-from aidm.engines.base import (
-    CHANGE_WORLD,
-    Counter,
-    JoinParty,
-    LeaveParty,
-    counter_fact,
-    entity_fact,
-    join_party,
-    keep_highest,
-    leave_party,
-)
-from aidm.engines.loner3e.creation import Pack
-from aidm.engines.loner3e.world import (
-    DIE_FACE,
-    LUCK_MAX,
-    Loner3eGame,
-    Loner3eSheet,
-    Loner3eWorld,
-    TagKind,
-    set_tags,
-    tags_of,
-)
-from aidm.engines.scenes.world import NEXT_SCENE, Enter, Kill, Leave, NextScene, Reveal
+from aidm.core.entities import CheckedEntityId, Frozen, Slug
+from aidm.core.play import DecisionOption
+from aidm.engines.loner3e.world import Loner3eSheet, Loner3eWorld, TagKind
+from aidm.engines.scenes.tools import Enter, JoinParty, Kill, Leave, LeaveParty, Reveal
 
 AND_AT = 4  # both dice 4+ sharpens the answer to -and
 BUT_AT = 3  # both dice 3 or under softens it to -but
 
-SRD_PACK: Slug = "srd"
-
 type Position = Literal["advantage", "neutral", "disadvantage"]
-type WorldChange = Reveal | Enter | Leave | ChangeTags | Drive | Kill | JoinParty | LeaveParty
 
 
 class ChangeTags(Frozen):
@@ -72,6 +44,9 @@ class Drive(Frozen):
     nemesis: str = Field(
         default="", description="Who or what stands in their way. Empty keeps the current nemesis."
     )
+
+
+type WorldChange = Reveal | Enter | Leave | ChangeTags | Drive | Kill | JoinParty | LeaveParty
 
 
 class ChangeWorld(Frozen):
@@ -114,99 +89,6 @@ class RestoreLuck(Frozen):
     actor_id: CheckedEntityId = Field(description="Exact id of the player or a character here.")
 
 
-@dataclass(frozen=True, slots=True)
-class Oracle:
-    """The rules that read the table sets: a tie that fills the Twist Counter rolls on them."""
-
-    packs: Mapping[str, Pack]
-
-    def resolve_question(self, draft: Loner3eGame, action: Question, rng: Random) -> list[Fact]:
-        world = draft.payload
-        actor = world.require_alive_here(action.actor_id)
-        facts = world.reveal(actor)
-        opponent: Loner3eSheet | None = None
-        if action.opponent_id is not None:
-            opponent = world.require_alive_here(action.opponent_id)
-            facts.extend(world.reveal(opponent))
-        _refuse_unless_ready(actor, opponent)
-
-        chance_kept, chance, risk_kept, risk, facts_rolled = _pair(action, rng)
-        facts.extend(facts_rolled)
-
-        outcome = outcome_for(chance_kept, risk_kept)
-        answered_at = len(facts)
-        facts.append(
-            entity_fact(actor, "question_answered", f"{action.question} -> {outcome.name}")
-        )
-        effects: tuple[str, ...] = ()
-        if opponent is not None:
-            exchange, effects = _absorbed(_strike(draft, actor, opponent, outcome))
-            facts.extend(exchange)
-            # The pools refill the moment a side hits 0, so only the fact says the conflict ended.
-            if not any(fact.kind == "conflict_lost" for fact in exchange):
-                draft.pending = PendingDecision(
-                    kind="conflict",
-                    prompt=conflict_prompt(world, actor, opponent),
-                    options=(),
-                    allows_text=True,
-                )
-        # SRD: the Twist Counter does not apply to Harm & Luck, so a tied conflict roll never
-        # ticks it.
-        if chance_kept == risk_kept and opponent is None:
-            twist = draft.payload.twist
-            twist.current += 1
-            if _shortfall(twist) == 0:
-                twist.current = 0
-                facts.extend(_twist(draft, actor, rng, twist_table(self.packs)))
-        # The question is master-authored and names unrevealed canon even on a "no": never shown.
-        edge = f" ({action.edge})" if action.edge else ""
-        card = "\n".join(
-            (f"Oracle — {action.position.capitalize()}{edge} → {outcome.name}", *effects)
-        )
-        facts[answered_at] = facts[answered_at].model_copy(
-            update={"card": card, "dice": (chance, risk)}
-        )
-        return facts
-
-
-def apply_change(world: Loner3eWorld, change: WorldChange) -> list[Fact]:
-    """Every arm settles its own deterministic consequences, so a call leaves nothing half-done."""
-    match change:
-        case Reveal():
-            return world.reveal_hidden(change.entity_id)
-        case Enter():
-            return world.enter(change.entity_id)
-        case Leave():
-            return world.leave(change.entity_id)
-        case ChangeTags():
-            return _change_tags(world, world.require_alive_here(change.entity_id), change)
-        case Drive():
-            return _drive(world, world.require_alive_here(change.entity_id), change)
-        case Kill():
-            return world.kill(change.entity_id)
-        case JoinParty():
-            one = world.require_alive_here(change.entity_id)
-            return [*world.reveal(one), join_party(world.party, one)]
-        case LeaveParty():
-            return [leave_party(world.party, world.require(change.entity_id))]
-
-
-def change_world(draft: Loner3eGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-    return apply_change(draft.payload, args.change)
-
-
-def next_scene(draft: Loner3eGame, args: NextScene, _rng: Random) -> list[Fact]:
-    return draft.payload.settle(args.job_done, args.pursuit)
-
-
-def twist_table(packs: Mapping[str, Pack]) -> tuple[tuple[str, str], ...]:
-    """Always the SRD's own table: no other pack publishes one."""
-    srd = packs.get(SRD_PACK)
-    if srd is None or srd.twist_subjects is None or srd.twist_actions is None:
-        raise Refusal("the SRD table set with its twist columns is not installed")
-    return tuple(zip(srd.twist_subjects, srd.twist_actions, strict=True))
-
-
 def outcome_for(chance: int, risk: int) -> Outcome:
     if chance == risk:
         return Outcome(name="yes-but", harm=1)
@@ -216,34 +98,6 @@ def outcome_for(chance: int, risk: int) -> Outcome:
     if max(chance, risk) <= BUT_AT:
         return Outcome(name=f"{side}-but", harm=sign)
     return Outcome(name=side, harm=2 * sign)
-
-
-def apply_restore_luck(draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
-    actor = draft.payload.require_alive_here(args.actor_id)
-    facts = draft.payload.reveal(actor)
-    # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
-    facts.extend(_refill(draft, actor, "the conflict is behind them"))
-    return facts
-
-
-def close_conflicts(draft: Loner3eGame) -> tuple[Fact, ...]:
-    """A scene ends its conflicts so nobody carries a spent pool on; the dead keep theirs."""
-    facts: list[Fact] = []
-    for one in draft.payload.here():
-        if one.alive and one.luck.current < LUCK_MAX:
-            facts.extend(_refill(draft, one, "the scene is over"))
-    return tuple(facts)
-
-
-def meanings(
-    packs: Mapping[str, Pack], selected: Sequence[Slug], one: Loner3eSheet
-) -> tuple[tuple[str, str], ...]:
-    chosen = tuple(packs[pack_id] for pack_id in selected)
-    # The concept's pack blurb is generic where the entity's own brief is not: skip it.
-    return _pack_meanings(
-        tuple(entry for pack in chosen for entry in (*pack.skills, *pack.frailties, *pack.gear)),
-        (*one.skills, *one.frailties, *one.gear),
-    )
 
 
 def conflict_prompt(world: Loner3eWorld, actor: Loner3eSheet, opponent: Loner3eSheet) -> str:
@@ -278,155 +132,7 @@ def defeat_note(name: str) -> str:
     )
 
 
-def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[Loner3eGame], ...]:
-    """Four tools: two world tools, then the two SRD procedures that roll or reset."""
-    oracle = Oracle(packs)
-    return (
-        master_tool("change_world", CHANGE_WORLD, ChangeWorld, change_world),
-        master_tool(
-            "next_scene",
-            NEXT_SCENE,
-            NextScene,
-            next_scene,
-        ),
-        master_tool(
-            "roll_question",
-            "Roll Chance against Risk for one closed dramatic question.",
-            Question,
-            oracle.resolve_question,
-        ),
-        master_tool(
-            "restore_luck",
-            "Restore an actor's luck after a conflict ends.",
-            RestoreLuck,
-            apply_restore_luck,
-        ),
-    )
-
-
-def _change_tags(world: Loner3eWorld, one: Loner3eSheet, change: ChangeTags) -> list[Fact]:
-    if not change.gained and not change.lost:
-        raise Refusal("change_tags needs at least one gained or lost tag")
-    require_unique(f"{change.kind} tags", (*change.gained, *change.lost))
-    current = tags_of(one, change.kind)
-    if held := [tag for tag in change.gained if tag in current]:
-        raise Refusal(f"{one.name} already carries the {change.kind} {held[0]!r}")
-    if missing := [tag for tag in change.lost if tag not in current]:
-        raise Refusal(f"{one.name} carries no {change.kind} {missing[0]!r}")
-    set_tags(
-        one, change.kind, tuple(tag for tag in (*current, *change.gained) if tag not in change.lost)
-    )
-    deltas = (*(f"+{tag}" for tag in change.gained), *(f"-{tag}" for tag in change.lost))
-    trace = f"{world.label(one)} {change.kind} " + ", ".join(deltas)
-    parts: list[str] = []
-    if change.gained:
-        took = ", ".join(change.gained)
-        parts.append(f"Took {took}" if change.kind == "gear" else f"Now: {took}")
-    if change.lost:
-        lost = ", ".join(change.lost)
-        parts.append(f"Lost {lost}" if change.kind == "gear" else f"No longer: {lost}")
-    return [entity_fact(one, "tags_changed", trace, card="; ".join(parts))]
-
-
-def _drive(world: Loner3eWorld, one: Loner3eSheet, change: Drive) -> list[Fact]:
-    if not change.goal and not change.motive and not change.nemesis:
-        raise Refusal("drive needs a goal, a motive or a nemesis to set")
-    parts: list[str] = []
-    if change.goal:
-        one.goal = change.goal
-        parts.append(f"goal: {change.goal}")
-    if change.motive:
-        one.motive = change.motive
-        parts.append(f"motive: {change.motive}")
-    if change.nemesis:
-        one.nemesis = change.nemesis
-        parts.append(f"nemesis: {change.nemesis}")
-    trace = f"{world.label(one)} " + "; ".join(parts)
-    card = f"{one.name}: {change.goal}" if change.goal else ""
-    return [entity_fact(one, "drive_set", trace, card=card)]
-
-
-def _absorbed(exchange: list[Fact]) -> tuple[list[Fact], tuple[str, ...]]:
-    """The exchange reads as lines inside the Oracle card, so it shows no cards of its own."""
-    lines = tuple(fact.card for fact in exchange if fact.told and fact.card)
-    return [fact.model_copy(update={"card": ""}) for fact in exchange], lines
-
-
-def _shortfall(pool: Counter) -> int:
-    """How far a bounded pool sits below full."""
-    return pool.maximum - pool.current
-
-
-def _refill(draft: Loner3eGame, side: Loner3eSheet, why: str) -> list[Fact]:
-    return counter_fact(
-        side, side.luck, _shortfall(side.luck), "Luck", why, draft.payload.player.id
-    )
-
-
-def _twist(
-    draft: Loner3eGame, actor: Loner3eSheet, rng: Random, twists: tuple[tuple[str, str], ...]
-) -> list[Fact]:
-    """The SRD's table is rolled here so the dice trace; the model only reads the pairing."""
-    faces = (DIE_FACE, DIE_FACE)
-    rolled, rolled_fact = roll(faces, "twist — subject, action", rng)
-    subject, action = twist_pairing(rolled[0], rolled[1], twists)
-    draft.notes = (*draft.notes, twist_note(subject, action))
-    # Echo the unnamed SRD intrusion in the call that rolled it without adding canon.
-    due = entity_fact(
-        actor,
-        "twist_due",
-        f"a twist interrupts the scene: {subject} / {action}",
-        card=f"Twist — {subject} / {action}",
-        dice=(DiceEvent(label="Twist", faces=faces, rolled=rolled),),
-    )
-    return [rolled_fact, due]
-
-
-def _strike(
-    draft: Loner3eGame, actor: Loner3eSheet, opponent: Loner3eSheet, outcome: Outcome
-) -> list[Fact]:
-    harm = outcome.harm
-    hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
-    why = f"{striker.name} gets the better of the exchange"
-    facts = counter_fact(hit, hit.luck, -abs(harm), "Luck", why, draft.payload.player.id)
-    if hit.luck.current != 0:
-        return facts
-    draft.notes = (*draft.notes, defeat_note(hit.name))
-    lost = f"{hit.name} is out of luck"
-    facts.append(entity_fact(hit, "conflict_lost", lost, card=lost))
-    # SRD: luck resets after conflicts, and a side at 0 is the only end the engine sees.
-    facts.extend(_refill(draft, hit, "the conflict is over"))
-    facts.extend(_refill(draft, striker, "the conflict is over"))
-    return facts
-
-
-def _refuse_unless_ready(actor: Loner3eSheet, opponent: Loner3eSheet | None) -> None:
-    if opponent is None:
-        return
-    if opponent.id == actor.id:
-        raise Refusal(f"{actor.name} cannot be their own opposition in a conflict.")
-    for side in (actor, opponent):
-        if side.luck.current == 0:
-            raise Refusal(
-                f"{side.name} is already out of luck, so that conflict is over. Settle what it "
-                "costs them instead of rolling it again."
-            )
-
-
-def _pair(action: Question, rng: Random) -> tuple[int, DiceEvent, int, DiceEvent, list[Fact]]:
-    """One extra die at most, and only for the side the judged position favours."""
-    face = DIE_FACE
-    chance_faces = (face, face) if action.position == "advantage" else (face,)
-    risk_faces = (face, face) if action.position == "disadvantage" else (face,)
-    asked = action.question
-    chance_kept, chance, chance_fact = keep_highest(
-        chance_faces, f"{asked} — chance", rng, label="Chance"
-    )
-    risk_kept, risk, risk_fact = keep_highest(risk_faces, f"{asked} — risk", rng, label="Risk")
-    return chance_kept, chance, risk_kept, risk, [chance_fact, risk_fact]
-
-
-def _pack_meanings(
+def pack_meanings(
     entries: Sequence[DecisionOption], tags: Sequence[str]
 ) -> tuple[tuple[str, str], ...]:
     detail_of = {entry.label: entry.detail for entry in entries if entry.detail}

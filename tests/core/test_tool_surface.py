@@ -8,7 +8,6 @@ from random import Random
 import pytest
 from core_test_support import (
     LONER3E,
-    LONER3E_PACKS,
     ScriptedSpawner,
     change_args,
     changed,
@@ -31,13 +30,12 @@ from aidm.config import Role
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.facts import Fact
 from aidm.core.model import WorldsmithAnswer
-from aidm.core.play import Narration, narration_text
+from aidm.core.play import Answer, Narration, narration_text
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
 from aidm.engines.scenes.drafts import SceneDraft
-from aidm.engines.scenes.world import scene_refusal
-from aidm.engines.scenes.worldsmith import install_scene
+from aidm.engines.scenes.worldsmith import scene_refusal
 from aidm.turn.run import NO_TURN, Turn
 
 
@@ -57,7 +55,8 @@ class _Watched:
 class _SilentEngine(Loner3eEngine):
     """A Loner engine whose world grows with no crossing to narrate."""
 
-    crossing = None
+    def crossing(self, pursuit: str) -> None:
+        return None
 
     def ready(self, state: Loner3eGame) -> bool:
         return True
@@ -68,10 +67,7 @@ class _SilentEngine(Loner3eEngine):
         written = SceneDraft[Loner3eSheet].model_validate_json(_bare_scene())
         if (refused := scene_refusal(written, self.world(draft))) is not None:
             raise ValueError(refused)
-        return (
-            *self.leaving(draft),
-            *install_scene(draft, written, finished_note=self.finished_note),
-        )
+        return (*self.leaving(draft), *self.install(draft, written))
 
 
 VAULT_MAP = EntityId("vault-map")
@@ -129,7 +125,7 @@ async def test_a_second_game_in_flight_crashes_the_call_rather_than_routing_it(
     table.spawner.turns.append(script)
     table.spawner.answers["narrator"] = [narrated("Dust hangs.")]
     with pytest.raises(ValueError, match="turns are in flight"):
-        await table.service.play("I look around.")
+        await table.service.play(Answer(text="I look around."))
     assert not table.refusals
 
 
@@ -149,7 +145,7 @@ async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(
 
     table.spawner.turns.append(script)
     table.spawner.answers["narrator"] = [narrated("A chart, under the stone.")]
-    await table.service.play("I lever up the flagstone.")
+    await table.service.play(Answer(text="I lever up the flagstone."))
 
     assert "not permitted" in table.refusals[0]
     assert landed == [1]
@@ -251,11 +247,11 @@ async def test_a_transition_without_an_arrival_brief_extends_on_a_lineless_excha
             shown.append(table.service.intent)
             return await super().advance(draft, intent, worldsmith)
 
-    table.service.engine = Watching(LONER3E_PACKS)
+    table.service.engine = Watching()
     before = table.state.turn
     runs = len(table.state.payload.runs)
 
-    await table.service.play("Out into the cloister walk.", moving_on=True)
+    await table.service.play(Answer(text="Out into the cloister walk."), moving_on=True)
 
     # The page has no turn to read the bubble from here, so the service holds the words.
     assert (shown, table.service.intent) == (["Out into the cloister walk."], "")
@@ -389,7 +385,7 @@ async def test_the_turn_is_filed_before_the_worldsmith_is_asked(tmp_path: Path) 
     before = len(table.service.engine.history(table.service.state))
     table.spawner.turns.append(table.plays(()))
     table.spawner.answers["narrator"] = [narrated("You pull the door to."), narrated("Rain.")]
-    await table.service.play("Out into the cloister walk.", moving_on=True)
+    await table.service.play(Answer(text="Out into the cloister walk."), moving_on=True)
 
     assert filed == [before + 1]
 
@@ -517,13 +513,13 @@ async def test_abandoning_a_spawn_kills_the_process_group_it_started(
 
 def test_the_surface_publishes_for_the_engine_whose_turn_is_in_flight(tmp_path: Path) -> None:
     table = open_game(tmp_path)
-    toolless = Loner3eEngine(LONER3E_PACKS)
+    toolless = Loner3eEngine()
     toolless.id = EngineId("mirror")
-    toolless.tools = ()
+    toolless.tools = {}
     # First of the installed engines, so reading the engines instead of the turn would show it.
     table.runtime.engines = {toolless.id: toolless, **table.runtime.engines}
     state = table.service.state
-    table.service.turn = Turn.begin(table.service.engine, state, "I look.", Random(0))
+    table.service.turn = Turn.begin(table.service.engine, state, Answer(text="I look."), Random(0))
 
     assert "roll_question" in [one.name for one in table.runtime.published_tools()]
 

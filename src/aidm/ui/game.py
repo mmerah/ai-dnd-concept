@@ -9,10 +9,9 @@ from time import monotonic
 from nicegui import ui
 
 from aidm.app.runtime import BEGUN, CROSSED, GameService, Runtime
+from aidm.config import Role
 from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import Answer, Speaker
-from aidm.core.views import speaker_of
-from aidm.turn.run import TurnStep
 from aidm.ui.panels import journal_panel, scene_sidebar
 from aidm.ui.widgets import (
     avatar,
@@ -25,7 +24,7 @@ _SCENE_HEIGHT = "calc(25vh - 1rem)"
 
 _ART_BOX = f"flex: none; height: {_SCENE_HEIGHT}; max-width: 50%; aspect-ratio: 16 / 9"
 
-_STEP_COPY: dict[TurnStep, tuple[str, str]] = {
+_STEP_COPY: dict[Role, tuple[str, str]] = {
     "master": (
         "Game Master",
         "Works out what your action actually does: who reacts, what changes, "
@@ -53,7 +52,7 @@ class GameView:
     composer: ui.input | None = None
     transcript: ui.scroll_area | None = None
     # What the last poll read: the phase, the facts landed, the exchanges filed.
-    seen: tuple[TurnStep | None, int, int] = (None, 0, 0)
+    seen: tuple[Role | None, int, int] = (None, 0, 0)
     step_started: float | None = None
     ticker: ui.label | None = None
 
@@ -73,7 +72,7 @@ def refresh_all() -> None:
 
 @ui.refreshable
 def scene_header(session: GameService) -> None:
-    scene = session.scene()
+    scene = session.engine.narrator_view(session.state)
     # A quarter of the column at most: the art holds it and the text beside it scrolls.
     with (
         ui.row()
@@ -98,7 +97,7 @@ def chat(view: GameView) -> None:
         ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
     # The live decision widget sits directly below the last exchange, so it needs no pause line.
     last = history[-1] if history and session.state.pending is not None else None
-    player = speaker_of(session.player_view().player)
+    player = session.player_view().player.speaker()
     for exchange in history:
         if exchange.prompt in (BEGUN, CROSSED):
             # A turn nobody played: the story's own marker, never the player's words.
@@ -123,12 +122,12 @@ def live_turn(view: GameView) -> None:
     session = view.session
     turn = session.turn
     if turn is not None:
-        _bubble(session, speaker_of(session.player_view().player), turn.prompt, sent=True)
+        _bubble(session, session.player_view().player.speaker(), turn.prompt, sent=True)
         shown = cards(turn.facts)
         for fact in shown:
             _card(fact, live=fact is shown[-1])
     elif session.intent:
-        _bubble(session, speaker_of(session.player_view().player), session.intent, sent=True)
+        _bubble(session, session.player_view().player.speaker(), session.intent, sent=True)
     view.ticker = None
     if session.phase is not None:
         elapsed = 0.0 if view.step_started is None else monotonic() - view.step_started
@@ -183,8 +182,7 @@ async def submit(view: GameView, box: ui.input, moving_on: bool = False) -> None
     box.value = ""
     # Quasar never saw the typed value change, so only an explicit push empties the composer.
     box.run_method("updateValue")
-    typed_input = typed if session.player_view().prompt is None else Answer(text=typed)
-    await _send(view, typed_input, moving_on=moving_on)
+    await _send(view, Answer(text=typed), moving_on=moving_on)
 
 
 async def move_on(view: GameView, intent: str) -> None:
@@ -194,13 +192,13 @@ async def move_on(view: GameView, intent: str) -> None:
     if pending is not None and not pending.allows_text:
         ui.notify("Choose an option above.", type="warning")
         return
-    await _send(view, intent if pending is None else Answer(text=intent), moving_on=True)
+    await _send(view, Answer(text=intent), moving_on=True)
 
 
 @ui.refreshable
 def way_on_panel(view: GameView) -> None:
     """The banner, not the offer: legible after a reload, once the asking has scrolled away."""
-    if not view.session.transition_available():
+    if not view.session.engine.ready(view.session.state):
         return
     with (
         ui.row().classes("game-card game-decision w-full items-center no-wrap").style("gap: 0.4rem")
@@ -263,7 +261,7 @@ def composer(view: GameView) -> None:
             .props("no-caps outline dense")
             .bind_enabled_from(session, "phase", backward=partial(_can_type, session))
             .bind_visibility_from(
-                session, "phase", backward=lambda _: session.transition_available()
+                session, "phase", backward=lambda _: session.engine.ready(session.state)
             )
         )
     view.composer = box
@@ -367,7 +365,7 @@ def _bubble(session: GameService, speaker: Speaker | None, text: str, *, sent: b
         avatar(icon, None if speaker is None else name)
 
 
-def _inline_status(step: TurnStep, elapsed: float) -> ui.label:
+def _inline_status(step: Role, elapsed: float) -> ui.label:
     label, description = _STEP_COPY[step]
     with ui.row().classes("items-center no-wrap q-py-xs").style("gap: 0.4rem"):
         ui.spinner(size="1.1rem")
@@ -395,7 +393,7 @@ def _composer_placeholder(view: GameView) -> str:
     return "What do you do?"
 
 
-def _observed(session: GameService) -> tuple[TurnStep | None, int, int]:
+def _observed(session: GameService) -> tuple[Role | None, int, int]:
     """The phase, the facts landed, the exchanges filed: what a render depends on."""
     turn = session.turn
     return (
@@ -424,12 +422,12 @@ async def _open(view: GameView) -> None:
     await _run(view, view.session.open)
 
 
-async def _send(view: GameView, player_input: str | Answer, *, moving_on: bool = False) -> None:
+async def _send(view: GameView, answer: Answer, *, moving_on: bool = False) -> None:
     session = view.session
-    await _run(view, lambda: session.play(player_input, moving_on=moving_on))
+    await _run(view, lambda: session.play(answer, moving_on=moving_on))
 
 
-def _can_type(session: GameService, phase: TurnStep | None) -> bool:
+def _can_type(session: GameService, phase: Role | None) -> bool:
     player = session.player_view()
     typed = player.prompt is None or player.prompt.allows_text
     return phase is None and typed and player.over is None

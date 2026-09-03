@@ -1,9 +1,18 @@
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen
-from aidm.core.play import Exchange, PendingDecision, SceneRecord, Speaker
+from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal
+from aidm.core.play import (
+    Exchange,
+    Line,
+    Narration,
+    PendingDecision,
+    SceneRecord,
+    Speaker,
+    SpokenLine,
+)
 
-type Rows = tuple[tuple[str, str], ...]
+type Rows = tuple[tuple[str, str], ...]  # a sheet
+type Sections = tuple[tuple[str, str], ...]  # a prompt
 
 SCENE_EXCHANGES = 20
 TAIL_EXCHANGES = 3
@@ -13,6 +22,9 @@ class Subject(Frozen):
     id: CheckedEntityId
     name: str
     brief: str
+
+    def speaker(self) -> Speaker:
+        return Speaker(name=self.name, id=self.id)
 
 
 class PanelRow(Frozen):
@@ -41,6 +53,42 @@ class NarratorView(Frozen):
     # The player and everyone present who may speak; nobody else can be attributed a line.
     speakers: tuple[Speaker, ...]
 
+    def spoken(self, lines: Sequence[Line]) -> tuple[SpokenLine, ...]:
+        """Attribution is denormalized here, so chat and journal never resolve ids through state."""
+        here = {one.id: one for one in self.speakers}
+
+        def one(line: Line) -> SpokenLine:
+            if line.speaker_id is None:
+                return SpokenLine(text=line.text)
+            who = here.get(line.speaker_id)
+            if who is None:
+                raise Refusal(f"nobody here has id {line.speaker_id!r}")
+            return SpokenLine(speaker=who, text=line.text)
+
+        return tuple(one(line) for line in lines)
+
+    def speakers_refusal(self, lines: Sequence[Line]) -> str | None:
+        """Only the player or someone here speaks; the leak rule holds by check, not trust."""
+        here = {one.id for one in self.speakers}
+        strangers = sorted(
+            {
+                line.speaker_id
+                for line in lines
+                if line.speaker_id is not None and line.speaker_id not in here
+            }
+        )
+        if not strangers:
+            return None
+        return (
+            f"nobody here has id {', '.join(strangers)}. Only the player or someone here with "
+            "them speaks; leave `speaker_id` null for narration."
+        )
+
+    def narration_refusal(self, written: Narration) -> str | None:
+        if not written.lines:
+            return "write the narration lines: an empty answer shows the player nothing."
+        return self.speakers_refusal(written.lines)
+
 
 class PlayerView(Frozen):
     """What the pages read: scene art and subjects live on the narrator view, not here."""
@@ -51,12 +99,8 @@ class PlayerView(Frozen):
     over: str | None
 
 
-def sections(parts: Iterable[tuple[str, str]]) -> str:
+def sections(parts: Sections) -> str:
     return "\n\n".join(f"{name}:\n{body.strip()}" for name, body in parts)
-
-
-def speaker_of(subject: Subject) -> Speaker:
-    return Speaker(name=subject.name, id=subject.id)
 
 
 def render_history(scenes: Sequence[SceneRecord]) -> str:

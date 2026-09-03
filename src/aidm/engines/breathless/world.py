@@ -5,7 +5,7 @@ from pydantic import Field, model_validator
 from aidm.core.entities import EntityId, Mutable, Refusal, slug
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
-from aidm.engines.base import PLAYER_ID, Counter, Person, pool
+from aidm.engines.base import PLAYER_ID, Counter, Person
 from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
 type Die = Literal[4, 6, 8, 10, 12]
@@ -63,7 +63,7 @@ class Survivor(Person):
                 ("Job", self.job),
                 ("Skills", skills),
                 ("Loot die", f"d{self.loot}"),
-                ("Stress", pool(self.stress) + (", vulnerable" if self.vulnerable else "")),
+                ("Stress", str(self.stress) + (", vulnerable" if self.vulnerable else "")),
                 ("Stunt", "spent" if self.stunted else ""),
                 ("Med kit", "yes" if self.med_kit else ""),
             )

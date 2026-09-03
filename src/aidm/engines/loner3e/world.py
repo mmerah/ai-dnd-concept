@@ -5,7 +5,7 @@ from pydantic import Field
 from aidm.core.entities import Mutable
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
-from aidm.engines.base import PLAYER_ID, Counter, Person, pool
+from aidm.engines.base import PLAYER_ID, Counter, Person
 from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
 LUCK_MAX = 6
@@ -41,7 +41,7 @@ class Loner3eSheet(Person):
                 ("Goal", self.goal),
                 ("Motive", self.motive),
                 ("Nemesis", self.nemesis),
-                ("Luck", pool(self.luck)),
+                ("Luck", str(self.luck)),
             )
             if value
         )

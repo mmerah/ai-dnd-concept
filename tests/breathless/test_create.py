@@ -1,17 +1,8 @@
-from pathlib import Path
-
-from aidm.engines.base import read_packs
-from aidm.engines.breathless.creation import (
-    Pack,
-    create_character,
-    creation_steps,
-    preview_character,
-)
+from aidm.engines.breathless.engine import BreathlessEngine
 from aidm.engines.breathless.world import BreathlessCharacterFile
 
-PACKS_DIR = Path(__file__).parents[2] / "src" / "aidm" / "engines" / "breathless" / "packs"
-PACKS = read_packs((PACKS_DIR,), Pack)
-SRD = PACKS["srd"]
+ENGINE = BreathlessEngine()
+SRD = ENGINE.packs["srd"]
 
 PICKS = {
     "pack": "srd",
@@ -25,7 +16,7 @@ PICKS = {
 
 
 def test_skill_steps_exclude_earlier_picks() -> None:
-    steps = creation_steps(PACKS, PICKS)
+    steps = ENGINE.creation_steps(PICKS)
     d8_ids = {option.id for option in next(s for s in steps if s.id == "skill-d8").options}
     d6_ids = {option.id for option in next(s for s in steps if s.id == "skill-d6").options}
     assert "bash" not in d8_ids
@@ -33,13 +24,13 @@ def test_skill_steps_exclude_earlier_picks() -> None:
 
 
 def test_create_character_round_trip() -> None:
-    character = create_character(PACKS, "Jax", "A wiry mechanic", PICKS)
+    character = ENGINE.create_character("Jax", "A wiry mechanic", PICKS)
     assert isinstance(character, BreathlessCharacterFile)
     assert character.payload.skills == {"bash": 10, "dash": 8, "sneak": 6}
     assert character.payload.item == SRD.weapons[0]
 
 
 def test_preview_character_shows_the_backpack_row() -> None:
-    character = create_character(PACKS, "Jax", "A wiry mechanic", PICKS)
-    rows = preview_character(character)
+    character = ENGINE.create_character("Jax", "A wiry mechanic", PICKS)
+    rows = ENGINE.preview_character(character)
     assert ("Backpack", SRD.weapons[0]) in rows

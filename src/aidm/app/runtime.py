@@ -1,30 +1,28 @@
 import logging
 from asyncio import Lock, Task, create_task
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
 from random import Random
 
-from pydantic import BaseModel
-
 from aidm.app.launch import LaunchTarget
 from aidm.app.media import Illustrator, open_illustrator
 from aidm.app.spawn import CliSpawner, Spawner, ask
 from aidm.app.speech import Reader, open_reader
-from aidm.config import Settings, read_settings
+from aidm.config import Role, Settings, read_settings
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.facts import Fact, cards, traced
 from aidm.core.io import FileStore, read_character, read_scenario, write_scenario
-from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioKind
+from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioKind, WorldsmithAnswer
 from aidm.core.play import Answer, Exchange, Line, Narration
 from aidm.core.source import given_text
 from aidm.core.tools import MasterTool
-from aidm.core.views import NarratorView, PlayerView
+from aidm.core.views import PlayerView
 from aidm.engines.registry import begin_game, build_engines
 from aidm.engines.seam import AnyEngine
 from aidm.turn.context import render_narrator
-from aidm.turn.run import Turn, TurnStep, close_segment, narration_refusal
+from aidm.turn.run import Turn
 
 LOGGER = logging.getLogger(__name__)
 
@@ -47,20 +45,6 @@ OPENING = (
 )
 
 
-@dataclass(frozen=True, slots=True)
-class _Worldsmith:
-    """The `WorldsmithAnswer` the platform hands an engine: one spawned role, one shared retry."""
-
-    spawner: Spawner
-
-    async def __call__[M: BaseModel](
-        self, prompt: str, model: type[M], refusal: Callable[[M], str | None]
-    ) -> M:
-        return await ask(
-            "worldsmith", prompt, model, refusal, partial(self.spawner.run, "worldsmith")
-        )
-
-
 @dataclass
 class GameService:
     target: LaunchTarget
@@ -73,7 +57,7 @@ class GameService:
     reader: Reader | None = None
     rng: Random = field(default_factory=Random)
     # The role at work; the play page polls it and binds its widgets to it.
-    phase: TurnStep | None = None
+    phase: Role | None = None
     # What the player typed for a write that opens no turn; the page shows it as their bubble.
     intent: str = ""
     # The turn in flight; the tool surface reaches the live game through it.
@@ -84,7 +68,7 @@ class GameService:
     def __post_init__(self) -> None:
         saved = self.store.load(self.slug)
         if saved is None:
-            self.state = self._begun()
+            self.state = self._begin()
             return
         self.state = self._resumable(self.engine.restore(saved))
 
@@ -109,22 +93,21 @@ class GameService:
             draft = self.state.draft()
             lines = await self._narrate(draft, (), OPENING, fatal=False)
             if lines:
-                view = self.engine.narrator_view(draft)
-                self.commit(close_segment(self.engine, view, draft, BEGUN, lines, ()))
+                self.commit(self.engine.close(draft, BEGUN, lines, ()))
             self.illustrate(_latest_narration(self.engine, self.state))
             self.speak()
         finally:
             self.phase = None
 
-    async def play(self, action: str | Answer, *, moving_on: bool = False) -> None:
-        """`moving_on` is the player taking the way on, so `action` is what they mean to pursue."""
-        crossing = self.engine.crossing
-        if moving_on and crossing is None:
-            await self.extend(action)
+    async def play(self, answer: Answer, *, moving_on: bool = False) -> None:
+        """`moving_on` is the player taking the way on, so `answer` is what they mean to pursue."""
+        brief = self.engine.crossing(answer.text) if moving_on else None
+        if moving_on and brief is None:
+            await self.extend(answer)
             return
         if moving_on and not self.engine.ready(self.state):
             raise Refusal("the world offers no transition from here")
-        turn = Turn.begin(self.engine, self.state, action, self.rng)
+        turn = Turn.begin(self.engine, self.state, answer, self.rng)
         self.turn, self.phase = turn, "master"
         try:
             # An answer that re-suspended leaves every tool refused: nothing for a master to do.
@@ -141,28 +124,24 @@ class GameService:
             self.illustrate(_latest_narration(self.engine, state))
             self.speak()
             # The player named where they go; the worldsmith writes it once the turn is safe.
-            if moving_on and crossing is not None and self.engine.over(state) is None:
-                await self._grow(turn.prompt, crossing.format(pursuit=turn.prompt))
+            if brief is not None and self.engine.over(state) is None:
+                await self._grow(turn.prompt, brief)
                 self.illustrate(_latest_narration(self.engine, self.state))
                 self.speak()
         finally:
             self.turn, self.phase = None, None
 
-    async def extend(self, intent: str | Answer) -> None:
+    async def extend(self, answer: Answer) -> None:
         """Author and install a region without a player turn; a told card is still filed."""
         if not self.engine.ready(self.state):
             raise Refusal("the world has no frontier to extend")
         if self.busy:
             raise Refusal("a turn is already in flight")
-        if isinstance(intent, Answer):
-            if intent.option_id is not None:
-                raise Refusal("a transition needs written intent")
-            intent_text = intent.text
-        else:
-            intent_text = intent
-        self.intent = intent_text
+        if answer.option_id is not None:
+            raise Refusal("a transition needs written intent")
+        self.intent = answer.text
         try:
-            await self._grow(intent_text, None)
+            await self._grow(answer.text, None)
         finally:
             self.intent, self.phase = "", None
 
@@ -203,7 +182,7 @@ class GameService:
                     scenes=self.engine.scenes(draft),
                 ),
                 Narration,
-                lambda written: narration_refusal(view, written),
+                view.narration_refusal,
                 partial(self.spawner.run, "narrator"),
             )
         except (OSError, Refusal) as failed:
@@ -218,7 +197,7 @@ class GameService:
         self.phase = "worldsmith"
         draft = self.state.draft()
         try:
-            facts = await self.engine.advance(draft, intent, _Worldsmith(self.spawner))
+            facts = await self.engine.advance(draft, intent, _worldsmith(self.spawner))
             self.engine.validate(draft)
         except (OSError, Refusal) as failed:
             # Dropping the write costs a scene; raising costs the turn that was already played.
@@ -227,8 +206,7 @@ class GameService:
             draft = self.state.draft()
             # The turn already filed the player's words when a crossing was asked for.
             prompt = intent if brief is None else CROSSED
-            view = self.engine.narrator_view(draft)
-            self.commit(close_segment(self.engine, view, draft, prompt, (), (UNWRITTEN,)))
+            self.commit(self.engine.close(draft, prompt, (), (UNWRITTEN,)))
             return
         if brief is None and not cards(facts):
             self.commit(draft.commit())
@@ -237,20 +215,15 @@ class GameService:
         if brief is not None:
             self.phase = "narrator"
             prompt, lines = CROSSED, await self._narrate(draft, facts, brief, fatal=False)
-        view = self.engine.narrator_view(draft)
-        self.commit(close_segment(self.engine, view, draft, prompt, lines, facts))
+        self.commit(self.engine.close(draft, prompt, lines, facts))
 
     def player_view(self) -> PlayerView:
         return self.engine.player_view(self.state)
 
-    def transition_available(self) -> bool:
-        return self.engine.ready(self.state)
-
-    def scene(self) -> NarratorView:
-        return self.engine.narrator_view(self.state)
-
     def scene_art(self) -> Path | None:
-        return None if self.media is None else self.media.scene_art(self.scene())
+        if self.media is None:
+            return None
+        return self.media.scene_art(self.engine.narrator_view(self.state))
 
     def icon(self, entity_id: EntityId) -> Path | None:
         return None if self.media is None else self.media.icon(entity_id)
@@ -262,9 +235,8 @@ class GameService:
     def illustrate(self, narration: str = "") -> None:
         if self.media is None:
             return
-        task = create_task(
-            self.media.illustrate(self.scene(), self.player_view().player, narration)
-        )
+        view = self.engine.narrator_view(self.state)
+        task = create_task(self.media.illustrate(view, self.player_view().player, narration))
         self._retain(task)
 
     def speak(self) -> None:
@@ -284,7 +256,7 @@ class GameService:
         task.add_done_callback(self._background.discard)
 
     def restart(self) -> None:
-        opening = self._begun()
+        opening = self._begin()
         self.store.discard(self.slug)
         self.state = opening
 
@@ -292,7 +264,7 @@ class GameService:
         self.store.save(self.slug, state)
         self.state = state
 
-    def _begun(self) -> AnyGame:
+    def _begin(self) -> AnyGame:
         return begin_game(self.engine, self.target.scenario_id, self.scenario, self.character)
 
     def _resumable(self, state: AnyGame) -> AnyGame:
@@ -321,7 +293,7 @@ class Runtime:
     engines: dict[EngineId, AnyEngine] = field(init=False)
 
     def __post_init__(self) -> None:
-        self.engines = build_engines(self.settings.packs_dir)
+        self.engines = build_engines()
 
     def default_engine(self) -> EngineId:
         """Dict order picks it; a create page has to start somewhere."""
@@ -330,7 +302,7 @@ class Runtime:
     def published_tools(self) -> tuple[MasterTool[AnyGame], ...]:
         """A CLI lists tools only inside its own turn; between turns there is nothing to call."""
         playing = self.playing()
-        return () if playing is None else playing.engine.tools
+        return () if playing is None else tuple(playing.engine.tools.values())
 
     def playing(self) -> GameService | None:
         """A second turn in flight has no owner: the tool surface is shared."""
@@ -352,7 +324,6 @@ class Runtime:
 
     def reload_settings(self) -> None:
         self.settings = read_settings()
-        self.engines = build_engines(self.settings.packs_dir)
         self.spawner = CliSpawner(self.settings)
         self._sessions.clear()
 
@@ -385,7 +356,7 @@ class Runtime:
             return None
 
         written = await engine.author(
-            title, premise, source, packs, kind, _Worldsmith(self.spawner), playable
+            title, premise, source, packs, kind, _worldsmith(self.spawner), playable
         )
         write_scenario(
             self.settings.scenarios_dir,
@@ -433,6 +404,11 @@ class Runtime:
             ),
             reader=open_reader(settings, store, target.slug, scenario),
         )
+
+
+def _worldsmith(spawner: Spawner) -> WorldsmithAnswer:
+    """What the platform hands an engine: one spawned role, one shared retry."""
+    return partial(ask, "worldsmith", spawn=partial(spawner.run, "worldsmith"))
 
 
 def _latest_narration(engine: AnyEngine, state: AnyGame) -> str:

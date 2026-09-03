@@ -20,7 +20,6 @@ from aidm.config import ProviderConfig, Providers, SpeechConfig
 from aidm.core.entities import EntityId
 from aidm.core.io import FileStore
 from aidm.core.play import Exchange, Line, Speaker, SpokenLine
-from aidm.turn.run import close_segment
 
 NARRATOR = "Kore"
 POOL = ("Kore", "Puck", "Charon", "Zephyr", "Fenrir")
@@ -161,12 +160,7 @@ async def test_speak_reads_and_caches_the_newest_committed_exchange(
 ) -> None:
     session = loner3e_session(tmp_path)
     draft = session.state.draft()
-    view = session.engine.narrator_view(draft)
-    session.commit(
-        close_segment(
-            session.engine, view, draft, "wait", (Line(text="The door groans open."),), ()
-        )
-    )
+    session.commit(session.engine.close(draft, "wait", (Line(text="The door groans open."),), ()))
 
     async def _fake_post_bearer(
         _provider: ProviderConfig, _path: str, _body: dict[str, str], _timeout: float

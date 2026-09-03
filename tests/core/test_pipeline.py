@@ -14,6 +14,7 @@ from core_test_support import (
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact, cards
 from aidm.core.model import AnyGame
+from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import outcome_for
 from aidm.turn.run import Turn
@@ -68,7 +69,7 @@ async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: 
     table.spawner.turns.append(table.plays((FOUND, TAKEN)))
 
     with pytest.raises(ValueError, match="no answer left"):
-        await table.service.play("I take the map.")
+        await table.service.play(Answer(text="I take the map."))
 
     assert table.service.state.model_dump_json() == before
     assert table.service.state.payload.exchanges() == ()
@@ -158,7 +159,7 @@ async def test_a_line_spoken_by_someone_not_here_is_re_prompted_with_the_id(
     ]
     table.spawner.turns.append(table.plays(()))
 
-    await table.service.play("I wait.")
+    await table.service.play(Answer(text="I wait."))
 
     assert any("elena" in prompt for role, prompt in table.spawner.prompts if role == "narrator")
     assert table.service.state.payload.exchanges()[-1].narration == "The door settles."
@@ -177,7 +178,7 @@ async def test_a_master_that_crashes_after_applying_still_commits_what_it_applie
     table.spawner.turns.append(crash)
     table.spawner.answers["narrator"] = [narrated("The map is in hand.")]
 
-    await table.service.play("I take the map and read it.")
+    await table.service.play(Answer(text="I take the map and read it."))
 
     assert table.service.state.turn == 1
     assert table.service.state.payload.require(MAP).known
@@ -198,7 +199,7 @@ async def test_a_master_that_crashed_after_a_tool_landed_is_not_spawned_again(
     table.spawner.answers["narrator"] = [narrated("The map is in hand.")]
     spawned = len(table.spawner.prompts)
 
-    await table.service.play("I take the map.")
+    await table.service.play(Answer(text="I take the map."))
 
     assert [role for role, _ in table.spawner.prompts[spawned:]].count("master") == 1
 
@@ -214,7 +215,7 @@ async def test_a_master_that_landed_nothing_is_spawned_once_more(tmp_path: Path)
     spawned = len(table.spawner.prompts)
 
     with pytest.raises(OSError, match="never started"):
-        await table.service.play("I take the map.")
+        await table.service.play(Answer(text="I take the map."))
 
     assert [session for role, session in table.spawner.resumed[spawned:] if role == "master"] == [
         None,
@@ -232,7 +233,7 @@ async def test_a_turn_that_applied_nothing_and_failed_is_refused(tmp_path: Path)
     table.spawner.turns += [crash, crash]
 
     with pytest.raises(OSError, match="never started"):
-        await table.service.play("I take the map.")
+        await table.service.play(Answer(text="I take the map."))
 
     assert table.service.state.model_dump_json() == before
 
@@ -248,7 +249,7 @@ async def test_two_rolls_in_one_turn_do_not_read_the_same_dice(tmp_path: Path) -
 
 def test_a_refused_call_leaves_the_turn_the_dice_it_had() -> None:
     engine, state = initialized()
-    turn = Turn.begin(engine, state, "I try the door.", Random(1))
+    turn = Turn.begin(engine, state, Answer(text="I try the door."), Random(1))
     before = turn.rng.getstate()
 
     with pytest.raises(ValueError, match="the rules said no"):

@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Refusal, Slug, parse, require_unique
-from aidm.core.facts import Fact
+from aidm.core.facts import Fact, cards
 from aidm.core.io import ENCODING, decode
 from aidm.core.model import (
     AnyCharacter,
@@ -18,9 +18,9 @@ from aidm.core.model import (
     ScenarioKind,
     WorldsmithAnswer,
 )
-from aidm.core.play import DecisionOption, Exchange, PendingOption, SceneRecord
+from aidm.core.play import DecisionOption, Exchange, Line, PendingOption, SceneRecord
 from aidm.core.tools import MasterTool
-from aidm.core.views import NarratorView, PlayerView, Rows
+from aidm.core.views import NarratorView, PlayerView, Rows, Sections
 
 type AnyEngine = Engine[Any]
 
@@ -36,19 +36,21 @@ class Engine[G: Game[Any]](ABC):
     game: type[G]
     scenario: type[AnyScenario]
     character: type[AnyCharacter]
-    # The narrator's brief for the arrival, `{pursuit}` the player's words; None when the world
-    # is extended without a turn, as Tunnel Goons grows its map.
-    crossing: str | None = None
     instructions: str
-    tools: tuple[MasterTool[G], ...]
+    tools: dict[str, MasterTool[G]]
 
     def __init__(self) -> None:
         self.instructions = (self.directory / "rules.md").read_text(encoding=ENCODING)
-        self.tools = self.master_tools()
-        require_unique(f"tool names of the {self.id!r} engine", (one.name for one in self.tools))
+        tools = self.master_tools()
+        require_unique(f"tool names of the {self.id!r} engine", (one.name for one in tools))
+        self.tools = {one.name: one for one in tools}
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
         return ()
+
+    def crossing(self, pursuit: str) -> str | None:
+        """The narrator's brief for the arrival; None where the world grows without a turn."""
+        return None
 
     def restore(self, raw: str) -> G:
         value = decode(raw)
@@ -59,12 +61,47 @@ class Engine[G: Game[Any]](ABC):
         return state
 
     def answer(self, draft: G, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
-        found = next((one for one in self.tools if one.name == chosen.name), None)
+        found = self.tools.get(chosen.name)
         if found is None:
             raise Refusal(
                 f"the {self.id!r} engine has no tool {chosen.name!r} to play option {chosen.id!r}"
             )
         return found.call(draft, chosen.args, rng)
+
+    async def compose[M: BaseModel](
+        self,
+        worldsmith: WorldsmithAnswer,
+        prompt: str,
+        model: type[M],
+        build: Callable[[M], AnyScenario],
+        playable: Callable[[AnyScenario], str | None],
+    ) -> AnyScenario:
+        """The build runs the engine's bar, so an unbuildable opening is re-prompted, not raised."""
+        built: AnyScenario | None = None
+
+        def refusal(written: M) -> str | None:
+            nonlocal built
+            try:
+                built = build(written)
+            except Refusal as unbuildable:
+                return str(unbuildable)
+            return playable(built)
+
+        written = await worldsmith(prompt, model, refusal)
+        # The accepted answer was built by its own check; one never checked is built here.
+        return build(written) if built is None else built
+
+    def close(self, draft: G, prompt: str, lines: tuple[Line, ...], facts: tuple[Fact, ...]) -> G:
+        """File the exchange, count the turn, commit."""
+        exchange = Exchange(
+            prompt=prompt,
+            lines=self.narrator_view(draft).spoken(lines),
+            facts=cards(facts),
+            decision="" if draft.pending is None else draft.pending.prompt,
+        )
+        self.record(draft, exchange)
+        draft.turn += 1
+        return draft.commit()
 
     @abstractmethod
     def master_tools(self) -> tuple[MasterTool[G], ...]: ...
@@ -87,7 +124,7 @@ class Engine[G: Game[Any]](ABC):
     @abstractmethod
     def scenes(self, state: G) -> tuple[SceneRecord, ...]: ...
     @abstractmethod
-    def master_sections(self, state: G) -> Rows: ...
+    def master_sections(self, state: G) -> Sections: ...
     @abstractmethod
     def narrator_view(self, state: G) -> NarratorView: ...
     @abstractmethod
@@ -110,21 +147,3 @@ class Engine[G: Game[Any]](ABC):
         self, draft: G, intent: str, worldsmith: WorldsmithAnswer
     ) -> tuple[Fact, ...]:
         """Write the world on, then install it on `draft`; raise when either will not hold."""
-
-
-async def compose[M: BaseModel](
-    worldsmith: WorldsmithAnswer,
-    prompt: str,
-    model: type[M],
-    build: Callable[[M], AnyScenario],
-    playable: Callable[[AnyScenario], str | None],
-) -> AnyScenario:
-    """The build runs the engine's bar, so an unbuildable opening is re-prompted, not raised."""
-
-    def refusal(written: M) -> str | None:
-        try:
-            return playable(build(written))
-        except Refusal as unbuildable:
-            return str(unbuildable)
-
-    return build(await worldsmith(prompt, model, refusal))
