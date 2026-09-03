@@ -3,7 +3,8 @@
 Six issues seen in the role trace of 2026-09-03 (four campaigns played through the real code
 with scripted roles). Each entry: what the code does today, verified; the options; a
 recommendation; the questions to settle together. High level by design: a settled entry becomes
-a plan phase. Nothing here is decided except where marked.
+a plan phase. Decisions (maintainer, 2026-09-03): 1A, 2A with the caution below, 3A, 4A, 5A, 6A.
+The open questions under each entry are still open.
 
 ## The rule the recommendations follow
 
@@ -17,7 +18,7 @@ Facts that bound every option: the tool cap is fifteen per engine (tools plus `c
 arms, party arms not counted), 24XX sits at fifteen today and Breathless at thirteen; the master
 spawn times out at 300 s and the worldsmith at 900 s; an engine stays under 2,000 lines.
 
-## 1. Recent play is the current job only, and the hub is not a job
+## 1. Recent play is the current job only, and the hub is not a job — settled: A
 
 **Today.** `SceneWorld.scenes()` and `RoomWorld.scenes()` render `job_runs()`: in a campaign,
 the runs since the open job's `started`, or only the hub's last run when no job is open
@@ -48,12 +49,12 @@ narration alone, and JOBS SO FAR = one debrief paragraph.
 - C. **A fixed window of N runs regardless of jobs.** Simplest, and the one that loses the most:
   a long job pushes its own start out again.
 
-**Recommendation.** A. The hub and the earlier jobs are the campaign's memory, and the master
+**Decision: A.** The hub and the earlier jobs are the campaign's memory, and the master
 deciding a hub turn without the job it just closed is the case the trace caught. Open question:
 whether the worldsmith reads the same depths or the whole thing unwindowed when it writes the
 next scene (it has 900 s and the most to gain from the earlier jobs' cast and debts).
 
-## 2. Jobs so far is a debrief for the player, not a memory for the master
+## 2. Jobs so far is a debrief for the player, not a memory for the master — settled: A
 
 **Today.** `Campaign.ledger()` prints per closed job: title, place, the `debrief` (one
 paragraph the worldsmith writes in the second person for the player's card), "(left open)" and
@@ -81,11 +82,23 @@ window.
   recap, Tunnel Goons has none, and the recaps were written for the next scene, not for the
   ledger.
 
-**Recommendation.** A. The summary is written by the role that reads everything, from
-everything. Question: whether the summary is one paragraph or a fixed shape (done, undone,
-people, debts, hidden), which the ledger and proposal 3 could then read field by field.
+**Decision: A.** The summary is written by the role that reads everything, from everything.
+Question: whether the summary is one paragraph or a fixed shape (done, undone, people, debts,
+hidden), which the ledger and proposal 3 could then read field by field.
 
-## 3. Leaving a job open, and taking it again
+**Caution, to be written into the code where the return draft is defined: the worldsmith's
+double duty at the return is dangerous.** One spawn writes for two readers at once: the
+`debrief` and the hub `situation` are read by the player; the `summary`, the `recap` and the
+`arc` are read by the master and the worldsmith and hold what the player has not found. The
+same model, in the same answer, with the whole job including its hidden facts in front of it, is
+the one place in the design where hidden canon and player-facing prose are written side by side.
+The narrator never has this problem because its input cannot hold a secret; here the input must.
+So: every field's description names its reader; the bar checks the player-facing fields against
+the unmet cast and the hidden facts, not only the debrief against unmet names as today; and if
+leaks show up in play, the return becomes two spawns (the summary first, the debrief and the
+scene from the summary and the told history), not one longer prompt.
+
+## 3. Leaving a job open, and taking it again — settled: A
 
 **Today, scene engines.** Going home with the question open needs `next_scene` first
 (`ready()` requires `run.left` or the hub), then the return closes the job with `finished =
@@ -116,11 +129,11 @@ longer the job's. Same ledger behaviour.
   the bars (`scene_refusal`, the map bars) and the install, and it is the natural next step once
   A holds.
 
-**Recommendation.** A, and C as the follow-up once A is played. B keeps a split the player does
+**Decision: A,** and C as the follow-up once A is played. B keeps a split the player does
 not see. Question: should the board mark an offer "left open" so the player knows it is a
 return, and should the offer's pitch be rewritten by the return draft to say where it stands.
 
-## 4. The crossing narrator reads nothing on a job's first scene and on the return
+## 4. The crossing narrator reads nothing on a job's first scene and on the return — settled: A
 
 **Today.** `GameService._grow` narrates the crossing after `advance` installed the new run.
 `told_narration(engine.scenes(draft))` now sees the new job's runs only (or the new hub run
@@ -139,7 +152,7 @@ scene left is still in the window. The opening spawn (`OPENING`) is correct: not
   narration before `advance` and hands it in. Fixes the narrator alone; the master's first turn
   in the new scene still opens blind.
 
-**Recommendation.** A, and it falls out of 1A. Also reword CROSSING to name the place left
+**Decision: A,** and it falls out of 1A. Also reword CROSSING to name the place left
 rather than a section. Do this with proposal 1 in the same phase.
 
 ## 5. Does the worldsmith design a job for several scenes? — settled: A
@@ -163,7 +176,7 @@ the player's screen.
 Options kept for the record: B, instruction only, carries nothing between spawns; C, author the
 whole job up front, fights "the player's own words build the next scene".
 
-## 6. A game master who can ask the worldsmith for more
+## 6. A game master who can ask the worldsmith for more — settled: A
 
 **Today.** The master changes the world only through engine tools on the draft. `enter` needs
 an existing cast id; there is no way to introduce anyone. The worldsmith runs only in `author`
@@ -192,7 +205,7 @@ through tools that mutate the draft.
   fields the rules allow. Retires the rule that the worldsmith writes cast; the master's picture
   becomes a source of canon; small models flood the cast.
 
-**Recommendation.** A, with B as the `later: true` flag on the same tool rather than a second
+**Decision: A,** with B as the `later: true` flag on the same tool rather than a second
 tool. A master that needs someone now should get them now, written by the role that writes
 people, with the whole cast and history in front of it. Questions: the cap is raised by one
 for a platform tool, or `commission` is counted apart from engine tools; what the master may
