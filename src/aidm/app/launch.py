@@ -1,16 +1,18 @@
 import logging
 from collections.abc import Mapping
+from dataclasses import dataclass
 
 from aidm.config import Settings
-from aidm.core.entities import EngineId, Frozen, Slug
-from aidm.core.io import FileStore, decoded, read_characters, read_scenarios
+from aidm.core.entities import EngineId, Refusal, Slug, parse
+from aidm.core.io import FileStore, decode, read_characters, read_scenarios
 from aidm.core.model import SaveHeader, ScenarioKind
 from aidm.engines.seam import AnyEngine
 
 LOGGER = logging.getLogger(__name__)
 
 
-class CatalogEntry(Frozen):
+@dataclass(frozen=True, slots=True)
+class CatalogEntry:
     id: Slug
     engine: EngineId
     title: str
@@ -19,7 +21,8 @@ class CatalogEntry(Frozen):
     kind: ScenarioKind = "one-shot"
 
 
-class LaunchTarget(Frozen):
+@dataclass(frozen=True, slots=True)
+class LaunchTarget:
     scenario_id: Slug
     character_id: Slug
 
@@ -32,7 +35,8 @@ class LaunchTarget(Frozen):
         return f"/game/{self.scenario_id}/{self.character_id}"
 
 
-class SaveOption(Frozen):
+@dataclass(frozen=True, slots=True)
+class SaveOption:
     target: LaunchTarget
     scenario_title: str
     character_title: str
@@ -42,7 +46,8 @@ class SaveOption(Frozen):
     rules: str
 
 
-class LauncherCatalog(Frozen):
+@dataclass(frozen=True, slots=True)
+class LauncherCatalog:
     scenarios: tuple[CatalogEntry, ...]
     characters: tuple[CatalogEntry, ...]
     saves: tuple[SaveOption, ...]
@@ -50,7 +55,7 @@ class LauncherCatalog(Frozen):
     def scenario(self, scenario_id: Slug) -> CatalogEntry:
         found = next((entry for entry in self.scenarios if entry.id == scenario_id), None)
         if found is None:
-            raise ValueError(f"unknown scenario {scenario_id!r}")
+            raise Refusal(f"unknown scenario {scenario_id!r}")
         return found
 
     def characters_for(self, engine: EngineId) -> tuple[CatalogEntry, ...]:
@@ -60,11 +65,11 @@ class LauncherCatalog(Frozen):
 def launch_target(catalog: LauncherCatalog, scenario_id: Slug, character_id: Slug) -> LaunchTarget:
     engine = catalog.scenario(scenario_id).engine
     if character_id not in {entry.id for entry in catalog.characters_for(engine)}:
-        raise ValueError(f"no character {character_id!r} is written for the {engine!r} rules")
+        raise Refusal(f"no character {character_id!r} is written for the {engine!r} rules")
     return LaunchTarget(scenario_id=scenario_id, character_id=character_id)
 
 
-def load_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> LauncherCatalog:
+def read_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> LauncherCatalog:
     scenario_models = {engine_id: engine.scenario for engine_id, engine in engines.items()}
     character_models = {engine_id: engine.character for engine_id, engine in engines.items()}
     scenarios = tuple(
@@ -97,8 +102,8 @@ def load_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> L
         if raw is None:
             continue
         try:
-            game = SaveHeader.model_validate(decoded(raw))
-        except ValueError as unreadable:
+            game = parse(SaveHeader, decode(raw))
+        except Refusal as unreadable:
             # Skip rather than raise: one save the app could not resume must not hide the rest.
             LOGGER.warning("skipping save %r: %s", slug, unreadable)
             continue
@@ -108,8 +113,8 @@ def load_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> L
             continue
         engine = engines[game.engine]
         try:
-            state = engine.restored(raw)
-        except ValueError as stale:
+            state = engine.restore(raw)
+        except Refusal as stale:
             LOGGER.warning("skipping save %r: %s", slug, stale)
             continue
         target = LaunchTarget(scenario_id=game.scenario_id, character_id=game.character_id)

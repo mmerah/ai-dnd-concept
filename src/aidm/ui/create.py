@@ -7,14 +7,13 @@ from tempfile import mkdtemp
 from nicegui import ui
 from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
-from aidm.app.launch import launch_target, load_catalog
+from aidm.app.launch import launch_target, read_catalog
 from aidm.app.runtime import Runtime
 from aidm.core.creation import CreationStep, picked
-from aidm.core.entities import EngineId, Slug
+from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.io import SOURCE_SUFFIXES, write_character
 from aidm.core.model import ScenarioKind
-
-from .widgets import labeled_value, page_header
+from aidm.ui.widgets import labeled_value, page_header
 
 LOGGER = logging.getLogger(__name__)
 
@@ -87,7 +86,7 @@ def character_page(runtime: Runtime) -> None:
                         title, (brief.value or "").strip(), picks
                     )
                     write_character(runtime.settings.characters_dir, made)
-                except ValueError as refused:
+                except Refusal as refused:
                     ui.notify(str(refused), type="negative")
                     return
                 LOGGER.info("character created: slug=%s engine=%s", made.id, made.engine)
@@ -106,7 +105,7 @@ def character_page(runtime: Runtime) -> None:
                             picks,
                         )
                     )
-                except ValueError as refused:
+                except Refusal as refused:
                     ui.label(f"Not ready yet: {refused}").classes("text-sm opacity-50")
                     return
                 ui.separator().classes("q-my-sm")
@@ -119,7 +118,7 @@ def character_page(runtime: Runtime) -> None:
 
 def scenario_page(runtime: Runtime) -> None:
     """A premise or a document, one worldsmith call, and the game opens on the scene it wrote."""
-    catalog = load_catalog(runtime.settings, runtime.engines)
+    catalog = read_catalog(runtime.settings, runtime.engines)
     engine_id = runtime.default_engine()
     with page_header("New scenario"):
         pass
@@ -179,7 +178,7 @@ def scenario_page(runtime: Runtime) -> None:
             .props("outlined")
         )
         ui.label("Or upload the adventure itself.").classes("text-sm opacity-70 q-mt-md")
-        _ = (
+        (
             ui.upload(on_upload=took, max_files=1, auto_upload=True)
             .props(f'accept="{",".join(SOURCE_SUFFIXES)}"')
             .classes("w-full")
@@ -206,9 +205,9 @@ def scenario_page(runtime: Runtime) -> None:
                     kind=kind,
                 )
                 opened = launch_target(
-                    load_catalog(runtime.settings, runtime.engines), name, character.value
+                    read_catalog(runtime.settings, runtime.engines), name, character.value
                 )
-            except (OSError, ValueError) as refused:
+            except (OSError, Refusal) as refused:
                 ui.notify(str(refused), type="negative", multi_line=True)
                 return
             finally:
@@ -245,4 +244,4 @@ def _drop_stale(steps: tuple[CreationStep, ...], picks: dict[Slug, str]) -> None
     """A new pack, or a skill moved onto its twin, can leave an answer its step no longer offers."""
     for step in steps:
         if step.options and picked(picks, step.id) not in {one.id for one in step.options}:
-            _ = picks.pop(step.id, None)
+            picks.pop(step.id, None)

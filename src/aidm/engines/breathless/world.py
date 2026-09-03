@@ -2,10 +2,10 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import EntityId, Mutable, slug
+from aidm.core.entities import EntityId, Mutable, Refusal, slug
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
-from aidm.engines.core import PLAYER_ID, Counter, Person, pool
+from aidm.engines.base import PLAYER_ID, Counter, Person, pool
 from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
 type Die = Literal[4, 6, 8, 10, 12]
@@ -74,7 +74,7 @@ class Survivor(Person):
 BreathlessWorld = SceneWorld[Person, Survivor]
 
 
-class BreathlessCharacter(Mutable):
+class BreathlessPayload(Mutable):
     pronouns: str
     job: str
     skills: dict[Skill, Die]
@@ -83,7 +83,7 @@ class BreathlessCharacter(Mutable):
     @model_validator(mode="after")
     def _three_skills(self) -> Self:
         if len(self.skills) != 3 or sorted(self.skills.values()) != [6, 8, 10]:
-            raise ValueError("three skills: one d10, one d8, one d6")
+            raise Refusal("three skills: one d10, one d8, one d6")
         return self
 
 
@@ -91,11 +91,11 @@ class BreathlessGame(Game[BreathlessWorld]):
     pass
 
 
-class BreathlessScenarioFile(Scenario[SceneCanon[Person]]):
+class BreathlessScenario(Scenario[SceneCanon[Person]]):
     pass
 
 
-class BreathlessCharacterFile(Character[BreathlessCharacter]):
+class BreathlessCharacterFile(Character[BreathlessPayload]):
     pass
 
 
@@ -104,7 +104,7 @@ def stepped(die: Die) -> Die:
     return LADDER[max(LADDER.index(die) - 1, 0)]
 
 
-def player_survivor(character: Character[BreathlessCharacter]) -> Survivor:
+def player_survivor(character: Character[BreathlessPayload]) -> Survivor:
     """The played character as the world holds them; `new_game` and `preview_character` share it."""
     payload = character.payload
     return Survivor(

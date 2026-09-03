@@ -3,17 +3,17 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from pydantic import Field
 
 from aidm.core.creation import CreationStep, Picks, check_picks, picked
-from aidm.core.entities import EngineId, Frozen, Slug, slug
+from aidm.core.entities import EngineId, Frozen, Refusal, Slug, slug
 from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption
 from aidm.core.views import Rows
-from aidm.engines.core import Pack as ScenePack
-from aidm.engines.core import pack_options
+from aidm.engines.base import Pack as ScenePack
+from aidm.engines.base import pack_options
 from aidm.engines.twentyfourxx.world import (
     Kit,
     SkillDie,
-    TwentyfourxxCharacter,
     TwentyfourxxCharacterFile,
+    TwentyfourxxPayload,
     player_operator,
     raised,
 )
@@ -140,14 +140,12 @@ def create_character(
 
     items = pack.starting_kit + specialty.kit + ((weapon,) if weapon is not None else ())
 
-    payload = TwentyfourxxCharacter.model_validate(
-        {
-            "specialty": specialty.label,
-            "origin": origin.label,
-            "traits": traits,
-            "skills": skills,
-            "items": items,
-        }
+    payload = TwentyfourxxPayload(
+        specialty=specialty.label,
+        origin=origin.label,
+        traits=traits,
+        skills=skills,
+        items=items,
     )
     return TwentyfourxxCharacterFile(
         id=slug(name, ()),
@@ -160,7 +158,7 @@ def create_character(
 
 def preview_character(character: AnyCharacter) -> Rows:
     if not isinstance(character, TwentyfourxxCharacterFile):
-        raise ValueError("24XX received an incompatible character")
+        raise Refusal("24XX received an incompatible character")
     names = ", ".join(kit.name for kit in character.payload.items)
     return (*player_operator(character).rows(), ("Gear", names))
 
@@ -181,5 +179,5 @@ def _by_key[T](options: Iterable[T], key: Callable[[T], str], wanted: str) -> T 
 def _require[T](options: Iterable[T], key: Callable[[T], str], wanted: str) -> T:
     found = _by_key(options, key, wanted)
     if found is None:
-        raise ValueError(f"no option {wanted!r}")
+        raise Refusal(f"no option {wanted!r}")
     return found

@@ -6,7 +6,7 @@ from twentyfourxx_test_support import KESTREL, LOCKPICKS, hub_world, small_world
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
-from aidm.engines.core import PLAYER_ID, load_packs
+from aidm.engines.base import PLAYER_ID, read_packs
 from aidm.engines.hub import JOB_DONE
 from aidm.engines.scenes.world import NextScene, player_over
 from aidm.engines.twentyfourxx.creation import Pack
@@ -25,7 +25,7 @@ from aidm.engines.twentyfourxx.tools import test_luck as roll_luck
 from aidm.engines.twentyfourxx.world import STARTING_CREDITS, TwentyfourxxGame
 
 PACKS_DIR = Path(__file__).parents[2] / "src" / "aidm" / "engines" / "twentyfourxx" / "packs"
-PACKS = load_packs((PACKS_DIR,), Pack)
+PACKS = read_packs((PACKS_DIR,), Pack)
 SKILLS = Skills(PACKS)
 
 

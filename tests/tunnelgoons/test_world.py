@@ -15,28 +15,28 @@ def test_an_item_on_nothing_is_refused() -> None:
         id=EntityId("stray"), name="Stray", brief="Nobody's", known=True, on=GHOST
     )
     with pytest.raises(ValueError, match="on nothing"):
-        _ = draft.committed()
+        _ = draft.commit()
 
 
 def test_an_npc_in_no_place_is_refused() -> None:
     draft = small_world().draft()
     draft.payload.npcs[MIRA].place = GHOST
     with pytest.raises(ValueError, match="no place"):
-        _ = draft.committed()
+        _ = draft.commit()
 
 
 def test_a_way_to_a_non_place_is_refused() -> None:
     draft = small_world().draft()
     draft.payload.ways[START] = (*draft.payload.ways[START], Way(to=GHOST))
     with pytest.raises(ValueError, match="not a place"):
-        _ = draft.committed()
+        _ = draft.commit()
 
 
 def test_a_visit_off_the_player_is_refused() -> None:
     draft = small_world().draft()
     draft.payload.visits.append(Visit(place=HALL))
     with pytest.raises(ValueError, match="not where the player stands"):
-        _ = draft.committed()
+        _ = draft.commit()
 
 
 def test_walk_reaches_every_place_along_the_ways() -> None:

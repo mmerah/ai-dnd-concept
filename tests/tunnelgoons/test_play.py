@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from random import Random
 
-from core_test_support import TUNNELGOONS, opened_for, played, tool_call
+from core_test_support import TUNNELGOONS, open_game_for, play_turn, tool_call
 
 # A miss against the crawler's DS 6 (brute 1 + 2d6[1,1] = 3): the margin lands on the player.
 FIGHT_SEED = 2
@@ -41,9 +41,9 @@ REGION = {
 
 
 async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
-    table = opened_for(tmp_path, TUNNELGOONS, rng=Random(FIGHT_SEED))
+    table = open_game_for(tmp_path, TUNNELGOONS, rng=Random(FIGHT_SEED))
 
-    state = await played(
+    state = await play_turn(
         table,
         "Down the corridor, into the storeroom, then back to face the thing in the roots.",
         tool_call("move", to_id="corridor"),
@@ -62,7 +62,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
     assert world.npcs["crawler"].alive
     assert world.player.hp.current == world.player.hp.maximum - MARGIN
 
-    state = await played(
+    state = await play_turn(
         table,
         "Back to the storeroom, force the sealed cell, and rest once it is safe.",
         tool_call("move", to_id="storeroom"),
@@ -74,7 +74,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
     assert world.player.place == "sealed-cell"
     assert world.player.hp.current == world.player.hp.maximum
 
-    state = await played(
+    state = await play_turn(
         table,
         "Back out and down into the flooded cellar.",
         tool_call("move", to_id="storeroom"),

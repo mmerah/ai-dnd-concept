@@ -3,17 +3,17 @@ from core_test_support import initialized, with_entity
 from aidm.core.entities import EntityId
 from aidm.core.play import Exchange, SceneRecord, SpokenLine
 from aidm.core.views import TAIL_EXCHANGES, render_history, told_narration
-from aidm.engines.core import PLAYER_ID
-from aidm.engines.loner3e.world import LonerCharacter
+from aidm.engines.base import PLAYER_ID
+from aidm.engines.loner3e.world import Loner3eSheet
 
-SECRET = LonerCharacter(
+SECRET = Loner3eSheet(
     id=EntityId("hidden-actor"),
     name="The Secret",
     brief="Unrevealed canon.",
     concept="A Watcher",
 )
 
-OBJECT = LonerCharacter(
+OBJECT = Loner3eSheet(
     id=EntityId("a-locked-chest"),
     name="A Locked Chest",
     brief="Iron-bound, and shut fast.",

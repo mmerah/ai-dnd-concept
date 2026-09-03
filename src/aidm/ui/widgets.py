@@ -5,19 +5,19 @@ from pathlib import Path
 
 from nicegui import ui
 
+from aidm.core.entities import Refusal
 from aidm.core.play import DecisionOption
-
-from . import theme
+from aidm.ui import theme
 
 DM_ICON = "auto_stories"
 
 
 @asynccontextmanager
 async def working() -> AsyncGenerator[None]:
-    """A failure is shown to the player and swallowed, so the page stays usable after it."""
+    """A refusal or an OS error is shown to the player; a bug propagates."""
     try:
         yield
-    except Exception as error:
+    except (OSError, Refusal) as error:
         ui.notify(f"{type(error).__name__}: {error}", type="negative", multi_line=True)
 
 

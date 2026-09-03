@@ -3,10 +3,10 @@ from core_test_support import initialized
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
-from aidm.engines.core import PLAYER_ID
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.engine import GROWTH_NOTE
 from aidm.engines.loner3e.tools import ChangeWorld, apply_change, close_conflicts
-from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, LonerCharacter
+from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, Loner3eSheet
 from aidm.engines.scenes.drafts import MIN_SITUATION, SceneDraft
 from aidm.engines.scenes.world import scene_refusal
 from aidm.engines.scenes.worldsmith import install_scene
@@ -44,7 +44,7 @@ def test_reveal_moves_a_hidden_entity_into_the_scene_and_tells_the_player() -> N
     assert MAP not in draft.payload.hidden()
     assert draft.payload.require(MAP).known
     assert "the vault map" in traces[0]
-    _ = draft.committed()
+    _ = draft.commit()
 
 
 def test_only_what_is_hidden_here_can_be_revealed() -> None:
@@ -69,8 +69,8 @@ def test_someone_hidden_here_cannot_be_acted_on_before_the_reveal() -> None:
 
 def _next_scene(
     present: tuple[str, ...] = (MARA,), hidden: tuple[str, ...] = (TOMAS,)
-) -> SceneDraft[LonerCharacter]:
-    return SceneDraft[LonerCharacter](
+) -> SceneDraft[Loner3eSheet]:
+    return SceneDraft[Loner3eSheet](
         place="cloister",
         title="The Cloister",
         question="Does the cloister walk still reach the stair?",
@@ -89,7 +89,7 @@ def test_the_party_follows_into_the_next_scene() -> None:
     # Mara comes along because she travels with the player; the player is never listed.
     assert MARA in here and PLAYER_ID not in here
     assert [run.place for run in draft.payload.runs[:-1]] == ["abbots-study"]
-    _ = draft.committed()
+    _ = draft.commit()
 
 
 def test_someone_left_behind_is_refilled_when_the_scene_moves_on() -> None:
@@ -142,7 +142,7 @@ def test_a_one_word_name_is_a_word_the_situation_may_use() -> None:
 
 def test_the_scene_bar_names_what_a_thin_scene_is_missing() -> None:
     _, state = initialized()
-    thin = SceneDraft[LonerCharacter](
+    thin = SceneDraft[Loner3eSheet](
         place="nowhere",
         title="Nowhere",
         question="Is there anything here at all?",
@@ -156,7 +156,7 @@ def test_the_scene_bar_names_what_a_thin_scene_is_missing() -> None:
 
     ghost = EntityId("ghost")
     broken = _next_scene().model_copy(
-        update={"cast": {ghost: LonerCharacter(id=ghost, name="Ghost", brief="", alive=False)}}
+        update={"cast": {ghost: Loner3eSheet(id=ghost, name="Ghost", brief="", alive=False)}}
     )
     assert scene_refusal(broken, state.payload) == (
         "the scene needs cast members as the worldsmith may write them: ['ghost: alive']"
@@ -184,7 +184,7 @@ def test_the_cast_may_not_name_someone_it_does_not_hold() -> None:
     draft = state.draft()
     draft.payload.run.here = [EntityId("ghost")]
     with pytest.raises(ValueError, match="not in the cast"):
-        _ = draft.committed()
+        _ = draft.commit()
 
 
 def test_a_corpse_takes_no_further_part() -> None:
@@ -262,7 +262,7 @@ def test_change_tags_edits_one_list_and_refuses_what_it_cannot_move() -> None:
 
     _ = changed(draft, "kill", entity_id=MARA)
     assert "dead" in refused(draft, "change_tags", entity_id=MARA, kind="gear", gained=["Rope"])
-    _ = draft.committed()
+    _ = draft.commit()
 
 
 def test_drive_writes_what_play_revealed() -> None:
@@ -277,4 +277,4 @@ def test_drive_writes_what_play_revealed() -> None:
 
     _ = changed(draft, "kill", entity_id=MARA)
     assert "dead" in refused(draft, "drive", entity_id=MARA, motive="Survive")
-    _ = draft.committed()
+    _ = draft.commit()

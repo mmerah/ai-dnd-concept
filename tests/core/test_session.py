@@ -5,8 +5,8 @@ from core_test_support import (
     ScriptedSpawner,
     narrated,
     offline_settings,
-    opened,
-    played,
+    open_game,
+    play_turn,
     updated,
 )
 from loner3e_test_support import TARGET
@@ -29,7 +29,7 @@ def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path
     game = session(tmp_path)
     assert store.slugs() == ()
 
-    store.save(TARGET.slug, game.state.model_copy(update={"turn": 7}).committed())
+    store.save(TARGET.slug, game.state.model_copy(update={"turn": 7}).commit())
     assert session(tmp_path).state.turn == 7
 
     game = session(tmp_path)
@@ -61,7 +61,7 @@ def test_resume_refuses_a_save_that_is_not_this_game(
     tmp_path: Path, change: dict[str, object], message: str
 ) -> None:
     game = session(tmp_path)
-    FileStore(tmp_path).save(TARGET.slug, game.state.model_copy(update=change).committed())
+    FileStore(tmp_path).save(TARGET.slug, game.state.model_copy(update=change).commit())
 
     with pytest.raises(ValueError, match=message):
         session(tmp_path)
@@ -75,7 +75,7 @@ def test_one_open_game_per_slug(tmp_path: Path) -> None:
 
 
 async def test_the_opening_is_narrated_once_and_costs_a_turn(tmp_path: Path) -> None:
-    table = opened(tmp_path)
+    table = open_game(tmp_path)
     table.spawner.answers["narrator"] = [narrated("The abbot's study holds its breath.")]
 
     await table.service.open()
@@ -90,7 +90,7 @@ async def test_the_opening_is_narrated_once_and_costs_a_turn(tmp_path: Path) -> 
 
 async def test_an_opening_the_narrator_will_not_write_commits_nothing(tmp_path: Path) -> None:
     """The premise still stands in for it; a page reload asks again."""
-    table = opened(tmp_path)
+    table = open_game(tmp_path)
 
     await table.service.open()
 
@@ -99,10 +99,10 @@ async def test_an_opening_the_narrator_will_not_write_commits_nothing(tmp_path: 
 
 
 async def test_a_failed_commit_still_frees_the_game(tmp_path: Path) -> None:
-    table = opened(tmp_path)
+    table = open_game(tmp_path)
     table.service.store = _UnsavableStore(table.service.store.directory)
 
     with pytest.raises(OSError):
-        _ = await played(table, "I take the map.")
+        _ = await play_turn(table, "I take the map.")
 
     assert (table.service.busy, table.service.turn) == (False, None)

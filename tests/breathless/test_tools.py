@@ -6,6 +6,7 @@ from breathless_test_support import WRENCH, changed_facts, hub_world, refused, s
 
 from aidm.core.entities import EntityId
 from aidm.core.tools import NoArgs
+from aidm.engines.base import PLAYER_ID, read_packs
 from aidm.engines.breathless.creation import Pack
 from aidm.engines.breathless.tools import (
     ChangeStress,
@@ -21,12 +22,11 @@ from aidm.engines.breathless.tools import (
 from aidm.engines.breathless.tools import TestLuck as LuckTest
 from aidm.engines.breathless.tools import test_luck as roll_luck
 from aidm.engines.breathless.world import Item, stepped
-from aidm.engines.core import PLAYER_ID, load_packs
 from aidm.engines.hub import JOB_DONE
 from aidm.engines.scenes.world import SCENE_LEFT, NextScene, player_over
 
 PACKS_DIR = Path(__file__).parents[2] / "src" / "aidm" / "engines" / "breathless" / "packs"
-PACKS = load_packs((PACKS_DIR,), Pack)
+PACKS = read_packs((PACKS_DIR,), Pack)
 
 
 def test_check_on_a_skill_wears_it() -> None:

@@ -5,19 +5,22 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked
-from aidm.core.entities import EngineId, Slug, slug
+from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption
 from aidm.core.views import Rows
+from aidm.engines.base import Pack as ScenePack
+from aidm.engines.base import pack_options
 from aidm.engines.breathless.world import (
     SKILLS,
-    BreathlessCharacter,
     BreathlessCharacterFile,
+    BreathlessPayload,
+    Die,
+    Skill,
     player_survivor,
 )
-from aidm.engines.core import Pack as ScenePack
-from aidm.engines.core import pack_options
 
+STARTING_DICE: tuple[Die, ...] = (10, 8, 6)  # the three rated skills, best first
 _AUTHORING = (
     "BREATHLESS AUTHORING\n"
     "The cast carries no dice: an NPC is a name, a brief and whether the player has met them, "
@@ -42,7 +45,7 @@ class Pack(ScenePack):
     @model_validator(mode="after")
     def _six_srd_skills(self) -> Self:
         if {one.id for one in self.skills} != set(SKILLS):
-            raise ValueError("the six SRD skills, by id")
+            raise Refusal("the six SRD skills, by id")
         return self
 
 
@@ -72,13 +75,11 @@ def create_character(
     packs: Mapping[str, Pack], name: str, brief: str, picks: Picks
 ) -> BreathlessCharacterFile:
     check_picks(creation_steps(packs, picks), picks)
-    payload = BreathlessCharacter.model_validate(
-        {
-            "pronouns": picked(picks, "pronouns"),
-            "job": picked(picks, "job"),
-            "skills": {picked(picks, f"skill-d{die}"): die for die in (10, 8, 6)},
-            "item": picked(picks, "item"),
-        }
+    payload = BreathlessPayload(
+        pronouns=picked(picks, "pronouns"),
+        job=picked(picks, "job"),
+        skills={_skill(picked(picks, f"skill-d{die}")): die for die in STARTING_DICE},
+        item=picked(picks, "item"),
     )
     return BreathlessCharacterFile(
         id=slug(name, ()), engine=EngineId("breathless"), name=name, brief=brief, payload=payload
@@ -87,7 +88,7 @@ def create_character(
 
 def preview_character(character: AnyCharacter) -> Rows:
     if not isinstance(character, BreathlessCharacterFile):
-        raise ValueError("Breathless received an incompatible character")
+        raise Refusal("Breathless received an incompatible character")
     return (*player_survivor(character).rows(), ("Backpack", character.payload.item))
 
 
@@ -98,3 +99,8 @@ def guidance(packs: Mapping[str, Pack], selected_ids: Sequence[Slug]) -> str:
         for one in selected_ids
     }
     return f"{_AUTHORING}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"
+
+
+def _skill(name: str) -> Skill:
+    """`check_picks` has already held the answer to the pack's six ids, which are the SRD's."""
+    return next(skill for skill in SKILLS if skill == name)

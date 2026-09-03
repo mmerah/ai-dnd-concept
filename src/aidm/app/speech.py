@@ -5,12 +5,11 @@ from dataclasses import dataclass, field
 from hashlib import sha1
 from pathlib import Path
 
+from aidm.app.media import claim, post_bearer
 from aidm.config import ProviderConfig, Settings, SpeechConfig
 from aidm.core.io import FileStore
 from aidm.core.model import AnyScenario
 from aidm.core.play import Exchange, Speaker
-
-from .media import claim, post_bearer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -18,7 +17,7 @@ SPEECH_DIR = "speech"
 SAMPLE_WIDTH = 2  # 16-bit PCM
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class Reader:
     """Spoken exchanges, cached on disk and never regenerated once written."""
 
@@ -59,7 +58,7 @@ class Reader:
                 clip_file.setsampwidth(SAMPLE_WIDTH)
                 clip_file.setframerate(self.config.sample_rate)
                 clip_file.writeframes(b"".join(chunks))
-            _ = part.replace(path)
+            part.replace(path)
         except Exception:
             LOGGER.exception("speech generation failed")
         finally:

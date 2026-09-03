@@ -10,24 +10,23 @@ from aidm.app.launch import (
     LaunchTarget,
     SaveOption,
     launch_target,
-    load_catalog,
+    read_catalog,
 )
 from aidm.app.mcp import MOUNT_PATH, endpoint
 from aidm.app.runtime import Runtime
 from aidm.app.spawn import CliSpawner
-from aidm.config import load_settings
+from aidm.config import read_settings
 from aidm.core.entities import Slug, content_id
-
-from .create import character_page, scenario_page
-from .game import game_page
-from .settings import settings_page
-from .widgets import page_header
+from aidm.ui.create import character_page, scenario_page
+from aidm.ui.game import game_page
+from aidm.ui.settings import settings_page
+from aidm.ui.widgets import page_header
 
 LOGGER = logging.getLogger(__name__)
 
 
 def home_page(runtime: Runtime) -> None:
-    catalog = load_catalog(runtime.settings, runtime.engines)
+    catalog = read_catalog(runtime.settings, runtime.engines)
     with page_header("AI Dungeon Master", home=False):
         ui.button("Settings", icon="settings", on_click=lambda: ui.navigate.to("/settings")).props(
             "flat color=white"
@@ -49,7 +48,7 @@ def home_page(runtime: Runtime) -> None:
 def start() -> None:
     # Without a handler the root logger drops every INFO record, spawns included.
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
-    settings = load_settings()
+    settings = read_settings()
     _register_pages(Runtime(settings, CliSpawner(settings)))
     ui.run(  # pyright: ignore[reportUnknownMemberType]
         title="AI Dungeon Master",

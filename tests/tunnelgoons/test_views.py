@@ -1,7 +1,7 @@
 from tunnelgoons_test_support import HALL, MIRA, START, TAVERN, hub_world, small_world
 
 from aidm.core.entities import EntityId
-from aidm.engines.core import PLAYER_ID
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.hub import Job, board_rows
 from aidm.engines.tunnelgoons.views import (
     REPORT_ROW,

@@ -8,10 +8,14 @@ from random import Random
 
 from pydantic import BaseModel
 
-from aidm.config import Settings, load_settings
-from aidm.core.entities import EngineId, EntityId, Slug, slug
+from aidm.app.launch import LaunchTarget
+from aidm.app.media import Illustrator, open_illustrator
+from aidm.app.spawn import CliSpawner, Spawner, ask
+from aidm.app.speech import Reader, open_reader
+from aidm.config import Settings, read_settings
+from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.facts import Fact, cards, traced
-from aidm.core.io import FileStore, load_character, read_scenario, write_scenario
+from aidm.core.io import FileStore, read_character, read_scenario, write_scenario
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioKind
 from aidm.core.play import Answer, Exchange, Line, Narration
 from aidm.core.source import given_text
@@ -21,11 +25,6 @@ from aidm.engines.registry import begin_game, build_engines
 from aidm.engines.seam import AnyEngine
 from aidm.turn.context import render_narrator
 from aidm.turn.run import Turn, TurnStep, close_segment, narration_refusal
-
-from .launch import LaunchTarget
-from .media import Illustrator, open_illustrator
-from .spawn import CliSpawner, Spawner, answered
-from .speech import Reader, open_reader
 
 LOGGER = logging.getLogger(__name__)
 
@@ -57,7 +56,7 @@ class _Worldsmith:
     async def __call__[M: BaseModel](
         self, prompt: str, model: type[M], refusal: Callable[[M], str | None]
     ) -> M:
-        return await answered(
+        return await ask(
             "worldsmith", prompt, model, refusal, partial(self.spawner.run, "worldsmith")
         )
 
@@ -87,7 +86,7 @@ class GameService:
         if saved is None:
             self.state = self._begun()
             return
-        self.state = self._resumable(self.engine.restored(saved))
+        self.state = self._resumable(self.engine.restore(saved))
 
     @property
     def slug(self) -> str:
@@ -124,7 +123,7 @@ class GameService:
             await self.extend(action)
             return
         if moving_on and not self.engine.ready(self.state):
-            raise ValueError("the world offers no transition from here")
+            raise Refusal("the world offers no transition from here")
         turn = Turn.begin(self.engine, self.state, action, self.rng)
         self.turn, self.phase = turn, "master"
         try:
@@ -152,12 +151,12 @@ class GameService:
     async def extend(self, intent: str | Answer) -> None:
         """Author and install a region without a player turn; a told card is still filed."""
         if not self.engine.ready(self.state):
-            raise ValueError("the world has no frontier to extend")
+            raise Refusal("the world has no frontier to extend")
         if self.busy:
-            raise ValueError("a turn is already in flight")
+            raise Refusal("a turn is already in flight")
         if isinstance(intent, Answer):
             if intent.option_id is not None:
-                raise ValueError("a transition needs written intent")
+                raise Refusal("a transition needs written intent")
             intent_text = intent.text
         else:
             intent_text = intent
@@ -176,9 +175,9 @@ class GameService:
         prompt = turn.picture()
         for last in (False, True):
             try:
-                _ = await self.spawner.run("master", prompt, None)
+                await self.spawner.run("master", prompt, None)
                 return
-            except (OSError, ValueError) as failed:
+            except (OSError, Refusal) as failed:
                 if not nothing_landed():
                     LOGGER.warning(
                         "the game master failed after applying %d facts: %s",
@@ -195,7 +194,7 @@ class GameService:
     ) -> tuple[Line, ...]:
         view = self.engine.narrator_view(draft)
         try:
-            narration = await answered(
+            narration = await ask(
                 "narrator",
                 render_narrator(
                     view,
@@ -207,7 +206,7 @@ class GameService:
                 lambda written: narration_refusal(view, written),
                 partial(self.spawner.run, "narrator"),
             )
-        except (OSError, ValueError) as failed:
+        except (OSError, Refusal) as failed:
             if fatal:
                 raise
             # The scene cost minutes to write; an unwritable arrival must not throw it away.
@@ -221,7 +220,7 @@ class GameService:
         try:
             facts = await self.engine.advance(draft, intent, _Worldsmith(self.spawner))
             self.engine.validate(draft)
-        except (OSError, ValueError) as failed:
+        except (OSError, Refusal) as failed:
             # Dropping the write costs a scene; raising costs the turn that was already played.
             LOGGER.warning("the world did not grow: %s", failed)
             # A fresh draft: the failed one may hold the half-installed scene.
@@ -232,7 +231,7 @@ class GameService:
             self.commit(close_segment(self.engine, view, draft, prompt, (), (UNWRITTEN,)))
             return
         if brief is None and not cards(facts):
-            self.commit(draft.committed())
+            self.commit(draft.commit())
             return
         prompt, lines = intent, ()  # a silent install's told card is filed under its intent
         if brief is not None:
@@ -298,12 +297,12 @@ class GameService:
 
     def _resumable(self, state: AnyGame) -> AnyGame:
         if (state.scenario_id, state.character_id) != (self.target.scenario_id, self.character.id):
-            raise ValueError(
+            raise Refusal(
                 f"save is {state.scenario_id!r}/{state.character_id!r}, "
                 f"selected is {self.target.scenario_id!r}/{self.character.id!r}"
             )
         if state.scenario != self.scenario.meta:
-            raise ValueError(
+            raise Refusal(
                 f"save scenario is {state.scenario.title!r}, "
                 f"selected scenario is {self.scenario.meta.title!r}"
             )
@@ -352,7 +351,7 @@ class Runtime:
         return self.busy_refusal()
 
     def reload_settings(self) -> None:
-        self.settings = load_settings()
+        self.settings = read_settings()
         self.engines = build_engines(self.settings.packs_dir)
         self.spawner = CliSpawner(self.settings)
         self._sessions.clear()
@@ -372,7 +371,7 @@ class Runtime:
     ) -> Slug:
         """One worldsmith call authors the engine's complete opening world."""
         engine = self.engines[engine_id]
-        character = load_character(
+        character = read_character(
             self.settings.characters_dir, character_id, engine.id, engine.character
         )
         source = given_text(premise, document, self.settings.source_max_chars)
@@ -380,8 +379,8 @@ class Runtime:
 
         def playable(built: AnyScenario) -> str | None:
             try:
-                _ = begin_game(engine, name, built, character)
-            except ValueError as unplayable:
+                begin_game(engine, name, built, character)
+            except Refusal as unplayable:
                 return str(unplayable)
             return None
 
@@ -418,7 +417,7 @@ class Runtime:
             {engine_id: engine.scenario for engine_id, engine in self.engines.items()},
         )
         engine = self.engines[scenario.engine]
-        character = load_character(
+        character = read_character(
             settings.characters_dir, target.character_id, engine.id, engine.character
         )
         store = FileStore(settings.saves_dir)

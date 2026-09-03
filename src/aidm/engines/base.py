@@ -5,7 +5,7 @@ from typing import Literal, Protocol, Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, require_unique
+from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Refusal, require_unique
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.io import ENCODING
 from aidm.core.play import DecisionOption
@@ -74,9 +74,9 @@ class Counter(Mutable):
     @model_validator(mode="after")
     def _within_bounds(self) -> Self:
         if self.current < 0:
-            raise ValueError(f"{self.current} is below zero")
+            raise Refusal(f"{self.current} is below zero")
         if self.current > self.maximum:
-            raise ValueError(f"{self.current} is above maximum {self.maximum}")
+            raise Refusal(f"{self.current} is above maximum {self.maximum}")
         return self
 
 
@@ -86,7 +86,7 @@ def sentence(text: str) -> str:
 
 def join_party(party: list[EntityId], one: Person) -> Fact:
     if one.id in party:
-        raise ValueError(f"{one.name} already travels with the player")
+        raise Refusal(f"{one.name} already travels with the player")
     party.append(one.id)
     return entity_fact(
         one,
@@ -98,7 +98,7 @@ def join_party(party: list[EntityId], one: Person) -> Fact:
 
 def leave_party(party: list[EntityId], one: Person) -> Fact:
     if one.id not in party:
-        raise ValueError(f"{one.name} does not travel with the player")
+        raise Refusal(f"{one.name} does not travel with the player")
     party.remove(one.id)
     return entity_fact(
         one,
@@ -112,9 +112,9 @@ def check_party(party: Sequence[EntityId], cast: Mapping[EntityId, Person]) -> N
     require_unique("party", party)
     for one in party:
         if one not in cast:
-            raise ValueError(f"{one!r} travels with the player but is not in the cast")
+            raise Refusal(f"{one!r} travels with the player but is not in the cast")
         if not cast[one].alive:
-            raise ValueError(f"{one!r} is dead and cannot travel with the player")
+            raise Refusal(f"{one!r} is dead and cannot travel with the player")
 
 
 def party_rows(members: Sequence[Person]) -> Rows:
@@ -175,7 +175,7 @@ def counter_fact(
 def check_filing[E: Entity](pool: dict[EntityId, E]) -> None:
     for key, one in pool.items():
         if key != one.id:
-            raise ValueError(f"entity {one.id!r} is filed under {key!r}")
+            raise Refusal(f"entity {one.id!r} is filed under {key!r}")
 
 
 def labeled(entity: Entity, player_id: EntityId) -> str:
@@ -228,7 +228,7 @@ def pack_options(packs: Mapping[str, Pack]) -> tuple[DecisionOption, ...]:
     return tuple(DecisionOption(id=key, label=one.name) for key, one in packs.items())
 
 
-def load_packs[P: BaseModel](directories: Sequence[Path], model: type[P]) -> dict[str, P]:
+def read_packs[P: BaseModel](directories: Sequence[Path], model: type[P]) -> dict[str, P]:
     """Later directories win; a broken file raises rather than being skipped."""
     packs: dict[str, P] = {}
     for directory in directories:

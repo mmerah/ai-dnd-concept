@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 
-from aidm.core.entities import Frozen, Slug
+from aidm.core.entities import Frozen, Refusal, Slug
 from aidm.core.play import DecisionOption
 
 type Picks = Mapping[Slug, str]
@@ -24,15 +24,15 @@ def check_picks(steps: Sequence[CreationStep], picks: Picks) -> None:
     """One legality rule for the page and for `create`, so neither can drift."""
     known = {step.id for step in steps}
     if unknown := sorted(set(picks) - known):
-        raise ValueError(f"no creation step is called {unknown}")
+        raise Refusal(f"no creation step is called {unknown}")
     for step in steps:
         answer = picked(picks, step.id)
         if not answer.strip():
-            raise ValueError(f"{step.id!r} is unanswered")
+            raise Refusal(f"{step.id!r} is unanswered")
         if len(answer) > ANSWER_MAX:
-            raise ValueError(f"{step.id!r} takes at most {ANSWER_MAX} characters")
+            raise Refusal(f"{step.id!r} takes at most {ANSWER_MAX} characters")
         if step.options and answer not in {option.id for option in step.options}:
-            raise ValueError(f"{step.id!r} offers no {answer!r}")
+            raise Refusal(f"{step.id!r} offers no {answer!r}")
 
 
 def other_than(options: Sequence[DecisionOption], taken: str) -> tuple[DecisionOption, ...]:

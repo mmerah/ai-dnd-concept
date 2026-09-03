@@ -3,7 +3,7 @@ from core_test_support import ENGINES_BUILT, LONER3E, initialized, with_entity
 from aidm.core.entities import EntityId
 from aidm.core.play import Exchange, SceneRecord, SpokenLine
 from aidm.core.views import NarratorView
-from aidm.engines.loner3e.world import Loner3eGame, LonerCharacter
+from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
 from aidm.engines.seam import AnyEngine
 from aidm.turn.context import ANSWERED_BY_OPTION, render_master, render_narrator
 
@@ -16,11 +16,11 @@ def _state() -> Loner3eGame:
     _, state = initialized()
     state = with_entity(
         state,
-        LonerCharacter(id=SECRET, name="The Secret", brief=UNREVEALED, concept="A Watcher"),
+        Loner3eSheet(id=SECRET, name="The Secret", brief=UNREVEALED, concept="A Watcher"),
     )
     return with_entity(
         state,
-        LonerCharacter(id=EntityId("ledger"), name="a ledger", brief="Mara's notes.", known=True),
+        Loner3eSheet(id=EntityId("ledger"), name="a ledger", brief="Mara's notes.", known=True),
     )
 
 

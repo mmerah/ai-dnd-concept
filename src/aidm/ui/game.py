@@ -13,9 +13,8 @@ from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import Answer, Speaker
 from aidm.core.views import speaker_of
 from aidm.turn.run import TurnStep
-
-from .panels import journal_panel, scene_sidebar
-from .widgets import (
+from aidm.ui.panels import journal_panel, scene_sidebar
+from aidm.ui.widgets import (
     avatar,
     decision_widget,
     page_header,
@@ -183,7 +182,7 @@ async def submit(view: GameView, box: ui.input, moving_on: bool = False) -> None
         return
     box.value = ""
     # Quasar never saw the typed value change, so only an explicit push empties the composer.
-    _ = box.run_method("updateValue")
+    box.run_method("updateValue")
     typed_input = typed if session.player_view().prompt is None else Answer(text=typed)
     await _send(view, typed_input, moving_on=moving_on)
 
@@ -254,12 +253,12 @@ def composer(view: GameView) -> None:
             lambda: submit(view, box),
             js_handler="(e) => { if (e.shiftKey) return; e.preventDefault(); emit(); }",
         )
-        _ = (
+        (
             ui.button(icon="send", on_click=lambda: submit(view, box))
             .props("round flat")
             .bind_enabled_from(session, "phase", backward=partial(_can_type, session))
         )
-        _ = (
+        (
             ui.button("Move on", icon="arrow_forward", on_click=lambda: submit(view, box, True))
             .props("no-caps outline dense")
             .bind_enabled_from(session, "phase", backward=partial(_can_type, session))

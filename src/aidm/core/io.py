@@ -8,7 +8,7 @@ from re import fullmatch
 
 from pydantic import BaseModel, JsonValue
 
-from aidm.core.entities import EngineId, Slug, content_id, require_unique
+from aidm.core.entities import EngineId, Refusal, Slug, content_id, parse, require_unique
 from aidm.core.model import (
     AnyCharacter,
     AnyGame,
@@ -63,9 +63,12 @@ def write_text(path: Path, body: str) -> None:
     staged.replace(path)
 
 
-def decoded(raw: str) -> JsonValue:
+def decode(raw: str) -> JsonValue:
     """`json` keeps the last of two equal keys, so a doubled id would vanish without a word."""
-    return json.loads(raw, object_pairs_hook=_unique_keys)
+    try:
+        return json.loads(raw, object_pairs_hook=_unique_keys)
+    except json.JSONDecodeError as broken:
+        raise Refusal(f"not JSON: {broken}") from broken
 
 
 def read_scenarios(
@@ -74,7 +77,7 @@ def read_scenarios(
     for path in sorted(p for p in directory.iterdir() if (p / WORLD_FILE).is_file()):
         try:
             scenario = read_scenario(directory, path.name, models)
-        except ValueError as unreadable:
+        except Refusal as unreadable:
             # Skip incomplete scenarios so the home screen remains usable.
             LOGGER.warning("skipping scenario %r: %s", path.name, unreadable)
             continue
@@ -93,9 +96,9 @@ def read_characters(
                 yield (
                     content_id(path.name),
                     engine,
-                    load_character(directory, path.name, engine, model),
+                    read_character(directory, path.name, engine, model),
                 )
-            except ValueError as unreadable:
+            except Refusal as unreadable:
                 LOGGER.warning("skipping character %r: %s", path.name, unreadable)
 
 
@@ -103,22 +106,22 @@ def read_scenario(
     directory: Path, name: Slug, models: Mapping[EngineId, type[AnyScenario]]
 ) -> AnyScenario:
     path = directory / content_id(name) / WORLD_FILE
-    value = decoded(_read_text(path))
-    engine = EngineHeader.model_validate(value).engine
+    value = decode(_read_text(path))
+    engine = parse(EngineHeader, value).engine
     model = models.get(engine)
     if model is None:
-        raise ValueError(f"the scenario needs the unavailable {engine!r} engine")
-    return model.model_validate(value)
+        raise Refusal(f"the scenario needs the unavailable {engine!r} engine")
+    return parse(model, value)
 
 
-def load_character(
+def read_character(
     directory: Path, name: Slug, engine: EngineId, model: type[AnyCharacter]
 ) -> AnyCharacter:
     character = _read(directory / content_id(name) / f"{engine}.json", model)
     if character.engine != engine:
-        raise ValueError(f"the character plays {character.engine!r}, not {engine!r}")
+        raise Refusal(f"the character plays {character.engine!r}, not {engine!r}")
     if character.id != content_id(name):
-        raise ValueError(f"character {character.id!r} is filed under {content_id(name)!r}")
+        raise Refusal(f"character {character.id!r} is filed under {content_id(name)!r}")
     return character
 
 
@@ -126,11 +129,11 @@ def write_character(directory: Path, character: AnyCharacter) -> None:
     folder = directory / content_id(character.id)
     path = folder / f"{character.engine}.json"
     if path.exists():
-        raise ValueError(f"character {character.id!r} already exists")
+        raise Refusal(f"character {character.id!r} already exists")
     # One folder is one person played by several engines, so any sibling settles who that is.
     sibling = next(folder.glob("*.json"), None)
     if sibling is not None and (held := _read(sibling, CharacterHeader)).name != character.name:
-        raise ValueError(f"character {character.id!r} is {held.name!r}, not {character.name!r}")
+        raise Refusal(f"character {character.id!r} is {held.name!r}, not {character.name!r}")
     write_text(path, character.model_dump_json(indent=2))
 
 
@@ -142,7 +145,7 @@ def write_scenario(
 ) -> None:
     folder = directory / content_id(name)
     if folder.exists():
-        raise ValueError(f"scenario {name!r} already exists")
+        raise Refusal(f"scenario {name!r} already exists")
     write_text(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
     if source is not None:
         shutil.copyfile(source, folder / f"{SOURCE_STEM}{source.suffix}")
@@ -150,12 +153,15 @@ def write_scenario(
 
 def _read_text(path: Path) -> str:
     if not path.is_file():
-        raise ValueError(f"{path.parent.name!r} has no {path.name}")
-    return path.read_text(encoding=ENCODING)
+        raise Refusal(f"{path.parent.name!r} has no {path.name}")
+    try:
+        return path.read_text(encoding=ENCODING)
+    except UnicodeDecodeError as broken:
+        raise Refusal(f"{path.name} is not {ENCODING}: {broken}") from broken
 
 
 def _read[T: BaseModel](path: Path, model: type[T]) -> T:
-    return model.model_validate(decoded(_read_text(path)))
+    return parse(model, decode(_read_text(path)))
 
 
 def _unique_keys(pairs: list[tuple[str, JsonValue]]) -> dict[str, JsonValue]:

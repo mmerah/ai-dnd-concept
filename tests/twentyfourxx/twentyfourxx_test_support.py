@@ -2,7 +2,7 @@ from collections.abc import Sequence
 
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import ScenarioMeta
-from aidm.engines.core import PLAYER_ID, Person
+from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.hub import Job, Offer
 from aidm.engines.scenes.world import SceneRun
 from aidm.engines.twentyfourxx.world import (

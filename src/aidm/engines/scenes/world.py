@@ -6,14 +6,22 @@ from typing import Any, Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Slug, require_unique
+from aidm.core.entities import (
+    CheckedEntityId,
+    EntityId,
+    Frozen,
+    Mutable,
+    Refusal,
+    Slug,
+    require_unique,
+)
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
 from aidm.core.model import Game
 from aidm.core.play import Exchange, SceneRecord
 from aidm.core.tools import schema_of
 from aidm.core.views import PanelRow, Rows, render_history, sections
-from aidm.engines.core import (
+from aidm.engines.base import (
     Entity,
     Person,
     check_filing,
@@ -116,7 +124,7 @@ class SceneCanon[C: Person](Mutable):
         check_named(self.opening.here, self.cast)
         opening = self.opening
         if opening.exchanges or opening.left is not None or opening.recap:
-            raise ValueError("an opening with play in it")
+            raise Refusal("an opening with play in it")
         check_hub(self.hub, self.board, (self.opening,), ())
         return self
 
@@ -139,16 +147,16 @@ class SceneWorld[C: Person, P: Person](Mutable):
         check_filing(self.cast)
         check_named(self.run.here, self.cast)
         if not self.player.known:
-            raise ValueError("the player is unknown to themselves")
+            raise Refusal("the player is unknown to themselves")
         if self.player.id in self.cast:
-            raise ValueError("the player is in the cast")
+            raise Refusal("the player is in the cast")
         if self.player.id in self.run.here:
-            raise ValueError("the player is in every scene and is never listed in it")
+            raise Refusal("the player is in every scene and is never listed in it")
         if self.player.id in self.party:
-            raise ValueError("the player cannot travel with themselves")
+            raise Refusal("the player cannot travel with themselves")
         check_party(self.party, self.cast)
         if left := sorted(set(self.party) - set(self.run.here)):
-            raise ValueError(f"the party is in every scene; {left} are not in this one")
+            raise Refusal(f"the party is in every scene; {left} are not in this one")
         return self
 
     @property
@@ -212,7 +220,7 @@ class SceneWorld[C: Person, P: Person](Mutable):
             return self.player
         one = self.cast.get(entity_id)
         if one is None:
-            raise ValueError(f"unknown id {entity_id!r}. Use only ids you were shown.")
+            raise Refusal(f"unknown id {entity_id!r}. Use only ids you were shown.")
         return one
 
     def require_here(self, entity_id: EntityId) -> C | P:
@@ -220,19 +228,17 @@ class SceneWorld[C: Person, P: Person](Mutable):
         if one.id == self.player.id:
             return one
         if one.id not in self.run.here or not one.known:
-            raise ValueError(
-                f"{one.name} is not here with the player, so nothing can happen to them"
-            )
+            raise Refusal(f"{one.name} is not here with the player, so nothing can happen to them")
         return one
 
     def require_alive_here(self, entity_id: EntityId) -> C | P:
         one = self.require(entity_id)
         if not one.alive:
-            raise ValueError(f"{one.name} is dead; they take no further part.")
+            raise Refusal(f"{one.name} is dead; they take no further part.")
         if one.id == self.player.id:
             return one
         if one.id not in self.run.here or not one.known:
-            raise ValueError(
+            raise Refusal(
                 f"{entity_id!r} is not here with the player. "
                 "Bring them here first, or act on who is here."
             )
@@ -253,16 +259,16 @@ class SceneWorld[C: Person, P: Person](Mutable):
         """The discovery itself, distinct from what `enter` tells about someone walking in."""
         one = self.require(entity_id)
         if entity_id not in self.run.here or one.known:
-            raise ValueError(f"{entity_id!r} is not hidden here")
+            raise Refusal(f"{entity_id!r} is not hidden here")
         facts = self.reveal(one)
         return [facts[0].model_copy(update={"card": sentence(f"{one.name} discovered")})]
 
     def enter(self, entity_id: EntityId) -> list[Fact]:
         if entity_id == self.player.id:
-            raise ValueError("the player is in every scene; move the story on instead")
+            raise Refusal("the player is in every scene; move the story on instead")
         one = self.require(entity_id)
         if one.id in self.run.here:
-            raise ValueError(f"{one.name} is already here")
+            raise Refusal(f"{one.name} is already here")
         self.run.here.append(one.id)
         trace = f"{self.label(one)} arrives"
         return [
@@ -272,10 +278,10 @@ class SceneWorld[C: Person, P: Person](Mutable):
 
     def leave(self, entity_id: EntityId) -> list[Fact]:
         if entity_id == self.player.id:
-            raise ValueError("the player is in every scene; move the story on instead")
+            raise Refusal("the player is in every scene; move the story on instead")
         one = self.require_here(entity_id)
         if one.id in self.party:
-            raise ValueError(f"{one.name} travels with the player and leaves through `leave_party`")
+            raise Refusal(f"{one.name} travels with the player and leaves through `leave_party`")
         self.run.here.remove(one.id)
         trace = f"{self.label(one)} leaves"
         return [entity_fact(one, "entity_left", trace, card=f"{one.name} leaves")]
@@ -283,7 +289,7 @@ class SceneWorld[C: Person, P: Person](Mutable):
     def kill(self, entity_id: EntityId) -> list[Fact]:
         one = self.require_here(entity_id)
         if not one.alive:
-            raise ValueError(f"{one.name} is already dead")
+            raise Refusal(f"{one.name} is already dead")
         facts = self.reveal(one)
         if one.id in self.party:
             self.party.remove(one.id)
@@ -292,17 +298,17 @@ class SceneWorld[C: Person, P: Person](Mutable):
         facts.append(entity_fact(one, "actor_killed", f"{self.label(one)} is dead", card=card))
         return facts
 
-    def settle(self, job_done: bool, pursuit: str) -> tuple[Fact, ...]:
+    def settle(self, job_done: bool, pursuit: str) -> list[Fact]:
         if self.run.left is not None:
-            raise ValueError("this scene is already settled; the player has the way on")
+            raise Refusal("this scene is already settled; the player has the way on")
         if job_done:
             job = self.open_job()
             if job is None or self.at_hub:
-                raise ValueError("no job is open here")
+                raise Refusal("no job is open here")
             job.finished = True
         self.run.left = pursuit
         settled = SCENE_LEFT if pursuit else SCENE_SETTLED
-        return (settled, JOB_DONE) if job_done else (settled,)
+        return [settled, JOB_DONE] if job_done else [settled]
 
     def merged_cast(self, draft: SceneDraft[C]) -> dict[EntityId, C]:
         """A re-filed member keeps the world's entry with the draft's brief."""
@@ -332,7 +338,7 @@ class SceneWorld[C: Person, P: Person](Mutable):
         elif isinstance(draft, ReturnDraft):
             job = self.open_job()
             if job is None:
-                raise ValueError("no job is open to close")
+                raise Refusal("no job is open to close")
             job.debrief = draft.debrief
         self.runs.append(run_of(draft, [*self.party, *present, *hidden]))
 
@@ -450,9 +456,9 @@ def new_world[W: SceneWorld[Any, Any]](
 
 def check_game[W: SceneWorld[Any, Any]](packs: Collection[str], state: Game[W]) -> None:
     if not state.packs:
-        raise ValueError(f"a {state.engine!r} game needs at least one table set")
+        raise Refusal(f"a {state.engine!r} game needs at least one table set")
     if missing := sorted(set(state.packs) - set(packs)):
-        raise ValueError(f"the game names packs not installed: {missing}")
+        raise Refusal(f"the game names packs not installed: {missing}")
     check_kind(state.scenario.kind, state.payload.hub)
 
 
@@ -469,7 +475,7 @@ def check_named(here: Sequence[EntityId], cast: Mapping[EntityId, Entity]) -> No
     require_unique("ids in the scene", here)
     for who in here:
         if who not in cast:
-            raise ValueError(f"scene names {who!r}, who is not in the cast")
+            raise Refusal(f"scene names {who!r}, who is not in the cast")
 
 
 def check_hub(
@@ -480,10 +486,10 @@ def check_hub(
     if hub is None:
         return
     if runs[0].place != hub:
-        raise ValueError(f"run 0 does not open at hub {hub!r}")
+        raise Refusal(f"run 0 does not open at hub {hub!r}")
     # Every hub run after the first is a return, and a return closes exactly one job.
     if sum(run.place == hub for run in runs[1:]) != len(closed_jobs_of(jobs)):
-        raise ValueError("hub runs after the first and closed jobs disagree")
+        raise Refusal("hub runs after the first and closed jobs disagree")
 
 
 def resolved_id(wanted: str, cast: Mapping[EntityId, Entity]) -> EntityId | None:
@@ -501,7 +507,7 @@ def resolve_ids(
     for one in wanted:
         matched = resolved_id(one, cast)
         if matched is None:
-            raise ValueError(f"the scene lists {one!r} as {where}, and no such id or name exists")
+            raise Refusal(f"the scene lists {one!r} as {where}, and no such id or name exists")
         if matched not in found:
             found.append(matched)
     return found

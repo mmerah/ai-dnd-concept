@@ -5,11 +5,11 @@ from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.entities import CheckedEntityId, Frozen, Slug, require_unique
+from aidm.core.entities import CheckedEntityId, Frozen, Refusal, Slug, require_unique
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.play import DecisionOption, PendingDecision
 from aidm.core.tools import MasterTool, master_tool
-from aidm.engines.core import (
+from aidm.engines.base import (
     CHANGE_WORLD,
     Counter,
     JoinParty,
@@ -25,8 +25,8 @@ from aidm.engines.loner3e.world import (
     DIE_FACE,
     LUCK_MAX,
     Loner3eGame,
-    LonerCharacter,
-    LonerWorld,
+    Loner3eSheet,
+    Loner3eWorld,
     TagKind,
     set_tags,
     tags_of,
@@ -103,8 +103,7 @@ class Question(Frozen):
     )
 
 
-@dataclass(frozen=True, slots=True)
-class Outcome:
+class Outcome(Frozen):
     """One of the six answers, carrying the luck an exchange costs the side that lost it."""
 
     name: Slug
@@ -121,13 +120,11 @@ class Oracle:
 
     packs: Mapping[str, Pack]
 
-    def resolve_question(
-        self, draft: Loner3eGame, action: Question, rng: Random
-    ) -> tuple[Fact, ...]:
+    def resolve_question(self, draft: Loner3eGame, action: Question, rng: Random) -> list[Fact]:
         world = draft.payload
         actor = world.require_alive_here(action.actor_id)
         facts = world.reveal(actor)
-        opponent: LonerCharacter | None = None
+        opponent: Loner3eSheet | None = None
         if action.opponent_id is not None:
             opponent = world.require_alive_here(action.opponent_id)
             facts.extend(world.reveal(opponent))
@@ -169,10 +166,10 @@ class Oracle:
         facts[answered_at] = facts[answered_at].model_copy(
             update={"card": card, "dice": (chance, risk)}
         )
-        return tuple(facts)
+        return facts
 
 
-def apply_change(world: LonerWorld, change: WorldChange) -> list[Fact]:
+def apply_change(world: Loner3eWorld, change: WorldChange) -> list[Fact]:
     """Every arm settles its own deterministic consequences, so a call leaves nothing half-done."""
     match change:
         case Reveal():
@@ -198,7 +195,7 @@ def change_world(draft: Loner3eGame, args: ChangeWorld, _rng: Random) -> list[Fa
     return apply_change(draft.payload, args.change)
 
 
-def next_scene(draft: Loner3eGame, args: NextScene, _rng: Random) -> tuple[Fact, ...]:
+def next_scene(draft: Loner3eGame, args: NextScene, _rng: Random) -> list[Fact]:
     return draft.payload.settle(args.job_done, args.pursuit)
 
 
@@ -206,19 +203,19 @@ def twist_table(packs: Mapping[str, Pack]) -> tuple[tuple[str, str], ...]:
     """Always the SRD's own table: no other pack publishes one."""
     srd = packs.get(SRD_PACK)
     if srd is None or srd.twist_subjects is None or srd.twist_actions is None:
-        raise ValueError("the SRD table set with its twist columns is not installed")
+        raise Refusal("the SRD table set with its twist columns is not installed")
     return tuple(zip(srd.twist_subjects, srd.twist_actions, strict=True))
 
 
 def outcome_for(chance: int, risk: int) -> Outcome:
     if chance == risk:
-        return Outcome("yes-but", 1)
+        return Outcome(name="yes-but", harm=1)
     side, sign = ("yes", 1) if chance > risk else ("no", -1)
     if min(chance, risk) >= AND_AT:
-        return Outcome(f"{side}-and", 3 * sign)
+        return Outcome(name=f"{side}-and", harm=3 * sign)
     if max(chance, risk) <= BUT_AT:
-        return Outcome(f"{side}-but", sign)
-    return Outcome(side, 2 * sign)
+        return Outcome(name=f"{side}-but", harm=sign)
+    return Outcome(name=side, harm=2 * sign)
 
 
 def apply_restore_luck(draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
@@ -239,7 +236,7 @@ def close_conflicts(draft: Loner3eGame) -> tuple[Fact, ...]:
 
 
 def meanings(
-    packs: Mapping[str, Pack], selected: Sequence[Slug], one: LonerCharacter
+    packs: Mapping[str, Pack], selected: Sequence[Slug], one: Loner3eSheet
 ) -> tuple[tuple[str, str], ...]:
     chosen = tuple(packs[pack_id] for pack_id in selected)
     # The concept's pack blurb is generic where the entity's own brief is not: skip it.
@@ -249,7 +246,7 @@ def meanings(
     )
 
 
-def conflict_prompt(world: LonerWorld, actor: LonerCharacter, opponent: LonerCharacter) -> str:
+def conflict_prompt(world: Loner3eWorld, actor: Loner3eSheet, opponent: Loner3eSheet) -> str:
     foe = actor if opponent.id == world.player.id else opponent
     return (
         f"The conflict with {foe.name} runs on: neither side is out of luck yet. Press the "
@@ -307,15 +304,15 @@ def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[Loner3eGame], ...]:
     )
 
 
-def _change_tags(world: LonerWorld, one: LonerCharacter, change: ChangeTags) -> list[Fact]:
+def _change_tags(world: Loner3eWorld, one: Loner3eSheet, change: ChangeTags) -> list[Fact]:
     if not change.gained and not change.lost:
-        raise ValueError("change_tags needs at least one gained or lost tag")
+        raise Refusal("change_tags needs at least one gained or lost tag")
     require_unique(f"{change.kind} tags", (*change.gained, *change.lost))
     current = tags_of(one, change.kind)
     if held := [tag for tag in change.gained if tag in current]:
-        raise ValueError(f"{one.name} already carries the {change.kind} {held[0]!r}")
+        raise Refusal(f"{one.name} already carries the {change.kind} {held[0]!r}")
     if missing := [tag for tag in change.lost if tag not in current]:
-        raise ValueError(f"{one.name} carries no {change.kind} {missing[0]!r}")
+        raise Refusal(f"{one.name} carries no {change.kind} {missing[0]!r}")
     set_tags(
         one, change.kind, tuple(tag for tag in (*current, *change.gained) if tag not in change.lost)
     )
@@ -331,9 +328,9 @@ def _change_tags(world: LonerWorld, one: LonerCharacter, change: ChangeTags) -> 
     return [entity_fact(one, "tags_changed", trace, card="; ".join(parts))]
 
 
-def _drive(world: LonerWorld, one: LonerCharacter, change: Drive) -> list[Fact]:
+def _drive(world: Loner3eWorld, one: Loner3eSheet, change: Drive) -> list[Fact]:
     if not change.goal and not change.motive and not change.nemesis:
-        raise ValueError("drive needs a goal, a motive or a nemesis to set")
+        raise Refusal("drive needs a goal, a motive or a nemesis to set")
     parts: list[str] = []
     if change.goal:
         one.goal = change.goal
@@ -360,14 +357,14 @@ def _shortfall(pool: Counter) -> int:
     return pool.maximum - pool.current
 
 
-def _refill(draft: Loner3eGame, side: LonerCharacter, why: str) -> list[Fact]:
+def _refill(draft: Loner3eGame, side: Loner3eSheet, why: str) -> list[Fact]:
     return counter_fact(
         side, side.luck, _shortfall(side.luck), "Luck", why, draft.payload.player.id
     )
 
 
 def _twist(
-    draft: Loner3eGame, actor: LonerCharacter, rng: Random, twists: tuple[tuple[str, str], ...]
+    draft: Loner3eGame, actor: Loner3eSheet, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> list[Fact]:
     """The SRD's table is rolled here so the dice trace; the model only reads the pairing."""
     faces = (DIE_FACE, DIE_FACE)
@@ -386,7 +383,7 @@ def _twist(
 
 
 def _strike(
-    draft: Loner3eGame, actor: LonerCharacter, opponent: LonerCharacter, outcome: Outcome
+    draft: Loner3eGame, actor: Loner3eSheet, opponent: Loner3eSheet, outcome: Outcome
 ) -> list[Fact]:
     harm = outcome.harm
     hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
@@ -403,14 +400,14 @@ def _strike(
     return facts
 
 
-def _refuse_unless_ready(actor: LonerCharacter, opponent: LonerCharacter | None) -> None:
+def _refuse_unless_ready(actor: Loner3eSheet, opponent: Loner3eSheet | None) -> None:
     if opponent is None:
         return
     if opponent.id == actor.id:
-        raise ValueError(f"{actor.name} cannot be their own opposition in a conflict.")
+        raise Refusal(f"{actor.name} cannot be their own opposition in a conflict.")
     for side in (actor, opponent):
         if side.luck.current == 0:
-            raise ValueError(
+            raise Refusal(
                 f"{side.name} is already out of luck, so that conflict is over. Settle what it "
                 "costs them instead of rolling it again."
             )

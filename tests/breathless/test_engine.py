@@ -3,15 +3,15 @@ from core_test_support import BREATHLESS, ENGINES_BUILT, game, updated
 
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import ScenarioMeta
+from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.breathless.tools import SRD_PACK
 from aidm.engines.breathless.world import (
     STARTING_ITEM,
-    BreathlessCharacter,
     BreathlessCharacterFile,
     BreathlessGame,
-    BreathlessScenarioFile,
+    BreathlessPayload,
+    BreathlessScenario,
 )
-from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.hub import Offer
 from aidm.engines.scenes.world import SceneCanon, SceneRun
 from aidm.engines.seam import AnyEngine
@@ -65,12 +65,12 @@ def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
 
 def test_restored_round_trips() -> None:
     engine, state = _breathless_game()
-    assert engine.restored(state.model_dump_json()) == state
+    assert engine.restore(state.model_dump_json()) == state
 
 
 def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
     decoy = Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
-    scenario = BreathlessScenarioFile(
+    scenario = BreathlessScenario(
         meta=ScenarioMeta(title="Test", premise="A test scenario."),
         engine=EngineId("breathless"),
         packs=(SRD_PACK,),
@@ -89,7 +89,7 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
         engine=EngineId("breathless"),
         name="Kael",
         brief="A wary ranger.",
-        payload=BreathlessCharacter(
+        payload=BreathlessPayload(
             pronouns="he/him",
             job="Park Ranger",
             skills={"think": 10, "sneak": 8, "bash": 6},

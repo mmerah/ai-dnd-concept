@@ -21,7 +21,7 @@ from tunnelgoons_test_support import (
 
 from aidm.core.entities import EntityId
 from aidm.core.tools import NoArgs
-from aidm.engines.core import PLAYER_ID
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.hub import Job
 from aidm.engines.tunnelgoons.tools import (
     ActionRoll,
@@ -86,7 +86,22 @@ def test_a_roll_against_an_npc_that_hits_can_slay_it() -> None:
     mantis = world.npcs[MANTIS]
     assert mantis.hp.current == 0
     assert not mantis.alive
-    assert any(fact.kind == "npc_slain" for fact in facts)
+    assert any(fact.kind == "actor_killed" for fact in facts)
+
+
+def test_an_npc_killed_by_a_roll_drops_what_it_carried_here() -> None:
+    draft = small_world().draft()
+    world = draft.payload
+    world.npcs[MANTIS].place = START
+    world.items[KEY].on = MANTIS
+    world.player.brute = 10  # min total 12 always beats DS 4
+    facts = action_roll(
+        draft,
+        ActionRoll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
+        Random(3),
+    )
+    assert world.items[KEY].on == START
+    assert any(fact.kind == "items_dropped" for fact in facts)
 
 
 def test_a_miss_against_an_npc_can_kill_the_player() -> None:
@@ -105,7 +120,7 @@ def test_a_miss_against_an_npc_can_kill_the_player() -> None:
     assert world.player.hp.current == 0
     assert not world.player.alive
     assert player_over(draft) == "You died."
-    assert any(fact.kind == "goon_killed" for fact in facts)
+    assert any(fact.kind == "actor_killed" for fact in facts)
 
 
 def test_a_roll_against_an_npc_wounds_nobody_unless_it_is_dangerous() -> None:

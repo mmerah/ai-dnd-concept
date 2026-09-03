@@ -2,10 +2,10 @@ from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.entities import EntityId, Frozen, Mutable, slug
+from aidm.core.entities import EntityId, Frozen, Mutable, Refusal, slug
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
-from aidm.engines.core import PLAYER_ID, Person
+from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
 type SkillDie = Literal[8, 10, 12]
@@ -69,7 +69,7 @@ class Operator(Person):
 TwentyfourxxWorld = SceneWorld[Person, Operator]
 
 
-class TwentyfourxxCharacter(Mutable):
+class TwentyfourxxPayload(Mutable):
     specialty: str
     origin: str
     traits: tuple[str, ...] = ()
@@ -81,11 +81,11 @@ class TwentyfourxxGame(Game[TwentyfourxxWorld]):
     pass
 
 
-class TwentyfourxxScenarioFile(Scenario[SceneCanon[Person]]):
+class TwentyfourxxScenario(Scenario[SceneCanon[Person]]):
     pass
 
 
-class TwentyfourxxCharacterFile(Character[TwentyfourxxCharacter]):
+class TwentyfourxxCharacterFile(Character[TwentyfourxxPayload]):
     pass
 
 
@@ -94,11 +94,11 @@ def raised(current: SkillDie | None) -> SkillDie:
     if current is None:
         return LADDER[0]
     if current == LADDER[-1]:
-        raise ValueError("the skill is already at d12")
+        raise Refusal("the skill is already at d12")
     return LADDER[LADDER.index(current) + 1]
 
 
-def player_operator(character: Character[TwentyfourxxCharacter]) -> Operator:
+def player_operator(character: Character[TwentyfourxxPayload]) -> Operator:
     """The played character as the world holds them; `new_game` and `preview_character` share it."""
     payload = character.payload
     taken: list[str] = []

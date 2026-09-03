@@ -5,7 +5,7 @@ import pytest
 from aidm.core.entities import EntityId
 from aidm.core.play import Exchange
 from aidm.core.views import PanelRow
-from aidm.engines.core import PLAYER_ID, Person
+from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.hub import HOME_ROW, HUB_ROW, Job, Offer
 from aidm.engines.scenes.drafts import NextDraft
 from aidm.engines.scenes.world import (

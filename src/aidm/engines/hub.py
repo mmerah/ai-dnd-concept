@@ -3,7 +3,7 @@ from typing import Annotated
 
 from pydantic import Field
 
-from aidm.core.entities import Frozen, Mutable, Slug
+from aidm.core.entities import Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import ScenarioKind
 from aidm.core.views import Panel, PanelRow, Rows
@@ -82,24 +82,24 @@ class Job(Mutable):
 
 def check_kind(kind: ScenarioKind, hub: Slug | None) -> None:
     if (kind == "campaign") != (hub is not None):
-        raise ValueError(f"a {kind} scenario with hub {hub!r}")
+        raise Refusal(f"a {kind} scenario with hub {hub!r}")
 
 
 def check_board(hub: Slug | None, board: Sequence[Offer]) -> None:
     if hub is None and board:
-        raise ValueError("a board with no hub")
+        raise Refusal("a board with no hub")
 
 
 def check_jobs(hub: Slug | None, jobs: Sequence[Job], walked: int) -> None:
     if hub is None and jobs:
-        raise ValueError("a job with no hub")
+        raise Refusal("a job with no hub")
     for index, job in enumerate(jobs):
         if index < len(jobs) - 1 and job.debrief is None:
-            raise ValueError(f"job {index} has no debrief and is not the last")
+            raise Refusal(f"job {index} has no debrief and is not the last")
         if (job.debrief is not None or job.finished) and job.started is None:
-            raise ValueError(f"job {index} is closed or finished before it was walked")
+            raise Refusal(f"job {index} is closed or finished before it was walked")
         if job.started is not None and job.started >= walked:
-            raise ValueError(f"job {index} started past the walk")
+            raise Refusal(f"job {index} started past the walk")
 
 
 def open_job_of(jobs: Sequence[Job]) -> Job | None:

@@ -7,9 +7,9 @@ from typing import Any
 from pydantic import BaseModel
 
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, Slug, require_unique
+from aidm.core.entities import EngineId, Refusal, Slug, parse, require_unique
 from aidm.core.facts import Fact
-from aidm.core.io import ENCODING, decoded
+from aidm.core.io import ENCODING, decode
 from aidm.core.model import (
     AnyCharacter,
     AnyScenario,
@@ -50,18 +50,18 @@ class Engine[G: Game[Any]](ABC):
     def pack_options(self) -> tuple[DecisionOption, ...]:
         return ()
 
-    def restored(self, raw: str) -> G:
-        value = decoded(raw)
-        if (header := EngineHeader.model_validate(value)).engine != self.id:
-            raise ValueError(f"the save plays {header.engine!r}, not {self.id!r}")
-        state = self.game.model_validate(value)
+    def restore(self, raw: str) -> G:
+        value = decode(raw)
+        if (header := parse(EngineHeader, value)).engine != self.id:
+            raise Refusal(f"the save plays {header.engine!r}, not {self.id!r}")
+        state = parse(self.game, value)
         self.validate(state)
         return state
 
     def answer(self, draft: G, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
         found = next((one for one in self.tools if one.name == chosen.name), None)
         if found is None:
-            raise ValueError(
+            raise Refusal(
                 f"the {self.id!r} engine has no tool {chosen.name!r} to play option {chosen.id!r}"
             )
         return found.call(draft, chosen.args, rng)
@@ -112,7 +112,7 @@ class Engine[G: Game[Any]](ABC):
         """Write the world on, then install it on `draft`; raise when either will not hold."""
 
 
-async def authored[M: BaseModel](
+async def compose[M: BaseModel](
     worldsmith: WorldsmithAnswer,
     prompt: str,
     model: type[M],
@@ -124,7 +124,7 @@ async def authored[M: BaseModel](
     def refusal(written: M) -> str | None:
         try:
             return playable(build(written))
-        except ValueError as unbuildable:
+        except Refusal as unbuildable:
             return str(unbuildable)
 
     return build(await worldsmith(prompt, model, refusal))

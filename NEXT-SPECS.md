@@ -77,7 +77,7 @@ and no crew (its "the cast carries no dice" stands until 24XX has played). G is 
   `turn`, `app` or `ui` changes: the panel is a `Panel`, the arms are `change_world` arms. Not a
   gap today: `NarratorView.party` and the two arms in 24XX and Breathless land here.
 - **Registration.** 24XX and Breathless register `JoinParty`/`LeaveParty` (15 → 17, 12 → 14,
-  the pair not counted per decision 4); Tunnel Goons gets `TunnelWorld.party: list[EntityId]`
+  the pair not counted per decision 4); Tunnel Goons gets `TunnelGoonsWorld.party: list[EntityId]`
   through Track A's `check_party`/`join_party`/`leave_party`, `move` carries the party with
   the player (`with_ids` stays for an NPC who follows once), and registers the pair (9 → 11).
   Loner has them. The player's death ends the game as today until an engine adds succession.
@@ -154,7 +154,7 @@ deviation 1 (the level-up cadence) stays.
 ### G.4 Phases, in order
 
 1. The party: `NarratorView.party`, `render_narrator`, the arms in 24XX, Breathless and Tunnel
-   Goons, `TunnelWorld.party` and `move`, the shared `rules.md` paragraph; goldens:
+   Goons, `TunnelGoonsWorld.party` and `move`, the shared `rules.md` paragraph; goldens:
    `narrator.txt` gains the YOUR PARTY line, `master.txt` the paragraph, `master_tools.json`
    the two arms, nothing else.
 2. 24XX: `Sheet`, `actor_id` on the tools, `helped_by`, `AfterJob.raises`, the android case, the
@@ -209,5 +209,5 @@ forbids volunteered member actions.
 - A `SceneRules` record and a `scene_engine` factory in place of `SceneEngine` (PLAN 5.1): the
   same surface, with a `partial` per field where the class carries `packs` and `cast` on
   `self`.
-- Folding the `Kill` arm into `engines/core.py`: 24XX's succession (G.2) changes what a kill
+- Folding the `Kill` arm into `engines/base.py`: 24XX's succession (G.2) changes what a kill
   does, so the arm stays per engine.

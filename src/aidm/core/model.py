@@ -2,9 +2,18 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import Any, Literal, Protocol, Self
 
-from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, model_validator
+from pydantic import BaseModel, Field, SerializeAsAny, model_validator
 
-from aidm.core.entities import EngineId, Frozen, Mutable, Slug, require_unique
+from aidm.core.entities import (
+    EngineId,
+    Frozen,
+    Loose,
+    Mutable,
+    Refusal,
+    Slug,
+    parse,
+    require_unique,
+)
 from aidm.core.play import PendingDecision
 
 type ScenarioKind = Literal["one-shot", "campaign"]
@@ -19,10 +28,8 @@ class ScenarioMeta(Frozen):
     kind: ScenarioKind = "one-shot"
 
 
-class EngineHeader(BaseModel):
+class EngineHeader(Loose):
     """Routes a document before its engine is known; the rest of the document is ignored."""
-
-    model_config = ConfigDict(extra="ignore", frozen=True)
 
     engine: EngineId
 
@@ -95,6 +102,9 @@ class Game[P: BaseModel](Mutable):
         """A working copy a resolution mutates; a failed turn never replaces the committed state."""
         return deepcopy(self)
 
-    def committed(self) -> Self:
-        """Dumping runs no validator, so the dump is validated back: that is the commit gate."""
-        return type(self).model_validate(self.model_dump(round_trip=True))
+    def commit(self) -> Self:
+        """The commit gate: the draft revalidated whole; a state the rules refuse never lands."""
+        try:
+            return parse(type(self), self)
+        except Refusal as refused:
+            raise Refusal(f"the state this leaves is invalid: {refused}") from refused

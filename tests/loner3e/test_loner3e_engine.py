@@ -7,7 +7,7 @@ from loner3e_test_support import ORACLE, TWISTS, hub_world
 from aidm.core.entities import EntityId
 from aidm.core.facts import cards
 from aidm.core.play import PendingDecision
-from aidm.engines.core import PLAYER_ID, Counter
+from aidm.engines.base import PLAYER_ID, Counter
 from aidm.engines.hub import JOB_DONE, Offer
 from aidm.engines.loner3e.tools import (
     Question,
@@ -107,7 +107,7 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     _, state = initialized()
     draft = state.draft()
     draft.payload.twist.current = TIES_PER_TWIST - 1
-    primed = draft.committed()
+    primed = draft.commit()
 
     action = Question(actor_id=PLAYER_ID, question="Does he slip past unheard?")
     for seed in range(200):
@@ -146,7 +146,7 @@ def test_a_tie_ticks_the_twist_only_outside_a_conflict() -> None:
 def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
     _, state = initialized()
     # Every answer the ladder can give costs somebody luck in a conflict.
-    ladder = {outcome_for(chance, risk) for chance in range(1, 7) for risk in range(1, 7)}
+    ladder = [outcome_for(chance, risk) for chance in range(1, 7) for risk in range(1, 7)]
     assert all(outcome.harm != 0 for outcome in ladder)
     assert {outcome.name for outcome in ladder} == {
         "yes-and",
@@ -175,7 +175,7 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     draft = state.draft()
     # A 10-max pool proves the reset lands on the sheet's own maximum, not on a +luck_max delta.
     loner_sheet(draft, FOE).luck = Counter(current=1, maximum=10)
-    hurt = draft.committed()
+    hurt = draft.commit()
 
     for seed in range(200):
         draft = hurt.draft()
@@ -233,14 +233,14 @@ def test_the_open_ended_hand_back_survives_a_save() -> None:
     draft = state.draft()
     draft.pending = hand_back
 
-    assert engine.restored(draft.committed().model_dump_json()).pending == hand_back
+    assert engine.restore(draft.commit().model_dump_json()).pending == hand_back
 
 
 def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
     _, state = initialized()
     draft = state.draft()
     loner_sheet(draft, FOE).luck.current = 0
-    spent = draft.committed()
+    spent = draft.commit()
 
     with pytest.raises(ValueError, match="already out of luck"):
         _ = ORACLE.resolve_question(spent.draft(), _duel(), Random(0))

@@ -28,12 +28,15 @@ Tests run offline. They are deterministic.
 - Do not use `Any`. Use exact types. The one exception: a class or function generic on the game
   state, where `Game[P]`'s invariance makes `Any` the only spelling of the bound.
 - Validate data at each boundary (file, model output, tool call) with strict Pydantic V2 models. Reject bad data at once.
+- A message a role or the player is meant to read is a `Refusal`; any other exception is a bug
+  and is not caught.
 - Do not add an abstraction until two things need it.
 - Do not build for future needs.
 - Names must explain themselves. Do not add a comment unless the reason is not visible in the code. One line max.
 - Keep `__init__.py` files empty. Import from full module paths.
 - Imports flow one way: `core <- engines <- turn <- app <- ui`. No cycles.
-- Module layout: imports, constants, classes, public functions, private functions.
+- Module layout: imports, constants, classes, public functions, private functions. A constant
+  built from a class follows that class.
 
 ## Design decisions (not visible from the code)
 

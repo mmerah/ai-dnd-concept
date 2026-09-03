@@ -2,8 +2,8 @@ from breathless_test_support import DAX, small_world
 from core_test_support import BREATHLESS, ENGINES_BUILT
 
 from aidm.core.views import PanelRow
+from aidm.engines.base import Person
 from aidm.engines.breathless.views import master_sections
-from aidm.engines.core import Person
 from aidm.engines.scenes.views import narrator_view
 from aidm.engines.scenes.world import entity_line
 

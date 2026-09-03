@@ -11,16 +11,16 @@ from core_test_support import (
 )
 
 from aidm.core.entities import EntityId
-from aidm.core.io import load_character, read_scenario
+from aidm.core.io import read_character, read_scenario
 from aidm.core.model import ScenarioMeta
-from aidm.engines.core import PLAYER_ID, Person
+from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.hub import Offer
 from aidm.engines.scenes.world import SceneCanon, SceneRun
 from aidm.engines.seam import AnyEngine
 from aidm.engines.twentyfourxx.world import (
     TwentyfourxxCharacterFile,
     TwentyfourxxGame,
-    TwentyfourxxScenarioFile,
+    TwentyfourxxScenario,
 )
 
 SRD_PACK = "srd"
@@ -82,12 +82,12 @@ def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
 
 def test_restored_round_trips() -> None:
     engine, state = _twentyfourxx_game()
-    assert engine.restored(state.model_dump_json()) == state
+    assert engine.restore(state.model_dump_json()) == state
 
 
 def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
     decoy = Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
-    scenario = TwentyfourxxScenarioFile(
+    scenario = TwentyfourxxScenario(
         meta=ScenarioMeta(title="Test", premise="A test scenario."),
         engine=TWENTYFOURXX,
         packs=(SRD_PACK,),
@@ -101,13 +101,13 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
             ),
         ),
     )
-    character = load_character(CHARACTERS, "kael", TWENTYFOURXX, TwentyfourxxCharacterFile)
+    character = read_character(CHARACTERS, "kael", TWENTYFOURXX, TwentyfourxxCharacterFile)
     with pytest.raises(ValueError, match="the player is in the cast"):
         ENGINES_BUILT[TWENTYFOURXX].new_game(scenario, character)
 
 
 def test_a_foreign_scenario_is_refused_by_new_game() -> None:
-    character = load_character(CHARACTERS, "kael", TWENTYFOURXX, TwentyfourxxCharacterFile)
+    character = read_character(CHARACTERS, "kael", TWENTYFOURXX, TwentyfourxxCharacterFile)
     foreign_scenario = read_scenario(SCENARIOS, "drowned-road", SCENARIO_MODELS)
     with pytest.raises(ValueError, match="incompatible scenario"):
         ENGINES_BUILT[TWENTYFOURXX].new_game(foreign_scenario, character)
@@ -116,6 +116,6 @@ def test_a_foreign_scenario_is_refused_by_new_game() -> None:
 def test_a_foreign_character_is_refused_by_new_game() -> None:
     scenario = read_scenario(SCENARIOS, "silent-relay", SCENARIO_MODELS)
     breathless = ENGINES_BUILT[BREATHLESS]
-    foreign_character = load_character(CHARACTERS, "kael", BREATHLESS, breathless.character)
+    foreign_character = read_character(CHARACTERS, "kael", BREATHLESS, breathless.character)
     with pytest.raises(ValueError, match="incompatible character"):
         ENGINES_BUILT[TWENTYFOURXX].new_game(scenario, foreign_character)

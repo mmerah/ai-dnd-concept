@@ -5,12 +5,12 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from aidm.core.entities import Slug
+from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import AnyCharacter, AnyScenario, Game, ScenarioKind, WorldsmithAnswer
 from aidm.core.play import DecisionOption, Exchange, SceneRecord
 from aidm.core.views import NarratorView, Panel, PlayerView
-from aidm.engines.core import Pack, Person, load_packs, pack_options
+from aidm.engines.base import Pack, Person, pack_options, read_packs
 from aidm.engines.scenes.drafts import SceneDraft
 from aidm.engines.scenes.views import narrator_view, player_view
 from aidm.engines.scenes.world import (
@@ -28,7 +28,7 @@ from aidm.engines.scenes.worldsmith import (
     render_opening,
     write_next,
 )
-from aidm.engines.seam import Engine, authored
+from aidm.engines.seam import Engine, compose
 
 
 class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
@@ -42,7 +42,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
     packs: dict[str, K]
 
     def __init__(self, user_packs: Path) -> None:
-        self.packs = load_packs((self.directory / "packs", user_packs), self.pack)
+        self.packs = read_packs((self.directory / "packs", user_packs), self.pack)
         super().__init__()  # last: `master_tools` reads the packs
 
     def world(self, state: G) -> SceneWorld[C, P]:
@@ -56,9 +56,9 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> BaseModel:
         if not isinstance(scenario, self.scenario):
-            raise ValueError(f"{self.title} received an incompatible scenario")
+            raise Refusal(f"{self.title} received an incompatible scenario")
         if not isinstance(character, self.character):
-            raise ValueError(f"{self.title} received an incompatible character")
+            raise Refusal(f"{self.title} received an incompatible character")
         canon: SceneCanon[C] = scenario.payload
         return self.new_state(canon, character)
 
@@ -92,7 +92,15 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
     ) -> AnyScenario:
         def built(written: SceneDraft[C]) -> AnyScenario:
             return build_scenario(
-                self.scenario, self.id, title, premise, tuple(packs), written, source, kind
+                self.scenario,
+                self.id,
+                title=title,
+                premise=premise,
+                packs=tuple(packs),
+                written=written,
+                source=source,
+                kind=kind,
+                cast_type=self.cast,
             )
 
         prompt = render_opening(
@@ -102,7 +110,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             kind,
             self.hub_phrase,
         )
-        return await authored(worldsmith, prompt, opening_draft(self.cast, kind), built, playable)
+        return await compose(worldsmith, prompt, opening_draft(self.cast, kind), built, playable)
 
     def ready(self, state: G) -> bool:
         return way_open(state)

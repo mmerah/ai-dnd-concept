@@ -1,10 +1,10 @@
 import json
 from pathlib import Path
 
-from core_test_support import changed, loner_sheet, opened, played, the_way_on
+from core_test_support import changed, loner_sheet, open_game, play_turn, the_way_on
 
 from aidm.core.entities import EntityId
-from aidm.engines.core import PLAYER_ID
+from aidm.engines.base import PLAYER_ID
 
 
 def _scene(**changes: object) -> str:
@@ -28,11 +28,11 @@ def _scene(**changes: object) -> str:
 async def test_crossing_keeps_a_drive_set_after_the_worldsmith_snapshot(
     tmp_path: Path,
 ) -> None:
-    table = opened(tmp_path)
+    table = open_game(tmp_path)
     table.spawner.answers["worldsmith"] = [_scene()]
 
-    _ = await played(table, "I have what I came for.", the_way_on())
-    state = await played(
+    _ = await play_turn(table, "I have what I came for.", the_way_on())
+    state = await play_turn(
         table,
         "Out into the cloister walk.",
         changed("drive", entity_id=PLAYER_ID, goal="Get the vault map out safely"),
@@ -47,7 +47,7 @@ async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_a
     tmp_path: Path,
 ) -> None:
     """The brief is the worldsmith's between scenes; the name and the sheet are the rules'."""
-    table = opened(tmp_path)
+    table = open_game(tmp_path)
     before = loner_sheet(table.state, EntityId("mara"))
     table.spawner.answers["worldsmith"] = [
         _scene(
@@ -61,8 +61,8 @@ async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_a
         )
     ]
 
-    _ = await played(table, "I have what I came for.", the_way_on())
-    state = await played(
+    _ = await play_turn(table, "I have what I came for.", the_way_on())
+    state = await play_turn(
         table, "Out into the cloister walk.", arrival="Rain takes the arcade.", moving_on=True
     )
 

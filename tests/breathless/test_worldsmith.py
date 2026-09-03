@@ -8,7 +8,7 @@ from breathless_test_support import (
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
-from aidm.engines.core import PLAYER_ID, Person
+from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.scenes.drafts import HubDraft, ReturnDraft, SceneDraft
 from aidm.engines.scenes.world import scene_refusal
 from aidm.engines.scenes.worldsmith import install_scene, opening_canon
@@ -88,14 +88,14 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
     game = small_world()
     facts = install_scene(game, _draft(present=("mira",)), finished_note="")
     assert len(game.payload.runs) == 2
-    assert facts == (
+    assert facts == [
         Fact(
             kind="scene_opened",
             trace="the story moves to The Alley",
             told=True,
             card="New scene: The Alley\nAt stake: Can they lose the mob in the alley?",
         ),
-    )
+    ]
 
 
 def test_render_worldsmith_lists_the_player_first() -> None:
@@ -162,8 +162,8 @@ def _opening(**fields: object) -> SceneDraft[Person]:
 def test_opening_canon_sets_the_hub_and_board_for_a_campaign_only() -> None:
     offers = [{"title": "A", "pitch": "Take A."}, {"title": "B", "pitch": "Take B."}]
     campaign = opening_canon(
-        HubDraft[Person].model_validate({**_opening().model_dump(), "offers": offers}), source=""
+        HubDraft[Person].model_validate({**_opening().model_dump(), "offers": offers}), "", Person
     )
     assert campaign.hub == HUB_PLACE
     assert [offer.title for offer in campaign.board] == ["A", "B"]
-    assert opening_canon(_opening(), source="").hub is None
+    assert opening_canon(_opening(), "", Person).hub is None

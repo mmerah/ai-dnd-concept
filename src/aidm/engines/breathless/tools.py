@@ -5,10 +5,11 @@ from typing import Literal, Self
 
 from pydantic import Field, JsonValue, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Slug, slug
+from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.tools import MasterTool, NoArgs, master_tool
+from aidm.engines.base import CHANGE_WORLD, counter_fact, entity_fact, sentence
 from aidm.engines.breathless.creation import Pack
 from aidm.engines.breathless.world import (
     CARRY,
@@ -23,7 +24,6 @@ from aidm.engines.breathless.world import (
     Survivor,
     stepped,
 )
-from aidm.engines.core import CHANGE_WORLD, counter_fact, entity_fact, sentence
 from aidm.engines.scenes.world import NEXT_SCENE, Enter, Kill, Leave, NextScene, Reveal
 
 SRD_PACK: Slug = "srd"
@@ -64,7 +64,7 @@ class Check(Frozen):
     @model_validator(mode="after")
     def _one_thing(self) -> Self:
         if sum((self.skill is not None, self.item_id is not None, self.stunt)) != 1:
-            raise ValueError("roll one thing: a skill, an item, or a stunt")
+            raise Refusal("roll one thing: a skill, an item, or a stunt")
         return self
 
 
@@ -91,7 +91,7 @@ class LootCheck(Frozen):
     @model_validator(mode="after")
     def _both_or_neither(self) -> Self:
         if (self.granted is None) != (self.choice is None):
-            raise ValueError("granted and choice arrive together, or not at all")
+            raise Refusal("granted and choice arrive together, or not at all")
         return self
 
 
@@ -156,7 +156,7 @@ def change_world(draft: BreathlessGame, args: ChangeWorld, _rng: Random) -> list
     return apply_change(draft.payload, args.change)
 
 
-def next_scene(draft: BreathlessGame, args: NextScene, _rng: Random) -> tuple[Fact, ...]:
+def next_scene(draft: BreathlessGame, args: NextScene, _rng: Random) -> list[Fact]:
     return draft.payload.settle(args.job_done, args.pursuit)
 
 
@@ -170,12 +170,12 @@ def check(draft: BreathlessGame, args: Check, rng: Random) -> list[Fact]:
     elif args.item_id is not None:
         item = player.items.get(args.item_id)
         if item is None:
-            raise ValueError(f"{args.item_id!r} is not among the player's items")
+            raise Refusal(f"{args.item_id!r} is not among the player's items")
         die = item.die
         label = item.name
     else:
         if player.stunted:
-            raise ValueError("the stunt is spent until the player catches their breath")
+            raise Refusal("the stunt is spent until the player catches their breath")
         die = STUNT_DIE
         label = "stunt"
         player.stunted = True
@@ -217,13 +217,13 @@ def complications_of(packs: Mapping[str, Pack]) -> tuple[str, ...]:
     """Always the SRD's own table: no other pack publishes one."""
     srd = packs.get(SRD_PACK)
     if srd is None:
-        raise ValueError("the SRD table set with its complications is not installed")
+        raise Refusal("the SRD table set with its complications is not installed")
     return srd.complications
 
 
 def change_stress(draft: BreathlessGame, args: ChangeStress, _rng: Random) -> list[Fact]:
     if args.amount == 0:
-        raise ValueError("change_stress needs a non-zero amount")
+        raise Refusal("change_stress needs a non-zero amount")
     player = draft.payload.player
     return counter_fact(player, player.stress, args.amount, "Stress", args.why, player.id)
 
@@ -231,7 +231,7 @@ def change_stress(draft: BreathlessGame, args: ChangeStress, _rng: Random) -> li
 def use_med_kit(draft: BreathlessGame, _args: NoArgs, _rng: Random) -> list[Fact]:
     player = draft.payload.player
     if not player.med_kit:
-        raise ValueError("the player holds no med kit")
+        raise Refusal("the player holds no med kit")
     player.med_kit = False
     facts = counter_fact(player, player.stress, -MED_KIT_CLEARS, "Stress", "the med kit", player.id)
     used = f"{player.name} uses the med kit"
@@ -273,11 +273,11 @@ def loot_check(draft: BreathlessGame, args: LootCheck, rng: Random) -> list[Fact
     return [_take_loot(player, args.item, args.granted, args.choice)]
 
 
-def test_luck(_draft: BreathlessGame, args: TestLuck, rng: Random) -> tuple[Fact, ...]:
+def test_luck(_draft: BreathlessGame, args: TestLuck, rng: Random) -> list[Fact]:
     rolled, dice_fact = roll((args.die,), args.question, rng)
     result = outcome(rolled[0])
     trace = f"{args.question} — d{args.die} [{rolled[0]}] -> {result}"
-    return dice_fact, Fact(kind="luck_tested", trace=trace)
+    return [dice_fact, Fact(kind="luck_tested", trace=trace)]
 
 
 def tools(packs: Mapping[str, Pack]) -> tuple[MasterTool[BreathlessGame], ...]:
@@ -336,7 +336,7 @@ def _drop_item(world: BreathlessWorld, item_id: EntityId) -> list[Fact]:
     player = world.player
     item = player.items.get(item_id)
     if item is None:
-        raise ValueError(f"{item_id!r} is not among the player's items")
+        raise Refusal(f"{item_id!r} is not among the player's items")
     del player.items[item_id]
     trace = f"{world.label(player)} drops {item.name}"
     return [entity_fact(player, "item_dropped", trace, card=f"Dropped {item.name}")]
@@ -382,15 +382,15 @@ def _roll_loot(draft: BreathlessGame, player: Survivor, item: str, rng: Random) 
 def _take_loot(player: Survivor, item: str, granted: Die, choice: str) -> Fact:
     if choice == "take":
         if len(player.items) >= CARRY:
-            raise ValueError("the backpack is full; swap for something carried instead")
+            raise Refusal("the backpack is full; swap for something carried instead")
         key = EntityId(slug(item, player.items))
         player.items[key] = Item(name=item, die=granted)
         card = f"Took {item} (d{granted})"
     elif choice == "med-kit":
         if granted < 10:
-            raise ValueError("only a d10 find or better can be a med kit")
+            raise Refusal("only a d10 find or better can be a med kit")
         if player.med_kit:
-            raise ValueError("the player already holds a med kit")
+            raise Refusal("the player already holds a med kit")
         player.med_kit = True
         card = "Took a med kit"
     elif choice.startswith(SWAP) and EntityId(choice.removeprefix(SWAP)) in player.items:
@@ -399,5 +399,5 @@ def _take_loot(player: Survivor, item: str, granted: Die, choice: str) -> Fact:
         player.items[key] = Item(name=item, die=granted)
         card = f"Swapped {old.name} for {item} (d{granted})"
     else:
-        raise ValueError(f"{choice!r} is not a valid loot choice")
+        raise Refusal(f"{choice!r} is not a valid loot choice")
     return entity_fact(player, "loot_taken", card, card=card)

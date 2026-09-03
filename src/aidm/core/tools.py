@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, JsonValue
 
-from aidm.core.entities import Frozen
+from aidm.core.entities import Frozen, parse
 from aidm.core.facts import Fact
 from aidm.core.model import Game
 
@@ -35,7 +35,7 @@ def master_tool[G: Game[Any], A: BaseModel](
         raise ValueError(f"{name} parameters the model reads carry no description: {bare}")
 
     def call(draft: G, raw: Mapping[str, JsonValue], rng: Random) -> tuple[Fact, ...]:
-        return tuple(resolve(draft, args.model_validate(raw), rng))
+        return tuple(resolve(draft, parse(args, raw), rng))
 
     return MasterTool(name, description, args, call)
 
@@ -45,7 +45,7 @@ def schema_of(args: type[BaseModel]) -> dict[str, JsonValue]:
     schema = args.model_json_schema()
     _drop_property_titles(schema)
     # The tool already names itself; the argument class name would be a second, wrong name.
-    _ = schema.pop("title", None)
+    schema.pop("title", None)
     return schema
 
 
@@ -56,7 +56,7 @@ def _drop_property_titles(node: JsonValue) -> None:
             if name == "properties" and isinstance(value, dict):
                 for field in value.values():
                     if isinstance(field, dict):
-                        _ = field.pop("title", None)
+                        field.pop("title", None)
             _drop_property_titles(value)
     elif isinstance(node, list):
         for item in node:

@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 
 from aidm.core.views import Rows
-from aidm.engines.core import party_rows
+from aidm.engines.base import party_rows
 from aidm.engines.hub import master_tail, question_heading
 from aidm.engines.loner3e.creation import Pack
 from aidm.engines.loner3e.tools import meanings
