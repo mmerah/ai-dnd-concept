@@ -136,9 +136,6 @@ HERE WITH THE PLAYER:
 HIDDEN HERE (the player has not found these):
 - Warden Six[warden-six] — QV-9's maintenance android, still carrying out a shutdown order it was never told to stand down from; its manipulator arms can crush a suit seal without meaning to kill.
 
-THE SCENE'S SECRET (never narrate this):
-Six days ago Vessa Rune ordered the station's maintenance android to seal the relay compartment and cut the beacon rather than risk a corrupted signal reaching the convoy; it has followed that order against everyone since, herself included.
-
 NOTES FROM THE RULES:
 - (none)
 

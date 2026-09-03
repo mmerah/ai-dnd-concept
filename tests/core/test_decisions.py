@@ -9,11 +9,16 @@ from aidm.core.entities import Frozen
 from aidm.core.facts import Fact
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, PendingDecision, PendingOption
-from aidm.core.tools import MasterTool, NoArgs, apply_to_draft, master_tool
+from aidm.core.tools import MasterTool, NoArgs, master_tool
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
 from aidm.engines.seam import AnyEngine
-from aidm.turn.run import RULES_WAIT, Turn, consume_answer
+from aidm.turn.run import (
+    RULES_WAIT,
+    Turn,
+    _apply,  # pyright: ignore[reportPrivateUsage]
+    consume_answer,
+)
 
 
 class Broken(Frozen):
@@ -172,22 +177,17 @@ def test_a_change_may_run_on_a_state_already_suspended_on_a_decision(tmp_path: P
         del draft, rng
         return ()
 
-    draft = _pending(state).draft()
-    _ = apply_to_draft(engine.validate, draft, nothing, Random(0))
-    suspended = draft.committed()
-    assert suspended.pending == DECISION
+    turn = Turn(engine=engine, draft=_pending(state).draft(), rng=Random(0))
+    _ = _apply(turn, nothing)
+    assert turn.draft.pending == DECISION
 
 
 def test_a_second_decision_is_refused_while_one_is_already_open(tmp_path: Path) -> None:
-    engine, draft = _engine(), _pending(opened(tmp_path).service.state).draft()
+    engine, state = _engine(), opened(tmp_path).service.state
+    turn = Turn(engine=engine, draft=_pending(state).draft(), rng=Random(0))
 
     with pytest.raises(ValueError, match="one at a time"):
-        _ = apply_to_draft(
-            engine.validate,
-            draft,
-            lambda draft, _rng: _hit(draft, narrate=False),
-            Random(0),
-        )
+        _ = _apply(turn, lambda draft, _rng: _hit(draft, narrate=False))
 
 
 def _option(**changes: object) -> PendingOption:

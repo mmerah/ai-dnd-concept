@@ -3,7 +3,6 @@
     "kind": "entity_discovered",
     "trace": "learned of the vault map[vault-map]",
     "told": true,
-    "entity_id": "vault-map",
     "card": "The vault map discovered",
     "dice": []
   },
@@ -11,7 +10,6 @@
     "kind": "dice_rolled",
     "trace": "Does he hear what waits past the vault door without being heard? — chance: 2d6 [4, 5]",
     "told": false,
-    "entity_id": null,
     "card": "",
     "dice": []
   },
@@ -19,7 +17,6 @@
     "kind": "dice_rolled",
     "trace": "Does he hear what waits past the vault door without being heard? — risk: 1d6 [4]",
     "told": false,
-    "entity_id": null,
     "card": "",
     "dice": []
   },
@@ -27,7 +24,6 @@
     "kind": "question_answered",
     "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
     "told": true,
-    "entity_id": "player",
     "card": "Oracle — Advantage (Quiet Hands) → yes-and",
     "dice": [
       {
@@ -62,7 +58,6 @@
     "kind": "tags_changed",
     "trace": "the player Kael[player] condition +Listening",
     "told": true,
-    "entity_id": "player",
     "card": "Now: Listening",
     "dice": []
   }

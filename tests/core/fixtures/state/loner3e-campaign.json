@@ -20,7 +20,6 @@
         "title": "The Buried Bell",
         "question": "The Bell owes the town its rent at the thaw, and Orsa's ledger shows Kael's finds have not yet covered his seat at the long table.",
         "situation": "The guild hall smells of tallow and old paper, its long table scarred by a hundred maps traced and retraced. Orsa Vane stands behind the board with a ledger open, and Castor Wren nurses a drink at the corner of the table, one boot up on the bench where his other leg should be.",
-        "secret": "Castor Wren sold his map to the Sealed Cairn twice — once to Orsa for the board, once to the hooded stranger by the door, who is waiting to see who takes the job so he can follow them out.",
         "here": [
           "orsa-vane",
           "castor-wren",

@@ -267,3 +267,24 @@ review findings and why, anything known and accepted.
 - Known and accepted: `job_runs()`/`job_visits()` start at the open job's `started` (phase 3);
   the phase 3 done-when grep still finds `Counter.current`, `TunnelWorld.current` and the prose
   "Stop here"; the phase 4 `ls` lists `scenes` beside `tunnelgoons`.
+
+## Fold after the maintainer's review
+
+- Cuts taken: `apply_to_draft` is inlined into `_apply`, and the `Validate` alias is gone with
+  it; `Fact.entity_id` is dropped, along with the one `entity_id=entity.id` that set it in
+  `entity_fact`; Tunnel Goons' module-level `record` and `history` are inlined into
+  `TunnelGoonsEngine.record` and `.history`; the `role` pass-through is gone — `WORLDSMITH` now
+  lives in `scenes/world.py` beside the `render_worldsmith` method that used to take it as an
+  argument, and `render_worldsmith` and `worldsmith_prompt` both read the module constant
+  directly instead of carrying a `role` parameter.
+- The `render_master` `recent` default, deferred in phase 1, was already gone by the time of
+  this fold — phase 2's history rewrite had removed it without anyone flagging the cut as taken.
+- Left as is: the shared `subject_of` in `engines/core.py`. `Goon` and `Npc` are `Mutable`, not
+  `Person`, and the `Entity` protocol carries no `brief`, so sharing the constructor needs a new
+  three-field protocol in `core` built for it alone. Not worth adding for one caller.
+- Removed the scene `secret`: the field on `SceneRun` and `SceneDraft`, the worldsmith paragraph
+  that described it, the "THE SCENE'S SECRET" row in the three scene engines' master sections,
+  and the `opening.secret` key in the six scenarios that still carried one. The game master
+  conjures what a scene hides at the table; a stored secret was prose nobody validated, sitting
+  beside the mechanic — `hidden`/`reveal` — that already does that job.
+- `src` lines: 9,243 before this fold, 9,205 after.

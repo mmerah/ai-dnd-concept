@@ -8,6 +8,7 @@ from aidm.engines.seam import AnyEngine
 from aidm.turn.context import ANSWERED_BY_OPTION, render_master, render_narrator
 
 SECRET = EntityId("hidden-actor")
+UNREVEALED = "Unrevealed canon."
 
 
 def _state() -> Loner3eGame:
@@ -15,9 +16,7 @@ def _state() -> Loner3eGame:
     _, state = initialized()
     state = with_entity(
         state,
-        LonerCharacter(
-            id=SECRET, name="The Secret", brief="Unrevealed canon.", concept="A Watcher"
-        ),
+        LonerCharacter(id=SECRET, name="The Secret", brief=UNREVEALED, concept="A Watcher"),
     )
     return with_entity(
         state,
@@ -55,8 +54,8 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
     }
     dumped = str(narrator.model_dump())
     assert "The Secret" not in dumped
-    assert held.payload.run.secret not in dumped
-    assert held.payload.run.secret in str(master)
+    assert UNREVEALED not in dumped
+    assert UNREVEALED in str(master)
 
 
 def test_the_master_is_shown_the_hidden_canon_and_the_tags_in_play() -> None:
@@ -86,7 +85,7 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:
     assert "Mara" in prompt
     assert "The Secret" not in prompt
     assert "hidden-actor" not in prompt
-    assert held.payload.run.secret not in prompt
+    assert UNREVEALED not in prompt
 
 
 def test_the_narrator_prompt_carries_only_what_the_player_has_read() -> None:

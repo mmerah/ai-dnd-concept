@@ -58,7 +58,6 @@ async def write_next[C: Person, P: Person](
     answer: WorldsmithAnswer,
     *,
     cast_type: type[C],
-    role: str,
     guidance: str,
 ) -> SceneDraft[C]:
     returning = world.hub is not None and not world.at_hub and intent == GO_HOME
@@ -70,7 +69,7 @@ async def write_next[C: Person, P: Person](
         else NextDraft[cast_type]
     )
 
-    prompt = world.render_worldsmith(intent, guidance, model, role=role)
+    prompt = world.render_worldsmith(intent, guidance, model)
     return await answer(prompt, model, lambda written: scene_refusal(written, world))
 
 
@@ -101,10 +100,9 @@ def install_scene[C: Person, W: SceneWorld[Any, Any]](
 
 
 def render_opening[C: Person](
-    cast_type: type[C], role: str, source: str, guidance: str, kind: ScenarioKind, hub_phrase: str
+    cast_type: type[C], source: str, guidance: str, kind: ScenarioKind, hub_phrase: str
 ) -> str:
     return worldsmith_prompt(
-        role,
         source=source,
         history="(no scenes yet — write the opening)",
         cast="(no cast yet — write the people and things this scene needs)",

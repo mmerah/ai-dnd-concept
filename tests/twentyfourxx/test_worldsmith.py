@@ -21,7 +21,6 @@ from aidm.core.model import AnyScenario, WorldsmithAnswer
 from aidm.engines.core import PLAYER_ID, Person
 from aidm.engines.hub import GO_HOME, TAKE_JOB
 from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft, SceneDraft
-from aidm.engines.scenes.engine import WORLDSMITH
 from aidm.engines.scenes.world import scene_refusal
 from aidm.engines.scenes.worldsmith import build_scenario, install_scene, opening_canon, write_next
 from aidm.engines.twentyfourxx.engine import BOARD_GUIDANCE, JOB_DONE_NOTE, TwentyfourxxEngine
@@ -36,9 +35,7 @@ async def _written(
     game: TwentyfourxxGame, intent: str, answer: WorldsmithAnswer
 ) -> SceneDraft[Person]:
     """The write alone: these tests read the model asked for, and install nothing."""
-    return await write_next(
-        game.payload, intent, answer, cast_type=Person, role=WORLDSMITH, guidance=GUIDANCE
-    )
+    return await write_next(game.payload, intent, answer, cast_type=Person, guidance=GUIDANCE)
 
 
 def _draft(**fields: object) -> SceneDraft[Person]:
@@ -248,7 +245,7 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
 
 def test_render_worldsmith_lists_the_player_first() -> None:
     prompt = small_world().payload.render_worldsmith(
-        "Explore the bay.", "guidance text", SceneDraft[Person], role=WORLDSMITH
+        "Explore the bay.", "guidance text", SceneDraft[Person]
     )
     assert prompt.index("Rook[player]") < prompt.index("Kestrel[kestrel]")
 
@@ -256,9 +253,7 @@ def test_render_worldsmith_lists_the_player_first() -> None:
 def test_render_worldsmith_says_who_travels_with_the_player() -> None:
     world = small_world().payload
     world.party = [KESTREL]
-    prompt = world.render_worldsmith(
-        "Explore the bay.", "guidance text", SceneDraft[Person], role=WORLDSMITH
-    )
+    prompt = world.render_worldsmith("Explore the bay.", "guidance text", SceneDraft[Person])
     assert "travels with the player" in prompt
 
 
@@ -399,7 +394,7 @@ async def test_write_next_gives_the_board_guidance_on_every_campaign_write() -> 
 
 def test_render_worldsmith_prints_the_job_line_for_the_job_run() -> None:
     prompt = hub_world().payload.render_worldsmith(
-        "I look around.", "guidance text", SceneDraft[Person], role=WORLDSMITH
+        "I look around.", "guidance text", SceneDraft[Person]
     )
     assert f"THE JOB:\n{JOB}" in prompt
 

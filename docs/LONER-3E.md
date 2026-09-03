@@ -97,8 +97,7 @@ a rule of this one.
 Fields and tools that exist for the app around the rules, not the rules themselves — each earns
 its keep for a reason the SRD has no need of.
 
-- `known`, `hidden` and the scene `secret` — the told-fact gate: no unknown name reaches the
-  narrator.
+- `known` and `hidden` — the told-fact gate: no unknown name reaches the narrator.
 - `alive` and `kill` — the SRD leaves death to narration; the gate needs a flag.
 - `next_scene` and `left` — `settle`'s answer is the only end a scene has.
 - No mood roll — the SRD offers it "when unsure"; the game master holds that judgment.

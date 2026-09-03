@@ -121,9 +121,6 @@ HERE WITH THE PLAYER:
 HIDDEN HERE (the player has not found these):
 - Drowned Marta[drowned-marta] — Once the causeway's toll-keeper, now a Crawler that answers the bell the same as anyone still starving.
 
-THE SCENE'S SECRET (never narrate this):
-Ovid rings the bell twice to mark the crossing window, never as a call for help; a third ring means something is already out on the causeway.
-
 NOTES FROM THE RULES:
 - (none)
 

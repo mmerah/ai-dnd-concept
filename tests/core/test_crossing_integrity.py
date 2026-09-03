@@ -18,7 +18,6 @@ def _scene(**changes: object) -> str:
         "present": ["mara"],
         "hidden": [],
         "question": "Can you reach the chapter house before the lantern gives you away?",
-        "secret": "",
         "recap": "The player left the abbot's study behind, lantern shuttered, and made for the "
         "cloister walk with Mara close behind them.",
     }

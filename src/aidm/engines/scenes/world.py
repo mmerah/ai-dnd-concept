@@ -1,12 +1,14 @@
 import json
 from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from copy import deepcopy
+from pathlib import Path
 from typing import Any, Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Slug, require_unique
 from aidm.core.facts import Fact
+from aidm.core.io import ENCODING
 from aidm.core.model import Game
 from aidm.core.play import Exchange, SceneRecord
 from aidm.core.tools import schema_of
@@ -38,6 +40,8 @@ from aidm.engines.hub import (
     since_start,
 )
 from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft, SceneDraft
+
+WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
 
 NEXT_SCENE = (
     "Say this scene's question is settled. The player is then asked what they want to pursue, "
@@ -74,11 +78,9 @@ class SceneRun(Mutable):
     # Names the art cache entry, so returning to a place reuses its picture.
     place: Slug
     title: str
-    # Public: the player reads it; settling it ends the scene.
+    # The player reads it; settling it ends the scene.
     question: str = Field(min_length=10)
     situation: str = Field(min_length=40)
-    # What `question` does not say: never narrated, never in a view.
-    secret: str = ""
     here: list[CheckedEntityId] = Field(default_factory=list)
     exchanges: list[Exchange] = Field(default_factory=list)
     # None while open; "" once settled here; the player's words when they left for elsewhere
@@ -373,9 +375,7 @@ class SceneWorld[C: Person, P: Person](Mutable):
     def hidden_lines(self) -> str:
         return "\n".join(entity_line(self.require(one)) for one in self.hidden()) or "- (none)"
 
-    def render_worldsmith(
-        self, intent: str, guidance: str, answer: type[SceneDraft[C]], *, role: str
-    ) -> str:
+    def render_worldsmith(self, intent: str, guidance: str, answer: type[SceneDraft[C]]) -> str:
         # The worldsmith must know who follows the player out of the scene.
         cast = "\n".join(
             (
@@ -392,7 +392,6 @@ class SceneWorld[C: Person, P: Person](Mutable):
             )
         )
         return worldsmith_prompt(
-            role,
             source=self.source,
             history=render_history(self.scenes()),
             cast=cast,
@@ -618,7 +617,6 @@ def scene_refusal[C: Person, P: Person](
 
 
 def worldsmith_prompt(
-    role: str,
     *,
     source: str,
     history: str,
@@ -630,7 +628,7 @@ def worldsmith_prompt(
 ) -> str:
     return sections(
         (
-            ("YOUR ROLE", role),
+            ("YOUR ROLE", WORLDSMITH),
             ("SOURCE MATERIAL", source or "(none — write from the cast)"),
             ("SCENES SO FAR", history),
             *hub,
@@ -661,6 +659,5 @@ def run_of[C: Person](draft: SceneDraft[C], here: list[EntityId]) -> SceneRun:
         title=draft.title,
         question=draft.question,
         situation=draft.situation,
-        secret=draft.secret,
         here=here,
     )

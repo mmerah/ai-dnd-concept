@@ -309,14 +309,6 @@ class TunnelGoonsCharacterFile(Character[TunnelGoonsCharacter]):
     pass
 
 
-def record(state: TunnelGoonsGame, exchange: Exchange) -> None:
-    state.payload.visit.exchanges.append(exchange)
-
-
-def history(state: TunnelGoonsGame) -> tuple[Exchange, ...]:
-    return state.payload.exchanges()
-
-
 def player_over(state: TunnelGoonsGame) -> str | None:
     return "You died." if not state.payload.player.alive else None
 

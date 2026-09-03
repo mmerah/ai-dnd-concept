@@ -36,10 +36,7 @@ Tests run offline. They are deterministic.
 
 ## Design decisions (not visible from the code)
 
-- Each role is a spawned CLI, cold every turn; the master's spawn prompt is the whole picture.
-  The narrator and the worldsmith return typed proposals. The master's tools mutate a
-  transactional draft: `_apply` in `turn/run.py` protects state with a candidate copy, an rng
-  copy and `committed()` revalidation. Only resolver code changes state or rolls dice.
+- Each role is a spawned CLI, cold every turn; the master's spawn prompt is the whole picture. The narrator and the worldsmith return typed proposals; the master plays through tools that mutate a transactional draft, validated before it lands. Only resolver code changes state or rolls dice.
 - The engine owns the world. `core`, `turn`, `app` and `ui` know no world shape. The registry is the one place that connects them.
 - An engine is self-contained under `engines/<id>/`, under 2,000 lines, with at most fifteen game-master tools, counted as tools plus `change_world` arms, the two shared party arms not counted; twenty in all for an engine whose SRD plays a crew, named in its `docs/<ENGINE>.md`. Every engine subclasses `Engine` in `engines/seam.py`; the three scene engines subclass `SceneEngine` in `engines/scenes/engine.py`; all four share the hub in `engines/hub.py`.
 - The narrator writes the story text; the worldsmith's scene titles, offers and debrief reach the player on cards and panels. The narrator's input holds revealed facts only. Hidden facts have no path into it.

@@ -21,7 +21,6 @@ class SceneDraft[C: Person](Frozen):
     )
     present: tuple[str, ...] = ()
     hidden: tuple[str, ...] = ()
-    secret: str = ""
     cast: dict[EntityId, C] = Field(
         default_factory=dict,
         description="New people and things, filed under their own id. An id already in THE "
@@ -37,7 +36,7 @@ class NextDraft[C: Person](SceneDraft[C]):
         min_length=MIN_RECAP,
         description="One paragraph on the scene the player is leaving: what they did, what it "
         "cost, what they learned, what they missed. Read by the game master and by you, never "
-        "by the player, so it may name the secret.",
+        "by the player.",
     )
 
 

@@ -146,9 +146,6 @@ WHAT THE TAGS IN PLAY MEAN:
 - Pry Bar: Forces a door, a crate, or a stubborn slab of stone.
 - Chalk and Wire: Marks a trail and rigs a lock from chalk and a length of wire.
 
-THE SCENE'S SECRET (never narrate this):
-The map is under the loose flagstone, and Mara knows it; she will not volunteer it while the ledgers are unfinished.
-
 NOTES FROM THE RULES:
 - (none)
 
