@@ -6,7 +6,7 @@ The app starts three separate AI roles:
 
 - The game master selects rule procedures and requests world changes.
 - The narrator writes the story text that the player can read.
-- The worldsmith writes the opening world and makes the world grow in play.
+- The worldsmith writes the opening world, makes the world grow in play, and answers the game master's commissions.
 
 The narrator opens the game with who the player is and where they stand; the player acts from there.
 

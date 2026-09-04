@@ -23,7 +23,8 @@ on 2026-09-02; the code after Phase 2 is the reference for the party helpers Tra
 4. **The tool cap stays fifteen, counted as tools plus `change_world` arms**, the two party
    arms every engine carries (Track A) not counted. An engine whose SRD plays a crew (Track G)
    may go to twenty in all; its `docs/<ENGINE>.md` says so. No fold is made for the count's
-   sake.
+   sake. Since 2026-09-04 the cap reads: at most fifteen engine tools plus `commission`, the
+   platform's, counted as tools plus `change_world` arms, the two shared party arms not counted.
 5. **Campaign refinements are all built**, except moving home, which stays in `IDEAS.md`.
 6. **`VISION.md` is deleted** after its non-goals and turn steps move. `COMPETITOR-RESEARCH.md`
    stays as a reference to other projects. PLAN.md Phase 6.2 (rewrite VISION's architecture)

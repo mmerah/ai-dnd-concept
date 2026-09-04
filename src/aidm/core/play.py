@@ -116,6 +116,14 @@ class ChapterRecord(Frozen):
     scenes: tuple[str, ...]
 
 
+class Commission(Frozen):
+    """What the game master asked the worldsmith for; `later` files it for the next scene write."""
+
+    kind: str
+    brief: str
+    later: bool = False
+
+
 type HistoryRecord = SceneRecord | ChapterRecord
 
 

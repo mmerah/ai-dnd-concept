@@ -1,6 +1,9 @@
+from collections.abc import Sequence
+
+from aidm.core.play import Commission
 from aidm.engines.base import Person
 from aidm.engines.hub import OFFER_ASK, named_unmet
-from aidm.engines.rooms.drafts import MapDraft, ReturnDraft
+from aidm.engines.rooms.drafts import ItemDraft, MapDraft, NpcDraft, ReturnDraft
 from aidm.engines.rooms.world import Dungeon, Dweller, RoomWorld
 
 MIN_PLACES = 4
@@ -8,6 +11,11 @@ MIN_EXTENSION_PLACES = 2
 TAVERN_ASK = (
     "(no map yet — write the tavern: one known place, its keeper and regulars as npcs, no ways "
     "out, and a `board` of two or three offers; " + OFFER_ASK + ")"
+)
+COMMISSION_ASK = (
+    "The game master asked for a {kind}: {brief}. Write that one {kind} and nothing else: an "
+    "npc stands at the player's place, an item lies at it or on a living npc there, a region "
+    "joins the map beyond the player's reach."
 )
 JOB_BRIEF = (
     "The player is leaving {title} ({place}) on a job. WHAT THE PLAYER WANTS TO PURSUE is the job "
@@ -30,19 +38,60 @@ def hub_refusal[N: Dweller](draft: MapDraft[N]) -> str | None:
     return None if not unmet else "the tavern needs " + "; ".join(unmet)
 
 
-def job_refusal[N: Dweller](draft: MapDraft[N], world: Dungeon[N]) -> str | None:
-    unmet = _map_unmet(draft) + _overlap_unmet(draft, world) + _board_unmet(draft)
+def job_refusal[N: Dweller](
+    draft: MapDraft[N], world: Dungeon[N], asked: Sequence[Commission] = ()
+) -> str | None:
+    unmet = (
+        _map_unmet(draft)
+        + _overlap_unmet(draft, world)
+        + _board_unmet(draft)
+        + _asked_unmet(draft, asked)
+    )
     return None if not unmet else "the job's region needs " + "; ".join(unmet)
 
 
-def extension_refusal[N: Dweller](draft: MapDraft[N], world: Dungeon[N]) -> str | None:
-    unmet = _extension_unmet(draft) + _overlap_unmet(draft, world) + _board_unmet(draft)
+def extension_refusal[N: Dweller](
+    draft: MapDraft[N], world: Dungeon[N], asked: Sequence[Commission] = ()
+) -> str | None:
+    unmet = (
+        _extension_unmet(draft)
+        + _overlap_unmet(draft, world)
+        + _board_unmet(draft)
+        + _asked_unmet(draft, asked)
+    )
     return None if not unmet else "the extension needs " + "; ".join(unmet)
 
 
 def return_refusal[N: Dweller, P: Person](draft: ReturnDraft, world: RoomWorld[N, P]) -> str | None:
     unmet = _recaps_unmet(draft, world) + _debrief_unmet(draft, world)
     return None if not unmet else "the return needs " + "; ".join(unmet)
+
+
+def npc_refusal[N: Dweller, P: Person](draft: NpcDraft[N], world: RoomWorld[N, P]) -> str | None:
+    npc = draft.npc
+    unmet: list[str] = []
+    if world.entity(npc.id) is not None:
+        unmet.append("a new id")
+    if npc.place != world.current.id:
+        unmet.append(f"the player's place {world.current.id!r}")
+    if npc.known:
+        unmet.append("unmet")
+    if why := npc.unwritten():
+        unmet.append(why)
+    return None if not unmet else "the npc needs " + "; ".join(unmet)
+
+
+def item_refusal[N: Dweller, P: Person](draft: ItemDraft, world: RoomWorld[N, P]) -> str | None:
+    item = draft.item
+    unmet: list[str] = []
+    if world.entity(item.id) is not None:
+        unmet.append("a new id")
+    holders = {world.current.id, *(npc.id for npc in world.at(world.current.id) if npc.alive)}
+    if item.on not in holders:
+        unmet.append("lying at the player's place or on a living npc there")
+    if item.known:
+        unmet.append("unmet")
+    return None if not unmet else "the item needs " + "; ".join(unmet)
 
 
 def _recaps_unmet[N: Dweller, P: Person](draft: ReturnDraft, world: RoomWorld[N, P]) -> list[str]:
@@ -145,3 +194,13 @@ def _board_unmet[N: Dweller](draft: MapDraft[N]) -> list[str]:
 
 def _has_hidden_thing[N: Dweller](draft: MapDraft[N]) -> bool:
     return any(not entity.known for entity in (*draft.npcs.values(), *draft.items.values()))
+
+
+def _asked_unmet[N: Dweller](draft: MapDraft[N], asked: Sequence[Commission]) -> list[str]:
+    """A `region` commission is met by the write itself; it counts nothing here."""
+    unmet: list[str] = []
+    for kind, written in (("npc", len(draft.npcs)), ("item", len(draft.items))):
+        wanted = sum(1 for commission in asked if commission.kind == kind)
+        if written < wanted:
+            unmet.append(f"{wanted} {kind}s asked for, {written} written")
+    return unmet

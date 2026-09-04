@@ -15,7 +15,7 @@ from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.facts import Fact, cards, traced
 from aidm.core.io import FileStore, read_character, read_scenario, write_scenario
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioMeta, WorldsmithAnswer
-from aidm.core.play import Answer, Exchange, Line, Narration
+from aidm.core.play import Answer, Commission, Exchange, Line, Narration
 from aidm.core.source import given_text
 from aidm.core.tools import MasterTool
 from aidm.core.views import PlayerView
@@ -113,6 +113,12 @@ class GameService:
             # An answer that re-suspended leaves every tool refused: nothing for a master to do.
             if turn.draft.pending is None:
                 await self._act(turn)
+                while (asked := turn.draft.wanted()) is not None:
+                    note = await self._fulfil(turn, asked)
+                    self.phase = "master"
+                    await self._act(turn)
+                    # Read once, by the re-spawn; the next turn has the facts.
+                    turn.draft.notes.remove(note)
             lines: tuple[Line, ...] = ()
             if turn.draft.pending is None or any(fact.told for fact in turn.facts):
                 self.phase = "narrator"
@@ -130,6 +136,25 @@ class GameService:
                 self.speak()
         finally:
             self.turn, self.phase = None, None
+
+    async def _fulfil(self, turn: Turn, asked: Commission) -> str:
+        """The suspended turn: the worldsmith writes, the install lands, the master is told."""
+        self.phase = "worldsmith"
+        resolved = traced(turn.facts)
+        try:
+            play = await self.engine.fulfil(turn.draft, asked, _worldsmith(self.spawner))
+            landed = turn.apply(play)
+        except (OSError, Refusal) as failed:
+            LOGGER.warning("the commissioned %s could not be written: %s", asked.kind, failed)
+            turn.apply(lambda draft, _rng: draft.withdraw(asked))
+            landed = "it could not be written; play on without it"
+        note = (
+            f'You asked the worldsmith for a {asked.kind}: "{asked.brief}". '
+            f"Already resolved this turn, before you asked:\n{resolved}\n"
+            f"Answered:\n{landed}"
+        )
+        turn.draft.note(note)
+        return note
 
     async def extend(self, answer: Answer) -> None:
         """Author and install a region without a player turn; a told card is still filed."""

@@ -14,7 +14,8 @@ from aidm.core.entities import (
     parse,
     require_unique,
 )
-from aidm.core.play import PendingDecision
+from aidm.core.facts import Fact
+from aidm.core.play import Commission, PendingDecision
 
 type ScenarioKind = Literal["one-shot", "campaign"]
 type AnyScenario = Scenario[Any]
@@ -99,6 +100,7 @@ class Game[P: BaseModel](Mutable):
     turn: int = Field(default=0, ge=0)
     pending: PendingDecision | None = None
     notes: list[str] = Field(default_factory=list)
+    commissions: list[Commission] = Field(default_factory=list)
     payload: P
 
     @model_validator(mode="after")
@@ -108,6 +110,19 @@ class Game[P: BaseModel](Mutable):
 
     def note(self, text: str) -> None:
         self.notes.append(text)
+
+    def wanted(self) -> Commission | None:
+        """The first commission the turn waits on; a `later` one waits for the next write."""
+        return next((commission for commission in self.commissions if not commission.later), None)
+
+    def on_order(self) -> list[Commission]:
+        """The `later` commissions the next write owes."""
+        return [commission for commission in self.commissions if commission.later]
+
+    def withdraw(self, asked: Commission) -> tuple[Fact, ...]:
+        """Remove it and land no fact: a `Play` the turn's gate can run."""
+        self.commissions.remove(asked)
+        return ()
 
     def draft(self) -> Self:
         """A working copy a resolution mutates; a failed turn never replaces the committed state."""

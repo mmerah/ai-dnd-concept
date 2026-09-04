@@ -18,12 +18,23 @@ from aidm.core.model import (
     ScenarioMeta,
     WorldsmithAnswer,
 )
-from aidm.core.play import DecisionOption, Exchange, HistoryRecord, Line, PendingOption
-from aidm.core.tools import MasterTool
+from aidm.core.play import Commission, DecisionOption, Exchange, HistoryRecord, Line, PendingOption
+from aidm.core.tools import MasterTool, Play
 from aidm.core.views import NarratorView, PlayerView, Rows, Sections
 from aidm.engines.base import PLAYER_ID, Person
 
 type AnyEngine = Engine[Any]
+
+COMMISSION = "commission"
+COMMISSION_BRIEF = (
+    "Ask the worldsmith for what the scene needs and the cast lacks. Written now, the turn "
+    "pauses and you are spawned again with the answer under NOTES FROM THE RULES; with "
+    "`later`, it is written into the next scene or region. What you ask for becomes canon."
+)
+WORLDSMITH_WAIT = (
+    "the worldsmith is writing what you asked for. Stop here and exit; you will be spawned "
+    "again with the answer."
+)
 
 
 class Engine[G: Game[Any]](ABC):
@@ -42,7 +53,7 @@ class Engine[G: Game[Any]](ABC):
 
     def __init__(self) -> None:
         self.instructions = (self.directory / "rules.md").read_text(encoding=ENCODING)
-        tools = self.master_tools()
+        tools = (*self.master_tools(), self.commission_tool())
         require_unique(f"tool names of the {self.id!r} engine", (tool.name for tool in tools))
         self.tools = {tool.name: tool for tool in tools}
 
@@ -102,6 +113,20 @@ class Engine[G: Game[Any]](ABC):
         # The accepted answer was built by its own check; one never checked is built here.
         return build(answer) if built is None else built
 
+    def commission(self, draft: G, kind: str, brief: str, *, later: bool) -> list[Fact]:
+        """One `later` on order at a time: the next write owes one entry, never a backlog."""
+        if later and (on_order := draft.on_order()):
+            raise Refusal(
+                f"a {on_order[0].kind} is already on order for the next write: {on_order[0].brief}"
+            )
+        draft.commissions.append(Commission(kind=kind, brief=brief, later=later))
+        if later:
+            trace = f"the worldsmith will write a {kind} into the next scene or region: {brief}"
+            draft.note(trace)
+        else:
+            trace = f"waiting on the worldsmith for a {kind}: {brief}"
+        return [Fact(kind="commission_asked", trace=trace)]
+
     def close(self, draft: G, prompt: str, lines: tuple[Line, ...], facts: tuple[Fact, ...]) -> G:
         """File the exchange, count the turn, commit."""
         exchange = Exchange(
@@ -116,6 +141,13 @@ class Engine[G: Game[Any]](ABC):
 
     @abstractmethod
     def master_tools(self) -> tuple[MasterTool[G], ...]: ...
+    @abstractmethod
+    def commission_tool(self) -> MasterTool[G]: ...
+    @abstractmethod
+    async def fulfil(self, draft: G, asked: Commission, worldsmith: WorldsmithAnswer) -> Play[G]:
+        """Ask the worldsmith from the draft as it stands; the install comes back to run under
+        the turn's gate."""
+
     @abstractmethod
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]: ...
     @abstractmethod

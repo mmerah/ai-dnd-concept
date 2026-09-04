@@ -21,6 +21,10 @@ After a roll, use more tools for every lasting consequence: a death, a condition
 
 If a tool says the rules now wait for the player's decision, stop the turn and exit. The player answers on their own screen.
 
+## Ask for more
+
+`commission` asks the worldsmith for a person, a thing or a rumour (an npc, an item or a region in a room crawl) the picture lacks; when its result says the worldsmith is at work, stop and exit; you are spawned again with the answer under NOTES FROM THE RULES, which also lists what you already resolved this turn, so continue from there and do not settle it again; `later` files it for the next scene; one commission per turn, now or later.
+
 THE RULES OF THIS GAME:
 # TUNNEL GOONS RULES
 

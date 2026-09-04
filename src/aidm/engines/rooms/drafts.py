@@ -4,7 +4,7 @@ from pydantic import Field
 
 from aidm.core.entities import CheckedEntityId, Frozen
 from aidm.engines.hub import MIN_RECAP, MIN_SUMMARY, Board
-from aidm.engines.rooms.world import Dungeon, Dweller
+from aidm.engines.rooms.world import Dungeon, Dweller, Item
 
 
 class MapDraft[N: Dweller](Dungeon[N]):
@@ -12,6 +12,16 @@ class MapDraft[N: Dweller](Dungeon[N]):
 
     start: CheckedEntityId
     board: Board | None = None  # a campaign's opening tavern only
+
+
+class NpcDraft[N: Dweller](Frozen):
+    npc: N = Field(description="One new npc, filed at the player's place, unmet.")
+
+
+class ItemDraft(Frozen):
+    item: Item = Field(
+        description="One new item, lying at the player's place or on a living npc there, unmet."
+    )
 
 
 class ReturnDraft(Frozen):

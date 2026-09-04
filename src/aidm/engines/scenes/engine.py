@@ -18,7 +18,8 @@ from aidm.core.model import (
     ScenarioMeta,
     WorldsmithAnswer,
 )
-from aidm.core.play import DecisionOption, Exchange, HistoryRecord
+from aidm.core.play import Commission, DecisionOption, Exchange, HistoryRecord
+from aidm.core.tools import MasterTool, Play, master_tool
 from aidm.core.views import (
     NarratorView,
     Panel,
@@ -45,15 +46,32 @@ from aidm.engines.hub import (
     check_kind,
     question_heading,
 )
-from aidm.engines.scenes.drafts import HubDraft, JobDraft, NextDraft, ReturnDraft, SceneDraft
-from aidm.engines.scenes.tools import Enter, Kill, Leave, NextScene, Reveal, SharedChange
+from aidm.engines.scenes.drafts import (
+    CastDraft,
+    HubDraft,
+    JobDraft,
+    NextDraft,
+    ReturnDraft,
+    SceneDraft,
+)
+from aidm.engines.scenes.tools import (
+    Enter,
+    Kill,
+    Leave,
+    NextScene,
+    Reveal,
+    SceneCommission,
+    SharedChange,
+)
 from aidm.engines.scenes.world import SceneCanon, SceneWorld, resolve_ids, run_of
 from aidm.engines.scenes.worldsmith import (
+    COMMISSION_ASK,
     CROSSING,
+    cast_refusal,
     scene_refusal,
     worldsmith_prompt,
 )
-from aidm.engines.seam import Engine
+from aidm.engines.seam import COMMISSION, COMMISSION_BRIEF, Engine
 
 
 class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
@@ -189,18 +207,28 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
     def next_scene(self, draft: G, args: NextScene, _rng: Random) -> list[Fact]:
         return self.world(draft).settle(args.job_done, args.pursuit)
 
+    def commission_tool(self) -> MasterTool[G]:
+        return master_tool(
+            COMMISSION,
+            COMMISSION_BRIEF
+            + " A person, a thing or a rumour, each a cast entry. Read THE ARC first and ask "
+            "with it in view; the worldsmith may bend it to hold what you ask for.",
+            SceneCommission,
+            self.ask_worldsmith,
+        )
+
+    def ask_worldsmith(self, draft: G, args: SceneCommission, _rng: Random) -> list[Fact]:
+        return self.commission(draft, args.kind, args.brief, later=args.later)
+
     def here_lines(self, world: SceneWorld[C, P]) -> str:
         return lines_of(member.line() for member in world.here() if member.id != world.player.id)
 
     def hidden_lines(self, world: SceneWorld[C, P]) -> str:
         return lines_of(world.require(entity_id).line() for entity_id in world.hidden())
 
-    def render_next(
-        self, draft: G, intent: str, answer: type[SceneDraft[C]], *, reopening: Job | None = None
-    ) -> str:
-        world = self.world(draft)
-        # The worldsmith must know who follows the player out of the scene.
-        cast = "\n".join(
+    def cast_lines(self, world: SceneWorld[C, P]) -> str:
+        """The worldsmith must know who follows the player out of the scene."""
+        return "\n".join(
             (
                 world.player.line(detail=world.last_seen(world.player.id)),
                 *(
@@ -213,26 +241,38 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
                 ),
             )
         )
+
+    def hub_sections(
+        self, world: SceneWorld[C, P], *, returning: bool, reopening: Job | None
+    ) -> Sections:
         campaign = world.campaign
-        hub_sections: list[tuple[str, str]] = []
-        if campaign is not None:
-            returning = issubclass(answer, ReturnDraft)
-            if returning:
-                hub_sections.append(
-                    ("THIS JOB", render_whole(campaign.job_records(world.records())))
-                )
-            if issubclass(answer, JobDraft) and reopening is not None:
-                hub_sections.append(
-                    (
-                        "THE JOB BEFORE",
-                        render_whole(campaign.records_of(reopening, world.records())),
-                    )
-                )
-            hub_sections.extend(
-                campaign.sections(world.runs[0].title, at_hub=world.at_hub, returning=returning)
+        if campaign is None:
+            return ()
+        sections: list[tuple[str, str]] = []
+        if returning:
+            sections.append(("THIS JOB", render_whole(campaign.job_records(world.records()))))
+        if reopening is not None:
+            sections.append(
+                ("THE JOB BEFORE", render_whole(campaign.records_of(reopening, world.records())))
             )
-        hub: Sections = tuple(hub_sections)
-        if world.arc and issubclass(answer, NextDraft):
+        sections.extend(
+            campaign.sections(world.runs[0].title, at_hub=world.at_hub, returning=returning)
+        )
+        return tuple(sections)
+
+    def render_next(
+        self,
+        draft: G,
+        intent: str,
+        answer: type[BaseModel],
+        *,
+        reopening: Job | None = None,
+        asked: str = "",
+    ) -> str:
+        """A scene write, or a commission: `answer` says which sections the intent needs."""
+        world = self.world(draft)
+        returning, follows_arc = issubclass(answer, ReturnDraft), issubclass(answer, NextDraft)
+        if world.arc and follows_arc:
             intent += (
                 f"\n\nThe arc as last written: {world.arc}. Rewrite `arc` so it follows what "
                 "happened."
@@ -241,11 +281,12 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             self.worldsmith,
             source=world.source,
             history=render_history(world.scenes()),
-            cast=cast,
-            guidance=self.guidance(draft.packs, campaign=campaign is not None),
+            cast=self.cast_lines(world),
+            guidance=self.guidance(draft.packs, campaign=world.campaign is not None),
             intent=intent,
             answer=answer,
-            hub=hub,
+            hub=self.hub_sections(world, returning=returning, reopening=reopening),
+            asked=asked,
         )
 
     def opening_draft(self, kind: ScenarioKind) -> type[SceneDraft[C]]:
@@ -307,14 +348,17 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             if world.at_hub
             else NextDraft[self.cast]
         )
-        prompt = self.render_next(draft, intent, model, reopening=reopening)
-        return await worldsmith(prompt, model, lambda answer: scene_refusal(answer, world))
+        later = draft.on_order()
+        asked = lines_of(f"- a {c.kind}: {c.brief}" for c in later) if later else ""
+        prompt = self.render_next(draft, intent, model, reopening=reopening, asked=asked)
+        return await worldsmith(prompt, model, lambda answer: scene_refusal(answer, world, later))
 
     def install(
         self, draft: G, scene: SceneDraft[C], *, reopening: Job | None = None
     ) -> list[Fact]:
         world = self.world(draft)
         world.apply_scene(scene.model_copy(deep=True), reopening=reopening)
+        draft.commissions.clear()  # every scene draft carries `cast`, and the bar counted it
         trace = f"the story moves to {scene.title}"
         if travelling := [member.name for member in world.members()]:
             trace += f", the player travelling with {', '.join(travelling)}"
@@ -334,6 +378,40 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
                 draft.note(self.finished_note.format(title=job.title))
             return [job.closed(), opened]
         return [opened]
+
+    def render_commission(self, draft: G, asked: Commission) -> str:
+        world = self.world(draft)
+        intent = COMMISSION_ASK.format(kind=asked.kind, brief=asked.brief)
+        if world.arc:
+            intent += (
+                f"\n\nThe arc as last written: {world.arc}. Rewrite `arc` only where it must "
+                "bend to hold the new entry; leave it empty to keep it."
+            )
+        return self.render_next(draft, intent, CastDraft[self.cast])
+
+    async def fulfil(self, draft: G, asked: Commission, worldsmith: WorldsmithAnswer) -> Play[G]:
+        world = self.world(draft)
+        written = await worldsmith(
+            self.render_commission(draft, asked),
+            CastDraft[self.cast],
+            lambda answer: cast_refusal(answer, world),
+        )
+        return lambda candidate, _rng: tuple(self.install_cast(candidate, asked, written))
+
+    def install_cast(self, draft: G, asked: Commission, written: CastDraft[C]) -> list[Fact]:
+        world = self.world(draft)
+        entity_id = next(iter(written.cast))
+        new = entity_id not in world.cast
+        world.cast = world.merged_cast(written.cast)
+        world.arc = written.arc or world.arc
+        draft.withdraw(asked)
+        entry = world.cast[entity_id]  # a known id keeps the world's name
+        trace = (
+            f"the worldsmith wrote {entry.label}: {entry.brief}; bring them in with `enter`"
+            if new
+            else f"the worldsmith rewrote {entry.label}: {entry.brief}"
+        )
+        return [Fact(kind="commissioned", trace=trace)]
 
     async def author(
         self,

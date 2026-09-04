@@ -39,6 +39,8 @@ locations, complications, missions) are all in the SRD at the page above, transc
   swap it for something carried, or take a med kit instead.
 - `test_luck` — one die of the master's choosing, read on the check ladder, for a question about
   the world where nobody acts.
+- `commission` (platform, not counted) — ask the worldsmith for a person, a thing or a rumour, now or
+  for the next scene.
 
 ## Deviations in this repo
 

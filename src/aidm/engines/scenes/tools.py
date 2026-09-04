@@ -66,3 +66,15 @@ class NextScene(Frozen):
 
 
 type SharedChange = Reveal | Enter | Leave | Kill
+
+
+class SceneCommission(Frozen):
+    kind: Literal["person", "thing", "rumour"] = Field(
+        description="What to ask for; each is a cast entry."
+    )
+    brief: str = Field(
+        min_length=20, description="Who or what it is and why the scene needs it, in a few lines."
+    )
+    later: bool = Field(
+        default=False, description="True to have it written into the next scene instead of now."
+    )

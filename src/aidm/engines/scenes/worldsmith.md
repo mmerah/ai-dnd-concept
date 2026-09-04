@@ -17,6 +17,8 @@ Put something in `hidden` when the scene has something worth finding. It is not 
 
 Never name the player: they are put into the scene by code. Name everyone else by their exact id. A new person or thing goes in `cast`, filed under its own id, and may then be named in `present` or `hidden`. Someone already in THE WHOLE CAST may be filed again to rewrite their `brief`; their name and their sheet are the rules' and do not change.
 
+Under THE GAME MASTER ASKED FOR, write one new entry per line, unmet, inside the scene; when WHAT COMES NEXT asks for one entry, answer with that entry and nothing else. `arc` bends only where it must.
+
 Everything you need is below. Do not read, search or run anything in the repository.
 
 Answer with one JSON object and nothing else, in the shape ANSWER WITH gives.
