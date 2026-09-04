@@ -419,7 +419,6 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
 
 
 def starting_items(kits: Sequence[Kit]) -> dict[EntityId, Item]:
-    """Filed by name in order, a duplicate name taking the next free slug."""
     taken: list[str] = []
     items: dict[EntityId, Item] = {}
     for kit in kits:

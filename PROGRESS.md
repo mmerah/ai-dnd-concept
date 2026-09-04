@@ -44,3 +44,6 @@ and why, and what is known and accepted.
 - Verified: four commands green; golden regen changes no fixture; `uv run aidm` serves the home
   page with a `My Backup` folder and a `.DS_Store` under `characters/`;
   `ROLES__NARATOR__MODEL=x` makes `read_settings()` exit naming `narator`.
+- Follow-up prose cut, same branch: 9,483 → 9,444 lines. Twenty-nine docstrings and comments
+  that restated a name, a signature or the line below went; the `RoomEngine` docstring is one
+  line; `SceneEngine.world` is one line. No schema description changed (golden regen clean).

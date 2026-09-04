@@ -100,7 +100,6 @@ class Dungeon[N: Dweller](Mutable):
         return (item for item in self.items.values() if item.on == holder_id)
 
     def frontier(self) -> int:
-        """Count distinct unknown places reachable through ways out of known places."""
         return len(
             {
                 way.to
@@ -115,7 +114,6 @@ class Dungeon[N: Dweller](Mutable):
         return _walk(self.ways, start)
 
     def has_shortcut(self) -> bool:
-        """A shortcut is an edge whose destination remains reachable after that edge is removed."""
         return any(
             direct.to in _walk({**self.ways, start: [w for w in leaving if w is not direct]}, start)
             for start, leaving in self.ways.items()
@@ -168,7 +166,6 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N]):
 
     @classmethod
     def begin(cls, canon: RoomCanon[N], player: P, items: Iterable[Item]) -> Self:
-        """The played character at the canon's start, their starting items filed on them."""
         return parse(
             cls,
             {
@@ -386,7 +383,6 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N]):
         return f"{line}\n  {sheet}" if sheet else line
 
     def place_lines(self, *, known: bool) -> str:
-        """Who stands and what lies at the current place, the found or the hidden half."""
         npcs_here = [npc for npc in self.at(self.current.id) if npc.known == known]
         holders = (self.current.id, *(npc.id for npc in self.at(self.current.id)))
         items = (item for holder in holders for item in self.carried(holder) if item.known == known)

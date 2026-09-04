@@ -47,8 +47,6 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass(frozen=True, slots=True)
 class Observed:
-    """Phase, facts landed, exchanges filed, the way on, the end: what a render reads."""
-
     phase: Role | None
     facts: int
     exchanges: int
@@ -80,7 +78,6 @@ class GamePage:
         self.seen: Observed = Observed(None, 0, 0, False, None)
         self.step_started: float | None = None
         self.ticker: ui.label | None = None
-        # The composer's widgets, built once by `composer` and set by `_set_composer`.
         self.box: ui.input
         self.send: ui.button
         self.move_on_button: ui.button
@@ -462,7 +459,6 @@ def _clock(seconds: float) -> str:
 
 
 def can_type(player: PlayerView, phase: Role | None) -> bool:
-    """The composer opens between turns, unless the game waits on a pick or is over."""
     prompt = player.prompt
     return phase is None and (prompt is None or prompt.allows_text) and player.over is None
 

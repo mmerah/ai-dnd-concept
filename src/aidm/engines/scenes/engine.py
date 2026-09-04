@@ -91,9 +91,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
         super().__init__()  # last: `master_tools` reads the packs
 
     def world(self, state: G) -> SceneWorld[C, P]:
-        return (
-            state.payload
-        )  # narrowed to the shared scene world; an engine's own subclass reads `draft.payload`
+        return state.payload  # narrowed to the shared scene world
 
     def crossing(self, state: G, pursuit: str) -> str | None:
         return CROSSING.format(left=self.world(state).run.title, pursuit=pursuit)

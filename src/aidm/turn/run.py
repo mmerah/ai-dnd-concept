@@ -49,7 +49,6 @@ class Turn:
         return turn
 
     def _consume(self, answer: Answer) -> None:
-        """The PLAYER ACTION and what the master reads as it."""
         engine, draft = self.engine, self.draft
         if (ended := engine.over(draft)) is not None:
             raise Refusal(f"{ended} The only way on is to restart.")

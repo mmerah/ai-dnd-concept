@@ -49,7 +49,6 @@ class Goon(Person):
         )
 
     def starting_items(self, taken: Iterable[str]) -> tuple[Item, ...]:
-        """The kit filed as `Item`s on the player, with ids clear of every id already taken."""
         made = list(taken)
         items: list[Item] = []
         for name in self.kit:

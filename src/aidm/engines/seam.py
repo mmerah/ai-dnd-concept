@@ -128,7 +128,6 @@ class Engine[G: Game[Any]](ABC):
         return [Fact(kind="commission_asked", trace=trace)]
 
     def close(self, draft: G, prompt: str, lines: tuple[Line, ...], facts: tuple[Fact, ...]) -> G:
-        """File the exchange, count the turn, commit."""
         exchange = Exchange(
             prompt=prompt,
             lines=self.narrator_view(draft).spoken(lines),

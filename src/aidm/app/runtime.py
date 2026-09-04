@@ -81,7 +81,6 @@ class GameService:
         return self.phase is not None
 
     def unopened(self) -> bool:
-        """No exchange yet: nobody has told the player where they stand."""
         return not self.busy and not self.engine.history(self.state)
 
     async def open(self) -> None:
