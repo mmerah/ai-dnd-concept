@@ -2,7 +2,8 @@
 
 Three phases, in order: the fixes and the two boundary conventions; the engine seam and the two
 families; the platform and the stored shapes, with the test consolidation. The twenty decisions of
-`PROPOSALS.md` (2026-09-04, section 6, every heading settled) land here: D1, D6, D18, D19 and P1–P7,
+`PROPOSALS.md` (2026-09-04, `git show 36be6f4:PROPOSALS.md`, section 6, every heading
+settled; the file is deleted, folded here) land here: D1, D6, D18, D19 and P1–P7,
 P22, P23 in Phase 1; D2, D4 B, D7, D13, D16 (the seam half) and P3, P8–P16, P20 in Phase 2; D8, D9,
 D14, D15, D17, D16 (the launcher half) and P17–P19, P21, P24, P25 in Phase 3. D3 C, D5 A, D10 A,
 D11 A, D12 A, D20 need no step beyond what is named below. Self-standing: an implementer needs this
@@ -38,8 +39,8 @@ uv run basedpyright
    ```
    Then read every changed line. Each phase names which fixtures may change and how; anything
    else is a bug. Phases 1 and 2 change none. Phase 3 changes the four `prompts/<id>/master.txt`
-   by one heading line (D9). `scenarios/*/world.json` and `characters/kael/*.json` change in no
-   phase.
+   by one heading line (D9: `loner3e` from `turn 1` to `turn 3`, the other three from `turn 1` to
+   `turn 2`). `scenarios/*/world.json` and `characters/kael/*.json` change in no phase.
 4. **Count `src` lines** at the start and end of each phase; write both in `PROGRESS.md`, one entry
    per phase. Phase 1 recreates the file:
    ```bash
@@ -55,17 +56,20 @@ uv run basedpyright
    `engines/rooms/` too); imports flow `core <- engines <- turn <- app <- ui`; no `Any` beyond the
    `Game[P]` bound and the bounds D2 derives from it; every `__init__.py` empty; tests never start a
    process (`ScriptedSpawner`); `Refusal` stays the one message-bearing exception; both views stay;
-   the `Engine` ABC and the generics stay; `RoomEngine` stays as it is (D3 C).
+   the `Engine` ABC and the generics stay; `RoomEngine` stays as it is (D3 C); the four
+   `ChangeWorld` classes stay (D5 A: a generic `ChangeWorld[V]` with `discriminator="verb"` fails
+   in pydantic 2.13.4).
 10. **A rename is a rename.** A step that deletes, moves or re-signs a name lists the grep the
     orchestrator runs (`grep -rn <name> src tests`, `--include=*.py`); after the step it finds only
     what the step says. The implementer does not explore.
+11. **Line numbers are as of `36be6f4`**; find the site by the name quoted beside it.
 
 | phase | what lands | `src` after (about) |
 |---|---|---|
 | start (`36be6f4`) | | 9,481 |
 | 1 — the fixes and the conventions | the two content bugs; `PendingOption.name` required; `ValueError` inside every validator and `parse` at every construction from model data; `read_packs` through `decode`+`parse`; `draft.payload` in every concrete engine; the prompt facts; the idiom bundle; `config.py` on `Frozen`; `Turn._consume` | 9,430 to 9,460 |
 | 2 — the seam and the two families | `World` in `hub.py`, `Engine[P, G]` with the five hoists, `Engine.begin` and `Engine.commit`; one entity line, one `reveal`, prompt lines on the worlds; sheet methods; shared refusals; `Pack.source`/`license`; `pack_step`/`srd_pack`; the party arms on the base; `taken` via `left_open`; rooms on one `worldsmith_prompt` and `Campaign.sections`, `apply_extension`/`apply_return`, the bar run once | 9,240 to 9,300 |
-| 3 — the platform, the stored shapes, the tests | `Library`; `Engine.tool`, `restore(value)`, one `final_message`; `ask(spawner, role, …)`; `app/providers.py`, one opener shape, `_present`, `_run_master`; `withdraw` returns `None`; `game_path` in `ui`, `LauncherCatalog.read`/`target`; `Game.turn` gone; `Speaker` gone; `SceneRecord.focus`; one scene-world builder in `tests/support/scenes.py`, Loner's test files renamed | 9,200 to 9,270 |
+| 3 — the platform, the stored shapes, the tests | `Library`; `Engine.tool`, `restore(value)`, `routed`, one `final_message`; `ask(spawner, role, …)`; `app/providers.py`, one opener shape, `_present`, `_run_master`; `withdraw` returns `None`; `game_path` in `ui`, `LauncherCatalog.read`/`target`; `Game.turn` gone; `Speaker` gone; `SceneRecord.focus`; one scene-world builder in `tests/support/scenes.py`, Loner's test files renamed | 9,220 to 9,290 |
 
 ---
 
@@ -73,6 +77,13 @@ uv run basedpyright
 
 Every no-loss fix, plus the two rules every later phase writes to: a validator raises
 `ValueError`, and untrusted data reaches a model through `parse`. No fixture moves.
+
+Split: B then A, sequential (A reads B's `WHOLE_SCENES`).
+- B, the platform: steps 1, 2, 8, 10, 12, 13, 14, and of step 9 the `core/views.py` and
+  `turn/context.py`/`turn/run.py` halves; owns `core/*`, `turn/*`, `app/*`, `ui/*`, `config.py`,
+  `CLAUDE.md`, `NEXT-SPECS.md`, and their tests.
+- A, the engines: steps 3, 4, 5, 6, 7, 11, and of step 9 the `hub.py:231` and `twentyfourxx` halves;
+  owns `src/aidm/engines/**` and their tests.
 
 1. **P1.** `core/io.py`: `read_scenarios` (`:77`) and `read_characters` (`:91`) both open with
    `if not directory.is_dir(): return`; `read_characters` iterates
@@ -99,7 +110,9 @@ Every no-loss fix, plus the two rules every later phase writes to: a validator r
    `pytest.raises(ValueError)` holds (`Refusal ⊂ ValueError`); the three `pytest.raises(Refusal)`
    on validator messages (`tests/tunnelgoons/test_world.py:17`, `tests/ui/test_launcher.py:280`,
    `tests/core/test_integrity_boundaries.py:112`) already go through `commit`, `compose` and
-   `read_character`, and hold. Grep: `raise Refusal` inside `@model_validator` bodies finds none.
+   `read_character`, and hold. Grep:
+   `grep -n -A14 "@model_validator" $(grep -rl model_validator src) | grep "raise Refusal"` finds
+   nothing.
 4. **P6b: constructions from model data go through `parse`.** `engines/scenes/world.py:122-132`
    `SceneWorld.begin` returns `parse(cls, {"cast": canon.cast, "player": player, "runs":
    [canon.opening], "source": canon.source, "campaign": canon.campaign, "arc": canon.arc})`;
@@ -108,10 +121,12 @@ Every no-loss fix, plus the two rules every later phase writes to: a validator r
    onto the seam); `engines/scenes/engine.py:331-337` returns `parse(SceneCanon[self.cast],
    {...})`; `engines/rooms/engine.py:503-511` returns `parse(RoomCanon[self.dweller], {...})`.
    Why: `Engine.compose` re-prompts on a `Refusal` from `build` and lets anything else propagate
-   as a bug, so an opening the world refuses must reach it as a `Refusal`. Tests: `tests/core/
-   test_scenes.py`, `SceneWorld.begin` on a canon whose player id is in the cast raises `Refusal`
-   matching "the player is in the cast"; `tests/tunnelgoons/test_world.py`, `RoomWorld.begin` on a
-   canon whose npc stands in no place raises `Refusal` matching "in no place".
+   as a bug, so an opening the world refuses must reach it as a `Refusal`. Tests:
+   `tests/twentyfourxx/test_engine.py:107` and `tests/breathless/test_engine.py:114` (`new_game`
+   with the player's id in the cast) tighten `pytest.raises(ValueError, …)` to
+   `pytest.raises(Refusal, …)`, same match; `tests/tunnelgoons/test_world.py` gains one:
+   `RoomWorld.begin` on a canon whose npc stands in no place raises `Refusal` matching "in no
+   place".
 5. **D12, P22.** `engines/base.py:165-170`: `read_packs` returns `{path.stem: parse(model,
    decode(path.read_text(encoding=ENCODING))) …}`; import `decode` from `aidm.core.io`. Test,
    `tests/core/test_seam.py` beside `_installed`: a pack with a doubled key is refused at
@@ -123,11 +138,13 @@ Every no-loss fix, plus the two rules every later phase writes to: a validator r
    `SceneWorld[C, P]` and hides `Loner3eWorld.twist`; one spelling per family, so the other two
    follow. Grep: `self.world(` in `src/aidm/engines/{loner3e,breathless,twentyfourxx,tunnelgoons}/`
    finds nothing; `SceneEngine.world` and `RoomEngine.world` stay for the bases.
-7. **P4.** `engines/hub.py:71`: "`summary` and the recap fields are written from it for the game
-   master, `debrief` for the player." `:64` comment: "Shared by the scene engines and the room
-   engine." `:102` comment: "empty for a room engine". `engines/rooms/engine.py:62` `REPORT_ROW.detail`
-   stays (it names the tavern to the player, who reads it as such in Tunnel Goons; a second crawler
-   overrides the row). No golden holds these strings.
+7. **P4, partial by choice.** `engines/hub.py:71`: "`summary` and the recap fields are written from
+   it for the game master, `debrief` for the player." `:64` comment: "Shared by the scene engines
+   and the room engine." (the "`Campaign.sections` prepends the scene sentence" clause goes here,
+   on purpose: Phase 2 step 16 makes the caller pass the brief). `:102` comment: "empty for a room
+   engine". The rooms prose keeps "tavern" and "dungeon" (`rooms/worldsmith.py:11-14,38`,
+   `rooms/world.py:198`, `rooms/engine.py:62`): one crawler plays it, and the words reach the
+   worldsmith and the player as that crawler's own. No golden holds these strings.
 8. **P5a, model idioms.** `core/model.py:33-41`: `with_premise` returns
    `self.model_copy(update={"premise": self.premise or fallback})`. `app/media.py:129-135`:
    `_ImageUrl(Loose)`, `_Image(Loose)`. `app/runtime.py:48`: `@dataclass(slots=True)` on
@@ -140,9 +157,11 @@ Every no-loss fix, plus the two rules every later phase writes to: a validator r
    `engines/hub.py:231` (`attempt.returned <= total - WHOLE_SCENES`). `turn/context.py:11-14`
    `ANSWERED_BY_OPTION` moves to `turn/run.py` beside `RULES_WAIT`; `tests/core/test_context_boundary.py:9`
    imports it from `aidm.turn.run`. `engines/twentyfourxx/tools.py:78` `Attempt` → `Roll`
-   (`engine.py:16,84,257` follow); the schema golden is unchanged (`schema_of` pops the model
-   title). Grep: `\bAttempt\b` in `src/aidm/engines/twentyfourxx` and `tests/twentyfourxx` finds
-   only `hub.Attempt` imports.
+   (`engine.py:16,84,257` follow; `tests/twentyfourxx/test_tools.py:12` imports `Roll` and its
+   twelve `Attempt(...)` constructions at `:21-103` become `Roll(...)`); the schema golden is
+   unchanged (`schema_of` pops the model title). Grep: `\bAttempt\b` in
+   `src/aidm/engines/twentyfourxx` and `tests/twentyfourxx` finds only the `hub.Attempt` import at
+   `tests/support/twentyfourxx.py:6` and its uses.
 10. **P5c, the page.** `ui/game.py:409-418` `_observed` becomes
     ```python
     @dataclass(frozen=True, slots=True)
@@ -161,9 +180,10 @@ Every no-loss fix, plus the two rules every later phase writes to: a validator r
     with `GamePage.seen: Observed = Observed(None, 0, 0, False, None)` and `poll_turn` comparing
     `now.phase != self.seen.phase`, `now != self.seen`. `ui/panels.py` folds into `ui/game.py`:
     `scene_sidebar`'s body becomes `GamePage.sidebar`'s, `journal_panel`'s becomes
-    `GamePage.journal`'s; delete `ui/panels.py`. `_can_type` → `can_type` (public, `:421`);
-    `tests/ui/test_game.py:4` drops the pyright ignore. Grep: `aidm.ui.panels`, `_observed`,
-    `_can_type` find nothing.
+    `GamePage.journal`'s; delete `ui/panels.py`. `ui/game.py` gains `Self` from `typing`,
+    `partial` from `functools`, and `entity_row`, `heading`, `labeled_value` from `aidm.ui.widgets`
+    (today `panels.py:2,7`). `_can_type` → `can_type` (public, `:421`); `tests/ui/test_game.py:4`
+    drops the pyright ignore. Grep: `aidm.ui.panels`, `_observed`, `_can_type` find nothing.
 11. **P5d, the small no-ops.** `engines/rooms/engine.py:137-142`: `here = tuple(entity for entity
     in world.here() if entity.known)` (`here()` yields the player first). `engines/breathless/
     engine.py:213-224`: `worn = stepped(die)` once after the roll, used at `:218,221,224,230`; the
@@ -172,14 +192,21 @@ Every no-loss fix, plus the two rules every later phase writes to: a validator r
     `Providers` subclass `Frozen` from `aidm.core.entities` and drop their `model_config` lines;
     `Settings` keeps `extra="ignore"`. Allowed: `tests/core/test_package_boundary.py::CONFINED`
     restricts who imports `aidm.config`, not what it imports, and `config.py` is outside the
-    checked packages. Test, `tests/core/test_config.py`: `ROLES__NARATOR__MODEL=x` (monkeypatched)
-    makes `read_settings()` raise a `ValidationError` naming `roles.narator`.
+    checked packages. Test, `tests/core/test_config.py`: with `ROLES__NARATOR__MODEL=x`
+    monkeypatched, `EnvFileFreeSettings()` (from `support.table`; `read_settings()` would read the
+    checkout's `.env`) raises `ValidationError` matching "narator".
 13. **D19, D10, the leans.** `app/runtime.py:102-103` `play` docstring gains one line: "A crossing
     of `None` means the world grows without a turn: `extend` runs instead." `CLAUDE.md`, under
     "Tests": "A golden is a drift detector, not a prose test." `core/entities.py:12-15`, one
     comment above `EngineId`: "`Slug` for content ids and places; `CheckedEntityId` for an id a
     model writes; `EntityId` for one the world has checked." `NEXT-SPECS.md:81`: "13 → 15" for
-    Breathless. D6 A: `Fact.kind` stays; no edit.
+    Breathless. D6 A: `Fact.kind` stays; no edit. `core/views.py:32-38`, one comment above
+    `PanelRow`: "Three row shapes, told apart in this order: a way on (`intent`), an entity
+    (`icon_id`), a labelled value (`detail`), else a bare label." `engines/scenes/engine.py:90` and
+    `engines/rooms/engine.py:77`: the `worldsmith.md` read becomes a module constant `WORLDSMITH =
+    (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)` in each `engine.py`;
+    the `worldsmith` attribute and the two `__init__` lines go; readers use `WORLDSMITH`. Grep:
+    `self.worldsmith\b` in `src` finds nothing.
 14. **P23.** `turn/run.py:46-79`: `consume` → `_consume`; `:66` becomes `option = option_of(
     consumed.options, chosen)` from `aidm.core.creation`. `tests/core/test_decisions.py:217` goes
     through `Turn.begin(engine, _pending(state, closed), Answer(text=...), Random(0))`; the two
@@ -200,6 +227,23 @@ exits non-zero naming `narator`; `uv run aidm` opens the home page with a stray 
 
 One commit: what both lifecycle bases duplicate moves to the seam, and each thing the two families
 spell twice gets one spelling.
+
+Split: A, then B, then C, sequential (B builds on A's `World`/`Engine[P, G]`; C's `case _`
+fallthrough is exhaustive only once B's `shared_change` takes the party arms, and its
+`require_here(alive=True)` callers need B's signature).
+- A, the seam: steps 1-4 and 15; owns `seam.py`, `registry.py`, `hub.py` (`World`, `taken`),
+  `scenes/engine.py` and `rooms/engine.py` (`world`, `new_game`, the hoists, `reopening`),
+  `scenes/world.py` and `rooms/world.py` (the base class, `record`), `turn/run.py:139-140`,
+  `app/runtime.py:22,225-237,293,373`; tests `test_seam.py`, `test_rooms.py`, `support/table.py`,
+  `test_integrity_boundaries.py`, `loner3e/test_create.py`.
+- B, the cast, the worlds, the hub, the rooms: steps 5-8, 16-18, and from steps 13-14 the
+  `SharedChange`/`shared_change` and `pack_step`/`srd_pack` definitions; owns `base.py`, `hub.py`
+  (`sections`, `this_job`, `job_before`, `board_panel`), `scenes/world.py`, `scenes/engine.py`,
+  `scenes/tools.py`, `rooms/world.py`, `rooms/engine.py`, `rooms/worldsmith.py`; tests
+  `test_engines_base.py`, `test_hub.py`, `tunnelgoons/test_world.py`, `tunnelgoons/test_worldsmith.py`.
+- C, the three engines' own files: steps 9-14 minus what B owns (sheet methods, the `apply_change`
+  fallthroughs, the `pack_step`/`srd_pack` callers, the `Pack` field deletions, the two constant
+  moves); owns `loner3e/*`, `breathless/*`, `twentyfourxx/*` and `tests/{loner3e,breathless,twentyfourxx}`.
 
 ### 2.1 The seam (D2 A, D16 seam half, P18's gate)
 
@@ -229,7 +273,8 @@ spell twice gets one spelling.
            return records if self.campaign is None else self.campaign.history(records)
    ```
    `abstractmethod` works on a pydantic model (`ModelMetaclass` extends `ABCMeta`); no `ABC` mixin.
-   `engines/scenes/world.py:80-89`: `class SceneWorld[C: Person, P: Person](World[P])` drops
+   `hub.py` gains `abstractmethod` from `abc`, `Exchange` from `aidm.core.play` and `Person` from
+   `aidm.engines.base`. `engines/scenes/world.py:80-89`: `class SceneWorld[C: Person, P: Person](World[P])` drops
    `source`, `campaign`, `player`; keeps `at_hub`; `record(exchange)` appends to
    `self.run.exchanges`; delete `exchanges()` and `scenes()` (`:151-152,165-167`).
    `engines/rooms/world.py:151-155`: `class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P])`
@@ -280,8 +325,9 @@ spell twice gets one spelling.
    `rooms/engine.py:225-227` read `self.reopening(draft, intent)`. Five abstract methods leave the
    seam (`player_of`, `over`, `record`, `history`, `scenes`); `world` arrives. Panels stay per
    family: the trail reads runs in one and visits in the other, and the Board panel sits in a
-   different slot. Grep: `def player_of\|def over\|def record\|def history\|def scenes` in
-   `src/aidm/engines` finds `seam.py` only; `\.taken(` in `src` finds `seam.py` and `hub.py` only.
+   different slot. Grep: `def \(player_of\|over\|record\|history\|scenes\)(self, state` in
+   `src/aidm/engines` finds `seam.py` only (the worlds' `record(self, exchange)`, `records(self)`
+   and `scenes(self)` take no state); `\.taken(` in `src` finds `seam.py` only.
 3. **`Engine.commit` and `Engine.begin`.** `engines/seam.py`:
    ```python
    def commit(self, draft: G) -> G:
@@ -321,8 +367,8 @@ spell twice gets one spelling.
    `tests/core/test_rooms.py:10,106`; `tests/loner3e/test_create.py:12,35`;
    `tests/core/test_integrity_boundaries.py:7` (imports it from `support.table`). Grep: `begin_game`
    finds nothing; `\.validate(` in `src` finds `seam.py` and `runtime.py:306` only (Phase 3 drops the
-   latter). Test, `tests/core/test_seam.py`: `engine.begin` with the fifth engine's scenario tagged
-   for another engine raises `Refusal` matching "does not play".
+   latter). Test: `tests/core/test_integrity_boundaries.py:92-97` (the two "does not play"
+   refusals) call `engine.begin(...)`; no new test.
 4. **D4 B.** `ask_worldsmith` moves to the seam as concrete
    `def ask_worldsmith(self, draft: G, args: CommissionArgs, _rng: Random) -> list[Fact]` where
    `CommissionArgs` is a `Protocol` in `seam.py` with `kind: str`, `brief: str`, `later: bool`
@@ -357,8 +403,9 @@ spell twice gets one spelling.
            parts.append(f"  {detail}")
        return "\n".join(parts)
    ```
-   `Person` keeps `rows()` off (inherits) and overrides `headline` to append `" (dead)"` when not
-   `alive`; delete `Person.line` (`:72-81`). `label` stays (it prefixes the player). `engines/rooms/
+   `Thing.rows` carries `Person.rows`'s docstring (`:65`, "The sheet, as the master's entity line
+   prints it."); delete `Person.rows` (`:64-66`) and `Person.line` (`:72-81`); `Person` overrides
+   `headline` to append `" (dead)"` when not `alive`. `label` stays (it prefixes the player). `engines/rooms/
    world.py:372-385`: `line(entity)` becomes `entity.line(rows=self.sheet_rows()) if entity.id ==
    self.player.id else entity.line()`. The six hand-written `name[id]` become `.tag`:
    `scenes/world.py:263,272,338`; `rooms/world.py:396` (`self.require_place(way.to).tag`);
@@ -387,9 +434,12 @@ spell twice gets one spelling.
    `f"{entity.name} is not here with the player. Bring them here first, or act on who is here."`
    when not in `run.here` or unknown. Callers of `require_alive_here` (`scenes/world.py:258`;
    `loner3e/engine.py:193,195,206,210,251`; `tests/twentyfourxx/test_world.py:86-90`) pass
-   `alive=True`. `tests/loner3e/test_loner3e_engine.py:81,202` match "is not here with the player"
-   and hold. Grep: `require_alive_here` finds nothing; `Use only ids you were shown` in `src` finds
-   `base.py` only.
+   `alive=True`. Intended: `leave` (`:239`) and `kill` (`:246`) now refuse with the "Bring them
+   here first" text instead of "…, so nothing can happen to them", and the text names
+   `entity.name` where `require_alive_here` printed `entity_id!r`; no test matches either old
+   wording. `tests/loner3e/test_loner3e_engine.py:81,202` match "is not here with the player" and
+   hold. Grep: `require_alive_here\|nothing can happen` finds nothing; `Use only ids you were
+   shown` in `src` finds `base.py` only.
 
 ### 2.3 The sheets and the packs (P12, P14, P15, P16, C13)
 
@@ -404,8 +454,11 @@ spell twice gets one spelling.
    int) -> list[Fact]`, `spend(amount: int, why: str) -> list[Fact]`; each body is today's
    `engine.py:353-418` with `pay`/`require_item` inside. `apply_change` arms become one-liners
    (`case GainItem(): return player.gain_item(change.name, bulky=change.bulky, breaks=change.breaks,
-   cost=change.cost)`); `defend` uses `require_item`. Messages verbatim. `tests/twentyfourxx/
-   test_views.py:5-25` call `Item(...).detail()`.
+   cost=change.cost)`); `defend` uses `require_item`. Messages verbatim, one change: a hindrance
+   listed twice in one `gained` now refuses "duplicate gained hindrances: […]" (from
+   `require_unique`) where the set loop at `:355-359` said "already among the player's hindrances";
+   `tests/twentyfourxx/test_tools.py:161-170` tests the across-calls case and holds.
+   `tests/twentyfourxx/test_views.py:5-25` call `Item(...).detail()`.
 10. **P12, Breathless.** `engines/breathless/world.py`, on `Survivor`: `require_item(item_id) ->
     Item` (same message), `drop_item(item_id) -> list[Fact]`, `loot_options(item: str, granted:
     Die) -> tuple[PendingOption, ...]` and `take_loot(item: str, granted: Die, choice: str) -> Fact`
@@ -418,7 +471,15 @@ spell twice gets one spelling.
     (today's `_refill`). On `Loner3eWorld`: `conflict_prompt(actor, opponent) -> str` (today's
     `tools.py:103-108`). `tests/loner3e/test_loner3e_engine.py:15,192` call
     `draft.payload.conflict_prompt(...)`. Grep: `gear_detail\|_refill\|conflict_prompt(world`
-    finds nothing.
+    finds nothing. The functions that stay free over our objects each get a one-line docstring
+    saying why: the `*_refusal` builders in `rooms/worldsmith.py:31-94` and
+    `scenes/worldsmith.py:32-53` ("Free by import order: the bar reads the draft and the world, and
+    neither may import the other's module."), `run_of` (`scenes/world.py:396`, "Free: it builds a
+    `SceneRun` from a draft the run does not own."), `here_panel` (`base.py:136`, "Free: two
+    families build it from subjects, not from a world."), `render_narrator` (`turn/context.py:43`,
+    "Free: the view is `core`'s and the prompt is `turn`'s."), `scene_key` (`media.py:196`, "Free:
+    the cache names a file by the view, which does not know it is cached."); `post_bearer` gets its
+    line in Phase 3 step 4 ("Free: a provider config is settings, not one of our objects.").
 12. **P14, D11.** `engines/base.py:84-87` `Pack` gains `source: str` and `license: str` (required);
     delete the pairs at `loner3e/worldsmith.py:29-30`, `breathless/worldsmith.py:21-22`,
     `twentyfourxx/worldsmith.py:39-40`. `tests/core/test_seam.py:78` writes
@@ -478,8 +539,9 @@ spell twice gets one spelling.
     `*(() if campaign is None else campaign.board_panel(at_hub=world.at_hub,
     reporting=REPORT_ROW if world.walked_job() is not None else None))`.
 17. **P11a, D13, one rooms prompt assembler.** `engines/rooms/worldsmith.py`: `NO_SOURCE = "(none
-    — write from the setting)"`, `MAP_ASK = "Write the opening map."`, `TAVERN_ASK` loses its
-    surrounding parentheses and "(no map yet — " prefix, and
+    — write from the setting)"`, `MAP_ASK = "Write the opening map."`, `TAVERN_ASK = "Write the
+    tavern: one known place, its keeper and regulars as npcs, no ways out, and a `board` of two or
+    three offers; " + OFFER_ASK` (replacing `:11-14`), and
     ```python
     def worldsmith_prompt(
         role: str,
@@ -543,9 +605,12 @@ spell twice gets one spelling.
     def apply_return(
         self, *, debrief: str, summary: str, recaps: Mapping[EntityId, str], offers: Board
     ) -> Job:
-        """Close the walked job, land each recap on that place's last visit, swap the board."""
+        """Close the walked job, land each recap on that place's last visit, swap the board.
+        No bar runs here: every caller refuses first, so a recap missing is a bug."""
     ```
     (`Dungeon[N]` and keyword fields, not the drafts: `rooms/drafts.py` imports `rooms/world.py`.)
+    `rooms/world.py` gains `Mapping` from `collections.abc` and `Attempt`, `Board` from
+    `aidm.engines.hub`.
     `apply_extension` at the hub with a campaign: `campaign.swap_out()` when the open job is
     unwalked; with `reopening`, `anchor = self.require_place(EntityId(reopening.place))`,
     `campaign.reopen(reopening, started=None)`, `attach(region, start, known=True, anchor=anchor.id)`;
@@ -571,9 +636,9 @@ spell twice gets one spelling.
 fixture; if a `master.txt` moves, step 5 printed a brief that was empty before, which is a bug.
 
 **Done when:** green; `src` 9,240 to 9,300; `engines/scenes/` and `engines/rooms/` under 1,300
-each; the greps of 2, 3, 7, 8, 11, 13, 17 as stated; `grep -rn "Any" src/aidm/engines` finds the
-`Game[Any]` bounds and `AnyEngine` only; `uv run aidm`, Tunnel Goons campaign: take a job, walk
-into it, report in, take it again; the worldsmith prompts in the log carry `WHAT COMES NEXT`;
+each; the greps of 2, 3, 7, 8, 11, 13, 17 as stated; `grep -rnw Any src/aidm/engines --include=*.py`
+finds the `from typing import Any` lines and the `Game[Any]`/`Engine[Any, Any]` subscripts only;
+`uv run aidm`, Tunnel Goons campaign: take a job, walk into it, report in, take it again;
 `PROGRESS.md` entry.
 
 ---
@@ -581,6 +646,17 @@ into it, report in, take it again; the worldsmith prompts in the log carry `WHAT
 ## Phase 3 — the platform, the stored shapes, the tests
 
 One commit; a save from before it is stale (D8, D9). Say so once, in the commit message.
+
+Split: A then B, sequential (`runtime.py`, `launch.py`, `seam.py`, `speech.py`, `ui/game.py` are
+touched by both).
+- A, the platform gates and presentation: 3.1 and 3.2 (steps 1-7); owns `core/io.py`,
+  `core/model.py` (`Check`, `withdraw`), `seam.py` (`tool`, `restore`), `spawn.py`, `runtime.py`,
+  `launch.py`, `media.py`, `speech.py` (the opener), the new `providers.py`, `ui/widgets.py`,
+  `ui/app.py`, `ui/create.py`, `ui/game.py:156`, and their tests.
+- B, the stored shapes and the tests: 3.3 and 3.4 (steps 8-13); owns `core/play.py`,
+  `core/views.py`, `core/model.py:100`, `seam.py:139`, `turn/context.py`, `turn/run.py`,
+  `launch.py:128`, `scenes/engine.py:169`, `rooms/engine.py:150`, `speech.py:88-99`, `ui/game.py`
+  (bubbles, journal), `tests/support/*`, `tests/loner3e/*`, the narrowing sweep.
 
 ### 3.1 The content library and the gates (D15 B, P18, P19, C10)
 
@@ -612,7 +688,8 @@ One commit; a save from before it is stale (D8, D9). Say so once, in the commit 
    Settings, store: FileStore, slug: str, *, style: str, icon_dirs: tuple[Path, ...])`; `Runtime._open`
    passes `icon_dirs=(self.library.scenario_folder(target.scenario_id) / ICON_DIR,
    self.library.character_folder(target.character_id) / ICON_DIR)`; `media.py` drops its
-   `aidm.app.launch` import. `tests/support/table.py`: `LIBRARY = Library(SCENARIOS, CHARACTERS)`
+   `aidm.app.launch` import. `ui/create.py:92`: `self.runtime.library.write_character(made)`, and
+   `:14` drops the `write_character` import. `tests/support/table.py`: `LIBRARY = Library(SCENARIOS, CHARACTERS)`
    and every `read_*` through it; `tests/support/loner.py:8,67,75`; `tests/loner3e/test_create.py`;
    `tests/twentyfourxx/test_engine.py:14,106-121`; `tests/core/test_integrity_boundaries.py`;
    `tests/core/test_store.py` (`Library(tmp_path, tmp_path)`); `tests/core/test_media.py:129-155`.
@@ -620,21 +697,51 @@ One commit; a save from before it is stale (D8, D9). Say so once, in the commit 
    finds `core/io.py` definitions and `library.`/`LIBRARY.` calls only; `scenarios_dir\|characters_dir`
    in `src` finds `config.py` and `runtime.py:__post_init__` only.
 2. **P18, one gate each.** `engines/seam.py`: `def tool(self, name: str) -> MasterTool[G]` raises
-   `Refusal(f"{name!r} is not a tool of the {self.id!r} engine.")`; `turn/run.py:95-97` calls it;
-   `answer` (`:85-91`) wraps: `try: found = self.tool(chosen.name) except Refusal as missing:
+   `Refusal(f"{name!r} is not a tool of the {self.id!r} engine.")` (the message of
+   `turn/run.py:97`, moved verbatim); `turn/run.py:95-97` becomes `found =
+   self.engine.tool(name)`; `answer` (`:85-91`) wraps: `try: found = self.tool(chosen.name) except Refusal as missing:
    raise Refusal(f"the {self.id!r} engine has no tool {chosen.name!r} to play option {chosen.id!r}")
-   from missing` (`tests/core/test_decisions.py:204` matches it). `restore(self, value: JsonValue)
-   -> G` takes the decoded value: `app/launch.py:101-109` decodes once (`value = decode(raw)`, the
-   header, `engine.restore(value)`); `app/runtime.py:73` passes `decode(saved)`; `_resumable`
-   (`:295-307`) drops `self.engine.validate(state)`. Callers: `tests/support/table.py:192`;
-   `tests/core/test_store.py:50`; `tests/core/test_decisions.py:202`;
+   from missing` (`tests/core/test_decisions.py:204` matches it). One header route, `core/io.py`
+   after `decode`:
+   ```python
+   def routed[T](value: JsonValue, by_engine: Mapping[EngineId, T]) -> tuple[EngineId, T]:
+       """The engine a document's header names, and what the caller keeps under that id."""
+       engine = parse(EngineHeader, value).engine
+       found = by_engine.get(engine)
+       if found is None:
+           raise Refusal(f"the {engine!r} engine is not installed")
+       return engine, found
+   ```
+   `Library.read_scenario` (today `io.py:110-115`) reads `_, model = routed(value, models)` (its
+   "needs the unavailable … engine" text goes; no test matches it); `LauncherCatalog.read` (today
+   `launch.py:104-107`) reads `engine = routed(value, engines)[1]` inside its existing `except
+   Refusal` (the warning reads "skipping save %r: %s"). `Engine.restore` keeps its own check and
+   its message verbatim ("the save plays {header.engine!r}, not {self.id!r}",
+   `tests/core/test_integrity_boundaries.py:144` matches it): one engine asking "is this mine" is
+   not a route. `restore(self, value: JsonValue) -> G` takes the decoded value: `app/launch.py:101-109`
+   decodes once (`value = decode(raw)`, `routed`, `engine.restore(value)`); `app/runtime.py:73`
+   passes `decode(saved)`; `_resumable` (`:295-307`) drops `self.engine.validate(state)`. Callers:
+   `tests/support/table.py:192`; `tests/core/test_store.py:50`; `tests/core/test_decisions.py:202`;
    `tests/core/test_integrity_boundaries.py:31,138,145`; `tests/{twentyfourxx,breathless,tunnelgoons}/
    test_engine.py`, `tests/loner3e/test_loner3e_engine.py:222` — each wraps its JSON in `decode(...)`.
    `app/spawn.py:84-91`: `ClaudeDriver.parse` returns `RunResult(final_message(result.result),
-   result.session_id)`; `ask` (`:202`) validates `parse(model, decode(spoken.text))` and catches
-   `Refusal` where it caught `ValidationError` (the re-prompt text is the first error, as every
-   other boundary reports it). Grep: `final_message` in `src` finds `spawn.py` drivers only;
-   `model_validate_json` in `src` finds `spawn.py:86` (`_ClaudeResult`) and `media.py:119` only.
+   result.session_id)`. `ask` (`:197-209`) spawns outside the `try` and parses inside, so a process
+   failure still raises at once and only a bad answer is re-prompted:
+   ```python
+   spoken = await spawner.run(role, asked, session)
+   session = spoken.session
+   try:
+       answer = parse(model, decode(spoken.text))
+   except Refusal as invalid:
+       refused = str(invalid)
+   else:
+       if (refused := refusal(answer)) is None:
+           return answer
+   ```
+   (the re-prompt text is the first error, as every other boundary reports it). Grep:
+   `final_message` in `src` finds `spawn.py` drivers only; `model_validate_json` in `src` finds
+   `spawn.py:86` (`_ClaudeResult`) and `media.py:119` only; `parse(EngineHeader` in `src` finds
+   `io.py:routed` and `seam.py:restore` only.
 3. **P19, C10.** `app/spawn.py:189-195`: `async def ask[T: BaseModel](spawner: Spawner, role: Role,
    prompt: str, model: type[T], refusal: Check[T]) -> T` spawning through `spawner.run(role, asked,
    session)`; `type Check[T] = Callable[[T], str | None]` moves to `core/model.py` beside
@@ -645,7 +752,8 @@ One commit; a save from before it is stale (D8, D9). Say so once, in the commit 
 
 ### 3.2 Presentation and the launcher (P17, D17, P24, P25, D16 launcher half)
 
-4. **P17.** New `app/providers.py` holds `claim` and `post_bearer` (`media.py:153-172`);
+4. **P17.** New `app/providers.py` holds `claim` and `post_bearer` (`media.py:153-172`;
+   `post_bearer`'s docstring gains "Free: a provider config is settings, not one of our objects.");
    `media.py` and `speech.py` import them from there (`speech.py:8` no longer names `media`).
    `app/speech.py:74-85`: `open_reader(settings: Settings, store: FileStore, slug: str, *, voice:
    str)`; `Runtime._open` passes `voice=scenario.meta.voice or settings.speech.voice`.
@@ -728,15 +836,18 @@ One commit; a save from before it is stale (D8, D9). Say so once, in the commit 
    ```
    `spoken()` resolves `here = {subject.id: subject for subject in self.subjects if subject.id in
    self.speakers}` and builds `SpokenLine(speaker_id=who.id, speaker=who.name, text=line.text)`;
-   `speakers_refusal` reads `set(self.speakers)`. `scenes/engine.py:169`: `speakers=tuple(member.id
+   `speakers_refusal` reads `set(self.speakers)`. The validator raises `ValueError` (D1); a
+   `NarratorView` is built by engine code, so a violation is a bug that surfaces as a
+   `ValidationError`, never a `Refusal`. `scenes/engine.py:169`: `speakers=tuple(member.id
    for member in here)`; `rooms/engine.py:150`: `tuple(entity.id for entity in here if entity.alive)`.
    `app/speech.py:88-99`: `voice_of(speaker_id: EntityId | None, narrator, pool)`;
    `requests_of` passes `line.speaker_id`. `ui/game.py:383-390`: `_bubble(session, speaker_id:
    EntityId | None, name: str, text: str, *, sent: bool)`; the player's bubbles (`:142,166,171`)
    pass `player.id, player.name` from `session.player_view().player`; lines pass
    `line.speaker_id, line.speaker`; the journal prints `f"**{line.speaker}:** {line.text}"` when
-   `speaker_id` is set. `tests/support/table.py:47` `KAEL` and `tests/core/test_speech.py:27,35,62`
-   build `SpokenLine(speaker_id=..., speaker="Kael", ...)` and pass ids to `voice_of`;
+   `speaker_id` is set. `tests/support/table.py:21,47` `KAEL` is deleted (nothing reads it);
+   `tests/core/test_speech.py:27,35,62` build `SpokenLine(speaker_id=..., speaker="Kael", ...)`
+   and pass ids to `voice_of`;
    `tests/core/test_views.py:42` and `tests/tunnelgoons/test_views.py:24` test `id in view.speakers`.
    `tests/core/test_context_boundary.py:200-207` holds: the field set is unchanged. Tests,
    `tests/core/test_views.py`: a `NarratorView` naming a speaker who is not a subject is refused;
@@ -744,7 +855,7 @@ One commit; a save from before it is stale (D8, D9). Say so once, in the commit 
    Grep: `Speaker\b\|\.speaker()` finds nothing.
 10. **D14.** `core/play.py:105`: `SceneRecord.focus: str`; `core/views.py:155` prints
     `scene.focus`; `scenes/world.py:158` fills it from `run.question`, `rooms/world.py:416` from
-    `place.brief`. `tests/core/test_views.py` (14 constructions), `tests/core/test_hub.py` (1),
+    `place.brief`. `tests/core/test_views.py` (16 constructions, `:70-150`), `tests/core/test_hub.py` (1),
     `tests/core/test_context_boundary.py:102` pass `focus=`. Grep: `question=` in `tests/core`
     finds `SceneRun(` constructions only.
 
@@ -797,12 +908,14 @@ One commit; a save from before it is stale (D8, D9). Say so once, in the commit 
     directory = tmp_path` inside the function and returns `Installed()`. Grep: `raise AssertionError`
     in `tests` finds `support/golden.py` and the two "no answer should be asked for" only.
 
-**Fixtures:** the four `prompts/<id>/master.txt` change in one line, `RECENT PLAY (this is turn 1)`
-→ `(this is turn 3)` (the golden state carries two hand-built exchanges that `Game.turn` never
-counted). `narrator.txt`, `schemas/*`, `turn/*` are byte-identical.
+**Fixtures:** the four `prompts/<id>/master.txt` change in one line each, `RECENT PLAY (this is
+turn 1)` → `(this is turn 3)` for `loner3e` and `(this is turn 2)` for the other three (each
+`tests/<id>/golden_turn.py::behind` adds the exchanges `Game.turn` never counted: two for Loner,
+one elsewhere). `narrator.txt`, `schemas/*`, `turn/*` are byte-identical.
 
-**Done when:** green; `src` 9,200 to 9,270; tests about 130 lines fewer than at the end of Phase 2;
-the greps of 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13 as stated; `grep -rn "Any" src/aidm` finds the
-`Game[Any]` bounds, `AnyEngine`, `AnyScenario`, `AnyCharacter`, `AnyGame` only; `uv run aidm`: a
+**Done when:** green; `src` 9,220 to 9,290; tests about 130 lines fewer than at the end of Phase 2;
+the greps of 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13 as stated; `grep -rnw Any src/aidm --include=*.py`
+finds the `from typing import Any` lines, the `Game[Any]`/`Scenario[Any]`/`Character[Any]`/
+`Engine[Any, Any]` subscripts and `entities.py:37` ("Any other exception") only; `uv run aidm`: a
 save from Phase 2 is skipped with the launcher's warning; a new game opens, a turn plays, the chat
 names the speaker and the journal shows it; `PROGRESS.md` entry.
