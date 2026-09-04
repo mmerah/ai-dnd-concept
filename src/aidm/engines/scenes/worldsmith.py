@@ -163,7 +163,6 @@ def _cast_unmet[C: Person](
     *,
     needs_return: bool,
 ) -> list[str]:
-    """The cast a scene owes, whatever the engine's own people are made of."""
     others = (*draft.present, *draft.hidden)
     unmet: list[str] = []
     if not others:

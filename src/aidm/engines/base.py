@@ -29,9 +29,7 @@ class Thing(Mutable):
     @property
     def label(self) -> str:
         """Name and exact id, so a role can reuse the id; the player is named as such."""
-        if self.id == PLAYER_ID:
-            return f"the player {self.tag}"
-        return self.tag
+        return f"the player {self.tag}" if self.id == PLAYER_ID else self.tag
 
     @property
     def tag(self) -> str:
@@ -46,7 +44,6 @@ class Thing(Mutable):
         return ()
 
     def line(self, *, rows: Rows | None = None, detail: str = "") -> str:
-        """The master's entity line, then the sheet, then a detail; `rows` overrides the sheet."""
         parts = [f"- {self.headline}"]
         shown = self.rows() if rows is None else rows
         if sheet := "; ".join(f"{label.lower()}: {value}" for label, value in shown):
@@ -116,13 +113,11 @@ class Counter(Mutable):
         return self.maximum - self.current
 
     def adjust(self, amount: int) -> int:
-        """Move a bounded pool and say how far it moved; a clamp can land short of `amount`."""
         before = self.current
         self.current = min(max(before + amount, 0), self.maximum)
         return self.current - before
 
     def change(self, owner: Thing, amount: int, label: str, why: str) -> list[Fact]:
-        """The move as a fact on its owner; a zero move is no fact."""
         delta = self.adjust(amount)
         if delta == 0:
             return []
@@ -173,7 +168,6 @@ def keep_highest(
 
 
 def read_packs[P: BaseModel](directory: Path, model: type[P]) -> dict[str, P]:
-    """A broken file raises rather than being skipped."""
     return {
         path.stem: parse(model, decode(path.read_text(encoding=ENCODING)))
         for path in sorted(directory.glob("*.json"))

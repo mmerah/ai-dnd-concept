@@ -69,7 +69,6 @@ def map_refusal[N: Dweller](draft: MapDraft[N]) -> str | None:
 
 
 def hub_refusal[N: Dweller](draft: MapDraft[N]) -> str | None:
-    """Free: the world may not import the drafts; one bar module for map, hub, job and return."""
     unmet = _hub_unmet(draft)
     return None if not unmet else "the tavern needs " + "; ".join(unmet)
 
@@ -77,7 +76,6 @@ def hub_refusal[N: Dweller](draft: MapDraft[N]) -> str | None:
 def job_refusal[N: Dweller](
     draft: MapDraft[N], world: Dungeon[N], asked: Sequence[Commission] = ()
 ) -> str | None:
-    """Free: the world may not import the drafts; one bar module for map, hub, job and return."""
     unmet = (
         _map_unmet(draft)
         + _overlap_unmet(draft, world)
@@ -90,7 +88,6 @@ def job_refusal[N: Dweller](
 def extension_refusal[N: Dweller](
     draft: MapDraft[N], world: Dungeon[N], asked: Sequence[Commission] = ()
 ) -> str | None:
-    """Free: the world may not import the drafts; one bar module for map, hub, job and return."""
     unmet = (
         _extension_unmet(draft)
         + _overlap_unmet(draft, world)
@@ -101,13 +98,11 @@ def extension_refusal[N: Dweller](
 
 
 def return_refusal[N: Dweller, P: Person](draft: ReturnDraft, world: RoomWorld[N, P]) -> str | None:
-    """Free: the world may not import the drafts; one bar module for map, hub, job and return."""
     unmet = _recaps_unmet(draft, world) + _debrief_unmet(draft, world)
     return None if not unmet else "the return needs " + "; ".join(unmet)
 
 
 def npc_refusal[N: Dweller, P: Person](draft: NpcDraft[N], world: RoomWorld[N, P]) -> str | None:
-    """Free: the world may not import the drafts; one bar module for map, hub, job and return."""
     npc = draft.npc
     unmet: list[str] = []
     if world.entity(npc.id) is not None:
@@ -122,7 +117,6 @@ def npc_refusal[N: Dweller, P: Person](draft: NpcDraft[N], world: RoomWorld[N, P
 
 
 def item_refusal[N: Dweller, P: Person](draft: ItemDraft, world: RoomWorld[N, P]) -> str | None:
-    """Free: the world may not import the drafts; one bar module for map, hub, job and return."""
     item = draft.item
     unmet: list[str] = []
     if world.entity(item.id) is not None:

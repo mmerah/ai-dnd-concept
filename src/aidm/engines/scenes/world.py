@@ -291,7 +291,6 @@ class SceneWorld[C: Person, P: Person](World[P]):
         return [settled, JOB_DONE] if job_done else [settled]
 
     def merged_cast(self, cast: Mapping[EntityId, C]) -> dict[EntityId, C]:
-        """A re-filed member keeps the world's entry with the given brief."""
         return {
             **self.cast,
             **{

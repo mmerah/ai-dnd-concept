@@ -63,8 +63,6 @@ WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODI
 
 
 class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
-    """The room-crawl lifecycle, once; a subclass says what its rules add."""
-
     dweller: type[N]
     world_type: type[RoomWorld[N, P]]
 
