@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from aidm.core.entities import Refusal, Slug
+from aidm.core.entities import Refusal, Slug, parse
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
 from aidm.core.model import (
@@ -73,6 +73,8 @@ from aidm.engines.scenes.worldsmith import (
 )
 from aidm.engines.seam import COMMISSION, COMMISSION_BRIEF, Engine
 
+WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
+
 
 class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
     """The scene lifecycle, once; a subclass says what its rules add."""
@@ -83,11 +85,9 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
     hub_phrase: str  # what CAMPAIGN_OPENING asks this engine's hub to be
     finished_note: str = ""  # the note a finished job leaves for the next turn
     packs: dict[str, K]
-    worldsmith: str
 
     def __init__(self) -> None:
         self.packs = read_packs(self.directory / "packs", self.pack)
-        self.worldsmith = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
         super().__init__()  # last: `master_tools` reads the packs
 
     def world(self, state: G) -> SceneWorld[C, P]:
@@ -278,7 +278,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
                 "happened."
             )
         return worldsmith_prompt(
-            self.worldsmith,
+            WORLDSMITH,
             source=world.source,
             history=render_history(world.scenes()),
             cast=self.cast_lines(world),
@@ -295,7 +295,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
 
     def render_opening(self, source: str, guidance: str, kind: ScenarioKind) -> str:
         return worldsmith_prompt(
-            self.worldsmith,
+            WORLDSMITH,
             source=source,
             history="(no scenes yet — write the opening)",
             cast="(no cast yet — write the people and things this scene needs)",
@@ -328,12 +328,15 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
         campaign = (
             Campaign(place=draft.place, board=draft.offers) if isinstance(draft, HubDraft) else None
         )
-        return SceneCanon[self.cast](
-            cast=cast,
-            opening=run_of(draft, [*present, *hidden]),
-            source=source,
-            campaign=campaign,
-            arc=draft.arc,
+        return parse(
+            SceneCanon[self.cast],
+            {
+                "cast": cast,
+                "opening": run_of(draft, [*present, *hidden]),
+                "source": source,
+                "campaign": campaign,
+                "arc": draft.arc,
+            },
         )
 
     async def write_next(

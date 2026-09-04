@@ -65,7 +65,7 @@ def labeled_value(label: str, value: str) -> None:
 def decision_widget(
     prompt: str,
     options: Sequence[DecisionOption],
-    answer: Callable[[str], Awaitable[None] | None],
+    answer: Callable[[str], Awaitable[None]],
 ) -> None:
     ui.label(prompt).classes("text-base whitespace-pre-wrap")
     if not options:

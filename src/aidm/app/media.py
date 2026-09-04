@@ -6,7 +6,7 @@ from hashlib import sha1
 from pathlib import Path
 
 from httpx import AsyncClient
-from pydantic import BaseModel, JsonValue
+from pydantic import JsonValue
 
 from aidm.app.launch import LaunchTarget
 from aidm.config import MediaConfig, ProviderConfig, Settings
@@ -126,11 +126,11 @@ class Illustrator:
             return None
 
 
-class _ImageUrl(BaseModel):
+class _ImageUrl(Loose):
     url: str
 
 
-class _Image(BaseModel):
+class _Image(Loose):
     image_url: _ImageUrl
 
 

@@ -1,8 +1,11 @@
 import logging
 from asyncio import get_running_loop
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from time import monotonic
+from typing import Self
 
 from nicegui import ui
 
@@ -11,10 +14,12 @@ from aidm.config import Role
 from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import Answer, Speaker
 from aidm.core.views import PlayerView
-from aidm.ui.panels import journal_panel, scene_sidebar
 from aidm.ui.widgets import (
     avatar,
     decision_widget,
+    entity_row,
+    heading,
+    labeled_value,
     page_header,
     working,
 )
@@ -40,6 +45,28 @@ _STEP_COPY: dict[Role, tuple[str, str]] = {
 LOGGER = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True, slots=True)
+class Observed:
+    """Phase, facts landed, exchanges filed, the way on, the end: what a render reads."""
+
+    phase: Role | None
+    facts: int
+    exchanges: int
+    ready: bool
+    over: str | None
+
+    @classmethod
+    def of(cls, session: GameService) -> Self:
+        turn = session.turn
+        return cls(
+            session.phase,
+            0 if turn is None else len(turn.facts),
+            len(session.engine.history(session.state)),
+            session.engine.ready(session.state),
+            session.player_view().over,
+        )
+
+
 class GamePage:
     """One tab on one game: it polls the service once a second and refreshes its own panels."""
 
@@ -50,8 +77,7 @@ class GamePage:
         self.shown_clip: Path | None = None
         self.autoplay_clip: Path | None = None
         self.transcript: ui.scroll_area
-        # What the last poll read: the phase, the facts landed, the exchanges filed.
-        self.seen: tuple[Role | None, int, int, bool, str | None] = (None, 0, 0, False, None)
+        self.seen: Observed = Observed(None, 0, 0, False, None)
         self.step_started: float | None = None
         self.ticker: ui.label | None = None
         # The composer's widgets, built once by `composer` and set by `_set_composer`.
@@ -96,7 +122,7 @@ class GamePage:
 
         # A cached clip never autoplays on a page load, only one landing after.
         self.shown_clip = session.newest_clip()
-        self.seen = _observed(session)
+        self.seen = Observed.of(session)
         self._set_composer()
 
         ui.timer(1.0, self.poll_turn)
@@ -213,11 +239,40 @@ class GamePage:
 
     @ui.refreshable_method
     def sidebar(self) -> None:
-        scene_sidebar(self.session, self.move_on)
+        session = self.session
+        view = session.player_view()
+        with ui.column().classes("w-full").style("gap: 0.75rem"):
+            for panel in view.panels:
+                with ui.column().classes("game-card w-full"):
+                    heading(panel.title, tight=True)
+                    if not panel.rows:
+                        ui.label("nothing").classes("text-sm opacity-60 mt-2")
+                    for row in panel.rows:
+                        if row.intent:
+                            ui.button(row.label, on_click=partial(self.move_on, row.intent)).props(
+                                "no-caps outline dense"
+                            )
+                            if row.detail:
+                                ui.label(row.detail).classes("text-xs opacity-70")
+                        elif row.icon_id is not None:
+                            entity_row(session.icon(row.icon_id), row.label, row.detail)
+                        elif row.detail:
+                            labeled_value(row.label, row.detail)
+                        else:
+                            ui.label(row.label).classes("text-sm mt-1")
 
     @ui.refreshable_method
     def journal(self) -> None:
-        journal_panel(self.session)
+        session = self.session
+        heading("Chronicle")
+        played = session.engine.history(session.state)
+        for number, exchange in reversed(list(enumerate(played, start=1))):
+            with ui.expansion(f"turn {number}: {exchange.prompt}").classes("w-full"):
+                # A speaker is named, because a bare quote reads as narration without bubbles.
+                for line in exchange.lines:
+                    who = line.speaker
+                    text = line.text if who is None else f"**{who.name}:** {line.text}"
+                    ui.markdown(text).classes("text-sm")
 
     def composer(self) -> None:
         with (
@@ -242,9 +297,9 @@ class GamePage:
 
     def poll_turn(self) -> None:
         """The page reads the turn once a second; the turn never calls the page."""
-        now = _observed(self.session)
-        if now[0] != self.seen[0]:
-            self.step_started = None if now[0] is None else monotonic()
+        now = Observed.of(self.session)
+        if now.phase != self.seen.phase:
+            self.step_started = None if now.phase is None else monotonic()
         if now != self.seen:
             self.seen = now
             self._set_composer()
@@ -306,7 +361,7 @@ class GamePage:
         """One `player_view()` sets the four widgets; the poll calls it when the turn moved."""
         session = self.session
         player = session.player_view()
-        typing = _can_type(player, session.phase)
+        typing = can_type(player, session.phase)
         self.box.set_enabled(typing)
         self.send.set_enabled(typing)
         self.move_on_button.set_enabled(typing)
@@ -406,19 +461,7 @@ def _clock(seconds: float) -> str:
     return f"{minutes}:{rest:02d}"
 
 
-def _observed(session: GameService) -> tuple[Role | None, int, int, bool, str | None]:
-    """Phase, facts landed, exchanges filed, the way on, the end: what a render reads."""
-    turn = session.turn
-    return (
-        session.phase,
-        0 if turn is None else len(turn.facts),
-        len(session.engine.history(session.state)),
-        session.engine.ready(session.state),
-        session.player_view().over,
-    )
-
-
-def _can_type(player: PlayerView, phase: Role | None) -> bool:
+def can_type(player: PlayerView, phase: Role | None) -> bool:
     """The composer opens between turns, unless the game waits on a pick or is over."""
     prompt = player.prompt
     return phase is None and (prompt is None or prompt.allows_text) and player.over is None

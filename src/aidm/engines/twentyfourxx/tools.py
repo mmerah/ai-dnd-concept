@@ -2,7 +2,7 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, Frozen, Refusal
+from aidm.core.entities import CheckedEntityId, Frozen
 from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
 
 
@@ -20,7 +20,7 @@ class ChangeHindrances(Frozen):
     @model_validator(mode="after")
     def _some_change(self) -> Self:
         if not self.gained and not self.lost:
-            raise Refusal("change_hindrances needs a gained or a lost hindrance")
+            raise ValueError("change_hindrances needs a gained or a lost hindrance")
         return self
 
 
@@ -75,7 +75,7 @@ class ChangeWorld(Frozen):
     )
 
 
-class Attempt(Frozen):
+class Roll(Frozen):
     what: str = Field(min_length=1, description="The action, in a few words; it heads the card.")
     skill: str = Field(default="", description="Which skill to roll; empty rolls the plain d6.")
     helped: str = Field(default="", description="Why circumstances help, when they do.")

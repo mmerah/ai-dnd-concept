@@ -74,6 +74,8 @@ def decode(raw: str) -> JsonValue:
 def read_scenarios(
     directory: Path, models: Mapping[EngineId, type[AnyScenario]]
 ) -> Iterator[tuple[Slug, AnyScenario]]:
+    if not directory.is_dir():
+        return
     for path in sorted(p for p in directory.iterdir() if (p / WORLD_FILE).is_file()):
         try:
             scenario = read_scenario(directory, path.name, models)
@@ -88,13 +90,15 @@ def read_characters(
     directory: Path, engines: Collection[EngineId]
 ) -> Iterator[tuple[Slug, EngineId, CharacterHeader]]:
     """One entry per character and engine written, so a shared id never names one engine's rules."""
-    for path in sorted(directory.iterdir()):
-        name = content_id(path.name)
+    if not directory.is_dir():
+        return
+    for path in sorted(p for p in directory.iterdir() if p.is_dir()):
         for engine in engines:
             file = path / f"{engine}.json"
             if not file.is_file():
                 continue
             try:
+                name = content_id(path.name)
                 header = _read(file, CharacterHeader)
                 _check_filed(header.id, header.engine, name, engine)
             except Refusal as unreadable:

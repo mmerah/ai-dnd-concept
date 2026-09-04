@@ -48,7 +48,7 @@ class Check(Frozen):
     @model_validator(mode="after")
     def _one_thing(self) -> Self:
         if sum((self.skill is not None, self.item_id is not None, self.stunt)) != 1:
-            raise Refusal("roll one thing: a skill, an item, or a stunt")
+            raise ValueError("roll one thing: a skill, an item, or a stunt")
         return self
 
 
@@ -75,7 +75,7 @@ class LootCheck(Frozen):
     @model_validator(mode="after")
     def _both_or_neither(self) -> Self:
         if (self.granted is None) != (self.choice is None):
-            raise Refusal("granted and choice arrive together, or not at all")
+            raise ValueError("granted and choice arrive together, or not at all")
         return self
 
 

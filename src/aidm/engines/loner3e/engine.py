@@ -153,7 +153,7 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
 
     def glossary(self, state: Loner3eGame) -> Sections:
         spelled: dict[str, str] = {}
-        for member in self.world(state).here():
+        for member in state.payload.here():
             spelled.update(self.meanings(state.packs, member))
         lines = "\n".join(f"- {tag}: {detail}" for tag, detail in spelled.items())
         return (("WHAT THE TAGS IN PLAY MEAN", lines),) if spelled else ()
@@ -180,7 +180,7 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
     def leaving(self, state: Loner3eGame) -> tuple[Fact, ...]:
         """A scene ends its conflicts so nobody carries a spent pool on; the dead keep theirs."""
         facts: list[Fact] = []
-        for member in self.world(state).here():
+        for member in state.payload.here():
             if member.alive and member.luck.current < LUCK_MAX:
                 facts.extend(_refill(member, "the scene is over"))
         return tuple(facts)
@@ -248,7 +248,7 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
         return facts
 
     def restore_luck(self, draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
-        actor = self.world(draft).require_alive_here(args.actor_id)
+        actor = draft.payload.require_alive_here(args.actor_id)
         facts = actor.reveal()
         # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
         facts.extend(_refill(actor, "the conflict is behind them"))

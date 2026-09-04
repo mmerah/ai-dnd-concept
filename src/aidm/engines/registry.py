@@ -1,4 +1,4 @@
-from aidm.core.entities import EngineId, Refusal, Slug, require_unique
+from aidm.core.entities import EngineId, Refusal, Slug, parse, require_unique
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario
 from aidm.engines.breathless.engine import BreathlessEngine
 from aidm.engines.loner3e.engine import Loner3eEngine
@@ -29,13 +29,16 @@ def begin_game(
             f"{character.id!r} is written for the {character.engine!r} rules, "
             f"which the {engine.id!r} engine does not play"
         )
-    state = engine.game(
-        scenario_id=scenario_id,
-        character_id=character.id,
-        scenario=scenario.meta,
-        engine=engine.id,
-        packs=scenario.packs,
-        payload=engine.new_game(scenario, character),
+    state = parse(
+        engine.game,
+        {
+            "scenario_id": scenario_id,
+            "character_id": character.id,
+            "scenario": scenario.meta,
+            "engine": engine.id,
+            "packs": scenario.packs,
+            "payload": engine.new_game(scenario, character),
+        },
     )
     engine.validate(state)
     return state.commit()

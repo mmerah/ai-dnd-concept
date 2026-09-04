@@ -6,15 +6,20 @@ from typing import Self
 
 from pydantic import JsonValue
 
+from aidm.core.creation import option_of
 from aidm.core.entities import Refusal
 from aidm.core.facts import NOTHING, Fact, traced
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, Line
 from aidm.core.tools import Play
 from aidm.engines.seam import COMMISSION, WORLDSMITH_WAIT, AnyEngine
-from aidm.turn.context import ANSWERED_BY_OPTION, render_master
+from aidm.turn.context import render_master
 
 RULES_WAIT = "the rules now wait on the player's decision"
+ANSWERED_BY_OPTION = (
+    "The player chose the option above and the rules have applied it. Develop what it caused; "
+    "do not settle it again."
+)
 NO_TURN = "no turn is open. The player starts one from the page; wait to be spawned again."
 GAME_OVER = "The game is over; the player restarts from the page."
 # A bound on the re-spawn loop, not a design choice.
@@ -38,12 +43,12 @@ class Turn:
     @classmethod
     def begin(cls, engine: AnyEngine, state: AnyGame, answer: Answer, rng: Random) -> Self:
         turn = cls(engine=engine, draft=state.draft(), rng=rng)
-        turn.consume(answer)
+        turn._consume(answer)
         # Notes are read once; a note a tool writes after this steers the next turn.
         turn.notes, turn.draft.notes = turn.draft.notes, []
         return turn
 
-    def consume(self, answer: Answer) -> None:
+    def _consume(self, answer: Answer) -> None:
         """The PLAYER ACTION and what the master reads as it."""
         engine, draft = self.engine, self.draft
         if (ended := engine.over(draft)) is not None:
@@ -63,7 +68,7 @@ class Turn:
             return
         if consumed is None:
             raise Refusal(f"no decision is open, so option {chosen!r} answers nothing")
-        option = next((offered for offered in consumed.options if offered.id == chosen), None)
+        option = option_of(consumed.options, chosen)
         if option is None:
             raise Refusal(f"the {consumed.kind!r} decision offers no option {chosen!r}")
         # A refusal raises: the engine enumerated the option, so it is never model error.

@@ -5,9 +5,9 @@ from typing import Self
 
 from pydantic import BaseModel, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Refusal, Slug
+from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Refusal, Slug, parse
 from aidm.core.facts import DiceEvent, Fact, roll
-from aidm.core.io import ENCODING
+from aidm.core.io import ENCODING, decode
 from aidm.core.views import Panel, PanelRow, Rows, Subject
 
 PLAYER_ID = EntityId("player")
@@ -94,9 +94,9 @@ class Counter(Mutable):
     @model_validator(mode="after")
     def _within_bounds(self) -> Self:
         if self.current < 0:
-            raise Refusal(f"{self.current} is below zero")
+            raise ValueError(f"{self.current} is below zero")
         if self.current > self.maximum:
-            raise Refusal(f"{self.current} is above maximum {self.maximum}")
+            raise ValueError(f"{self.current} is above maximum {self.maximum}")
         return self
 
     def __str__(self) -> str:
@@ -165,6 +165,6 @@ def keep_highest(
 def read_packs[P: BaseModel](directory: Path, model: type[P]) -> dict[str, P]:
     """A broken file raises rather than being skipped."""
     return {
-        path.stem: model.model_validate_json(path.read_text(encoding=ENCODING))
+        path.stem: parse(model, decode(path.read_text(encoding=ENCODING)))
         for path in sorted(directory.glob("*.json"))
     }

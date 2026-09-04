@@ -6,7 +6,8 @@ from aidm.core.play import Exchange, SceneRecord, SpokenLine
 from aidm.core.views import NarratorView
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
 from aidm.engines.seam import AnyEngine
-from aidm.turn.context import ANSWERED_BY_OPTION, render_master, render_narrator
+from aidm.turn.context import render_master, render_narrator
+from aidm.turn.run import ANSWERED_BY_OPTION
 
 SECRET = EntityId("hidden-actor")
 UNREVEALED = "Unrevealed canon."

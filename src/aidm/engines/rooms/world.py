@@ -1,10 +1,9 @@
 from collections.abc import Iterable, Iterator
-from copy import deepcopy
 from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Mutable, Refusal, require_unique
+from aidm.core.entities import CheckedEntityId, EntityId, Mutable, Refusal, parse, require_unique
 from aidm.core.facts import Fact
 from aidm.core.play import Exchange, HistoryRecord, SceneRecord
 from aidm.core.views import Rows, lines_of
@@ -56,23 +55,23 @@ class Dungeon[N: Dweller](Mutable):
         require_unique("ids across places, npcs and items", (*self.places, *self.npcs, *self.items))
         for npc in self.npcs.values():
             if npc.place not in self.places:
-                raise Refusal(f"{npc.name} is in no place: {npc.place!r}")
+                raise ValueError(f"{npc.name} is in no place: {npc.place!r}")
         # An authored item may already start `on` the player, who exists in no dict here.
         holders = {*self.npcs, *self.places, PLAYER_ID}
         for item in self.items.values():
             if item.on not in holders:
-                raise Refusal(f"{item.name} is on nothing: {item.on!r}")
+                raise ValueError(f"{item.name} is on nothing: {item.on!r}")
         for from_id, ways in self.ways.items():
             if from_id not in self.places:
-                raise Refusal(f"ways are filed under {from_id!r}, which is not a place")
+                raise ValueError(f"ways are filed under {from_id!r}, which is not a place")
             require_unique(f"ways out of {from_id!r}", (way.to for way in ways))
             for way in ways:
                 if way.to not in self.places:
-                    raise Refusal(
+                    raise ValueError(
                         f"a way from {from_id!r} leads to {way.to!r}, which is not a place"
                     )
                 if way.to == from_id:
-                    raise Refusal(f"a way from {from_id!r} cannot lead back to itself")
+                    raise ValueError(f"a way from {from_id!r} cannot lead back to itself")
         return self
 
     def entity(self, entity_id: EntityId) -> Person | Item | Place | None:
@@ -137,14 +136,14 @@ class RoomCanon[N: Dweller](Dungeon[N]):
     @model_validator(mode="after")
     def _startable(self) -> Self:
         if not self.require_place(self.start).known:
-            raise Refusal("the starting place must be known to the player")
+            raise ValueError("the starting place must be known to the player")
         if self.campaign is not None:
             if self.campaign.place != self.start:
-                raise Refusal(
+                raise ValueError(
                     f"hub {self.campaign.place!r} is not the starting place {self.start!r}"
                 )
             if self.campaign.jobs:
-                raise Refusal("an opening with jobs walked")
+                raise ValueError("an opening with jobs walked")
         return self
 
 
@@ -157,29 +156,31 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N]):
     @model_validator(mode="after")
     def _playable(self) -> Self:
         if not self.player.known:
-            raise Refusal("the player is unknown to themselves")
+            raise ValueError("the player is unknown to themselves")
         for visit in self.visits:
             self.require_place(visit.place)
         if (campaign := self.campaign) is not None:
             self.require_place(EntityId(campaign.place))
             campaign.check_spans([visit.place for visit in self.visits])
             if self.visits[0].place != campaign.place:
-                raise Refusal(f"visit 0 does not open at hub {campaign.place!r}")
+                raise ValueError(f"visit 0 does not open at hub {campaign.place!r}")
         return self
 
     @classmethod
     def begin(cls, canon: RoomCanon[N], player: P, items: Iterable[Item]) -> Self:
         """The played character at the canon's start, their starting items filed on them."""
-        canon = deepcopy(canon)
-        return cls(
-            places=canon.places,
-            ways=canon.ways,
-            npcs=canon.npcs,
-            items={**canon.items, **{item.id: item for item in items}},
-            player=player,
-            visits=[Visit(place=canon.start)],
-            source=canon.source,
-            campaign=canon.campaign,
+        return parse(
+            cls,
+            {
+                "places": canon.places,
+                "ways": canon.ways,
+                "npcs": canon.npcs,
+                "items": {**canon.items, **{item.id: item for item in items}},
+                "player": player,
+                "visits": [Visit(place=canon.start)],
+                "source": canon.source,
+                "campaign": canon.campaign,
+            },
         )
 
     @property

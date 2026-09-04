@@ -2,7 +2,6 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import Refusal
 from aidm.core.play import DecisionOption
 from aidm.engines.base import Pack as ScenePack
 from aidm.engines.twentyfourxx.world import Kit, SkillDie
@@ -48,5 +47,5 @@ class Pack(ScenePack):
         """A pick's detail is its prompt text, so a pack may not leave it blank."""
         untold = [option.id for option in (*self.specialties, *self.origins) if not option.detail]
         if untold:
-            raise Refusal(f"no detail for {', '.join(untold)}")
+            raise ValueError(f"no detail for {', '.join(untold)}")
         return self

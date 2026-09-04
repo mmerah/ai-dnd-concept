@@ -2,7 +2,7 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, Frozen, Refusal
+from aidm.core.entities import CheckedEntityId, Frozen
 from aidm.core.play import PendingOption
 from aidm.engines.rooms.tools import SharedChange
 from aidm.engines.tunnelgoons.world import ABILITIES, Ability, Boost
@@ -55,7 +55,7 @@ class ActionRoll(Frozen):
     @model_validator(mode="after")
     def _one_target(self) -> Self:
         if (self.difficulty is None) == (self.against is None):
-            raise Refusal("give a difficulty, or an npc to roll against, not both/neither")
+            raise ValueError("give a difficulty, or an npc to roll against, not both/neither")
         return self
 
 

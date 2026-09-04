@@ -111,5 +111,5 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
             items={FIRE_AXE: Item(name="Fire Axe", die=STARTING_ITEM)},
         ),
     )
-    with pytest.raises(ValueError, match="the player is in the cast"):
+    with pytest.raises(Refusal, match="the player is in the cast"):
         ENGINES_BUILT[BREATHLESS].new_game(scenario, character)

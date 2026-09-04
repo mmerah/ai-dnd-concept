@@ -2,7 +2,6 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import Refusal
 from aidm.core.play import DecisionOption
 from aidm.engines.base import Pack as ScenePack
 from aidm.engines.breathless.world import SKILLS
@@ -31,5 +30,5 @@ class Pack(ScenePack):
     @model_validator(mode="after")
     def _six_srd_skills(self) -> Self:
         if {skill.id for skill in self.skills} != set(SKILLS):
-            raise Refusal("the six SRD skills, by id")
+            raise ValueError("the six SRD skills, by id")
         return self

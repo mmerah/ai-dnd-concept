@@ -32,13 +32,7 @@ class ScenarioMeta(Frozen):
 
     def with_premise(self, fallback: str) -> Self:
         """The opening's own words stand in for a premise the player never wrote."""
-        return type(self)(
-            title=self.title,
-            premise=self.premise or fallback,
-            kind=self.kind,
-            art_style=self.art_style,
-            voice=self.voice,
-        )
+        return self.model_copy(update={"premise": self.premise or fallback})
 
 
 class EngineHeader(Loose):

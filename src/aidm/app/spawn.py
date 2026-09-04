@@ -154,7 +154,7 @@ class CliSpawner:
             config.provider,
             config.model,
             config.effort,
-            "resumed" if "resume" in argv or "--resume" in argv else "cold",
+            "resumed" if session is not None else "cold",
             monotonic() - started,
         )
         return result

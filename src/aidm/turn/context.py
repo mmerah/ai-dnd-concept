@@ -8,11 +8,6 @@ from aidm.core.play import HistoryRecord, Narration, PendingDecision
 from aidm.core.tools import schema_text
 from aidm.core.views import NarratorView, lines_of, render_history, sections, told_narration
 
-ANSWERED_BY_OPTION = (
-    "The player chose the option above and the rules have applied it. Develop what it caused; "
-    "do not settle it again."
-)
-
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 

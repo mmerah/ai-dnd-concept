@@ -1,10 +1,11 @@
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
+import pytest
 from pydantic import BaseModel
 
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, EntityId, Slug, slug
+from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
 from aidm.core.play import DecisionOption
@@ -78,6 +79,17 @@ def _installed(tmp_path: Path) -> FifthEngine:
     (tmp_path / "packs" / "srd.json").write_text('{"name": "The SRD"}', encoding=ENCODING)
     FifthEngine.directory = tmp_path
     return FifthEngine()
+
+
+def test_a_pack_with_doubled_keys_is_refused(tmp_path: Path) -> None:
+    (tmp_path / "rules.md").write_text("Roll high.", encoding=ENCODING)
+    (tmp_path / "packs").mkdir()
+    (tmp_path / "packs" / "srd.json").write_text(
+        '{"name": "The SRD", "name": "Twice"}', encoding=ENCODING
+    )
+    FifthEngine.directory = tmp_path
+    with pytest.raises(Refusal, match="duplicate keys"):
+        FifthEngine()
 
 
 def _scenario() -> FifthScenario:
