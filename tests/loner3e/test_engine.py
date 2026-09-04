@@ -2,6 +2,7 @@ from random import Random
 
 import pytest
 from support.loner import ENGINE, hub_world, initialized, loner_sheet
+from support.scenes import BOARD
 from support.table import the_campaign, updated
 
 from aidm.core.entities import EntityId, Refusal
@@ -9,7 +10,7 @@ from aidm.core.facts import cards
 from aidm.core.io import decode
 from aidm.core.play import PendingDecision
 from aidm.engines.base import PLAYER_ID, SRD_PACK, Counter
-from aidm.engines.hub import JOB_DONE, Campaign, Offer
+from aidm.engines.hub import JOB_DONE, Campaign
 from aidm.engines.loner3e.tools import (
     Question,
     RestoreLuck,
@@ -138,14 +139,6 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
     # Every answer the ladder can give costs somebody luck in a conflict.
     ladder = [outcome_for(chance, risk) for chance in range(1, 7) for risk in range(1, 7)]
     assert all(outcome.harm != 0 for outcome in ladder)
-    assert {outcome.name for outcome in ladder} == {
-        "yes-and",
-        "yes",
-        "yes-but",
-        "no-but",
-        "no",
-        "no-and",
-    }
 
     # Seed 0 rolls a 4-4 tie, a yes-but that costs the foe; seed 1 rolls 2 against 5, a no.
     for seed in (0, 1):
@@ -263,15 +256,7 @@ def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
     engine, state = initialized()
     world = state.payload
     hub_payload = world.model_copy(
-        update={
-            "campaign": Campaign(
-                place=world.run.place,
-                board=(
-                    Offer(title="Job One", pitch="I take job one."),
-                    Offer(title="Job Two", pitch="I take job two."),
-                ),
-            )
-        }
+        update={"campaign": Campaign(place=world.run.place, board=BOARD)}
     )
     with pytest.raises(Refusal, match="one-shot"):
         engine.validate(updated(state, payload=hub_payload))

@@ -14,7 +14,6 @@ ENGINES = (
 ROOTS = {"engines/registry.py"}
 # Flow: core <- engines <- turn <- app <- ui.
 LAYERS = ("core", "engines", "turn", "app")
-ALLOWED: dict[str, set[str]] = {}
 # `ui` sits above them all, imports downwards, and additionally stays engine-agnostic.
 TOPS = {"ui": {"aidm.engines"}}
 # A framework belongs to the layers that own it and to nothing below them.
@@ -66,15 +65,9 @@ def test_packages_import_only_in_the_allowed_direction(
     package: str,
     forbidden: set[str],
 ) -> None:
-    allowed = ALLOWED.get(package, set())
-    imports = {
-        name
-        for name in _imports(package)
-        if not any(name == prefix or name.startswith(f"{prefix}.") for prefix in allowed)
-    }
     violations = {
         name
-        for name in imports
+        for name in _imports(package)
         if any(name == root or name.startswith(f"{root}.") for root in forbidden)
     }
     assert not violations

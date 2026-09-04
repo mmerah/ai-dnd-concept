@@ -157,8 +157,7 @@ def test_loot_replay_applies_the_chosen_option() -> None:
     player = draft.payload.player
     taken = LootCheck(item="Machete", granted=8, choice="take")
     facts = ENGINE.loot_check(draft, taken, Random(0))
-    key = EntityId("machete")
-    assert player.items[key] == Item(name="Machete", die=8)
+    assert player.items[EntityId("machete")] == Item(name="Machete", die=8)
     assert any(fact.card == "Took Machete (d8)" for fact in facts)
 
 

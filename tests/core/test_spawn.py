@@ -53,9 +53,8 @@ def test_only_the_master_is_let_out_of_the_sandbox_and_no_role_sees_the_account(
     assert not any(line.startswith("mcp_servers") for line in narrator)
     for argv in (master, narrator):
         # `--ignore-user-config` leaves the account's own MCP servers standing; this removes them.
-        assert ["--disable", "apps"] == [
-            argv[i] for i in (argv.index("--disable"),) for i in (i, i + 1)
-        ]
+        disabled = argv.index("--disable")
+        assert list(argv[disabled : disabled + 2]) == ["--disable", "apps"]
         assert "--ignore-user-config" in argv
         assert "web_search=disabled" in argv
 

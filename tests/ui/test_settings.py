@@ -3,10 +3,10 @@ from pathlib import Path
 
 import pytest
 from nicegui import ui
+from support.loner import TARGET
 from support.table import ScriptedSpawner
 from support.ui import ui_settings
 
-from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import Runtime
 from aidm.config import RoleConfig, Roles, read_settings, save_settings
 from aidm.ui.settings import SettingsForm, _widget  # pyright: ignore[reportPrivateUsage]
@@ -69,7 +69,7 @@ def test_a_saved_key_reads_back_and_the_rest_of_the_file_survives(
 
 def test_settings_are_not_reloaded_under_a_turn_in_flight(tmp_path: Path) -> None:
     runtime = Runtime(ui_settings(saves_dir=tmp_path), ScriptedSpawner())
-    session = runtime.session(LaunchTarget(scenario_id="whispering-vault", character_id="kael"))
+    session = runtime.session(TARGET)
     assert runtime.busy_refusal() is None
     session.phase = "master"
     assert runtime.busy_refusal() == "A turn is in flight in 'whispering-vault--kael'."
@@ -78,7 +78,7 @@ def test_settings_are_not_reloaded_under_a_turn_in_flight(tmp_path: Path) -> Non
 def test_a_page_still_holding_a_dropped_session_may_not_play_it(tmp_path: Path) -> None:
     """The reload drops every session, and a tab that kept one would open a second writer."""
     runtime = Runtime(ui_settings(saves_dir=tmp_path), ScriptedSpawner())
-    session = runtime.session(LaunchTarget(scenario_id="whispering-vault", character_id="kael"))
+    session = runtime.session(TARGET)
     assert runtime.play_refusal(session) is None
 
     runtime.reload_settings()

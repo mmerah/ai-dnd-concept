@@ -100,9 +100,7 @@ def _deciding(saves: Path, *, narrate: bool = True) -> Table[Loner3eGame]:
 
 
 def _suspend(table: Table[Loner3eGame], decision: PendingDecision = DECISION) -> None:
-    draft = table.service.state.draft()
-    draft.pending = decision
-    table.service.commit(draft.commit())
+    table.service.commit(_pending(table.service.state, decision))
 
 
 def test_an_answer_is_a_chosen_option_or_written_text_but_never_both_nor_neither() -> None:

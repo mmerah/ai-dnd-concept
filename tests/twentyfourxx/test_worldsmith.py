@@ -2,7 +2,7 @@ from collections.abc import Callable
 
 import pytest
 from pydantic import BaseModel
-from support.table import the_campaign
+from support.table import TWENTYFOURXX, the_campaign
 from support.twentyfourxx import (
     HUB_PLACE,
     HUB_SITUATION,
@@ -15,7 +15,7 @@ from support.twentyfourxx import (
     small_world,
 )
 
-from aidm.core.entities import EngineId, EntityId, Refusal
+from aidm.core.entities import EntityId, Refusal
 from aidm.core.facts import Fact
 from aidm.core.model import AnyScenario, ScenarioMeta, WorldsmithAnswer
 from aidm.core.play import Commission
@@ -25,18 +25,9 @@ from aidm.engines.scenes.drafts import CastDraft, JobDraft, NextDraft, ReturnDra
 from aidm.engines.scenes.world import SceneRun
 from aidm.engines.scenes.worldsmith import COMMISSION_ASK, cast_refusal, scene_refusal
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
-from aidm.engines.twentyfourxx.world import TwentyfourxxGame
 from aidm.engines.twentyfourxx.worldsmith import BOARD_GUIDANCE
 
-TWENTYFOURXX = EngineId("twentyfourxx")
 ENGINE = TwentyfourxxEngine()
-
-
-async def _written(
-    game: TwentyfourxxGame, intent: str, answer: WorldsmithAnswer
-) -> SceneDraft[Person]:
-    """The write alone: these tests read the model asked for, and install nothing."""
-    return await ENGINE.write_next(game, intent, answer)
 
 
 def _draft(**fields: object) -> SceneDraft[Person]:
@@ -47,7 +38,7 @@ def _draft(**fields: object) -> SceneDraft[Person]:
         "situation": SITUATION,
         "arc": "Farther in, the fixer's own supplier still owes for the last load.",
     }
-    return SceneDraft[Person].model_validate({**base, **fields})
+    return SceneDraft[Person].model_validate(base | fields)
 
 
 def _built(draft: SceneDraft[Person]) -> AnyScenario:
@@ -355,44 +346,18 @@ async def test_write_next_picks_the_draft_the_moment_calls_for() -> None:
         assert refusal(answer) is None
         return answer
 
-    _ = await _written(game, GO_HOME, answer)
+    _ = await ENGINE.write_next(game, GO_HOME, answer)
     assert recorded[-1] is ReturnDraft[Person]
 
-    _ = await _written(game, "I look around the warehouse.", answer)
+    _ = await ENGINE.write_next(game, "I look around the warehouse.", answer)
     assert recorded[-1] is NextDraft[Person]
 
     _ = game.payload.runs.pop()  # home again: the next scene is the one that leaves
-    _ = await _written(game, TAKE_JOB.format(title="Job One"), answer)
+    _ = await ENGINE.write_next(game, TAKE_JOB.format(title="Job One"), answer)
     assert recorded[-1] is JobDraft[Person]
 
 
-async def test_write_next_shows_this_job_only_on_a_return() -> None:
-    game = hub_world()
-    prompts: list[str] = []
-
-    async def answer[M: BaseModel](
-        prompt: str, model: type[M], refusal: Callable[[M], str | None]
-    ) -> M:
-        prompts.append(prompt)
-        chosen: SceneDraft[Person] = (
-            _return_draft() if model is ReturnDraft[Person] else _next_draft(present=("fixer",))
-        )
-        answer = model.model_validate(chosen.model_dump())
-        assert refusal(answer) is None
-        return answer
-
-    _ = await _written(game, GO_HOME, answer)
-    assert "THIS JOB" in prompts[-1]
-
-    _ = await _written(game, "I look around the warehouse.", answer)
-    assert "THIS JOB" not in prompts[-1]
-
-
-async def test_the_arc_line_only_reaches_a_next_draft_prompt() -> None:
-    game = hub_world()
-    game.payload.arc = "Farther out, the fixer's own debts are still unpaid."
-    prompts: list[str] = []
-
+def _returning_or_moving_on(prompts: list[str]) -> WorldsmithAnswer:
     async def answer[M: BaseModel](
         prompt: str, model: type[M], refusal: Callable[[M], str | None]
     ) -> M:
@@ -404,10 +369,31 @@ async def test_the_arc_line_only_reaches_a_next_draft_prompt() -> None:
         assert refusal(answered) is None
         return answered
 
-    _ = await _written(game, GO_HOME, answer)
+    return answer
+
+
+async def test_write_next_shows_this_job_only_on_a_return() -> None:
+    game = hub_world()
+    prompts: list[str] = []
+    answer = _returning_or_moving_on(prompts)
+
+    _ = await ENGINE.write_next(game, GO_HOME, answer)
+    assert "THIS JOB" in prompts[-1]
+
+    _ = await ENGINE.write_next(game, "I look around the warehouse.", answer)
+    assert "THIS JOB" not in prompts[-1]
+
+
+async def test_the_arc_line_only_reaches_a_next_draft_prompt() -> None:
+    game = hub_world()
+    game.payload.arc = "Farther out, the fixer's own debts are still unpaid."
+    prompts: list[str] = []
+    answer = _returning_or_moving_on(prompts)
+
+    _ = await ENGINE.write_next(game, GO_HOME, answer)
     assert "The arc as last written" not in prompts[-1]
 
-    _ = await _written(game, "I look around the warehouse.", answer)
+    _ = await ENGINE.write_next(game, "I look around the warehouse.", answer)
     assert "The arc as last written" in prompts[-1]
 
 

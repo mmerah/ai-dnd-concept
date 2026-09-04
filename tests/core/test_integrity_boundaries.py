@@ -107,15 +107,11 @@ def test_a_character_file_belongs_to_its_folder_and_its_engine(tmp_path: Path) -
     (tmp_path / "mira").mkdir()
     _ = (tmp_path / "mira" / f"{LONER3E}.json").write_text(text, encoding="utf-8")
 
-    library = Library(tmp_path, tmp_path)
+    library, engine = Library(tmp_path, tmp_path), ENGINES_BUILT[LONER3E]
     with pytest.raises(Refusal, match="plays 'ruleless', not 'loner3e'"):
-        _ = library.read_character(
-            "kael", ENGINES_BUILT[LONER3E].id, ENGINES_BUILT[LONER3E].character
-        )
+        _ = library.read_character("kael", engine.id, engine.character)
     with pytest.raises(Refusal, match="'kael' is filed under 'mira'"):
-        _ = library.read_character(
-            "mira", ENGINES_BUILT[LONER3E].id, ENGINES_BUILT[LONER3E].character
-        )
+        _ = library.read_character("mira", engine.id, engine.character)
 
 
 def _luck(state: Loner3eGame) -> int:

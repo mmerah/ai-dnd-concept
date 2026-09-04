@@ -98,7 +98,6 @@ def _kael() -> Goon:
 
 
 def small_world() -> TunnelGoonsGame:
-    """A one-shot game: the player stands at the start of the four-place dungeon."""
     places, ways, npcs, items = _map_pieces()
     world = TunnelGoonsWorld(
         places=places,
@@ -118,7 +117,6 @@ def small_world() -> TunnelGoonsGame:
 
 
 def hub_world(*, with_map: bool = True) -> TunnelGoonsGame:
-    """A campaign game: a tavern hub the player starts at, plus the dungeon unless bare."""
     tavern = Place(
         id=TAVERN,
         name="Tavern",

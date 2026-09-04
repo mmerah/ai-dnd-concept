@@ -208,7 +208,6 @@ def open_game_for(
         saves,
         rng=rng,
         settings=settings,
-        engine=None,
         engine_id=engine_id,
         state_type=ENGINES_BUILT[engine_id].game,
     )
@@ -217,11 +216,11 @@ def open_game_for(
 def open_table[G: AnyGame](
     saves: Path,
     *,
-    rng: Random | None,
-    settings: Settings | None,
-    engine: AnyEngine | None,
     engine_id: EngineId,
     state_type: type[G],
+    rng: Random | None = None,
+    settings: Settings | None = None,
+    engine: AnyEngine | None = None,
 ) -> Table[G]:
     settings = settings or offline_settings(saves)
     spawner = ScriptedSpawner()

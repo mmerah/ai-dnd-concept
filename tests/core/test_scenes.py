@@ -29,6 +29,12 @@ def _campaign(*jobs: Job) -> Campaign:
     return Campaign(place=HUB, board=BOARD, jobs=list(jobs))
 
 
+def _world(*runs: SceneRun, **fields: object) -> SceneWorld[Person, Person]:
+    return SceneWorld[Person, Person].model_validate(
+        {"player": PLAYER, "runs": list(runs), **fields}
+    )
+
+
 def _run(
     place: str, title: str, *, played: bool = False, here: Sequence[EntityId] = ()
 ) -> SceneRun:
@@ -44,15 +50,12 @@ def _run(
 
 
 def test_the_job_walk_reads_job_runs_jobs_and_exchange_headings() -> None:
-    world = SceneWorld[Person, Person](
-        player=PLAYER,
-        runs=[
-            _run(HUB, "Hub", played=True),
-            _run("a1", "A1", played=True),
-            _run("a1", "A2", played=True),
-            _run(HUB, "Hub", played=True),
-            _run("b1", "B1", played=True),
-        ],
+    world = _world(
+        _run(HUB, "Hub", played=True),
+        _run("a1", "A1", played=True),
+        _run("a1", "A2", played=True),
+        _run(HUB, "Hub", played=True),
+        _run("b1", "B1", played=True),
         campaign=_campaign(
             Job(
                 title="A1",
@@ -88,14 +91,15 @@ def test_a_finished_verdict_reads_the_open_job_not_a_closed_one() -> None:
 
 def test_a_world_opening_away_from_the_hub_is_refused() -> None:
     with pytest.raises(ValueError, match="does not open at hub"):
-        _ = SceneWorld[Person, Person](player=PLAYER, runs=[_run("a1", "A1")], campaign=_campaign())
+        _ = _world(_run("a1", "A1"), campaign=_campaign())
 
 
 def test_a_hub_run_with_no_closed_job_to_explain_it_is_refused() -> None:
     with pytest.raises(ValueError, match="closed jobs disagree"):
-        _ = SceneWorld[Person, Person](
-            player=PLAYER,
-            runs=[_run(HUB, "Hub"), _run("a1", "A1"), _run(HUB, "Hub")],
+        _ = _world(
+            _run(HUB, "Hub"),
+            _run("a1", "A1"),
+            _run(HUB, "Hub"),
             campaign=_campaign(Job(title="A1", place="a1", attempts=[Attempt(started=1)])),
         )
 
@@ -117,36 +121,30 @@ def test_a_canon_opening_with_play_in_it_is_refused() -> None:
 
 
 def test_settle_refuses_a_job_done_where_no_job_is_open() -> None:
-    at_hub = SceneWorld[Person, Person](
-        player=PLAYER, runs=[_run(HUB, "Hub")], campaign=_campaign()
-    )
+    at_hub = _world(_run(HUB, "Hub"), campaign=_campaign())
     with pytest.raises(Refusal, match="no job is open here"):
         _ = at_hub.settle(True, "")
 
-    one_shot = SceneWorld[Person, Person](player=PLAYER, runs=[_run("a1", "A1")])
+    one_shot = _world(_run("a1", "A1"))
     with pytest.raises(Refusal, match="no job is open here"):
         _ = one_shot.settle(True, "")
 
 
 def test_scene_rows_shows_the_hub_row_and_the_way_on_and_home_rows_when_settled() -> None:
-    at_hub = SceneWorld[Person, Person](
-        player=PLAYER, runs=[_run(HUB, "Hub")], campaign=_campaign()
-    )
+    at_hub = _world(_run(HUB, "Hub"), campaign=_campaign())
     assert at_hub.scene_rows()[-1] == HUB_ROW
 
-    campaign = SceneWorld[Person, Person](
-        player=PLAYER, runs=[_run(HUB, "Hub"), _run("a1", "A1")], campaign=_campaign()
-    )
+    campaign = _world(_run(HUB, "Hub"), _run("a1", "A1"), campaign=_campaign())
     campaign.run.left = ""
     settled = campaign.scene_rows()
     assert any(row.label == "Way on" for row in settled)
     assert settled[-1] == HOME_ROW
 
-    one_shot = SceneWorld[Person, Person](player=PLAYER, runs=[_run("a1", "A1")])
+    one_shot = _world(_run("a1", "A1"))
     one_shot.run.left = ""
     assert HOME_ROW not in one_shot.scene_rows()
 
-    pursuing = SceneWorld[Person, Person](player=PLAYER, runs=[_run("a1", "A1")])
+    pursuing = _world(_run("a1", "A1"))
     pursuing.run.left = "the maintenance grate"
     pursued = pursuing.scene_rows()
     assert any(
@@ -158,9 +156,9 @@ def test_scene_rows_shows_the_hub_row_and_the_way_on_and_home_rows_when_settled(
 
 
 def test_scene_rows_lists_the_open_job_under_the_question() -> None:
-    world = SceneWorld[Person, Person](
-        player=PLAYER,
-        runs=[_run(HUB, "Hub"), _run("a1", "A1")],
+    world = _world(
+        _run(HUB, "Hub"),
+        _run("a1", "A1"),
         campaign=_campaign(Job(title="A1", place="a1", terms=JOB, attempts=[Attempt(started=1)])),
     )
 
@@ -170,8 +168,7 @@ def test_scene_rows_lists_the_open_job_under_the_question() -> None:
 def _travelling() -> SceneWorld[Person, Person]:
     """The player, one companion in the cast, and a scene the pair stand in."""
     mara = Person(id=MARA, name="Mara", brief="A guide", known=True)
-    run = _run("a1", "A1", here=[MARA])
-    return SceneWorld[Person, Person](player=PLAYER, cast={MARA: mara}, runs=[run], party=[MARA])
+    return _world(_run("a1", "A1", here=[MARA]), cast={MARA: mara}, party=[MARA])
 
 
 def test_a_party_member_leaves_the_scene_only_through_leave_party() -> None:
@@ -193,9 +190,7 @@ def test_a_party_member_who_is_not_in_this_scene_is_refused() -> None:
     world = _travelling()
     world.run.here.remove(MARA)
     with pytest.raises(ValueError, match="the party is in every scene"):
-        _ = SceneWorld[Person, Person](
-            player=PLAYER, cast=world.cast, runs=world.runs, party=[MARA]
-        )
+        _ = _world(*world.runs, cast=world.cast, party=[MARA])
 
 
 def test_apply_scene_with_a_next_draft_stamps_the_recap_on_the_run_left() -> None:
@@ -228,16 +223,13 @@ def test_scenes_chapters_a_closed_job_and_keeps_the_open_ones_scene_by_scene() -
         attempts=[Attempt(started=1, returned=3)],
     )
     job_b = Job(title="B1", place="b1", attempts=[Attempt(started=4, returned=5)])
-    world = SceneWorld[Person, Person](
-        player=PLAYER,
-        runs=[
-            _run(HUB, "Hub", played=True),
-            _run("a1", "A1", played=True),
-            _run("a1", "A2", played=True),
-            _run(HUB, "Hub", played=True),
-            _run("b1", "B1", played=True),
-            _run(HUB, "Hub", played=True),
-        ],
+    world = _world(
+        _run(HUB, "Hub", played=True),
+        _run("a1", "A1", played=True),
+        _run("a1", "A2", played=True),
+        _run(HUB, "Hub", played=True),
+        _run("b1", "B1", played=True),
+        _run(HUB, "Hub", played=True),
         campaign=_campaign(job_a, job_b),
     )
 
@@ -251,9 +243,10 @@ def test_scenes_chapters_a_closed_job_and_keeps_the_open_ones_scene_by_scene() -
 
 def test_apply_scene_with_reopening_reopens_the_job_instead_of_appending() -> None:
     job = Job(title="B1", place="b1", debrief=DONE, attempts=[Attempt(started=1, returned=2)])
-    world = SceneWorld[Person, Person](
-        player=PLAYER,
-        runs=[_run(HUB, "Hub", played=True), _run("b1", "B1", played=True), _run(HUB, "Hub")],
+    world = _world(
+        _run(HUB, "Hub", played=True),
+        _run("b1", "B1", played=True),
+        _run(HUB, "Hub"),
         campaign=_campaign(job),
     )
     draft = JobDraft[Person](
@@ -278,9 +271,9 @@ def test_apply_scene_with_reopening_reopens_the_job_instead_of_appending() -> No
 
 
 def test_apply_scene_with_a_return_draft_closes_the_attempt_and_stores_summary_and_recap() -> None:
-    world = SceneWorld[Person, Person](
-        player=PLAYER,
-        runs=[_run(HUB, "Hub", played=True), _run("b1", "B1", played=True)],
+    world = _world(
+        _run(HUB, "Hub", played=True),
+        _run("b1", "B1", played=True),
         campaign=_campaign(Job(title="B1", place="b1", attempts=[Attempt(started=1)])),
     )
     draft = ReturnDraft[Person](
@@ -305,9 +298,10 @@ def test_apply_scene_with_a_return_draft_closes_the_attempt_and_stores_summary_a
 
 def test_a_world_whose_job_returns_away_from_the_hub_is_refused() -> None:
     with pytest.raises(ValueError, match="returned away from the hub"):
-        _ = SceneWorld[Person, Person](
-            player=PLAYER,
-            runs=[_run(HUB, "Hub"), _run("a1", "A1"), _run("a1", "A2")],
+        _ = _world(
+            _run(HUB, "Hub"),
+            _run("a1", "A1"),
+            _run("a1", "A2"),
             campaign=_campaign(
                 Job(title="A1", place="a1", attempts=[Attempt(started=1, returned=2)])
             ),
@@ -316,9 +310,7 @@ def test_a_world_whose_job_returns_away_from_the_hub_is_refused() -> None:
 
 def test_entering_someone_hidden_is_refused_reveal_makes_them_present() -> None:
     mara = Person(id=MARA, name="Mara", brief="A guide", known=False)
-    world = SceneWorld[Person, Person](
-        player=PLAYER, cast={MARA: mara}, runs=[_run("a1", "A1", here=[MARA])]
-    )
+    world = _world(_run("a1", "A1", here=[MARA]), cast={MARA: mara})
     with pytest.raises(Refusal, match="already here"):
         _ = world.enter(MARA)
     _ = world.reveal_hidden(MARA)

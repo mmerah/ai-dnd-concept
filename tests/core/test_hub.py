@@ -134,13 +134,11 @@ def test_board_rows_plays_take_job_with_the_title_and_keeps_the_pitch() -> None:
 
 
 def test_the_board_marks_a_left_open_offer() -> None:
-    offer = Offer(title="B", pitch="Do b")
-    left_open_job = Job(title="B", place="b1", attempts=[Attempt(started=1, returned=2)])
-    campaign = _campaign(left_open_job)
+    campaign = _campaign(Job(title="B", place="b1", attempts=[Attempt(started=1, returned=2)]))
 
     row = next(row for row in campaign.board_rows() if row.label.startswith("B"))
-    assert row.label == "B" + " (left open)"
-    assert row.detail == offer.pitch
+    assert row.label == "B (left open)"
+    assert row.detail == "Do b"
     assert row.intent == TAKE_JOB.format(title="B")
     assert "B (left open): Do b" in campaign.board_lines()
 

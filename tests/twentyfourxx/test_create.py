@@ -6,6 +6,14 @@ from aidm.core.model import Character
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 
 ENGINE = TwentyfourxxEngine()
+SNEAK = {
+    "pack": "srd",
+    "specialty": "sneak",
+    "origin": "human",
+    "increase-1": "stealth",
+    "increase-2": "stealth",
+    "increase-3": "piloting",
+}
 
 
 class _OtherPayload(BaseModel):
@@ -57,15 +65,7 @@ def test_human_shows_three_increases() -> None:
 
 
 def test_create_character_builds_the_sheet() -> None:
-    picks = {
-        "pack": "srd",
-        "specialty": "sneak",
-        "origin": "human",
-        "increase-1": "stealth",
-        "increase-2": "stealth",
-        "increase-3": "piloting",
-    }
-    character = ENGINE.create_character("Rook", "A quiet operator", picks)
+    character = ENGINE.create_character("Rook", "A quiet operator", SNEAK)
     assert character.payload.skills == {"Stealth": 12, "Climbing": 8, "Piloting": 8}
     assert character.payload.specialty == "Sneak"
     assert character.payload.origin == "Human"
@@ -73,16 +73,8 @@ def test_create_character_builds_the_sheet() -> None:
 
 
 def test_pick_past_d12_is_refused() -> None:
-    picks = {
-        "pack": "srd",
-        "specialty": "sneak",
-        "origin": "human",
-        "increase-1": "stealth",
-        "increase-2": "stealth",
-        "increase-3": "stealth",
-    }
     with pytest.raises(Refusal):
-        ENGINE.create_character("Rook", "A quiet operator", picks)
+        ENGINE.create_character("Rook", "A quiet operator", {**SNEAK, "increase-3": "stealth"})
 
 
 def test_items_land_in_order_comm_kit_weapon() -> None:
@@ -101,15 +93,7 @@ def test_items_land_in_order_comm_kit_weapon() -> None:
 
 
 def test_preview_character_ends_with_gear_row() -> None:
-    picks = {
-        "pack": "srd",
-        "specialty": "sneak",
-        "origin": "human",
-        "increase-1": "stealth",
-        "increase-2": "stealth",
-        "increase-3": "piloting",
-    }
-    character = ENGINE.create_character("Rook", "A quiet operator", picks)
+    character = ENGINE.create_character("Rook", "A quiet operator", SNEAK)
     rows = ENGINE.preview_character(character)
     assert rows[-1] == ("Gear", "Comm, Climbing gear, Night vision goggles")
 

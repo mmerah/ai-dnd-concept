@@ -1,4 +1,3 @@
-import json
 import logging
 from pathlib import Path
 
@@ -70,13 +69,16 @@ def test_write_scenario_round_trips_and_refuses_a_duplicate(tmp_path: Path) -> N
         library.write_scenario("vault-copy", original)
 
 
+def _beside_a_broken_world(directory: Path, world: bytes) -> Library:
+    library = Library(directory, directory)
+    library.write_scenario("good", scenario())
+    (directory / "broken").mkdir()
+    (directory / "broken" / "world.json").write_bytes(world)
+    return library
+
+
 def test_read_scenarios_skips_a_world_that_fails_to_validate(tmp_path: Path) -> None:
-    original = scenario()
-    library = Library(tmp_path, tmp_path)
-    library.write_scenario("good", original)
-    broken = tmp_path / "broken"
-    broken.mkdir()
-    (broken / "world.json").write_text(json.dumps({"meta": {}}), encoding=ENCODING)
+    library = _beside_a_broken_world(tmp_path, b'{"meta": {}}')
 
     assert [slug for slug, _ in library.read_scenarios(SCENARIO_MODELS)] == ["good"]
 
@@ -84,11 +86,7 @@ def test_read_scenarios_skips_a_world_that_fails_to_validate(tmp_path: Path) -> 
 def test_read_scenarios_skips_a_world_that_is_not_json(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    library = Library(tmp_path, tmp_path)
-    library.write_scenario("good", scenario())
-    broken = tmp_path / "broken"
-    broken.mkdir()
-    (broken / "world.json").write_text("{not json", encoding=ENCODING)
+    library = _beside_a_broken_world(tmp_path, b"{not json")
 
     with caplog.at_level(logging.WARNING, logger="aidm.core.io"):
         read = [slug for slug, _ in library.read_scenarios(SCENARIO_MODELS)]
@@ -100,11 +98,7 @@ def test_read_scenarios_skips_a_world_that_is_not_json(
 def test_read_scenarios_skips_a_world_that_is_not_utf8(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    library = Library(tmp_path, tmp_path)
-    library.write_scenario("good", scenario())
-    broken = tmp_path / "broken"
-    broken.mkdir()
-    (broken / "world.json").write_bytes(b"\xff\xfe{}")
+    library = _beside_a_broken_world(tmp_path, b"\xff\xfe{}")
 
     with caplog.at_level(logging.WARNING, logger="aidm.core.io"):
         read = [slug for slug, _ in library.read_scenarios(SCENARIO_MODELS)]

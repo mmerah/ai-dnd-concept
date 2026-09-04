@@ -27,7 +27,6 @@ BOARD = (
 
 
 def hub_runs(names: HubNames, *, keeper: EntityId) -> list[SceneRun]:
-    """The hub run with the keeper in it, then the job run away from it, nobody there yet."""
     return [
         SceneRun(
             place=names.hub_place,

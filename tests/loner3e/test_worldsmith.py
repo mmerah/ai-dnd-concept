@@ -18,7 +18,7 @@ def _draft(**fields: object) -> SceneDraft[Loner3eSheet]:
         "situation": HUB_SITUATION,
         "arc": "Farther in, the cairn's own keeper is still owed for the last seal.",
     }
-    return SceneDraft[Loner3eSheet].model_validate({**base, **fields})
+    return SceneDraft[Loner3eSheet].model_validate(base | fields)
 
 
 RECAP = (

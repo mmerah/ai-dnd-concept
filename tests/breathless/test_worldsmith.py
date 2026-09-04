@@ -19,7 +19,7 @@ def _draft(**fields: object) -> SceneDraft[Person]:
         "situation": SITUATION,
         "arc": "Farther on, the mob's own paymaster still doesn't know Jax's face.",
     }
-    return SceneDraft[Person].model_validate({**base, **fields})
+    return SceneDraft[Person].model_validate(base | fields)
 
 
 def test_the_bar_refuses_a_scene_that_lists_the_player() -> None:
