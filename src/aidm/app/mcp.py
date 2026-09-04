@@ -6,8 +6,7 @@ from pydantic import JsonValue, TypeAdapter
 
 from aidm.app.runtime import Runtime
 from aidm.core.entities import Refusal
-from aidm.core.model import AnyGame
-from aidm.core.tools import MasterTool, schema_of
+from aidm.core.tools import schema_of
 from aidm.turn.run import NO_TURN
 
 SERVER_NAME = "aidm"
@@ -17,7 +16,10 @@ _ARGUMENTS = TypeAdapter(dict[str, JsonValue])
 
 
 def list_tools(runtime: Runtime) -> list[types.Tool]:
-    return [_published(tool) for tool in runtime.published_tools()]
+    return [
+        types.Tool(name=tool.name, description=tool.description, input_schema=schema_of(tool.args))
+        for tool in runtime.published_tools()
+    ]
 
 
 def call(runtime: Runtime, name: str, raw: dict[str, JsonValue]) -> str:
@@ -66,12 +68,6 @@ def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
         return _content(answered)
 
     return Server(SERVER_NAME, on_list_tools=on_list_tools, on_call_tool=on_call_tool)
-
-
-def _published(tool: MasterTool[AnyGame]) -> types.Tool:
-    return types.Tool(
-        name=tool.name, description=tool.description, input_schema=schema_of(tool.args)
-    )
 
 
 def _content(body: str, error: bool = False) -> types.CallToolResult:

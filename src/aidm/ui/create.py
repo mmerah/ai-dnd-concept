@@ -12,7 +12,7 @@ from aidm.app.runtime import Runtime
 from aidm.core.creation import CreationStep, picked
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.io import SOURCE_SUFFIXES
-from aidm.core.model import ScenarioKind, ScenarioMeta
+from aidm.core.model import ScenarioMeta
 from aidm.ui.widgets import game_path, labeled_value, page_header
 
 LOGGER = logging.getLogger(__name__)
@@ -218,11 +218,10 @@ class ScenarioForm:
             ui.notify("A title, a character, and a premise or a document.", type="warning")
             return
         self.button.props("loading")
-        kind: ScenarioKind = "campaign" if self.kind_toggle.value == "campaign" else "one-shot"
         meta = ScenarioMeta(
             title=title,
             premise=premise,
-            kind=kind,
+            kind="campaign" if self.kind_toggle.value == "campaign" else "one-shot",
             art_style=(self.style.value or "").strip(),
             voice=(self.voice.value or "").strip(),
         )
