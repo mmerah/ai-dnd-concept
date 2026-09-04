@@ -49,15 +49,14 @@ class Loner3eSheet(Person):
         )
 
     def unwritten(self) -> str:
-        missing = [
+        return ", ".join(
             why
             for why, satisfied in (
                 ("alive", self.alive),
                 ("full luck", self.luck.current == LUCK_MAX),
             )
             if not satisfied
-        ]
-        return ", ".join(missing)
+        )
 
     def change_tags(self, kind: TagKind, gained: Sequence[str], lost: Sequence[str]) -> list[Fact]:
         if not gained and not lost:
@@ -69,8 +68,9 @@ class Loner3eSheet(Person):
         if missing := [tag for tag in lost if tag not in current]:
             raise Refusal(f"{self.name} carries no {kind} {missing[0]!r}")
         self.tags[kind] = [tag for tag in (*current, *gained) if tag not in lost]
-        deltas = (*(f"+{tag}" for tag in gained), *(f"-{tag}" for tag in lost))
-        trace = f"{self.label} {kind} " + ", ".join(deltas)
+        trace = f"{self.label} {kind} " + ", ".join(
+            (*(f"+{tag}" for tag in gained), *(f"-{tag}" for tag in lost))
+        )
         parts: list[str] = []
         if gained:
             took = ", ".join(gained)

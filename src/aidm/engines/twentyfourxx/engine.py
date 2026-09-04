@@ -198,12 +198,10 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
         return "\n\n".join((AUTHORING, BOARD_GUIDANCE)) if campaign else AUTHORING
 
     def sheet_sections(self, state: TwentyfourxxGame) -> Sections:
-        lines: list[str] = []
-        for key, item in state.payload.player.items.items():
-            line = f"- {item.name}[{key}]"
-            if detail := item.detail():
-                line += f" — {detail}"
-            lines.append(line)
+        lines = [
+            f"- {item.name}[{key}]" + (f" — {detail}" if (detail := item.detail()) else "")
+            for key, item in state.payload.player.items.items()
+        ]
         return (("GEAR", lines_of(lines)),)
 
     def panels(self, state: TwentyfourxxGame) -> tuple[Panel, ...]:
@@ -214,7 +212,6 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
         return (Panel(title="Gear", rows=rows),)
 
     def resolve_skill(self, player: Operator, wanted: str) -> str:
-        """A skill the master names is matched against the sheet, then the table sets."""
         folded = wanted.casefold()
         for key in player.skills:
             if key.casefold() == folded:
@@ -296,8 +293,8 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
             facts.extend(world.kill(player.id))
         elif args.risking_death and result == "setback" and MAIMED not in player.hindrances:
             player.hindrances.append(MAIMED)
-            maimed_trace = f"{player.label} is maimed"
-            facts.append(player.fact("hindrances_changed", maimed_trace, card="Maimed"))
+            trace = f"{player.label} is maimed"
+            facts.append(player.fact("hindrances_changed", trace, card="Maimed"))
 
         return facts
 
@@ -306,19 +303,17 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
         label = self.resolve_skill(player, args.skill)
         new_die = raised(player.skills.get(label))
         player.skills[label] = new_die
-        raise_trace = f"{player.label} — {label} rises to d{new_die}"
-        raise_fact = player.fact("skill_raised", raise_trace, card=f"Skill up: {label} d{new_die}")
+        trace = f"{player.label} — {label} rises to d{new_die}"
+        raise_fact = player.fact("skill_raised", trace, card=f"Skill up: {label} d{new_die}")
 
         rolled, dice_fact = roll((6,), "credits earned", rng)
         gained = rolled[0]
         player.credits += gained
-        event = DiceEvent(label="d6", faces=(6,), rolled=rolled)
-        credit_trace = f"{player.label} earns ₡{gained} -> ₡{player.credits}"
         credit_fact = player.fact(
             "credits_gained",
-            credit_trace,
+            f"{player.label} earns ₡{gained} -> ₡{player.credits}",
             card=f"+₡{gained} -> ₡{player.credits}",
-            dice=(event,),
+            dice=(DiceEvent(label="d6", faces=(6,), rolled=rolled),),
         )
         return [raise_fact, dice_fact, credit_fact]
 

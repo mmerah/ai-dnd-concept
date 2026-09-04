@@ -20,8 +20,6 @@ MAIMED = "Maimed"
 
 
 class Kit(Frozen):
-    """An item as a pack or a character file names it."""
-
     name: str
     bulky: bool = False
     breaks: int = Field(default=1, ge=1)
@@ -49,8 +47,6 @@ class Item(Mutable):
 
 
 class Operator(Person):
-    """The played character: the only one with dice, credits and hindrances."""
-
     specialty: str
     origin: str
     traits: tuple[str, ...] = ()  # an alien's two; an android's body
@@ -110,8 +106,7 @@ class Operator(Person):
 
     def gain_item(self, name: str, *, bulky: bool, breaks: int, cost: int) -> list[Fact]:
         self.pay(cost)
-        key = EntityId(slug(name, self.items))
-        self.items[key] = Item(name=name, bulky=bulky, breaks=breaks)
+        self.items[EntityId(slug(name, self.items))] = Item(name=name, bulky=bulky, breaks=breaks)
         suffix = f" (₡{cost})" if cost > 0 else ""
         card = f"Gained {name}{suffix}"
         trace = f"{self.label} gains {name}{suffix}"
@@ -129,15 +124,13 @@ class Operator(Person):
             raise Refusal(f"{item.name} is not broken")
         self.pay(cost)
         item.broken_times = 0
-        card = f"Repaired {item.name}"
         trace = f"{self.label} repairs {item.name}"
-        return [self.fact("item_repaired", trace, card=card)]
+        return [self.fact("item_repaired", trace, card=f"Repaired {item.name}")]
 
     def spend(self, amount: int, why: str) -> list[Fact]:
         self.pay(amount)
-        card = f"₡{amount} spent — {why}"
         trace = f"{self.label} spends ₡{amount} — {why}"
-        return [self.fact("credits_spent", trace, card=card)]
+        return [self.fact("credits_spent", trace, card=f"₡{amount} spent — {why}")]
 
 
 TwentyfourxxWorld = SceneWorld[Person, Operator]
@@ -156,7 +149,6 @@ class TwentyfourxxCharacter(Character[Operator]):
 
 
 def raised(current: SkillDie | None) -> SkillDie:
-    """The SRD's advancement ladder: none -> d8 -> d10 -> d12."""
     if current is None:
         return LADDER[0]
     if current == LADDER[-1]:

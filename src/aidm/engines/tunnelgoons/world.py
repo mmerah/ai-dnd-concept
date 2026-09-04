@@ -29,8 +29,6 @@ class Npc(Dweller):
 
 
 class Goon(Person):
-    """The played character: the only one with abilities, and the only one who rolls."""
-
     abilities: dict[Ability, Annotated[int, Field(ge=0)]] = Field(
         default_factory=lambda: dict.fromkeys(ABILITIES, 0), min_length=3, max_length=3
     )
