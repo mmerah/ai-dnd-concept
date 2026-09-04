@@ -4,10 +4,11 @@ from pathlib import Path
 
 import pytest
 from pydantic import SecretStr
+from support.loner import TARGET
 from support.loner import session as loner_session
-from support.table import CHARACTERS, SCENARIOS, EnvFileFreeSettings
+from support.table import offline_settings
+from support.ui import ui_settings
 
-from aidm.app.launch import LaunchTarget
 from aidm.app.speech import (
     Reader,
     clip_key,
@@ -16,7 +17,7 @@ from aidm.app.speech import (
     speech_body,
     voice_of,
 )
-from aidm.config import ProviderConfig, Providers, SpeechConfig
+from aidm.config import ProviderConfig, SpeechConfig
 from aidm.core.entities import EntityId
 from aidm.core.io import FileStore
 from aidm.core.play import Exchange, Line, SpokenLine
@@ -125,31 +126,19 @@ async def test_read_leaves_no_file_when_generation_raises(
 
 
 def test_open_reader_is_none_when_off_and_takes_the_scenarios_voice(tmp_path: Path) -> None:
-    target = LaunchTarget(scenario_id="whispering-vault", character_id="kael")
     store = FileStore(tmp_path)
-    on = EnvFileFreeSettings(
-        saves_dir=tmp_path,
-        scenarios_dir=SCENARIOS,
-        characters_dir=CHARACTERS,
-        speech=SpeechConfig(enabled=True),
-        providers=Providers(
-            openrouter=ProviderConfig(
-                base_url="https://example.invalid/v1", api_key=SecretStr("test")
-            )
-        ),
-    )
-    reader = open_reader(on, store, target.slug, voice="Puck")
+    on = ui_settings(tmp_path).model_copy(update={"speech": SpeechConfig(enabled=True)})
+    reader = open_reader(on, store, TARGET.slug, voice="Puck")
     assert reader is not None
     assert reader.voice == "Puck"
 
-    reader = open_reader(on, store, target.slug, voice=on.speech.voice)
+    reader = open_reader(on, store, TARGET.slug, voice=on.speech.voice)
     assert reader is not None
     assert reader.voice == on.speech.voice
 
-    off = EnvFileFreeSettings(
-        saves_dir=tmp_path, scenarios_dir=SCENARIOS, characters_dir=CHARACTERS
+    assert (
+        open_reader(offline_settings(tmp_path), store, TARGET.slug, voice=on.speech.voice) is None
     )
-    assert open_reader(off, store, target.slug, voice=on.speech.voice) is None
 
 
 async def test_speak_reads_and_caches_the_newest_committed_exchange(

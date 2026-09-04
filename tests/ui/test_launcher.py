@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import JsonValue
+from support.loner import TARGET
 from support.table import (
     BREATHLESS,
     ENGINES_BUILT,
@@ -15,7 +16,7 @@ from support.table import (
 )
 from support.ui import REPOSITORY_ROOT, SCENARIOS, ui_settings
 
-from aidm.app.launch import LauncherCatalog, LaunchTarget
+from aidm.app.launch import LauncherCatalog
 from aidm.app.runtime import Runtime
 from aidm.config import Settings
 from aidm.core.entities import EngineId, Refusal
@@ -30,6 +31,12 @@ _MIRRORED = Loner3eEngine()
 _MIRRORED.id = MIRROR
 # A second engine installed, so the engine the launcher pairs on is observable at all.
 INSTALLED = {**ENGINES_BUILT, MIRROR: _MIRRORED}
+KAEL_FOR_EACH = [
+    ("kael", LONER3E),
+    ("kael", TUNNELGOONS),
+    ("kael", BREATHLESS),
+    ("kael", TWENTYFOURXX),
+]
 
 
 def _catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> LauncherCatalog:
@@ -39,8 +46,7 @@ def _catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> Launc
 
 def _opening_state(settings: Settings) -> Loner3eGame:
     """The launcher reads saves, so a test needs a state a real game would have written."""
-    target = LaunchTarget(scenario_id="whispering-vault", character_id="kael")
-    state = Runtime(settings, ScriptedSpawner()).session(target).state
+    state = Runtime(settings, ScriptedSpawner()).session(TARGET).state
     assert isinstance(state, Loner3eGame), "the Loner service holds another game type"
     return state
 
@@ -65,15 +71,8 @@ def test_the_catalog_pairs_a_scenario_with_a_character(tmp_path: Path) -> None:
     catalog = _catalog(ui_settings(tmp_path), ENGINES_BUILT)
 
     assert catalog.scenario("whispering-vault").title == "The Whispering Vault"
-    assert [(entry.id, entry.engine) for entry in catalog.characters] == [
-        ("kael", LONER3E),
-        ("kael", TUNNELGOONS),
-        ("kael", BREATHLESS),
-        ("kael", TWENTYFOURXX),
-    ]
-    assert catalog.target("whispering-vault", "kael") == LaunchTarget(
-        scenario_id="whispering-vault", character_id="kael"
-    )
+    assert [(entry.id, entry.engine) for entry in catalog.characters] == KAEL_FOR_EACH
+    assert catalog.target("whispering-vault", "kael") == TARGET
 
 
 def test_a_character_the_catalog_does_not_hold_is_refused(tmp_path: Path) -> None:
@@ -114,12 +113,7 @@ def test_a_save_whose_engine_is_not_the_scenarios_is_not_listed(tmp_path: Path) 
     catalog = _catalog(ui_settings(tmp_path, _declaring(tmp_path, MIRROR)), INSTALLED)
 
     # The scenario and the character are both still there; only the rules disagree.
-    assert [(entry.id, entry.engine) for entry in catalog.characters] == [
-        ("kael", LONER3E),
-        ("kael", TUNNELGOONS),
-        ("kael", BREATHLESS),
-        ("kael", TWENTYFOURXX),
-    ]
+    assert [(entry.id, entry.engine) for entry in catalog.characters] == KAEL_FOR_EACH
     assert not catalog.saves
 
 
@@ -137,7 +131,7 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
         "LONER 3E",
     )
     assert catalog.scenario("whispering-vault").rules == "LONER 3E"
-    assert saved.target == LaunchTarget(scenario_id="whispering-vault", character_id="kael")
+    assert saved.target == TARGET
 
 
 def test_a_save_filed_under_another_stem_is_not_listed(

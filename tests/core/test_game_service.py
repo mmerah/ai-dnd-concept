@@ -12,6 +12,10 @@ from aidm.core.model import AnyGame, ScenarioMeta
 from aidm.core.play import Commission
 from aidm.engines.base import PLAYER_ID
 
+COMMISSIONED = tool_call(
+    "commission", kind="person", brief="A witness who saw who broke the seal.", later=False
+)
+
 
 class _UnsavableStore(FileStore):
     """Overrides `save` alone: `FileStore` is frozen and slotted, so this cannot monkeypatch it."""
@@ -117,9 +121,6 @@ async def test_a_failed_commit_still_frees_the_game(tmp_path: Path) -> None:
 async def test_a_commission_now_is_fulfilled_between_two_master_spawns(tmp_path: Path) -> None:
     table = open_game(tmp_path)
     asked = tool_call("roll_question", actor_id=PLAYER_ID, question="Does the door give?")
-    commissioned = tool_call(
-        "commission", kind="person", brief="A witness who saw who broke the seal.", later=False
-    )
     table.spawner.answers["worldsmith"] = [
         json.dumps(
             {
@@ -135,7 +136,7 @@ async def test_a_commission_now_is_fulfilled_between_two_master_spawns(tmp_path:
         )
     ]
     # The initial spawn's calls; play_turn below appends the re-spawned master's own, empty turn.
-    table.spawner.turns.append(table.plays((asked, commissioned)))
+    table.spawner.turns.append(table.plays((asked, COMMISSIONED)))
 
     state = await play_turn(table, "I ask around and call for a witness.")
 
@@ -160,10 +161,7 @@ async def test_a_worldsmith_that_cannot_write_the_commission_leaves_the_turn_pla
     tmp_path: Path,
 ) -> None:
     table = open_game(tmp_path)
-    commissioned = tool_call(
-        "commission", kind="person", brief="A witness who saw who broke the seal.", later=False
-    )
-    table.spawner.turns.append(table.plays((commissioned,)))
+    table.spawner.turns.append(table.plays((COMMISSIONED,)))
 
     state = await play_turn(table, "I call for a witness.")
 

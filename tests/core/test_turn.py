@@ -1,10 +1,12 @@
 import json
+from collections.abc import Callable
 from pathlib import Path
 from random import Random
 
 import pytest
+from pydantic import JsonValue
 from support.loner import initialized, loner_sheet, open_game
-from support.table import changed, narrated, play_turn, the_way_on, tool_call
+from support.table import Table, changed, narrated, play_turn, the_way_on, tool_call
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.facts import Fact, cards
@@ -12,6 +14,7 @@ from aidm.core.model import AnyGame
 from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import outcome_for
+from aidm.engines.loner3e.world import Loner3eGame
 from aidm.engines.seam import WORLDSMITH_WAIT
 from aidm.turn.run import Turn
 
@@ -19,10 +22,15 @@ MAP = EntityId("vault-map")
 FOUND = changed("reveal", entity_id="vault-map")
 TAKEN = changed("change_tags", entity_id=PLAYER_ID, kind="gear", gained=["the vault map"])
 ASKED = tool_call("roll_question", actor_id=PLAYER_ID, question="Does the door give?")
+A_WITNESS: dict[str, JsonValue] = {"kind": "person", "brief": "A witness who saw the theft happen."}
+A_LEDGER: dict[str, JsonValue] = {
+    "kind": "thing",
+    "brief": "A ledger that names who else was paid.",
+}
 
 
 def _scene(**changes: object) -> str:
-    scene: dict[str, object] = {
+    scene = {
         "place": "cloister-walk",
         "title": "The Cloister Walk",
         "situation": (
@@ -37,8 +45,7 @@ def _scene(**changes: object) -> str:
         "arc": "Farther in, the chapter house still holds what Mara came for, and has not yet "
         "been found.",
     }
-    scene.update(changes)
-    return json.dumps(scene)
+    return json.dumps(scene | changes)
 
 
 async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_path: Path) -> None:
@@ -183,17 +190,24 @@ async def test_a_line_spoken_by_someone_not_here_is_re_prompted_with_the_id(
     assert table.service.state.payload.exchanges()[-1].narration == "The door settles."
 
 
+def _exploding_after_the_find(table: Table[Loner3eGame]) -> Callable[[], None]:
+    def crash() -> None:
+        _ = table.call(*FOUND)
+        raise OSError("the game master exploded")
+
+    return crash
+
+
+def _never_started() -> None:
+    raise OSError("the game master never started")
+
+
 async def test_a_master_that_crashes_after_applying_still_commits_what_it_applied(
     tmp_path: Path,
 ) -> None:
     """The exit is the only end signal: what it legally applied is the turn."""
     table = open_game(tmp_path)
-
-    def crash() -> None:
-        _ = table.call(*FOUND)
-        raise OSError("the game master exploded")
-
-    table.spawner.turns.append(crash)
+    table.spawner.turns.append(_exploding_after_the_find(table))
     table.spawner.answers["narrator"] = [narrated("The map is in hand.")]
 
     await table.service.play(Answer(text="I take the map and read it."))
@@ -208,12 +222,7 @@ async def test_a_master_that_crashed_after_a_tool_landed_is_not_spawned_again(
     """A second spawn would replay the prompt and apply the same mutation twice."""
     table = open_game(tmp_path)
     _ = await play_turn(table, "I look around.")
-
-    def crash() -> None:
-        _ = table.call(*FOUND)
-        raise OSError("the game master exploded")
-
-    table.spawner.turns.append(crash)
+    table.spawner.turns.append(_exploding_after_the_find(table))
     table.spawner.answers["narrator"] = [narrated("The map is in hand.")]
     spawned = len(table.spawner.prompts)
 
@@ -225,11 +234,7 @@ async def test_a_master_that_crashed_after_a_tool_landed_is_not_spawned_again(
 async def test_a_master_that_landed_nothing_is_spawned_once_more(tmp_path: Path) -> None:
     table = open_game(tmp_path)
     _ = await play_turn(table, "I look around.")
-
-    def crash() -> None:
-        raise OSError("the game master never started")
-
-    table.spawner.turns += [crash, crash]
+    table.spawner.turns += [_never_started, _never_started]
     spawned = len(table.spawner.prompts)
 
     with pytest.raises(OSError, match="never started"):
@@ -244,11 +249,7 @@ async def test_a_master_that_landed_nothing_is_spawned_once_more(tmp_path: Path)
 async def test_a_turn_that_applied_nothing_and_failed_is_refused(tmp_path: Path) -> None:
     table = open_game(tmp_path)
     before = table.service.state.model_dump_json()
-
-    def crash() -> None:
-        raise OSError("the game master never started")
-
-    table.spawner.turns += [crash, crash]
+    table.spawner.turns += [_never_started, _never_started]
 
     with pytest.raises(OSError, match="never started"):
         await table.service.play(Answer(text="I take the map."))
@@ -269,10 +270,7 @@ def test_a_commission_now_answers_the_wait_line_and_so_does_the_next_call() -> N
     engine, state = initialized()
     turn = Turn.begin(engine, state, Answer(text="I ask around."), Random(1))
 
-    first = turn.call(
-        "commission",
-        {"kind": "person", "brief": "A witness who saw the theft happen.", "later": False},
-    )
+    first = turn.call("commission", {**A_WITNESS, "later": False})
     second = turn.call("next_scene", {})
 
     assert WORLDSMITH_WAIT in first
@@ -283,16 +281,10 @@ def test_a_second_commission_in_one_turn_is_refused() -> None:
     engine, state = initialized()
     turn = Turn.begin(engine, state, Answer(text="I ask for help twice."), Random(1))
 
-    _ = turn.call(
-        "commission",
-        {"kind": "person", "brief": "A witness who saw the theft happen.", "later": True},
-    )
+    _ = turn.call("commission", {**A_WITNESS, "later": True})
 
     with pytest.raises(Refusal, match="one commission per turn"):
-        turn.call(
-            "commission",
-            {"kind": "thing", "brief": "A ledger that names who else was paid.", "later": True},
-        )
+        turn.call("commission", {**A_LEDGER, "later": True})
 
 
 def test_a_refused_call_leaves_the_turn_the_dice_it_had() -> None:
@@ -366,14 +358,8 @@ async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_a
 def test_a_later_commission_on_order_refuses_another_next_turn() -> None:
     engine, state = initialized()
     first = Turn.begin(engine, state, Answer(text="I ask for help."), Random(1))
-    _ = first.call(
-        "commission",
-        {"kind": "person", "brief": "A witness who saw the theft happen.", "later": True},
-    )
+    _ = first.call("commission", {**A_WITNESS, "later": True})
     second = Turn.begin(engine, first.finish(()), Answer(text="I ask again."), Random(1))
 
     with pytest.raises(Refusal, match="already on order"):
-        second.call(
-            "commission",
-            {"kind": "thing", "brief": "A ledger that names who else was paid.", "later": True},
-        )
+        second.call("commission", {**A_LEDGER, "later": True})

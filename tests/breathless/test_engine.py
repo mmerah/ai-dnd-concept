@@ -1,4 +1,6 @@
 import pytest
+from support.breathless import SKILLS_RATED
+from support.scenes import BOARD
 from support.table import BREATHLESS, ENGINES_BUILT, game, updated
 
 from aidm.core.entities import EngineId, EntityId, Refusal
@@ -10,12 +12,10 @@ from aidm.engines.breathless.world import (
     BreathlessCharacter,
     BreathlessGame,
     BreathlessScenario,
-    Die,
     Item,
-    Skill,
     Survivor,
 )
-from aidm.engines.hub import Campaign, Offer
+from aidm.engines.hub import Campaign
 from aidm.engines.scenes.world import SceneCanon, SceneRun
 from aidm.engines.seam import AnyEngine
 
@@ -53,15 +53,7 @@ def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
     engine, state = _breathless_game()
     world = state.payload
     hub_payload = world.model_copy(
-        update={
-            "campaign": Campaign(
-                place=world.run.place,
-                board=(
-                    Offer(title="Job One", pitch="I take job one."),
-                    Offer(title="Job Two", pitch="I take job two."),
-                ),
-            )
-        }
+        update={"campaign": Campaign(place=world.run.place, board=BOARD)}
     )
     with pytest.raises(Refusal, match="one-shot"):
         engine.validate(updated(state, payload=hub_payload))
@@ -88,14 +80,6 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
             ),
         ),
     )
-    skills: dict[Skill, Die] = {
-        "bash": 6,
-        "dash": 4,
-        "sneak": 8,
-        "shoot": 4,
-        "think": 10,
-        "sway": 4,
-    }
     character = BreathlessCharacter(
         id="kael",
         engine=EngineId("breathless"),
@@ -106,8 +90,8 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
             known=True,
             pronouns="he/him",
             job="Park Ranger",
-            skills=skills,
-            worn=skills,
+            skills=SKILLS_RATED,
+            worn=SKILLS_RATED,
             items={FIRE_AXE: Item(name="Fire Axe", die=STARTING_ITEM)},
         ),
     )

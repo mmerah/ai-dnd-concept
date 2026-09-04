@@ -57,7 +57,6 @@ NAMES = HubNames(
 
 
 def small_world() -> BreathlessGame:
-    """One player, one known NPC present, one hidden NPC, a Wrench in the backpack."""
     mira = Person(id=MIRA, name="Mira", brief="A neighbor", known=True)
     dax = Person(id=DAX, name="Dax", brief="A looter", known=False)
     world = BreathlessWorld(
@@ -75,7 +74,6 @@ def small_world() -> BreathlessGame:
 
 
 def hub_world() -> BreathlessGame:
-    """A campaign world: a hub run with a known keeper, then one job run away from it."""
     keeper = Person(id=KEEPER, name="Keeper", brief="Runs the camp", known=True)
     world = BreathlessWorld(
         cast={KEEPER: keeper},

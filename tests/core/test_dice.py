@@ -25,5 +25,4 @@ def test_keep_highest_results_in_the_highest_rolled_die() -> None:
 
     assert kept == 4
     assert event.rolled == (4, 4, 1)
-    assert max(event.rolled) == 4
     assert event.highlight == (0,)

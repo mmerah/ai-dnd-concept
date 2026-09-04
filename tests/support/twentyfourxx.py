@@ -39,7 +39,6 @@ NAMES = HubNames(
 
 
 def small_world() -> TwentyfourxxGame:
-    """One operator, one known NPC present, one hidden NPC, lockpicks in the kit."""
     kestrel = Person(id=KESTREL, name="Kestrel", brief="A dockhand", known=True)
     sable = Person(id=SABLE, name="Sable", brief="A rival operator", known=False)
     world = TwentyfourxxWorld(
@@ -57,7 +56,6 @@ def small_world() -> TwentyfourxxGame:
 
 
 def hub_world() -> TwentyfourxxGame:
-    """A campaign world: a hub run with a known fixer, then one job run away from it."""
     fixer = Person(id=FIXER, name="Fixer", brief="Runs the board", known=True)
     world = TwentyfourxxWorld(
         cast={FIXER: fixer},

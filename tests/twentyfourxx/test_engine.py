@@ -1,4 +1,5 @@
 import pytest
+from support.scenes import BOARD
 from support.table import (
     BREATHLESS,
     ENGINES_BUILT,
@@ -13,7 +14,7 @@ from aidm.core.entities import EntityId, Refusal
 from aidm.core.io import decode
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.hub import Campaign, Offer
+from aidm.engines.hub import Campaign
 from aidm.engines.scenes.world import SceneCanon, SceneRun
 from aidm.engines.seam import AnyEngine
 from aidm.engines.twentyfourxx.world import (
@@ -66,15 +67,7 @@ def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
     engine, state = _twentyfourxx_game()
     world = state.payload
     hub_payload = world.model_copy(
-        update={
-            "campaign": Campaign(
-                place=world.run.place,
-                board=(
-                    Offer(title="Job One", pitch="I take job one."),
-                    Offer(title="Job Two", pitch="I take job two."),
-                ),
-            )
-        }
+        update={"campaign": Campaign(place=world.run.place, board=BOARD)}
     )
     with pytest.raises(Refusal, match="one-shot"):
         engine.validate(updated(state, payload=hub_payload))

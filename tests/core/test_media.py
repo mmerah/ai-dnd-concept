@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 from pydantic import SecretStr
-from support.loner import initialized, with_entity
-from support.table import CHARACTERS, SCENARIOS, EnvFileFreeSettings
+from support.loner import TARGET, initialized, with_entity
+from support.table import offline_settings
+from support.ui import ui_settings
 
-from aidm.app.launch import LaunchTarget
 from aidm.app.media import (
     GeneratedImage,
     Illustrator,
@@ -15,7 +15,7 @@ from aidm.app.media import (
     open_illustrator,
     scene_key,
 )
-from aidm.config import MediaConfig, ProviderConfig, Providers
+from aidm.config import MediaConfig, ProviderConfig
 from aidm.core.entities import EntityId
 from aidm.core.io import FileStore
 from aidm.core.views import NarratorView
@@ -26,12 +26,12 @@ NARRATION = "The door groans open."
 STYLE = "Painterly fantasy illustration, muted colours, no text or lettering."
 
 
-def _illustrator(tmp_path: Path) -> Illustrator:
+def _illustrator(saves: Path, icon_dirs: tuple[Path, ...] = ()) -> Illustrator:
     return Illustrator(
         config=MediaConfig(enabled=True),
         provider=ProviderConfig(base_url="https://example.invalid/v1", api_key=SecretStr("test")),
-        saves=tmp_path / "save.media",
-        icon_dirs=(),
+        saves=saves,
+        icon_dirs=icon_dirs,
         style=STYLE,
     )
 
@@ -85,13 +85,7 @@ def test_an_icon_is_looked_up_in_each_authored_directory_in_order(tmp_path: Path
     ):
         directory.mkdir(parents=True)
         (directory / f"{stem}.png").write_bytes(b"\x89PNG")
-    illustrator = Illustrator(
-        config=MediaConfig(enabled=True),
-        provider=ProviderConfig(base_url="https://example.invalid/v1", api_key=SecretStr("test")),
-        saves=saves_dir,
-        icon_dirs=(scenario_dir, character_dir),
-        style=STYLE,
-    )
+    illustrator = _illustrator(saves_dir, (scenario_dir, character_dir))
     assert illustrator.icon(EntityId("mara")) == scenario_dir / "mara.png"
     assert illustrator.icon(EntityId("player")) == character_dir / "player.png"
     assert illustrator.icon(EntityId("invented")) == saves_dir / "icons" / "invented.png"
@@ -114,7 +108,7 @@ async def test_concurrent_illustrations_of_one_scene_generate_it_once(
         return GeneratedImage(data=b"\x89PNG", suffix=".png")
 
     monkeypatch.setattr(Illustrator, "_generate", _generate)
-    illustrator = _illustrator(tmp_path)
+    illustrator = _illustrator(tmp_path / "save.media")
     _ = await gather(
         illustrator.illustrate(scene, player, NARRATION),
         illustrator.illustrate(scene, player, NARRATION),
@@ -129,24 +123,11 @@ async def test_concurrent_illustrations_of_one_scene_generate_it_once(
 def test_open_illustrator_takes_the_passed_style_and_is_none_when_media_is_off(
     tmp_path: Path,
 ) -> None:
-    target = LaunchTarget(scenario_id="whispering-vault", character_id="kael")
     store = FileStore(tmp_path)
-    on = EnvFileFreeSettings(
-        saves_dir=tmp_path,
-        scenarios_dir=SCENARIOS,
-        characters_dir=CHARACTERS,
-        media=MediaConfig(enabled=True),
-        providers=Providers(
-            openrouter=ProviderConfig(
-                base_url="https://example.invalid/v1", api_key=SecretStr("test")
-            )
-        ),
-    )
-    illustrator = open_illustrator(on, store, target.slug, style="woodcut", icon_dirs=())
+    on = ui_settings(tmp_path).model_copy(update={"media": MediaConfig(enabled=True)})
+    illustrator = open_illustrator(on, store, TARGET.slug, style="woodcut", icon_dirs=())
     assert illustrator is not None
     assert illustrator.style == "woodcut"
 
-    off = EnvFileFreeSettings(
-        saves_dir=tmp_path, scenarios_dir=SCENARIOS, characters_dir=CHARACTERS
-    )
-    assert open_illustrator(off, store, target.slug, style="woodcut", icon_dirs=()) is None
+    off = offline_settings(tmp_path)
+    assert open_illustrator(off, store, TARGET.slug, style="woodcut", icon_dirs=()) is None

@@ -108,7 +108,6 @@ def open_game(
 
 
 def hub_world() -> Loner3eGame:
-    """A campaign world: a hub run with a known keeper, then one job run away from it."""
     keeper = Loner3eSheet(id=KEEPER, name="Keeper", brief="Runs the guild hall's board", known=True)
     world = Loner3eWorld(
         cast={KEEPER: keeper},
