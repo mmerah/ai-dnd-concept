@@ -140,7 +140,8 @@ class GameService:
             turn.draft.notes.remove(note)
 
     def _present(self) -> None:
-        self.illustrate(_latest_narration(self.engine, self.state))
+        newest = self._newest()
+        self.illustrate("" if newest is None else newest.narration)
         self.speak()
 
     async def _fulfil(self, turn: Turn, asked: Commission) -> str:
@@ -392,12 +393,9 @@ class Runtime:
 
     def session(self, target: LaunchTarget) -> GameService:
         """Memoised: a page render must not rebuild the game and drop the turn in flight."""
-        session = self._sessions.get(target.slug)
-        if session is not None:
-            return session
-        opened = self._open(target)
-        self._sessions[target.slug] = opened
-        return opened
+        if target.slug not in self._sessions:
+            self._sessions[target.slug] = self._open(target)
+        return self._sessions[target.slug]
 
     def _open(self, target: LaunchTarget) -> GameService:
         settings = self.settings
@@ -436,11 +434,6 @@ class Runtime:
 def _worldsmith(spawner: Spawner) -> WorldsmithAnswer:
     """What the platform hands an engine: one spawned role, one shared retry."""
     return partial(ask, spawner, "worldsmith")
-
-
-def _latest_narration(engine: AnyEngine, state: AnyGame) -> str:
-    history = engine.history(state)
-    return history[-1].narration if history else ""
 
 
 def _withdrawing(asked: Commission) -> Play[AnyGame]:

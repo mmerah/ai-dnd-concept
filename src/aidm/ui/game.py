@@ -56,10 +56,9 @@ class Observed:
 
     @classmethod
     def of(cls, session: GameService) -> Self:
-        turn = session.turn
         return cls(
             session.phase,
-            0 if turn is None else len(turn.facts),
+            0 if session.turn is None else len(session.turn.facts),
             len(session.engine.history(session.state)),
             session.engine.ready(session.state),
             session.player_view().over,
@@ -146,7 +145,9 @@ class GamePage:
             .classes("w-full items-start no-wrap")
             .style(f"max-height: {_SCENE_HEIGHT}; overflow: hidden; gap: 0.75rem")
         ):
-            _scene_art(session)
+            if (art := session.scene_art()) is not None:
+                # `contain` letterboxes a frame drawn at another ratio rather than cropping it.
+                ui.image(art).props("fit=contain").classes("rounded-borders").style(_ART_BOX)
             with (
                 ui.column()
                 .classes("flex-grow")
@@ -358,7 +359,6 @@ class GamePage:
         await self._open()
 
     def _set_composer(self) -> None:
-        """One `player_view()` sets the four widgets; the poll calls it when the turn moved."""
         session = self.session
         player = session.player_view()
         typing = can_type(player, session.phase)
@@ -396,13 +396,6 @@ class GamePage:
 
 def game_page(runtime: Runtime, session: GameService) -> None:
     GamePage(runtime, session).build()
-
-
-def _scene_art(session: GameService) -> None:
-    art = session.scene_art()
-    if art is not None:
-        # `contain` letterboxes a frame drawn at another ratio instead of cropping its subject.
-        ui.image(art).props("fit=contain").classes("rounded-borders").style(_ART_BOX)
 
 
 def _card(fact: Fact, *, live: bool = False) -> None:
@@ -454,8 +447,7 @@ def _inline_status(step: Role, elapsed: float) -> ui.label:
         ui.spinner(size="1.1rem")
         ui.label(label).classes("text-sm font-bold")
         ticker = ui.label(_clock(elapsed)).classes("text-xs font-mono")
-    if description:
-        ui.label(description).classes("text-xs opacity-70")
+    ui.label(description).classes("text-xs opacity-70")
     return ticker
 
 

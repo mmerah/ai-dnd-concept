@@ -28,7 +28,8 @@ class Reader:
     generating: set[str] = field(default_factory=set)
 
     def clip(self, exchange: Exchange) -> Path | None:
-        path = self._path(self._key(exchange))
+        requests = requests_of(exchange, self.voice, self.config.voices)
+        path = self._path(clip_key(self.config.model, requests))
         return path if path.is_file() else None
 
     async def read(self, exchange: Exchange) -> None:
@@ -63,9 +64,6 @@ class Reader:
             LOGGER.exception("speech generation failed")
         finally:
             self.generating.discard(key)
-
-    def _key(self, exchange: Exchange) -> str:
-        return clip_key(self.config.model, requests_of(exchange, self.voice, self.config.voices))
 
     def _path(self, key: str) -> Path:
         return self.saves / f"{key}.wav"

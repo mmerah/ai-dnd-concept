@@ -251,8 +251,10 @@ def _last_said(output: str) -> str | None:
     events = [event for line in output.splitlines() if (event := _object(line)) is not None]
     if len(events) < 2:
         return None
-    # Backwards, because the reasoning and the tool calls carry text of their own and come first.
-    return next((text for event in reversed(events) if (text := _said(event)) is not None), None)
+    # Backwards, because the reasoning and the tool calls carry text of their own and come first;
+    # every event stream we have seen names the message it carries `text`, at some depth.
+    said = (text for event in reversed(events) if isinstance(text := _found(event, "text"), str))
+    return next(said, None)
 
 
 def _object(line: str) -> JsonValue | None:
@@ -262,12 +264,6 @@ def _object(line: str) -> JsonValue | None:
         return _EVENT.validate_json(line)
     except ValidationError:
         return None
-
-
-def _said(node: JsonValue) -> str | None:
-    """Every event stream we have seen names the message it carries `text`, at some depth."""
-    found = _found(node, "text")
-    return found if isinstance(found, str) else None
 
 
 def _string(events: Sequence[JsonValue], name: str) -> str | None:
