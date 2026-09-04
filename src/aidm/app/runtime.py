@@ -101,7 +101,7 @@ class GameService:
 
     async def play(self, answer: Answer, *, moving_on: bool = False) -> None:
         """`moving_on` is the player taking the way on, so `answer` is what they mean to pursue."""
-        brief = self.engine.crossing(answer.text) if moving_on else None
+        brief = self.engine.crossing(self.state, answer.text) if moving_on else None
         if moving_on and brief is None:
             await self.extend(answer)
             return

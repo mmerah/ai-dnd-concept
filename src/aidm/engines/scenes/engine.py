@@ -18,8 +18,16 @@ from aidm.core.model import (
     ScenarioMeta,
     WorldsmithAnswer,
 )
-from aidm.core.play import DecisionOption, Exchange, SceneRecord
-from aidm.core.views import NarratorView, Panel, PlayerView, Sections, lines_of, render_history
+from aidm.core.play import DecisionOption, Exchange, HistoryRecord
+from aidm.core.views import (
+    NarratorView,
+    Panel,
+    PlayerView,
+    Sections,
+    lines_of,
+    render_history,
+    render_whole,
+)
 from aidm.engines.base import (
     Pack,
     Person,
@@ -33,6 +41,7 @@ from aidm.engines.hub import (
     GO_HOME,
     ONE_SHOT_OPENING,
     Campaign,
+    Job,
     check_kind,
     question_heading,
 )
@@ -68,8 +77,8 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             state.payload
         )  # narrowed to the shared scene world; an engine's own subclass reads `draft.payload`
 
-    def crossing(self, pursuit: str) -> str | None:
-        return CROSSING.format(pursuit=pursuit)
+    def crossing(self, state: G, pursuit: str) -> str | None:
+        return CROSSING.format(left=self.world(state).run.title, pursuit=pursuit)
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
         """The create page's table sets, and the first step of every scene engine's creation."""
@@ -101,7 +110,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
     def history(self, state: G) -> tuple[Exchange, ...]:
         return self.world(state).exchanges()
 
-    def scenes(self, state: G) -> tuple[SceneRecord, ...]:
+    def scenes(self, state: G) -> tuple[HistoryRecord, ...]:
         return self.world(state).scenes()
 
     def master_sections(self, state: G) -> Sections:
@@ -116,6 +125,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             ("HERE WITH THE PLAYER", self.here_lines(world)),
             *world.party_rows(),
             ("HIDDEN HERE (the player has not found these)", self.hidden_lines(world)),
+            *((("THE ARC (the player has not found this)", world.arc),) if world.arc else ()),
             *self.glossary(state),
             *(() if world.campaign is None else world.campaign.tail(at_hub=world.at_hub)),
         )
@@ -185,7 +195,9 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
     def hidden_lines(self, world: SceneWorld[C, P]) -> str:
         return lines_of(world.require(entity_id).line() for entity_id in world.hidden())
 
-    def render_next(self, draft: G, intent: str, answer: type[SceneDraft[C]]) -> str:
+    def render_next(
+        self, draft: G, intent: str, answer: type[SceneDraft[C]], *, reopening: Job | None = None
+    ) -> str:
         world = self.world(draft)
         # The worldsmith must know who follows the player out of the scene.
         cast = "\n".join(
@@ -201,21 +213,39 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
                 ),
             )
         )
+        campaign = world.campaign
+        hub_sections: list[tuple[str, str]] = []
+        if campaign is not None:
+            returning = issubclass(answer, ReturnDraft)
+            if returning:
+                hub_sections.append(
+                    ("THIS JOB", render_whole(campaign.job_records(world.records())))
+                )
+            if issubclass(answer, JobDraft) and reopening is not None:
+                hub_sections.append(
+                    (
+                        "THE JOB BEFORE",
+                        render_whole(campaign.records_of(reopening, world.records())),
+                    )
+                )
+            hub_sections.extend(
+                campaign.sections(world.runs[0].title, at_hub=world.at_hub, returning=returning)
+            )
+        hub: Sections = tuple(hub_sections)
+        if world.arc and issubclass(answer, NextDraft):
+            intent += (
+                f"\n\nThe arc as last written: {world.arc}. Rewrite `arc` so it follows what "
+                "happened."
+            )
         return worldsmith_prompt(
             self.worldsmith,
             source=world.source,
             history=render_history(world.scenes()),
             cast=cast,
-            guidance=self.guidance(draft.packs, campaign=world.campaign is not None),
+            guidance=self.guidance(draft.packs, campaign=campaign is not None),
             intent=intent,
             answer=answer,
-            hub=()
-            if world.campaign is None
-            else world.campaign.sections(
-                world.runs[0].title,
-                at_hub=world.at_hub,
-                returning=issubclass(answer, ReturnDraft),
-            ),
+            hub=hub,
         )
 
     def opening_draft(self, kind: ScenarioKind) -> type[SceneDraft[C]]:
@@ -262,10 +292,11 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             opening=run_of(draft, [*present, *hidden]),
             source=source,
             campaign=campaign,
+            arc=draft.arc,
         )
 
     async def write_next(
-        self, draft: G, intent: str, worldsmith: WorldsmithAnswer
+        self, draft: G, intent: str, worldsmith: WorldsmithAnswer, *, reopening: Job | None = None
     ) -> SceneDraft[C]:
         world = self.world(draft)
         returning = world.campaign is not None and not world.at_hub and intent == GO_HOME
@@ -276,12 +307,14 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             if world.at_hub
             else NextDraft[self.cast]
         )
-        prompt = self.render_next(draft, intent, model)
+        prompt = self.render_next(draft, intent, model, reopening=reopening)
         return await worldsmith(prompt, model, lambda answer: scene_refusal(answer, world))
 
-    def install(self, draft: G, scene: SceneDraft[C]) -> list[Fact]:
+    def install(
+        self, draft: G, scene: SceneDraft[C], *, reopening: Job | None = None
+    ) -> list[Fact]:
         world = self.world(draft)
-        world.apply_scene(scene.model_copy(deep=True))
+        world.apply_scene(scene.model_copy(deep=True), reopening=reopening)
         trace = f"the story moves to {scene.title}"
         if travelling := [member.name for member in world.members()]:
             trace += f", the player travelling with {', '.join(travelling)}"
@@ -325,9 +358,12 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
     async def advance(
         self, draft: G, intent: str, worldsmith: WorldsmithAnswer
     ) -> tuple[Fact, ...]:
-        scene = await self.write_next(draft, intent, worldsmith)
+        world = self.world(draft)
+        campaign = world.campaign
+        reopening = campaign.taken(intent) if world.at_hub and campaign is not None else None
+        scene = await self.write_next(draft, intent, worldsmith, reopening=reopening)
         # The engine's own closing reads the scene being left, so it runs before the install.
-        return (*self.leaving(draft), *self.install(draft, scene))
+        return (*self.leaving(draft), *self.install(draft, scene, reopening=reopening))
 
     def panels(self, state: G) -> tuple[Panel, ...]:
         return ()

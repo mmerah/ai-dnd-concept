@@ -146,7 +146,7 @@ class GamePage:
                 ui.label(exchange.prompt).classes("w-full text-center text-xs italic opacity-60")
             else:
                 _bubble(session, player, exchange.prompt, sent=True)
-            for fact in exchange.facts:
+            for fact in cards(exchange.facts):
                 _card(fact)
             for line in exchange.lines:
                 _bubble(session, line.speaker, line.text, sent=False)

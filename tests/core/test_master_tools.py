@@ -55,7 +55,7 @@ class _Watched:
 class _SilentEngine(Loner3eEngine):
     """A Loner engine whose world grows with no crossing to narrate."""
 
-    def crossing(self, pursuit: str) -> None:
+    def crossing(self, state: Loner3eGame, pursuit: str) -> None:
         return None
 
     def ready(self, state: Loner3eGame) -> bool:
@@ -77,6 +77,7 @@ A_CONFLICT: dict[str, JsonValue] = {
     "question": "Does he wrest the ledger out of her hands?",
     "opponent_id": MARA,
 }
+ARC = "Farther in, the chapter house still holds what Mara came for, and has not yet been found."
 A_SCENE = {
     "place": "cloister-walk",
     "title": "The Cloister Walk",
@@ -85,6 +86,7 @@ A_SCENE = {
     "present": ["mara"],
     "hidden": ["tomas"],
     "question": "Can you reach the chapter house before the lantern gives you away?",
+    "arc": ARC,
 }
 RECAP = (
     "The player left the abbot's study behind, lantern shuttered, and made for the cloister "
@@ -370,6 +372,11 @@ async def test_the_players_own_answer_is_the_brief_and_the_crossing_lands_in_tha
     assert len(state.payload.run.exchanges) == 1
     assert "Rain finds you" in state.payload.run.exchanges[-1].narration
     assert "before Tomas hears the door" in table.spawner.prompt("worldsmith")
+    # `prompt` hands back the first match; the crossing's brief is the narrator's last spawn.
+    crossing_prompt = next(
+        text for role, text in reversed(table.spawner.prompts) if role == "narrator"
+    )
+    assert "The player is leaving The Abbot's Study" in crossing_prompt
 
 
 async def test_the_turn_is_filed_before_the_worldsmith_is_asked(tmp_path: Path) -> None:
@@ -464,6 +471,7 @@ async def test_the_worldsmith_is_shown_the_source_the_cast_and_what_actually_hap
     _ = await play_turn(
         table, "I search the study.", narration="A flagstone sits proud of its neighbours."
     )
+    table.state.payload.arc = ARC
     _ = await play_turn(table, "I have what I came for.", the_way_on())
     _ = await play_turn(
         table, "Out into the cloister walk.", arrival="Rain takes the arcade.", moving_on=True
@@ -474,6 +482,7 @@ async def test_the_worldsmith_is_shown_the_source_the_cast_and_what_actually_hap
     assert "Out into the cloister walk." in prompt
     # What the scene was authored as is not what the scene became; the next one follows the second.
     assert "A flagstone sits proud of its neighbours." in prompt
+    assert f"The arc as last written: {ARC}" in prompt
     schema = SceneDraft[Loner3eSheet].model_json_schema()
     assert json.dumps(schema["properties"]["place"]["title"]) not in prompt
 

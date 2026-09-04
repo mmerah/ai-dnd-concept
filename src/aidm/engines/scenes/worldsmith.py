@@ -6,12 +6,12 @@ from aidm.core.entities import EntityId
 from aidm.core.tools import schema_text
 from aidm.core.views import Sections, sections
 from aidm.engines.base import Person, Thing
-from aidm.engines.hub import place_unmet
-from aidm.engines.scenes.drafts import ReturnDraft, SceneDraft
+from aidm.engines.hub import named_unmet, place_unmet
+from aidm.engines.scenes.drafts import HubDraft, ReturnDraft, SceneDraft
 from aidm.engines.scenes.world import SceneWorld, resolved_id
 
 CROSSING = (
-    "The player is leaving WHAT THE PLAYER HAS READ for the place in SCENE. They asked for this: "
+    "The player is leaving {left} for the place in SCENE. They asked for this: "
     '"{pursuit}"\n\n'
     "Write the crossing: a sentence of leaving, then the arrival. Cover the distance and the time "
     "in the fewest words that make it real, and end on what they see first. WHAT HAPPENED names "
@@ -44,6 +44,8 @@ def scene_unmet[C: Person, P: Person](
     followers = () if world is None else (world.player.id, *world.party)
     others = (*draft.present, *draft.hidden)
     unmet: list[str] = []
+    if world is None and not isinstance(draft, HubDraft) and not draft.arc:
+        unmet.append("an `arc`: a few lines on what lies beyond this scene")
     if named := sorted(name for name in others if resolved_id(name, everyone) in followers):
         unmet.append(
             "a scene that does not list the player or the party; "
@@ -80,21 +82,20 @@ def scene_unmet[C: Person, P: Person](
         if eid not in filed and (why := entry.unwritten())
     ]:
         unmet.append(f"cast members as the worldsmith may write them: {broken}")
-    unmet.extend(_hub_unmet(draft, world))
+    unmet.extend(_hub_unmet(draft, world, everyone))
     return unmet
 
 
 def named_in(situation: str, hidden: Iterable[str], cast: Mapping[EntityId, Thing]) -> list[str]:
-    """Multi-word names only: a prop called `Bell` shares its word with any bell tower."""
-    lowered = situation.casefold()
-    found = (
-        cast[entity_id] for wanted in hidden if (entity_id := resolved_id(wanted, cast)) is not None
+    """The hidden list arrives as free text, so each entry is resolved before the leak rule runs."""
+    return named_unmet(
+        situation,
+        (
+            cast[entity_id]
+            for wanted in hidden
+            if (entity_id := resolved_id(wanted, cast)) is not None
+        ),
     )
-    return [
-        entity.name
-        for entity in found
-        if " " in entity.name.strip() and entity.name.casefold() in lowered
-    ]
 
 
 def worldsmith_prompt(
@@ -146,16 +147,29 @@ def _cast_unmet[C: Person](
 
 
 def _hub_unmet[C: Person, P: Person](
-    draft: SceneDraft[C], world: SceneWorld[C, P] | None
+    draft: SceneDraft[C], world: SceneWorld[C, P] | None, everyone: Mapping[EntityId, Thing]
 ) -> list[str]:
-    """A debrief means a return: it is home, and it is read to the player."""
+    """A return is read by the player: no field names what they have not met. `situation` against
+    the draft's own `hidden` is `_cast_unmet`'s. Untold fact traces are not checked: prose cannot
+    be matched to a trace, so that half of the caution's second guard is the two-spawn fallback."""
     hub = None if world is None or world.campaign is None else world.campaign.place
-    debrief = draft.debrief if isinstance(draft, ReturnDraft) else None
     unmet: list[str] = []
-    if (misplaced := place_unmet(draft.place, hub, returning=debrief is not None)) is not None:
+    if (
+        misplaced := place_unmet(draft.place, hub, returning=isinstance(draft, ReturnDraft))
+    ) is not None:
         unmet.append(misplaced)
-    if debrief is not None and world is not None:
-        strangers = [eid for eid, entry in world.cast.items() if not entry.known]
-        if named := sorted(named_in(debrief, strangers, world.cast)):
-            unmet.append(f"a debrief that does not name what the player has not met: {named}")
+    if isinstance(draft, ReturnDraft) and world is not None:
+        unmet_world = {eid: entry for eid, entry in world.cast.items() if not entry.known}
+        unmet_hidden = {
+            entity_id: everyone[entity_id]
+            for name in draft.hidden
+            if (entity_id := resolved_id(name, everyone)) is not None
+        }
+        for field, text, candidates in (
+            ("debrief", draft.debrief, {**unmet_world, **unmet_hidden}.values()),
+            ("situation", draft.situation, unmet_world.values()),
+            ("question", draft.question, {**unmet_world, **unmet_hidden}.values()),
+        ):
+            if named := sorted(named_unmet(text, candidates)):
+                unmet.append(f"a {field} that does not name what the player has not met: {named}")
     return unmet

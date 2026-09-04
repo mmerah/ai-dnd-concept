@@ -13,10 +13,10 @@ from aidm.core.entities import (
     require_unique,
 )
 from aidm.core.facts import Fact
-from aidm.core.play import Exchange, SceneRecord
+from aidm.core.play import Exchange, HistoryRecord, SceneRecord
 from aidm.core.views import Panel, PanelRow, Sections
 from aidm.engines.base import Person, Thing, check_filing, sentence
-from aidm.engines.hub import HOME_ROW, HUB_ROW, JOB_DONE, Campaign, Job
+from aidm.engines.hub import HOME_ROW, HUB_ROW, JOB_DONE, Attempt, Campaign, Job
 from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft, SceneDraft
 
 SCENE_SETTLED = Fact(
@@ -60,6 +60,7 @@ class SceneCanon[C: Person](Mutable):
     opening: SceneRun
     source: str = ""
     campaign: Campaign | None = None
+    arc: str = ""
 
     @model_validator(mode="after")
     def _playable_canon(self) -> Self:
@@ -85,16 +86,17 @@ class SceneWorld[C: Person, P: Person](Mutable):
     cast: dict[EntityId, C] = Field(default_factory=dict)
     player: P
     party: list[EntityId] = Field(default_factory=list)
+    arc: str = ""
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
         if (campaign := self.campaign) is not None:
-            campaign.check_walked(len(self.runs))
+            campaign.check_spans([run.place for run in self.runs])
             if self.runs[0].place != campaign.place:
                 raise Refusal(f"run 0 does not open at hub {campaign.place!r}")
-            # Every hub run after the first is a return, and a return closes exactly one job.
+            # Every hub run after the first is a return, and a return closes exactly one attempt.
             returns = sum(run.place == campaign.place for run in self.runs[1:])
-            if returns != len(campaign.closed_jobs()):
+            if returns != campaign.returns():
                 raise Refusal("hub runs after the first and closed jobs disagree")
         check_filing(self.cast)
         check_named(self.run.here, self.cast)
@@ -126,6 +128,7 @@ class SceneWorld[C: Person, P: Person](Mutable):
             runs=[canon.opening],
             source=canon.source,
             campaign=canon.campaign,
+            arc=canon.arc,
         )
 
     @property
@@ -148,7 +151,7 @@ class SceneWorld[C: Person, P: Person](Mutable):
     def exchanges(self) -> tuple[Exchange, ...]:
         return tuple(exchange for run in self.runs for exchange in run.exchanges)
 
-    def scenes(self) -> tuple[SceneRecord, ...]:
+    def records(self) -> tuple[SceneRecord, ...]:
         return tuple(
             SceneRecord(
                 title=run.title,
@@ -156,8 +159,12 @@ class SceneWorld[C: Person, P: Person](Mutable):
                 recap=run.recap,
                 exchanges=tuple(run.exchanges),
             )
-            for run in self.job_runs()
+            for run in self.runs
         )
+
+    def scenes(self) -> tuple[HistoryRecord, ...]:
+        records = self.records()
+        return records if self.campaign is None else self.campaign.history(records)
 
     def last_seen(self, entity_id: EntityId) -> str:
         """The prompt's own line; scanning back keeps what the story dropped from being lost."""
@@ -289,33 +296,38 @@ class SceneWorld[C: Person, P: Person](Mutable):
             },
         }
 
-    def apply_scene(self, draft: SceneDraft[C]) -> None:
+    def apply_scene(self, draft: SceneDraft[C], *, reopening: Job | None = None) -> None:
         self.cast = self.merged_cast(draft)
         everyone: Mapping[EntityId, Thing] = {self.player.id: self.player, **self.cast}
         present = resolve_ids(draft.present, everyone, "present")
         hidden = resolve_ids(draft.hidden, everyone, "hidden")
         for entity_id in present:
             self.cast[entity_id].known = True
-        if isinstance(draft, NextDraft):
+        if isinstance(draft, NextDraft | ReturnDraft):
             self.run.recap = draft.recap
+        self.arc = draft.arc
         if isinstance(draft, JobDraft | ReturnDraft):
             campaign = self.campaign
             if campaign is None:
                 raise Refusal("a one-shot has no hub to take a job from or return to")
             if isinstance(draft, JobDraft):
-                campaign.jobs.append(
-                    Job(
-                        title=draft.title,
-                        place=draft.place,
-                        terms=draft.job,
-                        started=len(self.runs),
+                if reopening is not None:
+                    campaign.reopen(reopening, started=len(self.runs))
+                    reopening.terms = draft.job
+                else:
+                    campaign.jobs.append(
+                        Job(
+                            title=draft.title,
+                            place=draft.place,
+                            terms=draft.job,
+                            attempts=[Attempt(started=len(self.runs))],
+                        )
                     )
-                )
             else:
                 job = campaign.open_job()
                 if job is None:
                     raise Refusal("no job is open to close")
-                job.debrief = draft.debrief
+                job.close(returned=len(self.runs), debrief=draft.debrief, summary=draft.summary)
                 campaign.board = draft.offers
         self.runs.append(run_of(draft, [*self.party, *present, *hidden]))
 

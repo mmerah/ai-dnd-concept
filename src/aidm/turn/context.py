@@ -4,7 +4,7 @@ from pathlib import Path
 
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyGame
-from aidm.core.play import Narration, PendingDecision, SceneRecord
+from aidm.core.play import HistoryRecord, Narration, PendingDecision
 from aidm.core.tools import schema_text
 from aidm.core.views import NarratorView, lines_of, render_history, sections, told_narration
 
@@ -20,7 +20,7 @@ def render_master(
     instructions: str,
     engine_sections: Sequence[tuple[str, str]],
     state: AnyGame,
-    scenes: Sequence[SceneRecord],
+    scenes: Sequence[HistoryRecord],
     action: str,
     *,
     notes: Sequence[str] = (),
@@ -41,7 +41,7 @@ def render_master(
 
 
 def render_narrator(
-    view: NarratorView, *, evidence: str, prompt: str, scenes: Sequence[SceneRecord]
+    view: NarratorView, *, evidence: str, prompt: str, scenes: Sequence[HistoryRecord]
 ) -> str:
     """Only the narrator view reaches this, so hidden canon has no path into the prose."""
     return sections(

@@ -16,8 +16,20 @@ def _draft(**fields: object) -> SceneDraft[Loner3eSheet]:
         "title": "Deeper In",
         "question": "Can Kael get further into the cairn before dawn?",
         "situation": HUB_SITUATION,
+        "arc": "Farther in, the cairn's own keeper is still owed for the last seal.",
     }
     return SceneDraft[Loner3eSheet].model_validate({**base, **fields})
+
+
+RECAP = (
+    "Kael broke the cairn's seal, weighed what waited inside, and carried it back up into the "
+    "evening air."
+)
+SUMMARY = (
+    "Kael went down into the sealed cairn for Orsa, broke its seal, and found the relic whole; "
+    "he carried it back to the guild hall and the job is done, though a passage found beneath "
+    "the cairn still waits unspoken."
+)
 
 
 def _return_draft(*, offers: int = 2) -> ReturnDraft[Loner3eSheet]:
@@ -33,6 +45,8 @@ def _return_draft(*, offers: int = 2) -> ReturnDraft[Loner3eSheet]:
                 for number in range(1, offers + 1)
             ],
             "debrief": "The cairn is sealed again and the relic is recovered.",
+            "recap": RECAP,
+            "summary": SUMMARY,
         }
     )
 
@@ -45,6 +59,52 @@ def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> Non
     assert scene_refusal(draft, world) == (
         "the scene needs a debrief that does not name what the player has not met: "
         "['Old Man Riley']"
+    )
+
+
+def test_only_the_players_own_fields_are_checked_for_what_they_have_not_met() -> None:
+    """`summary` is the game master's memory; `situation`, `debrief` and `question` are the
+    player's, and none of them may hand the player what they have not found."""
+    world = hub_world().payload
+    stranger = EntityId("stranger")
+    world.cast[stranger] = Loner3eSheet(id=stranger, name="Old Man Riley", brief="", known=False)
+
+    named_in_summary = _return_draft().model_copy(
+        update={
+            "summary": "Old Man Riley wintered alone by the cairn's mouth while Kael broke the "
+            "seal below; the relic came up whole and the guild's ledger closes clean, though a "
+            "passage found beneath the cairn still waits unspoken."
+        }
+    )
+    assert scene_refusal(named_in_summary, world) is None
+
+    named_in_situation = _return_draft().model_copy(
+        update={"situation": f"{HUB_SITUATION} Old Man Riley watches from the doorway."}
+    )
+    assert scene_refusal(named_in_situation, world) == (
+        "the scene needs a situation that does not name what the player has not met: "
+        "['Old Man Riley']"
+    )
+
+    ided_in_debrief = _return_draft().model_copy(
+        update={"debrief": f"The cairn is sealed again; {stranger} saw them off."}
+    )
+    assert scene_refusal(ided_in_debrief, world) == (
+        "the scene needs a debrief that does not name what the player has not met: "
+        "['Old Man Riley']"
+    )
+
+    hidden = EntityId("buried-chest")
+    named_hidden_id_in_question = _return_draft().model_copy(
+        update={
+            "question": f"What does Kael do about {hidden}, now the job is behind him?",
+            "hidden": (hidden,),
+            "cast": {hidden: Loner3eSheet(id=hidden, name="A Buried Chest", brief="", known=False)},
+        }
+    )
+    assert scene_refusal(named_hidden_id_in_question, world) == (
+        "the scene needs a question that does not name what the player has not met: "
+        "['A Buried Chest']"
     )
 
 

@@ -17,6 +17,7 @@ def _draft(**fields: object) -> SceneDraft[Person]:
         "title": "The Alley",
         "question": "Can they lose the mob in the alley?",
         "situation": SITUATION,
+        "arc": "Farther on, the mob's own paymaster still doesn't know Jax's face.",
     }
     return SceneDraft[Person].model_validate({**base, **fields})
 
@@ -100,6 +101,16 @@ def test_render_worldsmith_lists_the_player_first() -> None:
     assert prompt.index("Jax[player]") < prompt.index("Mira[mira]")
 
 
+RECAP = (
+    "Jax cleared the pharmacy shelf by shelf, weighed what could be carried, and slipped back "
+    "out before the block woke."
+)
+SUMMARY = (
+    "Jax hit the pharmacy for the supplies the camp needed, cleared it room by room, and the "
+    "run is done; a locked back room they never opened still waits unspoken."
+)
+
+
 def _return_draft(*, offers: int = 2) -> ReturnDraft[Person]:
     return ReturnDraft[Person].model_validate(
         {
@@ -113,6 +124,8 @@ def _return_draft(*, offers: int = 2) -> ReturnDraft[Person]:
                 for number in range(1, offers + 1)
             ],
             "debrief": "The pharmacy is cleared and the supplies are back.",
+            "recap": RECAP,
+            "summary": SUMMARY,
         }
     )
 
@@ -125,6 +138,52 @@ def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> Non
     assert scene_refusal(draft, world) == (
         "the scene needs a debrief that does not name what the player has not met: "
         "['Old Man Riley']"
+    )
+
+
+def test_only_the_players_own_fields_are_checked_for_what_they_have_not_met() -> None:
+    """`summary` is the game master's memory; `situation`, `debrief` and `question` are the
+    player's, and none of them may hand the player what they have not found."""
+    world = hub_world().payload
+    stranger = EntityId("stranger")
+    world.cast[stranger] = Person(id=stranger, name="Old Man Riley", brief="", known=False)
+
+    named_in_summary = _return_draft().model_copy(
+        update={
+            "summary": "Old Man Riley wintered alone behind the pharmacy while Jax cleared the "
+            "shelves; the supplies came back whole and the camp is fed, though a locked back "
+            "room still waits unspoken."
+        }
+    )
+    assert scene_refusal(named_in_summary, world) is None
+
+    named_in_situation = _return_draft().model_copy(
+        update={"situation": f"{HUB_SITUATION} Old Man Riley watches from the doorway."}
+    )
+    assert scene_refusal(named_in_situation, world) == (
+        "the scene needs a situation that does not name what the player has not met: "
+        "['Old Man Riley']"
+    )
+
+    ided_in_debrief = _return_draft().model_copy(
+        update={"debrief": f"The pharmacy is cleared; {stranger} saw them off."}
+    )
+    assert scene_refusal(ided_in_debrief, world) == (
+        "the scene needs a debrief that does not name what the player has not met: "
+        "['Old Man Riley']"
+    )
+
+    hidden = EntityId("buried-chest")
+    named_hidden_id_in_question = _return_draft().model_copy(
+        update={
+            "question": f"What does Jax do about {hidden}, now the run is behind them?",
+            "hidden": (hidden,),
+            "cast": {hidden: Person(id=hidden, name="A Buried Chest", brief="", known=False)},
+        }
+    )
+    assert scene_refusal(named_hidden_id_in_question, world) == (
+        "the scene needs a question that does not name what the player has not met: "
+        "['A Buried Chest']"
     )
 
 

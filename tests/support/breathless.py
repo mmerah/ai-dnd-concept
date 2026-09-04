@@ -11,7 +11,7 @@ from aidm.engines.breathless.world import (
     Skill,
     Survivor,
 )
-from aidm.engines.hub import Campaign, Job, Offer
+from aidm.engines.hub import Attempt, Campaign, Job, Offer
 from aidm.engines.scenes.world import SceneRun
 
 MIRA = EntityId("mira")
@@ -78,7 +78,14 @@ def hub_world() -> BreathlessGame:
                 Offer(title="Job One", pitch="I take job one."),
                 Offer(title="Job Two", pitch="I take job two."),
             ),
-            jobs=[Job(title="The Pharmacy Run", place=JOB_PLACE, terms=JOB, started=1)],
+            jobs=[
+                Job(
+                    title="The Pharmacy Run",
+                    place=JOB_PLACE,
+                    terms=JOB,
+                    attempts=[Attempt(started=1)],
+                )
+            ],
         ),
     )
     return BreathlessGame(

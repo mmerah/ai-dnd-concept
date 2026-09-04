@@ -69,6 +69,7 @@ def _next_scene(
         situation=SITUATION,
         present=present,
         hidden=hidden,
+        arc="Farther along, the stair still leads down to what Tomas would not speak of.",
     )
 
 
@@ -139,6 +140,7 @@ def test_the_scene_bar_names_what_a_thin_scene_is_missing() -> None:
         title="Nowhere",
         question="Is there anything here at all?",
         situation="x" * MIN_SITUATION,
+        arc="",
     )
     assert scene_refusal(thin, state.payload) == (
         "the scene needs at least one cast member besides the player; "

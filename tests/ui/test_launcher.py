@@ -222,6 +222,8 @@ _OPENING: dict[str, JsonValue] = {
     "and something down there still rings the hour.",
     "present": ["hana"],
     "hidden": ["bell-rope"],
+    "arc": "Farther down, the bell tower's keeper is still owed for the crossing, and has not "
+    "yet been met.",
     "cast": {
         "hana": {
             "id": "hana",

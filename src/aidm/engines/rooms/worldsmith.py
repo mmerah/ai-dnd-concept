@@ -1,6 +1,7 @@
-from aidm.engines.hub import OFFER_ASK
-from aidm.engines.rooms.drafts import MapDraft
-from aidm.engines.rooms.world import Dungeon, Dweller
+from aidm.engines.base import Person
+from aidm.engines.hub import OFFER_ASK, named_unmet
+from aidm.engines.rooms.drafts import MapDraft, ReturnDraft
+from aidm.engines.rooms.world import Dungeon, Dweller, RoomWorld
 
 MIN_PLACES = 4
 MIN_EXTENSION_PLACES = 2
@@ -13,8 +14,9 @@ JOB_BRIEF = (
     "they take: an offer by its title, whose pitch THE BOARD holds, or their own words. Write the "
     "job as a whole new region joining the map at {place}: a complete dungeon by the opening "
     "map's bar, its start known and named after the offer, since the ledger lists the job by that "
-    "name. Old dungeons stay on the map, so write only new ids; a job left open and taken again "
-    "gets the part not yet walked."
+    'name. Old dungeons stay on the map, so write only new ids. An offer marked "(left open)" '
+    "is a job taken before: name the start of the new region exactly as the offer; it joins the "
+    "map at that job's own start, not the tavern, and holds only the part not yet walked."
 )
 
 
@@ -36,6 +38,33 @@ def job_refusal[N: Dweller](draft: MapDraft[N], world: Dungeon[N]) -> str | None
 def extension_refusal[N: Dweller](draft: MapDraft[N], world: Dungeon[N]) -> str | None:
     unmet = _extension_unmet(draft) + _overlap_unmet(draft, world) + _board_unmet(draft)
     return None if not unmet else "the extension needs " + "; ".join(unmet)
+
+
+def return_refusal[N: Dweller, P: Person](draft: ReturnDraft, world: RoomWorld[N, P]) -> str | None:
+    unmet = _recaps_unmet(draft, world) + _debrief_unmet(draft, world)
+    return None if not unmet else "the return needs " + "; ".join(unmet)
+
+
+def _recaps_unmet[N: Dweller, P: Person](draft: ReturnDraft, world: RoomWorld[N, P]) -> list[str]:
+    job = world.walked_job()
+    if job is None:
+        return []
+    walked = set(world.walked_places(job))
+    given = set(draft.recaps)
+    unmet: list[str] = []
+    if missing := sorted(walked - given):
+        unmet.append(f"a recap for each place walked, missing: {missing}")
+    if extra := sorted(given - walked):
+        unmet.append(f"recaps only for places walked, not: {extra}")
+    return unmet
+
+
+def _debrief_unmet[N: Dweller, P: Person](draft: ReturnDraft, world: RoomWorld[N, P]) -> list[str]:
+    hidden = [
+        entity for entity in (*world.npcs.values(), *world.items.values()) if not entity.known
+    ]
+    found = sorted(named_unmet(draft.debrief, hidden))
+    return [f"the debrief silent about unmet npcs and items: {found}"] if found else []
 
 
 def _map_unmet[N: Dweller](draft: MapDraft[N]) -> list[str]:

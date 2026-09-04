@@ -6,7 +6,7 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Mutable, Refusal, require_unique
 from aidm.core.facts import Fact
-from aidm.core.play import Exchange, SceneRecord
+from aidm.core.play import Exchange, HistoryRecord, SceneRecord
 from aidm.core.views import Rows, lines_of
 from aidm.engines.base import PLAYER_ID, Person, Thing, check_filing
 from aidm.engines.hub import Campaign, Job
@@ -37,6 +37,7 @@ class Way(Mutable):
 class Visit(Mutable):
     place: CheckedEntityId
     exchanges: list[Exchange] = Field(default_factory=list)
+    recap: str = ""
 
 
 class Dungeon[N: Dweller](Mutable):
@@ -161,7 +162,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N]):
             self.require_place(visit.place)
         if (campaign := self.campaign) is not None:
             self.require_place(EntityId(campaign.place))
-            campaign.check_walked(len(self.visits))
+            campaign.check_spans([visit.place for visit in self.visits])
             if self.visits[0].place != campaign.place:
                 raise Refusal(f"visit 0 does not open at hub {campaign.place!r}")
         return self
@@ -196,10 +197,19 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N]):
     def walked_job(self) -> Job | None:
         """The open job once walked; one taken at the tavern but not walked can still be swapped."""
         job = None if self.campaign is None else self.campaign.open_job()
-        return job if job is not None and job.started is not None else None
+        return job if job is not None and job.walking else None
 
     def job_visits(self) -> list[Visit]:
         return self.visits if self.campaign is None else self.campaign.since_start(self.visits)
+
+    def walked_places(self, job: Job) -> tuple[EntityId, ...]:
+        """The distinct places the walking attempt has crossed; the current tavern visit is not
+        walked."""
+        seen: list[EntityId] = []
+        for visit in self.visits[job.start() : len(self.visits) - 1]:
+            if visit.place not in seen:
+                seen.append(visit.place)
+        return tuple(seen)
 
     def entity(self, entity_id: EntityId) -> Person | Item | Place | None:
         return self.player if entity_id == self.player.id else super().entity(entity_id)
@@ -267,8 +277,8 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N]):
         self.visits.append(Visit(place=destination.id))
         if (campaign := self.campaign) is not None and destination.id != campaign.place:
             job = campaign.open_job()
-            if job is not None and job.started is None:
-                job.started = len(self.visits) - 1
+            if job is not None and not job.walking:
+                job.walk(len(self.visits) - 1)
         trace = f"the player arrives at {destination.label}"
         if coming:
             names = " and ".join(npc.name for npc in coming)
@@ -346,9 +356,11 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N]):
         facts.append(actor.fact("actor_killed", f"{actor.label} is dead", card=card))
         return facts
 
-    def attach(self, region: Dungeon[N], start: EntityId, *, known: bool) -> None:
+    def attach(
+        self, region: Dungeon[N], start: EntityId, *, known: bool, anchor: EntityId | None = None
+    ) -> None:
         """No bar runs here: every caller refuses first, so a refused region leaves it alone."""
-        anchor_id = self.current.id
+        anchor_id = self.current.id if anchor is None else anchor
         self.places.update(region.places)
         # Copied: the anchor ways appended below must not land in the draft's own lists.
         self.ways.update({key: [*ways] for key, ways in region.ways.items()})
@@ -394,16 +406,23 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N]):
     def exchanges(self) -> tuple[Exchange, ...]:
         return tuple(exchange for visit in self.visits for exchange in visit.exchanges)
 
-    def scenes(self) -> tuple[SceneRecord, ...]:
+    def records(self) -> tuple[SceneRecord, ...]:
         records: list[SceneRecord] = []
-        for visit in self.job_visits():
+        for visit in self.visits:
             place = self.require_place(visit.place)
             records.append(
                 SceneRecord(
-                    title=place.name, question=place.brief, exchanges=tuple(visit.exchanges)
+                    title=place.name,
+                    question=place.brief,
+                    recap=visit.recap,
+                    exchanges=tuple(visit.exchanges),
                 )
             )
         return tuple(records)
+
+    def scenes(self) -> tuple[HistoryRecord, ...]:
+        records = self.records()
+        return records if self.campaign is None else self.campaign.history(records)
 
 
 def _walk(ways: dict[EntityId, list[Way]], start: EntityId) -> set[EntityId]:

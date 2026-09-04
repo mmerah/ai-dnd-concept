@@ -16,7 +16,7 @@ from aidm.core.model import (
     ScenarioMeta,
     WorldsmithAnswer,
 )
-from aidm.core.play import Exchange, SceneRecord
+from aidm.core.play import Exchange, HistoryRecord
 from aidm.core.tools import schema_text
 from aidm.core.views import (
     NarratorView,
@@ -26,13 +26,14 @@ from aidm.core.views import (
     Sections,
     lines_of,
     render_history,
+    render_whole,
     sections,
 )
 from aidm.engines.base import Person, character_panel, here_panel, trail_panel
-from aidm.engines.hub import RETURN_BRIEF, Campaign, Job, check_kind
+from aidm.engines.hub import RETURN_BRIEF, Attempt, Campaign, Job, check_kind
 from aidm.engines.rooms.drafts import MapDraft, ReturnDraft
 from aidm.engines.rooms.tools import Kill, Move, MoveItem, Reveal, SharedChange, UnlockWay
-from aidm.engines.rooms.world import Dweller, Item, Place, RoomCanon, RoomWorld
+from aidm.engines.rooms.world import Dweller, Item, Place, RoomCanon, RoomWorld, Visit
 from aidm.engines.rooms.worldsmith import (
     JOB_BRIEF,
     TAVERN_ASK,
@@ -40,6 +41,7 @@ from aidm.engines.rooms.worldsmith import (
     hub_refusal,
     job_refusal,
     map_refusal,
+    return_refusal,
 )
 from aidm.engines.seam import Engine
 
@@ -98,7 +100,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
     def history(self, state: G) -> tuple[Exchange, ...]:
         return self.world(state).exchanges()
 
-    def scenes(self, state: G) -> tuple[SceneRecord, ...]:
+    def scenes(self, state: G) -> tuple[HistoryRecord, ...]:
         return self.world(state).scenes()
 
     def master_sections(self, state: G) -> Sections:
@@ -206,9 +208,12 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
     async def advance(
         self, draft: G, intent: str, worldsmith: WorldsmithAnswer
     ) -> tuple[Fact, ...]:
-        return tuple(
-            self.install_extension(draft, await self.write_extension(draft, intent, worldsmith))
+        world = self.world(draft)
+        reopening = (
+            world.campaign.taken(intent) if world.campaign is not None and world.at_hub else None
         )
+        extension = await self.write_extension(draft, intent, worldsmith, reopening=reopening)
+        return tuple(self.install_extension(draft, extension, reopening=reopening))
 
     def shared_change(self, world: RoomWorld[N, P], change: SharedChange) -> list[Fact]:
         match change:
@@ -244,6 +249,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
                 ("YOUR ROLE", self.worldsmith),
                 ("SOURCE MATERIAL", world.source or "(none — write from the setting)"),
                 ("MAP SO FAR", self.map_so_far(world)),
+                ("SCENES SO FAR", render_history(world.scenes())),
                 *hub,
                 ("THE PLAYER", world.line(world.player)),
                 ("WHAT THE PLAYER WANTS TO PURSUE", intent),
@@ -252,16 +258,20 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
             )
         )
 
-    def render_job(self, world: RoomWorld[N, P], campaign: Campaign, intent: str) -> str:
-        return self.render_extension(
-            world,
-            intent,
-            (
-                ("JOBS SO FAR", campaign.ledger()),
-                ("THE BOARD", campaign.board_lines()),
-                ("THE HUB", JOB_BRIEF.format(title=world.current.name, place=campaign.place)),
-            ),
+    def render_job(
+        self, world: RoomWorld[N, P], campaign: Campaign, intent: str, reopening: Job | None
+    ) -> str:
+        hub: Sections = (
+            ("JOBS SO FAR", campaign.ledger()),
+            ("THE BOARD", campaign.board_lines()),
+            ("THE HUB", JOB_BRIEF.format(title=world.current.name, place=campaign.place)),
         )
+        if reopening is not None:
+            hub = (
+                *hub,
+                ("THE JOB BEFORE", render_whole(campaign.records_of(reopening, world.records()))),
+            )
+        return self.render_extension(world, intent, hub)
 
     def render_return(self, world: RoomWorld[N, P], campaign: Campaign) -> str:
         return sections(
@@ -269,8 +279,9 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
                 ("YOUR ROLE", self.worldsmith),
                 ("SOURCE MATERIAL", world.source or "(none — write from the setting)"),
                 ("MAP SO FAR", self.map_so_far(world)),
+                ("SCENES SO FAR", render_history(world.scenes())),
                 ("JOBS SO FAR", campaign.ledger()),
-                ("THIS JOB", render_history(world.scenes())),
+                ("THIS JOB", render_whole(campaign.job_records(world.records()))),
                 ("THE BOARD", campaign.board_lines()),
                 ("THE VERDICT", "finished" if campaign.finished else "left open"),
                 ("THE PLAYER", world.line(world.player)),
@@ -300,7 +311,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
         return "\n".join(lines)
 
     async def write_extension(
-        self, draft: G, intent: str, worldsmith: WorldsmithAnswer
+        self, draft: G, intent: str, worldsmith: WorldsmithAnswer, *, reopening: Job | None = None
     ) -> MapDraft[N] | ReturnDraft:
         world = self.world(draft)
         campaign = world.campaign
@@ -310,10 +321,12 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
                 if walked is None:
                     raise Refusal("no job is open to report")
                 prompt = self.render_return(world, campaign)
-                return await worldsmith(prompt, ReturnDraft, lambda _written: None)
+                return await worldsmith(
+                    prompt, ReturnDraft, lambda answer: return_refusal(answer, world)
+                )
             if walked is not None:
                 raise Refusal("report the open job first")
-            prompt = self.render_job(world, campaign, intent)
+            prompt = self.render_job(world, campaign, intent, reopening)
             return await worldsmith(
                 prompt, self.map_draft(), lambda answer: job_refusal(answer, world)
             )
@@ -322,33 +335,49 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
             prompt, self.map_draft(), lambda answer: extension_refusal(answer, world)
         )
 
-    def install_extension(self, draft: G, extension: MapDraft[N] | ReturnDraft) -> list[Fact]:
+    def install_extension(
+        self, draft: G, extension: MapDraft[N] | ReturnDraft, *, reopening: Job | None = None
+    ) -> list[Fact]:
         world = self.world(draft)
         campaign = world.campaign
         if isinstance(extension, ReturnDraft):
             job = world.walked_job()
             if campaign is None or job is None:
                 raise Refusal("no job is open to report")
-            job.debrief = extension.debrief
+            started, end = job.start(), len(world.visits) - 1
+            job.close(returned=end, debrief=extension.debrief, summary=extension.summary)
+            last: dict[EntityId, Visit] = {}
+            for visit in world.visits[started:end]:
+                last[visit.place] = visit
+            for place, visit in last.items():
+                visit.recap = extension.recaps[place]
             campaign.board = extension.offers
             return [job.closed()]
         if campaign is not None and world.at_hub:
             if (refused := job_refusal(extension, world)) is not None:
                 raise Refusal(refused)
-            tavern = world.current
-            world.attach(extension, extension.start, known=True)
             start = extension.places[extension.start]
-            if (job := campaign.open_job()) is not None and job.started is None:
-                campaign.jobs.pop()
-            campaign.jobs.append(Job(title=start.name, place=extension.start))
-            trace = f"a way opens from {tavern.name} to {start.name}"
+            if (open_job := campaign.open_job()) is not None and not open_job.walking:
+                campaign.swap_out()
+            if reopening is not None:
+                anchor = EntityId(reopening.place)
+                anchor_name = world.require_place(anchor).name
+                campaign.reopen(reopening, started=None)
+                world.attach(extension, extension.start, known=True, anchor=anchor)
+            else:
+                anchor_name = world.current.name
+                world.attach(extension, extension.start, known=True)
+                campaign.jobs.append(
+                    Job(title=start.name, place=extension.start, attempts=[Attempt()])
+                )
+            trace = f"a way opens from {anchor_name} to {start.name}"
             card = f"A way opens: {start.name}"
             return [Fact(kind="job_taken", told=True, trace=trace, card=card)]
         if (refused := extension_refusal(extension, world)) is not None:
             raise Refusal(refused)
-        anchor = world.current.name
+        anchor_name = world.current.name
         world.attach(extension, extension.start, known=False)
-        trace = f"a hidden region opens beyond {anchor}"
+        trace = f"a hidden region opens beyond {anchor_name}"
         return [Fact(kind="region_added", trace=trace, told=False)]
 
     def build_scenario(
