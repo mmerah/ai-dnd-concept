@@ -18,11 +18,12 @@ from support.twentyfourxx import (
 from aidm.core.entities import EngineId, EntityId, Refusal
 from aidm.core.facts import Fact
 from aidm.core.model import AnyScenario, ScenarioMeta, WorldsmithAnswer
+from aidm.core.play import Commission
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.hub import GO_HOME, TAKE_JOB
-from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft, SceneDraft
+from aidm.engines.scenes.drafts import CastDraft, JobDraft, NextDraft, ReturnDraft, SceneDraft
 from aidm.engines.scenes.world import SceneRun
-from aidm.engines.scenes.worldsmith import scene_refusal
+from aidm.engines.scenes.worldsmith import COMMISSION_ASK, cast_refusal, scene_refusal
 from aidm.engines.twentyfourxx.engine import BOARD_GUIDANCE, TwentyfourxxEngine
 from aidm.engines.twentyfourxx.world import TwentyfourxxGame
 
@@ -548,3 +549,73 @@ def test_install_scene_on_a_hub_draft_lands_a_home_card() -> None:
     game = hub_world()
     facts = ENGINE.install(game, _return_draft())
     assert any(fact.card.startswith("Home: Back at the Amber Tap") for fact in facts)
+
+
+def test_cast_refusal_refuses_a_new_entry_marked_known() -> None:
+    world = small_world().payload
+    stranger = EntityId("stranger")
+    draft = CastDraft[Person](
+        cast={
+            stranger: Person(
+                id=stranger, name="A Stranger", brief="unknown to the world", known=True
+            )
+        }
+    )
+    assert "unmet" in (cast_refusal(draft, world) or "")
+
+
+def test_cast_refusal_accepts_a_re_filed_known_id() -> None:
+    world = small_world().payload
+    draft = CastDraft[Person](
+        cast={KESTREL: Person(id=KESTREL, name="Kestrel", brief="rewritten", known=True)}
+    )
+    assert cast_refusal(draft, world) is None
+
+
+def test_install_cast_files_the_entry_unmet_and_drops_the_commission() -> None:
+    game = small_world()
+    stranger = EntityId("stranger")
+    asked = Commission(kind="person", brief="A witness who saw the theft happen.")
+    game.commissions.append(asked)
+    written = CastDraft[Person](
+        cast={stranger: Person(id=stranger, name="A Stranger", brief="Saw the theft happen.")}
+    )
+
+    facts = ENGINE.install_cast(game, asked, written)
+
+    assert game.payload.cast[stranger].known is False
+    assert game.commissions == []
+    assert facts[0].kind == "commissioned"
+
+
+def test_a_later_commission_is_refused_until_written_then_cleared_by_install() -> None:
+    world = small_world().payload
+    later = [Commission(kind="person", brief="A witness who saw the theft happen.", later=True)]
+
+    assert scene_refusal(_draft(present=("kestrel",)), world, later) == (
+        "the scene needs 1 asked for, 0 written: one new cast entry per commission"
+    )
+
+    stranger = EntityId("stranger")
+    written_draft = _draft(
+        present=("kestrel", "stranger"),
+        cast={stranger: Person(id=stranger, name="A Stranger", brief="A witness.")},
+    )
+    assert scene_refusal(written_draft, world, later) is None
+
+    game = small_world()
+    game.commissions.append(later[0])
+    ENGINE.install(game, written_draft)
+    assert game.commissions == []
+
+
+def test_render_commission_carries_the_arc_line_and_no_asked_for_section() -> None:
+    game = hub_world()
+    game.payload.arc = "Farther in, the fixer's own supplier still owes for the last load."
+    asked = Commission(kind="person", brief="A witness who saw the theft happen.")
+
+    prompt = ENGINE.render_commission(game, asked)
+
+    assert "The arc as last written" in prompt
+    assert "THE GAME MASTER ASKED FOR:\n" not in prompt
+    assert COMMISSION_ASK.format(kind=asked.kind, brief=asked.brief) in prompt

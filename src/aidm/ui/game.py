@@ -32,8 +32,8 @@ _STEP_COPY: dict[Role, tuple[str, str]] = {
     "narrator": ("Narrator", "Writes what you see and hear this turn."),
     "worldsmith": (
         "Worldsmith",
-        "Writes the next scene or region: where the story goes and who is waiting there. "
-        "This one is slow — a few minutes is normal.",
+        "Writes the next scene or region, or what the game master asked for: where the story "
+        "goes and who is waiting there. This one is slow; a few minutes is normal.",
     ),
 }
 

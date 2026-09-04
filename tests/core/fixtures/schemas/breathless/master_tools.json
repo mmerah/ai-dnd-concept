@@ -370,5 +370,38 @@
       ],
       "type": "object"
     }
+  },
+  {
+    "name": "commission",
+    "description": "Ask the worldsmith for what the scene needs and the cast lacks. Written now, the turn pauses and you are spawned again with the answer under NOTES FROM THE RULES; with `later`, it is written into the next scene or region. What you ask for becomes canon. A person, a thing or a rumour, each a cast entry. Read THE ARC first and ask with it in view; the worldsmith may bend it to hold what you ask for.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "description": "What to ask for; each is a cast entry.",
+          "enum": [
+            "person",
+            "thing",
+            "rumour"
+          ],
+          "type": "string"
+        },
+        "brief": {
+          "description": "Who or what it is and why the scene needs it, in a few lines.",
+          "minLength": 20,
+          "type": "string"
+        },
+        "later": {
+          "default": false,
+          "description": "True to have it written into the next scene instead of now.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind",
+        "brief"
+      ],
+      "type": "object"
+    }
   }
 ]

@@ -284,20 +284,20 @@ class SceneWorld[C: Person, P: Person](Mutable):
         settled = SCENE_LEFT if pursuit else SCENE_SETTLED
         return [settled, JOB_DONE] if job_done else [settled]
 
-    def merged_cast(self, draft: SceneDraft[C]) -> dict[EntityId, C]:
-        """A re-filed member keeps the world's entry with the draft's brief."""
+    def merged_cast(self, cast: Mapping[EntityId, C]) -> dict[EntityId, C]:
+        """A re-filed member keeps the world's entry with the given brief."""
         return {
             **self.cast,
             **{
                 entity_id: filed.model_copy(update={"brief": entry.brief})
                 if (filed := self.cast.get(entity_id)) is not None
                 else entry
-                for entity_id, entry in draft.cast.items()
+                for entity_id, entry in cast.items()
             },
         }
 
     def apply_scene(self, draft: SceneDraft[C], *, reopening: Job | None = None) -> None:
-        self.cast = self.merged_cast(draft)
+        self.cast = self.merged_cast(draft.cast)
         everyone: Mapping[EntityId, Thing] = {self.player.id: self.player, **self.cast}
         present = resolve_ids(draft.present, everyone, "present")
         hidden = resolve_ids(draft.hidden, everyone, "hidden")

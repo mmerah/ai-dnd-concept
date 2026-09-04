@@ -3,17 +3,22 @@ from collections.abc import Callable
 import pytest
 from pydantic import BaseModel
 from support.table import TUNNELGOONS, game, the_campaign
-from support.tunnelgoons import START, TAVERN, hub_world, small_world
+from support.tunnelgoons import MIRA, START, TAVERN, hub_world, small_world
 
 from aidm.core.entities import EntityId, Refusal
+from aidm.core.play import Commission
+from aidm.engines.base import Counter
 from aidm.engines.hub import Attempt, Job, Offer
-from aidm.engines.rooms.drafts import MapDraft, ReturnDraft
+from aidm.engines.rooms.drafts import ItemDraft, MapDraft, NpcDraft, ReturnDraft
 from aidm.engines.rooms.engine import REPORT_IN
 from aidm.engines.rooms.world import Item, Place, Visit, Way
 from aidm.engines.rooms.worldsmith import (
     extension_refusal,
     hub_refusal,
+    item_refusal,
+    job_refusal,
     map_refusal,
+    npc_refusal,
     return_refusal,
 )
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
@@ -505,3 +510,128 @@ def test_map_refusal_refuses_a_one_shot_draft_carrying_a_board() -> None:
 def test_opening_canon_refuses_a_campaign_draft_without_a_board() -> None:
     with pytest.raises(Refusal, match="needs a board"):
         ENGINE.opening_canon(_region(), "source", "campaign")
+
+
+def _npc(entity_id: EntityId, *, place: EntityId, known: bool = False) -> Npc:
+    return Npc(
+        id=entity_id,
+        name="L",
+        brief="b",
+        known=known,
+        place=place,
+        hp=Counter(current=4, maximum=4),
+    )
+
+
+def test_install_commission_writes_an_npc_at_the_current_place_unmet() -> None:
+    state = small_world()
+    world = state.payload
+    asked = Commission(kind="npc", brief="a lookout at the door")
+    state.commissions.append(asked)
+    lookout = _npc(EntityId("lookout"), place=world.current.id)
+    assert npc_refusal(NpcDraft[Npc](npc=lookout), world) is None
+
+    facts = ENGINE.install_commission(state, asked, NpcDraft[Npc](npc=lookout))
+
+    assert world.npcs[lookout.id].place == world.current.id
+    assert not world.npcs[lookout.id].known
+    assert asked not in state.commissions
+    assert [fact.kind for fact in facts] == ["commissioned"]
+
+
+def test_install_commission_writes_an_item_on_the_place_or_a_living_npc_there() -> None:
+    state = small_world()
+    world = state.payload
+
+    on_place = Commission(kind="item", brief="a coin purse in the dust")
+    state.commissions.append(on_place)
+    purse = Item(id=EntityId("purse"), name="Purse", brief="b", known=False, on=world.current.id)
+    ENGINE.install_commission(state, on_place, ItemDraft(item=purse))
+    assert world.items[purse.id].on == world.current.id
+
+    on_npc = Commission(kind="item", brief="a ring on Mira's hand")
+    state.commissions.append(on_npc)
+    ring = Item(id=EntityId("ring"), name="Ring", brief="b", known=False, on=MIRA)
+    assert item_refusal(ItemDraft(item=ring), world) is None
+    ENGINE.install_commission(state, on_npc, ItemDraft(item=ring))
+    assert world.items[ring.id].on == MIRA
+
+
+def test_install_commission_attaches_a_region_hidden() -> None:
+    state = small_world()
+    world = state.payload
+    asked = Commission(kind="region", brief="a passage beyond the crypt")
+    state.commissions.append(asked)
+    region = _region()
+
+    facts = ENGINE.install_commission(state, asked, region)
+
+    assert not world.places[FAR_HALL].known
+    way = world.way(world.current.id, FAR_HALL)
+    assert way is not None and not way.known
+    assert asked not in state.commissions
+    assert [fact.kind for fact in facts] == ["commissioned"]
+
+
+def test_npc_refusal_refuses_a_wrong_place_a_used_id_and_a_known_entry() -> None:
+    world = small_world().payload
+
+    wrong_place = NpcDraft[Npc](npc=_npc(EntityId("lookout"), place=HALL))
+    refused = npc_refusal(wrong_place, world)
+    assert refused is not None and world.current.id in refused
+
+    reused_id = NpcDraft[Npc](npc=_npc(MIRA, place=world.current.id))
+    refused = npc_refusal(reused_id, world)
+    assert refused is not None and "a new id" in refused
+
+    known = NpcDraft[Npc](npc=_npc(EntityId("lookout"), place=world.current.id, known=True))
+    refused = npc_refusal(known, world)
+    assert refused is not None and "unmet" in refused
+
+
+def test_item_refusal_refuses_an_on_that_is_neither_the_place_nor_a_living_npc_here() -> None:
+    world = small_world().payload
+    elsewhere = ItemDraft(
+        item=Item(id=EntityId("coin"), name="Coin", brief="b", known=False, on=HALL)
+    )
+
+    refused = item_refusal(elsewhere, world)
+
+    assert refused is not None
+    assert "living npc" in refused
+
+
+def test_job_refusal_needs_a_later_npc_commission_met_by_a_new_npc() -> None:
+    world = hub_world(with_map=False).payload
+    asked = [Commission(kind="npc", brief="a fence for stolen goods", later=True)]
+    empty = _wide_region().model_copy(update={"npcs": {}})
+
+    refused = job_refusal(empty, world, asked)
+    assert refused is not None
+    assert "1 npcs asked for, 0 written" in refused
+
+    written = empty.model_copy(
+        update={"npcs": {EntityId("fence"): _npc(EntityId("fence"), place=empty.start)}}
+    )
+    assert job_refusal(written, world, asked) is None
+
+
+async def test_a_later_commission_survives_return_and_clears_on_the_job_that_meets_it() -> None:
+    state = hub_world(with_map=False)
+    world = state.payload
+    world.visits = _walked_job_visits()
+    the_campaign(world.campaign).jobs = [
+        Job(title="Bandits", place=START, finished=True, attempts=[Attempt(started=1)])
+    ]
+    asked = Commission(kind="npc", brief="a fence for stolen goods", later=True)
+    state.commissions.append(asked)
+
+    ENGINE.install_extension(state, RETURN)
+    assert asked in state.commissions
+
+    met = _wide_region().model_copy(
+        update={"npcs": {EntityId("fence"): _npc(EntityId("fence"), place=_wide_region().start)}}
+    )
+    ENGINE.install_extension(state, met)
+
+    assert asked not in state.commissions

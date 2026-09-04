@@ -1,13 +1,14 @@
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 
 from pydantic import BaseModel
 
 from aidm.core.entities import EntityId
+from aidm.core.play import Commission
 from aidm.core.tools import schema_text
 from aidm.core.views import Sections, sections
 from aidm.engines.base import Person, Thing
 from aidm.engines.hub import named_unmet, place_unmet
-from aidm.engines.scenes.drafts import HubDraft, ReturnDraft, SceneDraft
+from aidm.engines.scenes.drafts import CastDraft, HubDraft, ReturnDraft, SceneDraft
 from aidm.engines.scenes.world import SceneWorld, resolved_id
 
 CROSSING = (
@@ -22,24 +23,45 @@ SURPRISE = (
     "have stopped thinking about. Surprise by recombining what exists, never by inventing what "
     "the source would not hold."
 )
+COMMISSION_ASK = (
+    "The game master asked for a {kind}: {brief}. Write that one entry under its own id, or "
+    "rewrite one known entry's brief, and nothing else."
+)
 
 
 def scene_refusal[C: Person, P: Person](
-    draft: SceneDraft[C], world: SceneWorld[C, P] | None = None
+    draft: SceneDraft[C],
+    world: SceneWorld[C, P] | None = None,
+    asked: Sequence[Commission] = (),
 ) -> str | None:
-    unmet = scene_unmet(draft, world)
+    unmet = scene_unmet(draft, world, asked)
+    return None if not unmet else "the scene needs " + "; ".join(unmet)
+
+
+def cast_refusal[C: Person, P: Person](draft: CastDraft[C], world: SceneWorld[C, P]) -> str | None:
+    entity_id, entry = next(iter(draft.cast.items()))
+    unmet: list[str] = []
+    if entity_id == world.player.id:
+        unmet.append("an entry that is not the player")
+    if entry.id != entity_id:
+        unmet.append(f"{entry.id!r} filed under its own id, not {entity_id!r}")
+    if entity_id not in world.cast:
+        if entry.known:
+            unmet.append("a new entry unmet")
+        if why := entry.unwritten():
+            unmet.append(why)
     return None if not unmet else "the scene needs " + "; ".join(unmet)
 
 
 def scene_unmet[C: Person, P: Person](
-    draft: SceneDraft[C], world: SceneWorld[C, P] | None
+    draft: SceneDraft[C], world: SceneWorld[C, P] | None, asked: Sequence[Commission]
 ) -> list[str]:
     """The one bar: every refusal the install makes, so the worldsmith's one retry sees them all."""
     filed: Mapping[EntityId, C] = {} if world is None else world.cast
     everyone: Mapping[EntityId, Thing] = (
         dict(draft.cast)
         if world is None
-        else {world.player.id: world.player, **world.merged_cast(draft)}
+        else {world.player.id: world.player, **world.merged_cast(draft.cast)}
     )
     followers = () if world is None else (world.player.id, *world.party)
     others = (*draft.present, *draft.hidden)
@@ -83,6 +105,12 @@ def scene_unmet[C: Person, P: Person](
     ]:
         unmet.append(f"cast members as the worldsmith may write them: {broken}")
     unmet.extend(_hub_unmet(draft, world, everyone))
+    if asked:
+        written = len([eid for eid in draft.cast if eid not in filed])
+        if written < len(asked):
+            unmet.append(
+                f"{len(asked)} asked for, {written} written: one new cast entry per commission"
+            )
     return unmet
 
 
@@ -108,6 +136,7 @@ def worldsmith_prompt(
     intent: str,
     answer: type[BaseModel],
     hub: Sections = (),
+    asked: str = "",
 ) -> str:
     return sections(
         (
@@ -117,6 +146,7 @@ def worldsmith_prompt(
             *hub,
             ("THE WHOLE CAST", cast),
             ("ENGINE GUIDANCE", guidance),
+            *((("THE GAME MASTER ASKED FOR", asked),) if asked else ()),
             ("WHAT COMES NEXT", intent),
             ("STANDING INSTRUCTION", SURPRISE),
             ("ANSWER WITH", schema_text(answer)),

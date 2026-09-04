@@ -60,6 +60,8 @@ It is treated as covered by the site's licence. One email to the publisher would
   disadvantage adds one die to that side; a tie outside a conflict counts on the Twist Counter and
   may roll a twist; in a conflict the losing side's Luck pays.
 - `restore_luck` — refill an actor's Luck once their conflict is behind them.
+- `commission` (platform, not counted) — ask the worldsmith for a person, a thing or a rumour, now or
+  for the next scene.
 
 ## Deviations in this repo
 

@@ -109,6 +109,7 @@ def test_a_fifth_scene_engine_begins_a_playable_game(tmp_path: Path) -> None:
 
     assert engine.pack_options() == (DecisionOption(id="srd", label="The SRD"),)
     assert engine.instructions == "Roll high."
+    assert "commission" in engine.tools
     assert engine.narrator_view(state).title == "The Taproom"
     assert engine.master_sections(state) == (("SCENE", "The Taproom"),)
     assert [row.label for row in engine.player_view(state).panels[-2].rows] == [

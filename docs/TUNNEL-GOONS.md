@@ -49,6 +49,8 @@ None. The starting item list is in the SRD's character creation.
 - `action_roll` — 2d6 plus an ability and helpful items, against a Difficulty Score or an npc.
 - `rest` — heal the player to full Health in a safe spot.
 - `level_up` — raise one ability and either Health or Inventory by 1, once per adventure in a one-shot, once per job in a campaign.
+- `commission` (platform, not counted) — ask the worldsmith for an npc, an item or a region, now or for
+  the next region.
 
 The three `change_world` arms are `engines/rooms/tools.py`'s, shared by every room engine, and count here as before.
 

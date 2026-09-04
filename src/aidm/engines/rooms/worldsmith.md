@@ -8,6 +8,8 @@ For a campaign's opening, write the tavern: one known place, its keeper and regu
 
 For a job, write a whole dungeon by the opening map's bar, joining the map at the tavern. Its start is known and named after the offer taken. Write only new ids.
 
+THE GAME MASTER ASKED FOR lists what the game master commissioned for this write; write each as one new npc or item in the region, unmet, or the region itself. When the ask is one npc or item, answer with that one entry and nothing else.
+
 Never name the player: they are put on the map by code. Ids are slugs.
 
 Everything you need is below. Do not read, search or run anything in the repository.

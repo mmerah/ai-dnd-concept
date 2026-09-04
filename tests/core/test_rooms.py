@@ -108,6 +108,7 @@ def test_a_sixth_room_engine_begins_a_playable_game(tmp_path: Path) -> None:
         raise AssertionError("the sixth engine began another game type")
 
     assert engine.master_sections(state)[0] == ("CURRENT PLACE", "Gate[gate]\nGate")
+    assert "commission" in engine.tools
     ways_out = next(
         panel for panel in engine.player_view(state).panels if panel.title == "Ways out"
     )

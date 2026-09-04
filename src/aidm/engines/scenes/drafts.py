@@ -100,3 +100,18 @@ class ReturnDraft[C: Person](HubDraft[C]):
         "how it stands with them, what is owed, what was learned and what is still hidden.",
     )
     recap: str = RECAP
+
+
+class CastDraft[C: Person](Frozen):
+    """One commissioned entry; `arc` bends only where it must."""
+
+    cast: dict[EntityId, C] = Field(
+        min_length=1,
+        max_length=1,
+        description="One entry under its own id. A new id is a new person, thing or rumour, "
+        "unmet; an id already in THE WHOLE CAST re-files that entry's brief and nothing else.",
+    )
+    arc: str = Field(
+        default="",
+        description="Rewritten only where it must bend to hold the new entry; empty keeps it.",
+    )
