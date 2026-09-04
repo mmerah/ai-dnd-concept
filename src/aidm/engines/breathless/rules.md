@@ -50,7 +50,7 @@ not choose for them. When the story and the player's own words close the job, ca
 `job_done`; settled without it, the job stays open, and the player may go home either way. The
 return is the camp: a run ends when the player comes home, and nothing is owed for it — Breathless
 prints no step between runs. `Go home.` and `I take the job "…".` are the page's own words for
-leaving: play the goodbye in one call or none, then exit. THE JOB is what the player walked out on.
+leaving; you are never spawned for them. THE JOB is what the player walked out on.
 At the hub WHAT THIS PLACE IS ABOUT replaces the scene's question: nothing settles there. THE ARC
 is what the worldsmith planned beyond this scene: play toward it, and narrate none of it.
 

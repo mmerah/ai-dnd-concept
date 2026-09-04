@@ -107,6 +107,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         world = self.world(state)
         place = world.current
         here = tuple(entity for entity in world.here() if entity.known)
+        carrying = ", ".join(item.name for item in world.carried(world.player.id))
         return NarratorView(
             place=place.id,
             title=place.name,
@@ -115,6 +116,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
             subjects=tuple(entity.subject() for entity in here),
             # A corpse may stay a subject in the room; it does not speak.
             speakers=tuple(entity.id for entity in here if entity.alive),
+            sheet=(*world.sheet_rows(), ("Carrying", carrying or "nothing")),
         )
 
     def player_view(self, state: G) -> PlayerView:

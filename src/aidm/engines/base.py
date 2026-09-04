@@ -39,6 +39,10 @@ class Thing(Mutable):
     def headline(self) -> str:
         return self.tag + (f" — {self.brief}" if self.brief else "")
 
+    @property
+    def met_label(self) -> str:
+        return "met" if self.known else "unmet"
+
     def rows(self) -> Rows:
         """The sheet, as the master's entity line prints it."""
         return ()

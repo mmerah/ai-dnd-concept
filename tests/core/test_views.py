@@ -61,6 +61,7 @@ def test_a_narrator_view_naming_a_speaker_who_is_not_a_subject_is_refused() -> N
             situation="s",
             subjects=(subject,),
             speakers=(EntityId("stranger"),),
+            sheet=(),
         )
 
 
@@ -74,7 +75,13 @@ def test_a_spoken_line_names_its_speaker_or_nobody() -> None:
 def test_spoken_refuses_a_subject_who_is_not_a_speaker() -> None:
     subject = Subject(id=EntityId("mara"), name="Mara", brief="A ferrywoman.")
     view = NarratorView(
-        place="p", title="t", focus="f", situation="s", subjects=(subject,), speakers=()
+        place="p",
+        title="t",
+        focus="f",
+        situation="s",
+        subjects=(subject,),
+        speakers=(),
+        sheet=(),
     )
 
     with pytest.raises(Refusal, match="nobody here has id"):

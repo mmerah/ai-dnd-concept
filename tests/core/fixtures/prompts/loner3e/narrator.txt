@@ -26,9 +26,19 @@ WHO IS HERE:
 - Mara — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
 - the vault map — A creased chart of the undercroft, marking a stair the abbey's own plans deny. Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.
 
+THE PLAYER'S SHEET:
+- Concept: A Wary Relic-Hunter
+- Skills: Reads Old Stonework, Quiet Hands
+- Frailties: Never Walks Away
+- Gear: Pry Bar, Chalk and Wire, A Guttering Lantern
+- Conditions: Listening
+- Goal: Find what has been sealed away, and open it
+- Motive: Whatever was worth sealing is worth more unsealed
+- Luck: 6/6
+
 WHAT HAPPENED:
 - learned of the vault map[vault-map]
-- Does he hear what waits past the vault door without being heard? -> yes-and
+- the oracle for the player Kael[player]: yes-and
 - the player Kael[player] condition +Listening
 
 PLAYER ACTION:

@@ -25,6 +25,12 @@ WHO IS HERE:
 - Harl Odum — A salvage pilot who claims he only just made port, though his skiff has sat cold at the outer berth since before the relay went dark; his cutting torch opens more than hull plate.
 - Warden Six — QV-9's maintenance android, still carrying out a shutdown order it was never told to stand down from; its manipulator arms can crush a suit seal without meaning to kill.
 
+THE PLAYER'S SHEET:
+- Specialty: Sneak
+- Origin: Human
+- Skills: Stealth d12, Climbing d8, Piloting d8
+- Credits: ₡1
+
 WHAT HAPPENED:
 - learned of Warden Six[warden-six]
 - Slip along the dark gantry — Stealth d12 [8] -> success

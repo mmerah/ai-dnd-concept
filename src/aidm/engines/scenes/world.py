@@ -205,20 +205,16 @@ class SceneWorld[C: Person, P: Person](World[P]):
         return lines_of(self.require(entity_id).line() for entity_id in self.hidden())
 
     def cast_lines(self) -> str:
-        """The worldsmith must know who follows the player out of the scene."""
-        return "\n".join(
-            (
-                self.player.line(detail=self.last_seen(self.player.id)),
-                *(
-                    entry.line(
-                        detail="travels with the player"
-                        if entry.id in self.party
-                        else self.last_seen(entry.id)
-                    )
-                    for entry in self.cast.values()
-                ),
+        """The worldsmith must know who is met, and who follows the player out of the scene."""
+        lines = [self.player.line()]
+        for entry in self.cast.values():
+            where = (
+                "travels with the player" if entry.id in self.party else self.last_seen(entry.id)
             )
-        )
+            lines.append(
+                entry.line(detail=f"{entry.met_label}; {where}" if where else entry.met_label)
+            )
+        return "\n".join(lines)
 
     def reveal_hidden(self, entity_id: EntityId) -> list[Fact]:
         """The discovery itself, distinct from what `enter` tells about someone walking in."""

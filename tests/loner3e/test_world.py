@@ -272,3 +272,14 @@ def test_drive_writes_what_play_revealed() -> None:
     _ = changed(draft, "kill", entity_id=MARA)
     assert "dead" in refused(draft, "drive", entity_id=MARA, motive="Survive")
     _ = draft.commit()
+
+
+def test_the_cast_lines_say_who_the_player_has_met() -> None:
+    _, state = initialized()
+
+    lines = state.payload.cast_lines().splitlines()
+
+    assert any(line.strip() == "met; last seen in: The Abbot's Study" for line in lines)
+    assert any(line.strip() == "unmet; last seen in: The Abbot's Study" for line in lines)
+    assert any(line.strip() == "unmet" for line in lines)
+    assert not lines[1].strip().startswith(("met", "unmet"))

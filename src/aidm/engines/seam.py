@@ -73,6 +73,10 @@ class Engine[P: Person, G: Game[Any]](ABC):
         """The narrator's brief for the arrival; None where the world grows without a turn."""
         return None
 
+    def page_word(self, state: G, intent: str) -> bool:
+        """The page's own words for leaving: the narrator alone plays the goodbye."""
+        return False
+
     def check_character(self, character: AnyCharacter) -> None:
         if character.engine != self.id:
             raise Refusal(f"{self.title} received an incompatible character")

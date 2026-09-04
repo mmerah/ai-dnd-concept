@@ -21,8 +21,15 @@
     "dice": []
   },
   {
+    "kind": "question_asked",
+    "trace": "asked: Does he hear what waits past the vault door without being heard?",
+    "told": false,
+    "card": "",
+    "dice": []
+  },
+  {
     "kind": "question_answered",
-    "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
+    "trace": "the oracle for the player Kael[player]: yes-and",
     "told": true,
     "card": "Oracle — Advantage (Quiet Hands) → yes-and",
     "dice": [

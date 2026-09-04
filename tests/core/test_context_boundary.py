@@ -54,6 +54,7 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
         "focus",
         "subjects",
         "speakers",
+        "sheet",
     }
     dumped = str(narrator.model_dump())
     assert "The Secret" not in dumped
@@ -89,6 +90,24 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:
     assert "The Secret" not in prompt
     assert "hidden-actor" not in prompt
     assert UNREVEALED not in prompt
+
+
+def test_the_narrator_prompt_carries_the_players_own_sheet() -> None:
+    state = _state()
+
+    prompt = render_narrator(
+        _engine().narrator_view(state), evidence="- (nothing changed)", prompt="I wait.", scenes=()
+    )
+
+    assert "THE PLAYER'S SHEET:\n- Concept: A Wary Relic-Hunter" in prompt
+    assert "- Gear: Pry Bar, Chalk and Wire, A Guttering Lantern" in prompt
+
+
+def test_the_master_prompt_ends_on_the_action_with_no_empty_waiting_section() -> None:
+    master = _master_prompt(_state(), "I look around.")
+
+    assert "WAITING ON THE PLAYER" not in master
+    assert master.endswith("PLAYER ACTION:\nI look around.")
 
 
 def test_the_narrator_prompt_carries_only_what_the_player_has_read() -> None:

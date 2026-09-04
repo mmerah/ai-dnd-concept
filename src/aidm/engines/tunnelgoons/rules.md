@@ -28,7 +28,7 @@ Call it with no arguments once, when the whole adventure ends. The tool opens th
 
 ## Campaigns
 
-The tavern is home; the player takes work from the page, so do not choose for them. A job is a dungeon hung off the tavern. There is no teleport home: the player walks, and you may cover a known trek in one turn of `move` calls. `level_up` when the job's dungeon is done is your verdict that the job is finished; a job reported without it stays open. `Report in.` and `I take the job "…".` are the page's own words: play the keeper's reply in one call or none, then exit.
+The tavern is home; the player takes work from the page, so do not choose for them. A job is a dungeon hung off the tavern. There is no teleport home: the player walks, and you may cover a known trek in one turn of `move` calls. `level_up` when the job's dungeon is done is your verdict that the job is finished; a job reported without it stays open. `Report in.` and `I take the job "…".` are the page's own words; you are never spawned for them.
 
 ## The map's end
 
