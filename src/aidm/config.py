@@ -116,10 +116,9 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _keys_present(self) -> Self:
-        if self.media.enabled and not self.providers.for_name(self.media.provider).api_key:
-            raise ValueError(f"media uses provider {self.media.provider!r}, which has no api_key")
-        if self.speech.enabled and not self.providers.for_name(self.speech.provider).api_key:
-            raise ValueError(f"speech uses provider {self.speech.provider!r}, which has no api_key")
+        for what, feature in (("media", self.media), ("speech", self.speech)):
+            if feature.enabled and not self.providers.for_name(feature.provider).api_key:
+                raise ValueError(f"{what} uses provider {feature.provider!r}, which has no api_key")
         return self
 
 

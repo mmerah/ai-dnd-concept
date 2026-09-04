@@ -2,7 +2,7 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import Any, Literal, Protocol, Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, model_validator
 
 from aidm.core.entities import (
     EngineId,
@@ -77,8 +77,6 @@ class Character[P: BaseModel](Frozen):
 
 
 class WorldsmithAnswer(Protocol):
-    """How an engine asks the worldsmith: one prompt, the model to answer in, one refusal."""
-
     async def __call__[M: BaseModel](self, prompt: str, model: type[M], refusal: Check[M]) -> M: ...
 
 
@@ -91,8 +89,8 @@ class Game[P: BaseModel](Mutable):
     engine: EngineId
     packs: tuple[Slug, ...] = ()
     pending: PendingDecision | None = None
-    notes: list[str] = Field(default_factory=list)
-    commissions: list[Commission] = Field(default_factory=list)
+    notes: list[str] = []
+    commissions: list[Commission] = []
     payload: P
 
     @model_validator(mode="after")

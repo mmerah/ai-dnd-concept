@@ -63,7 +63,6 @@ class NarratorView(Frozen):
         return self
 
     def spoken(self, lines: Sequence[Line]) -> tuple[SpokenLine, ...]:
-        """Attribution is denormalized here, so chat and journal never resolve ids through state."""
         here = {subject.id: subject for subject in self.subjects if subject.id in self.speakers}
 
         def spoken_line(line: Line) -> SpokenLine:
@@ -78,14 +77,8 @@ class NarratorView(Frozen):
 
     def speakers_refusal(self, lines: Sequence[Line]) -> str | None:
         """Only the player or someone here speaks; the leak rule holds by check, not trust."""
-        here = set(self.speakers)
-        strangers = sorted(
-            {
-                line.speaker_id
-                for line in lines
-                if line.speaker_id is not None and line.speaker_id not in here
-            }
-        )
+        spoken = {line.speaker_id for line in lines if line.speaker_id is not None}
+        strangers = sorted(spoken - set(self.speakers))
         if not strangers:
             return None
         return (

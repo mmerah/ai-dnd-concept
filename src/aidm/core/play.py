@@ -49,7 +49,7 @@ class PendingOption(DecisionOption):
     """The frozen tool call an engine plays this option by."""
 
     name: str = Field(min_length=1)
-    args: dict[str, JsonValue] = Field(default_factory=dict)
+    args: dict[str, JsonValue] = {}
 
 
 class PendingDecision(Frozen):
@@ -109,8 +109,6 @@ class SceneRecord(Frozen):
 
 
 class ChapterRecord(Frozen):
-    """A closed stretch of scenes read back as one block: its summary, then its scenes' titles."""
-
     title: str
     verdict: str  # "done" or "left open", as the ledger says it
     summary: str
