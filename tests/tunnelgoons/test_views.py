@@ -21,7 +21,7 @@ def test_speakers_exclude_a_known_but_dead_npc() -> None:
     state.payload.npcs[MIRA].alive = False
     view = ENGINE.narrator_view(state)
     assert any(subject.id == MIRA for subject in view.subjects)
-    assert not any(speaker.id == MIRA for speaker in view.speakers)
+    assert MIRA not in view.speakers
 
 
 def test_player_view_has_the_five_panels_in_order_and_here_carries_icons() -> None:

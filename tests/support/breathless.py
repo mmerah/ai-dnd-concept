@@ -11,8 +11,8 @@ from aidm.engines.breathless.world import (
     Skill,
     Survivor,
 )
-from aidm.engines.hub import Attempt, Campaign, Job, Offer
 from aidm.engines.scenes.world import SceneRun
+from support.scenes import HubNames, hub_campaign, hub_runs
 
 MIRA = EntityId("mira")
 DAX = EntityId("dax")
@@ -43,6 +43,17 @@ JOB = (
     "Mira's group is nearly out of medicine and Keeper wants the pharmacy's shelves cleared "
     "before the Crawlers wake; whoever goes brings back what they can carry."
 )
+NAMES = HubNames(
+    hub_place=HUB_PLACE,
+    hub_title="The Camp",
+    hub_question="What keeps the group coming back to the camp?",
+    hub_situation=HUB_SITUATION,
+    job_place=JOB_PLACE,
+    job_title="The Pharmacy Run",
+    job_question="Can Jax clear the pharmacy before the Crawlers notice?",
+    job_situation=JOB_SITUATION,
+    terms=JOB,
+)
 
 
 def small_world() -> BreathlessGame:
@@ -66,27 +77,11 @@ def small_world() -> BreathlessGame:
 def hub_world() -> BreathlessGame:
     """A campaign world: a hub run with a known keeper, then one job run away from it."""
     keeper = Person(id=KEEPER, name="Keeper", brief="Runs the camp", known=True)
-    hub_run = _hub_scene(here=[KEEPER])
-    job_run = _job_scene()
     world = BreathlessWorld(
         cast={KEEPER: keeper},
         player=_player(),
-        runs=[hub_run, job_run],
-        campaign=Campaign(
-            place=HUB_PLACE,
-            board=(
-                Offer(title="Job One", pitch="I take job one."),
-                Offer(title="Job Two", pitch="I take job two."),
-            ),
-            jobs=[
-                Job(
-                    title="The Pharmacy Run",
-                    place=JOB_PLACE,
-                    terms=JOB,
-                    attempts=[Attempt(started=1)],
-                )
-            ],
-        ),
+        runs=hub_runs(NAMES, keeper=KEEPER),
+        campaign=hub_campaign(NAMES),
     )
     return BreathlessGame(
         scenario_id="the-camp",
@@ -116,24 +111,4 @@ def _player() -> Survivor:
         skills=SKILLS_RATED,
         worn=dict(SKILLS_RATED),
         items={WRENCH: Item(name="Wrench", die=10)},
-    )
-
-
-def _hub_scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
-    return SceneRun(
-        place=HUB_PLACE,
-        title="The Camp",
-        question="What keeps the group coming back to the camp?",
-        situation=HUB_SITUATION,
-        here=list(here),
-    )
-
-
-def _job_scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
-    return SceneRun(
-        place=JOB_PLACE,
-        title="The Pharmacy Run",
-        question="Can Jax clear the pharmacy before the Crawlers notice?",
-        situation=JOB_SITUATION,
-        here=list(here),
     )

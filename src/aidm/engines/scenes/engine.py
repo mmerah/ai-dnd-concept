@@ -153,7 +153,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
             focus=scene.question,
             situation=scene.situation,
             subjects=tuple(member.subject() for member in here),
-            speakers=tuple(member.subject().speaker() for member in here),
+            speakers=tuple(member.id for member in here),
         )
 
     def player_view(self, state: G) -> PlayerView:

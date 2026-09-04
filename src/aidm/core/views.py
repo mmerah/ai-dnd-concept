@@ -1,4 +1,7 @@
 from collections.abc import Iterable, Sequence
+from typing import Self
+
+from pydantic import model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal
 from aidm.core.play import (
@@ -9,7 +12,6 @@ from aidm.core.play import (
     Narration,
     PendingDecision,
     SceneRecord,
-    Speaker,
     SpokenLine,
 )
 
@@ -25,9 +27,6 @@ class Subject(Frozen):
     id: CheckedEntityId
     name: str
     brief: str
-
-    def speaker(self) -> Speaker:
-        return Speaker(name=self.name, id=self.id)
 
 
 # Three row shapes, told apart in this order: a way on (`intent`), an entity (`icon_id`),
@@ -54,11 +53,18 @@ class NarratorView(Frozen):
     situation: str
     subjects: tuple[Subject, ...]
     # The player and everyone present who may speak; nobody else can be attributed a line.
-    speakers: tuple[Speaker, ...]
+    speakers: tuple[CheckedEntityId, ...]
+
+    @model_validator(mode="after")
+    def _speakers_are_subjects(self) -> Self:
+        here = {subject.id for subject in self.subjects}
+        if strangers := sorted(set(self.speakers) - here):
+            raise ValueError(f"speakers who are not subjects: {strangers}")
+        return self
 
     def spoken(self, lines: Sequence[Line]) -> tuple[SpokenLine, ...]:
         """Attribution is denormalized here, so chat and journal never resolve ids through state."""
-        here = {speaker.id: speaker for speaker in self.speakers}
+        here = {subject.id: subject for subject in self.subjects if subject.id in self.speakers}
 
         def spoken_line(line: Line) -> SpokenLine:
             if line.speaker_id is None:
@@ -66,13 +72,13 @@ class NarratorView(Frozen):
             who = here.get(line.speaker_id)
             if who is None:
                 raise Refusal(f"nobody here has id {line.speaker_id!r}")
-            return SpokenLine(speaker=who, text=line.text)
+            return SpokenLine(speaker_id=who.id, speaker=who.name, text=line.text)
 
         return tuple(spoken_line(line) for line in lines)
 
     def speakers_refusal(self, lines: Sequence[Line]) -> str | None:
         """Only the player or someone here speaks; the leak rule holds by check, not trust."""
-        here = {speaker.id for speaker in self.speakers}
+        here = set(self.speakers)
         strangers = sorted(
             {
                 line.speaker_id
@@ -152,7 +158,7 @@ def _block(record: HistoryRecord, index: int, total: int) -> str:
 
 
 def _header(scene: SceneRecord) -> str:
-    return f"SCENE: {scene.title}\n{scene.question}"
+    return f"SCENE: {scene.title}\n{scene.focus}"
 
 
 def _told(exchanges: Sequence[Exchange]) -> str:

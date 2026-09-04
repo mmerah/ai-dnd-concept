@@ -3,7 +3,7 @@ import json
 import pytest
 
 from aidm.app.spawn import ClaudeDriver, CodexDriver, RunResult, ask, child_environment
-from aidm.config import RoleConfig
+from aidm.config import Role, RoleConfig
 from aidm.core.entities import Refusal
 from aidm.core.play import Narration
 
@@ -86,11 +86,12 @@ def test_a_driver_reads_the_session_its_cli_reported(
 async def test_a_retry_carries_on_the_refused_attempt_and_sends_only_the_error() -> None:
     asked: list[tuple[str, str | None]] = []
 
-    async def spawn(prompt: str, session: str | None) -> RunResult:
-        asked.append((prompt, session))
-        return RunResult('{"lines": []}' if session else "not json", "abc-123")
+    class _Spawner:
+        async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
+            asked.append((prompt, session))
+            return RunResult('{"lines": []}' if session else "not json", "abc-123")
 
-    _ = await ask("narrator", "THE WHOLE BRIEF", Narration, lambda _: None, spawn)
+    _ = await ask(_Spawner(), "narrator", "THE WHOLE BRIEF", Narration, lambda _: None)
 
     assert asked[0] == ("THE WHOLE BRIEF", None)
     assert asked[1][1] == "abc-123"

@@ -1,14 +1,13 @@
 import logging
 from base64 import b64decode, b64encode
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from hashlib import sha1
 from pathlib import Path
 
-from httpx import AsyncClient
 from pydantic import JsonValue
 
-from aidm.app.launch import LaunchTarget
+from aidm.app.providers import claim, post_bearer
 from aidm.config import MediaConfig, ProviderConfig, Settings
 from aidm.core.entities import EntityId, Loose
 from aidm.core.io import FileStore
@@ -150,45 +149,17 @@ class _ImageReply(Loose):
         return images[0].image_url.url if images else None
 
 
-def claim(generating: set[str], key: str) -> bool:
-    # Synchronous: an await between the read and the write would let two callers both pay.
-    if key in generating:
-        return False
-    generating.add(key)
-    return True
-
-
-async def post_bearer(
-    provider: ProviderConfig, path: str, body: Mapping[str, JsonValue], timeout: float
-) -> bytes:
-    """One bearer POST; the caller parses the bytes, since one reply is JSON, another audio."""
-    async with AsyncClient(timeout=timeout) as client:
-        reply = await client.post(
-            f"{provider.base_url}{path}",
-            headers={"Authorization": f"Bearer {provider.api_key.get_secret_value()}"},
-            json=body,
-        )
-        reply.raise_for_status()
-        return reply.content
-
-
 def open_illustrator(
-    settings: Settings,
-    target: LaunchTarget,
-    store: FileStore,
-    *,
-    style: str,
+    settings: Settings, store: FileStore, slug: str, *, style: str, icon_dirs: tuple[Path, ...]
 ) -> Illustrator | None:
     """Share authored icons across games while keeping generated canon and scenes per save."""
     if not settings.media.enabled:
         return None
-    scenario_icons = settings.scenarios_dir / target.scenario_id / ICON_DIR
-    character_icons = settings.characters_dir / target.character_id / ICON_DIR
     return Illustrator(
         config=settings.media,
         provider=settings.providers.for_name(settings.media.provider),
-        saves=store.media_dir(target.slug),
-        icon_dirs=(scenario_icons, character_icons),
+        saves=store.media_dir(slug),
+        icon_dirs=icon_dirs,
         style=style,
     )
 

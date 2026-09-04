@@ -89,6 +89,7 @@ class Turn:
             self.draft,
             self.engine.scenes(self.draft),
             self.action,
+            played=len(self.engine.history(self.draft)),
             notes=(*self.notes, *self.draft.notes),
         )
 
@@ -96,9 +97,7 @@ class Turn:
         """The one gate: every published tool is refused, answered or applied here."""
         if (ended := self.engine.over(self.draft)) is not None:
             raise Refusal(f"{ended} {GAME_OVER}")
-        found = self.engine.tools.get(name)
-        if found is None:
-            raise Refusal(f"{name!r} is not a tool of the {self.engine.id!r} engine.")
+        found = self.engine.tool(name)
         pending = self.draft.pending
         if pending is not None:
             # A plain answer, not a refusal: a retry prompt would tell the model to try again.

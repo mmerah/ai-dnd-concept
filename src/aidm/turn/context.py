@@ -18,6 +18,7 @@ def render_master(
     scenes: Sequence[HistoryRecord],
     action: str,
     *,
+    played: int,
     notes: Sequence[str] = (),
 ) -> str:
     """The whole spawn prompt: every spawn is cold, so the picture rides in it."""
@@ -26,7 +27,7 @@ def render_master(
             ("YOUR ROLE", _prompt("master")),
             ("THE RULES OF THIS GAME", instructions),
             ("SCENARIO", f"{state.scenario.title}\n{state.scenario.premise}"),
-            (f"RECENT PLAY (this is turn {state.turn + 1})", render_history(scenes)),
+            (f"RECENT PLAY (this is turn {played + 1})", render_history(scenes)),
             *engine_sections,
             ("NOTES FROM THE RULES", lines_of(f"- {note}" for note in notes)),
             ("WAITING ON THE PLAYER", _waiting(state.pending)),

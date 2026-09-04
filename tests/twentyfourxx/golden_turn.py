@@ -13,8 +13,9 @@ SCRIPT: tuple[Call, ...] = (
 
 def behind(state: AnyGame) -> AnyGame:
     """One prior exchange at the starting scene: RECENT PLAY has to render it."""
-    if not isinstance(state, TwentyfourxxGame):
-        raise AssertionError(f"unsupported golden engine state: {type(state).__name__}")
+    assert isinstance(state, TwentyfourxxGame), (
+        f"unsupported golden engine state: {type(state).__name__}"
+    )
     draft = state.draft()
     draft.payload.runs[0].exchanges.append(
         Exchange(

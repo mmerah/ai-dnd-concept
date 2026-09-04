@@ -36,7 +36,7 @@ def _campaign(*jobs: Job) -> Campaign:
 
 
 def _record(title: str) -> SceneRecord:
-    return SceneRecord(title=title, question="What happens next?")
+    return SceneRecord(title=title, focus="What happens next?")
 
 
 def test_a_board_of_one_offer_is_refused() -> None:

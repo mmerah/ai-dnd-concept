@@ -2,6 +2,7 @@ import pytest
 from support.table import BREATHLESS, ENGINES_BUILT, game, updated
 
 from aidm.core.entities import EngineId, EntityId, Refusal
+from aidm.core.io import decode
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, SRD_PACK, Person
 from aidm.engines.breathless.world import (
@@ -23,8 +24,7 @@ FIRE_AXE = EntityId("fire-axe")
 
 def _breathless_game() -> tuple[AnyEngine, BreathlessGame]:
     engine, state = game(BREATHLESS)
-    if not isinstance(state, BreathlessGame):
-        raise AssertionError("the Breathless engine began another game type")
+    assert isinstance(state, BreathlessGame), "the Breathless engine began another game type"
     return engine, state
 
 
@@ -69,7 +69,7 @@ def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
 
 def test_restored_round_trips() -> None:
     engine, state = _breathless_game()
-    assert engine.restore(state.model_dump_json()) == state
+    assert engine.restore(decode(state.model_dump_json())) == state
 
 
 def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:

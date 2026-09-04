@@ -1,11 +1,11 @@
 import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Self
 
-from aidm.config import Settings
-from aidm.core.entities import EngineId, Refusal, Slug, parse
-from aidm.core.io import FileStore, decode, read_characters, read_scenarios
-from aidm.core.model import EngineHeader, ScenarioKind
+from aidm.core.entities import EngineId, Refusal, Slug
+from aidm.core.io import FileStore, Library, decode, routed
+from aidm.core.model import ScenarioKind
 from aidm.engines.seam import AnyEngine
 
 LOGGER = logging.getLogger(__name__)
@@ -29,10 +29,6 @@ class LaunchTarget:
     @property
     def slug(self) -> str:
         return f"{self.scenario_id}--{self.character_id}"
-
-    @property
-    def path(self) -> str:
-        return f"/game/{self.scenario_id}/{self.character_id}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,74 +57,71 @@ class LauncherCatalog:
     def characters_for(self, engine: EngineId) -> tuple[CatalogEntry, ...]:
         return tuple(entry for entry in self.characters if entry.engine == engine)
 
+    def target(self, scenario_id: Slug, character_id: Slug) -> LaunchTarget:
+        engine = self.scenario(scenario_id).engine
+        if character_id not in {entry.id for entry in self.characters_for(engine)}:
+            raise Refusal(f"no character {character_id!r} is written for the {engine!r} rules")
+        return LaunchTarget(scenario_id=scenario_id, character_id=character_id)
 
-def launch_target(catalog: LauncherCatalog, scenario_id: Slug, character_id: Slug) -> LaunchTarget:
-    engine = catalog.scenario(scenario_id).engine
-    if character_id not in {entry.id for entry in catalog.characters_for(engine)}:
-        raise Refusal(f"no character {character_id!r} is written for the {engine!r} rules")
-    return LaunchTarget(scenario_id=scenario_id, character_id=character_id)
-
-
-def read_catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> LauncherCatalog:
-    scenario_models = {engine_id: engine.scenario for engine_id, engine in engines.items()}
-    scenarios = tuple(
-        CatalogEntry(
-            id=name,
-            engine=scenario.engine,
-            title=scenario.meta.title,
-            subtitle=scenario.meta.premise,
-            rules=engines[scenario.engine].title,
-            kind=scenario.meta.kind,
-        )
-        for name, scenario in read_scenarios(settings.scenarios_dir, scenario_models)
-    )
-    characters = tuple(
-        CatalogEntry(
-            id=name,
-            engine=engine,
-            title=header.payload.name,
-            subtitle=header.payload.brief,
-            rules=engines[engine].title,
-        )
-        for name, engine, header in read_characters(settings.characters_dir, engines)
-    )
-    titles = {(entry.id, entry.engine): entry.title for entry in characters}
-    played_by = {entry.id: entry.engine for entry in scenarios}
-    files = FileStore(settings.saves_dir)
-    saves: list[SaveOption] = []
-    for slug in files.slugs():
-        try:
-            raw = files.load(slug)
-            if raw is None:
-                continue
-            header = parse(EngineHeader, decode(raw))
-            engine = engines.get(header.engine)
-            if engine is None:
-                LOGGER.warning("skipping save %r: its engine %r is gone", slug, header.engine)
-                continue
-            state = engine.restore(raw)
-        except Refusal as unreadable:
-            # Skip rather than raise: one save the app could not resume must not hide the rest.
-            LOGGER.warning("skipping save %r: %s", slug, unreadable)
-            continue
-        title = titles.get((state.character_id, state.engine))
-        if played_by.get(state.scenario_id) != state.engine or title is None:
-            LOGGER.warning("skipping save %r: its scenario or character is gone", slug)
-            continue
-        target = LaunchTarget(scenario_id=state.scenario_id, character_id=state.character_id)
-        if slug != target.slug:
-            LOGGER.warning("skipping save %r: filed under another name", slug)
-            continue
-        scenes = engine.scenes(state)
-        saves.append(
-            SaveOption(
-                target=target,
-                scenario_title=state.scenario.title,
-                character_title=title,
-                turn=state.turn,
-                kind=state.scenario.kind,
-                where=scenes[-1].title if scenes else "",
-                rules=engine.title,
+    @classmethod
+    def read(
+        cls, library: Library, store: FileStore, engines: Mapping[EngineId, AnyEngine]
+    ) -> Self:
+        scenario_models = {engine_id: engine.scenario for engine_id, engine in engines.items()}
+        scenarios = tuple(
+            CatalogEntry(
+                id=name,
+                engine=scenario.engine,
+                title=scenario.meta.title,
+                subtitle=scenario.meta.premise,
+                rules=engines[scenario.engine].title,
+                kind=scenario.meta.kind,
             )
+            for name, scenario in library.read_scenarios(scenario_models)
         )
-    return LauncherCatalog(scenarios=scenarios, characters=characters, saves=tuple(saves))
+        characters = tuple(
+            CatalogEntry(
+                id=name,
+                engine=engine,
+                title=header.payload.name,
+                subtitle=header.payload.brief,
+                rules=engines[engine].title,
+            )
+            for name, engine, header in library.read_characters(engines)
+        )
+        titles = {(entry.id, entry.engine): entry.title for entry in characters}
+        played_by = {entry.id: entry.engine for entry in scenarios}
+        saves: list[SaveOption] = []
+        for slug in store.slugs():
+            try:
+                raw = store.load(slug)
+                if raw is None:
+                    continue
+                value = decode(raw)
+                engine = routed(value, engines)
+                state = engine.restore(value)
+            except Refusal as unreadable:
+                # Skip rather than raise: one save the app could not resume must not hide the rest.
+                LOGGER.warning("skipping save %r: %s", slug, unreadable)
+                continue
+            title = titles.get((state.character_id, state.engine))
+            if played_by.get(state.scenario_id) != state.engine or title is None:
+                LOGGER.warning("skipping save %r: its scenario or character is gone", slug)
+                continue
+            target = LaunchTarget(scenario_id=state.scenario_id, character_id=state.character_id)
+            if slug != target.slug:
+                LOGGER.warning("skipping save %r: filed under another name", slug)
+                continue
+            scenes = engine.scenes(state)
+            saves.append(
+                SaveOption(
+                    target=target,
+                    scenario_title=state.scenario.title,
+                    character_title=title,
+                    turn=len(engine.history(state)),
+                    kind=state.scenario.kind,
+                    where=scenes[-1].title if scenes else "",
+                    rules=engine.title,
+                )
+            )
+        return cls(scenarios=scenarios, characters=characters, saves=tuple(saves))

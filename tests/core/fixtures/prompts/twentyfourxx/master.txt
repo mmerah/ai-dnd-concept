@@ -111,7 +111,7 @@ SCENARIO:
 The Silent Relay
 Relay station QV-9 stopped answering six days ago, and Kael is the operator sent to bring its beacon back online before the next convoy jumps in blind.
 
-RECENT PLAY (this is turn 1):
+RECENT PLAY (this is turn 2):
 SCENE: The Docking Ring
 Can Kael get through Vessa's airlock and into the station, and on whose terms?
 

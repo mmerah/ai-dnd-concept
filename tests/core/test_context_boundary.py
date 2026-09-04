@@ -37,6 +37,7 @@ def _master_prompt(state: Loner3eGame, prompt: str, *, notes: tuple[str, ...] = 
         state,
         _engine().scenes(state),
         prompt,
+        played=len(_engine().history(state)),
         notes=notes,
     )
 
@@ -100,7 +101,7 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_read() -> None:
         scenes=(
             SceneRecord(
                 title="t",
-                question="q",
+                focus="q",
                 exchanges=(Exchange(prompt="p", lines=(SpokenLine(text="Water drips."),)),),
             ),
         ),

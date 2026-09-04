@@ -112,7 +112,7 @@ SCENARIO:
 The Whispering Vault
 The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit.
 
-RECENT PLAY (this is turn 1):
+RECENT PLAY (this is turn 3):
 SCENE: The Vault Stair
 Is there a way past the vault door from the stair?
 

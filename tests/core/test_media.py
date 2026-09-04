@@ -142,11 +142,11 @@ def test_open_illustrator_takes_the_passed_style_and_is_none_when_media_is_off(
             )
         ),
     )
-    illustrator = open_illustrator(on, target, store, style="woodcut")
+    illustrator = open_illustrator(on, store, target.slug, style="woodcut", icon_dirs=())
     assert illustrator is not None
     assert illustrator.style == "woodcut"
 
     off = EnvFileFreeSettings(
         saves_dir=tmp_path, scenarios_dir=SCENARIOS, characters_dir=CHARACTERS
     )
-    assert open_illustrator(off, target, store, style="woodcut") is None
+    assert open_illustrator(off, store, target.slug, style="woodcut", icon_dirs=()) is None

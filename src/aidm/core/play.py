@@ -15,16 +15,19 @@ class Line(Frozen):
     text: str = Field(min_length=1, description="Dialogue only, or one passage of narration.")
 
 
-class Speaker(Frozen):
-    """A speaker as recorded: chat and journal render this without resolving engine state."""
-
-    name: str
-    id: CheckedEntityId
-
-
 class SpokenLine(Frozen):
-    speaker: Speaker | None = None
+    """A line as recorded: the speaker's id and name ride on it, so chat, journal and speech
+    never resolve an id through state."""
+
+    speaker_id: CheckedEntityId | None = None
+    speaker: str = ""  # the name as it was when spoken; empty for narration
     text: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _named_when_spoken(self) -> Self:
+        if (self.speaker_id is None) != (not self.speaker):
+            raise ValueError("a spoken line names its speaker; narration names nobody")
+        return self
 
 
 class Narration(Frozen):
@@ -100,7 +103,7 @@ class SceneRecord(Frozen):
     written."""
 
     title: str
-    question: str
+    focus: str
     recap: str = ""
     exchanges: tuple[Exchange, ...] = ()
 

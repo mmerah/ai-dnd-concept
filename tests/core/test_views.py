@@ -1,9 +1,18 @@
+import pytest
+from pydantic import ValidationError
 from support.loner import initialized, with_entity
 
-from aidm.core.entities import EntityId
+from aidm.core.entities import EntityId, Refusal
 from aidm.core.facts import Fact
-from aidm.core.play import ChapterRecord, Exchange, SceneRecord, SpokenLine
-from aidm.core.views import TAIL_EXCHANGES, render_history, render_whole, told_narration
+from aidm.core.play import ChapterRecord, Exchange, Line, SceneRecord, SpokenLine
+from aidm.core.views import (
+    TAIL_EXCHANGES,
+    NarratorView,
+    Subject,
+    render_history,
+    render_whole,
+    told_narration,
+)
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import Loner3eSheet
 
@@ -39,7 +48,37 @@ def test_everyone_known_and_present_may_speak() -> None:
 
     view = engine.narrator_view(with_entity(state, OBJECT))
 
-    assert OBJECT.id in {speaker.id for speaker in view.speakers}
+    assert OBJECT.id in view.speakers
+
+
+def test_a_narrator_view_naming_a_speaker_who_is_not_a_subject_is_refused() -> None:
+    subject = Subject(id=EntityId("mara"), name="Mara", brief="A ferrywoman.")
+    with pytest.raises(ValidationError, match="not subjects"):
+        _ = NarratorView(
+            place="p",
+            title="t",
+            focus="f",
+            situation="s",
+            subjects=(subject,),
+            speakers=(EntityId("stranger"),),
+        )
+
+
+def test_a_spoken_line_names_its_speaker_or_nobody() -> None:
+    with pytest.raises(ValidationError, match="names its speaker"):
+        _ = SpokenLine(speaker_id=EntityId("kael"), text="Hello.")
+    with pytest.raises(ValidationError, match="names its speaker"):
+        _ = SpokenLine(speaker="Kael", text="Hello.")
+
+
+def test_spoken_refuses_a_subject_who_is_not_a_speaker() -> None:
+    subject = Subject(id=EntityId("mara"), name="Mara", brief="A ferrywoman.")
+    view = NarratorView(
+        place="p", title="t", focus="f", situation="s", subjects=(subject,), speakers=()
+    )
+
+    with pytest.raises(Refusal, match="nobody here has id"):
+        view.spoken((Line(speaker_id=EntityId("mara"), text="Hello."),))
 
 
 def test_the_player_view_panels_carry_icon_ids_for_who_is_here() -> None:
@@ -67,11 +106,11 @@ def _told(prompt: str) -> Exchange:
 def test_render_history_prints_an_older_scenes_recap_and_not_its_exchanges() -> None:
     older = SceneRecord(
         title="The Drowned Hall",
-        question="What lies beneath the water?",
+        focus="What lies beneath the water?",
         recap="You found the drowned hall and left it behind.",
         exchanges=(_told("dropped"),),
     )
-    scenes = [older, SceneRecord(title="A1", question="q1"), SceneRecord(title="A2", question="q2")]
+    scenes = [older, SceneRecord(title="A1", focus="q1"), SceneRecord(title="A2", focus="q2")]
 
     history = render_history(scenes)
 
@@ -80,9 +119,9 @@ def test_render_history_prints_an_older_scenes_recap_and_not_its_exchanges() -> 
 
 
 def test_render_history_prints_the_last_two_scenes_whole() -> None:
-    recent_a = SceneRecord(title="A1", question="q1", exchanges=(_told("p1"), _told("p2")))
-    recent_b = SceneRecord(title="A2", question="q2", exchanges=(_told("p3"),))
-    scenes = [SceneRecord(title="Hub", question="q0"), recent_a, recent_b]
+    recent_a = SceneRecord(title="A1", focus="q1", exchanges=(_told("p1"), _told("p2")))
+    recent_b = SceneRecord(title="A2", focus="q2", exchanges=(_told("p3"),))
+    scenes = [SceneRecord(title="Hub", focus="q0"), recent_a, recent_b]
 
     history = render_history(scenes)
 
@@ -93,8 +132,8 @@ def test_render_history_prints_the_last_two_scenes_whole() -> None:
 
 def test_render_history_shows_an_older_scenes_last_tail_exchanges_only() -> None:
     prompts = [f"p{number}" for number in range(TAIL_EXCHANGES + 2)]
-    older = SceneRecord(title="Hub", question="q0", exchanges=tuple(_told(p) for p in prompts))
-    scenes = [older, SceneRecord(title="A1", question="q1"), SceneRecord(title="A2", question="q2")]
+    older = SceneRecord(title="Hub", focus="q0", exchanges=tuple(_told(p) for p in prompts))
+    scenes = [older, SceneRecord(title="A1", focus="q1"), SceneRecord(title="A2", focus="q2")]
 
     history = render_history(scenes)
 
@@ -105,15 +144,15 @@ def test_render_history_shows_an_older_scenes_last_tail_exchanges_only() -> None
 
 
 def test_render_history_prints_a_chapters_summary_and_scene_titles_only() -> None:
-    swallowed = SceneRecord(title="A0", question="q0", exchanges=(_told("swallowed"),))
+    swallowed = SceneRecord(title="A0", focus="q0", exchanges=(_told("swallowed"),))
     chapter = ChapterRecord(
         title="The First Job",
         verdict="done",
         summary="The player found the ledger and burned it.",
         scenes=(swallowed.title, "The Cloister Walk"),
     )
-    recent_a = SceneRecord(title="A1", question="q1", exchanges=(_told("p1"),))
-    recent_b = SceneRecord(title="A2", question="q2", exchanges=(_told("p2"),))
+    recent_a = SceneRecord(title="A1", focus="q1", exchanges=(_told("p1"),))
+    recent_b = SceneRecord(title="A2", focus="q2", exchanges=(_told("p2"),))
     records = [chapter, recent_a, recent_b]
 
     history = render_history(records)
@@ -129,7 +168,7 @@ def test_render_whole_prints_the_trace_of_an_untold_fact() -> None:
     hidden = Fact(kind="region_added", trace="a hidden region opens beyond the vault", told=False)
     scene = SceneRecord(
         title="The Vault",
-        question="q",
+        focus="q",
         exchanges=(
             Exchange(prompt="p1", lines=(SpokenLine(text="p1 happens."),), facts=(hidden,)),
         ),
@@ -144,10 +183,10 @@ def test_render_whole_prints_the_trace_of_an_untold_fact() -> None:
 
 def test_told_narration_holds_narration_with_no_prompt_or_recap() -> None:
     older = SceneRecord(
-        title="Hub", question="q0", recap="What happened before.", exchanges=(_told("dropped"),)
+        title="Hub", focus="q0", recap="What happened before.", exchanges=(_told("dropped"),)
     )
-    recent_a = SceneRecord(title="A1", question="q1", exchanges=(_told("p1"),))
-    recent_b = SceneRecord(title="A2", question="q2", exchanges=(_told("p2"),))
+    recent_a = SceneRecord(title="A1", focus="q1", exchanges=(_told("p1"),))
+    recent_b = SceneRecord(title="A2", focus="q2", exchanges=(_told("p2"),))
     scenes = [older, recent_a, recent_b]
 
     narrated = told_narration(scenes)

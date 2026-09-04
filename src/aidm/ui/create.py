@@ -7,13 +7,13 @@ from tempfile import mkdtemp
 from nicegui import ui
 from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
-from aidm.app.launch import LauncherCatalog, LaunchTarget, read_catalog
+from aidm.app.launch import LauncherCatalog, LaunchTarget
 from aidm.app.runtime import Runtime
 from aidm.core.creation import CreationStep, picked
 from aidm.core.entities import EngineId, Refusal, Slug
-from aidm.core.io import SOURCE_SUFFIXES, write_character
+from aidm.core.io import SOURCE_SUFFIXES
 from aidm.core.model import ScenarioKind, ScenarioMeta
-from aidm.ui.widgets import labeled_value, page_header
+from aidm.ui.widgets import game_path, labeled_value, page_header
 
 LOGGER = logging.getLogger(__name__)
 
@@ -89,7 +89,7 @@ class CharacterForm:
             made = self.runtime.engines[self.engine_id].create_character(
                 title, (self.brief.value or "").strip(), self.picks
             )
-            write_character(self.runtime.settings.characters_dir, made)
+            self.runtime.library.write_character(made)
         except Refusal as refused:
             ui.notify(str(refused), type="negative")
             return
@@ -241,7 +241,7 @@ class ScenarioForm:
         finally:
             self.button.props(remove="loading")
         LOGGER.info("scenario created: slug=%s", name)
-        ui.navigate.to(opened.path)
+        ui.navigate.to(game_path(opened))
 
 
 def character_page(runtime: Runtime) -> None:
@@ -249,7 +249,8 @@ def character_page(runtime: Runtime) -> None:
 
 
 def scenario_page(runtime: Runtime) -> None:
-    ScenarioForm(runtime, read_catalog(runtime.settings, runtime.engines)).build()
+    catalog = LauncherCatalog.read(runtime.library, runtime.store, runtime.engines)
+    ScenarioForm(runtime, catalog).build()
 
 
 def _engine_select(

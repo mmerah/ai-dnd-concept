@@ -59,7 +59,7 @@ async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_pat
     assert "Elena" not in narrator
     # The sheets are the game master's: no tag the engine rolls by reaches the narrator.
     assert "concept" not in narrator
-    assert state.turn == 1
+    assert len(table.service.engine.history(state)) == 1
     assert state.payload.exchanges()[-1].prompt == "I search beneath the desk."
 
 
@@ -198,7 +198,7 @@ async def test_a_master_that_crashes_after_applying_still_commits_what_it_applie
 
     await table.service.play(Answer(text="I take the map and read it."))
 
-    assert table.service.state.turn == 1
+    assert len(table.service.engine.history(table.service.state)) == 1
     assert table.service.state.payload.require(MAP).known
 
 

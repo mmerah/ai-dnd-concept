@@ -7,17 +7,17 @@ from pathlib import Path
 from random import Random
 
 from aidm.app.launch import LaunchTarget
-from aidm.app.media import Illustrator, open_illustrator
+from aidm.app.media import ICON_DIR, Illustrator, open_illustrator
 from aidm.app.spawn import CliSpawner, Spawner, ask
 from aidm.app.speech import Reader, open_reader
 from aidm.config import Role, Settings, read_settings
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.facts import Fact, cards, traced
-from aidm.core.io import FileStore, read_character, read_scenario, write_scenario
+from aidm.core.io import FileStore, Library, decode
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioMeta, WorldsmithAnswer
 from aidm.core.play import Answer, Commission, Exchange, Line, Narration
 from aidm.core.source import given_text
-from aidm.core.tools import MasterTool
+from aidm.core.tools import MasterTool, Play
 from aidm.core.views import PlayerView
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
@@ -70,7 +70,7 @@ class GameService:
         if saved is None:
             self.state = self._begin()
             return
-        self.state = self._resumable(self.engine.restore(saved))
+        self.state = self._resumable(self.engine.restore(decode(saved)))
 
     @property
     def slug(self) -> str:
@@ -93,8 +93,7 @@ class GameService:
             lines = await self._narrate(draft, (), OPENING, fatal=False)
             if lines:
                 self.commit(self.engine.close(draft, BEGUN, lines, ()))
-            self.illustrate(_latest_narration(self.engine, self.state))
-            self.speak()
+            self._present()
         finally:
             self.phase = None
 
@@ -114,13 +113,7 @@ class GameService:
         try:
             # An answer that re-suspended leaves every tool refused: nothing for a master to do.
             if turn.draft.pending is None:
-                await self._act(turn)
-                while (asked := turn.draft.wanted()) is not None:
-                    note = await self._fulfil(turn, asked)
-                    self.phase = "master"
-                    await self._act(turn)
-                    # Read once, by the re-spawn; the next turn has the facts.
-                    turn.draft.notes.remove(note)
+                await self._run_master(turn)
             lines: tuple[Line, ...] = ()
             if turn.draft.pending is None or any(fact.told for fact in turn.facts):
                 self.phase = "narrator"
@@ -129,15 +122,26 @@ class GameService:
             # Cleared before arrival: the tool surface must not reach a turn nobody plays.
             self.turn = None
             self.commit(state)
-            self.illustrate(_latest_narration(self.engine, state))
-            self.speak()
+            self._present()
             # The player named where they go; the worldsmith writes it once the turn is safe.
             if brief is not None and self.engine.over(state) is None:
                 await self._grow(turn.prompt, brief)
-                self.illustrate(_latest_narration(self.engine, self.state))
-                self.speak()
+                self._present()
         finally:
             self.turn, self.phase = None, None
+
+    async def _run_master(self, turn: Turn) -> None:
+        await self._act(turn)
+        while (asked := turn.draft.wanted()) is not None:
+            note = await self._fulfil(turn, asked)
+            self.phase = "master"
+            await self._act(turn)
+            # Read once, by the re-spawn; the next turn has the facts.
+            turn.draft.notes.remove(note)
+
+    def _present(self) -> None:
+        self.illustrate(_latest_narration(self.engine, self.state))
+        self.speak()
 
     async def _fulfil(self, turn: Turn, asked: Commission) -> str:
         """The suspended turn: the worldsmith writes, the install lands, the master is told."""
@@ -148,7 +152,7 @@ class GameService:
             landed = turn.apply(play)
         except (OSError, Refusal) as failed:
             LOGGER.warning("the commissioned %s could not be written: %s", asked.kind, failed)
-            turn.apply(lambda draft, _rng: draft.withdraw(asked))
+            turn.apply(_withdrawing(asked))
             landed = "it could not be written; play on without it"
         note = (
             f'You asked the worldsmith for a {asked.kind}: "{asked.brief}". '
@@ -201,6 +205,7 @@ class GameService:
         view = self.engine.narrator_view(draft)
         try:
             narration = await ask(
+                self.spawner,
                 "narrator",
                 render_narrator(
                     view,
@@ -210,7 +215,6 @@ class GameService:
                 ),
                 Narration,
                 view.narration_refusal,
-                partial(self.spawner.run, "narrator"),
             )
         except (OSError, Refusal) as failed:
             if fatal:
@@ -304,7 +308,6 @@ class GameService:
                 f"save scenario is {state.scenario.title!r}, "
                 f"selected scenario is {self.scenario.meta.title!r}"
             )
-        self.engine.validate(state)
         return state
 
 
@@ -317,9 +320,16 @@ class Runtime:
     _sessions: dict[str, GameService] = field(default_factory=dict, repr=False)
     lock: Lock = field(default_factory=Lock, repr=False)
     engines: dict[EngineId, AnyEngine] = field(init=False)
+    library: Library = field(init=False)
+    store: FileStore = field(init=False)
 
     def __post_init__(self) -> None:
         self.engines = build_engines()
+        self._mount()
+
+    def _mount(self) -> None:
+        self.library = Library(self.settings.scenarios_dir, self.settings.characters_dir)
+        self.store = FileStore(self.settings.saves_dir)
 
     def default_engine(self) -> EngineId:
         """Dict order picks it; a create page has to start somewhere."""
@@ -351,6 +361,7 @@ class Runtime:
     def reload_settings(self) -> None:
         self.settings = read_settings()
         self.spawner = CliSpawner(self.settings)
+        self._mount()
         self._sessions.clear()
 
     async def new_scenario(
@@ -363,11 +374,9 @@ class Runtime:
     ) -> Slug:
         """One worldsmith call authors the engine's complete opening world."""
         engine = self.engines[engine_id]
-        character = read_character(
-            self.settings.characters_dir, character_id, engine.id, engine.character
-        )
+        character = self.library.read_character(character_id, engine.id, engine.character)
         source = given_text(meta.premise, document, self.settings.source_max_chars)
-        name = slug(meta.title, self._scenario_ids())
+        name = slug(meta.title, self.library.scenario_ids())
 
         def playable(built: AnyScenario) -> str | None:
             try:
@@ -377,13 +386,9 @@ class Runtime:
             return None
 
         scenario = await engine.author(meta, source, packs, _worldsmith(self.spawner), playable)
-        write_scenario(self.settings.scenarios_dir, name, scenario, document)
+        self.library.write_scenario(name, scenario, document)
         LOGGER.info("scenario written: slug=%s title=%r", name, meta.title)
         return name
-
-    def _scenario_ids(self) -> tuple[str, ...]:
-        directory = self.settings.scenarios_dir
-        return tuple(entry.name for entry in directory.iterdir()) if directory.is_dir() else ()
 
     def session(self, target: LaunchTarget) -> GameService:
         """Memoised: a page render must not rebuild the game and drop the turn in flight."""
@@ -396,35 +401,51 @@ class Runtime:
 
     def _open(self, target: LaunchTarget) -> GameService:
         settings = self.settings
-        scenario = read_scenario(
-            settings.scenarios_dir,
+        scenario = self.library.read_scenario(
             target.scenario_id,
             {engine_id: engine.scenario for engine_id, engine in self.engines.items()},
         )
         engine = self.engines[scenario.engine]
-        character = read_character(
-            settings.characters_dir, target.character_id, engine.id, engine.character
-        )
-        store = FileStore(settings.saves_dir)
+        character = self.library.read_character(target.character_id, engine.id, engine.character)
         return GameService(
             target=target,
             scenario=scenario,
             character=character,
             engine=engine,
             spawner=self.spawner,
-            store=store,
+            store=self.store,
             media=open_illustrator(
-                settings, target, store, style=scenario.meta.art_style or engine.art_style
+                settings,
+                self.store,
+                target.slug,
+                style=scenario.meta.art_style or engine.art_style,
+                icon_dirs=(
+                    self.library.scenario_folder(target.scenario_id) / ICON_DIR,
+                    self.library.character_folder(target.character_id) / ICON_DIR,
+                ),
             ),
-            reader=open_reader(settings, store, target.slug, scenario),
+            reader=open_reader(
+                settings,
+                self.store,
+                target.slug,
+                voice=scenario.meta.voice or settings.speech.voice,
+            ),
         )
 
 
 def _worldsmith(spawner: Spawner) -> WorldsmithAnswer:
     """What the platform hands an engine: one spawned role, one shared retry."""
-    return partial(ask, "worldsmith", spawn=partial(spawner.run, "worldsmith"))
+    return partial(ask, spawner, "worldsmith")
 
 
 def _latest_narration(engine: AnyEngine, state: AnyGame) -> str:
     history = engine.history(state)
     return history[-1].narration if history else ""
+
+
+def _withdrawing(asked: Commission) -> Play[AnyGame]:
+    def withdraw(draft: AnyGame, _rng: Random) -> tuple[Fact, ...]:
+        draft.withdraw(asked)
+        return ()
+
+    return withdraw

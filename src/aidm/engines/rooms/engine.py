@@ -116,7 +116,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
             situation=place.description,
             subjects=tuple(entity.subject() for entity in here),
             # A corpse may stay a subject in the room; it does not speak.
-            speakers=tuple(entity.subject().speaker() for entity in here if entity.alive),
+            speakers=tuple(entity.id for entity in here if entity.alive),
         )
 
     def player_view(self, state: G) -> PlayerView:

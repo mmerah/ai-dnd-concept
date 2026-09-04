@@ -1,6 +1,19 @@
+import pytest
+from pydantic import ValidationError
+from support.loner import initialized
+
 from aidm.core.entities import EntityId
 from aidm.core.views import Subject
-from aidm.engines.base import Person, Thing, here_panel
+from aidm.engines.base import Counter, Person, Thing, here_panel
+from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
+
+KAEL = Loner3eSheet(id=EntityId("kael"), name="Kael", brief="", known=True)
+
+
+def _state() -> Loner3eGame:
+    """A counter card drops the name for the played character alone, so it needs the state."""
+    _, state = initialized()
+    return state
 
 
 def test_here_panel_puts_the_player_first_with_icon_ids_on_every_row() -> None:
@@ -25,3 +38,24 @@ def test_a_dead_person_prints_dead_on_the_first_line_of_line() -> None:
     kestrel = Person(id=EntityId("kestrel"), name="Kestrel", brief="Runs the dock.", alive=False)
 
     assert kestrel.line().splitlines()[0] == "- Kestrel[kestrel] — Runs the dock. (dead)"
+
+
+def test_counter_rejects_current_outside_its_bounds() -> None:
+    with pytest.raises(ValidationError, match="below zero"):
+        Counter(current=-1, maximum=10)
+    with pytest.raises(ValidationError, match="above maximum"):
+        Counter(current=11, maximum=10)
+
+
+def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> None:
+    state = _state()
+    KAEL.luck.current = 0
+    (changed,) = KAEL.luck.change(KAEL, 99, "Luck", "the strain")
+    assert (changed.card, KAEL.luck.current) == ("Kael: Luck +6 -> 6/6", 6)
+    assert KAEL.luck.change(KAEL, 99, "Luck", "the strain") == []
+    assert KAEL.luck.adjust(-2) == -2
+
+    player = state.payload.player
+    player.luck.current = 0
+    (own,) = player.luck.change(player, 1, "Luck", "the strain")
+    assert own.card == "Luck +1 -> 1/6"

@@ -41,8 +41,7 @@ THIN = MapDraft[Npc](
 
 def _tunnelgoons_game() -> TunnelGoonsGame:
     _, state = game(TUNNELGOONS)
-    if not isinstance(state, TunnelGoonsGame):
-        raise AssertionError("the Tunnel Goons engine began another game type")
+    assert isinstance(state, TunnelGoonsGame), "the Tunnel Goons engine began another game type"
     return state
 
 
@@ -508,8 +507,9 @@ def test_hub_refusal_needs_a_two_or_three_offer_board_and_passes_the_shipped_cam
     assert "two or three offers" in refused
 
     _, campaign_state = game(TUNNELGOONS, "campaign")
-    if not isinstance(campaign_state, TunnelGoonsGame):
-        raise AssertionError("the Tunnel Goons engine began another game type")
+    assert isinstance(campaign_state, TunnelGoonsGame), (
+        "the Tunnel Goons engine began another game type"
+    )
     canon = campaign_state.payload
     draft = MapDraft[Npc](
         places=canon.places,

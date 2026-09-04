@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import SecretStr
-from support.loner import loner3e_session, scenario
+from support.loner import session as loner_session
 from support.table import CHARACTERS, SCENARIOS, EnvFileFreeSettings
 
 from aidm.app.launch import LaunchTarget
@@ -19,12 +19,11 @@ from aidm.app.speech import (
 from aidm.config import ProviderConfig, Providers, SpeechConfig
 from aidm.core.entities import EntityId
 from aidm.core.io import FileStore
-from aidm.core.model import ScenarioMeta
-from aidm.core.play import Exchange, Line, Speaker, SpokenLine
+from aidm.core.play import Exchange, Line, SpokenLine
 
 NARRATOR = "Kore"
 POOL = ("Kore", "Puck", "Charon", "Zephyr", "Fenrir")
-KAEL = Speaker(name="Kael", id=EntityId("kael"))
+KAEL = EntityId("kael")
 
 
 def _exchange() -> Exchange:
@@ -32,7 +31,7 @@ def _exchange() -> Exchange:
         prompt="wait",
         lines=(
             SpokenLine(text="The door groans open."),
-            SpokenLine(speaker=KAEL, text="I step through."),
+            SpokenLine(speaker_id=KAEL, speaker="Kael", text="I step through."),
         ),
     )
 
@@ -59,8 +58,7 @@ def test_voice_of_gives_the_narrator_for_narration_and_a_stable_pool_member_for_
     first = voice_of(KAEL, NARRATOR, POOL)
     assert first in POOL
     assert voice_of(KAEL, NARRATOR, POOL) == first
-    other = Speaker(name="Mara", id=EntityId("mara"))
-    assert voice_of(other, NARRATOR, POOL) in POOL
+    assert voice_of(EntityId("mara"), NARRATOR, POOL) in POOL
 
 
 def test_clip_key_is_twelve_hex_chars_and_changes_with_model_voice_or_text() -> None:
@@ -140,28 +138,24 @@ def test_open_reader_is_none_when_off_and_takes_the_scenarios_voice(tmp_path: Pa
             )
         ),
     )
-    voiced = scenario().model_copy(
-        update={"meta": ScenarioMeta(title="V", premise="p", voice="Puck")}
-    )
-    reader = open_reader(on, store, target.slug, voiced)
+    reader = open_reader(on, store, target.slug, voice="Puck")
     assert reader is not None
     assert reader.voice == "Puck"
 
-    unvoiced = scenario()
-    reader = open_reader(on, store, target.slug, unvoiced)
+    reader = open_reader(on, store, target.slug, voice=on.speech.voice)
     assert reader is not None
     assert reader.voice == on.speech.voice
 
     off = EnvFileFreeSettings(
         saves_dir=tmp_path, scenarios_dir=SCENARIOS, characters_dir=CHARACTERS
     )
-    assert open_reader(off, store, target.slug, unvoiced) is None
+    assert open_reader(off, store, target.slug, voice=on.speech.voice) is None
 
 
 async def test_speak_reads_and_caches_the_newest_committed_exchange(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    session = loner3e_session(tmp_path)
+    session = loner_session(tmp_path)
     draft = session.state.draft()
     session.commit(session.engine.close(draft, "wait", (Line(text="The door groans open."),), ()))
 
