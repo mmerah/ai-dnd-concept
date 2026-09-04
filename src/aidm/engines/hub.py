@@ -62,7 +62,6 @@ TAKE_BRIEF = (
 AWAY_BRIEF = (
     "The hub is {title} ({place}). Never place a scene at {place}: home is reached by going home."
 )
-# Shared by the scene engines and the room engine.
 RETURN_BRIEF = (
     "The player is home at {title} ({place}). `debrief` is one paragraph on the job they just "
     "left, in the second person and the present tense, as the narrator writes; THE VERDICT says "
@@ -163,7 +162,6 @@ class Campaign(Mutable):
         return self
 
     def check_spans(self, places: Sequence[Slug]) -> None:
-        """Every `started` is a run or visit away from the hub, every `returned` one at it."""
         for index, job in enumerate(self.jobs):
             for attempt in job.attempts:
                 if attempt.started is not None:
@@ -178,8 +176,7 @@ class Campaign(Mutable):
                         raise Refusal(f"job {index} returned away from the hub")
 
     def open_job(self) -> Job | None:
-        last = self.jobs[-1] if self.jobs else None
-        return last if last is not None and last.open else None
+        return self.jobs[-1] if self.jobs and self.jobs[-1].open else None
 
     def closed_jobs(self) -> tuple[Job, ...]:
         return tuple(job for job in self.jobs if not job.open)
@@ -194,7 +191,6 @@ class Campaign(Mutable):
         return job.terms if job is not None else ""
 
     def since_start[T](self, walked: list[T]) -> list[T]:
-        """The walking job's attempt; the hub's last when none is walking."""
         job = self.open_job()
         if job is not None and job.walking:
             return walked[job.start() :]
@@ -204,13 +200,12 @@ class Campaign(Mutable):
         return sum(attempt.returned is not None for job in self.jobs for attempt in job.attempts)
 
     def records_of(self, job: Job, records: Sequence[SceneRecord]) -> tuple[SceneRecord, ...]:
-        spans: list[SceneRecord] = []
-        for attempt in job.attempts:
-            if attempt.started is None:
-                continue
-            end = attempt.returned if attempt.returned is not None else len(records)
-            spans.extend(records[attempt.started : end])
-        return tuple(spans)
+        return tuple(
+            record
+            for attempt in job.attempts
+            if attempt.started is not None
+            for record in records[attempt.started : attempt.returned]
+        )
 
     def job_records(self, records: Sequence[SceneRecord]) -> tuple[SceneRecord, ...]:
         job = self.open_job()
@@ -249,7 +244,6 @@ class Campaign(Mutable):
         return tuple(result)
 
     def taken(self, intent: str) -> Job | None:
-        """The left-open job whose `TAKE_JOB` line the intent is."""
         prefix, suffix = TAKE_JOB.split("{title}")
         folded = intent.casefold()
         if not folded.startswith(prefix.casefold()) or not folded.endswith(suffix.casefold()):
@@ -260,12 +254,9 @@ class Campaign(Mutable):
         matches = [
             job
             for job in self.jobs
-            if self._left_open(job) and job.title.casefold() == title.casefold()
+            if not job.open and not job.finished and job.title.casefold() == title.casefold()
         ]
         return matches[-1] if matches else None
-
-    def _left_open(self, job: Job) -> bool:
-        return not job.open and not job.finished
 
     def reopen(self, job: Job, started: int | None) -> None:
         self.jobs.remove(job)
@@ -318,7 +309,6 @@ class Campaign(Mutable):
         returning: bool,
         reopening: Job | None,
     ) -> Sections:
-        """THIS JOB on a return, THE JOB BEFORE on a retake, then the hub's own sections."""
         this_job = (("THIS JOB", render_whole(self.job_records(records))),) if returning else ()
         before = (
             ()

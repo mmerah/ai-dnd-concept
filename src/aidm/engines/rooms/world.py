@@ -198,8 +198,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         return self.visits if self.campaign is None else self.campaign.since_start(self.visits)
 
     def walked_places(self, job: Job) -> tuple[EntityId, ...]:
-        """The distinct places the walking attempt has crossed; the current tavern visit is not
-        walked."""
+        """Distinct places the walking attempt crossed; the current tavern visit is not walked."""
         seen: list[EntityId] = []
         for visit in self.visits[job.start() : len(self.visits) - 1]:
             if visit.place not in seen:
@@ -386,10 +385,8 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         campaign, job = self.campaign, self.walked_job()
         if campaign is None or job is None:
             raise Refusal("no job is open to report")
-        started, end = (
-            job.start(),
-            len(self.visits) - 1,
-        )  # `start()` reads an open job: before `close`
+        started = job.start()  # reads an open job: before `close`
+        end = len(self.visits) - 1
         job.close(returned=end, debrief=debrief, summary=summary)
         for place, visit in {v.place: v for v in self.visits[started:end]}.items():
             visit.recap = recaps[place]

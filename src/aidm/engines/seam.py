@@ -49,8 +49,6 @@ class CommissionArgs(Protocol):
 
 
 class Engine[P: Person, G: Game[Any]](ABC):
-    """The seam joining an engine's rules to the platform; a subclass answers for one engine."""
-
     # Declared, not `ClassVar`: `type[G]` cannot be one, and a test sets them on its own instance.
     id: EngineId
     title: str
@@ -147,14 +145,13 @@ class Engine[P: Person, G: Game[Any]](ABC):
         exchange = Exchange(
             prompt=prompt,
             lines=self.narrator_view(draft).spoken(lines),
-            facts=tuple(facts),
+            facts=facts,
             decision="" if draft.pending is None else draft.pending.prompt,
         )
         self.record(draft, exchange)
         return self.commit(draft)
 
     def commit(self, draft: G) -> G:
-        """The one gate: the engine's own check, then the draft revalidated whole."""
         self.validate(draft)
         return draft.commit()
 
@@ -203,7 +200,6 @@ class Engine[P: Person, G: Game[Any]](ABC):
         return self.world(state).scenes()
 
     def reopening(self, state: G, intent: str) -> Job | None:
-        """The left-open job the intent takes again; only at the hub."""
         world = self.world(state)
         campaign = world.campaign
         return campaign.taken(intent) if campaign is not None and world.at_hub else None

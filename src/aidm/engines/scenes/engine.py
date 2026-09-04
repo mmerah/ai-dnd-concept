@@ -83,8 +83,6 @@ WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODI
 
 
 class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
-    """The scene lifecycle, once; a subclass says what its rules add."""
-
     cast: type[C]
     pack: type[K]
     world_type: type[SceneWorld[C, P]]
