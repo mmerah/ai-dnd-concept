@@ -160,14 +160,14 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
         return f"{AUTHORING}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"
 
     def sheet_sections(self, state: BreathlessGame) -> Sections:
-        player = self.world(state).player
+        player = state.payload.player
         lines = [f"- {item.name}[{key}] — d{item.die}" for key, item in player.items.items()]
         if player.med_kit:
             lines.append("- med kit")
         return (("BACKPACK", lines_of(lines)),)
 
     def panels(self, state: BreathlessGame) -> tuple[Panel, ...]:
-        player = self.world(state).player
+        player = state.payload.player
         rows = [PanelRow(label=item.name, detail=f"d{item.die}") for item in player.items.values()]
         if player.med_kit:
             rows.append(PanelRow(label="Med kit", detail="held"))
@@ -188,10 +188,10 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
                 return self.drop_item(world, change.item_id)
 
     def change_world(self, draft: BreathlessGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-        return self.apply_change(self.world(draft), args.change)
+        return self.apply_change(draft.payload, args.change)
 
     def check(self, draft: BreathlessGame, args: Check, rng: Random) -> list[Fact]:
-        player = self.world(draft).player
+        player = draft.payload.player
 
         item: Item | None = None
         if args.skill is not None:
@@ -213,21 +213,22 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
         rolled, dice_fact = roll((die,), f"{args.what} — {label}", rng)
         face = rolled[0]
         result = outcome(face)
+        worn = stepped(die)
 
         if args.skill is not None:
-            player.worn[args.skill] = stepped(die)
+            player.worn[args.skill] = worn
         elif item is not None and args.item_id is not None:
             # SRD: "When reduced to a d4, the item either breaks, gets lost, or fades away".
-            if stepped(die) == 4:
+            if worn == 4:
                 del player.items[args.item_id]
             else:
-                item.die = stepped(die)
+                item.die = worn
 
         trace = f"{args.what} — {label} d{die} [{face}] -> {result}"
         card = f"{args.what} — {sentence(label)} d{die} → {result}"
         event = DiceEvent(label=f"d{die}", faces=(die,), rolled=rolled)
         facts = [dice_fact, player.fact("checked", trace, card=card, dice=(event,))]
-        if item is not None and stepped(die) == 4:
+        if item is not None and worn == 4:
             gone = f"{item.name} is gone"
             facts.append(player.fact("item_gone", gone, card=gone))
 
@@ -239,7 +240,7 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
         return facts
 
     def catch_breath(self, draft: BreathlessGame, _args: NoArgs, rng: Random) -> list[Fact]:
-        player = self.world(draft).player
+        player = draft.payload.player
         player.worn = dict(player.skills)
         player.loot = LOOT_START
         player.stunted = False
@@ -259,11 +260,11 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
     def change_stress(self, draft: BreathlessGame, args: ChangeStress, _rng: Random) -> list[Fact]:
         if args.amount == 0:
             raise Refusal("change_stress needs a non-zero amount")
-        player = self.world(draft).player
+        player = draft.payload.player
         return player.stress.change(player, args.amount, "Stress", args.why)
 
     def use_med_kit(self, draft: BreathlessGame, _args: NoArgs, _rng: Random) -> list[Fact]:
-        player = self.world(draft).player
+        player = draft.payload.player
         if not player.med_kit:
             raise Refusal("the player holds no med kit")
         player.med_kit = False
@@ -273,7 +274,7 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
         return facts
 
     def loot_check(self, draft: BreathlessGame, args: LootCheck, rng: Random) -> list[Fact]:
-        player = self.world(draft).player
+        player = draft.payload.player
         if args.granted is None or args.choice is None:
             return roll_loot(draft, args.item, rng)
         return [take_loot(player, args.item, args.granted, args.choice)]

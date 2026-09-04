@@ -2,7 +2,7 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import EntityId, Mutable, Refusal
+from aidm.core.entities import EntityId, Mutable
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
 from aidm.engines.base import Counter, Person
@@ -42,7 +42,7 @@ class Survivor(Person):
     @model_validator(mode="after")
     def _rated_spread(self) -> Self:
         if sorted(self.skills.values()) != SKILL_SPREAD:
-            raise Refusal("skills as created: three d4, one d6, one d8, one d10")
+            raise ValueError("skills as created: three d4, one d6, one d8, one d10")
         return self
 
     @property

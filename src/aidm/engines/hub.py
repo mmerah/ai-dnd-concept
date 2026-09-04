@@ -8,7 +8,7 @@ from aidm.core.entities import Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import ScenarioKind
 from aidm.core.play import ChapterRecord, HistoryRecord, SceneRecord
-from aidm.core.views import Panel, PanelRow, Sections
+from aidm.core.views import WHOLE_SCENES, Panel, PanelRow, Sections
 from aidm.engines.base import Thing
 
 BOARD_MIN, BOARD_MAX = 2, 3
@@ -61,15 +61,15 @@ TAKE_BRIEF = (
 AWAY_BRIEF = (
     "The hub is {title} ({place}). Never place a scene at {place}: home is reached by going home."
 )
-# Shared by the scene engines and Tunnel Goons; `Campaign.sections` prepends the scene sentence.
+# Shared by the scene engines and the room engine.
 RETURN_BRIEF = (
     "The player is home at {title} ({place}). `debrief` is one paragraph on the job they just "
     "left, in the second person and the present tense, as the narrator writes; THE VERDICT says "
     "whether it was finished. Return the whole board in `offers`: keep, drop or add, two or three "
     "in all; " + OFFER_ASK + ". A job left open normally stays on the board, so the player can "
     "take it again. A new offer may grow from JOBS SO FAR: a debt, a job left open, someone met. "
-    "THIS JOB is the whole job, hidden facts included; `summary` and `recap` are written from it "
-    "for the game master, `debrief` for the player."
+    "THIS JOB is the whole job, hidden facts included; `summary` and the recap fields are written "
+    "from it for the game master, `debrief` for the player."
 )
 WRITE_HUB_SCENE = "Write the hub scene there. " + HUB_QUESTION + " "
 JOB_DONE = Fact(kind="job_done", told=True, trace="the job is done; the way home is open")
@@ -92,14 +92,14 @@ class Attempt(Mutable):
     @model_validator(mode="after")
     def _returns_only_what_started(self) -> Self:
         if self.returned is not None and (self.started is None or self.returned <= self.started):
-            raise Refusal("an attempt can only be returned after it started")
+            raise ValueError("an attempt can only be returned after it started")
         return self
 
 
 class Job(Mutable):
     title: str
     place: Slug
-    terms: str = ""  # as the scene that left the hub wrote them; empty for Tunnel Goons
+    terms: str = ""  # as the scene that left the hub wrote them; empty for a room engine
     attempts: list[Attempt] = Field(default_factory=list)
     finished: bool = False  # the master's verdict
     debrief: str = ""  # the last return's card, kept on a reopen
@@ -155,14 +155,14 @@ class Campaign(Mutable):
     def _jobs_in_order(self) -> Self:
         for index, job in enumerate(self.jobs):
             if index < len(self.jobs) - 1 and job.open:
-                raise Refusal(f"job {index} is open and is not the last")
+                raise ValueError(f"job {index} is open and is not the last")
             if (job.finished or job.debrief) and not any(
                 attempt.started is not None for attempt in job.attempts
             ):
-                raise Refusal(f"job {index} is closed or finished before it was walked")
+                raise ValueError(f"job {index} is closed or finished before it was walked")
             for attempt_index, attempt in enumerate(job.attempts):
                 if attempt_index < len(job.attempts) - 1 and attempt.returned is None:
-                    raise Refusal(f"job {index} has an attempt other than the last unreturned")
+                    raise ValueError(f"job {index} has an attempt other than the last unreturned")
         return self
 
     def check_spans(self, places: Sequence[Slug]) -> None:
@@ -228,7 +228,7 @@ class Campaign(Mutable):
             for attempt in job.attempts
             if attempt.started is not None
             and attempt.returned is not None
-            and attempt.returned <= total - 2
+            and attempt.returned <= total - WHOLE_SCENES
         }
         result: list[HistoryRecord] = []
         index = 0

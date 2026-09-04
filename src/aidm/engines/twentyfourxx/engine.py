@@ -14,13 +14,13 @@ from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, Enter, Kill, Leave, NextScene, Reveal
 from aidm.engines.twentyfourxx.tools import (
     AfterJob,
-    Attempt,
     ChangeHindrances,
     ChangeWorld,
     Defend,
     DropItem,
     GainItem,
     RepairItem,
+    Roll,
     Spend,
     TestLuck,
     WorldChange,
@@ -81,7 +81,7 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
                 "help — an ally who pitches in counts, named in it: the SRD gives them their own "
                 "die, but here it is the d6 of circumstance, because an NPC carries no dice. Name "
                 "`hindered` with why the player is hindered, when they are.",
-                Attempt,
+                Roll,
                 self.attempt,
             ),
             master_tool(
@@ -203,7 +203,7 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
 
     def sheet_sections(self, state: TwentyfourxxGame) -> Sections:
         lines: list[str] = []
-        for key, item in self.world(state).player.items.items():
+        for key, item in state.payload.player.items.items():
             line = f"- {item.name}[{key}]"
             if detail := gear_detail(item):
                 line += f" — {detail}"
@@ -213,7 +213,7 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
     def panels(self, state: TwentyfourxxGame) -> tuple[Panel, ...]:
         rows = tuple(
             PanelRow(label=item.name, detail=gear_detail(item))
-            for item in self.world(state).player.items.values()
+            for item in state.payload.player.items.values()
         )
         return (Panel(title="Gear", rows=rows),)
 
@@ -252,10 +252,10 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
                 return self.spend(world, change)
 
     def change_world(self, draft: TwentyfourxxGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-        return self.apply_change(self.world(draft), args.change)
+        return self.apply_change(draft.payload, args.change)
 
-    def attempt(self, draft: TwentyfourxxGame, args: Attempt, rng: Random) -> list[Fact]:
-        world = self.world(draft)
+    def attempt(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
+        world = draft.payload
         player = world.player
 
         if args.skill:
@@ -303,7 +303,7 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
         return facts
 
     def after_job(self, draft: TwentyfourxxGame, args: AfterJob, rng: Random) -> list[Fact]:
-        player = self.world(draft).player
+        player = draft.payload.player
         label = self.resolve_skill(player, args.skill)
         new_die = raised(player.skills.get(label))
         player.skills[label] = new_die
@@ -336,7 +336,7 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
         return [dice_fact, Fact(kind="luck_tested", trace=trace)]
 
     def defend(self, draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
-        player = self.world(draft).player
+        player = draft.payload.player
         item = player.items.get(args.item_id)
         if item is None:
             raise Refusal(f"{args.item_id!r} is not among the player's items")

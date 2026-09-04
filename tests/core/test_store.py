@@ -128,3 +128,21 @@ def test_a_character_written_for_two_engines_is_read_once_for_each(tmp_path: Pat
     ]
 
     assert rows == [("kael", LONER3E, "Kael"), ("kael", MIRROR, "Kael")]
+
+
+def test_read_characters_skips_a_stray_file_and_a_non_slug_folder(tmp_path: Path) -> None:
+    write_character(tmp_path, character())
+    (tmp_path / ".DS_Store").write_text("", encoding=ENCODING)
+    backup = tmp_path / "My Backup"
+    backup.mkdir()
+    (backup / f"{LONER3E}.json").write_text("{}", encoding=ENCODING)
+
+    rows = [name for name, _, _ in read_characters(tmp_path, (LONER3E,))]
+
+    assert rows == ["kael"]
+
+
+def test_read_scenarios_of_a_missing_directory_yields_nothing(tmp_path: Path) -> None:
+    missing = tmp_path / "scenarios"
+
+    assert list(read_scenarios(missing, SCENARIO_MODELS)) == []

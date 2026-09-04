@@ -1,3 +1,4 @@
+import pydantic
 import pytest
 from support.table import EnvFileFreeSettings
 
@@ -21,3 +22,9 @@ def test_illustration_without_a_key_is_refused() -> None:
 def test_speech_without_a_key_is_refused() -> None:
     with pytest.raises(ValueError, match="no api_key"):
         _ = EnvFileFreeSettings(speech=SpeechConfig(enabled=True))
+
+
+def test_a_misspelled_role_env_var_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ROLES__NARATOR__MODEL", "x")
+    with pytest.raises(pydantic.ValidationError, match="narator"):
+        _ = EnvFileFreeSettings()

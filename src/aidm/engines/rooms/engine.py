@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from aidm.core.entities import EntityId, Refusal, Slug
+from aidm.core.entities import EntityId, Refusal, Slug, parse
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
 from aidm.core.model import (
@@ -60,6 +60,7 @@ from aidm.engines.seam import COMMISSION, COMMISSION_BRIEF, Engine
 
 REPORT_IN = "Report in."
 REPORT_ROW = PanelRow(label="Report in", detail="Tell the tavern how it went.", intent=REPORT_IN)
+WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
 
 
 class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
@@ -71,11 +72,6 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
 
     dweller: type[N]
     world_type: type[RoomWorld[N, P]]
-    worldsmith: str
-
-    def __init__(self) -> None:
-        self.worldsmith = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
-        super().__init__()
 
     def world(self, state: G) -> RoomWorld[N, P]:
         return state.payload
@@ -134,12 +130,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
     def narrator_view(self, state: G) -> NarratorView:
         world = self.world(state)
         place = world.current
-        here = tuple(
-            sorted(
-                (entity for entity in world.here() if entity.known),
-                key=lambda entity: entity.id != world.player.id,
-            )
-        )
+        here = tuple(entity for entity in world.here() if entity.known)
         return NarratorView(
             place=place.id,
             title=place.name,
@@ -262,7 +253,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
         map_so_far = TAVERN_ASK if kind == "campaign" else "(no map yet — write the opening map)"
         return sections(
             (
-                ("YOUR ROLE", self.worldsmith),
+                ("YOUR ROLE", WORLDSMITH),
                 ("SOURCE MATERIAL", source or "(none — write from the setting)"),
                 ("MAP SO FAR", map_so_far),
                 ("ENGINE GUIDANCE", self.guidance()),
@@ -281,7 +272,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
     ) -> str:
         return sections(
             (
-                ("YOUR ROLE", self.worldsmith),
+                ("YOUR ROLE", WORLDSMITH),
                 ("SOURCE MATERIAL", world.source or "(none — write from the setting)"),
                 ("MAP SO FAR", self.map_so_far(world)),
                 ("SCENES SO FAR", render_history(world.scenes())),
@@ -328,7 +319,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
     def render_return(self, world: RoomWorld[N, P], campaign: Campaign) -> str:
         return sections(
             (
-                ("YOUR ROLE", self.worldsmith),
+                ("YOUR ROLE", WORLDSMITH),
                 ("SOURCE MATERIAL", world.source or "(none — write from the setting)"),
                 ("MAP SO FAR", self.map_so_far(world)),
                 ("SCENES SO FAR", render_history(world.scenes())),
@@ -500,14 +491,17 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
             if draft.board is None:
                 raise Refusal("a campaign's opening needs a board")
             campaign = Campaign(place=draft.start, board=draft.board)
-        return RoomCanon[self.dweller](
-            places=draft.places,
-            ways=draft.ways,
-            npcs=draft.npcs,
-            items=draft.items,
-            start=draft.start,
-            source=source,
-            campaign=campaign,
+        return parse(
+            RoomCanon[self.dweller],
+            {
+                "places": draft.places,
+                "ways": draft.ways,
+                "npcs": draft.npcs,
+                "items": draft.items,
+                "start": draft.start,
+                "source": source,
+                "campaign": campaign,
+            },
         )
 
     @abstractmethod

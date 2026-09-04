@@ -9,7 +9,7 @@ from aidm.engines.base import PLAYER_ID
 from aidm.engines.hub import JOB_DONE
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
-from aidm.engines.twentyfourxx.tools import AfterJob, Attempt, Defend
+from aidm.engines.twentyfourxx.tools import AfterJob, Defend, Roll
 from aidm.engines.twentyfourxx.tools import TestLuck as LuckTest
 from aidm.engines.twentyfourxx.world import STARTING_CREDITS
 
@@ -18,28 +18,28 @@ ENGINE = TwentyfourxxEngine()
 
 def test_attempt_bands_disaster_setback_success() -> None:
     draft = small_world().draft()
-    facts = ENGINE.attempt(draft, Attempt(what="Slip past", skill="Stealth"), Random(2))
+    facts = ENGINE.attempt(draft, Roll(what="Slip past", skill="Stealth"), Random(2))
     assert facts[1].trace.endswith("-> disaster")
 
     draft = small_world().draft()
-    facts = ENGINE.attempt(draft, Attempt(what="Slip past", skill="Stealth"), Random(1))
+    facts = ENGINE.attempt(draft, Roll(what="Slip past", skill="Stealth"), Random(1))
     assert facts[1].trace.endswith("-> setback")
 
     draft = small_world().draft()
-    facts = ENGINE.attempt(draft, Attempt(what="Slip past", skill="Stealth"), Random(0))
+    facts = ENGINE.attempt(draft, Roll(what="Slip past", skill="Stealth"), Random(0))
     assert facts[1].trace.endswith("-> success")
 
 
 def test_attempt_unskilled_rolls_the_plain_d6() -> None:
     draft = small_world().draft()
-    facts = ENGINE.attempt(draft, Attempt(what="Guess"), Random(0))
+    facts = ENGINE.attempt(draft, Roll(what="Guess"), Random(0))
     assert facts[1].dice[0].faces == (6,)
     assert "unskilled" in facts[1].trace
 
 
 def test_attempt_pack_label_not_on_sheet_rolls_d6() -> None:
     draft = small_world().draft()
-    facts = ENGINE.attempt(draft, Attempt(what="Scale the wall", skill="Climbing"), Random(0))
+    facts = ENGINE.attempt(draft, Roll(what="Scale the wall", skill="Climbing"), Random(0))
     assert facts[1].dice[0].faces == (6,)
     assert "Climbing" in facts[1].trace
 
@@ -47,7 +47,7 @@ def test_attempt_pack_label_not_on_sheet_rolls_d6() -> None:
 def test_attempt_unknown_skill_refused_with_both_lists() -> None:
     draft = small_world().draft()
     with pytest.raises(Refusal) as raised:
-        _ = ENGINE.attempt(draft, Attempt(what="Try", skill="Nonexistent"), Random(0))
+        _ = ENGINE.attempt(draft, Roll(what="Try", skill="Nonexistent"), Random(0))
     assert "Stealth" in str(raised.value)
     assert "Climbing" in str(raised.value)
 
@@ -56,7 +56,7 @@ def test_attempt_hindered_rolls_d4() -> None:
     draft = small_world().draft()
     facts = ENGINE.attempt(
         draft,
-        Attempt(what="Slip past", skill="Stealth", hindered="a jammed door"),
+        Roll(what="Slip past", skill="Stealth", hindered="a jammed door"),
         Random(0),
     )
     assert facts[1].dice[0].faces == (4,)
@@ -65,7 +65,7 @@ def test_attempt_hindered_rolls_d4() -> None:
 def test_attempt_helped_adds_the_d6_and_keeps_highest() -> None:
     draft = small_world().draft()
     facts = ENGINE.attempt(
-        draft, Attempt(what="Slip past", skill="Stealth", helped="Kestrel covers"), Random(0)
+        draft, Roll(what="Slip past", skill="Stealth", helped="Kestrel covers"), Random(0)
     )
     assert facts[1].dice[0].faces == (10, 6)
 
@@ -74,9 +74,7 @@ def test_attempt_helped_and_hindered_together_roll_4_and_6() -> None:
     draft = small_world().draft()
     facts = ENGINE.attempt(
         draft,
-        Attempt(
-            what="Slip past", skill="Stealth", hindered="a jammed door", helped="Kestrel covers"
-        ),
+        Roll(what="Slip past", skill="Stealth", hindered="a jammed door", helped="Kestrel covers"),
         Random(0),
     )
     assert facts[1].dice[0].faces == (4, 6)
@@ -86,21 +84,21 @@ def test_risking_death_kills_on_disaster_and_maims_on_setback_not_doubled() -> N
     draft = small_world().draft()
     player = draft.payload.player
     facts = ENGINE.attempt(
-        draft, Attempt(what="Sneak past", skill="Stealth", risking_death=True), Random(1)
+        draft, Roll(what="Sneak past", skill="Stealth", risking_death=True), Random(1)
     )
     assert player.alive
     assert player.hindrances == ["Maimed"]
     assert any(fact.card == "Maimed" for fact in facts)
 
     _ = ENGINE.attempt(
-        draft, Attempt(what="Sneak past", skill="Stealth", risking_death=True), Random(1)
+        draft, Roll(what="Sneak past", skill="Stealth", risking_death=True), Random(1)
     )
     assert player.hindrances == ["Maimed"]
 
     draft = small_world().draft()
     player = draft.payload.player
     facts = ENGINE.attempt(
-        draft, Attempt(what="Sneak past", skill="Stealth", risking_death=True), Random(2)
+        draft, Roll(what="Sneak past", skill="Stealth", risking_death=True), Random(2)
     )
     assert not player.alive
     assert any(fact.card == "You are dead" for fact in facts)

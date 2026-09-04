@@ -4,9 +4,20 @@ from support.tunnelgoons import HALL, MIRA, START, TAVERN, hub_world, small_worl
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.engines.hub import Attempt, Job
-from aidm.engines.rooms.world import Item, Visit, Way
+from aidm.engines.rooms.world import Item, RoomCanon, Visit, Way
+from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsWorld
 
 GHOST = EntityId("ghost")
+
+
+def test_begin_refuses_a_canon_whose_npc_stands_in_no_place() -> None:
+    world = small_world().payload
+    canon = RoomCanon[Npc](
+        places=world.places, ways=world.ways, npcs=world.npcs, items=world.items, start=START
+    )
+    canon.npcs[MIRA].place = GHOST
+    with pytest.raises(Refusal, match="in no place"):
+        _ = TunnelGoonsWorld.begin(canon, world.player, ())
 
 
 def test_an_item_on_nothing_is_refused() -> None:

@@ -3,8 +3,10 @@ from pathlib import Path
 from typing import Literal, Self
 
 from dotenv import set_key, unset_key
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from aidm.core.entities import Frozen
 
 type ProviderName = Literal["openrouter", "local"]
 # Each role is a one-shot CLI the app spawns, so a role is only a name and how to spawn it.
@@ -14,17 +16,13 @@ type Effort = Literal["low", "medium", "high"]
 ENV_FILE = ".env"
 
 
-class ProviderConfig(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
+class ProviderConfig(Frozen):
     base_url: str
     api_key: SecretStr
 
 
-class RoleConfig(BaseModel):
+class RoleConfig(Frozen):
     """How to spawn one role. The driver for `provider` turns this into a command line."""
-
-    model_config = ConfigDict(frozen=True)
 
     provider: CliProvider = "claude"
     # A string, not a `Literal`: model aliases move faster than this file.
@@ -33,10 +31,8 @@ class RoleConfig(BaseModel):
     timeout: float = Field(default=300.0, gt=0.0)
 
 
-class MediaConfig(BaseModel):
+class MediaConfig(Frozen):
     """Media is optional presentation, so failures only log and the default is off."""
-
-    model_config = ConfigDict(frozen=True)
 
     enabled: bool = False
     provider: ProviderName = "openrouter"
@@ -47,10 +43,8 @@ class MediaConfig(BaseModel):
     max_references: int = Field(default=4, ge=0)
 
 
-class SpeechConfig(BaseModel):
+class SpeechConfig(Frozen):
     """Speech is optional presentation, so failures only log and the default is off."""
-
-    model_config = ConfigDict(frozen=True)
 
     enabled: bool = False
     provider: ProviderName = "openrouter"
@@ -65,7 +59,7 @@ class SpeechConfig(BaseModel):
     timeout: float = Field(default=60.0, gt=0.0)
 
 
-class Roles(BaseModel):
+class Roles(Frozen):
     master: RoleConfig = RoleConfig(model="opus", effort="high")
     narrator: RoleConfig = RoleConfig(model="sonnet", effort="low", timeout=120.0)
     # A whole scene from the source, the cast and the history: measured at 335 seconds.
@@ -81,7 +75,7 @@ class Roles(BaseModel):
                 return self.worldsmith
 
 
-class Providers(BaseModel):
+class Providers(Frozen):
     openrouter: ProviderConfig = ProviderConfig(
         base_url="https://openrouter.ai/api/v1",
         api_key=SecretStr(""),

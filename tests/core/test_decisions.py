@@ -214,9 +214,7 @@ def test_a_decision_whose_options_are_the_whole_pick_refuses_an_answer_in_words(
     closed = DECISION.model_copy(update={"allows_text": False})
 
     with pytest.raises(Refusal, match="takes one of its options, not words"):
-        Turn(engine=engine, draft=_pending(state, closed).draft(), rng=Random(0)).consume(
-            Answer(text="I dive aside")
-        )
+        Turn.begin(engine, _pending(state, closed), Answer(text="I dive aside"), Random(0))
 
 
 def _pending(state: AnyGame, decision: PendingDecision = DECISION) -> Loner3eGame:

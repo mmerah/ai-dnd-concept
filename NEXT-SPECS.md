@@ -78,7 +78,7 @@ and no crew (its "the cast carries no dice" stands until 24XX has played). G is 
   you: <names or nobody>`. The `Illustrator` takes the player from it. Nothing else in `core`,
   `turn`, `app` or `ui` changes: the panel is a `Panel`, the arms are `change_world` arms. Not a
   gap today: `NarratorView.party` and the two arms in 24XX and Breathless land here.
-- **Registration.** 24XX and Breathless register `JoinParty`/`LeaveParty` (15 → 17, 12 → 14,
+- **Registration.** 24XX and Breathless register `JoinParty`/`LeaveParty` (15 → 17, 13 → 15,
   the pair not counted per decision 4); Tunnel Goons gets `TunnelGoonsWorld.party: list[EntityId]`
   through Track A's `check_party`/`join_party`/`leave_party`, `move` carries the party with
   the player (`with_ids` stays for an NPC who follows once), and registers the pair (9 → 11).

@@ -9,6 +9,8 @@ SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 SLUG_MAX = 64
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
+# `Slug` for content ids and places; `CheckedEntityId` for an id a model writes;
+# `EntityId` for one the world has checked.
 EngineId = NewType("EngineId", str)
 EntityId = NewType("EntityId", str)
 # The grammar rides the field annotation: a `NewType` over an `Annotated` alias is not a type.

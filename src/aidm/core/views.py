@@ -17,6 +17,7 @@ type Rows = tuple[tuple[str, str], ...]  # a sheet
 type Sections = tuple[tuple[str, str], ...]  # a prompt
 
 SCENE_EXCHANGES = 20
+WHOLE_SCENES = 2
 TAIL_EXCHANGES = 3
 
 
@@ -29,6 +30,8 @@ class Subject(Frozen):
         return Speaker(name=self.name, id=self.id)
 
 
+# Three row shapes, told apart in this order: a way on (`intent`), an entity (`icon_id`),
+# a labelled value (`detail`), else a bare label.
 class PanelRow(Frozen):
     label: str
     detail: str
@@ -122,7 +125,7 @@ def told_narration(records: Sequence[HistoryRecord]) -> tuple[str, ...]:
     """What the player has already read, so continuity costs the narrator no hidden canon."""
     return tuple(
         exchange.narration
-        for record in records[-2:]
+        for record in records[-WHOLE_SCENES:]
         if isinstance(record, SceneRecord)
         for exchange in record.exchanges[-SCENE_EXCHANGES:]
         if exchange.narration
@@ -142,7 +145,7 @@ def _block(record: HistoryRecord, index: int, total: int) -> str:
             f"scenes: {'; '.join(record.scenes)}"
         )
     header = _header(record)
-    if index >= total - 2:
+    if index >= total - WHOLE_SCENES:
         body = _told(record.exchanges[-SCENE_EXCHANGES:])
     elif record.recap:
         body = f"what happened: {record.recap}"

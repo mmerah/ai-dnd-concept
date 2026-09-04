@@ -104,7 +104,7 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
         ),
     )
     character = read_character(CHARACTERS, "kael", TWENTYFOURXX, TwentyfourxxCharacter)
-    with pytest.raises(ValueError, match="the player is in the cast"):
+    with pytest.raises(Refusal, match="the player is in the cast"):
         ENGINES_BUILT[TWENTYFOURXX].new_game(scenario, character)
 
 

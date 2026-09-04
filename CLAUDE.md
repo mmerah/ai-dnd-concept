@@ -30,6 +30,7 @@ Tests run offline. They are deterministic.
 - Validate data at each boundary (file, model output, tool call) with strict Pydantic V2 models. Reject bad data at once.
 - A message a role or the player is meant to read is a `Refusal`; any other exception is a bug
   and is not caught.
+- Inside a validator raise `ValueError`; `parse` turns it into the refusal.
 - Do not add an abstraction until two things need it.
 - Do not build for future needs.
 - Names must explain themselves. Do not add a comment unless the reason is not visible in the code. One line max.
@@ -53,5 +54,6 @@ Tests run offline. They are deterministic.
 
 - Test behavior and boundaries, not prose or wiring.
 - Never start a process in a test. Stub roles with `ScriptedSpawner`.
+- A golden is a drift detector, not a prose test.
 
 Keep this file for rules that stay true in every phase.

@@ -1,5 +1,4 @@
 from collections.abc import Iterable, Iterator, Mapping, Sequence
-from copy import deepcopy
 from typing import Self
 
 from pydantic import Field, model_validator
@@ -10,6 +9,7 @@ from aidm.core.entities import (
     Mutable,
     Refusal,
     Slug,
+    parse,
     require_unique,
 )
 from aidm.core.facts import Fact
@@ -68,12 +68,12 @@ class SceneCanon[C: Person](Mutable):
         check_named(self.opening.here, self.cast)
         opening = self.opening
         if opening.exchanges or opening.left is not None or opening.recap:
-            raise Refusal("an opening with play in it")
+            raise ValueError("an opening with play in it")
         if self.campaign is not None:
             if self.campaign.jobs:
-                raise Refusal("an opening with jobs walked")
+                raise ValueError("an opening with jobs walked")
             if opening.place != self.campaign.place:
-                raise Refusal(f"the opening is not at hub {self.campaign.place!r}")
+                raise ValueError(f"the opening is not at hub {self.campaign.place!r}")
         return self
 
 
@@ -93,42 +93,44 @@ class SceneWorld[C: Person, P: Person](Mutable):
         if (campaign := self.campaign) is not None:
             campaign.check_spans([run.place for run in self.runs])
             if self.runs[0].place != campaign.place:
-                raise Refusal(f"run 0 does not open at hub {campaign.place!r}")
+                raise ValueError(f"run 0 does not open at hub {campaign.place!r}")
             # Every hub run after the first is a return, and a return closes exactly one attempt.
             returns = sum(run.place == campaign.place for run in self.runs[1:])
             if returns != campaign.returns():
-                raise Refusal("hub runs after the first and closed jobs disagree")
+                raise ValueError("hub runs after the first and closed jobs disagree")
         check_filing(self.cast)
         check_named(self.run.here, self.cast)
         if not self.player.known:
-            raise Refusal("the player is unknown to themselves")
+            raise ValueError("the player is unknown to themselves")
         if self.player.id in self.cast:
-            raise Refusal("the player is in the cast")
+            raise ValueError("the player is in the cast")
         if self.player.id in self.run.here:
-            raise Refusal("the player is in every scene and is never listed in it")
+            raise ValueError("the player is in every scene and is never listed in it")
         if self.player.id in self.party:
-            raise Refusal("the player cannot travel with themselves")
+            raise ValueError("the player cannot travel with themselves")
         require_unique("party", self.party)
         for member_id in self.party:
             if member_id not in self.cast:
-                raise Refusal(f"{member_id!r} travels with the player but is not in the cast")
+                raise ValueError(f"{member_id!r} travels with the player but is not in the cast")
             if not self.cast[member_id].alive:
-                raise Refusal(f"{member_id!r} is dead and cannot travel with the player")
+                raise ValueError(f"{member_id!r} is dead and cannot travel with the player")
         if left := sorted(set(self.party) - set(self.run.here)):
-            raise Refusal(f"the party is in every scene; {left} are not in this one")
+            raise ValueError(f"the party is in every scene; {left} are not in this one")
         return self
 
     @classmethod
     def begin(cls, canon: SceneCanon[C], player: P) -> Self:
         """The player is added by code and never authored, so no scenario can claim their id."""
-        canon = deepcopy(canon)
-        return cls(
-            cast=canon.cast,
-            player=player,
-            runs=[canon.opening],
-            source=canon.source,
-            campaign=canon.campaign,
-            arc=canon.arc,
+        return parse(
+            cls,
+            {
+                "cast": canon.cast,
+                "player": player,
+                "runs": [canon.opening],
+                "source": canon.source,
+                "campaign": canon.campaign,
+                "arc": canon.arc,
+            },
         )
 
     @property

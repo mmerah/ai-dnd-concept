@@ -45,7 +45,7 @@ OPENING = (
 )
 
 
-@dataclass
+@dataclass(slots=True)
 class GameService:
     target: LaunchTarget
     scenario: AnyScenario
@@ -100,7 +100,10 @@ class GameService:
             self.phase = None
 
     async def play(self, answer: Answer, *, moving_on: bool = False) -> None:
-        """`moving_on` is the player taking the way on, so `answer` is what they mean to pursue."""
+        """`moving_on` is the player taking the way on, so `answer` is what they mean to pursue.
+
+        A crossing of `None` means the world grows without a turn: `extend` runs instead.
+        """
         brief = self.engine.crossing(self.state, answer.text) if moving_on else None
         if moving_on and brief is None:
             await self.extend(answer)

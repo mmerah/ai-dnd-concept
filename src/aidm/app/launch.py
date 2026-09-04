@@ -18,7 +18,7 @@ class CatalogEntry:
     title: str
     subtitle: str
     rules: str
-    kind: ScenarioKind = "one-shot"
+    kind: ScenarioKind | None = None
 
 
 @dataclass(frozen=True, slots=True)
