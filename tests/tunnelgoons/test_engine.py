@@ -1,5 +1,5 @@
 import pytest
-from support.table import TUNNELGOONS, game, updated
+from support.table import TUNNELGOONS, game, narrowed, updated
 
 from aidm.core.entities import Refusal
 from aidm.core.io import decode
@@ -9,7 +9,7 @@ from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 
 def _tunnelgoons_game() -> tuple[AnyEngine, TunnelGoonsGame]:
     engine, state = game(TUNNELGOONS)
-    assert isinstance(state, TunnelGoonsGame), "the Tunnel Goons engine began another game type"
+    state = narrowed(state, TunnelGoonsGame)
     return engine, state
 
 

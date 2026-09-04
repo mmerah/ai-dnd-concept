@@ -1,7 +1,7 @@
 import pytest
 from support.breathless import SKILLS_RATED
 from support.scenes import BOARD
-from support.table import BREATHLESS, ENGINES_BUILT, game, updated
+from support.table import BREATHLESS, ENGINES_BUILT, game, narrowed, updated
 
 from aidm.core.entities import EngineId, EntityId, Refusal
 from aidm.core.io import decode
@@ -24,7 +24,7 @@ FIRE_AXE = EntityId("fire-axe")
 
 def _breathless_game() -> tuple[AnyEngine, BreathlessGame]:
     engine, state = game(BREATHLESS)
-    assert isinstance(state, BreathlessGame), "the Breathless engine began another game type"
+    state = narrowed(state, BreathlessGame)
     return engine, state
 
 

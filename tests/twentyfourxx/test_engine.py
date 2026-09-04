@@ -7,6 +7,7 @@ from support.table import (
     SCENARIO_MODELS,
     TWENTYFOURXX,
     game,
+    narrowed,
     updated,
 )
 
@@ -31,7 +32,7 @@ NIGHT_VISION_GOGGLES = EntityId("night-vision-goggles")
 
 def _twentyfourxx_game() -> tuple[AnyEngine, TwentyfourxxGame]:
     engine, state = game(TWENTYFOURXX)
-    assert isinstance(state, TwentyfourxxGame), "the 24XX engine began another game type"
+    state = narrowed(state, TwentyfourxxGame)
     return engine, state
 
 

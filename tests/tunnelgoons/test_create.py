@@ -2,7 +2,6 @@ import pytest
 
 from aidm.core.entities import Refusal
 from aidm.engines.tunnelgoons.engine import STARTING_ITEM_LIST, TunnelGoonsEngine
-from aidm.engines.tunnelgoons.world import TunnelGoonsCharacter
 
 ENGINE = TunnelGoonsEngine()
 
@@ -32,7 +31,6 @@ def test_creation_steps_cover_the_abilities_and_the_three_items() -> None:
 
 def test_create_character_on_the_legal_path() -> None:
     character = ENGINE.create_character("Kael", "A wiry scavenger", PICKS)
-    assert isinstance(character, TunnelGoonsCharacter)
     assert character.payload.kit == ("Rope", "Torch", "Melee Weapon (dagger)")
     assert character.payload.abilities == {"brute": 1, "skulker": 1, "erudite": 1}
 

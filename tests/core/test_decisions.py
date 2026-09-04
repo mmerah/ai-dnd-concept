@@ -4,7 +4,7 @@ from random import Random
 import pytest
 from pydantic import Field, ValidationError
 from support.loner import open_game
-from support.table import Table, play_turn, tool_call
+from support.table import Table, narrowed, play_turn, tool_call
 
 from aidm.core.entities import Frozen, Refusal
 from aidm.core.facts import Fact
@@ -223,5 +223,5 @@ def _pending(state: AnyGame, decision: PendingDecision = DECISION) -> Loner3eGam
 
 
 def _loner(state: AnyGame) -> Loner3eGame:
-    assert isinstance(state, Loner3eGame), "the Loner test received another game type"
+    state = narrowed(state, Loner3eGame)
     return state

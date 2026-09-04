@@ -113,13 +113,8 @@ class Loner3eWorld(SceneWorld[Loner3eSheet, Loner3eSheet]):
         )
 
 
-class Loner3eGame(Game[Loner3eWorld]):
-    pass
+Loner3eGame = Game[Loner3eWorld]
 
+Loner3eScenario = Scenario[SceneCanon[Loner3eSheet]]
 
-class Loner3eScenario(Scenario[SceneCanon[Loner3eSheet]]):
-    pass
-
-
-class Loner3eCharacter(Character[Loner3eSheet]):
-    pass
+Loner3eCharacter = Character[Loner3eSheet]

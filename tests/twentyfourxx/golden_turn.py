@@ -1,4 +1,4 @@
-from support.table import Call, changed, tool_call
+from support.table import Call, changed, narrowed, tool_call
 
 from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, SpokenLine
@@ -13,9 +13,7 @@ SCRIPT: tuple[Call, ...] = (
 
 def behind(state: AnyGame) -> AnyGame:
     """One prior exchange at the starting scene: RECENT PLAY has to render it."""
-    assert isinstance(state, TwentyfourxxGame), (
-        f"unsupported golden engine state: {type(state).__name__}"
-    )
+    state = narrowed(state, TwentyfourxxGame)
     draft = state.draft()
     draft.payload.runs[0].exchanges.append(
         Exchange(

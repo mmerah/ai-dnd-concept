@@ -13,6 +13,7 @@ from support.table import (
     TUNNELGOONS,
     TWENTYFOURXX,
     ScriptedSpawner,
+    narrowed,
 )
 from support.ui import REPOSITORY_ROOT, SCENARIOS, ui_settings
 
@@ -47,7 +48,7 @@ def _catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> Launc
 def _opening_state(settings: Settings) -> Loner3eGame:
     """The launcher reads saves, so a test needs a state a real game would have written."""
     state = Runtime(settings, ScriptedSpawner()).session(TARGET).state
-    assert isinstance(state, Loner3eGame), "the Loner service holds another game type"
+    state = narrowed(state, Loner3eGame)
     return state
 
 
