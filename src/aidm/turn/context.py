@@ -39,9 +39,7 @@ def render_master(
 def render_narrator(
     view: NarratorView, *, evidence: str, prompt: str, scenes: Sequence[HistoryRecord]
 ) -> str:
-    """Free: the view is `core`'s and the prompt is `turn`'s.
-
-    Only the narrator view reaches this, so hidden canon has no path into the prose."""
+    """Only the narrator view reaches this, so hidden canon has no path into the prose."""
     return sections(
         (
             ("YOUR ROLE", _prompt("narrator")),

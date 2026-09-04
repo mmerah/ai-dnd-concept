@@ -9,13 +9,7 @@ from re import fullmatch
 from pydantic import BaseModel, JsonValue
 
 from aidm.core.entities import EngineId, Refusal, Slug, content_id, parse, require_unique
-from aidm.core.model import (
-    AnyCharacter,
-    AnyGame,
-    AnyScenario,
-    CharacterHeader,
-    EngineHeader,
-)
+from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, CharacterHeader, EngineHeader
 
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"
@@ -57,8 +51,6 @@ class FileStore:
 
 @dataclass(frozen=True, slots=True)
 class Library:
-    """The two content directories; `FileStore` is the third, the saves."""
-
     scenarios: Path
     characters: Path
 
@@ -114,8 +106,7 @@ class Library:
     ) -> AnyScenario:
         path = self.scenario_folder(name) / WORLD_FILE
         value = decode(_read_text(path))
-        model = routed(value, models)
-        return parse(model, value)
+        return parse(routed(value, models), value)
 
     def read_character(
         self, name: Slug, engine: EngineId, model: type[AnyCharacter]
@@ -137,12 +128,7 @@ class Library:
                 raise Refusal(f"character {character.id!r} is {filed!r}, not {named!r}")
         write_text(path, character.model_dump_json(indent=2))
 
-    def write_scenario(
-        self,
-        name: Slug,
-        scenario: AnyScenario,
-        source: Path | None = None,
-    ) -> None:
+    def write_scenario(self, name: Slug, scenario: AnyScenario, source: Path | None = None) -> None:
         folder = self.scenario_folder(name)
         if folder.exists():
             raise Refusal(f"scenario {name!r} already exists")
@@ -168,7 +154,6 @@ def decode(raw: str) -> JsonValue:
 
 
 def routed[T](value: JsonValue, by_engine: Mapping[EngineId, T]) -> T:
-    """What the caller keeps under the engine a document's header names."""
     engine = parse(EngineHeader, value).engine
     found = by_engine.get(engine)
     if found is None:
