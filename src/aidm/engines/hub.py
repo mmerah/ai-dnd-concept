@@ -1,4 +1,5 @@
 import re
+from abc import abstractmethod
 from collections.abc import Iterable, Sequence
 from typing import Annotated, Self
 
@@ -7,9 +8,9 @@ from pydantic import Field, model_validator
 from aidm.core.entities import Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import ScenarioKind
-from aidm.core.play import ChapterRecord, HistoryRecord, SceneRecord
-from aidm.core.views import WHOLE_SCENES, Panel, PanelRow, Sections
-from aidm.engines.base import Thing
+from aidm.core.play import ChapterRecord, Exchange, HistoryRecord, SceneRecord
+from aidm.core.views import WHOLE_SCENES, Panel, PanelRow, Sections, render_whole
+from aidm.engines.base import Person, Thing
 
 BOARD_MIN, BOARD_MAX = 2, 3
 MIN_JOB = 80
@@ -249,13 +250,11 @@ class Campaign(Mutable):
 
     def taken(self, intent: str) -> Job | None:
         """The left-open job whose `TAKE_JOB` line the intent is."""
-        matches = [
-            job
-            for job in self.jobs
-            if self._left_open(job)
-            and intent.casefold() == TAKE_JOB.format(title=job.title).casefold()
-        ]
-        return matches[-1] if matches else None
+        prefix, suffix = TAKE_JOB.split("{title}")
+        folded = intent.casefold()
+        if not folded.startswith(prefix.casefold()) or not folded.endswith(suffix.casefold()):
+            return None
+        return self.left_open(intent[len(prefix) : len(intent) - len(suffix)])
 
     def left_open(self, title: str) -> Job | None:
         matches = [
@@ -310,14 +309,27 @@ class Campaign(Mutable):
             for offer in self.board
         )
 
-    def sections(self, hub_title: str, *, at_hub: bool, returning: bool) -> Sections:
-        brief = (
-            WRITE_HUB_SCENE + RETURN_BRIEF if returning else TAKE_BRIEF if at_hub else AWAY_BRIEF
+    def hub_block(
+        self,
+        hub_title: str,
+        brief: str,
+        records: Sequence[SceneRecord],
+        *,
+        returning: bool,
+        reopening: Job | None,
+    ) -> Sections:
+        """THIS JOB on a return, THE JOB BEFORE on a retake, then the hub's own sections."""
+        this_job = (("THIS JOB", render_whole(self.job_records(records))),) if returning else ()
+        before = (
+            ()
+            if reopening is None
+            else (("THE JOB BEFORE", render_whole(self.records_of(reopening, records))),)
         )
+        return (*this_job, *before, *self.sections(hub_title, brief, returning=returning))
+
+    def sections(self, hub_title: str, brief: str, *, returning: bool) -> Sections:
         return (
-            *self.job_row(),
-            ("JOBS SO FAR", self.ledger()),
-            ("THE BOARD", self.board_lines()),
+            *self.tail(at_hub=True),
             ("THE HUB", brief.format(title=hub_title, place=self.place)),
             *(
                 (("THE VERDICT", "finished" if self.finished else "left open"),)
@@ -340,8 +352,12 @@ class Campaign(Mutable):
             *((("THE BOARD", self.board_lines()),) if at_hub else ()),
         )
 
-    def board_panel(self, *, at_hub: bool) -> tuple[Panel, ...]:
-        return (Panel(title="Board", rows=self.board_rows()),) if at_hub else ()
+    def board_panel(self, *, at_hub: bool, reporting: PanelRow | None = None) -> tuple[Panel, ...]:
+        """`reporting` is the one row a walked job leaves on the board."""
+        if not at_hub:
+            return ()
+        rows = self.board_rows() if reporting is None else (reporting,)
+        return (Panel(title="Board", rows=rows),)
 
     def jobs_panel(self) -> tuple[Panel, ...]:
         rows = tuple(
@@ -349,6 +365,29 @@ class Campaign(Mutable):
             for job in self.closed_jobs()
         )
         return (Panel(title="Jobs", rows=rows),) if rows else ()
+
+
+class World[P: Person](Mutable):
+    """What both families' worlds share; the sequence of places is each family's own."""
+
+    player: P
+    source: str = ""
+    campaign: Campaign | None = None
+
+    @property
+    @abstractmethod
+    def at_hub(self) -> bool: ...
+    @abstractmethod
+    def records(self) -> tuple[SceneRecord, ...]: ...
+    @abstractmethod
+    def record(self, exchange: Exchange) -> None: ...
+
+    def exchanges(self) -> tuple[Exchange, ...]:
+        return tuple(exchange for record in self.records() for exchange in record.exchanges)
+
+    def scenes(self) -> tuple[HistoryRecord, ...]:
+        records = self.records()
+        return records if self.campaign is None else self.campaign.history(records)
 
 
 def named_unmet(text: str, entities: Iterable[Thing]) -> list[str]:

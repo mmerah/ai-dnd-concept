@@ -11,7 +11,7 @@ from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Panel, PanelRow, Rows, Sections, lines_of
 from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, Person, keep_highest, sentence
 from aidm.engines.scenes.engine import SceneEngine
-from aidm.engines.scenes.tools import NEXT_SCENE, Enter, Kill, Leave, NextScene, Reveal
+from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
 from aidm.engines.twentyfourxx.tools import (
     AfterJob,
     ChangeHindrances,
@@ -41,12 +41,8 @@ from aidm.engines.twentyfourxx.world import (
     TwentyfourxxWorld,
     raised,
 )
-from aidm.engines.twentyfourxx.worldsmith import AUTHORING, Pack
+from aidm.engines.twentyfourxx.worldsmith import AUTHORING, BOARD_GUIDANCE, Pack
 
-BOARD_GUIDANCE = (
-    "The SRD's job-finding setup is the board's range, not a recipe: 1–2 nothing, owe somebody to "
-    "get in on a job; 3–4 found a job, but something seems off; 5–6 a choice between two jobs."
-)
 # Read by the next turn, which is usually the next offer click: the note must stand on its own.
 JOB_DONE_NOTE = (
     "The job {title} is closed and was completed. The SRD's after-a-job step applies: call "
@@ -107,7 +103,7 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
-        first = CreationStep(id="pack", prompt="Choose a table set", options=self.pack_options())
+        first = self.pack_step()
         pack = self.packs.get(picked(picks, "pack"))
         if pack is None:
             return (first,)
@@ -205,14 +201,14 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
         lines: list[str] = []
         for key, item in state.payload.player.items.items():
             line = f"- {item.name}[{key}]"
-            if detail := gear_detail(item):
+            if detail := item.detail():
                 line += f" — {detail}"
             lines.append(line)
         return (("GEAR", lines_of(lines)),)
 
     def panels(self, state: TwentyfourxxGame) -> tuple[Panel, ...]:
         rows = tuple(
-            PanelRow(label=item.name, detail=gear_detail(item))
+            PanelRow(label=item.name, detail=item.detail())
             for item in state.payload.player.items.values()
         )
         return (Panel(title="Gear", rows=rows),)
@@ -237,19 +233,22 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
         )
 
     def apply_change(self, world: TwentyfourxxWorld, change: WorldChange) -> list[Fact]:
+        player = world.player
         match change:
-            case Reveal() | Enter() | Leave() | Kill():
-                return self.shared_change(world, change)
             case ChangeHindrances():
-                return self.change_hindrances(world, change)
+                return player.change_hindrances(change.gained, change.lost)
             case GainItem():
-                return self.gain_item(world, change)
+                return player.gain_item(
+                    change.name, bulky=change.bulky, breaks=change.breaks, cost=change.cost
+                )
             case DropItem():
-                return self.drop_item(world, change.item_id)
+                return player.drop_item(change.item_id)
             case RepairItem():
-                return self.repair_item(world, change)
+                return player.repair_item(change.item_id, change.cost)
             case Spend():
-                return self.spend(world, change)
+                return player.spend(change.amount, change.why)
+            case _:
+                return self.shared_change(world, change)
 
     def change_world(self, draft: TwentyfourxxGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
         return self.apply_change(draft.payload, args.change)
@@ -337,9 +336,7 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
 
     def defend(self, draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
         player = draft.payload.player
-        item = player.items.get(args.item_id)
-        if item is None:
-            raise Refusal(f"{args.item_id!r} is not among the player's items")
+        item = player.require_item(args.item_id)
         if item.broken:
             raise Refusal(f"{item.name} is already broken")
         if args.hindrance in player.hindrances:
@@ -350,73 +347,6 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
         trace = f"{player.label} breaks {item.name} — {args.hindrance}"
         return [player.fact("item_broken", trace, card=card)]
 
-    def change_hindrances(self, world: TwentyfourxxWorld, change: ChangeHindrances) -> list[Fact]:
-        player = world.player
-        current = set(player.hindrances)
-        for hindrance in change.gained:
-            if hindrance in current:
-                raise Refusal(f"{hindrance!r} is already among the player's hindrances")
-            current.add(hindrance)
-        for hindrance in change.lost:
-            if hindrance not in player.hindrances:
-                raise Refusal(f"{hindrance!r} is not among the player's hindrances")
-        for hindrance in change.lost:
-            player.hindrances.remove(hindrance)
-        player.hindrances.extend(change.gained)
-        parts: list[str] = []
-        if change.gained:
-            parts.append(f"Hindered: {', '.join(change.gained)}")
-        if change.lost:
-            parts.append(f"Recovered: {', '.join(change.lost)}")
-        card = " / ".join(parts)
-        trace = f"{player.label} — {card}"
-        return [player.fact("hindrances_changed", trace, card=card)]
-
-    def gain_item(self, world: TwentyfourxxWorld, change: GainItem) -> list[Fact]:
-        player = world.player
-        if change.cost > player.credits:
-            raise Refusal(f"the player has only ₡{player.credits}, not ₡{change.cost}")
-        player.credits -= change.cost
-        key = EntityId(slug(change.name, player.items))
-        player.items[key] = Item(name=change.name, bulky=change.bulky, breaks=change.breaks)
-        suffix = f" (₡{change.cost})" if change.cost > 0 else ""
-        card = f"Gained {change.name}{suffix}"
-        trace = f"{player.label} gains {change.name}{suffix}"
-        return [player.fact("item_gained", trace, card=card)]
-
-    def drop_item(self, world: TwentyfourxxWorld, item_id: EntityId) -> list[Fact]:
-        player = world.player
-        item = player.items.get(item_id)
-        if item is None:
-            raise Refusal(f"{item_id!r} is not among the player's items")
-        del player.items[item_id]
-        trace = f"{player.label} drops {item.name}"
-        return [player.fact("item_dropped", trace, card=f"Dropped {item.name}")]
-
-    def repair_item(self, world: TwentyfourxxWorld, change: RepairItem) -> list[Fact]:
-        player = world.player
-        item = player.items.get(change.item_id)
-        if item is None:
-            raise Refusal(f"{change.item_id!r} is not among the player's items")
-        if item.broken_times == 0:
-            raise Refusal(f"{item.name} is not broken")
-        if change.cost > player.credits:
-            raise Refusal(f"the player has only ₡{player.credits}, not ₡{change.cost}")
-        player.credits -= change.cost
-        item.broken_times = 0
-        card = f"Repaired {item.name}"
-        trace = f"{player.label} repairs {item.name}"
-        return [player.fact("item_repaired", trace, card=card)]
-
-    def spend(self, world: TwentyfourxxWorld, change: Spend) -> list[Fact]:
-        player = world.player
-        if change.amount > player.credits:
-            raise Refusal(f"the player has only ₡{player.credits}, not ₡{change.amount}")
-        player.credits -= change.amount
-        card = f"₡{change.amount} spent — {change.why}"
-        trace = f"{player.label} spends ₡{change.amount} — {change.why}"
-        return [player.fact("credits_spent", trace, card=card)]
-
 
 def starting_items(kits: Sequence[Kit]) -> dict[EntityId, Item]:
     taken: list[str] = []
@@ -426,14 +356,3 @@ def starting_items(kits: Sequence[Kit]) -> dict[EntityId, Item]:
         taken.append(key)
         items[EntityId(key)] = Item(name=kit.name, bulky=kit.bulky, breaks=kit.breaks)
     return items
-
-
-def gear_detail(item: Item) -> str:
-    parts: list[str] = []
-    if item.bulky:
-        parts.append("bulky")
-    if item.broken:
-        parts.append("broken")
-    elif item.breaks > 1 and item.broken_times > 0:
-        parts.append(f"broken {item.broken_times}/{item.breaks}")
-    return ", ".join(parts)

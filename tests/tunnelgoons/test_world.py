@@ -4,10 +4,12 @@ from support.tunnelgoons import HALL, MIRA, START, TAVERN, hub_world, small_worl
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.engines.hub import Attempt, Job
-from aidm.engines.rooms.world import Item, RoomCanon, Visit, Way
+from aidm.engines.rooms.world import Dungeon, Item, Place, RoomCanon, Visit, Way
 from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsWorld
 
 GHOST = EntityId("ghost")
+OLD_SITE = EntityId("old-site")
+NEW_SITE = EntityId("new-site")
 
 
 def test_begin_refuses_a_canon_whose_npc_stands_in_no_place() -> None:
@@ -104,3 +106,42 @@ def test_walked_places_leaves_out_the_current_visit_and_lists_a_place_once() -> 
     the_campaign(world.campaign).jobs = [job]
 
     assert world.walked_places(job) == (START, HALL)
+
+
+def test_apply_extension_reopens_a_left_open_job_at_its_own_start() -> None:
+    state = hub_world(with_map=False)
+    world = state.payload
+    world.places[OLD_SITE] = Place(
+        id=OLD_SITE, name="Old Site", brief="b", known=True, description="d"
+    )
+    world.add_way(TAVERN, OLD_SITE, known=True)
+    world.visits = [Visit(place=TAVERN), Visit(place=OLD_SITE), Visit(place=TAVERN)]
+    old_job = Job(
+        title="Crates off Deck 9", place=OLD_SITE, attempts=[Attempt(started=1, returned=2)]
+    )
+    the_campaign(world.campaign).jobs = [old_job]
+    region = Dungeon[Npc](
+        places={
+            NEW_SITE: Place(id=NEW_SITE, name="New Site", brief="b", known=False, description="d")
+        }
+    )
+
+    anchor = world.apply_extension(region, NEW_SITE, reopening=old_job)
+
+    assert anchor.id == OLD_SITE
+    way = world.way(OLD_SITE, NEW_SITE)
+    assert way is not None and way.known
+    campaign = the_campaign(world.campaign)
+    assert campaign.jobs[-1] is old_job
+    assert campaign.jobs[-1].open
+    assert campaign.jobs[-1].attempts[-1].started is None
+    assert len(campaign.jobs[-1].attempts) == 2
+
+
+def test_apply_return_refuses_with_no_job_walked() -> None:
+    state = hub_world()
+    world = state.payload
+    board = the_campaign(world.campaign).board
+
+    with pytest.raises(Refusal, match="no job is open to report"):
+        world.apply_return(debrief="d", summary="s", recaps={}, offers=board)

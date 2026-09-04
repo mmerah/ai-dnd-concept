@@ -65,7 +65,7 @@ class NextScene(Frozen):
     )
 
 
-type SharedChange = Reveal | Enter | Leave | Kill
+type SharedChange = Reveal | Enter | Leave | Kill | JoinParty | LeaveParty
 
 
 class SceneCommission(Frozen):

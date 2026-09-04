@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
+from copy import deepcopy
 from pathlib import Path
 from random import Random
-from typing import Any
+from typing import Any, Protocol
 
 from pydantic import BaseModel
 
@@ -22,8 +23,9 @@ from aidm.core.play import Commission, DecisionOption, Exchange, HistoryRecord, 
 from aidm.core.tools import MasterTool, Play
 from aidm.core.views import NarratorView, PlayerView, Rows, Sections
 from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.hub import Job, World
 
-type AnyEngine = Engine[Any]
+type AnyEngine = Engine[Any, Any]
 
 COMMISSION = "commission"
 COMMISSION_BRIEF = (
@@ -37,7 +39,16 @@ WORLDSMITH_WAIT = (
 )
 
 
-class Engine[G: Game[Any]](ABC):
+class CommissionArgs(Protocol):
+    @property
+    def kind(self) -> str: ...
+    @property
+    def brief(self) -> str: ...
+    @property
+    def later(self) -> bool: ...
+
+
+class Engine[P: Person, G: Game[Any]](ABC):
     """The seam joining an engine's rules to the platform; a subclass answers for one engine."""
 
     # Declared, not `ClassVar`: `type[G]` cannot be one, and a test sets them on its own instance.
@@ -65,7 +76,6 @@ class Engine[G: Game[Any]](ABC):
         return None
 
     def check_character(self, character: AnyCharacter) -> None:
-        """The file is this engine's and its sheet is the player's."""
         if not isinstance(character, self.character):
             raise Refusal(f"{self.title} received an incompatible character")
         if character.payload.id != PLAYER_ID or not character.payload.known:
@@ -136,7 +146,65 @@ class Engine[G: Game[Any]](ABC):
         )
         self.record(draft, exchange)
         draft.turn += 1
+        return self.commit(draft)
+
+    def commit(self, draft: G) -> G:
+        """The one gate: the engine's own check, then the draft revalidated whole."""
+        self.validate(draft)
         return draft.commit()
+
+    def begin(self, scenario_id: Slug, scenario: AnyScenario, character: AnyCharacter) -> G:
+        if scenario.engine != self.id:
+            raise Refusal(
+                f"{scenario_id!r} is authored for the {scenario.engine!r} rules, "
+                f"which the {self.id!r} engine does not play"
+            )
+        if character.engine != self.id:
+            raise Refusal(
+                f"{character.id!r} is written for the {character.engine!r} rules, "
+                f"which the {self.id!r} engine does not play"
+            )
+        state = parse(
+            self.game,
+            {
+                "scenario_id": scenario_id,
+                "character_id": character.id,
+                "scenario": scenario.meta,
+                "engine": self.id,
+                "packs": scenario.packs,
+                "payload": self.new_game(scenario, character),
+            },
+        )
+        return self.commit(state)
+
+    def player_of(self, character: AnyCharacter) -> P:
+        self.check_character(character)
+        return deepcopy(character.payload)
+
+    def check_scenario(self, scenario: AnyScenario) -> None:
+        if not isinstance(scenario, self.scenario):
+            raise Refusal(f"{self.title} received an incompatible scenario")
+
+    def over(self, state: G) -> str | None:
+        return "You died." if not self.world(state).player.alive else None
+
+    def record(self, state: G, exchange: Exchange) -> None:
+        self.world(state).record(exchange)
+
+    def history(self, state: G) -> tuple[Exchange, ...]:
+        return self.world(state).exchanges()
+
+    def scenes(self, state: G) -> tuple[HistoryRecord, ...]:
+        return self.world(state).scenes()
+
+    def reopening(self, state: G, intent: str) -> Job | None:
+        """The left-open job the intent takes again; only at the hub."""
+        world = self.world(state)
+        campaign = world.campaign
+        return campaign.taken(intent) if campaign is not None and world.at_hub else None
+
+    def ask_worldsmith(self, draft: G, args: CommissionArgs, _rng: Random) -> list[Fact]:
+        return self.commission(draft, args.kind, args.brief, later=args.later)
 
     @abstractmethod
     def master_tools(self) -> tuple[MasterTool[G], ...]: ...
@@ -152,19 +220,11 @@ class Engine[G: Game[Any]](ABC):
     @abstractmethod
     def create_character(self, name: str, brief: str, picks: Picks) -> AnyCharacter: ...
     @abstractmethod
-    def player_of(self, character: AnyCharacter) -> Person: ...
+    def world(self, state: G) -> World[P]: ...
     @abstractmethod
     def validate(self, state: G) -> None: ...
     @abstractmethod
-    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> BaseModel: ...
-    @abstractmethod
-    def over(self, state: G) -> str | None: ...
-    @abstractmethod
-    def record(self, state: G, exchange: Exchange) -> None: ...
-    @abstractmethod
-    def history(self, state: G) -> tuple[Exchange, ...]: ...
-    @abstractmethod
-    def scenes(self, state: G) -> tuple[HistoryRecord, ...]: ...
+    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> World[P]: ...
     @abstractmethod
     def master_sections(self, state: G) -> Sections: ...
     @abstractmethod

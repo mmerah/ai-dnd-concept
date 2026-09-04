@@ -1,12 +1,12 @@
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
-from copy import deepcopy
 from pathlib import Path
 from random import Random
 from typing import Any
 
 from pydantic import BaseModel
 
+from aidm.core.creation import CreationStep
 from aidm.core.entities import Refusal, Slug, parse
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
@@ -18,7 +18,7 @@ from aidm.core.model import (
     ScenarioMeta,
     WorldsmithAnswer,
 )
-from aidm.core.play import Commission, DecisionOption, Exchange, HistoryRecord
+from aidm.core.play import Commission, DecisionOption
 from aidm.core.tools import MasterTool, Play, master_tool
 from aidm.core.views import (
     NarratorView,
@@ -27,9 +27,9 @@ from aidm.core.views import (
     Sections,
     lines_of,
     render_history,
-    render_whole,
 )
 from aidm.engines.base import (
+    SRD_PACK,
     Pack,
     Person,
     character_panel,
@@ -38,9 +38,13 @@ from aidm.engines.base import (
     trail_panel,
 )
 from aidm.engines.hub import (
+    AWAY_BRIEF,
     CAMPAIGN_OPENING,
     GO_HOME,
     ONE_SHOT_OPENING,
+    RETURN_BRIEF,
+    TAKE_BRIEF,
+    WRITE_HUB_SCENE,
     Campaign,
     Job,
     check_kind,
@@ -56,8 +60,10 @@ from aidm.engines.scenes.drafts import (
 )
 from aidm.engines.scenes.tools import (
     Enter,
+    JoinParty,
     Kill,
     Leave,
+    LeaveParty,
     NextScene,
     Reveal,
     SceneCommission,
@@ -76,7 +82,7 @@ from aidm.engines.seam import COMMISSION, COMMISSION_BRIEF, Engine
 WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
 
 
-class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
+class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
     """The scene lifecycle, once; a subclass says what its rules add."""
 
     cast: type[C]
@@ -91,7 +97,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
         super().__init__()  # last: `master_tools` reads the packs
 
     def world(self, state: G) -> SceneWorld[C, P]:
-        return state.payload  # narrowed to the shared scene world
+        return state.payload
 
     def crossing(self, state: G, pursuit: str) -> str | None:
         return CROSSING.format(left=self.world(state).run.title, pursuit=pursuit)
@@ -107,27 +113,10 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             raise Refusal(f"the game names packs not installed: {missing}")
         check_kind(state.scenario.kind, self.world(state).campaign)
 
-    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> BaseModel:
-        if not isinstance(scenario, self.scenario):
-            raise Refusal(f"{self.title} received an incompatible scenario")
+    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> SceneWorld[C, P]:
+        self.check_scenario(scenario)
         canon: SceneCanon[C] = scenario.payload
         return self.world_type.begin(canon, self.player_of(character))
-
-    def player_of(self, character: AnyCharacter) -> P:
-        self.check_character(character)
-        return deepcopy(character.payload)
-
-    def over(self, state: G) -> str | None:
-        return "You died." if not self.world(state).player.alive else None
-
-    def record(self, state: G, exchange: Exchange) -> None:
-        self.world(state).run.exchanges.append(exchange)
-
-    def history(self, state: G) -> tuple[Exchange, ...]:
-        return self.world(state).exchanges()
-
-    def scenes(self, state: G) -> tuple[HistoryRecord, ...]:
-        return self.world(state).scenes()
 
     def master_sections(self, state: G) -> Sections:
         """Every section stated, hidden canon included: the game master reads all of it."""
@@ -138,9 +127,9 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             (question_heading(world.at_hub), scene.question),
             ("YOU PLAY FOR", world.player.line()),
             *self.sheet_sections(state),
-            ("HERE WITH THE PLAYER", self.here_lines(world)),
+            ("HERE WITH THE PLAYER", world.here_lines()),
             *world.party_rows(),
-            ("HIDDEN HERE (the player has not found these)", self.hidden_lines(world)),
+            ("HIDDEN HERE (the player has not found these)", world.hidden_lines()),
             *((("THE ARC (the player has not found this)", world.arc),) if world.arc else ()),
             *self.glossary(state),
             *(() if world.campaign is None else world.campaign.tail(at_hub=world.at_hub)),
@@ -201,6 +190,10 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
                 return world.leave(change.entity_id)
             case Kill():
                 return world.kill(change.entity_id)
+            case JoinParty():
+                return world.join_party(change.entity_id)
+            case LeaveParty():
+                return world.leave_party(change.entity_id)
 
     def next_scene(self, draft: G, args: NextScene, _rng: Random) -> list[Fact]:
         return self.world(draft).settle(args.job_done, args.pursuit)
@@ -215,30 +208,14 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             self.ask_worldsmith,
         )
 
-    def ask_worldsmith(self, draft: G, args: SceneCommission, _rng: Random) -> list[Fact]:
-        return self.commission(draft, args.kind, args.brief, later=args.later)
+    def pack_step(self) -> CreationStep:
+        return CreationStep(id="pack", prompt="Choose a table set", options=self.pack_options())
 
-    def here_lines(self, world: SceneWorld[C, P]) -> str:
-        return lines_of(member.line() for member in world.here() if member.id != world.player.id)
-
-    def hidden_lines(self, world: SceneWorld[C, P]) -> str:
-        return lines_of(world.require(entity_id).line() for entity_id in world.hidden())
-
-    def cast_lines(self, world: SceneWorld[C, P]) -> str:
-        """The worldsmith must know who follows the player out of the scene."""
-        return "\n".join(
-            (
-                world.player.line(detail=world.last_seen(world.player.id)),
-                *(
-                    entry.line(
-                        detail="travels with the player"
-                        if entry.id in world.party
-                        else world.last_seen(entry.id)
-                    )
-                    for entry in world.cast.values()
-                ),
-            )
-        )
+    def srd_pack(self) -> K:
+        pack = self.packs.get(SRD_PACK)
+        if pack is None:
+            raise Refusal("the SRD table set is not installed")
+        return pack
 
     def hub_sections(
         self, world: SceneWorld[C, P], *, returning: bool, reopening: Job | None
@@ -246,17 +223,16 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
         campaign = world.campaign
         if campaign is None:
             return ()
-        sections: list[tuple[str, str]] = []
-        if returning:
-            sections.append(("THIS JOB", render_whole(campaign.job_records(world.records()))))
-        if reopening is not None:
-            sections.append(
-                ("THE JOB BEFORE", render_whole(campaign.records_of(reopening, world.records())))
-            )
-        sections.extend(
-            campaign.sections(world.runs[0].title, at_hub=world.at_hub, returning=returning)
+        brief = (
+            WRITE_HUB_SCENE + RETURN_BRIEF
+            if returning
+            else TAKE_BRIEF
+            if world.at_hub
+            else AWAY_BRIEF
         )
-        return tuple(sections)
+        return campaign.hub_block(
+            world.runs[0].title, brief, world.records(), returning=returning, reopening=reopening
+        )
 
     def render_next(
         self,
@@ -279,7 +255,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
             WORLDSMITH,
             source=world.source,
             history=render_history(world.scenes()),
-            cast=self.cast_lines(world),
+            cast=world.cast_lines(),
             guidance=self.guidance(draft.packs, campaign=world.campaign is not None),
             intent=intent,
             answer=answer,
@@ -437,9 +413,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[G]):
     async def advance(
         self, draft: G, intent: str, worldsmith: WorldsmithAnswer
     ) -> tuple[Fact, ...]:
-        world = self.world(draft)
-        campaign = world.campaign
-        reopening = campaign.taken(intent) if world.at_hub and campaign is not None else None
+        reopening = self.reopening(draft, intent)
         scene = await self.write_next(draft, intent, worldsmith, reopening=reopening)
         # The engine's own closing reads the scene being left, so it runs before the install.
         return (*self.leaving(draft), *self.install(draft, scene, reopening=reopening))

@@ -1,9 +1,11 @@
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, JsonValue, model_validator
 
-from aidm.core.entities import EntityId, Mutable
+from aidm.core.entities import EntityId, Mutable, Refusal, slug
+from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
+from aidm.core.play import PendingOption
 from aidm.core.views import Rows
 from aidm.engines.base import Counter, Person
 from aidm.engines.scenes.world import SceneCanon, SceneWorld
@@ -19,6 +21,8 @@ LOOT_START: Die = 12
 STUNT_DIE: Die = 12
 STARTING_ITEM: Die = 10
 MED_KIT_CLEARS = 2
+STARTING_DICE: tuple[Die, ...] = (10, 8, 6)  # the three rated skills, best first
+SWAP = "swap-"
 
 
 class Item(Mutable):
@@ -69,6 +73,67 @@ class Survivor(Person):
             if value
         )
 
+    def require_item(self, item_id: EntityId) -> Item:
+        item = self.items.get(item_id)
+        if item is None:
+            raise Refusal(f"{item_id!r} is not among the player's items")
+        return item
+
+    def drop_item(self, item_id: EntityId) -> list[Fact]:
+        item = self.require_item(item_id)
+        del self.items[item_id]
+        trace = f"{self.label} drops {item.name}"
+        return [self.fact("item_dropped", trace, card=f"Dropped {item.name}")]
+
+    def loot_options(self, item: str, granted: Die) -> tuple[PendingOption, ...]:
+        base: dict[str, JsonValue] = {"item": item, "granted": granted}
+        options: list[PendingOption] = []
+        if len(self.items) < CARRY:
+            take = {**base, "choice": "take"}
+            options.append(PendingOption(id="take", label="Take it", name="loot_check", args=take))
+        else:
+            for key, carried in self.items.items():
+                swap = {**base, "choice": f"{SWAP}{key}"}
+                options.append(
+                    PendingOption(
+                        id=f"{SWAP}{key}",
+                        label=f"Swap for {carried.name}",
+                        name="loot_check",
+                        args=swap,
+                    )
+                )
+        if granted >= 10 and not self.med_kit:
+            med_kit = {**base, "choice": "med-kit"}
+            options.append(
+                PendingOption(
+                    id="med-kit", label="Take a med kit instead", name="loot_check", args=med_kit
+                )
+            )
+        return tuple(options)
+
+    def take_loot(self, item: str, granted: Die, choice: str) -> Fact:
+        if choice == "take":
+            if len(self.items) >= CARRY:
+                raise Refusal("the backpack is full; swap for something carried instead")
+            key = EntityId(slug(item, self.items))
+            self.items[key] = Item(name=item, die=granted)
+            card = f"Took {item} (d{granted})"
+        elif choice == "med-kit":
+            if granted < 10:
+                raise Refusal("only a d10 find or better can be a med kit")
+            if self.med_kit:
+                raise Refusal("the player already holds a med kit")
+            self.med_kit = True
+            card = "Took a med kit"
+        elif choice.startswith(SWAP) and EntityId(choice.removeprefix(SWAP)) in self.items:
+            old = self.items.pop(EntityId(choice.removeprefix(SWAP)))
+            key = EntityId(slug(item, self.items))
+            self.items[key] = Item(name=item, die=granted)
+            card = f"Swapped {old.name} for {item} (d{granted})"
+        else:
+            raise Refusal(f"{choice!r} is not a valid loot choice")
+        return self.fact("loot_taken", card, card=card)
+
 
 BreathlessWorld = SceneWorld[Person, Survivor]
 
@@ -86,5 +151,4 @@ class BreathlessCharacter(Character[Survivor]):
 
 
 def stepped(die: Die) -> Die:
-    """One step down the ladder, floored at d4."""
     return LADDER[max(LADDER.index(die) - 1, 0)]

@@ -74,7 +74,6 @@ class Reader:
 def open_reader(
     settings: Settings, store: FileStore, slug: str, scenario: AnyScenario
 ) -> Reader | None:
-    """None unless `settings.speech.enabled`; the voice is the scenario's or the settings'."""
     if not settings.speech.enabled:
         return None
     return Reader(

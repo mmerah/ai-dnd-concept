@@ -7,7 +7,6 @@ from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
 from aidm.core.tools import MasterTool
 from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.registry import begin_game
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.tools import Move
 from aidm.engines.rooms.world import Dweller, Place, RoomCanon, RoomWorld, Way
@@ -103,9 +102,7 @@ def test_a_sixth_room_engine_begins_a_playable_game(tmp_path: Path) -> None:
     engine = _installed(tmp_path)
     character = engine.create_character("Wren", "A quiet scout", {})
 
-    state = begin_game(engine, "the-keep", _scenario(), character)
-    if not isinstance(state, SixthGame):
-        raise AssertionError("the sixth engine began another game type")
+    state = engine.begin("the-keep", _scenario(), character)
 
     assert engine.master_sections(state)[0] == ("CURRENT PLACE", "Gate[gate]\nGate")
     assert "commission" in engine.tools

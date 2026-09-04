@@ -4,12 +4,12 @@ from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, other_than, picked
-from aidm.core.entities import EngineId, Refusal, Slug, require_unique, slug
+from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.play import PendingDecision
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Sections
-from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, SRD_PACK, keep_highest
+from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, keep_highest
 from aidm.engines.loner3e.tools import (
     ChangeTags,
     ChangeWorld,
@@ -18,7 +18,6 @@ from aidm.engines.loner3e.tools import (
     Question,
     RestoreLuck,
     WorldChange,
-    conflict_prompt,
     defeat_note,
     outcome_for,
     pack_meanings,
@@ -36,16 +35,7 @@ from aidm.engines.loner3e.world import (
 )
 from aidm.engines.loner3e.worldsmith import AUTHORING, Pack
 from aidm.engines.scenes.engine import SceneEngine
-from aidm.engines.scenes.tools import (
-    NEXT_SCENE,
-    Enter,
-    JoinParty,
-    Kill,
-    Leave,
-    LeaveParty,
-    NextScene,
-    Reveal,
-)
+from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
 
 # Read by the next turn, which is usually the next offer click: the note must stand on its own.
 GROWTH_NOTE = (
@@ -70,7 +60,6 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
     finished_note = GROWTH_NOTE
 
     def master_tools(self) -> tuple[MasterTool[Loner3eGame], ...]:
-        """Four tools: two world tools, then the two SRD procedures that roll or reset."""
         return (
             master_tool("change_world", CHANGE_WORLD, ChangeWorld, self.change_world),
             master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
@@ -89,9 +78,7 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
-        first = CreationStep(
-            id="pack", prompt="Choose a character table set", options=self.pack_options()
-        )
+        first = self.pack_step()
         pack = self.packs.get(picked(picks, "pack"))
         if pack is None:
             return (first,)
@@ -172,9 +159,9 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
 
     def twist_table(self) -> tuple[tuple[str, str], ...]:
         """Always the SRD's own table: no other pack publishes one."""
-        srd = self.packs.get(SRD_PACK)
-        if srd is None or srd.twist_subjects is None or srd.twist_actions is None:
-            raise Refusal("the SRD table set with its twist columns is not installed")
+        srd = self.srd_pack()
+        if srd.twist_subjects is None or srd.twist_actions is None:
+            raise Refusal("the SRD table set has no twist columns")
         return tuple(zip(srd.twist_subjects, srd.twist_actions, strict=True))
 
     def leaving(self, state: Loner3eGame) -> tuple[Fact, ...]:
@@ -182,32 +169,32 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
         facts: list[Fact] = []
         for member in state.payload.here():
             if member.alive and member.luck.current < LUCK_MAX:
-                facts.extend(_refill(member, "the scene is over"))
+                facts.extend(member.refill("the scene is over"))
         return tuple(facts)
 
     def apply_change(self, world: Loner3eWorld, change: WorldChange) -> list[Fact]:
         match change:
-            case Reveal() | Enter() | Leave() | Kill():
-                return self.shared_change(world, change)
             case ChangeTags():
-                return self.change_tags(world.require_alive_here(change.entity_id), change)
+                return world.require_here(change.entity_id, alive=True).change_tags(
+                    change.kind, change.gained, change.lost
+                )
             case Drive():
-                return self.drive(world.require_alive_here(change.entity_id), change)
-            case JoinParty():
-                return world.join_party(change.entity_id)
-            case LeaveParty():
-                return world.leave_party(change.entity_id)
+                return world.require_here(change.entity_id, alive=True).drive(
+                    goal=change.goal, motive=change.motive, nemesis=change.nemesis
+                )
+            case _:
+                return self.shared_change(world, change)
 
     def change_world(self, draft: Loner3eGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
         return self.apply_change(draft.payload, args.change)
 
     def resolve_question(self, draft: Loner3eGame, action: Question, rng: Random) -> list[Fact]:
         world = draft.payload
-        actor = world.require_alive_here(action.actor_id)
+        actor = world.require_here(action.actor_id, alive=True)
         facts = actor.reveal()
         opponent: Loner3eSheet | None = None
         if action.opponent_id is not None:
-            opponent = world.require_alive_here(action.opponent_id)
+            opponent = world.require_here(action.opponent_id, alive=True)
             facts.extend(opponent.reveal())
         _refuse_unless_ready(actor, opponent)
 
@@ -225,7 +212,7 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
             if not any(fact.kind == "conflict_lost" for fact in exchange):
                 draft.pending = PendingDecision(
                     kind="conflict",
-                    prompt=conflict_prompt(world, actor, opponent),
+                    prompt=world.conflict_prompt(actor, opponent),
                     options=(),
                     allows_text=True,
                 )
@@ -248,51 +235,11 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
         return facts
 
     def restore_luck(self, draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
-        actor = draft.payload.require_alive_here(args.actor_id)
+        actor = draft.payload.require_here(args.actor_id, alive=True)
         facts = actor.reveal()
         # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
-        facts.extend(_refill(actor, "the conflict is behind them"))
+        facts.extend(actor.refill("the conflict is behind them"))
         return facts
-
-    def change_tags(self, sheet: Loner3eSheet, change: ChangeTags) -> list[Fact]:
-        if not change.gained and not change.lost:
-            raise Refusal("change_tags needs at least one gained or lost tag")
-        require_unique(f"{change.kind} tags", (*change.gained, *change.lost))
-        current = sheet.tagged(change.kind)
-        if carried := [tag for tag in change.gained if tag in current]:
-            raise Refusal(f"{sheet.name} already carries the {change.kind} {carried[0]!r}")
-        if missing := [tag for tag in change.lost if tag not in current]:
-            raise Refusal(f"{sheet.name} carries no {change.kind} {missing[0]!r}")
-        sheet.tags[change.kind] = [
-            tag for tag in (*current, *change.gained) if tag not in change.lost
-        ]
-        deltas = (*(f"+{tag}" for tag in change.gained), *(f"-{tag}" for tag in change.lost))
-        trace = f"{sheet.label} {change.kind} " + ", ".join(deltas)
-        parts: list[str] = []
-        if change.gained:
-            took = ", ".join(change.gained)
-            parts.append(f"Took {took}" if change.kind == "gear" else f"Now: {took}")
-        if change.lost:
-            lost = ", ".join(change.lost)
-            parts.append(f"Lost {lost}" if change.kind == "gear" else f"No longer: {lost}")
-        return [sheet.fact("tags_changed", trace, card="; ".join(parts))]
-
-    def drive(self, sheet: Loner3eSheet, change: Drive) -> list[Fact]:
-        if not change.goal and not change.motive and not change.nemesis:
-            raise Refusal("drive needs a goal, a motive or a nemesis to set")
-        parts: list[str] = []
-        if change.goal:
-            sheet.goal = change.goal
-            parts.append(f"goal: {change.goal}")
-        if change.motive:
-            sheet.motive = change.motive
-            parts.append(f"motive: {change.motive}")
-        if change.nemesis:
-            sheet.nemesis = change.nemesis
-            parts.append(f"nemesis: {change.nemesis}")
-        trace = f"{sheet.label} " + "; ".join(parts)
-        card = f"{sheet.name}: {change.goal}" if change.goal else ""
-        return [sheet.fact("drive_set", trace, card=card)]
 
     def _twist(self, draft: Loner3eGame, actor: Loner3eSheet, rng: Random) -> list[Fact]:
         """The SRD's table is rolled here so the dice trace; the model only reads the pairing."""
@@ -316,10 +263,6 @@ def _absorbed(exchange: list[Fact]) -> tuple[list[Fact], tuple[str, ...]]:
     return [fact.model_copy(update={"card": ""}) for fact in exchange], lines
 
 
-def _refill(side: Loner3eSheet, why: str) -> list[Fact]:
-    return side.luck.change(side, side.luck.shortfall, "Luck", why)
-
-
 def _strike(
     draft: Loner3eGame, actor: Loner3eSheet, opponent: Loner3eSheet, outcome: Outcome
 ) -> list[Fact]:
@@ -333,8 +276,8 @@ def _strike(
     lost = f"{hit.name} is out of luck"
     facts.append(hit.fact("conflict_lost", lost, card=lost))
     # SRD: luck resets after conflicts, and a side at 0 is the only end the engine sees.
-    facts.extend(_refill(hit, "the conflict is over"))
-    facts.extend(_refill(striker, "the conflict is over"))
+    facts.extend(hit.refill("the conflict is over"))
+    facts.extend(striker.refill("the conflict is over"))
     return facts
 
 

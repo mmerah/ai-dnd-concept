@@ -2,27 +2,26 @@ from support.table import ENGINES_BUILT, TWENTYFOURXX
 from support.twentyfourxx import LOCKPICKS, small_world
 
 from aidm.core.views import PanelRow
-from aidm.engines.twentyfourxx.engine import gear_detail
 from aidm.engines.twentyfourxx.world import Item
 
 ENGINE = ENGINES_BUILT[TWENTYFOURXX]
 
 
-def test_gear_detail_of_a_plain_item_is_empty() -> None:
-    assert gear_detail(Item(name="Lockpick set")) == ""
+def test_item_detail_of_a_plain_item_is_empty() -> None:
+    assert Item(name="Lockpick set").detail() == ""
 
 
-def test_gear_detail_of_a_bulky_item() -> None:
-    assert gear_detail(Item(name="Crate", bulky=True)) == "bulky"
+def test_item_detail_of_a_bulky_item() -> None:
+    assert Item(name="Crate", bulky=True).detail() == "bulky"
 
 
-def test_gear_detail_of_a_broken_item() -> None:
-    assert gear_detail(Item(name="Scanner", broken_times=1)) == "broken"
+def test_item_detail_of_a_broken_item() -> None:
+    assert Item(name="Scanner", broken_times=1).detail() == "broken"
 
 
-def test_gear_detail_of_a_multi_break_partly_broken_item() -> None:
+def test_item_detail_of_a_multi_break_partly_broken_item() -> None:
     item = Item(name="Battle armor", breaks=3, broken_times=1)
-    assert gear_detail(item) == "broken 1/3"
+    assert item.detail() == "broken 1/3"
 
 
 def test_narrator_view_lists_only_known_entities() -> None:

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 from support.loner import character, initialized, loner_sheet, scenario
-from support.table import ENGINES_BUILT, LONER3E, SCENARIO_MODELS, SCENARIOS, begin_game, updated
+from support.table import ENGINES_BUILT, LONER3E, SCENARIO_MODELS, SCENARIOS, updated
 
 from aidm.core.entities import EngineId, EntityId, Refusal
 from aidm.core.io import read_character, read_scenario
@@ -92,9 +92,9 @@ def test_entity_and_scene_ids_use_one_grammar() -> None:
 def test_a_game_is_refused_a_scenario_or_a_character_from_another_engine() -> None:
     engine = ENGINES_BUILT[LONER3E]
     with pytest.raises(Refusal, match="authored for the 'ruleless' rules"):
-        _ = begin_game(engine, "whispering-vault", updated(scenario(), engine=OTHER), character())
+        _ = engine.begin("whispering-vault", updated(scenario(), engine=OTHER), character())
     with pytest.raises(Refusal, match="written for the 'ruleless' rules"):
-        _ = begin_game(engine, "whispering-vault", scenario(), updated(character(), engine=OTHER))
+        _ = engine.begin("whispering-vault", scenario(), updated(character(), engine=OTHER))
 
 
 def test_a_character_file_belongs_to_its_folder_and_its_engine(tmp_path: Path) -> None:

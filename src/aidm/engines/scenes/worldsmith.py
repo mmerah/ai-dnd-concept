@@ -34,11 +34,13 @@ def scene_refusal[C: Person, P: Person](
     world: SceneWorld[C, P] | None = None,
     asked: Sequence[Commission] = (),
 ) -> str | None:
+    """Free: the drafts may not import the world, and the authoring call has no world."""
     unmet = scene_unmet(draft, world, asked)
     return None if not unmet else "the scene needs " + "; ".join(unmet)
 
 
 def cast_refusal[C: Person, P: Person](draft: CastDraft[C], world: SceneWorld[C, P]) -> str | None:
+    """Free: the drafts may not import the world; one bar module beside `scene_refusal`."""
     entity_id, entry = next(iter(draft.cast.items()))
     unmet: list[str] = []
     if entity_id == world.player.id:

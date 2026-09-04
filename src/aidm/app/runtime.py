@@ -19,7 +19,7 @@ from aidm.core.play import Answer, Commission, Exchange, Line, Narration
 from aidm.core.source import given_text
 from aidm.core.tools import MasterTool
 from aidm.core.views import PlayerView
-from aidm.engines.registry import begin_game, build_engines
+from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
 from aidm.turn.context import render_narrator
 from aidm.turn.run import Turn
@@ -225,7 +225,6 @@ class GameService:
         draft = self.state.draft()
         try:
             facts = await self.engine.advance(draft, intent, _worldsmith(self.spawner))
-            self.engine.validate(draft)
         except (OSError, Refusal) as failed:
             # Dropping the write costs a scene; raising costs the turn that was already played.
             LOGGER.warning("the world did not grow: %s", failed)
@@ -236,7 +235,7 @@ class GameService:
             self.commit(self.engine.close(draft, prompt, (), (UNWRITTEN,)))
             return
         if brief is None and not cards(facts):
-            self.commit(draft.commit())
+            self.commit(self.engine.commit(draft))
             return
         prompt, lines = intent, ()  # a silent install's told card is filed under its intent
         if brief is not None:
@@ -292,7 +291,7 @@ class GameService:
         self.state = state
 
     def _begin(self) -> AnyGame:
-        return begin_game(self.engine, self.target.scenario_id, self.scenario, self.character)
+        return self.engine.begin(self.target.scenario_id, self.scenario, self.character)
 
     def _resumable(self, state: AnyGame) -> AnyGame:
         if (state.scenario_id, state.character_id) != (self.target.scenario_id, self.character.id):
@@ -372,7 +371,7 @@ class Runtime:
 
         def playable(built: AnyScenario) -> str | None:
             try:
-                begin_game(engine, name, built, character)
+                engine.begin(name, built, character)
             except Refusal as unplayable:
                 return str(unplayable)
             return None

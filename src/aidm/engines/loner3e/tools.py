@@ -5,7 +5,7 @@ from pydantic import Field
 
 from aidm.core.entities import CheckedEntityId, Frozen, Slug
 from aidm.core.play import DecisionOption
-from aidm.engines.loner3e.world import Loner3eSheet, Loner3eWorld, TagKind
+from aidm.engines.loner3e.world import TagKind
 from aidm.engines.scenes.tools import Enter, JoinParty, Kill, Leave, LeaveParty, Reveal
 
 AND_AT = 4  # both dice 4+ sharpens the answer to -and
@@ -98,14 +98,6 @@ def outcome_for(chance: int, risk: int) -> Outcome:
     if max(chance, risk) <= BUT_AT:
         return Outcome(name=f"{side}-but", harm=sign)
     return Outcome(name=side, harm=2 * sign)
-
-
-def conflict_prompt(world: Loner3eWorld, actor: Loner3eSheet, opponent: Loner3eSheet) -> str:
-    foe = actor if opponent.id == world.player.id else opponent
-    return (
-        f"The conflict with {foe.name} runs on: neither side is out of luck yet. Press the "
-        "attack, try something else, or break away — what do you do?"
-    )
 
 
 def twist_pairing(

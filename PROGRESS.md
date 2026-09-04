@@ -47,3 +47,59 @@ and why, and what is known and accepted.
 - Follow-up prose cut, same branch: 9,483 → 9,444 lines. Twenty-nine docstrings and comments
   that restated a name, a signature or the line below went; the `RoomEngine` docstring is one
   line; `SceneEngine.world` is one line. No schema description changed (golden regen clean).
+
+## Phase 2 — the engine seam and the two families
+
+- `src` lines: 9,444 before, 9,438 after. The plan's band was 9,240 to 9,300. Both reviews
+  found the band unreachable from the eighteen steps: every step is a move (engine → sheet,
+  engine → world, registry → seam, the two hoists), so the real deletions (`begin_game`,
+  `render_job`/`render_return`, the two lifecycle bodies) are cancelled by what the moves add
+  (`World`, `CommissionArgs`, `worldsmith_prompt`, `apply_extension`/`apply_return`, keyword
+  signatures on the sheet methods, nine one-line "Free" docstrings). The maintainer chose a
+  prose sweep over the whole of `src` (Opus, every docstring and comment read): five lines
+  went; the rest each carry a reason the code cannot show. Nothing was padded.
+- Split: A (seam) → B1 (base, hub, scenes) → B2 (rooms) ∥ C1 (Loner) ∥ C2 (Breathless) ∥ C3
+  (24XX). Off-plan assignments: step 11's free-function docstrings went by file owner; step 8's
+  five `require_alive_here` call-site renames in `loner3e/engine.py` went to B1 so B1 left the
+  tree green; the three `Pack` field deletions went to B1 with the base change. No file was
+  edited by two implementers at once.
+- Off-plan, on the maintainer's call: `Campaign.hub_block(hub_title, brief, records, *,
+  returning, reopening)` replaces PLAN step 16's `this_job`/`job_before`; both families'
+  `hub_sections` now keep only their guard, title and brief. Both reviews flagged the block
+  spelled twice.
+- Off-plan: PLAN step 11's docstring for the `*_refusal` builders ("neither may import the
+  other's module") was false in one direction of each family (`scenes/world.py` imports the
+  drafts; `rooms/drafts.py` imports the world). The lines now say what is true: rooms, "the
+  world may not import the drafts; one bar module"; scenes, "the drafts may not import the
+  world, and the authoring call has no world".
+- Cuts folded from review: `write_extension` reads `world.at_hub` alone (it is False without a
+  campaign) and calls `walked_job()` once; `NO_SOURCE` inlined; `apply_extension` reads
+  `self.current` after `attach`; `apply_return` lands recaps through one comprehension;
+  `Campaign.sections` spreads `tail(at_hub=True)`; the dead `current` set in
+  `Operator.change_hindrances` went; `card` inlined in `install_extension`.
+- Added from review: `tests/core/test_seam.py` tests `srd_pack`'s refusal, the one behaviour
+  the phase added rather than moved.
+- Refuted: "`_grow` lost the `validate` inside its `try`, so a `Refusal` from `engine.commit`
+  now escapes to the UI." PLAN step 3 prescribes the drop; `validate` checks only the pack list
+  and kind-vs-campaign, which `advance` never changes, and the `draft.commit()` revalidation at
+  that site was already outside the `try`.
+- Refuted: "`World.exchanges()` through `records()` builds a record and a `require_place` per
+  visit." PLAN step 1 names the shape; `RoomWorld._playable` checks every visit's place, so it
+  cannot raise on a committed state; the cost is one frozen record per visit per prompt.
+- Refuted: "`roll_loot`'s face ladder as a table." Step 10 moves the body verbatim.
+- Refuted: "one comment per module instead of nine docstrings." Step 11 asks for one line on
+  each free function; each is now one line.
+- Known and accepted: the `hub_block` fold's signature wraps to eight lines under the formatter,
+  so the fold saved three lines, not the eighteen estimated.
+- Known and accepted: `leave` and `kill` now refuse with "Bring them here first, or act on who is
+  here." and name `entity.name` (PLAN step 8, intended).
+- Known and accepted (D13): the rooms return prompt carries ENGINE GUIDANCE and THE HUB, and its
+  WHAT COMES NEXT is the player's `Report in.`.
+- Reviews: Fable (`reviewer` agent) and Opus (`reviewer` agent, `model: opus`); no `codex` on
+  the machine, so no Codex Sol review ran.
+- Verified: four commands green (538 tests); golden regen changes no fixture; every grep of
+  steps 2, 3, 7, 8, 11, 13, 17 as stated; `Any` only in the `Game[Any]`/`Engine[Any, Any]`
+  bounds; `engines/scenes/` 1,242 and `engines/rooms/` 1,200 lines; `uv run aidm` serves the
+  home page; the Tunnel Goons campaign loop (take a job, walk into it, report in, take it again)
+  run offline through `engine.advance` with a scripted worldsmith: the retake reopens at the
+  job's own start with two attempts. The roles spawn a CLI, so the in-app loop was not run here.

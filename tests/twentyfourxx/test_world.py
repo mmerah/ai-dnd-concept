@@ -83,11 +83,11 @@ def test_check_filing_rejects_mis_filed_cast() -> None:
         )
 
 
-def test_require_alive_here_refuses_dead_cast_member() -> None:
+def test_require_here_alive_refuses_dead_cast_member() -> None:
     world = small_world().payload
     world.cast[KESTREL].alive = False
     with pytest.raises(Refusal):
-        world.require_alive_here(KESTREL)
+        world.require_here(KESTREL, alive=True)
 
 
 def test_way_open_is_true_at_an_unsettled_hub() -> None:
