@@ -110,7 +110,6 @@ class Game[P: BaseModel](Mutable):
         return next((commission for commission in self.commissions if not commission.later), None)
 
     def on_order(self) -> list[Commission]:
-        """The `later` commissions the next write owes."""
         return [commission for commission in self.commissions if commission.later]
 
     def withdraw(self, asked: Commission) -> tuple[Fact, ...]:

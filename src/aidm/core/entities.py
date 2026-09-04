@@ -18,8 +18,6 @@ CheckedEntityId = Annotated[EntityId, Field(pattern=rf"^{SLUG_PATTERN}$", max_le
 
 
 class Frozen(BaseModel):
-    """Frozen and compared by fields; every model answer and fact is one."""
-
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 

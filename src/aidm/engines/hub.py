@@ -107,7 +107,6 @@ class Job(Mutable):
 
     @property
     def open(self) -> bool:
-        """The last attempt exists and is unreturned."""
         return bool(self.attempts) and self.attempts[-1].returned is None
 
     @property
@@ -115,7 +114,6 @@ class Job(Mutable):
         return self.open and self.attempts[-1].started is not None
 
     def start(self) -> int:
-        """The index the walking attempt started at."""
         started = self.attempts[-1].started if self.open else None
         if started is None:
             raise Refusal(f"job {self.title!r} is not being walked")
@@ -145,8 +143,6 @@ class Job(Mutable):
 
 
 class Campaign(Mutable):
-    """The hub the player comes back to, its board, and the jobs walked from it."""
-
     place: Slug
     board: Board
     jobs: list[Job] = Field(default_factory=list)
@@ -181,7 +177,6 @@ class Campaign(Mutable):
                         raise Refusal(f"job {index} returned away from the hub")
 
     def open_job(self) -> Job | None:
-        """The last job while it is `open`."""
         last = self.jobs[-1] if self.jobs else None
         return last if last is not None and last.open else None
 

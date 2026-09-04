@@ -64,11 +64,7 @@ WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODI
 
 
 class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[G]):
-    """The room-crawl lifecycle, once; a subclass says what its rules add.
-
-    One crawler subclasses it today. The split mirrors `scenes/`, so a second one adds only
-    its sheet, its rolls and its creation, and every engine reads the same five files.
-    """
+    """The room-crawl lifecycle, once; a subclass says what its rules add."""
 
     dweller: type[N]
     world_type: type[RoomWorld[N, P]]

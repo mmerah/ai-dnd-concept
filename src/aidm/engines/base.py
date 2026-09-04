@@ -19,8 +19,6 @@ CHANGE_WORLD = (
 
 
 class Thing(Mutable):
-    """What every world thing shares: an id, a name, a brief, and whether the player has met it."""
-
     id: CheckedEntityId
     name: str
     brief: str
@@ -57,8 +55,6 @@ class Thing(Mutable):
 
 
 class Person(Thing):
-    """Every cast entry and every player sheet."""
-
     alive: bool = True
 
     def rows(self) -> Rows:
@@ -82,8 +78,6 @@ class Person(Thing):
 
 
 class Pack(Frozen):
-    """What every table set carries; an engine's own `Pack` extends it."""
-
     name: str
 
 

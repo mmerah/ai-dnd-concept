@@ -95,7 +95,6 @@ def voice_of(speaker: Speaker | None, narrator: str, pool: Sequence[str]) -> str
 def requests_of(
     exchange: Exchange, narrator: str, pool: Sequence[str]
 ) -> tuple[tuple[str, str], ...]:
-    """(voice, text) per line, in order."""
     return tuple((voice_of(line.speaker, narrator, pool), line.text) for line in exchange.lines)
 
 

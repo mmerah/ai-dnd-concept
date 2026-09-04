@@ -35,9 +35,7 @@ class Subject(Frozen):
 class PanelRow(Frozen):
     label: str
     detail: str
-    # Set when the row is an entity, so the sidebar can draw its icon.
     icon_id: EntityId | None = None
-    # Set when the row is a way on: the sidebar draws a button that plays Move on with it.
     intent: str = ""
 
 
@@ -109,7 +107,6 @@ def sections(parts: Sections) -> str:
 
 
 def lines_of(parts: Iterable[str]) -> str:
-    """A prompt list, one item per line; an empty one still says so."""
     return "\n".join(parts) or "- (none)"
 
 
