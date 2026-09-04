@@ -2,7 +2,7 @@ from collections.abc import Callable
 
 import pytest
 from pydantic import BaseModel
-from support.table import TUNNELGOONS, game, the_campaign
+from support.table import TUNNELGOONS, game, narrowed, the_campaign
 from support.tunnelgoons import MIRA, START, TAVERN, hub_world, small_world
 
 from aidm.core.entities import EntityId, Refusal
@@ -41,7 +41,7 @@ THIN = MapDraft[Npc](
 
 def _tunnelgoons_game() -> TunnelGoonsGame:
     _, state = game(TUNNELGOONS)
-    assert isinstance(state, TunnelGoonsGame), "the Tunnel Goons engine began another game type"
+    state = narrowed(state, TunnelGoonsGame)
     return state
 
 
@@ -469,9 +469,7 @@ def test_hub_refusal_needs_a_two_or_three_offer_board_and_passes_the_shipped_cam
     assert "two or three offers" in refused
 
     _, campaign_state = game(TUNNELGOONS, "campaign")
-    assert isinstance(campaign_state, TunnelGoonsGame), (
-        "the Tunnel Goons engine began another game type"
-    )
+    campaign_state = narrowed(campaign_state, TunnelGoonsGame)
     canon = campaign_state.payload
     draft = MapDraft[Npc](
         places=canon.places,

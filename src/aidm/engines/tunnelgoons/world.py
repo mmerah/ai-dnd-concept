@@ -67,13 +67,8 @@ class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
         )
 
 
-class TunnelGoonsGame(Game[TunnelGoonsWorld]):
-    pass
+TunnelGoonsGame = Game[TunnelGoonsWorld]
 
+TunnelGoonsScenario = Scenario[RoomCanon[Npc]]
 
-class TunnelGoonsScenario(Scenario[RoomCanon[Npc]]):
-    pass
-
-
-class TunnelGoonsCharacter(Character[Goon]):
-    pass
+TunnelGoonsCharacter = Character[Goon]

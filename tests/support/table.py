@@ -252,3 +252,8 @@ async def play_turn[G: AnyGame](
     answer = Answer(text=action) if isinstance(action, str) else action
     await table.service.play(answer, moving_on=moving_on)
     return table.state
+
+
+def narrowed[M: BaseModel](value: BaseModel, model: type[M]) -> M:
+    assert isinstance(value, model), f"{type(value).__name__} is not a {model.__name__}"
+    return value

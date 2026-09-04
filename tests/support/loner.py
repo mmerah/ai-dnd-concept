@@ -25,6 +25,7 @@ from support.table import (
     ScriptedSpawner,
     Table,
     game,
+    narrowed,
     open_table,
 )
 
@@ -73,20 +74,20 @@ def loner_sheet(state: Loner3eGame, entity_id: EntityId) -> Loner3eSheet:
 
 def scenario() -> Loner3eScenario:
     loaded = LIBRARY.read_scenario("whispering-vault", SCENARIO_MODELS)
-    assert isinstance(loaded, Loner3eScenario), "the Loner scenario parsed as another engine"
+    loaded = narrowed(loaded, Loner3eScenario)
     return loaded
 
 
 def character() -> Loner3eCharacter:
     engine = ENGINES_BUILT[LONER3E]
     loaded = LIBRARY.read_character("kael", engine.id, engine.character)
-    assert isinstance(loaded, Loner3eCharacter), "the Loner character parsed as another engine"
+    loaded = narrowed(loaded, Loner3eCharacter)
     return loaded
 
 
 def initialized() -> tuple[AnyEngine, Loner3eGame]:
     engine, state = game(LONER3E)
-    assert isinstance(state, Loner3eGame), "the Loner engine began another game type"
+    state = narrowed(state, Loner3eGame)
     return engine, state
 
 

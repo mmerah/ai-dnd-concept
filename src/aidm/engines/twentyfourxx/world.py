@@ -135,17 +135,11 @@ class Operator(Person):
 
 TwentyfourxxWorld = SceneWorld[Person, Operator]
 
+TwentyfourxxGame = Game[TwentyfourxxWorld]
 
-class TwentyfourxxGame(Game[TwentyfourxxWorld]):
-    pass
+TwentyfourxxScenario = Scenario[SceneCanon[Person]]
 
-
-class TwentyfourxxScenario(Scenario[SceneCanon[Person]]):
-    pass
-
-
-class TwentyfourxxCharacter(Character[Operator]):
-    pass
+TwentyfourxxCharacter = Character[Operator]
 
 
 def raised(current: SkillDie | None) -> SkillDie:

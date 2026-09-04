@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 from support.loner import loner_sheet
-from support.table import ENGINES_BUILT, LIBRARY, LONER3E, updated
+from support.table import ENGINES_BUILT, LIBRARY, LONER3E, narrowed, updated
 
 from aidm.core.creation import Picks
 from aidm.core.entities import EngineId, Refusal
@@ -32,7 +32,7 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     character = library.read_character("fen", ENGINE.id, ENGINE.character)
     scenario = LIBRARY.read_scenario("whispering-vault", {ENGINE.id: ENGINE.scenario})
     state = ENGINE.begin("whispering-vault", scenario, character)
-    assert isinstance(state, Loner3eGame), "the Loner engine began another game type"
+    state = narrowed(state, Loner3eGame)
     made = loner_sheet(state, PLAYER_ID)
     assert made.concept == "A wandering scribe who counts doors"
     assert made.tags == {

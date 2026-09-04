@@ -133,17 +133,11 @@ class Survivor(Person):
 
 BreathlessWorld = SceneWorld[Person, Survivor]
 
+BreathlessGame = Game[BreathlessWorld]
 
-class BreathlessGame(Game[BreathlessWorld]):
-    pass
+BreathlessScenario = Scenario[SceneCanon[Person]]
 
-
-class BreathlessScenario(Scenario[SceneCanon[Person]]):
-    pass
-
-
-class BreathlessCharacter(Character[Survivor]):
-    pass
+BreathlessCharacter = Character[Survivor]
 
 
 def stepped(die: Die) -> Die:

@@ -74,7 +74,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
         return None
 
     def check_character(self, character: AnyCharacter) -> None:
-        if not isinstance(character, self.character):
+        if character.engine != self.id:
             raise Refusal(f"{self.title} received an incompatible character")
         if character.payload.id != PLAYER_ID or not character.payload.known:
             raise Refusal("a character sheet is the player's: id 'player', known")
@@ -184,7 +184,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
         return deepcopy(character.payload)
 
     def check_scenario(self, scenario: AnyScenario) -> None:
-        if not isinstance(scenario, self.scenario):
+        if scenario.engine != self.id:
             raise Refusal(f"{self.title} received an incompatible scenario")
 
     def over(self, state: G) -> str | None:

@@ -1,5 +1,5 @@
 from aidm.engines.breathless.engine import BreathlessEngine
-from aidm.engines.breathless.world import STARTING_ITEM, BreathlessCharacter
+from aidm.engines.breathless.world import STARTING_ITEM
 
 ENGINE = BreathlessEngine()
 SRD = ENGINE.packs["srd"]
@@ -25,7 +25,6 @@ def test_skill_steps_exclude_earlier_picks() -> None:
 
 def test_create_character_round_trip() -> None:
     character = ENGINE.create_character("Jax", "A wiry mechanic", PICKS)
-    assert isinstance(character, BreathlessCharacter)
     sheet = character.payload
     assert sheet.skills == {"bash": 10, "dash": 8, "sneak": 6, "shoot": 4, "think": 4, "sway": 4}
     assert sheet.worn == sheet.skills
