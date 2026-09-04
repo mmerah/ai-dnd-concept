@@ -1,7 +1,7 @@
 import json
 import logging
 from asyncio import subprocess, wait_for
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from os import environ, killpg
 from signal import SIGKILL
@@ -12,13 +12,13 @@ from typing import Protocol
 from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
 
 from aidm.config import CliProvider, Role, RoleConfig, Settings
-from aidm.core.entities import Loose, Refusal
+from aidm.core.entities import Loose, Refusal, parse
+from aidm.core.io import decode
+from aidm.core.model import Check
 
 RETRIES = 1
 # The child inherits nothing else: the shell that started the app may hold keys no role should see.
 KEPT_ENV = ("PATH", "HOME", "LANG", "TERM")
-# What `ask` asks of the value it parsed, beyond its own schema; the reason re-prompts.
-type Check[T] = Callable[[T], str | None]
 
 LOGGER = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ class ClaudeDriver:
             raise Refusal(f"claude printed no JSON result: {output[-500:]}") from broken
         if result.is_error:
             raise Refusal(f"the run failed: {result.result[-500:]}")
-        return RunResult(result.result, result.session_id)
+        return RunResult(final_message(result.result), result.session_id)
 
 
 @dataclass(frozen=True, slots=True)
@@ -187,23 +187,20 @@ def final_message(output: str) -> str:
 
 
 async def ask[T: BaseModel](
-    role: Role,
-    prompt: str,
-    model: type[T],
-    refusal: Check[T],
-    spawn: Callable[[str, str | None], Awaitable[RunResult]],
+    spawner: Spawner, role: Role, prompt: str, model: type[T], refusal: Check[T]
 ) -> T:
     """The one retry, shared: a role that fails twice fails its step, loudly."""
     asked, refused, session = prompt, "", None
     for _ in range(RETRIES + 1):
+        spoken = await spawner.run(role, asked, session)
+        session = spoken.session
         try:
-            spoken = await spawn(asked, session)
-            session = spoken.session
-            answer = model.model_validate_json(final_message(spoken.text))
+            answer = parse(model, decode(spoken.text))
+        except Refusal as invalid:
+            refused = str(invalid)
+        else:
             if (refused := refusal(answer)) is None:
                 return answer
-        except ValidationError as invalid:
-            refused = str(invalid)
         correction = f"Your last answer was refused: {refused}\nAnswer again, fixed."
         # The retry carries on the refused attempt, which has read the prompt already.
         asked = correction if session is not None else f"{prompt}\n\n{correction}"

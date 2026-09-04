@@ -2,8 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
-from support.loner import TARGET, open_game
-from support.loner import loner3e_session as session
+from support.loner import TARGET, open_game, session
 from support.table import ScriptedSpawner, narrated, offline_settings, play_turn, tool_call, updated
 
 from aidm.app.runtime import BEGUN, Runtime
@@ -26,12 +25,12 @@ def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path
     game = session(tmp_path)
     assert store.slugs() == ()
 
-    store.save(TARGET.slug, game.state.model_copy(update={"turn": 7}).commit())
-    assert session(tmp_path).state.turn == 7
+    store.save(TARGET.slug, game.state.model_copy(update={"notes": ["kept"]}).commit())
+    assert session(tmp_path).state.notes == ["kept"]
 
     game = session(tmp_path)
     game.restart()
-    assert game.state.turn == 0
+    assert game.state.notes == []
     assert store.load(TARGET.slug) is None
 
 
@@ -89,7 +88,7 @@ async def test_the_opening_is_narrated_once_and_costs_a_turn(tmp_path: Path) -> 
 
     history = table.service.engine.history(table.service.state)
     assert [exchange.prompt for exchange in history] == [BEGUN]
-    assert table.service.state.turn == 1
+    assert len(history) == 1
 
     await table.service.open()
     assert len(table.service.engine.history(table.service.state)) == 1
@@ -102,7 +101,7 @@ async def test_an_opening_the_narrator_will_not_write_commits_nothing(tmp_path: 
     await table.service.open()
 
     assert table.service.engine.history(table.service.state) == ()
-    assert (table.service.state.turn, table.service.busy) == (0, False)
+    assert not table.service.busy
 
 
 async def test_a_failed_commit_still_frees_the_game(tmp_path: Path) -> None:

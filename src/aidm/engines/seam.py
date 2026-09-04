@@ -5,12 +5,12 @@ from pathlib import Path
 from random import Random
 from typing import Any, Protocol
 
-from pydantic import BaseModel
+from pydantic import BaseModel, JsonValue
 
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Refusal, Slug, parse, require_unique
 from aidm.core.facts import Fact
-from aidm.core.io import ENCODING, decode
+from aidm.core.io import ENCODING
 from aidm.core.model import (
     AnyCharacter,
     AnyScenario,
@@ -84,20 +84,26 @@ class Engine[P: Person, G: Game[Any]](ABC):
     def preview_character(self, character: AnyCharacter) -> Rows:
         return self.player_of(character).rows()
 
-    def restore(self, raw: str) -> G:
-        value = decode(raw)
+    def restore(self, value: JsonValue) -> G:
         if (header := parse(EngineHeader, value)).engine != self.id:
             raise Refusal(f"the save plays {header.engine!r}, not {self.id!r}")
         state = parse(self.game, value)
         self.validate(state)
         return state
 
-    def answer(self, draft: G, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
-        found = self.tools.get(chosen.name)
+    def tool(self, name: str) -> MasterTool[G]:
+        found = self.tools.get(name)
         if found is None:
+            raise Refusal(f"{name!r} is not a tool of the {self.id!r} engine.")
+        return found
+
+    def answer(self, draft: G, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
+        try:
+            found = self.tool(chosen.name)
+        except Refusal as missing:
             raise Refusal(
                 f"the {self.id!r} engine has no tool {chosen.name!r} to play option {chosen.id!r}"
-            )
+            ) from missing
         return found.call(draft, chosen.args, rng)
 
     async def compose[M: BaseModel](
@@ -145,7 +151,6 @@ class Engine[P: Person, G: Game[Any]](ABC):
             decision="" if draft.pending is None else draft.pending.prompt,
         )
         self.record(draft, exchange)
-        draft.turn += 1
         return self.commit(draft)
 
     def commit(self, draft: G) -> G:

@@ -5,11 +5,11 @@ from dataclasses import dataclass, field
 from hashlib import sha1
 from pathlib import Path
 
-from aidm.app.media import claim, post_bearer
+from aidm.app.providers import claim, post_bearer
 from aidm.config import ProviderConfig, Settings, SpeechConfig
+from aidm.core.entities import EntityId
 from aidm.core.io import FileStore
-from aidm.core.model import AnyScenario
-from aidm.core.play import Exchange, Speaker
+from aidm.core.play import Exchange
 
 LOGGER = logging.getLogger(__name__)
 
@@ -71,30 +71,28 @@ class Reader:
         return self.saves / f"{key}.wav"
 
 
-def open_reader(
-    settings: Settings, store: FileStore, slug: str, scenario: AnyScenario
-) -> Reader | None:
+def open_reader(settings: Settings, store: FileStore, slug: str, *, voice: str) -> Reader | None:
     if not settings.speech.enabled:
         return None
     return Reader(
         config=settings.speech,
         provider=settings.providers.for_name(settings.speech.provider),
         saves=store.media_dir(slug) / SPEECH_DIR,
-        voice=scenario.meta.voice or settings.speech.voice,
+        voice=voice,
     )
 
 
-def voice_of(speaker: Speaker | None, narrator: str, pool: Sequence[str]) -> str:
+def voice_of(speaker_id: EntityId | None, narrator: str, pool: Sequence[str]) -> str:
     """The narrator's voice for narration; a speaker keeps one voice from the pool across turns."""
-    if speaker is None:
+    if speaker_id is None:
         return narrator
-    return pool[int(sha1(speaker.id.encode(), usedforsecurity=False).hexdigest(), 16) % len(pool)]
+    return pool[int(sha1(speaker_id.encode(), usedforsecurity=False).hexdigest(), 16) % len(pool)]
 
 
 def requests_of(
     exchange: Exchange, narrator: str, pool: Sequence[str]
 ) -> tuple[tuple[str, str], ...]:
-    return tuple((voice_of(line.speaker, narrator, pool), line.text) for line in exchange.lines)
+    return tuple((voice_of(line.speaker_id, narrator, pool), line.text) for line in exchange.lines)
 
 
 def clip_key(model: str, lines: Sequence[tuple[str, str]]) -> str:

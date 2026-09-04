@@ -22,8 +22,9 @@ SCRIPT: tuple[Call, ...] = (
 
 def behind(state: AnyGame) -> AnyGame:
     """One played turn in the scene before this one: RECENT PLAY has to group by run, not title."""
-    if not isinstance(state, Loner3eGame):
-        raise AssertionError(f"unsupported golden engine state: {type(state).__name__}")
+    assert isinstance(state, Loner3eGame), (
+        f"unsupported golden engine state: {type(state).__name__}"
+    )
     draft = state.draft()
     draft.payload.runs.insert(
         0,

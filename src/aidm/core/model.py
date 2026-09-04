@@ -14,13 +14,14 @@ from aidm.core.entities import (
     parse,
     require_unique,
 )
-from aidm.core.facts import Fact
 from aidm.core.play import Commission, PendingDecision
 
 type ScenarioKind = Literal["one-shot", "campaign"]
 type AnyScenario = Scenario[Any]
 type AnyCharacter = Character[Any]
 type AnyGame = Game[Any]
+# What `ask` asks of the value it parsed, beyond its own schema; the reason re-prompts.
+type Check[T] = Callable[[T], str | None]
 
 
 class ScenarioMeta(Frozen):
@@ -78,9 +79,7 @@ class Character[P: BaseModel](Frozen):
 class WorldsmithAnswer(Protocol):
     """How an engine asks the worldsmith: one prompt, the model to answer in, one refusal."""
 
-    async def __call__[M: BaseModel](
-        self, prompt: str, model: type[M], refusal: Callable[[M], str | None]
-    ) -> M: ...
+    async def __call__[M: BaseModel](self, prompt: str, model: type[M], refusal: Check[M]) -> M: ...
 
 
 class Game[P: BaseModel](Mutable):
@@ -91,7 +90,6 @@ class Game[P: BaseModel](Mutable):
     scenario: ScenarioMeta
     engine: EngineId
     packs: tuple[Slug, ...] = ()
-    turn: int = Field(default=0, ge=0)
     pending: PendingDecision | None = None
     notes: list[str] = Field(default_factory=list)
     commissions: list[Commission] = Field(default_factory=list)
@@ -112,10 +110,8 @@ class Game[P: BaseModel](Mutable):
     def on_order(self) -> list[Commission]:
         return [commission for commission in self.commissions if commission.later]
 
-    def withdraw(self, asked: Commission) -> tuple[Fact, ...]:
-        """Remove it and land no fact: a `Play` the turn's gate can run."""
+    def withdraw(self, asked: Commission) -> None:
         self.commissions.remove(asked)
-        return ()
 
     def draft(self) -> Self:
         """A working copy a resolution mutates; a failed turn never replaces the committed state."""

@@ -103,3 +103,56 @@ and why, and what is known and accepted.
   home page; the Tunnel Goons campaign loop (take a job, walk into it, report in, take it again)
   run offline through `engine.advance` with a scripted worldsmith: the retake reopens at the
   job's own start with two attempts. The roles spawn a CLI, so the in-app loop was not run here.
+
+## Phase 3 — the platform, the stored shapes, the tests
+
+- `src` lines: 9,438 before, 9,486 after. The plan's band was 9,220 to 9,290. Both reviews
+  found the band unreachable from the thirteen steps: every step is a move (free functions →
+  `Library` methods, `read_catalog` → `LauncherCatalog.read`, `claim`/`post_bearer` → their own
+  module, `_act` loop → `_run_master`), and what the moves add (`Library`'s wrapped signatures,
+  `providers.py`'s imports, `Runtime.library`/`store`, `routed`, `Engine.tool`, `_withdrawing`,
+  the two validators) outweighs the deletions (`Speaker`, `Game.turn`, `LaunchTarget.path`,
+  `_scenario_ids`, the two `.get`+raise gates). Tests: 9,551 before, 9,586 after against
+  "about 130 fewer": `tests/support/scenes.py` costs 49 lines to delete 76, `Library(...)` and
+  `decode(...)` at the call sites add a line each, and the three new tests add 30. Nothing was
+  padded; every cut both reviews named was folded.
+- Split: A1 (the gates, `providers.py`, `_present`, `withdraw`) → A2 (`Library`, the catalog,
+  `game_path`) → B (the stored shapes, the tests), sequential; the plan's A was two context
+  windows of work. No file was edited by two implementers at once.
+- Off-plan, from review: `routed` returns the routed value alone, not `(engine, value)`; both
+  callers discarded the id. `game_path` formats `GAME_ROUTE` instead of spelling the route
+  twice. `Runtime._mount()` builds `library` and `store` for `__post_init__` and
+  `reload_settings`. `tests/support/scenes.py` has no `hub_scene`/`job_scene`: each had one
+  caller, so `hub_runs` builds the two runs. `support.loner.loner3e_session` is `session`
+  (the step 12 grep). `ui/game.py`'s clip line drops the dead `history and` guard.
+- Added from review: `tests/core/test_views.py` tests `SpokenLine`'s validator (a speaker id
+  without a name, a name without an id).
+- Refuted: "`live_turn` builds `player_view()` on every idle tick." `live_turn` re-renders only
+  from `GamePage.refresh`, which `poll_turn` calls when `Observed` changed, and `Observed.of`
+  calls `player_view()` every tick regardless.
+- Refuted: "`claim` does not belong in `providers.py`." PLAN step 4 (P17) names the module as
+  holding both; each caller uses `claim` to hold one `post_bearer` in flight.
+- Refuted: "cut `HubNames` to its four title/question fields." The situations and the terms
+  feed `SceneRun.situation` and `Job.terms` inside the builder; cutting them adds three
+  parameters to `hub_runs`/`hub_campaign`, the same count in another spelling.
+- Awaiting the maintainer's call (reviewer cuts refuted on the orchestrator's own reading):
+  "a `Runtime.catalog()` method replaces the two `LauncherCatalog.read(runtime.library,
+  runtime.store, runtime.engines)` calls" (refuted: PLAN step 7 names that call at both sites,
+  and the first argument is the library, not the runtime, so the method rule does not bind);
+  "`_bubble`'s `chat_name` local is redundant" (refuted: reassigning the `name` parameter hides
+  the caller's value; the local names what the chat shows).
+- Known and accepted: a save from before this commit is stale (`Game.turn`, `SpokenLine.speaker`,
+  `NarratorView.speakers` changed shape); the launcher skips it with "turn: Extra inputs are
+  not permitted".
+- Known and accepted: `Library.read_characters`'s docstring wraps to two lines at its new
+  indentation.
+- Reviews: Fable (`reviewer` agent) and Opus (`reviewer` agent, `model: opus`); no `codex` on
+  the machine, so no Codex Sol review ran.
+- Verified: four commands green (541 tests); golden regen changes the four `master.txt` by one
+  line each (`turn 1` → `turn 3` for Loner, `turn 2` elsewhere) and nothing else; every grep of
+  steps 1-4 and 7-13 as stated; `Any` only in the bounds and `entities.py`'s comment;
+  `.validate(` in `src` finds `seam.py` only; `uv run aidm` serves the home, create and
+  scenario pages and skips a Phase 2 save with the launcher's warning; one scripted turn offline:
+  the exchange line carries `mara`/`Mara`, the journal reads `**Mara:** …`, the master prompt
+  says turn 2, the catalog lists the save at turn 2. The roles spawn a CLI, so the in-app turn
+  was not run here.

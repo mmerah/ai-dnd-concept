@@ -5,11 +5,17 @@ from pathlib import Path
 
 from nicegui import ui
 
+from aidm.app.launch import LaunchTarget
 from aidm.core.entities import Refusal
 from aidm.core.play import DecisionOption
 from aidm.ui import theme
 
 DM_ICON = "auto_stories"
+GAME_ROUTE = "/game/{scenario}/{character}"
+
+
+def game_path(target: LaunchTarget) -> str:
+    return GAME_ROUTE.format(scenario=target.scenario_id, character=target.character_id)
 
 
 @asynccontextmanager

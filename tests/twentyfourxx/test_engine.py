@@ -1,17 +1,16 @@
 import pytest
 from support.table import (
     BREATHLESS,
-    CHARACTERS,
     ENGINES_BUILT,
+    LIBRARY,
     SCENARIO_MODELS,
-    SCENARIOS,
     TWENTYFOURXX,
     game,
     updated,
 )
 
 from aidm.core.entities import EntityId, Refusal
-from aidm.core.io import read_character, read_scenario
+from aidm.core.io import decode
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.hub import Campaign, Offer
@@ -31,8 +30,7 @@ NIGHT_VISION_GOGGLES = EntityId("night-vision-goggles")
 
 def _twentyfourxx_game() -> tuple[AnyEngine, TwentyfourxxGame]:
     engine, state = game(TWENTYFOURXX)
-    if not isinstance(state, TwentyfourxxGame):
-        raise AssertionError("the 24XX engine began another game type")
+    assert isinstance(state, TwentyfourxxGame), "the 24XX engine began another game type"
     return engine, state
 
 
@@ -84,7 +82,7 @@ def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
 
 def test_restored_round_trips() -> None:
     engine, state = _twentyfourxx_game()
-    assert engine.restore(state.model_dump_json()) == state
+    assert engine.restore(decode(state.model_dump_json())) == state
 
 
 def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
@@ -103,21 +101,21 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
             ),
         ),
     )
-    character = read_character(CHARACTERS, "kael", TWENTYFOURXX, TwentyfourxxCharacter)
+    character = LIBRARY.read_character("kael", TWENTYFOURXX, TwentyfourxxCharacter)
     with pytest.raises(Refusal, match="the player is in the cast"):
         ENGINES_BUILT[TWENTYFOURXX].new_game(scenario, character)
 
 
 def test_a_foreign_scenario_is_refused_by_new_game() -> None:
-    character = read_character(CHARACTERS, "kael", TWENTYFOURXX, TwentyfourxxCharacter)
-    foreign_scenario = read_scenario(SCENARIOS, "drowned-road", SCENARIO_MODELS)
+    character = LIBRARY.read_character("kael", TWENTYFOURXX, TwentyfourxxCharacter)
+    foreign_scenario = LIBRARY.read_scenario("drowned-road", SCENARIO_MODELS)
     with pytest.raises(Refusal, match="incompatible scenario"):
         ENGINES_BUILT[TWENTYFOURXX].new_game(foreign_scenario, character)
 
 
 def test_a_foreign_character_is_refused_by_new_game() -> None:
-    scenario = read_scenario(SCENARIOS, "silent-relay", SCENARIO_MODELS)
+    scenario = LIBRARY.read_scenario("silent-relay", SCENARIO_MODELS)
     breathless = ENGINES_BUILT[BREATHLESS]
-    foreign_character = read_character(CHARACTERS, "kael", BREATHLESS, breathless.character)
+    foreign_character = LIBRARY.read_character("kael", BREATHLESS, breathless.character)
     with pytest.raises(Refusal, match="incompatible character"):
         ENGINES_BUILT[TWENTYFOURXX].new_game(scenario, foreign_character)

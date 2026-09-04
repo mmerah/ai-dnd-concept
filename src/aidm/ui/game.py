@@ -11,8 +11,9 @@ from nicegui import ui
 
 from aidm.app.runtime import BEGUN, CROSSED, GameService, Runtime
 from aidm.config import Role
+from aidm.core.entities import EntityId
 from aidm.core.facts import DiceEvent, Fact, cards
-from aidm.core.play import Answer, Speaker
+from aidm.core.play import Answer
 from aidm.core.views import PlayerView
 from aidm.ui.widgets import (
     avatar,
@@ -162,21 +163,21 @@ class GamePage:
             ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
         # The live decision widget sits directly below the last exchange, so it needs no pause line.
         last = history[-1] if history and session.state.pending is not None else None
-        player = session.player_view().player.speaker()
+        player = session.player_view().player
         for exchange in history:
             if exchange.prompt in (BEGUN, CROSSED):
                 # A turn nobody played: the story's own marker, never the player's words.
                 ui.label(exchange.prompt).classes("w-full text-center text-xs italic opacity-60")
             else:
-                _bubble(session, player, exchange.prompt, sent=True)
+                _bubble(session, player.id, player.name, exchange.prompt, sent=True)
             for fact in cards(exchange.facts):
                 _card(fact)
             for line in exchange.lines:
-                _bubble(session, line.speaker, line.text, sent=False)
+                _bubble(session, line.speaker_id, line.speaker, line.text, sent=False)
             if exchange.decision and exchange is not last:
                 ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
         # The newest clip only: every `ui.audio` registers a route, and a refresh rebuilds them all.
-        if history and session.reader is not None and (clip := session.reader.clip(history[-1])):
+        if clip := session.newest_clip():
             ui.audio(clip, autoplay=clip == self.autoplay_clip)
             # Consumed by this render: a later refresh of the same turn must not restart it.
             self.autoplay_clip = None
@@ -185,13 +186,14 @@ class GamePage:
     def live_turn(self) -> None:
         session = self.session
         turn = session.turn
+        player = session.player_view().player
         if turn is not None:
-            _bubble(session, session.player_view().player.speaker(), turn.prompt, sent=True)
+            _bubble(session, player.id, player.name, turn.prompt, sent=True)
             shown = cards(turn.facts)
             for fact in shown:
                 _card(fact, live=fact is shown[-1])
         elif session.intent:
-            _bubble(session, session.player_view().player.speaker(), session.intent, sent=True)
+            _bubble(session, player.id, player.name, session.intent, sent=True)
         self.ticker = None
         if session.phase is not None:
             elapsed = 0.0 if self.step_started is None else monotonic() - self.step_started
@@ -267,8 +269,9 @@ class GamePage:
             with ui.expansion(f"turn {number}: {exchange.prompt}").classes("w-full"):
                 # A speaker is named, because a bare quote reads as narration without bubbles.
                 for line in exchange.lines:
-                    who = line.speaker
-                    text = line.text if who is None else f"**{who.name}:** {line.text}"
+                    text = (
+                        line.text if line.speaker_id is None else f"**{line.speaker}:** {line.text}"
+                    )
                     ui.markdown(text).classes("text-sm")
 
     def composer(self) -> None:
@@ -432,14 +435,17 @@ def _dice_group(die: DiceEvent, *, live: bool) -> None:
                     ui.label(str(value)).classes("game-die-value")
 
 
-def _bubble(session: GameService, speaker: Speaker | None, text: str, *, sent: bool) -> None:
-    icon = None if speaker is None else session.icon(speaker.id)
-    name = "DM" if speaker is None else speaker.name
-    message = ui.chat_message(text, name=name, sent=sent).classes("w-full")
-    if speaker is None:
+def _bubble(
+    session: GameService, speaker_id: EntityId | None, name: str, text: str, *, sent: bool
+) -> None:
+    narration = speaker_id is None
+    icon = None if narration else session.icon(speaker_id)
+    chat_name = "DM" if narration else name
+    message = ui.chat_message(text, name=chat_name, sent=sent).classes("w-full")
+    if narration:
         message.props("bg-color=grey-3")
     with message.add_slot("avatar"):
-        avatar(icon, None if speaker is None else name)
+        avatar(icon, None if narration else chat_name)
 
 
 def _inline_status(step: Role, elapsed: float) -> ui.label:

@@ -6,8 +6,9 @@ from support.table import the_campaign, updated
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.facts import cards
+from aidm.core.io import decode
 from aidm.core.play import PendingDecision
-from aidm.engines.base import PLAYER_ID, Counter
+from aidm.engines.base import PLAYER_ID, SRD_PACK, Counter
 from aidm.engines.hub import JOB_DONE, Campaign, Offer
 from aidm.engines.loner3e.tools import (
     Question,
@@ -218,7 +219,7 @@ def test_the_open_ended_hand_back_survives_a_save() -> None:
     draft = state.draft()
     draft.pending = hand_back
 
-    assert engine.restore(draft.commit().model_dump_json()).pending == hand_back
+    assert engine.restore(decode(draft.commit().model_dump_json())).pending == hand_back
 
 
 def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
@@ -274,3 +275,13 @@ def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
     )
     with pytest.raises(Refusal, match="one-shot"):
         engine.validate(updated(state, payload=hub_payload))
+
+
+def test_a_game_records_its_table_sets_and_is_refused_without_them() -> None:
+    engine, state = initialized()
+    assert state.packs == (SRD_PACK,)
+
+    stranded = updated(state, packs=(SRD_PACK, "uninstalled"))
+
+    with pytest.raises(Refusal, match="not installed"):
+        engine.validate(stranded)

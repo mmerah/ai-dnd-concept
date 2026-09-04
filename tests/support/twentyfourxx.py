@@ -3,7 +3,6 @@ from collections.abc import Sequence
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.hub import Attempt, Campaign, Job, Offer
 from aidm.engines.scenes.world import SceneRun
 from aidm.engines.twentyfourxx.world import (
     Item,
@@ -11,6 +10,7 @@ from aidm.engines.twentyfourxx.world import (
     TwentyfourxxGame,
     TwentyfourxxWorld,
 )
+from support.scenes import HubNames, hub_campaign, hub_runs
 
 KESTREL = EntityId("kestrel")
 SABLE = EntityId("sable")
@@ -25,6 +25,17 @@ JOB_PLACE = "dock-run"
 HUB_SITUATION = "The bar is quiet before the evening rush, and the fixer's board is up on the wall."
 JOB_SITUATION = "The dockside warehouse is stacked with crates nobody has claimed in a week."
 JOB = "Sable wants the crates counted and hauled clear before the shift change; she pays on drop."
+NAMES = HubNames(
+    hub_place=HUB_PLACE,
+    hub_title="The Amber Tap",
+    hub_question="What job does Kael take off the board tonight?",
+    hub_situation=HUB_SITUATION,
+    job_place=JOB_PLACE,
+    job_title="The Dock Run",
+    job_question="Can Kael clear the warehouse before the shift change?",
+    job_situation=JOB_SITUATION,
+    terms=JOB,
+)
 
 
 def small_world() -> TwentyfourxxGame:
@@ -48,22 +59,11 @@ def small_world() -> TwentyfourxxGame:
 def hub_world() -> TwentyfourxxGame:
     """A campaign world: a hub run with a known fixer, then one job run away from it."""
     fixer = Person(id=FIXER, name="Fixer", brief="Runs the board", known=True)
-    hub_run = _hub_scene(here=[FIXER])
-    job_run = _job_scene()
     world = TwentyfourxxWorld(
         cast={FIXER: fixer},
         player=_player(),
-        runs=[hub_run, job_run],
-        campaign=Campaign(
-            place=HUB_PLACE,
-            board=(
-                Offer(title="Job One", pitch="I take job one."),
-                Offer(title="Job Two", pitch="I take job two."),
-            ),
-            jobs=[
-                Job(title="The Dock Run", place=JOB_PLACE, terms=JOB, attempts=[Attempt(started=1)])
-            ],
-        ),
+        runs=hub_runs(NAMES, keeper=FIXER),
+        campaign=hub_campaign(NAMES),
     )
     return TwentyfourxxGame(
         scenario_id="amber-tap",
@@ -80,26 +80,6 @@ def _scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
         title="The Loading Bay",
         question="Can they reach the cargo before the lights come back?",
         situation=SITUATION,
-        here=list(here),
-    )
-
-
-def _hub_scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
-    return SceneRun(
-        place=HUB_PLACE,
-        title="The Amber Tap",
-        question="What job does Kael take off the board tonight?",
-        situation=HUB_SITUATION,
-        here=list(here),
-    )
-
-
-def _job_scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
-    return SceneRun(
-        place=JOB_PLACE,
-        title="The Dock Run",
-        question="Can Kael clear the warehouse before the shift change?",
-        situation=JOB_SITUATION,
         here=list(here),
     )
 

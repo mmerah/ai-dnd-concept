@@ -8,16 +8,7 @@ from support.table import ENGINES_BUILT, LONER3E, SCENARIO_MODELS, updated
 
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.facts import Fact
-from aidm.core.io import (
-    ENCODING,
-    FileStore,
-    read_character,
-    read_characters,
-    read_scenario,
-    read_scenarios,
-    write_character,
-    write_scenario,
-)
+from aidm.core.io import ENCODING, FileStore, Library, decode
 from aidm.core.play import Exchange
 
 MIRROR = EngineId("mirror")
@@ -47,7 +38,7 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
     reloaded = store.load("roundtrip")
 
     assert reloaded is not None
-    assert engine.restore(reloaded).payload.exchanges() == saved.payload.exchanges()
+    assert engine.restore(decode(reloaded)).payload.exchanges() == saved.payload.exchanges()
 
 
 @pytest.mark.parametrize("slug", ("../escape", "/absolute", "bad slug", ""))
@@ -60,43 +51,47 @@ def test_storage_rejects_unsafe_slugs(tmp_path: Path, slug: str) -> None:
 
 def test_content_paths_reject_an_unsafe_id(tmp_path: Path) -> None:
     engine = ENGINES_BUILT[LONER3E]
+    library = Library(tmp_path, tmp_path)
     with pytest.raises(Refusal, match="invalid content id"):
-        read_scenario(tmp_path, "../escape", SCENARIO_MODELS)
+        library.read_scenario("../escape", SCENARIO_MODELS)
     with pytest.raises(Refusal, match="invalid content id"):
-        read_character(tmp_path, "kael/../..", engine.id, engine.character)
+        library.read_character("kael/../..", engine.id, engine.character)
 
 
 def test_write_scenario_round_trips_and_refuses_a_duplicate(tmp_path: Path) -> None:
     original = scenario()
+    library = Library(tmp_path, tmp_path)
 
-    write_scenario(tmp_path, "vault-copy", original)
-    loaded = read_scenario(tmp_path, "vault-copy", SCENARIO_MODELS)
+    library.write_scenario("vault-copy", original)
+    loaded = library.read_scenario("vault-copy", SCENARIO_MODELS)
 
     assert loaded == original
     with pytest.raises(Refusal, match="already exists"):
-        write_scenario(tmp_path, "vault-copy", original)
+        library.write_scenario("vault-copy", original)
 
 
 def test_read_scenarios_skips_a_world_that_fails_to_validate(tmp_path: Path) -> None:
     original = scenario()
-    write_scenario(tmp_path, "good", original)
+    library = Library(tmp_path, tmp_path)
+    library.write_scenario("good", original)
     broken = tmp_path / "broken"
     broken.mkdir()
     (broken / "world.json").write_text(json.dumps({"meta": {}}), encoding=ENCODING)
 
-    assert [slug for slug, _ in read_scenarios(tmp_path, SCENARIO_MODELS)] == ["good"]
+    assert [slug for slug, _ in library.read_scenarios(SCENARIO_MODELS)] == ["good"]
 
 
 def test_read_scenarios_skips_a_world_that_is_not_json(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    write_scenario(tmp_path, "good", scenario())
+    library = Library(tmp_path, tmp_path)
+    library.write_scenario("good", scenario())
     broken = tmp_path / "broken"
     broken.mkdir()
     (broken / "world.json").write_text("{not json", encoding=ENCODING)
 
     with caplog.at_level(logging.WARNING, logger="aidm.core.io"):
-        read = [slug for slug, _ in read_scenarios(tmp_path, SCENARIO_MODELS)]
+        read = [slug for slug, _ in library.read_scenarios(SCENARIO_MODELS)]
 
     assert read == ["good"]
     assert "not JSON" in caplog.text
@@ -105,13 +100,14 @@ def test_read_scenarios_skips_a_world_that_is_not_json(
 def test_read_scenarios_skips_a_world_that_is_not_utf8(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    write_scenario(tmp_path, "good", scenario())
+    library = Library(tmp_path, tmp_path)
+    library.write_scenario("good", scenario())
     broken = tmp_path / "broken"
     broken.mkdir()
     (broken / "world.json").write_bytes(b"\xff\xfe{}")
 
     with caplog.at_level(logging.WARNING, logger="aidm.core.io"):
-        read = [slug for slug, _ in read_scenarios(tmp_path, SCENARIO_MODELS)]
+        read = [slug for slug, _ in library.read_scenarios(SCENARIO_MODELS)]
 
     assert read == ["good"]
     assert "is not utf-8" in caplog.text
@@ -119,25 +115,27 @@ def test_read_scenarios_skips_a_world_that_is_not_utf8(
 
 def test_a_character_written_for_two_engines_is_read_once_for_each(tmp_path: Path) -> None:
     filed = character()
-    write_character(tmp_path, filed)
-    write_character(tmp_path, updated(filed, engine=MIRROR))
+    library = Library(tmp_path, tmp_path)
+    library.write_character(filed)
+    library.write_character(updated(filed, engine=MIRROR))
 
     rows = [
         (name, engine, header.payload.name)
-        for name, engine, header in read_characters(tmp_path, (LONER3E, MIRROR))
+        for name, engine, header in library.read_characters((LONER3E, MIRROR))
     ]
 
     assert rows == [("kael", LONER3E, "Kael"), ("kael", MIRROR, "Kael")]
 
 
 def test_read_characters_skips_a_stray_file_and_a_non_slug_folder(tmp_path: Path) -> None:
-    write_character(tmp_path, character())
+    library = Library(tmp_path, tmp_path)
+    library.write_character(character())
     (tmp_path / ".DS_Store").write_text("", encoding=ENCODING)
     backup = tmp_path / "My Backup"
     backup.mkdir()
     (backup / f"{LONER3E}.json").write_text("{}", encoding=ENCODING)
 
-    rows = [name for name, _, _ in read_characters(tmp_path, (LONER3E,))]
+    rows = [name for name, _, _ in library.read_characters((LONER3E,))]
 
     assert rows == ["kael"]
 
@@ -145,4 +143,4 @@ def test_read_characters_skips_a_stray_file_and_a_non_slug_folder(tmp_path: Path
 def test_read_scenarios_of_a_missing_directory_yields_nothing(tmp_path: Path) -> None:
     missing = tmp_path / "scenarios"
 
-    assert list(read_scenarios(missing, SCENARIO_MODELS)) == []
+    assert list(Library(missing, missing).read_scenarios(SCENARIO_MODELS)) == []

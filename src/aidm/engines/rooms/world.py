@@ -442,7 +442,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
             records.append(
                 SceneRecord(
                     title=place.name,
-                    question=place.brief,
+                    focus=place.brief,
                     recap=visit.recap,
                     exchanges=tuple(visit.exchanges),
                 )

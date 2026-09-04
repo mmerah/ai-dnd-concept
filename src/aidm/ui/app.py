@@ -5,13 +5,7 @@ from functools import partial
 from nicegui import app, ui
 from nicegui.events import ValueChangeEventArguments
 
-from aidm.app.launch import (
-    LauncherCatalog,
-    LaunchTarget,
-    SaveOption,
-    launch_target,
-    read_catalog,
-)
+from aidm.app.launch import LauncherCatalog, LaunchTarget, SaveOption
 from aidm.app.mcp import MOUNT_PATH, endpoint
 from aidm.app.runtime import Runtime
 from aidm.app.spawn import CliSpawner
@@ -20,13 +14,13 @@ from aidm.core.entities import Slug, content_id
 from aidm.ui.create import character_page, scenario_page
 from aidm.ui.game import game_page
 from aidm.ui.settings import settings_page
-from aidm.ui.widgets import page_header
+from aidm.ui.widgets import GAME_ROUTE, game_path, page_header
 
 LOGGER = logging.getLogger(__name__)
 
 
 def home_page(runtime: Runtime) -> None:
-    catalog = read_catalog(runtime.settings, runtime.engines)
+    catalog = LauncherCatalog.read(runtime.library, runtime.store, runtime.engines)
     with page_header("AI Dungeon Master", home=False):
         ui.button("Settings", icon="settings", on_click=lambda: ui.navigate.to("/settings")).props(
             "flat color=white"
@@ -108,7 +102,7 @@ class LaunchForm:
         if chosen is None:
             ui.label("No character is written for these rules.").classes("text-negative")
             return
-        target = launch_target(catalog, self.scenario_id, chosen)
+        target = catalog.target(self.scenario_id, chosen)
         started = any(save.target.slug == target.slug for save in catalog.saves)
         ui.button(
             "Continue game" if started else "Start game",
@@ -159,7 +153,7 @@ def _saved_card(saved: SaveOption) -> None:
 
 def _open_game(target: LaunchTarget) -> None:
     LOGGER.info("launcher opening %r", target.slug)
-    ui.navigate.to(target.path)
+    ui.navigate.to(game_path(target))
 
 
 def _register_pages(runtime: Runtime) -> None:
@@ -180,7 +174,7 @@ def _register_pages(runtime: Runtime) -> None:
     def _index() -> None:  # pyright: ignore[reportUnusedFunction]
         home_page(runtime)
 
-    @ui.page("/game/{scenario}/{character}")
+    @ui.page(GAME_ROUTE)
     def _game(scenario: str, character: str) -> None:  # pyright: ignore[reportUnusedFunction]
         game_page(
             runtime,

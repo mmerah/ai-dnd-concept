@@ -7,7 +7,7 @@ from support.loner import character, initialized, loner_sheet, scenario
 from support.table import ENGINES_BUILT, LONER3E, SCENARIO_MODELS, SCENARIOS, updated
 
 from aidm.core.entities import EngineId, EntityId, Refusal
-from aidm.core.io import read_character, read_scenario
+from aidm.core.io import Library, decode
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, Loner3eWorld
 
@@ -21,14 +21,14 @@ def test_a_doubled_id_in_a_world_file_is_refused(tmp_path: Path) -> None:
     (tmp_path / "doubled").mkdir()
     _ = (tmp_path / "doubled" / "world.json").write_text(doubled, encoding="utf-8")
     with pytest.raises(Refusal, match="duplicate keys"):
-        _ = read_scenario(tmp_path, "doubled", SCENARIO_MODELS)
+        _ = Library(tmp_path, tmp_path).read_scenario("doubled", SCENARIO_MODELS)
 
 
 def test_a_doubled_key_in_a_save_is_refused() -> None:
     engine, state = initialized()
-    doubled = state.model_dump_json().replace('{"scenario_id"', '{"turn": 0, "scenario_id"', 1)
+    doubled = state.model_dump_json().replace('{"scenario_id"', '{"notes": [], "scenario_id"', 1)
     with pytest.raises(Refusal, match="duplicate keys"):
-        _ = engine.restore(doubled)
+        _ = engine.restore(decode(doubled))
 
 
 def test_a_doubled_key_in_a_character_file_is_refused(tmp_path: Path) -> None:
@@ -38,7 +38,9 @@ def test_a_doubled_key_in_a_character_file_is_refused(tmp_path: Path) -> None:
     doubled = filed.model_dump_json().replace('{"id"', '{"engine": "other", "id"', 1)
     _ = (folder / f"{filed.engine}.json").write_text(doubled, encoding="utf-8")
     with pytest.raises(Refusal, match="duplicate keys"):
-        _ = read_character(tmp_path, filed.id, filed.engine, ENGINES_BUILT[LONER3E].character)
+        _ = Library(tmp_path, tmp_path).read_character(
+            filed.id, filed.engine, ENGINES_BUILT[LONER3E].character
+        )
 
 
 def test_the_scene_world_rejects_state_it_cannot_stand_on() -> None:
@@ -105,13 +107,14 @@ def test_a_character_file_belongs_to_its_folder_and_its_engine(tmp_path: Path) -
     (tmp_path / "mira").mkdir()
     _ = (tmp_path / "mira" / f"{LONER3E}.json").write_text(text, encoding="utf-8")
 
+    library = Library(tmp_path, tmp_path)
     with pytest.raises(Refusal, match="plays 'ruleless', not 'loner3e'"):
-        _ = read_character(
-            tmp_path, "kael", ENGINES_BUILT[LONER3E].id, ENGINES_BUILT[LONER3E].character
+        _ = library.read_character(
+            "kael", ENGINES_BUILT[LONER3E].id, ENGINES_BUILT[LONER3E].character
         )
     with pytest.raises(Refusal, match="'kael' is filed under 'mira'"):
-        _ = read_character(
-            tmp_path, "mira", ENGINES_BUILT[LONER3E].id, ENGINES_BUILT[LONER3E].character
+        _ = library.read_character(
+            "mira", ENGINES_BUILT[LONER3E].id, ENGINES_BUILT[LONER3E].character
         )
 
 
@@ -135,11 +138,11 @@ def test_a_save_whose_payload_the_engine_rejects_is_refused() -> None:
     raw = state.model_dump(mode="json")
     raw["payload"]["cast"]["ghost"] = {"name": "Ghost"}
     with pytest.raises(Refusal):
-        _ = engine.restore(json.dumps(raw))
+        _ = engine.restore(decode(json.dumps(raw)))
 
 
 def test_a_save_from_other_rules_is_refused_before_it_is_read() -> None:
     engine, state = initialized()
     foreign = json.dumps(state.model_dump(mode="json") | {"engine": OTHER})
     with pytest.raises(Refusal, match="the save plays 'ruleless', not 'loner3e'"):
-        _ = engine.restore(foreign)
+        _ = engine.restore(decode(foreign))

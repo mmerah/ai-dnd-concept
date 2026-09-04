@@ -16,10 +16,9 @@ from aidm.app.spawn import RunResult
 from aidm.config import Role, Settings
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact
-from aidm.core.io import read_character, read_scenario, read_scenarios
+from aidm.core.io import Library, decode
 from aidm.core.model import AnyGame, ScenarioKind
-from aidm.core.play import Answer, Speaker
-from aidm.engines.base import PLAYER_ID
+from aidm.core.play import Answer
 from aidm.engines.hub import Campaign
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
@@ -37,6 +36,7 @@ class EnvFileFreeSettings(Settings):
 REPOSITORY_ROOT = Path(__file__).parents[2]
 SCENARIOS = REPOSITORY_ROOT / "scenarios"
 CHARACTERS = REPOSITORY_ROOT / "characters"
+LIBRARY = Library(SCENARIOS, CHARACTERS)
 LONER3E = EngineId("loner3e")
 TUNNELGOONS = EngineId("tunnelgoons")
 BREATHLESS = EngineId("breathless")
@@ -44,7 +44,6 @@ TWENTYFOURXX = EngineId("twentyfourxx")
 ENGINES_BUILT = build_engines()
 ENGINE_IDS = tuple(ENGINES_BUILT)
 SCENARIO_MODELS = {engine_id: engine.scenario for engine_id, engine in ENGINES_BUILT.items()}
-KAEL = Speaker(name="Kael", id=PLAYER_ID)
 
 
 def updated[T: BaseModel](model: T, **changes: object) -> T:
@@ -56,7 +55,7 @@ def scenario_for(engine_id: EngineId, kind: ScenarioKind = "one-shot") -> Slug:
     """Read off the shipped content rather than tabulated, so a second one fails here loudly."""
     matches = [
         slug
-        for slug, scenario in read_scenarios(SCENARIOS, SCENARIO_MODELS)
+        for slug, scenario in LIBRARY.read_scenarios(SCENARIO_MODELS)
         if scenario.engine == engine_id and scenario.meta.kind == kind
     ]
     if len(matches) != 1:
@@ -68,8 +67,8 @@ def game(engine_id: EngineId, kind: ScenarioKind = "one-shot") -> tuple[AnyEngin
     """The scenario authored for this engine and the shipped character, composed together."""
     engine = ENGINES_BUILT[engine_id]
     scenario_id = scenario_for(engine_id, kind)
-    selected_scenario = read_scenario(SCENARIOS, scenario_id, SCENARIO_MODELS)
-    selected_character = read_character(CHARACTERS, "kael", engine.id, engine.character)
+    selected_scenario = LIBRARY.read_scenario(scenario_id, SCENARIO_MODELS)
+    selected_character = LIBRARY.read_character("kael", engine.id, engine.character)
     begun = engine.begin(scenario_id, selected_scenario, selected_character)
     return engine, begun
 
@@ -182,16 +181,18 @@ class Table[G: AnyGame]:
     @property
     def state(self) -> G:
         state = self.service.state
-        if not isinstance(state, self.state_type):
-            raise AssertionError(f"the service holds an unexpected {self.state_type.__name__}")
+        assert isinstance(state, self.state_type), (
+            f"the service holds an unexpected {self.state_type.__name__}"
+        )
         return state
 
     def saved(self) -> G:
         raw = self.service.store.load(self.service.slug)
         assert raw is not None
-        restored = self.service.engine.restore(raw)
-        if not isinstance(restored, self.state_type):
-            raise AssertionError(f"the save restored an unexpected {self.state_type.__name__}")
+        restored = self.service.engine.restore(decode(raw))
+        assert isinstance(restored, self.state_type), (
+            f"the save restored an unexpected {self.state_type.__name__}"
+        )
         return restored
 
 

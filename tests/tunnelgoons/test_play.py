@@ -85,11 +85,12 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
     )
     assert table.service.engine.ready(table.service.state)
 
-    before_turn, before_place = state.turn, state.payload.current.id
+    engine = table.service.engine
+    before_turn, before_place = len(engine.history(state)), state.payload.current.id
     table.spawner.answers["worldsmith"] = [json.dumps(REGION)]
     await table.service.play(Answer(text="Deeper in."), moving_on=True)
 
     after = table.state
-    assert after.turn == before_turn
+    assert len(engine.history(after)) == before_turn
     assert after.payload.current.id == before_place
     assert set(REGION["places"]) <= set(after.payload.places)

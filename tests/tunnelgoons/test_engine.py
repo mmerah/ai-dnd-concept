@@ -2,14 +2,14 @@ import pytest
 from support.table import TUNNELGOONS, game, updated
 
 from aidm.core.entities import Refusal
+from aidm.core.io import decode
 from aidm.engines.seam import AnyEngine
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 
 
 def _tunnelgoons_game() -> tuple[AnyEngine, TunnelGoonsGame]:
     engine, state = game(TUNNELGOONS)
-    if not isinstance(state, TunnelGoonsGame):
-        raise AssertionError("the Tunnel Goons engine began another game type")
+    assert isinstance(state, TunnelGoonsGame), "the Tunnel Goons engine began another game type"
     return engine, state
 
 
@@ -33,4 +33,4 @@ def test_a_scenario_with_a_pack_is_refused_by_validate() -> None:
 
 def test_restored_round_trips() -> None:
     engine, state = _tunnelgoons_game()
-    assert engine.restore(state.model_dump_json()) == state
+    assert engine.restore(decode(state.model_dump_json())) == state

@@ -203,7 +203,7 @@ async def test_next_scene_asks_the_player_and_writes_nothing_yet(tmp_path: Path)
         narration="The flagstone settles back.",
     )
 
-    assert state.turn == 1
+    assert len(table.service.engine.history(state)) == 1
     # An offer, not a decision: nothing waits on the player and the scene is still playable.
     assert state.pending is None
     assert state.payload.run.left is not None
@@ -249,15 +249,16 @@ async def test_a_transition_without_an_arrival_brief_extends_on_a_lineless_excha
             shown.append(table.service.intent)
             return await super().advance(draft, intent, worldsmith)
 
+    engine = table.service.engine
     table.service.engine = Watching()
-    before = table.state.turn
+    before = len(engine.history(table.state))
     runs = len(table.state.payload.runs)
 
     await table.service.play(Answer(text="Out into the cloister walk."), moving_on=True)
 
     # The page has no turn to read the bubble from here, so the service holds the words.
     assert (shown, table.service.intent) == (["Out into the cloister walk."], "")
-    assert table.state.turn == before + 1
+    assert len(engine.history(table.state)) == before + 1
     assert len(table.state.payload.runs) == runs + 1
     new_run = table.state.payload.runs[-1]
     assert len(new_run.exchanges) == 1

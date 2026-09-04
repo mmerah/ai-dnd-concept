@@ -2,11 +2,11 @@ from pathlib import Path
 
 import pytest
 from support.loner import loner_sheet
-from support.table import ENGINES_BUILT, LONER3E, SCENARIOS, updated
+from support.table import ENGINES_BUILT, LIBRARY, LONER3E, updated
 
 from aidm.core.creation import Picks
 from aidm.core.entities import EngineId, Refusal
-from aidm.core.io import read_character, read_scenario, write_character
+from aidm.core.io import Library
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame
 from aidm.engines.seam import AnyEngine
@@ -28,12 +28,12 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
         "gear-2": "chalk-and-wire",
     }
     created = engine.create_character("Fen", "A wandering scribe with too many questions.", picks)
-    write_character(tmp_path, created)
-    character = read_character(tmp_path, "fen", engine.id, engine.character)
-    scenario = read_scenario(SCENARIOS, "whispering-vault", {engine.id: engine.scenario})
+    library = Library(tmp_path, tmp_path)
+    library.write_character(created)
+    character = library.read_character("fen", engine.id, engine.character)
+    scenario = LIBRARY.read_scenario("whispering-vault", {engine.id: engine.scenario})
     state = engine.begin("whispering-vault", scenario, character)
-    if not isinstance(state, Loner3eGame):
-        raise AssertionError("the Loner engine began another game type")
+    assert isinstance(state, Loner3eGame), "the Loner engine began another game type"
     made = loner_sheet(state, PLAYER_ID)
     assert made.concept == "A wandering scribe who counts doors"
     assert made.tags == {
@@ -58,23 +58,24 @@ def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:
     with pytest.raises(Refusal, match="is unanswered"):
         engine.create_character("Fen", "", {**legal, "concept": "  "})
     created = engine.create_character("Fen", "", legal)
-    write_character(tmp_path, created)
+    library = Library(tmp_path, tmp_path)
+    library.write_character(created)
     with pytest.raises(Refusal, match="already exists"):
-        write_character(tmp_path, created)
+        library.write_character(created)
 
 
 def test_one_folder_holds_one_person_across_engines(tmp_path: Path) -> None:
     engine = ENGINES_BUILT[LONER3E]
     fen = engine.create_character("Fen", "A wandering scribe.", _answered(engine, {"pack": "srd"}))
-    write_character(tmp_path, fen)
+    library = Library(tmp_path, tmp_path)
+    library.write_character(fen)
 
     mira = updated(fen, engine=OTHER, payload=updated(fen.payload, name="Mira"))
     with pytest.raises(Refusal, match="is 'Fen', not 'Mira'"):
-        write_character(tmp_path, mira)
+        library.write_character(mira)
 
-    write_character(tmp_path, updated(fen, engine=OTHER))
-    engine = ENGINES_BUILT[LONER3E]
-    assert read_character(tmp_path, "fen", engine.id, engine.character).payload.name == "Fen"
+    library.write_character(updated(fen, engine=OTHER))
+    assert library.read_character("fen", engine.id, engine.character).payload.name == "Fen"
 
 
 def _answered(engine: AnyEngine, chosen: Picks) -> Picks:

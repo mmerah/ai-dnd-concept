@@ -154,7 +154,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
         return tuple(
             SceneRecord(
                 title=run.title,
-                question=run.question,
+                focus=run.question,
                 recap=run.recap,
                 exchanges=tuple(run.exchanges),
             )

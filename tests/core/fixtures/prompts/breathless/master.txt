@@ -98,7 +98,7 @@ SCENARIO:
 The Drowned Road
 The causeway to Saint Ferrant only opens for four hours either side of low water, and the tide bell at the Bell House counts down the crossing. Kael has reached the Bell House with the water already rising, and something that used to be a person is still out on the flats.
 
-RECENT PLAY (this is turn 1):
+RECENT PLAY (this is turn 2):
 SCENE: The Bell House
 Can Kael get out of the Bell House and onto the causeway before Ovid rings the third bell?
 

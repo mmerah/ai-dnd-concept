@@ -8,6 +8,7 @@ from support.table import Table, play_turn, tool_call
 
 from aidm.core.entities import Frozen, Refusal
 from aidm.core.facts import Fact
+from aidm.core.io import decode
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, PendingDecision, PendingOption
 from aidm.core.tools import MasterTool, NoArgs, master_tool
@@ -199,7 +200,7 @@ def test_an_option_whose_call_names_no_tool_or_carries_args_it_rejects_is_refuse
     engine, suspended = _engine(), _pending(open_game(tmp_path).service.state)
     draft = suspended.draft()
 
-    assert engine.restore(suspended.model_dump_json()).pending == DECISION
+    assert engine.restore(decode(suspended.model_dump_json())).pending == DECISION
 
     with pytest.raises(Refusal, match="no tool 'spend_momentum' to play option 'lantern'"):
         _ = engine.answer(draft, _option(name="spend_momentum"), Random(0))
@@ -224,6 +225,5 @@ def _pending(state: AnyGame, decision: PendingDecision = DECISION) -> Loner3eGam
 
 
 def _loner(state: AnyGame) -> Loner3eGame:
-    if not isinstance(state, Loner3eGame):
-        raise AssertionError("the Loner test received another game type")
+    assert isinstance(state, Loner3eGame), "the Loner test received another game type"
     return state

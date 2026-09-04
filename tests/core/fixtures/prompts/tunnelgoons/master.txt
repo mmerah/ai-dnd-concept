@@ -66,7 +66,7 @@ SCENARIO:
 The Buried Keep
 A garrison keep collapsed into its own tunnels two winters back, and something down there still moves through the dark.
 
-RECENT PLAY (this is turn 1):
+RECENT PLAY (this is turn 2):
 SCENE: The Collapsed Archway
 Where the tunnels begin
 

@@ -72,20 +72,26 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, Pack]):
         return (("SCENE", self.world(state).run.title),)
 
 
+def _engine_at(tmp_path: Path) -> type[FifthEngine]:
+    class Installed(FifthEngine):
+        directory = tmp_path
+
+    return Installed
+
+
 def _installed(tmp_path: Path) -> FifthEngine:
     (tmp_path / "rules.md").write_text("Roll high.", encoding=ENCODING)
     (tmp_path / "packs").mkdir()
     (tmp_path / "packs" / "srd.json").write_text(
         '{"name": "The SRD", "source": "the test", "license": "CC0"}', encoding=ENCODING
     )
-    FifthEngine.directory = tmp_path
-    return FifthEngine()
+    return _engine_at(tmp_path)()
 
 
 def test_srd_pack_refuses_when_no_srd_table_set_is_installed(tmp_path: Path) -> None:
-    _ = _installed(tmp_path)
+    engine_type = type(_installed(tmp_path))
     (tmp_path / "packs" / "srd.json").rename(tmp_path / "packs" / "other.json")
-    engine = FifthEngine()
+    engine = engine_type()
     with pytest.raises(Refusal, match="the SRD table set is not installed"):
         _ = engine.srd_pack()
 
@@ -96,9 +102,8 @@ def test_a_pack_with_doubled_keys_is_refused(tmp_path: Path) -> None:
     (tmp_path / "packs" / "srd.json").write_text(
         '{"name": "The SRD", "name": "Twice"}', encoding=ENCODING
     )
-    FifthEngine.directory = tmp_path
     with pytest.raises(Refusal, match="duplicate keys"):
-        FifthEngine()
+        _engine_at(tmp_path)()
 
 
 def _scenario() -> FifthScenario:

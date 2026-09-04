@@ -64,10 +64,16 @@ class SixthEngine(RoomEngine[Dweller, Person, SixthGame]):
         return "Write the keep plainly."
 
 
+def _engine_at(tmp_path: Path) -> type[SixthEngine]:
+    class Installed(SixthEngine):
+        directory = tmp_path
+
+    return Installed
+
+
 def _installed(tmp_path: Path) -> SixthEngine:
     (tmp_path / "rules.md").write_text("Roll high.", encoding=ENCODING)
-    SixthEngine.directory = tmp_path
-    return SixthEngine()
+    return _engine_at(tmp_path)()
 
 
 def _place(place_id: EntityId, name: str, *, known: bool) -> Place:
