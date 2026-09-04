@@ -48,6 +48,7 @@ from aidm.engines.hub import (
     Campaign,
     Job,
     check_kind,
+    job_title,
     question_heading,
 )
 from aidm.engines.scenes.drafts import (
@@ -100,6 +101,10 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
     def crossing(self, state: G, pursuit: str) -> str | None:
         return CROSSING.format(left=self.world(state).run.title, pursuit=pursuit)
 
+    def page_word(self, state: G, intent: str) -> bool:
+        world = self.world(state)
+        return intent == GO_HOME or job_title(intent) is not None or intent == world.run.left
+
     def pack_options(self) -> tuple[DecisionOption, ...]:
         """The create page's table sets, and the first step of every scene engine's creation."""
         return tuple(DecisionOption(id=key, label=pack.name) for key, pack in self.packs.items())
@@ -145,6 +150,9 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         world = self.world(state)
         scene = world.run
         here = list(world.here())
+        sheet = world.player.rows()
+        if members := world.members():
+            sheet = (*sheet, ("Travelling with", ", ".join(member.name for member in members)))
         return NarratorView(
             place=scene.place,
             title=scene.title,
@@ -152,6 +160,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
             situation=scene.situation,
             subjects=tuple(member.subject() for member in here),
             speakers=tuple(member.id for member in here),
+            sheet=sheet,
         )
 
     def player_view(self, state: G) -> PlayerView:

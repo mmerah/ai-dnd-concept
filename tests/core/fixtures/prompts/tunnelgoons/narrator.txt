@@ -23,6 +23,15 @@ WHO IS HERE:
 - Kael — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
 - Cellar Lurker — Something pale that surfaces only when the water stills.
 
+THE PLAYER'S SHEET:
+- Brute: 1
+- Skulker: 2
+- Erudite: 0
+- Health: 10/10
+- Inventory: 3/8
+- Level: 1
+- Carrying: Pry Bar (melee weapon), Rope, Torch
+
 WHAT HAPPENED:
 - learned of The Flooded Cellar[cellar]
 - the player arrives at The Flooded Cellar[cellar]

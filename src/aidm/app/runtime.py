@@ -35,6 +35,10 @@ UNWRITTEN = Fact(
     trace="the way on could not be written",
     card="The way on could not be written. You are still where you were.",
 )
+PAUSED = (
+    'play pauses here on the player\'s decision: "{prompt}" End on the pause; settle nothing they '
+    "have not yet answered."
+)
 OPENING = (
     "The story begins here; the player has read nothing yet. Tell them, in the fiction and in "
     "this order: who they are (WHO IS HERE names them first) and where they stand; what is in "
@@ -108,11 +112,12 @@ class GameService:
             return
         if moving_on and not self.engine.ready(self.state):
             raise Refusal("the world offers no transition from here")
-        turn = Turn.begin(self.engine, self.state, answer, self.rng)
+        mastered = not (moving_on and self.engine.page_word(self.state, answer.text))
+        turn = Turn.begin(self.engine, self.state, answer, self.rng, mastered=mastered)
         self.turn, self.phase = turn, "master"
         try:
             # An answer that re-suspended leaves every tool refused: nothing for a master to do.
-            if turn.draft.pending is None:
+            if mastered and turn.draft.pending is None:
                 await self._run_master(turn)
             lines: tuple[Line, ...] = ()
             if turn.draft.pending is None or any(fact.told for fact in turn.facts):
@@ -174,6 +179,7 @@ class GameService:
         self.intent = answer.text
         try:
             await self._grow(answer.text, None)
+            self._present()
         finally:
             self.intent, self.phase = "", None
 
@@ -204,15 +210,15 @@ class GameService:
         self, draft: AnyGame, facts: tuple[Fact, ...], prompt: str, *, fatal: bool
     ) -> tuple[Line, ...]:
         view = self.engine.narrator_view(draft)
+        evidence = traced(facts, told_only=True)
+        if (pending := draft.pending) is not None:
+            evidence += f"\n- {PAUSED.format(prompt=pending.prompt)}"
         try:
             narration = await ask(
                 self.spawner,
                 "narrator",
                 render_narrator(
-                    view,
-                    evidence=traced(facts, told_only=True),
-                    prompt=prompt,
-                    scenes=self.engine.scenes(draft),
+                    view, evidence=evidence, prompt=prompt, scenes=self.engine.scenes(draft)
                 ),
                 Narration,
                 view.narration_refusal,
@@ -242,11 +248,9 @@ class GameService:
         if brief is None and not cards(facts):
             self.commit(self.engine.commit(draft))
             return
-        prompt, lines = intent, ()  # a silent install's told card is filed under its intent
-        if brief is not None:
-            self.phase = "narrator"
-            prompt, lines = CROSSED, await self._narrate(draft, facts, brief, fatal=False)
-        self.commit(self.engine.close(draft, prompt, lines, facts))
+        self.phase = "narrator"
+        lines = await self._narrate(draft, facts, brief or intent, fatal=False)
+        self.commit(self.engine.close(draft, intent if brief is None else CROSSED, lines, facts))
 
     def player_view(self) -> PlayerView:
         return self.engine.player_view(self.state)

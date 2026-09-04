@@ -25,6 +25,13 @@ WHO IS HERE:
 - Ivo Casks — A supply runner pinned here by the tide, itching to make the crossing before the flats fill up with Crawlers.
 - Drowned Marta — Once the causeway's toll-keeper, now a Crawler that answers the bell the same as anyone still starving.
 
+THE PLAYER'S SHEET:
+- Pronouns: he/him
+- Job: Park Ranger
+- Skills: Bash d6, Dash d4, Sneak d8, Shoot d4, Think d8 (rated d10), Sway d4
+- Loot die: d12
+- Stress: 1/4
+
 WHAT HAPPENED:
 - learned of Drowned Marta[drowned-marta]
 - Listen for what moves on the flats — think d10 [8] -> success

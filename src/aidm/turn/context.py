@@ -4,7 +4,7 @@ from pathlib import Path
 
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyGame
-from aidm.core.play import HistoryRecord, Narration, PendingDecision
+from aidm.core.play import HistoryRecord, Narration
 from aidm.core.tools import schema_text
 from aidm.core.views import NarratorView, lines_of, render_history, sections, told_narration
 
@@ -30,7 +30,6 @@ def render_master(
             (f"RECENT PLAY (this is turn {played + 1})", render_history(scenes)),
             *engine_sections,
             ("NOTES FROM THE RULES", lines_of(f"- {note}" for note in notes)),
-            ("WAITING ON THE PLAYER", _waiting(state.pending)),
             ("PLAYER ACTION", action),
         )
     )
@@ -50,6 +49,7 @@ def render_narrator(
                 "WHO IS HERE",
                 lines_of(f"- {subject.name} — {subject.brief}" for subject in view.subjects),
             ),
+            ("THE PLAYER'S SHEET", lines_of(f"- {label}: {value}" for label, value in view.sheet)),
             ("WHAT HAPPENED", evidence),
             ("PLAYER ACTION", prompt),
             ("ANSWER WITH", schema_text(Narration)),
@@ -60,17 +60,3 @@ def render_narrator(
 @cache
 def _prompt(name: str) -> str:
     return (_PROMPTS_DIR / f"{name}.md").read_text(encoding=ENCODING)
-
-
-def _waiting(pending: PendingDecision | None) -> str:
-    if pending is None:
-        return "- (nothing; the turn is yours to run)"
-    lines = [
-        f"- {option.id}: {option.label} {option.detail}".rstrip() for option in pending.options
-    ]
-    lines.append(
-        "- (the player answers in their own words)"
-        if pending.allows_text
-        else "- (choose one option above)"
-    )
-    return "\n".join([f"{pending.kind}: {pending.prompt}", *lines])

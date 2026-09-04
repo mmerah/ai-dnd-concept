@@ -18,6 +18,7 @@ from support.table import (
     play_turn,
     scenario_for,
     the_way_on,
+    tool_call,
     updated,
 )
 
@@ -263,10 +264,82 @@ async def test_a_transition_without_an_arrival_brief_extends_on_a_lineless_excha
     new_run = table.state.payload.runs[-1]
     assert len(new_run.exchanges) == 1
     exchange = new_run.exchanges[0]
-    assert exchange.lines == ()
     assert exchange.prompt == "Out into the cloister walk."
     assert any(fact.card.startswith("New scene: The Cloister Walk") for fact in exchange.facts)
     assert not any(role == "master" for role, _ in table.spawner.prompts)
+
+
+async def test_a_told_card_with_no_crossing_earns_the_narrators_reply(tmp_path: Path) -> None:
+    """A room engine's job taken or reported: the keeper answers, the master is never spawned."""
+    table = open_game(tmp_path)
+    table.service.engine = _SilentEngine()
+    table.spawner.answers["narrator"] = [narrated("Mara nods you toward the arcade.")]
+
+    await table.service.play(Answer(text="Out into the cloister walk."), moving_on=True)
+
+    roles = [role for role, _ in table.spawner.prompts]
+    assert roles == ["narrator"]
+    narrator = table.spawner.prompt("narrator")
+    assert "PLAYER ACTION:\nOut into the cloister walk." in narrator
+    assert "- the story moves to The Cloister Walk" in narrator
+    exchange = table.state.payload.runs[-1].exchanges[0]
+    assert narration_text(exchange.lines) == "Mara nods you toward the arcade."
+
+
+async def test_the_pages_own_words_spawn_no_master_and_keep_the_notes(tmp_path: Path) -> None:
+    """Go on, Go home, an offer: the leaving was played, so the narrator alone says goodbye and
+    a note left for the master waits for a turn a master reads."""
+    table = open_game(tmp_path)
+    table.spawner.answers["worldsmith"] = [_scene()]
+    pursuit = "Down the stair the map marks."
+
+    _ = await play_turn(table, "I go.", tool_call("next_scene", pursuit=pursuit))
+    table.service.commit(updated(table.state, notes=["the adventure's end applies"]))
+    seen = len(table.spawner.prompts)
+    table.spawner.answers["narrator"] = [narrated("You go."), narrated("The cold meets you.")]
+
+    await table.service.play(Answer(text=pursuit), moving_on=True)
+
+    roles = [role for role, _ in table.spawner.prompts[seen:]]
+    assert roles == ["narrator", "worldsmith", "narrator"]
+    assert table.state.notes == ["the adventure's end applies"]
+    goodbye = table.state.payload.runs[-2].exchanges[-1]
+    assert (goodbye.prompt, narration_text(goodbye.lines)) == (pursuit, "You go.")
+    assert table.state.payload.run.title == "The Cloister Walk"
+
+
+async def test_a_page_word_over_an_open_decision_leaves_no_pause_note(tmp_path: Path) -> None:
+    """The pause note answers a master; a turn that spawns none must not file it for the next."""
+    table = open_game(tmp_path)
+    table.spawner.answers["worldsmith"] = [_scene()]
+    pursuit = "Down the stair the map marks."
+
+    state = await play_turn(
+        table,
+        "I go, ledger or no ledger.",
+        tool_call("next_scene", pursuit=pursuit),
+        tool_call("roll_question", **A_CONFLICT),
+    )
+    assert state.pending is not None
+    table.spawner.answers["narrator"] = [narrated("You go."), narrated("The cold meets you.")]
+
+    await table.service.play(Answer(text=pursuit), moving_on=True)
+
+    assert table.state.pending is None
+    assert table.state.notes == []
+
+
+async def test_a_turn_that_suspends_tells_the_narrator_where_play_pauses(tmp_path: Path) -> None:
+    table = open_game(tmp_path)
+
+    state = await play_turn(
+        table, "I grab for the ledger.", tool_call("roll_question", **A_CONFLICT)
+    )
+
+    pending = state.pending
+    assert pending is not None
+    narrator = table.spawner.prompt("narrator")
+    assert f'play pauses here on the player\'s decision: "{pending.prompt}"' in narrator
 
 
 async def test_authoring_raises_when_the_worldsmith_never_meets_the_bar(tmp_path: Path) -> None:

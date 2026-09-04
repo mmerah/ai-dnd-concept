@@ -15,7 +15,7 @@ Put something in `hidden` when the scene has something worth finding. It is not 
 
 `summary` and `recap` are the game master's memory: they hold everything, including what the player has not found. `debrief` and `situation` are read by the player and must never hold it.
 
-Never name the player: they are put into the scene by code. Name everyone else by their exact id. A new person or thing goes in `cast`, filed under its own id, and may then be named in `present` or `hidden`. Someone already in THE WHOLE CAST may be filed again to rewrite their `brief`; their name and their sheet are the rules' and do not change.
+Never name the player: they are put into the scene by code. Name everyone else by their exact id. A new person or thing goes in `cast`, filed under its own id, and may then be named in `present` or `hidden`. Every line of THE WHOLE CAST says whether the player has met that entry: one met is never `hidden`, and one unmet is never named in what the player reads. Someone already in THE WHOLE CAST may be filed again to rewrite their `brief`; their name and their sheet are the rules' and do not change. A `brief` is read to the player's narrator once they have met its entry, so it holds nothing they must not learn; when you bring someone met into a new scene, file them again with a `brief` written for where they now stand.
 
 Under THE GAME MASTER ASKED FOR, write one new entry per line, unmet, inside the scene; when WHAT COMES NEXT asks for one entry, answer with that entry and nothing else. `arc` bends only where it must.
 

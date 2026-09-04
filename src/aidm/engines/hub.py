@@ -192,11 +192,8 @@ class Campaign(Mutable):
         return tuple(result)
 
     def taken(self, intent: str) -> Job | None:
-        prefix, suffix = TAKE_JOB.split("{title}")
-        folded = intent.casefold()
-        if not folded.startswith(prefix.casefold()) or not folded.endswith(suffix.casefold()):
-            return None
-        return self.left_open(intent[len(prefix) : len(intent) - len(suffix)])
+        title = job_title(intent)
+        return None if title is None else self.left_open(title)
 
     def titled(self, title: str) -> Job | None:
         folded = title.casefold()
@@ -346,6 +343,15 @@ def named_unmet(text: str, entities: Iterable[Thing]) -> list[str]:
         if (" " in entity.name.strip() and entity.name.casefold() in folded)
         or re.search(rf"\b{re.escape(entity.id)}\b", text) is not None
     ]
+
+
+def job_title(intent: str) -> str | None:
+    """The title inside the board's own `TAKE_JOB` line; None for any other words."""
+    prefix, suffix = TAKE_JOB.split("{title}")
+    folded = intent.casefold()
+    if not folded.startswith(prefix.casefold()) or not folded.endswith(suffix.casefold()):
+        return None
+    return intent[len(prefix) : len(intent) - len(suffix)]
 
 
 def check_kind(kind: ScenarioKind, campaign: Campaign | None) -> None:

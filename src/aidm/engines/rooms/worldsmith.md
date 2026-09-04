@@ -10,7 +10,7 @@ For a job, write a whole dungeon by the opening map's bar, joining the map at th
 
 THE GAME MASTER ASKED FOR lists what the game master commissioned for this write; write each as one new npc or item in the region, unmet, or the region itself. When the ask is one npc or item, answer with that one entry and nothing else.
 
-Never name the player: they are put on the map by code. Ids are slugs.
+Never name the player: they are put on the map by code. Ids are slugs. MAP SO FAR ends with every id in use: write none of them again. It says of each npc and item whether the player has met it: `debrief` names nothing unmet, and a `brief` is read to the player's narrator once its npc or item is met.
 
 Everything you need is below. Do not read, search or run anything in the repository.
 

@@ -398,11 +398,17 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         """One card line; the player's sheet is the world's, everyone else's is their own."""
         return entity.line(rows=self.sheet_rows()) if entity.id == self.player.id else entity.line()
 
+    def things_at(self, place_id: EntityId) -> Iterator[N | Item]:
+        """Who stands at a place, then what lies there or in their hands."""
+        npcs = list(self.at(place_id))
+        yield from npcs
+        for holder in (place_id, *(npc.id for npc in npcs)):
+            yield from self.carried(holder)
+
     def place_lines(self, *, known: bool) -> str:
-        npcs_here = [npc for npc in self.at(self.current.id) if npc.known == known]
-        holders = (self.current.id, *(npc.id for npc in self.at(self.current.id)))
-        items = (item for holder in holders for item in self.carried(holder) if item.known == known)
-        return lines_of(self.line(entity) for entity in (*npcs_here, *items))
+        return lines_of(
+            self.line(entity) for entity in self.things_at(self.current.id) if entity.known == known
+        )
 
     def ways_lines(self) -> str:
         return lines_of(
@@ -421,9 +427,12 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
             known_ways = ", ".join(
                 self.require_place(way.to).name for way in self.ways.get(place.id, ()) if way.known
             )
+            here = ", ".join(f"{e.tag} ({e.met_label})" for e in self.things_at(place.id))
             lines.append(
                 f"{place.tag} — {place.description}\n  known ways out: {known_ways or '(none)'}"
+                f"\n  here: {here or '(nobody, nothing)'}"
             )
+        lines.append("ids in use: " + ", ".join(sorted((*self.places, *self.npcs, *self.items))))
         return "\n".join(lines)
 
     def sheet_rows(self) -> Rows:

@@ -229,3 +229,15 @@ def test_apply_return_refuses_with_no_job_walked() -> None:
 
     with pytest.raises(Refusal, match="no job is open to report"):
         _ = world.apply_return(debrief="d", summary="s", recaps={}, offers=board)
+
+
+def test_the_map_so_far_names_who_stands_where_and_every_id_in_use() -> None:
+    state = small_world()
+
+    shown = state.payload.map_so_far()
+
+    assert "  here: Mira[mira] (met), Lantern[lantern] (met)" in shown
+    assert "Robo Mantis" not in shown
+    assert shown.endswith(
+        "ids in use: crypt, hall, key, lantern, mantis, mira, rope, start, torch, vault"
+    )

@@ -91,3 +91,10 @@ def test_entity_line_marks_a_dead_npc_and_the_players_carried_over_score() -> No
     world.npcs[MIRA].alive = False
     assert "(dead)" in world.line(world.npcs[MIRA]).splitlines()[0]
     assert "inventory: 2/8" in world.line(world.player).lower()
+
+
+def test_the_narrator_view_carries_the_sheet_and_what_is_carried() -> None:
+    view = ENGINE.narrator_view(small_world())
+
+    assert ("Health", "10/10") in view.sheet
+    assert ("Carrying", "Rope, Torch") in view.sheet

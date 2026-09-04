@@ -38,8 +38,8 @@ class SceneDraft[C: Person](Frozen):
         default_factory=dict,
         description="New people and things, filed under their own id. An id already in THE "
         "WHOLE CAST re-files that person: their `brief` is rewritten and nothing else; their "
-        "name and their sheet stay as the rules hold them. Read by the game master and by "
-        "you, never the player.",
+        "name and their sheet stay as the rules hold them. A `brief` reaches the narrator once "
+        "the player has met its entry, so what they must not learn goes in `arc`.",
     )
     arc: str = Field(
         description="A few lines on what lies beyond this scene, for the game master and for "

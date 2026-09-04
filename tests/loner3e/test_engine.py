@@ -71,8 +71,29 @@ def test_a_question_puts_two_dice_to_the_answer_and_costs_no_luck_on_its_own() -
 
     facts = ENGINE.resolve_question(draft, _seal(), Random(17))
 
-    assert [fact.kind for fact in facts] == ["dice_rolled", "dice_rolled", "question_answered"]
+    assert [fact.kind for fact in facts] == [
+        "dice_rolled",
+        "dice_rolled",
+        "question_asked",
+        "question_answered",
+    ]
     assert loner_sheet(draft, PLAYER_ID).luck.current == LUCK_MAX
+
+
+def test_the_question_is_the_masters_memory_and_never_reaches_the_narrator() -> None:
+    """The master writes the question and may name unrevealed canon in it, even on a no."""
+    _, state = initialized()
+    question = _seal()
+
+    facts = ENGINE.resolve_question(state.draft(), question, Random(17))
+
+    asked = next(fact for fact in facts if fact.kind == "question_asked")
+    answered = next(fact for fact in facts if fact.kind == "question_answered")
+    assert not asked.told
+    assert question.question in asked.trace
+    assert answered.told
+    assert question.question not in answered.trace
+    assert "the oracle for the player Kael[player]" in answered.trace
 
 
 def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> None:

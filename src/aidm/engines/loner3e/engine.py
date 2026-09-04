@@ -202,8 +202,12 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
         facts.extend(facts_rolled)
 
         outcome = outcome_for(chance_kept, risk_kept)
+        # The question is master-authored and may name unrevealed canon: never told.
+        facts.append(Fact(kind="question_asked", trace=f"asked: {action.question}"))
         answered_at = len(facts)
-        facts.append(actor.fact("question_answered", f"{action.question} -> {outcome.name}"))
+        facts.append(
+            actor.fact("question_answered", f"the oracle for {actor.label}: {outcome.name}")
+        )
         effects: tuple[str, ...] = ()
         if opponent is not None:
             exchange, effects = _absorbed(_strike(draft, actor, opponent, outcome))
@@ -223,7 +227,6 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
             if world.twist.shortfall == 0:
                 world.twist.current = 0
                 facts.extend(self._twist(draft, actor, rng))
-        # The question is master-authored and names unrevealed canon even on a "no": never shown.
         edge = f" ({action.edge})" if action.edge else ""
         card = "\n".join(
             (f"Oracle — {action.position.capitalize()}{edge} → {outcome.name}", *effects)

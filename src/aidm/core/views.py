@@ -4,6 +4,7 @@ from typing import Self
 from pydantic import model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal
+from aidm.core.facts import DICE
 from aidm.core.play import (
     ChapterRecord,
     Exchange,
@@ -54,6 +55,8 @@ class NarratorView(Frozen):
     subjects: tuple[Subject, ...]
     # The player and everyone present who may speak; nobody else can be attributed a line.
     speakers: tuple[CheckedEntityId, ...]
+    # The player's own sheet: theirs to know, so the narrator may show it through detail.
+    sheet: Rows
 
     @model_validator(mode="after")
     def _speakers_are_subjects(self) -> Self:
@@ -167,5 +170,5 @@ def _whole_scene(scene: SceneRecord) -> str:
 
 
 def _whole_exchange(exchange: Exchange) -> str:
-    facts = "\n".join(f"- {fact.trace}" for fact in exchange.facts)
+    facts = "\n".join(f"- {fact.trace}" for fact in exchange.facts if fact.kind != DICE)
     return "\n".join(part for part in (f"> {exchange.prompt}", facts, exchange.narration) if part)
