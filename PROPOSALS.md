@@ -4,9 +4,12 @@ Input: six independent full reads of `src/aidm` (9,481 lines, 526 tests green, r
 basedpyright clean at `baa34f5`) on 2026-09-04: five Fable subagents (A generalist, B SOLID and
 idiom, C the engines, D the platform, E the contrarian) and the lead. Each inventoried every
 concept, judged it, and hunted for two spellings of one thing. This file merges them. Votes are
-out of 6 where they matter. Line counts are estimates. Nothing here is decided.
+out of 6 where they matter. Line counts are estimates. Decisions (maintainer, 2026-09-04): D1 A,
+D2 A, D3 C, D4 B, D5 A, D6 A, D7 A, D8 B, D9 B, D10 A, D11 A, D12 A, D13 A, D14 A, D15 B, D16 A,
+D17 A, D18 A, D19 A; D20 was moot (`AGENTS.md` is already a symlink). Each heading in section 6
+ends with the answer.
 
-**Decisions this file needs from the maintainer are in section 6. Read that first.** Section 7
+**Section 6 holds the decisions, now settled.** Section 7
 lists what all six agree must not be simplified, with the test or rule that protects each.
 
 Headline, agreed by all six: the architecture is right and there is no dead code. Every setting
@@ -42,7 +45,8 @@ one edge crash** at the content directory. Total if everything lands: about −2
    Reproduced by B and the lead. The four identical `ChangeWorld` classes (`loner3e/tools.py:52`,
    `breathless/tools.py:25`, `twentyfourxx/tools.py:71`, `tunnelgoons/tools.py:22`) cannot fold
    that way.
-5. **`AGENTS.md` is a byte-identical copy of `CLAUDE.md`** (`diff -q`). It will drift.
+5. **`AGENTS.md` reads identical to `CLAUDE.md`** because it is a git symlink to it (mode
+   120000). Reviewer B reported a copy; the lead checked: no drift is possible. No action.
 6. **`PendingOption.name` defaults to `""`** with the docstring "empty when its `answer` reads
    the id" (`core/play.py:45-49`), but nothing overrides `Engine.answer`, which refuses an
    unknown name (`engines/seam.py:88-94`); no production option omits it. A documented path
@@ -484,9 +488,10 @@ object (one caller); removing the single-overrider hooks (Track G uses them).
 
 ## 6. Decisions for the maintainer
 
-Each with options and the reviewers' lean. Nothing here is decided.
+Each with options and the reviewers' lean, and the maintainer's answer (2026-09-04) on the
+heading.
 
-**D1 — `Refusal` or `ValueError` inside validators?** (fact 3; 6/6 on the fact, 5/6 lean A)
+**D1 — `Refusal` or `ValueError` inside validators? — settled: A** (fact 3; 6/6 on the fact, 5/6 lean A)
 - A. `ValueError` in every validator; one CLAUDE.md sentence: "inside a validator raise
   `ValueError`; `parse` turns it into the refusal". 18 sites, mechanical, zero behaviour change.
 - B. Keep `Refusal` everywhere and add the CLAUDE.md sentence "inside a validator, `Refusal` is
@@ -495,7 +500,7 @@ Each with options and the reviewers' lean. Nothing here is decided.
   pydantic's "Value error, " prefix in re-prompts). Cleaner text, one more helper.
 - Lean: **A**, C if the prefix in re-prompts bothers anyone.
 
-**D2 — Hoist what both lifecycle bases duplicate into `Engine`?** (fact 10; lead, B, C for; E
+**D2 — Hoist what both lifecycle bases duplicate into `Engine`? — settled: A** (fact 10; lead, B, C for; E
 against)
 - A. A `World` base class in `engines/base.py` (two things need it: `SceneWorld`, `RoomWorld`)
   with `player`, `source`, `campaign`, `exchanges()`, `records()`, `scenes()`, `record()`; the
@@ -509,7 +514,7 @@ against)
 - C. Leave: six one-liners duplicated; E's "not until a third family".
 - Lean: **A**; the duplication is the seam's own shape, and "two things need it" is met.
 
-**D3 — `engines/rooms/` with one production subclass.** (fact 20; E for folding, five keep)
+**D3 — `engines/rooms/` with one production subclass. — settled: C (keep the split as is)** (fact 20; E for folding, five keep)
 - A. Fold into `engines/tunnelgoons/`: `RoomEngine[N,P,G]` → `TunnelGoonsEngine`, `Dungeon[N]`
   over `Npc`, the `dweller`/`world_type`/`starting_items`/`guidance` hooks go. −90 to −120 lines
   of generic plumbing; 1,676 lines folded, under the cap; `test_rooms.py`'s `SixthEngine`
@@ -521,7 +526,7 @@ against)
 - Lean: **B now**; A is the honest reading of CLAUDE.md's rule against a line in CLAUDE.md, so it
   is the maintainer's call, not a reviewer's.
 
-**D4 — One `CommissionArgs` base and a concrete `commission_tool` on the seam?** (fact 12; B, C
+**D4 — One `CommissionArgs` base and a concrete `commission_tool` on the seam? — settled: B** (fact 12; B, C
 for; A leans leave; refuted once in the Phase 2 review)
 - A. Do it: `kind: str` on the base, each family overrides `kind` with its `Literal`; `Engine`
   gains `commission_args` and `commission_hint` class attributes. −22. Cost: pydantic puts
@@ -533,19 +538,19 @@ for; A leans leave; refuted once in the Phase 2 review)
 - C. Leave (−14 lines is not worth two more class attributes).
 - Lean: **B**.
 
-**D5 — The four `ChangeWorld` classes.** (fact 4)
+**D5 — The four `ChangeWorld` classes. — settled: A** (fact 4)
 - A. Keep the four (twelve lines, no risk).
 - B. A `change_world_tool(union, resolve)` helper using `create_model` so the class is built per
   engine; hides the schema the master reads behind a call.
 - Lean: **A**; recorded so nobody tries the generic again.
 
-**D6 — `Fact.kind`.** (fact 7)
+**D6 — `Fact.kind`. — settled: A** (fact 7)
 - A. Keep as a free-string label (D's view: a `Literal` would leak engine kinds into core).
 - B. Drop it; `conflict_lost` becomes a typed flag on the fact or a return value of `_strike`.
   Saves and turn goldens change.
 - Lean: **A**; it is the journal's and the goldens' vocabulary and costs nothing.
 
-**D7 — Align the entity line, `kill` signatures and `reveal` now, or after Track G?** (P8, P9,
+**D7 — Align the entity line, `kill` signatures and `reveal` now, or after Track G? — settled: A** (P8, P9,
 C9; B leans wait, A/C/E lean now)
 - A. Now: P8 and P9 land in Tier 2.
 - B. Wait: G.3 rewrites `Npc` (a sheet), `take_lead` and every one of these lines; aligning
@@ -553,19 +558,19 @@ C9; B leans wait, A/C/E lean now)
 - Lean: **A for `reveal` (P9, no G overlap), B for `line`/`kill` if Track G starts within the
   month, else A.**
 
-**D8 — `Speaker` vs `Subject`.** (D, A) `Speaker` is `Subject` minus `brief`; its only
+**D8 — `Speaker` vs `Subject`. — settled: B (now, not with G.1)** (D, A) `Speaker` is `Subject` minus `brief`; its only
 constructor is `Subject.speaker()`.
 - A. Keep both: a stored line never carries authoring text that may later be rewritten.
 - B. Drop `Speaker`; `NarratorView.speakers: tuple[CheckedEntityId, ...]` with a validator
   `speakers ⊆ subjects` — the same shape NEXT-SPECS G.1 plans for `party`. Saves go stale.
 - Lean: **A now, B when G.1 lands** (one migration instead of two).
 
-**D9 — Derive `Game.turn` from history?** (D) `turn == len(history)` on every path.
+**D9 — Derive `Game.turn` from history? — settled: B** (D) `turn == len(history)` on every path.
 - A. Keep the field (one int, the launcher's cheapest read).
 - B. Delete it (stale saves, 12 test edits).
 - Lean: **A**, revisit in the G.1 stale-save pass.
 
-**D10 — Golden prompt fixtures vs "test behaviour, not prose".** (E) Eight prose snapshots (883
+**D10 — Golden prompt fixtures vs "test behaviour, not prose". — settled: A** (E) Eight prose snapshots (883
 lines) plus five wording-asserting tests.
 - A. Keep both kinds, and say why in CLAUDE.md: "a golden is a drift detector, not a prose
   test".
@@ -574,12 +579,12 @@ lines) plus five wording-asserting tests.
 - C. Drop both.
 - Lean: **A**; B is what `test_context_boundary` does for one engine and would need four copies.
 
-**D11 — `source`/`license` on `base.Pack`: required or defaulted?** (P14)
+**D11 — `source`/`license` on `base.Pack`: required or defaulted? — settled: A** (P14)
 - A. Required; the test pack gains two keys; a pack naming no licence does not load.
 - B. `""` defaults; nothing breaks, the guarantee goes.
 - Lean: **A**; the docs already say every pack carries them.
 
-**D12 — `read_packs` through `decode`+`parse`?** (fact 19; B, D, E for; A leans keep raw)
+**D12 — `read_packs` through `decode`+`parse`? — settled: A** (fact 19; B, D, E for; A leans keep raw)
 - A. Yes: a doubled key is refused at boot like every other JSON, the failure reads as a
   `Refusal`.
 - B. Keep raw and say so in the docstring ("shipped, not user data; crash with the full
@@ -587,20 +592,20 @@ lines) plus five wording-asserting tests.
 - Lean: **A**; consistency over one nicer traceback.
 
 **D13 — The Tunnel Goons return prompt gains `ENGINE GUIDANCE` and the `WHAT COMES NEXT`
-heading when P11 lands.**
+heading when P11 lands. — settled: A**
 - A. Accept (the return is the one rooms write with no guidance today, which reads as an
   omission).
 - B. Add a flag that skips guidance and keeps the old heading (saving drops from −12 to −8).
 - C. Leave the duplicate.
 - Lean: **A**.
 
-**D14 — Rename `SceneRecord.question` → `focus`.** (E) Rooms store a place brief there;
+**D14 — Rename `SceneRecord.question` → `focus`. — settled: A** (E) Rooms store a place brief there;
 `NarratorView.focus` already exists for the same slot.
 - A. Rename (touches `play.py`, `views.py`, both worlds, tests; saves stale).
 - B. Leave, one docstring line.
 - Lean: **B now, A in the next stale-save pass.**
 
-**D15 — A content library object.** (D) Nine sites thread `settings.scenarios_dir/
+**D15 — A content library object. — settled: B** (D) Nine sites thread `settings.scenarios_dir/
 characters_dir/saves_dir` by hand.
 - A. Keep the free functions on `Path` (the rule allows them; a `Path` is not ours).
 - B. A frozen `Library(scenarios, characters)` beside `FileStore` with the readers and writers
@@ -608,12 +613,12 @@ characters_dir/saves_dir` by hand.
   files and `test_store.py`'s eight calls.
 - Lean: **B**; `FileStore` already set the precedent for the saves directory.
 
-**D16 — `begin_game` → `Engine.begin`, `launch_target` → `LauncherCatalog.target`.** (B)
+**D16 — `begin_game` → `Engine.begin`, `launch_target` → `LauncherCatalog.target`. — settled: A** (B)
 - A. Do it (CLAUDE.md's method rule; `registry.py` becomes 13 lines).
 - B. Leave (`begin_game` is the composition root's one verb).
 - Lean: **A**, folded into D2 if D2 is A.
 
-**D17 — `GameService.play` and presentation.** (A, D, B)
+**D17 — `GameService.play` and presentation. — settled: A** (A, D, B)
 - A. Extract `_run_master(turn)` (the master + commission loop) and `_present(state)`; keep
   media in the service. +3 lines, `play` reads as six steps.
 - B. Move illustration and speech scheduling to the page's `poll_turn` on history growth; the
@@ -621,7 +626,7 @@ characters_dir/saves_dir` by hand.
 - C. Leave.
 - Lean: **A**.
 
-**D18 — `config.py` models on `Frozen`.** (B)
+**D18 — `config.py` models on `Frozen`. — settled: A** (B)
 - A. Switch the four sub-models to `Frozen` (`extra="forbid"`): a `.env` typo in a nested key
   fails at start instead of vanishing; `Settings` itself stays `extra="ignore"` for the shell's
   unrelated keys. Needs `aidm.config` to import `aidm.core.entities` (allowed: the boundary test
@@ -629,13 +634,13 @@ characters_dir/saves_dir` by hand.
 - B. Leave.
 - Lean: **A after the manual check.**
 
-**D19 — `Engine.crossing()` as a behaviour switch.** (lead, B)
+**D19 — `Engine.crossing()` as a behaviour switch. — settled: A** (lead, B)
 - A. One docstring line on `GameService.play` naming the contract ("None means the world grows
   without a turn").
 - B. An explicit `Engine.crosses: bool` beside `crossing()` returning `str`.
 - Lean: **A**; two users, one None.
 
-**D20 — `AGENTS.md`.** (fact 5)
+**D20 — `AGENTS.md`. — settled: moot, already a symlink** (fact 5)
 - A. A symlink to `CLAUDE.md` (git stores symlinks; Codex reads it).
 - B. Delete it (Codex loses the rules).
 - C. Keep two copies and accept drift.
