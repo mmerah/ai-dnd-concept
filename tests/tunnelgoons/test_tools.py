@@ -21,7 +21,7 @@ from support.tunnelgoons import (
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.tools import NoArgs
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.hub import Job
+from aidm.engines.hub import Attempt, Job
 from aidm.engines.rooms.tools import Move, UnlockWay
 from aidm.engines.rooms.world import Item, Visit
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
@@ -217,7 +217,7 @@ def test_level_up_sets_job_done_only_when_a_job_is_open() -> None:
         Visit(place=TAVERN),
     ]
     campaign = the_campaign(stamped.payload.campaign)
-    campaign.jobs = [Job(title="Bandits", place=START, started=1)]
+    campaign.jobs = [Job(title="Bandits", place=START, attempts=[Attempt(started=1)])]
     _ = ENGINE.level_up(stamped, LevelUp(ability="brute", boost="health"), Random(0))
     assert campaign.jobs[-1].finished
 
@@ -236,15 +236,15 @@ def test_a_tavern_visit_mid_job_keeps_the_job_open() -> None:
     draft = hub_world().draft()
     world = draft.payload
     campaign = the_campaign(world.campaign)
-    campaign.jobs = [Job(title="Bandits", place=START)]
+    campaign.jobs = [Job(title="Bandits", place=START, attempts=[Attempt()])]
 
     _ = ENGINE.move(draft, Move(to_id=START), Random(0))
-    assert campaign.jobs[-1].started == 1
+    assert campaign.jobs[-1].attempts[-1].started == 1
     assert world.walked_job() is not None
 
     _ = ENGINE.move(draft, Move(to_id=TAVERN), Random(0))
     assert world.walked_job() is not None
-    assert campaign.jobs[-1].started == 1
+    assert campaign.jobs[-1].attempts[-1].started == 1
 
 
 def test_move_refuses_a_locked_way() -> None:

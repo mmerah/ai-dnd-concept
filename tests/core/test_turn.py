@@ -33,6 +33,8 @@ def _scene(**changes: object) -> str:
         "question": "Can you reach the chapter house before the lantern gives you away?",
         "recap": "The player left the abbot's study behind, lantern shuttered, and made for the "
         "cloister walk with Mara close behind them.",
+        "arc": "Farther in, the chapter house still holds what Mara came for, and has not yet "
+        "been found.",
     }
     scene.update(changes)
     return json.dumps(scene)
@@ -72,8 +74,10 @@ async def test_the_turn_holds_its_facts_in_resolver_order(tmp_path: Path) -> Non
     )
 
     expected = ["The vault map discovered", "Took the vault map", "Now: Listening"]
+    exchange = state.payload.exchanges()[-1]
     assert [fact.card for fact in cards(table.facts)] == expected
-    assert [fact.card for fact in state.payload.exchanges()[-1].facts] == expected
+    assert [fact.card for fact in cards(exchange.facts)] == expected
+    assert len(exchange.facts) >= len(cards(exchange.facts))
 
 
 async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: Path) -> None:

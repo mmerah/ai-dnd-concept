@@ -21,6 +21,7 @@ from aidm.core.model import AnyScenario, ScenarioMeta, WorldsmithAnswer
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.hub import GO_HOME, TAKE_JOB
 from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft, SceneDraft
+from aidm.engines.scenes.world import SceneRun
 from aidm.engines.scenes.worldsmith import scene_refusal
 from aidm.engines.twentyfourxx.engine import BOARD_GUIDANCE, TwentyfourxxEngine
 from aidm.engines.twentyfourxx.world import TwentyfourxxGame
@@ -42,6 +43,7 @@ def _draft(**fields: object) -> SceneDraft[Person]:
         "title": "The Bay Office",
         "question": "Can they slip past the night crew before the lights return?",
         "situation": SITUATION,
+        "arc": "Farther in, the fixer's own supplier still owes for the last load.",
     }
     return SceneDraft[Person].model_validate({**base, **fields})
 
@@ -275,6 +277,20 @@ def test_build_scenario_stamps_the_engine_id() -> None:
     assert _built(draft).engine == TWENTYFOURXX
 
 
+RECAP = (
+    "Kael cleared the pharmacy shelf by shelf, weighed what could be carried, and slipped back "
+    "out before the block woke."
+)
+SUMMARY = (
+    "Kael hit the bay office for the crates the fixer wanted, cleared them off deck by deck, "
+    "and the job is done; a second stash they never opened still waits unspoken."
+)
+ARC = (
+    "Farther in, the fixer's own supplier still owes for the last load, and has not yet been "
+    "confronted."
+)
+
+
 def _return_draft(*, offers: int = 2) -> ReturnDraft[Person]:
     return ReturnDraft[Person].model_validate(
         {
@@ -288,6 +304,8 @@ def _return_draft(*, offers: int = 2) -> ReturnDraft[Person]:
                 for number in range(1, offers + 1)
             ],
             "debrief": "The crates are cleared and paid for.",
+            "recap": RECAP,
+            "summary": SUMMARY,
         }
     )
 
@@ -300,6 +318,7 @@ def _job_draft() -> JobDraft[Person]:
             "job": JOB,
             "recap": "Kael left the Amber Tap with the job in hand and made straight for the "
             "dock, the fixer's directions still fresh.",
+            "arc": ARC,
         }
     )
 
@@ -311,6 +330,7 @@ def _next_draft(**fields: object) -> NextDraft[Person]:
             **base,
             "recap": "Kael slipped past the night crew, found nothing worth taking, and moved "
             "on before the lights came back up.",
+            "arc": ARC,
         }
     )
 
@@ -344,6 +364,84 @@ async def test_write_next_picks_the_draft_the_moment_calls_for() -> None:
     assert recorded[-1] is JobDraft[Person]
 
 
+async def test_write_next_shows_this_job_only_on_a_return() -> None:
+    game = hub_world()
+    prompts: list[str] = []
+
+    async def answer[M: BaseModel](
+        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
+        prompts.append(prompt)
+        chosen: SceneDraft[Person] = (
+            _return_draft() if model is ReturnDraft[Person] else _next_draft(present=("fixer",))
+        )
+        answer = model.model_validate(chosen.model_dump())
+        assert refusal(answer) is None
+        return answer
+
+    _ = await _written(game, GO_HOME, answer)
+    assert "THIS JOB" in prompts[-1]
+
+    _ = await _written(game, "I look around the warehouse.", answer)
+    assert "THIS JOB" not in prompts[-1]
+
+
+async def test_the_arc_line_only_reaches_a_next_draft_prompt() -> None:
+    game = hub_world()
+    game.payload.arc = "Farther out, the fixer's own debts are still unpaid."
+    prompts: list[str] = []
+
+    async def answer[M: BaseModel](
+        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
+        prompts.append(prompt)
+        chosen: SceneDraft[Person] = (
+            _return_draft() if model is ReturnDraft[Person] else _next_draft(present=("fixer",))
+        )
+        answered = model.model_validate(chosen.model_dump())
+        assert refusal(answered) is None
+        return answered
+
+    _ = await _written(game, GO_HOME, answer)
+    assert "The arc as last written" not in prompts[-1]
+
+    _ = await _written(game, "I look around the warehouse.", answer)
+    assert "The arc as last written" in prompts[-1]
+
+
+async def test_advance_reopens_a_left_open_job_and_shows_the_job_before() -> None:
+    game = hub_world()
+    world = game.payload
+    campaign = the_campaign(world.campaign)
+    job = campaign.jobs[0]
+    job.title = "Job One"  # matches a board offer, so the take intent resolves it
+    job.close(returned=len(world.runs), debrief="Crates delivered, for now.", summary=JOB)
+    world.runs.append(
+        SceneRun(
+            place=HUB_PLACE,
+            title="The Amber Tap",
+            question="What job does Kael take off the board tonight?",
+            situation=HUB_SITUATION,
+            here=[],
+        )
+    )
+    prompts: list[str] = []
+
+    async def answer[M: BaseModel](
+        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
+        prompts.append(prompt)
+        answered = model.model_validate(_job_draft().model_dump())
+        assert refusal(answered) is None
+        return answered
+
+    _ = await ENGINE.advance(game, TAKE_JOB.format(title="Job One"), answer)
+
+    assert "THE JOB BEFORE" in prompts[-1]
+    assert campaign.jobs[-1] is job
+    assert len(job.attempts) == 2
+
+
 def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> None:
     world = hub_world().payload
     stranger = EntityId("stranger")
@@ -352,6 +450,52 @@ def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> Non
     assert scene_refusal(draft, world) == (
         "the scene needs a debrief that does not name what the player has not met: "
         "['Old Man Riley']"
+    )
+
+
+def test_only_the_players_own_fields_are_checked_for_what_they_have_not_met() -> None:
+    """`summary` is the game master's memory; `situation`, `debrief` and `question` are the
+    player's, and none of them may hand the player what they have not found."""
+    world = hub_world().payload
+    stranger = EntityId("stranger")
+    world.cast[stranger] = Person(id=stranger, name="Old Man Riley", brief="", known=False)
+
+    named_in_summary = _return_draft().model_copy(
+        update={
+            "summary": "Old Man Riley wintered alone behind the loading bay while Kael cleared "
+            "the crates; the haul came back whole and the fixer is paid, though a second stash "
+            "still waits unspoken."
+        }
+    )
+    assert scene_refusal(named_in_summary, world) is None
+
+    named_in_situation = _return_draft().model_copy(
+        update={"situation": f"{HUB_SITUATION} Old Man Riley watches from the doorway."}
+    )
+    assert scene_refusal(named_in_situation, world) == (
+        "the scene needs a situation that does not name what the player has not met: "
+        "['Old Man Riley']"
+    )
+
+    ided_in_debrief = _return_draft().model_copy(
+        update={"debrief": f"The crates are cleared; {stranger} saw them off."}
+    )
+    assert scene_refusal(ided_in_debrief, world) == (
+        "the scene needs a debrief that does not name what the player has not met: "
+        "['Old Man Riley']"
+    )
+
+    hidden = EntityId("buried-chest")
+    named_hidden_id_in_question = _return_draft().model_copy(
+        update={
+            "question": f"What does Kael do about {hidden}, now the job is behind them?",
+            "hidden": (hidden,),
+            "cast": {hidden: Person(id=hidden, name="A Buried Chest", brief="", known=False)},
+        }
+    )
+    assert scene_refusal(named_hidden_id_in_question, world) == (
+        "the scene needs a question that does not name what the player has not met: "
+        "['A Buried Chest']"
     )
 
 

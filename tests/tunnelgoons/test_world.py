@@ -1,7 +1,9 @@
 import pytest
-from support.tunnelgoons import HALL, MIRA, START, small_world
+from support.table import the_campaign
+from support.tunnelgoons import HALL, MIRA, START, TAVERN, hub_world, small_world
 
 from aidm.core.entities import EntityId, Refusal
+from aidm.engines.hub import Attempt, Job
 from aidm.engines.rooms.world import Item, Visit, Way
 
 GHOST = EntityId("ghost")
@@ -49,3 +51,45 @@ def test_has_shortcut_finds_the_alternate_route_to_the_vault() -> None:
 def test_frontier_counts_the_one_unknown_place_past_a_known_one() -> None:
     world = small_world().payload
     assert world.frontier() == 1
+
+
+def test_move_off_the_tavern_walks_a_reopened_jobs_last_attempt() -> None:
+    state = hub_world()
+    world = state.payload
+    world.visits = [Visit(place=TAVERN), Visit(place=START), Visit(place=TAVERN)]
+    job = Job(title="Bandits", place=START, attempts=[Attempt(started=1, returned=2)])
+    campaign = the_campaign(world.campaign)
+    campaign.jobs = [job]
+    campaign.reopen(job, started=None)
+
+    world.move(START, ())
+
+    assert len(job.attempts) == 2
+    assert job.attempts[-1].started == len(world.visits) - 1
+
+
+def test_a_returned_that_is_not_a_tavern_visit_is_refused() -> None:
+    draft = hub_world().draft()
+    world = draft.payload
+    world.visits = [Visit(place=TAVERN), Visit(place=START), Visit(place=HALL)]
+    the_campaign(world.campaign).jobs = [
+        Job(title="Bandits", place=START, attempts=[Attempt(started=1, returned=2)])
+    ]
+    with pytest.raises(Refusal, match="returned away from the hub"):
+        _ = draft.commit()
+
+
+def test_walked_places_leaves_out_the_current_visit_and_lists_a_place_once() -> None:
+    state = hub_world()
+    world = state.payload
+    world.visits = [
+        Visit(place=TAVERN),
+        Visit(place=START),
+        Visit(place=HALL),
+        Visit(place=START),
+        Visit(place=TAVERN),
+    ]
+    job = Job(title="Bandits", place=START, attempts=[Attempt(started=1)])
+    the_campaign(world.campaign).jobs = [job]
+
+    assert world.walked_places(job) == (START, HALL)

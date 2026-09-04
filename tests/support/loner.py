@@ -8,7 +8,7 @@ from aidm.core.entities import EngineId, EntityId
 from aidm.core.io import FileStore, read_character, read_scenario
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.hub import Campaign, Job, Offer
+from aidm.engines.hub import Attempt, Campaign, Job, Offer
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import (
     Loner3eCharacter,
@@ -117,7 +117,14 @@ def hub_world() -> Loner3eGame:
                 Offer(title="Job One", pitch="I take job one."),
                 Offer(title="Job Two", pitch="I take job two."),
             ),
-            jobs=[Job(title="The Sealed Cairn", place=JOB_PLACE, terms=JOB, started=1)],
+            jobs=[
+                Job(
+                    title="The Sealed Cairn",
+                    place=JOB_PLACE,
+                    terms=JOB,
+                    attempts=[Attempt(started=1)],
+                )
+            ],
         ),
     )
     return Loner3eGame(

@@ -87,6 +87,7 @@ class Answer(Frozen):
 class Exchange(Frozen):
     prompt: str
     lines: tuple[SpokenLine, ...]
+    # every fact, told or not; `cards` picks the player's
     facts: tuple[Fact, ...] = ()
     # The suspending decision's prompt: the pause has to survive after `Game.pending` clears.
     decision: str = ""
@@ -104,6 +105,18 @@ class SceneRecord(Frozen):
     question: str
     recap: str = ""
     exchanges: tuple[Exchange, ...] = ()
+
+
+class ChapterRecord(Frozen):
+    """A closed stretch of scenes read back as one block: its summary, then its scenes' titles."""
+
+    title: str
+    verdict: str  # "done" or "left open", as the ledger says it
+    summary: str
+    scenes: tuple[str, ...]
+
+
+type HistoryRecord = SceneRecord | ChapterRecord
 
 
 def narration_text(lines: Sequence[Line | SpokenLine]) -> str:

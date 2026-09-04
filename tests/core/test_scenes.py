@@ -3,11 +3,11 @@ from collections.abc import Sequence
 import pytest
 
 from aidm.core.entities import EntityId, Refusal
-from aidm.core.play import Exchange
+from aidm.core.play import ChapterRecord, Exchange, SceneRecord
 from aidm.core.views import PanelRow
 from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.hub import HOME_ROW, HUB_ROW, Campaign, Job, Offer
-from aidm.engines.scenes.drafts import NextDraft
+from aidm.engines.hub import HOME_ROW, HUB_ROW, Attempt, Campaign, Job, Offer
+from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft
 from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld
 
 HUB = "hub"
@@ -15,8 +15,13 @@ PLAYER = Person(id=PLAYER_ID, name="Player", brief="", known=True)
 MARA = EntityId("mara")
 SITUATION = "A long enough situation to satisfy the minimum length the model demands, twice over."
 RECAP = "A long enough recap to satisfy the minimum length the model demands for what happened."
+ARC = "A few lines on what waits farther in, long enough to satisfy the model's own minimum."
 DONE = "Finished the job."
-JOB = "Count the crates and haul them clear before the shift change; she pays on drop."
+JOB = "Count the crates and haul them clear before the shift change; she pays on drop, in full."
+SUMMARY = (
+    "A paragraph on the whole job, in the third person, long enough to satisfy the model's own "
+    "minimum length for a summary written for the game master alone."
+)
 BOARD = (Offer(title="A", pitch="Do a"), Offer(title="B", pitch="Do b"))
 
 
@@ -49,8 +54,14 @@ def test_the_job_walk_reads_job_runs_jobs_and_exchange_headings() -> None:
             _run("b1", "B1", played=True),
         ],
         campaign=_campaign(
-            Job(title="A1", place="a1", started=1, finished=True, debrief=DONE),
-            Job(title="B1", place="b1", started=4),
+            Job(
+                title="A1",
+                place="a1",
+                finished=True,
+                debrief=DONE,
+                attempts=[Attempt(started=1, returned=3)],
+            ),
+            Job(title="B1", place="b1", attempts=[Attempt(started=4)]),
         ),
     )
 
@@ -60,8 +71,14 @@ def test_the_job_walk_reads_job_runs_jobs_and_exchange_headings() -> None:
 
 def test_a_finished_verdict_reads_the_open_job_not_a_closed_one() -> None:
     campaign = _campaign(
-        Job(title="A1", place="a1", started=1, finished=True, debrief=DONE),
-        Job(title="B1", place="b1", started=3),
+        Job(
+            title="A1",
+            place="a1",
+            finished=True,
+            debrief=DONE,
+            attempts=[Attempt(started=1, returned=2)],
+        ),
+        Job(title="B1", place="b1", attempts=[Attempt(started=3)]),
     )
     assert campaign.finished is False  # the finished job above is already closed
 
@@ -79,14 +96,15 @@ def test_a_hub_run_with_no_closed_job_to_explain_it_is_refused() -> None:
         _ = SceneWorld[Person, Person](
             player=PLAYER,
             runs=[_run(HUB, "Hub"), _run("a1", "A1"), _run(HUB, "Hub")],
-            campaign=_campaign(Job(title="A1", place="a1", started=1)),
+            campaign=_campaign(Job(title="A1", place="a1", attempts=[Attempt(started=1)])),
         )
 
 
 def test_a_canon_with_jobs_walked_or_opening_away_from_the_hub_is_refused() -> None:
     with pytest.raises(ValueError, match="jobs walked"):
         _ = SceneCanon[Person](
-            opening=_run(HUB, "Hub"), campaign=_campaign(Job(title="A1", place="a1", started=1))
+            opening=_run(HUB, "Hub"),
+            campaign=_campaign(Job(title="A1", place="a1", attempts=[Attempt(started=1)])),
         )
     with pytest.raises(ValueError, match="not at hub"):
         _ = SceneCanon[Person](opening=_run("a1", "A1"), campaign=_campaign())
@@ -143,7 +161,7 @@ def test_scene_rows_lists_the_open_job_under_the_question() -> None:
     world = SceneWorld[Person, Person](
         player=PLAYER,
         runs=[_run(HUB, "Hub"), _run("a1", "A1")],
-        campaign=_campaign(Job(title="A1", place="a1", terms=JOB, started=1)),
+        campaign=_campaign(Job(title="A1", place="a1", terms=JOB, attempts=[Attempt(started=1)])),
     )
 
     assert world.scene_rows()[1] == PanelRow(label="The job", detail=JOB)
@@ -190,12 +208,110 @@ def test_apply_scene_with_a_next_draft_stamps_the_recap_on_the_run_left() -> Non
         situation=SITUATION,
         present=(MARA,),
         recap=RECAP,
+        arc=ARC,
     )
 
     world.apply_scene(draft)
 
     assert world.runs[0].recap == RECAP
     assert world.runs[-1].recap == ""
+    assert world.arc == ARC
+
+
+def test_scenes_chapters_a_closed_job_and_keeps_the_open_ones_scene_by_scene() -> None:
+    job_a = Job(
+        title="A1",
+        place="a1",
+        finished=True,
+        debrief=DONE,
+        summary="Job one is done.",
+        attempts=[Attempt(started=1, returned=3)],
+    )
+    job_b = Job(title="B1", place="b1", attempts=[Attempt(started=4, returned=5)])
+    world = SceneWorld[Person, Person](
+        player=PLAYER,
+        runs=[
+            _run(HUB, "Hub", played=True),
+            _run("a1", "A1", played=True),
+            _run("a1", "A2", played=True),
+            _run(HUB, "Hub", played=True),
+            _run("b1", "B1", played=True),
+            _run(HUB, "Hub", played=True),
+        ],
+        campaign=_campaign(job_a, job_b),
+    )
+
+    scenes = world.scenes()
+
+    assert isinstance(scenes[1], ChapterRecord)
+    assert (scenes[1].title, scenes[1].scenes) == ("A1", ("A1", "A2"))
+    assert [record.title for record in (scenes[0], *scenes[2:])] == ["Hub", "Hub", "B1", "Hub"]
+    assert all(isinstance(record, SceneRecord) for record in (scenes[0], *scenes[2:]))
+
+
+def test_apply_scene_with_reopening_reopens_the_job_instead_of_appending() -> None:
+    job = Job(title="B1", place="b1", debrief=DONE, attempts=[Attempt(started=1, returned=2)])
+    world = SceneWorld[Person, Person](
+        player=PLAYER,
+        runs=[_run(HUB, "Hub", played=True), _run("b1", "B1", played=True), _run(HUB, "Hub")],
+        campaign=_campaign(job),
+    )
+    draft = JobDraft[Person](
+        place="b1",
+        title="B1",
+        question="What happens next here?",
+        situation=SITUATION,
+        recap=RECAP,
+        arc=ARC,
+        job=JOB,
+    )
+
+    world.apply_scene(draft, reopening=job)
+
+    campaign = world.campaign
+    assert campaign is not None
+    assert [j.title for j in campaign.jobs] == ["B1"]  # not appended a second time
+    assert campaign.jobs[-1] is job
+    assert job.open
+    assert job.finished is False
+    assert job.terms == JOB
+
+
+def test_apply_scene_with_a_return_draft_closes_the_attempt_and_stores_summary_and_recap() -> None:
+    world = SceneWorld[Person, Person](
+        player=PLAYER,
+        runs=[_run(HUB, "Hub", played=True), _run("b1", "B1", played=True)],
+        campaign=_campaign(Job(title="B1", place="b1", attempts=[Attempt(started=1)])),
+    )
+    draft = ReturnDraft[Person](
+        place=HUB,
+        title="Hub",
+        question="What does she do next?",
+        situation=SITUATION,
+        offers=BOARD,
+        debrief="She counts the take twice before she says a word.",
+        recap=RECAP,
+        summary=SUMMARY,
+    )
+
+    world.apply_scene(draft)
+
+    campaign = world.campaign
+    assert campaign is not None
+    job = campaign.jobs[-1]
+    assert (job.debrief, job.summary) == (draft.debrief, SUMMARY)
+    assert world.runs[1].recap == RECAP
+
+
+def test_a_world_whose_job_returns_away_from_the_hub_is_refused() -> None:
+    with pytest.raises(ValueError, match="returned away from the hub"):
+        _ = SceneWorld[Person, Person](
+            player=PLAYER,
+            runs=[_run(HUB, "Hub"), _run("a1", "A1"), _run("a1", "A2")],
+            campaign=_campaign(
+                Job(title="A1", place="a1", attempts=[Attempt(started=1, returned=2)])
+            ),
+        )
 
 
 def test_entering_someone_hidden_is_refused_reveal_makes_them_present() -> None:

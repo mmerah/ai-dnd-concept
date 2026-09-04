@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Refusal, Slug, parse, require_unique
-from aidm.core.facts import Fact, cards
+from aidm.core.facts import Fact
 from aidm.core.io import ENCODING, decode
 from aidm.core.model import (
     AnyCharacter,
@@ -18,7 +18,7 @@ from aidm.core.model import (
     ScenarioMeta,
     WorldsmithAnswer,
 )
-from aidm.core.play import DecisionOption, Exchange, Line, PendingOption, SceneRecord
+from aidm.core.play import DecisionOption, Exchange, HistoryRecord, Line, PendingOption
 from aidm.core.tools import MasterTool
 from aidm.core.views import NarratorView, PlayerView, Rows, Sections
 from aidm.engines.base import PLAYER_ID, Person
@@ -49,7 +49,7 @@ class Engine[G: Game[Any]](ABC):
     def pack_options(self) -> tuple[DecisionOption, ...]:
         return ()
 
-    def crossing(self, pursuit: str) -> str | None:
+    def crossing(self, state: G, pursuit: str) -> str | None:
         """The narrator's brief for the arrival; None where the world grows without a turn."""
         return None
 
@@ -107,7 +107,7 @@ class Engine[G: Game[Any]](ABC):
         exchange = Exchange(
             prompt=prompt,
             lines=self.narrator_view(draft).spoken(lines),
-            facts=cards(facts),
+            facts=tuple(facts),
             decision="" if draft.pending is None else draft.pending.prompt,
         )
         self.record(draft, exchange)
@@ -133,7 +133,7 @@ class Engine[G: Game[Any]](ABC):
     @abstractmethod
     def history(self, state: G) -> tuple[Exchange, ...]: ...
     @abstractmethod
-    def scenes(self, state: G) -> tuple[SceneRecord, ...]: ...
+    def scenes(self, state: G) -> tuple[HistoryRecord, ...]: ...
     @abstractmethod
     def master_sections(self, state: G) -> Sections: ...
     @abstractmethod

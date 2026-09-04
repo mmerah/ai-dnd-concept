@@ -6,11 +6,16 @@ from support.table import TUNNELGOONS, game, the_campaign
 from support.tunnelgoons import START, TAVERN, hub_world, small_world
 
 from aidm.core.entities import EntityId, Refusal
-from aidm.engines.hub import Job, Offer
+from aidm.engines.hub import Attempt, Job, Offer
 from aidm.engines.rooms.drafts import MapDraft, ReturnDraft
 from aidm.engines.rooms.engine import REPORT_IN
 from aidm.engines.rooms.world import Item, Place, Visit, Way
-from aidm.engines.rooms.worldsmith import extension_refusal, hub_refusal, map_refusal
+from aidm.engines.rooms.worldsmith import (
+    extension_refusal,
+    hub_refusal,
+    map_refusal,
+    return_refusal,
+)
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsGame
 from aidm.engines.tunnelgoons.worldsmith import AUTHORING
@@ -131,6 +136,13 @@ def test_install_extension_on_a_game_from_the_engine() -> None:
 RETURN = ReturnDraft(
     debrief="The crates are cleared and paid for.",
     offers=(Offer(title="Job One", pitch="pitch one"), Offer(title="Job Two", pitch="pitch two")),
+    summary=(
+        "Kael cleared the vault and squared the debt, though the crypt beyond stayed sealed and "
+        "whatever waits down there is still a mystery worth chasing."
+    ),
+    recaps={
+        START: "Kael slipped past Mira's watch, pried the vault open, and carried the take out."
+    },
 )
 
 
@@ -170,7 +182,9 @@ def _walked_job_visits() -> list[Visit]:
 async def test_write_extension_picks_return_draft_on_report_in_with_a_job_open() -> None:
     state = hub_world()
     state.payload.visits = _walked_job_visits()
-    the_campaign(state.payload.campaign).jobs = [Job(title="Bandits", place=START, started=1)]
+    the_campaign(state.payload.campaign).jobs = [
+        Job(title="Bandits", place=START, attempts=[Attempt(started=1)])
+    ]
     recorded: list[type[BaseModel]] = []
 
     async def answer[M: BaseModel](
@@ -197,7 +211,9 @@ async def test_write_extension_refuses_report_in_with_no_job_open() -> None:
         _ = await ENGINE.write_extension(unwalked, REPORT_IN, answer)
 
     stamped_not_walked = hub_world()
-    the_campaign(stamped_not_walked.payload.campaign).jobs = [Job(title="Bandits", place=START)]
+    the_campaign(stamped_not_walked.payload.campaign).jobs = [
+        Job(title="Bandits", place=START, attempts=[Attempt()])
+    ]
     with pytest.raises(Refusal, match="no job is open to report"):
         _ = await ENGINE.write_extension(stamped_not_walked, REPORT_IN, answer)
 
@@ -205,7 +221,9 @@ async def test_write_extension_refuses_report_in_with_no_job_open() -> None:
 async def test_write_extension_refuses_a_walked_job_open_with_another_intent() -> None:
     state = hub_world()
     state.payload.visits = _walked_job_visits()
-    the_campaign(state.payload.campaign).jobs = [Job(title="Bandits", place=START, started=1)]
+    the_campaign(state.payload.campaign).jobs = [
+        Job(title="Bandits", place=START, attempts=[Attempt(started=1)])
+    ]
 
     async def answer[M: BaseModel](
         prompt: str, model: type[M], refusal: Callable[[M], str | None]
@@ -235,12 +253,65 @@ async def test_write_extension_asks_for_map_draft_away_or_at_the_hub_otherwise()
     assert all(AUTHORING in prompt for prompt in prompts)
 
 
+def _job_walking() -> Job:
+    return Job(title="Bandits", place=START, attempts=[Attempt(started=1)])
+
+
+def test_return_refusal_names_a_walked_place_missing_its_recap() -> None:
+    state = hub_world()
+    state.payload.visits = _walked_job_visits()
+    the_campaign(state.payload.campaign).jobs = [_job_walking()]
+
+    refused = return_refusal(RETURN.model_copy(update={"recaps": {}}), state.payload)
+
+    assert refused is not None
+    assert START in refused
+
+
+def test_return_refusal_names_a_recap_for_a_place_not_walked() -> None:
+    state = hub_world()
+    state.payload.visits = _walked_job_visits()
+    the_campaign(state.payload.campaign).jobs = [_job_walking()]
+    extra = RETURN.model_copy(update={"recaps": {**RETURN.recaps, HALL: "H" * 60}})
+
+    refused = return_refusal(extra, state.payload)
+
+    assert refused is not None
+    assert HALL in refused
+
+
+def test_return_refusal_refuses_a_recap_of_the_current_tavern_visit() -> None:
+    state = hub_world()
+    state.payload.visits = _walked_job_visits()
+    the_campaign(state.payload.campaign).jobs = [_job_walking()]
+    with_tavern = RETURN.model_copy(update={"recaps": {**RETURN.recaps, TAVERN: "T" * 60}})
+
+    refused = return_refusal(with_tavern, state.payload)
+
+    assert refused is not None
+    assert TAVERN in refused
+
+
+def test_return_refusal_refuses_a_debrief_naming_an_unmet_npc() -> None:
+    state = hub_world()
+    state.payload.visits = _walked_job_visits()
+    the_campaign(state.payload.campaign).jobs = [_job_walking()]
+    naming = RETURN.model_copy(update={"debrief": "Robo Mantis clicked in the dark the whole way."})
+
+    refused = return_refusal(naming, state.payload)
+
+    assert refused is not None
+    assert "Robo Mantis" in refused
+
+
 def test_install_extension_on_a_return_draft_closes_the_job() -> None:
     state = hub_world()
     world = state.payload
     world.visits = _walked_job_visits()
     campaign = the_campaign(world.campaign)
-    campaign.jobs = [Job(title="Bandits", place=START, started=1, finished=True)]
+    campaign.jobs = [
+        Job(title="Bandits", place=START, finished=True, attempts=[Attempt(started=1)])
+    ]
 
     facts = ENGINE.install_extension(state, RETURN)
 
@@ -273,7 +344,132 @@ def test_install_extension_on_a_map_draft_at_the_hub_takes_the_job() -> None:
     way = world.way(TAVERN, extension.start)
     assert way is not None
     assert way.known
-    assert the_campaign(world.campaign).jobs[-1] == Job(title=start_name, place=extension.start)
+    assert the_campaign(world.campaign).jobs[-1] == Job(
+        title=start_name, place=extension.start, attempts=[Attempt()]
+    )
+
+
+def test_install_extension_on_a_return_draft_lands_recaps_on_each_places_last_visit() -> None:
+    state = hub_world()
+    world = state.payload
+    world.visits = [
+        Visit(place=TAVERN),
+        Visit(place=START),
+        Visit(place=HALL),
+        Visit(place=START),
+        Visit(place=TAVERN),
+    ]
+    the_campaign(world.campaign).jobs = [_job_walking()]
+    recapped = RETURN.model_copy(update={"recaps": {START: "S" * 60, HALL: "H" * 60}})
+
+    facts = ENGINE.install_extension(state, recapped)
+
+    assert world.visits[1].recap == ""
+    assert world.visits[2].recap == recapped.recaps[HALL]
+    assert world.visits[3].recap == recapped.recaps[START]
+    assert [fact.kind for fact in facts] == ["job_closed"]
+
+
+OLD_SITE = EntityId("old-site")
+
+
+def _left_open_job_world() -> tuple[TunnelGoonsGame, Job]:
+    state = hub_world(with_map=False)
+    world = state.payload
+    world.places[OLD_SITE] = Place(
+        id=OLD_SITE, name="Old Site", brief="b", known=True, description="d"
+    )
+    world.add_way(TAVERN, OLD_SITE, known=True)
+    world.visits = [Visit(place=TAVERN), Visit(place=OLD_SITE), Visit(place=TAVERN)]
+    old_job = Job(
+        title="Crates off Deck 9",
+        place=OLD_SITE,
+        debrief="left off mid-count",
+        attempts=[Attempt(started=1, returned=2)],
+    )
+    the_campaign(world.campaign).jobs = [old_job]
+    return state, old_job
+
+
+def _wide_region() -> MapDraft[Npc]:
+    canon = _tunnelgoons_game().payload
+    return MapDraft[Npc](
+        places=canon.places,
+        ways=canon.ways,
+        npcs=canon.npcs,
+        items=canon.items,
+        start=canon.current.id,
+    )
+
+
+def test_install_extension_reopens_a_left_open_job_at_its_own_start() -> None:
+    state, old_job = _left_open_job_world()
+    world = state.payload
+    campaign = the_campaign(world.campaign)
+    reopening = campaign.taken('I take the job "Crates off Deck 9".')
+    assert reopening is old_job
+
+    extension = _wide_region()
+    facts = ENGINE.install_extension(state, extension, reopening=reopening)
+
+    assert facts[0].kind == "job_taken"
+    assert "Old Site" in facts[0].trace
+    assert "Tavern" not in facts[0].trace
+    way = world.way(OLD_SITE, extension.start)
+    assert way is not None and way.known
+    assert campaign.jobs[-1] is old_job
+    assert campaign.jobs[-1].open
+    assert campaign.jobs[-1].attempts[-1].started is None
+    assert len(campaign.jobs[-1].attempts) == 2
+
+
+def test_swapping_out_a_reopened_unwalked_job_leaves_it_closed_not_open() -> None:
+    state, old_job = _left_open_job_world()
+    world = state.payload
+    campaign = the_campaign(world.campaign)
+    reopening = campaign.taken('I take the job "Crates off Deck 9".')
+    _ = ENGINE.install_extension(state, _wide_region(), reopening=reopening)
+
+    campaign.swap_out()
+
+    assert old_job in campaign.jobs
+    assert not old_job.open
+    assert old_job.attempts[-1].returned == 2
+
+
+async def test_write_extension_prompt_carries_scenes_so_far() -> None:
+    prompts: list[str] = []
+
+    async def answer[M: BaseModel](
+        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
+        prompts.append(prompt)
+        return model.model_validate(THIN.model_dump())
+
+    _ = await ENGINE.write_extension(hub_world(), "Nose around the docks.", answer)
+
+    assert "SCENES SO FAR" in prompts[0]
+
+
+async def test_write_extension_prompt_carries_the_job_before_only_on_a_retake() -> None:
+    state, old_job = _left_open_job_world()
+    campaign = the_campaign(state.payload.campaign)
+    retake = 'I take the job "Crates off Deck 9".'
+    reopening = campaign.taken(retake)
+    assert reopening is old_job
+    prompts: list[str] = []
+
+    async def answer[M: BaseModel](
+        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
+        prompts.append(prompt)
+        return model.model_validate(THIN.model_dump())
+
+    _ = await ENGINE.write_extension(state, retake, answer, reopening=reopening)
+    _ = await ENGINE.write_extension(state, "Nose around the docks.", answer, reopening=None)
+
+    assert "THE JOB BEFORE" in prompts[0]
+    assert "THE JOB BEFORE" not in prompts[1]
 
 
 def test_hub_refusal_needs_a_two_or_three_offer_board_and_passes_the_shipped_campaign() -> None:
