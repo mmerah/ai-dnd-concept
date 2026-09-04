@@ -7,8 +7,9 @@ for what can go or be spelled once. This file merges them, then re-checks every 
 `master` at `fc4d354` (9,330 lines, nine commits later: a docstring and one-use-local sweep,
 the envelope aliases, the job tags). **Two of the ten proposals landed on master while the
 round ran** (P1 in `c54eb47`, P10 in `fc4d354`); they stay below, marked, so the reasoning is
-on record. Votes are out of 4. Line counts are estimates. **Section 4 holds the decisions; each
-heading takes one letter.** Section 5 lists what round two settled and this round does not
+on record. Votes are out of 4. Line counts are estimates. **Section 4 holds the decisions, settled by the
+maintainer on 2026-09-04: D1 A, D2 A, D3 A, D5 A, D6 A, D7 B, D8 A; D4 landed. P9 is not
+taken.** Section 5 lists what round two settled and this round does not
 reopen, and what master landed.
 
 Headline, agreed by all four: there is no dead code (C found no name in `src` with zero callers),
@@ -16,7 +17,7 @@ the layering is clean (the boundary test passes; no upward import; `Any` only in
 bounds), and every concept has a user. What is left is of three kinds: **the two families spell
 one seam twice** (worldsmith frame, commission tool, hub block, lifecycle names), **the concrete
 engines repeat one scaffold four times** (creation, items), and **three names each mean two
-things** (`draft`, `commit`, `moving_on`). Total if the eight open proposals land: about −150
+things** (`draft`, `commit`, `moving_on`). Total if the seven open proposals land: about −140
 `src` lines, −400 test lines, two hooks and one Protocol fewer, and one spelling for each of the
 eight things now spelled twice. About a day and a half.
 
@@ -138,7 +139,7 @@ Verdicts: **keep** (earned, no proposal), **P#** (a proposal touches it), **D#**
 ## 2. The ten proposals, ranked by value over risk
 
 Each: what changes, the evidence, what is lost, size, risk, who proposed it. Two are marked
-**landed**; eight are open.
+**landed**, one **not taken**; seven are open.
 
 ### P1 — Twelve envelope classes become aliases; the engine fit is checked once (4/4) — **landed, one tail left**
 
@@ -343,7 +344,7 @@ reads an engine's own rule. `tests/core/test_scenes.py` already tests the same b
 **Lost.** Nothing. **Size.** −380 test lines; 3 h. **Risk.** Low; tests only. A test that turns
 out to read a rule stays where it is.
 
-### P9 — Data nothing reads: four knobs become constants (1/4 proposed; D7 for the pack fields)
+### P9 — Data nothing reads: four knobs become constants (1/4 proposed) — **not taken** (maintainer, 2026-09-04)
 
 **Change.** `MediaConfig.scene_ratio`, `icon_ratio`, `max_references` and `SpeechConfig.
 sample_rate` (fact 11) become module constants in `media.py` and `speech.py`. They leave the
@@ -375,7 +376,7 @@ consecutive equal tags, which reads as the spec.
 2. P2 with D1 decided, then P3: the family and engine scaffolds. One golden regen (master
    sections must not move). ~6 h.
 3. P4, P5 with D8 decided, P6 with D3 decided: dispatch, the service, the names. ~6 h.
-4. P8, P9: tests and knobs. ~4 h.
+4. P8: the tests. ~3 h.
 
 `src` after 1–4: about 9,180 lines. Every engine directory stays under 2,000; `engines/scenes/`
 and `engines/rooms/` shrink.
@@ -384,16 +385,17 @@ and `engines/rooms/` shrink.
 
 ## 4. Decisions for the maintainer
 
-Each with options and the reviewers' lean. Take one letter per heading. D4 needs no letter.
+Each with options and the reviewers' lean; the maintainer's answer (2026-09-04) is on the
+heading. D4 needed no letter.
 
-**D1 — Which section order does the shared worldsmith frame keep?** (P2)
+**D1 — Which section order does the shared worldsmith frame keep? — settled: A** (P2)
 - A. Scenes' order: `ENGINE GUIDANCE` before `WHAT COMES NEXT`, `STANDING INSTRUCTION` for both
   families. Rooms' prompt changes; Tunnel Goons gains the surprise instruction.
 - B. Rooms' order: guidance after the intent; no standing instruction. Scenes' prompt changes.
 - C. Keep both functions; rename one (`room_prompt`, `scene_prompt`). Consistency of names only.
 - Lean: **A** (lead, A, C). B (reviewer) leans C.
 
-**D2 — Split presentation out of `GameService`?** (A, B, lead)
+**D2 — Split presentation out of `GameService`? — settled: A** (A, B, lead)
 `runtime.py:56–57,65,142–145,254–287`: `media`, `reader`, `_background`, `_present`,
 `illustrate`, `speak`, `scene_art`, `icon`, `newest_clip`, `_newest`, `_retain` — about 40 lines
 that never read the turn. The page calls five of them directly.
@@ -405,7 +407,7 @@ that never read the turn. The page calls five of them directly.
 - C. Leave: 250 lines one person wrote.
 - Lean: **A if Track G starts within the month** (the party adds presentation), else **B**.
 
-**D3 — Which way does the `draft` rename go?** (P6)
+**D3 — Which way does the `draft` rename go? — settled: A** (P6)
 - A. The worldsmith's answers become `*Proposal` (CLAUDE.md's word); `draft` is the
   transactional copy only. ~90 sites.
 - B. The transactional copy becomes `candidate`/`working` and the proposals keep `Draft`.
@@ -413,9 +415,9 @@ that never read the turn. The page calls five of them directly.
 - C. Leave; one CLAUDE.md line saying "a Draft is the worldsmith's; a draft is the turn's".
 - Lean: **A**.
 
-**D4 — The job spans.** Settled by `fc4d354` (P10 landed). No letter needed.
+**D4 — The job spans. — settled by `fc4d354`** (P10 landed). No letter needed.
 
-**D5 — The method rule and the `Free:` docstrings.** (B)
+**D5 — The method rule and the `Free:` docstrings. — settled: A** (B)
 CLAUDE.md: "a function whose first argument is one of our objects is a method". Seven free
 functions still carry a `"""Free: …` line (P7 lists them); about sixty others take one of our
 objects first with no line (`illustration_request(scene: NarratorView, …)`,
@@ -431,7 +433,7 @@ Tunnel Goons spells starting items as a method (`Goon.starting_items`), 24XX as 
   starts at ~60 names. +40 lines; 3 h.
 - Lean: **A**.
 
-**D6 — The way-on affordance is drawn three times.** (C)
+**D6 — The way-on affordance is drawn three times. — settled: A** (C)
 `ui/game.py:204` `way_on_panel` ("there is more beyond here … press Move on"), the sidebar row
 `PanelRow(label="Way on", detail="Keep playing, or name where you go and move on.")`
 (`scenes/world.py`, `scene_rows`), and `move_on_button` (shown only when `ready`).
@@ -440,7 +442,7 @@ Tunnel Goons spells starting items as a method (`Goon.starting_items`), 24XX as 
 - C. Keep all three (the reader wants the prompt where they look).
 - Lean: **A**; the journal tab (a second view of the chat) stays under the same reasoning as C.
 
-**D7 — `Pack.source` and `Pack.license`.** (C) Required in every pack (`base.py:92–93`), read
+**D7 — `Pack.source` and `Pack.license`. — settled: B** (C) Required in every pack (`base.py:92–93`), read
 nowhere in `src`. Round two's D11 A made them required as attribution-in-data.
 - A. Delete both; the attribution lives in `rules.md` and `docs/<ENGINE>.md`. −2 fields, −12
   JSON lines.
@@ -449,7 +451,7 @@ nowhere in `src`. Round two's D11 A made them required as attribution-in-data.
 - C. Keep as is (reconfirm D11 A).
 - Lean: **B** (a required field earns its keep by being read once) — the lead; C leans A.
 
-**D8 — The `intent` bubble during a rooms write.** (P5)
+**D8 — The `intent` bubble during a rooms write. — settled: A** (P5)
 `GameService.intent` shows the player's words as their bubble while the worldsmith writes a
 region without a turn (`ui/game.py:196–197`).
 - A. Keep it; `move_on` sets it. The `_SilentEngine` test scaffolding stays.
