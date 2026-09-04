@@ -402,8 +402,8 @@ async def test_advance_reopens_a_left_open_job_and_shows_the_job_before() -> Non
     world = game.payload
     campaign = the_campaign(world.campaign)
     job = campaign.jobs[0]
-    job.title = "Job One"  # matches a board offer, so the take intent resolves it
-    job.close(returned=len(world.runs), debrief="Crates delivered, for now.", summary=JOB)
+    job.title = world.runs[-1].job = "Job One"  # a board offer, so the take intent resolves it
+    job.close(debrief="Crates delivered, for now.", summary=JOB)
     world.runs.append(
         SceneRun(
             place=HUB_PLACE,
@@ -427,7 +427,8 @@ async def test_advance_reopens_a_left_open_job_and_shows_the_job_before() -> Non
 
     assert "THE JOB BEFORE" in prompts[-1]
     assert campaign.jobs[-1] is job
-    assert len(job.attempts) == 2
+    assert job.open
+    assert [run.job for run in world.runs] == ["", "Job One", "", "Job One"]
 
 
 def test_a_return_naming_an_unmet_cast_member_in_the_debrief_is_refused() -> None:

@@ -3,13 +3,14 @@ from support.table import the_campaign
 from support.tunnelgoons import HALL, MIRA, START, TAVERN, hub_world, small_world
 
 from aidm.core.entities import EntityId, Refusal
-from aidm.engines.hub import Attempt, Job
+from aidm.engines.hub import Job
 from aidm.engines.rooms.world import Dungeon, Item, Place, RoomCanon, Visit, Way
 from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsWorld
 
 GHOST = EntityId("ghost")
 OLD_SITE = EntityId("old-site")
 NEW_SITE = EntityId("new-site")
+BANDITS = "Bandits"
 
 
 def test_begin_refuses_a_canon_whose_npc_stands_in_no_place() -> None:
@@ -66,82 +67,165 @@ def test_frontier_counts_the_one_unknown_place_past_a_known_one() -> None:
     assert world.frontier() == 1
 
 
-def test_move_off_the_tavern_walks_a_reopened_jobs_last_attempt() -> None:
-    state = hub_world()
-    world = state.payload
-    world.visits = [Visit(place=TAVERN), Visit(place=START), Visit(place=TAVERN)]
-    job = Job(title="Bandits", place=START, attempts=[Attempt(started=1, returned=2)])
+def test_move_tags_each_new_visit_with_the_open_job_even_back_at_the_tavern() -> None:
+    world = hub_world().payload
+    job = Job(title=BANDITS, place=START, open=True)
+    the_campaign(world.campaign).jobs = [job]
+
+    _ = world.move(START, ())
+    assert world.visit.job == BANDITS
+
+    _ = world.move(TAVERN, ())
+    assert world.visit.job == BANDITS
+    assert job.open
+    assert world.walked() == ["", BANDITS, BANDITS]
+
+
+def test_move_off_the_tavern_tags_the_visit_with_a_reopened_job() -> None:
+    world = hub_world().payload
+    world.visits = [Visit(place=TAVERN), Visit(place=START, job=BANDITS), Visit(place=TAVERN)]
+    job = Job(title=BANDITS, place=START)
     campaign = the_campaign(world.campaign)
     campaign.jobs = [job]
-    campaign.reopen(job, started=None)
+    campaign.reopen(job)
+    assert world.walked_job() is None
 
-    world.move(START, ())
+    _ = world.move(START, ())
 
-    assert len(job.attempts) == 2
-    assert job.attempts[-1].started == len(world.visits) - 1
+    assert world.visit.job == BANDITS
+    assert world.walked_job() is job
 
 
-def test_a_returned_that_is_not_a_tavern_visit_is_refused() -> None:
+def test_walked_job_reads_the_last_visits_tag() -> None:
+    world = hub_world().payload
+    job = Job(title=BANDITS, place=START, open=True)
+    the_campaign(world.campaign).jobs = [job]
+    assert world.walked_job() is None
+
+    world.visits.append(Visit(place=START, job=BANDITS))
+    assert world.walked_job() is job
+
+    world.visits.append(Visit(place=HALL))
+    assert world.walked_job() is None
+
+
+def test_a_closed_job_still_walked_by_the_last_visit_is_refused() -> None:
     draft = hub_world().draft()
     world = draft.payload
-    world.visits = [Visit(place=TAVERN), Visit(place=START), Visit(place=HALL)]
-    the_campaign(world.campaign).jobs = [
-        Job(title="Bandits", place=START, attempts=[Attempt(started=1, returned=2)])
-    ]
-    with pytest.raises(Refusal, match="returned away from the hub"):
+    world.visits = [Visit(place=TAVERN), Visit(place=START, job=BANDITS)]
+    the_campaign(world.campaign).jobs = [Job(title=BANDITS, place=START)]
+    with pytest.raises(Refusal, match="is not open"):
         _ = draft.commit()
 
 
-def test_walked_places_leaves_out_the_current_visit_and_lists_a_place_once() -> None:
-    state = hub_world()
-    world = state.payload
-    world.visits = [
+def test_a_visit_taking_a_job_at_the_tavern_is_refused() -> None:
+    draft = hub_world().draft()
+    world = draft.payload
+    world.visits = [Visit(place=TAVERN), Visit(place=START), Visit(place=TAVERN, job=BANDITS)]
+    the_campaign(world.campaign).jobs = [Job(title=BANDITS, place=START, open=True)]
+    with pytest.raises(Refusal, match="takes 'Bandits' at the hub"):
+        _ = draft.commit()
+
+
+def _mid_job_visits() -> list[Visit]:
+    return [
         Visit(place=TAVERN),
-        Visit(place=START),
-        Visit(place=HALL),
-        Visit(place=START),
-        Visit(place=TAVERN),
+        Visit(place=START, job=BANDITS),
+        Visit(place=HALL, job=BANDITS),
+        Visit(place=START, job=BANDITS),
+        Visit(place=TAVERN, job=BANDITS),
     ]
-    job = Job(title="Bandits", place=START, attempts=[Attempt(started=1)])
-    the_campaign(world.campaign).jobs = [job]
-
-    assert world.walked_places(job) == (START, HALL)
 
 
-def test_apply_extension_reopens_a_left_open_job_at_its_own_start() -> None:
-    state = hub_world(with_map=False)
-    world = state.payload
-    world.places[OLD_SITE] = Place(
-        id=OLD_SITE, name="Old Site", brief="b", known=True, description="d"
-    )
-    world.add_way(TAVERN, OLD_SITE, known=True)
-    world.visits = [Visit(place=TAVERN), Visit(place=OLD_SITE), Visit(place=TAVERN)]
-    old_job = Job(
-        title="Crates off Deck 9", place=OLD_SITE, attempts=[Attempt(started=1, returned=2)]
-    )
-    the_campaign(world.campaign).jobs = [old_job]
-    region = Dungeon[Npc](
+def test_walked_places_leaves_out_the_current_visit_and_lists_a_place_once() -> None:
+    world = hub_world().payload
+    world.visits = _mid_job_visits()
+    the_campaign(world.campaign).jobs = [Job(title=BANDITS, place=START, open=True)]
+
+    assert world.walked_places() == (START, HALL)
+
+
+def test_apply_return_clears_the_tavern_visits_tag_and_lands_recaps_on_the_span() -> None:
+    world = hub_world().payload
+    world.visits = _mid_job_visits()
+    campaign = the_campaign(world.campaign)
+    job = Job(title=BANDITS, place=START, open=True)
+    campaign.jobs = [job]
+    recaps = {START: "S" * 60, HALL: "H" * 60}
+
+    closed = world.apply_return(debrief="d", summary="s", recaps=recaps, offers=campaign.board)
+
+    assert closed is job
+    assert not job.open
+    assert world.walked() == ["", BANDITS, BANDITS, BANDITS, ""]
+    assert world.walked_job() is None
+    assert [visit.recap for visit in world.visits] == ["", "", recaps[HALL], recaps[START], ""]
+
+
+def _region() -> Dungeon[Npc]:
+    return Dungeon[Npc](
         places={
             NEW_SITE: Place(id=NEW_SITE, name="New Site", brief="b", known=False, description="d")
         }
     )
 
-    anchor = world.apply_extension(region, NEW_SITE, reopening=old_job)
+
+def test_apply_extension_reopens_a_left_open_job_at_its_own_start() -> None:
+    world = hub_world(with_map=False).payload
+    world.places[OLD_SITE] = Place(
+        id=OLD_SITE, name="Old Site", brief="b", known=True, description="d"
+    )
+    world.add_way(TAVERN, OLD_SITE, known=True)
+    world.visits = [
+        Visit(place=TAVERN),
+        Visit(place=OLD_SITE, job="Crates off Deck 9"),
+        Visit(place=TAVERN),
+    ]
+    old_job = Job(title="Crates off Deck 9", place=OLD_SITE)
+    the_campaign(world.campaign).jobs = [old_job]
+
+    anchor = world.apply_extension(_region(), NEW_SITE, reopening=old_job)
 
     assert anchor.id == OLD_SITE
     way = world.way(OLD_SITE, NEW_SITE)
     assert way is not None and way.known
     campaign = the_campaign(world.campaign)
     assert campaign.jobs[-1] is old_job
+    assert old_job.open
+    assert world.visit.job == ""
+    assert world.walked_job() is None
+
+
+def test_apply_extension_at_the_tavern_swaps_out_an_unwalked_job() -> None:
+    never_walked = hub_world(with_map=False).payload
+    campaign = the_campaign(never_walked.campaign)
+    campaign.jobs = [Job(title=BANDITS, place=START, open=True)]
+
+    _ = never_walked.apply_extension(_region(), NEW_SITE)
+
+    assert [job.title for job in campaign.jobs] == ["New Site"]
     assert campaign.jobs[-1].open
-    assert campaign.jobs[-1].attempts[-1].started is None
-    assert len(campaign.jobs[-1].attempts) == 2
+
+    walked_before = hub_world().payload
+    walked_before.visits = [
+        Visit(place=TAVERN),
+        Visit(place=START, job=BANDITS),
+        Visit(place=TAVERN),
+    ]
+    campaign = the_campaign(walked_before.campaign)
+    old_job = Job(title=BANDITS, place=START, open=True)  # reopened at the board, not walked
+    campaign.jobs = [old_job]
+
+    _ = walked_before.apply_extension(_region(), NEW_SITE)
+
+    assert [job.title for job in campaign.jobs] == [BANDITS, "New Site"]
+    assert not old_job.open
+    assert walked_before.visits[1].job == BANDITS
 
 
 def test_apply_return_refuses_with_no_job_walked() -> None:
-    state = hub_world()
-    world = state.payload
+    world = hub_world().payload
     board = the_campaign(world.campaign).board
 
     with pytest.raises(Refusal, match="no job is open to report"):
-        world.apply_return(debrief="d", summary="s", recaps={}, offers=board)
+        _ = world.apply_return(debrief="d", summary="s", recaps={}, offers=board)

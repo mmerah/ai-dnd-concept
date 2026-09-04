@@ -5,7 +5,7 @@ from typing import Annotated, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import Frozen, Mutable, Refusal, Slug
+from aidm.core.entities import Frozen, Mutable, Refusal, Slug, require_unique
 from aidm.core.facts import Fact
 from aidm.core.model import ScenarioKind
 from aidm.core.play import ChapterRecord, Exchange, HistoryRecord, SceneRecord
@@ -83,52 +83,19 @@ class Offer(Frozen):
 type Board = Annotated[tuple[Offer, ...], Field(min_length=BOARD_MIN, max_length=BOARD_MAX)]
 
 
-class Attempt(Mutable):
-    """One walk out on a job; a job left open and taken again has several."""
-
-    started: int | None = None  # index of the first run or visit away from the hub
-    returned: int | None = None  # index of the hub run or visit that closed it
-
-    @model_validator(mode="after")
-    def _returns_only_what_started(self) -> Self:
-        if self.returned is not None and (self.started is None or self.returned <= self.started):
-            raise ValueError("an attempt can only be returned after it started")
-        return self
-
-
 class Job(Mutable):
-    title: str
+    """A run or visit walking it carries its title; a job taken again has several spans."""
+
+    title: str = Field(min_length=1)  # a run's empty tag is the hub, so a job's is never empty
     place: Slug
     terms: str = ""  # as the scene that left the hub wrote them; empty for a room engine
-    attempts: list[Attempt] = Field(default_factory=list)
+    open: bool = False
     finished: bool = False  # the master's verdict
     debrief: str = ""  # the last return's card, kept on a reopen
     summary: str = ""  # the worldsmith's, for the master and itself
 
-    @property
-    def open(self) -> bool:
-        return bool(self.attempts) and self.attempts[-1].returned is None
-
-    @property
-    def walking(self) -> bool:
-        return self.open and self.attempts[-1].started is not None
-
-    def start(self) -> int:
-        started = self.attempts[-1].started if self.open else None
-        if started is None:
-            raise Refusal(f"job {self.title!r} is not being walked")
-        return started
-
-    def begin(self, started: int | None) -> None:
-        self.attempts.append(Attempt(started=started))
-
-    def walk(self, index: int) -> None:
-        if self.attempts[-1].started is not None:
-            raise Refusal(f"job {self.title!r} is not waiting to be walked")
-        self.attempts[-1].started = index
-
-    def close(self, returned: int, debrief: str, summary: str) -> None:
-        self.attempts[-1].returned = returned
+    def close(self, debrief: str, summary: str) -> None:
+        self.open = False
         self.debrief = debrief
         self.summary = summary
 
@@ -149,31 +116,32 @@ class Campaign(Mutable):
 
     @model_validator(mode="after")
     def _jobs_in_order(self) -> Self:
+        require_unique("job titles", (job.title.casefold() for job in self.jobs))
         for index, job in enumerate(self.jobs):
             if index < len(self.jobs) - 1 and job.open:
                 raise ValueError(f"job {index} is open and is not the last")
-            if (job.finished or job.debrief) and not any(
-                attempt.started is not None for attempt in job.attempts
-            ):
-                raise ValueError(f"job {index} is closed or finished before it was walked")
-            for attempt_index, attempt in enumerate(job.attempts):
-                if attempt_index < len(job.attempts) - 1 and attempt.returned is None:
-                    raise ValueError(f"job {index} has an attempt other than the last unreturned")
         return self
 
-    def check_spans(self, places: Sequence[Slug]) -> None:
-        for index, job in enumerate(self.jobs):
-            for attempt in job.attempts:
-                if attempt.started is not None:
-                    if attempt.started >= len(places):
-                        raise Refusal(f"job {index} started past the walk")
-                    if places[attempt.started] == self.place:
-                        raise Refusal(f"job {index} started at the hub")
-                if attempt.returned is not None:
-                    if attempt.returned >= len(places):
-                        raise Refusal(f"job {index} returned past the walk")
-                    if places[attempt.returned] != self.place:
-                        raise Refusal(f"job {index} returned away from the hub")
+    def check_walk(self, places: Sequence[Slug], walked: Sequence[str]) -> None:
+        """`walked` is the job each run or visit carries; the hub and a wander carry none."""
+        titles = {job.title for job in self.jobs}
+        for index, (place, title) in enumerate(zip(places, walked, strict=True)):
+            if not title:
+                if index and walked[index - 1] and place != self.place:
+                    raise Refusal(
+                        f"run {index} returns from {walked[index - 1]!r} away from the hub"
+                    )
+                continue
+            if title not in titles:
+                raise Refusal(f"run {index} walks a job the campaign never took: {title!r}")
+            if place == self.place and (index == 0 or walked[index - 1] != title):
+                raise Refusal(f"run {index} takes {title!r} at the hub")
+        open_job = self.open_job()
+        if walked and walked[-1] and (open_job is None or open_job.title != walked[-1]):
+            raise Refusal(f"the last run walks {walked[-1]!r}, which is not open")
+        for job in self.jobs:
+            if (job.finished or job.debrief) and job.title not in walked:
+                raise Refusal(f"job {job.title!r} is closed or finished before it was walked")
 
     def open_job(self) -> Job | None:
         return self.jobs[-1] if self.jobs and self.jobs[-1].open else None
@@ -190,56 +158,36 @@ class Campaign(Mutable):
         job = self.open_job()
         return job.terms if job is not None else ""
 
-    def since_start[T](self, walked: list[T]) -> list[T]:
-        job = self.open_job()
-        if job is not None and job.walking:
-            return walked[job.start() :]
-        return walked[-1:]
-
-    def returns(self) -> int:
-        return sum(attempt.returned is not None for job in self.jobs for attempt in job.attempts)
-
     def records_of(self, job: Job, records: Sequence[SceneRecord]) -> tuple[SceneRecord, ...]:
-        return tuple(
-            record
-            for attempt in job.attempts
-            if attempt.started is not None
-            for record in records[attempt.started : attempt.returned]
-        )
+        return tuple(record for record in records if record.job == job.title)
 
     def job_records(self, records: Sequence[SceneRecord]) -> tuple[SceneRecord, ...]:
         job = self.open_job()
         return self.records_of(job, records) if job is not None else ()
 
     def history(self, records: Sequence[SceneRecord]) -> tuple[HistoryRecord, ...]:
+        """A span walked whole and returned before the last two scenes is bound as a chapter."""
         total = len(records)
-        chapters = {
-            attempt.started: (job, attempt, attempt.returned)
-            for job in self.jobs
-            for attempt in job.attempts
-            if attempt.started is not None
-            and attempt.returned is not None
-            and attempt.returned <= total - WHOLE_SCENES
-        }
         result: list[HistoryRecord] = []
         index = 0
         while index < total:
-            found = chapters.get(index)
-            if found is None:
-                result.append(records[index])
-                index += 1
-                continue
-            job, attempt, end = found
-            span = records[index:end]
-            verdict = "done" if attempt is job.attempts[-1] and job.finished else "left open"
-            result.append(
-                ChapterRecord(
-                    title=job.title,
-                    verdict=verdict,
-                    summary=job.summary,
-                    scenes=tuple(record.title for record in span),
+            title = records[index].job
+            end = index + 1
+            while end < total and records[end].job == title:
+                end += 1
+            job = self.titled(title) if title else None
+            if job is None or end > total - WHOLE_SCENES:
+                result.extend(records[index:end])
+            else:
+                last = not any(record.job == title for record in records[end:])
+                result.append(
+                    ChapterRecord(
+                        title=job.title,
+                        verdict="done" if last and job.finished else "left open",
+                        summary=job.summary,
+                        scenes=tuple(record.title for record in records[index:end]),
+                    )
                 )
-            )
             index = end
         return tuple(result)
 
@@ -250,26 +198,27 @@ class Campaign(Mutable):
             return None
         return self.left_open(intent[len(prefix) : len(intent) - len(suffix)])
 
-    def left_open(self, title: str) -> Job | None:
-        matches = [
-            job
-            for job in self.jobs
-            if not job.open and not job.finished and job.title.casefold() == title.casefold()
-        ]
-        return matches[-1] if matches else None
+    def titled(self, title: str) -> Job | None:
+        folded = title.casefold()
+        return next((job for job in self.jobs if job.title.casefold() == folded), None)
 
-    def reopen(self, job: Job, started: int | None) -> None:
+    def left_open(self, title: str) -> Job | None:
+        job = self.titled(title)
+        return job if job is not None and not job.open and not job.finished else None
+
+    def reopen(self, job: Job) -> None:
         self.jobs.remove(job)
         self.jobs.append(job)
         job.finished = False
-        job.begin(started)
+        job.open = True
 
-    def swap_out(self) -> None:
+    def swap_out(self, walked: Sequence[str]) -> None:
+        """A job taken at the hub and never walked leaves no trace; one walked before stays."""
         job = self.open_job()
-        if job is None or job.walking:
+        if job is None or (walked and walked[-1] == job.title):
             raise Refusal("no unwalked job is open to swap out")
-        job.attempts.pop()
-        if not job.attempts:
+        job.open = False
+        if job.title not in walked:
             self.jobs.remove(job)
 
     def ledger(self) -> str:
@@ -380,6 +329,14 @@ class World[P: Person](Mutable):
         return records if self.campaign is None else self.campaign.history(records)
 
 
+def walk_start(walked: Sequence[str]) -> int:
+    """Where the current span began: the last run or visit, when it walks no job."""
+    index = max(len(walked) - 1, 0)
+    while index > 0 and walked[-1] and walked[index - 1] == walked[-1]:
+        index -= 1
+    return index
+
+
 def named_unmet(text: str, entities: Iterable[Thing]) -> list[str]:
     """A multi-word name or a bare id: a prop called `Bell` shares its word with any bell tower."""
     folded = text.casefold()
@@ -402,6 +359,14 @@ def place_unmet(place: Slug, hub: Slug | None, *, returning: bool) -> str | None
     if hub is not None and place == hub:
         return "a place away from the hub: home is reached by going home"
     return None
+
+
+def title_unmet(title: str, campaign: Campaign, reopening: Job | None) -> list[str]:
+    """Runs carry their job by title, so a job taken before is reopened, never taken twice."""
+    taken = campaign.titled(title)
+    if taken is None or (reopening is not None and taken.title == reopening.title):
+        return []
+    return [f"a title no job on JOBS SO FAR carries: {taken.title!r} was taken before"]
 
 
 def question_heading(at_hub: bool) -> str:

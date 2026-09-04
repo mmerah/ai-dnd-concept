@@ -326,7 +326,9 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         later = draft.on_order()
         asked = lines_of(f"- a {c.kind}: {c.brief}" for c in later) if later else ""
         prompt = self.render_next(draft, intent, model, reopening=reopening, asked=asked)
-        return await worldsmith(prompt, model, lambda answer: scene_refusal(answer, world, later))
+        return await worldsmith(
+            prompt, model, lambda answer: scene_refusal(answer, world, later, reopening)
+        )
 
     def install(
         self, draft: G, scene: SceneDraft[C], *, reopening: Job | None = None
