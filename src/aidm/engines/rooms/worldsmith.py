@@ -6,7 +6,7 @@ from aidm.core.play import Commission
 from aidm.core.tools import schema_text
 from aidm.core.views import Sections, sections
 from aidm.engines.base import Person
-from aidm.engines.hub import OFFER_ASK, named_unmet
+from aidm.engines.hub import OFFER_ASK, Job, named_unmet, title_unmet
 from aidm.engines.rooms.drafts import ItemDraft, MapDraft, NpcDraft, ReturnDraft
 from aidm.engines.rooms.world import Dungeon, Dweller, RoomWorld
 
@@ -73,8 +73,11 @@ def hub_refusal[N: Dweller](draft: MapDraft[N]) -> str | None:
     return None if not unmet else "the tavern needs " + "; ".join(unmet)
 
 
-def job_refusal[N: Dweller](
-    draft: MapDraft[N], world: Dungeon[N], asked: Sequence[Commission] = ()
+def job_refusal[N: Dweller, P: Person](
+    draft: MapDraft[N],
+    world: RoomWorld[N, P],
+    asked: Sequence[Commission] = (),
+    reopening: Job | None = None,
 ) -> str | None:
     unmet = (
         _map_unmet(draft)
@@ -82,6 +85,8 @@ def job_refusal[N: Dweller](
         + _board_unmet(draft)
         + _asked_unmet(draft, asked)
     )
+    if world.campaign is not None and draft.start in draft.places:
+        unmet += title_unmet(draft.places[draft.start].name, world.campaign, reopening)
     return None if not unmet else "the job's region needs " + "; ".join(unmet)
 
 
@@ -133,7 +138,7 @@ def _recaps_unmet[N: Dweller, P: Person](draft: ReturnDraft, world: RoomWorld[N,
     job = world.walked_job()
     if job is None:
         return []
-    walked = set(world.walked_places(job))
+    walked = set(world.walked_places())
     given = set(draft.recaps)
     unmet: list[str] = []
     if missing := sorted(walked - given):

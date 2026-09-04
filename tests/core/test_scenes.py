@@ -6,9 +6,10 @@ from aidm.core.entities import EntityId, Refusal
 from aidm.core.play import ChapterRecord, Exchange, SceneRecord
 from aidm.core.views import PanelRow
 from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.hub import HOME_ROW, HUB_ROW, Attempt, Campaign, Job, Offer
+from aidm.engines.hub import HOME_ROW, HUB_ROW, Campaign, Job, Offer
 from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft
 from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld
+from aidm.engines.scenes.worldsmith import scene_refusal
 
 HUB = "hub"
 PLAYER = Person(id=PLAYER_ID, name="Player", brief="", known=True)
@@ -36,7 +37,12 @@ def _world(*runs: SceneRun, **fields: object) -> SceneWorld[Person, Person]:
 
 
 def _run(
-    place: str, title: str, *, played: bool = False, here: Sequence[EntityId] = ()
+    place: str,
+    title: str,
+    *,
+    job: str = "",
+    played: bool = False,
+    here: Sequence[EntityId] = (),
 ) -> SceneRun:
     exchanges = [Exchange(prompt=title, lines=())] if played else []
     return SceneRun(
@@ -46,25 +52,20 @@ def _run(
         situation=SITUATION,
         here=list(here),
         exchanges=exchanges,
+        job=job,
     )
 
 
 def test_the_job_walk_reads_job_runs_jobs_and_exchange_headings() -> None:
     world = _world(
         _run(HUB, "Hub", played=True),
-        _run("a1", "A1", played=True),
-        _run("a1", "A2", played=True),
+        _run("a1", "A1", job="A1", played=True),
+        _run("a1", "A2", job="A1", played=True),
         _run(HUB, "Hub", played=True),
-        _run("b1", "B1", played=True),
+        _run("b1", "B1", job="B1", played=True),
         campaign=_campaign(
-            Job(
-                title="A1",
-                place="a1",
-                finished=True,
-                debrief=DONE,
-                attempts=[Attempt(started=1, returned=3)],
-            ),
-            Job(title="B1", place="b1", attempts=[Attempt(started=4)]),
+            Job(title="A1", place="a1", finished=True, debrief=DONE),
+            Job(title="B1", place="b1", open=True),
         ),
     )
 
@@ -74,14 +75,8 @@ def test_the_job_walk_reads_job_runs_jobs_and_exchange_headings() -> None:
 
 def test_a_finished_verdict_reads_the_open_job_not_a_closed_one() -> None:
     campaign = _campaign(
-        Job(
-            title="A1",
-            place="a1",
-            finished=True,
-            debrief=DONE,
-            attempts=[Attempt(started=1, returned=2)],
-        ),
-        Job(title="B1", place="b1", attempts=[Attempt(started=3)]),
+        Job(title="A1", place="a1", finished=True, debrief=DONE),
+        Job(title="B1", place="b1", open=True),
     )
     assert campaign.finished is False  # the finished job above is already closed
 
@@ -94,21 +89,29 @@ def test_a_world_opening_away_from_the_hub_is_refused() -> None:
         _ = _world(_run("a1", "A1"), campaign=_campaign())
 
 
-def test_a_hub_run_with_no_closed_job_to_explain_it_is_refused() -> None:
-    with pytest.raises(ValueError, match="closed jobs disagree"):
+def test_a_hub_run_that_takes_the_job_is_refused_a_mid_job_visit_is_not() -> None:
+    with pytest.raises(ValueError, match="run 2 takes 'A1' at the hub"):
         _ = _world(
             _run(HUB, "Hub"),
             _run("a1", "A1"),
-            _run(HUB, "Hub"),
-            campaign=_campaign(Job(title="A1", place="a1", attempts=[Attempt(started=1)])),
+            _run(HUB, "Hub", job="A1"),
+            campaign=_campaign(Job(title="A1", place="a1", open=True)),
         )
+
+    world = _world(
+        _run(HUB, "Hub"),
+        _run("a1", "A1", job="A1"),
+        _run(HUB, "Hub", job="A1"),
+        campaign=_campaign(Job(title="A1", place="a1", open=True)),
+    )
+    assert world.job_runs() == world.runs[1:]
 
 
 def test_a_canon_with_jobs_walked_or_opening_away_from_the_hub_is_refused() -> None:
     with pytest.raises(ValueError, match="jobs walked"):
         _ = SceneCanon[Person](
             opening=_run(HUB, "Hub"),
-            campaign=_campaign(Job(title="A1", place="a1", attempts=[Attempt(started=1)])),
+            campaign=_campaign(Job(title="A1", place="a1", open=True)),
         )
     with pytest.raises(ValueError, match="not at hub"):
         _ = SceneCanon[Person](opening=_run("a1", "A1"), campaign=_campaign())
@@ -158,8 +161,8 @@ def test_scene_rows_shows_the_hub_row_and_the_way_on_and_home_rows_when_settled(
 def test_scene_rows_lists_the_open_job_under_the_question() -> None:
     world = _world(
         _run(HUB, "Hub"),
-        _run("a1", "A1"),
-        campaign=_campaign(Job(title="A1", place="a1", terms=JOB, attempts=[Attempt(started=1)])),
+        _run("a1", "A1", job="A1"),
+        campaign=_campaign(Job(title="A1", place="a1", terms=JOB, open=True)),
     )
 
     assert world.scene_rows()[1] == PanelRow(label="The job", detail=JOB)
@@ -214,21 +217,14 @@ def test_apply_scene_with_a_next_draft_stamps_the_recap_on_the_run_left() -> Non
 
 
 def test_scenes_chapters_a_closed_job_and_keeps_the_open_ones_scene_by_scene() -> None:
-    job_a = Job(
-        title="A1",
-        place="a1",
-        finished=True,
-        debrief=DONE,
-        summary="Job one is done.",
-        attempts=[Attempt(started=1, returned=3)],
-    )
-    job_b = Job(title="B1", place="b1", attempts=[Attempt(started=4, returned=5)])
+    job_a = Job(title="A1", place="a1", finished=True, debrief=DONE, summary="Job one is done.")
+    job_b = Job(title="B1", place="b1")
     world = _world(
         _run(HUB, "Hub", played=True),
-        _run("a1", "A1", played=True),
-        _run("a1", "A2", played=True),
+        _run("a1", "A1", job="A1", played=True),
+        _run("a1", "A2", job="A1", played=True),
         _run(HUB, "Hub", played=True),
-        _run("b1", "B1", played=True),
+        _run("b1", "B1", job="B1", played=True),
         _run(HUB, "Hub", played=True),
         campaign=_campaign(job_a, job_b),
     )
@@ -242,10 +238,10 @@ def test_scenes_chapters_a_closed_job_and_keeps_the_open_ones_scene_by_scene() -
 
 
 def test_apply_scene_with_reopening_reopens_the_job_instead_of_appending() -> None:
-    job = Job(title="B1", place="b1", debrief=DONE, attempts=[Attempt(started=1, returned=2)])
+    job = Job(title="B1", place="b1", debrief=DONE)
     world = _world(
         _run(HUB, "Hub", played=True),
-        _run("b1", "B1", played=True),
+        _run("b1", "B1", job="B1", played=True),
         _run(HUB, "Hub"),
         campaign=_campaign(job),
     )
@@ -268,13 +264,14 @@ def test_apply_scene_with_reopening_reopens_the_job_instead_of_appending() -> No
     assert job.open
     assert job.finished is False
     assert job.terms == JOB
+    assert world.runs[-1].job == "B1"
 
 
-def test_apply_scene_with_a_return_draft_closes_the_attempt_and_stores_summary_and_recap() -> None:
+def test_apply_scene_with_a_return_draft_closes_the_job_and_stores_summary_and_recap() -> None:
     world = _world(
         _run(HUB, "Hub", played=True),
-        _run("b1", "B1", played=True),
-        campaign=_campaign(Job(title="B1", place="b1", attempts=[Attempt(started=1)])),
+        _run("b1", "B1", job="B1", played=True),
+        campaign=_campaign(Job(title="B1", place="b1", open=True)),
     )
     draft = ReturnDraft[Person](
         place=HUB,
@@ -293,18 +290,18 @@ def test_apply_scene_with_a_return_draft_closes_the_attempt_and_stores_summary_a
     assert campaign is not None
     job = campaign.jobs[-1]
     assert (job.debrief, job.summary) == (draft.debrief, SUMMARY)
+    assert job.open is False
+    assert world.runs[-1].job == ""
     assert world.runs[1].recap == RECAP
 
 
 def test_a_world_whose_job_returns_away_from_the_hub_is_refused() -> None:
-    with pytest.raises(ValueError, match="returned away from the hub"):
+    with pytest.raises(ValueError, match="run 2 returns from 'A1' away from the hub"):
         _ = _world(
             _run(HUB, "Hub"),
-            _run("a1", "A1"),
+            _run("a1", "A1", job="A1"),
             _run("a1", "A2"),
-            campaign=_campaign(
-                Job(title="A1", place="a1", attempts=[Attempt(started=1, returned=2)])
-            ),
+            campaign=_campaign(Job(title="A1", place="a1")),
         )
 
 
@@ -315,3 +312,33 @@ def test_entering_someone_hidden_is_refused_reveal_makes_them_present() -> None:
         _ = world.enter(MARA)
     _ = world.reveal_hidden(MARA)
     assert MARA in world.present()
+
+
+def test_scene_refusal_refuses_a_job_title_taken_before_unless_it_is_the_reopening() -> None:
+    mara = Person(id=MARA, name="Mara", brief="A guide", known=True)
+    world = _world(
+        _run(HUB, "Hub", here=[MARA]),
+        _run("b1", "B1", job="B1"),
+        _run(HUB, "Hub", here=[MARA]),
+        cast={MARA: mara},
+        campaign=_campaign(Job(title="B1", place="b1", debrief=DONE)),
+    )
+    campaign = world.campaign
+    assert campaign is not None
+    job = campaign.left_open("B1")
+    assert job is not None
+    draft = JobDraft[Person](
+        place="b1",
+        title="b1",
+        question="What happens next here?",
+        situation=SITUATION,
+        present=(MARA,),
+        recap=RECAP,
+        arc=ARC,
+        job=JOB,
+    )
+
+    assert scene_refusal(draft, world) == (
+        "the scene needs a title no job on JOBS SO FAR carries: 'B1' was taken before"
+    )
+    assert scene_refusal(draft, world, (), job) is None

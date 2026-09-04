@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from aidm.core.entities import EntityId
-from aidm.engines.hub import Attempt, Campaign, Job, Offer
+from aidm.engines.hub import Campaign, Job, Offer
 from aidm.engines.scenes.world import SceneRun
 
 
@@ -40,6 +40,7 @@ def hub_runs(names: HubNames, *, keeper: EntityId) -> list[SceneRun]:
             title=names.job_title,
             question=names.job_question,
             situation=names.job_situation,
+            job=names.job_title,
         ),
     ]
 
@@ -53,7 +54,7 @@ def hub_campaign(names: HubNames) -> Campaign:
                 title=names.job_title,
                 place=names.job_place,
                 terms=names.terms,
-                attempts=[Attempt(started=1)],
+                open=True,
             )
         ],
     )

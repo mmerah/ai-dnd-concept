@@ -106,6 +106,7 @@ class SceneRecord(Frozen):
     focus: str
     recap: str = ""
     exchanges: tuple[Exchange, ...] = ()
+    job: str = ""  # the campaign job this scene walks, by title; empty at the hub
 
 
 class ChapterRecord(Frozen):

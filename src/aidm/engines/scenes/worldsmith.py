@@ -7,8 +7,8 @@ from aidm.core.play import Commission
 from aidm.core.tools import schema_text
 from aidm.core.views import Sections, sections
 from aidm.engines.base import Person, Thing
-from aidm.engines.hub import named_unmet, place_unmet
-from aidm.engines.scenes.drafts import CastDraft, HubDraft, ReturnDraft, SceneDraft
+from aidm.engines.hub import Job, named_unmet, place_unmet, title_unmet
+from aidm.engines.scenes.drafts import CastDraft, HubDraft, JobDraft, ReturnDraft, SceneDraft
 from aidm.engines.scenes.world import SceneWorld, resolved_id
 
 CROSSING = (
@@ -33,9 +33,10 @@ def scene_refusal[C: Person, P: Person](
     draft: SceneDraft[C],
     world: SceneWorld[C, P] | None = None,
     asked: Sequence[Commission] = (),
+    reopening: Job | None = None,
 ) -> str | None:
     """Free: the drafts may not import the world, and the authoring call has no world."""
-    unmet = scene_unmet(draft, world, asked)
+    unmet = scene_unmet(draft, world, asked, reopening)
     return None if not unmet else "the scene needs " + "; ".join(unmet)
 
 
@@ -56,7 +57,10 @@ def cast_refusal[C: Person, P: Person](draft: CastDraft[C], world: SceneWorld[C,
 
 
 def scene_unmet[C: Person, P: Person](
-    draft: SceneDraft[C], world: SceneWorld[C, P] | None, asked: Sequence[Commission]
+    draft: SceneDraft[C],
+    world: SceneWorld[C, P] | None,
+    asked: Sequence[Commission],
+    reopening: Job | None = None,
 ) -> list[str]:
     """The one bar: every refusal the install makes, so the worldsmith's one retry sees them all."""
     filed: Mapping[EntityId, C] = {} if world is None else world.cast
@@ -106,7 +110,7 @@ def scene_unmet[C: Person, P: Person](
         if eid not in filed and (why := entry.unwritten())
     ]:
         unmet.append(f"cast members as the worldsmith may write them: {broken}")
-    unmet.extend(_hub_unmet(draft, world, everyone))
+    unmet.extend(_hub_unmet(draft, world, everyone, reopening))
     if asked:
         written = len([eid for eid in draft.cast if eid not in filed])
         if written < len(asked):
@@ -178,17 +182,23 @@ def _cast_unmet[C: Person](
 
 
 def _hub_unmet[C: Person, P: Person](
-    draft: SceneDraft[C], world: SceneWorld[C, P] | None, everyone: Mapping[EntityId, Thing]
+    draft: SceneDraft[C],
+    world: SceneWorld[C, P] | None,
+    everyone: Mapping[EntityId, Thing],
+    reopening: Job | None,
 ) -> list[str]:
     """A return is read by the player: no field names what they have not met. `situation` against
     the draft's own `hidden` is `_cast_unmet`'s. Untold fact traces are not checked: prose cannot
     be matched to a trace, so that half of the caution's second guard is the two-spawn fallback."""
-    hub = None if world is None or world.campaign is None else world.campaign.place
+    campaign = None if world is None else world.campaign
+    hub = None if campaign is None else campaign.place
     unmet: list[str] = []
     if (
         misplaced := place_unmet(draft.place, hub, returning=isinstance(draft, ReturnDraft))
     ) is not None:
         unmet.append(misplaced)
+    if isinstance(draft, JobDraft) and campaign is not None:
+        unmet.extend(title_unmet(draft.title, campaign, reopening))
     if isinstance(draft, ReturnDraft) and world is not None:
         unmet_world = {eid: entry for eid, entry in world.cast.items() if not entry.known}
         unmet_hidden = {

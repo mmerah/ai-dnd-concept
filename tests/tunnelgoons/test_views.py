@@ -3,7 +3,7 @@ from support.tunnelgoons import HALL, MIRA, START, TAVERN, hub_world, small_worl
 
 from aidm.core.entities import EntityId
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.hub import Attempt, Job
+from aidm.engines.hub import Job
 from aidm.engines.rooms.engine import REPORT_ROW
 from aidm.engines.rooms.world import Item, Visit
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
@@ -72,10 +72,12 @@ def test_a_stroll_with_no_job_open_shows_the_board_not_report_in() -> None:
 def test_a_job_open_at_the_hub_shows_only_report_in_on_the_board() -> None:
     state = hub_world()
     world = state.payload
-    world.visits = [Visit(place=TAVERN), Visit(place=START), Visit(place=TAVERN)]
-    the_campaign(world.campaign).jobs = [
-        Job(title="Bandits", place=START, attempts=[Attempt(started=1)])
+    world.visits = [
+        Visit(place=TAVERN),
+        Visit(place=START, job="Bandits"),
+        Visit(place=TAVERN, job="Bandits"),
     ]
+    the_campaign(world.campaign).jobs = [Job(title="Bandits", place=START, open=True)]
 
     view = ENGINE.player_view(state)
 

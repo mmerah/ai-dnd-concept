@@ -8,7 +8,7 @@ from support.tunnelgoons import MIRA, START, TAVERN, hub_world, small_world
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.play import Commission
 from aidm.engines.base import Counter
-from aidm.engines.hub import Attempt, Job, Offer
+from aidm.engines.hub import Job, Offer
 from aidm.engines.rooms.drafts import ItemDraft, MapDraft, NpcDraft, ReturnDraft
 from aidm.engines.rooms.engine import REPORT_IN
 from aidm.engines.rooms.world import Item, Place, Visit, Way
@@ -179,11 +179,15 @@ def test_attach_known_appends_known_ways_and_unknown_appends_unknown_both_direct
 
 
 def _walked_job_visits() -> list[Visit]:
-    return [Visit(place=TAVERN), Visit(place=START), Visit(place=TAVERN)]
+    return [
+        Visit(place=TAVERN),
+        Visit(place=START, job="Bandits"),
+        Visit(place=TAVERN, job="Bandits"),
+    ]
 
 
 def _job_walking() -> Job:
-    return Job(title="Bandits", place=START, attempts=[Attempt(started=1)])
+    return Job(title="Bandits", place=START, open=True)
 
 
 def _reporting_in() -> TunnelGoonsGame:
@@ -242,9 +246,7 @@ async def test_write_extension_refuses_report_in_with_no_job_open() -> None:
         _ = await ENGINE.write_extension(unwalked, REPORT_IN, _unasked)
 
     stamped_not_walked = hub_world()
-    the_campaign(stamped_not_walked.payload.campaign).jobs = [
-        Job(title="Bandits", place=START, attempts=[Attempt()])
-    ]
+    the_campaign(stamped_not_walked.payload.campaign).jobs = [_job_walking()]
     with pytest.raises(Refusal, match="no job is open to report"):
         _ = await ENGINE.write_extension(stamped_not_walked, REPORT_IN, _unasked)
 
@@ -317,13 +319,13 @@ def test_install_extension_on_a_return_draft_closes_the_job() -> None:
     world = state.payload
     world.visits = _walked_job_visits()
     campaign = the_campaign(world.campaign)
-    campaign.jobs = [
-        Job(title="Bandits", place=START, finished=True, attempts=[Attempt(started=1)])
-    ]
+    campaign.jobs = [Job(title="Bandits", place=START, finished=True, open=True)]
 
     facts = ENGINE.install_extension(state, RETURN)
 
     assert campaign.jobs[-1].debrief == RETURN.debrief
+    assert not campaign.jobs[-1].open
+    assert world.visit.job == ""
     assert campaign.jobs[-1].finished
     assert campaign.board == RETURN.offers
     assert [fact.kind for fact in facts] == ["job_closed"]
@@ -346,8 +348,9 @@ def test_install_extension_on_a_map_draft_at_the_hub_takes_the_job() -> None:
     assert way is not None
     assert way.known
     assert the_campaign(world.campaign).jobs[-1] == Job(
-        title=start_name, place=extension.start, attempts=[Attempt()]
+        title=start_name, place=extension.start, open=True
     )
+    assert world.visit.job == ""
 
 
 def test_install_extension_on_a_return_draft_lands_recaps_on_each_places_last_visit() -> None:
@@ -355,10 +358,10 @@ def test_install_extension_on_a_return_draft_lands_recaps_on_each_places_last_vi
     world = state.payload
     world.visits = [
         Visit(place=TAVERN),
-        Visit(place=START),
-        Visit(place=HALL),
-        Visit(place=START),
-        Visit(place=TAVERN),
+        Visit(place=START, job="Bandits"),
+        Visit(place=HALL, job="Bandits"),
+        Visit(place=START, job="Bandits"),
+        Visit(place=TAVERN, job="Bandits"),
     ]
     the_campaign(world.campaign).jobs = [_job_walking()]
     recapped = RETURN.model_copy(update={"recaps": {START: "S" * 60, HALL: "H" * 60}})
@@ -381,13 +384,12 @@ def _left_open_job_world() -> tuple[TunnelGoonsGame, Job]:
         id=OLD_SITE, name="Old Site", brief="b", known=True, description="d"
     )
     world.add_way(TAVERN, OLD_SITE, known=True)
-    world.visits = [Visit(place=TAVERN), Visit(place=OLD_SITE), Visit(place=TAVERN)]
-    old_job = Job(
-        title="Crates off Deck 9",
-        place=OLD_SITE,
-        debrief="left off mid-count",
-        attempts=[Attempt(started=1, returned=2)],
-    )
+    world.visits = [
+        Visit(place=TAVERN),
+        Visit(place=OLD_SITE, job="Crates off Deck 9"),
+        Visit(place=TAVERN),
+    ]
+    old_job = Job(title="Crates off Deck 9", place=OLD_SITE, debrief="left off mid-count")
     the_campaign(world.campaign).jobs = [old_job]
     return state, old_job
 
@@ -408,9 +410,9 @@ def test_install_extension_reopens_a_left_open_job_at_its_own_start() -> None:
     way = world.way(OLD_SITE, extension.start)
     assert way is not None and way.known
     assert campaign.jobs[-1] is old_job
-    assert campaign.jobs[-1].open
-    assert campaign.jobs[-1].attempts[-1].started is None
-    assert len(campaign.jobs[-1].attempts) == 2
+    assert old_job.open
+    assert world.visit.job == ""
+    assert world.walked_job() is None
 
 
 def test_swapping_out_a_reopened_unwalked_job_leaves_it_closed_not_open() -> None:
@@ -420,11 +422,11 @@ def test_swapping_out_a_reopened_unwalked_job_leaves_it_closed_not_open() -> Non
     reopening = campaign.taken('I take the job "Crates off Deck 9".')
     _ = ENGINE.install_extension(state, _wide_region(), reopening=reopening)
 
-    campaign.swap_out()
+    campaign.swap_out(world.walked())
 
     assert old_job in campaign.jobs
     assert not old_job.open
-    assert old_job.attempts[-1].returned == 2
+    assert world.visits[1].job == old_job.title
 
 
 async def test_write_extension_prompt_carries_scenes_so_far() -> None:
@@ -600,12 +602,25 @@ def test_job_refusal_needs_a_later_npc_commission_met_by_a_new_npc() -> None:
     assert job_refusal(written, world, asked) is None
 
 
+def test_job_refusal_refuses_a_title_taken_before_unless_it_is_the_reopening() -> None:
+    state, old_job = _left_open_job_world()
+    world = state.payload
+    retaken = _wide_region()
+    retaken.places[retaken.start].name = "crates off deck 9"
+
+    refused = job_refusal(retaken, world)
+
+    assert refused is not None
+    assert "a title no job on JOBS SO FAR carries: 'Crates off Deck 9' was taken before" in refused
+    assert job_refusal(retaken, world, (), old_job) is None
+
+
 async def test_a_later_commission_survives_return_and_clears_on_the_job_that_meets_it() -> None:
     state = hub_world(with_map=False)
     world = state.payload
     world.visits = _walked_job_visits()
     the_campaign(world.campaign).jobs = [
-        Job(title="Bandits", place=START, finished=True, attempts=[Attempt(started=1)])
+        Job(title="Bandits", place=START, finished=True, open=True)
     ]
     asked = Commission(kind="npc", brief="a fence for stolen goods", later=True)
     state.commissions.append(asked)

@@ -289,8 +289,15 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
                 prompt, ReturnDraft, lambda answer: return_refusal(answer, world)
             )
         prompt = self.render_extension(world, intent, hub, asked=asked)
-        bar = job_refusal if world.at_hub else extension_refusal
-        return await worldsmith(prompt, self.map_draft(), lambda answer: bar(answer, world, later))
+        if world.at_hub:
+            return await worldsmith(
+                prompt,
+                self.map_draft(),
+                lambda answer: job_refusal(answer, world, later, reopening),
+            )
+        return await worldsmith(
+            prompt, self.map_draft(), lambda answer: extension_refusal(answer, world, later)
+        )
 
     def install_extension(
         self, draft: G, extension: MapDraft[N] | ReturnDraft, *, reopening: Job | None = None

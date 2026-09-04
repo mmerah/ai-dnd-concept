@@ -8,7 +8,7 @@ from aidm.core.facts import Fact
 from aidm.core.play import Exchange, SceneRecord
 from aidm.core.views import Rows, lines_of
 from aidm.engines.base import IS_DEAD, PLAYER_ID, UNKNOWN_ID, Person, Thing, check_filing
-from aidm.engines.hub import Attempt, Board, Campaign, Job, World
+from aidm.engines.hub import Board, Campaign, Job, World, walk_start
 
 
 class Dweller(Person):
@@ -37,6 +37,7 @@ class Visit(Mutable):
     place: CheckedEntityId
     exchanges: list[Exchange] = Field(default_factory=list)
     recap: str = ""
+    job: str = ""  # the campaign job this visit walks, by title; empty at the tavern
 
 
 class Dungeon[N: Dweller](Mutable):
@@ -156,9 +157,9 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
             self.require_place(visit.place)
         if (campaign := self.campaign) is not None:
             self.require_place(EntityId(campaign.place))
-            campaign.check_spans([visit.place for visit in self.visits])
             if self.visits[0].place != campaign.place:
                 raise ValueError(f"visit 0 does not open at hub {campaign.place!r}")
+            campaign.check_walk([visit.place for visit in self.visits], self.walked())
         return self
 
     @classmethod
@@ -192,15 +193,18 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
     def walked_job(self) -> Job | None:
         """The open job once walked; one taken at the tavern but not walked can still be swapped."""
         job = None if self.campaign is None else self.campaign.open_job()
-        return job if job is not None and job.walking else None
+        return job if job is not None and self.visit.job == job.title else None
+
+    def walked(self) -> list[str]:
+        return [visit.job for visit in self.visits]
 
     def job_visits(self) -> list[Visit]:
-        return self.visits if self.campaign is None else self.campaign.since_start(self.visits)
+        return self.visits if self.campaign is None else self.visits[walk_start(self.walked()) :]
 
-    def walked_places(self, job: Job) -> tuple[EntityId, ...]:
-        """Distinct places the walking attempt crossed; the current tavern visit is not walked."""
+    def walked_places(self) -> tuple[EntityId, ...]:
+        """Distinct places the walking span crossed; the current tavern visit is not walked."""
         seen: list[EntityId] = []
-        for visit in self.visits[job.start() : len(self.visits) - 1]:
+        for visit in self.visits[walk_start(self.walked()) : -1]:
             if visit.place not in seen:
                 seen.append(visit.place)
         return tuple(seen)
@@ -268,11 +272,8 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
             coming.append(self.require_npc_here(npc_id))
         for npc in coming:
             npc.place = destination.id
-        self.visits.append(Visit(place=destination.id))
-        if (campaign := self.campaign) is not None and destination.id != campaign.place:
-            job = campaign.open_job()
-            if job is not None and not job.walking:
-                job.walk(len(self.visits) - 1)
+        job = None if self.campaign is None else self.campaign.open_job()
+        self.visits.append(Visit(place=destination.id, job="" if job is None else job.title))
         trace = f"the player arrives at {destination.label}"
         if coming:
             names = " and ".join(npc.name for npc in coming)
@@ -366,15 +367,15 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         if campaign is None or not self.at_hub:
             self.attach(region, start, known=False)
             return self.current
-        if (open_job := campaign.open_job()) is not None and not open_job.walking:
-            campaign.swap_out()
+        if campaign.open_job() is not None and self.walked_job() is None:
+            campaign.swap_out(self.walked())
         if reopening is not None:
             anchor = self.require_place(EntityId(reopening.place))
-            campaign.reopen(reopening, started=None)
+            campaign.reopen(reopening)
             self.attach(region, start, known=True, anchor=anchor.id)
             return anchor
         self.attach(region, start, known=True)
-        campaign.jobs.append(Job(title=self.places[start].name, place=start, attempts=[Attempt()]))
+        campaign.jobs.append(Job(title=self.places[start].name, place=start, open=True))
         return self.current
 
     def apply_return(
@@ -385,11 +386,11 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         campaign, job = self.campaign, self.walked_job()
         if campaign is None or job is None:
             raise Refusal("no job is open to report")
-        started = job.start()  # reads an open job: before `close`
-        end = len(self.visits) - 1
-        job.close(returned=end, debrief=debrief, summary=summary)
-        for place, visit in {v.place: v for v in self.visits[started:end]}.items():
+        span = self.visits[walk_start(self.walked()) : -1]
+        for place, visit in {v.place: v for v in span}.items():
             visit.recap = recaps[place]
+        job.close(debrief=debrief, summary=summary)
+        self.visit.job = ""  # the report closes the span; the tavern visit walks no job
         campaign.board = offers
         return job
 
@@ -442,6 +443,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
                     focus=place.brief,
                     recap=visit.recap,
                     exchanges=tuple(visit.exchanges),
+                    job=visit.job,
                 )
             )
         return tuple(records)
