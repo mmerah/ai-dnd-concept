@@ -22,6 +22,7 @@ from aidm.engines.breathless.tools import (
     outcome,
 )
 from aidm.engines.breathless.world import (
+    LADDER,
     LOOT_START,
     MED_KIT_CLEARS,
     SKILLS,
@@ -148,7 +149,6 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
         return (*sheet.rows(), ("Backpack", ", ".join(item.name for item in sheet.items.values())))
 
     def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
-        """Defaults restate rules the guidance already carries; dropping them halves the prompt."""
         selected = {
             pack_id: self.packs[pack_id].model_dump(
                 mode="json", include={"locations", "complications", "missions"}
@@ -284,14 +284,8 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
             draft.note("The scavenge turns up trouble right here; nothing is found.")
         elif face <= 4:
             draft.note("The scavenge finds nothing, and trouble is coming.")
-        elif face <= 6:
-            found = 6
-        elif face <= 8:
-            found = 8
-        elif face <= 10:
-            found = 10
         else:
-            found = 12
+            found = next(die for die in LADDER if face <= die)
 
         result = f"found {item} (d{found})" if found is not None else "nothing"
         trace = f"scavenging — loot d{before} [{face}] -> {found or 'nothing'}"

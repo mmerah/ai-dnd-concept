@@ -31,8 +31,6 @@ class Item(Mutable):
 
 
 class Survivor(Person):
-    """The played character: the only one with dice."""
-
     pronouns: str = ""
     job: str = ""
     skills: dict[Skill, Die] = Field(min_length=6, max_length=6)  # as created
@@ -115,8 +113,7 @@ class Survivor(Person):
         if choice == "take":
             if len(self.items) >= CARRY:
                 raise Refusal("the backpack is full; swap for something carried instead")
-            key = EntityId(slug(item, self.items))
-            self.items[key] = Item(name=item, die=granted)
+            self.items[EntityId(slug(item, self.items))] = Item(name=item, die=granted)
             card = f"Took {item} (d{granted})"
         elif choice == "med-kit":
             if granted < 10:
@@ -127,8 +124,7 @@ class Survivor(Person):
             card = "Took a med kit"
         elif choice.startswith(SWAP) and EntityId(choice.removeprefix(SWAP)) in self.items:
             old = self.items.pop(EntityId(choice.removeprefix(SWAP)))
-            key = EntityId(slug(item, self.items))
-            self.items[key] = Item(name=item, die=granted)
+            self.items[EntityId(slug(item, self.items))] = Item(name=item, die=granted)
             card = f"Swapped {old.name} for {item} (d{granted})"
         else:
             raise Refusal(f"{choice!r} is not a valid loot choice")

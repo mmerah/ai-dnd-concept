@@ -79,8 +79,6 @@ class Question(Frozen):
 
 
 class Outcome(Frozen):
-    """One of the six answers, carrying the luck an exchange costs the side that lost it."""
-
     name: Slug
     harm: int
 
@@ -103,7 +101,6 @@ def outcome_for(chance: int, risk: int) -> Outcome:
 def twist_pairing(
     subject: int, action: int, twists: tuple[tuple[str, str], ...]
 ) -> tuple[str, str]:
-    """Subject from one d6, action from the other, as the SRD's twist table is read."""
     return twists[subject - 1][0], twists[action - 1][1]
 
 
