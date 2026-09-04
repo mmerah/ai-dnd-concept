@@ -5,7 +5,11 @@ from aidm.core.play import ChapterRecord, SceneRecord
 from aidm.core.views import Panel
 from aidm.engines.base import Thing
 from aidm.engines.hub import (
+    AWAY_BRIEF,
+    RETURN_BRIEF,
+    TAKE_BRIEF,
     TAKE_JOB,
+    WRITE_HUB_SCENE,
     Attempt,
     Campaign,
     Job,
@@ -143,9 +147,11 @@ def test_the_board_marks_a_left_open_offer() -> None:
 
 def test_sections_picks_the_brief_by_moment() -> None:
     campaign = _campaign()
-    taking = dict(campaign.sections("The Amber Tap", at_hub=True, returning=False))
-    away = dict(campaign.sections("The Amber Tap", at_hub=False, returning=False))
-    returning = dict(campaign.sections("The Amber Tap", at_hub=False, returning=True))
+    taking = dict(campaign.sections("The Amber Tap", TAKE_BRIEF, returning=False))
+    away = dict(campaign.sections("The Amber Tap", AWAY_BRIEF, returning=False))
+    returning = dict(
+        campaign.sections("The Amber Tap", WRITE_HUB_SCENE + RETURN_BRIEF, returning=True)
+    )
 
     assert taking["THE HUB"].startswith("The player is leaving The Amber Tap")
     assert away["THE HUB"].startswith("The hub is The Amber Tap")
@@ -156,12 +162,11 @@ def test_sections_picks_the_brief_by_moment() -> None:
 
 def test_sections_returning_adds_the_verdict_by_the_open_jobs_finished() -> None:
     campaign = _campaign(Job(title="B1", place="b1", attempts=[Attempt(started=1)]))
-    assert (
-        dict(campaign.sections("Tap", at_hub=False, returning=True))["THE VERDICT"] == "left open"
-    )
+    brief = WRITE_HUB_SCENE + RETURN_BRIEF
+    assert dict(campaign.sections("Tap", brief, returning=True))["THE VERDICT"] == "left open"
 
     campaign.jobs[-1].finished = True
-    assert dict(campaign.sections("Tap", at_hub=False, returning=True))["THE VERDICT"] == "finished"
+    assert dict(campaign.sections("Tap", brief, returning=True))["THE VERDICT"] == "finished"
 
 
 def test_place_unmet_refuses_the_wrong_place_for_the_moment() -> None:

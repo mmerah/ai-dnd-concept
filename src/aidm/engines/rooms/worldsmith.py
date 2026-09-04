@@ -1,6 +1,10 @@
 from collections.abc import Sequence
 
+from pydantic import BaseModel
+
 from aidm.core.play import Commission
+from aidm.core.tools import schema_text
+from aidm.core.views import Sections, sections
 from aidm.engines.base import Person
 from aidm.engines.hub import OFFER_ASK, named_unmet
 from aidm.engines.rooms.drafts import ItemDraft, MapDraft, NpcDraft, ReturnDraft
@@ -8,9 +12,10 @@ from aidm.engines.rooms.world import Dungeon, Dweller, RoomWorld
 
 MIN_PLACES = 4
 MIN_EXTENSION_PLACES = 2
+MAP_ASK = "Write the opening map."
 TAVERN_ASK = (
-    "(no map yet — write the tavern: one known place, its keeper and regulars as npcs, no ways "
-    "out, and a `board` of two or three offers; " + OFFER_ASK + ")"
+    "Write the tavern: one known place, its keeper and regulars as npcs, no ways out, and a "
+    "`board` of two or three offers; " + OFFER_ASK
 )
 COMMISSION_ASK = (
     "The game master asked for a {kind}: {brief}. Write that one {kind} and nothing else: an "
@@ -18,8 +23,8 @@ COMMISSION_ASK = (
     "joins the map beyond the player's reach."
 )
 JOB_BRIEF = (
-    "The player is leaving {title} ({place}) on a job. WHAT THE PLAYER WANTS TO PURSUE is the job "
-    "they take: an offer by its title, whose pitch THE BOARD holds, or their own words. Write the "
+    "The player is leaving {title} ({place}) on a job. WHAT COMES NEXT is the job they take: an "
+    "offer by its title, whose pitch THE BOARD holds, or their own words. Write the "
     "job as a whole new region joining the map at {place}: a complete dungeon by the opening "
     "map's bar, its start known and named after the offer, since the ledger lists the job by that "
     'name. Old dungeons stay on the map, so write only new ids. An offer marked "(left open)" '
@@ -28,12 +33,43 @@ JOB_BRIEF = (
 )
 
 
+def worldsmith_prompt(
+    role: str,
+    *,
+    source: str,
+    map_so_far: str,
+    history: str,
+    player: str,
+    intent: str,
+    guidance: str,
+    answer: type[BaseModel],
+    hub: Sections = (),
+    asked: str = "",
+) -> str:
+    return sections(
+        (
+            ("YOUR ROLE", role),
+            ("SOURCE MATERIAL", source or "(none — write from the setting)"),
+            ("MAP SO FAR", map_so_far),
+            ("SCENES SO FAR", history),
+            *hub,
+            ("THE PLAYER", player),
+            *((("THE GAME MASTER ASKED FOR", asked),) if asked else ()),
+            ("WHAT COMES NEXT", intent),
+            ("ENGINE GUIDANCE", guidance),
+            ("ANSWER WITH", schema_text(answer)),
+        )
+    )
+
+
 def map_refusal[N: Dweller](draft: MapDraft[N]) -> str | None:
+    """Free: the world may not import the drafts; one bar module for map, hub, job and return."""
     unmet = _map_unmet(draft) + _board_unmet(draft)
     return None if not unmet else "the map needs " + "; ".join(unmet)
 
 
 def hub_refusal[N: Dweller](draft: MapDraft[N]) -> str | None:
+    """Free: the world may not import the drafts; one bar module for map, hub, job and return."""
     unmet = _hub_unmet(draft)
     return None if not unmet else "the tavern needs " + "; ".join(unmet)
 
@@ -41,6 +77,7 @@ def hub_refusal[N: Dweller](draft: MapDraft[N]) -> str | None:
 def job_refusal[N: Dweller](
     draft: MapDraft[N], world: Dungeon[N], asked: Sequence[Commission] = ()
 ) -> str | None:
+    """Free: the world may not import the drafts; one bar module for map, hub, job and return."""
     unmet = (
         _map_unmet(draft)
         + _overlap_unmet(draft, world)
@@ -53,6 +90,7 @@ def job_refusal[N: Dweller](
 def extension_refusal[N: Dweller](
     draft: MapDraft[N], world: Dungeon[N], asked: Sequence[Commission] = ()
 ) -> str | None:
+    """Free: the world may not import the drafts; one bar module for map, hub, job and return."""
     unmet = (
         _extension_unmet(draft)
         + _overlap_unmet(draft, world)
@@ -63,11 +101,13 @@ def extension_refusal[N: Dweller](
 
 
 def return_refusal[N: Dweller, P: Person](draft: ReturnDraft, world: RoomWorld[N, P]) -> str | None:
+    """Free: the world may not import the drafts; one bar module for map, hub, job and return."""
     unmet = _recaps_unmet(draft, world) + _debrief_unmet(draft, world)
     return None if not unmet else "the return needs " + "; ".join(unmet)
 
 
 def npc_refusal[N: Dweller, P: Person](draft: NpcDraft[N], world: RoomWorld[N, P]) -> str | None:
+    """Free: the world may not import the drafts; one bar module for map, hub, job and return."""
     npc = draft.npc
     unmet: list[str] = []
     if world.entity(npc.id) is not None:
@@ -82,6 +122,7 @@ def npc_refusal[N: Dweller, P: Person](draft: NpcDraft[N], world: RoomWorld[N, P
 
 
 def item_refusal[N: Dweller, P: Person](draft: ItemDraft, world: RoomWorld[N, P]) -> str | None:
+    """Free: the world may not import the drafts; one bar module for map, hub, job and return."""
     item = draft.item
     unmet: list[str] = []
     if world.entity(item.id) is not None:

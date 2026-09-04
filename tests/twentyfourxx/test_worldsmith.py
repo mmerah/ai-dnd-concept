@@ -24,8 +24,9 @@ from aidm.engines.hub import GO_HOME, TAKE_JOB
 from aidm.engines.scenes.drafts import CastDraft, JobDraft, NextDraft, ReturnDraft, SceneDraft
 from aidm.engines.scenes.world import SceneRun
 from aidm.engines.scenes.worldsmith import COMMISSION_ASK, cast_refusal, scene_refusal
-from aidm.engines.twentyfourxx.engine import BOARD_GUIDANCE, TwentyfourxxEngine
+from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.engines.twentyfourxx.world import TwentyfourxxGame
+from aidm.engines.twentyfourxx.worldsmith import BOARD_GUIDANCE
 
 TWENTYFOURXX = EngineId("twentyfourxx")
 ENGINE = TwentyfourxxEngine()

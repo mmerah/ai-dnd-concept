@@ -17,8 +17,6 @@ AUTHORING = (
 class Pack(ScenePack):
     """One published table set the player can build a survivor from."""
 
-    source: str
-    license: str
     skills: tuple[DecisionOption, ...] = Field(min_length=6, max_length=6)
     jobs: tuple[str, ...]
     weapons: tuple[str, ...]

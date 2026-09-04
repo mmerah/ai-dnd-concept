@@ -16,6 +16,8 @@ CHANGE_WORLD = (
     "Apply one settled world change to match the story. Set `verb` to pick the change and fill "
     "that verb's own fields. One call makes one change."
 )
+UNKNOWN_ID = "unknown id {entity_id!r}. Use only ids you were shown."
+IS_DEAD = "{name} is dead; they take no further part."
 
 
 class Thing(Mutable):
@@ -28,8 +30,30 @@ class Thing(Mutable):
     def label(self) -> str:
         """Name and exact id, so a role can reuse the id; the player is named as such."""
         if self.id == PLAYER_ID:
-            return f"the player {self.name}[{self.id}]"
+            return f"the player {self.tag}"
+        return self.tag
+
+    @property
+    def tag(self) -> str:
         return f"{self.name}[{self.id}]"
+
+    @property
+    def headline(self) -> str:
+        return self.tag + (f" — {self.brief}" if self.brief else "")
+
+    def rows(self) -> Rows:
+        """The sheet, as the master's entity line prints it."""
+        return ()
+
+    def line(self, *, rows: Rows | None = None, detail: str = "") -> str:
+        """The master's entity line, then the sheet, then a detail; `rows` overrides the sheet."""
+        parts = [f"- {self.headline}"]
+        shown = self.rows() if rows is None else rows
+        if sheet := "; ".join(f"{label.lower()}: {value}" for label, value in shown):
+            parts.append(f"  {sheet}")
+        if detail:
+            parts.append(f"  {detail}")
+        return "\n".join(parts)
 
     def fact(
         self,
@@ -43,12 +67,12 @@ class Thing(Mutable):
         """`told` only when the player has learned of this thing, so no unknown name leaks."""
         return Fact(kind=kind, trace=trace, told=narrate and self.known, card=card, dice=dice)
 
-    def reveal(self) -> list[Fact]:
+    def reveal(self, *, card: str = "") -> list[Fact]:
         """Leave cards to the containing action or the standalone reveal arm."""
         if self.known:
             return []
         self.known = True
-        return [self.fact("entity_discovered", f"learned of {self.label}")]
+        return [self.fact("entity_discovered", f"learned of {self.label}", card=card)]
 
     def subject(self) -> Subject:
         return Subject(id=self.id, name=self.name, brief=self.brief)
@@ -57,28 +81,19 @@ class Thing(Mutable):
 class Person(Thing):
     alive: bool = True
 
-    def rows(self) -> Rows:
-        """The sheet, as the master's entity line prints it."""
-        return ()
+    @property
+    def headline(self) -> str:
+        return super().headline + ("" if self.alive else " (dead)")
 
     def unwritten(self) -> str:
         """What the worldsmith may not write into a fresh cast member; empty when nothing."""
         return "" if self.alive else "alive"
 
-    def line(self, *, detail: str = "") -> str:
-        line = f"- {self.name}[{self.id}] — {self.brief}"
-        if not self.alive:
-            line += " (dead)"
-        parts = [line]
-        if sheet := "; ".join(f"{label.lower()}: {value}" for label, value in self.rows()):
-            parts.append(f"  {sheet}")
-        if detail:
-            parts.append(f"  {detail}")
-        return "\n".join(parts)
-
 
 class Pack(Frozen):
     name: str
+    source: str
+    license: str
 
 
 class Counter(Mutable):
@@ -128,6 +143,7 @@ def character_panel(rows: Rows) -> Panel:
 
 
 def here_panel(player: Subject, others: Iterable[Subject]) -> Panel:
+    """Free: two families build it from subjects, not from a world."""
     rows = (
         PanelRow(label=f"{player.name} (you)", detail=player.brief, icon_id=player.id),
         *(PanelRow(label=other.name, detail=other.brief, icon_id=other.id) for other in others),

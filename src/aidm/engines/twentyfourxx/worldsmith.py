@@ -13,6 +13,10 @@ AUTHORING = (
     "player is an operator on a job in a hard sci-fi future; write scenes as work sites, "
     "stations, ships and the people holding them."
 )
+BOARD_GUIDANCE = (
+    "The SRD's job-finding setup is the board's range, not a recipe: 1–2 nothing, owe somebody to "
+    "get in on a job; 3–4 found a job, but something seems off; 5–6 a choice between two jobs."
+)
 
 
 class SkillChoice(DecisionOption):
@@ -35,8 +39,6 @@ class Origin(DecisionOption):
 
 
 class Pack(ScenePack):
-    source: str
-    license: str
     skills: tuple[DecisionOption, ...] = Field(min_length=17, max_length=17)
     specialties: tuple[Specialty, ...]
     origins: tuple[Origin, ...]

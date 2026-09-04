@@ -9,7 +9,6 @@ from aidm.core.entities import EngineId, Refusal
 from aidm.core.io import read_character, read_scenario, write_character
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame
-from aidm.engines.registry import begin_game
 from aidm.engines.seam import AnyEngine
 
 OTHER = EngineId("ruleless")
@@ -32,7 +31,7 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     write_character(tmp_path, created)
     character = read_character(tmp_path, "fen", engine.id, engine.character)
     scenario = read_scenario(SCENARIOS, "whispering-vault", {engine.id: engine.scenario})
-    state = begin_game(engine, "whispering-vault", scenario, character)
+    state = engine.begin("whispering-vault", scenario, character)
     if not isinstance(state, Loner3eGame):
         raise AssertionError("the Loner engine began another game type")
     made = loner_sheet(state, PLAYER_ID)

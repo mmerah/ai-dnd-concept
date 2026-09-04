@@ -205,6 +205,30 @@ async def test_write_extension_picks_return_draft_on_report_in_with_a_job_open()
     assert recorded == [ReturnDraft]
 
 
+async def test_write_extension_return_prompt_carries_hub_sections_and_reads_report_in() -> None:
+    state = hub_world()
+    state.payload.visits = _walked_job_visits()
+    the_campaign(state.payload.campaign).jobs = [
+        Job(title="Bandits", place=START, attempts=[Attempt(started=1)])
+    ]
+    prompts: list[str] = []
+
+    async def answer[M: BaseModel](
+        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
+        prompts.append(prompt)
+        answer = model.model_validate(RETURN.model_dump())
+        assert refusal(answer) is None
+        return answer
+
+    _ = await ENGINE.write_extension(state, REPORT_IN, answer)
+
+    assert "THIS JOB" in prompts[0]
+    assert "THE VERDICT" in prompts[0]
+    assert "ENGINE GUIDANCE" in prompts[0]
+    assert "WHAT COMES NEXT:\nReport in." in prompts[0]
+
+
 async def test_write_extension_refuses_report_in_with_no_job_open() -> None:
     async def answer[M: BaseModel](
         prompt: str, model: type[M], refusal: Callable[[M], str | None]

@@ -12,7 +12,6 @@ from aidm.engines.hub import JOB_DONE, Campaign, Offer
 from aidm.engines.loner3e.tools import (
     Question,
     RestoreLuck,
-    conflict_prompt,
     defeat_note,
     outcome_for,
     twist_note,
@@ -189,7 +188,7 @@ def test_an_exchange_both_sides_survive_hands_the_next_key_action_to_the_player(
     decision = draft.pending
     assert decision is not None
     foe = draft.payload.require(FOE)
-    expected = conflict_prompt(draft.payload, draft.payload.player, foe)
+    expected = draft.payload.conflict_prompt(draft.payload.player, foe)
     assert (decision.kind, decision.prompt) == ("conflict", expected)
     assert foe.name in decision.prompt
     assert decision.options == ()

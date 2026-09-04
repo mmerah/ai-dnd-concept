@@ -1,8 +1,10 @@
+from collections.abc import Sequence
 from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.entities import EntityId, Frozen, Mutable, Refusal
+from aidm.core.entities import EntityId, Frozen, Mutable, Refusal, require_unique, slug
+from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
 from aidm.engines.base import Person
@@ -35,6 +37,16 @@ class Item(Mutable):
     def broken(self) -> bool:
         return self.broken_times >= self.breaks
 
+    def detail(self) -> str:
+        parts: list[str] = []
+        if self.bulky:
+            parts.append("bulky")
+        if self.broken:
+            parts.append("broken")
+        elif self.breaks > 1 and self.broken_times > 0:
+            parts.append(f"broken {self.broken_times}/{self.breaks}")
+        return ", ".join(parts)
+
 
 class Operator(Person):
     """The played character: the only one with dice, credits and hindrances."""
@@ -64,6 +76,68 @@ class Operator(Person):
             )
             if value
         )
+
+    def require_item(self, item_id: EntityId) -> Item:
+        item = self.items.get(item_id)
+        if item is None:
+            raise Refusal(f"{item_id!r} is not among the player's items")
+        return item
+
+    def pay(self, cost: int) -> None:
+        if cost > self.credits:
+            raise Refusal(f"the player has only ₡{self.credits}, not ₡{cost}")
+        self.credits -= cost
+
+    def change_hindrances(self, gained: Sequence[str], lost: Sequence[str]) -> list[Fact]:
+        require_unique("gained hindrances", gained)
+        for hindrance in gained:
+            if hindrance in self.hindrances:
+                raise Refusal(f"{hindrance!r} is already among the player's hindrances")
+        for hindrance in lost:
+            if hindrance not in self.hindrances:
+                raise Refusal(f"{hindrance!r} is not among the player's hindrances")
+        for hindrance in lost:
+            self.hindrances.remove(hindrance)
+        self.hindrances.extend(gained)
+        parts: list[str] = []
+        if gained:
+            parts.append(f"Hindered: {', '.join(gained)}")
+        if lost:
+            parts.append(f"Recovered: {', '.join(lost)}")
+        card = " / ".join(parts)
+        trace = f"{self.label} — {card}"
+        return [self.fact("hindrances_changed", trace, card=card)]
+
+    def gain_item(self, name: str, *, bulky: bool, breaks: int, cost: int) -> list[Fact]:
+        self.pay(cost)
+        key = EntityId(slug(name, self.items))
+        self.items[key] = Item(name=name, bulky=bulky, breaks=breaks)
+        suffix = f" (₡{cost})" if cost > 0 else ""
+        card = f"Gained {name}{suffix}"
+        trace = f"{self.label} gains {name}{suffix}"
+        return [self.fact("item_gained", trace, card=card)]
+
+    def drop_item(self, item_id: EntityId) -> list[Fact]:
+        item = self.require_item(item_id)
+        del self.items[item_id]
+        trace = f"{self.label} drops {item.name}"
+        return [self.fact("item_dropped", trace, card=f"Dropped {item.name}")]
+
+    def repair_item(self, item_id: EntityId, cost: int) -> list[Fact]:
+        item = self.require_item(item_id)
+        if item.broken_times == 0:
+            raise Refusal(f"{item.name} is not broken")
+        self.pay(cost)
+        item.broken_times = 0
+        card = f"Repaired {item.name}"
+        trace = f"{self.label} repairs {item.name}"
+        return [self.fact("item_repaired", trace, card=card)]
+
+    def spend(self, amount: int, why: str) -> list[Fact]:
+        self.pay(amount)
+        card = f"₡{amount} spent — {why}"
+        trace = f"{self.label} spends ₡{amount} — {why}"
+        return [self.fact("credits_spent", trace, card=card)]
 
 
 TwentyfourxxWorld = SceneWorld[Person, Operator]

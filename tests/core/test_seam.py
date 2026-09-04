@@ -12,7 +12,6 @@ from aidm.core.play import DecisionOption
 from aidm.core.tools import MasterTool
 from aidm.core.views import Sections
 from aidm.engines.base import PLAYER_ID, Pack, Person
-from aidm.engines.registry import begin_game
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld
 
@@ -76,9 +75,19 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, Pack]):
 def _installed(tmp_path: Path) -> FifthEngine:
     (tmp_path / "rules.md").write_text("Roll high.", encoding=ENCODING)
     (tmp_path / "packs").mkdir()
-    (tmp_path / "packs" / "srd.json").write_text('{"name": "The SRD"}', encoding=ENCODING)
+    (tmp_path / "packs" / "srd.json").write_text(
+        '{"name": "The SRD", "source": "the test", "license": "CC0"}', encoding=ENCODING
+    )
     FifthEngine.directory = tmp_path
     return FifthEngine()
+
+
+def test_srd_pack_refuses_when_no_srd_table_set_is_installed(tmp_path: Path) -> None:
+    _ = _installed(tmp_path)
+    (tmp_path / "packs" / "srd.json").rename(tmp_path / "packs" / "other.json")
+    engine = FifthEngine()
+    with pytest.raises(Refusal, match="the SRD table set is not installed"):
+        _ = engine.srd_pack()
 
 
 def test_a_pack_with_doubled_keys_is_refused(tmp_path: Path) -> None:
@@ -115,9 +124,7 @@ def test_a_fifth_scene_engine_begins_a_playable_game(tmp_path: Path) -> None:
     engine = _installed(tmp_path)
     character = engine.create_character("Wren", "A quiet scout", {})
 
-    state = begin_game(engine, "the-taproom", _scenario(), character)
-    if not isinstance(state, FifthGame):
-        raise AssertionError("the fifth engine began another game type")
+    state = engine.begin("the-taproom", _scenario(), character)
 
     assert engine.pack_options() == (DecisionOption(id="srd", label="The SRD"),)
     assert engine.instructions == "Roll high."

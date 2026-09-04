@@ -192,6 +192,12 @@ def test_drop_item_removes_the_key() -> None:
     assert WRENCH not in draft.payload.player.items
 
 
+def test_join_party_is_refused_outside_breathless_change() -> None:
+    draft = small_world().draft()
+    with pytest.raises(Refusal):
+        _ = change(ENGINE, draft, "join_party", entity_id=PLAYER_ID)
+
+
 def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() -> None:
     draft = hub_world()
     world = draft.payload

@@ -7,9 +7,10 @@ from aidm.core.creation import CreationStep, Picks, check_picks, other_than, pic
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import AnyCharacter
+from aidm.core.play import PendingDecision
 from aidm.core.tools import MasterTool, NoArgs, master_tool
 from aidm.core.views import Panel, PanelRow, Rows, Sections, lines_of
-from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, SRD_PACK, Person, sentence
+from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, Person, sentence
 from aidm.engines.breathless.tools import (
     ChangeStress,
     ChangeWorld,
@@ -19,13 +20,12 @@ from aidm.engines.breathless.tools import (
     TestLuck,
     WorldChange,
     outcome,
-    roll_loot,
-    take_loot,
 )
 from aidm.engines.breathless.world import (
     LOOT_START,
     MED_KIT_CLEARS,
     SKILLS,
+    STARTING_DICE,
     STARTING_ITEM,
     STUNT_DIE,
     BreathlessCharacter,
@@ -40,9 +40,7 @@ from aidm.engines.breathless.world import (
 )
 from aidm.engines.breathless.worldsmith import AUTHORING, Pack
 from aidm.engines.scenes.engine import SceneEngine
-from aidm.engines.scenes.tools import NEXT_SCENE, Enter, Kill, Leave, NextScene, Reveal
-
-STARTING_DICE: tuple[Die, ...] = (10, 8, 6)  # the three rated skills, best first
+from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
 
 
 class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
@@ -107,7 +105,7 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
-        first = CreationStep(id="pack", prompt="Choose a table set", options=self.pack_options())
+        first = self.pack_step()
         pack = self.packs.get(picked(picks, "pack"))
         if pack is None:
             return (first,)
@@ -175,17 +173,14 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
 
     def complications(self) -> tuple[str, ...]:
         """Always the SRD's own table: no other pack publishes one."""
-        srd = self.packs.get(SRD_PACK)
-        if srd is None:
-            raise Refusal("the SRD table set with its complications is not installed")
-        return srd.complications
+        return self.srd_pack().complications
 
     def apply_change(self, world: BreathlessWorld, change: WorldChange) -> list[Fact]:
         match change:
-            case Reveal() | Enter() | Leave() | Kill():
-                return self.shared_change(world, change)
             case DropItem():
-                return self.drop_item(world, change.item_id)
+                return world.player.drop_item(change.item_id)
+            case _:
+                return self.shared_change(world, change)
 
     def change_world(self, draft: BreathlessGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
         return self.apply_change(draft.payload, args.change)
@@ -198,9 +193,7 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
             die = player.worn[args.skill]
             label = args.skill
         elif args.item_id is not None:
-            item = player.items.get(args.item_id)
-            if item is None:
-                raise Refusal(f"{args.item_id!r} is not among the player's items")
+            item = player.require_item(args.item_id)
             die = item.die
             label = item.name
         else:
@@ -276,23 +269,51 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
     def loot_check(self, draft: BreathlessGame, args: LootCheck, rng: Random) -> list[Fact]:
         player = draft.payload.player
         if args.granted is None or args.choice is None:
-            return roll_loot(draft, args.item, rng)
-        return [take_loot(player, args.item, args.granted, args.choice)]
+            return self.roll_loot(draft, args.item, rng)
+        return [player.take_loot(args.item, args.granted, args.choice)]
+
+    def roll_loot(self, draft: BreathlessGame, item: str, rng: Random) -> list[Fact]:
+        player = draft.payload.player
+        before = player.loot
+        rolled, dice_fact = roll((before,), f"scavenging — {item}", rng)
+        face = rolled[0]
+        player.loot = stepped(before)
+
+        found: Die | None = None
+        if face <= 2:
+            draft.note("The scavenge turns up trouble right here; nothing is found.")
+        elif face <= 4:
+            draft.note("The scavenge finds nothing, and trouble is coming.")
+        elif face <= 6:
+            found = 6
+        elif face <= 8:
+            found = 8
+        elif face <= 10:
+            found = 10
+        else:
+            found = 12
+
+        result = f"found {item} (d{found})" if found is not None else "nothing"
+        trace = f"scavenging — loot d{before} [{face}] -> {found or 'nothing'}"
+        card = f"Scavenge — d{before} → {result}"
+        event = DiceEvent(label=f"d{before}", faces=(before,), rolled=rolled)
+        fact = player.fact("loot_checked", trace, card=card, dice=(event,))
+        facts = [dice_fact, fact]
+
+        if found is not None:
+            draft.pending = PendingDecision(
+                kind="loot",
+                prompt=f"You found {item} (d{found}). Take it?",
+                options=player.loot_options(item, found),
+                allows_text=False,
+            )
+        return facts
 
     def test_luck(self, _draft: BreathlessGame, args: TestLuck, rng: Random) -> list[Fact]:
         rolled, dice_fact = roll((args.die,), args.question, rng)
         result = outcome(rolled[0])
         trace = f"{args.question} — d{args.die} [{rolled[0]}] -> {result}"
         return [dice_fact, Fact(kind="luck_tested", trace=trace)]
-
-    def drop_item(self, world: BreathlessWorld, item_id: EntityId) -> list[Fact]:
-        player = world.player
-        item = player.items.get(item_id)
-        if item is None:
-            raise Refusal(f"{item_id!r} is not among the player's items")
-        del player.items[item_id]
-        trace = f"{player.label} drops {item.name}"
-        return [player.fact("item_dropped", trace, card=f"Dropped {item.name}")]
 
 
 def _skill(name: str) -> Skill:

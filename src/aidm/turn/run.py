@@ -140,8 +140,7 @@ class Turn:
         facts = play(candidate, dice)
         if before is not None and candidate.pending is not before:
             raise Refusal("the rules already wait on a decision; they take one at a time")
-        self.engine.validate(candidate)
-        self.draft = candidate.commit()
+        self.draft = self.engine.commit(candidate)
         self.rng.setstate(dice.getstate())
         self.facts.extend(facts)
         return facts

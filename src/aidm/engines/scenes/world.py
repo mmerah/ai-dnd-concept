@@ -13,10 +13,10 @@ from aidm.core.entities import (
     require_unique,
 )
 from aidm.core.facts import Fact
-from aidm.core.play import Exchange, HistoryRecord, SceneRecord
-from aidm.core.views import Panel, PanelRow, Sections
-from aidm.engines.base import Person, Thing, check_filing, sentence
-from aidm.engines.hub import HOME_ROW, HUB_ROW, JOB_DONE, Attempt, Campaign, Job
+from aidm.core.play import Exchange, SceneRecord
+from aidm.core.views import Panel, PanelRow, Sections, lines_of
+from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, check_filing, sentence
+from aidm.engines.hub import HOME_ROW, HUB_ROW, JOB_DONE, Attempt, Campaign, Job, World
 from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft, SceneDraft
 
 SCENE_SETTLED = Fact(
@@ -77,14 +77,11 @@ class SceneCanon[C: Person](Mutable):
         return self
 
 
-class SceneWorld[C: Person, P: Person](Mutable):
+class SceneWorld[C: Person, P: Person](World[P]):
     """The world as a sequence of scenes: the player is a sheet, never a cast entry."""
 
     runs: list[SceneRun] = Field(min_length=1)
-    source: str = ""
-    campaign: Campaign | None = None
     cast: dict[EntityId, C] = Field(default_factory=dict)
-    player: P
     party: list[EntityId] = Field(default_factory=list)
     arc: str = ""
 
@@ -150,8 +147,8 @@ class SceneWorld[C: Person, P: Person](Mutable):
     def job_runs(self) -> list[SceneRun]:
         return self.runs if self.campaign is None else self.campaign.since_start(self.runs)
 
-    def exchanges(self) -> tuple[Exchange, ...]:
-        return tuple(exchange for run in self.runs for exchange in run.exchanges)
+    def record(self, exchange: Exchange) -> None:
+        self.run.exchanges.append(exchange)
 
     def records(self) -> tuple[SceneRecord, ...]:
         return tuple(
@@ -163,10 +160,6 @@ class SceneWorld[C: Person, P: Person](Mutable):
             )
             for run in self.runs
         )
-
-    def scenes(self) -> tuple[HistoryRecord, ...]:
-        records = self.records()
-        return records if self.campaign is None else self.campaign.history(records)
 
     def last_seen(self, entity_id: EntityId) -> str:
         """The prompt's own line; scanning back keeps what the story dropped from being lost."""
@@ -183,28 +176,18 @@ class SceneWorld[C: Person, P: Person](Mutable):
             return self.player
         entity = self.cast.get(entity_id)
         if entity is None:
-            raise Refusal(f"unknown id {entity_id!r}. Use only ids you were shown.")
+            raise Refusal(UNKNOWN_ID.format(entity_id=entity_id))
         return entity
 
-    def require_here(self, entity_id: EntityId) -> C | P:
+    def require_here(self, entity_id: EntityId, *, alive: bool = False) -> C | P:
         entity = self.require(entity_id)
+        if alive and not entity.alive:
+            raise Refusal(IS_DEAD.format(name=entity.name))
         if entity.id == self.player.id:
             return entity
         if entity.id not in self.run.here or not entity.known:
             raise Refusal(
-                f"{entity.name} is not here with the player, so nothing can happen to them"
-            )
-        return entity
-
-    def require_alive_here(self, entity_id: EntityId) -> C | P:
-        entity = self.require(entity_id)
-        if not entity.alive:
-            raise Refusal(f"{entity.name} is dead; they take no further part.")
-        if entity.id == self.player.id:
-            return entity
-        if entity.id not in self.run.here or not entity.known:
-            raise Refusal(
-                f"{entity_id!r} is not here with the player. "
+                f"{entity.name} is not here with the player. "
                 "Bring them here first, or act on who is here."
             )
         return entity
@@ -214,13 +197,34 @@ class SceneWorld[C: Person, P: Person](Mutable):
         for entity_id in self.present():
             yield self.cast[entity_id]
 
+    def here_lines(self) -> str:
+        return lines_of(member.line() for member in self.here() if member.id != self.player.id)
+
+    def hidden_lines(self) -> str:
+        return lines_of(self.require(entity_id).line() for entity_id in self.hidden())
+
+    def cast_lines(self) -> str:
+        """The worldsmith must know who follows the player out of the scene."""
+        return "\n".join(
+            (
+                self.player.line(detail=self.last_seen(self.player.id)),
+                *(
+                    entry.line(
+                        detail="travels with the player"
+                        if entry.id in self.party
+                        else self.last_seen(entry.id)
+                    )
+                    for entry in self.cast.values()
+                ),
+            )
+        )
+
     def reveal_hidden(self, entity_id: EntityId) -> list[Fact]:
         """The discovery itself, distinct from what `enter` tells about someone walking in."""
         entity = self.require(entity_id)
         if entity_id not in self.run.here or entity.known:
             raise Refusal(f"{entity_id!r} is not hidden here")
-        facts = entity.reveal()
-        return [facts[0].model_copy(update={"card": sentence(f"{entity.name} discovered")})]
+        return entity.reveal(card=sentence(f"{entity.name} discovered"))
 
     def enter(self, entity_id: EntityId) -> list[Fact]:
         if entity_id == self.player.id:
@@ -257,12 +261,12 @@ class SceneWorld[C: Person, P: Person](Mutable):
         return facts
 
     def join_party(self, entity_id: EntityId) -> list[Fact]:
-        entity = self.require_alive_here(entity_id)
+        entity = self.require_here(entity_id, alive=True)
         if entity.id in self.party:
             raise Refusal(f"{entity.name} already travels with the player")
         facts = entity.reveal()
         self.party.append(entity.id)
-        trace = f"{entity.name}[{entity.id}] travels with the player"
+        trace = f"{entity.tag} travels with the player"
         facts.append(entity.fact("party_joined", trace, card=f"{entity.name} joins your party"))
         return facts
 
@@ -271,7 +275,7 @@ class SceneWorld[C: Person, P: Person](Mutable):
         if entity.id not in self.party:
             raise Refusal(f"{entity.name} does not travel with the player")
         self.party.remove(entity.id)
-        trace = f"{entity.name}[{entity.id}] no longer travels with the player"
+        trace = f"{entity.tag} no longer travels with the player"
         return [entity.fact("party_left", trace, card=f"{entity.name} leaves your party")]
 
     def settle(self, job_done: bool, pursuit: str) -> list[Fact]:
@@ -337,7 +341,7 @@ class SceneWorld[C: Person, P: Person](Mutable):
         members = self.members()
         if not members:
             return ()
-        listed = "\n".join(f"- {m.name}[{m.id}]" for m in members)
+        listed = "\n".join(f"- {m.tag}" for m in members)
         return (("THE PARTY (led by the player)", listed),)
 
     def party_panel(self) -> tuple[Panel, ...]:
@@ -396,6 +400,7 @@ def resolve_ids(
 
 
 def run_of[C: Person](draft: SceneDraft[C], here: list[EntityId]) -> SceneRun:
+    """Free: it builds a `SceneRun` from a draft the run does not own."""
     return SceneRun(
         place=draft.place,
         title=draft.title,

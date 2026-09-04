@@ -194,7 +194,9 @@ def open_illustrator(
 
 
 def scene_key(scene: NarratorView) -> str:
-    """The engine's own key, hashed because it names a file and an id may not be safe as one."""
+    """Free: the cache names a file by the view, which does not know it is cached.
+
+    The engine's own key, hashed because it names a file and an id may not be safe as one."""
     return sha1(scene.place.encode(), usedforsecurity=False).hexdigest()[:12]
 
 

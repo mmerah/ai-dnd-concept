@@ -1,14 +1,14 @@
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from typing import Self
 
 from pydantic import Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Mutable, Refusal, parse, require_unique
 from aidm.core.facts import Fact
-from aidm.core.play import Exchange, HistoryRecord, SceneRecord
+from aidm.core.play import Exchange, SceneRecord
 from aidm.core.views import Rows, lines_of
-from aidm.engines.base import PLAYER_ID, Person, Thing, check_filing
-from aidm.engines.hub import Campaign, Job
+from aidm.engines.base import IS_DEAD, PLAYER_ID, UNKNOWN_ID, Person, Thing, check_filing
+from aidm.engines.hub import Attempt, Board, Campaign, Job, World
 
 
 class Dweller(Person):
@@ -80,7 +80,7 @@ class Dungeon[N: Dweller](Mutable):
     def require(self, entity_id: EntityId) -> Person | Item | Place:
         entity = self.entity(entity_id)
         if entity is None:
-            raise Refusal(f"unknown id {entity_id!r}. Use only ids you were shown.")
+            raise Refusal(UNKNOWN_ID.format(entity_id=entity_id))
         return entity
 
     def require_place(self, entity_id: EntityId) -> Place:
@@ -145,11 +145,8 @@ class RoomCanon[N: Dweller](Dungeon[N]):
         return self
 
 
-class RoomWorld[N: Dweller, P: Person](Dungeon[N]):
-    player: P
+class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
     visits: list[Visit] = Field(min_length=1)
-    source: str = ""
-    campaign: Campaign | None = None
 
     @model_validator(mode="after")
     def _playable(self) -> Self:
@@ -219,9 +216,9 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N]):
     def require_npc_here(self, entity_id: EntityId) -> N:
         npc = self.npcs.get(entity_id)
         if npc is None:
-            raise Refusal(f"unknown id {entity_id!r}. Use only ids you were shown.")
+            raise Refusal(UNKNOWN_ID.format(entity_id=entity_id))
         if not npc.alive:
-            raise Refusal(f"{npc.name} is dead; they take no further part.")
+            raise Refusal(IS_DEAD.format(name=npc.name))
         if npc.place != self.current.id:
             raise Refusal(f"{npc.name} is not here with the player")
         return npc
@@ -313,12 +310,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N]):
         found = "found" if isinstance(entity, Item) else "discovered"
         if entity.known:
             raise Refusal(f"the player has already {found} {entity.name}")
-        entity.known = True
-        return [
-            entity.fact(
-                "entity_discovered", f"learned of {entity.label}", card=f"{entity.name} {found}"
-            )
-        ]
+        return entity.reveal(card=f"{entity.name} {found}")
 
     def move_item(self, item_id: EntityId, to: EntityId) -> list[Fact]:
         item = self.require_item_here(item_id)
@@ -367,20 +359,46 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N]):
         self.add_way(anchor_id, start, known=known)
         self.add_way(start, anchor_id, known=known)
 
+    def apply_extension(
+        self, region: Dungeon[N], start: EntityId, *, reopening: Job | None = None
+    ) -> Place:
+        """At the hub the region is the job's, known, joined at its anchor; away it is hidden."""
+        campaign = self.campaign
+        if campaign is None or not self.at_hub:
+            self.attach(region, start, known=False)
+            return self.current
+        if (open_job := campaign.open_job()) is not None and not open_job.walking:
+            campaign.swap_out()
+        if reopening is not None:
+            anchor = self.require_place(EntityId(reopening.place))
+            campaign.reopen(reopening, started=None)
+            self.attach(region, start, known=True, anchor=anchor.id)
+            return anchor
+        self.attach(region, start, known=True)
+        campaign.jobs.append(Job(title=self.places[start].name, place=start, attempts=[Attempt()]))
+        return self.current
+
+    def apply_return(
+        self, *, debrief: str, summary: str, recaps: Mapping[EntityId, str], offers: Board
+    ) -> Job:
+        """Close the walked job, land each recap on that place's last visit, swap the board.
+        No bar runs here: every caller refuses first, so a recap missing is a bug."""
+        campaign, job = self.campaign, self.walked_job()
+        if campaign is None or job is None:
+            raise Refusal("no job is open to report")
+        started, end = (
+            job.start(),
+            len(self.visits) - 1,
+        )  # `start()` reads an open job: before `close`
+        job.close(returned=end, debrief=debrief, summary=summary)
+        for place, visit in {v.place: v for v in self.visits[started:end]}.items():
+            visit.recap = recaps[place]
+        campaign.board = offers
+        return job
+
     def line(self, entity: P | N | Item) -> str:
         """One card line; the player's sheet is the world's, everyone else's is their own."""
-        line = f"- {entity.name}[{entity.id}]" + (f" — {entity.brief}" if entity.brief else "")
-        if isinstance(entity, Person) and not entity.alive:
-            line += " (dead)"
-        rows = (
-            self.sheet_rows()
-            if entity.id == self.player.id
-            else entity.rows()
-            if isinstance(entity, Person)
-            else ()
-        )
-        sheet = "; ".join(f"{label.lower()}: {value}" for label, value in rows)
-        return f"{line}\n  {sheet}" if sheet else line
+        return entity.line(rows=self.sheet_rows()) if entity.id == self.player.id else entity.line()
 
     def place_lines(self, *, known: bool) -> str:
         npcs_here = [npc for npc in self.at(self.current.id) if npc.known == known]
@@ -390,18 +408,32 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N]):
 
     def ways_lines(self) -> str:
         return lines_of(
-            f"- {self.require_place(way.to).name}[{way.to}] — "
+            f"- {self.require_place(way.to).tag} — "
             + ("known" if way.known else "unknown")
             + ("; locked" if way.locked else "")
             for way in self.ways.get(self.current.id, ())
         )
 
+    def map_so_far(self) -> str:
+        seen: dict[EntityId, Place] = {}
+        for visit in self.visits:
+            seen.setdefault(visit.place, self.require_place(visit.place))
+        lines: list[str] = []
+        for place in seen.values():
+            known_ways = ", ".join(
+                self.require_place(way.to).name for way in self.ways.get(place.id, ()) if way.known
+            )
+            lines.append(
+                f"{place.tag} — {place.description}\n  known ways out: {known_ways or '(none)'}"
+            )
+        return "\n".join(lines)
+
     def sheet_rows(self) -> Rows:
         """The player's sheet as the master and the panel print it; a rule may amend a row."""
         return self.player.rows()
 
-    def exchanges(self) -> tuple[Exchange, ...]:
-        return tuple(exchange for visit in self.visits for exchange in visit.exchanges)
+    def record(self, exchange: Exchange) -> None:
+        self.visit.exchanges.append(exchange)
 
     def records(self) -> tuple[SceneRecord, ...]:
         records: list[SceneRecord] = []
@@ -416,10 +448,6 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N]):
                 )
             )
         return tuple(records)
-
-    def scenes(self) -> tuple[HistoryRecord, ...]:
-        records = self.records()
-        return records if self.campaign is None else self.campaign.history(records)
 
 
 def _walk(ways: dict[EntityId, list[Way]], start: EntityId) -> set[EntityId]:

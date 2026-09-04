@@ -21,7 +21,7 @@ from aidm.core.model import AnyGame, ScenarioKind
 from aidm.core.play import Answer, Speaker
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.hub import Campaign
-from aidm.engines.registry import begin_game, build_engines
+from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
 
 # One tool call as a scripted game master makes it.
@@ -70,7 +70,7 @@ def game(engine_id: EngineId, kind: ScenarioKind = "one-shot") -> tuple[AnyEngin
     scenario_id = scenario_for(engine_id, kind)
     selected_scenario = read_scenario(SCENARIOS, scenario_id, SCENARIO_MODELS)
     selected_character = read_character(CHARACTERS, "kael", engine.id, engine.character)
-    begun = begin_game(engine, scenario_id, selected_scenario, selected_character)
+    begun = engine.begin(scenario_id, selected_scenario, selected_character)
     return engine, begun
 
 

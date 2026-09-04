@@ -25,8 +25,6 @@ AUTHORING = (
 class Pack(ScenePack):
     """One published table set the player can build a character from."""
 
-    source: str
-    license: str
     concepts: tuple[DecisionOption, ...] = Field(min_length=1)
     skills: tuple[DecisionOption, ...] = Field(min_length=1)
     frailties: tuple[DecisionOption, ...] = Field(min_length=1)
