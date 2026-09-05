@@ -16,7 +16,7 @@ CROSSING = (
     "in the fewest words that make it real, and end on what they see first. WHAT HAPPENED names "
     "anyone who travelled with them. They have not acted in the new place yet, so settle nothing."
 )
-COMPLICATION = (
+COMPLICATING = (
     "The game master brings a complication down on the scene the player is in: {brief}. Write "
     "the situation it makes as a new scene. The same `place` is allowed and usual; whoever is "
     "here stays unless the brief moves them. Change the situation, not the player's answer to "

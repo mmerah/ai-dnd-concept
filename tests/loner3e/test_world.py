@@ -92,7 +92,7 @@ def test_someone_left_behind_is_refilled_when_the_scene_moves_on() -> None:
 
     facts = (
         *ENGINE.leaving(draft),
-        *ENGINE.install(draft, _next_scene(present=(), hidden=(TOMAS,)), "the story moves to"),
+        *ENGINE.install(draft, _next_scene(present=(), hidden=(TOMAS,))),
     )
 
     assert MARA not in draft.payload.party

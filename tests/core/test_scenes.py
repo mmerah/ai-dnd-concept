@@ -197,7 +197,7 @@ def test_a_scene_without_a_focus_installs_and_shows_no_scene_panel() -> None:
     draft = narrowed(state, Loner3eGame).draft()
     scene = NextDraft[Loner3eSheet](place="a2", title="A2", situation=SITUATION, recap=RECAP)
 
-    _ = engine.install(draft, scene, "the story moves to")
+    _ = engine.install(draft, scene)
 
     assert "This scene" not in [panel.title for panel in engine.player_view(draft).panels]
     assert "WHAT THIS SCENE IS ABOUT" not in str(engine.master_sections(draft))

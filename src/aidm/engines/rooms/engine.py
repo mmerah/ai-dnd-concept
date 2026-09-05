@@ -150,13 +150,16 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
     def act(self, draft: G, action: Slug, words: str) -> None:
         if action != EXTEND or self.world(draft).frontier():
             raise Refusal("the map still has ways to walk; the page was drawn before them")
+        if not words:
+            raise Refusal("say where you push on")
         draft.generation = Generation(operation=EXTEND, brief=words)
 
     async def advance(
         self, draft: G, request: Generation, worldsmith: WorldsmithAnswer
     ) -> tuple[tuple[Fact, ...], str | None]:
         extension = await self.write_extension(draft, request.brief, worldsmith)
-        return tuple(self.install_extension(draft, extension)), None
+        self.install_extension(draft, extension)
+        return (), None
 
     def shared_change(self, world: RoomWorld[N, P], change: SharedChange) -> list[Fact]:
         match change:
@@ -209,15 +212,9 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
             prompt, self.map_draft(), lambda answer: extension_refusal(answer, world)
         )
 
-    def install_extension(self, draft: G, extension: MapDraft[N]) -> list[Fact]:
-        world = self.world(draft)
-        anchor = world.current
-        world.attach(extension, extension.start)
-        return [
-            Fact(
-                kind="region_added", trace=f"a hidden region opens beyond {anchor.name}", told=False
-            )
-        ]
+    def install_extension(self, draft: G, extension: MapDraft[N]) -> None:
+        """Hidden, so nothing is told: the region reaches the player only as they walk it."""
+        self.world(draft).attach(extension, extension.start)
 
     def build_scenario(
         self, meta: ScenarioMeta, packs: tuple[Slug, ...], draft: MapDraft[N], source: str

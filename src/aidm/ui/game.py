@@ -340,6 +340,9 @@ class GamePage:
         if not typed or self.refuse_play():
             return
         action = self.session.player_view().action
+        if acting and action is None:
+            ui.notify("The way on has changed.", type="warning")
+            return
         box.value = ""
         # Quasar never saw the typed value change, so only an explicit push empties the composer.
         box.run_method("updateValue")

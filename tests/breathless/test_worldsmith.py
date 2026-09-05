@@ -67,12 +67,12 @@ def test_a_hidden_multi_word_name_in_situation_is_refused() -> None:
 
 def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
     game = small_world()
-    facts = ENGINE.install(game, _draft(present=("mira",)), "the story moves to")
+    facts = ENGINE.install(game, _draft(present=("mira",)))
     assert len(game.payload.runs) == 2
     assert facts == [
         Fact(
             kind="scene_opened",
-            trace="the story moves to The Alley",
+            trace="the scene opens: The Alley",
             told=True,
             card="New scene: The Alley\nCan they lose the mob in the alley?",
         ),

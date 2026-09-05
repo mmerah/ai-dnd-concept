@@ -103,26 +103,25 @@ class GameService:
             self.phase = None
 
     async def play(self, answer: Answer) -> None:
-        try:
-            await self._turn(answer, self.state)
-        finally:
-            self.phase = None
+        await self._turn(answer, self.state)
 
     async def act(self, action: Slug, words: str) -> None:
         """The page's way on: a request the engine makes runs with no master, else a turn plays."""
+        if (ended := self.engine.over(self.state)) is not None:
+            raise Refusal(f"{ended} The only way on is to restart.")
         if self.state.pending is not None:
             raise Refusal("the rules wait on the player's decision first")
         draft = self.state.draft()
         self.engine.act(draft, action, words)
+        if draft.generation is None:
+            await self._turn(Answer(text=words), draft)
+            return
+        self.intent = words
         try:
-            if draft.generation is None:
-                await self._turn(Answer(text=words), draft)
-                return
-            self.intent = words
             self.commit(self.engine.commit(draft))
             await self._generate()
         finally:
-            self.intent, self.phase = "", None
+            self.intent = ""
 
     async def _turn(self, answer: Answer, state: AnyGame) -> None:
         turn = Turn.begin(self.engine, state, answer, self.rng)
@@ -138,7 +137,7 @@ class GameService:
             state = turn.finish(lines)
         finally:
             # Cleared before arrival: the tool surface must not reach a turn nobody plays.
-            self.turn = None
+            self.turn, self.phase = None, None
         self.commit(state)
         self._present()
         await self._generate()
@@ -153,18 +152,19 @@ class GameService:
         self.phase = "worldsmith"
         try:
             facts, telling = await self.engine.advance(draft, request, _worldsmith(self.spawner))
-        except (OSError, Refusal) as failed:
-            LOGGER.warning("the world did not grow: %s", failed)
-            draft = self.state.draft()
-            draft.generation = None
-            self.commit(self.engine.close(draft, STORY_MARK, (), (UNWRITTEN,)))
-        else:
             if telling is None:
                 self.commit(self.engine.commit(draft))
             else:
                 self.phase = "narrator"
                 lines = await self._narrate(draft, facts, telling, fatal=False)
                 self.commit(self.engine.close(draft, STORY_MARK, lines, facts))
+        except (OSError, Refusal) as failed:
+            LOGGER.warning("the world did not grow: %s", failed)
+            draft = self.state.draft()
+            draft.generation = None
+            self.commit(self.engine.close(draft, STORY_MARK, (), (UNWRITTEN,)))
+        finally:
+            self.phase = None
         self._present()
 
     def _present(self) -> None:
