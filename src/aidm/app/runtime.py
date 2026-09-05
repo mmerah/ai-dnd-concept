@@ -26,9 +26,10 @@ from aidm.turn.run import Turn
 
 LOGGER = logging.getLogger(__name__)
 
-# What a turn nobody played is filed under in the chronicle: the crossing, and the opening.
+# What a turn nobody played is filed under: the crossing, the opening, the master's complication.
 CROSSED = "(the story moves on)"
 BEGUN = "(the story begins)"
+HELD = "(the situation holds)"
 UNWRITTEN = Fact(
     kind="way_unwritten",
     told=True,
@@ -128,9 +129,15 @@ class GameService:
             self.turn = None
             self.commit(state)
             self._present()
-            # The player named where they go; the worldsmith writes it once the turn is safe.
-            if brief is not None and self.engine.over(state) is None:
-                await self._grow(turn.prompt, brief)
+            # The player named where they go, or the master handed the worldsmith a brief; either
+            # is written once the turn holds.
+            if self.engine.over(state) is None and (brief is not None or state.handoff):
+                if brief is not None:
+                    await self._grow(turn.prompt, brief)
+                else:
+                    await self._grow(
+                        state.handoff, self.engine.crossing(state, state.handoff), marker=HELD
+                    )
                 self._present()
         finally:
             self.turn, self.phase = None, None
@@ -203,7 +210,7 @@ class GameService:
             return ()
         return narration.lines
 
-    async def _grow(self, intent: str, brief: str | None) -> None:
+    async def _grow(self, intent: str, brief: str | None, *, marker: str = CROSSED) -> None:
         self.phase = "worldsmith"
         draft = self.state.draft()
         try:
@@ -213,16 +220,20 @@ class GameService:
             LOGGER.warning("the world did not grow: %s", failed)
             # A fresh draft: the failed one may hold the half-installed scene.
             draft = self.state.draft()
+            # The brief is spent either way: the master asks again next turn if it still wants to.
+            draft.handoff = ""
             # The turn already filed the player's words when a crossing was asked for.
-            prompt = intent if brief is None else CROSSED
+            prompt = intent if brief is None else marker
             self.commit(self.engine.close(draft, prompt, (), (UNWRITTEN,)))
             return
+        # The write landed; the brief it answered is spent.
+        draft.handoff = ""
         if brief is None and not cards(facts):
             self.commit(self.engine.commit(draft))
             return
         self.phase = "narrator"
         lines = await self._narrate(draft, facts, brief or intent, fatal=False)
-        self.commit(self.engine.close(draft, intent if brief is None else CROSSED, lines, facts))
+        self.commit(self.engine.close(draft, intent if brief is None else marker, lines, facts))
 
     def player_view(self) -> PlayerView:
         return self.engine.player_view(self.state)
@@ -285,6 +296,8 @@ class GameService:
                 f"save scenario is {state.scenario.title!r}, "
                 f"selected scenario is {self.scenario.meta.title!r}"
             )
+        # The write was lost with the process: a reload never finds a brief.
+        state.handoff = ""
         return state
 
 

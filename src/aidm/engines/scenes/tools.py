@@ -6,7 +6,9 @@ from aidm.core.entities import CheckedEntityId, Frozen
 
 NEXT_SCENE = (
     "Say this scene's question is settled. The player is then asked what they want to pursue, "
-    "and their own words build the next scene. Do not answer for them."
+    "and their own words build the next scene. Do not answer for them. Or set `complication` to "
+    "bring a new situation down on this place, only when `change_world` (an arrival, a reveal, a "
+    "death) cannot make it from what is here."
 )
 
 
@@ -57,6 +59,12 @@ class NextScene(Frozen):
         default="",
         description="Set when the player has left this place for good with its question open: "
         "where they are going, in their own words. Empty when the question settled here.",
+    )
+    complication: str = Field(
+        default="",
+        description="Set to change the situation here without the player leaving: what arrives "
+        "or turns, and why, for the worldsmith. Written now, the turn ends; the player answers "
+        "it next turn. Empty otherwise.",
     )
 
 

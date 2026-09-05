@@ -252,10 +252,22 @@ class SceneWorld[C: Person, P: Person](World[P]):
         return [entity.fact("party_left", trace, card=f"{entity.name} leaves your party")]
 
     def settle(self, pursuit: str) -> list[Fact]:
-        if self.run.left is not None:
-            raise Refusal("this scene is already settled; the player has the way on")
+        self._require_open()
         self.run.left = pursuit
         return [SCENE_LEFT if pursuit else SCENE_SETTLED]
+
+    def complicate(self, brief: str) -> Fact:
+        self._require_open()
+        return Fact(
+            kind="complication_asked",
+            told=False,
+            trace=f"the worldsmith writes the complication once this turn ends: {brief}. "
+            "Nothing more lands this turn; stop and exit",
+        )
+
+    def _require_open(self) -> None:
+        if self.run.left is not None:
+            raise Refusal("this scene is already settled; the player has the way on")
 
     def merged_cast(self, cast: Mapping[EntityId, C]) -> dict[EntityId, C]:
         return {

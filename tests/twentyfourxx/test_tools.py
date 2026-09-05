@@ -8,7 +8,7 @@ from aidm.core.entities import EntityId, Refusal
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
-from aidm.engines.twentyfourxx.tools import AfterJob, Defend, Roll
+from aidm.engines.twentyfourxx.tools import Defend, FinishJob, Roll, TakeJob
 from aidm.engines.twentyfourxx.tools import TestLuck as LuckTest
 from aidm.engines.twentyfourxx.world import STARTING_CREDITS
 
@@ -168,21 +168,56 @@ def test_change_hindrances_gains_and_loses_refuses_duplicate_and_absent() -> Non
     assert player.hindrances == ["Scared"]
 
 
-def test_after_job_raises_a_skill_enters_a_new_one_refuses_at_d12_adds_credits() -> None:
+def test_finish_job_raises_a_skill_enters_a_new_one_refuses_at_d12_adds_credits() -> None:
     draft = small_world().draft()
     player = draft.payload.player
     before_credits = player.credits
 
-    facts = ENGINE.after_job(draft, AfterJob(skill="Stealth"), Random(0))
+    draft.payload.job = "Escort the crate to dock nine"
+    facts = ENGINE.finish_job(draft, FinishJob(skill="Stealth"), Random(0))
     assert player.skills["Stealth"] == 12
     assert player.credits == before_credits + 4
-    assert any(fact.card == "Skill up: Stealth d12" for fact in facts)
+    assert any(fact.card == "Job done: Stealth d12" for fact in facts)
+    assert draft.payload.job == ""
 
-    _ = ENGINE.after_job(draft, AfterJob(skill="Climbing"), Random(1))
+    draft.payload.job = "Shadow the courier"
+    _ = ENGINE.finish_job(draft, FinishJob(skill="Climbing"), Random(1))
     assert player.skills["Climbing"] == 8
 
+    draft.payload.job = "One skill too far"
     with pytest.raises(Refusal, match="d12"):
-        _ = ENGINE.after_job(draft, AfterJob(skill="Stealth"), Random(0))
+        _ = ENGINE.finish_job(draft, FinishJob(skill="Stealth"), Random(0))
+
+
+def test_take_job_opens_a_job_and_refuses_a_second_while_open() -> None:
+    draft = small_world().draft()
+    facts = ENGINE.take_job(draft, TakeJob(terms="Move the crates by dawn"), Random(0))
+    assert draft.payload.job == "Move the crates by dawn"
+    assert any(fact.card == "Job taken\nMove the crates by dawn" for fact in facts)
+
+    with pytest.raises(Refusal, match="a job is open"):
+        _ = ENGINE.take_job(draft, TakeJob(terms="A second job"), Random(0))
+
+
+def test_finish_job_refuses_without_a_job_open() -> None:
+    draft = small_world().draft()
+    with pytest.raises(Refusal, match="no job is open"):
+        _ = ENGINE.finish_job(draft, FinishJob(skill="Stealth"), Random(0))
+
+
+def test_finish_job_pays_once_and_refuses_a_second_call() -> None:
+    draft = small_world().draft()
+    player = draft.payload.player
+    before_credits = player.credits
+
+    draft.payload.job = "Deliver the package"
+    _ = ENGINE.finish_job(draft, FinishJob(skill="Stealth"), Random(0))
+    assert player.credits == before_credits + 4
+    assert draft.payload.job == ""
+
+    with pytest.raises(Refusal, match="no job is open"):
+        _ = ENGINE.finish_job(draft, FinishJob(skill="Stealth"), Random(0))
+    assert player.credits == before_credits + 4
 
 
 def test_kill_on_the_player_flips_player_over() -> None:

@@ -6,7 +6,7 @@ The app starts three separate AI roles:
 
 - The game master selects rule procedures and requests world changes.
 - The narrator writes the story text that the player can read.
-- The worldsmith writes the opening world and makes the world grow in play.
+- The worldsmith writes the opening world and makes the world grow in play, and writes the complication the game master brings down on a scene.
 
 The narrator opens the game with who the player is and where they stand; the player acts from there.
 
@@ -25,6 +25,8 @@ Breathless is a survival game in scenes. Every roll wears the die down. Catching
 24XX is a science-fiction game in scenes. One skill die meets three outcome bands. Harm is a hindrance, gear breaks to soften a hit, and a finished job raises a skill.
 
 A scenario is a premise, a scope and an opening. Scope is prose guidance on how far the adventure reaches and whether it tends toward an ending, asked for on the create page and read by the game master and the worldsmith; no mode, turn budget or ending is enforced.
+
+The game master of a scene engine may bring a complication down on the place the player stands, asked for as an argument of `next_scene`. The ask ends the turn: every later tool call in it is answered with a wait line, and the turn narrates only what landed. The worldsmith then writes the new scene and the player reads the arrival in the same place. A failed write is filed as a failed pursuit is, and a reload never finds a pending brief.
 
 The three roles are spawned command-line programs. The narrator and the worldsmith return typed proposals; the master plays through tools, and only Python code changes state or rolls dice. The engine seam is `Engine`, an abstract class every engine subclasses. `SceneEngine` is the base of the three scene engines. The registry is the one place that joins an engine to the app. Imports flow one way, `core <- engines <- turn <- app <- ui`, so nothing above the engines knows a world shape.
 

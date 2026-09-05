@@ -102,7 +102,14 @@ class Defend(Frozen):
     )
 
 
-class AfterJob(Frozen):
+class TakeJob(Frozen):
+    terms: str = Field(
+        min_length=1,
+        description="Who wants what done, what done looks like, what it pays, as agreed.",
+    )
+
+
+class FinishJob(Frozen):
     skill: str = Field(
         min_length=1, description="The skill the job called on, named by the player, to raise."
     )

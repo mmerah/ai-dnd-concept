@@ -133,7 +133,9 @@ class Operator(Person):
         return [self.fact("credits_spent", trace, card=f"₡{amount} spent — {why}")]
 
 
-TwentyfourxxWorld = SceneWorld[Person, Operator]
+class TwentyfourxxWorld(SceneWorld[Person, Operator]):
+    job: str = ""  # the terms of the job the operator is on; empty between jobs
+
 
 TwentyfourxxGame = Game[TwentyfourxxWorld]
 

@@ -28,7 +28,8 @@ locations, complications, missions) are all in the SRD at the page above, transc
 - `change_world` — reveal someone found, bring a cast member in or out of the scene, record a
   death, or drop an item from the backpack for good.
 - `next_scene` — say the scene's question is settled, or that the player left it; the player is
-  then asked what they pursue.
+  then asked what they pursue. Or hand the worldsmith a complication to bring down on this place;
+  the turn ends and the player reads what arrives.
 - `check` — roll a skill, a carried item, or the once-per-breath stunt on the 1–2 / 3–4 / 5+
   ladder; the die rolled wears one step, and an item reduced to d4 is gone.
 - `catch_breath` — reset skills, the loot die and the stunt; stress stays; one d12 on the SRD's

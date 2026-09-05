@@ -49,10 +49,12 @@ bites; the engine does not count it.
 `gain_item` buys — most items cost ₡1. `spend` pays for everything else: a bribe, medical care,
 passage. `repair_item` fixes broken gear.
 
-## Job done
+## Jobs
 
-Call `after_job` once per job, when the player's own words close it out: it raises the skill the
-job called on and pays out its credits.
+`take_job` when the player agrees to work, with the terms as agreed; the job then stands under
+THE JOB. `finish_job` once, when the story and the player's own words close it: it raises the
+skill the player names, pays the d6 of credits and clears the job. Neither tool is needed for
+work the player never takes on.
 
 ## Let the player choose where the story goes
 

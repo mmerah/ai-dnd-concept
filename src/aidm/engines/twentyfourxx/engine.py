@@ -13,15 +13,16 @@ from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, Person, keep_highest, sen
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
 from aidm.engines.twentyfourxx.tools import (
-    AfterJob,
     ChangeHindrances,
     ChangeWorld,
     Defend,
     DropItem,
+    FinishJob,
     GainItem,
     RepairItem,
     Roll,
     Spend,
+    TakeJob,
     TestLuck,
     WorldChange,
     outcome,
@@ -86,11 +87,18 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
                 self.defend,
             ),
             master_tool(
-                "after_job",
-                "The SRD's after-a-job step, once per job, when the player's own words close it: "
-                "raise the named skill and pay out its credits.",
-                AfterJob,
-                self.after_job,
+                "take_job",
+                "The player agrees to work: record the job's terms as agreed. Refused while a "
+                "job is open.",
+                TakeJob,
+                self.take_job,
+            ),
+            master_tool(
+                "finish_job",
+                "The job is done, by the story and the player's own words: raise the skill it "
+                "called on and pay out its credits; the job then closes.",
+                FinishJob,
+                self.finish_job,
             ),
         )
 
@@ -194,14 +202,17 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
             f"- {item.name}[{key}]" + (f" — {detail}" if (detail := item.detail()) else "")
             for key, item in state.payload.player.items.items()
         ]
-        return (("GEAR", lines_of(lines)),)
+        job = state.payload.job
+        return (("GEAR", lines_of(lines)), *((("THE JOB", job),) if job else ()))
 
     def panels(self, state: TwentyfourxxGame) -> tuple[Panel, ...]:
         rows = tuple(
             PanelRow(label=item.name, detail=item.detail())
             for item in state.payload.player.items.values()
         )
-        return (Panel(title="Gear", rows=rows),)
+        job = state.payload.job
+        job_panel = Panel(title="Job", rows=(PanelRow(label=job, detail=""),))
+        return (Panel(title="Gear", rows=rows), *((job_panel,) if job else ()))
 
     def resolve_skill(self, player: Operator, wanted: str) -> str:
         folded = wanted.casefold()
@@ -290,13 +301,29 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
 
         return facts
 
-    def after_job(self, draft: TwentyfourxxGame, args: AfterJob, rng: Random) -> list[Fact]:
-        player = draft.payload.player
+    def take_job(self, draft: TwentyfourxxGame, args: TakeJob, _rng: Random) -> list[Fact]:
+        world = draft.payload
+        if world.job:
+            raise Refusal(f"a job is open: {world.job}")
+        world.job = args.terms
+        return [
+            world.player.fact(
+                "job_taken",
+                f"the job is taken: {args.terms}",
+                card=f"Job taken\n{args.terms}",
+            )
+        ]
+
+    def finish_job(self, draft: TwentyfourxxGame, args: FinishJob, rng: Random) -> list[Fact]:
+        world = draft.payload
+        if not world.job:
+            raise Refusal("no job is open to finish")
+        player = world.player
         label = self.resolve_skill(player, args.skill)
         new_die = raised(player.skills.get(label))
         player.skills[label] = new_die
         trace = f"{player.label} — {label} rises to d{new_die}"
-        raise_fact = player.fact("skill_raised", trace, card=f"Skill up: {label} d{new_die}")
+        raise_fact = player.fact("skill_raised", trace, card=f"Job done: {label} d{new_die}")
 
         rolled, dice_fact = roll((6,), "credits earned", rng)
         gained = rolled[0]
@@ -307,6 +334,7 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
             card=f"+₡{gained} -> ₡{player.credits}",
             dice=(DiceEvent(label="d6", faces=(6,), rolled=rolled),),
         )
+        world.job = ""
         return [raise_fact, dice_fact, credit_fact]
 
     def test_luck(self, _draft: TwentyfourxxGame, args: TestLuck, rng: Random) -> list[Fact]:

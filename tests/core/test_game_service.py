@@ -1,10 +1,18 @@
+import json
 from pathlib import Path
 
 import pytest
 from support.loner import TARGET, open_game, session
-from support.table import ScriptedSpawner, narrated, offline_settings, play_turn, updated
+from support.table import (
+    ScriptedSpawner,
+    narrated,
+    offline_settings,
+    play_turn,
+    tool_call,
+    updated,
+)
 
-from aidm.app.runtime import BEGUN, Runtime
+from aidm.app.runtime import BEGUN, HELD, Runtime
 from aidm.core.entities import Refusal
 from aidm.core.io import FileStore
 from aidm.core.model import AnyGame, ScenarioMeta
@@ -106,3 +114,90 @@ async def test_a_failed_commit_still_frees_the_game(tmp_path: Path) -> None:
         _ = await play_turn(table, "I take the map.")
 
     assert (table.service.busy, table.service.turn) == (False, None)
+
+
+def _scene(**changes: object) -> str:
+    scene = {
+        "place": "abbots-study",
+        "title": "The Abbot's Study, Disturbed",
+        "situation": "A second crew has forced the outer door, and torchlight swings wild across "
+        "the ledgers while Mara flattens herself against the shelves.",
+        "present": ["mara"],
+        "hidden": [],
+        "question": "Can you deal with the second crew before they find the stair down?",
+        "recap": "The player was keeping watch on the study door when a second crew broke in.",
+        "arc": "",
+    }
+    return json.dumps(scene | changes)
+
+
+async def test_a_complication_writes_and_installs_at_the_same_place(tmp_path: Path) -> None:
+    table = open_game(tmp_path)
+    place = table.state.payload.run.place
+    here_before = list(table.state.payload.run.here)
+    table.spawner.answers["worldsmith"] = [_scene()]
+
+    state = await play_turn(
+        table,
+        "I keep watch on the study door.",
+        tool_call("next_scene", complication="A second crew breaches the study door."),
+        arrival="Torchlight swings wild across the ledgers.",
+    )
+
+    exchanges = state.payload.exchanges()
+    assert len(exchanges) == 2
+    assert exchanges[0].prompt == "I keep watch on the study door."
+    assert exchanges[1].prompt == HELD
+    assert state.payload.run.place == place
+    assert all(entity_id in state.payload.cast for entity_id in here_before)
+    assert [role for role, _ in table.spawner.prompts].count("master") == 1
+    assert state.handoff == ""
+
+
+async def test_a_complication_does_not_refill_the_players_spent_luck(tmp_path: Path) -> None:
+    """The scene turns, it does not end: a handoff must not run Loner's own scene-closing refill."""
+    table = open_game(tmp_path)
+    table.state.payload.player.luck.current = 2
+    table.service.commit(table.state)
+    table.spawner.answers["worldsmith"] = [_scene()]
+
+    state = await play_turn(
+        table,
+        "I keep watch on the study door.",
+        tool_call("next_scene", complication="A second crew breaches the study door."),
+        arrival="Torchlight swings wild across the ledgers.",
+    )
+
+    installed = state.payload.exchanges()[-1]
+    assert installed.prompt == HELD
+    assert all(fact.kind != "counter_changed" for fact in installed.facts)
+    assert state.payload.player.luck.current == 2
+
+
+async def test_a_failed_write_after_a_complication_leaves_the_turn_committed(
+    tmp_path: Path,
+) -> None:
+    table = open_game(tmp_path)
+    title = table.state.payload.run.title
+
+    state = await play_turn(
+        table,
+        "I keep watch on the study door.",
+        tool_call("next_scene", complication="A second crew breaches the study door."),
+    )
+
+    exchange = state.payload.exchanges()[-1]
+    assert exchange.prompt == HELD
+    assert exchange.facts[0].kind == "way_unwritten"
+    assert state.handoff == ""
+    assert state.payload.run.title == title
+
+
+def test_a_reload_clears_a_saved_brief(tmp_path: Path) -> None:
+    game = session(tmp_path)
+    saved = game.state.model_copy(update={"handoff": "A crew breaks in."}).commit()
+    FileStore(tmp_path).save(TARGET.slug, saved)
+
+    reloaded = session(tmp_path)
+
+    assert reloaded.state.handoff == ""

@@ -79,3 +79,57 @@ complication write clears the brief and files `UNWRITTEN`, as a failed pursuit d
 `HANDOFF_WAIT`); `take_job` returns a list. `take_job` and `world.job` stay: the maintainer's call,
 kept as the review leaned. NEXT-SPECS.md line naming `scenarios/amber-tap` as a future host now says
 "a 24XX scenario".
+
+## Phase 2 — the generation handoff, 24XX's jobs, the documentation (2026-09-05)
+
+`src`: 7,965 → 8,071 lines (target 8,025–8,115). Tests: 425 → 435, all green. Every
+`engines/<id>/` under 2,000 lines (scenes 913, twentyfourxx 697; the rest untouched). 24XX counts
+sixteen engine tools under the crew allowance named in `docs/24XX.md`. Reviews: Fable and a second
+Opus reviewer; `codex` is not on this machine.
+
+### Decisions off-plan
+
+- `TwentyfourxxWorld` was a type alias (`SceneWorld[Person, Operator]`); PLAN step 4 gives it a
+  field, so it is now a subclass, as `Loner3eWorld` already is. A Phase 1 save still loads: `job`
+  is defaulted.
+- `SceneWorld._require_open()` holds the one "already settled" refusal that `settle` and
+  `complicate` both raise (a reviewer's cut; two callers now exist).
+- `next_scene` calls `complicate` before it writes `draft.handoff`, so a refused ask leaves no
+  brief on the draft it was handed (a reviewer's finding; `Turn._apply` would have discarded the
+  candidate anyway).
+- `install`'s trace reads "the scene turns to {title}" under a handoff and "the story moves to
+  {title}" otherwise, so the narrator's evidence agrees with `TURNING`.
+- The `next_scene` bullet in `docs/LONER-3E.md`, `docs/BREATHLESS.md` and `docs/24XX.md` names the
+  complication arm; PLAN step 6 listed only `README.md` and `CLAUDE.md`, but those files are where an
+  engine's tools are enumerated.
+- One test beyond PLAN step 3's list: a complication install leaves a spent Loner luck pool spent
+  (the `advance` branch that skips `leaving`).
+
+### Findings refuted (both reviewers), and why
+
+- Guard `play`'s handoff path against `crossing` returning `None` (the raw brief would be filed
+  as the player's bubble): `Game.handoff` is written only by `SceneEngine.next_scene`, and
+  `SceneEngine.crossing` never returns `None`; the room engines have no tool that sets a brief. A
+  guard for an unreachable state is building for a future need. Refuted.
+- Make `complicate` return `list[Fact]` like `settle`: PLAN step 2 writes `complicate(brief) -> Fact`.
+  Kept as the PLAN wrote it.
+
+### Awaiting the maintainer's call
+
+- PLAN step 6 mandates the `CLAUDE.md` bullet verbatim, and its tail reads "There is no commission
+  queue, no retry state and no same-turn respawn"; the phase's Done-when grep for `commission` over
+  `src/ docs/ README.md CLAUDE.md` therefore finds that one line. The bullet is kept verbatim; the
+  alternative is "no queue of pending asks". Both reviewers raised it.
+
+### Known and accepted
+
+- A turn in which the player dies after the master asked for a complication commits with the brief
+  set: the game is over, `restart` discards the save, and `_resumable` clears the brief on any
+  reload. No code path reads it.
+- The `/phase` smoke (`/`, `/scenario`, `/create`, `/settings` and a game page per scenario all
+  answer 200, no traceback in the log) ran before the review fold; the fold changed only code that
+  the `test_game_service.py` handoff tests drive. "Plays a complication end to end" in `uv run
+  aidm` needs a live CLI, which this machine does not have; the scripted-spawner tests are the
+  check of record.
+- `turn/<id>.json` fixtures did not change; the four `master_tools.json` and one `master.txt`
+  changed exactly as PLAN step 7 lists.
