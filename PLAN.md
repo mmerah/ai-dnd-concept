@@ -3,8 +3,9 @@
 Two phases. Phase 1 is the engine seam and the two families (P1 tail, P2, P4, the engine half of
 P6 and P7). Phase 2 is the per-engine scaffold (P3, D5, D7), the platform (P5, D2, D6, the platform
 half of P6 and P7) and the tests (P8). P and D numbers are `PROPOSALS.md`'s (deleted; `git show
-1732e73:PROPOSALS.md`); every decision letter is applied below and nothing is left to decide. Line numbers are as of `1732e73` (`src` identical to `fc4d354`); find a site by
-the name quoted beside it.
+1732e73:PROPOSALS.md`); every decision letter is applied below and nothing is left to decide.
+Line numbers are as of `1732e73` (`src` identical to `fc4d354`); find a site by the name quoted
+beside it.
 
 ## How to work
 
@@ -76,7 +77,8 @@ edits named there so A ends green).
    description="True to have it written into the next scene or region instead of now.")` (`kind`
    is first in both families today, so the schema order holds; only `later`'s description unifies).
    `SceneCommission(CommissionArgs)` in `scenes/tools.py` and `RoomCommission(CommissionArgs)` in
-   `rooms/tools.py` keep only their `kind: Literal[...] = Field(description=…)` line. `Engine` gains class attributes `commission_args:
+   `rooms/tools.py` keep only their `kind: Literal[...] = Field(description=…)` line. `Engine` gains
+   class attributes `commission_args:
    type[CommissionArgs]`, `commission_hint: str`, and a concrete
    `commission_tool(self) -> MasterTool[G]: return master_tool(COMMISSION, COMMISSION_BRIEF +
    self.commission_hint, self.commission_args, self.ask_worldsmith)`; the abstract declaration
