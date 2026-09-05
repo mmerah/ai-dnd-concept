@@ -1,11 +1,11 @@
 # PLAN — one seam, one scaffold, one name per thing
 
 Two phases. Phase 1 is the engine seam and the two families (P1 tail, P2, P4, the engine half of
-P6 and P7). Phase 2 is the per-engine scaffold (P3, D5, D7), the platform (P5, D2, D6, the platform
+P6 and P7). Phase 2 is the per-engine scaffold (P3, D5), the platform (P5, D2, D6, the platform
 half of P6 and P7) and the tests (P8). P and D numbers are `PROPOSALS.md`'s (deleted; `git show
-1732e73:PROPOSALS.md`); every decision letter is applied below and nothing is left to decide.
-Line numbers are as of `1732e73` (`src` identical to `fc4d354`); find a site by the name quoted
-beside it.
+322cc0d:PROPOSALS.md`); every decision letter is applied below and nothing is left to decide;
+D7 B (show `pack.source` on the create page) is dropped because it adds code and simplifies
+nothing. Line numbers are as of master `e2db974`; find a site by the name quoted beside it.
 
 ## How to work
 
@@ -31,9 +31,9 @@ uv run basedpyright
 
 | phase | what lands | `src` after | about |
 |---|---|---|---|
-| start | | 9,330 | |
-| 1 — the seam and the two families | `*Proposal`, `check_scenario` gone, `CommissionArgs` base + concrete `commission_tool`, one `worldsmith_prompt` in `hub.py`, `on_order_lines`, hub residents moved, `apply_next/apply_job/apply_return`, `install_next/job/return`, the hub forwarders and `Engine.answer` inlined, `Subject.row`, rooms on scenes' lifecycle names | 9,255–9,285 | 9 h |
-| 2 — the scaffold, the platform, the tests | concrete `create_character`/`creation_steps`, `items_shown`, Loner/24XX folds and methods, `pack.source` shown; `play`/`move_on`, `Presentation`, `save`, prompt constants, `narration_refusal`, `parse` at two boundaries, `history/scene/ready/newest/tools`, `Installed` + `FileStore.restore`, `way_on_panel` gone; nineteen tests folded | 9,225–9,250 (D2 A's `Presentation` costs ~25) | 9 h |
+| start | | 9,367 | |
+| 1 — the seam and the two families | `*Proposal`, `check_scenario` gone, `CommissionArgs` base + concrete `commission_tool`, one `worldsmith_prompt` in `hub.py`, `on_order_lines`, hub residents moved, `apply_next/apply_job/apply_return`, `install_next/job/return`, the hub forwarders and `Engine.answer` inlined, `Subject.row`, rooms on scenes' lifecycle names | 9,290–9,320 | 9 h |
+| 2 — the scaffold, the platform, the tests | concrete `create_character`/`creation_steps`, `items_shown`, Loner/24XX folds and methods; `play`/`move_on`, `Presentation`, `save`, prompt constants, `narration_refusal`, `parse` at two boundaries, `history/scene/ready/newest/tools`, `Installed` + `FileStore.restore`, `way_on_panel` gone; nineteen tests folded | 9,260–9,285 (D2 A's `Presentation` costs ~25) | 9 h |
 
 ---
 
@@ -64,8 +64,8 @@ edits named there so A ends green).
    becomes `_next_proposal` and builds a `NextProposal` (adds `recap`). Grep: `Draft` under
    `src/aidm/engines/scenes`, `tests/core`, `tests/loner3e`, `tests/breathless`, `tests/twentyfourxx`
    finds nothing; `draft` in `scenes/worldsmith.py` and `scenes/proposals.py` finds nothing.
-2. **P1 tail.** Delete `Engine.check_scenario` (`seam.py:186–188`) and its calls (`scenes/engine.py:115`,
-   `rooms/engine.py:82`); `check_character` (`seam.py:76`) keeps only the player-id line.
+2. **P1 tail.** Delete `Engine.check_scenario` (`seam.py:190–192`) and its calls (`scenes/engine.py:120`,
+   `rooms/engine.py:82`); `check_character` (`seam.py:80`) keeps only the player-id line.
    `Library._check_filed` stays. Tests: delete `tests/twentyfourxx/test_engine.py:103–115` (the two
    `_by_new_game` foreign tests; `tests/core/test_integrity_boundaries.py:94` covers `begin`) and
    `tests/twentyfourxx/test_create.py:101` (`test_preview_character_refuses_foreign_character_type`:
@@ -82,10 +82,10 @@ edits named there so A ends green).
    type[CommissionArgs]`, `commission_hint: str`, and a concrete
    `commission_tool(self) -> MasterTool[G]: return master_tool(COMMISSION, COMMISSION_BRIEF +
    self.commission_hint, self.commission_args, self.ask_worldsmith)`; the abstract declaration
-   (`seam.py:213`) goes. `SceneEngine`: `commission_args = SceneCommission`, `commission_hint` = the
-   string after `COMMISSION_BRIEF +` at `scenes/engine.py:203–204`, its `commission_tool` override
-   deleted (rooms' override at `rooms/engine.py:206` stays until step 11). Fold `Engine.commission`
-   (`seam.py:130–142`) into `ask_worldsmith(self, draft: G, args: CommissionArgs, _rng: Random) ->
+   (`seam.py:217`) goes. `SceneEngine`: `commission_args = SceneCommission`, `commission_hint` = the
+   string after `COMMISSION_BRIEF +` in `scenes/engine.py:208–216`, its `commission_tool` override
+   deleted (rooms' override at `rooms/engine.py:208` stays until step 10). Fold `Engine.commission`
+   (`seam.py:134–146`) into `ask_worldsmith(self, draft: G, args: CommissionArgs, _rng: Random) ->
    list[Fact]`, text unchanged. Golden: regenerate; `git diff --stat` shows the four
    `master_tools.json` and one changed line each (`later`). Tests: `tests/core/test_turn.py:364`
    ("already on order") holds. Grep: `Protocol` in `seam.py` finds nothing; `\.commission(` finds
@@ -101,7 +101,7 @@ edits named there so A ends green).
    in `render_next` and `world=(("THE WHOLE CAST", "(no cast yet — write the people and things this
    scene needs)"),)` in `render_opening`. In `core/model.py` add `Game.on_order_lines(self) -> str:
    return "\n".join(f"- {c.kind}: {c.brief}" for c in self.on_order())` after `on_order`;
-   `write_next` (`scenes/engine.py:326–327`) uses it (the scenes' `- a {kind}` spelling goes; no test
+   `write_next` (`scenes/engine.py:335–336`) uses it (the scenes' `- a {kind}` spelling goes; no test
    names it). `hub_sections` is not hoisted (a hook per differing part nets no lines). Test,
    `tests/core/test_hub.py`: `worldsmith_prompt` renders `hub` before `world`
    before `ENGINE GUIDANCE` before `WHAT COMES NEXT` before `STANDING INSTRUCTION` (`str.index`).
@@ -116,7 +116,7 @@ edits named there so A ends green).
    (`grep -rn "from aidm.engines.hub import" tests` lists the fifteen files);
    `test_place_unmet_refuses_the_wrong_place_for_the_moment` moves to `tests/core/test_scenes.py`.
    Grep: each moved name in `hub.py` finds nothing; `question_heading` is step 8's.
-6. **P4, the world.** In `scenes/world.py` replace `apply_scene` (`:305–335`) by
+6. **P4, the world.** In `scenes/world.py` replace `apply_scene` (`:301–334`) by
    `apply_next(self, proposal: NextProposal[C]) -> None`, `apply_job(self, proposal: JobProposal[C],
    *, reopening: Job | None) -> None`, `apply_return(self, proposal: ReturnProposal[C]) -> Job`, and
    private `_land(self, proposal: NextProposal[C] | ReturnProposal[C], job: str) -> None` (deep-copies
@@ -127,7 +127,7 @@ edits named there so A ends green).
    today, lands under its title; `apply_return` refuses `"no job is open to close"` without a campaign
    or an open job, closes it, swaps the board, lands under `""`, returns the job (the no-campaign
    return now reads "no job is open to close"; no test matches the old text). `install`
-   (`scenes/engine.py:333`) meanwhile takes `scene: NextProposal[C] | ReturnProposal[C]`, drops its own
+   (`scenes/engine.py:342`) meanwhile takes `scene: NextProposal[C] | ReturnProposal[C]`, drops its own
    `model_copy` (`_land` copies), and dispatches in this order: `isinstance(scene, ReturnProposal)` →
    `job = world.apply_return(scene)`; `isinstance(scene, JobProposal)` → `world.apply_job(scene,
    reopening=reopening)`; else `world.apply_next(scene)` (the remainder narrows to `NextProposal[C]`);
@@ -135,21 +135,21 @@ edits named there so A ends green).
    `NextProposal[C] | ReturnProposal[C]`; step 7 removes the dispatch. In
    `scenes/proposals.py` add `SceneProposal.opening_campaign(self) -> Campaign | None: return None`
    and the `HubProposal` override `Campaign(place=self.place, board=self.offers)`;
-   `opening_canon` (`scenes/engine.py:300–302`) calls it. Tests: `tests/core/test_scenes.py:199–296`
+   `opening_canon` (`scenes/engine.py:309–311`) calls it. Tests: `tests/core/test_scenes.py:199–296`
    call `apply_next`, `apply_job(…, reopening=job)`, `apply_return`; `tests/loner3e/test_world.py:80,
    107,110,163` and `tests/twentyfourxx/test_worldsmith.py:48–66,86,206` call `apply_next` with a
    `_next_proposal(...)`; a bare `_proposal(...)` passed to `install` becomes `_next_proposal(...)`,
-   added to `tests/breathless/test_worldsmith.py` as 24XX's builds it; `tests/core/test_master_tools.py:67`
+   added to `tests/breathless/test_worldsmith.py` as 24XX's builds it; `tests/core/test_master_tools.py:71`
    builds `NextProposal[Loner3eSheet].model_validate_json(_scene())`. Grep: `apply_scene`
    finds nothing; `isinstance` in `scenes/world.py` finds nothing.
-7. **P4, the engine.** `render_next(self, draft: G, intent: str, answer: type[BaseModel], *,
-   returning: bool, follows_arc: bool, reopening: Job | None = None, asked: str = "") -> str`
-   replaces the two `issubclass` reads (`:246`); `render_commission` passes `returning=False,
+7. **P4, the engine.** `render_next` (`scenes/engine.py:244`) becomes `render_next(self, draft: G,
+   intent: str, answer: type[BaseModel], *, returning: bool, follows_arc: bool, reopening: Job | None
+   = None, asked: str = "") -> str` and drops the two `issubclass` reads (`:255`); `render_commission` passes `returning=False,
    follows_arc=False`. `write_next` becomes generic: `async def write_next[M: BaseModel](self, draft:
    G, intent: str, worldsmith: WorldsmithAnswer, model: type[M], refusal: Check[M], *, returning:
    bool = False, reopening: Job | None = None) -> M` = render (`follows_arc=not returning`,
    `asked=draft.on_order_lines()`) then `await worldsmith(prompt, model, refusal)`. `install`
-   (`:333–357`) becomes `install_next(draft, proposal: NextProposal[C]) -> list[Fact]`,
+   (`:342–366`) becomes `install_next(draft, proposal: NextProposal[C]) -> list[Fact]`,
    `install_job(draft, proposal: JobProposal[C], *, reopening: Job | None)` (card line `The job:
    …`), `install_return(draft, proposal: ReturnProposal[C])` (the finished note, then `[job.closed(),
    opened]`), sharing `opened(self, draft: G, proposal: SceneProposal[C], label: str, *lines: str)
@@ -159,7 +159,7 @@ edits named there so A ends green).
    branches — `returning` (campaign, away, `intent == GO_HOME`): `ReturnProposal[self.cast]` →
    `install_return`; `world.at_hub`: `JobProposal[self.cast]` with `reopening` → `install_job`; else
    `NextProposal[self.cast]` → `install_next` — each `(*self.leaving(draft), *install)`. Tests:
-   `tests/core/test_master_tools.py:67` `_SilentEngine.advance` calls `install_next`;
+   `tests/core/test_master_tools.py:71` `_SilentEngine.advance` calls `install_next`;
    `tests/twentyfourxx/test_worldsmith.py:331–372` becomes three fresh `hub_world()`s through
    `advance` asserting the model recorded (`GO_HOME` → `ReturnProposal`, hub with the job run popped +
    `TAKE_JOB` → `JobProposal`, on the job → `NextProposal`); every other `ENGINE.write_next(game,
@@ -171,27 +171,27 @@ edits named there so A ends green).
    reopening=None)`/`install_return` with the matching proposal; `render_next` calls there add
    `returning=False, follows_arc=False`. Grep: `def install(` under `engines/scenes` finds nothing;
    `issubclass\|isinstance` under `engines/scenes` outside `worldsmith.py` finds nothing.
-8. **P7, the engine folds.** (a) `question_heading` (`hub.py:372`) inlined into `master_sections`
-   (`scenes/engine.py:125`); `tests/core/test_hub.py:180` deleted. (b) `Campaign.terms` (`hub.py:157`)
-   inlined into `scene_rows` (`scenes/world.py:353`: `(job := self.campaign.open_job()) is not None
-   and job.terms`); `sections` (`:269`) into `hub_block`; `board_rows` (`:236`) into `board_panel`;
-   `job_row` (`:280`) into `tail`. `tests/core/test_hub.py:124,134` read `board_panel(at_hub=True)[0]
+8. **P7, the engine folds.** (a) `question_heading` (`hub.py:378`) inlined into `master_sections`
+   (`scenes/engine.py:124`); `tests/core/test_hub.py:180` deleted. (b) `Campaign.terms` (`hub.py:157`)
+   inlined into `scene_rows` (`scenes/world.py:347`: `(job := self.campaign.open_job()) is not None
+   and job.terms`); `sections` (`:266`) into `hub_block`; `board_rows` (`:233`) into `board_panel`;
+   `job_row` (`:277`) into `tail`. `tests/core/test_hub.py:124,134` read `board_panel(at_hub=True)[0]
    .rows`, `:226` asserts the panel's title and row count instead of comparing against `board_rows()`,
    `:121–162,209–226` otherwise call `hub_block(title, brief, (), returning=…, reopening=None)` and
    `dict(tail(at_hub=False))["THE JOB"]`; `tests/tunnelgoons/test_views.py:68` reads
    `board_panel(at_hub=True)[0].rows`.
    (c) `here_lines`/`hidden_lines` (`scenes/world.py:201–205`) inlined into `master_sections`.
    (d) `Subject.row(self, label: str | None = None) -> PanelRow` in `core/views.py` (`label` defaults
-   to `name`, `detail=brief`, `icon_id=id`); move `PanelRow` and its comment (`views.py:32–39`) above
-   `Subject` first, or the annotation raises `NameError` at import; `here_panel` (`base.py:143–144`) and `party_panel`
-   (`scenes/world.py:348`, via `m.subject().row()`) use it; rooms' site is step 12. (e) `Engine.answer`
-   (`seam.py:98–105`) inlined into `Turn._consume` (`turn/run.py:74`): `try: found = engine.tool(
+   to `name`, `detail=brief`, `icon_id=id`); move `PanelRow` and its comment (`views.py:33–40`) above
+   `Subject` first, or the annotation raises `NameError` at import; `here_panel` (`base.py:147–148`) and `party_panel`
+   (`scenes/world.py:344`, via `m.subject().row()`) use it; rooms' site is step 12. (e) `Engine.answer`
+   (`seam.py:102–109`) inlined into `Turn._consume` (`turn/run.py:84`): `try: found = engine.tool(
    option.name) except Refusal as missing: raise Refusal(f"the {engine.id!r} engine has no tool
    {option.name!r} to play option {chosen!r}") from missing` (`chosen` is `option.id`, so the text
    holds), then `self._apply(lambda copy, dice: found.call(copy, option.args, dice))`; `tests/core/test_decisions.py:204–206` drive the same two
    refusals through `Turn.begin(engine, _pending(state, decision-with-that-option), Answer(option_id=
-   "lantern"), Random(0))`, same `match`. (f) D5 A: drop the `Free:` docstrings at `base.py:141` and
-   `scenes/world.py:400` (each is the whole docstring). Grep: each name in (a)–(e) finds nothing;
+   "lantern"), Random(0))`, same `match`. (f) D5 A: drop the `Free:` docstrings at `base.py:145` and
+   `scenes/world.py:396` (each is the whole docstring). Grep: each name in (a)–(e) finds nothing;
    `Free:` under `engines/scenes` and `base.py` finds nothing.
 9. **P6, rooms (D3 A).** `git mv src/aidm/engines/rooms/drafts.py src/aidm/engines/rooms/proposals.py`;
    `MapDraft→MapProposal`, `NpcDraft→NpcProposal`, `ItemDraft→ItemProposal`, `ReturnDraft→
@@ -200,13 +200,13 @@ edits named there so A ends green).
    (it installs what `write_next` wrote, return included; `install_commission` already matches);
    parameters `draft`/`extension` holding a proposal → `proposal` (`rooms/worldsmith.py` bars,
    `build_scenario`, `opening_canon`, `install_next`). Rooms' three `isinstance` on proposals
-   (`rooms/engine.py:306,354,357`) stay: `RoomEngine` is not reshaped (D3 C). Tests:
+   (`rooms/engine.py:308,356,359`) stay: `RoomEngine` is not reshaped (D3 C). Tests:
    `tests/tunnelgoons/test_worldsmith.py` follows. Grep: `Draft` under `engines/rooms` and
    `tests/tunnelgoons` finds nothing; `render_map\|write_extension\|install_extension\|map_draft`
    finds nothing.
-10. **P2, rooms adopt the shared tool and line.** Delete `commission_tool` (`rooms/engine.py:206–215`);
+10. **P2, rooms adopt the shared tool and line.** Delete `commission_tool` (`rooms/engine.py:208–217`);
     `RoomEngine.commission_args = RoomCommission`, `commission_hint` = the string after
-    `COMMISSION_BRIEF +` (`:210–212`). `write_next` uses `draft.on_order_lines()` (`:284`). Grep:
+    `COMMISSION_BRIEF +` (`:212–214`). `write_next` uses `draft.on_order_lines()` (`:286`). Grep:
     `def commission_tool` finds `seam.py` only.
 11. **P2, rooms adopt the frame (D1 A).** Delete `rooms/worldsmith.py:36–62`; `rooms/engine.py` imports
     `worldsmith_prompt` from `hub` and passes `world=(("MAP SO FAR", world.map_so_far()), ("THE PLAYER",
@@ -217,7 +217,7 @@ edits named there so A ends green).
     block (no test asserts the order). Test, `tests/tunnelgoons/test_worldsmith.py:432`
     (`..._prompt_carries_scenes_so_far`): also asserts `"STANDING INSTRUCTION:\n" in prompt`. Grep:
     `def worldsmith_prompt` finds `hub.py` only; `write from the setting` finds nothing.
-12. **P7, rooms.** The Carrying rows (`rooms/engine.py:136`) become `item.subject().row()`; drop the
+12. **P7, rooms.** The Carrying rows (`rooms/engine.py:138`) become `item.subject().row()`; drop the
     `Free:` docstring at `rooms/worldsmith.py:66`. Grep: `PanelRow(label=` under `engines/rooms` finds
     the `Ways out` rows and `REPORT_ROW` only; `Free:` under `engines/rooms` finds nothing.
 
@@ -231,34 +231,38 @@ Split: A and B parallel, then C.
   test_views,test_store,test_integrity_boundaries,test_golden_turn,test_decisions,test_turn}.py`,
   `tests/ui/*`, `tests/tunnelgoons/test_play.py`, `tests/twentyfourxx/test_engine.py`,
   `tests/support/{table,loner}.py`.
-- B, the scaffold: steps 22–28; owns `engines/seam.py`, `engines/base.py`, `engines/scenes/engine.py`,
-  `engines/{loner3e,breathless,twentyfourxx,tunnelgoons}/**`, `ui/create.py`; tests
+- B, the scaffold: steps 22–27; owns `engines/seam.py`, `engines/base.py`, `engines/scenes/engine.py`,
+  `engines/{loner3e,breathless,twentyfourxx,tunnelgoons}/**`; tests
   `tests/*/test_create.py`, `tests/breathless/test_views.py`, `tests/twentyfourxx/test_world.py`,
   `tests/core/{test_seam,test_rooms}.py`.
-- C, the tests: steps 29–30; owns `tests/**`.
+- C, the tests: steps 28–29; owns `tests/**`.
 
-13. **P5 with D8 A.** In `app/runtime.py` split `play` (`:100–131`) and `extend` (`:166–178`):
+13. **P5 with D8 A.** In `app/runtime.py` split `play` (`:104–136`) and `extend` (`:171–184`):
     `async def play(self, answer: Answer) -> None: await self._turn(answer)`; private `async def
-    _turn(self, answer: Answer) -> str` is today's `play` body without the `moving_on` lines, returning
+    _turn(self, answer: Answer, *, mastered: bool = True) -> str` is today's `play` body without the
+    `moving_on` lines, passing `mastered` to `Turn.begin` and the `_run_master` guard, returning
     `turn.prompt`; `async def move_on(self, answer: Answer) -> None` refuses `"the world offers no
     transition from here"` unless `engine.ready`, computes `brief = engine.crossing(state, answer.text)`,
     then under one `try/finally` that resets `self.intent, self.phase = "", None`: with a brief, `prompt
-    = await self._turn(answer)` and, if `engine.over(self.state) is None`, `await self._grow(prompt,
-    brief)` + `self._present()`; without one, refuse `"a transition needs written intent"` on an
-    `option_id`, set `self.intent = answer.text`, `await self._grow(answer.text, None)`. `extend` goes,
+    = await self._turn(answer, mastered=not engine.page_word(self.state, answer.text))` and, if
+    `engine.over(self.state) is None`, `await self._grow(prompt, brief)` + `self._present()`; without
+    one, refuse `"a transition needs written intent"` on an `option_id`, set `self.intent =
+    answer.text`, `await self._grow(answer.text, None)` + `self._present()`. `extend` goes,
     and with it its "a turn is already in flight" and "no frontier to extend" refusals: the page's
     `play_refusal` and `ready` gate both; no test matches either text.
     `ui/game.py`: `_send` (`:393`) goes; `decision_panel.answer` runs `self._run(partial(session.play,
     Answer(option_id=…)))`, `submit(moving_on)` runs `partial(session.move_on if moving_on else
     session.play, Answer(text=typed))`, `move_on(intent)` runs `partial(session.move_on, Answer(text=
     intent))`. Tests: `tests/support/table.py` `play_turn` awaits `move_on(answer)` when `moving_on`
-    else `play(answer)`; `tests/core/test_master_tools.py:257,396` and `tests/tunnelgoons/test_play.py:91`
-    call `move_on(Answer(...))`; `test_master_tools.py:239–260` (the `intent` bubble) holds. Grep:
+    else `play(answer)`; every `service.play(…, moving_on=True)` (`tests/core/test_master_tools.py:258,
+    278,301,326`, `tests/tunnelgoons/test_play.py:91`) becomes `service.move_on(Answer(...))`;
+    `test_master_tools.py:230–262` (the `intent` bubble) and the four page-word tests (`:288–340`)
+    hold. Grep:
     `moving_on` in `src` finds nothing; `def extend\|\.extend(answer` finds nothing; `_send` finds nothing.
 14. **D2 A and the page's reach.** New `app/present.py`: `@dataclass(slots=True) class Presentation`
     with `media: Illustrator | None = None`, `reader: Reader | None = None`, `_background: set[Task[
     None]] = field(default_factory=set, repr=False)` and the six methods moved from `GameService`
-    (`runtime.py:142–145,254–287`), each taking what it read from the game: `scene_art(scene:
+    (`runtime.py:147–150,258–291`), each taking what it read from the game: `scene_art(scene:
     NarratorView)`, `icon(entity_id)`, `newest_clip(newest: Exchange | None)`, `illustrate(scene, player:
     Subject, narration: str = "")`, `speak(newest)`, `show(scene, player, newest)` (was `_present`), plus
     private `_retain`. `GameService` loses `media`, `reader`, `_background`, gains `present: Presentation
@@ -279,18 +283,18 @@ Split: A and B parallel, then C.
     `session.newest()`. Grep: `session\.state` in `ui/` finds nothing; `session\.engine` in `ui/` finds
     `ui/game.py` once (`.title`); `_newest\|def illustrate\|def speak` in `runtime.py` finds nothing. Costs
     about +25 lines (the module header and five accessors); D2 A accepts it.
-15. **P6, `save`.** `GameService.commit` (`runtime.py:294`) → `save`; five callers in `runtime.py`;
+15. **P6, `save`.** `GameService.commit` (`runtime.py:298`) → `save`; five callers in `runtime.py`;
     `tests/core/test_speech.py:149`, `test_golden_turn.py:33`, `test_decisions.py:103`. Grep:
     `self\.commit(\|service\.commit(\|session\.commit(` finds nothing (`Engine.commit`, `Game.commit`
     stay).
 16. **P7, prompt files one way.** `turn/context.py`: `MASTER = (_PROMPTS_DIR / "master.md").read_text(
     encoding=ENCODING)` and `NARRATOR = …` as module constants; `_prompt` and the `cache` import go.
     Grep: `_prompt(` in `turn/` finds nothing; `@cache` in `src` finds nothing.
-17. **P7, one speaker rule.** `core/views.py`: `spoken`'s refusal (`:73`) becomes `f"nobody here has id
+17. **P7, one speaker rule.** `core/views.py`: `spoken`'s refusal (`:76`) becomes `f"nobody here has id
     {line.speaker_id!r}. Only the player or someone here with them speaks; leave `speaker_id` null
     for narration."`; `narration_refusal` returns the empty-lines message, else `try: self.spoken(
     narration.lines) except Refusal as refused: return str(refused)`, else `None`; `speakers_refusal`
-    (`:78–87`) goes. Lost: the re-prompt names the first stranger, not every stranger. Test, `tests/core/test_views.py`: `narration_refusal` names a stranger's id and
+    (`:81–90`) goes. Lost: the re-prompt names the first stranger, not every stranger. Test, `tests/core/test_views.py`: `narration_refusal` names a stranger's id and
     `None` for a subject who speaks. Grep: `speakers_refusal` finds nothing.
 18. **P7, `parse` at two boundaries.** `ui/settings.py:91`: `parse(Settings, merged)` under `except
     Refusal`; `app/spawn.py:87`: `result = parse(_ClaudeResult, decode(output))` under `except Refusal
@@ -302,16 +306,16 @@ Split: A and B parallel, then C.
     two methods need it); `FileStore.load` → `restore(self, slug: str, engines: Mapping[EngineId,
     Installed]) -> AnyGame | None` (read, `decode`, `routed`, `engine.restore`); `Library.read_scenario(
     name, engines: Mapping[EngineId, Installed])` and `read_scenarios(engines)` parse with
-    `routed(value, engines).scenario`. `GameService.__post_init__` (`runtime.py:69–73`) holds one
+    `routed(value, engines).scenario`. `GameService.__post_init__` (`runtime.py:73–77`) holds one
     engine: `saved = self.store.restore(self.slug, {self.engine.id: self.engine})` (a foreign save now
     reads "the 'x' engine is not installed"; no test matches the old text); `Runtime._open`
-    (`:402–405`) and `launch.py:70,97–102` pass `self.engines`/`engines` (`engine = engines[state.
+    (`:406–409`) and `launch.py:70,97–102` pass `self.engines`/`engines` (`engine = engines[state.
     engine]`; `decode`, `routed` imports in `launch.py` go).
     Tests: `SCENARIO_MODELS` (`tests/support/table.py:47`) goes, its six users pass `ENGINES_BUILT`;
     `Table.saved` and `tests/core/test_store.py:37,48`, `test_game_service.py:37` call `store.restore(
     slug, ENGINES_BUILT)`. Grep: `\.load(` in `src tests` finds nothing; `SCENARIO_MODELS` finds
     nothing; `scenario_models` finds nothing.
-20. **D6 A.** Delete `way_on_panel` (`ui/game.py:203–217`), its call (`:106`) and its refresh (`:134`).
+20. **D6 A.** Delete `way_on_panel` (`ui/game.py:204–217`), its call (`:106`) and its refresh (`:134`).
     Grep: `way_on_panel` finds nothing.
 21. **D5 A, platform half.** Drop the `Free:` line (first line only) of the docstrings at
     `app/providers.py:20` and `app/media.py:168`. Grep: `Free:` in `src` finds nothing.
@@ -352,9 +356,10 @@ Split: A and B parallel, then C.
 25. **P7, Loner's glossary in one method.** `Loner3eEngine.glossary` (`loner3e/engine.py:140`) absorbs
     `meanings` (`:147`) and `pack_meanings` (`loner3e/tools.py:124`): the packs from `state.packs`, a
     `detail_of` over their skills, frailties and gear, the tags of everyone `here()` in that order;
-    the two callees go. `tests/core/fixtures/prompts/loner3e/master.txt:147` pins the section. Grep:
+    the two callees go. the `WHAT THE TAGS IN PLAY MEAN` section of
+    `tests/core/fixtures/prompts/loner3e/master.txt` pins it. Grep:
     `meanings` finds nothing.
-26. **D5 A, Loner.** `_strike`, `_refuse_unless_ready`, `_pair` (`loner3e/engine.py:265–305`) become
+26. **D5 A, Loner.** `_strike`, `_refuse_unless_ready`, `_pair` (`loner3e/engine.py:268–308`) become
     private methods on `Loner3eEngine` with `self` first; `_absorbed` (a list) stays free. Grep:
     `^def _strike\|^def _refuse_unless_ready\|^def _pair` finds nothing.
 27. **D5 A, 24XX.** `starting_items` (`twentyfourxx/engine.py:346`) becomes `Pack.starting_items(self,
@@ -365,11 +370,7 @@ Split: A and B parallel, then C.
     to `tests/twentyfourxx/test_create.py` as `ENGINE.packs["srd"].model_copy(update={"starting_kit":
     (Kit(name="Comm"), Kit(name="Comm"))}).starting_items(Specialty(id="bare", label="Bare",
     detail="none", skills={}), None)` keyed `["comm", "comm-2"]`. Grep: `^def starting_items` finds nothing.
-28. **D7 B.** `SceneEngine.pack_options` (`scenes/engine.py:105`) sets `detail=pack.source`; the
-    scenario form's Table sets select (`ui/create.py:164`) labels `f"{pack.label} — {pack.detail}"`;
-    the character form's pack step shows it through its existing `detail` branch (`:73`). Test,
-    `tests/core/test_seam.py:134` becomes `pack_options()[0].detail == "the test"`.
-29. **P8, the tests fold into `tests/core`.** `tests/support/table.py`: `SCENE_ENGINE_IDS = (LONER3E,
+28. **P8, the tests fold into `tests/core`.** `tests/support/table.py`: `SCENE_ENGINE_IDS = (LONER3E,
     BREATHLESS, TWENTYFOURXX)`. `tests/support/scenes.py`: `HubNames` gains `keeper: EntityId` (the
     three `NAMES` set it; `hub_runs(names)` reads it) and gains `return_proposal(names, cast: type[C])
     -> ReturnProposal[C]` and `next_proposal(names, cast, **fields) -> NextProposal[C]` built from the
@@ -394,7 +395,7 @@ Split: A and B parallel, then C.
     the three `hub_world` builders (the engine-specific tests need them); the four `golden_turn.behind`
     (Loner's inserts a run, the others append an exchange). Grep: `grep -rhoE "def test_\w+" tests/{loner3e,breathless,twentyfourxx,tunnelgoons}
     | sort | uniq -d` prints `def test_luck_facts_are_untold` only. About −300 test lines.
-30. **P8, one opener.** Delete `open_game_for` (`tests/support/table.py:199`) and `support.loner.open_game`
+29. **P8, one opener.** Delete `open_game_for` (`tests/support/table.py:199`) and `support.loner.open_game`
     (`:94`); callers use `open_table(saves, engine_id=…, state_type=…, …)` (`ENGINES_BUILT[id].game`
     where the engine is a parameter, `Loner3eGame` for Loner; `engine=` passes through). Grep:
     `open_game_for\|open_game\b` in `tests` finds nothing.
