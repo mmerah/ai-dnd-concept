@@ -11,14 +11,7 @@ from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
 from aidm.engines.scenes.drafts import NextDraft
 from aidm.engines.scenes.tools import NextScene
-from aidm.engines.scenes.world import (
-    GO_ON,
-    Departure,
-    Invitation,
-    SceneCanon,
-    SceneRun,
-    SceneWorld,
-)
+from aidm.engines.scenes.world import MOVE_ON, SceneCanon, SceneRun, SceneWorld
 from aidm.engines.scenes.worldsmith import scene_refusal
 
 PLAYER = Person(id=PLAYER_ID, name="Player", brief="", known=True)
@@ -169,26 +162,25 @@ def test_next_scene_refuses_a_pursuit_and_a_complication_together() -> None:
         )
 
 
-def test_an_offer_can_turn_into_a_departure_but_a_departure_is_final() -> None:
-    world = _world(_run("a1", "A1"))
-    _ = world.settle("")
-    assert world.run.offer == Invitation()
+def test_a_departure_over_an_offer_requests_the_crossing_and_leaves_the_offer() -> None:
+    engine, state = game(LONER3E)
+    draft = narrowed(state, Loner3eGame).draft()
+    _ = engine.tools["next_scene"].call(draft, {}, Random(0))
 
-    _ = world.settle("Down the stair.")
-    assert world.run.offer == Departure(pursuit="Down the stair.")
+    _ = engine.tools["next_scene"].call(draft, {"pursuit": "Down the stair."}, Random(0))
 
-    with pytest.raises(Refusal, match="has left"):
-        _ = world.settle("")
+    assert draft.generation is not None
+    assert draft.generation.brief == "Down the stair."
 
 
-def test_an_action_the_offer_no_longer_matches_is_refused_and_requests_nothing() -> None:
+def test_an_action_the_scene_no_longer_offers_is_refused_and_notes_nothing() -> None:
     engine, state = game(LONER3E)
     draft = narrowed(state, Loner3eGame).draft()
 
     with pytest.raises(Refusal, match="the way on has changed"):
-        engine.act(draft, GO_ON, "Down the stair.")
+        engine.act(draft, MOVE_ON.id, "Down the stair.")
 
-    assert draft.generation is None
+    assert draft.notes == []
 
 
 def test_a_scene_without_a_focus_installs_and_shows_no_scene_panel() -> None:

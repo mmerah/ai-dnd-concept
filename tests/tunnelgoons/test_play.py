@@ -4,7 +4,7 @@ from random import Random
 
 from support.table import TUNNELGOONS, open_game_for, play_turn, take, tool_call
 
-from aidm.engines.rooms.engine import EXTEND, MORE_MAP
+from aidm.engines.rooms.engine import MORE_MAP
 
 # A miss against the crawler's DS 6 (brute 1 + 2d6[1,1] = 3): the margin lands on the player.
 FIGHT_SEED = 2
@@ -88,7 +88,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
     engine = table.service.engine
     before_turn, before_place = len(engine.history(state)), state.payload.current.id
     table.spawner.answers["worldsmith"] = [json.dumps(REGION)]
-    after = await take(table, EXTEND, "Deeper in.")
+    after = await take(table, MORE_MAP.id, "Deeper in.")
 
     # The region lands hidden: nobody moved, nothing is told, no master or narrator ran.
     assert len(engine.history(after)) == before_turn

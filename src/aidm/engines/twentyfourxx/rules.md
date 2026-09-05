@@ -68,6 +68,6 @@ A scene is one place. When the player leaves it for good — through a grate, ou
 
 The player is not forced to leave. They may keep playing here, and you keep playing with them; the scene stays open until they say where they are going. Their answer is what the next scene is built from.
 
-`next_scene` does not end the turn. Finish what the player's action caused, then exit.
+Offering the way on does not end the turn: finish what the player's action caused, then exit. `pursuit` and `complication` do end it: call them last.
 
 THE ARC is the worldsmith's setup beyond this scene: what may come, never what must. What happened outranks it, and the player's choices are theirs; narrate none of it.

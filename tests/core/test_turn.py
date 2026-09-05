@@ -5,7 +5,7 @@ from random import Random
 
 import pytest
 from support.loner import initialized, loner_sheet, open_game
-from support.table import Table, changed, narrated, play_turn, take, tool_call
+from support.table import Table, changed, narrated, play_turn, tool_call
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.facts import Fact, cards
@@ -14,7 +14,6 @@ from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import outcome_for
 from aidm.engines.loner3e.world import Loner3eGame
-from aidm.engines.scenes.world import GO_ON
 from aidm.turn.run import REQUEST_WAIT, Turn
 
 MAP = EntityId("vault-map")
@@ -164,7 +163,7 @@ async def test_a_later_call_in_one_turn_sees_the_earlier_calls_draft(
         table, "I close the book.", tool_call("next_scene"), tool_call("next_scene")
     )
 
-    assert state.payload.run.offer is not None
+    assert state.payload.run.offered
     assert any("already offers" in refusal for refusal in table.refusals)
 
 
@@ -298,14 +297,12 @@ async def test_crossing_keeps_a_drive_set_after_the_worldsmith_snapshot(
     table = open_game(tmp_path)
     table.spawner.answers["worldsmith"] = [_scene()]
 
-    _ = await play_turn(
+    state = await play_turn(
         table,
         "Out into the cloister walk.",
         changed("drive", entity_id=PLAYER_ID, goal="Get the vault map out safely"),
         tool_call("next_scene", pursuit="Out into the cloister walk."),
-    )
-    state = await take(
-        table, GO_ON, "Out into the cloister walk.", arrival="Rain takes the arcade."
+        arrival="Rain takes the arcade.",
     )
 
     assert state.payload.player.goal == "Get the vault map out safely"
@@ -329,13 +326,11 @@ async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_a
         )
     ]
 
-    _ = await play_turn(
+    state = await play_turn(
         table,
         "Out into the cloister walk.",
         tool_call("next_scene", pursuit="Out into the cloister walk."),
-    )
-    state = await take(
-        table, GO_ON, "Out into the cloister walk.", arrival="Rain takes the arcade."
+        arrival="Rain takes the arcade.",
     )
 
     mara = state.payload.require(EntityId("mara"))

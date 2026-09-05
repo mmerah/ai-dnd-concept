@@ -39,25 +39,20 @@ Tests run offline. They are deterministic.
 - Module layout: imports, constants, classes, public functions, private functions. A constant
   built from a class follows that class.
 
-## Design decisions (not visible from the code)
+## How the game is built
 
-- Each role is a spawned CLI, cold every turn; the master's spawn prompt is the whole picture. The narrator and the worldsmith return typed proposals; the master plays through tools that mutate a transactional draft, validated before it lands. Only resolver code changes state or rolls dice.
-- The engine owns the world. `core`, `turn`, `app` and `ui` know no world shape. The registry is the one place that connects them.
-- An engine is self-contained under `engines/<id>/`, under 2,000 lines, with at most fifteen engine tools, counted as tools plus `change_world` arms, the two shared party arms not counted; twenty in all for an engine whose SRD plays a crew, named in its `docs/<ENGINE>.md`. Every engine subclasses `Engine` in `engines/seam.py`; the three scene engines subclass `SceneEngine` in `engines/scenes/engine.py`, Tunnel Goons subclasses `RoomEngine` in `engines/rooms/engine.py`. Every world subclasses `World` in `engines/base.py`.
-- The narrator writes the story text; the worldsmith's scene titles reach the player on cards and panels. The narrator's input holds revealed facts only. Hidden facts have no path into it.
-- The worldsmith writes new cast entries and rewrites a brief; a name and a sheet are the rules'. The scene bar and the install share one refusal list, so the worldsmith's one retry sees every refusal.
-- A scenario is a premise, a scope and an opening. Scope is prose the master and the worldsmith read; nothing in code branches on it.
-- Generation is one engine request: a tool or a page action files `Game.generation` (an operation the engine names and validates, and a brief), the turn ends, and the platform's one executor has the engine write and install it through `advance`, narrating only what the engine says to tell. A failed write is filed and the request cleared; a reload clears a request it finds. There is no queue, no retry state and no same-turn respawn.
-- Pacing is the engine's. An offer to move on is engine state, never a decision; the page shows only the action the engine's view names, and `core`, `turn`, `app` and `ui` branch on no operation. A scene's `focus` is optional.
-- 24XX owns its job lifecycle in its world and tools; no other engine has a job.
+- Three AI roles, each a spawned CLI that starts cold every turn. The narrator and the worldsmith
+  answer with typed proposals. The master plays through tools on a draft that is checked before it
+  lands. Only code changes state or rolls dice.
+- The engine owns the world. `core`, `turn`, `app` and `ui` know no world shape; the registry is
+  the one place that joins an engine to the app.
+- The narrator reads revealed facts only. Hidden facts have no path into it.
 - A bad model answer is re-prompted once with the error, then raises.
 - Saves have no version field. A stale save is invalid.
-- Only `turn`, `app`, and `ui` read the settings.
+- Only `turn`, `app` and `ui` read the settings.
 
 ## Tests
 
 - Test behavior and boundaries, not prose or wiring.
 - Never start a process in a test. Stub roles with `ScriptedSpawner`.
 - A golden is a drift detector, not a prose test.
-
-Keep this file for rules that stay true in every phase.

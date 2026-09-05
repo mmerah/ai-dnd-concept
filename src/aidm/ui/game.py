@@ -2,7 +2,6 @@ import logging
 from asyncio import get_running_loop
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from functools import partial
 from pathlib import Path
 from time import monotonic
 from typing import Self
@@ -214,15 +213,9 @@ class GamePage:
         ):
             ui.icon("arrow_forward").classes("game-card-icon")
             ui.label("there is more beyond here").classes("text-xs font-bold game-outcome")
-            if action.intent:
-                ui.button(action.label, on_click=partial(self.take, action)).props(
-                    "no-caps outline dense"
-                )
-                ui.label(action.intent).classes("text-xs opacity-70")
-            else:
-                ui.label(f"{action.detail} Press {action.label} with your words.").classes(
-                    "text-xs opacity-60"
-                )
+            ui.label(f"{action.detail} Press {action.label} with your words.").classes(
+                "text-xs opacity-60"
+            )
 
     @ui.refreshable_method
     def decision_panel(self) -> None:
@@ -351,12 +344,6 @@ class GamePage:
         else:
             await self._run(lambda: self.session.play(Answer(text=typed)))
 
-    async def take(self, action: Action) -> None:
-        """The action the rules already resolved: its own words go, and the page asks for none."""
-        if self.refuse_play():
-            return
-        await self._run(lambda: self.session.act(action.id, action.intent))
-
     async def restart(self) -> None:
         if self.refuse_play():
             return
@@ -372,7 +359,7 @@ class GamePage:
         self.send.set_enabled(typing)
         action = player.action
         self.action_button.set_enabled(typing)
-        self.action_button.set_visibility(action is not None and not action.intent)
+        self.action_button.set_visibility(action is not None)
         self.action_button.set_text("" if action is None else action.label)
         self.over_label.set_text(player.over or "")
         self.box.props(f'placeholder="{_placeholder(player, session.phase)}"')
