@@ -21,8 +21,8 @@ from aidm.engines.scenes.drafts import NextDraft, SceneDraft
 
 MOVE_ON: Slug = "move-on"
 GO_ON: Slug = "go-on"
-SCENE_SETTLED = Fact(
-    kind="scene_settled",
+WAY_OFFERED = Fact(
+    kind="way_offered",
     trace=(
         "this scene offers a way on. Ask the player what they want to pursue next — in the "
         "fiction, naming what the scene left open, never as a list of choices. They may also "
@@ -42,16 +42,13 @@ SCENE_LEFT = Fact(
 
 
 class Invitation(Frozen):
-    """A useful stopping point: the player may stay, or name where they go next."""
+    pass
 
 
 class Departure(Frozen):
     """The player has left, as the rules played it; the page carries them on in these words."""
 
     pursuit: str = Field(min_length=1)
-
-
-type Offer = Invitation | Departure
 
 
 class SceneRun(Mutable):
@@ -62,7 +59,7 @@ class SceneRun(Mutable):
     situation: str = Field(min_length=1)
     here: list[CheckedEntityId] = Field(default_factory=list)
     exchanges: list[Exchange] = Field(default_factory=list)
-    offer: Offer | None = None
+    offer: Invitation | Departure | None = None
     recap: str = ""  # written when the scene was left or turned
 
 
@@ -283,7 +280,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
         if self.run.offer is not None:
             raise Refusal("this scene already offers the way on; play on, or send them off")
         self.run.offer = Invitation()
-        return [SCENE_SETTLED]
+        return [WAY_OFFERED]
 
     def offered(self) -> Action | None:
         match self.run.offer:

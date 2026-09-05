@@ -253,7 +253,7 @@ def test_next_scene_offers_the_way_on_and_refuses_a_second_offer() -> None:
     draft = small_world().draft()
     facts = ENGINE.next_scene(draft, NextScene(), Random(0))
     assert draft.payload.run.offer is not None
-    assert facts[0].kind == "scene_settled"
+    assert facts[0].kind == "way_offered"
     with pytest.raises(Refusal, match="already offers"):
         _ = ENGINE.next_scene(draft, NextScene(), Random(0))
 

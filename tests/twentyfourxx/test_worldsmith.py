@@ -165,20 +165,18 @@ def test_apply_scene_puts_the_party_first_in_the_new_run() -> None:
 def test_install_scene_names_who_travelled_in_the_trace() -> None:
     game = small_world()
     game.payload.party = [KESTREL]
-    facts = ENGINE.install(game, _draft(present=("sable",)), "the story moves to")
-    assert facts[0].trace == (
-        "the story moves to The Bay Office, the player travelling with Kestrel"
-    )
+    facts = ENGINE.install(game, _draft(present=("sable",)))
+    assert facts[0].trace == ("the scene opens: The Bay Office, the player travelling with Kestrel")
 
 
 def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
     game = small_world()
-    facts = ENGINE.install(game, _draft(present=("kestrel",)), "the story moves to")
+    facts = ENGINE.install(game, _draft(present=("kestrel",)))
     assert len(game.payload.runs) == 2
     assert facts == [
         Fact(
             kind="scene_opened",
-            trace="the story moves to The Bay Office",
+            trace="the scene opens: The Bay Office",
             told=True,
             card="New scene: The Bay Office\n"
             "Can they slip past the night crew before the lights return?",

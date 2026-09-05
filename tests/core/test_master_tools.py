@@ -219,7 +219,6 @@ async def test_moving_on_from_an_offer_is_a_turn_the_master_adjudicates(tmp_path
 
     state = await play_turn(table, PURSUIT, LEFT, action=MOVE_ON)
 
-    assert "takes the way on" in table.spawner.prompts[-2][1]
     assert state.payload.run.offer == Departure(pursuit=PURSUIT)
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
 

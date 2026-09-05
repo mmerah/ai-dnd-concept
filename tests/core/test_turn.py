@@ -15,7 +15,7 @@ from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import outcome_for
 from aidm.engines.loner3e.world import Loner3eGame
 from aidm.engines.scenes.world import GO_ON
-from aidm.turn.run import HANDOFF_WAIT, Turn
+from aidm.turn.run import REQUEST_WAIT, Turn
 
 MAP = EntityId("vault-map")
 FOUND = changed("reveal", entity_id="vault-map")
@@ -178,7 +178,7 @@ async def test_a_call_after_the_ask_answers_handoff_wait_and_changes_nothing(
         table, "I keep watch.", tool_call("next_scene", complication=complication), FOUND
     )
 
-    assert table.answers[1] == HANDOFF_WAIT
+    assert table.answers[1] == REQUEST_WAIT
     assert [fact.kind for fact in table.facts] == ["complication_asked"]
     assert not state.payload.require(MAP).known
 

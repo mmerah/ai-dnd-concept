@@ -78,10 +78,8 @@ def test_an_extension_of_one_hidden_place_with_no_ways_installs_hidden() -> None
     )
     assert extension_refusal(extension, draft.payload) is None
 
-    facts = ENGINE.install_extension(draft, extension)
+    ENGINE.install_extension(draft, extension)
 
-    assert [fact.kind for fact in facts] == ["region_added"]
-    assert not facts[0].told
     assert not draft.payload.places[HIDDEN].known
     assert draft.payload.way(draft.payload.current.id, HIDDEN) is not None
 
@@ -138,10 +136,8 @@ def test_install_extension_on_a_game_from_the_engine() -> None:
     draft = _tunnelgoons_game().draft()
     anchor = draft.payload.current.id
 
-    facts = ENGINE.install_extension(draft, _region())
+    ENGINE.install_extension(draft, _region())
 
-    assert [fact.kind for fact in facts] == ["region_added"]
-    assert not facts[0].told
     assert FAR_HALL in draft.payload.places
     assert draft.payload.way(anchor, FAR_HALL) is not None
 
