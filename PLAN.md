@@ -3,8 +3,8 @@
 Two phases. Phase 1 is the engine seam and the two families (P1 tail, P2, P4, the engine half of
 P6 and P7). Phase 2 is the per-engine scaffold (P3, D5, D7), the platform (P5, D2, D6, the platform
 half of P6 and P7) and the tests (P8). P and D numbers are `PROPOSALS.md`'s (deleted; `git show
-1732e73:PROPOSALS.md`); every decision letter is applied below and nothing is left to decide. Line numbers are as of `1732e73` (`src` identical to `fc4d354`); find a site by the
-name quoted beside it.
+1732e73:PROPOSALS.md`); every decision letter is applied below and nothing is left to decide. Line numbers are as of `1732e73` (`src` identical to `fc4d354`); find a site by
+the name quoted beside it.
 
 ## How to work
 
@@ -125,15 +125,20 @@ edits named there so A ends green).
    today, lands under its title; `apply_return` refuses `"no job is open to close"` without a campaign
    or an open job, closes it, swaps the board, lands under `""`, returns the job (the no-campaign
    return now reads "no job is open to close"; no test matches the old text). `install`
-   (`scenes/engine.py:337`) dispatches meanwhile: `ReturnProposal` → `apply_return`, `JobProposal` →
-   `apply_job(…, reopening=reopening)`, else `apply_next`; step 7 removes the dispatch. In
+   (`scenes/engine.py:333`) meanwhile takes `scene: NextProposal[C] | ReturnProposal[C]`, drops its own
+   `model_copy` (`_land` copies), and dispatches in this order: `isinstance(scene, ReturnProposal)` →
+   `job = world.apply_return(scene)`; `isinstance(scene, JobProposal)` → `world.apply_job(scene,
+   reopening=reopening)`; else `world.apply_next(scene)` (the remainder narrows to `NextProposal[C]`);
+   `write_next`'s `model` annotation and return become `type[NextProposal[C] | ReturnProposal[C]]` /
+   `NextProposal[C] | ReturnProposal[C]`; step 7 removes the dispatch. In
    `scenes/proposals.py` add `SceneProposal.opening_campaign(self) -> Campaign | None: return None`
    and the `HubProposal` override `Campaign(place=self.place, board=self.offers)`;
    `opening_canon` (`scenes/engine.py:300–302`) calls it. Tests: `tests/core/test_scenes.py:199–296`
    call `apply_next`, `apply_job(…, reopening=job)`, `apply_return`; `tests/loner3e/test_world.py:80,
    107,110,163` and `tests/twentyfourxx/test_worldsmith.py:48–66,86,206` call `apply_next` with a
    `_next_proposal(...)`; a bare `_proposal(...)` passed to `install` becomes `_next_proposal(...)`,
-   added to the Breathless and Loner `test_worldsmith.py` as 24XX's builds it. Grep: `apply_scene`
+   added to `tests/breathless/test_worldsmith.py` as 24XX's builds it; `tests/core/test_master_tools.py:67`
+   builds `NextProposal[Loner3eSheet].model_validate_json(_scene())`. Grep: `apply_scene`
    finds nothing; `isinstance` in `scenes/world.py` finds nothing.
 7. **P4, the engine.** `render_next(self, draft: G, intent: str, answer: type[BaseModel], *,
    returning: bool, follows_arc: bool, reopening: Job | None = None, asked: str = "") -> str`
@@ -152,8 +157,7 @@ edits named there so A ends green).
    branches — `returning` (campaign, away, `intent == GO_HOME`): `ReturnProposal[self.cast]` →
    `install_return`; `world.at_hub`: `JobProposal[self.cast]` with `reopening` → `install_job`; else
    `NextProposal[self.cast]` → `install_next` — each `(*self.leaving(draft), *install)`. Tests:
-   `tests/core/test_master_tools.py:55–69` `_SilentEngine.advance` builds
-   `NextProposal[Loner3eSheet].model_validate_json(_scene())` and calls `install_next`;
+   `tests/core/test_master_tools.py:67` `_SilentEngine.advance` calls `install_next`;
    `tests/twentyfourxx/test_worldsmith.py:331–372` becomes three fresh `hub_world()`s through
    `advance` asserting the model recorded (`GO_HOME` → `ReturnProposal`, hub with the job run popped +
    `TAKE_JOB` → `JobProposal`, on the job → `NextProposal`); every other `ENGINE.write_next(game,
