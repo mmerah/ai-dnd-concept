@@ -52,8 +52,9 @@ uv run basedpyright
    is green before the commit. Never leave two versions of one thing alive at a commit.
 8. **Review each phase adversarially against its staged diff before the commit.**
 9. **The standing limits hold.** At most fifteen engine tools per engine, counted as tools plus
-   `change_world` arms, the two shared party arms not counted (Phase 2 rewrites this rule in
-   `CLAUDE.md`: `commission` no longer exists). Every `engines/<id>/` stays under 2,000 lines;
+   `change_world` arms, the two shared party arms not counted, twenty for an engine whose SRD
+   plays a crew (Phase 1 step 15 rewrites this rule in `CLAUDE.md` without `commission`; Phase 2
+   takes 24XX to sixteen under the crew allowance). Every `engines/<id>/` stays under 2,000 lines;
    imports flow `core <- engines <- turn <- app <- ui`; no `Any` beyond the `Game[P]` bound;
    every `__init__.py` empty; tests never start a process (`ScriptedSpawner`); `Refusal` stays the
    one message-bearing exception; a bad model answer is re-prompted once, then raises.
@@ -69,10 +70,14 @@ uv run basedpyright
 Target: `src` from 9,367 to between 7,900 and 8,200 lines.
 
 Suggested split for the orchestrator: **A** (steps 1–6: `core/`, `engines/base.py`,
-`engines/seam.py`, `turn/`, `app/`, `ui/`, `tests/core/`, `tests/ui/`), then **B** (steps 7–11:
-`engines/scenes/`, the three scene engines, their tests, `tests/support/`) and **C** (steps 12–13:
-`engines/rooms/`, `engines/tunnelgoons/`, their tests) in parallel, then **D** (steps 14–16:
-scenarios, `CLAUDE.md`, fixtures) alone. The tree is red after A and green after D.
+`engines/seam.py`, `turn/`, `app/`, `ui/`, `tests/core/` except `test_scenes.py` and
+`test_rooms.py`, `tests/ui/`), then **B** (steps 7–11: `engines/scenes/`, the three scene
+engines, `tests/core/test_scenes.py`, `tests/support/`, `tests/{loner3e,breathless,twentyfourxx}/`)
+and **C** (steps 12–13: `engines/rooms/`, `engines/tunnelgoons/`, `tests/core/test_rooms.py`,
+`tests/tunnelgoons/`) in parallel — C deletes its own imports of `the_campaign` and
+`aidm.engines.hub` and adds `scope=` to its own `ScenarioMeta(...)` literals, B owns
+`tests/support/table.py` — then **D** (steps 14–17: scenarios, documentation, fixtures) alone.
+The tree is red after A and green after D.
 
 ### Steps
 
@@ -81,7 +86,11 @@ scenarios, `CLAUDE.md`, fixtures) alone. The tree is red after A and green after
    `art_style`, with the description "How far this adventure reaches, how its consequences
    develop, and whether it tends toward an ending or toward continuing concerns; guidance, not a
    rule." Delete `Game.commissions`, `Game.wanted`, `Game.on_order`, `Game.withdraw`, and the
-   `Commission` import. `Game.notes`, `Game.pending`, `draft`, `commit` stay.
+   `Commission` import. `Game.notes`, `Game.pending`, `draft`, `commit` stay. Every
+   `ScenarioMeta(...)` literal that survives in `tests/` gains `scope="..."` (a sentence; the
+   value is never asserted): `tests/core/{test_game_service,test_master_tools,test_seam}.py`
+   and `tests/ui/test_launcher.py` here; `tests/support/*.py`, `tests/core/test_rooms.py` and
+   the engines' test folders in steps 11 and 13.
 
 2. **`core/play.py` — history is a flat sequence of scenes.** Delete `SceneRecord.job`,
    `ChapterRecord`, `Commission` and the `HistoryRecord` alias; every former `HistoryRecord` in
@@ -98,7 +107,9 @@ scenarios, `CLAUDE.md`, fixtures) alone. The tree is red after A and green after
    Move into `base.py`, after `Person`: `class World[P: Person](Mutable)` with `player: P`,
    `source: str = ""`, abstract `records() -> tuple[SceneRecord, ...]` and `record(exchange)`,
    and `exchanges()`; delete `campaign`, `at_hub` and `scenes()`. Move `named_unmet(text,
-   entities)` into `base.py` as a public function. Delete everything else in `hub.py` (`Offer`,
+   entities)` into `base.py` as a public function, and its one test
+   (`tests/core/test_hub.py:185-193`) into `tests/core/test_engines_base.py`. Delete everything
+   else in `hub.py` (`Offer`,
    `Board`, `Job`, `Campaign`, `walk_start`, `job_title`, `check_kind`, `place_unmet`,
    `title_unmet`, `question_heading`, every constant and every prompt string) and the file.
 
@@ -147,7 +158,9 @@ scenarios, `CLAUDE.md`, fixtures) alone. The tree is red after A and green after
 8. **`engines/scenes/world.py` — the world is runs, cast, party, arc.** Delete `SceneRun.job`,
    `SceneCanon.campaign`, `SceneWorld.campaign` (now absent from `World`), `at_hub`, `walked`,
    `job_runs`, the `hub` imports and every campaign check in `_playable_canon` and
-   `_consistent`. `settle(pursuit: str)`: refuses an already-settled run, sets `run.left`,
+   `_consistent`. `SceneRun.question` and `SceneRun.situation` drop to `min_length=1`: the run
+   is built raw by `run_of`, so a minimum the draft no longer has would raise a
+   `ValidationError`, not a refusal. `settle(pursuit: str)`: refuses an already-settled run, sets `run.left`,
    returns `[SCENE_LEFT if pursuit else SCENE_SETTLED]`. `apply_scene(draft: SceneDraft[C])`:
    merges the cast, resolves present and hidden, marks present known, sets `run.recap` for a
    `NextDraft`, sets `self.arc = draft.arc or self.arc`, appends `run_of(draft, [*party,
@@ -160,7 +173,7 @@ scenarios, `CLAUDE.md`, fixtures) alone. The tree is red after A and green after
    `COMMISSION_ASK`, `cast_refusal`, `_hub_unmet`, and the `asked`/`reopening` parameters of
    `scene_refusal` and `scene_unmet`. `scene_unmet` keeps: the player or party listed as present
    or hidden; the player in `cast`; misfiled entries; unresolvable ids; present-and-hidden
-   overlap; a met entry listed hidden; a new entry written met or dead (`unwritten`); a hidden
+   overlap; a met entry listed hidden; a new entry written dead (`unwritten`); a hidden
    entity named in `situation`. Delete from `_cast_unmet` the "at least one cast member besides
    the player", the "at least one existing cast member brought back" and the `needs_return`
    parameter; delete the "an `arc`" requirement. `worldsmith_prompt` gains `scope: str` and
@@ -170,7 +183,9 @@ scenarios, `CLAUDE.md`, fixtures) alone. The tree is red after A and green after
    always has one `question` the player can settle here, and a source detail where a source
    exists; a solitary scene, a new cast, a quiet situation or a short setup is not wrong. Delete
    the sentences on THE GAME MASTER ASKED FOR, `summary`, `debrief`, and jobs ("A job takes
-   several scenes"); say `arc` is the setup beyond this scene, revised only when play warrants.
+   several scenes"); say `arc` is the setup beyond this scene, revised only when play warrants,
+   and that what happened in SCENES SO FAR outranks it: a possibility play resolved or
+   contradicted is spent, never restored.
 
 10. **`engines/scenes/engine.py` and `tools.py` — one opening, one next scene.** Delete
     `hub_phrase`, `finished_note`, `commission_tool`, `render_commission`, `fulfil`,
@@ -205,13 +220,15 @@ scenarios, `CLAUDE.md`, fixtures) alone. The tree is red after A and green after
     hub fixtures; in `tests/support/table.py` delete `the_campaign` and the `kind` parameter of
     `scenario_for` and `game`; in `tests/core/test_scenes.py` and the three engines' test folders
     delete every test of the hub, jobs, boards, returns, commissions, arc rewrites and the
-    editorial bars. New tests, one each: a scene naming no one but the player installs; a
+    editorial bars; every surviving `ScenarioMeta(...)` literal in these files gains `scope=`.
+    New tests, one each: a scene naming no one but the player installs; a
     `NextDraft` with an empty `arc` keeps the world's arc; the worldsmith prompt prints THE SCOPE
     OF PLAY at the opening and in play.
 
 12. **`engines/rooms/` — the map, its extension, nothing else.** `world.py`: delete
     `Visit.job`, `Visit.recap`, `RoomCanon.campaign`, `at_hub`, `walked_job`, `walked`,
-    `job_visits`, `walked_places`, `apply_return`, `apply_extension`, the `hub` imports and the
+    `job_visits`, `walked_places`, `apply_return`, `apply_extension`, `Dungeon.has_shortcut`
+    (its one caller is the shortcut bar deleted below), the `hub` imports and the
     campaign checks in `_startable` and `_playable`; `move` appends `Visit(place=destination.id)`;
     `records()` builds `SceneRecord(title, focus, exchanges)`. `drafts.py`: delete
     `MapDraft.board`, `NpcDraft`, `ItemDraft`, `ReturnDraft` and the `hub` imports.
@@ -241,8 +258,10 @@ scenarios, `CLAUDE.md`, fixtures) alone. The tree is red after A and green after
     when the job's dungeon is done; the tavern then closes the job as finished."; "## The map's
     end" loses "and at the tavern it offers work". Tests: in `tests/support/tunnelgoons.py`,
     `tests/core/test_rooms.py` and `tests/tunnelgoons/` delete every test of the tavern, jobs,
-    returns, recaps, commissions and the deleted map requirements. New tests, one each: a
-    one-place map with no ways is a valid opening; an extension of one hidden place installs.
+    returns, recaps, commissions and the deleted map requirements; delete their imports of
+    `the_campaign` and `aidm.engines.hub`; every surviving `ScenarioMeta(...)` literal gains
+    `scope=`. New tests, one each: a one-place map with no ways is a valid opening; an extension
+    of one hidden place installs.
 
 14. **Scenarios.** Delete `scenarios/amber-tap/`, `scenarios/buried-bell/`,
     `scenarios/salt-lantern/` and `scenarios/waystation/`: each opens on employment at a home
@@ -265,18 +284,31 @@ scenarios, `CLAUDE.md`, fixtures) alone. The tree is red after A and green after
     opening. Scope is prose the master and the worldsmith read; nothing in code branches on it."
     `IDEAS.md`: delete item 20 (moving home).
 
-16. **Fixtures.** Regenerate and read. Expected changes, and nothing else:
+16. **`README.md` and `docs/`.** `README.md` line 9 loses "and answers the game master's
+    commissions". Replace the campaign paragraph (line 27) with one on scenarios: a scenario is
+    a premise, a scope and an opening; scope is prose guidance on how far the adventure reaches
+    and whether it tends toward an ending, asked for on the create page and read by the game
+    master and the worldsmith; no mode, turn budget or ending is enforced. Add one sentence
+    where saves are described: a save from before a stored-shape change is stale; the launcher
+    skips it with a warning, and nothing migrates or deletes it. `docs/24XX.md`,
+    `docs/BREATHLESS.md`, `docs/LONER-3E.md`, `docs/TUNNEL-GOONS.md`: delete the `commission`
+    bullets and every "in a campaign" / "per job" / board clause (24XX deviation 3 and the
+    `after_job` deviation's campaign half, Loner's growth deviation, Tunnel Goons' `level_up`
+    bullet and deviation 1, Breathless' between-runs deviation). `NEXT-SPECS.md` decision 4:
+    append "Since 2026-09-05 `commission` is gone; the cap is fifteen engine tools, counted as
+    before." Nothing here describes the handoff or 24XX's jobs yet: Phase 2 adds them.
+
+17. **Fixtures.** Regenerate and read. Expected changes, and nothing else:
     `prompts/<id>/master.txt`: THE SCOPE OF PLAY after SCENARIO, the "Ask for more" section gone,
     the question heading, no JOBS SO FAR or THE BOARD; `prompts/<id>/narrator.txt`: unchanged
     unless a golden turn's scene text changed; `schemas/<id>/master_tools.json`: `commission`
     gone, `next_scene` without `job_done`; `turn/<id>.json`: no `commissions`, no `job`, no
-    `campaign`, `scope` in `scenario`. `scenarios/*/world.json` change only as step 14 says;
-    `characters/kael/*.json` do not change.
+    `campaign`, `scope` in `scenario`, and `turn/tunnelgoons.json` visits without `recap`.
+    `scenarios/*/world.json` change only as step 14 says; `characters/kael/*.json` do not change.
 
 ### Done when
 
-- No file under `src/` names a campaign, hub, board, job, offer, debrief, ledger, chapter,
-  commission or kind: `grep -rniE "campaign|hub|board|job|offer|debrief|ledger|chapter|commission|kind=" src/` finds only 24XX's `after_job` (Phase 2's) and `PendingDecision.kind`.
+- `grep -rnE "Campaign|Commission|ScenarioKind|at_hub|walked|job_done|hub_phrase|finished_note|reopening|debrief|ledger|Chapter|Board|Offer|GO_HOME|REPORT_IN|TAKE_JOB|question_heading|render_whole" src/ tests/` finds nothing.
 - All four engines start from the create page and play a turn; every scene engine settles a
   scene and moves on from the page; Tunnel Goons extends its map from the page.
 - `PROGRESS.md` holds the Phase 1 entry with both line counts. Full check green.
@@ -318,8 +350,13 @@ untouched: a map extension still moves nobody and opens no scene.
    `tools.py`: `NextScene.complication: str = Field(default="", description="Set to change the
    situation here without the player leaving: what arrives or turns, and why, for the worldsmith.
    Written now, the turn ends; the player answers it next turn. Empty otherwise.")`; `NEXT_SCENE`
-   gains "or set `complication` to bring a new situation down on this place". `engine.py`:
+   gains "or set `complication` to bring a new situation down on this place, only when
+   `change_world` (an arrival, a reveal, a death) cannot make it from what is here". `engine.py`:
    `next_scene` passes both. `handoff(state) -> str | None` returns `run.complication or None`.
+   `advance` skips `self.leaving(draft)` when `run.complication` is set: the scene turns, it
+   does not end (Loner's `leaving` refills every luck pool). An installed complication leaves
+   its brief on the run it replaced, as the record of why the scene turned; `handoff` and
+   `ready` read the current run only, so an older run's brief is inert, not stale state.
    `write_next`: when `world.run.complication` is set, the intent given to `render_next` is
    `COMPLICATION.format(brief=world.run.complication)` (in `worldsmith.py`: "The game master
    brings a complication down on the scene the player is in: {brief}. Write the situation it
@@ -343,20 +380,30 @@ untouched: a map extension still moves nobody and opens no scene.
    when `self.engine.handoff(self.state)` is not `None`: "the worldsmith owes the scene the game
    master asked for; write it first". Its tail becomes: after `self._present()`, when the game
    is not over, `await self._grow(turn.prompt, brief)` for a pursuit crossing as today, else
-   `await self.resume()` when `self.engine.handoff(state)` is not `None`; then `_present`.
-   `resume()`: refuses when busy or when nothing is owed; otherwise `brief =
-   self.engine.crossing(self.state, asked)` and `await self._grow(asked, brief)` inside the
-   phase/finally that `extend` uses. `_grow` is unchanged: on failure it files `UNWRITTEN` (card
-   reworded: "The next scene could not be written. You are still where you were; press Write it
-   to try again, or restart.") on a fresh draft, and the run keeps its brief; on an unnarrated
-   arrival it commits the installed scene with its cards.
+   `await self._resume()` when `self.engine.handoff(state)` is not `None`; then `_present`.
+   `_resume()` (private, no guards: `play` calls it while its own phase is still set): `asked =
+   self.engine.handoff(self.state)`, `brief = self.engine.crossing(self.state, asked)`, `await
+   self._grow(asked, brief, marker=HELD, unwritten=COMPLICATION_UNWRITTEN)`. `resume()`
+   (public, the page's retry): refuses when busy ("a turn is already in flight") or when nothing
+   is owed, sets `self.phase` and clears it in a `finally`, never sets `self.intent` (the page
+   shows `intent` as the player's bubble, and the brief is the game master's), and calls
+   `_resume()` then `_present()`. `_grow` gains two keywords with today's values as defaults:
+   `marker: str = CROSSED` (the prompt a failed or arrived write is filed under) and `unwritten:
+   Fact = UNWRITTEN`; its body is otherwise unchanged. New constants beside `CROSSED`: `HELD =
+   "(the situation holds)"` and `COMPLICATION_UNWRITTEN = Fact(kind="complication_unwritten",
+   told=True, trace="the complication could not be written", card="The situation could not be
+   written. Press Write it to try again, or restart.")`. `UNWRITTEN` keeps its text: a failed
+   pursuit and a failed room extension have no Write it button. On failure the run keeps its
+   brief; on an unnarrated arrival the installed scene commits with its cards, as today.
 
 4. **`ui/game.py` — the retry button, the disabled composer.** `Observed` gains `owed: bool`
    (`session.engine.handoff(session.state) is not None`). `can_type(player, phase, *, owed:
    bool)` is false while owed; `_placeholder` reads "The worldsmith owes the scene. Press Write
    it." while owed. `way_on_panel`, while owed, shows the banner "the situation is changing"
-   with the button "Write it" calling `self._run(self.session.resume)`; the Move on button is
-   hidden while owed. Tests, one each (`tests/core/test_turn.py`, `test_game_service.py`,
+   with the button "Write it", whose handler returns on `refuse_play()` and otherwise awaits
+   `self._run(self.session.resume)`; the Move on button is hidden while owed. `chat` and
+   `journal` render `HELD` beside `BEGUN` and `CROSSED` as a story marker, never as the player's
+   words. Tests, one each (`tests/core/test_turn.py`, `test_game_service.py`,
    `tests/core/test_scenes.py`, `tests/ui/test_game.py`): a call after the ask answers
    `HANDOFF_WAIT` and lands no fact; a turn with an ask commits, then writes and installs the
    scene in the same place with the cast kept, with no second master spawn; a failed write keeps
@@ -375,12 +422,17 @@ untouched: a map extension still moves nobody and opens no scene.
    `world.job` and returns `player.fact("job_taken", "the job is taken: {terms}", card="Job
    taken\n{terms}")`; `finish_job` refuses when no job is open ("no job is open to finish");
    with an empty `skill` it sets `draft.pending = PendingDecision(kind="job-done", prompt="The
-   job is done. Which skill rises?", options=<one PendingOption per pack skill not already at
-   d12 on the sheet, name="finish_job", args={"skill": label}>, allows_text=False)` and returns
-   `[]`; with a skill it raises the skill, rolls the d6 of credits, clears `world.job` and
-   returns the three facts `after_job` returned, the first carded "Job done: {label} d{die}".
-   `master_tools`: `take_job` and `finish_job` replace `after_job` (fifteen in all: nine arms,
-   six tools). `sheet_sections` adds `("THE JOB", world.job)` when set; `panels` adds
+   job is done. Which skill rises?", options=(...), allows_text=False)` and returns `[]`; the
+   options are one `PendingOption(id=slug(label, ()), label=label, name="finish_job",
+   args={"skill": label})` per skill of the game's packs (`self.packs[p].skills for p in
+   draft.packs`, de-duplicated by label, in pack order) whose die on the sheet is not d12; with
+   a skill it raises the skill, rolls the d6 of credits, clears `world.job` and returns the
+   three facts `after_job` returned, the first carded "Job done: {label} d{die}".
+   `master_tools`: `take_job` and `finish_job` replace `after_job`. 24XX then counts sixteen
+   (`change_world` and its nine arms, `next_scene`, `attempt`, `test_luck`, `defend`,
+   `take_job`, `finish_job`), one over fifteen and under the twenty the standing rule allows an
+   engine whose SRD plays a crew; step 6 names that allowance in `docs/24XX.md`. No fold is made
+   for the count's sake. `sheet_sections` adds `("THE JOB", world.job)` when set; `panels` adds
    `Panel(title="Job", rows=(PanelRow(label=world.job, detail=""),))` when set. `rules.md`:
    replace "## Job done" with "## Jobs": "`take_job` when the player agrees to work, with the
    terms as agreed; the job then stands under THE JOB. `finish_job` once, when the story and the
@@ -390,24 +442,19 @@ untouched: a map extension still moves nobody and opens no scene.
    second `take_job` is refused; `finish_job` without a job is refused; `finish_job` pays once
    and a second call is refused; an empty `skill` opens the decision and its option finishes.
 
-6. **`docs/24XX.md`.** Tool list: `take_job`, `finish_job` replace `after_job`; the `commission`
-   bullet goes; deviation 3 (the d6 job-finding setup) is rewritten: the SRD's job-finding roll
-   is not played; work arrives in the fiction and `take_job` records it. Counts: fifteen.
+6. **`docs/24XX.md`.** Tool list: `take_job`, `finish_job` replace `after_job`. Add a
+   deviation: the SRD's job-finding roll is not played; work arrives in the fiction and
+   `take_job` records it. Count: sixteen, under the twenty allowed an engine whose SRD plays a
+   crew (starships, help dice, "make a new character to introduce ASAP"); this file is where
+   `CLAUDE.md` says that allowance is named.
 
-7. **Documentation.** `README.md`: line 9 loses "and answers the game master's commissions",
-   gaining "and writes the complication the game master brings down on a scene"; replace the
-   campaign paragraph (line 27) with two: a scenario is a premise, a scope and an opening, scope
-   being prose guidance on the adventure's reach and whether it tends toward an ending (the
-   create page asks for it), with no mode, budget or ending enforced; and the handoff paragraph
-   above, shortened to four sentences. `docs/BREATHLESS.md`, `docs/LONER-3E.md`,
-   `docs/TUNNEL-GOONS.md`: delete the `commission` bullets and every "in a campaign" / "per job"
-   clause (Loner deviation on growth, Tunnel Goons `level_up` bullet and deviation 1, Breathless
-   deviation on between-runs). `CLAUDE.md` design decisions: add "Generation is an engine
-   handoff: a tool hands the worldsmith a brief, the turn ends, the platform writes and installs
-   after it, and a failed write is retried from the page. There is no commission queue and no
-   same-turn respawn." and "24XX owns its job lifecycle in its world and tools; no other engine
-   has a job." `NEXT-SPECS.md` decision 4: append "Since 2026-09-05 `commission` is gone; the cap
-   is fifteen engine tools, counted as before."
+7. **Documentation.** `README.md`: line 9 gains "and writes the complication the game master
+   brings down on a scene"; after the scenario paragraph Phase 1 wrote, add the handoff
+   paragraph above, shortened to four sentences. `CLAUDE.md` design decisions: add "Generation
+   is an engine handoff: a tool hands the worldsmith a brief, the turn ends, the platform writes
+   and installs after it, and a failed write is retried from the page. There is no commission
+   queue and no same-turn respawn." and "24XX owns its job lifecycle in its world and tools; no
+   other engine has a job."
 
 8. **Fixtures.** Regenerate and read. Expected: `schemas/<id>/master_tools.json` for the three
    scene engines gain `complication` on `next_scene`; `twentyfourxx` also swaps `after_job` for
