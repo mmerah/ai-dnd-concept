@@ -92,8 +92,7 @@ class Game[P: BaseModel](Mutable):
     engine: EngineId
     packs: tuple[Slug, ...] = ()
     pending: PendingDecision | None = None
-    # A tool's brief for the worldsmith; the platform writes it once the turn ends, then clears it.
-    handoff: str = ""
+    handoff: str = ""  # a tool's brief for the worldsmith; cleared once the platform wrote it
     notes: list[str] = []
     payload: P
 

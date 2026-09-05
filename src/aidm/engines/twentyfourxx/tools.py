@@ -109,6 +109,14 @@ class TakeJob(Frozen):
     )
 
 
+class FindJob(Frozen):
+    where: str = Field(
+        min_length=1,
+        description="Where, or through whom, the player looks for work, in a few words; it "
+        "heads the card.",
+    )
+
+
 class FinishJob(Frozen):
     skill: str = Field(
         min_length=1, description="The skill the job called on, named by the player, to raise."

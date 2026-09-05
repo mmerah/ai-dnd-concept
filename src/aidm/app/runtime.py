@@ -26,10 +26,11 @@ from aidm.turn.run import Turn
 
 LOGGER = logging.getLogger(__name__)
 
-# What a turn nobody played is filed under: the crossing, the opening, the master's complication.
-CROSSED = "(the story moves on)"
-BEGUN = "(the story begins)"
-HELD = "(the situation holds)"
+# The prompt of a turn nobody played; the chat shows it as the story's own line.
+OPENING_MARK = "(the story begins)"
+CROSSING_MARK = "(the player crosses to the next scene)"
+TURNING_MARK = "(the game master turns the scene)"
+MARKS = (OPENING_MARK, CROSSING_MARK, TURNING_MARK)
 UNWRITTEN = Fact(
     kind="way_unwritten",
     told=True,
@@ -97,7 +98,7 @@ class GameService:
             draft = self.state.draft()
             lines = await self._narrate(draft, (), OPENING, fatal=False)
             if lines:
-                self.commit(self.engine.close(draft, BEGUN, lines, ()))
+                self.commit(self.engine.close(draft, OPENING_MARK, lines, ()))
             self._present()
         finally:
             self.phase = None
@@ -129,14 +130,14 @@ class GameService:
             self.turn = None
             self.commit(state)
             self._present()
-            # The player named where they go, or the master handed the worldsmith a brief; either
-            # is written once the turn holds.
             if self.engine.over(state) is None and (brief is not None or state.handoff):
                 if brief is not None:
                     await self._grow(turn.prompt, brief)
                 else:
                     await self._grow(
-                        state.handoff, self.engine.crossing(state, state.handoff), marker=HELD
+                        state.handoff,
+                        self.engine.crossing(state, state.handoff),
+                        marker=TURNING_MARK,
                     )
                 self._present()
         finally:
@@ -210,7 +211,7 @@ class GameService:
             return ()
         return narration.lines
 
-    async def _grow(self, intent: str, brief: str | None, *, marker: str = CROSSED) -> None:
+    async def _grow(self, intent: str, brief: str | None, *, marker: str = CROSSING_MARK) -> None:
         self.phase = "worldsmith"
         draft = self.state.draft()
         try:
@@ -226,7 +227,6 @@ class GameService:
             prompt = intent if brief is None else marker
             self.commit(self.engine.close(draft, prompt, (), (UNWRITTEN,)))
             return
-        # The write landed; the brief it answered is spent.
         draft.handoff = ""
         if brief is None and not cards(facts):
             self.commit(self.engine.commit(draft))

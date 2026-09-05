@@ -115,7 +115,6 @@ class Turn:
                 "Stop here and exit; the player's answer opens the next turn."
             )
         if self.draft.handoff:
-            # A plain answer, not a refusal, for the same reason as the pending line above.
             return HANDOFF_WAIT
         already_pending = len(self.draft.notes)
         decided_before = self.draft.pending

@@ -12,7 +12,7 @@ from support.table import (
     updated,
 )
 
-from aidm.app.runtime import BEGUN, HELD, Runtime
+from aidm.app.runtime import OPENING_MARK, TURNING_MARK, Runtime
 from aidm.core.entities import Refusal
 from aidm.core.io import FileStore
 from aidm.core.model import AnyGame, ScenarioMeta
@@ -89,7 +89,7 @@ async def test_the_opening_is_narrated_once_and_costs_a_turn(tmp_path: Path) -> 
     await table.service.open()
 
     history = table.service.engine.history(table.service.state)
-    assert [exchange.prompt for exchange in history] == [BEGUN]
+    assert [exchange.prompt for exchange in history] == [OPENING_MARK]
     assert len(history) == 1
 
     await table.service.open()
@@ -147,7 +147,7 @@ async def test_a_complication_writes_and_installs_at_the_same_place(tmp_path: Pa
     exchanges = state.payload.exchanges()
     assert len(exchanges) == 2
     assert exchanges[0].prompt == "I keep watch on the study door."
-    assert exchanges[1].prompt == HELD
+    assert exchanges[1].prompt == TURNING_MARK
     assert state.payload.run.place == place
     assert all(entity_id in state.payload.cast for entity_id in here_before)
     assert [role for role, _ in table.spawner.prompts].count("master") == 1
@@ -169,7 +169,7 @@ async def test_a_complication_does_not_refill_the_players_spent_luck(tmp_path: P
     )
 
     installed = state.payload.exchanges()[-1]
-    assert installed.prompt == HELD
+    assert installed.prompt == TURNING_MARK
     assert all(fact.kind != "counter_changed" for fact in installed.facts)
     assert state.payload.player.luck.current == 2
 
@@ -187,7 +187,7 @@ async def test_a_failed_write_after_a_complication_leaves_the_turn_committed(
     )
 
     exchange = state.payload.exchanges()[-1]
-    assert exchange.prompt == HELD
+    assert exchange.prompt == TURNING_MARK
     assert exchange.facts[0].kind == "way_unwritten"
     assert state.handoff == ""
     assert state.payload.run.title == title
