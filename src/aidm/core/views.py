@@ -45,8 +45,7 @@ class Action(Frozen):
 
     id: Slug
     label: str
-    detail: str = ""
-    intent: str = ""  # already resolved by the rules: the page sends it, asking for no words
+    detail: str
 
 
 class NarratorView(Frozen):

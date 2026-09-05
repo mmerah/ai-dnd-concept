@@ -33,9 +33,8 @@ from aidm.engines.rooms.worldsmith import MAP_ASK, extension_refusal, map_refusa
 from aidm.engines.seam import Engine
 
 WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
-EXTEND: Slug = "extend"
 MORE_MAP = Action(
-    id=EXTEND, label="More map", detail="The map runs out here: say where you push on."
+    id="extend", label="More map", detail="The map runs out here: say where you push on."
 )
 
 
@@ -53,7 +52,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
     def validate(self, state: G) -> None:
         if state.packs:
             raise Refusal(f"{self.title} has no table sets")
-        if state.generation is not None and state.generation.operation != EXTEND:
+        if state.generation is not None and state.generation.operation != MORE_MAP.id:
             raise Refusal(f"a room engine cannot write {state.generation.operation!r}")
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> RoomWorld[N, P]:
@@ -148,11 +147,11 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         return await self.compose(worldsmith, prompt, self.map_draft(), built, playable)
 
     def act(self, draft: G, action: Slug, words: str) -> None:
-        if action != EXTEND or self.world(draft).frontier():
+        if action != MORE_MAP.id or self.world(draft).frontier():
             raise Refusal("the map still has ways to walk; the page was drawn before them")
         if not words:
             raise Refusal("say where you push on")
-        draft.generation = Generation(operation=EXTEND, brief=words)
+        draft.generation = Generation(operation=MORE_MAP.id, brief=words)
 
     async def advance(
         self, draft: G, request: Generation, worldsmith: WorldsmithAnswer

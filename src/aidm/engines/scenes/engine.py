@@ -39,10 +39,8 @@ from aidm.engines.scenes.tools import (
     SharedChange,
 )
 from aidm.engines.scenes.world import (
-    GO_ON,
     MOVE_ON,
-    Departure,
-    Invitation,
+    SCENE_LEFT,
     SceneCanon,
     SceneWorld,
     resolve_ids,
@@ -74,7 +72,7 @@ OPENING = (
 MOVING_ON = (
     "The player takes the way on this scene offered: PLAYER ACTION is where they mean to go. "
     "Play their leaving if nothing stops them, then call `next_scene` with `pursuit` in their "
-    "words; the page carries them on from there."
+    "words; the crossing is written after this turn."
 )
 
 
@@ -169,7 +167,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
                 trail_panel(run.title for run in world.runs),
             ),
             prompt=state.pending,
-            action=world.offered(),
+            action=MOVE_ON if world.run.offered else None,
             over=self.over(state),
         )
 
@@ -192,8 +190,11 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
     def next_scene(self, draft: G, args: NextScene, _rng: Random) -> list[Fact]:
         if args.pursuit and args.complication:
             raise Refusal("a pursuit or a complication, not both")
+        if args.pursuit:
+            draft.generation = Generation(operation=DEPARTURE, brief=args.pursuit)
+            return [SCENE_LEFT]
         if not args.complication:
-            return self.world(draft).settle(args.pursuit)
+            return self.world(draft).offer()
         draft.generation = Generation(operation=COMPLICATION, brief=args.complication)
         return [
             Fact(
@@ -204,13 +205,9 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         ]
 
     def act(self, draft: G, action: Slug, words: str) -> None:
-        offer = self.world(draft).run.offer
-        if action == GO_ON and isinstance(offer, Departure):
-            draft.generation = Generation(operation=DEPARTURE, brief=offer.pursuit)
-        elif action == MOVE_ON and isinstance(offer, Invitation):
-            draft.note(MOVING_ON)
-        else:
+        if action != MOVE_ON.id or not self.world(draft).run.offered:
             raise Refusal("the way on has changed since the page was drawn")
+        draft.note(MOVING_ON)
 
     def pack_step(self) -> CreationStep:
         return CreationStep(id="pack", prompt="Choose a table set", options=self.pack_options())

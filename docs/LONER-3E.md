@@ -54,10 +54,9 @@ It is treated as covered by the site's licence. One email to the publisher would
 - `change_world` — its eight arms: reveal someone found, bring a cast member in or out of the
   scene, change an actor's gear or condition tags, set an actor's goal, motive or nemesis
   (`drive`), record a death, and have someone join or leave the player's party.
-- `next_scene` — offer the player the way on at a stopping point, or say that they left this
-  place; the player is then asked what they pursue, or goes on from the page. Or hand the
-  worldsmith a complication to bring down on this place; the turn ends and the player reads what
-  arrives.
+- `next_scene` — offer the player the way on at a stopping point; or say that they left this
+  place, and the worldsmith writes where they land; or hand the worldsmith a complication to
+  bring down on this place. The last two end the turn, and the player reads what arrives.
 - `roll_question` — Chance against Risk for one closed dramatic question; an advantage or
   disadvantage adds one die to that side; a tie outside a conflict counts on the Twist Counter and
   may roll a twist; in a conflict the losing side's Luck pays.
@@ -101,8 +100,7 @@ its keep for a reason the SRD has no need of.
 
 - `known` and `hidden` — the told-fact gate: no unknown name reaches the narrator.
 - `alive` and `kill` — the SRD leaves death to narration; the gate needs a flag.
-- `next_scene` and the scene's `offer` — a stopping point or a departure the rules played;
-  neither ends anything on its own.
+- `next_scene` and the scene's `offered` flag — a stopping point the player may stay at.
 - No mood roll — the SRD offers it "when unsure"; the game master holds that judgment.
 
 ## Where the rules live

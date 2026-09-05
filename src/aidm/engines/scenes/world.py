@@ -6,7 +6,6 @@ from pydantic import Field, model_validator
 from aidm.core.entities import (
     CheckedEntityId,
     EntityId,
-    Frozen,
     Mutable,
     Refusal,
     Slug,
@@ -19,8 +18,9 @@ from aidm.core.views import Action, Panel, PanelRow, Sections, lines_of
 from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, World, check_filing, sentence
 from aidm.engines.scenes.drafts import NextDraft, SceneDraft
 
-MOVE_ON: Slug = "move-on"
-GO_ON: Slug = "go-on"
+MOVE_ON = Action(
+    id="move-on", label="Move on", detail="Keep playing, or say where you go and move on."
+)
 WAY_OFFERED = Fact(
     kind="way_offered",
     trace=(
@@ -35,20 +35,10 @@ SCENE_LEFT = Fact(
     kind="scene_left",
     trace=(
         "the player has left this place; close the scene on their going and describe nothing "
-        "of where they arrive: the page carries them on"
+        "of where they arrive: the crossing is written next"
     ),
     told=True,
 )
-
-
-class Invitation(Frozen):
-    pass
-
-
-class Departure(Frozen):
-    """The player has left, as the rules played it; the page carries them on in these words."""
-
-    pursuit: str = Field(min_length=1)
 
 
 class SceneRun(Mutable):
@@ -59,7 +49,7 @@ class SceneRun(Mutable):
     situation: str = Field(min_length=1)
     here: list[CheckedEntityId] = Field(default_factory=list)
     exchanges: list[Exchange] = Field(default_factory=list)
-    offer: Invitation | Departure | None = None
+    offered: bool = False  # the way on, offered at a stopping point; the player may stay
     recap: str = ""  # written when the scene was left or turned
 
 
@@ -76,7 +66,7 @@ class SceneCanon[C: Person](Mutable):
         check_filing(self.cast)
         check_named(self.opening.here, self.cast)
         opening = self.opening
-        if opening.exchanges or opening.offer is not None or opening.recap:
+        if opening.exchanges or opening.offered or opening.recap:
             raise ValueError("an opening with play in it")
         return self
 
@@ -271,26 +261,11 @@ class SceneWorld[C: Person, P: Person](World[P]):
         trace = f"{entity.tag} no longer travels with the player"
         return [entity.fact("party_left", trace, card=f"{entity.name} leaves your party")]
 
-    def settle(self, pursuit: str) -> list[Fact]:
-        if isinstance(self.run.offer, Departure):
-            raise Refusal("the player has left this scene; the page carries them on")
-        if pursuit:
-            self.run.offer = Departure(pursuit=pursuit)
-            return [SCENE_LEFT]
-        if self.run.offer is not None:
+    def offer(self) -> list[Fact]:
+        if self.run.offered:
             raise Refusal("this scene already offers the way on; play on, or send them off")
-        self.run.offer = Invitation()
+        self.run.offered = True
         return [WAY_OFFERED]
-
-    def offered(self) -> Action | None:
-        match self.run.offer:
-            case Invitation():
-                detail = "Keep playing, or say where you go and move on."
-                return Action(id=MOVE_ON, label="Move on", detail=detail)
-            case Departure(pursuit=pursuit):
-                return Action(id=GO_ON, label="Go on", intent=pursuit)
-            case None:
-                return None
 
     def merged_cast(self, cast: Mapping[EntityId, C]) -> dict[EntityId, C]:
         return {

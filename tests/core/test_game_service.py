@@ -19,7 +19,6 @@ from aidm.core.entities import Refusal
 from aidm.core.io import FileStore
 from aidm.core.model import AnyGame, Generation, ScenarioMeta
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.scenes.world import Invitation
 
 
 class _UnsavableStore(FileStore):
@@ -205,11 +204,11 @@ async def test_a_complication_after_an_offer_clears_it_only_once_installed(
     _ = await play_turn(table, "I have what I came for.", the_way_on())
 
     state = await play_turn(table, "I keep watch.", complication)
-    assert state.payload.run.offer == Invitation()
+    assert state.payload.run.offered
 
     table.spawner.answers["worldsmith"] = [_scene()]
     state = await play_turn(table, "I keep watching.", complication, arrival="Torchlight.")
-    assert state.payload.run.offer is None
+    assert not state.payload.run.offered
     assert state.payload.run.title == "The Abbot's Study, Disturbed"
 
 
