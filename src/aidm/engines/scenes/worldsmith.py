@@ -12,8 +12,8 @@ from aidm.engines.scenes.world import SceneWorld, resolved_id
 CROSSING = (
     "The player is leaving {left} for the place in SCENE. They asked for this: "
     '"{pursuit}"\n\n'
-    "Write the crossing: a sentence of leaving, then the arrival. Cover the distance and the time "
-    "in the fewest words that make it real, and end on what they see first. WHAT HAPPENED names "
+    "Their going is already told: write the arrival. Cover the distance and the time in the "
+    "fewest words that make it real, and end on what they see first. WHAT HAPPENED names "
     "anyone who travelled with them. They have not acted in the new place yet, so settle nothing."
 )
 COMPLICATING = (
