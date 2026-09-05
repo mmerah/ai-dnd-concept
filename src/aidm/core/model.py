@@ -83,6 +83,13 @@ class WorldsmithAnswer(Protocol):
     async def __call__[M: BaseModel](self, prompt: str, model: type[M], refusal: Check[M]) -> M: ...
 
 
+class Generation(Frozen):
+    """An engine's one request to the worldsmith; the platform runs it once the turn ends."""
+
+    operation: Slug  # the engine's own name for what it will author and install
+    brief: str = Field(min_length=1)
+
+
 class Game[P: BaseModel](Mutable):
     """The game as it is played; its dump is the save envelope around one engine payload."""
 
@@ -92,7 +99,7 @@ class Game[P: BaseModel](Mutable):
     engine: EngineId
     packs: tuple[Slug, ...] = ()
     pending: PendingDecision | None = None
-    handoff: str = ""  # a tool's brief for the worldsmith; cleared once the platform wrote it
+    generation: Generation | None = None
     notes: list[str] = []
     payload: P
 

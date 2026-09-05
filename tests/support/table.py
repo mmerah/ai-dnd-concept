@@ -229,21 +229,35 @@ def open_table[G: AnyGame](
 
 async def play_turn[G: AnyGame](
     table: Table[G],
-    action: str | Answer,
+    prompt: str | Answer,
     *calls: Call,
     narration: str = "You wait.",
     arrival: str | None = None,
-    moving_on: bool = False,
+    action: Slug | None = None,
 ) -> G:
-    """One turn, with the game master's tool calls scripted and the narrator's answer canned."""
+    """One turn, with the game master's tool calls scripted and the narrator's answer canned;
+    `action` is the page's own way of opening it."""
     table.spawner.turns.append(table.plays(calls))
     canned = table.spawner.answers.setdefault("narrator", [])
     canned.append(narrated(narration))
-    # The crossing is its own narrator spawn, so a turn that installs a scene answers twice.
+    # The arrival is its own narrator spawn, so a turn that installs a scene answers twice.
     if arrival is not None:
         canned.append(narrated(arrival))
-    answer = Answer(text=action) if isinstance(action, str) else action
-    await table.service.play(answer, moving_on=moving_on)
+    if action is not None:
+        assert isinstance(prompt, str)
+        await table.service.act(action, prompt)
+    else:
+        await table.service.play(Answer(text=prompt) if isinstance(prompt, str) else prompt)
+    return table.state
+
+
+async def take[G: AnyGame](
+    table: Table[G], action: Slug, words: str, *, arrival: str | None = None
+) -> G:
+    """The page's own action that opens no turn: the worldsmith writes, the narrator may tell."""
+    if arrival is not None:
+        table.spawner.answers.setdefault("narrator", []).append(narrated(arrival))
+    await table.service.act(action, words)
     return table.state
 
 

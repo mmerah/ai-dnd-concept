@@ -104,7 +104,7 @@ class Turn:
                 f"the rules are waiting on the player: {pending.prompt}\n"
                 "Stop here and exit; the player's answer opens the next turn."
             )
-        if self.draft.handoff:
+        if self.draft.generation is not None:
             return HANDOFF_WAIT
         already_pending = len(self.draft.notes)
         decided_before = self.draft.pending

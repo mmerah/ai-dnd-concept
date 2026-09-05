@@ -8,7 +8,14 @@ from aidm.core.creation import CreationStep
 from aidm.core.entities import Refusal, Slug, parse
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
-from aidm.core.model import AnyCharacter, AnyScenario, Game, ScenarioMeta, WorldsmithAnswer
+from aidm.core.model import (
+    AnyCharacter,
+    AnyScenario,
+    Game,
+    Generation,
+    ScenarioMeta,
+    WorldsmithAnswer,
+)
 from aidm.core.play import DecisionOption
 from aidm.core.views import NarratorView, Panel, PlayerView, Sections, render_history
 from aidm.engines.base import (
@@ -31,7 +38,16 @@ from aidm.engines.scenes.tools import (
     Reveal,
     SharedChange,
 )
-from aidm.engines.scenes.world import SceneCanon, SceneWorld, resolve_ids, run_of
+from aidm.engines.scenes.world import (
+    GO_ON,
+    MOVE_ON,
+    Departure,
+    Invitation,
+    SceneCanon,
+    SceneWorld,
+    resolve_ids,
+    run_of,
+)
 from aidm.engines.scenes.worldsmith import (
     COMPLICATION,
     CROSSING,
@@ -42,15 +58,24 @@ from aidm.engines.scenes.worldsmith import (
 from aidm.engines.seam import Engine
 
 WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
+DEPARTURE: Slug = "departure"
+COMPLICATION_ASKED: Slug = "complication"
+OPERATIONS = (DEPARTURE, COMPLICATION_ASKED)
 OPENING = (
     "Write the opening scene of this adventure: the one place the player starts in, who is "
-    "there, and a `question` that settles in that place. A scene ends when the player leaves "
-    "it, so a question about somewhere farther on belongs to a later scene. `cast` is the "
-    "adventure's people and things, not the scene's: write who is met here and who the player "
-    "will meet farther in, and list under `present` and `hidden` only who is here now. "
-    "`hidden` is for something worth finding here; it is not required. The opening also writes "
-    "`arc`, the setup beyond this scene for the game master and the worldsmith, never the "
-    "player: pressures, motives, secrets, what may come; a few lines, or none."
+    "there, and, when one thing is what the scene is about, a `focus` the player reads. A scene "
+    "ends when the player leaves it, so a focus on somewhere farther on belongs to a later "
+    "scene. `cast` is the adventure's people and things, not the scene's: write who is met "
+    "here and who the player will meet farther in, and list under `present` and `hidden` only "
+    "who is here now. `hidden` is for something worth finding here; it is not required. The "
+    "opening also writes `arc`, the setup beyond this scene for the game master and the "
+    "worldsmith, never the player: pressures, motives, secrets, what may come; a few lines, or "
+    "none."
+)
+MOVING_ON = (
+    "The player takes the way on this scene offered: PLAYER ACTION is where they mean to go. "
+    "Play their leaving if nothing stops them, then call `next_scene` with `pursuit` in their "
+    "words; the page carries them on from there."
 )
 
 
@@ -67,14 +92,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
     def world(self, state: G) -> SceneWorld[C, P]:
         return state.payload
 
-    def crossing(self, state: G, pursuit: str) -> str | None:
-        if state.handoff:
-            return TURNING
-        return CROSSING.format(left=self.world(state).run.title, pursuit=pursuit)
-
-    def page_word(self, state: G, intent: str) -> bool:
-        return intent == self.world(state).run.left
-
     def pack_options(self) -> tuple[DecisionOption, ...]:
         """The create page's table sets, and the first step of every scene engine's creation."""
         return tuple(DecisionOption(id=key, label=pack.name) for key, pack in self.packs.items())
@@ -84,6 +101,8 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
             raise Refusal(f"a {state.engine!r} game needs at least one table set")
         if missing := sorted(set(state.packs) - set(self.packs)):
             raise Refusal(f"the game names packs not installed: {missing}")
+        if state.generation is not None and state.generation.operation not in OPERATIONS:
+            raise Refusal(f"a scene engine cannot write {state.generation.operation!r}")
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> SceneWorld[C, P]:
         self.check_scenario(scenario)
@@ -96,7 +115,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         scene = world.run
         return (
             ("SCENE", f"{scene.title}\n{scene.situation}"),
-            ("THE QUESTION THIS SCENE SETTLES", scene.question),
+            *((("WHAT THIS SCENE IS ABOUT", scene.focus),) if scene.focus else ()),
             ("YOU PLAY FOR", world.player.line()),
             *self.sheet_sections(state),
             ("HERE WITH THE PLAYER", world.here_lines()),
@@ -124,7 +143,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         return NarratorView(
             place=scene.place,
             title=scene.title,
-            focus=scene.question,
+            focus=scene.focus,
             situation=scene.situation,
             subjects=tuple(member.subject() for member in here),
             speakers=tuple(member.id for member in here),
@@ -140,7 +159,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
             panels=(
                 character_panel(player.rows()),
                 *self.panels(state),
-                Panel(title="This scene", rows=world.scene_rows()),
+                *world.scene_panel(),
                 *world.party_panel(),
                 here_panel(
                     me, (member.subject() for member in world.here() if member.id != player.id)
@@ -148,6 +167,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
                 trail_panel(run.title for run in world.runs),
             ),
             prompt=state.pending,
+            action=world.offered(),
             over=self.over(state),
         )
 
@@ -170,11 +190,25 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
     def next_scene(self, draft: G, args: NextScene, _rng: Random) -> list[Fact]:
         if args.pursuit and args.complication:
             raise Refusal("a pursuit or a complication, not both")
-        if args.complication:
-            asked = self.world(draft).complicate(args.complication)
-            draft.handoff = args.complication
-            return [asked]
-        return self.world(draft).settle(args.pursuit)
+        if not args.complication:
+            return self.world(draft).settle(args.pursuit)
+        draft.generation = Generation(operation=COMPLICATION_ASKED, brief=args.complication)
+        return [
+            Fact(
+                kind="complication_asked",
+                trace=f"the worldsmith writes the complication once this turn ends: "
+                f"{args.complication}. Nothing more lands this turn; stop and exit",
+            )
+        ]
+
+    def act(self, draft: G, action: Slug, words: str) -> None:
+        offer = self.world(draft).run.offer
+        if action == GO_ON and isinstance(offer, Departure):
+            draft.generation = Generation(operation=DEPARTURE, brief=offer.pursuit)
+        elif action == MOVE_ON and isinstance(offer, Invitation):
+            draft.note(MOVING_ON)
+        else:
+            raise Refusal("the way on has changed since the page was drawn")
 
     def pack_step(self) -> CreationStep:
         return CreationStep(id="pack", prompt="Choose a table set", options=self.pack_options())
@@ -248,19 +282,18 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
 
     async def write_next(self, draft: G, intent: str, worldsmith: WorldsmithAnswer) -> NextDraft[C]:
         world = self.world(draft)
-        model = NextDraft[self.cast]
-        asked = COMPLICATION.format(brief=draft.handoff) if draft.handoff else intent
-        prompt = self.render_next(draft, asked)
-        return await worldsmith(prompt, model, lambda answer: scene_refusal(answer, world))
+        prompt = self.render_next(draft, intent)
+        return await worldsmith(
+            prompt, NextDraft[self.cast], lambda answer: scene_refusal(answer, world)
+        )
 
-    def install(self, draft: G, scene: SceneDraft[C]) -> list[Fact]:
+    def install(self, draft: G, scene: SceneDraft[C], moved: str) -> list[Fact]:
         world = self.world(draft)
         world.apply_scene(scene.model_copy(deep=True))
-        moved = "the scene turns to" if draft.handoff else "the story moves to"
         trace = f"{moved} {scene.title}"
         if travelling := [member.name for member in world.members()]:
             trace += f", the player travelling with {', '.join(travelling)}"
-        card = f"New scene: {scene.title}\nAt stake: {scene.question}"
+        card = f"New scene: {scene.title}" + (f"\n{scene.focus}" if scene.focus else "")
         return [Fact(kind="scene_opened", trace=trace, told=True, card=card)]
 
     async def author(
@@ -278,17 +311,19 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         prompt = self.render_opening(source, guidance, meta.scope)
         return await self.compose(worldsmith, prompt, SceneDraft[self.cast], built, playable)
 
-    def ready(self, state: G) -> bool:
-        return self.world(state).run.left is not None
-
     async def advance(
-        self, draft: G, intent: str, worldsmith: WorldsmithAnswer
-    ) -> tuple[Fact, ...]:
-        scene = await self.write_next(draft, intent, worldsmith)
-        # The engine's own closing reads the scene being left, so it runs before the install.
-        # A complication turns the scene, it does not end it: no closing (Loner refills pools) runs.
-        leaving = () if draft.handoff else self.leaving(draft)
-        return (*leaving, *self.install(draft, scene))
+        self, draft: G, request: Generation, worldsmith: WorldsmithAnswer
+    ) -> tuple[tuple[Fact, ...], str | None]:
+        left = self.world(draft).run.title
+        if request.operation == DEPARTURE:
+            scene = await self.write_next(draft, request.brief, worldsmith)
+            # The engine's own closing reads the scene being left, so it runs before the install.
+            leaving = self.leaving(draft)
+            facts = (*leaving, *self.install(draft, scene, "the story moves to"))
+            return facts, CROSSING.format(left=left, pursuit=request.brief)
+        asked = COMPLICATION.format(brief=request.brief)
+        scene = await self.write_next(draft, asked, worldsmith)
+        return tuple(self.install(draft, scene, "the scene turns to")), TURNING
 
     def panels(self, state: G) -> tuple[Panel, ...]:
         return ()

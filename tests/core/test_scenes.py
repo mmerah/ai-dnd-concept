@@ -8,10 +8,17 @@ from aidm.core.entities import EntityId, Refusal
 from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.loner3e.world import Loner3eGame
+from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
 from aidm.engines.scenes.drafts import NextDraft
 from aidm.engines.scenes.tools import NextScene
-from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld
+from aidm.engines.scenes.world import (
+    GO_ON,
+    Departure,
+    Invitation,
+    SceneCanon,
+    SceneRun,
+    SceneWorld,
+)
 from aidm.engines.scenes.worldsmith import scene_refusal
 
 PLAYER = Person(id=PLAYER_ID, name="Player", brief="", known=True)
@@ -34,7 +41,7 @@ def _run(
     return SceneRun(
         place=place,
         title=title,
-        question="What happens next here?",
+        focus="What happens next here?",
         situation=SITUATION,
         here=list(here),
         exchanges=exchanges,
@@ -92,7 +99,7 @@ def test_apply_scene_with_a_next_draft_stamps_the_recap_on_the_run_left() -> Non
     draft = NextDraft[Person](
         place="a2",
         title="A2",
-        question="What happens next here?",
+        focus="What happens next here?",
         situation=SITUATION,
         present=(MARA,),
         recap=RECAP,
@@ -112,7 +119,7 @@ def test_apply_scene_with_an_empty_arc_keeps_the_worlds_arc() -> None:
     draft = NextDraft[Person](
         place="a2",
         title="A2",
-        question="What happens next here?",
+        focus="What happens next here?",
         situation=SITUATION,
         present=(MARA,),
         recap=RECAP,
@@ -137,7 +144,7 @@ def test_a_next_draft_naming_no_one_but_the_player_passes_and_installs() -> None
     draft = NextDraft[Person](
         place="a2",
         title="A2",
-        question="What happens next here?",
+        focus="What happens next here?",
         situation=SITUATION,
         recap=RECAP,
     )
@@ -162,9 +169,35 @@ def test_next_scene_refuses_a_pursuit_and_a_complication_together() -> None:
         )
 
 
-def test_complicate_on_a_settled_run_is_refused() -> None:
+def test_an_offer_can_turn_into_a_departure_but_a_departure_is_final() -> None:
     world = _world(_run("a1", "A1"))
-    world.settle("")
+    _ = world.settle("")
+    assert world.run.offer == Invitation()
 
-    with pytest.raises(Refusal, match="already settled"):
-        _ = world.complicate("A second crew breaks in.")
+    _ = world.settle("Down the stair.")
+    assert world.run.offer == Departure(pursuit="Down the stair.")
+
+    with pytest.raises(Refusal, match="has left"):
+        _ = world.settle("")
+
+
+def test_an_action_the_offer_no_longer_matches_is_refused_and_requests_nothing() -> None:
+    engine, state = game(LONER3E)
+    draft = narrowed(state, Loner3eGame).draft()
+
+    with pytest.raises(Refusal, match="the way on has changed"):
+        engine.act(draft, GO_ON, "Down the stair.")
+
+    assert draft.generation is None
+
+
+def test_a_scene_without_a_focus_installs_and_shows_no_scene_panel() -> None:
+    engine, state = game(LONER3E)
+    assert isinstance(engine, Loner3eEngine)
+    draft = narrowed(state, Loner3eGame).draft()
+    scene = NextDraft[Loner3eSheet](place="a2", title="A2", situation=SITUATION, recap=RECAP)
+
+    _ = engine.install(draft, scene, "the story moves to")
+
+    assert "This scene" not in [panel.title for panel in engine.player_view(draft).panels]
+    assert "WHAT THIS SCENE IS ABOUT" not in str(engine.master_sections(draft))

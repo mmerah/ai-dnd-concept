@@ -9,7 +9,11 @@ class SceneDraft[C: Person](Frozen):
 
     place: Slug = Field(description="Where the scene is, read by the player.")
     title: str = Field(description="The scene's title, read by the player.")
-    question: str = Field(min_length=1, description="What this scene settles, read by the player.")
+    focus: str = Field(
+        default="",
+        description="What this scene is about, in one line the player reads, when one thing is; "
+        "empty when the situation says it all.",
+    )
     situation: str = Field(
         min_length=1,
         description="What the player sees and knows on arrival: where they are, why they are "

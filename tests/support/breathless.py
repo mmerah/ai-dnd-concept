@@ -53,7 +53,7 @@ def _scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
     return SceneRun(
         place="diner",
         title="The Diner",
-        question="Can they reach the back door?",
+        focus="Can they reach the back door?",
         situation=SITUATION,
         here=list(here),
     )

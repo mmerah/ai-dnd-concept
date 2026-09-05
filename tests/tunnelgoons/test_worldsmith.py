@@ -7,6 +7,7 @@ from support.tunnelgoons import small_world
 from aidm.core.entities import EntityId
 from aidm.core.model import ScenarioMeta
 from aidm.engines.rooms.drafts import MapDraft
+from aidm.engines.rooms.engine import MORE_MAP
 from aidm.engines.rooms.world import Item, Place, Way
 from aidm.engines.rooms.worldsmith import extension_refusal, map_refusal
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
@@ -123,14 +124,14 @@ def test_a_region_reusing_an_id_already_in_the_world_is_refused() -> None:
     assert "not already in the world" in refused
 
 
-def test_way_open_is_false_on_the_shipped_map_and_true_once_every_place_is_known() -> None:
+def test_more_map_is_offered_only_once_every_place_is_known() -> None:
     state = small_world()
-    assert not ENGINE.ready(state)
+    assert ENGINE.player_view(state).action is None
 
     draft = state.draft()
     for place in draft.payload.places.values():
         place.known = True
-    assert ENGINE.ready(draft.commit())
+    assert ENGINE.player_view(draft.commit()).action == MORE_MAP
 
 
 def test_install_extension_on_a_game_from_the_engine() -> None:

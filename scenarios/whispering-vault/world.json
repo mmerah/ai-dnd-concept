@@ -12,7 +12,7 @@
     "opening": {
       "place": "abbots-study",
       "title": "The Abbot's Study",
-      "question": "Can you get the way down to the vault out of this room, and out of Mara?",
+      "focus": "Can you get the way down to the vault out of this room, and out of Mara?",
       "situation": "The only lit room left in the abbey: ledgers stacked to the beams, candle stubs gone cold, and Mara still cataloguing books nobody will read. A flagstone under the desk sits a finger proud of its neighbours.",
       "here": [
         "mara",

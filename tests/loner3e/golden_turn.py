@@ -29,7 +29,7 @@ def behind(state: AnyGame) -> AnyGame:
         SceneRun(
             place="vault-stair",
             title="The Vault Stair",
-            question="Is there a way past the vault door from the stair?",
+            focus="Is there a way past the vault door from the stair?",
             situation=(
                 "A short flight of steps ends at an iron door, sealed, "
                 "the abbey's dust undisturbed on its sill."

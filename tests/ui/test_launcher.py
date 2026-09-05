@@ -218,7 +218,7 @@ _OPENING_ITEM: JsonValue = {
 _OPENING: dict[str, JsonValue] = {
     "place": "sunken-bell",
     "title": "The Bell Under the Water",
-    "question": "Can you reach the bell tower before the tide turns again?",
+    "focus": "Can you reach the bell tower before the tide turns again?",
     "situation": "The tide has taken the lower town and left the bell tower standing in it, "
     "and something down there still rings the hour.",
     "present": ["hana"],

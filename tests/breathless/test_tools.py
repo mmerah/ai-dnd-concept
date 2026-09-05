@@ -12,7 +12,7 @@ from aidm.engines.breathless.tools import ChangeStress, Check, LootCheck
 from aidm.engines.breathless.tools import TestLuck as LuckTest
 from aidm.engines.breathless.world import Item, stepped
 from aidm.engines.scenes.tools import NextScene
-from aidm.engines.scenes.world import SCENE_LEFT
+from aidm.engines.scenes.world import GO_ON, SCENE_LEFT, Departure
 
 ENGINE = BreathlessEngine()
 
@@ -196,12 +196,11 @@ def test_join_party_is_refused_outside_breathless_change() -> None:
         _ = change(ENGINE, draft, "join_party", entity_id=PLAYER_ID)
 
 
-def test_next_scene_with_pursuit_settles_the_run_and_leaves_a_go_on_row() -> None:
+def test_next_scene_with_pursuit_records_the_departure_and_offers_going_on() -> None:
     draft = small_world()
     world = draft.payload
     facts = ENGINE.next_scene(draft, NextScene(pursuit="the control deck"), Random(0))
-    assert world.run.left == "the control deck"
+    assert world.run.offer == Departure(pursuit="the control deck")
     assert SCENE_LEFT in facts
-    assert any(
-        row.label == "Go on" and row.intent == "the control deck" for row in world.scene_rows()
-    )
+    action = ENGINE.player_view(draft).action
+    assert action is not None and (action.id, action.intent) == (GO_ON, "the control deck")

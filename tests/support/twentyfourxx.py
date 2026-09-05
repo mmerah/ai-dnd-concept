@@ -43,7 +43,7 @@ def _scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
     return SceneRun(
         place="loading-bay",
         title="The Loading Bay",
-        question="Can they reach the cargo before the lights come back?",
+        focus="Can they reach the cargo before the lights come back?",
         situation=SITUATION,
         here=list(here),
     )

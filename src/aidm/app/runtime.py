@@ -28,9 +28,8 @@ LOGGER = logging.getLogger(__name__)
 
 # The prompt of a turn nobody played; the chat shows it as the story's own line.
 OPENING_MARK = "(the story begins)"
-CROSSING_MARK = "(the player crosses to the next scene)"
-TURNING_MARK = "(the game master turns the scene)"
-MARKS = (OPENING_MARK, CROSSING_MARK, TURNING_MARK)
+STORY_MARK = "(the story goes on)"
+MARKS = (OPENING_MARK, STORY_MARK)
 UNWRITTEN = Fact(
     kind="way_unwritten",
     told=True,
@@ -45,9 +44,9 @@ OPENING = (
     "The story begins here; the player has read nothing yet. Tell them, in the fiction and in "
     "this order: who they are (WHO IS HERE names them first) and where they stand; what is in "
     "front of them, the situation as they see it now; what they are here to do, from WHAT THIS "
-    "SCENE IS ABOUT, said as the thing pulling at them; and two or three things they could "
-    "plainly do first, offered by the place and the people, in prose, never as a list. Six to "
-    "eight sentences. They have not acted, so settle nothing."
+    "SCENE IS ABOUT where it is given, said as the thing pulling at them; and two or three "
+    "things they could plainly do first, offered by the place and the people, in prose, never "
+    "as a list. Six to eight sentences. They have not acted, so settle nothing."
 )
 
 
@@ -64,7 +63,7 @@ class GameService:
     rng: Random = field(default_factory=Random)
     # The role at work; the play page polls it and binds its widgets to it.
     phase: Role | None = None
-    # What the player typed for a write that opens no turn; the page shows it as their bubble.
+    # The player's words for a write that opens no turn; the page shows them as their bubble.
     intent: str = ""
     # The turn in flight; the tool surface reaches the live game through it.
     turn: Turn | None = None
@@ -103,45 +102,35 @@ class GameService:
         finally:
             self.phase = None
 
-    async def play(self, answer: Answer, *, moving_on: bool = False) -> None:
-        """`moving_on` is the player taking the way on, so `answer` is what they mean to pursue.
-
-        The page's own word crosses at once: the leaving was played when the scene settled. A
-        world with no crossing grows first, and the player's words then play in it as a turn.
-        """
-        if moving_on and not self.engine.ready(self.state):
-            raise Refusal("the world offers no transition from here")
-        if moving_on and answer.option_id is not None:
-            raise Refusal("a transition needs written intent")
-        brief = self.engine.crossing(self.state, answer.text) if moving_on else None
-        grown: tuple[Fact, ...] = ()
+    async def play(self, answer: Answer) -> None:
         try:
-            if moving_on:
-                self.intent = answer.text
-                draft = self.state.draft()
-                if self.engine.page_word(self.state, answer.text):
-                    draft.pending = None
-                    await self._grow(draft, answer.text, brief)
-                    self._present()
-                    return
-                if brief is None:
-                    facts = await self._grow(draft, answer.text, None)
-                    if facts is None:
-                        return
-                    grown = facts
-            self.intent = ""
-            await self._turn(answer, grown, brief)
+            await self._turn(answer, self.state)
+        finally:
+            self.phase = None
+
+    async def act(self, action: Slug, words: str) -> None:
+        """The page's way on: a request the engine makes runs with no master, else a turn plays."""
+        if self.state.pending is not None:
+            raise Refusal("the rules wait on the player's decision first")
+        draft = self.state.draft()
+        self.engine.act(draft, action, words)
+        try:
+            if draft.generation is None:
+                await self._turn(Answer(text=words), draft)
+                return
+            self.intent = words
+            self.commit(self.engine.commit(draft))
+            await self._generate()
         finally:
             self.intent, self.phase = "", None
 
-    async def _turn(self, answer: Answer, grown: tuple[Fact, ...], brief: str | None) -> None:
-        turn = Turn.begin(self.engine, self.state, answer, self.rng)
-        turn.facts.extend(grown)
+    async def _turn(self, answer: Answer, state: AnyGame) -> None:
+        turn = Turn.begin(self.engine, state, answer, self.rng)
         self.turn, self.phase = turn, "master"
         try:
             # An answer that re-suspended leaves every tool refused: nothing for a master to do.
             if turn.draft.pending is None:
-                await self._act(turn)
+                await self._master(turn)
             lines: tuple[Line, ...] = ()
             if turn.draft.pending is None or any(fact.told for fact in turn.facts):
                 self.phase = "narrator"
@@ -152,17 +141,30 @@ class GameService:
             self.turn = None
         self.commit(state)
         self._present()
-        if self.engine.over(state) is not None:
+        await self._generate()
+
+    async def _generate(self) -> None:
+        """The one executor: the state's request is written on a fresh draft, then cleared."""
+        request = self.state.generation
+        if request is None or self.engine.over(self.state) is not None:
             return
-        if brief is not None:
-            await self._grow(state.draft(), turn.prompt, brief)
-        elif state.handoff:
-            await self._grow(
-                state.draft(),
-                state.handoff,
-                self.engine.crossing(state, state.handoff),
-                marker=TURNING_MARK,
-            )
+        draft = self.state.draft()
+        draft.generation = None
+        self.phase = "worldsmith"
+        try:
+            facts, telling = await self.engine.advance(draft, request, _worldsmith(self.spawner))
+        except (OSError, Refusal) as failed:
+            LOGGER.warning("the world did not grow: %s", failed)
+            draft = self.state.draft()
+            draft.generation = None
+            self.commit(self.engine.close(draft, STORY_MARK, (), (UNWRITTEN,)))
+        else:
+            if telling is None:
+                self.commit(self.engine.commit(draft))
+            else:
+                self.phase = "narrator"
+                lines = await self._narrate(draft, facts, telling, fatal=False)
+                self.commit(self.engine.close(draft, STORY_MARK, lines, facts))
         self._present()
 
     def _present(self) -> None:
@@ -170,7 +172,7 @@ class GameService:
         self.illustrate("" if newest is None else newest.narration)
         self.speak()
 
-    async def _act(self, turn: Turn) -> None:
+    async def _master(self, turn: Turn) -> None:
         """A crashed game master still played the turn, if it applied anything legal first."""
 
         def nothing_landed() -> bool:
@@ -217,33 +219,6 @@ class GameService:
             LOGGER.warning("the arrival went unnarrated: %s", failed)
             return ()
         return narration.lines
-
-    async def _grow(
-        self, draft: AnyGame, intent: str, brief: str | None, *, marker: str = CROSSING_MARK
-    ) -> tuple[Fact, ...] | None:
-        """The facts of the growth, or None when the write failed and was filed as such."""
-        self.phase = "worldsmith"
-        try:
-            facts = await self.engine.advance(draft, intent, _worldsmith(self.spawner))
-        except (OSError, Refusal) as failed:
-            # Dropping the write costs a scene; raising costs the turn that was already played.
-            LOGGER.warning("the world did not grow: %s", failed)
-            # A fresh draft: the failed one may hold the half-installed scene.
-            draft = self.state.draft()
-            # The brief is spent either way: the master asks again next turn if it still wants to.
-            draft.handoff = ""
-            # Filed under the words that asked, or under the mark where the scene is already left.
-            prompt = intent if brief is None else marker
-            self.commit(self.engine.close(draft, prompt, (), (UNWRITTEN,)))
-            return None
-        draft.handoff = ""
-        if brief is None:
-            self.commit(self.engine.commit(draft))
-            return facts
-        self.phase = "narrator"
-        lines = await self._narrate(draft, facts, brief, fatal=False)
-        self.commit(self.engine.close(draft, marker, lines, facts))
-        return facts
 
     def player_view(self) -> PlayerView:
         return self.engine.player_view(self.state)
@@ -306,8 +281,8 @@ class GameService:
                 f"save scenario is {state.scenario.title!r}, "
                 f"selected scenario is {self.scenario.meta.title!r}"
             )
-        # The write was lost with the process: a reload never finds a brief.
-        state.handoff = ""
+        # The write was lost with the process: a reload never finds a request.
+        state.generation = None
         return state
 
 

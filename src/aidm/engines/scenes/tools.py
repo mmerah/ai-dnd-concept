@@ -5,10 +5,11 @@ from pydantic import Field
 from aidm.core.entities import CheckedEntityId, Frozen
 
 NEXT_SCENE = (
-    "Say this scene's question is settled. The player is then asked what they want to pursue, "
-    "and their own words build the next scene. Do not answer for them. Or set `complication` to "
-    "bring a new situation down on this place, only when `change_world` (an arrival, a reveal, a "
-    "death) cannot make it from what is here."
+    "Offer the player the way on: this scene has reached a useful stopping point. They are "
+    "then asked what they want to pursue, and their own words build the next scene; they may "
+    "also stay. Do not answer for them. Set `pursuit` instead once the player has left this "
+    "place. Or set `complication` to bring a new situation down on this place, only when "
+    "`change_world` (an arrival, a reveal, a death) cannot make it from what is here."
 )
 
 
@@ -57,8 +58,8 @@ class LeaveParty(Frozen):
 class NextScene(Frozen):
     pursuit: str = Field(
         default="",
-        description="Set when the player has left this place for good with its question open: "
-        "where they are going, in their own words. Empty when the question settled here.",
+        description="Set when the player has left this place for good: where they are going, "
+        "in their own words. Empty to offer the way on from here.",
     )
     complication: str = Field(
         default="",

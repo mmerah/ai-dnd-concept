@@ -16,7 +16,7 @@ def _draft(**fields: object) -> SceneDraft[Person]:
     base = {
         "place": "bay-office",
         "title": "The Bay Office",
-        "question": "Can they slip past the night crew before the lights return?",
+        "focus": "Can they slip past the night crew before the lights return?",
         "situation": SITUATION,
         "arc": "Farther in, the fixer's own supplier still owes for the last load.",
     }
@@ -165,7 +165,7 @@ def test_apply_scene_puts_the_party_first_in_the_new_run() -> None:
 def test_install_scene_names_who_travelled_in_the_trace() -> None:
     game = small_world()
     game.payload.party = [KESTREL]
-    facts = ENGINE.install(game, _draft(present=("sable",)))
+    facts = ENGINE.install(game, _draft(present=("sable",)), "the story moves to")
     assert facts[0].trace == (
         "the story moves to The Bay Office, the player travelling with Kestrel"
     )
@@ -173,7 +173,7 @@ def test_install_scene_names_who_travelled_in_the_trace() -> None:
 
 def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
     game = small_world()
-    facts = ENGINE.install(game, _draft(present=("kestrel",)))
+    facts = ENGINE.install(game, _draft(present=("kestrel",)), "the story moves to")
     assert len(game.payload.runs) == 2
     assert facts == [
         Fact(
@@ -181,7 +181,7 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
             trace="the story moves to The Bay Office",
             told=True,
             card="New scene: The Bay Office\n"
-            "At stake: Can they slip past the night crew before the lights return?",
+            "Can they slip past the night crew before the lights return?",
         ),
     ]
 

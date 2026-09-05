@@ -5,7 +5,7 @@ from random import Random
 
 import pytest
 from support.loner import initialized, loner_sheet, open_game
-from support.table import Table, changed, narrated, play_turn, the_way_on, tool_call
+from support.table import Table, changed, narrated, play_turn, take, tool_call
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.facts import Fact, cards
@@ -14,6 +14,7 @@ from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import outcome_for
 from aidm.engines.loner3e.world import Loner3eGame
+from aidm.engines.scenes.world import GO_ON
 from aidm.turn.run import HANDOFF_WAIT, Turn
 
 MAP = EntityId("vault-map")
@@ -32,7 +33,7 @@ def _scene(**changes: object) -> str:
         ),
         "present": ["mara"],
         "hidden": [],
-        "question": "Can you reach the chapter house before the lantern gives you away?",
+        "focus": "Can you reach the chapter house before the lantern gives you away?",
         "recap": "The player left the abbot's study behind, lantern shuttered, and made for the "
         "cloister walk with Mara close behind them.",
         "arc": "Farther in, the chapter house still holds what Mara came for, and has not yet "
@@ -163,8 +164,8 @@ async def test_a_later_call_in_one_turn_sees_the_earlier_calls_draft(
         table, "I close the book.", tool_call("next_scene"), tool_call("next_scene")
     )
 
-    assert state.payload.run.left is not None
-    assert any("already settled" in refusal for refusal in table.refusals)
+    assert state.payload.run.offer is not None
+    assert any("already offers" in refusal for refusal in table.refusals)
 
 
 async def test_a_call_after_the_ask_answers_handoff_wait_and_changes_nothing(
@@ -297,13 +298,14 @@ async def test_crossing_keeps_a_drive_set_after_the_worldsmith_snapshot(
     table = open_game(tmp_path)
     table.spawner.answers["worldsmith"] = [_scene()]
 
-    _ = await play_turn(table, "I have what I came for.", the_way_on())
-    state = await play_turn(
+    _ = await play_turn(
         table,
         "Out into the cloister walk.",
         changed("drive", entity_id=PLAYER_ID, goal="Get the vault map out safely"),
-        arrival="Rain takes the arcade.",
-        moving_on=True,
+        tool_call("next_scene", pursuit="Out into the cloister walk."),
+    )
+    state = await take(
+        table, GO_ON, "Out into the cloister walk.", arrival="Rain takes the arcade."
     )
 
     assert state.payload.player.goal == "Get the vault map out safely"
@@ -327,9 +329,13 @@ async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_a
         )
     ]
 
-    _ = await play_turn(table, "I have what I came for.", the_way_on())
-    state = await play_turn(
-        table, "Out into the cloister walk.", arrival="Rain takes the arcade.", moving_on=True
+    _ = await play_turn(
+        table,
+        "Out into the cloister walk.",
+        tool_call("next_scene", pursuit="Out into the cloister walk."),
+    )
+    state = await take(
+        table, GO_ON, "Out into the cloister walk.", arrival="Rain takes the arcade."
     )
 
     mara = state.payload.require(EntityId("mara"))
