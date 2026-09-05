@@ -10,6 +10,8 @@ Put something in `hidden` when the scene has something worth finding. It is not 
 
 Never name the player: they are put into the scene by code. Name everyone else by their exact id. A new person or thing goes in `cast`, filed under its own id, and may then be named in `present` or `hidden`. Every line of THE WHOLE CAST says whether the player has met that entry: one met is never `hidden`, and one unmet is never named in what the player reads. Someone already in THE WHOLE CAST may be filed again to rewrite their `brief`; their name and their sheet are the rules' and do not change. A `brief` is read to the player's narrator once they have met its entry, so it holds nothing they must not learn; when you bring someone met into a new scene, file them again with a `brief` written for where they now stand.
 
+THE SCENE NOW is the place the player stands in, as they read it, and who is there with them, met or not. A complication turns that place: keep what the brief does not move.
+
 What happened in SCENES SO FAR outranks `arc`. A possibility play resolved or contradicted is spent, never restored.
 
 Everything you need is below. Do not read, search or run anything in the repository.

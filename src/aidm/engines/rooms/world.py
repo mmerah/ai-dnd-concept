@@ -359,7 +359,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
 
     def records(self) -> tuple[SceneRecord, ...]:
         records: list[SceneRecord] = []
-        for visit in self.visits:
+        for visit in (*(v for v in self.visits[:-1] if v.exchanges), self.visit):
             place = self.require_place(visit.place)
             records.append(
                 SceneRecord(title=place.name, focus=place.brief, exchanges=tuple(visit.exchanges))

@@ -75,6 +75,17 @@ def test_a_party_member_who_is_not_in_this_scene_is_refused() -> None:
         _ = _world(*world.runs, cast=world.cast, party=[MARA])
 
 
+def test_the_next_scene_prompt_carries_the_scene_as_it_stands() -> None:
+    engine, state = game(LONER3E)
+    assert isinstance(engine, Loner3eEngine)
+    run = narrowed(state, Loner3eGame).payload.run
+
+    prompt = engine.render_next(state, "Down the stair.")
+
+    assert f"THE SCENE NOW:\n{run.title} [{run.place}]\n{run.situation}" in prompt
+    assert "present: Mara[mara]\nhidden: the vault map[vault-map]" in prompt
+
+
 def test_apply_scene_with_a_next_draft_stamps_the_recap_on_the_run_left() -> None:
     world = _travelling()
     world.party = []

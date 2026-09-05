@@ -6,7 +6,7 @@ from aidm.core.io import ENCODING
 from aidm.core.model import AnyGame
 from aidm.core.play import Narration, SceneRecord
 from aidm.core.tools import schema_text
-from aidm.core.views import NarratorView, lines_of, render_history, sections, told_narration
+from aidm.core.views import NarratorView, lines_of, render_history, sections, told_history
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
@@ -43,7 +43,7 @@ def render_narrator(
     return sections(
         (
             ("YOUR ROLE", _prompt("narrator")),
-            ("WHAT THE PLAYER HAS READ", "\n\n".join(told_narration(scenes)) or "(nothing yet)"),
+            ("WHAT THE PLAYER HAS READ", told_history(scenes)),
             ("SCENE", f"{view.title}\n{view.situation}"),
             ("WHAT THIS SCENE IS ABOUT", view.focus),
             (

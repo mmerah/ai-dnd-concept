@@ -52,6 +52,15 @@ def test_walk_reaches_every_place_along_the_ways() -> None:
     assert world.reachable(START) == set(world.places)
 
 
+def test_a_visit_nothing_was_played_in_is_no_scene_in_the_records() -> None:
+    world = small_world().payload
+    world.visits.append(Visit(place=HALL))
+    world.visits.append(Visit(place=START))
+
+    assert [record.title for record in world.records()] == ["Start"]
+    assert world.records()[-1].exchanges == ()
+
+
 def test_frontier_counts_the_one_unknown_place_past_a_known_one() -> None:
     world = small_world().payload
     assert world.frontier() == 1

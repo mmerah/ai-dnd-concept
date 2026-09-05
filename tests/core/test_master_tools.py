@@ -237,7 +237,7 @@ async def test_the_offer_does_not_close_the_scene_or_stop_the_player(tmp_path: P
     assert state.payload.run.title == "The Cloister Walk"
 
 
-async def test_a_transition_without_an_arrival_brief_extends_on_a_lineless_exchange(
+async def test_a_world_with_no_crossing_grows_first_and_the_words_then_play_as_a_turn(
     tmp_path: Path,
 ) -> None:
     table = open_game(tmp_path)
@@ -250,45 +250,49 @@ async def test_a_transition_without_an_arrival_brief_extends_on_a_lineless_excha
             shown.append(table.service.intent)
             return await super().advance(draft, intent, worldsmith)
 
-    engine = table.service.engine
     table.service.engine = Watching()
-    before = len(engine.history(table.state))
     runs = len(table.state.payload.runs)
-
-    await table.service.play(Answer(text="Out into the cloister walk."), moving_on=True)
-
-    # The page has no turn to read the bubble from here, so the service holds the words.
-    assert (shown, table.service.intent) == (["Out into the cloister walk."], "")
-    assert len(engine.history(table.state)) == before + 1
-    assert len(table.state.payload.runs) == runs + 1
-    new_run = table.state.payload.runs[-1]
-    assert len(new_run.exchanges) == 1
-    exchange = new_run.exchanges[0]
-    assert exchange.prompt == "Out into the cloister walk."
-    assert any(fact.card.startswith("New scene: The Cloister Walk") for fact in exchange.facts)
-    assert not any(role == "master" for role, _ in table.spawner.prompts)
-
-
-async def test_a_told_card_with_no_crossing_earns_the_narrators_reply(tmp_path: Path) -> None:
-    """A room engine's job taken or reported: the keeper answers, the master is never spawned."""
-    table = open_game(tmp_path)
-    table.service.engine = _SilentEngine()
     table.spawner.answers["narrator"] = [narrated("Mara nods you toward the arcade.")]
 
     await table.service.play(Answer(text="Out into the cloister walk."), moving_on=True)
 
-    roles = [role for role, _ in table.spawner.prompts]
-    assert roles == ["narrator"]
-    narrator = table.spawner.prompt("narrator")
-    assert "PLAYER ACTION:\nOut into the cloister walk." in narrator
-    assert "- the story moves to The Cloister Walk" in narrator
-    exchange = table.state.payload.runs[-1].exchanges[0]
-    assert narration_text(exchange.lines) == "Mara nods you toward the arcade."
+    # The page has no turn to read the bubble from while it writes, so the service holds it.
+    assert (shown, table.service.intent) == (["Out into the cloister walk."], "")
+    assert [role for role, _ in table.spawner.prompts] == ["master", "narrator"]
+    assert "PLAYER ACTION:\nOut into the cloister walk." in table.spawner.prompt("master")
+    assert "- the story moves to The Cloister Walk" in table.spawner.prompt("narrator")
+    assert len(table.state.payload.runs) == runs + 1
+    exchanges = table.state.payload.run.exchanges
+    assert len(exchanges) == 1
+    assert exchanges[0].prompt == "Out into the cloister walk."
+    assert any(fact.card.startswith("New scene: The Cloister Walk") for fact in exchanges[0].facts)
+    assert narration_text(exchanges[0].lines) == "Mara nods you toward the arcade."
 
 
-async def test_the_pages_own_words_spawn_no_master_and_keep_the_notes(tmp_path: Path) -> None:
-    """Go on, Go home, an offer: the leaving was played, so the narrator alone says goodbye and
-    a note left for the master waits for a turn a master reads."""
+async def test_a_world_that_would_not_grow_files_the_words_and_plays_no_turn(
+    tmp_path: Path,
+) -> None:
+    table = open_game(tmp_path)
+    table.service.engine = _SilentEngine()
+    table.service.engine.advance = _refusing  # pyright: ignore[reportAttributeAccessIssue]
+
+    await table.service.play(Answer(text="Out into the cloister walk."), moving_on=True)
+
+    assert table.spawner.prompts == []
+    exchange = table.state.payload.run.exchanges[-1]
+    assert exchange.prompt == "Out into the cloister walk."
+    assert [fact.kind for fact in exchange.facts] == ["way_unwritten"]
+
+
+async def _refusing(
+    draft: Loner3eGame, intent: str, worldsmith: WorldsmithAnswer
+) -> tuple[Fact, ...]:
+    raise Refusal("the worldsmith answered nothing usable")
+
+
+async def test_the_pages_own_words_cross_at_once_and_keep_the_notes(tmp_path: Path) -> None:
+    """Go on, Go home, an offer: the leaving was played when the scene settled, so no goodbye is
+    written, and a note left for the master waits for a turn a master reads."""
     table = open_game(tmp_path)
     table.spawner.answers["worldsmith"] = [_scene()]
     pursuit = "Down the stair the map marks."
@@ -296,15 +300,14 @@ async def test_the_pages_own_words_spawn_no_master_and_keep_the_notes(tmp_path: 
     _ = await play_turn(table, "I go.", tool_call("next_scene", pursuit=pursuit))
     table.service.commit(updated(table.state, notes=["the adventure's end applies"]))
     seen = len(table.spawner.prompts)
-    table.spawner.answers["narrator"] = [narrated("You go."), narrated("The cold meets you.")]
+    table.spawner.answers["narrator"] = [narrated("The cold meets you.")]
 
     await table.service.play(Answer(text=pursuit), moving_on=True)
 
     roles = [role for role, _ in table.spawner.prompts[seen:]]
-    assert roles == ["narrator", "worldsmith", "narrator"]
+    assert roles == ["worldsmith", "narrator"]
     assert table.state.notes == ["the adventure's end applies"]
-    goodbye = table.state.payload.runs[-2].exchanges[-1]
-    assert (goodbye.prompt, narration_text(goodbye.lines)) == (pursuit, "You go.")
+    assert table.state.payload.runs[-2].exchanges[-1].prompt == "I go."
     assert table.state.payload.run.title == "The Cloister Walk"
 
 
@@ -321,7 +324,7 @@ async def test_a_page_word_over_an_open_decision_leaves_no_pause_note(tmp_path: 
         tool_call("roll_question", **A_CONFLICT),
     )
     assert state.pending is not None
-    table.spawner.answers["narrator"] = [narrated("You go."), narrated("The cold meets you.")]
+    table.spawner.answers["narrator"] = [narrated("The cold meets you.")]
 
     await table.service.play(Answer(text=pursuit), moving_on=True)
 

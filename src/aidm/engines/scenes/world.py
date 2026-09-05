@@ -180,6 +180,15 @@ class SceneWorld[C: Person, P: Person](World[P]):
     def hidden_lines(self) -> str:
         return lines_of(self.require(entity_id).line() for entity_id in self.hidden())
 
+    def scene_lines(self) -> str:
+        run = self.run
+        present = ", ".join(self.cast[entity_id].tag for entity_id in self.present())
+        hidden = ", ".join(self.cast[entity_id].tag for entity_id in self.hidden())
+        return (
+            f"{run.title} [{run.place}]\n{run.situation}\n"
+            f"present: {present or '(nobody)'}\nhidden: {hidden or '(nothing)'}"
+        )
+
     def cast_lines(self) -> str:
         """The worldsmith must know who is met, and who follows the player out of the scene."""
         lines = [self.player.line()]

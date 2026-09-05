@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from random import Random
 
-from support.table import TUNNELGOONS, open_game_for, play_turn, tool_call
+from support.table import TUNNELGOONS, narrated, open_game_for, play_turn, tool_call
 
 from aidm.core.play import Answer
 
@@ -88,9 +88,11 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
     engine = table.service.engine
     before_turn, before_place = len(engine.history(state)), state.payload.current.id
     table.spawner.answers["worldsmith"] = [json.dumps(REGION)]
+    table.spawner.answers["narrator"] = [narrated("The water runs on somewhere below.")]
     await table.service.play(Answer(text="Deeper in."), moving_on=True)
 
     after = table.state
-    assert len(engine.history(after)) == before_turn
+    assert len(engine.history(after)) == before_turn + 1
+    assert engine.history(after)[-1].prompt == "Deeper in."
     assert after.payload.current.id == before_place
     assert set(REGION["places"]) <= set(after.payload.places)

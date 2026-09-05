@@ -117,13 +117,13 @@ def render_history(records: Sequence[SceneRecord]) -> str:
     return "\n\n".join(_block(record, index, total) for index, record in enumerate(records))
 
 
-def told_narration(records: Sequence[SceneRecord]) -> tuple[str, ...]:
-    """What the player has already read, so continuity costs the narrator no hidden canon."""
-    return tuple(
-        exchange.narration
-        for record in records[-WHOLE_SCENES:]
-        for exchange in record.exchanges[-SCENE_EXCHANGES:]
-        if exchange.narration
+def told_history(records: Sequence[SceneRecord]) -> str:
+    """The recent blocks the master reads, without recaps: those are the worldsmith's."""
+    recent = [record for record in records[-WHOLE_SCENES:] if record.exchanges]
+    if not recent:
+        return "(nothing yet)"
+    return "\n\n".join(
+        f"{_header(record)}\n\n{_told(record.exchanges[-SCENE_EXCHANGES:])}" for record in recent
     )
 
 
