@@ -226,6 +226,8 @@ async def test_no_generation_runs_once_the_game_is_over(tmp_path: Path) -> None:
     assert table.service.engine.over(state) is not None
     assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
     assert len(state.payload.runs) == 1
+    assert state.generation is None
+    assert table.saved().generation is None
 
 
 def test_a_reload_clears_a_saved_request(tmp_path: Path) -> None:

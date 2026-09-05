@@ -146,7 +146,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
             focus=scene.focus,
             situation=scene.situation,
             subjects=tuple(member.subject() for member in here),
-            speakers=tuple(member.id for member in here),
+            speakers=tuple(member.id for member in here if member.alive),
             sheet=sheet,
         )
 

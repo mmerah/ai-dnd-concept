@@ -183,6 +183,17 @@ def test_an_action_the_scene_no_longer_offers_is_refused_and_notes_nothing() -> 
     assert draft.notes == []
 
 
+def test_the_dead_stay_in_the_scene_but_do_not_speak() -> None:
+    engine, state = game(LONER3E)
+    draft = narrowed(state, Loner3eGame).draft()
+    _ = draft.payload.kill(MARA)
+
+    view = engine.narrator_view(draft)
+
+    assert MARA in [subject.id for subject in view.subjects]
+    assert MARA not in view.speakers
+
+
 def test_a_scene_without_a_focus_installs_and_shows_no_scene_panel() -> None:
     engine, state = game(LONER3E)
     assert isinstance(engine, Loner3eEngine)

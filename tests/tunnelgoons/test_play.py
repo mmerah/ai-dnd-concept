@@ -86,14 +86,40 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
     assert table.service.player_view().action == MORE_MAP
 
     engine = table.service.engine
-    before_turn, before_place = len(engine.history(state)), state.payload.current.id
+    before_turn = len(engine.history(state))
     table.spawner.answers["worldsmith"] = [json.dumps(REGION)]
-    after = await take(table, MORE_MAP.id, "Deeper in.")
+    after = await play_turn(table, "Deeper in.", action=MORE_MAP.id)
 
-    # The region lands hidden: nobody moved, nothing is told, no master or narrator ran.
-    assert len(engine.history(after)) == before_turn
-    assert after.payload.current.id == before_place
+    # The region lands hidden, then the words play as a turn that sees the new way out.
     assert set(REGION["places"]) <= set(after.payload.places)
     assert all(not after.payload.places[place].known for place in REGION["places"])
-    assert table.spawner.prompts[-1][0] == "worldsmith"
+    assert [role for role, _ in table.spawner.prompts[-3:]] == ["worldsmith", "master", "narrator"]
+    assert "Deep Vault" in table.spawner.prompts[-2][1]
+    assert engine.history(after)[before_turn].prompt == "Deeper in."
     assert table.service.player_view().action is None
+
+
+async def test_a_region_that_cannot_be_written_files_the_players_words(tmp_path: Path) -> None:
+    table = open_game_for(tmp_path, TUNNELGOONS)
+    _ = await play_turn(
+        table,
+        "Through every room, down to the flooded cellar.",
+        tool_call("move", to_id="corridor"),
+        tool_call("move", to_id="storeroom"),
+        tool_call("unlock_way", to_id="sealed-cell"),
+        tool_call("move", to_id="sealed-cell"),
+        tool_call("move", to_id="storeroom"),
+        tool_call("move", to_id="corridor"),
+        tool_call("move", to_id="cellar"),
+    )
+    assert table.service.player_view().action == MORE_MAP
+    before = len(table.service.engine.history(table.state))
+
+    after = await take(table, MORE_MAP.id, "Deeper in.")
+
+    unwritten = table.service.engine.history(after)
+    assert len(unwritten) == before + 1
+    assert unwritten[-1].prompt == "Deeper in."
+    assert unwritten[-1].facts[0].kind == "way_unwritten"
+    assert table.spawner.prompts[-1][0] == "worldsmith"
+    assert table.service.player_view().action == MORE_MAP
