@@ -36,13 +36,6 @@ from aidm.engines.loner3e.worldsmith import AUTHORING, Pack
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
 
-# Read by the next turn, which is usually the next offer click: the note must stand on its own.
-GROWTH_NOTE = (
-    "The job {title} is closed and was completed. The adventure's end applies: ask what the "
-    "character learned if the player has not said, then write it once with `change_tags` and "
-    "`drive`."
-)
-
 
 class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
     id = EngineId("loner3e")
@@ -55,8 +48,6 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
     cast = Loner3eSheet
     pack = Pack
     world_type = Loner3eWorld
-    hub_phrase = "a guild hall or a ship, whoever keeps it and the regulars"
-    finished_note = GROWTH_NOTE
 
     def master_tools(self) -> tuple[MasterTool[Loner3eGame], ...]:
         return (
@@ -129,7 +120,7 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
         )
         return Loner3eCharacter(id=slug(name, ()), engine=self.id, payload=sheet)
 
-    def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
+    def guidance(self, picks: Sequence[Slug]) -> str:
         """Defaults restate rules the guidance already carries; dropping them halves the prompt."""
         selected = {
             pack_id: self.packs[pack_id].model_dump(mode="json", exclude_defaults=True)

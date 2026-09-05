@@ -12,7 +12,7 @@ from aidm.core.facts import NOTHING, Fact, traced
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, Line
 from aidm.core.tools import Play
-from aidm.engines.seam import COMMISSION, WORLDSMITH_WAIT, AnyEngine
+from aidm.engines.seam import AnyEngine
 from aidm.turn.context import render_master
 
 RULES_WAIT = "the rules now wait on the player's decision"
@@ -22,8 +22,6 @@ ANSWERED_BY_OPTION = (
 )
 NO_TURN = "no turn is open. The player starts one from the page; wait to be spawned again."
 GAME_OVER = "The game is over; the player restarts from the page."
-# A bound on the re-spawn loop, not a design choice.
-COMMISSIONS_PER_TURN = 1
 
 
 @dataclass(slots=True, kw_only=True)
@@ -38,7 +36,6 @@ class Turn:
     # What the master reads as PLAYER ACTION: the prompt, or the marker for a chosen option.
     action: str = ""
     notes: list[str] = field(default_factory=list)
-    commissioned: int = 0
 
     @classmethod
     def begin(
@@ -104,7 +101,8 @@ class Turn:
         )
 
     def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
-        """The one gate: every published tool is refused, answered or applied here."""
+        """The one gate: every published tool is refused, answered or applied here. What the
+        call changed, as the game master reads it back."""
         if (ended := self.engine.over(self.draft)) is not None:
             raise Refusal(f"{ended} {GAME_OVER}")
         found = self.engine.tool(name)
@@ -115,28 +113,13 @@ class Turn:
                 f"the rules are waiting on the player: {pending.prompt}\n"
                 "Stop here and exit; the player's answer opens the next turn."
             )
-        if self.draft.wanted() is not None:
-            return WORLDSMITH_WAIT
-        commissioning = name == COMMISSION
-        if commissioning and self.commissioned >= COMMISSIONS_PER_TURN:
-            raise Refusal("one commission per turn: play on with what you have")
-        answer = self.apply(lambda draft, rng: found.call(draft, raw, rng))
-        if commissioning:
-            self.commissioned += 1
-        return answer
-
-    def apply(self, play: Play[AnyGame]) -> str:
-        """What the call changed, as the game master reads it back."""
         already_pending = len(self.draft.notes)
         decided_before = self.draft.pending
-        wanted_before = self.draft.wanted()
-        facts = self._apply(play)
+        facts = self._apply(lambda draft, rng: found.call(draft, raw, rng))
         lines = [f"- {fact.trace}" for fact in facts]
         lines.extend(f"- {note}" for note in self.draft.notes[already_pending:])
         if decided_before is None and self.draft.pending is not None:
             lines.append(f"- {RULES_WAIT}")
-        if wanted_before is None and self.draft.wanted() is not None:
-            lines.append(f"- {WORLDSMITH_WAIT}")
         return "\n".join(lines) or NOTHING
 
     def finish(self, lines: tuple[Line, ...]) -> AnyGame:

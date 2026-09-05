@@ -15,9 +15,8 @@ from aidm.core.entities import (
 from aidm.core.facts import Fact
 from aidm.core.play import Exchange, SceneRecord
 from aidm.core.views import Panel, PanelRow, Sections, lines_of
-from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, check_filing, sentence
-from aidm.engines.hub import HOME_ROW, HUB_ROW, JOB_DONE, Campaign, Job, World, walk_start
-from aidm.engines.scenes.drafts import JobDraft, NextDraft, ReturnDraft, SceneDraft
+from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, World, check_filing, sentence
+from aidm.engines.scenes.drafts import NextDraft, SceneDraft
 
 SCENE_SETTLED = Fact(
     kind="scene_settled",
@@ -44,14 +43,13 @@ class SceneRun(Mutable):
     place: Slug
     title: str
     # The player reads it; settling it ends the scene.
-    question: str = Field(min_length=10)
-    situation: str = Field(min_length=40)
+    question: str = Field(min_length=1)
+    situation: str = Field(min_length=1)
     here: list[CheckedEntityId] = Field(default_factory=list)
     exchanges: list[Exchange] = Field(default_factory=list)
     # None while open; "" once settled here; the player's words when they left for elsewhere
     left: str | None = None
     recap: str = ""  # written when the player left
-    job: str = ""  # the campaign job this run walks, by title; empty at the hub
 
 
 class SceneCanon[C: Person](Mutable):
@@ -60,7 +58,6 @@ class SceneCanon[C: Person](Mutable):
     cast: dict[EntityId, C] = Field(default_factory=dict)
     opening: SceneRun
     source: str = ""
-    campaign: Campaign | None = None
     arc: str = ""
 
     @model_validator(mode="after")
@@ -70,11 +67,6 @@ class SceneCanon[C: Person](Mutable):
         opening = self.opening
         if opening.exchanges or opening.left is not None or opening.recap:
             raise ValueError("an opening with play in it")
-        if self.campaign is not None:
-            if self.campaign.jobs:
-                raise ValueError("an opening with jobs walked")
-            if opening.place != self.campaign.place:
-                raise ValueError(f"the opening is not at hub {self.campaign.place!r}")
         return self
 
 
@@ -88,10 +80,6 @@ class SceneWorld[C: Person, P: Person](World[P]):
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
-        if (campaign := self.campaign) is not None:
-            if self.runs[0].place != campaign.place:
-                raise ValueError(f"run 0 does not open at hub {campaign.place!r}")
-            campaign.check_walk([run.place for run in self.runs], self.walked())
         check_filing(self.cast)
         check_named(self.run.here, self.cast)
         if not self.player.known:
@@ -122,7 +110,6 @@ class SceneWorld[C: Person, P: Person](World[P]):
                 "player": player,
                 "runs": [canon.opening],
                 "source": canon.source,
-                "campaign": canon.campaign,
                 "arc": canon.arc,
             },
         )
@@ -131,21 +118,11 @@ class SceneWorld[C: Person, P: Person](World[P]):
     def run(self) -> SceneRun:
         return self.runs[-1]
 
-    @property
-    def at_hub(self) -> bool:
-        return self.campaign is not None and self.run.place == self.campaign.place
-
     def present(self) -> list[EntityId]:
         return [entity_id for entity_id in self.run.here if self.cast[entity_id].known]
 
     def hidden(self) -> list[EntityId]:
         return [entity_id for entity_id in self.run.here if not self.cast[entity_id].known]
-
-    def walked(self) -> list[str]:
-        return [run.job for run in self.runs]
-
-    def job_runs(self) -> list[SceneRun]:
-        return self.runs if self.campaign is None else self.runs[walk_start(self.walked()) :]
 
     def record(self, exchange: Exchange) -> None:
         self.run.exchanges.append(exchange)
@@ -157,7 +134,6 @@ class SceneWorld[C: Person, P: Person](World[P]):
                 focus=run.question,
                 recap=run.recap,
                 exchanges=tuple(run.exchanges),
-                job=run.job,
             )
             for run in self.runs
         )
@@ -275,17 +251,11 @@ class SceneWorld[C: Person, P: Person](World[P]):
         trace = f"{entity.tag} no longer travels with the player"
         return [entity.fact("party_left", trace, card=f"{entity.name} leaves your party")]
 
-    def settle(self, job_done: bool, pursuit: str) -> list[Fact]:
+    def settle(self, pursuit: str) -> list[Fact]:
         if self.run.left is not None:
             raise Refusal("this scene is already settled; the player has the way on")
-        if job_done:
-            job = None if self.campaign is None else self.campaign.open_job()
-            if job is None or self.at_hub:
-                raise Refusal("no job is open here")
-            job.finished = True
         self.run.left = pursuit
-        settled = SCENE_LEFT if pursuit else SCENE_SETTLED
-        return [settled, JOB_DONE] if job_done else [settled]
+        return [SCENE_LEFT if pursuit else SCENE_SETTLED]
 
     def merged_cast(self, cast: Mapping[EntityId, C]) -> dict[EntityId, C]:
         return {
@@ -298,37 +268,17 @@ class SceneWorld[C: Person, P: Person](World[P]):
             },
         }
 
-    def apply_scene(self, draft: SceneDraft[C], *, reopening: Job | None = None) -> None:
+    def apply_scene(self, draft: SceneDraft[C]) -> None:
         self.cast = self.merged_cast(draft.cast)
         everyone: Mapping[EntityId, Thing] = {self.player.id: self.player, **self.cast}
         present = resolve_ids(draft.present, everyone, "present")
         hidden = resolve_ids(draft.hidden, everyone, "hidden")
         for entity_id in present:
             self.cast[entity_id].known = True
-        if isinstance(draft, NextDraft | ReturnDraft):
+        if isinstance(draft, NextDraft):
             self.run.recap = draft.recap
-        self.arc = draft.arc
-        campaign = self.campaign
-        walking = None if campaign is None else campaign.open_job()
-        if isinstance(draft, JobDraft | ReturnDraft):
-            if campaign is None:
-                raise Refusal("a one-shot has no hub to take a job from or return to")
-            if isinstance(draft, JobDraft):
-                if reopening is not None:
-                    campaign.reopen(reopening)
-                    reopening.terms = draft.job
-                    walking = reopening
-                else:
-                    walking = Job(title=draft.title, place=draft.place, terms=draft.job, open=True)
-                    campaign.jobs.append(walking)
-            else:
-                if walking is None:
-                    raise Refusal("no job is open to close")
-                walking.close(debrief=draft.debrief, summary=draft.summary)
-                campaign.board = draft.offers
-                walking = None
-        job = "" if walking is None else walking.title
-        self.runs.append(run_of(draft, [*self.party, *present, *hidden], job))
+        self.arc = draft.arc or self.arc
+        self.runs.append(run_of(draft, [*self.party, *present, *hidden]))
 
     def party_rows(self) -> Sections:
         members = self.members()
@@ -346,11 +296,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
 
     def scene_rows(self) -> tuple[PanelRow, ...]:
         rows = [PanelRow(label=self.run.question, detail="")]
-        if self.campaign is not None and (terms := self.campaign.terms()):
-            rows.append(PanelRow(label="The job", detail=terms))
-        if self.at_hub:
-            rows.append(HUB_ROW)
-        elif (left := self.run.left) is not None:
+        if (left := self.run.left) is not None:
             if left:
                 rows.append(PanelRow(label="Go on", detail=left, intent=left))
             else:
@@ -359,8 +305,6 @@ class SceneWorld[C: Person, P: Person](World[P]):
                         label="Way on", detail="Keep playing, or name where you go and move on."
                     )
                 )
-            if self.campaign is not None:
-                rows.append(HOME_ROW)
         return tuple(rows)
 
 
@@ -392,7 +336,7 @@ def resolve_ids(
     return found
 
 
-def run_of[C: Person](draft: SceneDraft[C], here: list[EntityId], job: str = "") -> SceneRun:
+def run_of[C: Person](draft: SceneDraft[C], here: list[EntityId]) -> SceneRun:
     """Free: it builds a `SceneRun` from a draft the run does not own."""
     return SceneRun(
         place=draft.place,
@@ -400,5 +344,4 @@ def run_of[C: Person](draft: SceneDraft[C], here: list[EntityId], job: str = "")
         question=draft.question,
         situation=draft.situation,
         here=here,
-        job=job,
     )

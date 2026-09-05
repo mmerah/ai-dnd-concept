@@ -1,3 +1,5 @@
+import re
+from abc import abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from random import Random
@@ -8,6 +10,7 @@ from pydantic import BaseModel, model_validator
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Refusal, Slug, parse
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.io import ENCODING, decode
+from aidm.core.play import Exchange, SceneRecord
 from aidm.core.views import Panel, PanelRow, Rows, Subject
 
 PLAYER_ID = EntityId("player")
@@ -91,6 +94,21 @@ class Person(Thing):
         return "" if self.alive else "alive"
 
 
+class World[P: Person](Mutable):
+    """What both families' worlds share; the sequence of places is each family's own."""
+
+    player: P
+    source: str = ""
+
+    @abstractmethod
+    def records(self) -> tuple[SceneRecord, ...]: ...
+    @abstractmethod
+    def record(self, exchange: Exchange) -> None: ...
+
+    def exchanges(self) -> tuple[Exchange, ...]:
+        return tuple(exchange for record in self.records() for exchange in record.exchanges)
+
+
 class Pack(Frozen):
     name: str
     source: str
@@ -169,6 +187,17 @@ def keep_highest(
         label=label, faces=tuple(faces), rolled=rolled, highlight=(rolled.index(kept),)
     )
     return kept, event, fact
+
+
+def named_unmet(text: str, entities: Iterable[Thing]) -> list[str]:
+    """A multi-word name or a bare id: a prop called `Bell` shares its word with any bell tower."""
+    folded = text.casefold()
+    return [
+        entity.name
+        for entity in entities
+        if (" " in entity.name.strip() and entity.name.casefold() in folded)
+        or re.search(rf"\b{re.escape(entity.id)}\b", text) is not None
+    ]
 
 
 def read_packs[P: BaseModel](directory: Path, model: type[P]) -> dict[str, P]:

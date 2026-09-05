@@ -6,7 +6,7 @@ The app starts three separate AI roles:
 
 - The game master selects rule procedures and requests world changes.
 - The narrator writes the story text that the player can read.
-- The worldsmith writes the opening world, makes the world grow in play, and answers the game master's commissions.
+- The worldsmith writes the opening world and makes the world grow in play.
 
 The narrator opens the game with who the player is and where they stand; the player acts from there.
 
@@ -24,7 +24,7 @@ Breathless is a survival game in scenes. Every roll wears the die down. Catching
 
 24XX is a science-fiction game in scenes. One skill die meets three outcome bands. Harm is a hindrance, gear breaks to soften a hit, and a finished job raises a skill.
 
-The create page lets the player choose a one-shot or a campaign. A campaign opens at a home base with a board of jobs to choose from. A job is one outing away from home. Coming home closes the job on a card with a debrief, and the board moves on. Played jobs pile up in a Jobs panel the player can look back through. A campaign ends only when the character dies. Where the rulebook prints a step for between jobs, the game master still runs it. The worldsmith writes a recap of each scene left and a summary of each job at the return; every role reads the whole campaign, the far parts as recaps and summaries.
+A scenario is a premise, a scope and an opening. Scope is prose guidance on how far the adventure reaches and whether it tends toward an ending, asked for on the create page and read by the game master and the worldsmith; no mode, turn budget or ending is enforced.
 
 The three roles are spawned command-line programs. The narrator and the worldsmith return typed proposals; the master plays through tools, and only Python code changes state or rolls dice. The engine seam is `Engine`, an abstract class every engine subclasses. `SceneEngine` is the base of the three scene engines. The registry is the one place that joins an engine to the app. Imports flow one way, `core <- engines <- turn <- app <- ui`, so nothing above the engines knows a world shape.
 
@@ -48,7 +48,7 @@ You need `uv` and an AI command-line program (Claude, Codex). The default settin
 
 Open Settings in the app to change the AI commands or other settings.
 
-Characters live one file per engine, under `characters/<id>/<engine>.json`. Scenarios live under `scenarios/<id>/world.json`, the engine's starting world, with the engine's own packs as tables. Saves are strict and engine-typed, with no version field, so a stale save is invalid. Play costs the subscription the player already has; illustration and speech are the exceptions, optional, off by default, with their own provider key.
+Characters live one file per engine, under `characters/<id>/<engine>.json`. Scenarios live under `scenarios/<id>/world.json`, the engine's starting world, with the engine's own packs as tables. Saves are strict and engine-typed, with no version field, so a stale save is invalid. A save from before a stored-shape change is stale; the launcher skips it with a warning, and nothing migrates or deletes it. Play costs the subscription the player already has; illustration and speech are the exceptions, optional, off by default, with their own provider key.
 
 ## Project information
 

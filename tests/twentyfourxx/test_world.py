@@ -1,6 +1,5 @@
 import pytest
-from support.table import ENGINES_BUILT, TWENTYFOURXX
-from support.twentyfourxx import KESTREL, hub_world, small_world
+from support.twentyfourxx import KESTREL, small_world
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.engines.base import PLAYER_ID, Person
@@ -88,16 +87,6 @@ def test_require_here_alive_refuses_dead_cast_member() -> None:
     world.cast[KESTREL].alive = False
     with pytest.raises(Refusal):
         world.require_here(KESTREL, alive=True)
-
-
-def test_way_open_is_true_at_an_unsettled_hub() -> None:
-    game = hub_world()
-    assert (
-        ENGINES_BUILT[TWENTYFOURXX].ready(game) is False
-    )  # away on a job, with the scene's question still open
-
-    _ = game.payload.runs.pop()  # home again, where the way on is always open
-    assert ENGINES_BUILT[TWENTYFOURXX].ready(game) is True
 
 
 def test_starting_items_slug_duplicate_kit_names_in_order() -> None:

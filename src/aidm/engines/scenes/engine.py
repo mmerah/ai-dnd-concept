@@ -4,30 +4,13 @@ from pathlib import Path
 from random import Random
 from typing import Any
 
-from pydantic import BaseModel
-
 from aidm.core.creation import CreationStep
 from aidm.core.entities import Refusal, Slug, parse
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
-from aidm.core.model import (
-    AnyCharacter,
-    AnyScenario,
-    Game,
-    ScenarioKind,
-    ScenarioMeta,
-    WorldsmithAnswer,
-)
-from aidm.core.play import Commission, DecisionOption
-from aidm.core.tools import MasterTool, Play, master_tool
-from aidm.core.views import (
-    NarratorView,
-    Panel,
-    PlayerView,
-    Sections,
-    lines_of,
-    render_history,
-)
+from aidm.core.model import AnyCharacter, AnyScenario, Game, ScenarioMeta, WorldsmithAnswer
+from aidm.core.play import DecisionOption
+from aidm.core.views import NarratorView, Panel, PlayerView, Sections, render_history
 from aidm.engines.base import (
     SRD_PACK,
     Pack,
@@ -37,28 +20,7 @@ from aidm.engines.base import (
     read_packs,
     trail_panel,
 )
-from aidm.engines.hub import (
-    AWAY_BRIEF,
-    CAMPAIGN_OPENING,
-    GO_HOME,
-    ONE_SHOT_OPENING,
-    RETURN_BRIEF,
-    TAKE_BRIEF,
-    WRITE_HUB_SCENE,
-    Campaign,
-    Job,
-    check_kind,
-    job_title,
-    question_heading,
-)
-from aidm.engines.scenes.drafts import (
-    CastDraft,
-    HubDraft,
-    JobDraft,
-    NextDraft,
-    ReturnDraft,
-    SceneDraft,
-)
+from aidm.engines.scenes.drafts import NextDraft, SceneDraft
 from aidm.engines.scenes.tools import (
     Enter,
     JoinParty,
@@ -67,28 +29,29 @@ from aidm.engines.scenes.tools import (
     LeaveParty,
     NextScene,
     Reveal,
-    SceneCommission,
     SharedChange,
 )
 from aidm.engines.scenes.world import SceneCanon, SceneWorld, resolve_ids, run_of
-from aidm.engines.scenes.worldsmith import (
-    COMMISSION_ASK,
-    CROSSING,
-    cast_refusal,
-    scene_refusal,
-    worldsmith_prompt,
-)
-from aidm.engines.seam import COMMISSION, COMMISSION_BRIEF, Engine
+from aidm.engines.scenes.worldsmith import CROSSING, scene_refusal, worldsmith_prompt
+from aidm.engines.seam import Engine
 
 WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
+OPENING = (
+    "Write the opening scene of this adventure: the one place the player starts in, who is "
+    "there, and a `question` that settles in that place. A scene ends when the player leaves "
+    "it, so a question about somewhere farther on belongs to a later scene. `cast` is the "
+    "adventure's people and things, not the scene's: write who is met here and who the player "
+    "will meet farther in, and list under `present` and `hidden` only who is here now. "
+    "`hidden` is for something worth finding here; it is not required. The opening also writes "
+    "`arc`, the setup beyond this scene for the game master and the worldsmith, never the "
+    "player: pressures, motives, secrets, what may come; a few lines, or none."
+)
 
 
 class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
     cast: type[C]
     pack: type[K]
     world_type: type[SceneWorld[C, P]]
-    hub_phrase: str  # what CAMPAIGN_OPENING asks this engine's hub to be
-    finished_note: str = ""  # the note a finished job leaves for the next turn
     packs: dict[str, K]
 
     def __init__(self) -> None:
@@ -102,8 +65,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         return CROSSING.format(left=self.world(state).run.title, pursuit=pursuit)
 
     def page_word(self, state: G, intent: str) -> bool:
-        world = self.world(state)
-        return intent == GO_HOME or job_title(intent) is not None or intent == world.run.left
+        return intent == self.world(state).run.left
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
         """The create page's table sets, and the first step of every scene engine's creation."""
@@ -114,7 +76,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
             raise Refusal(f"a {state.engine!r} game needs at least one table set")
         if missing := sorted(set(state.packs) - set(self.packs)):
             raise Refusal(f"the game names packs not installed: {missing}")
-        check_kind(state.scenario.kind, self.world(state).campaign)
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> SceneWorld[C, P]:
         self.check_scenario(scenario)
@@ -127,7 +88,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         scene = world.run
         return (
             ("SCENE", f"{scene.title}\n{scene.situation}"),
-            (question_heading(world.at_hub), scene.question),
+            ("THE QUESTION THIS SCENE SETTLES", scene.question),
             ("YOU PLAY FOR", world.player.line()),
             *self.sheet_sections(state),
             ("HERE WITH THE PLAYER", world.here_lines()),
@@ -135,7 +96,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
             ("HIDDEN HERE (the player has not found these)", world.hidden_lines()),
             *((("THE ARC (the player has not found this)", world.arc),) if world.arc else ()),
             *self.glossary(state),
-            *(() if world.campaign is None else world.campaign.tail(at_hub=world.at_hub)),
         )
 
     def sheet_sections(self, state: G) -> Sections:
@@ -166,7 +126,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
     def player_view(self, state: G) -> PlayerView:
         world = self.world(state)
         player = world.player
-        campaign = world.campaign
         me = player.subject()
         return PlayerView(
             player=me,
@@ -174,13 +133,11 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
                 character_panel(player.rows()),
                 *self.panels(state),
                 Panel(title="This scene", rows=world.scene_rows()),
-                *(() if campaign is None else campaign.board_panel(at_hub=world.at_hub)),
                 *world.party_panel(),
                 here_panel(
                     me, (member.subject() for member in world.here() if member.id != player.id)
                 ),
-                trail_panel(run.title for run in world.job_runs()),
-                *(() if campaign is None else campaign.jobs_panel()),
+                trail_panel(run.title for run in world.runs),
             ),
             prompt=state.pending,
             over=self.over(state),
@@ -203,17 +160,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
                 return world.leave_party(change.entity_id)
 
     def next_scene(self, draft: G, args: NextScene, _rng: Random) -> list[Fact]:
-        return self.world(draft).settle(args.job_done, args.pursuit)
-
-    def commission_tool(self) -> MasterTool[G]:
-        return master_tool(
-            COMMISSION,
-            COMMISSION_BRIEF
-            + " A person, a thing or a rumour, each a cast entry. Read THE ARC first and ask "
-            "with it in view; the worldsmith may bend it to hold what you ask for.",
-            SceneCommission,
-            self.ask_worldsmith,
-        )
+        return self.world(draft).settle(args.pursuit)
 
     def pack_step(self) -> CreationStep:
         return CreationStep(id="pack", prompt="Choose a table set", options=self.pack_options())
@@ -224,67 +171,34 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
             raise Refusal("the SRD table set is not installed")
         return pack
 
-    def hub_sections(
-        self, world: SceneWorld[C, P], *, returning: bool, reopening: Job | None
-    ) -> Sections:
-        campaign = world.campaign
-        if campaign is None:
-            return ()
-        brief = (
-            WRITE_HUB_SCENE + RETURN_BRIEF
-            if returning
-            else TAKE_BRIEF
-            if world.at_hub
-            else AWAY_BRIEF
-        )
-        return campaign.hub_block(
-            world.runs[0].title, brief, world.records(), returning=returning, reopening=reopening
-        )
-
-    def render_next(
-        self,
-        draft: G,
-        intent: str,
-        answer: type[BaseModel],
-        *,
-        reopening: Job | None = None,
-        asked: str = "",
-    ) -> str:
-        """A scene write, or a commission: `answer` says which sections the intent needs."""
+    def render_next(self, draft: G, intent: str) -> str:
         world = self.world(draft)
-        returning, follows_arc = issubclass(answer, ReturnDraft), issubclass(answer, NextDraft)
-        if world.arc and follows_arc:
+        if world.arc:
             intent += (
-                f"\n\nThe arc as last written: {world.arc}. Rewrite `arc` so it follows what "
-                "happened."
+                f"\n\nThe arc as last written: {world.arc}. Revise `arc` only where what "
+                "happened warrants it; leave it empty to keep it."
             )
         return worldsmith_prompt(
             WORLDSMITH,
             source=world.source,
-            history=render_history(world.scenes()),
+            scope=draft.scenario.scope,
+            history=render_history(world.records()),
             cast=world.cast_lines(),
-            guidance=self.guidance(draft.packs, campaign=world.campaign is not None),
+            guidance=self.guidance(draft.packs),
             intent=intent,
-            answer=answer,
-            hub=self.hub_sections(world, returning=returning, reopening=reopening),
-            asked=asked,
+            answer=NextDraft[self.cast],
         )
 
-    def opening_draft(self, kind: ScenarioKind) -> type[SceneDraft[C]]:
-        """Pydantic parametrizes the subscript at runtime, so the cast type reaches the schema."""
-        return HubDraft[self.cast] if kind == "campaign" else SceneDraft[self.cast]
-
-    def render_opening(self, source: str, guidance: str, kind: ScenarioKind) -> str:
+    def render_opening(self, source: str, guidance: str, scope: str) -> str:
         return worldsmith_prompt(
             WORLDSMITH,
             source=source,
+            scope=scope,
             history="(no scenes yet — write the opening)",
             cast="(no cast yet — write the people and things this scene needs)",
             guidance=guidance,
-            intent=CAMPAIGN_OPENING.format(hub=self.hub_phrase)
-            if kind == "campaign"
-            else ONE_SHOT_OPENING,
-            answer=self.opening_draft(kind),
+            intent=OPENING,
+            answer=SceneDraft[self.cast],
         )
 
     def build_scenario(
@@ -306,98 +220,30 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         hidden = resolve_ids(draft.hidden, cast, "hidden")
         for entity_id in present:
             cast[entity_id].known = True
-        campaign = (
-            Campaign(place=draft.place, board=draft.offers) if isinstance(draft, HubDraft) else None
-        )
         return parse(
             SceneCanon[self.cast],
             {
                 "cast": cast,
                 "opening": run_of(draft, [*present, *hidden]),
                 "source": source,
-                "campaign": campaign,
                 "arc": draft.arc,
             },
         )
 
-    async def write_next(
-        self, draft: G, intent: str, worldsmith: WorldsmithAnswer, *, reopening: Job | None = None
-    ) -> SceneDraft[C]:
+    async def write_next(self, draft: G, intent: str, worldsmith: WorldsmithAnswer) -> NextDraft[C]:
         world = self.world(draft)
-        returning = world.campaign is not None and not world.at_hub and intent == GO_HOME
-        model: type[SceneDraft[C]] = (
-            ReturnDraft[self.cast]
-            if returning
-            else JobDraft[self.cast]
-            if world.at_hub
-            else NextDraft[self.cast]
-        )
-        later = draft.on_order()
-        asked = lines_of(f"- a {c.kind}: {c.brief}" for c in later) if later else ""
-        prompt = self.render_next(draft, intent, model, reopening=reopening, asked=asked)
-        return await worldsmith(
-            prompt, model, lambda answer: scene_refusal(answer, world, later, reopening)
-        )
+        model = NextDraft[self.cast]
+        prompt = self.render_next(draft, intent)
+        return await worldsmith(prompt, model, lambda answer: scene_refusal(answer, world))
 
-    def install(
-        self, draft: G, scene: SceneDraft[C], *, reopening: Job | None = None
-    ) -> list[Fact]:
+    def install(self, draft: G, scene: SceneDraft[C]) -> list[Fact]:
         world = self.world(draft)
-        world.apply_scene(scene.model_copy(deep=True), reopening=reopening)
-        draft.commissions.clear()  # every scene draft carries `cast`, and the bar counted it
+        world.apply_scene(scene.model_copy(deep=True))
         trace = f"the story moves to {scene.title}"
         if travelling := [member.name for member in world.members()]:
             trace += f", the player travelling with {', '.join(travelling)}"
-        label = "Home" if isinstance(scene, ReturnDraft) else "New scene"
-        card = "\n".join(
-            (
-                f"{label}: {scene.title}",
-                f"At stake: {scene.question}",
-                *([f"The job: {scene.job}"] if isinstance(scene, JobDraft) else []),
-            )
-        )
-        opened = Fact(kind="scene_opened", trace=trace, told=True, card=card)
-        # `apply_scene` has refused a return with no campaign, so the narrowing is for the types.
-        if isinstance(scene, ReturnDraft) and world.campaign is not None:
-            job = world.campaign.jobs[-1]
-            if job.finished and self.finished_note:
-                draft.note(self.finished_note.format(title=job.title))
-            return [job.closed(), opened]
-        return [opened]
-
-    def render_commission(self, draft: G, asked: Commission) -> str:
-        world = self.world(draft)
-        intent = COMMISSION_ASK.format(kind=asked.kind, brief=asked.brief)
-        if world.arc:
-            intent += (
-                f"\n\nThe arc as last written: {world.arc}. Rewrite `arc` only where it must "
-                "bend to hold the new entry; leave it empty to keep it."
-            )
-        return self.render_next(draft, intent, CastDraft[self.cast])
-
-    async def fulfil(self, draft: G, asked: Commission, worldsmith: WorldsmithAnswer) -> Play[G]:
-        world = self.world(draft)
-        written = await worldsmith(
-            self.render_commission(draft, asked),
-            CastDraft[self.cast],
-            lambda answer: cast_refusal(answer, world),
-        )
-        return lambda candidate, _rng: tuple(self.install_cast(candidate, asked, written))
-
-    def install_cast(self, draft: G, asked: Commission, written: CastDraft[C]) -> list[Fact]:
-        world = self.world(draft)
-        entity_id = next(iter(written.cast))
-        new = entity_id not in world.cast
-        world.cast = world.merged_cast(written.cast)
-        world.arc = written.arc or world.arc
-        draft.withdraw(asked)
-        entry = world.cast[entity_id]  # a known id keeps the world's name
-        trace = (
-            f"the worldsmith wrote {entry.label}: {entry.brief}; bring them in with `enter`"
-            if new
-            else f"the worldsmith rewrote {entry.label}: {entry.brief}"
-        )
-        return [Fact(kind="commissioned", trace=trace)]
+        card = f"New scene: {scene.title}\nAt stake: {scene.question}"
+        return [Fact(kind="scene_opened", trace=trace, told=True, card=card)]
 
     async def author(
         self,
@@ -410,22 +256,19 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         def built(draft: SceneDraft[C]) -> AnyScenario:
             return self.build_scenario(meta, tuple(packs), draft, source)
 
-        kind = meta.kind
-        guidance = self.guidance(packs, campaign=kind == "campaign")
-        prompt = self.render_opening(source, guidance, kind)
-        return await self.compose(worldsmith, prompt, self.opening_draft(kind), built, playable)
+        guidance = self.guidance(packs)
+        prompt = self.render_opening(source, guidance, meta.scope)
+        return await self.compose(worldsmith, prompt, SceneDraft[self.cast], built, playable)
 
     def ready(self, state: G) -> bool:
-        world = self.world(state)
-        return world.run.left is not None or world.at_hub
+        return self.world(state).run.left is not None
 
     async def advance(
         self, draft: G, intent: str, worldsmith: WorldsmithAnswer
     ) -> tuple[Fact, ...]:
-        reopening = self.reopening(draft, intent)
-        scene = await self.write_next(draft, intent, worldsmith, reopening=reopening)
+        scene = await self.write_next(draft, intent, worldsmith)
         # The engine's own closing reads the scene being left, so it runs before the install.
-        return (*self.leaving(draft), *self.install(draft, scene, reopening=reopening))
+        return (*self.leaving(draft), *self.install(draft, scene))
 
     def panels(self, state: G) -> tuple[Panel, ...]:
         return ()
@@ -434,4 +277,4 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         return ()
 
     @abstractmethod
-    def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str: ...
+    def guidance(self, picks: Sequence[Slug]) -> str: ...

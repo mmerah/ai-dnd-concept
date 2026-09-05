@@ -5,7 +5,6 @@ from typing import Self
 
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.io import FileStore, Library, decode, routed
-from aidm.core.model import ScenarioKind
 from aidm.engines.seam import AnyEngine
 
 LOGGER = logging.getLogger(__name__)
@@ -18,7 +17,6 @@ class CatalogEntry:
     title: str
     subtitle: str
     rules: str
-    kind: ScenarioKind | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,7 +35,6 @@ class SaveOption:
     scenario_title: str
     character_title: str
     turn: int
-    kind: ScenarioKind
     where: str
     rules: str
 
@@ -75,7 +72,6 @@ class LauncherCatalog:
                 title=scenario.meta.title,
                 subtitle=scenario.meta.premise,
                 rules=engines[scenario.engine].title,
-                kind=scenario.meta.kind,
             )
             for name, scenario in library.read_scenarios(scenario_models)
         )
@@ -119,7 +115,6 @@ class LauncherCatalog:
                     scenario_title=state.scenario.title,
                     character_title=title,
                     turn=len(engine.history(state)),
-                    kind=state.scenario.kind,
                     where=scenes[-1].title if scenes else "",
                     rules=engine.title,
                 )

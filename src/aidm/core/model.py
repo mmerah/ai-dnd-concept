@@ -1,8 +1,8 @@
 from collections.abc import Callable
 from copy import deepcopy
-from typing import Any, Literal, Protocol, Self
+from typing import Any, Protocol, Self
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.entities import (
     EngineId,
@@ -14,9 +14,8 @@ from aidm.core.entities import (
     parse,
     require_unique,
 )
-from aidm.core.play import Commission, PendingDecision
+from aidm.core.play import PendingDecision
 
-type ScenarioKind = Literal["one-shot", "campaign"]
 type AnyScenario = Scenario[Any]
 type AnyCharacter = Character[Any]
 type AnyGame = Game[Any]
@@ -27,7 +26,11 @@ type Check[T] = Callable[[T], str | None]
 class ScenarioMeta(Frozen):
     title: str
     premise: str
-    kind: ScenarioKind = "one-shot"
+    scope: str = Field(
+        min_length=1,
+        description="How far this adventure reaches, how its consequences develop, and whether "
+        "it tends toward an ending or toward continuing concerns; guidance, not a rule.",
+    )
     art_style: str = ""  # empty: the engine's own
     voice: str = ""  # empty: the settings' narrator voice
 
@@ -90,7 +93,6 @@ class Game[P: BaseModel](Mutable):
     packs: tuple[Slug, ...] = ()
     pending: PendingDecision | None = None
     notes: list[str] = []
-    commissions: list[Commission] = []
     payload: P
 
     @model_validator(mode="after")
@@ -100,16 +102,6 @@ class Game[P: BaseModel](Mutable):
 
     def note(self, text: str) -> None:
         self.notes.append(text)
-
-    def wanted(self) -> Commission | None:
-        """The first commission the turn waits on; a `later` one waits for the next write."""
-        return next((commission for commission in self.commissions if not commission.later), None)
-
-    def on_order(self) -> list[Commission]:
-        return [commission for commission in self.commissions if commission.later]
-
-    def withdraw(self, asked: Commission) -> None:
-        self.commissions.remove(asked)
 
     def draft(self) -> Self:
         """A working copy a resolution mutates; a failed turn never replaces the committed state."""

@@ -84,8 +84,6 @@ class LaunchForm:
             on_change=self.choose_scenario,
         ).classes("w-full")
         ui.label(scenario.subtitle).classes("text-sm opacity-70")
-        if scenario.kind == "campaign":
-            ui.badge("campaign").props("outline")
         characters = {
             entry.id: f"{entry.title} — {entry.subtitle}"
             for entry in catalog.characters_for(scenario.engine)
@@ -142,8 +140,6 @@ def _saved_card(saved: SaveOption) -> None:
                 ).classes("text-sm opacity-70")
                 with ui.row().style("gap: 0.5rem"):
                     ui.badge(saved.rules).props("outline")
-                    if saved.kind == "campaign":
-                        ui.badge("campaign").props("outline")
             ui.button(
                 "Resume",
                 icon="play_arrow",

@@ -1,6 +1,5 @@
 import pytest
 from support.breathless import SKILLS_RATED
-from support.scenes import BOARD
 from support.table import BREATHLESS, ENGINES_BUILT, game, narrowed, updated
 
 from aidm.core.entities import EngineId, EntityId, Refusal
@@ -15,7 +14,6 @@ from aidm.engines.breathless.world import (
     Item,
     Survivor,
 )
-from aidm.engines.hub import Campaign
 from aidm.engines.scenes.world import SceneCanon, SceneRun
 from aidm.engines.seam import AnyEngine
 
@@ -42,23 +40,6 @@ def test_a_scenario_with_no_packs_is_refused_by_check_packs() -> None:
         engine.validate(updated(state, packs=()))
 
 
-def test_check_game_refuses_a_campaign_meta_with_no_hub() -> None:
-    engine, state = _breathless_game()
-    campaign_meta = state.scenario.model_copy(update={"kind": "campaign"})
-    with pytest.raises(Refusal, match="campaign"):
-        engine.validate(updated(state, scenario=campaign_meta))
-
-
-def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
-    engine, state = _breathless_game()
-    world = state.payload
-    hub_payload = world.model_copy(
-        update={"campaign": Campaign(place=world.run.place, board=BOARD)}
-    )
-    with pytest.raises(Refusal, match="one-shot"):
-        engine.validate(updated(state, payload=hub_payload))
-
-
 def test_restored_round_trips() -> None:
     engine, state = _breathless_game()
     assert engine.restore(decode(state.model_dump_json())) == state
@@ -67,7 +48,7 @@ def test_restored_round_trips() -> None:
 def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
     decoy = Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
     scenario = BreathlessScenario(
-        meta=ScenarioMeta(title="Test", premise="A test scenario."),
+        meta=ScenarioMeta(title="Test", premise="A test scenario.", scope="One tense evening."),
         engine=EngineId("breathless"),
         packs=(SRD_PACK,),
         payload=SceneCanon(

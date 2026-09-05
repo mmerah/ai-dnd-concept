@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Iterable, Iterator
 from typing import Self
 
 from pydantic import Field, model_validator
@@ -7,8 +7,7 @@ from aidm.core.entities import CheckedEntityId, EntityId, Mutable, Refusal, pars
 from aidm.core.facts import Fact
 from aidm.core.play import Exchange, SceneRecord
 from aidm.core.views import Rows, lines_of
-from aidm.engines.base import IS_DEAD, PLAYER_ID, UNKNOWN_ID, Person, Thing, check_filing
-from aidm.engines.hub import Board, Campaign, Job, World, walk_start
+from aidm.engines.base import IS_DEAD, PLAYER_ID, UNKNOWN_ID, Person, Thing, World, check_filing
 
 
 class Dweller(Person):
@@ -36,8 +35,6 @@ class Way(Mutable):
 class Visit(Mutable):
     place: CheckedEntityId
     exchanges: list[Exchange] = Field(default_factory=list)
-    recap: str = ""
-    job: str = ""  # the campaign job this visit walks, by title; empty at the tavern
 
 
 class Dungeon[N: Dweller](Mutable):
@@ -114,13 +111,6 @@ class Dungeon[N: Dweller](Mutable):
     def reachable(self, start: EntityId) -> set[EntityId]:
         return _walk(self.ways, start)
 
-    def has_shortcut(self) -> bool:
-        return any(
-            direct.to in _walk({**self.ways, start: [w for w in leaving if w is not direct]}, start)
-            for start, leaving in self.ways.items()
-            for direct in leaving
-        )
-
     def add_way(self, from_id: EntityId, to_id: EntityId, *, known: bool) -> None:
         self.ways.setdefault(from_id, []).append(Way(to=to_id, known=known))
 
@@ -130,19 +120,11 @@ class RoomCanon[N: Dweller](Dungeon[N]):
 
     start: CheckedEntityId
     source: str = ""
-    campaign: Campaign | None = None
 
     @model_validator(mode="after")
     def _startable(self) -> Self:
         if not self.require_place(self.start).known:
             raise ValueError("the starting place must be known to the player")
-        if self.campaign is not None:
-            if self.campaign.place != self.start:
-                raise ValueError(
-                    f"hub {self.campaign.place!r} is not the starting place {self.start!r}"
-                )
-            if self.campaign.jobs:
-                raise ValueError("an opening with jobs walked")
         return self
 
 
@@ -155,11 +137,6 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
             raise ValueError("the player is unknown to themselves")
         for visit in self.visits:
             self.require_place(visit.place)
-        if (campaign := self.campaign) is not None:
-            self.require_place(EntityId(campaign.place))
-            if self.visits[0].place != campaign.place:
-                raise ValueError(f"visit 0 does not open at hub {campaign.place!r}")
-            campaign.check_walk([visit.place for visit in self.visits], self.walked())
         return self
 
     @classmethod
@@ -174,7 +151,6 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
                 "player": player,
                 "visits": [Visit(place=canon.start)],
                 "source": canon.source,
-                "campaign": canon.campaign,
             },
         )
 
@@ -185,29 +161,6 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
     @property
     def visit(self) -> Visit:
         return self.visits[-1]
-
-    @property
-    def at_hub(self) -> bool:
-        return self.campaign is not None and self.current.id == self.campaign.place
-
-    def walked_job(self) -> Job | None:
-        """The open job once walked; one taken at the tavern but not walked can still be swapped."""
-        job = None if self.campaign is None else self.campaign.open_job()
-        return job if job is not None and self.visit.job == job.title else None
-
-    def walked(self) -> list[str]:
-        return [visit.job for visit in self.visits]
-
-    def job_visits(self) -> list[Visit]:
-        return self.visits if self.campaign is None else self.visits[walk_start(self.walked()) :]
-
-    def walked_places(self) -> tuple[EntityId, ...]:
-        """Distinct places the walking span crossed; the current tavern visit is not walked."""
-        seen: list[EntityId] = []
-        for visit in self.visits[walk_start(self.walked()) : -1]:
-            if visit.place not in seen:
-                seen.append(visit.place)
-        return tuple(seen)
 
     def entity(self, entity_id: EntityId) -> Person | Item | Place | None:
         return self.player if entity_id == self.player.id else super().entity(entity_id)
@@ -272,8 +225,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
             coming.append(self.require_npc_here(npc_id))
         for npc in coming:
             npc.place = destination.id
-        job = None if self.campaign is None else self.campaign.open_job()
-        self.visits.append(Visit(place=destination.id, job="" if job is None else job.title))
+        self.visits.append(Visit(place=destination.id))
         trace = f"the player arrives at {destination.label}"
         if coming:
             names = " and ".join(npc.name for npc in coming)
@@ -346,53 +298,16 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         facts.append(actor.fact("actor_killed", f"{actor.label} is dead", card=card))
         return facts
 
-    def attach(
-        self, region: Dungeon[N], start: EntityId, *, known: bool, anchor: EntityId | None = None
-    ) -> None:
+    def attach(self, region: Dungeon[N], start: EntityId) -> None:
         """No bar runs here: every caller refuses first, so a refused region leaves it alone."""
-        anchor_id = self.current.id if anchor is None else anchor
+        anchor_id = self.current.id
         self.places.update(region.places)
         # Copied: the anchor ways appended below must not land in the draft's own lists.
         self.ways.update({key: [*ways] for key, ways in region.ways.items()})
         self.npcs.update(region.npcs)
         self.items.update(region.items)
-        self.add_way(anchor_id, start, known=known)
-        self.add_way(start, anchor_id, known=known)
-
-    def apply_extension(
-        self, region: Dungeon[N], start: EntityId, *, reopening: Job | None = None
-    ) -> Place:
-        """At the hub the region is the job's, known, joined at its anchor; away it is hidden."""
-        campaign = self.campaign
-        if campaign is None or not self.at_hub:
-            self.attach(region, start, known=False)
-            return self.current
-        if campaign.open_job() is not None and self.walked_job() is None:
-            campaign.swap_out(self.walked())
-        if reopening is not None:
-            anchor = self.require_place(EntityId(reopening.place))
-            campaign.reopen(reopening)
-            self.attach(region, start, known=True, anchor=anchor.id)
-            return anchor
-        self.attach(region, start, known=True)
-        campaign.jobs.append(Job(title=self.places[start].name, place=start, open=True))
-        return self.current
-
-    def apply_return(
-        self, *, debrief: str, summary: str, recaps: Mapping[EntityId, str], offers: Board
-    ) -> Job:
-        """Close the walked job, land each recap on that place's last visit, swap the board.
-        No bar runs here: every caller refuses first, so a recap missing is a bug."""
-        campaign, job = self.campaign, self.walked_job()
-        if campaign is None or job is None:
-            raise Refusal("no job is open to report")
-        span = self.visits[walk_start(self.walked()) : -1]
-        for place, visit in {v.place: v for v in span}.items():
-            visit.recap = recaps[place]
-        job.close(debrief=debrief, summary=summary)
-        self.visit.job = ""  # the report closes the span; the tavern visit walks no job
-        campaign.board = offers
-        return job
+        self.add_way(anchor_id, start, known=False)
+        self.add_way(start, anchor_id, known=False)
 
     def line(self, entity: P | N | Item) -> str:
         """One card line; the player's sheet is the world's, everyone else's is their own."""
@@ -447,13 +362,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         for visit in self.visits:
             place = self.require_place(visit.place)
             records.append(
-                SceneRecord(
-                    title=place.name,
-                    focus=place.brief,
-                    recap=visit.recap,
-                    exchanges=tuple(visit.exchanges),
-                    job=visit.job,
-                )
+                SceneRecord(title=place.name, focus=place.brief, exchanges=tuple(visit.exchanges))
             )
         return tuple(records)
 

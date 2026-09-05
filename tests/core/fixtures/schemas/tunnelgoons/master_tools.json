@@ -235,7 +235,7 @@
   },
   {
     "name": "level_up",
-    "description": "Raise one ability and either Health or Inventory Score by 1 at an adventure's end. In a campaign, call it when the job's dungeon is done; the tavern then closes the job as finished.",
+    "description": "Raise one ability and either Health or Inventory Score by 1, once, at the adventure's end.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -273,39 +273,6 @@
           "description": "Health or Inventory to raise by 1; null asks the player."
         }
       },
-      "type": "object"
-    }
-  },
-  {
-    "name": "commission",
-    "description": "Ask the worldsmith for what the scene needs and the cast lacks. Written now, the turn pauses and you are spawned again with the answer under NOTES FROM THE RULES; with `later`, it is written into the next scene or region. What you ask for becomes canon. An npc standing at this place, an item lying here, or a region beyond the player's reach. Read HIDDEN HERE and WAYS OUT first: ask only for what the place lacks.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "kind": {
-          "description": "What to ask for: an npc standing here, an item lying here, or a region beyond the player's reach.",
-          "enum": [
-            "npc",
-            "item",
-            "region"
-          ],
-          "type": "string"
-        },
-        "brief": {
-          "description": "Who or what it is and why the scene needs it, in a few lines.",
-          "minLength": 20,
-          "type": "string"
-        },
-        "later": {
-          "default": false,
-          "description": "True to have it written into the next region instead of now.",
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "kind",
-        "brief"
-      ],
       "type": "object"
     }
   }

@@ -129,8 +129,8 @@ class ScenarioForm:
         self.title: ui.input
         self.packs: ui.select | None = None
         self.character: ui.select
-        self.kind_toggle: ui.toggle
         self.premise: ui.textarea
+        self.scope: ui.textarea
         self.style: ui.input
         self.voice: ui.input
         self.button: ui.button
@@ -174,15 +174,16 @@ class ScenarioForm:
             value=characters[0].id if characters else None,
             label="Character",
         ).classes("w-full")
-        self.kind_toggle = ui.toggle(
-            {"one-shot": "One-shot", "campaign": "Campaign"}, value="one-shot"
-        )
-        ui.label(
-            "A campaign opens at a home base with a board of jobs. "
-            "Say where home is and who runs it."
-        ).classes("text-sm opacity-70")
         self.premise = (
             ui.textarea(label="Premise", placeholder="What is this adventure about?")
+            .classes("w-full")
+            .props("outlined autogrow")
+        )
+        self.scope = (
+            ui.textarea(
+                label="Scope",
+                placeholder="How far does this go, and does it tend toward an ending?",
+            )
             .classes("w-full")
             .props("outlined autogrow")
         )
@@ -213,15 +214,16 @@ class ScenarioForm:
     async def write(self) -> None:
         title = (self.title.value or "").strip()
         premise = (self.premise.value or "").strip()
+        scope = (self.scope.value or "").strip()
         character_id = self.character.value
-        if not title or not (premise or self.document) or character_id is None:
-            ui.notify("A title, a character, and a premise or a document.", type="warning")
+        if not title or not scope or not (premise or self.document) or character_id is None:
+            ui.notify("A title, a scope, a character, and a premise or a document.", type="warning")
             return
         self.button.props("loading")
         meta = ScenarioMeta(
             title=title,
             premise=premise,
-            kind="campaign" if self.kind_toggle.value == "campaign" else "one-shot",
+            scope=scope,
             art_style=(self.style.value or "").strip(),
             voice=(self.voice.value or "").strip(),
         )

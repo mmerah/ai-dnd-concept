@@ -43,9 +43,10 @@ Tests run offline. They are deterministic.
 
 - Each role is a spawned CLI, cold every turn; the master's spawn prompt is the whole picture. The narrator and the worldsmith return typed proposals; the master plays through tools that mutate a transactional draft, validated before it lands. Only resolver code changes state or rolls dice.
 - The engine owns the world. `core`, `turn`, `app` and `ui` know no world shape. The registry is the one place that connects them.
-- An engine is self-contained under `engines/<id>/`, under 2,000 lines, with at most fifteen engine tools plus `commission`, the platform's, counted as tools plus `change_world` arms, the two shared party arms not counted; twenty in all for an engine whose SRD plays a crew, named in its `docs/<ENGINE>.md`. Every engine subclasses `Engine` in `engines/seam.py`; the three scene engines subclass `SceneEngine` in `engines/scenes/engine.py`, Tunnel Goons subclasses `RoomEngine` in `engines/rooms/engine.py`; all four share the hub in `engines/hub.py`.
-- The narrator writes the story text; the worldsmith's scene titles, offers and debrief reach the player on cards and panels. The narrator's input holds revealed facts only. Hidden facts have no path into it.
+- An engine is self-contained under `engines/<id>/`, under 2,000 lines, with at most fifteen engine tools, counted as tools plus `change_world` arms, the two shared party arms not counted; twenty in all for an engine whose SRD plays a crew, named in its `docs/<ENGINE>.md`. Every engine subclasses `Engine` in `engines/seam.py`; the three scene engines subclass `SceneEngine` in `engines/scenes/engine.py`, Tunnel Goons subclasses `RoomEngine` in `engines/rooms/engine.py`. Every world subclasses `World` in `engines/base.py`.
+- The narrator writes the story text; the worldsmith's scene titles reach the player on cards and panels. The narrator's input holds revealed facts only. Hidden facts have no path into it.
 - The worldsmith writes new cast entries and rewrites a brief; a name and a sheet are the rules'. The scene bar and the install share one refusal list, so the worldsmith's one retry sees every refusal.
+- A scenario is a premise, a scope and an opening. Scope is prose the master and the worldsmith read; nothing in code branches on it.
 - A bad model answer is re-prompted once with the error, then raises.
 - Saves have no version field. A stale save is invalid.
 - Only `turn`, `app`, and `ui` read the settings.

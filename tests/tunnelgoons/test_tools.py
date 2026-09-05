@@ -2,7 +2,7 @@ import re
 from random import Random
 
 import pytest
-from support.table import change, refused, the_campaign
+from support.table import change, refused
 from support.tunnelgoons import (
     CRYPT,
     HALL,
@@ -12,16 +12,13 @@ from support.tunnelgoons import (
     MIRA,
     ROPE,
     START,
-    TAVERN,
     VAULT,
-    hub_world,
     small_world,
 )
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.tools import NoArgs
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.hub import Job
 from aidm.engines.rooms.tools import Move, UnlockWay
 from aidm.engines.rooms.world import Item, Visit
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
@@ -209,43 +206,10 @@ def test_level_up_with_both_raises_the_ability_and_the_boost_and_the_level() -> 
     assert any(fact.kind == "levelled_up" for fact in facts)
 
 
-def test_level_up_sets_job_done_only_when_a_job_is_open() -> None:
-    stamped = hub_world().draft()
-    stamped.payload.visits = [
-        Visit(place=TAVERN),
-        Visit(place=START, job="Bandits"),
-        Visit(place=TAVERN, job="Bandits"),
-    ]
-    campaign = the_campaign(stamped.payload.campaign)
-    campaign.jobs = [Job(title="Bandits", place=START, open=True)]
-    _ = ENGINE.level_up(stamped, LevelUp(ability="brute", boost="health"), Random(0))
-    assert campaign.jobs[-1].finished
-
-    unstamped = small_world().draft()
-    _ = ENGINE.level_up(unstamped, LevelUp(ability="brute", boost="health"), Random(0))
-    assert unstamped.payload.campaign is None
-
-
 def test_level_up_with_one_argument_is_refused() -> None:
     draft = small_world().draft()
     with pytest.raises(Refusal, match="takes both"):
         _ = ENGINE.level_up(draft, LevelUp(ability="brute"), Random(0))
-
-
-def test_a_tavern_visit_mid_job_keeps_the_job_open() -> None:
-    draft = hub_world().draft()
-    world = draft.payload
-    campaign = the_campaign(world.campaign)
-    campaign.jobs = [Job(title="Bandits", place=START, open=True)]
-
-    _ = ENGINE.move(draft, Move(to_id=START), Random(0))
-    assert world.visit.job == "Bandits"
-    assert world.walked_job() is not None
-
-    _ = ENGINE.move(draft, Move(to_id=TAVERN), Random(0))
-    assert world.walked_job() is not None
-    assert world.visit.job == "Bandits"
-    assert campaign.jobs[-1].open
 
 
 def test_move_refuses_a_locked_way() -> None:

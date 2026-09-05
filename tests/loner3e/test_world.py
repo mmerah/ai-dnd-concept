@@ -7,7 +7,7 @@ from support.table import refused as change_refused
 from aidm.core.entities import EntityId, Refusal
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, Loner3eSheet
-from aidm.engines.scenes.drafts import MIN_SITUATION, SceneDraft
+from aidm.engines.scenes.drafts import SceneDraft
 from aidm.engines.scenes.worldsmith import scene_refusal
 
 MAP = EntityId("vault-map")
@@ -133,19 +133,8 @@ def test_a_one_word_name_is_a_word_the_situation_may_use() -> None:
     assert scene_refusal(scene, draft.payload) is None
 
 
-def test_the_scene_bar_names_what_a_thin_scene_is_missing() -> None:
+def test_the_scene_bar_names_a_cast_member_the_worldsmith_may_not_write() -> None:
     _, state = initialized()
-    thin = SceneDraft[Loner3eSheet](
-        place="nowhere",
-        title="Nowhere",
-        question="Is there anything here at all?",
-        situation="x" * MIN_SITUATION,
-        arc="",
-    )
-    assert scene_refusal(thin, state.payload) == (
-        "the scene needs at least one cast member besides the player; "
-        "at least one existing cast member brought back"
-    )
     assert scene_refusal(_next_scene(), state.payload) is None
 
     ghost = EntityId("ghost")

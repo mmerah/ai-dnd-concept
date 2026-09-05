@@ -106,25 +106,6 @@ class SceneRecord(Frozen):
     focus: str
     recap: str = ""
     exchanges: tuple[Exchange, ...] = ()
-    job: str = ""  # the campaign job this scene walks, by title; empty at the hub
-
-
-class ChapterRecord(Frozen):
-    title: str
-    verdict: str  # "done" or "left open", as the ledger says it
-    summary: str
-    scenes: tuple[str, ...]
-
-
-class Commission(Frozen):
-    """What the game master asked the worldsmith for; `later` files it for the next scene write."""
-
-    kind: str
-    brief: str
-    later: bool = False
-
-
-type HistoryRecord = SceneRecord | ChapterRecord
 
 
 def narration_text(lines: Sequence[Line | SpokenLine]) -> str:

@@ -1,7 +1,8 @@
 {
   "meta": {
     "title": "The Drowned Road",
-    "premise": "The causeway to Saint Ferrant only opens for four hours either side of low water, and the tide bell at the Bell House counts down the crossing. Kael has reached the Bell House with the water already rising, and something that used to be a person is still out on the flats."
+    "premise": "The causeway to Saint Ferrant only opens for four hours either side of low water, and the tide bell at the Bell House counts down the crossing. Kael has reached the Bell House with the water already rising, and something that used to be a person is still out on the flats.",
+    "scope": "One crossing, while the tide allows it. Reaching Saint Ferrant, or failing to, ends the scenario; nothing owes a sequel."
   },
   "engine": "breathless",
   "packs": [

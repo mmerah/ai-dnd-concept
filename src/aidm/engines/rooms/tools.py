@@ -35,16 +35,3 @@ class UnlockWay(Frozen):
 
 
 type SharedChange = Reveal | MoveItem | Kill
-
-
-class RoomCommission(Frozen):
-    kind: Literal["npc", "item", "region"] = Field(
-        description="What to ask for: an npc standing here, an item lying here, or a region "
-        "beyond the player's reach."
-    )
-    brief: str = Field(
-        min_length=20, description="Who or what it is and why the scene needs it, in a few lines."
-    )
-    later: bool = Field(
-        default=False, description="True to have it written into the next region instead of now."
-    )

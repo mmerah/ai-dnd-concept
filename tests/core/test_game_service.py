@@ -1,20 +1,13 @@
-import json
 from pathlib import Path
 
 import pytest
 from support.loner import TARGET, open_game, session
-from support.table import ScriptedSpawner, narrated, offline_settings, play_turn, tool_call, updated
+from support.table import ScriptedSpawner, narrated, offline_settings, play_turn, updated
 
 from aidm.app.runtime import BEGUN, Runtime
-from aidm.core.entities import EntityId, Refusal
+from aidm.core.entities import Refusal
 from aidm.core.io import FileStore
 from aidm.core.model import AnyGame, ScenarioMeta
-from aidm.core.play import Commission
-from aidm.engines.base import PLAYER_ID
-
-COMMISSIONED = tool_call(
-    "commission", kind="person", brief="A witness who saw who broke the seal.", later=False
-)
 
 
 class _UnsavableStore(FileStore):
@@ -38,16 +31,6 @@ def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path
     assert store.load(TARGET.slug) is None
 
 
-def test_a_commission_round_trips_through_a_save(tmp_path: Path) -> None:
-    store = FileStore(tmp_path)
-    game = session(tmp_path)
-    commission = Commission(kind="person", brief="A witness who saw the theft happen.")
-
-    store.save(TARGET.slug, game.state.model_copy(update={"commissions": [commission]}).commit())
-
-    assert session(tmp_path).state.commissions == [commission]
-
-
 def test_restart_keeps_scene_art_a_replayed_scene_would_reuse(tmp_path: Path) -> None:
     game = session(tmp_path)
     art = FileStore(tmp_path).media_dir(TARGET.slug) / "abc123def456.jpg"
@@ -63,7 +46,14 @@ def test_restart_keeps_scene_art_a_replayed_scene_would_reuse(tmp_path: Path) ->
     ("change", "message"),
     (
         ({"character_id": "someone-else"}, "save is 'whispering-vault'/'someone-else'"),
-        ({"scenario": ScenarioMeta(title="Another Vault", premise="Elsewhere.")}, "Another Vault"),
+        (
+            {
+                "scenario": ScenarioMeta(
+                    title="Another Vault", premise="Elsewhere.", scope="A single visit, brief."
+                )
+            },
+            "Another Vault",
+        ),
     ),
     ids=("another origin", "a scenario edited since the save"),
 )
@@ -116,56 +106,3 @@ async def test_a_failed_commit_still_frees_the_game(tmp_path: Path) -> None:
         _ = await play_turn(table, "I take the map.")
 
     assert (table.service.busy, table.service.turn) == (False, None)
-
-
-async def test_a_commission_now_is_fulfilled_between_two_master_spawns(tmp_path: Path) -> None:
-    table = open_game(tmp_path)
-    asked = tool_call("roll_question", actor_id=PLAYER_ID, question="Does the door give?")
-    table.spawner.answers["worldsmith"] = [
-        json.dumps(
-            {
-                "cast": {
-                    "elena": {
-                        "id": "elena",
-                        "name": "Elena",
-                        "brief": "A witness who saw who broke the seal.",
-                    }
-                },
-                "arc": "",
-            }
-        )
-    ]
-    # The initial spawn's calls; play_turn below appends the re-spawned master's own, empty turn.
-    table.spawner.turns.append(table.plays((asked, COMMISSIONED)))
-
-    state = await play_turn(table, "I ask around and call for a witness.")
-
-    roles = [role for role, _ in table.spawner.prompts]
-    assert roles == ["master", "worldsmith", "master", "narrator"]
-    master_prompts = [text for role, text in table.spawner.prompts if role == "master"]
-    assert "Does the door give?" in master_prompts[1]
-    assert "elena" in master_prompts[1]
-    assert "You asked the worldsmith for a person" in master_prompts[1]
-    assert state.payload.require(EntityId("elena")).known is False
-
-    seen_so_far = len(table.spawner.prompts)
-    next_state = await play_turn(table, "I look around some more.")
-    next_prompt = next(
-        text for role, text in table.spawner.prompts[seen_so_far:] if role == "master"
-    )
-    assert "You asked the worldsmith for a person" not in next_prompt
-    assert next_state.commissions == []
-
-
-async def test_a_worldsmith_that_cannot_write_the_commission_leaves_the_turn_playable(
-    tmp_path: Path,
-) -> None:
-    table = open_game(tmp_path)
-    table.spawner.turns.append(table.plays((COMMISSIONED,)))
-
-    state = await play_turn(table, "I call for a witness.")
-
-    master_prompts = [text for role, text in table.spawner.prompts if role == "master"]
-    assert len(master_prompts) == 2
-    assert "it could not be written" in master_prompts[1]
-    assert state.commissions == []

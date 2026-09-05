@@ -103,6 +103,17 @@ def test_the_narrator_prompt_carries_the_players_own_sheet() -> None:
     assert "- Gear: Pry Bar, Chalk and Wire, A Guttering Lantern" in prompt
 
 
+def test_the_master_prompt_shows_the_scope_right_after_the_scenario() -> None:
+    state = _state()
+
+    master = _master_prompt(state, "I look around.")
+
+    assert (
+        f"SCENARIO:\n{state.scenario.title}\n{state.scenario.premise}\n\n"
+        f"THE SCOPE OF PLAY:\n{state.scenario.scope}"
+    ) in master
+
+
 def test_the_master_prompt_ends_on_the_action_with_no_empty_waiting_section() -> None:
     master = _master_prompt(_state(), "I look around.")
 

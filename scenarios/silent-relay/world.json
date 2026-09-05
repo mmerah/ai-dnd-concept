@@ -1,7 +1,8 @@
 {
   "meta": {
     "title": "The Silent Relay",
-    "premise": "Relay station QV-9 stopped answering six days ago, and Kael is the operator sent to bring its beacon back online before the next convoy jumps in blind."
+    "premise": "Relay station QV-9 stopped answering six days ago, and Kael is the operator sent to bring its beacon back online before the next convoy jumps in blind.",
+    "scope": "The relay is one job among many: bring the beacon up, or learn why it went dark, and the work is done. Let what Kael finds at QV-9 create the next job, a debt, or an enemy; no final objective is prescribed."
   },
   "engine": "twentyfourxx",
   "packs": [

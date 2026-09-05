@@ -9,7 +9,7 @@ import pytest
 from pydantic import BaseModel, JsonValue
 from support.loner import open_game
 from support.table import (
-    LONER3E,
+    BREATHLESS,
     ScriptedSpawner,
     change_args,
     changed,
@@ -118,7 +118,7 @@ async def test_a_second_game_in_flight_crashes_the_call_rather_than_routing_it(
     """Two turns at once is a bug, not a message: the master's call is not answered, it crashes."""
     table = open_game(tmp_path)
     other = table.runtime.session(
-        LaunchTarget(scenario_id=scenario_for(LONER3E, "campaign"), character_id="kael")
+        LaunchTarget(scenario_id=scenario_for(BREATHLESS), character_id="kael")
     )
 
     def script() -> None:
@@ -344,7 +344,7 @@ async def test_a_turn_that_suspends_tells_the_narrator_where_play_pauses(tmp_pat
 
 async def test_authoring_raises_when_the_worldsmith_never_meets_the_bar(tmp_path: Path) -> None:
     table = open_game(tmp_path)
-    thin = SceneDraft[Loner3eSheet].model_validate(json.loads(_bare_scene(present=[], hidden=[])))
+    thin = SceneDraft[Loner3eSheet].model_validate(json.loads(_bare_scene(present=["nobody-here"])))
 
     async def answer[M: BaseModel](
         prompt: str, model: type[M], refusal: Callable[[M], str | None]
@@ -356,7 +356,11 @@ async def test_authoring_raises_when_the_worldsmith_never_meets_the_bar(tmp_path
 
     with pytest.raises(ValueError, match="the scene needs"):
         _ = await table.service.engine.author(
-            ScenarioMeta(title="T", premise="p"), "", table.state.packs, answer, lambda _built: None
+            ScenarioMeta(title="T", premise="p", scope="s"),
+            "",
+            table.state.packs,
+            answer,
+            lambda _built: None,
         )
 
 
@@ -493,17 +497,17 @@ async def test_a_scene_the_world_has_outgrown_is_dropped_rather_than_killing_the
     assert state.payload.run.title == "The Abbot's Study"
 
 
-async def test_the_scene_bar_refuses_a_thin_scene(
+async def test_the_scene_bar_refuses_a_scene_naming_nobody(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     table = open_game(tmp_path)
-    thin = _scene(present=[], hidden=[])
+    thin = _scene(present=["nobody-here"], hidden=[])
     table.spawner.answers["worldsmith"] = [thin, thin]
 
     _ = await play_turn(table, "I go.", the_way_on())
     state = await play_turn(table, "Out into the cloister walk.", moving_on=True)
 
-    assert "besides the player" in caplog.text
+    assert "these name nobody" in caplog.text
     assert table.service.engine.history(state)[-1].facts[0].kind == "way_unwritten"
     assert table.service.state.payload.run.title == "The Abbot's Study"
 

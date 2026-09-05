@@ -1,8 +1,8 @@
 from random import Random
 
 import pytest
-from support.breathless import WRENCH, hub_world, small_world
-from support.table import change, refused, the_campaign
+from support.breathless import WRENCH, small_world
+from support.table import change, refused
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.tools import NoArgs
@@ -11,7 +11,6 @@ from aidm.engines.breathless.engine import BreathlessEngine
 from aidm.engines.breathless.tools import ChangeStress, Check, LootCheck
 from aidm.engines.breathless.tools import TestLuck as LuckTest
 from aidm.engines.breathless.world import Item, stepped
-from aidm.engines.hub import JOB_DONE
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.scenes.world import SCENE_LEFT
 
@@ -197,22 +196,8 @@ def test_join_party_is_refused_outside_breathless_change() -> None:
         _ = change(ENGINE, draft, "join_party", entity_id=PLAYER_ID)
 
 
-def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() -> None:
-    draft = hub_world()
-    world = draft.payload
-    facts = ENGINE.next_scene(draft, NextScene(job_done=True), Random(0))
-    assert world.run.left is not None
-    assert the_campaign(world.campaign).jobs[-1].finished
-    assert JOB_DONE in facts
-
-    at_hub = hub_world()
-    at_hub.payload.runs = [at_hub.payload.runs[0]]
-    with pytest.raises(Refusal, match="no job is open here"):
-        _ = ENGINE.next_scene(at_hub, NextScene(job_done=True), Random(0))
-
-
 def test_next_scene_with_pursuit_settles_the_run_and_leaves_a_go_on_row() -> None:
-    draft = hub_world()
+    draft = small_world()
     world = draft.payload
     facts = ENGINE.next_scene(draft, NextScene(pursuit="the control deck"), Random(0))
     assert world.run.left == "the control deck"

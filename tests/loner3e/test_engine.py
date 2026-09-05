@@ -1,16 +1,14 @@
 from random import Random
 
 import pytest
-from support.loner import ENGINE, hub_world, initialized, loner_sheet
-from support.scenes import BOARD
-from support.table import the_campaign, updated
+from support.loner import ENGINE, initialized, loner_sheet
+from support.table import updated
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.facts import cards
 from aidm.core.io import decode
 from aidm.core.play import PendingDecision
 from aidm.engines.base import PLAYER_ID, SRD_PACK, Counter
-from aidm.engines.hub import JOB_DONE, Campaign
 from aidm.engines.loner3e.tools import (
     Question,
     RestoreLuck,
@@ -20,7 +18,7 @@ from aidm.engines.loner3e.tools import (
     twist_pairing,
 )
 from aidm.engines.loner3e.world import LUCK_MAX, TIES_PER_TWIST
-from aidm.engines.scenes.tools import NextScene, Reveal
+from aidm.engines.scenes.tools import Reveal
 
 FOE = EntityId("mara")
 MAP = EntityId("vault-map")
@@ -250,37 +248,6 @@ def test_restoring_luck_that_is_already_full_is_a_quiet_no_op() -> None:
     _, state = initialized()
 
     assert ENGINE.restore_luck(state.draft(), RestoreLuck(actor_id=PLAYER_ID), Random(0)) == []
-
-
-def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() -> None:
-    draft = hub_world()
-    world = draft.payload
-    facts = ENGINE.next_scene(draft, NextScene(job_done=True), Random(0))
-    assert world.run.left is not None
-    assert the_campaign(world.campaign).jobs[-1].finished
-    assert JOB_DONE in facts
-
-    at_hub = hub_world()
-    at_hub.payload.runs = [at_hub.payload.runs[0]]
-    with pytest.raises(Refusal, match="no job is open here"):
-        _ = ENGINE.next_scene(at_hub, NextScene(job_done=True), Random(0))
-
-
-def test_check_game_refuses_a_campaign_meta_with_no_hub() -> None:
-    engine, state = initialized()
-    campaign_meta = state.scenario.model_copy(update={"kind": "campaign"})
-    with pytest.raises(Refusal, match="campaign"):
-        engine.validate(updated(state, scenario=campaign_meta))
-
-
-def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
-    engine, state = initialized()
-    world = state.payload
-    hub_payload = world.model_copy(
-        update={"campaign": Campaign(place=world.run.place, board=BOARD)}
-    )
-    with pytest.raises(Refusal, match="one-shot"):
-        engine.validate(updated(state, payload=hub_payload))
 
 
 def test_a_game_records_its_table_sets_and_is_refused_without_them() -> None:

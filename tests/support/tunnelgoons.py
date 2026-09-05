@@ -1,7 +1,6 @@
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Counter
-from aidm.engines.hub import Campaign, Offer
 from aidm.engines.rooms.world import Item, Place, Visit, Way
 from aidm.engines.tunnelgoons.world import Goon, Npc, TunnelGoonsGame, TunnelGoonsWorld
 
@@ -15,7 +14,6 @@ ROPE = EntityId("rope")
 TORCH = EntityId("torch")
 KEY = EntityId("key")
 LANTERN = EntityId("lantern")
-TAVERN = EntityId("tavern")
 
 
 def _map_pieces() -> tuple[
@@ -110,47 +108,9 @@ def small_world() -> TunnelGoonsGame:
     return TunnelGoonsGame(
         scenario_id="test",
         character_id="kael",
-        scenario=ScenarioMeta(title="Test", premise="A test dungeon."),
-        engine=EngineId("tunnelgoons"),
-        payload=world,
-    )
-
-
-def hub_world(*, with_map: bool = True) -> TunnelGoonsGame:
-    tavern = Place(
-        id=TAVERN,
-        name="Tavern",
-        brief="Where jobs are taken",
-        known=True,
-        description="A dim taproom, its board thick with offers.",
-    )
-    if with_map:
-        places, ways, npcs, items = _map_pieces()
-        places = {**places, TAVERN: tavern}
-        ways = {
-            **ways,
-            TAVERN: [Way(to=START, known=True)],
-            START: [*ways[START], Way(to=TAVERN, known=True)],
-        }
-    else:
-        places, ways, npcs, items = {TAVERN: tavern}, {}, {}, {}
-    board = (
-        Offer(title="Crates off Deck 9", pitch="No manifest, half up front."),
-        Offer(title="A Debt Called In", pitch="Someone remembers what you owe."),
-    )
-    world = TunnelGoonsWorld(
-        places=places,
-        ways=ways,
-        npcs=npcs,
-        items=items,
-        player=_kael(),
-        visits=[Visit(place=TAVERN)],
-        campaign=Campaign(place=TAVERN, board=board),
-    )
-    return TunnelGoonsGame(
-        scenario_id="test",
-        character_id="kael",
-        scenario=ScenarioMeta(title="Test Campaign", premise="A test campaign.", kind="campaign"),
+        scenario=ScenarioMeta(
+            title="Test", premise="A test dungeon.", scope="One dungeon, played to its end."
+        ),
         engine=EngineId("tunnelgoons"),
         payload=world,
     )
