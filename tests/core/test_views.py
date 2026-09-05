@@ -9,7 +9,7 @@ from aidm.core.views import (
     NarratorView,
     Subject,
     render_history,
-    told_narration,
+    told_history,
 )
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import Loner3eSheet
@@ -148,7 +148,7 @@ def test_render_history_shows_an_older_scenes_last_tail_exchanges_only() -> None
         assert f"> {dropped}\n" not in history
 
 
-def test_told_narration_holds_narration_with_no_prompt_or_recap() -> None:
+def test_told_history_reads_as_the_master_does_without_the_recap() -> None:
     older = SceneRecord(
         title="Hub", focus="q0", recap="What happened before.", exchanges=(_told("dropped"),)
     )
@@ -156,8 +156,7 @@ def test_told_narration_holds_narration_with_no_prompt_or_recap() -> None:
     recent_b = SceneRecord(title="A2", focus="q2", exchanges=(_told("p2"),))
     scenes = [older, recent_a, recent_b]
 
-    narrated = told_narration(scenes)
+    read = told_history(scenes)
 
-    assert narrated == ("p1 happens.", "p2 happens.")
-    assert not any("dropped" in text for text in narrated)
-    assert not any("What happened before." in text for text in narrated)
+    assert read == "SCENE: A1\nq1\n\n> p1\np1 happens.\n\nSCENE: A2\nq2\n\n> p2\np2 happens."
+    assert told_history([SceneRecord(title="A1", focus="q1")]) == "(nothing yet)"

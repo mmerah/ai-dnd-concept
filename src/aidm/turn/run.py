@@ -39,24 +39,14 @@ class Turn:
     notes: list[str] = field(default_factory=list)
 
     @classmethod
-    def begin(
-        cls,
-        engine: AnyEngine,
-        state: AnyGame,
-        answer: Answer,
-        rng: Random,
-        *,
-        mastered: bool = True,
-    ) -> Self:
-        """`mastered` is False for the page's own words: no master reads this turn's picture."""
+    def begin(cls, engine: AnyEngine, state: AnyGame, answer: Answer, rng: Random) -> Self:
         turn = cls(engine=engine, draft=state.draft(), rng=rng)
-        turn._consume(answer, mastered=mastered)
+        turn._consume(answer)
         # Notes are read once; a note a tool writes after this steers the next turn.
-        if mastered:
-            turn.notes, turn.draft.notes = turn.draft.notes, []
+        turn.notes, turn.draft.notes = turn.draft.notes, []
         return turn
 
-    def _consume(self, answer: Answer, *, mastered: bool) -> None:
+    def _consume(self, answer: Answer) -> None:
         engine, draft = self.engine, self.draft
         if (ended := engine.over(draft)) is not None:
             raise Refusal(f"{ended} The only way on is to restart.")
@@ -66,7 +56,7 @@ class Turn:
         if consumed is not None and not consumed.allows_text and chosen is None:
             raise Refusal(f"the {consumed.kind!r} decision takes one of its options, not words")
         if chosen is None:
-            if consumed is not None and mastered:
+            if consumed is not None:
                 draft.note(
                     f'The rules paused play to ask the player: "{consumed.prompt}" '
                     "The PLAYER ACTION is their answer."

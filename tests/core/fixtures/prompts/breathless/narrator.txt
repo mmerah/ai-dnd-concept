@@ -10,6 +10,10 @@ Everything you need is below. Do not read, search or run anything in the reposit
 Answer with one JSON object and nothing else, in the shape ANSWER WITH gives.
 
 WHAT THE PLAYER HAS READ:
+SCENE: The Bell House
+Can Kael get out of the Bell House and onto the causeway before Ovid rings the third bell?
+
+> I look around the Bell House before going further.
 Ovid Sarn watches you from the cracked window.
 
 SCENE:

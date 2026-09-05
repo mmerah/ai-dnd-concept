@@ -10,6 +10,10 @@ Everything you need is below. Do not read, search or run anything in the reposit
 Answer with one JSON object and nothing else, in the shape ANSWER WITH gives.
 
 WHAT THE PLAYER HAS READ:
+SCENE: The Collapsed Archway
+Where the tunnels begin
+
+> I look around the archway before going further.
 Grix waves you toward the corridor, impatient.
 
 SCENE:

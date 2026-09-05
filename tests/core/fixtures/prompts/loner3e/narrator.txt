@@ -10,8 +10,16 @@ Everything you need is below. Do not read, search or run anything in the reposit
 Answer with one JSON object and nothing else, in the shape ANSWER WITH gives.
 
 WHAT THE PLAYER HAS READ:
+SCENE: The Vault Stair
+Is there a way past the vault door from the stair?
+
+> I try the vault door.
 The iron handle does not turn.
 
+SCENE: The Abbot's Study
+Can you get the way down to the vault out of this room, and out of Mara?
+
+> I look for another way in.
 A flagstone by the wall sits proud of its neighbours.
 
 SCENE:
