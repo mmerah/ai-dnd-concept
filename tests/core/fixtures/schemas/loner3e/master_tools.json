@@ -276,13 +276,18 @@
   },
   {
     "name": "next_scene",
-    "description": "Say this scene's question is settled. The player is then asked what they want to pursue, and their own words build the next scene. Do not answer for them.",
+    "description": "Say this scene's question is settled. The player is then asked what they want to pursue, and their own words build the next scene. Do not answer for them. Or set `complication` to bring a new situation down on this place, only when `change_world` (an arrival, a reveal, a death) cannot make it from what is here.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "pursuit": {
           "default": "",
           "description": "Set when the player has left this place for good with its question open: where they are going, in their own words. Empty when the question settled here.",
+          "type": "string"
+        },
+        "complication": {
+          "default": "",
+          "description": "Set to change the situation here without the player leaving: what arrives or turns, and why, for the worldsmith. Written now, the turn ends; the player answers it next turn. Empty otherwise.",
           "type": "string"
         }
       },

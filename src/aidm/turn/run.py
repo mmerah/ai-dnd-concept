@@ -16,6 +16,7 @@ from aidm.engines.seam import AnyEngine
 from aidm.turn.context import render_master
 
 RULES_WAIT = "the rules now wait on the player's decision"
+HANDOFF_WAIT = "the worldsmith writes what you asked for once this turn ends. Stop here and exit."
 ANSWERED_BY_OPTION = (
     "The player chose the option above and the rules have applied it. Develop what it caused; "
     "do not settle it again."
@@ -113,6 +114,9 @@ class Turn:
                 f"the rules are waiting on the player: {pending.prompt}\n"
                 "Stop here and exit; the player's answer opens the next turn."
             )
+        if self.draft.handoff:
+            # A plain answer, not a refusal, for the same reason as the pending line above.
+            return HANDOFF_WAIT
         already_pending = len(self.draft.notes)
         decided_before = self.draft.pending
         facts = self._apply(lambda draft, rng: found.call(draft, raw, rng))

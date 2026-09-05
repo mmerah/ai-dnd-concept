@@ -14,7 +14,7 @@ from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import outcome_for
 from aidm.engines.loner3e.world import Loner3eGame
-from aidm.turn.run import Turn
+from aidm.turn.run import HANDOFF_WAIT, Turn
 
 MAP = EntityId("vault-map")
 FOUND = changed("reveal", entity_id="vault-map")
@@ -165,6 +165,21 @@ async def test_a_later_call_in_one_turn_sees_the_earlier_calls_draft(
 
     assert state.payload.run.left is not None
     assert any("already settled" in refusal for refusal in table.refusals)
+
+
+async def test_a_call_after_the_ask_answers_handoff_wait_and_changes_nothing(
+    tmp_path: Path,
+) -> None:
+    table = open_game(tmp_path)
+    complication = "A second crew breaches the study door."
+
+    state = await play_turn(
+        table, "I keep watch.", tool_call("next_scene", complication=complication), FOUND
+    )
+
+    assert table.answers[1] == HANDOFF_WAIT
+    assert [fact.kind for fact in table.facts] == ["complication_asked"]
+    assert not state.payload.require(MAP).known
 
 
 async def test_a_line_spoken_by_someone_not_here_is_re_prompted_with_the_id(

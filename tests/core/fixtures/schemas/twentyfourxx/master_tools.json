@@ -296,13 +296,18 @@
   },
   {
     "name": "next_scene",
-    "description": "Say this scene's question is settled. The player is then asked what they want to pursue, and their own words build the next scene. Do not answer for them.",
+    "description": "Say this scene's question is settled. The player is then asked what they want to pursue, and their own words build the next scene. Do not answer for them. Or set `complication` to bring a new situation down on this place, only when `change_world` (an arrival, a reveal, a death) cannot make it from what is here.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "pursuit": {
           "default": "",
           "description": "Set when the player has left this place for good with its question open: where they are going, in their own words. Empty when the question settled here.",
+          "type": "string"
+        },
+        "complication": {
+          "default": "",
+          "description": "Set to change the situation here without the player leaving: what arrives or turns, and why, for the worldsmith. Written now, the turn ends; the player answers it next turn. Empty otherwise.",
           "type": "string"
         }
       },
@@ -391,8 +396,26 @@
     }
   },
   {
-    "name": "after_job",
-    "description": "The SRD's after-a-job step, once per job, when the player's own words close it: raise the named skill and pay out its credits.",
+    "name": "take_job",
+    "description": "The player agrees to work: record the job's terms as agreed. Refused while a job is open.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "terms": {
+          "description": "Who wants what done, what done looks like, what it pays, as agreed.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "terms"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "finish_job",
+    "description": "The job is done, by the story and the player's own words: raise the skill it called on and pay out its credits; the job then closes.",
     "parameters": {
       "additionalProperties": false,
       "properties": {

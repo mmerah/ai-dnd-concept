@@ -16,6 +16,18 @@ CROSSING = (
     "in the fewest words that make it real, and end on what they see first. WHAT HAPPENED names "
     "anyone who travelled with them. They have not acted in the new place yet, so settle nothing."
 )
+COMPLICATION = (
+    "The game master brings a complication down on the scene the player is in: {brief}. Write "
+    "the situation it makes as a new scene. The same `place` is allowed and usual; whoever is "
+    "here stays unless the brief moves them. Change the situation, not the player's answer to "
+    "it: they have not acted, so settle nothing for them. `recap` is the scene as it stood "
+    "before it turned: what the player did here so far, for the game master and for you."
+)
+TURNING = (
+    "The situation changes where the player stands, and they did nothing to bring it on. Write "
+    "what arrives or turns, as they see it, from SCENE and WHAT HAPPENED, and end on what it "
+    "asks of them. They have not answered it, so settle nothing."
+)
 SURPRISE = (
     "Surprise the player. Turn an established fact against them, or bring back something they "
     "have stopped thinking about. Surprise by recombining what exists, never by inventing what "

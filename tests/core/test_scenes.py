@@ -1,11 +1,16 @@
 from collections.abc import Sequence
+from random import Random
 
 import pytest
+from support.table import LONER3E, game, narrowed
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.loner3e.engine import Loner3eEngine
+from aidm.engines.loner3e.world import Loner3eGame
 from aidm.engines.scenes.drafts import NextDraft
+from aidm.engines.scenes.tools import NextScene
 from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld
 from aidm.engines.scenes.worldsmith import scene_refusal
 
@@ -131,3 +136,24 @@ def test_a_next_draft_naming_no_one_but_the_player_passes_and_installs() -> None
     world.apply_scene(draft)
 
     assert world.runs[-1].title == "A2"
+
+
+def test_next_scene_refuses_a_pursuit_and_a_complication_together() -> None:
+    engine, state = game(LONER3E)
+    assert isinstance(engine, Loner3eEngine)
+    draft = narrowed(state, Loner3eGame).draft()
+
+    with pytest.raises(Refusal, match="not both"):
+        _ = engine.next_scene(
+            draft,
+            NextScene(pursuit="Down the stair.", complication="A second crew breaks in."),
+            Random(0),
+        )
+
+
+def test_complicate_on_a_settled_run_is_refused() -> None:
+    world = _world(_run("a1", "A1"))
+    world.settle("")
+
+    with pytest.raises(Refusal, match="already settled"):
+        _ = world.complicate("A second crew breaks in.")

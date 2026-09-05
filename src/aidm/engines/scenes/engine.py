@@ -32,7 +32,13 @@ from aidm.engines.scenes.tools import (
     SharedChange,
 )
 from aidm.engines.scenes.world import SceneCanon, SceneWorld, resolve_ids, run_of
-from aidm.engines.scenes.worldsmith import CROSSING, scene_refusal, worldsmith_prompt
+from aidm.engines.scenes.worldsmith import (
+    COMPLICATION,
+    CROSSING,
+    TURNING,
+    scene_refusal,
+    worldsmith_prompt,
+)
 from aidm.engines.seam import Engine
 
 WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
@@ -62,6 +68,8 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         return state.payload
 
     def crossing(self, state: G, pursuit: str) -> str | None:
+        if state.handoff:
+            return TURNING
         return CROSSING.format(left=self.world(state).run.title, pursuit=pursuit)
 
     def page_word(self, state: G, intent: str) -> bool:
@@ -160,6 +168,12 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
                 return world.leave_party(change.entity_id)
 
     def next_scene(self, draft: G, args: NextScene, _rng: Random) -> list[Fact]:
+        if args.pursuit and args.complication:
+            raise Refusal("a pursuit or a complication, not both")
+        if args.complication:
+            asked = self.world(draft).complicate(args.complication)
+            draft.handoff = args.complication
+            return [asked]
         return self.world(draft).settle(args.pursuit)
 
     def pack_step(self) -> CreationStep:
@@ -233,13 +247,15 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
     async def write_next(self, draft: G, intent: str, worldsmith: WorldsmithAnswer) -> NextDraft[C]:
         world = self.world(draft)
         model = NextDraft[self.cast]
-        prompt = self.render_next(draft, intent)
+        asked = COMPLICATION.format(brief=draft.handoff) if draft.handoff else intent
+        prompt = self.render_next(draft, asked)
         return await worldsmith(prompt, model, lambda answer: scene_refusal(answer, world))
 
     def install(self, draft: G, scene: SceneDraft[C]) -> list[Fact]:
         world = self.world(draft)
         world.apply_scene(scene.model_copy(deep=True))
-        trace = f"the story moves to {scene.title}"
+        moved = "the scene turns to" if draft.handoff else "the story moves to"
+        trace = f"{moved} {scene.title}"
         if travelling := [member.name for member in world.members()]:
             trace += f", the player travelling with {', '.join(travelling)}"
         card = f"New scene: {scene.title}\nAt stake: {scene.question}"
@@ -268,7 +284,9 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
     ) -> tuple[Fact, ...]:
         scene = await self.write_next(draft, intent, worldsmith)
         # The engine's own closing reads the scene being left, so it runs before the install.
-        return (*self.leaving(draft), *self.install(draft, scene))
+        # A complication turns the scene, it does not end it: no closing (Loner refills pools) runs.
+        leaving = () if draft.handoff else self.leaving(draft)
+        return (*leaving, *self.install(draft, scene))
 
     def panels(self, state: G) -> tuple[Panel, ...]:
         return ()
