@@ -3,14 +3,12 @@ from pydantic import ValidationError
 from support.loner import initialized, with_entity
 
 from aidm.core.entities import EntityId, Refusal
-from aidm.core.facts import Fact
-from aidm.core.play import ChapterRecord, Exchange, Line, SceneRecord, SpokenLine
+from aidm.core.play import Exchange, Line, SceneRecord, SpokenLine
 from aidm.core.views import (
     TAIL_EXCHANGES,
     NarratorView,
     Subject,
     render_history,
-    render_whole,
     told_narration,
 )
 from aidm.engines.base import PLAYER_ID
@@ -148,44 +146,6 @@ def test_render_history_shows_an_older_scenes_last_tail_exchanges_only() -> None
         assert f"> {kept}" in history
     for dropped in prompts[:-TAIL_EXCHANGES]:
         assert f"> {dropped}\n" not in history
-
-
-def test_render_history_prints_a_chapters_summary_and_scene_titles_only() -> None:
-    swallowed = SceneRecord(title="A0", focus="q0", exchanges=(_told("swallowed"),))
-    chapter = ChapterRecord(
-        title="The First Job",
-        verdict="done",
-        summary="The player found the ledger and burned it.",
-        scenes=(swallowed.title, "The Cloister Walk"),
-    )
-    recent_a = SceneRecord(title="A1", focus="q1", exchanges=(_told("p1"),))
-    recent_b = SceneRecord(title="A2", focus="q2", exchanges=(_told("p2"),))
-    records = [chapter, recent_a, recent_b]
-
-    history = render_history(records)
-
-    assert "CLOSED: The First Job (done)" in history
-    assert "what happened: The player found the ledger and burned it." in history
-    assert "scenes: A0; The Cloister Walk" in history
-    assert "> swallowed" not in history
-    assert told_narration(records) == ("p1 happens.", "p2 happens.")
-
-
-def test_render_whole_prints_the_trace_of_an_untold_fact() -> None:
-    hidden = Fact(kind="region_added", trace="a hidden region opens beyond the vault", told=False)
-    scene = SceneRecord(
-        title="The Vault",
-        focus="q",
-        exchanges=(
-            Exchange(prompt="p1", lines=(SpokenLine(text="p1 happens."),), facts=(hidden,)),
-        ),
-    )
-
-    whole = render_whole([scene])
-
-    assert "SCENE: The Vault" in whole
-    assert "- a hidden region opens beyond the vault" in whole
-    assert "p1 happens." in whole
 
 
 def test_told_narration_holds_narration_with_no_prompt_or_recap() -> None:

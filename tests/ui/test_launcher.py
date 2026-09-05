@@ -239,19 +239,20 @@ _OPENING: dict[str, JsonValue] = {
 
 async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path, tmp_path / "scenarios")
-    thin = json.dumps(
-        {key: value for key, value in _OPENING.items() if key not in ("present", "hidden")}
-    )
+    thin = json.dumps({**_OPENING, "present": ["nobody-here"]})
     spawner = ScriptedSpawner(answers={"worldsmith": [thin, json.dumps(_OPENING)]})
     runtime = Runtime(settings, spawner)
 
     meta = ScenarioMeta(
-        title="The Sunken Bell", premise="The tide took the lower town.", art_style="woodcut"
+        title="The Sunken Bell",
+        premise="The tide took the lower town.",
+        scope="One crossing, before the tide turns.",
+        art_style="woodcut",
     )
     name = await runtime.new_scenario(LONER3E, meta, None, ("srd",), "kael")
 
     # The scene bar refuses the first answer, and the reason goes back with the re-prompt.
-    assert "besides the player" in spawner.prompts[1][1]
+    assert "these name nobody" in spawner.prompts[1][1]
     # The selected pack is the setting's vocabulary, so the worldsmith is given its tables.
     assert "Quiet Hands" in spawner.prompt("worldsmith")
     catalog = _catalog(settings, runtime.engines)
@@ -282,7 +283,7 @@ async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: P
     with pytest.raises(Refusal, match="filed under"):
         _ = await runtime.new_scenario(
             LONER3E,
-            ScenarioMeta(title="The Sunken Bell", premise="The tide."),
+            ScenarioMeta(title="The Sunken Bell", premise="The tide.", scope="One crossing."),
             None,
             ("srd",),
             "kael",
@@ -297,7 +298,11 @@ async def test_a_scenario_written_from_a_document_keeps_it_beside_the_world(tmp_
     runtime = Runtime(ui_settings(tmp_path, scenarios), spawner)
 
     name = await runtime.new_scenario(
-        LONER3E, ScenarioMeta(title="The Sunken Bell", premise=""), SOURCE_MD, ("srd",), "kael"
+        LONER3E,
+        ScenarioMeta(title="The Sunken Bell", premise="", scope="One crossing."),
+        SOURCE_MD,
+        ("srd",),
+        "kael",
     )
 
     assert (scenarios / name / "source.md").is_file()

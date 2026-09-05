@@ -10,7 +10,6 @@ from aidm.engines.twentyfourxx.world import (
     TwentyfourxxGame,
     TwentyfourxxWorld,
 )
-from support.scenes import HubNames, hub_campaign, hub_runs
 
 KESTREL = EntityId("kestrel")
 SABLE = EntityId("sable")
@@ -18,23 +17,6 @@ LOCKPICKS = EntityId("lockpicks")
 SITUATION = (
     "Cargo containers stack three high across the loading bay, and the station's night crew "
     "has just killed the lights for a scheduled power-saving cycle."
-)
-FIXER = EntityId("fixer")
-HUB_PLACE = "amber-tap"
-JOB_PLACE = "dock-run"
-HUB_SITUATION = "The bar is quiet before the evening rush, and the fixer's board is up on the wall."
-JOB_SITUATION = "The dockside warehouse is stacked with crates nobody has claimed in a week."
-JOB = "Sable wants the crates counted and hauled clear before the shift change; she pays on drop."
-NAMES = HubNames(
-    hub_place=HUB_PLACE,
-    hub_title="The Amber Tap",
-    hub_question="What job does Kael take off the board tonight?",
-    hub_situation=HUB_SITUATION,
-    job_place=JOB_PLACE,
-    job_title="The Dock Run",
-    job_question="Can Kael clear the warehouse before the shift change?",
-    job_situation=JOB_SITUATION,
-    terms=JOB,
 )
 
 
@@ -49,24 +31,9 @@ def small_world() -> TwentyfourxxGame:
     return TwentyfourxxGame(
         scenario_id="loading-bay",
         character_id="rook",
-        scenario=ScenarioMeta(title="Loading Bay", premise="A cargo job gone quiet."),
-        engine=EngineId("twentyfourxx"),
-        payload=world,
-    )
-
-
-def hub_world() -> TwentyfourxxGame:
-    fixer = Person(id=FIXER, name="Fixer", brief="Runs the board", known=True)
-    world = TwentyfourxxWorld(
-        cast={FIXER: fixer},
-        player=_player(),
-        runs=hub_runs(NAMES, keeper=FIXER),
-        campaign=hub_campaign(NAMES),
-    )
-    return TwentyfourxxGame(
-        scenario_id="amber-tap",
-        character_id="rook",
-        scenario=ScenarioMeta(title="The Amber Tap", premise="A hub campaign.", kind="campaign"),
+        scenario=ScenarioMeta(
+            title="Loading Bay", premise="A cargo job gone quiet.", scope="One tense night shift."
+        ),
         engine=EngineId("twentyfourxx"),
         payload=world,
     )

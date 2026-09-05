@@ -53,11 +53,6 @@ class LeaveParty(Frozen):
 
 
 class NextScene(Frozen):
-    job_done: bool = Field(
-        default=False,
-        description="A campaign only: settling this scene also finishes the job the player "
-        "walked out on.",
-    )
     pursuit: str = Field(
         default="",
         description="Set when the player has left this place for good with its question open: "
@@ -66,15 +61,3 @@ class NextScene(Frozen):
 
 
 type SharedChange = Reveal | Enter | Leave | Kill | JoinParty | LeaveParty
-
-
-class SceneCommission(Frozen):
-    kind: Literal["person", "thing", "rumour"] = Field(
-        description="What to ask for; each is a cast entry."
-    )
-    brief: str = Field(
-        min_length=20, description="Who or what it is and why the scene needs it, in a few lines."
-    )
-    later: bool = Field(
-        default=False, description="True to have it written into the next scene instead of now."
-    )

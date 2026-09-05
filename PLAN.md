@@ -74,10 +74,11 @@ Suggested split for the orchestrator: **A** (steps 1–6: `core/`, `engines/base
 `test_rooms.py`, `tests/ui/`), then **B** (steps 7–11: `engines/scenes/`, the three scene
 engines, `tests/core/test_scenes.py`, `tests/support/`, `tests/{loner3e,breathless,twentyfourxx}/`)
 and **C** (steps 12–13: `engines/rooms/`, `engines/tunnelgoons/`, `tests/core/test_rooms.py`,
-`tests/tunnelgoons/`) in parallel — C deletes its own imports of `the_campaign` and
-`aidm.engines.hub` and adds `scope=` to its own `ScenarioMeta(...)` literals, B owns
-`tests/support/table.py` — then **D** (steps 14–17: scenarios, documentation, fixtures) alone.
-The tree is red after A and green after D.
+`tests/tunnelgoons/`, `tests/support/tunnelgoons.py`) in parallel — C deletes its own imports of
+`the_campaign` and `aidm.engines.hub` and adds `scope=` to its own `ScenarioMeta(...)` literals,
+B owns `tests/support/table.py` — then **D** (steps 15–17: documentation, fixtures) alone. Step 14
+runs in A: `Frozen` forbids extra fields, so the shipped scenarios must lose `kind` before any test
+opens content. The tree is red after A and green after B and C, goldens aside.
 
 ### Steps
 
@@ -142,8 +143,10 @@ The tree is red after A and green after D.
    - Tests: delete `tests/core/test_hub.py`; in `tests/core/test_turn.py`,
      `test_game_service.py`, `test_master_tools.py`, `test_views.py`, `test_seam.py`,
      `test_decisions.py` and `tests/ui/test_launcher.py` delete every test of commissions,
-     chapters, kinds and the hub. New tests, one each: `render_master` prints THE SCOPE OF PLAY;
-     `render_history` binds nothing (a run of scenes renders as scenes only).
+     chapters, kinds and the hub. A test of the deleted cast bar whose subject is the re-prompt or
+     the `way_unwritten` path is re-targeted to an integrity refusal (an id that names nobody), not
+     deleted. New test, one: `render_master` prints THE SCOPE OF PLAY after SCENARIO. (No test of
+     `render_history` binding nothing: with `ChapterRecord` gone the type makes it impossible.)
 
 7. **`engines/scenes/drafts.py` — one scene draft, no hub drafts, no editorial minimums.**
    Delete `HubDraft`, `JobDraft`, `ReturnDraft`, `CastDraft`, `MIN_SITUATION`, `MIN_ARC` and the
@@ -203,8 +206,10 @@ The tree is red after A and green after D.
     it appends "The arc as last written: {arc}. Revise `arc` only where what happened warrants it;
     leave it empty to keep it." `write_next` always answers `NextDraft[self.cast]`. `install`
     returns the one `scene_opened` fact (card "New scene: {title}\nAt stake: {question}").
-    `guidance(picks)` loses `campaign`. `tools.py`: delete `SceneCommission` and
-    `NextScene.job_done`; `NEXT_SCENE` and `NextScene.pursuit` stay.
+    `guidance(picks)` loses `campaign`. `author` passes `meta.scope` to `render_opening` and answers
+    `SceneDraft[self.cast]`; `build_scenario` runs `scene_refusal` alone and `opening_canon(draft,
+    source)` builds no campaign. `tools.py`: delete `SceneCommission` and `NextScene.job_done`;
+    `NEXT_SCENE` and `NextScene.pursuit` stay.
 
 11. **The three scene engines and their support.** `loner3e/engine.py`: delete `GROWTH_NOTE`,
     `hub_phrase`, `finished_note`; `guidance(picks)`. `breathless/engine.py`: delete `hub_phrase`;
@@ -222,8 +227,8 @@ The tree is red after A and green after D.
     delete every test of the hub, jobs, boards, returns, commissions, arc rewrites and the
     editorial bars; every surviving `ScenarioMeta(...)` literal in these files gains `scope=`.
     New tests, one each: a scene naming no one but the player installs; a
-    `NextDraft` with an empty `arc` keeps the world's arc; the worldsmith prompt prints THE SCOPE
-    OF PLAY at the opening and in play.
+    `NextDraft` with an empty `arc` keeps the world's arc. (No test that the worldsmith prompt
+    prints THE SCOPE OF PLAY: that is prose.)
 
 12. **`engines/rooms/` — the map, its extension, nothing else.** `world.py`: delete
     `Visit.job`, `Visit.recap`, `RoomCanon.campaign`, `at_hub`, `walked_job`, `walked`,
@@ -240,7 +245,9 @@ The tree is red after A and green after D.
     `map_refusal` keeps `_start_unmet` (start in places, start known, every place reachable);
     `extension_refusal(draft, world)` keeps at least one place, start in places, start hidden,
     every place reachable, and `_overlap_unmet`. `worldsmith_prompt` gains `scope` (printed
-    after SOURCE MATERIAL) and loses `hub` and `asked`. `worldsmith.md`: the shortcut, locked way
+    after SOURCE MATERIAL) and loses `hub` and `asked`; `author` passes `meta.scope` to
+    `render_map`, `build_scenario` runs `map_refusal` alone and `opening_canon(draft, source)`
+    builds no campaign. `worldsmith.md`: the shortcut, locked way
     and hidden thing become advice ("a map plays best with…"); delete the tavern, job and
     THE GAME MASTER ASKED FOR paragraphs. `tools.py`: delete `RoomCommission`. `engine.py`: delete
     `REPORT_IN`, `REPORT_ROW`, `commission_tool`, `render_commission`, `hub_sections`, `fulfil`,
@@ -300,15 +307,16 @@ The tree is red after A and green after D.
 
 17. **Fixtures.** Regenerate and read. Expected changes, and nothing else:
     `prompts/<id>/master.txt`: THE SCOPE OF PLAY after SCENARIO, the "Ask for more" section gone,
-    the question heading, no JOBS SO FAR or THE BOARD; `prompts/<id>/narrator.txt`: unchanged
-    unless a golden turn's scene text changed; `schemas/<id>/master_tools.json`: `commission`
-    gone, `next_scene` without `job_done`; `turn/<id>.json`: no `commissions`, no `job`, no
-    `campaign`, `scope` in `scenario`, and `turn/tunnelgoons.json` visits without `recap`.
+    and every `rules.md` edit of steps 11 and 13 (the "## Campaigns" sections gone, the THE ARC
+    paragraph, Tunnel Goons' `level_up` and "map's end" lines); `prompts/<id>/narrator.txt`:
+    unchanged unless a golden turn's scene text changed; `schemas/<id>/master_tools.json`:
+    `commission` gone, `next_scene` without `job_done`, Tunnel Goons' `level_up` description;
+    `turn/<id>.json`: unchanged — they record a scripted turn's facts, not the game state.
     `scenarios/*/world.json` change only as step 14 says; `characters/kael/*.json` do not change.
 
 ### Done when
 
-- `grep -rnE "Campaign|Commission|ScenarioKind|at_hub|walked|job_done|hub_phrase|finished_note|reopening|debrief|ledger|Chapter|Board|Offer|GO_HOME|REPORT_IN|TAKE_JOB|question_heading|render_whole" src/ tests/` finds nothing.
+- `grep -rnwE "Campaign|Commission|ScenarioKind|at_hub|walked|job_done|hub_phrase|finished_note|reopening|debrief|Chapter|Board|Offer|GO_HOME|REPORT_IN|TAKE_JOB|question_heading|render_whole" src/ tests/ --include='*.py' --include='*.md'` finds nothing (whole words, code and prompts only: a pack's "Skate Board" and a test's "ledger" entity are not the deleted concepts).
 - All four engines start from the create page and play a turn; every scene engine settles a
   scene and moves on from the page; Tunnel Goons extends its map from the page.
 - `PROGRESS.md` holds the Phase 1 entry with both line counts. Full check green.
@@ -317,157 +325,125 @@ The tree is red after A and green after D.
 
 ## Phase 2 — the generation handoff, 24XX's jobs, the documentation
 
-Target: `src` grows by 150 to 250 lines over Phase 1's end.
+Target: `src` grows by 60 to 150 lines over Phase 1's end (7,965).
 
-Suggested split: **A** (steps 1–4: the handoff) and **B** (steps 5–6: 24XX) in parallel; they
-share no file. Then **C** (steps 7–8: documentation, fixtures).
+Suggested split: **A** (steps 1–3: the handoff) and **B** (steps 4–5: 24XX) in parallel; they
+share no file. Then **C** (steps 6–7: documentation, fixtures).
 
 ### The handoff, in one paragraph
 
-A scene engine's game master may introduce a complication: a newly authored situation in the
-place the player stands, written by the worldsmith. The ask is an argument of `next_scene`. It
-lands as a pending brief on the current run; every later tool call in that turn is answered with
-a wait line and changes nothing; the master exits; the turn narrates only what landed (the ask's
-fact is untold, so the narrator cannot assert an uninstalled scene); the turn commits. The
-service then writes and installs the new scene through `advance`, as it does for a player's
-pursuit, and narrates the arrival. If the write or the install fails, the committed turn stands,
-the brief stays on the run, the page disables the composer and offers one button that retries the
-write; nothing is replayed. If the write lands and the arrival's narration fails, the installed
-scene commits unnarrated, as a pursuit's does today: no second write. The brief on the run is the
-whole handoff state; a reload finds it in the save and offers the same retry. Room engines are
-untouched: a map extension still moves nobody and opens no scene.
+A scene engine's game master may bring a complication down on the place the player stands: a newly
+authored situation, written by the worldsmith. The ask is an argument of `next_scene`. It lands as
+`Game.handoff`, the brief, the one-field successor of `Game.commissions`; every later tool call in
+that turn is answered with a wait line and changes nothing; the master exits; the turn narrates
+only what landed (the ask's fact is untold, so the narrator cannot assert an uninstalled scene);
+the turn commits. The service then writes and installs the new scene through `advance`, as it does
+for a player's pursuit, and narrates the arrival under its own marker. A failed write is handled as
+a failed pursuit is today: the brief is cleared and `UNWRITTEN` is filed; the master asks again next
+turn if it still wants to. A reload that finds a brief in the save clears it: the write was lost
+with the process. If the write lands and the arrival's narration fails, the installed scene commits
+unnarrated, as a pursuit's does today. Room engines are untouched: a map extension still moves
+nobody and opens no scene. There is no retry button, no owed state and no brief on the run.
 
 ### Steps
 
-1. **`engines/scenes/` — the ask.** `world.py`: `SceneRun.complication: str = ""` (comment: the
-   game master's brief for the situation the worldsmith writes here once the turn ends).
-   `settle(pursuit: str, complication: str)`: refuses both set; refuses either on an
-   already-settled run; refuses a complication when one is pending ("a complication is already
-   pending: {brief}"); a complication sets `run.complication` and returns `[Fact(kind=
-   "complication_asked", told=False, trace="the worldsmith writes the complication once this
-   turn ends: {brief}. Nothing more lands this turn; stop and exit")]`; a pursuit is as in
-   Phase 1. `ready` (in `engine.py`) is `run.left is not None or bool(run.complication)`.
-   `tools.py`: `NextScene.complication: str = Field(default="", description="Set to change the
-   situation here without the player leaving: what arrives or turns, and why, for the worldsmith.
-   Written now, the turn ends; the player answers it next turn. Empty otherwise.")`; `NEXT_SCENE`
-   gains "or set `complication` to bring a new situation down on this place, only when
-   `change_world` (an arrival, a reveal, a death) cannot make it from what is here". `engine.py`:
-   `next_scene` passes both. `handoff(state) -> str | None` returns `run.complication or None`.
-   `advance` skips `self.leaving(draft)` when `run.complication` is set: the scene turns, it
-   does not end (Loner's `leaving` refills every luck pool). An installed complication leaves
-   its brief on the run it replaced, as the record of why the scene turned; `handoff` and
-   `ready` read the current run only, so an older run's brief is inert, not stale state.
-   `write_next`: when `world.run.complication` is set, the intent given to `render_next` is
-   `COMPLICATION.format(brief=world.run.complication)` (in `worldsmith.py`: "The game master
-   brings a complication down on the scene the player is in: {brief}. Write the situation it
-   makes as a new scene. The same `place` is allowed and usual; whoever is here stays unless the
-   brief moves them. Change the situation, not the player's answer to it: they have not acted, so
-   settle nothing for them."), else the intent as given. `crossing(state, pursuit)`: when
-   `run.complication` is set, returns `TURNING` (in `worldsmith.py`: "The situation changes where
-   the player stands, and they did nothing to bring it on. Write what arrives or turns, as they
-   see it, from SCENE and WHAT HAPPENED, and end on what it asks of them. They have not answered
-   it, so settle nothing."), else `CROSSING` as today. `install` is unchanged: the new run has an
-   empty `complication`, so `ready` and `handoff` fall back on their own.
+1. **`core/model.py` — the brief is the platform's.** `Game.handoff: str = ""` beside
+   `Game.pending` (comment: the brief a tool handed the worldsmith this turn; the platform writes
+   it once the turn ends, then clears it). Nothing else in `core/` changes.
 
-2. **`engines/seam.py` and `turn/run.py` — the platform half.** `Engine.handoff(self, state:
-   G) -> str | None` returns `None` (docstring: the brief a tool handed the worldsmith this turn;
-   the platform writes it once the turn ends). `turn/run.py`: `HANDOFF_WAIT = "the worldsmith
-   writes what you asked for once this turn ends. Stop here and exit."`; `Turn.call`, after the
-   pending-decision answer, returns `HANDOFF_WAIT` when `self.engine.handoff(self.draft)` is not
-   `None`. Nothing is counted per turn.
+2. **`engines/scenes/` — the ask.** `tools.py`: `NextScene.complication: str = Field(default="",
+   description="Set to change the situation here without the player leaving: what arrives or
+   turns, and why, for the worldsmith. Written now, the turn ends; the player answers it next turn.
+   Empty otherwise.")`; `NEXT_SCENE` gains "or set `complication` to bring a new situation down on
+   this place, only when `change_world` (an arrival, a reveal, a death) cannot make it from what is
+   here". `world.py`: `complicate(brief: str) -> Fact` refuses an already-settled run ("this scene
+   is already settled; the player has the way on") and returns `Fact(kind="complication_asked",
+   told=False, trace=f"the worldsmith writes the complication once this turn ends: {brief}. Nothing
+   more lands this turn; stop and exit")`; `settle(pursuit)` is as in Phase 1. `engine.py`:
+   `next_scene` refuses `pursuit` and `complication` both set ("a pursuit or a complication, not
+   both"); with a complication it sets `draft.handoff = args.complication` and returns
+   `[world.complicate(args.complication)]`; else `world.settle(args.pursuit)`. `crossing(state,
+   pursuit)` returns `TURNING` when `state.handoff` is set, else `CROSSING` as today. `write_next`:
+   when `draft.handoff` is set, the intent given to `render_next` is
+   `COMPLICATION.format(brief=draft.handoff)`, else the intent as given. `advance` skips
+   `self.leaving(draft)` when `draft.handoff` is set: the scene turns, it does not end (Loner's
+   `leaving` refills every luck pool). `install` and `ready` are unchanged. `worldsmith.py` gains
+   `COMPLICATION = "The game master brings a complication down on the scene the player is in:
+   {brief}. Write the situation it makes as a new scene. The same `place` is allowed and usual;
+   whoever is here stays unless the brief moves them. Change the situation, not the player's answer
+   to it: they have not acted, so settle nothing for them. `recap` is the scene as it stood before
+   it turned: what the player did here so far, for the game master and for you."` and `TURNING =
+   "The situation changes where the player stands, and they did nothing to bring it on. Write what
+   arrives or turns, as they see it, from SCENE and WHAT HAPPENED, and end on what it asks of them.
+   They have not answered it, so settle nothing."`.
 
-3. **`app/runtime.py` — the write after the turn, and the retry.** `play` refuses at its top
-   when `self.engine.handoff(self.state)` is not `None`: "the worldsmith owes the scene the game
-   master asked for; write it first". Its tail becomes: after `self._present()`, when the game
-   is not over, `await self._grow(turn.prompt, brief)` for a pursuit crossing as today, else
-   `await self._resume()` when `self.engine.handoff(state)` is not `None`; then `_present`.
-   `_resume()` (private, no guards: `play` calls it while its own phase is still set): `asked =
-   self.engine.handoff(self.state)`, `brief = self.engine.crossing(self.state, asked)`, `await
-   self._grow(asked, brief, marker=HELD, unwritten=COMPLICATION_UNWRITTEN)`. `resume()`
-   (public, the page's retry): refuses when busy ("a turn is already in flight") or when nothing
-   is owed, sets `self.phase` and clears it in a `finally`, never sets `self.intent` (the page
-   shows `intent` as the player's bubble, and the brief is the game master's), and calls
-   `_resume()` then `_present()`. `_grow` gains two keywords with today's values as defaults:
-   `marker: str = CROSSED` (the prompt a failed or arrived write is filed under) and `unwritten:
-   Fact = UNWRITTEN`; its body is otherwise unchanged. New constants beside `CROSSED`: `HELD =
-   "(the situation holds)"` and `COMPLICATION_UNWRITTEN = Fact(kind="complication_unwritten",
-   told=True, trace="the complication could not be written", card="The situation could not be
-   written. Press Write it to try again, or restart.")`. `UNWRITTEN` keeps its text: a failed
-   pursuit and a failed room extension have no Write it button. On failure the run keeps its
-   brief; on an unnarrated arrival the installed scene commits with its cards, as today.
+3. **`turn/run.py`, `app/runtime.py`, `ui/game.py` — the platform half.** `turn/run.py`:
+   `HANDOFF_WAIT = "the worldsmith writes what you asked for once this turn ends. Stop here and
+   exit."`; `Turn.call`, after the pending-decision answer, returns `HANDOFF_WAIT` when
+   `self.draft.handoff` is set. Nothing is counted per turn. `app/runtime.py`: `HELD = "(the
+   situation holds)"` beside `CROSSED`; `_grow(intent, brief, *, marker: str = CROSSED)`: `marker`
+   replaces both literal `CROSSED` uses, and both paths set `draft.handoff = ""` before their
+   commit (the failed path on its fresh draft). `play`'s tail, after `self._present()` and when the
+   game is not over: a pursuit crossing grows as today; else when `state.handoff` is set, `await
+   self._grow(state.handoff, self.engine.crossing(state, state.handoff), marker=HELD)`; then
+   `_present`. `_resumable` sets `state.handoff = ""` before returning the state. `ui/game.py`
+   `chat`: `HELD` joins `BEGUN` and `CROSSED` as a story marker, never the player's bubble;
+   `journal` needs no change (it prints the prompt as the turn's title). Tests, one each:
+   `tests/core/test_turn.py`, a call after the ask answers `HANDOFF_WAIT` and lands no fact;
+   `tests/core/test_game_service.py`, a turn with an ask commits, then writes and installs the scene
+   in the same place with the cast kept, one master spawn, the arrival filed under `HELD`; a failed
+   write leaves the turn committed, clears the brief and files `UNWRITTEN`; a save carrying a brief
+   loads with it cleared; `tests/core/test_scenes.py`, `next_scene` with both set is refused and
+   `complicate` on a settled run is refused.
 
-4. **`ui/game.py` — the retry button, the disabled composer.** `Observed` gains `owed: bool`
-   (`session.engine.handoff(session.state) is not None`). `can_type(player, phase, *, owed:
-   bool)` is false while owed; `_placeholder` reads "The worldsmith owes the scene. Press Write
-   it." while owed. `way_on_panel`, while owed, shows the banner "the situation is changing"
-   with the button "Write it", whose handler returns on `refuse_play()` and otherwise awaits
-   `self._run(self.session.resume)`; the Move on button is hidden while owed. `chat` and
-   `journal` render `HELD` beside `BEGUN` and `CROSSED` as a story marker, never as the player's
-   words. Tests, one each (`tests/core/test_turn.py`, `test_game_service.py`,
-   `tests/core/test_scenes.py`, `tests/ui/test_game.py`): a call after the ask answers
-   `HANDOFF_WAIT` and lands no fact; a turn with an ask commits, then writes and installs the
-   scene in the same place with the cast kept, with no second master spawn; a failed write keeps
-   the turn, the brief and offers `resume`, and `resume` installs without re-running the turn's
-   tools; a failed arrival narration commits the installed scene once; `can_type` is false while
-   owed.
+4. **`engines/twentyfourxx/` — the job is the engine's.** `world.py`: `TwentyfourxxWorld.job: str
+   = ""` (the terms of the job the operator is on; empty between jobs). `tools.py`:
+   `TakeJob(terms: str = Field(min_length=1, description="Who wants what done, what done looks
+   like, what it pays, as agreed."))`; `FinishJob(skill: str = Field(min_length=1, description="The
+   skill the job called on, named by the player, to raise."))`; delete `AfterJob`. `engine.py`:
+   `take_job` refuses when a job is open ("a job is open: {terms}"), else sets `world.job` and
+   returns `[player.fact("job_taken", f"the job is taken: {terms}", card=f"Job taken\n{terms}")]`;
+   `finish_job` refuses when no job is open ("no job is open to finish"), else raises the skill,
+   rolls the d6 of credits, clears `world.job` and returns the three facts `after_job` returns
+   today, the first carded "Job done: {label} d{die}". `master_tools`: `take_job` and `finish_job`
+   replace `after_job`. 24XX then counts sixteen (`change_world` and its nine arms, `next_scene`,
+   `attempt`, `test_luck`, `defend`, `take_job`, `finish_job`), one over fifteen and under the
+   twenty the standing rule allows an engine whose SRD plays a crew; step 5 names that allowance in
+   `docs/24XX.md`. No fold is made for the count's sake. `sheet_sections` adds `("THE JOB",
+   world.job)` when set; `panels` adds `Panel(title="Job", rows=(PanelRow(label=world.job,
+   detail=""),))` when set. `rules.md`: replace "## Job done" with "## Jobs": "`take_job` when the
+   player agrees to work, with the terms as agreed; the job then stands under THE JOB. `finish_job`
+   once, when the story and the player's own words close it: it raises the skill the player names,
+   pays the d6 of credits and clears the job. Neither tool is needed for work the player never
+   takes on." Tests, one each, in `tests/twentyfourxx/test_tools.py`: a second `take_job` is
+   refused; `finish_job` without a job is refused; `finish_job` pays once and a second call is
+   refused.
 
-5. **`engines/twentyfourxx/` — the job is the engine's.** `world.py`: `class
-   TwentyfourxxWorld(SceneWorld[Person, Operator])` with `job: str = ""` (the terms of the job
-   the operator is on; empty between jobs); `TwentyfourxxGame`, `TwentyfourxxScenario`,
-   `TwentyfourxxCharacter` as they are. `tools.py`: `TakeJob(terms: str = Field(min_length=1,
-   description="Who wants what done, what done looks like, what it pays, as agreed."))`;
-   `FinishJob(skill: str = Field(default="", description="The skill the job called on, named by
-   the player, to raise. Empty opens the pick to the player."))`; delete `AfterJob`.
-   `engine.py`: `take_job` refuses when a job is open ("a job is open: {terms}"), else sets
-   `world.job` and returns `player.fact("job_taken", "the job is taken: {terms}", card="Job
-   taken\n{terms}")`; `finish_job` refuses when no job is open ("no job is open to finish");
-   with an empty `skill` it sets `draft.pending = PendingDecision(kind="job-done", prompt="The
-   job is done. Which skill rises?", options=(...), allows_text=False)` and returns `[]`; the
-   options are one `PendingOption(id=slug(label, ()), label=label, name="finish_job",
-   args={"skill": label})` per skill of the game's packs (`self.packs[p].skills for p in
-   draft.packs`, de-duplicated by label, in pack order) whose die on the sheet is not d12; with
-   a skill it raises the skill, rolls the d6 of credits, clears `world.job` and returns the
-   three facts `after_job` returned, the first carded "Job done: {label} d{die}".
-   `master_tools`: `take_job` and `finish_job` replace `after_job`. 24XX then counts sixteen
-   (`change_world` and its nine arms, `next_scene`, `attempt`, `test_luck`, `defend`,
-   `take_job`, `finish_job`), one over fifteen and under the twenty the standing rule allows an
-   engine whose SRD plays a crew; step 6 names that allowance in `docs/24XX.md`. No fold is made
-   for the count's sake. `sheet_sections` adds `("THE JOB", world.job)` when set; `panels` adds
-   `Panel(title="Job", rows=(PanelRow(label=world.job, detail=""),))` when set. `rules.md`:
-   replace "## Job done" with "## Jobs": "`take_job` when the player agrees to work, with the
-   terms as agreed; the job then stands under THE JOB. `finish_job` once, when the story and the
-   player's own words close it: it raises the skill the player names, pays the d6 of credits and
-   clears the job. Empty `skill` asks the player which skill rises. Neither tool is needed for
-   work the player never takes on." Tests, one each, in `tests/twentyfourxx/test_tools.py`: a
-   second `take_job` is refused; `finish_job` without a job is refused; `finish_job` pays once
-   and a second call is refused; an empty `skill` opens the decision and its option finishes.
+5. **`docs/24XX.md`.** Tool list: `take_job`, `finish_job` replace `after_job`. Add a deviation:
+   the SRD's job-finding roll is not played; work arrives in the fiction and `take_job` records it.
+   Count: sixteen, under the twenty allowed an engine whose SRD plays a crew (starships, help dice,
+   "make a new character to introduce ASAP"); this file is where `CLAUDE.md` says that allowance is
+   named.
 
-6. **`docs/24XX.md`.** Tool list: `take_job`, `finish_job` replace `after_job`. Add a
-   deviation: the SRD's job-finding roll is not played; work arrives in the fiction and
-   `take_job` records it. Count: sixteen, under the twenty allowed an engine whose SRD plays a
-   crew (starships, help dice, "make a new character to introduce ASAP"); this file is where
-   `CLAUDE.md` says that allowance is named.
+6. **Documentation.** `README.md`: line 9 gains "and writes the complication the game master brings
+   down on a scene"; after the scenario paragraph Phase 1 wrote, add the handoff paragraph above,
+   shortened to four sentences. `CLAUDE.md` design decisions: add "Generation is an engine handoff:
+   a tool hands the worldsmith a brief through `Game.handoff`, the turn ends, the platform writes
+   and installs after it, and a failed write is filed as a failed pursuit is. There is no
+   commission queue, no retry state and no same-turn respawn." and "24XX owns its job lifecycle in
+   its world and tools; no other engine has a job."
 
-7. **Documentation.** `README.md`: line 9 gains "and writes the complication the game master
-   brings down on a scene"; after the scenario paragraph Phase 1 wrote, add the handoff
-   paragraph above, shortened to four sentences. `CLAUDE.md` design decisions: add "Generation
-   is an engine handoff: a tool hands the worldsmith a brief, the turn ends, the platform writes
-   and installs after it, and a failed write is retried from the page. There is no commission
-   queue and no same-turn respawn." and "24XX owns its job lifecycle in its world and tools; no
-   other engine has a job."
-
-8. **Fixtures.** Regenerate and read. Expected: `schemas/<id>/master_tools.json` for the three
-   scene engines gain `complication` on `next_scene`; `twentyfourxx` also swaps `after_job` for
-   `take_job` and `finish_job`; `prompts/twentyfourxx/master.txt` changes by the rules text;
-   `turn/twentyfourxx.json` gains `"job": ""` and every scene engine's `turn/<id>.json` gains
-   `"complication": ""` on each run. Nothing else.
+7. **Fixtures.** Regenerate and read. Expected: `schemas/<id>/master_tools.json` for the three scene
+   engines gain `complication` on `next_scene`; `twentyfourxx` also swaps `after_job` for `take_job`
+   and `finish_job`; `prompts/twentyfourxx/master.txt` changes by the rules text. `turn/<id>.json`
+   are fact lists and do not change. Nothing else.
 
 ### Done when
 
 - A scene engine's master can call `next_scene` with `complication`, every later call answers
-  `HANDOFF_WAIT`, and the player reads the arrival in the same place with the cast kept, with
-  one master spawn for the turn. A worldsmith that fails leaves the turn committed and the
-  "Write it" button working; a reload shows the same button.
+  `HANDOFF_WAIT`, and the player reads the arrival in the same place with the cast kept, with one
+  master spawn for the turn. A worldsmith that fails leaves the turn committed, the brief cleared
+  and `UNWRITTEN` filed; a reload never finds a brief.
 - 24XX pays a job once; a second `take_job`, a `finish_job` without a job, and a second
   `finish_job` are refused.
 - `grep -rn "commission" src/ docs/ README.md CLAUDE.md` finds nothing.

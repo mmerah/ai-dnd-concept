@@ -4,7 +4,6 @@ from pathlib import Path
 from random import Random
 
 import pytest
-from pydantic import JsonValue
 from support.loner import initialized, loner_sheet, open_game
 from support.table import Table, changed, narrated, play_turn, the_way_on, tool_call
 
@@ -15,18 +14,12 @@ from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import outcome_for
 from aidm.engines.loner3e.world import Loner3eGame
-from aidm.engines.seam import WORLDSMITH_WAIT
 from aidm.turn.run import Turn
 
 MAP = EntityId("vault-map")
 FOUND = changed("reveal", entity_id="vault-map")
 TAKEN = changed("change_tags", entity_id=PLAYER_ID, kind="gear", gained=["the vault map"])
 ASKED = tool_call("roll_question", actor_id=PLAYER_ID, question="Does the door give?")
-A_WITNESS: dict[str, JsonValue] = {"kind": "person", "brief": "A witness who saw the theft happen."}
-A_LEDGER: dict[str, JsonValue] = {
-    "kind": "thing",
-    "brief": "A ledger that names who else was paid.",
-}
 
 
 def _scene(**changes: object) -> str:
@@ -266,34 +259,13 @@ async def test_two_rolls_in_one_turn_do_not_read_the_same_dice(tmp_path: Path) -
     assert first != second
 
 
-def test_a_commission_now_answers_the_wait_line_and_so_does_the_next_call() -> None:
-    engine, state = initialized()
-    turn = Turn.begin(engine, state, Answer(text="I ask around."), Random(1))
-
-    first = turn.call("commission", {**A_WITNESS, "later": False})
-    second = turn.call("next_scene", {})
-
-    assert WORLDSMITH_WAIT in first
-    assert second == WORLDSMITH_WAIT
-
-
-def test_a_second_commission_in_one_turn_is_refused() -> None:
-    engine, state = initialized()
-    turn = Turn.begin(engine, state, Answer(text="I ask for help twice."), Random(1))
-
-    _ = turn.call("commission", {**A_WITNESS, "later": True})
-
-    with pytest.raises(Refusal, match="one commission per turn"):
-        turn.call("commission", {**A_LEDGER, "later": True})
-
-
 def test_a_refused_call_leaves_the_turn_the_dice_it_had() -> None:
     engine, state = initialized()
     turn = Turn.begin(engine, state, Answer(text="I try the door."), Random(1))
     before = turn.rng.getstate()
 
     with pytest.raises(ValueError, match="the rules said no"):
-        _ = turn.apply(_rolls_then_refuses)
+        _ = turn._apply(_rolls_then_refuses)  # pyright: ignore[reportPrivateUsage]
 
     assert turn.rng.getstate() == before
 
@@ -353,13 +325,3 @@ async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_a
     assert all(
         fact.kind != "way_unwritten" for fact in table.service.engine.history(state)[-1].facts
     )
-
-
-def test_a_later_commission_on_order_refuses_another_next_turn() -> None:
-    engine, state = initialized()
-    first = Turn.begin(engine, state, Answer(text="I ask for help."), Random(1))
-    _ = first.call("commission", {**A_WITNESS, "later": True})
-    second = Turn.begin(engine, first.finish(()), Answer(text="I ask again."), Random(1))
-
-    with pytest.raises(Refusal, match="already on order"):
-        second.call("commission", {**A_LEDGER, "later": True})

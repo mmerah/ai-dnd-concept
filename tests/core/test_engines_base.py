@@ -4,7 +4,7 @@ from support.loner import initialized
 
 from aidm.core.entities import EntityId
 from aidm.core.views import Subject
-from aidm.engines.base import Counter, Person, Thing, here_panel
+from aidm.engines.base import Counter, Person, Thing, here_panel, named_unmet
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
 
 KAEL = Loner3eSheet(id=EntityId("kael"), name="Kael", brief="", known=True)
@@ -59,3 +59,14 @@ def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> 
     player.luck.current = 0
     (own,) = player.luck.change(player, 1, "Luck", "the strain")
     assert own.card == "Luck +1 -> 1/6"
+
+
+def test_named_unmet_finds_multi_word_names_case_folded_and_bare_ids() -> None:
+    text = "The Bell Tower looms over the square; a bell rings, and old-tom watches."
+    entities = [
+        Thing(id=EntityId("bell-tower"), name="Bell Tower", brief=""),
+        Thing(id=EntityId("the-bell"), name="Bell", brief=""),
+        Thing(id=EntityId("town-square"), name="town square", brief=""),
+        Thing(id=EntityId("old-tom"), name="Tom", brief=""),
+    ]
+    assert named_unmet(text, entities) == ["Bell Tower", "Tom"]

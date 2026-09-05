@@ -65,11 +65,6 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
     world_type = TunnelGoonsWorld
 
     def master_tools(self) -> tuple[MasterTool[TunnelGoonsGame], ...]:
-        level_desc = (
-            "Raise one ability and either Health or Inventory Score by 1 at an adventure's end. "
-            "In a campaign, call it when the job's dungeon is done; the tavern then closes the "
-            "job as finished."
-        )
         return (
             master_tool("change_world", CHANGE_WORLD, ChangeWorld, self.change_world),
             master_tool(
@@ -96,7 +91,13 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
                 NoArgs,
                 self.rest,
             ),
-            master_tool("level_up", level_desc, LevelUp, self.level_up),
+            master_tool(
+                "level_up",
+                "Raise one ability and either Health or Inventory Score by 1, once, at the "
+                "adventure's end.",
+                LevelUp,
+                self.level_up,
+            ),
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
@@ -211,7 +212,5 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         else:
             player.inventory += 1
         player.level += 1
-        if (job := world.walked_job()) is not None:
-            job.finished = True
         card = f"Level {player.level}: {args.ability.capitalize()} +1, {args.boost.capitalize()} +1"
         return [player.fact("levelled_up", card, card=card)]

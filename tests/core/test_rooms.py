@@ -79,7 +79,9 @@ def _place(place_id: EntityId, name: str, *, known: bool) -> Place:
 def _scenario() -> SixthScenario:
     warden = Dweller(id=WARDEN, name="Warden", brief="Keeps the gate", known=True, place=GATE)
     return SixthScenario(
-        meta=ScenarioMeta(title="The Keep", premise="A keep with one gate."),
+        meta=ScenarioMeta(
+            title="The Keep", premise="A keep with one gate.", scope="One keep, one visit."
+        ),
         engine=SIXTH,
         packs=(),
         payload=RoomCanon[Dweller](
@@ -107,7 +109,6 @@ def test_a_sixth_room_engine_begins_a_playable_game(tmp_path: Path) -> None:
     state = engine.begin("the-keep", _scenario(), character)
 
     assert engine.master_sections(state)[0] == ("CURRENT PLACE", "Gate[gate]\nGate")
-    assert "commission" in engine.tools
     ways_out = next(
         panel for panel in engine.player_view(state).panels if panel.title == "Ways out"
     )

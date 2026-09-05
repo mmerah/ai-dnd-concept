@@ -1,10 +1,7 @@
-from support.table import the_campaign
-from support.tunnelgoons import HALL, MIRA, START, TAVERN, hub_world, small_world
+from support.tunnelgoons import HALL, MIRA, small_world
 
 from aidm.core.entities import EntityId
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.hub import Job
-from aidm.engines.rooms.engine import REPORT_ROW
 from aidm.engines.rooms.world import Item, Visit
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 
@@ -55,34 +52,6 @@ def test_master_sections_lists_an_item_an_npc_here_is_holding() -> None:
     )
     sections = dict(ENGINE.master_sections(state))
     assert "Mira's Key" in sections["HERE WITH THE PLAYER"]
-
-
-def test_a_stroll_with_no_job_open_shows_the_board_not_report_in() -> None:
-    state = hub_world()
-    world = state.payload
-    world.visits = [Visit(place=TAVERN), Visit(place=START), Visit(place=TAVERN)]
-
-    view = ENGINE.player_view(state)
-
-    board = next(panel for panel in view.panels if panel.title == "Board")
-    assert board.rows == the_campaign(world.campaign).board_rows()
-    assert not any(panel.title == "Jobs" for panel in view.panels)
-
-
-def test_a_job_open_at_the_hub_shows_only_report_in_on_the_board() -> None:
-    state = hub_world()
-    world = state.payload
-    world.visits = [
-        Visit(place=TAVERN),
-        Visit(place=START, job="Bandits"),
-        Visit(place=TAVERN, job="Bandits"),
-    ]
-    the_campaign(world.campaign).jobs = [Job(title="Bandits", place=START, open=True)]
-
-    view = ENGINE.player_view(state)
-
-    board = next(panel for panel in view.panels if panel.title == "Board")
-    assert board.rows == (REPORT_ROW,)
 
 
 def test_entity_line_marks_a_dead_npc_and_the_players_carried_over_score() -> None:

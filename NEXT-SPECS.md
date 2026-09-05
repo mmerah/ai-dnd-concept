@@ -4,7 +4,7 @@ Tracks A through F of the 2026-09-02 brainstorm became `PLAN.md` and were cut fr
 Track R (the seam refactor) became PLAN.md Phase 5 the same day and was cut too. What stays:
 the maintainer's decisions, Track G (the party, then crews), and what was left in `IDEAS.md`
 or refused. Track G becomes its own `PLAN.md` when PLAN.md's seven phases have landed and the
-campaign has been played through once with the recap. Counts and names below are as written
+game has been played through once. Counts and names below are as written
 on 2026-09-02; the code after Phase 2 is the reference for the party helpers Track G quotes
 (`check_party`, `join_party`, `leave_party`, `Person`).
 
@@ -25,7 +25,9 @@ on 2026-09-02; the code after Phase 2 is the reference for the party helpers Tra
    may go to twenty in all; its `docs/<ENGINE>.md` says so. No fold is made for the count's
    sake. Since 2026-09-04 the cap reads: at most fifteen engine tools plus `commission`, the
    platform's, counted as tools plus `change_world` arms, the two shared party arms not counted.
+   Since 2026-09-05 `commission` is gone; the cap is fifteen engine tools, counted as before.
 5. **Campaign refinements are all built**, except moving home, which stays in `IDEAS.md`.
+   Since 2026-09-05 the campaign layer is gone (PLAN.md Phase 1); moving home went with it.
 6. **`VISION.md` is deleted** after its non-goals and turn steps move. `COMPETITOR-RESEARCH.md`
    stays as a reference to other projects. PLAN.md Phase 6.2 (rewrite VISION's architecture)
    is skipped: Track F deletes the file.
@@ -34,7 +36,7 @@ on 2026-09-02; the code after Phase 2 is the reference for the party helpers Tra
    the party the player leads; the master applies the engine's own help knob. Then engine
    layers on top: 24XX sheets, help dice, the ship and succession; Tunnel Goons goons who roll
    and level. Retires PLAN.md settled 17 (no companions gained) and 19's "no crew list"; closes
-   `docs/24XX.md` deviations 1, 2, 4 and the ship half of 5, and `docs/BREATHLESS.md` 5.
+   `docs/24XX.md` deviations 1, 2, 3 and the ship half of 4, and `docs/BREATHLESS.md` 5.
 8. Ponytail audit: dropped. Eval loop (IDEAS 4): stays in `IDEAS.md`.
 
 Standing rules from `CLAUDE.md` bind every track: engines self-contained under 2,000 lines; one-way
@@ -139,7 +141,7 @@ and no crew (its "the cast carries no dice" stands until 24XX has played). G is 
 - **Views and prompts.** The `Party` panel shows a sheeted member's `rows()`; the master's `THE
   PARTY` prints sheets; `worldsmith.py AUTHORING` ("the cast carries no dice") and the `attempt`
   description are rewritten; `worldsmith.md` says a sheet is for someone who could plausibly be
-  hired, at most one per scene. `docs/24XX.md`: deviations 1, 2, 4 close; 5 splits into "the
+  hired, at most one per scene. `docs/24XX.md`: deviations 1, 2, 3 close; 4 splits into "the
   priced gear table is not transcribed" (stays) and the ship (closes).
 
 ### G.3 Tunnel Goons crew
@@ -161,7 +163,7 @@ deviation 1 (the level-up cadence) stays.
    the two arms, nothing else.
 2. 24XX: `Sheet`, `actor_id` on the tools, `helped_by`, `AfterJob.raises`, the android case, the
    panel rows, `rules.md`, `AUTHORING`, `worldsmith.md`, `docs/24XX.md`.
-3. 24XX: the ship and succession; `scenarios/amber-tap` gains a sheeted regular and a ship.
+3. 24XX: the ship and succession; a 24XX scenario gains a sheeted regular and a ship.
 4. Tunnel Goons: G.3.
 5. Docs; `IDEAS.md` 16 leaves.
 

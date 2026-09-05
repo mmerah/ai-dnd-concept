@@ -4,11 +4,8 @@ from typing import Self
 from pydantic import model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal
-from aidm.core.facts import DICE
 from aidm.core.play import (
-    ChapterRecord,
     Exchange,
-    HistoryRecord,
     Line,
     Narration,
     PendingDecision,
@@ -112,37 +109,25 @@ def lines_of(parts: Iterable[str]) -> str:
     return "\n".join(parts) or "- (none)"
 
 
-def render_history(records: Sequence[HistoryRecord]) -> str:
+def render_history(records: Sequence[SceneRecord]) -> str:
     """Every role reads the story back through this: the last two scenes whole, older ones bound."""
-    if not any(record.exchanges for record in records if isinstance(record, SceneRecord)):
+    if not any(record.exchanges for record in records):
         return "(the game has not started yet)"
     total = len(records)
     return "\n\n".join(_block(record, index, total) for index, record in enumerate(records))
 
 
-def told_narration(records: Sequence[HistoryRecord]) -> tuple[str, ...]:
+def told_narration(records: Sequence[SceneRecord]) -> tuple[str, ...]:
     """What the player has already read, so continuity costs the narrator no hidden canon."""
     return tuple(
         exchange.narration
         for record in records[-WHOLE_SCENES:]
-        if isinstance(record, SceneRecord)
         for exchange in record.exchanges[-SCENE_EXCHANGES:]
         if exchange.narration
     )
 
 
-def render_whole(scenes: Sequence[SceneRecord]) -> str:
-    """Every exchange and every fact, told or not: what the worldsmith reads to sum a job up."""
-    return "\n\n".join(_whole_scene(scene) for scene in scenes)
-
-
-def _block(record: HistoryRecord, index: int, total: int) -> str:
-    if isinstance(record, ChapterRecord):
-        return (
-            f"CLOSED: {record.title} ({record.verdict})\n"
-            f"what happened: {record.summary}\n"
-            f"scenes: {'; '.join(record.scenes)}"
-        )
+def _block(record: SceneRecord, index: int, total: int) -> str:
     header = _header(record)
     if index >= total - WHOLE_SCENES:
         body = _told(record.exchanges[-SCENE_EXCHANGES:])
@@ -162,13 +147,3 @@ def _told(exchanges: Sequence[Exchange]) -> str:
         "\n\n".join(f"> {exchange.prompt}\n{exchange.narration}" for exchange in exchanges)
         or "(nothing yet)"
     )
-
-
-def _whole_scene(scene: SceneRecord) -> str:
-    body = "\n\n".join(_whole_exchange(exchange) for exchange in scene.exchanges) or "(nothing yet)"
-    return f"{_header(scene)}\n\n{body}"
-
-
-def _whole_exchange(exchange: Exchange) -> str:
-    facts = "\n".join(f"- {fact.trace}" for fact in exchange.facts if fact.kind != DICE)
-    return "\n".join(part for part in (f"> {exchange.prompt}", facts, exchange.narration) if part)

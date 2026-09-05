@@ -48,15 +48,13 @@ None. The starting item list is in the SRD's character creation.
 - `unlock_way` — open a locked way once the story has dealt with it.
 - `action_roll` — 2d6 plus an ability and helpful items, against a Difficulty Score or an npc.
 - `rest` — heal the player to full Health in a safe spot.
-- `level_up` — raise one ability and either Health or Inventory by 1, once per adventure in a one-shot, once per job in a campaign.
-- `commission` (platform, not counted) — ask the worldsmith for an npc, an item or a region, now or for
-  the next region.
+- `level_up` — raise one ability and either Health or Inventory by 1, once, at the adventure's end.
 
 The three `change_world` arms are `engines/rooms/tools.py`'s, shared by every room engine, and count here as before.
 
 ## Deviations in this repo
 
-1. Levelling up is an end-of-adventure step the master calls once per adventure in a one-shot and once per job in a campaign. The SRD page says "every 2 game sessions", the 1.1 PDF "at the end of a game session"; an adventure is the closest thing this app has to a session.
+1. Levelling up is an end-of-adventure step the master calls once per adventure. The SRD page says "every 2 game sessions", the 1.1 PDF "at the end of a game session"; an adventure is the closest thing this app has to a session.
 
 ## What the AI game master adds
 

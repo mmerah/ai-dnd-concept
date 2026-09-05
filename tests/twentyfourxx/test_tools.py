@@ -1,12 +1,11 @@
 from random import Random
 
 import pytest
-from support.table import change, refused, the_campaign
-from support.twentyfourxx import KESTREL, LOCKPICKS, hub_world, small_world
+from support.table import change, refused
+from support.twentyfourxx import KESTREL, LOCKPICKS, small_world
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.hub import JOB_DONE
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.engines.twentyfourxx.tools import AfterJob, Defend, Roll
@@ -201,20 +200,6 @@ def test_next_scene_settles_and_refuses_a_second_call() -> None:
     assert facts[0].kind == "scene_settled"
     with pytest.raises(Refusal, match="already settled"):
         _ = ENGINE.next_scene(draft, NextScene(), Random(0))
-
-
-def test_next_scene_with_job_done_settles_the_job_and_is_refused_at_the_hub() -> None:
-    draft = hub_world()
-    world = draft.payload
-    facts = ENGINE.next_scene(draft, NextScene(job_done=True), Random(0))
-    assert world.run.left is not None
-    assert the_campaign(world.campaign).jobs[-1].finished
-    assert JOB_DONE in facts
-
-    at_hub = hub_world()
-    at_hub.payload.runs = [at_hub.payload.runs[0]]
-    with pytest.raises(Refusal, match="no job is open here"):
-        _ = ENGINE.next_scene(at_hub, NextScene(job_done=True), Random(0))
 
 
 def test_leave_takes_a_cast_member_out() -> None:

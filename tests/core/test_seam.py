@@ -50,7 +50,6 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, Pack]):
     cast = Person
     pack = Pack
     world_type = FifthState
-    hub_phrase = "a taproom and its regulars"
 
     def master_tools(self) -> tuple[MasterTool[FifthGame], ...]:
         return ()
@@ -65,7 +64,7 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, Pack]):
             payload=Person(id=PLAYER_ID, name=name, brief=brief, known=True),
         )
 
-    def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
+    def guidance(self, picks: Sequence[Slug]) -> str:
         return "Write the taproom plainly."
 
     def master_sections(self, state: FifthGame) -> Sections:
@@ -109,7 +108,11 @@ def test_a_pack_with_doubled_keys_is_refused(tmp_path: Path) -> None:
 def _scenario() -> FifthScenario:
     keeper = Person(id=KEEPER, name="Keeper", brief="Keeps the taproom", known=True)
     return FifthScenario(
-        meta=ScenarioMeta(title="The Taproom", premise="A quiet night that will not stay quiet."),
+        meta=ScenarioMeta(
+            title="The Taproom",
+            premise="A quiet night that will not stay quiet.",
+            scope="One evening at the taproom, start to close.",
+        ),
         engine=FIFTH,
         packs=("srd",),
         payload=SceneCanon(
@@ -133,7 +136,6 @@ def test_a_fifth_scene_engine_begins_a_playable_game(tmp_path: Path) -> None:
 
     assert engine.pack_options() == (DecisionOption(id="srd", label="The SRD"),)
     assert engine.instructions == "Roll high."
-    assert "commission" in engine.tools
     assert engine.narrator_view(state).title == "The Taproom"
     assert engine.master_sections(state) == (("SCENE", "The Taproom"),)
     assert [row.label for row in engine.player_view(state).panels[-2].rows] == [

@@ -41,13 +41,7 @@ from aidm.engines.twentyfourxx.world import (
     TwentyfourxxWorld,
     raised,
 )
-from aidm.engines.twentyfourxx.worldsmith import AUTHORING, BOARD_GUIDANCE, Pack
-
-# Read by the next turn, which is usually the next offer click: the note must stand on its own.
-JOB_DONE_NOTE = (
-    "The job {title} is closed and was completed. The SRD's after-a-job step applies: call "
-    "`after_job` once, with the skill the player names, else the skill the job called on."
-)
+from aidm.engines.twentyfourxx.worldsmith import AUTHORING, Pack
 
 
 class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
@@ -64,8 +58,6 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
     cast = Person
     pack = Pack
     world_type = TwentyfourxxWorld
-    hub_phrase = "the fixer and the regulars"
-    finished_note = JOB_DONE_NOTE
 
     def master_tools(self) -> tuple[MasterTool[TwentyfourxxGame], ...]:
         return (
@@ -193,9 +185,9 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
         sheet = self.player_of(character)
         return (*sheet.rows(), ("Gear", ", ".join(item.name for item in sheet.items.values())))
 
-    def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
+    def guidance(self, picks: Sequence[Slug]) -> str:
         """This pack holds creation tables, not setting vocabulary: the preamble alone suffices."""
-        return "\n\n".join((AUTHORING, BOARD_GUIDANCE)) if campaign else AUTHORING
+        return AUTHORING
 
     def sheet_sections(self, state: TwentyfourxxGame) -> Sections:
         lines = [

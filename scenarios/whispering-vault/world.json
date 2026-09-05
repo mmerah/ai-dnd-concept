@@ -1,7 +1,8 @@
 {
   "meta": {
     "title": "The Whispering Vault",
-    "premise": "The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit."
+    "premise": "The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit.",
+    "scope": "One night in the abbey, from the study to the vault and out again. Reaching what is sealed below, or learning why it was sealed, brings the scenario toward an ending; what Kael carries out can follow him into other stories."
   },
   "engine": "loner3e",
   "packs": [

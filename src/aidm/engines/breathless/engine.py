@@ -57,7 +57,6 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
     cast = Person
     pack = Pack
     world_type = BreathlessWorld
-    hub_phrase = "a camp or a safe house, whoever holds it and the regulars"
 
     def master_tools(self) -> tuple[MasterTool[BreathlessGame], ...]:
         return (
@@ -148,7 +147,7 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
         sheet = self.player_of(character)
         return (*sheet.rows(), ("Backpack", ", ".join(item.name for item in sheet.items.values())))
 
-    def guidance(self, picks: Sequence[Slug], *, campaign: bool) -> str:
+    def guidance(self, picks: Sequence[Slug]) -> str:
         selected = {
             pack_id: self.packs[pack_id].model_dump(
                 mode="json", include={"locations", "complications", "missions"}

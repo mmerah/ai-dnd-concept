@@ -1,5 +1,4 @@
 import pytest
-from support.scenes import BOARD
 from support.table import (
     BREATHLESS,
     ENGINES_BUILT,
@@ -15,7 +14,6 @@ from aidm.core.entities import EntityId, Refusal
 from aidm.core.io import decode
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.hub import Campaign
 from aidm.engines.scenes.world import SceneCanon, SceneRun
 from aidm.engines.seam import AnyEngine
 from aidm.engines.twentyfourxx.world import (
@@ -57,23 +55,6 @@ def test_a_scenario_with_an_uninstalled_pack_is_refused_by_check_packs() -> None
         engine.validate(updated(state, packs=(SRD_PACK, "uninstalled")))
 
 
-def test_check_game_refuses_a_campaign_meta_with_no_hub() -> None:
-    engine, state = _twentyfourxx_game()
-    campaign_meta = state.scenario.model_copy(update={"kind": "campaign"})
-    with pytest.raises(Refusal, match="campaign"):
-        engine.validate(updated(state, scenario=campaign_meta))
-
-
-def test_check_game_refuses_a_hub_with_a_one_shot_meta() -> None:
-    engine, state = _twentyfourxx_game()
-    world = state.payload
-    hub_payload = world.model_copy(
-        update={"campaign": Campaign(place=world.run.place, board=BOARD)}
-    )
-    with pytest.raises(Refusal, match="one-shot"):
-        engine.validate(updated(state, payload=hub_payload))
-
-
 def test_restored_round_trips() -> None:
     engine, state = _twentyfourxx_game()
     assert engine.restore(decode(state.model_dump_json())) == state
@@ -82,7 +63,7 @@ def test_restored_round_trips() -> None:
 def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
     decoy = Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
     scenario = TwentyfourxxScenario(
-        meta=ScenarioMeta(title="Test", premise="A test scenario."),
+        meta=ScenarioMeta(title="Test", premise="A test scenario.", scope="One tense night."),
         engine=TWENTYFOURXX,
         packs=(SRD_PACK,),
         payload=SceneCanon(

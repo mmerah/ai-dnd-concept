@@ -15,4 +15,3 @@
 - [] 17: Real 3D dice: a physics canvas; the CSS tumble is the cheap version.
 - [] 18: Maze Rats returns, self-contained on the same seam: the audited rules live in git at 2c3e8a5 and its docs/MAZE-RATS.md at 62f95c6; the return rewrites the world on its own strict actor/item/place model and fits 2,000 lines by dropping nothing the SRD prints.
 - [] 19: A Pokémon-style engine with battles delegated to Pokémon Showdown. The point is the boundary: AIDM runs the RPG, Showdown runs the fight, neither reads the other's internals.
-- [] 20: Moving home, for a campaign whose base moves; no SRD prints it, so it waits. Sketch, about 70 lines: `SceneWorld.hubs` becomes a tuple with `at_hub = place == hubs[-1]`, one `MOVE_HOME` row on the board, `HubDraft` reused to write the new home, and a "New home: <title>" card for the player.

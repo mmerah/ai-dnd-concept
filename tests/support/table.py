@@ -17,9 +17,8 @@ from aidm.config import Role, Settings
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import Library, decode
-from aidm.core.model import AnyGame, ScenarioKind
+from aidm.core.model import AnyGame
 from aidm.core.play import Answer
-from aidm.engines.hub import Campaign
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
 
@@ -51,32 +50,26 @@ def updated[T: BaseModel](model: T, **changes: object) -> T:
     return type(model).model_validate(model.model_dump(round_trip=True) | changes)
 
 
-def scenario_for(engine_id: EngineId, kind: ScenarioKind = "one-shot") -> Slug:
+def scenario_for(engine_id: EngineId) -> Slug:
     """Read off the shipped content rather than tabulated, so a second one fails here loudly."""
     matches = [
         slug
         for slug, scenario in LIBRARY.read_scenarios(SCENARIO_MODELS)
-        if scenario.engine == engine_id and scenario.meta.kind == kind
+        if scenario.engine == engine_id
     ]
     if len(matches) != 1:
-        raise ValueError(f"{engine_id!r} ships {len(matches)} {kind} scenarios, not one: {matches}")
+        raise ValueError(f"{engine_id!r} ships {len(matches)} scenarios, not one: {matches}")
     return matches[0]
 
 
-def game(engine_id: EngineId, kind: ScenarioKind = "one-shot") -> tuple[AnyEngine, AnyGame]:
+def game(engine_id: EngineId) -> tuple[AnyEngine, AnyGame]:
     """The scenario authored for this engine and the shipped character, composed together."""
     engine = ENGINES_BUILT[engine_id]
-    scenario_id = scenario_for(engine_id, kind)
+    scenario_id = scenario_for(engine_id)
     selected_scenario = LIBRARY.read_scenario(scenario_id, SCENARIO_MODELS)
     selected_character = LIBRARY.read_character("kael", engine.id, engine.character)
     begun = engine.begin(scenario_id, selected_scenario, selected_character)
     return engine, begun
-
-
-def the_campaign(campaign: Campaign | None) -> Campaign:
-    """The campaign a test built the world with, narrowed once."""
-    assert campaign is not None
-    return campaign
 
 
 def change_args(verb: str, **fields: JsonValue) -> dict[str, JsonValue]:
