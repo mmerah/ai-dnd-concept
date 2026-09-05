@@ -3,7 +3,7 @@ from typing import Self
 
 from pydantic import model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal
+from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal, Slug
 from aidm.core.play import (
     Exchange,
     Line,
@@ -27,18 +27,26 @@ class Subject(Frozen):
     brief: str
 
 
-# Three row shapes, told apart in this order: a way on (`intent`), an entity (`icon_id`),
-# a labelled value (`detail`), else a bare label.
+# Three row shapes, told apart in this order: an entity (`icon_id`), a labelled value
+# (`detail`), else a bare label.
 class PanelRow(Frozen):
     label: str
     detail: str
     icon_id: EntityId | None = None
-    intent: str = ""
 
 
 class Panel(Frozen):
     title: str
     rows: tuple[PanelRow, ...]
+
+
+class Action(Frozen):
+    """A way on the engine offers the page; the page sends its id back with the player's words."""
+
+    id: Slug
+    label: str
+    detail: str = ""
+    intent: str = ""  # already resolved by the rules: the page sends it, asking for no words
 
 
 class NarratorView(Frozen):
@@ -98,6 +106,7 @@ class PlayerView(Frozen):
     player: Subject
     panels: tuple[Panel, ...]
     prompt: PendingDecision | None
+    action: Action | None
     over: str | None
 
 
@@ -139,7 +148,7 @@ def _block(record: SceneRecord, index: int, total: int) -> str:
 
 
 def _header(scene: SceneRecord) -> str:
-    return f"SCENE: {scene.title}\n{scene.focus}"
+    return f"SCENE: {scene.title}" + (f"\n{scene.focus}" if scene.focus else "")
 
 
 def _told(exchanges: Sequence[Exchange]) -> str:

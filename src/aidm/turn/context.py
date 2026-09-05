@@ -45,7 +45,7 @@ def render_narrator(
             ("YOUR ROLE", _prompt("narrator")),
             ("WHAT THE PLAYER HAS READ", told_history(scenes)),
             ("SCENE", f"{view.title}\n{view.situation}"),
-            ("WHAT THIS SCENE IS ABOUT", view.focus),
+            *((("WHAT THIS SCENE IS ABOUT", view.focus),) if view.focus else ()),
             (
                 "WHO IS HERE",
                 lines_of(f"- {subject.name} — {subject.brief}" for subject in view.subjects),

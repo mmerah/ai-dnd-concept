@@ -7,8 +7,16 @@ from typing import Any
 from aidm.core.entities import Refusal, Slug, parse
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
-from aidm.core.model import AnyCharacter, AnyScenario, Game, ScenarioMeta, WorldsmithAnswer
+from aidm.core.model import (
+    AnyCharacter,
+    AnyScenario,
+    Game,
+    Generation,
+    ScenarioMeta,
+    WorldsmithAnswer,
+)
 from aidm.core.views import (
+    Action,
     NarratorView,
     Panel,
     PanelRow,
@@ -25,6 +33,10 @@ from aidm.engines.rooms.worldsmith import MAP_ASK, extension_refusal, map_refusa
 from aidm.engines.seam import Engine
 
 WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
+EXTEND: Slug = "extend"
+MORE_MAP = Action(
+    id=EXTEND, label="More map", detail="The map runs out here: say where you push on."
+)
 
 
 class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
@@ -41,6 +53,8 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
     def validate(self, state: G) -> None:
         if state.packs:
             raise Refusal(f"{self.title} has no table sets")
+        if state.generation is not None and state.generation.operation != EXTEND:
+            raise Refusal(f"a room engine cannot write {state.generation.operation!r}")
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> RoomWorld[N, P]:
         self.check_scenario(scenario)
@@ -115,6 +129,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
                 trail_panel(world.require_place(v.place).name for v in world.visits),
             ),
             prompt=state.pending,
+            action=MORE_MAP if world.frontier() == 0 else None,
             over=self.over(state),
         )
 
@@ -132,14 +147,16 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         prompt = self.render_map(source, meta.scope)
         return await self.compose(worldsmith, prompt, self.map_draft(), built, playable)
 
-    def ready(self, state: G) -> bool:
-        return self.world(state).frontier() == 0
+    def act(self, draft: G, action: Slug, words: str) -> None:
+        if action != EXTEND or self.world(draft).frontier():
+            raise Refusal("the map still has ways to walk; the page was drawn before them")
+        draft.generation = Generation(operation=EXTEND, brief=words)
 
     async def advance(
-        self, draft: G, intent: str, worldsmith: WorldsmithAnswer
-    ) -> tuple[Fact, ...]:
-        extension = await self.write_extension(draft, intent, worldsmith)
-        return tuple(self.install_extension(draft, extension))
+        self, draft: G, request: Generation, worldsmith: WorldsmithAnswer
+    ) -> tuple[tuple[Fact, ...], str | None]:
+        extension = await self.write_extension(draft, request.brief, worldsmith)
+        return tuple(self.install_extension(draft, extension)), None
 
     def shared_change(self, world: RoomWorld[N, P], change: SharedChange) -> list[Fact]:
         match change:

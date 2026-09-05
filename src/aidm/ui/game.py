@@ -14,7 +14,7 @@ from aidm.config import Role
 from aidm.core.entities import EntityId
 from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import Answer
-from aidm.core.views import PlayerView
+from aidm.core.views import Action, PlayerView
 from aidm.ui.widgets import (
     avatar,
     decision_widget,
@@ -51,17 +51,18 @@ class Observed:
     phase: Role | None
     facts: int
     exchanges: int
-    ready: bool
+    action: Action | None
     over: str | None
 
     @classmethod
     def of(cls, session: GameService) -> Self:
+        view = session.player_view()
         return cls(
             session.phase,
             0 if session.turn is None else len(session.turn.facts),
             len(session.engine.history(session.state)),
-            session.engine.ready(session.state),
-            session.player_view().over,
+            view.action,
+            view.over,
         )
 
 
@@ -75,12 +76,12 @@ class GamePage:
         self.shown_clip: Path | None = None
         self.autoplay_clip: Path | None = None
         self.transcript: ui.scroll_area
-        self.seen: Observed = Observed(None, 0, 0, False, None)
+        self.seen: Observed = Observed(None, 0, 0, None, None)
         self.step_started: float | None = None
         self.ticker: ui.label | None = None
         self.box: ui.input
         self.send: ui.button
-        self.move_on_button: ui.button
+        self.action_button: ui.button
         self.over_label: ui.label
 
     def build(self) -> None:
@@ -202,8 +203,9 @@ class GamePage:
 
     @ui.refreshable_method
     def way_on_panel(self) -> None:
-        """The banner, not the offer: legible after a reload, once the asking has scrolled away."""
-        if not self.session.engine.ready(self.session.state):
+        """The banner: legible after a reload, once the asking has scrolled away."""
+        action = self.session.player_view().action
+        if action is None:
             return
         with (
             ui.row()
@@ -212,9 +214,15 @@ class GamePage:
         ):
             ui.icon("arrow_forward").classes("game-card-icon")
             ui.label("there is more beyond here").classes("text-xs font-bold game-outcome")
-            ui.label("keep playing, or say what you pursue and press Move on").classes(
-                "text-xs opacity-60"
-            )
+            if action.intent:
+                ui.button(action.label, on_click=partial(self.take, action)).props(
+                    "no-caps outline dense"
+                )
+                ui.label(action.intent).classes("text-xs opacity-70")
+            else:
+                ui.label(f"{action.detail} Press {action.label} with your words.").classes(
+                    "text-xs opacity-60"
+                )
 
     @ui.refreshable_method
     def decision_panel(self) -> None:
@@ -225,7 +233,7 @@ class GamePage:
         async def answer(option_id: str) -> None:
             if self.refuse_play():
                 return
-            await self._send(Answer(option_id=option_id))
+            await self._run(lambda: self.session.play(Answer(option_id=option_id)))
 
         with ui.column().classes("game-card game-decision w-full").style("gap: 0.5rem"):
             with ui.row().classes("items-center no-wrap").style("gap: 0.4rem"):
@@ -248,13 +256,7 @@ class GamePage:
                     if not panel.rows:
                         ui.label("nothing").classes("text-sm opacity-60 mt-2")
                     for row in panel.rows:
-                        if row.intent:
-                            ui.button(row.label, on_click=partial(self.move_on, row.intent)).props(
-                                "no-caps outline dense"
-                            )
-                            if row.detail:
-                                ui.label(row.detail).classes("text-xs opacity-70")
-                        elif row.icon_id is not None:
+                        if row.icon_id is not None:
                             entity_row(session.icon(row.icon_id), row.label, row.detail)
                         elif row.detail:
                             labeled_value(row.label, row.detail)
@@ -292,8 +294,8 @@ class GamePage:
                 js_handler="(e) => { if (e.shiftKey) return; e.preventDefault(); emit(); }",
             )
             self.send = ui.button(icon="send", on_click=self.submit).props("round flat")
-            self.move_on_button = ui.button(
-                "Move on", icon="arrow_forward", on_click=lambda: self.submit(moving_on=True)
+            self.action_button = ui.button(
+                icon="arrow_forward", on_click=lambda: self.submit(acting=True)
             ).props("no-caps outline dense")
 
     def poll_turn(self) -> None:
@@ -331,25 +333,26 @@ class GamePage:
         ui.notify(refusal, type="warning")
         return True
 
-    async def submit(self, moving_on: bool = False) -> None:
+    async def submit(self, acting: bool = False) -> None:
         box = self.box
         typed = (box.value or "").strip()
         LOGGER.info("player submitted prompt: non_empty=%s busy=%s", bool(typed), self.session.busy)
         if not typed or self.refuse_play():
             return
+        action = self.session.player_view().action
         box.value = ""
         # Quasar never saw the typed value change, so only an explicit push empties the composer.
         box.run_method("updateValue")
-        await self._send(Answer(text=typed), moving_on=moving_on)
+        if acting and action is not None:
+            await self._run(lambda: self.session.act(action.id, typed))
+        else:
+            await self._run(lambda: self.session.play(Answer(text=typed)))
 
-    async def move_on(self, intent: str) -> None:
+    async def take(self, action: Action) -> None:
+        """The action the rules already resolved: its own words go, and the page asks for none."""
         if self.refuse_play():
             return
-        pending = self.session.player_view().prompt
-        if pending is not None and not pending.allows_text:
-            ui.notify("Choose an option above.", type="warning")
-            return
-        await self._send(Answer(text=intent), moving_on=True)
+        await self._run(lambda: self.session.act(action.id, action.intent))
 
     async def restart(self) -> None:
         if self.refuse_play():
@@ -364,8 +367,10 @@ class GamePage:
         typing = can_type(player, session.phase)
         self.box.set_enabled(typing)
         self.send.set_enabled(typing)
-        self.move_on_button.set_enabled(typing)
-        self.move_on_button.set_visibility(session.engine.ready(session.state))
+        action = player.action
+        self.action_button.set_enabled(typing)
+        self.action_button.set_visibility(action is not None and not action.intent)
+        self.action_button.set_text("" if action is None else action.label)
         self.over_label.set_text(player.over or "")
         self.box.props(f'placeholder="{_placeholder(player, session.phase)}"')
 
@@ -375,7 +380,7 @@ class GamePage:
 
     async def _run(self, playing: Callable[[], Awaitable[None]]) -> None:
         """The composer greys at once, not at the next tick: a second Enter has nothing to hit."""
-        for widget in (self.box, self.send, self.move_on_button):
+        for widget in (self.box, self.send, self.action_button):
             widget.set_enabled(False)
         try:
             async with working():
@@ -389,9 +394,6 @@ class GamePage:
         if not self.session.unopened():
             return
         await self._run(self.session.open)
-
-    async def _send(self, answer: Answer, *, moving_on: bool = False) -> None:
-        await self._run(lambda: self.session.play(answer, moving_on=moving_on))
 
 
 def game_page(runtime: Runtime, session: GameService) -> None:

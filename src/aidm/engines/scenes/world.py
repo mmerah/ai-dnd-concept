@@ -6,6 +6,7 @@ from pydantic import Field, model_validator
 from aidm.core.entities import (
     CheckedEntityId,
     EntityId,
+    Frozen,
     Mutable,
     Refusal,
     Slug,
@@ -14,16 +15,18 @@ from aidm.core.entities import (
 )
 from aidm.core.facts import Fact
 from aidm.core.play import Exchange, SceneRecord
-from aidm.core.views import Panel, PanelRow, Sections, lines_of
+from aidm.core.views import Action, Panel, PanelRow, Sections, lines_of
 from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, World, check_filing, sentence
 from aidm.engines.scenes.drafts import NextDraft, SceneDraft
 
+MOVE_ON: Slug = "move-on"
+GO_ON: Slug = "go-on"
 SCENE_SETTLED = Fact(
     kind="scene_settled",
     trace=(
-        "this scene is settled. Bring it to a close, then ask the player what they want to "
-        "pursue next — in the fiction, naming what the scene left open, never as a list of "
-        "choices. They may also stay and keep playing here, so ask; do not push them out"
+        "this scene offers a way on. Ask the player what they want to pursue next — in the "
+        "fiction, naming what the scene left open, never as a list of choices. They may also "
+        "stay and keep playing here, so ask; do not push them out"
     ),
     told=True,
 )
@@ -38,18 +41,29 @@ SCENE_LEFT = Fact(
 )
 
 
+class Invitation(Frozen):
+    """A useful stopping point: the player may stay, or name where they go next."""
+
+
+class Departure(Frozen):
+    """The player has left, as the rules played it; the page carries them on in these words."""
+
+    pursuit: str = Field(min_length=1)
+
+
+type Offer = Invitation | Departure
+
+
 class SceneRun(Mutable):
     # Names the art cache entry, so returning to a place reuses its picture.
     place: Slug
     title: str
-    # The player reads it; settling it ends the scene.
-    question: str = Field(min_length=1)
+    focus: str = ""  # what the scene is about, read by the player; empty says nothing
     situation: str = Field(min_length=1)
     here: list[CheckedEntityId] = Field(default_factory=list)
     exchanges: list[Exchange] = Field(default_factory=list)
-    # None while open; "" once settled here; the player's words when they left for elsewhere
-    left: str | None = None
-    recap: str = ""  # written when the player left
+    offer: Offer | None = None
+    recap: str = ""  # written when the scene was left or turned
 
 
 class SceneCanon[C: Person](Mutable):
@@ -65,7 +79,7 @@ class SceneCanon[C: Person](Mutable):
         check_filing(self.cast)
         check_named(self.opening.here, self.cast)
         opening = self.opening
-        if opening.exchanges or opening.left is not None or opening.recap:
+        if opening.exchanges or opening.offer is not None or opening.recap:
             raise ValueError("an opening with play in it")
         return self
 
@@ -131,7 +145,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
         return tuple(
             SceneRecord(
                 title=run.title,
-                focus=run.question,
+                focus=run.focus,
                 recap=run.recap,
                 exchanges=tuple(run.exchanges),
             )
@@ -261,22 +275,25 @@ class SceneWorld[C: Person, P: Person](World[P]):
         return [entity.fact("party_left", trace, card=f"{entity.name} leaves your party")]
 
     def settle(self, pursuit: str) -> list[Fact]:
-        self._require_open()
-        self.run.left = pursuit
-        return [SCENE_LEFT if pursuit else SCENE_SETTLED]
+        if isinstance(self.run.offer, Departure):
+            raise Refusal("the player has left this scene; the page carries them on")
+        if pursuit:
+            self.run.offer = Departure(pursuit=pursuit)
+            return [SCENE_LEFT]
+        if self.run.offer is not None:
+            raise Refusal("this scene already offers the way on; play on, or send them off")
+        self.run.offer = Invitation()
+        return [SCENE_SETTLED]
 
-    def complicate(self, brief: str) -> Fact:
-        self._require_open()
-        return Fact(
-            kind="complication_asked",
-            told=False,
-            trace=f"the worldsmith writes the complication once this turn ends: {brief}. "
-            "Nothing more lands this turn; stop and exit",
-        )
-
-    def _require_open(self) -> None:
-        if self.run.left is not None:
-            raise Refusal("this scene is already settled; the player has the way on")
+    def offered(self) -> Action | None:
+        match self.run.offer:
+            case Invitation():
+                detail = "Keep playing, or say where you go and move on."
+                return Action(id=MOVE_ON, label="Move on", detail=detail)
+            case Departure(pursuit=pursuit):
+                return Action(id=GO_ON, label="Go on", intent=pursuit)
+            case None:
+                return None
 
     def merged_cast(self, cast: Mapping[EntityId, C]) -> dict[EntityId, C]:
         return {
@@ -315,18 +332,10 @@ class SceneWorld[C: Person, P: Person](World[P]):
         rows = tuple(PanelRow(label=m.name, detail=m.brief, icon_id=m.id) for m in members)
         return (Panel(title="Party", rows=rows),)
 
-    def scene_rows(self) -> tuple[PanelRow, ...]:
-        rows = [PanelRow(label=self.run.question, detail="")]
-        if (left := self.run.left) is not None:
-            if left:
-                rows.append(PanelRow(label="Go on", detail=left, intent=left))
-            else:
-                rows.append(
-                    PanelRow(
-                        label="Way on", detail="Keep playing, or name where you go and move on."
-                    )
-                )
-        return tuple(rows)
+    def scene_panel(self) -> tuple[Panel, ...]:
+        if not self.run.focus:
+            return ()
+        return (Panel(title="This scene", rows=(PanelRow(label=self.run.focus, detail=""),)),)
 
 
 def check_named(here: Sequence[EntityId], cast: Mapping[EntityId, Thing]) -> None:
@@ -362,7 +371,7 @@ def run_of[C: Person](draft: SceneDraft[C], here: list[EntityId]) -> SceneRun:
     return SceneRun(
         place=draft.place,
         title=draft.title,
-        question=draft.question,
+        focus=draft.focus,
         situation=draft.situation,
         here=here,
     )

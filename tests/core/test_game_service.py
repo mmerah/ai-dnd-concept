@@ -5,17 +5,21 @@ import pytest
 from support.loner import TARGET, open_game, session
 from support.table import (
     ScriptedSpawner,
+    changed,
     narrated,
     offline_settings,
     play_turn,
+    the_way_on,
     tool_call,
     updated,
 )
 
-from aidm.app.runtime import OPENING_MARK, TURNING_MARK, Runtime
+from aidm.app.runtime import OPENING_MARK, STORY_MARK, Runtime
 from aidm.core.entities import Refusal
 from aidm.core.io import FileStore
-from aidm.core.model import AnyGame, ScenarioMeta
+from aidm.core.model import AnyGame, Generation, ScenarioMeta
+from aidm.engines.base import PLAYER_ID
+from aidm.engines.scenes.world import Invitation
 
 
 class _UnsavableStore(FileStore):
@@ -124,7 +128,7 @@ def _scene(**changes: object) -> str:
         "the ledgers while Mara flattens herself against the shelves.",
         "present": ["mara"],
         "hidden": [],
-        "question": "Can you deal with the second crew before they find the stair down?",
+        "focus": "Can you deal with the second crew before they find the stair down?",
         "recap": "The player was keeping watch on the study door when a second crew broke in.",
         "arc": "",
     }
@@ -147,15 +151,15 @@ async def test_a_complication_writes_and_installs_at_the_same_place(tmp_path: Pa
     exchanges = state.payload.exchanges()
     assert len(exchanges) == 2
     assert exchanges[0].prompt == "I keep watch on the study door."
-    assert exchanges[1].prompt == TURNING_MARK
+    assert exchanges[1].prompt == STORY_MARK
     assert state.payload.run.place == place
     assert all(entity_id in state.payload.cast for entity_id in here_before)
     assert [role for role, _ in table.spawner.prompts].count("master") == 1
-    assert state.handoff == ""
+    assert state.generation is None
 
 
 async def test_a_complication_does_not_refill_the_players_spent_luck(tmp_path: Path) -> None:
-    """The scene turns, it does not end: a handoff must not run Loner's own scene-closing refill."""
+    """The scene turns, it does not end: a complication runs no scene-closing refill."""
     table = open_game(tmp_path)
     table.state.payload.player.luck.current = 2
     table.service.commit(table.state)
@@ -169,7 +173,7 @@ async def test_a_complication_does_not_refill_the_players_spent_luck(tmp_path: P
     )
 
     installed = state.payload.exchanges()[-1]
-    assert installed.prompt == TURNING_MARK
+    assert installed.prompt == STORY_MARK
     assert all(fact.kind != "counter_changed" for fact in installed.facts)
     assert state.payload.player.luck.current == 2
 
@@ -187,17 +191,49 @@ async def test_a_failed_write_after_a_complication_leaves_the_turn_committed(
     )
 
     exchange = state.payload.exchanges()[-1]
-    assert exchange.prompt == TURNING_MARK
+    assert exchange.prompt == STORY_MARK
     assert exchange.facts[0].kind == "way_unwritten"
-    assert state.handoff == ""
+    assert state.generation is None
     assert state.payload.run.title == title
 
 
-def test_a_reload_clears_a_saved_brief(tmp_path: Path) -> None:
+async def test_a_complication_after_an_offer_clears_it_only_once_installed(
+    tmp_path: Path,
+) -> None:
+    table = open_game(tmp_path)
+    complication = tool_call("next_scene", complication="A second crew breaches the study door.")
+    _ = await play_turn(table, "I have what I came for.", the_way_on())
+
+    state = await play_turn(table, "I keep watch.", complication)
+    assert state.payload.run.offer == Invitation()
+
+    table.spawner.answers["worldsmith"] = [_scene()]
+    state = await play_turn(table, "I keep watching.", complication, arrival="Torchlight.")
+    assert state.payload.run.offer is None
+    assert state.payload.run.title == "The Abbot's Study, Disturbed"
+
+
+async def test_no_generation_runs_once_the_game_is_over(tmp_path: Path) -> None:
+    table = open_game(tmp_path)
+    table.spawner.answers["worldsmith"] = [_scene()]
+
+    state = await play_turn(
+        table,
+        "I keep watch, whatever comes.",
+        changed("kill", entity_id=PLAYER_ID),
+        tool_call("next_scene", complication="A second crew breaches the study door."),
+    )
+
+    assert table.service.engine.over(state) is not None
+    assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
+    assert len(state.payload.runs) == 1
+
+
+def test_a_reload_clears_a_saved_request(tmp_path: Path) -> None:
     game = session(tmp_path)
-    saved = game.state.model_copy(update={"handoff": "A crew breaks in."}).commit()
-    FileStore(tmp_path).save(TARGET.slug, saved)
+    asked = Generation(operation="complication", brief="A crew breaks in.")
+    FileStore(tmp_path).save(TARGET.slug, game.state.model_copy(update={"generation": asked}))
 
     reloaded = session(tmp_path)
 
-    assert reloaded.state.handoff == ""
+    assert reloaded.state.generation is None

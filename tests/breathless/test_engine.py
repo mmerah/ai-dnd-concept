@@ -56,7 +56,7 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
             opening=SceneRun(
                 place="alley",
                 title="The Alley",
-                question="Can they lose the mob in the alley?",
+                focus="Can they lose the mob in the alley?",
                 situation="A" * 80,
             ),
         ),

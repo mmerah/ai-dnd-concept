@@ -65,7 +65,7 @@ def _next_scene(
     return SceneDraft[Loner3eSheet](
         place="cloister",
         title="The Cloister",
-        question="Does the cloister walk still reach the stair?",
+        focus="Does the cloister walk still reach the stair?",
         situation=SITUATION,
         present=present,
         hidden=hidden,
@@ -92,7 +92,7 @@ def test_someone_left_behind_is_refilled_when_the_scene_moves_on() -> None:
 
     facts = (
         *ENGINE.leaving(draft),
-        *ENGINE.install(draft, _next_scene(present=(), hidden=(TOMAS,))),
+        *ENGINE.install(draft, _next_scene(present=(), hidden=(TOMAS,)), "the story moves to"),
     )
 
     assert MARA not in draft.payload.party

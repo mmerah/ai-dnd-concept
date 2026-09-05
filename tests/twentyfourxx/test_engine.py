@@ -71,7 +71,7 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
             opening=SceneRun(
                 place="airlock",
                 title="The Airlock",
-                question="Can they reach the control deck before the air runs out?",
+                focus="Can they reach the control deck before the air runs out?",
                 situation="A" * 80,
             ),
         ),

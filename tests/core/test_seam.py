@@ -120,7 +120,7 @@ def _scenario() -> FifthScenario:
             opening=SceneRun(
                 place="taproom",
                 title="The Taproom",
-                question="Who is asking after Wren?",
+                focus="Who is asking after Wren?",
                 situation=SITUATION,
                 here=[KEEPER],
             ),

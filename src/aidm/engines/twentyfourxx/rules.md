@@ -62,11 +62,9 @@ work the player never takes on.
 
 ## Let the player choose where the story goes
 
-Every scene has one question, given to you as THE QUESTION THIS SCENE SETTLES. Play until it is settled — answered, refused, or made moot by what the player did. NOTES FROM THE RULES may also tell you a scene looks finished.
+WHAT THIS SCENE IS ABOUT, when given, is what the scene is for; play it out. When the scene reaches a useful stopping point — what it was for is answered, refused, or made moot by what the player did — call `next_scene` once with nothing set. The Narrator then asks the player what they want to pursue. Do not decide for them, do not offer them a list, and do not describe the next place.
 
-When it is settled, call `next_scene` once. The Narrator then closes the scene and asks the player what they want to pursue. Do not decide for them, do not offer them a list, and do not describe the next place.
-
-A scene is one place. When the player leaves it for good with the question open — through a grate, out a door, off the map — call `next_scene` with `pursuit`: where they are going, in their own words. Play the leaving, never the arrival; the worldsmith writes where they land.
+A scene is one place. When the player leaves it for good — through a grate, out a door, off the map — call `next_scene` with `pursuit`: where they are going, in their own words. Play the leaving, never the arrival; the worldsmith writes where they land. Leaving is played like any other action: an obstacle in the way is a roll or a refusal, not a formality.
 
 The player is not forced to leave. They may keep playing here, and you keep playing with them; the scene stays open until they say where they are going. Their answer is what the next scene is built from.
 

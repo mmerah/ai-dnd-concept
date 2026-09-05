@@ -16,6 +16,7 @@ from aidm.core.model import (
     AnyScenario,
     EngineHeader,
     Game,
+    Generation,
     ScenarioMeta,
     WorldsmithAnswer,
 )
@@ -47,14 +48,6 @@ class Engine[P: Person, G: Game[Any]](ABC):
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
         return ()
-
-    def crossing(self, state: G, pursuit: str) -> str | None:
-        """The narrator's brief for the arrival; None where the world grows without a turn."""
-        return None
-
-    def page_word(self, state: G, intent: str) -> bool:
-        """The page's own words for leaving: the narrator alone plays the goodbye."""
-        return False
 
     def check_character(self, character: AnyCharacter) -> None:
         if character.engine != self.id:
@@ -196,9 +189,11 @@ class Engine[P: Person, G: Game[Any]](ABC):
         playable: Callable[[AnyScenario], str | None],
     ) -> AnyScenario: ...
     @abstractmethod
-    def ready(self, state: G) -> bool: ...
+    def act(self, draft: G, action: Slug, words: str) -> None:
+        """The page's action against the state now: refuse it stale, else request or note."""
+
     @abstractmethod
     async def advance(
-        self, draft: G, intent: str, worldsmith: WorldsmithAnswer
-    ) -> tuple[Fact, ...]:
-        """Write the world on, then install it on `draft`; raise when either will not hold."""
+        self, draft: G, request: Generation, worldsmith: WorldsmithAnswer
+    ) -> tuple[tuple[Fact, ...], str | None]:
+        """Write and install on `draft`; the facts, and what to tell the narrator, if anything."""

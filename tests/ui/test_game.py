@@ -7,7 +7,7 @@ WREN = Subject(id=EntityId("player"), name="Wren", brief="A quiet scout")
 
 
 def _view(prompt: PendingDecision | None = None, over: str | None = None) -> PlayerView:
-    return PlayerView(player=WREN, panels=(), prompt=prompt, over=over)
+    return PlayerView(player=WREN, panels=(), prompt=prompt, action=None, over=over)
 
 
 def _pick(*, allows_text: bool) -> PendingDecision:

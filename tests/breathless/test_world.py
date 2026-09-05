@@ -19,7 +19,7 @@ def _scene(*, here: list[EntityId] | None = None) -> SceneRun:
     return SceneRun(
         place="diner",
         title="The Diner",
-        question="Can they reach the back door?",
+        focus="Can they reach the back door?",
         situation="Booths overturned, glass everywhere, the front door barred shut.",
         here=here or [],
     )

@@ -249,12 +249,12 @@ def test_kill_on_the_player_flips_player_over() -> None:
     assert any(fact.card == "You are dead" for fact in facts)
 
 
-def test_next_scene_settles_and_refuses_a_second_call() -> None:
+def test_next_scene_offers_the_way_on_and_refuses_a_second_offer() -> None:
     draft = small_world().draft()
     facts = ENGINE.next_scene(draft, NextScene(), Random(0))
-    assert draft.payload.run.left is not None
+    assert draft.payload.run.offer is not None
     assert facts[0].kind == "scene_settled"
-    with pytest.raises(Refusal, match="already settled"):
+    with pytest.raises(Refusal, match="already offers"):
         _ = ENGINE.next_scene(draft, NextScene(), Random(0))
 
 

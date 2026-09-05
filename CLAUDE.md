@@ -47,7 +47,8 @@ Tests run offline. They are deterministic.
 - The narrator writes the story text; the worldsmith's scene titles reach the player on cards and panels. The narrator's input holds revealed facts only. Hidden facts have no path into it.
 - The worldsmith writes new cast entries and rewrites a brief; a name and a sheet are the rules'. The scene bar and the install share one refusal list, so the worldsmith's one retry sees every refusal.
 - A scenario is a premise, a scope and an opening. Scope is prose the master and the worldsmith read; nothing in code branches on it.
-- Generation is an engine handoff: a tool hands the worldsmith a brief through `Game.handoff`, the turn ends, the platform writes and installs after it, and a failed write is filed as a failed pursuit is. There is no commission queue, no retry state and no same-turn respawn.
+- Generation is one engine request: a tool or a page action files `Game.generation` (an operation the engine names and validates, and a brief), the turn ends, and the platform's one executor has the engine write and install it through `advance`, narrating only what the engine says to tell. A failed write is filed and the request cleared; a reload clears a request it finds. There is no queue, no retry state and no same-turn respawn.
+- Pacing is the engine's. An offer to move on is engine state, never a decision; the page shows only the action the engine's view names, and `core`, `turn`, `app` and `ui` branch on no operation. A scene's `focus` is optional.
 - 24XX owns its job lifecycle in its world and tools; no other engine has a job.
 - A bad model answer is re-prompted once with the error, then raises.
 - Saves have no version field. A stale save is invalid.

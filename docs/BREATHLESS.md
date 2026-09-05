@@ -27,9 +27,10 @@ locations, complications, missions) are all in the SRD at the page above, transc
 
 - `change_world` — reveal someone found, bring a cast member in or out of the scene, record a
   death, or drop an item from the backpack for good.
-- `next_scene` — say the scene's question is settled, or that the player left it; the player is
-  then asked what they pursue. Or hand the worldsmith a complication to bring down on this place;
-  the turn ends and the player reads what arrives.
+- `next_scene` — offer the player the way on at a stopping point, or say that they left this
+  place; the player is then asked what they pursue, or goes on from the page. Or hand the
+  worldsmith a complication to bring down on this place; the turn ends and the player reads what
+  arrives.
 - `check` — roll a skill, a carried item, or the once-per-breath stunt on the 1–2 / 3–4 / 5+
   ladder; the die rolled wears one step, and an item reduced to d4 is gone.
 - `catch_breath` — reset skills, the loot die and the stunt; stress stays; one d12 on the SRD's
@@ -70,7 +71,8 @@ Fields and tools that exist for the app around the rules, not the rules themselv
 - `known` and `hidden` — the told-fact gate: no unknown name reaches the narrator.
 - `alive` and `kill` — the SRD leaves being taken out or dying to the table; the gate needs a flag,
   and a vulnerable player's failed dangerous check hands the master that ruling as a note.
-- `next_scene` and `left` — `settle`'s answer is the only end a scene has.
+- `next_scene` and the scene's `offer` — a stopping point or a departure the rules played;
+  neither ends anything on its own.
 - The loot decision is the player's, asked through the app; the master leaves `granted` and
   `choice` null.
 
