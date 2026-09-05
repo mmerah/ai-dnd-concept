@@ -25,7 +25,7 @@ from support.table import (
 import aidm.app.spawn as spawn_module
 from aidm.app.launch import LaunchTarget
 from aidm.app.mcp import call, list_tools
-from aidm.app.runtime import CROSSED
+from aidm.app.runtime import CROSSING_MARK
 from aidm.app.spawn import CliSpawner, RunResult, final_message
 from aidm.config import Role
 from aidm.core.entities import EngineId, EntityId, Refusal
@@ -492,7 +492,7 @@ async def test_a_scene_the_world_has_outgrown_is_dropped_rather_than_killing_the
 
     assert "already met" in caplog.text
     unwritten = table.service.engine.history(state)[-1]
-    assert unwritten.prompt == CROSSED  # the turn filed the player's words already
+    assert unwritten.prompt == CROSSING_MARK  # the turn filed the player's words already
     assert unwritten.facts[0].kind == "way_unwritten"
     assert state.payload.run.title == "The Abbot's Study"
 

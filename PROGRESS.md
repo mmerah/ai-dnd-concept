@@ -82,9 +82,10 @@ kept as the review leaned. NEXT-SPECS.md line naming `scenarios/amber-tap` as a 
 
 ## Phase 2 — the generation handoff, 24XX's jobs, the documentation (2026-09-05)
 
-`src`: 7,965 → 8,071 lines (target 8,025–8,115). Tests: 425 → 435, all green. Every
-`engines/<id>/` under 2,000 lines (scenes 913, twentyfourxx 697; the rest untouched). 24XX counts
-sixteen engine tools under the crew allowance named in `docs/24XX.md`. Reviews: Fable and a second
+`src`: 7,965 → 8,071 lines (target 8,025–8,115); 8,109 after the follow-up below. Tests: 425 → 435,
+437 after the follow-up, all green. Every `engines/<id>/` under 2,000 lines (scenes 913,
+twentyfourxx 737; the rest untouched). 24XX counts seventeen engine tools under the crew allowance
+named in `docs/24XX.md`. Reviews: Fable and a second
 Opus reviewer; `codex` is not on this machine.
 
 ### Decisions off-plan
@@ -133,3 +134,17 @@ Opus reviewer; `codex` is not on this machine.
   check of record.
 - `turn/<id>.json` fixtures did not change; the four `master_tools.json` and one `master.txt`
   changed exactly as PLAN step 7 lists.
+
+### Follow-up, same day (the maintainer's three points after the commit)
+
+- The chronicle markers are `OPENING_MARK` "(the story begins)", `CROSSING_MARK` "(the player
+  crosses to the next scene)" and `TURNING_MARK` "(the game master turns the scene)", grouped in
+  `MARKS` for the chat page; `BEGUN`, `CROSSED` and `HELD` are gone. "(the situation holds)" said
+  the opposite of what a complication does. A save from before this renders the old text as a
+  player bubble; cosmetic, not migrated.
+- `find_job` plays the SRD's job-finding d6 verbatim (1–2 nothing, owe somebody; 3–4 a job that
+  seems off; 5–6 a choice of two; the ₡1 re-roll is `spend`). Deviation 5 of `docs/24XX.md` is
+  closed; 24XX counts seventeen. The SRD has no job-details table (only 20 example contacts and a
+  note to tailor jobs to the setting), so `take_job` rolls nothing.
+- Four comments that restated their code were cut (`runtime.play`, `runtime._grow`, `Turn.call`,
+  `Game.handoff`).

@@ -17,6 +17,7 @@ from aidm.engines.twentyfourxx.tools import (
     ChangeWorld,
     Defend,
     DropItem,
+    FindJob,
     FinishJob,
     GainItem,
     RepairItem,
@@ -85,6 +86,13 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
                 "outright; word the harm yourself.",
                 Defend,
                 self.defend,
+            ),
+            master_tool(
+                "find_job",
+                "The player looks for work: the SRD's d6. Narrate the job the roll allows; "
+                "`spend` ₡1 is the re-roll; `take_job` when they agree.",
+                FindJob,
+                self.find_job,
             ),
             master_tool(
                 "take_job",
@@ -300,6 +308,30 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
             facts.append(player.fact("hindrances_changed", trace, card="Maimed"))
 
         return facts
+
+    def find_job(self, draft: TwentyfourxxGame, args: FindJob, rng: Random) -> list[Fact]:
+        world = draft.payload
+        if world.job:
+            raise Refusal(f"a job is open: {world.job}")
+        rolled, dice_fact = roll((6,), args.where, rng)
+        face = rolled[0]
+        if face <= 2:
+            result = "nothing; the player owes somebody to get in on a job"
+        elif face <= 4:
+            result = "a job, but something seems off"
+        else:
+            result = "a choice between two jobs"
+        trace = f"{args.where} — d6 [{face}] -> {result}"
+        card = f"{args.where} — d6 → {result}"
+        return [
+            dice_fact,
+            world.player.fact(
+                "job_sought",
+                trace,
+                card=card,
+                dice=(DiceEvent(label="d6", faces=(6,), rolled=rolled),),
+            ),
+        ]
 
     def take_job(self, draft: TwentyfourxxGame, args: TakeJob, _rng: Random) -> list[Fact]:
         world = draft.payload

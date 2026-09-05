@@ -8,7 +8,7 @@ from aidm.core.entities import EntityId, Refusal
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
-from aidm.engines.twentyfourxx.tools import Defend, FinishJob, Roll, TakeJob
+from aidm.engines.twentyfourxx.tools import Defend, FindJob, FinishJob, Roll, TakeJob
 from aidm.engines.twentyfourxx.tools import TestLuck as LuckTest
 from aidm.engines.twentyfourxx.world import STARTING_CREDITS
 
@@ -197,6 +197,27 @@ def test_take_job_opens_a_job_and_refuses_a_second_while_open() -> None:
 
     with pytest.raises(Refusal, match="a job is open"):
         _ = ENGINE.take_job(draft, TakeJob(terms="A second job"), Random(0))
+
+
+def test_find_job_reads_the_three_bands_by_seed() -> None:
+    draft = small_world().draft()
+    facts = ENGINE.find_job(draft, FindJob(where="Docks"), Random(1))
+    assert facts[1].trace.endswith("nothing; the player owes somebody to get in on a job")
+
+    draft = small_world().draft()
+    facts = ENGINE.find_job(draft, FindJob(where="Docks"), Random(0))
+    assert facts[1].trace.endswith("a job, but something seems off")
+
+    draft = small_world().draft()
+    facts = ENGINE.find_job(draft, FindJob(where="Docks"), Random(5))
+    assert facts[1].trace.endswith("a choice between two jobs")
+
+
+def test_find_job_refused_while_a_job_is_open() -> None:
+    draft = small_world().draft()
+    draft.payload.job = "Move the crates by dawn"
+    with pytest.raises(Refusal, match="a job is open"):
+        _ = ENGINE.find_job(draft, FindJob(where="Docks"), Random(0))
 
 
 def test_finish_job_refuses_without_a_job_open() -> None:

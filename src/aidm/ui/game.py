@@ -9,7 +9,7 @@ from typing import Self
 
 from nicegui import ui
 
-from aidm.app.runtime import BEGUN, CROSSED, HELD, GameService, Runtime
+from aidm.app.runtime import MARKS, GameService, Runtime
 from aidm.config import Role
 from aidm.core.entities import EntityId
 from aidm.core.facts import DiceEvent, Fact, cards
@@ -166,7 +166,7 @@ class GamePage:
         last = history[-1] if history and session.state.pending is not None else None
         player = session.player_view().player
         for exchange in history:
-            if exchange.prompt in (BEGUN, CROSSED, HELD):
+            if exchange.prompt in MARKS:
                 # A turn nobody played: the story's own marker, never the player's words.
                 ui.label(exchange.prompt).classes("w-full text-center text-xs italic opacity-60")
             else:

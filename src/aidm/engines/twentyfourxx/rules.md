@@ -51,6 +51,10 @@ passage. `repair_item` fixes broken gear.
 
 ## Jobs
 
+`find_job` when the player looks for work: one d6, read 1–2 nothing and they owe somebody to get
+in on a job, 3–4 a job but something seems off, 5–6 a choice between two jobs. A ₡1 re-roll is
+`spend`.
+
 `take_job` when the player agrees to work, with the terms as agreed; the job then stands under
 THE JOB. `finish_job` once, when the story and the player's own words close it: it raises the
 skill the player names, pays the d6 of credits and clears the job. Neither tool is needed for

@@ -396,6 +396,24 @@
     }
   },
   {
+    "name": "find_job",
+    "description": "The player looks for work: the SRD's d6. Narrate the job the roll allows; `spend` ₡1 is the re-roll; `take_job` when they agree.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "where": {
+          "description": "Where, or through whom, the player looks for work, in a few words; it heads the card.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "where"
+      ],
+      "type": "object"
+    }
+  },
+  {
     "name": "take_job",
     "description": "The player agrees to work: record the job's terms as agreed. Refused while a job is open.",
     "parameters": {
