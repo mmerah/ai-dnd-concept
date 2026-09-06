@@ -66,6 +66,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
             raise Refusal(f"{self.title} has no table sets")
         if state.generation is not None and state.generation.operation not in self.operations:
             raise Refusal(f"a room engine cannot write {state.generation.operation!r}")
+        self.check_request(state)
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> RoomWorld[N, P]:
         self.check_scenario(scenario)

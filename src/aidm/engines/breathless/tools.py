@@ -4,11 +4,9 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, Frozen
 from aidm.core.tools import Attempt
-from aidm.engines.base import JoinParty, LeaveParty
+from aidm.engines.base import ACTOR, JoinParty, LeaveParty
 from aidm.engines.breathless.world import Die, Skill
 from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
-
-ACTOR = "null for the player; else the exact id of a hired survivor here who acts."
 
 
 class DropItem(Frozen):

@@ -30,7 +30,7 @@
                 }
               ],
               "default": null,
-              "description": "null for the player; else the exact id of a hired survivor here who acts."
+              "description": "null for the player; else the exact id of a hired party member here who acts."
             }
           },
           "required": [
@@ -276,7 +276,7 @@
             }
           ],
           "default": null,
-          "description": "null for the player; else the exact id of a hired survivor here who acts."
+          "description": "null for the player; else the exact id of a hired party member here who acts."
         },
         "skill": {
           "anyOf": [
@@ -353,7 +353,7 @@
             }
           ],
           "default": null,
-          "description": "null for the player; else the exact id of a hired survivor here who acts."
+          "description": "null for the player; else the exact id of a hired party member here who acts."
         }
       },
       "type": "object"
@@ -386,7 +386,7 @@
             }
           ],
           "default": null,
-          "description": "null for the player; else the exact id of a hired survivor here who acts."
+          "description": "null for the player; else the exact id of a hired party member here who acts."
         }
       },
       "required": [
@@ -414,7 +414,7 @@
             }
           ],
           "default": null,
-          "description": "null for the player; else the exact id of a hired survivor here who acts."
+          "description": "null for the player; else the exact id of a hired party member here who acts."
         }
       },
       "type": "object"

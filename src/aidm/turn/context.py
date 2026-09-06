@@ -52,7 +52,7 @@ def render_narrator(
     return sections(
         (
             ("YOUR ROLE", _prompt("narrator")),
-            *_picture(view, scenes, evidence, party=_party_lines(view)),
+            *_picture(view, scenes, evidence),
             ("PLAYER ACTION", prompt),
             ("ANSWER WITH", schema_text(Narration)),
         )
@@ -68,7 +68,6 @@ def render_interjection(
 ) -> str:
     """The member reads the narrator's whole picture: the view holds nothing hidden."""
     role = _prompt("interjection").format(name=member.name, brief=member.brief, id=member.id)
-    party = _party_lines(view, lead="the player is", beside="with them")
     return sections(
         (
             ("YOUR ROLE", role),
@@ -76,42 +75,41 @@ def render_interjection(
                 "YOUR SHEET",
                 "\n".join(f"- {label}: {value}" for label, value in sheet) or "(none)",
             ),
-            *_picture(view, scenes, evidence, party=party),
+            *_picture(view, scenes, evidence, reader=member),
             ("ANSWER WITH", schema_text(Interjection)),
         )
     )
 
 
 def _picture(
-    view: NarratorView, scenes: Sequence[SceneRecord], evidence: str, *, party: str
+    view: NarratorView,
+    scenes: Sequence[SceneRecord],
+    evidence: str,
+    *,
+    reader: Subject | None = None,
 ) -> Sections:
-    return (
-        ("WHAT THE PLAYER HAS READ", told_history(scenes)),
-        ("SCENE", f"{view.title}\n{view.situation}"),
-        *((("WHAT THIS SCENE IS ABOUT", view.focus),) if view.focus else ()),
-        ("WHO IS HERE", _who_is_here(view)),
-        ("YOUR PARTY", party),
-        ("THE PLAYER'S SHEET", lines_of(f"- {label}: {value}" for label, value in view.sheet)),
-        ("WHAT HAPPENED", evidence),
+    """`reader` is who reads it: nobody (the player themself) or a member reading about them."""
+    lead, beside = ("you are", "with you") if reader is None else ("the player is", "with them")
+    subjects = {subject.id: subject for subject in view.subjects}
+    first, *rest = (subjects[member_id] for member_id in view.party)
+    members = [f"{beside}: {member.name} — {member.brief}" for member in rest]
+    party = "\n".join(
+        (f"{lead} {first.name} — {first.brief}", *(members or [f"nobody travels {beside}"]))
     )
-
-
-def _who_is_here(view: NarratorView) -> str:
     others = view.others()
-    return (
+    who_is_here = (
         lines_of(f"- {subject.name} — {subject.brief}" for subject in others)
         if others
         else "(nobody else)"
     )
-
-
-def _party_lines(view: NarratorView, *, lead: str = "you are", beside: str = "with you") -> str:
-    """`lead` and `beside` say who reads it: the player, or a member reading about them."""
-    subjects = {subject.id: subject for subject in view.subjects}
-    first, *rest = (subjects[member_id] for member_id in view.party)
-    members = [f"{beside}: {member.name} — {member.brief}" for member in rest]
-    return "\n".join(
-        (f"{lead} {first.name} — {first.brief}", *(members or [f"nobody travels {beside}"]))
+    return (
+        ("WHAT THE PLAYER HAS READ", told_history(scenes)),
+        ("SCENE", f"{view.title}\n{view.situation}"),
+        *((("WHAT THIS SCENE IS ABOUT", view.focus),) if view.focus else ()),
+        ("WHO IS HERE", who_is_here),
+        ("YOUR PARTY", party),
+        ("THE PLAYER'S SHEET", lines_of(f"- {label}: {value}" for label, value in view.sheet)),
+        ("WHAT HAPPENED", evidence),
     )
 
 

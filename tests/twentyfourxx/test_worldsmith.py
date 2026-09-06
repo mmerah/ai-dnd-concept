@@ -9,7 +9,7 @@ from aidm.engines.scenes.drafts import SceneDraft
 from aidm.engines.scenes.worldsmith import scene_refusal
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.engines.twentyfourxx.world import Crewmate, Sheet
-from aidm.engines.twentyfourxx.worldsmith import SheetDraft, sheet_refusal
+from aidm.engines.twentyfourxx.worldsmith import SheetDraft
 
 ENGINE = TwentyfourxxEngine()
 SRD = ENGINE.packs["srd"]
@@ -19,22 +19,22 @@ def test_sheet_refusal_accepts_a_muscle_with_intimidation_and_shooting() -> None
     draft = SheetDraft(
         specialty="Muscle", skills={"Intimidation": 8, "Shooting": 8}, items=("Firearm",)
     )
-    assert sheet_refusal(draft, SRD) is None
+    assert draft.refusal(SRD) is None
 
 
 def test_sheet_refusal_refuses_an_unknown_specialty() -> None:
     draft = SheetDraft(specialty="Wizard", skills={"Shooting": 8}, items=())
-    assert "Wizard" in (sheet_refusal(draft, SRD) or "")
+    assert "Wizard" in (draft.refusal(SRD) or "")
 
 
 def test_sheet_refusal_refuses_a_skill_neither_listed_nor_granted() -> None:
     draft = SheetDraft(specialty="Muscle", skills={"Sorcery": 8}, items=())
-    assert "Sorcery" in (sheet_refusal(draft, SRD) or "")
+    assert "Sorcery" in (draft.refusal(SRD) or "")
 
 
 def test_sheet_refusal_accepts_medicine_granted_by_medic() -> None:
     draft = SheetDraft(specialty="Face", skills={"Medicine": 8}, items=())
-    assert sheet_refusal(draft, SRD) is None
+    assert draft.refusal(SRD) is None
 
 
 def test_the_pack_s_android_case_carries_the_kit() -> None:

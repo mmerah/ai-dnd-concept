@@ -24,6 +24,12 @@ CHANGE_WORLD = (
     "Apply one settled world change to match the story. Set `verb` to pick the change and fill "
     "that verb's own fields. One call makes one change."
 )
+HIRE_TOOL = (
+    "The player hires someone here to work: the worldsmith writes their sheet once this turn "
+    "ends, and they join the party. Someone already travelling with the player may be hired "
+    "too; a sheet is for someone hired to work, never for one who merely comes along."
+)
+ACTOR = "null for the player; else the exact id of a hired party member here who acts."
 UNKNOWN_ID = "unknown id {entity_id!r}. Use only ids you were shown."
 IS_DEAD = "{name} is dead; they take no further part."
 
@@ -139,6 +145,15 @@ class World[P: Person](Mutable):
         trace = f"{member.tag} no longer travels with the player"
         return [member.fact("party_left", trace, card=f"{member.name} leaves your party")]
 
+    def require_hireable(self, entity_id: EntityId) -> Person:
+        raise Refusal("nobody here can be hired")
+
+    def sign_on(self, member: Person, summary: str) -> tuple[tuple[Fact, ...], str]:
+        facts = self.join(member) if member.id not in self.party else []
+        trace = f"{member.label} signs on — {summary}"
+        facts.append(member.fact("hired", trace, card=f"{member.name} signs on — {summary}"))
+        return tuple(facts), SIGNED_ON.format(name=member.name)
+
 
 class JoinParty(Frozen):
     """A character here starts travelling with the player."""
@@ -201,16 +216,6 @@ class Counter(Mutable):
         moved = f"{label} {delta:+d} -> {self}"
         card = moved if owner.id == PLAYER_ID else f"{owner.name}: {moved}"
         return [owner.fact("counter_changed", f"{owner.label} {moved} ({why})", card=card)]
-
-
-def hire_request(member: Person, terms: str) -> tuple[Generation, Fact]:
-    """The turn ends on a hire: the request the worldsmith answers, and the fact that says so."""
-    generation = Generation(operation=HIRE, brief=terms, target=member.id)
-    trace = (
-        f"the worldsmith writes {member.name}'s sheet once this turn ends: {terms}. "
-        "Nothing more lands this turn; stop and exit"
-    )
-    return generation, Fact(kind="hire_asked", trace=trace)
 
 
 def hire_target(request: Generation) -> EntityId:

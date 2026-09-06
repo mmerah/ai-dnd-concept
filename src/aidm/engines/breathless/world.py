@@ -153,7 +153,7 @@ class Survivor(Person):
 
     def line(self, *, rows: Rows | None = None, detail: str = "") -> str:
         # the player's backpack is the BACKPACK section
-        if self.sheet is not None and self.id != PLAYER_ID and not detail:
+        if self.sheet is not None and self.id != PLAYER_ID:
             items = ", ".join(
                 f"{item.name}[{key}] d{item.die}" for key, item in self.sheet.items.items()
             )
