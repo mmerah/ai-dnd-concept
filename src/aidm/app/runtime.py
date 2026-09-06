@@ -181,13 +181,18 @@ class GameService:
         )
         if member is None:
             return
-        spoken = len(self.engine.history(self.state))
+        history = self.engine.history(self.state)
+        spoken = len(history)
         view = self.engine.narrator_view(self.state)
+        # The cards the player just read: the turn's told facts.
+        evidence = traced(history[-1].facts if history else (), told_only=True)
         try:
             answer = await ask(
                 self.spawner,
                 "narrator",
-                render_interjection(view, member.subject(), self.engine.scenes(self.state)),
+                render_interjection(
+                    view, member.subject(), self.engine.scenes(self.state), evidence
+                ),
                 Interjection,
                 partial(view.interjection_refusal, member.id),
             )

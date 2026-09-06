@@ -32,7 +32,7 @@ plan, review findings refuted and why, and what is known and accepted.
 
 ## Phase 2 — interjections
 
-- `src`: 8,324 → 8,486 lines (+162; target about +140). Tests: 459 → 469.
+- `src`: 8,324 → 8,507 lines (+183; target about +140). Tests: 459 → 469.
 - Off-plan decisions:
   - The golden `SEED` moves from 11 to 19: on 11 Vessa rolls a 9 after the turn even as `chatty`;
     on 19 she rolls a 1 at the default `normal`, so no script sets her chattiness. Every engine's
@@ -48,6 +48,11 @@ plan, review findings refuted and why, and what is known and accepted.
     composer would have stripped (review finding).
   - The interjection prompt's YOUR PARTY reads `the player is Kael` / `with them: ...`, since the
     member is the reader; `_party_lines` takes `lead` and `beside` (review finding).
+  - The member reads the narrator's whole picture, against PLAN step 3's "no sheet, no focus":
+    `NarratorView` is the revealed-only gate, so nothing in it can leak, and a companion who
+    cannot see the sheet or the scene's focus has nothing to worry about or push toward. One
+    `_picture` in `turn/context.py` serves both renderers; WHAT HAPPENED is the ended turn's
+    told facts (maintainer's call after the commit).
   - The spawn gate drops `state.generation is None`: `_generate` clears it on every path.
   - `play_turn` gains `then=`, further narrator answers queued behind the turn's, and
     `ScriptedSpawner.prompt` gains `nth`; the interjection golden is gated on the game having a
