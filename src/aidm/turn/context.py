@@ -6,7 +6,15 @@ from aidm.core.io import ENCODING
 from aidm.core.model import AnyGame
 from aidm.core.play import Interjection, Narration, SceneRecord
 from aidm.core.tools import schema_text
-from aidm.core.views import NarratorView, Subject, lines_of, render_history, sections, told_history
+from aidm.core.views import (
+    NarratorView,
+    Sections,
+    Subject,
+    lines_of,
+    render_history,
+    sections,
+    told_history,
+)
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
@@ -43,31 +51,39 @@ def render_narrator(
     return sections(
         (
             ("YOUR ROLE", _prompt("narrator")),
-            ("WHAT THE PLAYER HAS READ", told_history(scenes)),
-            ("SCENE", f"{view.title}\n{view.situation}"),
-            *((("WHAT THIS SCENE IS ABOUT", view.focus),) if view.focus else ()),
-            ("WHO IS HERE", _who_is_here(view)),
-            ("YOUR PARTY", _party_lines(view)),
-            ("THE PLAYER'S SHEET", lines_of(f"- {label}: {value}" for label, value in view.sheet)),
-            ("WHAT HAPPENED", evidence),
+            *_picture(view, scenes, evidence, party=_party_lines(view)),
             ("PLAYER ACTION", prompt),
             ("ANSWER WITH", schema_text(Narration)),
         )
     )
 
 
-def render_interjection(view: NarratorView, member: Subject, scenes: Sequence[SceneRecord]) -> str:
-    """No sheet, no focus, no WHAT HAPPENED: the member is not the player."""
+def render_interjection(
+    view: NarratorView, member: Subject, scenes: Sequence[SceneRecord], evidence: str
+) -> str:
+    """The member reads the narrator's whole picture: the view holds nothing hidden."""
     role = _prompt("interjection").format(name=member.name, brief=member.brief, id=member.id)
+    party = _party_lines(view, lead="the player is", beside="with them")
     return sections(
         (
             ("YOUR ROLE", role),
-            ("WHAT THE PLAYER HAS READ", told_history(scenes)),
-            ("SCENE", f"{view.title}\n{view.situation}"),
-            ("WHO IS HERE", _who_is_here(view)),
-            ("YOUR PARTY", _party_lines(view, lead="the player is", beside="with them")),
+            *_picture(view, scenes, evidence, party=party),
             ("ANSWER WITH", schema_text(Interjection)),
         )
+    )
+
+
+def _picture(
+    view: NarratorView, scenes: Sequence[SceneRecord], evidence: str, *, party: str
+) -> Sections:
+    return (
+        ("WHAT THE PLAYER HAS READ", told_history(scenes)),
+        ("SCENE", f"{view.title}\n{view.situation}"),
+        *((("WHAT THIS SCENE IS ABOUT", view.focus),) if view.focus else ()),
+        ("WHO IS HERE", _who_is_here(view)),
+        ("YOUR PARTY", party),
+        ("THE PLAYER'S SHEET", lines_of(f"- {label}: {value}" for label, value in view.sheet)),
+        ("WHAT HAPPENED", evidence),
     )
 
 
