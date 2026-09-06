@@ -461,7 +461,7 @@ async def test_the_worldsmith_is_shown_the_source_the_cast_and_what_actually_hap
     assert PURSUIT in prompt
     # What the scene was authored as is not what the scene became; the next one follows the second.
     assert "A flagstone sits proud of its neighbours." in prompt
-    assert f"The arc as last written: {ARC}" in prompt
+    assert f"The arc as last written:\n{ARC}\nRevise" in prompt
     schema = SceneDraft[Loner3eSheet].model_json_schema()
     assert json.dumps(schema["properties"]["place"]["title"]) not in prompt
 

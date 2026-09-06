@@ -80,6 +80,18 @@ class Turn:
         )
         self.prompt, self.action = option.label, ANSWERED_BY_OPTION
 
+    def told(self) -> bool:
+        return any(fact.told for fact in self.facts)
+
+    def handed_over(self) -> bool:
+        """The turn ended in the rules' hands: a decision is open, or a write is requested."""
+        return self.draft.pending is not None or self.draft.generation is not None
+
+    def narrates(self) -> bool:
+        """Prose only where the player has something to read: what was told, or a turn that
+        ended in their hands. A hand-over that moved no fiction gets none."""
+        return self.told() or not self.handed_over()
+
     def picture(self) -> str:
         return render_master(
             self.engine.instructions,

@@ -40,6 +40,10 @@ PAUSED = (
     'play pauses here on the player\'s decision: "{prompt}" End on the pause; settle nothing they '
     "have not yet answered."
 )
+REQUESTED = (
+    "play stops here while the world is written on; end on this moment and settle nothing "
+    "beyond what happened."
+)
 OPENING = (
     "The story begins here; the player has read nothing yet. Tell them, in the fiction and in "
     "this order: who they are (WHO IS HERE names them first) and where they stand; what is in "
@@ -133,7 +137,7 @@ class GameService:
             if turn.draft.pending is None:
                 await self._master(turn)
             lines: tuple[Line, ...] = ()
-            if turn.draft.pending is None or any(fact.told for fact in turn.facts):
+            if turn.narrates():
                 self.phase = "narrator"
                 lines = await self._narrate(turn.draft, tuple(turn.facts), turn.prompt, fatal=True)
             state = turn.finish(lines)
@@ -212,6 +216,8 @@ class GameService:
         evidence = traced(facts, told_only=True)
         if (pending := draft.pending) is not None:
             evidence += f"\n- {PAUSED.format(prompt=pending.prompt)}"
+        if draft.generation is not None:
+            evidence += f"\n- {REQUESTED}"
         try:
             narration = await ask(
                 self.spawner,

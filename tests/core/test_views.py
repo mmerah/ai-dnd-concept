@@ -160,3 +160,19 @@ def test_told_history_reads_as_the_master_does_without_the_recap() -> None:
 
     assert read == "SCENE: A1\nq1\n\n> p1\np1 happens.\n\nSCENE: A2\nq2\n\n> p2\np2 happens."
     assert told_history([SceneRecord(title="A1", focus="q1")]) == "(nothing yet)"
+
+
+def test_history_keeps_who_said_what() -> None:
+    exchange = Exchange(
+        prompt="I ask Mara.",
+        lines=(
+            SpokenLine(speaker_id=EntityId("mara"), speaker="Mara", text="Not for sale."),
+            SpokenLine(text="She goes back to her ledger."),
+        ),
+    )
+    scenes = [SceneRecord(title="A1", focus="", exchanges=(exchange,))]
+
+    read = told_history(scenes)
+
+    assert "> I ask Mara.\nMara: Not for sale.\nShe goes back to her ledger." in read
+    assert "Mara: Not for sale." in render_history(scenes)
