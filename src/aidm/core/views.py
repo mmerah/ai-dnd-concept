@@ -6,6 +6,7 @@ from pydantic import Field, model_validator
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal, Slug
 from aidm.core.play import (
     Exchange,
+    Interjection,
     Line,
     Narration,
     PendingDecision,
@@ -107,6 +108,16 @@ class NarratorView(Frozen):
         if not narration.lines:
             return "write the narration lines: an empty answer shows the player nothing."
         return self.speakers_refusal(narration.lines)
+
+    def interjection_refusal(self, member_id: EntityId, answer: Interjection) -> str | None:
+        if any(line.speaker_id != member_id for line in answer.lines):
+            return f"only {member_id} speaks here: every `speaker_id` is {member_id!r}"
+        if answer.proposal and not answer.lines:
+            return (
+                "a proposal comes with at least one line of dialogue; keep quiet with no lines "
+                "and no proposal"
+            )
+        return None
 
 
 class PlayerView(Frozen):

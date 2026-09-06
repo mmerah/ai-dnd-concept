@@ -1,5 +1,12 @@
 [
   {
+    "kind": "party_joined",
+    "trace": "Vessa Rune[vessa-rune] travels with the player",
+    "told": true,
+    "card": "Vessa Rune joins your party",
+    "dice": []
+  },
+  {
     "kind": "entity_discovered",
     "trace": "learned of Warden Six[warden-six]",
     "told": true,
@@ -8,7 +15,7 @@
   },
   {
     "kind": "dice_rolled",
-    "trace": "Slip along the dark gantry — Stealth: 1d12 [8]",
+    "trace": "Slip along the dark gantry — Stealth: 1d12 [11]",
     "told": false,
     "card": "",
     "dice": []
@@ -25,7 +32,7 @@
           12
         ],
         "rolled": [
-          8
+          11
         ],
         "highlight": []
       }

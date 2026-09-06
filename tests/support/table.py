@@ -2,6 +2,7 @@ import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from functools import partial
+from itertools import islice
 from pathlib import Path
 from random import Random
 
@@ -134,9 +135,10 @@ class ScriptedSpawner:
             raise Refusal(f"the scripted {role} has no answer left")
         return spoke(answers.pop(0))
 
-    def prompt(self, role: Role) -> str:
-        """The first prompt the role was given; the golden prompts come from here."""
-        return next(text for name, text in self.prompts if name == role)
+    def prompt(self, role: Role, nth: int = 0) -> str:
+        """The nth prompt the role was given; the golden prompts come from here."""
+        matches = (text for name, text in self.prompts if name == role)
+        return next(islice(matches, nth, None))
 
 
 @dataclass(slots=True)
@@ -234,15 +236,18 @@ async def play_turn[G: AnyGame](
     narration: str = "You wait.",
     arrival: str | None = None,
     action: Slug | None = None,
+    then: Sequence[str] = (),
 ) -> G:
     """One turn, with the game master's tool calls scripted and the narrator's answer canned;
-    `action` is the page's own way of opening it."""
+    `action` is the page's own way of opening it. `then` queues answers for a spawn beyond the
+    turn itself, such as an interjection, which is created inside the `await` below."""
     table.spawner.turns.append(table.plays(calls))
     canned = table.spawner.answers.setdefault("narrator", [])
     canned.append(narrated(narration))
     # The arrival is its own narrator spawn, so a turn that installs a scene answers twice.
     if arrival is not None:
         canned.append(narrated(arrival))
+    canned.extend(then)
     if action is not None:
         assert isinstance(prompt, str)
         await table.service.act(action, prompt)

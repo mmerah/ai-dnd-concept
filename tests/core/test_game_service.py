@@ -1,8 +1,11 @@
 import json
+from asyncio import Event, gather, sleep
+from dataclasses import dataclass
 from pathlib import Path
+from random import Random
 
 import pytest
-from support.loner import TARGET, open_game, session
+from support.loner import TARGET, open_game, session, with_entity
 from support.table import (
     ScriptedSpawner,
     changed,
@@ -14,11 +17,21 @@ from support.table import (
     updated,
 )
 
-from aidm.app.runtime import OPENING_MARK, REQUESTED, STORY_MARK, Runtime
-from aidm.core.entities import Refusal
+from aidm.app.runtime import (
+    INTERJECTION_MARK,
+    OPENING_MARK,
+    REQUESTED,
+    STORY_MARK,
+    GameService,
+    Runtime,
+)
+from aidm.app.spawn import RunResult
+from aidm.config import Role
+from aidm.core.entities import EntityId, Refusal
 from aidm.core.io import FileStore
 from aidm.core.model import AnyGame, Generation, ScenarioMeta
 from aidm.engines.base import PLAYER_ID
+from aidm.engines.loner3e.world import Loner3eSheet
 
 
 class _UnsavableStore(FileStore):
@@ -258,3 +271,126 @@ def test_a_reload_clears_a_saved_request(tmp_path: Path) -> None:
     reloaded = session(tmp_path)
 
     assert reloaded.state.generation is None
+
+
+@dataclass(slots=True)
+class _TurnLandsFirst:
+    """Commits an unrelated turn before answering, so `interject` sees history move on."""
+
+    service: GameService
+    inner: ScriptedSpawner
+
+    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
+        if role == "narrator":
+            self.service.commit(
+                self.service.engine.close(self.service.state.draft(), STORY_MARK, (), ())
+            )
+        return await self.inner.run(role, prompt, session)
+
+
+@dataclass(slots=True)
+class _StillSpeaking:
+    """Never answers the member: their interjection stays in flight until something silences it."""
+
+    inner: ScriptedSpawner
+
+    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
+        if role == "narrator" and prompt.startswith("YOUR ROLE:\nYou are Vessa Rune"):
+            await Event().wait()
+        return await self.inner.run(role, prompt, session)
+
+
+def _party_of_one(service: GameService) -> Loner3eSheet:
+    """One chatty companion, met and travelling: she passes the d10 on three faces in ten."""
+    member = Loner3eSheet(
+        id=EntityId("vessa-rune"),
+        name="Vessa Rune",
+        brief="A sharp-eyed pilot.",
+        known=True,
+        chattiness="chatty",
+    )
+    state = with_entity(service.state, member)
+    draft = state.draft()
+    draft.payload.party.append(member.id)
+    service.commit(draft.commit())
+    return member
+
+
+async def test_a_member_who_passes_the_d10_speaks_after_the_turn(tmp_path: Path) -> None:
+    table = open_game(tmp_path, rng=Random(1))
+    member = _party_of_one(table.service)
+    table.spawner.answers["narrator"] = [
+        json.dumps(
+            {
+                "lines": [{"speaker_id": member.id, "text": "Careful out there."}],
+                "proposal": "I check the airlock seal.",
+            }
+        )
+    ]
+
+    await table.service.interject()
+
+    prompt = table.spawner.prompt("narrator")
+    assert f"YOUR ROLE:\nYou are {member.name} — {member.brief}" in prompt
+    exchange = table.service.engine.history(table.service.state)[-1]
+    assert exchange.prompt == INTERJECTION_MARK
+    assert [line.speaker_id for line in exchange.lines] == [member.id]
+    assert exchange.proposal == "I check the airlock seal."
+    assert table.service.phase is None
+
+
+async def test_nobody_passing_the_d10_spawns_no_narrator(tmp_path: Path) -> None:
+    table = open_game(tmp_path, rng=Random(0))
+    _party_of_one(table.service)
+
+    await table.service.interject()
+
+    assert table.spawner.prompts == []
+    assert table.service.engine.history(table.service.state) == ()
+
+
+async def test_a_turn_that_lands_first_drops_the_interjection(tmp_path: Path) -> None:
+    table = open_game(tmp_path, rng=Random(1))
+    member = _party_of_one(table.service)
+    table.spawner.answers["narrator"] = [narrated("Wait.", member.id)]
+    table.service.spawner = _TurnLandsFirst(table.service, table.spawner)
+
+    await table.service.interject()
+
+    assert table.service.engine.history(table.service.state)[-1].prompt == STORY_MARK
+
+
+async def test_an_answer_with_no_lines_records_nothing(tmp_path: Path) -> None:
+    table = open_game(tmp_path, rng=Random(1))
+    _party_of_one(table.service)
+    before = table.service.engine.history(table.service.state)
+    table.spawner.answers["narrator"] = [json.dumps({"lines": []})]
+
+    await table.service.interject()
+
+    assert table.service.engine.history(table.service.state) == before
+
+
+async def test_interjections_disabled_starts_no_background_task(tmp_path: Path) -> None:
+    table = open_game(tmp_path, rng=Random(1))
+    _party_of_one(table.service)
+    table.service.interjections = False
+
+    _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
+
+    assert table.service._background == set()  # pyright: ignore[reportPrivateUsage]
+
+
+async def test_a_new_turn_silences_the_member_still_speaking(tmp_path: Path) -> None:
+    table = open_game(tmp_path, rng=Random(1))
+    _party_of_one(table.service)
+    table.service.spawner = _StillSpeaking(table.spawner)
+    _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
+    await sleep(0)
+    (speaking,) = table.service._background  # pyright: ignore[reportPrivateUsage]
+    table.service.interjections = False
+
+    _ = await play_turn(table, "I wait on.", narration="Still nothing.")
+
+    _ = await gather(speaking, return_exceptions=True)
+    assert speaking.cancelled()

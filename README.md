@@ -8,7 +8,7 @@ The app starts three separate AI roles:
 - The narrator writes the story text that the player can read.
 - The worldsmith writes the opening world and makes the world grow in play, and writes the complication the game master brings down on a scene.
 
-The narrator opens the game with who the player is and where they stand; the player acts from there.
+The narrator opens the game with who the player is and where they stand; the player acts from there. A party member may speak or propose a move after a turn, on its own narrator spawn the player never waits on.
 
 Python code controls the rules and the game state. It rolls the dice, validates requests, applies changes, and saves the game.
 

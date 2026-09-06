@@ -5,6 +5,7 @@ from aidm.core.play import Exchange, SpokenLine
 from aidm.engines.twentyfourxx.world import TwentyfourxxGame
 
 SCRIPT: tuple[Call, ...] = (
+    changed("join_party", entity_id="vessa-rune"),
     changed("reveal", entity_id="warden-six"),
     tool_call("attempt", what="Slip along the dark gantry", skill="Stealth"),
     changed("spend", amount=1, why="Harl's docking logs"),

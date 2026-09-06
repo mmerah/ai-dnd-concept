@@ -8,16 +8,16 @@
   },
   {
     "kind": "dice_rolled",
-    "trace": "Listen for what moves on the flats — think: 1d10 [8]",
+    "trace": "Listen for what moves on the flats — think: 1d10 [1]",
     "told": false,
     "card": "",
     "dice": []
   },
   {
     "kind": "checked",
-    "trace": "Listen for what moves on the flats — Think d10 → success",
+    "trace": "Listen for what moves on the flats — Think d10 → fail",
     "told": true,
-    "card": "Listen for what moves on the flats — Think d10 → success",
+    "card": "Listen for what moves on the flats — Think d10 → fail",
     "dice": [
       {
         "label": "d10",
@@ -25,7 +25,7 @@
           10
         ],
         "rolled": [
-          8
+          1
         ],
         "highlight": []
       }

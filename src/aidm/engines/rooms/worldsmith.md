@@ -6,6 +6,8 @@ For an extension, write a complete new region that joins the map beyond the play
 
 Never name the player: they are put on the map by code. Ids are slugs. MAP SO FAR ends with every id in use: write none of them again. It says of each npc and item whether the player has met it: a `brief` is read to the player's narrator once its npc or item is met.
 
+`chattiness` (quiet, normal, chatty) is how readily someone speaks unprompted when travelling with the player; most people are normal.
+
 Everything you need is below. Do not read, search or run anything in the repository.
 
 Answer with one JSON object and nothing else, in the shape ANSWER WITH gives.

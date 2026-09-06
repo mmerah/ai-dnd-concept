@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Self
 
-from pydantic import Field, JsonValue, model_validator
+from pydantic import Field, JsonValue, field_validator, model_validator
 
 from aidm.core.entities import CheckedEntityId, Frozen, Slug, require_unique
 from aidm.core.facts import Fact
@@ -41,6 +41,25 @@ class Narration(Frozen):
         description="All narration and dialogue in order; 2-4 sentences, or the length "
         "PLAYER ACTION asks for."
     )
+
+
+class Interjection(Frozen):
+    """What a party member says after a turn, unprompted."""
+
+    lines: tuple[Line, ...] = Field(
+        description="What they say, as dialogue; empty when they would keep quiet."
+    )
+    proposal: str = Field(
+        default="",
+        description="What they propose the party do now, as the player would type it in "
+        "their own words; empty when they only talk.",
+    )
+
+    @field_validator("proposal")
+    @classmethod
+    def _stripped(cls, proposal: str) -> str:
+        """Accept plays it as typed text, which the composer would have stripped."""
+        return proposal.strip()
 
 
 class DecisionOption(Frozen):
@@ -96,6 +115,8 @@ class Exchange(Frozen):
     facts: tuple[Fact, ...] = ()
     # The suspending decision's prompt: the pause has to survive after `Game.pending` clears.
     decision: str = ""
+    # A member's proposed action, standing until the next exchange.
+    proposal: str = ""
 
     @property
     def narration(self) -> str:
