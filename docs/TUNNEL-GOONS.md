@@ -43,15 +43,13 @@ None. The starting item list is in the SRD's character creation.
 
 ## The tools
 
-- `change_world` — reveal something found, move an item, kill an npc, or join or leave the party.
+A named tool rolls dice, opens a decision, or ends the turn. Every other change is an arm of `change_world`: set `verb`, fill that verb's fields.
+
+- `change_world` — arms: `reveal`, `move_item`, `kill`, `join_party`, `leave_party`, `unlock_way` (open a locked way once the story has dealt with it) and `rest` (heal the player and every party member to full Health in a safe spot).
 - `move` — carry the player, the party, and any NPCs named in `with_ids`, through an unlocked way listed in WAYS OUT.
-- `unlock_way` — open a locked way once the story has dealt with it.
-- `action_roll` — 2d6 plus an ability and helpful items, against a Difficulty Score or an npc; `actor_id` when a hired member acts instead of the player.
-- `rest` — heal the player and every party member to full Health in a safe spot.
+- `roll` — 2d6 plus an ability and helpful items, against a Difficulty Score or an npc; `actor_id` when a hired member acts instead of the player.
 - `level_up` — raise one ability and either Health or Inventory by 1, once, at the adventure's end: the player first, then each hired member in turn.
 - `hire` — the player hires someone here to work; the worldsmith writes their sheet once the turn ends, and they join the party.
-
-Ten counted: the seven tools plus the three room `change_world` arms, which are `engines/rooms/tools.py`'s and shared by every room engine; plus the pair, the two party arms of `engines/base.py`, shared by every engine and not counted (PLAN decision 8).
 
 ## Deviations in this repo
 
