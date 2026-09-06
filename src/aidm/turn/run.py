@@ -84,12 +84,10 @@ class Turn:
         return any(fact.told for fact in self.facts)
 
     def handed_over(self) -> bool:
-        """The turn ended in the rules' hands: a decision is open, or a write is requested."""
         return self.draft.pending is not None or self.draft.generation is not None
 
     def narrates(self) -> bool:
-        """Prose only where the player has something to read: what was told, or a turn that
-        ended in their hands. A hand-over that moved no fiction gets none."""
+        """A hand-over that moved no fiction gets no prose."""
         return self.told() or not self.handed_over()
 
     def picture(self) -> str:

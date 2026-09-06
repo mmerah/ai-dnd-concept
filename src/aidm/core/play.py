@@ -31,7 +31,6 @@ class SpokenLine(Frozen):
 
     @property
     def said(self) -> str:
-        """The line as it reads back: dialogue keeps its speaker, narration stands alone."""
         return f"{self.speaker}: {self.text}" if self.speaker else self.text
 
 
@@ -104,7 +103,7 @@ class Exchange(Frozen):
 
     @property
     def transcript(self) -> str:
-        """What every role reads back: who said what, not prose alone."""
+        """What the roles read back; `narration` stays prose alone for art and speech."""
         return "\n".join(line.said for line in self.lines)
 
 

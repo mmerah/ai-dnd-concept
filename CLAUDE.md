@@ -46,8 +46,8 @@ Tests run offline. They are deterministic.
   lands. Only code changes state or rolls dice.
 - The engine owns the world. `core`, `turn`, `app` and `ui` know no world shape; the registry is
   the one place that joins an engine to the app.
-- The narrator reads revealed facts only. Hidden facts have no path into it. The master's intent
-  reaches it only as the argument of a call that landed: a roll's `what` is read by the player.
+- The narrator reads revealed facts only. Hidden facts have no path into it. The master reaches
+  it only through tool calls that landed.
 - A bad model answer is re-prompted once with the error, then raises.
 - Saves have no version field. A stale save is invalid.
 - Only `turn`, `app` and `ui` read the settings.

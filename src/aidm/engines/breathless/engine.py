@@ -216,7 +216,6 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
             else:
                 item.die = worn
 
-        # One line for the card and the trace alike; the dice ride the event, never the words.
         line = f"{args.what} — {sentence(label)} d{die} → {result}"
         event = DiceEvent(label=f"d{die}", faces=(die,), rolled=rolled)
         facts = [dice_fact, player.fact("checked", line, card=line, dice=(event,))]
