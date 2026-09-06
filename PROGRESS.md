@@ -104,3 +104,36 @@ plan, review findings refuted and why, and what is known and accepted.
 - Known and accepted: the `uv run aidm` smoke reaches the launcher only; a turn needs a CLI
   model spawn.
 - Reviews: Fable and Opus (no `codex` on the machine).
+
+## Phase 4 — succession and the ship
+
+- `src`: 8,828 → 8,957 lines (+129; target about +120). `engines/twentyfourxx/`: 1,034 → 1,163.
+  Tests: 494 → 504.
+- SRD verified at phase start: the seven functions in the SRD's order; "upgrades cost ₡10 each";
+  "Hull armor: Break harmlessly for defense"; "If killed, make a new character to introduce ASAP".
+- Off-plan decisions:
+  - `ShipUpgrade.function` is `function_id`: every other id field in the union is `*_id`, and the
+    master reads the field name before its description (review finding; PLAN step 1 said
+    `function`).
+  - The ship's `default_factory` is justified by "every crew has one from the start" alone; the
+    "so a Phase 3 save still loads" reason (PLAN step 2) is dropped from the comment and the test
+    that pinned it, since CLAUDE.md and PLAN rule 10 say no compatibility path reads an old save.
+    The default still lets such a save load; nothing is written to keep it so (both reviews).
+  - `take_lead` resolves the successor through `require_actor` and refuses only the dead lead's
+    own id, instead of a third spelling of "living, sheeted, in the party" (both reviews).
+  - `TwentyfourxxEngine.over` defers to `Engine.over` when no sheeted member lives, so "You died."
+    is spelled once (review finding).
+  - The ship has no per-function rule: hull armor breaks through `defend` like any item, hindrance
+    and all, and every function may be named on `defend` and `repair_item`. `rules.md` no longer
+    says "harmlessly"; `docs/24XX.md` records it as deviation 2 (review finding; PLAN step 2
+    gives `require_gear` one shape for items and functions).
+  - `take_lead` and `ship_upgrade` are documented under the `change_world` bullet, not `hire`'s.
+  - `_item_lines` renders GEAR and THE SHIP; `_gear_lines` misnamed the second (review finding).
+- Refuted findings:
+  - The cut folding `panels`' `job_panel`/`ship_panel` locals into one return: two named locals
+    read better than a nested splat; a cut offered, not a defect.
+- Known and accepted: `Thing.label` still says "the player" for `PLAYER_ID` only (decision 6), so
+  a trace about the dead lead after succession reads "the player Kael[player]"; HERE lines use
+  `tag`, so the master prompt is unaffected. The `uv run aidm` smoke reaches the launcher only;
+  a turn needs a CLI model spawn.
+- Reviews: Fable and Opus (no `codex` on the machine).

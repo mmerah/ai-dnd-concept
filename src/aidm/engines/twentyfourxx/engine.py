@@ -1,5 +1,5 @@
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from random import Random
 
@@ -7,7 +7,7 @@ from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, 
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import Generation, WorldsmithAnswer
-from aidm.core.play import DecisionOption
+from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Panel, PanelRow, Sections, lines_of
 from aidm.engines.base import CHANGE_WORLD, HIRE, PLAYER_ID, keep_highest, sentence
@@ -24,8 +24,10 @@ from aidm.engines.twentyfourxx.tools import (
     Hire,
     RepairItem,
     Roll,
+    ShipUpgrade,
     Spend,
     TakeJob,
+    TakeLead,
     TestLuck,
     WorldChange,
     outcome,
@@ -232,16 +234,26 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
         return AUTHORING
 
     def sheet_sections(self, state: TwentyfourxxGame) -> Sections:
-        lines = [
-            f"- {item.name}[{key}]" + (f" — {detail}" if (detail := item.detail()) else "")
-            for key, item in state.payload.player.dice().items.items()
-        ]
-        job = state.payload.job
-        return (("GEAR", lines_of(lines)), *((("THE JOB", job),) if job else ()))
+        world = state.payload
+        job = world.job
+        return (
+            ("GEAR", _item_lines(world.player.dice().items)),
+            *((("THE JOB", job),) if job else ()),
+            ("THE SHIP", _item_lines(world.ship)),
+        )
 
     def panels(self, state: TwentyfourxxGame) -> tuple[Panel, ...]:
-        job = state.payload.job
-        return (Panel(title="Job", rows=(PanelRow(label=job, detail=""),)),) if job else ()
+        world = state.payload
+        job = world.job
+        job_panel = (Panel(title="Job", rows=(PanelRow(label=job, detail=""),)),) if job else ()
+        ship_panel = Panel(
+            title="Ship",
+            rows=tuple(
+                PanelRow(label=function.name, detail=function.detail())
+                for function in world.ship.values()
+            ),
+        )
+        return (*job_panel, ship_panel)
 
     def resolve_skill(self, sheet: Sheet, wanted: str) -> str:
         folded = wanted.casefold()
@@ -274,14 +286,46 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
             case DropItem():
                 return world.require_actor(change.actor_id).drop_item(change.item_id)
             case RepairItem():
-                return world.require_actor(change.actor_id).repair_item(change.item_id, change.cost)
+                actor = world.require_actor(change.actor_id)
+                return actor.repair_item(world.require_gear(actor, change.item_id), change.cost)
             case Spend():
                 return world.require_actor(change.actor_id).spend(change.amount, change.why)
+            case TakeLead():
+                return world.take_lead(change.entity_id)
+            case ShipUpgrade():
+                return world.upgrade_ship(change.function_id)
             case _:
                 return self.shared_change(world, change)
 
     def change_world(self, draft: TwentyfourxxGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-        return self.apply_change(draft.payload, args.change)
+        facts = self.apply_change(draft.payload, args.change)
+        self._succession(draft)
+        return facts
+
+    def _succession(self, draft: TwentyfourxxGame) -> None:
+        """Sits on the draft: `apply_change` sees only the world; the decision is the game's."""
+        world = draft.payload
+        if world.player.alive or not (members := world.sheeted_members()):
+            return
+        draft.pending = PendingDecision(
+            kind="succession",
+            prompt="Who leads now?",
+            options=tuple(
+                PendingOption(
+                    id=member.id,
+                    label=member.name,
+                    detail=member.brief,
+                    name="change_world",
+                    args={"change": {"verb": "take_lead", "entity_id": member.id}},
+                )
+                for member in members
+            ),
+            allows_text=False,
+        )
+
+    def over(self, state: TwentyfourxxGame) -> str | None:
+        """A dead lead with a hired member alive is a succession, not an ending."""
+        return None if state.payload.sheeted_members() else super().over(state)
 
     def hire(self, draft: TwentyfourxxGame, args: Hire, _rng: Random) -> list[Fact]:
         world = draft.payload
@@ -399,6 +443,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
             sheet.hindrances.append(MAIMED)
             trace = f"{actor.label} is maimed"
             facts.append(actor.fact("hindrances_changed", trace, card="Maimed"))
+        self._succession(draft)
 
         return facts
 
@@ -512,7 +557,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
         world = draft.payload
         actor = world.require_actor(args.actor_id)
         sheet = actor.dice()
-        item = actor.require_item(args.item_id)
+        item = world.require_gear(actor, args.item_id)
         if item.broken:
             raise Refusal(f"{item.name} is already broken")
         if args.hindrance in sheet.hindrances:
@@ -532,3 +577,10 @@ def starting_items(kits: Sequence[Kit]) -> dict[EntityId, Item]:
         taken.append(key)
         items[EntityId(key)] = Item(name=kit.name, bulky=kit.bulky, breaks=kit.breaks)
     return items
+
+
+def _item_lines(items: Mapping[EntityId, Item]) -> str:
+    return lines_of(
+        f"- {item.name}[{key}]" + (f" — {detail}" if (detail := item.detail()) else "")
+        for key, item in items.items()
+    )

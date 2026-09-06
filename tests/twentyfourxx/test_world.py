@@ -6,6 +6,7 @@ from aidm.engines.base import PLAYER_ID
 from aidm.engines.twentyfourxx.engine import starting_items
 from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
+    SHIP_FUNCTIONS,
     Crewmate,
     Item,
     Kit,
@@ -118,3 +119,44 @@ def test_starting_items_slug_duplicate_kit_names_in_order() -> None:
     items = starting_items((Kit(name="Comm"), Kit(name="Comm")))
     assert list(items.keys()) == [EntityId("comm"), EntityId("comm-2")]
     assert [item.name for item in items.values()] == ["Comm", "Comm"]
+
+
+def test_take_lead_swaps_player_and_cast_entry_and_keeps_ids() -> None:
+    world = hired(small_world(), KESTREL, skills={"Shooting": 8}).payload
+    dead_id = world.player.id
+    world.player.alive = False
+    facts = world.take_lead(KESTREL)
+
+    assert world.player.id == KESTREL
+    assert world.player.sheet is not None
+    assert KESTREL not in world.cast
+    assert KESTREL not in world.party
+    assert world.cast[dead_id].id == dead_id
+    assert not world.cast[dead_id].alive
+    assert dead_id in world.run.here
+    assert any(fact.card == "Kestrel leads now" for fact in facts)
+    TwentyfourxxWorld.model_validate(world.model_dump(mode="json"))
+
+
+def test_take_lead_refused_while_the_player_lives() -> None:
+    world = hired(small_world(), KESTREL, skills={"Shooting": 8}).payload
+    with pytest.raises(Refusal, match="lives and leads"):
+        world.take_lead(KESTREL)
+
+
+def test_require_gear_finds_a_ship_function_and_refuses_a_stranger() -> None:
+    world = small_world().payload
+    item = world.require_gear(world.player, EntityId("hull-armor"))
+    assert item.name == "Hull armor"
+    with pytest.raises(Refusal, match="not among"):
+        world.require_gear(world.player, EntityId("nonexistent"))
+
+
+def test_item_detail_shows_upgraded() -> None:
+    assert Item(name="Comms", upgraded=True).detail() == "upgraded"
+
+
+def test_every_crew_starts_with_the_seven_ship_functions() -> None:
+    ship = small_world().payload.ship
+    assert [item.name for item in ship.values()] == list(SHIP_FUNCTIONS)
+    assert list(ship)[4] == "hull-armor"

@@ -13,7 +13,7 @@ from aidm.engines.scenes.tools import NextScene
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.engines.twentyfourxx.tools import Defend, FindJob, FinishJob, Hire, Raise, Roll, TakeJob
 from aidm.engines.twentyfourxx.tools import TestLuck as LuckTest
-from aidm.engines.twentyfourxx.world import STARTING_CREDITS
+from aidm.engines.twentyfourxx.world import STARTING_CREDITS, UPGRADE_COST
 from aidm.engines.twentyfourxx.worldsmith import SIGNED_ON
 
 ENGINE = TwentyfourxxEngine()
@@ -343,6 +343,68 @@ def test_kill_on_the_player_flips_player_over() -> None:
     assert not draft.payload.player.alive
     assert ENGINE.over(draft) == "You died."
     assert any(fact.card == "You are dead" for fact in facts)
+
+
+def test_risking_death_disaster_with_hired_member_sets_succession_and_over_stays_none() -> None:
+    draft = hired(small_world(), KESTREL, skills={"Shooting": 8}).draft()
+    facts = ENGINE.attempt(
+        draft, Roll(what="Slip past", skill="Stealth", risking_death=True), Random(2)
+    )
+    assert not draft.payload.player.alive
+    assert draft.pending is not None
+    assert draft.pending.kind == "succession"
+    assert [option.id for option in draft.pending.options] == [KESTREL]
+    assert ENGINE.over(draft) is None
+    assert any(fact.card == "You are dead" for fact in facts)
+
+
+def test_risking_death_disaster_with_none_hired_ends_the_game() -> None:
+    draft = small_world().draft()
+    _ = ENGINE.attempt(
+        draft, Roll(what="Slip past", skill="Stealth", risking_death=True), Random(2)
+    )
+    assert not draft.payload.player.alive
+    assert draft.pending is None
+    assert ENGINE.over(draft) == "You died."
+
+
+def test_answering_the_succession_decision_makes_the_member_the_player() -> None:
+    draft = hired(small_world(), KESTREL, skills={"Shooting": 8}).draft()
+    _ = ENGINE.attempt(
+        draft, Roll(what="Slip past", skill="Stealth", risking_death=True), Random(2)
+    )
+    assert draft.pending is not None
+    option = draft.pending.options[0]
+    facts = ENGINE.answer(draft, option, Random(0))
+    assert draft.payload.player.id == KESTREL
+    assert any(fact.card == "Kestrel leads now" for fact in facts)
+
+
+def test_ship_upgrade_pays_credits_once_and_refuses_a_second() -> None:
+    draft = small_world().draft()
+    player = draft.payload.player
+    player.dice().credits = UPGRADE_COST * 2
+    before = player.dice().credits
+    facts = change(ENGINE, draft, "ship_upgrade", function_id="hull-armor")
+    assert player.dice().credits == before - UPGRADE_COST
+    assert draft.payload.ship[EntityId("hull-armor")].upgraded
+    assert any(fact.card == "Hull armor upgraded — ₡10" for fact in facts)
+
+    assert "already" in refused(ENGINE, draft, "ship_upgrade", function_id="hull-armor")
+
+
+def test_defend_and_repair_item_on_the_ships_hull_armor() -> None:
+    draft = small_world().draft()
+    player = draft.payload.player
+    facts = ENGINE.defend(
+        draft, Defend(item_id=EntityId("hull-armor"), hindrance="hull breached"), Random(0)
+    )
+    assert draft.payload.ship[EntityId("hull-armor")].broken
+    assert "hull breached" in player.dice().hindrances
+    assert any(fact.card == "Hull armor breaks — hull breached" for fact in facts)
+
+    _ = change(ENGINE, draft, "repair_item", item_id="hull-armor")
+    assert not draft.payload.ship[EntityId("hull-armor")].broken
 
 
 def test_next_scene_offers_the_way_on_and_refuses_a_second_offer() -> None:

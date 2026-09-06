@@ -256,7 +256,7 @@
               "type": "string"
             },
             "item_id": {
-              "description": "Exact id of an item the actor carries.",
+              "description": "Exact id of an item the actor carries, or a ship function.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
@@ -311,6 +311,28 @@
           "title": "Reveal",
           "type": "object"
         },
+        "ShipUpgrade": {
+          "additionalProperties": false,
+          "description": "Upgrade one ship function; ₡10 from the player, as the SRD prices it.",
+          "properties": {
+            "verb": {
+              "const": "ship_upgrade",
+              "type": "string"
+            },
+            "function_id": {
+              "description": "Exact id of a ship function; ₡10 from the player.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "function_id"
+          ],
+          "title": "ShipUpgrade",
+          "type": "object"
+        },
         "Spend": {
           "additionalProperties": false,
           "description": "Pay credits for anything that is not an item or a repair: bribes, care, passage.",
@@ -351,6 +373,28 @@
           ],
           "title": "Spend",
           "type": "object"
+        },
+        "TakeLead": {
+          "additionalProperties": false,
+          "description": "The hired member who leads once the player is dead; answers the succession decision.",
+          "properties": {
+            "verb": {
+              "const": "take_lead",
+              "type": "string"
+            },
+            "entity_id": {
+              "description": "Exact id of the living hired member who takes the lead.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "entity_id"
+          ],
+          "title": "TakeLead",
+          "type": "object"
         }
       },
       "additionalProperties": false,
@@ -369,7 +413,9 @@
               "leave_party": "#/$defs/LeaveParty",
               "repair_item": "#/$defs/RepairItem",
               "reveal": "#/$defs/Reveal",
-              "spend": "#/$defs/Spend"
+              "ship_upgrade": "#/$defs/ShipUpgrade",
+              "spend": "#/$defs/Spend",
+              "take_lead": "#/$defs/TakeLead"
             },
             "propertyName": "verb"
           },
@@ -406,6 +452,12 @@
             },
             {
               "$ref": "#/$defs/Spend"
+            },
+            {
+              "$ref": "#/$defs/TakeLead"
+            },
+            {
+              "$ref": "#/$defs/ShipUpgrade"
             }
           ]
         }
@@ -541,7 +593,7 @@
           "description": "null for the player; else the exact id of a hired crew member here who acts."
         },
         "item_id": {
-          "description": "Exact id of the item the actor breaks to defend.",
+          "description": "Exact id of an item the actor carries, or a ship function.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
