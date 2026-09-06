@@ -66,13 +66,25 @@ plan, review findings refuted and why, and what is known and accepted.
 
 ## Phase 3 — the 24XX crew rolls
 
-- `src`: 8,507 → 8,831 lines (+324; target about +280). `engines/twentyfourxx/`: 740 → 1,044
+- `src`: 8,507 → 8,828 lines (+321; target about +280). `engines/twentyfourxx/`: 740 → 1,034
   (cap 1,050). Tests: 469 → 494.
 - Off-plan decisions:
-  - `HIRE` lives in `engines/base.py` beside `SRD_PACK`: PLAN names no home, and 24XX and
-    Tunnel Goons both read it.
-  - `Crewmate.line()` adds a `gear:` row for any sheeted crewmate, the player included, so YOU
-    PLAY FOR gains one line beside GEAR; GEAR keeps the ids and break state the arms need.
+  - `HIRE` lives in `engines/base.py` beside `SRD_PACK`: PLAN names no home.
+  - Tunnel Goons does not extend `operations` with `HIRE` yet: nothing writes the request, and
+    `RoomEngine.advance` would play one as a map extension. Phase 5 adds it with the tool
+    (both reviews; PLAN step 1 and Phase 5 step 4 amended).
+  - Gear is a row of `Crewmate.rows()` (`Gear: Comm, Vest (broken)`), not a `line()` extra: one
+    place feeds the Character and Party panels, YOU PLAY FOR, THE PARTY, the cast lines, the
+    interjection's YOUR SHEET and the narrator's THE PLAYER'S SHEET. The `Gear` panel and 24XX's
+    `preview_character` override go; GEAR in the master prompt stays for the ids and the break
+    state the arms need. The narrator prompt fixture moves by that one line (review finding;
+    PLAN step 2 had put gear in `line()`, against step 8's stated purpose).
+  - `Subject.rows` is not added: every subject rides in `NarratorView`, whose promise is to hold
+    nothing hidden, and a Loner cast member's rows (goal, motive, nemesis) would have. The
+    interjection's sheet is passed to `render_interjection` as its own argument; the runtime
+    reads `member.rows()`.
+  - The `hire` description says a follower may be hired too, instead of PLAN step 5's "refused
+    ... only when the story has not hired them", a refusal the code never makes (review finding).
   - The hire's pack is the game's first pack (`draft.packs[0]`); PLAN says `pack`, singular.
   - `sheeted_members()` reads the party, not the cast: `require_actor` needs party membership,
     so a hired member who had left the party would otherwise make `finish_job` impossible.
@@ -87,18 +99,8 @@ plan, review findings refuted and why, and what is known and accepted.
   - PLAN.md Phase 4 step 5 now names deviations 1 and 2, since this phase deleted 1 and 3 and
     renumbered (review finding).
   - Refusals in the sheet methods moved onto `Crewmate` name the crewmate, not "the player".
-- Refuted findings, awaiting the maintainer's call:
-  - "Tunnel Goons' `operations` admits a `hire` request nothing writes and `RoomEngine.advance`
-    would play as a map extension; delete until Phase 5" (both reviews): PLAN step 1 says Tunnel
-    Goons extends its operations with `HIRE` in this phase; kept as written.
-  - "Gear belongs in `Crewmate.rows()`, so an interjecting member's YOUR SHEET names it" (Fable):
-    PLAN step 2 puts gear in `line()`, and PLAN's fixture list keeps the narrator prompt still;
-    gear in `rows()` would print the player's gear under THE PLAYER'S SHEET and twice in the
-    panels. Kept in `line()`.
-  - "`hire`'s description promises a refusal ('only when the story has not hired them') the code
-    never makes" (Fable): the sentence is PLAN step 5's text, read as guidance to the master, not
-    a code check; kept verbatim.
-- Known and accepted: `Subject.rows` rides in every subject of `NarratorView`, so a Loner cast
-  member's rows reach the view's data, though no narrator section prints them (PLAN step 8). The
-  `uv run aidm` smoke reaches the launcher only; a turn needs a CLI model spawn.
+- Refuted findings: none; the three first refuted on PLAN wording were taken on the maintainer's
+  word that the plan can be wrong.
+- Known and accepted: the `uv run aidm` smoke reaches the launcher only; a turn needs a CLI
+  model spawn.
 - Reviews: Fable and Opus (no `codex` on the machine).

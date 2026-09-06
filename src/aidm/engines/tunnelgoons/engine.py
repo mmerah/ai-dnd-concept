@@ -9,7 +9,7 @@ from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption, PendingDecision
 from aidm.core.tools import MasterTool, NoArgs, master_tool
 from aidm.core.views import Rows
-from aidm.engines.base import CHANGE_WORLD, HIRE, PLAYER_ID
+from aidm.engines.base import CHANGE_WORLD, PLAYER_ID
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.tools import Move, UnlockWay
 from aidm.engines.rooms.world import Item
@@ -63,7 +63,6 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
     character = TunnelGoonsCharacter
     dweller = Npc
     world_type = TunnelGoonsWorld
-    operations = (*RoomEngine.operations, HIRE)
 
     def master_tools(self) -> tuple[MasterTool[TunnelGoonsGame], ...]:
         return (

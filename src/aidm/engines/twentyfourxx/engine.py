@@ -6,10 +6,10 @@ from random import Random
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, option_of, picked
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, roll
-from aidm.core.model import AnyCharacter, Generation, WorldsmithAnswer
+from aidm.core.model import Generation, WorldsmithAnswer
 from aidm.core.play import DecisionOption
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import Panel, PanelRow, Rows, Sections, lines_of
+from aidm.core.views import Panel, PanelRow, Sections, lines_of
 from aidm.engines.base import CHANGE_WORLD, HIRE, PLAYER_ID, keep_highest, sentence
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
@@ -124,8 +124,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
             master_tool(
                 "hire",
                 "The player hires someone here to work: the worldsmith writes their sheet once "
-                "this turn ends, and they join the party. Refused for the party's unsheeted "
-                "followers only when the story has not hired them.",
+                "this turn ends, and they join the party. Someone already travelling with the "
+                "player may be hired too; a sheet is for someone hired to work, never for one "
+                "who merely comes along.",
                 Hire,
                 self.hire,
             ),
@@ -226,10 +227,6 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
         )
         return TwentyfourxxCharacter(id=slug(name, ()), engine=self.id, payload=player)
 
-    def preview_character(self, character: AnyCharacter) -> Rows:
-        sheet = self.player_of(character).dice()
-        return (*sheet.rows(), ("Gear", ", ".join(item.name for item in sheet.items.values())))
-
     def guidance(self, picks: Sequence[Slug]) -> str:
         """This pack holds creation tables, not setting vocabulary: the preamble alone suffices."""
         return AUTHORING
@@ -243,13 +240,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
         return (("GEAR", lines_of(lines)), *((("THE JOB", job),) if job else ()))
 
     def panels(self, state: TwentyfourxxGame) -> tuple[Panel, ...]:
-        rows = tuple(
-            PanelRow(label=item.name, detail=item.detail())
-            for item in state.payload.player.dice().items.values()
-        )
         job = state.payload.job
-        job_panel = Panel(title="Job", rows=(PanelRow(label=job, detail=""),))
-        return (Panel(title="Gear", rows=rows), *((job_panel,) if job else ()))
+        return (Panel(title="Job", rows=(PanelRow(label=job, detail=""),)),) if job else ()
 
     def resolve_skill(self, sheet: Sheet, wanted: str) -> str:
         folded = wanted.casefold()

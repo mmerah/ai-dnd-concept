@@ -29,10 +29,10 @@ def test_narrator_view_lists_only_known_entities() -> None:
     assert [subject.name for subject in view.subjects] == ["Rook", "Kestrel"]
 
 
-def test_player_view_gear_panel_lists_items() -> None:
+def test_player_view_character_panel_lists_gear() -> None:
     view = ENGINE.player_view(small_world())
-    gear = next(panel for panel in view.panels if panel.title == "Gear")
-    assert PanelRow(label="Lockpick set", detail="") in gear.rows
+    character = next(panel for panel in view.panels if panel.title == "Character")
+    assert PanelRow(label="Gear", detail="Lockpick set") in character.rows
 
 
 def test_master_sections_shows_hidden_entities() -> None:

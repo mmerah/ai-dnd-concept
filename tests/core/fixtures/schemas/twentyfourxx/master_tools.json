@@ -649,7 +649,7 @@
   },
   {
     "name": "hire",
-    "description": "The player hires someone here to work: the worldsmith writes their sheet once this turn ends, and they join the party. Refused for the party's unsheeted followers only when the story has not hired them.",
+    "description": "The player hires someone here to work: the worldsmith writes their sheet once this turn ends, and they join the party. Someone already travelling with the player may be hired too; a sheet is for someone hired to work, never for one who merely comes along.",
     "parameters": {
       "additionalProperties": false,
       "properties": {

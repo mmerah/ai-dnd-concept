@@ -82,7 +82,7 @@ class Thing(Mutable):
         return [self.fact("entity_discovered", f"learned of {self.label}", card=card)]
 
     def subject(self) -> Subject:
-        return Subject(id=self.id, name=self.name, brief=self.brief, rows=self.rows())
+        return Subject(id=self.id, name=self.name, brief=self.brief)
 
 
 class Person(Thing):

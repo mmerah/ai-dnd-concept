@@ -40,6 +40,7 @@ THE PLAYER'S SHEET:
 - Origin: Human
 - Skills: Stealth d12, Climbing d8, Piloting d8
 - Credits: ₡1
+- Gear: Comm, Climbing gear, Night vision goggles
 
 WHAT HAPPENED:
 - Vessa Rune[vessa-rune] travels with the player

@@ -195,13 +195,10 @@ def _view(subject: Subject) -> NarratorView:
 
 
 def test_render_interjection_prints_the_members_own_sheet_or_none() -> None:
-    sheeted = Subject(
-        id=EntityId("mara"), name="Mara", brief="A ferrywoman.", rows=(("Skill", "Stealth d8"),)
-    )
-    bare = Subject(id=EntityId("kael"), name="Kael", brief="A relic-hunter.")
+    mara = Subject(id=EntityId("mara"), name="Mara", brief="A ferrywoman.")
 
-    with_sheet = render_interjection(_view(sheeted), sheeted, (), "")
-    without_sheet = render_interjection(_view(bare), bare, (), "")
+    with_sheet = render_interjection(_view(mara), mara, (("Skill", "Stealth d8"),), (), "")
+    without_sheet = render_interjection(_view(mara), mara, (), (), "")
 
     assert "YOUR SHEET:\n- Skill: Stealth d8" in with_sheet
     assert "YOUR SHEET:\n(none)" in without_sheet

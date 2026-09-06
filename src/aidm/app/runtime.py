@@ -191,7 +191,11 @@ class GameService:
                 self.spawner,
                 "narrator",
                 render_interjection(
-                    view, member.subject(), self.engine.scenes(self.state), evidence
+                    view,
+                    member.subject(),
+                    member.rows(),
+                    self.engine.scenes(self.state),
+                    evidence,
                 ),
                 Interjection,
                 partial(view.interjection_refusal, member.id),

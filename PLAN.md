@@ -265,7 +265,8 @@ sheet the worldsmith wrote, rolls their own die to help, can act, and is raised 
    CheckedEntityId | None = None`, the entity the operation concerns, when one does.
    `Engine.operations: tuple[Slug, ...]`, the requests an engine writes: `SceneEngine` sets
    `(DEPARTURE, COMPLICATION)`, `RoomEngine` `(MORE_MAP.id,)`, and both `validate`s refuse an
-   operation outside it; 24XX and Tunnel Goons extend theirs with `HIRE`. An engine that uses
+   operation outside it; 24XX extends its with `HIRE`, Tunnel Goons in Phase 5 with the tool
+   that writes it. An engine that uses
    `target` checks it in its own `validate`.
 2. **`twentyfourxx/world.py` — the sheet nests.** `Sheet(Mutable)`: `specialty`,
    `origin: str = ""`, `traits`, `skills`, `credits`, `items`, `hindrances` (what `Operator` carries
@@ -428,7 +429,7 @@ the worldsmith, rolls, is healed by rest, and levels in turn.
    for the sum `ABILITY_POINTS`; `HIRING` as 24XX's, from the npc's brief and the SRD's three
    abilities in the guidance. `RoomEngine.render_extension` gains `answer: type[BaseModel]`, its
    callers passing `self.map_draft()`.
-4. **`tunnelgoons/engine.py`.** `hire` tool as 24XX's, setting the request;
+4. **`tunnelgoons/engine.py`.** `operations` gains `HIRE`; `hire` tool as 24XX's, setting the request;
    `TunnelGoonsEngine.advance` dispatches on `request.operation` before `super().advance`: for
    `HIRE`, the prompt through `render_extension` with `HIRING` and `AbilitiesDraft`; install
    `Abilities(abilities=draft.abilities, inventory=INVENTORY_START, level=1)` on the npc,
