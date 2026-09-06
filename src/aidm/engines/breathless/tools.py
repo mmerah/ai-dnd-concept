@@ -3,6 +3,7 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, Frozen
+from aidm.core.tools import Attempt
 from aidm.engines.breathless.world import Die, Skill
 from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
 
@@ -24,8 +25,7 @@ class ChangeWorld(Frozen):
     )
 
 
-class Check(Frozen):
-    what: str = Field(min_length=1, description="The action, in a few words; it heads the card.")
+class Check(Attempt):
     skill: Skill | None = Field(
         default=None, description="Which of the six skills the action calls on."
     )

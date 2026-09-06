@@ -195,10 +195,9 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
         outcome = outcome_for(chance_kept, risk_kept)
         # The question is master-authored and may name unrevealed canon: never told.
         facts.append(Fact(kind="question_asked", trace=f"asked: {action.question}"))
+        line = _oracle_line(action, opponent, outcome)
         answered_at = len(facts)
-        facts.append(
-            actor.fact("question_answered", f"the oracle for {actor.label}: {outcome.name}")
-        )
+        facts.append(actor.fact("question_answered", line))
         effects: tuple[str, ...] = ()
         if opponent is not None:
             exchange, effects = _absorbed(_strike(draft, actor, opponent, outcome))
@@ -218,12 +217,8 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
             if world.twist.shortfall == 0:
                 world.twist.current = 0
                 facts.extend(self._twist(draft, actor, rng))
-        edge = f" ({action.edge})" if action.edge else ""
-        card = "\n".join(
-            (f"Oracle — {action.position.capitalize()}{edge} → {outcome.name}", *effects)
-        )
         facts[answered_at] = facts[answered_at].model_copy(
-            update={"card": card, "dice": (chance, risk)}
+            update={"card": "\n".join((line, *effects)), "dice": (chance, risk)}
         )
         return facts
 
@@ -248,6 +243,13 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
             dice=(DiceEvent(label="Twist", faces=faces, rolled=rolled),),
         )
         return [rolled_fact, due]
+
+
+def _oracle_line(action: Question, opponent: Loner3eSheet | None, outcome: Outcome) -> str:
+    """One line for the card and the trace alike: the try, its footing, and the answer."""
+    footing = action.position + (f" ({action.edge})" if action.edge else "")
+    against = f" against {opponent.name}" if opponent is not None else ""
+    return f"{action.what}{against} — oracle, {footing}: {outcome.told}"
 
 
 def _absorbed(exchange: list[Fact]) -> tuple[list[Fact], tuple[str, ...]]:

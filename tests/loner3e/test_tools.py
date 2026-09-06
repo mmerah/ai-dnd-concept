@@ -14,6 +14,7 @@ FOE = EntityId("mara")
 def _seal(**args: object) -> Question:
     return Question.model_validate(
         {
+            "what": "Force the seal",
             "actor_id": PLAYER_ID,
             "question": "Does he get the seal open before the whispering finds him?",
         }
@@ -29,7 +30,7 @@ def test_a_neutral_question_shows_one_chance_die_and_one_risk_die() -> None:
     assert [die.label for die in oracle.dice] == ["Chance", "Risk"]
     assert len(oracle.dice[0].rolled) == 1
     assert len(oracle.dice[1].rolled) == 1
-    assert oracle.card.startswith("Oracle — Neutral → ")
+    assert oracle.card.startswith("Force the seal — oracle, neutral: ")
 
 
 def test_advantage_rolls_two_chance_dice() -> None:
@@ -41,7 +42,8 @@ def test_advantage_rolls_two_chance_dice() -> None:
     (oracle,) = cards(facts)
     assert len(oracle.dice[0].rolled) == 2
     assert len(oracle.dice[1].rolled) == 1
-    assert oracle.card.startswith("Oracle — Advantage (Relic Hunter) → ")
+    assert oracle.card.startswith("Force the seal — oracle, advantage (Relic Hunter): ")
+    assert oracle.trace == oracle.card
 
 
 def test_disadvantage_rolls_two_risk_dice() -> None:
@@ -59,7 +61,7 @@ def test_the_six_way_outcome_is_mapped_onto_the_card() -> None:
 
     (oracle,) = cards(facts)
     chance, risk = max(oracle.dice[0].rolled), max(oracle.dice[1].rolled)
-    assert oracle.card.endswith(f"→ {outcome_for(chance, risk).name}")
+    assert oracle.card.endswith(f": {outcome_for(chance, risk).told}")
 
 
 def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
@@ -68,7 +70,10 @@ def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
     loner_sheet(draft, FOE).luck.current = 1
     weakened = draft.commit()
     duel = Question(
-        actor_id=PLAYER_ID, question="Does he force her back from the door?", opponent_id=FOE
+        what="Force her back",
+        actor_id=PLAYER_ID,
+        question="Does he force her back from the door?",
+        opponent_id=FOE,
     )
 
     # Seed 0 rolls chance 4 against risk 4: a yes-but, one luck off the foe's last point.
@@ -92,7 +97,7 @@ def test_a_twist_card_lands_only_once_a_twist_fires() -> None:
     facts = ENGINE.resolve_question(primed.draft(), _seal(), Random(0))
 
     oracle, twist = cards(facts)
-    assert oracle.card.startswith("Oracle — ")
+    assert oracle.card.startswith("Force the seal — oracle, ")
     subject, action = twist.card.removeprefix("Twist — ").split(" / ")
     assert subject and action
     (twist_dice,) = twist.dice

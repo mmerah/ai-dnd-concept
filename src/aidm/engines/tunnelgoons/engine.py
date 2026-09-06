@@ -166,10 +166,15 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         outcome = "success" if success else "failure"
 
         facts.append(dice_fact)
-        trace = f"{args.what} — {args.ability} {total} vs DS {ds} -> {outcome}"
-        card = f"{args.what} — {args.ability.capitalize()} {total} vs DS {ds} → {outcome}"
+        # One line for the card and the trace alike: the try, what helped, whom, the score.
+        line = (
+            f"{args.what} — {args.ability.capitalize()}"
+            + (f" with {', '.join(item.name for item in items)}" if items else "")
+            + (f" against {npc.name}" if npc is not None else "")
+            + f", {total} vs DS {ds} → {outcome}"
+        )
         event = DiceEvent(label="2d6", faces=(6, 6), rolled=rolled)
-        facts.append(player.fact("action_rolled", trace, card=card, dice=(event,)))
+        facts.append(player.fact("action_rolled", line, card=line, dice=(event,)))
 
         # SRD: only a dangerous action turns the margin into damage; an npc's DS alone does not.
         if not args.dangerous:

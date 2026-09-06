@@ -15,7 +15,7 @@
   },
   {
     "kind": "attempted",
-    "trace": "Slip along the dark gantry — Stealth d12 [8] -> success",
+    "trace": "Slip along the dark gantry — Stealth d12 → success",
     "told": true,
     "card": "Slip along the dark gantry — Stealth d12 → success",
     "dice": [

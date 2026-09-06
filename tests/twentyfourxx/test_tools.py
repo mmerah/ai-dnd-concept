@@ -18,22 +18,22 @@ ENGINE = TwentyfourxxEngine()
 def test_attempt_bands_disaster_setback_success() -> None:
     draft = small_world().draft()
     facts = ENGINE.attempt(draft, Roll(what="Slip past", skill="Stealth"), Random(2))
-    assert facts[1].trace.endswith("-> disaster")
+    assert facts[1].trace.endswith("→ disaster")
 
     draft = small_world().draft()
     facts = ENGINE.attempt(draft, Roll(what="Slip past", skill="Stealth"), Random(1))
-    assert facts[1].trace.endswith("-> setback")
+    assert facts[1].trace.endswith("→ setback")
 
     draft = small_world().draft()
     facts = ENGINE.attempt(draft, Roll(what="Slip past", skill="Stealth"), Random(0))
-    assert facts[1].trace.endswith("-> success")
+    assert facts[1].trace.endswith("→ success")
 
 
 def test_attempt_unskilled_rolls_the_plain_d6() -> None:
     draft = small_world().draft()
     facts = ENGINE.attempt(draft, Roll(what="Guess"), Random(0))
     assert facts[1].dice[0].faces == (6,)
-    assert "unskilled" in facts[1].trace
+    assert "Unskilled" in facts[1].trace
 
 
 def test_attempt_pack_label_not_on_sheet_rolls_d6() -> None:

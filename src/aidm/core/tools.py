@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from random import Random
 from typing import Any
 
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel, Field, JsonValue
 
 from aidm.core.entities import Frozen, parse
 from aidm.core.facts import Fact
@@ -16,6 +16,16 @@ type Play[G: Game[Any]] = Callable[[G, Random], tuple[Fact, ...]]
 
 class NoArgs(Frozen):
     pass
+
+
+class Attempt(Frozen):
+    """What every roll-shaped tool asks first. `what` is read by the player and by the narrator,
+    so anything they must not learn goes in a field the engine keeps to the master."""
+
+    what: str = Field(
+        min_length=1,
+        description="The attempt, in a few words the player may read; it heads the card.",
+    )
 
 
 @dataclass(frozen=True, slots=True)

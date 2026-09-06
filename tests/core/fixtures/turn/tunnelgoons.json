@@ -22,9 +22,9 @@
   },
   {
     "kind": "action_rolled",
-    "trace": "Wade through the flooded cellar — skulker 11 vs DS 10 -> success",
+    "trace": "Wade through the flooded cellar — Skulker, 11 vs DS 10 → success",
     "told": true,
-    "card": "Wade through the flooded cellar — Skulker 11 vs DS 10 → success",
+    "card": "Wade through the flooded cellar — Skulker, 11 vs DS 10 → success",
     "dice": [
       {
         "label": "2d6",

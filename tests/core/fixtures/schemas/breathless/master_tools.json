@@ -194,7 +194,7 @@
       "additionalProperties": false,
       "properties": {
         "what": {
-          "description": "The action, in a few words; it heads the card.",
+          "description": "The attempt, in a few words the player may read; it heads the card.",
           "minLength": 1,
           "type": "string"
         },

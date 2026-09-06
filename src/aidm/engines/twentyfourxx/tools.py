@@ -3,6 +3,7 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, Frozen
+from aidm.core.tools import Attempt
 from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
 
 
@@ -75,8 +76,7 @@ class ChangeWorld(Frozen):
     )
 
 
-class Roll(Frozen):
-    what: str = Field(min_length=1, description="The action, in a few words; it heads the card.")
+class Roll(Attempt):
     skill: str = Field(default="", description="Which skill to roll; empty rolls the plain d6.")
     helped: str = Field(default="", description="Why circumstances help, when they do.")
     hindered: str = Field(default="", description="Why the player is hindered, when they are.")

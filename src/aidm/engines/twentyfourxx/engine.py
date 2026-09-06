@@ -284,21 +284,15 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
             event = DiceEvent(label=die_label, faces=(die,), rolled=rolled)
 
         result = outcome(face)
-        shown = ", ".join(str(value) for value in event.rolled)
-        trace = f"{args.what} — {label} {die_label} [{shown}] -> {result}"
-        card = f"{args.what} — {sentence(label)} {die_label} → {result}"
-        qualifiers = "; ".join(
-            part
-            for part in (
-                f"helped — {args.helped}" if args.helped else "",
-                f"hindered — {args.hindered}" if args.hindered else "",
-            )
-            if part
+        # One line for the card and the trace alike; the dice ride the event, never the words.
+        line = (
+            f"{args.what} — {sentence(label)} d{die}"
+            + (f", helped ({args.helped})" if args.helped else "")
+            + (f", hindered ({args.hindered})" if args.hindered else "")
+            + f" → {result}"
         )
-        if qualifiers:
-            card = f"{card} ({qualifiers})"
 
-        facts: list[Fact] = [dice_fact, player.fact("attempted", trace, card=card, dice=(event,))]
+        facts: list[Fact] = [dice_fact, player.fact("attempted", line, card=line, dice=(event,))]
 
         if args.risking_death and result == "disaster":
             facts.extend(world.kill(player.id))
@@ -321,14 +315,13 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
             result = "a job, but something seems off"
         else:
             result = "a choice between two jobs"
-        trace = f"{args.where} — d6 [{face}] -> {result}"
-        card = f"{args.where} — d6 → {result}"
+        line = f"{args.where} — d6 → {result}"
         return [
             dice_fact,
             world.player.fact(
                 "job_sought",
-                trace,
-                card=card,
+                line,
+                card=line,
                 dice=(DiceEvent(label="d6", faces=(6,), rolled=rolled),),
             ),
         ]

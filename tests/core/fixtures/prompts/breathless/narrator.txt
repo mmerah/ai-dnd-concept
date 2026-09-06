@@ -38,7 +38,7 @@ THE PLAYER'S SHEET:
 
 WHAT HAPPENED:
 - learned of Drowned Marta[drowned-marta]
-- Listen for what moves on the flats — think d10 [8] -> success
+- Listen for what moves on the flats — Think d10 → success
 - the player Kael[player] Stress +1 -> 1/4 (the bell rang twice)
 
 PLAYER ACTION:
