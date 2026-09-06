@@ -1,4 +1,4 @@
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
@@ -10,8 +10,14 @@ from aidm.engines.rooms.tools import SharedChange
 from aidm.engines.tunnelgoons.world import ABILITIES, Ability, Boost
 
 
+class Rest(Frozen):
+    """Spend the night in a safe spot to heal the player's and the party's Health to full."""
+
+    verb: Literal["rest"]
+
+
 class ChangeWorld(Frozen):
-    change: SharedChange = Field(
+    change: SharedChange | Rest = Field(
         discriminator="verb",
         description="The one world change to apply; `verb` picks the change.",
     )

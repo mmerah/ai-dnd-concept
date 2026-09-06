@@ -28,13 +28,13 @@ from aidm.engines.breathless.tools import (
     DropItem,
     LootCheck,
     TestLuck,
+    UseMedKit,
     WorldChange,
     outcome,
 )
 from aidm.engines.breathless.world import (
     LADDER,
     LOOT_START,
-    MED_KIT_CLEARS,
     SKILLS,
     STARTING_DICE,
     STARTING_ITEM,
@@ -75,13 +75,13 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
             master_tool("change_world", CHANGE_WORLD, ChangeWorld, self.change_world),
             master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
             master_tool(
-                "check",
+                "roll",
                 "Roll a check for an action with a real cost, on a skill, a carried item, or a "
                 "stunt. `actor_id` when a hired survivor acts instead of the player; "
                 "`helped_by` names a hired survivor who also makes a skill check on their own "
                 "die and shares the risk.",
                 Check,
-                self.check,
+                self.roll,
             ),
             master_tool(
                 "catch_breath",
@@ -90,21 +90,6 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
                 "instead of the player.",
                 Actor,
                 self.catch_breath,
-            ),
-            master_tool(
-                "change_stress",
-                "A complication costs the actor stress; laying low somewhere secure clears an "
-                "amount at your discretion. Never a stand-in for `use_med_kit`. `actor_id` when "
-                "a hired survivor is meant instead of the player.",
-                ChangeStress,
-                self.change_stress,
-            ),
-            master_tool(
-                "use_med_kit",
-                "Spend the actor's med kit to clear 2 stress. `actor_id` when a hired survivor "
-                "is meant instead of the player.",
-                Actor,
-                self.use_med_kit,
             ),
             master_tool(
                 "loot_check",
@@ -198,6 +183,10 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
         match change:
             case DropItem():
                 return world.require_actor(change.actor_id).drop_item(change.item_id)
+            case ChangeStress():
+                return world.require_actor(change.actor_id).change_stress(change.amount, change.why)
+            case UseMedKit():
+                return world.require_actor(change.actor_id).use_med_kit()
             case _:
                 return self.shared_change(world, change)
 
@@ -234,7 +223,7 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
         )
         return world.sign_on(member, answer.job)
 
-    def check(self, draft: BreathlessGame, args: Check, rng: Random) -> list[Fact]:
+    def roll(self, draft: BreathlessGame, args: Check, rng: Random) -> list[Fact]:
         world = draft.payload
         actor = world.require_actor(args.actor_id)
         sheet = actor.dice()
@@ -247,7 +236,7 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
             if args.helped_by is not None:
                 partner = world.require_actor(args.helped_by)
                 if partner is actor:
-                    raise Refusal(f"{actor.name} cannot help their own check")
+                    raise Refusal(f"{actor.name} cannot help their own roll")
                 helper = (partner, partner.dice().worn[args.skill])
         elif args.item_id is not None:
             item = actor.require_item(args.item_id)
@@ -299,7 +288,7 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
             for who in (actor, *((helper[0],) if helper else ())):
                 if who.dice().vulnerable:
                     draft.note(
-                        f"{who.name} is vulnerable and this dangerous check failed: rule "
+                        f"{who.name} is vulnerable and this dangerous roll failed: rule "
                         "whether they are taken out of the scene or dead. Death is "
                         f"`change_world` `kill` on {who.name}."
                     )
@@ -327,23 +316,6 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
         )
         fact = actor.fact("breath_caught", trace, card=card)
         return [dice_fact, fact]
-
-    def change_stress(self, draft: BreathlessGame, args: ChangeStress, _rng: Random) -> list[Fact]:
-        if args.amount == 0:
-            raise Refusal("change_stress needs a non-zero amount")
-        actor = draft.payload.require_actor(args.actor_id)
-        return actor.dice().stress.change(actor, args.amount, "Stress", args.why)
-
-    def use_med_kit(self, draft: BreathlessGame, args: Actor, _rng: Random) -> list[Fact]:
-        actor = draft.payload.require_actor(args.actor_id)
-        sheet = actor.dice()
-        if not sheet.med_kit:
-            raise Refusal(f"{actor.name} holds no med kit")
-        sheet.med_kit = False
-        facts = sheet.stress.change(actor, -MED_KIT_CLEARS, "Stress", "the med kit")
-        used = f"{actor.name} uses the med kit"
-        facts.append(actor.fact("med_kit_used", used, card="Med kit used"))
-        return facts
 
     def loot_check(self, draft: BreathlessGame, args: LootCheck, rng: Random) -> list[Fact]:
         if args.granted is None or args.choice is None:

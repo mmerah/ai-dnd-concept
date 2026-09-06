@@ -54,16 +54,10 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
             master_tool("change_world", CHANGE_WORLD, ChangeWorld, self.change_world),
             master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
             master_tool(
-                "roll_question",
+                "roll",
                 "Roll Chance against Risk for one closed dramatic question.",
                 Question,
-                self.resolve_question,
-            ),
-            master_tool(
-                "restore_luck",
-                "Restore an actor's luck after a conflict ends.",
-                RestoreLuck,
-                self.restore_luck,
+                self.roll,
             ),
         )
 
@@ -173,13 +167,19 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
                 return world.require_here(change.entity_id, alive=True).drive(
                     goal=change.goal, motive=change.motive, nemesis=change.nemesis
                 )
+            case RestoreLuck():
+                actor = world.require_here(change.entity_id, alive=True)
+                facts = actor.reveal()
+                # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
+                facts.extend(actor.refill("the conflict is behind them"))
+                return facts
             case _:
                 return self.shared_change(world, change)
 
     def change_world(self, draft: Loner3eGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
         return self.apply_change(draft.payload, args.change)
 
-    def resolve_question(self, draft: Loner3eGame, action: Question, rng: Random) -> list[Fact]:
+    def roll(self, draft: Loner3eGame, action: Question, rng: Random) -> list[Fact]:
         world = draft.payload
         actor = world.require_here(action.actor_id, alive=True)
         facts = actor.reveal()
@@ -220,13 +220,6 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
         facts[answered_at] = facts[answered_at].model_copy(
             update={"card": "\n".join((line, *effects)), "dice": (chance, risk)}
         )
-        return facts
-
-    def restore_luck(self, draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
-        actor = draft.payload.require_here(args.actor_id, alive=True)
-        facts = actor.reveal()
-        # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
-        facts.extend(actor.refill("the conflict is behind them"))
         return facts
 
     def _twist(self, draft: Loner3eGame, actor: Loner3eSheet, rng: Random) -> list[Fact]:

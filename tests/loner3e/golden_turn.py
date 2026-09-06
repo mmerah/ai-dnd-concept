@@ -10,7 +10,7 @@ from aidm.engines.scenes.world import SceneRun
 SCRIPT: tuple[Call, ...] = (
     changed("reveal", entity_id="vault-map"),
     tool_call(
-        "roll_question",
+        "roll",
         what="Listen at the vault door",
         actor_id="player",
         question="Does he hear what waits past the vault door without being heard?",

@@ -20,9 +20,8 @@ from support.tunnelgoons import (
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.model import Check, Generation
-from aidm.core.tools import NoArgs
 from aidm.engines.base import HIRE, PLAYER_ID, SIGNED_ON, Hire
-from aidm.engines.rooms.tools import Move, UnlockWay
+from aidm.engines.rooms.tools import Move
 from aidm.engines.rooms.world import Item, Visit
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 from aidm.engines.tunnelgoons.tools import ActionRoll, LevelUp
@@ -47,7 +46,7 @@ def test_the_roll_adds_ability_and_items_and_penalizes_brute_and_skulker_over_in
     world = draft.payload
     world.player.sheet.abilities["skulker"] = 2
     world.player.sheet.inventory = 1  # carrying rope + torch (2) is 1 over
-    facts = ENGINE.action_roll(
+    facts = ENGINE.roll(
         draft,
         ActionRoll(what="Sneak past", ability="skulker", items=(ROPE,), difficulty=10),
         Random(1),
@@ -62,7 +61,7 @@ def test_erudite_rolls_are_not_penalized_for_over_inventory() -> None:
     world = draft.payload
     world.player.sheet.abilities["erudite"] = 2
     world.player.sheet.inventory = 1
-    facts = ENGINE.action_roll(
+    facts = ENGINE.roll(
         draft, ActionRoll(what="Read the runes", ability="erudite", difficulty=8), Random(2)
     )
     rolled = next(fact for fact in facts if fact.kind == "action_rolled")
@@ -75,7 +74,7 @@ def test_a_roll_against_an_npc_that_hits_can_slay_it() -> None:
     world = draft.payload
     world.npcs[MANTIS].place = START
     world.player.sheet.abilities["brute"] = 10  # min total 12 always beats DS 4
-    facts = ENGINE.action_roll(
+    facts = ENGINE.roll(
         draft,
         ActionRoll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
         Random(3),
@@ -92,7 +91,7 @@ def test_an_npc_killed_by_a_roll_drops_what_it_carried_here() -> None:
     world.npcs[MANTIS].place = START
     world.items[KEY].on = MANTIS
     world.player.sheet.abilities["brute"] = 10  # min total 12 always beats DS 4
-    facts = ENGINE.action_roll(
+    facts = ENGINE.roll(
         draft,
         ActionRoll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
         Random(3),
@@ -109,7 +108,7 @@ def test_a_miss_against_an_npc_can_kill_the_player() -> None:
     world.npcs[MANTIS].hp.current = 20  # max total 12 never beats DS 20
     world.player.sheet.abilities["brute"] = 0
     world.player.hp.current = 1
-    facts = ENGINE.action_roll(
+    facts = ENGINE.roll(
         draft,
         ActionRoll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
         Random(4),
@@ -125,7 +124,7 @@ def test_a_roll_against_an_npc_wounds_nobody_unless_it_is_dangerous() -> None:
     draft = small_world().draft()
     world = draft.payload
     world.npcs[MANTIS].place = START
-    facts = ENGINE.action_roll(
+    facts = ENGINE.roll(
         draft, ActionRoll(what="Talk it down", ability="erudite", against=MANTIS), Random(3)
     )
     assert world.npcs[MANTIS].hp.current == world.npcs[MANTIS].hp.maximum
@@ -138,7 +137,7 @@ def test_dangerous_hurts_only_on_a_miss() -> None:
     world = draft.payload
     world.player.sheet.abilities["erudite"] = 12  # min total 14 always beats DS 8
     before = world.player.hp.current
-    facts = ENGINE.action_roll(
+    facts = ENGINE.roll(
         draft,
         ActionRoll(what="Cross the gap", ability="erudite", difficulty=8, dangerous=True),
         Random(0),
@@ -161,7 +160,7 @@ def test_dangerous_hurts_only_on_a_miss() -> None:
             for n in range(11)
         }
     )  # carried (13) - inventory (0) = 13 penalty, always below any legal DS
-    facts2 = ENGINE.action_roll(
+    facts2 = ENGINE.roll(
         draft2,
         ActionRoll(what="Cross the gap", ability="brute", difficulty=8, dangerous=True),
         Random(0),
@@ -180,7 +179,7 @@ def test_neither_or_both_of_difficulty_and_against_is_refused() -> None:
 def test_an_item_not_in_the_players_hands_is_refused() -> None:
     draft = small_world().draft()
     with pytest.raises(Refusal, match="not in Kael's hands"):
-        _ = ENGINE.action_roll(
+        _ = ENGINE.roll(
             draft,
             ActionRoll(what="Pick lock", ability="skulker", items=(KEY,), difficulty=8),
             Random(0),
@@ -191,7 +190,7 @@ def test_rest_heals_the_player() -> None:
     draft = small_world().draft()
     world = draft.payload
     world.player.hp.current = 4
-    facts = ENGINE.rest(draft, NoArgs(), Random(0))
+    facts = change(ENGINE, draft, "rest")
     assert world.player.hp.current == world.player.hp.maximum
     assert any(fact.kind == "rested" for fact in facts)
 
@@ -261,7 +260,7 @@ def test_unlock_way_then_move_passes() -> None:
     draft = small_world().draft()
     world = draft.payload
     world.visits.append(Visit(place=HALL))
-    _ = ENGINE.unlock_way(draft, UnlockWay(to_id=VAULT), Random(0))
+    _ = change(ENGINE, draft, "unlock_way", to_id=VAULT)
     facts = ENGINE.move(draft, Move(to_id=VAULT), Random(0))
     assert world.current.id == VAULT
     assert any(fact.kind == "arrived" for fact in facts)
@@ -319,7 +318,7 @@ def test_action_roll_a_member_rolls_on_their_own_abilities_and_items() -> None:
     world.npcs[MIRA].sheet = _sheeted(skulker=2)
     world.party.append(MIRA)
     world.items[ROPE].on = MIRA
-    facts = ENGINE.action_roll(
+    facts = ENGINE.roll(
         draft,
         ActionRoll(
             what="Sneak past", ability="skulker", items=(ROPE,), difficulty=10, actor_id=MIRA
@@ -338,7 +337,7 @@ def test_action_roll_refuses_rolling_against_oneself() -> None:
     world.npcs[MIRA].sheet = _sheeted()
     world.party.append(MIRA)
     with pytest.raises(Refusal, match="cannot roll against themselves"):
-        _ = ENGINE.action_roll(
+        _ = ENGINE.roll(
             draft,
             ActionRoll(what="Wrestle", ability="brute", against=MIRA, actor_id=MIRA),
             Random(0),
@@ -351,7 +350,7 @@ def test_a_members_miss_damages_them_and_kills_them_at_zero() -> None:
     world.npcs[MIRA].sheet = _sheeted()
     world.npcs[MIRA].hp.current = 1
     world.party.append(MIRA)
-    facts = ENGINE.action_roll(
+    facts = ENGINE.roll(
         draft,
         ActionRoll(
             what="Leap the gap", ability="brute", difficulty=20, dangerous=True, actor_id=MIRA
@@ -369,7 +368,7 @@ def test_rest_heals_a_member() -> None:
     world.npcs[MIRA].sheet = _sheeted()
     world.npcs[MIRA].hp.current = 2
     world.party.append(MIRA)
-    facts = ENGINE.rest(draft, NoArgs(), Random(0))
+    facts = change(ENGINE, draft, "rest")
     assert world.npcs[MIRA].hp.current == world.npcs[MIRA].hp.maximum
     assert any(fact.kind == "counter_changed" and "Mira" in fact.card for fact in facts)
 

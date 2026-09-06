@@ -1,11 +1,12 @@
 from random import Random
 
 from support.loner import ENGINE, initialized, loner_sheet
+from support.table import change
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import cards
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.loner3e.tools import Question, RestoreLuck, outcome_for
+from aidm.engines.loner3e.tools import Question, outcome_for
 from aidm.engines.loner3e.world import TIES_PER_TWIST
 
 FOE = EntityId("mara")
@@ -24,7 +25,7 @@ def _seal(**args: object) -> Question:
 
 def test_a_neutral_question_shows_one_chance_die_and_one_risk_die() -> None:
     _, state = initialized()
-    facts = ENGINE.resolve_question(state.draft(), _seal(), Random(0))
+    facts = ENGINE.roll(state.draft(), _seal(), Random(0))
 
     (oracle,) = cards(facts)
     assert [die.label for die in oracle.dice] == ["Chance", "Risk"]
@@ -35,9 +36,7 @@ def test_a_neutral_question_shows_one_chance_die_and_one_risk_die() -> None:
 
 def test_advantage_rolls_two_chance_dice() -> None:
     _, state = initialized()
-    facts = ENGINE.resolve_question(
-        state.draft(), _seal(position="advantage", edge="Relic Hunter"), Random(0)
-    )
+    facts = ENGINE.roll(state.draft(), _seal(position="advantage", edge="Relic Hunter"), Random(0))
 
     (oracle,) = cards(facts)
     assert len(oracle.dice[0].rolled) == 2
@@ -48,7 +47,7 @@ def test_advantage_rolls_two_chance_dice() -> None:
 
 def test_disadvantage_rolls_two_risk_dice() -> None:
     _, state = initialized()
-    facts = ENGINE.resolve_question(state.draft(), _seal(position="disadvantage"), Random(0))
+    facts = ENGINE.roll(state.draft(), _seal(position="disadvantage"), Random(0))
 
     (oracle,) = cards(facts)
     assert len(oracle.dice[0].rolled) == 1
@@ -57,7 +56,7 @@ def test_disadvantage_rolls_two_risk_dice() -> None:
 
 def test_the_six_way_outcome_is_mapped_onto_the_card() -> None:
     _, state = initialized()
-    facts = ENGINE.resolve_question(state.draft(), _seal(), Random(0))
+    facts = ENGINE.roll(state.draft(), _seal(), Random(0))
 
     (oracle,) = cards(facts)
     chance, risk = max(oracle.dice[0].rolled), max(oracle.dice[1].rolled)
@@ -77,7 +76,7 @@ def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
     )
 
     # Seed 0 rolls chance 4 against risk 4: a yes-but, one luck off the foe's last point.
-    facts = ENGINE.resolve_question(weakened.draft(), duel, Random(0))
+    facts = ENGINE.roll(weakened.draft(), duel, Random(0))
     (oracle,) = cards(facts)
 
     assert oracle.card.split("\n")[1:] == [
@@ -94,7 +93,7 @@ def test_a_twist_card_lands_only_once_a_twist_fires() -> None:
     primed = draft.commit()
 
     # Seed 0 rolls chance 4 against risk 4: the tie that ticks the twist over.
-    facts = ENGINE.resolve_question(primed.draft(), _seal(), Random(0))
+    facts = ENGINE.roll(primed.draft(), _seal(), Random(0))
 
     oracle, twist = cards(facts)
     assert oracle.card.startswith("Force the seal — oracle, ")
@@ -110,6 +109,6 @@ def test_restoring_luck_shows_as_a_counter_card() -> None:
     loner_sheet(draft, PLAYER_ID).luck.current = 1
     spent = draft.commit()
 
-    facts = tuple(ENGINE.restore_luck(spent.draft(), RestoreLuck(actor_id=PLAYER_ID), Random(0)))
+    facts = tuple(change(ENGINE, spent.draft(), "restore_luck", entity_id=PLAYER_ID))
     (event,) = cards(facts)
     assert event.card == "Luck +5 -> 6/6"

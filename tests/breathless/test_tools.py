@@ -7,7 +7,7 @@ from support.table import change, refused
 from aidm.core.entities import EntityId, Refusal
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.engine import BreathlessEngine
-from aidm.engines.breathless.tools import Actor, ChangeStress, Check, LootCheck
+from aidm.engines.breathless.tools import Actor, Check, LootCheck
 from aidm.engines.breathless.tools import TestLuck as LuckTest
 from aidm.engines.breathless.world import Item, stepped
 from aidm.engines.scenes.tools import NextScene
@@ -19,7 +19,7 @@ ENGINE = BreathlessEngine()
 def test_check_on_a_skill_wears_it() -> None:
     draft = small_world().draft()
     player = draft.payload.player
-    facts = ENGINE.check(draft, Check(what="Force the door", skill="bash"), Random(0))
+    facts = ENGINE.roll(draft, Check(what="Force the door", skill="bash"), Random(0))
     assert player.dice().worn["bash"] == stepped(6)
     assert any(fact.kind == "checked" for fact in facts)
 
@@ -27,7 +27,7 @@ def test_check_on_a_skill_wears_it() -> None:
 def test_check_at_d4_stays_d4() -> None:
     draft = small_world().draft()
     player = draft.payload.player
-    _ = ENGINE.check(draft, Check(what="Spot a way through", skill="dash"), Random(1))
+    _ = ENGINE.roll(draft, Check(what="Spot a way through", skill="dash"), Random(1))
     assert player.dice().worn["dash"] == 4
 
 
@@ -35,7 +35,7 @@ def test_an_item_reduced_to_d4_is_gone() -> None:
     draft = small_world().draft()
     player = draft.payload.player
     player.dice().items[WRENCH].die = 6
-    facts = ENGINE.check(draft, Check(what="Swing the axe", item_id=WRENCH), Random(0))
+    facts = ENGINE.roll(draft, Check(what="Swing the axe", item_id=WRENCH), Random(0))
     assert WRENCH not in player.dice().items
     assert any(fact.kind == "item_gone" for fact in facts)
 
@@ -43,16 +43,16 @@ def test_an_item_reduced_to_d4_is_gone() -> None:
 def test_stunt_refused_twice() -> None:
     draft = small_world().draft()
     player = draft.payload.player
-    _ = ENGINE.check(draft, Check(what="Leap the gap", stunt=True), Random(0))
+    _ = ENGINE.roll(draft, Check(what="Leap the gap", stunt=True), Random(0))
     assert player.dice().stunted
     with pytest.raises(Refusal, match="catches their breath"):
-        _ = ENGINE.check(draft, Check(what="Leap again", stunt=True), Random(0))
+        _ = ENGINE.roll(draft, Check(what="Leap again", stunt=True), Random(0))
 
 
 def test_check_with_actor_id_rolls_and_wears_the_members_die() -> None:
     draft = small_world().draft()
     member = hired(draft.payload, MIRA)
-    facts = ENGINE.check(draft, Check(what="Slip past", skill="sneak", actor_id=MIRA), Random(0))
+    facts = ENGINE.roll(draft, Check(what="Slip past", skill="sneak", actor_id=MIRA), Random(0))
     assert member.dice().worn["sneak"] == stepped(8)
     assert any(fact.kind == "checked" and "Mira" in fact.trace for fact in facts)
 
@@ -61,7 +61,7 @@ def test_check_with_helped_by_keeps_the_highest_and_wears_both_dice() -> None:
     draft = small_world().draft()
     player = draft.payload.player
     member = hired(draft.payload, MIRA)
-    facts = ENGINE.check(
+    facts = ENGINE.roll(
         draft, Check(what="Force the door", skill="bash", helped_by=MIRA), Random(0)
     )
     assert player.dice().worn["bash"] == stepped(6)
@@ -85,7 +85,7 @@ def test_vulnerable_fail_leaves_a_note() -> None:
     draft = small_world().draft()
     player = draft.payload.player
     player.dice().stress.current = 4
-    _ = ENGINE.check(draft, Check(what="Force the door", skill="bash", dangerous=True), Random(2))
+    _ = ENGINE.roll(draft, Check(what="Force the door", skill="bash", dangerous=True), Random(2))
     assert any("vulnerable" in note for note in draft.notes)
 
 
@@ -128,8 +128,7 @@ def test_catch_breath_with_actor_id_resets_only_the_members_sheet() -> None:
 
 def test_use_med_kit_refused_without_a_kit() -> None:
     draft = small_world().draft()
-    with pytest.raises(Refusal, match="holds no med kit"):
-        _ = ENGINE.use_med_kit(draft, Actor(), Random(0))
+    assert "holds no med kit" in refused(ENGINE, draft, "use_med_kit")
 
 
 def test_use_med_kit_clears_two_stress() -> None:
@@ -137,7 +136,7 @@ def test_use_med_kit_clears_two_stress() -> None:
     sheet = draft.payload.player.dice()
     sheet.med_kit = True
     sheet.stress.current = 3
-    facts = ENGINE.use_med_kit(draft, Actor(), Random(0))
+    facts = change(ENGINE, draft, "use_med_kit")
     assert not sheet.med_kit
     assert sheet.stress.current == 1
     assert any(fact.kind == "med_kit_used" for fact in facts)
@@ -145,16 +144,13 @@ def test_use_med_kit_clears_two_stress() -> None:
 
 def test_change_stress_refuses_a_zero_amount() -> None:
     draft = small_world().draft()
-    with pytest.raises(Refusal, match="non-zero"):
-        _ = ENGINE.change_stress(draft, ChangeStress(amount=0, why="nothing"), Random(0))
+    assert "non-zero" in refused(ENGINE, draft, "change_stress", amount=0, why="nothing")
 
 
 def test_change_stress_acts_on_the_member() -> None:
     draft = small_world().draft()
     member = hired(draft.payload, MIRA)
-    facts = ENGINE.change_stress(
-        draft, ChangeStress(amount=1, why="a close call", actor_id=MIRA), Random(0)
-    )
+    facts = change(ENGINE, draft, "change_stress", amount=1, why="a close call", actor_id=MIRA)
     assert member.dice().stress.current == 1
     assert any(fact.kind == "counter_changed" for fact in facts)
 
@@ -164,7 +160,7 @@ def test_use_med_kit_acts_on_the_member() -> None:
     member = hired(draft.payload, MIRA)
     member.dice().med_kit = True
     member.dice().stress.current = 3
-    facts = ENGINE.use_med_kit(draft, Actor(actor_id=MIRA), Random(0))
+    facts = change(ENGINE, draft, "use_med_kit", actor_id=MIRA)
     assert not member.dice().med_kit
     assert member.dice().stress.current == 1
     assert any(fact.kind == "med_kit_used" for fact in facts)

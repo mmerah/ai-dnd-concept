@@ -27,6 +27,7 @@ SHIP_FUNCTIONS: tuple[str, ...] = (
     "Weapons",
 )  # the SRD's seven, in its order
 UPGRADE_COST = 10
+HULL_ARMOR: EntityId = EntityId("hull-armor")
 
 
 class Kit(Frozen):
@@ -218,6 +219,28 @@ class TwentyfourxxWorld(SceneWorld[Crewmate, Crewmate]):
         if item is None:
             raise Refusal(f"{item_id!r} is not among {actor.name}'s items or the ship's functions")
         return item
+
+    def defend(self, actor_id: EntityId | None, item_id: EntityId, hindrance: str) -> list[Fact]:
+        actor = self.require_actor(actor_id)
+        item = self.require_gear(actor, item_id)
+        if item.broken:
+            raise Refusal(f"{item.name} is already broken")
+        if item_id == HULL_ARMOR:
+            if hindrance:
+                raise Refusal("hull armor breaks harmlessly: leave `hindrance` empty")
+            item.broken_times += 1
+            trace = f"{actor.label} breaks the hull armor"
+            return [actor.fact("item_broken", trace, card="Hull armor breaks")]
+        if not hindrance:
+            raise Refusal("name the hindrance the hit becomes")
+        sheet = actor.dice()
+        if hindrance in sheet.hindrances:
+            raise Refusal(f"{hindrance!r} is already among {actor.name}'s hindrances")
+        item.broken_times += 1
+        sheet.hindrances.append(hindrance)
+        card = f"{item.name} breaks — {hindrance}"
+        trace = f"{actor.label} breaks {item.name} — {hindrance}"
+        return [actor.fact("item_broken", trace, card=card)]
 
     def upgrade_ship(self, function_id: EntityId) -> list[Fact]:
         function = self.ship.get(function_id)

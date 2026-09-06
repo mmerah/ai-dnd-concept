@@ -48,7 +48,16 @@ class Drive(Frozen):
     )
 
 
-type WorldChange = Reveal | Enter | Leave | ChangeTags | Drive | Kill | JoinParty | LeaveParty
+class RestoreLuck(Frozen):
+    """Restore an actor's luck after a conflict ends."""
+
+    verb: Literal["restore_luck"]
+    entity_id: CheckedEntityId = Field(description="Exact id of the player or a character here.")
+
+
+type WorldChange = (
+    Reveal | Enter | Leave | ChangeTags | Drive | Kill | JoinParty | LeaveParty | RestoreLuck
+)
 
 
 class ChangeWorld(Frozen):
@@ -100,10 +109,6 @@ TOLD: dict[str, str] = {
     "no": "no",
     "no-and": "no, and worse",
 }
-
-
-class RestoreLuck(Frozen):
-    actor_id: CheckedEntityId = Field(description="Exact id of the player or a character here.")
 
 
 def outcome_for(chance: int, risk: int) -> Outcome:

@@ -7,13 +7,13 @@ from aidm.core.entities import EngineId, Refusal, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import AnyCharacter, Generation, WorldsmithAnswer
 from aidm.core.play import DecisionOption, PendingDecision
-from aidm.core.tools import MasterTool, NoArgs, master_tool
+from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Rows
 from aidm.engines.base import CHANGE_WORLD, HIRE, HIRE_TOOL, PLAYER_ID, Hire, hire_target
 from aidm.engines.rooms.engine import RoomEngine
-from aidm.engines.rooms.tools import Move, UnlockWay
+from aidm.engines.rooms.tools import Move, SharedChange
 from aidm.engines.rooms.world import Item
-from aidm.engines.tunnelgoons.tools import ActionRoll, ChangeWorld, LevelUp, level_options
+from aidm.engines.tunnelgoons.tools import ActionRoll, ChangeWorld, LevelUp, Rest, level_options
 from aidm.engines.tunnelgoons.world import (
     ABILITIES,
     ABILITY_POINTS,
@@ -76,24 +76,11 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
                 self.move,
             ),
             master_tool(
-                "unlock_way",
-                "Unlock a locked way out of the player's current place.",
-                UnlockWay,
-                self.unlock_way,
-            ),
-            master_tool(
-                "action_roll",
+                "roll",
                 "Roll 2d6 plus an ability and helpful items against a Difficulty Score or an "
                 "npc; `actor_id` when a hired member acts instead of the player.",
                 ActionRoll,
-                self.action_roll,
-            ),
-            master_tool(
-                "rest",
-                "Spend the night in a safe spot to heal the player's and the party's Health to "
-                "full.",
-                NoArgs,
-                self.rest,
+                self.roll,
             ),
             master_tool(
                 "level_up",
@@ -149,7 +136,14 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         return AUTHORING
 
     def change_world(self, draft: TunnelGoonsGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-        return self.shared_change(draft.payload, args.change)
+        return self.apply_change(draft.payload, args.change)
+
+    def apply_change(self, world: TunnelGoonsWorld, change: SharedChange | Rest) -> list[Fact]:
+        match change:
+            case Rest():
+                return self.rest(world)
+            case _:
+                return self.shared_change(world, change)
 
     async def advance(
         self, draft: TunnelGoonsGame, request: Generation, worldsmith: WorldsmithAnswer
@@ -172,7 +166,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         )
         return world.sign_on(member, summary)
 
-    def action_roll(self, draft: TunnelGoonsGame, args: ActionRoll, rng: Random) -> list[Fact]:
+    def roll(self, draft: TunnelGoonsGame, args: ActionRoll, rng: Random) -> list[Fact]:
         world = draft.payload
         actor, sheet = world.require_actor(args.actor_id)
         items = world.carried_items(actor, args.items)
@@ -217,8 +211,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
                 facts.extend(world.kill(actor))
         return facts
 
-    def rest(self, draft: TunnelGoonsGame, _args: NoArgs, _rng: Random) -> list[Fact]:
-        world = draft.payload
+    def rest(self, world: TunnelGoonsWorld) -> list[Fact]:
         player = world.player
         members = world.members()
         facts = player.hp.change(player, player.hp.shortfall, "Health", "resting")

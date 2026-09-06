@@ -32,7 +32,10 @@ class Move(Frozen):
 
 
 class UnlockWay(Frozen):
+    """Open a locked way once the story has dealt with it."""
+
+    verb: Literal["unlock_way"]
     to_id: CheckedEntityId = Field(description="Exact id of the locked way's destination.")
 
 
-type SharedChange = Reveal | MoveItem | Kill | JoinParty | LeaveParty
+type SharedChange = Reveal | MoveItem | Kill | JoinParty | LeaveParty | UnlockWay

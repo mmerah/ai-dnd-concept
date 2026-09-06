@@ -7,7 +7,7 @@ from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 SCRIPT: tuple[Call, ...] = (
     tool_call("move", to_id="cellar"),
     tool_call(
-        "action_roll",
+        "roll",
         what="Wade through the flooded cellar",
         ability="skulker",
         difficulty=10,
