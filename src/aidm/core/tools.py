@@ -19,8 +19,7 @@ class NoArgs(Frozen):
 
 
 class Attempt(Frozen):
-    """What every roll-shaped tool asks first. `what` is read by the player and by the narrator,
-    so anything they must not learn goes in a field the engine keeps to the master."""
+    """`what` is read by the player; what they must not learn goes in a master-only field."""
 
     what: str = Field(
         min_length=1,

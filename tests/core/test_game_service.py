@@ -153,7 +153,6 @@ async def test_a_complication_writes_and_installs_at_the_same_place(tmp_path: Pa
     assert exchanges[1].prompt == STORY_MARK
     assert state.payload.run.place == place
     assert all(entity_id in state.payload.cast for entity_id in here_before)
-    # Nothing was told before the write, so no narrator speaks before the worldsmith.
     assert [role for role, _ in table.spawner.prompts] == ["master", "worldsmith", "narrator"]
     assert state.generation is None
 

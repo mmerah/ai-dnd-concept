@@ -284,7 +284,6 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
             event = DiceEvent(label=die_label, faces=(die,), rolled=rolled)
 
         result = outcome(face)
-        # One line for the card and the trace alike; the dice ride the event, never the words.
         line = (
             f"{args.what} — {sentence(label)} d{die}"
             + (f", helped ({args.helped})" if args.helped else "")

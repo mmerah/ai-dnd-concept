@@ -166,7 +166,6 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         outcome = "success" if success else "failure"
 
         facts.append(dice_fact)
-        # One line for the card and the trace alike: the try, what helped, whom, the score.
         line = (
             f"{args.what} — {args.ability.capitalize()}"
             + (f" with {', '.join(item.name for item in items)}" if items else "")

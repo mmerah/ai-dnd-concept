@@ -246,7 +246,6 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
 
 
 def _oracle_line(action: Question, opponent: Loner3eSheet | None, outcome: Outcome) -> str:
-    """One line for the card and the trace alike: the try, its footing, and the answer."""
     footing = action.position + (f" ({action.edge})" if action.edge else "")
     against = f" against {opponent.name}" if opponent is not None else ""
     return f"{action.what}{against} — oracle, {footing}: {outcome.told}"

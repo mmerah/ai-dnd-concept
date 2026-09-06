@@ -95,7 +95,6 @@ def test_the_question_is_the_masters_memory_and_never_reaches_the_narrator() -> 
     assert question.question in asked.trace
     assert answered.told
     assert question.question not in answered.trace
-    # The narrator reads the try and its footing, in the same words the card shows.
     assert answered.trace.startswith(f"{question.what} — oracle, neutral: ")
     assert answered.card.startswith(answered.trace)
 
