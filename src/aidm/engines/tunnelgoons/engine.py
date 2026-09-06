@@ -141,7 +141,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
     def apply_change(self, world: TunnelGoonsWorld, change: SharedChange | Rest) -> list[Fact]:
         match change:
             case Rest():
-                return self.rest(world)
+                return world.rest()
             case _:
                 return self.shared_change(world, change)
 
@@ -209,16 +209,6 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
             facts.extend(actor.hp.change(actor, margin, "Health", args.what))
             if actor.hp.current == 0:
                 facts.extend(world.kill(actor))
-        return facts
-
-    def rest(self, world: TunnelGoonsWorld) -> list[Fact]:
-        player = world.player
-        members = world.members()
-        facts = player.hp.change(player, player.hp.shortfall, "Health", "resting")
-        for member in members:
-            facts.extend(member.hp.change(member, member.hp.shortfall, "Health", "resting"))
-        trace = f"{'the party' if members else 'the player'} rests at {world.current.label}"
-        facts.append(player.fact("rested", trace, card=f"Rested — Health {player.hp}"))
         return facts
 
     def level_up(self, draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:

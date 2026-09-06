@@ -52,17 +52,19 @@ class _ArmB(Frozen):
 class _SchemaProbe(Frozen):
     change: _ArmA | _ArmB = Field(discriminator="verb", description="which arm")
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+    title: str = Field(default="", description="a field whose name spells a noise key")
 
 
 def test_schema_of_drops_noise_and_collapses_a_nullable() -> None:
     schema = schema_of(_SchemaProbe)
 
     dumped = json.dumps(schema)
-    assert '"title"' not in dumped
     assert '"pattern"' not in dumped
     assert '"discriminator"' not in dumped
+    assert "title" not in schema
     properties = schema["properties"]
     assert isinstance(properties, dict)
+    assert "title" in properties
     actor_id = properties["actor_id"]
     assert isinstance(actor_id, dict)
     assert actor_id["type"] == ["string", "null"]

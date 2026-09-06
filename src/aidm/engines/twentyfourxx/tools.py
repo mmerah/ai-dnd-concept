@@ -89,8 +89,7 @@ class ShipUpgrade(Frozen):
 
 
 class Defend(Frozen):
-    """Break a carried item, or a ship function, to turn a hit into a hindrance instead of
-    taking it outright; word the harm yourself."""
+    """Break a carried item or a ship function so a hit becomes a hindrance; word the harm."""
 
     verb: Literal["defend"]
     item_id: CheckedEntityId = Field(
