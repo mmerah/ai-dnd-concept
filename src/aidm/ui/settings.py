@@ -21,8 +21,6 @@ class Box(Protocol):
 
 
 class SettingsForm:
-    """One box per `.env` key; saving writes only the boxes whose value moved."""
-
     def __init__(self, settings: Settings, apply: Callable[[], str | None], boxes: Boxes) -> None:
         self.settings = settings
         self.apply = apply

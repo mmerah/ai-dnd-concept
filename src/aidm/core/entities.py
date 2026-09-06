@@ -9,8 +9,7 @@ SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 SLUG_MAX = 64
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
-# `Slug` for content ids and places; `CheckedEntityId` for an id a model writes;
-# `EntityId` for one the world has checked.
+# `Slug`: ids/places; `CheckedEntityId`: an id a model writes; `EntityId`: one the world checked.
 EngineId = NewType("EngineId", str)
 EntityId = NewType("EntityId", str)
 # The grammar rides the field annotation: a `NewType` over an `Annotated` alias is not a type.
@@ -55,7 +54,6 @@ def require_unique(what: str, ids: Iterable[str]) -> None:
 
 
 def parse[T: BaseModel](model: type[T], value: object) -> T:
-    """Validation at a boundary; a shape the model rejects reads back as a refusal."""
     try:
         return model.model_validate(value)
     except ValidationError as broken:

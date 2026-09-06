@@ -36,12 +36,11 @@ class ScenarioMeta(Frozen):
     voice: str = ""  # empty: the settings' narrator voice
 
     def with_premise(self, fallback: str) -> Self:
-        """The opening's own words stand in for a premise the player never wrote."""
         return self.model_copy(update={"premise": self.premise or fallback})
 
 
 class EngineHeader(Loose):
-    """Routes a document before its engine is known; the rest of the document is ignored."""
+    """Routes a document before its engine is known."""
 
     engine: EngineId
 
@@ -89,12 +88,10 @@ class Generation(Frozen):
 
     operation: Slug  # the engine's own name for what it will author and install
     brief: str = Field(min_length=1)
-    target: CheckedEntityId | None = None  # the entity the operation concerns, when one does
+    target: CheckedEntityId | None = None
 
 
 class Game[P: BaseModel](Mutable):
-    """The game as it is played; its dump is the save envelope around one engine payload."""
-
     scenario_id: Slug
     character_id: Slug
     scenario: ScenarioMeta
@@ -118,7 +115,6 @@ class Game[P: BaseModel](Mutable):
         return deepcopy(self)
 
     def commit(self) -> Self:
-        """The commit gate: the draft revalidated whole; a state the rules refuse never lands."""
         try:
             return parse(type(self), self)
         except Refusal as refused:

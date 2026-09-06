@@ -40,7 +40,6 @@ class Illustrator:
         return _existing(self.saves, scene_key(scene))
 
     def icon(self, entity_id: EntityId) -> Path | None:
-        """What the chat shows as an avatar: a cached icon only, never a generation."""
         for directory in (*self.icon_dirs, self.saves / ICON_DIR):
             found = _existing(directory, entity_id)
             if found is not None:
@@ -74,7 +73,7 @@ class Illustrator:
             _write(self.saves / f"{key}{generated.suffix}", generated.data)
 
     async def _drawn_icon(self, subject: Subject) -> Path | None:
-        """The cached icon, or one drawn now and kept; a loser of the race goes without."""
+        """A loser of the claim race goes without rather than waiting."""
         found = self.icon(subject.id)
         if found is not None:
             return found
@@ -165,9 +164,7 @@ def open_illustrator(
 
 
 def scene_key(scene: NarratorView) -> str:
-    """Free: the cache names a file by the view, which does not know it is cached.
-
-    The engine's own key, hashed because it names a file and an id may not be safe as one."""
+    """Hashed because `place` names a file; free because the view does not know it is cached."""
     return sha1(scene.place.encode(), usedforsecurity=False).hexdigest()[:12]
 
 
@@ -183,7 +180,6 @@ def illustration_request(
     if narration:
         lines.append(f"What just happened: {narration}")
     if referenced:
-        # Map attachments to names so recurring characters retain their likeness.
         lines.append(
             f"Use the attached images as likeness references in this order: "
             f"{', '.join(referenced)}. Keep each appearance consistent."

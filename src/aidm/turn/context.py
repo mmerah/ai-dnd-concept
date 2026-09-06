@@ -30,7 +30,6 @@ def render_master(
     played: int,
     notes: Sequence[str] = (),
 ) -> str:
-    """The whole spawn prompt: every spawn is cold, so the picture rides in it."""
     return sections(
         (
             ("YOUR ROLE", _prompt("master")),
@@ -48,7 +47,6 @@ def render_master(
 def render_narrator(
     view: NarratorView, *, evidence: str, prompt: str, scenes: Sequence[SceneRecord]
 ) -> str:
-    """Only the narrator view reaches this, so hidden canon has no path into the prose."""
     return sections(
         (
             ("YOUR ROLE", _prompt("narrator")),
@@ -66,7 +64,6 @@ def render_interjection(
     scenes: Sequence[SceneRecord],
     evidence: str,
 ) -> str:
-    """The member reads the narrator's whole picture: the view holds nothing hidden."""
     role = _prompt("interjection").format(name=member.name, brief=member.brief, id=member.id)
     return sections(
         (

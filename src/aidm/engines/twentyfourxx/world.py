@@ -12,7 +12,7 @@ from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
 type SkillDie = Literal[8, 10, 12]
 LADDER: tuple[SkillDie, ...] = (8, 10, 12)
-DEFAULT_DIE = 6  # a skill not on the sheet
+DEFAULT_DIE = 6
 HINDERED_DIE = 4
 HELP_DIE = 6
 STARTING_CREDITS = 2
@@ -69,7 +69,7 @@ class Sheet(Mutable):
     skills: dict[str, SkillDie] = Field(default_factory=dict)  # keyed by the pack label
     credits: int = Field(default=STARTING_CREDITS, ge=0)
     items: dict[EntityId, Item] = Field(default_factory=dict)
-    hindrances: list[str] = Field(default_factory=list)  # the SRD's word: injuries and the like
+    hindrances: list[str] = Field(default_factory=list)
 
     def die(self, skill: str) -> int:
         return self.skills.get(skill, DEFAULT_DIE)
@@ -183,12 +183,12 @@ class Crewmate(Person):
 
 
 class TwentyfourxxWorld(SceneWorld[Crewmate, Crewmate]):
-    job: str = ""  # the terms of the job the crew is on; empty between jobs
+    job: str = ""
     ship: dict[EntityId, Item] = Field(
         default_factory=lambda: {
             EntityId(slug(name, ())): Item(name=name) for name in SHIP_FUNCTIONS
         }
-    )  # every crew has one from the start
+    )
 
     @model_validator(mode="after")
     def _player_carries_a_sheet(self) -> Self:

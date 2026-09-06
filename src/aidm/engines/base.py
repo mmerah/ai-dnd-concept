@@ -16,7 +16,7 @@ from aidm.core.views import Panel, PanelRow, Rows, Sections, Subject
 
 PLAYER_ID = EntityId("player")
 SRD_PACK: Slug = "srd"
-HIRE: Slug = "hire"  # the worldsmith writes a sheet for someone hired
+HIRE: Slug = "hire"
 SIGNED_ON = (
     "{name} has signed on with the player: tell it in a line or two, and settle nothing else."
 )
@@ -44,7 +44,7 @@ class Thing(Mutable):
 
     @property
     def label(self) -> str:
-        """Name and exact id, so a role can reuse the id; the player is named as such."""
+        """Carries the exact id so a role can reuse it."""
         return f"the player {self.tag}" if self.id == PLAYER_ID else self.tag
 
     @property
@@ -60,7 +60,6 @@ class Thing(Mutable):
         return "met" if self.known else "unmet"
 
     def rows(self) -> Rows:
-        """The sheet, as the master's entity line prints it."""
         return ()
 
     def line(self, *, rows: Rows | None = None, detail: str = "") -> str:
@@ -112,11 +111,9 @@ class Person(Thing):
 
 
 class World[P: Person](Mutable):
-    """What both families' worlds share; the sequence of places is each family's own."""
-
     player: P
     source: str = ""
-    party: list[EntityId] = Field(default_factory=list)  # who travels with the player, in order
+    party: list[EntityId] = Field(default_factory=list)
 
     @abstractmethod
     def records(self) -> tuple[SceneRecord, ...]: ...
@@ -129,7 +126,6 @@ class World[P: Person](Mutable):
         return tuple(exchange for record in self.records() for exchange in record.exchanges)
 
     def join(self, member: Person) -> list[Fact]:
-        """Each family resolves who may join; the party itself is one list, kept here."""
         if member.id in self.party:
             raise Refusal(f"{member.name} already travels with the player")
         facts = member.reveal()

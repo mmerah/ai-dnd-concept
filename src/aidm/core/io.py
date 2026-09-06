@@ -83,8 +83,7 @@ class Library:
     def read_characters(
         self, engines: Collection[EngineId]
     ) -> Iterator[tuple[Slug, EngineId, CharacterHeader]]:
-        """One entry per character and engine written, so a shared id never names one
-        engine's rules."""
+        """One entry per (character, engine) file, so a shared id never names one engine's rules."""
         if not self.characters.is_dir():
             return
         for path in sorted(p for p in self.characters.iterdir() if p.is_dir()):

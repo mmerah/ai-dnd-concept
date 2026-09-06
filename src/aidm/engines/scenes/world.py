@@ -45,17 +45,15 @@ class SceneRun(Mutable):
     # Names the art cache entry, so returning to a place reuses its picture.
     place: Slug
     title: str
-    focus: str = ""  # what the scene is about, read by the player; empty says nothing
+    focus: str = ""
     situation: str = Field(min_length=1)
     here: list[CheckedEntityId] = Field(default_factory=list)
     exchanges: list[Exchange] = Field(default_factory=list)
-    offered: bool = False  # the way on, offered at a stopping point; the player may stay
-    recap: str = ""  # written when the scene was left or turned
+    offered: bool = False
+    recap: str = ""
 
 
 class SceneCanon[C: Person](Mutable):
-    """A scenario as authored: its opening scene and cast, with no player in it yet."""
-
     cast: dict[EntityId, C] = Field(default_factory=dict)
     opening: SceneRun
     source: str = ""
@@ -72,8 +70,6 @@ class SceneCanon[C: Person](Mutable):
 
 
 class SceneWorld[C: Person, P: Person](World[P]):
-    """The world as a sequence of scenes: the player is a sheet, never a cast entry."""
-
     runs: list[SceneRun] = Field(min_length=1)
     cast: dict[EntityId, C] = Field(default_factory=dict)
     arc: str = ""
@@ -141,7 +137,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
         )
 
     def last_seen(self, entity_id: EntityId) -> str:
-        """The prompt's own line; scanning back keeps what the story dropped from being lost."""
+        """Scans every run so an entity the story dropped is still placed."""
         for run in reversed(self.runs):
             if entity_id in run.here:
                 return f"last seen in: {run.title}"
@@ -177,7 +173,6 @@ class SceneWorld[C: Person, P: Person](World[P]):
             yield self.cast[entity_id]
 
     def others(self) -> Iterator[C]:
-        """Who is here with the player and does not travel with them."""
         return (self.cast[entity_id] for entity_id in self.present() if entity_id not in self.party)
 
     def here_lines(self) -> str:
@@ -196,7 +191,6 @@ class SceneWorld[C: Person, P: Person](World[P]):
         )
 
     def cast_lines(self) -> str:
-        """The worldsmith must know who is met, and who follows the player out of the scene."""
         lines = [self.player.line()]
         for entry in self.cast.values():
             where = (

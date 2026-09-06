@@ -19,8 +19,6 @@ LOGGER = logging.getLogger(__name__)
 
 
 class CharacterForm:
-    """The engine's creation steps, answered one at a time, previewed as the sheet they make."""
-
     def __init__(self, runtime: Runtime) -> None:
         self.runtime = runtime
         self.engine_id = runtime.default_engine()
@@ -119,8 +117,6 @@ class CharacterForm:
 
 
 class ScenarioForm:
-    """A premise or a document, one worldsmith call, and the game opens on the scene it wrote."""
-
     def __init__(self, runtime: Runtime, catalog: LauncherCatalog) -> None:
         self.runtime = runtime
         self.catalog = catalog

@@ -16,11 +16,10 @@ class Line(Frozen):
 
 
 class SpokenLine(Frozen):
-    """A line as recorded: the speaker's id and name ride on it, so chat, journal and speech
-    never resolve an id through state."""
+    """Carries the speaker's name so chat, journal and speech never resolve an id through state."""
 
     speaker_id: CheckedEntityId | None = None
-    speaker: str = ""  # the name as it was when spoken; empty for narration
+    speaker: str = ""
     text: str = Field(min_length=1)
 
     @model_validator(mode="after")
@@ -115,7 +114,6 @@ class Exchange(Frozen):
     facts: tuple[Fact, ...] = ()
     # The suspending decision's prompt: the pause has to survive after `Game.pending` clears.
     decision: str = ""
-    # A member's proposed action, standing until the next exchange.
     proposal: str = ""
 
     @property
@@ -129,8 +127,7 @@ class Exchange(Frozen):
 
 
 class SceneRecord(Frozen):
-    """One scene as every role reads it back; `recap` is empty while open or where none was
-    written."""
+    """`recap` is empty while the scene is open or where none was written."""
 
     title: str
     focus: str

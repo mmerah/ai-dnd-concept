@@ -9,7 +9,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from aidm.core.entities import Frozen
 
 type ProviderName = Literal["openrouter", "local"]
-# Each role is a one-shot CLI the app spawns, so a role is only a name and how to spawn it.
 type Role = Literal["master", "narrator", "worldsmith"]
 type CliProvider = Literal["claude", "codex"]
 type Effort = Literal["low", "medium", "high"]
@@ -22,8 +21,6 @@ class ProviderConfig(Frozen):
 
 
 class RoleConfig(Frozen):
-    """How to spawn one role. The driver for `provider` turns this into a command line."""
-
     provider: CliProvider = "claude"
     # A string, not a `Literal`: model aliases move faster than this file.
     model: str = Field(min_length=1)
@@ -32,8 +29,6 @@ class RoleConfig(Frozen):
 
 
 class MediaConfig(Frozen):
-    """Media is optional presentation, so failures only log and the default is off."""
-
     enabled: bool = False
     provider: ProviderName = "openrouter"
     model: str = "google/gemini-3.1-flash-lite-image"
@@ -44,14 +39,11 @@ class MediaConfig(Frozen):
 
 
 class SpeechConfig(Frozen):
-    """Speech is optional presentation, so failures only log and the default is off."""
-
     enabled: bool = False
     provider: ProviderName = "openrouter"
     model: str = "google/gemini-3.1-flash-tts-preview"
-    # The narrator's, when the scenario names none.
+    # `voice` is the narrator's unless the scenario names one; `voices` is the pool to draw from.
     voice: str = "Kore"
-    # The pool dialogue draws from.
     voices: tuple[str, ...] = Field(
         default=("Kore", "Puck", "Charon", "Zephyr", "Fenrir"), min_length=1
     )
@@ -109,8 +101,7 @@ class Settings(BaseSettings):
     interjections: bool = True
     # This ~30k-token ceiling admits a 76-page adventure without swallowing the context.
     source_max_chars: int = Field(default=120_000, ge=1)
-    # `.mcp.json` and `.codex/config.toml` hard-code this port: change all three together.
-    # Not `PORT`: that name is set in too many shells to be safe to read.
+    # Also hard-coded in `.mcp.json` and `.codex/config.toml`; not `PORT`, set by too many shells.
     server_port: int = Field(default=8080, gt=0, lt=65536)
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")

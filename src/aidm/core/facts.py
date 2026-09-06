@@ -45,7 +45,6 @@ def cards(facts: Sequence[Fact]) -> tuple[Fact, ...]:
 
 
 def traced(facts: Sequence[Fact], *, told_only: bool = False) -> str:
-    """One bullet per fact: how every surface that reports what landed renders it."""
     return "\n".join(f"- {fact.trace}" for fact in facts if fact.told or not told_only) or NOTHING
 
 

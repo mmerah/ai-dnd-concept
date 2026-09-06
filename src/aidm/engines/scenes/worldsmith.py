@@ -98,7 +98,6 @@ def scene_unmet[C: Person, P: Person](
 
 
 def named_in(situation: str, hidden: Iterable[str], cast: Mapping[EntityId, Thing]) -> list[str]:
-    """The hidden list arrives as free text, so each entry is resolved before the leak rule runs."""
     return named_unmet(
         situation,
         (
