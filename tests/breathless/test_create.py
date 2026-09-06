@@ -25,7 +25,7 @@ def test_skill_steps_exclude_earlier_picks() -> None:
 
 def test_create_character_round_trip() -> None:
     character = ENGINE.create_character("Jax", "A wiry mechanic", PICKS)
-    sheet = character.payload
+    sheet = character.payload.dice()
     assert sheet.skills == {"bash": 10, "dash": 8, "sneak": 6, "shoot": 4, "think": 4, "sway": 4}
     assert sheet.worn == sheet.skills
     assert [(item.name, item.die) for item in sheet.items.values()] == [

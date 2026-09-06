@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Literal, Self
 
 from pydantic import Field, JsonValue, model_validator
@@ -7,7 +8,7 @@ from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import PendingOption
 from aidm.core.views import Rows
-from aidm.engines.base import Counter, Person
+from aidm.engines.base import PLAYER_ID, Counter, Person
 from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
 type Die = Literal[4, 6, 8, 10, 12]
@@ -30,7 +31,10 @@ class Item(Mutable):
     die: Die
 
 
-class Survivor(Person):
+class SurvivorSheet(Mutable):
+    """What Breathless rolls for: the player's sheet from creation, a hired survivor's from
+    the worldsmith."""
+
     pronouns: str = ""
     job: str = ""
     skills: dict[Skill, Die] = Field(min_length=6, max_length=6)  # as created
@@ -43,8 +47,7 @@ class Survivor(Person):
 
     @model_validator(mode="after")
     def _rated_spread(self) -> Self:
-        if sorted(self.skills.values()) != SKILL_SPREAD:
-            raise ValueError("skills as created: three d4, one d6, one d8, one d10")
+        check_spread(self.skills)
         return self
 
     @property
@@ -70,18 +73,6 @@ class Survivor(Person):
             )
             if value
         )
-
-    def require_item(self, item_id: EntityId) -> Item:
-        item = self.items.get(item_id)
-        if item is None:
-            raise Refusal(f"{item_id!r} is not among the player's items")
-        return item
-
-    def drop_item(self, item_id: EntityId) -> list[Fact]:
-        item = self.require_item(item_id)
-        del self.items[item_id]
-        trace = f"{self.label} drops {item.name}"
-        return [self.fact("item_dropped", trace, card=f"Dropped {item.name}")]
 
     def loot_options(self, item: str, granted: Die) -> tuple[PendingOption, ...]:
         base: dict[str, JsonValue] = {"item": item, "granted": granted}
@@ -109,36 +100,110 @@ class Survivor(Person):
             )
         return tuple(options)
 
+
+class Survivor(Person):
+    """One type plays the player and the cast alike; only a sheet says who has dice."""
+
+    sheet: SurvivorSheet | None = Field(
+        default=None,
+        description="Never written by you: code installs it when the player hires them.",
+    )
+
+    def dice(self) -> SurvivorSheet:
+        if self.sheet is None:
+            raise Refusal(f"{self.name} carries no dice")
+        return self.sheet
+
+    def require_item(self, item_id: EntityId) -> Item:
+        item = self.dice().items.get(item_id)
+        if item is None:
+            raise Refusal(f"{item_id!r} is not among {self.name}'s items")
+        return item
+
+    def drop_item(self, item_id: EntityId) -> list[Fact]:
+        item = self.require_item(item_id)
+        del self.dice().items[item_id]
+        trace = f"{self.label} drops {item.name}"
+        return [self.fact("item_dropped", trace, card=f"Dropped {item.name}")]
+
     def take_loot(self, item: str, granted: Die, choice: str) -> Fact:
+        sheet = self.dice()
         if choice == "take":
-            if len(self.items) >= CARRY:
+            if len(sheet.items) >= CARRY:
                 raise Refusal("the backpack is full; swap for something carried instead")
-            self.items[EntityId(slug(item, self.items))] = Item(name=item, die=granted)
+            sheet.items[EntityId(slug(item, sheet.items))] = Item(name=item, die=granted)
             card = f"Took {item} (d{granted})"
         elif choice == "med-kit":
             if granted < 10:
                 raise Refusal("only a d10 find or better can be a med kit")
-            if self.med_kit:
-                raise Refusal("the player already holds a med kit")
-            self.med_kit = True
+            if sheet.med_kit:
+                raise Refusal(f"{self.name} already holds a med kit")
+            sheet.med_kit = True
             card = "Took a med kit"
-        elif choice.startswith(SWAP) and EntityId(choice.removeprefix(SWAP)) in self.items:
-            old = self.items.pop(EntityId(choice.removeprefix(SWAP)))
-            self.items[EntityId(slug(item, self.items))] = Item(name=item, die=granted)
+        elif choice.startswith(SWAP) and EntityId(choice.removeprefix(SWAP)) in sheet.items:
+            old = sheet.items.pop(EntityId(choice.removeprefix(SWAP)))
+            sheet.items[EntityId(slug(item, sheet.items))] = Item(name=item, die=granted)
             card = f"Swapped {old.name} for {item} (d{granted})"
         else:
             raise Refusal(f"{choice!r} is not a valid loot choice")
         return self.fact("loot_taken", card, card=card)
 
+    def rows(self) -> Rows:
+        return self.sheet.rows() if self.sheet is not None else ()
 
-BreathlessWorld = SceneWorld[Person, Survivor]
+    def line(self, *, rows: Rows | None = None, detail: str = "") -> str:
+        # the player's backpack is the BACKPACK section
+        if self.sheet is not None and self.id != PLAYER_ID and not detail:
+            items = ", ".join(
+                f"{item.name}[{key}] d{item.die}" for key, item in self.sheet.items.items()
+            )
+            detail = f"backpack: {items or '(empty)'}"
+            if self.sheet.med_kit:
+                detail += ", med kit"
+        return super().line(rows=rows, detail=detail)
+
+    def unwritten(self) -> str:
+        parts = [
+            part
+            for part in (super().unwritten(), "a sheet" if self.sheet is not None else "")
+            if part
+        ]
+        return ", ".join(parts)
+
+
+class BreathlessWorld(SceneWorld[Survivor, Survivor]):
+    @model_validator(mode="after")
+    def _player_carries_a_sheet(self) -> Self:
+        if self.player.sheet is None:
+            raise ValueError("the player carries no sheet")
+        return self
+
+    def require_actor(self, actor_id: EntityId | None) -> Survivor:
+        if actor_id is None or actor_id == self.player.id:
+            return self.player
+        entity = self.require(actor_id)
+        if entity.alive and entity.sheet is not None and entity.id in self.party:
+            return entity
+        raise Refusal(f"{entity.name} is not the player or a hired survivor")
+
+    def require_hireable(self, entity_id: EntityId) -> Survivor:
+        member = self.require_here(entity_id, alive=True)
+        if member.sheet is not None:
+            raise Refusal(f"{member.name} already carries a sheet")
+        return member
+
 
 BreathlessGame = Game[BreathlessWorld]
 
-BreathlessScenario = Scenario[SceneCanon[Person]]
+BreathlessScenario = Scenario[SceneCanon[Survivor]]
 
 BreathlessCharacter = Character[Survivor]
 
 
 def stepped(die: Die) -> Die:
     return LADDER[max(LADDER.index(die) - 1, 0)]
+
+
+def check_spread(skills: Mapping[Skill, Die]) -> None:
+    if sorted(skills.values()) != SKILL_SPREAD:
+        raise ValueError("skills as created: three d4, one d6, one d8, one d10")

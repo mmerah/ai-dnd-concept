@@ -31,7 +31,9 @@ locations, complications, missions) are all in the SRD at the page above, transc
   place, and the worldsmith writes where they land; or hand the worldsmith a complication to
   bring down on this place. The last two end the turn, and the player reads what arrives.
 - `check` — roll a skill, a carried item, or the once-per-breath stunt on the 1–2 / 3–4 / 5+
-  ladder; the die rolled wears one step, and an item reduced to d4 is gone.
+  ladder; the die rolled wears one step, and an item reduced to d4 is gone. `actor_id` when a
+  hired survivor acts instead of the player; `helped_by` names a hired survivor who rolls beside
+  them, keeping the highest die.
 - `catch_breath` — reset skills, the loot die and the stunt; stress stays; one d12 on the SRD's
   complication table goes to the master as a note.
 - `change_stress` — what a complication costs, or what laying low somewhere secure clears.
@@ -40,6 +42,8 @@ locations, complications, missions) are all in the SRD at the page above, transc
   swap it for something carried, or take a med kit instead.
 - `test_luck` — one die of the master's choosing, read on the check ladder, for a question about
   the world where nobody acts.
+- `hire` — the player hires someone here to work; the worldsmith writes their sheet once the turn
+  ends, and they join the party.
 
 ## Deviations in this repo
 
@@ -48,18 +52,24 @@ stands. Nothing diverges silently: a rule not listed here is implemented as prin
 
 1. **Before We Start is not modelled.** The SRD opens with a content warning and a lines-and-veils
    step before play. This is a table procedure with no rule inside it; the app has no seat for it.
-2. **No ally rolls.** An NPC is `id, name, brief, known, alive` and carries no dice; a threat to
-   the player is the player's own `check`. Only the player rolls, and only the player has a sheet.
-3. **An item reduced to d4 leaves for good.** The SRD's "breaks, gets lost, or fades away ... until
+2. **An item reduced to d4 leaves for good.** The SRD's "breaks, gets lost, or fades away ... until
    it's made relevant again" has no procedure for the way back, so the engine models none.
-4. **A med kit is a mark on the sheet, not an item.** The SRD counts it apart from the three
+3. **A med kit is a mark on the sheet, not an item.** The SRD counts it apart from the three
    carried items; here it is a flag, spent by `use_med_kit`, never dropped or swapped.
 
-Three readings the SRD leaves open are settled without diverging from it: stress is a counter that
+Four readings the SRD leaves open are settled without diverging from it: stress is a counter that
 stops at 4 (the SRD names 4 as the threshold for vulnerable and nothing above it); the catch-breath
 complication is one d12 on the SRD's own table, offered to the game master as a note rather than
-forced into the story; and a luck test is read on the check ladder, the SRD's "interpret the
-result as you see fit".
+forced into the story; a luck test is read on the check ladder, the SRD's "interpret the result as
+you see fit"; and the SRD's "if an ally helps you, they also make a check" is played on the same
+skill as the actor's, and an item or stunt check takes no helper, since the SRD names no die for one.
+
+## Tool count
+
+Fourteen counted: `change_world` and its five arms — `reveal`, `enter`, `leave`, `kill`,
+`drop_item` — plus the eight named tools: `next_scene`, `check`, `catch_breath`, `change_stress`,
+`use_med_kit`, `loot_check`, `test_luck`, `hire`; plus the pair, the two party arms of
+`engines/base.py`, shared by every engine and not counted (PLAN decision 8).
 
 ## What the AI game master adds
 
@@ -67,10 +77,12 @@ Fields and tools that exist for the app around the rules, not the rules themselv
 
 - `known` and `hidden` — the told-fact gate: no unknown name reaches the narrator.
 - `alive` and `kill` — the SRD leaves being taken out or dying to the table; the gate needs a flag,
-  and a vulnerable player's failed dangerous check hands the master that ruling as a note.
+  and a vulnerable participant's failed dangerous check hands the master that ruling as a note,
+  naming whoever failed.
 - `next_scene` and the scene's `offered` flag — a stopping point the player may stay at.
 - The loot decision is the player's, asked through the app; the master leaves `granted` and
   `choice` null.
+- A sheet on a cast member marks who has dice; the worldsmith writes it on `hire`.
 
 ## Where the rules live
 

@@ -11,7 +11,6 @@
 - [] 11: Demo path. One command and one GIF of a full Loner turn. The popular repos win on install friction and demos, not on play quality. This is the only thing they have that we do not.
 - [] 13: Pack authoring: write a pack (skills, gear, tables) through the authoring loop, then a scenario or character that plays with it.
 - [x] 14: The docs for each engine: have a template/format for each? Engines that are not implemented have the sections content as "unimplemented"?
-- [] 16: Non-solo play, with NPCs first. The player leads a small crew: crew members can roll, get hurt, and share things like the 24XX ship. Today only the player rolls and no companion is gained, so it needs its own plan. It would also close most 24XX deviations in `docs/24XX.md`: an ally who helps rolls their own die, the crew's shared ship and its systems come in, and a dead operator can be replaced by a crew member instead of ending the game.
 - [] 17: Real 3D dice: a physics canvas; the CSS tumble is the cheap version.
 - [] 18: Maze Rats returns, self-contained on the same seam: the audited rules live in git at 2c3e8a5 and its docs/MAZE-RATS.md at 62f95c6; the return rewrites the world on its own strict actor/item/place model and fits 2,000 lines by dropping nothing the SRD prints.
 - [] 19: A Pokémon-style engine with battles delegated to Pokémon Showdown. The point is the boundary: AIDM runs the RPG, Showdown runs the fight, neither reads the other's internals.
