@@ -25,8 +25,8 @@ locations, complications, missions) are all in the SRD at the page above, transc
 
 ## The tools
 
-- `change_world` — reveal someone found, bring a cast member in or out of the scene, record a
-  death, or drop an item from the backpack for good.
+- `change_world` — reveal someone found, bring a cast member in or out of the scene, have someone
+  join or leave the party, record a death, or drop an item from the backpack for good.
 - `next_scene` — offer the player the way on at a stopping point; or say that they left this
   place, and the worldsmith writes where they land; or hand the worldsmith a complication to
   bring down on this place. The last two end the turn, and the player reads what arrives.
@@ -54,8 +54,6 @@ stands. Nothing diverges silently: a rule not listed here is implemented as prin
    it's made relevant again" has no procedure for the way back, so the engine models none.
 4. **A med kit is a mark on the sheet, not an item.** The SRD counts it apart from the three
    carried items; here it is a flag, spent by `use_med_kit`, never dropped or swapped.
-5. **No companions.** The SRD prints no rule for another character joining the player, so the
-   engine has none; the worldsmith's bar brings the cast back scene by scene.
 
 Three readings the SRD leaves open are settled without diverging from it: stress is a counter that
 stops at 4 (the SRD names 4 as the threshold for vulnerable and nothing above it); the catch-breath

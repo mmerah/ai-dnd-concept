@@ -14,7 +14,7 @@ from aidm.core.entities import (
 )
 from aidm.core.facts import Fact
 from aidm.core.play import Exchange, SceneRecord
-from aidm.core.views import Action, Panel, PanelRow, Sections, lines_of
+from aidm.core.views import Action, Panel, PanelRow, lines_of
 from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, World, check_filing, sentence
 from aidm.engines.scenes.drafts import NextDraft, SceneDraft
 
@@ -76,7 +76,6 @@ class SceneWorld[C: Person, P: Person](World[P]):
 
     runs: list[SceneRun] = Field(min_length=1)
     cast: dict[EntityId, C] = Field(default_factory=dict)
-    party: list[EntityId] = Field(default_factory=list)
     arc: str = ""
 
     @model_validator(mode="after")
@@ -93,8 +92,10 @@ class SceneWorld[C: Person, P: Person](World[P]):
             raise ValueError("the player cannot travel with themselves")
         require_unique("party", self.party)
         for member_id in self.party:
-            if member_id not in self.cast:
-                raise ValueError(f"{member_id!r} travels with the player but is not in the cast")
+            if member_id not in self.cast or not self.cast[member_id].known:
+                raise ValueError(
+                    f"{member_id!r} travels with the player but is not met in the cast"
+                )
             if not self.cast[member_id].alive:
                 raise ValueError(f"{member_id!r} is dead and cannot travel with the player")
         if left := sorted(set(self.party) - set(self.run.here)):
@@ -175,8 +176,12 @@ class SceneWorld[C: Person, P: Person](World[P]):
         for entity_id in self.present():
             yield self.cast[entity_id]
 
+    def others(self) -> Iterator[C]:
+        """Who is here with the player and does not travel with them."""
+        return (self.cast[entity_id] for entity_id in self.present() if entity_id not in self.party)
+
     def here_lines(self) -> str:
-        return lines_of(member.line() for member in self.here() if member.id != self.player.id)
+        return lines_of(other.line() for other in self.others())
 
     def hidden_lines(self) -> str:
         return lines_of(self.require(entity_id).line() for entity_id in self.hidden())
@@ -244,22 +249,10 @@ class SceneWorld[C: Person, P: Person](World[P]):
         return facts
 
     def join_party(self, entity_id: EntityId) -> list[Fact]:
-        entity = self.require_here(entity_id, alive=True)
-        if entity.id in self.party:
-            raise Refusal(f"{entity.name} already travels with the player")
-        facts = entity.reveal()
-        self.party.append(entity.id)
-        trace = f"{entity.tag} travels with the player"
-        facts.append(entity.fact("party_joined", trace, card=f"{entity.name} joins your party"))
-        return facts
+        return self.join(self.require_here(entity_id, alive=True))
 
     def leave_party(self, entity_id: EntityId) -> list[Fact]:
-        entity = self.require(entity_id)
-        if entity.id not in self.party:
-            raise Refusal(f"{entity.name} does not travel with the player")
-        self.party.remove(entity.id)
-        trace = f"{entity.tag} no longer travels with the player"
-        return [entity.fact("party_left", trace, card=f"{entity.name} leaves your party")]
+        return self.part(self.require(entity_id))
 
     def offer(self) -> list[Fact]:
         if self.run.offered:
@@ -289,20 +282,6 @@ class SceneWorld[C: Person, P: Person](World[P]):
             self.run.recap = draft.recap
         self.arc = draft.arc or self.arc
         self.runs.append(run_of(draft, [*self.party, *present, *hidden]))
-
-    def party_rows(self) -> Sections:
-        members = self.members()
-        if not members:
-            return ()
-        listed = "\n".join(f"- {m.tag}" for m in members)
-        return (("THE PARTY (led by the player)", listed),)
-
-    def party_panel(self) -> tuple[Panel, ...]:
-        members = self.members()
-        if not members:
-            return ()
-        rows = tuple(PanelRow(label=m.name, detail=m.brief, icon_id=m.id) for m in members)
-        return (Panel(title="Party", rows=rows),)
 
     def scene_panel(self) -> tuple[Panel, ...]:
         if not self.run.focus:

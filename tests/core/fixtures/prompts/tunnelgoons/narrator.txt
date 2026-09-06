@@ -24,8 +24,11 @@ WHAT THIS SCENE IS ABOUT:
 A drowned room
 
 WHO IS HERE:
-- Kael — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
 - Cellar Lurker — Something pale that surfaces only when the water stills.
+
+YOUR PARTY:
+you are Kael — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
+nobody travels with you
 
 THE PLAYER'S SHEET:
 - Brute: 1

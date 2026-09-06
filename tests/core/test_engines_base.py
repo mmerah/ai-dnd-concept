@@ -3,8 +3,16 @@ from pydantic import ValidationError
 from support.loner import initialized
 
 from aidm.core.entities import EntityId
-from aidm.core.views import Subject
-from aidm.engines.base import Counter, Person, Thing, here_panel, named_unmet
+from aidm.core.views import PanelRow, Subject
+from aidm.engines.base import (
+    Counter,
+    Person,
+    Thing,
+    here_panel,
+    named_unmet,
+    party_panel,
+    party_section,
+)
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
 
 KAEL = Loner3eSheet(id=EntityId("kael"), name="Kael", brief="", known=True)
@@ -26,6 +34,23 @@ def test_here_panel_puts_the_player_first_with_icon_ids_on_every_row() -> None:
     assert [row.label for row in panel.rows] == ["Sable (you)", "Kestrel"]
     assert panel.rows[0].icon_id == player.id
     assert panel.rows[1].icon_id == other.id
+
+
+def test_party_section_is_empty_for_nobody_and_party_panel_orders_entity_before_sheet() -> None:
+    assert party_section(()) == ()
+    assert party_panel(()) == ()
+
+    member = Loner3eSheet(
+        id=EntityId("mara"), name="Mara", brief="Keeps to herself.", known=True, concept="A Watcher"
+    )
+
+    (panel,) = party_panel((member,))
+    assert panel.title == "Party"
+    assert panel.rows[0] == PanelRow(label="Mara", detail="Keeps to herself.", icon_id=member.id)
+    assert panel.rows[1] == PanelRow(label="Concept", detail="A Watcher")
+
+    ((title, body),) = party_section((member,))
+    assert (title, body) == ("THE PARTY (led by the player)", member.line())
 
 
 def test_a_thing_with_no_brief_prints_only_its_tag() -> None:

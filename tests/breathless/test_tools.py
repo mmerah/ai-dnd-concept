@@ -190,12 +190,6 @@ def test_drop_item_removes_the_key() -> None:
     assert WRENCH not in draft.payload.player.items
 
 
-def test_join_party_is_refused_outside_breathless_change() -> None:
-    draft = small_world().draft()
-    with pytest.raises(Refusal):
-        _ = change(ENGINE, draft, "join_party", entity_id=PLAYER_ID)
-
-
 def test_next_scene_with_pursuit_requests_the_crossing() -> None:
     draft = small_world()
     facts = ENGINE.next_scene(draft, NextScene(pursuit="the control deck"), Random(0))

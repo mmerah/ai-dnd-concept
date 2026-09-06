@@ -3,6 +3,7 @@ from typing import Literal
 from pydantic import Field
 
 from aidm.core.entities import CheckedEntityId, Frozen
+from aidm.engines.base import JoinParty, LeaveParty
 
 NEXT_SCENE = (
     "Offer the player the way on: this scene has reached a useful stopping point. They are "
@@ -39,20 +40,6 @@ class Kill(Frozen):
 
     verb: Literal["kill"]
     entity_id: CheckedEntityId = Field(description="Exact id of who here died.")
-
-
-class JoinParty(Frozen):
-    """A character here starts travelling with the player."""
-
-    verb: Literal["join_party"]
-    entity_id: CheckedEntityId = Field(description="Exact id of who is joining.")
-
-
-class LeaveParty(Frozen):
-    """A companion stops travelling with the player."""
-
-    verb: Literal["leave_party"]
-    entity_id: CheckedEntityId = Field(description="Exact id of the companion leaving.")
 
 
 class NextScene(Frozen):

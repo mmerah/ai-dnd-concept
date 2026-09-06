@@ -6,8 +6,9 @@ from pydantic import Field
 from aidm.core.entities import CheckedEntityId, Frozen, Slug
 from aidm.core.play import DecisionOption
 from aidm.core.tools import Attempt
+from aidm.engines.base import JoinParty, LeaveParty
 from aidm.engines.loner3e.world import TagKind
-from aidm.engines.scenes.tools import Enter, JoinParty, Kill, Leave, LeaveParty, Reveal
+from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
 
 AND_AT = 4  # both dice 4+ sharpens the answer to -and
 BUT_AT = 3  # both dice 3 or under softens it to -but

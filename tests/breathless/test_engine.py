@@ -1,6 +1,6 @@
 import pytest
 from support.breathless import SKILLS_RATED
-from support.table import BREATHLESS, ENGINES_BUILT, game, narrowed, updated
+from support.table import BREATHLESS, ENGINES_BUILT, change, game, narrowed, updated
 
 from aidm.core.entities import EngineId, EntityId, Refusal
 from aidm.core.io import decode
@@ -18,6 +18,7 @@ from aidm.engines.scenes.world import SceneCanon, SceneRun
 from aidm.engines.seam import AnyEngine
 
 FIRE_AXE = EntityId("fire-axe")
+OVID = EntityId("ovid-sarn")
 
 
 def _breathless_game() -> tuple[AnyEngine, BreathlessGame]:
@@ -32,6 +33,16 @@ def test_the_shipped_game_begins_with_the_srd_pack_and_the_players_item() -> Non
     world = state.payload
     assert world.player.items[FIRE_AXE].die == STARTING_ITEM
     assert PLAYER_ID not in world.present()
+
+
+def test_join_party_lands_a_party_joined_fact_and_adds_the_member() -> None:
+    engine, state = _breathless_game()
+    draft = state.draft()
+
+    facts = change(engine, draft, "join_party", entity_id=OVID)
+
+    assert any(fact.kind == "party_joined" for fact in facts)
+    assert OVID in draft.payload.party
 
 
 def test_a_scenario_with_no_packs_is_refused_by_check_packs() -> None:

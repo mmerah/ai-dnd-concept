@@ -24,10 +24,13 @@ WHAT THIS SCENE IS ABOUT:
 Can Kael get through Vessa's airlock and into the station, and on whose terms?
 
 WHO IS HERE:
-- Kael — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
 - Vessa Rune — QV-9's keeper for eleven years, she knows every corridor by feel and won't say why she hasn't left the docking ring in six days; her override codes can lock Kael out of the whole station.
 - Harl Odum — A salvage pilot who claims he only just made port, though his skiff has sat cold at the outer berth since before the relay went dark; his cutting torch opens more than hull plate.
 - Warden Six — QV-9's maintenance android, still carrying out a shutdown order it was never told to stand down from; its manipulator arms can crush a suit seal without meaning to kill.
+
+YOUR PARTY:
+you are Kael — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
+nobody travels with you
 
 THE PLAYER'S SHEET:
 - Specialty: Sneak
