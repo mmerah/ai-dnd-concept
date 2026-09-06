@@ -6,8 +6,8 @@ a move after a turn, at the cost of one narrator spawn the player never waits on
 24XX a crew that rolls beside the player, hired through the worldsmith. **Phase 4** gives 24XX
 succession and the ship. **Phase 5** gives Tunnel Goons goons who roll and level. **Phase 6** gives
 Breathless survivors who roll beside the player. Self-standing: an implementer needs this file,
-`CLAUDE.md` and the code. Track G of `NEXT-SPECS.md` (2026-09-02) is folded here and cut from that
-file.
+`CLAUDE.md` and the code. Track G of the 2026-09-02 brainstorm (`NEXT-SPECS.md`, deleted; last at
+`git show ae7c416:NEXT-SPECS.md`) is folded here.
 
 What stays, everywhere: one turn is one player input on one draft behind the commit gate; only
 code changes state or rolls dice; the narrator reads revealed facts only; the three roles, each
