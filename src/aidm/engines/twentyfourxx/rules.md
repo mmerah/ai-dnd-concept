@@ -31,8 +31,8 @@ Say it before the roll. With `risking_death` set, a disaster (1–2) kills the a
 
 ## Defend
 
-The actor may break a carried item to turn a hit into a hindrance instead of taking it
-outright. Broken gear is useless until `repair_item` fixes it.
+The actor may break a carried item, or a ship function, to turn a hit into a hindrance instead of
+taking it outright. Broken gear is useless until `repair_item` fixes it.
 
 ## Harm as hindrances
 
@@ -47,7 +47,7 @@ bites; the engine does not count it.
 ## Credits and gear
 
 `gain_item` buys — most items cost ₡1. `spend` pays for everything else: a bribe, medical care,
-passage. `repair_item` fixes broken gear.
+passage. `repair_item` fixes broken gear, a ship function included.
 
 ## Jobs
 
@@ -69,6 +69,21 @@ party. A hired member is a crew member from then on: `actor_id` on `attempt`, `d
 `change_hindrances`, `gain_item`, `drop_item`, `repair_item` and `spend` arms says when they act
 instead of the player. `helped_by` beside `helped` names a hired member who rolls their own die.
 `finish_job` raises the whole crew, one `raises` entry each.
+
+## Death and succession
+
+If killed, the SRD says: make a new character to introduce ASAP. Here, when the player dies with
+a hired member alive, the rules ask the player who leads. The chosen member is "you" from then on,
+keeping their own name and id; the dead lead stays in the scene as a body. With nobody hired, the
+game ends.
+
+## The ship
+
+Every crew has a starship with the SRD's seven basic functions — Comms, Crafts, Drive, Equipment,
+Hull armor, Sensors, Weapons — listed under THE SHIP with their ids. Any function may be named
+as `item_id` on `defend` and `repair_item` when the fiction breaks it; hull armor is the one
+built to break. `ship_upgrade` upgrades one function for ₡10 from the player's
+credits, once each; say what the upgrade is in the fiction.
 
 ## The party
 

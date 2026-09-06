@@ -17,6 +17,16 @@ HINDERED_DIE = 4
 HELP_DIE = 6
 STARTING_CREDITS = 2
 MAIMED = "Maimed"
+SHIP_FUNCTIONS: tuple[str, ...] = (
+    "Comms",
+    "Crafts",
+    "Drive",
+    "Equipment",
+    "Hull armor",
+    "Sensors",
+    "Weapons",
+)  # the SRD's seven, in its order
+UPGRADE_COST = 10
 
 
 class Kit(Frozen):
@@ -30,6 +40,7 @@ class Item(Mutable):
     bulky: bool = False
     breaks: int = Field(default=1, ge=1)  # a vest breaks once; battle armor "up to 3x"
     broken_times: int = Field(default=0, ge=0)
+    upgraded: bool = False
 
     @property
     def broken(self) -> bool:
@@ -43,6 +54,8 @@ class Item(Mutable):
             parts.append("broken")
         elif self.breaks > 1 and self.broken_times > 0:
             parts.append(f"broken {self.broken_times}/{self.breaks}")
+        if self.upgraded:
+            parts.append("upgraded")
         return ", ".join(parts)
 
 
@@ -137,8 +150,7 @@ class Crewmate(Person):
         trace = f"{self.label} drops {item.name}"
         return [self.fact("item_dropped", trace, card=f"Dropped {item.name}")]
 
-    def repair_item(self, item_id: EntityId, cost: int) -> list[Fact]:
-        item = self.require_item(item_id)
+    def repair_item(self, item: Item, cost: int) -> list[Fact]:
         if item.broken_times == 0:
             raise Refusal(f"{item.name} is not broken")
         self.pay(cost)
@@ -171,6 +183,11 @@ class Crewmate(Person):
 
 class TwentyfourxxWorld(SceneWorld[Crewmate, Crewmate]):
     job: str = ""  # the terms of the job the crew is on; empty between jobs
+    ship: dict[EntityId, Item] = Field(
+        default_factory=lambda: {
+            EntityId(slug(name, ())): Item(name=name) for name in SHIP_FUNCTIONS
+        }
+    )  # every crew has one from the start
 
     @model_validator(mode="after")
     def _player_carries_a_sheet(self) -> Self:
@@ -194,6 +211,42 @@ class TwentyfourxxWorld(SceneWorld[Crewmate, Crewmate]):
         if member.sheet is not None:
             raise Refusal(f"{member.name} already carries a sheet")
         return member
+
+    def require_gear(self, actor: Crewmate, item_id: EntityId) -> Item:
+        """The actor's item or a ship function: both break to defend and both are repaired."""
+        item = actor.dice().items.get(item_id) or self.ship.get(item_id)
+        if item is None:
+            raise Refusal(f"{item_id!r} is not among {actor.name}'s items or the ship's functions")
+        return item
+
+    def upgrade_ship(self, function_id: EntityId) -> list[Fact]:
+        function = self.ship.get(function_id)
+        if function is None:
+            raise Refusal(f"{function_id!r} is not a ship function")
+        if function.upgraded:
+            raise Refusal(f"{function.name} is already upgraded")
+        self.player.pay(UPGRADE_COST)
+        function.upgraded = True
+        trace = f"the ship's {function.name} is upgraded (₡{UPGRADE_COST})"
+        card = f"{function.name} upgraded — ₡{UPGRADE_COST}"
+        return [self.player.fact("ship_upgraded", trace, card=card)]
+
+    def take_lead(self, member_id: EntityId) -> list[Fact]:
+        """Decision 6: ids are kept. The new lead keeps theirs; the dead lead goes into the cast."""
+        dead = self.player
+        if dead.alive:
+            raise Refusal(f"{dead.name} lives and leads")
+        member = self.require_actor(member_id)
+        if member is dead:
+            raise Refusal(f"{dead.name} is dead and cannot lead")
+        del self.cast[member.id]
+        self.party.remove(member.id)
+        self.run.here.remove(member.id)
+        self.player = member
+        self.cast[dead.id] = dead
+        self.run.here.append(dead.id)
+        trace = f"{member.tag} takes the lead; {dead.tag} is dead"
+        return [member.fact("lead_taken", trace, card=f"{member.name} leads now")]
 
 
 TwentyfourxxGame = Game[TwentyfourxxWorld]

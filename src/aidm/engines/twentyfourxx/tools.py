@@ -56,7 +56,9 @@ class RepairItem(Frozen):
     """Fix a broken item, spending credits when the repair costs any."""
 
     verb: Literal["repair_item"]
-    item_id: CheckedEntityId = Field(description="Exact id of an item the actor carries.")
+    item_id: CheckedEntityId = Field(
+        description="Exact id of an item the actor carries, or a ship function."
+    )
     cost: int = Field(default=0, ge=0, description="Credits spent on the repair.")
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 
@@ -68,6 +70,24 @@ class Spend(Frozen):
     amount: int = Field(gt=0, description="Credits spent.")
     why: str = Field(min_length=1, description="What the credits pay for, in a few words.")
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+
+
+class TakeLead(Frozen):
+    """The hired member who leads once the player is dead; answers the succession decision."""
+
+    verb: Literal["take_lead"]
+    entity_id: CheckedEntityId = Field(
+        description="Exact id of the living hired member who takes the lead."
+    )
+
+
+class ShipUpgrade(Frozen):
+    """Upgrade one ship function; ₡10 from the player, as the SRD prices it."""
+
+    verb: Literal["ship_upgrade"]
+    function_id: CheckedEntityId = Field(
+        description="Exact id of a ship function; ₡10 from the player."
+    )
 
 
 type WorldChange = (
@@ -82,6 +102,8 @@ type WorldChange = (
     | DropItem
     | RepairItem
     | Spend
+    | TakeLead
+    | ShipUpgrade
 )
 
 
@@ -117,7 +139,9 @@ class TestLuck(Frozen):
 
 class Defend(Frozen):
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
-    item_id: CheckedEntityId = Field(description="Exact id of the item the actor breaks to defend.")
+    item_id: CheckedEntityId = Field(
+        description="Exact id of an item the actor carries, or a ship function."
+    )
     hindrance: str = Field(
         min_length=1, description="What the harm the actor takes becomes, as a hindrance."
     )
