@@ -175,16 +175,6 @@ class FinishJob(Frozen):
     )
 
 
-class Hire(Frozen):
-    entity_id: CheckedEntityId = Field(
-        description="Exact id of who here signs on; they must not already carry a sheet."
-    )
-    terms: str = Field(
-        min_length=1,
-        description="What they are hired for and on what terms, as agreed, for the worldsmith.",
-    )
-
-
 def outcome(face: int) -> str:
     if face <= 2:
         return "disaster"

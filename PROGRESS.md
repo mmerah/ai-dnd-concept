@@ -137,3 +137,37 @@ plan, review findings refuted and why, and what is known and accepted.
   `tag`, so the master prompt is unaffected. The `uv run aidm` smoke reaches the launcher only;
   a turn needs a CLI model spawn.
 - Reviews: Fable and Opus (no `codex` on the machine).
+
+## Phase 5 — Tunnel Goons goons
+
+- `src`: 8,957 → 9,135 lines (+178; target about +150). `engines/tunnelgoons/`: 367 → 521
+  (cap 600). Tests: 504 → 515.
+- Off-plan decisions:
+  - `Abilities.rows(hp)` prints one order (Brute, Skulker, Erudite, Health, Inventory, Level)
+    for the player and a hired npc alike; PLAN step 1's "`Npc.rows()` adds the sheet's rows after
+    Health" would have given the two a different order, and the narrator prompt fixture stays
+    where it was.
+  - `Hire`, `SIGNED_ON`, `hire_request(member, terms) -> (Generation, Fact)` and
+    `hire_target(request) -> EntityId` live in `engines/base.py`: 24XX and Tunnel Goons carried
+    the same lines, CLAUDE.md's threshold for one body (both reviews). 24XX's `hire`, `validate`
+    and `advance` call them; nothing else in 24XX moves.
+  - `RoomEngine.render_extension` gains `guidance` beside PLAN step 3's `answer`: the hire
+    prompt's ENGINE GUIDANCE is `HIRE_GUIDANCE` (the three abilities and the point total), not
+    `AUTHORING`'s "every npc needs hp", which contradicted the `AbilitiesDraft` answer (both
+    reviews). `HIRING` is the intent alone.
+  - `RoomWorld.carried_items(holder, item_ids)` takes the holder: a member's roll counts the
+    items in the member's hands.
+  - `level_options(actor.id)` for everyone, the player's own id included, since `require_actor`
+    takes it (standing decision); the option args never say null.
+  - `action_roll` refuses `actor_id == against`: a member is now both a legal actor and a legal
+    target (review finding).
+  - `rest` heals every party member, sheeted or not (PLAN step 4: "every member").
+  - `_level_decision` is a free function: it reads only its `actor`.
+- Refuted findings:
+  - "`next_to_level` raises a bare `ValueError` for a sheeted actor outside the party": the
+    actor comes from `require_actor`, which admits only the player or a living sheeted party
+    member, so an absent actor is a bug, and CLAUDE.md says a bug is not caught. The one-chain
+    rewrite offered as a cut was taken.
+- Known and accepted: the `uv run aidm` smoke reaches the launcher (NiceGUI up), and the
+  rewritten character file opens a Buried Keep game; a turn needs a CLI model spawn.
+- Reviews: Fable and Opus (no `codex` on the machine).

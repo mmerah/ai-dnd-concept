@@ -4,6 +4,8 @@ from pathlib import Path
 from random import Random
 from typing import Any
 
+from pydantic import BaseModel
+
 from aidm.core.entities import Refusal, Slug, parse
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
@@ -211,7 +213,15 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
             answer=self.map_draft(),
         )
 
-    def render_extension(self, world: RoomWorld[N, P], intent: str, scope: str) -> str:
+    def render_extension(
+        self,
+        world: RoomWorld[N, P],
+        intent: str,
+        scope: str,
+        *,
+        guidance: str,
+        answer: type[BaseModel],
+    ) -> str:
         return worldsmith_prompt(
             WORLDSMITH,
             source=world.source,
@@ -220,15 +230,17 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
             history=render_history(world.records()),
             player=world.line(world.player),
             intent=intent,
-            guidance=self.guidance(),
-            answer=self.map_draft(),
+            guidance=guidance,
+            answer=answer,
         )
 
     async def write_extension(
         self, draft: G, intent: str, worldsmith: WorldsmithAnswer
     ) -> MapDraft[N]:
         world = self.world(draft)
-        prompt = self.render_extension(world, intent, draft.scenario.scope)
+        prompt = self.render_extension(
+            world, intent, draft.scenario.scope, guidance=self.guidance(), answer=self.map_draft()
+        )
         return await worldsmith(
             prompt, self.map_draft(), lambda answer: extension_refusal(answer, world)
         )

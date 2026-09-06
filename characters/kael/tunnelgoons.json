@@ -6,10 +6,12 @@
     "name": "Kael",
     "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
     "known": true,
-    "abilities": {
-      "brute": 1,
-      "skulker": 2,
-      "erudite": 0
+    "sheet": {
+      "abilities": {
+        "brute": 1,
+        "skulker": 2,
+        "erudite": 0
+      }
     },
     "kit": [
       "Pry Bar (melee weapon)",

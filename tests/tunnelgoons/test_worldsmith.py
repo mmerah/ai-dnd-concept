@@ -1,6 +1,7 @@
 from collections.abc import Callable
 
-from pydantic import BaseModel
+import pytest
+from pydantic import BaseModel, ValidationError
 from support.table import TUNNELGOONS, game, narrowed
 from support.tunnelgoons import small_world
 
@@ -12,7 +13,7 @@ from aidm.engines.rooms.world import Item, Place, Way
 from aidm.engines.rooms.worldsmith import extension_refusal, map_refusal
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsGame
-from aidm.engines.tunnelgoons.worldsmith import AUTHORING
+from aidm.engines.tunnelgoons.worldsmith import AUTHORING, AbilitiesDraft
 
 ENGINE = TunnelGoonsEngine()
 
@@ -186,3 +187,8 @@ async def test_write_extension_prompt_carries_scenes_so_far() -> None:
     _ = await ENGINE.write_extension(small_world(), "Nose around the docks.", answer)
 
     assert "SCENES SO FAR" in prompts[0]
+
+
+def test_abilities_draft_refuses_a_wrong_point_total() -> None:
+    with pytest.raises(ValidationError, match="share exactly 3 points"):
+        AbilitiesDraft(abilities={"brute": 2, "skulker": 2, "erudite": 0})

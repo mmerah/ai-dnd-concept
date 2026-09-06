@@ -200,13 +200,13 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
             raise Refusal(f"{item.name} is not here with the player")
         return item
 
-    def carried_items(self, item_ids: tuple[EntityId, ...]) -> tuple[Item, ...]:
+    def carried_items(self, holder: Person, item_ids: tuple[EntityId, ...]) -> tuple[Item, ...]:
         require_unique("items", item_ids)
         items: list[Item] = []
         for item_id in item_ids:
             item = self.items.get(item_id)
-            if item is None or item.on != self.player.id:
-                raise Refusal(f"{item_id!r} is not in the player's hands")
+            if item is None or item.on != holder.id:
+                raise Refusal(f"{item_id!r} is not in {holder.name}'s hands")
             items.append(item)
         return tuple(items)
 
