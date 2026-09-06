@@ -2,52 +2,59 @@
 
 Five phases, in order. **Phase 1** gives every engine the party: an NPC who joins the player,
 follows them, and is read as the party by all three roles. **Phase 2** lets a party member speak
-unprompted after a turn, at the cost of one narrator spawn the player never waits on. **Phase 3**
-gives 24XX a crew that rolls beside the player. **Phase 4** lets a crew member take the lead when
-the player dies. **Phase 5** gives Tunnel Goons goons who roll and level. Self-standing: an
-implementer needs this file, `CLAUDE.md` and the code. Track G of `NEXT-SPECS.md` (2026-09-02)
-is folded here and cut from that file, with two of its shapes replaced (below, "Decisions").
+or propose a move after a turn, at the cost of one narrator spawn the player never waits on.
+**Phase 3** gives 24XX a crew that rolls beside the player, hired through the worldsmith.
+**Phase 4** gives 24XX succession and the ship. **Phase 5** gives Tunnel Goons goons who roll
+and level. Self-standing: an implementer needs this file, `CLAUDE.md` and the code. Track G of
+`NEXT-SPECS.md` (2026-09-02) is folded here and cut from that file.
 
 What stays, everywhere: one turn is one player input on one draft behind the commit gate; only
 code changes state or rolls dice; the narrator reads revealed facts only; the three roles, each
 a cold spawn; every engine self-contained; scenarios and characters authored and stored on
-their own. What is not built: an agent per NPC, a second human player, the 24XX ship, a crew
-store beside the cast, a party cap, a summariser.
+their own. What is not built: an agent per NPC, a second human player, a crew store beside the
+cast, a party cap, a summariser.
 
-Saves have no version field. Phase 1 changes `World` by a defaulted field, so saves still load.
-Phase 3 nests the 24XX sheet and Phase 5 nests the Tunnel Goons sheet, so those engines' saves
-and character files from before go stale: the launcher skips a stale save with its warning, and
-the shipped character files are rewritten by hand in the same phase. Nothing migrates.
+Saves have no version field. Phases 1 and 2 add defaulted fields, so saves still load. Phase 3
+nests the 24XX sheet and Phase 5 nests the Tunnel Goons sheet, so those engines' saves and
+character files from before go stale: the launcher skips a stale save with its warning, and the
+shipped character files are rewritten by hand in the same phase. Nothing migrates.
 
 ## Decisions
 
-1. **The party is one shape in `World`**, `party: list[EntityId]`, moved up from `SceneWorld`;
-   the room family gains the same list, and `move` carries it. Two arms, `join_party` and
-   `leave_party`, in every engine; the pair is not counted against the tool cap.
-2. **An NPC agent is refused.** A member who "acts on their own" would either change state
-   outside a turn, which the transaction and the one-turn-in-flight rule forbid, or only talk,
-   which is Phase 2. A spawn per member per turn multiplies wall-clock and cost for the same
-   reason the summariser was refused; the master already voices the party in the fiction.
-3. **An interjection is one narrator spawn, in the background, dropped if the player acts
-   first.** It lands as an `Exchange` under its own mark, so every role reads it back through
-   the history that exists, the chat draws it, and speech reads it. The member is chosen by the
-   turn's `Random`; the model may answer with no lines, which records nothing.
-4. **A crew member's dice come from a `hire` arm, not from the worldsmith.** Track G.2 had the
-   worldsmith write a sheet into the cast. Here the master names a specialty when someone is
-   hired, and code builds the sheet from the pack, as `create_character` builds the player's.
-   The cast draft does not change; "the cast carries no dice" stays true for authoring; no
-   extra spawn. A member without a sheet follows and helps as Phase 1 says; a hired one rolls.
-5. **Succession keeps ids.** The member who takes the lead keeps their own id as
-   `world.player.id`; the dead lead goes into the cast under `player`. `PLAYER_ID` then names
-   a character file's sheet and nothing in play; `Thing.label` and `Counter.change` say "the
+1. **The party is one list in `World`**, `party: list[EntityId]`, moved up from `SceneWorld`;
+   the room family gains the same list, and `move` carries it. A member is read under THE PARTY
+   and never again under HERE WITH THE PLAYER or the `Here` panel: one entry, one place. Two
+   arms, `join_party` and `leave_party`, in every engine, not counted against the tool cap.
+2. **An agent per NPC is refused.** A member who "acts on their own" would change state outside
+   a turn, which the transaction and the one-turn-in-flight rule forbid, or only talk, which is
+   Phase 2. A spawn per member per turn costs what the summariser was refused for. The minimal
+   form of the idea is Phase 2's proposal: the member says what they would do, and the player
+   accepts it with one press or ignores it.
+3. **An interjection is one narrator spawn, in the background, gated by chattiness.** Every
+   `Person` carries `chattiness` (`quiet`, `normal`, `chatty`), authored by the worldsmith; after
+   an eventful turn each member is rolled against it with the service's `Random`, and the first
+   who passes speaks. Nothing spawns when nobody passes. It lands as an `Exchange` under its own
+   mark, so every role reads it back through the history that exists, the chat draws it, and
+   speech reads it. The model may answer with no lines, which records nothing. On by default;
+   `Settings.interjections` turns it off.
+4. **The worldsmith writes a hire.** `hire` is a request, as `next_scene`'s complication is: the
+   master calls it, the turn ends, the worldsmith writes the sheet on a fresh draft, code checks
+   it against the pack and installs it, and the narrator tells the signing-on. Who has dice is
+   authored, never improvised by the master. The same in Tunnel Goons. `Generation` gains
+   `target`, the entity a request concerns.
+5. **The crew closes 24XX's deviations.** Ally rolls (`helped_by`), succession, the android
+   case as a breakable item, and the ship with its seven functions all land; only the priced
+   gear table stays untranscribed, and it is not a crew rule.
+6. **Succession keeps ids.** The member who takes the lead keeps their own id as
+   `world.player.id`; the dead lead goes into the cast under `player`. `PLAYER_ID` then names a
+   character file's sheet and nothing in play; `Thing.label` and `Counter.change` say "the
    player" only for that id, which after succession reads as the name, and YOU PLAY FOR names
-   the lead. No id is rewritten in history or in the icon cache.
-6. **Multiplayer is not in this plan.** `COMPETITOR-RESEARCH.md` records the earlier "no"; the
-   maintainer's "maybe" is answered by the design the crew leaves room for (last section) and by
-   playing the crew first. Two browsers on one game URL already share one game today.
-7. **The tool cap.** Fifteen engine tools, counted as tools plus `change_world` arms, the two
+   the lead. Nothing in history or the icon cache is rewritten.
+7. **Multiplayer is not in this plan** and is not designed against: the last section lists what
+   each phase leaves in place for it.
+8. **The tool cap.** Fifteen engine tools, counted as tools plus `change_world` arms, the two
    party arms not counted; twenty for 24XX and Tunnel Goons, whose SRDs play a crew, as
-   `docs/24XX.md` and `docs/TUNNEL-GOONS.md` say. After this plan: 24XX 18 counted, Tunnel
+   `docs/24XX.md` and `docs/TUNNEL-GOONS.md` say. After this plan: 24XX 19 counted, Tunnel
    Goons 10, Loner 12, Breathless 13.
 
 ## How to work
@@ -81,7 +88,7 @@ uv run basedpyright
 7. **One commit per phase.** The full check is green before the commit. Never leave two
    versions of one thing alive at a commit.
 8. **Review each phase adversarially against its staged diff before the commit.**
-9. **The standing limits hold.** The cap of decision 7; every `engines/<id>/` under 2,000
+9. **The standing limits hold.** The cap of decision 8; every `engines/<id>/` under 2,000
    lines; imports flow `core <- engines <- turn <- app <- ui`; no `Any` beyond the `Game[P]`
    bound; every `__init__.py` empty; tests never start a process (`ScriptedSpawner`);
    `Refusal` stays the one message-bearing exception; a bad model answer is re-prompted once.
@@ -94,45 +101,49 @@ uv run basedpyright
 
 ## Phase 1 — the party, everywhere
 
-Target: about +150 lines. Loner's party arms exist; this phase gives the other three engines
+Target: about +160 lines. Loner's party arms exist; this phase gives the other three engines
 the same, and every role one way to read it.
 
 ### Steps
 
 1. **`core/views.py` — the narrator knows the party.** `NarratorView.party: tuple[
    CheckedEntityId, ...] = Field(min_length=1)`: the player first, then who travels with them.
-   The validator, in `_speakers_are_subjects` renamed `_everyone_is_a_subject`: every party id
-   is a subject and none repeats. Nothing else in `core` changes.
-2. **`turn/context.py` — YOUR PARTY.** `render_narrator` adds `("YOUR PARTY", ...)` after WHO IS
-   HERE: `you are Kael; with you: Mira, Dax`, or `you are Kael; nobody travels with you`, names
-   looked up in `view.subjects`. Delete the `Travelling with` sheet row in
-   `SceneEngine.narrator_view`.
+   The validator, `_speakers_are_subjects` renamed `_everyone_is_a_subject`: every party id is a
+   subject and none repeats. `NarratorView.others(self) -> tuple[Subject, ...]`: the subjects
+   not in the party. Nothing else in `core` changes.
+2. **`turn/context.py` — YOUR PARTY.** `render_narrator` prints WHO IS HERE from
+   `view.others()` (`(nobody else)` when empty) and adds `("YOUR PARTY", ...)` after it: `you
+   are Kael — <brief>` then one `with you: Mira — <brief>` line per member, or `nobody travels
+   with you`. Delete the `Travelling with` sheet row in `SceneEngine.narrator_view`.
 3. **`engines/base.py` — the party is the world's.** `World.party: list[EntityId] =
    Field(default_factory=list)` moves up from `SceneWorld`; abstract `World.members(self) ->
    Sequence[Person]`. Two free functions replace `SceneWorld.party_rows` and
-   `SceneWorld.party_panel`: `party_section(members: Sequence[Thing]) -> Sections` (empty
-   when nobody; else `("THE PARTY (led by the player)", one "- <line()>" per member)`) and
-   `party_panel(members) -> tuple[Panel, ...]` (a `Party` panel: for each member an entity
-   row, then one `PanelRow(label, detail)` per `rows()` entry). `SceneWorld` keeps its
-   validator, `members()`, `join_party`, `leave_party` and the party in `apply_scene`;
-   `SceneEngine` calls the two functions.
-4. **`engines/rooms/` — the room family gets the party.** `rooms/tools.py`: `JoinParty`
-   (`verb: Literal["join_party"]`, `entity_id`, description "Exact id of a living npc here who
-   starts travelling with the player.") and `LeaveParty` (`verb: Literal["leave_party"]`,
-   `entity_id`), added to `SharedChange`. `rooms/world.py`: `RoomWorld._playable` also checks
-   each party id names a living, known npc at the player's place, none repeated;
-   `members()`; `join_party(entity_id)` and `leave_party(entity_id)` with the refusals and facts
-   `SceneWorld` gives (`party_joined`, `party_left`; join reveals); `kill` removes the dead
-   from the party; `move` sets every member's `place` to the destination and names them in the
-   arrival trace before `with_ids`, and refuses a `with_ids` entry who travels with the player
-   ("X already travels with the player"). `rooms/engine.py`: `shared_change` matches the two
-   arms; `master_sections` adds `*party_section(world.members())` after HERE WITH THE
-   PLAYER; `player_view` adds `*party_panel(...)` before the `Here` panel; `narrator_view`
-   passes `party=(world.player.id, *world.party)`.
-5. **24XX and Breathless register the pair.** `twentyfourxx/tools.py` and
+   `SceneWorld.party_panel`: `party_section(members: Sequence[Thing]) -> Sections` (empty when
+   nobody; else `("THE PARTY (led by the player)", one line() per member)`) and
+   `party_panel(members) -> tuple[Panel, ...]` (a `Party` panel: per member an entity row, then
+   one `PanelRow(label, detail)` per `rows()` entry). `here_panel` takes the others only.
+4. **`engines/scenes/` — members leave HERE.** `SceneWorld.here_lines()` skips the party;
+   `SceneEngine.player_view` passes `here_panel` the present who are not members and adds
+   `*party_panel(world.members())` before it; `narrator_view` passes `party=(player.id,
+   *world.party)`; `master_sections` calls `party_section`.
+5. **`engines/rooms/` — the room family gets the party.** `rooms/tools.py`: `JoinParty`
+   (`verb: Literal["join_party"]`, `entity_id`, "Exact id of a living npc here who starts
+   travelling with the player.") and `LeaveParty` (`verb: Literal["leave_party"]`, `entity_id`),
+   added to `SharedChange`. `rooms/world.py`: `RoomWorld._playable` also checks each party id
+   names a living, known npc at the player's place, none repeated; `members()`;
+   `join_party(entity_id)` and `leave_party(entity_id)` with the refusals and facts `SceneWorld`
+   gives (`party_joined`, `party_left`; join reveals); `kill` removes the dead from the party;
+   `move` sets every member's `place` to the destination, names them in the arrival trace, and
+   refuses a `with_ids` entry who travels with the player; `place_lines(known=True)` and
+   `things_at` for the current place skip members and what they carry, which THE PARTY prints
+   instead. `rooms/engine.py`: `shared_change` matches the two arms; `master_sections` adds
+   `*party_section(world.members())` after HERE WITH THE PLAYER; `player_view` adds
+   `*party_panel(...)` before the `Here` panel, which lists the others; `narrator_view` passes
+   `party=(world.player.id, *world.party)`.
+6. **24XX and Breathless register the pair.** `twentyfourxx/tools.py` and
    `breathless/tools.py`: `WorldChange` gains `JoinParty | LeaveParty` from
    `engines/scenes/tools.py`. `SceneEngine.shared_change` already applies them.
-6. **One paragraph in every `rules.md`, under `## The party`:** a party member travels with the
+7. **One paragraph in every `rules.md`, under `## The party`:** a party member travels with the
    player from scene to scene and is theirs to command in the fiction and yours to voice; when
    one plainly helps, that is the engine's own help — 24XX `helped`, Loner `position`/`edge`,
    Tunnel Goons a lower `difficulty` or a named item, Breathless nothing (the fiction carries
@@ -140,142 +151,167 @@ the same, and every role one way to read it.
    a member's action to soften a scene; `join_party` when someone here decides to come along,
    `leave_party` when they stop. Tunnel Goons' `rules.md:15` loses "nobody follows on their own":
    the party comes along without `with_ids`, which stays for an NPC who follows once.
-7. **Docs.** `docs/BREATHLESS.md` deviation 5 (no companions) closes. `docs/TUNNEL-GOONS.md`,
+8. **Docs.** `docs/BREATHLESS.md` deviation 5 (no companions) closes. `docs/TUNNEL-GOONS.md`,
    "What the AI game master adds": the party follows the player; only the player rolls until
    Phase 5. `docs/24XX.md` tool list names the pair.
 
 ### Fixtures
 
-`prompts/<engine>/narrator.txt` (all four): YOUR PARTY, and 24XX/Loner lose the `Travelling
-with` row where the fixture game has a party. `prompts/<engine>/master.txt` (all four): the
-paragraph. `schemas/{twentyfourxx,breathless,tunnelgoons}/master_tools.json`: the two arms.
-Nothing else.
-
-### Tests
-
-`tests/core/test_views.py`: a party id that is not a subject is refused. `tests/core/
-test_rooms.py`: `join_party` files the npc and `move` carries them; `with_ids` naming a member
-is refused; a dead or elsewhere member fails the validator. `tests/core/test_context_boundary.py`
-(or the golden alone): YOUR PARTY names nobody unmet.
+`prompts/<engine>/narrator.txt` (all four): WHO IS HERE without members, YOUR PARTY, no
+`Travelling with` row. `prompts/<engine>/master.txt` (all four): the paragraph, and THE PARTY
+where the fixture game has one. `schemas/{twentyfourxx,breathless,tunnelgoons}/master_tools.json`:
+the two arms. Nothing else.
 
 ### Done when
 
-In every engine a named NPC joins, walks into the next scene or room, and the narrator prompt
-says who travels with the player. Full check green; fixtures as listed.
+In every engine a named NPC joins, walks into the next scene or room, appears once in every
+prompt and panel, and the narrator prompt says who travels with the player. Full check green;
+one test per new behaviour; fixtures as listed.
 
 ---
 
 ## Phase 2 — interjections
 
-Target: about +180 lines. A party member speaks unprompted after a turn: one narrator spawn,
-dialogue only, no state, dropped if the player acts first.
+Target: about +220 lines. A party member speaks or proposes a move after a turn: one narrator
+spawn, gated by chattiness, dialogue and a proposal only, no state, dropped if the player acts
+first; the player accepts a proposal with one press.
 
 ### Steps
 
-1. **`config.py` — one switch.** `Settings.interjections: bool = True`, comment "A party member
-   may speak after a turn: one narrator spawn the player never waits on." The settings page
-   renders it as it renders every top-level field. `Runtime._open` passes it to
-   `GameService(interjections=settings.interjections)`; `GameService.interjections: bool =
-   True` is a field.
-2. **`core/views.py` — the leak rule for one voice.** `NarratorView.interjection_refusal(self,
-   member_id: EntityId, narration: Narration) -> str | None`: `None` when every line's
-   `speaker_id == member_id`, empty lines included (silence); otherwise "only <name> speaks
-   here; leave no line to narration or to anyone else". `narration_refusal` stays for turns.
+1. **`core/views.py` and `engines/base.py` — chattiness.** `type Chattiness =
+   Literal["quiet", "normal", "chatty"]` in `core/views.py`; `Subject.chattiness: Chattiness =
+   "normal"`. `Person.chattiness: Chattiness = Field(default="normal", description="How readily
+   they speak unprompted when travelling with the player.")`, carried by `Thing.subject()`; the
+   worldsmith reads the description in the cast draft schema. `config.py`:
+   `Settings.interjections: bool = True`, comment "A party member may speak after a turn: one
+   narrator spawn the player never waits on." `Runtime._open` passes it to
+   `GameService(interjections=...)`, a field defaulting to `True`.
+2. **`core/play.py` — the answer and the record.** `Interjection(Frozen)`: `lines:
+   tuple[Line, ...]` ("What they say, as dialogue; empty when they would keep quiet.") and
+   `proposal: str = ""` ("What they propose the party do now, as the player would type it in
+   their own words; empty when they only talk."). `Exchange.proposal: str = ""`: a member's
+   proposed action, standing until the next exchange. `NarratorView.interjection_refusal(self,
+   member_id: EntityId, answer: Interjection) -> str | None`: `None` when every line's
+   `speaker_id` is `member_id` and a proposal comes with at least one line; else the reason.
 3. **`turn/prompts/interjection.md` and `turn/context.py`.** The prompt: you are `{name}`,
    `{brief}`, travelling with the player; say what you would say now, unprompted, in one to
    three lines of dialogue that add something (a worry, a suggestion, a memory, a joke), or
-   answer with no lines when you would keep quiet; every `speaker_id` is `{id}`; you know only
+   answer with no lines when you would keep quiet; when you would push the party to act, set
+   `proposal` to the move in the player's own words; every `speaker_id` is `{id}`; you know only
    what the player has read; never settle what the player has not done; answer with one JSON
    object. `render_interjection(view: NarratorView, member: Subject, scenes:
    Sequence[SceneRecord]) -> str`: YOUR ROLE (the prompt formatted), WHAT THE PLAYER HAS READ
-   (`told_history`), SCENE, WHO IS HERE, YOUR PARTY, ANSWER WITH `Narration`. No sheet, no
+   (`told_history`), SCENE, WHO IS HERE, YOUR PARTY, ANSWER WITH `Interjection`. No sheet, no
    focus: the member is not the player.
 4. **`app/runtime.py` — the background spawn.** `INTERJECTION_MARK = "(the party speaks)"`,
-   added to `MARKS`. `GameService.interject(self) -> None` is started with `_retain` at the end
-   of `_turn`, after `_generate`, when: `interjections` is on, `state.pending` and
-   `state.generation` are `None`, `over` is `None`, the newest exchange carries a told fact, and
-   `view.party[1:]` has an id in `view.speakers`. The member is `self.rng.choice` of those.
-   It spawns the narrator through `ask` with `render_interjection` and
-   `partial(view.interjection_refusal, member.id)`. On landing, in one synchronous stretch:
-   if `self.turn is not None`, `self.phase is not None`, or `self._newest()` is not the
-   exchange it answered, drop it with one INFO line; if the answer has no lines, do nothing;
-   else `self.commit(self.engine.close(self.state.draft(), INTERJECTION_MARK, lines, ()))` and
-   `self.speak()`. `(OSError, Refusal)` logs a warning and nothing else. No `phase` is set: the
-   composer stays open throughout.
-5. **`ui/game.py`.** Nothing: `Observed.exchanges` moves when it lands, the chat draws the mark
-   as it draws the other marks and the member's bubble under it.
-6. **Docs.** `README.md`, one sentence under the roles: a party member may speak after a turn.
+   added to `MARKS`; `INTERJECTION_ODDS: dict[Chattiness, int] = {"quiet": 1, "normal": 2,
+   "chatty": 3}`, the faces of a d6 on which a member speaks. `GameService.interject(self) ->
+   None` is started with `_retain` at the end of `_turn`, after `_generate`, when
+   `interjections` is on, `state.pending` and `state.generation` are `None`, `over` is `None`,
+   and the newest exchange carries a told fact. The candidates are `view.party[1:]` who are in
+   `view.speakers`, in party order; for each, `self.rng.randint(1, 6) <= INTERJECTION_ODDS[
+   chattiness]` decides, and the first who passes speaks; nobody passing, nothing spawns. It
+   spawns the narrator through `ask` with `render_interjection` and
+   `partial(view.interjection_refusal, member.id)`. On landing, in one synchronous stretch: if
+   `self.turn is not None`, `self.phase is not None`, or `self._newest()` is not the exchange
+   it answered, drop it with one INFO line; if the answer has no lines, do nothing; else commit
+   `self.engine.close(...)` under the mark with the lines, no facts, and the proposal, and
+   `self.speak()`. `Engine.close` gains `proposal: str = ""`. `(OSError, Refusal)` logs a warning
+   and nothing else. No `phase` is set: the composer stays open throughout.
+5. **`ui/game.py` — the accept button.** Under the newest exchange, when it carries a proposal,
+   `can_type` holds and no decision is open: a `game-card` reading `<name> proposes: <proposal>`
+   with an `Accept` button that runs `session.play(Answer(text=proposal))` through `_run`, and
+   the refusal path `refuse_play` takes. `Observed.exchanges` already refreshes the chat when an
+   interjection lands.
+6. **Docs.** `README.md`, one sentence under the roles: a party member may speak or propose a
+   move after a turn. `worldsmith.md` (scenes) and `rooms/worldsmith.md`: one line on
+   `chattiness`.
 
 ### Fixtures
 
 `prompts/<engine>/interjection.txt` for the one engine whose golden turn travels with someone
-(add a member to that fixture's scenario if none does). Nothing else moves.
-
-### Tests
-
-`tests/core/test_game_service.py`: an interjection lands as an exchange under the mark with the
-member's lines alone; an answer with no lines records nothing; a turn begun before it lands
-drops it and the save holds no trace of it; `interjections=False` spawns no narrator; no party,
-no spawn. `tests/core/test_views.py`: a line by anyone else, or narration, is refused.
-`tests/core/test_context_boundary.py`: the interjection prompt holds no hidden name.
+(add a member to that fixture's scenario if none does). `schemas/*/...` where a cast draft
+schema is golden: `chattiness`. Nothing else.
 
 ### Done when
 
 Playing 24XX with Vessa in the party, a turn ends, the composer stays open, and a few seconds
-later Vessa says something the player did not ask for; typing before she does loses nothing but
-her line. Full check green.
+later Vessa says something the player did not ask for, sometimes with an `Accept` under it that
+plays her move; typing before she does loses nothing but her line; a quiet member speaks
+rarely. Full check green; one test per new behaviour.
 
 ---
 
 ## Phase 3 — the 24XX crew rolls
 
-Target: about +250 lines; `engines/twentyfourxx/` at most 1,000 lines. A hired member carries a
-sheet, rolls their own die to help, can act, and is raised after a job.
+Target: about +300 lines; `engines/twentyfourxx/` at most 1,050 lines. A hired member carries a
+sheet the worldsmith wrote, rolls their own die to help, can act, and is raised after a job.
 
 ### Steps
 
-1. **`twentyfourxx/world.py` — the sheet nests.** `Sheet(Mutable)`: `specialty`, `origin: str =
+1. **`core/model.py` — a request names its subject.** `Generation.target: CheckedEntityId | None
+   = None`, the entity the operation concerns, when one does. `SceneEngine.validate` and
+   `RoomEngine.validate` keep their operation checks; an engine that uses `target` checks it.
+2. **`twentyfourxx/world.py` — the sheet nests.** `Sheet(Mutable)`: `specialty`, `origin: str =
    ""`, `traits`, `skills`, `credits`, `items`, `hindrances` (what `Operator` carries today),
    with `die(skill)` and `rows()`. `Crewmate(Person)`: `sheet: Sheet | None = None`, `dice(self)
    -> Sheet` (refuses "<name> carries no dice"), and the state methods moved from `Operator`
    (`require_item`, `pay`, `change_hindrances`, `gain_item`, `drop_item`, `repair_item`,
-   `spend`), each reading `self.dice()`; `rows()` is the sheet's or `()`. `Operator(Crewmate)`:
-   `sheet: Sheet`. `TwentyfourxxWorld(SceneWorld[Crewmate, Operator])` gains
-   `sheeted_members() -> list[Crewmate]` (living, with a sheet) and `require_actor(actor_id:
-   EntityId | None) -> Crewmate | Operator`: the player when `None`, else a living sheeted
-   party member (refused: "<name> is not the player or a hired crew member"). `TwentyfourxxScenario
-   = Scenario[SceneCanon[Crewmate]]`; the engine's `cast = Crewmate`. `characters/kael/
-   twentyfourxx.json` is rewritten to the nested shape; `scenarios/silent-relay` is untouched.
-2. **`twentyfourxx/tools.py`.** `Hire` (`verb: Literal["hire"]`, `entity_id`, `specialty: str`,
-   description "A specialty from the packs; the sheet is built from it") joins `WorldChange`.
+   `spend`), each reading `self.dice()`; `rows()` is the sheet's or `()`; `line()` adds `gear:
+   ...` for a sheeted member. `Operator(Crewmate)`: `sheet: Sheet`. `TwentyfourxxWorld(
+   SceneWorld[Crewmate, Operator])` gains `sheeted_members() -> list[Crewmate]` (living, with a
+   sheet) and `require_actor(actor_id: EntityId | None) -> Crewmate | Operator`: the player when
+   `None`, else a living sheeted party member (refused: "<name> is not the player or a hired
+   crew member"); `validate` refuses a `hire` request whose `target` is not a living unsheeted
+   cast member here. `TwentyfourxxScenario = Scenario[SceneCanon[Crewmate]]`; the engine's
+   `cast = Crewmate`. `characters/kael/twentyfourxx.json` is rewritten to the nested shape;
+   `scenarios/silent-relay` is untouched.
+3. **`twentyfourxx/tools.py`.** `Hire(Frozen)`: `entity_id: CheckedEntityId` ("Exact id of who
+   here signs on; they must not already carry a sheet."), `terms: str` ("What they are hired
+   for and on what terms, as agreed, for the worldsmith."), the arguments of a `hire` tool.
    `Roll.actor_id: CheckedEntityId | None = None` ("null for the player; else a hired crew
    member here who acts") and `Roll.helped_by: CheckedEntityId | None = None` ("a hired crew
    member who helps: they roll their own die for the skill and the highest counts; `helped`
    stays the d6 of circumstance"). `actor_id` likewise on `ChangeHindrances`, `GainItem`,
    `DropItem`, `RepairItem`, `Spend`, `Defend`. `FinishJob.skill` becomes `FinishJob.raises:
-   tuple[Raise, ...]` with `Raise(Frozen)`: `actor_id: CheckedEntityId | None`, `skill: str`;
-   description "one per operator: the player and every living hired member".
-3. **`twentyfourxx/engine.py`.** `hire`: `require_here(alive=True)` must be a `Crewmate` without
-   a sheet; the specialty resolves against the packs as `resolve_skill` resolves a skill; the
-   sheet is `Sheet(specialty=label, skills=specialty.skills, items=starting_items(specialty.kit))`,
-   ₡0, no origin, a printed skill choice not made; joins the party when not in it; facts:
-   `party_joined` when joined, then `hired` with card "<name> hired — <specialty>". `attempt`:
-   `actor = world.require_actor(args.actor_id)`; `helper = world.require_actor(args.helped_by)`
-   when given, not the actor; the pool is the actor's die, `HELP_DIE` when `helped`, the helper's
-   `dice().die(label)` when helping, `keep_highest` over all of it, the label naming each die;
-   the trace and card name the actor and the helper; `risking_death` kills or maims the actor.
-   `defend`, `change_hindrances`, the item arms and `spend` act on `require_actor`. `finish_job`:
-   `raises` must name the player and every living sheeted member once each, no stranger;
-   each raises the named skill and rolls its own d6 of credits, one fact per raise and per roll.
-   `sheet_sections` GEAR lists the player's; THE PARTY prints a member's `line()`, which now
-   carries the sheet rows; `Crewmate.line(detail=...)` adds `gear: ...` for a sheeted member.
-4. **Prompts and docs.** The `attempt` description loses "an NPC carries no dice"; `AUTHORING`:
+   tuple[Raise, ...]`, `Raise(Frozen)`: `actor_id: CheckedEntityId | None`, `skill: str`; "one
+   per operator: the player and every living hired member".
+4. **`twentyfourxx/worldsmith.py` — the sheet draft.** `SheetDraft(Frozen)`: `specialty: str`,
+   `skills: dict[str, SkillDie]` ("one to three, from the seventeen"), `items: tuple[str, ...]`
+   ("what they carry, three at most"), `hindrances: tuple[str, ...] = ()`; described for the
+   worldsmith. `HIRING`, the intent: the player has hired `{name}` (`{brief}`) on these terms:
+   `{terms}`; write their sheet from the specialties and skills in ENGINE GUIDANCE, as someone
+   who could plausibly be hired for this. `sheet_refusal(draft, pack) -> str | None`: the
+   specialty is one of the pack's, every skill one of its seventeen, no duplicates.
+5. **`twentyfourxx/engine.py`.** `hire` tool (description: "The player hires someone here to
+   work: the worldsmith writes their sheet once this turn ends, and they join the party. Refused
+   for the party's unsheeted followers only when the story has not hired them."): refuses a
+   stranger, the dead, an unmet one, or a sheeted member, then sets `draft.generation =
+   Generation(operation=HIRE, brief=args.terms, target=args.entity_id)` and returns the wait
+   fact, as `next_scene`'s complication does. `advance` handles `HIRE`: the prompt through
+   `worldsmith_prompt` with `HIRING` as the intent and `SheetDraft` as the answer; install:
+   `member.sheet = Sheet(...)` from the draft with `starting_items`, ₡0; `join_party` when not
+   in it; facts `party_joined` (when joined) and `hired` (card "<name> signs on — <specialty>");
+   the telling: `SIGNED_ON`, "<name> has signed on with the player: tell it in a line or two, and
+   settle nothing else". `attempt`: `actor = world.require_actor(args.actor_id)`; `helper =
+   world.require_actor(args.helped_by)` when given, not the actor; the pool is the actor's die,
+   `HELP_DIE` when `helped`, the helper's `dice().die(label)` when helping, `keep_highest` over
+   all of it, the label naming each die; the trace and card name the actor and the helper;
+   `risking_death` kills or maims the actor. `defend`, `change_hindrances`, the item arms and
+   `spend` act on `require_actor`. `finish_job`: `raises` must name the player and every living
+   sheeted member once each, no stranger; each raises the named skill and rolls its own d6 of
+   credits, one fact per raise and per roll. `sheet_sections` GEAR lists the player's; THE PARTY
+   prints a member's `line()`.
+6. **The android case** (deviation 3). `worldsmith.py`: `Body(DecisionOption)` with `kit: Kit |
+   None = None`; `Origin.choice: tuple[Body, ...]`; `packs/srd.json`'s android `case` carries
+   `{"kit": {"name": "Case"}}`, verified against the SRD at phase start. `create_character` adds
+   the chosen body's kit to the items; `defend` then breaks it as any item.
+7. **Prompts and docs.** The `attempt` description loses "an NPC carries no dice"; `AUTHORING`:
    "a cast member carries no dice until the player hires them in play"; `rules.md`: `## Hiring`
-   (who gets a sheet: someone hired to work, never someone who merely comes along), `helped_by`
-   beside `helped`, `actor_id` on the arms, `finish_job` for the whole crew. `docs/24XX.md`:
-   deviation 1 closes; deviation 4 keeps the gear table and the ship; the settled readings gain
-   "a hire takes the specialty's fixed skills and kit, no origin, no printed choice"; the tool
-   count reads eighteen counted plus the pair.
+   (who gets a sheet: someone hired to work, never someone who merely comes along; the turn
+   ends on `hire`), `helped_by` beside `helped`, `actor_id` on the arms, `finish_job` for the
+   whole crew. `docs/24XX.md`: deviations 1 and 3 close; the tool count reads eighteen counted
+   plus the pair.
 
 ### Fixtures
 
@@ -283,67 +319,67 @@ sheet, rolls their own die to help, can act, and is raised after a job.
 `turn/twentyfourxx.json` (`finish_job` now `raises`; `tests/twentyfourxx/golden_turn.py` is
 rewritten to call it so). Nothing else.
 
-### Tests
-
-`tests/twentyfourxx/`: `hire` builds the sheet from the pack and joins; `attempt` with
-`helped_by` keeps the highest of the actor's and the helper's dice; an unsheeted helper or a
-stranger actor is refused; `risking_death` on a hired actor kills them and they leave the party;
-`finish_job` refuses a missing member and raises each named one; the flat character file is
-refused by `read_character`.
-
 ### Done when
 
-Kael hires Harl, Harl rolls his own die beside Kael's and the higher counts, Harl gets his own
-d6 of credits when the job closes. Full check green; 24XX at most 1,000 lines.
+Kael hires Harl on a turn, the worldsmith writes Harl's sheet, Harl rolls his own die beside
+Kael's and the higher counts, Harl gets his own d6 of credits when the job closes, and an
+android's case breaks to defend. Full check green; one test per new behaviour; 24XX at most
+1,050 lines.
 
 ---
 
-## Phase 4 — succession
+## Phase 4 — succession and the ship
 
-Target: about +90 lines. When the player dies with a hired member alive, the page asks who
-leads; the game ends only when nobody can.
+Target: about +170 lines. When the player dies with a hired member alive, the page asks who
+leads; the crew has a ship whose functions break, mend and upgrade as the SRD prints.
 
 ### Steps
 
-1. **`twentyfourxx/tools.py`.** `TakeLead` (`verb: Literal["take_lead"]`, `entity_id`) joins
-   `WorldChange`. Description: "A living hired member takes the lead after the player's death;
-   answered from the page, never called while the player lives."
-2. **`twentyfourxx/engine.py`.** After any kill of `world.player` (`Kill` in `apply_change`, the
-   disaster in `attempt`), `_succession(draft)`: with living sheeted members it sets
-   `draft.pending = PendingDecision(kind="succession", prompt="Who leads now?", options=one
-   PendingOption(id=member.id, label=member.name, detail=member.brief, name="change_world",
-   args={"change": {"verb": "take_lead", "entity_id": member.id}}) per member,
-   allows_text=False)`; with none, nothing, and `over` says "You died." `take_lead`: refused
-   while the player lives or when the id is not a living sheeted member; the member becomes
-   `world.player` as an `Operator` (`parse(Operator, member.model_dump())`), leaves the party
-   and the scene's `here`; the dead lead goes into `cast` under their id and into `here`.
-   `TwentyfourxxEngine.over`: "You died." only when the player is dead and no sheeted member
-   lives. `NarratorView.party` names the new "you" with no further change.
-3. **Docs.** `rules.md`: `## Death and succession`. `docs/24XX.md`: deviation 2 closes; a settled
-   reading: the new lead keeps their own id, and traces name them by name rather than "the
-   player".
+1. **`twentyfourxx/tools.py`.** `TakeLead` (`verb: Literal["take_lead"]`, `entity_id`) and
+   `ShipUpgrade` (`verb: Literal["ship_upgrade"]`, `function: CheckedEntityId`, "Exact id of a
+   ship function; ₡10 from the player.") join `WorldChange`. `Defend.item_id` and
+   `RepairItem.item_id` read "an item the actor carries, or a ship function".
+2. **`twentyfourxx/world.py` — the ship.** `SHIP_FUNCTIONS: tuple[str, ...] = ("Comms",
+   "Crafts", "Drive", "Equipment", "Hull armor", "Sensors", "Weapons")`, verified against the
+   SRD at phase start. `Item.upgraded: bool = False`, shown in `detail()`. `TwentyfourxxWorld.
+   ship: dict[EntityId, Item]`, built by `begin` from the seven, one basic `Item` each;
+   `require_gear(actor, item_id) -> Item`: the actor's item or a ship function.
+3. **`twentyfourxx/engine.py` — succession.** After any kill of `world.player` (`Kill` in
+   `apply_change`, the disaster in `attempt`), `_succession(draft)`: with living sheeted members
+   it sets `draft.pending = PendingDecision(kind="succession", prompt="Who leads now?",
+   options=one PendingOption(id=member.id, label=member.name, detail=member.brief,
+   name="change_world", args={"change": {"verb": "take_lead", "entity_id": member.id}}) per
+   member, allows_text=False)`; with none, nothing, and `over` says "You died." `take_lead`:
+   refused while the player lives or when the id is not a living sheeted member; the member
+   becomes `world.player` as an `Operator` (`parse(Operator, member.model_dump())`), leaves the
+   party and the scene's `here`; the dead lead goes into `cast` under their id and into `here`.
+   `over`: "You died." only when the player is dead and no sheeted member lives.
+   `NarratorView.party` names the new "you" with no further change.
+4. **`twentyfourxx/engine.py` — the ship in play.** `defend` and `repair_item` resolve through
+   `require_gear`; `ship_upgrade` pays ₡10 from the player and sets `upgraded` (refused when
+   already upgraded); a `Ship` panel and a THE SHIP master section list the functions with
+   their detail.
+5. **Docs.** `rules.md`: `## Death and succession`, `## The ship`. `docs/24XX.md`: deviations 2
+   and 4's ship half close; deviation 4 keeps the gear table alone; a settled reading: the new
+   lead keeps their own id, and traces name them by name rather than "the player"; the tool
+   count reads nineteen counted plus the pair.
 
 ### Fixtures
 
 `schemas/twentyfourxx/master_tools.json`, `prompts/twentyfourxx/master.txt`. Nothing else.
 
-### Tests
-
-`tests/twentyfourxx/`: a player's death with a hired member opens the decision and `over` is
-`None`; answering it swaps the lead and the next `attempt` rolls the new lead's die; a death
-with nobody hired ends the game; `take_lead` while the player lives is refused.
-
 ### Done when
 
 Kael dies on a `risking_death` disaster, the page asks who leads, Harl plays on and finishes
-the job. Full check green.
+the job; the hull breaks to defend and is repaired. Full check green; one test per new
+behaviour.
 
 ---
 
 ## Phase 5 — Tunnel Goons goons
 
-Target: about +170 lines; `engines/tunnelgoons/` at most 600 lines. A hired goon rolls, is
-healed by rest, and levels in turn.
+Target: about +220 lines; `engines/tunnelgoons/` at most 650 lines. A hired goon, written by
+the worldsmith, rolls, is healed by rest, and levels in turn.
 
 ### Steps
 
@@ -351,35 +387,33 @@ healed by rest, and levels in turn.
    `level` (what `Goon` carries beside `hp` and `kit`), with `rows()`. `Npc(Dweller)`: `hp`,
    `sheet: Abilities | None = None`. `Goon(Person)`: `hp`, `sheet: Abilities`, `kit`.
    `TunnelGoonsWorld.require_actor(actor_id: EntityId | None) -> Goon | Npc` as 24XX's;
-   `sheet_rows()` for the actor; `hire(entity_id, abilities)` refuses a sum other than
-   `ABILITY_POINTS` and a sheeted member. `characters/kael/tunnelgoons.json` is rewritten.
-2. **`tunnelgoons/tools.py`.** `Hire` (`verb: Literal["hire"]`, `entity_id`, `brute`, `skulker`,
-   `erudite`, each `ge=0`) joins `ChangeWorld`'s union. `ActionRoll.actor_id` and
-   `LevelUp.actor_id`, `CheckedEntityId | None = None`. `LEVEL_OPTIONS` becomes
-   `level_options(actor_id)`, the args carrying it.
-3. **`tunnelgoons/engine.py`.** `action_roll` uses the actor's abilities, carried items and
-   inventory penalty; the damage lands on the actor, and a member at 0 dies through
-   `world.kill`, which drops their items and leaves the party. `rest` heals the player and every
-   member. `level_up` with no choice opens the decision for the player; answering it applies and
-   opens the next for the first living hired member after the actor in party order; the last
-   answer opens nothing. `rules.md`: `## Hiring`, the actor on the roll, levelling in turn.
-   `docs/TUNNEL-GOONS.md`: the "only the player has abilities" paragraph is rewritten; the
-   tool count reads ten counted plus the pair.
+   `sheet_rows()` for the actor; `validate` refuses a `hire` request whose `target` is not a
+   living unsheeted npc here. `characters/kael/tunnelgoons.json` is rewritten.
+2. **`tunnelgoons/tools.py`.** `Hire(Frozen)`: `entity_id`, `terms`, as 24XX's.
+   `ActionRoll.actor_id` and `LevelUp.actor_id`, `CheckedEntityId | None = None`.
+   `LEVEL_OPTIONS` becomes `level_options(actor_id)`, the args carrying it.
+3. **`tunnelgoons/worldsmith.py` — the sheet draft.** `AbilitiesDraft(Frozen)`: `brute`,
+   `skulker`, `erudite`, each `ge=0`, summing to `ABILITY_POINTS` by validator; `HIRING` as
+   24XX's, from the npc's brief and the SRD's three abilities in the guidance.
+4. **`tunnelgoons/engine.py`.** `hire` tool as 24XX's, setting the request; `advance` handles
+   `HIRE` beside `MORE_MAP`: install `Abilities(abilities=..., inventory=INVENTORY_START,
+   level=1)` on the npc, `join_party` when not in it, the facts and the telling as 24XX's.
+   `action_roll` uses the actor's abilities, carried items and inventory penalty; the damage
+   lands on the actor, and a member at 0 dies through `world.kill`, which drops their items and
+   leaves the party. `rest` heals the player and every member. `level_up` with no choice opens
+   the decision for the player; answering it applies and opens the next for the first living
+   hired member after the actor in party order; the last answer opens nothing. `rules.md`:
+   `## Hiring`, the actor on the roll, levelling in turn. `docs/TUNNEL-GOONS.md`: the "only the
+   player has abilities" paragraph is rewritten; the tool count reads ten counted plus the pair.
 
 ### Fixtures
 
 `schemas/tunnelgoons/master_tools.json`, `prompts/tunnelgoons/master.txt`. Nothing else.
 
-### Tests
-
-`tests/tunnelgoons/`: `hire` builds the sheet and refuses a wrong sum; a member's `action_roll`
-uses their abilities and damage lands on them; `rest` heals the party; `level_up` chains one
-decision per goon and ends; the flat character file is refused.
-
 ### Done when
 
-A hired goon rolls, takes a hit, rests, and levels after the player. Full check green; Tunnel
-Goons at most 600 lines. `IDEAS.md` 16 leaves.
+A hired goon rolls, takes a hit, rests, and levels after the player. Full check green; one test
+per new behaviour; Tunnel Goons at most 650 lines. `IDEAS.md` 16 leaves.
 
 ---
 
@@ -389,31 +423,27 @@ Goons at most 600 lines. `IDEAS.md` 16 leaves.
   "twelve parallel models" lesson in `COMPETITOR-RESEARCH.md` is the same lesson.
 - **An interjection as a master tool** (`say_as`): the master writes no prose the player reads.
 - **The narrator choosing who interjects**: "you are Mira" plays better than "somebody speaks";
-  the rng gives the surprise, the model gives the silence.
+  the dice give the surprise, chattiness the frequency, the model the silence.
 - **Per-member knowledge** (`knownBy`): a member reads what the player has read. One gate.
-- **The worldsmith writing sheets** (G.2): decision 4.
-- **A round-based turn for several players**: not this plan; the sketch below keeps hot seat.
-- **The ship**: stays with the gear table in `docs/24XX.md` deviation 4 and `IDEAS.md`.
+- **A sheet built by code from a specialty the master names**: the maintainer's call; the
+  worldsmith writes who has dice, and a worldsmith spawn at hiring is rare.
+- **A round-based turn for several players**: not this plan.
+- **The priced gear table**: not a crew rule; stays in `docs/24XX.md` deviation 4.
 - **A `Crew` store, `PARTY_MAX`, a `Regular` class, `Offer.follows`**: refused before, stand.
-- **Rewriting ids on succession**: decision 5.
+- **Rewriting ids on succession**: decision 6.
 
-## After this plan — what multiplayer would be
+## What each phase leaves in place for multiplayer
 
-Not built here; written so the crew does not foreclose it. Two people can already open one game
-URL from two devices on the LAN and take turns: sessions are one per save, pages poll, and a
-turn in flight refuses the second composer. What is missing is a second character.
+Not designed here; only what must not be closed. Two people can already open one game URL from
+two devices on the LAN and take turns: sessions are one per save, pages poll, and a turn in
+flight refuses the second composer.
 
-- **A second human drives a party member.** The party is the crew; a member is driven by a
-  human or voiced by the roles. Phase 2's interjection is what an AI-driven member does between
-  turns; a human-driven one types. Both land as the same `Exchange` shape.
-- **Identity.** `Game.characters: dict[EntityId, Slug]` (member id to character file), the
-  second character file relaxing `check_character`'s `id == PLAYER_ID`; the page picks who you
-  are (`?as=<character>`), the composer sends `Answer.actor_id`; PLAYER ACTION says who acts.
-- **The turn stays one input.** Hot seat: any human's message opens a turn; the master resolves
-  it for that actor through Phase 3's `actor_id`; the others read. No rounds, no merging.
-- **The lead.** `world.player` stays the first human's character; Phase 4's `take_lead` is the
-  only path that moves it, and a human-driven member is a valid successor.
-- **Cost.** Nothing new spawns: the same three roles per turn, whoever typed.
-
-About +250 lines across `core/model.py`, `engines/seam.py`, `turn/run.py`, `app/runtime.py`,
-`ui/game.py`, once the crew has played through and the maintainer says yes.
+- Phase 1: the party is the crew, and a member is a full entity with a sheet slot; a second
+  human would drive one.
+- Phase 2: an interjection lands as an `Exchange` under a mark and a proposal is a typed
+  action a press sends; a second human's line and move would take the same two shapes.
+- Phase 3: `actor_id` on every acting tool; PLAYER ACTION would only need to say who acts.
+- Phase 4: `take_lead` is the one path that moves `world.player`; a human-driven member is a
+  valid successor.
+- What would be new, and nothing here forecloses: a second character file per game
+  (`Game.characters`), `Answer.actor_id`, and the page choosing who you are.
