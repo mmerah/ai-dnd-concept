@@ -24,10 +24,13 @@ WHAT THIS SCENE IS ABOUT:
 Can Kael get out of the Bell House and onto the causeway before Ovid rings the third bell?
 
 WHO IS HERE:
-- Kael — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
 - Ovid Sarn — The Bell House's keeper, who rings the tide bell twice a day and reads the flats better than anyone left alive.
 - Ivo Casks — A supply runner pinned here by the tide, itching to make the crossing before the flats fill up with Crawlers.
 - Drowned Marta — Once the causeway's toll-keeper, now a Crawler that answers the bell the same as anyone still starving.
+
+YOUR PARTY:
+you are Kael — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
+nobody travels with you
 
 THE PLAYER'S SHEET:
 - Pronouns: he/him

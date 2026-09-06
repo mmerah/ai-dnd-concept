@@ -59,8 +59,49 @@ def test_a_narrator_view_naming_a_speaker_who_is_not_a_subject_is_refused() -> N
             situation="s",
             subjects=(subject,),
             speakers=(EntityId("stranger"),),
+            party=(subject.id,),
             sheet=(),
         )
+
+
+def test_a_narrator_views_party_refuses_a_stranger_or_a_repeat_and_others_excludes_it() -> None:
+    subject = Subject(id=EntityId("mara"), name="Mara", brief="A ferrywoman.")
+    other = Subject(id=EntityId("kael"), name="Kael", brief="")
+
+    with pytest.raises(ValidationError, match="not subjects"):
+        _ = NarratorView(
+            place="p",
+            title="t",
+            focus="f",
+            situation="s",
+            subjects=(subject,),
+            speakers=(),
+            party=(EntityId("stranger"),),
+            sheet=(),
+        )
+    with pytest.raises(ValidationError, match="repeats"):
+        _ = NarratorView(
+            place="p",
+            title="t",
+            focus="f",
+            situation="s",
+            subjects=(subject, other),
+            speakers=(),
+            party=(other.id, other.id),
+            sheet=(),
+        )
+
+    view = NarratorView(
+        place="p",
+        title="t",
+        focus="f",
+        situation="s",
+        subjects=(subject, other),
+        speakers=(),
+        party=(other.id,),
+        sheet=(),
+    )
+    assert view.others() == (subject,)
 
 
 def test_a_spoken_line_names_its_speaker_or_nobody() -> None:
@@ -79,6 +120,7 @@ def test_spoken_refuses_a_subject_who_is_not_a_speaker() -> None:
         situation="s",
         subjects=(subject,),
         speakers=(),
+        party=(subject.id,),
         sheet=(),
     )
 

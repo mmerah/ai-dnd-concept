@@ -25,7 +25,16 @@ from aidm.core.views import (
     lines_of,
     render_history,
 )
-from aidm.engines.base import Person, character_panel, here_panel, trail_panel
+from aidm.engines.base import (
+    JoinParty,
+    LeaveParty,
+    Person,
+    character_panel,
+    here_panel,
+    party_panel,
+    party_section,
+    trail_panel,
+)
 from aidm.engines.rooms.drafts import MapDraft
 from aidm.engines.rooms.tools import Kill, Move, MoveItem, Reveal, SharedChange, UnlockWay
 from aidm.engines.rooms.world import Dweller, Item, RoomCanon, RoomWorld
@@ -75,6 +84,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
             ("YOU PLAY FOR", world.line(player)),
             ("CARRYING", lines_of(world.line(item) for item in world.carried(player.id))),
             ("HERE WITH THE PLAYER", world.place_lines(known=True)),
+            *party_section(world.members()),
             ("HIDDEN HERE (the player has not found these)", world.place_lines(known=False)),
             ("WAYS OUT", world.ways_lines()),
         )
@@ -92,6 +102,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
             subjects=tuple(entity.subject() for entity in here),
             # A corpse may stay a subject in the room; it does not speak.
             speakers=tuple(entity.id for entity in here if entity.alive),
+            party=(world.player.id, *world.party),
             sheet=(*world.sheet_rows(), ("Carrying", carrying or "nothing")),
         )
 
@@ -104,8 +115,14 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
             player=me,
             panels=(
                 character_panel(world.sheet_rows()),
+                *party_panel(world.members()),
                 here_panel(
-                    me, (entity.subject() for entity in world.at(world.current.id) if entity.known)
+                    me,
+                    (
+                        entity.subject()
+                        for entity in world.at(world.current.id)
+                        if entity.known and entity.id not in world.party
+                    ),
                 ),
                 Panel(
                     title="Carrying",
@@ -168,6 +185,10 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
                 return world.move_item(change.item_id, change.to)
             case Kill():
                 return world.kill(world.require_npc_here(change.entity_id))
+            case JoinParty():
+                return world.join_party(change.entity_id)
+            case LeaveParty():
+                return world.leave_party(change.entity_id)
 
     def move(self, draft: G, args: Move, _rng: Random) -> list[Fact]:
         return self.world(draft).move(args.to_id, args.with_ids)

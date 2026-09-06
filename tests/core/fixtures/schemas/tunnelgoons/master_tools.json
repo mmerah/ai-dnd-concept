@@ -4,6 +4,28 @@
     "description": "Apply one settled world change to match the story. Set `verb` to pick the change and fill that verb's own fields. One call makes one change.",
     "parameters": {
       "$defs": {
+        "JoinParty": {
+          "additionalProperties": false,
+          "description": "A character here starts travelling with the player.",
+          "properties": {
+            "verb": {
+              "const": "join_party",
+              "type": "string"
+            },
+            "entity_id": {
+              "description": "Exact id of who is joining.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "entity_id"
+          ],
+          "title": "JoinParty",
+          "type": "object"
+        },
         "Kill": {
           "additionalProperties": false,
           "properties": {
@@ -23,6 +45,28 @@
             "entity_id"
           ],
           "title": "Kill",
+          "type": "object"
+        },
+        "LeaveParty": {
+          "additionalProperties": false,
+          "description": "A companion stops travelling with the player.",
+          "properties": {
+            "verb": {
+              "const": "leave_party",
+              "type": "string"
+            },
+            "entity_id": {
+              "description": "Exact id of the companion leaving.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "entity_id"
+          ],
+          "title": "LeaveParty",
           "type": "object"
         },
         "MoveItem": {
@@ -81,7 +125,9 @@
           "description": "The one world change to apply; `verb` picks the change.",
           "discriminator": {
             "mapping": {
+              "join_party": "#/$defs/JoinParty",
               "kill": "#/$defs/Kill",
+              "leave_party": "#/$defs/LeaveParty",
               "move_item": "#/$defs/MoveItem",
               "reveal": "#/$defs/Reveal"
             },
@@ -96,6 +142,12 @@
             },
             {
               "$ref": "#/$defs/Kill"
+            },
+            {
+              "$ref": "#/$defs/JoinParty"
+            },
+            {
+              "$ref": "#/$defs/LeaveParty"
             }
           ]
         }

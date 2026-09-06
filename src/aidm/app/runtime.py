@@ -46,7 +46,7 @@ REQUESTED = (
 )
 OPENING = (
     "The story begins here; the player has read nothing yet. Tell them, in the fiction and in "
-    "this order: who they are (WHO IS HERE names them first) and where they stand; what is in "
+    "this order: who they are (YOUR PARTY names them first) and where they stand; what is in "
     "front of them, the situation as they see it now; what they are here to do, from WHAT THIS "
     "SCENE IS ABOUT where it is given, said as the thing pulling at them; and two or three "
     "things they could plainly do first, offered by the place and the people, in prose, never "

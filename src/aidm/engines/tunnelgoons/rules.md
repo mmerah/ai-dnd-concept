@@ -12,11 +12,11 @@ Call it for any uncertain action that carries a real cost. Name only items the p
 
 ## `move` and `unlock_way`
 
-The map the player can act on right now is WAYS OUT: only a way listed there leads anywhere. A locked way needs a roll, or a key applied with `change_world`, before it opens; call `unlock_way` once that is dealt with, and only then does `move` carry the player through. Name in `with_ids` every NPC who comes along; nobody follows on their own.
+The map the player can act on right now is WAYS OUT: only a way listed there leads anywhere. A locked way needs a roll, or a key applied with `change_world`, before it opens; call `unlock_way` once that is dealt with, and only then does `move` carry the player through. The party comes along on its own; `with_ids` is for an NPC who follows once.
 
 ## `change_world`
 
-Use it to reveal something hidden the player has plainly found, move an item, or kill an NPC the story has settled. Reveal nothing the player has not found; a helpless target needs no roll to kill.
+Use it to reveal something hidden the player has plainly found, move an item, kill an NPC the story has settled, or have someone join or leave the party. Reveal nothing the player has not found; a helpless target needs no roll to kill.
 
 ## `rest`
 
@@ -25,6 +25,10 @@ A night in a safe spot heals the player to full Health; you judge safe.
 ## `level_up`
 
 Call it with no arguments once, when the whole adventure ends. The tool opens the pick to the player themselves: one ability up by 1, and Health or Inventory up by 1.
+
+## The party
+
+A party member travels with the player from place to place, theirs to command in the fiction and yours to voice. When one plainly helps, that is a lower `difficulty` or a named item; a member cannot act on their own dice unless the rules give them some. Never volunteer a member's action to soften a scene. Call `join_party` when someone here decides to come along, `leave_party` when they stop.
 
 ## The map's end
 

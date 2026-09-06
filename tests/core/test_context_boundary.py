@@ -54,6 +54,7 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
         "focus",
         "subjects",
         "speakers",
+        "party",
         "sheet",
     }
     dumped = str(narrator.model_dump())
@@ -90,6 +91,22 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:
     assert "The Secret" not in prompt
     assert "hidden-actor" not in prompt
     assert UNREVEALED not in prompt
+
+
+def test_the_narrator_prompt_names_the_party_and_leaves_a_member_out_of_who_is_here() -> None:
+    state = _state()
+    draft = state.draft()
+    draft.payload.party.append(EntityId("ledger"))
+    state = draft.commit()
+
+    prompt = render_narrator(
+        _engine().narrator_view(state), evidence="- (nothing changed)", prompt="I wait.", scenes=()
+    )
+
+    assert "YOUR PARTY:\nyou are Kael" in prompt
+    assert "with you: a ledger — Mara's notes." in prompt
+    who_is_here = prompt.split("WHO IS HERE:\n", 1)[1].split("\n\n", 1)[0]
+    assert "a ledger" not in who_is_here
 
 
 def test_the_narrator_prompt_carries_the_players_own_sheet() -> None:

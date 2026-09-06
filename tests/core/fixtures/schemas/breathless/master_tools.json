@@ -48,6 +48,28 @@
           "title": "Enter",
           "type": "object"
         },
+        "JoinParty": {
+          "additionalProperties": false,
+          "description": "A character here starts travelling with the player.",
+          "properties": {
+            "verb": {
+              "const": "join_party",
+              "type": "string"
+            },
+            "entity_id": {
+              "description": "Exact id of who is joining.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "entity_id"
+          ],
+          "title": "JoinParty",
+          "type": "object"
+        },
         "Kill": {
           "additionalProperties": false,
           "description": "Record that someone here has died.",
@@ -92,6 +114,28 @@
           "title": "Leave",
           "type": "object"
         },
+        "LeaveParty": {
+          "additionalProperties": false,
+          "description": "A companion stops travelling with the player.",
+          "properties": {
+            "verb": {
+              "const": "leave_party",
+              "type": "string"
+            },
+            "entity_id": {
+              "description": "Exact id of the companion leaving.",
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "entity_id"
+          ],
+          "title": "LeaveParty",
+          "type": "object"
+        },
         "Reveal": {
           "additionalProperties": false,
           "description": "Make a hidden entity known when the player notices, finds, or reaches it.",
@@ -123,8 +167,10 @@
             "mapping": {
               "drop_item": "#/$defs/DropItem",
               "enter": "#/$defs/Enter",
+              "join_party": "#/$defs/JoinParty",
               "kill": "#/$defs/Kill",
               "leave": "#/$defs/Leave",
+              "leave_party": "#/$defs/LeaveParty",
               "reveal": "#/$defs/Reveal"
             },
             "propertyName": "verb"
@@ -141,6 +187,12 @@
             },
             {
               "$ref": "#/$defs/Kill"
+            },
+            {
+              "$ref": "#/$defs/JoinParty"
+            },
+            {
+              "$ref": "#/$defs/LeaveParty"
             },
             {
               "$ref": "#/$defs/DropItem"

@@ -5,6 +5,7 @@ from support.table import (
     LIBRARY,
     SCENARIO_MODELS,
     TWENTYFOURXX,
+    change,
     game,
     narrowed,
     updated,
@@ -26,6 +27,7 @@ SRD_PACK = "srd"
 COMM = EntityId("comm")
 CLIMBING_GEAR = EntityId("climbing-gear")
 NIGHT_VISION_GOGGLES = EntityId("night-vision-goggles")
+VESSA = EntityId("vessa-rune")
 
 
 def _twentyfourxx_game() -> tuple[AnyEngine, TwentyfourxxGame]:
@@ -41,6 +43,16 @@ def test_the_shipped_game_begins_with_the_srd_pack_and_the_operators_gear() -> N
     assert list(world.player.items) == [COMM, CLIMBING_GEAR, NIGHT_VISION_GOGGLES]
     assert world.run.place == "docking-ring"
     assert PLAYER_ID not in world.present()
+
+
+def test_join_party_lands_a_party_joined_fact_and_adds_the_member() -> None:
+    engine, state = _twentyfourxx_game()
+    draft = state.draft()
+
+    facts = change(engine, draft, "join_party", entity_id=VESSA)
+
+    assert any(fact.kind == "party_joined" for fact in facts)
+    assert VESSA in draft.payload.party
 
 
 def test_a_scenario_with_no_packs_is_refused_by_check_packs() -> None:

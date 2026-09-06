@@ -1,15 +1,20 @@
 from pathlib import Path
 from random import Random
 
+import pytest
+from pydantic import Field
+from support.table import change, refused
+
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, EntityId, slug
+from aidm.core.entities import EngineId, EntityId, Frozen, Refusal, slug
+from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
-from aidm.core.tools import MasterTool
-from aidm.engines.base import PLAYER_ID, Person
+from aidm.core.tools import MasterTool, master_tool
+from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, Person
 from aidm.engines.rooms.engine import RoomEngine
-from aidm.engines.rooms.tools import Move
-from aidm.engines.rooms.world import Dweller, Place, RoomCanon, RoomWorld, Way
+from aidm.engines.rooms.tools import Move, SharedChange
+from aidm.engines.rooms.world import Dweller, Item, Place, RoomCanon, RoomWorld, Visit, Way
 
 SIXTH = EngineId("sixth")
 GATE = EntityId("gate")
@@ -35,8 +40,15 @@ class SixthCharacter(Character[Person]):
     pass
 
 
+class ChangeWorld(Frozen):
+    change: SharedChange = Field(
+        discriminator="verb",
+        description="The one world change to apply; `verb` picks the change.",
+    )
+
+
 class SixthEngine(RoomEngine[Dweller, Person, SixthGame]):
-    """A sixth engine, a room crawler: its state model, its creation and no tools of its own."""
+    """A sixth engine, a room crawler: its state model, its creation and `change_world`."""
 
     id = SIXTH
     title = "SIXTH"
@@ -48,7 +60,10 @@ class SixthEngine(RoomEngine[Dweller, Person, SixthGame]):
     world_type = SixthWorld
 
     def master_tools(self) -> tuple[MasterTool[SixthGame], ...]:
-        return ()
+        return (master_tool("change_world", CHANGE_WORLD, ChangeWorld, self.change_world),)
+
+    def change_world(self, draft: SixthGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
+        return self.shared_change(self.world(draft), args.change)
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
         return ()
@@ -115,3 +130,109 @@ def test_a_sixth_room_engine_begins_a_playable_game(tmp_path: Path) -> None:
     assert [row.label for row in ways_out.rows] == ["Yard"]
     engine.move(state, Move(to_id=YARD), Random(0))
     assert [visit.place for visit in state.payload.visits] == [GATE, YARD]
+
+
+def test_a_party_member_moves_with_the_player_and_is_named_in_the_trace(tmp_path: Path) -> None:
+    engine = _installed(tmp_path)
+    character = engine.create_character("Wren", "A quiet scout", {})
+    state = engine.begin("the-keep", _scenario(), character)
+    state.payload.party.append(WARDEN)
+
+    facts = engine.move(state, Move(to_id=YARD), Random(0))
+
+    assert state.payload.npcs[WARDEN].place == YARD
+    assert any("Warden" in fact.trace and "along" in fact.trace for fact in facts)
+
+
+def test_a_with_ids_entry_who_is_a_party_member_is_refused(tmp_path: Path) -> None:
+    engine = _installed(tmp_path)
+    character = engine.create_character("Wren", "A quiet scout", {})
+    state = engine.begin("the-keep", _scenario(), character)
+    state.payload.party.append(WARDEN)
+
+    with pytest.raises(Refusal, match="without with_ids"):
+        engine.move(state, Move(to_id=YARD, with_ids=(WARDEN,)), Random(0))
+
+
+def test_join_party_and_leave_party_land_through_change_world(tmp_path: Path) -> None:
+    engine = _installed(tmp_path)
+    character = engine.create_character("Wren", "A quiet scout", {})
+    state = engine.begin("the-keep", _scenario(), character)
+    draft = state.draft()
+
+    joined = change(engine, draft, "join_party", entity_id=WARDEN)
+
+    assert any(fact.kind == "party_joined" for fact in joined)
+    assert WARDEN in draft.payload.party
+
+    left = change(engine, draft, "leave_party", entity_id=WARDEN)
+
+    assert any(fact.kind == "party_left" for fact in left)
+    assert draft.payload.party == []
+
+
+def test_leave_party_on_a_non_member_is_refused(tmp_path: Path) -> None:
+    engine = _installed(tmp_path)
+    character = engine.create_character("Wren", "A quiet scout", {})
+    state = engine.begin("the-keep", _scenario(), character)
+    draft = state.draft()
+
+    message = refused(engine, draft, "leave_party", entity_id=WARDEN)
+
+    assert "does not travel with the player" in message
+
+
+def test_a_party_member_is_absent_from_place_lines_while_their_items_stay(
+    tmp_path: Path,
+) -> None:
+    engine = _installed(tmp_path)
+    character = engine.create_character("Wren", "A quiet scout", {})
+    state = engine.begin("the-keep", _scenario(), character)
+    world = state.payload
+    key = EntityId("warden-key")
+    world.items[key] = Item(id=key, name="Key", brief="A rusty key", known=True, on=WARDEN)
+    world.party.append(WARDEN)
+
+    lines = world.place_lines(known=True)
+
+    assert "Warden[warden]" not in lines
+    assert "Key[warden-key]" in lines
+
+    panels = engine.player_view(state).panels
+    party_rows = next(panel for panel in panels if panel.title == "Party").rows
+    here_rows = next(panel for panel in panels if panel.title == "Here").rows
+
+    assert any(row.icon_id == WARDEN for row in party_rows)
+    assert all(row.icon_id != WARDEN for row in here_rows)
+
+
+def test_killing_a_party_member_drops_them_from_the_party(tmp_path: Path) -> None:
+    engine = _installed(tmp_path)
+    character = engine.create_character("Wren", "A quiet scout", {})
+    state = engine.begin("the-keep", _scenario(), character)
+    world = state.payload
+    world.party.append(WARDEN)
+
+    facts = world.kill(world.npcs[WARDEN])
+
+    assert world.party == []
+    assert not world.npcs[WARDEN].alive
+    assert any(fact.card == "Warden is dead" for fact in facts)
+
+
+def test_a_party_member_who_is_not_at_the_players_place_is_refused(tmp_path: Path) -> None:
+    engine = _installed(tmp_path)
+    character = engine.create_character("Wren", "A quiet scout", {})
+    state = engine.begin("the-keep", _scenario(), character)
+    world = state.payload
+
+    with pytest.raises(ValueError, match="not at their place"):
+        SixthWorld(
+            places=world.places,
+            ways=world.ways,
+            npcs=world.npcs,
+            items=world.items,
+            player=world.player,
+            visits=[Visit(place=YARD)],
+            party=[WARDEN],
+        )

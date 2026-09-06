@@ -3,15 +3,15 @@ from abc import abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from random import Random
-from typing import Self
+from typing import Literal, Self
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Refusal, Slug, parse
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.io import ENCODING, decode
 from aidm.core.play import Exchange, SceneRecord
-from aidm.core.views import Panel, PanelRow, Rows, Subject
+from aidm.core.views import Panel, PanelRow, Rows, Sections, Subject
 
 PLAYER_ID = EntityId("player")
 SRD_PACK: Slug = "srd"
@@ -99,14 +99,48 @@ class World[P: Person](Mutable):
 
     player: P
     source: str = ""
+    party: list[EntityId] = Field(default_factory=list)  # who travels with the player, in order
 
     @abstractmethod
     def records(self) -> tuple[SceneRecord, ...]: ...
     @abstractmethod
     def record(self, exchange: Exchange) -> None: ...
+    @abstractmethod
+    def members(self) -> Sequence[Person]: ...
 
     def exchanges(self) -> tuple[Exchange, ...]:
         return tuple(exchange for record in self.records() for exchange in record.exchanges)
+
+    def join(self, member: Person) -> list[Fact]:
+        """Each family resolves who may join; the party itself is one list, kept here."""
+        if member.id in self.party:
+            raise Refusal(f"{member.name} already travels with the player")
+        facts = member.reveal()
+        self.party.append(member.id)
+        trace = f"{member.tag} travels with the player"
+        facts.append(member.fact("party_joined", trace, card=f"{member.name} joins your party"))
+        return facts
+
+    def part(self, member: Person) -> list[Fact]:
+        if member.id not in self.party:
+            raise Refusal(f"{member.name} does not travel with the player")
+        self.party.remove(member.id)
+        trace = f"{member.tag} no longer travels with the player"
+        return [member.fact("party_left", trace, card=f"{member.name} leaves your party")]
+
+
+class JoinParty(Frozen):
+    """A character here starts travelling with the player."""
+
+    verb: Literal["join_party"]
+    entity_id: CheckedEntityId = Field(description="Exact id of who is joining.")
+
+
+class LeaveParty(Frozen):
+    """A companion stops travelling with the player."""
+
+    verb: Literal["leave_party"]
+    entity_id: CheckedEntityId = Field(description="Exact id of the companion leaving.")
 
 
 class Pack(Frozen):
@@ -166,6 +200,26 @@ def here_panel(player: Subject, others: Iterable[Subject]) -> Panel:
         *(PanelRow(label=other.name, detail=other.brief, icon_id=other.id) for other in others),
     )
     return Panel(title="Here", rows=rows)
+
+
+def party_section(members: Sequence[Thing]) -> Sections:
+    if not members:
+        return ()
+    return (("THE PARTY (led by the player)", "\n".join(member.line() for member in members)),)
+
+
+def party_panel(members: Sequence[Thing]) -> tuple[Panel, ...]:
+    if not members:
+        return ()
+    rows = tuple(
+        row
+        for member in members
+        for row in (
+            PanelRow(label=member.name, detail=member.brief, icon_id=member.id),
+            *(PanelRow(label=label, detail=detail) for label, detail in member.rows()),
+        )
+    )
+    return (Panel(title="Party", rows=rows),)
 
 
 def trail_panel(titles: Iterable[str]) -> Panel:

@@ -4,6 +4,7 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, Frozen
 from aidm.core.tools import Attempt
+from aidm.engines.base import JoinParty, LeaveParty
 from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
 
 
@@ -65,7 +66,17 @@ class Spend(Frozen):
 
 
 type WorldChange = (
-    Reveal | Enter | Leave | Kill | ChangeHindrances | GainItem | DropItem | RepairItem | Spend
+    Reveal
+    | Enter
+    | Leave
+    | Kill
+    | JoinParty
+    | LeaveParty
+    | ChangeHindrances
+    | GainItem
+    | DropItem
+    | RepairItem
+    | Spend
 )
 
 

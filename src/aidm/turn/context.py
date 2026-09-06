@@ -40,21 +40,34 @@ def render_narrator(
     view: NarratorView, *, evidence: str, prompt: str, scenes: Sequence[SceneRecord]
 ) -> str:
     """Only the narrator view reaches this, so hidden canon has no path into the prose."""
+    others = view.others()
+    who_is_here = (
+        lines_of(f"- {subject.name} — {subject.brief}" for subject in others)
+        if others
+        else "(nobody else)"
+    )
     return sections(
         (
             ("YOUR ROLE", _prompt("narrator")),
             ("WHAT THE PLAYER HAS READ", told_history(scenes)),
             ("SCENE", f"{view.title}\n{view.situation}"),
             *((("WHAT THIS SCENE IS ABOUT", view.focus),) if view.focus else ()),
-            (
-                "WHO IS HERE",
-                lines_of(f"- {subject.name} — {subject.brief}" for subject in view.subjects),
-            ),
+            ("WHO IS HERE", who_is_here),
+            ("YOUR PARTY", _party_lines(view)),
             ("THE PLAYER'S SHEET", lines_of(f"- {label}: {value}" for label, value in view.sheet)),
             ("WHAT HAPPENED", evidence),
             ("PLAYER ACTION", prompt),
             ("ANSWER WITH", schema_text(Narration)),
         )
+    )
+
+
+def _party_lines(view: NarratorView) -> str:
+    subjects = {subject.id: subject for subject in view.subjects}
+    lead, *rest = (subjects[member_id] for member_id in view.party)
+    with_you = [f"with you: {member.name} — {member.brief}" for member in rest]
+    return "\n".join(
+        (f"you are {lead.name} — {lead.brief}", *(with_you or ["nobody travels with you"]))
     )
 
 

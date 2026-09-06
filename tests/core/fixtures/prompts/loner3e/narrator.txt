@@ -30,9 +30,12 @@ WHAT THIS SCENE IS ABOUT:
 Can you get the way down to the vault out of this room, and out of Mara?
 
 WHO IS HERE:
-- Kael — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
 - Mara — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
 - the vault map — A creased chart of the undercroft, marking a stair the abbey's own plans deny. Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.
+
+YOUR PARTY:
+you are Kael — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
+nobody travels with you
 
 THE PLAYER'S SHEET:
 - Concept: A Wary Relic-Hunter

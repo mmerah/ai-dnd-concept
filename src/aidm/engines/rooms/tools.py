@@ -3,6 +3,7 @@ from typing import Literal
 from pydantic import Field
 
 from aidm.core.entities import CheckedEntityId, Frozen
+from aidm.engines.base import JoinParty, LeaveParty
 
 
 class Reveal(Frozen):
@@ -34,4 +35,4 @@ class UnlockWay(Frozen):
     to_id: CheckedEntityId = Field(description="Exact id of the locked way's destination.")
 
 
-type SharedChange = Reveal | MoveItem | Kill
+type SharedChange = Reveal | MoveItem | Kill | JoinParty | LeaveParty

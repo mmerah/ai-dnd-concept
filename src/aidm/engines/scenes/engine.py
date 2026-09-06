@@ -20,24 +20,19 @@ from aidm.core.play import DecisionOption
 from aidm.core.views import NarratorView, Panel, PlayerView, Sections, render_history
 from aidm.engines.base import (
     SRD_PACK,
+    JoinParty,
+    LeaveParty,
     Pack,
     Person,
     character_panel,
     here_panel,
+    party_panel,
+    party_section,
     read_packs,
     trail_panel,
 )
 from aidm.engines.scenes.drafts import NextDraft, SceneDraft
-from aidm.engines.scenes.tools import (
-    Enter,
-    JoinParty,
-    Kill,
-    Leave,
-    LeaveParty,
-    NextScene,
-    Reveal,
-    SharedChange,
-)
+from aidm.engines.scenes.tools import Enter, Kill, Leave, NextScene, Reveal, SharedChange
 from aidm.engines.scenes.world import (
     MOVE_ON,
     SCENE_LEFT,
@@ -119,7 +114,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
             ("YOU PLAY FOR", world.player.line()),
             *self.sheet_sections(state),
             ("HERE WITH THE PLAYER", world.here_lines()),
-            *world.party_rows(),
+            *party_section(world.members()),
             ("HIDDEN HERE (the player has not found these)", world.hidden_lines()),
             *((("THE ARC (the player has not found this)", world.arc),) if world.arc else ()),
             *self.glossary(state),
@@ -137,9 +132,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         world = self.world(state)
         scene = world.run
         here = list(world.here())
-        sheet = world.player.rows()
-        if members := world.members():
-            sheet = (*sheet, ("Travelling with", ", ".join(member.name for member in members)))
         return NarratorView(
             place=scene.place,
             title=scene.title,
@@ -147,7 +139,8 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
             situation=scene.situation,
             subjects=tuple(member.subject() for member in here),
             speakers=tuple(member.id for member in here if member.alive),
-            sheet=sheet,
+            party=(world.player.id, *world.party),
+            sheet=world.player.rows(),
         )
 
     def player_view(self, state: G) -> PlayerView:
@@ -160,10 +153,8 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
                 character_panel(player.rows()),
                 *self.panels(state),
                 *world.scene_panel(),
-                *world.party_panel(),
-                here_panel(
-                    me, (member.subject() for member in world.here() if member.id != player.id)
-                ),
+                *party_panel(world.members()),
+                here_panel(me, (other.subject() for other in world.others())),
                 trail_panel(run.title for run in world.runs),
             ),
             prompt=state.pending,

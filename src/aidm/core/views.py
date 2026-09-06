@@ -1,7 +1,7 @@
 from collections.abc import Iterable, Sequence
 from typing import Self
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal, Slug
 from aidm.core.play import (
@@ -59,15 +59,25 @@ class NarratorView(Frozen):
     subjects: tuple[Subject, ...]
     # The player and everyone present who may speak; nobody else can be attributed a line.
     speakers: tuple[CheckedEntityId, ...]
+    # The player first, then who travels with them: every id a subject, none repeated.
+    party: tuple[CheckedEntityId, ...] = Field(min_length=1)
     # The player's own sheet: theirs to know, so the narrator may show it through detail.
     sheet: Rows
 
     @model_validator(mode="after")
-    def _speakers_are_subjects(self) -> Self:
+    def _everyone_is_a_subject(self) -> Self:
         here = {subject.id for subject in self.subjects}
         if strangers := sorted(set(self.speakers) - here):
             raise ValueError(f"speakers who are not subjects: {strangers}")
+        if party_strangers := sorted(set(self.party) - here):
+            raise ValueError(f"party members who are not subjects: {party_strangers}")
+        if len(set(self.party)) != len(self.party):
+            raise ValueError("the party repeats an id")
         return self
+
+    def others(self) -> tuple[Subject, ...]:
+        """The subjects who do not travel with the player."""
+        return tuple(subject for subject in self.subjects if subject.id not in self.party)
 
     def spoken(self, lines: Sequence[Line]) -> tuple[SpokenLine, ...]:
         here = {subject.id: subject for subject in self.subjects if subject.id in self.speakers}
