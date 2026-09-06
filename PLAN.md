@@ -334,11 +334,17 @@ sheet the worldsmith wrote, rolls their own die to help, can act, and is raised 
    ends on `hire`), `helped_by` beside `helped`, `actor_id` on the arms, `finish_job` for the
    whole crew. `docs/24XX.md`: deviations 1 and 3 close; the tool count reads eighteen counted
    plus the pair.
+8. **`core/views.py` and `turn/context.py` — the member reads their own sheet.** `Subject.rows:
+   Rows = ()`, filled by `Thing.subject()`; `render_interjection` adds `("YOUR SHEET", ...)` from
+   the member's subject after YOUR ROLE, `(none)` when they carry no rows. The narrator's
+   sections do not change (settled after Phase 2: a hired member's gear is what an interjection
+   should be able to name).
 
 ### Fixtures
 
-`schemas/twentyfourxx/master_tools.json`, `prompts/twentyfourxx/master.txt`. The solo
-`attempt` line keeps its wording, so `turn/twentyfourxx.json` does not move. Nothing else.
+`schemas/twentyfourxx/master_tools.json`, `prompts/twentyfourxx/master.txt`,
+`prompts/twentyfourxx/interjection.txt` (YOUR SHEET). The solo `attempt` line keeps its wording,
+so `turn/twentyfourxx.json` does not move. Nothing else.
 
 ### Done when
 
