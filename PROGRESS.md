@@ -63,3 +63,42 @@ plan, review findings refuted and why, and what is known and accepted.
 - Known and accepted: the `uv run aidm` smoke here reaches the launcher only; a turn needs a CLI
   model spawn the container cannot make.
 - Reviews: Fable and Opus (no `codex` on the machine).
+
+## Phase 3 — the 24XX crew rolls
+
+- `src`: 8,507 → 8,831 lines (+324; target about +280). `engines/twentyfourxx/`: 740 → 1,044
+  (cap 1,050). Tests: 469 → 494.
+- Off-plan decisions:
+  - `HIRE` lives in `engines/base.py` beside `SRD_PACK`: PLAN names no home, and 24XX and
+    Tunnel Goons both read it.
+  - `Crewmate.line()` adds a `gear:` row for any sheeted crewmate, the player included, so YOU
+    PLAY FOR gains one line beside GEAR; GEAR keeps the ids and break state the arms need.
+  - The hire's pack is the game's first pack (`draft.packs[0]`); PLAN says `pack`, singular.
+  - `sheeted_members()` reads the party, not the cast: `require_actor` needs party membership,
+    so a hired member who had left the party would otherwise make `finish_job` impossible.
+  - `require_actor` also takes the player's own id, which the master sees as `Kael[player]`
+    (review finding).
+  - `TwentyfourxxWorld.require_hireable` serves `hire`, `validate` and `advance`; three callers
+    had spelled "here, alive, unsheeted" three ways (review finding).
+  - `SceneEngine.render_request` is the one worldsmith prompt builder; `render_next` and the hire
+    prompt both call it (review finding).
+  - `finish_job`'s refusal counts the raises (`Counter`) and names the missing, extra and
+    repeated actors by name (review finding).
+  - PLAN.md Phase 4 step 5 now names deviations 1 and 2, since this phase deleted 1 and 3 and
+    renumbered (review finding).
+  - Refusals in the sheet methods moved onto `Crewmate` name the crewmate, not "the player".
+- Refuted findings, awaiting the maintainer's call:
+  - "Tunnel Goons' `operations` admits a `hire` request nothing writes and `RoomEngine.advance`
+    would play as a map extension; delete until Phase 5" (both reviews): PLAN step 1 says Tunnel
+    Goons extends its operations with `HIRE` in this phase; kept as written.
+  - "Gear belongs in `Crewmate.rows()`, so an interjecting member's YOUR SHEET names it" (Fable):
+    PLAN step 2 puts gear in `line()`, and PLAN's fixture list keeps the narrator prompt still;
+    gear in `rows()` would print the player's gear under THE PLAYER'S SHEET and twice in the
+    panels. Kept in `line()`.
+  - "`hire`'s description promises a refusal ('only when the story has not hired them') the code
+    never makes" (Fable): the sentence is PLAN step 5's text, read as guidance to the master, not
+    a code check; kept verbatim.
+- Known and accepted: `Subject.rows` rides in every subject of `NarratorView`, so a Loner cast
+  member's rows reach the view's data, though no narrator section prints them (PLAN step 8). The
+  `uv run aidm` smoke reaches the launcher only; a turn needs a CLI model spawn.
+- Reviews: Fable and Opus (no `codex` on the machine).

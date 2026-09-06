@@ -4,6 +4,8 @@ from pathlib import Path
 from random import Random
 from typing import Any
 
+from pydantic import BaseModel
+
 from aidm.core.creation import CreationStep
 from aidm.core.entities import Refusal, Slug, parse
 from aidm.core.facts import Fact
@@ -76,6 +78,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
     pack: type[K]
     world_type: type[SceneWorld[C, P]]
     packs: dict[str, K]
+    operations = (DEPARTURE, COMPLICATION)
 
     def __init__(self) -> None:
         self.packs = read_packs(self.directory / "packs", self.pack)
@@ -93,10 +96,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
             raise Refusal(f"a {state.engine!r} game needs at least one table set")
         if missing := sorted(set(state.packs) - set(self.packs)):
             raise Refusal(f"the game names packs not installed: {missing}")
-        if state.generation is not None and state.generation.operation not in (
-            DEPARTURE,
-            COMPLICATION,
-        ):
+        if state.generation is not None and state.generation.operation not in self.operations:
             raise Refusal(f"a scene engine cannot write {state.generation.operation!r}")
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> SceneWorld[C, P]:
@@ -209,13 +209,11 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
             raise Refusal("the SRD table set is not installed")
         return pack
 
-    def render_next(self, draft: G, intent: str) -> str:
+    def render_request(
+        self, draft: G, *, guidance: str, intent: str, answer: type[BaseModel]
+    ) -> str:
+        """The worldsmith prompt every scene request shares; `advance` reuses it off-scene too."""
         world = self.world(draft)
-        if world.arc:
-            intent += (
-                f"\n\nThe arc as last written:\n{world.arc}\n"
-                "Revise `arc` only where what happened warrants it; leave it empty to keep it."
-            )
         return worldsmith_prompt(
             WORLDSMITH,
             source=world.source,
@@ -223,9 +221,20 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
             history=render_history(world.records()),
             scene=world.scene_lines(),
             cast=world.cast_lines(),
-            guidance=self.guidance(draft.packs),
+            guidance=guidance,
             intent=intent,
-            answer=NextDraft[self.cast],
+            answer=answer,
+        )
+
+    def render_next(self, draft: G, intent: str) -> str:
+        world = self.world(draft)
+        if world.arc:
+            intent += (
+                f"\n\nThe arc as last written:\n{world.arc}\n"
+                "Revise `arc` only where what happened warrants it; leave it empty to keep it."
+            )
+        return self.render_request(
+            draft, guidance=self.guidance(draft.packs), intent=intent, answer=NextDraft[self.cast]
         )
 
     def render_opening(self, source: str, guidance: str, scope: str) -> str:

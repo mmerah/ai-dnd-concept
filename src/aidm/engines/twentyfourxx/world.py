@@ -1,7 +1,7 @@
 from collections.abc import Sequence
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from aidm.core.entities import EntityId, Frozen, Mutable, Refusal, require_unique, slug
 from aidm.core.facts import Fact
@@ -46,9 +46,11 @@ class Item(Mutable):
         return ", ".join(parts)
 
 
-class Operator(Person):
+class Sheet(Mutable):
+    """What the rules roll for: the player's from creation, a hired member's from the worldsmith."""
+
     specialty: str
-    origin: str
+    origin: str = ""  # empty on a hired member: the worldsmith writes no origin
     traits: tuple[str, ...] = ()  # an alien's two; an android's body
     skills: dict[str, SkillDie] = Field(default_factory=dict)  # keyed by the pack label
     credits: int = Field(default=STARTING_CREDITS, ge=0)
@@ -73,28 +75,44 @@ class Operator(Person):
             if value
         )
 
+
+class Crewmate(Person):
+    """One type plays the player and the cast alike; only a sheet says who has dice."""
+
+    sheet: Sheet | None = Field(
+        default=None,
+        description="Never written by you: code installs it when the player hires them.",
+    )
+
+    def dice(self) -> Sheet:
+        if self.sheet is None:
+            raise Refusal(f"{self.name} carries no dice")
+        return self.sheet
+
     def require_item(self, item_id: EntityId) -> Item:
-        item = self.items.get(item_id)
+        item = self.dice().items.get(item_id)
         if item is None:
-            raise Refusal(f"{item_id!r} is not among the player's items")
+            raise Refusal(f"{item_id!r} is not among {self.name}'s items")
         return item
 
     def pay(self, cost: int) -> None:
-        if cost > self.credits:
-            raise Refusal(f"the player has only ₡{self.credits}, not ₡{cost}")
-        self.credits -= cost
+        sheet = self.dice()
+        if cost > sheet.credits:
+            raise Refusal(f"{self.name} has only ₡{sheet.credits}, not ₡{cost}")
+        sheet.credits -= cost
 
     def change_hindrances(self, gained: Sequence[str], lost: Sequence[str]) -> list[Fact]:
+        sheet = self.dice()
         require_unique("gained hindrances", gained)
         for hindrance in gained:
-            if hindrance in self.hindrances:
-                raise Refusal(f"{hindrance!r} is already among the player's hindrances")
+            if hindrance in sheet.hindrances:
+                raise Refusal(f"{hindrance!r} is already among {self.name}'s hindrances")
         for hindrance in lost:
-            if hindrance not in self.hindrances:
-                raise Refusal(f"{hindrance!r} is not among the player's hindrances")
+            if hindrance not in sheet.hindrances:
+                raise Refusal(f"{hindrance!r} is not among {self.name}'s hindrances")
         for hindrance in lost:
-            self.hindrances.remove(hindrance)
-        self.hindrances.extend(gained)
+            sheet.hindrances.remove(hindrance)
+        sheet.hindrances.extend(gained)
         parts: list[str] = []
         if gained:
             parts.append(f"Hindered: {', '.join(gained)}")
@@ -106,7 +124,8 @@ class Operator(Person):
 
     def gain_item(self, name: str, *, bulky: bool, breaks: int, cost: int) -> list[Fact]:
         self.pay(cost)
-        self.items[EntityId(slug(name, self.items))] = Item(name=name, bulky=bulky, breaks=breaks)
+        items = self.dice().items
+        items[EntityId(slug(name, items))] = Item(name=name, bulky=bulky, breaks=breaks)
         suffix = f" (₡{cost})" if cost > 0 else ""
         card = f"Gained {name}{suffix}"
         trace = f"{self.label} gains {name}{suffix}"
@@ -114,7 +133,7 @@ class Operator(Person):
 
     def drop_item(self, item_id: EntityId) -> list[Fact]:
         item = self.require_item(item_id)
-        del self.items[item_id]
+        del self.dice().items[item_id]
         trace = f"{self.label} drops {item.name}"
         return [self.fact("item_dropped", trace, card=f"Dropped {item.name}")]
 
@@ -132,16 +151,58 @@ class Operator(Person):
         trace = f"{self.label} spends ₡{amount} — {why}"
         return [self.fact("credits_spent", trace, card=f"₡{amount} spent — {why}")]
 
+    def rows(self) -> Rows:
+        return self.sheet.rows() if self.sheet is not None else ()
 
-class TwentyfourxxWorld(SceneWorld[Person, Operator]):
-    job: str = ""  # the terms of the job the operator is on; empty between jobs
+    def line(self, *, rows: Rows | None = None, detail: str = "") -> str:
+        sheet = self.sheet
+        if sheet is None:
+            return super().line(rows=rows, detail=detail)
+        base = self.rows() if rows is None else rows
+        gear = ", ".join(item.name for item in sheet.items.values())
+        return super().line(rows=(*base, ("Gear", gear)) if gear else base, detail=detail)
+
+    def unwritten(self) -> str:
+        parts = [
+            part
+            for part in (super().unwritten(), "a sheet" if self.sheet is not None else "")
+            if part
+        ]
+        return ", ".join(parts)
+
+
+class TwentyfourxxWorld(SceneWorld[Crewmate, Crewmate]):
+    job: str = ""  # the terms of the job the crew is on; empty between jobs
+
+    @model_validator(mode="after")
+    def _player_carries_a_sheet(self) -> Self:
+        if self.player.sheet is None:
+            raise ValueError("the player carries no sheet")
+        return self
+
+    def sheeted_members(self) -> list[Crewmate]:
+        return [member for member in self.members() if member.sheet is not None]
+
+    def require_actor(self, actor_id: EntityId | None) -> Crewmate:
+        if actor_id is None or actor_id == self.player.id:
+            return self.player
+        entity = self.require(actor_id)
+        if entity.alive and entity.sheet is not None and entity.id in self.party:
+            return entity
+        raise Refusal(f"{entity.name} is not the player or a hired crew member")
+
+    def require_hireable(self, entity_id: EntityId) -> Crewmate:
+        member = self.require_here(entity_id, alive=True)
+        if member.sheet is not None:
+            raise Refusal(f"{member.name} already carries a sheet")
+        return member
 
 
 TwentyfourxxGame = Game[TwentyfourxxWorld]
 
-TwentyfourxxScenario = Scenario[SceneCanon[Person]]
+TwentyfourxxScenario = Scenario[SceneCanon[Crewmate]]
 
-TwentyfourxxCharacter = Character[Operator]
+TwentyfourxxCharacter = Character[Crewmate]
 
 
 def raised(current: SkillDie | None) -> SkillDie:

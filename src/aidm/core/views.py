@@ -14,18 +14,19 @@ from aidm.core.play import (
     SpokenLine,
 )
 
-type Rows = tuple[tuple[str, str], ...]  # a sheet
-type Sections = tuple[tuple[str, str], ...]  # a prompt
-
 SCENE_EXCHANGES = 20
 WHOLE_SCENES = 2
 TAIL_EXCHANGES = 3
+
+type Rows = tuple[tuple[str, str], ...]  # a sheet
+type Sections = tuple[tuple[str, str], ...]  # a prompt
 
 
 class Subject(Frozen):
     id: CheckedEntityId
     name: str
     brief: str
+    rows: Rows = ()
 
 
 # Three row shapes, told apart in this order: an entity (`icon_id`), a labelled value

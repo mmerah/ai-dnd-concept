@@ -5,6 +5,7 @@ import pytest
 from support.table import LONER3E, game, narrowed
 
 from aidm.core.entities import EntityId, Refusal
+from aidm.core.model import Generation
 from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
@@ -171,6 +172,15 @@ def test_a_departure_over_an_offer_requests_the_crossing_and_leaves_the_offer() 
 
     assert draft.generation is not None
     assert draft.generation.brief == "Down the stair."
+
+
+def test_a_scene_engine_refuses_to_write_an_operation_not_its_own() -> None:
+    engine, state = game(LONER3E)
+    draft = narrowed(state, Loner3eGame).draft()
+    draft.generation = Generation(operation="hire", brief="Hire a fixer.")
+
+    with pytest.raises(Refusal, match="a scene engine cannot write 'hire'"):
+        engine.validate(draft)
 
 
 def test_an_action_the_scene_no_longer_offers_is_refused_and_notes_nothing() -> None:

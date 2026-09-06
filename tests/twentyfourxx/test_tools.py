@@ -1,16 +1,20 @@
+import asyncio
 from random import Random
 
 import pytest
+from pydantic import BaseModel
 from support.table import change, refused
-from support.twentyfourxx import KESTREL, LOCKPICKS, small_world
+from support.twentyfourxx import KESTREL, LOCKPICKS, SABLE, hired, small_world
 
 from aidm.core.entities import EntityId, Refusal
-from aidm.engines.base import PLAYER_ID
+from aidm.core.model import Check, Generation
+from aidm.engines.base import HIRE, PLAYER_ID, SRD_PACK
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
-from aidm.engines.twentyfourxx.tools import Defend, FindJob, FinishJob, Roll, TakeJob
+from aidm.engines.twentyfourxx.tools import Defend, FindJob, FinishJob, Hire, Raise, Roll, TakeJob
 from aidm.engines.twentyfourxx.tools import TestLuck as LuckTest
 from aidm.engines.twentyfourxx.world import STARTING_CREDITS
+from aidm.engines.twentyfourxx.worldsmith import SIGNED_ON
 
 ENGINE = TwentyfourxxEngine()
 
@@ -79,6 +83,31 @@ def test_attempt_helped_and_hindered_together_roll_4_and_6() -> None:
     assert facts[1].dice[0].faces == (4, 6)
 
 
+def test_attempt_helped_by_rolls_two_dice_and_keeps_highest() -> None:
+    draft = hired(small_world(), KESTREL, skills={"Stealth": 8}).draft()
+    facts = ENGINE.attempt(
+        draft, Roll(what="Slip past", skill="Stealth", helped_by=KESTREL), Random(0)
+    )
+    assert facts[1].dice[0].faces == (10, 8)
+    assert facts[1].dice[0].label == "d10+d8"
+    assert "helped by Kestrel (d8)" in facts[1].trace
+
+
+def test_attempt_actor_id_acts_on_the_member_and_risking_death_kills_them() -> None:
+    draft = hired(small_world(), KESTREL, skills={"Stealth": 10}).draft()
+    facts = ENGINE.attempt(
+        draft,
+        Roll(what="Slip past", actor_id=KESTREL, skill="Stealth", risking_death=True),
+        Random(2),
+    )
+    member = draft.payload.cast[KESTREL]
+    assert not member.alive
+    assert draft.payload.player.alive
+    assert any(fact.card == f"{member.name} is dead" for fact in facts)
+    attempted = next(fact for fact in facts if fact.kind == "attempted")
+    assert attempted.trace.startswith("Slip past — Kestrel: ")
+
+
 def test_risking_death_kills_on_disaster_and_maims_on_setback_not_doubled() -> None:
     draft = small_world().draft()
     player = draft.payload.player
@@ -86,13 +115,13 @@ def test_risking_death_kills_on_disaster_and_maims_on_setback_not_doubled() -> N
         draft, Roll(what="Sneak past", skill="Stealth", risking_death=True), Random(1)
     )
     assert player.alive
-    assert player.hindrances == ["Maimed"]
+    assert player.dice().hindrances == ["Maimed"]
     assert any(fact.card == "Maimed" for fact in facts)
 
     _ = ENGINE.attempt(
         draft, Roll(what="Sneak past", skill="Stealth", risking_death=True), Random(1)
     )
-    assert player.hindrances == ["Maimed"]
+    assert player.dice().hindrances == ["Maimed"]
 
     draft = small_world().draft()
     player = draft.payload.player
@@ -115,9 +144,9 @@ def test_defend_breaks_the_item_and_adds_the_hindrance_refused_when_broken() -> 
     draft = small_world().draft()
     player = draft.payload.player
     facts = ENGINE.defend(draft, Defend(item_id=LOCKPICKS, hindrance="fingers cut"), Random(0))
-    assert player.items[LOCKPICKS].broken_times == 1
-    assert player.items[LOCKPICKS].broken
-    assert "fingers cut" in player.hindrances
+    assert player.dice().items[LOCKPICKS].broken_times == 1
+    assert player.dice().items[LOCKPICKS].broken
+    assert "fingers cut" in player.dice().hindrances
     assert any(fact.card == "Lockpick set breaks — fingers cut" for fact in facts)
 
     with pytest.raises(Refusal, match="already broken"):
@@ -129,10 +158,10 @@ def test_defend_breaks_the_item_and_adds_the_hindrance_refused_when_broken() -> 
 def test_gain_item_spends_and_refuses_short_credits() -> None:
     draft = small_world().draft()
     player = draft.payload.player
-    assert player.credits == STARTING_CREDITS
+    assert player.dice().credits == STARTING_CREDITS
     _ = change(ENGINE, draft, "gain_item", name="Rope", cost=1)
-    assert player.credits == STARTING_CREDITS - 1
-    assert player.items[EntityId("rope")].name == "Rope"
+    assert player.dice().credits == STARTING_CREDITS - 1
+    assert player.dice().items[EntityId("rope")].name == "Rope"
 
     assert "only" in refused(ENGINE, draft, "gain_item", name="Grenade", cost=99)
 
@@ -141,8 +170,17 @@ def test_spend_refuses_short_credits() -> None:
     draft = small_world().draft()
     player = draft.payload.player
     _ = change(ENGINE, draft, "spend", amount=1, why="a bribe")
-    assert player.credits == STARTING_CREDITS - 1
+    assert player.dice().credits == STARTING_CREDITS - 1
     assert "only" in refused(ENGINE, draft, "spend", amount=99, why="a bigger bribe")
+
+
+def test_change_world_spend_with_actor_id_pays_from_the_member_credits() -> None:
+    draft = hired(small_world(), KESTREL, skills={"Shooting": 8}).draft()
+    member = draft.payload.cast[KESTREL]
+    before = member.dice().credits
+    _ = change(ENGINE, draft, "spend", amount=1, why="ammo", actor_id=KESTREL)
+    assert member.dice().credits == before - 1
+    assert draft.payload.player.dice().credits == STARTING_CREDITS
 
 
 def test_repair_item_zeroes_broken_times_and_refuses_an_unbroken_item() -> None:
@@ -150,43 +188,101 @@ def test_repair_item_zeroes_broken_times_and_refuses_an_unbroken_item() -> None:
     player = draft.payload.player
     assert "not broken" in refused(ENGINE, draft, "repair_item", item_id=LOCKPICKS)
 
-    player.items[LOCKPICKS].broken_times = 1
+    player.dice().items[LOCKPICKS].broken_times = 1
     _ = change(ENGINE, draft, "repair_item", item_id=LOCKPICKS)
-    assert player.items[LOCKPICKS].broken_times == 0
+    assert player.dice().items[LOCKPICKS].broken_times == 0
 
 
 def test_change_hindrances_gains_and_loses_refuses_duplicate_and_absent() -> None:
     draft = small_world().draft()
     player = draft.payload.player
     _ = change(ENGINE, draft, "change_hindrances", gained=["Bleeding"])
-    assert player.hindrances == ["Bleeding"]
+    assert player.dice().hindrances == ["Bleeding"]
 
     assert "already" in refused(ENGINE, draft, "change_hindrances", gained=["Bleeding"])
     assert "not among" in refused(ENGINE, draft, "change_hindrances", lost=["Scared"])
 
     _ = change(ENGINE, draft, "change_hindrances", gained=["Scared"], lost=["Bleeding"])
-    assert player.hindrances == ["Scared"]
+    assert player.dice().hindrances == ["Scared"]
 
 
 def test_finish_job_raises_a_skill_enters_a_new_one_refuses_at_d12_adds_credits() -> None:
     draft = small_world().draft()
     player = draft.payload.player
-    before_credits = player.credits
+    before_credits = player.dice().credits
 
     draft.payload.job = "Escort the crate to dock nine"
-    facts = ENGINE.finish_job(draft, FinishJob(skill="Stealth"), Random(0))
-    assert player.skills["Stealth"] == 12
-    assert player.credits == before_credits + 4
+    facts = ENGINE.finish_job(draft, FinishJob(raises=(Raise(skill="Stealth"),)), Random(0))
+    assert player.dice().skills["Stealth"] == 12
+    assert player.dice().credits == before_credits + 4
     assert any(fact.card == "Job done: Stealth d12" for fact in facts)
     assert draft.payload.job == ""
 
     draft.payload.job = "Shadow the courier"
-    _ = ENGINE.finish_job(draft, FinishJob(skill="Climbing"), Random(1))
-    assert player.skills["Climbing"] == 8
+    _ = ENGINE.finish_job(draft, FinishJob(raises=(Raise(skill="Climbing"),)), Random(1))
+    assert player.dice().skills["Climbing"] == 8
 
     draft.payload.job = "One skill too far"
     with pytest.raises(Refusal, match="d12"):
-        _ = ENGINE.finish_job(draft, FinishJob(skill="Stealth"), Random(0))
+        _ = ENGINE.finish_job(draft, FinishJob(raises=(Raise(skill="Stealth"),)), Random(0))
+
+
+def test_finish_job_refuses_raises_missing_a_hired_member() -> None:
+    draft = hired(small_world(), KESTREL, skills={"Shooting": 8}).draft()
+    draft.payload.job = "Escort the crate"
+    with pytest.raises(Refusal, match="the player and every living hired member"):
+        _ = ENGINE.finish_job(draft, FinishJob(raises=(Raise(skill="Stealth"),)), Random(0))
+
+
+def test_finish_job_refuses_raises_that_name_the_player_twice() -> None:
+    draft = small_world().draft()
+    draft.payload.job = "Escort the crate"
+    with pytest.raises(Refusal, match="repeated the player"):
+        _ = ENGINE.finish_job(
+            draft,
+            FinishJob(raises=(Raise(skill="Stealth"), Raise(skill="Climbing"))),
+            Random(0),
+        )
+
+
+def test_finish_job_raises_the_whole_crew_and_pays_each_a_d6() -> None:
+    draft = hired(small_world(), KESTREL, skills={"Shooting": 8}).draft()
+    player = draft.payload.player
+    member = draft.payload.cast[KESTREL]
+    before_member_credits = member.dice().credits
+    draft.payload.job = "Escort the crate"
+
+    facts = ENGINE.finish_job(
+        draft,
+        FinishJob(raises=(Raise(skill="Stealth"), Raise(actor_id=KESTREL, skill="Shooting"))),
+        Random(0),
+    )
+
+    assert player.dice().skills["Stealth"] == 12
+    assert member.dice().skills["Shooting"] == 10
+    assert member.dice().credits > before_member_credits
+    assert any(fact.card == "Job done: Shooting d10" for fact in facts)
+
+
+def test_android_case_is_an_item_on_creation_and_defend_breaks_it() -> None:
+    picks = {
+        "pack": "srd",
+        "specialty": "tech",
+        "origin": "android",
+        "increase-1": "climbing",
+        "body": "case",
+    }
+    character = ENGINE.create_character("Unit-9", "A tireless drone", picks)
+    android = character.payload
+    sheet = android.dice()
+    case_id = next(item_id for item_id, item in sheet.items.items() if item.name == "Case")
+
+    draft = small_world().draft()
+    draft.payload.player = android
+
+    facts = ENGINE.defend(draft, Defend(item_id=case_id, hindrance="dented"), Random(0))
+    assert draft.payload.player.dice().items[case_id].broken
+    assert any(fact.card == "Case breaks — dented" for fact in facts)
 
 
 def test_take_job_opens_a_job_and_refuses_a_second_while_open() -> None:
@@ -223,22 +319,22 @@ def test_find_job_refused_while_a_job_is_open() -> None:
 def test_finish_job_refuses_without_a_job_open() -> None:
     draft = small_world().draft()
     with pytest.raises(Refusal, match="no job is open"):
-        _ = ENGINE.finish_job(draft, FinishJob(skill="Stealth"), Random(0))
+        _ = ENGINE.finish_job(draft, FinishJob(raises=(Raise(skill="Stealth"),)), Random(0))
 
 
 def test_finish_job_pays_once_and_refuses_a_second_call() -> None:
     draft = small_world().draft()
     player = draft.payload.player
-    before_credits = player.credits
+    before_credits = player.dice().credits
 
     draft.payload.job = "Deliver the package"
-    _ = ENGINE.finish_job(draft, FinishJob(skill="Stealth"), Random(0))
-    assert player.credits == before_credits + 4
+    _ = ENGINE.finish_job(draft, FinishJob(raises=(Raise(skill="Stealth"),)), Random(0))
+    assert player.dice().credits == before_credits + 4
     assert draft.payload.job == ""
 
     with pytest.raises(Refusal, match="no job is open"):
-        _ = ENGINE.finish_job(draft, FinishJob(skill="Stealth"), Random(0))
-    assert player.credits == before_credits + 4
+        _ = ENGINE.finish_job(draft, FinishJob(raises=(Raise(skill="Stealth"),)), Random(0))
+    assert player.dice().credits == before_credits + 4
 
 
 def test_kill_on_the_player_flips_player_over() -> None:
@@ -261,3 +357,58 @@ def test_next_scene_offers_the_way_on_and_refuses_a_second_offer() -> None:
 def test_leave_takes_a_cast_member_out() -> None:
     draft = small_world().draft()
     assert "leaves" in change(ENGINE, draft, "leave", entity_id=KESTREL)[0].trace
+
+
+def test_hire_sets_generation_and_ends_the_turn() -> None:
+    draft = small_world().draft()
+    facts = ENGINE.hire(draft, Hire(entity_id=KESTREL, terms="Watch our backs"), Random(0))
+    assert draft.generation == Generation(operation=HIRE, brief="Watch our backs", target=KESTREL)
+    assert any(fact.kind == "hire_asked" for fact in facts)
+
+
+def test_hire_refuses_a_sheeted_member() -> None:
+    draft = small_world().draft()
+    with pytest.raises(Refusal, match="already carries a sheet"):
+        _ = ENGINE.hire(draft, Hire(entity_id=PLAYER_ID, terms="terms"), Random(0))
+
+
+def test_validate_refuses_a_hire_with_no_target() -> None:
+    draft = small_world().draft()
+    draft.packs = (SRD_PACK,)
+    draft.generation = Generation(operation=HIRE, brief="terms")
+    with pytest.raises(Refusal, match="a hire needs someone here without a sheet: None"):
+        ENGINE.validate(draft)
+
+
+def test_validate_refuses_a_hire_whose_target_is_not_here_or_already_sheeted() -> None:
+    draft = small_world().draft()
+    draft.packs = (SRD_PACK,)
+    draft.generation = Generation(operation=HIRE, brief="terms", target=SABLE)
+    with pytest.raises(Refusal, match="is not here with the player"):
+        ENGINE.validate(draft)
+
+    draft = small_world().draft()
+    draft.packs = (SRD_PACK,)
+    draft.generation = Generation(operation=HIRE, brief="terms", target=PLAYER_ID)
+    with pytest.raises(Refusal, match="already carries a sheet"):
+        ENGINE.validate(draft)
+
+
+async def _stub_worldsmith[M: BaseModel](prompt: str, model: type[M], refusal: Check[M]) -> M:
+    del prompt, refusal
+    return model.model_validate(
+        {"specialty": "Muscle", "skills": {"Intimidation": 8}, "items": ["Crowbar"]}
+    )
+
+
+def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party() -> None:
+    draft = small_world().draft()
+    draft.packs = (SRD_PACK,)
+    generation = Generation(operation=HIRE, brief="Watch our backs", target=KESTREL)
+    facts, told = asyncio.run(ENGINE.advance(draft, generation, _stub_worldsmith))
+    member = draft.payload.cast[KESTREL]
+    assert member.dice().credits == 0
+    assert [item.name for item in member.dice().items.values()] == ["Crowbar"]
+    assert KESTREL in draft.payload.party
+    assert told == SIGNED_ON.format(name=member.name)
+    assert any(fact.kind == "hired" for fact in facts)

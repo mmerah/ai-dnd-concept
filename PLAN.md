@@ -388,8 +388,8 @@ leads; the crew has a ship whose functions break, mend and upgrade as the SRD pr
    `require_gear`; `ship_upgrade` pays ₡10 from the player and sets `upgraded` (refused when
    already upgraded); a `Ship` panel and a THE SHIP master section list the functions with
    their detail.
-5. **Docs.** `rules.md`: `## Death and succession`, `## The ship`. `docs/24XX.md`: deviations 2
-   and 4's ship half close; deviation 4 keeps the gear table alone; a settled reading: the new
+5. **Docs.** `rules.md`: `## Death and succession`, `## The ship`. `docs/24XX.md`: deviations 1
+   and 2's ship half close; deviation 2 keeps the gear table alone; a settled reading: the new
    lead keeps their own id, and traces name them by name rather than "the player"; the tool
    count reads twenty counted plus the pair, at the cap.
 

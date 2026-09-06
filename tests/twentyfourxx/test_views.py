@@ -43,7 +43,7 @@ def test_master_sections_shows_hidden_entities() -> None:
 
 def test_master_sections_gear_shows_none_for_empty_gear() -> None:
     game = small_world()
-    game.payload.player.items = {}
+    game.payload.player.dice().items.clear()
     sections = dict(ENGINE.master_sections(game))
     assert sections["GEAR"] == "- (none)"
 

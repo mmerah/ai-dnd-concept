@@ -2,11 +2,13 @@ from collections.abc import Sequence
 
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import ScenarioMeta
-from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.world import SceneRun
 from aidm.engines.twentyfourxx.world import (
+    Crewmate,
     Item,
-    Operator,
+    Sheet,
+    SkillDie,
     TwentyfourxxGame,
     TwentyfourxxWorld,
 )
@@ -21,8 +23,8 @@ SITUATION = (
 
 
 def small_world() -> TwentyfourxxGame:
-    kestrel = Person(id=KESTREL, name="Kestrel", brief="A dockhand", known=True)
-    sable = Person(id=SABLE, name="Sable", brief="A rival operator", known=False)
+    kestrel = Crewmate(id=KESTREL, name="Kestrel", brief="A dockhand", known=True)
+    sable = Crewmate(id=SABLE, name="Sable", brief="A rival operator", known=False)
     world = TwentyfourxxWorld(
         cast={KESTREL: kestrel, SABLE: sable},
         player=_player(),
@@ -39,6 +41,16 @@ def small_world() -> TwentyfourxxGame:
     )
 
 
+def hired(
+    state: TwentyfourxxGame, entity_id: EntityId, *, skills: dict[str, SkillDie]
+) -> TwentyfourxxGame:
+    """Give a cast member a sheet and put them in the party, for tests that need a hired hand."""
+    draft = state.draft()
+    draft.payload.cast[entity_id].sheet = Sheet(specialty="Muscle", skills=skills)
+    draft.payload.party.append(entity_id)
+    return draft.commit()
+
+
 def _scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
     return SceneRun(
         place="loading-bay",
@@ -49,14 +61,16 @@ def _scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
     )
 
 
-def _player() -> Operator:
-    return Operator(
+def _player() -> Crewmate:
+    return Crewmate(
         id=PLAYER_ID,
         name="Rook",
         brief="A quiet operator",
         known=True,
-        specialty="Sneak",
-        origin="Human",
-        skills={"Stealth": 10},
-        items={LOCKPICKS: Item(name="Lockpick set")},
+        sheet=Sheet(
+            specialty="Sneak",
+            origin="Human",
+            skills={"Stealth": 10},
+            items={LOCKPICKS: Item(name="Lockpick set")},
+        ),
     )

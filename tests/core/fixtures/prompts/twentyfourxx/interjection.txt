@@ -7,6 +7,9 @@ Everything you need is below. Do not read, search or run anything in the reposit
 
 Answer with one JSON object and nothing else, in the shape ANSWER WITH gives.
 
+YOUR SHEET:
+(none)
+
 WHAT THE PLAYER HAS READ:
 SCENE: The Docking Ring
 Can Kael get through Vessa's airlock and into the station, and on whose terms?

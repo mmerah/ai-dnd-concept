@@ -50,6 +50,7 @@ MORE_MAP = Action(
 class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
     dweller: type[N]
     world_type: type[RoomWorld[N, P]]
+    operations = (MORE_MAP.id,)
 
     def world(self, state: G) -> RoomWorld[N, P]:
         return state.payload
@@ -61,7 +62,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
     def validate(self, state: G) -> None:
         if state.packs:
             raise Refusal(f"{self.title} has no table sets")
-        if state.generation is not None and state.generation.operation != MORE_MAP.id:
+        if state.generation is not None and state.generation.operation not in self.operations:
             raise Refusal(f"a room engine cannot write {state.generation.operation!r}")
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> RoomWorld[N, P]:

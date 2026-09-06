@@ -5,6 +5,7 @@ from typing import Any, Protocol, Self
 from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.entities import (
+    CheckedEntityId,
     EngineId,
     Frozen,
     Loose,
@@ -88,6 +89,7 @@ class Generation(Frozen):
 
     operation: Slug  # the engine's own name for what it will author and install
     brief: str = Field(min_length=1)
+    target: CheckedEntityId | None = None  # the entity the operation concerns, when one does
 
 
 class Game[P: BaseModel](Mutable):

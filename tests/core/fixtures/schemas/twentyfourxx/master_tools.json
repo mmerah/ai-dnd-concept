@@ -14,7 +14,7 @@
             },
             "gained": {
               "default": [],
-              "description": "Hindrances the player now carries, that they did not before.",
+              "description": "Hindrances the actor now carries, that they did not before.",
               "items": {
                 "type": "string"
               },
@@ -22,11 +22,25 @@
             },
             "lost": {
               "default": [],
-              "description": "Hindrances the player no longer carries.",
+              "description": "Hindrances the actor no longer carries.",
               "items": {
                 "type": "string"
               },
               "type": "array"
+            },
+            "actor_id": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "null for the player; else the exact id of a hired crew member here who acts."
             }
           },
           "required": [
@@ -44,10 +58,24 @@
               "type": "string"
             },
             "item_id": {
-              "description": "Exact id of an item the player carries.",
+              "description": "Exact id of an item the actor carries.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
+            },
+            "actor_id": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "null for the player; else the exact id of a hired crew member here who acts."
             }
           },
           "required": [
@@ -108,6 +136,20 @@
               "description": "Credits spent for the item; `cost` 0 only for a thing found or given.",
               "minimum": 0,
               "type": "integer"
+            },
+            "actor_id": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "null for the player; else the exact id of a hired crew member here who acts."
             }
           },
           "required": [
@@ -214,7 +256,7 @@
               "type": "string"
             },
             "item_id": {
-              "description": "Exact id of an item the player carries.",
+              "description": "Exact id of an item the actor carries.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
@@ -224,6 +266,20 @@
               "description": "Credits spent on the repair.",
               "minimum": 0,
               "type": "integer"
+            },
+            "actor_id": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "null for the player; else the exact id of a hired crew member here who acts."
             }
           },
           "required": [
@@ -272,6 +328,20 @@
               "description": "What the credits pay for, in a few words.",
               "minLength": 1,
               "type": "string"
+            },
+            "actor_id": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "null for the player; else the exact id of a hired crew member here who acts."
             }
           },
           "required": [
@@ -368,7 +438,7 @@
   },
   {
     "name": "attempt",
-    "description": "Roll for something whose outcome matters. Name `helped` with why circumstances help — an ally who pitches in counts, named in it: the SRD gives them their own die, but here it is the d6 of circumstance, because an NPC carries no dice. Name `hindered` with why the player is hindered, when they are.",
+    "description": "Roll for something whose outcome matters. Name `helped` with why circumstances help, when they do. Name `hindered` with why the actor is hindered, when they are. `helped_by` names a hired crew member who rolls their own die beside the actor's; `actor_id` when a hired member acts instead of the player.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -376,6 +446,20 @@
           "description": "The attempt, in a few words the player may read; it heads the card.",
           "minLength": 1,
           "type": "string"
+        },
+        "actor_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "null for the player; else the exact id of a hired crew member here who acts."
         },
         "skill": {
           "default": "",
@@ -387,14 +471,28 @@
           "description": "Why circumstances help, when they do.",
           "type": "string"
         },
+        "helped_by": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A hired crew member who helps: they roll their own die for the skill and the highest counts; `helped` stays the d6 of circumstance."
+        },
         "hindered": {
           "default": "",
-          "description": "Why the player is hindered, when they are.",
+          "description": "Why the actor is hindered, when they are.",
           "type": "string"
         },
         "risking_death": {
           "default": false,
-          "description": "True when a disaster kills the player and a setback maims them; say it before the roll.",
+          "description": "True when a disaster kills the actor and a setback maims them; say it before the roll.",
           "type": "boolean"
         }
       },
@@ -428,14 +526,28 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {
+        "actor_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "null for the player; else the exact id of a hired crew member here who acts."
+        },
         "item_id": {
-          "description": "Exact id of the item the player breaks to defend.",
+          "description": "Exact id of the item the actor breaks to defend.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         },
         "hindrance": {
-          "description": "What the harm the player takes becomes, as a hindrance.",
+          "description": "What the harm the actor takes becomes, as a hindrance.",
           "minLength": 1,
           "type": "string"
         }
@@ -485,18 +597,77 @@
   },
   {
     "name": "finish_job",
-    "description": "The job is done, by the story and the player's own words: raise the skill it called on and pay out its credits; the job then closes.",
+    "description": "The job is done, by the story and the crew's own words: raise the skill it called on for the player and every living hired member, and pay out its credits; the job then closes.",
+    "parameters": {
+      "$defs": {
+        "Raise": {
+          "additionalProperties": false,
+          "properties": {
+            "actor_id": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "null for the player; else the exact id of a hired crew member here who acts."
+            },
+            "skill": {
+              "description": "The skill the job called on for them, to raise.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "skill"
+          ],
+          "title": "Raise",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "raises": {
+          "description": "One per operator: the player and every living hired member, each with the skill the job called on for them.",
+          "items": {
+            "$ref": "#/$defs/Raise"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "raises"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "hire",
+    "description": "The player hires someone here to work: the worldsmith writes their sheet once this turn ends, and they join the party. Refused for the party's unsheeted followers only when the story has not hired them.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "skill": {
-          "description": "The skill the job called on, named by the player, to raise.",
+        "entity_id": {
+          "description": "Exact id of who here signs on; they must not already carry a sheet.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "terms": {
+          "description": "What they are hired for and on what terms, as agreed, for the worldsmith.",
           "minLength": 1,
           "type": "string"
         }
       },
       "required": [
-        "skill"
+        "entity_id",
+        "terms"
       ],
       "type": "object"
     }

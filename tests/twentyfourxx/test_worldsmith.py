@@ -4,15 +4,47 @@ from support.twentyfourxx import KESTREL, SABLE, SITUATION, small_world
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
 from aidm.core.model import AnyScenario, ScenarioMeta
-from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.drafts import SceneDraft
 from aidm.engines.scenes.worldsmith import scene_refusal
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
+from aidm.engines.twentyfourxx.world import Crewmate, Sheet
+from aidm.engines.twentyfourxx.worldsmith import SheetDraft, sheet_refusal
 
 ENGINE = TwentyfourxxEngine()
+SRD = ENGINE.packs["srd"]
 
 
-def _draft(**fields: object) -> SceneDraft[Person]:
+def test_sheet_refusal_accepts_a_muscle_with_intimidation_and_shooting() -> None:
+    draft = SheetDraft(
+        specialty="Muscle", skills={"Intimidation": 8, "Shooting": 8}, items=("Firearm",)
+    )
+    assert sheet_refusal(draft, SRD) is None
+
+
+def test_sheet_refusal_refuses_an_unknown_specialty() -> None:
+    draft = SheetDraft(specialty="Wizard", skills={"Shooting": 8}, items=())
+    assert "Wizard" in (sheet_refusal(draft, SRD) or "")
+
+
+def test_sheet_refusal_refuses_a_skill_neither_listed_nor_granted() -> None:
+    draft = SheetDraft(specialty="Muscle", skills={"Sorcery": 8}, items=())
+    assert "Sorcery" in (sheet_refusal(draft, SRD) or "")
+
+
+def test_sheet_refusal_accepts_medicine_granted_by_medic() -> None:
+    draft = SheetDraft(specialty="Face", skills={"Medicine": 8}, items=())
+    assert sheet_refusal(draft, SRD) is None
+
+
+def test_the_pack_s_android_case_carries_the_kit() -> None:
+    android = next(origin for origin in SRD.origins if origin.label == "Android")
+    case = next(body for body in android.choice if body.label == "Case")
+    assert case.kit is not None
+    assert case.kit.name == "Case"
+
+
+def _draft(**fields: object) -> SceneDraft[Crewmate]:
     base = {
         "place": "bay-office",
         "title": "The Bay Office",
@@ -20,10 +52,10 @@ def _draft(**fields: object) -> SceneDraft[Person]:
         "situation": SITUATION,
         "arc": "Farther in, the fixer's own supplier still owes for the last load.",
     }
-    return SceneDraft[Person].model_validate(base | fields)
+    return SceneDraft[Crewmate].model_validate(base | fields)
 
 
-def _built(draft: SceneDraft[Person]) -> AnyScenario:
+def _built(draft: SceneDraft[Crewmate]) -> AnyScenario:
     return ENGINE.build_scenario(
         ScenarioMeta(title="Loading Bay", premise="", scope="One tense night shift."), (), draft, ""
     )
@@ -53,7 +85,7 @@ def test_apply_scene_lands_new_cast() -> None:
     world.apply_scene(
         _draft(
             present=("kestrel", "stranger"),
-            cast={stranger: Person(id=stranger, name="A Stranger", brief="unknown to the world")},
+            cast={stranger: Crewmate(id=stranger, name="A Stranger", brief="unknown to the world")},
         ),
     )
     assert stranger in world.cast
@@ -62,7 +94,7 @@ def test_apply_scene_lands_new_cast() -> None:
 def test_the_bar_refuses_a_draft_cast_entry_under_player_id() -> None:
     world = small_world().payload
     draft = _draft(
-        cast={PLAYER_ID: Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)}
+        cast={PLAYER_ID: Crewmate(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)}
     )
     assert "rewrites the player" in (scene_refusal(draft, world) or "")
 
@@ -71,7 +103,7 @@ def test_apply_scene_re_files_an_existing_cast_member_as_a_new_brief_alone() -> 
     world = small_world().payload
     draft = _draft(
         present=("kestrel",),
-        cast={KESTREL: Person(id=KESTREL, name="Another Kestrel", brief="rewritten")},
+        cast={KESTREL: Crewmate(id=KESTREL, name="Another Kestrel", brief="rewritten")},
     )
 
     world.apply_scene(draft)
@@ -85,7 +117,7 @@ def test_the_bar_refuses_a_misfiled_cast_entry() -> None:
     other = EntityId("other")
     draft = _draft(
         present=("stranger",),
-        cast={stranger: Person(id=other, name="A Stranger", brief="filed wrongly")},
+        cast={stranger: Crewmate(id=other, name="A Stranger", brief="filed wrongly")},
     )
     assert "is filed under" in (scene_refusal(draft, world) or "")
 
@@ -113,11 +145,25 @@ def test_a_dead_draft_cast_member_is_refused() -> None:
     world = small_world().payload
     ghost = EntityId("ghost")
     draft = _draft(
-        present=("kestrel",), cast={ghost: Person(id=ghost, name="Ghost", brief="", alive=False)}
+        present=("kestrel",), cast={ghost: Crewmate(id=ghost, name="Ghost", brief="", alive=False)}
     )
     assert scene_refusal(draft, world) == (
         "the scene needs cast members as the worldsmith may write them: ['ghost: alive']"
     )
+
+
+def test_a_sheeted_draft_cast_member_is_refused() -> None:
+    world = small_world().payload
+    stranger = EntityId("stranger")
+    draft = _draft(
+        present=("kestrel", "stranger"),
+        cast={
+            stranger: Crewmate(
+                id=stranger, name="Stranger", brief="", sheet=Sheet(specialty="Muscle")
+            )
+        },
+    )
+    assert "a sheet" in (scene_refusal(draft, world) or "")
 
 
 def test_a_hidden_multi_word_name_in_situation_is_refused() -> None:
@@ -128,7 +174,7 @@ def test_a_hidden_multi_word_name_in_situation_is_refused() -> None:
         situation=situation,
         present=("kestrel",),
         hidden=(stalker,),
-        cast={stalker: Person(id=stalker, name="Old Man Riley", brief="")},
+        cast={stalker: Crewmate(id=stalker, name="Old Man Riley", brief="")},
     )
     assert scene_refusal(draft, world) == (
         "the scene needs a situation that does not name what is hidden: ['Old Man Riley']"
@@ -200,7 +246,7 @@ def test_opening_canon_marks_present_known() -> None:
     stranger = EntityId("stranger")
     draft = _draft(
         present=(stranger,),
-        cast={stranger: Person(id=stranger, name="A Stranger", brief="new to the world")},
+        cast={stranger: Crewmate(id=stranger, name="A Stranger", brief="new to the world")},
     )
     canon = ENGINE.opening_canon(draft, "")
     assert canon.cast[stranger].known is True
@@ -210,6 +256,6 @@ def test_build_scenario_stamps_the_engine_id() -> None:
     stranger = EntityId("stranger")
     draft = _draft(
         present=(stranger,),
-        cast={stranger: Person(id=stranger, name="A Stranger", brief="new to the world")},
+        cast={stranger: Crewmate(id=stranger, name="A Stranger", brief="new to the world")},
     )
     assert _built(draft).engine == TWENTYFOURXX

@@ -21,7 +21,7 @@ extra d6 is rolled and the highest die counts.
 
 ## Risking death
 
-Say it before the roll. With `risking_death` set, a disaster (1–2) kills the player; a setback
+Say it before the roll. With `risking_death` set, a disaster (1–2) kills the actor; a setback
 (3–4) maims them.
 
 ## Luck tests
@@ -31,12 +31,12 @@ Say it before the roll. With `risking_death` set, a disaster (1–2) kills the p
 
 ## Defend
 
-The player may break a carried item to turn a hit into a hindrance instead of taking it
+The actor may break a carried item to turn a hit into a hindrance instead of taking it
 outright. Broken gear is useless until `repair_item` fixes it.
 
 ## Harm as hindrances
 
-`change_hindrances` words an injury, or anything else that slows the player down, as a
+`change_hindrances` words an injury, or anything else that slows the actor down, as a
 hindrance. A hindered roll is a d4.
 
 ## Load
@@ -56,17 +56,28 @@ in on a job, 3–4 a job but something seems off, 5–6 a choice between two job
 `spend`.
 
 `take_job` when the player agrees to work, with the terms as agreed; the job then stands under
-THE JOB. `finish_job` once, when the story and the player's own words close it: it raises the
-skill the player names, pays the d6 of credits and clears the job. Neither tool is needed for
-work the player never takes on.
+THE JOB. `finish_job` once, when the story and the crew's own words close it: one `raises` entry
+per operator, the player and every living hired member, each raising the skill the job called on
+for them and paid their own d6 of credits; the job then clears. Neither tool is needed for work
+the player never takes on.
+
+## Hiring
+
+A sheet is for someone hired to work, never for someone who merely comes along. Call `hire` with
+the terms as agreed, and the turn ends: the worldsmith writes their sheet and they join the
+party. A hired member is a crew member from then on: `actor_id` on `attempt`, `defend`, and the
+`change_hindrances`, `gain_item`, `drop_item`, `repair_item` and `spend` arms says when they act
+instead of the player. `helped_by` beside `helped` names a hired member who rolls their own die.
+`finish_job` raises the whole crew, one `raises` entry each.
 
 ## The party
 
 A party member travels with the player from scene to scene, theirs to command in the fiction and
 yours to voice. When one plainly helps a roll, write why in `helped` — the same as any other
-circumstance — rather than giving them dice of their own; a member never rolls unless the rules
-say otherwise. Never volunteer a member's action to soften a scene the player is meant to face
-alone. Call `join_party` when someone here decides to come along, `leave_party` when they stop.
+circumstance; a hired member rolls through `helped_by` or as the actor; an unhired member helps
+only through `helped`. Never volunteer a member's action to soften a scene the player is meant to
+face alone. Call `join_party` when someone here decides to come along, `leave_party` when they
+stop.
 
 ## Let the player choose where the story goes
 
