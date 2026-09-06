@@ -5,10 +5,9 @@ from pydantic import Field, model_validator
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen
 from aidm.core.play import PendingOption
 from aidm.core.tools import Attempt
+from aidm.engines.base import ACTOR
 from aidm.engines.rooms.tools import SharedChange
 from aidm.engines.tunnelgoons.world import ABILITIES, Ability, Boost
-
-ACTOR = "null for the player; else the exact id of a hired party member here who acts."
 
 
 class ChangeWorld(Frozen):

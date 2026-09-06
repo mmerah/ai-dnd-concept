@@ -13,10 +13,9 @@ from aidm.core.views import Panel, PanelRow, Rows, Sections, lines_of
 from aidm.engines.base import (
     CHANGE_WORLD,
     HIRE,
+    HIRE_TOOL,
     PLAYER_ID,
-    SIGNED_ON,
     Hire,
-    hire_request,
     hire_target,
     keep_highest,
     sentence,
@@ -120,15 +119,7 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
                 TestLuck,
                 self.test_luck,
             ),
-            master_tool(
-                "hire",
-                "The player hires someone here to work: the worldsmith writes their sheet once "
-                "this turn ends, and they join the party. Someone already travelling with the "
-                "player may be hired too; a sheet is for someone hired to work, never for one "
-                "who merely comes along.",
-                Hire,
-                self.hire,
-            ),
+            master_tool("hire", HIRE_TOOL, Hire, self.hire),
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
@@ -213,18 +204,6 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
     def change_world(self, draft: BreathlessGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
         return self.apply_change(draft.payload, args.change)
 
-    def hire(self, draft: BreathlessGame, args: Hire, _rng: Random) -> list[Fact]:
-        world = draft.payload
-        member = world.require_hireable(args.entity_id)
-        draft.generation, fact = hire_request(member, args.terms)
-        return [fact]
-
-    def validate(self, state: BreathlessGame) -> None:
-        super().validate(state)
-        generation = state.generation
-        if generation is not None and generation.operation == HIRE:
-            state.payload.require_hireable(hire_target(generation))
-
     async def advance(
         self, draft: BreathlessGame, request: Generation, worldsmith: WorldsmithAnswer
     ) -> tuple[tuple[Fact, ...], str | None]:
@@ -253,10 +232,7 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
             worn=dict(answer.skills),
             items={EntityId(slug(answer.item, ())): Item(name=answer.item, die=STARTING_ITEM)},
         )
-        facts = world.join_party(member.id) if member.id not in world.party else []
-        trace = f"{member.label} signs on — {answer.job}"
-        facts.append(member.fact("hired", trace, card=f"{member.name} signs on — {answer.job}"))
-        return tuple(facts), SIGNED_ON.format(name=member.name)
+        return world.sign_on(member, answer.job)
 
     def check(self, draft: BreathlessGame, args: Check, rng: Random) -> list[Fact]:
         world = draft.payload

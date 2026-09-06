@@ -9,15 +9,7 @@ from aidm.core.model import AnyCharacter, Generation, WorldsmithAnswer
 from aidm.core.play import DecisionOption, PendingDecision
 from aidm.core.tools import MasterTool, NoArgs, master_tool
 from aidm.core.views import Rows
-from aidm.engines.base import (
-    CHANGE_WORLD,
-    HIRE,
-    PLAYER_ID,
-    SIGNED_ON,
-    Hire,
-    hire_request,
-    hire_target,
-)
+from aidm.engines.base import CHANGE_WORLD, HIRE, HIRE_TOOL, PLAYER_ID, Hire, hire_target
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.tools import Move, UnlockWay
 from aidm.engines.rooms.world import Item
@@ -110,15 +102,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
                 LevelUp,
                 self.level_up,
             ),
-            master_tool(
-                "hire",
-                "The player hires someone here to work: the worldsmith writes their sheet once "
-                "this turn ends, and they join the party. Someone already travelling with the "
-                "player may be hired too; a sheet is for someone hired to work, never for one "
-                "who merely comes along.",
-                Hire,
-                self.hire,
-            ),
+            master_tool("hire", HIRE_TOOL, Hire, self.hire),
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
@@ -167,18 +151,6 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
     def change_world(self, draft: TunnelGoonsGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
         return self.shared_change(draft.payload, args.change)
 
-    def hire(self, draft: TunnelGoonsGame, args: Hire, _rng: Random) -> list[Fact]:
-        world = draft.payload
-        member = world.require_hireable(args.entity_id)
-        draft.generation, fact = hire_request(member, args.terms)
-        return [fact]
-
-    def validate(self, state: TunnelGoonsGame) -> None:
-        super().validate(state)
-        generation = state.generation
-        if generation is not None and generation.operation == HIRE:
-            state.payload.require_hireable(hire_target(generation))
-
     async def advance(
         self, draft: TunnelGoonsGame, request: Generation, worldsmith: WorldsmithAnswer
     ) -> tuple[tuple[Fact, ...], str | None]:
@@ -195,18 +167,10 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         )
         answer = await worldsmith(prompt, AbilitiesDraft, lambda _draft: None)
         sheet = member.sheet = Abilities(abilities=dict(answer.abilities))
-        facts = world.join_party(member.id) if member.id not in world.party else []
         summary = ", ".join(
             f"{ability.capitalize()} {sheet.abilities[ability]}" for ability in ABILITIES
         )
-        facts.append(
-            member.fact(
-                "hired",
-                f"{member.label} signs on — {summary}",
-                card=f"{member.name} signs on — {summary}",
-            )
-        )
-        return tuple(facts), SIGNED_ON.format(name=member.name)
+        return world.sign_on(member, summary)
 
     def action_roll(self, draft: TunnelGoonsGame, args: ActionRoll, rng: Random) -> list[Fact]:
         world = draft.payload

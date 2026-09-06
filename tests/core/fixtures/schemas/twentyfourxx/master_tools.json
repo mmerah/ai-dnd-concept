@@ -40,7 +40,7 @@
                 }
               ],
               "default": null,
-              "description": "null for the player; else the exact id of a hired crew member here who acts."
+              "description": "null for the player; else the exact id of a hired party member here who acts."
             }
           },
           "required": [
@@ -75,7 +75,7 @@
                 }
               ],
               "default": null,
-              "description": "null for the player; else the exact id of a hired crew member here who acts."
+              "description": "null for the player; else the exact id of a hired party member here who acts."
             }
           },
           "required": [
@@ -149,7 +149,7 @@
                 }
               ],
               "default": null,
-              "description": "null for the player; else the exact id of a hired crew member here who acts."
+              "description": "null for the player; else the exact id of a hired party member here who acts."
             }
           },
           "required": [
@@ -279,7 +279,7 @@
                 }
               ],
               "default": null,
-              "description": "null for the player; else the exact id of a hired crew member here who acts."
+              "description": "null for the player; else the exact id of a hired party member here who acts."
             }
           },
           "required": [
@@ -363,7 +363,7 @@
                 }
               ],
               "default": null,
-              "description": "null for the player; else the exact id of a hired crew member here who acts."
+              "description": "null for the player; else the exact id of a hired party member here who acts."
             }
           },
           "required": [
@@ -511,7 +511,7 @@
             }
           ],
           "default": null,
-          "description": "null for the player; else the exact id of a hired crew member here who acts."
+          "description": "null for the player; else the exact id of a hired party member here who acts."
         },
         "skill": {
           "default": "",
@@ -590,7 +590,7 @@
             }
           ],
           "default": null,
-          "description": "null for the player; else the exact id of a hired crew member here who acts."
+          "description": "null for the player; else the exact id of a hired party member here who acts."
         },
         "item_id": {
           "description": "Exact id of an item the actor carries, or a ship function.",
@@ -667,7 +667,7 @@
                 }
               ],
               "default": null,
-              "description": "null for the player; else the exact id of a hired crew member here who acts."
+              "description": "null for the player; else the exact id of a hired party member here who acts."
             },
             "skill": {
               "description": "The skill the job called on for them, to raise.",

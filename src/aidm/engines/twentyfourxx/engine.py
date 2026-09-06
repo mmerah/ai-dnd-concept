@@ -13,10 +13,9 @@ from aidm.core.views import Panel, PanelRow, Sections, lines_of
 from aidm.engines.base import (
     CHANGE_WORLD,
     HIRE,
+    HIRE_TOOL,
     PLAYER_ID,
-    SIGNED_ON,
     Hire,
-    hire_request,
     hire_target,
     keep_highest,
     sentence,
@@ -57,14 +56,7 @@ from aidm.engines.twentyfourxx.world import (
     TwentyfourxxWorld,
     raised,
 )
-from aidm.engines.twentyfourxx.worldsmith import (
-    AUTHORING,
-    HIRING,
-    Pack,
-    SheetDraft,
-    hire_guidance,
-    sheet_refusal,
-)
+from aidm.engines.twentyfourxx.worldsmith import AUTHORING, HIRING, Pack, SheetDraft
 
 
 class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]):
@@ -131,15 +123,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
                 FinishJob,
                 self.finish_job,
             ),
-            master_tool(
-                "hire",
-                "The player hires someone here to work: the worldsmith writes their sheet once "
-                "this turn ends, and they join the party. Someone already travelling with the "
-                "player may be hired too; a sheet is for someone hired to work, never for one "
-                "who merely comes along.",
-                Hire,
-                self.hire,
-            ),
+            master_tool("hire", HIRE_TOOL, Hire, self.hire),
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
@@ -335,18 +319,6 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
         """A dead lead with a hired member alive is a succession, not an ending."""
         return None if state.payload.sheeted_members() else super().over(state)
 
-    def hire(self, draft: TwentyfourxxGame, args: Hire, _rng: Random) -> list[Fact]:
-        world = draft.payload
-        member = world.require_hireable(args.entity_id)
-        draft.generation, fact = hire_request(member, args.terms)
-        return [fact]
-
-    def validate(self, state: TwentyfourxxGame) -> None:
-        super().validate(state)
-        generation = state.generation
-        if generation is not None and generation.operation == HIRE:
-            state.payload.require_hireable(hire_target(generation))
-
     async def advance(
         self, draft: TwentyfourxxGame, request: Generation, worldsmith: WorldsmithAnswer
     ) -> tuple[tuple[Fact, ...], str | None]:
@@ -357,11 +329,11 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
         pack = self.packs[draft.packs[0]]
         prompt = self.render_request(
             draft,
-            guidance=hire_guidance(pack),
+            guidance=pack.hire_guidance(),
             intent=HIRING.format(name=member.name, brief=member.brief, terms=request.brief),
             answer=SheetDraft,
         )
-        answer = await worldsmith(prompt, SheetDraft, lambda sheet: sheet_refusal(sheet, pack))
+        answer = await worldsmith(prompt, SheetDraft, lambda sheet: sheet.refusal(pack))
         specialty = answer.specialty
         member.sheet = Sheet(
             specialty=specialty,
@@ -370,15 +342,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
             items=starting_items(tuple(Kit(name=name) for name in answer.items)),
             hindrances=list(answer.hindrances),
         )
-        facts = world.join_party(member.id) if member.id not in world.party else []
-        facts.append(
-            member.fact(
-                "hired",
-                f"{member.label} signs on — {specialty}",
-                card=f"{member.name} signs on — {specialty}",
-            )
-        )
-        return tuple(facts), SIGNED_ON.format(name=member.name)
+        return world.sign_on(member, specialty)
 
     def attempt(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
         world = draft.payload

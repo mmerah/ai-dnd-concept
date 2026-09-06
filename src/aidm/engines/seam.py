@@ -23,7 +23,7 @@ from aidm.core.model import (
 from aidm.core.play import DecisionOption, Exchange, Line, PendingOption, SceneRecord
 from aidm.core.tools import MasterTool
 from aidm.core.views import NarratorView, PlayerView, Rows, Sections
-from aidm.engines.base import PLAYER_ID, Person, World
+from aidm.engines.base import HIRE, PLAYER_ID, Hire, Person, World, hire_target
 
 type AnyEngine = Engine[Any, Any]
 
@@ -169,6 +169,20 @@ class Engine[P: Person, G: Game[Any]](ABC):
 
     def scenes(self, state: G) -> tuple[SceneRecord, ...]:
         return self.world(state).records()
+
+    def hire(self, draft: G, args: Hire, _rng: Random) -> list[Fact]:
+        member = self.world(draft).require_hireable(args.entity_id)
+        draft.generation = Generation(operation=HIRE, brief=args.terms, target=member.id)
+        trace = (
+            f"the worldsmith writes {member.name}'s sheet once this turn ends: {args.terms}. "
+            "Nothing more lands this turn; stop and exit"
+        )
+        return [Fact(kind="hire_asked", trace=trace)]
+
+    def check_request(self, state: G) -> None:
+        generation = state.generation
+        if generation is not None and generation.operation == HIRE:
+            self.world(state).require_hireable(hire_target(generation))
 
     @abstractmethod
     def master_tools(self) -> tuple[MasterTool[G], ...]: ...

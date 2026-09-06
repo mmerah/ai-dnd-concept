@@ -57,6 +57,11 @@ class Pack(ScenePack):
             raise ValueError(f"no detail for {', '.join(untold)}")
         return self
 
+    def hire_guidance(self) -> str:
+        lines = [_specialty_line(specialty) for specialty in self.specialties]
+        labels = ", ".join(option.label for option in self.skills)
+        return "\n".join((*lines, f"Skills: {labels}"))
+
 
 class SheetDraft(Frozen):
     """A hired member's sheet, checked against the pack by `sheet_refusal`."""
@@ -76,32 +81,25 @@ class SheetDraft(Frozen):
         description="What already slows them down, if anything: an injury, a debt, a fear.",
     )
 
-
-def hire_guidance(pack: Pack) -> str:
-    lines = [_specialty_line(specialty) for specialty in pack.specialties]
-    labels = ", ".join(option.label for option in pack.skills)
-    return "\n".join((*lines, f"Skills: {labels}"))
-
-
-def sheet_refusal(draft: SheetDraft, pack: Pack) -> str | None:
-    """`None` when the pack can back every claim the draft makes; else what is wrong, joined."""
-    problems: list[str] = []
-    if draft.specialty not in {specialty.label for specialty in pack.specialties}:
-        problems.append(f"{draft.specialty!r} is not a specialty this pack lists")
-    listed = {option.label for option in pack.skills}
-    granted = {
-        skill
-        for specialty in pack.specialties
-        for skill in (
-            *specialty.skills,
-            *(name for option in specialty.choice for name in option.skills),
-        )
-    }
-    if unknown := sorted(set(draft.skills) - listed - granted):
-        problems.append(f"{', '.join(unknown)} is not a skill this pack lists or grants")
-    if len(set(draft.items)) != len(draft.items):
-        problems.append("an item repeats")
-    return "; ".join(problems) or None
+    def refusal(self, pack: Pack) -> str | None:
+        """`None` when the pack can back every claim the draft makes; else what is wrong, joined."""
+        problems: list[str] = []
+        if self.specialty not in {specialty.label for specialty in pack.specialties}:
+            problems.append(f"{self.specialty!r} is not a specialty this pack lists")
+        listed = {option.label for option in pack.skills}
+        granted = {
+            skill
+            for specialty in pack.specialties
+            for skill in (
+                *specialty.skills,
+                *(name for option in specialty.choice for name in option.skills),
+            )
+        }
+        if unknown := sorted(set(self.skills) - listed - granted):
+            problems.append(f"{', '.join(unknown)} is not a skill this pack lists or grants")
+        if len(set(self.items)) != len(self.items):
+            problems.append("an item repeats")
+        return "; ".join(problems) or None
 
 
 def _specialty_line(specialty: Specialty) -> str:
