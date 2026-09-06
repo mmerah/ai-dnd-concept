@@ -51,16 +51,17 @@ It is treated as covered by the site's licence. One email to the publisher would
 
 ## The tools
 
-- `change_world` — its eight arms: reveal someone found, bring a cast member in or out of the
-  scene, change an actor's gear or condition tags, set an actor's goal, motive or nemesis
-  (`drive`), record a death, and have someone join or leave the player's party.
+A named tool rolls dice, opens a decision, or ends the turn. Every other change is an arm of `change_world`: set `verb`, fill that verb's fields.
+
+- `change_world` — arms: `reveal`, `enter`, `leave`, `kill`, `join_party`, `leave_party`,
+  `change_tags` (an actor's gear or condition tags), `drive` (goal, motive, nemesis) and
+  `restore_luck` (refill an actor's Luck once their conflict is behind them).
 - `next_scene` — offer the player the way on at a stopping point; or say that they left this
   place, and the worldsmith writes where they land; or hand the worldsmith a complication to
-  bring down on this place. The last two end the turn, and the player reads what arrives.
-- `roll_question` — Chance against Risk for one closed dramatic question; an advantage or
-  disadvantage adds one die to that side; a tie outside a conflict counts on the Twist Counter and
-  may roll a twist; in a conflict the losing side's Luck pays.
-- `restore_luck` — refill an actor's Luck once their conflict is behind them.
+  bring down on this place. The last two end the turn.
+- `roll` — Chance against Risk for one closed dramatic question; an advantage or disadvantage
+  adds one die to that side; a tie outside a conflict counts on the Twist Counter and may roll a
+  twist; in a conflict the losing side's Luck pays.
 
 ## Deviations in this repo
 

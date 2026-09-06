@@ -25,19 +25,19 @@ locations, complications, missions) are all in the SRD at the page above, transc
 
 ## The tools
 
-- `change_world` — reveal someone found, bring a cast member in or out of the scene, have someone
-  join or leave the party, record a death, or drop an item from the backpack for good.
+A named tool rolls dice, opens a decision, or ends the turn. Every other change is an arm of `change_world`: set `verb`, fill that verb's fields.
+
+- `change_world` — arms: `reveal`, `enter`, `leave`, `kill`, `join_party`, `leave_party`,
+  `drop_item`, `change_stress` (what a complication costs, or what laying low clears) and
+  `use_med_kit` (clear 2 stress). The sheet arms take `actor_id`.
 - `next_scene` — offer the player the way on at a stopping point; or say that they left this
   place, and the worldsmith writes where they land; or hand the worldsmith a complication to
-  bring down on this place. The last two end the turn, and the player reads what arrives.
-- `check` — roll a skill, a carried item, or the once-per-breath stunt on the 1–2 / 3–4 / 5+
-  ladder; the die rolled wears one step, and an item reduced to d4 is gone. `actor_id` when a
-  hired survivor acts instead of the player; `helped_by` names a hired survivor who rolls beside
-  them, keeping the highest die.
+  bring down on this place. The last two end the turn.
+- `roll` — a skill, a carried item, or the once-per-breath stunt on the 1–2 / 3–4 / 5+ ladder;
+  the die rolled wears one step, and an item reduced to d4 is gone. `actor_id` when a hired
+  survivor acts; `helped_by` names a hired survivor who rolls beside them, keeping the highest die.
 - `catch_breath` — reset skills, the loot die and the stunt; stress stays; one d12 on the SRD's
   complication table goes to the master as a note.
-- `change_stress` — what a complication costs, or what laying low somewhere secure clears.
-- `use_med_kit` — spend the held med kit to clear 2 stress.
 - `loot_check` — roll the loot die and step it down; a find opens the player's decision: take it,
   swap it for something carried, or take a med kit instead.
 - `test_luck` — one die of the master's choosing, read on the check ladder, for a question about
@@ -63,13 +63,6 @@ complication is one d12 on the SRD's own table, offered to the game master as a 
 forced into the story; a luck test is read on the check ladder, the SRD's "interpret the result as
 you see fit"; and the SRD's "if an ally helps you, they also make a check" is played on the same
 skill as the actor's, and an item or stunt check takes no helper, since the SRD names no die for one.
-
-## Tool count
-
-Fourteen counted: `change_world` and its five arms — `reveal`, `enter`, `leave`, `kill`,
-`drop_item` — plus the eight named tools: `next_scene`, `check`, `catch_breath`, `change_stress`,
-`use_med_kit`, `loot_check`, `test_luck`, `hire`; plus the pair, the two party arms of
-`engines/base.py`, shared by every engine and not counted (PLAN decision 8).
 
 ## What the AI game master adds
 
