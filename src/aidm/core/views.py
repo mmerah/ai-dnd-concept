@@ -152,6 +152,6 @@ def _header(scene: SceneRecord) -> str:
 
 def _told(exchanges: Sequence[Exchange]) -> str:
     return (
-        "\n\n".join(f"> {exchange.prompt}\n{exchange.narration}" for exchange in exchanges)
+        "\n\n".join(f"> {exchange.prompt}\n{exchange.transcript}" for exchange in exchanges)
         or "(nothing yet)"
     )

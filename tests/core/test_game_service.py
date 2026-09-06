@@ -14,7 +14,7 @@ from support.table import (
     updated,
 )
 
-from aidm.app.runtime import OPENING_MARK, STORY_MARK, Runtime
+from aidm.app.runtime import OPENING_MARK, REQUESTED, STORY_MARK, Runtime
 from aidm.core.entities import Refusal
 from aidm.core.io import FileStore
 from aidm.core.model import AnyGame, Generation, ScenarioMeta
@@ -153,8 +153,29 @@ async def test_a_complication_writes_and_installs_at_the_same_place(tmp_path: Pa
     assert exchanges[1].prompt == STORY_MARK
     assert state.payload.run.place == place
     assert all(entity_id in state.payload.cast for entity_id in here_before)
-    assert [role for role, _ in table.spawner.prompts].count("master") == 1
+    # Nothing was told before the write, so no narrator speaks before the worldsmith.
+    assert [role for role, _ in table.spawner.prompts] == ["master", "worldsmith", "narrator"]
     assert state.generation is None
+
+
+async def test_a_write_requested_after_something_told_ends_the_narration_there(
+    tmp_path: Path,
+) -> None:
+    table = open_game(tmp_path)
+    table.spawner.answers["worldsmith"] = [_scene()]
+
+    _ = await play_turn(
+        table,
+        "I go down.",
+        tool_call("next_scene", pursuit="Down the stair."),
+        arrival="Rain takes the arcade.",
+    )
+
+    roles = [role for role, _ in table.spawner.prompts]
+    assert roles == ["master", "narrator", "worldsmith", "narrator"]
+    leaving = table.spawner.prompt("narrator")
+    assert "the player has left this place" in leaving
+    assert REQUESTED in leaving
 
 
 async def test_a_complication_does_not_refill_the_players_spent_luck(tmp_path: Path) -> None:

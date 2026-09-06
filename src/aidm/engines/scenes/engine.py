@@ -222,8 +222,8 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         world = self.world(draft)
         if world.arc:
             intent += (
-                f"\n\nThe arc as last written: {world.arc}. Revise `arc` only where what "
-                "happened warrants it; leave it empty to keep it."
+                f"\n\nThe arc as last written:\n{world.arc}\n"
+                "Revise `arc` only where what happened warrants it; leave it empty to keep it."
             )
         return worldsmith_prompt(
             WORLDSMITH,

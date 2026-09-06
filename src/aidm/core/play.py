@@ -29,6 +29,11 @@ class SpokenLine(Frozen):
             raise ValueError("a spoken line names its speaker; narration names nobody")
         return self
 
+    @property
+    def said(self) -> str:
+        """The line as it reads back: dialogue keeps its speaker, narration stands alone."""
+        return f"{self.speaker}: {self.text}" if self.speaker else self.text
+
 
 class Narration(Frozen):
     """The prose the player reads, split into narration and dialogue."""
@@ -96,6 +101,11 @@ class Exchange(Frozen):
     @property
     def narration(self) -> str:
         return narration_text(self.lines)
+
+    @property
+    def transcript(self) -> str:
+        """What every role reads back: who said what, not prose alone."""
+        return "\n".join(line.said for line in self.lines)
 
 
 class SceneRecord(Frozen):
