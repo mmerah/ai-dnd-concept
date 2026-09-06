@@ -4,9 +4,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
+from typing import Literal
 
 import pytest
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel, Field, JsonValue
 from support.loner import open_game
 from support.table import (
     BREATHLESS,
@@ -28,15 +29,43 @@ from aidm.app.mcp import call, list_tools
 from aidm.app.runtime import STORY_MARK
 from aidm.app.spawn import CliSpawner, RunResult, final_message
 from aidm.config import Role
-from aidm.core.entities import EngineId, EntityId, Refusal
+from aidm.core.entities import CheckedEntityId, EngineId, EntityId, Frozen, Refusal
 from aidm.core.model import ScenarioMeta
 from aidm.core.play import Answer, Narration, narration_text
-from aidm.engines.base import PLAYER_ID
+from aidm.core.tools import schema_of
+from aidm.engines.base import ACTOR, PLAYER_ID
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eSheet
 from aidm.engines.scenes.drafts import SceneDraft
 from aidm.engines.scenes.world import MOVE_ON
 from aidm.turn.run import NO_TURN, Turn
+
+
+class _ArmA(Frozen):
+    verb: Literal["a"]
+
+
+class _ArmB(Frozen):
+    verb: Literal["b"]
+
+
+class _SchemaProbe(Frozen):
+    change: _ArmA | _ArmB = Field(discriminator="verb", description="which arm")
+    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+
+
+def test_schema_of_drops_noise_and_collapses_a_nullable() -> None:
+    schema = schema_of(_SchemaProbe)
+
+    dumped = json.dumps(schema)
+    assert '"title"' not in dumped
+    assert '"pattern"' not in dumped
+    assert '"discriminator"' not in dumped
+    properties = schema["properties"]
+    assert isinstance(properties, dict)
+    actor_id = properties["actor_id"]
+    assert isinstance(actor_id, dict)
+    assert actor_id["type"] == ["string", "null"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,7 +179,7 @@ async def test_an_open_decision_blocks_every_other_tool_until_the_player_answers
     state = await play_turn(
         table,
         "I grab for the ledger in her hands.",
-        ("roll_question", A_CONFLICT),
+        ("roll", A_CONFLICT),
         ("change_world", change_args("reveal", entity_id=VAULT_MAP)),
         narration="She holds on.",
     )
@@ -169,7 +198,7 @@ async def test_a_decision_on_the_table_holds_the_next_scene_back_too(tmp_path: P
     _ = await play_turn(
         table,
         "I grab for the ledger in her hands.",
-        ("roll_question", A_CONFLICT),
+        ("roll", A_CONFLICT),
         the_way_on(),
         narration="She holds on.",
     )
@@ -248,9 +277,7 @@ async def test_a_departure_crosses_after_the_leaving_turn_and_keeps_the_notes(
 
 async def test_an_action_over_an_open_decision_is_refused(tmp_path: Path) -> None:
     table = open_game(tmp_path)
-    state = await play_turn(
-        table, "I grab for it.", the_way_on(), tool_call("roll_question", **A_CONFLICT)
-    )
+    state = await play_turn(table, "I grab for it.", the_way_on(), tool_call("roll", **A_CONFLICT))
     assert state.pending is not None
     before = state.model_dump_json()
 
@@ -263,9 +290,7 @@ async def test_an_action_over_an_open_decision_is_refused(tmp_path: Path) -> Non
 async def test_a_turn_that_suspends_tells_the_narrator_where_play_pauses(tmp_path: Path) -> None:
     table = open_game(tmp_path)
 
-    state = await play_turn(
-        table, "I grab for the ledger.", tool_call("roll_question", **A_CONFLICT)
-    )
+    state = await play_turn(table, "I grab for the ledger.", tool_call("roll", **A_CONFLICT))
 
     pending = state.pending
     assert pending is not None
@@ -510,7 +535,7 @@ def test_the_surface_publishes_for_the_engine_whose_turn_is_in_flight(tmp_path: 
     state = table.service.state
     table.service.turn = Turn.begin(table.service.engine, state, Answer(text="I look."), Random(0))
 
-    assert "roll_question" in [tool.name for tool in table.runtime.published_tools()]
+    assert "roll" in [tool.name for tool in table.runtime.published_tools()]
 
     table.service.turn = None
     assert [tool.name for tool in table.runtime.published_tools()] == []

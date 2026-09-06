@@ -17,7 +17,28 @@ class DropItem(Frozen):
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 
 
-type WorldChange = Reveal | Enter | Leave | Kill | JoinParty | LeaveParty | DropItem
+class ChangeStress(Frozen):
+    """What a complication costs the actor, or what laying low somewhere secure clears."""
+
+    verb: Literal["change_stress"]
+    amount: int = Field(
+        description="How much stress changes: positive for a complication's cost, negative to "
+        "clear it."
+    )
+    why: str = Field(min_length=1, description="What causes the change, in a few words.")
+    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+
+
+class UseMedKit(Frozen):
+    """Spend the actor's med kit to clear 2 stress."""
+
+    verb: Literal["use_med_kit"]
+    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+
+
+type WorldChange = (
+    Reveal | Enter | Leave | Kill | JoinParty | LeaveParty | DropItem | ChangeStress | UseMedKit
+)
 
 
 class ChangeWorld(Frozen):
@@ -55,15 +76,6 @@ class Check(Attempt):
         if self.helped_by is not None and self.skill is None:
             raise ValueError("help joins a skill check: an item or a stunt is one person's")
         return self
-
-
-class ChangeStress(Frozen):
-    amount: int = Field(
-        description="How much stress changes: positive for a complication's cost, negative to "
-        "clear it."
-    )
-    why: str = Field(min_length=1, description="What causes the change, in a few words.")
-    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 
 
 class LootCheck(Frozen):

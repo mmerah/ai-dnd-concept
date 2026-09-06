@@ -53,9 +53,7 @@ def master_tool[G: Game[Any], A: BaseModel](
 def schema_of(args: type[BaseModel]) -> dict[str, JsonValue]:
     """One schema function, so what MCP publishes is what every prompt describes."""
     schema = args.model_json_schema()
-    _drop_property_titles(schema)
-    # The tool already names itself; the argument class name would be a second, wrong name.
-    schema.pop("title", None)
+    _normalize(schema)
     return schema
 
 
@@ -63,15 +61,36 @@ def schema_text(model: type[BaseModel]) -> str:
     return json.dumps(schema_of(model), indent=2, ensure_ascii=False)
 
 
-def _drop_property_titles(node: JsonValue) -> None:
-    """A field title only restates its name; a model title still names the arm `verb` selects."""
-    if isinstance(node, dict):
-        for name, value in node.items():
-            if name == "properties" and isinstance(value, dict):
-                for field in value.values():
-                    if isinstance(field, dict):
-                        field.pop("title", None)
-            _drop_property_titles(value)
-    elif isinstance(node, list):
+_NOISE_KEYS = ("title", "pattern", "maxLength", "minLength", "discriminator")
+
+
+def _normalize(node: JsonValue) -> None:
+    """Drop what the model reads for free from parsing, and fold `T | None` to one node."""
+    if isinstance(node, list):
         for item in node:
-            _drop_property_titles(item)
+            _normalize(item)
+        return
+    if not isinstance(node, dict):
+        return
+    for value in node.values():
+        _normalize(value)
+    for key in _NOISE_KEYS:
+        node.pop(key, None)
+    _collapse_nullable(node)
+
+
+def _collapse_nullable(node: dict[str, JsonValue]) -> None:
+    members = node.get("anyOf")
+    if not isinstance(members, list) or len(members) != 2:
+        return
+    branches = [member for member in members if member != {"type": "null"}]
+    if len(branches) != 1:
+        return
+    branch = branches[0]
+    if not isinstance(branch, dict) or not isinstance(branch.get("type"), str):
+        return
+    rest = {key: value for key, value in node.items() if key != "anyOf"}
+    node.clear()
+    node.update(branch)
+    node["type"] = [branch["type"], "null"]
+    node.update(rest)

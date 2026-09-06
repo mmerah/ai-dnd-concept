@@ -12,7 +12,7 @@ Use `change_world` with `change_tags` when the story plainly writes a tag: `gear
 
 ## When to roll
 
-Use `roll_question` when the answer is uncertain and both yes and no would change the story. When in doubt, roll: any real cost for no qualifies. Danger, combat, pursuit, stealth, and haste always qualify: roll before you tell the outcome. A dangerous arrival or departure is a roll first and an `enter` or `leave` after, never the change alone. Skip the roll for a quiet arrival, simple conversation, and a certain outcome, such as finishing a helpless foe: then use `kill` or the fitting tool.
+Use `roll` when the answer is uncertain and both yes and no would change the story. When in doubt, roll: any real cost for no qualifies. Danger, combat, pursuit, stealth, and haste always qualify: roll before you tell the outcome. A dangerous arrival or departure is a roll first and an `enter` or `leave` after, never the change alone. Skip the roll for a quiet arrival, simple conversation, and a certain outcome, such as finishing a helpless foe: then use `kill` or the fitting tool.
 
 Write a closed question where yes means what the actor wants. The acting side is the actor doing the uncertain thing. For example, if a monster lunges, ask about the monster rather than inventing a player reaction.
 
@@ -45,7 +45,7 @@ Run one conflict exchange per turn. The engine changes luck from the result: str
 
 At 0 luck, that character loses the conflict. Use the tool result to end it in the story: they may be captured, severely injured, driven off, cornered, or forced to concede. This does not automatically mean death. If the ending leaves a lasting mark on either side, write it now with `change_tags`: this is the one point in a conflict where that is right. The engine restores both sides' luck.
 
-Use `restore_luck` after a conflict ends another way and the character has had a breath. Hazards outside a conflict still use `roll_question`.
+Use the `restore_luck` arm of `change_world` after a conflict ends another way and the character has had a breath. Hazards outside a conflict still use `roll`.
 
 ## Twists and the adventure's end
 

@@ -27,14 +27,13 @@ from aidm.engines.twentyfourxx.tools import (
     ChangeWorld,
     Defend,
     DropItem,
-    FindJob,
-    FinishJob,
     GainItem,
+    Job,
+    Raise,
     RepairItem,
     Roll,
     ShipUpgrade,
     Spend,
-    TakeJob,
     TakeLead,
     TestLuck,
     WorldChange,
@@ -80,13 +79,13 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
             master_tool("change_world", CHANGE_WORLD, ChangeWorld, self.change_world),
             master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
             master_tool(
-                "attempt",
+                "roll",
                 "Roll for something whose outcome matters. Name `helped` with why circumstances "
                 "help, when they do. Name `hindered` with why the actor is hindered, when they "
                 "are. `helped_by` names a hired crew member who rolls their own die beside the "
                 "actor's; `actor_id` when a hired member acts instead of the player.",
                 Roll,
-                self.attempt,
+                self.roll,
             ),
             master_tool(
                 "test_luck",
@@ -95,33 +94,13 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
                 self.test_luck,
             ),
             master_tool(
-                "defend",
-                "Break a carried item to turn a hit into a hindrance instead of taking it "
-                "outright; word the harm yourself.",
-                Defend,
-                self.defend,
-            ),
-            master_tool(
-                "find_job",
-                "The player looks for work: the SRD's d6. Narrate the job the roll allows; "
-                "`spend` ₡1 is the re-roll; `take_job` when they agree.",
-                FindJob,
-                self.find_job,
-            ),
-            master_tool(
-                "take_job",
-                "The player agrees to work: record the job's terms as agreed. Refused while a "
-                "job is open.",
-                TakeJob,
-                self.take_job,
-            ),
-            master_tool(
-                "finish_job",
-                "The job is done, by the story and the crew's own words: raise the skill it "
-                "called on for the player and every living hired member, and pay out its "
-                "credits; the job then closes.",
-                FinishJob,
-                self.finish_job,
+                "job",
+                "`find` rolls the SRD's d6 for work — narrate the job it allows, `spend` ₡1 for "
+                "a re-roll; `take` records the job's terms once agreed, refused while one is "
+                "already open; `finish` closes it: raise the skill it called on for the player "
+                "and every living hired member, and pay out its credits.",
+                Job,
+                self.job,
             ),
             master_tool("hire", HIRE_TOOL, Hire, self.hire),
         )
@@ -286,6 +265,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
                 return world.take_lead(change.entity_id)
             case ShipUpgrade():
                 return world.upgrade_ship(change.function_id)
+            case Defend():
+                return world.defend(change.actor_id, change.item_id, change.hindrance)
             case _:
                 return self.shared_change(world, change)
 
@@ -344,7 +325,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
         )
         return world.sign_on(member, specialty)
 
-    def attempt(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
+    def roll(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
         world = draft.payload
         actor = world.require_actor(args.actor_id)
         sheet = actor.dice()
@@ -406,11 +387,32 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
 
         return facts
 
-    def find_job(self, draft: TwentyfourxxGame, args: FindJob, rng: Random) -> list[Fact]:
+    def test_luck(self, _draft: TwentyfourxxGame, args: TestLuck, rng: Random) -> list[Fact]:
+        rolled, dice_fact = roll((6,), args.question, rng)
+        face = rolled[0]
+        if face <= 2:
+            result = "trouble now"
+        elif face <= 4:
+            result = "signs of it"
+        else:
+            result = "nothing"
+        trace = f"{args.question} — d6 [{face}] -> {result}"
+        return [dice_fact, Fact(kind="luck_tested", trace=trace)]
+
+    def job(self, draft: TwentyfourxxGame, args: Job, rng: Random) -> list[Fact]:
+        match args.verb:
+            case "find":
+                return self._find(draft, args.where, rng)
+            case "take":
+                return self._take(draft, args.terms)
+            case "finish":
+                return self._finish(draft, args.raises, rng)
+
+    def _find(self, draft: TwentyfourxxGame, where: str, rng: Random) -> list[Fact]:
         world = draft.payload
         if world.job:
             raise Refusal(f"a job is open: {world.job}")
-        rolled, dice_fact = roll((6,), args.where, rng)
+        rolled, dice_fact = roll((6,), where, rng)
         face = rolled[0]
         if face <= 2:
             result = "nothing; the player owes somebody to get in on a job"
@@ -418,7 +420,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
             result = "a job, but something seems off"
         else:
             result = "a choice between two jobs"
-        line = f"{args.where} — d6 → {result}"
+        line = f"{where} — d6 → {result}"
         return [
             dice_fact,
             world.player.fact(
@@ -429,25 +431,21 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
             ),
         ]
 
-    def take_job(self, draft: TwentyfourxxGame, args: TakeJob, _rng: Random) -> list[Fact]:
+    def _take(self, draft: TwentyfourxxGame, terms: str) -> list[Fact]:
         world = draft.payload
         if world.job:
             raise Refusal(f"a job is open: {world.job}")
-        world.job = args.terms
+        world.job = terms
         return [
-            world.player.fact(
-                "job_taken",
-                f"the job is taken: {args.terms}",
-                card=f"Job taken\n{args.terms}",
-            )
+            world.player.fact("job_taken", f"the job is taken: {terms}", card=f"Job taken\n{terms}")
         ]
 
-    def finish_job(self, draft: TwentyfourxxGame, args: FinishJob, rng: Random) -> list[Fact]:
+    def _finish(self, draft: TwentyfourxxGame, raises: Sequence[Raise], rng: Random) -> list[Fact]:
         world = draft.payload
         if not world.job:
             raise Refusal("no job is open to finish")
         expected = [None, *(member.id for member in world.sheeted_members())]
-        got = [raise_.actor_id for raise_ in args.raises]
+        got = [raise_.actor_id for raise_ in raises]
         expected_count, got_count = Counter(expected), Counter(got)
         if got_count != expected_count:
 
@@ -471,12 +469,12 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
                 if part
             ]
             raise Refusal(
-                "finish_job names the player and every living hired member once each: "
+                "`job` `finish` names the player and every living hired member once each: "
                 + "; ".join(parts)
             )
 
         facts: list[Fact] = []
-        for raise_ in args.raises:
+        for raise_ in raises:
             actor = world.require_actor(raise_.actor_id)
             sheet = actor.dice()
             label = self.resolve_skill(sheet, raise_.skill)
@@ -499,33 +497,6 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
             )
         world.job = ""
         return facts
-
-    def test_luck(self, _draft: TwentyfourxxGame, args: TestLuck, rng: Random) -> list[Fact]:
-        rolled, dice_fact = roll((6,), args.question, rng)
-        face = rolled[0]
-        if face <= 2:
-            result = "trouble now"
-        elif face <= 4:
-            result = "signs of it"
-        else:
-            result = "nothing"
-        trace = f"{args.question} — d6 [{face}] -> {result}"
-        return [dice_fact, Fact(kind="luck_tested", trace=trace)]
-
-    def defend(self, draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
-        world = draft.payload
-        actor = world.require_actor(args.actor_id)
-        sheet = actor.dice()
-        item = world.require_gear(actor, args.item_id)
-        if item.broken:
-            raise Refusal(f"{item.name} is already broken")
-        if args.hindrance in sheet.hindrances:
-            raise Refusal(f"{args.hindrance!r} is already among {actor.name}'s hindrances")
-        item.broken_times += 1
-        sheet.hindrances.append(args.hindrance)
-        card = f"{item.name} breaks — {args.hindrance}"
-        trace = f"{actor.label} breaks {item.name} — {args.hindrance}"
-        return [actor.fact("item_broken", trace, card=card)]
 
 
 def starting_items(kits: Sequence[Kit]) -> dict[EntityId, Item]:

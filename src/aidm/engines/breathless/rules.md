@@ -11,7 +11,7 @@ They carry up to three items, each with its own die, plus a loot die that starts
 runs 0 to 4; at 4 the player is vulnerable. A stunt is an extraordinary action rolled at d12
 instead of a skill or item, once per breath. A med kit, if held, clears stress.
 
-## When to call `check`
+## When to call `roll`
 
 Call it for any action with a real cost: on a skill, a carried item, or a stunt — never more than
 one. Set `dangerous` whenever a fail would plainly hurt the actor.
@@ -29,8 +29,9 @@ stress. It always brings a new complication; weave it into the story.
 
 ## Stress and the med kit
 
-Use `change_stress` for what a complication costs and for what laying low somewhere secure
-clears. A med kit clears stress only through `use_med_kit`, never through `change_stress`.
+Use the `change_stress` arm for what a complication costs and for what laying low somewhere
+secure clears. A med kit clears stress only through the `use_med_kit` arm, never through
+`change_stress`.
 
 ## Scavenging and the loot decision
 
@@ -39,16 +40,16 @@ engine rolls, and the player answers what to do with any find.
 
 ## Luck tests
 
-`test_luck` answers a question about the world where nobody is acting; `check` is for the actor
+`test_luck` answers a question about the world where nobody is acting; `roll` is for the actor
 doing something. Pick the die by the odds.
 
 ## Hiring
 
 A sheet is for someone hired to work, never for someone who merely comes along. `hire` with the
 terms as agreed ends the turn; the worldsmith writes their sheet, and they join the party. From
-then on, `actor_id` on `check`, `catch_breath`, `change_stress`, `use_med_kit` and the `drop_item`
-arm of `change_world` says when they act instead of the player. `helped_by` on `check` names a
-hired survivor who rolls beside the actor. `loot_check` stays the player's.
+then on, `actor_id` on `roll`, `catch_breath` and the `change_stress`, `use_med_kit` and
+`drop_item` arms of `change_world` says when they act instead of the player. `helped_by` on
+`roll` names a hired survivor who rolls beside the actor. `loot_check` stays the player's.
 
 ## The party
 

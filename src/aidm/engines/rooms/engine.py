@@ -193,12 +193,11 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
                 return world.join_party(change.entity_id)
             case LeaveParty():
                 return world.leave_party(change.entity_id)
+            case UnlockWay():
+                return world.unlock_way(change.to_id)
 
     def move(self, draft: G, args: Move, _rng: Random) -> list[Fact]:
         return self.world(draft).move(args.to_id, args.with_ids)
-
-    def unlock_way(self, draft: G, args: UnlockWay, _rng: Random) -> list[Fact]:
-        return self.world(draft).unlock_way(args.to_id)
 
     def render_map(self, source: str, scope: str) -> str:
         """A room engine ships no packs to pick."""

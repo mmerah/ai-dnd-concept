@@ -126,6 +126,21 @@ class Survivor(Person):
         trace = f"{self.label} drops {item.name}"
         return [self.fact("item_dropped", trace, card=f"Dropped {item.name}")]
 
+    def change_stress(self, amount: int, why: str) -> list[Fact]:
+        if amount == 0:
+            raise Refusal("change_stress needs a non-zero amount")
+        return self.dice().stress.change(self, amount, "Stress", why)
+
+    def use_med_kit(self) -> list[Fact]:
+        sheet = self.dice()
+        if not sheet.med_kit:
+            raise Refusal(f"{self.name} holds no med kit")
+        sheet.med_kit = False
+        facts = sheet.stress.change(self, -MED_KIT_CLEARS, "Stress", "the med kit")
+        used = f"{self.name} uses the med kit"
+        facts.append(self.fact("med_kit_used", used, card="Med kit used"))
+        return facts
+
     def take_loot(self, item: str, granted: Die, choice: str) -> Fact:
         sheet = self.dice()
         if choice == "take":

@@ -88,6 +88,22 @@ class ShipUpgrade(Frozen):
     )
 
 
+class Defend(Frozen):
+    """Break a carried item, or a ship function, to turn a hit into a hindrance instead of
+    taking it outright; word the harm yourself."""
+
+    verb: Literal["defend"]
+    item_id: CheckedEntityId = Field(
+        description="Exact id of an item the actor carries, or a ship function."
+    )
+    hindrance: str = Field(
+        default="",
+        description="What the harm becomes, as a hindrance. Empty only when the ship's hull "
+        "armor takes the hit; it breaks harmlessly.",
+    )
+    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+
+
 type WorldChange = (
     Reveal
     | Enter
@@ -102,6 +118,7 @@ type WorldChange = (
     | Spend
     | TakeLead
     | ShipUpgrade
+    | Defend
 )
 
 
@@ -135,42 +152,39 @@ class TestLuck(Frozen):
     )
 
 
-class Defend(Frozen):
-    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
-    item_id: CheckedEntityId = Field(
-        description="Exact id of an item the actor carries, or a ship function."
-    )
-    hindrance: str = Field(
-        min_length=1, description="What the harm the actor takes becomes, as a hindrance."
-    )
-
-
-class TakeJob(Frozen):
-    terms: str = Field(
-        min_length=1,
-        description="Who wants what done, what done looks like, what it pays, as agreed.",
-    )
-
-
-class FindJob(Frozen):
-    where: str = Field(
-        min_length=1,
-        description="Where, or through whom, the player looks for work, in a few words; it "
-        "heads the card.",
-    )
-
-
 class Raise(Frozen):
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
     skill: str = Field(min_length=1, description="The skill the job called on for them, to raise.")
 
 
-class FinishJob(Frozen):
-    raises: tuple[Raise, ...] = Field(
-        min_length=1,
-        description="One per operator: the player and every living hired member, each with the "
-        "skill the job called on for them.",
+class Job(Frozen):
+    verb: Literal["find", "take", "finish"] = Field(
+        description="`find` rolls the SRD's d6 for work; `take` records the job's terms as "
+        "agreed; `finish` closes it: raises and pay."
     )
+    where: str = Field(
+        default="",
+        description="Where, or through whom, the player looks for work, in a few words; it "
+        "heads the card. With `find`.",
+    )
+    terms: str = Field(
+        default="",
+        description="Who wants what done, what done looks like, what it pays, as agreed. "
+        "With `take`.",
+    )
+    raises: tuple[Raise, ...] = Field(
+        default=(),
+        description="One per operator: the player and every living hired member, each with the "
+        "skill the job called on for them. With `finish`.",
+    )
+
+    @model_validator(mode="after")
+    def _fields_for_verb(self) -> Self:
+        wanted = {"find": "where", "take": "terms", "finish": "raises"}[self.verb]
+        given = {"where": self.where, "terms": self.terms, "raises": self.raises}
+        if not given.pop(wanted) or any(given.values()):
+            raise ValueError(f"{self.verb} takes {wanted} only")
+        return self
 
 
 def outcome(face: int) -> str:

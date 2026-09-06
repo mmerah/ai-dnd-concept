@@ -6,8 +6,8 @@ from aidm.engines.breathless.world import BreathlessGame
 
 SCRIPT: tuple[Call, ...] = (
     changed("reveal", entity_id="drowned-marta"),
-    tool_call("check", what="Listen for what moves on the flats", skill="think"),
-    tool_call("change_stress", amount=1, why="the bell rang twice"),
+    tool_call("roll", what="Listen for what moves on the flats", skill="think"),
+    changed("change_stress", amount=1, why="the bell rang twice"),
 )
 
 

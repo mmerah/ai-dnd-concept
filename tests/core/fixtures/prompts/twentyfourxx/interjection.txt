@@ -55,29 +55,21 @@ ANSWER WITH:
       "additionalProperties": false,
       "properties": {
         "speaker_id": {
-          "anyOf": [
-            {
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ],
           "default": null,
           "description": "Exact speaker id for dialogue, or null for narration."
         },
         "text": {
           "description": "Dialogue only, or one passage of narration.",
-          "minLength": 1,
           "type": "string"
         }
       },
       "required": [
         "text"
       ],
-      "title": "Line",
       "type": "object"
     }
   },

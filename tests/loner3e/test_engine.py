@@ -2,21 +2,14 @@ from random import Random
 
 import pytest
 from support.loner import ENGINE, initialized, loner_sheet
-from support.table import updated
+from support.table import change, updated
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.facts import cards
 from aidm.core.io import decode
 from aidm.core.play import PendingDecision
 from aidm.engines.base import PLAYER_ID, SRD_PACK, Counter
-from aidm.engines.loner3e.tools import (
-    Question,
-    RestoreLuck,
-    defeat_note,
-    outcome_for,
-    twist_note,
-    twist_pairing,
-)
+from aidm.engines.loner3e.tools import Question, defeat_note, outcome_for, twist_note, twist_pairing
 from aidm.engines.loner3e.world import LUCK_MAX, TIES_PER_TWIST
 from aidm.engines.scenes.tools import Reveal
 
@@ -71,7 +64,7 @@ def test_a_question_puts_two_dice_to_the_answer_and_costs_no_luck_on_its_own() -
     _, state = initialized()
     draft = state.draft()
 
-    facts = ENGINE.resolve_question(draft, _seal(), Random(17))
+    facts = ENGINE.roll(draft, _seal(), Random(17))
 
     assert [fact.kind for fact in facts] == [
         "dice_rolled",
@@ -87,7 +80,7 @@ def test_the_question_is_the_masters_memory_and_never_reaches_the_narrator() -> 
     _, state = initialized()
     question = _seal()
 
-    facts = ENGINE.resolve_question(state.draft(), question, Random(17))
+    facts = ENGINE.roll(state.draft(), question, Random(17))
 
     asked = next(fact for fact in facts if fact.kind == "question_asked")
     answered = next(fact for fact in facts if fact.kind == "question_answered")
@@ -104,9 +97,9 @@ def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> Non
 
     elsewhere = _seal(opponent_id="cloister-rat")
     with pytest.raises(Refusal, match="is not here with the player"):
-        _ = ENGINE.resolve_question(state.draft(), elsewhere, Random(0))
+        _ = ENGINE.roll(state.draft(), elsewhere, Random(0))
     with pytest.raises(Refusal, match="their own opposition"):
-        _ = ENGINE.resolve_question(state.draft(), _seal(opponent_id=PLAYER_ID), Random(0))
+        _ = ENGINE.roll(state.draft(), _seal(opponent_id=PLAYER_ID), Random(0))
 
 
 def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
@@ -119,7 +112,7 @@ def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
         edge="Never Walks Away",
     )
 
-    facts = ENGINE.resolve_question(state.draft(), action, Random(1))
+    facts = ENGINE.roll(state.draft(), action, Random(1))
 
     (oracle,) = cards(facts)
     assert oracle.card.startswith("Force the seal — oracle, disadvantage (Never Walks Away): ")
@@ -135,7 +128,7 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     action = Question(what="Slip past", actor_id=PLAYER_ID, question="Does he slip past unheard?")
     draft = primed.draft()
     # Seed 0 rolls chance 4 against risk 4: the tie that ticks the twist over.
-    facts = ENGINE.resolve_question(draft, action, Random(0))
+    facts = ENGINE.roll(draft, action, Random(0))
 
     _, twist = cards(facts)
     subject, action_name = twist.card.removeprefix("Twist — ").split(" / ")
@@ -149,13 +142,13 @@ def test_a_tie_ticks_the_twist_only_outside_a_conflict() -> None:
 
     # Seed 0 rolls chance 4 against risk 4: a tie, in and out of a conflict.
     duel_draft = state.draft()
-    facts = ENGINE.resolve_question(duel_draft, _duel(), Random(0))
+    facts = ENGINE.roll(duel_draft, _duel(), Random(0))
     (oracle, *_) = cards(facts)
     assert max(oracle.dice[0].rolled) == max(oracle.dice[1].rolled)
     assert duel_draft.payload.twist.current == 0
 
     solo_draft = state.draft()
-    _ = ENGINE.resolve_question(solo_draft, _seal(), Random(0))
+    _ = ENGINE.roll(solo_draft, _seal(), Random(0))
     assert solo_draft.payload.twist.current == 1
 
 
@@ -168,7 +161,7 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
     # Seed 0 rolls a 4-4 tie, a yes-but that costs the foe; seed 1 rolls 2 against 5, a no.
     for seed in (0, 1):
         draft = state.draft()
-        facts = ENGINE.resolve_question(draft, _duel(), Random(seed))
+        facts = ENGINE.roll(draft, _duel(), Random(seed))
         (oracle,) = cards(facts)
         harm = outcome_for(max(oracle.dice[0].rolled), max(oracle.dice[1].rolled)).harm
         loser, unharmed = (FOE, PLAYER_ID) if harm > 0 else (PLAYER_ID, FOE)
@@ -188,7 +181,7 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
 
     draft = hurt.draft()
     # Seed 0 rolls chance 4 against risk 4: a yes-but, one luck off the foe's last point.
-    facts = ENGINE.resolve_question(draft, _duel(), Random(0))
+    facts = ENGINE.roll(draft, _duel(), Random(0))
 
     assert loner_sheet(draft, FOE).luck.current == 10
     assert loner_sheet(draft, PLAYER_ID).luck.current == LUCK_MAX
@@ -202,7 +195,7 @@ def test_an_exchange_both_sides_survive_hands_the_next_key_action_to_the_player(
     _, state = initialized()
     draft = state.draft()
 
-    _ = ENGINE.resolve_question(draft, _duel(), Random(0))
+    _ = ENGINE.roll(draft, _duel(), Random(0))
 
     decision = draft.pending
     assert decision is not None
@@ -218,11 +211,11 @@ def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
 
     # The map is hidden in this scene, so nothing can be rolled against it yet.
     with pytest.raises(Refusal, match="is not here with the player"):
-        _ = ENGINE.resolve_question(state.draft(), _seal(opponent_id=MAP), Random(0))
+        _ = ENGINE.roll(state.draft(), _seal(opponent_id=MAP), Random(0))
 
     draft = state.draft()
     _ = ENGINE.apply_change(draft.payload, Reveal(verb="reveal", entity_id=MAP))
-    facts = ENGINE.resolve_question(draft, _seal(opponent_id=MAP), Random(0))
+    facts = ENGINE.roll(draft, _seal(opponent_id=MAP), Random(0))
 
     assert any(fact.kind == "question_answered" for fact in facts)
     resisted = draft.payload.require(MAP).luck.current
@@ -247,13 +240,13 @@ def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
     spent = draft.commit()
 
     with pytest.raises(Refusal, match="already out of luck"):
-        _ = ENGINE.resolve_question(spent.draft(), _duel(), Random(0))
+        _ = ENGINE.roll(spent.draft(), _duel(), Random(0))
 
 
 def test_restoring_luck_that_is_already_full_is_a_quiet_no_op() -> None:
     _, state = initialized()
 
-    assert ENGINE.restore_luck(state.draft(), RestoreLuck(actor_id=PLAYER_ID), Random(0)) == []
+    assert change(ENGINE, state.draft(), "restore_luck", entity_id=PLAYER_ID) == []
 
 
 def test_a_game_records_its_table_sets_and_is_refused_without_them() -> None:

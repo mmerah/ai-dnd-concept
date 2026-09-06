@@ -33,7 +33,7 @@ Credits are ₡. Gear is carried as items, some bulky, each good for a number of
 is ruined. Hindrances are the SRD's word for what slows the player down: an injury, a fear, and
 the like.
 
-## When to call `attempt`
+## When to call `roll`
 
 Call it for anything whose outcome matters. Name `skill` when one applies; leave it empty to
 roll the plain d6, unskilled. Name `helped` with why when circumstances or an ally pitch in: an
@@ -51,7 +51,7 @@ Say it before the roll. With `risking_death` set, a disaster (1–2) kills the a
 ## Luck tests
 
 `test_luck` answers a question about the world's bad luck, where nobody is acting — one d6.
-`attempt` is for the player doing something.
+`roll` is for the player doing something.
 
 ## Defend
 
@@ -75,24 +75,24 @@ passage. `repair_item` fixes broken gear, a ship function included.
 
 ## Jobs
 
-`find_job` when the player looks for work: one d6, read 1–2 nothing and they owe somebody to get
-in on a job, 3–4 a job but something seems off, 5–6 a choice between two jobs. A ₡1 re-roll is
-`spend`.
+`job` with `find` when the player looks for work: one d6, read 1–2 nothing and they owe somebody
+to get in on a job, 3–4 a job but something seems off, 5–6 a choice between two jobs. A ₡1
+re-roll is `spend`.
 
-`take_job` when the player agrees to work, with the terms as agreed; the job then stands under
-THE JOB. `finish_job` once, when the story and the crew's own words close it: one `raises` entry
-per operator, the player and every living hired member, each raising the skill the job called on
-for them and paid their own d6 of credits; the job then clears. Neither tool is needed for work
-the player never takes on.
+`job` with `take` when the player agrees to work, with the terms as agreed; the job then stands
+under THE JOB. `job` with `finish` once, when the story and the crew's own words close it: one
+`raises` entry per operator, the player and every living hired member, each raising the skill the
+job called on for them and paid their own d6 of credits; the job then clears. Neither is needed
+for work the player never takes on.
 
 ## Hiring
 
 A sheet is for someone hired to work, never for someone who merely comes along. Call `hire` with
 the terms as agreed, and the turn ends: the worldsmith writes their sheet and they join the
-party. A hired member is a crew member from then on: `actor_id` on `attempt`, `defend`, and the
+party. A hired member is a crew member from then on: `actor_id` on `roll` and the `defend`,
 `change_hindrances`, `gain_item`, `drop_item`, `repair_item` and `spend` arms says when they act
 instead of the player. `helped_by` beside `helped` names a hired member who rolls their own die.
-`finish_job` raises the whole crew, one `raises` entry each.
+`job` `finish` raises the whole crew, one `raises` entry each.
 
 ## Death and succession
 
@@ -105,8 +105,8 @@ game ends.
 
 Every crew has a starship with the SRD's seven basic functions — Comms, Crafts, Drive, Equipment,
 Hull armor, Sensors, Weapons — listed under THE SHIP with their ids. Any function may be named
-as `item_id` on `defend` and `repair_item` when the fiction breaks it; hull armor is the one
-built to break. `ship_upgrade` upgrades one function for ₡10 from the player's
+as `item_id` on the `defend` arm and `repair_item` when the fiction breaks it; hull armor is the
+one built to break. `ship_upgrade` upgrades one function for ₡10 from the player's
 credits, once each; say what the upgrade is in the fiction.
 
 ## The party

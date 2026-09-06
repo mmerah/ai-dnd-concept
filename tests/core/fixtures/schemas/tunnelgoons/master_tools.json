@@ -14,8 +14,6 @@
             },
             "entity_id": {
               "description": "Exact id of who is joining.",
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
             }
           },
@@ -23,7 +21,6 @@
             "verb",
             "entity_id"
           ],
-          "title": "JoinParty",
           "type": "object"
         },
         "Kill": {
@@ -35,8 +32,6 @@
             },
             "entity_id": {
               "description": "Exact id of an npc here.",
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
             }
           },
@@ -44,7 +39,6 @@
             "verb",
             "entity_id"
           ],
-          "title": "Kill",
           "type": "object"
         },
         "LeaveParty": {
@@ -57,8 +51,6 @@
             },
             "entity_id": {
               "description": "Exact id of the companion leaving.",
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
             }
           },
@@ -66,7 +58,6 @@
             "verb",
             "entity_id"
           ],
-          "title": "LeaveParty",
           "type": "object"
         },
         "MoveItem": {
@@ -78,14 +69,10 @@
             },
             "item_id": {
               "description": "Exact id of an item here or carried.",
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
             },
             "to": {
               "description": "Exact id of the player, an npc here, or this place.",
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
             }
           },
@@ -94,7 +81,20 @@
             "item_id",
             "to"
           ],
-          "title": "MoveItem",
+          "type": "object"
+        },
+        "Rest": {
+          "additionalProperties": false,
+          "description": "Spend the night in a safe spot to heal the player's and the party's Health to full.",
+          "properties": {
+            "verb": {
+              "const": "rest",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb"
+          ],
           "type": "object"
         },
         "Reveal": {
@@ -106,8 +106,6 @@
             },
             "entity_id": {
               "description": "Exact id of something hidden here: an npc or an item.",
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
             }
           },
@@ -115,25 +113,10 @@
             "verb",
             "entity_id"
           ],
-          "title": "Reveal",
           "type": "object"
-        }
-      },
-      "additionalProperties": false,
-      "properties": {
-        "change": {
-          "description": "The one world change to apply; `verb` picks the change.",
-          "discriminator": {
-            "mapping": {
-              "join_party": "#/$defs/JoinParty",
-              "kill": "#/$defs/Kill",
-              "leave_party": "#/$defs/LeaveParty",
-              "move_item": "#/$defs/MoveItem",
-              "reveal": "#/$defs/Reveal"
-            },
-            "propertyName": "verb"
-          },
-          "oneOf": [
+        },
+        "SharedChange": {
+          "anyOf": [
             {
               "$ref": "#/$defs/Reveal"
             },
@@ -148,6 +131,42 @@
             },
             {
               "$ref": "#/$defs/LeaveParty"
+            },
+            {
+              "$ref": "#/$defs/UnlockWay"
+            }
+          ]
+        },
+        "UnlockWay": {
+          "additionalProperties": false,
+          "description": "Open a locked way once the story has dealt with it.",
+          "properties": {
+            "verb": {
+              "const": "unlock_way",
+              "type": "string"
+            },
+            "to_id": {
+              "description": "Exact id of the locked way's destination.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "verb",
+            "to_id"
+          ],
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "change": {
+          "description": "The one world change to apply; `verb` picks the change.",
+          "oneOf": [
+            {
+              "$ref": "#/$defs/SharedChange"
+            },
+            {
+              "$ref": "#/$defs/Rest"
             }
           ]
         }
@@ -166,16 +185,12 @@
       "properties": {
         "to_id": {
           "description": "Exact id of the place to move to.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         },
         "with_ids": {
           "default": [],
           "description": "Exact ids of living NPCs here who come along.",
           "items": {
-            "maxLength": 64,
-            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
             "type": "string"
           },
           "type": "array"
@@ -188,33 +203,13 @@
     }
   },
   {
-    "name": "unlock_way",
-    "description": "Unlock a locked way out of the player's current place.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "to_id": {
-          "description": "Exact id of the locked way's destination.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "type": "string"
-        }
-      },
-      "required": [
-        "to_id"
-      ],
-      "type": "object"
-    }
-  },
-  {
-    "name": "action_roll",
+    "name": "roll",
     "description": "Roll 2d6 plus an ability and helpful items against a Difficulty Score or an npc; `actor_id` when a hired member acts instead of the player.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "what": {
           "description": "The attempt, in a few words the player may read; it heads the card.",
-          "minLength": 1,
           "type": "string"
         },
         "ability": {
@@ -230,35 +225,23 @@
           "default": [],
           "description": "Exact ids of items the actor carries that plainly help; +1 each.",
           "items": {
-            "maxLength": 64,
-            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
             "type": "string"
           },
           "type": "array"
         },
         "difficulty": {
-          "anyOf": [
-            {
-              "minimum": 1,
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
+          "minimum": 1,
+          "type": [
+            "integer",
+            "null"
           ],
           "default": null,
           "description": "Difficulty Score; the SRD's guidelines: 8 easy, 10 moderate, 12 hard. Null when `against` names an NPC."
         },
         "against": {
-          "anyOf": [
-            {
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ],
           "default": null,
           "description": "Exact id of an npc here; its Health is the Difficulty Score."
@@ -269,15 +252,9 @@
           "type": "boolean"
         },
         "actor_id": {
-          "anyOf": [
-            {
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ],
           "default": null,
           "description": "null for the player; else the exact id of a hired party member here who acts."
@@ -291,63 +268,40 @@
     }
   },
   {
-    "name": "rest",
-    "description": "Spend the night in a safe spot to heal the player's and the party's Health to full.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    }
-  },
-  {
     "name": "level_up",
     "description": "Raise one ability and either Health or Inventory Score by 1, once, at the adventure's end: the player first, then each hired member in turn.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "ability": {
-          "anyOf": [
-            {
-              "enum": [
-                "brute",
-                "skulker",
-                "erudite"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "enum": [
+            "brute",
+            "skulker",
+            "erudite"
+          ],
+          "type": [
+            "string",
+            "null"
           ],
           "default": null,
           "description": "Which ability to raise by 1; null asks the player."
         },
         "boost": {
-          "anyOf": [
-            {
-              "enum": [
-                "health",
-                "inventory"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "enum": [
+            "health",
+            "inventory"
+          ],
+          "type": [
+            "string",
+            "null"
           ],
           "default": null,
           "description": "Health or Inventory to raise by 1; null asks the player."
         },
         "actor_id": {
-          "anyOf": [
-            {
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
+          "type": [
+            "string",
+            "null"
           ],
           "default": null,
           "description": "null for the player; else the exact id of a hired party member here who acts."
@@ -364,13 +318,10 @@
       "properties": {
         "entity_id": {
           "description": "Exact id of who here signs on; they must not already carry a sheet.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         },
         "terms": {
           "description": "What they are hired for and on what terms, as agreed, for the worldsmith.",
-          "minLength": 1,
           "type": "string"
         }
       },
