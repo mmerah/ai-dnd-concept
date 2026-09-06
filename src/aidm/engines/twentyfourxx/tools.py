@@ -9,12 +9,10 @@ from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
 
 
 class ChangeHindrances(Frozen):
-    """Record hindrances the player picks up, sheds, or both at once."""
+    """The actor picks up hindrances, sheds them, or both at once."""
 
     verb: Literal["change_hindrances"]
-    gained: tuple[str, ...] = Field(
-        default=(), description="Hindrances the actor now carries, that they did not before."
-    )
+    gained: tuple[str, ...] = Field(default=(), description="Hindrances the actor now carries.")
     lost: tuple[str, ...] = Field(default=(), description="Hindrances the actor no longer carries.")
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 
@@ -26,7 +24,7 @@ class ChangeHindrances(Frozen):
 
 
 class GainItem(Frozen):
-    """Add an item to the player's kit, spending credits when it costs any."""
+    """The actor gains an item and pays for it."""
 
     verb: Literal["gain_item"]
     name: str = Field(min_length=1, description="The item's name.")
@@ -37,13 +35,13 @@ class GainItem(Frozen):
     cost: int = Field(
         default=0,
         ge=0,
-        description="Credits spent for the item; `cost` 0 only for a thing found or given.",
+        description="Credits paid. 0 for a thing found or given.",
     )
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 
 
 class DropItem(Frozen):
-    """Take an item out of the player's kit for good."""
+    """The actor loses an item for good."""
 
     verb: Literal["drop_item"]
     item_id: CheckedEntityId = Field(description="Exact id of an item the actor carries.")
@@ -51,7 +49,7 @@ class DropItem(Frozen):
 
 
 class RepairItem(Frozen):
-    """Fix a broken item, spending credits when the repair costs any."""
+    """A broken item is mended."""
 
     verb: Literal["repair_item"]
     item_id: CheckedEntityId = Field(
@@ -62,7 +60,7 @@ class RepairItem(Frozen):
 
 
 class Spend(Frozen):
-    """Pay credits for anything that is not an item or a repair: bribes, care, passage."""
+    """The actor pays credits for something that is not an item or a repair."""
 
     verb: Literal["spend"]
     amount: int = Field(gt=0, description="Credits spent.")
@@ -71,7 +69,7 @@ class Spend(Frozen):
 
 
 class TakeLead(Frozen):
-    """The hired member who leads once the player is dead; answers the succession decision."""
+    """A hired member takes the lead after the player dies."""
 
     verb: Literal["take_lead"]
     entity_id: CheckedEntityId = Field(
@@ -80,16 +78,16 @@ class TakeLead(Frozen):
 
 
 class ShipUpgrade(Frozen):
-    """Upgrade one ship function; ₡10 from the player, as the SRD prices it."""
+    """One ship function is upgraded."""
 
     verb: Literal["ship_upgrade"]
     function_id: CheckedEntityId = Field(
-        description="Exact id of a ship function; ₡10 from the player."
+        description="Exact id of a ship function. The player pays ₡10."
     )
 
 
 class Defend(Frozen):
-    """Break a carried item or a ship function so a hit becomes a hindrance; word the harm."""
+    """A carried item or a ship function breaks so a hit becomes a hindrance."""
 
     verb: Literal["defend"]
     item_id: CheckedEntityId = Field(
@@ -97,8 +95,7 @@ class Defend(Frozen):
     )
     hindrance: str = Field(
         default="",
-        description="What the harm becomes, as a hindrance. Empty only when the ship's hull "
-        "armor takes the hit; it breaks harmlessly.",
+        description="What the harm becomes, as a hindrance. Empty when hull armor takes the hit.",
     )
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 
@@ -124,24 +121,22 @@ type WorldChange = (
 class ChangeWorld(Frozen):
     change: WorldChange = Field(
         discriminator="verb",
-        description="The one world change to apply; `verb` picks the change.",
+        description="The change to apply. `verb` picks which one.",
     )
 
 
 class Roll(Attempt):
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
-    skill: str = Field(default="", description="Which skill to roll; empty rolls the plain d6.")
-    helped: str = Field(default="", description="Why circumstances help, when they do.")
+    skill: str = Field(default="", description="Which skill to roll. Empty rolls the plain d6.")
+    helped: str = Field(default="", description="Why circumstances help. Empty when none do.")
     helped_by: CheckedEntityId | None = Field(
         default=None,
-        description="A hired crew member who helps: they roll their own die for the skill and "
-        "the highest counts; `helped` stays the d6 of circumstance.",
+        description="Exact id of a hired member who rolls their own die. Null when none helps.",
     )
-    hindered: str = Field(default="", description="Why the actor is hindered, when they are.")
+    hindered: str = Field(default="", description="Why the actor is hindered. Empty when none is.")
     risking_death: bool = Field(
         default=False,
-        description="True when a disaster kills the actor and a setback maims them; say it "
-        "before the roll.",
+        description="True when the actor risks death on this roll.",
     )
 
 
@@ -153,28 +148,24 @@ class TestLuck(Frozen):
 
 class Raise(Frozen):
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
-    skill: str = Field(min_length=1, description="The skill the job called on for them, to raise.")
+    skill: str = Field(min_length=1, description="The skill the job called on for them.")
 
 
 class Job(Frozen):
     verb: Literal["find", "take", "finish"] = Field(
-        description="`find` rolls the SRD's d6 for work; `take` records the job's terms as "
-        "agreed; `finish` closes it: raises and pay."
+        description="`find` looks for work. `take` records agreed work. `finish` closes the job."
     )
     where: str = Field(
         default="",
-        description="Where, or through whom, the player looks for work, in a few words; it "
-        "heads the card. With `find`.",
+        description="Where the player looks for work, in a few words. With `find`.",
     )
     terms: str = Field(
         default="",
-        description="Who wants what done, what done looks like, what it pays, as agreed. "
-        "With `take`.",
+        description="Who wants what done, what that looks like, and what it pays. With `take`.",
     )
     raises: tuple[Raise, ...] = Field(
         default=(),
-        description="One per operator: the player and every living hired member, each with the "
-        "skill the job called on for them. With `finish`.",
+        description="One per operator: the player and every living hired member. With `finish`.",
     )
 
     @model_validator(mode="after")

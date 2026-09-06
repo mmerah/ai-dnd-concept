@@ -71,21 +71,21 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
             master_tool("change_world", CHANGE_WORLD, ChangeWorld, self.change_world),
             master_tool(
                 "move",
-                "Move through an unlocked way from the player's current place.",
+                "Call this to carry the player through an unlocked way out of this place.",
                 Move,
                 self.move,
             ),
             master_tool(
                 "roll",
-                "Roll 2d6 plus an ability and helpful items against a Difficulty Score or an "
-                "npc; `actor_id` when a hired member acts instead of the player.",
+                "Call this for an uncertain action that carries a real cost. The engine rolls "
+                "2d6, adds the ability and the items, and reads the total.",
                 ActionRoll,
                 self.roll,
             ),
             master_tool(
                 "level_up",
-                "Raise one ability and either Health or Inventory Score by 1, once, at the "
-                "adventure's end: the player first, then each hired member in turn.",
+                "Call this once, when the whole adventure ends. The engine opens the pick to "
+                "the player, then to each living hired member in turn.",
                 LevelUp,
                 self.level_up,
             ),

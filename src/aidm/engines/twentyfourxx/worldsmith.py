@@ -9,14 +9,15 @@ from aidm.engines.twentyfourxx.world import Kit, SkillDie
 
 AUTHORING = (
     "24XX AUTHORING\n"
-    "The cast carries no dice until the player hires them in play: an NPC is a name, a brief "
-    "and whether the player has met them, nothing more. A threat is a brief the player's own "
-    "roll meets, never a stat block. The player is an operator on a job in a hard sci-fi future; "
-    "write scenes as work sites, stations, ships and the people holding them."
+    "The cast carries no dice until the player hires them in play. An npc is a name, a brief, "
+    "and whether the player has met them. A threat is a brief that the player's own roll meets, "
+    "never a stat block. The player is an operator on a job in a hard science-fiction future. "
+    "Write scenes as work sites, stations, ships, and the people who hold them."
 )
 HIRING = (
-    "The player has hired {name} ({brief}) on these terms: {terms}. Write their sheet from the "
-    "specialties and skills in ENGINE GUIDANCE, as someone who could plausibly be hired for this."
+    "The player has hired {name}, {brief}, on these terms: {terms}. Write their sheet from the "
+    "specialties and skills in ENGINE GUIDANCE. Write someone who could plausibly be hired for "
+    "this work. The specialty's own skills belong in `skills`."
 )
 
 
@@ -64,14 +65,13 @@ class Pack(ScenePack):
 
 
 class SheetDraft(Frozen):
-    """A hired member's sheet, checked against the pack by `sheet_refusal`."""
+    """A hired member's sheet."""
 
     specialty: str = Field(description="One of the specialties in ENGINE GUIDANCE.")
     skills: dict[str, SkillDie] = Field(
         min_length=1,
         max_length=3,
-        description="One to three skills, each named as ENGINE GUIDANCE lists them, at d8, d10 "
-        "or d12; the specialty's own skills belong here.",
+        description="One to three skills from ENGINE GUIDANCE, at d8, d10 or d12.",
     )
     items: tuple[str, ...] = Field(
         max_length=3, description="What they carry, three at most, named plainly."

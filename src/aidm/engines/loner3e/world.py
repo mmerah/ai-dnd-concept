@@ -18,7 +18,7 @@ TagKind = Literal["skill", "frailty", "gear", "condition"]
 
 
 class Loner3eSheet(Person):
-    """SRD "Everything is a Character": a person, an object, a vehicle or a curse alike."""
+    """A character: a person, an object, a vehicle or a curse alike."""
 
     concept: str = ""
     tags: dict[TagKind, list[str]] = Field(default_factory=dict)

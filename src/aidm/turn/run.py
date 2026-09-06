@@ -21,8 +21,8 @@ ANSWERED_BY_OPTION = (
     "The player chose the option above and the rules have applied it. Develop what it caused; "
     "do not settle it again."
 )
-NO_TURN = "no turn is open. The player starts one from the page; wait to be spawned again."
-GAME_OVER = "The game is over; the player restarts from the page."
+NO_TURN = "no turn is open. The player starts one from the page. Wait to be spawned again."
+GAME_OVER = "The game is over. The player restarts from the page."
 
 
 @dataclass(slots=True, kw_only=True)

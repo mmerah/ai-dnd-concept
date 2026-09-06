@@ -61,7 +61,7 @@ class Item(Mutable):
 
 
 class Sheet(Mutable):
-    """What the rules roll for: the player's from creation, a hired member's from the worldsmith."""
+    """The dice a crew member rolls."""
 
     specialty: str
     origin: str = ""  # empty on a hired member: the worldsmith writes no origin
@@ -91,12 +91,9 @@ class Sheet(Mutable):
 
 
 class Crewmate(Person):
-    """One type plays the player and the cast alike; only a sheet says who has dice."""
+    """A person in this game. Only a sheet gives them dice."""
 
-    sheet: Sheet | None = Field(
-        default=None,
-        description="Never written by you: code installs it when the player hires them.",
-    )
+    sheet: Sheet | None = Field(default=None, description="Leave empty.")
 
     def dice(self) -> Sheet:
         if self.sheet is None:

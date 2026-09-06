@@ -10,9 +10,11 @@ from aidm.core.facts import Fact
 class Line(Frozen):
     speaker_id: CheckedEntityId | None = Field(
         default=None,
-        description="Exact speaker id for dialogue, or null for narration.",
+        description="Exact id of the speaker. Null for narration.",
     )
-    text: str = Field(min_length=1, description="Dialogue only, or one passage of narration.")
+    text: str = Field(
+        min_length=1, description="One passage of narration, or only what the speaker says."
+    )
 
 
 class SpokenLine(Frozen):
@@ -36,22 +38,18 @@ class SpokenLine(Frozen):
 class Narration(Frozen):
     """The prose the player reads, split into narration and dialogue."""
 
-    lines: tuple[Line, ...] = Field(
-        description="All narration and dialogue in order; 2-4 sentences, or the length "
-        "PLAYER ACTION asks for."
-    )
+    lines: tuple[Line, ...] = Field(description="All narration and dialogue, in order.")
 
 
 class Interjection(Frozen):
     """What a party member says after a turn, unprompted."""
 
     lines: tuple[Line, ...] = Field(
-        description="What they say, as dialogue; empty when they would keep quiet."
+        description="What they say, as dialogue. Empty when they would keep quiet."
     )
     proposal: str = Field(
         default="",
-        description="What they propose the party do now, as the player would type it in "
-        "their own words; empty when they only talk.",
+        description="What they propose the party do now. Empty when they only talk.",
     )
 
     @field_validator("proposal")

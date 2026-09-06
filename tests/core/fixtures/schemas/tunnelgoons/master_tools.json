@@ -1,7 +1,7 @@
 [
   {
     "name": "change_world",
-    "description": "Apply one settled world change to match the story. Set `verb` to pick the change and fill that verb's own fields. One call makes one change.",
+    "description": "Call this when the story has settled a change to the world. Fill the fields of the verb you pick. One call makes one change.",
     "parameters": {
       "$defs": {
         "JoinParty": {
@@ -25,6 +25,7 @@
         },
         "Kill": {
           "additionalProperties": false,
+          "description": "An npc here dies.",
           "properties": {
             "verb": {
               "const": "kill",
@@ -43,14 +44,14 @@
         },
         "LeaveParty": {
           "additionalProperties": false,
-          "description": "A companion stops travelling with the player.",
+          "description": "A party member stops travelling with the player.",
           "properties": {
             "verb": {
               "const": "leave_party",
               "type": "string"
             },
             "entity_id": {
-              "description": "Exact id of the companion leaving.",
+              "description": "Exact id of the party member leaving.",
               "type": "string"
             }
           },
@@ -62,6 +63,7 @@
         },
         "MoveItem": {
           "additionalProperties": false,
+          "description": "An item moves to a new holder.",
           "properties": {
             "verb": {
               "const": "move_item",
@@ -85,7 +87,7 @@
         },
         "Rest": {
           "additionalProperties": false,
-          "description": "Spend the night in a safe spot to heal the player's and the party's Health to full.",
+          "description": "The player and the party spend a night here and heal to full Health.",
           "properties": {
             "verb": {
               "const": "rest",
@@ -99,6 +101,7 @@
         },
         "Reveal": {
           "additionalProperties": false,
+          "description": "Something hidden here becomes known to the player.",
           "properties": {
             "verb": {
               "const": "reveal",
@@ -139,7 +142,7 @@
         },
         "UnlockWay": {
           "additionalProperties": false,
-          "description": "Open a locked way once the story has dealt with it.",
+          "description": "A locked way out of this place opens.",
           "properties": {
             "verb": {
               "const": "unlock_way",
@@ -160,7 +163,7 @@
       "additionalProperties": false,
       "properties": {
         "change": {
-          "description": "The one world change to apply; `verb` picks the change.",
+          "description": "The change to apply. `verb` picks which one.",
           "oneOf": [
             {
               "$ref": "#/$defs/SharedChange"
@@ -179,7 +182,7 @@
   },
   {
     "name": "move",
-    "description": "Move through an unlocked way from the player's current place.",
+    "description": "Call this to carry the player through an unlocked way out of this place.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -189,7 +192,7 @@
         },
         "with_ids": {
           "default": [],
-          "description": "Exact ids of living NPCs here who come along.",
+          "description": "Exact ids of living npcs here who follow once. Party members come anyway.",
           "items": {
             "type": "string"
           },
@@ -204,12 +207,12 @@
   },
   {
     "name": "roll",
-    "description": "Roll 2d6 plus an ability and helpful items against a Difficulty Score or an npc; `actor_id` when a hired member acts instead of the player.",
+    "description": "Call this for an uncertain action that carries a real cost. The engine rolls 2d6, adds the ability and the items, and reads the total.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "what": {
-          "description": "The attempt, in a few words the player may read; it heads the card.",
+          "description": "The attempt, in a few words the player reads.",
           "type": "string"
         },
         "ability": {
@@ -223,7 +226,7 @@
         },
         "items": {
           "default": [],
-          "description": "Exact ids of items the actor carries that plainly help; +1 each.",
+          "description": "Exact ids of items the actor carries that plainly help.",
           "items": {
             "type": "string"
           },
@@ -236,7 +239,7 @@
             "null"
           ],
           "default": null,
-          "description": "Difficulty Score; the SRD's guidelines: 8 easy, 10 moderate, 12 hard. Null when `against` names an NPC."
+          "description": "Difficulty Score: 8 easy, 10 moderate, 12 hard. Null when `against` is set."
         },
         "against": {
           "type": [
@@ -244,11 +247,11 @@
             "null"
           ],
           "default": null,
-          "description": "Exact id of an npc here; its Health is the Difficulty Score."
+          "description": "Exact id of an npc here. Its Health is the Difficulty Score."
         },
         "dangerous": {
           "default": false,
-          "description": "A fight, a trap, a fall: the margin becomes damage, to the NPC on a hit or to the actor on a miss.",
+          "description": "True when a miss would hurt: a fight, a trap, a fall.",
           "type": "boolean"
         },
         "actor_id": {
@@ -257,7 +260,7 @@
             "null"
           ],
           "default": null,
-          "description": "null for the player; else the exact id of a hired party member here who acts."
+          "description": "Exact id of a hired party member here who acts. Null for the player."
         }
       },
       "required": [
@@ -269,7 +272,7 @@
   },
   {
     "name": "level_up",
-    "description": "Raise one ability and either Health or Inventory Score by 1, once, at the adventure's end: the player first, then each hired member in turn.",
+    "description": "Call this once, when the whole adventure ends. The engine opens the pick to the player, then to each living hired member in turn.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -284,7 +287,7 @@
             "null"
           ],
           "default": null,
-          "description": "Which ability to raise by 1; null asks the player."
+          "description": "Which ability to raise by 1. Null asks the player."
         },
         "boost": {
           "enum": [
@@ -296,7 +299,7 @@
             "null"
           ],
           "default": null,
-          "description": "Health or Inventory to raise by 1; null asks the player."
+          "description": "Health or Inventory to raise by 1. Null asks the player."
         },
         "actor_id": {
           "type": [
@@ -304,7 +307,7 @@
             "null"
           ],
           "default": null,
-          "description": "null for the player; else the exact id of a hired party member here who acts."
+          "description": "Exact id of a hired party member here who acts. Null for the player."
         }
       },
       "type": "object"
@@ -312,16 +315,16 @@
   },
   {
     "name": "hire",
-    "description": "The player hires someone here to work: the worldsmith writes their sheet once this turn ends, and they join the party. Someone already travelling with the player may be hired too; a sheet is for someone hired to work, never for one who merely comes along.",
+    "description": "Call this when the player hires someone here to work. Someone already travelling with the player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing more lands this turn.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "entity_id": {
-          "description": "Exact id of who here signs on; they must not already carry a sheet.",
+          "description": "Exact id of who here signs on.",
           "type": "string"
         },
         "terms": {
-          "description": "What they are hired for and on what terms, as agreed, for the worldsmith.",
+          "description": "What they are hired for, and on what terms, as agreed.",
           "type": "string"
         }
       },

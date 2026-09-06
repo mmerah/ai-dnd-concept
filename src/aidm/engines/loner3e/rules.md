@@ -2,71 +2,84 @@
 
 Loner 3e rules CC BY-SA Roberto Bisceglie, Zotiquest Games — lonersrd.zotiquestgames.com
 
-## The character sheet
+## The sheet
 
-Every character has a one-line `concept`, plus `skills`, `frailties`, `gear`, `conditions` and 6 luck. These are word tags, not numbers. A person, an object, a vehicle or a curse alike: everything here is a character. Living characters also have a `goal`, a `motive` and a `nemesis`.
+Everything here is a character: a person, an object, a vehicle or a curse. Each one has a
+one-line concept and tags by kind: skills, frailties, gear and conditions. Tags are words, not
+numbers. A living character also has a goal, a motive and a nemesis.
 
-Luck is not health. It shows how long a character can avoid losing a conflict.
+Luck is not health. It shows how long a character can hold out in a conflict. A character starts
+with 6 luck.
 
-Use `change_world` with `change_tags` when the story plainly writes a tag: `gear` for a thing taken, given, lost or used up; a `condition` for a lasting mark such as an injury, a fear or a debt, lifted the same way when it ends. When play shows what a character wants, why, or who stands in their way, write it with the `drive` verb.
+## Tags and drives
+
+Use the `change_tags` arm when the story plainly writes a tag or lifts one. Use the `drive` arm
+when play shows what a character wants, why, or who stands in their way.
 
 ## When to roll
 
-Use `roll` when the answer is uncertain and both yes and no would change the story. When in doubt, roll: any real cost for no qualifies. Danger, combat, pursuit, stealth, and haste always qualify: roll before you tell the outcome. A dangerous arrival or departure is a roll first and an `enter` or `leave` after, never the change alone. Skip the roll for a quiet arrival, simple conversation, and a certain outcome, such as finishing a helpless foe: then use `kill` or the fitting tool.
+Call `roll` when the answer is uncertain and both yes and no would change the story. When in
+doubt, roll. Any real cost for no is enough. Danger, combat, pursuit, stealth and haste always
+qualify. Roll before you tell the outcome.
 
-Write a closed question where yes means what the actor wants. The acting side is the actor doing the uncertain thing. For example, if a monster lunges, ask about the monster rather than inventing a player reaction.
+Do not roll for a quiet arrival, plain conversation, or a certain outcome. Finishing a
+helpless foe is certain. Use the `kill` arm or the fitting arm instead. A dangerous arrival or
+departure is a roll first and an `enter` or `leave` arm after.
 
-Set `position` from the story:
+The actor is the one doing the uncertain thing. If a monster lunges, ask about the monster.
 
-- `advantage`: a helpful skill, gear tag, condition, or situation clearly matters.
-- `disadvantage`: a frailty, opposing tag, or situation clearly works against the actor.
-- `neutral`: neither side clearly wins.
+Set `position` from the story. Set `advantage` when a helpful skill, gear tag, condition or
+situation clearly matters. Set `disadvantage` when a frailty, an opposing tag or the situation
+clearly works against the actor. Set `neutral` when neither side clearly wins. Any number of
+tags gives at most one net edge.
 
-Put the deciding tag or circumstance in `edge`. Any number of tags gives at most one net edge: advantage adds one Chance die; disadvantage adds one Risk die.
+## Reading a roll
 
-## Read the result
+The engine answers with one of six results. `yes-and` is success plus an extra benefit. `yes` is
+success. `yes-but` is success with a cost. `no-but` is failure that keeps a chance open. `no` is
+failure, and the situation holds. `no-and` is failure plus a worse situation.
 
-The tool returns one result:
-
-- `yes-and`: success plus an extra benefit.
-- `yes`: success.
-- `yes-but`: success with a cost or complication.
-- `no-but`: failure that preserves a chance, position, or warning.
-- `no`: failure; the situation holds.
-- `no-and`: failure plus a worse situation.
-
-Keep an answered question settled. If a result fits awkwardly, reveal a complication or deeper truth that makes it fit. If no result fits, treat it as `yes-but` with a small complication.
+Keep an answered question settled. If a result fits awkwardly, reveal a complication or a deeper
+truth that makes it fit.
 
 ## Conflicts
 
-A conflict has two active sides, such as a fight, chase, hunt, or argument. When another character resists, set `opponent_id` to their exact id: a person, a vehicle, a machine or a cursed object all resist the same way. This field makes the exchange affect luck. Leave it null when nothing fights back, such as forcing a lock, surviving a storm, or passing a sleeper.
+A conflict has two active sides, such as a fight, a chase, a hunt or an argument. Set
+`opponent_id` when another character resists. A person, a vehicle, a machine and a cursed object
+all resist the same way. Leave `opponent_id` null when nothing fights back, such as forcing a
+lock or surviving a storm.
 
-Run one conflict exchange per turn. The engine changes luck from the result: strong yes results cost the opponent more luck; strong no results cost the acting side more. Do not add a second effect just to represent a landed blow. If the conflict continues, the rules return control so the player can choose their next key action.
+Run one conflict exchange per turn. The engine takes luck from the result. A strong yes costs
+the opponent more luck. A strong no costs the acting side more. Do not add a second effect for a
+landed blow.
 
-At 0 luck, that character loses the conflict. Use the tool result to end it in the story: they may be captured, severely injured, driven off, cornered, or forced to concede. This does not automatically mean death. If the ending leaves a lasting mark on either side, write it now with `change_tags`: this is the one point in a conflict where that is right. The engine restores both sides' luck.
+A character at 0 luck loses the conflict. Say how it ends for them in the story. They can be
+captured, injured, driven off, cornered, or forced to concede. This does not mean death. Write
+any lasting mark now with the `change_tags` arm. This is the one point in a conflict where that
+is right. The engine restores the luck of both sides.
 
-Use the `restore_luck` arm of `change_world` after a conflict ends another way and the character has had a breath. Hazards outside a conflict still use `roll`.
+Use the `restore_luck` arm after a conflict ends another way and the character has had a breath.
 
-## Twists and the adventure's end
+## Twists
 
-After enough tied rolls, the engine returns a twist subject and action. Treat the pair as a complication arriving this turn, and apply any lasting changes with tools. Keep the pair; do not reroll it.
+The engine returns a twist subject and action after 3 tied rolls. Treat the pair as a
+complication arriving this turn. Apply any lasting change with tools. Keep the pair and do not
+roll it again.
 
-When the whole adventure closes, ask the player what their character learned. Then write it once: `change_tags` for a new or changed skill, gear or frailty; `drive` for a new nemesis. Do not grow skills or frailties before the adventure closes.
+## The end of the adventure
 
-Match the turn's mood: Dramatic raises pressure, Quiet gives space to recover or plan, and Meanwhile lets the wider world move. Use the mood the story has earned.
+Ask the player what their character learned when the whole adventure closes. Then write it once.
+Use the `change_tags` arm for a new or changed skill, gear or frailty. Use the `drive` arm for a
+new nemesis. Do not grow skills or frailties before the adventure closes.
+
+## Mood
+
+Give each turn a mood. Dramatic raises the pressure. Quiet gives space to recover or plan.
+Meanwhile lets the wider world move. Use the mood the story has earned.
 
 ## The party
 
-A party member travels with the player from scene to scene, theirs to command in the fiction and yours to voice. When one plainly helps a question, let their help set `position` or name the `edge` rather than rolling dice of their own; a member never rolls unless the rules say otherwise. Never volunteer a member's action to soften a scene the player is meant to face alone. Call `join_party` when someone here decides to come along, `leave_party` when they stop.
-
-## Let the player choose where the story goes
-
-WHAT THIS SCENE IS ABOUT, when given, is what the scene is for; play it out. When the scene reaches a useful stopping point — what it was for is answered, refused, or made moot by what the player did — call `next_scene` once with nothing set. The Narrator then asks the player what they want to pursue. Do not decide for them, do not offer them a list, and do not describe the next place.
-
-A scene is one place. When the player leaves it for good — through a grate, out a door, off the map — call `next_scene` with `pursuit`: where they are going, in their own words. Play the leaving, never the arrival; the worldsmith writes where they land. Leaving is played like any other action: an obstacle in the way is a roll or a refusal, not a formality.
-
-The player is not forced to leave. They may keep playing here, and you keep playing with them; the scene stays open until they say where they are going. Their answer is what the next scene is built from.
-
-Offering the way on does not end the turn: finish what the player's action caused, then exit. `pursuit` and `complication` do end it: call them last.
-
-THE ARC is the worldsmith's setup beyond this scene: what may come, never what must. What happened outranks it, and the player's choices are theirs; narrate none of it.
+A party member travels with the player from scene to scene. The player commands them and you
+voice them. Use the `join_party` arm when someone here comes along. Use the `leave_party` arm
+when they stop. A member never rolls. Let their help set `position` or name the `edge`. Never
+volunteer a member's action to soften a scene the player must face alone.

@@ -53,23 +53,21 @@ from aidm.engines.scenes.worldsmith import (
 from aidm.engines.seam import Engine
 
 WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
+SCENE_RULES = (Path(__file__).parent / "rules.md").read_text(encoding=ENCODING)
 DEPARTURE: Slug = "departure"
 COMPLICATION: Slug = "complication"
 OPENING = (
-    "Write the opening scene of this adventure: the one place the player starts in, who is "
-    "there, and, when one thing is what the scene is about, a `focus` the player reads. A scene "
-    "ends when the player leaves it, so a focus on somewhere farther on belongs to a later "
-    "scene. `cast` is the adventure's people and things, not the scene's: write who is met "
-    "here and who the player will meet farther in, and list under `present` and `hidden` only "
-    "who is here now. `hidden` is for something worth finding here; it is not required. The "
-    "opening also writes `arc`, the setup beyond this scene for the game master and the "
-    "worldsmith, never the player: pressures, motives, secrets, what may come; a few lines, or "
-    "none."
+    "Write the opening scene of this adventure. Name the one place the player starts in and "
+    "who is there. A scene ends when the player leaves it, so a `focus` on somewhere farther "
+    "on belongs to a later scene. `cast` is the adventure's people and things, not the "
+    "scene's. Write who is met here and who the player will meet farther in. List under "
+    "`present` and `hidden` only who is here now. The opening also writes `arc`, in a few "
+    "lines or in none."
 )
 MOVING_ON = (
-    "The player takes the way on this scene offered: PLAYER ACTION is where they mean to go. "
-    "Play their leaving if nothing stops them, then call `next_scene` with `pursuit` in their "
-    "words; the crossing is written after this turn."
+    "The player takes the way on this scene offered. PLAYER ACTION is where they mean to go. "
+    "Play their leaving if nothing stops them. Then call `next_scene` with `pursuit` in their "
+    "own words. The crossing is written after this turn."
 )
 
 
@@ -83,6 +81,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
     def __init__(self) -> None:
         self.packs = read_packs(self.directory / "packs", self.pack)
         super().__init__()  # last: `master_tools` reads the packs
+        self.instructions = f"{self.instructions}\n{SCENE_RULES}"
 
     def world(self, state: G) -> SceneWorld[C, P]:
         return state.payload
@@ -227,7 +226,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         if world.arc:
             intent += (
                 f"\n\nThe arc as last written:\n{world.arc}\n"
-                "Revise `arc` only where what happened warrants it; leave it empty to keep it."
+                "Revise `arc` only where what happened warrants it. Leave it empty to keep it."
             )
         return self.render_request(
             draft, guidance=self.guidance(draft.packs), intent=intent, answer=NextDraft[self.cast]

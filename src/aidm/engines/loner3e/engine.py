@@ -55,7 +55,8 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
             master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
             master_tool(
                 "roll",
-                "Roll Chance against Risk for one closed dramatic question.",
+                "Call this for one closed dramatic question. The engine rolls Chance against "
+                "Risk, reads the answer, and moves luck in a conflict.",
                 Question,
                 self.roll,
             ),

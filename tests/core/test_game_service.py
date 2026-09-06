@@ -331,7 +331,7 @@ async def test_a_member_who_passes_the_d10_speaks_after_the_turn(tmp_path: Path)
     await table.service.interject()
 
     prompt = table.spawner.prompt("narrator")
-    assert f"YOUR ROLE:\nYou are {member.name} — {member.brief}" in prompt
+    assert f"YOUR ROLE:\nYou are {member.name}. {member.brief}" in prompt
     exchange = table.service.engine.history(table.service.state)[-1]
     assert exchange.prompt == INTERJECTION_MARK
     assert [line.speaker_id for line in exchange.lines] == [member.id]

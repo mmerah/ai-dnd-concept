@@ -16,11 +16,11 @@ NOISE_KEYS = ("title", "pattern", "maxLength", "minLength", "discriminator")
 
 
 class Attempt(Frozen):
-    """`what` is read by the player; what they must not learn goes in a master-only field."""
+    """An attempt at something uncertain."""
 
     what: str = Field(
         min_length=1,
-        description="The attempt, in a few words the player may read; it heads the card.",
+        description="The attempt, in a few words the player reads.",
     )
 
 
