@@ -1,3 +1,6 @@
+from asyncio import Event, Task, create_task
+from dataclasses import dataclass, field
+
 import mcp_types as types
 from mcp.server import Server, ServerRequestContext
 from mcp.server.streamable_http_manager import StreamableHTTPASGIApp, StreamableHTTPSessionManager
@@ -13,6 +16,39 @@ SERVER_NAME = "aidm"
 MOUNT_PATH = "/mcp"
 
 _ARGUMENTS = TypeAdapter(dict[str, JsonValue])
+
+
+@dataclass(slots=True)
+class MountedLifespan:
+    """A mounted app's own lifespan never runs, so one task of ours holds the manager open.
+
+    One task, because NiceGUI starts in a task of its own and stops in the lifespan's, and
+    anyio refuses a task group exited by a task other than the one that entered it."""
+
+    manager: StreamableHTTPSessionManager
+    _ready: Event = field(default_factory=Event)
+    _stopping: Event = field(default_factory=Event)
+    _serving: Task[None] | None = None
+
+    async def start(self) -> None:
+        self._serving = create_task(self._serve())
+        await self._ready.wait()
+        if self._serving.done():
+            self._serving.result()
+
+    async def stop(self) -> None:
+        self._stopping.set()
+        if self._serving is not None:
+            await self._serving
+
+    async def _serve(self) -> None:
+        try:
+            async with self.manager.run():
+                self._ready.set()
+                await self._stopping.wait()
+        finally:
+            # Set on failure too, or a manager that never came up would hang the startup.
+            self._ready.set()
 
 
 def list_tools(runtime: Runtime) -> list[types.Tool]:

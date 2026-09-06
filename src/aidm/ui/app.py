@@ -1,12 +1,11 @@
 import logging
-from contextlib import AsyncExitStack
 from functools import partial
 
 from nicegui import app, ui
 from nicegui.events import ValueChangeEventArguments
 
 from aidm.app.launch import LauncherCatalog, LaunchTarget, SaveOption
-from aidm.app.mcp import MOUNT_PATH, endpoint
+from aidm.app.mcp import MOUNT_PATH, MountedLifespan, endpoint
 from aidm.app.runtime import Runtime
 from aidm.app.spawn import CliSpawner
 from aidm.config import read_settings
@@ -155,10 +154,9 @@ def _open_game(target: LaunchTarget) -> None:
 def _register_pages(runtime: Runtime) -> None:
     asgi, manager = endpoint(runtime)
     app.mount(MOUNT_PATH, asgi)
-    # A mounted app's own lifespan never runs, so the manager's task group is opened by hand.
-    running = AsyncExitStack()
-    app.on_startup(lambda: running.enter_async_context(manager.run()))  # pyright: ignore[reportUnknownMemberType]
-    app.on_shutdown(running.aclose)  # pyright: ignore[reportUnknownMemberType]
+    lifespan = MountedLifespan(manager)
+    app.on_startup(lifespan.start)  # pyright: ignore[reportUnknownMemberType]
+    app.on_shutdown(lifespan.stop)  # pyright: ignore[reportUnknownMemberType]
 
     def apply_settings() -> str | None:
         refusal = runtime.busy_refusal()
