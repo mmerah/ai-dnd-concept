@@ -12,10 +12,7 @@ from aidm.core.model import Game
 
 # The rng is a parameter so a trial run against a throwaway copy cannot consume the turn's dice.
 type Play[G: Game[Any]] = Callable[[G, Random], tuple[Fact, ...]]
-
-
-class NoArgs(Frozen):
-    pass
+NOISE_KEYS = ("title", "pattern", "maxLength", "minLength", "discriminator")
 
 
 class Attempt(Frozen):
@@ -61,9 +58,6 @@ def schema_text(model: type[BaseModel]) -> str:
     return json.dumps(schema_of(model), indent=2, ensure_ascii=False)
 
 
-_NOISE_KEYS = ("title", "pattern", "maxLength", "minLength", "discriminator")
-
-
 def _normalize(node: JsonValue) -> None:
     """Drop what the model reads for free from parsing, and fold `T | None` to one node."""
     if isinstance(node, list):
@@ -72,9 +66,14 @@ def _normalize(node: JsonValue) -> None:
         return
     if not isinstance(node, dict):
         return
-    for value in node.values():
-        _normalize(value)
-    for key in _NOISE_KEYS:
+    for key, value in node.items():
+        # A `properties` or `$defs` map is keyed by names, which may spell a noise key.
+        if key in ("properties", "$defs") and isinstance(value, dict):
+            for child in value.values():
+                _normalize(child)
+        else:
+            _normalize(value)
+    for key in NOISE_KEYS:
         node.pop(key, None)
     _collapse_nullable(node)
 

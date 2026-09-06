@@ -4,6 +4,7 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from aidm.core.entities import EntityId, Mutable, Refusal, slug
+from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
 from aidm.engines.base import PLAYER_ID, UNKNOWN_ID, Counter, Person
@@ -94,6 +95,16 @@ class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
         if npc.sheet is not None:
             raise Refusal(f"{npc.name} already carries a sheet")
         return npc
+
+    def rest(self) -> list[Fact]:
+        player = self.player
+        members = self.members()
+        facts = player.hp.change(player, player.hp.shortfall, "Health", "resting")
+        for member in members:
+            facts.extend(member.hp.change(member, member.hp.shortfall, "Health", "resting"))
+        trace = f"{'the party' if members else 'the player'} rests at {self.current.label}"
+        facts.append(player.fact("rested", trace, card=f"Rested — Health {player.hp}"))
+        return facts
 
     def next_to_level(self, actor: Goon | Npc) -> Npc | None:
         members = [member for member in self.members() if member.sheet is not None]

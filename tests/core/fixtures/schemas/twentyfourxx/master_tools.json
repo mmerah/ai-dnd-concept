@@ -44,7 +44,7 @@
         },
         "Defend": {
           "additionalProperties": false,
-          "description": "Break a carried item, or a ship function, to turn a hit into a hindrance instead of\ntaking it outright; word the harm yourself.",
+          "description": "Break a carried item or a ship function so a hit becomes a hindrance; word the harm.",
           "properties": {
             "verb": {
               "const": "defend",

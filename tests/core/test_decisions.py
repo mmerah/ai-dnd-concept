@@ -11,7 +11,7 @@ from aidm.core.facts import Fact
 from aidm.core.io import decode
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, PendingDecision, PendingOption
-from aidm.core.tools import MasterTool, NoArgs, master_tool
+from aidm.core.tools import MasterTool, master_tool
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
 from aidm.engines.seam import AnyEngine
@@ -79,11 +79,15 @@ def _hit(draft: AnyGame, *, narrate: bool) -> tuple[Fact, ...]:
     )
 
 
+class _NoArgs(Frozen):
+    pass
+
+
 def _strike_tool(*, narrate: bool) -> MasterTool[Loner3eGame]:
     return master_tool(
         "strike",
         "Take a hit the player may turn by breaking something of theirs.",
-        NoArgs,
+        _NoArgs,
         lambda draft, _args, _rng: _hit(draft, narrate=narrate),
     )
 
