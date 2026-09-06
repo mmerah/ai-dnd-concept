@@ -206,8 +206,8 @@ first; the player accepts a proposal with one press.
    Sequence[SceneRecord]) -> str`: YOUR ROLE (the prompt formatted), WHAT THE PLAYER HAS READ
    (`told_history`), SCENE, WHO IS HERE, YOUR PARTY, ANSWER WITH `Interjection`. No sheet, no
    focus: the member is not the player.
-4. **`app/runtime.py` — the background spawn.** `INTERJECTION_MARK = "(the party speaks)"`, added to
-   `MARKS`; `INTERJECTION_ODDS: dict[Chattiness, int] = {"quiet": 1, "normal": 2, "chatty": 3}`, the
+4. **`app/runtime.py` — the background spawn.** `INTERJECTION_MARK = "(the party speaks)"`,
+   added to `MARKS`; `INTERJECTION_ODDS: dict[Chattiness, int] = {"quiet": 1, "normal": 2, "chatty": 3}`, the
    faces of a d6 on which a member speaks. `GameService.interject(self) -> None` is started with
    `_retain` at the end of `_turn`, after `_generate`, when `interjections` is on, `state.pending`
    and `state.generation` are `None`, `over` is `None`, and the newest exchange carries a told fact.
