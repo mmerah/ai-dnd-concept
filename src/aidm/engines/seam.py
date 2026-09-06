@@ -103,12 +103,20 @@ class Engine[P: Person, G: Game[Any]](ABC):
         # The accepted answer was built by its own check; one never checked is built here.
         return build(answer) if built is None else built
 
-    def close(self, draft: G, prompt: str, lines: tuple[Line, ...], facts: tuple[Fact, ...]) -> G:
+    def close(
+        self,
+        draft: G,
+        prompt: str,
+        lines: tuple[Line, ...],
+        facts: tuple[Fact, ...],
+        proposal: str = "",
+    ) -> G:
         exchange = Exchange(
             prompt=prompt,
             lines=self.narrator_view(draft).spoken(lines),
             facts=facts,
             decision="" if draft.pending is None else draft.pending.prompt,
+            proposal=proposal,
         )
         self.record(draft, exchange)
         return self.commit(draft)

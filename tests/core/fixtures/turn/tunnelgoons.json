@@ -15,16 +15,16 @@
   },
   {
     "kind": "dice_rolled",
-    "trace": "Wade through the flooded cellar — skulker: 2d6 [4, 5]",
+    "trace": "Wade through the flooded cellar — skulker: 2d6 [6, 1]",
     "told": false,
     "card": "",
     "dice": []
   },
   {
     "kind": "action_rolled",
-    "trace": "Wade through the flooded cellar — Skulker, 11 vs DS 10 → success",
+    "trace": "Wade through the flooded cellar — Skulker, 9 vs DS 10 → failure",
     "told": true,
-    "card": "Wade through the flooded cellar — Skulker, 11 vs DS 10 → success",
+    "card": "Wade through the flooded cellar — Skulker, 9 vs DS 10 → failure",
     "dice": [
       {
         "label": "2d6",
@@ -33,12 +33,19 @@
           6
         ],
         "rolled": [
-          4,
-          5
+          6,
+          1
         ],
         "highlight": []
       }
     ]
+  },
+  {
+    "kind": "counter_changed",
+    "trace": "the player Kael[player] Health -1 -> 9/10 (Wade through the flooded cellar)",
+    "told": true,
+    "card": "Health -1 -> 9/10",
+    "dice": []
   },
   {
     "kind": "entity_discovered",

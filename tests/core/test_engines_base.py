@@ -65,6 +65,16 @@ def test_a_dead_person_prints_dead_on_the_first_line_of_line() -> None:
     assert kestrel.line().splitlines()[0] == "- Kestrel[kestrel] — Runs the dock. (dead)"
 
 
+def test_a_person_defaults_to_normal_chattiness_and_refuses_an_unknown_one() -> None:
+    kestrel = Person(id=EntityId("kestrel"), name="Kestrel", brief="Runs the dock.")
+    assert kestrel.chattiness == "normal"
+
+    with pytest.raises(ValidationError):
+        Person.model_validate(
+            {"id": "kestrel", "name": "Kestrel", "brief": "", "chattiness": "loud"}
+        )
+
+
 def test_counter_rejects_current_outside_its_bounds() -> None:
     with pytest.raises(ValidationError, match="below zero"):
         Counter(current=-1, maximum=10)

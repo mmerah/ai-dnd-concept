@@ -22,6 +22,8 @@ CHANGE_WORLD = (
 UNKNOWN_ID = "unknown id {entity_id!r}. Use only ids you were shown."
 IS_DEAD = "{name} is dead; they take no further part."
 
+type Chattiness = Literal["quiet", "normal", "chatty"]
+
 
 class Thing(Mutable):
     id: CheckedEntityId
@@ -84,6 +86,10 @@ class Thing(Mutable):
 
 class Person(Thing):
     alive: bool = True
+    chattiness: Chattiness = Field(
+        default="normal",
+        description="How readily they speak unprompted when travelling with the player.",
+    )
 
     @property
     def headline(self) -> str:

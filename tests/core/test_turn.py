@@ -123,6 +123,7 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record(tmp_path: Path
 
 async def test_the_master_reacts_in_run_to_its_own_earlier_tool_call(tmp_path: Path) -> None:
     table = open_game(tmp_path)
+    table.service.interjections = False
 
     state = await play_turn(
         table,

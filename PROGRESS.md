@@ -29,3 +29,32 @@ plan, review findings refuted and why, and what is known and accepted.
 - Known and accepted: the two-line "remove the dead from the party" sits in both `kill`s; two
   lines do not earn a helper.
 - Reviews: Fable and Opus (no `codex` on the machine).
+
+## Phase 2 — interjections
+
+- `src`: 8,324 → 8,486 lines (+162; target about +140). Tests: 459 → 469.
+- Off-plan decisions:
+  - The golden `SEED` moves from 11 to 19: on 11 Vessa rolls a 9 after the turn even as `chatty`;
+    on 19 she rolls a 1 at the default `normal`, so no script sets her chattiness. Every engine's
+    `turn/*.json` and the breathless and tunnelgoons narrator prompts move in dice values and
+    their outcomes only (PLAN offered "or the seed is chosen so"; its "Nothing else" assumed the
+    chatty route).
+  - `GameService.hush()` cancels the interjection in flight; `_turn` and `restart` call it, and
+    `Runtime.reload_settings` calls it on every session it evicts. Cancelling kills the narrator
+    spawn, so quick turns do not stack spawns whose answers are all dropped, and an evicted
+    session cannot land a line on a rival's save (both review findings). The landing checks of
+    PLAN step 4 stay for the write path (`act`), which sets no turn.
+  - `Interjection.proposal` is stripped by a validator: Accept plays it as typed text, which the
+    composer would have stripped (review finding).
+  - The interjection prompt's YOUR PARTY reads `the player is Kael` / `with them: ...`, since the
+    member is the reader; `_party_lines` takes `lead` and `beside` (review finding).
+  - The spawn gate drops `state.generation is None`: `_generate` clears it on every path.
+  - `play_turn` gains `then=`, further narrator answers queued behind the turn's, and
+    `ScriptedSpawner.prompt` gains `nth`; the interjection golden is gated on the game having a
+    party, so a member who stops speaking fails the test rather than skipping it.
+- Refuted findings:
+  - "Drop `player.prompt is None` from `standing_proposal`, an unreachable state": PLAN step 5
+    names the condition; one clause, kept.
+- Known and accepted: the `uv run aidm` smoke here reaches the launcher only; a turn needs a CLI
+  model spawn the container cannot make.
+- Reviews: Fable and Opus (no `codex` on the machine).

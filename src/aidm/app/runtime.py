@@ -15,13 +15,14 @@ from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.facts import Fact, traced
 from aidm.core.io import FileStore, Library, decode
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioMeta, WorldsmithAnswer
-from aidm.core.play import Answer, Exchange, Line, Narration
+from aidm.core.play import Answer, Exchange, Interjection, Line, Narration
 from aidm.core.source import given_text
 from aidm.core.tools import MasterTool
 from aidm.core.views import PlayerView
+from aidm.engines.base import Chattiness
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
-from aidm.turn.context import render_narrator
+from aidm.turn.context import render_interjection, render_narrator
 from aidm.turn.run import Turn
 
 LOGGER = logging.getLogger(__name__)
@@ -29,7 +30,10 @@ LOGGER = logging.getLogger(__name__)
 # The prompt of a turn nobody played; the chat shows it as the story's own line.
 OPENING_MARK = "(the story begins)"
 STORY_MARK = "(the story goes on)"
-MARKS = (OPENING_MARK, STORY_MARK)
+INTERJECTION_MARK = "(the party speaks)"
+MARKS = (OPENING_MARK, STORY_MARK, INTERJECTION_MARK)
+# The faces of a d10 on which a member speaks after a turn.
+INTERJECTION_ODDS: dict[Chattiness, int] = {"quiet": 1, "normal": 2, "chatty": 3}
 UNWRITTEN = Fact(
     kind="way_unwritten",
     told=True,
@@ -64,6 +68,7 @@ class GameService:
     store: FileStore
     media: Illustrator | None = None
     reader: Reader | None = None
+    interjections: bool = True
     rng: Random = field(default_factory=Random)
     # The role at work; the play page polls it and binds its widgets to it.
     phase: Role | None = None
@@ -71,6 +76,8 @@ class GameService:
     intent: str = ""
     # The turn in flight; the tool surface reaches the live game through it.
     turn: Turn | None = None
+    # The party member speaking after the last turn; a new turn or a reload silences them.
+    _speaking: Task[None] | None = field(default=None, repr=False)
     _background: set[Task[None]] = field(default_factory=set, repr=False)
     state: AnyGame = field(init=False)
 
@@ -130,6 +137,7 @@ class GameService:
             await self._turn(Answer(text=words), self.state)
 
     async def _turn(self, answer: Answer, state: AnyGame) -> None:
+        self.hush()
         turn = Turn.begin(self.engine, state, answer, self.rng)
         self.turn, self.phase = turn, "master"
         try:
@@ -147,6 +155,60 @@ class GameService:
         self.commit(state)
         self._present()
         await self._generate()
+        if (
+            self.interjections
+            and self.state.pending is None
+            and self.engine.over(self.state) is None
+        ):
+            self._speaking = create_task(self.interject())
+            self._retain(self._speaking)
+
+    def hush(self) -> None:
+        """Cancelling kills the narrator spawn: an answer nobody will read costs nothing more."""
+        if self._speaking is not None:
+            self._speaking.cancel()
+            self._speaking = None
+
+    async def interject(self) -> None:
+        """One party member may speak after a turn; nothing spawns when nobody passes the d10."""
+        member = next(
+            (
+                candidate
+                for candidate in self.engine.world(self.state).members()
+                if self.rng.randint(1, 10) <= INTERJECTION_ODDS[candidate.chattiness]
+            ),
+            None,
+        )
+        if member is None:
+            return
+        spoken = len(self.engine.history(self.state))
+        view = self.engine.narrator_view(self.state)
+        try:
+            answer = await ask(
+                self.spawner,
+                "narrator",
+                render_interjection(view, member.subject(), self.engine.scenes(self.state)),
+                Interjection,
+                partial(view.interjection_refusal, member.id),
+            )
+        except (OSError, Refusal) as failed:
+            LOGGER.warning("the party did not speak: %s", failed)
+            return
+        if (
+            self.turn is not None
+            or self.phase is not None
+            or len(self.engine.history(self.state)) != spoken
+        ):
+            LOGGER.info("%s's interjection came after the turn moved on; dropped", member.name)
+            return
+        if not answer.lines:
+            return
+        self.commit(
+            self.engine.close(
+                self.state.draft(), INTERJECTION_MARK, answer.lines, (), proposal=answer.proposal
+            )
+        )
+        self.speak()
 
     async def _generate(self, prompt: str = STORY_MARK) -> bool:
         """The one executor: the state's request is written on a fresh draft, then cleared.
@@ -275,6 +337,7 @@ class GameService:
         task.add_done_callback(self._background.discard)
 
     def restart(self) -> None:
+        self.hush()
         opening = self._begin()
         self.store.discard(self.slug)
         self.state = opening
@@ -353,6 +416,9 @@ class Runtime:
         self.settings = read_settings()
         self.spawner = CliSpawner(self.settings)
         self._mount()
+        # An evicted session must not write: its member's answer would land on a rival's save.
+        for session in self._sessions.values():
+            session.hush()
         self._sessions.clear()
 
     async def new_scenario(
@@ -402,6 +468,7 @@ class Runtime:
             engine=engine,
             spawner=self.spawner,
             store=self.store,
+            interjections=settings.interjections,
             media=open_illustrator(
                 settings,
                 self.store,

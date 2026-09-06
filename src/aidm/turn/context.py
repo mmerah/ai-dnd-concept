@@ -4,9 +4,9 @@ from pathlib import Path
 
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyGame
-from aidm.core.play import Narration, SceneRecord
+from aidm.core.play import Interjection, Narration, SceneRecord
 from aidm.core.tools import schema_text
-from aidm.core.views import NarratorView, lines_of, render_history, sections, told_history
+from aidm.core.views import NarratorView, Subject, lines_of, render_history, sections, told_history
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
@@ -40,19 +40,13 @@ def render_narrator(
     view: NarratorView, *, evidence: str, prompt: str, scenes: Sequence[SceneRecord]
 ) -> str:
     """Only the narrator view reaches this, so hidden canon has no path into the prose."""
-    others = view.others()
-    who_is_here = (
-        lines_of(f"- {subject.name} — {subject.brief}" for subject in others)
-        if others
-        else "(nobody else)"
-    )
     return sections(
         (
             ("YOUR ROLE", _prompt("narrator")),
             ("WHAT THE PLAYER HAS READ", told_history(scenes)),
             ("SCENE", f"{view.title}\n{view.situation}"),
             *((("WHAT THIS SCENE IS ABOUT", view.focus),) if view.focus else ()),
-            ("WHO IS HERE", who_is_here),
+            ("WHO IS HERE", _who_is_here(view)),
             ("YOUR PARTY", _party_lines(view)),
             ("THE PLAYER'S SHEET", lines_of(f"- {label}: {value}" for label, value in view.sheet)),
             ("WHAT HAPPENED", evidence),
@@ -62,12 +56,37 @@ def render_narrator(
     )
 
 
-def _party_lines(view: NarratorView) -> str:
+def render_interjection(view: NarratorView, member: Subject, scenes: Sequence[SceneRecord]) -> str:
+    """No sheet, no focus, no WHAT HAPPENED: the member is not the player."""
+    role = _prompt("interjection").format(name=member.name, brief=member.brief, id=member.id)
+    return sections(
+        (
+            ("YOUR ROLE", role),
+            ("WHAT THE PLAYER HAS READ", told_history(scenes)),
+            ("SCENE", f"{view.title}\n{view.situation}"),
+            ("WHO IS HERE", _who_is_here(view)),
+            ("YOUR PARTY", _party_lines(view, lead="the player is", beside="with them")),
+            ("ANSWER WITH", schema_text(Interjection)),
+        )
+    )
+
+
+def _who_is_here(view: NarratorView) -> str:
+    others = view.others()
+    return (
+        lines_of(f"- {subject.name} — {subject.brief}" for subject in others)
+        if others
+        else "(nobody else)"
+    )
+
+
+def _party_lines(view: NarratorView, *, lead: str = "you are", beside: str = "with you") -> str:
+    """`lead` and `beside` say who reads it: the player, or a member reading about them."""
     subjects = {subject.id: subject for subject in view.subjects}
-    lead, *rest = (subjects[member_id] for member_id in view.party)
-    with_you = [f"with you: {member.name} — {member.brief}" for member in rest]
+    first, *rest = (subjects[member_id] for member_id in view.party)
+    members = [f"{beside}: {member.name} — {member.brief}" for member in rest]
     return "\n".join(
-        (f"you are {lead.name} — {lead.brief}", *(with_you or ["nobody travels with you"]))
+        (f"{lead} {first.name} — {first.brief}", *(members or [f"nobody travels {beside}"]))
     )
 
 

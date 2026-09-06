@@ -1,3 +1,4 @@
+from asyncio import gather
 from importlib import import_module
 from pathlib import Path
 from random import Random
@@ -5,14 +6,14 @@ from typing import cast
 
 import pytest
 from support.golden import FIXTURES, golden, golden_json
-from support.golden_turn import NARRATION
+from support.golden_turn import INTERJECTION, NARRATION
 from support.table import ENGINE_IDS, Call, open_game_for, play_turn
 
 from aidm.core.entities import EngineId
 from aidm.core.model import AnyGame
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
-SEED = 11
+SEED = 19
 
 
 def _script(engine_id: EngineId) -> tuple[Call, ...]:
@@ -32,7 +33,8 @@ async def test_a_scripted_turn_renders_and_records_unchanged(
     table = open_game_for(tmp_path, engine_id, rng=Random(SEED))
     table.service.commit(_behind(engine_id, table.state))
 
-    await play_turn(table, PROMPT, *_script(engine_id), narration=NARRATION)
+    await play_turn(table, PROMPT, *_script(engine_id), narration=NARRATION, then=(INTERJECTION,))
+    await gather(*table.service._background)  # pyright: ignore[reportPrivateUsage]
 
     golden(FIXTURES / "prompts" / engine_id / "master.txt", table.spawner.prompt("master"))
     golden(FIXTURES / "prompts" / engine_id / "narrator.txt", table.spawner.prompt("narrator"))
@@ -41,3 +43,9 @@ async def test_a_scripted_turn_renders_and_records_unchanged(
         FIXTURES / "turn" / f"{engine_id}.json",
         [fact.model_dump(mode="json") for fact in table.facts],
     )
+    # Only a party spawns the interjection; an engine with none leaves the answer unused.
+    if table.service.engine.world(table.state).members():
+        golden(
+            FIXTURES / "prompts" / engine_id / "interjection.txt",
+            table.spawner.prompt("narrator", 1),
+        )

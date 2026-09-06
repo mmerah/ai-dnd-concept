@@ -3,7 +3,7 @@ from pydantic import ValidationError
 from support.loner import initialized, with_entity
 
 from aidm.core.entities import EntityId, Refusal
-from aidm.core.play import Exchange, Line, SceneRecord, SpokenLine
+from aidm.core.play import Exchange, Interjection, Line, SceneRecord, SpokenLine
 from aidm.core.views import (
     TAIL_EXCHANGES,
     NarratorView,
@@ -126,6 +126,40 @@ def test_spoken_refuses_a_subject_who_is_not_a_speaker() -> None:
 
     with pytest.raises(Refusal, match="nobody here has id"):
         view.spoken((Line(speaker_id=EntityId("mara"), text="Hello."),))
+
+
+def test_interjection_refusal_accepts_the_members_own_lines_and_refuses_the_rest() -> None:
+    member_id = EntityId("mara")
+    accepted = Interjection(
+        lines=(Line(speaker_id=member_id, text="Careful."),), proposal="I check the door."
+    )
+    stranger = Interjection(lines=(Line(speaker_id=EntityId("kael"), text="Careful."),))
+    bare_proposal = Interjection(lines=(), proposal="I check the door.")
+
+    subject = Subject(id=member_id, name="Mara", brief="A ferrywoman.")
+    view = NarratorView(
+        place="p",
+        title="t",
+        focus="f",
+        situation="s",
+        subjects=(subject,),
+        speakers=(member_id,),
+        party=(member_id,),
+        sheet=(),
+    )
+
+    assert view.interjection_refusal(member_id, accepted) is None
+    assert view.interjection_refusal(member_id, stranger) == (
+        f"only {member_id} speaks here: every `speaker_id` is {member_id!r}"
+    )
+    assert view.interjection_refusal(member_id, bare_proposal) == (
+        "a proposal comes with at least one line of dialogue; keep quiet with no lines and no "
+        "proposal"
+    )
+
+
+def test_a_proposal_is_stripped_so_accept_plays_what_the_composer_would() -> None:
+    assert Interjection(lines=(), proposal="  ").proposal == ""
 
 
 def test_the_player_view_panels_carry_icon_ids_for_who_is_here() -> None:

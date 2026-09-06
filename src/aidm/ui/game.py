@@ -1,6 +1,6 @@
 import logging
 from asyncio import get_running_loop
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from time import monotonic
@@ -12,7 +12,7 @@ from aidm.app.runtime import MARKS, GameService, Runtime
 from aidm.config import Role
 from aidm.core.entities import EntityId
 from aidm.core.facts import DiceEvent, Fact, cards
-from aidm.core.play import Answer
+from aidm.core.play import Answer, Exchange
 from aidm.core.views import Action, PlayerView
 from aidm.ui.widgets import (
     avatar,
@@ -164,7 +164,8 @@ class GamePage:
             ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
         # The live decision widget sits directly below the last exchange, so it needs no pause line.
         last = history[-1] if history and session.state.pending is not None else None
-        player = session.player_view().player
+        view = session.player_view()
+        player = view.player
         for exchange in history:
             if exchange.prompt in MARKS:
                 # A turn nobody played: the story's own marker, never the player's words.
@@ -177,6 +178,23 @@ class GamePage:
                 _bubble(session, line.speaker_id, line.speaker, line.text, sent=False)
             if exchange.decision and exchange is not last:
                 ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
+        if (proposed := standing_proposal(history, view, session.phase)) is not None:
+
+            async def accept() -> None:
+                if self.refuse_play():
+                    return
+                await self._run(lambda: self.session.play(Answer(text=proposed.proposal)))
+
+            with (
+                ui.row()
+                .classes("game-card game-decision w-full items-center no-wrap")
+                .style("gap: 0.4rem")
+            ):
+                ui.icon("record_voice_over").classes("game-card-icon")
+                ui.label(f"{proposed.lines[0].speaker} proposes: {proposed.proposal}").classes(
+                    "text-sm"
+                )
+                ui.button("Accept", on_click=accept).props("no-caps outline dense")
         # The newest clip only: every `ui.audio` registers a route, and a refresh rebuilds them all.
         if clip := session.newest_clip():
             ui.audio(clip, autoplay=clip == self.autoplay_clip)
@@ -451,6 +469,16 @@ def _clock(seconds: float) -> str:
 def can_type(player: PlayerView, phase: Role | None) -> bool:
     prompt = player.prompt
     return phase is None and (prompt is None or prompt.allows_text) and player.over is None
+
+
+def standing_proposal(
+    history: Sequence[Exchange], player: PlayerView, phase: Role | None
+) -> Exchange | None:
+    """The newest exchange's proposal, while the composer is open and no decision waits."""
+    newest = history[-1] if history else None
+    if newest is None or not newest.proposal:
+        return None
+    return newest if can_type(player, phase) and player.prompt is None else None
 
 
 def _placeholder(player: PlayerView, phase: Role | None) -> str:
