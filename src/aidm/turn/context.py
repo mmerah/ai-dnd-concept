@@ -8,6 +8,7 @@ from aidm.core.play import Interjection, Narration, SceneRecord
 from aidm.core.tools import schema_text
 from aidm.core.views import (
     NarratorView,
+    Rows,
     Sections,
     Subject,
     lines_of,
@@ -59,7 +60,11 @@ def render_narrator(
 
 
 def render_interjection(
-    view: NarratorView, member: Subject, scenes: Sequence[SceneRecord], evidence: str
+    view: NarratorView,
+    member: Subject,
+    sheet: Rows,
+    scenes: Sequence[SceneRecord],
+    evidence: str,
 ) -> str:
     """The member reads the narrator's whole picture: the view holds nothing hidden."""
     role = _prompt("interjection").format(name=member.name, brief=member.brief, id=member.id)
@@ -69,7 +74,7 @@ def render_interjection(
             ("YOUR ROLE", role),
             (
                 "YOUR SHEET",
-                "\n".join(f"- {label}: {value}" for label, value in member.rows) or "(none)",
+                "\n".join(f"- {label}: {value}" for label, value in sheet) or "(none)",
             ),
             *_picture(view, scenes, evidence, party=party),
             ("ANSWER WITH", schema_text(Interjection)),

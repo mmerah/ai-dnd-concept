@@ -152,15 +152,13 @@ class Crewmate(Person):
         return [self.fact("credits_spent", trace, card=f"₡{amount} spent — {why}")]
 
     def rows(self) -> Rows:
-        return self.sheet.rows() if self.sheet is not None else ()
-
-    def line(self, *, rows: Rows | None = None, detail: str = "") -> str:
-        sheet = self.sheet
-        if sheet is None:
-            return super().line(rows=rows, detail=detail)
-        base = self.rows() if rows is None else rows
-        gear = ", ".join(item.name for item in sheet.items.values())
-        return super().line(rows=(*base, ("Gear", gear)) if gear else base, detail=detail)
+        if self.sheet is None:
+            return ()
+        gear = ", ".join(
+            item.name + (f" ({detail})" if (detail := item.detail()) else "")
+            for item in self.sheet.items.values()
+        )
+        return (*self.sheet.rows(), *((("Gear", gear),) if gear else ()))
 
     def unwritten(self) -> str:
         parts = [
