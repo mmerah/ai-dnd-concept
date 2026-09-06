@@ -6,17 +6,31 @@
       "$defs": {
         "DropItem": {
           "additionalProperties": false,
-          "description": "Take an item out of the player's backpack for good.",
+          "description": "Take an item out of the actor's backpack for good.",
           "properties": {
             "verb": {
               "const": "drop_item",
               "type": "string"
             },
             "item_id": {
-              "description": "Exact id of an item the player carries.",
+              "description": "Exact id of an item the actor carries.",
               "maxLength": 64,
               "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
+            },
+            "actor_id": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "null for the player; else the exact id of a hired survivor here who acts."
             }
           },
           "required": [
@@ -228,7 +242,7 @@
   },
   {
     "name": "check",
-    "description": "Roll a check for an action with a real cost, on a skill, a carried item, or a stunt.",
+    "description": "Roll a check for an action with a real cost, on a skill, a carried item, or a stunt. `actor_id` when a hired survivor acts instead of the player; `helped_by` names a hired survivor who also makes a skill check on their own die and shares the risk.",
     "parameters": {
       "$defs": {
         "Skill": {
@@ -249,6 +263,20 @@
           "description": "The attempt, in a few words the player may read; it heads the card.",
           "minLength": 1,
           "type": "string"
+        },
+        "actor_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "null for the player; else the exact id of a hired survivor here who acts."
         },
         "skill": {
           "anyOf": [
@@ -283,8 +311,22 @@
         },
         "dangerous": {
           "default": false,
-          "description": "True when a fail would plainly hurt the player.",
+          "description": "True when a fail would plainly hurt the actor.",
           "type": "boolean"
+        },
+        "helped_by": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A hired survivor here who helps: they also make the check on their own die of the same skill and share its risks; the highest die counts. Only on a skill check."
         }
       },
       "required": [
@@ -295,16 +337,31 @@
   },
   {
     "name": "catch_breath",
-    "description": "Let the player catch their breath: skills, loot die and the stunt reset, at the cost of a new complication.",
+    "description": "Let the actor catch their breath: skills, loot die and the stunt reset, at the cost of a new complication. `actor_id` when a hired survivor catches breath instead of the player.",
     "parameters": {
       "additionalProperties": false,
-      "properties": {},
+      "properties": {
+        "actor_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "null for the player; else the exact id of a hired survivor here who acts."
+        }
+      },
       "type": "object"
     }
   },
   {
     "name": "change_stress",
-    "description": "A complication costs the player stress; laying low somewhere secure clears an amount at your discretion. Never a stand-in for `use_med_kit`.",
+    "description": "A complication costs the actor stress; laying low somewhere secure clears an amount at your discretion. Never a stand-in for `use_med_kit`. `actor_id` when a hired survivor is meant instead of the player.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -316,6 +373,20 @@
           "description": "What causes the change, in a few words.",
           "minLength": 1,
           "type": "string"
+        },
+        "actor_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "null for the player; else the exact id of a hired survivor here who acts."
         }
       },
       "required": [
@@ -327,10 +398,25 @@
   },
   {
     "name": "use_med_kit",
-    "description": "Spend the player's med kit to clear 2 stress.",
+    "description": "Spend the actor's med kit to clear 2 stress. `actor_id` when a hired survivor is meant instead of the player.",
     "parameters": {
       "additionalProperties": false,
-      "properties": {},
+      "properties": {
+        "actor_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "null for the player; else the exact id of a hired survivor here who acts."
+        }
+      },
       "type": "object"
     }
   },
@@ -419,6 +505,31 @@
       "required": [
         "question",
         "die"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "hire",
+    "description": "The player hires someone here to work: the worldsmith writes their sheet once this turn ends, and they join the party. Someone already travelling with the player may be hired too; a sheet is for someone hired to work, never for one who merely comes along.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of who here signs on; they must not already carry a sheet.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "terms": {
+          "description": "What they are hired for and on what terms, as agreed, for the worldsmith.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "terms"
       ],
       "type": "object"
     }

@@ -2,7 +2,7 @@ from collections.abc import Sequence
 
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import ScenarioMeta
-from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.world import (
     BreathlessGame,
     BreathlessWorld,
@@ -10,6 +10,7 @@ from aidm.engines.breathless.world import (
     Item,
     Skill,
     Survivor,
+    SurvivorSheet,
 )
 from aidm.engines.scenes.world import SceneRun
 
@@ -31,8 +32,8 @@ SITUATION = (
 
 
 def small_world() -> BreathlessGame:
-    mira = Person(id=MIRA, name="Mira", brief="A neighbor", known=True)
-    dax = Person(id=DAX, name="Dax", brief="A looter", known=False)
+    mira = Survivor(id=MIRA, name="Mira", brief="A neighbor", known=True)
+    dax = Survivor(id=DAX, name="Dax", brief="A looter", known=False)
     world = BreathlessWorld(
         cast={MIRA: mira, DAX: dax},
         player=_player(),
@@ -47,6 +48,14 @@ def small_world() -> BreathlessGame:
         engine=EngineId("breathless"),
         payload=world,
     )
+
+
+def hired(world: BreathlessWorld, member_id: EntityId) -> Survivor:
+    member = world.cast[member_id]
+    member.sheet = SurvivorSheet(skills=dict(SKILLS_RATED), worn=dict(SKILLS_RATED))
+    if member_id not in world.party:
+        world.join_party(member_id)
+    return member
 
 
 def _scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
@@ -65,7 +74,9 @@ def _player() -> Survivor:
         name="Jax",
         brief="A wiry mechanic",
         known=True,
-        skills=SKILLS_RATED,
-        worn=dict(SKILLS_RATED),
-        items={WRENCH: Item(name="Wrench", die=10)},
+        sheet=SurvivorSheet(
+            skills=SKILLS_RATED,
+            worn=dict(SKILLS_RATED),
+            items={WRENCH: Item(name="Wrench", die=10)},
+        ),
     )

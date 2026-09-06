@@ -171,3 +171,37 @@ plan, review findings refuted and why, and what is known and accepted.
 - Known and accepted: the `uv run aidm` smoke reaches the launcher (NiceGUI up), and the
   rewritten character file opens a Buried Keep game; a turn needs a CLI model spawn.
 - Reviews: Fable and Opus (no `codex` on the machine).
+
+## Phase 6 — Breathless survivors
+
+- `src`: 9,135 → 9,350 lines (+215; target about +190). `engines/breathless/`: 576 → 791
+  (cap 800). Tests: 515 → 528.
+- SRD verified at phase start (v2.1): catching breath resets "all your skills", per character, and
+  brings "a new complication for the group"; stress is per character ("if your character reaches
+  4 stress, they become vulnerable"); and a help rule is printed: "If an ally helps you, they also
+  make a check, but share the same risks as you. Take the highest die and interpret the result."
+  PLAN said a rule found there is played as printed, so it is.
+- Off-plan decisions:
+  - `Check.helped_by`: a hired survivor who also makes the check on their own worn die of the same
+    skill; the pool goes through `keep_highest`, both dice wear one step, and the dangerous-fail
+    note names each vulnerable participant. An item or stunt check takes no helper, refused by
+    `Check._one_thing` at the boundary (review finding), since the SRD names no die for one;
+    `docs/BREATHLESS.md` records it as a settled reading.
+  - `sheeted_members()` (PLAN step 1) is not built: nothing in Breathless calls it, since
+    succession is refused (both reviews).
+  - `require_item` sits on `Survivor`, not the sheet, so the refusal names the owner now that
+    three actors carry backpacks (review finding; PLAN put it on the sheet).
+  - `Survivor.line()` adds `backpack: <name>[<id>] d<die>, med kit` for a sheeted member who is
+    not the player, whose backpack stays the BACKPACK section; the ids let the master act on a
+    member's items.
+  - The hire prompt's ENGINE GUIDANCE is `AUTHORING` alone, not `guidance()`'s pack dump: a sheet
+    needs no locations or missions; `HIRING` names the pack's jobs and weapons inline (PLAN step 3).
+  - `rules.md` says "the actor" where it said "the player" on `dangerous`, catching breath and
+    luck tests, matching the tool descriptions (review finding).
+- Refuted findings: none.
+- Known and accepted: `dice`, `unwritten`, `_player_carries_a_sheet`, `require_actor` and
+  `require_hireable` in `breathless/world.py` now mirror `twentyfourxx/world.py` line for line but
+  for the refusal noun; a follow-up may lift them to a sheeted `Person` in `engines/base.py`
+  (off limits this phase). The `uv run aidm` smoke reaches the launcher (NiceGUI up), and the
+  rewritten character file parses; a turn needs a CLI model spawn.
+- Reviews: Fable and Opus (no `codex` on the machine).

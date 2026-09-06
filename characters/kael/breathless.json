@@ -6,28 +6,30 @@
     "name": "Kael",
     "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
     "known": true,
-    "pronouns": "he/him",
-    "job": "Park Ranger",
-    "skills": {
-      "bash": 6,
-      "dash": 4,
-      "sneak": 8,
-      "shoot": 4,
-      "think": 10,
-      "sway": 4
-    },
-    "worn": {
-      "bash": 6,
-      "dash": 4,
-      "sneak": 8,
-      "shoot": 4,
-      "think": 10,
-      "sway": 4
-    },
-    "items": {
-      "fire-axe": {
-        "name": "Fire Axe",
-        "die": 10
+    "sheet": {
+      "pronouns": "he/him",
+      "job": "Park Ranger",
+      "skills": {
+        "bash": 6,
+        "dash": 4,
+        "sneak": 8,
+        "shoot": 4,
+        "think": 10,
+        "sway": 4
+      },
+      "worn": {
+        "bash": 6,
+        "dash": 4,
+        "sneak": 8,
+        "shoot": 4,
+        "think": 10,
+        "sway": 4
+      },
+      "items": {
+        "fire-axe": {
+          "name": "Fire Axe",
+          "die": 10
+        }
       }
     }
   }

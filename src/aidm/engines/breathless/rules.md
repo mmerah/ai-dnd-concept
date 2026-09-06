@@ -14,17 +14,17 @@ instead of a skill or item, once per breath. A med kit, if held, clears stress.
 ## When to call `check`
 
 Call it for any action with a real cost: on a skill, a carried item, or a stunt — never more than
-one. Set `dangerous` whenever a fail would plainly hurt the player.
+one. Set `dangerous` whenever a fail would plainly hurt the actor.
 
 ## Reading the result
 
 1–2 is a fail, 3–4 succeeds but with a complication, 5+ succeeds outright. Whichever die rolled —
 skill or item — wears one step down. An item reduced to d4 is gone: it breaks, gets lost, or fades
-from the fiction.
+from the fiction. With `helped_by`, both dice wear one step.
 
 ## Catching breath
 
-`catch_breath` resets the player's skills, loot die and stunt after a lull. It does not clear
+`catch_breath` resets the actor's skills, loot die and stunt after a lull. It does not clear
 stress. It always brings a new complication; weave it into the story.
 
 ## Stress and the med kit
@@ -39,16 +39,24 @@ engine rolls, and the player answers what to do with any find.
 
 ## Luck tests
 
-`test_luck` answers a question about the world where nobody is acting; `check` is for the player
+`test_luck` answers a question about the world where nobody is acting; `check` is for the actor
 doing something. Pick the die by the odds.
+
+## Hiring
+
+A sheet is for someone hired to work, never for someone who merely comes along. `hire` with the
+terms as agreed ends the turn; the worldsmith writes their sheet, and they join the party. From
+then on, `actor_id` on `check`, `catch_breath`, `change_stress`, `use_med_kit` and the `drop_item`
+arm of `change_world` says when they act instead of the player. `helped_by` on `check` names a
+hired survivor who rolls beside the actor. `loot_check` stays the player's.
 
 ## The party
 
 A party member travels with the player from scene to scene, theirs to command in the fiction and
-yours to voice. When one plainly helps, say so in the story alone — nothing on the sheet carries
-it, and a member rolls no dice of their own. Never volunteer a member's action to soften a scene
-the player is meant to face alone. Call `join_party` when someone here decides to come along,
-`leave_party` when they stop.
+yours to voice. When one plainly helps, a hired member rolls through `helped_by` or as the
+actor; an unhired member helps in the story alone, and nothing on the sheet carries it. Never
+volunteer a member's action to soften a scene the player is meant to face alone. Call
+`join_party` when someone here decides to come along, `leave_party` when they stop.
 
 ## Let the player choose where the story goes
 
