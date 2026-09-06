@@ -1,12 +1,13 @@
 # PLAN — the party, then the crew
 
-Five phases, in order. **Phase 1** gives every engine the party: an NPC who joins the player,
-follows them, and is read as the party by all three roles. **Phase 2** lets a party member speak
-or propose a move after a turn, at the cost of one narrator spawn the player never waits on.
-**Phase 3** gives 24XX a crew that rolls beside the player, hired through the worldsmith.
-**Phase 4** gives 24XX succession and the ship. **Phase 5** gives Tunnel Goons goons who roll
-and level. Self-standing: an implementer needs this file, `CLAUDE.md` and the code. Track G of
-`NEXT-SPECS.md` (2026-09-02) is folded here and cut from that file.
+Six phases, in order. **Phase 1** gives every engine the party: an NPC who joins the player, follows
+them, and is read as the party by all three roles. **Phase 2** lets a party member speak or propose
+a move after a turn, at the cost of one narrator spawn the player never waits on. **Phase 3** gives
+24XX a crew that rolls beside the player, hired through the worldsmith. **Phase 4** gives 24XX
+succession and the ship. **Phase 5** gives Tunnel Goons goons who roll and level. **Phase 6** gives
+Breathless survivors who roll beside the player. Self-standing: an implementer needs this file,
+`CLAUDE.md` and the code. Track G of `NEXT-SPECS.md` (2026-09-02) is folded here and cut from that
+file.
 
 What stays, everywhere: one turn is one player input on one draft behind the commit gate; only
 code changes state or rolls dice; the narrator reads revealed facts only; the three roles, each
@@ -14,10 +15,10 @@ a cold spawn; every engine self-contained; scenarios and characters authored and
 their own. What is not built: an agent per NPC, a second human player, a crew store beside the
 cast, a party cap, a summariser.
 
-Saves have no version field. Phases 1 and 2 add defaulted fields, so saves still load. Phase 3
-nests the 24XX sheet and Phase 5 nests the Tunnel Goons sheet, so those engines' saves and
-character files from before go stale: the launcher skips a stale save with its warning, and the
-shipped character files are rewritten by hand in the same phase. Nothing migrates.
+Saves have no version field. Phases 1 and 2 add defaulted fields, so saves still load. Phase 3 nests
+the 24XX sheet, Phase 5 the Tunnel Goons sheet and Phase 6 the Breathless sheet, so those engines'
+saves and character files from before go stale: the launcher skips a stale save with its warning,
+and the shipped character files are rewritten by hand in the same phase. Nothing migrates.
 
 ## Decisions
 
@@ -32,19 +33,22 @@ shipped character files are rewritten by hand in the same phase. Nothing migrate
    accepts it with one press or ignores it.
 3. **An interjection is one narrator spawn, in the background, gated by chattiness.** Every
    `Person` carries `chattiness` (`quiet`, `normal`, `chatty`), authored by the worldsmith; after
-   an eventful turn each member is rolled against it with the service's `Random`, and the first
-   who passes speaks. Nothing spawns when nobody passes. It lands as an `Exchange` under its own
+   any turn each member is rolled on a d10 against it with the service's `Random` (quiet 1 in
+   10, normal 2, chatty 3), and the first who passes speaks. Nothing spawns when nobody passes:
+   the player stays the main driver. It lands as an `Exchange` under its own
    mark, so every role reads it back through the history that exists, the chat draws it, and
    speech reads it. The model may answer with no lines, which records nothing. On by default;
    `Settings.interjections` turns it off.
 4. **The worldsmith writes a hire.** `hire` is a request, as `next_scene`'s complication is: the
-   master calls it, the turn ends, the worldsmith writes the sheet on a fresh draft, code checks
-   it against the pack and installs it, and the narrator tells the signing-on. Who has dice is
-   authored, never improvised by the master. The same in Tunnel Goons. `Generation` gains
-   `target`, the entity a request concerns.
-5. **The crew closes 24XX's deviations.** Ally rolls (`helped_by`), succession, the android
-   case as a breakable item, and the ship with its seven functions all land; only the priced
-   gear table stays untranscribed, and it is not a crew rule.
+   master calls it, the turn ends, the worldsmith writes the sheet on a fresh draft, code checks it
+   against the pack and installs it, and the narrator tells the signing-on. Who has dice is
+   authored, never improvised by the master. The same in Tunnel Goons and Breathless. `Generation`
+   gains `target`, the entity a request concerns.
+5. **The crew closes the crew deviations, the SRD's way.** 24XX: ally rolls (`helped_by`),
+   succession, the android case as a breakable item, and the ship with its seven functions,
+   which every crew has from the start as the SRD prints; only the priced gear table stays
+   untranscribed, and it is not a crew rule. Breathless: ally rolls close too (Phase 6), each
+   survivor on their own sheet; succession stays 24XX's alone, the one SRD that prints it.
 6. **Succession keeps ids.** The member who takes the lead keeps their own id as
    `world.player.id`; the dead lead goes into the cast under `player`. `PLAYER_ID` then names a
    character file's sheet and nothing in play; `Thing.label` and `Counter.change` say "the
@@ -55,7 +59,7 @@ shipped character files are rewritten by hand in the same phase. Nothing migrate
 8. **The tool cap.** Fifteen engine tools, counted as tools plus `change_world` arms, the two
    party arms not counted; twenty for 24XX and Tunnel Goons, whose SRDs play a crew, as
    `docs/24XX.md` and `docs/TUNNEL-GOONS.md` say. After this plan: 24XX 20 counted, at its
-   cap; Tunnel Goons 10; Loner 10; Breathless 13.
+   cap; Tunnel Goons 10; Loner 10; Breathless 14.
 
 ## How to work
 
@@ -154,7 +158,8 @@ the same, and every role one way to read it.
    a member's action to soften a scene; `join_party` when someone here decides to come along,
    `leave_party` when they stop. Tunnel Goons' `rules.md:15` loses "nobody follows on their own":
    the party comes along without `with_ids`, which stays for an NPC who follows once.
-8. **Docs.** `docs/BREATHLESS.md` deviation 5 (no companions) closes. `docs/TUNNEL-GOONS.md`,
+8. **Docs.** `docs/BREATHLESS.md` deviation 5 (no companions) closes; deviation 2 stays until
+   Phase 6. `docs/TUNNEL-GOONS.md`,
    "What the AI game master adds": the party follows the player; only the player rolls until
    Phase 5. `docs/24XX.md` tool list names the pair.
 
@@ -175,8 +180,8 @@ one test per new behaviour; fixtures as listed.
 
 ## Phase 2 — interjections
 
-Target: about +220 lines. A party member speaks or proposes a move after a turn: one narrator
-spawn, gated by chattiness, dialogue and a proposal only, no state, dropped if the player acts
+Target: about +220 lines. A party member speaks or proposes a move after a turn: one narrator spawn,
+gated by chattiness on a d10, dialogue and a proposal only, no state, dropped if the player acts
 first; the player accepts a proposal with one press.
 
 ### Steps
@@ -208,11 +213,11 @@ first; the player accepts a proposal with one press.
    focus: the member is not the player.
 4. **`app/runtime.py` — the spawn.** `INTERJECTION_MARK = "(the party speaks)"`, added to `MARKS`;
    `INTERJECTION_ODDS: dict[Chattiness, int]`, `{"quiet": 1, "normal": 2, "chatty": 3}`, the faces
-   of a d6 on which a member speaks. `GameService.interject(self) -> None` is started with `_retain`
-   at the end of `_turn`, after `_generate`, when `interjections` is on, `state.pending` and
-   `state.generation` are `None`, `over` is `None`, and the newest exchange carries a told fact. The
-   candidates are `self.engine.world(self.state).members()`, in party order; for each,
-   `self.rng.randint(1, 6) <= INTERJECTION_ODDS[chattiness]` decides, and the first who passes
+   of a d10 on which a member speaks. `GameService.interject(self) -> None` is started with
+   `_retain` at the end of `_turn`, after `_generate`, when `interjections` is on and
+   `state.pending`, `state.generation` and `over` are all `None`; any turn qualifies, a quiet one
+   included. The candidates are `self.engine.world(self.state).members()`, in party order; for each,
+   `self.rng.randint(1, 10) <= INTERJECTION_ODDS[chattiness]` decides, and the first who passes
    speaks; nobody passing, nothing spawns. It spawns the narrator through `ask` with
    `render_interjection(view, member.subject(), scenes)` and `partial(view.interjection_refusal,
    member.id)`. On landing, in one synchronous stretch: if `self.turn is not None`, `self.phase is
@@ -430,7 +435,57 @@ the worldsmith, rolls, is healed by rest, and levels in turn.
 ### Done when
 
 A hired goon rolls, takes a hit, rests, and levels after the player. Full check green; one test
-per new behaviour; Tunnel Goons at most 650 lines. `IDEAS.md` 16 leaves.
+per new behaviour; Tunnel Goons at most 650 lines.
+
+---
+
+## Phase 6 — Breathless survivors
+
+Target: about +230 lines; `engines/breathless/` at most 820 lines. A hired survivor, written by
+the worldsmith, rolls on their own sheet, wears their own dice down, catches their own breath.
+Verify at phase start against the SRD that catching breath and stress are per character and
+that no help rule is printed; a rule found there is played as printed.
+
+### Steps
+
+1. **`breathless/world.py` — the sheet nests.** `SurvivorSheet(Mutable)`: `pronouns`, `job`,
+   `skills`, `worn`, `items`, `med_kit`, `loot`, `stress`, `stunted` (what `Survivor` carries
+   today) with `_rated_spread`, `vulnerable`, `rows()`, `require_item`, `loot_options` and
+   `take_loot`. `Survivor(Person)` replaces the cast's `Person` and the player alike: `sheet:
+   SurvivorSheet | None = None`, `dice() -> SurvivorSheet` (refuses "<name> carries no dice"),
+   `drop_item` reading `self.dice()`, `rows()` the sheet's or `()`, `line()` adding `backpack:
+   ...` for a sheeted member, `unwritten()` returning "a sheet" when one is set.
+   `BreathlessWorld(SceneWorld[Survivor, Survivor])`: a validator "the player carries a sheet";
+   `sheeted_members()`, `require_actor(actor_id: EntityId | None) -> Survivor` and the `hire`
+   check in `validate`, as 24XX's. `BreathlessScenario = Scenario[SceneCanon[Survivor]]`,
+   `BreathlessCharacter = Character[Survivor]`; the engine's `cast = Survivor`.
+   `characters/kael/breathless.json` is rewritten; the Breathless scenarios are untouched.
+2. **`breathless/tools.py`.** `Hire` as 24XX's. `actor_id: CheckedEntityId | None = None` on
+   `Check`, `ChangeStress`, `DropItem`; `Actor(Frozen)` with the same field replaces `NoArgs` on
+   `catch_breath` and `use_med_kit`. `loot_check` stays the player's: the decision is theirs.
+3. **`breathless/worldsmith.py` — the sheet draft.** `SheetDraft(Frozen)`: `pronouns`, `job`,
+   `skill_d10`, `skill_d8`, `skill_d6` (three distinct of the six), `item: str`; `HIRING` as
+   24XX's; `hire_guidance(pack)`: the jobs, the six skills with their detail, the weapons;
+   `sheet_refusal(draft, pack)`: the three skills distinct and among the six.
+4. **`breathless/engine.py`.** `hire` tool and the `HIRE` branch of `advance` as 24XX's: the
+   sheet is `SurvivorSheet(skills=...)` with the three rated dice and three d4, `worn` a copy,
+   one `Item` at `STARTING_ITEM`. `check`: the actor's worn die, item or stunt, wearing the
+   actor's down; the vulnerable note names the actor. `catch_breath` resets the actor's sheet,
+   the complication note unchanged. `change_stress`, `use_med_kit`, `drop_item` act on
+   `require_actor`. `sheet_sections` BACKPACK lists the player's; THE PARTY prints a member's
+   `line()`. `rules.md`: `## Hiring`, `actor_id` on the checks; `AUTHORING` as 24XX's.
+   `docs/BREATHLESS.md`: deviation 2 closes; the tool count reads fourteen counted plus the pair.
+
+### Fixtures
+
+`schemas/breathless/master_tools.json`, `prompts/breathless/master.txt`. The solo `check` line
+keeps its wording, so `turn/breathless.json` does not move. Nothing else.
+
+### Done when
+
+Jax hires Mira, Mira rolls her own Sneak die and wears it down, catches her own breath and
+brings her own complication. Full check green; one test per new behaviour; Breathless at most
+820 lines. `IDEAS.md` 16 leaves.
 
 ---
 
@@ -446,6 +501,7 @@ per new behaviour; Tunnel Goons at most 650 lines. `IDEAS.md` 16 leaves.
   worldsmith writes who has dice, and a worldsmith spawn at hiring is rare.
 - **A round-based turn for several players**: not this plan.
 - **The priced gear table**: not a crew rule; stays in `docs/24XX.md` deviation 4.
+- **Succession in Breathless**: its SRD prints none; a survivor's death ends the game as today.
 - **A `Crew` store, `PARTY_MAX`, a `Regular` class, `Offer.follows`**: refused before, stand.
 - **Rewriting ids on succession**: decision 6.
 
