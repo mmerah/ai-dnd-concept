@@ -27,6 +27,7 @@ MAP = EntityId("vault-map")
 def _seal(**args: object) -> Question:
     return Question.model_validate(
         {
+            "what": "Force the seal",
             "actor_id": PLAYER_ID,
             "question": "Does he get the seal open before the whispering finds him?",
         }
@@ -36,7 +37,10 @@ def _seal(**args: object) -> Question:
 
 def _duel() -> Question:
     return Question(
-        actor_id=PLAYER_ID, question="Does he force her back from the door?", opponent_id=FOE
+        what="Force her back from the door",
+        actor_id=PLAYER_ID,
+        question="Does he force her back from the door?",
+        opponent_id=FOE,
     )
 
 
@@ -91,7 +95,9 @@ def test_the_question_is_the_masters_memory_and_never_reaches_the_narrator() -> 
     assert question.question in asked.trace
     assert answered.told
     assert question.question not in answered.trace
-    assert "the oracle for the player Kael[player]" in answered.trace
+    # The narrator reads the try and its footing, in the same words the card shows.
+    assert answered.trace.startswith(f"{question.what} — oracle, neutral: ")
+    assert answered.card.startswith(answered.trace)
 
 
 def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> None:
@@ -107,6 +113,7 @@ def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> Non
 def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
     _, state = initialized()
     action = Question(
+        what="Force the seal",
         actor_id=PLAYER_ID,
         question="Does he force the seal before the whispering finds him?",
         position="disadvantage",
@@ -116,7 +123,7 @@ def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
     facts = ENGINE.resolve_question(state.draft(), action, Random(1))
 
     (oracle,) = cards(facts)
-    assert oracle.card.startswith("Oracle — Disadvantage (Never Walks Away) → ")
+    assert oracle.card.startswith("Force the seal — oracle, disadvantage (Never Walks Away): ")
     assert oracle.dice[1].faces == (6, 6)
 
 
@@ -126,7 +133,7 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     draft.payload.twist.current = TIES_PER_TWIST - 1
     primed = draft.commit()
 
-    action = Question(actor_id=PLAYER_ID, question="Does he slip past unheard?")
+    action = Question(what="Slip past", actor_id=PLAYER_ID, question="Does he slip past unheard?")
     draft = primed.draft()
     # Seed 0 rolls chance 4 against risk 4: the tie that ticks the twist over.
     facts = ENGINE.resolve_question(draft, action, Random(0))

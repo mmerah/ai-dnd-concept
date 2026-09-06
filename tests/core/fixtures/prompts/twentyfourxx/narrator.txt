@@ -37,7 +37,7 @@ THE PLAYER'S SHEET:
 
 WHAT HAPPENED:
 - learned of Warden Six[warden-six]
-- Slip along the dark gantry — Stealth d12 [8] -> success
+- Slip along the dark gantry — Stealth d12 → success
 - the player Kael[player] spends ₡1 — Harl's docking logs
 
 PLAYER ACTION:

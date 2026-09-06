@@ -216,10 +216,10 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
             else:
                 item.die = worn
 
-        trace = f"{args.what} — {label} d{die} [{face}] -> {result}"
-        card = f"{args.what} — {sentence(label)} d{die} → {result}"
+        # One line for the card and the trace alike; the dice ride the event, never the words.
+        line = f"{args.what} — {sentence(label)} d{die} → {result}"
         event = DiceEvent(label=f"d{die}", faces=(die,), rolled=rolled)
-        facts = [dice_fact, player.fact("checked", trace, card=card, dice=(event,))]
+        facts = [dice_fact, player.fact("checked", line, card=line, dice=(event,))]
         if item is not None and worn == 4:
             gone = f"{item.name} is gone"
             facts.append(player.fact("item_gone", gone, card=gone))
@@ -287,10 +287,9 @@ class BreathlessEngine(SceneEngine[Person, Survivor, BreathlessGame, Pack]):
             found = next(die for die in LADDER if face <= die)
 
         result = f"found {item} (d{found})" if found is not None else "nothing"
-        trace = f"scavenging — loot d{before} [{face}] -> {found or 'nothing'}"
-        card = f"Scavenge — d{before} → {result}"
+        line = f"Scavenge — d{before} → {result}"
         event = DiceEvent(label=f"d{before}", faces=(before,), rolled=rolled)
-        fact = player.fact("loot_checked", trace, card=card, dice=(event,))
+        fact = player.fact("loot_checked", line, card=line, dice=(event,))
         facts = [dice_fact, fact]
 
         if found is not None:

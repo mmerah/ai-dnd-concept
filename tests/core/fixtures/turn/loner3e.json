@@ -29,9 +29,9 @@
   },
   {
     "kind": "question_answered",
-    "trace": "the oracle for the player Kael[player]: yes-and",
+    "trace": "Listen at the vault door — oracle, advantage (Quiet Hands): yes, and better than hoped",
     "told": true,
-    "card": "Oracle — Advantage (Quiet Hands) → yes-and",
+    "card": "Listen at the vault door — oracle, advantage (Quiet Hands): yes, and better than hoped",
     "dice": [
       {
         "label": "Chance",

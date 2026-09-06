@@ -11,6 +11,7 @@ SCRIPT: tuple[Call, ...] = (
     changed("reveal", entity_id="vault-map"),
     tool_call(
         "roll_question",
+        what="Listen at the vault door",
         actor_id="player",
         question="Does he hear what waits past the vault door without being heard?",
         position="advantage",

@@ -39,7 +39,7 @@ THE PLAYER'S SHEET:
 WHAT HAPPENED:
 - learned of The Flooded Cellar[cellar]
 - the player arrives at The Flooded Cellar[cellar]
-- Wade through the flooded cellar — skulker 11 vs DS 10 -> success
+- Wade through the flooded cellar — Skulker, 11 vs DS 10 → success
 - learned of Cellar Lurker[lurker]
 
 PLAYER ACTION:

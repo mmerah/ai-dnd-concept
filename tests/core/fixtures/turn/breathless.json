@@ -15,7 +15,7 @@
   },
   {
     "kind": "checked",
-    "trace": "Listen for what moves on the flats — think d10 [8] -> success",
+    "trace": "Listen for what moves on the flats — Think d10 → success",
     "told": true,
     "card": "Listen for what moves on the flats — Think d10 → success",
     "dice": [

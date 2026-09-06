@@ -4,6 +4,7 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, Frozen
 from aidm.core.play import PendingOption
+from aidm.core.tools import Attempt
 from aidm.engines.rooms.tools import SharedChange
 from aidm.engines.tunnelgoons.world import ABILITIES, Ability, Boost
 
@@ -26,8 +27,7 @@ class ChangeWorld(Frozen):
     )
 
 
-class ActionRoll(Frozen):
-    what: str = Field(min_length=1, description="The action, in a few words; it heads the card.")
+class ActionRoll(Attempt):
     ability: Ability = Field(description="Which ability the action calls on.")
     items: tuple[CheckedEntityId, ...] = Field(
         default=(), description="Exact ids of items the player carries that plainly help; +1 each."

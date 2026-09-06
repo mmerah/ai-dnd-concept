@@ -5,6 +5,7 @@ from pydantic import Field
 
 from aidm.core.entities import CheckedEntityId, Frozen, Slug
 from aidm.core.play import DecisionOption
+from aidm.core.tools import Attempt
 from aidm.engines.loner3e.world import TagKind
 from aidm.engines.scenes.tools import Enter, JoinParty, Kill, Leave, LeaveParty, Reveal
 
@@ -56,13 +57,14 @@ class ChangeWorld(Frozen):
     )
 
 
-class Question(Frozen):
+class Question(Attempt):
     actor_id: CheckedEntityId = Field(
         description="Exact id of the player or actor here who takes the action."
     )
     question: str = Field(
         min_length=1,
-        description="Closed question where yes means the actor gets what they want.",
+        description="Closed question where yes means the actor gets what they want. For you "
+        "alone: it may name what the player has not found.",
     )
     position: Position = Field(
         default="neutral",
@@ -70,7 +72,8 @@ class Question(Frozen):
     )
     edge: str = Field(
         default="",
-        description="Tag or circumstance that sets the position. Empty for neutral.",
+        description="Tag or circumstance that sets the position, read by the player. Empty "
+        "for neutral.",
     )
     opponent_id: CheckedEntityId | None = Field(
         default=None,
@@ -81,6 +84,21 @@ class Question(Frozen):
 class Outcome(Frozen):
     name: Slug
     harm: int
+
+    @property
+    def told(self) -> str:
+        """The answer in story words: the narrator never reads the rules."""
+        return TOLD[self.name]
+
+
+TOLD: dict[str, str] = {
+    "yes-and": "yes, and better than hoped",
+    "yes": "yes",
+    "yes-but": "yes, but at a cost",
+    "no-but": "no, but not badly",
+    "no": "no",
+    "no-and": "no, and worse",
+}
 
 
 class RestoreLuck(Frozen):

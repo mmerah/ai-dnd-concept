@@ -19,7 +19,9 @@ from aidm.turn.run import REQUEST_WAIT, Turn
 MAP = EntityId("vault-map")
 FOUND = changed("reveal", entity_id="vault-map")
 TAKEN = changed("change_tags", entity_id=PLAYER_ID, kind="gear", gained=["the vault map"])
-ASKED = tool_call("roll_question", actor_id=PLAYER_ID, question="Does the door give?")
+ASKED = tool_call(
+    "roll_question", what="Try the door", actor_id=PLAYER_ID, question="Does the door give?"
+)
 
 
 def _scene(**changes: object) -> str:
@@ -101,6 +103,7 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record(tmp_path: Path
         "I plead with the door.",
         tool_call(
             "roll_question",
+            what="Try the door",
             actor_id="player",
             question="Does the door give before the whispering finds him?",
         ),
@@ -113,7 +116,7 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record(tmp_path: Path
     rolled = [fact.trace for fact in fired if fact.kind == "dice_rolled"]
     for die, trace in zip(answer.dice, rolled, strict=True):
         assert trace.endswith(f"[{', '.join(str(v) for v in die.rolled)}]")
-    assert answer.card.endswith(f"→ {outcome_for(max(chance.rolled), max(risk.rolled)).name}")
+    assert answer.card.endswith(f": {outcome_for(max(chance.rolled), max(risk.rolled)).told}")
     table.service.engine.validate(state)
     assert any(fact.kind == "dice_rolled" and not fact.told for fact in fired)
 

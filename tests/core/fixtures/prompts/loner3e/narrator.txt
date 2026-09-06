@@ -46,7 +46,7 @@ THE PLAYER'S SHEET:
 
 WHAT HAPPENED:
 - learned of the vault map[vault-map]
-- the oracle for the player Kael[player]: yes-and
+- Listen at the vault door — oracle, advantage (Quiet Hands): yes, and better than hoped
 - the player Kael[player] condition +Listening
 
 PLAYER ACTION:

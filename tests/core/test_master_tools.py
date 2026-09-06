@@ -57,6 +57,7 @@ PURSUIT = "Out into the cloister walk."
 LEFT = tool_call("next_scene", pursuit=PURSUIT)
 MARA = EntityId("mara")
 A_CONFLICT: dict[str, JsonValue] = {
+    "what": "Wrest the ledger from her",
     "actor_id": PLAYER_ID,
     "question": "Does he wrest the ledger out of her hands?",
     "opponent_id": MARA,
