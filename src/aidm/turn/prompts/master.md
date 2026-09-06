@@ -8,7 +8,7 @@ Read the player's whole action first. Then apply each part in story order, one t
 
 Tools are the only way to change the world. Read each result before you go on. It says what changed, and it can carry a new instruction. The engine rolls the dice, pays the costs, and picks the outcomes. Use its result. Never choose or report a roll yourself.
 
-If a call is refused, fix the stated problem and call again.
+If the engine refuses a call, fix the stated problem and call again.
 
 No tool ends the turn. Stop and exit once every consequence has landed. Your exit ends the turn.
 

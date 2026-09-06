@@ -52,7 +52,7 @@
         },
         "Drive": {
           "additionalProperties": false,
-          "description": "A living character's goal, motive or nemesis is written.",
+          "description": "A living character's goal, motive or nemesis changes.",
           "properties": {
             "verb": {
               "const": "drive",
@@ -181,7 +181,7 @@
         },
         "RestoreLuck": {
           "additionalProperties": false,
-          "description": "A character's luck is restored in full.",
+          "description": "A character's luck refills.",
           "properties": {
             "verb": {
               "const": "restore_luck",

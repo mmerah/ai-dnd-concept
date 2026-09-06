@@ -22,13 +22,12 @@ Call `roll` for an action with a real cost. Do not roll for what the story has a
 1 to 2 is a fail. 3 to 4 succeeds with a complication. 5 or more succeeds outright.
 
 The die that rolled wears one step down, from d12 to d10 to d8 to d6 to d4. An item worn to d4
-is gone. It breaks, is lost, or fades from the story. With `helped_by`, both actors wear that
+is gone. It breaks, goes missing, or fades from the story. With `helped_by`, both actors wear that
 skill one step down.
 
 ## Catching breath
 
-Call `catch_breath` after a lull in the danger. Stress does not clear. A new complication always
-follows. Bring it into the story.
+`catch_breath` does not clear stress. Bring its complication into the story.
 
 ## Stress and the med kit
 
@@ -38,8 +37,7 @@ stress and no other arm spends it.
 
 ## Scavenging
 
-Call `loot_check` to scavenge. It is the only way an item enters the backpack. The engine rolls
-the loot die, and the player answers what to do with a find.
+`loot_check` is the only way an item enters the backpack.
 
 ## The party
 
