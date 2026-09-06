@@ -67,6 +67,10 @@ def render_interjection(
     return sections(
         (
             ("YOUR ROLE", role),
+            (
+                "YOUR SHEET",
+                "\n".join(f"- {label}: {value}" for label, value in member.rows) or "(none)",
+            ),
             *_picture(view, scenes, evidence, party=party),
             ("ANSWER WITH", schema_text(Interjection)),
         )

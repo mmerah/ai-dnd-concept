@@ -1,3 +1,4 @@
+from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
 from random import Random
@@ -5,11 +6,11 @@ from random import Random
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, option_of, picked
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, roll
-from aidm.core.model import AnyCharacter
+from aidm.core.model import AnyCharacter, Generation, WorldsmithAnswer
 from aidm.core.play import DecisionOption
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Panel, PanelRow, Rows, Sections, lines_of
-from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, Person, keep_highest, sentence
+from aidm.engines.base import CHANGE_WORLD, HIRE, PLAYER_ID, keep_highest, sentence
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
 from aidm.engines.twentyfourxx.tools import (
@@ -20,6 +21,7 @@ from aidm.engines.twentyfourxx.tools import (
     FindJob,
     FinishJob,
     GainItem,
+    Hire,
     RepairItem,
     Roll,
     Spend,
@@ -33,9 +35,10 @@ from aidm.engines.twentyfourxx.world import (
     HELP_DIE,
     HINDERED_DIE,
     MAIMED,
+    Crewmate,
     Item,
     Kit,
-    Operator,
+    Sheet,
     SkillDie,
     TwentyfourxxCharacter,
     TwentyfourxxGame,
@@ -43,10 +46,18 @@ from aidm.engines.twentyfourxx.world import (
     TwentyfourxxWorld,
     raised,
 )
-from aidm.engines.twentyfourxx.worldsmith import AUTHORING, Pack
+from aidm.engines.twentyfourxx.worldsmith import (
+    AUTHORING,
+    HIRING,
+    SIGNED_ON,
+    Pack,
+    SheetDraft,
+    hire_guidance,
+    sheet_refusal,
+)
 
 
-class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
+class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]):
     id = EngineId("twentyfourxx")
     title = "24XX"
     art_style = (
@@ -57,9 +68,10 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
     game = TwentyfourxxGame
     scenario = TwentyfourxxScenario
     character = TwentyfourxxCharacter
-    cast = Person
+    cast = Crewmate
     pack = Pack
     world_type = TwentyfourxxWorld
+    operations = (*SceneEngine.operations, HIRE)
 
     def master_tools(self) -> tuple[MasterTool[TwentyfourxxGame], ...]:
         return (
@@ -68,9 +80,9 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
             master_tool(
                 "attempt",
                 "Roll for something whose outcome matters. Name `helped` with why circumstances "
-                "help — an ally who pitches in counts, named in it: the SRD gives them their own "
-                "die, but here it is the d6 of circumstance, because an NPC carries no dice. Name "
-                "`hindered` with why the player is hindered, when they are.",
+                "help, when they do. Name `hindered` with why the actor is hindered, when they "
+                "are. `helped_by` names a hired crew member who rolls their own die beside the "
+                "actor's; `actor_id` when a hired member acts instead of the player.",
                 Roll,
                 self.attempt,
             ),
@@ -103,10 +115,19 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
             ),
             master_tool(
                 "finish_job",
-                "The job is done, by the story and the player's own words: raise the skill it "
-                "called on and pay out its credits; the job then closes.",
+                "The job is done, by the story and the crew's own words: raise the skill it "
+                "called on for the player and every living hired member, and pay out its "
+                "credits; the job then closes.",
                 FinishJob,
                 self.finish_job,
+            ),
+            master_tool(
+                "hire",
+                "The player hires someone here to work: the worldsmith writes their sheet once "
+                "this turn ends, and they join the party. Refused for the party's unsheeted "
+                "followers only when the story has not hired them.",
+                Hire,
+                self.hire,
             ),
         )
 
@@ -179,26 +200,34 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
                 raise Refusal(f"{wanted!r} is not one of the weapons on offer")
 
         traits = tuple(picked(picks, f"trait-{number}") for number in range(1, origin.invents + 1))
+        body = None
         if origin.choice:
             body = chosen_option(origin.choice, picked(picks, "body"))
             traits = (*traits, body.label)
 
-        kits = pack.starting_kit + specialty.kit + ((weapon,) if weapon is not None else ())
-        sheet = Operator(
+        kits = (
+            pack.starting_kit
+            + specialty.kit
+            + ((weapon,) if weapon is not None else ())
+            + ((body.kit,) if body is not None and body.kit is not None else ())
+        )
+        player = Crewmate(
             id=PLAYER_ID,
             name=name,
             brief=brief,
             known=True,
-            specialty=specialty.label,
-            origin=origin.label,
-            traits=traits,
-            skills=skills,
-            items=starting_items(kits),
+            sheet=Sheet(
+                specialty=specialty.label,
+                origin=origin.label,
+                traits=traits,
+                skills=skills,
+                items=starting_items(kits),
+            ),
         )
-        return TwentyfourxxCharacter(id=slug(name, ()), engine=self.id, payload=sheet)
+        return TwentyfourxxCharacter(id=slug(name, ()), engine=self.id, payload=player)
 
     def preview_character(self, character: AnyCharacter) -> Rows:
-        sheet = self.player_of(character)
+        sheet = self.player_of(character).dice()
         return (*sheet.rows(), ("Gear", ", ".join(item.name for item in sheet.items.values())))
 
     def guidance(self, picks: Sequence[Slug]) -> str:
@@ -208,7 +237,7 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
     def sheet_sections(self, state: TwentyfourxxGame) -> Sections:
         lines = [
             f"- {item.name}[{key}]" + (f" — {detail}" if (detail := item.detail()) else "")
-            for key, item in state.payload.player.items.items()
+            for key, item in state.payload.player.dice().items.items()
         ]
         job = state.payload.job
         return (("GEAR", lines_of(lines)), *((("THE JOB", job),) if job else ()))
@@ -216,15 +245,15 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
     def panels(self, state: TwentyfourxxGame) -> tuple[Panel, ...]:
         rows = tuple(
             PanelRow(label=item.name, detail=item.detail())
-            for item in state.payload.player.items.values()
+            for item in state.payload.player.dice().items.values()
         )
         job = state.payload.job
         job_panel = Panel(title="Job", rows=(PanelRow(label=job, detail=""),))
         return (Panel(title="Gear", rows=rows), *((job_panel,) if job else ()))
 
-    def resolve_skill(self, player: Operator, wanted: str) -> str:
+    def resolve_skill(self, sheet: Sheet, wanted: str) -> str:
         folded = wanted.casefold()
-        for key in player.skills:
+        for key in sheet.skills:
             if key.casefold() == folded:
                 return key
         labels: list[str] = []
@@ -234,71 +263,150 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
                     return option.label
                 if option.label not in labels:
                     labels.append(option.label)
-        sheet = ", ".join(sorted(player.skills)) or "none"
+        known = ", ".join(sorted(sheet.skills)) or "none"
         raise Refusal(
-            f"{wanted!r} is not a skill on the sheet ({sheet}) or in the packs "
+            f"{wanted!r} is not a skill on the sheet ({known}) or in the packs "
             f"({', '.join(labels)})"
         )
 
     def apply_change(self, world: TwentyfourxxWorld, change: WorldChange) -> list[Fact]:
-        player = world.player
         match change:
             case ChangeHindrances():
-                return player.change_hindrances(change.gained, change.lost)
+                return world.require_actor(change.actor_id).change_hindrances(
+                    change.gained, change.lost
+                )
             case GainItem():
-                return player.gain_item(
+                return world.require_actor(change.actor_id).gain_item(
                     change.name, bulky=change.bulky, breaks=change.breaks, cost=change.cost
                 )
             case DropItem():
-                return player.drop_item(change.item_id)
+                return world.require_actor(change.actor_id).drop_item(change.item_id)
             case RepairItem():
-                return player.repair_item(change.item_id, change.cost)
+                return world.require_actor(change.actor_id).repair_item(change.item_id, change.cost)
             case Spend():
-                return player.spend(change.amount, change.why)
+                return world.require_actor(change.actor_id).spend(change.amount, change.why)
             case _:
                 return self.shared_change(world, change)
 
     def change_world(self, draft: TwentyfourxxGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
         return self.apply_change(draft.payload, args.change)
 
+    def hire(self, draft: TwentyfourxxGame, args: Hire, _rng: Random) -> list[Fact]:
+        world = draft.payload
+        member = world.require_hireable(args.entity_id)
+        draft.generation = Generation(operation=HIRE, brief=args.terms, target=member.id)
+        return [
+            Fact(
+                kind="hire_asked",
+                trace=f"the worldsmith writes {member.name}'s sheet once this turn ends: "
+                f"{args.terms}. Nothing more lands this turn; stop and exit",
+            )
+        ]
+
+    def validate(self, state: TwentyfourxxGame) -> None:
+        super().validate(state)
+        generation = state.generation
+        if generation is None or generation.operation != HIRE:
+            return
+        target = generation.target
+        if target is None:
+            raise Refusal(f"a hire needs someone here without a sheet: {target!r}")
+        state.payload.require_hireable(target)
+
+    async def advance(
+        self, draft: TwentyfourxxGame, request: Generation, worldsmith: WorldsmithAnswer
+    ) -> tuple[tuple[Fact, ...], str | None]:
+        if request.operation != HIRE:
+            return await super().advance(draft, request, worldsmith)
+        world = draft.payload
+        target = request.target
+        if target is None:
+            raise Refusal("a hire names who signs on")
+        member = world.require_hireable(target)
+        pack = self.packs[draft.packs[0]]
+        prompt = self.render_request(
+            draft,
+            guidance=hire_guidance(pack),
+            intent=HIRING.format(name=member.name, brief=member.brief, terms=request.brief),
+            answer=SheetDraft,
+        )
+        answer = await worldsmith(prompt, SheetDraft, lambda sheet: sheet_refusal(sheet, pack))
+        specialty = answer.specialty
+        member.sheet = Sheet(
+            specialty=specialty,
+            skills=dict(answer.skills),
+            credits=0,
+            items=starting_items(tuple(Kit(name=name) for name in answer.items)),
+            hindrances=list(answer.hindrances),
+        )
+        facts = world.join_party(member.id) if member.id not in world.party else []
+        facts.append(
+            member.fact(
+                "hired",
+                f"{member.label} signs on — {specialty}",
+                card=f"{member.name} signs on — {specialty}",
+            )
+        )
+        return tuple(facts), SIGNED_ON.format(name=member.name)
+
     def attempt(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
         world = draft.payload
-        player = world.player
+        actor = world.require_actor(args.actor_id)
+        sheet = actor.dice()
+        helper = None
+        if args.helped_by is not None:
+            helper = world.require_actor(args.helped_by)
+            if helper is actor:
+                raise Refusal(f"{actor.name} cannot help their own roll")
 
         if args.skill:
-            label = self.resolve_skill(player, args.skill)
-            die = player.die(label)
+            label = self.resolve_skill(sheet, args.skill)
+            die = sheet.die(label)
         else:
             label = "unskilled"
             die = DEFAULT_DIE
         if args.hindered:
             die = HINDERED_DIE
 
-        reason = f"{args.what} — {label}"
-        die_label = f"d{die}+d{HELP_DIE}" if args.helped else f"d{die}"
+        pool = [die]
         if args.helped:
-            face, event, dice_fact = keep_highest((die, HELP_DIE), reason, rng, label=die_label)
-        else:
+            pool.append(HELP_DIE)
+        helped_by_clause = ""
+        if helper is not None:
+            helper_die = helper.dice().die(label)
+            pool.append(helper_die)
+            helped_by_clause = f", helped by {helper.name} (d{helper_die})"
+
+        reason = f"{args.what} — {label}"
+        if len(pool) == 1:
             rolled, dice_fact = roll((die,), reason, rng)
             face = rolled[0]
-            event = DiceEvent(label=die_label, faces=(die,), rolled=rolled)
+            event = DiceEvent(label=f"d{die}", faces=(die,), rolled=rolled)
+        else:
+            die_label = "+".join(f"d{face}" for face in pool)
+            face, event, dice_fact = keep_highest(pool, reason, rng, label=die_label)
 
         result = outcome(face)
         line = (
             f"{args.what} — {sentence(label)} d{die}"
-            + (f", helped ({args.helped})" if args.helped else "")
-            + (f", hindered ({args.hindered})" if args.hindered else "")
-            + f" → {result}"
+            if actor is world.player
+            else f"{args.what} — {actor.name}: {sentence(label)} d{die}"
         )
+        if args.helped:
+            line += f", helped ({args.helped})"
+        line += helped_by_clause
+        if args.hindered:
+            line += f", hindered ({args.hindered})"
+        line += f" → {result}"
 
-        facts: list[Fact] = [dice_fact, player.fact("attempted", line, card=line, dice=(event,))]
+        facts: list[Fact] = [dice_fact, actor.fact("attempted", line, card=line, dice=(event,))]
 
         if args.risking_death and result == "disaster":
-            facts.extend(world.kill(player.id))
-        elif args.risking_death and result == "setback" and MAIMED not in player.hindrances:
-            player.hindrances.append(MAIMED)
-            trace = f"{player.label} is maimed"
-            facts.append(player.fact("hindrances_changed", trace, card="Maimed"))
+            facts.extend(world.kill(actor.id))
+        elif args.risking_death and result == "setback" and MAIMED not in sheet.hindrances:
+            sheet.hindrances.append(MAIMED)
+            trace = f"{actor.label} is maimed"
+            facts.append(actor.fact("hindrances_changed", trace, card="Maimed"))
 
         return facts
 
@@ -342,24 +450,59 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
         world = draft.payload
         if not world.job:
             raise Refusal("no job is open to finish")
-        player = world.player
-        label = self.resolve_skill(player, args.skill)
-        new_die = raised(player.skills.get(label))
-        player.skills[label] = new_die
-        trace = f"{player.label} — {label} rises to d{new_die}"
-        raise_fact = player.fact("skill_raised", trace, card=f"Job done: {label} d{new_die}")
+        expected = [None, *(member.id for member in world.sheeted_members())]
+        got = [raise_.actor_id for raise_ in args.raises]
+        expected_count, got_count = Counter(expected), Counter(got)
+        if got_count != expected_count:
 
-        rolled, dice_fact = roll((6,), "credits earned", rng)
-        gained = rolled[0]
-        player.credits += gained
-        credit_fact = player.fact(
-            "credits_gained",
-            f"{player.label} earns ₡{gained} -> ₡{player.credits}",
-            card=f"+₡{gained} -> ₡{player.credits}",
-            dice=(DiceEvent(label="d6", faces=(6,), rolled=rolled),),
-        )
+            def named(actor_id: EntityId | None) -> str:
+                return "the player" if actor_id is None else actor_id
+
+            missing = sorted(named(actor_id) for actor_id in set(expected) - set(got))
+            extra = sorted(named(actor_id) for actor_id in set(got) - set(expected))
+            repeated = sorted(
+                named(actor_id)
+                for actor_id, count in got_count.items()
+                if count > 1 and actor_id in expected_count
+            )
+            parts = [
+                part
+                for part in (
+                    f"missing {', '.join(missing)}" if missing else "",
+                    f"extra {', '.join(extra)}" if extra else "",
+                    f"repeated {', '.join(repeated)}" if repeated else "",
+                )
+                if part
+            ]
+            raise Refusal(
+                "finish_job names the player and every living hired member once each: "
+                + "; ".join(parts)
+            )
+
+        facts: list[Fact] = []
+        for raise_ in args.raises:
+            actor = world.require_actor(raise_.actor_id)
+            sheet = actor.dice()
+            label = self.resolve_skill(sheet, raise_.skill)
+            new_die = raised(sheet.skills.get(label))
+            sheet.skills[label] = new_die
+            trace = f"{actor.label} — {label} rises to d{new_die}"
+            facts.append(actor.fact("skill_raised", trace, card=f"Job done: {label} d{new_die}"))
+
+            rolled, dice_fact = roll((6,), f"credits earned by {actor.name}", rng)
+            gained = rolled[0]
+            sheet.credits += gained
+            facts.append(dice_fact)
+            facts.append(
+                actor.fact(
+                    "credits_gained",
+                    f"{actor.label} earns ₡{gained} -> ₡{sheet.credits}",
+                    card=f"+₡{gained} -> ₡{sheet.credits}",
+                    dice=(DiceEvent(label="d6", faces=(6,), rolled=rolled),),
+                )
+            )
         world.job = ""
-        return [raise_fact, dice_fact, credit_fact]
+        return facts
 
     def test_luck(self, _draft: TwentyfourxxGame, args: TestLuck, rng: Random) -> list[Fact]:
         rolled, dice_fact = roll((6,), args.question, rng)
@@ -374,17 +517,19 @@ class TwentyfourxxEngine(SceneEngine[Person, Operator, TwentyfourxxGame, Pack]):
         return [dice_fact, Fact(kind="luck_tested", trace=trace)]
 
     def defend(self, draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
-        player = draft.payload.player
-        item = player.require_item(args.item_id)
+        world = draft.payload
+        actor = world.require_actor(args.actor_id)
+        sheet = actor.dice()
+        item = actor.require_item(args.item_id)
         if item.broken:
             raise Refusal(f"{item.name} is already broken")
-        if args.hindrance in player.hindrances:
-            raise Refusal(f"{args.hindrance!r} is already among the player's hindrances")
+        if args.hindrance in sheet.hindrances:
+            raise Refusal(f"{args.hindrance!r} is already among {actor.name}'s hindrances")
         item.broken_times += 1
-        player.hindrances.append(args.hindrance)
+        sheet.hindrances.append(args.hindrance)
         card = f"{item.name} breaks — {args.hindrance}"
-        trace = f"{player.label} breaks {item.name} — {args.hindrance}"
-        return [player.fact("item_broken", trace, card=card)]
+        trace = f"{actor.label} breaks {item.name} — {args.hindrance}"
+        return [actor.fact("item_broken", trace, card=card)]
 
 
 def starting_items(kits: Sequence[Kit]) -> dict[EntityId, Item]:

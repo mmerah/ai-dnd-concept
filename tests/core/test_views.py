@@ -13,6 +13,7 @@ from aidm.core.views import (
 )
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import Loner3eSheet
+from aidm.turn.context import render_interjection
 
 SECRET = Loner3eSheet(
     id=EntityId("hidden-actor"),
@@ -178,6 +179,32 @@ def test_the_player_view_panels_carry_icon_ids_for_who_is_here() -> None:
     assert PLAYER_ID in icon_ids
     assert EntityId("mara") in icon_ids
     assert all(row.label != "The Secret" for panel in view.panels for row in panel.rows)
+
+
+def _view(subject: Subject) -> NarratorView:
+    return NarratorView(
+        place="p",
+        title="t",
+        focus="",
+        situation="s",
+        subjects=(subject,),
+        speakers=(subject.id,),
+        party=(subject.id,),
+        sheet=(),
+    )
+
+
+def test_render_interjection_prints_the_members_own_sheet_or_none() -> None:
+    sheeted = Subject(
+        id=EntityId("mara"), name="Mara", brief="A ferrywoman.", rows=(("Skill", "Stealth d8"),)
+    )
+    bare = Subject(id=EntityId("kael"), name="Kael", brief="A relic-hunter.")
+
+    with_sheet = render_interjection(_view(sheeted), sheeted, (), "")
+    without_sheet = render_interjection(_view(bare), bare, (), "")
+
+    assert "YOUR SHEET:\n- Skill: Stealth d8" in with_sheet
+    assert "YOUR SHEET:\n(none)" in without_sheet
 
 
 def _told(prompt: str) -> Exchange:

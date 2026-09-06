@@ -7,17 +7,18 @@ from aidm.core.tools import Attempt
 from aidm.engines.base import JoinParty, LeaveParty
 from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
 
+ACTOR = "null for the player; else the exact id of a hired crew member here who acts."
+
 
 class ChangeHindrances(Frozen):
     """Record hindrances the player picks up, sheds, or both at once."""
 
     verb: Literal["change_hindrances"]
     gained: tuple[str, ...] = Field(
-        default=(), description="Hindrances the player now carries, that they did not before."
+        default=(), description="Hindrances the actor now carries, that they did not before."
     )
-    lost: tuple[str, ...] = Field(
-        default=(), description="Hindrances the player no longer carries."
-    )
+    lost: tuple[str, ...] = Field(default=(), description="Hindrances the actor no longer carries.")
+    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 
     @model_validator(mode="after")
     def _some_change(self) -> Self:
@@ -40,21 +41,24 @@ class GainItem(Frozen):
         ge=0,
         description="Credits spent for the item; `cost` 0 only for a thing found or given.",
     )
+    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 
 
 class DropItem(Frozen):
     """Take an item out of the player's kit for good."""
 
     verb: Literal["drop_item"]
-    item_id: CheckedEntityId = Field(description="Exact id of an item the player carries.")
+    item_id: CheckedEntityId = Field(description="Exact id of an item the actor carries.")
+    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 
 
 class RepairItem(Frozen):
     """Fix a broken item, spending credits when the repair costs any."""
 
     verb: Literal["repair_item"]
-    item_id: CheckedEntityId = Field(description="Exact id of an item the player carries.")
+    item_id: CheckedEntityId = Field(description="Exact id of an item the actor carries.")
     cost: int = Field(default=0, ge=0, description="Credits spent on the repair.")
+    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 
 
 class Spend(Frozen):
@@ -63,6 +67,7 @@ class Spend(Frozen):
     verb: Literal["spend"]
     amount: int = Field(gt=0, description="Credits spent.")
     why: str = Field(min_length=1, description="What the credits pay for, in a few words.")
+    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 
 
 type WorldChange = (
@@ -88,12 +93,18 @@ class ChangeWorld(Frozen):
 
 
 class Roll(Attempt):
+    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
     skill: str = Field(default="", description="Which skill to roll; empty rolls the plain d6.")
     helped: str = Field(default="", description="Why circumstances help, when they do.")
-    hindered: str = Field(default="", description="Why the player is hindered, when they are.")
+    helped_by: CheckedEntityId | None = Field(
+        default=None,
+        description="A hired crew member who helps: they roll their own die for the skill and "
+        "the highest counts; `helped` stays the d6 of circumstance.",
+    )
+    hindered: str = Field(default="", description="Why the actor is hindered, when they are.")
     risking_death: bool = Field(
         default=False,
-        description="True when a disaster kills the player and a setback maims them; say it "
+        description="True when a disaster kills the actor and a setback maims them; say it "
         "before the roll.",
     )
 
@@ -105,11 +116,10 @@ class TestLuck(Frozen):
 
 
 class Defend(Frozen):
-    item_id: CheckedEntityId = Field(
-        description="Exact id of the item the player breaks to defend."
-    )
+    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+    item_id: CheckedEntityId = Field(description="Exact id of the item the actor breaks to defend.")
     hindrance: str = Field(
-        min_length=1, description="What the harm the player takes becomes, as a hindrance."
+        min_length=1, description="What the harm the actor takes becomes, as a hindrance."
     )
 
 
@@ -128,9 +138,26 @@ class FindJob(Frozen):
     )
 
 
+class Raise(Frozen):
+    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+    skill: str = Field(min_length=1, description="The skill the job called on for them, to raise.")
+
+
 class FinishJob(Frozen):
-    skill: str = Field(
-        min_length=1, description="The skill the job called on, named by the player, to raise."
+    raises: tuple[Raise, ...] = Field(
+        min_length=1,
+        description="One per operator: the player and every living hired member, each with the "
+        "skill the job called on for them.",
+    )
+
+
+class Hire(Frozen):
+    entity_id: CheckedEntityId = Field(
+        description="Exact id of who here signs on; they must not already carry a sheet."
+    )
+    terms: str = Field(
+        min_length=1,
+        description="What they are hired for and on what terms, as agreed, for the worldsmith.",
     )
 
 

@@ -14,10 +14,11 @@ from support.table import (
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.io import decode
 from aidm.core.model import ScenarioMeta
-from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.world import SceneCanon, SceneRun
 from aidm.engines.seam import AnyEngine
 from aidm.engines.twentyfourxx.world import (
+    Crewmate,
     TwentyfourxxCharacter,
     TwentyfourxxGame,
     TwentyfourxxScenario,
@@ -40,7 +41,7 @@ def test_the_shipped_game_begins_with_the_srd_pack_and_the_operators_gear() -> N
     _, state = _twentyfourxx_game()
     assert state.packs == (SRD_PACK,)
     world = state.payload
-    assert list(world.player.items) == [COMM, CLIMBING_GEAR, NIGHT_VISION_GOGGLES]
+    assert list(world.player.dice().items) == [COMM, CLIMBING_GEAR, NIGHT_VISION_GOGGLES]
     assert world.run.place == "docking-ring"
     assert PLAYER_ID not in world.present()
 
@@ -73,12 +74,12 @@ def test_restored_round_trips() -> None:
 
 
 def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
-    decoy = Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
+    decoy = Crewmate(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
     scenario = TwentyfourxxScenario(
         meta=ScenarioMeta(title="Test", premise="A test scenario.", scope="One tense night."),
         engine=TWENTYFOURXX,
         packs=(SRD_PACK,),
-        payload=SceneCanon(
+        payload=SceneCanon[Crewmate](
             cast={PLAYER_ID: decoy},
             opening=SceneRun(
                 place="airlock",

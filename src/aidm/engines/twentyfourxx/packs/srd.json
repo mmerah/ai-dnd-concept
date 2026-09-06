@@ -101,7 +101,12 @@
       "increases": 1,
       "choice": [
         { "id": "synth-skin", "label": "Synth skin", "detail": "Looks human." },
-        { "id": "case", "label": "Case", "detail": "Breaks harmlessly for defense." }
+        {
+          "id": "case",
+          "label": "Case",
+          "detail": "Breaks harmlessly for defense.",
+          "kit": { "name": "Case" }
+        }
       ]
     },
     {

@@ -39,6 +39,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
     character: type[AnyCharacter]
     instructions: str
     tools: dict[str, MasterTool[G]]
+    operations: tuple[Slug, ...]  # the requests this engine writes
 
     def __init__(self) -> None:
         self.instructions = (self.directory / "rules.md").read_text(encoding=ENCODING)

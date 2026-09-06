@@ -15,6 +15,7 @@ from aidm.core.views import Panel, PanelRow, Rows, Sections, Subject
 
 PLAYER_ID = EntityId("player")
 SRD_PACK: Slug = "srd"
+HIRE: Slug = "hire"  # the worldsmith writes a sheet for someone hired
 CHANGE_WORLD = (
     "Apply one settled world change to match the story. Set `verb` to pick the change and fill "
     "that verb's own fields. One call makes one change."
@@ -81,7 +82,7 @@ class Thing(Mutable):
         return [self.fact("entity_discovered", f"learned of {self.label}", card=card)]
 
     def subject(self) -> Subject:
-        return Subject(id=self.id, name=self.name, brief=self.brief)
+        return Subject(id=self.id, name=self.name, brief=self.brief, rows=self.rows())
 
 
 class Person(Thing):

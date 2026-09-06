@@ -1,14 +1,15 @@
 import pytest
-from support.twentyfourxx import KESTREL, small_world
+from support.twentyfourxx import KESTREL, hired, small_world
 
 from aidm.core.entities import EntityId, Refusal
-from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.twentyfourxx.engine import starting_items
 from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
+    Crewmate,
     Item,
     Kit,
-    Operator,
+    Sheet,
     TwentyfourxxWorld,
     raised,
 )
@@ -34,31 +35,37 @@ def test_raised_refuses_past_d12() -> None:
         raised(12)
 
 
-def test_operator_die_returns_sheet_skill_or_default() -> None:
-    operator = small_world().payload.player
-    assert operator.die("Stealth") == 10
-    assert operator.die("Piloting") == DEFAULT_DIE
+def test_sheet_die_returns_skill_or_default() -> None:
+    sheet = small_world().payload.player.dice()
+    assert sheet.die("Stealth") == 10
+    assert sheet.die("Piloting") == DEFAULT_DIE
 
 
 def test_rows_drops_empties_and_shows_credits() -> None:
-    operator = Operator(
-        id=PLAYER_ID,
-        name="Rook",
-        brief="",
-        specialty="Sneak",
-        origin="Human",
-        skills={"Stealth": 12},
-    )
-    rows = dict(operator.rows())
+    sheet = Sheet(specialty="Sneak", origin="Human", skills={"Stealth": 12})
+    rows = dict(sheet.rows())
     assert rows["Skills"] == "Stealth d12"
     assert rows["Credits"] == "₡2"
     assert "Traits" not in rows
     assert "Hindrances" not in rows
 
 
+def test_dice_refuses_on_an_unsheeted_member() -> None:
+    world = small_world().payload
+    with pytest.raises(Refusal, match="carries no dice"):
+        world.cast[KESTREL].dice()
+
+
+def test_a_player_with_no_sheet_is_refused() -> None:
+    world = small_world().payload
+    unsheeted = world.player.model_copy(update={"sheet": None})
+    with pytest.raises(ValueError, match="the player carries no sheet"):
+        TwentyfourxxWorld(cast=world.cast, player=unsheeted, runs=world.runs)
+
+
 def test_a_cast_that_holds_the_player_is_refused() -> None:
     world = small_world().payload
-    decoy = Person(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
+    decoy = Crewmate(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
     with pytest.raises(ValueError, match="the player is in the cast"):
         TwentyfourxxWorld(
             cast={**world.cast, PLAYER_ID: decoy}, player=world.player, runs=world.runs
@@ -87,6 +94,24 @@ def test_require_here_alive_refuses_dead_cast_member() -> None:
     world.cast[KESTREL].alive = False
     with pytest.raises(Refusal):
         world.require_here(KESTREL, alive=True)
+
+
+def test_require_actor_none_is_the_player() -> None:
+    world = small_world().payload
+    assert world.require_actor(None) is world.player
+    assert world.require_actor(PLAYER_ID) is world.player
+
+
+def test_require_actor_accepts_a_living_sheeted_party_member() -> None:
+    world = hired(small_world(), KESTREL, skills={"Shooting": 8}).payload
+    assert world.require_actor(KESTREL) is world.cast[KESTREL]
+
+
+def test_require_actor_refuses_an_unsheeted_member() -> None:
+    world = small_world().payload
+    world.party = [KESTREL]
+    with pytest.raises(Refusal, match="not the player or a hired crew member"):
+        world.require_actor(KESTREL)
 
 
 def test_starting_items_slug_duplicate_kit_names_in_order() -> None:
