@@ -10,7 +10,7 @@ from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
 
 
 class DropItem(Frozen):
-    """Take an item out of the actor's backpack for good."""
+    """The actor loses an item for good."""
 
     verb: Literal["drop_item"]
     item_id: CheckedEntityId = Field(description="Exact id of an item the actor carries.")
@@ -18,19 +18,18 @@ class DropItem(Frozen):
 
 
 class ChangeStress(Frozen):
-    """What a complication costs the actor, or what laying low somewhere secure clears."""
+    """The actor's stress goes up or down."""
 
     verb: Literal["change_stress"]
     amount: int = Field(
-        description="How much stress changes: positive for a complication's cost, negative to "
-        "clear it."
+        description="How much stress changes. Positive costs stress, negative clears it."
     )
     why: str = Field(min_length=1, description="What causes the change, in a few words.")
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 
 
 class UseMedKit(Frozen):
-    """Spend the actor's med kit to clear 2 stress."""
+    """The actor spends their med kit."""
 
     verb: Literal["use_med_kit"]
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
@@ -44,7 +43,7 @@ type WorldChange = (
 class ChangeWorld(Frozen):
     change: WorldChange = Field(
         discriminator="verb",
-        description="The one world change to apply; `verb` picks the change.",
+        description="The change to apply. `verb` picks which one.",
     )
 
 
@@ -58,15 +57,14 @@ class Check(Attempt):
     )
     stunt: bool = Field(
         default=False,
-        description="True to attempt an extraordinary stunt at d12 instead of a skill or item.",
+        description="True for an extraordinary stunt at d12.",
     )
     dangerous: bool = Field(
         default=False, description="True when a fail would plainly hurt the actor."
     )
     helped_by: CheckedEntityId | None = Field(
         default=None,
-        description="A hired survivor here who helps: they also make the check on their own die "
-        "of the same skill and share its risks; the highest die counts. Only on a skill check.",
+        description="Exact id of a hired member who checks the same skill. Only with `skill`.",
     )
 
     @model_validator(mode="after")
@@ -81,14 +79,10 @@ class Check(Attempt):
 class LootCheck(Frozen):
     item: str = Field(
         min_length=1,
-        description="What is found if the roll finds anything; the die sets how good it is.",
+        description="What is found if the roll finds anything.",
     )
-    granted: Die | None = Field(
-        default=None, description="Leave null; the engine fills it when the player answers."
-    )
-    choice: str | None = Field(
-        default=None, description="Leave null; the engine fills it when the player answers."
-    )
+    granted: Die | None = Field(default=None, description="Leave null. The engine fills it.")
+    choice: str | None = Field(default=None, description="Leave null. The engine fills it.")
 
     @model_validator(mode="after")
     def _both_or_neither(self) -> Self:

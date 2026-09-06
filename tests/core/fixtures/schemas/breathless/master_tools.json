@@ -1,19 +1,19 @@
 [
   {
     "name": "change_world",
-    "description": "Apply one settled world change to match the story. Set `verb` to pick the change and fill that verb's own fields. One call makes one change.",
+    "description": "Call this when the story has settled a change to the world. Fill the fields of the verb you pick. One call makes one change.",
     "parameters": {
       "$defs": {
         "ChangeStress": {
           "additionalProperties": false,
-          "description": "What a complication costs the actor, or what laying low somewhere secure clears.",
+          "description": "The actor's stress goes up or down.",
           "properties": {
             "verb": {
               "const": "change_stress",
               "type": "string"
             },
             "amount": {
-              "description": "How much stress changes: positive for a complication's cost, negative to clear it.",
+              "description": "How much stress changes. Positive costs stress, negative clears it.",
               "type": "integer"
             },
             "why": {
@@ -26,7 +26,7 @@
                 "null"
               ],
               "default": null,
-              "description": "null for the player; else the exact id of a hired party member here who acts."
+              "description": "Exact id of a hired party member here who acts. Null for the player."
             }
           },
           "required": [
@@ -38,7 +38,7 @@
         },
         "DropItem": {
           "additionalProperties": false,
-          "description": "Take an item out of the actor's backpack for good.",
+          "description": "The actor loses an item for good.",
           "properties": {
             "verb": {
               "const": "drop_item",
@@ -54,7 +54,7 @@
                 "null"
               ],
               "default": null,
-              "description": "null for the player; else the exact id of a hired party member here who acts."
+              "description": "Exact id of a hired party member here who acts. Null for the player."
             }
           },
           "required": [
@@ -65,7 +65,7 @@
         },
         "Enter": {
           "additionalProperties": false,
-          "description": "Bring a cast member into the current scene.",
+          "description": "A cast member comes into the scene.",
           "properties": {
             "verb": {
               "const": "enter",
@@ -103,7 +103,7 @@
         },
         "Kill": {
           "additionalProperties": false,
-          "description": "Record that someone here has died.",
+          "description": "Someone here dies.",
           "properties": {
             "verb": {
               "const": "kill",
@@ -122,7 +122,7 @@
         },
         "Leave": {
           "additionalProperties": false,
-          "description": "Take a cast member out of the current scene.",
+          "description": "A cast member goes out of the scene.",
           "properties": {
             "verb": {
               "const": "leave",
@@ -141,14 +141,14 @@
         },
         "LeaveParty": {
           "additionalProperties": false,
-          "description": "A companion stops travelling with the player.",
+          "description": "A party member stops travelling with the player.",
           "properties": {
             "verb": {
               "const": "leave_party",
               "type": "string"
             },
             "entity_id": {
-              "description": "Exact id of the companion leaving.",
+              "description": "Exact id of the party member leaving.",
               "type": "string"
             }
           },
@@ -160,7 +160,7 @@
         },
         "Reveal": {
           "additionalProperties": false,
-          "description": "Make a hidden entity known when the player notices, finds, or reaches it.",
+          "description": "A hidden entity here becomes known to the player.",
           "properties": {
             "verb": {
               "const": "reveal",
@@ -179,7 +179,7 @@
         },
         "UseMedKit": {
           "additionalProperties": false,
-          "description": "Spend the actor's med kit to clear 2 stress.",
+          "description": "The actor spends their med kit.",
           "properties": {
             "verb": {
               "const": "use_med_kit",
@@ -191,7 +191,7 @@
                 "null"
               ],
               "default": null,
-              "description": "null for the player; else the exact id of a hired party member here who acts."
+              "description": "Exact id of a hired party member here who acts. Null for the player."
             }
           },
           "required": [
@@ -203,7 +203,7 @@
       "additionalProperties": false,
       "properties": {
         "change": {
-          "description": "The one world change to apply; `verb` picks the change.",
+          "description": "The change to apply. `verb` picks which one.",
           "oneOf": [
             {
               "$ref": "#/$defs/Reveal"
@@ -243,18 +243,18 @@
   },
   {
     "name": "next_scene",
-    "description": "Offer the player the way on: this scene has reached a useful stopping point. They are then asked what they want to pursue, and their own words build the next scene; they may also stay. Do not answer for them. Set `pursuit` instead once the player has left this place. Or set `complication` to bring a new situation down on this place, only when `change_world` (an arrival, a reveal, a death) cannot make it from what is here.",
+    "description": "Call this with nothing set when the scene reaches a stopping point. Set `pursuit` instead once the player has left this place. Set `complication` instead to bring a new situation down on this place.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "pursuit": {
           "default": "",
-          "description": "Set when the player has left this place for good: where they are going, in their own words. Empty to offer the way on from here.",
+          "description": "Where the player is going, in their own words. Empty to offer the way on.",
           "type": "string"
         },
         "complication": {
           "default": "",
-          "description": "Set to change the situation here without the player leaving: what arrives or turns, and why, for the worldsmith. Written now, the turn ends; the player answers it next turn. Empty otherwise.",
+          "description": "What arrives or turns here, and why. Empty otherwise.",
           "type": "string"
         }
       },
@@ -263,7 +263,7 @@
   },
   {
     "name": "roll",
-    "description": "Roll a check for an action with a real cost, on a skill, a carried item, or a stunt. `actor_id` when a hired survivor acts instead of the player; `helped_by` names a hired survivor who also makes a skill check on their own die and shares the risk.",
+    "description": "Call this for an action with a real cost. Roll one thing: a skill, a carried item, or a stunt. The engine rolls, reads the result, and wears the die down.",
     "parameters": {
       "$defs": {
         "Skill": {
@@ -281,7 +281,7 @@
       "additionalProperties": false,
       "properties": {
         "what": {
-          "description": "The attempt, in a few words the player may read; it heads the card.",
+          "description": "The attempt, in a few words the player reads.",
           "type": "string"
         },
         "actor_id": {
@@ -290,7 +290,7 @@
             "null"
           ],
           "default": null,
-          "description": "null for the player; else the exact id of a hired party member here who acts."
+          "description": "Exact id of a hired party member here who acts. Null for the player."
         },
         "skill": {
           "anyOf": [
@@ -314,7 +314,7 @@
         },
         "stunt": {
           "default": false,
-          "description": "True to attempt an extraordinary stunt at d12 instead of a skill or item.",
+          "description": "True for an extraordinary stunt at d12.",
           "type": "boolean"
         },
         "dangerous": {
@@ -328,7 +328,7 @@
             "null"
           ],
           "default": null,
-          "description": "A hired survivor here who helps: they also make the check on their own die of the same skill and share its risks; the highest die counts. Only on a skill check."
+          "description": "Exact id of a hired member who checks the same skill. Only with `skill`."
         }
       },
       "required": [
@@ -339,7 +339,7 @@
   },
   {
     "name": "catch_breath",
-    "description": "Let the actor catch their breath: skills, loot die and the stunt reset, at the cost of a new complication. `actor_id` when a hired survivor catches breath instead of the player.",
+    "description": "Call this after a lull in the danger. The engine resets the actor's skills, loot die and stunt, and brings a new complication.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -349,7 +349,7 @@
             "null"
           ],
           "default": null,
-          "description": "null for the player; else the exact id of a hired party member here who acts."
+          "description": "Exact id of a hired party member here who acts. Null for the player."
         }
       },
       "type": "object"
@@ -357,7 +357,7 @@
   },
   {
     "name": "loot_check",
-    "description": "Scavenge for an item. Leave `granted` and `choice` null; the engine fills them once the player answers.",
+    "description": "Call this to scavenge for an item. The engine rolls the loot die and asks the player what to do with a find.",
     "parameters": {
       "$defs": {
         "Die": {
@@ -374,7 +374,7 @@
       "additionalProperties": false,
       "properties": {
         "item": {
-          "description": "What is found if the roll finds anything; the die sets how good it is.",
+          "description": "What is found if the roll finds anything.",
           "type": "string"
         },
         "granted": {
@@ -387,7 +387,7 @@
             }
           ],
           "default": null,
-          "description": "Leave null; the engine fills it when the player answers."
+          "description": "Leave null. The engine fills it."
         },
         "choice": {
           "type": [
@@ -395,7 +395,7 @@
             "null"
           ],
           "default": null,
-          "description": "Leave null; the engine fills it when the player answers."
+          "description": "Leave null. The engine fills it."
         }
       },
       "required": [
@@ -406,7 +406,7 @@
   },
   {
     "name": "test_luck",
-    "description": "Roll a die to answer a question about the world where nobody is acting.",
+    "description": "Call this to ask about the world when nobody acts. The engine rolls the die you pick and reads it.",
     "parameters": {
       "$defs": {
         "Die": {
@@ -440,16 +440,16 @@
   },
   {
     "name": "hire",
-    "description": "The player hires someone here to work: the worldsmith writes their sheet once this turn ends, and they join the party. Someone already travelling with the player may be hired too; a sheet is for someone hired to work, never for one who merely comes along.",
+    "description": "Call this when the player hires someone here to work. Someone already travelling with the player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing more lands this turn.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "entity_id": {
-          "description": "Exact id of who here signs on; they must not already carry a sheet.",
+          "description": "Exact id of who here signs on.",
           "type": "string"
         },
         "terms": {
-          "description": "What they are hired for and on what terms, as agreed, for the worldsmith.",
+          "description": "What they are hired for, and on what terms, as agreed.",
           "type": "string"
         }
       },

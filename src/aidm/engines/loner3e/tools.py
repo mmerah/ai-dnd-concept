@@ -17,13 +17,13 @@ type Position = Literal["advantage", "neutral", "disadvantage"]
 
 
 class ChangeTags(Frozen):
-    """A character here gains or loses tags: a thing taken or lost, a lasting mark, a lesson."""
+    """A character here gains tags, loses tags, or both."""
 
     verb: Literal["change_tags"]
     entity_id: CheckedEntityId = Field(description="Exact id of the player or someone here.")
     kind: TagKind = Field(
-        description="`gear` for a thing taken or lost; `condition` for a lasting mark such as "
-        "`Battle Worn` or `Poisoned`; `skill` or `frailty` only when the story plainly wrote one."
+        description="`gear` for a thing taken or lost. `condition` for a lasting mark such as "
+        "`Poisoned`."
     )
     gained: tuple[str, ...] = Field(
         default=(), description="Title-case tags gained, such as `Rusty Key`."
@@ -32,7 +32,7 @@ class ChangeTags(Frozen):
 
 
 class Drive(Frozen):
-    """What a living character wants, why, and who stands in their way, once play has shown it."""
+    """A living character's goal, motive or nemesis is written."""
 
     verb: Literal["drive"]
     entity_id: CheckedEntityId = Field(
@@ -49,7 +49,7 @@ class Drive(Frozen):
 
 
 class RestoreLuck(Frozen):
-    """Restore an actor's luck after a conflict ends."""
+    """A character's luck is restored in full."""
 
     verb: Literal["restore_luck"]
     entity_id: CheckedEntityId = Field(description="Exact id of the player or a character here.")
@@ -63,18 +63,16 @@ type WorldChange = (
 class ChangeWorld(Frozen):
     change: WorldChange = Field(
         discriminator="verb",
-        description="The one world change to apply; `verb` picks the change.",
+        description="The change to apply. `verb` picks which one.",
     )
 
 
 class Question(Attempt):
-    actor_id: CheckedEntityId = Field(
-        description="Exact id of the player or actor here who takes the action."
-    )
+    actor_id: CheckedEntityId = Field(description="Exact id of the character here who acts.")
     question: str = Field(
         min_length=1,
-        description="Closed question where yes means the actor gets what they want. For you "
-        "alone: it may name what the player has not found.",
+        description="Closed question where yes means the actor gets what they want. Only you "
+        "read it.",
     )
     position: Position = Field(
         default="neutral",
@@ -87,7 +85,7 @@ class Question(Attempt):
     )
     opponent_id: CheckedEntityId | None = Field(
         default=None,
-        description=("Exact id of the character here that resists. Null when nothing fights back."),
+        description="Exact id of the character here that resists. Null when nothing fights back.",
     )
 
 
@@ -130,17 +128,17 @@ def twist_pairing(
 
 def twist_note(subject: str, action: str) -> str:
     return (
-        f"A twist has just interrupted the scene: {subject.upper()} / {action.upper()} — the "
-        "narration showed it arriving. Develop it this turn: what it set in motion, what it "
-        "costs, what it changes."
+        f"A twist has just interrupted the scene: {subject.upper()} / {action.upper()}. The "
+        "narration showed it arriving. Develop it this turn. Say what it set in motion, what "
+        "it costs, and what it changes."
     )
 
 
 def defeat_note(name: str) -> str:
     return (
-        f"{name} has run out of luck and lost this conflict. Ask nothing further of it: say how it "
-        "ends for them — taken, severely injured, broken off, cornered, conceding — write any "
-        "lasting mark the ending leaves with `change_tags` (a `condition`), and let the story "
+        f"{name} has run out of luck and lost this conflict. Roll nothing more for it. Say how "
+        "it ends for them: taken, severely injured, broken off, cornered, or conceding. Write "
+        "any lasting mark with the `change_tags` arm, as a `condition`. Then let the story "
         "move on."
     )
 

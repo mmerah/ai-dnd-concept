@@ -21,7 +21,7 @@ STARTING_ITEMS = 3
 
 
 class Abilities(Mutable):
-    """What a goon carries beside `hp`: the player's own, or a hired npc's."""
+    """The three ability scores a goon rolls with."""
 
     abilities: AbilityScores = Field(
         default_factory=lambda: dict.fromkeys(ABILITIES, 0), min_length=3, max_length=3
@@ -39,7 +39,7 @@ class Abilities(Mutable):
 
 
 class Npc(Dweller):
-    """Every non-player character, friend or foe: the SRD gives them one shape."""
+    """A non-player character, friend or foe."""
 
     # SRD: an NPC's Difficulty Score is also its Health Points, so one counter serves both.
     hp: Counter

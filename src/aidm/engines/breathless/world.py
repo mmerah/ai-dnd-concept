@@ -32,8 +32,7 @@ class Item(Mutable):
 
 
 class SurvivorSheet(Mutable):
-    """What Breathless rolls for: the player's sheet from creation, a hired survivor's from
-    the worldsmith."""
+    """The dice a survivor rolls."""
 
     pronouns: str = ""
     job: str = ""
@@ -103,12 +102,9 @@ class SurvivorSheet(Mutable):
 
 
 class Survivor(Person):
-    """One type plays the player and the cast alike; only a sheet says who has dice."""
+    """A person in this game. Only a sheet gives them dice."""
 
-    sheet: SurvivorSheet | None = Field(
-        default=None,
-        description="Never written by you: code installs it when the player hires them.",
-    )
+    sheet: SurvivorSheet | None = Field(default=None, description="Leave empty.")
 
     def dice(self) -> SurvivorSheet:
         if self.sheet is None:

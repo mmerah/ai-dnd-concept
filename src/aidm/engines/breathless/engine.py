@@ -76,31 +76,29 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
             master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
             master_tool(
                 "roll",
-                "Roll a check for an action with a real cost, on a skill, a carried item, or a "
-                "stunt. `actor_id` when a hired survivor acts instead of the player; "
-                "`helped_by` names a hired survivor who also makes a skill check on their own "
-                "die and shares the risk.",
+                "Call this for an action with a real cost. Roll one thing: a skill, a carried "
+                "item, or a stunt. The engine rolls, reads the result, and wears the die down.",
                 Check,
                 self.roll,
             ),
             master_tool(
                 "catch_breath",
-                "Let the actor catch their breath: skills, loot die and the stunt reset, at the "
-                "cost of a new complication. `actor_id` when a hired survivor catches breath "
-                "instead of the player.",
+                "Call this after a lull in the danger. The engine resets the actor's skills, "
+                "loot die and stunt, and brings a new complication.",
                 Actor,
                 self.catch_breath,
             ),
             master_tool(
                 "loot_check",
-                "Scavenge for an item. Leave `granted` and `choice` null; the engine fills them "
-                "once the player answers.",
+                "Call this to scavenge for an item. The engine rolls the loot die and asks the "
+                "player what to do with a find.",
                 LootCheck,
                 self.loot_check,
             ),
             master_tool(
                 "test_luck",
-                "Roll a die to answer a question about the world where nobody is acting.",
+                "Call this to ask about the world when nobody acts. The engine rolls the die "
+                "you pick and reads it.",
                 TestLuck,
                 self.test_luck,
             ),

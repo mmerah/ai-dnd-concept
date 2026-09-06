@@ -12,26 +12,26 @@ from aidm.engines.scenes.world import SceneWorld, resolved_id
 CROSSING = (
     "The player is leaving {left} for the place in SCENE. They asked for this: "
     '"{pursuit}"\n\n'
-    "Their going is already told: write the arrival. Cover the distance and the time in the "
-    "fewest words that make it real, and end on what they see first. WHAT HAPPENED names "
-    "anyone who travelled with them. They have not acted in the new place yet, so settle nothing."
+    "Their going is already told. Write the arrival. Cover the distance and the time in the "
+    "fewest words that make it real. End on what they see first. WHAT HAPPENED names anyone "
+    "who travelled with them. They have not acted in the new place yet, so settle nothing."
 )
 COMPLICATING = (
     "The game master brings a complication down on the scene the player is in: {brief}. Write "
-    "the situation it makes as a new scene. The same `place` is allowed and usual; whoever is "
+    "the situation it makes as a new scene. The same `place` is allowed and usual. Whoever is "
     "here stays unless the brief moves them. Change the situation, not the player's answer to "
-    "it: they have not acted, so settle nothing for them. `recap` is the scene as it stood "
-    "before it turned: what the player did here so far, for the game master and for you."
+    "it. They have not acted, so settle nothing for them. `recap` is the scene as it stood "
+    "before it turned."
 )
 TURNING = (
     "The situation changes where the player stands, and they did nothing to bring it on. Write "
-    "what arrives or turns, as they see it, from SCENE and WHAT HAPPENED, and end on what it "
-    "asks of them. They have not answered it, so settle nothing."
+    "what arrives or turns, as they see it, from SCENE and WHAT HAPPENED. End on what it asks "
+    "of them. They have not answered it, so settle nothing."
 )
 SURPRISE = (
     "Surprise the player. Turn an established fact against them, or bring back something they "
-    "have stopped thinking about. Surprise by recombining what exists, never by inventing what "
-    "the source would not hold."
+    "have stopped thinking about. Surprise by recombining what exists. Never invent what the "
+    "source would not hold."
 )
 
 

@@ -11,7 +11,7 @@ from aidm.engines.tunnelgoons.world import ABILITIES, Ability, Boost
 
 
 class Rest(Frozen):
-    """Spend the night in a safe spot to heal the player's and the party's Health to full."""
+    """The player and the party spend a night here and heal to full Health."""
 
     verb: Literal["rest"]
 
@@ -19,33 +19,27 @@ class Rest(Frozen):
 class ChangeWorld(Frozen):
     change: SharedChange | Rest = Field(
         discriminator="verb",
-        description="The one world change to apply; `verb` picks the change.",
+        description="The change to apply. `verb` picks which one.",
     )
 
 
 class ActionRoll(Attempt):
     ability: Ability = Field(description="Which ability the action calls on.")
     items: tuple[CheckedEntityId, ...] = Field(
-        default=(), description="Exact ids of items the actor carries that plainly help; +1 each."
+        default=(), description="Exact ids of items the actor carries that plainly help."
     )
     difficulty: int | None = Field(
         default=None,
         ge=1,
-        description=(
-            "Difficulty Score; the SRD's guidelines: 8 easy, 10 moderate, 12 hard. Null when "
-            "`against` names an NPC."
-        ),
+        description=("Difficulty Score: 8 easy, 10 moderate, 12 hard. Null when `against` is set."),
     )
     against: CheckedEntityId | None = Field(
         default=None,
-        description="Exact id of an npc here; its Health is the Difficulty Score.",
+        description="Exact id of an npc here. Its Health is the Difficulty Score.",
     )
     dangerous: bool = Field(
         default=False,
-        description=(
-            "A fight, a trap, a fall: the margin becomes damage, to the NPC on a hit or to "
-            "the actor on a miss."
-        ),
+        description="True when a miss would hurt: a fight, a trap, a fall.",
     )
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 
@@ -58,10 +52,10 @@ class ActionRoll(Attempt):
 
 class LevelUp(Frozen):
     ability: Ability | None = Field(
-        default=None, description="Which ability to raise by 1; null asks the player."
+        default=None, description="Which ability to raise by 1. Null asks the player."
     )
     boost: Boost | None = Field(
-        default=None, description="Health or Inventory to raise by 1; null asks the player."
+        default=None, description="Health or Inventory to raise by 1. Null asks the player."
     )
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 

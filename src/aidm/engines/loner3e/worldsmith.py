@@ -8,17 +8,17 @@ from aidm.engines.loner3e.world import DIE_FACE
 
 AUTHORING = (
     "LONER 3E AUTHORING\n"
-    "Every character — a person, an object, a vehicle or a curse alike — has a one-line "
-    "`concept` and any fitting `tags` by kind — `skill`, `frailty`, `gear` — and rolls with "
-    "luck of its own. "
-    "Living characters may carry a `goal`, a `motive` and a `nemesis`; objects, vehicles and "
-    "curses do not. "
+    "Every character is a person, an object, a vehicle or a curse alike. Each one has a "
+    "one-line `concept`, any fitting `tags` by kind, and luck of its own. The kinds are "
+    "`skill`, `frailty` and `gear`. "
+    "A living character can carry a `goal`, a `motive` and a `nemesis`. An object, a vehicle "
+    "and a curse do not. "
     "Every scene bears on the player's `goal`, or brings their `nemesis` nearer. "
     "Give a door or a storm the `skill` and `frailty` tags it resists with. "
-    "Loner tags are freeform descriptions: use selected pack entries when they fit and invent "
+    "Loner tags are freeform descriptions. Use selected pack entries when they fit. Invent "
     "scenario-specific tags when they are clearer. Only a pack tag carries a meaning the game "
-    "master can look up, so an invented tag that does not say what it does needs one sentence "
-    "in that character's `brief`: positions are judged from it."
+    "master can look up. An invented tag that does not say what it does needs one sentence in "
+    "that character's `brief`. Positions are judged from it."
 )
 
 

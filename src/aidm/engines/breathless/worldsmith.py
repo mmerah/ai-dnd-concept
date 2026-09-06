@@ -9,15 +9,16 @@ from aidm.engines.breathless.world import SKILLS, Die, Skill, check_spread
 
 AUTHORING = (
     "BREATHLESS AUTHORING\n"
-    "The cast carries no dice until the player hires them in play: an NPC is a name, a brief "
-    "and whether the player has met them, nothing more. A threat is a brief the player's own "
-    "roll meets, never a stat block. Use the pack's `locations`, `complications` and `missions` "
-    "as the setting's vocabulary."
+    "The cast carries no dice until the player hires them in play. An npc is a name, a brief, "
+    "and whether the player has met them. A threat is a brief that the player's own roll meets, "
+    "never a stat block. Use the pack's `locations`, `complications` and `missions` as the "
+    "setting's vocabulary."
 )
 HIRING = (
-    "The player has hired {name} ({brief}) on these terms: {terms}. Write their sheet as "
-    "someone who could plausibly be hired for this: pronouns, a job (this pack's: {jobs}), the "
-    "six skills as created, and the one item they carry (weapons here: {weapons})."
+    "The player has hired {name}, {brief}, on these terms: {terms}. Write their sheet as "
+    "someone who could plausibly be hired for this work. Give them pronouns and a job from "
+    "this pack's list: {jobs}. Rate the six skills, with the best where the job and the terms "
+    "point. Give them one item, and this pack's weapons are: {weapons}."
 )
 
 
@@ -38,15 +39,14 @@ class Pack(ScenePack):
 
 
 class SheetDraft(Frozen):
-    """A hired survivor's sheet: the literal spread is the whole bar; no pack check follows."""
+    """A hired survivor's sheet."""
 
     pronouns: str = Field(min_length=1, description="Their pronouns.")
     job: str = Field(min_length=1, description="Their job, one of the pack's or one like them.")
     skills: dict[Skill, Die] = Field(
         min_length=6,
         max_length=6,
-        description="All six skills as created: three at d4, one d6, one d8, one d10, the best "
-        "where the job and the terms say.",
+        description="All six skills: three at d4, one d6, one d8 and one d10.",
     )
     item: str = Field(
         min_length=1,

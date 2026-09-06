@@ -17,21 +17,19 @@ from aidm.core.views import Panel, PanelRow, Rows, Sections, Subject
 PLAYER_ID = EntityId("player")
 SRD_PACK: Slug = "srd"
 HIRE: Slug = "hire"
-SIGNED_ON = (
-    "{name} has signed on with the player: tell it in a line or two, and settle nothing else."
-)
+SIGNED_ON = "{name} has signed on with the player. Tell it in a line or two. Settle nothing else."
 CHANGE_WORLD = (
-    "Apply one settled world change to match the story. Set `verb` to pick the change and fill "
-    "that verb's own fields. One call makes one change."
+    "Call this when the story has settled a change to the world. Fill the fields of the verb "
+    "you pick. One call makes one change."
 )
 HIRE_TOOL = (
-    "The player hires someone here to work: the worldsmith writes their sheet once this turn "
-    "ends, and they join the party. Someone already travelling with the player may be hired "
-    "too; a sheet is for someone hired to work, never for one who merely comes along."
+    "Call this when the player hires someone here to work. Someone already travelling with the "
+    "player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing "
+    "more lands this turn."
 )
-ACTOR = "null for the player; else the exact id of a hired party member here who acts."
-UNKNOWN_ID = "unknown id {entity_id!r}. Use only ids you were shown."
-IS_DEAD = "{name} is dead; they take no further part."
+ACTOR = "Exact id of a hired party member here who acts. Null for the player."
+UNKNOWN_ID = "unknown id {entity_id!r}. Use only the ids you were shown."
+IS_DEAD = "{name} is dead and takes no further part."
 
 type Chattiness = Literal["quiet", "normal", "chatty"]
 
@@ -98,7 +96,8 @@ class Person(Thing):
     alive: bool = True
     chattiness: Chattiness = Field(
         default="normal",
-        description="How readily they speak unprompted when travelling with the player.",
+        description="How readily they speak unprompted when travelling with the player. Most "
+        "are normal.",
     )
 
     @property
@@ -159,19 +158,17 @@ class JoinParty(Frozen):
 
 
 class LeaveParty(Frozen):
-    """A companion stops travelling with the player."""
+    """A party member stops travelling with the player."""
 
     verb: Literal["leave_party"]
-    entity_id: CheckedEntityId = Field(description="Exact id of the companion leaving.")
+    entity_id: CheckedEntityId = Field(description="Exact id of the party member leaving.")
 
 
 class Hire(Frozen):
-    entity_id: CheckedEntityId = Field(
-        description="Exact id of who here signs on; they must not already carry a sheet."
-    )
+    entity_id: CheckedEntityId = Field(description="Exact id of who here signs on.")
     terms: str = Field(
         min_length=1,
-        description="What they are hired for and on what terms, as agreed, for the worldsmith.",
+        description="What they are hired for, and on what terms, as agreed.",
     )
 
 

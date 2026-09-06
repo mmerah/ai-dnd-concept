@@ -80,25 +80,23 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
             master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
             master_tool(
                 "roll",
-                "Roll for something whose outcome matters. Name `helped` with why circumstances "
-                "help, when they do. Name `hindered` with why the actor is hindered, when they "
-                "are. `helped_by` names a hired crew member who rolls their own die beside the "
-                "actor's; `actor_id` when a hired member acts instead of the player.",
+                "Call this when the outcome of an action matters. The engine picks the dice, "
+                "rolls them, and reads the result.",
                 Roll,
                 self.roll,
             ),
             master_tool(
                 "test_luck",
-                "Roll a d6 to test the world's bad luck, where nobody is acting.",
+                "Call this to ask about the world's bad luck when nobody acts. The engine "
+                "rolls one d6 and reads it.",
                 TestLuck,
                 self.test_luck,
             ),
             master_tool(
                 "job",
-                "`find` rolls the SRD's d6 for work — narrate the job it allows, `spend` ₡1 for "
-                "a re-roll; `take` records the job's terms once agreed, refused while one is "
-                "already open; `finish` closes it: raise the skill it called on for the player "
-                "and every living hired member, and pay out its credits.",
+                "Call this to look for work with `find`, to record agreed work with `take`, "
+                "and to close the job with `finish`. The engine rolls, raises one skill for "
+                "each operator, and pays each of them d6 credits.",
                 Job,
                 self.job,
             ),
