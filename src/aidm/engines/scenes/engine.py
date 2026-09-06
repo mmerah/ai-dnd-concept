@@ -88,7 +88,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         return state.payload
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
-        """The create page's table sets, and the first step of every scene engine's creation."""
         return tuple(DecisionOption(id=key, label=pack.name) for key, pack in self.packs.items())
 
     def validate(self, state: G) -> None:
@@ -106,7 +105,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         return self.world_type.begin(canon, self.player_of(character))
 
     def master_sections(self, state: G) -> Sections:
-        """Every section stated, hidden canon included: the game master reads all of it."""
         world = self.world(state)
         scene = world.run
         return (
@@ -122,11 +120,9 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         )
 
     def sheet_sections(self, state: G) -> Sections:
-        """What the player's sheet adds below YOU PLAY FOR."""
         return ()
 
     def glossary(self, state: G) -> Sections:
-        """What the rules spell out for the master below HIDDEN HERE."""
         return ()
 
     def narrator_view(self, state: G) -> NarratorView:
@@ -213,7 +209,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
     def render_request(
         self, draft: G, *, guidance: str, intent: str, answer: type[BaseModel]
     ) -> str:
-        """The worldsmith prompt every scene request shares; `advance` reuses it off-scene too."""
         world = self.world(draft)
         return worldsmith_prompt(
             WORLDSMITH,

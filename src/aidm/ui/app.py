@@ -57,8 +57,6 @@ def start() -> None:
 
 
 class LaunchForm:
-    """The scenario picked first, then a character written for its rules."""
-
     def __init__(self, catalog: LauncherCatalog) -> None:
         self.catalog = catalog
         self.scenario_id: Slug = catalog.scenarios[0].id

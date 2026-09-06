@@ -20,10 +20,7 @@ _ARGUMENTS = TypeAdapter(dict[str, JsonValue])
 
 @dataclass(slots=True)
 class MountedLifespan:
-    """A mounted app's own lifespan never runs, so one task of ours holds the manager open.
-
-    One task, because NiceGUI starts in a task of its own and stops in the lifespan's, and
-    anyio refuses a task group exited by a task other than the one that entered it."""
+    """A mounted app's lifespan never runs; anyio needs one task to enter and exit the manager."""
 
     manager: StreamableHTTPSessionManager
     _ready: Event = field(default_factory=Event)
@@ -69,7 +66,6 @@ def call(runtime: Runtime, name: str, raw: dict[str, JsonValue]) -> str:
 def endpoint(
     runtime: Runtime,
 ) -> tuple[StreamableHTTPASGIApp, StreamableHTTPSessionManager]:
-    """The transport, served from the running app so the spawned CLI reaches the live game."""
     manager = StreamableHTTPSessionManager(
         app=_build_server(runtime),
         json_response=True,

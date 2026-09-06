@@ -32,12 +32,10 @@ class RunResult:
 
 
 class Driver(Protocol):
-    """Builds a command line and reads what it printed. A driver never starts a process."""
+    """A driver never starts a process."""
 
     @property
-    def secrets(self) -> tuple[str, ...]:
-        """Beyond `KEPT_ENV`: what this CLI needs to authenticate."""
-        ...
+    def secrets(self) -> tuple[str, ...]: ...
 
     def command(
         self, role: Role, config: RoleConfig, session: str | None, url: str
@@ -161,7 +159,6 @@ class CliSpawner:
 
 
 def final_message(output: str) -> str:
-    """The agent's last message: its own event, else the last fence, else the trailing object."""
     if (text := _last_said(output)) is not None:
         return text
     fenced = output.rsplit("```", 2)
@@ -189,7 +186,6 @@ def final_message(output: str) -> str:
 async def ask[T: BaseModel](
     spawner: Spawner, role: Role, prompt: str, model: type[T], refusal: Check[T]
 ) -> T:
-    """The one retry, shared: a role that fails twice fails its step, loudly."""
     asked, refused, session = prompt, "", None
     for _ in range(RETRIES + 1):
         spoken = await spawner.run(role, asked, session)
@@ -251,8 +247,7 @@ def _last_said(output: str) -> str | None:
     events = [event for line in output.splitlines() if (event := _object(line)) is not None]
     if len(events) < 2:
         return None
-    # Backwards, because the reasoning and the tool calls carry text of their own and come first;
-    # every event stream we have seen names the message it carries `text`, at some depth.
+    # Backwards: reasoning and tool-call events carry `text` of their own and come first.
     said = (text for event in reversed(events) if isinstance(text := _found(event, "text"), str))
     return next(said, None)
 
@@ -273,7 +268,6 @@ def _string(events: Sequence[JsonValue], name: str) -> str | None:
 
 
 def _found(node: JsonValue, name: str) -> JsonValue | None:
-    """An event nests its payload, so a name is searched for at any depth."""
     if isinstance(node, list):
         return next((match for item in node if (match := _found(item, name)) is not None), None)
     if not isinstance(node, dict):

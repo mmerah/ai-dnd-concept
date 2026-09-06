@@ -27,8 +27,6 @@ GAME_OVER = "The game is over; the player restarts from the page."
 
 @dataclass(slots=True, kw_only=True)
 class Turn:
-    """The transaction: one player input applied to a draft. The session owns the lifecycle."""
-
     engine: AnyEngine
     draft: AnyGame
     rng: Random
@@ -102,8 +100,7 @@ class Turn:
         )
 
     def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
-        """The one gate: every published tool is refused, answered or applied here. What the
-        call changed, as the game master reads it back."""
+        """The one gate every published tool passes; returns what changed as the master reads it."""
         if (ended := self.engine.over(self.draft)) is not None:
             raise Refusal(f"{ended} {GAME_OVER}")
         found = self.engine.tool(name)

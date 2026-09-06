@@ -20,7 +20,6 @@ def game_path(target: LaunchTarget) -> str:
 
 @asynccontextmanager
 async def working() -> AsyncGenerator[None]:
-    """A refusal or an OS error is shown to the player; a bug propagates."""
     try:
         yield
     except (OSError, Refusal) as error:
@@ -52,7 +51,6 @@ def entity_row(icon: Path | None, name: str, sub: str) -> None:
 
 
 def avatar(icon: Path | None, name: str | None) -> None:
-    """`name` is None for the DM, whose avatar is the one shipped material icon."""
     with ui.avatar(color="grey-8", size="42px").classes("q-mx-sm"):
         if icon is not None:
             ui.image(icon)

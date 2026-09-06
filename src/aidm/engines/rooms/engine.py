@@ -79,7 +79,6 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         return ()
 
     def master_sections(self, state: G) -> Sections:
-        """Every section stated, hidden canon included: the game master reads all of it."""
         world = self.world(state)
         place = world.current
         player = world.player
@@ -200,7 +199,6 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         return self.world(draft).move(args.to_id, args.with_ids)
 
     def render_map(self, source: str, scope: str) -> str:
-        """A room engine ships no packs to pick."""
         return worldsmith_prompt(
             WORLDSMITH,
             source=source,

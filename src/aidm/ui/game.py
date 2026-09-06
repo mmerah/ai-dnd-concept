@@ -66,7 +66,7 @@ class Observed:
 
 
 class GamePage:
-    """One tab on one game: it polls the service once a second and refreshes its own panels."""
+    """One per tab; several tabs may share one session."""
 
     def __init__(self, runtime: Runtime, session: GameService) -> None:
         self.runtime = runtime
@@ -139,7 +139,6 @@ class GamePage:
     def scene_header(self) -> None:
         session = self.session
         scene = session.engine.narrator_view(session.state)
-        # A quarter of the column at most: the art holds it and the text beside it scrolls.
         with (
             ui.row()
             .classes("w-full items-start no-wrap")
@@ -168,7 +167,6 @@ class GamePage:
         player = view.player
         for exchange in history:
             if exchange.prompt in MARKS:
-                # A turn nobody played: the story's own marker, never the player's words.
                 ui.label(exchange.prompt).classes("w-full text-center text-xs italic opacity-60")
             else:
                 _bubble(session, player.id, player.name, exchange.prompt, sent=True)
@@ -310,7 +308,6 @@ class GamePage:
             ).props("no-caps outline dense")
 
     def poll_turn(self) -> None:
-        """The page reads the turn once a second; the turn never calls the page."""
         now = Observed.of(self.session)
         if now.phase != self.seen.phase:
             self.step_started = None if now.phase is None else monotonic()
@@ -324,7 +321,6 @@ class GamePage:
             ticker.set_text(_clock(monotonic() - started))
 
     def poll_media(self) -> None:
-        """The illustration and the clip are generated after the turn commits and watched for."""
         session = self.session
         art = session.scene_art()
         if art != self.shown_art:
@@ -474,7 +470,6 @@ def can_type(player: PlayerView, phase: Role | None) -> bool:
 def standing_proposal(
     history: Sequence[Exchange], player: PlayerView, phase: Role | None
 ) -> Exchange | None:
-    """The newest exchange's proposal, while the composer is open and no decision waits."""
     newest = history[-1] if history else None
     if newest is None or not newest.proposal:
         return None

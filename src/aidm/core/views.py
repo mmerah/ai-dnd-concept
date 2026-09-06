@@ -28,8 +28,7 @@ class Subject(Frozen):
     brief: str
 
 
-# Three row shapes, told apart in this order: an entity (`icon_id`), a labelled value
-# (`detail`), else a bare label.
+# Three row shapes, in order: entity (`icon_id`), labelled value (`detail`), or bare label.
 class PanelRow(Frozen):
     label: str
     detail: str
@@ -58,9 +57,8 @@ class NarratorView(Frozen):
     focus: str
     situation: str
     subjects: tuple[Subject, ...]
-    # The player and everyone present who may speak; nobody else can be attributed a line.
     speakers: tuple[CheckedEntityId, ...]
-    # The player first, then who travels with them: every id a subject, none repeated.
+    # The player first, then who travels with them.
     party: tuple[CheckedEntityId, ...] = Field(min_length=1)
     # The player's own sheet: theirs to know, so the narrator may show it through detail.
     sheet: Rows
@@ -77,7 +75,6 @@ class NarratorView(Frozen):
         return self
 
     def others(self) -> tuple[Subject, ...]:
-        """The subjects who do not travel with the player."""
         return tuple(subject for subject in self.subjects if subject.id not in self.party)
 
     def spoken(self, lines: Sequence[Line]) -> tuple[SpokenLine, ...]:
@@ -94,7 +91,6 @@ class NarratorView(Frozen):
         return tuple(spoken_line(line) for line in lines)
 
     def speakers_refusal(self, lines: Sequence[Line]) -> str | None:
-        """Only the player or someone here speaks; the leak rule holds by check, not trust."""
         spoken = {line.speaker_id for line in lines if line.speaker_id is not None}
         strangers = sorted(spoken - set(self.speakers))
         if not strangers:
@@ -139,7 +135,6 @@ def lines_of(parts: Iterable[str]) -> str:
 
 
 def render_history(records: Sequence[SceneRecord]) -> str:
-    """Every role reads the story back through this: the last two scenes whole, older ones bound."""
     if not any(record.exchanges for record in records):
         return "(the game has not started yet)"
     total = len(records)

@@ -28,7 +28,7 @@ class SkillChoice(DecisionOption):
 
 class Specialty(DecisionOption):
     skills: dict[str, SkillDie]  # the fixed ones, at d8
-    choice: tuple[SkillChoice, ...] = ()  # Muscle, Psychic
+    choice: tuple[SkillChoice, ...] = ()
     kit: tuple[Kit, ...] = ()
     kit_choice: tuple[Kit, ...] = ()  # Muscle: "a sword, firearm, or cyber-arm" -- pick one
 
@@ -40,14 +40,14 @@ class Body(DecisionOption):
 class Origin(DecisionOption):
     increases: int = 0  # human 3, android 1
     invents: int = 0  # alien 2
-    choice: tuple[Body, ...] = ()  # android: synth skin | case
+    choice: tuple[Body, ...] = ()
 
 
 class Pack(ScenePack):
     skills: tuple[DecisionOption, ...] = Field(min_length=17, max_length=17)
     specialties: tuple[Specialty, ...]
     origins: tuple[Origin, ...]
-    starting_kit: tuple[Kit, ...]  # the comm
+    starting_kit: tuple[Kit, ...]
 
     @model_validator(mode="after")
     def _every_pick_told(self) -> Self:
@@ -82,7 +82,6 @@ class SheetDraft(Frozen):
     )
 
     def refusal(self, pack: Pack) -> str | None:
-        """`None` when the pack can back every claim the draft makes; else what is wrong, joined."""
         problems: list[str] = []
         if self.specialty not in {specialty.label for specialty in pack.specialties}:
             problems.append(f"{self.specialty!r} is not a specialty this pack lists")

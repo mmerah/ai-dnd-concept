@@ -16,7 +16,7 @@ LADDER: tuple[Die, ...] = (4, 6, 8, 10, 12)
 type Skill = Literal["bash", "dash", "sneak", "shoot", "think", "sway"]
 SKILLS: tuple[Skill, ...] = ("bash", "dash", "sneak", "shoot", "think", "sway")
 SKILL_SPREAD = [4, 4, 4, 6, 8, 10]
-STRESS_MAX = 4  # vulnerable at 4
+STRESS_MAX = 4
 CARRY = 3  # items beside the med kit
 LOOT_START: Die = 12
 STUNT_DIE: Die = 12
@@ -37,9 +37,10 @@ class SurvivorSheet(Mutable):
 
     pronouns: str = ""
     job: str = ""
-    skills: dict[Skill, Die] = Field(min_length=6, max_length=6)  # as created
-    worn: dict[Skill, Die] = Field(min_length=6, max_length=6)  # where each stands now
-    items: dict[EntityId, Item] = Field(default_factory=dict)  # the backpack
+    skills: dict[Skill, Die] = Field(min_length=6, max_length=6)
+    # where each stands now; `skills` is as created
+    worn: dict[Skill, Die] = Field(min_length=6, max_length=6)
+    items: dict[EntityId, Item] = Field(default_factory=dict)
     med_kit: bool = False
     loot: Die = LOOT_START
     stress: Counter = Field(default_factory=lambda: Counter(current=0, maximum=STRESS_MAX))

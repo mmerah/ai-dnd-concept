@@ -45,5 +45,4 @@ def _passages(body: str) -> Iterator[str]:
 
 
 def _unquoted(block: str) -> str:
-    """A Markdown quote marker is punctuation around a line, not part of its text."""
     return "\n".join(line.strip().removeprefix(">").strip() for line in block.splitlines())

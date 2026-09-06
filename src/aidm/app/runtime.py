@@ -70,11 +70,9 @@ class GameService:
     reader: Reader | None = None
     interjections: bool = True
     rng: Random = field(default_factory=Random)
-    # The role at work; the play page polls it and binds its widgets to it.
     phase: Role | None = None
     # The player's words for a write that opens no turn; the page shows them as their bubble.
     intent: str = ""
-    # The turn in flight; the tool surface reaches the live game through it.
     turn: Turn | None = None
     # The party member speaking after the last turn; a new turn or a reload silences them.
     _speaking: Task[None] | None = field(default=None, repr=False)
@@ -117,7 +115,6 @@ class GameService:
         await self._turn(answer, self.state)
 
     async def act(self, action: Slug, words: str) -> None:
-        """The page's way on: a request the engine makes is written first, then the words play."""
         if (ended := self.engine.over(self.state)) is not None:
             raise Refusal(f"{ended} The only way on is to restart.")
         if self.state.pending is not None:
@@ -170,7 +167,6 @@ class GameService:
             self._speaking = None
 
     async def interject(self) -> None:
-        """One party member may speak after a turn; nothing spawns when nobody passes the d10."""
         member = next(
             (
                 candidate
@@ -184,7 +180,6 @@ class GameService:
         history = self.engine.history(self.state)
         spoken = len(history)
         view = self.engine.narrator_view(self.state)
-        # The cards the player just read: the turn's told facts.
         evidence = traced(history[-1].facts if history else (), told_only=True)
         try:
             answer = await ask(
@@ -220,10 +215,6 @@ class GameService:
         self.speak()
 
     async def _generate(self, prompt: str = STORY_MARK) -> bool:
-        """The one executor: the state's request is written on a fresh draft, then cleared.
-
-        `prompt` heads what the write files; True once the world grew.
-        """
         request = self.state.generation
         if request is None:
             return False
@@ -330,7 +321,6 @@ class GameService:
         self._retain(task)
 
     def speak(self) -> None:
-        """The newest exchange is read after it commits; old ones are never generated."""
         newest = self._newest()
         if self.reader is None or newest is None:
             return
@@ -376,8 +366,6 @@ class GameService:
 
 @dataclass(slots=True)
 class Runtime:
-    """The composition root: settings, the built engine, the spawner, and the games open."""
-
     settings: Settings
     spawner: Spawner
     _sessions: dict[str, GameService] = field(default_factory=dict, repr=False)
@@ -438,7 +426,6 @@ class Runtime:
         packs: Sequence[Slug],
         character_id: Slug,
     ) -> Slug:
-        """One worldsmith call authors the engine's complete opening world."""
         engine = self.engines[engine_id]
         character = self.library.read_character(character_id, engine.id, engine.character)
         source = given_text(meta.premise, document, self.settings.source_max_chars)
@@ -498,5 +485,4 @@ class Runtime:
 
 
 def _worldsmith(spawner: Spawner) -> WorldsmithAnswer:
-    """What the platform hands an engine: one spawned role, one shared retry."""
     return partial(ask, spawner, "worldsmith")

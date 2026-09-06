@@ -210,8 +210,7 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
                     options=(),
                     allows_text=True,
                 )
-        # SRD: the Twist Counter does not apply to Harm & Luck, so a tied conflict roll never
-        # ticks it.
+        # SRD: the Twist Counter skips Harm & Luck, so a tied conflict roll never ticks it.
         if chance_kept == risk_kept and opponent is None:
             world.twist.current += 1
             if world.twist.shortfall == 0:
@@ -282,7 +281,6 @@ def _refuse_unless_ready(actor: Loner3eSheet, opponent: Loner3eSheet | None) -> 
 
 
 def _pair(action: Question, rng: Random) -> tuple[int, DiceEvent, int, DiceEvent, list[Fact]]:
-    """One extra die at most, and only for the side the judged position favours."""
     chance_faces = (DIE_FACE, DIE_FACE) if action.position == "advantage" else (DIE_FACE,)
     risk_faces = (DIE_FACE, DIE_FACE) if action.position == "disadvantage" else (DIE_FACE,)
     asked = action.question

@@ -44,8 +44,6 @@ class SceneDraft[C: Person](Frozen):
 
 
 class NextDraft[C: Person](SceneDraft[C]):
-    """A scene written in play."""
-
     recap: str = Field(
         min_length=1,
         description="One paragraph on the scene the player is leaving: what they did, what it "

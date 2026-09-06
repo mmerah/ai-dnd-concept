@@ -11,8 +11,6 @@ from aidm.engines.base import IS_DEAD, PLAYER_ID, UNKNOWN_ID, Person, Thing, Wor
 
 
 class Dweller(Person):
-    """Anyone who stands in a place; a room engine's npc adds its own stats."""
-
     place: CheckedEntityId
 
 
@@ -38,8 +36,6 @@ class Visit(Mutable):
 
 
 class Dungeon[N: Dweller](Mutable):
-    """The map and everything in it; the holder matrix is in the types."""
-
     places: dict[EntityId, Place] = Field(default_factory=dict)
     ways: dict[EntityId, list[Way]] = Field(default_factory=dict)
     npcs: dict[EntityId, N] = Field(default_factory=dict)
@@ -116,8 +112,6 @@ class Dungeon[N: Dweller](Mutable):
 
 
 class RoomCanon[N: Dweller](Dungeon[N]):
-    """An authored map before the played character stands at its start."""
-
     start: CheckedEntityId
     source: str = ""
 
@@ -312,7 +306,6 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         return [*facts, item.fact("entity_moved", trace, card=card)]
 
     def kill(self, actor: P | N) -> list[Fact]:
-        """Whatever the dead carried lies loose where they fell, the player's kit included."""
         facts = actor.reveal()
         if actor.id in self.party:
             self.party.remove(actor.id)
@@ -339,11 +332,9 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         self.add_way(start, anchor_id, known=False)
 
     def line(self, entity: P | N | Item) -> str:
-        """One card line; the player's sheet is the world's, everyone else's is their own."""
         return entity.line(rows=self.sheet_rows()) if entity.id == self.player.id else entity.line()
 
     def things_at(self, place_id: EntityId) -> Iterator[N | Item]:
-        """Who stands at a place, then what lies there or in their hands."""
         npcs = list(self.at(place_id))
         yield from npcs
         for holder in (place_id, *(npc.id for npc in npcs)):
@@ -383,7 +374,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         return "\n".join(lines)
 
     def sheet_rows(self) -> Rows:
-        """The player's sheet as the master and the panel print it; a rule may amend a row."""
+        """Overridable: a rule may amend a row."""
         return self.player.rows()
 
     def record(self, exchange: Exchange) -> None:
