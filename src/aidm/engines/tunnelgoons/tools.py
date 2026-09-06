@@ -2,22 +2,13 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, Frozen
+from aidm.core.entities import CheckedEntityId, EntityId, Frozen
 from aidm.core.play import PendingOption
 from aidm.core.tools import Attempt
 from aidm.engines.rooms.tools import SharedChange
 from aidm.engines.tunnelgoons.world import ABILITIES, Ability, Boost
 
-LEVEL_OPTIONS: tuple[PendingOption, ...] = tuple(
-    PendingOption(
-        id=f"{ability}-{boost}",
-        label=f"{ability.capitalize()} +1, {boost.capitalize()} +1",
-        name="level_up",
-        args={"ability": ability, "boost": boost},
-    )
-    for ability in ABILITIES
-    for boost in ("health", "inventory")
-)
+ACTOR = "null for the player; else the exact id of a hired party member here who acts."
 
 
 class ChangeWorld(Frozen):
@@ -30,7 +21,7 @@ class ChangeWorld(Frozen):
 class ActionRoll(Attempt):
     ability: Ability = Field(description="Which ability the action calls on.")
     items: tuple[CheckedEntityId, ...] = Field(
-        default=(), description="Exact ids of items the player carries that plainly help; +1 each."
+        default=(), description="Exact ids of items the actor carries that plainly help; +1 each."
     )
     difficulty: int | None = Field(
         default=None,
@@ -48,9 +39,10 @@ class ActionRoll(Attempt):
         default=False,
         description=(
             "A fight, a trap, a fall: the margin becomes damage, to the NPC on a hit or to "
-            "the player on a miss."
+            "the actor on a miss."
         ),
     )
+    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 
     @model_validator(mode="after")
     def _one_target(self) -> Self:
@@ -65,4 +57,18 @@ class LevelUp(Frozen):
     )
     boost: Boost | None = Field(
         default=None, description="Health or Inventory to raise by 1; null asks the player."
+    )
+    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+
+
+def level_options(actor_id: EntityId | None) -> tuple[PendingOption, ...]:
+    return tuple(
+        PendingOption(
+            id=f"{ability}-{boost}",
+            label=f"{ability.capitalize()} +1, {boost.capitalize()} +1",
+            name="level_up",
+            args={"ability": ability, "boost": boost, "actor_id": actor_id},
+        )
+        for ability in ABILITIES
+        for boost in ("health", "inventory")
     )

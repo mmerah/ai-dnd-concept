@@ -18,9 +18,6 @@ HIRING = (
     "The player has hired {name} ({brief}) on these terms: {terms}. Write their sheet from the "
     "specialties and skills in ENGINE GUIDANCE, as someone who could plausibly be hired for this."
 )
-SIGNED_ON = (
-    "{name} has signed on with the player: tell it in a line or two, and settle nothing else."
-)
 
 
 class SkillChoice(DecisionOption):

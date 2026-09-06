@@ -208,7 +208,7 @@
   },
   {
     "name": "action_roll",
-    "description": "Roll 2d6 plus an ability and helpful items against a Difficulty Score or an npc.",
+    "description": "Roll 2d6 plus an ability and helpful items against a Difficulty Score or an npc; `actor_id` when a hired member acts instead of the player.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -228,7 +228,7 @@
         },
         "items": {
           "default": [],
-          "description": "Exact ids of items the player carries that plainly help; +1 each.",
+          "description": "Exact ids of items the actor carries that plainly help; +1 each.",
           "items": {
             "maxLength": 64,
             "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
@@ -265,8 +265,22 @@
         },
         "dangerous": {
           "default": false,
-          "description": "A fight, a trap, a fall: the margin becomes damage, to the NPC on a hit or to the player on a miss.",
+          "description": "A fight, a trap, a fall: the margin becomes damage, to the NPC on a hit or to the actor on a miss.",
           "type": "boolean"
+        },
+        "actor_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "null for the player; else the exact id of a hired party member here who acts."
         }
       },
       "required": [
@@ -278,7 +292,7 @@
   },
   {
     "name": "rest",
-    "description": "Spend the night in a safe spot to heal the player's Health to full.",
+    "description": "Spend the night in a safe spot to heal the player's and the party's Health to full.",
     "parameters": {
       "additionalProperties": false,
       "properties": {},
@@ -287,7 +301,7 @@
   },
   {
     "name": "level_up",
-    "description": "Raise one ability and either Health or Inventory Score by 1, once, at the adventure's end.",
+    "description": "Raise one ability and either Health or Inventory Score by 1, once, at the adventure's end: the player first, then each hired member in turn.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -323,8 +337,47 @@
           ],
           "default": null,
           "description": "Health or Inventory to raise by 1; null asks the player."
+        },
+        "actor_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "null for the player; else the exact id of a hired party member here who acts."
         }
       },
+      "type": "object"
+    }
+  },
+  {
+    "name": "hire",
+    "description": "The player hires someone here to work: the worldsmith writes their sheet once this turn ends, and they join the party. Someone already travelling with the player may be hired too; a sheet is for someone hired to work, never for one who merely comes along.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of who here signs on; they must not already carry a sheet.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "terms": {
+          "description": "What they are hired for and on what terms, as agreed, for the worldsmith.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "terms"
+      ],
       "type": "object"
     }
   }

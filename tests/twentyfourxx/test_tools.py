@@ -8,13 +8,12 @@ from support.twentyfourxx import KESTREL, LOCKPICKS, SABLE, hired, small_world
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.model import Check, Generation
-from aidm.engines.base import HIRE, PLAYER_ID, SRD_PACK
+from aidm.engines.base import HIRE, PLAYER_ID, SIGNED_ON, SRD_PACK, Hire
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
-from aidm.engines.twentyfourxx.tools import Defend, FindJob, FinishJob, Hire, Raise, Roll, TakeJob
+from aidm.engines.twentyfourxx.tools import Defend, FindJob, FinishJob, Raise, Roll, TakeJob
 from aidm.engines.twentyfourxx.tools import TestLuck as LuckTest
 from aidm.engines.twentyfourxx.world import STARTING_CREDITS, UPGRADE_COST
-from aidm.engines.twentyfourxx.worldsmith import SIGNED_ON
 
 ENGINE = TwentyfourxxEngine()
 
@@ -438,7 +437,7 @@ def test_validate_refuses_a_hire_with_no_target() -> None:
     draft = small_world().draft()
     draft.packs = (SRD_PACK,)
     draft.generation = Generation(operation=HIRE, brief="terms")
-    with pytest.raises(Refusal, match="a hire needs someone here without a sheet: None"):
+    with pytest.raises(Refusal, match="a hire names who signs on"):
         ENGINE.validate(draft)
 
 

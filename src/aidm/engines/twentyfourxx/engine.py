@@ -10,7 +10,17 @@ from aidm.core.model import Generation, WorldsmithAnswer
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Panel, PanelRow, Sections, lines_of
-from aidm.engines.base import CHANGE_WORLD, HIRE, PLAYER_ID, keep_highest, sentence
+from aidm.engines.base import (
+    CHANGE_WORLD,
+    HIRE,
+    PLAYER_ID,
+    SIGNED_ON,
+    Hire,
+    hire_request,
+    hire_target,
+    keep_highest,
+    sentence,
+)
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
 from aidm.engines.twentyfourxx.tools import (
@@ -21,7 +31,6 @@ from aidm.engines.twentyfourxx.tools import (
     FindJob,
     FinishJob,
     GainItem,
-    Hire,
     RepairItem,
     Roll,
     ShipUpgrade,
@@ -51,7 +60,6 @@ from aidm.engines.twentyfourxx.world import (
 from aidm.engines.twentyfourxx.worldsmith import (
     AUTHORING,
     HIRING,
-    SIGNED_ON,
     Pack,
     SheetDraft,
     hire_guidance,
@@ -330,24 +338,14 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
     def hire(self, draft: TwentyfourxxGame, args: Hire, _rng: Random) -> list[Fact]:
         world = draft.payload
         member = world.require_hireable(args.entity_id)
-        draft.generation = Generation(operation=HIRE, brief=args.terms, target=member.id)
-        return [
-            Fact(
-                kind="hire_asked",
-                trace=f"the worldsmith writes {member.name}'s sheet once this turn ends: "
-                f"{args.terms}. Nothing more lands this turn; stop and exit",
-            )
-        ]
+        draft.generation, fact = hire_request(member, args.terms)
+        return [fact]
 
     def validate(self, state: TwentyfourxxGame) -> None:
         super().validate(state)
         generation = state.generation
-        if generation is None or generation.operation != HIRE:
-            return
-        target = generation.target
-        if target is None:
-            raise Refusal(f"a hire needs someone here without a sheet: {target!r}")
-        state.payload.require_hireable(target)
+        if generation is not None and generation.operation == HIRE:
+            state.payload.require_hireable(hire_target(generation))
 
     async def advance(
         self, draft: TwentyfourxxGame, request: Generation, worldsmith: WorldsmithAnswer
@@ -355,10 +353,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
         if request.operation != HIRE:
             return await super().advance(draft, request, worldsmith)
         world = draft.payload
-        target = request.target
-        if target is None:
-            raise Refusal("a hire names who signs on")
-        member = world.require_hireable(target)
+        member = world.require_hireable(hire_target(request))
         pack = self.packs[draft.packs[0]]
         prompt = self.render_request(
             draft,

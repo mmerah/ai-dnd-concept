@@ -46,11 +46,12 @@ None. The starting item list is in the SRD's character creation.
 - `change_world` — reveal something found, move an item, kill an npc, or join or leave the party.
 - `move` — carry the player, the party, and any NPCs named in `with_ids`, through an unlocked way listed in WAYS OUT.
 - `unlock_way` — open a locked way once the story has dealt with it.
-- `action_roll` — 2d6 plus an ability and helpful items, against a Difficulty Score or an npc.
-- `rest` — heal the player to full Health in a safe spot.
-- `level_up` — raise one ability and either Health or Inventory by 1, once, at the adventure's end.
+- `action_roll` — 2d6 plus an ability and helpful items, against a Difficulty Score or an npc; `actor_id` when a hired member acts instead of the player.
+- `rest` — heal the player and every party member to full Health in a safe spot.
+- `level_up` — raise one ability and either Health or Inventory by 1, once, at the adventure's end: the player first, then each hired member in turn.
+- `hire` — the player hires someone here to work; the worldsmith writes their sheet once the turn ends, and they join the party.
 
-The three room `change_world` arms are `engines/rooms/tools.py`'s, shared by every room engine, and count here as before; the two party arms are `engines/base.py`'s, shared by every engine, and are not counted here (PLAN decision 8).
+Ten counted: the seven tools plus the three room `change_world` arms, which are `engines/rooms/tools.py`'s and shared by every room engine; plus the pair, the two party arms of `engines/base.py`, shared by every engine and not counted (PLAN decision 8).
 
 ## Deviations in this repo
 
@@ -58,7 +59,7 @@ The three room `change_world` arms are `engines/rooms/tools.py`'s, shared by eve
 
 ## What the AI game master adds
 
-Every entity has `known`, and a `Way` is known once the player has walked it: what the player has found stays legible turn to turn without the master having to restate it. Every non-player character — friend or foe — is one shape, exactly as the SRD prints: an id, a name, a Health that is also its Difficulty Score, and whether it is still alive. The party follows the player through `move` on its own; only the player rolls, until Phase 5. The map's extension bar lets the worldsmith write a new region once the authored map is fully walked. `kill` ends a helpless npc outright, no roll needed.
+Every entity has `known`, and a `Way` is known once the player has walked it: what the player has found stays legible turn to turn without the master having to restate it. Every non-player character — friend or foe — is one shape, exactly as the SRD prints: an id, a name, a Health that is also its Difficulty Score, and whether it is still alive. The party follows the player through `move` on its own. A hired npc carries the same three abilities as the player and rolls, rests and levels beside them; one without a sheet still cannot roll on its own. The map's extension bar lets the worldsmith write a new region once the authored map is fully walked. `kill` ends a helpless npc outright, no roll needed.
 
 ## Where the rules live
 

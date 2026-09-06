@@ -2,7 +2,7 @@ from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Counter
 from aidm.engines.rooms.world import Item, Place, Visit, Way
-from aidm.engines.tunnelgoons.world import Goon, Npc, TunnelGoonsGame, TunnelGoonsWorld
+from aidm.engines.tunnelgoons.world import Abilities, Goon, Npc, TunnelGoonsGame, TunnelGoonsWorld
 
 START = EntityId("start")
 HALL = EntityId("hall")
@@ -90,7 +90,7 @@ def _kael() -> Goon:
         name="Kael",
         brief="A wiry scavenger",
         known=True,
-        abilities={"brute": 1, "skulker": 1, "erudite": 1},
+        sheet=Abilities(abilities={"brute": 1, "skulker": 1, "erudite": 1}),
         kit=("Rope", "Torch", "Lantern"),
     )
 

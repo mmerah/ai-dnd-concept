@@ -10,12 +10,16 @@ from pydantic import BaseModel, Field, model_validator
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Refusal, Slug, parse
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.io import ENCODING, decode
+from aidm.core.model import Generation
 from aidm.core.play import Exchange, SceneRecord
 from aidm.core.views import Panel, PanelRow, Rows, Sections, Subject
 
 PLAYER_ID = EntityId("player")
 SRD_PACK: Slug = "srd"
 HIRE: Slug = "hire"  # the worldsmith writes a sheet for someone hired
+SIGNED_ON = (
+    "{name} has signed on with the player: tell it in a line or two, and settle nothing else."
+)
 CHANGE_WORLD = (
     "Apply one settled world change to match the story. Set `verb` to pick the change and fill "
     "that verb's own fields. One call makes one change."
@@ -150,6 +154,16 @@ class LeaveParty(Frozen):
     entity_id: CheckedEntityId = Field(description="Exact id of the companion leaving.")
 
 
+class Hire(Frozen):
+    entity_id: CheckedEntityId = Field(
+        description="Exact id of who here signs on; they must not already carry a sheet."
+    )
+    terms: str = Field(
+        min_length=1,
+        description="What they are hired for and on what terms, as agreed, for the worldsmith.",
+    )
+
+
 class Pack(Frozen):
     name: str
     source: str
@@ -187,6 +201,22 @@ class Counter(Mutable):
         moved = f"{label} {delta:+d} -> {self}"
         card = moved if owner.id == PLAYER_ID else f"{owner.name}: {moved}"
         return [owner.fact("counter_changed", f"{owner.label} {moved} ({why})", card=card)]
+
+
+def hire_request(member: Person, terms: str) -> tuple[Generation, Fact]:
+    """The turn ends on a hire: the request the worldsmith answers, and the fact that says so."""
+    generation = Generation(operation=HIRE, brief=terms, target=member.id)
+    trace = (
+        f"the worldsmith writes {member.name}'s sheet once this turn ends: {terms}. "
+        "Nothing more lands this turn; stop and exit"
+    )
+    return generation, Fact(kind="hire_asked", trace=trace)
+
+
+def hire_target(request: Generation) -> EntityId:
+    if request.target is None:
+        raise Refusal("a hire names who signs on")
+    return request.target
 
 
 def sentence(text: str) -> str:
