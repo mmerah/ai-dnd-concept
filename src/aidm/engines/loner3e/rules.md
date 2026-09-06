@@ -40,7 +40,7 @@ success. `yes-but` is success with a cost. `no-but` is failure that keeps a chan
 failure, and the situation holds. `no-and` is failure plus a worse situation.
 
 Keep an answered question settled. If a result fits awkwardly, reveal a complication or a deeper
-truth that makes it fit.
+truth that makes it fit. If no result fits, treat it as `yes-but` with a small complication.
 
 ## Conflicts
 
@@ -62,7 +62,8 @@ Use the `restore_luck` arm after a conflict ends another way and the character h
 
 ## Twists
 
-The engine returns a twist subject and action after 3 tied rolls. Treat the pair as a
+The engine returns a twist subject and action after 3 tied rolls outside a
+conflict. Treat the pair as a
 complication arriving this turn. Apply any lasting change with tools. Keep the pair and do not
 roll it again.
 
@@ -74,12 +75,13 @@ new nemesis. Do not grow skills or frailties before the adventure closes.
 
 ## Mood
 
-Give each turn a mood. Dramatic raises the pressure. Quiet gives space to recover or plan.
+Give each scene a mood. Dramatic raises the pressure. Quiet gives space to recover or plan.
 Meanwhile lets the wider world move. Use the mood the story has earned.
 
 ## The party
 
 A party member travels with the player from scene to scene. The player commands them and you
 voice them. Use the `join_party` arm when someone here comes along. Use the `leave_party` arm
-when they stop. A member never rolls. Let their help set `position` or name the `edge`. Never
+when they stop. A member rolls only as the actor of their own uncertain act. Otherwise their
+help sets `position` or names the `edge`. Never
 volunteer a member's action to soften a scene the player must face alone.

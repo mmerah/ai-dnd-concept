@@ -18,7 +18,7 @@ HIRING = (
     "The player has hired {name}, {brief}, on these terms: {terms}. Write their sheet as "
     "someone who could plausibly be hired for this work. Give them pronouns and a job from "
     "this pack's list: {jobs}. Rate the six skills, with the best where the job and the terms "
-    "point. Give them one item, and this pack's weapons are: {weapons}."
+    "point. Give them one item. This pack's weapons are: {weapons}."
 )
 
 

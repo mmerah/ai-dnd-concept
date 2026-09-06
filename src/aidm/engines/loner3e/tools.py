@@ -32,7 +32,7 @@ class ChangeTags(Frozen):
 
 
 class Drive(Frozen):
-    """A living character's goal, motive or nemesis is written."""
+    """A living character's goal, motive or nemesis changes."""
 
     verb: Literal["drive"]
     entity_id: CheckedEntityId = Field(
@@ -49,7 +49,7 @@ class Drive(Frozen):
 
 
 class RestoreLuck(Frozen):
-    """A character's luck is restored in full."""
+    """A character's luck refills."""
 
     verb: Literal["restore_luck"]
     entity_id: CheckedEntityId = Field(description="Exact id of the player or a character here.")

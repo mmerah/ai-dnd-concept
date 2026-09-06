@@ -4,7 +4,7 @@ Write from the material below. The source is the adventure. The packs are the se
 
 WHAT COMES NEXT is the player's own words about where they go and what they are after. Build the scene they asked for. Give them what they went looking for, or the reason they cannot have it. Never give them silence.
 
-Put someone or something in the scene to meet. Bring back one established thing: a person, an object, a place, or a rumour. It does not have to be a person. A person needs a reason to be there. The party follows the player from scene to scene, and nobody else does. Someone the player left behind stays behind until the story brings them back. Write a `focus` the player can answer by what they do here. Never write a question the situation has already answered. When a source exists, give a detail traceable to it. A solitary scene, a new cast, a quiet situation or a short setup is not wrong.
+Put someone or something in the scene to meet. Bring back one established thing when one fits: a person, an object, a place, or a rumour. It does not have to be a person. A person needs a reason to be there. The party follows the player from scene to scene, and nobody else does. Someone the player left behind stays behind until the story brings them back. Write a `focus` the player can answer by what they do here. Never write a question the situation has already answered. When a source exists, give a detail traceable to it. A solitary scene, a new cast, a quiet situation or a short setup is not wrong.
 
 Put something in `hidden` when the scene has something worth finding. It is not required. Never name a hidden entity in `situation`. The player reads `situation`, and naming it there hands them the find.
 

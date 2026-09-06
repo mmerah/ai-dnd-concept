@@ -3,7 +3,7 @@
 WHAT THIS SCENE IS ABOUT is what the scene is for. Play it out.
 
 Call `next_scene` with nothing set when the scene reaches a stopping point. A scene reaches a
-stopping point when what it was for is answered, refused, or made moot. The narrator then asks
+stopping point when the player has answered, refused, or made moot what it was for. The narrator then asks
 the player what they want to pursue. Do not decide for the player. Do not offer a list. Do not
 describe the next place.
 

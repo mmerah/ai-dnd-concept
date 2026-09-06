@@ -242,7 +242,7 @@
         },
         "RepairItem": {
           "additionalProperties": false,
-          "description": "A broken item is mended.",
+          "description": "The actor mends a broken item.",
           "properties": {
             "verb": {
               "const": "repair_item",
@@ -294,7 +294,7 @@
         },
         "ShipUpgrade": {
           "additionalProperties": false,
-          "description": "One ship function is upgraded.",
+          "description": "The player upgrades one ship function.",
           "properties": {
             "verb": {
               "const": "ship_upgrade",

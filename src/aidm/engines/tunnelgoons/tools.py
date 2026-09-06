@@ -35,11 +35,12 @@ class ActionRoll(Attempt):
     )
     against: CheckedEntityId | None = Field(
         default=None,
-        description="Exact id of an npc here. Its Health is the Difficulty Score.",
+        description="Exact id of an npc here the actor acts on, in a fight or in talk. Its "
+        "Health is the Difficulty Score.",
     )
     dangerous: bool = Field(
         default=False,
-        description="True when a miss would hurt: a fight, a trap, a fall.",
+        description="True when a miss would hurt. Talk is not dangerous unless the story says so.",
     )
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 

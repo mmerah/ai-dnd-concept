@@ -5,7 +5,7 @@
 ## The sheet
 
 A skill on the sheet is a d8, a d10 or a d12. Any skill not on the sheet rolls a plain d6.
-Credits are written ₡. GEAR lists the items the player carries. A bulky item takes real space.
+₡ marks credits. GEAR lists the items the player carries. A bulky item takes real space.
 Each item breaks a set number of times before it is ruined. A hindrance is anything that slows
 the actor down, such as an injury or a fear.
 
@@ -33,13 +33,13 @@ the player pays for, such as a bribe, medical care or passage.
 ## Defending
 
 Use the `defend` arm to break one carried item or one ship function. The hit becomes a hindrance
-instead. Broken gear is useless until `repair_item` mends it.
+instead. Broken gear is useless until mended.
 
 ## Hindrances
 
 Use the `change_hindrances` arm when the story gives the actor a hindrance or lifts one. A
-hindered roll is a d4. More than one bulky item can hinder the actor. Cite that load in
-`hindered` when it applies. The engine does not count bulk itself.
+hindered roll is a d4. The engine reads no hindrance itself. Cite the one that applies in
+`hindered`, load included. More than one bulky item can hinder the actor.
 
 ## The ship
 
@@ -76,4 +76,4 @@ Name them in `actor_id` on `roll`, and on the `defend`, `change_hindrances`, `ga
 
 The player can die. The rules then ask the player which hired member leads. The chosen member
 becomes the player and keeps their own name and id. The dead lead stays in the scene as a body.
-The game ends when nobody is hired.
+The game ends when no hired member lives.

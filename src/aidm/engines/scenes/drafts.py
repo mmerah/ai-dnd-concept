@@ -11,7 +11,8 @@ class SceneDraft[C: Person](Frozen):
     title: str = Field(description="The scene's title, read by the player.")
     focus: str = Field(
         default="",
-        description="What this scene is about, in one line the player reads. Can be empty.",
+        description="What this scene is about, in one line the player reads. Empty when the "
+        "situation says it all.",
     )
     situation: str = Field(
         min_length=1,

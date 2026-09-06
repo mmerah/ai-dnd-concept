@@ -49,7 +49,7 @@ class DropItem(Frozen):
 
 
 class RepairItem(Frozen):
-    """A broken item is mended."""
+    """The actor mends a broken item."""
 
     verb: Literal["repair_item"]
     item_id: CheckedEntityId = Field(
@@ -78,7 +78,7 @@ class TakeLead(Frozen):
 
 
 class ShipUpgrade(Frozen):
-    """One ship function is upgraded."""
+    """The player upgrades one ship function."""
 
     verb: Literal["ship_upgrade"]
     function_id: CheckedEntityId = Field(

@@ -54,5 +54,5 @@ named item. Never volunteer a member's action to soften a scene the player must 
 ## Hiring
 
 A sheet is for someone hired to work, never for one who only comes along.
-Call `hire` when the player takes someone on to work. A hired member then acts like the player.
-Name them in `actor_id` on `roll` and `level_up`. The `rest` arm heals them with the party.
+Call `hire` when the player takes someone on to work. Name the hired member in `actor_id` on
+`roll`. The `rest` arm heals them with the party.
