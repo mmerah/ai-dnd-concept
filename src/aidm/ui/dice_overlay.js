@@ -26,13 +26,14 @@ export default {
       layer.className = "game-dice-layer";
       this.$el.appendChild(layer);
       const radius = Math.max(36, Math.min(64, Math.min(innerWidth, innerHeight) * 0.055));
-      const spacing = Math.min(radius * 3.2, innerWidth / (dice.length + 1));
+      const start = offscreen(radius);
+      const spots = [];
       const landings = dice.map((die, index) => {
         const element = buildDie(die, radius);
         layer.appendChild(element);
-        const x = innerWidth / 2 + (index - (dice.length - 1) / 2) * spacing - radius + jitter(radius);
-        const y = innerHeight * 0.42 - radius + jitter(radius);
-        return fly(element, x, y, radius, index * STAGGER_MS).then(() => {
+        const spot = clearSpot(spots, radius);
+        spots.push(spot);
+        return fly(element, start, spot, radius, index * STAGGER_MS).then(() => {
           element.classList.add("game-dice-landed");
         });
       });
@@ -66,9 +67,30 @@ function buildDie(die, radius) {
   return element;
 }
 
-function fly(element, x, y, radius, delay) {
-  const start = [-radius * 3, innerHeight * 0.75];
-  const apex = [(start[0] + x) / 2, Math.min(start[1], y) - innerHeight * 0.22];
+// A point just past the left, right or bottom edge of the page: the handful comes from one hand.
+function offscreen(radius) {
+  const away = radius * 2;
+  const along = Math.random();
+  const edges = [
+    [-away, innerHeight * along],
+    [innerWidth + away, innerHeight * along],
+    [innerWidth * along, innerHeight + away],
+  ];
+  return edges[Math.floor(Math.random() * edges.length)];
+}
+
+// A random spot around the middle of the page, away from the dice already down.
+function clearSpot(taken, radius) {
+  let spot = [];
+  for (let tries = 0; tries < 20; tries++) {
+    spot = [innerWidth * (0.25 + Math.random() * 0.5) - radius, innerHeight * (0.25 + Math.random() * 0.35) - radius];
+    if (taken.every((other) => Math.hypot(other[0] - spot[0], other[1] - spot[1]) > radius * 2.4)) break;
+  }
+  return spot;
+}
+
+function fly(element, start, [x, y], radius, delay) {
+  const apex = [(start[0] + x) / 2, (start[1] + y) / 2 - innerHeight * 0.2];
   const turns = () => (Math.random() < 0.5 ? -1 : 1) * (540 + Math.random() * 540);
   const timing = { duration: FLIGHT_MS, delay, fill: "both" };
   element.querySelector(".game-dice-spin").animate(
@@ -181,10 +203,6 @@ function signed(point) {
 
 function cyclic([x, y, z]) {
   return [[x, y, z], [z, x, y], [y, z, x]];
-}
-
-function jitter(radius) {
-  return (Math.random() - 0.5) * radius;
 }
 
 function tag(className) {
