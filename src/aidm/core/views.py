@@ -40,6 +40,14 @@ class Panel(Frozen):
     rows: tuple[PanelRow, ...]
 
 
+class DiceLook(Frozen):
+    """An engine's dice on the table: the body, the ink of the numbers, the glow of a kept die."""
+
+    body: str
+    ink: str
+    glow: str
+
+
 class Action(Frozen):
     """A way on the engine offers the page; the page sends its id back with the player's words."""
 

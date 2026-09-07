@@ -9,7 +9,7 @@ from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import AnyCharacter, Generation, WorldsmithAnswer
 from aidm.core.play import PendingDecision
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import Panel, PanelRow, Rows, Sections, lines_of
+from aidm.core.views import DiceLook, Panel, PanelRow, Rows, Sections, lines_of
 from aidm.engines.base import (
     CHANGE_WORLD,
     HIRE,
@@ -61,6 +61,7 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
     art_style = (
         "Grim survival-horror illustration: dim, desaturated, wet surfaces, no text or lettering."
     )
+    dice_look = DiceLook(body="#5a1216", ink="#efe1d3", glow="#e0393e")
     directory = Path(__file__).parent
     game = BreathlessGame
     scenario = BreathlessScenario

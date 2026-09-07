@@ -9,7 +9,7 @@ from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import Generation, WorldsmithAnswer
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import Panel, PanelRow, Sections, lines_of
+from aidm.core.views import DiceLook, Panel, PanelRow, Sections, lines_of
 from aidm.engines.base import (
     CHANGE_WORLD,
     HIRE,
@@ -65,6 +65,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
         "Clean science-fiction illustration: hard light, neon on steel, lived-in "
         "technology, no text or lettering."
     )
+    dice_look = DiceLook(body="#101418", ink="#5ee1ff", glow="#5ee1ff")
     directory = Path(__file__).parent
     game = TwentyfourxxGame
     scenario = TwentyfourxxScenario

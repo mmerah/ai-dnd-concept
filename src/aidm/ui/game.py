@@ -14,6 +14,7 @@ from aidm.core.entities import EntityId
 from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import Answer, Exchange
 from aidm.core.views import Action, PlayerView
+from aidm.ui.dice import DiceOverlay, rolled_since
 from aidm.ui.widgets import (
     avatar,
     decision_widget,
@@ -75,6 +76,7 @@ class GamePage:
         self.shown_clip: Path | None = None
         self.autoplay_clip: Path | None = None
         self.transcript: ui.scroll_area
+        self.dice: DiceOverlay
         self.seen: Observed = Observed(None, 0, 0, None, None)
         self.step_started: float | None = None
         self.ticker: ui.label | None = None
@@ -117,6 +119,7 @@ class GamePage:
                     with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
                         self.journal()
 
+        self.dice = DiceOverlay(session.engine.dice_look)
         # A cached clip never autoplays on a page load, only one landing after.
         self.shown_clip = session.newest_clip()
         self.seen = Observed.of(session)
@@ -312,6 +315,8 @@ class GamePage:
         if now.phase != self.seen.phase:
             self.step_started = None if now.phase is None else monotonic()
         if now != self.seen:
+            if (turn := self.session.turn) is not None:
+                self.dice.toss(rolled_since(turn.facts, self.seen.facts))
             self.seen = now
             self._set_composer()
             self.refresh()
