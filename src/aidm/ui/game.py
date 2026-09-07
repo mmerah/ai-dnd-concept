@@ -315,8 +315,7 @@ class GamePage:
         if now.phase != self.seen.phase:
             self.step_started = None if now.phase is None else monotonic()
         if now != self.seen:
-            if (turn := self.session.turn) is not None:
-                self.dice.toss(rolled_since(turn.facts, self.seen.facts))
+            self.dice.toss(self._landed(now))
             self.seen = now
             self._set_composer()
             self.refresh()
@@ -382,6 +381,17 @@ class GamePage:
         self.action_button.set_text("" if action is None else action.label)
         self.over_label.set_text(player.over or "")
         self.box.props(f'placeholder="{_placeholder(player, session.phase)}"')
+
+    def _landed(self, now: Observed) -> tuple[DiceEvent, ...]:
+        """Since the last poll: the seen turn's tail once it closed, then the live turn's dice."""
+        session = self.session
+        since = self.seen.facts
+        closed: tuple[DiceEvent, ...] = ()
+        if now.exchanges > self.seen.exchanges:
+            closed = rolled_since(session.engine.history(session.state)[-1].facts, since)
+            since = 0
+        live = () if session.turn is None else rolled_since(session.turn.facts, since)
+        return closed + live
 
     def _scroll(self) -> None:
         # A method call on an existing element needs no NiceGUI slot; `ui.timer` here would.
