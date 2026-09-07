@@ -8,7 +8,7 @@ from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import AnyCharacter, Generation, WorldsmithAnswer
 from aidm.core.play import DecisionOption, PendingDecision
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import Rows
+from aidm.core.views import DiceLook, Rows
 from aidm.engines.base import CHANGE_WORLD, HIRE, HIRE_TOOL, PLAYER_ID, Hire, hire_target
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.tools import Move
@@ -65,6 +65,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
     id = EngineId("tunnelgoons")
     title = "TUNNEL GOONS"
     art_style = "Old-school fantasy illustration in black ink, cross-hatched, no text or lettering."
+    dice_look = DiceLook(body="#3b4048", ink="#f3efe6", glow="#7fb069")
     directory = Path(__file__).parent
     game = TunnelGoonsGame
     scenario = TunnelGoonsScenario

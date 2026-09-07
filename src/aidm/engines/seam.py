@@ -22,7 +22,7 @@ from aidm.core.model import (
 )
 from aidm.core.play import DecisionOption, Exchange, Line, PendingOption, SceneRecord
 from aidm.core.tools import MasterTool
-from aidm.core.views import NarratorView, PlayerView, Rows, Sections
+from aidm.core.views import DiceLook, NarratorView, PlayerView, Rows, Sections
 from aidm.engines.base import HIRE, PLAYER_ID, Hire, Person, World, hire_target
 
 type AnyEngine = Engine[Any, Any]
@@ -33,6 +33,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
     id: EngineId
     title: str
     art_style: str
+    dice_look: DiceLook
     directory: Path  # rules.md; a scene engine's packs/
     game: type[G]
     scenario: type[AnyScenario]
