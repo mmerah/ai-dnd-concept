@@ -14,11 +14,15 @@ const SOLIDS = {
   8: cyclic([1, 0, 0]).flatMap(signed),
   10: trapezohedron(),
   12: [...signed([1, 1, 1]), ...cyclic([0, 1 / PHI, PHI]).flatMap(signed)],
-  20: cyclic([0, 1, PHI]).flatMap(signed),
 };
 
+// Faces are SVG polygons: Chromium misplaces a `clip-path` inside a preserve-3d context.
+const SHADE = `<svg width="0" height="0"><defs><linearGradient id="game-dice-shade" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#fff" stop-opacity=".4"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/>
+  <stop offset="1" stop-color="#000" stop-opacity=".4"/></linearGradient></defs></svg>`;
+
 export default {
-  template: "<div></div>",
+  template: `<div>${SHADE}</div>`,
   methods: {
     toss(dice) {
       if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -46,7 +50,7 @@ export default {
 };
 
 function buildDie(die, radius) {
-  const points = SOLIDS[die.faces] ?? SOLIDS[6];
+  const points = SOLIDS[die.faces];
   const reach = Math.max(...points.map(length));
   const faces = hullFaces(points.map((point) => scale(point, 1 / reach)));
   const numbers = numbered(faces);
@@ -55,14 +59,14 @@ function buildDie(die, radius) {
   element.style.width = element.style.height = `${size}px`;
   const spin = element.appendChild(tag("game-dice-spin"));
   const body = spin.appendChild(tag("game-dice-body"));
-  body.style.transform = facing(faces[numbers.indexOf(die.value)] ?? faces[0]);
+  body.style.transform = facing(faces[numbers.indexOf(die.value)]);
   faces.forEach((face, index) => {
     const panel = body.appendChild(tag("game-dice-face"));
-    panel.textContent = numbers[index];
     panel.style.transform = `matrix3d(${face.u},0,${face.v},0,${face.normal},0,${scale(face.centroid, radius)},1)`;
-    const corners = face.corners.map(([x, y]) => `${radius + x * radius}px ${radius + y * radius}px`);
-    panel.style.clipPath = `polygon(${corners})`;
     panel.style.fontSize = `${inradius(face.corners) * radius * 1.1}px`;
+    const points = face.corners.map(([x, y]) => `${radius + x * radius},${radius + y * radius}`).join(" ");
+    panel.innerHTML = `<svg viewBox="0 0 ${size} ${size}"><polygon class="game-dice-facet" points="${points}"/>
+      <polygon fill="url(#game-dice-shade)" points="${points}"/></svg><span>${numbers[index]}</span>`;
   });
   return element;
 }
@@ -71,17 +75,14 @@ function buildDie(die, radius) {
 function offscreen(radius) {
   const away = radius * 2;
   const along = Math.random();
-  const edges = [
-    [-away, innerHeight * along],
-    [innerWidth + away, innerHeight * along],
-    [innerWidth * along, innerHeight + away],
-  ];
-  return edges[Math.floor(Math.random() * edges.length)];
+  const edge = Math.floor(Math.random() * 3);
+  if (edge === 2) return [innerWidth * along, innerHeight + away];
+  return [edge ? innerWidth + away : -away, innerHeight * along];
 }
 
 // A random spot around the middle of the page, away from the dice already down.
 function clearSpot(taken, radius) {
-  let spot = [];
+  let spot;
   for (let tries = 0; tries < 20; tries++) {
     spot = [innerWidth * (0.25 + Math.random() * 0.5) - radius, innerHeight * (0.25 + Math.random() * 0.35) - radius];
     if (taken.every((other) => Math.hypot(other[0] - spot[0], other[1] - spot[1]) > radius * 2.4)) break;
@@ -137,7 +138,7 @@ function hullFaces(points) {
           if (heights.some((h) => h < -EPS)) continue;
           normal = scale(normal, -1);
         }
-        const key = normal.map((x) => Math.round(x * 1000) + 0).join();
+        const key = normal.map((x) => Math.round(x * 1000)).join();
         if (faces.has(key)) continue;
         faces.set(key, face(points.filter((_, index) => Math.abs(heights[index]) < EPS), normal));
       }

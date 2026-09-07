@@ -65,9 +65,11 @@ body, body.body--dark, .nicegui-content, .q-page {
 }
 @media (prefers-reduced-motion: reduce) { .game-die-live { animation: none; } }
 
-.game-dice-overlay, .game-dice-layer {
+.game-dice-overlay {
   position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 7000;
 }
+
+.game-dice-layer { position: absolute; inset: 0; }
 
 .game-dice-die { position: absolute; left: 0; top: 0; perspective: 800px; }
 
@@ -92,13 +94,13 @@ body, body.body--dark, .nicegui-content, .q-page {
   backface-visibility: hidden;
   font-family: Georgia, "Times New Roman", serif; font-weight: 800; color: var(--die-ink);
   text-shadow: 0 1px 1px rgba(0, 0, 0, .35);
-  background: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--die-body) 70%, white),
-    var(--die-body) 45%,
-    color-mix(in srgb, var(--die-body) 65%, black)
-  );
 }
+
+.game-dice-face svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.game-dice-face span { position: relative; }
+
+.game-dice-facet { fill: var(--die-body); stroke: rgba(0, 0, 0, .4); stroke-linejoin: round; }
 
 .game-dice-landed:not(.game-dice-kept) { opacity: .45; transition: opacity .4s; }
 
