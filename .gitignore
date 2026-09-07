@@ -17,3 +17,6 @@ repository.md
 
 # Eval output
 evals/results/
+
+# QA harness screenshots
+qa/shots/

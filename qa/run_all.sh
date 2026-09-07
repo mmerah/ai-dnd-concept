@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Run every scenario on a fresh server each: qa/run_all.sh [scenario ...]
+set -u
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PW="${QA_PW:-python}"
+cd "$ROOT"
+scenarios=("$@")
+[ ${#scenarios[@]} -eq 0 ] && scenarios=(home loner goons breathless 24xx settings create mobile mcp)
+for name in "${scenarios[@]}"; do
+  transport=direct
+  [ "$name" = "mcp" ] && transport=mcp
+  qa/serve.sh --transport "$transport" > /dev/null || exit 1
+  echo "### $name"
+  "$PW" "qa/s_$name.py" 2>&1 | grep -E "^(ISSUE|NOTE|==| - )|Error|Traceback|File \"/home.*qa/|waiting for" | grep -v "GL Driver"
+done

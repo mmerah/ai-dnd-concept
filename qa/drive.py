@@ -1,0 +1,161 @@
+"""Playwright helpers for driving the QA server. Run scenario scripts with the `pw` venv."""
+
+import json
+import re
+import time
+import urllib.request
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from playwright.sync_api import Browser, Locator, Page, sync_playwright
+
+CHROMIUM = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
+BASE = "http://localhost:8123"
+
+
+@dataclass
+class Session:
+    browser: Browser
+    shots: Path
+    issues: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+    counter: int = 0
+
+    def page(self, width: int = 1280, height: int = 800, **kwargs: object) -> Page:
+        context = self.browser.new_context(viewport={"width": width, "height": height}, **kwargs)
+        page = context.new_page()
+        page.set_default_timeout(15000)
+        page.on(
+            "console",
+            lambda m: (
+                self.notes.append(f"console[{m.type}]: {m.text}")
+                if m.type in ("error", "warning")
+                else None
+            ),
+        )
+        page.on("pageerror", lambda e: self.issues.append(f"pageerror: {e}"))
+        return page
+
+    def shot(self, page: Page, name: str) -> None:
+        self.counter += 1
+        page.screenshot(path=str(self.shots / f"{self.counter:03d}-{name}.png"), full_page=False)
+
+    def check(self, condition: bool, message: str) -> bool:
+        if not condition:
+            self.issues.append(message)
+            print("ISSUE:", message)
+        return condition
+
+    def note(self, message: str) -> None:
+        self.notes.append(message)
+        print("NOTE:", message)
+
+
+def run(name: str, body) -> None:  # noqa: ANN001
+    shots = Path(__file__).parent / "shots" / name
+    shots.mkdir(parents=True, exist_ok=True)
+    for old in shots.glob("*.png"):
+        old.unlink()
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=CHROMIUM)
+        session = Session(browser=browser, shots=shots)
+        try:
+            body(session)
+        finally:
+            browser.close()
+            report = shots / "report.json"
+            report.write_text(
+                json.dumps({"issues": session.issues, "notes": session.notes}, indent=1)
+            )
+            print(f"\n== {name}: {len(session.issues)} issues")
+            for issue in session.issues:
+                print(" -", issue)
+
+
+def log() -> list[dict]:
+    with urllib.request.urlopen(f"{BASE}/qa/log") as reply:
+        return json.load(reply)
+
+
+def composer(page: Page) -> Locator:
+    return page.locator(".game-composer textarea")
+
+
+def send(page: Page) -> Locator:
+    return page.locator('button[aria-label="Send"]')
+
+
+def wait_idle(page: Page, timeout: float = 30) -> None:
+    """The composer is enabled again and no role is working."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        spinning = page.locator(".q-spinner:visible:not(.q-img .q-spinner)").count() > 0
+        disabled = composer(page).is_disabled() if composer(page).count() else True
+        if not spinning and not disabled:
+            page.wait_for_timeout(300)
+            return
+        page.wait_for_timeout(200)
+    raise TimeoutError("the page never went idle")
+
+
+def wait_working(page: Page, timeout: float = 5) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if page.locator(".q-spinner:visible:not(.q-img .q-spinner)").count() > 0:
+            return True
+        page.wait_for_timeout(50)
+    return False
+
+
+def submit(page: Page, text: str, *, enter: bool = False, wait: bool = True) -> bool:
+    """Type and send; returns whether a turn visibly started (spinner or greyed composer)."""
+    box = composer(page)
+    box.fill(text)
+    if enter:
+        box.press("Enter")
+    else:
+        send(page).click()
+    if not wait:
+        return True
+    deadline = time.time() + 5
+    while time.time() < deadline:
+        if (
+            page.locator(".q-spinner:visible:not(.q-img .q-spinner)").count() > 0
+            or composer(page).is_disabled()
+        ):
+            return True
+        page.wait_for_timeout(50)
+    return False
+
+
+def bubbles(page: Page) -> list[str]:
+    return [
+        t.strip()
+        for t in page.locator(".game-transcript .q-message-text-content").all_inner_texts()
+    ]
+
+
+def cards(page: Page) -> list[str]:
+    return [t.strip() for t in page.locator(".game-transcript .game-card").all_inner_texts()]
+
+
+def notifications(page: Page) -> list[str]:
+    return [t.strip() for t in page.locator(".q-notification__message").all_inner_texts()]
+
+
+def placeholder(page: Page) -> str:
+    return composer(page).get_attribute("placeholder") or ""
+
+
+def drawer_text(page: Page) -> str:
+    return page.locator(".game-drawer").inner_text()
+
+
+def open_drawer(page: Page) -> None:
+    if not page.locator(".game-drawer").is_visible():
+        page.locator('button:has(i:text("menu_book"))').click()
+        page.wait_for_timeout(400)
+
+
+def clean(text: str) -> str:
+    return re.sub(r"\s+", " ", text).strip()
