@@ -9,12 +9,12 @@ def _fact(dice: DiceEvent, *, told: bool) -> Fact:
     return Fact(kind=DICE, trace=dice.label, told=told, card=dice.label, dice=(dice,))
 
 
-def test_every_die_of_a_group_is_kept_unless_the_group_keeps_some() -> None:
+def test_every_rolled_value_is_one_die_in_event_order() -> None:
     assert thrown((TWO_D6, KEPT_HIGHEST)) == [
-        {"faces": 6, "value": 2, "kept": True},
-        {"faces": 6, "value": 5, "kept": True},
-        {"faces": 8, "value": 3, "kept": False},
-        {"faces": 8, "value": 7, "kept": True},
+        {"faces": 6, "value": 2},
+        {"faces": 6, "value": 5},
+        {"faces": 8, "value": 3},
+        {"faces": 8, "value": 7},
     ]
 
 

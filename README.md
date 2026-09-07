@@ -73,3 +73,5 @@ Breathless is based on Breathless by Fari RPGs, licensed under the ORC License â
 24XX rules (v1.4) are CC BY Jason Tocci â€” attribution in the [24XX notes](docs/24XX.md).
 
 This project does not yet specify a license for the other code.
+
+The 3D dice are `@3d-dice/dice-box-threejs` 0.0.12, MIT, vendored under `src/aidm/ui/lib/` with its licence beside it.

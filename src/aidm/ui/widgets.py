@@ -1,12 +1,11 @@
-from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Sequence
-from contextlib import asynccontextmanager, contextmanager
+from collections.abc import Awaitable, Callable, Generator, Sequence
+from contextlib import contextmanager
 from functools import partial
 from pathlib import Path
 
 from nicegui import ui
 
 from aidm.app.launch import LaunchTarget
-from aidm.core.entities import Refusal
 from aidm.core.play import DecisionOption
 from aidm.ui import theme
 
@@ -18,26 +17,18 @@ def game_path(target: LaunchTarget) -> str:
     return GAME_ROUTE.format(scenario=target.scenario_id, character=target.character_id)
 
 
-@asynccontextmanager
-async def working() -> AsyncGenerator[None]:
-    try:
-        yield
-    except (OSError, Refusal) as error:
-        ui.notify(f"{type(error).__name__}: {error}", type="negative", multi_line=True)
-
-
 @contextmanager
 def page_header(title: str, badge: str | None = None, home: bool = True) -> Generator[None]:
     theme.apply()
-    with ui.header().classes("items-center").style("gap: 1rem"):
+    with ui.header().classes("items-center no-wrap"):
         if home:
             ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props(
                 "flat color=white round"
             )
-        ui.label(title).classes("text-lg font-bold")
+        ui.label(title).classes("text-lg font-bold ellipsis")
         if badge is not None:
             ui.badge(badge).props("color=primary text-color=white").classes(
-                "text-sm font-bold q-px-md q-py-sm"
+                "text-sm font-bold q-px-md q-py-sm gt-xs"
             )
         yield
 
@@ -74,13 +65,18 @@ def decision_widget(
     ui.label(prompt).classes("text-base whitespace-pre-wrap")
     if not options:
         return
-    with ui.row().classes("w-full items-center").style("gap: 0.5rem"):
+    with ui.row().classes("w-full items-start").style("gap: 0.5rem"):
         for option in options:
-            button = ui.button(option.label, on_click=partial(answer, option.id)).props(
-                "no-caps outline"
-            )
-            if option.detail:
-                button.tooltip(option.detail)
+            # A label in the button's own slot sits beside the detail, not above it.
+            with (
+                ui.button(on_click=partial(answer, option.id))
+                .props("no-caps outline")
+                .style("min-height: 44px"),
+                ui.column().style("gap: 0"),
+            ):
+                ui.label(option.label)
+                if option.detail:
+                    ui.label(option.detail).classes("text-xs opacity-70")
 
 
 def heading(title: str, *, tight: bool = False) -> None:

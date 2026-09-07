@@ -1,31 +1,35 @@
 from collections.abc import Sequence
+from pathlib import Path
 
 from nicegui import ui
 
 from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.views import DiceLook
 
+DICE_ASSETS = Path(__file__).parent / "dice_assets"
+DICE_ASSETS_ROUTE = "/dice/"
 
-class DiceOverlay(ui.element, component="dice_overlay.js"):
+
+class DiceTray(ui.element, component="dice_tray.js", dependencies=["lib/dice-box-threejs.es.js"]):
     """Dice thrown across the whole page as they land; the card below keeps the result."""
 
     def __init__(self, look: DiceLook) -> None:
         super().__init__()
-        self.classes("game-dice-overlay").style(
-            f"--die-body: {look.body}; --die-ink: {look.ink}; --die-glow: {look.glow}"
-        )
+        self._props["look"] = look.model_dump()
+        self._props["assets"] = DICE_ASSETS_ROUTE
+        self.classes("game-dice-overlay")
 
     def toss(self, events: Sequence[DiceEvent]) -> None:
         if dice := thrown(events):
             self.run_method("toss", dice)
 
 
-def thrown(events: Sequence[DiceEvent]) -> list[dict[str, int | bool]]:
-    """One die per rolled value; in a group that keeps some, the others land dimmed."""
+def thrown(events: Sequence[DiceEvent]) -> list[dict[str, int]]:
+    """One die per rolled value, in event order; the card, not the toss, says which are kept."""
     return [
-        {"faces": face, "value": value, "kept": not event.highlight or index in event.highlight}
+        {"faces": face, "value": value}
         for event in events
-        for index, (face, value) in enumerate(zip(event.faces, event.rolled, strict=True))
+        for face, value in zip(event.faces, event.rolled, strict=True)
     ]
 
 
