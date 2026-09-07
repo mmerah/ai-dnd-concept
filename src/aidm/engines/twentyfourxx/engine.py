@@ -95,8 +95,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
             master_tool(
                 "job",
                 "Call this to look for work with `find`, to record agreed work with `take`, "
-                "and to close the job with `finish`. The engine rolls, raises one skill for "
-                "each operator, and pays each of them d6 credits.",
+                "and to close the job with `finish`. With `find` the engine rolls the SRD's "
+                "d6. With `finish` it raises one skill for each operator and pays each of "
+                "them d6 credits.",
                 Job,
                 self.job,
             ),
@@ -503,7 +504,9 @@ def starting_items(kits: Sequence[Kit]) -> dict[EntityId, Item]:
     for kit in kits:
         key = slug(kit.name, taken)
         taken.append(key)
-        items[EntityId(key)] = Item(name=kit.name, bulky=kit.bulky, breaks=kit.breaks)
+        items[EntityId(key)] = Item(
+            name=kit.name, bulky=kit.bulky, breaks=kit.breaks, harmless=kit.harmless
+        )
     return items
 
 

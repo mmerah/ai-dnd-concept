@@ -95,7 +95,8 @@ class Defend(Frozen):
     )
     hindrance: str = Field(
         default="",
-        description="What the harm becomes, as a hindrance. Empty when hull armor takes the hit.",
+        description="What the harm becomes, as a hindrance. Empty for an item that breaks "
+        "harmlessly.",
     )
     actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
 
@@ -157,15 +158,17 @@ class Job(Frozen):
     )
     where: str = Field(
         default="",
-        description="Where the player looks for work, in a few words. With `find`.",
+        description="Where the player looks for work, in a few words. Required with `find`.",
     )
     terms: str = Field(
         default="",
-        description="Who wants what done, what that looks like, and what it pays. With `take`.",
+        description="Who wants what done, what that looks like, and what it pays. Required with "
+        "`take`.",
     )
     raises: tuple[Raise, ...] = Field(
         default=(),
-        description="One per operator: the player and every living hired member. With `finish`.",
+        description="One per operator: the player and every living hired member. Required with "
+        "`finish`.",
     )
 
     @model_validator(mode="after")
