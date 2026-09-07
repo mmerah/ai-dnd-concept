@@ -1,5 +1,6 @@
 """The Buried Keep (Tunnel Goons): map, fights, hire, interjection, level-up, more map."""
 
+import json
 import sys
 import urllib.request
 from pathlib import Path
@@ -35,8 +36,8 @@ def body(s: Session) -> None:
     wait_idle(page)
     s.shot(page, "opened")
     side = clean(drawer_text(page))
-    s.check("Ways out The Root Corridor" in side, f"ways out panel: {side[-300:]}")
-    s.check("Carrying" in side and "Pry Bar" in side, "carrying panel missing")
+    s.check("ways out the root corridor" in side.lower(), f"ways out panel: {side[-300:]}")
+    s.check("carrying" in side.lower() and "Pry Bar" in side, "carrying panel missing")
 
     # 1. Move: the header, the trail and the ways out follow.
     submit(page, "I go down the corridor.\n!move to_id=corridor")
@@ -52,7 +53,10 @@ def body(s: Session) -> None:
         "Crawler" in side or "crawler" in side.lower(),
         f"the crawler is not shown here: {side[:400]}",
     )
-    s.check("Trail The Collapsed Archway The Root Corridor" in side, f"trail wrong: {side[-200:]}")
+    s.check(
+        "trail the collapsed archway the root corridor" in side.lower(),
+        f"trail wrong: {side[-200:]}",
+    )
 
     # 2. A dangerous fight roll against an npc: health moves.
     submit(
@@ -71,7 +75,7 @@ def body(s: Session) -> None:
     s.shot(page, "hired")
     side = clean(drawer_text(page))
     s.check(
-        "Party" in side and "Grix" in side and "Brute" in side,
+        "party" in side.lower() and "Grix" in side and "Brute" in side,
         f"party panel missing Grix's sheet: {side[:500]}",
     )
     s.check("signs on" in " ".join(cards(page)), f"hire card missing: {cards(page)[-3:]}")
@@ -210,11 +214,13 @@ def body(s: Session) -> None:
         "the more-map words were not played as a turn",
     )
     prompts = [e for e in log() if e["role"] == "master"]
-    s.check("qa-room-1" in prompts[-1]["prompt"], "the master was not shown the new way")
-    submit(page, "East then.\n!move to_id=qa-room-1")
+    s.check("qa-room-" in prompts[-1]["prompt"], "the master was not shown the new way")
+    written = [e for e in log() if e["role"] == "worldsmith"][-1]["answer"]
+    room = json.loads(written)["start"]
+    submit(page, f"East then.\n!move to_id={room}")
     wait_idle(page)
     s.check(
-        "QA Room 1" in clean(page.inner_text(".game-scene")), "could not walk into the written room"
+        "QA Room" in clean(page.inner_text(".game-scene")), "could not walk into the written room"
     )
     s.shot(page, "new-room")
 

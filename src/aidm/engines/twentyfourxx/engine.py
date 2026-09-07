@@ -478,7 +478,12 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
             actor = world.require_actor(raise_.actor_id)
             sheet = actor.dice()
             label = self.resolve_skill(sheet, raise_.skill)
-            new_die = raised(sheet.skills.get(label))
+            try:
+                new_die = raised(sheet.skills.get(label))
+            except Refusal as maxed:
+                raise Refusal(
+                    f"{actor.name}'s {label} is already at d12; raise another skill for them"
+                ) from maxed
             sheet.skills[label] = new_die
             trace = f"{actor.label} — {label} rises to d{new_die}"
             facts.append(actor.fact("skill_raised", trace, card=f"Job done: {label} d{new_die}"))

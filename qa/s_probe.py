@@ -68,10 +68,10 @@ def body(s: Session) -> None:
     s.shot(page, "hire-failed")
     s.note(f"cards after a failed hire: {cards(page)[-2:]}")
     s.check(
-        "Grix" in cards(page)[-1],
+        "hire" in cards(page)[-1].lower() and "way on" not in cards(page)[-1].lower(),
         f"the failed-hire card does not name the hire: {cards(page)[-1]!r}",
     )
-    s.check("Party" not in clean(drawer_text(page)), "a failed hire still joined the party")
+    s.check("party" not in clean(drawer_text(page)).lower(), "a failed hire still joined the party")
 
     # 4. The composer after a reload mid-turn: the sent words stay in the box.
     submit(page, "I look about slowly.\n!slow narrator\n!none")

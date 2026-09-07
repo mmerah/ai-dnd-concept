@@ -264,9 +264,13 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         if not way.locked:
             raise Refusal(f"the way from {here.name} to {destination.name} is not locked")
         way.locked = False
+        way.known = True
+        back = self.way(destination.id, here.id)
+        if back is not None:
+            back.known = True
         trace = f"the way from {here.label} to {destination.label} is unlocked"
         card = f"{destination.name} unlocked"
-        return [here.fact("way_unlocked", trace, narrate=way.known and here.known, card=card)]
+        return [here.fact("way_unlocked", trace, card=card)]
 
     def reveal_hidden(self, entity_id: EntityId) -> list[Fact]:
         entity = self.require(entity_id)

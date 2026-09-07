@@ -7,10 +7,12 @@ from random import Random
 import pytest
 from support.loner import TARGET, open_game, session, with_entity
 from support.table import (
+    BREATHLESS,
     ScriptedSpawner,
     changed,
     narrated,
     offline_settings,
+    open_game_for,
     play_turn,
     the_way_on,
     tool_call,
@@ -224,9 +226,27 @@ async def test_a_failed_write_after_a_complication_leaves_the_turn_committed(
 
     exchange = state.payload.exchanges()[-1]
     assert exchange.prompt == STORY_MARK
-    assert exchange.facts[0].kind == "way_unwritten"
+    assert exchange.facts[0].kind == "complication_unwritten"
+    assert exchange.facts[0].card == (
+        "Nothing new came down on this place after all. You are still where you were."
+    )
     assert state.generation is None
     assert state.payload.run.title == title
+
+
+async def test_a_failed_write_after_a_hire_names_the_hire(tmp_path: Path) -> None:
+    table = open_game_for(tmp_path, BREATHLESS)
+
+    state = await play_turn(
+        table,
+        "I ask Ovid to guide us across the flats.",
+        tool_call("hire", entity_id="ovid-sarn", terms="Guide us across the flats."),
+    )
+
+    exchange = table.service.engine.history(state)[-1]
+    assert exchange.facts[0].kind == "hire_unwritten"
+    assert exchange.facts[0].card == "The hire could not be written; nobody signed on."
+    assert state.generation is None
 
 
 async def test_a_complication_after_an_offer_clears_it_only_once_installed(

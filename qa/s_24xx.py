@@ -27,7 +27,7 @@ def body(s: Session) -> None:
     wait_idle(page)
     s.shot(page, "opened")
     side = clean(drawer_text(page))
-    s.check("Ship" in side and "Hull armor" in side, f"ship panel: {side[:500]}")
+    s.check("ship" in side.lower() and "Hull armor" in side, f"ship panel: {side[:500]}")
     s.check("Credits ₡2" in side, "credits missing")
 
     submit(page, 'I ask around.\n!job verb=find where="the docking ring"')
@@ -35,13 +35,14 @@ def body(s: Session) -> None:
     s.check("the docking ring — d6" in " ".join(cards(page)), f"find card: {cards(page)[-2:]}")
     submit(page, 'I take the job.\n!job verb=take terms="Fix the relay for 20 credits"')
     wait_idle(page)
-    s.check("Job Fix the relay" in clean(drawer_text(page)), "job panel missing")
+    s.check("job fix the relay" in clean(drawer_text(page)).lower(), "job panel missing")
     s.shot(page, "job")
     submit(page, 'I hire Vessa.\n!hire entity_id=vessa-rune terms="Fly us out"')
     wait_idle(page, timeout=40)
     side = clean(drawer_text(page))
     s.check(
-        "Party" in side and "Vessa Rune" in side and "Medic" in side, f"party panel: {side[:600]}"
+        "party" in side.lower() and "Vessa Rune" in side and "Medic" in side,
+        f"party panel: {side[:600]}",
     )
     s.shot(page, "hired")
     submit(
@@ -53,7 +54,7 @@ def body(s: Session) -> None:
     s.note(f"finish: {last['calls'][-1][2][:200]}")
     joined = " ".join(cards(page))
     s.check("Job done" in joined and "+₡" in joined, f"finish cards: {cards(page)[-4:]}")
-    s.check("Job Fix" not in clean(drawer_text(page)), "job panel stayed after finish")
+    s.check("job fix" not in clean(drawer_text(page)).lower(), "job panel stayed after finish")
     s.shot(page, "finished")
     submit(
         page,

@@ -89,15 +89,11 @@ def _picture(
     lead, beside = ("you are", "with you") if reader is None else ("the player is", "with them")
     subjects = {subject.id: subject for subject in view.subjects}
     first, *rest = (subjects[member_id] for member_id in view.party)
-    members = [f"{beside}: {member.name} — {member.brief}" for member in rest]
-    party = "\n".join(
-        (f"{lead} {first.name} — {first.brief}", *(members or [f"nobody travels {beside}"]))
-    )
+    members = [f"{beside}: {member.headline}" for member in rest]
+    party = "\n".join((f"{lead} {first.headline}", *(members or [f"nobody travels {beside}"])))
     others = view.others()
     who_is_here = (
-        lines_of(f"- {subject.name} — {subject.brief}" for subject in others)
-        if others
-        else "(nobody else)"
+        lines_of(f"- {subject.headline}" for subject in others) if others else "(nobody else)"
     )
     return (
         ("WHAT THE PLAYER HAS READ", told_history(scenes)),

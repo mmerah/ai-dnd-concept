@@ -1,7 +1,27 @@
+from asyncio import get_running_loop
+from collections.abc import Generator
+from contextlib import contextmanager
+from pathlib import Path
+
+from nicegui import Client, core, ui
+from support.loner import open_game
+from support.table import Table, play_turn
+
 from aidm.core.entities import EntityId
+from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, PendingDecision, PendingOption, SpokenLine
 from aidm.core.views import PlayerView, Subject
-from aidm.ui.game import can_type, insert_at_caret, near_end, standing_proposal
+from aidm.ui.dice import DiceTray
+from aidm.ui.game import (
+    GamePage,
+    Observed,
+    can_type,
+    draft_spent,
+    insert_at_caret,
+    near_end,
+    placeholder,
+    standing_proposal,
+)
 
 WREN = Subject(id=EntityId("player"), name="Wren", brief="A quiet scout")
 
@@ -56,3 +76,108 @@ def test_insert_at_caret_spaces_only_against_a_non_space_neighbour() -> None:
     assert insert_at_caret("I go", "north", 4) == "I go north"
     assert insert_at_caret("", "hi", 0) == "hi"
     assert insert_at_caret("I ", "go", 2) == "I go"
+
+
+def test_placeholder_names_the_working_role_between_turns() -> None:
+    assert placeholder(_view(), "master") != placeholder(_view(), None)
+    assert placeholder(_view(prompt=_pick(allows_text=False)), None) != placeholder(
+        _view(prompt=_pick(allows_text=True)), None
+    )
+
+
+def test_placeholder_names_game_over_before_anything_else() -> None:
+    assert placeholder(_view(over="Wren is dead"), None) == (
+        "The game is over. Restart it from the menu."
+    )
+    assert placeholder(_view(over="Wren is dead"), "master") == (
+        "The game is over. Restart it from the menu."
+    )
+
+
+def test_draft_spent_once_the_matching_exchange_has_landed() -> None:
+    assert draft_spent("I open the door.", "I open the door.")
+
+
+def test_draft_spent_ignores_an_unrelated_landed_prompt() -> None:
+    assert not draft_spent("I open the door.", "(the party speaks)")
+
+
+def test_draft_spent_is_false_for_an_empty_draft() -> None:
+    assert not draft_spent("", "")
+
+
+@contextmanager
+def _nicegui_loop() -> Generator[None]:
+    """A refreshable's background task asserts NiceGUI's loop is set; only `ui.run()` sets it."""
+    core.loop = get_running_loop()
+    try:
+        yield
+    finally:
+        core.loop = None
+
+
+def _page[G: AnyGame](table: Table[G]) -> GamePage:
+    """The few elements `poll_turn` touches, built without a socket connection."""
+    page = GamePage(table.runtime, table.service)
+    page.transcript = ui.scroll_area()
+    page.new_activity = ui.button("New activity")
+    page.dice = DiceTray(table.service.engine.dice_look)
+    page.box = ui.input()
+    page.send = ui.button()
+    page.action_button = ui.button()
+    page.over_label = ui.label()
+    page.seen = Observed.of(table.service)
+    return page
+
+
+async def test_poll_turn_follows_only_on_the_readers_own_move(tmp_path: Path) -> None:
+    table = open_game(tmp_path)
+    client = Client(ui.page("/"))
+    try:
+        with _nicegui_loop(), client:
+            page = _page(table)
+            page.at_end = False
+            page.own_move = True
+
+            table.service.phase = "master"  # another tab's turn starting: not the reader's move
+            page.poll_turn()
+            assert page.new_activity.visible is False
+
+        _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
+
+        with _nicegui_loop(), client:
+            page.poll_turn()
+            assert page.new_activity.visible is False
+
+            page.own_move = False
+            table.service.phase = "narrator"
+            page.poll_turn()
+            assert page.new_activity.visible is True
+    finally:
+        client.delete()
+
+
+async def test_a_change_that_lands_nothing_keeps_a_draft_matching_the_last_prompt(
+    tmp_path: Path,
+) -> None:
+    table = open_game(tmp_path)
+    _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
+    client = Client(ui.page("/"))
+    try:
+        with _nicegui_loop(), client:
+            page = _page(table)
+            page.box.value = "I wait."
+
+            table.service.phase = "master"  # a turn starts elsewhere; nothing has landed yet
+            page.poll_turn()
+
+            assert page.box.value == "I wait."
+            table.service.phase = None
+
+        _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
+
+        with _nicegui_loop(), client:
+            page.poll_turn()
+            assert page.box.value == ""
+    finally:
+        client.delete()

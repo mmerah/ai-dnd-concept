@@ -31,7 +31,7 @@ def body(s: Session) -> None:
     wait_idle(page)
     s.shot(page, "opened")
     side = clean(drawer_text(page))
-    s.check("Backpack" in side and "Loot die d12" in side, f"sheet panels: {side[:400]}")
+    s.check("backpack" in side.lower() and "Loot die d12" in side, f"sheet panels: {side[:400]}")
 
     # 1. Loot until something is found: an option-only decision.
     found = False
@@ -97,7 +97,8 @@ def body(s: Session) -> None:
     s.shot(page, "hired")
     side = clean(drawer_text(page))
     s.check(
-        "Party" in side and "Ovid Sarn" in side and "Nurse" in side, f"party panel: {side[:600]}"
+        "party" in side.lower() and "Ovid Sarn" in side and "Nurse" in side,
+        f"party panel: {side[:600]}",
     )
     # A helped roll.
     submit(
