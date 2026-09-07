@@ -369,8 +369,6 @@ class GameService:
 
 @dataclass(frozen=True, slots=True)
 class RoleSpawner:
-    """Each role goes where its settings send it: a CLI, or the builtin loop over an API."""
-
     settings: Settings
     cli: CliSpawner
     builtin: BuiltinSpawner
@@ -384,7 +382,7 @@ class RoleSpawner:
 @dataclass(slots=True)
 class Runtime:
     settings: Settings
-    # A stub for tests; the runtime builds its own spawner because that spawner calls back into it.
+    # Tests hand in a stub; the runtime builds its own because that spawner calls back into it.
     stub: InitVar[Spawner | None] = None
     spawner: Spawner = field(init=False)
     _sessions: dict[str, GameService] = field(default_factory=dict, repr=False)
@@ -423,7 +421,6 @@ class Runtime:
         return in_flight[0] if in_flight else None
 
     def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
-        """Between turns there is nothing to call."""
         playing = self.playing()
         turn = None if playing is None else playing.turn
         if turn is None:

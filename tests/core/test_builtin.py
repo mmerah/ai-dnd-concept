@@ -10,7 +10,7 @@ from httpx import HTTPStatusError, Request, Response
 from pydantic import JsonValue
 from support.table import ENGINES_BUILT, LONER3E, offline_settings, updated
 
-from aidm.app.builtin import MAX_ROUNDS, BuiltinSpawner
+from aidm.app.builtin import BuiltinSpawner
 from aidm.app.runtime import Runtime
 from aidm.config import RoleConfig, Roles, Settings
 from aidm.core.entities import Refusal
@@ -43,7 +43,6 @@ def _settings(**roles: RoleConfig) -> Settings:
 def _post(
     monkeypatch: pytest.MonkeyPatch, *replies: JsonValue | Exception
 ) -> list[dict[str, JsonValue]]:
-    """Scripts the provider and records every body sent; a scripted exception is raised."""
     queued, sent = list(replies), list[dict[str, JsonValue]]()
 
     async def scripted(
@@ -151,12 +150,13 @@ async def test_a_master_still_calling_tools_past_the_cap_is_cut_off(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     endless = _said(None, _call("a", "change_world", "{}"))
-    sent = _post(monkeypatch, *([endless] * (MAX_ROUNDS + 1)))
-    spawner = BuiltinSpawner(_settings(master=RoleConfig(provider="local", model="m")), _Tools())
+    sent = _post(monkeypatch, endless, endless, endless, endless)
+    master = RoleConfig(provider="local", model="m", max_rounds=3)
+    spawner = BuiltinSpawner(_settings(master=master), _Tools())
 
-    with pytest.raises(Refusal, match=f"{MAX_ROUNDS} rounds"):
+    with pytest.raises(Refusal, match="3 rounds"):
         _ = await spawner.run("master", "PLAY", None)
-    assert len(sent) == MAX_ROUNDS
+    assert len(sent) == 3
 
 
 @pytest.mark.parametrize(

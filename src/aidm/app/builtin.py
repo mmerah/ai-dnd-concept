@@ -16,14 +16,10 @@ from aidm.core.io import decode
 from aidm.core.model import AnyGame
 from aidm.core.tools import MasterTool, schema_of
 
-MAX_ROUNDS = 30
-
 LOGGER = logging.getLogger(__name__)
 
 
 class Tools(Protocol):
-    """The tool surface of the turn in flight."""
-
     def published_tools(self) -> Sequence[MasterTool[AnyGame]]: ...
     def call(self, name: str, raw: Mapping[str, JsonValue]) -> str: ...
 
@@ -66,8 +62,6 @@ class _Completion(Loose):
 
 @dataclass(frozen=True, slots=True)
 class BuiltinSpawner:
-    """Plays a role over an OpenAI-style completion API; the master's tools run in-process."""
-
     settings: Settings
     tools: Tools
 
@@ -105,7 +99,7 @@ class BuiltinSpawner:
     ) -> tuple[str, int]:
         messages: list[JsonValue] = [{"role": "user", "content": prompt}]
         tools: list[JsonValue] = [_declared(tool) for tool in published]
-        for rounds in range(1, MAX_ROUNDS + 1):
+        for rounds in range(1, config.max_rounds + 1):
             said = await _complete(config, provider, messages, tools)
             messages.append(said.model_dump(mode="json", exclude_none=True))
             if not said.tool_calls:
@@ -117,7 +111,9 @@ class BuiltinSpawner:
                 messages.append(
                     {"role": "tool", "tool_call_id": call.id, "content": self._answer(call)}
                 )
-        raise Refusal(f"the {role} made {MAX_ROUNDS} rounds of tool calls without ending the turn")
+        raise Refusal(
+            f"the {role} made {config.max_rounds} rounds of tool calls without ending the turn"
+        )
 
     def _answer(self, call: _ToolCall) -> str:
         """What the server does: a refusal is the result the model reads and carries on from."""
