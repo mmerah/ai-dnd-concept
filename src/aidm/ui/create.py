@@ -13,6 +13,7 @@ from aidm.core.creation import CreationStep, picked
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.io import SOURCE_SUFFIXES
 from aidm.core.model import ScenarioMeta
+from aidm.ui import theme
 from aidm.ui.widgets import game_path, labeled_value, page_header
 
 LOGGER = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ class CharacterForm:
         self.brief: ui.input
 
     def build(self) -> None:
-        with page_header("New character"):
+        with page_header("New character", engine=self.engine_id):
             pass
         with ui.column().classes("w-full q-pa-lg items-center"):
             with ui.card().classes("q-pa-lg").style("width: min(60rem, 100%)"):
@@ -42,6 +43,7 @@ class CharacterForm:
 
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
+        theme.set_engine(self.engine_id)
         # The steps come from the engine, so an answer to the old ones means nothing.
         self.picks.clear()
         self.form.refresh()
@@ -132,7 +134,7 @@ class ScenarioForm:
         self.button: ui.button
 
     def build(self) -> None:
-        with page_header("New scenario"):
+        with page_header("New scenario", engine=self.engine_id):
             pass
         with ui.column().classes("w-full q-pa-lg items-center"):
             with ui.card().classes("q-pa-lg").style("width: min(60rem, 100%)"):
@@ -148,6 +150,7 @@ class ScenarioForm:
 
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
+        theme.set_engine(self.engine_id)
         self.form.refresh()
 
     @ui.refreshable_method
