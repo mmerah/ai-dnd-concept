@@ -27,13 +27,13 @@ SHIP_FUNCTIONS: tuple[str, ...] = (
     "Weapons",
 )  # the SRD's seven, in its order
 UPGRADE_COST = 10
-HULL_ARMOR: EntityId = EntityId("hull-armor")
 
 
 class Kit(Frozen):
     name: str
     bulky: bool = False
     breaks: int = Field(default=1, ge=1)
+    harmless: bool = False  # SRD: "break harmlessly for defense"
 
 
 class Item(Mutable):
@@ -42,6 +42,7 @@ class Item(Mutable):
     breaks: int = Field(default=1, ge=1)  # a vest breaks once; battle armor "up to 3x"
     broken_times: int = Field(default=0, ge=0)
     upgraded: bool = False
+    harmless: bool = False
 
     @property
     def broken(self) -> bool:
@@ -51,6 +52,8 @@ class Item(Mutable):
         parts: list[str] = []
         if self.bulky:
             parts.append("bulky")
+        if self.harmless:
+            parts.append("breaks harmlessly")
         if self.broken:
             parts.append("broken")
         elif self.breaks > 1 and self.broken_times > 0:
@@ -183,7 +186,8 @@ class TwentyfourxxWorld(SceneWorld[Crewmate, Crewmate]):
     job: str = ""
     ship: dict[EntityId, Item] = Field(
         default_factory=lambda: {
-            EntityId(slug(name, ())): Item(name=name) for name in SHIP_FUNCTIONS
+            EntityId(slug(name, ())): Item(name=name, harmless=name == "Hull armor")
+            for name in SHIP_FUNCTIONS
         }
     )
 
@@ -222,12 +226,12 @@ class TwentyfourxxWorld(SceneWorld[Crewmate, Crewmate]):
         item = self.require_gear(actor, item_id)
         if item.broken:
             raise Refusal(f"{item.name} is already broken")
-        if item_id == HULL_ARMOR:
+        if item.harmless:
             if hindrance:
-                raise Refusal("hull armor breaks harmlessly: leave `hindrance` empty")
+                raise Refusal(f"{item.name} breaks harmlessly: leave `hindrance` empty")
             item.broken_times += 1
-            trace = f"{actor.label} breaks the hull armor"
-            return [actor.fact("item_broken", trace, card="Hull armor breaks")]
+            trace = f"{actor.label} breaks {item.name}, harmlessly"
+            return [actor.fact("item_broken", trace, card=f"{item.name} breaks")]
         if not hindrance:
             raise Refusal("name the hindrance the hit becomes")
         sheet = actor.dice()

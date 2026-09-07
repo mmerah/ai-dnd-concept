@@ -281,7 +281,7 @@ def test_finish_job_raises_the_whole_crew_and_pays_each_a_d6() -> None:
     assert any(fact.card == "Job done: Shooting d10" for fact in facts)
 
 
-def test_android_case_is_an_item_on_creation_and_defend_breaks_it() -> None:
+def test_android_case_is_an_item_on_creation_and_defend_breaks_it_harmlessly() -> None:
     picks = {
         "pack": "srd",
         "specialty": "tech",
@@ -297,9 +297,10 @@ def test_android_case_is_an_item_on_creation_and_defend_breaks_it() -> None:
     draft = small_world().draft()
     draft.payload.player = android
 
-    facts = change(ENGINE, draft, "defend", item_id=case_id, hindrance="dented")
+    facts = change(ENGINE, draft, "defend", item_id=case_id)
     assert draft.payload.player.dice().items[case_id].broken
-    assert any(fact.card == "Case breaks — dented" for fact in facts)
+    assert draft.payload.player.dice().hindrances == []
+    assert any(fact.card == "Case breaks" for fact in facts)
 
 
 def test_take_job_opens_a_job_and_refuses_a_second_while_open() -> None:

@@ -11,9 +11,16 @@ from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import Rows
 from aidm.engines.base import CHANGE_WORLD, HIRE, HIRE_TOOL, PLAYER_ID, Hire, hire_target
 from aidm.engines.rooms.engine import RoomEngine
-from aidm.engines.rooms.tools import Move, SharedChange
+from aidm.engines.rooms.tools import Move
 from aidm.engines.rooms.world import Item
-from aidm.engines.tunnelgoons.tools import ActionRoll, ChangeWorld, LevelUp, Rest, level_options
+from aidm.engines.tunnelgoons.tools import (
+    ActionRoll,
+    ChangeWorld,
+    LevelUp,
+    Rest,
+    WorldChange,
+    level_options,
+)
 from aidm.engines.tunnelgoons.world import (
     ABILITIES,
     ABILITY_POINTS,
@@ -138,7 +145,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
     def change_world(self, draft: TunnelGoonsGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
         return self.apply_change(draft.payload, args.change)
 
-    def apply_change(self, world: TunnelGoonsWorld, change: SharedChange | Rest) -> list[Fact]:
+    def apply_change(self, world: TunnelGoonsWorld, change: WorldChange) -> list[Fact]:
         match change:
             case Rest():
                 return world.rest()

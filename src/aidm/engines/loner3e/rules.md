@@ -28,9 +28,9 @@ departure is a roll first and an `enter` or `leave` arm after.
 
 The actor is the one doing the uncertain thing. If a monster lunges, ask about the monster.
 
-Set `position` from the story. Set `advantage` when a helpful skill, gear tag, condition or
-situation clearly matters. Set `disadvantage` when a frailty, an opposing tag or the situation
-clearly works against the actor. Set `neutral` when neither side clearly wins. Any number of
+Set `position` from the story. Set it to `advantage` when a helpful skill, gear tag, condition
+or situation clearly matters. Set it to `disadvantage` when a frailty, an opposing tag or the
+situation clearly works against the actor. Set it to `neutral` when neither side clearly wins. Any number of
 tags gives at most one net edge.
 
 ## Reading a roll
@@ -72,11 +72,6 @@ roll it again.
 Ask the player what their character learned when the whole adventure closes. Then write it once.
 Use the `change_tags` arm for a new or changed skill, gear or frailty. Use the `drive` arm for a
 new nemesis. Do not grow skills or frailties before the adventure closes.
-
-## Mood
-
-Give each scene a mood. Dramatic raises the pressure. Quiet gives space to recover or plan.
-Meanwhile lets the wider world move. Use the mood the story has earned.
 
 ## The party
 

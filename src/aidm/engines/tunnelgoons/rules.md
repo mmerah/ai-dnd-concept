@@ -22,7 +22,8 @@ item the actor carries above their Inventory Score, on a Brute or Skulker roll o
 never penalised this way. The total meets or beats the Difficulty Score for a success.
 
 A dangerous action turns the margin into damage. The npc takes it on a hit. The actor takes it
-on a miss.
+on a miss. Every fight is dangerous. So is a trap, a fall or a hazard with no defender. Set
+`dangerous` on each of those rolls.
 
 ## Changing the world
 
@@ -31,11 +32,12 @@ the story has settled. A helpless target needs no roll.
 
 ## Moving
 
-WAYS OUT is the map the player can act on now. Only a way listed there leads anywhere.
+WAYS OUT is the map the player can act on now. Only a way listed there leads anywhere. An
+`unknown` way is one the player has not found, and their page does not show it. Walking it
+with `move` makes it known. Do that only once the story has found it.
 
-A locked way needs a roll, or a key applied with `change_world`, before it opens. Use the
-`unlock_way` arm once the story has dealt with it. Only then does `move` carry the player
-through.
+A locked way opens after a roll, or after the story uses a key the player carries. Then use the
+`unlock_way` arm. Only then does `move` carry the player through.
 
 When WAYS OUT lead nowhere new, the page offers the player more map. There is nothing for you to
 call.

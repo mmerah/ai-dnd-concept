@@ -56,7 +56,7 @@
             },
             "hindrance": {
               "default": "",
-              "description": "What the harm becomes, as a hindrance. Empty when hull armor takes the hit.",
+              "description": "What the harm becomes, as a hindrance. Empty for an item that breaks harmlessly.",
               "type": "string"
             },
             "actor_id": {
@@ -512,7 +512,7 @@
   },
   {
     "name": "job",
-    "description": "Call this to look for work with `find`, to record agreed work with `take`, and to close the job with `finish`. The engine rolls, raises one skill for each operator, and pays each of them d6 credits.",
+    "description": "Call this to look for work with `find`, to record agreed work with `take`, and to close the job with `finish`. With `find` the engine rolls the SRD's d6. With `finish` it raises one skill for each operator and pays each of them d6 credits.",
     "parameters": {
       "$defs": {
         "Raise": {
@@ -550,17 +550,17 @@
         },
         "where": {
           "default": "",
-          "description": "Where the player looks for work, in a few words. With `find`.",
+          "description": "Where the player looks for work, in a few words. Required with `find`.",
           "type": "string"
         },
         "terms": {
           "default": "",
-          "description": "Who wants what done, what that looks like, and what it pays. With `take`.",
+          "description": "Who wants what done, what that looks like, and what it pays. Required with `take`.",
           "type": "string"
         },
         "raises": {
           "default": [],
-          "description": "One per operator: the player and every living hired member. With `finish`.",
+          "description": "One per operator: the player and every living hired member. Required with `finish`.",
           "items": {
             "$ref": "#/$defs/Raise"
           },

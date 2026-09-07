@@ -118,28 +118,6 @@
           ],
           "type": "object"
         },
-        "SharedChange": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Reveal"
-            },
-            {
-              "$ref": "#/$defs/MoveItem"
-            },
-            {
-              "$ref": "#/$defs/Kill"
-            },
-            {
-              "$ref": "#/$defs/JoinParty"
-            },
-            {
-              "$ref": "#/$defs/LeaveParty"
-            },
-            {
-              "$ref": "#/$defs/UnlockWay"
-            }
-          ]
-        },
         "UnlockWay": {
           "additionalProperties": false,
           "description": "A locked way out of this place opens.",
@@ -166,7 +144,22 @@
           "description": "The change to apply. `verb` picks which one.",
           "oneOf": [
             {
-              "$ref": "#/$defs/SharedChange"
+              "$ref": "#/$defs/Reveal"
+            },
+            {
+              "$ref": "#/$defs/MoveItem"
+            },
+            {
+              "$ref": "#/$defs/Kill"
+            },
+            {
+              "$ref": "#/$defs/JoinParty"
+            },
+            {
+              "$ref": "#/$defs/LeaveParty"
+            },
+            {
+              "$ref": "#/$defs/UnlockWay"
             },
             {
               "$ref": "#/$defs/Rest"

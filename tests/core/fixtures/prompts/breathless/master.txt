@@ -11,7 +11,7 @@ Tools are the only way to change the world. Read each result before you go on. I
 
 If the engine refuses a call, fix the stated problem and call again.
 
-No tool ends the turn. Stop and exit once every consequence has landed. Your exit ends the turn.
+No tool ends the turn by itself. A tool that hands the turn to the worldsmith or the player says so in its result. Stop then. Otherwise stop and exit once every consequence has landed. Your exit ends the turn.
 
 ## Use the dice
 
