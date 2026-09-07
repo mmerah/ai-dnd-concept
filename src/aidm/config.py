@@ -11,6 +11,8 @@ from aidm.core.entities import Frozen
 type ProviderName = Literal["openrouter", "local"]
 type Role = Literal["master", "narrator", "worldsmith"]
 type CliProvider = Literal["claude", "codex"]
+# Spelled flat, not as a union of the two: the settings page renders one `Literal` as a select.
+type RoleProvider = Literal["claude", "codex", "openrouter", "local"]
 type Effort = Literal["low", "medium", "high"]
 ENV_FILE = ".env"
 
@@ -21,11 +23,29 @@ class ProviderConfig(Frozen):
 
 
 class RoleConfig(Frozen):
-    provider: CliProvider = "claude"
+    provider: RoleProvider = "claude"
     # A string, not a `Literal`: model aliases move faster than this file.
     model: str = Field(min_length=1)
     effort: Effort = "medium"
     timeout: float = Field(default=300.0, gt=0.0)
+
+    @property
+    def cli(self) -> CliProvider | None:
+        """The command that plays the role on the player's subscription; None for an API."""
+        match self.provider:
+            case "claude" | "codex":
+                return self.provider
+            case "openrouter" | "local":
+                return None
+
+    @property
+    def api(self) -> ProviderName | None:
+        """The provider the builtin harness posts to; None when a CLI plays the role."""
+        match self.provider:
+            case "claude" | "codex":
+                return None
+            case "openrouter" | "local":
+                return self.provider
 
 
 class MediaConfig(Frozen):
@@ -65,6 +85,13 @@ class Roles(Frozen):
                 return self.narrator
             case "worldsmith":
                 return self.worldsmith
+
+    def each(self) -> tuple[tuple[Role, RoleConfig], ...]:
+        return (
+            ("master", self.master),
+            ("narrator", self.narrator),
+            ("worldsmith", self.worldsmith),
+        )
 
 
 class Providers(Frozen):
@@ -109,9 +136,15 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _keys_present(self) -> Self:
-        for what, feature in (("media", self.media), ("speech", self.speech)):
-            if feature.enabled and not self.providers.for_name(feature.provider).api_key:
-                raise ValueError(f"{what} uses provider {feature.provider!r}, which has no api_key")
+        posting: list[tuple[str, ProviderName]] = [
+            (what, feature.provider)
+            for what, feature in (("media", self.media), ("speech", self.speech))
+            if feature.enabled
+        ]
+        posting.extend((role, config.api) for role, config in self.roles.each() if config.api)
+        for what, name in posting:
+            if not self.providers.for_name(name).api_key:
+                raise ValueError(f"{what} uses provider {name!r}, which has no api_key")
         return self
 
 

@@ -10,7 +10,6 @@ import pytest
 from pydantic import BaseModel, JsonValue
 from pydantic_settings import SettingsConfigDict
 
-from aidm.app import mcp
 from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import GameService, Runtime
 from aidm.app.spawn import RunResult
@@ -156,7 +155,7 @@ class Table[G: AnyGame]:
     def call(self, name: str, args: dict[str, JsonValue]) -> str:
         """What the server does: a refusal is an error result the CLI reads and carries on from."""
         try:
-            answered = mcp.call(self.runtime, name, args)
+            answered = self.runtime.call(name, args)
         except Refusal as refused:
             self.refusals.append(str(refused))
             answered = str(refused)

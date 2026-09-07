@@ -28,7 +28,7 @@ A scenario is a premise, a scope and an opening. Scope is prose guidance on how 
 
 The world grows through one request. A scene engine's game master may offer the player the way on at a stopping point, say that they left, or bring a complication down on the place they stand, all through `next_scene`; a room engine offers more map when the authored map runs out. The page's buttons are the engine's own. A request ends the turn: every later tool call in it is answered with a wait line, and the turn narrates only what landed, nothing when nothing did. The worldsmith then writes and the engine installs, the player reads what the engine says to tell, and a failed write is filed with the request cleared; a reload never finds a pending request.
 
-The three roles are spawned command-line programs. The narrator and the worldsmith return typed proposals; the master plays through tools, and only Python code changes state or rolls dice. Every engine offers the same small vocabulary: `roll` for dice, `change_world` for any settled change, and a few named tools that open a decision or end the turn. The engine seam is `Engine`, an abstract class every engine subclasses. `SceneEngine` is the base of the three scene engines. The registry is the one place that joins an engine to the app. Imports flow one way, `core <- engines <- turn <- app <- ui`, so nothing above the engines knows a world shape.
+The three roles are spawned command-line programs, or, role by role, one loop over an OpenAI-style completion API. The narrator and the worldsmith return typed proposals; the master plays through tools, and only Python code changes state or rolls dice. Every engine offers the same small vocabulary: `roll` for dice, `change_world` for any settled change, and a few named tools that open a decision or end the turn. The engine seam is `Engine`, an abstract class every engine subclasses. `SceneEngine` is the base of the three scene engines. The registry is the one place that joins an engine to the app. Imports flow one way, `core <- engines <- turn <- app <- ui`, so nothing above the engines knows a world shape.
 
 ## Start the app
 
@@ -49,6 +49,8 @@ You need `uv` and an AI command-line program (Claude, Codex). The default settin
 3. Open the address that the command shows.
 
 Open Settings in the app to change the AI commands or other settings.
+
+A role can play over a completion API instead of a command. Under Roles, set its provider to `openrouter` or `local` and name a model that supports tool calls, such as `deepseek/deepseek-v4-flash-0731` on OpenRouter or a tool-capable model served by Ollama at the local default `http://localhost:11434/v1`. The provider's base URL and key live under Providers. The narrator and the worldsmith then answer in one request each; the master plays its tools in the app's own process.
 
 Characters live one file per engine, under `characters/<id>/<engine>.json`. Scenarios live under `scenarios/<id>/world.json`, the engine's starting world, with the engine's own packs as tables. Saves are strict and engine-typed, with no version field, so a stale save is invalid. A save from before a stored-shape change is stale; the launcher skips it with a warning, and nothing migrates or deletes it. Play costs the subscription the player already has; illustration and speech are the exceptions, optional, off by default, with their own provider key.
 

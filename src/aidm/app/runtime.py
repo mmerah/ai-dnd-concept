@@ -1,14 +1,17 @@
 import logging
 from asyncio import Lock, Task, create_task
-from collections.abc import Sequence
-from dataclasses import dataclass, field
+from collections.abc import Mapping, Sequence
+from dataclasses import InitVar, dataclass, field
 from functools import partial
 from pathlib import Path
 from random import Random
 
+from pydantic import JsonValue
+
+from aidm.app.builtin import BuiltinSpawner
 from aidm.app.launch import LaunchTarget
 from aidm.app.media import ICON_DIR, Illustrator, open_illustrator
-from aidm.app.spawn import CliSpawner, Spawner, ask
+from aidm.app.spawn import CliSpawner, RunResult, Spawner, ask
 from aidm.app.speech import Reader, open_reader
 from aidm.config import Role, Settings, read_settings
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
@@ -23,7 +26,7 @@ from aidm.engines.base import Chattiness
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
 from aidm.turn.context import render_interjection, render_narrator
-from aidm.turn.run import Turn
+from aidm.turn.run import NO_TURN, Turn
 
 LOGGER = logging.getLogger(__name__)
 
@@ -364,19 +367,40 @@ class GameService:
         return state
 
 
+@dataclass(frozen=True, slots=True)
+class RoleSpawner:
+    """Each role goes where its settings send it: a CLI, or the builtin loop over an API."""
+
+    settings: Settings
+    cli: CliSpawner
+    builtin: BuiltinSpawner
+
+    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
+        config = self.settings.roles.for_name(role)
+        played_by = self.cli if config.api is None else self.builtin
+        return await played_by.run(role, prompt, session)
+
+
 @dataclass(slots=True)
 class Runtime:
     settings: Settings
-    spawner: Spawner
+    # A stub for tests; the runtime builds its own spawner because that spawner calls back into it.
+    stub: InitVar[Spawner | None] = None
+    spawner: Spawner = field(init=False)
     _sessions: dict[str, GameService] = field(default_factory=dict, repr=False)
     lock: Lock = field(default_factory=Lock, repr=False)
     engines: dict[EngineId, AnyEngine] = field(init=False)
     library: Library = field(init=False)
     store: FileStore = field(init=False)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, stub: Spawner | None) -> None:
         self.engines = build_engines()
+        self.spawner = self._spawner() if stub is None else stub
         self._mount()
+
+    def _spawner(self) -> Spawner:
+        settings = self.settings
+        return RoleSpawner(settings, CliSpawner(settings), BuiltinSpawner(settings, self))
 
     def _mount(self) -> None:
         self.library = Library(self.settings.scenarios_dir, self.settings.characters_dir)
@@ -398,6 +422,14 @@ class Runtime:
             raise ValueError(f"turns are in flight in {[session.slug for session in in_flight]}")
         return in_flight[0] if in_flight else None
 
+    def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
+        """Between turns there is nothing to call."""
+        playing = self.playing()
+        turn = None if playing is None else playing.turn
+        if turn is None:
+            raise Refusal(NO_TURN)
+        return turn.call(name, raw)
+
     def busy_refusal(self) -> str | None:
         """Evicting a session mid-turn would let the next tab open a rival writer on that save."""
         playing = [slug for slug, session in self._sessions.items() if session.busy]
@@ -411,7 +443,7 @@ class Runtime:
 
     def reload_settings(self) -> None:
         self.settings = read_settings()
-        self.spawner = CliSpawner(self.settings)
+        self.spawner = self._spawner()
         self._mount()
         # An evicted session must not write: its member's answer would land on a rival's save.
         for session in self._sessions.values():
