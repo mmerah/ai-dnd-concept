@@ -61,46 +61,77 @@ between turns and the engine's tools inside one.
    `ScenarioForm.write` before spawning. Evidence: `qa/shots/probe/006-no-packs.png`, log shows
    2 worldsmith spawns.
 
+6. **The reader's own turn often does not follow to the end; "New activity" shows instead.**
+   Reproduced on every engine at 1280 px on the first turn after the opening (`s_visual.py`:
+   `scrollTop` stays 0 with 656 px of content in a 417 px box) and once on a phone. Cause, in
+   `ui/game.py:poll_turn`: `own_move` is consumed by the first observed change of the turn
+   (the phase flip to "master"), when the content still fits; when the roll and the narration
+   land the transcript overflows, Quasar fires its resize-scroll event with position 0, so
+   `at_end` reads false, and the later refresh runs `_scroll(False)`. Fix: keep `own_move`
+   until the turn closes (`_run`'s `finally` already clears it), or treat a change while
+   `session.busy` as the reader's own. Evidence: `qa/shots/visual/003-breathless-game.png`,
+   `004-24xx-game.png`, `qa/shots/mobile/003-game-turn.png`.
+
 ## Next
 
-6. **Game over leaves the composer asking "What do you do?"** After death the box is disabled
+7. **Game over leaves the composer asking "What do you do?"** After death the box is disabled
    but keeps the inviting placeholder; the only hint is a small red "You died." beside it, and
    nothing points at Restart in the overflow menu. `_placeholder` in `ui/game.py` never reads
    `player.over`. Evidence: `qa/shots/loner/021-dead.png`, `qa/shots/breathless/*-dead.png`.
-
-7. **The footer is Quasar's default bright blue** (`ui.footer` ships `bg-primary`), the one
-   element outside the dark palette; the decision card, the way-on banner and the composer all
-   sit on it. Every game screenshot shows it. Fix: `.q-footer { background: var(--game-surface) }`
-   in `theme.py`, as `.q-header` already has.
 
 8. **Tab out of a typed creation step loses the focus.** Every free-text step re-renders the
    whole form on blur (`create.py:67`), so Tab from "Item 1" lands nowhere (`activeElement` is
    the body) and the player has to click "Item 2". The typed value survives. Evidence:
    `s_probe.py` step 5.
 
-9. **On a phone, the reader's own turn can leave the transcript short of the end with "New
-   activity" showing.** Seen once at 390×664 after the first turn: the scroll-to-end runs 0.1 s
-   after the refresh, the bubbles are still laying out, `at_end` reads false on the next change.
-   Not reproduced at 1280 px. Evidence: `qa/shots/mobile/003-game-turn.png`.
 
-10. **Unlocking a door the player has not walked is silent, and the Ways-out panel cannot show
+
+9. **Unlocking a door the player has not walked is silent, and the Ways-out panel cannot show
     a locked door.** `RoomWorld.unlock_way` tells the fact only when the way is already known;
     ways become known only by moving through them, so a locked way out of the current room is
     invisible to the player until the master unlocks and moves them. No card, no panel row.
     Evidence: `s_goons.py` step 7 ("unlock card missing" on the first run).
 
-11. **The journal renders the narrator's prose as markdown; the chat shows it verbatim.**
+10. **The journal renders the narrator's prose as markdown; the chat shows it verbatim.**
     `**bold**` is bold in the journal and literal in the chat. HTML and `<script>` are escaped
     in both. Harmless today, inconsistent once a model writes an asterisk.
     Evidence: `qa/shots/probe/001-journal-markdown.png`.
 
-12. **`job finish` refuses the whole call with "the skill is already at d12"** without naming
+11. **`job finish` refuses the whole call with "the skill is already at d12"** without naming
     the operator or the skill, and the shipped Kael has Stealth at d12. Minor; the master gets
     a retry, but the message should name whose skill. Evidence: `s_24xx.py` first run.
 
-13. **Settings validation shows raw pydantic text** including the `errors.pydantic.dev` URL
+12. **Settings validation shows raw pydantic text** including the `errors.pydantic.dev` URL
     (`qa/shots/settings/004-invalid-timeout.png`). A one-line "roles.master.timeout must be
     greater than 0" would do.
+
+## The styling branch (`codex/engine-visual-identities`, merged here)
+
+Reviewed by reading the diff and re-running `visual`, `loner` and `mobile` on the merge:
+548 tests, ruff and basedpyright clean; every scenario still passes. Each engine gets its own
+palette, radius and heading face on the game page, the launcher follows the picked scenario,
+the creation pages follow the picked rules, settings stay neutral, and the phone layout holds
+(`qa/shots/visual/`). The old blue footer is gone. Two things to fix:
+
+- **Primary buttons are still Quasar blue under every theme.** `theme.py` sets `--q-primary:
+  var(--game-accent)` on `body`, but NiceGUI writes its default `--q-primary: #5898d4` as an
+  inline style on `body`, which wins. So Start/Continue game, Resume, Save, Restart, New
+  activity, the outline buttons and the drawer's close icon keep the stock blue next to a
+  purple, orange, teal or ice accent (`qa/shots/visual/001-loner-game.png`, `005-home.png`,
+  `007-settings.png`). Fix: call `ui.colors(primary=<accent>)` from `set_engine` (per client),
+  and drop the `--q-primary` line, or set the variable on `.q-layout` and scope the button
+  rules under it. The same applies to `--q-negative`/`--q-positive`: toasts keep Quasar's red
+  and green.
+- **Notifications now sit at the very bottom edge, over the composer** and their text was
+  clipped by the viewport in two screenshots (`qa/shots/visual/012-goons-crash-toast.png`);
+  measured at rest they end 10 px above the bottom, so this may be the slide-in caught late.
+  Worth a look by eye; a `bottom` offset on `.q-notifications` or `position="top"` on the
+  game page's `ui.notify` calls would settle it either way.
+
+Smaller notes: `.q-btn--flat.text-white` turns the header icons muted grey on every theme;
+the `.q-message-text { color: <surface> }` trick colours the bubble tail and relies on
+`.q-message-text-content` for the text, so any future bubble content outside that node
+would inherit the invisible colour.
 
 ## Noted, no action asked
 

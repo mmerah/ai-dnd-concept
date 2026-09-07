@@ -46,7 +46,7 @@ def body(s: Session) -> None:
     # The drawer is open at 1280px with the sheet.
     side = clean(drawer_text(page))
     s.check("Luck 6/6" in side, f"sheet missing luck: {side[:200]}")
-    s.check("Mara" in side and "Trail" in side, "here/trail panels missing")
+    s.check("Mara" in side and "trail" in side.lower(), "here/trail panels missing")
 
     # 1. A plain turn: default roll.
     s.check(submit(page, "I search the desk."), "no working indicator after submit")
@@ -169,7 +169,8 @@ def body(s: Session) -> None:
     s.shot(page, "journal")
     journal = clean(drawer_text(page))
     s.check(
-        "Chronicle" in journal and "turn 1:" in journal, f"journal missing turns: {journal[:200]}"
+        "chronicle" in journal.lower() and "turn 1:" in journal,
+        f"journal missing turns: {journal[:200]}",
     )
     page.locator(".q-expansion-item").first.click()
     page.wait_for_timeout(400)
@@ -181,7 +182,7 @@ def body(s: Session) -> None:
     wait_idle(page)
     s.shot(page, "way-offered")
     text = clean(page.inner_text("body"))
-    s.check("there is more beyond here" in text, "way-on banner missing")
+    s.check("there is more beyond here" in text.lower(), "way-on banner missing")
     action = page.locator(".game-composer button", has_text="Move on")
     s.check(action.count() == 1 and action.is_visible(), "Move on button missing")
     # Move on with the words: act -> master calls next_scene pursuit -> worldsmith -> arrival.
@@ -204,7 +205,7 @@ def body(s: Session) -> None:
         "New scene: QA Scene 1" in " ".join(cards(page)), f"scene card missing: {cards(page)[-3:]}"
     )
     s.check(
-        "there is more beyond here" not in clean(page.inner_text("body")),
+        "there is more beyond here" not in clean(page.inner_text("body")).lower(),
         "banner stayed after the crossing",
     )
     s.check(
