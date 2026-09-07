@@ -6,6 +6,7 @@ from pathlib import Path
 from nicegui import ui
 
 from aidm.app.launch import LaunchTarget
+from aidm.core.entities import EngineId
 from aidm.core.play import DecisionOption
 from aidm.ui import theme
 
@@ -18,14 +19,16 @@ def game_path(target: LaunchTarget) -> str:
 
 
 @contextmanager
-def page_header(title: str, badge: str | None = None, home: bool = True) -> Generator[None]:
-    theme.apply()
+def page_header(
+    title: str, badge: str | None = None, home: bool = True, *, engine: EngineId | None = None
+) -> Generator[None]:
+    theme.apply(engine)
     with ui.header().classes("items-center no-wrap"):
         if home:
             ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props(
                 "flat color=white round"
             )
-        ui.label(title).classes("text-lg font-bold ellipsis")
+        ui.label(title).classes("text-lg font-bold ellipsis game-title")
         if badge is not None:
             ui.badge(badge).props("color=primary text-color=white").classes(
                 "text-sm font-bold q-px-md q-py-sm gt-xs"
@@ -42,7 +45,9 @@ def entity_row(icon: Path | None, name: str, sub: str) -> None:
 
 
 def avatar(icon: Path | None, name: str | None) -> None:
-    with ui.avatar(color="grey-8", size="42px").classes("q-mx-sm"):
+    with ui.avatar(color="grey-8", size="42px").classes(
+        "q-mx-sm game-avatar" + (" game-avatar-dm" if name is None else "")
+    ):
         if icon is not None:
             ui.image(icon)
         elif name is None:
@@ -80,4 +85,4 @@ def decision_widget(
 
 
 def heading(title: str, *, tight: bool = False) -> None:
-    ui.label(title).classes(f"text-xs font-bold opacity-60 {'mt-2' if tight else 'mt-4'}")
+    ui.label(title).classes(f"text-xs font-bold game-heading {'mt-2' if tight else 'mt-4'}")
