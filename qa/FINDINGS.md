@@ -1,5 +1,12 @@
 # Findings — full UI sweep with scripted roles, 2026-09-07
 
+Status: every item below, and both styling-branch items, is fixed on this branch (four
+implementers by file, then an adversarial review whose ten items were folded). The harness
+re-ran green on the fixed tree: `loner`, `goons`, `probe`, `visual`, `settings`, `create`,
+`mobile`. What each fix did is in the commit that follows this file's last edit. Item 9 is
+fixed for the unlock (told and listed); a locked door the player has not yet dealt with is
+still not listed, by design.
+
 Method: the real app served with `qa/agents.py` in place of the three roles, driven in headless
 Chromium at 1280×800, 390×664 (phone, touch) and 768×1024 (tablet, touch), plus the MCP path
 with the master calling tools over HTTP. Every scenario in `qa/run_all.sh` passes its checks;

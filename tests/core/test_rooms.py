@@ -132,6 +132,25 @@ def test_a_sixth_room_engine_begins_a_playable_game(tmp_path: Path) -> None:
     assert [visit.place for visit in state.payload.visits] == [GATE, YARD]
 
 
+def test_unlocking_a_way_makes_it_known_and_tells_a_card(tmp_path: Path) -> None:
+    engine = _installed(tmp_path)
+    character = engine.create_character("Wren", "A quiet scout", {})
+    state = engine.begin("the-keep", _scenario(), character)
+    engine.move(state, Move(to_id=YARD), Random(0))
+    draft = state.draft()
+    before = next(panel for panel in engine.player_view(draft).panels if panel.title == "Ways out")
+    assert [row.label for row in before.rows] == []
+
+    facts = change(engine, draft, "unlock_way", to_id=WELL)
+
+    way = draft.payload.way(YARD, WELL)
+    assert way is not None
+    assert way.known
+    assert any(fact.told and fact.card == "Well unlocked" for fact in facts)
+    after = next(panel for panel in engine.player_view(draft).panels if panel.title == "Ways out")
+    assert [row.label for row in after.rows] == ["Well"]
+
+
 def test_a_party_member_moves_with_the_player_and_is_named_in_the_trace(tmp_path: Path) -> None:
     engine = _installed(tmp_path)
     character = engine.create_character("Wren", "A quiet scout", {})

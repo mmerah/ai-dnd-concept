@@ -266,6 +266,20 @@ def test_unlock_way_then_move_passes() -> None:
     assert any(fact.kind == "arrived" for fact in facts)
 
 
+def test_unlock_way_the_player_has_not_walked_tells_a_card_and_becomes_known() -> None:
+    draft = small_world().draft()
+    world = draft.payload
+    world.visits.append(Visit(place=HALL))
+    way = world.way(HALL, VAULT)
+    assert way is not None
+    way.known = False
+
+    facts = change(ENGINE, draft, "unlock_way", to_id=VAULT)
+
+    assert way.known
+    assert any(fact.told and fact.card == "Vault unlocked" for fact in facts)
+
+
 def test_move_item_to_the_player_to_an_npc_here_and_to_the_place() -> None:
     draft = small_world().draft()
     world = draft.payload

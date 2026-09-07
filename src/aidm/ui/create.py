@@ -26,6 +26,8 @@ class CharacterForm:
         self.picks: dict[Slug, str] = {}
         self.name: ui.input
         self.brief: ui.input
+        self.ready: bool = False
+        self.create_button: ui.button | None = None
 
     def build(self) -> None:
         with page_header("New character", engine=self.engine_id):
@@ -39,14 +41,22 @@ class CharacterForm:
                     .classes("w-full")
                     .props("outlined")
                 )
-                self.form()
+                self.steps()
+                self.preview()
+                # Outside the preview refreshable: a rebuild on blur must not destroy the button
+                # focus just moved to.
+                self.create_button = ui.button(
+                    "Create", icon="person_add", on_click=self.create
+                ).props("color=primary")
+                self.create_button.set_visibility(self.ready)
 
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
         theme.set_engine(self.engine_id)
         # The steps come from the engine, so an answer to the old ones means nothing.
         self.picks.clear()
-        self.form.refresh()
+        self.steps.refresh()
+        self.preview.refresh()
 
     def write(self, step_id: Slug, event: ValueChangeEventArguments[str | None]) -> None:
         self.picks[step_id] = (event.value or "").strip()
@@ -54,7 +64,8 @@ class CharacterForm:
     def choose(self, step_id: Slug, event: ValueChangeEventArguments[str]) -> None:
         self.picks[step_id] = event.value
         _drop_stale(self.runtime.engines[self.engine_id].creation_steps(self.picks), self.picks)
-        self.form.refresh()
+        self.steps.refresh()
+        self.preview.refresh()
 
     def field(self, step: CreationStep) -> None:
         given = picked(self.picks, step.id)
@@ -65,8 +76,8 @@ class CharacterForm:
                 value=given,
                 on_change=partial(self.write, step.id),
             )
-            # Refreshing per keystroke would take the focus away mid-word.
-            typed.classes("w-full").props("outlined").on("blur", self.form.refresh)
+            # Rebuilding the whole form on blur would destroy the field Tab just moved to.
+            typed.classes("w-full").props("outlined").on("blur", self.preview.refresh)
             return
         chosen = ui.select(
             options={
@@ -97,10 +108,14 @@ class CharacterForm:
         ui.navigate.to("/")
 
     @ui.refreshable_method
-    def form(self) -> None:
+    def steps(self) -> None:
         engine = self.runtime.engines[self.engine_id]
         for step in engine.creation_steps(self.picks):
             self.field(step)
+
+    @ui.refreshable_method
+    def preview(self) -> None:
+        engine = self.runtime.engines[self.engine_id]
         try:
             preview = engine.preview_character(
                 engine.create_character(
@@ -111,11 +126,14 @@ class CharacterForm:
             )
         except Refusal as refused:
             ui.label(f"Not ready yet: {refused}").classes("text-sm opacity-50")
-            return
-        ui.separator().classes("q-my-sm")
-        for label, text in preview:
-            labeled_value(label, text)
-        ui.button("Create", icon="person_add", on_click=self.create).props("color=primary")
+            self.ready = False
+        else:
+            ui.separator().classes("q-my-sm")
+            for label, text in preview:
+                labeled_value(label, text)
+            self.ready = True
+        if self.create_button is not None:
+            self.create_button.set_visibility(self.ready)
 
 
 class ScenarioForm:
@@ -217,6 +235,9 @@ class ScenarioForm:
         character_id = self.character.value
         if not title or not scope or not (premise or self.document) or character_id is None:
             ui.notify("A title, a scope, a character, and a premise or a document.", type="warning")
+            return
+        if self.packs is not None and not self.packs.value:
+            ui.notify("Choose at least one table set.", type="warning")
             return
         self.button.props("loading")
         meta = ScenarioMeta(

@@ -3,13 +3,18 @@ from pathlib import Path
 
 import pytest
 from nicegui import ui
+from pydantic import ValidationError
 from support.loner import TARGET
 from support.table import ScriptedSpawner
 from support.ui import ui_settings
 
 from aidm.app.runtime import Runtime
-from aidm.config import RoleConfig, Roles, read_settings, save_settings
-from aidm.ui.settings import SettingsForm, _widget  # pyright: ignore[reportPrivateUsage]
+from aidm.config import RoleConfig, Roles, Settings, read_settings, save_settings
+from aidm.ui.settings import (
+    SettingsForm,
+    _refusal_text,  # pyright: ignore[reportPrivateUsage]
+    _widget,  # pyright: ignore[reportPrivateUsage]
+)
 
 
 @dataclass(frozen=True)
@@ -93,3 +98,13 @@ def test_a_page_still_holding_a_dropped_session_may_not_play_it(tmp_path: Path) 
 def test_an_aliased_literal_field_is_a_dropdown() -> None:
     field = RoleConfig.model_fields["provider"]
     assert isinstance(_widget("provider", field, "claude"), ui.select)
+
+
+def test_a_validation_error_reads_as_one_line_per_field() -> None:
+    with pytest.raises(ValidationError) as raised:
+        _ = Settings.model_validate({"roles": {"master": {"timeout": -1}}})
+
+    text = _refusal_text(raised.value)
+    assert text.startswith("roles.master.timeout: ")
+    assert "type=" not in text
+    assert "http" not in text

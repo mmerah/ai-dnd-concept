@@ -17,6 +17,7 @@ from aidm.core.views import Panel, PanelRow, Rows, Sections, Subject
 PLAYER_ID = EntityId("player")
 SRD_PACK: Slug = "srd"
 HIRE: Slug = "hire"
+EXTEND: Slug = "extend"
 SIGNED_ON = "{name} has signed on with the player. Tell it in a line or two. Settle nothing else."
 CHANGE_WORLD = (
     "Call this when the story has settled a change to the world. Fill the fields of the verb "
@@ -47,11 +48,11 @@ class Thing(Mutable):
 
     @property
     def tag(self) -> str:
-        return f"{self.name}[{self.id}]"
+        return self.subject().tag
 
     @property
     def headline(self) -> str:
-        return self.tag + (f" — {self.brief}" if self.brief else "")
+        return self.subject().headline
 
     @property
     def met_label(self) -> str:

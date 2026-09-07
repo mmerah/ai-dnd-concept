@@ -104,9 +104,20 @@ def test_the_narrator_prompt_names_the_party_and_leaves_a_member_out_of_who_is_h
     )
 
     assert "YOUR PARTY:\nyou are Kael" in prompt
-    assert "with you: a ledger — Mara's notes." in prompt
+    assert "with you: a ledger[ledger] — Mara's notes." in prompt
     who_is_here = prompt.split("WHO IS HERE:\n", 1)[1].split("\n\n", 1)[0]
     assert "a ledger" not in who_is_here
+
+
+def test_the_narrator_prompt_carries_the_id_of_each_subject_here() -> None:
+    state = _state()
+
+    prompt = render_narrator(
+        _engine().narrator_view(state), evidence="- (nothing changed)", prompt="I wait.", scenes=()
+    )
+
+    who_is_here = prompt.split("WHO IS HERE:\n", 1)[1].split("\n\n", 1)[0]
+    assert "a ledger[ledger] — Mara's notes." in who_is_here
 
 
 def test_the_narrator_prompt_carries_the_players_own_sheet() -> None:

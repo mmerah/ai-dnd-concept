@@ -165,6 +165,7 @@ class GamePage:
         self.shown_clip = session.newest_clip()
         self.seen = Observed.of(session)
         self._set_composer()
+        self._clear_spent_draft()
 
         ui.timer(1.0, self.poll_turn)
         if session.media is not None or session.reader is not None:
@@ -325,10 +326,14 @@ class GamePage:
             with ui.expansion(f"turn {number}: {exchange.prompt}").classes("w-full"):
                 # A speaker is named, because a bare quote reads as narration without bubbles.
                 for line in exchange.lines:
-                    text = (
-                        line.text if line.speaker_id is None else f"**{line.speaker}:** {line.text}"
-                    )
-                    ui.markdown(text).classes("text-sm")
+                    if line.speaker_id is None:
+                        ui.label(line.text).classes("whitespace-pre-wrap text-sm")
+                    else:
+                        with ui.row().classes("items-start no-wrap").style("gap: 0.3rem"):
+                            ui.label(f"{line.speaker}:").classes(
+                                "font-bold whitespace-nowrap text-sm"
+                            )
+                            ui.label(line.text).classes("whitespace-pre-wrap text-sm")
 
     def composer(self) -> None:
         with (
@@ -368,15 +373,25 @@ class GamePage:
             self.step_started = None if now.phase is None else monotonic()
         if now != self.seen:
             self.dice.toss(self._landed(now))
+            landed = now.exchanges > self.seen.exchanges
             self.seen = now
             self._set_composer()
-            follow = self.at_end or self.own_move
-            self.own_move = False
+            if landed:
+                self._clear_spent_draft()
             self.refresh()
-            self._scroll(follow)
+            self._scroll(self.at_end or self.own_move)
         ticker, started = self.ticker, self.step_started
         if ticker is not None and started is not None and not ticker.is_deleted:
             ticker.set_text(_clock(monotonic() - started))
+
+    def _clear_spent_draft(self) -> None:
+        session = self.session
+        history = session.engine.history(session.state)
+        newest_prompt = history[-1].prompt if history else ""
+        if draft_spent((self.box.value or "").strip(), newest_prompt):
+            self.box.value = ""
+            # Quasar never saw the value change, so only an explicit push empties the composer.
+            self.box.run_method("updateValue")
 
     def poll_media(self) -> None:
         session = self.session
@@ -395,7 +410,7 @@ class GamePage:
         refusal = self.runtime.play_refusal(self.session)
         if refusal is None:
             return False
-        ui.notify(refusal, type="warning")
+        ui.notify(refusal, type="warning", position="top")
         return True
 
     async def submit(self, acting: bool = False) -> None:
@@ -406,7 +421,7 @@ class GamePage:
             return
         action = self.session.player_view().action
         if acting and action is None:
-            ui.notify("The way on has changed.", type="warning")
+            ui.notify("The way on has changed.", type="warning", position="top")
             return
         self.own_move = True
         if acting and action is not None:
@@ -458,7 +473,7 @@ class GamePage:
         self.box.run_method("updateValue")
 
     def dictation_failed(self, e: GenericEventArguments) -> None:
-        ui.notify(_DICTATION_FAILURES.get(e.args, str(e.args)), type="warning")
+        ui.notify(_DICTATION_FAILURES.get(e.args, str(e.args)), type="warning", position="top")
 
     def _set_composer(self) -> None:
         session = self.session
@@ -471,7 +486,7 @@ class GamePage:
         self.action_button.set_visibility(action is not None)
         self.action_button.set_text("" if action is None else action.label)
         self.over_label.set_text(player.over or "")
-        self.box.props(f'placeholder="{_placeholder(player, session.phase)}"')
+        self.box.props(f'placeholder="{placeholder(player, session.phase)}"')
 
     def _landed(self, now: Observed) -> tuple[DiceEvent, ...]:
         """Since the last poll: the seen turn's tail once it closed, then the live turn's dice."""
@@ -499,7 +514,9 @@ class GamePage:
         try:
             await playing()
         except (OSError, Refusal) as error:
-            ui.notify(f"{type(error).__name__}: {error}", type="negative", multi_line=True)
+            ui.notify(
+                f"{type(error).__name__}: {error}", type="negative", multi_line=True, position="top"
+            )
             return False
         finally:
             self._set_composer()
@@ -595,6 +612,11 @@ def near_end(position: float, size: float, container: float, slack: float = 48) 
     return size - position - container <= slack
 
 
+def draft_spent(draft: str, newest_prompt: str) -> bool:
+    """The words sent for the turn that just landed."""
+    return bool(draft) and draft == newest_prompt
+
+
 def insert_at_caret(draft: str, text: str, caret: int) -> str:
     """A space on each side, unless the neighbour is already whitespace or the draft edge."""
     before, after = draft[:caret], draft[caret:]
@@ -603,7 +625,9 @@ def insert_at_caret(draft: str, text: str, caret: int) -> str:
     return f"{before}{lead}{text}{trail}{after}"
 
 
-def _placeholder(player: PlayerView, phase: Role | None) -> str:
+def placeholder(player: PlayerView, phase: Role | None) -> str:
+    if player.over is not None:
+        return "The game is over. Restart it from the menu."
     if phase is not None:
         return f"{_STEP_COPY[phase][0]} is working..."
     if player.prompt is None:

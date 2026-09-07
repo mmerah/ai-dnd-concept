@@ -27,6 +27,14 @@ class Subject(Frozen):
     name: str
     brief: str
 
+    @property
+    def tag(self) -> str:
+        return f"{self.name}[{self.id}]"
+
+    @property
+    def headline(self) -> str:
+        return self.tag + (f" — {self.brief}" if self.brief else "")
+
 
 # Three row shapes, in order: entity (`icon_id`), labelled value (`detail`), or bare label.
 class PanelRow(Frozen):

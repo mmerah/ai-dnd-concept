@@ -28,6 +28,7 @@ from aidm.core.views import (
     render_history,
 )
 from aidm.engines.base import (
+    EXTEND,
     JoinParty,
     LeaveParty,
     Person,
@@ -45,7 +46,7 @@ from aidm.engines.seam import Engine
 
 WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
 MORE_MAP = Action(
-    id="extend", label="More map", detail="The map runs out here: say where you push on."
+    id=EXTEND, label="More map", detail="The map runs out here: say where you push on."
 )
 
 

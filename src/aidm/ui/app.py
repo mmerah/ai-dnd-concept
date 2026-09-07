@@ -8,7 +8,7 @@ from aidm.app.launch import LauncherCatalog, LaunchTarget, SaveOption
 from aidm.app.mcp import MOUNT_PATH, MountedLifespan, endpoint
 from aidm.app.runtime import Runtime
 from aidm.config import read_settings
-from aidm.core.entities import Slug, content_id
+from aidm.core.entities import Refusal, Slug, content_id
 from aidm.ui import theme
 from aidm.ui.create import character_page, scenario_page
 from aidm.ui.dice import DICE_ASSETS, DICE_ASSETS_ROUTE
@@ -151,6 +151,18 @@ def _open_game(target: LaunchTarget) -> None:
     ui.navigate.to(game_path(target))
 
 
+def _refused_page(message: str) -> None:
+    with page_header("AI Dungeon Master"):
+        pass
+    with ui.column().classes("w-full q-pa-lg items-center"):
+        with ui.card().classes("q-pa-lg").style("width: min(32rem, 100%)"):
+            with ui.column().classes("items-center").style("gap: 1rem"):
+                ui.label(message).classes("text-body1")
+                ui.button("Home", icon="home", on_click=lambda: ui.navigate.to("/")).props(
+                    "color=primary"
+                )
+
+
 def _register_pages(runtime: Runtime) -> None:
     asgi, manager = endpoint(runtime)
     app.mount(MOUNT_PATH, asgi)
@@ -171,14 +183,16 @@ def _register_pages(runtime: Runtime) -> None:
 
     @ui.page(GAME_ROUTE)
     async def _game(scenario: str, character: str) -> None:  # pyright: ignore[reportUnusedFunction]
+        try:
+            session = runtime.session(
+                LaunchTarget(scenario_id=content_id(scenario), character_id=content_id(character))
+            )
+        except Refusal as refused:
+            _refused_page(str(refused))
+            return
         # Tab storage (the composer draft) is readable only after the handshake.
         await ui.context.client.connected()
-        game_page(
-            runtime,
-            runtime.session(
-                LaunchTarget(scenario_id=content_id(scenario), character_id=content_id(character))
-            ),
-        )
+        game_page(runtime, session)
 
     @ui.page("/create")
     def _create() -> None:  # pyright: ignore[reportUnusedFunction]

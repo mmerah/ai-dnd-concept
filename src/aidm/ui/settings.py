@@ -88,7 +88,7 @@ class SettingsForm:
         try:
             Settings.model_validate(merged)
         except ValidationError as error:
-            ui.notify(str(error), type="negative", multi_line=True)
+            ui.notify(_refusal_text(error), type="negative", multi_line=True)
             return
         save_settings(changed)
         refusal = self.apply()
@@ -103,6 +103,13 @@ class SettingsForm:
 
 def settings_page(settings: Settings, apply: Callable[[], str | None]) -> None:
     SettingsForm(settings, apply, {}).build()
+
+
+def _refusal_text(error: ValidationError) -> str:
+    return "\n".join(
+        f"{'.'.join(str(part) for part in issue['loc'])}: {issue['msg']}"
+        for issue in error.errors()
+    )
 
 
 def _shown(model: BaseModel) -> list[tuple[str, FieldInfo, object]]:

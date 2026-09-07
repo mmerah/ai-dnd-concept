@@ -1,5 +1,6 @@
 """The Whispering Vault (Loner 3e): the full life of one game page."""
 
+import re
 import sys
 from pathlib import Path
 
@@ -299,10 +300,11 @@ def body(s: Session) -> None:
     )
     s.shot(page, "spoken")
     # A wrong id: what the narrator is shown holds no ids at all.
-    prompt = [e for e in log() if e["role"] == "narrator"][-1]["prompt"]
+    prompt = [e for e in log() if e["role"] == "narrator" and "WHO IS HERE" in e["prompt"]][-1]
+    here = prompt["prompt"].split("WHO IS HERE:")[1].split("\n\n")[0]
     s.check(
-        "qa-npc-2" in prompt.split("ANSWER WITH")[0],
-        "the narrator prompt never shows speaker ids, yet asks for exact ids",
+        all(re.match(r"- .+\[[a-z0-9-]+\]", line) for line in here.strip().splitlines()),
+        f"the narrator prompt shows no speaker ids: {here!r}",
     )
 
     # 18. Restart: dialog, keep playing, then confirm.

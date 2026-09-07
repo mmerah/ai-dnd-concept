@@ -237,8 +237,22 @@ def test_finish_job_raises_a_skill_enters_a_new_one_refuses_at_d12_adds_credits(
     assert player.dice().skills["Climbing"] == 8
 
     draft.payload.job = "One skill too far"
-    with pytest.raises(Refusal, match="d12"):
+    with pytest.raises(Refusal, match="Rook's Stealth is already at d12"):
         _ = ENGINE.job(draft, Job(verb="finish", raises=(Raise(skill="Stealth"),)), Random(0))
+
+
+def test_finish_job_names_a_hired_members_skill_when_already_at_d12() -> None:
+    draft = hired(small_world(), KESTREL, skills={"Shooting": 12}).draft()
+    draft.payload.job = "Escort the crate"
+    with pytest.raises(Refusal, match="Kestrel's Shooting is already at d12"):
+        _ = ENGINE.job(
+            draft,
+            Job(
+                verb="finish",
+                raises=(Raise(skill="Stealth"), Raise(actor_id=KESTREL, skill="Shooting")),
+            ),
+            Random(0),
+        )
 
 
 def test_finish_job_refuses_raises_missing_a_hired_member() -> None:

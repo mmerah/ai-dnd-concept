@@ -37,7 +37,8 @@ WAYS OUT is the map the player can act on now. Only a way listed there leads any
 with `move` makes it known. Do that only once the story has found it.
 
 A locked way opens after a roll, or after the story uses a key the player carries. Then use the
-`unlock_way` arm. Only then does `move` carry the player through.
+`unlock_way` arm, which also makes the way known to the player. Only then does `move` carry the
+player through.
 
 When WAYS OUT lead nowhere new, the page offers the player more map. There is nothing for you to
 call.

@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from functools import cache
 from typing import cast
 
@@ -6,87 +6,81 @@ from nicegui import ui
 
 from aidm.core.entities import EngineId
 
-_CSS = """
-:root {
-  --game-bg: #111519;
-  --game-surface: #1a2026;
-  --game-surface-raised: #232c33;
-  --game-text: #eeeae0;
-  --game-muted: #b0b8be;
-  --game-border: #39434b;
-  --game-accent: #dbc18b;
-  --game-wash: rgba(219, 193, 139, .07);
-  --game-success: #85c6a3;
-  --game-danger: #f09696;
-  --game-radius: 14px;
-  --game-heading: Georgia, 'Times New Roman', serif;
+type Tokens = Mapping[str, str]
+
+# The single source for every hex value: the CSS block and the Quasar colours below both read it.
+NEUTRAL_PALETTE: Tokens = {
+    "game-bg": "#111519",
+    "game-surface": "#1a2026",
+    "game-surface-raised": "#232c33",
+    "game-text": "#eeeae0",
+    "game-muted": "#b0b8be",
+    "game-border": "#39434b",
+    "game-accent": "#dbc18b",
+    "game-wash": "rgba(219, 193, 139, .07)",
+    "game-success": "#85c6a3",
+    "game-danger": "#f09696",
+    "game-radius": "14px",
+    "game-heading": "Georgia, 'Times New Roman', serif",
+}
+ENGINE_PALETTES: dict[EngineId, Tokens] = {
+    EngineId("loner3e"): {
+        "game-bg": "#14121e",
+        "game-surface": "#201c2d",
+        "game-surface-raised": "#2c263c",
+        "game-text": "#eee7f4",
+        "game-muted": "#bdb0ce",
+        "game-border": "#443951",
+        "game-accent": "#c5a4ed",
+        "game-wash": "rgba(197, 164, 237, .09)",
+        "game-radius": "18px",
+    },
+    EngineId("tunnelgoons"): {
+        "game-bg": "#191411",
+        "game-surface": "#261e18",
+        "game-surface-raised": "#34281f",
+        "game-text": "#f4e7d5",
+        "game-muted": "#c6b29c",
+        "game-border": "#534030",
+        "game-accent": "#eab078",
+        "game-wash": "rgba(234, 176, 120, .08)",
+        "game-radius": "8px",
+    },
+    EngineId("breathless"): {
+        "game-bg": "#0d1818",
+        "game-surface": "#162525",
+        "game-surface-raised": "#203332",
+        "game-text": "#e0eeea",
+        "game-muted": "#a8c1bb",
+        "game-border": "#35504b",
+        "game-accent": "#94d5be",
+        "game-wash": "rgba(148, 213, 190, .07)",
+        "game-radius": "5px",
+        "game-heading": "'Arial Narrow', 'Helvetica Neue', Arial, sans-serif",
+    },
+    EngineId("twentyfourxx"): {
+        "game-bg": "#0f1624",
+        "game-surface": "#182236",
+        "game-surface-raised": "#22314b",
+        "game-text": "#e3edf9",
+        "game-muted": "#afc0da",
+        "game-border": "#354968",
+        "game-accent": "#91c8ff",
+        "game-wash": "rgba(145, 200, 255, .08)",
+        "game-radius": "10px",
+        "game-heading": "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
+    },
 }
 
-body:has(.q-layout.game-theme-loner3e), .game-theme-loner3e {
-  --game-bg: #14121e;
-  --game-surface: #201c2d;
-  --game-surface-raised: #2c263c;
-  --game-text: #eee7f4;
-  --game-muted: #bdb0ce;
-  --game-border: #443951;
-  --game-accent: #c5a4ed;
-  --game-wash: rgba(197, 164, 237, .09);
-  --game-radius: 18px;
+_STATIC_CSS = """
+.q-page {
+  background: radial-gradient(ellipse at 15% 0, var(--game-wash), transparent 65%), var(--game-bg);
 }
-
-body:has(.q-layout.game-theme-tunnelgoons), .game-theme-tunnelgoons {
-  --game-bg: #191411;
-  --game-surface: #261e18;
-  --game-surface-raised: #34281f;
-  --game-text: #f4e7d5;
-  --game-muted: #c6b29c;
-  --game-border: #534030;
-  --game-accent: #eab078;
-  --game-wash: rgba(234, 176, 120, .08);
-  --game-radius: 8px;
-}
-
-body:has(.q-layout.game-theme-breathless), .game-theme-breathless {
-  --game-bg: #0d1818;
-  --game-surface: #162525;
-  --game-surface-raised: #203332;
-  --game-text: #e0eeea;
-  --game-muted: #a8c1bb;
-  --game-border: #35504b;
-  --game-accent: #94d5be;
-  --game-wash: rgba(148, 213, 190, .07);
-  --game-radius: 5px;
-  --game-heading: 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
-}
-
-body:has(.q-layout.game-theme-twentyfourxx), .game-theme-twentyfourxx {
-  --game-bg: #0f1624;
-  --game-surface: #182236;
-  --game-surface-raised: #22314b;
-  --game-text: #e3edf9;
-  --game-muted: #afc0da;
-  --game-border: #354968;
-  --game-accent: #91c8ff;
-  --game-wash: rgba(145, 200, 255, .08);
-  --game-radius: 10px;
-  --game-heading: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
-}
-
 body, body.body--dark {
-  --q-primary: var(--game-accent);
-  --q-secondary: var(--game-muted);
-  --q-positive: var(--game-success);
-  --q-negative: var(--game-danger);
-  --q-dark: var(--game-surface);
-  --q-dark-page: var(--game-bg);
   background: var(--game-bg);
   color: var(--game-text);
   font-family: 'Inter', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
-}
-
-.q-page {
-  background: radial-gradient(ellipse at 15% 0, var(--game-wash), transparent 65%), var(--game-bg);
 }
 .q-header {
   background: var(--game-surface);
@@ -261,9 +255,40 @@ def set_engine(engine: EngineId | None) -> None:
         name for name in cast(Sequence[str], layout.classes) if name.startswith("game-theme-")
     )
     layout.classes(remove=previous, add=f"game-theme-{engine}" if engine else "")
+    palette = _palette(engine)
+    ui.colors(
+        primary=palette["game-accent"],
+        secondary=palette["game-muted"],
+        dark=palette["game-surface"],
+        dark_page=palette["game-bg"],
+        positive=palette["game-success"],
+        negative=palette["game-danger"],
+    )
+
+
+def _palette(engine: EngineId | None) -> dict[str, str]:
+    overrides: Tokens = ENGINE_PALETTES.get(engine, {}) if engine is not None else {}
+    return {**NEUTRAL_PALETTE, **overrides}
+
+
+def _declarations(palette: Tokens) -> str:
+    return "\n".join(f"  --{key}: {value};" for key, value in palette.items())
+
+
+def _engine_block(engine: EngineId, overrides: Tokens) -> str:
+    selector = f".q-layout.game-theme-{engine}"
+    return f"body:has({selector}), .game-theme-{engine} {{\n{_declarations(overrides)}\n}}"
+
+
+def _palette_css() -> str:
+    root = f":root {{\n{_declarations(NEUTRAL_PALETTE)}\n}}"
+    engines = "\n\n".join(
+        _engine_block(engine, overrides) for engine, overrides in ENGINE_PALETTES.items()
+    )
+    return f"{root}\n\n{engines}\n"
 
 
 @cache
 def _inject_css() -> None:
     # `shared=True` appends to the app-wide head on every call; injected once per process.
-    ui.add_css(_CSS, shared=True)
+    ui.add_css(_palette_css() + _STATIC_CSS, shared=True)
