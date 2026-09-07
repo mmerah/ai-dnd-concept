@@ -28,10 +28,11 @@ class RoleConfig(Frozen):
     model: str = Field(min_length=1)
     effort: Effort = "medium"
     timeout: float = Field(default=300.0, gt=0.0)
+    # The replies a master may make in one turn over an API; a CLI paces itself.
+    max_rounds: int = Field(default=30, gt=0)
 
     @property
     def cli(self) -> CliProvider | None:
-        """The command that plays the role on the player's subscription; None for an API."""
         match self.provider:
             case "claude" | "codex":
                 return self.provider
@@ -40,7 +41,6 @@ class RoleConfig(Frozen):
 
     @property
     def api(self) -> ProviderName | None:
-        """The provider the builtin harness posts to; None when a CLI plays the role."""
         match self.provider:
             case "claude" | "codex":
                 return None
