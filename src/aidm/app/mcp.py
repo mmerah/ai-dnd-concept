@@ -10,7 +10,6 @@ from pydantic import JsonValue, TypeAdapter
 from aidm.app.runtime import Runtime
 from aidm.core.entities import Refusal
 from aidm.core.tools import schema_of
-from aidm.turn.run import NO_TURN
 
 SERVER_NAME = "aidm"
 MOUNT_PATH = "/mcp"
@@ -55,14 +54,6 @@ def list_tools(runtime: Runtime) -> list[types.Tool]:
     ]
 
 
-def call(runtime: Runtime, name: str, raw: dict[str, JsonValue]) -> str:
-    session = runtime.playing()
-    turn = None if session is None else session.turn
-    if turn is None:
-        raise Refusal(NO_TURN)
-    return turn.call(name, raw)
-
-
 def endpoint(
     runtime: Runtime,
 ) -> tuple[StreamableHTTPASGIApp, StreamableHTTPSessionManager]:
@@ -92,8 +83,8 @@ def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
         """The lock replaces a sequential toolset: a CLI may call several tools at once."""
         async with runtime.lock:
             try:
-                answered = call(
-                    runtime, params.name, _ARGUMENTS.validate_python(params.arguments or {})
+                answered = runtime.call(
+                    params.name, _ARGUMENTS.validate_python(params.arguments or {})
                 )
             except Refusal as refused:
                 return _content(str(refused), error=True)

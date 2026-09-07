@@ -41,7 +41,7 @@ Tests run offline. They are deterministic.
 
 ## How the game is built
 
-- Three AI roles, each a spawned CLI that starts cold every turn. The narrator and the worldsmith
+- Three AI roles, each a spawned CLI or a loop over a completion API, starting cold every turn. The narrator and the worldsmith
   answer with typed proposals. The master plays through tools on a draft that is checked before it
   lands. Only code changes state or rolls dice.
 - The engine owns the world. `core`, `turn`, `app` and `ui` know no world shape; the registry is

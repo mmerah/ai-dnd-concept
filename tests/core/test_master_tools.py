@@ -25,7 +25,7 @@ from support.table import (
 
 import aidm.app.spawn as spawn_module
 from aidm.app.launch import LaunchTarget
-from aidm.app.mcp import call, list_tools
+from aidm.app.mcp import list_tools
 from aidm.app.runtime import STORY_MARK
 from aidm.app.spawn import CliSpawner, RunResult, final_message
 from aidm.config import Role
@@ -124,7 +124,7 @@ def test_no_tool_runs_before_a_turn_is_open(tmp_path: Path) -> None:
 
     assert list_tools(table.runtime) == []
     with pytest.raises(ValueError, match=NO_TURN):
-        _ = call(table.runtime, "change_world", {})
+        _ = table.runtime.call("change_world", {})
 
 
 async def test_a_second_game_in_flight_crashes_the_call_rather_than_routing_it(

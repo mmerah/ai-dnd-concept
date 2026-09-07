@@ -2,7 +2,7 @@ import pydantic
 import pytest
 from support.table import EnvFileFreeSettings
 
-from aidm.config import MediaConfig, SpeechConfig
+from aidm.config import MediaConfig, RoleConfig, Roles, SpeechConfig
 
 
 def test_a_role_carries_its_own_model_and_inherits_nothing(
@@ -22,6 +22,14 @@ def test_illustration_without_a_key_is_refused() -> None:
 def test_speech_without_a_key_is_refused() -> None:
     with pytest.raises(ValueError, match="no api_key"):
         _ = EnvFileFreeSettings(speech=SpeechConfig(enabled=True))
+
+
+def test_a_role_on_a_provider_without_a_key_is_refused() -> None:
+    with pytest.raises(ValueError, match="master uses provider 'openrouter', which has no api_key"):
+        _ = EnvFileFreeSettings(roles=Roles(master=RoleConfig(provider="openrouter", model="m")))
+    local = EnvFileFreeSettings(roles=Roles(master=RoleConfig(provider="local", model="m")))
+    assert local.roles.master.api == "local"
+    assert local.roles.narrator.api is None
 
 
 def test_a_misspelled_role_env_var_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:

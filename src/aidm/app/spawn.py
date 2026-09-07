@@ -138,7 +138,9 @@ class CliSpawner:
 
     async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
         config = self.settings.roles.for_name(role)
-        driver = DRIVERS[config.provider]
+        if config.cli is None:
+            raise ValueError(f"the {role} is played over the {config.provider!r} API")
+        driver = DRIVERS[config.cli]
         url = f"http://localhost:{self.settings.server_port}/mcp/"
         argv = driver.command(role, config, session, url)
         started = monotonic()
