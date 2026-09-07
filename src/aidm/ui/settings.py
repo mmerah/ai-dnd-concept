@@ -38,14 +38,15 @@ class SettingsForm:
                     "Each box is one key in .env. Saving applies it; reopen an open game to pick "
                     "it up. The server port applies at the next start, and .mcp.json must match it."
                 ).classes("text-sm opacity-70")
-                with ui.row().classes("w-full no-wrap items-start").style("gap: 1rem"):
-                    with ui.tabs().props("vertical dense").classes("w-40") as tabs:
-                        for name, field, _ in groups:
-                            ui.tab(name, label=_label((name,), field))
-                    with ui.tab_panels(tabs, value=groups[0][0]).classes("w-full"):
-                        for name, field, value in groups:
-                            with ui.tab_panel(name):
-                                self.render(value, field, (name,))
+                with (
+                    ui.tabs().props("dense outside-arrows mobile-arrows").classes("w-full") as tabs
+                ):
+                    for name, field, _ in groups:
+                        ui.tab(name, label=_label((name,), field))
+                with ui.tab_panels(tabs, value=groups[0][0]).classes("w-full"):
+                    for name, field, value in groups:
+                        with ui.tab_panel(name):
+                            self.render(value, field, (name,))
 
     def render(self, value: object, field: FieldInfo, path: tuple[str, ...]) -> None:
         if not isinstance(value, BaseModel):

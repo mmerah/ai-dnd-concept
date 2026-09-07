@@ -21,9 +21,30 @@ body, body.body--dark, .nicegui-content, .q-page {
   color: var(--game-text);
 }
 
-.q-header { background: var(--game-surface); }
+.q-header { background: var(--game-surface); gap: 1rem; }
+
+.q-page-container { height: 100dvh; box-sizing: border-box; display: flex; flex-direction: column }
+.q-page { flex: 1 1 0; min-height: 0 !important; display: flex; flex-direction: column }
+.nicegui-content { flex: 1 1 0; min-height: 0 }
+.q-footer { padding-bottom: env(safe-area-inset-bottom) }
+.game-drawer { background: var(--game-surface) }
+
+@media (max-width: 599.98px) {
+  .q-header { gap: .25rem }
+  .game-scene-art { display: none }
+  .game-scene .text-h6 { font-size: 1rem }
+}
 
 .game-transcript { max-width: 46rem; margin: 0 auto; }
+
+.game-scene {
+  --game-scene-height: calc(25vh - 1rem);
+  max-height: var(--game-scene-height); overflow: hidden;
+}
+
+.game-scene-art {
+  flex: none; height: var(--game-scene-height); max-width: 50%; aspect-ratio: 16 / 9;
+}
 
 .game-card {
   background: var(--game-surface);
@@ -66,43 +87,15 @@ body, body.body--dark, .nicegui-content, .q-page {
 @media (prefers-reduced-motion: reduce) { .game-die-live { animation: none; } }
 
 .game-dice-overlay {
-  position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 7000;
+  position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 5000;
+  transition: opacity .5s;
 }
 
-.game-dice-layer { position: absolute; inset: 0; }
-
-.game-dice-die { position: absolute; left: 0; top: 0; perspective: 800px; }
-
-/* Behind the solid: a floor shadow, and the glow of a die that landed kept. */
-.game-dice-die::before, .game-dice-die::after {
-  content: ""; position: absolute; inset: -25%; border-radius: 50%; z-index: -1;
+.game-dictating {
+  box-shadow: 0 0 0 4px rgba(201, 107, 107, .35);
+  animation: game-pulse 1.2s infinite;
 }
-.game-dice-die::after {
-  background: radial-gradient(closest-side, rgba(0, 0, 0, .6), transparent);
-  transform: translateY(28%) scale(1.1, .7);
-}
-.game-dice-die::before {
-  background: radial-gradient(closest-side, var(--die-glow), transparent);
-  opacity: 0; transition: opacity .4s;
-}
-.game-dice-landed.game-dice-kept::before { opacity: .75; }
-
-.game-dice-spin, .game-dice-body { position: absolute; inset: 0; transform-style: preserve-3d; }
-
-.game-dice-face {
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  backface-visibility: hidden;
-  font-family: Georgia, "Times New Roman", serif; font-weight: 800; color: var(--die-ink);
-  text-shadow: 0 1px 1px rgba(0, 0, 0, .35);
-}
-
-.game-dice-face svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-
-.game-dice-face span { position: relative; }
-
-.game-dice-facet { fill: var(--die-body); stroke: rgba(0, 0, 0, .4); stroke-linejoin: round; }
-
-.game-dice-landed:not(.game-dice-kept) { opacity: .45; transition: opacity .4s; }
+@keyframes game-pulse { 50% { box-shadow: 0 0 0 8px rgba(201, 107, 107, 0) } }
 
 .game-composer {
   background: var(--game-surface-raised);

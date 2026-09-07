@@ -1,7 +1,7 @@
 from aidm.core.entities import EntityId
 from aidm.core.play import Exchange, PendingDecision, PendingOption, SpokenLine
 from aidm.core.views import PlayerView, Subject
-from aidm.ui.game import can_type, standing_proposal
+from aidm.ui.game import can_type, insert_at_caret, near_end, standing_proposal
 
 WREN = Subject(id=EntityId("player"), name="Wren", brief="A quiet scout")
 
@@ -42,3 +42,17 @@ def test_standing_proposal_holds_the_newest_proposal_between_turns_only() -> Non
     assert standing_proposal(proposed, _view(), "master") is None
     assert standing_proposal(proposed, _view(prompt=_pick(allows_text=True)), None) is None
     assert standing_proposal((_spoken(),), _view(), None) is None
+
+
+def test_near_end_follows_a_reader_within_slack_of_the_bottom() -> None:
+    assert near_end(1000, 1600, 600)
+    assert near_end(960, 1600, 600)
+    assert not near_end(400, 1600, 600)
+    assert near_end(0, 300, 600)
+
+
+def test_insert_at_caret_spaces_only_against_a_non_space_neighbour() -> None:
+    assert insert_at_caret("abcd", "x", 2) == "ab x cd"
+    assert insert_at_caret("I go", "north", 4) == "I go north"
+    assert insert_at_caret("", "hi", 0) == "hi"
+    assert insert_at_caret("I ", "go", 2) == "I go"

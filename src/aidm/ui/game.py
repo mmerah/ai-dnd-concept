@@ -6,15 +6,17 @@ from pathlib import Path
 from time import monotonic
 from typing import Self
 
-from nicegui import ui
+from nicegui import app, ui
+from nicegui.events import GenericEventArguments, ScrollEventArguments
 
 from aidm.app.runtime import MARKS, GameService, Runtime
 from aidm.config import Role
-from aidm.core.entities import EntityId
+from aidm.core.entities import EntityId, Refusal
 from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import Answer, Exchange
 from aidm.core.views import Action, PlayerView
-from aidm.ui.dice import DiceOverlay, rolled_since
+from aidm.ui.dice import DiceTray, rolled_since
+from aidm.ui.dictation import Dictation
 from aidm.ui.widgets import (
     avatar,
     decision_widget,
@@ -22,12 +24,7 @@ from aidm.ui.widgets import (
     heading,
     labeled_value,
     page_header,
-    working,
 )
-
-_SCENE_HEIGHT = "calc(25vh - 1rem)"
-
-_ART_BOX = f"flex: none; height: {_SCENE_HEIGHT}; max-width: 50%; aspect-ratio: 16 / 9"
 
 _STEP_COPY: dict[Role, tuple[str, str]] = {
     "master": (
@@ -41,6 +38,12 @@ _STEP_COPY: dict[Role, tuple[str, str]] = {
         "Writes the next scene or region, or what the game master asked for: where the story "
         "goes and who is waiting there. This one is slow; a few minutes is normal.",
     ),
+}
+
+_DICTATION_FAILURES = {
+    "not-allowed": "The browser refused the microphone (a secure context is needed).",
+    "audio-capture": "No microphone.",
+    "no-speech": "Nothing was heard.",
 }
 
 LOGGER = logging.getLogger(__name__)
@@ -76,7 +79,12 @@ class GamePage:
         self.shown_clip: Path | None = None
         self.autoplay_clip: Path | None = None
         self.transcript: ui.scroll_area
-        self.dice: DiceOverlay
+        self.drawer: ui.right_drawer
+        self.dice: DiceTray
+        self.sound: ui.button
+        self.new_activity: ui.button
+        self.restart_dialog: ui.dialog
+        self.restart_label: ui.label
         self.seen: Observed = Observed(None, 0, 0, None, None)
         self.step_started: float | None = None
         self.ticker: ui.label | None = None
@@ -84,6 +92,8 @@ class GamePage:
         self.send: ui.button
         self.action_button: ui.button
         self.over_label: ui.label
+        self.at_end: bool = True
+        self.own_move: bool = False
 
     def build(self) -> None:
         session = self.session
@@ -93,33 +103,62 @@ class GamePage:
             session.illustrate()
         with page_header(session.state.scenario.title, session.engine.title):
             ui.space()
-            ui.button("restart", on_click=self.restart).props("flat color=white dense")
+            self.sound = ui.button(icon="volume_up", on_click=self.toggle_sound).props(
+                "flat color=white round"
+            )
+            ui.button(icon="menu_book", on_click=lambda: self.drawer.toggle()).props(
+                "flat color=white round"
+            )
+            with ui.button(icon="more_vert").props("flat color=white round"), ui.menu():
+                ui.menu_item("Restart this game", on_click=self.confirm_restart)
 
-        # Account for the header and page padding so the input stays above the fold.
-        with (
-            ui.splitter(value=55).classes("w-full").style("height: calc(100vh - 6rem)") as splitter
-        ):
-            with splitter.before, ui.column().classes("w-full h-full p-4").style("gap: 0.5rem"):
-                self.scene_header()
-                with ui.scroll_area().classes("w-full flex-grow game-transcript") as transcript:
-                    self.chat()
-                    self.live_turn()
+        with ui.column().classes("w-full h-full p-4").style("gap: 0.5rem"):
+            self.scene_header()
+            with ui.scroll_area().classes("w-full flex-grow game-transcript") as transcript:
+                self.chat()
+                self.live_turn()
+            self.transcript = transcript
+            transcript.on_scroll(self.scrolled)
+            ui.timer(0.5, lambda: transcript.scroll_to(percent=1.0), once=True)
+
+        self.drawer = (
+            ui.right_drawer(value=None, bordered=True).props("width=420").classes("game-drawer")
+        )
+        with self.drawer, ui.column().classes("w-full h-full").style("gap: 0"):
+            with ui.row().classes("w-full items-center no-wrap").style("gap: 0"):
+                with ui.tabs().classes("flex-grow") as tabs:
+                    scene_tab = ui.tab("scene")
+                    journal_tab = ui.tab("journal")
+                # Below 600px the drawer covers the header, so it carries its own way out.
+                ui.button(icon="close", on_click=self.drawer.hide).props("flat round").classes(
+                    "lt-sm"
+                )
+            with ui.tab_panels(tabs, value=scene_tab).classes("w-full flex-grow"):
+                with ui.tab_panel(scene_tab), ui.scroll_area().classes("w-full h-full"):
+                    self.sidebar()
+                with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
+                    self.journal()
+
+        with ui.footer().classes("game-footer").style("max-height: 50dvh; overflow-y: auto"):
+            with (
+                ui.column().classes("w-full").style("max-width: 46rem; margin: 0 auto; gap: 0.5rem")
+            ):
+                self.new_activity = ui.button(
+                    "New activity", icon="arrow_downward", on_click=self.catch_up
+                ).props("no-caps dense")
+                self.new_activity.set_visibility(False)
                 self.decision_panel()
                 self.way_on_panel()
                 self.composer()
-                self.transcript = transcript
-                ui.timer(0.5, lambda: transcript.scroll_to(percent=1.0), once=True)
-            with splitter.after, ui.column().classes("w-full h-full").style("gap: 0"):
-                with ui.tabs().classes("w-full") as tabs:
-                    scene_tab = ui.tab("scene")
-                    journal_tab = ui.tab("journal")
-                with ui.tab_panels(tabs, value=scene_tab).classes("w-full flex-grow"):
-                    with ui.tab_panel(scene_tab), ui.scroll_area().classes("w-full h-full"):
-                        self.sidebar()
-                    with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
-                        self.journal()
 
-        self.dice = DiceOverlay(session.engine.dice_look)
+        with ui.dialog() as self.restart_dialog, ui.card():
+            self.restart_label = ui.label()
+            with ui.row():
+                ui.button("Keep playing", on_click=self.restart_dialog.close).props("flat")
+                ui.button("Restart", on_click=self.confirmed_restart)
+
+        self.dice = DiceTray(session.engine.dice_look)
+        self.dice.on("sound", self.sound_state)
         # A cached clip never autoplays on a page load, only one landing after.
         self.shown_clip = session.newest_clip()
         self.seen = Observed.of(session)
@@ -142,18 +181,16 @@ class GamePage:
     def scene_header(self) -> None:
         session = self.session
         scene = session.engine.narrator_view(session.state)
-        with (
-            ui.row()
-            .classes("w-full items-start no-wrap")
-            .style(f"max-height: {_SCENE_HEIGHT}; overflow: hidden; gap: 0.75rem")
-        ):
+        with ui.row().classes("game-scene w-full items-start no-wrap").style("gap: 0.75rem"):
             if (art := session.scene_art()) is not None:
                 # `contain` letterboxes a frame drawn at another ratio rather than cropping it.
-                ui.image(art).props("fit=contain").classes("rounded-borders").style(_ART_BOX)
+                ui.image(art).props("fit=contain").classes("game-scene-art rounded-borders")
             with (
                 ui.column()
                 .classes("flex-grow")
-                .style(f"max-height: {_SCENE_HEIGHT}; overflow-y: auto; gap: 0; min-width: 0")
+                .style(
+                    "max-height: var(--game-scene-height); overflow-y: auto; gap: 0; min-width: 0"
+                )
             ):
                 ui.label(scene.title).classes("text-h6 font-bold")
                 ui.label(scene.situation).classes("text-sm opacity-70")
@@ -184,6 +221,7 @@ class GamePage:
             async def accept() -> None:
                 if self.refuse_play():
                     return
+                self.own_move = True
                 await self._run(lambda: self.session.play(Answer(text=proposed.proposal)))
 
             with (
@@ -245,6 +283,7 @@ class GamePage:
         async def answer(option_id: str) -> None:
             if self.refuse_play():
                 return
+            self.own_move = True
             await self._run(lambda: self.session.play(Answer(option_id=option_id)))
 
         with ui.column().classes("game-card game-decision w-full").style("gap: 0.5rem"):
@@ -297,15 +336,24 @@ class GamePage:
                 ui.label("").classes("text-xs self-center").style("color: var(--game-danger)")
             )
             self.box = (
-                ui.input().classes("flex-grow").props("outlined autogrow type=textarea borderless")
+                ui.input()
+                .classes("flex-grow")
+                .props('outlined autogrow type=textarea borderless input-style="max-height: 9rem"')
             )
-            # Enter sends; without the prevent the browser also leaves its newline behind.
+            self.box.bind_value(app.storage.tab, f"draft:{self.session.slug}")
+            # Enter sends on a fine pointer only; a touch keyboard's Enter must stay a newline.
             self.box.on(
                 "keydown.enter",
                 self.submit,
-                js_handler="(e) => { if (e.shiftKey) return; e.preventDefault(); emit(); }",
+                js_handler=(
+                    '(e) => { if (e.shiftKey || !matchMedia("(pointer: fine)").matches) return; '
+                    "e.preventDefault(); emit(); }"
+                ),
             )
-            self.send = ui.button(icon="send", on_click=self.submit).props("round flat")
+            Dictation(self.box).on("dictated", self.dictated).on("failed", self.dictation_failed)
+            self.send = ui.button(icon="send", on_click=self.submit).props(
+                "round flat size=lg aria-label=Send"
+            )
             self.action_button = ui.button(
                 icon="arrow_forward", on_click=lambda: self.submit(acting=True)
             ).props("no-caps outline dense")
@@ -318,8 +366,10 @@ class GamePage:
             self.dice.toss(self._landed(now))
             self.seen = now
             self._set_composer()
+            follow = self.at_end or self.own_move
+            self.own_move = False
             self.refresh()
-            self._scroll()
+            self._scroll(follow)
         ticker, started = self.ticker, self.step_started
         if ticker is not None and started is not None and not ticker.is_deleted:
             ticker.set_text(_clock(monotonic() - started))
@@ -354,13 +404,15 @@ class GamePage:
         if acting and action is None:
             ui.notify("The way on has changed.", type="warning")
             return
-        box.value = ""
-        # Quasar never saw the typed value change, so only an explicit push empties the composer.
-        box.run_method("updateValue")
+        self.own_move = True
         if acting and action is not None:
-            await self._run(lambda: self.session.act(action.id, typed))
+            landed = await self._run(lambda: self.session.act(action.id, typed))
         else:
-            await self._run(lambda: self.session.play(Answer(text=typed)))
+            landed = await self._run(lambda: self.session.play(Answer(text=typed)))
+        if landed:
+            box.value = ""
+            # Quasar never saw the value change, so only an explicit push empties the composer.
+            box.run_method("updateValue")
 
     async def restart(self) -> None:
         if self.refuse_play():
@@ -368,6 +420,41 @@ class GamePage:
         self.session.restart()
         self.poll_turn()
         await self._open()
+
+    async def confirm_restart(self) -> None:
+        history = self.session.engine.history(self.session.state)
+        if not history:
+            await self.restart()
+            return
+        title = self.session.state.scenario.title
+        self.restart_label.set_text(f"Restart {title}? {len(history)} turns are erased.")
+        self.restart_dialog.open()
+
+    async def confirmed_restart(self) -> None:
+        self.restart_dialog.close()
+        await self.restart()
+
+    def toggle_sound(self) -> None:
+        self.dice.run_method("toggleSound")
+
+    def sound_state(self, e: GenericEventArguments) -> None:
+        self.sound.set_icon("volume_up" if e.args else "volume_off")
+
+    def scrolled(self, e: ScrollEventArguments) -> None:
+        self.at_end = near_end(e.vertical_position, e.vertical_size, e.vertical_container_size)
+        if self.at_end:
+            self.new_activity.set_visibility(False)
+
+    def catch_up(self) -> None:
+        self.transcript.scroll_to(percent=1.0)
+        self.new_activity.set_visibility(False)
+
+    def dictated(self, e: GenericEventArguments) -> None:
+        self.box.value = insert_at_caret(self.box.value or "", e.args["text"], e.args["caret"])
+        self.box.run_method("updateValue")
+
+    def dictation_failed(self, e: GenericEventArguments) -> None:
+        ui.notify(_DICTATION_FAILURES.get(e.args, str(e.args)), type="warning")
 
     def _set_composer(self) -> None:
         session = self.session
@@ -393,20 +480,29 @@ class GamePage:
         live = () if session.turn is None else rolled_since(session.turn.facts, since)
         return closed + live
 
-    def _scroll(self) -> None:
+    def _scroll(self, follow: bool) -> None:
+        if not follow:
+            self.new_activity.set_visibility(True)
+            return
+        self.new_activity.set_visibility(False)
         # A method call on an existing element needs no NiceGUI slot; `ui.timer` here would.
         get_running_loop().call_later(0.1, lambda: self.transcript.scroll_to(percent=1.0))
 
-    async def _run(self, playing: Callable[[], Awaitable[None]]) -> None:
+    async def _run(self, playing: Callable[[], Awaitable[None]]) -> bool:
         """The composer greys at once, not at the next tick: a second Enter has nothing to hit."""
         for widget in (self.box, self.send, self.action_button):
             widget.set_enabled(False)
         try:
-            async with working():
-                await playing()
+            await playing()
+        except (OSError, Refusal) as error:
+            ui.notify(f"{type(error).__name__}: {error}", type="negative", multi_line=True)
+            return False
         finally:
             self._set_composer()
             self.poll_turn()
+            # A move that changed nothing must not pull a reader down on the next change.
+            self.own_move = False
+        return True
 
     async def _open(self) -> None:
         # A second tab's timer must not run the page reset over an opening already in flight.
@@ -489,6 +585,18 @@ def standing_proposal(
     if newest is None or not newest.proposal:
         return None
     return newest if can_type(player, phase) and player.prompt is None else None
+
+
+def near_end(position: float, size: float, container: float, slack: float = 48) -> bool:
+    return size - position - container <= slack
+
+
+def insert_at_caret(draft: str, text: str, caret: int) -> str:
+    """A space on each side, unless the neighbour is already whitespace or the draft edge."""
+    before, after = draft[:caret], draft[caret:]
+    lead = "" if not before or before[-1].isspace() else " "
+    trail = "" if not after or after[0].isspace() else " "
+    return f"{before}{lead}{text}{trail}{after}"
 
 
 def _placeholder(player: PlayerView, phase: Role | None) -> str:

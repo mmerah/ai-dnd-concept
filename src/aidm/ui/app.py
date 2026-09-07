@@ -10,6 +10,7 @@ from aidm.app.runtime import Runtime
 from aidm.config import read_settings
 from aidm.core.entities import Slug, content_id
 from aidm.ui.create import character_page, scenario_page
+from aidm.ui.dice import DICE_ASSETS, DICE_ASSETS_ROUTE
 from aidm.ui.game import game_page
 from aidm.ui.settings import settings_page
 from aidm.ui.widgets import GAME_ROUTE, game_path, page_header
@@ -24,7 +25,7 @@ def home_page(runtime: Runtime) -> None:
             "flat color=white"
         )
         ui.space()
-        ui.label("Choose your game").classes("text-sm opacity-80")
+        ui.label("Choose your game").classes("text-sm opacity-80 gt-xs")
 
     with ui.column().classes("w-full q-pa-lg items-center").style("gap: 1.5rem"):
         with ui.column().style("width: min(64rem, 100%); gap: 1.5rem"):
@@ -140,7 +141,7 @@ def _saved_card(saved: SaveOption) -> None:
                 "Resume",
                 icon="play_arrow",
                 on_click=partial(_open_game, saved.target),
-            ).props("color=primary")
+            ).props("color=primary").classes("col-12 col-sm-auto")
 
 
 def _open_game(target: LaunchTarget) -> None:
@@ -151,6 +152,7 @@ def _open_game(target: LaunchTarget) -> None:
 def _register_pages(runtime: Runtime) -> None:
     asgi, manager = endpoint(runtime)
     app.mount(MOUNT_PATH, asgi)
+    app.add_static_files(DICE_ASSETS_ROUTE, DICE_ASSETS)
     lifespan = MountedLifespan(manager)
     app.on_startup(lifespan.start)  # pyright: ignore[reportUnknownMemberType]
     app.on_shutdown(lifespan.stop)  # pyright: ignore[reportUnknownMemberType]
@@ -166,7 +168,9 @@ def _register_pages(runtime: Runtime) -> None:
         home_page(runtime)
 
     @ui.page(GAME_ROUTE)
-    def _game(scenario: str, character: str) -> None:  # pyright: ignore[reportUnusedFunction]
+    async def _game(scenario: str, character: str) -> None:  # pyright: ignore[reportUnusedFunction]
+        # Tab storage (the composer draft) is readable only after the handshake.
+        await ui.context.client.connected()
         game_page(
             runtime,
             runtime.session(
