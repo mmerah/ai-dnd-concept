@@ -1,113 +1,266 @@
+from collections.abc import Sequence
 from functools import cache
+from typing import cast
 
 from nicegui import ui
 
+from aidm.core.entities import EngineId
+
 _CSS = """
 :root {
-  --game-bg: #0f1115;
-  --game-surface: #171a21;
-  --game-surface-raised: #1e222b;
-  --game-text: #f3efe6;
-  --game-muted: #a9afbd;
-  --game-border: rgba(255, 255, 255, .08);
-  --game-accent: #c89b5a;
-  --game-success: #5fa777;
-  --game-danger: #c96b6b;
+  --game-bg: #111519;
+  --game-surface: #1a2026;
+  --game-surface-raised: #232c33;
+  --game-text: #eeeae0;
+  --game-muted: #b0b8be;
+  --game-border: #39434b;
+  --game-accent: #dbc18b;
+  --game-wash: rgba(219, 193, 139, .07);
+  --game-success: #85c6a3;
+  --game-danger: #f09696;
   --game-radius: 14px;
+  --game-heading: Georgia, 'Times New Roman', serif;
 }
 
-body, body.body--dark, .nicegui-content, .q-page {
+body:has(.q-layout.game-theme-loner3e), .game-theme-loner3e {
+  --game-bg: #14121e;
+  --game-surface: #201c2d;
+  --game-surface-raised: #2c263c;
+  --game-text: #eee7f4;
+  --game-muted: #bdb0ce;
+  --game-border: #443951;
+  --game-accent: #c5a4ed;
+  --game-wash: rgba(197, 164, 237, .09);
+  --game-radius: 18px;
+}
+
+body:has(.q-layout.game-theme-tunnelgoons), .game-theme-tunnelgoons {
+  --game-bg: #191411;
+  --game-surface: #261e18;
+  --game-surface-raised: #34281f;
+  --game-text: #f4e7d5;
+  --game-muted: #c6b29c;
+  --game-border: #534030;
+  --game-accent: #eab078;
+  --game-wash: rgba(234, 176, 120, .08);
+  --game-radius: 8px;
+}
+
+body:has(.q-layout.game-theme-breathless), .game-theme-breathless {
+  --game-bg: #0d1818;
+  --game-surface: #162525;
+  --game-surface-raised: #203332;
+  --game-text: #e0eeea;
+  --game-muted: #a8c1bb;
+  --game-border: #35504b;
+  --game-accent: #94d5be;
+  --game-wash: rgba(148, 213, 190, .07);
+  --game-radius: 5px;
+  --game-heading: 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+}
+
+body:has(.q-layout.game-theme-twentyfourxx), .game-theme-twentyfourxx {
+  --game-bg: #0f1624;
+  --game-surface: #182236;
+  --game-surface-raised: #22314b;
+  --game-text: #e3edf9;
+  --game-muted: #afc0da;
+  --game-border: #354968;
+  --game-accent: #91c8ff;
+  --game-wash: rgba(145, 200, 255, .08);
+  --game-radius: 10px;
+  --game-heading: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+}
+
+body, body.body--dark {
+  --q-primary: var(--game-accent);
+  --q-secondary: var(--game-muted);
+  --q-positive: var(--game-success);
+  --q-negative: var(--game-danger);
+  --q-dark: var(--game-surface);
+  --q-dark-page: var(--game-bg);
   background: var(--game-bg);
   color: var(--game-text);
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-.q-header { background: var(--game-surface); gap: 1rem; }
-
+.q-page {
+  background: radial-gradient(ellipse at 15% 0, var(--game-wash), transparent 65%), var(--game-bg);
+}
+.q-header {
+  background: var(--game-surface);
+  border-bottom: 1px solid var(--game-border);
+  box-shadow: 0 4px 24px #0002;
+  gap: 1rem;
+}
 .q-page-container { height: 100dvh; box-sizing: border-box; display: flex; flex-direction: column }
 .q-page { flex: 1 1 0; min-height: 0 !important; display: flex; flex-direction: column }
 .nicegui-content { flex: 1 1 0; min-height: 0 }
 .q-footer { padding-bottom: env(safe-area-inset-bottom) }
-.game-drawer { background: var(--game-surface) }
+.game-footer { background: var(--game-bg); border-top: 1px solid var(--game-border) }
+.game-drawer { background: var(--game-surface); border-color: var(--game-border) }
+.game-drawer .q-tab-panels { background: transparent }
+.q-tab { color: var(--game-muted); text-transform: none; letter-spacing: .03em }
+.q-tab--active { color: var(--game-accent) }
+.q-tab__indicator { background: var(--game-accent) }
+
+.text-h4, .text-h5, .text-h6, .game-title {
+  font-family: var(--game-heading);
+  letter-spacing: -.025em;
+}
+.game-title { color: var(--game-text) }
+.game-heading { color: var(--game-muted); letter-spacing: .1em; text-transform: uppercase }
+
+.q-card, .game-card, .q-menu {
+  color: var(--game-text);
+  background: var(--game-surface);
+  border: 1px solid var(--game-border);
+  border-radius: var(--game-radius);
+  box-shadow: 0 8px 28px #0002;
+}
+.q-menu .q-item--active { color: var(--game-accent) }
+.q-separator { background: var(--game-border) }
+.q-btn {
+  border-radius: calc(var(--game-radius) * .65);
+  text-transform: none;
+  font-weight: 600;
+  letter-spacing: .01em;
+  transition: background-color 160ms, box-shadow 160ms;
+}
+.q-btn--round { border-radius: 50% }
+.q-btn--rectangle { min-height: 2.5rem }
+.q-btn.bg-primary { color: var(--game-bg) !important; box-shadow: 0 3px 12px #0002 }
+.q-btn--outline { background: var(--game-wash) }
+.q-btn--outline:before { border-color: var(--game-border) }
+.q-btn--outline:hover:before { border-color: var(--game-accent) }
+.q-btn--flat.text-white { color: var(--game-muted) !important }
+.q-btn:focus-visible, .q-field:focus-within .q-field__control {
+  outline: 2px solid var(--game-accent);
+  outline-offset: 3px;
+}
+.q-btn.disabled { opacity: .45 !important }
+.q-badge {
+  --q-primary: var(--game-accent);
+  border-radius: 999px;
+  padding: .35em .75em;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+.q-badge.bg-primary { background: var(--game-wash) !important; color: var(--game-accent) !important;
+  border: 1px solid var(--game-border) }
+.q-field__control { background: var(--game-wash); border-radius: calc(var(--game-radius) * .65) }
+.q-field--outlined .q-field__control:before { border-color: var(--game-border) }
+.q-field__native, .q-field__input { color: var(--game-text) }
+.q-field__label, .q-field__marginal, .q-field__bottom { color: var(--game-muted) }
+.q-field__native::placeholder { color: var(--game-muted); opacity: .8 }
+.q-field--focused .q-field__label { color: var(--game-accent) }
+.q-uploader { background: var(--game-surface-raised); border: 1px solid var(--game-border) }
+.q-uploader__header { background: var(--game-surface-raised); color: var(--game-text) }
+
+.game-transcript { max-width: 46rem; margin: 0 auto; }
+.game-scene {
+  --game-scene-height: calc(25vh - 1rem);
+  max-height: var(--game-scene-height); overflow: hidden;
+  border-bottom: 1px solid var(--game-border);
+}
+.game-scene-art {
+  flex: none; height: var(--game-scene-height); max-width: 50%; aspect-ratio: 16 / 9;
+  border-radius: var(--game-radius);
+}
+.game-scene .text-h6 { color: var(--game-accent) }
+.game-message .q-message-name { color: var(--game-muted); font-size: .75rem; font-weight: 600 }
+.game-message .q-message-text {
+  background: var(--game-surface-raised);
+  color: var(--game-surface-raised);
+  border-radius: var(--game-radius);
+  padding: .85rem 1rem;
+  box-shadow: 0 4px 16px #0002;
+}
+.game-message .q-message-text-content { color: var(--game-text); line-height: 1.7 }
+.game-message .q-message-text--sent {
+  background: var(--game-surface);
+  color: var(--game-surface);
+  box-shadow: inset -3px 0 var(--game-accent), 0 4px 16px #0002;
+}
+.game-message.q-message-sent .q-message-name { color: var(--game-accent) }
+.game-narration .q-message-text { box-shadow: inset 3px 0 var(--game-border), 0 4px 16px #0002 }
+.game-avatar {
+  border: 1px solid var(--game-border); background: var(--game-surface-raised) !important;
+}
+.game-avatar-dm { color: var(--game-accent); border-color: var(--game-accent) }
+
+.game-card { padding: .6rem .9rem; margin: .35rem 0 }
+.game-decision {
+  border-color: var(--game-accent);
+  background: linear-gradient(110deg, var(--game-wash), transparent), var(--game-surface);
+  box-shadow: 0 4px 20px #0002;
+}
+.game-card-icon { color: var(--game-accent) }
+.game-outcome { color: var(--game-accent); letter-spacing: .08em; text-transform: uppercase }
+.game-die {
+  background: var(--game-surface-raised);
+  border: 1px solid var(--game-border);
+  border-radius: calc(var(--game-radius) * .6);
+  min-width: 2.4rem;
+  padding: .2rem .4rem;
+  align-items: center;
+}
+.game-die-face { font-size: .6rem; color: var(--game-muted); text-transform: uppercase }
+.game-die-value {
+  font-size: 1.15rem; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums;
+}
+.game-die-kept { border-color: var(--game-accent); box-shadow: 0 0 0 1px var(--game-accent) }
+.game-die-live { animation: game-die-tumble 600ms cubic-bezier(.2, .8, .3, 1) both }
+@keyframes game-die-tumble {
+  from { opacity: 0; transform: perspective(240px) rotateX(-220deg) rotateY(160deg) scale(.5) }
+  60% { opacity: 1; transform: perspective(240px) rotateX(20deg) rotateY(-15deg) scale(1.08) }
+  to { transform: none }
+}
+.game-dice-overlay {
+  position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 5000;
+  transition: opacity .5s;
+}
+.game-dictating { box-shadow: 0 0 0 4px #f0969659; animation: game-pulse 1.2s infinite }
+@keyframes game-pulse { 50% { box-shadow: 0 0 0 8px #f0969600 } }
+.game-composer {
+  background: var(--game-surface-raised);
+  border: 1px solid var(--game-border);
+  border-radius: var(--game-radius);
+  box-shadow: 0 6px 24px #0003;
+}
+.game-composer:focus-within { border-color: var(--game-accent) }
+.game-composer .q-field__control { background: transparent }
+.game-send {
+  background: var(--game-accent); color: var(--game-bg) !important; box-shadow: 0 2px 10px #0003;
+}
 
 @media (max-width: 599.98px) {
   .q-header { gap: .25rem }
   .game-scene-art { display: none }
   .game-scene .text-h6 { font-size: 1rem }
+  .game-message .q-message-text { padding: .65rem .75rem }
 }
-
-.game-transcript { max-width: 46rem; margin: 0 auto; }
-
-.game-scene {
-  --game-scene-height: calc(25vh - 1rem);
-  max-height: var(--game-scene-height); overflow: hidden;
-}
-
-.game-scene-art {
-  flex: none; height: var(--game-scene-height); max-width: 50%; aspect-ratio: 16 / 9;
-}
-
-.game-card {
-  background: var(--game-surface);
-  border: 1px solid var(--game-border);
-  border-radius: var(--game-radius);
-  padding: .6rem .9rem;
-  margin: .35rem 0;
-}
-
-.game-decision {
-  border-color: var(--game-accent);
-  background: var(--game-surface-raised);
-}
-
-.game-card-icon { color: var(--game-accent); }
-
-.game-outcome { color: var(--game-accent); letter-spacing: .04em; text-transform: uppercase; }
-
-.game-die {
-  background: var(--game-surface-raised);
-  border: 1px solid var(--game-border);
-  border-radius: 8px;
-  min-width: 2.4rem;
-  padding: .2rem .4rem;
-  align-items: center;
-}
-
-.game-die-face { font-size: .6rem; color: var(--game-muted); text-transform: uppercase; }
-
-.game-die-value { font-size: 1.15rem; font-weight: 700; text-align: center; }
-
-.game-die-kept { border-color: var(--game-accent); box-shadow: 0 0 0 1px var(--game-accent); }
-
-.game-die-live { animation: game-die-tumble 600ms cubic-bezier(.2, .8, .3, 1) both; }
-@keyframes game-die-tumble {
-  from { opacity: 0; transform: perspective(240px) rotateX(-220deg) rotateY(160deg) scale(.5); }
-  60% { opacity: 1; transform: perspective(240px) rotateX(20deg) rotateY(-15deg) scale(1.08); }
-  to { transform: none; }
-}
-@media (prefers-reduced-motion: reduce) { .game-die-live { animation: none; } }
-
-.game-dice-overlay {
-  position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 5000;
-  transition: opacity .5s;
-}
-
-.game-dictating {
-  box-shadow: 0 0 0 4px rgba(201, 107, 107, .35);
-  animation: game-pulse 1.2s infinite;
-}
-@keyframes game-pulse { 50% { box-shadow: 0 0 0 8px rgba(201, 107, 107, 0) } }
-
-.game-composer {
-  background: var(--game-surface-raised);
-  border: 1px solid var(--game-border);
-  border-radius: var(--game-radius);
+@media (prefers-reduced-motion: reduce) {
+  .game-die-live, .game-dictating { animation: none }
+  .q-btn, .game-dice-overlay { transition: none }
 }
 """
 
 
-def apply() -> None:
+def apply(engine: EngineId | None = None) -> None:
     ui.dark_mode(True)
     _inject_css()
+    set_engine(engine)
+
+
+def set_engine(engine: EngineId | None) -> None:
+    layout = ui.context.client.layout
+    previous = " ".join(
+        name for name in cast(Sequence[str], layout.classes) if name.startswith("game-theme-")
+    )
+    layout.classes(remove=previous, add=f"game-theme-{engine}" if engine else "")
 
 
 @cache

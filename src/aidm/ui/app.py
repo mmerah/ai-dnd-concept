@@ -9,6 +9,7 @@ from aidm.app.mcp import MOUNT_PATH, MountedLifespan, endpoint
 from aidm.app.runtime import Runtime
 from aidm.config import read_settings
 from aidm.core.entities import Slug, content_id
+from aidm.ui import theme
 from aidm.ui.create import character_page, scenario_page
 from aidm.ui.dice import DICE_ASSETS, DICE_ASSETS_ROUTE
 from aidm.ui.game import game_page
@@ -74,6 +75,7 @@ class LaunchForm:
     def form(self) -> None:
         catalog = self.catalog
         scenario = catalog.scenario(self.scenario_id)
+        theme.set_engine(scenario.engine)
         ui.select(
             options={entry.id: f"{entry.title} · {entry.rules}" for entry in catalog.scenarios},
             value=self.scenario_id,

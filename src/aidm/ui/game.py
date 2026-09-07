@@ -101,7 +101,9 @@ class GamePage:
             ui.timer(0.1, self._open, once=True)
         else:
             session.illustrate()
-        with page_header(session.state.scenario.title, session.engine.title):
+        with page_header(
+            session.state.scenario.title, session.engine.title, engine=session.engine.id
+        ):
             ui.space()
             self.sound = ui.button(icon="volume_up", on_click=self.toggle_sound).props(
                 "flat color=white round"
@@ -351,8 +353,10 @@ class GamePage:
                 ),
             )
             Dictation(self.box).on("dictated", self.dictated).on("failed", self.dictation_failed)
-            self.send = ui.button(icon="send", on_click=self.submit).props(
-                "round flat size=lg aria-label=Send"
+            self.send = (
+                ui.button(icon="send", on_click=self.submit)
+                .props("round flat size=lg aria-label=Send")
+                .classes("game-send")
             )
             self.action_button = ui.button(
                 icon="arrow_forward", on_click=lambda: self.submit(acting=True)
@@ -551,9 +555,9 @@ def _bubble(
     narration = speaker_id is None
     icon = None if narration else session.icon(speaker_id)
     chat_name = "DM" if narration else name
-    message = ui.chat_message(text, name=chat_name, sent=sent).classes("w-full")
-    if narration:
-        message.props("bg-color=grey-3")
+    message = ui.chat_message(text, name=chat_name, sent=sent).classes(
+        "w-full game-message" + (" game-narration" if narration else "")
+    )
     with message.add_slot("avatar"):
         avatar(icon, None if narration else chat_name)
 
