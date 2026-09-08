@@ -18,7 +18,6 @@ from aidm.engines.tunnelgoons.tools import (
     ChangeWorld,
     LevelUp,
     Rest,
-    WorldChange,
     level_options,
 )
 from aidm.engines.tunnelgoons.world import (
@@ -144,9 +143,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         return AUTHORING
 
     def change_world(self, draft: TunnelGoonsGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-        return self.apply_change(draft.payload, args.change)
-
-    def apply_change(self, world: TunnelGoonsWorld, change: WorldChange) -> list[Fact]:
+        world, change = draft.payload, args.change
         match change:
             case Rest():
                 return world.rest()

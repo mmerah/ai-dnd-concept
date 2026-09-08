@@ -29,7 +29,6 @@ from aidm.engines.breathless.tools import (
     LootCheck,
     TestLuck,
     UseMedKit,
-    WorldChange,
     outcome,
 )
 from aidm.engines.breathless.world import (
@@ -178,7 +177,8 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
         """Always the SRD's own table: no other pack publishes one."""
         return self.srd_pack().complications
 
-    def apply_change(self, world: BreathlessWorld, change: WorldChange) -> list[Fact]:
+    def change_world(self, draft: BreathlessGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
+        world, change = draft.payload, args.change
         match change:
             case DropItem():
                 return world.require_actor(change.actor_id).drop_item(change.item_id)
@@ -188,9 +188,6 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
                 return world.require_actor(change.actor_id).use_med_kit()
             case _:
                 return self.shared_change(world, change)
-
-    def change_world(self, draft: BreathlessGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-        return self.apply_change(draft.payload, args.change)
 
     async def advance(
         self, draft: BreathlessGame, request: Generation, worldsmith: WorldsmithAnswer
