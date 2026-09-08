@@ -1,20 +1,20 @@
-# PLAN — three cuts before MVP0: dispatch, companion speech, the journal
+# PLAN — two measured cuts before MVP0: dispatch, companion speech
 
-Three phases, in order, cut from `PROPOSALS.md` and re-measured against the code on 2026-09-08.
-**Phase 1** folds the one-caller `apply_change` dispatch into `change_world` where it only
-forwards (proposal 5). **Phase 2** moves the companion's words into the narrator's own answer and
-deletes the separate background run (proposal 3). **Phase 3** gives `Game` one typed journal and
-deletes the two families' duplicate exchange storage (proposal 1), **under a gate**: it is kept
-only if the measured diff is net-negative.
+Two phases, in order. **Phase 1** folds the one-caller `apply_change` dispatch into `change_world`
+where it only forwards (proposal 5). **Phase 2** moves the companion's words into the narrator's
+own answer and deletes the separate background run (proposal 3).
 
-Proposals 2 and 4 are not in this plan. Their reasons are at the end.
+**Both were built end to end and measured before this plan was written**, on a scratch worktree
+off `f81dfc1`, each to a green full check. The line counts below are measurements, not estimates.
+Proposal 1's journal was built the same way, measured at **+16 lines**, and is refused; proposals
+2 and 4 are out of scope. All three reasons are at the end.
 
 Self-standing: an implementer needs this file, `CLAUDE.md` and the code. `PROPOSALS.md` stays in
 the repository as the evidence document behind it; every claim this plan relies on was re-checked
 against the working tree and the line numbers below name that tree.
 
-`src` is **10,080** lines at the start of Phase 1, Python and JavaScript together, the vendored
-dice library excluded:
+`src` is **10,080** lines at the start of Phase 1 and **10,046** at the end of Phase 2, Python and
+JavaScript together, the vendored dice library excluded:
 
 ```bash
 find src \( -name '*.py' -o -name '*.js' \) -not -path '*/lib/*' | xargs cat | wc -l
@@ -49,61 +49,67 @@ Every measurable claim in `PROPOSALS.md` reproduces. Recorded here so no phase r
   and `choice` without rolling, though `tools.py:85` tells the model to leave them null. It is
   **not** in this plan; see the end.
 
-Two findings revise `PROPOSALS.md` downward. They set Phase 3's gate and both phase targets:
+`PROPOSALS.md`'s LOC ranges do not survive being built. All three were implemented to a green
+full check and counted; every range came in far below its estimate, and one came in positive:
 
-1. **The journal alone is not a reduction.** The code it removes is 42 lines:
-   `RoomWorld.record/records` 12 (`rooms/world.py:384-395`), `SceneWorld.record/records` 13
-   (`scenes/world.py:125-137`), `World.records/record/exchanges` 9 (`base.py:118-126`), and
-   `Engine.record/history/scenes` 8 (`seam.py:171-178`). A `Journal` that carries the two
-   families' different projection rules costs at least that. The 150-350 estimate belongs to the
-   broader shared-world extraction, which `PROPOSALS.md` itself gates as conditional.
-2. **Only Tunnel Goons is a room engine.** Breathless, Loner and 24XX are all `SceneEngine`. So
-   the document's slice 1 (Tunnel Goons and Breathless) already converts both family bases;
-   slices 2 and 3 add no new family, only the two remaining scene engines and the optional
-   presence work.
+| Proposal | `PROPOSALS.md` estimate | Built and measured | Gates |
+| --- | ---: | ---: | --- |
+| 5, dispatch | −8 to −25 | **−9** | 564 pass, all four green |
+| 3, companion | −80 to −140 | **−25** | 562 pass, all four green |
+| 1, journal | −150 to −350 | **+16** | `src` clean, tests not finished |
+
+Three findings behind those numbers:
+
+1. **The journal cannot pay for itself, because it does not replace a sequence — it adds one.**
+   It removes 42 lines of duplicate storage (`RoomWorld.record/records` 12,
+   `SceneWorld.record/records` 13, `World.records/record/exchanges` 9,
+   `Engine.record/history/scenes` 8). But `Visit` and `SceneRun` must stay: the trail reads
+   visits, and `last_seen`, the offer and the cast read runs. So after the move there are two
+   parallel sequences — world visits/runs and journal blocks — that code must keep 1:1 by hand,
+   at `RoomEngine.move` and `SceneEngine.install`. Built minimally (three operations, no
+   `enrich`) it measured **+24**; with `Visit` further collapsed to a bare id list, **+16**.
+2. **Deleting 152 lines of companion machinery buys back only 25.** Phase 2 removes the whole
+   background run and its prompt, then spends 116 lines on the typed `Suggestion` and `Proposal`,
+   the extended refusal, the draw, the prompt section and the `final` plumbing. The deletion is
+   real; the net is not what the document promised.
+3. **Only Tunnel Goons is a room engine.** Breathless, Loner and 24XX are all `SceneEngine`, so
+   the document's slice 1 already converts both family bases; its later slices add no new family.
 
 ## Decisions
 
-1. **The order is 5, then 3, then 1.** Not the document's order. Phase 1 is a one-hour cleanup
-   that touches nothing the other two touch, so it lands first and green. Phase 2 is
-   self-contained and deletes the most code, so it lands before the phase that might be refused.
-   Phase 3 is last because it is the only one that can fail its own gate.
-2. **The journal is built with the operations that have callers today, and no others.**
-   Append an exchange, open a block, set the previous block's recap. **Not** "enrich a
-   checkpointed exchange": that operation exists only for proposal 2's crash checkpoint, and
-   proposal 2 is not in this plan. Building it now is building for a future need.
-3. **Phase 3 is gated on its own diff.** `src` is counted before and after. If the phase is not
-   net-negative once the forwarding chain is deleted, it is reverted and `PROGRESS.md` records
-   the measurement and the refusal. A neutral abstraction is not kept on the promise of a later
-   phase.
-4. **The companion's words ride the last narrator call of the submission.** Which call that is
+1. **The order is 5, then 3.** Not the document's order. Phase 1 touches nothing Phase 2 touches,
+   so it lands first and green.
+2. **A phase that does not measure net-negative does not land.** `src` is counted before and
+   after every phase, and the count goes in `PROGRESS.md`. This is how proposal 1 was refused:
+   it was built, it measured +16, it was dropped. The same rule holds for these two if a review
+   makes them grow.
+3. **The companion's words ride the last narrator call of the submission.** Which call that is
    is decided without proposal 2: in `_turn` the narration is final when
    `turn.draft.generation is None`; in `_generate` it is final only when `_generate` was called
    from the tail of `_turn`, never from `act`'s pre-generation route. One `final: bool` parameter
    carries it. Proposal 2 later deletes that parameter; roughly eight lines are knowingly
    temporary.
-5. **The selection draw stays where it is in the RNG order.** The existing ordered d10 against
+4. **The selection draw stays where it is in the RNG order.** The existing ordered d10 against
    `INTERJECTION_ODDS[chattiness]` on `self.rng`, drawn after every mechanic has landed and
    before the final narrator call. `Engine.advance` takes no `Random`, so the seeded trace is
    unchanged. No second RNG is created.
-6. **One companion path is lost and that is accepted.** Today a member may speak after a
+5. **One companion path is lost and that is accepted.** Today a member may speak after a
    worldsmith failure, which closes an exchange with no narration. With the words inside the
    narrator's answer, a submission that never narrates has nobody to speak. No fallback is built
    to keep that path: a fallback would keep the machinery this phase is for deleting.
-7. **The narrator's answer carries one optional typed value, not loose fields.** `Suggestion`
+6. **The narrator's answer carries one optional typed value, not loose fields.** `Suggestion`
    on `Narration` (speaker id, lines, proposal) and `Proposal` on `Exchange` (speaker name,
    text). `Exchange.proposal: str` becomes `Exchange.proposal: Proposal | None`, so the
    proposing speaker is stored and `ui/game.py` stops guessing at `lines[0].speaker`.
-8. **The schema is one shape, always.** `Narration.suggestion` is always present and optional.
+7. **The schema is one shape, always.** `Narration.suggestion` is always present and optional.
    When no member was selected the refusal check requires it to be `None`. No second dynamic
    schema is built for the eligible and ineligible cases.
-9. **24XX keeps both dispatch methods.** Every arm must reach `_succession()` after its
+8. **24XX keeps both dispatch methods.** Every arm must reach `_succession()` after its
    mutation; that postcondition stays one explicit statement in `change_world`. The fold in
    Phase 1 applies only where `change_world` does nothing but forward.
-10. **Saves change twice and neither is migrated.** Phase 2 changes `Exchange.proposal`;
-    Phase 3 moves exchanges out of the world payload. The current policy stands: no version
-    field, a stale save is invalid, and the stale-save warning keeps working. Fixtures are
-    regenerated in the phase that changes them.
+9. **The save changes once and is not migrated.** Phase 2 turns `Exchange.proposal` from a
+   string into `Proposal | None`. The current policy stands: no version field, a stale save is
+   invalid, and the stale-save warning keeps working. Fixtures are regenerated in that phase.
 
 ## How to work
 
@@ -139,9 +145,10 @@ uv run basedpyright
 
 ## Phase 1 — the dispatch that only forwards
 
-Target: **−6 lines** in `engines/`. Not the 8-25 of `PROPOSALS.md`: the fold saves two lines per
-engine and 24XX keeps both methods by decision 9. The gain is one less hop to read, not LOC.
-Nothing the model sees changes.
+**Measured: −9 lines** (10,080 → 10,071), 564 tests passing, all four gates green. Two lines per
+engine from the fold, plus one dead `WorldChange` import each — that annotation was its only
+user. 24XX keeps both methods by decision 8. Nothing the model sees changes: the four
+`master_tools.json` goldens and the four `turn/*.json` fact goldens are byte-identical.
 
 ### Steps
 
@@ -154,10 +161,13 @@ Nothing the model sees changes.
 2. **Leave 24XX alone.** `twentyfourxx/engine.py:247-276` keeps `apply_change` and
    `change_world`, so `facts = ...; self._succession(draft); return facts` stays one readable
    postcondition. Add nothing; this step is a decision recorded, not an edit.
-3. **Move the one direct test caller.** `tests/loner3e/test_engine.py:217` calls
-   `ENGINE.apply_change(draft.payload, Reveal(...))`. It goes through the tool instead, with the
-   helper that already exists at `tests/support/table.py:84`. No alias is left behind.
-4. **Regenerate nothing.** `tests/core/fixtures/schemas/*/master_tools.json` must come back
+3. **Drop the three dead imports.** With `apply_change` gone, `WorldChange` has no user left in
+   any of the three engine modules. Ruff and basedpyright both flag it; delete the import line.
+4. **Move the one direct test caller.** `tests/loner3e/test_engine.py:217` calls
+   `ENGINE.apply_change(draft.payload, Reveal(...))`. It becomes
+   `change(ENGINE, draft, "reveal", entity_id=MAP)` — the helper is already imported in that file
+   at line 5, so this also retires the file's `Reveal` import. No alias is left behind.
+5. **Regenerate nothing.** `tests/core/fixtures/schemas/*/master_tools.json` must come back
    byte-identical: the tool names, order and argument schemas do not change. If a golden schema
    moves, the fold changed the public surface and is wrong.
 
@@ -167,16 +177,20 @@ Nothing the model sees changes.
   both, and `_succession` still runs after every successful arm.
 - The four `master_tools.json` goldens are unchanged, and so are `tests/core/fixtures/turn/*.json`.
 - 24XX death-and-succession and decision-replay tests pass untouched.
-- Full check green. `src` is 10,074.
+- Full check green. `src` is 10,071.
 
 ---
 
 ## Phase 2 — the companion speaks inside the narration
 
-Target: **−50 to −100 lines**, mostly in `app/runtime.py`, `core/play.py`, `core/views.py` and
-`turn/context.py`. Lower than the document's 80-140: the removals total about 104 lines, and the
-typed suggestion, the refusal check, the selection helper and the temporary `final` parameter add
-back about 50.
+**Measured: −25 lines** (10,071 → 10,046), 562 tests passing, all four gates green. 152 lines
+deleted, 116 added: `app/runtime.py` −134/+56, `turn/context.py` −48/+22, `core/play.py` +30 net,
+`core/views.py` +21 net, `ui/game.py`, `turn/run.py` and `engines/seam.py` a handful each, and
+`turn/prompts/interjection.md` (11 lines, uncounted) replaced by `aside.md` (10).
+
+The RNG claim is verified, not argued: after this phase the four `tests/core/fixtures/turn/*.json`
+fact goldens are byte-identical. Only the four `narrator.txt` prompt goldens move, and only
+because the schema gained `Suggestion` and the prompt gained the aside section.
 
 The companion's line now arrives with the narration instead of a second later. There is no second
 narrator spawn, nothing to cancel, and no synthetic exchange.
@@ -196,11 +210,12 @@ narrator spawn, nothing to cancel, and no synthetic exchange.
    speaker. When no member was selected, a non-`None` suggestion is refused. The selected member
    is passed in, so the check is a method on the view taking `EntityId | None`.
 3. **`turn/context.py` — one prompt, not two.** Delete `render_interjection` (60-78) and
-   `turn/prompts/interjection.md`. `render_narrator` takes the selected member as
-   `Subject | None` and, when it is set, adds one section naming them, their sheet rows and what
-   an aside is for — the text of `interjection.md`, rewritten in the second person about a member
-   the narrator writes rather than plays. When it is `None` the section is absent and the schema
-   still shows `suggestion`.
+   `turn/prompts/interjection.md`; add `turn/prompts/aside.md`, the same text rewritten in the
+   third person about a member the narrator writes rather than plays. `render_narrator` takes
+   `member: Subject | None` and `sheet: Rows = ()` and calls a small `_aside(member, sheet)`
+   that returns `()` or one `ONE OF THEM MAY SPEAK UP` section. When it is `None` the section is
+   absent and the schema still shows `suggestion`. `_picture`'s `reader` parameter goes with it:
+   the deleted renderer was its only caller, so `lead, beside` collapses to its constants.
 4. **`engines/seam.py` — `close` carries the value.** `close(..., proposal: str = "")` becomes
    `close(..., proposal: Proposal | None = None)` and passes it to `Exchange`.
 5. **`app/runtime.py` — the fold.** Delete `interject` (166-212), `hush` (160-164), the
@@ -213,8 +228,11 @@ narrator spawn, nothing to cancel, and no synthetic exchange.
    returning `None` when `interjections` is off, a decision is pending, or the game is over. Call
    it once per submission, immediately before the final narrator call, and pass the member to
    `_narrate`, which forwards it to `render_narrator` and to the refusal check, and which returns
-   the answer whole so the caller can read `suggestion`. Carry the same member across the one
-   corrective retry; never draw twice.
+   `(lines, proposal)` so the caller can close the exchange with both. Carry the same member
+   across the one corrective retry; never draw twice.
+   **`_companion` takes the draft, not `self.state`.** The committed game does not yet hold
+   whoever joined, died or left this turn; reading it silently skips a member who joined on the
+   same submission. This was caught by the 24XX golden turn, whose script joins Vessa Rune.
 6. **`app/runtime.py` — which narration is final.** `_generate` takes `final: bool`. `_turn`
    calls `_generate(final=True)` from its tail and narrates with a companion only when
    `turn.draft.generation is None`. `act` calls `_generate(words, final=False)` for the More map
@@ -257,88 +275,35 @@ narrator spawn, nothing to cancel, and no synthetic exchange.
   the one intended loss.
 - The seeded trace of `tests/core/fixtures/turn/*.json` is unchanged: the draw did not move in
   the RNG order.
-- Full check green.
-
----
-
-## Phase 3 — one journal, under a gate
-
-Target: **net-negative or reverted.** The duplicate storage is 42 lines (measured above); the
-replacement must come in under that once the forwarding chain is deleted. Behaviour does not
-change in this phase.
-
-**The gate**: count `src` before the first edit and after the last. If the phase is not
-net-negative, revert it, write the measurement and the refusal in `PROGRESS.md`, and stop. Do not
-keep it against a later phase that might use it. Decision 3.
-
-### Steps
-
-1. **`core/model.py` — the journal.** Add `Block(Mutable)`: `title: str`, `focus: str = ""`,
-   `recap: str = ""`, `exchanges: list[Exchange]`, and `empty: bool` meaning "drop this block from
-   the record once it is not the current one" — the one flag that encodes the two families'
-   difference, set by the caller that opens the block. Add `Journal(Mutable)` with
-   `blocks: list[Block]` and exactly three methods: `append(exchange)` onto the last block,
-   `open(title, focus, *, empty)` appending a block, and `recap(text)` setting the previous
-   block's recap. Add `journal: Journal` to `Game`. No `enrich`; decision 2. A journal with no
-   block has nothing to append to, so `Engine.begin` opens the first one from the starting place
-   or scene, and a validator refuses a game whose journal is empty.
-2. **`engines/seam.py` — the engine talks to the journal.** `record` appends to
-   `state.journal`; `history` flattens it; `scenes` projects it, dropping a completed block whose
-   `empty` is true and which holds no exchanges. Delete the forwarding into `world()` (171-178
-   becomes journal calls, not world calls). `Engine.close` is unchanged above this.
-3. **`engines/base.py` — the abstracts go.** Delete `records`, `record` and `exchanges` from
-   `World` (118-126). `members` stays abstract.
-4. **Tunnel Goons: the room family.** Delete `Visit.exchanges` (`rooms/world.py:35`) and
-   `RoomWorld.record/records` (384-395). `RoomWorld.move` and `attach` — wherever a visit begins
-   — call `journal.open(place.name, place.brief, empty=True)`, so a completed visit with no
-   exchanges still drops out of the record and the current one is still kept. `visits` stays: the
-   trail needs it. This freezes a room's title and focus at the moment the block opens, where
-   `records()` reads them live off the place today; that is safe, and checked — nothing under
-   `engines/` ever assigns `.name`, `.brief` or `.description` on a `Place` after it is built.
-5. **The three scene engines.** Delete `SceneRun.exchanges` (`scenes/world.py:51`) and
-   `SceneWorld.record/records` (125-137). `SceneWorld.apply_scene` calls
-   `journal.open(title, focus, empty=False)` and `journal.recap(...)` where the worldsmith's
-   recap closes the old scene. `runs` stays: `last_seen` walks `run.here`, and the offer and cast
-   live there. Loner's `leaving()` refill and 24XX's succession are untouched.
-6. **Nothing else moves.** No shared presence layer, no shared party helper, no shared panel
-   assembly — `PROPOSALS.md`'s slices 2 and 3 are not in this phase. Directed ways, item holders,
-   scene cast and arc, the Loner refill and 24XX leadership all stay exactly where they are.
-7. **Fixtures and tests.** `Game`'s stored shape changes: `journal` is new at the top level and
-   `payload`'s visits and runs lose their exchanges. Regenerate
-   `tests/core/fixtures/turn/*.json` and any saved-game fixture; the stale-save warning path is
-   tested and keeps working. Add behavioural comparisons, on facts and public projections rather
-   than class names: a return visit to a room already recorded; a departed NPC's `last_seen`; the
-   party moving; a death; 24XX succession; the narrator's history still carrying no hidden recap
-   while the master's does (`told_history` against `render_history`).
-8. **Measure and decide.** Count `src`. Net-negative: commit. Not: revert, record, stop.
-
-### Done when
-
-- `Game.journal` is the one authoritative log; no `Visit.exchanges`, no `SceneRun.exchanges`, no
-  `World.record/records/exchanges`, and no compatibility forwarding left alive.
-- Room history still omits an empty completed visit and still keeps the current one; scene
-  history still carries its recaps and its grouping.
-- `told_history` still excludes hidden recaps and `render_history` still reaches them.
-- The public projections and the facts of a played turn are unchanged, on all four engines.
-- Full check green, and `PROGRESS.md` carries the before and after counts either way.
+- Full check green; `src` is 10,046.
 
 ---
 
 ## Not in this plan, with the reason
 
+- **Proposal 1, the shared journal — built, measured at +16 lines, refused.** `Game` gained a
+  typed `Journal` of `Block`s with exactly three operations; `Visit.exchanges`,
+  `SceneRun.exchanges`, `World.record/records/exchanges` and the `Engine` forwarding chain all
+  went; `render_extension` was simplified to take the draft along the way; `src/` type-checked
+  clean. It still came out **+24**, and **+16** with `Visit` collapsed to a bare id list. The
+  reason is structural, not a matter of effort: the world must keep `visits` and `runs` for the
+  trail, `last_seen`, the offer and the cast, so the journal does not replace a sequence, it adds
+  a second one that `RoomEngine.move` and `SceneEngine.install` must keep in step by hand. The
+  198 test failures it caused were all mechanical (a missing `journal` field in fixture dicts),
+  so the number would not have improved by finishing them. Revisit it only with proposal 2, where
+  the checkpoint gives the journal an operation the world genuinely cannot carry.
 - **Proposal 2, one player-submission pipeline.** The largest change in the document: new failure
   semantics, a crash checkpoint, a revision counter on `Observed` because enriching an entry
   leaves `facts` and `exchanges` unmoved, a per-entry fact cursor so prose does not toss the same
-  dice twice, and two-tab tests. It earns its own plan, written once Phase 3 has measured the
-  journal. Phase 2's `final` parameter is the one thing here it will delete.
+  dice twice, and two-tab tests. It earns its own plan. Phase 2's `final` parameter is the one
+  thing here it will delete, and proposal 1 should be reconsidered as part of it.
 - **Proposal 4, deterministic hiring.** Its gate is at least 60 net lines removed after
   production gates, against a measured 180 removed and 84 added in a scratch prototype that was
   not type-checked. It also narrows what a recruit can be — 24XX loses its invented hindrances,
   Tunnel Goons its mixed 2/1 spreads. That is a game decision to take deliberately, not a
   simplification to slip into a cleanup.
 - **The shared presence, party and panel layer** (`PROPOSALS.md` proposal 1, slices 2 and 3).
-  Refused for now by decision 3's logic: the document itself says to stop after the journal if
-  the broader layer is larger or harder to read, and nothing yet shows it is not.
+  If slice 1 measures +16, a larger extraction over the same code has no evidence behind it.
 - **The `loot_check` bypass.** `breathless/engine.py:319-322` honours a `granted` and `choice`
   the master should never send. Real, reproduced from source, and out of scope: `PROPOSALS.md`
   says explicitly that dispatch cleanup must not be claimed to fix it. It needs its own decision
@@ -347,3 +312,12 @@ keep it against a later phase that might use it. Decision 3.
   `INTERJECTION_ODDS` keeps its name because the odds are unchanged and a rename would touch
   every test for nothing.
 - **A save version field or a migration path.** The policy stands: a stale save is invalid.
+
+## What these two phases are worth
+
+−34 lines on 10,080, or 0.34%. That is the honest total, and it is not why either phase is worth
+doing: Phase 1 removes a hop that reads as ceremony, and Phase 2 removes a whole concurrent path
+— a second narrator spawn, a cancellable task, a stale-result check and a synthetic exchange —
+in exchange for one optional field. Neither is a simplification measured in lines. `PROPOSALS.md`
+is right that "the completion criterion is a smaller, understandable implementation"; on this
+evidence the understandable half is the part that is actually available.
