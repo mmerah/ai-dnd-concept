@@ -39,10 +39,10 @@ finding. None of them was a defect — only taste.
 
 ## 1. Settled decisions
 
-Twelve are made; three remain in Section 5.
+**All fifteen are made.** Section 5 keeps the reasoning for each, with a pointer here.
 
 The first three came out of the merged review and no
-longer carry a number. The rest are D1-D9 from Section 5, answered in a walkthrough.
+longer carry a number. The rest are D1-D12 from Section 5, answered in a walkthrough.
 
 ### The `engines/rooms/` family stays. **Settled: keep it.**
 
@@ -280,6 +280,66 @@ The work: widen `raw` from `Mapping[str, JsonValue]` to `JsonValue` on `Turn.cal
 delete the check on both roads. One validation site, at the gate whose own docstring calls it *"the
 one gate every published tool passes"*. The test ripple is small — `tests/support/table.py:155`
 passes a `dict[str, JsonValue]`, which is already a valid `JsonValue`.
+
+### D10 — Should the MCP tool surface be per-turn? **Settled: option A — leave it, and say why.**
+
+`Runtime.playing()` (`runtime.py:410`) scans every open session to find the one with a turn, and
+raises `ValueError` if two are in flight. That path is unreachable: `busy_refusal` (`:424`) stops the
+UI opening a second turn, `Runtime.lock` (`:383`, held at `mcp.py:84`) serialises every tool call,
+and `mcp.py:63` runs `stateless=True`.
+
+The change is one comment. `runtime.py:411` currently reads *"A second turn in flight has no owner:
+the tool surface is shared"*, which describes a state the code prevents somewhere else, so a reader
+cannot tell the line is unreachable. Replace it with something that says: this app is single-player;
+`busy_refusal` prevents a second turn; this raise is a cannot-happen guard — **and that if
+multiplayer or concurrent multi-save play ever becomes real, the answer is option B: drop
+`stateless=True`, route by MCP session, and delete `playing()`, `Runtime.lock` and `NO_TURN`.**
+
+That note is the point of settling this as A rather than leaving it undocumented: the next reader
+should find the upgrade path written down, not rediscover it.
+
+**Do B only with test coverage first.** `app/mcp.py` is tested for startup alone
+(`test_mcp_lifespan.py`, 22 lines); the real JSON-RPC round trip lives only in `qa/s_mcp.py`.
+
+### D11 — How does the UI learn about the game? **Settled: option B — accessors on `GameService`.**
+
+The `ui/` -> `aidm.engines` import ban passes, but `ui/game.py` reaches the engine through the
+session on twelve lines: `:66, 105, 162, 186, 204, 206, 208, 324, 389, 444, 448, 497`. The facade is
+nominal.
+
+The work:
+1. Add six accessors to `GameService`: `history()`, `scenes()`, `engine_title`, `engine_id`,
+   `dice_look`, and a `scene_header()` returning place/title/situation.
+2. `ui/game.py:186` currently reads `narrator_view` — a type built for the *narrator* — to draw the
+   scene header. `scene_header()` replaces that. Prefer it over widening `PlayerView`, which is
+   already rebuilt 8 times per refresh.
+3. Extend `tests/core/test_package_boundary.py` to forbid `session.engine` in `ui/`. Today it checks
+   imports only, which is why twelve method calls slipped through.
+
+**This unblocks P8.** `session.engine.history(session.state)` appears six times and runs once a
+second per open tab, rebuilding every `SceneRecord` from scratch. It cannot be cached in one place
+while six call sites fetch it themselves.
+
+### D12 — Do the test directories mirror `src/`? **Settled: option A — the full re-shape.**
+
+`tests/core/` is not tests for `core`. Verified by what each file imports: six test `app`
+(`test_builtin`, `test_game_service`, `test_mcp_lifespan`, `test_media`, `test_spawn`,
+`test_speech`), four test `turn` (`test_turn`, `test_context_boundary`, `test_decisions`,
+`test_views`), six test `engines` (`test_rooms`, `test_scenes`, `test_seam`, `test_engines_base`,
+`test_dice`, `test_integrity_boundaries`). And `tests/ui/test_launcher.py` (313 lines) imports
+`app, config, core, engines` and **no `ui` at all**.
+
+The work: `tests/{core,engines,turn,app,ui}` plus the four engine directories;
+`test_launcher.py` -> `tests/app/`; `tests/support/loner.py` -> `tests/support/game.py` (it is
+imported by 14 files outside `tests/loner3e` — it is the shared default fixture, not a Loner helper).
+
+**Keep the four per-engine directories.** Each holds 740-1,240 lines of genuinely different rules.
+
+**Sequencing, not a reopened question.** ~30 files move with zero behaviour change, so schedule it
+where the diff is readable: after **P10** (CI), because nothing runs on push today and a 30-file move
+verified only by hand is the wrong order; and not in the same window as **D2** (`Fact.kind`) or
+**D3** (the hiring mixin), both of which edit large numbers of test files. Moving and editing the
+same files together makes both diffs unreadable.
 
 ---
 
@@ -887,7 +947,7 @@ accepted input, so it is Liskov-safe. Recorded, not a change request — the alt
 
 ---
 
-## 5. Open decisions
+## 5. Decisions — all settled
 
 Twelve remain. Numbering restarts — D1-D3 are settled in Section 1. Options are listed with the merged recommendation last.
 
@@ -929,55 +989,15 @@ Twelve remain. Numbering restarts — D1-D3 are settled in Section 1. Options ar
 
 ### D10 — Should the MCP tool surface be per-turn rather than process-global?
 
-`Runtime.playing()` (`runtime.py:410`) scans every session and raises `ValueError` if two turns are
-in flight; `Runtime.lock` (`:383`) serialises every tool call across every save; `mcp.py:63` runs
-`stateless=True`.
-
-- **(a) Leave it, and fix the comment.** The app is single-player; `busy_refusal` already blocks a
-  second turn from the UI, so `playing()`'s `ValueError` is a "cannot happen" guard — but the comment
-  at `:411` ("A second turn in flight has no owner") describes a state the code prevents elsewhere,
-  and a reader cannot tell it is unreachable.
-- **(b) Key the MCP session to the turn** (drop `stateless`), so a master's calls route to its own
-  turn by construction. Deletes `playing()`, the lock and `NO_TURN`.
-- **(c) Hand the server a turn handle** when `_turn` starts, revoked in the `finally` at `:148`.
-
-Recommend **(a) for now**, and record why. (b) is structurally right but trades a documented
-single-player constraint for MCP session plumbing; it earns its keep only if concurrent multi-save
-play becomes real.
+**Settled: no, leave it and document the upgrade path (option A).** See Section 1.
 
 ### D11 — How does the UI learn about the game?
 
-See C8.
-
-- **(a) Leave it.** The boundary test already prevents the real hazard (importing a concrete engine).
-- **(b) Give `GameService` the six accessors the UI actually uses** — `history()`, `scenes()`,
-  `narrator_view()`, `engine_title`, `engine_id`, `dice_look` — and forbid `ui` from touching
-  `session.engine`. ~15 lines.
-- **(c) A full DTO boundary:** the UI sees only `PlayerView` and a `ChatView`, never `Fact` or
-  `Exchange`.
-
-Recommend **(b)**. It is the smallest change that makes the stated boundary true, and it makes
-P8(3)'s caching possible in one place. (c) adds a whole shape family that would itself become a
-finding.
+**Settled: accessors on `GameService` (option B).** See Section 1.
 
 ### D12 — Do the test directories get re-shaped to mirror `src/`?
 
-See C26.
-
-- **(a) Full re-shape.** `tests/{core,engines,turn,app,ui}` plus the four engine dirs;
-  `tests/ui/test_launcher.py` → `tests/app/`; `tests/support/loner.py` → `tests/support/game.py`.
-  ~30 files, zero behaviour change, expensive to review.
-- **(b) Minimal.** Move the one clearly-misfiled file and rename `tests/support/loner.py` to `game.py` (it is imported by 14 files outside `tests/loner3e`). Leave the rest.
-- **(c) Leave it.**
-
-Recommend **(b) now, (a) later** — and (a) only after the dropped test-suite tidying has landed, so `tests/core` is
-smaller when it moves.
-
-Related, and settled: **keep the four per-engine directories**. They hold 740-1,240 lines of
-genuinely different rules each; collapsing them would produce 1,000-line files. The problem is not
-the split, it is that shared-family code is tested inside engine directories .
-
----
+**Settled: yes, the full re-shape (option A).** See Section 1.
 
 
 ## 6. Load-bearing — do not touch
