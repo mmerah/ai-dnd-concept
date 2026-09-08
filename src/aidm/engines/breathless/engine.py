@@ -4,10 +4,10 @@ from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked
-from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
+from aidm.core.entities import EngineId, EntityId, Refusal, Slug, parse, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import AnyCharacter, Generation, WorldsmithAnswer
-from aidm.core.play import PendingDecision
+from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Panel, PanelRow, Rows, Sections, lines_of
 from aidm.engines.base import (
@@ -27,6 +27,7 @@ from aidm.engines.breathless.tools import (
     Check,
     DropItem,
     LootCheck,
+    TakeLoot,
     TestLuck,
     UseMedKit,
     outcome,
@@ -38,6 +39,7 @@ from aidm.engines.breathless.world import (
     STARTING_DICE,
     STARTING_ITEM,
     STUNT_DIE,
+    TAKE_LOOT,
     BreathlessCharacter,
     BreathlessGame,
     BreathlessScenario,
@@ -313,13 +315,17 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
         fact = actor.fact("breath_caught", trace, card=card)
         return [dice_fact, fact]
 
-    def loot_check(self, draft: BreathlessGame, args: LootCheck, rng: Random) -> list[Fact]:
-        if args.granted is None or args.choice is None:
-            return self.roll_loot(draft, args.item, rng)
-        return [draft.payload.player.take_loot(args.item, args.granted, args.choice)]
+    def answer(self, draft: BreathlessGame, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
+        """The loot decision is answered here, not by a tool: its `granted` is a rolled die,
+        and the options the roll wrote are the only place one can come from."""
+        if chosen.name != TAKE_LOOT:
+            return super().answer(draft, chosen, rng)
+        taken = parse(TakeLoot, chosen.args)
+        return (draft.payload.player.take_loot(taken.item, taken.granted, taken.choice),)
 
-    def roll_loot(self, draft: BreathlessGame, item: str, rng: Random) -> list[Fact]:
-        player = draft.payload.player
+    def loot_check(self, draft: BreathlessGame, args: LootCheck, rng: Random) -> list[Fact]:
+        """Always rolls. Taking what it finds is the player's answer, never the master's call."""
+        item, player = args.item, draft.payload.player
         sheet = player.dice()
         before = sheet.loot
         rolled, dice_fact = roll((before,), f"scavenging — {item}", rng)

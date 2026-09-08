@@ -359,43 +359,11 @@
     "name": "loot_check",
     "description": "Call this to scavenge for an item. The engine rolls the loot die and asks the player what to do with a find.",
     "parameters": {
-      "$defs": {
-        "Die": {
-          "enum": [
-            4,
-            6,
-            8,
-            10,
-            12
-          ],
-          "type": "integer"
-        }
-      },
       "additionalProperties": false,
       "properties": {
         "item": {
           "description": "What is found if the roll finds anything.",
           "type": "string"
-        },
-        "granted": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Die"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Leave null. The engine fills it."
-        },
-        "choice": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null,
-          "description": "Leave null. The engine fills it."
         }
       },
       "required": [

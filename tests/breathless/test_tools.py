@@ -4,10 +4,11 @@ import pytest
 from support.breathless import MIRA, WRENCH, hired, small_world
 from support.table import change, refused
 
-from aidm.core.entities import EntityId, Refusal
+from aidm.core.entities import EntityId, Refusal, parse
+from aidm.core.play import PendingOption
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.breathless.engine import BreathlessEngine
-from aidm.engines.breathless.tools import Actor, Check, LootCheck
+from aidm.engines.breathless.engine import BreathlessEngine, BreathlessGame
+from aidm.engines.breathless.tools import Actor, Check, LootCheck, TakeLoot
 from aidm.engines.breathless.tools import TestLuck as LuckTest
 from aidm.engines.breathless.world import Item, stepped
 from aidm.engines.scenes.tools import NextScene
@@ -198,9 +199,7 @@ def test_loot_on_an_item_with_a_full_backpack_offers_swaps() -> None:
     _ = ENGINE.loot_check(draft, LootCheck(item="Crowbar"), Random(0))
     assert draft.pending is not None
     assert {option.id for option in draft.pending.options} == {f"swap-{key}" for key in sheet.items}
-    _ = ENGINE.loot_check(
-        draft, LootCheck(item="Crowbar", granted=8, choice="swap-rope"), Random(0)
-    )
+    _ = ENGINE.answer(draft, _option(draft, "swap-rope"), Random(0))
     assert "rope" not in sheet.items and sheet.items[EntityId("crowbar")].die == 8
 
 
@@ -212,13 +211,36 @@ def test_loot_at_d10_or_better_also_offers_a_med_kit() -> None:
     assert ids == ["take", "med-kit"]
 
 
-def test_loot_replay_applies_the_chosen_option() -> None:
+def _option(draft: BreathlessGame, option_id: str) -> PendingOption:
+    """The option the roll wrote: the one place a granted die can come from."""
+    assert draft.pending is not None
+    return next(option for option in draft.pending.options if option.id == option_id)
+
+
+def test_loot_replay_applies_the_option_the_roll_wrote() -> None:
     draft = small_world().draft()
     sheet = draft.payload.player.dice()
-    taken = LootCheck(item="Machete", granted=8, choice="take")
-    facts = ENGINE.loot_check(draft, taken, Random(0))
-    assert sheet.items[EntityId("machete")] == Item(name="Machete", die=8)
-    assert any(fact.card == "Took Machete (d8)" for fact in facts)
+    _ = ENGINE.loot_check(draft, LootCheck(item="Machete"), Random(17))
+    take = _option(draft, "take")
+    granted = parse(TakeLoot, take.args).granted
+
+    facts = ENGINE.answer(draft, take, Random(0))
+
+    assert sheet.items[EntityId("machete")] == Item(name="Machete", die=granted)
+    assert any(fact.card == f"Took Machete (d{granted})" for fact in facts)
+
+
+def test_the_master_cannot_award_loot_without_rolling_for_it() -> None:
+    """`granted` is a rolled die: the tool takes no such argument, and always rolls."""
+    with pytest.raises(Refusal):
+        _ = parse(LootCheck, {"item": "Machete", "granted": 12, "choice": "take"})
+
+    draft = small_world().draft()
+    facts = ENGINE.tools["loot_check"].call(draft, {"item": "Machete"}, Random(17))
+
+    assert EntityId("machete") not in draft.payload.player.dice().items
+    assert any(fact.kind == "loot_checked" for fact in facts)
+    assert draft.pending is not None and draft.pending.kind == "loot"
 
 
 def test_luck_facts_are_untold() -> None:
