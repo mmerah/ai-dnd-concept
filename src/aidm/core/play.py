@@ -66,8 +66,7 @@ class DecisionOption(Frozen):
 
 
 class PendingOption(DecisionOption):
-    """The frozen call an engine plays this option by: a master tool, or a name only the engine
-    answers, where the args carry something rolled that no master may write."""
+    """The frozen call an engine plays this option by; not every name is a tool."""
 
     name: str = Field(min_length=1)
     args: dict[str, JsonValue] = {}

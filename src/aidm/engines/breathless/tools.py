@@ -84,8 +84,7 @@ class LootCheck(Frozen):
 
 
 class TakeLoot(Frozen):
-    """What the player's answer plays. Not a tool: `granted` is a rolled die, so only the
-    engine's own options may carry it, and the master has no way to write one."""
+    """Not a tool: `granted` is rolled, so only the options the roll wrote may carry one."""
 
     item: str = Field(min_length=1)
     granted: Die

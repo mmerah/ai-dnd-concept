@@ -212,7 +212,6 @@ def test_loot_at_d10_or_better_also_offers_a_med_kit() -> None:
 
 
 def _option(draft: BreathlessGame, option_id: str) -> PendingOption:
-    """The option the roll wrote: the one place a granted die can come from."""
     assert draft.pending is not None
     return next(option for option in draft.pending.options if option.id == option_id)
 
@@ -231,7 +230,6 @@ def test_loot_replay_applies_the_option_the_roll_wrote() -> None:
 
 
 def test_the_master_cannot_award_loot_without_rolling_for_it() -> None:
-    """`granted` is a rolled die: the tool takes no such argument, and always rolls."""
     with pytest.raises(Refusal):
         _ = parse(LootCheck, {"item": "Machete", "granted": 12, "choice": "take"})
 

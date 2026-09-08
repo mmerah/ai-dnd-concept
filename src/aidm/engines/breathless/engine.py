@@ -316,15 +316,12 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
         return [dice_fact, fact]
 
     def answer(self, draft: BreathlessGame, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
-        """The loot decision is answered here, not by a tool: its `granted` is a rolled die,
-        and the options the roll wrote are the only place one can come from."""
         if chosen.name != TAKE_LOOT:
             return super().answer(draft, chosen, rng)
         taken = parse(TakeLoot, chosen.args)
         return (draft.payload.player.take_loot(taken.item, taken.granted, taken.choice),)
 
     def loot_check(self, draft: BreathlessGame, args: LootCheck, rng: Random) -> list[Fact]:
-        """Always rolls. Taking what it finds is the player's answer, never the master's call."""
         item, player = args.item, draft.payload.player
         sheet = player.dice()
         before = sheet.loot

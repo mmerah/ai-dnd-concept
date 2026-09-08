@@ -24,7 +24,6 @@ STARTING_ITEM: Die = 10
 MED_KIT_CLEARS = 2
 STARTING_DICE: tuple[Die, ...] = (10, 8, 6)  # the three rated skills, best first
 SWAP = "swap-"
-# Names the engine's own answer to the loot decision; no tool carries it.
 TAKE_LOOT = "take_loot"
 
 
