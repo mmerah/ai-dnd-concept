@@ -302,8 +302,20 @@ narrator spawn, nothing to cancel, and no synthetic exchange.
   not type-checked. It also narrows what a recruit can be — 24XX loses its invented hindrances,
   Tunnel Goons its mixed 2/1 spreads. That is a game decision to take deliberately, not a
   simplification to slip into a cleanup.
-- **The shared presence, party and panel layer** (`PROPOSALS.md` proposal 1, slices 2 and 3).
-  If slice 1 measures +16, a larger extraction over the same code has no evidence behind it.
+- **The shared presence, party and panel layer** (`PROPOSALS.md` proposal 1, slices 2 and 3) —
+  **already done, before the document was written.** `engines/base.py` holds the shared party
+  bookkeeping at 128-152 (`World.join`, `part`, `sign_on`, `require_hireable`, 25 lines) and the
+  shared public-panel assembly at 225-266 (`character_panel`, `here_panel`, `party_section`,
+  `party_panel`, `trail_panel`, 42 lines). Both families already call all of it. What is left in
+  each family is the part that genuinely differs: `RoomWorld.join_party` looks its target up with
+  `require_npc_here` and `SceneWorld.join_party` with `require_here(alive=True)`, then both
+  delegate to the same `World.join`; `player_view` differs only in which panels it composes and
+  from which world-specific source — rooms adds Carrying and Ways out, scenes adds the scene
+  panel and a trail over runs. Sharing that composition needs a hook per panel, which costs more
+  than the eight lines the two methods have in common. `kill` is the one real remainder: about
+  seven common lines under a room-specific "drop what they carried" and a scene-specific
+  already-dead refusal. Slice 2 is moot in any case — Breathless, Loner and 24XX are all
+  `SceneEngine`, so nothing reaches them that the family base did not already carry.
 - **The `loot_check` bypass.** `breathless/engine.py:319-322` honours a `granted` and `choice`
   the master should never send. Real, reproduced from source, and out of scope: `PROPOSALS.md`
   says explicitly that dispatch cleanup must not be claimed to fix it. It needs its own decision
