@@ -48,6 +48,12 @@ WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODI
 MORE_MAP = Action(
     id=EXTEND, label="More map", detail="The map runs out here: say where you push on."
 )
+MAP_UNWRITTEN = Fact(
+    kind="map_unwritten",
+    told=True,
+    trace="the map could not be written",
+    card="The map could not be written. You are still where you were.",
+)
 
 
 class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
@@ -166,6 +172,11 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
 
         prompt = self.render_map(source, meta.scope)
         return await self.compose(worldsmith, prompt, self.map_draft(), built, playable)
+
+    def unwritten(self, request: Generation) -> Fact:
+        if request.operation == EXTEND:
+            return MAP_UNWRITTEN
+        return super().unwritten(request)
 
     def act(self, draft: G, action: Slug, words: str) -> None:
         if action != MORE_MAP.id or self.world(draft).frontier():

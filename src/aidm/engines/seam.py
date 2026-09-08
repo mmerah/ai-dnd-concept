@@ -26,6 +26,12 @@ from aidm.core.views import DiceLook, NarratorView, PlayerView, Rows, Sections
 from aidm.engines.base import HIRE, PLAYER_ID, Hire, Person, World, hire_target
 
 type AnyEngine = Engine[Any, Any]
+HIRE_UNWRITTEN = Fact(
+    kind="hire_unwritten",
+    told=True,
+    trace="the hire could not be written",
+    card="The hire could not be written; nobody signed on.",
+)
 
 
 class Engine[P: Person, G: Game[Any]](ABC):
@@ -179,6 +185,12 @@ class Engine[P: Person, G: Game[Any]](ABC):
             "Nothing more lands this turn; stop and exit"
         )
         return [Fact(kind="hire_asked", trace=trace)]
+
+    def unwritten(self, request: Generation) -> Fact:
+        """What the player reads when the worldsmith could not write this request."""
+        if request.operation == HIRE:
+            return HIRE_UNWRITTEN
+        raise ValueError(f"the {self.id!r} engine writes no {request.operation!r}")
 
     def check_request(self, state: G) -> None:
         generation = state.generation

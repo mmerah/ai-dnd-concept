@@ -56,6 +56,18 @@ WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODI
 SCENE_RULES = (Path(__file__).parent / "rules.md").read_text(encoding=ENCODING)
 DEPARTURE: Slug = "departure"
 COMPLICATION: Slug = "complication"
+WAY_UNWRITTEN = Fact(
+    kind="way_unwritten",
+    told=True,
+    trace="the way on could not be written",
+    card="The way on could not be written. You are still where you were.",
+)
+COMPLICATION_UNWRITTEN = Fact(
+    kind="complication_unwritten",
+    told=True,
+    trace="the complication could not be written",
+    card="Nothing new came down on this place after all. You are still where you were.",
+)
 OPENING = (
     "Write the opening scene of this adventure. Name the one place the player starts in and "
     "who is there. A scene ends when the player leaves it, so a `focus` on somewhere farther "
@@ -190,6 +202,13 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
                 f"{args.complication}. Nothing more lands this turn; stop and exit",
             )
         ]
+
+    def unwritten(self, request: Generation) -> Fact:
+        if request.operation == DEPARTURE:
+            return WAY_UNWRITTEN
+        if request.operation == COMPLICATION:
+            return COMPLICATION_UNWRITTEN
+        return super().unwritten(request)
 
     def act(self, draft: G, action: Slug, words: str) -> None:
         if action != MOVE_ON.id or not self.world(draft).run.offered:
