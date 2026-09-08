@@ -2,6 +2,7 @@ import logging
 from asyncio import get_running_loop
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from time import monotonic
 from typing import Self
@@ -46,6 +47,11 @@ _DICTATION_FAILURES = {
     "no-speech": "Nothing was heard.",
 }
 
+SCENE_TAB = "scene"
+JOURNAL_TAB = "journal"
+# Not the header's `menu_book`: two buttons with one icon make every icon locator ambiguous.
+RAIL: tuple[tuple[str, str], ...] = ((SCENE_TAB, "map"), (JOURNAL_TAB, "history_edu"))
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -80,6 +86,8 @@ class GamePage:
         self.autoplay_clip: Path | None = None
         self.transcript: ui.scroll_area
         self.drawer: ui.right_drawer
+        self.tabs: ui.tabs
+        self.rail: dict[str, ui.button] = {}
         self.dice: DiceTray
         self.sound: ui.button
         self.new_activity: ui.button
@@ -114,31 +122,38 @@ class GamePage:
             with ui.button(icon="more_vert").props("flat color=white round"), ui.menu():
                 ui.menu_item("Restart this game", on_click=self.confirm_restart)
 
-        with ui.column().classes("w-full h-full p-4").style("gap: 0.5rem"):
-            self.scene_header()
-            with ui.scroll_area().classes("w-full flex-grow game-transcript") as transcript:
-                self.chat()
-                self.live_turn()
-            self.transcript = transcript
-            transcript.on_scroll(self.scrolled)
-            ui.timer(0.5, lambda: transcript.scroll_to(percent=1.0), once=True)
+        ui.query(".nicegui-content").style("padding: 0; gap: 0")
+        with ui.row().classes("w-full h-full no-wrap").style("gap: 0"):
+            self.nav_rail()
+            with ui.column().classes("h-full flex-grow").style("gap: 0; min-width: 0"):
+                self.scene_header()
+                with ui.scroll_area().classes(
+                    "w-full flex-grow game-transcript q-pa-md"
+                ) as transcript:
+                    self.chat()
+                    self.live_turn()
+                self.transcript = transcript
+                transcript.on_scroll(self.scrolled)
+                ui.timer(0.5, lambda: transcript.scroll_to(percent=1.0), once=True)
 
         self.drawer = (
             ui.right_drawer(value=None, bordered=True).props("width=420").classes("game-drawer")
         )
         with self.drawer, ui.column().classes("w-full h-full").style("gap: 0"):
             with ui.row().classes("w-full items-center no-wrap").style("gap: 0"):
-                with ui.tabs().classes("flex-grow") as tabs:
-                    scene_tab = ui.tab("scene")
-                    journal_tab = ui.tab("journal")
+                with ui.tabs(on_change=lambda e: self.mark_rail(str(e.value))).classes(
+                    "flex-grow"
+                ) as self.tabs:
+                    ui.tab(SCENE_TAB)
+                    ui.tab(JOURNAL_TAB)
                 # Below 600px the drawer covers the header, so it carries its own way out.
                 ui.button(icon="close", on_click=self.drawer.hide).props("flat round").classes(
                     "lt-sm"
                 )
-            with ui.tab_panels(tabs, value=scene_tab).classes("w-full flex-grow"):
-                with ui.tab_panel(scene_tab), ui.scroll_area().classes("w-full h-full"):
+            with ui.tab_panels(self.tabs, value=SCENE_TAB).classes("w-full flex-grow"):
+                with ui.tab_panel(SCENE_TAB), ui.scroll_area().classes("w-full h-full"):
                     self.sidebar()
-                with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
+                with ui.tab_panel(JOURNAL_TAB), ui.scroll_area().classes("w-full h-full"):
                     self.journal()
 
         with ui.footer().classes("game-footer").style("max-height: 50dvh; overflow-y: auto"):
@@ -180,23 +195,35 @@ class GamePage:
         self.sidebar.refresh()
         self.journal.refresh()
 
+    def nav_rail(self) -> None:
+        with ui.column().classes("game-rail h-full items-center q-pt-md").style("gap: 0.4rem"):
+            for name, icon in RAIL:
+                self.rail[name] = (
+                    ui.button(name, icon=icon, on_click=partial(self.show_tab, name))
+                    .props("flat no-caps")
+                    .classes("game-rail-btn")
+                )
+        self.mark_rail(SCENE_TAB)
+
+    def show_tab(self, name: str) -> None:
+        self.tabs.set_value(name)
+        self.drawer.show()
+
+    def mark_rail(self, active: str) -> None:
+        for name, button in self.rail.items():
+            button.classes(add="game-rail-on" if name == active else "", remove="game-rail-on")
+
     @ui.refreshable_method
     def scene_header(self) -> None:
         session = self.session
         scene = session.engine.narrator_view(session.state)
-        with ui.row().classes("game-scene w-full items-start no-wrap").style("gap: 0.75rem"):
+        with ui.element("div").classes("game-scene w-full"):
             if (art := session.scene_art()) is not None:
-                # `contain` letterboxes a frame drawn at another ratio rather than cropping it.
-                ui.image(art).props("fit=contain").classes("game-scene-art rounded-borders")
-            with (
-                ui.column()
-                .classes("flex-grow")
-                .style(
-                    "max-height: var(--game-scene-height); overflow-y: auto; gap: 0; min-width: 0"
-                )
-            ):
-                ui.label(scene.title).classes("text-h6 font-bold")
-                ui.label(scene.situation).classes("text-sm opacity-70")
+                ui.image(art).classes("game-scene-art")
+            with ui.column().classes("game-scene-text").style("gap: 0.15rem"):
+                ui.label("current scene").classes("text-xs game-eyebrow")
+                ui.label(scene.title).classes("text-h4 font-bold game-scene-title")
+                ui.label(scene.situation).classes("text-sm opacity-80")
 
     @ui.refreshable_method
     def chat(self) -> None:
@@ -303,7 +330,10 @@ class GamePage:
     def sidebar(self) -> None:
         session = self.session
         view = session.player_view()
+        player = view.player
         with ui.column().classes("w-full").style("gap: 0.75rem"):
+            with ui.column().classes("game-card game-portrait w-full"):
+                entity_row(session.icon(player.id), player.name, player.brief)
             for panel in view.panels:
                 with ui.column().classes("game-card w-full"):
                     heading(panel.title, tight=True)
@@ -358,8 +388,9 @@ class GamePage:
                 ),
             )
             Dictation(self.box).on("dictated", self.dictated).on("failed", self.dictation_failed)
+            # `color=None`: Quasar's `text-primary` would paint the glyph the button's own gold.
             self.send = (
-                ui.button(icon="send", on_click=self.submit)
+                ui.button(icon="send", on_click=self.submit, color=None)
                 .props("round flat size=lg aria-label=Send")
                 .classes("game-send")
             )

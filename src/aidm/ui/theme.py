@@ -99,12 +99,34 @@ body, body.body--dark {
 .q-tab--active { color: var(--game-accent) }
 .q-tab__indicator { background: var(--game-accent) }
 
+.game-rail {
+  flex: none; width: 5.25rem;
+  background: var(--game-surface);
+  border-right: 1px solid var(--game-border);
+}
+.game-rail-btn {
+  width: 3.4rem; height: 3.4rem;
+  border-radius: calc(var(--game-radius) * .9) !important;
+  color: var(--game-muted) !important;
+}
+.game-rail-btn .q-btn__content { flex-direction: column; gap: .15rem; font-size: .6rem }
+.game-rail-btn:hover { color: var(--game-text) !important }
+.game-rail-on {
+  color: var(--game-accent) !important;
+  background: var(--game-wash);
+  box-shadow: inset 0 0 0 1px var(--game-border);
+}
+
 .text-h4, .text-h5, .text-h6, .game-title {
   font-family: var(--game-heading);
   letter-spacing: -.025em;
 }
 .game-title { color: var(--game-text) }
 .game-heading { color: var(--game-muted); letter-spacing: .1em; text-transform: uppercase }
+.game-eyebrow {
+  color: var(--game-accent); opacity: .8;
+  letter-spacing: .22em; text-transform: uppercase; font-weight: 600;
+}
 
 .q-card, .game-card, .q-menu {
   color: var(--game-text);
@@ -155,37 +177,47 @@ body, body.body--dark {
 
 .game-transcript { max-width: 46rem; margin: 0 auto; }
 .game-scene {
-  --game-scene-height: calc(25vh - 1rem);
-  max-height: var(--game-scene-height); overflow: hidden;
+  --game-scene-height: calc(24vh - 1rem);
+  position: relative; overflow: hidden; flex: none;
+  min-height: var(--game-scene-height);
   border-bottom: 1px solid var(--game-border);
+  background: var(--game-surface);
 }
-.game-scene-art {
-  flex: none; height: var(--game-scene-height); max-width: 50%; aspect-ratio: 16 / 9;
-  border-radius: var(--game-radius);
+.game-scene-art { position: absolute; inset: 0; height: 100%; width: 100% }
+.game-scene:has(.game-scene-art):after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(100deg, var(--game-bg) 14%, #000a 55%, #0006);
 }
-.game-scene .text-h6 { color: var(--game-accent) }
+.game-scene-text {
+  position: relative; z-index: 1;
+  max-height: var(--game-scene-height); overflow-y: auto;
+  padding: 1.1rem 1.4rem;
+  max-width: 44rem; min-width: 0;
+}
+.game-scene-title { color: var(--game-text); line-height: 1.1 }
 .game-message .q-message-name { color: var(--game-muted); font-size: .75rem; font-weight: 600 }
 .game-message .q-message-text {
   background: var(--game-surface-raised);
-  color: var(--game-surface-raised);
+  border: 1px solid var(--game-border);
   border-radius: var(--game-radius);
   padding: .85rem 1rem;
   box-shadow: 0 4px 16px #0002;
 }
+.game-message .q-message-text:before { display: none }
 .game-message .q-message-text-content { color: var(--game-text); line-height: 1.7 }
 .game-message .q-message-text--sent {
-  background: var(--game-surface);
-  color: var(--game-surface);
-  box-shadow: inset -3px 0 var(--game-accent), 0 4px 16px #0002;
+  background: linear-gradient(130deg, var(--game-wash), transparent), var(--game-surface);
+  border-color: var(--game-accent);
 }
 .game-message.q-message-sent .q-message-name { color: var(--game-accent) }
-.game-narration .q-message-text { box-shadow: inset 3px 0 var(--game-border), 0 4px 16px #0002 }
+.game-narration .q-message-text { border-left: 3px solid var(--game-border) }
 .game-avatar {
   border: 1px solid var(--game-border); background: var(--game-surface-raised) !important;
 }
 .game-avatar-dm { color: var(--game-accent); border-color: var(--game-accent) }
 
 .game-card { padding: .6rem .9rem; margin: .35rem 0 }
+.game-portrait .q-avatar { font-size: 64px !important }  /* beats the inline `size` */
 .game-decision {
   border-color: var(--game-accent);
   background: linear-gradient(110deg, var(--game-wash), transparent), var(--game-surface);
@@ -230,10 +262,11 @@ body, body.body--dark {
   background: var(--game-accent); color: var(--game-bg) !important; box-shadow: 0 2px 10px #0003;
 }
 
+@media (max-width: 1023.98px) { .game-rail { display: none } }
 @media (max-width: 599.98px) {
   .q-header { gap: .25rem }
-  .game-scene-art { display: none }
-  .game-scene .text-h6 { font-size: 1rem }
+  .game-scene-text { padding: .7rem .9rem }
+  .game-scene-title { font-size: 1.25rem }
   .game-message .q-message-text { padding: .65rem .75rem }
 }
 @media (prefers-reduced-motion: reduce) {

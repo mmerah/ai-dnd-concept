@@ -57,9 +57,9 @@ def avatar(icon: Path | None, name: str | None) -> None:
 
 
 def labeled_value(label: str, value: str) -> None:
-    with ui.row().classes("w-full items-baseline no-wrap mt-2").style("gap: 0.5rem"):
+    with ui.row().classes("w-full items-baseline justify-between mt-2").style("gap: 0.75rem"):
         ui.label(label).classes("text-xs font-bold opacity-60")
-        ui.label(value or "—").classes("text-sm")
+        ui.label(value or "—").classes("text-sm text-right")
 
 
 def decision_widget(
