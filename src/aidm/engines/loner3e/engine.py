@@ -17,7 +17,6 @@ from aidm.engines.loner3e.tools import (
     Outcome,
     Question,
     RestoreLuck,
-    WorldChange,
     defeat_note,
     outcome_for,
     pack_meanings,
@@ -159,7 +158,8 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
             for fact in member.refill("the scene is over")
         )
 
-    def apply_change(self, world: Loner3eWorld, change: WorldChange) -> list[Fact]:
+    def change_world(self, draft: Loner3eGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
+        world, change = draft.payload, args.change
         match change:
             case ChangeTags():
                 return world.require_here(change.entity_id, alive=True).change_tags(
@@ -177,9 +177,6 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
                 return facts
             case _:
                 return self.shared_change(world, change)
-
-    def change_world(self, draft: Loner3eGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-        return self.apply_change(draft.payload, args.change)
 
     def roll(self, draft: Loner3eGame, action: Question, rng: Random) -> list[Fact]:
         world = draft.payload

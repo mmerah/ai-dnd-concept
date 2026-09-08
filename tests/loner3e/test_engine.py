@@ -11,7 +11,6 @@ from aidm.core.play import PendingDecision
 from aidm.engines.base import PLAYER_ID, SRD_PACK, Counter
 from aidm.engines.loner3e.tools import Question, defeat_note, outcome_for, twist_note, twist_pairing
 from aidm.engines.loner3e.world import LUCK_MAX, TIES_PER_TWIST
-from aidm.engines.scenes.tools import Reveal
 
 FOE = EntityId("mara")
 MAP = EntityId("vault-map")
@@ -214,7 +213,7 @@ def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
         _ = ENGINE.roll(state.draft(), _seal(opponent_id=MAP), Random(0))
 
     draft = state.draft()
-    _ = ENGINE.apply_change(draft.payload, Reveal(verb="reveal", entity_id=MAP))
+    _ = change(ENGINE, draft, "reveal", entity_id=MAP)
     facts = ENGINE.roll(draft, _seal(opponent_id=MAP), Random(0))
 
     assert any(fact.kind == "question_answered" for fact in facts)
