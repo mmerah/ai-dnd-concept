@@ -22,9 +22,8 @@ from aidm.core.play import Answer, Exchange, Interjection, Line, Narration
 from aidm.core.source import given_text
 from aidm.core.tools import MasterTool
 from aidm.core.views import PlayerView
-from aidm.engines.base import EXTEND, HIRE, Chattiness
+from aidm.engines.base import Chattiness
 from aidm.engines.registry import build_engines
-from aidm.engines.scenes.engine import COMPLICATION
 from aidm.engines.seam import AnyEngine
 from aidm.turn.context import render_interjection, render_narrator
 from aidm.turn.run import NO_TURN, Turn
@@ -38,30 +37,6 @@ INTERJECTION_MARK = "(the party speaks)"
 MARKS = (OPENING_MARK, STORY_MARK, INTERJECTION_MARK)
 # The faces of a d10 on which a member speaks after a turn.
 INTERJECTION_ODDS: dict[Chattiness, int] = {"quiet": 1, "normal": 2, "chatty": 3}
-UNWRITTEN = Fact(
-    kind="way_unwritten",
-    told=True,
-    trace="the way on could not be written",
-    card="The way on could not be written. You are still where you were.",
-)
-HIRE_UNWRITTEN = Fact(
-    kind="hire_unwritten",
-    told=True,
-    trace="the hire could not be written",
-    card="The hire could not be written; nobody signed on.",
-)
-MAP_UNWRITTEN = Fact(
-    kind="map_unwritten",
-    told=True,
-    trace="the map could not be written",
-    card="The map could not be written. You are still where you were.",
-)
-COMPLICATION_UNWRITTEN = Fact(
-    kind="complication_unwritten",
-    told=True,
-    trace="the complication could not be written",
-    card="Nothing new came down on this place after all. You are still where you were.",
-)
 PAUSED = (
     'play pauses here on the player\'s decision: "{prompt}" End on the pause; settle nothing they '
     "have not yet answered."
@@ -258,7 +233,7 @@ class GameService:
             LOGGER.warning("the world did not grow: %s", failed)
             draft = self.state.draft()
             draft.generation = None
-            self.commit(self.engine.close(draft, prompt, (), (_unwritten(request.operation),)))
+            self.commit(self.engine.close(draft, prompt, (), (self.engine.unwritten(request),)))
             grown = False
         finally:
             self.phase = None
@@ -534,13 +509,3 @@ class Runtime:
 
 def _worldsmith(spawner: Spawner) -> WorldsmithAnswer:
     return partial(ask, spawner, "worldsmith")
-
-
-def _unwritten(operation: Slug) -> Fact:
-    if operation == HIRE:
-        return HIRE_UNWRITTEN
-    if operation == EXTEND:
-        return MAP_UNWRITTEN
-    if operation == COMPLICATION:
-        return COMPLICATION_UNWRITTEN
-    return UNWRITTEN
