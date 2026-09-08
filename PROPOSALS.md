@@ -39,10 +39,10 @@ finding. None of them was a defect — only taste.
 
 ## 1. Settled decisions
 
-Nine are made; the rest are in Section 5.
+Twelve are made; three remain in Section 5.
 
 The first three came out of the merged review and no
-longer carry a number. The rest are D1-D6 from Section 5, answered in a walkthrough.
+longer carry a number. The rest are D1-D9 from Section 5, answered in a walkthrough.
 
 ### The `engines/rooms/` family stays. **Settled: keep it.**
 
@@ -218,6 +218,68 @@ question honestly instead.
 `session.hush()`, which cancels only the interjection task — in-flight art and speech tasks keep
 running and write into the evicted session's folder, though the comment at `:440` claims eviction
 stops the writing. A `Presenter` that owns `_background` can actually drain it.
+
+### D7 — What is `qa/` for? **Settled: option B — bring it under the toolchain, keep the scenarios.**
+
+`qa/` is not redundant with `tests/`. Three modules have **no test in `tests/` importing them at
+all** — `ui/app.py` (207 lines), `ui/create.py` (292) and `ui/widgets.py` (88, including
+`decision_widget`, the only way a player answers a decision). `app/mcp.py` is tested only for
+startup (`test_mcp_lifespan.py`, 22 lines); the real JSON-RPC round trip exists only in
+`qa/s_mcp.py`. It has also caught real bugs — `823f702`, `abac557`, `afa36d3` exist to fold its
+findings back in.
+
+The problem is that it sits outside every gate. The work:
+1. **Add CI.** `.github/` does not exist, so nothing runs on push — not `qa/`, not `pytest`, not
+   `ruff`. A workflow running the four CLAUDE.md commands is the highest-leverage item in this
+   document. This is **P10**.
+2. Add `qa` to `[tool.basedpyright] include` (today: `["src", "tests"]`), then fix what it finds.
+   `qa/drive.py:54` `def run(name: str, body)` is an unannotated callable.
+3. `ruff check --extend-select RUF100 --fix qa/` — **14 dead `noqa` directives**, all in `qa/`: ten
+   for `ANN001`/`ANN202` (rule families this repo never enabled) and four `E402` in
+   `qa/server.py:20-24` that suppress nothing.
+4. `run_all.sh:8` defaults to nine scenarios and silently omits `visual` and `probe`, which
+   `qa/README.md` lists. Align them.
+
+**Explicitly rejected:** trimming `s_settings` and `s_home` for overlapping `tests/ui/`. Redundancy
+in the only suite that touches the UI is not waste.
+
+### D8 — The unreachable `_apply` guard. **Settled: option B — say it as a bug, not a refusal.**
+
+`turn/run.py:131-134` can never fire. `before` is always `None`: the caller at `:70` runs after
+`draft.pending = None` (`:52`), and the caller at `:118` runs after the early return at `:108-113`.
+No test references the string.
+
+But the invariant is real — a tool opening a second decision while one is open would silently lose
+the player's first question. What is wrong is only its label. A `Refusal` is text a model reads and
+retries from, and no model can cause this; only an engine bug can. CLAUDE.md: *"any other exception
+is a bug and is not caught."*
+
+Replace the `raise Refusal(...)` with a plain `raise ValueError(...)` naming the invariant.
+Preferred over `assert`, which vanishes under `python -O`. Also delete `decided_before` (`:117`),
+dead for the same reason, and rename `already_pending` (`:116`) — it counts notes, not decisions.
+
+### D9 — Which boundary validates tool arguments? **Settled: option C — `Turn.call` owns it.**
+
+`app/mcp.py:87` calls `_ARGUMENTS.validate_python(...)` inside a `try` that catches only `Refusal`.
+It raises `ValidationError`, which is not a `Refusal`, so bad arguments from a CLI escape the
+handler instead of returning a tool error. `app/builtin.py:156-160` handles the same case correctly.
+
+**The refusing code already exists, one layer down.** `master_tool`'s inner `call` does
+`parse(args, raw)` (`core/tools.py:45`). Verified against bad input:
+
+```
+[1, 2]   -> Refusal: Input should be a valid dictionary or instance of Attempt
+'hello'  -> Refusal: Input should be a valid dictionary or instance of Attempt
+5        -> Refusal: Input should be a valid dictionary or instance of Attempt
+```
+
+So both boundary checks are redundant work, and one of them does it wrong.
+
+The work: widen `raw` from `Mapping[str, JsonValue]` to `JsonValue` on `Turn.call`
+(`turn/run.py:102`), `Runtime.call` (`runtime.py:417`) and `MasterTool.call` (`core/tools.py:32,44`);
+delete the check on both roads. One validation site, at the gate whose own docstring calls it *"the
+one gate every published tool passes"*. The test ripple is small — `tests/support/table.py:155`
+passes a `dict[str, JsonValue]`, which is already a valid `JsonValue`.
 
 ---
 
@@ -855,50 +917,15 @@ Twelve remain. Numbering restarts — D1-D3 are settled in Section 1. Options ar
 
 ### D7 — What is `qa/` for, going forward?
 
-2,292 lines, 11 scenarios, 217 assertions, 103 screenshots. It runs the real app with scripted
-roles under Playwright. It is maintained (4 of the last 100 commits touch it, the most recent `a46e7ee`; three
-commits exist purely to fold its findings back in: `823f702`, `abac557`, `afa36d3`). It is the **only** coverage of `ui/app.py`,
-`ui/create.py`, `ui/widgets.py` and the real MCP JSON-RPC transport. It is also outside every gate:
-unchecked by basedpyright, 14 dead `noqa`s, no CI at all.
-
-- **(a) Leave it as is.** Zero work; the drift continues.
-- **(b) Bring it under the toolchain and trim the pytest-redundant scenarios** . Add `qa` to
-  `basedpyright.include`, clear the dead directives, shrink `s_settings` (193 lines, largely
-  restating `tests/ui/test_settings.py`) and fold `s_home`'s route checks into `s_visual`.
-  Keep `s_visual`, `s_mobile`, `s_probe`, `s_mcp` and the four engine drives — nothing in `tests/`
-  touches what they cover.
-- **(c) Delete it and port the checkable parts to pytest.**
-
-Recommend **(b)**, and explicitly **not (c)**. But take the trimming half only if those two scenarios
-have genuinely stopped finding things — the redundancy has historically paid.
+**Settled: toolchain + CI, keep the scenarios (option B).** See Section 1.
 
 ### D8 — Delete the unreachable `_apply` guard, or promote it?
 
-`turn/run.py:131-134` (see P1).
-
-- **(a) Delete.** It is dead; "do not build for future needs".
-- **(b) Convert to `assert`.** Documents a real, non-obvious invariant — a tool that opens a
-  decision while one is already open would be a genuine engine bug — and would fire loudly if a
-  third `_apply` caller appears.
-- **(c) Keep as is.** Costs nothing at runtime.
-
-Recommend **(b)**. The invariant is real, but expressing it as a `Refusal` mislabels a bug as a
-message, which is exactly what CLAUDE.md forbids.
+**Settled: promote it to a `ValueError` (option B).** See Section 1.
 
 ### D9 — Which boundary owns tool-argument validation?
 
-See P2.
-
-- **(a) Fix `mcp.py:87`** to catch `ValidationError` too. Smallest change.
-- **(b) Move `builtin._arguments` (`builtin.py:156-160`) into `core/tools.py`** as
-  `tool_arguments(value) -> dict[str, JsonValue]` raising `Refusal`, called from both transports.
-  One implementation, two call sites.
-- **(c) Push validation into `Turn.call`** (`turn/run.py:102`), which is already documented as "the
-  one gate every published tool passes". Neither transport validates; one site owns it.
-
-Recommend **(c), falling back to (b)**. (c) is the smallest number of validation sites and matches
-"reject bad data at once" at the place that acts on it — but it changes `Turn.call`'s signature,
-which ripples into `tests/support/table.py`. (b) is the safe version.
+**Settled: `Turn.call` (option C).** See Section 1.
 
 ### D10 — Should the MCP tool surface be per-turn rather than process-global?
 
