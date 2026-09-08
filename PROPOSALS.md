@@ -39,10 +39,10 @@ finding. None of them was a defect — only taste.
 
 ## 1. Settled decisions
 
-Six are made; the rest are in Section 5.
+Nine are made; the rest are in Section 5.
 
 The first three came out of the merged review and no
-longer carry a number. The last three are D1, D2 and D3 from Section 5, answered in a walkthrough.
+longer carry a number. The rest are D1-D6 from Section 5, answered in a walkthrough.
 
 ### The `engines/rooms/` family stays. **Settled: keep it.**
 
@@ -156,6 +156,68 @@ template method on the seam.
 
 **Blocked on coverage.** Breathless and 24XX have no multi-turn test at all (Section 7 §1), and
 24XX's hire-then-succession path has no end-to-end test (§2). Write the §2 test first.
+
+### D4 — Should `config.py` move under `app/`? **Settled: no, option A — fix the rule instead.**
+
+`config.py` imports one project symbol (`core.entities.Frozen`) and is read by `app` (6 files) and
+`ui` (3 files). **Verified: `turn/` imports it nowhere.**
+
+Two lines to change, and both a rule and a test become true:
+1. CLAUDE.md: *"Only `turn`, `app` and `ui` read the settings"* -> *"Only `app` and `ui` read the
+   settings"*.
+2. `tests/core/test_package_boundary.py:22`: `"aidm.config": ("turn", "app", "ui")` ->
+   `("app", "ui")`.
+
+This matters beyond tidiness: the one property `turn/` earns as a separate layer is that `Turn`
+cannot reach a `Spawner`, a `Settings` or a `GameService`. The rule as written weakened that on
+paper while the code kept it.
+
+`config.py` stays at the top level, in no layer. Accepted.
+
+### D5 — Where does prompt rendering live? **Settled: option B, split by owner.**
+
+Each of the three renderers has exactly one caller:
+
+| Renderer | Called from |
+|---|---|
+| `render_master` (`turn/context.py:23`) | `turn/run.py:92` (`Turn.picture`) |
+| `render_narrator` (`:47`) | `app/runtime.py:284` (`GameService._narrate`) |
+| `render_interjection` (`:60`) | `app/runtime.py:185` (`GameService.interject`) |
+
+The work:
+1. Fold `render_master` into `turn/run.py`, beside `Turn.picture`.
+2. Move `render_narrator`, `render_interjection` and `_picture` (`:81`) into `app/`, beside
+   `GameService`. `turn/context.py` disappears.
+3. `turn/prompts/master.md` stays; `narrator.md` and `interjection.md` move to `app/prompts/`.
+4. `_prompt` (`:109`, the cached file reader) is then needed in both places -> move it to
+   `core/io.py` as `read_prompt(path)`.
+
+Step 4 is worth doing on its own (C4): there are currently **three** mechanisms for reading a prompt
+file — at import time (`scenes/engine.py:55-56`, `rooms/engine.py:47`), at construction
+(`seam.py:52`), and cached-lazy (`context.py:109`). The import-time ones mean importing a module
+performs disk I/O and can raise `OSError` from an `import` statement, against "side effects live at
+the edges". One shared cached reader fixes all three.
+
+**Explicitly rejected: merging `turn/` into `app/`.** It would push `app/runtime.py` past 750 lines
+and throw away the compile-time guarantee above.
+
+### D6 — Null Object for `media` / `reader`? **Settled: no, option B — extract a `Presenter`.**
+
+The `X | None` fields stay. What moves is where the checks live.
+
+`GameService` gives up `media`, `reader`, `_background`, `_retain`, `_present`, `illustrate`,
+`speak`, `scene_art`, `icon`, `newest_clip` and `_newest` to one ~45-line `Presenter` whose whole
+job is showing things to the player. This is part of **P9**.
+
+A Null Object was rejected because it does not finish the job: five of the six guards would go, but
+`ui/game.py:171` asks *"is this feature on at all"*, not *"is it safe to call"* — so an `enabled`
+flag comes back and you have two new classes for four deleted `if`s. `Presenter.polls` answers that
+question honestly instead.
+
+**Bonus, and the reason to prefer B:** it fixes C23. `reload_settings` (`runtime.py:439-442`) calls
+`session.hush()`, which cancels only the interjection task — in-flight art and speech tasks keep
+running and write into the evicted session's folder, though the comment at `:440` claims eviction
+stops the writing. A `Presenter` that owns `_background` can actually drain it.
 
 ---
 
@@ -781,54 +843,15 @@ Twelve remain. Numbering restarts — D1-D3 are settled in Section 1. Options ar
 
 ### D4 — Should `config.py` move under `app/`?
 
-It sits outside every layer name, imports only `core.entities.Frozen`, and is hand-listed in the
-boundary test. Its real readers are `app` (6 imports) and `ui` (3).
-
-- **(a) Leave it, and fix the stale rule.** Tighten CLAUDE.md and
-  `tests/core/test_package_boundary.py:22` to `("app", "ui")`. Free (see C24).
-- **(b) Move to `app/config.py`** and tighten the rule. `ui → app` is already legal. Removes the one
-  module with no layer.
-- **(c) Leave everything.**
-
-Recommend **(a) now**, since it is free and correct, and **(b)** if the "every module has a layer"
-property is worth a rename.
+**Settled: no, fix the rule (option A).** See Section 1.
 
 ### D5 — Where does prompt rendering live?
 
-`turn/context.py` holds three renderers with two different owners: `render_master` is called only
-from `Turn.picture` (`run.py:92`); `render_narrator` and `render_interjection` are called only from
-`GameService._narrate` (`runtime.py:284`) and `GameService.interject` (`runtime.py:185`). They share
-only `_picture` and `_prompt`.
-
-Separately: `turn/` is 249 lines with one consumer. **Verified:** it imports no settings, so the one
-property it currently earns is that `Turn` cannot reach a `Spawner`, `Settings` or `GameService`.
-
-- **(a) Leave `turn/` as is,** and just fix the stale settings claim (D7a).
-- **(b) Split `context.py` by owner.** `render_master` folds into `turn/run.py` beside
-  `Turn.picture`; `render_narrator`/`render_interjection`/`_picture` move to `app/` beside their only
-  callers, with `narrator.md`/`interjection.md` moving to `app/prompts/`. One module deleted, each
-  renderer beside its owner, and `turn/` keeps one honest job.
-- **(c) Merge `turn/` into `app/` entirely.** Deletes a layer name, pushes `app/runtime.py` past 750
-  lines, and mixes "the rules of a turn" with "the plumbing of a session".
-
-Recommend **(b)**, and explicitly **not (c)** — the compile-time guarantee that turn logic cannot
-reach a spawner is the property the whole design rests on.
+**Settled: split by owner (option B).** See Section 1.
 
 ### D6 — Null Object for `media` / `reader`?
 
-`GameService.media: Illustrator | None` and `reader: Reader | None` (`runtime.py:66-67`), guarded at
-`runtime.py:302, 307, 311, 314, 322` and `ui/game.py:171`.
-
-- **(a) Two Null classes** (`BlankIllustrator`, `SilentReader`). Removes five guards — but
-  `ui/game.py:171` decides whether to start a 3-second poll at all, so an `enabled` flag comes back
-  anyway. Two new classes to delete four `if`s.
-- **(b) Keep the `Optional`s, extract a `Presenter`** (part of P9). The checks stay but live in one
-  45-line class instead of interleaved with turn orchestration, and `Presenter.polls` answers
-  `ui/game.py:171` honestly.
-- **(c) Both.**
-
-Recommend **(b)**. The Null Object is net ceremony here, and "do not add an abstraction until two
-things need it" applies. The clustering is the real problem, not the checks.
+**Settled: no, extract a `Presenter` (option B).** See Section 1.
 
 ### D7 — What is `qa/` for, going forward?
 
