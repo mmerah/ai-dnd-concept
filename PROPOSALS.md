@@ -13,26 +13,92 @@ Effort is S (under an hour), M (half a day), L (a day or more).
 
 ## 0. Start here
 
-The five things worth doing first, in order. Each is small, each is agreed, none needs a decision.
+Ten proposals, ranked. The first five are small, agreed, and need no decision from you.
 
 | # | Do | Where | Effort |
 |---|---|---|---|
-| 1 | Delete two provably dead guards | `turn/run.py:117,131-134` | S |
-| 2 | Fix the MCP argument-validation escape | `app/mcp.py:87` | S |
-| 3 | Move the per-engine palettes onto `Engine` | `ui/theme.py:26-73` → `engines/seam.py` | M |
-| 4 | Split `core/views.py` into models and prompt rendering | `core/views.py` | S |
-| 5 | Give `Survivor`/`Crewmate` a shared sheeted base | `breathless/world.py`, `twentyfourxx/world.py` | M |
+| P1 | Delete two provably dead guards | `turn/run.py:117,131-134` | S |
+| P2 | Fix the MCP argument-validation escape (**a bug**) | `app/mcp.py:87` | S |
+| P3 | Move the per-engine palettes onto `Engine` | `ui/theme.py:26-73` -> `engines/seam.py` | M |
+| P4 | Give `Survivor`/`Crewmate` a shared sheeted base | `breathless/world.py`, `twentyfourxx/world.py` | M |
+| P5 | One generic `ChangeWorld[C]` instead of four | `engines/*/tools.py` -> `engines/base.py` | S |
+| P6 | Split `core/views.py` into models and prompt rendering | `core/views.py` | S |
+| P7 | Evict the single-family symbols from `engines/base.py` | `engines/base.py` | S |
+| P8 | Compute the view and the history once per turn | `runtime.py`, `seam.py`, `turn/run.py` | M |
+| P9 | Split `GameService` | `app/runtime.py:59-361` | M |
+| P10 | Add CI; bring `qa/` under the linters | `.github/`, `pyproject.toml` | S |
 
-Everything after this is either larger, or needs a decision from Section D first.
+**This list was cut from twenty.** The ten dropped were the ones I was least sure of: moving
+`core/creation.py`'s option helpers, moving `core/source.py` to `app/`, merging the two
+`Reveal`/`Kill` pairs, merging the unmet-reason joiners, splitting `Runtime`, splitting
+`LauncherCatalog.read`, splitting `app/spawn.py`, decomposing `ui/game.py`, and three test-suite
+tidying moves. Where the underlying observation was worth recording it survives in Section 4 as a
+finding. None of them was a defect — only taste.
 
 ---
 
-## 1. Concept inventory
+## 1. Settled decisions
+
+Three decisions are made. The rest are in Section 5.
+
+### D1 — `engines/rooms/` stays a family. **Settled: keep it.**
+
+`rooms/` is 834 lines with one shipping user (**verified:** the only importer outside `rooms/`
+itself is `tunnelgoons/`), and its only second implementer is the `SixthEngine` fixture in
+`tests/core/test_rooms.py`. The family stays anyway.
+
+What should still be fixed is its asymmetry against `scenes/`, which is a defect either way:
+
+1. `scenes/` appends a family `rules.md` at `scenes/engine.py:96`; rooms has none. Add
+   `rooms/rules.md`, or make the family suffix an explicit, possibly-empty hook on `Engine`.
+2. `rooms/drafts.py` is 10 lines and its one class **imports the world** (`rooms/drafts.py:4`), so
+   the stated reason for a separate `drafts.py` (`scenes/worldsmith.py:41`: "the drafts may not
+   import the world") does not apply to it. Move `MapDraft` into `rooms/world.py`.
+3. `EXTEND` (`base.py:20`) is a rooms-only constant in the shared base. Move it — part of P7.
+4. Four verb pairs diverge for the same roles: `render_opening`/`render_map`,
+   `render_next`/`render_extension`, `write_next`/`write_extension`, `install`/`install_extension`.
+   Align them on the `scenes/` names.
+5. `RoomEngine.advance` (`rooms/engine.py:188-193`) never checks `request.operation == EXTEND`,
+   while `SceneEngine.advance:331` does branch. One line closes it (C17).
+
+About 2 hours for all five. Also settled by this: `MapDraft` and `RoomCanon` (both `Dungeon + start`)
+stay separate — the compile-time guarantee that a draft is not a canon is worth the duplicate shape.
+
+### D2 — The four `ChangeWorld` wrappers. **Settled: a generic in `engines/base.py`.** Now **P5**.
+
+### D3 — One labelled-value vocabulary. **Settled: the full rename.**
+
+Six spellings of "a thing with a name and a line" collapse to one law: **`id` / `label` / `detail`**,
+with `icon_id` as the single extension. The work, in one commit, when nothing else is in flight:
+
+1. Delete `Action` (`core/views.py:59`) — **verified** field-for-field a `DecisionOption`
+   (`core/play.py:62`); `DecisionOption` additionally has `min_length=1` on `label` and
+   `detail: str = ""`. The constants `MORE_MAP` and `MOVE_ON` change type only.
+2. Delete `Named` (`core/model.py:48`) — one use, at `core/model.py:57`.
+3. Collapse `Rows` and `Sections` (`core/views.py:21-22`). They are PEP 695 aliases of the identical
+   type, so the checker already treats them as one — a sheet can be passed where a prompt section is
+   expected with no error. Name the survivor for what it is.
+4. Rename `Subject.name`/`brief` -> `label`/`detail` (`core/views.py:25`). Touches
+   `base.py:92,225-262`, `media.py:176,193`, `turn/context.py:92-96` and all four engines.
+5. Make `CatalogEntry` (`app/launch.py:14`) a `Labelled` plus `engine` and `rules`. Note `subtitle`
+   currently means two different things — a premise at `launch.py:73`, a brief at `:83`.
+6. Add the naming law to CLAUDE.md, or it will not hold.
+
+~30 sites, all mechanical. The golden schema fixtures churn; regenerate with `AIDM_GOLDEN_REGEN=1`
+and read the diff.
+
+**Not covered by this decision, and still open:** whether the same tidying applies to `draft` and
+`prompt`, which mean three and five things respectively (C5). Left alone.
+
+---
+
+## 2. Concept inventory
 
 Every concept the codebase defines, by layer. The **Verdict** column is the merged judgement;
-proposals referenced as `P<n>` are in Section B.
+proposals referenced as `P<n>` are in Section 3, findings as `C<n>` in Section 4,
+open decisions as `D<n>` in Section 5.
 
-### 1.1 `core/` — the shape-free kernel (967 lines)
+### 2.1 `core/` — the shape-free kernel (967 lines)
 
 | Concept | Location | Purpose | Verdict |
 |---|---|---|---|
@@ -41,28 +107,28 @@ proposals referenced as `P<n>` are in Section B.
 | `Refusal` | `core/entities.py:35` | The one exception a role or player reads | **Do not touch** |
 | `parse` | `core/entities.py:56` | The single `ValidationError` → `Refusal` funnel | **Do not touch** |
 | `content_id` / `slug` / `require_unique` | `core/entities.py:39,46,51` | Id narrowing, minting, duplicate bar | Keep; `require_unique` misused twice (C6) |
-| `Fact` | `core/facts.py:32` | One thing that occurred | Keep; `kind` is questionable (**D5**) |
-| `Fact.kind` | `core/facts.py:35` | Event category | **50 literals written, 1 read** — see **D5** |
+| `Fact` | `core/facts.py:32` | One thing that occurred | Keep; `kind` is questionable (**D2**) |
+| `Fact.kind` | `core/facts.py:35` | Event category | **50 literals written, 1 read** — see **D2** |
 | `DiceEvent` / `roll` / `cards` / `traced` | `core/facts.py:13,51,42,47` | The only die roller and the two fact renderings | **Do not touch** |
 | `Line` / `SpokenLine` / `Narration` / `Interjection` | `core/play.py:10,20,38,44` | The narrator's typed answers | Keep |
 | `DecisionOption` / `PendingOption` / `PendingDecision` | `core/play.py:62,68,75` | The suspended-decision machinery | Keep |
 | `Answer` | `core/play.py:91` | Player input: option xor text | Keep |
-| `Exchange` / `SceneRecord` | `core/play.py:108,127` | The unit of play; the unit of history | Keep; `SceneRecord` is rebuilt wastefully (P10) |
+| `Exchange` / `SceneRecord` | `core/play.py:108,127` | The unit of play; the unit of history | Keep; `SceneRecord` is rebuilt wastefully (P8) |
 | `Scenario[P]` / `Character[P]` / `Game[P]` | `core/model.py:60,74,94` | The three persisted envelopes | Keep |
 | `ScenarioMeta` | `core/model.py:27` | title/premise/scope/art_style/voice | Keep |
 | `EngineHeader` / `CharacterHeader` | `core/model.py:42,55` | Routing headers read before the engine is known | **Do not touch** |
-| `Named` | `core/model.py:48` | (name, brief) | One use (`model.py:57`) — see **D3** |
-| `Generation` | `core/model.py:86` | An engine's one request to the worldsmith | Keep; string dispatch is the issue (**D4**) |
+| `Named` | `core/model.py:48` | (name, brief) | One use (`model.py:57`) — see Section 1 |
+| `Generation` | `core/model.py:86` | An engine's one request to the worldsmith | Keep; string dispatch is the issue (**D1**) |
 | `WorldsmithAnswer` / `Check[T]` | `core/model.py:82,24` | The ask protocol and its extra bar | Keep; `Check` name collides (C5) |
 | `Game.draft()` / `.commit()` | `core/model.py:113,117` | Working copy; whole-tree revalidation | **Do not touch** |
-| `Subject` | `core/views.py:25` | (id, name, brief) as roles and art see it | Keep; field names drift (**D3**) |
+| `Subject` | `core/views.py:25` | (id, name, brief) as roles and art see it | Keep; field names drift (Section 1) |
 | `Panel` / `PanelRow` | `core/views.py:46,40` | Sidebar row and its group | Keep; `PanelRow` is a stringly-typed 3-way variant (C12) |
-| `Action` | `core/views.py:59` | The page's way-on button | **Field-for-field a `DecisionOption`** — see **D3** |
+| `Action` | `core/views.py:59` | The page's way-on button | **Field-for-field a `DecisionOption`** — see Section 1 |
 | `DiceLook` | `core/views.py:51` | Per-engine dice colours | Keep — and the model for P3 |
 | `NarratorView` | `core/views.py:67` | The narrator's input; structurally free of hidden canon | **Do not touch** |
 | `PlayerView` | `core/views.py:135` | What the pages read | Keep; the UI bypasses it (C8) |
-| `Rows` / `Sections` | `core/views.py:21,22` | Two aliases of one type, distinguished by a comment | Merge or `NewType` — see **D3** |
-| `sections` / `lines_of` / `render_history` / `told_history` | `core/views.py:145,149,153,160` | Prompt text assembly | Split out of `views.py` (P4) |
+| `Rows` / `Sections` | `core/views.py:21,22` | Two aliases of one type, distinguished by a comment | Merge or `NewType` — see Section 1 |
+| `sections` / `lines_of` / `render_history` / `told_history` | `core/views.py:145,149,153,160` | Prompt text assembly | Split out of `views.py` (P6) |
 | `FileStore` / `Library` | `core/io.py:25,53` | Saves; scenarios + characters on disk | Keep |
 | `decode` + `_unique_keys` | `core/io.py:147,183` | Duplicate-key-rejecting JSON | **Do not touch** |
 | `routed` / `write_text` | `core/io.py:155,139` | Engine routing; atomic staged write | **Do not touch** |
@@ -70,10 +136,10 @@ proposals referenced as `P<n>` are in Section B.
 | `Attempt` | `core/tools.py:18` | The `what` field four engines extend | Keep; it is game vocabulary in `core` (C18) |
 | `schema_of` / `_normalize` | `core/tools.py:50,61` | One schema pipeline for MCP and prompts | **Do not touch** |
 | `CreationStep` / `Picks` / `check_picks` | `core/creation.py:10,6,23` | Creation questions and their one legality rule | Keep |
-| `other_than` / `option_of` / `chosen_option` | `core/creation.py:38,42,46` | `DecisionOption` list helpers | Move to `core/play.py` (P6) |
-| `given_text` / `whole_text` | `core/source.py:14,22` | PDF/text source ingestion | Move to `app/` (P7) |
+| `other_than` / `option_of` / `chosen_option` | `core/creation.py:38,42,46` | `DecisionOption` list helpers | Sit oddly in a creation module; `turn/run.py:9` imports `option_of` from it |
+| `given_text` / `whole_text` | `core/source.py:14,22` | PDF/text source ingestion | One caller, in `app` (`runtime.py:454`); arguably not kernel |
 
-### 1.2 `config.py` (165 lines)
+### 2.2 `config.py` (165 lines)
 
 | Concept | Location | Purpose | Verdict |
 |---|---|---|---|
@@ -82,9 +148,9 @@ proposals referenced as `P<n>` are in Section B.
 | `MediaConfig` / `SpeechConfig` | `config.py:51,61` | Optional features, both off by default | Keep |
 | `Settings` + `_keys_present` | `config.py:115,137` | The `.env` surface with a cross-field key check | Keep |
 | `Role` / `ProviderName` / `CliProvider` / `RoleProvider` / `Effort` | `config.py:11-16` | Five string literals; `RoleProvider` is deliberately flat | Keep — the flat union is justified in a comment |
-| Placement of `config.py` itself | outside every layer name | — | See **D7** |
+| Placement of `config.py` itself | outside every layer name | — | See **D4** |
 
-### 1.3 `engines/` — the world layer (5,234 lines)
+### 2.3 `engines/` — the world layer (5,234 lines)
 
 | Concept | Location | Purpose | Verdict |
 |---|---|---|---|
@@ -92,61 +158,61 @@ proposals referenced as `P<n>` are in Section B.
 | `Engine.compose` | `engines/seam.py:91` | Build-inside-the-bar so an unbuildable opening re-prompts | Keep |
 | `Engine.close`/`commit`/`begin`/`restore` | `engines/seam.py:114,132,136,69` | The state lifecycle | Keep; `commit` names three things (C9) |
 | `Engine.answer` | `engines/seam.py:82` | Play a `PendingOption` as a tool call | Keep |
-| Hire machinery | `seam.py:180-198`, `base.py:144,147,168,215` | `hire`, `unwritten`, `check_request`, `require_hireable`, `sign_on` | 3 of 4 engines — see **D6** |
+| Hire machinery | `seam.py:180-198`, `base.py:144,147,168,215` | `hire`, `unwritten`, `check_request`, `require_hireable`, `sign_on` | 3 of 4 engines — see **D3** |
 | `AnyEngine` | `engines/seam.py:28` | `Engine[Any, Any]` | Keep — the sanctioned `Any` |
 | `build_engines` | `engines/registry.py:9` | The one composition root | **Do not touch** |
 | `Thing` / `Person` / `World[P]` | `engines/base.py:38,96,113` | The entity hierarchy | Keep |
 | `Counter` | `engines/base.py:182` | Bounded current/max with fact-emitting `change` | Keep |
-| `Pack` | `engines/base.py:176` | Table-set base — **scene engines only** | Move to `scenes/` (P8) |
+| `Pack` | `engines/base.py:176` | Table-set base — **scene engines only** | Move to `scenes/` (P7) |
 | `JoinParty` / `LeaveParty` / `Hire` | `engines/base.py:154,161,168` | Shared change verbs | Keep |
-| Panel builders | `engines/base.py:225-262` | `character_panel`, `here_panel`, `party_panel`, `trail_panel`, `party_section` | Keep; consider own module (P8) |
-| `keep_highest` | `engines/base.py:271` | Roll-and-keep-highest, 3 users | Keep; belongs near `roll` (P8) |
-| `named_unmet` / `read_packs` / `SRD_PACK` | `engines/base.py:282,293,18` | **Scene-only helpers in the shared base** | Move to `scenes/` (P8) |
-| `EXTEND` | `engines/base.py:20` | **Rooms-only constant in the shared base** | Move to the room engine (P8) |
+| Panel builders | `engines/base.py:225-262` | `character_panel`, `here_panel`, `party_panel`, `trail_panel`, `party_section` | Keep (P7 may give them their own module) |
+| `keep_highest` | `engines/base.py:271` | Roll-and-keep-highest, 3 users | Keep; arguably belongs near `roll` (P7) |
+| `named_unmet` / `read_packs` / `SRD_PACK` | `engines/base.py:282,293,18` | **Scene-only helpers in the shared base** | Move to `scenes/` (P7) |
+| `EXTEND` | `engines/base.py:20` | **Rooms-only constant in the shared base** | Move to the room engine (P7, D1) |
 | `SceneEngine` family | `engines/scenes/*` (901 lines, 3 users) | `SceneRun`, `SceneCanon`, `SceneWorld`, `SceneDraft`, `NextDraft` | **Do not touch** — earns its keep |
-| `RoomEngine` family | `engines/rooms/*` (834 lines, **1 user**) | `Dungeon`, `Place`, `Way`, `Visit`, `RoomCanon`, `RoomWorld`, `MapDraft` | See **D1** |
-| `MapDraft` vs `RoomCanon` | `rooms/drafts.py:7`, `rooms/world.py:114` | Both are `Dungeon + start` | Merge candidate — part of **D1** |
-| `ChangeWorld` ×4 | `loner3e/tools.py:63`, `breathless:43`, `tunnelgoons:22`, `twentyfourxx:122` | One discriminated-union tool per engine | **Byte-identical** — see **D2** |
-| `Reveal` / `Kill` ×2 | `scenes/tools.py:15,36`, `rooms/tools.py:9,26` | Same shape, different prose | Merge candidate (P9) |
-| `scene_refusal` / `map_refusal` / `extension_refusal` | `scenes/worldsmith.py:38`, `rooms/worldsmith.py:38,43` | One bar per draft kind, all reasons at once | Keep; joiner duplicated 3× (P12) |
+| `RoomEngine` family | `engines/rooms/*` (834 lines, **1 user**) | `Dungeon`, `Place`, `Way`, `Visit`, `RoomCanon`, `RoomWorld`, `MapDraft` | See Section 1 |
+| `MapDraft` vs `RoomCanon` | `rooms/drafts.py:7`, `rooms/world.py:114` | Both are `Dungeon + start` | Merge candidate — part of Section 1 |
+| `ChangeWorld` ×4 | `loner3e/tools.py:63`, `breathless:43`, `tunnelgoons:22`, `twentyfourxx:122` | One discriminated-union tool per engine | **Byte-identical** — see Section 1 |
+| `Reveal` / `Kill` ×2 | `scenes/tools.py:15,36`, `rooms/tools.py:9,26` | Same shape, different prose | Leave — the prose reaches the model through `schema_of` |
+| `scene_refusal` / `map_refusal` / `extension_refusal` | `scenes/worldsmith.py:38`, `rooms/worldsmith.py:38,43` | One bar per draft kind, all reasons at once | Keep; the unmet-reason joiner is written 3× |
 | Four concrete engines | `loner3e/`, `tunnelgoons/`, `breathless/`, `twentyfourxx/` | Each: engine, world, tools, worldsmith, rules.md, packs | **Keep all four** — see D1 rationale |
 
-### 1.4 `turn/` (249 lines, 2 files, 1 consumer)
+### 2.4 `turn/` (249 lines, 2 files, 1 consumer)
 
 | Concept | Location | Purpose | Verdict |
 |---|---|---|---|
 | `Turn` | `turn/run.py:29` | One turn's draft, rng, facts, notes | Keep |
 | `Turn.call` | `turn/run.py:102` | The one gate every published tool passes | **Do not touch** |
 | `Turn._apply` | `turn/run.py:128` | Trial-run against a copy; a refused call costs no dice | **Do not touch** the mechanism; delete the dead guard (P1) |
-| `Turn.picture` | `turn/run.py:91` | Builds the master prompt | Rename (C10); it recomputes history (P10) |
-| `render_master` | `turn/context.py:23` | Master prompt | See **D8** |
-| `render_narrator` / `render_interjection` / `_picture` | `turn/context.py:47,60,81` | Narrator prompts | See **D8** |
-| `turn/` as a layer | — | — | See **D8** |
+| `Turn.picture` | `turn/run.py:91` | Builds the master prompt | Rename (C10); it recomputes history (P8) |
+| `render_master` | `turn/context.py:23` | Master prompt | See **D5** |
+| `render_narrator` / `render_interjection` / `_picture` | `turn/context.py:47,60,81` | Narrator prompts | See **D5** |
+| `turn/` as a layer | — | — | See **D5** |
 
-### 1.5 `app/` (1,547 lines)
+### 2.5 `app/` (1,547 lines)
 
 | Concept | Location | Purpose | Verdict |
 |---|---|---|---|
-| `GameService` | `app/runtime.py:59` | One live game — **7 responsibilities** | Split (P13) |
-| `Runtime` | `app/runtime.py:377` | Sessions, engines, library, store, tool surface, settings | Split (P14) |
-| `RoleSpawner` | `app/runtime.py:365` | CLI-or-API per role | Keep; the decision is written 3× (P11) |
+| `GameService` | `app/runtime.py:59` | One live game — **7 responsibilities** | Split (P9) |
+| `Runtime` | `app/runtime.py:377` | Sessions, engines, library, store, tool surface, settings | 5 jobs; see C3 |
+| `RoleSpawner` | `app/runtime.py:365` | CLI-or-API per role | Keep; the CLI-vs-API decision is written 3× (C3) |
 | `Spawner` / `Driver` protocols | `app/spawn.py:129,34` | Role execution; per-CLI argv+parse | **Do not touch** |
 | `ClaudeDriver` / `CodexDriver` | `app/spawn.py:56,93` | The two CLI dialects | Keep |
 | `CliSpawner` | `app/spawn.py:134` | The only thing that starts a process | **Do not touch** |
-| `ask` + `RETRIES` | `app/spawn.py:188,19` | One retry carrying the error | **Do not touch**; move to its own module (P5) |
-| `final_message` + scrapers | `app/spawn.py:163,247,257,266,272` | Extract JSON from four CLI output shapes | Move to `app/scrape.py` (P5) |
+| `ask` + `RETRIES` | `app/spawn.py:188,19` | One retry carrying the error | **Do not touch** |
+| `final_message` + scrapers | `app/spawn.py:163,247,257,266,272` | Extract JSON from four CLI output shapes | String in, string out; sits oddly beside process spawning |
 | `BuiltinSpawner` / `Tools` | `app/builtin.py:64,22` | Completion-API loop; the one real DIP inversion | **Do not touch** the protocol |
 | `_Echoed` | `app/builtin.py:27` | A fourth Pydantic base config, declared in `app` | See C11 |
-| `Illustrator` / `Reader` | `app/media.py:29`, `app/speech.py:21` | Cached art and TTS | Keep — see **D9** |
+| `Illustrator` / `Reader` | `app/media.py:29`, `app/speech.py:21` | Cached art and TTS | Keep — see **D6** |
 | `claim` / `post_bearer` | `app/providers.py:9,17` | Single-flight guard; the one bearer POST | Keep |
 | `MountedLifespan` / `endpoint` | `app/mcp.py:21,57` | MCP over streamable HTTP | **Do not touch** |
-| `LauncherCatalog` / `CatalogEntry` / `LaunchTarget` / `SaveOption` | `app/launch.py:43,14,23,33` | The launcher read model | `read()` does two jobs (P15) |
+| `LauncherCatalog` / `CatalogEntry` / `LaunchTarget` / `SaveOption` | `app/launch.py:43,14,23,33` | The launcher read model | `read()` does two jobs in 60 lines |
 
-### 1.6 `ui/` (1,735 lines)
+### 2.6 `ui/` (1,735 lines)
 
 | Concept | Location | Purpose | Verdict |
 |---|---|---|---|
-| `GamePage` | `ui/game.py:72` | One tab — **7 jobs, 18 attributes, 9 uninitialised** | Split (P16) |
+| `GamePage` | `ui/game.py:72` | One tab — **7 jobs, 18 attributes, 9 uninitialised** | See C7 |
 | `Observed` | `ui/game.py:52` | The 1 Hz poll snapshot | Keep — genuinely the diff |
 | Pure UI rules | `ui/game.py:597-637` | `can_type`, `standing_proposal`, `near_end`, `draft_spent`, `insert_at_caret`, `placeholder` | Keep; **module-layout violation** (C7) |
 | `LaunchForm` / `CharacterForm` / `ScenarioForm` / `SettingsForm` | `ui/app.py:60`, `ui/create.py:22,139`, `ui/settings.py:23` | The four forms | Keep; `LaunchForm` after a public function (C7) |
@@ -154,25 +220,25 @@ proposals referenced as `P<n>` are in Section B.
 | `DiceTray` / `Dictation` | `ui/dice.py:13`, `ui/dictation.py:4` | Two JS components | Keep |
 | `widgets` | `ui/widgets.py` | `page_header`, `avatar`, `entity_row`, `decision_widget`, … | Keep |
 
-### 1.7 Test and QA concepts
+### 2.7 Test and QA concepts
 
 | Concept | Location | Purpose | Verdict |
 |---|---|---|---|
 | `Table[G]` / `ScriptedSpawner` | `tests/support/table.py:144,115` | Live game + scripted roles | **Do not touch** — mandated by CLAUDE.md |
 | `golden` / `AIDM_GOLDEN_REGEN` guard | `tests/support/golden.py:13`, `conftest.py:5` | Drift detector that cannot pass while regenerating | **Do not touch** — good design |
-| `tests/support/golden_turn.py` | 14 lines, 3 constants | One consumer each | Delete (P18) |
-| `tests/support/ui.py` | 20 lines | `ui_settings`, used by two non-UI tests | Delete (P18) |
-| `tests/support/loner.py` | 87 lines | **The shared default game fixture**, used by 14 non-loner files | Rename (P18) |
-| Dynamic golden lookup | `tests/core/test_golden_turn.py:19-26` | `import_module(f"tests.{id}.golden_turn")` behind two `cast`s | Replace with a table (P19) |
-| `SixthEngine` et al. | `tests/core/test_rooms.py` (17 references) | A fabricated second room engine | Part of **D1** |
+| `tests/support/golden_turn.py` | 14 lines, 3 constants | One consumer each | Small; dropped from the list |
+| `tests/support/ui.py` | 20 lines | `ui_settings`, used by two non-UI tests | Misnamed; dropped from the list |
+| `tests/support/loner.py` | 87 lines | **The shared default game fixture**, used by 14 non-loner files | Misnamed (D12) |
+| Dynamic golden lookup | `tests/core/test_golden_turn.py:19-26` | `import_module(f"tests.{id}.golden_turn")` behind two `cast`s | Two `cast`s past the checker |
+| `SixthEngine` et al. | `tests/core/test_rooms.py` (17 references) | A fabricated second room engine | Part of Section 1 |
 | `test_package_boundary.py` | 84 lines | The layer rule, enforced by AST | **Do not touch**; close the literal hole (P3) |
 | `test_context_boundary.py` | 180 lines | The hidden-canon firewall | **Do not touch** |
 | `test_integrity_boundaries.py` | 144 lines | Save/file corruption modes | **Do not touch** |
-| `qa/` harness | 2,292 lines, 11 scenarios, 217 assertions | Real app + Playwright + scripted roles | Keep — see **D10** |
+| `qa/` harness | 2,292 lines, 11 scenarios, 217 assertions | Real app + Playwright + scripted roles | Keep — see **D7** |
 
 ---
 
-## 2. Simplification proposals
+## 3. Proposals
 
 ### P1 — Delete two provably dead guards in `Turn` **[3/6]** · S · high confidence
 
@@ -234,7 +300,77 @@ without a `Runtime` — that is the plumbing cost.
 
 ---
 
-### P4 — Split `core/views.py` into models and prompt rendering **[2/6]** · S · high confidence
+### P4 — A shared sheeted-person base for `Survivor` and `Crewmate` **[4/6]** · M · high confidence
+
+**Verified byte-identical.** `Survivor` (`breathless/world.py:105`) and `Crewmate`
+(`twentyfourxx/world.py:96`) share four methods character for character:
+
+| Method | Breathless | 24XX |
+|---|---|---|
+| `dice()` | `:110-113` | `:101-104` |
+| `require_item()` | `:115-119` | `:106-110` |
+| `drop_item()` | `:121-125` | `:148-152` |
+| `unwritten()` | `:178-184` | `:176-182` |
+
+Both also declare `sheet: X | None = Field(default=None, description="Leave empty.")` identically.
+Their worlds' `require_actor` (`breathless:194`, `twentyfourxx:203`) and `require_hireable`
+(`:202`, `:211`) differ only in the noun inside the refusal string, and the
+`_player_carries_a_sheet` validator (`:188`, `:194`) is byte-identical.
+
+**Do:** `class Sheeted[S: BaseModel](Person)` carrying `sheet`, `dice()`, `require_item()`,
+`drop_item()`, `unwritten()`; and a `require_sheeted(entity_id, *, noun: str)` on the world side for
+the two `require_actor`/`require_hireable` pairs. Removes ~45 lines.
+
+Two things need it, so CLAUDE.md's bar is met, and the duplication is verbatim — this is one idea
+written twice, not two similar ideas that will diverge.
+
+**Watch:** `Item` means different things in the two engines (`breathless/world.py:30` is name+die;
+`twentyfourxx/world.py:39` is name+bulky+breaks), so `require_item`/`drop_item` need the item type as
+a second parameter. The codebase already relies on runtime-parametrised generic models
+(`scenes/engine.py:264`, `rooms/engine.py:69`), so this should hold — confirm before committing.
+
+**Blocked on coverage.** `breathless` and `twentyfourxx` have no multi-turn test at all (Section 7
+§1), and 24XX's hire-then-succession path has no end-to-end test (§2). Close §2 first.
+
+**Lost:** each engine stops reading as a fully self-contained implementation of one SRD.
+
+---
+
+### P5 — One generic `ChangeWorld[C]` instead of four **[4/6]** · S · high confidence
+
+*Settled by D2.*
+
+**Verified byte-identical**, differing only in the union each wraps: `loner3e/tools.py:63`,
+`breathless/tools.py:43`, `tunnelgoons/tools.py:22`, `twentyfourxx/tools.py:122` — plus a fifth copy
+in `tests/core/test_rooms.py:43`.
+
+```python
+class ChangeWorld(Frozen):
+    change: WorldChange = Field(
+        discriminator="verb",
+        description="The change to apply. `verb` picks which one.",
+    )
+```
+
+**Do:** `class ChangeWorld[C](Frozen)` in `engines/base.py`; each engine keeps its own
+`type WorldChange = ...` and writes `ChangeWorld[WorldChange]`. The union stays a written
+annotation, so basedpyright keeps checking it.
+
+Beyond the 25 lines, the win is that the name `ChangeWorld` stops resolving to four different types
+depending on which module you imported from.
+
+**Verify two things before committing:**
+1. That Pydantic accepts `Field(discriminator=...)` on a type-parameter field at parametrisation
+   time. If not, fall back to renaming the four (`BreathlessChangeWorld`, ...) — that removes the
+   collision without losing types.
+2. That `tests/core/fixtures/schemas/*/master_tools.json` do not move. `schema_of` strips `title`
+   (`core/tools.py:15`), so they should not.
+
+**Lost:** nothing.
+
+---
+
+### P6 — Split `core/views.py` into models and prompt rendering **[2/6]** · S · high confidence
 
 **Current.** `core/views.py` holds nine frozen models (`Subject`, `PanelRow`, `Panel`, `DiceLook`,
 `Action`, `NarratorView`, `PlayerView`) **and** five prompt-string functions (`sections:145`,
@@ -253,60 +389,7 @@ It must be `core/prompt.py`, not `turn/`: `engines/` sits below `turn/` and call
 
 ---
 
-### P5 — Split `app/spawn.py` into three **[2/6]** · S · high confidence
-
-**Current.** 299 lines doing four jobs: `Driver` + two CLI drivers (34-126), process spawning
-(133-160, 208-244, 293-299), LLM-output scraping (163-185, 247-290), and the `ask` retry loop
-(188-205).
-
-**Do:**
-- `app/scrape.py` — `final_message`, `_last_said`, `_object`, `_string`, `_found`, `_decodes`.
-  String in, string out; zero knowledge of processes or settings; **already** imported across a
-  module boundary by `builtin.py:12`. This is the strongest cut.
-- `app/ask.py` — `ask()` and `RETRIES`. It takes a `Spawner` and never starts anything.
-  `runtime.py:14` currently imports it from `spawn`, which reads as if asking spawns a process.
-- `app/spawn.py` keeps `RunResult`, the protocols, the two drivers, `CliSpawner`, `_spawn`,
-  `child_environment`, `_kill` — one job: start a role, get its text back.
-
-While there: `CodexDriver.parse` (`spawn.py:122`) and `_last_said` (`spawn.py:249`) contain a
-**byte-identical** event-list comprehension, and `parse` then calls `final_message(output)` on the
-next line, which re-runs it. Extract `_events(output)`.
-
-**Lost:** nothing.
-
----
-
-### P6 — Move the `DecisionOption` helpers out of `core/creation.py` **[1/6]** · S · high confidence
-
-`core/creation.py` is two things: character creation (`CreationStep:10`, `Picks:6`, `ANSWER_MAX:7`,
-`picked:19`, `check_picks:23`) and generic `DecisionOption` list utilities (`other_than:38`,
-`option_of:42`, `chosen_option:46`) — while `DecisionOption` itself lives in `core/play.py:62`.
-
-The visible consequence: `turn/run.py:9` imports `option_of` from `core.creation` to resolve a
-**pending play decision** — turn-time code importing a character-creation module.
-
-**Do:** move the three helpers to `core/play.py` beside `DecisionOption`. `creation.py` becomes a
-coherent 30-line module. (`option_of` and `chosen_option` differ only by raise-vs-`None`; keeping
-both is fine, they have different callers.)
-
-**Lost:** nothing.
-
----
-
-### P7 — Move `core/source.py` to `app/` **[1/6]** · S · high confidence
-
-`core/source.py` imports `pypdf` and reads the filesystem. It has **one** caller:
-`app/runtime.py:22,454`. (`ui/create.py:14` takes `SOURCE_SUFFIXES` from `core/io.py:17`, not from
-here.)
-
-**Do:** move to `app/source.py`, and take `SOURCE_SUFFIXES`/`SOURCE_STEM` with it. `core` then
-declares only `pydantic`, and PDF extraction stops being kernel vocabulary.
-
-**Lost:** nothing.
-
----
-
-### P8 — Evict the single-family symbols from `engines/base.py` **[3/6]** · S · high confidence
+### P7 — Evict the single-family symbols from `engines/base.py` **[3/6]** · S · high confidence
 
 `engines/base.py` is 297 lines mixing domain classes (`Thing:38`, `Person:96`, `World:113`,
 `Counter:182`), tool-arg models (`JoinParty:154`, `LeaveParty:161`, `Hire:168`), `Pack:176`,
@@ -335,22 +418,7 @@ where a reader will look for it.
 
 ---
 
-### P9 — Give the shared change verbs one home **[2/6]** · S · medium confidence
-
-`Reveal` and `Kill` are defined twice with the same shape — `scenes/tools.py:15,36` and
-`rooms/tools.py:9,26` — while their siblings `JoinParty`/`LeaveParty` live in `engines/base.py`.
-So "the shared world-change vocabulary" currently has no single home.
-
-**Do:** define `Reveal` and `Kill` once beside `JoinParty`/`LeaveParty`.
-
-**Lost:** the per-family `description=` prose differs (`rooms`' `Reveal` says "an npc or an item";
-`scenes`' says "an entity listed as hidden here"), and those descriptions reach the model through
-`schema_of`. Either one wording serves both, or the union overrides the field. **Check the schema
-goldens** (`tests/core/fixtures/schemas/*/master_tools.json`) before committing.
-
----
-
-### P10 — Compute the view and the history once per turn **[2/6]** · M · high/medium confidence
+### P8 — Compute the view and the history once per turn **[2/6]** · M · high/medium confidence
 
 Three pieces of measured waste on the hot path:
 
@@ -373,40 +441,7 @@ Three pieces of measured waste on the hot path:
 
 ---
 
-### P11 — Resolve the CLI-vs-API decision once **[1/6]** · S · high confidence
-
-The question "is this role a CLI or an API?" is written three times, each re-reading
-`settings.roles.for_name(role)` independently: `RoleSpawner.run` (`runtime.py:371-373`),
-`CliSpawner.run`'s guard (`spawn.py:141-142`), `BuiltinSpawner.run`'s mirror guard
-(`builtin.py:71-72`).
-
-**Do:** `RoleSpawner` resolves the `RoleConfig` once and passes it down —
-`CliSpawner.run(role, config, prompt, session)`. Both guards and both re-reads disappear.
-
-**Lost:** the two spawners stop being callable with just a role name. Nothing calls them that way.
-
-**Note:** do **not** try to unify or drop the two mechanisms themselves. They are already unified
-behind a one-method `Spawner` protocol, which is the minimum. `IDEAS.md:4` records that the builtin
-mode was removed once and deliberately brought back. The duplication is the *decision*, not the
-mechanisms.
-
----
-
-### P12 — One unmet-reason joiner, one room-draft bar **[2/6]** · S · high confidence
-
-Three copies of `return None if not unmet else "the X needs " + "; ".join(unmet)`:
-`scenes/worldsmith.py:42-43`, `rooms/worldsmith.py:39-40`, `rooms/worldsmith.py:44-45`.
-And `rooms/worldsmith.py:48-58` (`_start_unmet`) vs `:61-73` (`_extension_unmet`) are the same
-eleven lines, differing only in the `known` polarity and one extra empty-places guard.
-
-**Do:** one `unmet_refusal(what, unmet)` helper; merge the two room functions into
-`_reachable_unmet(draft, *, start_known: bool)`.
-
-**Lost:** two named functions that read as prose, traded for one boolean parameter.
-
----
-
-### P13 — Split `GameService` **[4/6]** · M · high confidence
+### P9 — Split `GameService` **[4/6]** · M · high confidence
 
 `app/runtime.py:59-361` — 300 lines, one class, seven jobs:
 
@@ -439,119 +474,7 @@ and `session.icon()` in five places, so either delegate or update the call sites
 
 ---
 
-### P14 — Split `Runtime` **[2/6]** · M · medium confidence
-
-`app/runtime.py:377-507` does five jobs: composition root (engines, library, store, spawner),
-session cache, settings reload, MCP tool routing, scenario authoring.
-
-**Do:**
-- Extract **`SessionTools`** — `_sessions` plus `published_tools`, `playing`, `call`,
-  `busy_refusal`, `play_refusal`, `session`. This is what `mcp.py` and `BuiltinSpawner` actually
-  need. Today `mcp.py:10` imports the whole composition root to reach two methods, and
-  `builtin.Tools` (`builtin.py:22`) is a protocol **no production type is declared against**.
-  It also un-cycles the wiring: `Runtime → BuiltinSpawner → Runtime` becomes
-  `Runtime → BuiltinSpawner → SessionTools`.
-- Move `new_scenario` (`:444-467`) to `app/authoring.py` as a free function. It touches no
-  `Runtime` state beyond `engines`, `library`, `settings`, `spawner`.
-
-`Runtime` then ≈ 60 lines.
-
-**Against:** CLAUDE.md's "do not add an abstraction until two things need it" — but the protocol
-already exists and is simply unused, so this is making an existing abstraction real rather than
-inventing one.
-
----
-
-### P15 — Split `LauncherCatalog.read` **[1/6]** · S · high confidence
-
-`app/launch.py:63-122` is a 60-line `@classmethod` doing two jobs: build the scenario and character
-entries (67-87) and validate every save (88-121 — load, decode, route, restore, cross-check title,
-scenario engine and filename, read the scene title, with three warn-and-continue arms).
-
-**Do:** extract `readable_saves(store, engines, scenarios, characters)` as a free function. `read()`
-drops to ~20 lines, and the majority of `tests/ui/test_launcher.py` (313 lines) can target the
-function directly.
-
-**Related waste:** `LauncherCatalog.read` is called from `ui/app.py:23` **and** `ui/create.py:273`,
-but `ScenarioForm` uses only `catalog.characters_for` (`create.py:177`). Opening `/scenario`
-therefore fully `restore()`s every save on disk for nothing. Also, `scenario_models` is built
-identically at `launch.py:67` and `runtime.py:478-479` — one `Runtime.scenario_models()` method.
-
----
-
-### P16 — Decompose `ui/game.py` **[2/6]** · M · high confidence
-
-637 lines, seven jobs, and `GamePage.__init__` (`:75-96`) declares 18 attributes of which **nine are
-bare annotations with no value** — the object is not usable until `build()` runs.
-
-**Do, in order of confidence:**
-1. **`ui/rules.py`** — move the six pure functions at `:597-637`. Fixes the module-layout violation
-   (C7), ~40 lines, zero risk.
-2. **`ui/composer.py`** — a `Composer` owning `box`, `send`, `action_button`, `over_label`,
-   `Dictation`, plus `_set_composer`, `_clear_spent_draft`, `submit`'s widget half,
-   `dictated`/`dictation_failed`. ~130 lines. This is the tightest seam: four of the eighteen
-   attributes, and the three duplicated `run_method("updateValue")` pairs at `:391-394`, `:431-434`
-   and `:472-473` collapse into one `set_text()`.
-3. **`ui/transcript.py`** and **`ui/panels.py`** — later, and only after P10(3) settles, or you will
-   thread `PlayerView` through three constructors twice.
-
-`GamePage` then ≈ 230 lines with one job: drive the page.
-
----
-
-### P17 — Move the shared scene-bar tests out of the engine directories **[1/6]** · M · high confidence
-
-`scene_refusal` (`scenes/worldsmith.py:38`) and `SceneEngine.install` (`scenes/engine.py:303`) are
-tested three times over — `tests/breathless/test_worldsmith.py:27,32,40,45,56,71,85`,
-`tests/twentyfourxx/test_worldsmith.py:94,125,132,139,144,169,184,191,218,233`, and
-`tests/loner3e/test_world.py:113,136,205`. Several are functionally identical. Meanwhile
-`tests/core/test_scenes.py` already owns the shared scene world.
-
-**Do:** move one copy of each shared-bar assertion into `tests/core/test_scenes.py`. Leave in each
-engine directory only what is genuinely that engine's (`Survivor.unwritten()` returning `"a sheet"`,
-24XX's `SheetDraft.refusal(pack)`).
-
-**Lost:** the accidental property that the bar is proven against each engine's concrete cast type —
-recoverable by parameterising the moved tests over the three cast types.
-
----
-
-### P18 — Retire two test-support modules, rename a third **[1/6]** · S · high confidence
-
-- **`tests/support/golden_turn.py`** (14 lines, 3 constants): `NARRATION`/`INTERJECTION` have one
-  consumer (`test_golden_turn.py:9`), `LISTENING` has one (`tests/loner3e/golden_turn.py:1`).
-  Inline them; delete the module.
-- **`tests/support/ui.py`** (20 lines): `ui_settings`'s only delta over `offline_settings`
-  (`table.py:106`) is a populated OpenRouter key — and it is imported by `tests/core/test_speech.py:10`
-  and `tests/core/test_media.py:9`, contradicting its name. Replace with
-  `offline_settings(..., keyed=True)`.
-- **`tests/support/loner.py`** (87 lines): **verified** — imported by 14 test files outside
-  `tests/loner3e`. It is the shared default game fixture, not a loner3e helper. Rename to
-  `tests/support/game.py`.
-
-Also: `offline_settings()` (`table.py:106-111`) defaults `saves_dir` to `Path("saves")` — the
-working directory. Two call sites use the no-arg form and neither writes today, but it is a live
-trap. Make `saves` required or default it to a temp dir.
-
----
-
-### P19 — Replace the dynamic golden-turn lookup with a table **[1/6]** · S · high confidence
-
-`tests/core/test_golden_turn.py:19-26` does
-`cast(..., import_module(f"tests.{engine_id}.golden_turn").SCRIPT)` — two `cast`s past the type
-checker, working only because `tests/` are implicit namespace packages. A new engine without that
-file fails with `ModuleNotFoundError`, not a readable message.
-
-**Do:** a `GOLDEN_TURNS: dict[EngineId, tuple[Script, Behind]]` in `tests/support/table.py`
-importing the four modules directly. Removes both `cast`s; a missing entry becomes a `KeyError`
-naming the engine.
-
-**Lost:** the property that adding an engine needs no core edit — worth one line per engine, and a
-new engine already has to write `tests/<id>/golden_turn.py` anyway.
-
----
-
-### P20 — Bring `qa/` under the toolchain **[1/6]** · S · high confidence
+### P10 — Add CI, and bring `qa/` under the linters **[1/6]** · S · high confidence
 
 **Verified:** `.github/` does not exist — **nothing runs on push, pytest included**.
 `pyproject.toml` sets `[tool.basedpyright] include = ["src", "tests"]`, so `qa/`'s 2,292 lines are
@@ -568,7 +491,7 @@ commands. Every guarantee in this document currently depends on the maintainer r
 
 ---
 
-## 3. Consistency and SOLID findings
+## 4. Consistency and SOLID findings
 
 Ranked by impact. Findings that already have a proposal are cross-referenced, not repeated.
 
@@ -578,11 +501,11 @@ violation in the codebase, and it fails silently.
 **C2 — Two tool-argument validation conventions at the two transports.** See **P2**. A behavioural
 bug, not just drift.
 
-**C3 — `GameService` and `Runtime` are the app layer's God objects.** See **P13**, **P14**.
+**C3 — `GameService` and `Runtime` are the app layer's God objects.** See **P9**, a split of `Runtime`.
 The sharpest symptom is `Runtime.playing()` (`runtime.py:410-415`): because an MCP tool call carries
 no session identity, the runtime must assert that at most one turn is in flight process-wide and
 raise `ValueError` otherwise. That is a global-singleton assumption forced by the transport, and it
-is invisible from `Turn` or `Engine`. See **D13**.
+is invisible from `Turn` or `Engine`. See **D10**.
 
 **C4 — The `Engine` seam is *not* an ISP problem.** Worth recording, since it looks like one.
 `seam.py` declares 11 class attributes, 12 abstract methods and ~15 concrete. But: the two families
@@ -636,7 +559,7 @@ These are the only three in `src/aidm`. Everything else follows the rule.
 the facade is nominal — the page reads raw `Fact`s and `Exchange`s and reimplements fact-to-pixel
 rules (`ui/game.py:539` splits `Fact.card` on `\n`; `ui/dice.py:36` filters `cards(facts[seen:])`).
 The `aidm.engines` import ban is satisfied by *name* while the UI calls engine methods on ten lines.
-See **D14**.
+See **D11**.
 
 **C9 — Validators split between `ValueError` and `Refusal`.** CLAUDE.md: *"Inside a validator raise
 `ValueError`; `parse` turns it into the refusal."* Every inline `raise` obeys. But helpers called
@@ -744,7 +667,7 @@ carries each palette's hex values — a wiring test over a data table (and the o
 `test_speech`, `test_mcp_lifespan`, `test_game_service`, `test_turn`, `test_context_boundary`, plus
 `test_rooms`, `test_scenes`, `test_seam`, `test_engines_base` which test `engines`).
 **Verified:** `tests/ui/test_launcher.py` (313 lines) imports `aidm.app.launch` and
-`aidm.app.runtime` — it tests `app`, not `ui`. See **D15**.
+`aidm.app.runtime` — it tests `app`, not `ui`. See **D12**.
 
 **C27 — Two idioms for constructing an engine in tests.** 13 module-level `ENGINE = XEngine()`
 versus 19 uses of the already-built `ENGINES_BUILT[...]` (`tests/support/table.py:43`). Each
@@ -773,100 +696,11 @@ accepted input, so it is Liskov-safe. Recorded, not a change request — the alt
 
 ---
 
-## 4. Decisions
+## 5. Open decisions
 
-Each of these is genuinely open — either the reviewers disagreed, or the trade-off is a judgement
-call about where this project is going. Options are listed with the merged recommendation last.
+Twelve remain. Numbering restarts — D1-D3 are settled in Section 1. Options are listed with the merged recommendation last.
 
-### D1 — Does `engines/rooms/` survive as a family?
-
-**Facts.** `rooms/` is 834 lines across five modules with generic parameters `[N]`, `[P]`, `[G]`.
-**Verified:** the only importer of `aidm.engines.rooms` outside `rooms/` itself is `tunnelgoons/`.
-The only second implementer is `SixthEngine`/`SixthWorld`/`SixthGame`/`SixthScenario`/`SixthCharacter`
-in `tests/core/test_rooms.py` (17 references) — a fabricated engine that exists because the
-abstraction demands a second user the codebase does not have.
-
-**Verified against the roadmap:** `IDEAS.md:18` says the planned second dungeon game (Maze Rats)
-"rewrites the world on its own strict actor/item/place model" — i.e. it is *not* planned to reuse
-`rooms/`.
-
-Structural asymmetries that exist either way: `scenes/` has a family `rules.md` appended at
-`scenes/engine.py:96`; rooms has none. `rooms/drafts.py` is 10 lines and its one class *imports the
-world*, so the stated reason for a separate `drafts.py` (`scenes/worldsmith.py:41`: "the drafts may
-not import the world") does not apply to it. `EXTEND` is a rooms-only constant in the shared
-`base.py:20`. Four verb pairs diverge for the same roles (`render_opening`/`render_map`,
-`render_next`/`render_extension`, `write_next`/`write_extension`, `install`/`install_extension`).
-
-- **(a) Fold `rooms/` into `tunnelgoons/`.** Removes 834 source lines plus 257 test lines including
-  the synthetic engine; drops five layers of generic parametrisation and the runtime-subscript trick
-  at `rooms/engine.py:67-69`. Merge `MapDraft` and `RoomCanon` (both are `Dungeon + start`).
-  Mechanical, 2-3 hours. This is the codebase's own "do not add an abstraction until two things need
-  it" rule violated at the largest scale present.
-- **(b) Keep it and fix the asymmetries.** Add `rooms/rules.md`, move `drafts.py`'s class into
-  `world.py`, align the four verb names with `scenes/`, move `EXTEND` out of `base.py`. ~2 hours.
-  The code is written, tested and correct; folding it in is churn unless it buys clarity, and
-  `RoomWorld` (406 lines) is its own module either way.
-- **(c) Keep the models, drop the engine.** Fold `RoomEngine` into `TunnelGoonsEngine`, leave
-  `rooms/world.py` as a shared map model.
-
-**Two reviewers split here.** Recommend **(a)** — `IDEAS.md:18` refutes (c)'s premise outright, and
-(b) protects one package by writing an exception into the rules. But (b) is the safe answer if a
-second map ruleset is more likely than the roadmap suggests, and the asymmetry fixes in (b) are
-worth doing *first* either way, since (a) subsumes them.
-
-### D2 — How to remove the four `ChangeWorld` wrappers
-
-**Verified byte-identical** at `loner3e/tools.py:63`, `breathless/tools.py:43`,
-`tunnelgoons/tools.py:22`, `twentyfourxx/tools.py:122` (plus a fifth in `tests/core/test_rooms.py:43`),
-differing only in the union they wrap.
-
-- **(a) A generic `class ChangeWorld[C](Frozen)` in `engines/base.py`**, with each engine writing
-  `ChangeWorld[WorldChange]`. Keeps the union as a written annotation and stays type-checked.
-- **(b) A `create_model` factory**, `change_world_args(union)`. Saves the most lines, but the output
-  is opaque to basedpyright and would likely need a `# pyright: ignore` — against the spirit of the
-  no-`Any` rule.
-- **(c) Just rename the four** (`BreathlessChangeWorld`, …) so the name stops resolving to four
-  different types depending on the import, and accept the duplication.
-
-Recommend **(a)**, with (c) as the fallback if pydantic's discriminated union does not accept a
-type-parameter field cleanly — **verify that before committing**. Either way, check
-`tests/core/fixtures/schemas/*/master_tools.json`: `schema_of` strips `title` (`core/tools.py:15`),
-so the goldens should not move, but confirm.
-
-### D3 — One labelled-value vocabulary, or leave the five shapes?
-
-Six spellings of "a thing with a name and a line":
-
-```
-Named          (name, brief)                          core/model.py:48   1 use
-Subject        (id, name, brief)                       core/views.py:25   roles + art
-CatalogEntry   (id, engine, title, subtitle, rules)    app/launch.py:14   launcher
-PanelRow       (label, detail, icon_id)                core/views.py:40   sidebar
-DecisionOption (id, label, detail)                     core/play.py:62    choices
-Action         (id, label, detail)                     core/views.py:59   the way-on button
-```
-
-**Verified:** `Action` and `DecisionOption` have the same three fields; `DecisionOption` adds
-`min_length=1` on `label` and a default `detail=""`.
-
-- **(a) Minimal.** Delete `Action` (use `DecisionOption`), delete `Named` (one use), collapse
-  `Rows`/`Sections` into one alias. ~11 lines, ~10 sites. Low risk.
-- **(b) Minimal plus the rename.** Also rename `Subject.name`/`brief` → `label`/`detail` and make
-  `CatalogEntry` a `Labelled` plus `engine`/`rules`, establishing one naming law: `id`/`label`/`detail`,
-  with `icon_id` the one extension. ~30 sites including `base.py:92,225-262`, `launch.py:70-87`,
-  `media.py:176,193`, `context.py:92-96` and all four engines. Mechanical but wide.
-- **(c) Leave it.** Each name carries local intent (`Action` says "this is a button, not a choice
-  inside a decision").
-
-Recommend **(a) now, (b) later**. (a) is unambiguous. (b) is a real improvement and a real diff; do
-it as its own commit when nothing else is in flight, and add the naming law to CLAUDE.md so it holds.
-
-Related, same decision shape: `Rows` and `Sections` (`core/views.py:21-22`) are PEP 695 aliases of
-the identical type, so the checker treats them as one — a sheet can be passed where a prompt section
-is expected with no error. Either make them `NewType`s (the distinction becomes real) or admit they
-are one type and keep one name.
-
-### D4 — Replace `Generation.operation` string dispatch?
+### D1 — Replace `Generation.operation` string dispatch?
 
 The slug is compared by `==`/`in` at nine sites: `seam.py:191,197`, `scenes/engine.py:109,207,209,331`,
 `rooms/engine.py:74,177`, plus `!= HIRE` in three engines. The `operations` tuple (`seam.py:49`) is a
@@ -885,7 +719,7 @@ parallel declaration kept in sync by hand (`(*Base.operations, HIRE)` in three e
 Recommend **(b)**. With three operations, (a) risks tripping "do not build for future needs". If a
 fourth operation appears, do (a) then.
 
-### D5 — Delete `Fact.kind`?
+### D2 — Delete `Fact.kind`?
 
 **Verified:** 50 distinct `kind` literals are written across all four engines and both families.
 Production reads the field in **exactly one place**: `loner3e/engine.py:205`,
@@ -907,7 +741,7 @@ but `trace` already carries the same information in prose, so (b) is defensible 
 readability is genuinely used. **(c) is the low-risk middle**: it removes the wiring tests
 immediately and leaves the delete for later. Four turn goldens regenerate under (a).
 
-### D6 — How is the hire feature factored?
+### D3 — How is the hire feature factored?
 
 Three engines hire (breathless, tunnelgoons, 24XX); loner3e does not. The machinery is spread over
 four files: `Engine.hire` (`seam.py:180`), `Engine.unwritten`'s HIRE branch (`:189`),
@@ -930,7 +764,7 @@ Recommend **(b) if the mixin composes cleanly with `SceneEngine`/`RoomEngine`; o
 **Do neither until the coverage gap in Section 6 §2 is closed** — 24XX's hire-then-succession path
 has no end-to-end test, and both options touch it.
 
-### D7 — Should `config.py` move under `app/`?
+### D4 — Should `config.py` move under `app/`?
 
 It sits outside every layer name, imports only `core.entities.Frozen`, and is hand-listed in the
 boundary test. Its real readers are `app` (6 imports) and `ui` (3).
@@ -944,7 +778,7 @@ boundary test. Its real readers are `app` (6 imports) and `ui` (3).
 Recommend **(a) now**, since it is free and correct, and **(b)** if the "every module has a layer"
 property is worth a rename.
 
-### D8 — Where does prompt rendering live?
+### D5 — Where does prompt rendering live?
 
 `turn/context.py` holds three renderers with two different owners: `render_master` is called only
 from `Turn.picture` (`run.py:92`); `render_narrator` and `render_interjection` are called only from
@@ -965,7 +799,7 @@ property it currently earns is that `Turn` cannot reach a `Spawner`, `Settings` 
 Recommend **(b)**, and explicitly **not (c)** — the compile-time guarantee that turn logic cannot
 reach a spawner is the property the whole design rests on.
 
-### D9 — Null Object for `media` / `reader`?
+### D6 — Null Object for `media` / `reader`?
 
 `GameService.media: Illustrator | None` and `reader: Reader | None` (`runtime.py:66-67`), guarded at
 `runtime.py:302, 307, 311, 314, 322` and `ui/game.py:171`.
@@ -973,7 +807,7 @@ reach a spawner is the property the whole design rests on.
 - **(a) Two Null classes** (`BlankIllustrator`, `SilentReader`). Removes five guards — but
   `ui/game.py:171` decides whether to start a 3-second poll at all, so an `enabled` flag comes back
   anyway. Two new classes to delete four `if`s.
-- **(b) Keep the `Optional`s, extract a `Presenter`** (part of P13). The checks stay but live in one
+- **(b) Keep the `Optional`s, extract a `Presenter`** (part of P9). The checks stay but live in one
   45-line class instead of interleaved with turn orchestration, and `Presenter.polls` answers
   `ui/game.py:171` honestly.
 - **(c) Both.**
@@ -981,7 +815,7 @@ reach a spawner is the property the whole design rests on.
 Recommend **(b)**. The Null Object is net ceremony here, and "do not add an abstraction until two
 things need it" applies. The clustering is the real problem, not the checks.
 
-### D10 — What is `qa/` for, going forward?
+### D7 — What is `qa/` for, going forward?
 
 2,292 lines, 11 scenarios, 217 assertions, 103 screenshots. It runs the real app with scripted
 roles under Playwright. It is maintained (4 of the last 100 commits touch it, the most recent `a46e7ee`; three
@@ -990,7 +824,7 @@ commits exist purely to fold its findings back in: `823f702`, `abac557`, `afa36d
 unchecked by basedpyright, 14 dead `noqa`s, no CI at all.
 
 - **(a) Leave it as is.** Zero work; the drift continues.
-- **(b) Bring it under the toolchain and trim the pytest-redundant scenarios** (P20). Add `qa` to
+- **(b) Bring it under the toolchain and trim the pytest-redundant scenarios** . Add `qa` to
   `basedpyright.include`, clear the dead directives, shrink `s_settings` (193 lines, largely
   restating `tests/ui/test_settings.py`) and fold `s_home`'s route checks into `s_visual`.
   Keep `s_visual`, `s_mobile`, `s_probe`, `s_mcp` and the four engine drives — nothing in `tests/`
@@ -1000,7 +834,7 @@ unchecked by basedpyright, 14 dead `noqa`s, no CI at all.
 Recommend **(b)**, and explicitly **not (c)**. But take the trimming half only if those two scenarios
 have genuinely stopped finding things — the redundancy has historically paid.
 
-### D11 — Delete the unreachable `_apply` guard, or promote it?
+### D8 — Delete the unreachable `_apply` guard, or promote it?
 
 `turn/run.py:131-134` (see P1).
 
@@ -1013,7 +847,7 @@ have genuinely stopped finding things — the redundancy has historically paid.
 Recommend **(b)**. The invariant is real, but expressing it as a `Refusal` mislabels a bug as a
 message, which is exactly what CLAUDE.md forbids.
 
-### D12 — Which boundary owns tool-argument validation?
+### D9 — Which boundary owns tool-argument validation?
 
 See P2.
 
@@ -1028,7 +862,7 @@ Recommend **(c), falling back to (b)**. (c) is the smallest number of validation
 "reject bad data at once" at the place that acts on it — but it changes `Turn.call`'s signature,
 which ripples into `tests/support/table.py`. (b) is the safe version.
 
-### D13 — Should the MCP tool surface be per-turn rather than process-global?
+### D10 — Should the MCP tool surface be per-turn rather than process-global?
 
 `Runtime.playing()` (`runtime.py:410`) scans every session and raises `ValueError` if two turns are
 in flight; `Runtime.lock` (`:383`) serialises every tool call across every save; `mcp.py:63` runs
@@ -1046,7 +880,7 @@ Recommend **(a) for now**, and record why. (b) is structurally right but trades 
 single-player constraint for MCP session plumbing; it earns its keep only if concurrent multi-save
 play becomes real.
 
-### D14 — How does the UI learn about the game?
+### D11 — How does the UI learn about the game?
 
 See C8.
 
@@ -1058,29 +892,30 @@ See C8.
   `Exchange`.
 
 Recommend **(b)**. It is the smallest change that makes the stated boundary true, and it makes
-P10(3)'s caching possible in one place. (c) adds a whole shape family that would itself become a
+P8(3)'s caching possible in one place. (c) adds a whole shape family that would itself become a
 finding.
 
-### D15 — Do the test directories get re-shaped to mirror `src/`?
+### D12 — Do the test directories get re-shaped to mirror `src/`?
 
 See C26.
 
 - **(a) Full re-shape.** `tests/{core,engines,turn,app,ui}` plus the four engine dirs;
   `tests/ui/test_launcher.py` → `tests/app/`; `tests/support/loner.py` → `tests/support/game.py`.
   ~30 files, zero behaviour change, expensive to review.
-- **(b) Minimal.** Move the one clearly-misfiled file and do the rename from P18. Leave the rest.
+- **(b) Minimal.** Move the one clearly-misfiled file and rename `tests/support/loner.py` to `game.py` (it is imported by 14 files outside `tests/loner3e`). Leave the rest.
 - **(c) Leave it.**
 
-Recommend **(b) now, (a) later** — and (a) only after P17 and P18 have landed, so `tests/core` is
+Recommend **(b) now, (a) later** — and (a) only after the dropped test-suite tidying has landed, so `tests/core` is
 smaller when it moves.
 
 Related, and settled: **keep the four per-engine directories**. They hold 740-1,240 lines of
 genuinely different rules each; collapsing them would produce 1,000-line files. The problem is not
-the split, it is that shared-family code is tested inside engine directories (P17).
+the split, it is that shared-family code is tested inside engine directories .
 
 ---
 
-## 5. Load-bearing — do not touch
+
+## 6. Load-bearing — do not touch
 
 Consolidated from all six reviews. Each of these is doing real work that is not obvious from the
 code, and every one has a failure mode that is silent.
@@ -1115,14 +950,14 @@ calcifying. The duplication they expose is the price; D2 and D6 collect most of 
 
 ---
 
-## 6. Coverage gaps that gate the risky work
+## 7. Coverage gaps that gate the risky work
 
 Simplification without coverage is a bet. These are the gaps, in the order they constrain the
 proposals above.
 
 1. **No full-playthrough test for any scene engine.** `tests/tunnelgoons/test_play.py:45` is the only
    start-to-finish test. `breathless` and `twentyfourxx` have no multi-turn test at all.
-   **Gates D6 and P17.**
+   **Gates D3.**
 2. **24XX's hire-then-succession path is untested end to end.** `tests/twentyfourxx/test_world.py:124`
    and `test_tools.py:416` cover the mechanism, but not a hired member's sheet surviving a save
    across `_succession` (`twentyfourxx/engine.py:278`). **Gates D6 specifically.**
@@ -1131,18 +966,18 @@ proposals above.
    `:166-172`); `ui/create.py` (292 lines — the refresh-on-blur dance at `:80`, `_drop_stale`, the
    preview gate at `:135`); `ui/widgets.py` (88 lines — `decision_widget`, **the only way a player
    answers a `PendingDecision`**, heavily tested server-side and untested client-side).
-   Covered only by `qa/`. **Gates D10's trimming half and P16.**
+   Covered only by `qa/`. **Gates D7's trimming half.**
 4. **The real MCP transport** exists only in `qa/s_mcp.py`. `app/mcp.py` is tested for lifespan only
-   (`test_mcp_lifespan.py`, 22 lines). **Gates P2, D12 and D13 — do not trim `s_mcp`.**
+   (`test_mcp_lifespan.py`, 22 lines). **Gates P2, D9 and D10 — do not trim `s_mcp`.**
 5. **`reload_settings` and background tasks.** `tests/ui/test_settings.py:75,83` covers the refusals;
    nothing covers what happens to a background interjection belonging to an evicted session
-   (`runtime.py:440-442`). **Gates P13's `Presenter` extraction** — and see C23, which says the
+   (`runtime.py:440-442`). **Gates P9's `Presenter` extraction** — and see C23, which says the
    current behaviour is not what the comment claims.
 6. **`app/providers.py`** (28 lines) — `claim()`'s no-await invariant (`:9-14`) is exercised only
    indirectly. **Gates any merge of `Illustrator` and `Reader`.**
 7. **`Pack._twist_columns_pair_up`** (`loner3e/worldsmith.py:33-40`) — the only guard that a twist
    column is exactly six rows, and it has no direct test.
-8. **No CI at all.** `.github/` does not exist. **Do P20's CI half before any L-effort move.**
+8. **No CI at all.** `.github/` does not exist. **This is P10, and it should come before any large move.**
 
 ---
 
@@ -1154,7 +989,11 @@ whole-system pass (hot path, vocabulary, layering, big bets).
 
 Every factual claim reproduced here was re-verified against the source before being written down.
 Where a reviewer's number was wrong it was corrected; where two reviewers disagreed, the
-disagreement is preserved as a decision in Section 4 rather than resolved silently.
+disagreement was preserved as a decision rather than resolved silently.
+
+The first draft carried twenty proposals. Ten were dropped on a second pass — the ones whose payoff
+was taste rather than a defect, or whose downside was real. Where the observation behind a dropped
+proposal was still worth knowing it survives in Section 4 or in the inventory's Verdict column.
 
 Claims deliberately **not** carried forward, because verification contradicted them or the evidence
 was too thin to act on, are omitted rather than listed.
