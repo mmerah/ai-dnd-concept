@@ -24,6 +24,8 @@ STARTING_ITEM: Die = 10
 MED_KIT_CLEARS = 2
 STARTING_DICE: tuple[Die, ...] = (10, 8, 6)  # the three rated skills, best first
 SWAP = "swap-"
+# Names the engine's own answer to the loot decision; no tool carries it.
+TAKE_LOOT = "take_loot"
 
 
 class Item(Mutable):
@@ -79,7 +81,7 @@ class SurvivorSheet(Mutable):
         options: list[PendingOption] = []
         if len(self.items) < CARRY:
             take = {**base, "choice": "take"}
-            options.append(PendingOption(id="take", label="Take it", name="loot_check", args=take))
+            options.append(PendingOption(id="take", label="Take it", name=TAKE_LOOT, args=take))
         else:
             for key, carried in self.items.items():
                 swap = {**base, "choice": f"{SWAP}{key}"}
@@ -87,7 +89,7 @@ class SurvivorSheet(Mutable):
                     PendingOption(
                         id=f"{SWAP}{key}",
                         label=f"Swap for {carried.name}",
-                        name="loot_check",
+                        name=TAKE_LOOT,
                         args=swap,
                     )
                 )
@@ -95,7 +97,7 @@ class SurvivorSheet(Mutable):
             med_kit = {**base, "choice": "med-kit"}
             options.append(
                 PendingOption(
-                    id="med-kit", label="Take a med kit instead", name="loot_check", args=med_kit
+                    id="med-kit", label="Take a med kit instead", name=TAKE_LOOT, args=med_kit
                 )
             )
         return tuple(options)

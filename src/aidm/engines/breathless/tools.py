@@ -81,14 +81,15 @@ class LootCheck(Frozen):
         min_length=1,
         description="What is found if the roll finds anything.",
     )
-    granted: Die | None = Field(default=None, description="Leave null. The engine fills it.")
-    choice: str | None = Field(default=None, description="Leave null. The engine fills it.")
 
-    @model_validator(mode="after")
-    def _both_or_neither(self) -> Self:
-        if (self.granted is None) != (self.choice is None):
-            raise ValueError("granted and choice arrive together, or not at all")
-        return self
+
+class TakeLoot(Frozen):
+    """What the player's answer plays. Not a tool: `granted` is a rolled die, so only the
+    engine's own options may carry it, and the master has no way to write one."""
+
+    item: str = Field(min_length=1)
+    granted: Die
+    choice: str = Field(min_length=1)
 
 
 class TestLuck(Frozen):
