@@ -39,9 +39,12 @@ finding. None of them was a defect — only taste.
 
 ## 1. Settled decisions
 
-Three decisions are made. The rest are in Section 5.
+Six are made; the rest are in Section 5.
 
-### D1 — `engines/rooms/` stays a family. **Settled: keep it.**
+The first three came out of the merged review and no
+longer carry a number. The last three are D1, D2 and D3 from Section 5, answered in a walkthrough.
+
+### The `engines/rooms/` family stays. **Settled: keep it.**
 
 `rooms/` is 834 lines with one shipping user (**verified:** the only importer outside `rooms/`
 itself is `tunnelgoons/`), and its only second implementer is the `SixthEngine` fixture in
@@ -64,9 +67,9 @@ What should still be fixed is its asymmetry against `scenes/`, which is a defect
 About 2 hours for all five. Also settled by this: `MapDraft` and `RoomCanon` (both `Dungeon + start`)
 stay separate — the compile-time guarantee that a draft is not a canon is worth the duplicate shape.
 
-### D2 — The four `ChangeWorld` wrappers. **Settled: a generic in `engines/base.py`.** Now **P5**.
+### The four `ChangeWorld` wrappers. **Settled: one generic in `engines/base.py`.** Now **P5**.
 
-### D3 — One labelled-value vocabulary. **Settled: the full rename.**
+### One labelled-value vocabulary. **Settled: the full rename.**
 
 Six spellings of "a thing with a name and a line" collapse to one law: **`id` / `label` / `detail`**,
 with `icon_id` as the single extension. The work, in one commit, when nothing else is in flight:
@@ -89,6 +92,70 @@ and read the diff.
 
 **Not covered by this decision, and still open:** whether the same tidying applies to `draft` and
 `prompt`, which mean three and five things respectively (C5). Left alone.
+
+### D1 — Replace the `operation` string dispatch? **Settled: no, option A — D3 answers it.**
+
+The hiring mixin (D3) removes 5 of the 11 hand-written comparisons: `seam.py:191`, `seam.py:197`,
+and the three `!= HIRE` guards at `breathless:197`, `tunnelgoons:156`, `twentyfourxx:306`. It also
+removes the three hand-synced `operations` lines.
+
+What is left is six sites, all inside the two family bases, and only four of them are `if`s:
+`scenes/engine.py:207,209,331` and `rooms/engine.py:177`. The other two (`scenes:109`, `rooms:74`)
+are membership tests against the declared list. Replacing four `if`s across two files with an
+`Operation` value type would be ceremony. Leave it.
+
+**Still worth doing, 2 minutes:** `rooms/engine.py:62` says `operations = (MORE_MAP.id,)` while
+`:177` says `request.operation == EXTEND`. `MORE_MAP.id` **is** `EXTEND` (`rooms/engine.py:48`) —
+one value, two spellings, one file. Make line 62 say `(EXTEND,)`.
+
+### D2 — Delete `Fact.kind`? **Settled: yes, option A.**
+
+50 label values are written; **exactly one is read** by the running game
+(`loner3e/engine.py:205`, `fact.kind == "conflict_lost"`). `core/facts.py:10` defines
+`DICE = "dice_rolled"`, which looks like a filter but is never read as one — the dice tray selects
+facts by *having dice* (`ui/dice.py:36`), not by kind.
+
+The work:
+1. Change `_strike` (`loner3e/engine.py:251`) to return `(facts, ended: bool)`. It already knows at
+   `:259` (`if hit.luck.current != 0`). The caller at `:205` reads the flag instead of the label.
+2. Remove `kind` from `Fact` (`core/facts.py:35`) and the `kind` argument from `Thing.fact()`
+   (`base.py:73`) and its ~60 call sites.
+3. Delete `DICE` (`core/facts.py:10`) — write-only once `kind` is gone.
+4. Drop the ~80 test assertions that check `kind` and nothing else. CLAUDE.md calls those wiring.
+5. Regenerate the four turn goldens.
+
+**Lost:** a readable label in save files. `trace` already says what happened, in better English.
+
+### D3 — How is hiring factored? **Settled: a mixin, option B.**
+
+The three hiring engines (breathless, tunnelgoons, twentyfourxx) opt in; loner3e does not, and stops
+carrying five pieces it never uses: `Engine.hire` (`seam.py:180`), the HIRE branch of
+`Engine.unwritten` (`:191`), `Engine.check_request` (`:195`), `World.require_hireable`
+(`base.py:144`, a method whose whole body is a refusal with its argument unused), and
+`World.sign_on` (`base.py:147`).
+
+The mixin also absorbs the six-step `advance` block written three times
+(`breathless/engine.py:194`, `tunnelgoons/engine.py:153`, `twentyfourxx/engine.py:303`), leaving each
+engine only its prompt text and its sheet shape — steps 3 and 5, the two that are genuinely
+per-ruleset.
+
+**Scope and naming.** Hiring is *not* the party. `World.join`/`part` (`base.py:128,137`) and the
+`JoinParty`/`LeaveParty` verbs are used by **all four** engines, loner3e included
+(`loner3e/tools.py:9,59`). What the three share is narrower: bringing in someone whose **sheet must
+be authored by the worldsmith**. So the mixin must not be called `Party` — that word already means
+something every engine has. `Hiring` is precise. A `Crew` framing works only if it stays about
+authored companions and does not annex the party verbs.
+
+The mixin should also own its own operation, so `operations = (*SceneEngine.operations, HIRE)` —
+repeated by hand in three engines (`breathless:73`, `tunnelgoons:74`, `twentyfourxx:76`) — is
+contributed by the mixin instead.
+
+**Do a short spike first** to confirm a mixin composes cleanly through
+`Engine[P, G]` -> `SceneEngine[C, P, G, K]` -> concrete. If it does not, fall back to option A, a
+template method on the seam.
+
+**Blocked on coverage.** Breathless and 24XX have no multi-turn test at all (Section 7 §1), and
+24XX's hire-then-succession path has no end-to-end test (§2). Write the §2 test first.
 
 ---
 
@@ -702,67 +769,15 @@ Twelve remain. Numbering restarts — D1-D3 are settled in Section 1. Options ar
 
 ### D1 — Replace `Generation.operation` string dispatch?
 
-The slug is compared by `==`/`in` at nine sites: `seam.py:191,197`, `scenes/engine.py:109,207,209,331`,
-`rooms/engine.py:74,177`, plus `!= HIRE` in three engines. The `operations` tuple (`seam.py:49`) is a
-parallel declaration kept in sync by hand (`(*Base.operations, HIRE)` in three engines).
-
-- **(a) `Operation` value objects.** `class Operation(Frozen): id: Slug; unwritten: Fact`. Each
-  family declares its tuple; `Engine.unwritten` becomes a lookup instead of an `if`-chain with a
-  `super()` fall-through; `validate` becomes a membership test. But `Generation.operation` must stay
-  a `Slug` on disk, so you gain an indirection at the boundary.
-- **(b) Do D6 first, then re-measure.** Folding the hire round-trip into the seam removes three
-  `!= HIRE` comparisons and lets `check_request` merge into the operations check, leaving five sites
-  inside the two family bases.
-- **(c) Leave it.** Three operations total (`hire`, `departure`/`complication`, `extend`); an enum
-  would add ceremony without removing a branch.
-
-Recommend **(b)**. With three operations, (a) risks tripping "do not build for future needs". If a
-fourth operation appears, do (a) then.
+**Settled: no, leave it (option A).** See Section 1.
 
 ### D2 — Delete `Fact.kind`?
 
-**Verified:** 50 distinct `kind` literals are written across all four engines and both families.
-Production reads the field in **exactly one place**: `loner3e/engine.py:205`,
-`if not any(fact.kind == "conflict_lost" for fact in exchange)`. (The other `.kind` hits are
-`PendingDecision.kind` and `ChangeTags.kind` — different fields.)
-
-- **(a) Delete it.** Replace the one read by having `_strike` (`loner3e/engine.py:251`) return
-  `(facts, ended: bool)` — it already knows at `:259` that `hit.luck.current == 0`. Removes a field,
-  an argument from `Thing.fact()` and its ~60 call sites, 50 invented string constants, and ~80 test
-  assertions that check `kind` and nothing else — which CLAUDE.md's own test rule calls "wiring".
-- **(b) Keep it.** It is a human-readable annotation in the save JSON, visible in
-  `tests/core/fixtures/turn/*.json`. And `IDEAS.md:9` contemplates a "state keeper" role that might
-  filter facts by kind.
-- **(c) Keep it, drop the tests that assert only on it.** Half the win, none of the churn.
-
-Recommend **(a) or (c)**, not (b). The `IDEAS.md:9` argument is precisely the "build for future
-needs" the rules forbid, and the field can be re-added in one commit when a second reader appears —
-but `trace` already carries the same information in prose, so (b) is defensible if the save-file
-readability is genuinely used. **(c) is the low-risk middle**: it removes the wiring tests
-immediately and leaves the delete for later. Four turn goldens regenerate under (a).
+**Settled: yes, delete it (option A).** See Section 1.
 
 ### D3 — How is the hire feature factored?
 
-Three engines hire (breathless, tunnelgoons, 24XX); loner3e does not. The machinery is spread over
-four files: `Engine.hire` (`seam.py:180`), `Engine.unwritten`'s HIRE branch (`:189`),
-`Engine.check_request` (`:195`), `World.require_hireable` (`base.py:144` — a base method that
-unconditionally raises, with its parameter unused), `World.sign_on` (`base.py:147`), plus
-`HIRE`/`HIRE_TOOL`/`SIGNED_ON`/`Hire`/`hire_target` in `base.py`. And the same six-step `advance`
-branch is written three times: `breathless/engine.py:196-224`, `tunnelgoons/engine.py:153-172`,
-`twentyfourxx/engine.py:303-326`.
-
-- **(a) A template method on the seam.** `Engine.advance` handles the HIRE arm and delegates to a new
-  `write_sheet(draft, member, terms, worldsmith) -> str` hook; the families implement a `grow` hook
-  for their own operations. Each hiring engine keeps only its prompt and sheet construction.
-  Loner3e needs a default that raises — the same optional-method smell, moved.
-- **(b) A `Hiring` mixin** the three hiring engines opt into, removing the machinery from `Engine`
-  entirely. ISP-correct: loner3e stops carrying four methods it never uses. But it adds a third
-  dimension to an already-generic hierarchy (`Engine[P,G]` → `SceneEngine[C,P,G,K]` → concrete).
-- **(c) Leave it.**
-
-Recommend **(b) if the mixin composes cleanly with `SceneEngine`/`RoomEngine`; otherwise (a)**.
-**Do neither until the coverage gap in Section 6 §2 is closed** — 24XX's hire-then-succession path
-has no end-to-end test, and both options touch it.
+**Settled: a `Hiring` mixin (option B).** See Section 1.
 
 ### D4 — Should `config.py` move under `app/`?
 
