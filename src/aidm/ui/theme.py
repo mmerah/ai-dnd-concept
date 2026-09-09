@@ -177,22 +177,34 @@ body, body.body--dark {
 
 .game-transcript { max-width: 46rem; margin: 0 auto; }
 .game-scene {
-  --game-scene-height: calc(24vh - 1rem);
+  --game-scene-height: clamp(9rem, 26vh, 16rem);
   position: relative; overflow: hidden; flex: none;
-  min-height: var(--game-scene-height);
+  height: var(--game-scene-height);
   border-bottom: 1px solid var(--game-border);
   background: var(--game-surface);
 }
-.game-scene-art { position: absolute; inset: 0; height: 100%; width: 100% }
-.game-scene:has(.game-scene-art):after {
+/* The frame again, blurred past reading, so the letterboxed art sits on its own colour. */
+.game-scene-wash {
+  position: absolute; inset: 0; height: 100%; width: 100%;
+  filter: blur(28px) saturate(1.3); transform: scale(1.15); opacity: .55;
+}
+.game-scene:has(.game-scene-wash):after {
   content: ''; position: absolute; inset: 0;
-  background: linear-gradient(100deg, var(--game-bg) 14%, #000a 55%, #0006);
+  background: linear-gradient(100deg, var(--game-bg) 16%, #000a 55%, #0004);
+}
+.game-scene-body { position: relative; z-index: 1; height: 100% }
+/* Sized off the band, not `aspect-ratio`: a QImg is a block, so flex sizes it from content. */
+.game-scene-art {
+  flex: none; margin: .75rem .9rem;
+  height: calc(100% - 1.5rem);
+  width: calc((var(--game-scene-height) - 1.5rem) * 16 / 9); max-width: 55%;
+  border: 1px solid var(--game-border); border-radius: var(--game-radius);
+  box-shadow: 0 6px 22px #0006;
 }
 .game-scene-text {
-  position: relative; z-index: 1;
-  max-height: var(--game-scene-height); overflow-y: auto;
+  flex: 1 1 auto; min-width: 0;
+  height: 100%; overflow-y: auto;
   padding: 1.1rem 1.4rem;
-  max-width: 44rem; min-width: 0;
 }
 .game-scene-title { color: var(--game-text); line-height: 1.1 }
 .game-message .q-message-name { color: var(--game-muted); font-size: .75rem; font-weight: 600 }
@@ -265,6 +277,7 @@ body, body.body--dark {
 @media (max-width: 1023.98px) { .game-rail { display: none } }
 @media (max-width: 599.98px) {
   .q-header { gap: .25rem }
+  .game-scene-art { display: none }
   .game-scene-text { padding: .7rem .9rem }
   .game-scene-title { font-size: 1.25rem }
   .game-message .q-message-text { padding: .65rem .75rem }

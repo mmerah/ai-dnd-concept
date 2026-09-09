@@ -217,13 +217,18 @@ class GamePage:
     def scene_header(self) -> None:
         session = self.session
         scene = session.engine.narrator_view(session.state)
+        art = session.scene_art()
         with ui.element("div").classes("game-scene w-full"):
-            if (art := session.scene_art()) is not None:
-                ui.image(art).classes("game-scene-art")
-            with ui.column().classes("game-scene-text").style("gap: 0.15rem"):
-                ui.label("current scene").classes("text-xs game-eyebrow")
-                ui.label(scene.title).classes("text-h4 font-bold game-scene-title")
-                ui.label(scene.situation).classes("text-sm opacity-80")
+            if art is not None:
+                ui.image(art).classes("game-scene-wash")
+            with ui.row().classes("game-scene-body w-full no-wrap").style("gap: 0"):
+                with ui.column().classes("game-scene-text").style("gap: 0.15rem"):
+                    ui.label("current scene").classes("text-xs game-eyebrow")
+                    ui.label(scene.title).classes("text-h4 font-bold game-scene-title")
+                    ui.label(scene.situation).classes("text-sm opacity-80")
+                if art is not None:
+                    # Whole frame: a drawn scene puts what matters wherever it likes.
+                    ui.image(art).props("fit=contain").classes("game-scene-art")
 
     @ui.refreshable_method
     def chat(self) -> None:
