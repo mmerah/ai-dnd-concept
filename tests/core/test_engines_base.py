@@ -24,16 +24,14 @@ def _state() -> Loner3eGame:
     return state
 
 
-def test_here_panel_puts_the_player_first_with_icon_ids_on_every_row() -> None:
-    player = Subject(id=EntityId("player"), name="Sable", brief="Wary and quick.")
+def test_here_panel_leaves_out_the_player_and_carries_an_icon_id_per_row() -> None:
     other = Subject(id=EntityId("kestrel"), name="Kestrel", brief="Runs the dock.")
 
-    panel = here_panel(player, (other,))
+    panel = here_panel((other,))
 
-    assert panel.title == "Here"
-    assert [row.label for row in panel.rows] == ["Sable (you)", "Kestrel"]
-    assert panel.rows[0].icon_id == player.id
-    assert panel.rows[1].icon_id == other.id
+    assert panel.title == "Also here"
+    assert [row.label for row in panel.rows] == ["Kestrel"]
+    assert panel.rows[0].icon_id == other.id
 
 
 def test_party_section_is_empty_for_nobody_and_party_panel_orders_entity_before_sheet() -> None:

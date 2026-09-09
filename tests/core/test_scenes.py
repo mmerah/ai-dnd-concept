@@ -218,7 +218,7 @@ def test_a_party_member_prints_under_the_party_and_not_here() -> None:
 
     panels = engine.player_view(draft).panels
     party_panel = next(panel for panel in panels if panel.title == "Party")
-    here_panel = next(panel for panel in panels if panel.title == "Here")
+    here_panel = next(panel for panel in panels if panel.title == "Also here")
     assert MARA in [row.icon_id for row in party_panel.rows]
     assert MARA not in [row.icon_id for row in here_panel.rows]
 

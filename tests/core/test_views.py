@@ -163,7 +163,7 @@ def test_a_proposal_is_stripped_so_accept_plays_what_the_composer_would() -> Non
     assert Interjection(lines=(), proposal="  ").proposal == ""
 
 
-def test_the_player_view_panels_carry_icon_ids_for_who_is_here() -> None:
+def test_the_player_view_panels_carry_icon_ids_for_who_else_is_here() -> None:
     engine, state = initialized()
 
     view = engine.player_view(with_entity(state, SECRET))
@@ -171,12 +171,12 @@ def test_the_player_view_panels_carry_icon_ids_for_who_is_here() -> None:
     assert tuple(panel.title for panel in view.panels) == (
         "Character",
         "This scene",
-        "Here",
+        "Also here",
         "Trail",
     )
-    here = next(panel for panel in view.panels if panel.title == "Here")
+    here = next(panel for panel in view.panels if panel.title == "Also here")
     icon_ids = {row.icon_id for row in here.rows}
-    assert PLAYER_ID in icon_ids
+    assert PLAYER_ID not in icon_ids
     assert EntityId("mara") in icon_ids
     assert all(row.label != "The Secret" for panel in view.panels for row in panel.rows)
 

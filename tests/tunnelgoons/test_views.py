@@ -21,17 +21,17 @@ def test_speakers_exclude_a_known_but_dead_npc() -> None:
     assert MIRA not in view.speakers
 
 
-def test_player_view_has_the_five_panels_in_order_and_here_carries_icons() -> None:
+def test_player_view_has_the_five_panels_in_order_and_here_leaves_out_the_player() -> None:
     view = ENGINE.player_view(small_world())
     assert [panel.title for panel in view.panels] == [
         "Character",
-        "Here",
+        "Also here",
         "Carrying",
         "Ways out",
         "Trail",
     ]
-    here = next(panel for panel in view.panels if panel.title == "Here")
-    assert here.rows[0].icon_id == PLAYER_ID
+    here = next(panel for panel in view.panels if panel.title == "Also here")
+    assert all(row.icon_id != PLAYER_ID for row in here.rows)
 
 
 def test_master_sections_names_the_hidden_npc_and_the_locked_way() -> None:

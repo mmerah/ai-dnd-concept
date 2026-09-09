@@ -127,12 +127,9 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
                 character_panel(world.sheet_rows()),
                 *party_panel(world.members()),
                 here_panel(
-                    me,
-                    (
-                        entity.subject()
-                        for entity in world.at(world.current.id)
-                        if entity.known and entity.id not in world.party
-                    ),
+                    entity.subject()
+                    for entity in world.at(world.current.id)
+                    if entity.known and entity.id not in world.party
                 ),
                 Panel(
                     title="Carrying",
