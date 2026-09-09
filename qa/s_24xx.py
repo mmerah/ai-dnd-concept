@@ -86,8 +86,9 @@ def body(s: Session) -> None:
     s.shot(page, "new-lead")
     s.check("Vessa Rune leads now" in " ".join(cards(page)), f"lead card: {cards(page)[-3:]}")
     side = clean(drawer_text(page))
-    s.check("Vessa Rune (you)" in side, f"the new lead is not the player on the page: {side[:400]}")
-    s.check("Medic" in side.split("Here")[0], "the sheet is not the new lead's")
+    sheet = side.split("SHIP")[0]  # the character card, before the panel that follows it
+    s.check("Vessa Rune" in sheet, f"the new lead does not head the drawer: {side[:400]}")
+    s.check("Medic" in sheet, "the sheet is not the new lead's")
     submit(page, "I take stock.")
     wait_idle(page)
     s.check(

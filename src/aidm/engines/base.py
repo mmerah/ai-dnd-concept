@@ -229,13 +229,12 @@ def character_panel(rows: Rows) -> Panel:
     )
 
 
-def here_panel(player: Subject, others: Iterable[Subject]) -> Panel:
-    """Free: two families build it from subjects, not from a world."""
-    rows = (
-        PanelRow(label=f"{player.name} (you)", detail=player.brief, icon_id=player.id),
-        *(PanelRow(label=other.name, detail=other.brief, icon_id=other.id) for other in others),
+def here_panel(others: Iterable[Subject]) -> Panel:
+    """Who else: the player already has the sheet above, so a row for them would say it twice."""
+    rows = tuple(
+        PanelRow(label=other.name, detail=other.brief, icon_id=other.id) for other in others
     )
-    return Panel(title="Here", rows=rows)
+    return Panel(title="Also here", rows=rows)
 
 
 def party_section(members: Sequence[Thing]) -> Sections:

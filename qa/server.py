@@ -18,9 +18,11 @@ from nicegui import app, ui
 
 sys.path.insert(0, str(Path(__file__).parent))
 from agents import ScriptedAgents, Transport  # noqa: E402
+from art import PlaceholderIllustrator  # noqa: E402
 
+from aidm.app import runtime as runtime_module  # noqa: E402
 from aidm.app.runtime import Runtime  # noqa: E402
-from aidm.config import Settings  # noqa: E402
+from aidm.config import MediaConfig, Settings  # noqa: E402
 from aidm.ui.app import _register_pages  # noqa: E402  # pyright: ignore[reportPrivateUsage]
 
 REPOSITORY_ROOT = Path(__file__).parents[1]
@@ -44,6 +46,7 @@ def main() -> None:
     parser.add_argument("--transport", choices=("direct", "mcp"), default="direct")
     parser.add_argument("--delay", type=float, default=0.3)
     parser.add_argument("--fresh", action="store_true", help="wipe the work directory first")
+    parser.add_argument("--art", action="store_true", help="draw placeholder scene art offline")
     parsed = parser.parse_args()
     work: Path = parsed.work.resolve()
     if parsed.fresh and work.exists():
@@ -55,11 +58,15 @@ def main() -> None:
     (work / "saves").mkdir(exist_ok=True)
     os.chdir(work)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    if parsed.art:
+        _draw_offline()
     settings = Settings(
         saves_dir=work / "saves",
         scenarios_dir=work / "scenarios",
         characters_dir=work / "characters",
         server_port=parsed.port,
+        # Only under `--art`: the default provider is what the settings scenario checks against.
+        media=MediaConfig(enabled=True, provider="local") if parsed.art else MediaConfig(),
     )
     transport: Transport = parsed.transport
     agents = ScriptedAgents(port=parsed.port, transport=transport, delay=parsed.delay)
@@ -101,6 +108,28 @@ def main() -> None:
         show=False,
         show_welcome_message=False,
     )
+
+
+def _draw_offline() -> None:
+    """The real illustrator, with the provider call swapped for a gradient."""
+
+    def open_placeholder(
+        settings: Settings,
+        store: object,
+        slug: str,
+        *,
+        style: str,
+        icon_dirs: tuple[Path, ...],
+    ) -> PlaceholderIllustrator:
+        return PlaceholderIllustrator(
+            config=settings.media,
+            provider=settings.providers.for_name(settings.media.provider),
+            saves=store.media_dir(slug),  # pyright: ignore[reportAttributeAccessIssue]
+            icon_dirs=icon_dirs,
+            style=style,
+        )
+
+    runtime_module.open_illustrator = open_placeholder  # pyright: ignore[reportAttributeAccessIssue]
 
 
 if __name__ in {"__main__", "__mp_main__"}:

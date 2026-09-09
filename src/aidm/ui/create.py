@@ -39,7 +39,7 @@ class CharacterForm:
                 self.brief = (
                     ui.input(label="Brief", placeholder="Who are they, in one sentence?")
                     .classes("w-full")
-                    .props("outlined")
+                    .props("outlined stack-label")
                 )
                 self.steps()
                 self.preview()
@@ -77,7 +77,7 @@ class CharacterForm:
                 on_change=partial(self.write, step.id),
             )
             # Rebuilding the whole form on blur would destroy the field Tab just moved to.
-            typed.classes("w-full").props("outlined").on("blur", self.preview.refresh)
+            typed.classes("w-full").props("outlined stack-label").on("blur", self.preview.refresh)
             return
         chosen = ui.select(
             options={
@@ -194,7 +194,7 @@ class ScenarioForm:
         self.premise = (
             ui.textarea(label="Premise", placeholder="What is this adventure about?")
             .classes("w-full")
-            .props("outlined autogrow")
+            .props("outlined autogrow stack-label")
         )
         self.scope = (
             ui.textarea(
@@ -202,17 +202,17 @@ class ScenarioForm:
                 placeholder="How far does this go, and does it tend toward an ending?",
             )
             .classes("w-full")
-            .props("outlined autogrow")
+            .props("outlined autogrow stack-label")
         )
         self.style = (
             ui.input(label="Art style", placeholder=f"Leave empty for: {engine.art_style}")
             .classes("w-full")
-            .props("outlined")
+            .props("outlined stack-label")
         )
         self.voice = (
             ui.input(label="Narrator voice", placeholder="Leave empty for the default voice")
             .classes("w-full")
-            .props("outlined")
+            .props("outlined stack-label")
         )
         ui.label("Or upload the adventure itself.").classes("text-sm opacity-70 q-mt-md")
         (

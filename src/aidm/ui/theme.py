@@ -21,6 +21,7 @@ NEUTRAL_PALETTE: Tokens = {
     "game-success": "#85c6a3",
     "game-danger": "#f09696",
     "game-radius": "14px",
+    "game-measure": "46rem",
     "game-heading": "Georgia, 'Times New Roman', serif",
 }
 ENGINE_PALETTES: dict[EngineId, Tokens] = {
@@ -91,8 +92,12 @@ body, body.body--dark {
 .q-page-container { height: 100dvh; box-sizing: border-box; display: flex; flex-direction: column }
 .q-page { flex: 1 1 0; min-height: 0 !important; display: flex; flex-direction: column }
 .nicegui-content { flex: 1 1 0; min-height: 0 }
-.q-footer { padding-bottom: env(safe-area-inset-bottom) }
-.game-footer { background: var(--game-bg); border-top: 1px solid var(--game-border) }
+.game-foot {
+  flex: none; gap: .5rem;
+  max-height: 50dvh; overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--game-bg); border-top: 1px solid var(--game-border);
+}
 .game-drawer { background: var(--game-surface); border-color: var(--game-border) }
 .game-drawer .q-tab-panels { background: transparent }
 .q-tab { color: var(--game-muted); text-transform: none; letter-spacing: .03em }
@@ -175,14 +180,15 @@ body, body.body--dark {
 .q-uploader { background: var(--game-surface-raised); border: 1px solid var(--game-border) }
 .q-uploader__header { background: var(--game-surface-raised); color: var(--game-text) }
 
-.game-transcript { max-width: 46rem; margin: 0 auto; }
+/* One measure down the page: the scene title, every bubble and the composer share a left edge. */
+.game-measure, .game-transcript { max-width: var(--game-measure); margin-inline: auto }
 .game-scene {
   --game-scene-height: clamp(9rem, 26vh, 16rem);
   position: relative; overflow: hidden; flex: none;
-  height: var(--game-scene-height);
   border-bottom: 1px solid var(--game-border);
   background: var(--game-surface);
 }
+.game-scene:has(.game-scene-art) { height: var(--game-scene-height) }
 /* The frame again, blurred past reading, so the letterboxed art sits on its own colour. */
 .game-scene-wash {
   position: absolute; inset: 0; height: 100%; width: 100%;
@@ -190,23 +196,27 @@ body, body.body--dark {
 }
 .game-scene:has(.game-scene-wash):after {
   content: ''; position: absolute; inset: 0;
-  background: linear-gradient(100deg, var(--game-bg) 16%, #000a 55%, #0004);
+  background: linear-gradient(100deg, var(--game-bg) 22%, #000a 62%, transparent);
 }
 .game-scene-body { position: relative; z-index: 1; height: 100% }
-/* Sized off the band, not `aspect-ratio`: a QImg is a block, so flex sizes it from content. */
+/* Its own 16:9 box, so a column too narrow for the full band shortens the art, never crops it. */
 .game-scene-art {
-  flex: none; margin: .75rem .9rem;
-  height: calc(100% - 1.5rem);
-  width: calc((var(--game-scene-height) - 1.5rem) * 16 / 9); max-width: 55%;
-  border: 1px solid var(--game-border); border-radius: var(--game-radius);
-  box-shadow: 0 6px 22px #0006;
+  flex: none; align-self: center;
+  width: min(55%, calc(var(--game-scene-height) * 16 / 9)); aspect-ratio: 16 / 9;
+  /* Bled to the edges and dissolved on the left: the whole 16:9 frame, cropped nowhere. */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 24%);
+  mask-image: linear-gradient(to right, transparent, #000 24%);
 }
+/* The gutter the centred transcript leaves, so the title starts where the bubbles do. */
 .game-scene-text {
   flex: 1 1 auto; min-width: 0;
   height: 100%; overflow-y: auto;
-  padding: 1.1rem 1.4rem;
+  padding: 1.1rem 1rem;
+  padding-left: calc(max(0px, (100% - var(--game-measure)) / 2) + 1rem);
 }
 .game-scene-title { color: var(--game-text); line-height: 1.1 }
+/* No side padding: an avatar starts on the measure's edge, where the scene title starts. */
+.game-message { padding-inline: 0 }
 .game-message .q-message-name { color: var(--game-muted); font-size: .75rem; font-weight: 600 }
 .game-message .q-message-text {
   background: var(--game-surface-raised);
@@ -229,6 +239,9 @@ body, body.body--dark {
 .game-avatar-dm { color: var(--game-accent); border-color: var(--game-accent) }
 
 .game-card { padding: .6rem .9rem; margin: .35rem 0 }
+/* An expansion brings its own padding, so the card around it only lends surface and edge. */
+.q-expansion-item.game-card { padding: 0; overflow: hidden }
+.q-expansion-item.game-card .q-item { min-height: 2.75rem }
 .game-portrait .q-avatar { font-size: 64px !important }  /* beats the inline `size` */
 .game-decision {
   border-color: var(--game-accent);
@@ -277,8 +290,16 @@ body, body.body--dark {
 @media (max-width: 1023.98px) { .game-rail { display: none } }
 @media (max-width: 599.98px) {
   .q-header { gap: .25rem }
-  .game-scene-art { display: none }
-  .game-scene-text { padding: .7rem .9rem }
+  /* No room beside the text: the frame goes full width on top and fades into the words below. */
+  .game-scene:has(.game-scene-art) { height: auto }
+  .game-scene-body { flex-direction: column-reverse }
+  .game-scene-art {
+    /* Capped for a short or landscape phone, where a full-width 16:9 would fill the screen. */
+    width: 100%; max-width: none; height: auto; aspect-ratio: 16 / 9; max-height: 30dvh;
+    -webkit-mask-image: linear-gradient(to bottom, #000 68%, transparent);
+    mask-image: linear-gradient(to bottom, #000 68%, transparent);
+  }
+  .game-scene-text { height: auto; padding: .2rem .9rem .9rem }
   .game-scene-title { font-size: 1.25rem }
   .game-message .q-message-text { padding: .65rem .75rem }
 }

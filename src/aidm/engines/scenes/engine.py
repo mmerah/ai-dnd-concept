@@ -162,7 +162,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
                 *self.panels(state),
                 *world.scene_panel(),
                 *party_panel(world.members()),
-                here_panel(me, (other.subject() for other in world.others())),
+                here_panel(other.subject() for other in world.others()),
                 trail_panel(run.title for run in world.runs),
             ),
             prompt=state.pending,

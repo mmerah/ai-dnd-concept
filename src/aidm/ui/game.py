@@ -50,7 +50,10 @@ _DICTATION_FAILURES = {
 SCENE_TAB = "scene"
 JOURNAL_TAB = "journal"
 # Not the header's `menu_book`: two buttons with one icon make every icon locator ambiguous.
-RAIL: tuple[tuple[str, str], ...] = ((SCENE_TAB, "map"), (JOURNAL_TAB, "history_edu"))
+RAIL: tuple[tuple[str, str, str], ...] = (
+    (SCENE_TAB, "map", "Scene"),
+    (JOURNAL_TAB, "history_edu", "Journal"),
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -127,14 +130,15 @@ class GamePage:
             self.nav_rail()
             with ui.column().classes("h-full flex-grow").style("gap: 0; min-width: 0"):
                 self.scene_header()
-                with ui.scroll_area().classes(
-                    "w-full flex-grow game-transcript q-pa-md"
-                ) as transcript:
+                # No padding class: NiceGUI already pads the scroll content, and twice would
+                # push every bubble off the measure the scene title and composer sit on.
+                with ui.scroll_area().classes("w-full flex-grow game-transcript") as transcript:
                     self.chat()
                     self.live_turn()
                 self.transcript = transcript
                 transcript.on_scroll(self.scrolled)
                 ui.timer(0.5, lambda: transcript.scroll_to(percent=1.0), once=True)
+                self.foot()
 
         self.drawer = (
             ui.right_drawer(value=None, bordered=True).props("width=420").classes("game-drawer")
@@ -144,8 +148,8 @@ class GamePage:
                 with ui.tabs(on_change=lambda e: self.mark_rail(str(e.value))).classes(
                     "flex-grow"
                 ) as self.tabs:
-                    ui.tab(SCENE_TAB)
-                    ui.tab(JOURNAL_TAB)
+                    ui.tab(SCENE_TAB, label="Scene")
+                    ui.tab(JOURNAL_TAB, label="Journal")
                 # Below 600px the drawer covers the header, so it carries its own way out.
                 ui.button(icon="close", on_click=self.drawer.hide).props("flat round").classes(
                     "lt-sm"
@@ -155,18 +159,6 @@ class GamePage:
                     self.sidebar()
                 with ui.tab_panel(JOURNAL_TAB), ui.scroll_area().classes("w-full h-full"):
                     self.journal()
-
-        with ui.footer().classes("game-footer").style("max-height: 50dvh; overflow-y: auto"):
-            with (
-                ui.column().classes("w-full").style("max-width: 46rem; margin: 0 auto; gap: 0.5rem")
-            ):
-                self.new_activity = ui.button(
-                    "New activity", icon="arrow_downward", on_click=self.catch_up
-                ).props("no-caps dense")
-                self.new_activity.set_visibility(False)
-                self.decision_panel()
-                self.way_on_panel()
-                self.composer()
 
         with ui.dialog() as self.restart_dialog, ui.card():
             self.restart_label = ui.label()
@@ -195,11 +187,25 @@ class GamePage:
         self.sidebar.refresh()
         self.journal.refresh()
 
+    def foot(self) -> None:
+        """In the column, not `ui.footer`: a page-wide footer ignores the rail and the drawer."""
+        with (
+            ui.column().classes("w-full game-foot"),
+            ui.column().classes("w-full game-measure q-px-md q-py-sm"),
+        ):
+            self.new_activity = ui.button(
+                "New activity", icon="arrow_downward", on_click=self.catch_up
+            ).props("no-caps dense")
+            self.new_activity.set_visibility(False)
+            self.decision_panel()
+            self.way_on_panel()
+            self.composer()
+
     def nav_rail(self) -> None:
         with ui.column().classes("game-rail h-full items-center q-pt-md").style("gap: 0.4rem"):
-            for name, icon in RAIL:
+            for name, icon, label in RAIL:
                 self.rail[name] = (
-                    ui.button(name, icon=icon, on_click=partial(self.show_tab, name))
+                    ui.button(label, icon=icon, on_click=partial(self.show_tab, name))
                     .props("flat no-caps")
                     .classes("game-rail-btn")
                 )
@@ -227,7 +233,8 @@ class GamePage:
                     ui.label(scene.title).classes("text-h4 font-bold game-scene-title")
                     ui.label(scene.situation).classes("text-sm opacity-80")
                 if art is not None:
-                    # Whole frame: a drawn scene puts what matters wherever it likes.
+                    # Whole frame, bled to the edges: a drawn scene puts what matters anywhere,
+                    # so it is faded into the header rather than cropped to fit a band.
                     ui.image(art).props("fit=contain").classes("game-scene-art")
 
     @ui.refreshable_method
@@ -337,11 +344,14 @@ class GamePage:
         view = session.player_view()
         player = view.player
         with ui.column().classes("w-full").style("gap: 0.75rem"):
-            with ui.column().classes("game-card game-portrait w-full"):
-                entity_row(session.icon(player.id), player.name, player.brief)
-            for panel in view.panels:
-                with ui.column().classes("game-card w-full"):
+            for index, panel in enumerate(view.panels):
+                # The sheet leads in both engine families, so it carries the portrait: one card
+                # for one character, rather than a name and a brief said twice down the drawer.
+                sheet = index == 0
+                with ui.column().classes("game-card w-full" + (" game-portrait" if sheet else "")):
                     heading(panel.title, tight=True)
+                    if sheet:
+                        entity_row(session.icon(player.id), player.name, player.brief)
                     if not panel.rows:
                         ui.label("nothing").classes("text-sm opacity-60 mt-2")
                     for row in panel.rows:
@@ -358,7 +368,7 @@ class GamePage:
         heading("Chronicle")
         played = session.engine.history(session.state)
         for number, exchange in reversed(list(enumerate(played, start=1))):
-            with ui.expansion(f"turn {number}: {exchange.prompt}").classes("w-full"):
+            with ui.expansion(f"turn {number}: {exchange.prompt}").classes("w-full game-card"):
                 # A speaker is named, because a bare quote reads as narration without bubbles.
                 for line in exchange.lines:
                     if line.speaker_id is None:

@@ -133,7 +133,12 @@ def _widget(label: str, field: FieldInfo, value: object) -> Box:
     if bare is SecretStr:
         # Never read a stored key back into the DOM; blank means "leave the stored key alone".
         placeholder = "set — type to replace" if value else "not set"
-        return ui.input(label, password=True, placeholder=placeholder).classes("w-full")
+        # `stack-label`: a floating label would sit on top of the placeholder in an empty box.
+        return (
+            ui.input(label, password=True, placeholder=placeholder)
+            .classes("w-full")
+            .props("stack-label")
+        )
     if bare is bool:
         return ui.switch(label, value=value is True).classes("w-full")
     if get_origin(bare) is Literal:

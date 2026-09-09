@@ -219,7 +219,7 @@ def test_a_party_member_is_absent_from_place_lines_while_their_items_stay(
 
     panels = engine.player_view(state).panels
     party_rows = next(panel for panel in panels if panel.title == "Party").rows
-    here_rows = next(panel for panel in panels if panel.title == "Here").rows
+    here_rows = next(panel for panel in panels if panel.title == "Also here").rows
 
     assert any(row.icon_id == WARDEN for row in party_rows)
     assert all(row.icon_id != WARDEN for row in here_rows)

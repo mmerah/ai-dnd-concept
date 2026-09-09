@@ -139,10 +139,7 @@ def test_a_fifth_scene_engine_begins_a_playable_game(tmp_path: Path) -> None:
     assert "Call `next_scene` with `pursuit`" in engine.instructions
     assert engine.narrator_view(state).title == "The Taproom"
     assert engine.master_sections(state) == (("SCENE", "The Taproom"),)
-    assert [row.label for row in engine.player_view(state).panels[-2].rows] == [
-        "Wren (you)",
-        "Keeper",
-    ]
+    assert [row.label for row in engine.player_view(state).panels[-2].rows] == ["Keeper"]
 
 
 async def test_compose_builds_the_accepted_answer_once(tmp_path: Path) -> None:
