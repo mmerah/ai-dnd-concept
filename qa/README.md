@@ -20,8 +20,7 @@ scene header can be looked at with a picture in it without a key or a network.
 Playwright comes from the project venv (the `qa` dependency group), but the browsers do not:
 Chromium is pinned in `drive.py` (`CHROMIUM`); change it for another machine.
 
-Scenarios: `home`, `loner`, `goons`, `breathless`, `24xx`, `settings`, `create`, `mobile`,
-`mcp` (tools over HTTP), `visual` (every page under each theme), `probe`.
+Scenarios: `home`, `loner`, `goons`, `breathless`, `24xx`, `settings`, `create`, `mobile`.
 
 ## The scripted roles
 

@@ -16,7 +16,8 @@ SIGNED_ON = "{name} has signed on with the player. Tell it in a line or two. Set
 HIRE_TOOL = (
     "Call this when the player hires someone here to work. Someone already travelling with the "
     "player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing "
-    "more lands this turn."
+    "more lands this turn. A sheet is for someone hired to work, never for one who only comes "
+    "along."
 )
 HIRE_UNWRITTEN = Fact(
     told=True,

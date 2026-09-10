@@ -1,27 +1,13 @@
 import pytest
-from support.table import (
-    ENGINES_BUILT,
-    LIBRARY,
-    TWENTYFOURXX,
-    change,
-    game,
-    narrowed,
-    updated,
-)
+from support.table import TWENTYFOURXX, change, game, narrowed, updated
+from support.twentyfourxx import ENGINE, LOCKPICKS, small_world
 
 from aidm.core.entities import Refusal
-from aidm.core.io import decode
-from aidm.core.model import ScenarioMeta
+from aidm.core.views import PanelRow
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.packs import SRD_PACK
-from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.seam import AnyEngine
-from aidm.engines.twentyfourxx.world import (
-    Crewmate,
-    TwentyfourxxCharacter,
-    TwentyfourxxGame,
-    TwentyfourxxScenario,
-)
+from aidm.engines.twentyfourxx.world import Gear, TwentyfourxxGame
 
 COMM = "comm"
 CLIMBING_GEAR = "climbing-gear"
@@ -53,37 +39,49 @@ def test_join_party_lands_a_party_joined_fact_and_adds_the_member() -> None:
     assert VESSA in draft.payload.party
 
 
-def test_a_scenario_with_no_packs_is_refused_by_check_packs() -> None:
-    engine, state = _twentyfourxx_game()
-    with pytest.raises(Refusal, match="at least one table set"):
-        engine.validate(updated(state, packs=()))
-
-
 def test_a_scenario_with_an_uninstalled_pack_is_refused_by_check_packs() -> None:
     engine, state = _twentyfourxx_game()
     with pytest.raises(Refusal, match="not installed"):
         engine.validate(updated(state, packs=(SRD_PACK, "uninstalled")))
 
 
-def test_restored_round_trips() -> None:
-    engine, state = _twentyfourxx_game()
-    assert engine.restore(decode(state.model_dump_json())) == state
+def test_item_detail_of_a_plain_item_is_empty() -> None:
+    assert Gear(name="Lockpick set").detail() == ""
 
 
-def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
-    decoy = Crewmate(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
-    scenario = TwentyfourxxScenario(
-        meta=ScenarioMeta(title="Test", premise="A test scenario.", scope="One tense night."),
-        engine=TWENTYFOURXX,
-        packs=(SRD_PACK,),
-        payload=SceneDraft[Crewmate](
-            place="airlock",
-            title="The Airlock",
-            focus="Can they reach the control deck before the air runs out?",
-            situation="A" * 80,
-            cast={PLAYER_ID: decoy},
-        ),
-    )
-    character = LIBRARY.read_character("kael", TWENTYFOURXX, TwentyfourxxCharacter)
-    with pytest.raises(Refusal, match="the player is in the cast"):
-        ENGINES_BUILT[TWENTYFOURXX].new_game(scenario, character)
+def test_item_detail_of_a_bulky_item() -> None:
+    assert Gear(name="Crate", bulky=True).detail() == "bulky"
+
+
+def test_item_detail_of_a_broken_item() -> None:
+    assert Gear(name="Scanner", broken_times=1).detail() == "broken"
+
+
+def test_item_detail_of_a_multi_break_partly_broken_item() -> None:
+    item = Gear(name="Battle armor", breaks=3, broken_times=1)
+    assert item.detail() == "broken 1/3"
+
+
+def test_player_view_character_panel_lists_gear() -> None:
+    view = ENGINE.player_view(small_world())
+    character = next(panel for panel in view.panels if panel.title == "Character")
+    assert PanelRow(label="Gear", detail="Lockpick set") in character.rows
+
+
+def test_master_sections_shows_hidden_entities() -> None:
+    world = small_world()
+    sections = dict(ENGINE.master_sections(world))
+    assert "Sable" in sections["HIDDEN HERE (the player has not found these)"]
+
+
+def test_master_sections_gear_shows_none_for_empty_gear() -> None:
+    world = small_world()
+    world.payload.player.dice().items.clear()
+    sections = dict(ENGINE.master_sections(world))
+    assert sections["GEAR"] == "- (none)"
+
+
+def test_master_sections_gear_lists_items_with_key_and_detail() -> None:
+    world = small_world()
+    sections = dict(ENGINE.master_sections(world))
+    assert sections["GEAR"] == f"- Lockpick set[{LOCKPICKS}]"

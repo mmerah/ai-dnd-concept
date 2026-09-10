@@ -60,18 +60,14 @@ Call `job` with `finish` when the story and the crew close the job. Give one `ra
 for the player and one for each living hired member. A job the player never takes needs no
 `take` and no `finish`.
 
-## The party
+## A member's help
 
-A party member travels with the player from scene to scene. The player commands them and you
-voice them. Use the `join_party` arm when someone here comes along. Use the `leave_party` arm
-when they stop. A member without a sheet helps through `helped` only. Never volunteer a
-member's action to soften a scene the player must face alone.
+A member without a sheet helps through `helped` only.
 
 ## Hiring
 
-A sheet is for someone hired to work, never for one who only comes along.
-Call `hire` when the player takes someone on to work. A hired member then acts like the player.
-Name them in `actor_id` wherever a tool or arm offers it.
+A hired member then acts like the player. Name them in `actor_id` wherever a tool or arm offers
+it.
 
 ## Death and succession
 

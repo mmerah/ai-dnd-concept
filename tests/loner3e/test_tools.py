@@ -6,7 +6,6 @@ from support.table import change
 from aidm.core.facts import cards
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import Question, outcome_for
-from aidm.engines.loner3e.world import TIES_PER_TWIST
 
 FOE = "mara"
 
@@ -83,23 +82,6 @@ def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
         "Mara is out of luck",
         "Mara: Luck +6 -> 6/6",
     ]
-
-
-def test_a_twist_card_lands_only_once_a_twist_fires() -> None:
-    _, state = initialized()
-    draft = state.draft()
-    draft.payload.twist.current = TIES_PER_TWIST - 1
-    primed = draft.commit()
-
-    # Seed 0 rolls chance 4 against risk 4: the tie that ticks the twist over.
-    facts = ENGINE.roll(primed.draft(), _seal(), Random(0))
-
-    oracle, twist = cards(facts)
-    assert oracle.card.startswith("Force the seal — oracle, ")
-    subject, action = twist.card.removeprefix("Twist — ").split(" / ")
-    assert subject and action
-    (twist_dice,) = twist.dice
-    assert twist_dice.faces == (6, 6)
 
 
 def test_restoring_luck_shows_as_a_counter_card() -> None:

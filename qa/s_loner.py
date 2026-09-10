@@ -348,5 +348,42 @@ def body(s: Session) -> None:
     wait_idle(page, timeout=30)
     s.check(not composer(page).is_disabled(), "composer closed after a restart from death")
 
+    # 20. Prose with markdown and html: the chat shows it verbatim, the journal renders markdown.
+    submit(page, "I say **bold** and *soft* and <b>tag</b> and <script>alert(1)</script>.\n!none")
+    wait_idle(page)
+    chat = bubbles(page)[-2]
+    s.note(f"chat bubble: {chat!r}")
+    s.check("**bold**" in chat and "<b>tag</b>" in chat, "chat did not show the text verbatim")
+    open_drawer(page)
+    page.get_by_role("tab", name="journal").click()
+    page.wait_for_timeout(400)
+    page.locator(".q-expansion-item").first.click()
+    page.wait_for_timeout(400)
+    s.shot(page, "journal-markdown")
+    journal_html = page.locator(".q-expansion-item").first.inner_html()
+    s.note(
+        f"journal html sample: {journal_html[journal_html.find('bold') - 60 : journal_html.find('bold') + 60]!r}"  # noqa: E501
+    )
+    s.check(
+        "<strong>bold</strong>" not in journal_html,
+        "the journal renders the narrator's text as markdown",
+    )
+    s.check("<script>" not in journal_html, "the journal lets script tags through")
+    page.get_by_role("tab", name="scene").click()
+
+    # 21. A long unbroken word: the bubble must not overflow the page.
+    long_word = "x" * 300
+    submit(page, f"I shout {long_word}.\n!none")
+    wait_idle(page)
+    s.shot(page, "long-word")
+    s.check(
+        page.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1"),
+        "a long word makes the page scroll sideways",
+    )
+    overflow = page.evaluate(
+        "Array.from(document.querySelectorAll('.q-message-text-content')).some(e => e.scrollWidth > e.clientWidth + 2)"  # noqa: E501
+    )
+    s.check(not overflow, "a long word overflows its bubble")
+
 
 run("loner", body)

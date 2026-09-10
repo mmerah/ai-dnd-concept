@@ -1,36 +1,22 @@
-from pydantic import BaseModel
-
-from aidm.core.prompt import sections
-from aidm.core.tools import schema_text
-from aidm.engines.rooms.world import Dungeon, Dweller, MapDraft
+from aidm.core.prompt import render_history
+from aidm.core.views import Pairs
+from aidm.engines.base import Person
+from aidm.engines.rooms.world import Dungeon, Dweller, MapDraft, RoomWorld
 
 MAP_ASK = "Write the opening map."
 
 
-def worldsmith_prompt(
-    role: str,
-    *,
-    source: str,
-    scope: str,
-    map_so_far: str,
-    history: str,
-    player: str,
-    intent: str,
-    guidance: str,
-    answer: type[BaseModel],
-) -> str:
-    return sections(
-        (
-            ("YOUR ROLE", role),
-            ("SOURCE MATERIAL", source or "(none — write from the setting)"),
-            ("THE SCOPE OF PLAY", scope),
-            ("MAP SO FAR", map_so_far),
-            ("SCENES SO FAR", history),
-            ("THE PLAYER", player),
-            ("WHAT COMES NEXT", intent),
-            ("ENGINE GUIDANCE", guidance),
-            ("ANSWER WITH", schema_text(answer)),
+def map_sections[N: Dweller, P: Person](world: RoomWorld[N, P] | None) -> Pairs:
+    if world is None:
+        return (
+            ("MAP SO FAR", "(no map yet)"),
+            ("SCENES SO FAR", "(no scenes yet — write the opening)"),
+            ("THE PLAYER", "(no player yet — the map is authored before anyone stands in it)"),
         )
+    return (
+        ("MAP SO FAR", world.map_so_far()),
+        ("SCENES SO FAR", render_history(world.records())),
+        ("THE PLAYER", world.line(world.player)),
     )
 
 

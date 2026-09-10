@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field, model_validator
 from aidm.core.entities import Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import DiceEvent, Fact
 from aidm.core.play import Exchange, SceneRecord
+from aidm.core.prompt import sections
+from aidm.core.tools import schema_text
 from aidm.core.views import Pairs, Panel, PanelRow, Subject
 
 PLAYER_ID: Slug = "player"
@@ -16,6 +18,7 @@ CHANGE_WORLD = (
 )
 UNKNOWN_ID = "unknown id {entity_id!r}. Use only the ids you were shown."
 IS_DEAD = "{name} is dead and takes no further part."
+SOURCELESS = "(none — write from what is below)"
 
 type Chattiness = Literal["quiet", "normal", "chatty"]
 
@@ -281,3 +284,26 @@ def check_filing(pool: Mapping[Slug, Thing]) -> None:
 def banded(face: int, low: str, mid: str, high: str) -> str:
     """The three bands of a six-sided read: 1 to 2, 3 to 4, 5 and up."""
     return low if face <= 2 else mid if face <= 4 else high
+
+
+def render_worldsmith(
+    *,
+    role: str,
+    source: str,
+    scope: str,
+    family: Pairs,
+    intent: str,
+    guidance: str,
+    answer: type[BaseModel],
+) -> str:
+    return sections(
+        (
+            ("YOUR ROLE", role),
+            ("SOURCE MATERIAL", source or SOURCELESS),
+            ("THE SCOPE OF PLAY", scope),
+            *family,
+            ("WHAT COMES NEXT", intent),
+            ("ENGINE GUIDANCE", guidance),
+            ("ANSWER WITH", schema_text(answer)),
+        )
+    )

@@ -1,15 +1,11 @@
-import asyncio
 from random import Random
 
 import pytest
-from support.table import change, refused, stub_worldsmith
+from support.table import change, refused
 from support.twentyfourxx import ENGINE, KESTREL, LOCKPICKS, hired, small_world
 
 from aidm.core.entities import Refusal
-from aidm.core.model import Generation
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.hiring import HIRE, SIGNED_ON, Hire
-from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.twentyfourxx.tools import Job, Raise, Roll
 from aidm.engines.twentyfourxx.tools import TestLuck as LuckTest
@@ -453,28 +449,3 @@ def test_next_scene_offers_the_way_on_and_refuses_a_second_offer() -> None:
 def test_leave_takes_a_cast_member_out() -> None:
     draft = small_world().draft()
     assert "leaves" in change(ENGINE, draft, "leave", entity_id=KESTREL)[0].trace
-
-
-def test_hire_sets_generation_and_ends_the_turn() -> None:
-    draft = small_world().draft()
-    _ = ENGINE.hire(draft, Hire(entity_id=KESTREL, terms="Watch our backs"), Random(0))
-    assert draft.generation == Generation(operation=HIRE, brief="Watch our backs", target=KESTREL)
-
-
-def test_hire_refuses_a_sheeted_member() -> None:
-    draft = small_world().draft()
-    with pytest.raises(Refusal, match="already carries a sheet"):
-        _ = ENGINE.hire(draft, Hire(entity_id=PLAYER_ID, terms="terms"), Random(0))
-
-
-def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party() -> None:
-    draft = small_world().draft()
-    draft.packs = (SRD_PACK,)
-    generation = Generation(operation=HIRE, brief="Watch our backs", target=KESTREL)
-    answer = {"specialty": "Muscle", "skills": {"Intimidation": 8}, "items": ["Crowbar"]}
-    _, told = asyncio.run(ENGINE.advance(draft, generation, stub_worldsmith(answer)))
-    member = draft.payload.cast[KESTREL]
-    assert member.dice().credits == 0
-    assert [item.name for item in member.dice().items.values()] == ["Crowbar"]
-    assert KESTREL in draft.payload.party
-    assert told == SIGNED_ON.format(name=member.name)

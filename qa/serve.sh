@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restart the QA server: qa/serve.sh [--transport mcp] [--delay 1.2]
+# Restart the QA server: qa/serve.sh [--delay 1.2]
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="${QA_WORK:-/tmp/aidm-qa-work}"
