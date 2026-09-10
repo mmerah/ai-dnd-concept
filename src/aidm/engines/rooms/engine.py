@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from aidm.core.entities import Refusal, Slug, parse
 from aidm.core.facts import Fact
-from aidm.core.io import ENCODING
+from aidm.core.io import read_prompt
 from aidm.core.model import (
     AnyCharacter,
     AnyScenario,
@@ -17,18 +17,10 @@ from aidm.core.model import (
     ScenarioMeta,
     WorldsmithAnswer,
 )
-from aidm.core.views import (
-    Action,
-    NarratorView,
-    Panel,
-    PanelRow,
-    PlayerView,
-    Sections,
-    lines_of,
-    render_history,
-)
+from aidm.core.play import DecisionOption
+from aidm.core.prompt import lines_of, render_history
+from aidm.core.views import NarratorView, Pairs, Panel, PanelRow, PlayerView
 from aidm.engines.base import (
-    EXTEND,
     JoinParty,
     LeaveParty,
     Person,
@@ -38,14 +30,15 @@ from aidm.engines.base import (
     party_section,
     trail_panel,
 )
-from aidm.engines.rooms.drafts import MapDraft
 from aidm.engines.rooms.tools import Kill, Move, MoveItem, Reveal, SharedChange, UnlockWay
-from aidm.engines.rooms.world import Dweller, Item, RoomCanon, RoomWorld
+from aidm.engines.rooms.world import Dweller, Item, MapDraft, RoomCanon, RoomWorld
 from aidm.engines.rooms.worldsmith import MAP_ASK, extension_refusal, map_refusal, worldsmith_prompt
 from aidm.engines.seam import Engine
 
-WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
-MORE_MAP = Action(
+WORLDSMITH_PROMPT = Path(__file__).parent / "worldsmith.md"
+RULES_PROMPT = Path(__file__).parent / "rules.md"
+EXTEND: Slug = "extend"
+MORE_MAP = DecisionOption(
     id=EXTEND, label="More map", detail="The map runs out here: say where you push on."
 )
 MAP_UNWRITTEN = Fact(
@@ -59,7 +52,10 @@ MAP_UNWRITTEN = Fact(
 class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
     dweller: type[N]
     world_type: type[RoomWorld[N, P]]
-    operations = (MORE_MAP.id,)
+    operations = (EXTEND,)
+
+    def family_rules(self) -> str:
+        return read_prompt(RULES_PROMPT)
 
     def world(self, state: G) -> RoomWorld[N, P]:
         return state.payload
@@ -85,7 +81,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
     def starting_items(self, player: P, taken: Iterable[str]) -> tuple[Item, ...]:
         return ()
 
-    def master_sections(self, state: G) -> Sections:
+    def master_sections(self, state: G) -> Pairs:
         world = self.world(state)
         place = world.current
         player = world.player
@@ -133,10 +129,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
                 ),
                 Panel(
                     title="Carrying",
-                    rows=tuple(
-                        PanelRow(label=item.name, detail=item.brief, icon_id=item.id)
-                        for item in world.carried(player.id)
-                    ),
+                    rows=tuple(item.subject().row() for item in world.carried(player.id)),
                 ),
                 Panel(
                     title="Ways out",
@@ -167,7 +160,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         def built(draft: MapDraft[N]) -> AnyScenario:
             return self.build_scenario(meta, tuple(packs), draft, source)
 
-        prompt = self.render_map(source, meta.scope)
+        prompt = self.render_opening(source, meta.scope)
         return await self.compose(worldsmith, prompt, self.map_draft(), built, playable)
 
     def unwritten(self, request: Generation) -> Fact:
@@ -176,17 +169,19 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         return super().unwritten(request)
 
     def act(self, draft: G, action: Slug, words: str) -> None:
-        if action != MORE_MAP.id or self.world(draft).frontier():
+        if action != EXTEND or self.world(draft).frontier():
             raise Refusal("the map still has ways to walk; the page was drawn before them")
         if not words:
             raise Refusal("say where you push on")
-        draft.generation = Generation(operation=MORE_MAP.id, brief=words)
+        draft.generation = Generation(operation=EXTEND, brief=words)
 
     async def advance(
         self, draft: G, request: Generation, worldsmith: WorldsmithAnswer
     ) -> tuple[tuple[Fact, ...], str | None]:
-        extension = await self.write_extension(draft, request.brief, worldsmith)
-        self.install_extension(draft, extension)
+        if request.operation != EXTEND:
+            raise ValueError(f"the {self.id!r} engine writes no {request.operation!r}")
+        extension = await self.write_next(draft, request.brief, worldsmith)
+        self.install(draft, extension)
         return (), None
 
     def shared_change(self, world: RoomWorld[N, P], change: SharedChange) -> list[Fact]:
@@ -207,9 +202,9 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
     def move(self, draft: G, args: Move, _rng: Random) -> list[Fact]:
         return self.world(draft).move(args.to_id, args.with_ids)
 
-    def render_map(self, source: str, scope: str) -> str:
+    def render_opening(self, source: str, scope: str) -> str:
         return worldsmith_prompt(
-            WORLDSMITH,
+            read_prompt(WORLDSMITH_PROMPT),
             source=source,
             scope=scope,
             map_so_far="(no map yet)",
@@ -220,7 +215,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
             answer=self.map_draft(),
         )
 
-    def render_extension(
+    def render_request(
         self,
         world: RoomWorld[N, P],
         intent: str,
@@ -230,7 +225,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         answer: type[BaseModel],
     ) -> str:
         return worldsmith_prompt(
-            WORLDSMITH,
+            read_prompt(WORLDSMITH_PROMPT),
             source=world.source,
             scope=scope,
             map_so_far=world.map_so_far(),
@@ -241,18 +236,16 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
             answer=answer,
         )
 
-    async def write_extension(
-        self, draft: G, intent: str, worldsmith: WorldsmithAnswer
-    ) -> MapDraft[N]:
+    async def write_next(self, draft: G, intent: str, worldsmith: WorldsmithAnswer) -> MapDraft[N]:
         world = self.world(draft)
-        prompt = self.render_extension(
+        prompt = self.render_request(
             world, intent, draft.scenario.scope, guidance=self.guidance(), answer=self.map_draft()
         )
         return await worldsmith(
             prompt, self.map_draft(), lambda answer: extension_refusal(answer, world)
         )
 
-    def install_extension(self, draft: G, extension: MapDraft[N]) -> None:
+    def install(self, draft: G, extension: MapDraft[N]) -> None:
         """Hidden, so nothing is told: the region reaches the player only as they walk it."""
         self.world(draft).attach(extension, extension.start)
 

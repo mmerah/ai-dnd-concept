@@ -60,7 +60,7 @@ class Illustrator:
 
     async def _draw(self, scene: NarratorView, key: str, narration: str) -> None:
         icons = {
-            subject.name: icon
+            subject.label: icon
             for subject in scene.subjects[: self.config.max_references]
             if (icon := await self._drawn_icon(subject)) is not None
         }
@@ -175,7 +175,7 @@ def illustration_request(
         "Draw one wide, borderless view of this place from the eye level of someone there. "
         "Show a single scene, not a portrait or comic panel.",
         f"The place: {scene.title} — {scene.situation}",
-        *(f"Present: {subject.name} — {subject.brief}" for subject in scene.subjects),
+        *(f"Present: {subject.label} — {subject.detail}" for subject in scene.subjects),
     ]
     if narration:
         lines.append(f"What just happened: {narration}")
@@ -190,7 +190,7 @@ def illustration_request(
 
 def _icon_request(subject: Subject, style: str) -> str:
     return (
-        f"Draw a borderless portrait token of {subject.name} — {subject.brief}. "
+        f"Draw a borderless portrait token of {subject.label} — {subject.detail}. "
         f"Centre the subject alone, filling the square on a plain background. "
         f"Include only props they carry. {style}"
     )

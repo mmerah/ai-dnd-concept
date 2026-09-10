@@ -30,6 +30,9 @@ dev = [
     "pytest-asyncio==1.4.0",
     "ruff==0.16.4",
 ]
+qa = [
+    "playwright==1.56.0",
+]
 
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]
@@ -38,7 +41,7 @@ pythonpath = ["tests"]
 testpaths = ["tests"]
 
 [tool.basedpyright]
-include = ["src", "tests"]
+include = ["src", "tests", "qa"]
 extraPaths = ["src", "tests"]
 typeCheckingMode = "strict"
 venvPath = "."

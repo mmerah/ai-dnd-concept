@@ -10,7 +10,7 @@ ENGINE = TunnelGoonsEngine()
 
 def test_narrator_view_names_nothing_unknown_here() -> None:
     view = ENGINE.narrator_view(small_world())
-    assert all(subject.name != "Robo Mantis" for subject in view.subjects)
+    assert all(subject.label != "Robo Mantis" for subject in view.subjects)
 
 
 def test_speakers_exclude_a_known_but_dead_npc() -> None:

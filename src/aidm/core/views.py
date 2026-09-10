@@ -1,39 +1,19 @@
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal, Slug
+from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal
 from aidm.core.play import (
-    Exchange,
+    DecisionOption,
     Interjection,
     Line,
     Narration,
     PendingDecision,
-    SceneRecord,
     SpokenLine,
 )
 
-SCENE_EXCHANGES = 20
-WHOLE_SCENES = 2
-TAIL_EXCHANGES = 3
-
-type Rows = tuple[tuple[str, str], ...]  # a sheet
-type Sections = tuple[tuple[str, str], ...]  # a prompt
-
-
-class Subject(Frozen):
-    id: CheckedEntityId
-    name: str
-    brief: str
-
-    @property
-    def tag(self) -> str:
-        return f"{self.name}[{self.id}]"
-
-    @property
-    def headline(self) -> str:
-        return self.tag + (f" — {self.brief}" if self.brief else "")
+type Pairs = tuple[tuple[str, str], ...]
 
 
 # Three row shapes, in order: entity (`icon_id`), labelled value (`detail`), or bare label.
@@ -41,6 +21,23 @@ class PanelRow(Frozen):
     label: str
     detail: str
     icon_id: EntityId | None = None
+
+
+class Subject(Frozen):
+    id: CheckedEntityId
+    label: str
+    detail: str
+
+    @property
+    def tag(self) -> str:
+        return f"{self.label}[{self.id}]"
+
+    @property
+    def headline(self) -> str:
+        return self.tag + (f" — {self.detail}" if self.detail else "")
+
+    def row(self) -> PanelRow:
+        return PanelRow(label=self.label, detail=self.detail, icon_id=self.id)
 
 
 class Panel(Frozen):
@@ -56,14 +53,6 @@ class DiceLook(Frozen):
     glow: str
 
 
-class Action(Frozen):
-    """A way on the engine offers the page; the page sends its id back with the player's words."""
-
-    id: Slug
-    label: str
-    detail: str
-
-
 class NarratorView(Frozen):
     """The Narrator's input type: it has no field that can hold hidden canon."""
 
@@ -77,7 +66,7 @@ class NarratorView(Frozen):
     # The player first, then who travels with them.
     party: tuple[CheckedEntityId, ...] = Field(min_length=1)
     # The player's own sheet: theirs to know, so the narrator may show it through detail.
-    sheet: Rows
+    sheet: Pairs
 
     @model_validator(mode="after")
     def _everyone_is_a_subject(self) -> Self:
@@ -102,7 +91,7 @@ class NarratorView(Frozen):
             who = here.get(line.speaker_id)
             if who is None:
                 raise Refusal(f"nobody here has id {line.speaker_id!r}")
-            return SpokenLine(speaker_id=who.id, speaker=who.name, text=line.text)
+            return SpokenLine(speaker_id=who.id, speaker=who.label, text=line.text)
 
         return tuple(spoken_line(line) for line in lines)
 
@@ -138,52 +127,5 @@ class PlayerView(Frozen):
     player: Subject
     panels: tuple[Panel, ...]
     prompt: PendingDecision | None
-    action: Action | None
+    action: DecisionOption | None
     over: str | None
-
-
-def sections(parts: Sections) -> str:
-    return "\n\n".join(f"{name}:\n{body.strip()}" for name, body in parts)
-
-
-def lines_of(parts: Iterable[str]) -> str:
-    return "\n".join(parts) or "- (none)"
-
-
-def render_history(records: Sequence[SceneRecord]) -> str:
-    if not any(record.exchanges for record in records):
-        return "(the game has not started yet)"
-    total = len(records)
-    return "\n\n".join(_block(record, index, total) for index, record in enumerate(records))
-
-
-def told_history(records: Sequence[SceneRecord]) -> str:
-    """The recent blocks the master reads, without recaps: those are the worldsmith's."""
-    recent = [record for record in records[-WHOLE_SCENES:] if record.exchanges]
-    if not recent:
-        return "(nothing yet)"
-    return "\n\n".join(
-        f"{_header(record)}\n\n{_told(record.exchanges[-SCENE_EXCHANGES:])}" for record in recent
-    )
-
-
-def _block(record: SceneRecord, index: int, total: int) -> str:
-    header = _header(record)
-    if index >= total - WHOLE_SCENES:
-        body = _told(record.exchanges[-SCENE_EXCHANGES:])
-    elif record.recap:
-        body = f"what happened: {record.recap}"
-    else:
-        body = _told(record.exchanges[-TAIL_EXCHANGES:])
-    return f"{header}\n\n{body}"
-
-
-def _header(scene: SceneRecord) -> str:
-    return f"SCENE: {scene.title}" + (f"\n{scene.focus}" if scene.focus else "")
-
-
-def _told(exchanges: Sequence[Exchange]) -> str:
-    return (
-        "\n\n".join(f"> {exchange.prompt}\n{exchange.transcript}" for exchange in exchanges)
-        or "(nothing yet)"
-    )

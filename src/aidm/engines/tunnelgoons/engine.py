@@ -8,7 +8,7 @@ from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import AnyCharacter, Generation, WorldsmithAnswer
 from aidm.core.play import DecisionOption, PendingDecision
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import DiceLook, Rows
+from aidm.core.views import DiceLook, Pairs
 from aidm.engines.base import CHANGE_WORLD, HIRE, HIRE_TOOL, PLAYER_ID, Hire, hire_target
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.tools import Move
@@ -132,7 +132,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         )
         return TunnelGoonsCharacter(id=slug(name, ()), engine=self.id, payload=sheet)
 
-    def preview_character(self, character: AnyCharacter) -> Rows:
+    def preview_character(self, character: AnyCharacter) -> Pairs:
         sheet = self.player_of(character)
         return (*sheet.rows(), ("Items", ", ".join(sheet.kit)))
 
@@ -157,7 +157,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
             return await super().advance(draft, request, worldsmith)
         world = draft.payload
         member = world.require_hireable(hire_target(request))
-        prompt = self.render_extension(
+        prompt = self.render_request(
             world,
             HIRING.format(name=member.name, brief=member.brief, terms=request.brief),
             draft.scenario.scope,

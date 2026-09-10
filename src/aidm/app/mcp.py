@@ -5,7 +5,6 @@ import mcp_types as types
 from mcp.server import Server, ServerRequestContext
 from mcp.server.streamable_http_manager import StreamableHTTPASGIApp, StreamableHTTPSessionManager
 from mcp.server.transport_security import TransportSecuritySettings
-from pydantic import JsonValue, TypeAdapter
 
 from aidm.app.runtime import Runtime
 from aidm.core.entities import Refusal
@@ -13,8 +12,6 @@ from aidm.core.tools import schema_of
 
 SERVER_NAME = "aidm"
 MOUNT_PATH = "/mcp"
-
-_ARGUMENTS = TypeAdapter(dict[str, JsonValue])
 
 
 @dataclass(slots=True)
@@ -83,9 +80,7 @@ def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
         """The lock replaces a sequential toolset: a CLI may call several tools at once."""
         async with runtime.lock:
             try:
-                answered = runtime.call(
-                    params.name, _ARGUMENTS.validate_python(params.arguments or {})
-                )
+                answered = runtime.call(params.name, params.arguments or {})
             except Refusal as refused:
                 return _content(str(refused), error=True)
         return _content(answered)

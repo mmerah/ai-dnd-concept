@@ -19,7 +19,7 @@ TOPS = {"ui": {"aidm.engines"}}
 # A framework belongs to the layers that own it and to nothing below them.
 CONFINED = {
     "nicegui": ("ui",),
-    "aidm.config": ("turn", "app", "ui"),
+    "aidm.config": ("app", "ui"),
 }
 
 

@@ -3,6 +3,8 @@
 import sys
 from pathlib import Path
 
+from playwright.sync_api import Page
+
 sys.path.insert(0, str(Path(__file__).parent))
 from drive import (
     BASE,
@@ -21,7 +23,7 @@ from drive import (
 GAME = BASE + "/game/drowned-road/kael"
 
 
-def decision_open(page) -> bool:  # noqa: ANN001
+def decision_open(page: Page) -> bool:
     return "the game is waiting on you" in clean(page.inner_text("body"))
 
 

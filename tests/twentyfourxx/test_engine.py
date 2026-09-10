@@ -15,6 +15,7 @@ from aidm.core.entities import EntityId, Refusal
 from aidm.core.io import decode
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID
+from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.scenes.world import SceneCanon, SceneRun
 from aidm.engines.seam import AnyEngine
 from aidm.engines.twentyfourxx.world import (
@@ -24,7 +25,6 @@ from aidm.engines.twentyfourxx.world import (
     TwentyfourxxScenario,
 )
 
-SRD_PACK = "srd"
 COMM = EntityId("comm")
 CLIMBING_GEAR = EntityId("climbing-gear")
 NIGHT_VISION_GOGGLES = EntityId("night-vision-goggles")

@@ -8,7 +8,8 @@ from support.twentyfourxx import KESTREL, LOCKPICKS, SABLE, hired, small_world
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.model import Check, Generation
-from aidm.engines.base import HIRE, PLAYER_ID, SIGNED_ON, SRD_PACK, Hire
+from aidm.engines.base import HIRE, PLAYER_ID, SIGNED_ON, Hire
+from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.engines.twentyfourxx.tools import Job, Raise, Roll

@@ -7,7 +7,7 @@ from aidm.core.entities import EntityId, Mutable, Refusal, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import PendingOption
-from aidm.core.views import Rows
+from aidm.core.views import Pairs
 from aidm.engines.base import PLAYER_ID, Counter, Person
 from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
@@ -55,7 +55,7 @@ class SurvivorSheet(Mutable):
     def vulnerable(self) -> bool:
         return self.stress.current >= STRESS_MAX
 
-    def rows(self) -> Rows:
+    def rows(self) -> Pairs:
         skills = ", ".join(
             f"{skill.capitalize()} d{self.worn[skill]}"
             + ("" if self.worn[skill] == self.skills[skill] else f" (rated d{self.skills[skill]})")
@@ -121,7 +121,7 @@ class Survivor(Person):
     def drop_item(self, item_id: EntityId) -> list[Fact]:
         item = self.require_item(item_id)
         del self.dice().items[item_id]
-        trace = f"{self.label} drops {item.name}"
+        trace = f"{self.mention} drops {item.name}"
         return [self.fact("item_dropped", trace, card=f"Dropped {item.name}")]
 
     def change_stress(self, amount: int, why: str) -> list[Fact]:
@@ -161,10 +161,10 @@ class Survivor(Person):
             raise Refusal(f"{choice!r} is not a valid loot choice")
         return self.fact("loot_taken", card, card=card)
 
-    def rows(self) -> Rows:
+    def rows(self) -> Pairs:
         return self.sheet.rows() if self.sheet is not None else ()
 
-    def line(self, *, rows: Rows | None = None, detail: str = "") -> str:
+    def line(self, *, rows: Pairs | None = None, detail: str = "") -> str:
         # the player's backpack is the BACKPACK section
         if self.sheet is not None and self.id != PLAYER_ID:
             items = ", ".join(

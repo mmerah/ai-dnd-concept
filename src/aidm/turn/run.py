@@ -1,6 +1,7 @@
-from collections.abc import Mapping
+from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
+from pathlib import Path
 from random import Random
 from typing import Self
 
@@ -9,12 +10,15 @@ from pydantic import JsonValue
 from aidm.core.creation import option_of
 from aidm.core.entities import Refusal
 from aidm.core.facts import NOTHING, Fact, traced
+from aidm.core.io import read_prompt
 from aidm.core.model import AnyGame
-from aidm.core.play import Answer, Line
+from aidm.core.play import Answer, Line, SceneRecord
+from aidm.core.prompt import lines_of, render_history, sections
 from aidm.core.tools import Play
+from aidm.core.views import Pairs
 from aidm.engines.seam import AnyEngine
-from aidm.turn.context import render_master
 
+MASTER_PROMPT = Path(__file__).parent / "prompts" / "master.md"
 RULES_WAIT = "the rules now wait on the player's decision"
 REQUEST_WAIT = "the worldsmith writes what you asked for once this turn ends. Stop here and exit."
 ANSWERED_BY_OPTION = (
@@ -99,7 +103,7 @@ class Turn:
             notes=(*self.notes, *self.draft.notes),
         )
 
-    def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
+    def call(self, name: str, raw: JsonValue) -> str:
         """The one gate every published tool passes; returns what changed as the master reads it."""
         if (ended := self.engine.over(self.draft)) is not None:
             raise Refusal(f"{ended} {GAME_OVER}")
@@ -113,12 +117,11 @@ class Turn:
             )
         if self.draft.generation is not None:
             return REQUEST_WAIT
-        already_pending = len(self.draft.notes)
-        decided_before = self.draft.pending
+        notes_before = len(self.draft.notes)
         facts = self._apply(lambda draft, rng: found.call(draft, raw, rng))
         lines = [f"- {fact.trace}" for fact in facts]
-        lines.extend(f"- {note}" for note in self.draft.notes[already_pending:])
-        if decided_before is None and self.draft.pending is not None:
+        lines.extend(f"- {note}" for note in self.draft.notes[notes_before:])
+        if self.draft.pending is not None:
             lines.append(f"- {RULES_WAIT}")
         return "\n".join(lines) or NOTHING
 
@@ -128,11 +131,32 @@ class Turn:
     def _apply(self, play: Play[AnyGame]) -> tuple[Fact, ...]:
         """One execution against a candidate; a refused call leaves the draft and the dice alone."""
         candidate, dice = self.draft.draft(), deepcopy(self.rng)
-        before = candidate.pending
         facts = play(candidate, dice)
-        if before is not None and candidate.pending is not before:
-            raise Refusal("the rules already wait on a decision; they take one at a time")
         self.draft = self.engine.commit(candidate)
         self.rng.setstate(dice.getstate())
         self.facts.extend(facts)
         return facts
+
+
+def render_master(
+    instructions: str,
+    engine_sections: Pairs,
+    state: AnyGame,
+    scenes: Sequence[SceneRecord],
+    action: str,
+    *,
+    played: int,
+    notes: Sequence[str] = (),
+) -> str:
+    return sections(
+        (
+            ("YOUR ROLE", read_prompt(MASTER_PROMPT)),
+            ("THE RULES OF THIS GAME", instructions),
+            ("SCENARIO", f"{state.scenario.title}\n{state.scenario.premise}"),
+            ("THE SCOPE OF PLAY", state.scenario.scope),
+            (f"RECENT PLAY (this is turn {played + 1})", render_history(scenes)),
+            *engine_sections,
+            ("NOTES FROM THE RULES", lines_of(f"- {note}" for note in notes)),
+            ("PLAYER ACTION", action),
+        )
+    )

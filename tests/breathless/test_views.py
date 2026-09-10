@@ -31,7 +31,7 @@ def test_master_sections_lists_the_backpack() -> None:
 
 def test_narrator_view_lists_only_known_entities_player_first() -> None:
     view = ENGINE.narrator_view(small_world())
-    assert [subject.name for subject in view.subjects] == ["Jax", "Mira"]
+    assert [subject.label for subject in view.subjects] == ["Jax", "Mira"]
 
 
 def test_entity_line_marks_a_dead_one_after_the_brief() -> None:

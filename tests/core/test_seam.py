@@ -10,9 +10,10 @@ from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
 from aidm.core.play import DecisionOption
 from aidm.core.tools import MasterTool
-from aidm.core.views import Sections
-from aidm.engines.base import PLAYER_ID, Pack, Person
+from aidm.core.views import Pairs
+from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.scenes.engine import SceneEngine
+from aidm.engines.scenes.packs import ScenePack
 from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld
 
 FIFTH = EngineId("fifth")
@@ -38,7 +39,7 @@ class FifthCharacter(Character[Person]):
     pass
 
 
-class FifthEngine(SceneEngine[Person, Person, FifthGame, Pack]):
+class FifthEngine(SceneEngine[Person, Person, FifthGame, ScenePack]):
     """A fifth scene engine: its state model, its creation, its tools and its sections."""
 
     id = FIFTH
@@ -48,7 +49,7 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, Pack]):
     scenario = FifthScenario
     character = FifthCharacter
     cast = Person
-    pack = Pack
+    pack = ScenePack
     world_type = FifthState
 
     def master_tools(self) -> tuple[MasterTool[FifthGame], ...]:
@@ -67,7 +68,7 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, Pack]):
     def guidance(self, picks: Sequence[Slug]) -> str:
         return "Write the taproom plainly."
 
-    def master_sections(self, state: FifthGame) -> Sections:
+    def master_sections(self, state: FifthGame) -> Pairs:
         return (("SCENE", self.world(state).run.title),)
 
 

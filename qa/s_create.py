@@ -3,13 +3,15 @@
 import sys
 from pathlib import Path
 
+from playwright.sync_api import Page
+
 sys.path.insert(0, str(Path(__file__).parent))
 from drive import BASE, Session, clean, notifications, run, wait_idle
 
 SOURCE = Path(__file__).parents[1] / "tests/core/fixtures/source/drowned-road.md"
 
 
-def select(page, label: str, option: str) -> None:  # noqa: ANN001
+def select(page: Page, label: str, option: str) -> None:
     field = page.locator(f".q-select:has(.q-field__label:text-is('{label}'))").first
     field.click()
     page.wait_for_timeout(200)
@@ -17,7 +19,7 @@ def select(page, label: str, option: str) -> None:  # noqa: ANN001
     page.wait_for_timeout(400)
 
 
-def text(page, label: str, value: str) -> None:  # noqa: ANN001
+def text(page: Page, label: str, value: str) -> None:
     box = page.locator(".q-field", has_text=label).first.locator("input, textarea").first
     box.fill(value)
     box.blur()
@@ -34,9 +36,8 @@ def body(s: Session) -> None:
     # Tunnel Goons: the abilities and three items.
     select(page, "Rules", "TUNNEL GOONS")
     s.shot(page, "create-goons")
-    page.get_by_role("button", name="Create").count() and s.check(
-        False, "Create offered before the form is filled"
-    )
+    if page.get_by_role("button", name="Create").count():
+        s.check(False, "Create offered before the form is filled")
     text(page, "Name", "Quinn")
     text(page, "Brief", "A goon.")
     for ability, points in (("Brute", "2"), ("Skulker", "2"), ("Erudite", "0")):

@@ -3,6 +3,7 @@ import logging
 import shutil
 from collections.abc import Collection, Iterator, Mapping
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 from re import fullmatch
 
@@ -134,6 +135,11 @@ class Library:
         write_text(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
         if source is not None:
             shutil.copyfile(source, folder / f"{SOURCE_STEM}{source.suffix}")
+
+
+@cache
+def read_prompt(path: Path) -> str:
+    return path.read_text(encoding=ENCODING)
 
 
 def write_text(path: Path, body: str) -> None:

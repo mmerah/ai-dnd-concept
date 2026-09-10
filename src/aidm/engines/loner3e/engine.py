@@ -5,11 +5,11 @@ from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, other_than, picked
 from aidm.core.entities import EngineId, Refusal, Slug, slug
-from aidm.core.facts import DiceEvent, Fact, roll
+from aidm.core.facts import DiceEvent, Fact, keep_highest, roll
 from aidm.core.play import PendingDecision
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import DiceLook, Sections
-from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, keep_highest
+from aidm.core.views import DiceLook, Pairs
+from aidm.engines.base import CHANGE_WORLD, PLAYER_ID
 from aidm.engines.loner3e.tools import (
     ChangeTags,
     ChangeWorld,
@@ -123,7 +123,7 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
         }
         return f"{AUTHORING}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"
 
-    def glossary(self, state: Loner3eGame) -> Sections:
+    def glossary(self, state: Loner3eGame) -> Pairs:
         spelled: dict[str, str] = {}
         for member in state.payload.here():
             spelled.update(self.meanings(state.packs, member))

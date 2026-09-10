@@ -14,8 +14,8 @@ from aidm.app.runtime import MARKS, GameService, Runtime
 from aidm.config import Role
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.facts import DiceEvent, Fact, cards
-from aidm.core.play import Answer, Exchange
-from aidm.core.views import Action, PlayerView
+from aidm.core.play import Answer, DecisionOption, Exchange
+from aidm.core.views import PlayerView
 from aidm.ui.dice import DiceTray, rolled_since
 from aidm.ui.dictation import Dictation
 from aidm.ui.widgets import (
@@ -64,7 +64,7 @@ class Observed:
     phase: Role | None
     facts: int
     exchanges: int
-    action: Action | None
+    action: DecisionOption | None
     over: str | None
 
     @classmethod
@@ -265,7 +265,7 @@ class GamePage:
             if exchange.prompt in MARKS:
                 ui.label(exchange.prompt).classes("w-full text-center text-xs italic opacity-60")
             else:
-                _bubble(session, player.id, player.name, exchange.prompt, sent=True)
+                _bubble(session, player.id, player.label, exchange.prompt, sent=True)
             for fact in cards(exchange.facts):
                 _card(fact)
             for line in exchange.lines:
@@ -302,12 +302,12 @@ class GamePage:
         turn = session.turn
         player = session.player_view().player
         if turn is not None:
-            _bubble(session, player.id, player.name, turn.prompt, sent=True)
+            _bubble(session, player.id, player.label, turn.prompt, sent=True)
             shown = cards(turn.facts)
             for fact in shown:
                 _card(fact, live=fact is shown[-1])
         elif session.intent:
-            _bubble(session, player.id, player.name, session.intent, sent=True)
+            _bubble(session, player.id, player.label, session.intent, sent=True)
         self.ticker = None
         if session.phase is not None:
             elapsed = 0.0 if self.step_started is None else monotonic() - self.step_started
@@ -364,7 +364,7 @@ class GamePage:
                 sheet = index == 0
                 with section(panel.title, classes="game-portrait" if sheet else ""):
                     if sheet:
-                        entity_row(session.icon(player.id), player.name, player.brief)
+                        entity_row(session.icon(player.id), player.label, player.detail)
                     if not panel.rows:
                         ui.label("nothing").classes("text-sm opacity-60")
                     for row in panel.rows:

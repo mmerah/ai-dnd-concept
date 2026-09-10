@@ -13,12 +13,13 @@ from aidm.core.entities import (
     require_unique,
 )
 from aidm.core.facts import Fact
-from aidm.core.play import Exchange, SceneRecord
-from aidm.core.views import Action, Panel, PanelRow, lines_of
-from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, World, check_filing, sentence
+from aidm.core.play import DecisionOption, Exchange, SceneRecord
+from aidm.core.prompt import lines_of
+from aidm.core.views import Panel, PanelRow
+from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, World, check_filing
 from aidm.engines.scenes.drafts import NextDraft, SceneDraft
 
-MOVE_ON = Action(
+MOVE_ON = DecisionOption(
     id="move-on", label="Move on", detail="Keep playing, or say where you go and move on."
 )
 WAY_OFFERED = Fact(
@@ -215,7 +216,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
         if entity.id in self.run.here:
             raise Refusal(f"{entity.name} is already here")
         self.run.here.append(entity.id)
-        trace = f"{entity.label} arrives"
+        trace = f"{entity.mention} arrives"
         return [
             *entity.reveal(),
             entity.fact("entity_entered", trace, card=f"{entity.name} arrives"),
@@ -228,7 +229,8 @@ class SceneWorld[C: Person, P: Person](World[P]):
         if entity.id in self.party:
             raise Refusal(f"{entity.name} travels with the player and leaves through `leave_party`")
         self.run.here.remove(entity.id)
-        return [entity.fact("entity_left", f"{entity.label} leaves", card=f"{entity.name} leaves")]
+        card = f"{entity.name} leaves"
+        return [entity.fact("entity_left", f"{entity.mention} leaves", card=card)]
 
     def kill(self, entity_id: EntityId) -> list[Fact]:
         entity = self.require_here(entity_id)
@@ -239,7 +241,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
             self.party.remove(entity.id)
         entity.alive = False
         card = "You are dead" if entity.id == self.player.id else f"{entity.name} is dead"
-        facts.append(entity.fact("actor_killed", f"{entity.label} is dead", card=card))
+        facts.append(entity.fact("actor_killed", f"{entity.mention} is dead", card=card))
         return facts
 
     def join_party(self, entity_id: EntityId) -> list[Fact]:
@@ -281,6 +283,10 @@ class SceneWorld[C: Person, P: Person](World[P]):
         if not self.run.focus:
             return ()
         return (Panel(title="This scene", rows=(PanelRow(label=self.run.focus, detail=""),)),)
+
+
+def sentence(text: str) -> str:
+    return text[:1].upper() + text[1:]
 
 
 def check_named(here: Sequence[EntityId], cast: Mapping[EntityId, Thing]) -> None:

@@ -1,6 +1,6 @@
 import logging
 from asyncio import Lock, Task, create_task
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import InitVar, dataclass, field
 from functools import partial
 from pathlib import Path
@@ -11,6 +11,7 @@ from pydantic import JsonValue
 from aidm.app.builtin import BuiltinSpawner
 from aidm.app.launch import LaunchTarget
 from aidm.app.media import ICON_DIR, Illustrator, open_illustrator
+from aidm.app.roles import render_interjection, render_narrator
 from aidm.app.spawn import CliSpawner, RunResult, Spawner, ask
 from aidm.app.speech import Reader, open_reader
 from aidm.config import Role, Settings, read_settings
@@ -25,7 +26,6 @@ from aidm.core.views import PlayerView
 from aidm.engines.base import Chattiness
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
-from aidm.turn.context import render_interjection, render_narrator
 from aidm.turn.run import NO_TURN, Turn
 
 LOGGER = logging.getLogger(__name__)
@@ -414,7 +414,7 @@ class Runtime:
             raise ValueError(f"turns are in flight in {[session.slug for session in in_flight]}")
         return in_flight[0] if in_flight else None
 
-    def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
+    def call(self, name: str, raw: JsonValue) -> str:
         playing = self.playing()
         turn = None if playing is None else playing.turn
         if turn is None:

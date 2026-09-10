@@ -182,14 +182,6 @@ def test_a_change_may_run_on_a_state_already_suspended_on_a_decision(tmp_path: P
     assert turn.draft.pending == DECISION
 
 
-def test_a_second_decision_is_refused_while_one_is_already_open(tmp_path: Path) -> None:
-    engine, state = _engine(), open_game(tmp_path).service.state
-    turn = Turn(engine=engine, draft=_pending(state).draft(), rng=Random(0))
-
-    with pytest.raises(Refusal, match="one at a time"):
-        _ = turn._apply(lambda draft, _rng: _hit(draft, narrate=False))  # pyright: ignore[reportPrivateUsage]
-
-
 def _option(**changes: object) -> PendingOption:
     return PendingOption.model_validate(
         {"id": "lantern", "label": "Break the lantern", "name": TURN_THE_HIT.name} | changes

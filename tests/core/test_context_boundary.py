@@ -1,13 +1,13 @@
 from support.loner import initialized, with_entity
 from support.table import ENGINES_BUILT, LONER3E
 
+from aidm.app.roles import render_narrator
 from aidm.core.entities import EntityId
 from aidm.core.play import Exchange, SceneRecord, SpokenLine
 from aidm.core.views import NarratorView
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
 from aidm.engines.seam import AnyEngine
-from aidm.turn.context import render_master, render_narrator
-from aidm.turn.run import ANSWERED_BY_OPTION
+from aidm.turn.run import ANSWERED_BY_OPTION, render_master
 
 SECRET = EntityId("hidden-actor")
 UNREVEALED = "Unrevealed canon."

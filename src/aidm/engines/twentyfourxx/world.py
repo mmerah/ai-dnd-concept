@@ -6,7 +6,7 @@ from pydantic import Field, model_validator
 from aidm.core.entities import EntityId, Frozen, Mutable, Refusal, require_unique, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
-from aidm.core.views import Rows
+from aidm.core.views import Pairs
 from aidm.engines.base import Person
 from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
@@ -77,7 +77,7 @@ class Sheet(Mutable):
     def die(self, skill: str) -> int:
         return self.skills.get(skill, DEFAULT_DIE)
 
-    def rows(self) -> Rows:
+    def rows(self) -> Pairs:
         skills = ", ".join(f"{skill} d{die}" for skill, die in self.skills.items())
         return tuple(
             (label, value)
@@ -133,7 +133,7 @@ class Crewmate(Person):
         if lost:
             parts.append(f"Recovered: {', '.join(lost)}")
         card = " / ".join(parts)
-        trace = f"{self.label} — {card}"
+        trace = f"{self.mention} — {card}"
         return [self.fact("hindrances_changed", trace, card=card)]
 
     def gain_item(self, name: str, *, bulky: bool, breaks: int, cost: int) -> list[Fact]:
@@ -142,13 +142,13 @@ class Crewmate(Person):
         items[EntityId(slug(name, items))] = Item(name=name, bulky=bulky, breaks=breaks)
         suffix = f" (₡{cost})" if cost > 0 else ""
         card = f"Gained {name}{suffix}"
-        trace = f"{self.label} gains {name}{suffix}"
+        trace = f"{self.mention} gains {name}{suffix}"
         return [self.fact("item_gained", trace, card=card)]
 
     def drop_item(self, item_id: EntityId) -> list[Fact]:
         item = self.require_item(item_id)
         del self.dice().items[item_id]
-        trace = f"{self.label} drops {item.name}"
+        trace = f"{self.mention} drops {item.name}"
         return [self.fact("item_dropped", trace, card=f"Dropped {item.name}")]
 
     def repair_item(self, item: Item, cost: int) -> list[Fact]:
@@ -156,15 +156,15 @@ class Crewmate(Person):
             raise Refusal(f"{item.name} is not broken")
         self.pay(cost)
         item.broken_times = 0
-        trace = f"{self.label} repairs {item.name}"
+        trace = f"{self.mention} repairs {item.name}"
         return [self.fact("item_repaired", trace, card=f"Repaired {item.name}")]
 
     def spend(self, amount: int, why: str) -> list[Fact]:
         self.pay(amount)
-        trace = f"{self.label} spends ₡{amount} — {why}"
+        trace = f"{self.mention} spends ₡{amount} — {why}"
         return [self.fact("credits_spent", trace, card=f"₡{amount} spent — {why}")]
 
-    def rows(self) -> Rows:
+    def rows(self) -> Pairs:
         if self.sheet is None:
             return ()
         gear = ", ".join(
@@ -230,7 +230,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate, Crewmate]):
             if hindrance:
                 raise Refusal(f"{item.name} breaks harmlessly: leave `hindrance` empty")
             item.broken_times += 1
-            trace = f"{actor.label} breaks {item.name}, harmlessly"
+            trace = f"{actor.mention} breaks {item.name}, harmlessly"
             return [actor.fact("item_broken", trace, card=f"{item.name} breaks")]
         if not hindrance:
             raise Refusal("name the hindrance the hit becomes")
@@ -240,7 +240,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate, Crewmate]):
         item.broken_times += 1
         sheet.hindrances.append(hindrance)
         card = f"{item.name} breaks — {hindrance}"
-        trace = f"{actor.label} breaks {item.name} — {hindrance}"
+        trace = f"{actor.mention} breaks {item.name} — {hindrance}"
         return [actor.fact("item_broken", trace, card=card)]
 
     def upgrade_ship(self, function_id: EntityId) -> list[Fact]:

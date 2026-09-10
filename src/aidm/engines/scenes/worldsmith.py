@@ -1,11 +1,12 @@
+import re
 from collections.abc import Iterable, Mapping
 
 from pydantic import BaseModel
 
 from aidm.core.entities import EntityId
+from aidm.core.prompt import sections
 from aidm.core.tools import schema_text
-from aidm.core.views import sections
-from aidm.engines.base import Person, Thing, named_unmet
+from aidm.engines.base import Person, Thing
 from aidm.engines.scenes.drafts import SceneDraft
 from aidm.engines.scenes.world import SceneWorld, resolved_id
 
@@ -95,6 +96,17 @@ def scene_unmet[C: Person, P: Person](
     ]:
         unmet.append(f"cast members as the worldsmith may write them: {broken}")
     return unmet
+
+
+def named_unmet(text: str, entities: Iterable[Thing]) -> list[str]:
+    """A multi-word name or a bare id: a prop called `Bell` shares its word with any bell tower."""
+    folded = text.casefold()
+    return [
+        entity.name
+        for entity in entities
+        if (" " in entity.name.strip() and entity.name.casefold() in folded)
+        or re.search(rf"\b{re.escape(entity.id)}\b", text) is not None
+    ]
 
 
 def named_in(situation: str, hidden: Iterable[str], cast: Mapping[EntityId, Thing]) -> list[str]:

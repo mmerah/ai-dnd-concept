@@ -5,21 +5,13 @@ from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, parse, slug
-from aidm.core.facts import DiceEvent, Fact, roll
+from aidm.core.facts import DiceEvent, Fact, keep_highest, roll
 from aidm.core.model import AnyCharacter, Generation, WorldsmithAnswer
 from aidm.core.play import PendingDecision, PendingOption
+from aidm.core.prompt import lines_of
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import DiceLook, Panel, PanelRow, Rows, Sections, lines_of
-from aidm.engines.base import (
-    CHANGE_WORLD,
-    HIRE,
-    HIRE_TOOL,
-    PLAYER_ID,
-    Hire,
-    hire_target,
-    keep_highest,
-    sentence,
-)
+from aidm.core.views import DiceLook, Pairs, Panel, PanelRow
+from aidm.engines.base import CHANGE_WORLD, HIRE, HIRE_TOOL, PLAYER_ID, Hire, hire_target
 from aidm.engines.breathless.tools import (
     Actor,
     ChangeStress,
@@ -54,6 +46,7 @@ from aidm.engines.breathless.world import (
 from aidm.engines.breathless.worldsmith import AUTHORING, HIRING, Pack, SheetDraft
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
+from aidm.engines.scenes.world import sentence
 
 
 class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
@@ -148,7 +141,7 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
         )
         return BreathlessCharacter(id=slug(name, ()), engine=self.id, payload=player)
 
-    def preview_character(self, character: AnyCharacter) -> Rows:
+    def preview_character(self, character: AnyCharacter) -> Pairs:
         sheet = self.player_of(character).dice()
         return (*sheet.rows(), ("Backpack", ", ".join(item.name for item in sheet.items.values())))
 
@@ -161,7 +154,7 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
         }
         return f"{AUTHORING}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"
 
-    def sheet_sections(self, state: BreathlessGame) -> Sections:
+    def sheet_sections(self, state: BreathlessGame) -> Pairs:
         sheet = state.payload.player.dice()
         lines = [f"- {item.name}[{key}] — d{item.die}" for key, item in sheet.items.items()]
         if sheet.med_kit:
@@ -306,7 +299,7 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
             f"Catching breath brings a new complication. The SRD's table suggests: {text} Bring "
             "it in through the story, or one that fits better."
         )
-        trace = f"{actor.label} catches their breath: skills and loot die restored"
+        trace = f"{actor.mention} catches their breath: skills and loot die restored"
         card = (
             "Caught breath — skills and loot die restored"
             if actor is world.player

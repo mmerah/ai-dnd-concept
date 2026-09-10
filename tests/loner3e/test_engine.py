@@ -8,9 +8,10 @@ from aidm.core.entities import EntityId, Refusal
 from aidm.core.facts import cards
 from aidm.core.io import decode
 from aidm.core.play import PendingDecision
-from aidm.engines.base import PLAYER_ID, SRD_PACK, Counter
+from aidm.engines.base import PLAYER_ID, Counter
 from aidm.engines.loner3e.tools import Question, defeat_note, outcome_for, twist_note, twist_pairing
 from aidm.engines.loner3e.world import LUCK_MAX, TIES_PER_TWIST
+from aidm.engines.scenes.packs import SRD_PACK
 
 FOE = EntityId("mara")
 MAP = EntityId("vault-map")

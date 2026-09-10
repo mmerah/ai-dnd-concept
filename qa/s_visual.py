@@ -3,8 +3,10 @@
 import sys
 from pathlib import Path
 
+from playwright.sync_api import Page
+
 sys.path.insert(0, str(Path(__file__).parent))
-from drive import BASE, Session, submit, wait_idle
+from drive import BASE, Device, Session, submit, wait_idle
 
 GAMES = {
     "loner": "/game/whispering-vault/kael",
@@ -12,7 +14,7 @@ GAMES = {
     "breathless": "/game/drowned-road/kael",
     "24xx": "/game/silent-relay/kael",
 }
-PHONE = {
+PHONE: Device = {
     "viewport": {"width": 390, "height": 664},
     "device_scale_factor": 2,
     "is_mobile": True,
@@ -20,7 +22,7 @@ PHONE = {
 }
 
 
-def theme_of(page) -> str:  # noqa: ANN001
+def theme_of(page: Page) -> str:
     return page.evaluate(
         "[...document.querySelector('.q-layout').classList].filter(c => c.startsWith('game-theme-')).join(' ')"  # noqa: E501
     )

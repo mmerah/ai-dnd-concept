@@ -1,23 +1,17 @@
-import re
 from abc import abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
-from pathlib import Path
-from random import Random
 from typing import Literal, Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Refusal, Slug, parse
-from aidm.core.facts import DiceEvent, Fact, roll
-from aidm.core.io import ENCODING, decode
+from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Refusal, Slug
+from aidm.core.facts import DiceEvent, Fact
 from aidm.core.model import Generation
 from aidm.core.play import Exchange, SceneRecord
-from aidm.core.views import Panel, PanelRow, Rows, Sections, Subject
+from aidm.core.views import Pairs, Panel, PanelRow, Subject
 
 PLAYER_ID = EntityId("player")
-SRD_PACK: Slug = "srd"
 HIRE: Slug = "hire"
-EXTEND: Slug = "extend"
 SIGNED_ON = "{name} has signed on with the player. Tell it in a line or two. Settle nothing else."
 CHANGE_WORLD = (
     "Call this when the story has settled a change to the world. Fill the fields of the verb "
@@ -42,7 +36,7 @@ class Thing(Mutable):
     known: bool = False
 
     @property
-    def label(self) -> str:
+    def mention(self) -> str:
         """Carries the exact id so a role can reuse it."""
         return f"the player {self.tag}" if self.id == PLAYER_ID else self.tag
 
@@ -58,10 +52,10 @@ class Thing(Mutable):
     def met_label(self) -> str:
         return "met" if self.known else "unmet"
 
-    def rows(self) -> Rows:
+    def rows(self) -> Pairs:
         return ()
 
-    def line(self, *, rows: Rows | None = None, detail: str = "") -> str:
+    def line(self, *, rows: Pairs | None = None, detail: str = "") -> str:
         parts = [f"- {self.headline}"]
         shown = self.rows() if rows is None else rows
         if sheet := "; ".join(f"{label.lower()}: {value}" for label, value in shown):
@@ -87,10 +81,10 @@ class Thing(Mutable):
         if self.known:
             return []
         self.known = True
-        return [self.fact("entity_discovered", f"learned of {self.label}", card=card)]
+        return [self.fact("entity_discovered", f"learned of {self.mention}", card=card)]
 
     def subject(self) -> Subject:
-        return Subject(id=self.id, name=self.name, brief=self.brief)
+        return Subject(id=self.id, label=self.name, detail=self.brief)
 
 
 class Person(Thing):
@@ -146,7 +140,7 @@ class World[P: Person](Mutable):
 
     def sign_on(self, member: Person, summary: str) -> tuple[tuple[Fact, ...], str]:
         facts = self.join(member) if member.id not in self.party else []
-        trace = f"{member.label} signs on — {summary}"
+        trace = f"{member.mention} signs on — {summary}"
         facts.append(member.fact("hired", trace, card=f"{member.name} signs on — {summary}"))
         return tuple(facts), SIGNED_ON.format(name=member.name)
 
@@ -173,10 +167,8 @@ class Hire(Frozen):
     )
 
 
-class Pack(Frozen):
-    name: str
-    source: str
-    license: str
+class ChangeWorld[C](Frozen):
+    change: C = Field(description="The change to apply. `verb` picks which one.")
 
 
 class Counter(Mutable):
@@ -209,7 +201,7 @@ class Counter(Mutable):
             return []
         moved = f"{label} {delta:+d} -> {self}"
         card = moved if owner.id == PLAYER_ID else f"{owner.name}: {moved}"
-        return [owner.fact("counter_changed", f"{owner.label} {moved} ({why})", card=card)]
+        return [owner.fact("counter_changed", f"{owner.mention} {moved} ({why})", card=card)]
 
 
 def hire_target(request: Generation) -> EntityId:
@@ -218,11 +210,7 @@ def hire_target(request: Generation) -> EntityId:
     return request.target
 
 
-def sentence(text: str) -> str:
-    return text[:1].upper() + text[1:]
-
-
-def character_panel(rows: Rows) -> Panel:
+def character_panel(rows: Pairs) -> Panel:
     return Panel(
         title="Character",
         rows=tuple(PanelRow(label=label, detail=detail) for label, detail in rows),
@@ -231,13 +219,10 @@ def character_panel(rows: Rows) -> Panel:
 
 def here_panel(others: Iterable[Subject]) -> Panel:
     """Who else: the player already has the sheet above, so a row for them would say it twice."""
-    rows = tuple(
-        PanelRow(label=other.name, detail=other.brief, icon_id=other.id) for other in others
-    )
-    return Panel(title="Also here", rows=rows)
+    return Panel(title="Also here", rows=tuple(other.row() for other in others))
 
 
-def party_section(members: Sequence[Thing]) -> Sections:
+def party_section(members: Sequence[Thing]) -> Pairs:
     if not members:
         return ()
     return (("THE PARTY (led by the player)", "\n".join(member.line() for member in members)),)
@@ -250,7 +235,7 @@ def party_panel(members: Sequence[Thing]) -> tuple[Panel, ...]:
         row
         for member in members
         for row in (
-            PanelRow(label=member.name, detail=member.brief, icon_id=member.id),
+            member.subject().row(),
             *(PanelRow(label=label, detail=detail) for label, detail in member.rows()),
         )
     )
@@ -265,32 +250,3 @@ def check_filing(pool: Mapping[EntityId, Thing]) -> None:
     for key, entity in pool.items():
         if key != entity.id:
             raise Refusal(f"entity {entity.id!r} is filed under {key!r}")
-
-
-def keep_highest(
-    faces: Sequence[int], reason: str, rng: Random, *, label: str
-) -> tuple[int, DiceEvent, Fact]:
-    rolled, fact = roll(faces, reason, rng)
-    kept = max(rolled)
-    event = DiceEvent(
-        label=label, faces=tuple(faces), rolled=rolled, highlight=(rolled.index(kept),)
-    )
-    return kept, event, fact
-
-
-def named_unmet(text: str, entities: Iterable[Thing]) -> list[str]:
-    """A multi-word name or a bare id: a prop called `Bell` shares its word with any bell tower."""
-    folded = text.casefold()
-    return [
-        entity.name
-        for entity in entities
-        if (" " in entity.name.strip() and entity.name.casefold() in folded)
-        or re.search(rf"\b{re.escape(entity.id)}\b", text) is not None
-    ]
-
-
-def read_packs[P: BaseModel](directory: Path, model: type[P]) -> dict[str, P]:
-    return {
-        path.stem: parse(model, decode(path.read_text(encoding=ENCODING)))
-        for path in sorted(directory.glob("*.json"))
-    }
