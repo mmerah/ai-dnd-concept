@@ -53,12 +53,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
         tools = self.master_tools()
         require_unique(f"tool names of the {self.id!r} engine", (tool.name for tool in tools))
         self.tools = {tool.name: tool for tool in tools}
-        if family := self.family_rules():
-            self.instructions = f"{self.instructions}\n{family}"
-
-    def family_rules(self) -> str:
-        """What every engine of this family is told, after its own rules."""
-        return ""
+        self.instructions = f"{self.instructions}\n{self.family_rules()}"
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
         return ()
@@ -209,6 +204,10 @@ class Engine[P: Person, G: Game[Any]](ABC):
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]: ...
     @abstractmethod
     def create_character(self, name: str, brief: str, picks: Picks) -> AnyCharacter: ...
+    @abstractmethod
+    def family_rules(self) -> str:
+        """What every engine of this family is told, after its own rules."""
+
     @abstractmethod
     def world(self, state: G) -> World[P]: ...
     @abstractmethod

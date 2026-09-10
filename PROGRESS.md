@@ -32,11 +32,10 @@ and why, anything known and accepted. Phases 1–3 landed in one commit, in one 
   `WORLDSMITH`/`SCENE_RULES` are gone as PLAN said. No module reads a file at import.
 - Off-plan: `tests/core/test_builtin.py`'s `_Tools` stub holds a real loner3e state and delegates
   to `CHANGE_WORLD.call`, so its `change_tags` payload now carries `kind`/`gained`.
-- Refuted (review): "`Engine.family_rules` should be abstract; the `return ""` default and the
-  `if family :=` guard are dead because both families override." PLAN step 10 specifies the
-  concrete default, and Decision 2 fixes the seam at 12 abstract methods and says a concrete engine
-  answers only its family hook; a third family with no rules file would otherwise stub the method.
-  Kept as PLAN wrote it. The maintainer may overrule.
+- Off-plan (review, maintainer's call): `Engine.family_rules` is abstract and appended
+  unconditionally, not the concrete empty default PLAN step 10 wrote: both families override it
+  with a file, so the default and its guard were dead. Decision 2's counts moved to 13 abstract
+  and 18 concrete.
 - Known and accepted: the room-family rules block lands at the end of `THE RULES OF THIS GAME:` in
   every TunnelGoons master prompt (golden `tests/core/fixtures/prompts/tunnelgoons/master.txt`,
   +9 lines); `tests/core/fixtures/schemas/` is byte-identical under the generic `ChangeWorld[C]`.
