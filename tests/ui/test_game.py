@@ -136,8 +136,7 @@ def _page[G: AnyGame](table: Table[G]) -> GamePage:
     page.send = ui.button()
     page.action_button = ui.button()
     page.over_label = ui.label()
-    page.view = table.service.player_view()
-    page.history = table.service.history()
+    page.view, page.history = table.service.player_view(), table.service.history()
     page.seen = Observed.of(table.service, page.view, page.history)
     return page
 
@@ -172,7 +171,6 @@ async def test_poll_turn_follows_only_on_the_readers_own_move(tmp_path: Path) ->
 async def test_poll_turn_walks_the_player_view_and_history_once(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """One tick, one walk: every refreshable `poll_turn` triggers reads the page's own copy."""
     table = open_game(tmp_path)
     client = Client(ui.page("/"))
     try:

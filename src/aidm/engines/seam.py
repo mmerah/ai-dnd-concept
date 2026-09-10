@@ -177,10 +177,6 @@ class Engine[P: Person, G: Game[Any]](ABC):
         """What the player reads when the worldsmith could not write this request."""
         raise ValueError(f"the {self.id!r} engine writes no {request.operation!r}")
 
-    def check_request(self, state: G) -> None:
-        """The hook the hiring mixin fills; a request needs no check of its own."""
-        return None  # ruff B027: an empty method on an ABC
-
     @abstractmethod
     def master_tools(self) -> tuple[MasterTool[G], ...]: ...
     @abstractmethod
@@ -194,7 +190,9 @@ class Engine[P: Person, G: Game[Any]](ABC):
     @abstractmethod
     def world(self, state: G) -> World[P]: ...
     @abstractmethod
-    def validate(self, state: G) -> None: ...
+    def validate(self, state: G) -> None:
+        """Refuse a state this engine cannot play; a mixin adds its check after `super()`."""
+
     @abstractmethod
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> World[P]: ...
     @abstractmethod

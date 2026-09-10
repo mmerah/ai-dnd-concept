@@ -373,8 +373,7 @@ class Runtime:
         self.settings = read_settings()
         self.spawner = self._spawner()
         self._mount()
-        # An evicted session must not write: its member's answer would land on a rival's save.
-        # Art too: media_dir(slug) is shared and Illustrator.generating is per instance.
+        # A late answer or image from an evicted session would land where the new session reads.
         for session in self._sessions.values():
             session.stop()
         self._sessions.clear()

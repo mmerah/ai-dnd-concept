@@ -140,9 +140,7 @@ class ScriptedSpawner:
         return next(islice(matches, nth, None))
 
 
-def stub_worldsmith(answer: Mapping[str, JsonValue]) -> WorldsmithAnswer:
-    """Answers every ask with one canned draft, validated as the model asked for."""
-
+def stub_worldsmith(answer: Mapping[str, object]) -> WorldsmithAnswer:
     async def answered[M: BaseModel](prompt: str, model: type[M], refusal: Check[M]) -> M:
         del prompt, refusal
         return model.model_validate(answer)

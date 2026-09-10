@@ -15,8 +15,7 @@ DISASTER_SEED = 2
 NEXT_SCENE = {
     "place": "cargo-bay",
     "title": "The Cargo Bay",
-    "situation": "Stacked containers throw long shadows, and the station's power hums back on "
-    "somewhere overhead.",
+    "situation": "Stacked containers throw long shadows as the station's power hums back on.",
     "recap": "Kael slipped past Vessa's watch at the airlock, favouring a bruised leg.",
 }
 

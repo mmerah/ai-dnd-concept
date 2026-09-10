@@ -164,8 +164,7 @@ class Survivor(Sheeted[SurvivorSheet]):
 
 
 class BreathlessWorld(SheetedWorld[Survivor, Survivor]):
-    def require_actor(self, actor_id: EntityId | None) -> Survivor:
-        return self.require_sheeted(actor_id, noun="survivor")
+    member_noun = "survivor"
 
 
 BreathlessGame = Game[BreathlessWorld]

@@ -1,7 +1,6 @@
 from random import Random
 
 import pytest
-from pydantic import JsonValue
 from support.breathless import SKILLS_RATED
 from support.table import (
     BREATHLESS,
@@ -144,11 +143,10 @@ async def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party() -> Non
     generation = draft.generation
     assert generation is not None
 
-    skills: dict[str, JsonValue] = dict(SKILLS_RATED.items())
-    answer: dict[str, JsonValue] = {
+    answer = {
         "pronouns": "he/him",
         "job": "Bell-ringer",
-        "skills": skills,
+        "skills": SKILLS_RATED,
         "item": "Boat hook",
     }
     _, message = await ENGINE.advance(draft, generation, stub_worldsmith(answer))

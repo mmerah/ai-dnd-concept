@@ -13,10 +13,8 @@ LOOT_SEED = 0
 NEXT_SCENE = {
     "place": "causeway",
     "title": "The Causeway",
-    "situation": "Water climbs past your knees, and the chapel lamp still waits a mile off "
-    "across the flats.",
-    "recap": "Kael forced the Bell House door and scavenged a first aid kit before the tide "
-    "closed the crossing.",
+    "situation": "Water climbs past your knees; the chapel lamp waits a mile off across the flats.",
+    "recap": "Kael forced the Bell House door and scavenged a first aid kit before the tide rose.",
 }
 
 

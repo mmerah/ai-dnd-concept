@@ -161,6 +161,7 @@ class Crewmate(Sheeted[Sheet]):
 
 
 class TwentyfourxxWorld(SheetedWorld[Crewmate, Crewmate]):
+    member_noun = "crew member"
     job: str = ""
     ship: dict[EntityId, Item] = Field(
         default_factory=lambda: {
@@ -171,9 +172,6 @@ class TwentyfourxxWorld(SheetedWorld[Crewmate, Crewmate]):
 
     def sheeted_members(self) -> list[Crewmate]:
         return [member for member in self.members() if member.sheet is not None]
-
-    def require_actor(self, actor_id: EntityId | None) -> Crewmate:
-        return self.require_sheeted(actor_id, noun="crew member")
 
     def require_gear(self, actor: Crewmate, item_id: EntityId) -> Item:
         """The actor's item or a ship function: both break to defend and both are repaired."""

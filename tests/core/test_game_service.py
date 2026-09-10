@@ -414,16 +414,12 @@ async def test_a_new_turn_silences_the_member_still_speaking(tmp_path: Path) -> 
     assert speaking.cancelled()
 
 
-async def _never_finishes() -> None:
-    await Event().wait()
-
-
 async def test_reload_settings_cancels_an_evicted_sessions_background_task(
     tmp_path: Path,
 ) -> None:
     runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), ScriptedSpawner())
     opened = runtime.session(TARGET)
-    task = create_task(_never_finishes())
+    task = create_task(sleep(3600))
     opened._retain(task)  # pyright: ignore[reportPrivateUsage]
 
     runtime.reload_settings()

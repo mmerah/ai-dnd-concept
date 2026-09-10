@@ -46,8 +46,6 @@ class RoleSpawner:
 
 @dataclass(frozen=True, slots=True)
 class Roles:
-    """The three AI roles and how each is asked; committing what they answer is the caller's."""
-
     spawner: Spawner
     engine: AnyEngine
 
