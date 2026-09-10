@@ -21,8 +21,10 @@ NEUTRAL_PALETTE: Tokens = {
     "game-success": "#85c6a3",
     "game-danger": "#f09696",
     "game-radius": "14px",
-    "game-measure": "46rem",
-    "game-heading": "Georgia, 'Times New Roman', serif",
+    "game-inset": ".75rem",
+    "game-measure": "60rem",
+    "game-body": "'Inter', 'Segoe UI', system-ui, sans-serif",
+    "game-heading": "'EB Garamond', Georgia, 'Times New Roman', serif",
 }
 ENGINE_PALETTES: dict[EngineId, Tokens] = {
     EngineId("loner3e"): {
@@ -73,6 +75,13 @@ ENGINE_PALETTES: dict[EngineId, Tokens] = {
     },
 }
 
+# Offline the fallback stacks in the tokens above apply, which is why every stack names one.
+FONT_LINK = (
+    '<link rel="preconnect" href="https://fonts.googleapis.com">'
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2'
+    '?family=EB+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">'
+)
+
 _STATIC_CSS = """
 .q-page {
   background: radial-gradient(ellipse at 15% 0, var(--game-wash), transparent 65%), var(--game-bg);
@@ -80,14 +89,8 @@ _STATIC_CSS = """
 body, body.body--dark {
   background: var(--game-bg);
   color: var(--game-text);
-  font-family: 'Inter', 'Segoe UI', sans-serif;
+  font-family: var(--game-body);
   -webkit-font-smoothing: antialiased;
-}
-.q-header {
-  background: var(--game-surface);
-  border-bottom: 1px solid var(--game-border);
-  box-shadow: 0 4px 24px #0002;
-  gap: 1rem;
 }
 .q-page-container { height: 100dvh; box-sizing: border-box; display: flex; flex-direction: column }
 .q-page { flex: 1 1 0; min-height: 0 !important; display: flex; flex-direction: column }
@@ -98,42 +101,71 @@ body, body.body--dark {
   padding-bottom: env(safe-area-inset-bottom);
   background: var(--game-bg); border-top: 1px solid var(--game-border);
 }
-.game-drawer { background: var(--game-surface); border-color: var(--game-border) }
+.game-panel {
+  background: var(--game-surface);
+  border: 1px solid var(--game-border);
+  border-radius: var(--game-radius);
+  overflow: hidden;
+}
+.game-main { margin: var(--game-inset) }
+.game-drawer { background: var(--game-bg); border: 0 }
+.game-drawer-panel { margin: var(--game-inset); height: calc(100% - 2 * var(--game-inset)) }
 .game-drawer .q-tab-panels { background: transparent }
+
+.q-header {
+  background: var(--game-surface);
+  border-bottom: 1px solid var(--game-border);
+  box-shadow: 0 4px 24px #0002;
+  gap: 1rem;
+}
+.q-header .game-title { font-size: 1.4rem }
+
 .q-tab { color: var(--game-muted); text-transform: none; letter-spacing: .03em }
 .q-tab--active { color: var(--game-accent) }
 .q-tab__indicator { background: var(--game-accent) }
 
 .game-rail {
-  flex: none; width: 5.25rem;
+  flex: none; width: 6rem;
   background: var(--game-surface);
   border-right: 1px solid var(--game-border);
 }
 .game-rail-btn {
-  width: 3.4rem; height: 3.4rem;
+  width: 4.5rem; height: 4.5rem;
   border-radius: calc(var(--game-radius) * .9) !important;
   color: var(--game-muted) !important;
 }
-.game-rail-btn .q-btn__content { flex-direction: column; gap: .15rem; font-size: .6rem }
+.game-rail-btn .q-btn__content { flex-direction: column; gap: .15rem; font-size: .72rem }
+.game-rail-btn .q-icon { font-size: 1.5rem }
 .game-rail-btn:hover { color: var(--game-text) !important }
 .game-rail-on {
   color: var(--game-accent) !important;
   background: var(--game-wash);
-  box-shadow: inset 0 0 0 1px var(--game-border);
+  box-shadow: inset 0 0 0 1px var(--game-accent);
 }
 
 .text-h4, .text-h5, .text-h6, .game-title {
   font-family: var(--game-heading);
-  letter-spacing: -.025em;
+  letter-spacing: -.015em;
 }
 .game-title { color: var(--game-text) }
-.game-heading { color: var(--game-muted); letter-spacing: .1em; text-transform: uppercase }
+.game-lead { color: var(--game-muted) }
 .game-eyebrow {
-  color: var(--game-accent); opacity: .8;
-  letter-spacing: .22em; text-transform: uppercase; font-weight: 600;
+  color: var(--game-accent);
+  font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; font-weight: 600;
 }
 
-.q-card, .game-card, .q-menu {
+.game-card {
+  color: var(--game-text);
+  background: var(--game-surface-raised);
+  border: 1px solid var(--game-border);
+  border-radius: var(--game-radius);
+  padding: 1rem 1.25rem;
+  box-shadow: none;
+}
+/* An expansion brings its own padding, so the card around it only lends surface and edge. */
+.q-expansion-item.game-card { padding: 0; overflow: hidden }
+.q-expansion-item.game-card .q-item { min-height: 2.75rem }
+.q-menu {
   color: var(--game-text);
   background: var(--game-surface);
   border: 1px solid var(--game-border);
@@ -142,20 +174,46 @@ body, body.body--dark {
 }
 .q-menu .q-item--active { color: var(--game-accent) }
 .q-separator { background: var(--game-border) }
+
+.game-stat {
+  display: flex; width: 100%; justify-content: space-between; align-items: baseline;
+  gap: 1rem; padding: .55rem 0;
+}
+.game-stat + .game-stat { border-top: 1px solid var(--game-border) }
+.game-stat-label { color: var(--game-muted); font-size: .85rem }
+.game-stat-value { font-size: .9rem; text-align: right; font-variant-numeric: tabular-nums }
+.game-stat-long { flex-direction: column; align-items: stretch; gap: .15rem }
+.game-stat-long .game-stat-value { text-align: left }
+
+.game-entity { display: flex; width: 100%; align-items: center; gap: .75rem; padding: .4rem 0 }
+.game-entity-name { font-size: 1.05rem; font-weight: 600 }
+.game-entity-sub { color: var(--game-muted); font-size: .8rem; line-height: 1.35 }
+.game-portrait .q-avatar {
+  font-size: 64px !important;  /* beats the inline `size` */
+  box-shadow: 0 0 0 2px var(--game-accent);
+}
+.game-card-icon { color: var(--game-accent) }
+.game-decision {
+  border-color: var(--game-accent);
+  background: linear-gradient(110deg, var(--game-wash), transparent), var(--game-surface);
+  box-shadow: 0 4px 20px #0002;
+}
+.game-outcome { color: var(--game-accent); letter-spacing: .08em; text-transform: uppercase }
+
 .q-btn {
   border-radius: calc(var(--game-radius) * .65);
-  text-transform: none;
   font-weight: 600;
   letter-spacing: .01em;
   transition: background-color 160ms, box-shadow 160ms;
 }
 .q-btn--round { border-radius: 50% }
 .q-btn--rectangle { min-height: 2.5rem }
+/* Gold is a light fill: its words are the page's own dark, never Quasar's white. */
 .q-btn.bg-primary { color: var(--game-bg) !important; box-shadow: 0 3px 12px #0002 }
+.q-btn--flat.text-white { color: var(--game-muted) !important }
 .q-btn--outline { background: var(--game-wash) }
 .q-btn--outline:before { border-color: var(--game-border) }
 .q-btn--outline:hover:before { border-color: var(--game-accent) }
-.q-btn--flat.text-white { color: var(--game-muted) !important }
 .q-btn:focus-visible, .q-field:focus-within .q-field__control {
   outline: 2px solid var(--game-accent);
   outline-offset: 3px;
@@ -169,10 +227,11 @@ body, body.body--dark {
   font-weight: 600;
   letter-spacing: .04em;
 }
-.q-badge.bg-primary { background: var(--game-wash) !important; color: var(--game-accent) !important;
-  border: 1px solid var(--game-border) }
+
 .q-field__control { background: var(--game-wash); border-radius: calc(var(--game-radius) * .65) }
 .q-field--outlined .q-field__control:before { border-color: var(--game-border) }
+.q-field--outlined .q-field__control:hover:before { border-color: var(--game-muted) }
+.q-field--outlined.q-field--focused .q-field__control:after { border-color: var(--game-accent) }
 .q-field__native, .q-field__input { color: var(--game-text) }
 .q-field__label, .q-field__marginal, .q-field__bottom { color: var(--game-muted) }
 .q-field__native::placeholder { color: var(--game-muted); opacity: .8 }
@@ -183,9 +242,11 @@ body, body.body--dark {
 /* One measure down the page: the scene title, every bubble and the composer share a left edge. */
 .game-measure, .game-transcript { max-width: var(--game-measure); margin-inline: auto }
 .game-scene {
-  --game-scene-height: clamp(9rem, 26vh, 16rem);
+  --game-scene-height: clamp(9rem, 24vh, 15rem);
   position: relative; overflow: hidden; flex: none;
-  border-bottom: 1px solid var(--game-border);
+  width: auto; align-self: stretch; margin: var(--game-inset);
+  border: 1px solid var(--game-border);
+  border-radius: calc(var(--game-radius) * .8);
   background: var(--game-surface);
 }
 .game-scene:has(.game-scene-art) { height: var(--game-scene-height) }
@@ -207,14 +268,18 @@ body, body.body--dark {
   -webkit-mask-image: linear-gradient(to right, transparent, #000 24%);
   mask-image: linear-gradient(to right, transparent, #000 24%);
 }
-/* The gutter the centred transcript leaves, so the title starts where the bubbles do. */
+/* The gutter the centred transcript leaves, less the inset this card holds, so the title
+   starts where the bubbles do. */
 .game-scene-text {
   flex: 1 1 auto; min-width: 0;
   height: 100%; overflow-y: auto;
   padding: 1.1rem 1rem;
-  padding-left: calc(max(0px, (100% - var(--game-measure)) / 2) + 1rem);
+  padding-left: calc(
+    max(0px, (100% + 2 * var(--game-inset) - var(--game-measure)) / 2) + 1rem - var(--game-inset)
+  );
 }
 .game-scene-title { color: var(--game-text); line-height: 1.1 }
+
 /* No side padding: an avatar starts on the measure's edge, where the scene title starts. */
 .game-message { padding-inline: 0 }
 .game-message .q-message-name { color: var(--game-muted); font-size: .75rem; font-weight: 600 }
@@ -226,30 +291,18 @@ body, body.body--dark {
   box-shadow: 0 4px 16px #0002;
 }
 .game-message .q-message-text:before { display: none }
-.game-message .q-message-text-content { color: var(--game-text); line-height: 1.7 }
+.game-message .q-message-text-content {
+  color: var(--game-text); line-height: 1.7; font-size: .95rem;
+}
 .game-message .q-message-text--sent {
   background: linear-gradient(130deg, var(--game-wash), transparent), var(--game-surface);
   border-color: var(--game-accent);
 }
 .game-message.q-message-sent .q-message-name { color: var(--game-accent) }
 .game-narration .q-message-text { border-left: 3px solid var(--game-border) }
-.game-avatar {
-  border: 1px solid var(--game-border); background: var(--game-surface-raised) !important;
-}
+.game-avatar { border: 1px solid var(--game-border); background: var(--game-surface) }
 .game-avatar-dm { color: var(--game-accent); border-color: var(--game-accent) }
 
-.game-card { padding: .6rem .9rem; margin: .35rem 0 }
-/* An expansion brings its own padding, so the card around it only lends surface and edge. */
-.q-expansion-item.game-card { padding: 0; overflow: hidden }
-.q-expansion-item.game-card .q-item { min-height: 2.75rem }
-.game-portrait .q-avatar { font-size: 64px !important }  /* beats the inline `size` */
-.game-decision {
-  border-color: var(--game-accent);
-  background: linear-gradient(110deg, var(--game-wash), transparent), var(--game-surface);
-  box-shadow: 0 4px 20px #0002;
-}
-.game-card-icon { color: var(--game-accent) }
-.game-outcome { color: var(--game-accent); letter-spacing: .08em; text-transform: uppercase }
 .game-die {
   background: var(--game-surface-raised);
   border: 1px solid var(--game-border);
@@ -273,6 +326,7 @@ body, body.body--dark {
   position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 5000;
   transition: opacity .5s;
 }
+
 .game-dictating { box-shadow: 0 0 0 4px #f0969659; animation: game-pulse 1.2s infinite }
 @keyframes game-pulse { 50% { box-shadow: 0 0 0 8px #f0969600 } }
 .game-composer {
@@ -290,6 +344,12 @@ body, body.body--dark {
 @media (max-width: 1023.98px) { .game-rail { display: none } }
 @media (max-width: 599.98px) {
   .q-header { gap: .25rem }
+  /* A phone has no room for the inset frames: every panel runs edge to edge. */
+  .game-main, .game-drawer-panel, .game-scene {
+    margin: 0; border-left: 0; border-right: 0; border-radius: 0;
+  }
+  .game-main, .game-scene { border-top: 0 }
+  .game-drawer-panel { height: 100% }
   /* No room beside the text: the frame goes full width on top and fades into the words below. */
   .game-scene:has(.game-scene-art) { height: auto }
   .game-scene-body { flex-direction: column-reverse }
@@ -312,7 +372,7 @@ body, body.body--dark {
 
 def apply(engine: EngineId | None = None) -> None:
     ui.dark_mode(True)
-    _inject_css()
+    _install()
     set_engine(engine)
 
 
@@ -356,6 +416,16 @@ def _palette_css() -> str:
 
 
 @cache
-def _inject_css() -> None:
+def _install() -> None:
+    # One look for every call site: the defaults live here so no widget repeats a prop.
+    ui.button.default_props("no-caps")
+    ui.badge.default_props("outline")
+    ui.input.default_props("outlined stack-label")
+    ui.textarea.default_props("outlined stack-label")
+    ui.select.default_props("outlined stack-label")
+    ui.number.default_props("outlined stack-label")
+    ui.card.default_classes("game-card")
     # `shared=True` appends to the app-wide head on every call; injected once per process.
-    ui.add_css(_palette_css() + _STATIC_CSS, shared=True)
+    ui.add_head_html(FONT_LINK, shared=True)
+    # NiceGUI layers Quasar's own `!important` rules; only a layer before theirs outranks them.
+    ui.add_css(f"{_palette_css()}@layer overrides {{{_STATIC_CSS}}}", shared=True)

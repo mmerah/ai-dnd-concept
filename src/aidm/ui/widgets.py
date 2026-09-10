@@ -25,28 +25,53 @@ def page_header(
     theme.apply(engine)
     with ui.header().classes("items-center no-wrap"):
         if home:
-            ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props(
-                "flat color=white round"
-            )
-        ui.label(title).classes("text-lg font-bold ellipsis game-title")
+            ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props("flat round")
+        ui.label(title).classes("game-title ellipsis")
         if badge is not None:
-            ui.badge(badge).props("color=primary text-color=white").classes(
-                "text-sm font-bold q-px-md q-py-sm gt-xs"
-            )
+            ui.badge(badge).classes("gt-xs")
         yield
 
 
+@contextmanager
+def page_body() -> Generator[None]:
+    """The centred column every page but the game puts its content in."""
+    with (
+        ui.column().classes("w-full q-pa-lg items-center"),
+        ui.column().classes("w-full").style("max-width: var(--game-measure); gap: 1.25rem"),
+    ):
+        yield
+
+
+def page_intro(eyebrow: str, title: str, lead: str) -> None:
+    with ui.column().style("gap: .2rem"):
+        ui.label(eyebrow).classes("game-eyebrow")
+        ui.label(title).classes("text-h4 game-title")
+        ui.label(lead).classes("text-body1 game-lead")
+
+
+@contextmanager
+def section(title: str, *, classes: str = "") -> Generator[None]:
+    """A card with the eyebrow that names it: the sidebar panels, the launcher, settings tabs."""
+    with ui.column().classes(f"game-card w-full {classes}").style("gap: .5rem"):
+        heading(title)
+        yield
+
+
+def heading(title: str, *, tight: bool = False) -> None:
+    ui.label(title).classes("game-eyebrow")
+
+
 def entity_row(icon: Path | None, name: str, sub: str) -> None:
-    with ui.row().classes("w-full items-center no-wrap mt-2").style("gap: 0.5rem"):
+    with ui.element("div").classes("game-entity"):
         avatar(icon, name)
         with ui.column().style("gap: 0"):
-            ui.label(name).classes("text-sm font-bold")
-            ui.label(sub).classes("text-xs opacity-70")
+            ui.label(name).classes("game-entity-name game-title")
+            ui.label(sub).classes("game-entity-sub")
 
 
 def avatar(icon: Path | None, name: str | None) -> None:
-    with ui.avatar(color="grey-8", size="42px").classes(
-        "q-mx-sm game-avatar" + (" game-avatar-dm" if name is None else "")
+    with ui.avatar(size="42px", color=None).classes(
+        "game-avatar" + (" game-avatar-dm" if name is None else "")
     ):
         if icon is not None:
             ui.image(icon)
@@ -57,9 +82,9 @@ def avatar(icon: Path | None, name: str | None) -> None:
 
 
 def labeled_value(label: str, value: str) -> None:
-    with ui.row().classes("w-full items-baseline justify-between mt-2").style("gap: 0.75rem"):
-        ui.label(label).classes("text-xs font-bold opacity-60")
-        ui.label(value or "—").classes("text-sm text-right")
+    with ui.element("div").classes("game-stat" + (" game-stat-long" if len(value) > 28 else "")):
+        ui.label(label).classes("game-stat-label")
+        ui.label(value or "—").classes("game-stat-value")
 
 
 def decision_widget(
@@ -75,14 +100,10 @@ def decision_widget(
             # A label in the button's own slot sits beside the detail, not above it.
             with (
                 ui.button(on_click=partial(answer, option.id))
-                .props("no-caps outline")
+                .props("outline")
                 .style("min-height: 44px"),
                 ui.column().style("gap: 0"),
             ):
                 ui.label(option.label)
                 if option.detail:
                     ui.label(option.detail).classes("text-xs opacity-70")
-
-
-def heading(title: str, *, tight: bool = False) -> None:
-    ui.label(title).classes(f"text-xs font-bold game-heading {'mt-2' if tight else 'mt-4'}")
