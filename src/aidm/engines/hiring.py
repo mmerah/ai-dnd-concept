@@ -1,13 +1,13 @@
 from abc import abstractmethod
 from random import Random
-from typing import Any, Self
+from typing import Any, ClassVar, Self
 
 from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import Check, Game, Generation, WorldsmithAnswer
-from aidm.engines.base import Person, World
+from aidm.engines.base import Person
 from aidm.engines.scenes.world import SceneWorld
 from aidm.engines.seam import Engine
 
@@ -42,8 +42,6 @@ class ItemSheet[I: BaseModel](Mutable):
 
 
 class Sheeted[S: BaseModel](Person):
-    """A person whose dice come from a sheet the worldsmith writes."""
-
     sheet: S | None = Field(default=None, description="Leave empty.")
 
     def dice(self) -> S:
@@ -52,28 +50,26 @@ class Sheeted[S: BaseModel](Person):
         return self.sheet
 
     def unwritten(self) -> str:
-        parts = [
-            part
-            for part in (super().unwritten(), "a sheet" if self.sheet is not None else "")
-            if part
-        ]
-        return ", ".join(parts)
+        parts = (super().unwritten(), "a sheet" if self.sheet is not None else "")
+        return ", ".join(part for part in parts if part)
 
 
 class SheetedWorld[C: Sheeted[Any], P: Sheeted[Any]](SceneWorld[C, P]):
+    member_noun: ClassVar[str]
+
     @model_validator(mode="after")
     def _player_carries_a_sheet(self) -> Self:
         if self.player.sheet is None:
             raise ValueError("the player carries no sheet")
         return self
 
-    def require_sheeted(self, entity_id: EntityId | None, *, noun: str) -> C | P:
-        if entity_id is None or entity_id == self.player.id:
+    def require_actor(self, actor_id: EntityId | None) -> C | P:
+        if actor_id is None or actor_id == self.player.id:
             return self.player
-        entity = self.require(entity_id)
+        entity = self.require(actor_id)
         if entity.alive and entity.sheet is not None and entity.id in self.party:
             return entity
-        raise Refusal(f"{entity.name} is not the player or a hired {noun}")
+        raise Refusal(f"{entity.name} is not the player or a hired {self.member_noun}")
 
     def require_hireable(self, entity_id: EntityId) -> C | P:
         member = self.require_here(entity_id, alive=True)
@@ -110,11 +106,10 @@ class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
         return [Fact(trace=trace)]
 
     def unwritten(self, request: Generation) -> Fact:
-        if request.operation == HIRE:
-            return HIRE_UNWRITTEN
-        return super().unwritten(request)
+        return HIRE_UNWRITTEN if request.operation == HIRE else super().unwritten(request)
 
-    def check_request(self, state: G) -> None:
+    def validate(self, state: G) -> None:
+        super().validate(state)
         generation = state.generation
         if generation is not None and generation.operation == HIRE:
             self.hireable(state, _hire_target(generation))
@@ -129,9 +124,7 @@ class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
             self.hire_prompt(draft, member, request.brief), self.hire_answer, self.hire_bar(draft)
         )
         summary = self.install_sheet(draft, member, answer)
-        return self._sign_on(self.world(draft), member, summary)
-
-    def _sign_on(self, world: World[P], member: M, summary: str) -> tuple[tuple[Fact, ...], str]:
+        world = self.world(draft)
         facts = world.join(member) if member.id not in world.party else []
         trace = f"{member.mention} signs on — {summary}"
         facts.append(member.fact(trace, card=f"{member.name} signs on — {summary}"))

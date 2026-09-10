@@ -2,7 +2,6 @@ import asyncio
 from random import Random
 
 import pytest
-from pydantic import JsonValue
 from support.table import change, refused, stub_worldsmith
 from support.twentyfourxx import KESTREL, LOCKPICKS, SABLE, hired, small_world
 
@@ -497,11 +496,7 @@ def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party() -> None:
     draft = small_world().draft()
     draft.packs = (SRD_PACK,)
     generation = Generation(operation=HIRE, brief="Watch our backs", target=KESTREL)
-    answer: dict[str, JsonValue] = {
-        "specialty": "Muscle",
-        "skills": {"Intimidation": 8},
-        "items": ["Crowbar"],
-    }
+    answer = {"specialty": "Muscle", "skills": {"Intimidation": 8}, "items": ["Crowbar"]}
     _, told = asyncio.run(ENGINE.advance(draft, generation, stub_worldsmith(answer)))
     member = draft.payload.cast[KESTREL]
     assert member.dice().credits == 0

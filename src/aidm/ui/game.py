@@ -112,8 +112,7 @@ class GamePage:
 
     def build(self) -> None:
         session = self.session
-        self.view = session.player_view()
-        self.history = session.history()
+        self.view, self.history = session.player_view(), session.history()
         if session.unopened():
             ui.timer(0.1, self._open, once=True)
         else:

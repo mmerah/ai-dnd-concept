@@ -85,8 +85,7 @@ def test_no_module_names_a_concrete_engine() -> None:
 
 
 def test_no_ui_module_reaches_through_a_session_into_the_engine() -> None:
-    """A bare `.engine` ban false-positives on `scenario.engine` (`ui/app.py`) and `made.engine`
-    (`ui/create.py`), so this walks the attribute chain a session is reached through instead."""
+    """A bare `.engine` ban would catch `scenario.engine` in `ui/app.py`: only a session's is."""
 
     def is_session(value: ast.expr) -> bool:
         if isinstance(value, ast.Name):
@@ -110,8 +109,6 @@ def test_no_ui_module_reaches_through_a_session_into_the_engine() -> None:
 
 
 def test_no_ui_module_names_a_built_engine_id() -> None:
-    """The boundary above reads imports only; a bare id string could still smuggle world knowledge
-    into `ui/` unseen, so this walks the constants themselves."""
     built_ids = {name.rsplit(".", 1)[-1] for name in ENGINES}
     naming = {
         str(path.relative_to(SOURCE))

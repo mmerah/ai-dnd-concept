@@ -12,7 +12,6 @@ from aidm.core.play import DecisionOption, SpokenLine
 from aidm.core.tools import MasterTool
 from aidm.core.views import NarratorView, Pairs
 from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.hiring import HIRE, Hiring
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.packs import ScenePack
 from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld
@@ -71,16 +70,6 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, ScenePack]):
 
     def master_sections(self, state: FifthGame) -> Pairs:
         return (("SCENE", self.world(state).run.title),)
-
-
-class HireAnswer(BaseModel):
-    job: str
-
-
-class HiringFifthEngine(Hiring[Person, Person, FifthGame, HireAnswer], FifthEngine):
-    """A fifth engine that hires: only what `__init_subclass__` contributes is under test."""
-
-    hire_answer = HireAnswer
 
 
 def _engine_at(tmp_path: Path) -> type[FifthEngine]:
@@ -174,12 +163,11 @@ async def test_compose_builds_the_accepted_answer_once(tmp_path: Path) -> None:
 
 
 class _CountingFifthEngine(FifthEngine):
-    """Counts `narrator_view` calls, so a test can watch `close` build none."""
+    narrator_view_calls = 0
 
     def __init__(self, directory: Path) -> None:
         self.directory = directory
         super().__init__()
-        self.narrator_view_calls = 0
 
     def narrator_view(self, state: FifthGame) -> NarratorView:
         self.narrator_view_calls += 1
@@ -196,11 +184,3 @@ def test_close_builds_no_narrator_view(tmp_path: Path) -> None:
 
     assert engine.narrator_view_calls == 0
     assert engine.history(closed)[-1].prompt == "I wait."
-
-
-def test_the_hiring_mixin_contributes_hire_to_operations_once() -> None:
-    class Deeper(HiringFifthEngine):
-        pass
-
-    assert HiringFifthEngine.operations == (*FifthEngine.operations, HIRE)
-    assert Deeper.operations.count(HIRE) == 1

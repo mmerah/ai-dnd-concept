@@ -66,8 +66,8 @@ and why, anything known and accepted. Phases 1–3 landed in one commit, in one 
 
 ## Phase 5 — The service's seams
 
-- `src` 10,095 → 10,155 (target about +30; the palettes moved onto four engines, +35 of it, and
-  the two accessor tests' stubs pay for the rest). `app/runtime.py` 511 → 449 (target about 440).
+- `src` 10,095 → 10,152 (target about +30; the palettes moved onto four engines, +44 of it as
+  data, and the accessors pay for the rest). `app/runtime.py` 511 → 446 (target about 440).
   Tests 565 → 574.
 - Off-plan (review, measured): `self._retain(self._speaking)` stays in `_turn`. PLAN step 9 called
   it redundant and, in the same step, relied on `_background` holding the interjection task so the
@@ -89,15 +89,14 @@ and why, anything known and accepted. Phases 1–3 landed in one commit, in one 
 
 ## Phase 6 — Coverage, the sheeted base and hiring
 
-- `src` 10,155 → 10,193 (target about -30: **missed by about 70**, PLAN rule 5 says so). Tests
-  574 → 575, plus the two playthroughs and the hire-then-succession test (about +150 lines under
+- `src` 10,152 → 10,175 (target about -30: **missed by about 50**, PLAN rule 5 says so; a cuts
+  pass after review took 18 lines off `src` and 46 off `tests`). Tests 574 → 574, plus the two playthroughs and the hire-then-succession test (about +150 lines under
   `tests/`). Where it went: `Sheeted`/`ItemSheet`/`SheetedWorld` paid as PLAN said
   (`breathless/world.py` -38, `twentyfourxx/world.py` -39 against 51 new); the `Hiring` extraction
   did not come out "about zero": what left `base.py` (-29) and `seam.py` (-17) reappears in
   `hiring.py`, and each engine's 20-29 line HIRE block became 18-25 lines of typed hooks
   (`hireable`, `hire_prompt`, `install_sheet`, `hire_bar`), so the module's own `advance`,
-  `_sign_on`, `check_request`, `unwritten`, the abstract declarations and imports are the net
-  cost. Not padded and not golfed; the maintainer's call whether the one hire flow is worth it.
+  `validate`, `unwritten`, the abstract declarations and imports are the net cost. Not padded and not golfed; the maintainer's call whether the one hire flow is worth it.
 - Off-plan (Decision, brief-sanctioned): `SheetedWorld[C: Sheeted[Any], P: Sheeted[Any]]` spells
   the bound with `Any`, exactly as `G: Game[Any]` does and for the same reason: `Sheeted[S]` is
   invariant (`sheet` is a mutable field), so `Sheeted[BaseModel]` rejects `Survivor`, and a
@@ -110,8 +109,17 @@ and why, anything known and accepted. Phases 1–3 landed in one commit, in one 
 - Refuted: "drop the `hireable` hook and call `world.require_hireable` from the mixin" — the base
   `World` no longer has `require_hireable` (its default body was dead, PLAN step 5) and TunnelGoons
   hires an `Npc` while its `P` is `Goon`, so the hook is the typed seam PLAN wrote.
-- Refuted: "delete `return None` from `Engine.check_request`" — ruff B027 flags an empty method
-  on an ABC; the line carries the reason.
+- Off-plan (cuts pass, **re-opens one sentence of Decision 9**, maintainer's call): the mixin
+  overrides `validate` — `super().validate(state)` then the hire target check — instead of
+  filling a `check_request` hook on the seam. Decision 9 and step 6.6 said the hook, because the
+  checker treats `Engine.validate`'s `...` body as uncallable through `super()`; verified under
+  basedpyright 1.39, a one-line docstring body is callable, and with `Hiring` first in the bases
+  `super()` reaches the family's `validate`. That deletes the empty hook and the `return None`
+  ruff B027 needed on it. Revert is one hook and two calls if the Decision stands as written.
+- Off-plan (cuts pass): `require_sheeted(..., noun=)` became `SheetedWorld.require_actor` over a
+  `member_noun: ClassVar[str]` each world sets; the per-world wrappers went.
+- Off-plan (cuts pass): the `__init_subclass__` test went; `HIRE` in `operations` is proved in situ
+  by the stale-hire-target tests on 24XX and TunnelGoons.
 - Known and accepted: `SheetedWorld` lives in `engines/hiring.py` beside `Sheeted` (PLAN step 5
   lists both as the mixin module's), so `tunnelgoons/engine.py` imports `scenes/world.py`
   transitively; no cycle, and the boundary test holds. A separate `engines/sheeted.py` would undo

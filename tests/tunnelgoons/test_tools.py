@@ -3,7 +3,6 @@ import re
 from random import Random
 
 import pytest
-from pydantic import JsonValue
 from support.table import change, refused, stub_worldsmith
 from support.tunnelgoons import (
     CRYPT,
@@ -424,7 +423,7 @@ def test_validate_refuses_a_stale_hire_target() -> None:
 def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party() -> None:
     draft = small_world().draft()
     generation = Generation(operation=HIRE, brief="Watch our backs", target=MIRA)
-    answer: dict[str, JsonValue] = {"abilities": {"brute": 2, "skulker": 1, "erudite": 0}}
+    answer = {"abilities": {"brute": 2, "skulker": 1, "erudite": 0}}
     _, told = asyncio.run(ENGINE.advance(draft, generation, stub_worldsmith(answer)))
     member = draft.payload.npcs[MIRA]
     assert member.sheet is not None

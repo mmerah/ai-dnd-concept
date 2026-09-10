@@ -109,7 +109,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
             raise Refusal(f"the game names packs not installed: {missing}")
         if state.generation is not None and state.generation.operation not in self.operations:
             raise Refusal(f"a scene engine cannot write {state.generation.operation!r}")
-        self.check_request(state)
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> SceneWorld[C, P]:
         self.check_scenario(scenario)

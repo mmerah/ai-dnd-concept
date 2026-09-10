@@ -294,12 +294,8 @@ def _rolls_then_refuses(draft: AnyGame, rng: Random) -> tuple[Fact, ...]:
 
 
 class _CountingLoner3e(Loner3eEngine):
-    """Counts `scenes`/`history` calls, so a test can watch `Turn.picture` walk each once."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.scenes_calls = 0
-        self.history_calls = 0
+    scenes_calls = 0
+    history_calls = 0
 
     def scenes(self, state: Loner3eGame) -> tuple[SceneRecord, ...]:
         self.scenes_calls += 1
