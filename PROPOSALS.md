@@ -183,6 +183,8 @@ One bundle, all high confidence, about −100 in total, 2 h.
 
 ## 7. Transport plumbing: one runner, the turn instead of the runtime, one layer fewer
 
+**Decided: accepted, steps 1–3; the `turn` layer stays (option b).**
+
 **What.** Three spawner classes stand between a role and a process: `RoleSpawner` dispatches
 (`roles.py:35-44`), `CliSpawner` and `BuiltinSpawner` each guard against being handed the other's
 role (`spawn.py:141-142`, `builtin.py:65-66`). `BuiltinSpawner` is built with the whole `Runtime`
@@ -211,6 +213,8 @@ than `app` does.
 
 ## 8. One worldsmith prompt renderer and one copy of the party prose
 
+**Decided: accepted, renderer and prose both; add a worldsmith golden per family first.**
+
 **What.** `scenes/worldsmith.py:123-148` and `rooms/worldsmith.py:10-34` build the same
 `sections((YOUR ROLE, SOURCE MATERIAL, THE SCOPE OF PLAY, ...family..., WHAT COMES NEXT, ENGINE
 GUIDANCE, ANSWER WITH))` with two or three middle sections swapped; `render_request` /
@@ -230,6 +234,8 @@ add one per family before the refactor so a wording slip is visible. The party r
 mid-rules to the end. **Confidence.** Medium-high. **Time.** 2–3 h.
 
 ## 9. Tests and qa: write each rule once
+
+**Decided: accepted, items 1 and 2, and qa option (a): cut to browser-only with one in-process MCP test.**
 
 **What.** 17 test names appear two or three times across the four engine test packages
 (`test_restored_round_trips` ×3, `test_advance_on_a_hire_installs_the_sheet_and_joins_the_party`
