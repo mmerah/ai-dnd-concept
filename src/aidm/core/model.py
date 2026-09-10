@@ -55,11 +55,12 @@ class CharacterHeader(EngineHeader):
 
 
 class Scenario[P: BaseModel](Frozen):
-    """`scenarios/<id>/world.json`: its dump is the scenario envelope around one payload."""
+    """`scenarios/<id>/world.json`: the envelope around the worldsmith's accepted draft."""
 
     meta: ScenarioMeta
     engine: EngineId
     packs: tuple[Slug, ...] = ()
+    source: str = ""
     payload: P
 
     @model_validator(mode="after")
@@ -102,7 +103,7 @@ class Game[P: BaseModel](Mutable):
     engine: EngineId
     packs: tuple[Slug, ...] = ()
     pending: PendingDecision | None = None
-    generation: Generation | None = None
+    generation: Generation | None = Field(default=None, exclude=True)
     notes: list[str] = []
     payload: P
 

@@ -99,5 +99,5 @@ def test_require_actor_accepts_a_sheeted_party_member_and_refuses_an_unsheeted_o
         party=[MIRA, DAX],
     )
     assert world.require_actor(MIRA) is world.cast[MIRA]
-    with pytest.raises(Refusal, match="not the player or a hired survivor"):
+    with pytest.raises(Refusal, match="not the player or a hired party member"):
         world.require_actor(DAX)

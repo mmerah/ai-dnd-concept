@@ -6,6 +6,7 @@
   },
   "engine": "tunnelgoons",
   "packs": [],
+  "source": "",
   "payload": {
     "places": {
       "entrance": {
@@ -148,7 +149,6 @@
         "on": "storeroom"
       }
     },
-    "start": "entrance",
-    "source": ""
+    "start": "entrance"
   }
 }

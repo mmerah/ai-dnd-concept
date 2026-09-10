@@ -2,20 +2,20 @@ import pytest
 from support.tunnelgoons import HALL, MIRA, START, small_world
 
 from aidm.core.entities import Refusal
-from aidm.engines.rooms.world import Prop, RoomCanon, Visit, Way
+from aidm.engines.rooms.world import MapDraft, Prop, Visit, Way
 from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsWorld
 
 GHOST = "ghost"
 
 
-def test_begin_refuses_a_canon_whose_npc_stands_in_no_place() -> None:
+def test_begin_refuses_a_draft_whose_npc_stands_in_no_place() -> None:
     world = small_world().payload
-    canon = RoomCanon[Npc](
+    draft = MapDraft[Npc](
         places=world.places, ways=world.ways, npcs=world.npcs, items=world.items, start=START
     )
-    canon.npcs[MIRA].place = GHOST
+    draft.npcs[MIRA].place = GHOST
     with pytest.raises(Refusal, match="in no place"):
-        _ = TunnelGoonsWorld.begin(canon, world.player, ())
+        _ = TunnelGoonsWorld.begin(draft, world.player, (), "")
 
 
 def test_an_item_on_nothing_is_refused() -> None:

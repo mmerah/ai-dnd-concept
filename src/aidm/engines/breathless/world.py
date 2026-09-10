@@ -8,9 +8,10 @@ from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import PendingOption
 from aidm.core.views import Pairs
-from aidm.engines.base import PLAYER_ID, Counter
-from aidm.engines.hiring import ItemSheet, Sheeted, SheetedWorld
-from aidm.engines.scenes.world import SceneCanon
+from aidm.engines.base import PLAYER_ID, Counter, Sheeted
+from aidm.engines.hiring import ItemSheet
+from aidm.engines.scenes.tools import SceneDraft
+from aidm.engines.scenes.world import SceneWorld
 
 type Die = Literal[4, 6, 8, 10, 12]
 LADDER: tuple[Die, ...] = (4, 6, 8, 10, 12)
@@ -163,13 +164,12 @@ class Survivor(Sheeted[SurvivorSheet]):
         return super().line(rows=rows, detail=detail)
 
 
-class BreathlessWorld(SheetedWorld[Survivor, Survivor]):
-    member_noun = "survivor"
+BreathlessWorld = SceneWorld[Survivor]
 
 
 BreathlessGame = Game[BreathlessWorld]
 
-BreathlessScenario = Scenario[SceneCanon[Survivor]]
+BreathlessScenario = Scenario[SceneDraft[Survivor]]
 
 BreathlessCharacter = Character[Survivor]
 

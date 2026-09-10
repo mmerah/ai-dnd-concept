@@ -42,7 +42,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
     character: type[AnyCharacter]
     instructions: str
     tools: dict[str, MasterTool[G]]
-    operations: tuple[Slug, ...]  # the requests this engine writes
+    unwritten: dict[Slug, Fact]  # the requests this engine writes, and what a failed one tells
 
     def __init__(self) -> None:
         self.instructions = (
@@ -157,9 +157,11 @@ class Engine[P: Person, G: Game[Any]](ABC):
     def over(self, state: G) -> str | None:
         return "You died." if not self.world(state).player.alive else None
 
-    def unwritten(self, request: Generation) -> Fact:
-        """What the player reads when the worldsmith could not write this request."""
-        raise ValueError(f"the {self.id!r} engine writes no {request.operation!r}")
+    def validate(self, state: G) -> None:
+        """Refuse a state this engine cannot play; a family adds its check after `super()`."""
+        request = state.generation
+        if request is not None and request.operation not in self.unwritten:
+            raise Refusal(f"the {self.id!r} engine writes no {request.operation!r}")
 
     @abstractmethod
     def master_tools(self) -> tuple[MasterTool[G], ...]: ...
@@ -168,13 +170,9 @@ class Engine[P: Person, G: Game[Any]](ABC):
     @abstractmethod
     def create_character(self, name: str, brief: str, picks: Picks, /) -> AnyCharacter: ...
     @abstractmethod
-    def world(self, state: G) -> World[P]: ...
+    def world(self, state: G) -> World[Person, P]: ...
     @abstractmethod
-    def validate(self, state: G) -> None:
-        """Refuse a state this engine cannot play; a mixin adds its check after `super()`."""
-
-    @abstractmethod
-    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> World[P]: ...
+    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> World[Person, P]: ...
     @abstractmethod
     def master_sections(self, state: G) -> Pairs: ...
     @abstractmethod

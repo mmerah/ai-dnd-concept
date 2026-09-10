@@ -47,23 +47,7 @@ class SceneRun(Mutable):
     recap: str = ""
 
 
-class SceneCanon[C: Person](Mutable):
-    cast: dict[Slug, C] = Field(default_factory=dict)
-    opening: SceneRun
-    source: str = ""
-    arc: str = ""
-
-    @model_validator(mode="after")
-    def _playable_canon(self) -> Self:
-        check_filing(self.cast)
-        check_named(self.opening.here, self.cast)
-        opening = self.opening
-        if opening.exchanges or opening.offered or opening.recap:
-            raise ValueError("an opening with play in it")
-        return self
-
-
-class SceneWorld[C: Person, P: Person](World[P]):
+class SceneWorld[C: Person](World[C, C]):
     runs: list[SceneRun] = Field(min_length=1)
     cast: dict[Slug, C] = Field(default_factory=dict)
     arc: str = ""
@@ -93,17 +77,11 @@ class SceneWorld[C: Person, P: Person](World[P]):
         return self
 
     @classmethod
-    def begin(cls, canon: SceneCanon[C], player: P) -> Self:
+    def opening(cls, draft: SceneDraft[C], player: C, source: str) -> Self:
         """The player is added by code and never authored, so no scenario can claim their id."""
+        cast, run = settled(draft, player, dict(draft.cast), ())
         return parse(
-            cls,
-            {
-                "cast": canon.cast,
-                "player": player,
-                "runs": [canon.opening],
-                "source": canon.source,
-                "arc": canon.arc,
-            },
+            cls, {"player": player, "cast": cast, "runs": [run], "arc": draft.arc, "source": source}
         )
 
     @property
@@ -140,7 +118,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
     def members(self) -> list[C]:
         return [self.cast[member_id] for member_id in self.party]
 
-    def require(self, entity_id: Slug) -> C | P:
+    def require(self, entity_id: Slug) -> C:
         if entity_id == self.player.id:
             return self.player
         entity = self.cast.get(entity_id)
@@ -148,7 +126,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
             raise Refusal(UNKNOWN_ID.format(entity_id=entity_id))
         return entity
 
-    def require_here(self, entity_id: Slug, *, alive: bool = False) -> C | P:
+    def require_here(self, entity_id: Slug, *, alive: bool = False) -> C:
         entity = self.require(entity_id)
         if alive and not entity.alive:
             raise Refusal(IS_DEAD.format(name=entity.name))
@@ -161,10 +139,13 @@ class SceneWorld[C: Person, P: Person](World[P]):
             )
         return entity
 
-    def here(self) -> Iterator[C | P]:
+    def here(self) -> Iterator[C]:
         yield self.player
         for entity_id in self.present():
             yield self.cast[entity_id]
+
+    def require_member_here(self, entity_id: Slug) -> C:
+        return self.require_here(entity_id, alive=True)
 
     def others(self) -> Iterator[C]:
         return (self.cast[entity_id] for entity_id in self.present() if entity_id not in self.party)
@@ -261,21 +242,35 @@ class SceneWorld[C: Person, P: Person](World[P]):
         }
 
     def apply_scene(self, draft: SceneDraft[C]) -> None:
-        self.cast = self.merged_cast(draft.cast)
-        everyone: Mapping[Slug, Thing] = {self.player.id: self.player, **self.cast}
-        present = resolve_ids(draft.present, everyone, "present")
-        hidden = resolve_ids(draft.hidden, everyone, "hidden")
-        for entity_id in present:
-            self.cast[entity_id].known = True
+        self.cast, run = settled(draft, self.player, self.merged_cast(draft.cast), self.party)
         if isinstance(draft, NextDraft):
             self.run.recap = draft.recap
         self.arc = draft.arc or self.arc
-        self.runs.append(run_of(draft, [*self.party, *present, *hidden]))
+        self.runs.append(run)
 
     def scene_panel(self) -> tuple[Panel, ...]:
         if not self.run.focus:
             return ()
         return (Panel(title="This scene", rows=(PanelRow(label=self.run.focus, detail=""),)),)
+
+
+def settled[C: Person](
+    draft: SceneDraft[C], player: Person, cast: dict[Slug, C], party: Sequence[Slug]
+) -> tuple[dict[Slug, C], SceneRun]:
+    """Free: it marks the present met and files the run, for a world that may not exist yet."""
+    everyone: Mapping[Slug, Thing] = {player.id: player, **cast}
+    present = _resolve_ids(draft.present, everyone, "present")
+    hidden = _resolve_ids(draft.hidden, everyone, "hidden")
+    for entity_id in present:
+        cast[entity_id].known = True
+    run = SceneRun(
+        place=draft.place,
+        title=draft.title,
+        focus=draft.focus,
+        situation=draft.situation,
+        here=[*party, *present, *hidden],
+    )
+    return cast, run
 
 
 def sentence(text: str) -> str:
@@ -297,7 +292,7 @@ def resolved_id(wanted: str, cast: Mapping[Slug, Thing]) -> Slug | None:
     return matches[0] if len(matches) == 1 else None
 
 
-def resolve_ids(wanted: Iterable[str], cast: Mapping[Slug, Thing], where: str) -> list[Slug]:
+def _resolve_ids(wanted: Iterable[str], cast: Mapping[Slug, Thing], where: str) -> list[Slug]:
     found: list[Slug] = []
     for name in wanted:
         matched = resolved_id(name, cast)
@@ -306,14 +301,3 @@ def resolve_ids(wanted: Iterable[str], cast: Mapping[Slug, Thing], where: str) -
         if matched not in found:
             found.append(matched)
     return found
-
-
-def run_of[C: Person](draft: SceneDraft[C], here: list[Slug]) -> SceneRun:
-    """Free: it builds a `SceneRun` from a draft the run does not own."""
-    return SceneRun(
-        place=draft.place,
-        title=draft.title,
-        focus=draft.focus,
-        situation=draft.situation,
-        here=here,
-    )

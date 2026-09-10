@@ -3,12 +3,12 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from aidm.core.entities import Mutable, Refusal, Slug, slug
+from aidm.core.entities import Mutable, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Pairs
-from aidm.engines.base import PLAYER_ID, UNKNOWN_ID, Counter, Person
-from aidm.engines.rooms.world import Dweller, Prop, RoomCanon, RoomWorld
+from aidm.engines.base import PLAYER_ID, Counter, Sheeted
+from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RoomWorld
 
 Ability = Literal["brute", "skulker", "erudite"]
 ABILITIES: tuple[Ability, ...] = ("brute", "skulker", "erudite")
@@ -38,27 +38,25 @@ class Abilities(Mutable):
         )
 
 
-class Npc(Dweller):
+class Npc(Sheeted[Abilities], Dweller):
     """A non-player character, friend or foe."""
 
     # SRD: an NPC's Difficulty Score is also its Health Points, so one counter serves both.
     hp: Counter
-    sheet: Abilities | None = None
 
     def rows(self) -> Pairs:
-        if self.sheet is not None:
-            return self.sheet.rows(self.hp)
+        if self.hired():
+            return self.dice().rows(self.hp)
         return (("Health", f"{self.hp} (its Difficulty Score)"),)
 
 
-class Goon(Person):
+class Goon(Sheeted[Abilities]):
     hp: Counter = Field(default_factory=lambda: Counter(current=HP_START, maximum=HP_START))
-    sheet: Abilities
     # The starting items by name; `new_game` files them as `Prop`s on the player.
     kit: tuple[str, ...] = Field(min_length=STARTING_ITEMS, max_length=STARTING_ITEMS)
 
     def rows(self) -> Pairs:
-        return self.sheet.rows(self.hp)
+        return self.dice().rows(self.hp)
 
     def unpack_kit(self, taken: Iterable[str]) -> tuple[Prop, ...]:
         made = list(taken)
@@ -74,27 +72,11 @@ class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
     def sheet_rows(self) -> Pairs:
         carried = len(list(self.carried(self.player.id)))
         return tuple(
-            (label, f"{carried}/{self.player.sheet.inventory}")
+            (label, f"{carried}/{self.player.dice().inventory}")
             if label == "Inventory"
             else (label, value)
             for label, value in self.player.rows()
         )
-
-    def require_actor_and_sheet(self, actor_id: Slug | None) -> tuple[Goon | Npc, Abilities]:
-        if actor_id is None or actor_id == self.player.id:
-            return self.player, self.player.sheet
-        npc = self.npcs.get(actor_id)
-        if npc is None:
-            raise Refusal(UNKNOWN_ID.format(entity_id=actor_id))
-        if npc.alive and npc.sheet is not None and npc.id in self.party:
-            return npc, npc.sheet
-        raise Refusal(f"{npc.name} is not the player or a hired party member")
-
-    def require_hireable(self, entity_id: Slug) -> Npc:
-        npc = self.require_npc_here(entity_id)
-        if npc.sheet is not None:
-            raise Refusal(f"{npc.name} already carries a sheet")
-        return npc
 
     def rest(self) -> list[Fact]:
         player = self.player
@@ -107,7 +89,7 @@ class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
         return facts
 
     def next_to_level(self, actor: Goon | Npc) -> Npc | None:
-        members = [member for member in self.members() if member.sheet is not None]
+        members = [member for member in self.members() if member.hired()]
         order = [self.player.id, *(member.id for member in members)]
         index = order.index(actor.id)
         return members[index] if index < len(members) else None
@@ -115,6 +97,6 @@ class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
 
 TunnelGoonsGame = Game[TunnelGoonsWorld]
 
-TunnelGoonsScenario = Scenario[RoomCanon[Npc]]
+TunnelGoonsScenario = Scenario[MapDraft[Npc]]
 
 TunnelGoonsCharacter = Character[Goon]

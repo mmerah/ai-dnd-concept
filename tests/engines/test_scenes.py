@@ -12,7 +12,7 @@ from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
 from aidm.engines.scenes.engine import MOVE_ON
 from aidm.engines.scenes.tools import NextDraft, NextScene
-from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld
+from aidm.engines.scenes.world import SceneRun, SceneWorld
 from aidm.engines.scenes.worldsmith import scene_refusal
 
 PLAYER = Person(id=PLAYER_ID, name="Player", brief="", known=True)
@@ -22,10 +22,8 @@ RECAP = "A long enough recap to satisfy the minimum length the model demands for
 ARC = "A few lines on what waits farther in, long enough to satisfy the model's own minimum."
 
 
-def _world(*runs: SceneRun, **fields: object) -> SceneWorld[Person, Person]:
-    return SceneWorld[Person, Person].model_validate(
-        {"player": PLAYER, "runs": list(runs), **fields}
-    )
+def _world(*runs: SceneRun, **fields: object) -> SceneWorld[Person]:
+    return SceneWorld[Person].model_validate({"player": PLAYER, "runs": list(runs), **fields})
 
 
 def _run(place: str, title: str, *, played: bool = False, here: Sequence[Slug] = ()) -> SceneRun:
@@ -40,16 +38,10 @@ def _run(place: str, title: str, *, played: bool = False, here: Sequence[Slug] =
     )
 
 
-def _travelling() -> SceneWorld[Person, Person]:
+def _travelling() -> SceneWorld[Person]:
     """The player, one companion in the cast, and a scene the pair stand in."""
     mara = Person(id=MARA, name="Mara", brief="A guide", known=True)
     return _world(_run("a1", "A1", here=[MARA]), cast={MARA: mara}, party=[MARA])
-
-
-def test_a_canon_opening_with_play_in_it_is_refused() -> None:
-    opening = _run("a1", "A1", played=True)
-    with pytest.raises(ValueError, match="an opening with play in it"):
-        _ = SceneCanon[Person](opening=opening)
 
 
 def test_a_party_member_leaves_the_scene_only_through_leave_party() -> None:
@@ -177,7 +169,7 @@ def test_a_scene_engine_refuses_to_write_an_operation_not_its_own() -> None:
     draft = narrowed(state, Loner3eGame).draft()
     draft.generation = Generation(operation="hire", brief="Hire a fixer.")
 
-    with pytest.raises(Refusal, match="a scene engine cannot write 'hire'"):
+    with pytest.raises(Refusal, match="writes no 'hire'"):
         engine.validate(draft)
 
 

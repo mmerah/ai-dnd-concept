@@ -275,14 +275,13 @@ async def test_no_generation_runs_once_the_game_is_over(tmp_path: Path) -> None:
     assert table.saved().generation is None
 
 
-def test_a_reload_clears_a_saved_request(tmp_path: Path) -> None:
+def test_a_save_never_carries_a_request(tmp_path: Path) -> None:
     game = session(tmp_path)
-    asked = Generation(operation="complication", brief="A crew breaks in.")
-    FileStore(tmp_path).save(TARGET.slug, game.state.model_copy(update={"generation": asked}))
+    draft = game.state.draft()
+    draft.generation = Generation(operation="complication", brief="A crew breaks in.")
+    FileStore(tmp_path).save(TARGET.slug, draft)
 
-    reloaded = session(tmp_path)
-
-    assert reloaded.state.generation is None
+    assert "generation" not in json.loads(FileStore(tmp_path).load(TARGET.slug) or "")
 
 
 @dataclass(slots=True)

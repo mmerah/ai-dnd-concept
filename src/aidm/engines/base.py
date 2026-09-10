@@ -2,7 +2,7 @@ from abc import abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.entities import Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import DiceEvent, Fact
@@ -93,18 +93,68 @@ class Person(Thing):
         """What the worldsmith may not write into a fresh cast member; empty when nothing."""
         return "" if self.alive else "alive"
 
+    def hired(self) -> bool:
+        """Whether they carry a sheet. A kind that never does answers no."""
+        return False
 
-class World[P: Person](Mutable):
+    def hireable(self) -> bool:
+        """Whether a sheet could still be written for them."""
+        return False
+
+
+class Sheeted[S: BaseModel](Person):
+    sheet: S | None = Field(default=None, description="Leave empty.")
+
+    def dice(self) -> S:
+        if self.sheet is None:
+            raise Refusal(f"{self.name} carries no dice")
+        return self.sheet
+
+    def forbidden(self) -> str:
+        parts = (super().forbidden(), "a sheet" if self.sheet is not None else "")
+        return ", ".join(part for part in parts if part)
+
+    def hired(self) -> bool:
+        return self.sheet is not None
+
+    def hireable(self) -> bool:
+        return self.sheet is None
+
+
+class World[M: Person, P: Person](Mutable):
     player: P
     source: str = ""
     party: list[Slug] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _player_carries_a_sheet(self) -> Self:
+        if self.player.hireable():
+            raise ValueError("the player carries no sheet")
+        return self
 
     @abstractmethod
     def records(self) -> tuple[SceneRecord, ...]: ...
     @abstractmethod
     def record(self, exchange: Exchange) -> None: ...
     @abstractmethod
-    def members(self) -> Sequence[Person]: ...
+    def members(self) -> Sequence[M]: ...
+    @abstractmethod
+    def require_member_here(self, entity_id: Slug) -> M:
+        """Alive and here with the player."""
+
+    def require_actor(self, actor_id: Slug | None) -> M | P:
+        if actor_id is None or actor_id == self.player.id:
+            return self.player
+        member = self.require_member_here(actor_id)
+        if member.hired() and member.id in self.party:
+            return member
+        raise Refusal(f"{member.name} is not the player or a hired party member")
+
+    def require_hireable(self, entity_id: Slug) -> M:
+        member = self.require_member_here(entity_id)
+        if member.hired():
+            raise Refusal(f"{member.name} already carries a sheet")
+        return member
 
     def exchanges(self) -> tuple[Exchange, ...]:
         return tuple(exchange for record in self.records() for exchange in record.exchanges)

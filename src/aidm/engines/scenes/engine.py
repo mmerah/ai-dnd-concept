@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from aidm.core.creation import CreationStep
-from aidm.core.entities import Refusal, Slug, parse
+from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import read_prompt
 from aidm.core.model import (
@@ -42,13 +42,7 @@ from aidm.engines.scenes.tools import (
     SceneDraft,
     SharedChange,
 )
-from aidm.engines.scenes.world import (
-    SCENE_LEFT,
-    SceneCanon,
-    SceneWorld,
-    resolve_ids,
-    run_of,
-)
+from aidm.engines.scenes.world import SCENE_LEFT, SceneWorld
 from aidm.engines.scenes.worldsmith import (
     COMPLICATING,
     CROSSING,
@@ -90,35 +84,37 @@ MOVING_ON = (
 )
 
 
-class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]):
+class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
     cast: type[C]
     pack: type[K]
-    world_type: type[SceneWorld[C, P]]
+    world_type: type[SceneWorld[C]]
     packs: dict[str, K]
-    operations = (DEPARTURE, COMPLICATION)
+    unwritten = {DEPARTURE: WAY_UNWRITTEN, COMPLICATION: COMPLICATION_UNWRITTEN}
     family_prompt = RULES_PROMPT
 
     def __init__(self) -> None:
         self.packs = read_packs(self.directory / "packs", self.pack)
         super().__init__()  # last: `master_tools` reads the packs
 
-    def world(self, state: G) -> SceneWorld[C, P]:
+    def world(self, state: G) -> SceneWorld[C]:
         return state.payload
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
         return tuple(DecisionOption(id=key, label=pack.name) for key, pack in self.packs.items())
 
     def validate(self, state: G) -> None:
+        super().validate(state)
         if not state.packs:
             raise Refusal(f"a {state.engine!r} game needs at least one table set")
         if missing := sorted(set(state.packs) - set(self.packs)):
             raise Refusal(f"the game names packs not installed: {missing}")
-        if state.generation is not None and state.generation.operation not in self.operations:
-            raise Refusal(f"a scene engine cannot write {state.generation.operation!r}")
 
-    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> SceneWorld[C, P]:
-        canon: SceneCanon[C] = scenario.payload
-        return self.world_type.begin(canon, self.player_of(character))
+    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> SceneWorld[C]:
+        # A restart opens the same scenario again, so the present is marked met on a copy.
+        draft: SceneDraft[C] = scenario.payload.model_copy(deep=True)
+        if (refused := scene_refusal(draft)) is not None:
+            raise Refusal(refused)
+        return self.world_type.opening(draft, self.player_of(character), scenario.source)
 
     def master_sections(self, state: G) -> Pairs:
         world = self.world(state)
@@ -177,7 +173,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
             over=self.over(state),
         )
 
-    def shared_change(self, world: SceneWorld[C, P], change: SharedChange) -> list[Fact]:
+    def shared_change(self, world: SceneWorld[C], change: SharedChange) -> list[Fact]:
         """Each arm settles its own consequences, so a call leaves nothing half-done."""
         match change:
             case Reveal():
@@ -208,13 +204,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
                 f"{args.complication}. Nothing more lands this turn; stop and exit",
             )
         ]
-
-    def unwritten(self, request: Generation) -> Fact:
-        if request.operation == DEPARTURE:
-            return WAY_UNWRITTEN
-        if request.operation == COMPLICATION:
-            return COMPLICATION_UNWRITTEN
-        return super().unwritten(request)
 
     def act(self, draft: G, action: Slug, _words: str) -> None:
         if action != MOVE_ON.id or not self.world(draft).run.offered:
@@ -279,24 +268,8 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
             meta=meta.with_premise(draft.situation),
             engine=self.id,
             packs=packs,
-            payload=self.opening_canon(draft, source),
-        )
-
-    def opening_canon(self, draft: SceneDraft[C], source: str) -> SceneCanon[C]:
-        """Parametrized on the engine's cast, so the canon revalidates as its own people."""
-        cast = draft.cast
-        present = resolve_ids(draft.present, cast, "present")
-        hidden = resolve_ids(draft.hidden, cast, "hidden")
-        for entity_id in present:
-            cast[entity_id].known = True
-        return parse(
-            SceneCanon[self.cast],
-            {
-                "cast": cast,
-                "opening": run_of(draft, [*present, *hidden]),
-                "source": source,
-                "arc": draft.arc,
-            },
+            source=source,
+            payload=draft,
         )
 
     async def write_next(self, draft: G, intent: str, worldsmith: WorldsmithAnswer) -> NextDraft[C]:

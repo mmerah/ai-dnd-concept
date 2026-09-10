@@ -1,6 +1,5 @@
 import json
 import logging
-import shutil
 from collections.abc import Collection, Iterator, Mapping
 from dataclasses import dataclass
 from functools import cache
@@ -14,7 +13,6 @@ from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, CharacterHeader,
 
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"
-SOURCE_STEM = "source"
 SOURCE_SUFFIXES = (".md", ".txt", ".pdf")
 # Two content ids joined by `--`: a save name is not a `Slug`.
 _SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9-]*"
@@ -128,13 +126,11 @@ class Library:
                 raise Refusal(f"character {character.id!r} is {filed!r}, not {named!r}")
         write_text(path, character.model_dump_json(indent=2))
 
-    def write_scenario(self, name: Slug, scenario: AnyScenario, source: Path | None = None) -> None:
+    def write_scenario(self, name: Slug, scenario: AnyScenario) -> None:
         folder = self.scenario_folder(name)
         if folder.exists():
             raise Refusal(f"scenario {name!r} already exists")
         write_text(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
-        if source is not None:
-            shutil.copyfile(source, folder / f"{SOURCE_STEM}{source.suffix}")
 
 
 @cache

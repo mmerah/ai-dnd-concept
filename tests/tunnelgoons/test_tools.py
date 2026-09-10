@@ -43,8 +43,8 @@ def _total(card: str) -> int:
 def test_the_roll_adds_ability_and_items_and_penalizes_brute_and_skulker_over_inventory() -> None:
     draft = small_world().draft()
     world = draft.payload
-    world.player.sheet.abilities["skulker"] = 2
-    world.player.sheet.inventory = 1  # carrying rope + torch (2) is 1 over
+    world.player.dice().abilities["skulker"] = 2
+    world.player.dice().inventory = 1  # carrying rope + torch (2) is 1 over
     facts = ENGINE.roll(
         draft,
         ActionRoll(what="Sneak past", ability="skulker", items=(ROPE,), difficulty=10),
@@ -52,27 +52,27 @@ def test_the_roll_adds_ability_and_items_and_penalizes_brute_and_skulker_over_in
     )
     rolled = facts[1]
     dice = rolled.dice[0].rolled
-    assert _total(rolled.card) == sum(dice) + world.player.sheet.abilities["skulker"] + 1 - 1
+    assert _total(rolled.card) == sum(dice) + world.player.dice().abilities["skulker"] + 1 - 1
 
 
 def test_erudite_rolls_are_not_penalized_for_over_inventory() -> None:
     draft = small_world().draft()
     world = draft.payload
-    world.player.sheet.abilities["erudite"] = 2
-    world.player.sheet.inventory = 1
+    world.player.dice().abilities["erudite"] = 2
+    world.player.dice().inventory = 1
     facts = ENGINE.roll(
         draft, ActionRoll(what="Read the runes", ability="erudite", difficulty=8), Random(2)
     )
     rolled = facts[1]
     dice = rolled.dice[0].rolled
-    assert _total(rolled.card) == sum(dice) + world.player.sheet.abilities["erudite"]
+    assert _total(rolled.card) == sum(dice) + world.player.dice().abilities["erudite"]
 
 
 def test_a_roll_against_an_npc_that_hits_can_slay_it() -> None:
     draft = small_world().draft()
     world = draft.payload
     world.npcs[MANTIS].place = START
-    world.player.sheet.abilities["brute"] = 10  # min total 12 always beats DS 4
+    world.player.dice().abilities["brute"] = 10  # min total 12 always beats DS 4
     _ = ENGINE.roll(
         draft,
         ActionRoll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
@@ -88,7 +88,7 @@ def test_an_npc_killed_by_a_roll_drops_what_it_carried_here() -> None:
     world = draft.payload
     world.npcs[MANTIS].place = START
     world.items[KEY].on = MANTIS
-    world.player.sheet.abilities["brute"] = 10  # min total 12 always beats DS 4
+    world.player.dice().abilities["brute"] = 10  # min total 12 always beats DS 4
     _ = ENGINE.roll(
         draft,
         ActionRoll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
@@ -103,7 +103,7 @@ def test_a_miss_against_an_npc_can_kill_the_player() -> None:
     world.npcs[MANTIS].place = START
     world.npcs[MANTIS].hp.maximum = 20
     world.npcs[MANTIS].hp.current = 20  # max total 12 never beats DS 20
-    world.player.sheet.abilities["brute"] = 0
+    world.player.dice().abilities["brute"] = 0
     world.player.hp.current = 1
     _ = ENGINE.roll(
         draft,
@@ -130,7 +130,7 @@ def test_a_roll_against_an_npc_wounds_nobody_unless_it_is_dangerous() -> None:
 def test_dangerous_hurts_only_on_a_miss() -> None:
     draft = small_world().draft()
     world = draft.payload
-    world.player.sheet.abilities["erudite"] = 12  # min total 14 always beats DS 8
+    world.player.dice().abilities["erudite"] = 12  # min total 14 always beats DS 8
     before = world.player.hp.current
     _ = ENGINE.roll(
         draft,
@@ -141,7 +141,7 @@ def test_dangerous_hurts_only_on_a_miss() -> None:
 
     draft2 = small_world().draft()
     world2 = draft2.payload
-    world2.player.sheet.inventory = 0
+    world2.player.dice().inventory = 0
     world2.items.update(
         {
             f"junk-{n}": Prop(
@@ -198,10 +198,10 @@ def test_level_up_with_no_args_opens_the_six_option_decision() -> None:
 def test_level_up_with_both_raises_the_ability_and_the_boost_and_the_level() -> None:
     draft = small_world().draft()
     world = draft.payload
-    before = world.player.sheet.level
+    before = world.player.dice().level
     _ = ENGINE.level_up(draft, LevelUp(ability="brute", boost="health"), Random(0))
-    assert world.player.sheet.abilities["brute"] == 2
-    assert world.player.sheet.level == before + 1
+    assert world.player.dice().abilities["brute"] == 2
+    assert world.player.dice().level == before + 1
 
 
 def test_level_up_with_one_argument_is_refused() -> None:
@@ -390,12 +390,12 @@ def test_level_up_for_the_player_opens_the_members_decision() -> None:
     assert draft.pending is None
 
 
-def test_require_actor_and_sheet_refuses_an_unsheeted_member() -> None:
+def test_require_actor_refuses_an_unsheeted_member() -> None:
     draft = small_world().draft()
     world = draft.payload
     world.party.append(MIRA)
     with pytest.raises(Refusal, match="is not the player or a hired party member"):
-        _ = world.require_actor_and_sheet(MIRA)
+        _ = world.require_actor(MIRA)
 
 
 def test_hire_sets_generation_and_ends_the_turn() -> None:
@@ -409,14 +409,6 @@ def test_hire_refuses_a_sheeted_npc() -> None:
     draft.payload.npcs[MIRA].sheet = _sheeted()
     with pytest.raises(Refusal, match="already carries a sheet"):
         _ = ENGINE.hire(draft, Hire(entity_id=MIRA, terms="terms"), Random(0))
-
-
-def test_validate_refuses_a_stale_hire_target() -> None:
-    draft = small_world().draft()
-    draft.generation = Generation(operation=HIRE, brief="terms", target=MIRA)
-    draft.payload.npcs[MIRA].sheet = _sheeted()
-    with pytest.raises(Refusal, match="already carries a sheet"):
-        ENGINE.validate(draft)
 
 
 def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party() -> None:

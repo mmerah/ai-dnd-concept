@@ -3,7 +3,7 @@ from random import Random
 
 import pytest
 from support.table import change, refused, stub_worldsmith
-from support.twentyfourxx import ENGINE, KESTREL, LOCKPICKS, SABLE, hired, small_world
+from support.twentyfourxx import ENGINE, KESTREL, LOCKPICKS, hired, small_world
 
 from aidm.core.entities import Refusal
 from aidm.core.model import Generation
@@ -465,28 +465,6 @@ def test_hire_refuses_a_sheeted_member() -> None:
     draft = small_world().draft()
     with pytest.raises(Refusal, match="already carries a sheet"):
         _ = ENGINE.hire(draft, Hire(entity_id=PLAYER_ID, terms="terms"), Random(0))
-
-
-def test_validate_refuses_a_hire_with_no_target() -> None:
-    draft = small_world().draft()
-    draft.packs = (SRD_PACK,)
-    draft.generation = Generation(operation=HIRE, brief="terms")
-    with pytest.raises(Refusal, match="a 'hire' request names no target"):
-        ENGINE.validate(draft)
-
-
-def test_validate_refuses_a_hire_whose_target_is_not_here_or_already_sheeted() -> None:
-    draft = small_world().draft()
-    draft.packs = (SRD_PACK,)
-    draft.generation = Generation(operation=HIRE, brief="terms", target=SABLE)
-    with pytest.raises(Refusal, match="is not here with the player"):
-        ENGINE.validate(draft)
-
-    draft = small_world().draft()
-    draft.packs = (SRD_PACK,)
-    draft.generation = Generation(operation=HIRE, brief="terms", target=PLAYER_ID)
-    with pytest.raises(Refusal, match="already carries a sheet"):
-        ENGINE.validate(draft)
 
 
 def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party() -> None:

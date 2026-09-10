@@ -8,23 +8,23 @@
   "packs": [
     "srd"
   ],
+  "source": "",
   "payload": {
-    "opening": {
-      "place": "abbots-study",
-      "title": "The Abbot's Study",
-      "focus": "Can you get the way down to the vault out of this room, and out of Mara?",
-      "situation": "The only lit room left in the abbey: ledgers stacked to the beams, candle stubs gone cold, and Mara still cataloguing books nobody will read. A flagstone under the desk sits a finger proud of its neighbours.",
-      "here": [
-        "mara",
-        "vault-map"
-      ]
-    },
+    "place": "abbots-study",
+    "title": "The Abbot's Study",
+    "focus": "Can you get the way down to the vault out of this room, and out of Mara?",
+    "situation": "The only lit room left in the abbey: ledgers stacked to the beams, candle stubs gone cold, and Mara still cataloguing books nobody will read. A flagstone under the desk sits a finger proud of its neighbours.",
+    "present": [
+      "mara"
+    ],
+    "hidden": [
+      "vault-map"
+    ],
     "cast": {
       "mara": {
         "id": "mara",
         "name": "Mara",
         "brief": "The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.",
-        "known": true,
         "concept": "A Cautious Scribe",
         "tags": {
           "skill": [
@@ -44,14 +44,12 @@
       "vault-map": {
         "id": "vault-map",
         "name": "the vault map",
-        "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny. Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.",
-        "known": false
+        "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny. Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it."
       },
       "tomas": {
         "id": "tomas",
         "name": "Brother Tomas",
         "brief": "A deaf old porter who sweeps the cloister and knows almost nothing about the vault.",
-        "known": false,
         "concept": "A Deaf Old Porter",
         "tags": {
           "skill": [
@@ -69,7 +67,6 @@
         "id": "elena",
         "name": "Elena",
         "brief": "The vault's former archivist; she alone remembers the sealing rite, and she names a price before she gives it up. She catalogued the vault ledgers beside Mara for two winters, until the night she went below alone and never came back up. The rite is in her head and nowhere else.",
-        "known": false,
         "concept": "A Ruined Archivist",
         "tags": {
           "skill": [
@@ -90,7 +87,6 @@
         "id": "cloister-rat",
         "name": "a bloated rat",
         "brief": "It has grown fat on the dead garden and does not run from a lantern.",
-        "known": false,
         "concept": "A Bloated Cloister Rat",
         "tags": {
           "skill": [
@@ -103,6 +99,6 @@
         }
       }
     },
-    "source": ""
+    "arc": ""
   }
 }

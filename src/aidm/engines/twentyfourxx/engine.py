@@ -12,7 +12,7 @@ from aidm.core.prompt import lines_of
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Pairs, Panel, PanelRow
 from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, banded
-from aidm.engines.hiring import HIRE_TOOL, Hire, Hiring
+from aidm.engines.hiring import HIRE, HIRE_TOOL, HIRE_UNWRITTEN, Hire, Hiring
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
 from aidm.engines.scenes.world import sentence
@@ -53,7 +53,7 @@ from aidm.engines.twentyfourxx.worldsmith import AUTHORING, HIRING, Pack, SheetD
 
 class TwentyfourxxEngine(
     Hiring[Crewmate, Crewmate, TwentyfourxxGame, SheetDraft],
-    SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack],
+    SceneEngine[Crewmate, TwentyfourxxGame, Pack],
 ):
     id = EngineId("twentyfourxx")
     title = "24XX"
@@ -82,6 +82,7 @@ class TwentyfourxxEngine(
     pack = Pack
     world_type = TwentyfourxxWorld
     hire_answer = SheetDraft
+    unwritten = {**SceneEngine.unwritten, HIRE: HIRE_UNWRITTEN}
 
     def master_tools(self) -> tuple[MasterTool[TwentyfourxxGame], ...]:
         return (

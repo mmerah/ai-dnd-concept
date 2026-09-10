@@ -1,14 +1,13 @@
 from abc import abstractmethod
 from random import Random
-from typing import Any, ClassVar, Self
+from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 from aidm.core.entities import Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import Game, Generation, Objection, WorldsmithAnswer
 from aidm.engines.base import Person
-from aidm.engines.scenes.world import SceneWorld
 from aidm.engines.seam import Engine
 
 HIRE: Slug = "hire"
@@ -41,43 +40,6 @@ class ItemSheet[I: BaseModel](Mutable):
         return item
 
 
-class Sheeted[S: BaseModel](Person):
-    sheet: S | None = Field(default=None, description="Leave empty.")
-
-    def dice(self) -> S:
-        if self.sheet is None:
-            raise Refusal(f"{self.name} carries no dice")
-        return self.sheet
-
-    def forbidden(self) -> str:
-        parts = (super().forbidden(), "a sheet" if self.sheet is not None else "")
-        return ", ".join(part for part in parts if part)
-
-
-class SheetedWorld[C: Sheeted[Any], P: Sheeted[Any]](SceneWorld[C, P]):
-    member_noun: ClassVar[str]
-
-    @model_validator(mode="after")
-    def _player_carries_a_sheet(self) -> Self:
-        if self.player.sheet is None:
-            raise ValueError("the player carries no sheet")
-        return self
-
-    def require_actor(self, actor_id: Slug | None) -> C | P:
-        if actor_id is None or actor_id == self.player.id:
-            return self.player
-        entity = self.require(actor_id)
-        if entity.alive and entity.sheet is not None and entity.id in self.party:
-            return entity
-        raise Refusal(f"{entity.name} is not the player or a hired {self.member_noun}")
-
-    def require_hireable(self, entity_id: Slug) -> C | P:
-        member = self.require_here(entity_id, alive=True)
-        if member.sheet is not None:
-            raise Refusal(f"{member.name} already carries a sheet")
-        return member
-
-
 class Hire(Frozen):
     entity_id: Slug = Field(description="Exact id of who here signs on.")
     terms: str = Field(
@@ -91,11 +53,6 @@ class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
 
     hire_answer: type[A]
 
-    def __init_subclass__(cls, **kwargs: object) -> None:
-        super().__init_subclass__(**kwargs)
-        if HIRE not in cls.operations:
-            cls.operations = (*cls.operations, HIRE)
-
     def hire(self, draft: G, args: Hire, _rng: Random) -> list[Fact]:
         member = self.hireable(draft, args.entity_id)
         draft.generation = Generation(operation=HIRE, brief=args.terms, target=member.id)
@@ -104,15 +61,6 @@ class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
             "Nothing more lands this turn; stop and exit"
         )
         return [Fact(trace=trace)]
-
-    def unwritten(self, request: Generation) -> Fact:
-        return HIRE_UNWRITTEN if request.operation == HIRE else super().unwritten(request)
-
-    def validate(self, state: G) -> None:
-        super().validate(state)
-        generation = state.generation
-        if generation is not None and generation.operation == HIRE:
-            self.hireable(state, generation.require_target())
 
     async def advance(
         self, draft: G, request: Generation, worldsmith: WorldsmithAnswer

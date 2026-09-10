@@ -14,7 +14,7 @@ from aidm.core.io import decode
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.packs import SRD_PACK
-from aidm.engines.scenes.world import SceneCanon, SceneRun
+from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.seam import AnyEngine
 from aidm.engines.twentyfourxx.world import (
     Crewmate,
@@ -76,14 +76,12 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
         meta=ScenarioMeta(title="Test", premise="A test scenario.", scope="One tense night."),
         engine=TWENTYFOURXX,
         packs=(SRD_PACK,),
-        payload=SceneCanon[Crewmate](
+        payload=SceneDraft[Crewmate](
+            place="airlock",
+            title="The Airlock",
+            focus="Can they reach the control deck before the air runs out?",
+            situation="A" * 80,
             cast={PLAYER_ID: decoy},
-            opening=SceneRun(
-                place="airlock",
-                title="The Airlock",
-                focus="Can they reach the control deck before the air runs out?",
-                situation="A" * 80,
-            ),
         ),
     )
     character = LIBRARY.read_character("kael", TWENTYFOURXX, TwentyfourxxCharacter)

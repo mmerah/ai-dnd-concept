@@ -118,18 +118,7 @@ class MapDraft[N: Dweller](Dungeon[N]):
     start: Slug = Field(description="Exact id of the place this map starts from.")
 
 
-class RoomCanon[N: Dweller](Dungeon[N]):
-    start: Slug
-    source: str = ""
-
-    @model_validator(mode="after")
-    def _startable(self) -> Self:
-        if not self.require_place(self.start).known:
-            raise ValueError("the starting place must be known to the player")
-        return self
-
-
-class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
+class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
     visits: list[Visit] = Field(min_length=1)
 
     @model_validator(mode="after")
@@ -150,17 +139,17 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         return self
 
     @classmethod
-    def begin(cls, canon: RoomCanon[N], player: P, items: Iterable[Prop]) -> Self:
+    def begin(cls, draft: MapDraft[N], player: P, items: Iterable[Prop], source: str) -> Self:
         return parse(
             cls,
             {
-                "places": canon.places,
-                "ways": canon.ways,
-                "npcs": canon.npcs,
-                "items": {**canon.items, **{item.id: item for item in items}},
+                "places": draft.places,
+                "ways": draft.ways,
+                "npcs": draft.npcs,
+                "items": {**draft.items, **{item.id: item for item in items}},
                 "player": player,
-                "visits": [Visit(place=canon.start)],
-                "source": canon.source,
+                "visits": [Visit(place=draft.start)],
+                "source": source,
             },
         )
 
@@ -182,7 +171,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         yield self.player
         yield from self.at(self.current.id)
 
-    def require_npc_here(self, entity_id: Slug) -> N:
+    def require_member_here(self, entity_id: Slug) -> N:
         npc = self.npcs.get(entity_id)
         if npc is None:
             raise Refusal(UNKNOWN_ID.format(entity_id=entity_id))
@@ -212,7 +201,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         return tuple(items)
 
     def join_party(self, entity_id: Slug) -> list[Fact]:
-        return self.join(self.require_npc_here(entity_id))
+        return self.join(self.require_member_here(entity_id))
 
     def leave_party(self, entity_id: Slug) -> list[Fact]:
         npc = self.npcs.get(entity_id)
@@ -244,7 +233,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         for npc_id in with_ids:
             if npc_id == self.player.id:
                 raise Refusal("the player already comes along")
-            npc = self.require_npc_here(npc_id)
+            npc = self.require_member_here(npc_id)
             if npc.id in self.party:
                 raise Refusal(
                     f"{npc.name} travels with the player and comes along without with_ids"

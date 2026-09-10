@@ -36,7 +36,7 @@ from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
 
 
-class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
+class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eGame, Pack]):
     id = EngineId("loner3e")
     title = "LONER 3E"
     art_style = "Painterly illustration, muted colours, no text or lettering."
