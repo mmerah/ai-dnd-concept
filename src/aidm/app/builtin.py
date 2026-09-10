@@ -1,6 +1,6 @@
 import logging
 from asyncio import timeout
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from time import monotonic
 from typing import Literal, Protocol
@@ -21,7 +21,7 @@ LOGGER = logging.getLogger(__name__)
 
 class Tools(Protocol):
     def published_tools(self) -> Sequence[MasterTool[AnyGame]]: ...
-    def call(self, name: str, raw: Mapping[str, JsonValue]) -> str: ...
+    def call(self, name: str, raw: JsonValue) -> str: ...
 
 
 class _Echoed(BaseModel):
@@ -118,7 +118,7 @@ class BuiltinSpawner:
     def _answer(self, call: _ToolCall) -> str:
         """What the server does: a refusal is the result the model reads and carries on from."""
         try:
-            return self.tools.call(call.function.name, _arguments(call.function.arguments))
+            return self.tools.call(call.function.name, decode(call.function.arguments))
         except Refusal as refused:
             return str(refused)
 
@@ -151,13 +151,6 @@ def _declared(tool: MasterTool[AnyGame]) -> JsonValue:
             "parameters": schema_of(tool.args),
         },
     }
-
-
-def _arguments(text: str) -> dict[str, JsonValue]:
-    value = decode(text)
-    if not isinstance(value, dict):
-        raise Refusal("tool arguments are a JSON object")
-    return value
 
 
 def _detail(failed: HTTPError) -> str:

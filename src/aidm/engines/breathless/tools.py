@@ -1,9 +1,10 @@
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import Discriminator, Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, Frozen
 from aidm.core.tools import Attempt
+from aidm.engines import base
 from aidm.engines.base import ACTOR, JoinParty, LeaveParty
 from aidm.engines.breathless.world import Die, Skill
 from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
@@ -40,11 +41,7 @@ type WorldChange = (
 )
 
 
-class ChangeWorld(Frozen):
-    change: WorldChange = Field(
-        discriminator="verb",
-        description="The change to apply. `verb` picks which one.",
-    )
+ChangeWorld = base.ChangeWorld[Annotated[WorldChange, Discriminator("verb")]]
 
 
 class Check(Attempt):

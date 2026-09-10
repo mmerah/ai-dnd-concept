@@ -23,7 +23,7 @@ from aidm.ui.game import (
     standing_proposal,
 )
 
-WREN = Subject(id=EntityId("player"), name="Wren", brief="A quiet scout")
+WREN = Subject(id=EntityId("player"), label="Wren", detail="A quiet scout")
 
 
 def _view(prompt: PendingDecision | None = None, over: str | None = None) -> PlayerView:

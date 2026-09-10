@@ -7,8 +7,7 @@ report per scenario to `qa/shots/<scenario>/` (ignored by git).
 ## Run it
 
 ```bash
-uv venv /tmp/pw --python 3.13 && uv pip install --python /tmp/pw/bin/python playwright
-export QA_PW=/tmp/pw/bin/python QA_WORK=/tmp/aidm-qa-work
+export QA_WORK=/tmp/aidm-qa-work
 qa/run_all.sh                 # every scenario, a fresh server each
 qa/run_all.sh loner mobile    # some of them
 qa/serve.sh                   # only the server, at http://localhost:8123 (/qa/log lists spawns)
@@ -18,6 +17,7 @@ qa/serve.sh --art             # the same, with placeholder 16:9 scene art drawn 
 `--art` turns media on and swaps the provider call for a gradient keyed off the prompt, so the
 scene header can be looked at with a picture in it without a key or a network.
 
+Playwright comes from the project venv (the `qa` dependency group), but the browsers do not:
 Chromium is pinned in `drive.py` (`CHROMIUM`); change it for another machine.
 
 Scenarios: `home`, `loner`, `goons`, `breathless`, `24xx`, `settings`, `create`, `mobile`,

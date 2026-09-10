@@ -6,7 +6,8 @@ from pydantic import Field, model_validator
 from aidm.core.entities import CheckedEntityId, EntityId, Mutable, Refusal, parse, require_unique
 from aidm.core.facts import Fact
 from aidm.core.play import Exchange, SceneRecord
-from aidm.core.views import Rows, lines_of
+from aidm.core.prompt import lines_of
+from aidm.core.views import Pairs
 from aidm.engines.base import IS_DEAD, PLAYER_ID, UNKNOWN_ID, Person, Thing, World, check_filing
 
 
@@ -109,6 +110,12 @@ class Dungeon[N: Dweller](Mutable):
 
     def add_way(self, from_id: EntityId, to_id: EntityId, *, known: bool) -> None:
         self.ways.setdefault(from_id, []).append(Way(to=to_id, known=known))
+
+
+class MapDraft[N: Dweller](Dungeon[N]):
+    """A map: places, the ways between them, and the npcs and items in them."""
+
+    start: CheckedEntityId = Field(description="Exact id of the place this map starts from.")
 
 
 class RoomCanon[N: Dweller](Dungeon[N]):
@@ -247,7 +254,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         for npc in travelers:
             npc.place = destination.id
         self.visits.append(Visit(place=destination.id))
-        trace = f"the player arrives at {destination.label}"
+        trace = f"the player arrives at {destination.mention}"
         if travelers:
             names = " and ".join(npc.name for npc in travelers)
             verb = "comes" if len(travelers) == 1 else "come"
@@ -268,7 +275,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         back = self.way(destination.id, here.id)
         if back is not None:
             back.known = True
-        trace = f"the way from {here.label} to {destination.label} is unlocked"
+        trace = f"the way from {here.mention} to {destination.mention} is unlocked"
         card = f"{destination.name} unlocked"
         return [here.fact("way_unlocked", trace, card=card)]
 
@@ -306,7 +313,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         facts = item.reveal()
         item.on = to
         card = f"Took {item.name}" if to == self.player.id else f"{item.name} → {holder.name}"
-        trace = f"{item.label} moves to {holder.label}"
+        trace = f"{item.mention} moves to {holder.mention}"
         return [*facts, item.fact("entity_moved", trace, card=card)]
 
     def kill(self, actor: P | N) -> list[Fact]:
@@ -318,10 +325,10 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         for item in dropped:
             item.on = self.current.id
         if dropped:
-            fell = ", ".join(item.label for item in dropped) + " fell loose here"
+            fell = ", ".join(item.mention for item in dropped) + " fell loose here"
             facts.append(Fact(kind="items_dropped", trace=fell))
         card = "You are dead" if actor.id == self.player.id else f"{actor.name} is dead"
-        facts.append(actor.fact("actor_killed", f"{actor.label} is dead", card=card))
+        facts.append(actor.fact("actor_killed", f"{actor.mention} is dead", card=card))
         return facts
 
     def attach(self, region: Dungeon[N], start: EntityId) -> None:
@@ -377,7 +384,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         lines.append("ids in use: " + ", ".join(sorted((*self.places, *self.npcs, *self.items))))
         return "\n".join(lines)
 
-    def sheet_rows(self) -> Rows:
+    def sheet_rows(self) -> Pairs:
         """Overridable: a rule may amend a row."""
         return self.player.rows()
 

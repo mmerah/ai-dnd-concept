@@ -4,8 +4,8 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen
 from aidm.core.play import DecisionOption
-from aidm.engines.base import Pack as ScenePack
 from aidm.engines.breathless.world import SKILLS, Die, Skill, check_spread
+from aidm.engines.scenes.packs import ScenePack
 
 AUTHORING = (
     "BREATHLESS AUTHORING\n"

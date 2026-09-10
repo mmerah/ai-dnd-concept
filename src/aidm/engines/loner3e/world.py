@@ -6,7 +6,7 @@ from pydantic import Field
 from aidm.core.entities import Refusal, require_unique
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
-from aidm.core.views import Rows
+from aidm.core.views import Pairs
 from aidm.engines.base import Counter, Person
 from aidm.engines.scenes.world import SceneCanon, SceneWorld
 
@@ -31,7 +31,7 @@ class Loner3eSheet(Person):
     def tagged(self, kind: TagKind) -> list[str]:
         return self.tags.get(kind, [])
 
-    def rows(self) -> Rows:
+    def rows(self) -> Pairs:
         return tuple(
             (label, value)
             for label, value in (
@@ -68,7 +68,7 @@ class Loner3eSheet(Person):
         if missing := [tag for tag in lost if tag not in current]:
             raise Refusal(f"{self.name} carries no {kind} {missing[0]!r}")
         self.tags[kind] = [tag for tag in (*current, *gained) if tag not in lost]
-        trace = f"{self.label} {kind} " + ", ".join(
+        trace = f"{self.mention} {kind} " + ", ".join(
             (*(f"+{tag}" for tag in gained), *(f"-{tag}" for tag in lost))
         )
         parts: list[str] = []
@@ -93,7 +93,7 @@ class Loner3eSheet(Person):
         if nemesis:
             self.nemesis = nemesis
             parts.append(f"nemesis: {nemesis}")
-        trace = f"{self.label} " + "; ".join(parts)
+        trace = f"{self.mention} " + "; ".join(parts)
         card = f"{self.name}: {goal}" if goal else ""
         return [self.fact("drive_set", trace, card=card)]
 

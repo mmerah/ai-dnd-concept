@@ -3,11 +3,13 @@
 import sys
 from pathlib import Path
 
+from playwright.sync_api import Page
+
 sys.path.insert(0, str(Path(__file__).parent))
 from drive import BASE, Session, clean, run
 
 
-def pick(page, label: str, option: str) -> None:  # noqa: ANN001
+def pick(page: Page, label: str, option: str) -> None:
     page.locator(f".q-select:has(.q-field__label:text-is('{label}'))").click()
     page.locator(".q-menu .q-item", has_text=option).first.click()
     page.wait_for_timeout(300)

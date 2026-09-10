@@ -6,7 +6,7 @@ from pydantic import Field
 from aidm.core.entities import EntityId, Mutable, Refusal, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
-from aidm.core.views import Rows
+from aidm.core.views import Pairs
 from aidm.engines.base import PLAYER_ID, UNKNOWN_ID, Counter, Person
 from aidm.engines.rooms.world import Dweller, Item, RoomCanon, RoomWorld
 
@@ -29,7 +29,7 @@ class Abilities(Mutable):
     inventory: int = Field(default=INVENTORY_START, ge=0)
     level: int = Field(default=1, ge=1)
 
-    def rows(self, hp: Counter) -> Rows:
+    def rows(self, hp: Counter) -> Pairs:
         return (
             *((ability.capitalize(), str(self.abilities[ability])) for ability in ABILITIES),
             ("Health", str(hp)),
@@ -45,7 +45,7 @@ class Npc(Dweller):
     hp: Counter
     sheet: Abilities | None = None
 
-    def rows(self) -> Rows:
+    def rows(self) -> Pairs:
         if self.sheet is not None:
             return self.sheet.rows(self.hp)
         return (("Health", f"{self.hp} (its Difficulty Score)"),)
@@ -57,7 +57,7 @@ class Goon(Person):
     # The starting items by name; `new_game` files them as `Item`s on the player.
     kit: tuple[str, ...] = Field(min_length=STARTING_ITEMS, max_length=STARTING_ITEMS)
 
-    def rows(self) -> Rows:
+    def rows(self) -> Pairs:
         return self.sheet.rows(self.hp)
 
     def starting_items(self, taken: Iterable[str]) -> tuple[Item, ...]:
@@ -71,7 +71,7 @@ class Goon(Person):
 
 
 class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
-    def sheet_rows(self) -> Rows:
+    def sheet_rows(self) -> Pairs:
         carried = len(list(self.carried(self.player.id)))
         return tuple(
             (label, f"{carried}/{self.player.sheet.inventory}")
@@ -102,7 +102,7 @@ class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
         facts = player.hp.change(player, player.hp.shortfall, "Health", "resting")
         for member in members:
             facts.extend(member.hp.change(member, member.hp.shortfall, "Health", "resting"))
-        trace = f"{'the party' if members else 'the player'} rests at {self.current.label}"
+        trace = f"{'the party' if members else 'the player'} rests at {self.current.mention}"
         facts.append(player.fact("rested", trace, card=f"Rested — Health {player.hp}"))
         return facts
 

@@ -45,16 +45,14 @@ class EngineHeader(Loose):
     engine: EngineId
 
 
-class Named(Loose):
-    """What every sheet shows the launcher: who this is, in a name and a line."""
-
+class SheetHeader(Loose):
     name: str
     brief: str = ""
 
 
 class CharacterHeader(EngineHeader):
     id: Slug
-    payload: Named
+    payload: SheetHeader
 
 
 class Scenario[P: BaseModel](Frozen):

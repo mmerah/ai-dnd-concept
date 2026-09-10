@@ -5,23 +5,16 @@ from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, option_of, picked
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
-from aidm.core.facts import DiceEvent, Fact, roll
+from aidm.core.facts import DiceEvent, Fact, keep_highest, roll
 from aidm.core.model import Generation, WorldsmithAnswer
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
+from aidm.core.prompt import lines_of
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import DiceLook, Panel, PanelRow, Sections, lines_of
-from aidm.engines.base import (
-    CHANGE_WORLD,
-    HIRE,
-    HIRE_TOOL,
-    PLAYER_ID,
-    Hire,
-    hire_target,
-    keep_highest,
-    sentence,
-)
+from aidm.core.views import DiceLook, Pairs, Panel, PanelRow
+from aidm.engines.base import CHANGE_WORLD, HIRE, HIRE_TOOL, PLAYER_ID, Hire, hire_target
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
+from aidm.engines.scenes.world import sentence
 from aidm.engines.twentyfourxx.tools import (
     ChangeHindrances,
     ChangeWorld,
@@ -204,7 +197,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
         """This pack holds creation tables, not setting vocabulary: the preamble alone suffices."""
         return AUTHORING
 
-    def sheet_sections(self, state: TwentyfourxxGame) -> Sections:
+    def sheet_sections(self, state: TwentyfourxxGame) -> Pairs:
         world = state.payload
         job = world.job
         return (
@@ -381,7 +374,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
             facts.extend(world.kill(actor.id))
         elif args.risking_death and result == "setback" and MAIMED not in sheet.hindrances:
             sheet.hindrances.append(MAIMED)
-            trace = f"{actor.label} is maimed"
+            trace = f"{actor.mention} is maimed"
             facts.append(actor.fact("hindrances_changed", trace, card="Maimed"))
         self._succession(draft)
 
@@ -485,7 +478,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
                     f"{actor.name}'s {label} is already at d12; raise another skill for them"
                 ) from maxed
             sheet.skills[label] = new_die
-            trace = f"{actor.label} — {label} rises to d{new_die}"
+            trace = f"{actor.mention} — {label} rises to d{new_die}"
             facts.append(actor.fact("skill_raised", trace, card=f"Job done: {label} d{new_die}"))
 
             rolled, dice_fact = roll((6,), f"credits earned by {actor.name}", rng)
@@ -495,7 +488,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
             facts.append(
                 actor.fact(
                     "credits_gained",
-                    f"{actor.label} earns ₡{gained} -> ₡{sheet.credits}",
+                    f"{actor.mention} earns ₡{gained} -> ₡{sheet.credits}",
                     card=f"+₡{gained} -> ₡{sheet.credits}",
                     dice=(DiceEvent(label="d6", faces=(6,), rolled=rolled),),
                 )

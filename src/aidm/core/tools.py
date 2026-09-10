@@ -1,5 +1,5 @@
 import json
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from random import Random
 from typing import Any
@@ -29,7 +29,7 @@ class MasterTool[G: Game[Any]]:
     name: str
     description: str
     args: type[BaseModel]
-    call: Callable[[G, Mapping[str, JsonValue], Random], tuple[Fact, ...]]
+    call: Callable[[G, JsonValue, Random], tuple[Fact, ...]]
 
 
 def master_tool[G: Game[Any], A: BaseModel](
@@ -41,7 +41,7 @@ def master_tool[G: Game[Any], A: BaseModel](
     if bare := [key for key, info in args.model_fields.items() if not info.description]:
         raise ValueError(f"{name} parameters the model reads carry no description: {bare}")
 
-    def call(draft: G, raw: Mapping[str, JsonValue], rng: Random) -> tuple[Fact, ...]:
+    def call(draft: G, raw: JsonValue, rng: Random) -> tuple[Fact, ...]:
         return tuple(resolve(draft, parse(args, raw), rng))
 
     return MasterTool(name, description, args, call)

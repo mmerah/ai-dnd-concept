@@ -84,14 +84,14 @@ class LaunchForm:
         scenario = catalog.scenario(self.scenario_id)
         theme.set_engine(scenario.engine)
         ui.select(
-            options={entry.id: f"{entry.title} · {entry.rules}" for entry in catalog.scenarios},
+            options={entry.id: f"{entry.label} · {entry.rules}" for entry in catalog.scenarios},
             value=self.scenario_id,
             label="Scenario",
             on_change=self.choose_scenario,
         ).classes("w-full")
-        ui.label(scenario.subtitle).classes("text-sm opacity-70")
+        ui.label(scenario.detail).classes("text-sm opacity-70")
         characters = {
-            entry.id: f"{entry.title} — {entry.subtitle}"
+            entry.id: f"{entry.label} — {entry.detail}"
             for entry in catalog.characters_for(scenario.engine)
         }
         chosen = (

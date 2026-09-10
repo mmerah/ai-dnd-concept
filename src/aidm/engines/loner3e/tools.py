@@ -1,11 +1,12 @@
 from collections.abc import Sequence
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Discriminator, Field
 
 from aidm.core.entities import CheckedEntityId, Frozen, Slug
 from aidm.core.play import DecisionOption
 from aidm.core.tools import Attempt
+from aidm.engines import base
 from aidm.engines.base import JoinParty, LeaveParty
 from aidm.engines.loner3e.world import TagKind
 from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
@@ -60,11 +61,7 @@ type WorldChange = (
 )
 
 
-class ChangeWorld(Frozen):
-    change: WorldChange = Field(
-        discriminator="verb",
-        description="The change to apply. `verb` picks which one.",
-    )
+ChangeWorld = base.ChangeWorld[Annotated[WorldChange, Discriminator("verb")]]
 
 
 class Question(Attempt):

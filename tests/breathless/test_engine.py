@@ -8,7 +8,7 @@ from support.table import BREATHLESS, ENGINES_BUILT, change, game, narrowed, upd
 from aidm.core.entities import EngineId, EntityId, Refusal
 from aidm.core.io import decode
 from aidm.core.model import Check, ScenarioMeta
-from aidm.engines.base import HIRE, PLAYER_ID, SIGNED_ON, SRD_PACK, Hire
+from aidm.engines.base import HIRE, PLAYER_ID, SIGNED_ON, Hire
 from aidm.engines.breathless.engine import BreathlessEngine
 from aidm.engines.breathless.world import (
     STARTING_ITEM,
@@ -19,6 +19,7 @@ from aidm.engines.breathless.world import (
     Survivor,
     SurvivorSheet,
 )
+from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.scenes.world import SceneCanon, SceneRun
 from aidm.engines.seam import AnyEngine
 

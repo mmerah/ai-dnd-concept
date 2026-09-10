@@ -3,8 +3,8 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from aidm.core.play import DecisionOption
-from aidm.engines.base import Pack as ScenePack
 from aidm.engines.loner3e.world import DIE_FACE
+from aidm.engines.scenes.packs import ScenePack
 
 AUTHORING = (
     "LONER 3E AUTHORING\n"

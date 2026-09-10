@@ -14,8 +14,8 @@ LOGGER = logging.getLogger(__name__)
 class CatalogEntry:
     id: Slug
     engine: EngineId
-    title: str
-    subtitle: str
+    label: str
+    detail: str
     rules: str
 
 
@@ -69,8 +69,8 @@ class LauncherCatalog:
             CatalogEntry(
                 id=name,
                 engine=scenario.engine,
-                title=scenario.meta.title,
-                subtitle=scenario.meta.premise,
+                label=scenario.meta.title,
+                detail=scenario.meta.premise,
                 rules=engines[scenario.engine].title,
             )
             for name, scenario in library.read_scenarios(scenario_models)
@@ -79,13 +79,13 @@ class LauncherCatalog:
             CatalogEntry(
                 id=name,
                 engine=engine,
-                title=header.payload.name,
-                subtitle=header.payload.brief,
+                label=header.payload.name,
+                detail=header.payload.brief,
                 rules=engines[engine].title,
             )
             for name, engine, header in library.read_characters(engines)
         )
-        titles = {(entry.id, entry.engine): entry.title for entry in characters}
+        titles = {(entry.id, entry.engine): entry.label for entry in characters}
         played_by = {entry.id: entry.engine for entry in scenarios}
         saves: list[SaveOption] = []
         for slug in store.slugs():

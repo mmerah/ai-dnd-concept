@@ -5,6 +5,7 @@ import json
 import sys
 import urllib.request
 from pathlib import Path
+from typing import TypedDict
 
 sys.path.insert(0, str(Path(__file__).parent))
 from drive import BASE, Session, cards, log, run, submit, wait_idle
@@ -17,7 +18,20 @@ GAMES = (
 )
 
 
-def rpc(method: str, params: dict) -> dict:  # noqa: ANN001
+class Tool(TypedDict):
+    name: str
+
+
+class Result(TypedDict, total=False):
+    tools: list[Tool]
+    isError: bool
+
+
+class Reply(TypedDict, total=False):
+    result: Result
+
+
+def rpc(method: str, params: dict[str, object]) -> Reply:
     body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode()
     request = urllib.request.Request(
         BASE + "/mcp/",
@@ -59,7 +73,7 @@ def body(s: Session) -> None:
         wait_idle(page)
         spoken = [e for e in log() if e["role"] == "master"][-1]
         s.check(
-            spoken["calls"] and not any("MCP ERROR" in c[2] for c in spoken["calls"]),
+            bool(spoken["calls"]) and not any("MCP ERROR" in c[2] for c in spoken["calls"]),
             f"mcp call failed: {spoken['calls']}",
         )
         s.check(

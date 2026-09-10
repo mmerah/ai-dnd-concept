@@ -4,16 +4,9 @@ from support.loner import initialized
 
 from aidm.core.entities import EntityId
 from aidm.core.views import PanelRow, Subject
-from aidm.engines.base import (
-    Counter,
-    Person,
-    Thing,
-    here_panel,
-    named_unmet,
-    party_panel,
-    party_section,
-)
+from aidm.engines.base import Counter, Person, Thing, here_panel, party_panel, party_section
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
+from aidm.engines.scenes.worldsmith import named_unmet
 
 KAEL = Loner3eSheet(id=EntityId("kael"), name="Kael", brief="", known=True)
 
@@ -25,7 +18,7 @@ def _state() -> Loner3eGame:
 
 
 def test_here_panel_leaves_out_the_player_and_carries_an_icon_id_per_row() -> None:
-    other = Subject(id=EntityId("kestrel"), name="Kestrel", brief="Runs the dock.")
+    other = Subject(id=EntityId("kestrel"), label="Kestrel", detail="Runs the dock.")
 
     panel = here_panel((other,))
 

@@ -197,7 +197,7 @@ class ScenarioForm:
             else None
         )
         self.character = ui.select(
-            options={entry.id: f"{entry.title} — {entry.subtitle}" for entry in characters},
+            options={entry.id: f"{entry.label} — {entry.detail}" for entry in characters},
             value=characters[0].id if characters else None,
             label="Character",
         ).classes("w-full")

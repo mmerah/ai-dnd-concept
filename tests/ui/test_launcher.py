@@ -71,7 +71,7 @@ def _declaring(tmp_path: Path, engine: str) -> Path:
 def test_the_catalog_pairs_a_scenario_with_a_character(tmp_path: Path) -> None:
     catalog = _catalog(ui_settings(tmp_path), ENGINES_BUILT)
 
-    assert catalog.scenario("whispering-vault").title == "The Whispering Vault"
+    assert catalog.scenario("whispering-vault").label == "The Whispering Vault"
     assert [(entry.id, entry.engine) for entry in catalog.characters] == KAEL_FOR_EACH
     assert catalog.target("whispering-vault", "kael") == TARGET
 

@@ -10,7 +10,7 @@ from pydantic import BaseModel, JsonValue
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Refusal, Slug, parse, require_unique
 from aidm.core.facts import Fact
-from aidm.core.io import ENCODING
+from aidm.core.io import read_prompt
 from aidm.core.model import (
     AnyCharacter,
     AnyScenario,
@@ -22,7 +22,7 @@ from aidm.core.model import (
 )
 from aidm.core.play import DecisionOption, Exchange, Line, PendingOption, SceneRecord
 from aidm.core.tools import MasterTool
-from aidm.core.views import DiceLook, NarratorView, PlayerView, Rows, Sections
+from aidm.core.views import DiceLook, NarratorView, Pairs, PlayerView
 from aidm.engines.base import HIRE, PLAYER_ID, Hire, Person, World, hire_target
 
 type AnyEngine = Engine[Any, Any]
@@ -49,10 +49,16 @@ class Engine[P: Person, G: Game[Any]](ABC):
     operations: tuple[Slug, ...]  # the requests this engine writes
 
     def __init__(self) -> None:
-        self.instructions = (self.directory / "rules.md").read_text(encoding=ENCODING)
+        self.instructions = read_prompt(self.directory / "rules.md")
         tools = self.master_tools()
         require_unique(f"tool names of the {self.id!r} engine", (tool.name for tool in tools))
         self.tools = {tool.name: tool for tool in tools}
+        if family := self.family_rules():
+            self.instructions = f"{self.instructions}\n{family}"
+
+    def family_rules(self) -> str:
+        """What every engine of this family is told, after its own rules."""
+        return ""
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
         return ()
@@ -63,7 +69,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
         if character.payload.id != PLAYER_ID or not character.payload.known:
             raise Refusal("a character sheet is the player's: id 'player', known")
 
-    def preview_character(self, character: AnyCharacter) -> Rows:
+    def preview_character(self, character: AnyCharacter) -> Pairs:
         return self.player_of(character).rows()
 
     def restore(self, value: JsonValue) -> G:
@@ -210,7 +216,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
     @abstractmethod
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> World[P]: ...
     @abstractmethod
-    def master_sections(self, state: G) -> Sections: ...
+    def master_sections(self, state: G) -> Pairs: ...
     @abstractmethod
     def narrator_view(self, state: G) -> NarratorView: ...
     @abstractmethod

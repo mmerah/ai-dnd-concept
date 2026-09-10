@@ -1,10 +1,11 @@
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import Discriminator, Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen
 from aidm.core.play import PendingOption
 from aidm.core.tools import Attempt
+from aidm.engines import base
 from aidm.engines.base import ACTOR, JoinParty, LeaveParty
 from aidm.engines.rooms.tools import Kill, MoveItem, Reveal, UnlockWay
 from aidm.engines.tunnelgoons.world import ABILITIES, Ability, Boost
@@ -19,11 +20,7 @@ class Rest(Frozen):
 type WorldChange = Reveal | MoveItem | Kill | JoinParty | LeaveParty | UnlockWay | Rest
 
 
-class ChangeWorld(Frozen):
-    change: WorldChange = Field(
-        discriminator="verb",
-        description="The change to apply. `verb` picks which one.",
-    )
+ChangeWorld = base.ChangeWorld[Annotated[WorldChange, Discriminator("verb")]]
 
 
 class ActionRoll(Attempt):

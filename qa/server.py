@@ -17,13 +17,14 @@ from random import Random
 from nicegui import app, ui
 
 sys.path.insert(0, str(Path(__file__).parent))
-from agents import ScriptedAgents, Transport  # noqa: E402
-from art import PlaceholderIllustrator  # noqa: E402
+from agents import ScriptedAgents, Transport
+from art import PlaceholderIllustrator
 
-from aidm.app import runtime as runtime_module  # noqa: E402
-from aidm.app.runtime import Runtime  # noqa: E402
-from aidm.config import MediaConfig, Settings  # noqa: E402
-from aidm.ui.app import _register_pages  # noqa: E402  # pyright: ignore[reportPrivateUsage]
+from aidm.app import runtime as runtime_module
+from aidm.app.runtime import Runtime
+from aidm.config import MediaConfig, Settings
+from aidm.core.io import FileStore
+from aidm.ui.app import _register_pages  # pyright: ignore[reportPrivateUsage]
 
 REPOSITORY_ROOT = Path(__file__).parents[1]
 
@@ -115,7 +116,7 @@ def _draw_offline() -> None:
 
     def open_placeholder(
         settings: Settings,
-        store: object,
+        store: FileStore,
         slug: str,
         *,
         style: str,
@@ -124,7 +125,7 @@ def _draw_offline() -> None:
         return PlaceholderIllustrator(
             config=settings.media,
             provider=settings.providers.for_name(settings.media.provider),
-            saves=store.media_dir(slug),  # pyright: ignore[reportAttributeAccessIssue]
+            saves=store.media_dir(slug),
             icon_dirs=icon_dirs,
             style=style,
         )

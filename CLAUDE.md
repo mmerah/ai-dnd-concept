@@ -25,6 +25,9 @@ Tests run offline. They are deterministic.
 - Side effects live at the edges (files, network, UI). Rules code changes only the draft it is
   handed and rolls only the `Random` it is handed.
 - State models are mutable. Value models are frozen.
+- A value type that names something to a role, the player or the launcher spells it `id` /
+  `label` / `detail`, with `icon_id` as the one extension; a heading over rows is `title`.
+  Persisted world entities and document headers keep `name` and `brief`: those words are on disk.
 - Do not use `Any`. Use exact types. The one exception: a class or function generic on the game
   state, where `Game[P]`'s invariance makes `Any` the only spelling of the bound.
 - Validate data at each boundary (file, model output, tool call) with strict Pydantic V2 models. Reject bad data at once.
@@ -50,7 +53,7 @@ Tests run offline. They are deterministic.
   it only through tool calls that landed.
 - A bad model answer is re-prompted once with the error, then raises.
 - Saves have no version field. A stale save is invalid.
-- Only `turn`, `app` and `ui` read the settings.
+- Only `app` and `ui` read the settings.
 
 ## Tests
 

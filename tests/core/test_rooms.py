@@ -1,16 +1,18 @@
 from pathlib import Path
 from random import Random
+from typing import Annotated
 
 import pytest
-from pydantic import Field
+from pydantic import Discriminator
 from support.table import change, refused
 
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, EntityId, Frozen, Refusal, slug
+from aidm.core.entities import EngineId, EntityId, Refusal, slug
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
 from aidm.core.tools import MasterTool, master_tool
+from aidm.engines import base
 from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, Person
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.tools import Move, SharedChange
@@ -40,11 +42,7 @@ class SixthCharacter(Character[Person]):
     pass
 
 
-class ChangeWorld(Frozen):
-    change: SharedChange = Field(
-        discriminator="verb",
-        description="The one world change to apply; `verb` picks the change.",
-    )
+ChangeWorld = base.ChangeWorld[Annotated[SharedChange, Discriminator("verb")]]
 
 
 class SixthEngine(RoomEngine[Dweller, Person, SixthGame]):

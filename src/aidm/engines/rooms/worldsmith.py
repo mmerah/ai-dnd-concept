@@ -1,9 +1,8 @@
 from pydantic import BaseModel
 
+from aidm.core.prompt import sections
 from aidm.core.tools import schema_text
-from aidm.core.views import sections
-from aidm.engines.rooms.drafts import MapDraft
-from aidm.engines.rooms.world import Dungeon, Dweller
+from aidm.engines.rooms.world import Dungeon, Dweller, MapDraft
 
 MAP_ASK = "Write the opening map."
 

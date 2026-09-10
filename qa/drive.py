@@ -1,16 +1,38 @@
-"""Playwright helpers for driving the QA server. Run scenario scripts with the `pw` venv."""
+"""Playwright helpers for driving the QA server. Run scenario scripts with the `qa` group."""
 
 import json
 import re
 import time
 import urllib.request
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import NotRequired, TypedDict
 
-from playwright.sync_api import Browser, Locator, Page, sync_playwright
+from playwright.sync_api import Browser, Locator, Page, ViewportSize, sync_playwright
 
 CHROMIUM = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
 BASE = "http://localhost:8123"
+
+
+class Spoken(TypedDict):
+    """One role's spawn as `/qa/log` serves it; the shape `agents.Spoken` is dumped from."""
+
+    role: str
+    prompt: str
+    answer: str
+    error: str
+    calls: list[tuple[str, dict[str, object], str]]
+
+
+class Device(TypedDict):
+    """The `new_context` keywords a scenario emulates a phone or a tablet with."""
+
+    viewport: ViewportSize
+    device_scale_factor: float
+    is_mobile: bool
+    has_touch: bool
+    user_agent: NotRequired[str]
 
 
 @dataclass
@@ -21,8 +43,8 @@ class Session:
     notes: list[str] = field(default_factory=list)
     counter: int = 0
 
-    def page(self, width: int = 1280, height: int = 800, **kwargs: object) -> Page:
-        context = self.browser.new_context(viewport={"width": width, "height": height}, **kwargs)
+    def page(self) -> Page:
+        context = self.browser.new_context(viewport={"width": 1280, "height": 800})
         page = context.new_page()
         page.set_default_timeout(15000)
         page.on(
@@ -51,7 +73,7 @@ class Session:
         print("NOTE:", message)
 
 
-def run(name: str, body) -> None:  # noqa: ANN001
+def run(name: str, body: Callable[[Session], None]) -> None:
     shots = Path(__file__).parent / "shots" / name
     shots.mkdir(parents=True, exist_ok=True)
     for old in shots.glob("*.png"):
@@ -72,9 +94,13 @@ def run(name: str, body) -> None:  # noqa: ANN001
                 print(" -", issue)
 
 
-def log() -> list[dict]:
+def log() -> list[Spoken]:
     with urllib.request.urlopen(f"{BASE}/qa/log") as reply:
-        return json.load(reply)
+        spoken: list[Spoken] = json.load(reply)
+    # JSON hands the call triples back as lists; the declared shape is restored here.
+    for entry in spoken:
+        entry["calls"] = [(name, args, answer) for name, args, answer in entry["calls"]]
+    return spoken
 
 
 def composer(page: Page) -> Locator:

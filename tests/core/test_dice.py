@@ -3,8 +3,7 @@ from random import Random
 import pytest
 from pydantic import ValidationError
 
-from aidm.core.facts import DiceEvent, roll
-from aidm.engines.base import keep_highest
+from aidm.core.facts import DiceEvent, keep_highest, roll
 
 
 def test_roll_traces_every_die() -> None:

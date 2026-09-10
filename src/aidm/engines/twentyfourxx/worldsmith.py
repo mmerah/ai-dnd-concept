@@ -4,7 +4,7 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen
 from aidm.core.play import DecisionOption
-from aidm.engines.base import Pack as ScenePack
+from aidm.engines.scenes.packs import ScenePack
 from aidm.engines.twentyfourxx.world import Kit, SkillDie
 
 AUTHORING = (

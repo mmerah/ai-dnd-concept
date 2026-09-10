@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from aidm.core.creation import CreationStep
 from aidm.core.entities import Refusal, Slug, parse
 from aidm.core.facts import Fact
-from aidm.core.io import ENCODING
+from aidm.core.io import read_prompt
 from aidm.core.model import (
     AnyCharacter,
     AnyScenario,
@@ -19,21 +19,20 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption
-from aidm.core.views import NarratorView, Panel, PlayerView, Sections, render_history
+from aidm.core.prompt import render_history
+from aidm.core.views import NarratorView, Pairs, Panel, PlayerView
 from aidm.engines.base import (
-    SRD_PACK,
     JoinParty,
     LeaveParty,
-    Pack,
     Person,
     character_panel,
     here_panel,
     party_panel,
     party_section,
-    read_packs,
     trail_panel,
 )
 from aidm.engines.scenes.drafts import NextDraft, SceneDraft
+from aidm.engines.scenes.packs import SRD_PACK, ScenePack, read_packs
 from aidm.engines.scenes.tools import Enter, Kill, Leave, NextScene, Reveal, SharedChange
 from aidm.engines.scenes.world import (
     MOVE_ON,
@@ -52,8 +51,8 @@ from aidm.engines.scenes.worldsmith import (
 )
 from aidm.engines.seam import Engine
 
-WORLDSMITH = (Path(__file__).parent / "worldsmith.md").read_text(encoding=ENCODING)
-SCENE_RULES = (Path(__file__).parent / "rules.md").read_text(encoding=ENCODING)
+WORLDSMITH_PROMPT = Path(__file__).parent / "worldsmith.md"
+RULES_PROMPT = Path(__file__).parent / "rules.md"
 DEPARTURE: Slug = "departure"
 COMPLICATION: Slug = "complication"
 WAY_UNWRITTEN = Fact(
@@ -83,7 +82,7 @@ MOVING_ON = (
 )
 
 
-class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
+class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]):
     cast: type[C]
     pack: type[K]
     world_type: type[SceneWorld[C, P]]
@@ -93,7 +92,9 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
     def __init__(self) -> None:
         self.packs = read_packs(self.directory / "packs", self.pack)
         super().__init__()  # last: `master_tools` reads the packs
-        self.instructions = f"{self.instructions}\n{SCENE_RULES}"
+
+    def family_rules(self) -> str:
+        return read_prompt(RULES_PROMPT)
 
     def world(self, state: G) -> SceneWorld[C, P]:
         return state.payload
@@ -115,7 +116,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
         canon: SceneCanon[C] = scenario.payload
         return self.world_type.begin(canon, self.player_of(character))
 
-    def master_sections(self, state: G) -> Sections:
+    def master_sections(self, state: G) -> Pairs:
         world = self.world(state)
         scene = world.run
         return (
@@ -130,10 +131,10 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
             *self.glossary(state),
         )
 
-    def sheet_sections(self, state: G) -> Sections:
+    def sheet_sections(self, state: G) -> Pairs:
         return ()
 
-    def glossary(self, state: G) -> Sections:
+    def glossary(self, state: G) -> Pairs:
         return ()
 
     def narrator_view(self, state: G) -> NarratorView:
@@ -229,7 +230,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
     ) -> str:
         world = self.world(draft)
         return worldsmith_prompt(
-            WORLDSMITH,
+            read_prompt(WORLDSMITH_PROMPT),
             source=world.source,
             scope=draft.scenario.scope,
             history=render_history(world.records()),
@@ -253,7 +254,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: Pack](Engine[P, G]):
 
     def render_opening(self, source: str, guidance: str, scope: str) -> str:
         return worldsmith_prompt(
-            WORLDSMITH,
+            read_prompt(WORLDSMITH_PROMPT),
             source=source,
             scope=scope,
             history="(no scenes yet — write the opening)",

@@ -5,6 +5,8 @@ import sys
 import urllib.request
 from pathlib import Path
 
+from playwright.sync_api import Locator, Page
+
 sys.path.insert(0, str(Path(__file__).parent))
 from drive import (
     BASE,
@@ -26,7 +28,7 @@ from drive import (
 GAME = BASE + "/game/buried-keep/kael"
 
 
-def option(page, label: str):  # noqa: ANN001, ANN202
+def option(page: Page, label: str) -> Locator:
     return page.locator(".game-decision button", has_text=label)
 
 
@@ -192,7 +194,7 @@ def body(s: Session) -> None:
     more.click()
     page.wait_for_timeout(800)
     s.shot(page, "more-map-working")
-    phases = set()
+    phases: set[str] = set()
     for _ in range(100):
         phases.add(placeholder(page))
         if (

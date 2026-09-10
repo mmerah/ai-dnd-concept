@@ -26,7 +26,7 @@ def test_item_detail_of_a_multi_break_partly_broken_item() -> None:
 
 def test_narrator_view_lists_only_known_entities() -> None:
     view = ENGINE.narrator_view(small_world())
-    assert [subject.name for subject in view.subjects] == ["Rook", "Kestrel"]
+    assert [subject.label for subject in view.subjects] == ["Rook", "Kestrel"]
 
 
 def test_player_view_character_panel_lists_gear() -> None:

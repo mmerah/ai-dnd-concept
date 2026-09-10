@@ -1,47 +1,13 @@
 from collections.abc import Sequence
-from functools import cache
 from pathlib import Path
 
-from aidm.core.io import ENCODING
-from aidm.core.model import AnyGame
+from aidm.core.io import read_prompt
 from aidm.core.play import Interjection, Narration, SceneRecord
+from aidm.core.prompt import lines_of, sections, told_history
 from aidm.core.tools import schema_text
-from aidm.core.views import (
-    NarratorView,
-    Rows,
-    Sections,
-    Subject,
-    lines_of,
-    render_history,
-    sections,
-    told_history,
-)
+from aidm.core.views import NarratorView, Pairs, Subject
 
-_PROMPTS_DIR = Path(__file__).parent / "prompts"
-
-
-def render_master(
-    instructions: str,
-    engine_sections: Sequence[tuple[str, str]],
-    state: AnyGame,
-    scenes: Sequence[SceneRecord],
-    action: str,
-    *,
-    played: int,
-    notes: Sequence[str] = (),
-) -> str:
-    return sections(
-        (
-            ("YOUR ROLE", _prompt("master")),
-            ("THE RULES OF THIS GAME", instructions),
-            ("SCENARIO", f"{state.scenario.title}\n{state.scenario.premise}"),
-            ("THE SCOPE OF PLAY", state.scenario.scope),
-            (f"RECENT PLAY (this is turn {played + 1})", render_history(scenes)),
-            *engine_sections,
-            ("NOTES FROM THE RULES", lines_of(f"- {note}" for note in notes)),
-            ("PLAYER ACTION", action),
-        )
-    )
+PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 
 def render_narrator(
@@ -49,7 +15,7 @@ def render_narrator(
 ) -> str:
     return sections(
         (
-            ("YOUR ROLE", _prompt("narrator")),
+            ("YOUR ROLE", read_prompt(PROMPTS_DIR / "narrator.md")),
             *_picture(view, scenes, evidence),
             ("PLAYER ACTION", prompt),
             ("ANSWER WITH", schema_text(Narration)),
@@ -60,11 +26,13 @@ def render_narrator(
 def render_interjection(
     view: NarratorView,
     member: Subject,
-    sheet: Rows,
+    sheet: Pairs,
     scenes: Sequence[SceneRecord],
     evidence: str,
 ) -> str:
-    role = _prompt("interjection").format(name=member.name, brief=member.brief, id=member.id)
+    role = read_prompt(PROMPTS_DIR / "interjection.md").format(
+        name=member.label, brief=member.detail, id=member.id
+    )
     return sections(
         (
             ("YOUR ROLE", role),
@@ -84,7 +52,7 @@ def _picture(
     evidence: str,
     *,
     reader: Subject | None = None,
-) -> Sections:
+) -> Pairs:
     """`reader` is who reads it: nobody (the player themself) or a member reading about them."""
     lead, beside = ("you are", "with you") if reader is None else ("the player is", "with them")
     subjects = {subject.id: subject for subject in view.subjects}
@@ -104,8 +72,3 @@ def _picture(
         ("THE PLAYER'S SHEET", lines_of(f"- {label}: {value}" for label, value in view.sheet)),
         ("WHAT HAPPENED", evidence),
     )
-
-
-@cache
-def _prompt(name: str) -> str:
-    return (_PROMPTS_DIR / f"{name}.md").read_text(encoding=ENCODING)

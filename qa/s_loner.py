@@ -190,7 +190,7 @@ def body(s: Session) -> None:
     composer(page).fill('Down the stair.\n!next_scene pursuit="Down the stair."')
     action.click()
     s.check(wait_working(page), "move on did not start a turn")
-    seen_phases = set()
+    seen_phases: set[str] = set()
     for _ in range(60):
         seen_phases.add(placeholder(page))
         if not composer(page).is_disabled():
@@ -241,7 +241,8 @@ def body(s: Session) -> None:
     s.shot(page, "reload-mid-turn")
     body_text = clean(page.inner_text("body"))
     s.check(
-        "is working" in placeholder(page) or ".q-spinner", "no live turn after a reload mid-turn"
+        "is working" in placeholder(page) or page.locator(".q-spinner").count() > 0,
+        "no live turn after a reload mid-turn",
     )
     s.check("I take my time." in body_text, "the live prompt bubble missing after reload")
     wait_idle(page, timeout=60)

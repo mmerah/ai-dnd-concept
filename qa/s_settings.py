@@ -4,13 +4,15 @@ import os
 import sys
 from pathlib import Path
 
+from playwright.sync_api import Locator, Page
+
 sys.path.insert(0, str(Path(__file__).parent))
 from drive import BASE, Session, clean, composer, notifications, placeholder, run, submit, wait_idle
 
 WORK = Path(os.environ.get("QA_WORK", "/tmp/aidm-qa-work"))
 
 
-def switch(page, label: str):  # noqa: ANN001, ANN202
+def switch(page: Page, label: str) -> Locator:
     return page.locator(".q-toggle", has_text=label)
 
 

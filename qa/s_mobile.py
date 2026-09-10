@@ -4,12 +4,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from drive import BASE, Session, clean, composer, placeholder, submit, wait_idle
+from drive import BASE, Device, Session, clean, composer, placeholder, submit, wait_idle
 
 GAME = BASE + "/game/whispering-vault/kael"
 
 
-def body(s: Session, device: dict) -> None:  # noqa: ANN001
+def body(s: Session, device: Device) -> None:
     context = s.browser.new_context(**device)
     page = context.new_page()
     page.set_default_timeout(15000)
@@ -106,14 +106,14 @@ def body(s: Session, device: dict) -> None:  # noqa: ANN001
     context.close()
 
 
-PHONE = {
+PHONE: Device = {
     "viewport": {"width": 390, "height": 664},
     "device_scale_factor": 3,
     "is_mobile": True,
     "has_touch": True,
     "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15",
 }
-TABLET = {
+TABLET: Device = {
     "viewport": {"width": 768, "height": 1024},
     "device_scale_factor": 2,
     "is_mobile": True,

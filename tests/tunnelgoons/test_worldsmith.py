@@ -6,10 +6,9 @@ from support.table import TUNNELGOONS, game, narrowed
 from support.tunnelgoons import small_world
 
 from aidm.core.entities import EntityId
-from aidm.core.model import ScenarioMeta
-from aidm.engines.rooms.drafts import MapDraft
+from aidm.core.model import Generation, ScenarioMeta
 from aidm.engines.rooms.engine import MORE_MAP
-from aidm.engines.rooms.world import Item, Place, Way
+from aidm.engines.rooms.world import Item, MapDraft, Place, Way
 from aidm.engines.rooms.worldsmith import extension_refusal, map_refusal
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsGame
@@ -79,7 +78,7 @@ def test_an_extension_of_one_hidden_place_with_no_ways_installs_hidden() -> None
     )
     assert extension_refusal(extension, draft.payload) is None
 
-    ENGINE.install_extension(draft, extension)
+    ENGINE.install(draft, extension)
 
     assert not draft.payload.places[HIDDEN].known
     assert draft.payload.way(draft.payload.current.id, HIDDEN) is not None
@@ -133,11 +132,11 @@ def test_more_map_is_offered_only_once_every_place_is_known() -> None:
     assert ENGINE.player_view(draft.commit()).action == MORE_MAP
 
 
-def test_install_extension_on_a_game_from_the_engine() -> None:
+def test_install_on_a_game_from_the_engine() -> None:
     draft = _tunnelgoons_game().draft()
     anchor = draft.payload.current.id
 
-    ENGINE.install_extension(draft, _region())
+    ENGINE.install(draft, _region())
 
     assert FAR_HALL in draft.payload.places
     assert draft.payload.way(anchor, FAR_HALL) is not None
@@ -157,7 +156,7 @@ def test_attach_appends_unknown_ways_both_directions() -> None:
     assert back is not None and not back.known
 
 
-async def test_write_extension_asks_for_the_map_draft() -> None:
+async def test_write_next_asks_for_the_map_draft() -> None:
     recorded: list[type[BaseModel]] = []
     prompts: list[str] = []
 
@@ -168,14 +167,14 @@ async def test_write_extension_asks_for_the_map_draft() -> None:
         prompts.append(prompt)
         return model.model_validate(THIN.model_dump())
 
-    _ = await ENGINE.write_extension(small_world(), "Push north.", answer)
+    _ = await ENGINE.write_next(small_world(), "Push north.", answer)
 
     assert recorded == [MapDraft[Npc]]
     # The `hp` rule reaches the worldsmith only through the engine's guidance.
     assert AUTHORING in prompts[0]
 
 
-async def test_write_extension_prompt_carries_scenes_so_far() -> None:
+async def test_write_next_prompt_carries_scenes_so_far() -> None:
     prompts: list[str] = []
 
     async def answer[M: BaseModel](
@@ -184,9 +183,21 @@ async def test_write_extension_prompt_carries_scenes_so_far() -> None:
         prompts.append(prompt)
         return model.model_validate(THIN.model_dump())
 
-    _ = await ENGINE.write_extension(small_world(), "Nose around the docks.", answer)
+    _ = await ENGINE.write_next(small_world(), "Nose around the docks.", answer)
 
     assert "SCENES SO FAR" in prompts[0]
+
+
+async def test_advance_raises_on_an_operation_the_engine_does_not_write() -> None:
+    async def answer[M: BaseModel](
+        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+    ) -> M:
+        raise AssertionError("the worldsmith is not asked")
+
+    with pytest.raises(ValueError, match="writes no 'departure'"):
+        _ = await ENGINE.advance(
+            small_world().draft(), Generation(operation="departure", brief="x"), answer
+        )
 
 
 def test_abilities_draft_refuses_a_wrong_point_total() -> None:
