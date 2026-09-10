@@ -108,12 +108,19 @@ body, body.body--dark {
   overflow: hidden;
 }
 .game-main { margin: var(--game-inset) }
-.game-drawer { background: var(--game-bg); border: 0 }
+/* The page's 420px drawer would hang off a phone's left edge, clipping the panel. */
+.q-drawer { max-width: 100% }
+.game-drawer { background: var(--game-bg); border: 0; padding: 0; align-items: stretch }
+/* Beside the centre panel the two share one gutter; narrower, the drawer overlays instead. */
 .game-drawer-panel {
-  margin: var(--game-inset);
-  width: calc(100% - 2 * var(--game-inset)); height: calc(100% - 2 * var(--game-inset));
+  margin: var(--game-inset) var(--game-inset) var(--game-inset) 0;
+  height: calc(100% - 2 * var(--game-inset));
 }
 .game-drawer .q-tab-panels { background: transparent }
+/* One padding, on the scroll content: Quasar's tab panel and NiceGUI's scroll default would
+   each add their own. */
+.game-drawer .q-tab-panel { padding: 0 }
+.game-drawer .q-scrollarea__content { padding: var(--game-inset) }
 
 .q-header {
   background: var(--game-surface);
@@ -126,6 +133,8 @@ body, body.body--dark {
 .q-tab { color: var(--game-muted); text-transform: none; letter-spacing: .03em }
 .q-tab--active { color: var(--game-accent) }
 .q-tab__indicator { background: var(--game-accent) }
+/* Quasar's hover helper paints currentColor, the muted grey; a tab hovers in the accent. */
+.q-tab .q-focus-helper { background: var(--game-accent) }
 
 .game-rail {
   flex: none; width: 6rem;
@@ -343,7 +352,10 @@ body, body.body--dark {
   background: var(--game-accent); color: var(--game-bg) !important; box-shadow: 0 2px 10px #0003;
 }
 
-@media (max-width: 1023.98px) { .game-rail { display: none } }
+@media (max-width: 1023.98px) {
+  .game-rail { display: none }
+  .game-drawer-panel { margin-left: var(--game-inset) }
+}
 @media (max-width: 599.98px) {
   .q-header { gap: .25rem }
   /* A phone has no room for the inset frames: every panel runs edge to edge. */
@@ -351,7 +363,7 @@ body, body.body--dark {
     margin: 0; border-left: 0; border-right: 0; border-radius: 0;
   }
   .game-main, .game-scene { border-top: 0 }
-  .game-drawer-panel { width: 100%; height: 100% }
+  .game-drawer-panel { height: 100% }
   /* No room beside the text: the frame goes full width on top and fades into the words below. */
   .game-scene:has(.game-scene-art) { height: auto }
   .game-scene-body { flex-direction: column-reverse }
