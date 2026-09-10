@@ -4,7 +4,6 @@ from random import Random
 
 from support.table import BREATHLESS, open_table, play_turn, the_way_on, tool_call
 
-from aidm.core.entities import EntityId
 from aidm.core.play import Answer
 from aidm.engines.breathless.world import BreathlessGame
 from aidm.engines.scenes.engine import MOVE_ON
@@ -39,12 +38,12 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
 
     state = await play_turn(table, Answer(option_id="take"))
     assert state.pending is None
-    assert state.payload.player.dice().items[EntityId("first-aid-kit")].die == 8
+    assert state.payload.player.dice().items["first-aid-kit"].die == 8
 
     state = await play_turn(table, "Ask what lies past the Bell House.", the_way_on())
     assert state.payload.run.offered
 
-    before = len(table.service.engine.history(state))
+    before = len(table.service.engine.world(state).exchanges())
     table.spawner.answers["worldsmith"] = [json.dumps(NEXT_SCENE)]
     pursuit = "Out onto the causeway before the third bell."
     state = await play_turn(
@@ -56,5 +55,5 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
     )
 
     assert state.payload.run.title == "The Causeway"
-    assert table.service.engine.history(state)[before].prompt == pursuit
+    assert table.service.engine.world(state).exchanges()[before].prompt == pursuit
     assert table.saved() == table.state

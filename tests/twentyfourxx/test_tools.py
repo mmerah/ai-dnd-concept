@@ -5,7 +5,7 @@ import pytest
 from support.table import change, refused, stub_worldsmith
 from support.twentyfourxx import ENGINE, KESTREL, LOCKPICKS, SABLE, hired, small_world
 
-from aidm.core.entities import EntityId, Refusal
+from aidm.core.entities import Refusal
 from aidm.core.model import Generation
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.hiring import HIRE, SIGNED_ON, Hire
@@ -156,7 +156,7 @@ def test_defend_refuses_an_empty_hindrance_on_a_carried_item() -> None:
 def test_defend_hull_armor_breaks_harmlessly_and_refuses_a_hindrance() -> None:
     draft = small_world().draft()
     facts = change(ENGINE, draft, "defend", item_id="hull-armor")
-    assert draft.payload.ship[EntityId("hull-armor")].broken
+    assert draft.payload.ship["hull-armor"].broken
     assert draft.payload.player.dice().hindrances == []
     assert any(fact.card == "Hull armor breaks" for fact in facts)
 
@@ -172,7 +172,7 @@ def test_gain_item_spends_and_refuses_short_credits() -> None:
     assert player.dice().credits == STARTING_CREDITS
     _ = change(ENGINE, draft, "gain_item", name="Rope", cost=1)
     assert player.dice().credits == STARTING_CREDITS - 1
-    assert player.dice().items[EntityId("rope")].name == "Rope"
+    assert player.dice().items["rope"].name == "Rope"
 
     assert "only" in refused(ENGINE, draft, "gain_item", name="Grenade", cost=99)
 
@@ -427,7 +427,7 @@ def test_ship_upgrade_pays_credits_once_and_refuses_a_second() -> None:
     before = player.dice().credits
     facts = change(ENGINE, draft, "ship_upgrade", function_id="hull-armor")
     assert player.dice().credits == before - UPGRADE_COST
-    assert draft.payload.ship[EntityId("hull-armor")].upgraded
+    assert draft.payload.ship["hull-armor"].upgraded
     assert any(fact.card == "Hull armor upgraded — ₡10" for fact in facts)
 
     assert "already" in refused(ENGINE, draft, "ship_upgrade", function_id="hull-armor")
@@ -436,10 +436,10 @@ def test_ship_upgrade_pays_credits_once_and_refuses_a_second() -> None:
 def test_defend_and_repair_item_on_the_ships_hull_armor() -> None:
     draft = small_world().draft()
     _ = change(ENGINE, draft, "defend", item_id="hull-armor")
-    assert draft.payload.ship[EntityId("hull-armor")].broken
+    assert draft.payload.ship["hull-armor"].broken
 
     _ = change(ENGINE, draft, "repair_item", item_id="hull-armor")
-    assert not draft.payload.ship[EntityId("hull-armor")].broken
+    assert not draft.payload.ship["hull-armor"].broken
 
 
 def test_next_scene_offers_the_way_on_and_refuses_a_second_offer() -> None:

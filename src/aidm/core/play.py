@@ -3,7 +3,7 @@ from typing import Literal, Self
 
 from pydantic import Field, JsonValue, field_validator, model_validator
 
-from aidm.core.entities import CheckedEntityId, Frozen, Slug, check_unique
+from aidm.core.entities import Frozen, Slug, check_unique
 from aidm.core.facts import Fact
 
 type Marked = Literal["opening", "story", "interjection"]
@@ -11,7 +11,7 @@ type Mark = Marked | Literal[""]
 
 
 class Line(Frozen):
-    speaker_id: CheckedEntityId | None = Field(
+    speaker_id: Slug | None = Field(
         default=None,
         description="Exact id of the speaker. Null for narration.",
     )
@@ -23,7 +23,7 @@ class Line(Frozen):
 class SpokenLine(Frozen):
     """Carries the speaker's name so chat, journal and speech never resolve an id through state."""
 
-    speaker_id: CheckedEntityId | None = None
+    speaker_id: Slug | None = None
     speaker: str = ""
     text: str = Field(min_length=1)
 

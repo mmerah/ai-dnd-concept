@@ -3,7 +3,7 @@ from typing import Literal, Self
 
 from pydantic import Field, JsonValue, model_validator
 
-from aidm.core.entities import EntityId, Mutable, Refusal, slug
+from aidm.core.entities import Mutable, Refusal, Slug, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import PendingOption
@@ -103,10 +103,10 @@ class SurvivorSheet(ItemSheet[Supply]):
 
 
 class Survivor(Sheeted[SurvivorSheet]):
-    def require_item(self, item_id: EntityId) -> Supply:
+    def require_item(self, item_id: Slug) -> Supply:
         return self.dice().require(item_id, self.name)
 
-    def drop_item(self, item_id: EntityId) -> list[Fact]:
+    def drop_item(self, item_id: Slug) -> list[Fact]:
         item = self.dice().drop(item_id, self.name)
         trace = f"{self.mention} drops {item.name}"
         return [self.fact(trace, card=f"Dropped {item.name}")]
@@ -131,7 +131,7 @@ class Survivor(Sheeted[SurvivorSheet]):
         if choice == "take":
             if len(sheet.items) >= CARRY:
                 raise Refusal("the backpack is full; swap for something carried instead")
-            sheet.items[EntityId(slug(item, sheet.items))] = Supply(name=item, die=granted)
+            sheet.items[slug(item, sheet.items)] = Supply(name=item, die=granted)
             card = f"Took {item} (d{granted})"
         elif choice == "med-kit":
             if granted < 10:
@@ -140,9 +140,9 @@ class Survivor(Sheeted[SurvivorSheet]):
                 raise Refusal(f"{self.name} already holds a med kit")
             sheet.med_kit = True
             card = "Took a med kit"
-        elif choice.startswith(SWAP) and EntityId(choice.removeprefix(SWAP)) in sheet.items:
-            old = sheet.items.pop(EntityId(choice.removeprefix(SWAP)))
-            sheet.items[EntityId(slug(item, sheet.items))] = Supply(name=item, die=granted)
+        elif choice.startswith(SWAP) and choice.removeprefix(SWAP) in sheet.items:
+            old = sheet.items.pop(choice.removeprefix(SWAP))
+            sheet.items[slug(item, sheet.items)] = Supply(name=item, die=granted)
             card = f"Swapped {old.name} for {item} (d{granted})"
         else:
             raise Refusal(f"{choice!r} is not a valid loot choice")

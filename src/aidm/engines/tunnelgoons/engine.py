@@ -3,7 +3,7 @@ from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, picked
-from aidm.core.entities import EngineId, EntityId, Refusal, slug
+from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption, PendingDecision
@@ -165,7 +165,7 @@ class TunnelGoonsEngine(
             case _:
                 return self.shared_change(world, change)
 
-    def hireable(self, draft: TunnelGoonsGame, entity_id: EntityId) -> Npc:
+    def hireable(self, draft: TunnelGoonsGame, entity_id: Slug) -> Npc:
         return draft.payload.require_hireable(entity_id)
 
     def hire_prompt(self, draft: TunnelGoonsGame, member: Npc, terms: str) -> str:

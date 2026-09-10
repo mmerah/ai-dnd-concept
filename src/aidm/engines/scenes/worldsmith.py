@@ -3,11 +3,11 @@ from collections.abc import Iterable, Mapping
 
 from pydantic import BaseModel
 
-from aidm.core.entities import EntityId
+from aidm.core.entities import Slug
 from aidm.core.prompt import sections
 from aidm.core.tools import schema_text
 from aidm.engines.base import Person, Thing
-from aidm.engines.scenes.drafts import SceneDraft
+from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld, resolved_id
 
 CROSSING = (
@@ -48,8 +48,8 @@ def scene_unmet[C: Person, P: Person](
     draft: SceneDraft[C], world: SceneWorld[C, P] | None
 ) -> list[str]:
     """The one bar: every refusal the install makes, so the worldsmith's one retry sees them all."""
-    filed: Mapping[EntityId, C] = {} if world is None else world.cast
-    everyone: Mapping[EntityId, Thing] = (
+    filed: Mapping[Slug, C] = {} if world is None else world.cast
+    everyone: Mapping[Slug, Thing] = (
         dict(draft.cast)
         if world is None
         else {world.player.id: world.player, **world.merged_cast(draft.cast)}
@@ -109,7 +109,7 @@ def named_unmet(text: str, entities: Iterable[Thing]) -> list[str]:
     ]
 
 
-def named_in(situation: str, hidden: Iterable[str], cast: Mapping[EntityId, Thing]) -> list[str]:
+def named_in(situation: str, hidden: Iterable[str], cast: Mapping[Slug, Thing]) -> list[str]:
     return named_unmet(
         situation,
         (

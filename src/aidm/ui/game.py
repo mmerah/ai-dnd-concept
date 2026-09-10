@@ -12,7 +12,7 @@ from nicegui.events import GenericEventArguments, ScrollEventArguments
 
 from aidm.app.runtime import GameService, Runtime
 from aidm.config import Role
-from aidm.core.entities import EntityId, Refusal
+from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import Answer, DecisionOption, Exchange, Marked
 from aidm.core.views import PlayerView
@@ -677,7 +677,7 @@ def _dice_group(die: DiceEvent, *, live: bool) -> None:
 
 
 def _bubble(
-    session: GameService, speaker_id: EntityId | None, name: str, text: str, *, sent: bool
+    session: GameService, speaker_id: Slug | None, name: str, text: str, *, sent: bool
 ) -> None:
     narration = speaker_id is None
     icon = None if narration else session.icon(speaker_id)

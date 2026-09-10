@@ -9,11 +9,7 @@ SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 SLUG_MAX = 64
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
-# `Slug`: ids/places; `CheckedEntityId`: an id a model writes; `EntityId`: one the world checked.
 EngineId = NewType("EngineId", str)
-EntityId = NewType("EntityId", str)
-# The grammar rides the field annotation: a `NewType` over an `Annotated` alias is not a type.
-CheckedEntityId = Annotated[EntityId, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
 
 class Frozen(BaseModel):

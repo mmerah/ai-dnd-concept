@@ -5,9 +5,7 @@ from typing import Any, Protocol, Self
 from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.entities import (
-    CheckedEntityId,
     EngineId,
-    EntityId,
     Frozen,
     Loose,
     Mutable,
@@ -89,9 +87,9 @@ class Generation(Frozen):
 
     operation: Slug  # the engine's own name for what it will author and install
     brief: str = Field(min_length=1)
-    target: CheckedEntityId | None = None
+    target: Slug | None = None
 
-    def require_target(self) -> EntityId:
+    def require_target(self) -> Slug:
         if self.target is None:
             raise Refusal(f"a {self.operation!r} request names no target")
         return self.target

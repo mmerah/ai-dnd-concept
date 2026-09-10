@@ -1,4 +1,4 @@
-from asyncio import Event, Task, create_task
+from asyncio import Event, Lock, Task, create_task
 from dataclasses import dataclass, field
 
 import mcp_types as types
@@ -68,6 +68,8 @@ def endpoint(
 
 
 def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
+    lock = Lock()
+
     async def on_list_tools(
         _ctx: ServerRequestContext[dict[str, object]],
         _params: types.PaginatedRequestParams | None,
@@ -78,7 +80,7 @@ def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
         _ctx: ServerRequestContext[dict[str, object]], params: types.CallToolRequestParams
     ) -> types.CallToolResult:
         """The lock replaces a sequential toolset: a CLI may call several tools at once."""
-        async with runtime.lock:
+        async with lock:
             try:
                 answered = runtime.call(params.name, params.arguments or {})
             except Refusal as refused:

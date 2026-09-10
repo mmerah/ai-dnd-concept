@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
-from aidm.app.builtin import BuiltinSpawner
-from aidm.app.spawn import CliSpawner, RunResult, Spawner, ask
+from aidm.app.builtin import run_builtin
+from aidm.app.spawn import DRIVERS, RunResult, Spawner, Tools, ask, run_cli
 from aidm.config import Role, Settings
 from aidm.core.entities import Refusal
 from aidm.core.facts import Fact, traced
@@ -33,15 +33,22 @@ REQUESTED = (
 
 
 @dataclass(frozen=True, slots=True)
-class RoleSpawner:
+class RoleRunner:
     settings: Settings
-    cli: CliSpawner
-    builtin: BuiltinSpawner
 
-    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
+    async def run(
+        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+    ) -> RunResult:
         config = self.settings.roles.for_name(role)
-        played_by = self.cli if config.api is None else self.builtin
-        return await played_by.run(role, prompt, session)
+        match config.provider:
+            case "claude" | "codex":
+                driver = DRIVERS[config.provider]
+                return await run_cli(
+                    role, config, driver, self.settings.server_port, prompt, session
+                )
+            case "openrouter" | "local":
+                provider = self.settings.providers.for_name(config.provider)
+                return await run_builtin(role, config, provider, prompt, tools)
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,26 +58,19 @@ class Roles:
 
     async def master(self, turn: Turn) -> None:
         """A crashed game master still played the turn, if it applied anything legal first."""
-
-        def nothing_landed() -> bool:
-            return not turn.facts and turn.draft.pending is None
-
         prompt = turn.picture()
-        for last in (False, True):
-            try:
-                await self.spawner.run("master", prompt, None)
+        try:
+            await self.spawner.run("master", prompt, None, turn)
+            return
+        except (OSError, Refusal) as failed:
+            if _landed(turn, failed):
                 return
-            except (OSError, Refusal) as failed:
-                if not nothing_landed():
-                    LOGGER.warning(
-                        "the game master failed after applying %d facts: %s",
-                        len(turn.facts),
-                        failed,
-                    )
-                    return
-                if last:
-                    raise
-                LOGGER.warning("the game master landed nothing, spawning it again: %s", failed)
+            LOGGER.warning("the game master landed nothing, spawning it again: %s", failed)
+        try:
+            await self.spawner.run("master", prompt, None, turn)
+        except (OSError, Refusal) as failed:
+            if not _landed(turn, failed):
+                raise
 
     async def narrate(
         self, draft: AnyGame, facts: tuple[Fact, ...], prompt: str, *, fatal: bool
@@ -86,7 +86,10 @@ class Roles:
                 self.spawner,
                 "narrator",
                 render_narrator(
-                    view, evidence=evidence, prompt=prompt, scenes=self.engine.scenes(draft)
+                    view,
+                    evidence=evidence,
+                    prompt=prompt,
+                    scenes=self.engine.world(draft).records(),
                 ),
                 Narration,
                 view.narration_refusal,
@@ -101,13 +104,13 @@ class Roles:
 
     async def interject(self, state: AnyGame, member: Person) -> tuple[tuple[SpokenLine, ...], str]:
         view = self.engine.narrator_view(state)
-        history = self.engine.history(state)
+        history = self.engine.world(state).exchanges()
         evidence = traced(history[-1].facts if history else (), told_only=True)
         answer = await ask(
             self.spawner,
             "narrator",
             render_interjection(
-                view, member.subject(), member.rows(), self.engine.scenes(state), evidence
+                view, member.subject(), member.rows(), self.engine.world(state).records(), evidence
             ),
             Interjection,
             partial(view.interjection_refusal, member.id),
@@ -180,3 +183,10 @@ def _picture(
         ("THE PLAYER'S SHEET", lines_of(f"- {label}: {value}" for label, value in view.sheet)),
         ("WHAT HAPPENED", evidence),
     )
+
+
+def _landed(turn: Turn, failed: Exception) -> bool:
+    if not turn.facts and turn.draft.pending is None:
+        return False
+    LOGGER.warning("the game master failed after applying %d facts: %s", len(turn.facts), failed)
+    return True

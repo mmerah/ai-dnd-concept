@@ -1,11 +1,10 @@
 from support.table import TWENTYFOURXX
 from support.twentyfourxx import ENGINE, KESTREL, SABLE, SITUATION, small_world
 
-from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
 from aidm.core.model import AnyScenario, ScenarioMeta
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.scenes.drafts import SceneDraft
+from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.worldsmith import scene_refusal
 from aidm.engines.twentyfourxx.world import Crewmate, Sheet
 from aidm.engines.twentyfourxx.worldsmith import SheetDraft
@@ -79,7 +78,7 @@ def test_apply_scene_marks_present_cast_known() -> None:
 
 def test_apply_scene_lands_new_cast() -> None:
     world = small_world().payload
-    stranger = EntityId("stranger")
+    stranger = "stranger"
     world.apply_scene(
         _draft(
             present=("kestrel", "stranger"),
@@ -111,8 +110,8 @@ def test_apply_scene_re_files_an_existing_cast_member_as_a_new_brief_alone() -> 
 
 def test_the_bar_refuses_a_misfiled_cast_entry() -> None:
     world = small_world().payload
-    stranger = EntityId("stranger")
-    other = EntityId("other")
+    stranger = "stranger"
+    other = "other"
     draft = _draft(
         present=("stranger",),
         cast={stranger: Crewmate(id=other, name="A Stranger", brief="filed wrongly")},
@@ -141,7 +140,7 @@ def test_the_opening_refuses_a_present_name_that_exists_nowhere() -> None:
 
 def test_a_dead_draft_cast_member_is_refused() -> None:
     world = small_world().payload
-    ghost = EntityId("ghost")
+    ghost = "ghost"
     draft = _draft(
         present=("kestrel",), cast={ghost: Crewmate(id=ghost, name="Ghost", brief="", alive=False)}
     )
@@ -152,7 +151,7 @@ def test_a_dead_draft_cast_member_is_refused() -> None:
 
 def test_a_sheeted_draft_cast_member_is_refused() -> None:
     world = small_world().payload
-    stranger = EntityId("stranger")
+    stranger = "stranger"
     draft = _draft(
         present=("kestrel", "stranger"),
         cast={
@@ -166,7 +165,7 @@ def test_a_sheeted_draft_cast_member_is_refused() -> None:
 
 def test_a_hidden_multi_word_name_in_situation_is_refused() -> None:
     world = small_world().payload
-    stalker = EntityId("stalker")
+    stalker = "stalker"
     situation = f"{SITUATION} Old Man Riley waits by the containers."
     draft = _draft(
         situation=situation,
@@ -240,7 +239,7 @@ def test_render_worldsmith_says_who_travels_with_the_player() -> None:
 
 
 def test_opening_canon_marks_present_known() -> None:
-    stranger = EntityId("stranger")
+    stranger = "stranger"
     draft = _draft(
         present=(stranger,),
         cast={stranger: Crewmate(id=stranger, name="A Stranger", brief="new to the world")},
@@ -250,7 +249,7 @@ def test_opening_canon_marks_present_known() -> None:
 
 
 def test_build_scenario_stamps_the_engine_id() -> None:
-    stranger = EntityId("stranger")
+    stranger = "stranger"
     draft = _draft(
         present=(stranger,),
         cast={stranger: Crewmate(id=stranger, name="A Stranger", brief="new to the world")},

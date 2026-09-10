@@ -1,6 +1,5 @@
 from support.tunnelgoons import ENGINE, HALL, MIRA, small_world
 
-from aidm.core.entities import EntityId
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.rooms.world import Prop, Visit
 
@@ -43,7 +42,7 @@ def test_master_sections_names_the_hidden_npc_and_the_locked_way() -> None:
 def test_master_sections_lists_an_item_an_npc_here_is_holding() -> None:
     state = small_world()
     world = state.payload
-    on_a_string = EntityId("mira-key")
+    on_a_string = "mira-key"
     world.items[on_a_string] = Prop(
         id=on_a_string, name="Mira's Key", brief="On a string", known=True, on=MIRA
     )

@@ -10,13 +10,11 @@ import pytest
 from pydantic import BaseModel, Field, JsonValue
 from support.game import open_game
 from support.table import (
-    BREATHLESS,
     ScriptedSpawner,
     change_args,
     narrated,
     offline_settings,
     play_turn,
-    scenario_for,
     take,
     the_way_on,
     tool_call,
@@ -24,12 +22,11 @@ from support.table import (
 )
 
 import aidm.app.spawn as spawn_module
-from aidm.app.launch import LaunchTarget
 from aidm.app.mcp import list_tools
-from aidm.app.roles import Roles
-from aidm.app.spawn import CliSpawner, RunResult, final_message
+from aidm.app.roles import RoleRunner, Roles
+from aidm.app.spawn import RunResult, Tools, final_message
 from aidm.config import Role
-from aidm.core.entities import CheckedEntityId, EngineId, EntityId, Frozen, Refusal
+from aidm.core.entities import EngineId, Frozen, Refusal, Slug
 from aidm.core.model import ScenarioMeta
 from aidm.core.play import Answer, Narration, narration_text
 from aidm.core.tools import schema_of
@@ -37,8 +34,8 @@ from aidm.engines.base import PLAYER_ID
 from aidm.engines.hiring import ACTOR
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eSheet
-from aidm.engines.scenes.drafts import SceneDraft
 from aidm.engines.scenes.engine import MOVE_ON, WAY_UNWRITTEN
+from aidm.engines.scenes.tools import SceneDraft
 from aidm.turn.run import NO_TURN, Turn
 
 
@@ -52,7 +49,7 @@ class _ArmB(Frozen):
 
 class _SchemaProbe(Frozen):
     change: _ArmA | _ArmB = Field(discriminator="verb", description="which arm")
-    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+    actor_id: Slug | None = Field(default=None, description=ACTOR)
     title: str = Field(default="", description="a field whose name spells a noise key")
 
 
@@ -78,16 +75,18 @@ class _Watched:
     inner: ScriptedSpawner
     seen: Callable[[], None]
 
-    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
+    async def run(
+        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+    ) -> RunResult:
         if role == "worldsmith":
             self.seen()
-        return await self.inner.run(role, prompt, session)
+        return await self.inner.run(role, prompt, session, tools)
 
 
-VAULT_MAP = EntityId("vault-map")
+VAULT_MAP = "vault-map"
 PURSUIT = "Out into the cloister walk."
 LEFT = tool_call("next_scene", pursuit=PURSUIT)
-MARA = EntityId("mara")
+MARA = "mara"
 A_CONFLICT: dict[str, JsonValue] = {
     "what": "Wrest the ledger from her",
     "actor_id": PLAYER_ID,
@@ -126,26 +125,6 @@ def test_no_tool_runs_before_a_turn_is_open(tmp_path: Path) -> None:
     assert list_tools(table.runtime) == []
     with pytest.raises(ValueError, match=NO_TURN):
         _ = table.runtime.call("change_world", {})
-
-
-async def test_a_second_game_in_flight_crashes_the_call_rather_than_routing_it(
-    tmp_path: Path,
-) -> None:
-    """Two turns at once is a bug, not a message: the master's call is not answered, it crashes."""
-    table = open_game(tmp_path)
-    other = table.runtime.session(
-        LaunchTarget(scenario_id=scenario_for(BREATHLESS), character_id="kael")
-    )
-
-    def script() -> None:
-        other.turn = table.service.turn
-        _ = table.call("change_world", change_args("reveal", entity_id=VAULT_MAP))
-
-    table.spawner.turns.append(script)
-    table.spawner.answers["narrator"] = [narrated("Dust hangs.")]
-    with pytest.raises(ValueError, match="turns are in flight"):
-        await table.service.play(Answer(text="I look around."))
-    assert not table.refusals
 
 
 async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(
@@ -220,7 +199,7 @@ async def test_next_scene_asks_the_player_and_writes_nothing_yet(tmp_path: Path)
         narration="The flagstone settles back.",
     )
 
-    assert len(table.service.engine.history(state)) == 1
+    assert len(table.service.engine.world(state).exchanges()) == 1
     # An offer, not a decision: nothing waits on the player and the scene is still playable.
     assert state.pending is None
     assert state.payload.run.offered
@@ -381,7 +360,7 @@ async def test_the_players_own_words_are_the_brief_and_the_crossing_is_its_own_e
     )
 
     assert state.payload.run.title == "The Cloister Walk"
-    assert EntityId("tomas") in state.payload.hidden()
+    assert "tomas" in state.payload.hidden()
     # Lands as the new run's own exchange, not tacked onto the scene the player just left.
     assert len(state.payload.run.exchanges) == 1
     assert state.payload.run.exchanges[-1].mark == "story"
@@ -401,12 +380,12 @@ async def test_the_turn_is_filed_before_the_worldsmith_is_asked(tmp_path: Path) 
     table.service.roles = Roles(
         _Watched(
             table.spawner,
-            lambda: filed.append(len(table.service.engine.history(table.service.state))),
+            lambda: filed.append(len(table.service.engine.world(table.service.state).exchanges())),
         ),
         table.service.engine,
     )
     table.spawner.answers["worldsmith"] = [_scene()]
-    before = len(table.service.engine.history(table.service.state))
+    before = len(table.service.engine.world(table.service.state).exchanges())
 
     _ = await play_turn(
         table,
@@ -431,7 +410,7 @@ async def test_a_scene_the_world_has_outgrown_is_dropped_and_the_offer_kept(
     )
 
     assert "already met" in caplog.text
-    unwritten = table.service.engine.history(state)[-1]
+    unwritten = table.service.engine.world(state).exchanges()[-1]
     assert unwritten.mark == "story"
     assert unwritten.facts[0] == WAY_UNWRITTEN
     assert state.payload.run.title == "The Abbot's Study"
@@ -449,7 +428,7 @@ async def test_the_scene_bar_refuses_a_scene_naming_nobody(
     state = await play_turn(table, "I go.", LEFT)
 
     assert "these name nobody" in caplog.text
-    assert table.service.engine.history(state)[-1].facts[0] == WAY_UNWRITTEN
+    assert table.service.engine.world(state).exchanges()[-1].facts[0] == WAY_UNWRITTEN
     assert table.service.state.payload.run.title == "The Abbot's Study"
 
 
@@ -459,7 +438,7 @@ async def test_a_scene_with_nothing_hidden_in_it_is_allowed(tmp_path: Path) -> N
 
     state = await play_turn(table, "I go.", LEFT, arrival="The rain has the arcade.")
 
-    assert WAY_UNWRITTEN not in table.service.engine.history(state)[-1].facts
+    assert WAY_UNWRITTEN not in table.service.engine.world(state).exchanges()[-1].facts
     assert state.payload.run.title == "The Cloister Walk"
 
 
@@ -471,7 +450,7 @@ async def test_a_worldsmith_that_fails_leaves_the_scene_unchanged_and_says_why(
     state = await play_turn(table, "I go.", LEFT)
 
     assert "no answer left" in caplog.text
-    assert table.service.engine.history(state)[-1].facts[0] == WAY_UNWRITTEN
+    assert table.service.engine.world(state).exchanges()[-1].facts[0] == WAY_UNWRITTEN
     assert table.service.state.payload.run.title == "The Abbot's Study"
 
 
@@ -526,7 +505,7 @@ async def test_abandoning_a_spawn_kills_the_process_group_it_started(
     )
 
     with pytest.raises(asyncio.TimeoutError):
-        await CliSpawner(settings).run("master", "go", None)
+        await RoleRunner(settings).run("master", "go", None)
     assert killed == [(1234, spawn_module.SIGKILL)]
 
 

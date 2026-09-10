@@ -16,7 +16,6 @@ from aidm.app.media import (
     scene_key,
 )
 from aidm.config import MediaConfig, ProviderConfig
-from aidm.core.entities import EntityId
 from aidm.core.io import FileStore
 from aidm.core.views import NarratorView
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
@@ -40,7 +39,7 @@ def _placed(state: Loner3eGame, name: str, *, known: bool) -> Loner3eGame:
     return with_entity(
         state,
         Loner3eSheet(
-            id=EntityId(name.lower().replace(" ", "-")),
+            id=name.lower().replace(" ", "-"),
             name=name,
             brief=f"A {name.lower()}.",
             known=known,
@@ -86,10 +85,10 @@ def test_an_icon_is_looked_up_in_each_authored_directory_in_order(tmp_path: Path
         directory.mkdir(parents=True)
         (directory / f"{stem}.png").write_bytes(b"\x89PNG")
     illustrator = _illustrator(saves_dir, (scenario_dir, character_dir))
-    assert illustrator.icon(EntityId("mara")) == scenario_dir / "mara.png"
-    assert illustrator.icon(EntityId("player")) == character_dir / "player.png"
-    assert illustrator.icon(EntityId("invented")) == saves_dir / "icons" / "invented.png"
-    assert illustrator.icon(EntityId("nobody")) is None
+    assert illustrator.icon("mara") == scenario_dir / "mara.png"
+    assert illustrator.icon("player") == character_dir / "player.png"
+    assert illustrator.icon("invented") == saves_dir / "icons" / "invented.png"
+    assert illustrator.icon("nobody") is None
 
 
 async def test_concurrent_illustrations_of_one_scene_generate_it_once(

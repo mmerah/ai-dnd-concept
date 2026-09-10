@@ -108,13 +108,14 @@ class LauncherCatalog:
             if slug != target.slug:
                 LOGGER.warning("skipping save %r: filed under another name", slug)
                 continue
-            scenes = engine.scenes(state)
+            world = engine.world(state)
+            scenes = world.records()
             saves.append(
                 SaveOption(
                     target=target,
                     scenario_title=state.scenario.title,
                     character_title=title,
-                    turn=len(engine.history(state)),
+                    turn=len(world.exchanges()),
                     where=scenes[-1].title if scenes else "",
                     rules=engine.title,
                 )

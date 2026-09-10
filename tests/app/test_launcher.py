@@ -256,7 +256,7 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
     catalog = _catalog(settings, runtime.engines)
     state = runtime.session(catalog.target(name, "kael")).state
     engine = runtime.engines[state.engine]
-    assert (name, len(engine.history(state))) == ("the-sunken-bell", 0)
+    assert (name, len(engine.world(state).exchanges())) == ("the-sunken-bell", 0)
     assert state.payload.run.title == "The Bell Under the Water"
     assert state.payload.player.name == "Kael"
     assert state.payload.source.startswith("PREMISE:")

@@ -7,18 +7,17 @@ import pytest
 from support.game import initialized, loner_sheet, open_game
 from support.table import Table, changed, narrated, play_turn, tool_call
 
-from aidm.core.entities import EntityId, Refusal
+from aidm.core.entities import Refusal
 from aidm.core.facts import Fact, cards
 from aidm.core.model import AnyGame
-from aidm.core.play import Answer, Exchange, SceneRecord
+from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.tools import outcome_for
 from aidm.engines.loner3e.world import Loner3eGame
 from aidm.engines.scenes.engine import WAY_UNWRITTEN
 from aidm.turn.run import REQUEST_WAIT, Turn
 
-MAP = EntityId("vault-map")
+MAP = "vault-map"
 FOUND = changed("reveal", entity_id="vault-map")
 TAKEN = changed("change_tags", entity_id=PLAYER_ID, kind="gear", gained=["the vault map"])
 ASKED = tool_call("roll", what="Try the door", actor_id=PLAYER_ID, question="Does the door give?")
@@ -60,7 +59,7 @@ async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_pat
     assert "Elena" not in narrator
     # The sheets are the game master's: no tag the engine rolls by reaches the narrator.
     assert "concept" not in narrator
-    assert len(table.service.engine.history(state)) == 1
+    assert len(table.service.engine.world(state).exchanges()) == 1
     assert state.payload.exchanges()[-1].prompt == "I search beneath the desk."
 
 
@@ -222,7 +221,7 @@ async def test_a_master_that_crashes_after_applying_still_commits_what_it_applie
 
     await table.service.play(Answer(text="I take the map and read it."))
 
-    assert len(table.service.engine.history(table.service.state)) == 1
+    assert len(table.service.engine.world(table.service.state).exchanges()) == 1
     assert table.service.state.payload.require(MAP).known
 
 
@@ -293,29 +292,6 @@ def _rolls_then_refuses(draft: AnyGame, rng: Random) -> tuple[Fact, ...]:
     raise ValueError("the rules said no")
 
 
-class _CountingLoner3e(Loner3eEngine):
-    scenes_calls = 0
-    history_calls = 0
-
-    def scenes(self, state: Loner3eGame) -> tuple[SceneRecord, ...]:
-        self.scenes_calls += 1
-        return super().scenes(state)
-
-    def history(self, state: Loner3eGame) -> tuple[Exchange, ...]:
-        self.history_calls += 1
-        return super().history(state)
-
-
-def test_turn_picture_walks_the_history_through_scenes_alone() -> None:
-    engine = _CountingLoner3e()
-    _, state = initialized()
-    turn = Turn.begin(engine, state, Answer(text="I look around."), Random(1))
-
-    _ = turn.picture()
-
-    assert (engine.scenes_calls, engine.history_calls) == (1, 0)
-
-
 async def test_crossing_keeps_a_drive_set_after_the_worldsmith_snapshot(
     tmp_path: Path,
 ) -> None:
@@ -338,7 +314,7 @@ async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_a
 ) -> None:
     """The brief is the worldsmith's between scenes; the name and the sheet are the rules'."""
     table = open_game(tmp_path)
-    before = loner_sheet(table.state, EntityId("mara"))
+    before = loner_sheet(table.state, "mara")
     table.spawner.answers["worldsmith"] = [
         _scene(
             cast={
@@ -358,9 +334,9 @@ async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_a
         arrival="Rain takes the arcade.",
     )
 
-    mara = state.payload.require(EntityId("mara"))
+    mara = state.payload.require("mara")
     assert state.payload.run.title == "The Cloister Walk"
     assert mara.name == "Mara"
     assert mara.brief == "Waiting under the arcade with the lantern shuttered."
     assert (mara.concept, mara.tags) == (before.concept, before.tags)
-    assert WAY_UNWRITTEN not in table.service.engine.history(state)[-1].facts
+    assert WAY_UNWRITTEN not in table.service.engine.world(state).exchanges()[-1].facts

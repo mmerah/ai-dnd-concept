@@ -4,7 +4,7 @@ import pytest
 from support.game import ENGINE, initialized, loner_sheet
 from support.table import change, updated
 
-from aidm.core.entities import EntityId, Refusal
+from aidm.core.entities import Refusal
 from aidm.core.facts import cards
 from aidm.core.io import decode
 from aidm.core.play import PendingDecision
@@ -13,8 +13,8 @@ from aidm.engines.loner3e.tools import Question, defeat_note, outcome_for, twist
 from aidm.engines.loner3e.world import LUCK_MAX, TIES_PER_TWIST
 from aidm.engines.scenes.packs import SRD_PACK
 
-FOE = EntityId("mara")
-MAP = EntityId("vault-map")
+FOE = "mara"
+MAP = "vault-map"
 
 
 def _seal(**args: object) -> Question:

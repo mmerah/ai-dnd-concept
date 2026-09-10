@@ -9,7 +9,7 @@ from httpx import HTTPError
 
 from aidm.app.providers import claim, post_bearer
 from aidm.config import ProviderConfig, Settings, SpeechConfig
-from aidm.core.entities import EntityId
+from aidm.core.entities import Slug
 from aidm.core.io import FileStore
 from aidm.core.play import Exchange
 
@@ -82,7 +82,7 @@ def open_reader(settings: Settings, store: FileStore, slug: str, *, voice: str) 
     )
 
 
-def voice_of(speaker_id: EntityId | None, narrator: str, pool: Sequence[str]) -> str:
+def voice_of(speaker_id: Slug | None, narrator: str, pool: Sequence[str]) -> str:
     """The narrator's voice for narration; a speaker keeps one voice from the pool across turns."""
     if speaker_id is None:
         return narrator

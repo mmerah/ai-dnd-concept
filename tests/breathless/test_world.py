@@ -1,6 +1,6 @@
 import pytest
 
-from aidm.core.entities import EntityId, Refusal
+from aidm.core.entities import Refusal, Slug
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.world import (
     SKILLS,
@@ -13,11 +13,11 @@ from aidm.engines.breathless.world import (
 )
 from aidm.engines.scenes.world import SceneRun
 
-MIRA = EntityId("mira")
-DAX = EntityId("dax")
+MIRA = "mira"
+DAX = "dax"
 
 
-def _scene(*, here: list[EntityId] | None = None) -> SceneRun:
+def _scene(*, here: list[Slug] | None = None) -> SceneRun:
     return SceneRun(
         place="diner",
         title="The Diner",

@@ -1,20 +1,19 @@
 import logging
-from asyncio import Lock, Task, create_task, gather
+from asyncio import Task, create_task, gather
 from collections.abc import Sequence
-from dataclasses import InitVar, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
 
 from pydantic import JsonValue
 
-from aidm.app.builtin import BuiltinSpawner
 from aidm.app.launch import LaunchTarget
 from aidm.app.media import ICON_DIR, Illustrator, open_illustrator
-from aidm.app.roles import Roles, RoleSpawner
-from aidm.app.spawn import CliSpawner, Spawner
+from aidm.app.roles import RoleRunner, Roles
+from aidm.app.spawn import Spawner
 from aidm.app.speech import Reader, open_reader
 from aidm.config import Role, Settings, read_settings
-from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
+from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.io import FileStore, Library, decode
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioMeta
 from aidm.core.play import Answer, Exchange, Mark, SpokenLine
@@ -94,7 +93,7 @@ class GameService:
 
     def unopened(self) -> bool:
         return not self.busy and not any(
-            record.exchanges for record in self.engine.scenes(self.state)
+            record.exchanges for record in self.engine.world(self.state).records()
         )
 
     async def open(self) -> None:
@@ -242,14 +241,14 @@ class GameService:
         return self.engine.player_view(self.state)
 
     def history(self) -> tuple[Exchange, ...]:
-        return self.engine.history(self.state)
+        return self.engine.world(self.state).exchanges()
 
     def scene_art(self) -> Path | None:
         if self.media is None:
             return None
         return self.media.scene_art(self.engine.narrator_view(self.state))
 
-    def icon(self, entity_id: EntityId) -> Path | None:
+    def icon(self, entity_id: Slug) -> Path | None:
         return None if self.media is None else self.media.icon(entity_id)
 
     def newest_clip(self) -> Path | None:
@@ -269,7 +268,7 @@ class GameService:
         self._retain(create_task(self.reader.read(newest)))
 
     def _newest(self) -> Exchange | None:
-        history = self.engine.history(self.state)
+        history = self.engine.world(self.state).exchanges()
         return history[-1] if history else None
 
     def _retain(self, task: Task[None]) -> None:
@@ -317,23 +316,15 @@ class GameService:
 @dataclass(slots=True)
 class Runtime:
     settings: Settings
-    # Tests hand in a stub; the runtime builds its own because that spawner calls back into it.
-    stub: InitVar[Spawner | None] = None
-    spawner: Spawner = field(init=False)
+    spawner: Spawner
     _sessions: dict[str, GameService] = field(default_factory=dict, repr=False)
-    lock: Lock = field(default_factory=Lock, repr=False)
     engines: dict[EngineId, AnyEngine] = field(init=False)
     library: Library = field(init=False)
     store: FileStore = field(init=False)
 
-    def __post_init__(self, stub: Spawner | None) -> None:
+    def __post_init__(self) -> None:
         self.engines = build_engines()
-        self.spawner = self._spawner() if stub is None else stub
         self._mount()
-
-    def _spawner(self) -> Spawner:
-        settings = self.settings
-        return RoleSpawner(settings, CliSpawner(settings), BuiltinSpawner(settings, self))
 
     def _mount(self) -> None:
         self.library = Library(self.settings.scenarios_dir, self.settings.characters_dir)
@@ -345,21 +336,15 @@ class Runtime:
 
     def published_tools(self) -> tuple[MasterTool[AnyGame], ...]:
         """A CLI lists tools only inside its own turn; between turns there is nothing to call."""
-        playing = self.playing()
-        return () if playing is None else tuple(playing.engine.tools.values())
+        turn = self.playing()
+        return () if turn is None else turn.published_tools()
 
-    def playing(self) -> GameService | None:
-        in_flight = [session for session in self._sessions.values() if session.turn is not None]
-        if len(in_flight) > 1:
-            # Single-player: `busy_refusal` and `Runtime.lock` block two turns in flight, so this
-            # raise cannot happen. Multiplayer means dropping `stateless=True` in `app/mcp.py`,
-            # routing by session, and deleting `playing`, `lock`, `NO_TURN`.
-            raise ValueError(f"turns are in flight in {[session.slug for session in in_flight]}")
-        return in_flight[0] if in_flight else None
+    def playing(self) -> Turn | None:
+        turns = (session.turn for session in self._sessions.values())
+        return next((turn for turn in turns if turn is not None), None)
 
     def call(self, name: str, raw: JsonValue) -> str:
-        playing = self.playing()
-        turn = None if playing is None else playing.turn
+        turn = self.playing()
         if turn is None:
             raise Refusal(NO_TURN)
         return turn.call(name, raw)
@@ -377,7 +362,7 @@ class Runtime:
 
     def reload_settings(self) -> None:
         self.settings = read_settings()
-        self.spawner = self._spawner()
+        self.spawner = RoleRunner(self.settings)
         self._mount()
         # A late answer or image from an evicted session would land where the new session reads.
         for session in self._sessions.values():

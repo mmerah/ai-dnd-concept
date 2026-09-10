@@ -4,7 +4,6 @@ from random import Random
 
 from support.table import TWENTYFOURXX, open_table, play_turn, the_way_on, tool_call
 
-from aidm.core.entities import EntityId
 from aidm.core.play import Answer
 from aidm.engines.scenes.engine import MOVE_ON
 from aidm.engines.twentyfourxx.world import TwentyfourxxGame
@@ -40,7 +39,7 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
     state = await play_turn(table, "Ask what else this shift wants of Kael.", the_way_on())
     assert state.payload.run.offered
 
-    before = len(table.service.engine.history(state))
+    before = len(table.service.engine.world(state).exchanges())
     table.spawner.answers["worldsmith"] = [json.dumps(NEXT_SCENE)]
     pursuit = "Deeper into the station, past the dark corridor."
     state = await play_turn(
@@ -52,14 +51,14 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
     )
 
     assert state.payload.run.title == "The Cargo Bay"
-    assert table.service.engine.history(state)[before].prompt == pursuit
+    assert table.service.engine.world(state).exchanges()[before].prompt == pursuit
     assert table.saved() == table.state
 
 
 async def test_a_hired_member_survives_a_save_and_succeeds_the_dead_lead(tmp_path: Path) -> None:
     table = open_table(tmp_path, engine_id=TWENTYFOURXX, state_type=TwentyfourxxGame)
     table.service.interjections = False
-    member_id = EntityId("vessa-rune")
+    member_id = "vessa-rune"
     sheet = {
         "specialty": "Face",
         "skills": {"Deception": 8},
@@ -104,7 +103,7 @@ async def test_a_hired_member_survives_a_save_and_succeeds_the_dead_lead(tmp_pat
     assert world.player.sheet.specialty == "Face"
     assert world.player.sheet.skills == {"Deception": 8}
     assert "player" in world.cast
-    assert not world.cast[EntityId("player")].alive
+    assert not world.cast["player"].alive
     assert "player" in world.run.here
     assert member_id not in world.party
     assert table.saved() == table.state

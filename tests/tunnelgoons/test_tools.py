@@ -18,7 +18,7 @@ from support.tunnelgoons import (
     small_world,
 )
 
-from aidm.core.entities import EntityId, Refusal
+from aidm.core.entities import Refusal
 from aidm.core.model import Generation
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.hiring import HIRE, SIGNED_ON, Hire
@@ -144,8 +144,8 @@ def test_dangerous_hurts_only_on_a_miss() -> None:
     world2.player.sheet.inventory = 0
     world2.items.update(
         {
-            EntityId(f"junk-{n}"): Prop(
-                id=EntityId(f"junk-{n}"),
+            f"junk-{n}": Prop(
+                id=f"junk-{n}",
                 name=f"Junk {n}",
                 brief="Clutter",
                 known=True,
@@ -294,7 +294,7 @@ def test_move_item_refuses_a_holder_the_player_has_not_met() -> None:
 def test_kill_drops_an_npcs_items_loose() -> None:
     draft = small_world().draft()
     world = draft.payload
-    blade = EntityId("mira-blade")
+    blade = "mira-blade"
     world.items[blade] = Prop(id=blade, name="Blade", brief="Mira's blade", known=True, on=MIRA)
 
     _ = change(ENGINE, draft, "kill", entity_id=MIRA)

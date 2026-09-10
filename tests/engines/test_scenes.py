@@ -4,20 +4,19 @@ from random import Random
 import pytest
 from support.table import LONER3E, game, narrowed
 
-from aidm.core.entities import EntityId, Refusal
+from aidm.core.entities import Refusal, Slug
 from aidm.core.model import Generation
 from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
-from aidm.engines.scenes.drafts import NextDraft
 from aidm.engines.scenes.engine import MOVE_ON
-from aidm.engines.scenes.tools import NextScene
+from aidm.engines.scenes.tools import NextDraft, NextScene
 from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld
 from aidm.engines.scenes.worldsmith import scene_refusal
 
 PLAYER = Person(id=PLAYER_ID, name="Player", brief="", known=True)
-MARA = EntityId("mara")
+MARA = "mara"
 SITUATION = "A long enough situation to satisfy the minimum length the model demands, twice over."
 RECAP = "A long enough recap to satisfy the minimum length the model demands for what happened."
 ARC = "A few lines on what waits farther in, long enough to satisfy the model's own minimum."
@@ -29,9 +28,7 @@ def _world(*runs: SceneRun, **fields: object) -> SceneWorld[Person, Person]:
     )
 
 
-def _run(
-    place: str, title: str, *, played: bool = False, here: Sequence[EntityId] = ()
-) -> SceneRun:
+def _run(place: str, title: str, *, played: bool = False, here: Sequence[Slug] = ()) -> SceneRun:
     exchanges = [Exchange(prompt=title, lines=())] if played else []
     return SceneRun(
         place=place,

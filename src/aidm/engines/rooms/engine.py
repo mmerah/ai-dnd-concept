@@ -52,9 +52,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
     dweller: type[N]
     world_type: type[RoomWorld[N, P]]
     operations = (EXTEND,)
-
-    def family_rules(self) -> str:
-        return read_prompt(RULES_PROMPT)
+    family_prompt = RULES_PROMPT
 
     def world(self, state: G) -> RoomWorld[N, P]:
         return state.payload
@@ -70,7 +68,6 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
             raise Refusal(f"a room engine cannot write {state.generation.operation!r}")
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> RoomWorld[N, P]:
-        self.check_scenario(scenario)
         canon: RoomCanon[N] = scenario.payload
         player = self.player_of(character)
         taken = (*canon.places, *canon.npcs, *canon.items)

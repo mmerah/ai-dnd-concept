@@ -3,7 +3,7 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Refusal
+from aidm.core.entities import Frozen, Refusal, Slug
 from aidm.core.play import (
     DecisionOption,
     Interjection,
@@ -20,11 +20,11 @@ type Pairs = tuple[tuple[str, str], ...]
 class PanelRow(Frozen):
     label: str
     detail: str
-    icon_id: EntityId | None = None
+    icon_id: Slug | None = None
 
 
 class Subject(Frozen):
-    id: CheckedEntityId
+    id: Slug
     label: str
     detail: str
 
@@ -65,9 +65,9 @@ class NarratorView(Frozen):
     focus: str
     situation: str
     subjects: tuple[Subject, ...]
-    speakers: tuple[CheckedEntityId, ...]
+    speakers: tuple[Slug, ...]
     # The player first, then who travels with them.
-    party: tuple[CheckedEntityId, ...] = Field(min_length=1)
+    party: tuple[Slug, ...] = Field(min_length=1)
     # The player's own sheet: theirs to know, so the narrator may show it through detail.
     sheet: Pairs
 
@@ -113,7 +113,7 @@ class NarratorView(Frozen):
             return "write the narration lines: an empty answer shows the player nothing."
         return self.speakers_refusal(narration.lines)
 
-    def interjection_refusal(self, member_id: EntityId, answer: Interjection) -> str | None:
+    def interjection_refusal(self, member_id: Slug, answer: Interjection) -> str | None:
         if any(line.speaker_id != member_id for line in answer.lines):
             return f"only {member_id} speaks here: every `speaker_id` is {member_id!r}"
         if answer.proposal and not answer.lines:

@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 
 from pydantic import Discriminator, Field
 
-from aidm.core.entities import CheckedEntityId, Frozen, Slug
+from aidm.core.entities import Frozen, Slug
 from aidm.core.play import DecisionOption
 from aidm.engines import base
 from aidm.engines.base import Attempt, JoinParty, LeaveParty
@@ -28,7 +28,7 @@ class ChangeTags(Frozen):
     """A character here gains tags, loses tags, or both."""
 
     verb: Literal["change_tags"]
-    entity_id: CheckedEntityId = Field(description="Exact id of the player or someone here.")
+    entity_id: Slug = Field(description="Exact id of the player or someone here.")
     kind: TagKind = Field(
         description="`gear` for a thing taken or lost. `condition` for a lasting mark such as "
         "`Poisoned`."
@@ -43,9 +43,7 @@ class Drive(Frozen):
     """A living character's goal, motive or nemesis changes."""
 
     verb: Literal["drive"]
-    entity_id: CheckedEntityId = Field(
-        description="Exact id of the player or a living character here."
-    )
+    entity_id: Slug = Field(description="Exact id of the player or a living character here.")
     goal: str = Field(
         default="",
         description="What they now pursue, in one line. Empty keeps the current goal.",
@@ -60,7 +58,7 @@ class RestoreLuck(Frozen):
     """A character's luck refills."""
 
     verb: Literal["restore_luck"]
-    entity_id: CheckedEntityId = Field(description="Exact id of the player or a character here.")
+    entity_id: Slug = Field(description="Exact id of the player or a character here.")
 
 
 type WorldChange = (
@@ -72,7 +70,7 @@ ChangeWorld = base.ChangeWorld[Annotated[WorldChange, Discriminator("verb")]]
 
 
 class Question(Attempt):
-    actor_id: CheckedEntityId = Field(description="Exact id of the character here who acts.")
+    actor_id: Slug = Field(description="Exact id of the character here who acts.")
     question: str = Field(
         min_length=1,
         description="Closed question where yes means the actor gets what they want. Only you "
@@ -87,7 +85,7 @@ class Question(Attempt):
         description="Tag or circumstance that sets the position, read by the player. Empty "
         "for neutral.",
     )
-    opponent_id: CheckedEntityId | None = Field(
+    opponent_id: Slug | None = Field(
         default=None,
         description="Exact id of the character here that resists. Null when nothing fights back.",
     )

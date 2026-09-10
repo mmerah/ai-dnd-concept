@@ -1,9 +1,7 @@
 import pytest
 from support.table import (
-    BREATHLESS,
     ENGINES_BUILT,
     LIBRARY,
-    SCENARIO_MODELS,
     TWENTYFOURXX,
     change,
     game,
@@ -11,7 +9,7 @@ from support.table import (
     updated,
 )
 
-from aidm.core.entities import EntityId, Refusal
+from aidm.core.entities import Refusal
 from aidm.core.io import decode
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID
@@ -25,10 +23,10 @@ from aidm.engines.twentyfourxx.world import (
     TwentyfourxxScenario,
 )
 
-COMM = EntityId("comm")
-CLIMBING_GEAR = EntityId("climbing-gear")
-NIGHT_VISION_GOGGLES = EntityId("night-vision-goggles")
-VESSA = EntityId("vessa-rune")
+COMM = "comm"
+CLIMBING_GEAR = "climbing-gear"
+NIGHT_VISION_GOGGLES = "night-vision-goggles"
+VESSA = "vessa-rune"
 
 
 def _twentyfourxx_game() -> tuple[AnyEngine, TwentyfourxxGame]:
@@ -91,18 +89,3 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
     character = LIBRARY.read_character("kael", TWENTYFOURXX, TwentyfourxxCharacter)
     with pytest.raises(Refusal, match="the player is in the cast"):
         ENGINES_BUILT[TWENTYFOURXX].new_game(scenario, character)
-
-
-def test_a_foreign_scenario_is_refused_by_new_game() -> None:
-    character = LIBRARY.read_character("kael", TWENTYFOURXX, TwentyfourxxCharacter)
-    foreign_scenario = LIBRARY.read_scenario("drowned-road", SCENARIO_MODELS)
-    with pytest.raises(Refusal, match="incompatible scenario"):
-        ENGINES_BUILT[TWENTYFOURXX].new_game(foreign_scenario, character)
-
-
-def test_a_foreign_character_is_refused_by_new_game() -> None:
-    scenario = LIBRARY.read_scenario("silent-relay", SCENARIO_MODELS)
-    breathless = ENGINES_BUILT[BREATHLESS]
-    foreign_character = LIBRARY.read_character("kael", BREATHLESS, breathless.character)
-    with pytest.raises(Refusal, match="incompatible character"):
-        ENGINES_BUILT[TWENTYFOURXX].new_game(scenario, foreign_character)

@@ -12,8 +12,7 @@ from pydantic import JsonValue
 from support.game import initialized
 from support.table import ENGINES_BUILT, LONER3E, offline_settings, updated
 
-from aidm.app.builtin import BuiltinSpawner
-from aidm.app.runtime import Runtime
+from aidm.app.roles import RoleRunner
 from aidm.config import RoleConfig, RoleSettings, Settings
 from aidm.core.entities import Refusal
 from aidm.core.model import AnyGame
@@ -87,9 +86,10 @@ async def test_a_writer_is_asked_once_and_its_fenced_answer_is_unwrapped(
 ) -> None:
     sent = _post(monkeypatch, _said(FENCED))
     narrator = RoleConfig(provider="local", model="qwen", effort="low")
-    spawner = BuiltinSpawner(_settings(narrator=narrator), _Tools(STATE))
 
-    spoken = await spawner.run("narrator", "THE WHOLE BRIEF", None)
+    spoken = await RoleRunner(_settings(narrator=narrator)).run(
+        "narrator", "THE WHOLE BRIEF", None, _Tools(STATE)
+    )
 
     assert (json.loads(spoken.text), spoken.session) == ({"lines": []}, None)
     assert len(sent) == 1
@@ -117,9 +117,10 @@ async def test_the_master_plays_its_tools_in_process_and_echoes_each_reply_whole
     )
     sent = _post(monkeypatch, first, _said("Done."))
     tools = _Tools(STATE)
-    spawner = BuiltinSpawner(_settings(master=RoleConfig(provider="local", model="m")), tools)
 
-    spoken = await spawner.run("master", "PLAY", None)
+    spoken = await RoleRunner(_settings(master=RoleConfig(provider="local", model="m"))).run(
+        "master", "PLAY", None, tools
+    )
 
     assert spoken.text == "Done."
     assert tools.calls == [("change_world", {"change": change})]
@@ -162,10 +163,9 @@ async def test_a_master_still_calling_tools_past_the_cap_is_cut_off(
     endless = _said(None, _call("a", "change_world", "{}"))
     sent = _post(monkeypatch, endless, endless, endless, endless)
     master = RoleConfig(provider="local", model="m", max_rounds=3)
-    spawner = BuiltinSpawner(_settings(master=master), _Tools(STATE))
 
     with pytest.raises(Refusal, match="3 rounds"):
-        _ = await spawner.run("master", "PLAY", None)
+        _ = await RoleRunner(_settings(master=master)).run("master", "PLAY", None, _Tools(STATE))
     assert len(sent) == 3
 
 
@@ -190,12 +190,11 @@ async def test_a_failed_provider_is_a_refusal_the_player_reads(
     monkeypatch: pytest.MonkeyPatch, reply: JsonValue | Exception, expected: str
 ) -> None:
     _ = _post(monkeypatch, reply)
-    spawner = BuiltinSpawner(
-        _settings(narrator=RoleConfig(provider="local", model="m")), _Tools(STATE)
-    )
 
     with pytest.raises(Refusal, match=expected):
-        _ = await spawner.run("narrator", "BRIEF", None)
+        _ = await RoleRunner(_settings(narrator=RoleConfig(provider="local", model="m"))).run(
+            "narrator", "BRIEF", None, _Tools(STATE)
+        )
 
 
 async def test_the_whole_run_is_held_to_the_roles_timeout(
@@ -207,10 +206,11 @@ async def test_the_whole_run_is_held_to_the_roles_timeout(
 
     monkeypatch.setattr("aidm.app.builtin.post_bearer", slow)
     narrator = RoleConfig(provider="local", model="m", timeout=0.01)
-    spawner = BuiltinSpawner(_settings(narrator=narrator), _Tools(STATE))
 
     with pytest.raises(TimeoutError):
-        _ = await spawner.run("narrator", "BRIEF", None)
+        _ = await RoleRunner(_settings(narrator=narrator)).run(
+            "narrator", "BRIEF", None, _Tools(STATE)
+        )
 
 
 async def test_a_writer_that_calls_a_tool_is_refused_before_anything_lands(
@@ -218,10 +218,11 @@ async def test_a_writer_that_calls_a_tool_is_refused_before_anything_lands(
 ) -> None:
     _ = _post(monkeypatch, _said(None, _call("a", "change_world", "{}")))
     tools = _Tools(STATE)
-    spawner = BuiltinSpawner(_settings(narrator=RoleConfig(provider="local", model="m")), tools)
 
     with pytest.raises(Refusal, match="no tools, yet called 'change_world'"):
-        _ = await spawner.run("narrator", "BRIEF", None)
+        _ = await RoleRunner(_settings(narrator=RoleConfig(provider="local", model="m"))).run(
+            "narrator", "BRIEF", None, tools
+        )
     assert tools.calls == []
 
 
@@ -232,7 +233,7 @@ async def test_the_runtime_sends_each_role_where_its_settings_say(
     narrator = RoleConfig(provider="local", model="qwen")
     settings = updated(_settings(narrator=narrator), saves_dir=tmp_path)
 
-    spoken = await Runtime(settings).spawner.run("narrator", "BRIEF", None)
+    spoken = await RoleRunner(settings).run("narrator", "BRIEF", None)
 
     assert json.loads(spoken.text) == {"lines": []}
     assert len(sent) == 1

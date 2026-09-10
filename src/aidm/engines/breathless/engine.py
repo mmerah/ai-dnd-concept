@@ -4,14 +4,14 @@ from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked
-from aidm.core.entities import EngineId, EntityId, Refusal, Slug, parse, slug
+from aidm.core.entities import EngineId, Refusal, Slug, parse, slug
 from aidm.core.facts import DiceEvent, Fact, keep_highest, roll
 from aidm.core.model import AnyCharacter
 from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.prompt import lines_of
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Pairs, Panel, PanelRow
-from aidm.engines.base import CHANGE_WORLD, PLAYER_ID
+from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, banded
 from aidm.engines.breathless.tools import (
     Actor,
     ChangeStress,
@@ -22,7 +22,6 @@ from aidm.engines.breathless.tools import (
     TakeLoot,
     TestLuck,
     UseMedKit,
-    outcome,
 )
 from aidm.engines.breathless.world import (
     LADDER,
@@ -152,7 +151,7 @@ class BreathlessEngine(
                 job=picked(picks, "job"),
                 skills=skills,
                 worn=dict(skills),
-                items={EntityId(slug(item, ())): Supply(name=item, die=STARTING_ITEM)},
+                items={slug(item, ()): Supply(name=item, die=STARTING_ITEM)},
             ),
         )
         return BreathlessCharacter(id=slug(name, ()), engine=self.id, payload=player)
@@ -200,7 +199,7 @@ class BreathlessEngine(
             case _:
                 return self.shared_change(world, change)
 
-    def hireable(self, draft: BreathlessGame, entity_id: EntityId) -> Survivor:
+    def hireable(self, draft: BreathlessGame, entity_id: Slug) -> Survivor:
         return draft.payload.require_hireable(entity_id)
 
     def hire_prompt(self, draft: BreathlessGame, member: Survivor, terms: str) -> str:
@@ -224,7 +223,7 @@ class BreathlessEngine(
             job=answer.job,
             skills=dict(answer.skills),
             worn=dict(answer.skills),
-            items={EntityId(slug(answer.item, ())): Supply(name=answer.item, die=STARTING_ITEM)},
+            items={slug(answer.item, ()): Supply(name=answer.item, die=STARTING_ITEM)},
         )
         return answer.job
 
@@ -264,7 +263,7 @@ class BreathlessEngine(
                 (die, helper[1]), reason, rng, label=f"d{die}+d{helper[1]}"
             )
 
-        result = outcome(face)
+        result = banded(face, "fail", "success-but", "success")
         worn = stepped(die)
 
         if args.skill is not None:
@@ -361,7 +360,7 @@ class BreathlessEngine(
 
     def test_luck(self, _draft: BreathlessGame, args: TestLuck, rng: Random) -> list[Fact]:
         rolled, dice_fact = roll((args.die,), args.question, rng)
-        result = outcome(rolled[0])
+        result = banded(rolled[0], "fail", "success-but", "success")
         trace = f"{args.question} — d{args.die} [{rolled[0]}] -> {result}"
         return [dice_fact, Fact(trace=trace)]
 

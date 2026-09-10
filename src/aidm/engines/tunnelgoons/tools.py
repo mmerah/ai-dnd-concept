@@ -2,7 +2,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Discriminator, Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen
+from aidm.core.entities import Frozen, Slug
 from aidm.core.play import PendingOption
 from aidm.engines import base
 from aidm.engines.base import Attempt, JoinParty, LeaveParty
@@ -25,7 +25,7 @@ ChangeWorld = base.ChangeWorld[Annotated[WorldChange, Discriminator("verb")]]
 
 class ActionRoll(Attempt):
     ability: Ability = Field(description="Which ability the action calls on.")
-    items: tuple[CheckedEntityId, ...] = Field(
+    items: tuple[Slug, ...] = Field(
         default=(), description="Exact ids of items the actor carries that plainly help."
     )
     difficulty: int | None = Field(
@@ -33,7 +33,7 @@ class ActionRoll(Attempt):
         ge=1,
         description=("Difficulty Score: 8 easy, 10 moderate, 12 hard. Null when `against` is set."),
     )
-    against: CheckedEntityId | None = Field(
+    against: Slug | None = Field(
         default=None,
         description="Exact id of an npc here the actor acts on, in a fight or in talk. Its "
         "Health is the Difficulty Score.",
@@ -42,7 +42,7 @@ class ActionRoll(Attempt):
         default=False,
         description="True when a miss would hurt. Talk is not dangerous unless the story says so.",
     )
-    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+    actor_id: Slug | None = Field(default=None, description=ACTOR)
 
     @model_validator(mode="after")
     def _one_target(self) -> Self:
@@ -58,10 +58,10 @@ class LevelUp(Frozen):
     boost: Boost | None = Field(
         default=None, description="Health or Inventory to raise by 1. Null asks the player."
     )
-    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+    actor_id: Slug | None = Field(default=None, description=ACTOR)
 
 
-def level_options(actor_id: EntityId | None) -> tuple[PendingOption, ...]:
+def level_options(actor_id: Slug | None) -> tuple[PendingOption, ...]:
     return tuple(
         PendingOption(
             id=f"{ability}-{boost}",

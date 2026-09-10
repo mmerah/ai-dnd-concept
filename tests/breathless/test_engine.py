@@ -12,7 +12,7 @@ from support.table import (
     updated,
 )
 
-from aidm.core.entities import EngineId, EntityId, Refusal
+from aidm.core.entities import EngineId, Refusal
 from aidm.core.io import decode
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID
@@ -30,8 +30,8 @@ from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.scenes.world import SceneCanon, SceneRun
 from aidm.engines.seam import AnyEngine
 
-FIRE_AXE = EntityId("fire-axe")
-OVID = EntityId("ovid-sarn")
+FIRE_AXE = "fire-axe"
+OVID = "ovid-sarn"
 
 
 def _breathless_game() -> tuple[AnyEngine, BreathlessGame]:
@@ -152,6 +152,6 @@ async def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party() -> Non
     member = draft.payload.cast[OVID]
     assert member.sheet is not None
     assert len(member.sheet.skills) == 6
-    assert member.sheet.items[EntityId("boat-hook")].die == STARTING_ITEM
+    assert member.sheet.items["boat-hook"].die == STARTING_ITEM
     assert OVID in draft.payload.party
     assert message == SIGNED_ON.format(name=member.name)

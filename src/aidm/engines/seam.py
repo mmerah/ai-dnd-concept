@@ -20,7 +20,7 @@ from aidm.core.model import (
     ScenarioMeta,
     WorldsmithAnswer,
 )
-from aidm.core.play import DecisionOption, Exchange, Mark, PendingOption, SceneRecord, SpokenLine
+from aidm.core.play import DecisionOption, Exchange, Mark, PendingOption, SpokenLine
 from aidm.core.tools import MasterTool
 from aidm.core.views import DiceLook, NarratorView, Pairs, Palette, PlayerView
 from aidm.engines.base import PLAYER_ID, Person, World
@@ -36,6 +36,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
     dice_look: DiceLook
     palette: Palette
     directory: Path  # rules.md; a scene engine's packs/
+    family_prompt: Path
     game: type[G]
     scenario: type[AnyScenario]
     character: type[AnyCharacter]
@@ -44,22 +45,17 @@ class Engine[P: Person, G: Game[Any]](ABC):
     operations: tuple[Slug, ...]  # the requests this engine writes
 
     def __init__(self) -> None:
-        self.instructions = read_prompt(self.directory / "rules.md")
+        self.instructions = (
+            f"{read_prompt(self.directory / 'rules.md')}\n{read_prompt(self.family_prompt)}"
+        )
         tools = self.master_tools()
         names = [tool.name for tool in tools]
         if len(set(names)) != len(names):
             raise ValueError(f"the {self.id!r} engine names a tool twice: {names}")
         self.tools = {tool.name: tool for tool in tools}
-        self.instructions = f"{self.instructions}\n{self.family_rules()}"
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
         return ()
-
-    def check_character(self, character: AnyCharacter) -> None:
-        if character.engine != self.id:
-            raise Refusal(f"{self.title} received an incompatible character")
-        if character.payload.id != PLAYER_ID or not character.payload.known:
-            raise Refusal("a character sheet is the player's: id 'player', known")
 
     def preview_character(self, character: AnyCharacter) -> Pairs:
         return self.player_of(character).rows()
@@ -95,19 +91,14 @@ class Engine[P: Person, G: Game[Any]](ABC):
         playable: Callable[[AnyScenario], str | None],
     ) -> AnyScenario:
         """The build runs the engine's bar, so an unbuildable opening is re-prompted, not raised."""
-        built: AnyScenario | None = None
 
         def refusal(answer: M) -> str | None:
-            nonlocal built
             try:
-                built = build(answer)
+                return playable(build(answer))
             except Refusal as unbuildable:
                 return str(unbuildable)
-            return playable(built)
 
-        answer = await worldsmith(prompt, model, refusal)
-        # The accepted answer was built by its own check; one never checked is built here.
-        return build(answer) if built is None else built
+        return build(await worldsmith(prompt, model, refusal))
 
     def close(
         self,
@@ -127,7 +118,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
             decision="" if draft.pending is None else draft.pending.prompt,
             proposal=proposal,
         )
-        self.record(draft, exchange)
+        self.world(draft).record(exchange)
         return self.land(draft)
 
     def land(self, draft: G) -> G:
@@ -159,24 +150,12 @@ class Engine[P: Person, G: Game[Any]](ABC):
         return self.land(state)
 
     def player_of(self, character: AnyCharacter) -> P:
-        self.check_character(character)
+        if character.payload.id != PLAYER_ID or not character.payload.known:
+            raise Refusal("a character sheet is the player's: id 'player', known")
         return deepcopy(character.payload)
-
-    def check_scenario(self, scenario: AnyScenario) -> None:
-        if scenario.engine != self.id:
-            raise Refusal(f"{self.title} received an incompatible scenario")
 
     def over(self, state: G) -> str | None:
         return "You died." if not self.world(state).player.alive else None
-
-    def record(self, state: G, exchange: Exchange) -> None:
-        self.world(state).record(exchange)
-
-    def history(self, state: G) -> tuple[Exchange, ...]:
-        return self.world(state).exchanges()
-
-    def scenes(self, state: G) -> tuple[SceneRecord, ...]:
-        return self.world(state).records()
 
     def unwritten(self, request: Generation) -> Fact:
         """What the player reads when the worldsmith could not write this request."""
@@ -188,10 +167,6 @@ class Engine[P: Person, G: Game[Any]](ABC):
     def creation_steps(self, picks: Picks, /) -> tuple[CreationStep, ...]: ...
     @abstractmethod
     def create_character(self, name: str, brief: str, picks: Picks, /) -> AnyCharacter: ...
-    @abstractmethod
-    def family_rules(self) -> str:
-        """What every engine of this family is told, after its own rules."""
-
     @abstractmethod
     def world(self, state: G) -> World[P]: ...
     @abstractmethod

@@ -11,10 +11,11 @@ from typing import Protocol
 
 from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
 
-from aidm.config import CliProvider, Role, RoleConfig, Settings
+from aidm.config import CliProvider, Role, RoleConfig
 from aidm.core.entities import Loose, Refusal, parse
 from aidm.core.io import decode
-from aidm.core.model import Objection
+from aidm.core.model import AnyGame, Objection
+from aidm.core.tools import MasterTool
 
 RETRIES = 1
 # The child inherits nothing else: the shell that started the app may hold keys no role should see.
@@ -126,38 +127,38 @@ class CodexDriver:
 DRIVERS: Mapping[CliProvider, Driver] = {"claude": ClaudeDriver(), "codex": CodexDriver()}
 
 
+class Tools(Protocol):
+    def published_tools(self) -> Sequence[MasterTool[AnyGame]]: ...
+    def call(self, name: str, raw: JsonValue) -> str: ...
+
+
 class Spawner(Protocol):
-    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult: ...
+    async def run(
+        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+    ) -> RunResult: ...
 
 
-@dataclass(frozen=True, slots=True)
-class CliSpawner:
+async def run_cli(
+    role: Role, config: RoleConfig, driver: Driver, port: int, prompt: str, session: str | None
+) -> RunResult:
     """The only thing in the codebase that starts a process."""
-
-    settings: Settings
-
-    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
-        config = self.settings.roles.for_name(role)
-        if config.cli is None:
-            raise ValueError(f"the {role} is played over the {config.provider!r} API")
-        driver = DRIVERS[config.cli]
-        url = f"http://localhost:{self.settings.server_port}/mcp/"
-        argv = driver.command(role, config, session, url)
-        started = monotonic()
-        # An empty working directory, so a role cannot read this repository even if it tries.
-        with TemporaryDirectory(prefix=f"aidm-{role}-") as empty:
-            output = await _spawn(role, argv, prompt, config.timeout, driver.secrets, empty)
-        result = driver.read_result(output)
-        LOGGER.info(
-            "%s spawned: provider=%s model=%s effort=%s %s in %.1fs",
-            role,
-            config.provider,
-            config.model,
-            config.effort,
-            "resumed" if session is not None else "cold",
-            monotonic() - started,
-        )
-        return result
+    url = f"http://localhost:{port}/mcp/"
+    argv = driver.command(role, config, session, url)
+    started = monotonic()
+    # An empty working directory, so a role cannot read this repository even if it tries.
+    with TemporaryDirectory(prefix=f"aidm-{role}-") as empty:
+        output = await _spawn(role, argv, prompt, config.timeout, driver.secrets, empty)
+    result = driver.read_result(output)
+    LOGGER.info(
+        "%s spawned: provider=%s model=%s effort=%s %s in %.1fs",
+        role,
+        config.provider,
+        config.model,
+        config.effort,
+        "resumed" if session is not None else "cold",
+        monotonic() - started,
+    )
+    return result
 
 
 def final_message(output: str) -> str:
