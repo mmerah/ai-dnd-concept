@@ -11,8 +11,9 @@ from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
 from aidm.engines.scenes.drafts import NextDraft
+from aidm.engines.scenes.engine import MOVE_ON
 from aidm.engines.scenes.tools import NextScene
-from aidm.engines.scenes.world import MOVE_ON, SceneCanon, SceneRun, SceneWorld
+from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld
 from aidm.engines.scenes.worldsmith import scene_refusal
 
 PLAYER = Person(id=PLAYER_ID, name="Player", brief="", known=True)

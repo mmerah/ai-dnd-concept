@@ -37,7 +37,7 @@ from aidm.engines.base import ACTOR, PLAYER_ID
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eSheet
 from aidm.engines.scenes.drafts import SceneDraft
-from aidm.engines.scenes.world import MOVE_ON
+from aidm.engines.scenes.engine import MOVE_ON
 from aidm.turn.run import NO_TURN, Turn
 
 

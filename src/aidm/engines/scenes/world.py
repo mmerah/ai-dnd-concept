@@ -13,15 +13,12 @@ from aidm.core.entities import (
     require_unique,
 )
 from aidm.core.facts import Fact
-from aidm.core.play import DecisionOption, Exchange, SceneRecord
+from aidm.core.play import Exchange, SceneRecord
 from aidm.core.prompt import lines_of
 from aidm.core.views import Panel, PanelRow
 from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, World, check_filing
 from aidm.engines.scenes.drafts import NextDraft, SceneDraft
 
-MOVE_ON = DecisionOption(
-    id="move-on", label="Move on", detail="Keep playing, or say where you go and move on."
-)
 WAY_OFFERED = Fact(
     kind="way_offered",
     trace=(
