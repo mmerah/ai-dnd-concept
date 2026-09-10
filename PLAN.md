@@ -30,7 +30,7 @@ uv run basedpyright
    uv run pytest
    ```
    Then read every changed fixture line against the phase's "Done when". Any other change is a bug.
-5. One commit per phase, full check green, reviewed adversarially against the staged diff first. Leave the game playable at the end of every phase: `uv run aidm`, open each shipped scenario, take a turn.
+5. One commit per phase, full check green, reviewed adversarially against the staged diff first. Before the commit, run `uv sync --all-groups --locked` once and then the four commands on the staged tree: CI runs exactly that, and `ruff format --check` also formats the Python fences in this file, so `uv run ruff format PLAN.md` after editing it. Leave the game playable at the end of every phase: `uv run aidm`, open each shipped scenario, take a turn.
 6. Delete, do not preserve. No compatibility path reads an old save or scenario file. No constant, helper, prompt line or test stays for a caller that is gone.
 7. The standing limits hold. Imports flow `core <- engines <- turn <- app <- ui` with no cycles. No `Any` beyond the `Game[P]` bound. Every `__init__.py` stays empty. Tests never start a process and stub roles with `ScriptedSpawner`. `Refusal` stays the one message-bearing exception and any other exception is a bug. A bad model answer is re-prompted once with the error, then raises. Only code changes state or rolls dice. The narrator reads revealed facts only. Data is validated at each boundary with strict Pydantic models. Names must explain themselves and a comment is one line, only where the reason is not visible in the code.
 
@@ -66,6 +66,7 @@ Proposals 1, 6 and 7. Mechanical: no file on disk changes shape.
        except Refusal as unbuildable:
            return str(unbuildable)
 
+
    return build(await worldsmith(prompt, model, refusal))
    ```
    Delete `test_compose_builds_the_accepted_answer_once` at `tests/engines/test_seam.py:146-160`.
@@ -86,6 +87,7 @@ Proposals 1, 6 and 7. Mechanical: no file on disk changes shape.
        except (OSError, Refusal) as failed:
            if not self._landed(turn, failed):
                raise
+
 
    def _landed(self, turn: Turn, failed: Exception) -> bool:
        if not turn.facts and turn.draft.pending is None:
@@ -108,6 +110,7 @@ Proposals 1, 6 and 7. Mechanical: no file on disk changes shape.
     class Tools(Protocol):
         def published_tools(self) -> Sequence[MasterTool[AnyGame]]: ...
         def call(self, name: str, raw: JsonValue) -> str: ...
+
 
     class Spawner(Protocol):
         async def run(
@@ -141,7 +144,9 @@ Proposals 1, 6 and 7. Mechanical: no file on disk changes shape.
             match config.provider:
                 case "claude" | "codex":
                     driver = DRIVERS[config.provider]
-                    return await run_cli(role, config, driver, self.settings.server_port, prompt, session)
+                    return await run_cli(
+                        role, config, driver, self.settings.server_port, prompt, session
+                    )
                 case "openrouter" | "local":
                     provider = self.settings.providers.for_name(config.provider)
                     return await run_builtin(role, config, provider, prompt, tools)
@@ -222,6 +227,7 @@ Proposals 2 with option a, 3 in full, and 5. Reordered from the suggested order 
            cls, {"player": player, "cast": cast, "runs": [run], "arc": draft.arc, "source": source}
        )
 
+
    def apply_scene(self, draft: SceneDraft[C]) -> None:
        self.cast, run = settled(draft, self.player, self.merged_cast(draft.cast), self.party)
        if isinstance(draft, NextDraft):
@@ -257,6 +263,7 @@ Proposals 2 with option a, 3 in full, and 5. Reordered from the suggested order 
     ```python
     class Person(Thing):
         ...
+
         def hired(self) -> bool:
             """Whether they carry a sheet. A kind that never does answers no."""
             return False
@@ -269,8 +276,8 @@ Proposals 2 with option a, 3 in full, and 5. Reordered from the suggested order 
     class Sheeted[S: BaseModel](Person):
         sheet: S | None = Field(default=None, description="Leave empty.")
 
-        def dice(self) -> S: ...          # as today
-        def forbidden(self) -> str: ...   # as today
+        def dice(self) -> S: ...  # as today
+        def forbidden(self) -> str: ...  # as today
 
         def hired(self) -> bool:
             return self.sheet is not None
@@ -354,7 +361,9 @@ Proposals 8, 4 option c, and 9 with qa option a.
            prompts.append(prompt)
            raise Refusal("recorded")
 
-       request = Generation(operation=next(iter(engine.unwritten)), brief="Deeper in, toward the sound.")
+       request = Generation(
+           operation=next(iter(engine.unwritten)), brief="Deeper in, toward the sound."
+       )
        with pytest.raises(Refusal, match="recorded"):
            await engine.advance(state.draft(), request, recording)
        golden(FIXTURES / "prompts" / engine_id / "worldsmith.txt", prompts[0])
@@ -406,10 +415,10 @@ Proposals 8, 4 option c, and 9 with qa option a.
    @dataclass(frozen=True, slots=True)
    class HireCase:
        engine: AnyEngine
-       game: Callable[[], AnyGame]                # support.breathless / twentyfourxx / tunnelgoons small_world
-       member: Slug                               # MIRA, KESTREL, MIRA
-       sheeted: Callable[[AnyGame], AnyGame]      # the game with `member` already carrying a sheet
-       answer: dict[str, JsonValue]               # the worldsmith's sheet, as in the three deleted tests
+       game: Callable[[], AnyGame]  # support.breathless / twentyfourxx / tunnelgoons small_world
+       member: Slug  # MIRA, KESTREL, MIRA
+       sheeted: Callable[[AnyGame], AnyGame]  # the game with `member` already carrying a sheet
+       answer: dict[str, JsonValue]  # the worldsmith's sheet, as in the three deleted tests
    ```
    The three tests, written once: `test_hire_sets_the_generation_and_ends_the_turn` through `case.engine.tools["hire"].call(draft, {"entity_id": case.member, "terms": "Watch our backs"}, Random(0))`; `test_hire_refuses_a_sheeted_member` matching `"already carries a sheet"`; `test_advance_on_a_hire_installs_the_sheet_and_joins_the_party` through `await case.engine.advance(draft, Generation(operation=HIRE, brief=..., target=case.member), stub_worldsmith(case.answer))`, asserting `engine.world(draft).require_member_here(case.member).hired()`, membership in `party`, and the `SIGNED_ON` line. Delete the originals: `tests/breathless/test_engine.py:111-157`, `tests/tunnelgoons/test_tools.py:401-431`, `tests/twentyfourxx/test_tools.py:458-467,492-502`. Move `test_restored_round_trips` once into `tests/engines/test_seam.py`, parametrized over `ENGINE_IDS` through `game(engine_id)`, and delete it from `tests/breathless/test_engine.py:69`, `tests/tunnelgoons/test_engine.py:34` and `tests/twentyfourxx/test_engine.py:70`.
 10. `tests/engines/test_scene_bar.py`, new, parametrized over the three scene engines:
@@ -418,10 +427,12 @@ Proposals 8, 4 option c, and 9 with qa option a.
     class SceneCase:
         engine: AnyEngine
         game: Callable[[], AnyGame]
-        bar: Callable[[Mapping[str, object]], str | None]   # scene_refusal over the engine's SceneDraft and the game's world
-        player: str        # the player's name: Jax, Rook, Kael
-        met: Slug          # a known cast member here: mira, kestrel, mara
-        unmet: Slug        # a hidden one: dax, sable, vault-map
+        bar: Callable[
+            [Mapping[str, object]], str | None
+        ]  # scene_refusal over the engine's SceneDraft and the game's world
+        player: str  # the player's name: Jax, Rook, Kael
+        met: Slug  # a known cast member here: mira, kestrel, mara
+        unmet: Slug  # a hidden one: dax, sable, vault-map
     ```
     Each case's `bar` builds the engine's draft from the base fields at `tests/breathless/test_worldsmith.py:13-21` and `tests/twentyfourxx/test_worldsmith.py:45-53`, and the Loner case uses `support.game.initialized` with a matching base. The tests, written once: lists the player, matching `"put there by code"`; a cast entry under the player's id, matching `"rewrites the player"`; hides someone met, matching `"already met"`; a dead draft cast member, matching `"may write them"`; a hidden multi-word name in the situation, matching `"does not name what is hidden"`; a scenario whose cast holds the player's id is refused by `new_game`, matching `"the player is in the cast"`; a game with no packs is refused by `validate`, matching `"at least one table set"`; installing a next scene through `engine.advance` with `stub_worldsmith` appends a run and returns a fact whose card starts with `"New scene:"`; the worldsmith prompt names the player first under `THE WHOLE CAST`, read through the recording worldsmith of step 1. Delete the originals: `tests/breathless/test_worldsmith.py:24-84` except `test_sheet_draft_rated_off_the_creation_spread_is_refused`; `tests/twentyfourxx/test_worldsmith.py` at `:92`, `:130`, `:142`, `:167`, `:182`, `:216`, `:230`; `tests/breathless/test_engine.py:63-66` and `:74-108`; `tests/twentyfourxx/test_engine.py:58-62` and `:75-94`; `tests/loner3e/test_world.py` at `:110`, `:133`, `:195`, `:202`.
 11. Fold the small files: `tests/breathless/test_views.py` and `tests/breathless/test_create.py` into `tests/breathless/test_engine.py`; `tests/twentyfourxx/test_views.py` into `tests/twentyfourxx/test_engine.py`; `tests/tunnelgoons/test_create.py` into `tests/tunnelgoons/test_engine.py`; delete the four files. While folding, delete the three "nothing hidden" narrator-view tests, `tests/breathless/test_views.py:29`, `tests/twentyfourxx/test_views.py:24` and `tests/tunnelgoons/test_views.py:8`: `tests/app/test_context_boundary.py:44` pins the field set and stays. Delete `test_a_twist_card_lands_only_once_a_twist_fires` at `tests/loner3e/test_tools.py:89`; `tests/loner3e/test_engine.py:116` keeps the priming.
