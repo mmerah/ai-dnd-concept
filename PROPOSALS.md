@@ -19,6 +19,8 @@ saves and the four `scenarios/*/world.json` are rewritten in one pass or two.
 
 ## 1. One id type
 
+**Decided: accepted.**
+
 **What.** Five spellings of "a lowercase slug": `Slug` (`Annotated[str, pattern]`), `EntityId`
 (`NewType`), `CheckedEntityId` (`Annotated[EntityId, pattern]`), `content_id()`, and
 `_SAVE_SLUG_PATTERN` (`core/entities.py:6-14`, `core/io.py:20`). The comment says
@@ -35,6 +37,8 @@ pydantic-validated, which `dict[EntityId, C]` keys never were.
 distinction that was never real. **Confidence.** High. **Time.** 1–2 h, mechanical.
 
 ## 2. The world-request mechanism: one dict, and stop persisting the request
+
+**Decided: accepted, with (a): `Game.generation` is not persisted.**
 
 **What.** A worldsmith request is `Game.generation` with an `operation` string. Around it:
 `Engine.operations` tuple (`seam.py:44`), `Hiring.__init_subclass__` mutating that tuple
@@ -62,6 +66,8 @@ line, in the seam); `GameService._generate` reads `engine.unwritten[request.oper
 - (b) Keep persisting it; the dict alone.
 
 ## 3. Scenario payload is the worldsmith's draft: delete the canon layer
+
+**Decided: accepted, option (a) full; source stays inside saves (3b: no).**
 
 **What.** A scene exists in four shapes: `SceneDraft`/`NextDraft` (model output,
 `scenes/drafts.py`), `SceneCanon` (the `world.json` payload, `scenes/world.py:52-65`), `SceneRun`
