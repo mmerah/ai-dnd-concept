@@ -10,7 +10,6 @@ def test_roll_traces_every_die() -> None:
     rolled, fact = roll((6, 6), "a forced door", Random(0))
 
     assert len(rolled) == 2
-    assert fact.kind == "dice_rolled"
     assert fact.trace == f"a forced door: 2d6 [{rolled[0]}, {rolled[1]}]"
 
 

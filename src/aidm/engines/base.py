@@ -4,25 +4,16 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Refusal, Slug
+from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Refusal
 from aidm.core.facts import DiceEvent, Fact
-from aidm.core.model import Generation
 from aidm.core.play import Exchange, SceneRecord
 from aidm.core.views import Pairs, Panel, PanelRow, Subject
 
 PLAYER_ID = EntityId("player")
-HIRE: Slug = "hire"
-SIGNED_ON = "{name} has signed on with the player. Tell it in a line or two. Settle nothing else."
 CHANGE_WORLD = (
     "Call this when the story has settled a change to the world. Fill the fields of the verb "
     "you pick. One call makes one change."
 )
-HIRE_TOOL = (
-    "Call this when the player hires someone here to work. Someone already travelling with the "
-    "player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing "
-    "more lands this turn."
-)
-ACTOR = "Exact id of a hired party member here who acts. Null for the player."
 UNKNOWN_ID = "unknown id {entity_id!r}. Use only the ids you were shown."
 IS_DEAD = "{name} is dead and takes no further part."
 
@@ -66,7 +57,6 @@ class Thing(Mutable):
 
     def fact(
         self,
-        kind: str,
         trace: str,
         *,
         narrate: bool = True,
@@ -74,14 +64,14 @@ class Thing(Mutable):
         dice: tuple[DiceEvent, ...] = (),
     ) -> Fact:
         """`told` only when the player has learned of this thing, so no unknown name leaks."""
-        return Fact(kind=kind, trace=trace, told=narrate and self.known, card=card, dice=dice)
+        return Fact(trace=trace, told=narrate and self.known, card=card, dice=dice)
 
     def reveal(self, *, card: str = "") -> list[Fact]:
         """Leave cards to the containing action or the standalone reveal arm."""
         if self.known:
             return []
         self.known = True
-        return [self.fact("entity_discovered", f"learned of {self.mention}", card=card)]
+        return [self.fact(f"learned of {self.mention}", card=card)]
 
     def subject(self) -> Subject:
         return Subject(id=self.id, label=self.name, detail=self.brief)
@@ -125,7 +115,7 @@ class World[P: Person](Mutable):
         facts = member.reveal()
         self.party.append(member.id)
         trace = f"{member.tag} travels with the player"
-        facts.append(member.fact("party_joined", trace, card=f"{member.name} joins your party"))
+        facts.append(member.fact(trace, card=f"{member.name} joins your party"))
         return facts
 
     def part(self, member: Person) -> list[Fact]:
@@ -133,16 +123,7 @@ class World[P: Person](Mutable):
             raise Refusal(f"{member.name} does not travel with the player")
         self.party.remove(member.id)
         trace = f"{member.tag} no longer travels with the player"
-        return [member.fact("party_left", trace, card=f"{member.name} leaves your party")]
-
-    def require_hireable(self, entity_id: EntityId) -> Person:
-        raise Refusal("nobody here can be hired")
-
-    def sign_on(self, member: Person, summary: str) -> tuple[tuple[Fact, ...], str]:
-        facts = self.join(member) if member.id not in self.party else []
-        trace = f"{member.mention} signs on — {summary}"
-        facts.append(member.fact("hired", trace, card=f"{member.name} signs on — {summary}"))
-        return tuple(facts), SIGNED_ON.format(name=member.name)
+        return [member.fact(trace, card=f"{member.name} leaves your party")]
 
 
 class JoinParty(Frozen):
@@ -157,14 +138,6 @@ class LeaveParty(Frozen):
 
     verb: Literal["leave_party"]
     entity_id: CheckedEntityId = Field(description="Exact id of the party member leaving.")
-
-
-class Hire(Frozen):
-    entity_id: CheckedEntityId = Field(description="Exact id of who here signs on.")
-    terms: str = Field(
-        min_length=1,
-        description="What they are hired for, and on what terms, as agreed.",
-    )
 
 
 class ChangeWorld[C](Frozen):
@@ -201,13 +174,7 @@ class Counter(Mutable):
             return []
         moved = f"{label} {delta:+d} -> {self}"
         card = moved if owner.id == PLAYER_ID else f"{owner.name}: {moved}"
-        return [owner.fact("counter_changed", f"{owner.mention} {moved} ({why})", card=card)]
-
-
-def hire_target(request: Generation) -> EntityId:
-    if request.target is None:
-        raise Refusal("a hire names who signs on")
-    return request.target
+        return [owner.fact(f"{owner.mention} {moved} ({why})", card=card)]
 
 
 def character_panel(rows: Pairs) -> Panel:

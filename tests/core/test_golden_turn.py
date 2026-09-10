@@ -1,4 +1,3 @@
-from asyncio import gather
 from importlib import import_module
 from pathlib import Path
 from random import Random
@@ -34,7 +33,7 @@ async def test_a_scripted_turn_renders_and_records_unchanged(
     table.service.commit(_behind(engine_id, table.state))
 
     await play_turn(table, PROMPT, *_script(engine_id), narration=NARRATION, then=(INTERJECTION,))
-    await gather(*table.service._background)  # pyright: ignore[reportPrivateUsage]
+    await table.service.drain()
 
     golden(FIXTURES / "prompts" / engine_id / "master.txt", table.spawner.prompt("master"))
     golden(FIXTURES / "prompts" / engine_id / "narrator.txt", table.spawner.prompt("narrator"))

@@ -22,7 +22,6 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
             lines=(),
             facts=(
                 Fact(
-                    kind="entity_moved",
                     trace="the vault map moved to Kael",
                     told=True,
                     card="Took the vault map",

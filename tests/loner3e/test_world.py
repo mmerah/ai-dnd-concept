@@ -90,14 +90,11 @@ def test_someone_left_behind_is_refilled_when_the_scene_moves_on() -> None:
     draft = state.draft()
     draft.payload.require(MARA).luck.current = LUCK_MAX - 2
 
-    facts = (
-        *ENGINE.leaving(draft),
-        *ENGINE.install(draft, _next_scene(present=(), hidden=(TOMAS,))),
-    )
+    _ = ENGINE.leaving(draft)
+    _ = ENGINE.install(draft, _next_scene(present=(), hidden=(TOMAS,)))
 
     assert MARA not in draft.payload.party
     assert draft.payload.require(MARA).luck.current == LUCK_MAX
-    assert any(fact.kind == "counter_changed" for fact in facts)
 
 
 def test_an_id_the_worldsmith_got_wrong_resolves_by_name_before_it_is_refused() -> None:

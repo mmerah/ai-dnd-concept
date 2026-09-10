@@ -64,14 +64,8 @@ def test_a_question_puts_two_dice_to_the_answer_and_costs_no_luck_on_its_own() -
     _, state = initialized()
     draft = state.draft()
 
-    facts = ENGINE.roll(draft, _seal(), Random(17))
+    _ = ENGINE.roll(draft, _seal(), Random(17))
 
-    assert [fact.kind for fact in facts] == [
-        "dice_rolled",
-        "dice_rolled",
-        "question_asked",
-        "question_answered",
-    ]
     assert loner_sheet(draft, PLAYER_ID).luck.current == LUCK_MAX
 
 
@@ -82,8 +76,8 @@ def test_the_question_is_the_masters_memory_and_never_reaches_the_narrator() -> 
 
     facts = ENGINE.roll(state.draft(), question, Random(17))
 
-    asked = next(fact for fact in facts if fact.kind == "question_asked")
-    answered = next(fact for fact in facts if fact.kind == "question_answered")
+    asked = next(fact for fact in facts if fact.trace.startswith("asked:"))
+    answered = next(fact for fact in facts if fact.dice)
     assert not asked.told
     assert question.question in asked.trace
     assert answered.told
@@ -168,7 +162,6 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
         assert loner_sheet(draft, loser).luck.current == LUCK_MAX - abs(harm)
         assert loner_sheet(draft, unharmed).luck.current == LUCK_MAX
         # SRD: the Twist Counter does not apply to Harm & Luck, so a conflict tie never ticks it.
-        assert not any(fact.kind == "twist_due" for fact in facts)
         assert draft.payload.twist.current == 0
 
 
@@ -181,11 +174,10 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
 
     draft = hurt.draft()
     # Seed 0 rolls chance 4 against risk 4: a yes-but, one luck off the foe's last point.
-    facts = ENGINE.roll(draft, _duel(), Random(0))
+    _ = ENGINE.roll(draft, _duel(), Random(0))
 
     assert loner_sheet(draft, FOE).luck.current == 10
     assert loner_sheet(draft, PLAYER_ID).luck.current == LUCK_MAX
-    assert any(fact.kind == "conflict_lost" for fact in facts)
     assert defeat_note(draft.payload.require(FOE).name) in draft.notes
     # The conflict is over, so the defeat note steers the same run instead of handing control back.
     assert draft.pending is None
@@ -215,9 +207,8 @@ def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
 
     draft = state.draft()
     _ = change(ENGINE, draft, "reveal", entity_id=MAP)
-    facts = ENGINE.roll(draft, _seal(opponent_id=MAP), Random(0))
+    _ = ENGINE.roll(draft, _seal(opponent_id=MAP), Random(0))
 
-    assert any(fact.kind == "question_answered" for fact in facts)
     resisted = draft.payload.require(MAP).luck.current
     assert min(resisted, loner_sheet(draft, PLAYER_ID).luck.current) < LUCK_MAX
 

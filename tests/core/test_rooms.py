@@ -177,14 +177,12 @@ def test_join_party_and_leave_party_land_through_change_world(tmp_path: Path) ->
     state = engine.begin("the-keep", _scenario(), character)
     draft = state.draft()
 
-    joined = change(engine, draft, "join_party", entity_id=WARDEN)
+    _ = change(engine, draft, "join_party", entity_id=WARDEN)
 
-    assert any(fact.kind == "party_joined" for fact in joined)
     assert WARDEN in draft.payload.party
 
-    left = change(engine, draft, "leave_party", entity_id=WARDEN)
+    _ = change(engine, draft, "leave_party", entity_id=WARDEN)
 
-    assert any(fact.kind == "party_left" for fact in left)
     assert draft.payload.party == []
 
 

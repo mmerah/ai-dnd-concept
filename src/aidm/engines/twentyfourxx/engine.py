@@ -6,12 +6,13 @@ from random import Random
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, option_of, picked
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, keep_highest, roll
-from aidm.core.model import Generation, WorldsmithAnswer
+from aidm.core.model import Check
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import lines_of
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Pairs, Panel, PanelRow
-from aidm.engines.base import CHANGE_WORLD, HIRE, HIRE_TOOL, PLAYER_ID, Hire, hire_target
+from aidm.engines.base import CHANGE_WORLD, PLAYER_ID
+from aidm.engines.hiring import HIRE_TOOL, Hire, Hiring
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
 from aidm.engines.scenes.world import sentence
@@ -51,7 +52,10 @@ from aidm.engines.twentyfourxx.world import (
 from aidm.engines.twentyfourxx.worldsmith import AUTHORING, HIRING, Pack, SheetDraft
 
 
-class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]):
+class TwentyfourxxEngine(
+    Hiring[Crewmate, Crewmate, TwentyfourxxGame, SheetDraft],
+    SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack],
+):
     id = EngineId("twentyfourxx")
     title = "24XX"
     art_style = (
@@ -59,6 +63,18 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
         "technology, no text or lettering."
     )
     dice_look = DiceLook(body="#101418", ink="#5ee1ff", glow="#5ee1ff")
+    palette = {
+        "game-bg": "#0f1624",
+        "game-surface": "#182236",
+        "game-surface-raised": "#22314b",
+        "game-text": "#e3edf9",
+        "game-muted": "#afc0da",
+        "game-border": "#354968",
+        "game-accent": "#91c8ff",
+        "game-wash": "rgba(145, 200, 255, .08)",
+        "game-radius": "10px",
+        "game-heading": "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
+    }
     directory = Path(__file__).parent
     game = TwentyfourxxGame
     scenario = TwentyfourxxScenario
@@ -66,7 +82,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
     cast = Crewmate
     pack = Pack
     world_type = TwentyfourxxWorld
-    operations = (*SceneEngine.operations, HIRE)
+    hire_answer = SheetDraft
 
     def master_tools(self) -> tuple[MasterTool[TwentyfourxxGame], ...]:
         return (
@@ -293,30 +309,33 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
         """A dead lead with a hired member alive is a succession, not an ending."""
         return None if state.payload.sheeted_members() else super().over(state)
 
-    async def advance(
-        self, draft: TwentyfourxxGame, request: Generation, worldsmith: WorldsmithAnswer
-    ) -> tuple[tuple[Fact, ...], str | None]:
-        if request.operation != HIRE:
-            return await super().advance(draft, request, worldsmith)
-        world = draft.payload
-        member = world.require_hireable(hire_target(request))
-        pack = self.packs[draft.packs[0]]
-        prompt = self.render_request(
+    def hireable(self, draft: TwentyfourxxGame, entity_id: EntityId) -> Crewmate:
+        return draft.payload.require_hireable(entity_id)
+
+    def hire_prompt(self, draft: TwentyfourxxGame, member: Crewmate, terms: str) -> str:
+        return self.render_request(
             draft,
-            guidance=pack.hire_guidance(),
-            intent=HIRING.format(name=member.name, brief=member.brief, terms=request.brief),
+            guidance=self._pack(draft).hire_guidance(),
+            intent=HIRING.format(name=member.name, brief=member.brief, terms=terms),
             answer=SheetDraft,
         )
-        answer = await worldsmith(prompt, SheetDraft, lambda sheet: sheet.refusal(pack))
-        specialty = answer.specialty
+
+    def hire_bar(self, draft: TwentyfourxxGame) -> Check[SheetDraft]:
+        pack = self._pack(draft)
+        return lambda sheet: sheet.refusal(pack)
+
+    def install_sheet(self, draft: TwentyfourxxGame, member: Crewmate, answer: SheetDraft) -> str:
         member.sheet = Sheet(
-            specialty=specialty,
+            specialty=answer.specialty,
             skills=dict(answer.skills),
             credits=0,
             items=starting_items(tuple(Kit(name=name) for name in answer.items)),
             hindrances=list(answer.hindrances),
         )
-        return world.sign_on(member, specialty)
+        return answer.specialty
+
+    def _pack(self, draft: TwentyfourxxGame) -> Pack:
+        return self.packs[draft.packs[0]]
 
     def roll(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
         world = draft.payload
@@ -368,14 +387,14 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
             line += f", hindered ({args.hindered})"
         line += f" → {result}"
 
-        facts: list[Fact] = [dice_fact, actor.fact("attempted", line, card=line, dice=(event,))]
+        facts: list[Fact] = [dice_fact, actor.fact(line, card=line, dice=(event,))]
 
         if args.risking_death and result == "disaster":
             facts.extend(world.kill(actor.id))
         elif args.risking_death and result == "setback" and MAIMED not in sheet.hindrances:
             sheet.hindrances.append(MAIMED)
             trace = f"{actor.mention} is maimed"
-            facts.append(actor.fact("hindrances_changed", trace, card="Maimed"))
+            facts.append(actor.fact(trace, card="Maimed"))
         self._succession(draft)
 
         return facts
@@ -390,7 +409,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
         else:
             result = "nothing"
         trace = f"{args.question} — d6 [{face}] -> {result}"
-        return [dice_fact, Fact(kind="luck_tested", trace=trace)]
+        return [dice_fact, Fact(trace=trace)]
 
     def job(self, draft: TwentyfourxxGame, args: Job, rng: Random) -> list[Fact]:
         match args.verb:
@@ -417,10 +436,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
         return [
             dice_fact,
             world.player.fact(
-                "job_sought",
-                line,
-                card=line,
-                dice=(DiceEvent(label="d6", faces=(6,), rolled=rolled),),
+                line, card=line, dice=(DiceEvent(label="d6", faces=(6,), rolled=rolled),)
             ),
         ]
 
@@ -429,9 +445,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
         if world.job:
             raise Refusal(f"a job is open: {world.job}")
         world.job = terms
-        return [
-            world.player.fact("job_taken", f"the job is taken: {terms}", card=f"Job taken\n{terms}")
-        ]
+        return [world.player.fact(f"the job is taken: {terms}", card=f"Job taken\n{terms}")]
 
     def _finish(self, draft: TwentyfourxxGame, raises: Sequence[Raise], rng: Random) -> list[Fact]:
         world = draft.payload
@@ -479,7 +493,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
                 ) from maxed
             sheet.skills[label] = new_die
             trace = f"{actor.mention} — {label} rises to d{new_die}"
-            facts.append(actor.fact("skill_raised", trace, card=f"Job done: {label} d{new_die}"))
+            facts.append(actor.fact(trace, card=f"Job done: {label} d{new_die}"))
 
             rolled, dice_fact = roll((6,), f"credits earned by {actor.name}", rng)
             gained = rolled[0]
@@ -487,7 +501,6 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, Crewmate, TwentyfourxxGame, Pack]
             facts.append(dice_fact)
             facts.append(
                 actor.fact(
-                    "credits_gained",
                     f"{actor.mention} earns ₡{gained} -> ₡{sheet.credits}",
                     card=f"+₡{gained} -> ₡{sheet.credits}",
                     dice=(DiceEvent(label="d6", faces=(6,), rolled=rolled),),

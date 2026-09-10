@@ -3,13 +3,14 @@ from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, picked
-from aidm.core.entities import EngineId, Refusal, slug
+from aidm.core.entities import EngineId, EntityId, Refusal, slug
 from aidm.core.facts import DiceEvent, Fact, roll
-from aidm.core.model import AnyCharacter, Generation, WorldsmithAnswer
+from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption, PendingDecision
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Pairs
-from aidm.engines.base import CHANGE_WORLD, HIRE, HIRE_TOOL, PLAYER_ID, Hire, hire_target
+from aidm.engines.base import CHANGE_WORLD, PLAYER_ID
+from aidm.engines.hiring import HIRE_TOOL, Hire, Hiring
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.tools import Move
 from aidm.engines.rooms.world import Item
@@ -60,18 +61,32 @@ POINT_OPTIONS: tuple[DecisionOption, ...] = tuple(
 )
 
 
-class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
+class TunnelGoonsEngine(
+    Hiring[Goon, Npc, TunnelGoonsGame, AbilitiesDraft],
+    RoomEngine[Npc, Goon, TunnelGoonsGame],
+):
     id = EngineId("tunnelgoons")
     title = "TUNNEL GOONS"
     art_style = "Old-school fantasy illustration in black ink, cross-hatched, no text or lettering."
     dice_look = DiceLook(body="#3b4048", ink="#f3efe6", glow="#7fb069")
+    palette = {
+        "game-bg": "#191411",
+        "game-surface": "#261e18",
+        "game-surface-raised": "#34281f",
+        "game-text": "#f4e7d5",
+        "game-muted": "#c6b29c",
+        "game-border": "#534030",
+        "game-accent": "#eab078",
+        "game-wash": "rgba(234, 176, 120, .08)",
+        "game-radius": "8px",
+    }
     directory = Path(__file__).parent
     game = TunnelGoonsGame
     scenario = TunnelGoonsScenario
     character = TunnelGoonsCharacter
     dweller = Npc
     world_type = TunnelGoonsWorld
-    operations = (*RoomEngine.operations, HIRE)
+    hire_answer = AbilitiesDraft
 
     def master_tools(self) -> tuple[MasterTool[TunnelGoonsGame], ...]:
         return (
@@ -150,26 +165,23 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
             case _:
                 return self.shared_change(world, change)
 
-    async def advance(
-        self, draft: TunnelGoonsGame, request: Generation, worldsmith: WorldsmithAnswer
-    ) -> tuple[tuple[Fact, ...], str | None]:
-        if request.operation != HIRE:
-            return await super().advance(draft, request, worldsmith)
-        world = draft.payload
-        member = world.require_hireable(hire_target(request))
-        prompt = self.render_request(
-            world,
-            HIRING.format(name=member.name, brief=member.brief, terms=request.brief),
+    def hireable(self, draft: TunnelGoonsGame, entity_id: EntityId) -> Npc:
+        return draft.payload.require_hireable(entity_id)
+
+    def hire_prompt(self, draft: TunnelGoonsGame, member: Npc, terms: str) -> str:
+        return self.render_request(
+            draft.payload,
+            HIRING.format(name=member.name, brief=member.brief, terms=terms),
             draft.scenario.scope,
             guidance=HIRE_GUIDANCE,
             answer=AbilitiesDraft,
         )
-        answer = await worldsmith(prompt, AbilitiesDraft, lambda _draft: None)
+
+    def install_sheet(self, draft: TunnelGoonsGame, member: Npc, answer: AbilitiesDraft) -> str:
         sheet = member.sheet = Abilities(abilities=dict(answer.abilities))
-        summary = ", ".join(
+        return ", ".join(
             f"{ability.capitalize()} {sheet.abilities[ability]}" for ability in ABILITIES
         )
-        return world.sign_on(member, summary)
 
     def roll(self, draft: TunnelGoonsGame, args: ActionRoll, rng: Random) -> list[Fact]:
         world = draft.payload
@@ -201,7 +213,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
             + f", {total} vs DS {ds} → {outcome}"
         )
         event = DiceEvent(label="2d6", faces=(6, 6), rolled=rolled)
-        facts.append(actor.fact("action_rolled", line, card=line, dice=(event,)))
+        facts.append(actor.fact(line, card=line, dice=(event,)))
 
         # SRD: only a dangerous action turns the margin into damage; an npc's DS alone does not.
         if not args.dangerous:
@@ -235,7 +247,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         card = f"Level {sheet.level}: {args.ability.capitalize()} +1, {args.boost.capitalize()} +1"
         if actor is not world.player:
             card = f"{actor.name}: {card}"
-        facts = [actor.fact("levelled_up", card, card=card)]
+        facts = [actor.fact(card, card=card)]
         following = world.next_to_level(actor)
         if following is not None:
             draft.pending = _level_decision(following)

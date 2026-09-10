@@ -41,6 +41,17 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
     title = "LONER 3E"
     art_style = "Painterly illustration, muted colours, no text or lettering."
     dice_look = DiceLook(body="#efe4c8", ink="#7a2e2e", glow="#c89b5a")
+    palette = {
+        "game-bg": "#14121e",
+        "game-surface": "#201c2d",
+        "game-surface-raised": "#2c263c",
+        "game-text": "#eee7f4",
+        "game-muted": "#bdb0ce",
+        "game-border": "#443951",
+        "game-accent": "#c5a4ed",
+        "game-wash": "rgba(197, 164, 237, .09)",
+        "game-radius": "18px",
+    }
     directory = Path(__file__).parent
     game = Loner3eGame
     scenario = Loner3eScenario
@@ -193,16 +204,16 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
 
         outcome = outcome_for(chance_kept, risk_kept)
         # The question is master-authored and may name unrevealed canon: never told.
-        facts.append(Fact(kind="question_asked", trace=f"asked: {action.question}"))
+        facts.append(Fact(trace=f"asked: {action.question}"))
         line = _oracle_line(action, opponent, outcome)
         answered_at = len(facts)
-        facts.append(actor.fact("question_answered", line))
+        facts.append(actor.fact(line))
         effects: tuple[str, ...] = ()
         if opponent is not None:
-            exchange, effects = _absorbed(_strike(draft, actor, opponent, outcome))
+            struck, ended = _strike(draft, actor, opponent, outcome)
+            exchange, effects = _absorbed(struck)
             facts.extend(exchange)
-            # The pools refill the moment a side hits 0, so only the fact says the conflict ended.
-            if not any(fact.kind == "conflict_lost" for fact in exchange):
+            if not ended:
                 draft.pending = PendingDecision(
                     kind="conflict",
                     prompt=world.conflict_prompt(actor, opponent),
@@ -228,7 +239,6 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
         draft.note(twist_note(subject, action))
         # Echo the unnamed SRD intrusion in the call that rolled it without adding canon.
         due = actor.fact(
-            "twist_due",
             f"a twist interrupts the scene: {subject} / {action}",
             card=f"Twist — {subject} / {action}",
             dice=(DiceEvent(label="Twist", faces=faces, rolled=rolled),),
@@ -250,20 +260,20 @@ def _absorbed(exchange: list[Fact]) -> tuple[list[Fact], tuple[str, ...]]:
 
 def _strike(
     draft: Loner3eGame, actor: Loner3eSheet, opponent: Loner3eSheet, outcome: Outcome
-) -> list[Fact]:
+) -> tuple[list[Fact], bool]:
     harm = outcome.harm
     hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
     why = f"{striker.name} gets the better of the exchange"
     facts = hit.luck.change(hit, -abs(harm), "Luck", why)
     if hit.luck.current != 0:
-        return facts
+        return facts, False
     draft.note(defeat_note(hit.name))
     lost = f"{hit.name} is out of luck"
-    facts.append(hit.fact("conflict_lost", lost, card=lost))
+    facts.append(hit.fact(lost, card=lost))
     # SRD: luck resets after conflicts, and a side at 0 is the only end the engine sees.
     facts.extend(hit.refill("the conflict is over"))
     facts.extend(striker.refill("the conflict is over"))
-    return facts
+    return facts, True
 
 
 def _refuse_unless_ready(actor: Loner3eSheet, opponent: Loner3eSheet | None) -> None:

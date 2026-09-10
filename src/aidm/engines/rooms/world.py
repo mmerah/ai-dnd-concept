@@ -259,7 +259,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
             names = " and ".join(npc.name for npc in travelers)
             verb = "comes" if len(travelers) == 1 else "come"
             trace += f", and {names} {verb} along"
-        facts.append(destination.fact("arrived", trace, card=f"Arrived at {destination.name}"))
+        facts.append(destination.fact(trace, card=f"Arrived at {destination.name}"))
         return facts
 
     def unlock_way(self, to_id: EntityId) -> list[Fact]:
@@ -277,7 +277,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
             back.known = True
         trace = f"the way from {here.mention} to {destination.mention} is unlocked"
         card = f"{destination.name} unlocked"
-        return [here.fact("way_unlocked", trace, card=card)]
+        return [here.fact(trace, card=card)]
 
     def reveal_hidden(self, entity_id: EntityId) -> list[Fact]:
         entity = self.require(entity_id)
@@ -314,7 +314,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
         item.on = to
         card = f"Took {item.name}" if to == self.player.id else f"{item.name} → {holder.name}"
         trace = f"{item.mention} moves to {holder.mention}"
-        return [*facts, item.fact("entity_moved", trace, card=card)]
+        return [*facts, item.fact(trace, card=card)]
 
     def kill(self, actor: P | N) -> list[Fact]:
         facts = actor.reveal()
@@ -326,9 +326,9 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[P]):
             item.on = self.current.id
         if dropped:
             fell = ", ".join(item.mention for item in dropped) + " fell loose here"
-            facts.append(Fact(kind="items_dropped", trace=fell))
+            facts.append(Fact(trace=fell))
         card = "You are dead" if actor.id == self.player.id else f"{actor.name} is dead"
-        facts.append(actor.fact("actor_killed", f"{actor.mention} is dead", card=card))
+        facts.append(actor.fact(f"{actor.mention} is dead", card=card))
         return facts
 
     def attach(self, region: Dungeon[N], start: EntityId) -> None:

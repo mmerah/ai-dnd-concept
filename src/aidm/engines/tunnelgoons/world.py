@@ -103,7 +103,7 @@ class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
         for member in members:
             facts.extend(member.hp.change(member, member.hp.shortfall, "Health", "resting"))
         trace = f"{'the party' if members else 'the player'} rests at {self.current.mention}"
-        facts.append(player.fact("rested", trace, card=f"Rested — Health {player.hp}"))
+        facts.append(player.fact(trace, card=f"Rested — Health {player.hp}"))
         return facts
 
     def next_to_level(self, actor: Goon | Npc) -> Npc | None:

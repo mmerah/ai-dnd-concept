@@ -68,12 +68,11 @@ class Observed:
     over: str | None
 
     @classmethod
-    def of(cls, session: GameService) -> Self:
-        view = session.player_view()
+    def of(cls, session: GameService, view: PlayerView, history: Sequence[Exchange]) -> Self:
         return cls(
             session.phase,
             0 if session.turn is None else len(session.turn.facts),
-            len(session.engine.history(session.state)),
+            len(history),
             view.action,
             view.over,
         )
@@ -100,6 +99,8 @@ class GamePage:
         self.restart_dialog: ui.dialog
         self.restart_label: ui.label
         self.seen: Observed = Observed(None, 0, 0, None, None)
+        self.view: PlayerView
+        self.history: tuple[Exchange, ...]
         self.step_started: float | None = None
         self.ticker: ui.label | None = None
         self.box: ui.input
@@ -111,12 +112,14 @@ class GamePage:
 
     def build(self) -> None:
         session = self.session
+        self.view = session.player_view()
+        self.history = session.history()
         if session.unopened():
             ui.timer(0.1, self._open, once=True)
         else:
             session.illustrate()
         with page_header(
-            session.state.scenario.title, session.engine.title, engine=session.engine.id
+            session.state.scenario.title, session.engine_title, engine=session.engine_id
         ):
             ui.space()
             self.sound = ui.button(icon="volume_up", on_click=self.toggle_sound).props("flat round")
@@ -170,16 +173,16 @@ class GamePage:
                 ui.button("Keep playing", on_click=self.restart_dialog.close).props("flat")
                 ui.button("Restart", on_click=self.confirmed_restart)
 
-        self.dice = DiceTray(session.engine.dice_look)
+        self.dice = DiceTray(session.dice_look)
         self.dice.on("sound", self.sound_state)
         # A cached clip never autoplays on a page load, only one landing after.
         self.shown_clip = session.newest_clip()
-        self.seen = Observed.of(session)
+        self.seen = Observed.of(session, self.view, self.history)
         self._set_composer()
         self._clear_spent_draft()
 
         ui.timer(1.0, self.poll_turn)
-        if session.media is not None or session.reader is not None:
+        if session.presents:
             ui.timer(3.0, self.poll_media)
 
     def refresh(self) -> None:
@@ -231,7 +234,6 @@ class GamePage:
     @ui.refreshable_method
     def scene_header(self) -> None:
         session = self.session
-        scene = session.engine.narrator_view(session.state)
         art = session.scene_art()
         open_class = " game-scene-open" if self.scene_open else ""
         self.scene_card = ui.element("div").classes("game-scene" + open_class)
@@ -242,8 +244,8 @@ class GamePage:
             with ui.row().classes("game-scene-body w-full no-wrap").style("gap: 0"):
                 with ui.column().classes("game-scene-text").style("gap: 0.15rem"):
                     ui.label("current scene").classes("text-xs game-eyebrow")
-                    ui.label(scene.title).classes("game-title game-scene-title")
-                    ui.label(scene.situation).classes("text-sm opacity-80 game-scene-situation")
+                    ui.label(self.view.scene_title).classes("game-title game-scene-title")
+                    ui.label(self.view.situation).classes("text-sm opacity-80 game-scene-situation")
                 if art is not None:
                     # Whole frame, bled to the edges: a drawn scene puts what matters anywhere,
                     # so it is faded into the header rather than cropped to fit a band;
@@ -254,13 +256,12 @@ class GamePage:
     @ui.refreshable_method
     def chat(self) -> None:
         session = self.session
-        history = session.engine.history(session.state)
+        history = self.history
         if not history:
             ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
         # The live decision widget sits directly below the last exchange, so it needs no pause line.
         last = history[-1] if history and session.state.pending is not None else None
-        view = session.player_view()
-        player = view.player
+        player = self.view.player
         for exchange in history:
             if exchange.prompt in MARKS:
                 ui.label(exchange.prompt).classes("w-full text-center text-xs italic opacity-60")
@@ -272,7 +273,7 @@ class GamePage:
                 _bubble(session, line.speaker_id, line.speaker, line.text, sent=False)
             if exchange.decision and exchange is not last:
                 ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
-        if (proposed := standing_proposal(history, view, session.phase)) is not None:
+        if (proposed := standing_proposal(history, self.view, session.phase)) is not None:
 
             async def accept() -> None:
                 if self.refuse_play():
@@ -300,7 +301,7 @@ class GamePage:
     def live_turn(self) -> None:
         session = self.session
         turn = session.turn
-        player = session.player_view().player
+        player = self.view.player
         if turn is not None:
             _bubble(session, player.id, player.label, turn.prompt, sent=True)
             shown = cards(turn.facts)
@@ -316,7 +317,7 @@ class GamePage:
     @ui.refreshable_method
     def way_on_panel(self) -> None:
         """The banner: legible after a reload, once the asking has scrolled away."""
-        action = self.session.player_view().action
+        action = self.view.action
         if action is None:
             return
         with (
@@ -332,7 +333,7 @@ class GamePage:
 
     @ui.refreshable_method
     def decision_panel(self) -> None:
-        pending = self.session.player_view().prompt
+        pending = self.view.prompt
         if pending is None:
             return
 
@@ -355,7 +356,7 @@ class GamePage:
     @ui.refreshable_method
     def sidebar(self) -> None:
         session = self.session
-        view = session.player_view()
+        view = self.view
         player = view.player
         with ui.column().classes("w-full").style("gap: 0.75rem"):
             for index, panel in enumerate(view.panels):
@@ -377,9 +378,8 @@ class GamePage:
 
     @ui.refreshable_method
     def journal(self) -> None:
-        session = self.session
         heading("Chronicle")
-        played = session.engine.history(session.state)
+        played = self.history
         for number, exchange in reversed(list(enumerate(played, start=1))):
             with ui.expansion(f"turn {number}: {exchange.prompt}").classes("w-full game-card"):
                 # A speaker is named, because a bare quote reads as narration without bubbles.
@@ -427,7 +427,9 @@ class GamePage:
             ).props("outline dense")
 
     def poll_turn(self) -> None:
-        now = Observed.of(self.session)
+        session = self.session
+        self.view, self.history = session.player_view(), session.history()
+        now = Observed.of(session, self.view, self.history)
         if now.phase != self.seen.phase:
             self.step_started = None if now.phase is None else monotonic()
         if now != self.seen:
@@ -444,8 +446,7 @@ class GamePage:
             ticker.set_text(_clock(monotonic() - started))
 
     def _clear_spent_draft(self) -> None:
-        session = self.session
-        history = session.engine.history(session.state)
+        history = self.history
         newest_prompt = history[-1].prompt if history else ""
         if draft_spent((self.box.value or "").strip(), newest_prompt):
             self.box.value = ""
@@ -478,7 +479,7 @@ class GamePage:
         LOGGER.info("player submitted prompt: non_empty=%s busy=%s", bool(typed), self.session.busy)
         if not typed or self.refuse_play():
             return
-        action = self.session.player_view().action
+        action = self.view.action
         if acting and action is None:
             ui.notify("The way on has changed.", type="warning", position="top")
             return
@@ -500,7 +501,7 @@ class GamePage:
         await self._open()
 
     async def confirm_restart(self) -> None:
-        history = self.session.engine.history(self.session.state)
+        history = self.history
         if not history:
             await self.restart()
             return
@@ -536,7 +537,7 @@ class GamePage:
 
     def _set_composer(self) -> None:
         session = self.session
-        player = session.player_view()
+        player = self.view
         typing = can_type(player, session.phase)
         self.box.set_enabled(typing)
         self.send.set_enabled(typing)
@@ -553,7 +554,7 @@ class GamePage:
         since = self.seen.facts
         closed: tuple[DiceEvent, ...] = ()
         if now.exchanges > self.seen.exchanges:
-            closed = rolled_since(session.engine.history(session.state)[-1].facts, since)
+            closed = rolled_since(self.history[-1].facts, since)
             since = 0
         live = () if session.turn is None else rolled_since(session.turn.facts, since)
         return closed + live

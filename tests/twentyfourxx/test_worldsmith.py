@@ -221,7 +221,6 @@ def test_install_scene_appends_a_run_and_returns_the_opened_fact() -> None:
     assert len(game.payload.runs) == 2
     assert facts == [
         Fact(
-            kind="scene_opened",
             trace="the scene opens: The Bay Office",
             told=True,
             card="New scene: The Bay Office\n"

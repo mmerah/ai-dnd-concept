@@ -20,7 +20,6 @@ from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, World, check_f
 from aidm.engines.scenes.drafts import NextDraft, SceneDraft
 
 WAY_OFFERED = Fact(
-    kind="way_offered",
     trace=(
         "this scene offers a way on. Ask the player what they want to pursue next — in the "
         "fiction, naming what the scene left open, never as a list of choices. They may also "
@@ -30,7 +29,6 @@ WAY_OFFERED = Fact(
 )
 
 SCENE_LEFT = Fact(
-    kind="scene_left",
     trace=(
         "the player has left this place; close the scene on their going and describe nothing "
         "of where they arrive: the crossing is written next"
@@ -216,7 +214,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
         trace = f"{entity.mention} arrives"
         return [
             *entity.reveal(),
-            entity.fact("entity_entered", trace, card=f"{entity.name} arrives"),
+            entity.fact(trace, card=f"{entity.name} arrives"),
         ]
 
     def leave(self, entity_id: EntityId) -> list[Fact]:
@@ -227,7 +225,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
             raise Refusal(f"{entity.name} travels with the player and leaves through `leave_party`")
         self.run.here.remove(entity.id)
         card = f"{entity.name} leaves"
-        return [entity.fact("entity_left", f"{entity.mention} leaves", card=card)]
+        return [entity.fact(f"{entity.mention} leaves", card=card)]
 
     def kill(self, entity_id: EntityId) -> list[Fact]:
         entity = self.require_here(entity_id)
@@ -238,7 +236,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
             self.party.remove(entity.id)
         entity.alive = False
         card = "You are dead" if entity.id == self.player.id else f"{entity.name} is dead"
-        facts.append(entity.fact("actor_killed", f"{entity.mention} is dead", card=card))
+        facts.append(entity.fact(f"{entity.mention} is dead", card=card))
         return facts
 
     def join_party(self, entity_id: EntityId) -> list[Fact]:

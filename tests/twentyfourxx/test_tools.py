@@ -2,13 +2,14 @@ import asyncio
 from random import Random
 
 import pytest
-from pydantic import BaseModel
-from support.table import change, refused
+from pydantic import JsonValue
+from support.table import change, refused, stub_worldsmith
 from support.twentyfourxx import KESTREL, LOCKPICKS, SABLE, hired, small_world
 
 from aidm.core.entities import EntityId, Refusal
-from aidm.core.model import Check, Generation
-from aidm.engines.base import HIRE, PLAYER_ID, SIGNED_ON, Hire
+from aidm.core.model import Generation
+from aidm.engines.base import PLAYER_ID
+from aidm.engines.hiring import HIRE, SIGNED_ON, Hire
 from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
@@ -104,8 +105,7 @@ def test_attempt_actor_id_acts_on_the_member_and_risking_death_kills_them() -> N
     assert not member.alive
     assert draft.payload.player.alive
     assert any(fact.card == f"{member.name} is dead" for fact in facts)
-    attempted = next(fact for fact in facts if fact.kind == "attempted")
-    assert attempted.trace.startswith("Slip past — Kestrel: ")
+    assert facts[1].trace.startswith("Slip past — Kestrel: ")
 
 
 def test_risking_death_kills_on_disaster_and_maims_on_setback_not_doubled() -> None:
@@ -448,9 +448,8 @@ def test_defend_and_repair_item_on_the_ships_hull_armor() -> None:
 
 def test_next_scene_offers_the_way_on_and_refuses_a_second_offer() -> None:
     draft = small_world().draft()
-    facts = ENGINE.next_scene(draft, NextScene(), Random(0))
+    _ = ENGINE.next_scene(draft, NextScene(), Random(0))
     assert draft.payload.run.offered
-    assert facts[0].kind == "way_offered"
     with pytest.raises(Refusal, match="already offers"):
         _ = ENGINE.next_scene(draft, NextScene(), Random(0))
 
@@ -462,9 +461,8 @@ def test_leave_takes_a_cast_member_out() -> None:
 
 def test_hire_sets_generation_and_ends_the_turn() -> None:
     draft = small_world().draft()
-    facts = ENGINE.hire(draft, Hire(entity_id=KESTREL, terms="Watch our backs"), Random(0))
+    _ = ENGINE.hire(draft, Hire(entity_id=KESTREL, terms="Watch our backs"), Random(0))
     assert draft.generation == Generation(operation=HIRE, brief="Watch our backs", target=KESTREL)
-    assert any(fact.kind == "hire_asked" for fact in facts)
 
 
 def test_hire_refuses_a_sheeted_member() -> None:
@@ -495,21 +493,18 @@ def test_validate_refuses_a_hire_whose_target_is_not_here_or_already_sheeted() -
         ENGINE.validate(draft)
 
 
-async def _stub_worldsmith[M: BaseModel](prompt: str, model: type[M], refusal: Check[M]) -> M:
-    del prompt, refusal
-    return model.model_validate(
-        {"specialty": "Muscle", "skills": {"Intimidation": 8}, "items": ["Crowbar"]}
-    )
-
-
 def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party() -> None:
     draft = small_world().draft()
     draft.packs = (SRD_PACK,)
     generation = Generation(operation=HIRE, brief="Watch our backs", target=KESTREL)
-    facts, told = asyncio.run(ENGINE.advance(draft, generation, _stub_worldsmith))
+    answer: dict[str, JsonValue] = {
+        "specialty": "Muscle",
+        "skills": {"Intimidation": 8},
+        "items": ["Crowbar"],
+    }
+    _, told = asyncio.run(ENGINE.advance(draft, generation, stub_worldsmith(answer)))
     member = draft.payload.cast[KESTREL]
     assert member.dice().credits == 0
     assert [item.name for item in member.dice().items.values()] == ["Crowbar"]
     assert KESTREL in draft.payload.party
     assert told == SIGNED_ON.format(name=member.name)
-    assert any(fact.kind == "hired" for fact in facts)

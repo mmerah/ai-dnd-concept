@@ -20,18 +20,12 @@ from aidm.core.model import (
     ScenarioMeta,
     WorldsmithAnswer,
 )
-from aidm.core.play import DecisionOption, Exchange, Line, PendingOption, SceneRecord
+from aidm.core.play import DecisionOption, Exchange, PendingOption, SceneRecord, SpokenLine
 from aidm.core.tools import MasterTool
-from aidm.core.views import DiceLook, NarratorView, Pairs, PlayerView
-from aidm.engines.base import HIRE, PLAYER_ID, Hire, Person, World, hire_target
+from aidm.core.views import DiceLook, NarratorView, Pairs, Palette, PlayerView
+from aidm.engines.base import PLAYER_ID, Person, World
 
 type AnyEngine = Engine[Any, Any]
-HIRE_UNWRITTEN = Fact(
-    kind="hire_unwritten",
-    told=True,
-    trace="the hire could not be written",
-    card="The hire could not be written; nobody signed on.",
-)
 
 
 class Engine[P: Person, G: Game[Any]](ABC):
@@ -40,6 +34,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
     title: str
     art_style: str
     dice_look: DiceLook
+    palette: Palette
     directory: Path  # rules.md; a scene engine's packs/
     game: type[G]
     scenario: type[AnyScenario]
@@ -116,13 +111,13 @@ class Engine[P: Person, G: Game[Any]](ABC):
         self,
         draft: G,
         prompt: str,
-        lines: tuple[Line, ...],
+        lines: tuple[SpokenLine, ...],
         facts: tuple[Fact, ...],
         proposal: str = "",
     ) -> G:
         exchange = Exchange(
             prompt=prompt,
-            lines=self.narrator_view(draft).spoken(lines),
+            lines=lines,
             facts=facts,
             decision="" if draft.pending is None else draft.pending.prompt,
             proposal=proposal,
@@ -178,25 +173,13 @@ class Engine[P: Person, G: Game[Any]](ABC):
     def scenes(self, state: G) -> tuple[SceneRecord, ...]:
         return self.world(state).records()
 
-    def hire(self, draft: G, args: Hire, _rng: Random) -> list[Fact]:
-        member = self.world(draft).require_hireable(args.entity_id)
-        draft.generation = Generation(operation=HIRE, brief=args.terms, target=member.id)
-        trace = (
-            f"the worldsmith writes {member.name}'s sheet once this turn ends: {args.terms}. "
-            "Nothing more lands this turn; stop and exit"
-        )
-        return [Fact(kind="hire_asked", trace=trace)]
-
     def unwritten(self, request: Generation) -> Fact:
         """What the player reads when the worldsmith could not write this request."""
-        if request.operation == HIRE:
-            return HIRE_UNWRITTEN
         raise ValueError(f"the {self.id!r} engine writes no {request.operation!r}")
 
     def check_request(self, state: G) -> None:
-        generation = state.generation
-        if generation is not None and generation.operation == HIRE:
-            self.world(state).require_hireable(hire_target(generation))
+        """The hook the hiring mixin fills; a request needs no check of its own."""
+        return None  # ruff B027: an empty method on an ABC
 
     @abstractmethod
     def master_tools(self) -> tuple[MasterTool[G], ...]: ...
