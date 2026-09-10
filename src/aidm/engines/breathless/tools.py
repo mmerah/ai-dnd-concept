@@ -5,8 +5,9 @@ from pydantic import Discriminator, Field, model_validator
 from aidm.core.entities import CheckedEntityId, Frozen
 from aidm.core.tools import Attempt
 from aidm.engines import base
-from aidm.engines.base import ACTOR, JoinParty, LeaveParty
+from aidm.engines.base import JoinParty, LeaveParty
 from aidm.engines.breathless.world import Die, Skill
+from aidm.engines.hiring import ACTOR
 from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
 
 

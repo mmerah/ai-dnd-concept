@@ -1,6 +1,7 @@
 from pathlib import Path
 from random import Random
 
+from aidm.app.roles import Roles
 from aidm.app.runtime import GameService, LaunchTarget
 from aidm.config import Settings
 from aidm.core.entities import EntityId
@@ -81,7 +82,7 @@ def session(directory: Path) -> GameService:
         scenario=scenario(),
         character=character(),
         engine=engine,
-        spawner=spawner,
+        roles=Roles(spawner, engine),
         store=store,
         rng=Random(1),
     )

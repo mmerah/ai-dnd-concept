@@ -82,3 +82,42 @@ def test_no_module_names_a_concrete_engine() -> None:
         if not name.startswith(f"aidm.engines.{path.parts[-2]}")
     }
     assert naming == ROOTS
+
+
+def test_no_ui_module_reaches_through_a_session_into_the_engine() -> None:
+    """A bare `.engine` ban false-positives on `scenario.engine` (`ui/app.py`) and `made.engine`
+    (`ui/create.py`), so this walks the attribute chain a session is reached through instead."""
+
+    def is_session(value: ast.expr) -> bool:
+        if isinstance(value, ast.Name):
+            return value.id == "session"
+        return (
+            isinstance(value, ast.Attribute)
+            and value.attr == "session"
+            and isinstance(value.value, ast.Name)
+            and value.value.id == "self"
+        )
+
+    naming = {
+        str(path.relative_to(SOURCE))
+        for path in _source_files("ui")
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"), filename=str(path)))
+        if isinstance(node, ast.Attribute)
+        if node.attr == "engine"
+        if is_session(node.value)
+    }
+    assert not naming
+
+
+def test_no_ui_module_names_a_built_engine_id() -> None:
+    """The boundary above reads imports only; a bare id string could still smuggle world knowledge
+    into `ui/` unseen, so this walks the constants themselves."""
+    built_ids = {name.rsplit(".", 1)[-1] for name in ENGINES}
+    naming = {
+        str(path.relative_to(SOURCE))
+        for path in _source_files("ui")
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"), filename=str(path)))
+        if isinstance(node, ast.Constant)
+        if isinstance(node.value, str) and node.value in built_ids
+    }
+    assert not naming

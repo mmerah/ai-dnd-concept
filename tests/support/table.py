@@ -1,5 +1,5 @@
 import json
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import partial
 from itertools import islice
@@ -17,7 +17,7 @@ from aidm.config import Role, Settings
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import Library, decode
-from aidm.core.model import AnyGame
+from aidm.core.model import AnyGame, Check, WorldsmithAnswer
 from aidm.core.play import Answer
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
@@ -138,6 +138,16 @@ class ScriptedSpawner:
         """The nth prompt the role was given; the golden prompts come from here."""
         matches = (text for name, text in self.prompts if name == role)
         return next(islice(matches, nth, None))
+
+
+def stub_worldsmith(answer: Mapping[str, JsonValue]) -> WorldsmithAnswer:
+    """Answers every ask with one canned draft, validated as the model asked for."""
+
+    async def answered[M: BaseModel](prompt: str, model: type[M], refusal: Check[M]) -> M:
+        del prompt, refusal
+        return model.model_validate(answer)
+
+    return answered
 
 
 @dataclass(slots=True)

@@ -7,7 +7,6 @@ from pydantic import model_validator
 from aidm.core.entities import Frozen
 
 NOTHING = "- (nothing changed)"
-DICE = "dice_rolled"
 
 
 class DiceEvent(Frozen):
@@ -32,7 +31,6 @@ class DiceEvent(Frozen):
 class Fact(Frozen):
     """One thing that occurred, rendered where its values were in scope."""
 
-    kind: str
     trace: str
     told: bool = False
     card: str = ""
@@ -53,7 +51,7 @@ def roll(faces: Sequence[int], reason: str, rng: Random) -> tuple[tuple[int, ...
         raise ValueError("a dice pool rolls at least one die")
     drawn = tuple(rng.randint(1, face) for face in faces)
     shown = ", ".join(str(die) for die in drawn)
-    return drawn, Fact(kind=DICE, trace=f"{reason}: {_notation(faces)} [{shown}]")
+    return drawn, Fact(trace=f"{reason}: {_notation(faces)} [{shown}]")
 
 
 def keep_highest(

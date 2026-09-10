@@ -20,9 +20,8 @@ ENGINE = BreathlessEngine()
 def test_check_on_a_skill_wears_it() -> None:
     draft = small_world().draft()
     player = draft.payload.player
-    facts = ENGINE.roll(draft, Check(what="Force the door", skill="bash"), Random(0))
+    _ = ENGINE.roll(draft, Check(what="Force the door", skill="bash"), Random(0))
     assert player.dice().worn["bash"] == stepped(6)
-    assert any(fact.kind == "checked" for fact in facts)
 
 
 def test_check_at_d4_stays_d4() -> None:
@@ -36,9 +35,8 @@ def test_an_item_reduced_to_d4_is_gone() -> None:
     draft = small_world().draft()
     player = draft.payload.player
     player.dice().items[WRENCH].die = 6
-    facts = ENGINE.roll(draft, Check(what="Swing the axe", item_id=WRENCH), Random(0))
+    _ = ENGINE.roll(draft, Check(what="Swing the axe", item_id=WRENCH), Random(0))
     assert WRENCH not in player.dice().items
-    assert any(fact.kind == "item_gone" for fact in facts)
 
 
 def test_stunt_refused_twice() -> None:
@@ -55,7 +53,7 @@ def test_check_with_actor_id_rolls_and_wears_the_members_die() -> None:
     member = hired(draft.payload, MIRA)
     facts = ENGINE.roll(draft, Check(what="Slip past", skill="sneak", actor_id=MIRA), Random(0))
     assert member.dice().worn["sneak"] == stepped(8)
-    assert any(fact.kind == "checked" and "Mira" in fact.trace for fact in facts)
+    assert any("Mira" in fact.trace for fact in facts)
 
 
 def test_check_with_helped_by_keeps_the_highest_and_wears_both_dice() -> None:
@@ -67,7 +65,7 @@ def test_check_with_helped_by_keeps_the_highest_and_wears_both_dice() -> None:
     )
     assert player.dice().worn["bash"] == stepped(6)
     assert member.dice().worn["bash"] == stepped(6)
-    assert any(fact.kind == "checked" and "helped by Mira" in fact.trace for fact in facts)
+    assert any("helped by Mira" in fact.trace for fact in facts)
 
 
 def test_check_needs_exactly_one_of_skill_item_or_stunt() -> None:
@@ -108,10 +106,7 @@ def test_catch_breath_resets_worn_loot_and_stunt_but_keeps_stress_and_item_dice(
     assert sheet.stress.current == 2
     assert sheet.items[WRENCH].die == 6
     assert any("The SRD's table suggests" in note for note in draft.notes)
-    assert {fact.kind for fact in facts} == {"dice_rolled", "breath_caught"}
-    assert next(f for f in facts if f.kind == "breath_caught").card == (
-        "Caught breath — skills and loot die restored"
-    )
+    assert facts[1].card == "Caught breath — skills and loot die restored"
 
 
 def test_catch_breath_with_actor_id_resets_only_the_members_sheet() -> None:
@@ -137,10 +132,9 @@ def test_use_med_kit_clears_two_stress() -> None:
     sheet = draft.payload.player.dice()
     sheet.med_kit = True
     sheet.stress.current = 3
-    facts = change(ENGINE, draft, "use_med_kit")
+    _ = change(ENGINE, draft, "use_med_kit")
     assert not sheet.med_kit
     assert sheet.stress.current == 1
-    assert any(fact.kind == "med_kit_used" for fact in facts)
 
 
 def test_change_stress_refuses_a_zero_amount() -> None:
@@ -151,9 +145,8 @@ def test_change_stress_refuses_a_zero_amount() -> None:
 def test_change_stress_acts_on_the_member() -> None:
     draft = small_world().draft()
     member = hired(draft.payload, MIRA)
-    facts = change(ENGINE, draft, "change_stress", amount=1, why="a close call", actor_id=MIRA)
+    _ = change(ENGINE, draft, "change_stress", amount=1, why="a close call", actor_id=MIRA)
     assert member.dice().stress.current == 1
-    assert any(fact.kind == "counter_changed" for fact in facts)
 
 
 def test_use_med_kit_acts_on_the_member() -> None:
@@ -161,10 +154,9 @@ def test_use_med_kit_acts_on_the_member() -> None:
     member = hired(draft.payload, MIRA)
     member.dice().med_kit = True
     member.dice().stress.current = 3
-    facts = change(ENGINE, draft, "use_med_kit", actor_id=MIRA)
+    _ = change(ENGINE, draft, "use_med_kit", actor_id=MIRA)
     assert not member.dice().med_kit
     assert member.dice().stress.current == 1
-    assert any(fact.kind == "med_kit_used" for fact in facts)
 
 
 def test_drop_item_acts_on_the_member() -> None:
@@ -177,10 +169,9 @@ def test_drop_item_acts_on_the_member() -> None:
 
 def test_loot_1_or_2_leaves_a_note_and_no_pending() -> None:
     draft = small_world().draft()
-    facts = ENGINE.loot_check(draft, LootCheck(item="Rope"), Random(2))
+    _ = ENGINE.loot_check(draft, LootCheck(item="Rope"), Random(2))
     assert draft.pending is None
     assert any("nothing is found" in note for note in draft.notes)
-    assert any(fact.kind == "loot_checked" for fact in facts)
 
 
 def test_loot_on_an_item_with_room_offers_take() -> None:
@@ -234,10 +225,9 @@ def test_the_master_cannot_award_loot_without_rolling_for_it() -> None:
         _ = parse(LootCheck, {"item": "Machete", "granted": 12, "choice": "take"})
 
     draft = small_world().draft()
-    facts = ENGINE.tools["loot_check"].call(draft, {"item": "Machete"}, Random(17))
+    _ = ENGINE.tools["loot_check"].call(draft, {"item": "Machete"}, Random(17))
 
     assert EntityId("machete") not in draft.payload.player.dice().items
-    assert any(fact.kind == "loot_checked" for fact in facts)
     assert draft.pending is not None and draft.pending.kind == "loot"
 
 

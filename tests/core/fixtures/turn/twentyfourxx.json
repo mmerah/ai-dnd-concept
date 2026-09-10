@@ -1,27 +1,23 @@
 [
   {
-    "kind": "party_joined",
     "trace": "Vessa Rune[vessa-rune] travels with the player",
     "told": true,
     "card": "Vessa Rune joins your party",
     "dice": []
   },
   {
-    "kind": "entity_discovered",
     "trace": "learned of Warden Six[warden-six]",
     "told": true,
     "card": "Warden Six discovered",
     "dice": []
   },
   {
-    "kind": "dice_rolled",
     "trace": "Slip along the dark gantry — Stealth: 1d12 [11]",
     "told": false,
     "card": "",
     "dice": []
   },
   {
-    "kind": "attempted",
     "trace": "Slip along the dark gantry — Stealth d12 → success",
     "told": true,
     "card": "Slip along the dark gantry — Stealth d12 → success",
@@ -39,7 +35,6 @@
     ]
   },
   {
-    "kind": "credits_spent",
     "trace": "the player Kael[player] spends ₡1 — Harl's docking logs",
     "told": true,
     "card": "₡1 spent — Harl's docking logs",

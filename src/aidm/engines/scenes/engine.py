@@ -58,13 +58,11 @@ MOVE_ON = DecisionOption(
     id="move-on", label="Move on", detail="Keep playing, or say where you go and move on."
 )
 WAY_UNWRITTEN = Fact(
-    kind="way_unwritten",
     told=True,
     trace="the way on could not be written",
     card="The way on could not be written. You are still where you were.",
 )
 COMPLICATION_UNWRITTEN = Fact(
-    kind="complication_unwritten",
     told=True,
     trace="the complication could not be written",
     card="Nothing new came down on this place after all. You are still where you were.",
@@ -160,6 +158,8 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
         me = player.subject()
         return PlayerView(
             player=me,
+            scene_title=world.run.title,
+            situation=world.run.situation,
             panels=(
                 character_panel(player.rows()),
                 *self.panels(state),
@@ -200,7 +200,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
         draft.generation = Generation(operation=COMPLICATION, brief=args.complication)
         return [
             Fact(
-                kind="complication_asked",
                 trace=f"the worldsmith writes the complication once this turn ends: "
                 f"{args.complication}. Nothing more lands this turn; stop and exit",
             )
@@ -310,7 +309,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
         if travelling := [member.name for member in world.members()]:
             trace += f", the player travelling with {', '.join(travelling)}"
         card = f"New scene: {scene.title}" + (f"\n{scene.focus}" if scene.focus else "")
-        return [Fact(kind="scene_opened", trace=trace, told=True, card=card)]
+        return [Fact(trace=trace, told=True, card=card)]
 
     async def author(
         self,

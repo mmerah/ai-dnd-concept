@@ -23,7 +23,7 @@ class Broken(Frozen):
 
 
 def _turned(item: str) -> tuple[Fact, ...]:
-    return (Fact(kind="defence_turned", trace=f"{item} broke to turn the hit", told=True),)
+    return (Fact(trace=f"{item} broke to turn the hit", told=True),)
 
 
 TURN_THE_HIT: MasterTool[Loner3eGame] = master_tool(
@@ -70,13 +70,7 @@ CHAINING = _decision(CHAIN_THE_HIT)
 
 def _hit(draft: AnyGame, *, narrate: bool) -> tuple[Fact, ...]:
     _loner(draft).pending = DECISION
-    return (
-        Fact(
-            kind="hit_taken",
-            trace="the blow reaches the player",
-            told=narrate,
-        ),
-    )
+    return (Fact(trace="the blow reaches the player", told=narrate),)
 
 
 class _NoArgs(Frozen):
@@ -145,7 +139,7 @@ async def test_a_closed_answer_resolves_in_engine_code_before_the_master_continu
 
     state = await play_turn(table, Answer(option_id="lantern"))
 
-    assert [fact.kind for fact in table.facts] == ["defence_turned"]
+    assert [fact.trace for fact in table.facts] == ["lantern broke to turn the hit"]
     assert "lantern broke to turn the hit" in table.spawner.prompt("master")
     assert state.payload.exchanges()[-1].prompt == "Break the lantern"
     assert state.pending is None

@@ -1,5 +1,5 @@
 import json
-from asyncio import Event, gather, sleep
+from asyncio import Event, create_task, gather, sleep
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
@@ -19,10 +19,10 @@ from support.table import (
     updated,
 )
 
+from aidm.app.roles import REQUESTED, Roles
 from aidm.app.runtime import (
     INTERJECTION_MARK,
     OPENING_MARK,
-    REQUESTED,
     STORY_MARK,
     GameService,
     Runtime,
@@ -208,7 +208,6 @@ async def test_a_complication_does_not_refill_the_players_spent_luck(tmp_path: P
 
     installed = state.payload.exchanges()[-1]
     assert installed.prompt == STORY_MARK
-    assert all(fact.kind != "counter_changed" for fact in installed.facts)
     assert state.payload.player.luck.current == 2
 
 
@@ -226,7 +225,6 @@ async def test_a_failed_write_after_a_complication_leaves_the_turn_committed(
 
     exchange = state.payload.exchanges()[-1]
     assert exchange.prompt == STORY_MARK
-    assert exchange.facts[0].kind == "complication_unwritten"
     assert exchange.facts[0].card == (
         "Nothing new came down on this place after all. You are still where you were."
     )
@@ -244,7 +242,6 @@ async def test_a_failed_write_after_a_hire_names_the_hire(tmp_path: Path) -> Non
     )
 
     exchange = table.service.engine.history(state)[-1]
-    assert exchange.facts[0].kind == "hire_unwritten"
     assert exchange.facts[0].card == "The hire could not be written; nobody signed on."
     assert state.generation is None
 
@@ -373,7 +370,7 @@ async def test_a_turn_that_lands_first_drops_the_interjection(tmp_path: Path) ->
     table = open_game(tmp_path, rng=Random(1))
     member = _party_of_one(table.service)
     table.spawner.answers["narrator"] = [narrated("Wait.", member.id)]
-    table.service.spawner = _TurnLandsFirst(table.service, table.spawner)
+    table.service.roles = Roles(_TurnLandsFirst(table.service, table.spawner), table.service.engine)
 
     await table.service.interject()
 
@@ -398,19 +395,38 @@ async def test_interjections_disabled_starts_no_background_task(tmp_path: Path) 
 
     _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
 
-    assert table.service._background == set()  # pyright: ignore[reportPrivateUsage]
+    assert table.service._speaking is None  # pyright: ignore[reportPrivateUsage]
 
 
 async def test_a_new_turn_silences_the_member_still_speaking(tmp_path: Path) -> None:
     table = open_game(tmp_path, rng=Random(1))
     _party_of_one(table.service)
-    table.service.spawner = _StillSpeaking(table.spawner)
+    table.service.roles = Roles(_StillSpeaking(table.spawner), table.service.engine)
     _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
     await sleep(0)
-    (speaking,) = table.service._background  # pyright: ignore[reportPrivateUsage]
+    speaking = table.service._speaking  # pyright: ignore[reportPrivateUsage]
+    assert speaking is not None
     table.service.interjections = False
 
     _ = await play_turn(table, "I wait on.", narration="Still nothing.")
 
     _ = await gather(speaking, return_exceptions=True)
     assert speaking.cancelled()
+
+
+async def _never_finishes() -> None:
+    await Event().wait()
+
+
+async def test_reload_settings_cancels_an_evicted_sessions_background_task(
+    tmp_path: Path,
+) -> None:
+    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), ScriptedSpawner())
+    opened = runtime.session(TARGET)
+    task = create_task(_never_finishes())
+    opened._retain(task)  # pyright: ignore[reportPrivateUsage]
+
+    runtime.reload_settings()
+
+    _ = await gather(task, return_exceptions=True)
+    assert task.cancelled()

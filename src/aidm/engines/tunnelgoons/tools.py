@@ -6,7 +6,8 @@ from aidm.core.entities import CheckedEntityId, EntityId, Frozen
 from aidm.core.play import PendingOption
 from aidm.core.tools import Attempt
 from aidm.engines import base
-from aidm.engines.base import ACTOR, JoinParty, LeaveParty
+from aidm.engines.base import JoinParty, LeaveParty
+from aidm.engines.hiring import ACTOR
 from aidm.engines.rooms.tools import Kill, MoveItem, Reveal, UnlockWay
 from aidm.engines.tunnelgoons.world import ABILITIES, Ability, Boost
 

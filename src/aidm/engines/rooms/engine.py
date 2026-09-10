@@ -42,7 +42,6 @@ MORE_MAP = DecisionOption(
     id=EXTEND, label="More map", detail="The map runs out here: say where you push on."
 )
 MAP_UNWRITTEN = Fact(
-    kind="map_unwritten",
     told=True,
     trace="the map could not be written",
     card="The map could not be written. You are still where you were.",
@@ -119,6 +118,8 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         me = player.subject()
         return PlayerView(
             player=me,
+            scene_title=world.current.name,
+            situation=world.current.description,
             panels=(
                 character_panel(world.sheet_rows()),
                 *party_panel(world.members()),

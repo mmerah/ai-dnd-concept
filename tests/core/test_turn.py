@@ -10,10 +10,12 @@ from support.table import Table, changed, narrated, play_turn, tool_call
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.facts import Fact, cards
 from aidm.core.model import AnyGame
-from aidm.core.play import Answer
+from aidm.core.play import Answer, Exchange, SceneRecord
 from aidm.engines.base import PLAYER_ID
+from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.tools import outcome_for
 from aidm.engines.loner3e.world import Loner3eGame
+from aidm.engines.scenes.engine import WAY_UNWRITTEN
 from aidm.turn.run import REQUEST_WAIT, Turn
 
 MAP = EntityId("vault-map")
@@ -53,7 +55,6 @@ async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_pat
     )
 
     assert [role for role, _ in table.spawner.prompts] == ["master", "narrator"]
-    assert [fact.kind for fact in table.facts] == ["entity_discovered", "tags_changed"]
     assert "the vault map" in state.payload.player.tagged("gear")
     narrator = table.spawner.prompt("narrator")
     assert "Elena" not in narrator
@@ -109,14 +110,14 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record(tmp_path: Path
     )
 
     fired = table.facts
-    answer = next(fact for fact in fired if fact.kind == "question_answered")
+    answer = next(fact for fact in fired if fact.dice)
     chance, risk = answer.dice
-    rolled = [fact.trace for fact in fired if fact.kind == "dice_rolled"]
+    rolled = [fact.trace for fact in fired[:2]]
     for die, trace in zip(answer.dice, rolled, strict=True):
         assert trace.endswith(f"[{', '.join(str(v) for v in die.rolled)}]")
     assert answer.card.endswith(f": {outcome_for(max(chance.rolled), max(risk.rolled)).told}")
     table.service.engine.validate(state)
-    assert any(fact.kind == "dice_rolled" and not fact.told for fact in fired)
+    assert not any(fact.told for fact in fired[:2])
 
 
 async def test_the_master_reacts_in_run_to_its_own_earlier_tool_call(tmp_path: Path) -> None:
@@ -180,7 +181,6 @@ async def test_a_call_after_the_ask_answers_handoff_wait_and_changes_nothing(
     )
 
     assert table.answers[1] == REQUEST_WAIT
-    assert [fact.kind for fact in table.facts] == ["complication_asked"]
     assert not state.payload.require(MAP).known
 
 
@@ -272,7 +272,7 @@ async def test_two_rolls_in_one_turn_do_not_read_the_same_dice(tmp_path: Path) -
 
     _ = await play_turn(table, "I try the door twice.", ASKED, ASKED)
 
-    first, second = (fact.dice for fact in table.facts if fact.kind == "question_answered")
+    first, second = (fact.dice for fact in table.facts if len(fact.dice) == 2)
     assert first != second
 
 
@@ -291,6 +291,33 @@ def _rolls_then_refuses(draft: AnyGame, rng: Random) -> tuple[Fact, ...]:
     del draft
     _ = rng.random()
     raise ValueError("the rules said no")
+
+
+class _CountingLoner3e(Loner3eEngine):
+    """Counts `scenes`/`history` calls, so a test can watch `Turn.picture` walk each once."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.scenes_calls = 0
+        self.history_calls = 0
+
+    def scenes(self, state: Loner3eGame) -> tuple[SceneRecord, ...]:
+        self.scenes_calls += 1
+        return super().scenes(state)
+
+    def history(self, state: Loner3eGame) -> tuple[Exchange, ...]:
+        self.history_calls += 1
+        return super().history(state)
+
+
+def test_turn_picture_walks_the_history_through_scenes_alone() -> None:
+    engine = _CountingLoner3e()
+    _, state = initialized()
+    turn = Turn.begin(engine, state, Answer(text="I look around."), Random(1))
+
+    _ = turn.picture()
+
+    assert (engine.scenes_calls, engine.history_calls) == (1, 0)
 
 
 async def test_crossing_keeps_a_drive_set_after_the_worldsmith_snapshot(
@@ -340,6 +367,4 @@ async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_a
     assert mara.name == "Mara"
     assert mara.brief == "Waiting under the arcade with the lantern shuttered."
     assert (mara.concept, mara.tags) == (before.concept, before.tags)
-    assert all(
-        fact.kind != "way_unwritten" for fact in table.service.engine.history(state)[-1].facts
-    )
+    assert WAY_UNWRITTEN not in table.service.engine.history(state)[-1].facts

@@ -50,3 +50,70 @@ and why, anything known and accepted. Phases 1–3 landed in one commit, in one 
 - Off-plan: `render_master`'s `engine_sections` is typed `Pairs` (review finding: a fourth spelling
   of the collapsed alias).
 - `CLAUDE.md` carries the law under `## Code`.
+
+## Phase 4 — Facts without kinds
+
+- `src` 10,112 → 10,095 (target about -12). Tests 565 → 565: no test lost its feature; the
+  `kind`-only assertions went, the tests around them kept their behaviour half. The four turn
+  goldens moved by exactly the 21 removed `"kind"` keys.
+- Off-plan: PLAN named five tests whose "only assertion was a kind" as going whole
+  (`tunnelgoons/test_tools.py`, `breathless/test_tools.py`, `core/test_dice.py`); each carried a
+  real assertion beside the kind line, so only the kind line went. Where a test picked one fact
+  out of a list by its kind, it now picks by the property it asserts (`fact.dice`, a trace
+  prefix) or by the constant (`WAY_UNWRITTEN`), never by position (review finding).
+- Known and accepted: the comment above loner's `if not ended:` went with the flag; the bool says
+  what the comment said.
+
+## Phase 5 — The service's seams
+
+- `src` 10,095 → 10,155 (target about +30; the palettes moved onto four engines, +35 of it, and
+  the two accessor tests' stubs pay for the rest). `app/runtime.py` 511 → 449 (target about 440).
+  Tests 565 → 574.
+- Off-plan (review, measured): `self._retain(self._speaking)` stays in `_turn`. PLAN step 9 called
+  it redundant and, in the same step, relied on `_background` holding the interjection task so the
+  golden turn test's second narrator prompt comes from awaiting it; `drain()` gathers
+  `_background`, so dropping the line fails `test_golden_turn` for 24XX. The two tests PLAN
+  pointed at `_speaking` moved anyway.
+- Off-plan: `_declarations` stays a module helper in `ui/theme.py`; after `_engine_block` was
+  inlined it has two call sites in `_palette_css` (root and each engine block), which meets the
+  bar. `seed` carries no docstring.
+- Off-plan: `GameService.spawner` became `roles: Roles`; the three tests that swapped a wrapped
+  spawner in now swap `Roles(wrapper, engine)`. `RoleSpawner` moved to `app/roles.py` beside it.
+  `Roles.interject` returns `(spoken lines, proposal)` so the caller keeps the policy and
+  `Engine.close` gets `SpokenLine`s without a second view.
+- Refuted: "make `worldsmith()` a module function so `new_scenario` need not build a `Roles`" —
+  PLAN step 12 names `new_scenario` as `Roles`'s second user by design.
+- Known and accepted: the `uv run aidm` smoke here fetched home, the four game routes and
+  settings over HTTP (all 200, no log errors); the drawn game page renders only after the socket
+  connects, so the tick path is proved by the counting test, not the smoke.
+
+## Phase 6 — Coverage, the sheeted base and hiring
+
+- `src` 10,155 → 10,193 (target about -30: **missed by about 70**, PLAN rule 5 says so). Tests
+  574 → 575, plus the two playthroughs and the hire-then-succession test (about +150 lines under
+  `tests/`). Where it went: `Sheeted`/`ItemSheet`/`SheetedWorld` paid as PLAN said
+  (`breathless/world.py` -38, `twentyfourxx/world.py` -39 against 51 new); the `Hiring` extraction
+  did not come out "about zero": what left `base.py` (-29) and `seam.py` (-17) reappears in
+  `hiring.py`, and each engine's 20-29 line HIRE block became 18-25 lines of typed hooks
+  (`hireable`, `hire_prompt`, `install_sheet`, `hire_bar`), so the module's own `advance`,
+  `_sign_on`, `check_request`, `unwritten`, the abstract declarations and imports are the net
+  cost. Not padded and not golfed; the maintainer's call whether the one hire flow is worth it.
+- Off-plan (Decision, brief-sanctioned): `SheetedWorld[C: Sheeted[Any], P: Sheeted[Any]]` spells
+  the bound with `Any`, exactly as `G: Game[Any]` does and for the same reason: `Sheeted[S]` is
+  invariant (`sheet` is a mutable field), so `Sheeted[BaseModel]` rejects `Survivor`, and a
+  read-only `Protocol` bound cannot satisfy `SceneWorld`'s nominal `C: Person`. Both spellings
+  were tried under basedpyright and failed.
+- Off-plan: `ACTOR` moved from `engines/base.py` to `engines/hiring.py` with the rest of the
+  hiring text ("a hired party member here who acts"); the three hiring engines' `tools.py` import
+  it from there. Awaiting the maintainer's call (review finding: it describes `actor_id` on
+  every roll tool, so it could stay in `base.py`).
+- Refuted: "drop the `hireable` hook and call `world.require_hireable` from the mixin" — the base
+  `World` no longer has `require_hireable` (its default body was dead, PLAN step 5) and TunnelGoons
+  hires an `Npc` while its `P` is `Goon`, so the hook is the typed seam PLAN wrote.
+- Refuted: "delete `return None` from `Engine.check_request`" — ruff B027 flags an empty method
+  on an ABC; the line carries the reason.
+- Known and accepted: `SheetedWorld` lives in `engines/hiring.py` beside `Sheeted` (PLAN step 5
+  lists both as the mixin module's), so `tunnelgoons/engine.py` imports `scenes/world.py`
+  transitively; no cycle, and the boundary test holds. A separate `engines/sheeted.py` would undo
+  that at the cost of splitting the trio.
+- `stub_worldsmith(answer)` lives in `tests/support/table.py`; the three per-file copies are gone.

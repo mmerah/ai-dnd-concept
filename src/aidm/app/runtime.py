@@ -1,8 +1,7 @@
 import logging
-from asyncio import Lock, Task, create_task
+from asyncio import Lock, Task, create_task, gather
 from collections.abc import Sequence
 from dataclasses import InitVar, dataclass, field
-from functools import partial
 from pathlib import Path
 from random import Random
 
@@ -11,18 +10,17 @@ from pydantic import JsonValue
 from aidm.app.builtin import BuiltinSpawner
 from aidm.app.launch import LaunchTarget
 from aidm.app.media import ICON_DIR, Illustrator, open_illustrator
-from aidm.app.roles import render_interjection, render_narrator
-from aidm.app.spawn import CliSpawner, RunResult, Spawner, ask
+from aidm.app.roles import Roles, RoleSpawner
+from aidm.app.spawn import CliSpawner, Spawner
 from aidm.app.speech import Reader, open_reader
 from aidm.config import Role, Settings, read_settings
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
-from aidm.core.facts import Fact, traced
 from aidm.core.io import FileStore, Library, decode
-from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioMeta, WorldsmithAnswer
-from aidm.core.play import Answer, Exchange, Interjection, Line, Narration
+from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioMeta
+from aidm.core.play import Answer, Exchange, SpokenLine
 from aidm.core.source import given_text
 from aidm.core.tools import MasterTool
-from aidm.core.views import PlayerView
+from aidm.core.views import DiceLook, PlayerView
 from aidm.engines.base import Chattiness
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
@@ -37,14 +35,6 @@ INTERJECTION_MARK = "(the party speaks)"
 MARKS = (OPENING_MARK, STORY_MARK, INTERJECTION_MARK)
 # The faces of a d10 on which a member speaks after a turn.
 INTERJECTION_ODDS: dict[Chattiness, int] = {"quiet": 1, "normal": 2, "chatty": 3}
-PAUSED = (
-    'play pauses here on the player\'s decision: "{prompt}" End on the pause; settle nothing they '
-    "have not yet answered."
-)
-REQUESTED = (
-    "play stops here while the world is written on; end on this moment and settle nothing "
-    "beyond what happened."
-)
 OPENING = (
     "The story begins here; the player has read nothing yet. Tell them, in the fiction and in "
     "this order: who they are (YOUR PARTY names them first) and where they stand; what is in "
@@ -61,7 +51,7 @@ class GameService:
     scenario: AnyScenario
     character: AnyCharacter
     engine: AnyEngine
-    spawner: Spawner
+    roles: Roles
     store: FileStore
     media: Illustrator | None = None
     reader: Reader | None = None
@@ -91,8 +81,26 @@ class GameService:
     def busy(self) -> bool:
         return self.phase is not None
 
+    @property
+    def presents(self) -> bool:
+        return self.media is not None or self.reader is not None
+
+    @property
+    def engine_title(self) -> str:
+        return self.engine.title
+
+    @property
+    def engine_id(self) -> EngineId:
+        return self.engine.id
+
+    @property
+    def dice_look(self) -> DiceLook:
+        return self.engine.dice_look
+
     def unopened(self) -> bool:
-        return not self.busy and not self.engine.history(self.state)
+        return not self.busy and not any(
+            record.exchanges for record in self.engine.scenes(self.state)
+        )
 
     async def open(self) -> None:
         """A failed narrator leaves the premise to do its work; a reload mid-opening is a no-op."""
@@ -101,7 +109,7 @@ class GameService:
         self.phase = "narrator"
         try:
             draft = self.state.draft()
-            lines = await self._narrate(draft, (), OPENING, fatal=False)
+            lines = await self.roles.narrate(draft, (), OPENING, fatal=False)
             if lines:
                 self.commit(self.engine.close(draft, OPENING_MARK, lines, ()))
             self._present()
@@ -137,11 +145,13 @@ class GameService:
         try:
             # An answer that re-suspended leaves every tool refused: nothing for a master to do.
             if turn.draft.pending is None:
-                await self._master(turn)
-            lines: tuple[Line, ...] = ()
+                await self.roles.master(turn)
+            lines: tuple[SpokenLine, ...] = ()
             if turn.narrates():
                 self.phase = "narrator"
-                lines = await self._narrate(turn.draft, tuple(turn.facts), turn.prompt, fatal=True)
+                lines = await self.roles.narrate(
+                    turn.draft, tuple(turn.facts), turn.prompt, fatal=True
+                )
             state = turn.finish(lines)
         finally:
             # Cleared before arrival: the tool surface must not reach a turn nobody plays.
@@ -174,42 +184,21 @@ class GameService:
         )
         if member is None:
             return
-        history = self.engine.history(self.state)
-        spoken = len(history)
-        view = self.engine.narrator_view(self.state)
-        evidence = traced(history[-1].facts if history else (), told_only=True)
+        before = self.state
         try:
-            answer = await ask(
-                self.spawner,
-                "narrator",
-                render_interjection(
-                    view,
-                    member.subject(),
-                    member.rows(),
-                    self.engine.scenes(self.state),
-                    evidence,
-                ),
-                Interjection,
-                partial(view.interjection_refusal, member.id),
-            )
+            lines, proposal = await self.roles.interject(self.state, member)
         except (OSError, Refusal) as failed:
             LOGGER.warning("the party did not speak: %s", failed)
             return
-        if (
-            self.turn is not None
-            or self.phase is not None
-            or len(self.engine.history(self.state)) != spoken
-        ):
+        if self.turn is not None or self.phase is not None or self.state is not before:
             LOGGER.info("%s's interjection came after the turn moved on; dropped", member.name)
             return
-        if not answer.lines:
+        if not lines:
             return
         self.commit(
-            self.engine.close(
-                self.state.draft(), INTERJECTION_MARK, answer.lines, (), proposal=answer.proposal
-            )
+            self.engine.close(self.state.draft(), INTERJECTION_MARK, lines, (), proposal=proposal)
         )
-        self.speak()
+        self.speak(self._newest())
 
     async def _generate(self, prompt: str = STORY_MARK) -> bool:
         request = self.state.generation
@@ -222,12 +211,12 @@ class GameService:
             return False
         self.phase, grown = "worldsmith", True
         try:
-            facts, telling = await self.engine.advance(draft, request, _worldsmith(self.spawner))
+            facts, telling = await self.engine.advance(draft, request, self.roles.worldsmith())
             if telling is None:
                 self.commit(self.engine.commit(draft))
             else:
                 self.phase = "narrator"
-                lines = await self._narrate(draft, facts, telling, fatal=False)
+                lines = await self.roles.narrate(draft, facts, telling, fatal=False)
                 self.commit(self.engine.close(draft, prompt, lines, facts))
         except (OSError, Refusal) as failed:
             LOGGER.warning("the world did not grow: %s", failed)
@@ -243,60 +232,13 @@ class GameService:
     def _present(self) -> None:
         newest = self._newest()
         self.illustrate("" if newest is None else newest.narration)
-        self.speak()
-
-    async def _master(self, turn: Turn) -> None:
-        """A crashed game master still played the turn, if it applied anything legal first."""
-
-        def nothing_landed() -> bool:
-            return not turn.facts and turn.draft.pending is None
-
-        prompt = turn.picture()
-        for last in (False, True):
-            try:
-                await self.spawner.run("master", prompt, None)
-                return
-            except (OSError, Refusal) as failed:
-                if not nothing_landed():
-                    LOGGER.warning(
-                        "the game master failed after applying %d facts: %s",
-                        len(turn.facts),
-                        failed,
-                    )
-                    return
-                if last:
-                    raise
-                LOGGER.warning("the game master landed nothing, spawning it again: %s", failed)
-
-    async def _narrate(
-        self, draft: AnyGame, facts: tuple[Fact, ...], prompt: str, *, fatal: bool
-    ) -> tuple[Line, ...]:
-        view = self.engine.narrator_view(draft)
-        evidence = traced(facts, told_only=True)
-        if (pending := draft.pending) is not None:
-            evidence += f"\n- {PAUSED.format(prompt=pending.prompt)}"
-        if draft.generation is not None:
-            evidence += f"\n- {REQUESTED}"
-        try:
-            narration = await ask(
-                self.spawner,
-                "narrator",
-                render_narrator(
-                    view, evidence=evidence, prompt=prompt, scenes=self.engine.scenes(draft)
-                ),
-                Narration,
-                view.narration_refusal,
-            )
-        except (OSError, Refusal) as failed:
-            if fatal:
-                raise
-            # The scene cost minutes to write; an unwritable arrival must not throw it away.
-            LOGGER.warning("the arrival went unnarrated: %s", failed)
-            return ()
-        return narration.lines
+        self.speak(newest)
 
     def player_view(self) -> PlayerView:
         return self.engine.player_view(self.state)
+
+    def history(self) -> tuple[Exchange, ...]:
+        return self.engine.history(self.state)
 
     def scene_art(self) -> Path | None:
         if self.media is None:
@@ -317,8 +259,7 @@ class GameService:
         task = create_task(self.media.illustrate(view, self.player_view().player, narration))
         self._retain(task)
 
-    def speak(self) -> None:
-        newest = self._newest()
+    def speak(self, newest: Exchange | None) -> None:
         if self.reader is None or newest is None:
             return
         self._retain(create_task(self.reader.read(newest)))
@@ -331,6 +272,14 @@ class GameService:
         """Retain background tasks because asyncio may collect unreferenced tasks early."""
         self._background.add(task)
         task.add_done_callback(self._background.discard)
+
+    async def drain(self) -> None:
+        await gather(*self._background)
+
+    def stop(self) -> None:
+        self.hush()
+        for task in self._background:
+            task.cancel()
 
     def restart(self) -> None:
         self.hush()
@@ -359,18 +308,6 @@ class GameService:
         # The write was lost with the process: a reload never finds a request.
         state.generation = None
         return state
-
-
-@dataclass(frozen=True, slots=True)
-class RoleSpawner:
-    settings: Settings
-    cli: CliSpawner
-    builtin: BuiltinSpawner
-
-    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
-        config = self.settings.roles.for_name(role)
-        played_by = self.cli if config.api is None else self.builtin
-        return await played_by.run(role, prompt, session)
 
 
 @dataclass(slots=True)
@@ -437,8 +374,9 @@ class Runtime:
         self.spawner = self._spawner()
         self._mount()
         # An evicted session must not write: its member's answer would land on a rival's save.
+        # Art too: media_dir(slug) is shared and Illustrator.generating is per instance.
         for session in self._sessions.values():
-            session.hush()
+            session.stop()
         self._sessions.clear()
 
     async def new_scenario(
@@ -461,7 +399,9 @@ class Runtime:
                 return str(unplayable)
             return None
 
-        scenario = await engine.author(meta, source, packs, _worldsmith(self.spawner), playable)
+        scenario = await engine.author(
+            meta, source, packs, Roles(self.spawner, engine).worldsmith(), playable
+        )
         self.library.write_scenario(name, scenario, document)
         LOGGER.info("scenario written: slug=%s title=%r", name, meta.title)
         return name
@@ -485,7 +425,7 @@ class Runtime:
             scenario=scenario,
             character=character,
             engine=engine,
-            spawner=self.spawner,
+            roles=Roles(self.spawner, engine),
             store=self.store,
             interjections=settings.interjections,
             media=open_illustrator(
@@ -505,7 +445,3 @@ class Runtime:
                 voice=scenario.meta.voice or settings.speech.voice,
             ),
         )
-
-
-def _worldsmith(spawner: Spawner) -> WorldsmithAnswer:
-    return partial(ask, spawner, "worldsmith")

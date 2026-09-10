@@ -37,7 +37,6 @@ def _master_prompt(state: Loner3eGame, prompt: str, *, notes: tuple[str, ...] = 
         state,
         _engine().scenes(state),
         prompt,
-        played=len(_engine().history(state)),
         notes=notes,
     )
 

@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Self
 
 from pydantic import Field, model_validator
@@ -51,6 +51,9 @@ class DiceLook(Frozen):
     body: str
     ink: str
     glow: str
+
+
+type Palette = Mapping[str, str]
 
 
 class NarratorView(Frozen):
@@ -125,6 +128,8 @@ class PlayerView(Frozen):
     """What the pages read: scene art and subjects live on the narrator view, not here."""
 
     player: Subject
+    scene_title: str
+    situation: str
     panels: tuple[Panel, ...]
     prompt: PendingDecision | None
     action: DecisionOption | None

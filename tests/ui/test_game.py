@@ -3,10 +3,12 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
+import pytest
 from nicegui import Client, core, ui
 from support.loner import open_game
 from support.table import Table, play_turn
 
+from aidm.app.runtime import GameService
 from aidm.core.entities import EntityId
 from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, PendingDecision, PendingOption, SpokenLine
@@ -27,7 +29,15 @@ WREN = Subject(id=EntityId("player"), label="Wren", detail="A quiet scout")
 
 
 def _view(prompt: PendingDecision | None = None, over: str | None = None) -> PlayerView:
-    return PlayerView(player=WREN, panels=(), prompt=prompt, action=None, over=over)
+    return PlayerView(
+        player=WREN,
+        scene_title="The Cloister Walk",
+        situation="Rain drums the arcade.",
+        panels=(),
+        prompt=prompt,
+        action=None,
+        over=over,
+    )
 
 
 def _pick(*, allows_text: bool) -> PendingDecision:
@@ -126,7 +136,9 @@ def _page[G: AnyGame](table: Table[G]) -> GamePage:
     page.send = ui.button()
     page.action_button = ui.button()
     page.over_label = ui.label()
-    page.seen = Observed.of(table.service)
+    page.view = table.service.player_view()
+    page.history = table.service.history()
+    page.seen = Observed.of(table.service, page.view, page.history)
     return page
 
 
@@ -153,6 +165,37 @@ async def test_poll_turn_follows_only_on_the_readers_own_move(tmp_path: Path) ->
             table.service.phase = "narrator"
             page.poll_turn()
             assert page.new_activity.visible is True
+    finally:
+        client.delete()
+
+
+async def test_poll_turn_walks_the_player_view_and_history_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One tick, one walk: every refreshable `poll_turn` triggers reads the page's own copy."""
+    table = open_game(tmp_path)
+    client = Client(ui.page("/"))
+    try:
+        with _nicegui_loop(), client:
+            page = _page(table)
+            service_type = type(table.service)
+            real_view, real_history = service_type.player_view, service_type.history
+            calls = {"view": 0, "history": 0}
+
+            def counting_view(self: GameService) -> PlayerView:
+                calls["view"] += 1
+                return real_view(self)
+
+            def counting_history(self: GameService) -> tuple[Exchange, ...]:
+                calls["history"] += 1
+                return real_history(self)
+
+            monkeypatch.setattr(service_type, "player_view", counting_view)
+            monkeypatch.setattr(service_type, "history", counting_history)
+
+            page.poll_turn()
+
+            assert calls == {"view": 1, "history": 1}
     finally:
         client.delete()
 

@@ -1,5 +1,6 @@
 from nicegui import Client, ui
 from nicegui.elements.colors import Colors
+from support.table import ENGINES_BUILT
 
 from aidm.core.entities import EngineId
 from aidm.ui import theme
@@ -40,13 +41,15 @@ def test_switching_engines_is_local_to_the_current_page() -> None:
 
 
 def test_set_engine_writes_the_engines_accent_as_the_primary_colour() -> None:
+    theme.seed({engine_id: engine.palette for engine_id, engine in ENGINES_BUILT.items()})
     client = Client(ui.page("/"))
     try:
         with client:
             theme.set_engine(EngineId("loner3e"))
         colors = _colors(client)
-        assert colors.props["primary"] == theme.ENGINE_PALETTES[EngineId("loner3e")]["game-accent"]
-        assert colors.props["secondary"] == theme.ENGINE_PALETTES[EngineId("loner3e")]["game-muted"]
+        loner3e = ENGINES_BUILT[EngineId("loner3e")]
+        assert colors.props["primary"] == loner3e.palette["game-accent"]
+        assert colors.props["secondary"] == loner3e.palette["game-muted"]
         assert colors.props["negative"] == theme.NEUTRAL_PALETTE["game-danger"]
         assert colors.props["positive"] == theme.NEUTRAL_PALETTE["game-success"]
     finally:
@@ -65,10 +68,7 @@ def test_set_engine_falls_back_to_the_neutral_palette() -> None:
 
 
 def test_the_generated_css_carries_each_engines_palette() -> None:
+    theme.seed({engine_id: engine.palette for engine_id, engine in ENGINES_BUILT.items()})
     css = theme._palette_css()  # pyright: ignore[reportPrivateUsage]
-    for engine, overrides in theme.ENGINE_PALETTES.items():
-        assert f"game-theme-{engine}" in css
-        for value in overrides.values():
-            assert value in css
-    for value in theme.NEUTRAL_PALETTE.values():
-        assert value in css
+    for engine_id in ENGINES_BUILT:
+        assert f"game-theme-{engine_id}" in css

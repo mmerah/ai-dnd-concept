@@ -1,5 +1,4 @@
 import wave
-from asyncio import gather
 from pathlib import Path
 
 import pytest
@@ -20,7 +19,7 @@ from aidm.app.speech import (
 from aidm.config import ProviderConfig, SpeechConfig
 from aidm.core.entities import EntityId
 from aidm.core.io import FileStore
-from aidm.core.play import Exchange, Line, SpokenLine
+from aidm.core.play import Exchange, SpokenLine
 
 NARRATOR = "Kore"
 POOL = ("Kore", "Puck", "Charon", "Zephyr", "Fenrir")
@@ -146,7 +145,9 @@ async def test_speak_reads_and_caches_the_newest_committed_exchange(
 ) -> None:
     session = loner_session(tmp_path)
     draft = session.state.draft()
-    session.commit(session.engine.close(draft, "wait", (Line(text="The door groans open."),), ()))
+    session.commit(
+        session.engine.close(draft, "wait", (SpokenLine(text="The door groans open."),), ())
+    )
 
     async def _fake_post_bearer(
         _provider: ProviderConfig, _path: str, _body: dict[str, str], _timeout: float
@@ -156,9 +157,9 @@ async def test_speak_reads_and_caches_the_newest_committed_exchange(
     monkeypatch.setattr("aidm.app.speech.post_bearer", _fake_post_bearer)
     session.reader = _reader(tmp_path)
 
-    session.speak()
-    await gather(*session._background)  # pyright: ignore[reportPrivateUsage]
-
     exchange = session.engine.history(session.state)[-1]
+    session.speak(exchange)
+    await session.drain()
+
     assert session.newest_clip() == session.reader.clip(exchange)
     assert session.newest_clip() is not None

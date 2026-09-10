@@ -1,14 +1,22 @@
 from random import Random
 
 import pytest
-from pydantic import BaseModel
+from pydantic import JsonValue
 from support.breathless import SKILLS_RATED
-from support.table import BREATHLESS, ENGINES_BUILT, change, game, narrowed, updated
+from support.table import (
+    BREATHLESS,
+    ENGINES_BUILT,
+    change,
+    game,
+    narrowed,
+    stub_worldsmith,
+    updated,
+)
 
 from aidm.core.entities import EngineId, EntityId, Refusal
 from aidm.core.io import decode
-from aidm.core.model import Check, ScenarioMeta
-from aidm.engines.base import HIRE, PLAYER_ID, SIGNED_ON, Hire
+from aidm.core.model import ScenarioMeta
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.engine import BreathlessEngine
 from aidm.engines.breathless.world import (
     STARTING_ITEM,
@@ -19,6 +27,7 @@ from aidm.engines.breathless.world import (
     Survivor,
     SurvivorSheet,
 )
+from aidm.engines.hiring import HIRE, SIGNED_ON, Hire
 from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.scenes.world import SceneCanon, SceneRun
 from aidm.engines.seam import AnyEngine
@@ -32,18 +41,6 @@ def _breathless_game() -> tuple[AnyEngine, BreathlessGame]:
     engine, state = game(BREATHLESS)
     state = narrowed(state, BreathlessGame)
     return engine, state
-
-
-async def _stub_worldsmith[M: BaseModel](prompt: str, model: type[M], refusal: Check[M]) -> M:
-    del prompt, refusal
-    return model.model_validate(
-        {
-            "pronouns": "he/him",
-            "job": "Bell-ringer",
-            "skills": SKILLS_RATED,
-            "item": "Boat hook",
-        }
-    )
 
 
 def test_the_shipped_game_begins_with_the_srd_pack_and_the_players_item() -> None:
@@ -61,9 +58,8 @@ def test_join_party_lands_a_party_joined_fact_and_adds_the_member() -> None:
     engine, state = _breathless_game()
     draft = state.draft()
 
-    facts = change(engine, draft, "join_party", entity_id=OVID)
+    _ = change(engine, draft, "join_party", entity_id=OVID)
 
-    assert any(fact.kind == "party_joined" for fact in facts)
     assert OVID in draft.payload.party
 
 
@@ -118,11 +114,10 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
 def test_hire_sets_the_generation_and_ends_the_turn() -> None:
     _, state = _breathless_game()
     draft = state.draft()
-    facts = ENGINE.hire(draft, Hire(entity_id=OVID, terms="Guide us across the flats"), Random(0))
+    _ = ENGINE.hire(draft, Hire(entity_id=OVID, terms="Guide us across the flats"), Random(0))
     assert draft.generation is not None
     assert draft.generation.operation == HIRE
     assert draft.generation.target == OVID
-    assert any(fact.kind == "hire_asked" for fact in facts)
 
 
 def test_hire_refuses_a_sheeted_member() -> None:
@@ -149,12 +144,18 @@ async def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party() -> Non
     generation = draft.generation
     assert generation is not None
 
-    facts, message = await ENGINE.advance(draft, generation, _stub_worldsmith)
+    skills: dict[str, JsonValue] = dict(SKILLS_RATED.items())
+    answer: dict[str, JsonValue] = {
+        "pronouns": "he/him",
+        "job": "Bell-ringer",
+        "skills": skills,
+        "item": "Boat hook",
+    }
+    _, message = await ENGINE.advance(draft, generation, stub_worldsmith(answer))
 
     member = draft.payload.cast[OVID]
     assert member.sheet is not None
     assert len(member.sheet.skills) == 6
     assert member.sheet.items[EntityId("boat-hook")].die == STARTING_ITEM
     assert OVID in draft.payload.party
-    assert any(fact.kind == "hired" for fact in facts)
     assert message == SIGNED_ON.format(name=member.name)

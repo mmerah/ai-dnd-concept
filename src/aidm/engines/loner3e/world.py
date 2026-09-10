@@ -78,7 +78,7 @@ class Loner3eSheet(Person):
         if lost:
             lost_line = ", ".join(lost)
             parts.append(f"Lost {lost_line}" if kind == "gear" else f"No longer: {lost_line}")
-        return [self.fact("tags_changed", trace, card="; ".join(parts))]
+        return [self.fact(trace, card="; ".join(parts))]
 
     def drive(self, *, goal: str, motive: str, nemesis: str) -> list[Fact]:
         if not goal and not motive and not nemesis:
@@ -95,7 +95,7 @@ class Loner3eSheet(Person):
             parts.append(f"nemesis: {nemesis}")
         trace = f"{self.mention} " + "; ".join(parts)
         card = f"{self.name}: {goal}" if goal else ""
-        return [self.fact("drive_set", trace, card=card)]
+        return [self.fact(trace, card=card)]
 
     def refill(self, why: str) -> list[Fact]:
         return self.luck.change(self, self.luck.shortfall, "Luck", why)

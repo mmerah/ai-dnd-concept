@@ -26,6 +26,7 @@ from support.table import (
 import aidm.app.spawn as spawn_module
 from aidm.app.launch import LaunchTarget
 from aidm.app.mcp import list_tools
+from aidm.app.roles import Roles
 from aidm.app.runtime import STORY_MARK
 from aidm.app.spawn import CliSpawner, RunResult, final_message
 from aidm.config import Role
@@ -33,11 +34,12 @@ from aidm.core.entities import CheckedEntityId, EngineId, EntityId, Frozen, Refu
 from aidm.core.model import ScenarioMeta
 from aidm.core.play import Answer, Narration, narration_text
 from aidm.core.tools import schema_of
-from aidm.engines.base import ACTOR, PLAYER_ID
+from aidm.engines.base import PLAYER_ID
+from aidm.engines.hiring import ACTOR
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eSheet
 from aidm.engines.scenes.drafts import SceneDraft
-from aidm.engines.scenes.engine import MOVE_ON
+from aidm.engines.scenes.engine import MOVE_ON, WAY_UNWRITTEN
 from aidm.turn.run import NO_TURN, Turn
 
 
@@ -397,8 +399,12 @@ async def test_the_turn_is_filed_before_the_worldsmith_is_asked(tmp_path: Path) 
     """The turn's own narration must reach the player while the slow write runs."""
     table = open_game(tmp_path)
     filed: list[int] = []
-    table.service.spawner = _Watched(
-        table.spawner, lambda: filed.append(len(table.service.engine.history(table.service.state)))
+    table.service.roles = Roles(
+        _Watched(
+            table.spawner,
+            lambda: filed.append(len(table.service.engine.history(table.service.state))),
+        ),
+        table.service.engine,
     )
     table.spawner.answers["worldsmith"] = [_scene()]
     before = len(table.service.engine.history(table.service.state))
@@ -428,7 +434,7 @@ async def test_a_scene_the_world_has_outgrown_is_dropped_and_the_offer_kept(
     assert "already met" in caplog.text
     unwritten = table.service.engine.history(state)[-1]
     assert unwritten.prompt == STORY_MARK
-    assert unwritten.facts[0].kind == "way_unwritten"
+    assert unwritten.facts[0] == WAY_UNWRITTEN
     assert state.payload.run.title == "The Abbot's Study"
     assert state.payload.run.offered
     assert state.generation is None
@@ -444,7 +450,7 @@ async def test_the_scene_bar_refuses_a_scene_naming_nobody(
     state = await play_turn(table, "I go.", LEFT)
 
     assert "these name nobody" in caplog.text
-    assert table.service.engine.history(state)[-1].facts[0].kind == "way_unwritten"
+    assert table.service.engine.history(state)[-1].facts[0] == WAY_UNWRITTEN
     assert table.service.state.payload.run.title == "The Abbot's Study"
 
 
@@ -454,9 +460,7 @@ async def test_a_scene_with_nothing_hidden_in_it_is_allowed(tmp_path: Path) -> N
 
     state = await play_turn(table, "I go.", LEFT, arrival="The rain has the arcade.")
 
-    assert all(
-        fact.kind != "way_unwritten" for fact in table.service.engine.history(state)[-1].facts
-    )
+    assert WAY_UNWRITTEN not in table.service.engine.history(state)[-1].facts
     assert state.payload.run.title == "The Cloister Walk"
 
 
@@ -468,7 +472,7 @@ async def test_a_worldsmith_that_fails_leaves_the_scene_unchanged_and_says_why(
     state = await play_turn(table, "I go.", LEFT)
 
     assert "no answer left" in caplog.text
-    assert table.service.engine.history(state)[-1].facts[0].kind == "way_unwritten"
+    assert table.service.engine.history(state)[-1].facts[0] == WAY_UNWRITTEN
     assert table.service.state.payload.run.title == "The Abbot's Study"
 
 

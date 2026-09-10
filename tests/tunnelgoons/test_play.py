@@ -120,7 +120,6 @@ async def test_a_region_that_cannot_be_written_files_the_players_words(tmp_path:
     unwritten = table.service.engine.history(after)
     assert len(unwritten) == before + 1
     assert unwritten[-1].prompt == "Deeper in."
-    assert unwritten[-1].facts[0].kind == "map_unwritten"
     assert (
         unwritten[-1].facts[0].card == "The map could not be written. You are still where you were."
     )

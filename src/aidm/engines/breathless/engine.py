@@ -6,12 +6,12 @@ from random import Random
 from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, parse, slug
 from aidm.core.facts import DiceEvent, Fact, keep_highest, roll
-from aidm.core.model import AnyCharacter, Generation, WorldsmithAnswer
+from aidm.core.model import AnyCharacter
 from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.prompt import lines_of
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Pairs, Panel, PanelRow
-from aidm.engines.base import CHANGE_WORLD, HIRE, HIRE_TOOL, PLAYER_ID, Hire, hire_target
+from aidm.engines.base import CHANGE_WORLD, PLAYER_ID
 from aidm.engines.breathless.tools import (
     Actor,
     ChangeStress,
@@ -44,18 +44,34 @@ from aidm.engines.breathless.world import (
     stepped,
 )
 from aidm.engines.breathless.worldsmith import AUTHORING, HIRING, Pack, SheetDraft
+from aidm.engines.hiring import HIRE_TOOL, Hire, Hiring
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
 from aidm.engines.scenes.world import sentence
 
 
-class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
+class BreathlessEngine(
+    Hiring[Survivor, Survivor, BreathlessGame, SheetDraft],
+    SceneEngine[Survivor, Survivor, BreathlessGame, Pack],
+):
     id = EngineId("breathless")
     title = "BREATHLESS"
     art_style = (
         "Grim survival-horror illustration: dim, desaturated, wet surfaces, no text or lettering."
     )
     dice_look = DiceLook(body="#5a1216", ink="#efe1d3", glow="#e0393e")
+    palette = {
+        "game-bg": "#0d1818",
+        "game-surface": "#162525",
+        "game-surface-raised": "#203332",
+        "game-text": "#e0eeea",
+        "game-muted": "#a8c1bb",
+        "game-border": "#35504b",
+        "game-accent": "#94d5be",
+        "game-wash": "rgba(148, 213, 190, .07)",
+        "game-radius": "5px",
+        "game-heading": "'Arial Narrow', 'Helvetica Neue', Arial, sans-serif",
+    }
     directory = Path(__file__).parent
     game = BreathlessGame
     scenario = BreathlessScenario
@@ -63,7 +79,7 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
     cast = Survivor
     pack = Pack
     world_type = BreathlessWorld
-    operations = (*SceneEngine.operations, HIRE)
+    hire_answer = SheetDraft
 
     def master_tools(self) -> tuple[MasterTool[BreathlessGame], ...]:
         return (
@@ -184,27 +200,25 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
             case _:
                 return self.shared_change(world, change)
 
-    async def advance(
-        self, draft: BreathlessGame, request: Generation, worldsmith: WorldsmithAnswer
-    ) -> tuple[tuple[Fact, ...], str | None]:
-        if request.operation != HIRE:
-            return await super().advance(draft, request, worldsmith)
-        world = draft.payload
-        member = world.require_hireable(hire_target(request))
+    def hireable(self, draft: BreathlessGame, entity_id: EntityId) -> Survivor:
+        return draft.payload.require_hireable(entity_id)
+
+    def hire_prompt(self, draft: BreathlessGame, member: Survivor, terms: str) -> str:
         pack = self.packs[draft.packs[0]]
-        prompt = self.render_request(
+        return self.render_request(
             draft,
             guidance=AUTHORING,
             intent=HIRING.format(
                 name=member.name,
                 brief=member.brief,
-                terms=request.brief,
+                terms=terms,
                 jobs=", ".join(pack.jobs),
                 weapons=", ".join(pack.weapons),
             ),
             answer=SheetDraft,
         )
-        answer = await worldsmith(prompt, SheetDraft, lambda _draft: None)
+
+    def install_sheet(self, draft: BreathlessGame, member: Survivor, answer: SheetDraft) -> str:
         member.sheet = SurvivorSheet(
             pronouns=answer.pronouns,
             job=answer.job,
@@ -212,7 +226,7 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
             worn=dict(answer.skills),
             items={EntityId(slug(answer.item, ())): Item(name=answer.item, die=STARTING_ITEM)},
         )
-        return world.sign_on(member, answer.job)
+        return answer.job
 
     def roll(self, draft: BreathlessGame, args: Check, rng: Random) -> list[Fact]:
         world = draft.payload
@@ -270,10 +284,10 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
             line += f", helped by {helper[0].name} (d{helper[1]})"
         line += f" → {result}"
 
-        facts = [dice_fact, actor.fact("checked", line, card=line, dice=(event,))]
+        facts = [dice_fact, actor.fact(line, card=line, dice=(event,))]
         if item is not None and worn == 4:
             gone = f"{item.name} is gone"
-            facts.append(actor.fact("item_gone", gone, card=gone))
+            facts.append(actor.fact(gone, card=gone))
 
         if args.dangerous and result == "fail":
             for who in (actor, *((helper[0],) if helper else ())):
@@ -305,7 +319,7 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
             if actor is world.player
             else f"{actor.name} caught breath — skills and loot die restored"
         )
-        fact = actor.fact("breath_caught", trace, card=card)
+        fact = actor.fact(trace, card=card)
         return [dice_fact, fact]
 
     def answer(self, draft: BreathlessGame, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
@@ -333,7 +347,7 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
         result = f"found {item} (d{found})" if found is not None else "nothing"
         line = f"Scavenge — d{before} → {result}"
         event = DiceEvent(label=f"d{before}", faces=(before,), rolled=rolled)
-        fact = player.fact("loot_checked", line, card=line, dice=(event,))
+        fact = player.fact(line, card=line, dice=(event,))
         facts = [dice_fact, fact]
 
         if found is not None:
@@ -349,7 +363,7 @@ class BreathlessEngine(SceneEngine[Survivor, Survivor, BreathlessGame, Pack]):
         rolled, dice_fact = roll((args.die,), args.question, rng)
         result = outcome(rolled[0])
         trace = f"{args.question} — d{args.die} [{rolled[0]}] -> {result}"
-        return [dice_fact, Fact(kind="luck_tested", trace=trace)]
+        return [dice_fact, Fact(trace=trace)]
 
 
 def _skill(name: str) -> Skill:

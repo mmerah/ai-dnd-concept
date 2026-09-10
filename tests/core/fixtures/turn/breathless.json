@@ -1,20 +1,17 @@
 [
   {
-    "kind": "entity_discovered",
     "trace": "learned of Drowned Marta[drowned-marta]",
     "told": true,
     "card": "Drowned Marta discovered",
     "dice": []
   },
   {
-    "kind": "dice_rolled",
     "trace": "Listen for what moves on the flats — think: 1d10 [1]",
     "told": false,
     "card": "",
     "dice": []
   },
   {
-    "kind": "checked",
     "trace": "Listen for what moves on the flats — Think d10 → fail",
     "told": true,
     "card": "Listen for what moves on the flats — Think d10 → fail",
@@ -32,7 +29,6 @@
     ]
   },
   {
-    "kind": "counter_changed",
     "trace": "the player Kael[player] Stress +1 -> 1/4 (the bell rang twice)",
     "told": true,
     "card": "Stress +1 -> 1/4",

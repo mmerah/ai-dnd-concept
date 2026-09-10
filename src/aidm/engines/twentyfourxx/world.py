@@ -1,14 +1,14 @@
 from collections.abc import Sequence
-from typing import Literal, Self
+from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field
 
 from aidm.core.entities import EntityId, Frozen, Mutable, Refusal, require_unique, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Pairs
-from aidm.engines.base import Person
-from aidm.engines.scenes.world import SceneCanon, SceneWorld
+from aidm.engines.hiring import ItemSheet, Sheeted, SheetedWorld
+from aidm.engines.scenes.world import SceneCanon
 
 type SkillDie = Literal[8, 10, 12]
 LADDER: tuple[SkillDie, ...] = (8, 10, 12)
@@ -63,7 +63,7 @@ class Item(Mutable):
         return ", ".join(parts)
 
 
-class Sheet(Mutable):
+class Sheet(ItemSheet[Item]):
     """The dice a crew member rolls."""
 
     specialty: str
@@ -71,7 +71,6 @@ class Sheet(Mutable):
     traits: tuple[str, ...] = ()  # an alien's two; an android's body
     skills: dict[str, SkillDie] = Field(default_factory=dict)  # keyed by the pack label
     credits: int = Field(default=STARTING_CREDITS, ge=0)
-    items: dict[EntityId, Item] = Field(default_factory=dict)
     hindrances: list[str] = Field(default_factory=list)
 
     def die(self, skill: str) -> int:
@@ -93,21 +92,9 @@ class Sheet(Mutable):
         )
 
 
-class Crewmate(Person):
-    """A person in this game. Only a sheet gives them dice."""
-
-    sheet: Sheet | None = Field(default=None, description="Leave empty.")
-
-    def dice(self) -> Sheet:
-        if self.sheet is None:
-            raise Refusal(f"{self.name} carries no dice")
-        return self.sheet
-
+class Crewmate(Sheeted[Sheet]):
     def require_item(self, item_id: EntityId) -> Item:
-        item = self.dice().items.get(item_id)
-        if item is None:
-            raise Refusal(f"{item_id!r} is not among {self.name}'s items")
-        return item
+        return self.dice().require(item_id, self.name)
 
     def pay(self, cost: int) -> None:
         sheet = self.dice()
@@ -134,7 +121,7 @@ class Crewmate(Person):
             parts.append(f"Recovered: {', '.join(lost)}")
         card = " / ".join(parts)
         trace = f"{self.mention} — {card}"
-        return [self.fact("hindrances_changed", trace, card=card)]
+        return [self.fact(trace, card=card)]
 
     def gain_item(self, name: str, *, bulky: bool, breaks: int, cost: int) -> list[Fact]:
         self.pay(cost)
@@ -143,13 +130,12 @@ class Crewmate(Person):
         suffix = f" (₡{cost})" if cost > 0 else ""
         card = f"Gained {name}{suffix}"
         trace = f"{self.mention} gains {name}{suffix}"
-        return [self.fact("item_gained", trace, card=card)]
+        return [self.fact(trace, card=card)]
 
     def drop_item(self, item_id: EntityId) -> list[Fact]:
-        item = self.require_item(item_id)
-        del self.dice().items[item_id]
+        item = self.dice().drop(item_id, self.name)
         trace = f"{self.mention} drops {item.name}"
-        return [self.fact("item_dropped", trace, card=f"Dropped {item.name}")]
+        return [self.fact(trace, card=f"Dropped {item.name}")]
 
     def repair_item(self, item: Item, cost: int) -> list[Fact]:
         if item.broken_times == 0:
@@ -157,12 +143,12 @@ class Crewmate(Person):
         self.pay(cost)
         item.broken_times = 0
         trace = f"{self.mention} repairs {item.name}"
-        return [self.fact("item_repaired", trace, card=f"Repaired {item.name}")]
+        return [self.fact(trace, card=f"Repaired {item.name}")]
 
     def spend(self, amount: int, why: str) -> list[Fact]:
         self.pay(amount)
         trace = f"{self.mention} spends ₡{amount} — {why}"
-        return [self.fact("credits_spent", trace, card=f"₡{amount} spent — {why}")]
+        return [self.fact(trace, card=f"₡{amount} spent — {why}")]
 
     def rows(self) -> Pairs:
         if self.sheet is None:
@@ -173,16 +159,8 @@ class Crewmate(Person):
         )
         return (*self.sheet.rows(), *((("Gear", gear),) if gear else ()))
 
-    def unwritten(self) -> str:
-        parts = [
-            part
-            for part in (super().unwritten(), "a sheet" if self.sheet is not None else "")
-            if part
-        ]
-        return ", ".join(parts)
 
-
-class TwentyfourxxWorld(SceneWorld[Crewmate, Crewmate]):
+class TwentyfourxxWorld(SheetedWorld[Crewmate, Crewmate]):
     job: str = ""
     ship: dict[EntityId, Item] = Field(
         default_factory=lambda: {
@@ -191,28 +169,11 @@ class TwentyfourxxWorld(SceneWorld[Crewmate, Crewmate]):
         }
     )
 
-    @model_validator(mode="after")
-    def _player_carries_a_sheet(self) -> Self:
-        if self.player.sheet is None:
-            raise ValueError("the player carries no sheet")
-        return self
-
     def sheeted_members(self) -> list[Crewmate]:
         return [member for member in self.members() if member.sheet is not None]
 
     def require_actor(self, actor_id: EntityId | None) -> Crewmate:
-        if actor_id is None or actor_id == self.player.id:
-            return self.player
-        entity = self.require(actor_id)
-        if entity.alive and entity.sheet is not None and entity.id in self.party:
-            return entity
-        raise Refusal(f"{entity.name} is not the player or a hired crew member")
-
-    def require_hireable(self, entity_id: EntityId) -> Crewmate:
-        member = self.require_here(entity_id, alive=True)
-        if member.sheet is not None:
-            raise Refusal(f"{member.name} already carries a sheet")
-        return member
+        return self.require_sheeted(actor_id, noun="crew member")
 
     def require_gear(self, actor: Crewmate, item_id: EntityId) -> Item:
         """The actor's item or a ship function: both break to defend and both are repaired."""
@@ -231,7 +192,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate, Crewmate]):
                 raise Refusal(f"{item.name} breaks harmlessly: leave `hindrance` empty")
             item.broken_times += 1
             trace = f"{actor.mention} breaks {item.name}, harmlessly"
-            return [actor.fact("item_broken", trace, card=f"{item.name} breaks")]
+            return [actor.fact(trace, card=f"{item.name} breaks")]
         if not hindrance:
             raise Refusal("name the hindrance the hit becomes")
         sheet = actor.dice()
@@ -241,7 +202,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate, Crewmate]):
         sheet.hindrances.append(hindrance)
         card = f"{item.name} breaks — {hindrance}"
         trace = f"{actor.mention} breaks {item.name} — {hindrance}"
-        return [actor.fact("item_broken", trace, card=card)]
+        return [actor.fact(trace, card=card)]
 
     def upgrade_ship(self, function_id: EntityId) -> list[Fact]:
         function = self.ship.get(function_id)
@@ -253,7 +214,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate, Crewmate]):
         function.upgraded = True
         trace = f"the ship's {function.name} is upgraded (₡{UPGRADE_COST})"
         card = f"{function.name} upgraded — ₡{UPGRADE_COST}"
-        return [self.player.fact("ship_upgraded", trace, card=card)]
+        return [self.player.fact(trace, card=card)]
 
     def take_lead(self, member_id: EntityId) -> list[Fact]:
         """Decision 6: ids are kept. The new lead keeps theirs; the dead lead goes into the cast."""
@@ -270,7 +231,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate, Crewmate]):
         self.cast[dead.id] = dead
         self.run.here.append(dead.id)
         trace = f"{member.tag} takes the lead; {dead.tag} is dead"
-        return [member.fact("lead_taken", trace, card=f"{member.name} leads now")]
+        return [member.fact(trace, card=f"{member.name} leads now")]
 
 
 TwentyfourxxGame = Game[TwentyfourxxWorld]

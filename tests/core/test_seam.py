@@ -8,10 +8,11 @@ from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
-from aidm.core.play import DecisionOption
+from aidm.core.play import DecisionOption, SpokenLine
 from aidm.core.tools import MasterTool
-from aidm.core.views import Pairs
+from aidm.core.views import NarratorView, Pairs
 from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.hiring import HIRE, Hiring
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.packs import ScenePack
 from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld
@@ -70,6 +71,16 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, ScenePack]):
 
     def master_sections(self, state: FifthGame) -> Pairs:
         return (("SCENE", self.world(state).run.title),)
+
+
+class HireAnswer(BaseModel):
+    job: str
+
+
+class HiringFifthEngine(Hiring[Person, Person, FifthGame, HireAnswer], FifthEngine):
+    """A fifth engine that hires: only what `__init_subclass__` contributes is under test."""
+
+    hire_answer = HireAnswer
 
 
 def _engine_at(tmp_path: Path) -> type[FifthEngine]:
@@ -160,3 +171,36 @@ async def test_compose_builds_the_accepted_answer_once(tmp_path: Path) -> None:
 
     await engine.compose(worldsmith, "write", DecisionOption, build, lambda _: None)
     assert len(builds) == 1
+
+
+class _CountingFifthEngine(FifthEngine):
+    """Counts `narrator_view` calls, so a test can watch `close` build none."""
+
+    def __init__(self, directory: Path) -> None:
+        self.directory = directory
+        super().__init__()
+        self.narrator_view_calls = 0
+
+    def narrator_view(self, state: FifthGame) -> NarratorView:
+        self.narrator_view_calls += 1
+        return super().narrator_view(state)
+
+
+def test_close_builds_no_narrator_view(tmp_path: Path) -> None:
+    _ = _installed(tmp_path)  # writes rules.md and packs/srd.json onto tmp_path
+    engine = _CountingFifthEngine(tmp_path)
+    character = engine.create_character("Wren", "A quiet scout", {})
+    state = engine.begin("the-taproom", _scenario(), character)
+
+    closed = engine.close(state.draft(), "I wait.", (SpokenLine(text="Nothing stirs."),), ())
+
+    assert engine.narrator_view_calls == 0
+    assert engine.history(closed)[-1].prompt == "I wait."
+
+
+def test_the_hiring_mixin_contributes_hire_to_operations_once() -> None:
+    class Deeper(HiringFifthEngine):
+        pass
+
+    assert HiringFifthEngine.operations == (*FifthEngine.operations, HIRE)
+    assert Deeper.operations.count(HIRE) == 1

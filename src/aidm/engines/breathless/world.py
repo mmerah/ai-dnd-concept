@@ -8,8 +8,9 @@ from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import PendingOption
 from aidm.core.views import Pairs
-from aidm.engines.base import PLAYER_ID, Counter, Person
-from aidm.engines.scenes.world import SceneCanon, SceneWorld
+from aidm.engines.base import PLAYER_ID, Counter
+from aidm.engines.hiring import ItemSheet, Sheeted, SheetedWorld
+from aidm.engines.scenes.world import SceneCanon
 
 type Die = Literal[4, 6, 8, 10, 12]
 LADDER: tuple[Die, ...] = (4, 6, 8, 10, 12)
@@ -32,7 +33,7 @@ class Item(Mutable):
     die: Die
 
 
-class SurvivorSheet(Mutable):
+class SurvivorSheet(ItemSheet[Item]):
     """The dice a survivor rolls."""
 
     pronouns: str = ""
@@ -40,7 +41,6 @@ class SurvivorSheet(Mutable):
     skills: dict[Skill, Die] = Field(min_length=6, max_length=6)
     # where each stands now; `skills` is as created
     worn: dict[Skill, Die] = Field(min_length=6, max_length=6)
-    items: dict[EntityId, Item] = Field(default_factory=dict)
     med_kit: bool = False
     loot: Die = LOOT_START
     stress: Counter = Field(default_factory=lambda: Counter(current=0, maximum=STRESS_MAX))
@@ -102,27 +102,14 @@ class SurvivorSheet(Mutable):
         return tuple(options)
 
 
-class Survivor(Person):
-    """A person in this game. Only a sheet gives them dice."""
-
-    sheet: SurvivorSheet | None = Field(default=None, description="Leave empty.")
-
-    def dice(self) -> SurvivorSheet:
-        if self.sheet is None:
-            raise Refusal(f"{self.name} carries no dice")
-        return self.sheet
-
+class Survivor(Sheeted[SurvivorSheet]):
     def require_item(self, item_id: EntityId) -> Item:
-        item = self.dice().items.get(item_id)
-        if item is None:
-            raise Refusal(f"{item_id!r} is not among {self.name}'s items")
-        return item
+        return self.dice().require(item_id, self.name)
 
     def drop_item(self, item_id: EntityId) -> list[Fact]:
-        item = self.require_item(item_id)
-        del self.dice().items[item_id]
+        item = self.dice().drop(item_id, self.name)
         trace = f"{self.mention} drops {item.name}"
-        return [self.fact("item_dropped", trace, card=f"Dropped {item.name}")]
+        return [self.fact(trace, card=f"Dropped {item.name}")]
 
     def change_stress(self, amount: int, why: str) -> list[Fact]:
         if amount == 0:
@@ -136,7 +123,7 @@ class Survivor(Person):
         sheet.med_kit = False
         facts = sheet.stress.change(self, -MED_KIT_CLEARS, "Stress", "the med kit")
         used = f"{self.name} uses the med kit"
-        facts.append(self.fact("med_kit_used", used, card="Med kit used"))
+        facts.append(self.fact(used, card="Med kit used"))
         return facts
 
     def take_loot(self, item: str, granted: Die, choice: str) -> Fact:
@@ -159,7 +146,7 @@ class Survivor(Person):
             card = f"Swapped {old.name} for {item} (d{granted})"
         else:
             raise Refusal(f"{choice!r} is not a valid loot choice")
-        return self.fact("loot_taken", card, card=card)
+        return self.fact(card, card=card)
 
     def rows(self) -> Pairs:
         return self.sheet.rows() if self.sheet is not None else ()
@@ -175,35 +162,10 @@ class Survivor(Person):
                 detail += ", med kit"
         return super().line(rows=rows, detail=detail)
 
-    def unwritten(self) -> str:
-        parts = [
-            part
-            for part in (super().unwritten(), "a sheet" if self.sheet is not None else "")
-            if part
-        ]
-        return ", ".join(parts)
 
-
-class BreathlessWorld(SceneWorld[Survivor, Survivor]):
-    @model_validator(mode="after")
-    def _player_carries_a_sheet(self) -> Self:
-        if self.player.sheet is None:
-            raise ValueError("the player carries no sheet")
-        return self
-
+class BreathlessWorld(SheetedWorld[Survivor, Survivor]):
     def require_actor(self, actor_id: EntityId | None) -> Survivor:
-        if actor_id is None or actor_id == self.player.id:
-            return self.player
-        entity = self.require(actor_id)
-        if entity.alive and entity.sheet is not None and entity.id in self.party:
-            return entity
-        raise Refusal(f"{entity.name} is not the player or a hired survivor")
-
-    def require_hireable(self, entity_id: EntityId) -> Survivor:
-        member = self.require_here(entity_id, alive=True)
-        if member.sheet is not None:
-            raise Refusal(f"{member.name} already carries a sheet")
-        return member
+        return self.require_sheeted(actor_id, noun="survivor")
 
 
 BreathlessGame = Game[BreathlessWorld]
