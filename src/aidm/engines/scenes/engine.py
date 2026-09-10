@@ -89,8 +89,9 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
     packs: dict[str, K]
     operations = (DEPARTURE, COMPLICATION)
 
-    def prepare(self) -> None:
+    def __init__(self) -> None:
         self.packs = read_packs(self.directory / "packs", self.pack)
+        super().__init__()  # last: `master_tools` reads the packs
 
     def family_rules(self) -> str:
         return read_prompt(RULES_PROMPT)
@@ -210,8 +211,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
             return COMPLICATION_UNWRITTEN
         return super().unwritten(request)
 
-    def act(self, draft: G, action: Slug, words: str) -> None:
-        del words
+    def act(self, draft: G, action: Slug, _words: str) -> None:
         if action != MOVE_ON.id or not self.world(draft).run.offered:
             raise Refusal("the way on has changed since the page was drawn")
         draft.note(MOVING_ON)
@@ -346,4 +346,4 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
         return ()
 
     @abstractmethod
-    def guidance(self, picks: Sequence[Slug]) -> str: ...
+    def guidance(self, picks: Sequence[Slug], /) -> str: ...

@@ -47,9 +47,7 @@ def _catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> Launc
 
 def _opening_state(settings: Settings) -> Loner3eGame:
     """The launcher reads saves, so a test needs a state a real game would have written."""
-    state = Runtime(settings, ScriptedSpawner()).session(TARGET).state
-    state = narrowed(state, Loner3eGame)
-    return state
+    return narrowed(Runtime(settings, ScriptedSpawner()).session(TARGET).state, Loner3eGame)
 
 
 def _scenarios_copy(tmp_path: Path) -> Path:

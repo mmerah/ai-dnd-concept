@@ -166,6 +166,14 @@ and why, anything known and accepted. Phases 1–3 landed in one commit, in one 
   the latter.
 - Known and accepted: `Refusal` stays imported in `engines/base.py` and `scenes/world.py`; the
   validators no longer raise it but `World.join`/`part` and the `require_*` methods do.
+- Cuts pass after the commit (maintainer's ask), `src` 10,209 → 10,199, `tests` 9,483 → 9,462:
+  **re-opens step 8**: the `prepare` hook had one overrider, so `SceneEngine.__init__` is back
+  with its ordering comment; **re-opens step 11**: the two one-line comments on `busy` and
+  `playing` restated their bodies and went; `_speaks` keeps one line. The seam's
+  `creation_steps`, `create_character`, `act`, `guidance`, `WorldsmithAnswer.__call__` and
+  `FileStore.save` are positional-only (every caller was), so an ignoring override or stub
+  `_`-prefixes its parameter and the `del name` lines went. Four `support/game.py` helpers
+  return their narrowed value directly.
 
 ## Phase 8 — One name, one meaning
 

@@ -158,9 +158,8 @@ async def test_write_next_asks_for_the_map_draft() -> None:
     prompts: list[str] = []
 
     async def answer[M: BaseModel](
-        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+        prompt: str, model: type[M], _refusal: Callable[[M], str | None]
     ) -> M:
-        del refusal
         recorded.append(model)
         prompts.append(prompt)
         return model.model_validate(THIN.model_dump())
@@ -176,9 +175,8 @@ async def test_write_next_prompt_carries_scenes_so_far() -> None:
     prompts: list[str] = []
 
     async def answer[M: BaseModel](
-        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+        prompt: str, model: type[M], _refusal: Callable[[M], str | None]
     ) -> M:
-        del refusal
         prompts.append(prompt)
         return model.model_validate(THIN.model_dump())
 
@@ -189,9 +187,8 @@ async def test_write_next_prompt_carries_scenes_so_far() -> None:
 
 async def test_advance_raises_on_an_operation_the_engine_does_not_write() -> None:
     async def answer[M: BaseModel](
-        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+        _prompt: str, _model: type[M], _refusal: Callable[[M], str | None]
     ) -> M:
-        del prompt, model, refusal
         raise AssertionError("the worldsmith is not asked")
 
     with pytest.raises(ValueError, match="writes no 'departure'"):

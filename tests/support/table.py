@@ -141,8 +141,7 @@ class ScriptedSpawner:
 
 
 def stub_worldsmith(answer: Mapping[str, object]) -> WorldsmithAnswer:
-    async def answered[M: BaseModel](prompt: str, model: type[M], refusal: Objection[M]) -> M:
-        del prompt, refusal
+    async def answered[M: BaseModel](_prompt: str, model: type[M], _refusal: Objection[M]) -> M:
         return model.model_validate(answer)
 
     return answered

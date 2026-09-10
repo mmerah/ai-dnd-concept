@@ -37,7 +37,7 @@ class FileStore:
         path = self._save_path(slug)
         return _read_text(path) if path.is_file() else None
 
-    def save(self, slug: str, state: AnyGame) -> None:
+    def save(self, slug: str, state: AnyGame, /) -> None:
         write_text(self._save_path(slug), state.model_dump_json(indent=2))
 
     def media_dir(self, slug: str) -> Path:

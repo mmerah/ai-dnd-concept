@@ -44,7 +44,6 @@ class Engine[P: Person, G: Game[Any]](ABC):
     operations: tuple[Slug, ...]  # the requests this engine writes
 
     def __init__(self) -> None:
-        self.prepare()
         self.instructions = read_prompt(self.directory / "rules.md")
         tools = self.master_tools()
         names = [tool.name for tool in tools]
@@ -52,10 +51,6 @@ class Engine[P: Person, G: Game[Any]](ABC):
             raise ValueError(f"the {self.id!r} engine names a tool twice: {names}")
         self.tools = {tool.name: tool for tool in tools}
         self.instructions = f"{self.instructions}\n{self.family_rules()}"
-
-    def prepare(self) -> None:
-        """What `master_tools` needs before it runs; nothing by default."""
-        return None
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
         return ()
@@ -190,9 +185,9 @@ class Engine[P: Person, G: Game[Any]](ABC):
     @abstractmethod
     def master_tools(self) -> tuple[MasterTool[G], ...]: ...
     @abstractmethod
-    def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]: ...
+    def creation_steps(self, picks: Picks, /) -> tuple[CreationStep, ...]: ...
     @abstractmethod
-    def create_character(self, name: str, brief: str, picks: Picks) -> AnyCharacter: ...
+    def create_character(self, name: str, brief: str, picks: Picks, /) -> AnyCharacter: ...
     @abstractmethod
     def family_rules(self) -> str:
         """What every engine of this family is told, after its own rules."""
@@ -221,7 +216,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
         playable: Callable[[AnyScenario], str | None],
     ) -> AnyScenario: ...
     @abstractmethod
-    def act(self, draft: G, action: Slug, words: str) -> None:
+    def act(self, draft: G, action: Slug, words: str, /) -> None:
         """The page's action against the state now: refuse it stale, else request or note."""
 
     @abstractmethod

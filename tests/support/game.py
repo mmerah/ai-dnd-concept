@@ -38,22 +38,16 @@ def loner_sheet(state: Loner3eGame, entity_id: EntityId) -> Loner3eSheet:
 
 
 def scenario() -> Loner3eScenario:
-    loaded = LIBRARY.read_scenario("whispering-vault", SCENARIO_MODELS)
-    loaded = narrowed(loaded, Loner3eScenario)
-    return loaded
+    return narrowed(LIBRARY.read_scenario("whispering-vault", SCENARIO_MODELS), Loner3eScenario)
 
 
 def character() -> Loner3eCharacter:
-    engine = ENGINES_BUILT[LONER3E]
-    loaded = LIBRARY.read_character("kael", engine.id, engine.character)
-    loaded = narrowed(loaded, Loner3eCharacter)
-    return loaded
+    return narrowed(LIBRARY.read_character("kael", ENGINE.id, ENGINE.character), Loner3eCharacter)
 
 
 def initialized() -> tuple[AnyEngine, Loner3eGame]:
     engine, state = game(LONER3E)
-    state = narrowed(state, Loner3eGame)
-    return engine, state
+    return engine, narrowed(state, Loner3eGame)
 
 
 def open_game(
@@ -74,15 +68,14 @@ def open_game(
 
 
 def session(directory: Path) -> GameService:
-    engine = ENGINES_BUILT[LONER3E]
     spawner = ScriptedSpawner()
     store = FileStore(directory)
     return GameService(
         target=TARGET,
         scenario=scenario(),
         character=character(),
-        engine=engine,
-        roles=Roles(spawner, engine),
+        engine=ENGINE,
+        roles=Roles(spawner, ENGINE),
         store=store,
         rng=Random(1),
     )

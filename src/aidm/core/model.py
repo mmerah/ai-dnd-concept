@@ -80,7 +80,7 @@ class Character[P: BaseModel](Frozen):
 
 class WorldsmithAnswer(Protocol):
     async def __call__[M: BaseModel](
-        self, prompt: str, model: type[M], refusal: Objection[M]
+        self, prompt: str, model: type[M], refusal: Objection[M], /
     ) -> M: ...
 
 

@@ -114,8 +114,7 @@ class TunnelGoonsEngine(
             master_tool("hire", HIRE_TOOL, Hire, self.hire),
         )
 
-    def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
-        del picks
+    def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
         ability_steps = tuple(
             CreationStep(
                 id=ability,

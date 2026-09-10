@@ -74,7 +74,6 @@ class GameService:
 
     @property
     def busy(self) -> bool:
-        # Is any role working on this save; the page and `busy_refusal` ask this.
         return self.phase is not None
 
     @property
@@ -197,8 +196,7 @@ class GameService:
         self.speak(self._newest())
 
     def _speaks(self, candidate: Person) -> bool:
-        # Whether to spawn a narrator for this member; it changes no state and lands no fact, so
-        # it is the one die that is not the game's and stays outside `core.facts.roll`.
+        # The one die that is not the game's: it spawns a narrator, changes no state, lands no fact.
         return self.rng.randint(1, 10) <= INTERJECTION_ODDS[candidate.chattiness]
 
     async def _generate(self, words: str = "") -> bool:
@@ -351,7 +349,6 @@ class Runtime:
         return () if playing is None else tuple(playing.engine.tools.values())
 
     def playing(self) -> GameService | None:
-        # Is a master mid-turn with a draft to call tools on; the tool surface asks this.
         in_flight = [session for session in self._sessions.values() if session.turn is not None]
         if len(in_flight) > 1:
             # Single-player: `busy_refusal` and `Runtime.lock` block two turns in flight, so this
