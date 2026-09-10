@@ -37,8 +37,8 @@ invalidates a save.
    (`IDEAS.md`, the Maze Rats item), so the family stays and only its asymmetry against `scenes/` is
    fixed (Phase 2). `MapDraft` and `RoomCanon` stay two types: the compile-time guarantee that a
    draft is not a canon is worth the duplicate shape.
-2. **The `Engine` seam is not split.** It declares 11 class attributes, 12 abstract methods and 19
-   concrete ones plus `__init__`, but the two families answer 9 of the 12, so a concrete engine
+2. **The `Engine` seam is not split.** It declares 11 class attributes, 13 abstract methods and 18
+   concrete ones plus `__init__`, but the two families answer 10 of the 13, so a concrete engine
    writes only `master_tools`, `creation_steps`, `create_character` and one family hook. No engine
    stubs a method to satisfy it (`FifthEngine`, `tests/core/test_seam.py:41-71`, is 30 lines).
    Every public member has a caller. Do not propose an interface split again.
