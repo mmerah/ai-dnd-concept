@@ -106,6 +106,8 @@ world needs `_install_run(draft)` split out of `apply_scene`. **Player change.**
 
 ## 4. Packs become engine data, not game data
 
+**Decided: option (c) only. A scenario (and, by intent, a character) names the packs it plays; the mechanism stays. Move `pack_options` off the seam and delete the room validator line.**
+
 **What.** The pack-selection path serves one engine with two packs. It runs through
 `Scenario.packs` + validator and `Game.packs` + validator (`core/model.py:64-70, 105-114`),
 `Engine.pack_options` on the seam (`seam.py:55-56`), `SceneEngine.validate`'s two pack checks
@@ -130,6 +132,8 @@ complication tables always come from `srd`. Only Loner has a second pack (`ap01-
 
 ## 5. Hiring: one rule, fewer type parameters, one scene-world type
 
+**Decided: accepted.**
+
 **What.** "The player, or a living party member with a sheet" is written twice:
 `SheetedWorld.require_actor/require_hireable` (`hiring.py:66-78`, scenes only) and
 `TunnelGoonsWorld.require_actor_and_sheet/require_hireable` (`tunnelgoons/world.py:83-97`),
@@ -151,6 +155,8 @@ the bases"). Every scene engine binds `SceneWorld[C, P]`'s two parameters to the
 player type re-adds the parameter. **Confidence.** Medium-high. **Time.** 3–4 h, after 2.
 
 ## 6. Seam and pipeline tidy: delete what a second check or a wrapper repeats
+
+**Decided: accepted, all eight items, including the `history`/`scenes` wrappers.**
 
 One bundle, all high confidence, about −100 in total, 2 h.
 
