@@ -109,7 +109,10 @@ body, body.body--dark {
 }
 .game-main { margin: var(--game-inset) }
 .game-drawer { background: var(--game-bg); border: 0 }
-.game-drawer-panel { margin: var(--game-inset); height: calc(100% - 2 * var(--game-inset)) }
+.game-drawer-panel {
+  margin: var(--game-inset);
+  width: calc(100% - 2 * var(--game-inset)); height: calc(100% - 2 * var(--game-inset));
+}
 .game-drawer .q-tab-panels { background: transparent }
 
 .q-header {
@@ -163,7 +166,7 @@ body, body.body--dark {
   box-shadow: none;
 }
 /* An expansion brings its own padding, so the card around it only lends surface and edge. */
-.q-expansion-item.game-card { padding: 0; overflow: hidden }
+.q-expansion-item.game-card, .q-tab-panels.game-card { padding: 0; overflow: hidden }
 .q-expansion-item.game-card .q-item { min-height: 2.75rem }
 .q-menu {
   color: var(--game-text);
@@ -210,7 +213,6 @@ body, body.body--dark {
 .q-btn--rectangle { min-height: 2.5rem }
 /* Gold is a light fill: its words are the page's own dark, never Quasar's white. */
 .q-btn.bg-primary { color: var(--game-bg) !important; box-shadow: 0 3px 12px #0002 }
-.q-btn--flat.text-white { color: var(--game-muted) !important }
 .q-btn--outline { background: var(--game-wash) }
 .q-btn--outline:before { border-color: var(--game-border) }
 .q-btn--outline:hover:before { border-color: var(--game-accent) }
@@ -244,7 +246,7 @@ body, body.body--dark {
 .game-scene {
   --game-scene-height: clamp(9rem, 24vh, 15rem);
   position: relative; overflow: hidden; flex: none;
-  width: auto; align-self: stretch; margin: var(--game-inset);
+  align-self: stretch; margin: var(--game-inset);
   border: 1px solid var(--game-border);
   border-radius: calc(var(--game-radius) * .8);
   background: var(--game-surface);
@@ -278,7 +280,7 @@ body, body.body--dark {
     max(0px, (100% + 2 * var(--game-inset) - var(--game-measure)) / 2) + 1rem - var(--game-inset)
   );
 }
-.game-scene-title { color: var(--game-text); line-height: 1.1 }
+.game-scene-title { font-size: 2.125rem; font-weight: 700; line-height: 1.1 }
 
 /* No side padding: an avatar starts on the measure's edge, where the scene title starts. */
 .game-message { padding-inline: 0 }
@@ -349,7 +351,7 @@ body, body.body--dark {
     margin: 0; border-left: 0; border-right: 0; border-radius: 0;
   }
   .game-main, .game-scene { border-top: 0 }
-  .game-drawer-panel { height: 100% }
+  .game-drawer-panel { width: 100%; height: 100% }
   /* No room beside the text: the frame goes full width on top and fades into the words below. */
   .game-scene:has(.game-scene-art) { height: auto }
   .game-scene-body { flex-direction: column-reverse }

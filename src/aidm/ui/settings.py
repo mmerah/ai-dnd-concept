@@ -8,7 +8,7 @@ from pydantic import BaseModel, SecretStr, ValidationError
 from pydantic.fields import FieldInfo
 
 from aidm.config import Settings, env_key, save_settings
-from aidm.ui.widgets import page_header
+from aidm.ui.widgets import page_body, page_header, page_intro
 
 type Boxes = dict[tuple[str, ...], Box]
 # A cleared box writes no key at all, which is the only way back to a field's own default.
@@ -32,21 +32,20 @@ class SettingsForm:
         with page_header("Settings"):
             ui.space()
             ui.button("Save", icon="save", on_click=self.save).props("color=primary")
-        with ui.column().classes("w-full q-pa-lg items-center"):
-            with ui.column().style("width: min(56rem, 100%); gap: 1rem"):
-                ui.label(
-                    "Each box is one key in .env. Saving applies it; reopen an open game to pick "
-                    "it up. The server port applies at the next start, and .mcp.json must match it."
-                ).classes("text-sm opacity-70")
-                with (
-                    ui.tabs().props("dense outside-arrows mobile-arrows").classes("w-full") as tabs
-                ):
-                    for name, field, _ in groups:
-                        ui.tab(name, label=_label((name,), field))
-                with ui.tab_panels(tabs, value=groups[0][0]).classes("w-full"):
-                    for name, field, value in groups:
-                        with ui.tab_panel(name):
-                            self.render(value, field, (name,))
+        with page_body():
+            page_intro(
+                "Configuration",
+                "Settings",
+                "Each box is one key in .env. Saving applies it; reopen an open game to pick "
+                "it up. The server port applies at the next start, and .mcp.json must match it.",
+            )
+            with ui.tabs().props("dense outside-arrows mobile-arrows").classes("w-full") as tabs:
+                for name, field, _ in groups:
+                    ui.tab(name, label=_label((name,), field))
+            with ui.tab_panels(tabs, value=groups[0][0]).classes("w-full game-card"):
+                for name, field, value in groups:
+                    with ui.tab_panel(name):
+                        self.render(value, field, (name,))
 
     def render(self, value: object, field: FieldInfo, path: tuple[str, ...]) -> None:
         if not isinstance(value, BaseModel):
@@ -54,7 +53,11 @@ class SettingsForm:
             return
         for name, nested, nested_value in _shown(value):
             if isinstance(nested_value, BaseModel):
-                with ui.expansion(_label((*path, name), nested)).classes("w-full").props("dense"):
+                with (
+                    ui.expansion(_label((*path, name), nested))
+                    .classes("w-full game-card")
+                    .props("dense")
+                ):
                     self.render(nested_value, nested, (*path, name))
             else:
                 self.render(nested_value, nested, (*path, name))
@@ -133,12 +136,7 @@ def _widget(label: str, field: FieldInfo, value: object) -> Box:
     if bare is SecretStr:
         # Never read a stored key back into the DOM; blank means "leave the stored key alone".
         placeholder = "set — type to replace" if value else "not set"
-        # `stack-label`: a floating label would sit on top of the placeholder in an empty box.
-        return (
-            ui.input(label, password=True, placeholder=placeholder)
-            .classes("w-full")
-            .props("stack-label")
-        )
+        return ui.input(label, password=True, placeholder=placeholder).classes("w-full")
     if bare is bool:
         return ui.switch(label, value=value is True).classes("w-full")
     if get_origin(bare) is Literal:

@@ -25,6 +25,7 @@ from aidm.ui.widgets import (
     heading,
     labeled_value,
     page_header,
+    section,
 )
 
 _STEP_COPY: dict[Role, tuple[str, str]] = {
@@ -116,19 +117,19 @@ class GamePage:
             session.state.scenario.title, session.engine.title, engine=session.engine.id
         ):
             ui.space()
-            self.sound = ui.button(icon="volume_up", on_click=self.toggle_sound).props(
-                "flat color=white round"
-            )
-            ui.button(icon="menu_book", on_click=lambda: self.drawer.toggle()).props(
-                "flat color=white round"
-            )
-            with ui.button(icon="more_vert").props("flat color=white round"), ui.menu():
+            self.sound = ui.button(icon="volume_up", on_click=self.toggle_sound).props("flat round")
+            ui.button(icon="menu_book", on_click=lambda: self.drawer.toggle()).props("flat round")
+            with ui.button(icon="more_vert").props("flat round"), ui.menu():
                 ui.menu_item("Restart this game", on_click=self.confirm_restart)
 
         ui.query(".nicegui-content").style("padding: 0; gap: 0")
         with ui.row().classes("w-full h-full no-wrap").style("gap: 0"):
             self.nav_rail()
-            with ui.column().classes("h-full flex-grow").style("gap: 0; min-width: 0"):
+            with (
+                ui.column()
+                .classes("self-stretch flex-grow game-panel game-main")
+                .style("gap: 0; min-width: 0")
+            ):
                 self.scene_header()
                 # No padding class: NiceGUI already pads the scroll content, and twice would
                 # push every bubble off the measure the scene title and composer sit on.
@@ -140,10 +141,11 @@ class GamePage:
                 ui.timer(0.5, lambda: transcript.scroll_to(percent=1.0), once=True)
                 self.foot()
 
-        self.drawer = (
-            ui.right_drawer(value=None, bordered=True).props("width=420").classes("game-drawer")
-        )
-        with self.drawer, ui.column().classes("w-full h-full").style("gap: 0"):
+        self.drawer = ui.right_drawer(value=None).props("width=420").classes("game-drawer")
+        with (
+            self.drawer,
+            ui.column().classes("game-panel game-drawer-panel").style("gap: 0"),
+        ):
             with ui.row().classes("w-full items-center no-wrap").style("gap: 0"):
                 with ui.tabs(on_change=lambda e: self.mark_rail(str(e.value))).classes(
                     "flex-grow"
@@ -195,7 +197,7 @@ class GamePage:
         ):
             self.new_activity = ui.button(
                 "New activity", icon="arrow_downward", on_click=self.catch_up
-            ).props("no-caps dense")
+            ).props("dense")
             self.new_activity.set_visibility(False)
             self.decision_panel()
             self.way_on_panel()
@@ -206,7 +208,7 @@ class GamePage:
             for name, icon, label in RAIL:
                 self.rail[name] = (
                     ui.button(label, icon=icon, on_click=partial(self.show_tab, name))
-                    .props("flat no-caps")
+                    .props("flat")
                     .classes("game-rail-btn")
                 )
         self.mark_rail(SCENE_TAB)
@@ -224,13 +226,13 @@ class GamePage:
         session = self.session
         scene = session.engine.narrator_view(session.state)
         art = session.scene_art()
-        with ui.element("div").classes("game-scene w-full"):
+        with ui.element("div").classes("game-scene"):
             if art is not None:
                 ui.image(art).classes("game-scene-wash")
             with ui.row().classes("game-scene-body w-full no-wrap").style("gap: 0"):
                 with ui.column().classes("game-scene-text").style("gap: 0.15rem"):
                     ui.label("current scene").classes("text-xs game-eyebrow")
-                    ui.label(scene.title).classes("text-h4 font-bold game-scene-title")
+                    ui.label(scene.title).classes("game-title game-scene-title")
                     ui.label(scene.situation).classes("text-sm opacity-80")
                 if art is not None:
                     # Whole frame, bled to the edges: a drawn scene puts what matters anywhere,
@@ -275,7 +277,7 @@ class GamePage:
                 ui.label(f"{proposed.lines[0].speaker} proposes: {proposed.proposal}").classes(
                     "text-sm"
                 )
-                ui.button("Accept", on_click=accept).props("no-caps outline dense")
+                ui.button("Accept", on_click=accept).props("outline dense")
         # The newest clip only: every `ui.audio` registers a route, and a refresh rebuilds them all.
         if clip := session.newest_clip():
             ui.audio(clip, autoplay=clip == self.autoplay_clip)
@@ -348,19 +350,18 @@ class GamePage:
                 # The sheet leads in both engine families, so it carries the portrait: one card
                 # for one character, rather than a name and a brief said twice down the drawer.
                 sheet = index == 0
-                with ui.column().classes("game-card w-full" + (" game-portrait" if sheet else "")):
-                    heading(panel.title, tight=True)
+                with section(panel.title, classes="game-portrait" if sheet else ""):
                     if sheet:
                         entity_row(session.icon(player.id), player.name, player.brief)
                     if not panel.rows:
-                        ui.label("nothing").classes("text-sm opacity-60 mt-2")
+                        ui.label("nothing").classes("text-sm opacity-60")
                     for row in panel.rows:
                         if row.icon_id is not None:
                             entity_row(session.icon(row.icon_id), row.label, row.detail)
                         elif row.detail:
                             labeled_value(row.label, row.detail)
                         else:
-                            ui.label(row.label).classes("text-sm mt-1")
+                            ui.label(row.label).classes("text-sm")
 
     @ui.refreshable_method
     def journal(self) -> None:
@@ -390,7 +391,7 @@ class GamePage:
             self.box = (
                 ui.input()
                 .classes("flex-grow")
-                .props('outlined autogrow type=textarea borderless input-style="max-height: 9rem"')
+                .props('autogrow type=textarea borderless input-style="max-height: 9rem"')
             )
             self.box.bind_value(app.storage.tab, f"draft:{self.session.slug}")
             # Enter sends on a fine pointer only; a touch keyboard's Enter must stay a newline.
@@ -411,7 +412,7 @@ class GamePage:
             )
             self.action_button = ui.button(
                 icon="arrow_forward", on_click=lambda: self.submit(acting=True)
-            ).props("no-caps outline dense")
+            ).props("outline dense")
 
     def poll_turn(self) -> None:
         now = Observed.of(self.session)
