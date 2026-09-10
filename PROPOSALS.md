@@ -9,11 +9,13 @@ code changes state or rolls dice; the narrator reads revealed facts only; strict
 every boundary; engine-typed saves). Where a proposal touches something the player sees, the
 "Player change" line says exactly what.
 
-**Do first:** 1, 2, 6. All three are mechanical, need no decision, and clear the ground for 3, 4, 5.
-About half a day together.
+**All ten decided.** Accepted: 1, 2 (request not persisted), 3 (full; source stays in saves),
+5, 6 (all eight), 7 (steps 1–3, `turn` layer stays), 8 (renderer and prose), 9 (tests, and qa cut
+to browser-only). Reduced: 4 (option c only). Refused: 10 (dice stay as they are).
 
-**Decide first:** 3, 4, 10. They change file shapes or what the player sees, and they gate whether
-saves and the four `scenarios/*/world.json` are rewritten in one pass or two.
+**Suggested order:** 1, 2, 6 first (mechanical, about half a day together), then 3 and 5 (the two
+that reshape models), then 7, 8, 4(c), and 9 last. Proposal 3 rewrites the four
+`scenarios/*/world.json`; proposal 2 makes every existing save stale once. Do both in one pass.
 
 ---
 
@@ -264,6 +266,8 @@ tests already prove.
 **Time.** 3–4 h for 1–2; half a day for 3(a).
 
 ## 10. Decision: the 3D dice stack
+
+**Decided: option (c), keep as is.**
 
 **What.** `ui/lib/dice-box-threejs.es.js` (17,248 lines, 692 KB), `ui/dice_assets/` (28 mp3,
 232 KB), `ui/dice_tray.js` (95), `ui/dice.py` (38), about 35 lines of wiring in `ui/game.py`,
