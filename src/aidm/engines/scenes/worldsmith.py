@@ -36,17 +36,15 @@ SURPRISE = (
 )
 
 
-def scene_refusal[C: Person, P: Person](
-    draft: SceneDraft[C], world: SceneWorld[C, P] | None = None
+def scene_refusal[C: Person](
+    draft: SceneDraft[C], world: SceneWorld[C] | None = None
 ) -> str | None:
     """Free: the drafts may not import the world, and the authoring call has no world."""
     unmet = scene_unmet(draft, world)
     return None if not unmet else "the scene needs " + "; ".join(unmet)
 
 
-def scene_unmet[C: Person, P: Person](
-    draft: SceneDraft[C], world: SceneWorld[C, P] | None
-) -> list[str]:
+def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) -> list[str]:
     """The one bar: every refusal the install makes, so the worldsmith's one retry sees them all."""
     filed: Mapping[Slug, C] = {} if world is None else world.cast
     everyone: Mapping[Slug, Thing] = (

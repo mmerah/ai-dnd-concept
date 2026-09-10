@@ -13,7 +13,8 @@ from aidm.core.views import NarratorView, Pairs
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.packs import ScenePack
-from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld
+from aidm.engines.scenes.tools import SceneDraft
+from aidm.engines.scenes.world import SceneWorld
 
 FIFTH = EngineId("fifth")
 KEEPER = "keeper"
@@ -22,7 +23,7 @@ SITUATION = (
 )
 
 
-class FifthState(SceneWorld[Person, Person]):
+class FifthState(SceneWorld[Person]):
     pass
 
 
@@ -30,7 +31,7 @@ class FifthGame(Game[FifthState]):
     pass
 
 
-class FifthScenario(Scenario[SceneCanon[Person]]):
+class FifthScenario(Scenario[SceneDraft[Person]]):
     pass
 
 
@@ -38,7 +39,7 @@ class FifthCharacter(Character[Person]):
     pass
 
 
-class FifthEngine(SceneEngine[Person, Person, FifthGame, ScenePack]):
+class FifthEngine(SceneEngine[Person, FifthGame, ScenePack]):
     """A fifth scene engine: its state model, its creation, its tools and its sections."""
 
     id = FIFTH
@@ -115,15 +116,13 @@ def _scenario() -> FifthScenario:
         ),
         engine=FIFTH,
         packs=("srd",),
-        payload=SceneCanon(
+        payload=SceneDraft[Person](
+            place="taproom",
+            title="The Taproom",
+            focus="Who is asking after Wren?",
+            situation=SITUATION,
+            present=("keeper",),
             cast={KEEPER: keeper},
-            opening=SceneRun(
-                place="taproom",
-                title="The Taproom",
-                focus="Who is asking after Wren?",
-                situation=SITUATION,
-                here=[KEEPER],
-            ),
         ),
     )
 

@@ -223,7 +223,7 @@ class GameService:
             draft.generation = None
             self.save(
                 self.engine.close(
-                    draft, (), (self.engine.unwritten(request),), prompt=words, mark=mark
+                    draft, (), (self.engine.unwritten[request.operation],), prompt=words, mark=mark
                 )
             )
             grown = False
@@ -308,8 +308,6 @@ class GameService:
                 f"save scenario is {state.scenario.title!r}, "
                 f"selected scenario is {self.scenario.meta.title!r}"
             )
-        # The write was lost with the process: a reload never finds a request.
-        state.generation = None
         return state
 
 
@@ -392,7 +390,7 @@ class Runtime:
         scenario = await engine.author(
             meta, source, packs, Roles(self.spawner, engine).worldsmith(), playable
         )
-        self.library.write_scenario(name, scenario, document)
+        self.library.write_scenario(name, scenario)
         LOGGER.info("scenario written: slug=%s title=%r", name, meta.title)
         return name
 

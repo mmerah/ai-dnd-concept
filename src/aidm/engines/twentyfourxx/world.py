@@ -7,8 +7,10 @@ from aidm.core.entities import Frozen, Mutable, Refusal, Slug, check_unique, slu
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Pairs
-from aidm.engines.hiring import ItemSheet, Sheeted, SheetedWorld
-from aidm.engines.scenes.world import SceneCanon
+from aidm.engines.base import Sheeted
+from aidm.engines.hiring import ItemSheet
+from aidm.engines.scenes.tools import SceneDraft
+from aidm.engines.scenes.world import SceneWorld
 
 type SkillDie = Literal[8, 10, 12]
 LADDER: tuple[SkillDie, ...] = (8, 10, 12)
@@ -160,8 +162,7 @@ class Crewmate(Sheeted[Sheet]):
         return (*self.sheet.rows(), *((("Gear", gear),) if gear else ()))
 
 
-class TwentyfourxxWorld(SheetedWorld[Crewmate, Crewmate]):
-    member_noun = "crew member"
+class TwentyfourxxWorld(SceneWorld[Crewmate]):
     job: str = ""
     ship: dict[Slug, Gear] = Field(
         default_factory=lambda: {
@@ -171,7 +172,7 @@ class TwentyfourxxWorld(SheetedWorld[Crewmate, Crewmate]):
     )
 
     def sheeted_members(self) -> list[Crewmate]:
-        return [member for member in self.members() if member.sheet is not None]
+        return [member for member in self.members() if member.hired()]
 
     def require_gear(self, actor: Crewmate, item_id: Slug) -> Gear:
         """The actor's item or a ship function: both break to defend and both are repaired."""
@@ -234,7 +235,7 @@ class TwentyfourxxWorld(SheetedWorld[Crewmate, Crewmate]):
 
 TwentyfourxxGame = Game[TwentyfourxxWorld]
 
-TwentyfourxxScenario = Scenario[SceneCanon[Crewmate]]
+TwentyfourxxScenario = Scenario[SceneDraft[Crewmate]]
 
 TwentyfourxxCharacter = Character[Crewmate]
 

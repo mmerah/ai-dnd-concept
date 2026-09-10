@@ -81,7 +81,7 @@ def test_a_character_the_catalog_does_not_hold_is_refused(tmp_path: Path) -> Non
         _ = catalog.target("whispering-vault", "nobody")
 
 
-def test_a_directory_holding_no_canon_is_skipped(tmp_path: Path) -> None:
+def test_a_directory_holding_no_world_is_skipped(tmp_path: Path) -> None:
     scenarios = _scenarios_copy(tmp_path)
     (scenarios / "notes").mkdir()
     shutil.copytree(scenarios / "whispering-vault", scenarios / "aaa-draft")
@@ -290,7 +290,7 @@ async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: P
     assert not scenarios.exists()
 
 
-async def test_a_scenario_written_from_a_document_keeps_it_beside_the_world(tmp_path: Path) -> None:
+async def test_a_scenario_written_from_a_document_carries_its_text(tmp_path: Path) -> None:
     scenarios = tmp_path / "scenarios"
     spawner = ScriptedSpawner(answers={"worldsmith": [json.dumps(_OPENING)]})
     runtime = Runtime(ui_settings(tmp_path, scenarios), spawner)
@@ -303,7 +303,6 @@ async def test_a_scenario_written_from_a_document_keeps_it_beside_the_world(tmp_
         "kael",
     )
 
-    assert (scenarios / name / "source.md").is_file()
     catalog = _catalog(runtime.settings, runtime.engines)
     state = runtime.session(catalog.target(name, "kael")).state
     assert state.payload.source.startswith("SOURCE DOCUMENT:")

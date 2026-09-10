@@ -10,7 +10,7 @@ from aidm.core.play import DecisionOption, PendingDecision
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Pairs
 from aidm.engines.base import CHANGE_WORLD, PLAYER_ID
-from aidm.engines.hiring import HIRE_TOOL, Hire, Hiring
+from aidm.engines.hiring import HIRE, HIRE_TOOL, HIRE_UNWRITTEN, Hire, Hiring
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.tools import Move
 from aidm.engines.rooms.world import Prop
@@ -87,6 +87,7 @@ class TunnelGoonsEngine(
     dweller = Npc
     world_type = TunnelGoonsWorld
     hire_answer = AbilitiesDraft
+    unwritten = {**RoomEngine.unwritten, HIRE: HIRE_UNWRITTEN}
 
     def master_tools(self) -> tuple[MasterTool[TunnelGoonsGame], ...]:
         return (
@@ -185,9 +186,10 @@ class TunnelGoonsEngine(
 
     def roll(self, draft: TunnelGoonsGame, args: ActionRoll, rng: Random) -> list[Fact]:
         world = draft.payload
-        actor, sheet = world.require_actor_and_sheet(args.actor_id)
+        actor = world.require_actor(args.actor_id)
+        sheet = actor.dice()
         items = world.carried_items(actor, args.items)
-        npc = world.require_npc_here(args.against) if args.against is not None else None
+        npc = world.require_member_here(args.against) if args.against is not None else None
         if npc is actor:
             raise Refusal(f"{actor.name} cannot roll against themselves")
         facts = npc.reveal() if npc is not None else []
@@ -231,12 +233,13 @@ class TunnelGoonsEngine(
     def level_up(self, draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
         world = draft.payload
         if args.ability is None and args.boost is None:
-            actor, _ = world.require_actor_and_sheet(args.actor_id)
+            actor = world.require_actor(args.actor_id)
             draft.pending = _level_decision(actor)
             return []
         if args.ability is None or args.boost is None:
             raise Refusal("level_up takes both an ability and a boost, or neither")
-        actor, sheet = world.require_actor_and_sheet(args.actor_id)
+        actor = world.require_actor(args.actor_id)
+        sheet = actor.dice()
         sheet.abilities[args.ability] += 1
         if args.boost == "health":
             actor.hp.maximum += 1

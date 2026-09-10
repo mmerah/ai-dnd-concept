@@ -8,7 +8,8 @@ from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Pairs
 from aidm.engines.base import Counter, Person
-from aidm.engines.scenes.world import SceneCanon, SceneWorld
+from aidm.engines.scenes.tools import SceneDraft
+from aidm.engines.scenes.world import SceneWorld
 
 LUCK_MAX = 6
 DIE_FACE = 6  # every roll in the game is one d6, and every table is six rows
@@ -101,7 +102,7 @@ class Loner3eSheet(Person):
         return self.luck.change(self, self.luck.shortfall, "Luck", why)
 
 
-class Loner3eWorld(SceneWorld[Loner3eSheet, Loner3eSheet]):
+class Loner3eWorld(SceneWorld[Loner3eSheet]):
     # The played character's tally paces the whole game, so no sheet carries one.
     twist: Counter = Field(default_factory=lambda: Counter(current=0, maximum=TIES_PER_TWIST))
 
@@ -115,6 +116,6 @@ class Loner3eWorld(SceneWorld[Loner3eSheet, Loner3eSheet]):
 
 Loner3eGame = Game[Loner3eWorld]
 
-Loner3eScenario = Scenario[SceneCanon[Loner3eSheet]]
+Loner3eScenario = Scenario[SceneDraft[Loner3eSheet]]
 
 Loner3eCharacter = Character[Loner3eSheet]

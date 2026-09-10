@@ -43,7 +43,7 @@ from aidm.engines.breathless.world import (
     stepped,
 )
 from aidm.engines.breathless.worldsmith import AUTHORING, HIRING, Pack, SheetDraft
-from aidm.engines.hiring import HIRE_TOOL, Hire, Hiring
+from aidm.engines.hiring import HIRE, HIRE_TOOL, HIRE_UNWRITTEN, Hire, Hiring
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
 from aidm.engines.scenes.world import sentence
@@ -51,7 +51,7 @@ from aidm.engines.scenes.world import sentence
 
 class BreathlessEngine(
     Hiring[Survivor, Survivor, BreathlessGame, SheetDraft],
-    SceneEngine[Survivor, Survivor, BreathlessGame, Pack],
+    SceneEngine[Survivor, BreathlessGame, Pack],
 ):
     id = EngineId("breathless")
     title = "BREATHLESS"
@@ -79,6 +79,7 @@ class BreathlessEngine(
     pack = Pack
     world_type = BreathlessWorld
     hire_answer = SheetDraft
+    unwritten = {**SceneEngine.unwritten, HIRE: HIRE_UNWRITTEN}
 
     def master_tools(self) -> tuple[MasterTool[BreathlessGame], ...]:
         return (

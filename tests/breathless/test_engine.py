@@ -27,7 +27,7 @@ from aidm.engines.breathless.world import (
 )
 from aidm.engines.hiring import HIRE, SIGNED_ON, Hire
 from aidm.engines.scenes.packs import SRD_PACK
-from aidm.engines.scenes.world import SceneCanon, SceneRun
+from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.seam import AnyEngine
 
 FIRE_AXE = "fire-axe"
@@ -77,14 +77,12 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
         meta=ScenarioMeta(title="Test", premise="A test scenario.", scope="One tense evening."),
         engine=EngineId("breathless"),
         packs=(SRD_PACK,),
-        payload=SceneCanon[Survivor](
+        payload=SceneDraft[Survivor](
+            place="alley",
+            title="The Alley",
+            focus="Can they lose the mob in the alley?",
+            situation="A" * 80,
             cast={PLAYER_ID: decoy},
-            opening=SceneRun(
-                place="alley",
-                title="The Alley",
-                focus="Can they lose the mob in the alley?",
-                situation="A" * 80,
-            ),
         ),
     )
     character = BreathlessCharacter(
@@ -123,15 +121,6 @@ def test_hire_refuses_a_sheeted_member() -> None:
     draft.payload.cast[OVID].sheet = SurvivorSheet(skills=SKILLS_RATED, worn=dict(SKILLS_RATED))
     with pytest.raises(Refusal, match="already carries a sheet"):
         ENGINE.hire(draft, Hire(entity_id=OVID, terms="Guide us across the flats"), Random(0))
-
-
-def test_validate_refuses_a_stale_hire_target() -> None:
-    _, state = _breathless_game()
-    draft = state.draft()
-    _ = ENGINE.hire(draft, Hire(entity_id=OVID, terms="Guide us across the flats"), Random(0))
-    draft.payload.cast[OVID].sheet = SurvivorSheet(skills=SKILLS_RATED, worn=dict(SKILLS_RATED))
-    with pytest.raises(Refusal, match="already carries a sheet"):
-        ENGINE.validate(draft)
 
 
 async def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party() -> None:

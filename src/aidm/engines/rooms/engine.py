@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from aidm.core.entities import Refusal, Slug, parse
+from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import read_prompt
 from aidm.core.model import (
@@ -31,7 +31,7 @@ from aidm.engines.base import (
     trail_panel,
 )
 from aidm.engines.rooms.tools import Kill, Move, MoveItem, Reveal, SharedChange, UnlockWay
-from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RoomCanon, RoomWorld
+from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RoomWorld
 from aidm.engines.rooms.worldsmith import MAP_ASK, extension_refusal, map_refusal, worldsmith_prompt
 from aidm.engines.seam import Engine
 
@@ -51,7 +51,7 @@ MAP_UNWRITTEN = Fact(
 class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
     dweller: type[N]
     world_type: type[RoomWorld[N, P]]
-    operations = (EXTEND,)
+    unwritten = {EXTEND: MAP_UNWRITTEN}
     family_prompt = RULES_PROMPT
 
     def world(self, state: G) -> RoomWorld[N, P]:
@@ -62,16 +62,19 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         return MapDraft[self.dweller]
 
     def validate(self, state: G) -> None:
+        super().validate(state)
         if state.packs:
             raise Refusal(f"{self.title} has no table sets")
-        if state.generation is not None and state.generation.operation not in self.operations:
-            raise Refusal(f"a room engine cannot write {state.generation.operation!r}")
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> RoomWorld[N, P]:
-        canon: RoomCanon[N] = scenario.payload
+        draft: MapDraft[N] = scenario.payload
+        if (refused := map_refusal(draft)) is not None:
+            raise Refusal(refused)
         player = self.player_of(character)
-        taken = (*canon.places, *canon.npcs, *canon.items)
-        return self.world_type.begin(canon, player, self.starting_items(player, taken))
+        taken = (*draft.places, *draft.npcs, *draft.items)
+        return self.world_type.begin(
+            draft, player, self.starting_items(player, taken), scenario.source
+        )
 
     def starting_items(self, _player: P, _taken: Iterable[str]) -> tuple[Prop, ...]:
         return ()
@@ -160,11 +163,6 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         prompt = self.render_opening(source, meta.scope)
         return await self.compose(worldsmith, prompt, self.map_draft(), built, playable)
 
-    def unwritten(self, request: Generation) -> Fact:
-        if request.operation == EXTEND:
-            return MAP_UNWRITTEN
-        return super().unwritten(request)
-
     def act(self, draft: G, action: Slug, words: str) -> None:
         if action != EXTEND or self.world(draft).frontier():
             raise Refusal("the map still has ways to walk; the page was drawn before them")
@@ -188,7 +186,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
             case MoveItem():
                 return world.move_item(change.item_id, change.to)
             case Kill():
-                return world.kill(world.require_npc_here(change.entity_id))
+                return world.kill(world.require_member_here(change.entity_id))
             case JoinParty():
                 return world.join_party(change.entity_id)
             case LeaveParty():
@@ -255,21 +253,8 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
             meta=meta.with_premise(draft.places[draft.start].description),
             engine=self.id,
             packs=packs,
-            payload=self.opening_canon(draft, source),
-        )
-
-    def opening_canon(self, draft: MapDraft[N], source: str) -> RoomCanon[N]:
-        """Parametrized on the engine's npc, so the canon revalidates as its own people."""
-        return parse(
-            RoomCanon[self.dweller],
-            {
-                "places": draft.places,
-                "ways": draft.ways,
-                "npcs": draft.npcs,
-                "items": draft.items,
-                "start": draft.start,
-                "source": source,
-            },
+            source=source,
+            payload=draft,
         )
 
     @abstractmethod

@@ -1,4 +1,4 @@
-from support.table import TWENTYFOURXX
+from support.table import LIBRARY, TWENTYFOURXX
 from support.twentyfourxx import ENGINE, KESTREL, SABLE, SITUATION, small_world
 
 from aidm.core.facts import Fact
@@ -6,7 +6,7 @@ from aidm.core.model import AnyScenario, ScenarioMeta
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.worldsmith import scene_refusal
-from aidm.engines.twentyfourxx.world import Crewmate, Sheet
+from aidm.engines.twentyfourxx.world import Crewmate, Sheet, TwentyfourxxCharacter
 from aidm.engines.twentyfourxx.worldsmith import SheetDraft
 
 SRD = ENGINE.packs["srd"]
@@ -238,14 +238,15 @@ def test_render_worldsmith_says_who_travels_with_the_player() -> None:
     assert "travels with the player" in prompt
 
 
-def test_opening_canon_marks_present_known() -> None:
+def test_new_game_marks_present_known() -> None:
     stranger = "stranger"
     draft = _draft(
         present=(stranger,),
         cast={stranger: Crewmate(id=stranger, name="A Stranger", brief="new to the world")},
     )
-    canon = ENGINE.opening_canon(draft, "")
-    assert canon.cast[stranger].known is True
+    character = LIBRARY.read_character("kael", TWENTYFOURXX, TwentyfourxxCharacter)
+    world = ENGINE.new_game(_built(draft), character)
+    assert world.cast[stranger].known is True
 
 
 def test_build_scenario_stamps_the_engine_id() -> None:

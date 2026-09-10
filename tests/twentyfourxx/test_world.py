@@ -111,7 +111,7 @@ def test_require_actor_accepts_a_living_sheeted_party_member() -> None:
 def test_require_actor_refuses_an_unsheeted_member() -> None:
     world = small_world().payload
     world.party = [KESTREL]
-    with pytest.raises(Refusal, match="not the player or a hired crew member"):
+    with pytest.raises(Refusal, match="not the player or a hired party member"):
         world.require_actor(KESTREL)
 
 
