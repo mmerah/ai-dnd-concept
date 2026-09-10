@@ -111,3 +111,70 @@ Known and accepted:
   and took one turn on each with the CLI roles; every save landed without a `generation` key
   (`grep -L '"generation"'` lists all four). One narrator answer on Whispering Vault was not
   JSON and surfaced as a refusal notification; no page error.
+
+## Phase 3: one worldsmith renderer, packs, tests and qa
+
+Counts (`find <dir> -name '*.py' | xargs cat | wc -l`):
+
+| tree  | before | after | target |
+| ----- | ------ | ----- | ------ |
+| src   | 10,020 | 9,994 | ~9,940 |
+| tests | 9,307  | 9,316 | ~9,220 |
+| qa    | 2,435  | 1,792 | ~1,730 |
+
+Reviews: Fable reviewer and a second Opus reviewer (no `codex` on the machine). Three Sonnet
+implementers: A (steps 1 to 8, src and goldens) first, then B (steps 9 to 11, the engine tests)
+and C (steps 12 and 13, qa and `tests/app/test_mcp.py`) in parallel on disjoint files.
+
+Decisions off the plan:
+
+- `SceneCase` (step 10) carries a seventh field, `base`, the draft fields every scene of the case
+  starts from: three tests read it (the multi-word situation, the `new_game` payload, the
+  installed scene's answer), and the alternative was a second tuple zipped onto `CASES` by hand.
+- `MAP`, `MARA` and `SITUATION` for the shipped Loner game live in `tests/support/game.py`, read
+  by `tests/loner3e/test_world.py` and `tests/engines/test_scene_bar.py` (both reviews: two
+  verbatim copies).
+- `qa/agents.py` also loses the `port` field and `qa/server.py` the `/qa/chatty/{slug}` route
+  with its `Random` import: their only readers were the MCP transport and the Buried Keep
+  interjection step, both gone in step 12 (PLAN "How to work" 6).
+- The 24XX qa script reaches the succession decision through a real `risking_death` roll,
+  hindered so the d4 lands a disaster on 1 to 2, looped up to eight turns; the old script killed
+  the player with `change_world`.
+- The three shrunk qa scripts' docstrings describe the one decision they now play, not the runs
+  they used to.
+- The hiring and scene-bar tests use `ids=_case_id` (the engine id) instead of a hand-kept
+  `CASE_IDS` tuple.
+
+Refuted findings:
+
+- "`scene_sections` / `map_sections` take `world | None` as a mode flag; the call sites know
+  statically which branch they want": PLAN steps 3 and 4 give exactly that signature, with the
+  opening placeholders inside the function.
+- "`opened, attempt = False, 0` pre-seeds a loop variable the loop always rebinds": without the
+  seed basedpyright reports `attempt` possibly unbound after the loop, and the loop body must
+  read `attempt` or ruff B007 fires, so the words submitted carry the attempt number.
+- "the MCP test's `service.interjections = False` needs a why": dropped; the test is green
+  without it (the Whispering Vault player has no party, so no interjection spawns).
+
+Both reviews raised two points the plan decided otherwise; the maintainer chose the cleanest
+solution for each:
+
+- `SOURCELESS` reads "(none — write from what is below)", not the scene family's "(none — write
+  from the cast)" PLAN step 2 named: the room worldsmith reads it too and its prompt never
+  mentions a cast. The two `worldsmith.txt` of the source-less scenarios (Whispering Vault,
+  Buried Keep) changed on that one line.
+- `test_narrator_view_names_nothing_unknown_here` in `tests/tunnelgoons/test_views.py` stays,
+  against PLAN step 11: `tests/app/test_context_boundary.py` pins the narrator view's field set
+  on loner3e only, so it is the one test of the room family's `known` filter in
+  `RoomEngine.narrator_view`.
+
+Known and accepted:
+
+- `src` ends 54 lines over "about 9,940": the renderer and the two `*_sections` functions cost
+  more than the two `worldsmith_prompt` bodies they replace. `tests` ends 96 over: the two case
+  tables and the MCP test. `qa` ends 62 over: the two probe steps moved into the Loner script.
+  Nothing padded, nothing compressed to hit a number; well under the "half again" stop rule.
+- The smoke (`uv run aidm`, port 8765, saves in a scratch dir) opened the four shipped
+  scenarios with the CLI roles, each narrated its opening, and one turn on Buried Keep spawned
+  the master and the narrator and landed as an exchange with no page error; the save carries
+  no `generation` key.

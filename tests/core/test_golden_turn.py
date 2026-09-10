@@ -4,12 +4,13 @@ from random import Random
 from typing import cast
 
 import pytest
+from pydantic import BaseModel
 from support.golden import FIXTURES, golden, golden_json
 from support.golden_turn import INTERJECTION, NARRATION
-from support.table import ENGINE_IDS, ENGINES_BUILT, Call, open_table, play_turn
+from support.table import ENGINE_IDS, ENGINES_BUILT, Call, game, open_table, play_turn
 
-from aidm.core.entities import EngineId
-from aidm.core.model import AnyGame
+from aidm.core.entities import EngineId, Refusal
+from aidm.core.model import AnyGame, Generation, Objection
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
 SEED = 19
@@ -50,3 +51,20 @@ async def test_a_scripted_turn_renders_and_records_unchanged(
             FIXTURES / "prompts" / engine_id / "interjection.txt",
             table.spawner.prompt("narrator", 1),
         )
+
+
+@pytest.mark.parametrize("engine_id", ENGINE_IDS)
+async def test_a_worldsmith_request_renders_unchanged(engine_id: EngineId) -> None:
+    engine, state = game(engine_id)
+    prompts: list[str] = []
+
+    async def recording[M: BaseModel](prompt: str, _model: type[M], _refusal: Objection[M]) -> M:
+        prompts.append(prompt)
+        raise Refusal("recorded")
+
+    request = Generation(
+        operation=next(iter(engine.unwritten)), brief="Deeper in, toward the sound."
+    )
+    with pytest.raises(Refusal, match="recorded"):
+        await engine.advance(state.draft(), request, recording)
+    golden(FIXTURES / "prompts" / engine_id / "worldsmith.txt", prompts[0])

@@ -73,10 +73,7 @@ Ask the player what their character learned when the whole adventure closes. The
 Use the `change_tags` arm for a new or changed skill, gear or frailty. Use the `drive` arm for a
 new nemesis. Do not grow skills or frailties before the adventure closes.
 
-## The party
+## A member's help
 
-A party member travels with the player from scene to scene. The player commands them and you
-voice them. Use the `join_party` arm when someone here comes along. Use the `leave_party` arm
-when they stop. A member rolls only as the actor of their own uncertain act. Otherwise their
-help sets `position` or names the `edge`. Never
-volunteer a member's action to soften a scene the player must face alone.
+A member rolls only as the actor of their own uncertain act. Otherwise their help sets
+`position` or names the `edge`.

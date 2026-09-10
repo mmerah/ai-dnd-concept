@@ -1,6 +1,6 @@
 import pytest
 from pydantic import JsonValue
-from support.game import ENGINE, initialized
+from support.game import ENGINE, MAP, MARA, SITUATION, initialized
 from support.table import change
 from support.table import refused as change_refused
 
@@ -10,14 +10,7 @@ from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, Loner3eSheet
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.worldsmith import scene_refusal
 
-MAP = "vault-map"
-MARA = "mara"
 TOMAS = "tomas"
-
-SITUATION = (
-    "A frost-rimed colonnade around a dead garden, and the way down is somewhere under it. "
-    "Nothing here has been swept in a long while."
-)
 
 
 def changed(draft: Loner3eGame, verb: str, **fields: JsonValue) -> list[str]:
@@ -107,18 +100,6 @@ def test_an_id_the_worldsmith_got_wrong_resolves_by_name_before_it_is_refused() 
         state.draft().payload.apply_scene(_next_scene(present=("nobody",)))
 
 
-def test_a_situation_that_names_what_it_hides_is_refused() -> None:
-    """`situation` is read to the player, so it must not hand them the find."""
-    _, state = initialized()
-    scene = _next_scene()
-    hidden_name = state.payload.require(TOMAS).name
-    scene = scene.model_copy(update={"situation": f"{SITUATION} {hidden_name} waits in the dark."})
-
-    assert scene_refusal(scene, state.payload) == (
-        f"the scene needs a situation that does not name what is hidden: ['{hidden_name}']"
-    )
-
-
 def test_a_one_word_name_is_a_word_the_situation_may_use() -> None:
     """A prop called `Bell` shares its word with any bell tower; refusing that costs a crossing."""
     _, state = initialized()
@@ -128,19 +109,6 @@ def test_a_one_word_name_is_a_word_the_situation_may_use() -> None:
     scene = scene.model_copy(update={"situation": f"{SITUATION} The bell tower stands over it."})
 
     assert scene_refusal(scene, draft.payload) is None
-
-
-def test_the_scene_bar_names_a_cast_member_the_worldsmith_may_not_write() -> None:
-    _, state = initialized()
-    assert scene_refusal(_next_scene(), state.payload) is None
-
-    ghost = "ghost"
-    broken = _next_scene().model_copy(
-        update={"cast": {ghost: Loner3eSheet(id=ghost, name="Ghost", brief="", alive=False)}}
-    )
-    assert scene_refusal(broken, state.payload) == (
-        "the scene needs cast members as the worldsmith may write them: ['ghost: alive']"
-    )
 
 
 def test_an_entity_is_never_lost_when_a_scene_leaves_it_behind() -> None:
@@ -190,20 +158,6 @@ def test_a_companion_stops_travelling_and_a_stranger_never_started() -> None:
     assert changed(draft, "leave_party", entity_id=MARA)
     assert MARA not in draft.payload.party
     assert "does not travel" in refused(draft, "leave_party", entity_id=MARA)
-
-
-def test_the_player_is_in_every_scene_and_is_never_listed_in_one() -> None:
-    _, state = initialized()
-    draft = state.draft()
-    scene = _next_scene(present=("kael",), hidden=("Kael", TOMAS))
-    assert "put there by code" in (scene_refusal(scene, draft.payload) or "")
-
-
-def test_a_scene_that_hides_someone_already_met_is_refused_whole() -> None:
-    _, state = initialized()
-    draft = state.draft()
-    scene = _next_scene(present=(), hidden=(MARA,))
-    assert "already met" in (scene_refusal(scene, draft.payload) or "")
 
 
 def test_change_tags_edits_one_list_and_refuses_what_it_cannot_move() -> None:

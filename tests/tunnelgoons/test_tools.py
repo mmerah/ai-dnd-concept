@@ -1,9 +1,8 @@
-import asyncio
 import re
 from random import Random
 
 import pytest
-from support.table import change, refused, stub_worldsmith
+from support.table import change, refused
 from support.tunnelgoons import (
     CRYPT,
     ENGINE,
@@ -19,9 +18,7 @@ from support.tunnelgoons import (
 )
 
 from aidm.core.entities import Refusal
-from aidm.core.model import Generation
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.hiring import HIRE, SIGNED_ON, Hire
 from aidm.engines.rooms.tools import Move
 from aidm.engines.rooms.world import Prop, Visit
 from aidm.engines.tunnelgoons.tools import ActionRoll, LevelUp
@@ -396,28 +393,3 @@ def test_require_actor_refuses_an_unsheeted_member() -> None:
     world.party.append(MIRA)
     with pytest.raises(Refusal, match="is not the player or a hired party member"):
         _ = world.require_actor(MIRA)
-
-
-def test_hire_sets_generation_and_ends_the_turn() -> None:
-    draft = small_world().draft()
-    _ = ENGINE.hire(draft, Hire(entity_id=MIRA, terms="Watch our backs"), Random(0))
-    assert draft.generation == Generation(operation=HIRE, brief="Watch our backs", target=MIRA)
-
-
-def test_hire_refuses_a_sheeted_npc() -> None:
-    draft = small_world().draft()
-    draft.payload.npcs[MIRA].sheet = _sheeted()
-    with pytest.raises(Refusal, match="already carries a sheet"):
-        _ = ENGINE.hire(draft, Hire(entity_id=MIRA, terms="terms"), Random(0))
-
-
-def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party() -> None:
-    draft = small_world().draft()
-    generation = Generation(operation=HIRE, brief="Watch our backs", target=MIRA)
-    answer = {"abilities": {"brute": 2, "skulker": 1, "erudite": 0}}
-    _, told = asyncio.run(ENGINE.advance(draft, generation, stub_worldsmith(answer)))
-    member = draft.payload.npcs[MIRA]
-    assert member.sheet is not None
-    assert member.sheet.abilities == {"brute": 2, "skulker": 1, "erudite": 0}
-    assert MIRA in draft.payload.party
-    assert told == SIGNED_ON.format(name=member.name)

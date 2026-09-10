@@ -39,17 +39,12 @@ stress and no other arm spends it.
 
 `loot_check` is the only way an item enters the backpack.
 
-## The party
+## A member's help
 
-A party member travels with the player from scene to scene. The player commands them and you
-voice them. Use the `join_party` arm when someone here comes along. Use the `leave_party` arm
-when they stop. A member without a sheet helps in the story alone and rolls nothing. Never
-volunteer a member's action to soften a scene the player must face alone.
+A member without a sheet helps in the story alone and rolls nothing.
 
 ## Hiring
 
-A sheet is for someone hired to work, never for one who only comes along.
-Call `hire` when the player takes someone on to work. A hired member then acts like the
-player. Name them in `actor_id` on `roll` and `catch_breath`, and on the `change_stress`,
-`use_med_kit` and `drop_item` arms. Name them in `helped_by` to roll beside the actor.
-`loot_check` stays the player's.
+A hired member then acts like the player. Name them in `actor_id` on `roll` and `catch_breath`,
+and on the `change_stress`, `use_med_kit` and `drop_item` arms. Name them in `helped_by` to roll
+beside the actor. `loot_check` stays the player's.

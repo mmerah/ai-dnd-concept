@@ -22,6 +22,12 @@ from support.table import (
 )
 
 TARGET = LaunchTarget(scenario_id="whispering-vault", character_id="kael")
+MAP: Slug = "vault-map"
+MARA: Slug = "mara"
+SITUATION = (
+    "A frost-rimed colonnade around a dead garden, and the way down is somewhere under it. "
+    "Nothing here has been swept in a long while."
+)
 ENGINE = narrowed(ENGINES_BUILT[LONER3E], Loner3eEngine)
 
 

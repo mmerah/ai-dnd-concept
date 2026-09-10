@@ -20,7 +20,6 @@ from dataclasses import dataclass, field
 from itertools import count
 from typing import Literal
 
-import httpx
 from pydantic import JsonValue
 
 from aidm.app.runtime import Runtime
@@ -30,7 +29,6 @@ from aidm.core.entities import Refusal
 
 LOGGER = logging.getLogger("qa.agents")
 
-type Transport = Literal["direct", "mcp"]
 type Fault = Literal["fail", "bad", "slow"]
 
 DEFAULT_ROLLS: dict[str, tuple[str, dict[str, JsonValue]]] = {
@@ -59,8 +57,6 @@ class Spoken:
 
 @dataclass(slots=True)
 class ScriptedAgents:
-    port: int
-    transport: Transport = "direct"
     delay: float = 0.3
     runtime: Runtime | None = None
     faults: dict[Role, list[Fault]] = field(default_factory=dict)
@@ -126,34 +122,12 @@ class ScriptedAgents:
                     await self._call(head, _args(rest), spoken)
 
     async def _call(self, name: str, args: dict[str, JsonValue], spoken: Spoken) -> None:
-        if self.transport == "mcp":
-            answered = await self._mcp_call(name, args)
-        else:
-            try:
-                answered = self._runtime().call(name, args)
-            except Refusal as refused:
-                answered = f"REFUSED: {refused}"
+        try:
+            answered = self._runtime().call(name, args)
+        except Refusal as refused:
+            answered = f"REFUSED: {refused}"
         spoken.calls.append((name, args, answered))
         LOGGER.info("master %s(%s) -> %s", name, json.dumps(args), answered.replace("\n", " | "))
-
-    async def _mcp_call(self, name: str, args: dict[str, JsonValue]) -> str:
-        body: dict[str, JsonValue] = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {"name": name, "arguments": args},
-        }
-        headers = {"Accept": "application/json, text/event-stream"}
-        async with httpx.AsyncClient() as client:
-            reply = await client.post(
-                f"http://localhost:{self.port}/mcp/", json=body, headers=headers, timeout=30
-            )
-        result = reply.json()
-        if "error" in result:
-            return f"MCP ERROR: {result['error']}"
-        content = result["result"]
-        text = "\n".join(part["text"] for part in content.get("content", ()))
-        return f"REFUSED: {text}" if content.get("isError") else text
 
     def _narrator(self, prompt: str) -> str:
         role = _section(prompt, "YOUR ROLE")

@@ -12,12 +12,11 @@ import os
 import shutil
 import sys
 from pathlib import Path
-from random import Random
 
 from nicegui import app, ui
 
 sys.path.insert(0, str(Path(__file__).parent))
-from agents import ScriptedAgents, Transport
+from agents import ScriptedAgents
 from art import PlaceholderIllustrator
 
 from aidm.app import runtime as runtime_module
@@ -44,7 +43,6 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8123)
     parser.add_argument("--work", type=Path, required=True)
-    parser.add_argument("--transport", choices=("direct", "mcp"), default="direct")
     parser.add_argument("--delay", type=float, default=0.3)
     parser.add_argument("--fresh", action="store_true", help="wipe the work directory first")
     parser.add_argument("--art", action="store_true", help="draw placeholder scene art offline")
@@ -69,8 +67,7 @@ def main() -> None:
         # Only under `--art`: the default provider is what the settings scenario checks against.
         media=MediaConfig(enabled=True, provider="local") if parsed.art else MediaConfig(),
     )
-    transport: Transport = parsed.transport
-    agents = ScriptedAgents(port=parsed.port, transport=transport, delay=parsed.delay)
+    agents = ScriptedAgents(delay=parsed.delay)
     runtime = QaRuntime(settings, agents)
     runtime.stubbed = agents
     agents.runtime = runtime
@@ -88,15 +85,6 @@ def main() -> None:
             }
             for spoken in agents.log
         ]
-
-    @app.get("/qa/chatty/{slug}")
-    def _chatty(slug: str) -> dict[str, str]:  # pyright: ignore[reportUnusedFunction]
-        """Seed the game's dice so the next party member passes the interjection d10."""
-        session = runtime._sessions.get(slug)  # pyright: ignore[reportPrivateUsage]
-        if session is None:
-            return {"seeded": "no such session"}
-        session.rng = Random(2)
-        return {"seeded": slug}
 
     @app.get("/qa/faults")
     def _faults() -> dict[str, list[str]]:  # pyright: ignore[reportUnusedFunction]

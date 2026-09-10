@@ -19,7 +19,6 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption
-from aidm.core.prompt import render_history
 from aidm.core.views import NarratorView, Pairs, Panel, PlayerView
 from aidm.engines.base import (
     JoinParty,
@@ -29,6 +28,7 @@ from aidm.engines.base import (
     here_panel,
     party_panel,
     party_section,
+    render_worldsmith,
     trail_panel,
 )
 from aidm.engines.scenes.packs import SRD_PACK, ScenePack, read_packs
@@ -48,7 +48,7 @@ from aidm.engines.scenes.worldsmith import (
     CROSSING,
     TURNING,
     scene_refusal,
-    worldsmith_prompt,
+    scene_sections,
 )
 from aidm.engines.seam import Engine
 
@@ -223,15 +223,13 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
         self, draft: G, *, guidance: str, intent: str, answer: type[BaseModel]
     ) -> str:
         world = self.world(draft)
-        return worldsmith_prompt(
-            read_prompt(WORLDSMITH_PROMPT),
+        return render_worldsmith(
+            role=read_prompt(WORLDSMITH_PROMPT),
             source=world.source,
             scope=draft.scenario.scope,
-            history=render_history(world.records()),
-            scene=world.scene_lines(),
-            cast=world.cast_lines(),
-            guidance=guidance,
+            family=scene_sections(world),
             intent=intent,
+            guidance=guidance,
             answer=answer,
         )
 
@@ -247,15 +245,13 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
         )
 
     def render_opening(self, source: str, guidance: str, scope: str) -> str:
-        return worldsmith_prompt(
-            read_prompt(WORLDSMITH_PROMPT),
+        return render_worldsmith(
+            role=read_prompt(WORLDSMITH_PROMPT),
             source=source,
             scope=scope,
-            history="(no scenes yet — write the opening)",
-            scene="(none yet)",
-            cast="(no cast yet — write the people and things this scene needs)",
-            guidance=guidance,
+            family=scene_sections(None),
             intent=OPENING,
+            guidance=guidance,
             answer=SceneDraft[self.cast],
         )
 

@@ -1,11 +1,9 @@
 import re
 from collections.abc import Iterable, Mapping
 
-from pydantic import BaseModel
-
 from aidm.core.entities import Slug
-from aidm.core.prompt import sections
-from aidm.core.tools import schema_text
+from aidm.core.prompt import render_history
+from aidm.core.views import Pairs
 from aidm.engines.base import Person, Thing
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld, resolved_id
@@ -28,11 +26,6 @@ TURNING = (
     "The situation changes where the player stands, and they did nothing to bring it on. Write "
     "what arrives or turns, as they see it, from SCENE and WHAT HAPPENED. End on what it asks "
     "of them. They have not answered it, so settle nothing."
-)
-SURPRISE = (
-    "Surprise the player. Turn an established fact against them, or bring back something they "
-    "have stopped thinking about. Surprise by recombining what exists. Never invent what the "
-    "source would not hold."
 )
 
 
@@ -96,6 +89,20 @@ def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) ->
     return unmet
 
 
+def scene_sections[C: Person](world: SceneWorld[C] | None) -> Pairs:
+    if world is None:
+        return (
+            ("SCENES SO FAR", "(no scenes yet — write the opening)"),
+            ("THE WHOLE CAST", "(no cast yet — write the people and things this scene needs)"),
+            ("THE SCENE NOW", "(none yet)"),
+        )
+    return (
+        ("SCENES SO FAR", render_history(world.records())),
+        ("THE WHOLE CAST", world.cast_lines()),
+        ("THE SCENE NOW", world.scene_lines()),
+    )
+
+
 def named_unmet(text: str, entities: Iterable[Thing]) -> list[str]:
     """A multi-word name or a bare id: a prop called `Bell` shares its word with any bell tower."""
     folded = text.casefold()
@@ -115,32 +122,4 @@ def named_in(situation: str, hidden: Iterable[str], cast: Mapping[Slug, Thing]) 
             for wanted in hidden
             if (entity_id := resolved_id(wanted, cast)) is not None
         ),
-    )
-
-
-def worldsmith_prompt(
-    role: str,
-    *,
-    source: str,
-    scope: str,
-    history: str,
-    scene: str,
-    cast: str,
-    guidance: str,
-    intent: str,
-    answer: type[BaseModel],
-) -> str:
-    return sections(
-        (
-            ("YOUR ROLE", role),
-            ("SOURCE MATERIAL", source or "(none — write from the cast)"),
-            ("THE SCOPE OF PLAY", scope),
-            ("SCENES SO FAR", history),
-            ("THE WHOLE CAST", cast),
-            ("THE SCENE NOW", scene),
-            ("ENGINE GUIDANCE", guidance),
-            ("WHAT COMES NEXT", intent),
-            ("STANDING INSTRUCTION", SURPRISE),
-            ("ANSWER WITH", schema_text(answer)),
-        )
     )

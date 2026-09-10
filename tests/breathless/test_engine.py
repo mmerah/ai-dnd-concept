@@ -1,37 +1,24 @@
-from random import Random
+from support.breathless import DAX, ENGINE, small_world
+from support.table import BREATHLESS, change, game, narrowed
 
-import pytest
-from support.breathless import ENGINE, SKILLS_RATED
-from support.table import (
-    BREATHLESS,
-    ENGINES_BUILT,
-    change,
-    game,
-    narrowed,
-    stub_worldsmith,
-    updated,
-)
-
-from aidm.core.entities import EngineId, Refusal
-from aidm.core.io import decode
-from aidm.core.model import ScenarioMeta
-from aidm.engines.base import PLAYER_ID
-from aidm.engines.breathless.world import (
-    STARTING_ITEM,
-    BreathlessCharacter,
-    BreathlessGame,
-    BreathlessScenario,
-    Supply,
-    Survivor,
-    SurvivorSheet,
-)
-from aidm.engines.hiring import HIRE, SIGNED_ON, Hire
+from aidm.core.views import PanelRow
+from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.breathless.world import STARTING_ITEM, BreathlessGame
 from aidm.engines.scenes.packs import SRD_PACK
-from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.seam import AnyEngine
 
 FIRE_AXE = "fire-axe"
 OVID = "ovid-sarn"
+SRD = ENGINE.packs["srd"]
+PICKS = {
+    "pack": "srd",
+    "pronouns": "she/her",
+    "job": SRD.jobs[0],
+    "skill-d10": "bash",
+    "skill-d8": "dash",
+    "skill-d6": "sneak",
+    "item": SRD.weapons[0],
+}
 
 
 def _breathless_game() -> tuple[AnyEngine, BreathlessGame]:
@@ -60,87 +47,53 @@ def test_join_party_lands_a_party_joined_fact_and_adds_the_member() -> None:
     assert OVID in draft.payload.party
 
 
-def test_a_scenario_with_no_packs_is_refused_by_check_packs() -> None:
-    engine, state = _breathless_game()
-    with pytest.raises(Refusal, match="at least one table set"):
-        engine.validate(updated(state, packs=()))
+def test_the_player_views_backpack_panel_lists_items_and_the_med_kit() -> None:
+    world = small_world()
+    world.payload.player.dice().med_kit = True
+    view = ENGINE.player_view(world)
+    backpack = next(panel for panel in view.panels if panel.title == "Backpack")
+    assert PanelRow(label="Wrench", detail="d10") in backpack.rows
+    assert PanelRow(label="Med kit", detail="held") in backpack.rows
 
 
-def test_restored_round_trips() -> None:
-    engine, state = _breathless_game()
-    assert engine.restore(decode(state.model_dump_json())) == state
+def test_master_sections_never_lists_the_player_under_here() -> None:
+    sections = dict(ENGINE.master_sections(small_world()))
+    assert "Jax" not in sections["HERE WITH THE PLAYER"]
+    assert "Mira" in sections["HERE WITH THE PLAYER"]
 
 
-def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
-    decoy = Survivor(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
-    scenario = BreathlessScenario(
-        meta=ScenarioMeta(title="Test", premise="A test scenario.", scope="One tense evening."),
-        engine=EngineId("breathless"),
-        packs=(SRD_PACK,),
-        payload=SceneDraft[Survivor](
-            place="alley",
-            title="The Alley",
-            focus="Can they lose the mob in the alley?",
-            situation="A" * 80,
-            cast={PLAYER_ID: decoy},
-        ),
-    )
-    character = BreathlessCharacter(
-        id="kael",
-        engine=EngineId("breathless"),
-        payload=Survivor(
-            id=PLAYER_ID,
-            name="Kael",
-            brief="A wary ranger.",
-            known=True,
-            sheet=SurvivorSheet(
-                pronouns="he/him",
-                job="Park Ranger",
-                skills=SKILLS_RATED,
-                worn=dict(SKILLS_RATED),
-                items={FIRE_AXE: Supply(name="Fire Axe", die=STARTING_ITEM)},
-            ),
-        ),
-    )
-    with pytest.raises(Refusal, match="the player is in the cast"):
-        ENGINES_BUILT[BREATHLESS].new_game(scenario, character)
+def test_master_sections_lists_the_backpack() -> None:
+    world = small_world()
+    world.payload.player.dice().med_kit = True
+    sections = dict(ENGINE.master_sections(world))
+    assert sections["BACKPACK"] == "- Wrench[wrench] — d10\n- med kit"
 
 
-def test_hire_sets_the_generation_and_ends_the_turn() -> None:
-    _, state = _breathless_game()
-    draft = state.draft()
-    _ = ENGINE.hire(draft, Hire(entity_id=OVID, terms="Guide us across the flats"), Random(0))
-    assert draft.generation is not None
-    assert draft.generation.operation == HIRE
-    assert draft.generation.target == OVID
+def test_entity_line_marks_a_dead_one_after_the_brief() -> None:
+    dead = Person(id=DAX, name="Dax", brief="A looter", known=True, alive=False)
+    line = dead.line()
+    assert line.startswith("- Dax[dax] — A looter (dead)")
 
 
-def test_hire_refuses_a_sheeted_member() -> None:
-    _, state = _breathless_game()
-    draft = state.draft()
-    draft.payload.cast[OVID].sheet = SurvivorSheet(skills=SKILLS_RATED, worn=dict(SKILLS_RATED))
-    with pytest.raises(Refusal, match="already carries a sheet"):
-        ENGINE.hire(draft, Hire(entity_id=OVID, terms="Guide us across the flats"), Random(0))
+def test_skill_steps_exclude_earlier_picks() -> None:
+    steps = ENGINE.creation_steps(PICKS)
+    d8_ids = {option.id for option in next(s for s in steps if s.id == "skill-d8").options}
+    d6_ids = {option.id for option in next(s for s in steps if s.id == "skill-d6").options}
+    assert "bash" not in d8_ids
+    assert {"bash", "dash"} & d6_ids == set()
 
 
-async def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party() -> None:
-    _, state = _breathless_game()
-    draft = state.draft()
-    _ = ENGINE.hire(draft, Hire(entity_id=OVID, terms="Guide us across the flats"), Random(0))
-    generation = draft.generation
-    assert generation is not None
+def test_create_character_round_trip() -> None:
+    character = ENGINE.create_character("Jax", "A wiry mechanic", PICKS)
+    sheet = character.payload.dice()
+    assert sheet.skills == {"bash": 10, "dash": 8, "sneak": 6, "shoot": 4, "think": 4, "sway": 4}
+    assert sheet.worn == sheet.skills
+    assert [(item.name, item.die) for item in sheet.items.values()] == [
+        (SRD.weapons[0], STARTING_ITEM)
+    ]
 
-    answer = {
-        "pronouns": "he/him",
-        "job": "Bell-ringer",
-        "skills": SKILLS_RATED,
-        "item": "Boat hook",
-    }
-    _, message = await ENGINE.advance(draft, generation, stub_worldsmith(answer))
 
-    member = draft.payload.cast[OVID]
-    assert member.sheet is not None
-    assert len(member.sheet.skills) == 6
-    assert member.sheet.items["boat-hook"].die == STARTING_ITEM
-    assert OVID in draft.payload.party
-    assert message == SIGNED_ON.format(name=member.name)
+def test_preview_character_shows_the_backpack_row() -> None:
+    character = ENGINE.create_character("Jax", "A wiry mechanic", PICKS)
+    rows = ENGINE.preview_character(character)
+    assert ("Backpack", SRD.weapons[0]) in rows

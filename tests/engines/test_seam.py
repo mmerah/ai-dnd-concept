@@ -2,10 +2,11 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
+from support.table import ENGINE_IDS, game
 
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Refusal, Slug, slug
-from aidm.core.io import ENCODING, read_prompt
+from aidm.core.io import ENCODING, decode, read_prompt
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
 from aidm.core.play import DecisionOption, SpokenLine
 from aidm.core.tools import MasterTool
@@ -163,3 +164,9 @@ def test_close_builds_no_narrator_view(tmp_path: Path) -> None:
 
     assert engine.narrator_view_calls == 0
     assert engine.world(closed).exchanges()[-1].prompt == "I wait."
+
+
+@pytest.mark.parametrize("engine_id", ENGINE_IDS)
+def test_restored_round_trips(engine_id: EngineId) -> None:
+    engine, state = game(engine_id)
+    assert engine.restore(decode(state.model_dump_json())) == state

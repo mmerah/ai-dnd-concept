@@ -18,7 +18,7 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption
-from aidm.core.prompt import lines_of, render_history
+from aidm.core.prompt import lines_of
 from aidm.core.views import NarratorView, Pairs, Panel, PanelRow, PlayerView
 from aidm.engines.base import (
     JoinParty,
@@ -28,11 +28,12 @@ from aidm.engines.base import (
     here_panel,
     party_panel,
     party_section,
+    render_worldsmith,
     trail_panel,
 )
 from aidm.engines.rooms.tools import Kill, Move, MoveItem, Reveal, SharedChange, UnlockWay
 from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RoomWorld
-from aidm.engines.rooms.worldsmith import MAP_ASK, extension_refusal, map_refusal, worldsmith_prompt
+from aidm.engines.rooms.worldsmith import MAP_ASK, extension_refusal, map_refusal, map_sections
 from aidm.engines.seam import Engine
 
 WORLDSMITH_PROMPT = Path(__file__).parent / "worldsmith.md"
@@ -60,11 +61,6 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
     def map_draft(self) -> type[MapDraft[N]]:
         """Pydantic parametrizes the subscript at runtime, so the npc type reaches the schema."""
         return MapDraft[self.dweller]
-
-    def validate(self, state: G) -> None:
-        super().validate(state)
-        if state.packs:
-            raise Refusal(f"{self.title} has no table sets")
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> RoomWorld[N, P]:
         draft: MapDraft[N] = scenario.payload
@@ -198,34 +194,25 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         return self.world(draft).move(args.to_id, args.with_ids)
 
     def render_opening(self, source: str, scope: str) -> str:
-        return worldsmith_prompt(
-            read_prompt(WORLDSMITH_PROMPT),
+        return render_worldsmith(
+            role=read_prompt(WORLDSMITH_PROMPT),
             source=source,
             scope=scope,
-            map_so_far="(no map yet)",
-            history="(no scenes yet — write the opening)",
-            player="(no player yet — the map is authored before anyone stands in it)",
+            family=map_sections(None),
             intent=MAP_ASK,
             guidance=self.guidance(),
             answer=self.map_draft(),
         )
 
     def render_request(
-        self,
-        world: RoomWorld[N, P],
-        intent: str,
-        scope: str,
-        *,
-        guidance: str,
-        answer: type[BaseModel],
+        self, draft: G, *, intent: str, guidance: str, answer: type[BaseModel]
     ) -> str:
-        return worldsmith_prompt(
-            read_prompt(WORLDSMITH_PROMPT),
+        world = self.world(draft)
+        return render_worldsmith(
+            role=read_prompt(WORLDSMITH_PROMPT),
             source=world.source,
-            scope=scope,
-            map_so_far=world.map_so_far(),
-            history=render_history(world.records()),
-            player=world.line(world.player),
+            scope=draft.scenario.scope,
+            family=map_sections(world),
             intent=intent,
             guidance=guidance,
             answer=answer,
@@ -234,7 +221,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
     async def write_next(self, draft: G, intent: str, worldsmith: WorldsmithAnswer) -> MapDraft[N]:
         world = self.world(draft)
         prompt = self.render_request(
-            world, intent, draft.scenario.scope, guidance=self.guidance(), answer=self.map_draft()
+            draft, intent=intent, guidance=self.guidance(), answer=self.map_draft()
         )
         return await worldsmith(
             prompt, self.map_draft(), lambda answer: extension_refusal(answer, world)

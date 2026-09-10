@@ -171,9 +171,8 @@ class TunnelGoonsEngine(
 
     def hire_prompt(self, draft: TunnelGoonsGame, member: Npc, terms: str) -> str:
         return self.render_request(
-            draft.payload,
-            HIRING.format(name=member.name, brief=member.brief, terms=terms),
-            draft.scenario.scope,
+            draft,
+            intent=HIRING.format(name=member.name, brief=member.brief, terms=terms),
             guidance=HIRE_GUIDANCE,
             answer=AbilitiesDraft,
         )

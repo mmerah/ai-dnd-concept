@@ -14,6 +14,8 @@ THE SCENE NOW is the place the player stands in, as they read it. It also names 
 
 What happened in SCENES SO FAR outranks `arc`. A possibility that play resolved or contradicted is spent. Never restore it.
 
+Surprise the player. Turn an established fact against them, or bring back something they have stopped thinking about. Surprise by recombining what exists. Never invent what the source would not hold.
+
 Everything you need is below. Do not read, search or run anything in the repository.
 
 Answer with one JSON object and nothing else, in the shape ANSWER WITH gives.

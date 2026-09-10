@@ -1,0 +1,282 @@
+YOUR ROLE:
+You are the WORLDSMITH of a tabletop roleplaying game. You write authored maps: places joined by directed ways, with npcs and items placed in those places.
+
+For an opening map, write a complete, explorable map. Every place must be reachable from the starting place by some directed walk, counting unknown and locked ways. A map plays best with a shortcut, a locked way, and something hidden. A shortcut is a second route between two places that stays reachable if its direct way is removed.
+
+For an extension, write a complete new region that joins the map beyond the player's reach. Write only new ids. Every place must be reachable from the extension start by directed ways. An extension plays best with at least 2 new places and at least one hidden npc or item.
+
+Never name the player. Code puts them on the map. Ids are slugs. MAP SO FAR ends with every id in use. Write none of those ids again. It says of each npc and item whether the player has met it. A `brief` is read to the player's narrator once its npc or item is met.
+
+Everything you need is below. Do not read, search or run anything in the repository.
+
+Answer with one JSON object and nothing else, in the shape ANSWER WITH gives.
+
+SOURCE MATERIAL:
+(none — write from what is below)
+
+THE SCOPE OF PLAY:
+One descent into the keep. The dark below has an end, and reaching it or turning back is the adventure's; a way out that opens onto more of the world is the worldsmith's to write.
+
+MAP SO FAR:
+The Collapsed Archway[entrance] — A collapsed archway lets grey light down into the tunnels below.
+  known ways out: The Root Corridor
+  here: Grix[grix] (met)
+ids in use: cellar, corridor, crawler, entrance, grix, lurker, pry-bar-melee-weapon, rope, rope-coil, sealed-cell, storeroom, tarnished-flask, torch
+
+SCENES SO FAR:
+(the game has not started yet)
+
+THE PLAYER:
+- Kael[player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
+  brute: 1; skulker: 2; erudite: 0; health: 10/10; inventory: 3/8; level: 1
+
+WHAT COMES NEXT:
+Deeper in, toward the sound.
+
+ENGINE GUIDANCE:
+TUNNEL GOONS AUTHORING
+Every npc needs `hp`. It is the npc's Health and its Difficulty Score at once. Grade it as 8 easy, 10 moderate, or 12 hard.
+
+ANSWER WITH:
+{
+  "$defs": {
+    "Abilities": {
+      "additionalProperties": false,
+      "description": "The three ability scores a goon rolls with.",
+      "properties": {
+        "abilities": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "maxProperties": 3,
+          "minProperties": 3,
+          "propertyNames": {
+            "enum": [
+              "brute",
+              "skulker",
+              "erudite"
+            ]
+          },
+          "type": "object"
+        },
+        "inventory": {
+          "default": 8,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "level": {
+          "default": 1,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "Chattiness": {
+      "enum": [
+        "quiet",
+        "normal",
+        "chatty"
+      ],
+      "type": "string"
+    },
+    "Counter": {
+      "additionalProperties": false,
+      "properties": {
+        "current": {
+          "type": "integer"
+        },
+        "maximum": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "current",
+        "maximum"
+      ],
+      "type": "object"
+    },
+    "Npc": {
+      "additionalProperties": false,
+      "description": "A non-player character, friend or foe.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "brief": {
+          "type": "string"
+        },
+        "known": {
+          "default": false,
+          "type": "boolean"
+        },
+        "alive": {
+          "default": true,
+          "type": "boolean"
+        },
+        "chattiness": {
+          "$ref": "#/$defs/Chattiness",
+          "default": "normal",
+          "description": "How readily they speak unprompted when travelling with the player. Most are normal."
+        },
+        "place": {
+          "type": "string"
+        },
+        "sheet": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Abilities"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Leave empty."
+        },
+        "hp": {
+          "$ref": "#/$defs/Counter"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "brief",
+        "place",
+        "hp"
+      ],
+      "type": "object"
+    },
+    "Place": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "brief": {
+          "type": "string"
+        },
+        "known": {
+          "default": false,
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "brief",
+        "description"
+      ],
+      "type": "object"
+    },
+    "Prop": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "brief": {
+          "type": "string"
+        },
+        "known": {
+          "default": false,
+          "type": "boolean"
+        },
+        "on": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "brief",
+        "on"
+      ],
+      "type": "object"
+    },
+    "Way": {
+      "additionalProperties": false,
+      "description": "One directed passage from the place under which it is filed.",
+      "properties": {
+        "to": {
+          "type": "string"
+        },
+        "known": {
+          "default": false,
+          "type": "boolean"
+        },
+        "locked": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "to"
+      ],
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "places": {
+      "patternProperties": {
+        "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
+          "$ref": "#/$defs/Place"
+        }
+      },
+      "propertyNames": {},
+      "type": "object"
+    },
+    "ways": {
+      "patternProperties": {
+        "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
+          "items": {
+            "$ref": "#/$defs/Way"
+          },
+          "type": "array"
+        }
+      },
+      "propertyNames": {},
+      "type": "object"
+    },
+    "npcs": {
+      "patternProperties": {
+        "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
+          "$ref": "#/$defs/Npc"
+        }
+      },
+      "propertyNames": {},
+      "type": "object"
+    },
+    "items": {
+      "patternProperties": {
+        "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
+          "$ref": "#/$defs/Prop"
+        }
+      },
+      "propertyNames": {},
+      "type": "object"
+    },
+    "start": {
+      "description": "Exact id of the place this map starts from.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "start"
+  ],
+  "type": "object"
+}

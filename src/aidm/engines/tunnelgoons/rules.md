@@ -47,15 +47,10 @@ call.
 
 Use the `rest` arm for a night in a safe spot. You judge what is safe.
 
-## The party
+## A member's help
 
-A party member travels with the player from place to place. The player commands them and you
-voice them. Use the `join_party` arm when someone here comes along. Use the `leave_party` arm
-when they stop. A member without a sheet rolls nothing. Their help is a lower `difficulty` or a
-named item. Never volunteer a member's action to soften a scene the player must face alone.
+A member without a sheet rolls nothing. Their help is a lower `difficulty` or a named item.
 
 ## Hiring
 
-A sheet is for someone hired to work, never for one who only comes along.
-Call `hire` when the player takes someone on to work. Name the hired member in `actor_id` on
-`roll`. The `rest` arm heals them with the party.
+Name the hired member in `actor_id` on `roll`. The `rest` arm heals them with the party.
