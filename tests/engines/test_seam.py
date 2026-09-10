@@ -55,20 +55,17 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, ScenePack]):
     def master_tools(self) -> tuple[MasterTool[FifthGame], ...]:
         return ()
 
-    def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
-        del picks
+    def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
         return (CreationStep(id="pack", prompt="Choose a table set", options=self.pack_options()),)
 
-    def create_character(self, name: str, brief: str, picks: Picks) -> AnyCharacter:
-        del picks
+    def create_character(self, name: str, brief: str, _picks: Picks) -> AnyCharacter:
         return FifthCharacter(
             id=slug(name, ()),
             engine=FIFTH,
             payload=Person(id=PLAYER_ID, name=name, brief=brief, known=True),
         )
 
-    def guidance(self, picks: Sequence[Slug]) -> str:
-        del picks
+    def guidance(self, _picks: Sequence[Slug]) -> str:
         return "Write the taproom plainly."
 
     def master_sections(self, state: FifthGame) -> Pairs:
@@ -155,9 +152,8 @@ async def test_compose_builds_the_accepted_answer_once(tmp_path: Path) -> None:
         return _scenario()
 
     async def worldsmith[M: BaseModel](
-        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+        _prompt: str, model: type[M], refusal: Callable[[M], str | None]
     ) -> M:
-        del prompt
         option = model.model_validate({"id": "srd", "label": "The SRD"})
         assert refusal(option) is None
         return option

@@ -34,8 +34,7 @@ from aidm.engines.loner3e.world import Loner3eSheet
 class _UnsavableStore(FileStore):
     """Overrides `save` alone: `FileStore` is frozen and slotted, so this cannot monkeypatch it."""
 
-    def save(self, slug: str, state: AnyGame) -> None:
-        del slug, state
+    def save(self, _slug: str, _state: AnyGame, /) -> None:
         raise OSError("disk is gone")
 
 

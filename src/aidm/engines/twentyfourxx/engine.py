@@ -209,9 +209,8 @@ class TwentyfourxxEngine(
         )
         return TwentyfourxxCharacter(id=slug(name, ()), engine=self.id, payload=player)
 
-    def guidance(self, picks: Sequence[Slug]) -> str:
+    def guidance(self, _picks: Sequence[Slug]) -> str:
         """This pack holds creation tables, not setting vocabulary: the preamble alone suffices."""
-        del picks
         return AUTHORING
 
     def sheet_sections(self, state: TwentyfourxxGame) -> Pairs:

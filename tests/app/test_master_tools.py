@@ -306,9 +306,8 @@ async def test_authoring_raises_when_the_worldsmith_never_meets_the_bar(tmp_path
     thin = SceneDraft[Loner3eSheet].model_validate(json.loads(_bare_scene(present=["nobody-here"])))
 
     async def answer[M: BaseModel](
-        prompt: str, model: type[M], refusal: Callable[[M], str | None]
+        _prompt: str, model: type[M], refusal: Callable[[M], str | None]
     ) -> M:
-        del prompt
         answer = model.model_validate(thin.model_dump())
         if (refused := refusal(answer)) is not None:
             raise ValueError(f"the worldsmith answered nothing usable: {refused}")

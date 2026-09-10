@@ -63,12 +63,10 @@ class SixthEngine(RoomEngine[Dweller, Person, SixthGame]):
     def change_world(self, draft: SixthGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
         return self.shared_change(self.world(draft), args.change)
 
-    def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
-        del picks
+    def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
         return ()
 
-    def create_character(self, name: str, brief: str, picks: Picks) -> AnyCharacter:
-        del picks
+    def create_character(self, name: str, brief: str, _picks: Picks) -> AnyCharacter:
         return SixthCharacter(
             id=slug(name, ()),
             engine=SIXTH,
