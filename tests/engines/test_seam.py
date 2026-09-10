@@ -1,12 +1,11 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel
 
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
-from aidm.core.io import ENCODING
+from aidm.core.entities import EngineId, Refusal, Slug, slug
+from aidm.core.io import ENCODING, read_prompt
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
 from aidm.core.play import DecisionOption, SpokenLine
 from aidm.core.tools import MasterTool
@@ -17,7 +16,7 @@ from aidm.engines.scenes.packs import ScenePack
 from aidm.engines.scenes.world import SceneCanon, SceneRun, SceneWorld
 
 FIFTH = EngineId("fifth")
-KEEPER = EntityId("keeper")
+KEEPER = "keeper"
 SITUATION = (
     "The taproom is half empty, the fire is down to embers, and the keeper is watching the door."
 )
@@ -137,29 +136,10 @@ def test_a_fifth_scene_engine_begins_a_playable_game(tmp_path: Path) -> None:
 
     assert engine.pack_options() == (DecisionOption(id="srd", label="The SRD"),)
     assert engine.instructions.startswith("Roll high.")
-    assert engine.instructions.endswith(engine.family_rules())
+    assert engine.instructions.endswith(read_prompt(engine.family_prompt))
     assert engine.narrator_view(state).title == "The Taproom"
     assert engine.master_sections(state) == (("SCENE", "The Taproom"),)
     assert [row.label for row in engine.player_view(state).panels[-2].rows] == ["Keeper"]
-
-
-async def test_compose_builds_the_accepted_answer_once(tmp_path: Path) -> None:
-    engine = _installed(tmp_path)
-    builds: list[DecisionOption] = []
-
-    def build(option: DecisionOption) -> FifthScenario:
-        builds.append(option)
-        return _scenario()
-
-    async def worldsmith[M: BaseModel](
-        _prompt: str, model: type[M], refusal: Callable[[M], str | None]
-    ) -> M:
-        option = model.model_validate({"id": "srd", "label": "The SRD"})
-        assert refusal(option) is None
-        return option
-
-    await engine.compose(worldsmith, "write", DecisionOption, build, lambda _: None)
-    assert len(builds) == 1
 
 
 class _CountingFifthEngine(FifthEngine):
@@ -183,4 +163,4 @@ def test_close_builds_no_narrator_view(tmp_path: Path) -> None:
     closed = engine.close(state.draft(), (SpokenLine(text="Nothing stirs."),), (), prompt="I wait.")
 
     assert engine.narrator_view_calls == 0
-    assert engine.history(closed)[-1].prompt == "I wait."
+    assert engine.world(closed).exchanges()[-1].prompt == "I wait."

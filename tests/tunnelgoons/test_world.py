@@ -1,11 +1,11 @@
 import pytest
 from support.tunnelgoons import HALL, MIRA, START, small_world
 
-from aidm.core.entities import EntityId, Refusal
+from aidm.core.entities import Refusal
 from aidm.engines.rooms.world import Prop, RoomCanon, Visit, Way
 from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsWorld
 
-GHOST = EntityId("ghost")
+GHOST = "ghost"
 
 
 def test_begin_refuses_a_canon_whose_npc_stands_in_no_place() -> None:
@@ -20,8 +20,8 @@ def test_begin_refuses_a_canon_whose_npc_stands_in_no_place() -> None:
 
 def test_an_item_on_nothing_is_refused() -> None:
     draft = small_world().draft()
-    draft.payload.items[EntityId("stray")] = Prop(
-        id=EntityId("stray"), name="Stray", brief="Nobody's", known=True, on=GHOST
+    draft.payload.items["stray"] = Prop(
+        id="stray", name="Stray", brief="Nobody's", known=True, on=GHOST
     )
     with pytest.raises(Refusal, match="on nothing"):
         _ = draft.commit()

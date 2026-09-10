@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.entities import EntityId, Frozen, Mutable, Refusal, check_unique, slug
+from aidm.core.entities import Frozen, Mutable, Refusal, Slug, check_unique, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Pairs
@@ -93,7 +93,7 @@ class Sheet(ItemSheet[Gear]):
 
 
 class Crewmate(Sheeted[Sheet]):
-    def require_item(self, item_id: EntityId) -> Gear:
+    def require_item(self, item_id: Slug) -> Gear:
         return self.dice().require(item_id, self.name)
 
     def pay(self, cost: int) -> None:
@@ -126,13 +126,13 @@ class Crewmate(Sheeted[Sheet]):
     def gain_item(self, name: str, *, bulky: bool, breaks: int, cost: int) -> list[Fact]:
         self.pay(cost)
         items = self.dice().items
-        items[EntityId(slug(name, items))] = Gear(name=name, bulky=bulky, breaks=breaks)
+        items[slug(name, items)] = Gear(name=name, bulky=bulky, breaks=breaks)
         suffix = f" (₡{cost})" if cost > 0 else ""
         card = f"Gained {name}{suffix}"
         trace = f"{self.mention} gains {name}{suffix}"
         return [self.fact(trace, card=card)]
 
-    def drop_item(self, item_id: EntityId) -> list[Fact]:
+    def drop_item(self, item_id: Slug) -> list[Fact]:
         item = self.dice().drop(item_id, self.name)
         trace = f"{self.mention} drops {item.name}"
         return [self.fact(trace, card=f"Dropped {item.name}")]
@@ -163,9 +163,9 @@ class Crewmate(Sheeted[Sheet]):
 class TwentyfourxxWorld(SheetedWorld[Crewmate, Crewmate]):
     member_noun = "crew member"
     job: str = ""
-    ship: dict[EntityId, Gear] = Field(
+    ship: dict[Slug, Gear] = Field(
         default_factory=lambda: {
-            EntityId(slug(name, ())): Gear(name=name, harmless=name == "Hull armor")
+            slug(name, ()): Gear(name=name, harmless=name == "Hull armor")
             for name in SHIP_FUNCTIONS
         }
     )
@@ -173,14 +173,14 @@ class TwentyfourxxWorld(SheetedWorld[Crewmate, Crewmate]):
     def sheeted_members(self) -> list[Crewmate]:
         return [member for member in self.members() if member.sheet is not None]
 
-    def require_gear(self, actor: Crewmate, item_id: EntityId) -> Gear:
+    def require_gear(self, actor: Crewmate, item_id: Slug) -> Gear:
         """The actor's item or a ship function: both break to defend and both are repaired."""
         item = actor.dice().items.get(item_id) or self.ship.get(item_id)
         if item is None:
             raise Refusal(f"{item_id!r} is not among {actor.name}'s items or the ship's functions")
         return item
 
-    def defend(self, actor_id: EntityId | None, item_id: EntityId, hindrance: str) -> list[Fact]:
+    def defend(self, actor_id: Slug | None, item_id: Slug, hindrance: str) -> list[Fact]:
         actor = self.require_actor(actor_id)
         item = self.require_gear(actor, item_id)
         if item.broken:
@@ -202,7 +202,7 @@ class TwentyfourxxWorld(SheetedWorld[Crewmate, Crewmate]):
         trace = f"{actor.mention} breaks {item.name} — {hindrance}"
         return [actor.fact(trace, card=card)]
 
-    def upgrade_ship(self, function_id: EntityId) -> list[Fact]:
+    def upgrade_ship(self, function_id: Slug) -> list[Fact]:
         function = self.ship.get(function_id)
         if function is None:
             raise Refusal(f"{function_id!r} is not a ship function")
@@ -214,7 +214,7 @@ class TwentyfourxxWorld(SheetedWorld[Crewmate, Crewmate]):
         card = f"{function.name} upgraded — ₡{UPGRADE_COST}"
         return [self.player.fact(trace, card=card)]
 
-    def take_lead(self, member_id: EntityId) -> list[Fact]:
+    def take_lead(self, member_id: Slug) -> list[Fact]:
         """Decision 6: ids are kept. The new lead keeps theirs; the dead lead goes into the cast."""
         dead = self.player
         if dead.alive:

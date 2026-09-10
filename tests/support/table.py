@@ -12,7 +12,7 @@ from pydantic_settings import SettingsConfigDict
 
 from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import GameService, Runtime
-from aidm.app.spawn import RunResult
+from aidm.app.spawn import RunResult, Tools
 from aidm.config import Role, Settings
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact
@@ -120,7 +120,10 @@ class ScriptedSpawner:
     prompts: list[tuple[Role, str]] = field(default_factory=list)
     resumed: list[tuple[Role, str | None]] = field(default_factory=list)
 
-    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
+    async def run(
+        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+    ) -> RunResult:
+        del tools
         self.prompts.append((role, prompt))
         self.resumed.append((role, session))
         # A session every time, so a test exercises the resumed path the real CLIs take.

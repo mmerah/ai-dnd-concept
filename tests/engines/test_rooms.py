@@ -7,7 +7,7 @@ from pydantic import Discriminator
 from support.table import change, refused
 
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, EntityId, Refusal, slug
+from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
@@ -19,11 +19,11 @@ from aidm.engines.rooms.tools import Move, SharedChange
 from aidm.engines.rooms.world import Dweller, Place, Prop, RoomCanon, RoomWorld, Visit, Way
 
 SIXTH = EngineId("sixth")
-GATE = EntityId("gate")
-YARD = EntityId("yard")
-CELLAR = EntityId("cellar")
-WELL = EntityId("well")
-WARDEN = EntityId("warden")
+GATE = "gate"
+YARD = "yard"
+CELLAR = "cellar"
+WELL = "well"
+WARDEN = "warden"
 
 
 class SixthWorld(RoomWorld[Dweller, Person]):
@@ -85,7 +85,7 @@ def _installed(tmp_path: Path) -> SixthEngine:
     return Installed()
 
 
-def _place(place_id: EntityId, name: str, *, known: bool) -> Place:
+def _place(place_id: Slug, name: str, *, known: bool) -> Place:
     return Place(id=place_id, name=name, brief=f"The {name.lower()}", known=known, description=name)
 
 
@@ -204,7 +204,7 @@ def test_a_party_member_is_absent_from_place_lines_while_their_items_stay(
     character = engine.create_character("Wren", "A quiet scout", {})
     state = engine.begin("the-keep", _scenario(), character)
     world = state.payload
-    key = EntityId("warden-key")
+    key = "warden-key"
     world.items[key] = Prop(id=key, name="Key", brief="A rusty key", known=True, on=WARDEN)
     world.party.append(WARDEN)
 

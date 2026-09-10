@@ -6,12 +6,12 @@ from pydantic import ValidationError
 from support.game import character, initialized, loner_sheet, scenario
 from support.table import ENGINES_BUILT, LONER3E, SCENARIO_MODELS, SCENARIOS, updated
 
-from aidm.core.entities import EngineId, EntityId, Refusal
+from aidm.core.entities import EngineId, Refusal
 from aidm.core.io import Library, decode
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, Loner3eWorld
 
-MARA = EntityId("mara")
+MARA = "mara"
 OTHER = EngineId("ruleless")
 
 

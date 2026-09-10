@@ -1,4 +1,3 @@
-from aidm.core.entities import EntityId
 from aidm.core.play import Exchange, SceneRecord, SpokenLine
 from aidm.core.prompt import INTERJECTED, TAIL_EXCHANGES, render_history, told_history
 
@@ -65,7 +64,7 @@ def test_history_keeps_who_said_what() -> None:
     exchange = Exchange(
         prompt="I ask Mara.",
         lines=(
-            SpokenLine(speaker_id=EntityId("mara"), speaker="Mara", text="Not for sale."),
+            SpokenLine(speaker_id="mara", speaker="Mara", text="Not for sale."),
             SpokenLine(text="She goes back to her ledger."),
         ),
     )
@@ -82,7 +81,7 @@ def test_a_marked_exchange_carries_no_prompt_line() -> None:
     party = Exchange(
         prompt="",
         mark="interjection",
-        lines=(SpokenLine(speaker_id=EntityId("vessa"), speaker="Vessa", text="Wait."),),
+        lines=(SpokenLine(speaker_id="vessa", speaker="Vessa", text="Wait."),),
     )
     scenes = [SceneRecord(title="A1", focus="q1", exchanges=(story, party))]
 

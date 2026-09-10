@@ -5,7 +5,6 @@ from pydantic import BaseModel, ValidationError
 from support.table import TUNNELGOONS, game, narrowed
 from support.tunnelgoons import ENGINE, small_world
 
-from aidm.core.entities import EntityId
 from aidm.core.model import Generation, ScenarioMeta
 from aidm.engines.rooms.engine import MORE_MAP
 from aidm.engines.rooms.world import MapDraft, Place, Prop, Way
@@ -13,12 +12,12 @@ from aidm.engines.rooms.worldsmith import extension_refusal, map_refusal
 from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsGame
 from aidm.engines.tunnelgoons.worldsmith import AUTHORING, AbilitiesDraft
 
-ONLY = EntityId("only")
-HIDDEN = EntityId("hidden")
-FAR_HALL = EntityId("far-hall")
-FAR_VAULT = EntityId("far-vault")
-FAR_ITEM = EntityId("far-item")
-HALL = EntityId("hall")
+ONLY = "only"
+HIDDEN = "hidden"
+FAR_HALL = "far-hall"
+FAR_VAULT = "far-vault"
+FAR_ITEM = "far-item"
+HALL = "hall"
 
 THIN = MapDraft[Npc](
     places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},

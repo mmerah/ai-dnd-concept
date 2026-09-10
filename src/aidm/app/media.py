@@ -10,7 +10,7 @@ from pydantic import JsonValue
 
 from aidm.app.providers import claim, post_bearer
 from aidm.config import MediaConfig, ProviderConfig, Settings
-from aidm.core.entities import EntityId, Loose
+from aidm.core.entities import Loose, Slug
 from aidm.core.io import FileStore
 from aidm.core.views import NarratorView, Subject
 
@@ -40,7 +40,7 @@ class Illustrator:
     def scene_art(self, scene: NarratorView) -> Path | None:
         return _existing(self.saves, scene_key(scene))
 
-    def icon(self, entity_id: EntityId) -> Path | None:
+    def icon(self, entity_id: Slug) -> Path | None:
         for directory in (*self.icon_dirs, self.saves / ICON_DIR):
             found = _existing(directory, entity_id)
             if found is not None:

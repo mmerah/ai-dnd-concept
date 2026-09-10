@@ -2,14 +2,13 @@ from support.game import initialized, with_entity
 from support.table import ENGINES_BUILT, LONER3E
 
 from aidm.app.roles import render_narrator
-from aidm.core.entities import EntityId
 from aidm.core.play import Exchange, SceneRecord, SpokenLine
 from aidm.core.views import NarratorView
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
 from aidm.engines.seam import AnyEngine
 from aidm.turn.run import ANSWERED_BY_OPTION, render_master
 
-SECRET = EntityId("hidden-actor")
+SECRET = "hidden-actor"
 UNREVEALED = "Unrevealed canon."
 
 
@@ -22,7 +21,7 @@ def _state() -> Loner3eGame:
     )
     return with_entity(
         state,
-        Loner3eSheet(id=EntityId("ledger"), name="a ledger", brief="Mara's notes.", known=True),
+        Loner3eSheet(id="ledger", name="a ledger", brief="Mara's notes.", known=True),
     )
 
 
@@ -35,7 +34,7 @@ def _master_prompt(state: Loner3eGame, prompt: str, *, notes: tuple[str, ...] = 
         _engine().instructions,
         _engine().master_sections(state),
         state,
-        _engine().scenes(state),
+        _engine().world(state).records(),
         prompt,
         notes=notes,
     )
@@ -95,7 +94,7 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_met() -> None:
 def test_the_narrator_prompt_names_the_party_and_leaves_a_member_out_of_who_is_here() -> None:
     state = _state()
     draft = state.draft()
-    draft.payload.party.append(EntityId("ledger"))
+    draft.payload.party.append("ledger")
     state = draft.commit()
 
     prompt = render_narrator(

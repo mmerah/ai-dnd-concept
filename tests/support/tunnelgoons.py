@@ -1,4 +1,4 @@
-from aidm.core.entities import EngineId, EntityId
+from aidm.core.entities import EngineId, Slug
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Counter
 from aidm.engines.rooms.world import Place, Prop, Visit, Way
@@ -6,24 +6,24 @@ from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 from aidm.engines.tunnelgoons.world import Abilities, Goon, Npc, TunnelGoonsGame, TunnelGoonsWorld
 from support.table import ENGINES_BUILT, TUNNELGOONS, narrowed
 
-START = EntityId("start")
-HALL = EntityId("hall")
-VAULT = EntityId("vault")
-CRYPT = EntityId("crypt")
-MIRA = EntityId("mira")
-MANTIS = EntityId("mantis")
-ROPE = EntityId("rope")
-TORCH = EntityId("torch")
-KEY = EntityId("key")
-LANTERN = EntityId("lantern")
+START: Slug = "start"
+HALL: Slug = "hall"
+VAULT: Slug = "vault"
+CRYPT: Slug = "crypt"
+MIRA: Slug = "mira"
+MANTIS: Slug = "mantis"
+ROPE: Slug = "rope"
+TORCH: Slug = "torch"
+KEY: Slug = "key"
+LANTERN: Slug = "lantern"
 ENGINE = narrowed(ENGINES_BUILT[TUNNELGOONS], TunnelGoonsEngine)
 
 
 def _map_pieces() -> tuple[
-    dict[EntityId, Place],
-    dict[EntityId, list[Way]],
-    dict[EntityId, Npc],
-    dict[EntityId, Prop],
+    dict[Slug, Place],
+    dict[Slug, list[Way]],
+    dict[Slug, Npc],
+    dict[Slug, Prop],
 ]:
     """A line of four places, a start->vault shortcut, and hall->vault locked."""
     places = {

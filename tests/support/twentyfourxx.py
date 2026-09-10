@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from aidm.core.entities import EngineId, EntityId
+from aidm.core.entities import EngineId, Slug
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.world import SceneRun
@@ -15,9 +15,9 @@ from aidm.engines.twentyfourxx.world import (
 )
 from support.table import ENGINES_BUILT, TWENTYFOURXX, narrowed
 
-KESTREL = EntityId("kestrel")
-SABLE = EntityId("sable")
-LOCKPICKS = EntityId("lockpicks")
+KESTREL: Slug = "kestrel"
+SABLE: Slug = "sable"
+LOCKPICKS: Slug = "lockpicks"
 SITUATION = (
     "Cargo containers stack three high across the loading bay, and the station's night crew "
     "has just killed the lights for a scheduled power-saving cycle."
@@ -45,7 +45,7 @@ def small_world() -> TwentyfourxxGame:
 
 
 def hired(
-    state: TwentyfourxxGame, entity_id: EntityId, *, skills: dict[str, SkillDie]
+    state: TwentyfourxxGame, entity_id: Slug, *, skills: dict[str, SkillDie]
 ) -> TwentyfourxxGame:
     """Give a cast member a sheet and put them in the party, for tests that need a hired hand."""
     draft = state.draft()
@@ -54,7 +54,7 @@ def hired(
     return draft.commit()
 
 
-def _scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
+def _scene(*, here: Sequence[Slug] = ()) -> SceneRun:
     return SceneRun(
         place="loading-bay",
         title="The Loading Bay",

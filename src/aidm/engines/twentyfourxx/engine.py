@@ -4,14 +4,14 @@ from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, option_of, picked
-from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
+from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, keep_highest, roll
 from aidm.core.model import Objection
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import lines_of
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Pairs, Panel, PanelRow
-from aidm.engines.base import CHANGE_WORLD, PLAYER_ID
+from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, banded
 from aidm.engines.hiring import HIRE_TOOL, Hire, Hiring
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
@@ -31,7 +31,6 @@ from aidm.engines.twentyfourxx.tools import (
     TakeLead,
     TestLuck,
     WorldChange,
-    outcome,
 )
 from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
@@ -309,7 +308,7 @@ class TwentyfourxxEngine(
         """A dead lead with a hired member alive is a succession, not an ending."""
         return None if state.payload.sheeted_members() else super().over(state)
 
-    def hireable(self, draft: TwentyfourxxGame, entity_id: EntityId) -> Crewmate:
+    def hireable(self, draft: TwentyfourxxGame, entity_id: Slug) -> Crewmate:
         return draft.payload.require_hireable(entity_id)
 
     def hire_prompt(self, draft: TwentyfourxxGame, member: Crewmate, terms: str) -> str:
@@ -374,7 +373,7 @@ class TwentyfourxxEngine(
             die_label = "+".join(f"d{face}" for face in pool)
             face, event, dice_fact = keep_highest(pool, reason, rng, label=die_label)
 
-        result = outcome(face)
+        result = banded(face, "disaster", "setback", "success")
         line = (
             f"{args.what} — {sentence(label)} d{die}"
             if actor is world.player
@@ -402,12 +401,7 @@ class TwentyfourxxEngine(
     def test_luck(self, _draft: TwentyfourxxGame, args: TestLuck, rng: Random) -> list[Fact]:
         rolled, dice_fact = roll((6,), args.question, rng)
         face = rolled[0]
-        if face <= 2:
-            result = "trouble now"
-        elif face <= 4:
-            result = "signs of it"
-        else:
-            result = "nothing"
+        result = banded(face, "trouble now", "signs of it", "nothing")
         trace = f"{args.question} — d6 [{face}] -> {result}"
         return [dice_fact, Fact(trace=trace)]
 
@@ -426,12 +420,12 @@ class TwentyfourxxEngine(
             raise Refusal(f"a job is open: {world.job}")
         rolled, dice_fact = roll((6,), where, rng)
         face = rolled[0]
-        if face <= 2:
-            result = "nothing; the player owes somebody to get in on a job"
-        elif face <= 4:
-            result = "a job, but something seems off"
-        else:
-            result = "a choice between two jobs"
+        result = banded(
+            face,
+            "nothing; the player owes somebody to get in on a job",
+            "a job, but something seems off",
+            "a choice between two jobs",
+        )
         line = f"{where} — d6 → {result}"
         return [
             dice_fact,
@@ -456,7 +450,7 @@ class TwentyfourxxEngine(
         expected_count, got_count = Counter(expected), Counter(got)
         if got_count != expected_count:
 
-            def named(actor_id: EntityId | None) -> str:
+            def named(actor_id: Slug | None) -> str:
                 return "the player" if actor_id is None else actor_id
 
             missing = sorted(named(actor_id) for actor_id in set(expected) - set(got))
@@ -510,19 +504,17 @@ class TwentyfourxxEngine(
         return facts
 
 
-def items_from_kits(kits: Sequence[Kit]) -> dict[EntityId, Gear]:
+def items_from_kits(kits: Sequence[Kit]) -> dict[Slug, Gear]:
     taken: list[str] = []
-    items: dict[EntityId, Gear] = {}
+    items: dict[Slug, Gear] = {}
     for kit in kits:
         key = slug(kit.name, taken)
         taken.append(key)
-        items[EntityId(key)] = Gear(
-            name=kit.name, bulky=kit.bulky, breaks=kit.breaks, harmless=kit.harmless
-        )
+        items[key] = Gear(name=kit.name, bulky=kit.bulky, breaks=kit.breaks, harmless=kit.harmless)
     return items
 
 
-def _item_lines(items: Mapping[EntityId, Gear]) -> str:
+def _item_lines(items: Mapping[Slug, Gear]) -> str:
     return lines_of(
         f"- {item.name}[{key}]" + (f" — {detail}" if (detail := item.detail()) else "")
         for key, item in items.items()

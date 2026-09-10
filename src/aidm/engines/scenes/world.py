@@ -4,8 +4,6 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import (
-    CheckedEntityId,
-    EntityId,
     Mutable,
     Refusal,
     Slug,
@@ -17,7 +15,7 @@ from aidm.core.play import Exchange, SceneRecord
 from aidm.core.prompt import lines_of
 from aidm.core.views import Panel, PanelRow
 from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, World, check_filing
-from aidm.engines.scenes.drafts import NextDraft, SceneDraft
+from aidm.engines.scenes.tools import NextDraft, SceneDraft
 
 WAY_OFFERED = Fact(
     trace=(
@@ -43,14 +41,14 @@ class SceneRun(Mutable):
     title: str
     focus: str = ""
     situation: str = Field(min_length=1)
-    here: list[CheckedEntityId] = Field(default_factory=list)
+    here: list[Slug] = Field(default_factory=list)
     exchanges: list[Exchange] = Field(default_factory=list)
     offered: bool = False
     recap: str = ""
 
 
 class SceneCanon[C: Person](Mutable):
-    cast: dict[EntityId, C] = Field(default_factory=dict)
+    cast: dict[Slug, C] = Field(default_factory=dict)
     opening: SceneRun
     source: str = ""
     arc: str = ""
@@ -67,7 +65,7 @@ class SceneCanon[C: Person](Mutable):
 
 class SceneWorld[C: Person, P: Person](World[P]):
     runs: list[SceneRun] = Field(min_length=1)
-    cast: dict[EntityId, C] = Field(default_factory=dict)
+    cast: dict[Slug, C] = Field(default_factory=dict)
     arc: str = ""
 
     @model_validator(mode="after")
@@ -112,10 +110,10 @@ class SceneWorld[C: Person, P: Person](World[P]):
     def run(self) -> SceneRun:
         return self.runs[-1]
 
-    def present(self) -> list[EntityId]:
+    def present(self) -> list[Slug]:
         return [entity_id for entity_id in self.run.here if self.cast[entity_id].known]
 
-    def hidden(self) -> list[EntityId]:
+    def hidden(self) -> list[Slug]:
         return [entity_id for entity_id in self.run.here if not self.cast[entity_id].known]
 
     def record(self, exchange: Exchange) -> None:
@@ -132,7 +130,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
             for run in self.runs
         )
 
-    def last_seen(self, entity_id: EntityId) -> str:
+    def last_seen(self, entity_id: Slug) -> str:
         """Scans every run so an entity the story dropped is still placed."""
         for run in reversed(self.runs):
             if entity_id in run.here:
@@ -142,7 +140,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
     def members(self) -> list[C]:
         return [self.cast[member_id] for member_id in self.party]
 
-    def require(self, entity_id: EntityId) -> C | P:
+    def require(self, entity_id: Slug) -> C | P:
         if entity_id == self.player.id:
             return self.player
         entity = self.cast.get(entity_id)
@@ -150,7 +148,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
             raise Refusal(UNKNOWN_ID.format(entity_id=entity_id))
         return entity
 
-    def require_here(self, entity_id: EntityId, *, alive: bool = False) -> C | P:
+    def require_here(self, entity_id: Slug, *, alive: bool = False) -> C | P:
         entity = self.require(entity_id)
         if alive and not entity.alive:
             raise Refusal(IS_DEAD.format(name=entity.name))
@@ -197,14 +195,14 @@ class SceneWorld[C: Person, P: Person](World[P]):
             )
         return "\n".join(lines)
 
-    def reveal_hidden(self, entity_id: EntityId) -> list[Fact]:
+    def reveal_hidden(self, entity_id: Slug) -> list[Fact]:
         """The discovery itself, distinct from what `enter` tells about someone walking in."""
         entity = self.require(entity_id)
         if entity_id not in self.run.here or entity.known:
             raise Refusal(f"{entity_id!r} is not hidden here")
         return entity.reveal(card=sentence(f"{entity.name} discovered"))
 
-    def enter(self, entity_id: EntityId) -> list[Fact]:
+    def enter(self, entity_id: Slug) -> list[Fact]:
         if entity_id == self.player.id:
             raise Refusal("the player is in every scene; move the story on instead")
         entity = self.require(entity_id)
@@ -217,7 +215,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
             entity.fact(trace, card=f"{entity.name} arrives"),
         ]
 
-    def leave(self, entity_id: EntityId) -> list[Fact]:
+    def leave(self, entity_id: Slug) -> list[Fact]:
         if entity_id == self.player.id:
             raise Refusal("the player is in every scene; move the story on instead")
         entity = self.require_here(entity_id)
@@ -227,7 +225,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
         card = f"{entity.name} leaves"
         return [entity.fact(f"{entity.mention} leaves", card=card)]
 
-    def kill(self, entity_id: EntityId) -> list[Fact]:
+    def kill(self, entity_id: Slug) -> list[Fact]:
         entity = self.require_here(entity_id)
         if not entity.alive:
             raise Refusal(f"{entity.name} is already dead")
@@ -239,10 +237,10 @@ class SceneWorld[C: Person, P: Person](World[P]):
         facts.append(entity.fact(f"{entity.mention} is dead", card=card))
         return facts
 
-    def join_party(self, entity_id: EntityId) -> list[Fact]:
+    def join_party(self, entity_id: Slug) -> list[Fact]:
         return self.join(self.require_here(entity_id, alive=True))
 
-    def leave_party(self, entity_id: EntityId) -> list[Fact]:
+    def leave_party(self, entity_id: Slug) -> list[Fact]:
         return self.part(self.require(entity_id))
 
     def offer(self) -> list[Fact]:
@@ -251,7 +249,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
         self.run.offered = True
         return [WAY_OFFERED]
 
-    def merged_cast(self, cast: Mapping[EntityId, C]) -> dict[EntityId, C]:
+    def merged_cast(self, cast: Mapping[Slug, C]) -> dict[Slug, C]:
         return {
             **self.cast,
             **{
@@ -264,7 +262,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
 
     def apply_scene(self, draft: SceneDraft[C]) -> None:
         self.cast = self.merged_cast(draft.cast)
-        everyone: Mapping[EntityId, Thing] = {self.player.id: self.player, **self.cast}
+        everyone: Mapping[Slug, Thing] = {self.player.id: self.player, **self.cast}
         present = resolve_ids(draft.present, everyone, "present")
         hidden = resolve_ids(draft.hidden, everyone, "hidden")
         for entity_id in present:
@@ -284,25 +282,23 @@ def sentence(text: str) -> str:
     return text[:1].upper() + text[1:]
 
 
-def check_named(here: Sequence[EntityId], cast: Mapping[EntityId, Thing]) -> None:
+def check_named(here: Sequence[Slug], cast: Mapping[Slug, Thing]) -> None:
     check_unique("ids in the scene", here)
     for who in here:
         if who not in cast:
             raise ValueError(f"scene names {who!r}, who is not in the cast")
 
 
-def resolved_id(wanted: str, cast: Mapping[EntityId, Thing]) -> EntityId | None:
+def resolved_id(wanted: str, cast: Mapping[Slug, Thing]) -> Slug | None:
     """Ids are the worldsmith's failure mode: an unknown one matches a cast name before refusal."""
     if wanted in cast:
-        return EntityId(wanted)
+        return wanted
     matches = [entry.id for entry in cast.values() if entry.name.casefold() == wanted.casefold()]
-    return EntityId(matches[0]) if len(matches) == 1 else None
+    return matches[0] if len(matches) == 1 else None
 
 
-def resolve_ids(
-    wanted: Iterable[str], cast: Mapping[EntityId, Thing], where: str
-) -> list[EntityId]:
-    found: list[EntityId] = []
+def resolve_ids(wanted: Iterable[str], cast: Mapping[Slug, Thing], where: str) -> list[Slug]:
+    found: list[Slug] = []
     for name in wanted:
         matched = resolved_id(name, cast)
         if matched is None:
@@ -312,7 +308,7 @@ def resolve_ids(
     return found
 
 
-def run_of[C: Person](draft: SceneDraft[C], here: list[EntityId]) -> SceneRun:
+def run_of[C: Person](draft: SceneDraft[C], here: list[Slug]) -> SceneRun:
     """Free: it builds a `SceneRun` from a draft the run does not own."""
     return SceneRun(
         place=draft.place,

@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from aidm.core.entities import EntityId, Mutable, Refusal, slug
+from aidm.core.entities import Mutable, Refusal, Slug, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Pairs
@@ -64,7 +64,7 @@ class Goon(Person):
         made = list(taken)
         items: list[Prop] = []
         for name in self.kit:
-            item_id = EntityId(slug(name, made))
+            item_id = slug(name, made)
             made.append(item_id)
             items.append(Prop(id=item_id, name=name, brief="", known=True, on=PLAYER_ID))
         return tuple(items)
@@ -80,7 +80,7 @@ class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
             for label, value in self.player.rows()
         )
 
-    def require_actor_and_sheet(self, actor_id: EntityId | None) -> tuple[Goon | Npc, Abilities]:
+    def require_actor_and_sheet(self, actor_id: Slug | None) -> tuple[Goon | Npc, Abilities]:
         if actor_id is None or actor_id == self.player.id:
             return self.player, self.player.sheet
         npc = self.npcs.get(actor_id)
@@ -90,7 +90,7 @@ class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
             return npc, npc.sheet
         raise Refusal(f"{npc.name} is not the player or a hired party member")
 
-    def require_hireable(self, entity_id: EntityId) -> Npc:
+    def require_hireable(self, entity_id: Slug) -> Npc:
         npc = self.require_npc_here(entity_id)
         if npc.sheet is not None:
             raise Refusal(f"{npc.name} already carries a sheet")

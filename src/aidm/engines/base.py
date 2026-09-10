@@ -4,12 +4,12 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Refusal
+from aidm.core.entities import Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import DiceEvent, Fact
 from aidm.core.play import Exchange, SceneRecord
 from aidm.core.views import Pairs, Panel, PanelRow, Subject
 
-PLAYER_ID = EntityId("player")
+PLAYER_ID: Slug = "player"
 CHANGE_WORLD = (
     "Call this when the story has settled a change to the world. Fill the fields of the verb "
     "you pick. One call makes one change."
@@ -21,7 +21,7 @@ type Chattiness = Literal["quiet", "normal", "chatty"]
 
 
 class Thing(Mutable):
-    id: CheckedEntityId
+    id: Slug
     name: str
     brief: str
     known: bool = False
@@ -97,7 +97,7 @@ class Person(Thing):
 class World[P: Person](Mutable):
     player: P
     source: str = ""
-    party: list[EntityId] = Field(default_factory=list)
+    party: list[Slug] = Field(default_factory=list)
 
     @abstractmethod
     def records(self) -> tuple[SceneRecord, ...]: ...
@@ -139,14 +139,14 @@ class JoinParty(Frozen):
     """A character here starts travelling with the player."""
 
     verb: Literal["join_party"]
-    entity_id: CheckedEntityId = Field(description="Exact id of who is joining.")
+    entity_id: Slug = Field(description="Exact id of who is joining.")
 
 
 class LeaveParty(Frozen):
     """A party member stops travelling with the player."""
 
     verb: Literal["leave_party"]
-    entity_id: CheckedEntityId = Field(description="Exact id of the party member leaving.")
+    entity_id: Slug = Field(description="Exact id of the party member leaving.")
 
 
 class ChangeWorld[C](Frozen):
@@ -222,7 +222,12 @@ def trail_panel(titles: Iterable[str]) -> Panel:
     return Panel(title="Trail", rows=tuple(PanelRow(label=title, detail="") for title in titles))
 
 
-def check_filing(pool: Mapping[EntityId, Thing]) -> None:
+def check_filing(pool: Mapping[Slug, Thing]) -> None:
     for key, entity in pool.items():
         if key != entity.id:
             raise ValueError(f"entity {entity.id!r} is filed under {key!r}")
+
+
+def banded(face: int, low: str, mid: str, high: str) -> str:
+    """The three bands of a six-sided read: 1 to 2, 3 to 4, 5 and up."""
+    return low if face <= 2 else mid if face <= 4 else high

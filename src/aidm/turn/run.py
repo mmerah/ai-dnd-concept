@@ -14,7 +14,7 @@ from aidm.core.io import read_prompt
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, SceneRecord, SpokenLine
 from aidm.core.prompt import lines_of, render_history, sections
-from aidm.core.tools import Play
+from aidm.core.tools import MasterTool, Play
 from aidm.core.views import Pairs
 from aidm.engines.seam import AnyEngine
 
@@ -97,9 +97,9 @@ class Turn:
             self.engine.instructions,
             self.engine.master_sections(self.draft),
             self.draft,
-            self.engine.scenes(self.draft),
+            self.engine.world(self.draft).records(),
             self.action,
-            notes=(*self.notes, *self.draft.notes),
+            notes=self.notes,
         )
 
     def call(self, name: str, raw: JsonValue) -> str:
@@ -123,6 +123,9 @@ class Turn:
         if self.draft.pending is not None:
             lines.append(f"- {RULES_WAIT}")
         return "\n".join(lines) or NOTHING
+
+    def published_tools(self) -> tuple[MasterTool[AnyGame], ...]:
+        return tuple(self.engine.tools.values())
 
     def finish(self, lines: tuple[SpokenLine, ...]) -> AnyGame:
         return self.engine.close(self.draft, lines, tuple(self.facts), prompt=self.prompt)

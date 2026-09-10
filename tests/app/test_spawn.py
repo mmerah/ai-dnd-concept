@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from aidm.app.spawn import ClaudeDriver, CodexDriver, RunResult, ask, child_environment
+from aidm.app.spawn import ClaudeDriver, CodexDriver, RunResult, Tools, ask, child_environment
 from aidm.config import Role, RoleConfig
 from aidm.core.entities import Refusal
 from aidm.core.play import Narration
@@ -86,8 +86,10 @@ async def test_a_retry_carries_on_the_refused_attempt_and_sends_only_the_error()
     asked: list[tuple[str, str | None]] = []
 
     class _Spawner:
-        async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
-            del role
+        async def run(
+            self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+        ) -> RunResult:
+            del role, tools
             asked.append((prompt, session))
             return RunResult('{"lines": []}' if session else "not json", "abc-123")
 

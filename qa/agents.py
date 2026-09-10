@@ -24,7 +24,7 @@ import httpx
 from pydantic import JsonValue
 
 from aidm.app.runtime import Runtime
-from aidm.app.spawn import RunResult
+from aidm.app.spawn import RunResult, Tools
 from aidm.config import Role
 from aidm.core.entities import Refusal
 
@@ -67,8 +67,10 @@ class ScriptedAgents:
     log: list[Spoken] = field(default_factory=list)
     scenes: "count[int]" = field(default_factory=lambda: count(1))
 
-    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
-        del session
+    async def run(
+        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+    ) -> RunResult:
+        del session, tools
         spoken = Spoken(role=role, prompt=prompt, answer="")
         self.log.append(spoken)
         await sleep(self.delay)

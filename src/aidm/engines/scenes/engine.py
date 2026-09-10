@@ -31,9 +31,17 @@ from aidm.engines.base import (
     party_section,
     trail_panel,
 )
-from aidm.engines.scenes.drafts import NextDraft, SceneDraft
 from aidm.engines.scenes.packs import SRD_PACK, ScenePack, read_packs
-from aidm.engines.scenes.tools import Enter, Kill, Leave, NextScene, Reveal, SharedChange
+from aidm.engines.scenes.tools import (
+    Enter,
+    Kill,
+    Leave,
+    NextDraft,
+    NextScene,
+    Reveal,
+    SceneDraft,
+    SharedChange,
+)
 from aidm.engines.scenes.world import (
     SCENE_LEFT,
     SceneCanon,
@@ -88,13 +96,11 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
     world_type: type[SceneWorld[C, P]]
     packs: dict[str, K]
     operations = (DEPARTURE, COMPLICATION)
+    family_prompt = RULES_PROMPT
 
     def __init__(self) -> None:
         self.packs = read_packs(self.directory / "packs", self.pack)
         super().__init__()  # last: `master_tools` reads the packs
-
-    def family_rules(self) -> str:
-        return read_prompt(RULES_PROMPT)
 
     def world(self, state: G) -> SceneWorld[C, P]:
         return state.payload
@@ -111,7 +117,6 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
             raise Refusal(f"a scene engine cannot write {state.generation.operation!r}")
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> SceneWorld[C, P]:
-        self.check_scenario(scenario)
         canon: SceneCanon[C] = scenario.payload
         return self.world_type.begin(canon, self.player_of(character))
 

@@ -1,7 +1,7 @@
 import pytest
 from support.twentyfourxx import KESTREL, hired, small_world
 
-from aidm.core.entities import EntityId, Refusal
+from aidm.core.entities import Refusal
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.twentyfourxx.engine import items_from_kits
 from aidm.engines.twentyfourxx.world import (
@@ -84,7 +84,7 @@ def test_check_filing_rejects_mis_filed_cast() -> None:
     world = small_world().payload
     with pytest.raises(ValueError):
         TwentyfourxxWorld(
-            cast={EntityId("wrong-key"): world.cast[KESTREL]},
+            cast={"wrong-key": world.cast[KESTREL]},
             player=world.player,
             runs=world.runs,
         )
@@ -117,7 +117,7 @@ def test_require_actor_refuses_an_unsheeted_member() -> None:
 
 def test_starting_items_slug_duplicate_kit_names_in_order() -> None:
     items = items_from_kits((Kit(name="Comm"), Kit(name="Comm")))
-    assert list(items.keys()) == [EntityId("comm"), EntityId("comm-2")]
+    assert list(items.keys()) == ["comm", "comm-2"]
     assert [item.name for item in items.values()] == ["Comm", "Comm"]
 
 
@@ -146,10 +146,10 @@ def test_take_lead_refused_while_the_player_lives() -> None:
 
 def test_require_gear_finds_a_ship_function_and_refuses_a_stranger() -> None:
     world = small_world().payload
-    item = world.require_gear(world.player, EntityId("hull-armor"))
+    item = world.require_gear(world.player, "hull-armor")
     assert item.name == "Hull armor"
     with pytest.raises(Refusal, match="not among"):
-        world.require_gear(world.player, EntityId("nonexistent"))
+        world.require_gear(world.player, "nonexistent")
 
 
 def test_item_detail_shows_upgraded() -> None:

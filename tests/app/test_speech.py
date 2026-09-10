@@ -18,13 +18,12 @@ from aidm.app.speech import (
     voice_of,
 )
 from aidm.config import ProviderConfig, SpeechConfig
-from aidm.core.entities import EntityId
 from aidm.core.io import FileStore
 from aidm.core.play import Exchange, SpokenLine
 
 NARRATOR = "Kore"
 POOL = ("Kore", "Puck", "Charon", "Zephyr", "Fenrir")
-KAEL = EntityId("kael")
+KAEL = "kael"
 
 
 def _exchange() -> Exchange:
@@ -59,7 +58,7 @@ def test_voice_of_gives_the_narrator_for_narration_and_a_stable_pool_member_for_
     first = voice_of(KAEL, NARRATOR, POOL)
     assert first in POOL
     assert voice_of(KAEL, NARRATOR, POOL) == first
-    assert voice_of(EntityId("mara"), NARRATOR, POOL) in POOL
+    assert voice_of("mara", NARRATOR, POOL) in POOL
 
 
 def test_clip_key_is_twelve_hex_chars_and_changes_with_model_voice_or_text() -> None:
@@ -158,7 +157,7 @@ async def test_speak_reads_and_caches_the_newest_committed_exchange(
     monkeypatch.setattr("aidm.app.speech.post_bearer", _fake_post_bearer)
     session.reader = _reader(tmp_path)
 
-    exchange = session.engine.history(session.state)[-1]
+    exchange = session.engine.world(session.state).exchanges()[-1]
     session.speak(exchange)
     await session.drain()
 

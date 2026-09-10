@@ -21,9 +21,9 @@ from support.table import (
 
 from aidm.app.roles import REQUESTED, Roles
 from aidm.app.runtime import GameService, Runtime
-from aidm.app.spawn import RunResult
+from aidm.app.spawn import RunResult, Tools
 from aidm.config import Role
-from aidm.core.entities import EntityId, Refusal
+from aidm.core.entities import Refusal
 from aidm.core.io import FileStore
 from aidm.core.model import AnyGame, Generation, ScenarioMeta
 from aidm.engines.base import PLAYER_ID
@@ -101,12 +101,12 @@ async def test_the_opening_is_narrated_once_and_costs_a_turn(tmp_path: Path) -> 
 
     await table.service.open()
 
-    history = table.service.engine.history(table.service.state)
+    history = table.service.engine.world(table.service.state).exchanges()
     assert [exchange.mark for exchange in history] == ["opening"]
     assert len(history) == 1
 
     await table.service.open()
-    assert len(table.service.engine.history(table.service.state)) == 1
+    assert len(table.service.engine.world(table.service.state).exchanges()) == 1
 
 
 async def test_an_opening_the_narrator_will_not_write_commits_nothing(tmp_path: Path) -> None:
@@ -115,7 +115,7 @@ async def test_an_opening_the_narrator_will_not_write_commits_nothing(tmp_path: 
 
     await table.service.open()
 
-    assert table.service.engine.history(table.service.state) == ()
+    assert table.service.engine.world(table.service.state).exchanges() == ()
     assert not table.service.busy
 
 
@@ -236,7 +236,7 @@ async def test_a_failed_write_after_a_hire_names_the_hire(tmp_path: Path) -> Non
         tool_call("hire", entity_id="ovid-sarn", terms="Guide us across the flats."),
     )
 
-    exchange = table.service.engine.history(state)[-1]
+    exchange = table.service.engine.world(state).exchanges()[-1]
     assert exchange.facts[0].card == "The hire could not be written; nobody signed on."
     assert state.generation is None
 
@@ -292,12 +292,14 @@ class _TurnLandsFirst:
     service: GameService
     inner: ScriptedSpawner
 
-    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
+    async def run(
+        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+    ) -> RunResult:
         if role == "narrator":
             self.service.save(
                 self.service.engine.close(self.service.state.draft(), (), (), mark="story")
             )
-        return await self.inner.run(role, prompt, session)
+        return await self.inner.run(role, prompt, session, tools)
 
 
 @dataclass(slots=True)
@@ -306,16 +308,18 @@ class _StillSpeaking:
 
     inner: ScriptedSpawner
 
-    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
+    async def run(
+        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+    ) -> RunResult:
         if role == "narrator" and prompt.startswith("YOUR ROLE:\nYou are Vessa Rune"):
             await Event().wait()
-        return await self.inner.run(role, prompt, session)
+        return await self.inner.run(role, prompt, session, tools)
 
 
 def _party_of_one(service: GameService) -> Loner3eSheet:
     """One chatty companion, met and travelling: she passes the d10 on three faces in ten."""
     member = Loner3eSheet(
-        id=EntityId("vessa-rune"),
+        id="vessa-rune",
         name="Vessa Rune",
         brief="A sharp-eyed pilot.",
         known=True,
@@ -344,7 +348,7 @@ async def test_a_member_who_passes_the_d10_speaks_after_the_turn(tmp_path: Path)
 
     prompt = table.spawner.prompt("narrator")
     assert f"YOUR ROLE:\nYou are {member.name}. {member.brief}" in prompt
-    exchange = table.service.engine.history(table.service.state)[-1]
+    exchange = table.service.engine.world(table.service.state).exchanges()[-1]
     assert exchange.mark == "interjection"
     assert [line.speaker_id for line in exchange.lines] == [member.id]
     assert exchange.proposal == "I check the airlock seal."
@@ -358,7 +362,7 @@ async def test_nobody_passing_the_d10_spawns_no_narrator(tmp_path: Path) -> None
     await table.service.interject()
 
     assert table.spawner.prompts == []
-    assert table.service.engine.history(table.service.state) == ()
+    assert table.service.engine.world(table.service.state).exchanges() == ()
 
 
 async def test_a_turn_that_lands_first_drops_the_interjection(tmp_path: Path) -> None:
@@ -369,18 +373,18 @@ async def test_a_turn_that_lands_first_drops_the_interjection(tmp_path: Path) ->
 
     await table.service.interject()
 
-    assert table.service.engine.history(table.service.state)[-1].mark == "story"
+    assert table.service.engine.world(table.service.state).exchanges()[-1].mark == "story"
 
 
 async def test_an_answer_with_no_lines_records_nothing(tmp_path: Path) -> None:
     table = open_game(tmp_path, rng=Random(1))
     _party_of_one(table.service)
-    before = table.service.engine.history(table.service.state)
+    before = table.service.engine.world(table.service.state).exchanges()
     table.spawner.answers["narrator"] = [json.dumps({"lines": []})]
 
     await table.service.interject()
 
-    assert table.service.engine.history(table.service.state) == before
+    assert table.service.engine.world(table.service.state).exchanges() == before
 
 
 async def test_interjections_disabled_starts_no_background_task(tmp_path: Path) -> None:

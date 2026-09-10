@@ -34,14 +34,6 @@ class RoleConfig(Frozen):
     max_rounds: int = Field(default=30, gt=0)
 
     @property
-    def cli(self) -> CliProvider | None:
-        match self.provider:
-            case "claude" | "codex":
-                return self.provider
-            case "openrouter" | "local":
-                return None
-
-    @property
     def api(self) -> ProviderName | None:
         match self.provider:
             case "claude" | "codex":

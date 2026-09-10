@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from aidm.core.entities import EngineId, EntityId
+from aidm.core.entities import EngineId, Slug
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.engine import BreathlessEngine
@@ -16,9 +16,9 @@ from aidm.engines.breathless.world import (
 from aidm.engines.scenes.world import SceneRun
 from support.table import BREATHLESS, ENGINES_BUILT, narrowed
 
-MIRA = EntityId("mira")
-DAX = EntityId("dax")
-WRENCH = EntityId("wrench")
+MIRA: Slug = "mira"
+DAX: Slug = "dax"
+WRENCH: Slug = "wrench"
 SKILLS_RATED: dict[Skill, Die] = {
     "bash": 6,
     "dash": 4,
@@ -53,7 +53,7 @@ def small_world() -> BreathlessGame:
     )
 
 
-def hired(world: BreathlessWorld, member_id: EntityId) -> Survivor:
+def hired(world: BreathlessWorld, member_id: Slug) -> Survivor:
     member = world.cast[member_id]
     member.sheet = SurvivorSheet(skills=dict(SKILLS_RATED), worn=dict(SKILLS_RATED))
     if member_id not in world.party:
@@ -61,7 +61,7 @@ def hired(world: BreathlessWorld, member_id: EntityId) -> Survivor:
     return member
 
 
-def _scene(*, here: Sequence[EntityId] = ()) -> SceneRun:
+def _scene(*, here: Sequence[Slug] = ()) -> SceneRun:
     return SceneRun(
         place="diner",
         title="The Diner",

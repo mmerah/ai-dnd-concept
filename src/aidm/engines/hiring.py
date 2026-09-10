@@ -4,7 +4,7 @@ from typing import Any, ClassVar, Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Refusal, Slug
+from aidm.core.entities import Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import Game, Generation, Objection, WorldsmithAnswer
 from aidm.engines.base import Person
@@ -27,15 +27,15 @@ HIRE_UNWRITTEN = Fact(
 
 
 class ItemSheet[I: BaseModel](Mutable):
-    items: dict[EntityId, I] = Field(default_factory=dict)
+    items: dict[Slug, I] = Field(default_factory=dict)
 
-    def require(self, item_id: EntityId, owner: str) -> I:
+    def require(self, item_id: Slug, owner: str) -> I:
         item = self.items.get(item_id)
         if item is None:
             raise Refusal(f"{item_id!r} is not among {owner}'s items")
         return item
 
-    def drop(self, item_id: EntityId, owner: str) -> I:
+    def drop(self, item_id: Slug, owner: str) -> I:
         item = self.require(item_id, owner)
         del self.items[item_id]
         return item
@@ -63,7 +63,7 @@ class SheetedWorld[C: Sheeted[Any], P: Sheeted[Any]](SceneWorld[C, P]):
             raise ValueError("the player carries no sheet")
         return self
 
-    def require_actor(self, actor_id: EntityId | None) -> C | P:
+    def require_actor(self, actor_id: Slug | None) -> C | P:
         if actor_id is None or actor_id == self.player.id:
             return self.player
         entity = self.require(actor_id)
@@ -71,7 +71,7 @@ class SheetedWorld[C: Sheeted[Any], P: Sheeted[Any]](SceneWorld[C, P]):
             return entity
         raise Refusal(f"{entity.name} is not the player or a hired {self.member_noun}")
 
-    def require_hireable(self, entity_id: EntityId) -> C | P:
+    def require_hireable(self, entity_id: Slug) -> C | P:
         member = self.require_here(entity_id, alive=True)
         if member.sheet is not None:
             raise Refusal(f"{member.name} already carries a sheet")
@@ -79,7 +79,7 @@ class SheetedWorld[C: Sheeted[Any], P: Sheeted[Any]](SceneWorld[C, P]):
 
 
 class Hire(Frozen):
-    entity_id: CheckedEntityId = Field(description="Exact id of who here signs on.")
+    entity_id: Slug = Field(description="Exact id of who here signs on.")
     terms: str = Field(
         min_length=1,
         description="What they are hired for, and on what terms, as agreed.",
@@ -134,7 +134,7 @@ class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
         return lambda _answer: None
 
     @abstractmethod
-    def hireable(self, draft: G, entity_id: EntityId) -> M: ...
+    def hireable(self, draft: G, entity_id: Slug) -> M: ...
     @abstractmethod
     def hire_prompt(self, draft: G, member: M, terms: str) -> str: ...
     @abstractmethod

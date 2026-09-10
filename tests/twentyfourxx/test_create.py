@@ -1,9 +1,7 @@
 import pytest
-from pydantic import BaseModel
 from support.twentyfourxx import ENGINE
 
-from aidm.core.entities import EngineId, Refusal
-from aidm.core.model import Character
+from aidm.core.entities import Refusal
 
 SNEAK = {
     "pack": "srd",
@@ -13,10 +11,6 @@ SNEAK = {
     "increase-2": "stealth",
     "increase-3": "piloting",
 }
-
-
-class _OtherPayload(BaseModel):
-    pass
 
 
 def test_steps_grow_as_picks_land() -> None:
@@ -96,12 +90,6 @@ def test_preview_character_ends_with_gear_row() -> None:
     character = ENGINE.create_character("Rook", "A quiet operator", SNEAK)
     rows = ENGINE.preview_character(character)
     assert rows[-1] == ("Gear", "Comm, Climbing gear, Night vision goggles")
-
-
-def test_preview_character_refuses_foreign_character_type() -> None:
-    foreign = Character(id="x", engine=EngineId("other"), payload=_OtherPayload())
-    with pytest.raises(Refusal):
-        ENGINE.preview_character(foreign)
 
 
 def test_preview_character_refuses_a_sheet_that_is_not_the_players() -> None:

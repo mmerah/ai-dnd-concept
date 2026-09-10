@@ -9,7 +9,6 @@ from support.game import open_game
 from support.table import Table, play_turn
 
 from aidm.app.runtime import GameService
-from aidm.core.entities import EntityId
 from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, PendingDecision, PendingOption, SpokenLine
 from aidm.core.views import PlayerView, Subject
@@ -25,7 +24,7 @@ from aidm.ui.game import (
     standing_proposal,
 )
 
-WREN = Subject(id=EntityId("player"), label="Wren", detail="A quiet scout")
+WREN = Subject(id="player", label="Wren", detail="A quiet scout")
 
 
 def _view(prompt: PendingDecision | None = None, over: str | None = None) -> PlayerView:
@@ -61,7 +60,7 @@ def _spoken(*, proposal: str = "") -> Exchange:
     return Exchange(
         prompt="",
         mark="interjection",
-        lines=(SpokenLine(speaker_id=EntityId("vessa-rune"), speaker="Vessa", text="Wait."),),
+        lines=(SpokenLine(speaker_id="vessa-rune", speaker="Vessa", text="Wait."),),
         proposal=proposal,
     )
 

@@ -1,12 +1,11 @@
 import pytest
 from support.breathless import ENGINE, SITUATION, small_world
 
-from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.world import SKILLS, Survivor
 from aidm.engines.breathless.worldsmith import SheetDraft
-from aidm.engines.scenes.drafts import SceneDraft
+from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.worldsmith import scene_refusal
 
 
@@ -41,7 +40,7 @@ def test_the_bar_refuses_hiding_someone_met() -> None:
 
 def test_a_dead_draft_cast_member_is_refused() -> None:
     world = small_world().payload
-    ghost = EntityId("ghost")
+    ghost = "ghost"
     draft = _draft(
         present=("mira",), cast={ghost: Survivor(id=ghost, name="Ghost", brief="", alive=False)}
     )
@@ -52,7 +51,7 @@ def test_a_dead_draft_cast_member_is_refused() -> None:
 
 def test_a_hidden_multi_word_name_in_situation_is_refused() -> None:
     world = small_world().payload
-    stalker = EntityId("stalker")
+    stalker = "stalker"
     situation = f"{SITUATION} Old Man Riley waits by the dumpster."
     draft = _draft(
         situation=situation,

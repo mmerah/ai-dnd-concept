@@ -3,13 +3,12 @@ from random import Random
 from support.game import ENGINE, initialized, loner_sheet
 from support.table import change
 
-from aidm.core.entities import EntityId
 from aidm.core.facts import cards
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import Question, outcome_for
 from aidm.engines.loner3e.world import TIES_PER_TWIST
 
-FOE = EntityId("mara")
+FOE = "mara"
 
 
 def _seal(**args: object) -> Question:

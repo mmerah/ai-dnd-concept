@@ -2,7 +2,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Discriminator, Field, model_validator
 
-from aidm.core.entities import CheckedEntityId, Frozen
+from aidm.core.entities import Frozen, Slug
 from aidm.engines import base
 from aidm.engines.base import Attempt, JoinParty, LeaveParty
 from aidm.engines.breathless.world import Die, Skill
@@ -14,8 +14,8 @@ class DropItem(Frozen):
     """The actor loses an item for good."""
 
     verb: Literal["drop_item"]
-    item_id: CheckedEntityId = Field(description="Exact id of an item the actor carries.")
-    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+    item_id: Slug = Field(description="Exact id of an item the actor carries.")
+    actor_id: Slug | None = Field(default=None, description=ACTOR)
 
 
 class ChangeStress(Frozen):
@@ -26,14 +26,14 @@ class ChangeStress(Frozen):
         description="How much stress changes. Positive costs stress, negative clears it."
     )
     why: str = Field(min_length=1, description="What causes the change, in a few words.")
-    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+    actor_id: Slug | None = Field(default=None, description=ACTOR)
 
 
 class UseMedKit(Frozen):
     """The actor spends their med kit."""
 
     verb: Literal["use_med_kit"]
-    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+    actor_id: Slug | None = Field(default=None, description=ACTOR)
 
 
 type WorldChange = (
@@ -45,11 +45,11 @@ ChangeWorld = base.ChangeWorld[Annotated[WorldChange, Discriminator("verb")]]
 
 
 class Check(Attempt):
-    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
+    actor_id: Slug | None = Field(default=None, description=ACTOR)
     skill: Skill | None = Field(
         default=None, description="Which of the six skills the action calls on."
     )
-    item_id: CheckedEntityId | None = Field(
+    item_id: Slug | None = Field(
         default=None, description="Exact id of a carried item used instead of a skill."
     )
     stunt: bool = Field(
@@ -59,7 +59,7 @@ class Check(Attempt):
     dangerous: bool = Field(
         default=False, description="True when a fail would plainly hurt the actor."
     )
-    helped_by: CheckedEntityId | None = Field(
+    helped_by: Slug | None = Field(
         default=None,
         description="Exact id of a hired member who checks the same skill. Only with `skill`.",
     )
@@ -96,12 +96,4 @@ class TestLuck(Frozen):
 
 
 class Actor(Frozen):
-    actor_id: CheckedEntityId | None = Field(default=None, description=ACTOR)
-
-
-def outcome(face: int) -> str:
-    if face <= 2:
-        return "fail"
-    if face <= 4:
-        return "success-but"
-    return "success"
+    actor_id: Slug | None = Field(default=None, description=ACTOR)
