@@ -88,6 +88,7 @@ class GamePage:
         self.shown_art: Path | None = None
         self.shown_clip: Path | None = None
         self.autoplay_clip: Path | None = None
+        self.scene_open: bool = False
         self.transcript: ui.scroll_area
         self.drawer: ui.right_drawer
         self.tabs: ui.tabs
@@ -95,6 +96,7 @@ class GamePage:
         self.dice: DiceTray
         self.sound: ui.button
         self.new_activity: ui.button
+        self.scene_card: ui.element
         self.restart_dialog: ui.dialog
         self.restart_label: ui.label
         self.seen: Observed = Observed(None, 0, 0, None, None)
@@ -221,23 +223,33 @@ class GamePage:
         for name, button in self.rail.items():
             button.classes(add="game-rail-on" if name == active else "", remove="game-rail-on")
 
+    def toggle_scene(self) -> None:
+        """A phone shows the scene as a strip; the tap opens the whole frame."""
+        self.scene_open = not self.scene_open
+        self.scene_card.classes(toggle="game-scene-open")
+
     @ui.refreshable_method
     def scene_header(self) -> None:
         session = self.session
         scene = session.engine.narrator_view(session.state)
         art = session.scene_art()
-        with ui.element("div").classes("game-scene"):
+        open_class = " game-scene-open" if self.scene_open else ""
+        self.scene_card = ui.element("div").classes("game-scene" + open_class)
+        self.scene_card.on("click", self.toggle_scene)
+        with self.scene_card:
             if art is not None:
                 ui.image(art).classes("game-scene-wash")
             with ui.row().classes("game-scene-body w-full no-wrap").style("gap: 0"):
                 with ui.column().classes("game-scene-text").style("gap: 0.15rem"):
                     ui.label("current scene").classes("text-xs game-eyebrow")
                     ui.label(scene.title).classes("game-title game-scene-title")
-                    ui.label(scene.situation).classes("text-sm opacity-80")
+                    ui.label(scene.situation).classes("text-sm opacity-80 game-scene-situation")
                 if art is not None:
                     # Whole frame, bled to the edges: a drawn scene puts what matters anywhere,
-                    # so it is faded into the header rather than cropped to fit a band.
+                    # so it is faded into the header rather than cropped to fit a band;
+                    # only the phone strip crops it.
                     ui.image(art).props("fit=contain").classes("game-scene-art")
+            ui.icon("expand_more").classes("game-scene-chevron lt-sm")
 
     @ui.refreshable_method
     def chat(self) -> None:
