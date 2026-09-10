@@ -35,7 +35,6 @@ from aidm.engines.scenes.drafts import NextDraft, SceneDraft
 from aidm.engines.scenes.packs import SRD_PACK, ScenePack, read_packs
 from aidm.engines.scenes.tools import Enter, Kill, Leave, NextScene, Reveal, SharedChange
 from aidm.engines.scenes.world import (
-    MOVE_ON,
     SCENE_LEFT,
     SceneCanon,
     SceneWorld,
@@ -55,6 +54,9 @@ WORLDSMITH_PROMPT = Path(__file__).parent / "worldsmith.md"
 RULES_PROMPT = Path(__file__).parent / "rules.md"
 DEPARTURE: Slug = "departure"
 COMPLICATION: Slug = "complication"
+MOVE_ON = DecisionOption(
+    id="move-on", label="Move on", detail="Keep playing, or say where you go and move on."
+)
 WAY_UNWRITTEN = Fact(
     kind="way_unwritten",
     told=True,
