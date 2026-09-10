@@ -14,7 +14,15 @@ from aidm.ui.create import character_page, scenario_page
 from aidm.ui.dice import DICE_ASSETS, DICE_ASSETS_ROUTE
 from aidm.ui.game import game_page
 from aidm.ui.settings import settings_page
-from aidm.ui.widgets import GAME_ROUTE, game_path, page_header
+from aidm.ui.widgets import (
+    GAME_ROUTE,
+    game_path,
+    heading,
+    page_body,
+    page_header,
+    page_intro,
+    section,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -23,25 +31,24 @@ def home_page(runtime: Runtime) -> None:
     catalog = LauncherCatalog.read(runtime.library, runtime.store, runtime.engines)
     with page_header("AI Dungeon Master", home=False):
         ui.button("Settings", icon="settings", on_click=lambda: ui.navigate.to("/settings")).props(
-            "flat color=white"
+            "flat"
         )
         ui.space()
         ui.label("Choose your game").classes("text-sm opacity-80 gt-xs")
 
-    with ui.column().classes("w-full q-pa-lg items-center").style("gap: 1.5rem"):
-        with ui.column().style("width: min(64rem, 100%); gap: 1.5rem"):
-            ui.label("Begin an adventure").classes("text-h4 font-bold")
-            ui.label("Choose a scenario, then a character written for its rules.").classes(
-                "text-body1 opacity-70"
-            )
-            with ui.card().classes("w-full q-pa-lg"):
-                ui.label("New or current game").classes("text-h6 font-bold")
-                if catalog.scenarios:
-                    LaunchForm(catalog).form()
-                else:
-                    ui.label("No playable scenario was found.").classes("text-negative")
-            _new_content()
-            _saved_games(catalog)
+    with page_body():
+        page_intro(
+            "Adventure",
+            "Begin an adventure",
+            "Choose a scenario, then a character written for its rules.",
+        )
+        with section("New or current game"):
+            if catalog.scenarios:
+                LaunchForm(catalog).form()
+            else:
+                ui.label("No playable scenario was found.").classes("text-negative")
+        _new_content()
+        _saved_games(catalog)
 
 
 def start() -> None:
@@ -119,7 +126,7 @@ def _new_content() -> None:
 
 
 def _saved_games(catalog: LauncherCatalog) -> None:
-    ui.label("Saved games").classes("text-h5 font-bold q-mt-md")
+    heading("Saved games")
     if not catalog.saves:
         ui.label("No saved games yet.").classes("text-body1 opacity-60")
         return
@@ -129,16 +136,16 @@ def _saved_games(catalog: LauncherCatalog) -> None:
 
 
 def _saved_card(saved: SaveOption) -> None:
-    with ui.card().classes("w-full q-pa-md"):
+    with ui.card().classes("w-full"):
         with ui.row().classes("w-full items-center").style("gap: 1rem"):
             with ui.column().classes("col").style("gap: 0.25rem"):
-                ui.label(saved.scenario_title).classes("text-h6 font-bold")
+                ui.label(saved.scenario_title).classes("text-h6 game-title")
                 ui.label(
                     f"{saved.character_title} · turn {saved.turn}"
                     + (f" · {saved.where}" if saved.where else "")
                 ).classes("text-sm opacity-70")
                 with ui.row().style("gap: 0.5rem"):
-                    ui.badge(saved.rules).props("outline")
+                    ui.badge(saved.rules)
             ui.button(
                 "Resume",
                 icon="play_arrow",
@@ -154,8 +161,8 @@ def _open_game(target: LaunchTarget) -> None:
 def _refused_page(message: str) -> None:
     with page_header("AI Dungeon Master"):
         pass
-    with ui.column().classes("w-full q-pa-lg items-center"):
-        with ui.card().classes("q-pa-lg").style("width: min(32rem, 100%)"):
+    with page_body():
+        with ui.card().classes("w-full"):
             with ui.column().classes("items-center").style("gap: 1rem"):
                 ui.label(message).classes("text-body1")
                 ui.button("Home", icon="home", on_click=lambda: ui.navigate.to("/")).props(

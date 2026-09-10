@@ -52,12 +52,12 @@ def page_intro(eyebrow: str, title: str, lead: str) -> None:
 @contextmanager
 def section(title: str, *, classes: str = "") -> Generator[None]:
     """A card with the eyebrow that names it: the sidebar panels, the launcher, settings tabs."""
-    with ui.column().classes(f"game-card w-full {classes}").style("gap: .5rem"):
+    with ui.card().classes(f"w-full {classes}").style("gap: .5rem"):
         heading(title)
         yield
 
 
-def heading(title: str, *, tight: bool = False) -> None:
+def heading(title: str) -> None:
     ui.label(title).classes("game-eyebrow")
 
 

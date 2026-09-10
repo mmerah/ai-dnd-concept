@@ -14,7 +14,7 @@ from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.io import SOURCE_SUFFIXES
 from aidm.core.model import ScenarioMeta
 from aidm.ui import theme
-from aidm.ui.widgets import game_path, labeled_value, page_header
+from aidm.ui.widgets import game_path, heading, labeled_value, page_body, page_header, page_intro
 
 LOGGER = logging.getLogger(__name__)
 
@@ -32,22 +32,28 @@ class CharacterForm:
     def build(self) -> None:
         with page_header("New character", engine=self.engine_id):
             pass
-        with ui.column().classes("w-full q-pa-lg items-center"):
-            with ui.card().classes("q-pa-lg").style("width: min(60rem, 100%)"):
+        with page_body():
+            page_intro(
+                "Character",
+                "New character",
+                "Name them, pick their rules, and answer what the rules ask.",
+            )
+            with ui.card().classes("w-full"):
                 _engine_select(self.runtime, self.engine_id, self.choose_engine)
-                self.name = ui.input(label="Name").classes("w-full").props("outlined")
-                self.brief = (
-                    ui.input(label="Brief", placeholder="Who are they, in one sentence?")
-                    .classes("w-full")
-                    .props("outlined stack-label")
-                )
+                self.name = ui.input(label="Name").classes("w-full")
+                self.brief = ui.input(
+                    label="Brief", placeholder="Who are they, in one sentence?"
+                ).classes("w-full")
                 self.steps()
+                heading("Preview")
                 self.preview()
                 # Outside the preview refreshable: a rebuild on blur must not destroy the button
                 # focus just moved to.
-                self.create_button = ui.button(
-                    "Create", icon="person_add", on_click=self.create
-                ).props("color=primary")
+                self.create_button = (
+                    ui.button("Create", icon="person_add", on_click=self.create)
+                    .props("color=primary")
+                    .classes("self-end")
+                )
                 self.create_button.set_visibility(self.ready)
 
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
@@ -77,7 +83,7 @@ class CharacterForm:
                 on_change=partial(self.write, step.id),
             )
             # Rebuilding the whole form on blur would destroy the field Tab just moved to.
-            typed.classes("w-full").props("outlined stack-label").on("blur", self.preview.refresh)
+            typed.classes("w-full").on("blur", self.preview.refresh)
             return
         chosen = ui.select(
             options={
@@ -128,7 +134,6 @@ class CharacterForm:
             ui.label(f"Not ready yet: {refused}").classes("text-sm opacity-50")
             self.ready = False
         else:
-            ui.separator().classes("q-my-sm")
             for label, text in preview:
                 labeled_value(label, text)
             self.ready = True
@@ -154,8 +159,13 @@ class ScenarioForm:
     def build(self) -> None:
         with page_header("New scenario", engine=self.engine_id):
             pass
-        with ui.column().classes("w-full q-pa-lg items-center"):
-            with ui.card().classes("q-pa-lg").style("width: min(60rem, 100%)"):
+        with page_body():
+            page_intro(
+                "Scenario",
+                "New scenario",
+                "Describe the adventure, or upload one, and the worldsmith writes its opening.",
+            )
+            with ui.card().classes("w-full"):
                 _engine_select(self.runtime, self.engine_id, self.choose_engine)
                 self.form()
 
@@ -175,7 +185,7 @@ class ScenarioForm:
     def form(self) -> None:
         engine = self.runtime.engines[self.engine_id]
         characters = self.catalog.characters_for(self.engine_id)
-        self.title = ui.input(label="Title").classes("w-full").props("outlined")
+        self.title = ui.input(label="Title").classes("w-full")
         self.packs = (
             ui.select(
                 options={pack.id: pack.label for pack in engine.pack_options()},
@@ -194,7 +204,7 @@ class ScenarioForm:
         self.premise = (
             ui.textarea(label="Premise", placeholder="What is this adventure about?")
             .classes("w-full")
-            .props("outlined autogrow stack-label")
+            .props("autogrow")
         )
         self.scope = (
             ui.textarea(
@@ -202,31 +212,28 @@ class ScenarioForm:
                 placeholder="How far does this go, and does it tend toward an ending?",
             )
             .classes("w-full")
-            .props("outlined autogrow stack-label")
+            .props("autogrow")
         )
-        self.style = (
-            ui.input(label="Art style", placeholder=f"Leave empty for: {engine.art_style}")
-            .classes("w-full")
-            .props("outlined stack-label")
-        )
-        self.voice = (
-            ui.input(label="Narrator voice", placeholder="Leave empty for the default voice")
-            .classes("w-full")
-            .props("outlined stack-label")
-        )
-        ui.label("Or upload the adventure itself.").classes("text-sm opacity-70 q-mt-md")
+        self.style = ui.input(
+            label="Art style", placeholder=f"Leave empty for: {engine.art_style}"
+        ).classes("w-full")
+        self.voice = ui.input(
+            label="Narrator voice", placeholder="Leave empty for the default voice"
+        ).classes("w-full")
+        heading("Or upload the adventure")
         (
             ui.upload(on_upload=self.took, max_files=1, auto_upload=True)
             .props(f'accept="{",".join(SOURCE_SUFFIXES)}"')
             .classes("w-full")
         )
-        self.button = ui.button(
-            "Write the opening", icon="auto_stories", on_click=self.write
-        ).props("color=primary")
-        ui.label("Writing takes several minutes.").classes("text-xs opacity-60")
-        if not characters:
-            self.button.disable()
-            ui.label("Make a character first.").classes("text-sm text-negative")
+        with ui.row().classes("w-full items-center").style("gap: 0.75rem"):
+            self.button = ui.button(
+                "Write the opening", icon="auto_stories", on_click=self.write
+            ).props("color=primary")
+            ui.label("Writing takes several minutes.").classes("text-xs opacity-60")
+            if not characters:
+                self.button.disable()
+                ui.label("Make a character first.").classes("text-sm text-negative")
 
     async def write(self) -> None:
         title = (self.title.value or "").strip()
