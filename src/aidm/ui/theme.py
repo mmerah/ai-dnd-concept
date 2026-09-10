@@ -290,6 +290,11 @@ body, body.body--dark {
   );
 }
 .game-scene-title { font-size: 2.125rem; font-weight: 700; line-height: 1.1 }
+.game-scene-chevron {
+  position: absolute; right: .6rem; top: .6rem; z-index: 2;
+  color: var(--game-accent); font-size: 1.5rem; transition: transform 200ms;
+}
+.game-scene-open .game-scene-chevron { transform: rotate(180deg) }
 
 /* No side padding: an avatar starts on the measure's edge, where the scene title starts. */
 .game-message { padding-inline: 0 }
@@ -364,22 +369,38 @@ body, body.body--dark {
   }
   .game-main, .game-scene { border-top: 0 }
   .game-drawer-panel { height: 100% }
-  /* No room beside the text: the frame goes full width on top and fades into the words below. */
+  .game-scene { cursor: pointer }
+  /* Open: no room beside the text, so the frame goes full width on top and fades into the words. */
   .game-scene:has(.game-scene-art) { height: auto }
   .game-scene-body { flex-direction: column-reverse }
   .game-scene-art {
     /* Capped for a short or landscape phone, where a full-width 16:9 would fill the screen. */
-    width: 100%; max-width: none; height: auto; aspect-ratio: 16 / 9; max-height: 30dvh;
+    width: 100%; height: auto; aspect-ratio: 16 / 9; max-height: 30dvh;
     -webkit-mask-image: linear-gradient(to bottom, #000 68%, transparent);
     mask-image: linear-gradient(to bottom, #000 68%, transparent);
   }
   .game-scene-text { height: auto; padding: .2rem .9rem .9rem }
   .game-scene-title { font-size: 1.25rem }
+  /* Closed: a strip, the art a dim band cropped behind the title, the situation put away. */
+  .game-scene:not(.game-scene-open) { height: 5.5rem }
+  .game-scene:not(.game-scene-open) .game-scene-art {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%; aspect-ratio: auto; opacity: .55;
+    -webkit-mask-image: linear-gradient(to top, transparent 15%, #000 70%);
+    mask-image: linear-gradient(to top, transparent 15%, #000 70%);
+  }
+  /* `fit=contain` is an inline style Quasar writes on the frame, so the band has to shout. */
+  .game-scene:not(.game-scene-open) .game-scene-art .q-img__image { object-fit: cover !important }
+  .game-scene:not(.game-scene-open) .game-scene-text {
+    position: relative; z-index: 1;
+    height: 100%; justify-content: flex-end; padding: .2rem 3rem .7rem .9rem;
+  }
+  .game-scene:not(.game-scene-open) .game-scene-situation { display: none }
   .game-message .q-message-text { padding: .65rem .75rem }
 }
 @media (prefers-reduced-motion: reduce) {
   .game-die-live, .game-dictating { animation: none }
-  .q-btn, .game-dice-overlay { transition: none }
+  .q-btn, .game-dice-overlay, .game-scene-chevron { transition: none }
 }
 """
 
