@@ -5,14 +5,21 @@ from pydantic import Discriminator, Field
 
 from aidm.core.entities import CheckedEntityId, Frozen, Slug
 from aidm.core.play import DecisionOption
-from aidm.core.tools import Attempt
 from aidm.engines import base
-from aidm.engines.base import JoinParty, LeaveParty
+from aidm.engines.base import Attempt, JoinParty, LeaveParty
 from aidm.engines.loner3e.world import TagKind
 from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
 
 AND_AT = 4  # both dice 4+ sharpens the answer to -and
 BUT_AT = 3  # both dice 3 or under softens it to -but
+TOLD: dict[str, str] = {
+    "yes-and": "yes, and better than hoped",
+    "yes": "yes",
+    "yes-but": "yes, but at a cost",
+    "no-but": "no, but not badly",
+    "no": "no",
+    "no-and": "no, and worse",
+}
 
 type Position = Literal["advantage", "neutral", "disadvantage"]
 
@@ -91,19 +98,9 @@ class Outcome(Frozen):
     harm: int
 
     @property
-    def told(self) -> str:
+    def wording(self) -> str:
         """The answer in story words: the narrator never reads the rules."""
         return TOLD[self.name]
-
-
-TOLD: dict[str, str] = {
-    "yes-and": "yes, and better than hoped",
-    "yes": "yes",
-    "yes-but": "yes, but at a cost",
-    "no-but": "no, but not badly",
-    "no": "no",
-    "no-and": "no, and worse",
-}
 
 
 def outcome_for(chance: int, risk: int) -> Outcome:

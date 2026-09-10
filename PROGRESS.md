@@ -125,3 +125,68 @@ and why, anything known and accepted. Phases 1–3 landed in one commit, in one 
   transitively; no cycle, and the boundary test holds. A separate `engines/sheeted.py` would undo
   that at the cost of splitting the trio.
 - `stub_worldsmith(answer)` lives in `tests/support/table.py`; the three per-file copies are gone.
+
+## Phase 7 — The consistency pass
+
+- `src` 10,175 → 10,207 (target about -30: **missed by about 60**, PLAN rule 5 says so). Not
+  padded; where it went: `Engine.prepare` and its call (+5), `Generation.require_target` (+5
+  against `_hire_target` -6), `Echoed` moved (0), `Mark`/`Marked` and `Exchange.mark` (+4),
+  `_entry` in `core/prompt.py` (+5), `MARK_LABELS` (+5) against the four mark constants (-5),
+  `_speaks` and the three comments PLAN asked for (+10), the two inline uniqueness checks (+4
+  against two `require_unique` lines), `ROLE_NAMES` (+2). Tests 574 → 575 (the marked-exchange
+  prompt test). No golden moved.
+- Off-plan: `Engine.close(draft, lines, facts, *, prompt="", mark="", proposal="")`: keyword-only,
+  so a marked exchange passes no positional `""`. `_generate(words="")` derives the mark.
+- Off-plan (review): `Mark` is `Marked | Literal[""]`, so `MARK_LABELS: dict[Marked, str]` is
+  total and the truthiness guard narrows the key.
+- Off-plan (review): `app/speech.py` also catches `OSError`: `mkdir`, `wave.open` and
+  `replace` sit inside the `try`, which PLAN step 5's enumeration missed. `media.py` is as PLAN
+  wrote; its writes sit outside the `try`.
+- Off-plan (review): `ROLE_NAMES: tuple[Role, ...] = get_args(Role.__value__)` is a constant,
+  so `each` iterates `Role`s, not `Any`.
+- Off-plan: `Engine.prepare`'s body is a docstring plus `return None`; ruff B027 flags a
+  docstring-only method on the ABC (Phase 6 precedent).
+- Off-plan (step 10, measured under basedpyright 1.39): a `_`-prefixed parameter on a base hook
+  is fine and an override may keep the plain name, but an override of a plainly-named parent
+  parameter, or a function bound to a `Protocol`, must keep the name; those use `del name` as
+  the first line (the `stub_worldsmith` idiom). `Hiring.install_sheet` lost `draft`: all three
+  implementers ignored it. `qa/art.py`'s override is `@override` instead of a pyright ignore.
+- Off-plan (step 14): three tests keep constructing their own engine, not PLAN's one: they set
+  `id`/`tools` on it (`_MIRRORED`, `toolless`, `test_decisions._engine`). The typed getter is
+  `narrowed`, widened from `BaseModel` to any type (review cut of a second helper); each engine's
+  support module exports `ENGINE = narrowed(ENGINES_BUILT[...], XEngine)`.
+- Off-plan: `require_target`'s message is generic ("a 'hire' request names no target"); one
+  24XX test's expected text followed.
+- Refuted (review): "`test_seam.py`'s `endswith(family_rules())` is a wiring test; delete it"
+  — PLAN step 17 names that assertion, and it fails if the family rules stop reaching
+  `instructions`. Awaiting the maintainer's call.
+- Refuted (review): "delete the registry's duplicate-id guard" — PLAN step 2 rewrites it.
+- Refuted (review): "return `CheckedEntityId` from `require_target`" — `entities.py` says
+  `CheckedEntityId` is an id a model writes and `EntityId` one the world checked; a return is
+  the latter.
+- Known and accepted: `Refusal` stays imported in `engines/base.py` and `scenes/world.py`; the
+  validators no longer raise it but `World.join`/`part` and the `require_*` methods do.
+
+## Phase 8 — One name, one meaning
+
+- `src` 10,207 → 10,209 (target 0; `WorldsmithAnswer.__call__` re-wrapped by the formatter
+  under `Objection`). Tests 575 → 575; `tests/core/fixtures/` byte-identical.
+- Sites: `Engine.land` 7, `GameService.save` 16, `Prop` 41, `Gear` 23, `Supply` 18,
+  `Objection` 10, `Person.forbidden` 5, `require_actor_and_sheet` 6, `Goon.unpack_kit` 2,
+  `items_from_kits` 5, `_ImageChoice` 2, `Driver.read_result` 6, `RoleSettings` 9,
+  `Outcome.wording` 4, `OPENING_NARRATION` 2, `check_unique` 21, `_check_ready` 2.
+- Off-plan: the narrator's `OPENING` lives in `app/runtime.py` (PLAN placed it in `app/roles.py`
+  after Phase 5; it never moved). `Settings.roles` keeps its field name: it is the `ROLES__`
+  env key.
+- Known and accepted: prose keeps "Item" where a player reads it (`"Item {n}"` creation step,
+  a `"Far Item"` test fixture name, `qa/`).
+
+## Phase 9 — The test re-shape
+
+- `src` unchanged. `tests` 21 files moved by `git mv`, 7 more changed one import line
+  (`support.loner` → `support.game`). Tests 575 → 575. `tests/core/fixtures/` untouched.
+- Off-plan: `tests/core/test_views.py` moved to `tests/engines/`: it imports
+  `aidm.engines.base` and `aidm.engines.loner3e.world`, and PLAN's placement rule (a
+  `tests/<layer>/` file imports its layer and below) decides it; PLAN step 6 said re-check.
+- The layers now read: `tests/core` imports `core`; `tests/engines` `core`, `engines`;
+  `tests/turn` up to `turn`; `tests/app` up to `app` (plus `config`); `tests/ui` up to `ui`.

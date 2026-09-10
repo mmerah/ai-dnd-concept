@@ -6,12 +6,12 @@ from time import monotonic
 from typing import Literal, Protocol
 
 from httpx import HTTPError, HTTPStatusError
-from pydantic import BaseModel, ConfigDict, JsonValue
+from pydantic import JsonValue
 
 from aidm.app.providers import post_bearer
 from aidm.app.spawn import RunResult, final_message
 from aidm.config import ProviderConfig, Role, RoleConfig, Settings
-from aidm.core.entities import Loose, Refusal, parse
+from aidm.core.entities import Echoed, Loose, Refusal, parse
 from aidm.core.io import decode
 from aidm.core.model import AnyGame
 from aidm.core.tools import MasterTool, schema_of
@@ -24,24 +24,18 @@ class Tools(Protocol):
     def call(self, name: str, raw: JsonValue) -> str: ...
 
 
-class _Echoed(BaseModel):
-    """Kept whole: a reply goes back in the next request, reasoning and all."""
-
-    model_config = ConfigDict(extra="allow", frozen=True)
-
-
-class _Function(_Echoed):
+class _Function(Echoed):
     name: str
     arguments: str
 
 
-class _ToolCall(_Echoed):
+class _ToolCall(Echoed):
     id: str
     type: Literal["function"]
     function: _Function
 
 
-class _Said(_Echoed):
+class _Said(Echoed):
     role: Literal["assistant"]
     content: str | None = None
     tool_calls: tuple[_ToolCall, ...] | None = None
@@ -65,8 +59,8 @@ class BuiltinSpawner:
     settings: Settings
     tools: Tools
 
-    async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
-        """Stateless, so `session` is never given back: a retry resends the whole prompt."""
+    async def run(self, role: Role, prompt: str, _session: str | None) -> RunResult:
+        """Stateless: `_session` is never given back, and a retry resends the whole prompt."""
         config = self.settings.roles.for_name(role)
         if config.api is None:
             raise ValueError(f"the {role} is played by the {config.provider!r} CLI")

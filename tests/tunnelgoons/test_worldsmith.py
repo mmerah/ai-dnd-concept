@@ -3,18 +3,15 @@ from collections.abc import Callable
 import pytest
 from pydantic import BaseModel, ValidationError
 from support.table import TUNNELGOONS, game, narrowed
-from support.tunnelgoons import small_world
+from support.tunnelgoons import ENGINE, small_world
 
 from aidm.core.entities import EntityId
 from aidm.core.model import Generation, ScenarioMeta
 from aidm.engines.rooms.engine import MORE_MAP
-from aidm.engines.rooms.world import Item, MapDraft, Place, Way
+from aidm.engines.rooms.world import MapDraft, Place, Prop, Way
 from aidm.engines.rooms.worldsmith import extension_refusal, map_refusal
-from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsGame
 from aidm.engines.tunnelgoons.worldsmith import AUTHORING, AbilitiesDraft
-
-ENGINE = TunnelGoonsEngine()
 
 ONLY = EntityId("only")
 HIDDEN = EntityId("hidden")
@@ -44,7 +41,7 @@ def _region() -> MapDraft[Npc]:
             ),
         },
         ways={FAR_HALL: [Way(to=FAR_VAULT)]},
-        items={FAR_ITEM: Item(id=FAR_ITEM, name="Far Item", brief="b", known=False, on=FAR_HALL)},
+        items={FAR_ITEM: Prop(id=FAR_ITEM, name="Far Item", brief="b", known=False, on=FAR_HALL)},
         start=FAR_HALL,
     )
 
@@ -163,6 +160,7 @@ async def test_write_next_asks_for_the_map_draft() -> None:
     async def answer[M: BaseModel](
         prompt: str, model: type[M], refusal: Callable[[M], str | None]
     ) -> M:
+        del refusal
         recorded.append(model)
         prompts.append(prompt)
         return model.model_validate(THIN.model_dump())
@@ -180,6 +178,7 @@ async def test_write_next_prompt_carries_scenes_so_far() -> None:
     async def answer[M: BaseModel](
         prompt: str, model: type[M], refusal: Callable[[M], str | None]
     ) -> M:
+        del refusal
         prompts.append(prompt)
         return model.model_validate(THIN.model_dump())
 
@@ -192,6 +191,7 @@ async def test_advance_raises_on_an_operation_the_engine_does_not_write() -> Non
     async def answer[M: BaseModel](
         prompt: str, model: type[M], refusal: Callable[[M], str | None]
     ) -> M:
+        del prompt, model, refusal
         raise AssertionError("the worldsmith is not asked")
 
     with pytest.raises(ValueError, match="writes no 'departure'"):

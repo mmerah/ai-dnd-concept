@@ -1,5 +1,5 @@
 from support.table import TWENTYFOURXX
-from support.twentyfourxx import KESTREL, SABLE, SITUATION, small_world
+from support.twentyfourxx import ENGINE, KESTREL, SABLE, SITUATION, small_world
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
@@ -7,11 +7,9 @@ from aidm.core.model import AnyScenario, ScenarioMeta
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.drafts import SceneDraft
 from aidm.engines.scenes.worldsmith import scene_refusal
-from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.engines.twentyfourxx.world import Crewmate, Sheet
 from aidm.engines.twentyfourxx.worldsmith import SheetDraft
 
-ENGINE = TwentyfourxxEngine()
 SRD = ENGINE.packs["srd"]
 
 

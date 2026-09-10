@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.entities import Refusal, require_unique
+from aidm.core.entities import Refusal, check_unique
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Pairs
@@ -48,7 +48,7 @@ class Loner3eSheet(Person):
             if value
         )
 
-    def unwritten(self) -> str:
+    def forbidden(self) -> str:
         return ", ".join(
             why
             for why, satisfied in (
@@ -61,7 +61,7 @@ class Loner3eSheet(Person):
     def change_tags(self, kind: TagKind, gained: Sequence[str], lost: Sequence[str]) -> list[Fact]:
         if not gained and not lost:
             raise Refusal("change_tags needs at least one gained or lost tag")
-        require_unique(f"{kind} tags", (*gained, *lost))
+        check_unique(f"{kind} tags", (*gained, *lost))
         current = self.tagged(kind)
         if carried := [tag for tag in gained if tag in current]:
             raise Refusal(f"{self.name} already carries the {kind} {carried[0]!r}")

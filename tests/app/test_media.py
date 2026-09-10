@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import SecretStr
-from support.loner import TARGET, initialized, with_entity
+from support.game import TARGET, initialized, with_entity
 from support.table import offline_settings
 from support.ui import ui_settings
 

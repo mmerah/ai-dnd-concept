@@ -21,7 +21,9 @@ Tests run offline. They are deterministic.
 ## Code
 
 - A class owns its state and the methods that read or change it. A function whose first argument
-  is one of our objects is a method; a free function is for what has no owner.
+  is one of our objects is a method; a free function is for what has no owner. A function stays
+  free when its object's class lives in a lower layer, when it renders or builds at an edge, or
+  when it is unit-tested on its own.
 - Side effects live at the edges (files, network, UI). Rules code changes only the draft it is
   handed and rolls only the `Random` it is handed.
 - State models are mutable. Value models are frozen.

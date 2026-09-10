@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from nicegui import Client, core, ui
-from support.loner import open_game
+from support.game import open_game
 from support.table import Table, play_turn
 
 from aidm.app.runtime import GameService
@@ -59,7 +59,8 @@ def test_the_composer_opens_only_between_turns_on_a_game_still_going() -> None:
 
 def _spoken(*, proposal: str = "") -> Exchange:
     return Exchange(
-        prompt="(the party speaks)",
+        prompt="",
+        mark="interjection",
         lines=(SpokenLine(speaker_id=EntityId("vessa-rune"), speaker="Vessa", text="Wait."),),
         proposal=proposal,
     )

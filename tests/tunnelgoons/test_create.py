@@ -1,9 +1,8 @@
 import pytest
+from support.tunnelgoons import ENGINE
 
 from aidm.core.entities import Refusal
-from aidm.engines.tunnelgoons.engine import STARTING_ITEM_LIST, TunnelGoonsEngine
-
-ENGINE = TunnelGoonsEngine()
+from aidm.engines.tunnelgoons.engine import STARTING_ITEM_LIST
 
 PICKS = {
     "brute": "1",

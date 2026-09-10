@@ -1,20 +1,18 @@
 from random import Random
 
 import pytest
-from support.breathless import MIRA, WRENCH, hired, small_world
+from support.breathless import ENGINE, MIRA, WRENCH, hired, small_world
 from support.table import change, refused
 
 from aidm.core.entities import EntityId, Refusal, parse
 from aidm.core.play import PendingOption
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.breathless.engine import BreathlessEngine, BreathlessGame
+from aidm.engines.breathless.engine import BreathlessGame
 from aidm.engines.breathless.tools import Actor, Check, LootCheck, TakeLoot
 from aidm.engines.breathless.tools import TestLuck as LuckTest
-from aidm.engines.breathless.world import Item, stepped
+from aidm.engines.breathless.world import Supply, stepped
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.scenes.world import SCENE_LEFT
-
-ENGINE = BreathlessEngine()
 
 
 def test_check_on_a_skill_wears_it() -> None:
@@ -162,7 +160,7 @@ def test_use_med_kit_acts_on_the_member() -> None:
 def test_drop_item_acts_on_the_member() -> None:
     draft = small_world().draft()
     member = hired(draft.payload, MIRA)
-    member.dice().items[EntityId("rope")] = Item(name="Rope", die=6)
+    member.dice().items[EntityId("rope")] = Supply(name="Rope", die=6)
     _ = change(ENGINE, draft, "drop_item", item_id="rope", actor_id=MIRA)
     assert EntityId("rope") not in member.dice().items
 
@@ -184,8 +182,8 @@ def test_loot_on_an_item_with_room_offers_take() -> None:
 def test_loot_on_an_item_with_a_full_backpack_offers_swaps() -> None:
     draft = small_world().draft()
     sheet = draft.payload.player.dice()
-    sheet.items[EntityId("rope")] = Item(name="Rope", die=6)
-    sheet.items[EntityId("torch")] = Item(name="Torch", die=6)
+    sheet.items[EntityId("rope")] = Supply(name="Rope", die=6)
+    sheet.items[EntityId("torch")] = Supply(name="Torch", die=6)
     assert len(sheet.items) == 3
     _ = ENGINE.loot_check(draft, LootCheck(item="Crowbar"), Random(0))
     assert draft.pending is not None
@@ -216,7 +214,7 @@ def test_loot_replay_applies_the_option_the_roll_wrote() -> None:
 
     facts = ENGINE.answer(draft, take, Random(0))
 
-    assert sheet.items[EntityId("machete")] == Item(name="Machete", die=granted)
+    assert sheet.items[EntityId("machete")] == Supply(name="Machete", die=granted)
     assert any(fact.card == f"Took Machete (d{granted})" for fact in facts)
 
 

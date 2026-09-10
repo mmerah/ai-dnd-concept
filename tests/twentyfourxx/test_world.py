@@ -3,12 +3,12 @@ from support.twentyfourxx import KESTREL, hired, small_world
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.twentyfourxx.engine import starting_items
+from aidm.engines.twentyfourxx.engine import items_from_kits
 from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
     SHIP_FUNCTIONS,
     Crewmate,
-    Item,
+    Gear,
     Kit,
     Sheet,
     TwentyfourxxWorld,
@@ -17,7 +17,7 @@ from aidm.engines.twentyfourxx.world import (
 
 
 def test_item_broken_at_and_below_breaks() -> None:
-    item = Item(name="Vest", breaks=2)
+    item = Gear(name="Vest", breaks=2)
     assert not item.broken
     item.broken_times = 1
     assert not item.broken
@@ -116,7 +116,7 @@ def test_require_actor_refuses_an_unsheeted_member() -> None:
 
 
 def test_starting_items_slug_duplicate_kit_names_in_order() -> None:
-    items = starting_items((Kit(name="Comm"), Kit(name="Comm")))
+    items = items_from_kits((Kit(name="Comm"), Kit(name="Comm")))
     assert list(items.keys()) == [EntityId("comm"), EntityId("comm-2")]
     assert [item.name for item in items.values()] == ["Comm", "Comm"]
 
@@ -153,7 +153,7 @@ def test_require_gear_finds_a_ship_function_and_refuses_a_stranger() -> None:
 
 
 def test_item_detail_shows_upgraded() -> None:
-    assert Item(name="Comms", upgraded=True).detail() == "upgraded"
+    assert Gear(name="Comms", upgraded=True).detail() == "upgraded"
 
 
 def test_every_crew_starts_with_the_seven_ship_functions() -> None:

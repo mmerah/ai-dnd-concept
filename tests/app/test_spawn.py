@@ -61,7 +61,7 @@ def test_only_the_master_is_let_out_of_the_sandbox_and_no_role_sees_the_account(
 
 def test_a_claude_reply_that_is_not_json_is_a_broken_run() -> None:
     with pytest.raises(Refusal, match="no JSON result"):
-        _ = ClaudeDriver().parse("I ask in prose.")
+        _ = ClaudeDriver().read_result("I ask in prose.")
 
 
 @pytest.mark.parametrize(
@@ -79,7 +79,7 @@ def test_a_claude_reply_that_is_not_json_is_a_broken_run() -> None:
 def test_a_driver_reads_the_session_its_cli_reported(
     driver: ClaudeDriver | CodexDriver, output: str, session: str
 ) -> None:
-    assert driver.parse(output).session == session
+    assert driver.read_result(output).session == session
 
 
 async def test_a_retry_carries_on_the_refused_attempt_and_sends_only_the_error() -> None:
@@ -87,6 +87,7 @@ async def test_a_retry_carries_on_the_refused_attempt_and_sends_only_the_error()
 
     class _Spawner:
         async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
+            del role
             asked.append((prompt, session))
             return RunResult('{"lines": []}' if session else "not json", "abc-123")
 

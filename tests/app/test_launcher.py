@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import JsonValue
-from support.loner import TARGET
+from support.game import TARGET
 from support.table import (
     BREATHLESS,
     ENGINES_BUILT,

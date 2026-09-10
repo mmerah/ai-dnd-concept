@@ -4,12 +4,12 @@ from pathlib import Path
 import pytest
 from nicegui import ui
 from pydantic import ValidationError
-from support.loner import TARGET
+from support.game import TARGET
 from support.table import ScriptedSpawner
 from support.ui import ui_settings
 
 from aidm.app.runtime import Runtime
-from aidm.config import RoleConfig, Roles, Settings, read_settings, save_settings
+from aidm.config import RoleConfig, RoleSettings, Settings, read_settings, save_settings
 from aidm.ui.settings import (
     SettingsForm,
     _refusal_text,  # pyright: ignore[reportPrivateUsage]
@@ -24,7 +24,7 @@ class FakeBox:
 
 def test_only_a_real_edit_is_written(tmp_path: Path) -> None:
     settings = ui_settings(saves_dir=tmp_path)
-    settings.roles = Roles(narrator=RoleConfig(model="sonnet"))
+    settings.roles = RoleSettings(narrator=RoleConfig(model="sonnet"))
     form = SettingsForm(
         settings,
         lambda: None,

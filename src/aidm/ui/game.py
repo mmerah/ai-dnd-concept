@@ -10,11 +10,11 @@ from typing import Self
 from nicegui import app, ui
 from nicegui.events import GenericEventArguments, ScrollEventArguments
 
-from aidm.app.runtime import MARKS, GameService, Runtime
+from aidm.app.runtime import GameService, Runtime
 from aidm.config import Role
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.facts import DiceEvent, Fact, cards
-from aidm.core.play import Answer, DecisionOption, Exchange
+from aidm.core.play import Answer, DecisionOption, Exchange, Marked
 from aidm.core.views import PlayerView
 from aidm.ui.dice import DiceTray, rolled_since
 from aidm.ui.dictation import Dictation
@@ -55,6 +55,11 @@ RAIL: tuple[tuple[str, str, str], ...] = (
     (SCENE_TAB, "map", "Scene"),
     (JOURNAL_TAB, "history_edu", "Journal"),
 )
+MARK_LABELS: dict[Marked, str] = {
+    "opening": "(the story begins)",
+    "story": "(the story goes on)",
+    "interjection": "(the party speaks)",
+}
 
 LOGGER = logging.getLogger(__name__)
 
@@ -262,8 +267,10 @@ class GamePage:
         last = history[-1] if history and session.state.pending is not None else None
         player = self.view.player
         for exchange in history:
-            if exchange.prompt in MARKS:
-                ui.label(exchange.prompt).classes("w-full text-center text-xs italic opacity-60")
+            if exchange.mark:
+                ui.label(MARK_LABELS[exchange.mark]).classes(
+                    "w-full text-center text-xs italic opacity-60"
+                )
             else:
                 _bubble(session, player.id, player.label, exchange.prompt, sent=True)
             for fact in cards(exchange.facts):
@@ -380,7 +387,8 @@ class GamePage:
         heading("Chronicle")
         played = self.history
         for number, exchange in reversed(list(enumerate(played, start=1))):
-            with ui.expansion(f"turn {number}: {exchange.prompt}").classes("w-full game-card"):
+            title = MARK_LABELS[exchange.mark] if exchange.mark else exchange.prompt
+            with ui.expansion(f"turn {number}: {title}").classes("w-full game-card"):
                 # A speaker is named, because a bare quote reads as narration without bubbles.
                 for line in exchange.lines:
                     if line.speaker_id is None:
@@ -595,6 +603,49 @@ def game_page(runtime: Runtime, session: GameService) -> None:
     GamePage(runtime, session).build()
 
 
+def can_type(player: PlayerView, phase: Role | None) -> bool:
+    prompt = player.prompt
+    return phase is None and (prompt is None or prompt.allows_text) and player.over is None
+
+
+def standing_proposal(
+    history: Sequence[Exchange], player: PlayerView, phase: Role | None
+) -> Exchange | None:
+    newest = history[-1] if history else None
+    if newest is None or not newest.proposal:
+        return None
+    return newest if can_type(player, phase) and player.prompt is None else None
+
+
+def near_end(position: float, size: float, container: float, slack: float = 48) -> bool:
+    return size - position - container <= slack
+
+
+def draft_spent(draft: str, newest_prompt: str) -> bool:
+    """The words sent for the turn that just landed."""
+    return bool(draft) and draft == newest_prompt
+
+
+def insert_at_caret(draft: str, text: str, caret: int) -> str:
+    """A space on each side, unless the neighbour is already whitespace or the draft edge."""
+    before, after = draft[:caret], draft[caret:]
+    lead = "" if not before or before[-1].isspace() else " "
+    trail = "" if not after or after[0].isspace() else " "
+    return f"{before}{lead}{text}{trail}{after}"
+
+
+def placeholder(player: PlayerView, phase: Role | None) -> str:
+    if player.over is not None:
+        return "The game is over. Restart it from the menu."
+    if phase is not None:
+        return f"{_STEP_COPY[phase][0]} is working..."
+    if player.prompt is None:
+        return "What do you do?"
+    if player.prompt.allows_text:
+        return "The game is waiting on your answer."
+    return "Choose an option above."
+
+
 def _card(fact: Fact, *, live: bool = False) -> None:
     headline, *detail = fact.card.split("\n")
     with ui.column().classes("game-card w-full").style("gap: 0.3rem"):
@@ -651,46 +702,3 @@ def _inline_status(step: Role, elapsed: float) -> ui.label:
 def _clock(seconds: float) -> str:
     minutes, rest = divmod(int(seconds), 60)
     return f"{minutes}:{rest:02d}"
-
-
-def can_type(player: PlayerView, phase: Role | None) -> bool:
-    prompt = player.prompt
-    return phase is None and (prompt is None or prompt.allows_text) and player.over is None
-
-
-def standing_proposal(
-    history: Sequence[Exchange], player: PlayerView, phase: Role | None
-) -> Exchange | None:
-    newest = history[-1] if history else None
-    if newest is None or not newest.proposal:
-        return None
-    return newest if can_type(player, phase) and player.prompt is None else None
-
-
-def near_end(position: float, size: float, container: float, slack: float = 48) -> bool:
-    return size - position - container <= slack
-
-
-def draft_spent(draft: str, newest_prompt: str) -> bool:
-    """The words sent for the turn that just landed."""
-    return bool(draft) and draft == newest_prompt
-
-
-def insert_at_caret(draft: str, text: str, caret: int) -> str:
-    """A space on each side, unless the neighbour is already whitespace or the draft edge."""
-    before, after = draft[:caret], draft[caret:]
-    lead = "" if not before or before[-1].isspace() else " "
-    trail = "" if not after or after[0].isspace() else " "
-    return f"{before}{lead}{text}{trail}{after}"
-
-
-def placeholder(player: PlayerView, phase: Role | None) -> str:
-    if player.over is not None:
-        return "The game is over. Restart it from the menu."
-    if phase is not None:
-        return f"{_STEP_COPY[phase][0]} is working..."
-    if player.prompt is None:
-        return "What do you do?"
-    if player.prompt.allows_text:
-        return "The game is waiting on your answer."
-    return "Choose an option above."

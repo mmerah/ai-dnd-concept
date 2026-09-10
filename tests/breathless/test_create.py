@@ -1,7 +1,7 @@
-from aidm.engines.breathless.engine import BreathlessEngine
+from support.breathless import ENGINE
+
 from aidm.engines.breathless.world import STARTING_ITEM
 
-ENGINE = BreathlessEngine()
 SRD = ENGINE.packs["srd"]
 
 PICKS = {

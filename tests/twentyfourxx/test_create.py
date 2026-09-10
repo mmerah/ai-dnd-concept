@@ -1,11 +1,10 @@
 import pytest
 from pydantic import BaseModel
+from support.twentyfourxx import ENGINE
 
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.model import Character
-from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 
-ENGINE = TwentyfourxxEngine()
 SNEAK = {
     "pack": "srd",
     "specialty": "sneak",

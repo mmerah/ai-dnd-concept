@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 import pytest
-from support.loner import character, initialized, scenario
+from support.game import character, initialized, scenario
 from support.table import ENGINES_BUILT, LONER3E, SCENARIO_MODELS, updated
 
 from aidm.core.entities import EngineId, Refusal

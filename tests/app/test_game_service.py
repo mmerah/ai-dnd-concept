@@ -5,14 +5,14 @@ from pathlib import Path
 from random import Random
 
 import pytest
-from support.loner import TARGET, open_game, session, with_entity
+from support.game import TARGET, open_game, session, with_entity
 from support.table import (
     BREATHLESS,
     ScriptedSpawner,
     changed,
     narrated,
     offline_settings,
-    open_game_for,
+    open_table,
     play_turn,
     the_way_on,
     tool_call,
@@ -20,19 +20,14 @@ from support.table import (
 )
 
 from aidm.app.roles import REQUESTED, Roles
-from aidm.app.runtime import (
-    INTERJECTION_MARK,
-    OPENING_MARK,
-    STORY_MARK,
-    GameService,
-    Runtime,
-)
+from aidm.app.runtime import GameService, Runtime
 from aidm.app.spawn import RunResult
 from aidm.config import Role
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.io import FileStore
 from aidm.core.model import AnyGame, Generation, ScenarioMeta
 from aidm.engines.base import PLAYER_ID
+from aidm.engines.breathless.world import BreathlessGame
 from aidm.engines.loner3e.world import Loner3eSheet
 
 
@@ -40,6 +35,7 @@ class _UnsavableStore(FileStore):
     """Overrides `save` alone: `FileStore` is frozen and slotted, so this cannot monkeypatch it."""
 
     def save(self, slug: str, state: AnyGame) -> None:
+        del slug, state
         raise OSError("disk is gone")
 
 
@@ -107,7 +103,7 @@ async def test_the_opening_is_narrated_once_and_costs_a_turn(tmp_path: Path) -> 
     await table.service.open()
 
     history = table.service.engine.history(table.service.state)
-    assert [exchange.prompt for exchange in history] == [OPENING_MARK]
+    assert [exchange.mark for exchange in history] == ["opening"]
     assert len(history) == 1
 
     await table.service.open()
@@ -165,7 +161,7 @@ async def test_a_complication_writes_and_installs_at_the_same_place(tmp_path: Pa
     exchanges = state.payload.exchanges()
     assert len(exchanges) == 2
     assert exchanges[0].prompt == "I keep watch on the study door."
-    assert exchanges[1].prompt == STORY_MARK
+    assert exchanges[1].mark == "story"
     assert state.payload.run.place == place
     assert all(entity_id in state.payload.cast for entity_id in here_before)
     assert [role for role, _ in table.spawner.prompts] == ["master", "worldsmith", "narrator"]
@@ -196,7 +192,7 @@ async def test_a_complication_does_not_refill_the_players_spent_luck(tmp_path: P
     """The scene turns, it does not end: a complication runs no scene-closing refill."""
     table = open_game(tmp_path)
     table.state.payload.player.luck.current = 2
-    table.service.commit(table.state)
+    table.service.save(table.state)
     table.spawner.answers["worldsmith"] = [_scene()]
 
     state = await play_turn(
@@ -207,7 +203,7 @@ async def test_a_complication_does_not_refill_the_players_spent_luck(tmp_path: P
     )
 
     installed = state.payload.exchanges()[-1]
-    assert installed.prompt == STORY_MARK
+    assert installed.mark == "story"
     assert state.payload.player.luck.current == 2
 
 
@@ -224,7 +220,7 @@ async def test_a_failed_write_after_a_complication_leaves_the_turn_committed(
     )
 
     exchange = state.payload.exchanges()[-1]
-    assert exchange.prompt == STORY_MARK
+    assert exchange.mark == "story"
     assert exchange.facts[0].card == (
         "Nothing new came down on this place after all. You are still where you were."
     )
@@ -233,7 +229,7 @@ async def test_a_failed_write_after_a_complication_leaves_the_turn_committed(
 
 
 async def test_a_failed_write_after_a_hire_names_the_hire(tmp_path: Path) -> None:
-    table = open_game_for(tmp_path, BREATHLESS)
+    table = open_table(tmp_path, engine_id=BREATHLESS, state_type=BreathlessGame)
 
     state = await play_turn(
         table,
@@ -299,8 +295,8 @@ class _TurnLandsFirst:
 
     async def run(self, role: Role, prompt: str, session: str | None) -> RunResult:
         if role == "narrator":
-            self.service.commit(
-                self.service.engine.close(self.service.state.draft(), STORY_MARK, (), ())
+            self.service.save(
+                self.service.engine.close(self.service.state.draft(), (), (), mark="story")
             )
         return await self.inner.run(role, prompt, session)
 
@@ -329,7 +325,7 @@ def _party_of_one(service: GameService) -> Loner3eSheet:
     state = with_entity(service.state, member)
     draft = state.draft()
     draft.payload.party.append(member.id)
-    service.commit(draft.commit())
+    service.save(draft.commit())
     return member
 
 
@@ -350,7 +346,7 @@ async def test_a_member_who_passes_the_d10_speaks_after_the_turn(tmp_path: Path)
     prompt = table.spawner.prompt("narrator")
     assert f"YOUR ROLE:\nYou are {member.name}. {member.brief}" in prompt
     exchange = table.service.engine.history(table.service.state)[-1]
-    assert exchange.prompt == INTERJECTION_MARK
+    assert exchange.mark == "interjection"
     assert [line.speaker_id for line in exchange.lines] == [member.id]
     assert exchange.proposal == "I check the airlock seal."
     assert table.service.phase is None
@@ -374,7 +370,7 @@ async def test_a_turn_that_lands_first_drops_the_interjection(tmp_path: Path) ->
 
     await table.service.interject()
 
-    assert table.service.engine.history(table.service.state)[-1].prompt == STORY_MARK
+    assert table.service.engine.history(table.service.state)[-1].mark == "story"
 
 
 async def test_an_answer_with_no_lines_records_nothing(tmp_path: Path) -> None:

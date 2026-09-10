@@ -13,7 +13,7 @@ from aidm.engines.base import CHANGE_WORLD, PLAYER_ID
 from aidm.engines.hiring import HIRE_TOOL, Hire, Hiring
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.tools import Move
-from aidm.engines.rooms.world import Item
+from aidm.engines.rooms.world import Prop
 from aidm.engines.tunnelgoons.tools import (
     ActionRoll,
     ChangeWorld,
@@ -115,6 +115,7 @@ class TunnelGoonsEngine(
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
+        del picks
         ability_steps = tuple(
             CreationStep(
                 id=ability,
@@ -151,8 +152,8 @@ class TunnelGoonsEngine(
         sheet = self.player_of(character)
         return (*sheet.rows(), ("Items", ", ".join(sheet.kit)))
 
-    def starting_items(self, player: Goon, taken: Iterable[str]) -> tuple[Item, ...]:
-        return player.starting_items(taken)
+    def starting_items(self, player: Goon, taken: Iterable[str]) -> tuple[Prop, ...]:
+        return player.unpack_kit(taken)
 
     def guidance(self) -> str:
         return AUTHORING
@@ -177,7 +178,7 @@ class TunnelGoonsEngine(
             answer=AbilitiesDraft,
         )
 
-    def install_sheet(self, draft: TunnelGoonsGame, member: Npc, answer: AbilitiesDraft) -> str:
+    def install_sheet(self, member: Npc, answer: AbilitiesDraft) -> str:
         sheet = member.sheet = Abilities(abilities=dict(answer.abilities))
         return ", ".join(
             f"{ability.capitalize()} {sheet.abilities[ability]}" for ability in ABILITIES
@@ -185,7 +186,7 @@ class TunnelGoonsEngine(
 
     def roll(self, draft: TunnelGoonsGame, args: ActionRoll, rng: Random) -> list[Fact]:
         world = draft.payload
-        actor, sheet = world.require_actor(args.actor_id)
+        actor, sheet = world.require_actor_and_sheet(args.actor_id)
         items = world.carried_items(actor, args.items)
         npc = world.require_npc_here(args.against) if args.against is not None else None
         if npc is actor:
@@ -231,12 +232,12 @@ class TunnelGoonsEngine(
     def level_up(self, draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
         world = draft.payload
         if args.ability is None and args.boost is None:
-            actor, _ = world.require_actor(args.actor_id)
+            actor, _ = world.require_actor_and_sheet(args.actor_id)
             draft.pending = _level_decision(actor)
             return []
         if args.ability is None or args.boost is None:
             raise Refusal("level_up takes both an ability and a boost, or neither")
-        actor, sheet = world.require_actor(args.actor_id)
+        actor, sheet = world.require_actor_and_sheet(args.actor_id)
         sheet.abilities[args.ability] += 1
         if args.boost == "health":
             actor.hp.maximum += 1

@@ -9,8 +9,8 @@ from aidm.core.entities import (
     Mutable,
     Refusal,
     Slug,
+    check_unique,
     parse,
-    require_unique,
 )
 from aidm.core.facts import Fact
 from aidm.core.play import Exchange, SceneRecord
@@ -82,7 +82,7 @@ class SceneWorld[C: Person, P: Person](World[P]):
             raise ValueError("the player is in every scene and is never listed in it")
         if self.player.id in self.party:
             raise ValueError("the player cannot travel with themselves")
-        require_unique("party", self.party)
+        check_unique("party", self.party)
         for member_id in self.party:
             if member_id not in self.cast or not self.cast[member_id].known:
                 raise ValueError(
@@ -285,10 +285,10 @@ def sentence(text: str) -> str:
 
 
 def check_named(here: Sequence[EntityId], cast: Mapping[EntityId, Thing]) -> None:
-    require_unique("ids in the scene", here)
+    check_unique("ids in the scene", here)
     for who in here:
         if who not in cast:
-            raise Refusal(f"scene names {who!r}, who is not in the cast")
+            raise ValueError(f"scene names {who!r}, who is not in the cast")
 
 
 def resolved_id(wanted: str, cast: Mapping[EntityId, Thing]) -> EntityId | None:

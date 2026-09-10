@@ -1,7 +1,7 @@
 from random import Random
 
 import pytest
-from support.loner import ENGINE, initialized, loner_sheet
+from support.game import ENGINE, initialized, loner_sheet
 from support.table import change, updated
 
 from aidm.core.entities import EntityId, Refusal

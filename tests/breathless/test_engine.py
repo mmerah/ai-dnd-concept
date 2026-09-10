@@ -1,7 +1,7 @@
 from random import Random
 
 import pytest
-from support.breathless import SKILLS_RATED
+from support.breathless import ENGINE, SKILLS_RATED
 from support.table import (
     BREATHLESS,
     ENGINES_BUILT,
@@ -16,13 +16,12 @@ from aidm.core.entities import EngineId, EntityId, Refusal
 from aidm.core.io import decode
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.breathless.engine import BreathlessEngine
 from aidm.engines.breathless.world import (
     STARTING_ITEM,
     BreathlessCharacter,
     BreathlessGame,
     BreathlessScenario,
-    Item,
+    Supply,
     Survivor,
     SurvivorSheet,
 )
@@ -33,7 +32,6 @@ from aidm.engines.seam import AnyEngine
 
 FIRE_AXE = EntityId("fire-axe")
 OVID = EntityId("ovid-sarn")
-ENGINE = BreathlessEngine()
 
 
 def _breathless_game() -> tuple[AnyEngine, BreathlessGame]:
@@ -102,7 +100,7 @@ def test_a_player_id_cast_entry_is_refused_by_new_game() -> None:
                 job="Park Ranger",
                 skills=SKILLS_RATED,
                 worn=dict(SKILLS_RATED),
-                items={FIRE_AXE: Item(name="Fire Axe", die=STARTING_ITEM)},
+                items={FIRE_AXE: Supply(name="Fire Axe", die=STARTING_ITEM)},
             ),
         ),
     )

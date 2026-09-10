@@ -3,7 +3,7 @@ from random import Random
 
 import pytest
 from support.table import change, refused, stub_worldsmith
-from support.twentyfourxx import KESTREL, LOCKPICKS, SABLE, hired, small_world
+from support.twentyfourxx import ENGINE, KESTREL, LOCKPICKS, SABLE, hired, small_world
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.model import Generation
@@ -11,12 +11,9 @@ from aidm.engines.base import PLAYER_ID
 from aidm.engines.hiring import HIRE, SIGNED_ON, Hire
 from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.scenes.tools import NextScene
-from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.engines.twentyfourxx.tools import Job, Raise, Roll
 from aidm.engines.twentyfourxx.tools import TestLuck as LuckTest
 from aidm.engines.twentyfourxx.world import STARTING_CREDITS, UPGRADE_COST
-
-ENGINE = TwentyfourxxEngine()
 
 
 def test_attempt_bands_disaster_setback_success() -> None:
@@ -474,7 +471,7 @@ def test_validate_refuses_a_hire_with_no_target() -> None:
     draft = small_world().draft()
     draft.packs = (SRD_PACK,)
     draft.generation = Generation(operation=HIRE, brief="terms")
-    with pytest.raises(Refusal, match="a hire names who signs on"):
+    with pytest.raises(Refusal, match="a 'hire' request names no target"):
         ENGINE.validate(draft)
 
 

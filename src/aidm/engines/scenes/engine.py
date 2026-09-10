@@ -89,9 +89,8 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
     packs: dict[str, K]
     operations = (DEPARTURE, COMPLICATION)
 
-    def __init__(self) -> None:
+    def prepare(self) -> None:
         self.packs = read_packs(self.directory / "packs", self.pack)
-        super().__init__()  # last: `master_tools` reads the packs
 
     def family_rules(self) -> str:
         return read_prompt(RULES_PROMPT)
@@ -130,10 +129,10 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
             *self.glossary(state),
         )
 
-    def sheet_sections(self, state: G) -> Pairs:
+    def sheet_sections(self, _state: G) -> Pairs:
         return ()
 
-    def glossary(self, state: G) -> Pairs:
+    def glossary(self, _state: G) -> Pairs:
         return ()
 
     def narrator_view(self, state: G) -> NarratorView:
@@ -212,6 +211,7 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
         return super().unwritten(request)
 
     def act(self, draft: G, action: Slug, words: str) -> None:
+        del words
         if action != MOVE_ON.id or not self.world(draft).run.offered:
             raise Refusal("the way on has changed since the page was drawn")
         draft.note(MOVING_ON)
@@ -339,10 +339,10 @@ class SceneEngine[C: Person, P: Person, G: Game[Any], K: ScenePack](Engine[P, G]
         scene = await self.write_next(draft, asked, worldsmith)
         return tuple(self.install(draft, scene)), TURNING
 
-    def panels(self, state: G) -> tuple[Panel, ...]:
+    def panels(self, _state: G) -> tuple[Panel, ...]:
         return ()
 
-    def leaving(self, state: G) -> tuple[Fact, ...]:
+    def leaving(self, _state: G) -> tuple[Fact, ...]:
         return ()
 
     @abstractmethod

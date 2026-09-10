@@ -1,10 +1,13 @@
 from collections.abc import Sequence
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import Field, JsonValue, field_validator, model_validator
 
-from aidm.core.entities import CheckedEntityId, Frozen, Slug, require_unique
+from aidm.core.entities import CheckedEntityId, Frozen, Slug, check_unique
 from aidm.core.facts import Fact
+
+type Marked = Literal["opening", "story", "interjection"]
+type Mark = Marked | Literal[""]
 
 
 class Line(Frozen):
@@ -84,7 +87,7 @@ class PendingDecision(Frozen):
 
     @model_validator(mode="after")
     def _options_are_unambiguous(self) -> Self:
-        require_unique("option ids", (option.id for option in self.options))
+        check_unique("option ids", (option.id for option in self.options))
         return self
 
 
@@ -107,6 +110,7 @@ class Answer(Frozen):
 
 class Exchange(Frozen):
     prompt: str
+    mark: Mark = ""
     lines: tuple[SpokenLine, ...]
     # every fact, told or not; `cards` picks the player's
     facts: tuple[Fact, ...] = ()

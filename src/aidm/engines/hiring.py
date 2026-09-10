@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.entities import CheckedEntityId, EntityId, Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import Fact
-from aidm.core.model import Check, Game, Generation, WorldsmithAnswer
+from aidm.core.model import Game, Generation, Objection, WorldsmithAnswer
 from aidm.engines.base import Person
 from aidm.engines.scenes.world import SceneWorld
 from aidm.engines.seam import Engine
@@ -49,8 +49,8 @@ class Sheeted[S: BaseModel](Person):
             raise Refusal(f"{self.name} carries no dice")
         return self.sheet
 
-    def unwritten(self) -> str:
-        parts = (super().unwritten(), "a sheet" if self.sheet is not None else "")
+    def forbidden(self) -> str:
+        parts = (super().forbidden(), "a sheet" if self.sheet is not None else "")
         return ", ".join(part for part in parts if part)
 
 
@@ -112,25 +112,25 @@ class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
         super().validate(state)
         generation = state.generation
         if generation is not None and generation.operation == HIRE:
-            self.hireable(state, _hire_target(generation))
+            self.hireable(state, generation.require_target())
 
     async def advance(
         self, draft: G, request: Generation, worldsmith: WorldsmithAnswer
     ) -> tuple[tuple[Fact, ...], str | None]:
         if request.operation != HIRE:
             return await super().advance(draft, request, worldsmith)
-        member = self.hireable(draft, _hire_target(request))
+        member = self.hireable(draft, request.require_target())
         answer = await worldsmith(
             self.hire_prompt(draft, member, request.brief), self.hire_answer, self.hire_bar(draft)
         )
-        summary = self.install_sheet(draft, member, answer)
+        summary = self.install_sheet(member, answer)
         world = self.world(draft)
         facts = world.join(member) if member.id not in world.party else []
         trace = f"{member.mention} signs on — {summary}"
         facts.append(member.fact(trace, card=f"{member.name} signs on — {summary}"))
         return tuple(facts), SIGNED_ON.format(name=member.name)
 
-    def hire_bar(self, draft: G) -> Check[A]:
+    def hire_bar(self, _draft: G) -> Objection[A]:
         return lambda _answer: None
 
     @abstractmethod
@@ -138,11 +138,5 @@ class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
     @abstractmethod
     def hire_prompt(self, draft: G, member: M, terms: str) -> str: ...
     @abstractmethod
-    def install_sheet(self, draft: G, member: M, answer: A) -> str:
+    def install_sheet(self, member: M, answer: A) -> str:
         """Write the sheet onto the member; the summary the sign-on is told in."""
-
-
-def _hire_target(request: Generation) -> EntityId:
-    if request.target is None:
-        raise Refusal("a hire names who signs on")
-    return request.target

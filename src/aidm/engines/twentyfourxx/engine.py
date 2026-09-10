@@ -6,7 +6,7 @@ from random import Random
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, option_of, picked
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, keep_highest, roll
-from aidm.core.model import Check
+from aidm.core.model import Objection
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import lines_of
 from aidm.core.tools import MasterTool, master_tool
@@ -39,7 +39,7 @@ from aidm.engines.twentyfourxx.world import (
     HINDERED_DIE,
     MAIMED,
     Crewmate,
-    Item,
+    Gear,
     Kit,
     Sheet,
     SkillDie,
@@ -204,13 +204,14 @@ class TwentyfourxxEngine(
                 origin=origin.label,
                 traits=traits,
                 skills=skills,
-                items=starting_items(kits),
+                items=items_from_kits(kits),
             ),
         )
         return TwentyfourxxCharacter(id=slug(name, ()), engine=self.id, payload=player)
 
     def guidance(self, picks: Sequence[Slug]) -> str:
         """This pack holds creation tables, not setting vocabulary: the preamble alone suffices."""
+        del picks
         return AUTHORING
 
     def sheet_sections(self, state: TwentyfourxxGame) -> Pairs:
@@ -320,16 +321,16 @@ class TwentyfourxxEngine(
             answer=SheetDraft,
         )
 
-    def hire_bar(self, draft: TwentyfourxxGame) -> Check[SheetDraft]:
+    def hire_bar(self, draft: TwentyfourxxGame) -> Objection[SheetDraft]:
         pack = self._pack(draft)
         return lambda sheet: sheet.refusal(pack)
 
-    def install_sheet(self, draft: TwentyfourxxGame, member: Crewmate, answer: SheetDraft) -> str:
+    def install_sheet(self, member: Crewmate, answer: SheetDraft) -> str:
         member.sheet = Sheet(
             specialty=answer.specialty,
             skills=dict(answer.skills),
             credits=0,
-            items=starting_items(tuple(Kit(name=name) for name in answer.items)),
+            items=items_from_kits(tuple(Kit(name=name) for name in answer.items)),
             hindrances=list(answer.hindrances),
         )
         return answer.specialty
@@ -510,19 +511,19 @@ class TwentyfourxxEngine(
         return facts
 
 
-def starting_items(kits: Sequence[Kit]) -> dict[EntityId, Item]:
+def items_from_kits(kits: Sequence[Kit]) -> dict[EntityId, Gear]:
     taken: list[str] = []
-    items: dict[EntityId, Item] = {}
+    items: dict[EntityId, Gear] = {}
     for kit in kits:
         key = slug(kit.name, taken)
         taken.append(key)
-        items[EntityId(key)] = Item(
+        items[EntityId(key)] = Gear(
             name=kit.name, bulky=kit.bulky, breaks=kit.breaks, harmless=kit.harmless
         )
     return items
 
 
-def _item_lines(items: Mapping[EntityId, Item]) -> str:
+def _item_lines(items: Mapping[EntityId, Gear]) -> str:
     return lines_of(
         f"- {item.name}[{key}]" + (f" — {detail}" if (detail := item.detail()) else "")
         for key, item in items.items()

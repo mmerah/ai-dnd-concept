@@ -3,16 +3,18 @@ from collections.abc import Sequence
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID
+from aidm.engines.breathless.engine import BreathlessEngine
 from aidm.engines.breathless.world import (
     BreathlessGame,
     BreathlessWorld,
     Die,
-    Item,
     Skill,
+    Supply,
     Survivor,
     SurvivorSheet,
 )
 from aidm.engines.scenes.world import SceneRun
+from support.table import BREATHLESS, ENGINES_BUILT, narrowed
 
 MIRA = EntityId("mira")
 DAX = EntityId("dax")
@@ -29,6 +31,7 @@ SITUATION = (
     "Booths lie overturned and glass covers the floor of the diner, the front door barred "
     "shut against the mob still pounding just outside in the street."
 )
+ENGINE = narrowed(ENGINES_BUILT[BREATHLESS], BreathlessEngine)
 
 
 def small_world() -> BreathlessGame:
@@ -77,6 +80,6 @@ def _player() -> Survivor:
         sheet=SurvivorSheet(
             skills=SKILLS_RATED,
             worn=dict(SKILLS_RATED),
-            items={WRENCH: Item(name="Wrench", die=10)},
+            items={WRENCH: Supply(name="Wrench", die=10)},
         ),
     )

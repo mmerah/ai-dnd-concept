@@ -8,7 +8,7 @@ from typing import Literal
 
 import pytest
 from pydantic import BaseModel, Field, JsonValue
-from support.loner import open_game
+from support.game import open_game
 from support.table import (
     BREATHLESS,
     ScriptedSpawner,
@@ -27,7 +27,6 @@ import aidm.app.spawn as spawn_module
 from aidm.app.launch import LaunchTarget
 from aidm.app.mcp import list_tools
 from aidm.app.roles import Roles
-from aidm.app.runtime import STORY_MARK
 from aidm.app.spawn import CliSpawner, RunResult, final_message
 from aidm.config import Role
 from aidm.core.entities import CheckedEntityId, EngineId, EntityId, Frozen, Refusal
@@ -263,7 +262,7 @@ async def test_a_departure_crosses_after_the_leaving_turn_and_keeps_the_notes(
     """One adjudication: the master played the leaving, so the crossing needs no second turn."""
     table = open_game(tmp_path)
     table.spawner.answers["worldsmith"] = [_scene()]
-    table.service.commit(updated(table.state, notes=["the adventure's end applies"]))
+    table.service.save(updated(table.state, notes=["the adventure's end applies"]))
 
     state = await play_turn(table, "I go.", LEFT, arrival="The cold meets you.")
 
@@ -309,6 +308,7 @@ async def test_authoring_raises_when_the_worldsmith_never_meets_the_bar(tmp_path
     async def answer[M: BaseModel](
         prompt: str, model: type[M], refusal: Callable[[M], str | None]
     ) -> M:
+        del prompt
         answer = model.model_validate(thin.model_dump())
         if (refused := refusal(answer)) is not None:
             raise ValueError(f"the worldsmith answered nothing usable: {refused}")
@@ -385,7 +385,7 @@ async def test_the_players_own_words_are_the_brief_and_the_crossing_is_its_own_e
     assert EntityId("tomas") in state.payload.hidden()
     # Lands as the new run's own exchange, not tacked onto the scene the player just left.
     assert len(state.payload.run.exchanges) == 1
-    assert state.payload.run.exchanges[-1].prompt == STORY_MARK
+    assert state.payload.run.exchanges[-1].mark == "story"
     assert "Rain finds you" in state.payload.run.exchanges[-1].narration
     assert "before Tomas hears the door" in table.spawner.prompt("worldsmith")
     # `prompt` hands back the first match; the crossing's brief is the narrator's last spawn.
@@ -433,7 +433,7 @@ async def test_a_scene_the_world_has_outgrown_is_dropped_and_the_offer_kept(
 
     assert "already met" in caplog.text
     unwritten = table.service.engine.history(state)[-1]
-    assert unwritten.prompt == STORY_MARK
+    assert unwritten.mark == "story"
     assert unwritten.facts[0] == WAY_UNWRITTEN
     assert state.payload.run.title == "The Abbot's Study"
     assert state.payload.run.offered

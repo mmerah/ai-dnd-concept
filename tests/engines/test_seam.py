@@ -56,9 +56,11 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, ScenePack]):
         return ()
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
+        del picks
         return (CreationStep(id="pack", prompt="Choose a table set", options=self.pack_options()),)
 
     def create_character(self, name: str, brief: str, picks: Picks) -> AnyCharacter:
+        del picks
         return FifthCharacter(
             id=slug(name, ()),
             engine=FIFTH,
@@ -66,6 +68,7 @@ class FifthEngine(SceneEngine[Person, Person, FifthGame, ScenePack]):
         )
 
     def guidance(self, picks: Sequence[Slug]) -> str:
+        del picks
         return "Write the taproom plainly."
 
     def master_sections(self, state: FifthGame) -> Pairs:
@@ -137,7 +140,7 @@ def test_a_fifth_scene_engine_begins_a_playable_game(tmp_path: Path) -> None:
 
     assert engine.pack_options() == (DecisionOption(id="srd", label="The SRD"),)
     assert engine.instructions.startswith("Roll high.")
-    assert "Call `next_scene` with `pursuit`" in engine.instructions
+    assert engine.instructions.endswith(engine.family_rules())
     assert engine.narrator_view(state).title == "The Taproom"
     assert engine.master_sections(state) == (("SCENE", "The Taproom"),)
     assert [row.label for row in engine.player_view(state).panels[-2].rows] == ["Keeper"]
@@ -154,6 +157,7 @@ async def test_compose_builds_the_accepted_answer_once(tmp_path: Path) -> None:
     async def worldsmith[M: BaseModel](
         prompt: str, model: type[M], refusal: Callable[[M], str | None]
     ) -> M:
+        del prompt
         option = model.model_validate({"id": "srd", "label": "The SRD"})
         assert refusal(option) is None
         return option
@@ -180,7 +184,7 @@ def test_close_builds_no_narrator_view(tmp_path: Path) -> None:
     character = engine.create_character("Wren", "A quiet scout", {})
     state = engine.begin("the-taproom", _scenario(), character)
 
-    closed = engine.close(state.draft(), "I wait.", (SpokenLine(text="Nothing stirs."),), ())
+    closed = engine.close(state.draft(), (SpokenLine(text="Nothing stirs."),), (), prompt="I wait.")
 
     assert engine.narrator_view_calls == 0
     assert engine.history(closed)[-1].prompt == "I wait."

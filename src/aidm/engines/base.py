@@ -89,7 +89,7 @@ class Person(Thing):
     def headline(self) -> str:
         return super().headline + ("" if self.alive else " (dead)")
 
-    def unwritten(self) -> str:
+    def forbidden(self) -> str:
         """What the worldsmith may not write into a fresh cast member; empty when nothing."""
         return "" if self.alive else "alive"
 
@@ -124,6 +124,15 @@ class World[P: Person](Mutable):
         self.party.remove(member.id)
         trace = f"{member.tag} no longer travels with the player"
         return [member.fact(trace, card=f"{member.name} leaves your party")]
+
+
+class Attempt(Frozen):
+    """An attempt at something uncertain."""
+
+    what: str = Field(
+        min_length=1,
+        description="The attempt, in a few words the player reads.",
+    )
 
 
 class JoinParty(Frozen):
@@ -216,4 +225,4 @@ def trail_panel(titles: Iterable[str]) -> Panel:
 def check_filing(pool: Mapping[EntityId, Thing]) -> None:
     for key, entity in pool.items():
         if key != entity.id:
-            raise Refusal(f"entity {entity.id!r} is filed under {key!r}")
+            raise ValueError(f"entity {entity.id!r} is filed under {key!r}")

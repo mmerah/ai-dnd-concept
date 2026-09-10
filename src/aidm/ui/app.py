@@ -27,43 +27,6 @@ from aidm.ui.widgets import (
 LOGGER = logging.getLogger(__name__)
 
 
-def home_page(runtime: Runtime) -> None:
-    catalog = LauncherCatalog.read(runtime.library, runtime.store, runtime.engines)
-    with page_header("AI Dungeon Master", home=False):
-        ui.button("Settings", icon="settings", on_click=lambda: ui.navigate.to("/settings")).props(
-            "flat"
-        )
-        ui.space()
-        ui.label("Choose your game").classes("text-sm opacity-80 gt-xs")
-
-    with page_body():
-        page_intro(
-            "Adventure",
-            "Begin an adventure",
-            "Choose a scenario, then a character written for its rules.",
-        )
-        with section("New or current game"):
-            if catalog.scenarios:
-                LaunchForm(catalog).form()
-            else:
-                ui.label("No playable scenario was found.").classes("text-negative")
-        _new_content()
-        _saved_games(catalog)
-
-
-def start() -> None:
-    # Without a handler the root logger drops every INFO record, spawns included.
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
-    settings = read_settings()
-    _register_pages(Runtime(settings))
-    ui.run(  # pyright: ignore[reportUnknownMemberType]
-        title="AI Dungeon Master",
-        port=settings.server_port,
-        reload=False,
-        show=False,
-    )
-
-
 class LaunchForm:
     def __init__(self, catalog: LauncherCatalog) -> None:
         self.catalog = catalog
@@ -113,6 +76,43 @@ class LaunchForm:
             icon="play_arrow",
             on_click=partial(_open_game, target),
         ).props("color=primary").classes("q-mt-md")
+
+
+def home_page(runtime: Runtime) -> None:
+    catalog = LauncherCatalog.read(runtime.library, runtime.store, runtime.engines)
+    with page_header("AI Dungeon Master", home=False):
+        ui.button("Settings", icon="settings", on_click=lambda: ui.navigate.to("/settings")).props(
+            "flat"
+        )
+        ui.space()
+        ui.label("Choose your game").classes("text-sm opacity-80 gt-xs")
+
+    with page_body():
+        page_intro(
+            "Adventure",
+            "Begin an adventure",
+            "Choose a scenario, then a character written for its rules.",
+        )
+        with section("New or current game"):
+            if catalog.scenarios:
+                LaunchForm(catalog).form()
+            else:
+                ui.label("No playable scenario was found.").classes("text-negative")
+        _new_content()
+        _saved_games(catalog)
+
+
+def start() -> None:
+    # Without a handler the root logger drops every INFO record, spawns included.
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    settings = read_settings()
+    _register_pages(Runtime(settings))
+    ui.run(  # pyright: ignore[reportUnknownMemberType]
+        title="AI Dungeon Master",
+        port=settings.server_port,
+        reload=False,
+        show=False,
+    )
 
 
 def _new_content() -> None:

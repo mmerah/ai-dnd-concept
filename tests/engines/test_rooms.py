@@ -16,7 +16,7 @@ from aidm.engines import base
 from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, Person
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.tools import Move, SharedChange
-from aidm.engines.rooms.world import Dweller, Item, Place, RoomCanon, RoomWorld, Visit, Way
+from aidm.engines.rooms.world import Dweller, Place, Prop, RoomCanon, RoomWorld, Visit, Way
 
 SIXTH = EngineId("sixth")
 GATE = EntityId("gate")
@@ -64,9 +64,11 @@ class SixthEngine(RoomEngine[Dweller, Person, SixthGame]):
         return self.shared_change(self.world(draft), args.change)
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
+        del picks
         return ()
 
     def create_character(self, name: str, brief: str, picks: Picks) -> AnyCharacter:
+        del picks
         return SixthCharacter(
             id=slug(name, ()),
             engine=SIXTH,
@@ -205,7 +207,7 @@ def test_a_party_member_is_absent_from_place_lines_while_their_items_stay(
     state = engine.begin("the-keep", _scenario(), character)
     world = state.payload
     key = EntityId("warden-key")
-    world.items[key] = Item(id=key, name="Key", brief="A rusty key", known=True, on=WARDEN)
+    world.items[key] = Prop(id=key, name="Key", brief="A rusty key", known=True, on=WARDEN)
     world.party.append(WARDEN)
 
     lines = world.place_lines(known=True)

@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from support.loner import initialized
+from support.game import initialized
 
 from aidm.core.entities import EntityId
 from aidm.core.views import PanelRow, Subject

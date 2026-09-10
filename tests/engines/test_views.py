@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from support.loner import initialized, with_entity
+from support.game import initialized, with_entity
 
 from aidm.core.entities import EntityId, Refusal
 from aidm.core.play import Interjection, Line, SpokenLine

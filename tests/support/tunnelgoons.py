@@ -1,8 +1,10 @@
 from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Counter
-from aidm.engines.rooms.world import Item, Place, Visit, Way
+from aidm.engines.rooms.world import Place, Prop, Visit, Way
+from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 from aidm.engines.tunnelgoons.world import Abilities, Goon, Npc, TunnelGoonsGame, TunnelGoonsWorld
+from support.table import ENGINES_BUILT, TUNNELGOONS, narrowed
 
 START = EntityId("start")
 HALL = EntityId("hall")
@@ -14,13 +16,14 @@ ROPE = EntityId("rope")
 TORCH = EntityId("torch")
 KEY = EntityId("key")
 LANTERN = EntityId("lantern")
+ENGINE = narrowed(ENGINES_BUILT[TUNNELGOONS], TunnelGoonsEngine)
 
 
 def _map_pieces() -> tuple[
     dict[EntityId, Place],
     dict[EntityId, list[Way]],
     dict[EntityId, Npc],
-    dict[EntityId, Item],
+    dict[EntityId, Prop],
 ]:
     """A line of four places, a start->vault shortcut, and hall->vault locked."""
     places = {
@@ -76,10 +79,10 @@ def _map_pieces() -> tuple[
         hp=Counter(current=4, maximum=4),
     )
     items = {
-        ROPE: Item(id=ROPE, name="Rope", brief="A coil of rope", known=True, on=PLAYER_ID),
-        TORCH: Item(id=TORCH, name="Torch", brief="An unlit torch", known=True, on=PLAYER_ID),
-        KEY: Item(id=KEY, name="Key", brief="A tarnished key", known=False, on=HALL),
-        LANTERN: Item(id=LANTERN, name="Lantern", brief="A dented lantern", known=True, on=START),
+        ROPE: Prop(id=ROPE, name="Rope", brief="A coil of rope", known=True, on=PLAYER_ID),
+        TORCH: Prop(id=TORCH, name="Torch", brief="An unlit torch", known=True, on=PLAYER_ID),
+        KEY: Prop(id=KEY, name="Key", brief="A tarnished key", known=False, on=HALL),
+        LANTERN: Prop(id=LANTERN, name="Lantern", brief="A dented lantern", known=True, on=START),
     }
     return places, ways, {mira.id: mira, mantis.id: mantis}, items
 

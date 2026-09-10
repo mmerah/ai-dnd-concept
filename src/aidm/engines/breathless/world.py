@@ -28,12 +28,12 @@ SWAP = "swap-"
 TAKE_LOOT = "take_loot"
 
 
-class Item(Mutable):
+class Supply(Mutable):
     name: str
     die: Die
 
 
-class SurvivorSheet(ItemSheet[Item]):
+class SurvivorSheet(ItemSheet[Supply]):
     """The dice a survivor rolls."""
 
     pronouns: str = ""
@@ -103,7 +103,7 @@ class SurvivorSheet(ItemSheet[Item]):
 
 
 class Survivor(Sheeted[SurvivorSheet]):
-    def require_item(self, item_id: EntityId) -> Item:
+    def require_item(self, item_id: EntityId) -> Supply:
         return self.dice().require(item_id, self.name)
 
     def drop_item(self, item_id: EntityId) -> list[Fact]:
@@ -131,7 +131,7 @@ class Survivor(Sheeted[SurvivorSheet]):
         if choice == "take":
             if len(sheet.items) >= CARRY:
                 raise Refusal("the backpack is full; swap for something carried instead")
-            sheet.items[EntityId(slug(item, sheet.items))] = Item(name=item, die=granted)
+            sheet.items[EntityId(slug(item, sheet.items))] = Supply(name=item, die=granted)
             card = f"Took {item} (d{granted})"
         elif choice == "med-kit":
             if granted < 10:
@@ -142,7 +142,7 @@ class Survivor(Sheeted[SurvivorSheet]):
             card = "Took a med kit"
         elif choice.startswith(SWAP) and EntityId(choice.removeprefix(SWAP)) in sheet.items:
             old = sheet.items.pop(EntityId(choice.removeprefix(SWAP)))
-            sheet.items[EntityId(slug(item, sheet.items))] = Item(name=item, die=granted)
+            sheet.items[EntityId(slug(item, sheet.items))] = Supply(name=item, die=granted)
             card = f"Swapped {old.name} for {item} (d{granted})"
         else:
             raise Refusal(f"{choice!r} is not a valid loot choice")

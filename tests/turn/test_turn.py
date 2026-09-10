@@ -4,7 +4,7 @@ from pathlib import Path
 from random import Random
 
 import pytest
-from support.loner import initialized, loner_sheet, open_game
+from support.game import initialized, loner_sheet, open_game
 from support.table import Table, changed, narrated, play_turn, tool_call
 
 from aidm.core.entities import EntityId, Refusal
@@ -115,7 +115,7 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record(tmp_path: Path
     rolled = [fact.trace for fact in fired[:2]]
     for die, trace in zip(answer.dice, rolled, strict=True):
         assert trace.endswith(f"[{', '.join(str(v) for v in die.rolled)}]")
-    assert answer.card.endswith(f": {outcome_for(max(chance.rolled), max(risk.rolled)).told}")
+    assert answer.card.endswith(f": {outcome_for(max(chance.rolled), max(risk.rolled)).wording}")
     table.service.engine.validate(state)
     assert not any(fact.told for fact in fired[:2])
 
