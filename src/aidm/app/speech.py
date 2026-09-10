@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from hashlib import sha1
 from pathlib import Path
 
+from httpx import HTTPError
+
 from aidm.app.providers import claim, post_bearer
 from aidm.config import ProviderConfig, Settings, SpeechConfig
 from aidm.core.entities import EntityId
@@ -60,7 +62,7 @@ class Reader:
                 clip_file.setframerate(self.config.sample_rate)
                 clip_file.writeframes(b"".join(chunks))
             part.replace(path)
-        except Exception:
+        except (HTTPError, OSError, ValueError, wave.Error):
             LOGGER.exception("speech generation failed")
         finally:
             self.generating.discard(key)

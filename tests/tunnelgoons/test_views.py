@@ -1,11 +1,8 @@
-from support.tunnelgoons import HALL, MIRA, small_world
+from support.tunnelgoons import ENGINE, HALL, MIRA, small_world
 
 from aidm.core.entities import EntityId
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.rooms.world import Item, Visit
-from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
-
-ENGINE = TunnelGoonsEngine()
+from aidm.engines.rooms.world import Prop, Visit
 
 
 def test_narrator_view_names_nothing_unknown_here() -> None:
@@ -47,7 +44,7 @@ def test_master_sections_lists_an_item_an_npc_here_is_holding() -> None:
     state = small_world()
     world = state.payload
     on_a_string = EntityId("mira-key")
-    world.items[on_a_string] = Item(
+    world.items[on_a_string] = Prop(
         id=on_a_string, name="Mira's Key", brief="On a string", known=True, on=MIRA
     )
     sections = dict(ENGINE.master_sections(state))

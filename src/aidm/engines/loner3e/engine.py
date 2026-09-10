@@ -197,7 +197,7 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
         if action.opponent_id is not None:
             opponent = world.require_here(action.opponent_id, alive=True)
             facts.extend(opponent.reveal())
-        _refuse_unless_ready(actor, opponent)
+        _check_ready(actor, opponent)
 
         chance_kept, chance, risk_kept, risk, facts_rolled = _pair(action, rng)
         facts.extend(facts_rolled)
@@ -249,7 +249,7 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eSheet, Loner3eGame, Pack]):
 def _oracle_line(action: Question, opponent: Loner3eSheet | None, outcome: Outcome) -> str:
     footing = action.position + (f" ({action.edge})" if action.edge else "")
     against = f" against {opponent.name}" if opponent is not None else ""
-    return f"{action.what}{against} — oracle, {footing}: {outcome.told}"
+    return f"{action.what}{against} — oracle, {footing}: {outcome.wording}"
 
 
 def _absorbed(exchange: list[Fact]) -> tuple[list[Fact], tuple[str, ...]]:
@@ -276,7 +276,7 @@ def _strike(
     return facts, True
 
 
-def _refuse_unless_ready(actor: Loner3eSheet, opponent: Loner3eSheet | None) -> None:
+def _check_ready(actor: Loner3eSheet, opponent: Loner3eSheet | None) -> None:
     if opponent is None:
         return
     if opponent.id == actor.id:

@@ -31,7 +31,7 @@ from aidm.engines.base import (
     trail_panel,
 )
 from aidm.engines.rooms.tools import Kill, Move, MoveItem, Reveal, SharedChange, UnlockWay
-from aidm.engines.rooms.world import Dweller, Item, MapDraft, RoomCanon, RoomWorld
+from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RoomCanon, RoomWorld
 from aidm.engines.rooms.worldsmith import MAP_ASK, extension_refusal, map_refusal, worldsmith_prompt
 from aidm.engines.seam import Engine
 
@@ -76,7 +76,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         taken = (*canon.places, *canon.npcs, *canon.items)
         return self.world_type.begin(canon, player, self.starting_items(player, taken))
 
-    def starting_items(self, player: P, taken: Iterable[str]) -> tuple[Item, ...]:
+    def starting_items(self, _player: P, _taken: Iterable[str]) -> tuple[Prop, ...]:
         return ()
 
     def master_sections(self, state: G) -> Pairs:

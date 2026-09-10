@@ -6,6 +6,7 @@ from aidm.core.views import Pairs
 SCENE_EXCHANGES = 20
 WHOLE_SCENES = 2
 TAIL_EXCHANGES = 3
+INTERJECTED = "(a party member speaks, unprompted)"
 
 
 def sections(parts: Pairs) -> str:
@@ -49,7 +50,12 @@ def _header(scene: SceneRecord) -> str:
 
 
 def _told(exchanges: Sequence[Exchange]) -> str:
-    return (
-        "\n\n".join(f"> {exchange.prompt}\n{exchange.transcript}" for exchange in exchanges)
-        or "(nothing yet)"
-    )
+    return "\n\n".join(_entry(exchange) for exchange in exchanges) or "(nothing yet)"
+
+
+def _entry(exchange: Exchange) -> str:
+    if exchange.mark == "interjection":
+        return f"{INTERJECTED}\n{exchange.transcript}"
+    if exchange.mark:
+        return exchange.transcript
+    return f"> {exchange.prompt}\n{exchange.transcript}"

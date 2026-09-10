@@ -1,10 +1,7 @@
-from support.breathless import DAX, small_world
-from support.table import BREATHLESS, ENGINES_BUILT
+from support.breathless import DAX, ENGINE, small_world
 
 from aidm.core.views import PanelRow
 from aidm.engines.base import Person
-
-ENGINE = ENGINES_BUILT[BREATHLESS]
 
 
 def test_the_player_views_backpack_panel_lists_items_and_the_med_kit() -> None:

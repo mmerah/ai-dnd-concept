@@ -32,6 +32,12 @@ class Loose(BaseModel):
     model_config = ConfigDict(extra="ignore", frozen=True)
 
 
+class Echoed(BaseModel):
+    """Kept whole: a reply goes back in the next request, reasoning and all."""
+
+    model_config = ConfigDict(extra="allow", frozen=True)
+
+
 class Refusal(ValueError):
     """A message a role or the player is meant to read. Any other exception is a bug."""
 
@@ -48,7 +54,7 @@ def slug(text: str, taken: Iterable[str]) -> Slug:
     return _unused(_capped(words, SLUG_MAX), taken)
 
 
-def require_unique(what: str, ids: Iterable[str]) -> None:
+def check_unique(what: str, ids: Iterable[str]) -> None:
     if found := sorted(name for name, count in Tally(ids).items() if count > 1):
         raise Refusal(f"duplicate {what}: {found}")
 

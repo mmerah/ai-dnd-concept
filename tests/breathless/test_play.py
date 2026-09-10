@@ -2,9 +2,11 @@ import json
 from pathlib import Path
 from random import Random
 
-from support.table import BREATHLESS, open_game_for, play_turn, the_way_on, tool_call
+from support.table import BREATHLESS, open_table, play_turn, the_way_on, tool_call
 
+from aidm.core.entities import EntityId
 from aidm.core.play import Answer
+from aidm.engines.breathless.world import BreathlessGame
 from aidm.engines.scenes.engine import MOVE_ON
 
 # Any face wears the skill die; the d12 loot roll after it draws a 7, so it finds a d8 item.
@@ -19,7 +21,9 @@ NEXT_SCENE = {
 
 
 async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
-    table = open_game_for(tmp_path, BREATHLESS, rng=Random(LOOT_SEED))
+    table = open_table(
+        tmp_path, engine_id=BREATHLESS, state_type=BreathlessGame, rng=Random(LOOT_SEED)
+    )
     table.service.interjections = False
 
     state = await play_turn(
@@ -35,7 +39,7 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
 
     state = await play_turn(table, Answer(option_id="take"))
     assert state.pending is None
-    assert state.payload.player.dice().items["first-aid-kit"].die == 8
+    assert state.payload.player.dice().items[EntityId("first-aid-kit")].die == 8
 
     state = await play_turn(table, "Ask what lies past the Bell House.", the_way_on())
     assert state.payload.run.offered

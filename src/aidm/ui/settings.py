@@ -40,8 +40,8 @@ class SettingsForm:
                 "it up. The server port applies at the next start, and .mcp.json must match it.",
             )
             with ui.tabs().props("dense outside-arrows mobile-arrows").classes("w-full") as tabs:
-                for name, field, _ in groups:
-                    ui.tab(name, label=_label((name,), field))
+                for name, _, _ in groups:
+                    ui.tab(name, label=_label((name,)))
             with ui.tab_panels(tabs, value=groups[0][0]).classes("w-full game-card"):
                 for name, field, value in groups:
                     with ui.tab_panel(name):
@@ -49,15 +49,11 @@ class SettingsForm:
 
     def render(self, value: object, field: FieldInfo, path: tuple[str, ...]) -> None:
         if not isinstance(value, BaseModel):
-            self.boxes[path] = _widget(_label(path, field), field, value)
+            self.boxes[path] = _widget(_label(path), field, value)
             return
         for name, nested, nested_value in _shown(value):
             if isinstance(nested_value, BaseModel):
-                with (
-                    ui.expansion(_label((*path, name), nested))
-                    .classes("w-full game-card")
-                    .props("dense")
-                ):
+                with ui.expansion(_label((*path, name))).classes("w-full game-card").props("dense"):
                     self.render(nested_value, nested, (*path, name))
             else:
                 self.render(nested_value, nested, (*path, name))
@@ -124,7 +120,7 @@ def _shown(model: BaseModel) -> list[tuple[str, FieldInfo, object]]:
     ]
 
 
-def _label(path: tuple[str, ...], field: FieldInfo) -> str:
+def _label(path: tuple[str, ...]) -> str:
     spelled = path[-1].replace("_", " ")
     if env_key(path) in os.environ:
         return f"{spelled} — set in your shell, which wins"

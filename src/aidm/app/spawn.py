@@ -14,7 +14,7 @@ from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
 from aidm.config import CliProvider, Role, RoleConfig, Settings
 from aidm.core.entities import Loose, Refusal, parse
 from aidm.core.io import decode
-from aidm.core.model import Check
+from aidm.core.model import Objection
 
 RETRIES = 1
 # The child inherits nothing else: the shell that started the app may hold keys no role should see.
@@ -40,7 +40,7 @@ class Driver(Protocol):
     def command(
         self, role: Role, config: RoleConfig, session: str | None, url: str
     ) -> Sequence[str]: ...
-    def parse(self, output: str) -> RunResult: ...
+    def read_result(self, output: str) -> RunResult: ...
 
 
 class _ClaudeResult(Loose):
@@ -79,7 +79,7 @@ class ClaudeDriver:
             argv += ["--allowed-tools", "mcp__aidm", "--mcp-config", _claude_mcp(url)]
         return (*argv, "--strict-mcp-config")
 
-    def parse(self, output: str) -> RunResult:
+    def read_result(self, output: str) -> RunResult:
         try:
             result = _ClaudeResult.model_validate_json(output)
         except ValidationError as broken:
@@ -118,7 +118,7 @@ class CodexDriver:
         # `resume` takes no `--sandbox`, so a writer's box rides `-c`, which both forms accept.
         return (*argv, "-c", "sandbox_mode=read-only", "-c", "approval_policy=never")
 
-    def parse(self, output: str) -> RunResult:
+    def read_result(self, output: str) -> RunResult:
         events = [event for line in output.splitlines() if (event := _object(line)) is not None]
         return RunResult(final_message(output), _string(events, "thread_id"))
 
@@ -147,7 +147,7 @@ class CliSpawner:
         # An empty working directory, so a role cannot read this repository even if it tries.
         with TemporaryDirectory(prefix=f"aidm-{role}-") as empty:
             output = await _spawn(role, argv, prompt, config.timeout, driver.secrets, empty)
-        result = driver.parse(output)
+        result = driver.read_result(output)
         LOGGER.info(
             "%s spawned: provider=%s model=%s effort=%s %s in %.1fs",
             role,
@@ -186,7 +186,7 @@ def final_message(output: str) -> str:
 
 
 async def ask[T: BaseModel](
-    spawner: Spawner, role: Role, prompt: str, model: type[T], refusal: Check[T]
+    spawner: Spawner, role: Role, prompt: str, model: type[T], refusal: Objection[T]
 ) -> T:
     asked, refused, session = prompt, "", None
     for _ in range(RETRIES + 1):

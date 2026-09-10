@@ -37,8 +37,8 @@ from aidm.engines.breathless.world import (
     BreathlessScenario,
     BreathlessWorld,
     Die,
-    Item,
     Skill,
+    Supply,
     Survivor,
     SurvivorSheet,
     stepped,
@@ -152,7 +152,7 @@ class BreathlessEngine(
                 job=picked(picks, "job"),
                 skills=skills,
                 worn=dict(skills),
-                items={EntityId(slug(item, ())): Item(name=item, die=STARTING_ITEM)},
+                items={EntityId(slug(item, ())): Supply(name=item, die=STARTING_ITEM)},
             ),
         )
         return BreathlessCharacter(id=slug(name, ()), engine=self.id, payload=player)
@@ -218,13 +218,13 @@ class BreathlessEngine(
             answer=SheetDraft,
         )
 
-    def install_sheet(self, draft: BreathlessGame, member: Survivor, answer: SheetDraft) -> str:
+    def install_sheet(self, member: Survivor, answer: SheetDraft) -> str:
         member.sheet = SurvivorSheet(
             pronouns=answer.pronouns,
             job=answer.job,
             skills=dict(answer.skills),
             worn=dict(answer.skills),
-            items={EntityId(slug(answer.item, ())): Item(name=answer.item, die=STARTING_ITEM)},
+            items={EntityId(slug(answer.item, ())): Supply(name=answer.item, die=STARTING_ITEM)},
         )
         return answer.job
 
@@ -233,7 +233,7 @@ class BreathlessEngine(
         actor = world.require_actor(args.actor_id)
         sheet = actor.dice()
 
-        item: Item | None = None
+        item: Supply | None = None
         helper: tuple[Survivor, Die] | None = None
         if args.skill is not None:
             die = sheet.worn[args.skill]

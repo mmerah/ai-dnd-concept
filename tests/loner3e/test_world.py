@@ -1,6 +1,6 @@
 import pytest
 from pydantic import JsonValue
-from support.loner import ENGINE, initialized
+from support.game import ENGINE, initialized
 from support.table import change
 from support.table import refused as change_refused
 

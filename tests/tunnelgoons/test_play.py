@@ -2,9 +2,11 @@ import json
 from pathlib import Path
 from random import Random
 
-from support.table import TUNNELGOONS, changed, open_game_for, play_turn, take, tool_call
+from support.table import TUNNELGOONS, changed, open_table, play_turn, take, tool_call
 
+from aidm.core.entities import EntityId
 from aidm.engines.rooms.engine import MORE_MAP
+from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 
 # A miss against the crawler's DS 6 (brute 1 + 2d6[1,1] = 3): the margin lands on the player.
 FIGHT_SEED = 2
@@ -43,7 +45,9 @@ REGION = {
 
 
 async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
-    table = open_game_for(tmp_path, TUNNELGOONS, rng=Random(FIGHT_SEED))
+    table = open_table(
+        tmp_path, engine_id=TUNNELGOONS, state_type=TunnelGoonsGame, rng=Random(FIGHT_SEED)
+    )
 
     state = await play_turn(
         table,
@@ -61,7 +65,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
     )
     world = state.payload
     assert world.current.id == "corridor"
-    assert world.npcs["crawler"].alive
+    assert world.npcs[EntityId("crawler")].alive
     assert world.player.hp.current == world.player.hp.maximum - MARGIN
 
     state = await play_turn(
@@ -92,7 +96,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
 
     # The region lands hidden, then the words play as a turn that sees the new way out.
     assert set(REGION["places"]) <= set(after.payload.places)
-    assert all(not after.payload.places[place].known for place in REGION["places"])
+    assert all(not after.payload.places[EntityId(place)].known for place in REGION["places"])
     assert [role for role, _ in table.spawner.prompts[-3:]] == ["worldsmith", "master", "narrator"]
     assert "Deep Vault" in table.spawner.prompts[-2][1]
     assert engine.history(after)[before_turn].prompt == "Deeper in."
@@ -100,7 +104,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
 
 
 async def test_a_region_that_cannot_be_written_files_the_players_words(tmp_path: Path) -> None:
-    table = open_game_for(tmp_path, TUNNELGOONS)
+    table = open_table(tmp_path, engine_id=TUNNELGOONS, state_type=TunnelGoonsGame)
     _ = await play_turn(
         table,
         "Through every room, down to the flooded cellar.",

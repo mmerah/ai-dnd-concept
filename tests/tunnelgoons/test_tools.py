@@ -6,6 +6,7 @@ import pytest
 from support.table import change, refused, stub_worldsmith
 from support.tunnelgoons import (
     CRYPT,
+    ENGINE,
     HALL,
     KEY,
     LANTERN,
@@ -22,12 +23,10 @@ from aidm.core.model import Generation
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.hiring import HIRE, SIGNED_ON, Hire
 from aidm.engines.rooms.tools import Move
-from aidm.engines.rooms.world import Item, Visit
-from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
+from aidm.engines.rooms.world import Prop, Visit
 from aidm.engines.tunnelgoons.tools import ActionRoll, LevelUp
 from aidm.engines.tunnelgoons.world import Abilities
 
-ENGINE = TunnelGoonsEngine()
 TOTAL_RE = re.compile(r"(-?\d+) vs DS")
 
 
@@ -145,7 +144,7 @@ def test_dangerous_hurts_only_on_a_miss() -> None:
     world2.player.sheet.inventory = 0
     world2.items.update(
         {
-            EntityId(f"junk-{n}"): Item(
+            EntityId(f"junk-{n}"): Prop(
                 id=EntityId(f"junk-{n}"),
                 name=f"Junk {n}",
                 brief="Clutter",
@@ -296,7 +295,7 @@ def test_kill_drops_an_npcs_items_loose() -> None:
     draft = small_world().draft()
     world = draft.payload
     blade = EntityId("mira-blade")
-    world.items[blade] = Item(id=blade, name="Blade", brief="Mira's blade", known=True, on=MIRA)
+    world.items[blade] = Prop(id=blade, name="Blade", brief="Mira's blade", known=True, on=MIRA)
 
     _ = change(ENGINE, draft, "kill", entity_id=MIRA)
 
@@ -391,12 +390,12 @@ def test_level_up_for_the_player_opens_the_members_decision() -> None:
     assert draft.pending is None
 
 
-def test_require_actor_refuses_an_unsheeted_member() -> None:
+def test_require_actor_and_sheet_refuses_an_unsheeted_member() -> None:
     draft = small_world().draft()
     world = draft.payload
     world.party.append(MIRA)
     with pytest.raises(Refusal, match="is not the player or a hired party member"):
-        _ = world.require_actor(MIRA)
+        _ = world.require_actor_and_sheet(MIRA)
 
 
 def test_hire_sets_generation_and_ends_the_turn() -> None:

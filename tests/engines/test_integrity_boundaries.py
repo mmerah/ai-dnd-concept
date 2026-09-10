@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
-from support.loner import character, initialized, loner_sheet, scenario
+from support.game import character, initialized, loner_sheet, scenario
 from support.table import ENGINES_BUILT, LONER3E, SCENARIO_MODELS, SCENARIOS, updated
 
 from aidm.core.entities import EngineId, EntityId, Refusal

@@ -17,7 +17,7 @@ from aidm.config import Role, Settings
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import Library, decode
-from aidm.core.model import AnyGame, Check, WorldsmithAnswer
+from aidm.core.model import AnyGame, Objection, WorldsmithAnswer
 from aidm.core.play import Answer
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
@@ -141,7 +141,7 @@ class ScriptedSpawner:
 
 
 def stub_worldsmith(answer: Mapping[str, object]) -> WorldsmithAnswer:
-    async def answered[M: BaseModel](prompt: str, model: type[M], refusal: Check[M]) -> M:
+    async def answered[M: BaseModel](prompt: str, model: type[M], refusal: Objection[M]) -> M:
         del prompt, refusal
         return model.model_validate(answer)
 
@@ -196,23 +196,6 @@ class Table[G: AnyGame]:
             f"the save restored an unexpected {self.state_type.__name__}"
         )
         return restored
-
-
-def open_game_for(
-    saves: Path,
-    engine_id: EngineId,
-    *,
-    rng: Random | None = None,
-    settings: Settings | None = None,
-) -> Table[AnyGame]:
-    """Open a golden-test table for whichever concrete engine is under test."""
-    return open_table(
-        saves,
-        rng=rng,
-        settings=settings,
-        engine_id=engine_id,
-        state_type=ENGINES_BUILT[engine_id].game,
-    )
 
 
 def open_table[G: AnyGame](
@@ -273,6 +256,6 @@ async def take[G: AnyGame](
     return table.state
 
 
-def narrowed[M: BaseModel](value: BaseModel, model: type[M]) -> M:
+def narrowed[M](value: object, model: type[M]) -> M:
     assert isinstance(value, model), f"{type(value).__name__} is not a {model.__name__}"
     return value

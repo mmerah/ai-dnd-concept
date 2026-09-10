@@ -1,4 +1,4 @@
-from support.loner import initialized, with_entity
+from support.game import initialized, with_entity
 from support.table import ENGINES_BUILT, LONER3E
 
 from aidm.app.roles import render_narrator

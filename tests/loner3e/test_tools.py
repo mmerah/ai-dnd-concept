@@ -1,6 +1,6 @@
 from random import Random
 
-from support.loner import ENGINE, initialized, loner_sheet
+from support.game import ENGINE, initialized, loner_sheet
 from support.table import change
 
 from aidm.core.entities import EntityId
@@ -60,7 +60,7 @@ def test_the_six_way_outcome_is_mapped_onto_the_card() -> None:
 
     (oracle,) = cards(facts)
     chance, risk = max(oracle.dice[0].rolled), max(oracle.dice[1].rolled)
-    assert oracle.card.endswith(f": {outcome_for(chance, risk).told}")
+    assert oracle.card.endswith(f": {outcome_for(chance, risk).wording}")
 
 
 def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:

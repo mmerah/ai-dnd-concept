@@ -3,7 +3,7 @@ from random import Random
 
 import pytest
 from pydantic import Field, ValidationError
-from support.loner import open_game
+from support.game import open_game
 from support.table import Table, narrowed, play_turn, tool_call
 
 from aidm.core.entities import Frozen, Refusal
@@ -98,7 +98,7 @@ def _deciding(saves: Path, *, narrate: bool = True) -> Table[Loner3eGame]:
 
 
 def _suspend(table: Table[Loner3eGame], decision: PendingDecision = DECISION) -> None:
-    table.service.commit(_pending(table.service.state, decision))
+    table.service.save(_pending(table.service.state, decision))
 
 
 def test_an_answer_is_a_chosen_option_or_written_text_but_never_both_nor_neither() -> None:

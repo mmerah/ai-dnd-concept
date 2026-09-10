@@ -8,7 +8,7 @@ from typing import Any
 from pydantic import BaseModel, JsonValue
 
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, Refusal, Slug, parse, require_unique
+from aidm.core.entities import EngineId, Refusal, Slug, parse
 from aidm.core.facts import Fact
 from aidm.core.io import read_prompt
 from aidm.core.model import (
@@ -20,7 +20,7 @@ from aidm.core.model import (
     ScenarioMeta,
     WorldsmithAnswer,
 )
-from aidm.core.play import DecisionOption, Exchange, PendingOption, SceneRecord, SpokenLine
+from aidm.core.play import DecisionOption, Exchange, Mark, PendingOption, SceneRecord, SpokenLine
 from aidm.core.tools import MasterTool
 from aidm.core.views import DiceLook, NarratorView, Pairs, Palette, PlayerView
 from aidm.engines.base import PLAYER_ID, Person, World
@@ -44,11 +44,18 @@ class Engine[P: Person, G: Game[Any]](ABC):
     operations: tuple[Slug, ...]  # the requests this engine writes
 
     def __init__(self) -> None:
+        self.prepare()
         self.instructions = read_prompt(self.directory / "rules.md")
         tools = self.master_tools()
-        require_unique(f"tool names of the {self.id!r} engine", (tool.name for tool in tools))
+        names = [tool.name for tool in tools]
+        if len(set(names)) != len(names):
+            raise ValueError(f"the {self.id!r} engine names a tool twice: {names}")
         self.tools = {tool.name: tool for tool in tools}
         self.instructions = f"{self.instructions}\n{self.family_rules()}"
+
+    def prepare(self) -> None:
+        """What `master_tools` needs before it runs; nothing by default."""
+        return None
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
         return ()
@@ -110,22 +117,25 @@ class Engine[P: Person, G: Game[Any]](ABC):
     def close(
         self,
         draft: G,
-        prompt: str,
         lines: tuple[SpokenLine, ...],
         facts: tuple[Fact, ...],
+        *,
+        prompt: str = "",
+        mark: Mark = "",
         proposal: str = "",
     ) -> G:
         exchange = Exchange(
             prompt=prompt,
+            mark=mark,
             lines=lines,
             facts=facts,
             decision="" if draft.pending is None else draft.pending.prompt,
             proposal=proposal,
         )
         self.record(draft, exchange)
-        return self.commit(draft)
+        return self.land(draft)
 
-    def commit(self, draft: G) -> G:
+    def land(self, draft: G) -> G:
         self.validate(draft)
         return draft.commit()
 
@@ -151,7 +161,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
                 "payload": self.new_game(scenario, character),
             },
         )
-        return self.commit(state)
+        return self.land(state)
 
     def player_of(self, character: AnyCharacter) -> P:
         self.check_character(character)

@@ -6,7 +6,7 @@ from typing import cast
 import pytest
 from support.golden import FIXTURES, golden, golden_json
 from support.golden_turn import INTERJECTION, NARRATION
-from support.table import ENGINE_IDS, Call, open_game_for, play_turn
+from support.table import ENGINE_IDS, ENGINES_BUILT, Call, open_table, play_turn
 
 from aidm.core.entities import EngineId
 from aidm.core.model import AnyGame
@@ -29,8 +29,10 @@ def _behind(engine_id: EngineId, state: AnyGame) -> AnyGame:
 async def test_a_scripted_turn_renders_and_records_unchanged(
     engine_id: EngineId, tmp_path: Path
 ) -> None:
-    table = open_game_for(tmp_path, engine_id, rng=Random(SEED))
-    table.service.commit(_behind(engine_id, table.state))
+    table = open_table(
+        tmp_path, engine_id=engine_id, state_type=ENGINES_BUILT[engine_id].game, rng=Random(SEED)
+    )
+    table.service.save(_behind(engine_id, table.state))
 
     await play_turn(table, PROMPT, *_script(engine_id), narration=NARRATION, then=(INTERJECTION,))
     await table.service.drain()

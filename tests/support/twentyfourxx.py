@@ -4,14 +4,16 @@ from aidm.core.entities import EngineId, EntityId
 from aidm.core.model import ScenarioMeta
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.world import SceneRun
+from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.engines.twentyfourxx.world import (
     Crewmate,
-    Item,
+    Gear,
     Sheet,
     SkillDie,
     TwentyfourxxGame,
     TwentyfourxxWorld,
 )
+from support.table import ENGINES_BUILT, TWENTYFOURXX, narrowed
 
 KESTREL = EntityId("kestrel")
 SABLE = EntityId("sable")
@@ -20,6 +22,7 @@ SITUATION = (
     "Cargo containers stack three high across the loading bay, and the station's night crew "
     "has just killed the lights for a scheduled power-saving cycle."
 )
+ENGINE = narrowed(ENGINES_BUILT[TWENTYFOURXX], TwentyfourxxEngine)
 
 
 def small_world() -> TwentyfourxxGame:
@@ -71,6 +74,6 @@ def _player() -> Crewmate:
             specialty="Sneak",
             origin="Human",
             skills={"Stealth": 10},
-            items={LOCKPICKS: Item(name="Lockpick set")},
+            items={LOCKPICKS: Gear(name="Lockpick set")},
         ),
     )

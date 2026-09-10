@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Literal, Self
+from typing import Literal, Self, get_args
 
 from dotenv import set_key, unset_key
 from pydantic import Field, SecretStr, model_validator
@@ -15,6 +15,8 @@ type CliProvider = Literal["claude", "codex"]
 type RoleProvider = Literal["claude", "codex", "openrouter", "local"]
 type Effort = Literal["low", "medium", "high"]
 ENV_FILE = ".env"
+# `get_args(Role)` is `()`: a PEP 695 alias hides its value behind `__value__`.
+ROLE_NAMES: tuple[Role, ...] = get_args(Role.__value__)
 
 
 class ProviderConfig(Frozen):
@@ -71,7 +73,7 @@ class SpeechConfig(Frozen):
     timeout: float = Field(default=60.0, gt=0.0)
 
 
-class Roles(Frozen):
+class RoleSettings(Frozen):
     master: RoleConfig = RoleConfig(model="opus", effort="high")
     narrator: RoleConfig = RoleConfig(model="sonnet", effort="low", timeout=120.0)
     # A whole scene from the source, the cast and the history: measured at 335 seconds.
@@ -87,11 +89,7 @@ class Roles(Frozen):
                 return self.worldsmith
 
     def each(self) -> tuple[tuple[Role, RoleConfig], ...]:
-        return (
-            ("master", self.master),
-            ("narrator", self.narrator),
-            ("worldsmith", self.worldsmith),
-        )
+        return tuple((name, self.for_name(name)) for name in ROLE_NAMES)
 
 
 class Providers(Frozen):
@@ -121,7 +119,7 @@ class Settings(BaseSettings):
     )
 
     providers: Providers = Providers()
-    roles: Roles = Roles()
+    roles: RoleSettings = RoleSettings()
     media: MediaConfig = MediaConfig()
     speech: SpeechConfig = SpeechConfig()
     # A party member may speak after a turn: one narrator spawn the player never waits on.

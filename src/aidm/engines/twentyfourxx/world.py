@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.entities import EntityId, Frozen, Mutable, Refusal, require_unique, slug
+from aidm.core.entities import EntityId, Frozen, Mutable, Refusal, check_unique, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Pairs
@@ -36,7 +36,7 @@ class Kit(Frozen):
     harmless: bool = False  # SRD: "break harmlessly for defense"
 
 
-class Item(Mutable):
+class Gear(Mutable):
     name: str
     bulky: bool = False
     breaks: int = Field(default=1, ge=1)  # a vest breaks once; battle armor "up to 3x"
@@ -63,7 +63,7 @@ class Item(Mutable):
         return ", ".join(parts)
 
 
-class Sheet(ItemSheet[Item]):
+class Sheet(ItemSheet[Gear]):
     """The dice a crew member rolls."""
 
     specialty: str
@@ -93,7 +93,7 @@ class Sheet(ItemSheet[Item]):
 
 
 class Crewmate(Sheeted[Sheet]):
-    def require_item(self, item_id: EntityId) -> Item:
+    def require_item(self, item_id: EntityId) -> Gear:
         return self.dice().require(item_id, self.name)
 
     def pay(self, cost: int) -> None:
@@ -104,7 +104,7 @@ class Crewmate(Sheeted[Sheet]):
 
     def change_hindrances(self, gained: Sequence[str], lost: Sequence[str]) -> list[Fact]:
         sheet = self.dice()
-        require_unique("gained hindrances", gained)
+        check_unique("gained hindrances", gained)
         for hindrance in gained:
             if hindrance in sheet.hindrances:
                 raise Refusal(f"{hindrance!r} is already among {self.name}'s hindrances")
@@ -126,7 +126,7 @@ class Crewmate(Sheeted[Sheet]):
     def gain_item(self, name: str, *, bulky: bool, breaks: int, cost: int) -> list[Fact]:
         self.pay(cost)
         items = self.dice().items
-        items[EntityId(slug(name, items))] = Item(name=name, bulky=bulky, breaks=breaks)
+        items[EntityId(slug(name, items))] = Gear(name=name, bulky=bulky, breaks=breaks)
         suffix = f" (₡{cost})" if cost > 0 else ""
         card = f"Gained {name}{suffix}"
         trace = f"{self.mention} gains {name}{suffix}"
@@ -137,7 +137,7 @@ class Crewmate(Sheeted[Sheet]):
         trace = f"{self.mention} drops {item.name}"
         return [self.fact(trace, card=f"Dropped {item.name}")]
 
-    def repair_item(self, item: Item, cost: int) -> list[Fact]:
+    def repair_item(self, item: Gear, cost: int) -> list[Fact]:
         if item.broken_times == 0:
             raise Refusal(f"{item.name} is not broken")
         self.pay(cost)
@@ -163,9 +163,9 @@ class Crewmate(Sheeted[Sheet]):
 class TwentyfourxxWorld(SheetedWorld[Crewmate, Crewmate]):
     member_noun = "crew member"
     job: str = ""
-    ship: dict[EntityId, Item] = Field(
+    ship: dict[EntityId, Gear] = Field(
         default_factory=lambda: {
-            EntityId(slug(name, ())): Item(name=name, harmless=name == "Hull armor")
+            EntityId(slug(name, ())): Gear(name=name, harmless=name == "Hull armor")
             for name in SHIP_FUNCTIONS
         }
     )
@@ -173,7 +173,7 @@ class TwentyfourxxWorld(SheetedWorld[Crewmate, Crewmate]):
     def sheeted_members(self) -> list[Crewmate]:
         return [member for member in self.members() if member.sheet is not None]
 
-    def require_gear(self, actor: Crewmate, item_id: EntityId) -> Item:
+    def require_gear(self, actor: Crewmate, item_id: EntityId) -> Gear:
         """The actor's item or a ship function: both break to defend and both are repaired."""
         item = actor.dice().items.get(item_id) or self.ship.get(item_id)
         if item is None:

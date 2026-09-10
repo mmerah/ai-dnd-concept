@@ -1,26 +1,23 @@
-from support.table import ENGINES_BUILT, TWENTYFOURXX
-from support.twentyfourxx import LOCKPICKS, small_world
+from support.twentyfourxx import ENGINE, LOCKPICKS, small_world
 
 from aidm.core.views import PanelRow
-from aidm.engines.twentyfourxx.world import Item
-
-ENGINE = ENGINES_BUILT[TWENTYFOURXX]
+from aidm.engines.twentyfourxx.world import Gear
 
 
 def test_item_detail_of_a_plain_item_is_empty() -> None:
-    assert Item(name="Lockpick set").detail() == ""
+    assert Gear(name="Lockpick set").detail() == ""
 
 
 def test_item_detail_of_a_bulky_item() -> None:
-    assert Item(name="Crate", bulky=True).detail() == "bulky"
+    assert Gear(name="Crate", bulky=True).detail() == "bulky"
 
 
 def test_item_detail_of_a_broken_item() -> None:
-    assert Item(name="Scanner", broken_times=1).detail() == "broken"
+    assert Gear(name="Scanner", broken_times=1).detail() == "broken"
 
 
 def test_item_detail_of_a_multi_break_partly_broken_item() -> None:
-    item = Item(name="Battle armor", breaks=3, broken_times=1)
+    item = Gear(name="Battle armor", breaks=3, broken_times=1)
     assert item.detail() == "broken 1/3"
 
 

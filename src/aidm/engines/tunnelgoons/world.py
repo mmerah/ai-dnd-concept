@@ -8,7 +8,7 @@ from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Pairs
 from aidm.engines.base import PLAYER_ID, UNKNOWN_ID, Counter, Person
-from aidm.engines.rooms.world import Dweller, Item, RoomCanon, RoomWorld
+from aidm.engines.rooms.world import Dweller, Prop, RoomCanon, RoomWorld
 
 Ability = Literal["brute", "skulker", "erudite"]
 ABILITIES: tuple[Ability, ...] = ("brute", "skulker", "erudite")
@@ -54,19 +54,19 @@ class Npc(Dweller):
 class Goon(Person):
     hp: Counter = Field(default_factory=lambda: Counter(current=HP_START, maximum=HP_START))
     sheet: Abilities
-    # The starting items by name; `new_game` files them as `Item`s on the player.
+    # The starting items by name; `new_game` files them as `Prop`s on the player.
     kit: tuple[str, ...] = Field(min_length=STARTING_ITEMS, max_length=STARTING_ITEMS)
 
     def rows(self) -> Pairs:
         return self.sheet.rows(self.hp)
 
-    def starting_items(self, taken: Iterable[str]) -> tuple[Item, ...]:
+    def unpack_kit(self, taken: Iterable[str]) -> tuple[Prop, ...]:
         made = list(taken)
-        items: list[Item] = []
+        items: list[Prop] = []
         for name in self.kit:
             item_id = EntityId(slug(name, made))
             made.append(item_id)
-            items.append(Item(id=item_id, name=name, brief="", known=True, on=PLAYER_ID))
+            items.append(Prop(id=item_id, name=name, brief="", known=True, on=PLAYER_ID))
         return tuple(items)
 
 
@@ -80,7 +80,7 @@ class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
             for label, value in self.player.rows()
         )
 
-    def require_actor(self, actor_id: EntityId | None) -> tuple[Goon | Npc, Abilities]:
+    def require_actor_and_sheet(self, actor_id: EntityId | None) -> tuple[Goon | Npc, Abilities]:
         if actor_id is None or actor_id == self.player.id:
             return self.player, self.player.sheet
         npc = self.npcs.get(actor_id)

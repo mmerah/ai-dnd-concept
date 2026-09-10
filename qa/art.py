@@ -8,6 +8,7 @@ import zlib
 from collections.abc import Sequence
 from hashlib import sha1
 from pathlib import Path
+from typing import override
 
 from aidm.app.media import GeneratedImage, Illustrator
 
@@ -19,7 +20,8 @@ ICON_SIDE = 256
 class PlaceholderIllustrator(Illustrator):
     """Every request answered from the hash of its prompt, so a place keeps its own picture."""
 
-    async def _generate(  # pyright: ignore[reportImplicitOverride]
+    @override
+    async def _generate(
         self, prompt: str, ratio: str, references: Sequence[Path] = ()
     ) -> GeneratedImage:
         width, height = (

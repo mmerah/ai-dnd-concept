@@ -9,7 +9,7 @@ from re import fullmatch
 
 from pydantic import BaseModel, JsonValue
 
-from aidm.core.entities import EngineId, Refusal, Slug, content_id, parse, require_unique
+from aidm.core.entities import EngineId, Refusal, Slug, check_unique, content_id, parse
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, CharacterHeader, EngineHeader
 
 ENCODING = "utf-8"
@@ -187,7 +187,7 @@ def _check_filed(character_id: str, plays: EngineId, name: Slug, engine: EngineI
 
 
 def _unique_keys(pairs: list[tuple[str, JsonValue]]) -> dict[str, JsonValue]:
-    require_unique("keys in a JSON object", (key for key, _ in pairs))
+    check_unique("keys in a JSON object", (key for key, _ in pairs))
     return dict(pairs)
 
 

@@ -17,25 +17,20 @@ from aidm.config import Role, Settings, read_settings
 from aidm.core.entities import EngineId, EntityId, Refusal, Slug, slug
 from aidm.core.io import FileStore, Library, decode
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioMeta
-from aidm.core.play import Answer, Exchange, SpokenLine
+from aidm.core.play import Answer, Exchange, Mark, SpokenLine
 from aidm.core.source import given_text
 from aidm.core.tools import MasterTool
 from aidm.core.views import DiceLook, PlayerView
-from aidm.engines.base import Chattiness
+from aidm.engines.base import Chattiness, Person
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
 from aidm.turn.run import NO_TURN, Turn
 
 LOGGER = logging.getLogger(__name__)
 
-# The prompt of a turn nobody played; the chat shows it as the story's own line.
-OPENING_MARK = "(the story begins)"
-STORY_MARK = "(the story goes on)"
-INTERJECTION_MARK = "(the party speaks)"
-MARKS = (OPENING_MARK, STORY_MARK, INTERJECTION_MARK)
 # The faces of a d10 on which a member speaks after a turn.
 INTERJECTION_ODDS: dict[Chattiness, int] = {"quiet": 1, "normal": 2, "chatty": 3}
-OPENING = (
+OPENING_NARRATION = (
     "The story begins here; the player has read nothing yet. Tell them, in the fiction and in "
     "this order: who they are (YOUR PARTY names them first) and where they stand; what is in "
     "front of them, the situation as they see it now; what they are here to do, from WHAT THIS "
@@ -79,6 +74,7 @@ class GameService:
 
     @property
     def busy(self) -> bool:
+        # Is any role working on this save; the page and `busy_refusal` ask this.
         return self.phase is not None
 
     @property
@@ -109,9 +105,9 @@ class GameService:
         self.phase = "narrator"
         try:
             draft = self.state.draft()
-            lines = await self.roles.narrate(draft, (), OPENING, fatal=False)
+            lines = await self.roles.narrate(draft, (), OPENING_NARRATION, fatal=False)
             if lines:
-                self.commit(self.engine.close(draft, OPENING_MARK, lines, ()))
+                self.save(self.engine.close(draft, lines, (), mark="opening"))
             self._present()
         finally:
             self.phase = None
@@ -131,7 +127,7 @@ class GameService:
             return
         self.intent = words
         try:
-            self.commit(self.engine.commit(draft))
+            self.save(self.engine.land(draft))
             written = await self._generate(words)
         finally:
             self.intent = ""
@@ -156,7 +152,7 @@ class GameService:
         finally:
             # Cleared before arrival: the tool surface must not reach a turn nobody plays.
             self.turn, self.phase = None, None
-        self.commit(state)
+        self.save(state)
         self._present()
         await self._generate()
         if (
@@ -178,7 +174,7 @@ class GameService:
             (
                 candidate
                 for candidate in self.engine.world(self.state).members()
-                if self.rng.randint(1, 10) <= INTERJECTION_ODDS[candidate.chattiness]
+                if self._speaks(candidate)
             ),
             None,
         )
@@ -195,34 +191,44 @@ class GameService:
             return
         if not lines:
             return
-        self.commit(
-            self.engine.close(self.state.draft(), INTERJECTION_MARK, lines, (), proposal=proposal)
+        self.save(
+            self.engine.close(self.state.draft(), lines, (), mark="interjection", proposal=proposal)
         )
         self.speak(self._newest())
 
-    async def _generate(self, prompt: str = STORY_MARK) -> bool:
+    def _speaks(self, candidate: Person) -> bool:
+        # Whether to spawn a narrator for this member; it changes no state and lands no fact, so
+        # it is the one die that is not the game's and stays outside `core.facts.roll`.
+        return self.rng.randint(1, 10) <= INTERJECTION_ODDS[candidate.chattiness]
+
+    async def _generate(self, words: str = "") -> bool:
         request = self.state.generation
         if request is None:
             return False
         draft = self.state.draft()
         draft.generation = None
         if self.engine.over(self.state) is not None:
-            self.commit(self.engine.commit(draft))
+            self.save(self.engine.land(draft))
             return False
+        mark: Mark = "" if words else "story"
         self.phase, grown = "worldsmith", True
         try:
             facts, telling = await self.engine.advance(draft, request, self.roles.worldsmith())
             if telling is None:
-                self.commit(self.engine.commit(draft))
+                self.save(self.engine.land(draft))
             else:
                 self.phase = "narrator"
                 lines = await self.roles.narrate(draft, facts, telling, fatal=False)
-                self.commit(self.engine.close(draft, prompt, lines, facts))
+                self.save(self.engine.close(draft, lines, facts, prompt=words, mark=mark))
         except (OSError, Refusal) as failed:
             LOGGER.warning("the world did not grow: %s", failed)
             draft = self.state.draft()
             draft.generation = None
-            self.commit(self.engine.close(draft, prompt, (), (self.engine.unwritten(request),)))
+            self.save(
+                self.engine.close(
+                    draft, (), (self.engine.unwritten(request),), prompt=words, mark=mark
+                )
+            )
             grown = False
         finally:
             self.phase = None
@@ -287,7 +293,7 @@ class GameService:
         self.store.discard(self.slug)
         self.state = opening
 
-    def commit(self, state: AnyGame) -> None:
+    def save(self, state: AnyGame) -> None:
         self.store.save(self.slug, state)
         self.state = state
 
@@ -345,9 +351,12 @@ class Runtime:
         return () if playing is None else tuple(playing.engine.tools.values())
 
     def playing(self) -> GameService | None:
-        """A second turn in flight has no owner: the tool surface is shared."""
+        # Is a master mid-turn with a draft to call tools on; the tool surface asks this.
         in_flight = [session for session in self._sessions.values() if session.turn is not None]
         if len(in_flight) > 1:
+            # Single-player: `busy_refusal` and `Runtime.lock` block two turns in flight, so this
+            # raise cannot happen. Multiplayer means dropping `stateless=True` in `app/mcp.py`,
+            # routing by session, and deleting `playing`, `lock`, `NO_TURN`.
             raise ValueError(f"turns are in flight in {[session.slug for session in in_flight]}")
         return in_flight[0] if in_flight else None
 

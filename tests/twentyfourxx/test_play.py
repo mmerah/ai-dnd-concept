@@ -2,10 +2,12 @@ import json
 from pathlib import Path
 from random import Random
 
-from support.table import TWENTYFOURXX, open_game_for, play_turn, the_way_on, tool_call
+from support.table import TWENTYFOURXX, open_table, play_turn, the_way_on, tool_call
 
+from aidm.core.entities import EntityId
 from aidm.core.play import Answer
 from aidm.engines.scenes.engine import MOVE_ON
+from aidm.engines.twentyfourxx.world import TwentyfourxxGame
 
 # A setback (not a disaster or a success): the roll maims the player without killing them.
 SETBACK_SEED = 1
@@ -21,7 +23,9 @@ NEXT_SCENE = {
 
 
 async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
-    table = open_game_for(tmp_path, TWENTYFOURXX, rng=Random(SETBACK_SEED))
+    table = open_table(
+        tmp_path, engine_id=TWENTYFOURXX, state_type=TwentyfourxxGame, rng=Random(SETBACK_SEED)
+    )
     table.service.interjections = False
 
     state = await play_turn(
@@ -53,9 +57,9 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
 
 
 async def test_a_hired_member_survives_a_save_and_succeeds_the_dead_lead(tmp_path: Path) -> None:
-    table = open_game_for(tmp_path, TWENTYFOURXX)
+    table = open_table(tmp_path, engine_id=TWENTYFOURXX, state_type=TwentyfourxxGame)
     table.service.interjections = False
-    member_id = "vessa-rune"
+    member_id = EntityId("vessa-rune")
     sheet = {
         "specialty": "Face",
         "skills": {"Deception": 8},
@@ -100,7 +104,7 @@ async def test_a_hired_member_survives_a_save_and_succeeds_the_dead_lead(tmp_pat
     assert world.player.sheet.specialty == "Face"
     assert world.player.sheet.skills == {"Deception": 8}
     assert "player" in world.cast
-    assert not world.cast["player"].alive
+    assert not world.cast[EntityId("player")].alive
     assert "player" in world.run.here
     assert member_id not in world.party
     assert table.saved() == table.state

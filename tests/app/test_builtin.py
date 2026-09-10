@@ -9,12 +9,12 @@ from random import Random
 import pytest
 from httpx import HTTPStatusError, Request, Response
 from pydantic import JsonValue
-from support.loner import initialized
+from support.game import initialized
 from support.table import ENGINES_BUILT, LONER3E, offline_settings, updated
 
 from aidm.app.builtin import BuiltinSpawner
 from aidm.app.runtime import Runtime
-from aidm.config import RoleConfig, Roles, Settings
+from aidm.config import RoleConfig, RoleSettings, Settings
 from aidm.core.entities import Refusal
 from aidm.core.model import AnyGame
 from aidm.core.tools import MasterTool, schema_of
@@ -42,7 +42,7 @@ class _Tools:
 
 
 def _settings(**roles: RoleConfig) -> Settings:
-    return updated(offline_settings(), roles=Roles(**roles).model_dump())
+    return updated(offline_settings(), roles=RoleSettings(**roles).model_dump())
 
 
 def _post(
@@ -51,7 +51,7 @@ def _post(
     queued, sent = list(replies), list[dict[str, JsonValue]]()
 
     async def scripted(
-        provider: object, path: str, body: Mapping[str, JsonValue], timeout: float
+        _provider: object, path: str, body: Mapping[str, JsonValue], _timeout: float
     ) -> bytes:
         assert path == "/chat/completions"
         # Snapshotted as the wire would see it: the loop appends to the same list afterwards.
@@ -201,7 +201,7 @@ async def test_a_failed_provider_is_a_refusal_the_player_reads(
 async def test_the_whole_run_is_held_to_the_roles_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    async def slow(provider: object, path: str, body: object, timeout: float) -> bytes:
+    async def slow(_provider: object, _path: str, _body: object, _timeout: float) -> bytes:
         await sleep(1)
         return b""
 

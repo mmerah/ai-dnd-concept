@@ -125,13 +125,13 @@ class Turn:
         return "\n".join(lines) or NOTHING
 
     def finish(self, lines: tuple[SpokenLine, ...]) -> AnyGame:
-        return self.engine.close(self.draft, self.prompt, lines, tuple(self.facts))
+        return self.engine.close(self.draft, lines, tuple(self.facts), prompt=self.prompt)
 
     def _apply(self, play: Play[AnyGame]) -> tuple[Fact, ...]:
         """One execution against a candidate; a refused call leaves the draft and the dice alone."""
         candidate, dice = self.draft.draft(), deepcopy(self.rng)
         facts = play(candidate, dice)
-        self.draft = self.engine.commit(candidate)
+        self.draft = self.engine.land(candidate)
         self.rng.setstate(dice.getstate())
         self.facts.extend(facts)
         return facts

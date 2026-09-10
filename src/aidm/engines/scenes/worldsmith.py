@@ -92,7 +92,7 @@ def scene_unmet[C: Person, P: Person](
     if broken := [
         f"{eid}: {why}"
         for eid, entry in draft.cast.items()
-        if eid not in filed and (why := entry.unwritten())
+        if eid not in filed and (why := entry.forbidden())
     ]:
         unmet.append(f"cast members as the worldsmith may write them: {broken}")
     return unmet

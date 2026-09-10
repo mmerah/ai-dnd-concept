@@ -2,9 +2,10 @@ import wave
 from pathlib import Path
 
 import pytest
+from httpx import HTTPError
 from pydantic import SecretStr
-from support.loner import TARGET
-from support.loner import session as loner_session
+from support.game import TARGET
+from support.game import session as loner_session
 from support.table import offline_settings
 from support.ui import ui_settings
 
@@ -115,7 +116,7 @@ async def test_read_leaves_no_file_when_generation_raises(
     async def _raising(
         _provider: ProviderConfig, _path: str, _body: dict[str, str], _timeout: float
     ) -> bytes:
-        raise RuntimeError("boom")
+        raise HTTPError("boom")
 
     monkeypatch.setattr("aidm.app.speech.post_bearer", _raising)
     reader = _reader(tmp_path)
@@ -145,8 +146,8 @@ async def test_speak_reads_and_caches_the_newest_committed_exchange(
 ) -> None:
     session = loner_session(tmp_path)
     draft = session.state.draft()
-    session.commit(
-        session.engine.close(draft, "wait", (SpokenLine(text="The door groans open."),), ())
+    session.save(
+        session.engine.close(draft, (SpokenLine(text="The door groans open."),), (), prompt="wait")
     )
 
     async def _fake_post_bearer(

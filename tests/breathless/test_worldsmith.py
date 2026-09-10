@@ -1,16 +1,13 @@
 import pytest
-from support.breathless import SITUATION, small_world
+from support.breathless import ENGINE, SITUATION, small_world
 
 from aidm.core.entities import EntityId
 from aidm.core.facts import Fact
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.breathless.engine import BreathlessEngine
 from aidm.engines.breathless.world import SKILLS, Survivor
 from aidm.engines.breathless.worldsmith import SheetDraft
 from aidm.engines.scenes.drafts import SceneDraft
 from aidm.engines.scenes.worldsmith import scene_refusal
-
-ENGINE = BreathlessEngine()
 
 
 def _draft(**fields: object) -> SceneDraft[Survivor]:

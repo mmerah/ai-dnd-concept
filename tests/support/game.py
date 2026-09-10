@@ -22,7 +22,7 @@ from support.table import (
 )
 
 TARGET = LaunchTarget(scenario_id="whispering-vault", character_id="kael")
-ENGINE = Loner3eEngine()
+ENGINE = narrowed(ENGINES_BUILT[LONER3E], Loner3eEngine)
 
 
 def with_entity(state: Loner3eGame, entity: Loner3eSheet) -> Loner3eGame:

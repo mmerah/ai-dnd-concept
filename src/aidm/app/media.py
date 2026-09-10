@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from hashlib import sha1
 from pathlib import Path
 
+from httpx import HTTPError
 from pydantic import JsonValue
 
 from aidm.app.providers import claim, post_bearer
@@ -119,7 +120,7 @@ class Illustrator:
                 LOGGER.warning("image reply held no image")
                 return None
             return _decode(url)
-        except Exception:
+        except (HTTPError, ValueError):
             LOGGER.exception("image generation failed")
             return None
 
@@ -136,12 +137,12 @@ class _Message(Loose):
     images: tuple[_Image, ...] = ()
 
 
-class _Choice(Loose):
+class _ImageChoice(Loose):
     message: _Message
 
 
 class _ImageReply(Loose):
-    choices: tuple[_Choice, ...] = ()
+    choices: tuple[_ImageChoice, ...] = ()
 
     def url(self) -> str | None:
         images = self.choices[0].message.images if self.choices else ()

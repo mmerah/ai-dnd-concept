@@ -7,13 +7,14 @@ from pydantic import BaseModel, Field, model_validator
 from aidm.core.entities import (
     CheckedEntityId,
     EngineId,
+    EntityId,
     Frozen,
     Loose,
     Mutable,
     Refusal,
     Slug,
+    check_unique,
     parse,
-    require_unique,
 )
 from aidm.core.play import PendingDecision
 
@@ -21,7 +22,7 @@ type AnyScenario = Scenario[Any]
 type AnyCharacter = Character[Any]
 type AnyGame = Game[Any]
 # What `ask` asks of the value it parsed, beyond its own schema; the reason re-prompts.
-type Check[T] = Callable[[T], str | None]
+type Objection[T] = Callable[[T], str | None]
 
 
 class ScenarioMeta(Frozen):
@@ -65,7 +66,7 @@ class Scenario[P: BaseModel](Frozen):
 
     @model_validator(mode="after")
     def _unique_packs(self) -> Self:
-        require_unique("scenario pack ids", self.packs)
+        check_unique("scenario pack ids", self.packs)
         return self
 
 
@@ -78,7 +79,9 @@ class Character[P: BaseModel](Frozen):
 
 
 class WorldsmithAnswer(Protocol):
-    async def __call__[M: BaseModel](self, prompt: str, model: type[M], refusal: Check[M]) -> M: ...
+    async def __call__[M: BaseModel](
+        self, prompt: str, model: type[M], refusal: Objection[M]
+    ) -> M: ...
 
 
 class Generation(Frozen):
@@ -87,6 +90,11 @@ class Generation(Frozen):
     operation: Slug  # the engine's own name for what it will author and install
     brief: str = Field(min_length=1)
     target: CheckedEntityId | None = None
+
+    def require_target(self) -> EntityId:
+        if self.target is None:
+            raise Refusal(f"a {self.operation!r} request names no target")
+        return self.target
 
 
 class Game[P: BaseModel](Mutable):
@@ -102,7 +110,7 @@ class Game[P: BaseModel](Mutable):
 
     @model_validator(mode="after")
     def _playable_game(self) -> Self:
-        require_unique("game pack ids", self.packs)
+        check_unique("game pack ids", self.packs)
         return self
 
     def note(self, text: str) -> None:
