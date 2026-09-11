@@ -12,39 +12,46 @@ they are, with the reason, so those can be closed without discussion.
 
 Sizes: S is under an hour of agent work, M is half a day, L is a day or more.
 
+Preference applied throughout: a proposal that makes `src` smaller or removes a concept wins
+over one that adds machinery. The "src" column says what each does to the code: `-` fewer
+lines or concepts, `=` moved or renamed only, `+` more. Where the first review's choice adds
+machinery, the simpler option is now recommended and the original is kept as an option.
+
 ## 1. Decision table
 
 Fill the last column. "Accept" means do it as written. Where a proposal has options, write the
 option letter.
 
-| ID | Proposal | Kind | Size | Recommendation | Your decision |
-| --- | --- | --- | --- | --- | --- |
-| F1 | Release the image claim on every exit | bug | S | Accept | |
-| F2 | Observe and drain background tasks | bug | M | Accept | |
-| F3 | One safe file publication helper | bug | S | Accept | |
-| F4 | Classify expected file errors at each boundary | bug | M | Accept | |
-| F5 | Put the single-turn rule inside `Runtime` | bug | M | Accept, option A | |
-| D1 | Strict scalar validation | decided | M | Implement as written | |
-| D2 | Commit dice with the turn; separate cosmetic RNG | decided | S | Implement as written | |
-| D3 | Carry precise types through engine, session, turn | decided | L | Implement; includes N6 | |
-| D4 | One explicit pack selection policy | decided | L | Implement with pack authoring | |
-| D5 | Shallow freezing: document it and pin it with a test | decided | S | Implement as written | |
-| Q1 | Parse CLI events by their real shape | quality | M | Accept | |
-| Q2 | The form owns its upload until success or dismissal | quality | S | Accept | |
-| Q3 | Helpers that mutate become methods | quality | M | Accept, widened list | |
-| Q4 | Named steps over compressed expressions; split `GamePage` | quality | M | Accept, option A | |
-| N1 | One constructor style for objects that need I/O | consistency | S | Accept, option A | |
-| N2 | Finish the spawner injection in `Runtime` | consistency | S | Accept, option A | |
-| N3 | Take PDF extraction off the event loop | pattern | S | Accept, option A | |
-| N4 | Share `rows()` on `Sheeted`; keep the other duplicates | consistency | S | Accept, option A | |
-| N5 | One retry constant, one timeout idiom | consistency | S | Accept | |
-| N6 | Drop the `world_of` narrowing overrides | consistency | S | Fold into D3 | |
-| N7 | `Rolled` carries its dice once | naming | S | Accept, option A | |
-| N8 | Split the `Pairs` alias into `Sections` and `Rows` | naming | S | Accept | |
-| N9 | `Slug` stays `Annotated[str]`; say so in CLAUDE.md | naming | S | Option A (leave) | |
-| N10 | `Hiring` becomes a frozen dataclass like `Request` | consistency | S | Option B (leave) | |
-| N11 | Comment and naming sweep against CLAUDE.md rules | style | S | Accept | |
-| N12 | Write the constructor and return-shape rules into CLAUDE.md | docs | S | Accept | |
+| ID | Proposal | Kind | Size | src | Recommendation | Your decision |
+| --- | --- | --- | --- | --- | --- | --- |
+| F1 | `Claims.hold` context manager replaces three try/finally blocks | bug | S | - | Accept | |
+| F2 | One `close()` replaces `stop()` and `settled()`; errors get logged | bug | M | = | Accept | |
+| F3 | One `publish` helper replaces three staging implementations | bug | S | - | Accept | |
+| F4 | Expected file errors handled at the read and write helpers only | bug | S | = | Accept | |
+| F5 | One `admit` in `Runtime` replaces three refusal methods and the UI checks | bug | M | - | Accept, option A | |
+| D1 | Strict scalar validation | decided | M | = | Implement as written | |
+| D2 | Commit dice with the turn; separate cosmetic RNG | decided | S | = | Implement as written | |
+| D3 | Precise types through the chain | decided | L | + | Re-decide: option B (family `W` only) | |
+| D4 | One explicit pack selection policy | decided | L | - | Implement, option B (no fingerprints) | |
+| D5 | Shallow freezing: document it and pin it with a test | decided | S | = | Implement as written | |
+| Q1 | Typed CLI events replace the recursive text search | quality | M | - | Accept | |
+| Q2 | Upload: one directory per form, deleted on success only | quality | S | - | Accept, option B | |
+| Q3 | Helpers that mutate become methods | quality | M | = | Accept, widened list | |
+| Q4 | Delete compressed expressions and duplicate closures | quality | S | - | Accept, option B | |
+| N1 | Constructor style | consistency | S | = | Option B (leave, write the rule) | |
+| N2 | `Runtime` takes a spawner factory defaulting to `RoleRunner` | consistency | S | - | Accept, option C | |
+| N3 | Take PDF extraction off the event loop | pattern | S | = | Accept, option A | |
+| N4 | Share `rows()` on `Sheeted`; keep the other duplicates | consistency | S | - | Accept, option A | |
+| N5 | One retry constant, one timeout idiom | consistency | S | - | Accept | |
+| N6 | Drop the `world_of` narrowing overrides | consistency | S | - | Fold into D3 option B | |
+| N7 | `Rolled` carries its dice once | naming | S | - | Accept, option A | |
+| N8 | Split the `Pairs` alias into `Sections` and `Rows` | naming | S | = | Accept | |
+| N9 | `Slug` stays `Annotated[str]`; say so in CLAUDE.md | naming | S | = | Option A (leave) | |
+| N10 | `Hiring` packaging | consistency | S | = | Option B (leave) | |
+| N11 | Comment and naming sweep against CLAUDE.md rules | style | S | = | Accept | |
+| N12 | Write the constructor and return-shape rules into CLAUDE.md | docs | S | = | Accept | |
+| N13 | Move the 350-line CSS string out of `ui/theme.py` into `theme.css` | simplify | S | - | Accept | |
+| N14 | Delete thin pass-through methods | simplify | S | - | Accept | |
 
 ## 2. Fixes: wrong behaviour hiding in a pattern
 
@@ -91,10 +98,13 @@ Change to:
 1. One done handler on `GameService`: discard the task, ignore `CancelledError`, log any other
    exception with `LOGGER.exception`.
 2. `async def close(self)`: `hush()`, cancel every retained task, `await gather(..., return_exceptions=True)`.
+   It replaces both `stop()` and `settled()` (`settled` is used by one test helper, which
+   awaits `close` instead).
 3. `Runtime.reload_settings` and a new `Runtime.close` become async and await each session's
    `close`. `ui/app.py` registers `runtime.close` on shutdown; `apply_settings` awaits the reload.
 
-Impact: `reload_settings` and the settings page's apply path turn async. Normal play unchanged.
+Impact: two methods become one. `reload_settings` and the settings page's apply path turn
+async. Normal play unchanged.
 
 Done when: a task that fails before `settled()` is logged; `close()` leaves no live task; both
 tested with stub coroutines.
@@ -152,10 +162,14 @@ Change to, one rule per boundary kind:
 | Optional media (image, clip) | catch `HTTPError`, `OSError`, `Refusal`; `LOGGER.warning("... failed: %s")`; no cache entry written |
 | Bundled resources (`rules.md`, `packs/*.json`, prompts) | not caught; a broken install fails at start |
 
-Use `LOGGER.warning` with the message for media in both modules, or `LOGGER.exception` in both.
-Pick one; recommendation `warning`, since these failures are expected and the traceback is noise.
+Keep it small: the read rule lives in `_read_text` and `whole_text` only (one `except
+(OSError, UnicodeDecodeError)` each); the write rule in `write_text`, `publish` (F3) and
+`discard`; the media rule in the one `except` each of `Illustrator.illustrate` and
+`Reader.read`, so `_write` and `_data_uri` need no handling of their own. Media logs with
+`LOGGER.warning("... failed: %s", failed)` in both modules; the traceback is noise for an
+expected failure.
 
-Impact: a bad user file no longer breaks a page. No exception hierarchy is added.
+Impact: a bad user file no longer breaks a page. Five `except` clauses in total, no new types.
 
 Done when: a permission error on a scenario is skipped with a log line; a missing source
 document refuses with its name; a full disk during an image write logs and caches nothing.
@@ -174,8 +188,10 @@ Change to: `Runtime` owns admission.
 2. Public entry points on `Runtime`: `open(session)`, `play(session, answer)`,
    `act(session, action, words)`, `restart(session)`, `reload_settings()`. Each enters `admit`
    before its first await.
-3. `GamePage` calls these and only displays the refusal. `refuse_play` and `play_refusal` go.
-4. `Runtime.call` and `published_tools` read the one active session, not the first with a turn.
+3. `GamePage` calls these and only displays the refusal. `refuse_play`, `play_refusal` and
+   `busy_refusal` go, and `GamePage._open`'s `unopened` guard moves into `Runtime.open`: one
+   `admit` replaces four checks.
+4. `Runtime.call` and `published_tools` read the one active session; `playing()` goes.
 
 Deployment decision (needed for the README and for D4's resume checks):
 
@@ -242,25 +258,21 @@ after checking `id` and `known` only; `SceneEngine.new_game` annotates an `Any` 
 `SceneDraft[C]`, which proves nothing. Three concrete engines override `world_of` with the same
 one-line body only to narrow the return type (N6).
 
-Change to:
+This is the one decided item that runs against the simplification preference: the full chain
+adds two type parameters to `Engine`, one to `GameService`, `Turn` and `Roles`, and touches
+every call site, for a static guarantee that the engine id checks in `begin` and `restore`
+already give at runtime. CLAUDE.md already names this seam as the one allowed `Any`. So
+re-decide:
 
-1. `Engine[P, M, G, S, C]` where `S` is the scenario payload and `C` the character payload;
-   `scenario: type[Scenario[S]]`, `character: type[Character[C]]`, and `player_of`,
-   `new_game`, `begin`, `author`, `build_scenario` take those types.
-2. `SceneEngine[C, W, G, K]` adds the world type `W: SceneWorld[C]` so `world_of` returns `W`
-   and the concrete overrides in `loner3e`, `twentyfourxx`, `tunnelgoons` are deleted.
-3. `GameService[G, S, C]`, `Turn[G]`, `Roles` methods generic on `G`.
-4. Type erasure happens once: `registry.build_engines()` returns `dict[EngineId, AnyEngine]`,
-   and `Runtime._open` validates the scenario and character against the concrete engine's
-   models before building a typed `GameService`. No `cast`.
-5. `AnyScenario`, `AnyCharacter`, `AnyGame` survive only at `io.py` routing, `launch.py` and
-   the registry.
+- A. The full chain as first accepted: `Engine[P, M, G, S, C]`, generic `GameService`, `Turn`,
+  `Roles`, erasure in the registry only, a negative typing check. L, `+`.
+- B. Family engines only: `SceneEngine[C, W, G, K]` and `RoomEngine[N, P, W, G]` gain the world
+  type `W`, `world_of` returns `W`, and the three concrete `world_of` overrides are deleted
+  (N6). `AnyEngine`, `AnyGame`, `AnyScenario`, `AnyCharacter` stay at the seam as they are.
+  S, `-`. Recommended.
+- C. Leave everything. Nothing deleted.
 
-Impact: many signatures change; no behaviour or save change. A negative typing check (a
-`# pyright: expect-error`-style test file) proves a mismatched engine and game is rejected.
-
-Done when: basedpyright is clean with no new `Any` outside the registry and routing; a test
-refuses a scenario routed to the wrong engine before any attribute access.
+Done when (B): the three overrides are gone and basedpyright is clean.
 
 ### D4. One explicit pack selection policy
 
@@ -273,23 +285,30 @@ Verified, four policies for one concept:
 - Loner meanings use the selected packs.
 
 Change to: one frozen `PackSelection` value in `engines/scenes/packs.py` built once per game:
-`primary: Slug`, `supplements: tuple[Slug, ...]`, `fingerprints: dict[Slug, str]` (sha of
-each pack file). It is the only object creation, launch validation, prompts, skill lookup and
-hiring read.
+`primary: Slug`, `supplements: tuple[Slug, ...]`. It is the only object creation, launch
+validation, prompts, skill lookup and hiring read, so `first_pack`, `pack_content`'s picks
+argument and the all-packs scan in `resolve_skill` go.
 
 - `Scenario.packs` becomes `Scenario.packs: PackSelection` (primary first, explicit).
 - `Character` gains `pack: Slug`; launch refuses a character whose pack is not selected.
-- `Game` stores the selection with fingerprints; `SceneEngine.validate` refuses a missing pack
-  or a changed fingerprint with a message naming the pack.
 - Duplicate ids across selected packs are refused at selection time, not first-wins.
 - `resolve_skill` searches the selection only.
+
+Resume compatibility (C1 in the first review) has two shapes:
+
+- A. Content fingerprints stored in the save; a changed pack refuses resume. Adds a field, a
+  hash, and a message.
+- B. No fingerprints. `SceneEngine.validate` already refuses a missing pack; an edited pack is
+  accepted and plays with its new content, the same way an edited `rules.md` does. Nothing
+  stored. Recommended: a pack author editing their own pack mid-game gets the edit, and no
+  save carries a hash.
 
 Impact: save and scenario format change. Under the no-migration rule, existing scenarios and
 characters under `scenarios/` and `characters/` are regenerated. Implement together with pack
 authoring, since that is when the format is touched anyway.
 
 Done when: tests cover two packs with an overlapping id, a character from an unselected pack,
-an installed-but-unselected skill, and an edited or missing active pack on resume.
+an installed-but-unselected skill, and a missing active pack on resume.
 
 ### D5. Shallow freezing with explicit ownership
 
@@ -322,25 +341,32 @@ message. `CodexDriver.read_result` reads the thread id the same way.
 Change to: each driver declares the event models it understands as `Loose` classes
 (`_CodexItemCompleted` with `item.type == "agent_message"` and `item.text`,
 `_CodexThreadStarted` with `thread_id`); `read_result` filters by type and takes the last
-agent message. `final_message` keeps only the fenced and raw JSON extraction for message text.
-A stream with no final message is a `Refusal`. Confirm the codex event names against the
+agent message. `_last_said`, `_found`, `_string` and `_object` are deleted; `final_message`
+keeps only the fenced and raw JSON extraction for message text. A stream with no final
+message is a `Refusal`. Net: about forty lines of tree walking become two small models. Confirm the codex event names against the
 installed CLI version before writing the fixtures; this review did not run either CLI.
 
 Done when: fixtures cover a final answer, reasoning text after the answer, a failed event, and
 no final answer, with no process spawned.
 
-### Q2. The form owns its upload until success or dismissal
+### Q2. Upload: one directory per form, deleted on success only
 
 Now (`ui/create.py:173-282`): every upload calls `mkdtemp()`; replacing an upload drops the
 only reference to the old directory; `write()` deletes the document in `finally`, so a failed
 generation forces a new upload; leaving the page cleans nothing.
 
-Change to: one `Upload` owner on the form with `replace(file)`, `path`, `dispose()`. `replace`
-removes the previous directory. `write()` disposes only after success. The page registers
-`dispose` on client disconnect.
+Options:
 
-Done when: replacing an upload removes the old directory; a refused write keeps the document;
-disconnect releases it.
+- A. An `Upload` owner class with `replace`, `path`, `dispose`, plus a disconnect hook. Adds a
+  class.
+- B. `ScenarioForm` creates one temp directory lazily on the first upload and saves every
+  upload into it (a replacement overwrites by name, the previous file is unlinked). `write()`
+  removes the directory after success only; a refused write keeps the document for the retry.
+  An abandoned page leaves one temp directory to the OS, which is what `mkdtemp` is for.
+  `_discard_upload` shrinks to one `rmtree`. Recommended: fewer lines than today.
+
+Done when: a refused write keeps the document; a second upload leaves one file in the
+directory; success removes the directory.
 
 ### Q3. Helpers that mutate become methods (widened)
 
@@ -360,33 +386,41 @@ two of them hide a mutation behind a calculation name:
 
 Impact: no dice, fact order or rules change; existing engine tests pass unchanged.
 
-### Q4. Named steps over compressed expressions; split `GamePage`
+### Q4. Delete compressed expressions and duplicate closures
 
-Now: `app/roles.py:170` and `scenes/engine.py:118-127` build optional prompt sections with
+Now: `app/roles.py:170`, `scenes/engine.py:118,124`, `twentyfourxx/engine.py:229,236` and
+`twentyfourxx/world.py:202` build optional prompt sections with
 `*((("TITLE", body),) if body else ())`; `twentyfourxx/engine.py:195-200` builds kits with
 chained conditional tuple additions; `hiring.py:49` defaults to a lambda returning a lambda;
-`ui/game.py:688` constructs `Observed(None, 0, 0, None, None)` positionally; `GamePage` is 500
-lines and declares 20 widget attributes in `__init__` as bare annotations assigned later in
-`build`.
+`ui/game.py:688` constructs `Observed(None, 0, 0, None, None)` positionally; `ui/game.py`
+carries two inner closures (`accept` at 284, `answer` at 346) and `_send` that all do
+`refuse_play; own_move = True; await _run(play)`; `twentyfourxx/engine.py:433-464` spends
+thirty lines producing a three-way diff (missing, extra, repeated) for one refusal message.
 
 Change to:
 
-- A helper `section_if(title, body) -> Pairs` in `core/prompt.py` replaces the starred
-  conditional tuple idiom at its five sites.
-- Kits: append to a list in named steps.
-- `Observed` becomes `kw_only=True`.
-- `GamePage` splits into three plain classes that each own the widgets they build:
-  `Transcript` (chat, live turn, cards, scroll state), `Drawer` (sidebar, journal, tabs, rail),
-  `Composer` (box, send, action, decision and way-on panels). `GamePage` keeps polling, the
-  header, the dialog and the media state. Options:
-  - A. Split as above. Recommended: each class then has no unassigned attribute after
-    `__init__`.
-  - B. Keep one class, only fix the expressions and `Observed`.
-- Renames from the first review: `Turn.picture()` to `master_prompt()`, `Turn.told()` to
-  `has_told_facts()`, `Engine.land()` to `validate_and_commit()`. These are optional; the
-  current names read fine inside their modules. Decide yes or no as a block.
+- `section_if(title, body) -> Sections` in `core/prompt.py` replaces the starred idiom at its
+  six sites.
+- Kits: a list appended in named steps.
+- `Observed` becomes `kw_only=True`; the default check in `hiring()` becomes a named function.
+- One `GamePage.play(answer: Answer)` replaces the two closures and the lambda in `_send`
+  (`act` keeps its own line because it calls `session.act`).
+- `_finish`: one comparison, `sorted(got) != sorted(expected)`, and one message naming the
+  expected operators and the given ones. The master reads two lists instead of three
+  categories. About twenty lines deleted.
 
-Done when: golden prompt and schema fixtures are byte-identical; UI behaviour tests pass.
+Options for `GamePage` itself (500 lines, twenty attributes assigned in `build`):
+
+- A. Split into `Transcript`, `Drawer`, `Composer` classes. Adds three classes; the page is
+  not growing, so the split buys structure without deleting anything.
+- B. Leave the class whole; do the deletions above only. Recommended.
+
+Renames from the first review (`Turn.picture()`, `Turn.told()`, `Engine.land()`): the current
+names read fine in their modules and each rename touches tests and prompts of nothing. Decide
+yes or no as a block; recommendation no.
+
+Done when: golden prompt and schema fixtures are byte-identical; UI behaviour tests pass;
+`ui/game.py` and `twentyfourxx/engine.py` are shorter.
 
 ### N1. One constructor style for objects that need I/O
 
@@ -403,22 +437,30 @@ classmethods do not.
 
 Options:
 
-- A. Classmethods everywhere: `GameService.resume(target, ...)`, `Runtime.start(settings, spawner)`,
-  `Illustrator.open(settings, store, slug, ...)`, `Reader.open(...)`. The dataclass constructors
-  become plain. Recommended.
-- B. Leave as is and write the current mix into CLAUDE.md.
+- A. Classmethods everywhere: `GameService.resume(target, ...)`, `Runtime.start(settings, ...)`,
+  `Illustrator.open(settings, store, slug, ...)`, `Reader.open(...)`. Moves code, deletes none.
+- B. Leave as is and write one line into CLAUDE.md: "an object that reads disk to exist does
+  it in `__post_init__` or a classmethod named for the act; a free `open_*` function is for a
+  thing that may be `None`". Recommended: the `open_*` functions exist because they return
+  `None` when the feature is off, which a classmethod would spell less clearly.
 
-### N2. Finish the spawner injection in `Runtime`
+### N2. `Runtime` takes a spawner factory defaulting to `RoleRunner`
 
 Now: `Runtime(settings, spawner)` takes an injected `Spawner`, but `reload_settings`
 (`app/runtime.py:369`) replaces it with a hard-wired `RoleRunner(self.settings)`. Tests that
-inject a `ScriptedSpawner` lose it on reload.
+inject a `ScriptedSpawner` lose it on reload. Ten test sites and one production site construct
+`Runtime`.
 
 Options:
 
-- A. Inject a factory: `Runtime(settings, spawn: Callable[[Settings], Spawner])`; reload calls
-  it. Recommended.
-- B. Drop injection; `Runtime` always builds `RoleRunner` and tests assign `runtime.spawner`.
+- A. `Runtime(settings, spawn: Callable[[Settings], Spawner])`, always passed. Touches every
+  site.
+- B. Drop injection; tests assign `runtime.spawner` after construction. Touches every site and
+  leaves a window where the wrong spawner is live.
+- C. `spawn: Callable[[Settings], Spawner] = RoleRunner`. `RoleRunner(settings)` already has
+  that signature, so production becomes `Runtime(settings)` and reload calls
+  `self.spawn(self.settings)`. Tests pass `lambda _: ScriptedSpawner()`. Recommended: one
+  parameter fewer at the production site, and reload can no longer forget the injection.
 
 ### N3. Take PDF extraction off the event loop
 
@@ -535,6 +577,34 @@ intent from accident:
   widgets. Rule: state that.
 - Add whatever N1 decides.
 
+### N13. Move the CSS string out of `ui/theme.py`
+
+Now: `ui/theme.py` is 391 lines, of which 320 are one Python string of CSS (`STATIC_CSS`).
+No editor lints it, and the Python module's real content (the palette, `set_look`, `install`)
+is forty lines at the bottom.
+
+Change to: `ui/theme.css` beside the module, read once in `install()` with
+`read_prompt(Path(__file__).parent / "theme.css")` (it caches). `ui/dice_assets/` already sets
+the precedent for assets next to code. The `:root` palette line stays generated in Python
+because it comes from `NEUTRAL_PALETTE`.
+
+Impact: none at runtime. `theme.py` drops to about seventy lines.
+
+### N14. Delete thin pass-through methods
+
+Each of these is a method whose whole body is a call to another method with the same
+arguments:
+
+| Delete | Replace with |
+| --- | --- |
+| `Engine._render` (`engines/seam.py:327`) | the two callers call `render_worldsmith` directly |
+| `Runtime.scenario_models` (`app/runtime.py:338`) | `LauncherCatalog.read(library, store, engines)` derives the models itself from `engines[id].scenario`; `_open` does the same inline |
+| `GameService.stop` and `settled` | F2's `close` |
+| `Runtime.playing`, `busy_refusal`, `play_refusal` | F5's `admit` |
+| `SceneEngine.first_pack` | D4's `PackSelection.primary` |
+
+Impact: none at runtime; about thirty lines and three names fewer.
+
 ## 5. Leave as is
 
 A reviewer may raise these. Each has a reason in the code or in this repo's rules.
@@ -554,12 +624,15 @@ A reviewer may raise these. Each has a reason in the code or in this repo's rule
 
 ## 6. Order and cost
 
-1. Behaviour first, one phase: F1, F3, F2, D2, D5, N5 (about one day). F4 next (half a day).
-2. F5 with N1 and N2 together, since all three touch `Runtime` and `GameService` construction
-   (one day).
-3. D1 (half a day). Q3, N4, N7, N8, N11, N12 in one behaviour-preserving phase (one day).
-4. D3 with N6 (one to two days). Q4 after it, since the page split reads the typed session.
-5. Q1, Q2, N3 (half a day together).
-6. D4 with pack authoring, then the eval and the README GIF.
+1. Deletions and fixes in one behaviour-preserving phase: F1, F3, N5, N7, N13, N14, Q4, then
+   D2 and D5 (one day).
+2. F2, F5, N2 together, since all three touch `Runtime` and `GameService` (one day).
+3. F4, D1, N3 (half a day). Q3, N4, N8, N11, N12 in one phase (half a day).
+4. D3 option B with N6 (under an hour). Q1, Q2 (half a day).
+5. D4 with pack authoring, then the eval and the README GIF.
+
+If every recommendation is taken, the Python under `src` ends about four hundred lines
+smaller: Q1, Q4 and N14 delete around a hundred, N13 moves three hundred of CSS into a `.css`
+file, and only D4 adds a type.
 
 Next: fill the decision column in section 1.
