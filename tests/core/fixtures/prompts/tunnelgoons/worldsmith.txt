@@ -39,202 +39,37 @@ Every npc needs `hp`. It is the npc's Health and its Difficulty Score at once. G
 
 ANSWER WITH:
 {
-  "$defs": {
-    "Chattiness": {
-      "enum": [
-        "quiet",
-        "normal",
-        "chatty"
-      ],
-      "type": "string"
-    },
-    "Gauge": {
-      "additionalProperties": false,
-      "properties": {
-        "current": {
-          "type": "integer"
-        },
-        "maximum": {
-          "type": "integer"
-        }
-      },
-      "required": [
-        "current",
-        "maximum"
-      ],
-      "type": "object"
-    },
-    "GoonSheet": {
-      "additionalProperties": false,
-      "description": "The three ability scores a goon rolls with.",
-      "properties": {
-        "abilities": {
-          "additionalProperties": {
-            "minimum": 0,
-            "type": "integer"
-          },
-          "maxProperties": 3,
-          "minProperties": 3,
-          "propertyNames": {
-            "enum": [
-              "brute",
-              "skulker",
-              "erudite"
-            ]
-          },
-          "type": "object"
-        },
-        "inventory": {
-          "default": 8,
-          "minimum": 0,
-          "type": "integer"
-        },
-        "level": {
-          "default": 1,
-          "minimum": 1,
-          "type": "integer"
-        }
-      },
-      "type": "object"
-    },
-    "Npc": {
-      "additionalProperties": false,
-      "description": "A non-player character, friend or foe.",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "brief": {
-          "type": "string"
-        },
-        "known": {
-          "default": false,
-          "type": "boolean"
-        },
-        "alive": {
-          "default": true,
-          "type": "boolean"
-        },
-        "chattiness": {
-          "$ref": "#/$defs/Chattiness",
-          "default": "normal",
-          "description": "How readily they speak unprompted when travelling with the player. Most are normal."
-        },
-        "place": {
-          "type": "string"
-        },
-        "sheet": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/GoonSheet"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Leave empty."
-        },
-        "hp": {
-          "$ref": "#/$defs/Gauge"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "brief",
-        "place",
-        "hp"
-      ],
-      "type": "object"
-    },
-    "Place": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "brief": {
-          "type": "string"
-        },
-        "known": {
-          "default": false,
-          "type": "boolean"
-        },
-        "description": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "brief",
-        "description"
-      ],
-      "type": "object"
-    },
-    "Prop": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "brief": {
-          "type": "string"
-        },
-        "known": {
-          "default": false,
-          "type": "boolean"
-        },
-        "on": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "brief",
-        "on"
-      ],
-      "type": "object"
-    },
-    "Way": {
-      "additionalProperties": false,
-      "description": "One directed passage from the place under which it is filed.",
-      "properties": {
-        "to": {
-          "type": "string"
-        },
-        "known": {
-          "default": false,
-          "type": "boolean"
-        },
-        "locked": {
-          "default": false,
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "to"
-      ],
-      "type": "object"
-    }
-  },
   "additionalProperties": false,
   "properties": {
     "places": {
       "patternProperties": {
         "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
-          "$ref": "#/$defs/Place"
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "brief": {
+              "type": "string"
+            },
+            "known": {
+              "default": false,
+              "type": "boolean"
+            },
+            "description": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "brief",
+            "description"
+          ],
+          "type": "object"
         }
       },
       "propertyNames": {},
@@ -244,7 +79,25 @@ ANSWER WITH:
       "patternProperties": {
         "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
           "items": {
-            "$ref": "#/$defs/Way"
+            "additionalProperties": false,
+            "description": "One directed passage from the place under which it is filed.",
+            "properties": {
+              "to": {
+                "type": "string"
+              },
+              "known": {
+                "default": false,
+                "type": "boolean"
+              },
+              "locked": {
+                "default": false,
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "to"
+            ],
+            "type": "object"
           },
           "type": "array"
         }
@@ -255,7 +108,102 @@ ANSWER WITH:
     "npcs": {
       "patternProperties": {
         "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
-          "$ref": "#/$defs/Npc"
+          "additionalProperties": false,
+          "description": "A non-player character, friend or foe.",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "brief": {
+              "type": "string"
+            },
+            "known": {
+              "default": false,
+              "type": "boolean"
+            },
+            "alive": {
+              "default": true,
+              "type": "boolean"
+            },
+            "chattiness": {
+              "default": "normal",
+              "description": "How readily they speak unprompted when travelling with the player. Most are normal.",
+              "enum": [
+                "quiet",
+                "normal",
+                "chatty"
+              ],
+              "type": "string"
+            },
+            "place": {
+              "type": "string"
+            },
+            "sheet": {
+              "additionalProperties": false,
+              "description": "Leave empty.",
+              "properties": {
+                "abilities": {
+                  "additionalProperties": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "maxProperties": 3,
+                  "minProperties": 3,
+                  "propertyNames": {
+                    "enum": [
+                      "brute",
+                      "skulker",
+                      "erudite"
+                    ],
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "inventory": {
+                  "default": 8,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "level": {
+                  "default": 1,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "type": [
+                "object",
+                "null"
+              ],
+              "default": null
+            },
+            "hp": {
+              "additionalProperties": false,
+              "properties": {
+                "current": {
+                  "type": "integer"
+                },
+                "maximum": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "current",
+                "maximum"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "brief",
+            "place",
+            "hp"
+          ],
+          "type": "object"
         }
       },
       "propertyNames": {},
@@ -264,7 +212,32 @@ ANSWER WITH:
     "items": {
       "patternProperties": {
         "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
-          "$ref": "#/$defs/Prop"
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "brief": {
+              "type": "string"
+            },
+            "known": {
+              "default": false,
+              "type": "boolean"
+            },
+            "on": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "brief",
+            "on"
+          ],
+          "type": "object"
         }
       },
       "propertyNames": {},

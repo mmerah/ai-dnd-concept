@@ -63,153 +63,6 @@ The cast carries no dice until the player hires them in play. An npc is a name, 
 
 ANSWER WITH:
 {
-  "$defs": {
-    "Chattiness": {
-      "enum": [
-        "quiet",
-        "normal",
-        "chatty"
-      ],
-      "type": "string"
-    },
-    "CrewSheet": {
-      "additionalProperties": false,
-      "description": "The dice a crew member rolls.",
-      "properties": {
-        "items": {
-          "patternProperties": {
-            "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
-              "$ref": "#/$defs/Gear"
-            }
-          },
-          "propertyNames": {},
-          "type": "object"
-        },
-        "specialty": {
-          "type": "string"
-        },
-        "origin": {
-          "default": "",
-          "type": "string"
-        },
-        "traits": {
-          "default": [],
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "skills": {
-          "additionalProperties": {
-            "$ref": "#/$defs/SkillDie"
-          },
-          "type": "object"
-        },
-        "credits": {
-          "default": 2,
-          "minimum": 0,
-          "type": "integer"
-        },
-        "hindrances": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "specialty"
-      ],
-      "type": "object"
-    },
-    "Crewmate": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "brief": {
-          "type": "string"
-        },
-        "known": {
-          "default": false,
-          "type": "boolean"
-        },
-        "alive": {
-          "default": true,
-          "type": "boolean"
-        },
-        "chattiness": {
-          "$ref": "#/$defs/Chattiness",
-          "default": "normal",
-          "description": "How readily they speak unprompted when travelling with the player. Most are normal."
-        },
-        "sheet": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CrewSheet"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Leave empty."
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "brief"
-      ],
-      "type": "object"
-    },
-    "Gear": {
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "bulky": {
-          "default": false,
-          "type": "boolean"
-        },
-        "breaks": {
-          "default": 1,
-          "minimum": 1,
-          "type": "integer"
-        },
-        "broken_times": {
-          "default": 0,
-          "minimum": 0,
-          "type": "integer"
-        },
-        "upgraded": {
-          "default": false,
-          "type": "boolean"
-        },
-        "harmless": {
-          "default": false,
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "name"
-      ],
-      "type": "object"
-    },
-    "SkillDie": {
-      "enum": [
-        8,
-        10,
-        12
-      ],
-      "type": "integer"
-    }
-  },
   "additionalProperties": false,
   "properties": {
     "place": {
@@ -249,7 +102,132 @@ ANSWER WITH:
       "description": "New people and things, each filed under its own id.",
       "patternProperties": {
         "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
-          "$ref": "#/$defs/Crewmate"
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "brief": {
+              "type": "string"
+            },
+            "known": {
+              "default": false,
+              "type": "boolean"
+            },
+            "alive": {
+              "default": true,
+              "type": "boolean"
+            },
+            "chattiness": {
+              "default": "normal",
+              "description": "How readily they speak unprompted when travelling with the player. Most are normal.",
+              "enum": [
+                "quiet",
+                "normal",
+                "chatty"
+              ],
+              "type": "string"
+            },
+            "sheet": {
+              "additionalProperties": false,
+              "description": "Leave empty.",
+              "properties": {
+                "items": {
+                  "patternProperties": {
+                    "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "bulky": {
+                          "default": false,
+                          "type": "boolean"
+                        },
+                        "breaks": {
+                          "default": 1,
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "broken_times": {
+                          "default": 0,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "upgraded": {
+                          "default": false,
+                          "type": "boolean"
+                        },
+                        "harmless": {
+                          "default": false,
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "propertyNames": {},
+                  "type": "object"
+                },
+                "specialty": {
+                  "type": "string"
+                },
+                "origin": {
+                  "default": "",
+                  "type": "string"
+                },
+                "traits": {
+                  "default": [],
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "skills": {
+                  "additionalProperties": {
+                    "enum": [
+                      8,
+                      10,
+                      12
+                    ],
+                    "type": "integer"
+                  },
+                  "type": "object"
+                },
+                "credits": {
+                  "default": 2,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "hindrances": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "specialty"
+              ],
+              "type": [
+                "object",
+                "null"
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "brief"
+          ],
+          "type": "object"
         }
       },
       "propertyNames": {},

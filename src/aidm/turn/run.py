@@ -71,7 +71,7 @@ class Turn:
         if option is None:
             raise Refusal(f"the {consumed.kind!r} decision offers no option {chosen!r}")
         # A refusal raises: the engine enumerated the option, so it is never model error.
-        facts = self._apply(lambda copy, dice: tuple(engine.answer(copy, option, dice)))
+        facts = self._apply(lambda copy, dice: engine.answer(copy, option, dice))
         traces = traced(facts)
         # An answer that re-suspended has no tool answer to carry the wait, so the note says it.
         if self.draft.pending is not None:

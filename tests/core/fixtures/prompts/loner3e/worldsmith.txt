@@ -67,102 +67,6 @@ SELECTED PACK CONTENT
 
 ANSWER WITH:
 {
-  "$defs": {
-    "Chattiness": {
-      "enum": [
-        "quiet",
-        "normal",
-        "chatty"
-      ],
-      "type": "string"
-    },
-    "Gauge": {
-      "additionalProperties": false,
-      "properties": {
-        "current": {
-          "type": "integer"
-        },
-        "maximum": {
-          "type": "integer"
-        }
-      },
-      "required": [
-        "current",
-        "maximum"
-      ],
-      "type": "object"
-    },
-    "Loner3eCast": {
-      "additionalProperties": false,
-      "description": "A character: a person, an object, a vehicle or a curse alike.",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "brief": {
-          "type": "string"
-        },
-        "known": {
-          "default": false,
-          "type": "boolean"
-        },
-        "alive": {
-          "default": true,
-          "type": "boolean"
-        },
-        "chattiness": {
-          "$ref": "#/$defs/Chattiness",
-          "default": "normal",
-          "description": "How readily they speak unprompted when travelling with the player. Most are normal."
-        },
-        "concept": {
-          "default": "",
-          "type": "string"
-        },
-        "tags": {
-          "additionalProperties": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "propertyNames": {
-            "enum": [
-              "skill",
-              "frailty",
-              "gear",
-              "condition"
-            ]
-          },
-          "type": "object"
-        },
-        "goal": {
-          "default": "",
-          "type": "string"
-        },
-        "motive": {
-          "default": "",
-          "type": "string"
-        },
-        "nemesis": {
-          "default": "",
-          "type": "string"
-        },
-        "luck": {
-          "$ref": "#/$defs/Gauge"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "brief"
-      ],
-      "type": "object"
-    }
-  },
   "additionalProperties": false,
   "properties": {
     "place": {
@@ -202,7 +106,93 @@ ANSWER WITH:
       "description": "New people and things, each filed under its own id.",
       "patternProperties": {
         "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
-          "$ref": "#/$defs/Loner3eCast"
+          "additionalProperties": false,
+          "description": "A character: a person, an object, a vehicle or a curse alike.",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "brief": {
+              "type": "string"
+            },
+            "known": {
+              "default": false,
+              "type": "boolean"
+            },
+            "alive": {
+              "default": true,
+              "type": "boolean"
+            },
+            "chattiness": {
+              "default": "normal",
+              "description": "How readily they speak unprompted when travelling with the player. Most are normal.",
+              "enum": [
+                "quiet",
+                "normal",
+                "chatty"
+              ],
+              "type": "string"
+            },
+            "concept": {
+              "default": "",
+              "type": "string"
+            },
+            "tags": {
+              "additionalProperties": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "propertyNames": {
+                "enum": [
+                  "skill",
+                  "frailty",
+                  "gear",
+                  "condition"
+                ],
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "goal": {
+              "default": "",
+              "type": "string"
+            },
+            "motive": {
+              "default": "",
+              "type": "string"
+            },
+            "nemesis": {
+              "default": "",
+              "type": "string"
+            },
+            "luck": {
+              "additionalProperties": false,
+              "properties": {
+                "current": {
+                  "type": "integer"
+                },
+                "maximum": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "current",
+                "maximum"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "brief"
+          ],
+          "type": "object"
         }
       },
       "propertyNames": {},

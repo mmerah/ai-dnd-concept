@@ -1,5 +1,6 @@
 import json
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from copy import deepcopy
 from dataclasses import dataclass
 from random import Random
 from typing import Any
@@ -46,12 +47,32 @@ def master_tool[G: Game[Any], A: BaseModel](
 def schema_of(args: type[BaseModel]) -> dict[str, JsonValue]:
     """One schema function, so what MCP publishes is what every prompt describes."""
     schema = args.model_json_schema()
+    defs = schema.pop("$defs", {})
+    _inline_refs(schema, defs)
     _normalize(schema)
     return schema
 
 
 def schema_text(model: type[BaseModel]) -> str:
     return json.dumps(schema_of(model), indent=2, ensure_ascii=False)
+
+
+def _inline_refs(node: JsonValue, defs: Mapping[str, JsonValue]) -> None:
+    """A `$ref` becomes its definition: the model reads one tree and no class name leaks in."""
+    if isinstance(node, list):
+        for item in node:
+            _inline_refs(item, defs)
+        return
+    if not isinstance(node, dict):
+        return
+    ref = node.pop("$ref", None)
+    if isinstance(ref, str):
+        target = defs[ref.removeprefix("#/$defs/")]
+        if isinstance(target, dict):
+            for key, value in target.items():
+                node.setdefault(key, deepcopy(value))
+    for value in node.values():
+        _inline_refs(value, defs)
 
 
 def _normalize(node: JsonValue) -> None:
@@ -63,8 +84,8 @@ def _normalize(node: JsonValue) -> None:
     if not isinstance(node, dict):
         return
     for key, value in node.items():
-        # A `properties` or `$defs` map is keyed by names, which may spell a noise key.
-        if key in ("properties", "$defs") and isinstance(value, dict):
+        # A `properties` map is keyed by names, which may spell a noise key.
+        if key == "properties" and isinstance(value, dict):
             for child in value.values():
                 _normalize(child)
         else:

@@ -54,36 +54,31 @@ WHAT HAPPENED:
 
 ANSWER WITH:
 {
-  "$defs": {
-    "Line": {
-      "additionalProperties": false,
-      "properties": {
-        "speaker_id": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null,
-          "description": "Exact id of the speaker. Null for narration."
-        },
-        "text": {
-          "description": "One passage of narration, or only what the speaker says.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "text"
-      ],
-      "type": "object"
-    }
-  },
   "additionalProperties": false,
   "description": "What a party member says after a turn, unprompted.",
   "properties": {
     "lines": {
       "description": "What they say, as dialogue. Empty when they would keep quiet.",
       "items": {
-        "$ref": "#/$defs/Line"
+        "additionalProperties": false,
+        "properties": {
+          "speaker_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null,
+            "description": "Exact id of the speaker. Null for narration."
+          },
+          "text": {
+            "description": "One passage of narration, or only what the speaker says.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
       },
       "type": "array"
     },

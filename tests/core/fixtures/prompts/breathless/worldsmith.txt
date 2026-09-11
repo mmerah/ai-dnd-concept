@@ -69,179 +69,6 @@ SELECTED PACK CONTENT
 
 ANSWER WITH:
 {
-  "$defs": {
-    "Chattiness": {
-      "enum": [
-        "quiet",
-        "normal",
-        "chatty"
-      ],
-      "type": "string"
-    },
-    "Die": {
-      "enum": [
-        4,
-        6,
-        8,
-        10,
-        12
-      ],
-      "type": "integer"
-    },
-    "Gauge": {
-      "additionalProperties": false,
-      "properties": {
-        "current": {
-          "type": "integer"
-        },
-        "maximum": {
-          "type": "integer"
-        }
-      },
-      "required": [
-        "current",
-        "maximum"
-      ],
-      "type": "object"
-    },
-    "Skill": {
-      "enum": [
-        "bash",
-        "dash",
-        "sneak",
-        "shoot",
-        "think",
-        "sway"
-      ],
-      "type": "string"
-    },
-    "Supply": {
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "die": {
-          "$ref": "#/$defs/Die"
-        }
-      },
-      "required": [
-        "name",
-        "die"
-      ],
-      "type": "object"
-    },
-    "Survivor": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "brief": {
-          "type": "string"
-        },
-        "known": {
-          "default": false,
-          "type": "boolean"
-        },
-        "alive": {
-          "default": true,
-          "type": "boolean"
-        },
-        "chattiness": {
-          "$ref": "#/$defs/Chattiness",
-          "default": "normal",
-          "description": "How readily they speak unprompted when travelling with the player. Most are normal."
-        },
-        "sheet": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/SurvivorSheet"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Leave empty."
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "brief"
-      ],
-      "type": "object"
-    },
-    "SurvivorSheet": {
-      "additionalProperties": false,
-      "description": "The dice a survivor rolls.",
-      "properties": {
-        "items": {
-          "patternProperties": {
-            "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
-              "$ref": "#/$defs/Supply"
-            }
-          },
-          "propertyNames": {},
-          "type": "object"
-        },
-        "pronouns": {
-          "default": "",
-          "type": "string"
-        },
-        "job": {
-          "default": "",
-          "type": "string"
-        },
-        "skills": {
-          "additionalProperties": {
-            "$ref": "#/$defs/Die"
-          },
-          "maxProperties": 6,
-          "minProperties": 6,
-          "propertyNames": {
-            "$ref": "#/$defs/Skill"
-          },
-          "type": "object"
-        },
-        "worn": {
-          "additionalProperties": {
-            "$ref": "#/$defs/Die"
-          },
-          "maxProperties": 6,
-          "minProperties": 6,
-          "propertyNames": {
-            "$ref": "#/$defs/Skill"
-          },
-          "type": "object"
-        },
-        "med_kit": {
-          "default": false,
-          "type": "boolean"
-        },
-        "loot": {
-          "$ref": "#/$defs/Die",
-          "default": 12
-        },
-        "stress": {
-          "$ref": "#/$defs/Gauge"
-        },
-        "stunted": {
-          "default": false,
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "skills",
-        "worn"
-      ],
-      "type": "object"
-    }
-  },
   "additionalProperties": false,
   "properties": {
     "place": {
@@ -281,7 +108,181 @@ ANSWER WITH:
       "description": "New people and things, each filed under its own id.",
       "patternProperties": {
         "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
-          "$ref": "#/$defs/Survivor"
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "brief": {
+              "type": "string"
+            },
+            "known": {
+              "default": false,
+              "type": "boolean"
+            },
+            "alive": {
+              "default": true,
+              "type": "boolean"
+            },
+            "chattiness": {
+              "default": "normal",
+              "description": "How readily they speak unprompted when travelling with the player. Most are normal.",
+              "enum": [
+                "quiet",
+                "normal",
+                "chatty"
+              ],
+              "type": "string"
+            },
+            "sheet": {
+              "additionalProperties": false,
+              "description": "Leave empty.",
+              "properties": {
+                "items": {
+                  "patternProperties": {
+                    "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "die": {
+                          "enum": [
+                            4,
+                            6,
+                            8,
+                            10,
+                            12
+                          ],
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "die"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "propertyNames": {},
+                  "type": "object"
+                },
+                "pronouns": {
+                  "default": "",
+                  "type": "string"
+                },
+                "job": {
+                  "default": "",
+                  "type": "string"
+                },
+                "skills": {
+                  "additionalProperties": {
+                    "enum": [
+                      4,
+                      6,
+                      8,
+                      10,
+                      12
+                    ],
+                    "type": "integer"
+                  },
+                  "maxProperties": 6,
+                  "minProperties": 6,
+                  "propertyNames": {
+                    "enum": [
+                      "bash",
+                      "dash",
+                      "sneak",
+                      "shoot",
+                      "think",
+                      "sway"
+                    ],
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "worn": {
+                  "additionalProperties": {
+                    "enum": [
+                      4,
+                      6,
+                      8,
+                      10,
+                      12
+                    ],
+                    "type": "integer"
+                  },
+                  "maxProperties": 6,
+                  "minProperties": 6,
+                  "propertyNames": {
+                    "enum": [
+                      "bash",
+                      "dash",
+                      "sneak",
+                      "shoot",
+                      "think",
+                      "sway"
+                    ],
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "med_kit": {
+                  "default": false,
+                  "type": "boolean"
+                },
+                "loot": {
+                  "default": 12,
+                  "enum": [
+                    4,
+                    6,
+                    8,
+                    10,
+                    12
+                  ],
+                  "type": "integer"
+                },
+                "stress": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "current": {
+                      "type": "integer"
+                    },
+                    "maximum": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "current",
+                    "maximum"
+                  ],
+                  "type": "object"
+                },
+                "stunted": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "skills",
+                "worn"
+              ],
+              "type": [
+                "object",
+                "null"
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "brief"
+          ],
+          "type": "object"
         }
       },
       "propertyNames": {},

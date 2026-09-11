@@ -10,10 +10,9 @@ from aidm.core.prompt import Pairs
 from aidm.engines.base import PLAYER_ID, Gauge, Sheeted
 from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RoomWorld
 
-# assignments, not `type`: a `type` alias becomes a `$defs` entry in every schema that reads it
-Ability = Literal["brute", "skulker", "erudite"]
-AbilityScores = dict[Ability, Annotated[int, Field(ge=0)]]
-Boost = Literal["health", "inventory"]
+type Ability = Literal["brute", "skulker", "erudite"]
+type AbilityScores = dict[Ability, Annotated[int, Field(ge=0)]]
+type Boost = Literal["health", "inventory"]
 ABILITIES: tuple[Ability, ...] = ("brute", "skulker", "erudite")
 HP_START = 10
 INVENTORY_START = 8
