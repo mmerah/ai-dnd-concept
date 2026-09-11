@@ -100,6 +100,8 @@ not change (section order is preserved). Two `test_build_scenario_*` tests move 
 
 ### 4. Same code in three engines, written once
 
+**Decided: accepted.**
+
 **Concept.** Five places where two or three engines carry the same lines, verified by grep:
 
 1. `Hiring.hireable` is abstract and all three bodies are `return
@@ -126,6 +128,8 @@ byte-identical if docstrings and descriptions are kept; keep `highlight=()` for 
 turn goldens do not drift. **Confidence.** High. **Time.** About 2 hours.
 
 ### 5. Decision: the world grows one way, through the master's tool call (reopened, widened)
+
+**Decided: refused, option (c). The page's own action stays.**
 
 **Concept.** Today the world grows two ways. The master calls `next_scene(pursuit=...)` or
 `next_scene(complication=...)` or `hire`, which sets `Game.generation`. Or the player presses the
@@ -157,6 +161,8 @@ and because deleting both halves removes a concept (the page's own action) rathe
 Recommend (a). **Confidence.** Medium. **Time.** Half a day including the room tool and tests.
 
 ### 6. Decision: where the scene log lives
+
+**Decided: accepted, option (a). The log moves to `Game.log`.**
 
 **Concept.** Every exchange the player reads is core-typed (`Exchange`), yet it is stored inside
 the engine payload (`SceneRun.exchanges`, `Visit.exchanges`) and projected back out through three
