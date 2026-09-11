@@ -3,14 +3,14 @@ from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, picked
-from aidm.core.entities import EngineId, Frozen, Refusal, Slug, slug
+from aidm.core.entities import EngineId, Frozen, Refusal, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption, PendingDecision
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Pairs
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.hiring import HIRE, HIRE_UNWRITTEN, Hiring
+from aidm.engines.hiring import Hiring
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.world import Prop
 from aidm.engines.tunnelgoons.tools import (
@@ -84,8 +84,8 @@ class TunnelGoonsEngine(
     character = TunnelGoonsCharacter
     dweller = Npc
     world_type = TunnelGoonsWorld
+    member = Npc
     hire_answer = AbilitiesDraft
-    unwritten = {**RoomEngine.unwritten, HIRE: HIRE_UNWRITTEN}
 
     def master_tools(self) -> tuple[MasterTool[TunnelGoonsGame], ...]:
         return (
@@ -152,9 +152,6 @@ class TunnelGoonsEngine(
 
     def rest(self, draft: TunnelGoonsGame, _args: Frozen, _rng: Random) -> list[Fact]:
         return draft.payload.rest()
-
-    def hireable(self, draft: TunnelGoonsGame, entity_id: Slug) -> Npc:
-        return draft.payload.require_hireable(entity_id)
 
     def hire_prompt(self, draft: TunnelGoonsGame, member: Npc, terms: str) -> str:
         return self.render_request(

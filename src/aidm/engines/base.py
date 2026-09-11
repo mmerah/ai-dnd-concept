@@ -1,11 +1,12 @@
 from abc import abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
+from random import Random
 from typing import Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.entities import Frozen, Mutable, Refusal, Slug
-from aidm.core.facts import DiceEvent, Fact
+from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.play import Exchange, SceneRecord
 from aidm.core.prompt import sections
 from aidm.core.tools import schema_text
@@ -120,6 +121,25 @@ class Sheeted[S: BaseModel](Person):
 
     def hireable(self) -> bool:
         return self.sheet is None
+
+
+class Item(Mutable):
+    name: str
+
+
+class ItemSheet[I: Item](Mutable):
+    items: dict[Slug, I] = Field(default_factory=dict)
+
+    def require(self, item_id: Slug, owner: str) -> I:
+        item = self.items.get(item_id)
+        if item is None:
+            raise Refusal(f"{item_id!r} is not among {owner}'s items")
+        return item
+
+    def drop_item(self, item_id: Slug, owner: Thing) -> list[Fact]:
+        item = self.require(item_id, owner.name)
+        del self.items[item_id]
+        return [owner.fact(f"{owner.mention} drops {item.name}", card=f"Dropped {item.name}")]
 
 
 class World[M: Person, P: Person](Mutable):
@@ -272,6 +292,13 @@ def check_filing(pool: Mapping[Slug, Thing]) -> None:
 def banded(face: int, low: str, mid: str, high: str) -> str:
     """The three bands of a six-sided read: 1 to 2, 3 to 4, 5 and up."""
     return low if face <= 2 else mid if face <= 4 else high
+
+
+def luck_test(question: str, die: int, bands: tuple[str, str, str], rng: Random) -> list[Fact]:
+    """A question about the world when nobody acts: the dice trace, the answer is never told."""
+    rolled, dice_fact = roll((die,), question, rng)
+    result = banded(rolled[0], *bands)
+    return [dice_fact, Fact(trace=f"{question} — d{die} [{rolled[0]}] -> {result}")]
 
 
 def render_worldsmith(

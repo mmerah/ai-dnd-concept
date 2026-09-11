@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from copy import deepcopy
+from dataclasses import dataclass
 from pathlib import Path
 from random import Random
 from typing import Any
@@ -23,9 +24,19 @@ from aidm.core.model import (
 from aidm.core.play import DecisionOption, Exchange, Mark, PendingOption, SpokenLine
 from aidm.core.tools import MasterTool
 from aidm.core.views import DiceLook, NarratorView, Pairs, Palette, PlayerView
-from aidm.engines.base import PLAYER_ID, Person, World
+from aidm.engines.base import PLAYER_ID, Person, World, render_worldsmith
 
 type AnyEngine = Engine[Any, Any]
+# What a worldsmith write leaves: the facts, and what to tell the narrator, if anything.
+type Written = tuple[tuple[Fact, ...], str | None]
+
+
+@dataclass(frozen=True, slots=True)
+class Request[G: Game[Any]]:
+    """What a failed write tells the player, and the write itself."""
+
+    unwritten: Fact
+    write: Callable[[G, Generation, WorldsmithAnswer], Awaitable[Written]]
 
 
 class Engine[P: Person, G: Game[Any]](ABC):
@@ -37,12 +48,13 @@ class Engine[P: Person, G: Game[Any]](ABC):
     palette: Palette
     directory: Path  # rules.md; a scene engine's packs/
     family_prompt: Path
+    worldsmith_prompt: Path
     game: type[G]
     scenario: type[AnyScenario]
     character: type[AnyCharacter]
     instructions: str
     tools: dict[str, MasterTool[G]]
-    unwritten: dict[Slug, Fact]  # the requests this engine writes, and what a failed one tells
+    requests: dict[Slug, Request[G]]
 
     def __init__(self) -> None:
         self.instructions = (
@@ -53,10 +65,15 @@ class Engine[P: Person, G: Game[Any]](ABC):
         if len(set(names)) != len(names):
             raise ValueError(f"the {self.id!r} engine names a tool twice: {names}")
         self.tools = {tool.name: tool for tool in tools}
+        self.requests = self.worldsmith_requests()
 
     def master_tools(self) -> tuple[MasterTool[G], ...]:
         """Each layer adds its own after `super()`'s: family, then `hire`, then the engine."""
         return ()
+
+    async def advance(self, draft: G, request: Generation, worldsmith: WorldsmithAnswer) -> Written:
+        """Write and install on `draft`; the facts, and what to tell the narrator, if anything."""
+        return await self.requests[request.operation].write(draft, request, worldsmith)
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
         return ()
@@ -85,17 +102,46 @@ class Engine[P: Person, G: Game[Any]](ABC):
         prompt: str,
         model: type[M],
         build: Callable[[M], AnyScenario],
-        playable: Callable[[AnyScenario], str | None],
+        playable: Callable[[AnyScenario], None],
     ) -> AnyScenario:
-        """The build runs the engine's bar, so an unbuildable opening is re-prompted, not raised."""
+        return build(await worldsmith(prompt, model, lambda answer: playable(build(answer))))
 
-        def refusal(answer: M) -> str | None:
-            try:
-                return playable(build(answer))
-            except Refusal as unbuildable:
-                return str(unbuildable)
+    def render_request(
+        self, draft: G, *, intent: str, guidance: str, answer: type[BaseModel]
+    ) -> str:
+        world = self.world(draft)
+        family = self.family_sections(draft)
+        return self._render(
+            world.source,
+            draft.scenario.scope,
+            family,
+            intent=intent,
+            guidance=guidance,
+            answer=answer,
+        )
 
-        return build(await worldsmith(prompt, model, refusal))
+    def render_opening(
+        self, source: str, scope: str, *, intent: str, guidance: str, answer: type[BaseModel]
+    ) -> str:
+        family = self.family_sections(None)
+        return self._render(source, scope, family, intent=intent, guidance=guidance, answer=answer)
+
+    def build_scenario(
+        self,
+        meta: ScenarioMeta,
+        packs: tuple[Slug, ...],
+        draft: BaseModel,
+        source: str,
+        premise: str,
+    ) -> AnyScenario:
+        """No bar: `begin` is the one bar an opening meets, and `playable` always runs it."""
+        return self.scenario(
+            meta=meta.with_premise(premise),
+            engine=self.id,
+            packs=packs,
+            source=source,
+            payload=draft,
+        )
 
     def close(
         self,
@@ -157,7 +203,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
     def validate(self, state: G) -> None:
         """Refuse a state this engine cannot play; a family adds its check after `super()`."""
         request = state.generation
-        if request is not None and request.operation not in self.unwritten:
+        if request is not None and request.operation not in self.requests:
             raise Refusal(f"the {self.id!r} engine writes no {request.operation!r}")
 
     @abstractmethod
@@ -171,6 +217,12 @@ class Engine[P: Person, G: Game[Any]](ABC):
     @abstractmethod
     def master_sections(self, state: G) -> Pairs: ...
     @abstractmethod
+    def family_sections(self, draft: G | None) -> Pairs: ...
+    @abstractmethod
+    def worldsmith_requests(self) -> dict[Slug, Request[G]]:
+        """Each layer adds its own after `super()`'s: family, then `hire`."""
+
+    @abstractmethod
     def narrator_view(self, state: G) -> NarratorView: ...
     @abstractmethod
     def player_view(self, state: G) -> PlayerView: ...
@@ -181,14 +233,28 @@ class Engine[P: Person, G: Game[Any]](ABC):
         source: str,
         packs: Sequence[Slug],
         worldsmith: WorldsmithAnswer,
-        playable: Callable[[AnyScenario], str | None],
+        playable: Callable[[AnyScenario], None],
     ) -> AnyScenario: ...
     @abstractmethod
     def act(self, draft: G, action: Slug, words: str, /) -> None:
         """The page's action against the state now: refuse it stale, else request or note."""
 
-    @abstractmethod
-    async def advance(
-        self, draft: G, request: Generation, worldsmith: WorldsmithAnswer
-    ) -> tuple[tuple[Fact, ...], str | None]:
-        """Write and install on `draft`; the facts, and what to tell the narrator, if anything."""
+    def _render(
+        self,
+        source: str,
+        scope: str,
+        family: Pairs,
+        *,
+        intent: str,
+        guidance: str,
+        answer: type[BaseModel],
+    ) -> str:
+        return render_worldsmith(
+            role=read_prompt(self.worldsmith_prompt),
+            source=source,
+            scope=scope,
+            family=family,
+            intent=intent,
+            guidance=guidance,
+            answer=answer,
+        )

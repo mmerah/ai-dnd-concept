@@ -5,7 +5,7 @@ from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, other_than, picked
 from aidm.core.entities import EngineId, Refusal, Slug, slug
-from aidm.core.facts import DiceEvent, Fact, keep_highest, roll
+from aidm.core.facts import DiceEvent, Fact, roll, roll_pool
 from aidm.core.play import PendingDecision
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Pairs
@@ -291,8 +291,8 @@ def _pair(action: Question, rng: Random) -> tuple[int, DiceEvent, int, DiceEvent
     chance_faces = (DIE_FACE, DIE_FACE) if action.position == "advantage" else (DIE_FACE,)
     risk_faces = (DIE_FACE, DIE_FACE) if action.position == "disadvantage" else (DIE_FACE,)
     asked = action.question
-    chance_kept, chance, chance_fact = keep_highest(
+    chance_kept, chance, chance_fact = roll_pool(
         chance_faces, f"{asked} — chance", rng, label="Chance"
     )
-    risk_kept, risk, risk_fact = keep_highest(risk_faces, f"{asked} — risk", rng, label="Risk")
+    risk_kept, risk, risk_fact = roll_pool(risk_faces, f"{asked} — risk", rng, label="Risk")
     return chance_kept, chance, risk_kept, risk, [chance_fact, risk_fact]

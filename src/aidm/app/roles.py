@@ -92,7 +92,7 @@ class Roles:
                     scenes=self.engine.world(draft).records(),
                 ),
                 Narration,
-                view.narration_refusal,
+                view.check_narration,
             )
         except (OSError, Refusal) as failed:
             if fatal:
@@ -113,7 +113,7 @@ class Roles:
                 view, member.subject(), member.rows(), self.engine.world(state).records(), evidence
             ),
             Interjection,
-            partial(view.interjection_refusal, member.id),
+            partial(view.check_interjection, member.id),
         )
         return view.spoken(answer.lines), answer.proposal
 

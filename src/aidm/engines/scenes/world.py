@@ -12,7 +12,7 @@ from aidm.core.entities import (
 )
 from aidm.core.facts import Fact
 from aidm.core.play import Exchange, SceneRecord
-from aidm.core.prompt import lines_of
+from aidm.core.prompt import lines_of, sentence
 from aidm.core.views import Panel, PanelRow
 from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, World, check_filing
 from aidm.engines.scenes.tools import NextDraft, SceneDraft
@@ -271,10 +271,6 @@ def settled[C: Person](
         here=[*party, *present, *hidden],
     )
     return cast, run
-
-
-def sentence(text: str) -> str:
-    return text[:1].upper() + text[1:]
 
 
 def check_named(here: Sequence[Slug], cast: Mapping[Slug, Thing]) -> None:

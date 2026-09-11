@@ -223,7 +223,11 @@ class GameService:
             draft.generation = None
             self.save(
                 self.engine.close(
-                    draft, (), (self.engine.unwritten[request.operation],), prompt=words, mark=mark
+                    draft,
+                    (),
+                    (self.engine.requests[request.operation].unwritten,),
+                    prompt=words,
+                    mark=mark,
                 )
             )
             grown = False
@@ -380,12 +384,8 @@ class Runtime:
         source = given_text(meta.premise, document, self.settings.source_max_chars)
         name = slug(meta.title, self.library.scenario_ids())
 
-        def playable(built: AnyScenario) -> str | None:
-            try:
-                engine.begin(name, built, character)
-            except Refusal as unplayable:
-                return str(unplayable)
-            return None
+        def playable(built: AnyScenario) -> None:
+            engine.begin(name, built, character)
 
         scenario = await engine.author(
             meta, source, packs, Roles(self.spawner, engine).worldsmith(), playable

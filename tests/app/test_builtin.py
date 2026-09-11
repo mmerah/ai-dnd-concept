@@ -185,7 +185,7 @@ async def test_a_master_still_calling_tools_past_the_cap_is_cut_off(
     ),
     ids=("http status", "error body", "no choices", "unreadable"),
 )
-async def test_a_failed_provider_is_a_refusal_the_player_reads(
+async def test_a_failed_provider_refuses_in_words_the_player_reads(
     monkeypatch: pytest.MonkeyPatch, reply: JsonValue | Exception, expected: str
 ) -> None:
     _ = _post(monkeypatch, reply)

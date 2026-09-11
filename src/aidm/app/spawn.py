@@ -195,11 +195,11 @@ async def ask[T: BaseModel](
         session = spoken.session
         try:
             answer = parse(model, decode(spoken.text))
+            refusal(answer)
         except Refusal as invalid:
             refused = str(invalid)
         else:
-            if (refused := refusal(answer)) is None:
-                return answer
+            return answer
         correction = f"Your last answer was refused: {refused}\nAnswer again, fixed."
         # The retry carries on the refused attempt, which has read the prompt already.
         asked = correction if session is not None else f"{prompt}\n\n{correction}"

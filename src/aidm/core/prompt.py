@@ -17,6 +17,10 @@ def lines_of(parts: Iterable[str]) -> str:
     return "\n".join(parts) or "- (none)"
 
 
+def sentence(text: str) -> str:
+    return text[:1].upper() + text[1:]
+
+
 def render_history(records: Sequence[SceneRecord]) -> str:
     if not any(record.exchanges for record in records):
         return "(the game has not started yet)"

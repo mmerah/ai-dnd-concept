@@ -25,7 +25,7 @@ from aidm.app.roles import RoleRunner, Roles
 from aidm.app.spawn import RunResult, Tools, final_message
 from aidm.config import Role
 from aidm.core.entities import EngineId, Frozen, Refusal, Slug
-from aidm.core.model import ScenarioMeta
+from aidm.core.model import Objection, ScenarioMeta
 from aidm.core.play import Answer, Narration, narration_text
 from aidm.core.tools import schema_of
 from aidm.engines.base import PLAYER_ID
@@ -272,21 +272,18 @@ async def test_authoring_raises_when_the_worldsmith_never_meets_the_bar(tmp_path
     table = open_game(tmp_path)
     thin = SceneDraft[Loner3eSheet].model_validate(json.loads(_bare_scene(present=["nobody-here"])))
 
-    async def answer[M: BaseModel](
-        _prompt: str, model: type[M], refusal: Callable[[M], str | None]
-    ) -> M:
+    async def answer[M: BaseModel](_prompt: str, model: type[M], refusal: Objection[M]) -> M:
         answer = model.model_validate(thin.model_dump())
-        if (refused := refusal(answer)) is not None:
-            raise ValueError(f"the worldsmith answered nothing usable: {refused}")
+        refusal(answer)
         return answer
 
-    with pytest.raises(ValueError, match="the scene needs"):
+    with pytest.raises(Refusal, match="the scene needs"):
         _ = await table.service.engine.author(
             ScenarioMeta(title="T", premise="p", scope="s"),
             "",
             table.state.packs,
             answer,
-            lambda _built: None,
+            lambda built: table.service.engine.begin("t", built, table.service.character),
         )
 
 

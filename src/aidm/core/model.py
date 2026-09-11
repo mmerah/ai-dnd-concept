@@ -19,8 +19,8 @@ from aidm.core.play import PendingDecision
 type AnyScenario = Scenario[Any]
 type AnyCharacter = Character[Any]
 type AnyGame = Game[Any]
-# What `ask` asks of the value it parsed, beyond its own schema; the reason re-prompts.
-type Objection[T] = Callable[[T], str | None]
+# What `ask` asks of the value it parsed, beyond its own schema; it raises the reason to re-prompt.
+type Objection[T] = Callable[[T], None]
 
 
 class ScenarioMeta(Frozen):
@@ -89,11 +89,6 @@ class Generation(Frozen):
     operation: Slug  # the engine's own name for what it will author and install
     brief: str = Field(min_length=1)
     target: Slug | None = None
-
-    def require_target(self) -> Slug:
-        if self.target is None:
-            raise Refusal(f"a {self.operation!r} request names no target")
-        return self.target
 
 
 class Game[P: BaseModel](Mutable):

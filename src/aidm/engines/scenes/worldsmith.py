@@ -1,7 +1,7 @@
 import re
 from collections.abc import Iterable, Mapping
 
-from aidm.core.entities import Slug
+from aidm.core.entities import Refusal, Slug
 from aidm.core.prompt import render_history
 from aidm.core.views import Pairs
 from aidm.engines.base import Person, Thing
@@ -29,12 +29,10 @@ TURNING = (
 )
 
 
-def scene_refusal[C: Person](
-    draft: SceneDraft[C], world: SceneWorld[C] | None = None
-) -> str | None:
+def check_scene[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None = None) -> None:
     """Free: the drafts may not import the world, and the authoring call has no world."""
-    unmet = scene_unmet(draft, world)
-    return None if not unmet else "the scene needs " + "; ".join(unmet)
+    if unmet := scene_unmet(draft, world):
+        raise Refusal("the scene needs " + "; ".join(unmet))
 
 
 def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) -> list[str]:

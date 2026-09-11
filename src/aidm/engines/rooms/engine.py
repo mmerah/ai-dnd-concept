@@ -4,11 +4,8 @@ from pathlib import Path
 from random import Random
 from typing import Any
 
-from pydantic import BaseModel
-
 from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import Fact
-from aidm.core.io import read_prompt
 from aidm.core.model import (
     AnyCharacter,
     AnyScenario,
@@ -31,7 +28,6 @@ from aidm.engines.base import (
     here_panel,
     party_panel,
     party_section,
-    render_worldsmith,
     trail_panel,
 )
 from aidm.engines.rooms.tools import (
@@ -47,8 +43,8 @@ from aidm.engines.rooms.tools import (
     UnlockWay,
 )
 from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RoomWorld
-from aidm.engines.rooms.worldsmith import MAP_ASK, extension_refusal, map_refusal, map_sections
-from aidm.engines.seam import Engine
+from aidm.engines.rooms.worldsmith import MAP_ASK, check_extension, check_map, map_sections
+from aidm.engines.seam import Engine, Request, Written
 
 WORLDSMITH_PROMPT = Path(__file__).parent / "worldsmith.md"
 RULES_PROMPT = Path(__file__).parent / "rules.md"
@@ -66,8 +62,8 @@ MAP_UNWRITTEN = Fact(
 class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
     dweller: type[N]
     world_type: type[RoomWorld[N, P]]
-    unwritten = {EXTEND: MAP_UNWRITTEN}
     family_prompt = RULES_PROMPT
+    worldsmith_prompt = WORLDSMITH_PROMPT
 
     def world(self, state: G) -> RoomWorld[N, P]:
         return state.payload
@@ -78,8 +74,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> RoomWorld[N, P]:
         draft: MapDraft[N] = scenario.payload
-        if (refused := map_refusal(draft)) is not None:
-            raise Refusal(refused)
+        check_map(draft)
         player = self.player_of(character)
         taken = (*draft.places, *draft.npcs, *draft.items)
         return self.world_type.begin(
@@ -88,6 +83,9 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
 
     def starting_items(self, _player: P, _taken: Iterable[str]) -> tuple[Prop, ...]:
         return ()
+
+    def family_sections(self, draft: G | None) -> Pairs:
+        return map_sections(None if draft is None else self.world(draft))
 
     def master_sections(self, state: G) -> Pairs:
         world = self.world(state)
@@ -165,12 +163,16 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         source: str,
         packs: Sequence[Slug],
         worldsmith: WorldsmithAnswer,
-        playable: Callable[[AnyScenario], str | None],
+        playable: Callable[[AnyScenario], None],
     ) -> AnyScenario:
         def built(draft: MapDraft[N]) -> AnyScenario:
-            return self.build_scenario(meta, tuple(packs), draft, source)
+            start = draft.places.get(draft.start)
+            premise = "" if start is None else start.description
+            return self.build_scenario(meta, tuple(packs), draft, source, premise)
 
-        prompt = self.render_opening(source, meta.scope)
+        prompt = self.render_opening(
+            source, meta.scope, intent=MAP_ASK, guidance=self.guidance(), answer=self.map_draft()
+        )
         return await self.compose(worldsmith, prompt, self.map_draft(), built, playable)
 
     def act(self, draft: G, action: Slug, words: str) -> None:
@@ -180,14 +182,12 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
             raise Refusal("say where you push on")
         draft.generation = Generation(operation=EXTEND, brief=words)
 
-    async def advance(
-        self, draft: G, request: Generation, worldsmith: WorldsmithAnswer
-    ) -> tuple[tuple[Fact, ...], str | None]:
-        if request.operation != EXTEND:
-            raise ValueError(f"the {self.id!r} engine writes no {request.operation!r}")
-        extension = await self.write_next(draft, request.brief, worldsmith)
-        self.install(draft, extension)
+    async def extend(self, draft: G, request: Generation, worldsmith: WorldsmithAnswer) -> Written:
+        self.install(draft, await self.write_next(draft, request.brief, worldsmith))
         return (), None
+
+    def worldsmith_requests(self) -> dict[Slug, Request[G]]:
+        return {EXTEND: Request(MAP_UNWRITTEN, self.extend)}
 
     def master_tools(self) -> tuple[MasterTool[G], ...]:
         return (
@@ -223,56 +223,18 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
     def move(self, draft: G, args: Move, _rng: Random) -> list[Fact]:
         return self.world(draft).move(args.to_id, args.with_ids)
 
-    def render_opening(self, source: str, scope: str) -> str:
-        return render_worldsmith(
-            role=read_prompt(WORLDSMITH_PROMPT),
-            source=source,
-            scope=scope,
-            family=map_sections(None),
-            intent=MAP_ASK,
-            guidance=self.guidance(),
-            answer=self.map_draft(),
-        )
-
-    def render_request(
-        self, draft: G, *, intent: str, guidance: str, answer: type[BaseModel]
-    ) -> str:
-        world = self.world(draft)
-        return render_worldsmith(
-            role=read_prompt(WORLDSMITH_PROMPT),
-            source=world.source,
-            scope=draft.scenario.scope,
-            family=map_sections(world),
-            intent=intent,
-            guidance=guidance,
-            answer=answer,
-        )
-
     async def write_next(self, draft: G, intent: str, worldsmith: WorldsmithAnswer) -> MapDraft[N]:
         world = self.world(draft)
         prompt = self.render_request(
             draft, intent=intent, guidance=self.guidance(), answer=self.map_draft()
         )
         return await worldsmith(
-            prompt, self.map_draft(), lambda answer: extension_refusal(answer, world)
+            prompt, self.map_draft(), lambda answer: check_extension(answer, world)
         )
 
     def install(self, draft: G, extension: MapDraft[N]) -> None:
         """Hidden, so nothing is told: the region reaches the player only as they walk it."""
         self.world(draft).attach(extension, extension.start)
-
-    def build_scenario(
-        self, meta: ScenarioMeta, packs: tuple[Slug, ...], draft: MapDraft[N], source: str
-    ) -> AnyScenario:
-        if (refused := map_refusal(draft)) is not None:
-            raise Refusal(refused)
-        return self.scenario(
-            meta=meta.with_premise(draft.places[draft.start].description),
-            engine=self.id,
-            packs=packs,
-            source=source,
-            payload=draft,
-        )
 
     @abstractmethod
     def guidance(self) -> str: ...
