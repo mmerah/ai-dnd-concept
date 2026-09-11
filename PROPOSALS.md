@@ -18,6 +18,7 @@ Now: `app/spawn.py:226-244` lets `FileNotFoundError` (no `claude`/`codex` binary
 Change: convert at the edge. `_spawn`: `except OSError as failed: raise Refusal(f"the {role}
 could not be started: {failed}")`, `except TimeoutError: raise Refusal(f"the {role} answered
 nothing in {timeout:.0f}s")`. Same in `run_builtin`. Every other site catches `Refusal` only.
+Decided: yes.
 
 ### 2. An uploaded source document fails as a bug (S)
 
@@ -26,6 +27,7 @@ Now: `core/source.py:24` `read_text(encoding="utf-8")` raises `UnicodeDecodeErro
 catches neither, so the page shows nothing. `core/io.py:170-172` already converts the first.
 Change: in `whole_text`: `except (UnicodeDecodeError, PyPdfError) as broken: raise
 Refusal(f"{path.name} cannot be read: {broken}") from broken`.
+Decided: yes.
 
 ### 3. `Refusal` is a `ValueError`, and refusal helpers run inside validators (S or M)
 
@@ -41,6 +43,7 @@ Decision:
   raises `Refusal` for symmetry; one line in CLAUDE.md.
 - B (M): `Refusal(Exception)`; `check_unique` raises `ValueError`; the five rules-code callers
   wrap it. The two error kinds become disjoint, as CLAUDE.md describes.
+Decided: A.
 
 ### 4. Media and speech catch `ValueError`, which hides validation errors and refusals (S)
 
