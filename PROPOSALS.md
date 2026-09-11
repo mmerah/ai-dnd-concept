@@ -56,6 +56,7 @@ Change: `parse_json[T: BaseModel](model, raw: str | bytes) -> T` beside `parse` 
 `except binascii.Error: raise Refusal(...)`. Then media catches `(HTTPError, Refusal)` and speech
 `(HTTPError, Refusal, wave.Error)`.
 Decision: keep `OSError` on `speech.py:65` (a full disk is not a bug) or drop it.
+Decided: yes; keep `OSError` on speech (a full disk is not a bug).
 
 ### 5. Packaging errors raised as refusals (S)
 
@@ -64,6 +65,7 @@ installed")`; `loner3e/engine.py:146-152` `twist_table()` raises `Refusal("... h
 columns")`. Both mean a broken install, not a message a role or player reads.
 Change: check once in `SceneEngine.__init__` (`ValueError` if `SRD_PACK` is missing); `srd_pack()`
 becomes `self.packs[SRD_PACK]`. `Loner3eEngine.__init__` checks the twist columns the same way.
+Decided: yes.
 
 ## B. Where rules live
 
@@ -84,6 +86,7 @@ changes fields and writes the facts. Add `SurvivorSheet.wear(skill)`, `.spend_st
 `.rested()`, `Goon.level(ability, boost)`, `Crewmate.maimed()`, `Sheet.raise_skill(label)`,
 `Sheet.earn(n)`, `TwentyfourxxWorld.take_job/finish_job`, `Loner3eWorld.tick_twist() -> bool`.
 The four `roll` methods keep only dice and card lines.
+Decided: yes.
 
 ### 7. Argument-shape rules sit in a validator for some tools and in the resolver for others (S)
 
@@ -96,6 +99,7 @@ Now: validators: `Check._one_thing` (`breathless/tools.py:46-52`), `ActionRoll._
 (`breathless/world.py:106-107`).
 Change: `model_validator`s on `NextScene`, `LevelUp`, `ChangeTags`, `Drive`; `ChangeStress.amount:
 int = Field(ne=0, ...)`. Resolvers and world methods then check state only.
+Decided: yes.
 
 ### 8. `leaving(state)` mutates through a parameter named `state` (S)
 
@@ -103,6 +107,7 @@ Now: `SceneEngine.leaving(self, _state: G)` (`scenes/engine.py:312`) reads as re
 `Loner3eEngine.leaving` (`loner3e/engine.py:154-161`) calls `member.refill(...)`, which writes
 `luck.current`. Everywhere else `draft` names what a call changes and `state` what it reads.
 Change: the hook takes `draft`; its docstring says it may change the draft.
+Decided: yes.
 
 ## C. Layers
 
