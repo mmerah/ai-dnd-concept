@@ -172,10 +172,6 @@ class Crewmate(Sheeted[CrewSheet]):
             )
         ]
 
-    def drop_item(self, item_id: Slug) -> list[Fact]:
-        item = self.require_sheet().remove_item(item_id, self.name)
-        return [self.fact(f"{self.mention} drops {item.name}", card=f"Dropped {item.name}")]
-
     def rows(self) -> Pairs:
         return self.sheet.rows() if self.sheet is not None else ()
 

@@ -39,15 +39,7 @@ from aidm.engines.base import (
     World,
     render_worldsmith,
 )
-from aidm.engines.hiring import (
-    HIRE,
-    HIRE_TOOL,
-    HIRE_UNWRITTEN,
-    SIGNED_ON,
-    DropItem,
-    Hire,
-    Hiring,
-)
+from aidm.engines.hiring import HIRE, HIRE_TOOL, HIRE_UNWRITTEN, SIGNED_ON, Hire, Hiring
 
 type AnyEngine = Engine[Any, Any, Any]
 
@@ -119,9 +111,6 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
 
     def leave_party(self, draft: G, args: LeaveParty, _rng: Random) -> list[Fact]:
         return self.world_of(draft).leave_party(args.entity_id)
-
-    def drop_item(self, draft: G, args: DropItem, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).require_actor(args.actor_id).drop_item(args.item_id)
 
     def hiring(self) -> Hiring[G, M] | None:
         """The write of a hired member's sheet; `None` when this engine hires nobody."""

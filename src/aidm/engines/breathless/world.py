@@ -129,17 +129,13 @@ class Survivor(Sheeted[SurvivorSheet]):
         facts.append(self.fact(used, card="Med kit used"))
         return facts
 
-    def drop_item(self, item_id: Slug) -> list[Fact]:
-        item = self.require_sheet().remove_item(item_id, self.name)
-        return [self.fact(f"{self.mention} drops {item.name}", card=f"Dropped {item.name}")]
-
     def wear_item(self, item_id: Slug) -> list[Fact]:
         sheet = self.require_sheet()
         item = sheet.require(item_id, self.name)
         worn = stepped(item.die)
         # SRD: "When reduced to a d4, the item either breaks, gets lost, or fades away".
         if worn == 4:
-            sheet.remove_item(item_id, self.name)
+            del sheet.items[item_id]
             gone = f"{item.name} is gone"
             return [self.fact(gone, card=gone)]
         item.die = worn

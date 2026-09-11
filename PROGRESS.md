@@ -181,8 +181,8 @@ Part B (steps 9 to 16) is the next commit.
 
 | dir   | before | after  |
 | ----- | ------ | ------ |
-| src   | 9,903  | 10,135 |
-| tests | 9,286  | 9,533  |
+| src   | 9,903  | 9,989  |
+| tests | 9,286  | 9,498  |
 | qa    | 1,788  | 1,788  |
 
 PLAN.md phase 3 steps 9 to 16. Full check green; goldens changed as step 16 says: the three
@@ -225,16 +225,25 @@ readers (Fable and Opus; no Codex on the machine). Implemented as three sequenti
   reaching private state); the refusal is covered through the `job` tool.
 - The tunnelgoons `Adventurer.rows` puts Health first, so `GoonSheet.rows` is the sheet's alone.
 
+### The cut
+
+A third pass (Fable, on the maintainer's instruction: the cleanest shape, whatever the plan says)
+took 145 lines back out of `src`: the `scene_unmet` helpers and the tunnelgoons `Pool` folded
+back into their callers; `_line` / `_consequence` folded into each `roll` (breathless and 24XX
+keep `Pool` and `_pool` for the three-way branch); `_operators_unmet` and `_take` inlined;
+`Sheeted.take_sheet` gone (its guard duplicates `require_hireable`; `install_sheet` assigns the
+sheet); `Person.drop_item`, the seam wrapper and `remove_item` gone in favour of the pre-B
+`ItemSheet.drop_item(item_id, owner)` and the two engine tool methods; restating docstrings and
+comments deleted, the kept whys at one line. Three tests of deleted helpers went with them.
+
 ### Refuted review findings
 
-- "Tunnelgoons `Pool.faces` and `label` are constants": PLAN step 12 spells the field list.
 - "`roll` and `_pool` both call `require_sheet()`": `_pool(world, actor, args)` is the plan's
   signature; the call is a field read behind a refusal.
 - "Breathless `_consequence` returns `None`": the plan names `_wear` and `_consequence` both for
   breathless; the vulnerable note is what a dangerous fail does.
 - "Drop `world` from `_line` and test `actor.id == PLAYER_ID`": 24XX's lead keeps their own id
   after `take_lead`, so `actor is world.player` is the check there; the three `_line`s stay alike.
-- "`wear_item` looks the item up twice": `remove_item` is the sheet's one door that deletes.
 
 ### Known and accepted
 
