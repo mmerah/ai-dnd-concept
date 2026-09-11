@@ -240,6 +240,8 @@ comments deleted, the kept whys at one line. Three tests of deleted helpers went
   row (the hook tunnelgoons uses for its Inventory count), so the narrator view, the interjection
   prompt and the page's Character panel show it and the Gear panel goes; `rows()` stays without
   it, so the master reads gear in its GEAR section only (maintainer's call after the phase).
+  `SceneWorld.cast_lines()` prints the player with `sheet_rows()` too, as the rooms family does,
+  so the worldsmith keeps the gear it has no section for.
 
 ### Refuted review findings
 
