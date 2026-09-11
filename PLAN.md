@@ -1,7 +1,7 @@
-# PLAN: fold the seven accepted simplifications into two commits
+# PLAN: one tool per change, then the seven accepted simplifications, in three commits
 
-This plan lands the seven accepted proposals from the second round of reads: one way to refuse a model answer (a bar raises `Refusal`), one request table on the seam, the pure worldsmith renderers hoisted once, the same engine code written once, the scene log on `Game.log` in core, the palettes and dice looks in one `ui/theme.py` table, and the edge and test cuts of bundle 10 as amended: `media.scene_ratio`, `media.icon_ratio` and `media.max_references` become constants, `RoleConfig.api`, `RoleSettings.each()` and `ROLE_NAMES` go, `Roles` loses the engine, the four wiring tests go, the test helpers collapse to one settings builder and one service builder, and the small deletions land.
-Not built: proposal 5 (the page's own action stays: `act`, `offered`, `MOVE_ON` and `MORE_MAP` are not touched), proposal 8 (live settings reload stays), proposal 9 (session resume stays), item 10.4 (`Engine.begin` keeps its three validations), `speech.voices` and `speech.sample_rate` stay settings, proposal 4.5 (`family_tools()`: `change_world` cannot be shared because each engine's `ChangeWorld` args type is its own and `master_tool` is typed on it; sharing `next_scene` and `hire` alone removes two lines per engine and adds two methods of five lines, a net gain of lines, and prepending them reorders `tools` so the three `master_tools.json` goldens would drift where PROPOSALS promised byte-identical; the `master_tools()` tuples stay as they are), and nothing from the appendix of feature cuts.
+This plan lands one tool per change (every arm of `change_world` becomes a master tool of its own, and the families and `Hiring` register the tools whose methods they own), then the seven accepted proposals from the second round of reads: one way to refuse a model answer (a bar raises `Refusal`), one request table on the seam, the pure worldsmith renderers hoisted once, the same engine code written once, the scene log on `Game.log` in core, the palettes and dice looks in one `ui/theme.py` table, and the edge and test cuts of bundle 10 as amended: `media.scene_ratio`, `media.icon_ratio` and `media.max_references` become constants, `RoleConfig.api`, `RoleSettings.each()` and `ROLE_NAMES` go, `Roles` loses the engine, the four wiring tests go, the test helpers collapse to one settings builder and one service builder, and the small deletions land.
+Not built: proposal 5 (the page's own action stays: `act`, `offered`, `MOVE_ON` and `MORE_MAP` are not touched), proposal 8 (live settings reload stays), proposal 9 (session resume stays), item 10.4 (`Engine.begin` keeps its three validations), `speech.voices` and `speech.sample_rate` stay settings, and nothing from the appendix of feature cuts. Proposal 4.5 is built as phase 1, in the one-tool-per-change shape the maintainer chose; its old reason not to, that the schema goldens would reorder, is waived.
 
 ## How to work
 
@@ -14,7 +14,7 @@ uv run ruff format --check
 uv run basedpyright
 ```
 
-1. Do the steps in order. Each is one action on the files it names. Every `file.py:line` anchor is as of `a8fc8ca`; where an earlier step moved the code, find the named symbol and ignore the number.
+1. Do the steps in order. Each is one action on the files it names. Every `file.py:line` anchor is as of `d384d69`; where an earlier step moved the code, find the named symbol and ignore the number, and where an earlier phase moved a block to another file, the step names the new file.
 2. Change a shape and its tests in the same step. One test per new behaviour. A test of a deleted behaviour is deleted with it, never kept alive by stubbing.
 3. Count lines at the start and end of each phase and write both in `PROGRESS.md`, one entry per phase. At the start `src` is 9,994 lines, `tests` 9,321 and `qa` 1,792:
    ```bash
@@ -33,7 +33,116 @@ uv run basedpyright
 6. Delete, do not preserve. No compatibility path reads an old save or scenario file. No constant, helper, prompt line or test stays for a caller that is gone.
 7. The standing limits hold. Imports flow `core <- engines <- turn <- app <- ui` with no cycles. No `Any` beyond the `Game[P]` bound. Every `__init__.py` stays empty. Tests never start a process and stub roles with `ScriptedSpawner`. `Refusal` stays the one message-bearing exception and any other exception is a bug. A bad model answer is re-prompted once with the error, then raises. Only code changes state or rolls dice. The narrator reads revealed facts only. Data is validated at each boundary with strict Pydantic models. Names must explain themselves and a comment is one line, only where the reason is not visible in the code.
 
-## Phase 1: one bar, one request table, one renderer, shared engine code
+## Phase 1: one tool per change
+
+### Steps
+
+1. `engines/seam.py:166-167`: `master_tools` is concrete and empty, moved beside `pack_options` at `:57`:
+   ```python
+   def master_tools(self) -> tuple[MasterTool[G], ...]:
+       """Each layer adds its own after `super()`'s: the family's, then `hire`, then the engine's."""
+       return ()
+   ```
+   This is the mechanism for the family's tools: one chain through `super()` on `master_tools()` itself. `SceneEngine`, `RoomEngine`, `Hiring` and each engine return `(*super().master_tools(), ...)`, so an engine lists only its own tools after the family's and `hire`. No new hook, no concatenation in `__init__`, and no MRO trap: every link calls `super()` and the root returns nothing, so for `master_tools` `Hiring` may sit anywhere in the bases (Breathless resolves `BreathlessEngine -> Hiring -> SceneEngine -> Engine`, so its tools come out family, `hire`, own); `advance` still wants it first until phase 2 step 7 removes that rule. A `family_tools()` hook would spend the hook and a concatenation line for the same order, and `__init__` registration, the pattern the request table uses in phase 2, would land after the doubled-name check at `seam.py:52-54`, which now has something to catch.
+2. `engines/base.py`: delete `CHANGE_WORLD` at `:15-18` and `ChangeWorld` at `:205-206`; `JoinParty` and `LeaveParty` at `:191-202` lose their docstring and `verb`, the sentence moving beside `PLAYER_ID`:
+   ```python
+   JOIN_PARTY = "A character here starts travelling with the player."
+   LEAVE_PARTY = "A party member stops travelling with the player."
+   ```
+   This is the convention for every change tool: its description is the sentence its arm's docstring carried, as a constant beside the args class (`REVEAL`, `KILL`, `GAIN_ITEM`), and the class loses the docstring so the schema does not say it twice. The guidance `CHANGE_WORLD` gave, call it once the story has settled a change, is already `master.md:19`, so `master.md` does not change. `Thing.reveal`'s docstring at `:73` ends "or the standalone `reveal` tool." `core/tools.py:15`: `NOISE_KEYS` drops `"discriminator"`: nothing emits one once the unions are gone (`Job.verb` is a plain `Literal`). `tests/app/test_master_tools.py:42-66`: `_ArmA`, `_ArmB`, the `change` field, the `'"discriminator"'` assert and the `Literal` import at `:7` go; the probe keeps `actor_id` and `title`.
+3. `engines/scenes/tools.py`: `Reveal`, `Enter`, `Leave`, `Kill` at `:15-40` lose docstring and `verb`; delete `SharedChange` at `:54` and the `Literal` import; `:6` keeps `Person` alone; add beside `NEXT_SCENE`:
+   ```python
+   REVEAL = "A hidden entity here becomes known to the player."
+   ENTER = "A cast member comes into the scene."
+   LEAVE = "A cast member goes out of the scene."
+   KILL = "Someone here dies."
+   ```
+   `engines/scenes/engine.py`: delete `shared_change` at `:176-190`; after `player_view` add the family's tools and six two-line methods:
+   ```python
+   def master_tools(self) -> tuple[MasterTool[G], ...]:
+       return (
+           *super().master_tools(),
+           master_tool("reveal", REVEAL, Reveal, self.reveal),
+           master_tool("enter", ENTER, Enter, self.enter),
+           master_tool("leave", LEAVE, Leave, self.leave),
+           master_tool("kill", KILL, Kill, self.kill),
+           master_tool("join_party", JOIN_PARTY, JoinParty, self.join_party),
+           master_tool("leave_party", LEAVE_PARTY, LeaveParty, self.leave_party),
+           master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
+       )
+
+
+   def reveal(self, draft: G, args: Reveal, _rng: Random) -> list[Fact]:
+       return self.world(draft).reveal_hidden(args.entity_id)
+   ```
+   `enter`, `leave`, `kill`, `join_party` and `leave_party` are the same line over `world.enter`, `world.leave`, `world.kill`, `world.join_party`, `world.leave_party`. `next_scene` is the family's method at `:192`, so its registration leaves the three scene engines with it. Delete the comment at `:97` ("last: `master_tools` reads the packs"): nothing in any `master_tools` reads them. Imports: `SharedChange` goes from `:43`; `ENTER, KILL, LEAVE, NEXT_SCENE, REVEAL` join it; `JOIN_PARTY, LEAVE_PARTY` join the `aidm.engines.base` block; `MasterTool, master_tool` from `aidm.core.tools`. `tests/engines/test_seam.py:56-57`: delete `FifthEngine.master_tools` and the `MasterTool` import at `:12`; add `test_a_scene_engine_offers_the_familys_tools_without_naming_them`: `list(_installed(tmp_path).tools) == ["reveal", "enter", "leave", "kill", "join_party", "leave_party", "next_scene"]`.
+4. `engines/rooms/tools.py`: `Reveal`, `MoveItem`, `Kill`, `UnlockWay` at `:9-43` lose docstring and `verb`; delete `SharedChange` at `:46`, the `Literal` import and the `aidm.engines.base` import at `:6` whole; add at the top `REVEAL`, `MOVE_ITEM`, `KILL`, `UNLOCK_WAY` from the four docstrings and `MOVE` from `tunnelgoons/engine.py:97` ("Call this to carry the player through an unlocked way out of this place."). `engines/rooms/engine.py`: delete `shared_change` at `:178-191`; after `player_view` add `master_tools` in the shape of step 3 over `reveal`, `move_item`, `kill`, `join_party`, `leave_party`, `unlock_way`, `move`, and the six methods, `kill` being `world.kill(world.require_member_here(args.entity_id))` and `move_item` `world.move_item(args.item_id, args.to)`; `move` at `:193` stays. Imports as in step 3; the `aidm.engines.rooms.tools` line at `:34` explodes to one name per line. `tests/engines/test_rooms.py`: delete `ChangeWorld` at `:45`, `master_tools` and `change_world` at `:60-64`, and `Annotated`, `Discriminator`, `Fact`, `base`, `CHANGE_WORLD`, `MasterTool`, `master_tool`, `SharedChange` from the imports; the docstring at `:49` ends "its state model and its creation; the tools are the family's"; `test_join_party_and_leave_party_land_through_change_world` at `:174` becomes `test_the_familys_tools_are_offered_in_order` and first asserts `list(engine.tools) == ["reveal", "move_item", "kill", "join_party", "leave_party", "unlock_way", "move"]`.
+5. `engines/hiring.py`: `Hiring` registers `hire`, after the `hire` method at `:57`:
+   ```python
+   def master_tools(self) -> tuple[MasterTool[G], ...]:
+       return (*super().master_tools(), master_tool("hire", HIRE_TOOL, Hire, self.hire))
+   ```
+   `from aidm.core.tools import MasterTool, master_tool` joins the imports after `aidm.core.model`. Delete the three `master_tool("hire", HIRE_TOOL, Hire, self.hire)` lines at `breathless/engine.py:116`, `twentyfourxx/engine.py:114`, `tunnelgoons/engine.py:115` and `HIRE_TOOL`, `Hire` from their `aidm.engines.hiring` imports. `DropItem` is written once here, after `Hire`, from `breathless/tools.py:13-18` without docstring and `verb`, both field descriptions byte for byte, with `DROP_ITEM = "The actor loses an item for good."` beside `HIRE_TOOL`; the copy at `twentyfourxx/tools.py:44-49` goes in step 8. `drop_item` is not a `Hiring` tool: Tunnel Goons mixes `Hiring` in and carries no backpack (its items are the room's props, moved by `move_item`), so the two backpack engines register it in steps 7 and 8, and phase 2 step 9 no longer moves the class.
+6. `engines/loner3e/tools.py`: `ChangeTags`, `Drive`, `RestoreLuck` at `:27-61` lose docstring and `verb`; delete `WorldChange` and `ChangeWorld` at `:64-69`, `from aidm.engines import base` at `:8`, the `scenes.tools` import at `:11`, `Annotated` and `Discriminator`; `:9` keeps `Attempt` alone; add `CHANGE_TAGS`, `DRIVE`, `RESTORE_LUCK` beside `TOLD`; `defeat_note` at `:133` says "with `change_tags`, as a `condition`". `engines/loner3e/engine.py`: `master_tools` at `:63-74` returns `(*super().master_tools(), change_tags, drive, restore_luck, roll)`; `change_world` at `:172-190` becomes three methods:
+   ```python
+   def change_tags(self, draft: Loner3eGame, args: ChangeTags, _rng: Random) -> list[Fact]:
+       actor = draft.payload.require_here(args.entity_id, alive=True)
+       return actor.change_tags(args.kind, args.gained, args.lost)
+
+
+   def drive(self, draft: Loner3eGame, args: Drive, _rng: Random) -> list[Fact]:
+       actor = draft.payload.require_here(args.entity_id, alive=True)
+       return actor.drive(goal=args.goal, motive=args.motive, nemesis=args.nemesis)
+
+
+   def restore_luck(self, draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
+       actor = draft.payload.require_here(args.entity_id, alive=True)
+       facts = actor.reveal()
+       # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
+       facts.extend(actor.refill("the conflict is behind them"))
+       return facts
+   ```
+   Imports: `CHANGE_WORLD` at `:12`, `ChangeWorld` at `:15` and the `scenes.tools` line at `:36` go; the three constants join `:13`.
+7. `engines/breathless/tools.py`: `ChangeStress`, `UseMedKit` at `:21-36` lose docstring and `verb`; delete `WorldChange` and `ChangeWorld` at `:39-44`, `from aidm.engines import base` at `:6`, the `scenes.tools` import at `:10`, `Annotated`, `Literal` and `Discriminator`; `:7` keeps `Attempt` alone; add `CHANGE_STRESS`, `USE_MED_KIT` at the top. `engines/breathless/engine.py`: `master_tools` at `:84-117` returns `(*super().master_tools(), drop_item, change_stress, use_med_kit, roll, catch_breath, loot_check, test_luck)`; `change_world` at `:191-201` becomes three one-line methods, `drop_item` being `return draft.payload.require_actor(args.actor_id).drop_item(args.item_id)`, `change_stress` and `use_med_kit` the same over `.change_stress(args.amount, args.why)` and `.use_med_kit()`; the note at `:298` reads "Death is `kill` on {who.name}." Imports: `CHANGE_WORLD`, `ChangeWorld`, `DropItem` and the `scenes.tools` line at `:48` go; `CHANGE_STRESS, USE_MED_KIT` join the `breathless.tools` block; `DROP_ITEM, DropItem` come from `aidm.engines.hiring`.
+8. `engines/twentyfourxx/tools.py`: the seven classes at `:12-94` lose docstring and `verb`; delete `DropItem` at `:44-49`, `WorldChange` and `ChangeWorld` at `:97-115`, `from aidm.engines import base` at `:6`, the `scenes.tools` import at `:9`, `Annotated` and `Discriminator` (`Literal` stays for `Job.verb`); `:7` keeps `Attempt` alone; add `CHANGE_HINDRANCES`, `GAIN_ITEM`, `REPAIR_ITEM`, `SPEND`, `TAKE_LEAD`, `SHIP_UPGRADE`, `DEFEND` at the top. `engines/twentyfourxx/engine.py`: `master_tools` at `:87-115` returns `(*super().master_tools(), change_hindrances, gain_item, drop_item, repair_item, spend, take_lead, ship_upgrade, defend, roll, test_luck, job)`; delete `apply_change` at `:256-280` and `change_world` at `:282-285`; each arm is a method in the shape of step 7 over `require_actor(args.actor_id)` (`repair_item` keeps its `require_gear` line; `take_lead`, `ship_upgrade` and `defend` call the world), and the family's `kill` is overridden for the one death the option must follow:
+   ```python
+   def kill(self, draft: TwentyfourxxGame, args: Kill, _rng: Random) -> list[Fact]:
+       facts = super().kill(draft, args, _rng)
+       self._succession(draft)
+       return facts
+   ```
+   This changes behaviour: today `_succession` runs after every `change_world` arm; after this step only `kill` and `roll` run it, which is harmless because they are the two tools that can kill the lead and `Turn.call` blocks further tools once `pending` is set. `_succession` at `:287-306`: the docstring reads "`kill` and `roll` are the two tools that can kill the lead."; the option replays flat, `name="take_lead"` and `args={"entity_id": member.id}`. Imports: `CHANGE_WORLD`, `ChangeWorld`, `DropItem`, `WorldChange` go; the seven constants join `:19`; `Kill` replaces `NEXT_SCENE, NextScene` at `:17`; `DROP_ITEM, DropItem` come from `aidm.engines.hiring`. Tests: `test_answering_the_succession_decision_makes_the_member_the_player` at `tests/twentyfourxx/test_tools.py:409-416` already replays the option through `answer` and stays; add `test_kill_on_the_lead_with_a_hired_member_opens_the_succession` beside `:389`: `draft = hired(small_world(), KESTREL, skills={"Shooting": 8}).draft()`, `change(ENGINE, draft, "kill", entity_id=PLAYER_ID)`, then `draft.pending is not None and draft.pending.kind == "succession"` and `ENGINE.over(draft) is None`.
+9. `engines/tunnelgoons/tools.py`: delete `Rest` at `:14-17` (a class with no fields is the schema `Frozen` already is), `WorldChange` and `ChangeWorld` at `:20-23`, `from aidm.engines import base` at `:7`, the `rooms.tools` import at `:10`, `Annotated`, `Literal` and `Discriminator`; `:8` keeps `Attempt` alone; add `REST = "The player and the party spend a night here and heal to full Health."`. `engines/tunnelgoons/engine.py`: `master_tools` at `:92-116` returns `(*super().master_tools(), master_tool("rest", REST, Frozen, self.rest), roll, level_up)`; `change_world` at `:161-167` becomes `rest(self, draft, _args: Frozen, _rng)` returning `draft.payload.rest()`. Imports: `CHANGE_WORLD`, `ChangeWorld`, `Rest`, the `rooms.tools` line at `:15` go; `REST` joins the `tunnelgoons.tools` block; `Frozen` joins `:6`.
+10. `engines/seam.py:70-83`: delete `tool()`; `answer` looks the tool up itself:
+    ```python
+    def answer(self, draft: G, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
+        found = self.tools.get(chosen.name)
+        if found is None:
+            raise Refusal(
+                f"the {self.id!r} engine has no tool {chosen.name!r} to play option {chosen.id!r}"
+            )
+        return found.call(draft, chosen.args, rng)
+    ```
+    `turn/run.py:109` becomes `found = self.engine.tools.get(name)` followed by `if found is None: raise Refusal(f"{name!r} is not a tool of the {self.engine.id!r} engine.")`; `tests/app/test_builtin.py:37,156` pin that text and stay.
+11. `tests/support/table.py:75-91`: delete `change_args` and `changed` (flat, `changed` is `tool_call`); `change` plays a tool by name:
+    ```python
+    def change(engine: AnyEngine, draft: AnyGame, name: str, **args: JsonValue) -> list[Fact]:
+        return list(engine.tools[name].call(draft, args, Random(0)))
+    ```
+    and `refused` keeps its shape over `name`. Every `changed(` is `tool_call(` and the import follows: `tests/support/golden_turn.py:3,13`, `tests/loner3e/golden_turn.py:2,11`, `tests/breathless/golden_turn.py:1,8,10`, `tests/twentyfourxx/golden_turn.py:1,8-11`, `tests/tunnelgoons/golden_turn.py:1,16`, `tests/turn/test_turn.py:8,21-22,74,129-130,139,151-152,304`, `tests/tunnelgoons/test_play.py:5,74,76,112`, `tests/app/test_game_service.py:12,267`; `tests/loner3e/test_world.py:16-21` keep their two wrappers with the parameter named `name`. `tests/app/test_master_tools.py:13` drops `change_args`; `:138-139` become `table.call("reveal", {"entity_id": VAULT_MAP, "junk": 1})` and `table.call("reveal", {"entity_id": VAULT_MAP})`; `:165,218,409` become `tool_call("reveal", entity_id=VAULT_MAP)` and `tool_call("enter", entity_id="tomas")`; `:127` calls `"reveal"`. `tests/app/test_builtin.py:21` is `CHANGE_TAGS = ENGINES_BUILT[LONER3E].tools["change_tags"]` and every `CHANGE_WORLD` name (`:33,36,38,132,133`) follows; `:104-110` the flat dict is the arguments; `:113-114,126,131,143-144,163,219,222` say `change_tags`. `tests/app/test_mcp.py:18-21`: `REVEAL_VAULT_MAP = {"name": "reveal", "arguments": {"entity_id": "vault-map"}}`; `:101,106` say `reveal`. `tests/twentyfourxx/test_tools.py:184` becomes `test_spend_with_actor_id_pays_from_the_member_credits`. `qa/agents.py:5,119-120`: the `!change` clause and the `case "change":` go, a change is the plain `case _`; `qa/README.md:32` row goes; `qa/s_loner.py:63,105,235,335` spell `!reveal entity_id=vault-map`, `!change_tags entity_id=player ...`, `!drive entity_id=player ...`, `!kill entity_id=player`.
+12. Prompts and docs name tools, not arms. `engines/scenes/rules.md:17` "no other tool can bring", `:32` "Call `join_party` when someone here comes along. Call `leave_party`"; `engines/rooms/rules.md:5` "until `unlock_way` opens", `:13` as scenes `:32`; `engines/loner3e/rules.md:16` "Call `change_tags` when ... Call `drive`", `:26` "Call `kill` or the fitting tool instead.", `:27` "and `enter` or `leave` after.", `:58` "now with `change_tags`.", `:61` "Call `restore_luck` after", `:73` "Call `change_tags` for ... Call `drive` for a"; `engines/breathless/rules.md:34` "Call `change_stress` for", `:35` "Call `use_med_kit` to spend", `:36` "no other tool spends it.", `:49` "and on `change_stress`, `use_med_kit` and `drop_item`."; `engines/twentyfourxx/rules.md:29` "Call `gain_item` to add ... Call `drop_item` to lose one", `:30` "Call `repair_item` to mend ... Call `spend` for everything else", `:35` "Call `defend` when", `:40` "Call `change_hindrances` when", `:47` "on `defend` or `repair_item`.", `:48` "Call `ship_upgrade` to upgrade", `:53` "Call `spend` to pay ₡1", `:69` "wherever a tool offers"; `engines/tunnelgoons/rules.md:30` "Call `reveal` only for ... Call `kill` for a death", `:40` "`unlock_way`, which also makes", `:48` "Call `rest` for a night", `:56` "`rest` heals them with the party." Every line only gets shorter, so no wrap moves. `docs/24XX.md:38`, `docs/BREATHLESS.md:28`, `docs/LONER-3E.md:54`, `docs/TUNNEL-GOONS.md:46` become "Every tool makes one change, rolls dice, opens a decision, or ends the turn."; the `- \`change_world\` — arms:` bullet at `24XX.md:40-44`, `BREATHLESS.md:30-32`, `LONER-3E.md:56-58`, `TUNNEL-GOONS.md:48` opens "- `reveal`, `enter`, `leave`, `kill`, `join_party`, `leave_party`," (rooms: "`reveal`, `move_item`, `kill`, `join_party`, `leave_party`, `unlock_way`") with the rest of its text as it is, "The sheet arms take `actor_id`" reading "The sheet tools take `actor_id`".
+13. Regenerate the goldens (How to work §4) and read the diff: the four `tests/core/fixtures/schemas/*/master_tools.json` are rewritten whole, one entry per tool in family, `hire`, engine order (loner3e 11 tools, breathless 15, twentyfourxx 19, tunnelgoons 11), each change tool's `parameters` a flat object with no `$defs`, `oneOf`, `verb` or `discriminator`; `tests/core/fixtures/prompts/*/master.txt` differ on exactly the lines step 12's `rules.md` edits land on: `breathless/master.txt:60-62,75,94,109`, `loner3e/master.txt:42,52-53,84,87,99,123,138`, `tunnelgoons/master.txt:56,66,74,82,88,96`, `twentyfourxx/master.txt:55-56,61,66,73-74,79,95,120,135`. `narrator.txt`, `worldsmith.txt`, `interjection.txt` and the four `turn/*.json` are byte-identical: the traces never named the tool.
+
+### Done when
+
+- `grep -rnI "change_world\|ChangeWorld\|WorldChange\|SharedChange\|shared_change\|CHANGE_WORLD\|Discriminator\|discriminator\|verb: Literal\|change_args\|def tool(" src tests qa docs` prints only `Job.verb` at `engines/twentyfourxx/tools.py`; `grep -rn "\barm\b\|arms\b" src/aidm/engines/*/rules.md src/aidm/turn/prompts/master.md docs/*.md` prints nothing.
+- `grep -rn "def master_tools" src` prints `seam.py`, `scenes/engine.py`, `rooms/engine.py`, `hiring.py` and the four engines, and every body but the seam's spreads `super().master_tools()` first. `list(engine.tools)` for each built engine is the family's seven, then `hire` where mixed in, then its own; `tests/engines/test_seam.py` and `tests/engines/test_rooms.py` each pin one family's order on an engine that names no tool.
+- The `take_lead` succession option replays through `answer` with flat args, and `kill` on the lead with a hired member alive opens the same decision `roll` does (`test_kill_on_the_lead_with_a_hired_member_opens_the_succession`).
+- The schema goldens and the `master.txt` goldens regenerate as step 13 says; anything else under `tests/core/fixtures/` is a bug.
+- `src` is about 9,920 lines, at most 9,940: 9,994 plus step 1 (+3), step 2 (−12), step 3 (+14: the scene family's constants and flat classes save 12, its tool table, six methods and imports cost 26), step 4 (+24: the same for rooms, and the `rooms.tools` import explodes to twelve lines), step 5 (0: `Hiring.master_tools`, `DropItem` and `DROP_ITEM` cost what the three `hire` lines and the Breathless copy save), step 6 (−18), step 7 (−28), step 8 (−16: the 24XX union, the seven docstrings and `verb` lines, the doubled `DropItem`, `apply_change` and `change_world` were about 80 lines; the constants, the eleven methods, the `kill` override and the larger tool table are about 65), step 9 (−33), step 10 (−5), steps 11-13 (0). `tests` is about 9,300: the three new tests cost what the probe arms, the sixth engine's tool and the three helpers save. `qa` is 1,790.
+- Full check green. `uv run aidm` opens each of the four shipped scenarios and plays a turn in which the master lands one change tool. Saves keep their shape; a save from before this phase restores as before, except a 24XX save holding an open succession decision, whose options name `change_world` and are refused at `answer`.
+
+## Phase 2: one bar, one request table, one renderer, shared engine code
 
 ### Steps
 
@@ -221,7 +330,7 @@ uv run basedpyright
            item = self.drop(item_id, owner.name)
            return [owner.fact(f"{owner.mention} drops {item.name}", card=f"Dropped {item.name}")]
    ```
-   Delete `Survivor.drop_item` at `engines/breathless/world.py:110-113`, `Crewmate.drop_item` at `engines/twentyfourxx/world.py:137-140` and the unused `Crewmate.require_item` at `:98-99`; repoint the `ItemSheet` imports at `breathless/world.py:12` and `twentyfourxx/world.py:11` to `aidm.engines.base` and make `Supply(Item)` at `breathless/world.py:32` and `Gear(Item)` at `twentyfourxx/world.py:41`, importing `Item` beside it. The two `change_world` arms become `actor = world.require_actor(change.actor_id)` then `return actor.dice().drop_item(change.item_id, actor)` at `breathless/engine.py:194-195` and `twentyfourxx/engine.py:266-267`. `DropItem` is written once: move the class from `engines/breathless/tools.py:13-18` to `engines/hiring.py` after `Hire`, keeping its docstring and both field descriptions byte for byte, delete the copy at `engines/twentyfourxx/tools.py:44-49`, and import it from `aidm.engines.hiring` beside `ACTOR` in both `tools.py`. `tests/breathless/test_tools.py:160-165,256-259` still pass through `change_world`.
+   Delete `Survivor.drop_item` at `engines/breathless/world.py:110-113`, `Crewmate.drop_item` at `engines/twentyfourxx/world.py:137-140` and the unused `Crewmate.require_item` at `:98-99`; repoint the `ItemSheet` imports at `breathless/world.py:12` and `twentyfourxx/world.py:11` to `aidm.engines.base` and make `Supply(Item)` at `breathless/world.py:32` and `Gear(Item)` at `twentyfourxx/world.py:41`, importing `Item` beside it. The two `drop_item` tool methods (phase 1 steps 7 and 8, `engines/breathless/engine.py` and `engines/twentyfourxx/engine.py`) become `actor = draft.payload.require_actor(args.actor_id)` then `return actor.dice().drop_item(args.item_id, actor)`. `DropItem` already lives once in `engines/hiring.py` (phase 1 step 5), so nothing moves. `tests/breathless/test_tools.py:160-165,256-259` still pass through `change`.
 10. `engines/hiring.py`: delete the abstract `hireable` at `:85-86` and its three bodies at `breathless/engine.py:203-204`, `twentyfourxx/engine.py:312-313`, `tunnelgoons/engine.py:169-170`. `Hiring` gains `member: type[M]` beside `hire_answer` and one narrow that `hire` and `write_hire` both call:
     ```python
     def hireable(self, draft: G, entity_id: Slug) -> M:
@@ -230,7 +339,7 @@ uv run basedpyright
             raise ValueError(f"{member.id!r} is not a {self.member.__name__}")
         return member
     ```
-    The `ValueError` is a bug, never a refusal: the world already files only `M`. Each engine sets `member = Survivor` / `Crewmate` / `Npc` beside `hire_answer`.
+    The `ValueError` is a bug, never a refusal: the world already files only `M`. Each engine sets `member = Survivor` / `Crewmate` / `Npc` beside `hire_answer`. Phase 1 left `hireable` as it was, so this stands.
 11. `engines/hiring.py:71`: inline `Generation.require_target` and delete it from `core/model.py:93-96`:
     ```python
     if request.target is None:
@@ -258,36 +367,25 @@ uv run basedpyright
         return [dice_fact, Fact(trace=f"{question} — d{die} [{rolled[0]}] -> {result}")]
     ```
     `engines/breathless/engine.py:362-366` returns `luck_test(args.question, args.die, ("fail", "success-but", "success"), rng)`; `engines/twentyfourxx/engine.py:402-407` returns `luck_test(args.question, 6, ("trouble now", "signs of it", "nothing"), rng)`. `tests/breathless/test_tools.py:232-239` and `tests/twentyfourxx/test_tools.py:125-130` stay green as they are.
-14. `engines/seam.py:70-83`: delete `tool()`; `answer` looks the tool up itself:
-    ```python
-    def answer(self, draft: G, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
-        found = self.tools.get(chosen.name)
-        if found is None:
-            raise Refusal(
-                f"the {self.id!r} engine has no tool {chosen.name!r} to play option {chosen.id!r}"
-            )
-        return found.call(draft, chosen.args, rng)
-    ```
-    `turn/run.py:109` becomes `found = self.engine.tools.get(name)` followed by `if found is None: raise Refusal(f"{name!r} is not a tool of the {self.engine.id!r} engine.")`; `tests/app/test_builtin.py:37,156` pin that text and stay.
-15. `engines/loner3e/world.py:52-60`: `forbidden` builds on `super()` like `Sheeted.forbidden` at `engines/base.py:116-118`:
+14. `engines/loner3e/world.py:52-60`: `forbidden` builds on `super()` like `Sheeted.forbidden` at `engines/base.py:116-118`:
     ```python
     def forbidden(self) -> str:
         parts = (super().forbidden(), "full luck" if self.luck.current != LUCK_MAX else "")
         return ", ".join(part for part in parts if part)
     ```
-16. `core/prompt.py`: `sentence` moves here from `engines/scenes/world.py:276-277`, after `lines_of`. `engines/scenes/world.py:184` imports it from `aidm.core.prompt` beside `lines_of`; `engines/breathless/engine.py:49` and `engines/twentyfourxx/engine.py:18` drop their `from aidm.engines.scenes.world import sentence` and add `sentence` to their `aidm.core.prompt` import.
+15. `core/prompt.py`: `sentence` moves here from `engines/scenes/world.py:276-277`, after `lines_of`. `engines/scenes/world.py:184` imports it from `aidm.core.prompt` beside `lines_of`; `engines/breathless/engine.py:49` and `engines/twentyfourxx/engine.py:18` drop their `from aidm.engines.scenes.world import sentence` and add `sentence` to their `aidm.core.prompt` import.
 
 ### Done when
 
 - `grep -rn "str | None" src/aidm/core/views.py src/aidm/engines/*/worldsmith.py` prints nothing; `grep -rn "def [a-z_]*_refusal\|\.refusal(" src tests` prints only `busy_refusal`, `play_refusal` and `_refusal_text`. A refused sheet, scene, map or narration is re-prompted once through `ask` and then raises `Refusal`.
-- `grep -rn "unwritten =\|def advance\|require_target\|List it first\|def hireable(self, draft\|def tool(\|keep_highest" src` prints `Engine.advance` once, `Hiring.hireable` once and nothing else; `grep -rn "def drop_item\|def sentence" src` prints `engines/base.py` once and `core/prompt.py` once. `Engine.requests` is the one table; `tests/tunnelgoons/test_worldsmith.py` no longer names `departure`.
+- `grep -rn "unwritten =\|def advance\|require_target\|List it first\|def hireable(self, draft\|keep_highest" src` prints `Engine.advance` once, `Hiring.hireable` once and nothing else; `grep -rn "def drop_item\|def sentence" src` prints `engines/base.py` once and `core/prompt.py` once. `Engine.requests` is the one table; `tests/tunnelgoons/test_worldsmith.py` no longer names `departure`.
 - `grep -rn "def render_request\|def render_opening\|def build_scenario" src` prints `engines/seam.py` three times and nothing else. `tests/core/fixtures/prompts/*/worldsmith.txt` do not change.
-- `tests/core/fixtures/schemas/*/master_tools.json` do not change: `DropItem` keeps its docstring and descriptions, and no tool moved in the list. `name` is already the first field of `Supply` and `Gear`, so the `worldsmith.txt` schemas, which embed them through the cast's sheet, do not change either.
+- `tests/core/fixtures/schemas/*/master_tools.json` do not change: `DropItem` keeps its descriptions and its place in each list. `name` is already the first field of `Supply` and `Gear`, so the `worldsmith.txt` schemas, which embed them through the cast's sheet, do not change either.
 - One golden regenerates: `tests/core/fixtures/turn/loner3e.json`, the `Risk` event's `highlight` alone. Anything else in `tests/core/fixtures/` is a bug.
-- `src` is about 9,940 lines, at most 9,955: 9,994 plus step 1 (0: the new `ask` has the body lines of the old), steps 2-5 (−17), steps 6-7 (+25: `Request`, three `worldsmith_requests`, `Hiring.__init__` and the split come to about 37 lines; the six `unwritten` lines, the if-chain, the guard and the `super()` branch were 11), step 8 (−25), step 9 (−8: `Item` is three lines), steps 10-11 (−4), step 12 (−8), step 13 (−4), step 14 (−4), steps 15-16 (−7). `tests` is about 9,320: the raises cost what the deleted goons test saves.
+- `src` is about 9,880 lines, at most 9,895: 9,923 plus step 1 (0: the new `ask` has the body lines of the old), steps 2-5 (−17), steps 6-7 (+25: `Request`, three `worldsmith_requests`, `Hiring.__init__` and the split come to about 37 lines; the six `unwritten` lines, the if-chain, the guard and the `super()` branch were 11), step 8 (−25), step 9 (−2: `Item` and `ItemSheet.drop_item` cost seven, the two member methods and `require_item` were eleven, and the two tool methods gain a line each), steps 10-11 (−4), step 12 (−8), step 13 (−4), steps 14-15 (−7). `tests` is about 9,300: the raises cost what the deleted goons test saves.
 - Full check green. `uv run aidm` opens each of the four shipped scenarios and plays a turn. Saves keep their shape and a save from before this phase restores as before.
 
-## Phase 2: the log in core, the theme in ui, edge and test cuts
+## Phase 3: the log in core, the theme in ui, edge and test cuts
 
 ### Steps
 
@@ -412,8 +510,8 @@ uv run basedpyright
 
 - `grep -rn "SceneRecord\|\bVisit\b\|def records\|def record\b\|\.records()\|world(.*)\.exchanges()\|payload\.exchanges()" src tests qa` prints nothing. `Game.log` is the one history; `state.exchanges()` is the one read.
 - A save written before this phase is skipped on the home screen with a warning (its `SceneRun.exchanges` or `Visit` key is an extra field); a new game saves `log` beside `payload` and restores through `engine.restore`.
-- No golden regenerates in steps 1-7: every prompt fixture is byte-identical to the phase 1 commit.
+- No golden regenerates in steps 1-7: every prompt fixture is byte-identical to the phase 2 commit.
 - `grep -rn "dice_look\|palette\|DiceLook\|Palette" src` prints only `ui/theme.py`, `ui/dice.py` and `ui/game.py`; `grep -rn "game-theme-\|_PALETTES\|def seed" src` prints nothing. `THEMES` names the four engine ids and `test_no_ui_module_names_a_built_engine_id` allows `ui/theme.py` alone.
 - `grep -rn "scene_ratio\|icon_ratio\|max_references\|ROLE_NAMES\|def each\|def api\|\blist_tools(\|def drain(self\|ui_settings\|FakeBox\|class Box\b" src tests qa` prints nothing; `ls .mcp.json .codex src/aidm/ui/__main__.py tests/support/ui.py tests/ui/test_theme.py tests/app/test_mcp_lifespan.py` finds none of them. `Roles(spawner)` is the only constructor; `worldsmith(spawner)` lives in `app/spawn.py`.
-- `src` is about 9,875 lines, at most 9,900: 9,940 minus steps 1-5 (−30: the two `records()` projections, `Visit` and the three abstract methods go, `Chapter`, `Game.exchanges`, `open_chapter` and the two `validate` lines come), steps 8-9 (−18: the four palettes are thirteen lines each wherever they live, so the gain is the registry, `_palette_css`, the class juggling and the two core types), step 10 (0), step 11 (−5), step 12 (+2), step 16 (−4), step 17 (−9). `tests` is about 9,170: 9,320 minus step 13 (−129 with `test_theme.py`), step 14 (−17), step 15 (−10), step 16 (−11), plus step 2 (+5), step 6 (+7) and step 17 (+3). `qa` stays 1,792.
+- `src` is about 9,815 lines, at most 9,840: 9,880 minus steps 1-5 (−30: the two `records()` projections, `Visit` and the three abstract methods go, `Chapter`, `Game.exchanges`, `open_chapter` and the two `validate` lines come), steps 8-9 (−18: the four palettes are thirteen lines each wherever they live, so the gain is the registry, `_palette_css`, the class juggling and the two core types), step 10 (0), step 11 (−5), step 12 (+2), step 16 (−4), step 17 (−9). `tests` is about 9,150: 9,300 minus step 13 (−129 with `test_theme.py`), step 14 (−17), step 15 (−10), step 16 (−11), plus step 2 (+5), step 6 (+7) and step 17 (+3). `qa` stays 1,790.
 - Full check green. `uv run aidm` opens each of the four shipped scenarios and plays a turn; each shows its own colours and dice; the settings page saves a key and reloads live as before.
