@@ -1,5 +1,5 @@
 import logging
-from asyncio import Task, create_task
+from asyncio import Task, create_task, gather
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -14,13 +14,13 @@ from aidm.app.spawn import Spawner, worldsmith
 from aidm.app.speech import Reader, open_reader
 from aidm.config import Role, Settings, read_settings
 from aidm.core.entities import EngineId, Refusal, Slug, slug
+from aidm.core.facts import Fact
 from aidm.core.io import FileStore, Library, decode
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioMeta
 from aidm.core.play import Answer, Exchange, Mark, SpokenLine
 from aidm.core.source import given_text
 from aidm.core.tools import MasterTool
-from aidm.core.views import PlayerView
-from aidm.engines.base import Chattiness, Person
+from aidm.core.views import Chattiness, Companion, PlayerView
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
 from aidm.turn.run import NO_TURN, Turn
@@ -79,8 +79,15 @@ class GameService:
     def presents(self) -> bool:
         return self.media is not None or self.reader is not None
 
+    @property
+    def speaking(self) -> bool:
+        return self._speaking is not None and not self._speaking.done()
+
     def unopened(self) -> bool:
         return not self.busy and not self.state.exchanges()
+
+    async def settled(self) -> None:
+        await gather(*self._background)
 
     async def open(self) -> None:
         """A failed narrator leaves the premise to do its work; a reload mid-opening is a no-op."""
@@ -89,7 +96,7 @@ class GameService:
         self.phase = "narrator"
         try:
             draft = self.state.draft()
-            lines = await self.roles.narrate(self.engine, draft, (), OPENING_NARRATION, fatal=False)
+            lines = await self._narrated(draft, (), OPENING_NARRATION)
             if lines:
                 self.save(self.engine.close(draft, lines, (), mark="opening"))
             self._present()
@@ -112,7 +119,7 @@ class GameService:
         self.intent = words
         try:
             self.save(self.engine.land(draft))
-            written = await self._generate(words)
+            written = await self._grow(words=words, mark="")
         finally:
             self.intent = ""
         if written:
@@ -130,7 +137,7 @@ class GameService:
             if turn.narrates():
                 self.phase = "narrator"
                 lines = await self.roles.narrate(
-                    self.engine, turn.draft, tuple(turn.facts), turn.words, fatal=True
+                    self.engine, turn.draft, tuple(turn.facts), turn.words
                 )
             state = turn.finish(lines)
         finally:
@@ -138,7 +145,7 @@ class GameService:
             self.turn, self.phase = None, None
         self.save(state)
         self._present()
-        await self._generate()
+        await self._grow(words="", mark="story")
         if (
             self.interjections
             and self.state.pending is None
@@ -157,7 +164,7 @@ class GameService:
         member = next(
             (
                 candidate
-                for candidate in self.engine.world(self.state).members()
+                for candidate in self.engine.companions(self.state)
                 if self._speaks(candidate)
             ),
             None,
@@ -167,11 +174,11 @@ class GameService:
         before = self.state
         try:
             lines, proposal = await self.roles.interject(self.engine, self.state, member)
-        except (OSError, Refusal) as failed:
+        except Refusal as failed:
             LOGGER.warning("the party did not speak: %s", failed)
             return
         if self.turn is not None or self.phase is not None or self.state is not before:
-            LOGGER.info("%s's interjection came after the turn moved on; dropped", member.name)
+            LOGGER.info("%s's interjection came after the turn moved on; dropped", member.label)
             return
         if not lines:
             return
@@ -180,11 +187,11 @@ class GameService:
         )
         self.speak(self._newest())
 
-    def _speaks(self, candidate: Person) -> bool:
+    def _speaks(self, candidate: Companion) -> bool:
         # The one die that is not the game's: it spawns a narrator, changes no state, lands no fact.
         return self.rng.randint(1, 10) <= INTERJECTION_ODDS[candidate.chattiness]
 
-    async def _generate(self, words: str = "") -> bool:
+    async def _grow(self, *, words: str, mark: Mark) -> bool:
         request = self.state.generation
         if request is None:
             return False
@@ -193,7 +200,6 @@ class GameService:
         if self.engine.over(self.state) is not None:
             self.save(self.engine.land(draft))
             return False
-        mark: Mark = "" if words else "story"
         self.phase, grown = "worldsmith", True
         try:
             facts, telling = await self.engine.advance(
@@ -203,9 +209,9 @@ class GameService:
                 self.save(self.engine.land(draft))
             else:
                 self.phase = "narrator"
-                lines = await self.roles.narrate(self.engine, draft, facts, telling, fatal=False)
+                lines = await self._narrated(draft, facts, telling)
                 self.save(self.engine.close(draft, lines, facts, words=words, mark=mark))
-        except (OSError, Refusal) as failed:
+        except Refusal as failed:
             LOGGER.warning("the world did not grow: %s", failed)
             draft = self.state.draft()
             draft.generation = None
@@ -223,6 +229,16 @@ class GameService:
             self.phase = None
         self._present()
         return grown
+
+    async def _narrated(
+        self, draft: AnyGame, facts: tuple[Fact, ...], prompt: str
+    ) -> tuple[SpokenLine, ...]:
+        """The scene cost minutes to write; an unwritable arrival must not throw it away."""
+        try:
+            return await self.roles.narrate(self.engine, draft, facts, prompt)
+        except Refusal as failed:
+            LOGGER.warning("the arrival went unnarrated: %s", failed)
+            return ()
 
     def _present(self) -> None:
         newest = self._newest()
@@ -321,6 +337,9 @@ class Runtime:
         """Dict order picks it; a create page has to start somewhere."""
         return next(iter(self.engines))
 
+    def scenario_models(self) -> dict[EngineId, type[AnyScenario]]:
+        return {engine_id: engine.scenario for engine_id, engine in self.engines.items()}
+
     def published_tools(self) -> tuple[MasterTool[AnyGame], ...]:
         """A CLI lists tools only inside its own turn; between turns there is nothing to call."""
         turn = self.playing()
@@ -385,10 +404,7 @@ class Runtime:
 
     def _open(self, target: LaunchTarget) -> GameService:
         settings = self.settings
-        scenario = self.library.read_scenario(
-            target.scenario_id,
-            {engine_id: engine.scenario for engine_id, engine in self.engines.items()},
-        )
+        scenario = self.library.read_scenario(target.scenario_id, self.scenario_models())
         engine = self.engines[scenario.engine]
         character = self.library.read_character(target.character_id, engine.id, engine.character)
         return GameService(

@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Slug
 from aidm.engines.base import Attempt
@@ -28,6 +28,12 @@ class ChangeTags(Frozen):
     )
     lost: tuple[str, ...] = Field(default=(), description="Exact tags lost, lifted or used up.")
 
+    @model_validator(mode="after")
+    def _at_least_one(self) -> Self:
+        if not self.gained and not self.lost:
+            raise ValueError("at least one gained or lost tag")
+        return self
+
 
 class Drive(Frozen):
     entity_id: Slug = Field(description="Exact id of the player or a living character here.")
@@ -39,6 +45,12 @@ class Drive(Frozen):
     nemesis: str = Field(
         default="", description="Who or what stands in their way. Empty keeps the current nemesis."
     )
+
+    @model_validator(mode="after")
+    def _at_least_one(self) -> Self:
+        if not self.goal and not self.motive and not self.nemesis:
+            raise ValueError("a goal, a motive or a nemesis")
+        return self
 
 
 class RestoreLuck(Frozen):

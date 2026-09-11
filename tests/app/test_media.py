@@ -1,3 +1,4 @@
+import json
 from asyncio import gather, sleep
 from collections.abc import Sequence
 from pathlib import Path
@@ -115,7 +116,31 @@ async def test_concurrent_illustrations_of_one_scene_generate_it_once(
     assert len(scene_prompts) == 1
     # Every other prompt is an icon: a repeat is a second bill for the same picture.
     assert len(prompts) == len(set(prompts))
-    assert illustrator.generating == set()
+    assert illustrator.claims.held == set()
+
+
+async def test_a_reply_holding_unreadable_base64_leaves_illustrate_quiet(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    engine, state = initialized()
+    scene = engine.narrator_view(state)
+    player = engine.player_view(state).player
+
+    async def _bad_reply(_provider: object, _path: str, _body: object, _timeout: float) -> bytes:
+        reply = {
+            "choices": [
+                {"message": {"images": [{"image_url": {"url": "data:image/png;base64,abc"}}]}}
+            ]
+        }
+        return json.dumps(reply).encode()
+
+    monkeypatch.setattr("aidm.app.media.post_bearer", _bad_reply)
+    illustrator = _illustrator(tmp_path / "save.media")
+
+    await illustrator.illustrate(scene, player, NARRATION)
+
+    assert illustrator.scene_art(scene) is None
+    assert illustrator.claims.held == set()
 
 
 def test_open_illustrator_takes_the_passed_style_and_is_none_when_media_is_off(

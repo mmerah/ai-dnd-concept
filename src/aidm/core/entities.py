@@ -36,7 +36,8 @@ class Echoed(BaseModel):
 
 
 class Refusal(ValueError):
-    """A message a role or the player is meant to read. Any other exception is a bug."""
+    """A message a role or the player is meant to read. Any other exception is a bug. A
+    `ValueError`, so a check helper may raise it inside a validator too."""
 
 
 def content_id(value: str) -> Slug:

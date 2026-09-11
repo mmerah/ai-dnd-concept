@@ -55,6 +55,8 @@ async def run_builtin(
     try:
         async with timeout(config.timeout):
             said, rounds = await _converse(role, config, provider, prompt, tools)
+    except TimeoutError:
+        raise Refusal(f"the {role} answered nothing in {config.timeout:.0f}s") from None
     except HTTPError as failed:
         raise Refusal(f"the {role}'s provider failed: {_detail(failed)}") from failed
     LOGGER.info(

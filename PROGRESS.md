@@ -53,3 +53,75 @@ two adversarial readers (Fable and Opus; no Codex on the machine).
 
 - `Hiring.hire_check(self, _draft: G)` keeps the underscore: the base body reads nothing (ruff ARG).
 - `dice_look`, `THEMES`, `Theme`, `NEUTRAL_DICE`, `HIRE_TOOL` and `AbilitiesDraft` stay for phase 2.
+
+## Phase 2: edges and layers
+
+| dir   | before | after |
+| ----- | ------ | ----- |
+| src   | 9,817  | 9,907 |
+| tests | 9,132  | 9,256 |
+| qa    | 1,788  | 1,788 |
+
+Full check green; goldens byte-identical; app smoke green (home, settings, create, scenario and
+the four shipped game pages serve). Reviewed by two adversarial readers (Fable and Opus; no
+Codex on the machine). `uv sync --all-groups --locked` is needed before `basedpyright`: without
+the `qa` group Playwright is unresolved and `qa/*.py` reports 1,100 errors.
+
+### Decisions off-plan
+
+Every review finding was folded; where a finding and the plan's letter disagreed, the cleaner
+shape won, on the maintainer's instruction:
+
+- `core/io.py` `write_text` converts `OSError` to `Refusal(f"{path.name} cannot be written: ...")`
+  (one test). Before the phase `GamePage._run` caught `OSError` and showed it; with the callers
+  narrowed to `except Refusal` a full disk on save would have escaped the page unhandled. The
+  file write is the one edge PLAN step 1 did not list.
+- No `parse_json` (PLAN step 4): one JSON door, `parse(model, decode(raw))`, as `app/builtin.py`
+  already reads a provider reply. `ClaudeDriver.read_result` keeps its tail:
+  `claude printed no JSON result: {output[-500:]}` is the only report when the CLI exits 0 with
+  prose. `media._generate` decodes the reply the same way.
+- `media._decode` returns a `GeneratedImage` and refuses on an unsupported data uri as it does
+  on bad base64; `_generate` raises `Refusal("image reply held no image")` and its one handler
+  logs a warning with the reason (no traceback: an edge is not a bug).
+- `Claims` lives in `app/providers.py`, which media and speech both import; PLAN step 12 put it
+  in `media.py`, which made speech depend on the image module.
+- Speech catches `(HTTPError, OSError, wave.Error)`: nothing in its `try` raises a `Refusal`.
+- `theme.set_engine` → `set_look`: it takes a `Look` now (PLAN step 10 kept the old name).
+- `GamePage._send(playing: Callable[[str], Awaitable[None]])` reads the box once and hands the
+  text to the closure; PLAN step 11 had `submit` and `act` each read it.
+- `render_interjection(view, member: Companion, scenes, evidence)` reads `member.sheet` itself.
+- `ScenarioForm._discard_upload()` holds the cleanup: `rmtree(..., ignore_errors=True)`, since
+  it runs in a `finally` and a temp dir that will not delete must not replace the refusal the
+  player was about to read.
+- `Look.palette` is `Mapping[str, str]` with no default: a frozen value model on a class
+  attribute must not hand out a dict four sessions share, and every engine passes one.
+- `GameService.speaking` is `_speaking is not None and not _speaking.done()`: a member who has
+  finished speaking is not speaking. `settled()` is `async def ... -> None` rather than
+  `-> Awaitable[None]`: `gather` returns a `Future[list[None]]`.
+- `GameService._narrated(draft, facts, prompt)` holds the one `except Refusal` around the
+  narrator that `open` and `_grow` both need; PLAN step 11 spelled the handler inline twice.
+- `theme.apply(look)` has no default: `page_header` is its one caller and always passes it.
+- `TunnelGoonsEngine.level_up` tests `ability is None or boost is None` (was `and`): the
+  `LevelUp` validator makes the two equivalent, and `or` narrows both for the fall-through
+  without an `assert`; one comment says so.
+- `Loner3eEngine.__init__` calls `twist_table()` once so a pack without twist columns fails at
+  construction; `twist_table` keeps the one check, as `ValueError`.
+- `tests/turn/test_turn.py`: the three "master crashed" stubs raise `Refusal`, since a spawn
+  failure can no longer reach `Roles.master` as anything else.
+- `tests/core/test_package_boundary.py`: the UI names no engine id at all now, so the test
+  expects an empty set rather than `ui/theme.py`.
+- `test_reload_settings_cancels_an_evicted_sessions_background_task` runs through public state
+  (a member left speaking, then `reload_settings()`); `_StillSpeaking` records the cancellation
+  so `test_a_new_turn_silences_the_member_still_speaking` still asserts the spawn was cancelled.
+
+### Refuted review findings
+
+- "`CatalogEntry.look` is set on character entries but only read for scenarios": one entry
+  type for both; a required dataclass field is set on every entry.
+
+### Known and accepted
+
+- `SceneDraft`/`NextDraft` are `Mutable` state inside a `Frozen` `Scenario`; `new_game` deep-copies
+  once so a restart reopens the file unchanged.
+- `world_type`, `cast`, `dweller`, `Hiring` mixin, `hire_answer`, `AbilitiesDraft`, `HIRE_TOOL`
+  stay for phase 3.

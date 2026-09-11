@@ -44,7 +44,8 @@ KAEL_FOR_EACH = [
 
 def _catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> LauncherCatalog:
     library = Library(settings.scenarios_dir, settings.characters_dir)
-    return LauncherCatalog.read(library, FileStore(settings.saves_dir), engines)
+    scenario_models = {engine_id: engine.scenario for engine_id, engine in engines.items()}
+    return LauncherCatalog.read(library, FileStore(settings.saves_dir), engines, scenario_models)
 
 
 def _opening_state(settings: Settings) -> Loner3eGame:

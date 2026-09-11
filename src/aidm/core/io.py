@@ -140,10 +140,13 @@ def read_prompt(path: Path) -> str:
 
 def write_text(path: Path, body: str) -> None:
     """Two processes may read one save; a reader must never see a half-written file."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    staged = path.with_name(f"{path.name}.writing")
-    staged.write_text(body, encoding=ENCODING)
-    staged.replace(path)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        staged = path.with_name(f"{path.name}.writing")
+        staged.write_text(body, encoding=ENCODING)
+        staged.replace(path)
+    except OSError as broken:
+        raise Refusal(f"{path.name} cannot be written: {broken}") from broken
 
 
 def decode(raw: str) -> JsonValue:

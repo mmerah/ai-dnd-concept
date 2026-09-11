@@ -24,7 +24,7 @@ from aidm.core.model import (
 from aidm.core.play import Chapter, DecisionOption, Exchange, Mark, PendingOption, SpokenLine
 from aidm.core.prompt import Pairs
 from aidm.core.tools import MasterTool
-from aidm.core.views import NarratorView, PlayerView
+from aidm.core.views import Companion, Look, NarratorView, PlayerView
 from aidm.engines.base import PLAYER_ID, Person, World, render_worldsmith
 
 type AnyEngine = Engine[Any, Any]
@@ -45,6 +45,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
     id: EngineId
     title: str
     art_style: str
+    look: Look
     directory: Path  # rules.md; a scene engine's packs/
     family_dir: Path
     game: type[G]
@@ -79,6 +80,18 @@ class Engine[P: Person, G: Game[Any]](ABC):
 
     def preview_character(self, character: AnyCharacter) -> Pairs:
         return self.player_of(character).rows()
+
+    def companions(self, state: G) -> tuple[Companion, ...]:
+        return tuple(
+            Companion(
+                id=member.id,
+                label=member.name,
+                detail=member.brief,
+                sheet=member.rows(),
+                chattiness=member.chattiness,
+            )
+            for member in self.world(state).members()
+        )
 
     def restore(self, value: JsonValue) -> G:
         if (header := parse(EngineHeader, value)).engine != self.id:

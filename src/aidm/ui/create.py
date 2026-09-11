@@ -1,4 +1,5 @@
 import logging
+import shutil
 from collections.abc import Callable
 from functools import partial
 from pathlib import Path
@@ -10,7 +11,7 @@ from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 from aidm.app.launch import LauncherCatalog, LaunchTarget
 from aidm.app.runtime import Runtime
 from aidm.core.creation import CreationStep, picked
-from aidm.core.entities import EngineId, Refusal, Slug
+from aidm.core.entities import EngineId, Refusal, Slug, content_id
 from aidm.core.io import SOURCE_SUFFIXES
 from aidm.core.model import ScenarioMeta
 from aidm.ui import theme
@@ -30,7 +31,7 @@ class CharacterForm:
         self.create_button: ui.button | None = None
 
     def build(self) -> None:
-        with page_header("New character", engine=self.engine_id):
+        with page_header("New character", look=self.runtime.engines[self.engine_id].look):
             pass
         with page_body():
             page_intro(
@@ -58,7 +59,7 @@ class CharacterForm:
 
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
-        theme.set_engine(self.engine_id)
+        theme.set_look(self.runtime.engines[self.engine_id].look)
         # The steps come from the engine, so an answer to the old ones means nothing.
         self.picks.clear()
         self.steps.refresh()
@@ -157,7 +158,7 @@ class ScenarioForm:
         self.button: ui.button
 
     def build(self) -> None:
-        with page_header("New scenario", engine=self.engine_id):
+        with page_header("New scenario", look=self.runtime.engines[self.engine_id].look):
             pass
         with page_body():
             page_intro(
@@ -178,7 +179,7 @@ class ScenarioForm:
 
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
-        theme.set_engine(self.engine_id)
+        theme.set_look(self.runtime.engines[self.engine_id].look)
         self.form.refresh()
 
     @ui.refreshable_method
@@ -255,21 +256,30 @@ class ScenarioForm:
             voice=(self.voice.value or "").strip(),
         )
         try:
+            packs = (
+                tuple(content_id(pick) for pick in self.packs.value)
+                if self.packs is not None
+                else ()
+            )
+            character_id = content_id(character_id)
             name = await self.runtime.new_scenario(
-                self.engine_id,
-                meta,
-                self.document,
-                self.packs.value if self.packs is not None else (),
-                character_id,
+                self.engine_id, meta, self.document, packs, character_id
             )
             opened = LaunchTarget(scenario_id=name, character_id=character_id)
-        except (OSError, Refusal) as refused:
+        except Refusal as refused:
             ui.notify(str(refused), type="negative", multi_line=True)
             return
         finally:
             self.button.props(remove="loading")
+            self._discard_upload()
         LOGGER.info("scenario created: slug=%s", name)
         ui.navigate.to(game_path(opened))
+
+    def _discard_upload(self) -> None:
+        """A retry must not read a deleted file; a temp dir left behind is not a bug."""
+        if self.document is not None:
+            shutil.rmtree(self.document.parent, ignore_errors=True)
+            self.document = None
 
 
 def character_page(runtime: Runtime) -> None:
@@ -277,7 +287,9 @@ def character_page(runtime: Runtime) -> None:
 
 
 def scenario_page(runtime: Runtime) -> None:
-    catalog = LauncherCatalog.read(runtime.library, runtime.store, runtime.engines)
+    catalog = LauncherCatalog.read(
+        runtime.library, runtime.store, runtime.engines, runtime.scenario_models()
+    )
     ScenarioForm(runtime, catalog).build()
 
 

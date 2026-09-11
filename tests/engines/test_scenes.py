@@ -4,7 +4,7 @@ from random import Random
 import pytest
 from support.table import LONER3E, game, narrowed
 
-from aidm.core.entities import Refusal, Slug
+from aidm.core.entities import Refusal, Slug, parse
 from aidm.core.model import Generation
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
@@ -118,15 +118,10 @@ def test_a_next_draft_naming_no_one_but_the_player_passes_and_installs() -> None
 
 
 def test_next_scene_refuses_a_pursuit_and_a_complication_together() -> None:
-    engine, state = game(LONER3E)
-    assert isinstance(engine, Loner3eEngine)
-    draft = narrowed(state, Loner3eGame).draft()
-
     with pytest.raises(Refusal, match="not both"):
-        _ = engine.next_scene(
-            draft,
-            NextScene(pursuit="Down the stair.", complication="A second crew breaks in."),
-            Random(0),
+        _ = parse(
+            NextScene,
+            {"pursuit": "Down the stair.", "complication": "A second crew breaks in."},
         )
 
 

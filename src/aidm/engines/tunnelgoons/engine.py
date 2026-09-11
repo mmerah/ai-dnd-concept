@@ -9,6 +9,7 @@ from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption, PendingDecision
 from aidm.core.prompt import Pairs
 from aidm.core.tools import MasterTool, NoArgs, master_tool
+from aidm.core.views import DiceLook, Look
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.hiring import Hiring
 from aidm.engines.rooms.engine import RoomEngine
@@ -68,6 +69,20 @@ class TunnelGoonsEngine(
     id = EngineId("tunnelgoons")
     title = "TUNNEL GOONS"
     art_style = "Old-school fantasy illustration in black ink, cross-hatched, no text or lettering."
+    look = Look(
+        palette={
+            "game-bg": "#191411",
+            "game-surface": "#261e18",
+            "game-surface-raised": "#34281f",
+            "game-text": "#f4e7d5",
+            "game-muted": "#c6b29c",
+            "game-border": "#534030",
+            "game-accent": "#eab078",
+            "game-wash": "rgba(234, 176, 120, .08)",
+            "game-radius": "8px",
+        },
+        dice=DiceLook(body="#3b4048", ink="#f3efe6", glow="#7fb069"),
+    )
     directory = Path(__file__).parent
     game = TunnelGoonsGame
     scenario = TunnelGoonsScenario
@@ -193,12 +208,11 @@ class TunnelGoonsEngine(
 
     def level_up(self, draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
         world = draft.payload
-        if args.ability is None and args.boost is None:
+        # Both or neither, by `LevelUp`; `or` narrows both for the fall-through.
+        if args.ability is None or args.boost is None:
             actor = world.require_actor(args.actor_id)
             draft.pending = _level_decision(actor)
             return []
-        if args.ability is None or args.boost is None:
-            raise Refusal("level_up takes both an ability and a boost, or neither")
         actor = world.require_actor(args.actor_id)
         sheet = actor.require_sheet()
         sheet.abilities[args.ability] += 1

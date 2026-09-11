@@ -6,8 +6,8 @@ from pathlib import Path
 from nicegui import ui
 
 from aidm.app.launch import LaunchTarget
-from aidm.core.entities import EngineId
 from aidm.core.play import DecisionOption
+from aidm.core.views import Look
 from aidm.ui import theme
 
 DM_ICON = "auto_stories"
@@ -20,9 +20,9 @@ def game_path(target: LaunchTarget) -> str:
 
 @contextmanager
 def page_header(
-    title: str, badge: str | None = None, home: bool = True, *, engine: EngineId | None = None
+    title: str, badge: str | None = None, home: bool = True, *, look: Look | None = None
 ) -> Generator[None]:
-    theme.apply(engine)
+    theme.apply(look)
     with ui.header().classes("items-center no-wrap"):
         if home:
             ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props("flat round")

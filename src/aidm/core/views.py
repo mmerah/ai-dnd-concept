@@ -1,5 +1,5 @@
-from collections.abc import Sequence
-from typing import Self
+from collections.abc import Mapping, Sequence
+from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
@@ -13,6 +13,8 @@ from aidm.core.play import (
     SpokenLine,
 )
 from aidm.core.prompt import Pairs
+
+type Chattiness = Literal["quiet", "normal", "chatty"]
 
 
 # Three row shapes, in order: entity (`icon_id`), labelled value (`detail`), or bare label.
@@ -37,6 +39,13 @@ class Subject(Frozen):
 
     def row(self) -> PanelRow:
         return PanelRow(label=self.label, detail=self.detail, icon_id=self.id)
+
+
+class Companion(Subject):
+    """A party member as the app sees them: what they show, and how readily they speak."""
+
+    sheet: Pairs
+    chattiness: Chattiness
 
 
 class Panel(Frozen):
@@ -116,3 +125,18 @@ class PlayerView(Frozen):
     decision: PendingDecision | None
     action: DecisionOption | None
     over: str | None
+
+
+class DiceLook(Frozen):
+    """An engine's dice on the table: the body, the ink of the numbers, the glow of a kept die."""
+
+    body: str
+    ink: str
+    glow: str
+
+
+class Look(Frozen):
+    """An engine's palette overrides and dice, read by the pages."""
+
+    palette: Mapping[str, str]
+    dice: DiceLook

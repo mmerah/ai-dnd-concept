@@ -204,7 +204,7 @@ async def test_the_whole_run_is_held_to_the_roles_timeout(
     monkeypatch.setattr("aidm.app.builtin.post_bearer", slow)
     narrator = RoleConfig(provider="local", model="m", timeout=0.01)
 
-    with pytest.raises(TimeoutError):
+    with pytest.raises(Refusal, match="answered nothing in"):
         _ = await RoleRunner(_settings(narrator=narrator)).run(
             "narrator", "BRIEF", None, _Tools(STATE)
         )

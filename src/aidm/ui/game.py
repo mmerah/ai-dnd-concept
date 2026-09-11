@@ -16,7 +16,6 @@ from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import Answer, DecisionOption, Exchange, Marked
 from aidm.core.views import PlayerView
-from aidm.ui import theme
 from aidm.ui.dice import DiceTray, rolled_since
 from aidm.ui.dictation import Dictation
 from aidm.ui.widgets import (
@@ -124,7 +123,7 @@ class GamePage:
         else:
             session.illustrate()
         with page_header(
-            session.state.scenario.title, session.engine.title, engine=session.engine.id
+            session.state.scenario.title, session.engine.title, look=session.engine.look
         ):
             ui.space()
             self.sound = ui.button(icon="volume_up", on_click=self.toggle_sound).props("flat round")
@@ -178,7 +177,7 @@ class GamePage:
                 ui.button("Keep playing", on_click=self.restart_dialog.close).props("flat")
                 ui.button("Restart", on_click=self.confirmed_restart)
 
-        self.dice = DiceTray(theme.dice_look(session.engine.id))
+        self.dice = DiceTray(session.engine.look.dice)
         self.dice.on("sound", self.sound_state)
         # A cached clip never autoplays on a page load, only one landing after.
         self.shown_clip = session.newest_clip()
@@ -430,9 +429,9 @@ class GamePage:
                 .props("round flat size=lg aria-label=Send")
                 .classes("game-send")
             )
-            self.action_button = ui.button(
-                icon="arrow_forward", on_click=lambda: self.submit(acting=True)
-            ).props("outline dense")
+            self.action_button = ui.button(icon="arrow_forward", on_click=self.act).props(
+                "outline dense"
+            )
 
     def poll_turn(self) -> None:
         session = self.session
@@ -481,25 +480,26 @@ class GamePage:
         ui.notify(refusal, type="warning", position="top")
         return True
 
-    async def submit(self, acting: bool = False) -> None:
-        box = self.box
-        typed = (box.value or "").strip()
+    async def _send(self, playing: Callable[[str], Awaitable[None]]) -> None:
+        typed = (self.box.value or "").strip()
         LOGGER.info("player submitted prompt: non_empty=%s busy=%s", bool(typed), self.session.busy)
         if not typed or self.refuse_play():
             return
+        self.own_move = True
+        if await self._run(lambda: playing(typed)):
+            self.box.value = ""
+            # Quasar never saw the value change, so only an explicit push empties the composer.
+            self.box.run_method("updateValue")
+
+    async def submit(self) -> None:
+        await self._send(lambda typed: self.session.play(Answer(text=typed)))
+
+    async def act(self) -> None:
         action = self.view.action
-        if acting and action is None:
+        if action is None:
             ui.notify("The way on has changed.", type="warning", position="top")
             return
-        self.own_move = True
-        if acting and action is not None:
-            landed = await self._run(lambda: self.session.act(action.id, typed))
-        else:
-            landed = await self._run(lambda: self.session.play(Answer(text=typed)))
-        if landed:
-            box.value = ""
-            # Quasar never saw the value change, so only an explicit push empties the composer.
-            box.run_method("updateValue")
+        await self._send(lambda typed: self.session.act(action.id, typed))
 
     async def restart(self) -> None:
         if self.refuse_play():
@@ -581,10 +581,8 @@ class GamePage:
             widget.set_enabled(False)
         try:
             await playing()
-        except (OSError, Refusal) as error:
-            ui.notify(
-                f"{type(error).__name__}: {error}", type="negative", multi_line=True, position="top"
-            )
+        except Refusal as error:
+            ui.notify(str(error), type="negative", multi_line=True, position="top")
             return False
         finally:
             self._set_composer()

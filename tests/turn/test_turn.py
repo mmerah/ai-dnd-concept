@@ -201,13 +201,13 @@ async def test_a_line_spoken_by_someone_not_here_is_re_prompted_with_the_id(
 def _exploding_after_the_find(table: Table[Loner3eGame]) -> Callable[[], None]:
     def crash() -> None:
         _ = table.call(*FOUND)
-        raise OSError("the game master exploded")
+        raise Refusal("the game master exploded")
 
     return crash
 
 
 def _never_started() -> None:
-    raise OSError("the game master never started")
+    raise Refusal("the game master never started")
 
 
 async def test_a_master_that_crashes_after_applying_still_commits_what_it_applied(
@@ -245,7 +245,7 @@ async def test_a_master_that_landed_nothing_is_spawned_once_more(tmp_path: Path)
     table.spawner.turns += [_never_started, _never_started]
     spawned = len(table.spawner.prompts)
 
-    with pytest.raises(OSError, match="never started"):
+    with pytest.raises(Refusal, match="never started"):
         await table.service.play(Answer(text="I take the map."))
 
     assert [session for role, session in table.spawner.resumed[spawned:] if role == "master"] == [
@@ -259,7 +259,7 @@ async def test_a_turn_that_applied_nothing_and_failed_is_refused(tmp_path: Path)
     before = table.service.state.model_dump_json()
     table.spawner.turns += [_never_started, _never_started]
 
-    with pytest.raises(OSError, match="never started"):
+    with pytest.raises(Refusal, match="never started"):
         await table.service.play(Answer(text="I take the map."))
 
     assert table.service.state.model_dump_json() == before
@@ -280,7 +280,7 @@ def test_a_refused_call_leaves_the_turn_the_dice_it_had() -> None:
     before = turn.rng.getstate()
 
     with pytest.raises(ValueError, match="the rules said no"):
-        _ = turn._apply(_rolls_then_refuses)  # pyright: ignore[reportPrivateUsage]
+        _ = turn.apply(_rolls_then_refuses)
 
     assert turn.rng.getstate() == before
 

@@ -71,7 +71,7 @@ class Turn:
         if option is None:
             raise Refusal(f"the {consumed.kind!r} decision offers no option {chosen!r}")
         # A refusal raises: the engine enumerated the option, so it is never model error.
-        facts = self._apply(lambda copy, dice: engine.answer(copy, option, dice))
+        facts = self.apply(lambda copy, dice: engine.answer(copy, option, dice))
         traces = traced(facts)
         # An answer that re-suspended has no tool answer to carry the wait, so the note says it.
         if self.draft.pending is not None:
@@ -118,7 +118,7 @@ class Turn:
         if self.draft.generation is not None:
             return REQUEST_WAIT
         notes_before = len(self.draft.notes)
-        facts = self._apply(lambda draft, rng: found.call(draft, raw, rng))
+        facts = self.apply(lambda draft, rng: found.call(draft, raw, rng))
         lines = [f"- {fact.trace}" for fact in facts]
         lines.extend(f"- {note}" for note in self.draft.notes[notes_before:])
         if self.draft.pending is not None:
@@ -131,7 +131,7 @@ class Turn:
     def finish(self, lines: tuple[SpokenLine, ...]) -> AnyGame:
         return self.engine.close(self.draft, lines, tuple(self.facts), words=self.words)
 
-    def _apply(self, play: Play[AnyGame]) -> tuple[Fact, ...]:
+    def apply(self, play: Play[AnyGame]) -> tuple[Fact, ...]:
         """One execution against a candidate; a refused call leaves the draft and the dice alone."""
         candidate, dice = self.draft.draft(), deepcopy(self.rng)
         facts = play(candidate, dice)

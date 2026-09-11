@@ -10,7 +10,6 @@ from support.table import Table, play_turn
 from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, PendingDecision, PendingOption, SpokenLine
 from aidm.core.views import PlayerView, Subject
-from aidm.ui import theme
 from aidm.ui.dice import DiceTray
 from aidm.ui.game import (
     GamePage,
@@ -130,7 +129,7 @@ def _page[G: AnyGame](table: Table[G]) -> GamePage:
     page = GamePage(table.runtime, table.service)
     page.transcript = ui.scroll_area()
     page.new_activity = ui.button("New activity")
-    page.dice = DiceTray(theme.dice_look(table.service.engine.id))
+    page.dice = DiceTray(table.service.engine.look.dice)
     page.box = ui.input()
     page.send = ui.button()
     page.action_button = ui.button()

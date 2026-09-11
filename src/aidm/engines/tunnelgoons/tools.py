@@ -56,6 +56,12 @@ class LevelUp(Frozen):
     )
     actor_id: Slug | None = Field(default=None, description=ACTOR)
 
+    @model_validator(mode="after")
+    def _both_or_neither(self) -> Self:
+        if (self.ability is None) != (self.boost is None):
+            raise ValueError("both an ability and a boost, or neither")
+        return self
+
 
 def level_options(actor_id: Slug | None) -> tuple[PendingOption, ...]:
     return tuple(
