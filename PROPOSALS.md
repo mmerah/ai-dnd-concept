@@ -19,8 +19,8 @@ machinery, the simpler option is now recommended and the original is kept as an 
 
 ## 1. Decision table
 
-Fill the last column. "Accept" means do it as written. Where a proposal has options, write the
-option letter.
+All decisions are in. CLAUDE.md gains no new convention lines (N12 refused): D5 and N9 are
+therefore the test and the leave-alone only, and N1's classmethod rule is shown by the code.
 
 | ID | Proposal | Kind | Size | src | Recommendation | Your decision |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -45,11 +45,11 @@ option letter.
 | N5 | One retry constant, one timeout idiom | consistency | S | - | Accept | Accepted |
 | N6 | Drop the `world_of` narrowing overrides | consistency | S | - | Fold into D3 option B | Accepted (via D3 B) |
 | N7 | `Rolled` carries its dice once | naming | S | - | Accept, option A | Accepted, A |
-| N8 | Split the `Pairs` alias into `Sections` and `Rows` | naming | S | = | Accept | |
-| N9 | `Slug` stays `Annotated[str]`; say so in CLAUDE.md | naming | S | = | Option A (leave) | |
-| N10 | `Hiring` packaging | consistency | S | = | Option B (leave) | |
-| N11 | Comment and naming sweep against CLAUDE.md rules | style | S | = | Accept | |
-| N12 | Write the constructor and return-shape rules into CLAUDE.md | docs | S | = | Accept | |
+| N8 | Split the `Pairs` alias into `Sections` and `Rows` | naming | S | = | Accept | Accepted |
+| N9 | `Slug` stays `Annotated[str]`; say so in CLAUDE.md | naming | S | = | Option A (leave) | Accepted, A (no CLAUDE.md line) |
+| N10 | `Hiring` packaging | consistency | S | = | Option B (leave) | Accepted, A |
+| N11 | Comment and naming sweep against CLAUDE.md rules | style | S | = | Accept | Accepted |
+| N12 | Write the constructor and return-shape rules into CLAUDE.md | docs | S | = | Accept | Refused |
 | N13 | Move the 350-line CSS string out of `ui/theme.py` into `theme.css` | simplify | S | - | Accept | Accepted |
 | N14 | Delete thin pass-through methods | simplify | S | - | Accept | Accepted |
 
@@ -318,17 +318,14 @@ world through `parse`, and `Mutable`'s `revalidate_instances="always"` copies ev
 model, so a draft never aliases the authored scenario; and `Engine.answer` hands
 `PendingOption.args` to `parse`, which builds a fresh model, so a tool cannot edit the option.
 
-Change to: documentation and a guard test, nothing else.
+Change to: a guard test, nothing else (no CLAUDE.md line, per N12).
 
-- Two lines in CLAUDE.md: "frozen means no field assignment; nested dicts and lists are still
-  mutable; a value model never hands out a nested collection it did not copy. `Mutable`
-  re-validates on parse, which is what keeps a draft from aliasing its scenario".
 - One test per family: mutate the world after `begin` and assert the scenario payload is
   unchanged. This pins the `revalidate_instances` behaviour so a config change cannot remove it
   silently.
 - Do not turn on `validate_assignment`; drafts are validated at commit on purpose.
 
-Done when: the two tests pass and the rule is in CLAUDE.md.
+Done when: the two tests pass.
 
 ## 4. Consistency and quality
 
@@ -622,17 +619,15 @@ A reviewer may raise these. Each has a reason in the code or in this repo's rule
 | Prompt strings as module constants with a distinct prose voice | everywhere | Rewritten in idea 10; the eval judges them, not the code review |
 | Dataclasses for services, pydantic for boundaries | `app/`, `core/` | A deliberate distinction, not an inconsistency |
 
-## 6. Order and cost
+## 6. Accepted plan
 
-1. Deletions and fixes in one behaviour-preserving phase: F1, F3, N5, N7, N13, N14, Q4, then
-   D2 and D5 (one day).
-2. F2, F5, N2 together, since all three touch `Runtime` and `GameService` (one day).
-3. F4, D1, N3 (half a day). Q3, N4, N8, N11, N12 in one phase (half a day).
-4. D3 option B with N6 (under an hour). Q1, Q2 (half a day).
-5. D4 with pack authoring, then the eval and the README GIF.
+Refused: Q1, N12. Everything else is accepted with the option named in the table.
 
-If every recommendation is taken, the Python under `src` ends about four hundred lines
-smaller: Q1, Q4 and N14 delete around a hundred, N13 moves three hundred of CSS into a `.css`
-file, and only D4 adds a type.
+1. Deletions and small fixes, behaviour-preserving: F1, F3, N5, N7, N13, N14, Q4 (B), N8, N11,
+   then D2 and D5's tests (one day).
+2. `Runtime` and `GameService`: F2, F5 (A), N2 (C), N1 (A) together, since all four touch how
+   sessions are built and guarded (one day).
+3. F4, D1, N3 (half a day). Q3, N4 (A), N10 (A), D3 (B) with N6 (half a day). Q2 (B).
+4. D4 (B) with pack authoring, then the eval and the README GIF.
 
-Next: fill the decision column in section 1.
+`src` ends about four hundred lines of Python smaller. CLAUDE.md is unchanged.
