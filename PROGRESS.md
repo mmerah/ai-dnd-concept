@@ -214,18 +214,19 @@ readers (Fable and Opus; no Codex on the machine). Implemented as three sequenti
 - Step 14, `Sheeted.line` appends `carried()` to the caller's detail with `; `, where
   `Survivor.line` replaced the detail (so a hired survivor's cast line lost "met; travels with the
   player"); `Survivor.carried` has no "backpack:" prefix. No golden shows a hired survivor.
-- Step 15, `scene_unmet` is `[*_listing_unmet, *_cast_unmet, *_hidden_unmet]` as the plan says
-  "concatenated": the messages inside the one refusal now group by kind (listed, stray, overlap;
-  rewritten, misfiled, forbidden; situation, met) instead of the install order. Both reviews
-  flagged the reorder; kept as the plan's letter, the order being prose.
+- Step 15, `scene_unmet` is `[*_listing_unmet, *_cast_unmet, *_hidden_unmet]`: the messages
+  inside the one refusal now group by kind (listed, stray, overlap; rewritten, misfiled,
+  forbidden; situation, met) instead of the install order. Both reviews flagged the reorder;
+  kept on the maintainer's call, the plain concatenation being the cleaner shape and the order
+  prose.
+- Step 9, `Rolled` has no `faces`: nothing read it and `event.faces` carries the pool for the
+  tray (both reviews; the plan's shape had it; the maintainer's call).
 - Step 15, the test that imported the private `_operators_unmet` is gone (phase 2: tests stop
   reaching private state); the refusal is covered through the `job` tool.
 - The tunnelgoons `Adventurer.rows` puts Health first, so `GoonSheet.rows` is the sheet's alone.
 
 ### Refuted review findings
 
-- "Delete `Rolled.faces`, nothing in `src` reads it" (both reviews): PLAN step 9 spells the shape;
-  left to the maintainer.
 - "Tunnelgoons `Pool.faces` and `label` are constants": PLAN step 12 spells the field list.
 - "`roll` and `_pool` both call `require_sheet()`": `_pool(world, actor, args)` is the plan's
   signature; the call is a field read behind a refusal.
@@ -237,7 +238,6 @@ readers (Fable and Opus; no Codex on the machine). Implemented as three sequenti
 
 ### Known and accepted
 
-- `Rolled.faces` duplicates `event.faces` (see above).
 - `Thing.change` and `Survivor.catch_breath` card the player by `self.id == PLAYER_ID`, as
   `Gauge.change` did; a 24XX lead who took over carries their own id and is carded by name.
 - The 24XX `Pool` holds `helped_by` as the finished clause, not the helper's id and die.
