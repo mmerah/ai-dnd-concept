@@ -1,260 +1,102 @@
 [
   {
-    "name": "change_world",
-    "description": "Call this when the story has settled a change to the world. Fill the fields of the verb you pick. One call makes one change.",
+    "name": "reveal",
+    "description": "A hidden entity here becomes known to the player.",
     "parameters": {
-      "$defs": {
-        "ChangeTags": {
-          "additionalProperties": false,
-          "description": "A character here gains tags, loses tags, or both.",
-          "properties": {
-            "verb": {
-              "const": "change_tags",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of the player or someone here.",
-              "type": "string"
-            },
-            "kind": {
-              "description": "`gear` for a thing taken or lost. `condition` for a lasting mark such as `Poisoned`.",
-              "enum": [
-                "skill",
-                "frailty",
-                "gear",
-                "condition"
-              ],
-              "type": "string"
-            },
-            "gained": {
-              "default": [],
-              "description": "Title-case tags gained, such as `Rusty Key`.",
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "lost": {
-              "default": [],
-              "description": "Exact tags lost, lifted or used up.",
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id",
-            "kind"
-          ],
-          "type": "object"
-        },
-        "Drive": {
-          "additionalProperties": false,
-          "description": "A living character's goal, motive or nemesis changes.",
-          "properties": {
-            "verb": {
-              "const": "drive",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of the player or a living character here.",
-              "type": "string"
-            },
-            "goal": {
-              "default": "",
-              "description": "What they now pursue, in one line. Empty keeps the current goal.",
-              "type": "string"
-            },
-            "motive": {
-              "default": "",
-              "description": "Why, in one line. Empty keeps the current motive.",
-              "type": "string"
-            },
-            "nemesis": {
-              "default": "",
-              "description": "Who or what stands in their way. Empty keeps the current nemesis.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "Enter": {
-          "additionalProperties": false,
-          "description": "A cast member comes into the scene.",
-          "properties": {
-            "verb": {
-              "const": "enter",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of a cast member not already here.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "JoinParty": {
-          "additionalProperties": false,
-          "description": "A character here starts travelling with the player.",
-          "properties": {
-            "verb": {
-              "const": "join_party",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of who is joining.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "Kill": {
-          "additionalProperties": false,
-          "description": "Someone here dies.",
-          "properties": {
-            "verb": {
-              "const": "kill",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of who here died.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "Leave": {
-          "additionalProperties": false,
-          "description": "A cast member goes out of the scene.",
-          "properties": {
-            "verb": {
-              "const": "leave",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of someone here.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "LeaveParty": {
-          "additionalProperties": false,
-          "description": "A party member stops travelling with the player.",
-          "properties": {
-            "verb": {
-              "const": "leave_party",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of the party member leaving.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "RestoreLuck": {
-          "additionalProperties": false,
-          "description": "A character's luck refills.",
-          "properties": {
-            "verb": {
-              "const": "restore_luck",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of the player or a character here.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "Reveal": {
-          "additionalProperties": false,
-          "description": "A hidden entity here becomes known to the player.",
-          "properties": {
-            "verb": {
-              "const": "reveal",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of an entity listed as hidden here.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        }
-      },
       "additionalProperties": false,
       "properties": {
-        "change": {
-          "description": "The change to apply. `verb` picks which one.",
-          "oneOf": [
-            {
-              "$ref": "#/$defs/Reveal"
-            },
-            {
-              "$ref": "#/$defs/Enter"
-            },
-            {
-              "$ref": "#/$defs/Leave"
-            },
-            {
-              "$ref": "#/$defs/ChangeTags"
-            },
-            {
-              "$ref": "#/$defs/Drive"
-            },
-            {
-              "$ref": "#/$defs/Kill"
-            },
-            {
-              "$ref": "#/$defs/JoinParty"
-            },
-            {
-              "$ref": "#/$defs/LeaveParty"
-            },
-            {
-              "$ref": "#/$defs/RestoreLuck"
-            }
-          ]
+        "entity_id": {
+          "description": "Exact id of an entity listed as hidden here.",
+          "type": "string"
         }
       },
       "required": [
-        "change"
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "enter",
+    "description": "A cast member comes into the scene.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of a cast member not already here.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "leave",
+    "description": "A cast member goes out of the scene.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of someone here.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "kill",
+    "description": "Someone here dies.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of who here died.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "join_party",
+    "description": "A character here starts travelling with the player.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of who is joining.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "leave_party",
+    "description": "A party member stops travelling with the player.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of the party member leaving.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
       ],
       "type": "object"
     }
@@ -276,6 +118,99 @@
           "type": "string"
         }
       },
+      "type": "object"
+    }
+  },
+  {
+    "name": "change_tags",
+    "description": "A character here gains tags, loses tags, or both.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of the player or someone here.",
+          "type": "string"
+        },
+        "kind": {
+          "description": "`gear` for a thing taken or lost. `condition` for a lasting mark such as `Poisoned`.",
+          "enum": [
+            "skill",
+            "frailty",
+            "gear",
+            "condition"
+          ],
+          "type": "string"
+        },
+        "gained": {
+          "default": [],
+          "description": "Title-case tags gained, such as `Rusty Key`.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "lost": {
+          "default": [],
+          "description": "Exact tags lost, lifted or used up.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "entity_id",
+        "kind"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "drive",
+    "description": "A living character's goal, motive or nemesis changes.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of the player or a living character here.",
+          "type": "string"
+        },
+        "goal": {
+          "default": "",
+          "description": "What they now pursue, in one line. Empty keeps the current goal.",
+          "type": "string"
+        },
+        "motive": {
+          "default": "",
+          "description": "Why, in one line. Empty keeps the current motive.",
+          "type": "string"
+        },
+        "nemesis": {
+          "default": "",
+          "description": "Who or what stands in their way. Empty keeps the current nemesis.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "restore_luck",
+    "description": "A character's luck refills.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of the player or a character here.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
       "type": "object"
     }
   },

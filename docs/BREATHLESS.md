@@ -25,11 +25,11 @@ locations, complications, missions) are all in the SRD at the page above, transc
 
 ## The tools
 
-A named tool rolls dice, opens a decision, or ends the turn. Every other change is an arm of `change_world`: set `verb`, fill that verb's fields.
+Every tool makes one change, rolls dice, opens a decision, or ends the turn.
 
-- `change_world` — arms: `reveal`, `enter`, `leave`, `kill`, `join_party`, `leave_party`,
+- `reveal`, `enter`, `leave`, `kill`, `join_party`, `leave_party`,
   `drop_item`, `change_stress` (what a complication costs, or what laying low clears) and
-  `use_med_kit` (clear 2 stress). The sheet arms take `actor_id`.
+  `use_med_kit` (clear 2 stress). The sheet tools take `actor_id`.
 - `next_scene` — offer the player the way on at a stopping point; or say that they left this
   place, and the worldsmith writes where they land; or hand the worldsmith a complication to
   bring down on this place. The last two end the turn.

@@ -13,12 +13,12 @@ from aidm.engines.scenes.worldsmith import scene_refusal
 TOMAS = "tomas"
 
 
-def changed(draft: Loner3eGame, verb: str, **fields: JsonValue) -> list[str]:
-    return [fact.trace for fact in change(ENGINE, draft, verb, **fields)]
+def changed(draft: Loner3eGame, name: str, **fields: JsonValue) -> list[str]:
+    return [fact.trace for fact in change(ENGINE, draft, name, **fields)]
 
 
-def refused(draft: Loner3eGame, verb: str, **fields: JsonValue) -> str:
-    return change_refused(ENGINE, draft, verb, **fields)
+def refused(draft: Loner3eGame, name: str, **fields: JsonValue) -> str:
+    return change_refused(ENGINE, draft, name, **fields)
 
 
 def test_reveal_moves_a_hidden_entity_into_the_scene_and_tells_the_player() -> None:

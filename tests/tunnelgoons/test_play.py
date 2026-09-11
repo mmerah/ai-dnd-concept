@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from random import Random
 
-from support.table import TUNNELGOONS, changed, open_table, play_turn, take, tool_call
+from support.table import TUNNELGOONS, open_table, play_turn, take, tool_call
 
 from aidm.engines.rooms.engine import MORE_MAP
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
@@ -71,9 +71,9 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
         table,
         "Back to the storeroom, force the sealed cell, and rest once it is safe.",
         tool_call("move", to_id="storeroom"),
-        changed("unlock_way", to_id="sealed-cell"),
+        tool_call("unlock_way", to_id="sealed-cell"),
         tool_call("move", to_id="sealed-cell"),
-        changed("rest"),
+        tool_call("rest"),
     )
     world = state.payload
     assert world.current.id == "sealed-cell"
@@ -109,7 +109,7 @@ async def test_a_region_that_cannot_be_written_files_the_players_words(tmp_path:
         "Through every room, down to the flooded cellar.",
         tool_call("move", to_id="corridor"),
         tool_call("move", to_id="storeroom"),
-        changed("unlock_way", to_id="sealed-cell"),
+        tool_call("unlock_way", to_id="sealed-cell"),
         tool_call("move", to_id="sealed-cell"),
         tool_call("move", to_id="storeroom"),
         tool_call("move", to_id="corridor"),

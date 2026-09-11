@@ -1,13 +1,13 @@
-from support.table import Call, changed, narrowed, tool_call
+from support.table import Call, narrowed, tool_call
 
 from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, SpokenLine
 from aidm.engines.breathless.world import BreathlessGame
 
 SCRIPT: tuple[Call, ...] = (
-    changed("reveal", entity_id="drowned-marta"),
+    tool_call("reveal", entity_id="drowned-marta"),
     tool_call("roll", what="Listen for what moves on the flats", skill="think"),
-    changed("change_stress", amount=1, why="the bell rang twice"),
+    tool_call("change_stress", amount=1, why="the bell rang twice"),
 )
 
 

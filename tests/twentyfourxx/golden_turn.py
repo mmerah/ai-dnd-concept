@@ -1,14 +1,14 @@
-from support.table import Call, changed, narrowed, tool_call
+from support.table import Call, narrowed, tool_call
 
 from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, SpokenLine
 from aidm.engines.twentyfourxx.world import TwentyfourxxGame
 
 SCRIPT: tuple[Call, ...] = (
-    changed("join_party", entity_id="vessa-rune"),
-    changed("reveal", entity_id="warden-six"),
+    tool_call("join_party", entity_id="vessa-rune"),
+    tool_call("reveal", entity_id="warden-six"),
     tool_call("roll", what="Slip along the dark gantry", skill="Stealth"),
-    changed("spend", amount=1, why="Harl's docking logs"),
+    tool_call("spend", amount=1, why="Harl's docking logs"),
 )
 
 

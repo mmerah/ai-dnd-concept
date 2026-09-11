@@ -31,9 +31,9 @@ skill one step down.
 
 ## Stress and the med kit
 
-Use the `change_stress` arm for what a complication costs the actor, and for what laying low
-somewhere secure clears. Use the `use_med_kit` arm to spend a held med kit. The med kit clears 2
-stress and no other arm spends it.
+Call `change_stress` for what a complication costs the actor, and for what laying low
+somewhere secure clears. Call `use_med_kit` to spend a held med kit. The med kit clears 2
+stress and no other tool spends it.
 
 ## Scavenging
 
@@ -46,5 +46,5 @@ A member without a sheet helps in the story alone and rolls nothing.
 ## Hiring
 
 A hired member then acts like the player. Name them in `actor_id` on `roll` and `catch_breath`,
-and on the `change_stress`, `use_med_kit` and `drop_item` arms. Name them in `helped_by` to roll
+and on `change_stress`, `use_med_kit` and `drop_item`. Name them in `helped_by` to roll
 beside the actor. `loot_check` stays the player's.

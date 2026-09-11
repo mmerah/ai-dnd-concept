@@ -106,7 +106,9 @@ class Turn:
         """The one gate every published tool passes; returns what changed as the master reads it."""
         if (ended := self.engine.over(self.draft)) is not None:
             raise Refusal(f"{ended} {GAME_OVER}")
-        found = self.engine.tool(name)
+        found = self.engine.tools.get(name)
+        if found is None:
+            raise Refusal(f"{name!r} is not a tool of the {self.engine.id!r} engine.")
         pending = self.draft.pending
         if pending is not None:
             # A plain answer, not a refusal: a retry prompt would tell the model to try again.

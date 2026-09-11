@@ -9,10 +9,12 @@ from aidm.core.facts import DiceEvent, Fact, keep_highest, roll
 from aidm.core.play import PendingDecision
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Pairs
-from aidm.engines.base import CHANGE_WORLD, PLAYER_ID
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import (
+    CHANGE_TAGS,
+    DRIVE,
+    RESTORE_LUCK,
     ChangeTags,
-    ChangeWorld,
     Drive,
     Outcome,
     Question,
@@ -33,7 +35,6 @@ from aidm.engines.loner3e.world import (
 )
 from aidm.engines.loner3e.worldsmith import AUTHORING, Pack
 from aidm.engines.scenes.engine import SceneEngine
-from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
 
 
 class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eGame, Pack]):
@@ -62,8 +63,10 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eGame, Pack]):
 
     def master_tools(self) -> tuple[MasterTool[Loner3eGame], ...]:
         return (
-            master_tool("change_world", CHANGE_WORLD, ChangeWorld, self.change_world),
-            master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
+            *super().master_tools(),
+            master_tool("change_tags", CHANGE_TAGS, ChangeTags, self.change_tags),
+            master_tool("drive", DRIVE, Drive, self.drive),
+            master_tool("restore_luck", RESTORE_LUCK, RestoreLuck, self.restore_luck),
             master_tool(
                 "roll",
                 "Call this for one closed dramatic question. The engine rolls Chance against "
@@ -169,25 +172,20 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eGame, Pack]):
             for fact in member.refill("the scene is over")
         )
 
-    def change_world(self, draft: Loner3eGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-        world, change = draft.payload, args.change
-        match change:
-            case ChangeTags():
-                return world.require_here(change.entity_id, alive=True).change_tags(
-                    change.kind, change.gained, change.lost
-                )
-            case Drive():
-                return world.require_here(change.entity_id, alive=True).drive(
-                    goal=change.goal, motive=change.motive, nemesis=change.nemesis
-                )
-            case RestoreLuck():
-                actor = world.require_here(change.entity_id, alive=True)
-                facts = actor.reveal()
-                # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
-                facts.extend(actor.refill("the conflict is behind them"))
-                return facts
-            case _:
-                return self.shared_change(world, change)
+    def change_tags(self, draft: Loner3eGame, args: ChangeTags, _rng: Random) -> list[Fact]:
+        actor = draft.payload.require_here(args.entity_id, alive=True)
+        return actor.change_tags(args.kind, args.gained, args.lost)
+
+    def drive(self, draft: Loner3eGame, args: Drive, _rng: Random) -> list[Fact]:
+        actor = draft.payload.require_here(args.entity_id, alive=True)
+        return actor.drive(goal=args.goal, motive=args.motive, nemesis=args.nemesis)
+
+    def restore_luck(self, draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
+        actor = draft.payload.require_here(args.entity_id, alive=True)
+        facts = actor.reveal()
+        # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
+        facts.extend(actor.refill("the conflict is behind them"))
+        return facts
 
     def roll(self, draft: Loner3eGame, action: Question, rng: Random) -> list[Fact]:
         world = draft.payload

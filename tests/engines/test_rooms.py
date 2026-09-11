@@ -1,21 +1,16 @@
 from pathlib import Path
 from random import Random
-from typing import Annotated
 
 import pytest
-from pydantic import Discriminator
 from support.table import change, refused
 
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Refusal, Slug, slug
-from aidm.core.facts import Fact
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
-from aidm.core.tools import MasterTool, master_tool
-from aidm.engines import base
-from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, Person
+from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.rooms.engine import RoomEngine
-from aidm.engines.rooms.tools import Move, SharedChange
+from aidm.engines.rooms.tools import Move
 from aidm.engines.rooms.world import Dweller, MapDraft, Place, Prop, RoomWorld, Visit, Way
 
 SIXTH = EngineId("sixth")
@@ -42,11 +37,9 @@ class SixthCharacter(Character[Person]):
     pass
 
 
-ChangeWorld = base.ChangeWorld[Annotated[SharedChange, Discriminator("verb")]]
-
-
 class SixthEngine(RoomEngine[Dweller, Person, SixthGame]):
-    """A sixth engine, a room crawler: its state model, its creation and `change_world`."""
+    """A sixth engine, a room crawler: its state model and its creation; the tools are the
+    family's."""
 
     id = SIXTH
     title = "SIXTH"
@@ -56,12 +49,6 @@ class SixthEngine(RoomEngine[Dweller, Person, SixthGame]):
     character = SixthCharacter
     dweller = Dweller
     world_type = SixthWorld
-
-    def master_tools(self) -> tuple[MasterTool[SixthGame], ...]:
-        return (master_tool("change_world", CHANGE_WORLD, ChangeWorld, self.change_world),)
-
-    def change_world(self, draft: SixthGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-        return self.shared_change(self.world(draft), args.change)
 
     def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
         return ()
@@ -171,8 +158,17 @@ def test_a_with_ids_entry_who_is_a_party_member_is_refused(tmp_path: Path) -> No
         engine.move(state, Move(to_id=YARD, with_ids=(WARDEN,)), Random(0))
 
 
-def test_join_party_and_leave_party_land_through_change_world(tmp_path: Path) -> None:
+def test_the_familys_tools_are_offered_in_order(tmp_path: Path) -> None:
     engine = _installed(tmp_path)
+    assert list(engine.tools) == [
+        "reveal",
+        "move_item",
+        "kill",
+        "join_party",
+        "leave_party",
+        "unlock_way",
+        "move",
+    ]
     character = engine.create_character("Wren", "A quiet scout", {})
     state = engine.begin("the-keep", _scenario(), character)
     draft = state.draft()

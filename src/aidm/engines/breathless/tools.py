@@ -1,27 +1,17 @@
-from typing import Annotated, Literal, Self
+from typing import Self
 
-from pydantic import Discriminator, Field, model_validator
+from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Slug
-from aidm.engines import base
-from aidm.engines.base import Attempt, JoinParty, LeaveParty
+from aidm.engines.base import Attempt
 from aidm.engines.breathless.world import Die, Skill
 from aidm.engines.hiring import ACTOR
-from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
 
-
-class DropItem(Frozen):
-    """The actor loses an item for good."""
-
-    verb: Literal["drop_item"]
-    item_id: Slug = Field(description="Exact id of an item the actor carries.")
-    actor_id: Slug | None = Field(default=None, description=ACTOR)
+CHANGE_STRESS = "The actor's stress goes up or down."
+USE_MED_KIT = "The actor spends their med kit."
 
 
 class ChangeStress(Frozen):
-    """The actor's stress goes up or down."""
-
-    verb: Literal["change_stress"]
     amount: int = Field(
         description="How much stress changes. Positive costs stress, negative clears it."
     )
@@ -30,18 +20,7 @@ class ChangeStress(Frozen):
 
 
 class UseMedKit(Frozen):
-    """The actor spends their med kit."""
-
-    verb: Literal["use_med_kit"]
     actor_id: Slug | None = Field(default=None, description=ACTOR)
-
-
-type WorldChange = (
-    Reveal | Enter | Leave | Kill | JoinParty | LeaveParty | DropItem | ChangeStress | UseMedKit
-)
-
-
-ChangeWorld = base.ChangeWorld[Annotated[WorldChange, Discriminator("verb")]]
 
 
 class Check(Attempt):

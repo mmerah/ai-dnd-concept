@@ -11,16 +11,21 @@ from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import lines_of
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Pairs, Panel, PanelRow
-from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, banded
-from aidm.engines.hiring import HIRE, HIRE_TOOL, HIRE_UNWRITTEN, Hire, Hiring
+from aidm.engines.base import PLAYER_ID, banded
+from aidm.engines.hiring import DROP_ITEM, HIRE, HIRE_UNWRITTEN, DropItem, Hiring
 from aidm.engines.scenes.engine import SceneEngine
-from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
+from aidm.engines.scenes.tools import Kill
 from aidm.engines.scenes.world import sentence
 from aidm.engines.twentyfourxx.tools import (
+    CHANGE_HINDRANCES,
+    DEFEND,
+    GAIN_ITEM,
+    REPAIR_ITEM,
+    SHIP_UPGRADE,
+    SPEND,
+    TAKE_LEAD,
     ChangeHindrances,
-    ChangeWorld,
     Defend,
-    DropItem,
     GainItem,
     Job,
     Raise,
@@ -30,7 +35,6 @@ from aidm.engines.twentyfourxx.tools import (
     Spend,
     TakeLead,
     TestLuck,
-    WorldChange,
 )
 from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
@@ -86,8 +90,17 @@ class TwentyfourxxEngine(
 
     def master_tools(self) -> tuple[MasterTool[TwentyfourxxGame], ...]:
         return (
-            master_tool("change_world", CHANGE_WORLD, ChangeWorld, self.change_world),
-            master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
+            *super().master_tools(),
+            master_tool(
+                "change_hindrances", CHANGE_HINDRANCES, ChangeHindrances, self.change_hindrances
+            ),
+            master_tool("gain_item", GAIN_ITEM, GainItem, self.gain_item),
+            master_tool("drop_item", DROP_ITEM, DropItem, self.drop_item),
+            master_tool("repair_item", REPAIR_ITEM, RepairItem, self.repair_item),
+            master_tool("spend", SPEND, Spend, self.spend),
+            master_tool("take_lead", TAKE_LEAD, TakeLead, self.take_lead),
+            master_tool("ship_upgrade", SHIP_UPGRADE, ShipUpgrade, self.ship_upgrade),
+            master_tool("defend", DEFEND, Defend, self.defend),
             master_tool(
                 "roll",
                 "Call this when the outcome of an action matters. The engine picks the dice, "
@@ -111,7 +124,6 @@ class TwentyfourxxEngine(
                 Job,
                 self.job,
             ),
-            master_tool("hire", HIRE_TOOL, Hire, self.hire),
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
@@ -253,39 +265,43 @@ class TwentyfourxxEngine(
             f"({', '.join(labels)})"
         )
 
-    def apply_change(self, world: TwentyfourxxWorld, change: WorldChange) -> list[Fact]:
-        match change:
-            case ChangeHindrances():
-                return world.require_actor(change.actor_id).change_hindrances(
-                    change.gained, change.lost
-                )
-            case GainItem():
-                return world.require_actor(change.actor_id).gain_item(
-                    change.name, bulky=change.bulky, breaks=change.breaks, cost=change.cost
-                )
-            case DropItem():
-                return world.require_actor(change.actor_id).drop_item(change.item_id)
-            case RepairItem():
-                actor = world.require_actor(change.actor_id)
-                return actor.repair_item(world.require_gear(actor, change.item_id), change.cost)
-            case Spend():
-                return world.require_actor(change.actor_id).spend(change.amount, change.why)
-            case TakeLead():
-                return world.take_lead(change.entity_id)
-            case ShipUpgrade():
-                return world.upgrade_ship(change.function_id)
-            case Defend():
-                return world.defend(change.actor_id, change.item_id, change.hindrance)
-            case _:
-                return self.shared_change(world, change)
+    def change_hindrances(
+        self, draft: TwentyfourxxGame, args: ChangeHindrances, _rng: Random
+    ) -> list[Fact]:
+        return draft.payload.require_actor(args.actor_id).change_hindrances(args.gained, args.lost)
 
-    def change_world(self, draft: TwentyfourxxGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-        facts = self.apply_change(draft.payload, args.change)
+    def gain_item(self, draft: TwentyfourxxGame, args: GainItem, _rng: Random) -> list[Fact]:
+        return draft.payload.require_actor(args.actor_id).gain_item(
+            args.name, bulky=args.bulky, breaks=args.breaks, cost=args.cost
+        )
+
+    def drop_item(self, draft: TwentyfourxxGame, args: DropItem, _rng: Random) -> list[Fact]:
+        return draft.payload.require_actor(args.actor_id).drop_item(args.item_id)
+
+    def repair_item(self, draft: TwentyfourxxGame, args: RepairItem, _rng: Random) -> list[Fact]:
+        world = draft.payload
+        actor = world.require_actor(args.actor_id)
+        return actor.repair_item(world.require_gear(actor, args.item_id), args.cost)
+
+    def spend(self, draft: TwentyfourxxGame, args: Spend, _rng: Random) -> list[Fact]:
+        return draft.payload.require_actor(args.actor_id).spend(args.amount, args.why)
+
+    def take_lead(self, draft: TwentyfourxxGame, args: TakeLead, _rng: Random) -> list[Fact]:
+        return draft.payload.take_lead(args.entity_id)
+
+    def ship_upgrade(self, draft: TwentyfourxxGame, args: ShipUpgrade, _rng: Random) -> list[Fact]:
+        return draft.payload.upgrade_ship(args.function_id)
+
+    def defend(self, draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
+        return draft.payload.defend(args.actor_id, args.item_id, args.hindrance)
+
+    def kill(self, draft: TwentyfourxxGame, args: Kill, _rng: Random) -> list[Fact]:
+        facts = super().kill(draft, args, _rng)
         self._succession(draft)
         return facts
 
     def _succession(self, draft: TwentyfourxxGame) -> None:
-        """Sits on the draft: `apply_change` sees only the world; the decision is the game's."""
+        """`kill` and `roll` are the two tools that can kill the lead."""
         world = draft.payload
         if world.player.alive or not (members := world.sheeted_members()):
             return
@@ -297,8 +313,8 @@ class TwentyfourxxEngine(
                     id=member.id,
                     label=member.name,
                     detail=member.brief,
-                    name="change_world",
-                    args={"change": {"verb": "take_lead", "entity_id": member.id}},
+                    name="take_lead",
+                    args={"entity_id": member.id},
                 )
                 for member in members
             ),

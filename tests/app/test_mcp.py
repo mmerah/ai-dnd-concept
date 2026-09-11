@@ -15,10 +15,7 @@ from aidm.config import Role
 from aidm.core.play import Answer
 
 BASE_URL = "http://localhost:8123"
-REVEAL_VAULT_MAP: dict[str, object] = {
-    "name": "change_world",
-    "arguments": {"change": {"verb": "reveal", "entity_id": "vault-map"}},
-}
+REVEAL_VAULT_MAP: dict[str, object] = {"name": "reveal", "arguments": {"entity_id": "vault-map"}}
 
 
 class Tool(TypedDict):
@@ -98,12 +95,12 @@ async def test_master_tools_over_the_mcp_endpoint(tmp_path: Path) -> None:
             )
             await service.play(Answer(text="I search the vault."))
             assert "roll" in master.tools_seen
-            assert "change_world" in master.tools_seen
+            assert "reveal" in master.tools_seen
             change_result = master.change_result
             assert change_result is not None
             assert change_result.get("isError") is not True
 
-            # The change_world call landed as a fact.
+            # The reveal call landed as a fact.
             facts = service.engine.world(service.state).exchanges()[-1].facts
             assert any("vault-map" in fact.trace for fact in facts)
     finally:

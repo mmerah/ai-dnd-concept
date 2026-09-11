@@ -27,7 +27,7 @@ on a miss. Every fight is dangerous. So is a trap, a fall or a hazard with no de
 
 ## Changing the world
 
-Use the `reveal` arm only for what the player has plainly found. Use the `kill` arm for a death
+Call `reveal` only for what the player has plainly found. Call `kill` for a death
 the story has settled. A helpless target needs no roll.
 
 ## Moving
@@ -36,8 +36,8 @@ WAYS OUT is the map the player can act on now. Only a way listed there leads any
 `unknown` way is one the player has not found, and their page does not show it. Walking it
 with `move` makes it known. Do that only once the story has found it.
 
-A locked way opens after a roll, or after the story uses a key the player carries. Then use the
-`unlock_way` arm, which also makes the way known to the player. Only then does `move` carry the
+A locked way opens after a roll, or after the story uses a key the player carries. Then call
+`unlock_way`, which also makes the way known to the player. Only then does `move` carry the
 player through.
 
 When WAYS OUT lead nowhere new, the page offers the player more map. There is nothing for you to
@@ -45,7 +45,7 @@ call.
 
 ## Resting
 
-Use the `rest` arm for a night in a safe spot. You judge what is safe.
+Call `rest` for a night in a safe spot. You judge what is safe.
 
 ## A member's help
 
@@ -53,4 +53,4 @@ A member without a sheet rolls nothing. Their help is a lower `difficulty` or a 
 
 ## Hiring
 
-Name the hired member in `actor_id` on `roll`. The `rest` arm heals them with the party.
+Name the hired member in `actor_id` on `roll`. `rest` heals them with the party.

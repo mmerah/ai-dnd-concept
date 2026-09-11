@@ -60,7 +60,7 @@ def body(s: Session) -> None:
     # 2. Reveal + take: cards and sheet.
     submit(
         page,
-        "I find the map.\n!change verb=reveal entity_id=vault-map\n!change verb=change_tags entity_id=player kind=gear gained='[\"Vault Map\"]'",  # noqa: E501
+        "I find the map.\n!reveal entity_id=vault-map\n!change_tags entity_id=player kind=gear gained='[\"Vault Map\"]'",  # noqa: E501
     )
     wait_idle(page)
     s.check(
@@ -102,7 +102,7 @@ def body(s: Session) -> None:
     # 4. Refused master calls do not kill the turn; the refusal reaches the log.
     submit(
         page,
-        "I do something the rules refuse.\n!change verb=reveal entity_id=nowhere\n!change verb=reveal entity_id=elena",  # noqa: E501
+        "I do something the rules refuse.\n!reveal entity_id=nowhere\n!reveal entity_id=elena",  # noqa: E501
     )
     wait_idle(page)
     last = log()[-2]
@@ -231,9 +231,7 @@ def body(s: Session) -> None:
     s.check(not composer(page).is_disabled(), "composer stuck after an unwritten way")
 
     # 13. Reload mid-turn: the live turn shows; the draft survives.
-    submit(
-        page, 'I take my time.\n!slow narrator\n!change verb=drive entity_id=player goal="Get out"'
-    )
+    submit(page, 'I take my time.\n!slow narrator\n!drive entity_id=player goal="Get out"')
     page.wait_for_timeout(800)
     composer(page).fill("a draft typed mid-turn") if not composer(page).is_disabled() else None
     page.reload()
@@ -332,7 +330,7 @@ def body(s: Session) -> None:
     s.check("The Abbot's Study" in clean(page.inner_text(".game-scene")), "scene header not reset")
 
     # 19. Death: the game is over, the composer closes, the only way on is restart.
-    submit(page, "I die.\n!change verb=kill entity_id=player")
+    submit(page, "I die.\n!kill entity_id=player")
     wait_idle(page) if False else page.wait_for_timeout(3000)
     s.shot(page, "dead")
     text = clean(page.inner_text("body"))

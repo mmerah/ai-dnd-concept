@@ -1,18 +1,21 @@
-from typing import Annotated, Literal, Self
+from typing import Literal, Self
 
-from pydantic import Discriminator, Field, model_validator
+from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Slug
-from aidm.engines import base
-from aidm.engines.base import Attempt, JoinParty, LeaveParty
+from aidm.engines.base import Attempt
 from aidm.engines.hiring import ACTOR
-from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
+
+CHANGE_HINDRANCES = "The actor picks up hindrances, sheds them, or both at once."
+GAIN_ITEM = "The actor gains an item and pays for it."
+REPAIR_ITEM = "The actor mends a broken item."
+SPEND = "The actor pays credits for something that is not an item or a repair."
+TAKE_LEAD = "A hired member takes the lead after the player dies."
+SHIP_UPGRADE = "The player upgrades one ship function."
+DEFEND = "A carried item or a ship function breaks so a hit becomes a hindrance."
 
 
 class ChangeHindrances(Frozen):
-    """The actor picks up hindrances, sheds them, or both at once."""
-
-    verb: Literal["change_hindrances"]
     gained: tuple[str, ...] = Field(default=(), description="Hindrances the actor now carries.")
     lost: tuple[str, ...] = Field(default=(), description="Hindrances the actor no longer carries.")
     actor_id: Slug | None = Field(default=None, description=ACTOR)
@@ -25,9 +28,6 @@ class ChangeHindrances(Frozen):
 
 
 class GainItem(Frozen):
-    """The actor gains an item and pays for it."""
-
-    verb: Literal["gain_item"]
     name: str = Field(min_length=1, description="The item's name.")
     bulky: bool = Field(default=False, description="True when the item takes real space to carry.")
     breaks: int = Field(
@@ -41,50 +41,27 @@ class GainItem(Frozen):
     actor_id: Slug | None = Field(default=None, description=ACTOR)
 
 
-class DropItem(Frozen):
-    """The actor loses an item for good."""
-
-    verb: Literal["drop_item"]
-    item_id: Slug = Field(description="Exact id of an item the actor carries.")
-    actor_id: Slug | None = Field(default=None, description=ACTOR)
-
-
 class RepairItem(Frozen):
-    """The actor mends a broken item."""
-
-    verb: Literal["repair_item"]
     item_id: Slug = Field(description="Exact id of an item the actor carries, or a ship function.")
     cost: int = Field(default=0, ge=0, description="Credits spent on the repair.")
     actor_id: Slug | None = Field(default=None, description=ACTOR)
 
 
 class Spend(Frozen):
-    """The actor pays credits for something that is not an item or a repair."""
-
-    verb: Literal["spend"]
     amount: int = Field(gt=0, description="Credits spent.")
     why: str = Field(min_length=1, description="What the credits pay for, in a few words.")
     actor_id: Slug | None = Field(default=None, description=ACTOR)
 
 
 class TakeLead(Frozen):
-    """A hired member takes the lead after the player dies."""
-
-    verb: Literal["take_lead"]
     entity_id: Slug = Field(description="Exact id of the living hired member who takes the lead.")
 
 
 class ShipUpgrade(Frozen):
-    """The player upgrades one ship function."""
-
-    verb: Literal["ship_upgrade"]
     function_id: Slug = Field(description="Exact id of a ship function. The player pays ₡10.")
 
 
 class Defend(Frozen):
-    """A carried item or a ship function breaks so a hit becomes a hindrance."""
-
-    verb: Literal["defend"]
     item_id: Slug = Field(description="Exact id of an item the actor carries, or a ship function.")
     hindrance: str = Field(
         default="",
@@ -92,27 +69,6 @@ class Defend(Frozen):
         "harmlessly.",
     )
     actor_id: Slug | None = Field(default=None, description=ACTOR)
-
-
-type WorldChange = (
-    Reveal
-    | Enter
-    | Leave
-    | Kill
-    | JoinParty
-    | LeaveParty
-    | ChangeHindrances
-    | GainItem
-    | DropItem
-    | RepairItem
-    | Spend
-    | TakeLead
-    | ShipUpgrade
-    | Defend
-)
-
-
-ChangeWorld = base.ChangeWorld[Annotated[WorldChange, Discriminator("verb")]]
 
 
 class Roll(Attempt):

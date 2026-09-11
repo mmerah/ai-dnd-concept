@@ -18,7 +18,7 @@ from aidm.core.entities import Refusal
 from aidm.core.model import AnyGame
 from aidm.core.tools import MasterTool, schema_of
 
-CHANGE_WORLD = ENGINES_BUILT[LONER3E].tools["change_world"]
+CHANGE_TAGS = ENGINES_BUILT[LONER3E].tools["change_tags"]
 TRACE = "- the player Kael[player] gained the tag Listening"
 FENCED = '```json\n{"lines": []}\n```'
 _, STATE = initialized()
@@ -30,12 +30,12 @@ class _Tools:
     calls: list[tuple[str, JsonValue]] = field(default_factory=list)
 
     def published_tools(self) -> Sequence[MasterTool[AnyGame]]:
-        return (CHANGE_WORLD,)
+        return (CHANGE_TAGS,)
 
     def call(self, name: str, raw: JsonValue) -> str:
-        if name != CHANGE_WORLD.name:
+        if name != CHANGE_TAGS.name:
             raise Refusal(f"{name!r} is not a tool of the 'loner3e' engine.")
-        _ = CHANGE_WORLD.call(self.state.draft(), raw, Random(0))
+        _ = CHANGE_TAGS.call(self.state.draft(), raw, Random(0))
         self.calls.append((name, raw))
         return TRACE
 
@@ -102,16 +102,15 @@ async def test_the_master_plays_its_tools_in_process_and_echoes_each_reply_whole
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     change = {
-        "verb": "change_tags",
         "entity_id": "player",
         "kind": "condition",
         "gained": ["Listening"],
     }
-    arguments = json.dumps({"change": change})
+    arguments = json.dumps(change)
     first = _said(
         None,
-        _call("a", "change_world", arguments),
-        _call("b", "change_world", "[1]"),
+        _call("a", "change_tags", arguments),
+        _call("b", "change_tags", "[1]"),
         _call("c", "next_scene", "{}"),
         reasoning_details=[{"type": "reasoning.text", "text": "thinking"}],
     )
@@ -123,14 +122,14 @@ async def test_the_master_plays_its_tools_in_process_and_echoes_each_reply_whole
     )
 
     assert spoken.text == "Done."
-    assert tools.calls == [("change_world", {"change": change})]
+    assert tools.calls == [("change_tags", change)]
     assert sent[0]["tools"] == [
         {
             "type": "function",
             "function": {
-                "name": "change_world",
-                "description": CHANGE_WORLD.description,
-                "parameters": schema_of(CHANGE_WORLD.args),
+                "name": "change_tags",
+                "description": CHANGE_TAGS.description,
+                "parameters": schema_of(CHANGE_TAGS.args),
             },
         }
     ]
@@ -140,8 +139,8 @@ async def test_the_master_plays_its_tools_in_process_and_echoes_each_reply_whole
         "role": "assistant",
         "reasoning_details": [{"type": "reasoning.text", "text": "thinking"}],
         "tool_calls": [
-            _call("a", "change_world", arguments),
-            _call("b", "change_world", "[1]"),
+            _call("a", "change_tags", arguments),
+            _call("b", "change_tags", "[1]"),
             _call("c", "next_scene", "{}"),
         ],
     }
@@ -160,7 +159,7 @@ async def test_the_master_plays_its_tools_in_process_and_echoes_each_reply_whole
 async def test_a_master_still_calling_tools_past_the_cap_is_cut_off(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    endless = _said(None, _call("a", "change_world", "{}"))
+    endless = _said(None, _call("a", "change_tags", "{}"))
     sent = _post(monkeypatch, endless, endless, endless, endless)
     master = RoleConfig(provider="local", model="m", max_rounds=3)
 
@@ -216,10 +215,10 @@ async def test_the_whole_run_is_held_to_the_roles_timeout(
 async def test_a_writer_that_calls_a_tool_is_refused_before_anything_lands(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _ = _post(monkeypatch, _said(None, _call("a", "change_world", "{}")))
+    _ = _post(monkeypatch, _said(None, _call("a", "change_tags", "{}")))
     tools = _Tools(STATE)
 
-    with pytest.raises(Refusal, match="no tools, yet called 'change_world'"):
+    with pytest.raises(Refusal, match="no tools, yet called 'change_tags'"):
         _ = await RoleRunner(_settings(narrator=RoleConfig(provider="local", model="m"))).run(
             "narrator", "BRIEF", None, tools
         )

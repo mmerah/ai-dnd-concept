@@ -57,9 +57,9 @@ skill one step down.
 
 ## Stress and the med kit
 
-Use the `change_stress` arm for what a complication costs the actor, and for what laying low
-somewhere secure clears. Use the `use_med_kit` arm to spend a held med kit. The med kit clears 2
-stress and no other arm spends it.
+Call `change_stress` for what a complication costs the actor, and for what laying low
+somewhere secure clears. Call `use_med_kit` to spend a held med kit. The med kit clears 2
+stress and no other tool spends it.
 
 ## Scavenging
 
@@ -72,7 +72,7 @@ A member without a sheet helps in the story alone and rolls nothing.
 ## Hiring
 
 A hired member then acts like the player. Name them in `actor_id` on `roll` and `catch_breath`,
-and on the `change_stress`, `use_med_kit` and `drop_item` arms. Name them in `helped_by` to roll
+and on `change_stress`, `use_med_kit` and `drop_item`. Name them in `helped_by` to roll
 beside the actor. `loot_check` stays the player's.
 
 ## The way on
@@ -91,7 +91,7 @@ Play the leaving like any other action. An obstacle in the way is a roll or a re
 The player can stay. The scene stays open until the player says where they go. Their answer
 builds the next scene.
 
-Set `complication` only when no `change_world` arm can bring the new situation out of what is
+Set `complication` only when no other tool can bring the new situation out of what is
 already here.
 
 `next_scene` with nothing set does not end the turn. Finish what the player's action caused,
@@ -106,7 +106,7 @@ the arc yourself.
 ## The party
 
 A party member travels with the player from scene to scene. The player commands them and you
-voice them. Use the `join_party` arm when someone here comes along. Use the `leave_party` arm
+voice them. Call `join_party` when someone here comes along. Call `leave_party`
 when they stop. Never volunteer a member's action to soften a scene the player must face alone.
 
 SCENARIO:

@@ -181,7 +181,7 @@ def test_spend_refuses_short_credits() -> None:
     assert "only" in refused(ENGINE, draft, "spend", amount=99, why="a bigger bribe")
 
 
-def test_change_world_spend_with_actor_id_pays_from_the_member_credits() -> None:
+def test_spend_with_actor_id_pays_from_the_member_credits() -> None:
     draft = hired(small_world(), KESTREL, skills={"Shooting": 8}).draft()
     member = draft.payload.cast[KESTREL]
     before = member.dice().credits
@@ -396,6 +396,14 @@ def test_risking_death_disaster_with_hired_member_sets_succession_and_over_stays
     assert [option.id for option in draft.pending.options] == [KESTREL]
     assert ENGINE.over(draft) is None
     assert any(fact.card == "You are dead" for fact in facts)
+
+
+def test_kill_on_the_lead_with_a_hired_member_opens_the_succession() -> None:
+    draft = hired(small_world(), KESTREL, skills={"Shooting": 8}).draft()
+    _ = change(ENGINE, draft, "kill", entity_id=PLAYER_ID)
+    assert draft.pending is not None
+    assert draft.pending.kind == "succession"
+    assert ENGINE.over(draft) is None
 
 
 def test_risking_death_disaster_with_none_hired_ends_the_game() -> None:

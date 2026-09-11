@@ -26,31 +26,31 @@ setback then maims them.
 
 ## Gear and credits
 
-Use the `gain_item` arm to add an item. Most items cost ₡1. Use the `drop_item` arm to lose one
-for good. Use the `repair_item` arm to mend broken gear. Use the `spend` arm for everything else
+Call `gain_item` to add an item. Most items cost ₡1. Call `drop_item` to lose one
+for good. Call `repair_item` to mend broken gear. Call `spend` for everything else
 the player pays for, such as a bribe, medical care or passage.
 
 ## Defending
 
-Use the `defend` arm when the player says their gear takes a hit. One carried item or one ship
+Call `defend` when the player says their gear takes a hit. One carried item or one ship
 function breaks. The hit becomes a hindrance instead. Broken gear is useless until mended.
 
 ## Hindrances
 
-Use the `change_hindrances` arm when the story gives the actor a hindrance or lifts one. A
+Call `change_hindrances` when the story gives the actor a hindrance or lifts one. A
 hindered roll is a d4. The engine reads no hindrance itself. Cite the one that applies in
 `hindered`, load included. More than one bulky item can hinder the actor.
 
 ## The ship
 
 THE SHIP lists the crew's seven starship functions with their ids. Name a function as `item_id`
-on the `defend` arm or the `repair_item` arm. An item or function marked harmless breaks with no
-hindrance. Use the `ship_upgrade` arm to upgrade one function for ₡10. Say in the story what
+on `defend` or `repair_item`. An item or function marked harmless breaks with no
+hindrance. Call `ship_upgrade` to upgrade one function for ₡10. Say in the story what
 the upgrade is.
 
 ## Jobs
 
-Call `job` with `find` and `where` when the player looks for work. Use the `spend` arm to pay ₡1
+Call `job` with `find` and `where` when the player looks for work. Call `spend` to pay ₡1
 for a second `find`.
 
 Call `job` with `take` and `terms` when the player agrees to the work. THE JOB then holds its
@@ -66,7 +66,7 @@ A member without a sheet helps through `helped` only.
 
 ## Hiring
 
-A hired member then acts like the player. Name them in `actor_id` wherever a tool or arm offers
+A hired member then acts like the player. Name them in `actor_id` wherever a tool offers
 it.
 
 ## Death and succession

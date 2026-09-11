@@ -19,8 +19,11 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption
+from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import NarratorView, Pairs, Panel, PlayerView
 from aidm.engines.base import (
+    JOIN_PARTY,
+    LEAVE_PARTY,
     JoinParty,
     LeaveParty,
     Person,
@@ -33,6 +36,11 @@ from aidm.engines.base import (
 )
 from aidm.engines.scenes.packs import SRD_PACK, ScenePack, read_packs
 from aidm.engines.scenes.tools import (
+    ENTER,
+    KILL,
+    LEAVE,
+    NEXT_SCENE,
+    REVEAL,
     Enter,
     Kill,
     Leave,
@@ -40,7 +48,6 @@ from aidm.engines.scenes.tools import (
     NextScene,
     Reveal,
     SceneDraft,
-    SharedChange,
 )
 from aidm.engines.scenes.world import SCENE_LEFT, SceneWorld
 from aidm.engines.scenes.worldsmith import (
@@ -94,7 +101,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
 
     def __init__(self) -> None:
         self.packs = read_packs(self.directory / "packs", self.pack)
-        super().__init__()  # last: `master_tools` reads the packs
+        super().__init__()
 
     def world(self, state: G) -> SceneWorld[C]:
         return state.payload
@@ -173,21 +180,35 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
             over=self.over(state),
         )
 
-    def shared_change(self, world: SceneWorld[C], change: SharedChange) -> list[Fact]:
-        """Each arm settles its own consequences, so a call leaves nothing half-done."""
-        match change:
-            case Reveal():
-                return world.reveal_hidden(change.entity_id)
-            case Enter():
-                return world.enter(change.entity_id)
-            case Leave():
-                return world.leave(change.entity_id)
-            case Kill():
-                return world.kill(change.entity_id)
-            case JoinParty():
-                return world.join_party(change.entity_id)
-            case LeaveParty():
-                return world.leave_party(change.entity_id)
+    def master_tools(self) -> tuple[MasterTool[G], ...]:
+        return (
+            *super().master_tools(),
+            master_tool("reveal", REVEAL, Reveal, self.reveal),
+            master_tool("enter", ENTER, Enter, self.enter),
+            master_tool("leave", LEAVE, Leave, self.leave),
+            master_tool("kill", KILL, Kill, self.kill),
+            master_tool("join_party", JOIN_PARTY, JoinParty, self.join_party),
+            master_tool("leave_party", LEAVE_PARTY, LeaveParty, self.leave_party),
+            master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
+        )
+
+    def reveal(self, draft: G, args: Reveal, _rng: Random) -> list[Fact]:
+        return self.world(draft).reveal_hidden(args.entity_id)
+
+    def enter(self, draft: G, args: Enter, _rng: Random) -> list[Fact]:
+        return self.world(draft).enter(args.entity_id)
+
+    def leave(self, draft: G, args: Leave, _rng: Random) -> list[Fact]:
+        return self.world(draft).leave(args.entity_id)
+
+    def kill(self, draft: G, args: Kill, _rng: Random) -> list[Fact]:
+        return self.world(draft).kill(args.entity_id)
+
+    def join_party(self, draft: G, args: JoinParty, _rng: Random) -> list[Fact]:
+        return self.world(draft).join_party(args.entity_id)
+
+    def leave_party(self, draft: G, args: LeaveParty, _rng: Random) -> list[Fact]:
+        return self.world(draft).leave_party(args.entity_id)
 
     def next_scene(self, draft: G, args: NextScene, _rng: Random) -> list[Fact]:
         if args.pursuit and args.complication:
