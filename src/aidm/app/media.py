@@ -18,6 +18,9 @@ LOGGER = logging.getLogger(__name__)
 
 ICON_DIR = "icons"
 SUFFIXES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
+SCENE_RATIO = "16:9"
+ICON_RATIO = "1:1"
+MAX_REFERENCES = 4
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,12 +65,12 @@ class Illustrator:
     async def _draw(self, scene: NarratorView, key: str, narration: str) -> None:
         icons = {
             subject.label: icon
-            for subject in scene.subjects[: self.config.max_references]
+            for subject in scene.subjects[:MAX_REFERENCES]
             if (icon := await self._drawn_icon(subject)) is not None
         }
         generated = await self._generate(
             illustration_request(scene, narration, self.style, tuple(icons)),
-            self.config.scene_ratio,
+            SCENE_RATIO,
             tuple(icons.values()),
         )
         if generated is not None:
@@ -83,9 +86,7 @@ class Illustrator:
         if not claim(self.generating, claim_key):
             return None
         try:
-            generated = await self._generate(
-                _icon_request(subject, self.style), self.config.icon_ratio
-            )
+            generated = await self._generate(_icon_request(subject, self.style), ICON_RATIO)
         finally:
             self.generating.discard(claim_key)
         if generated is None:

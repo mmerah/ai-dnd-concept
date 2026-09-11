@@ -10,7 +10,7 @@ from hashlib import sha1
 from pathlib import Path
 from typing import override
 
-from aidm.app.media import GeneratedImage, Illustrator
+from aidm.app.media import ICON_RATIO, GeneratedImage, Illustrator
 
 WIDTH = 960
 HEIGHT = 540
@@ -24,9 +24,7 @@ class PlaceholderIllustrator(Illustrator):
     async def _generate(
         self, prompt: str, ratio: str, references: Sequence[Path] = ()
     ) -> GeneratedImage:
-        width, height = (
-            (ICON_SIDE, ICON_SIDE) if ratio == self.config.icon_ratio else (WIDTH, HEIGHT)
-        )
+        width, height = (ICON_SIDE, ICON_SIDE) if ratio == ICON_RATIO else (WIDTH, HEIGHT)
         return GeneratedImage(data=gradient_png(prompt, width, height), suffix=".png")
 
 

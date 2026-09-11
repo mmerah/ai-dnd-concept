@@ -4,7 +4,7 @@ from pathlib import Path
 from nicegui import ui
 
 from aidm.core.facts import DiceEvent, Fact, cards
-from aidm.core.views import DiceLook
+from aidm.ui.theme import DiceLook
 
 DICE_ASSETS = Path(__file__).parent / "dice_assets"
 DICE_ASSETS_ROUTE = "/dice/"

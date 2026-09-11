@@ -2,6 +2,7 @@ from collections.abc import Sequence
 
 from aidm.core.entities import EngineId, Slug
 from aidm.core.model import ScenarioMeta
+from aidm.core.play import Chapter
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.engine import BreathlessEngine
 from aidm.engines.breathless.world import (
@@ -49,6 +50,7 @@ def small_world() -> BreathlessGame:
             title="Diner", premise="A quiet diner, disturbed.", scope="One quiet night in."
         ),
         engine=EngineId("breathless"),
+        log=[Chapter(title="The Diner", focus="Can they reach the back door?")],
         payload=world,
     )
 

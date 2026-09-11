@@ -8,7 +8,7 @@ from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, roll, roll_pool
 from aidm.core.play import PendingDecision
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import DiceLook, Pairs
+from aidm.core.views import Pairs
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import (
     CHANGE_TAGS,
@@ -41,18 +41,6 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eGame, Pack]):
     id = EngineId("loner3e")
     title = "LONER 3E"
     art_style = "Painterly illustration, muted colours, no text or lettering."
-    dice_look = DiceLook(body="#efe4c8", ink="#7a2e2e", glow="#c89b5a")
-    palette = {
-        "game-bg": "#14121e",
-        "game-surface": "#201c2d",
-        "game-surface-raised": "#2c263c",
-        "game-text": "#eee7f4",
-        "game-muted": "#bdb0ce",
-        "game-border": "#443951",
-        "game-accent": "#c5a4ed",
-        "game-wash": "rgba(197, 164, 237, .09)",
-        "game-radius": "18px",
-    }
     directory = Path(__file__).parent
     game = Loner3eGame
     scenario = Loner3eScenario

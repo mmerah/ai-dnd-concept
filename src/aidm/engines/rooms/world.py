@@ -5,7 +5,6 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import Mutable, Refusal, Slug, check_unique, parse
 from aidm.core.facts import Fact
-from aidm.core.play import Exchange, SceneRecord
 from aidm.core.prompt import lines_of
 from aidm.core.views import Pairs
 from aidm.engines.base import IS_DEAD, PLAYER_ID, UNKNOWN_ID, Person, Thing, World, check_filing
@@ -29,11 +28,6 @@ class Way(Mutable):
     to: Slug
     known: bool = False
     locked: bool = False
-
-
-class Visit(Mutable):
-    place: Slug
-    exchanges: list[Exchange] = Field(default_factory=list)
 
 
 class Dungeon[N: Dweller](Mutable):
@@ -119,14 +113,14 @@ class MapDraft[N: Dweller](Dungeon[N]):
 
 
 class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
-    visits: list[Visit] = Field(min_length=1)
+    visits: list[Slug] = Field(min_length=1)
 
     @model_validator(mode="after")
     def _playable(self) -> Self:
         if not self.player.known:
             raise ValueError("the player is unknown to themselves")
-        for visit in self.visits:
-            self.require_place(visit.place)
+        for place_id in self.visits:
+            self.require_place(place_id)
         check_unique("party", self.party)
         for member_id in self.party:
             npc = self.npcs.get(member_id)
@@ -148,18 +142,14 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
                 "npcs": draft.npcs,
                 "items": {**draft.items, **{item.id: item for item in items}},
                 "player": player,
-                "visits": [Visit(place=draft.start)],
+                "visits": [draft.start],
                 "source": source,
             },
         )
 
     @property
     def current(self) -> Place:
-        return self.places[self.visits[-1].place]
-
-    @property
-    def visit(self) -> Visit:
-        return self.visits[-1]
+        return self.places[self.visits[-1]]
 
     def entity(self, entity_id: Slug) -> Person | Prop | Place | None:
         return self.player if entity_id == self.player.id else super().entity(entity_id)
@@ -242,7 +232,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         travelers = [*self.members(), *coming]
         for npc in travelers:
             npc.place = destination.id
-        self.visits.append(Visit(place=destination.id))
+        self.visits.append(destination.id)
         trace = f"the player arrives at {destination.mention}"
         if travelers:
             names = " and ".join(npc.name for npc in travelers)
@@ -358,8 +348,8 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
 
     def map_so_far(self) -> str:
         seen: dict[Slug, Place] = {}
-        for visit in self.visits:
-            seen.setdefault(visit.place, self.require_place(visit.place))
+        for place_id in self.visits:
+            seen.setdefault(place_id, self.require_place(place_id))
         lines: list[str] = []
         for place in seen.values():
             known_ways = ", ".join(
@@ -376,18 +366,6 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
     def sheet_rows(self) -> Pairs:
         """Overridable: a rule may amend a row."""
         return self.player.rows()
-
-    def record(self, exchange: Exchange) -> None:
-        self.visit.exchanges.append(exchange)
-
-    def records(self) -> tuple[SceneRecord, ...]:
-        records: list[SceneRecord] = []
-        for visit in (*(v for v in self.visits[:-1] if v.exchanges), self.visit):
-            place = self.require_place(visit.place)
-            records.append(
-                SceneRecord(title=place.name, focus=place.brief, exchanges=tuple(visit.exchanges))
-            )
-        return tuple(records)
 
 
 def _walk(ways: dict[Slug, list[Way]], start: Slug) -> set[Slug]:

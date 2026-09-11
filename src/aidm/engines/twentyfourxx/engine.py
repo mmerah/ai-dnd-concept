@@ -10,7 +10,7 @@ from aidm.core.model import Objection
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import lines_of, sentence
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import DiceLook, Pairs, Panel, PanelRow
+from aidm.core.views import Pairs, Panel, PanelRow
 from aidm.engines.base import PLAYER_ID, banded, luck_test
 from aidm.engines.hiring import DROP_ITEM, DropItem, Hiring
 from aidm.engines.scenes.engine import SceneEngine
@@ -64,19 +64,6 @@ class TwentyfourxxEngine(
         "Clean science-fiction illustration: hard light, neon on steel, lived-in "
         "technology, no text or lettering."
     )
-    dice_look = DiceLook(body="#101418", ink="#5ee1ff", glow="#5ee1ff")
-    palette = {
-        "game-bg": "#0f1624",
-        "game-surface": "#182236",
-        "game-surface-raised": "#22314b",
-        "game-text": "#e3edf9",
-        "game-muted": "#afc0da",
-        "game-border": "#354968",
-        "game-accent": "#91c8ff",
-        "game-wash": "rgba(145, 200, 255, .08)",
-        "game-radius": "10px",
-        "game-heading": "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
-    }
     directory = Path(__file__).parent
     game = TwentyfourxxGame
     scenario = TwentyfourxxScenario

@@ -8,7 +8,7 @@ from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption, PendingDecision
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import DiceLook, Pairs
+from aidm.core.views import Pairs
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.hiring import Hiring
 from aidm.engines.rooms.engine import RoomEngine
@@ -66,18 +66,6 @@ class TunnelGoonsEngine(
     id = EngineId("tunnelgoons")
     title = "TUNNEL GOONS"
     art_style = "Old-school fantasy illustration in black ink, cross-hatched, no text or lettering."
-    dice_look = DiceLook(body="#3b4048", ink="#f3efe6", glow="#7fb069")
-    palette = {
-        "game-bg": "#191411",
-        "game-surface": "#261e18",
-        "game-surface-raised": "#34281f",
-        "game-text": "#f4e7d5",
-        "game-muted": "#c6b29c",
-        "game-border": "#534030",
-        "game-accent": "#eab078",
-        "game-wash": "rgba(234, 176, 120, .08)",
-        "game-radius": "8px",
-    }
     directory = Path(__file__).parent
     game = TunnelGoonsGame
     scenario = TunnelGoonsScenario

@@ -1,13 +1,23 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
+from dataclasses import dataclass
 from functools import cache
-from typing import cast
 
 from nicegui import ui
 
-from aidm.core.entities import EngineId
-from aidm.core.views import Palette
+from aidm.core.entities import EngineId, Frozen
 
-# The single source for every hex value: the CSS block and the Quasar colours below both read it.
+type Palette = Mapping[str, str]
+
+
+class DiceLook(Frozen):
+    """An engine's dice on the table: the body, the ink of the numbers, the glow of a kept die."""
+
+    body: str
+    ink: str
+    glow: str
+
+
+# The single source for every hex value: the first paint, `set_engine` and the Quasar colours.
 NEUTRAL_PALETTE: Palette = {
     "game-bg": "#111519",
     "game-surface": "#1a2026",
@@ -25,7 +35,76 @@ NEUTRAL_PALETTE: Palette = {
     "game-body": "'Inter', 'Segoe UI', system-ui, sans-serif",
     "game-heading": "'EB Garamond', Georgia, 'Times New Roman', serif",
 }
-_PALETTES: dict[EngineId, Palette] = {}
+NEUTRAL_DICE = DiceLook(body="#232c33", ink="#eeeae0", glow="#dbc18b")
+
+
+@dataclass(frozen=True, slots=True)
+class Theme:
+    palette: Palette
+    dice: DiceLook
+
+
+# The one place the UI names an engine; an engine not listed here gets the neutral look.
+THEMES: dict[EngineId, Theme] = {
+    EngineId("loner3e"): Theme(
+        palette={
+            "game-bg": "#14121e",
+            "game-surface": "#201c2d",
+            "game-surface-raised": "#2c263c",
+            "game-text": "#eee7f4",
+            "game-muted": "#bdb0ce",
+            "game-border": "#443951",
+            "game-accent": "#c5a4ed",
+            "game-wash": "rgba(197, 164, 237, .09)",
+            "game-radius": "18px",
+        },
+        dice=DiceLook(body="#efe4c8", ink="#7a2e2e", glow="#c89b5a"),
+    ),
+    EngineId("tunnelgoons"): Theme(
+        palette={
+            "game-bg": "#191411",
+            "game-surface": "#261e18",
+            "game-surface-raised": "#34281f",
+            "game-text": "#f4e7d5",
+            "game-muted": "#c6b29c",
+            "game-border": "#534030",
+            "game-accent": "#eab078",
+            "game-wash": "rgba(234, 176, 120, .08)",
+            "game-radius": "8px",
+        },
+        dice=DiceLook(body="#3b4048", ink="#f3efe6", glow="#7fb069"),
+    ),
+    EngineId("breathless"): Theme(
+        palette={
+            "game-bg": "#0d1818",
+            "game-surface": "#162525",
+            "game-surface-raised": "#203332",
+            "game-text": "#e0eeea",
+            "game-muted": "#a8c1bb",
+            "game-border": "#35504b",
+            "game-accent": "#94d5be",
+            "game-wash": "rgba(148, 213, 190, .07)",
+            "game-radius": "5px",
+            "game-heading": "'Arial Narrow', 'Helvetica Neue', Arial, sans-serif",
+        },
+        dice=DiceLook(body="#5a1216", ink="#efe1d3", glow="#e0393e"),
+    ),
+    EngineId("twentyfourxx"): Theme(
+        palette={
+            "game-bg": "#0f1624",
+            "game-surface": "#182236",
+            "game-surface-raised": "#22314b",
+            "game-text": "#e3edf9",
+            "game-muted": "#afc0da",
+            "game-border": "#354968",
+            "game-accent": "#91c8ff",
+            "game-wash": "rgba(145, 200, 255, .08)",
+            "game-radius": "10px",
+            "game-heading": "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
+        },
+        dice=DiceLook(body="#101418", ink="#5ee1ff", glow="#5ee1ff"),
+    ),
+}
 
 # Offline the fallback stacks in the tokens above apply, which is why every stack names one.
 FONT_LINK = (
@@ -357,10 +436,6 @@ body, body.body--dark {
 """
 
 
-def seed(palettes: Mapping[EngineId, Palette]) -> None:
-    _PALETTES.update(palettes)
-
-
 def apply(engine: EngineId | None = None) -> None:
     ui.dark_mode(True)
     _install()
@@ -368,12 +443,9 @@ def apply(engine: EngineId | None = None) -> None:
 
 
 def set_engine(engine: EngineId | None) -> None:
-    layout = ui.context.client.layout
-    previous = " ".join(
-        name for name in cast(Sequence[str], layout.classes) if name.startswith("game-theme-")
-    )
-    layout.classes(remove=previous, add=f"game-theme-{engine}" if engine else "")
-    palette = _palette(engine)
+    theme = THEMES.get(engine) if engine is not None else None
+    palette = {**NEUTRAL_PALETTE, **(theme.palette if theme is not None else {})}
+    ui.query("body").style("; ".join(f"--{key}: {value}" for key, value in palette.items()))
     ui.colors(
         primary=palette["game-accent"],
         secondary=palette["game-muted"],
@@ -384,23 +456,9 @@ def set_engine(engine: EngineId | None) -> None:
     )
 
 
-def _palette(engine: EngineId | None) -> dict[str, str]:
-    overrides: Palette = _PALETTES.get(engine, {}) if engine is not None else {}
-    return {**NEUTRAL_PALETTE, **overrides}
-
-
-def _palette_css() -> str:
-    root = f":root {{\n{_declarations(NEUTRAL_PALETTE)}\n}}"
-    engines = "\n\n".join(
-        f"body:has(.q-layout.game-theme-{engine}), .game-theme-{engine} "
-        f"{{\n{_declarations(overrides)}\n}}"
-        for engine, overrides in _PALETTES.items()
-    )
-    return f"{root}\n\n{engines}\n"
-
-
-def _declarations(palette: Palette) -> str:
-    return "\n".join(f"  --{key}: {value};" for key, value in palette.items())
+def dice_look(engine: EngineId) -> DiceLook:
+    theme = THEMES.get(engine)
+    return NEUTRAL_DICE if theme is None else theme.dice
 
 
 @cache
@@ -416,4 +474,6 @@ def _install() -> None:
     # `shared=True` appends to the app-wide head on every call; injected once per process.
     ui.add_head_html(FONT_LINK, shared=True)
     # NiceGUI layers Quasar's own `!important` rules; only a layer before theirs outranks them.
-    ui.add_css(f"{_palette_css()}@layer overrides {{{_STATIC_CSS}}}", shared=True)
+    # The palette lands on `body` only once the page mounts; `:root` keeps the first paint dark.
+    root = "".join(f"--{key}: {value};" for key, value in NEUTRAL_PALETTE.items())
+    ui.add_css(f":root {{{root}}}@layer overrides {{{_STATIC_CSS}}}", shared=True)

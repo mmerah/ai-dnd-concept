@@ -3,6 +3,7 @@ import logging
 from asyncio import subprocess, wait_for
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from functools import partial
 from os import environ, killpg
 from signal import SIGKILL
 from tempfile import TemporaryDirectory
@@ -14,7 +15,7 @@ from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
 from aidm.config import CliProvider, Role, RoleConfig
 from aidm.core.entities import Loose, Refusal, parse
 from aidm.core.io import decode
-from aidm.core.model import AnyGame, Objection
+from aidm.core.model import AnyGame, Objection, WorldsmithAnswer
 from aidm.core.tools import MasterTool
 
 RETRIES = 1
@@ -204,6 +205,10 @@ async def ask[T: BaseModel](
         # The retry carries on the refused attempt, which has read the prompt already.
         asked = correction if session is not None else f"{prompt}\n\n{correction}"
     raise Refusal(f"the {role} answered nothing usable: {refused}")
+
+
+def worldsmith(spawner: Spawner) -> WorldsmithAnswer:
+    return partial(ask, spawner, "worldsmith")
 
 
 def child_environment(secrets: Sequence[str]) -> dict[str, str]:

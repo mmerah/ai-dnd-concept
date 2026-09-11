@@ -6,7 +6,6 @@ from support.table import LONER3E, game, narrowed
 
 from aidm.core.entities import Refusal, Slug
 from aidm.core.model import Generation
-from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
@@ -26,15 +25,13 @@ def _world(*runs: SceneRun, **fields: object) -> SceneWorld[Person]:
     return SceneWorld[Person].model_validate({"player": PLAYER, "runs": list(runs), **fields})
 
 
-def _run(place: str, title: str, *, played: bool = False, here: Sequence[Slug] = ()) -> SceneRun:
-    exchanges = [Exchange(prompt=title, lines=())] if played else []
+def _run(place: str, title: str, *, here: Sequence[Slug] = ()) -> SceneRun:
     return SceneRun(
         place=place,
         title=title,
         focus="What happens next here?",
         situation=SITUATION,
         here=list(here),
-        exchanges=exchanges,
     )
 
 
@@ -75,26 +72,6 @@ def test_the_next_scene_prompt_carries_the_scene_as_it_stands() -> None:
 
     assert f"THE SCENE NOW:\n{run.title} [{run.place}]\n{run.situation}" in prompt
     assert "present: Mara[mara]\nhidden: the vault map[vault-map]" in prompt
-
-
-def test_apply_scene_with_a_next_draft_stamps_the_recap_on_the_run_left() -> None:
-    world = _travelling()
-    world.party = []
-    draft = NextDraft[Person](
-        place="a2",
-        title="A2",
-        focus="What happens next here?",
-        situation=SITUATION,
-        present=(MARA,),
-        recap=RECAP,
-        arc=ARC,
-    )
-
-    world.apply_scene(draft)
-
-    assert world.runs[0].recap == RECAP
-    assert world.runs[-1].recap == ""
-    assert world.arc == ARC
 
 
 def test_apply_scene_with_an_empty_arc_keeps_the_worlds_arc() -> None:

@@ -6,7 +6,6 @@ import pytest
 from pydantic import SecretStr
 from support.game import TARGET, initialized, with_entity
 from support.table import offline_settings
-from support.ui import ui_settings
 
 from aidm.app.media import (
     GeneratedImage,
@@ -123,7 +122,7 @@ def test_open_illustrator_takes_the_passed_style_and_is_none_when_media_is_off(
     tmp_path: Path,
 ) -> None:
     store = FileStore(tmp_path)
-    on = ui_settings(tmp_path).model_copy(update={"media": MediaConfig(enabled=True)})
+    on = offline_settings(tmp_path).model_copy(update={"media": MediaConfig(enabled=True)})
     illustrator = open_illustrator(on, store, TARGET.slug, style="woodcut", icon_dirs=())
     assert illustrator is not None
     assert illustrator.style == "woodcut"

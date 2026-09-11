@@ -2,6 +2,7 @@ from collections.abc import Sequence
 
 from aidm.core.entities import EngineId, Slug
 from aidm.core.model import ScenarioMeta
+from aidm.core.play import Chapter
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.world import SceneRun
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
@@ -40,6 +41,12 @@ def small_world() -> TwentyfourxxGame:
             title="Loading Bay", premise="A cargo job gone quiet.", scope="One tense night shift."
         ),
         engine=EngineId("twentyfourxx"),
+        log=[
+            Chapter(
+                title="The Loading Bay",
+                focus="Can they reach the cargo before the lights come back?",
+            )
+        ],
         payload=world,
     )
 

@@ -138,6 +138,16 @@ def test_a_fifth_scene_engine_begins_a_playable_game(tmp_path: Path) -> None:
     assert [row.label for row in engine.player_view(state).panels[-2].rows] == ["Keeper"]
 
 
+def test_a_game_with_no_chapter_open_is_refused(tmp_path: Path) -> None:
+    engine = _installed(tmp_path)
+    character = engine.create_character("Wren", "A quiet scout", {})
+    state = engine.begin("the-taproom", _scenario(), character)
+    state.log.clear()
+
+    with pytest.raises(Refusal, match="no chapter open"):
+        engine.validate(state)
+
+
 def test_a_scene_engine_offers_the_familys_tools_without_naming_them(tmp_path: Path) -> None:
     assert list(_installed(tmp_path).tools) == [
         "reveal",
@@ -167,11 +177,12 @@ def test_close_builds_no_narrator_view(tmp_path: Path) -> None:
     engine = _CountingFifthEngine(tmp_path)
     character = engine.create_character("Wren", "A quiet scout", {})
     state = engine.begin("the-taproom", _scenario(), character)
+    before = engine.narrator_view_calls
 
     closed = engine.close(state.draft(), (SpokenLine(text="Nothing stirs."),), (), prompt="I wait.")
 
-    assert engine.narrator_view_calls == 0
-    assert engine.world(closed).exchanges()[-1].prompt == "I wait."
+    assert engine.narrator_view_calls == before
+    assert closed.exchanges()[-1].prompt == "I wait."
 
 
 @pytest.mark.parametrize("engine_id", ENGINE_IDS)

@@ -1,5 +1,5 @@
 import logging
-from asyncio import Task, create_task, gather
+from asyncio import Task, create_task
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -10,7 +10,7 @@ from pydantic import JsonValue
 from aidm.app.launch import LaunchTarget
 from aidm.app.media import ICON_DIR, Illustrator, open_illustrator
 from aidm.app.roles import RoleRunner, Roles
-from aidm.app.spawn import Spawner
+from aidm.app.spawn import Spawner, worldsmith
 from aidm.app.speech import Reader, open_reader
 from aidm.config import Role, Settings, read_settings
 from aidm.core.entities import EngineId, Refusal, Slug, slug
@@ -19,7 +19,7 @@ from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioMeta
 from aidm.core.play import Answer, Exchange, Mark, SpokenLine
 from aidm.core.source import given_text
 from aidm.core.tools import MasterTool
-from aidm.core.views import DiceLook, PlayerView
+from aidm.core.views import PlayerView
 from aidm.engines.base import Chattiness, Person
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
@@ -87,14 +87,8 @@ class GameService:
     def engine_id(self) -> EngineId:
         return self.engine.id
 
-    @property
-    def dice_look(self) -> DiceLook:
-        return self.engine.dice_look
-
     def unopened(self) -> bool:
-        return not self.busy and not any(
-            record.exchanges for record in self.engine.world(self.state).records()
-        )
+        return not self.busy and not self.state.exchanges()
 
     async def open(self) -> None:
         """A failed narrator leaves the premise to do its work; a reload mid-opening is a no-op."""
@@ -103,7 +97,7 @@ class GameService:
         self.phase = "narrator"
         try:
             draft = self.state.draft()
-            lines = await self.roles.narrate(draft, (), OPENING_NARRATION, fatal=False)
+            lines = await self.roles.narrate(self.engine, draft, (), OPENING_NARRATION, fatal=False)
             if lines:
                 self.save(self.engine.close(draft, lines, (), mark="opening"))
             self._present()
@@ -144,7 +138,7 @@ class GameService:
             if turn.narrates():
                 self.phase = "narrator"
                 lines = await self.roles.narrate(
-                    turn.draft, tuple(turn.facts), turn.prompt, fatal=True
+                    self.engine, turn.draft, tuple(turn.facts), turn.prompt, fatal=True
                 )
             state = turn.finish(lines)
         finally:
@@ -180,7 +174,7 @@ class GameService:
             return
         before = self.state
         try:
-            lines, proposal = await self.roles.interject(self.state, member)
+            lines, proposal = await self.roles.interject(self.engine, self.state, member)
         except (OSError, Refusal) as failed:
             LOGGER.warning("the party did not speak: %s", failed)
             return
@@ -210,12 +204,14 @@ class GameService:
         mark: Mark = "" if words else "story"
         self.phase, grown = "worldsmith", True
         try:
-            facts, telling = await self.engine.advance(draft, request, self.roles.worldsmith())
+            facts, telling = await self.engine.advance(
+                draft, request, worldsmith(self.roles.spawner)
+            )
             if telling is None:
                 self.save(self.engine.land(draft))
             else:
                 self.phase = "narrator"
-                lines = await self.roles.narrate(draft, facts, telling, fatal=False)
+                lines = await self.roles.narrate(self.engine, draft, facts, telling, fatal=False)
                 self.save(self.engine.close(draft, lines, facts, prompt=words, mark=mark))
         except (OSError, Refusal) as failed:
             LOGGER.warning("the world did not grow: %s", failed)
@@ -245,7 +241,7 @@ class GameService:
         return self.engine.player_view(self.state)
 
     def history(self) -> tuple[Exchange, ...]:
-        return self.engine.world(self.state).exchanges()
+        return self.state.exchanges()
 
     def scene_art(self) -> Path | None:
         if self.media is None:
@@ -272,16 +268,13 @@ class GameService:
         self._retain(create_task(self.reader.read(newest)))
 
     def _newest(self) -> Exchange | None:
-        history = self.engine.world(self.state).exchanges()
+        history = self.state.exchanges()
         return history[-1] if history else None
 
     def _retain(self, task: Task[None]) -> None:
         """Retain background tasks because asyncio may collect unreferenced tasks early."""
         self._background.add(task)
         task.add_done_callback(self._background.discard)
-
-    async def drain(self) -> None:
-        await gather(*self._background)
 
     def stop(self) -> None:
         self.hush()
@@ -387,9 +380,7 @@ class Runtime:
         def playable(built: AnyScenario) -> None:
             engine.begin(name, built, character)
 
-        scenario = await engine.author(
-            meta, source, packs, Roles(self.spawner, engine).worldsmith(), playable
-        )
+        scenario = await engine.author(meta, source, packs, worldsmith(self.spawner), playable)
         self.library.write_scenario(name, scenario)
         LOGGER.info("scenario written: slug=%s title=%r", name, meta.title)
         return name
@@ -413,7 +404,7 @@ class Runtime:
             scenario=scenario,
             character=character,
             engine=engine,
-            roles=Roles(self.spawner, engine),
+            roles=Roles(self.spawner),
             store=self.store,
             interjections=settings.interjections,
             media=open_illustrator(

@@ -21,9 +21,9 @@ from aidm.core.model import (
     ScenarioMeta,
     WorldsmithAnswer,
 )
-from aidm.core.play import DecisionOption, Exchange, Mark, PendingOption, SpokenLine
+from aidm.core.play import Chapter, DecisionOption, Exchange, Mark, PendingOption, SpokenLine
 from aidm.core.tools import MasterTool
-from aidm.core.views import DiceLook, NarratorView, Pairs, Palette, PlayerView
+from aidm.core.views import NarratorView, Pairs, PlayerView
 from aidm.engines.base import PLAYER_ID, Person, World, render_worldsmith
 
 type AnyEngine = Engine[Any, Any]
@@ -44,8 +44,6 @@ class Engine[P: Person, G: Game[Any]](ABC):
     id: EngineId
     title: str
     art_style: str
-    dice_look: DiceLook
-    palette: Palette
     directory: Path  # rules.md; a scene engine's packs/
     family_prompt: Path
     worldsmith_prompt: Path
@@ -161,8 +159,13 @@ class Engine[P: Person, G: Game[Any]](ABC):
             decision="" if draft.pending is None else draft.pending.prompt,
             proposal=proposal,
         )
-        self.world(draft).record(exchange)
+        draft.log[-1].exchanges.append(exchange)
         return self.land(draft)
+
+    def open_chapter(self, draft: G) -> None:
+        """The title and focus the narrator sees are the ones the history keeps."""
+        view = self.narrator_view(draft)
+        draft.log.append(Chapter(title=view.title, focus=view.focus))
 
     def land(self, draft: G) -> G:
         self.validate(draft)
@@ -190,6 +193,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
                 "payload": self.new_game(scenario, character),
             },
         )
+        self.open_chapter(state)
         return self.land(state)
 
     def player_of(self, character: AnyCharacter) -> P:
@@ -202,6 +206,8 @@ class Engine[P: Person, G: Game[Any]](ABC):
 
     def validate(self, state: G) -> None:
         """Refuse a state this engine cannot play; a family adds its check after `super()`."""
+        if not state.log:
+            raise Refusal(f"a {self.id!r} game has no chapter open")
         request = state.generation
         if request is not None and request.operation not in self.requests:
             raise Refusal(f"the {self.id!r} engine writes no {request.operation!r}")

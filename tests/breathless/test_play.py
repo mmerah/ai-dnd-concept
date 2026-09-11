@@ -43,7 +43,7 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
     state = await play_turn(table, "Ask what lies past the Bell House.", the_way_on())
     assert state.payload.run.offered
 
-    before = len(table.service.engine.world(state).exchanges())
+    before = len(state.exchanges())
     table.spawner.answers["worldsmith"] = [json.dumps(NEXT_SCENE)]
     pursuit = "Out onto the causeway before the third bell."
     state = await play_turn(
@@ -55,5 +55,5 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
     )
 
     assert state.payload.run.title == "The Causeway"
-    assert table.service.engine.world(state).exchanges()[before].prompt == pursuit
+    assert state.exchanges()[before].prompt == pursuit
     assert table.saved() == table.state

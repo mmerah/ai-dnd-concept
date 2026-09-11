@@ -11,7 +11,7 @@ from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMet
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.tools import Move
-from aidm.engines.rooms.world import Dweller, MapDraft, Place, Prop, RoomWorld, Visit, Way
+from aidm.engines.rooms.world import Dweller, MapDraft, Place, Prop, RoomWorld, Way
 
 SIXTH = EngineId("sixth")
 GATE = "gate"
@@ -114,7 +114,7 @@ def test_a_sixth_room_engine_begins_a_playable_game(tmp_path: Path) -> None:
     )
     assert [row.label for row in ways_out.rows] == ["Yard"]
     engine.move(state, Move(to_id=YARD), Random(0))
-    assert [visit.place for visit in state.payload.visits] == [GATE, YARD]
+    assert state.payload.visits == [GATE, YARD]
 
 
 def test_unlocking_a_way_makes_it_known_and_tells_a_card(tmp_path: Path) -> None:
@@ -244,6 +244,6 @@ def test_a_party_member_who_is_not_at_the_players_place_is_refused(tmp_path: Pat
             npcs=world.npcs,
             items=world.items,
             player=world.player,
-            visits=[Visit(place=YARD)],
+            visits=[YARD],
             party=[WARDEN],
         )

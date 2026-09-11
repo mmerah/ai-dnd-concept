@@ -140,7 +140,9 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
         return ()
 
     def family_sections(self, draft: G | None) -> Pairs:
-        return scene_sections(None if draft is None else self.world(draft))
+        return scene_sections(
+            None if draft is None else self.world(draft), () if draft is None else draft.log
+        )
 
     def narrator_view(self, state: G) -> NarratorView:
         world = self.world(state)
@@ -258,7 +260,10 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
 
     def install(self, draft: G, scene: SceneDraft[C]) -> list[Fact]:
         world = self.world(draft)
+        if isinstance(scene, NextDraft):
+            draft.log[-1].recap = scene.recap
         world.apply_scene(scene.model_copy(deep=True))
+        self.open_chapter(draft)
         trace = f"the scene opens: {scene.title}"
         if travelling := [member.name for member in world.members()]:
             trace += f", the player travelling with {', '.join(travelling)}"

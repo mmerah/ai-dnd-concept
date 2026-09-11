@@ -59,8 +59,8 @@ async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_pat
     assert "Elena" not in narrator
     # The sheets are the game master's: no tag the engine rolls by reaches the narrator.
     assert "concept" not in narrator
-    assert len(table.service.engine.world(state).exchanges()) == 1
-    assert state.payload.exchanges()[-1].prompt == "I search beneath the desk."
+    assert len(state.exchanges()) == 1
+    assert state.exchanges()[-1].prompt == "I search beneath the desk."
 
 
 async def test_the_turn_holds_its_facts_in_resolver_order(tmp_path: Path) -> None:
@@ -75,7 +75,7 @@ async def test_the_turn_holds_its_facts_in_resolver_order(tmp_path: Path) -> Non
     )
 
     expected = ["The vault map discovered", "Took the vault map", "Now: Listening"]
-    exchange = state.payload.exchanges()[-1]
+    exchange = state.exchanges()[-1]
     assert [fact.card for fact in cards(table.facts)] == expected
     assert [fact.card for fact in cards(exchange.facts)] == expected
     assert len(exchange.facts) >= len(cards(exchange.facts))
@@ -90,7 +90,7 @@ async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: 
         await table.service.play(Answer(text="I take the map."))
 
     assert table.service.state.model_dump_json() == before
-    assert table.service.state.payload.exchanges() == ()
+    assert table.service.state.exchanges() == ()
 
 
 async def test_the_engine_rolls_the_outcome_the_facts_then_record(tmp_path: Path) -> None:
@@ -196,7 +196,7 @@ async def test_a_line_spoken_by_someone_not_here_is_re_prompted_with_the_id(
     await table.service.play(Answer(text="I wait."))
 
     assert any("elena" in prompt for role, prompt in table.spawner.prompts if role == "narrator")
-    assert table.service.state.payload.exchanges()[-1].narration == "The door settles."
+    assert table.service.state.exchanges()[-1].narration == "The door settles."
 
 
 def _exploding_after_the_find(table: Table[Loner3eGame]) -> Callable[[], None]:
@@ -221,7 +221,7 @@ async def test_a_master_that_crashes_after_applying_still_commits_what_it_applie
 
     await table.service.play(Answer(text="I take the map and read it."))
 
-    assert len(table.service.engine.world(table.service.state).exchanges()) == 1
+    assert len(table.service.state.exchanges()) == 1
     assert table.service.state.payload.require(MAP).known
 
 
@@ -339,4 +339,4 @@ async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_a
     assert mara.name == "Mara"
     assert mara.brief == "Waiting under the arcade with the lantern shuttered."
     assert (mara.concept, mara.tags) == (before.concept, before.tags)
-    assert WAY_UNWRITTEN not in table.service.engine.world(state).exchanges()[-1].facts
+    assert WAY_UNWRITTEN not in state.exchanges()[-1].facts

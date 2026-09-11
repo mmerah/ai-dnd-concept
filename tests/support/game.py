@@ -1,11 +1,9 @@
 from pathlib import Path
 from random import Random
 
-from aidm.app.roles import Roles
 from aidm.app.runtime import GameService, LaunchTarget
 from aidm.config import Settings
 from aidm.core.entities import Slug
-from aidm.core.io import FileStore
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCharacter, Loner3eGame, Loner3eScenario, Loner3eSheet
 from aidm.engines.seam import AnyEngine
@@ -14,7 +12,6 @@ from support.table import (
     LIBRARY,
     LONER3E,
     SCENARIO_MODELS,
-    ScriptedSpawner,
     Table,
     game,
     narrowed,
@@ -74,14 +71,4 @@ def open_game(
 
 
 def session(directory: Path) -> GameService:
-    spawner = ScriptedSpawner()
-    store = FileStore(directory)
-    return GameService(
-        target=TARGET,
-        scenario=scenario(),
-        character=character(),
-        engine=ENGINE,
-        roles=Roles(spawner, ENGINE),
-        store=store,
-        rng=Random(1),
-    )
+    return open_game(directory, rng=Random(1)).service

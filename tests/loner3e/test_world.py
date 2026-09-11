@@ -7,10 +7,11 @@ from support.table import refused as change_refused
 from aidm.core.entities import Refusal
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, Loner3eSheet
-from aidm.engines.scenes.tools import SceneDraft
+from aidm.engines.scenes.tools import NextDraft, SceneDraft
 from aidm.engines.scenes.worldsmith import check_scene
 
 TOMAS = "tomas"
+RECAP = "A long enough recap to satisfy the minimum length the model demands for what happened."
 
 
 def changed(draft: Loner3eGame, name: str, **fields: JsonValue) -> list[str]:
@@ -88,6 +89,16 @@ def test_someone_left_behind_is_refilled_when_the_scene_moves_on() -> None:
 
     assert MARA not in draft.payload.party
     assert draft.payload.require(MARA).luck.current == LUCK_MAX
+
+
+def test_install_stamps_the_recap_on_the_chapter_left() -> None:
+    _, state = initialized()
+    draft = state.draft()
+
+    _ = ENGINE.install(draft, NextDraft[Loner3eSheet](**_next_scene().model_dump(), recap=RECAP))
+
+    assert draft.log[-2].recap == RECAP
+    assert draft.log[-1].recap == ""
 
 
 def test_an_id_the_worldsmith_got_wrong_resolves_by_name_before_it_is_refused() -> None:

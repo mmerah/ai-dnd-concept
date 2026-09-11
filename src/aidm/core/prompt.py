@@ -1,6 +1,6 @@
 from collections.abc import Iterable, Sequence
 
-from aidm.core.play import Exchange, SceneRecord
+from aidm.core.play import Chapter, Exchange
 from aidm.core.views import Pairs
 
 SCENE_EXCHANGES = 20
@@ -21,36 +21,36 @@ def sentence(text: str) -> str:
     return text[:1].upper() + text[1:]
 
 
-def render_history(records: Sequence[SceneRecord]) -> str:
-    if not any(record.exchanges for record in records):
+def render_history(log: Sequence[Chapter]) -> str:
+    if not any(chapter.exchanges for chapter in log):
         return "(the game has not started yet)"
-    total = len(records)
-    return "\n\n".join(_block(record, index, total) for index, record in enumerate(records))
+    total = len(log)
+    return "\n\n".join(_block(chapter, index, total) for index, chapter in enumerate(log))
 
 
-def told_history(records: Sequence[SceneRecord]) -> str:
+def told_history(log: Sequence[Chapter]) -> str:
     """The recent blocks the master reads, without recaps: those are the worldsmith's."""
-    recent = [record for record in records[-WHOLE_SCENES:] if record.exchanges]
+    recent = [chapter for chapter in log[-WHOLE_SCENES:] if chapter.exchanges]
     if not recent:
         return "(nothing yet)"
     return "\n\n".join(
-        f"{_header(record)}\n\n{_told(record.exchanges[-SCENE_EXCHANGES:])}" for record in recent
+        f"{_header(chapter)}\n\n{_told(chapter.exchanges[-SCENE_EXCHANGES:])}" for chapter in recent
     )
 
 
-def _block(record: SceneRecord, index: int, total: int) -> str:
-    header = _header(record)
+def _block(chapter: Chapter, index: int, total: int) -> str:
+    header = _header(chapter)
     if index >= total - WHOLE_SCENES:
-        body = _told(record.exchanges[-SCENE_EXCHANGES:])
-    elif record.recap:
-        body = f"what happened: {record.recap}"
+        body = _told(chapter.exchanges[-SCENE_EXCHANGES:])
+    elif chapter.recap:
+        body = f"what happened: {chapter.recap}"
     else:
-        body = _told(record.exchanges[-TAIL_EXCHANGES:])
+        body = _told(chapter.exchanges[-TAIL_EXCHANGES:])
     return f"{header}\n\n{body}"
 
 
-def _header(scene: SceneRecord) -> str:
-    return f"SCENE: {scene.title}" + (f"\n{scene.focus}" if scene.focus else "")
+def _header(chapter: Chapter) -> str:
+    return f"SCENE: {chapter.title}" + (f"\n{chapter.focus}" if chapter.focus else "")
 
 
 def _told(exchanges: Sequence[Exchange]) -> str:

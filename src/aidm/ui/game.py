@@ -16,6 +16,7 @@ from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import Answer, DecisionOption, Exchange, Marked
 from aidm.core.views import PlayerView
+from aidm.ui import theme
 from aidm.ui.dice import DiceTray, rolled_since
 from aidm.ui.dictation import Dictation
 from aidm.ui.widgets import (
@@ -177,7 +178,7 @@ class GamePage:
                 ui.button("Keep playing", on_click=self.restart_dialog.close).props("flat")
                 ui.button("Restart", on_click=self.confirmed_restart)
 
-        self.dice = DiceTray(session.dice_look)
+        self.dice = DiceTray(theme.dice_look(session.engine_id))
         self.dice.on("sound", self.sound_state)
         # A cached clip never autoplays on a page load, only one landing after.
         self.shown_clip = session.newest_clip()

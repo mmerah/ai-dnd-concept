@@ -11,11 +11,10 @@ from aidm.core.entities import (
     parse,
 )
 from aidm.core.facts import Fact
-from aidm.core.play import Exchange, SceneRecord
 from aidm.core.prompt import lines_of, sentence
 from aidm.core.views import Panel, PanelRow
 from aidm.engines.base import IS_DEAD, UNKNOWN_ID, Person, Thing, World, check_filing
-from aidm.engines.scenes.tools import NextDraft, SceneDraft
+from aidm.engines.scenes.tools import SceneDraft
 
 WAY_OFFERED = Fact(
     trace=(
@@ -42,9 +41,7 @@ class SceneRun(Mutable):
     focus: str = ""
     situation: str = Field(min_length=1)
     here: list[Slug] = Field(default_factory=list)
-    exchanges: list[Exchange] = Field(default_factory=list)
     offered: bool = False
-    recap: str = ""
 
 
 class SceneWorld[C: Person](World[C, C]):
@@ -93,20 +90,6 @@ class SceneWorld[C: Person](World[C, C]):
 
     def hidden(self) -> list[Slug]:
         return [entity_id for entity_id in self.run.here if not self.cast[entity_id].known]
-
-    def record(self, exchange: Exchange) -> None:
-        self.run.exchanges.append(exchange)
-
-    def records(self) -> tuple[SceneRecord, ...]:
-        return tuple(
-            SceneRecord(
-                title=run.title,
-                focus=run.focus,
-                recap=run.recap,
-                exchanges=tuple(run.exchanges),
-            )
-            for run in self.runs
-        )
 
     def last_seen(self, entity_id: Slug) -> str:
         """Scans every run so an entity the story dropped is still placed."""
@@ -243,8 +226,6 @@ class SceneWorld[C: Person](World[C, C]):
 
     def apply_scene(self, draft: SceneDraft[C]) -> None:
         self.cast, run = settled(draft, self.player, self.merged_cast(draft.cast), self.party)
-        if isinstance(draft, NextDraft):
-            self.run.recap = draft.recap
         self.arc = draft.arc or self.arc
         self.runs.append(run)
 
