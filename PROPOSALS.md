@@ -189,6 +189,7 @@ a list (`:261`); `Engine.answer` returns a tuple (`seam.py:89`); `depart` splice
 Change: rules code returns `list[Fact]`; tuples only in frozen models (`Exchange.facts`) and at
 the `Play`/`Written` boundary, where `master_tool` and `advance` already convert. `leaving` and
 `Engine.answer` return lists.
+Decided: yes.
 
 ### 15. Property vs method has no rule (S)
 
@@ -198,6 +199,7 @@ next to `SurvivorSheet.vulnerable`, a property.
 Change: property = no arguments, no side effect, derived from own fields. `hired`/`hireable` →
 properties; `Gear.detail()` → `Gear.notes()` (a `detail` property would collide with the
 `detail` naming rule).
+Decided: yes.
 
 ### 16. Pack ids and widget values cross boundaries as unchecked `str` (S)
 
@@ -212,6 +214,7 @@ Change: `content_id(path.stem)` and `dict[Slug, ...]` in `read_packs`/`SceneEngi
 Decision on `Slug` itself: A) keep `Annotated[str, ...]` (checked at runtime only); B)
 `Annotated[NewType("Slug", str), ...]` so the checker refuses a bare `str`, at the cost of wrapping
 every literal (`id="take"`, `PLAYER_ID`). A unless the boundary keeps leaking.
+Decided: yes; A.
 
 ### 17. The two worldsmith drafts differ in mutability (S or L)
 
@@ -225,6 +228,7 @@ Decision:
   the top of `new_game` only (a scenario file is reopened on restart).
 - B (L): both `Frozen`, with entity classes split into a frozen authored shape and a mutable
   played shape. Honest, but doubles the entity classes.
+Decided: A.
 
 ## E. Naming
 
@@ -234,12 +238,14 @@ Now: `base.py:109-113` `def dice(self) -> S` returns `self.sheet` or refuses; ca
 `actor.dice().items`, `actor.dice().credits`, `sheet = actor.dice()`.
 Change: `require_sheet()`, matching `require_actor`, `require_member_here`, `require_place`,
 `require_gear`.
+Decided: yes.
 
 ### 19. Four names for the `roll` tool's arguments (S)
 
 Now: `Question` (`loner3e/tools.py:50`), `Check` (`breathless/tools.py:27`), `Roll`
 (`twentyfourxx/tools.py:74`), `ActionRoll` (`tunnelgoons/tools.py:15`).
 Change: `Roll` in all four.
+Decided: yes (no feature impact; accepted without review).
 
 ### 20. Person and sheet class names follow no rule (S)
 
@@ -257,6 +263,7 @@ them to the same class (`breathless/engine.py:63,66`, `twentyfourxx/engine.py:71
 `tunnelgoons/engine.py:73,75`). `member` exists only for the `isinstance` at `hiring.py:86`.
 Change: one `Engine.member: type[M]` on the seam, used by both families and `Hiring`; drop `cast`
 and `dweller`.
+Decided: yes (no feature impact; accepted without review).
 
 ### 22. `Library` calls an id `name`; two verbs for file IO (S)
 
@@ -265,6 +272,7 @@ name, ...)`, `write_scenario(self, name, ...)`, `character_folder(self, name)`; 
 `name` for the display string on disk. `FileStore.load/save/discard` (`:33-44`) vs
 `Library.read_*/write_*` (`:66-139`).
 Change: `scenario_id`/`character_id`; `FileStore.read/write` (matches `read_prompt`, `write_text`).
+Decided: yes (no feature impact; accepted without review).
 
 ### 23. One idea, five names: the callable that refuses a bad model answer (S)
 
@@ -274,6 +282,7 @@ Now: `Objection[T]` (`core/model.py:16`); parameter `refusal: Objection[M]` (`Wo
 (`scenes/worldsmith.py:40`, `seam.py:129`, `rooms/world.py:323`).
 Change: `type Check[T] = Callable[[T], None]`; parameters named `check`; `hire_check()`; delete
 "bar" from docstrings.
+Decided: yes (no feature impact; accepted without review).
 
 ### 24. `prompt` names four things (M)
 
@@ -292,6 +301,7 @@ Now: `base.py:210` `class Counter(Mutable)` is a bounded gauge; `core/entities.p
 stdlib one `as Tally` to dodge it; `twentyfourxx/engine.py:1` imports `collections.Counter` into a
 module that also reads `hp`/`luck` gauges.
 Change: `Counter` → `Gauge`; drop the `as Tally` alias.
+Decided: yes (no feature impact; accepted without review).
 
 ### 26. Naming rule slips and small renames (S)
 
@@ -311,6 +321,7 @@ Change: `Counter` → `Gauge`; drop the `as Tally` alias.
 - `Loner3eEngine.meanings()`/`twist_table()` return `tuple[tuple[str, str], ...]`. → `Pairs`.
 - `complications()` (`breathless/engine.py:173`) and `meanings()` (`loner3e/engine.py:135`) are
   called only inside their class and by no test. → `_complications`, `_meanings`.
+Decided: yes (no feature impact; accepted without review).
 
 ## F. Consistency across engines
 
@@ -342,6 +353,7 @@ Change: move `Reveal`, `Kill`, `REVEAL`, `KILL` to `base.py` beside `JoinParty`;
 `reveal_hidden`, `kill`, `join_party`, `leave_party` (all by id) abstract on `World`; `RoomWorld.kill`
 takes an id; the four wrappers and their `master_tool` entries move to `Engine.master_tools()`.
 Families then add only their own tools.
+Decided: yes (no feature impact; accepted without review).
 
 ### 29. Tool descriptions live in two places (S)
 
@@ -351,6 +363,7 @@ in `master_tools()` (every `roll`, `test_luck`, `catch_breath`, `loot_check`, `l
 class `Frozen` as the no-argument schema while breathless declares `Actor`.
 Change: every description is a constant in the module of its args model, named after the tool
 (`ROLL`, `TEST_LUCK`, `HIRE`); `class NoArgs(Frozen)` in `core/tools.py` for `rest`.
+Decided: yes (no feature impact; accepted without review).
 
 ### 30. Four `roll` methods, four shapes, 42 to 65 lines each (M, with 6)
 
@@ -362,6 +375,7 @@ the consequence.
 Change: one shape in all four: `_pool(world, actor, args)` (die, label, extras), roll, `_line(...)`,
 `_consequence(...)`. Breathless gets a frozen `_Pool(die, label, item, helper)` and
 `_wear(sheet, pool)`; loner3e builds the oracle fact after the exchange so nothing is patched.
+Decided: yes (no feature impact; accepted without review).
 
 ### 31. `loner3e/tools.py` holds rules and prompt text the other engines keep elsewhere (S)
 
@@ -372,6 +386,7 @@ Now: `loner3e/tools.py` carries `TOLD`, `AND_AT`, `BUT_AT`, `Outcome`, `outcome_
 `engine.py`/`worldsmith.py` (`SIGNED_ON` in `hiring.py:16`).
 Change: rules to `loner3e/world.py`; `twist_note`/`defeat_note` to `engine.py` as `TWIST_NOTE`/
 `DEFEAT_NOTE` format strings. `tools.py` then holds args models and descriptions only.
+Decided: yes (no feature impact; accepted without review).
 
 ### 32. The player's items are listed once in breathless and twice in 24XX; the sheet rows are owned by the World in rooms and by the Person in scenes (M)
 
@@ -396,6 +411,7 @@ for two different lists (`:50`, `:66`).
 Change: `_operators_unmet(expected, got) -> str` (empty when fine) so `_finish` reads `if unmet
 := ...: raise Refusal(...)`; split `scene_unmet` into `_listing_unmet`, `_cast_unmet`,
 `_hidden_unmet`, concatenated, as `rooms/worldsmith.py:30-36` already does.
+Decided: yes (no feature impact; accepted without review).
 
 ### 34. Party-membership validation is written twice (S)
 
@@ -422,6 +438,7 @@ Decision:
   and `speech.py:30` each hold `generating: set[str]` and pair `claim` with `discard` in a
   `finally` (three sites). → `class Claims` (`claim(key) -> bool`, `release(key)`) next to its first
   user; `providers.py` keeps `post_bearer` only.
+Decided: yes (no feature impact; accepted without review).
 
 ### 36. Chapter handling differs between the families (S)
 
@@ -430,6 +447,7 @@ Now: `RoomEngine.move` pops `draft.log[-1]` when it has no exchanges before `ope
 install that lands on an empty chapter (a failed opening narration, then a complication) keeps
 the empty one in the save.
 Change: the pop moves into `Engine.open_chapter` (`seam.py:165-168`); delete it from `move`.
+Decided: yes (no feature impact; accepted without review).
 
 ### 37. Spelling drift (S)
 
@@ -479,6 +497,7 @@ Decision:
 - `WORLDSMITH_PROMPT`/`RULES_PROMPT = Path(__file__).parent / ...` repeated at
   `rooms/engine.py:49-50` and `scenes/engine.py:58-59`. → `Engine.__init__` derives both from a
   `family_dir: Path` attribute.
+Decided: yes (no feature impact; accepted without review).
 
 ### 40. Docstrings and comments (S)
 
@@ -495,3 +514,5 @@ Now: `tests/support/table.py:262` `service._background`; `tests/app/test_game_se
 `tests/turn/test_decisions.py:175` `turn._apply(...)`; seven `reportPrivateUsage` ignores.
 Change: `GameService.settled() -> Awaitable[None]` (await every background task) and
 `GameService.speaking: bool`; `Turn.apply(play)` public (its docstring calls it "the one gate").
+Decided: yes (no feature impact; accepted without review).
+
