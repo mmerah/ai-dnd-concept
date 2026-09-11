@@ -233,13 +233,6 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
     def panels(self, state: TwentyfourxxGame) -> tuple[Panel, ...]:
         world = self.world_of(state)
         job = world.job
-        gear_panel = Panel(
-            title="Gear",
-            rows=tuple(
-                PanelRow(label=item.name, detail=item.notes())
-                for item in world.player.require_sheet().items.values()
-            ),
-        )
         job_panel = (Panel(title="Job", rows=(PanelRow(label=job, detail=""),)),) if job else ()
         ship_panel = Panel(
             title="Ship",
@@ -248,7 +241,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
                 for function in world.ship.values()
             ),
         )
-        return (gear_panel, *job_panel, ship_panel)
+        return (*job_panel, ship_panel)
 
     def resolve_skill(self, sheet: CrewSheet, wanted: str) -> str:
         folded = wanted.casefold()

@@ -236,6 +236,11 @@ sheet); `Person.drop_item`, the seam wrapper and `remove_item` gone in favour of
 `ItemSheet.drop_item(item_id, owner)` and the two engine tool methods; restating docstrings and
 comments deleted, the kept whys at one line. Three tests of deleted helpers went with them.
 
+- Step 14, the narrator keeps the player's gear: `TwentyfourxxWorld.sheet_rows()` appends the Gear
+  row (the hook tunnelgoons uses for its Inventory count), so the narrator view, the interjection
+  prompt and the page's Character panel show it and the Gear panel goes; `rows()` stays without
+  it, so the master reads gear in its GEAR section only (maintainer's call after the phase).
+
 ### Refuted review findings
 
 - "`roll` and `_pool` both call `require_sheet()`": `_pool(world, actor, args)` is the plan's

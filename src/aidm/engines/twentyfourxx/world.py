@@ -193,6 +193,14 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         }
     )
 
+    def sheet_rows(self) -> Pairs:
+        """The narrator and the page read the kit here; the master has its GEAR section."""
+        gear = ", ".join(
+            item.name + (f" ({notes})" if (notes := item.notes()) else "")
+            for item in self.player.require_sheet().items.values()
+        )
+        return (*self.player.rows(), *((("Gear", gear),) if gear else ()))
+
     def sheeted_members(self) -> list[Crewmate]:
         return [member for member in self.members() if member.hired]
 
