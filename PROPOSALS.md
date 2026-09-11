@@ -24,34 +24,34 @@ option letter.
 
 | ID | Proposal | Kind | Size | src | Recommendation | Your decision |
 | --- | --- | --- | --- | --- | --- | --- |
-| F1 | `Claims.hold` context manager replaces three try/finally blocks | bug | S | - | Accept | |
+| F1 | `Claims.hold` context manager replaces three try/finally blocks | bug | S | - | Accept | Accepted |
 | F2 | One `close()` replaces `stop()` and `settled()`; errors get logged | bug | M | = | Accept | |
-| F3 | One `publish` helper replaces three staging implementations | bug | S | - | Accept | |
+| F3 | One `publish` helper replaces three staging implementations | bug | S | - | Accept | Accepted |
 | F4 | Expected file errors handled at the read and write helpers only | bug | S | = | Accept | |
 | F5 | One `admit` in `Runtime` replaces three refusal methods and the UI checks | bug | M | - | Accept, option A | |
-| D1 | Strict scalar validation | decided | M | = | Implement as written | |
-| D2 | Commit dice with the turn; separate cosmetic RNG | decided | S | = | Implement as written | |
+| D1 | Strict scalar validation | decided | M | = | Implement as written | Decided |
+| D2 | Commit dice with the turn; separate cosmetic RNG | decided | S | = | Implement as written | Decided |
 | D3 | Precise types through the chain | decided | L | + | Re-decide: option B (family `W` only) | |
 | D4 | One explicit pack selection policy | decided | L | - | Implement, option B (no fingerprints) | |
-| D5 | Shallow freezing: document it and pin it with a test | decided | S | = | Implement as written | |
+| D5 | Shallow freezing: document it and pin it with a test | decided | S | = | Implement as written | Decided |
 | Q1 | Typed CLI events replace the recursive text search | quality | M | - | Accept | |
 | Q2 | Upload: one directory per form, deleted on success only | quality | S | - | Accept, option B | |
 | Q3 | Helpers that mutate become methods | quality | M | = | Accept, widened list | |
-| Q4 | Delete compressed expressions and duplicate closures | quality | S | - | Accept, option B | |
+| Q4 | Delete compressed expressions and duplicate closures | quality | S | - | Accept, option B | Accepted, B |
 | N1 | Constructor style | consistency | S | = | Option B (leave, write the rule) | |
-| N2 | `Runtime` takes a spawner factory defaulting to `RoleRunner` | consistency | S | - | Accept, option C | |
+| N2 | `Runtime` takes a spawner factory defaulting to `RoleRunner` | consistency | S | - | Accept, option C | Accepted, C |
 | N3 | Take PDF extraction off the event loop | pattern | S | = | Accept, option A | |
-| N4 | Share `rows()` on `Sheeted`; keep the other duplicates | consistency | S | - | Accept, option A | |
-| N5 | One retry constant, one timeout idiom | consistency | S | - | Accept | |
+| N4 | Share `rows()` on `Sheeted`; keep the other duplicates | consistency | S | - | Accept, option A | Accepted, A |
+| N5 | One retry constant, one timeout idiom | consistency | S | - | Accept | Accepted |
 | N6 | Drop the `world_of` narrowing overrides | consistency | S | - | Fold into D3 option B | |
-| N7 | `Rolled` carries its dice once | naming | S | - | Accept, option A | |
+| N7 | `Rolled` carries its dice once | naming | S | - | Accept, option A | Accepted, A |
 | N8 | Split the `Pairs` alias into `Sections` and `Rows` | naming | S | = | Accept | |
 | N9 | `Slug` stays `Annotated[str]`; say so in CLAUDE.md | naming | S | = | Option A (leave) | |
 | N10 | `Hiring` packaging | consistency | S | = | Option B (leave) | |
 | N11 | Comment and naming sweep against CLAUDE.md rules | style | S | = | Accept | |
 | N12 | Write the constructor and return-shape rules into CLAUDE.md | docs | S | = | Accept | |
-| N13 | Move the 350-line CSS string out of `ui/theme.py` into `theme.css` | simplify | S | - | Accept | |
-| N14 | Delete thin pass-through methods | simplify | S | - | Accept | |
+| N13 | Move the 350-line CSS string out of `ui/theme.py` into `theme.css` | simplify | S | - | Accept | Accepted |
+| N14 | Delete thin pass-through methods | simplify | S | - | Accept | Accepted |
 
 ## 2. Fixes: wrong behaviour hiding in a pattern
 
