@@ -12,7 +12,7 @@ from aidm.core.entities import Refusal
 from aidm.core.facts import NOTHING, Fact, traced
 from aidm.core.io import read_prompt
 from aidm.core.model import AnyGame
-from aidm.core.play import Answer, SceneRecord, SpokenLine
+from aidm.core.play import Answer, Chapter, SpokenLine
 from aidm.core.prompt import lines_of, render_history, sections
 from aidm.core.tools import MasterTool, Play
 from aidm.core.views import Pairs
@@ -97,7 +97,7 @@ class Turn:
             self.engine.instructions,
             self.engine.master_sections(self.draft),
             self.draft,
-            self.engine.world(self.draft).records(),
+            self.draft.log,
             self.action,
             notes=self.notes,
         )
@@ -146,12 +146,12 @@ def render_master(
     instructions: str,
     engine_sections: Pairs,
     state: AnyGame,
-    scenes: Sequence[SceneRecord],
+    scenes: Sequence[Chapter],
     action: str,
     *,
     notes: Sequence[str] = (),
 ) -> str:
-    played = sum(len(record.exchanges) for record in scenes)
+    played = sum(len(chapter.exchanges) for chapter in scenes)
     return sections(
         (
             ("YOUR ROLE", read_prompt(MASTER_PROMPT)),

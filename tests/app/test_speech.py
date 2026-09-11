@@ -6,8 +6,7 @@ from httpx import HTTPError
 from pydantic import SecretStr
 from support.game import TARGET
 from support.game import session as loner_session
-from support.table import offline_settings
-from support.ui import ui_settings
+from support.table import drain, offline_settings
 
 from aidm.app.speech import (
     Reader,
@@ -126,7 +125,7 @@ async def test_read_leaves_no_file_when_generation_raises(
 
 def test_open_reader_is_none_when_off_and_takes_the_scenarios_voice(tmp_path: Path) -> None:
     store = FileStore(tmp_path)
-    on = ui_settings(tmp_path).model_copy(update={"speech": SpeechConfig(enabled=True)})
+    on = offline_settings(tmp_path).model_copy(update={"speech": SpeechConfig(enabled=True)})
     reader = open_reader(on, store, TARGET.slug, voice="Puck")
     assert reader is not None
     assert reader.voice == "Puck"
@@ -157,9 +156,9 @@ async def test_speak_reads_and_caches_the_newest_committed_exchange(
     monkeypatch.setattr("aidm.app.speech.post_bearer", _fake_post_bearer)
     session.reader = _reader(tmp_path)
 
-    exchange = session.engine.world(session.state).exchanges()[-1]
+    exchange = session.state.exchanges()[-1]
     session.speak(exchange)
-    await session.drain()
+    await drain(session)
 
     assert session.newest_clip() == session.reader.clip(exchange)
     assert session.newest_clip() is not None

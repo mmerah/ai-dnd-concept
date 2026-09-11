@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.entities import Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import DiceEvent, Fact, roll
-from aidm.core.play import Exchange, SceneRecord
 from aidm.core.prompt import sections
 from aidm.core.tools import schema_text
 from aidm.core.views import Pairs, Panel, PanelRow, Subject
@@ -154,10 +153,6 @@ class World[M: Person, P: Person](Mutable):
         return self
 
     @abstractmethod
-    def records(self) -> tuple[SceneRecord, ...]: ...
-    @abstractmethod
-    def record(self, exchange: Exchange) -> None: ...
-    @abstractmethod
     def members(self) -> Sequence[M]: ...
     @abstractmethod
     def require_member_here(self, entity_id: Slug) -> M:
@@ -176,9 +171,6 @@ class World[M: Person, P: Person](Mutable):
         if member.hired():
             raise Refusal(f"{member.name} already carries a sheet")
         return member
-
-    def exchanges(self) -> tuple[Exchange, ...]:
-        return tuple(exchange for record in self.records() for exchange in record.exchanges)
 
     def join(self, member: Person) -> list[Fact]:
         if member.id in self.party:

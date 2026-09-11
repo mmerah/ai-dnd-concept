@@ -20,7 +20,7 @@ from support.tunnelgoons import (
 from aidm.core.entities import Refusal
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.rooms.tools import Move
-from aidm.engines.rooms.world import Prop, Visit
+from aidm.engines.rooms.world import Prop
 from aidm.engines.tunnelgoons.tools import ActionRoll, LevelUp
 from aidm.engines.tunnelgoons.world import Abilities
 
@@ -210,7 +210,7 @@ def test_level_up_with_one_argument_is_refused() -> None:
 def test_move_refuses_a_locked_way() -> None:
     draft = small_world().draft()
     world = draft.payload
-    world.visits.append(Visit(place=HALL))
+    world.visits.append(HALL)
     with pytest.raises(Refusal, match="locked"):
         _ = ENGINE.move(draft, Move(to_id=VAULT), Random(0))
 
@@ -231,6 +231,13 @@ def test_move_reveals_the_destination_and_adds_a_visit() -> None:
     assert len(world.visits) == before + 1
 
 
+def test_a_place_walked_through_without_a_word_is_no_chapter() -> None:
+    draft = small_world().draft()
+    _ = ENGINE.move(draft, Move(to_id=HALL), Random(0))
+    _ = ENGINE.move(draft, Move(to_id=START), Random(0))
+    assert [chapter.title for chapter in draft.log] == ["Start"]
+
+
 def test_move_with_ids_brings_an_npc_here_and_refuses_one_standing_elsewhere() -> None:
     draft = small_world().draft()
     world = draft.payload
@@ -246,7 +253,7 @@ def test_move_with_ids_brings_an_npc_here_and_refuses_one_standing_elsewhere() -
 def test_unlock_way_then_move_passes() -> None:
     draft = small_world().draft()
     world = draft.payload
-    world.visits.append(Visit(place=HALL))
+    world.visits.append(HALL)
     _ = change(ENGINE, draft, "unlock_way", to_id=VAULT)
     _ = ENGINE.move(draft, Move(to_id=VAULT), Random(0))
     assert world.current.id == VAULT
@@ -255,7 +262,7 @@ def test_unlock_way_then_move_passes() -> None:
 def test_unlock_way_the_player_has_not_walked_tells_a_card_and_becomes_known() -> None:
     draft = small_world().draft()
     world = draft.payload
-    world.visits.append(Visit(place=HALL))
+    world.visits.append(HALL)
     way = world.way(HALL, VAULT)
     assert way is not None
     way.known = False

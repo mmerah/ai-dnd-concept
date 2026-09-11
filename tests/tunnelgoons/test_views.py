@@ -1,7 +1,7 @@
 from support.tunnelgoons import ENGINE, HALL, MIRA, small_world
 
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.rooms.world import Prop, Visit
+from aidm.engines.rooms.world import Prop
 
 
 def test_narrator_view_names_nothing_unknown_here() -> None:
@@ -33,7 +33,7 @@ def test_player_view_has_the_five_panels_in_order_and_here_leaves_out_the_player
 def test_master_sections_names_the_hidden_npc_and_the_locked_way() -> None:
     state = small_world()
     world = state.payload
-    world.visits.append(Visit(place=HALL))
+    world.visits.append(HALL)
     sections = dict(ENGINE.master_sections(state))
     assert "Robo Mantis" in sections["HIDDEN HERE (the player has not found these)"]
     assert "locked" in sections["WAYS OUT"]

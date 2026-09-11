@@ -3,7 +3,7 @@ from typing import Literal, Self
 
 from pydantic import Field, JsonValue, field_validator, model_validator
 
-from aidm.core.entities import Frozen, Slug, check_unique
+from aidm.core.entities import Frozen, Mutable, Slug, check_unique
 from aidm.core.facts import Fact
 
 type Marked = Literal["opening", "story", "interjection"]
@@ -128,13 +128,13 @@ class Exchange(Frozen):
         return "\n".join(line.said for line in self.lines)
 
 
-class SceneRecord(Frozen):
-    """`recap` is empty while the scene is open or where none was written."""
+class Chapter(Mutable):
+    """One scene or place as the player read it; `recap` is empty until the scene closes."""
 
     title: str
     focus: str
     recap: str = ""
-    exchanges: tuple[Exchange, ...] = ()
+    exchanges: list[Exchange] = Field(default_factory=list)
 
 
 def narration_text(lines: Sequence[Line | SpokenLine]) -> str:

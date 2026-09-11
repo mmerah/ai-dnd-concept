@@ -16,7 +16,7 @@ def behind(state: AnyGame) -> AnyGame:
     """One prior exchange at the starting scene: RECENT PLAY has to render it."""
     state = narrowed(state, TwentyfourxxGame)
     draft = state.draft()
-    draft.payload.runs[0].exchanges.append(
+    draft.log[0].exchanges.append(
         Exchange(
             prompt="I look around the docking ring before going further.",
             lines=(SpokenLine(text="Vessa Rune watches you from the airlock."),),

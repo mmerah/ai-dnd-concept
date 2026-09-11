@@ -101,7 +101,7 @@ async def test_master_tools_over_the_mcp_endpoint(tmp_path: Path) -> None:
             assert change_result.get("isError") is not True
 
             # The reveal call landed as a fact.
-            facts = service.engine.world(service.state).exchanges()[-1].facts
+            facts = service.state.exchanges()[-1].facts
             assert any("vault-map" in fact.trace for fact in facts)
     finally:
         await lifespan.stop()

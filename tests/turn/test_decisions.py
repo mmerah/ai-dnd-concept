@@ -115,7 +115,7 @@ async def test_a_suspending_resolver_ends_the_run_and_records_the_pause(tmp_path
 
     assert any(RULES_WAIT in answer for answer in table.answers)
     assert state.pending == DECISION
-    assert state.payload.exchanges()[-1].decision == DECISION.prompt
+    assert state.exchanges()[-1].decision == DECISION.prompt
     assert [role for role, _ in table.spawner.prompts] == ["master", "narrator"]
 
 
@@ -127,8 +127,8 @@ async def test_a_hand_back_that_moved_no_fiction_gets_no_prose(tmp_path: Path) -
 
     state = table.service.state
     assert [role for role, _ in table.spawner.prompts] == ["master"]
-    assert state.payload.exchanges()[-1].lines == ()
-    assert state.payload.exchanges()[-1].narration == ""
+    assert state.exchanges()[-1].lines == ()
+    assert state.exchanges()[-1].narration == ""
 
 
 async def test_a_closed_answer_resolves_in_engine_code_before_the_master_continues(
@@ -141,7 +141,7 @@ async def test_a_closed_answer_resolves_in_engine_code_before_the_master_continu
 
     assert [fact.trace for fact in table.facts] == ["lantern broke to turn the hit"]
     assert "lantern broke to turn the hit" in table.spawner.prompt("master")
-    assert state.payload.exchanges()[-1].prompt == "Break the lantern"
+    assert state.exchanges()[-1].prompt == "Break the lantern"
     assert state.pending is None
 
 

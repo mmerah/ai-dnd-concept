@@ -10,8 +10,8 @@ from aidm.config import Role, Settings
 from aidm.core.entities import Refusal
 from aidm.core.facts import Fact, traced
 from aidm.core.io import read_prompt
-from aidm.core.model import AnyGame, WorldsmithAnswer
-from aidm.core.play import Interjection, Narration, SceneRecord, SpokenLine
+from aidm.core.model import AnyGame
+from aidm.core.play import Chapter, Interjection, Narration, SpokenLine
 from aidm.core.prompt import lines_of, sections, told_history
 from aidm.core.tools import schema_text
 from aidm.core.views import NarratorView, Pairs, Subject
@@ -54,7 +54,6 @@ class RoleRunner:
 @dataclass(frozen=True, slots=True)
 class Roles:
     spawner: Spawner
-    engine: AnyEngine
 
     async def master(self, turn: Turn) -> None:
         """A crashed game master still played the turn, if it applied anything legal first."""
@@ -73,9 +72,15 @@ class Roles:
                 raise
 
     async def narrate(
-        self, draft: AnyGame, facts: tuple[Fact, ...], prompt: str, *, fatal: bool
+        self,
+        engine: AnyEngine,
+        draft: AnyGame,
+        facts: tuple[Fact, ...],
+        prompt: str,
+        *,
+        fatal: bool,
     ) -> tuple[SpokenLine, ...]:
-        view = self.engine.narrator_view(draft)
+        view = engine.narrator_view(draft)
         evidence = traced(facts, told_only=True)
         if (pending := draft.pending) is not None:
             evidence += f"\n- {PAUSED.format(prompt=pending.prompt)}"
@@ -89,7 +94,7 @@ class Roles:
                     view,
                     evidence=evidence,
                     prompt=prompt,
-                    scenes=self.engine.world(draft).records(),
+                    scenes=draft.log,
                 ),
                 Narration,
                 view.check_narration,
@@ -102,27 +107,24 @@ class Roles:
             return ()
         return view.spoken(narration.lines)
 
-    async def interject(self, state: AnyGame, member: Person) -> tuple[tuple[SpokenLine, ...], str]:
-        view = self.engine.narrator_view(state)
-        history = self.engine.world(state).exchanges()
+    async def interject(
+        self, engine: AnyEngine, state: AnyGame, member: Person
+    ) -> tuple[tuple[SpokenLine, ...], str]:
+        view = engine.narrator_view(state)
+        history = state.exchanges()
         evidence = traced(history[-1].facts if history else (), told_only=True)
         answer = await ask(
             self.spawner,
             "narrator",
-            render_interjection(
-                view, member.subject(), member.rows(), self.engine.world(state).records(), evidence
-            ),
+            render_interjection(view, member.subject(), member.rows(), state.log, evidence),
             Interjection,
             partial(view.check_interjection, member.id),
         )
         return view.spoken(answer.lines), answer.proposal
 
-    def worldsmith(self) -> WorldsmithAnswer:
-        return partial(ask, self.spawner, "worldsmith")
-
 
 def render_narrator(
-    view: NarratorView, *, evidence: str, prompt: str, scenes: Sequence[SceneRecord]
+    view: NarratorView, *, evidence: str, prompt: str, scenes: Sequence[Chapter]
 ) -> str:
     return sections(
         (
@@ -138,7 +140,7 @@ def render_interjection(
     view: NarratorView,
     member: Subject,
     sheet: Pairs,
-    scenes: Sequence[SceneRecord],
+    scenes: Sequence[Chapter],
     evidence: str,
 ) -> str:
     role = read_prompt(PROMPTS_DIR / "interjection.md").format(
@@ -159,7 +161,7 @@ def render_interjection(
 
 def _picture(
     view: NarratorView,
-    scenes: Sequence[SceneRecord],
+    scenes: Sequence[Chapter],
     evidence: str,
     *,
     reader: Subject | None = None,

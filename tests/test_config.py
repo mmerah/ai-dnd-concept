@@ -30,8 +30,7 @@ def test_a_role_on_a_provider_without_a_key_is_refused() -> None:
             roles=RoleSettings(master=RoleConfig(provider="openrouter", model="m"))
         )
     local = EnvFileFreeSettings(roles=RoleSettings(master=RoleConfig(provider="local", model="m")))
-    assert local.roles.master.api == "local"
-    assert local.roles.narrator.api is None
+    assert local.roles.master.provider == "local"
 
 
 def test_a_misspelled_role_env_var_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:

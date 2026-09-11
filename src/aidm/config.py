@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Literal, Self, get_args
+from typing import Literal, Self
 
 from dotenv import set_key, unset_key
 from pydantic import Field, SecretStr, model_validator
@@ -15,8 +15,6 @@ type CliProvider = Literal["claude", "codex"]
 type RoleProvider = Literal["claude", "codex", "openrouter", "local"]
 type Effort = Literal["low", "medium", "high"]
 ENV_FILE = ".env"
-# `get_args(Role)` is `()`: a PEP 695 alias hides its value behind `__value__`.
-ROLE_NAMES: tuple[Role, ...] = get_args(Role.__value__)
 
 
 class ProviderConfig(Frozen):
@@ -33,23 +31,12 @@ class RoleConfig(Frozen):
     # The replies a master may make in one turn over an API; a CLI paces itself.
     max_rounds: int = Field(default=30, gt=0)
 
-    @property
-    def api(self) -> ProviderName | None:
-        match self.provider:
-            case "claude" | "codex":
-                return None
-            case "openrouter" | "local":
-                return self.provider
-
 
 class MediaConfig(Frozen):
     enabled: bool = False
     provider: ProviderName = "openrouter"
     model: str = "google/gemini-3.1-flash-lite-image"
-    scene_ratio: str = "16:9"
-    icon_ratio: str = "1:1"
     timeout: float = Field(default=180.0, gt=0.0)
-    max_references: int = Field(default=4, ge=0)
 
 
 class SpeechConfig(Frozen):
@@ -79,9 +66,6 @@ class RoleSettings(Frozen):
                 return self.narrator
             case "worldsmith":
                 return self.worldsmith
-
-    def each(self) -> tuple[tuple[Role, RoleConfig], ...]:
-        return tuple((name, self.for_name(name)) for name in ROLE_NAMES)
 
 
 class Providers(Frozen):
@@ -118,7 +102,7 @@ class Settings(BaseSettings):
     interjections: bool = True
     # This ~30k-token ceiling admits a 76-page adventure without swallowing the context.
     source_max_chars: int = Field(default=120_000, ge=1)
-    # Also hard-coded in `.mcp.json` and `.codex/config.toml`; not `PORT`, set by too many shells.
+    # Not `PORT`, set by too many shells.
     server_port: int = Field(default=8080, gt=0, lt=65536)
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")
@@ -131,7 +115,13 @@ class Settings(BaseSettings):
             for what, feature in (("media", self.media), ("speech", self.speech))
             if feature.enabled
         ]
-        posting.extend((role, config.api) for role, config in self.roles.each() if config.api)
+        for role, config in (
+            ("master", self.roles.master),
+            ("narrator", self.roles.narrator),
+            ("worldsmith", self.roles.worldsmith),
+        ):
+            if config.provider in ("openrouter", "local"):
+                posting.append((role, config.provider))
         for what, name in posting:
             if not self.providers.for_name(name).api_key:
                 raise ValueError(f"{what} uses provider {name!r}, which has no api_key")

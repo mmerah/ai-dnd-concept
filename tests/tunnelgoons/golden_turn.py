@@ -21,7 +21,7 @@ def behind(state: AnyGame) -> AnyGame:
     """One prior exchange at the starting place: RECENT PLAY has to render it."""
     state = narrowed(state, TunnelGoonsGame)
     draft = state.draft()
-    draft.payload.visits[0].exchanges.append(
+    draft.log[0].exchanges.append(
         Exchange(
             prompt="I look around the archway before going further.",
             lines=(SpokenLine(text="Grix waves you toward the corridor, impatient."),),

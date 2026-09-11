@@ -7,7 +7,7 @@ import pytest
 from pydantic import BaseModel
 from support.golden import FIXTURES, golden, golden_json
 from support.golden_turn import INTERJECTION, NARRATION
-from support.table import ENGINE_IDS, ENGINES_BUILT, Call, game, open_table, play_turn
+from support.table import ENGINE_IDS, ENGINES_BUILT, Call, drain, game, open_table, play_turn
 
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.model import AnyGame, Generation, Objection
@@ -36,7 +36,7 @@ async def test_a_scripted_turn_renders_and_records_unchanged(
     table.service.save(_behind(engine_id, table.state))
 
     await play_turn(table, PROMPT, *_script(engine_id), narration=NARRATION, then=(INTERJECTION,))
-    await table.service.drain()
+    await drain(table.service)
 
     golden(FIXTURES / "prompts" / engine_id / "master.txt", table.spawner.prompt("master"))
     golden(FIXTURES / "prompts" / engine_id / "narrator.txt", table.spawner.prompt("narrator"))

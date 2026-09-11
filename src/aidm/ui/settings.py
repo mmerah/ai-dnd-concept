@@ -1,7 +1,7 @@
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Literal, Protocol, TypeAliasType, get_args, get_origin
+from typing import Literal, TypeAliasType, get_args, get_origin
 
 from nicegui import ui
 from pydantic import BaseModel, SecretStr, ValidationError
@@ -10,21 +10,16 @@ from pydantic.fields import FieldInfo
 from aidm.config import Settings, env_key, save_settings
 from aidm.ui.widgets import page_body, page_header, page_intro
 
-type Boxes = dict[tuple[str, ...], Box]
+type Widget = ui.input | ui.switch | ui.select | ui.number
 # A cleared box writes no key at all, which is the only way back to a field's own default.
 type Changes = dict[tuple[str, ...], str | None]
 
 
-class Box(Protocol):
-    @property
-    def value(self) -> object: ...
-
-
 class SettingsForm:
-    def __init__(self, settings: Settings, apply: Callable[[], str | None], boxes: Boxes) -> None:
+    def __init__(self, settings: Settings, apply: Callable[[], str | None]) -> None:
         self.settings = settings
         self.apply = apply
-        self.boxes = boxes
+        self.boxes: dict[tuple[str, ...], Widget] = {}
 
     def build(self) -> None:
         groups = _shown(self.settings)
@@ -37,7 +32,7 @@ class SettingsForm:
                 "Configuration",
                 "Settings",
                 "Each box is one key in .env. Saving applies it; reopen an open game to pick "
-                "it up. The server port applies at the next start, and .mcp.json must match it.",
+                "it up. The server port applies at the next start.",
             )
             with ui.tabs().props("dense outside-arrows mobile-arrows").classes("w-full") as tabs:
                 for name, _, _ in groups:
@@ -58,23 +53,8 @@ class SettingsForm:
             else:
                 self.render(nested_value, nested, (*path, name))
 
-    def changes(self) -> Changes:
-        changed: Changes = {}
-        for path, box in self.boxes.items():
-            if env_key(path) in os.environ:
-                continue
-            stored = _stored(self.settings, path)
-            typed = box.value
-            if isinstance(stored, SecretStr):
-                # The box starts blank, so only a typed key is a change.
-                if isinstance(typed, str) and typed:
-                    changed[path] = typed
-            elif typed != stored:
-                changed[path] = None if typed is None else _text(typed)
-        return changed
-
     def save(self) -> None:
-        changed = self.changes()
+        changed = changes(self.settings, {path: box.value for path, box in self.boxes.items()})
         if not changed:
             ui.notify("Nothing changed.", type="info")
             return
@@ -101,7 +81,22 @@ class SettingsForm:
 
 
 def settings_page(settings: Settings, apply: Callable[[], str | None]) -> None:
-    SettingsForm(settings, apply, {}).build()
+    SettingsForm(settings, apply).build()
+
+
+def changes(settings: Settings, typed: Mapping[tuple[str, ...], object]) -> Changes:
+    changed: Changes = {}
+    for path, value in typed.items():
+        if env_key(path) in os.environ:
+            continue
+        stored = _stored(settings, path)
+        if isinstance(stored, SecretStr):
+            # The box starts blank, so only a typed key is a change.
+            if isinstance(value, str) and value:
+                changed[path] = value
+        elif value != stored:
+            changed[path] = None if value is None else _text(value)
+    return changed
 
 
 def _refusal_text(error: ValidationError) -> str:
@@ -127,7 +122,7 @@ def _label(path: tuple[str, ...]) -> str:
     return spelled
 
 
-def _widget(label: str, field: FieldInfo, value: object) -> Box:
+def _widget(label: str, field: FieldInfo, value: object) -> Widget:
     bare = _unaliased(field.annotation)
     if bare is SecretStr:
         # Never read a stored key back into the DOM; blank means "leave the stored key alone".

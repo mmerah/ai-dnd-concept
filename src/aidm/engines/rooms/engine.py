@@ -85,7 +85,9 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         return ()
 
     def family_sections(self, draft: G | None) -> Pairs:
-        return map_sections(None if draft is None else self.world(draft))
+        return map_sections(
+            None if draft is None else self.world(draft), () if draft is None else draft.log
+        )
 
     def master_sections(self, state: G) -> Pairs:
         world = self.world(state)
@@ -150,7 +152,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
                         if way.known
                     ),
                 ),
-                trail_panel(world.require_place(v.place).name for v in world.visits),
+                trail_panel(world.require_place(place_id).name for place_id in world.visits),
             ),
             prompt=state.pending,
             action=MORE_MAP if world.frontier() == 0 else None,
@@ -221,7 +223,11 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         return self.world(draft).unlock_way(args.to_id)
 
     def move(self, draft: G, args: Move, _rng: Random) -> list[Fact]:
-        return self.world(draft).move(args.to_id, args.with_ids)
+        facts = self.world(draft).move(args.to_id, args.with_ids)
+        if not draft.log[-1].exchanges:
+            draft.log.pop()
+        self.open_chapter(draft)
+        return facts
 
     async def write_next(self, draft: G, intent: str, worldsmith: WorldsmithAnswer) -> MapDraft[N]:
         world = self.world(draft)

@@ -2,7 +2,7 @@ from support.golden_turn import LISTENING
 from support.table import Call, narrowed, tool_call
 
 from aidm.core.model import AnyGame
-from aidm.core.play import Exchange, SpokenLine
+from aidm.core.play import Chapter, Exchange, SpokenLine
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import Loner3eGame
 from aidm.engines.scenes.world import SceneRun
@@ -36,6 +36,13 @@ def behind(state: AnyGame) -> AnyGame:
                 "the abbey's dust undisturbed on its sill."
             ),
             here=[PLAYER_ID],
+        ),
+    )
+    draft.log.insert(
+        0,
+        Chapter(
+            title="The Vault Stair",
+            focus="Is there a way past the vault door from the stair?",
             exchanges=[
                 Exchange(
                     prompt="I try the vault door.",
@@ -44,7 +51,7 @@ def behind(state: AnyGame) -> AnyGame:
             ],
         ),
     )
-    draft.payload.run.exchanges = [
+    draft.log[-1].exchanges = [
         Exchange(
             prompt="I look for another way in.",
             lines=(SpokenLine(text="A flagstone by the wall sits proud of its neighbours."),),

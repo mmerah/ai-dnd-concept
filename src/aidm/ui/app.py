@@ -172,7 +172,6 @@ def _refused_page(message: str) -> None:
 
 
 def _register_pages(runtime: Runtime) -> None:
-    theme.seed({engine_id: engine.palette for engine_id, engine in runtime.engines.items()})
     asgi, manager = endpoint(runtime)
     app.mount(MOUNT_PATH, asgi)
     app.add_static_files(DICE_ASSETS_ROUTE, DICE_ASSETS)

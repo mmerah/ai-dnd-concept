@@ -3,15 +3,14 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-import pytest
 from nicegui import Client, core, ui
 from support.game import open_game
 from support.table import Table, play_turn
 
-from aidm.app.runtime import GameService
 from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, PendingDecision, PendingOption, SpokenLine
 from aidm.core.views import PlayerView, Subject
+from aidm.ui import theme
 from aidm.ui.dice import DiceTray
 from aidm.ui.game import (
     GamePage,
@@ -131,7 +130,7 @@ def _page[G: AnyGame](table: Table[G]) -> GamePage:
     page = GamePage(table.runtime, table.service)
     page.transcript = ui.scroll_area()
     page.new_activity = ui.button("New activity")
-    page.dice = DiceTray(table.service.engine.dice_look)
+    page.dice = DiceTray(theme.dice_look(table.service.engine_id))
     page.box = ui.input()
     page.send = ui.button()
     page.action_button = ui.button()
@@ -164,36 +163,6 @@ async def test_poll_turn_follows_only_on_the_readers_own_move(tmp_path: Path) ->
             table.service.phase = "narrator"
             page.poll_turn()
             assert page.new_activity.visible is True
-    finally:
-        client.delete()
-
-
-async def test_poll_turn_walks_the_player_view_and_history_once(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    table = open_game(tmp_path)
-    client = Client(ui.page("/"))
-    try:
-        with _nicegui_loop(), client:
-            page = _page(table)
-            service_type = type(table.service)
-            real_view, real_history = service_type.player_view, service_type.history
-            calls = {"view": 0, "history": 0}
-
-            def counting_view(self: GameService) -> PlayerView:
-                calls["view"] += 1
-                return real_view(self)
-
-            def counting_history(self: GameService) -> tuple[Exchange, ...]:
-                calls["history"] += 1
-                return real_history(self)
-
-            monkeypatch.setattr(service_type, "player_view", counting_view)
-            monkeypatch.setattr(service_type, "history", counting_history)
-
-            page.poll_turn()
-
-            assert calls == {"view": 1, "history": 1}
     finally:
         client.delete()
 

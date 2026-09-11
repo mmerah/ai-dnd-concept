@@ -88,8 +88,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
     )
     assert table.service.player_view().action == MORE_MAP
 
-    engine = table.service.engine
-    before_turn = len(engine.world(state).exchanges())
+    before_turn = len(state.exchanges())
     table.spawner.answers["worldsmith"] = [json.dumps(REGION)]
     after = await play_turn(table, "Deeper in.", action=MORE_MAP.id)
 
@@ -98,7 +97,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
     assert all(not after.payload.places[place].known for place in REGION["places"])
     assert [role for role, _ in table.spawner.prompts[-3:]] == ["worldsmith", "master", "narrator"]
     assert "Deep Vault" in table.spawner.prompts[-2][1]
-    assert engine.world(after).exchanges()[before_turn].prompt == "Deeper in."
+    assert after.exchanges()[before_turn].prompt == "Deeper in."
     assert table.service.player_view().action is None
 
 
@@ -116,11 +115,11 @@ async def test_a_region_that_cannot_be_written_files_the_players_words(tmp_path:
         tool_call("move", to_id="cellar"),
     )
     assert table.service.player_view().action == MORE_MAP
-    before = len(table.service.engine.world(table.state).exchanges())
+    before = len(table.state.exchanges())
 
     after = await take(table, MORE_MAP.id, "Deeper in.")
 
-    unwritten = table.service.engine.world(after).exchanges()
+    unwritten = after.exchanges()
     assert len(unwritten) == before + 1
     assert unwritten[-1].prompt == "Deeper in."
     assert (

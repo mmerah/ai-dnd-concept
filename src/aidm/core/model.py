@@ -14,7 +14,7 @@ from aidm.core.entities import (
     check_unique,
     parse,
 )
-from aidm.core.play import PendingDecision
+from aidm.core.play import Chapter, Exchange, PendingDecision
 
 type AnyScenario = Scenario[Any]
 type AnyCharacter = Character[Any]
@@ -100,6 +100,7 @@ class Game[P: BaseModel](Mutable):
     pending: PendingDecision | None = None
     generation: Generation | None = Field(default=None, exclude=True)
     notes: list[str] = []
+    log: list[Chapter] = Field(default_factory=list)
     payload: P
 
     @model_validator(mode="after")
@@ -109,6 +110,9 @@ class Game[P: BaseModel](Mutable):
 
     def note(self, text: str) -> None:
         self.notes.append(text)
+
+    def exchanges(self) -> tuple[Exchange, ...]:
+        return tuple(exchange for chapter in self.log for exchange in chapter.exchanges)
 
     def draft(self) -> Self:
         """A working copy a resolution mutates; a failed turn never replaces the committed state."""

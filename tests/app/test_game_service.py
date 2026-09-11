@@ -100,12 +100,12 @@ async def test_the_opening_is_narrated_once_and_costs_a_turn(tmp_path: Path) -> 
 
     await table.service.open()
 
-    history = table.service.engine.world(table.service.state).exchanges()
+    history = table.service.state.exchanges()
     assert [exchange.mark for exchange in history] == ["opening"]
     assert len(history) == 1
 
     await table.service.open()
-    assert len(table.service.engine.world(table.service.state).exchanges()) == 1
+    assert len(table.service.state.exchanges()) == 1
 
 
 async def test_an_opening_the_narrator_will_not_write_commits_nothing(tmp_path: Path) -> None:
@@ -114,7 +114,7 @@ async def test_an_opening_the_narrator_will_not_write_commits_nothing(tmp_path: 
 
     await table.service.open()
 
-    assert table.service.engine.world(table.service.state).exchanges() == ()
+    assert table.service.state.exchanges() == ()
     assert not table.service.busy
 
 
@@ -156,7 +156,7 @@ async def test_a_complication_writes_and_installs_at_the_same_place(tmp_path: Pa
         arrival="Torchlight swings wild across the ledgers.",
     )
 
-    exchanges = state.payload.exchanges()
+    exchanges = state.exchanges()
     assert len(exchanges) == 2
     assert exchanges[0].prompt == "I keep watch on the study door."
     assert exchanges[1].mark == "story"
@@ -200,7 +200,7 @@ async def test_a_complication_does_not_refill_the_players_spent_luck(tmp_path: P
         arrival="Torchlight swings wild across the ledgers.",
     )
 
-    installed = state.payload.exchanges()[-1]
+    installed = state.exchanges()[-1]
     assert installed.mark == "story"
     assert state.payload.player.luck.current == 2
 
@@ -217,7 +217,7 @@ async def test_a_failed_write_after_a_complication_leaves_the_turn_committed(
         tool_call("next_scene", complication="A second crew breaches the study door."),
     )
 
-    exchange = state.payload.exchanges()[-1]
+    exchange = state.exchanges()[-1]
     assert exchange.mark == "story"
     assert exchange.facts[0].card == (
         "Nothing new came down on this place after all. You are still where you were."
@@ -235,7 +235,7 @@ async def test_a_failed_write_after_a_hire_names_the_hire(tmp_path: Path) -> Non
         tool_call("hire", entity_id="ovid-sarn", terms="Guide us across the flats."),
     )
 
-    exchange = table.service.engine.world(state).exchanges()[-1]
+    exchange = state.exchanges()[-1]
     assert exchange.facts[0].card == "The hire could not be written; nobody signed on."
     assert state.generation is None
 
@@ -346,7 +346,7 @@ async def test_a_member_who_passes_the_d10_speaks_after_the_turn(tmp_path: Path)
 
     prompt = table.spawner.prompt("narrator")
     assert f"YOUR ROLE:\nYou are {member.name}. {member.brief}" in prompt
-    exchange = table.service.engine.world(table.service.state).exchanges()[-1]
+    exchange = table.service.state.exchanges()[-1]
     assert exchange.mark == "interjection"
     assert [line.speaker_id for line in exchange.lines] == [member.id]
     assert exchange.proposal == "I check the airlock seal."
@@ -360,29 +360,29 @@ async def test_nobody_passing_the_d10_spawns_no_narrator(tmp_path: Path) -> None
     await table.service.interject()
 
     assert table.spawner.prompts == []
-    assert table.service.engine.world(table.service.state).exchanges() == ()
+    assert table.service.state.exchanges() == ()
 
 
 async def test_a_turn_that_lands_first_drops_the_interjection(tmp_path: Path) -> None:
     table = open_game(tmp_path, rng=Random(1))
     member = _party_of_one(table.service)
     table.spawner.answers["narrator"] = [narrated("Wait.", member.id)]
-    table.service.roles = Roles(_TurnLandsFirst(table.service, table.spawner), table.service.engine)
+    table.service.roles = Roles(_TurnLandsFirst(table.service, table.spawner))
 
     await table.service.interject()
 
-    assert table.service.engine.world(table.service.state).exchanges()[-1].mark == "story"
+    assert table.service.state.exchanges()[-1].mark == "story"
 
 
 async def test_an_answer_with_no_lines_records_nothing(tmp_path: Path) -> None:
     table = open_game(tmp_path, rng=Random(1))
     _party_of_one(table.service)
-    before = table.service.engine.world(table.service.state).exchanges()
+    before = table.service.state.exchanges()
     table.spawner.answers["narrator"] = [json.dumps({"lines": []})]
 
     await table.service.interject()
 
-    assert table.service.engine.world(table.service.state).exchanges() == before
+    assert table.service.state.exchanges() == before
 
 
 async def test_interjections_disabled_starts_no_background_task(tmp_path: Path) -> None:
@@ -398,7 +398,7 @@ async def test_interjections_disabled_starts_no_background_task(tmp_path: Path) 
 async def test_a_new_turn_silences_the_member_still_speaking(tmp_path: Path) -> None:
     table = open_game(tmp_path, rng=Random(1))
     _party_of_one(table.service)
-    table.service.roles = Roles(_StillSpeaking(table.spawner), table.service.engine)
+    table.service.roles = Roles(_StillSpeaking(table.spawner))
     _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
     await sleep(0)
     speaking = table.service._speaking  # pyright: ignore[reportPrivateUsage]

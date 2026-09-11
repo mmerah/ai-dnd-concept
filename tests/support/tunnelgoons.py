@@ -1,7 +1,8 @@
 from aidm.core.entities import EngineId, Slug
 from aidm.core.model import ScenarioMeta
+from aidm.core.play import Chapter
 from aidm.engines.base import PLAYER_ID, Counter
-from aidm.engines.rooms.world import Place, Prop, Visit, Way
+from aidm.engines.rooms.world import Place, Prop, Way
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
 from aidm.engines.tunnelgoons.world import Abilities, Goon, Npc, TunnelGoonsGame, TunnelGoonsWorld
 from support.table import ENGINES_BUILT, TUNNELGOONS, narrowed
@@ -106,7 +107,7 @@ def small_world() -> TunnelGoonsGame:
         npcs=npcs,
         items=items,
         player=_kael(),
-        visits=[Visit(place=START)],
+        visits=[START],
     )
     return TunnelGoonsGame(
         scenario_id="test",
@@ -115,5 +116,6 @@ def small_world() -> TunnelGoonsGame:
             title="Test", premise="A test dungeon.", scope="One dungeon, played to its end."
         ),
         engine=EngineId("tunnelgoons"),
+        log=[Chapter(title="Start", focus="Where you begin")],
         payload=world,
     )

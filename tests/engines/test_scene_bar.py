@@ -177,8 +177,7 @@ def test_a_scenario_with_no_packs_is_refused_by_check_packs(case: SceneCase) -> 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 async def test_install_scene_appends_a_run_and_returns_the_opened_fact(case: SceneCase) -> None:
     draft = case.game().draft()
-    world = case.engine.world(draft)
-    runs_before = len(world.records())
+    chapters_before = len(draft.log)
     answer = {
         **case.base,
         "present": [case.met],
@@ -188,7 +187,7 @@ async def test_install_scene_appends_a_run_and_returns_the_opened_fact(case: Sce
     facts, _ = await case.engine.advance(
         draft, Generation(operation=DEPARTURE, brief="Onward."), stub_worldsmith(answer)
     )
-    assert len(world.records()) == runs_before + 1
+    assert len(draft.log) == chapters_before + 1
     assert any(fact.card.startswith("New scene:") for fact in facts)
 
 

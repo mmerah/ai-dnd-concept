@@ -1,4 +1,5 @@
 import json
+from asyncio import gather
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import partial
@@ -7,13 +8,13 @@ from pathlib import Path
 from random import Random
 
 import pytest
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel, JsonValue, SecretStr
 from pydantic_settings import SettingsConfigDict
 
 from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import GameService, Runtime
 from aidm.app.spawn import RunResult, Tools
-from aidm.config import Role, Settings
+from aidm.config import ProviderConfig, Providers, Role, Settings
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import Library, decode
@@ -96,10 +97,16 @@ def narrated(body: str, speaker_id: str | None = None) -> str:
     return json.dumps({"lines": [{"speaker_id": speaker_id, "text": body}]})
 
 
-def offline_settings(saves: Path | None = None) -> Settings:
+def offline_settings(saves: Path | None = None, scenarios: Path = SCENARIOS) -> Settings:
+    """A fake key lets a test switch media or speech on."""
     return EnvFileFreeSettings(
+        providers=Providers(
+            openrouter=ProviderConfig(
+                base_url="https://example.invalid/v1", api_key=SecretStr("test")
+            )
+        ),
         saves_dir=Path("saves") if saves is None else saves,
-        scenarios_dir=SCENARIOS,
+        scenarios_dir=scenarios,
         characters_dir=CHARACTERS,
     )
 
@@ -249,6 +256,10 @@ async def take[G: AnyGame](
         table.spawner.answers.setdefault("narrator", []).append(narrated(arrival))
     await table.service.act(action, words)
     return table.state
+
+
+async def drain(service: GameService) -> None:
+    await gather(*service._background)  # pyright: ignore[reportPrivateUsage]
 
 
 def narrowed[M](value: object, model: type[M]) -> M:

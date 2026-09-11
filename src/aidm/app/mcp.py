@@ -44,13 +44,6 @@ class MountedLifespan:
             self._ready.set()
 
 
-def list_tools(runtime: Runtime) -> list[types.Tool]:
-    return [
-        types.Tool(name=tool.name, description=tool.description, input_schema=schema_of(tool.args))
-        for tool in runtime.published_tools()
-    ]
-
-
 def endpoint(
     runtime: Runtime,
 ) -> tuple[StreamableHTTPASGIApp, StreamableHTTPSessionManager]:
@@ -74,7 +67,16 @@ def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
         _ctx: ServerRequestContext[dict[str, object]],
         _params: types.PaginatedRequestParams | None,
     ) -> types.ListToolsResult:
-        return types.ListToolsResult(tools=list_tools(runtime))
+        return types.ListToolsResult(
+            tools=[
+                types.Tool(
+                    name=tool.name,
+                    description=tool.description,
+                    input_schema=schema_of(tool.args),
+                )
+                for tool in runtime.published_tools()
+            ]
+        )
 
     async def on_call_tool(
         _ctx: ServerRequestContext[dict[str, object]], params: types.CallToolRequestParams

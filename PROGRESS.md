@@ -78,3 +78,54 @@ Known and accepted:
 - The qa harness (`qa/run_all.sh loner goons breathless 24xx`): `goons`, `breathless` and `24xx`
   report 0 issues; `loner` reports the same pre-existing "no live turn after a reload mid-turn"
   phase 1 recorded.
+
+## Phase 3: the log in core, the theme in ui, edge and test cuts
+
+Counts: `src` 9,869 -> 9,827 (target about 9,804, at most 9,829; PLAN's 9,880 base counted
+eleven lines phase 2 had already cut); `tests` 9,304 -> 9,146; `qa` 1,788 -> 1,786. No
+fixture under `tests/core/fixtures/` changed.
+
+Decisions off-plan:
+
+- `ui/theme.py` (Opus finding): `_install` keeps a `:root` block of the neutral palette in the
+  shared stylesheet. NiceGUI serves a bare `<body>`; the inline palette `set_engine` writes and
+  Quasar's `body--dark` both land only once the page mounts, so without it the first paint is
+  white. Two lines, not the deleted `_palette_css`.
+- `app/launch.py` (Fable finding): `where=state.log[-1].title`, without PLAN's
+  `if state.log else ""`: `engine.restore` validates, and `validate` now refuses an empty log,
+  so the branch was a compatibility path for a state that cannot arrive.
+- `config.py` (both reviews): `_keys_present` tests `config.provider in ("openrouter", "local")`
+  instead of PLAN's `match` with its empty `case "claude" | "codex": pass` arm; pyright
+  narrows the literal through the membership test.
+- `engines/scenes/worldsmith.py`, `engines/rooms/worldsmith.py` (Opus finding): `log` is a
+  required parameter, not `= ()`; each `family_sections` calls its builder once with
+  `() if draft is None else draft.log` instead of spelling the call twice.
+- `core/prompt.py`, `turn/run.py` (both reviews): `told_history`, `_block` and `_header` say
+  `log`/`chapter` where they said `records`/`record`/`scene`, as `render_history` does.
+- `app/runtime.py`: the worldsmith write passes `worldsmith(self.roles.spawner)`; PLAN step 12
+  wrote `self.spawner`, which `GameService` does not hold.
+- `tests/engines/test_seam.py`: `test_close_builds_no_narrator_view` compares the narrator-view
+  count before and after `close` instead of to zero, since `begin` now builds one view in
+  `open_chapter`.
+
+Refuted findings:
+
+- Opus: `worldsmith(self.roles.spawner)` reaches through a collaborator; give `GameService` a
+  spawner field or keep `Roles.worldsmith()`. PLAN step 12 moved `worldsmith` to `app/spawn.py`
+  beside `ask` so the service and the runtime call one function; `Roles.spawner` is a public
+  field of a frozen dataclass, and a field on the service for one call is an abstraction with
+  one user.
+- Opus: keep one `set_engine` colour test and a `dice_look` fallback test from the deleted
+  `tests/ui/test_theme.py`. PLAN step 9 deleted the file whole and named the two colour asserts
+  as the `ui.colors` wiring; `dice_look` is a dict lookup with a default.
+
+Known and accepted:
+
+- Reviews: Fable and a second Opus reviewer (no `codex` on this machine).
+- Available cut not taken: `GameService.history()` is now `return self.state.exchanges()`;
+  `ui/game.py` could read `session.state.exchanges()` directly. Outside the phase.
+- A save from before this phase is refused by `engine.restore` (its `SceneRun.exchanges` or
+  `Visit` is an extra field, and its `log` is empty); the home screen skips it with a warning.
+- The qa harness (`qa/run_all.sh home loner goons breathless 24xx settings`): `home`, `goons`,
+  `breathless`, `24xx` and `settings` report 0 issues; `loner` reports the same pre-existing
+  "no live turn after a reload mid-turn" phases 1 and 2 recorded.
