@@ -265,6 +265,8 @@ warm") for a path that runs at most once per call (`RETRIES = 1`).
 
 ### 10. Edge and test cuts (bundle, no decisions inside)
 
+**Decided: accepted, with two amendments.** Item 1 keeps `speech.voices` and `speech.sample_rate` as settings (both follow the TTS model); only `scene_ratio`, `icon_ratio` and `max_references` become constants. Item 4 is dropped (two lines, not worth a change).
+
 Each is small; together about −250 lines and one afternoon.
 
 1. **Settings nobody sets become constants.** `media.scene_ratio`, `media.icon_ratio`,
