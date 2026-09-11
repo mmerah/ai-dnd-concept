@@ -220,26 +220,23 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
                     options=(),
                     allows_text=True,
                 )
-        twist_facts: list[Fact] = []
         # SRD: the Twist Counter skips Harm & Luck, so a tied conflict roll never ticks it.
-        if chance.kept == risk.kept and opponent is None and world.tick_twist():
-            twist_facts = self._twist(draft, actor, rng)
-        oracle = actor.fact(line, card="\n".join((line, *effects)), dice=(chance.event, risk.event))
+        tied = chance.kept == risk.kept and opponent is None
+        twist_facts = self._twist(draft, actor, rng) if tied and world.tick_twist() else []
         return [
             *reveals,
             chance.fact,
             risk.fact,
             # The question is master-authored and may name unrevealed canon: never told.
             Fact(trace=f"asked: {args.question}"),
-            oracle,
+            actor.fact(line, card="\n".join((line, *effects)), dice=(chance.event, risk.event)),
             *exchange,
             *twist_facts,
         ]
 
     def _twist(self, draft: Loner3eGame, actor: Loner3eCast, rng: Random) -> list[Fact]:
         """The SRD's table is rolled here so the dice trace; the model only reads the pairing."""
-        faces = (DIE_FACE, DIE_FACE)
-        rolled = roll(faces, "twist — subject, action", rng, label="Twist")
+        rolled = roll((DIE_FACE, DIE_FACE), "twist — subject, action", rng, label="Twist")
         subject, action = twist_pairing(rolled.rolled[0], rolled.rolled[1], self.twist_table())
         draft.note(TWIST_NOTE.format(subject=subject.upper(), action=action.upper()))
         # Echo the unnamed SRD intrusion in the call that rolled it without adding canon.

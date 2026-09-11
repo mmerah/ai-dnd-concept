@@ -284,6 +284,10 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             .gain_item(args.name, bulky=args.bulky, breaks=args.breaks, cost=args.cost)
         )
 
+    def drop_item(self, draft: TwentyfourxxGame, args: DropItem, _rng: Random) -> list[Fact]:
+        actor = self.world_of(draft).require_actor(args.actor_id)
+        return actor.require_sheet().drop_item(args.item_id, actor)
+
     def repair_item(self, draft: TwentyfourxxGame, args: RepairItem, _rng: Random) -> list[Fact]:
         world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
@@ -344,14 +348,12 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         return lambda sheet: sheet.check(pack)
 
     def install_sheet(self, member: Crewmate, answer: SheetDraft) -> str:
-        member.take_sheet(
-            CrewSheet(
-                specialty=answer.specialty,
-                skills=dict(answer.skills),
-                credits=0,
-                items=items_from_kits(tuple(Kit(name=name) for name in answer.items)),
-                hindrances=list(answer.hindrances),
-            )
+        member.sheet = CrewSheet(
+            specialty=answer.specialty,
+            skills=dict(answer.skills),
+            credits=0,
+            items=items_from_kits(tuple(Kit(name=name) for name in answer.items)),
+            hindrances=list(answer.hindrances),
         )
         return answer.specialty
 
@@ -359,16 +361,24 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
         pool = self._pool(world, actor, args)
-        rolled = roll_pool(
-            pool.faces,
-            f"{args.what} — {pool.label}",
-            rng,
-            label="+".join(f"d{face}" for face in pool.faces),
-        )
+        label = "+".join(f"d{face}" for face in pool.faces)
+        rolled = roll_pool(pool.faces, f"{args.what} — {pool.label}", rng, label=label)
         result = banded(rolled.kept, "disaster", "setback", "success")
-        line = _line(world, actor, args, pool, result)
-        facts: list[Fact] = [rolled.fact, actor.fact(line, card=line, dice=(rolled.event,))]
-        facts.extend(_consequence(world, actor, args, result))
+
+        prefix = "" if actor is world.player else f"{actor.name}: "
+        line = f"{args.what} — {prefix}{sentence(pool.label)} d{pool.die}"
+        if args.helped:
+            line += f", helped ({args.helped})"
+        line += pool.helped_by
+        if args.hindered:
+            line += f", hindered ({args.hindered})"
+        line += f" → {result}"
+
+        facts = [rolled.fact, actor.fact(line, card=line, dice=(rolled.event,))]
+        if args.risking_death and result == "disaster":
+            facts.extend(world.kill(actor.id))
+        elif args.risking_death and result == "setback":
+            facts.extend(actor.maim())
         self._succession(draft)
         return facts
 
@@ -408,7 +418,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             case "find":
                 return self._find(draft, args.where, rng)
             case "take":
-                return self._take(draft, args.terms)
+                return self.world_of(draft).take_job(args.terms)
             case "finish":
                 return self._finish(draft, args.raises, rng)
 
@@ -425,13 +435,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             "a choice between two jobs",
         )
         line = f"{where} — d6 → {result}"
-        return [
-            rolled.fact,
-            world.player.fact(line, card=line, dice=(rolled.event,)),
-        ]
-
-    def _take(self, draft: TwentyfourxxGame, terms: str) -> list[Fact]:
-        return self.world_of(draft).take_job(terms)
+        return [rolled.fact, world.player.fact(line, card=line, dice=(rolled.event,))]
 
     def _finish(self, draft: TwentyfourxxGame, raises: Sequence[Raise], rng: Random) -> list[Fact]:
         world = self.world_of(draft)
@@ -439,8 +443,32 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             raise Refusal("no job is open to finish")
         expected = [None, *(member.id for member in world.sheeted_members())]
         got = [raise_.actor_id for raise_ in raises]
-        if unmet := _operators_unmet(expected, got):
-            raise Refusal(unmet)
+        expected_count, got_count = Counter(expected), Counter(got)
+        if got_count != expected_count:
+
+            def named(actor_id: Slug | None) -> str:
+                return "the player" if actor_id is None else actor_id
+
+            missing = sorted(named(actor_id) for actor_id in set(expected) - set(got))
+            extra = sorted(named(actor_id) for actor_id in set(got) - set(expected))
+            repeated = sorted(
+                named(actor_id)
+                for actor_id, count in got_count.items()
+                if count > 1 and actor_id in expected_count
+            )
+            parts = [
+                part
+                for part in (
+                    f"missing {', '.join(missing)}" if missing else "",
+                    f"extra {', '.join(extra)}" if extra else "",
+                    f"repeated {', '.join(repeated)}" if repeated else "",
+                )
+                if part
+            ]
+            raise Refusal(
+                "`job` `finish` names the player and every living hired member once each: "
+                + "; ".join(parts)
+            )
 
         facts: list[Fact] = []
         for raise_ in raises:
@@ -469,57 +497,4 @@ def _item_lines(items: Mapping[Slug, Gear]) -> str:
     return lines_of(
         f"- {item.name}[{key}]" + (f" — {detail}" if (detail := item.notes()) else "")
         for key, item in items.items()
-    )
-
-
-def _line(world: TwentyfourxxWorld, actor: Crewmate, args: Roll, pool: Pool, result: str) -> str:
-    line = (
-        f"{args.what} — {sentence(pool.label)} d{pool.die}"
-        if actor is world.player
-        else f"{args.what} — {actor.name}: {sentence(pool.label)} d{pool.die}"
-    )
-    if args.helped:
-        line += f", helped ({args.helped})"
-    line += pool.helped_by
-    if args.hindered:
-        line += f", hindered ({args.hindered})"
-    line += f" → {result}"
-    return line
-
-
-def _consequence(world: TwentyfourxxWorld, actor: Crewmate, args: Roll, result: str) -> list[Fact]:
-    if not args.risking_death:
-        return []
-    if result == "disaster":
-        return world.kill(actor.id)
-    return actor.maim() if result == "setback" else []
-
-
-def _operators_unmet(expected: Sequence[Slug | None], got: Sequence[Slug | None]) -> str:
-    """The `job` `finish` refusal, or `""` when every operator is named once."""
-    expected_count, got_count = Counter(expected), Counter(got)
-    if got_count == expected_count:
-        return ""
-
-    def named(actor_id: Slug | None) -> str:
-        return "the player" if actor_id is None else actor_id
-
-    missing = sorted(named(actor_id) for actor_id in set(expected) - set(got))
-    extra = sorted(named(actor_id) for actor_id in set(got) - set(expected))
-    repeated = sorted(
-        named(actor_id)
-        for actor_id, count in got_count.items()
-        if count > 1 and actor_id in expected_count
-    )
-    parts = [
-        part
-        for part in (
-            f"missing {', '.join(missing)}" if missing else "",
-            f"extra {', '.join(extra)}" if extra else "",
-            f"repeated {', '.join(repeated)}" if repeated else "",
-        )
-        if part
-    ]
-    return "`job` `finish` names the player and every living hired member once each: " + "; ".join(
-        parts
     )

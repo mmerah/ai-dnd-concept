@@ -1,15 +1,11 @@
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 from support.game import initialized
 
-from aidm.core.entities import Refusal
 from aidm.core.views import PanelRow, Subject
 from aidm.engines.base import (
     Gauge,
-    Item,
-    ItemSheet,
     Person,
-    Sheeted,
     Thing,
     here_panel,
     party_panel,
@@ -17,15 +13,6 @@ from aidm.engines.base import (
 )
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
 from aidm.engines.scenes.worldsmith import named_unmet
-
-
-class _Sheet(BaseModel):
-    pass
-
-
-class _Holder(Sheeted[_Sheet]):
-    pass
-
 
 KAEL = Loner3eCast(id="kael", name="Kael", brief="", known=True)
 
@@ -104,28 +91,6 @@ def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> 
     player.luck.current = 0
     (own,) = player.change(player.luck, 1, "Luck", "the strain")
     assert own.card == "Luck +1 → 1/6"
-
-
-def test_remove_item_returns_the_item_and_forgets_it() -> None:
-    sheet = ItemSheet[Item](items={"lantern": Item(name="Lantern")})
-
-    removed = sheet.remove_item("lantern", "Kael")
-
-    assert removed.name == "Lantern"
-    assert "lantern" not in sheet.items
-
-
-def test_person_drop_item_refuses_for_a_person_with_no_items() -> None:
-    kestrel = Person(id="kestrel", name="Kestrel", brief="Runs the dock.")
-    with pytest.raises(Refusal, match="carries no items"):
-        kestrel.drop_item("lantern")
-
-
-def test_take_sheet_refuses_a_second_sheet() -> None:
-    holder = _Holder(id="h", name="H", brief="")
-    holder.take_sheet(_Sheet())
-    with pytest.raises(Refusal, match="already carries a sheet"):
-        holder.take_sheet(_Sheet())
 
 
 def test_named_unmet_finds_multi_word_names_case_folded_and_bare_ids() -> None:

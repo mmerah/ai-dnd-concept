@@ -118,7 +118,6 @@ class Loner3eWorld(SceneWorld[Loner3eCast]):
     twist: Gauge = Field(default_factory=lambda: Gauge(current=0, maximum=TIES_PER_TWIST))
 
     def tick_twist(self) -> bool:
-        """True when the counter turns over, which resets it."""
         self.twist.current += 1
         if self.twist.shortfall == 0:
             self.twist.current = 0

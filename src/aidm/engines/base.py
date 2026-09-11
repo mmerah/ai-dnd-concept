@@ -130,9 +130,6 @@ class Person(Thing):
         """Whether a sheet could still be written for them."""
         return False
 
-    def drop_item(self, _item_id: Slug) -> list[Fact]:
-        raise Refusal(f"{self.name} carries no items")
-
 
 class Sheeted[S: BaseModel](Person):
     sheet: S | None = Field(default=None, description="Leave empty.")
@@ -141,11 +138,6 @@ class Sheeted[S: BaseModel](Person):
         if self.sheet is None:
             raise Refusal(f"{self.name} carries no dice")
         return self.sheet
-
-    def take_sheet(self, sheet: S) -> None:
-        if self.sheet is not None:
-            raise Refusal(f"{self.name} already carries a sheet")
-        self.sheet = sheet
 
     def carried(self) -> str:
         return ""
@@ -184,10 +176,10 @@ class ItemSheet[I: Item](Mutable):
             raise Refusal(f"{item_id!r} is not among {owner}'s items")
         return item
 
-    def remove_item(self, item_id: Slug, owner: str) -> I:
-        item = self.require(item_id, owner)
+    def drop_item(self, item_id: Slug, owner: Thing) -> list[Fact]:
+        item = self.require(item_id, owner.name)
         del self.items[item_id]
-        return item
+        return [owner.fact(f"{owner.mention} drops {item.name}", card=f"Dropped {item.name}")]
 
 
 class World[M: Person, P: Person](Mutable):
