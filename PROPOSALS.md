@@ -25,17 +25,17 @@ option letter.
 | ID | Proposal | Kind | Size | src | Recommendation | Your decision |
 | --- | --- | --- | --- | --- | --- | --- |
 | F1 | `Claims.hold` context manager replaces three try/finally blocks | bug | S | - | Accept | Accepted |
-| F2 | One `close()` replaces `stop()` and `settled()`; errors get logged | bug | M | = | Accept | |
+| F2 | One `close()` replaces `stop()` and `settled()`; errors get logged | bug | M | = | Accept | Accepted |
 | F3 | One `publish` helper replaces three staging implementations | bug | S | - | Accept | Accepted |
-| F4 | Expected file errors handled at the read and write helpers only | bug | S | = | Accept | |
-| F5 | One `admit` in `Runtime` replaces three refusal methods and the UI checks | bug | M | - | Accept, option A | |
+| F4 | Expected file errors handled at the read and write helpers only | bug | S | = | Accept | Accepted |
+| F5 | One `admit` in `Runtime` replaces three refusal methods and the UI checks | bug | M | - | Accept, option A | Accepted, A |
 | D1 | Strict scalar validation | decided | M | = | Implement as written | Decided |
 | D2 | Commit dice with the turn; separate cosmetic RNG | decided | S | = | Implement as written | Decided |
 | D3 | Precise types through the chain | decided | L | + | Re-decide: option B (family `W` only) | |
 | D4 | One explicit pack selection policy | decided | L | - | Implement, option B (no fingerprints) | |
 | D5 | Shallow freezing: document it and pin it with a test | decided | S | = | Implement as written | Decided |
-| Q1 | Typed CLI events replace the recursive text search | quality | M | - | Accept | |
-| Q2 | Upload: one directory per form, deleted on success only | quality | S | - | Accept, option B | |
+| Q1 | Typed CLI events replace the recursive text search | quality | M | - | Accept | Refused |
+| Q2 | Upload: one directory per form, deleted on success only | quality | S | - | Accept, option B | Accepted, B |
 | Q3 | Helpers that mutate become methods | quality | M | = | Accept, widened list | |
 | Q4 | Delete compressed expressions and duplicate closures | quality | S | - | Accept, option B | Accepted, B |
 | N1 | Constructor style | consistency | S | = | Option B (leave, write the rule) | |
