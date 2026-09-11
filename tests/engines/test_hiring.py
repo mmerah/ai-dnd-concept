@@ -116,7 +116,7 @@ async def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party(case: Hi
     draft = case.game().draft()
     generation = Generation(operation=HIRE, detail=TERMS, target=case.member)
     _, told = await case.engine.advance(draft, generation, stub_worldsmith(case.answer))
-    world = case.engine.world(draft)
+    world = case.engine.world_of(draft)
     member = world.require_member_here(case.member)
     assert member.hired
     assert case.member in world.party

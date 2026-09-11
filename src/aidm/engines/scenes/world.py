@@ -59,16 +59,6 @@ class SceneWorld[C: Person](World[C, C]):
             raise ValueError("the player is in the cast")
         if self.player.id in self.run.here:
             raise ValueError("the player is in every scene and is never listed in it")
-        if self.player.id in self.party:
-            raise ValueError("the player cannot travel with themselves")
-        check_unique("party", self.party)
-        for member_id in self.party:
-            if member_id not in self.cast or not self.cast[member_id].known:
-                raise ValueError(
-                    f"{member_id!r} travels with the player but is not met in the cast"
-                )
-            if not self.cast[member_id].alive:
-                raise ValueError(f"{member_id!r} is dead and cannot travel with the player")
         if left := sorted(set(self.party) - set(self.run.here)):
             raise ValueError(f"the party is in every scene; {left} are not in this one")
         return self
@@ -100,6 +90,9 @@ class SceneWorld[C: Person](World[C, C]):
 
     def members(self) -> list[C]:
         return [self.cast[member_id] for member_id in self.party]
+
+    def member_of(self, member_id: Slug) -> C | None:
+        return self.cast.get(member_id)
 
     def require(self, entity_id: Slug) -> C:
         if entity_id == self.player.id:
@@ -200,9 +193,6 @@ class SceneWorld[C: Person](World[C, C]):
         card = "You are dead" if entity.id == self.player.id else f"{entity.name} is dead"
         facts.append(entity.fact(f"{entity.mention} is dead", card=card))
         return facts
-
-    def join_party(self, entity_id: Slug) -> list[Fact]:
-        return self.join(self.require_here(entity_id, alive=True))
 
     def leave_party(self, entity_id: Slug) -> list[Fact]:
         return self.part(self.require(entity_id))

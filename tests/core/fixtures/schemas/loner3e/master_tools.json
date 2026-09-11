@@ -6,41 +6,7 @@
       "additionalProperties": false,
       "properties": {
         "entity_id": {
-          "description": "Exact id of an entity listed as hidden here.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id"
-      ],
-      "type": "object"
-    }
-  },
-  {
-    "name": "enter",
-    "description": "A cast member comes into the scene.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "entity_id": {
-          "description": "Exact id of a cast member not already here.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id"
-      ],
-      "type": "object"
-    }
-  },
-  {
-    "name": "leave",
-    "description": "A cast member goes out of the scene.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "entity_id": {
-          "description": "Exact id of someone here.",
+          "description": "Exact id of something hidden here.",
           "type": "string"
         }
       },
@@ -92,6 +58,40 @@
       "properties": {
         "entity_id": {
           "description": "Exact id of the party member leaving.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "enter",
+    "description": "A cast member comes into the scene.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of a cast member not already here.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "leave",
+    "description": "A cast member goes out of the scene.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of someone here.",
           "type": "string"
         }
       },

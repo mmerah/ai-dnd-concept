@@ -6,41 +6,7 @@
       "additionalProperties": false,
       "properties": {
         "entity_id": {
-          "description": "Exact id of an entity listed as hidden here.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id"
-      ],
-      "type": "object"
-    }
-  },
-  {
-    "name": "enter",
-    "description": "A cast member comes into the scene.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "entity_id": {
-          "description": "Exact id of a cast member not already here.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id"
-      ],
-      "type": "object"
-    }
-  },
-  {
-    "name": "leave",
-    "description": "A cast member goes out of the scene.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "entity_id": {
-          "description": "Exact id of someone here.",
+          "description": "Exact id of something hidden here.",
           "type": "string"
         }
       },
@@ -102,26 +68,6 @@
     }
   },
   {
-    "name": "next_scene",
-    "description": "Call this with nothing set when the scene reaches a stopping point. Set `pursuit` instead once the player has left this place. Set `complication` instead to bring a new situation down on this place.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "pursuit": {
-          "default": "",
-          "description": "Where the player is going, in their own words. Empty to offer the way on.",
-          "type": "string"
-        },
-        "complication": {
-          "default": "",
-          "description": "What arrives or turns here, and why. Empty otherwise.",
-          "type": "string"
-        }
-      },
-      "type": "object"
-    }
-  },
-  {
     "name": "hire",
     "description": "Call this when the player hires someone here to work. Someone already travelling with the player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing more lands this turn. A sheet is for someone hired to work, never for one who only comes along.",
     "parameters": {
@@ -140,6 +86,60 @@
         "entity_id",
         "terms"
       ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "enter",
+    "description": "A cast member comes into the scene.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of a cast member not already here.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "leave",
+    "description": "A cast member goes out of the scene.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of someone here.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "next_scene",
+    "description": "Call this with nothing set when the scene reaches a stopping point. Set `pursuit` instead once the player has left this place. Set `complication` instead to bring a new situation down on this place.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "pursuit": {
+          "default": "",
+          "description": "Where the player is going, in their own words. Empty to offer the way on.",
+          "type": "string"
+        },
+        "complication": {
+          "default": "",
+          "description": "What arrives or turns here, and why. Empty otherwise.",
+          "type": "string"
+        }
+      },
       "type": "object"
     }
   },

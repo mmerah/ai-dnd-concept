@@ -11,10 +11,9 @@ from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import Pairs, lines_of, sentence
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Look, Panel, PanelRow
-from aidm.engines.base import PLAYER_ID, banded, luck_test
-from aidm.engines.hiring import DROP_ITEM, DropItem, Hiring
+from aidm.engines.base import PLAYER_ID, Kill, banded, luck_test
+from aidm.engines.hiring import DROP_ITEM, DropItem, Hiring, hiring
 from aidm.engines.scenes.engine import SceneEngine
-from aidm.engines.scenes.tools import Kill
 from aidm.engines.twentyfourxx.tools import (
     CHANGE_HINDRANCES,
     DEFEND,
@@ -57,10 +56,7 @@ from aidm.engines.twentyfourxx.world import (
 from aidm.engines.twentyfourxx.worldsmith import AUTHORING, HIRING, Pack, SheetDraft
 
 
-class TwentyfourxxEngine(
-    Hiring[Crewmate, Crewmate, TwentyfourxxGame, SheetDraft],
-    SceneEngine[Crewmate, TwentyfourxxGame, Pack],
-):
+class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
     id = EngineId("twentyfourxx")
     title = "24XX"
     art_style = (
@@ -86,11 +82,15 @@ class TwentyfourxxEngine(
     game = TwentyfourxxGame
     scenario = TwentyfourxxScenario
     character = TwentyfourxxCharacter
-    cast = Crewmate
     pack = Pack
-    world_type = TwentyfourxxWorld
+    world = TwentyfourxxWorld
     member = Crewmate
-    hire_answer = SheetDraft
+
+    def world_of(self, state: TwentyfourxxGame) -> TwentyfourxxWorld:
+        return state.payload
+
+    def hiring(self) -> Hiring[TwentyfourxxGame, Crewmate]:
+        return hiring(SheetDraft, self.hire_prompt, self.install_sheet, self.hire_check)
 
     def master_tools(self) -> tuple[MasterTool[TwentyfourxxGame], ...]:
         return (
@@ -210,7 +210,7 @@ class TwentyfourxxEngine(
         return AUTHORING
 
     def sheet_sections(self, state: TwentyfourxxGame) -> Pairs:
-        world = state.payload
+        world = self.world_of(state)
         job = world.job
         return (
             ("GEAR", _item_lines(world.player.require_sheet().items)),
@@ -219,7 +219,7 @@ class TwentyfourxxEngine(
         )
 
     def panels(self, state: TwentyfourxxGame) -> tuple[Panel, ...]:
-        world = state.payload
+        world = self.world_of(state)
         job = world.job
         job_panel = (Panel(title="Job", rows=(PanelRow(label=job, detail=""),)),) if job else ()
         ship_panel = Panel(
@@ -252,33 +252,39 @@ class TwentyfourxxEngine(
     def change_hindrances(
         self, draft: TwentyfourxxGame, args: ChangeHindrances, _rng: Random
     ) -> list[Fact]:
-        return draft.payload.require_actor(args.actor_id).change_hindrances(args.gained, args.lost)
+        return (
+            self.world_of(draft)
+            .require_actor(args.actor_id)
+            .change_hindrances(args.gained, args.lost)
+        )
 
     def gain_item(self, draft: TwentyfourxxGame, args: GainItem, _rng: Random) -> list[Fact]:
-        return draft.payload.require_actor(args.actor_id).gain_item(
-            args.name, bulky=args.bulky, breaks=args.breaks, cost=args.cost
+        return (
+            self.world_of(draft)
+            .require_actor(args.actor_id)
+            .gain_item(args.name, bulky=args.bulky, breaks=args.breaks, cost=args.cost)
         )
 
     def drop_item(self, draft: TwentyfourxxGame, args: DropItem, _rng: Random) -> list[Fact]:
-        actor = draft.payload.require_actor(args.actor_id)
+        actor = self.world_of(draft).require_actor(args.actor_id)
         return actor.require_sheet().drop_item(args.item_id, actor)
 
     def repair_item(self, draft: TwentyfourxxGame, args: RepairItem, _rng: Random) -> list[Fact]:
-        world = draft.payload
+        world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
         return actor.repair_item(world.require_gear(actor, args.item_id), args.cost)
 
     def spend(self, draft: TwentyfourxxGame, args: Spend, _rng: Random) -> list[Fact]:
-        return draft.payload.require_actor(args.actor_id).spend(args.amount, args.why)
+        return self.world_of(draft).require_actor(args.actor_id).spend(args.amount, args.why)
 
     def take_lead(self, draft: TwentyfourxxGame, args: TakeLead, _rng: Random) -> list[Fact]:
-        return draft.payload.take_lead(args.entity_id)
+        return self.world_of(draft).take_lead(args.entity_id)
 
     def ship_upgrade(self, draft: TwentyfourxxGame, args: ShipUpgrade, _rng: Random) -> list[Fact]:
-        return draft.payload.upgrade_ship(args.function_id)
+        return self.world_of(draft).upgrade_ship(args.function_id)
 
     def defend(self, draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
-        return draft.payload.defend(args.actor_id, args.item_id, args.hindrance)
+        return self.world_of(draft).defend(args.actor_id, args.item_id, args.hindrance)
 
     def kill(self, draft: TwentyfourxxGame, args: Kill, rng: Random) -> list[Fact]:
         facts = super().kill(draft, args, rng)
@@ -287,7 +293,7 @@ class TwentyfourxxEngine(
 
     def _succession(self, draft: TwentyfourxxGame) -> None:
         """`kill` and `roll` are the two tools that can kill the lead."""
-        world = draft.payload
+        world = self.world_of(draft)
         if world.player.alive or not (members := world.sheeted_members()):
             return
         draft.pending = PendingDecision(
@@ -308,18 +314,18 @@ class TwentyfourxxEngine(
 
     def over(self, state: TwentyfourxxGame) -> str | None:
         """A dead lead with a hired member alive is a succession, not an ending."""
-        return None if state.payload.sheeted_members() else super().over(state)
+        return None if self.world_of(state).sheeted_members() else super().over(state)
 
     def hire_prompt(self, draft: TwentyfourxxGame, member: Crewmate, terms: str) -> str:
         return self.render_request(
             draft,
-            guidance=self._pack(draft).hire_guidance(),
+            guidance=self.first_pack(draft).hire_guidance(),
             intent=HIRING.format(name=member.name, brief=member.brief, terms=terms),
             answer=SheetDraft,
         )
 
     def hire_check(self, draft: TwentyfourxxGame) -> Check[SheetDraft]:
-        pack = self._pack(draft)
+        pack = self.first_pack(draft)
         return lambda sheet: sheet.check(pack)
 
     def install_sheet(self, member: Crewmate, answer: SheetDraft) -> str:
@@ -332,11 +338,8 @@ class TwentyfourxxEngine(
         )
         return answer.specialty
 
-    def _pack(self, draft: TwentyfourxxGame) -> Pack:
-        return self.packs[draft.packs[0]]
-
     def roll(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
-        world = draft.payload
+        world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
         sheet = actor.require_sheet()
         helper = None
@@ -404,7 +407,7 @@ class TwentyfourxxEngine(
                 return self._finish(draft, args.raises, rng)
 
     def _find(self, draft: TwentyfourxxGame, where: str, rng: Random) -> list[Fact]:
-        world = draft.payload
+        world = self.world_of(draft)
         if world.job:
             raise Refusal(f"a job is open: {world.job}")
         rolled, dice_fact = roll((6,), where, rng)
@@ -424,14 +427,14 @@ class TwentyfourxxEngine(
         ]
 
     def _take(self, draft: TwentyfourxxGame, terms: str) -> list[Fact]:
-        world = draft.payload
+        world = self.world_of(draft)
         if world.job:
             raise Refusal(f"a job is open: {world.job}")
         world.job = terms
         return [world.player.fact(f"the job is taken: {terms}", card=f"Job taken\n{terms}")]
 
     def _finish(self, draft: TwentyfourxxGame, raises: Sequence[Raise], rng: Random) -> list[Fact]:
-        world = draft.payload
+        world = self.world_of(draft)
         if not world.job:
             raise Refusal("no job is open to finish")
         expected = [None, *(member.id for member in world.sheeted_members())]

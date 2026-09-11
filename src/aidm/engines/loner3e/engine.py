@@ -1,4 +1,3 @@
-import json
 from collections.abc import Sequence
 from pathlib import Path
 from random import Random
@@ -70,13 +69,16 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
     game = Loner3eGame
     scenario = Loner3eScenario
     character = Loner3eCharacter
-    cast = Loner3eCast
     pack = Pack
-    world_type = Loner3eWorld
+    world = Loner3eWorld
+    member = Loner3eCast
 
     def __init__(self) -> None:
         super().__init__()
         self.twist_table()  # fails at start, not mid-scene
+
+    def world_of(self, state: Loner3eGame) -> Loner3eWorld:
+        return state.payload
 
     def master_tools(self) -> tuple[MasterTool[Loner3eGame], ...]:
         return (
@@ -142,15 +144,11 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
 
     def guidance(self, picks: Sequence[Slug]) -> str:
         """Defaults restate rules the guidance already carries; dropping them halves the prompt."""
-        selected = {
-            pack_id: self.packs[pack_id].model_dump(mode="json", exclude_defaults=True)
-            for pack_id in picks
-        }
-        return f"{AUTHORING}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"
+        return f"{AUTHORING}\n\n{self.pack_content(picks, exclude_defaults=True)}"
 
     def glossary(self, state: Loner3eGame) -> Pairs:
         spelled: dict[str, str] = {}
-        for member in state.payload.here():
+        for member in self.world_of(state).here():
             spelled.update(self._meanings(state.packs, member))
         lines = "\n".join(f"- {tag}: {detail}" for tag, detail in spelled.items())
         return (("WHAT THE TAGS IN PLAY MEAN", lines),) if spelled else ()
@@ -176,28 +174,28 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         """A scene ends its conflicts so nobody carries a spent pool on; the dead keep theirs."""
         return [
             fact
-            for member in draft.payload.here()
+            for member in self.world_of(draft).here()
             if member.alive
             for fact in member.refill("the scene is over")
         ]
 
     def change_tags(self, draft: Loner3eGame, args: ChangeTags, _rng: Random) -> list[Fact]:
-        actor = draft.payload.require_here(args.entity_id, alive=True)
+        actor = self.world_of(draft).require_here(args.entity_id, alive=True)
         return actor.change_tags(args.kind, args.gained, args.lost)
 
     def drive(self, draft: Loner3eGame, args: Drive, _rng: Random) -> list[Fact]:
-        actor = draft.payload.require_here(args.entity_id, alive=True)
+        actor = self.world_of(draft).require_here(args.entity_id, alive=True)
         return actor.drive(goal=args.goal, motive=args.motive, nemesis=args.nemesis)
 
     def restore_luck(self, draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
-        actor = draft.payload.require_here(args.entity_id, alive=True)
+        actor = self.world_of(draft).require_here(args.entity_id, alive=True)
         facts = actor.reveal()
         # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
         facts.extend(actor.refill("the conflict is behind them"))
         return facts
 
     def roll(self, draft: Loner3eGame, args: Roll, rng: Random) -> list[Fact]:
-        world = draft.payload
+        world = self.world_of(draft)
         actor = world.require_here(args.actor_id, alive=True)
         facts = actor.reveal()
         opponent = None

@@ -19,10 +19,6 @@ from aidm.core.prompt import Pairs, lines_of
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import NarratorView, Panel, PanelRow, PlayerView
 from aidm.engines.base import (
-    JOIN_PARTY,
-    LEAVE_PARTY,
-    JoinParty,
-    LeaveParty,
     Person,
     character_panel,
     here_panel,
@@ -31,15 +27,11 @@ from aidm.engines.base import (
     trail_panel,
 )
 from aidm.engines.rooms.tools import (
-    KILL,
     MOVE,
     MOVE_ITEM,
-    REVEAL,
     UNLOCK_WAY,
-    Kill,
     Move,
     MoveItem,
-    Reveal,
     UnlockWay,
 )
 from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RoomWorld
@@ -57,24 +49,23 @@ MAP_UNWRITTEN = Fact(
 )
 
 
-class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
-    dweller: type[N]
-    world_type: type[RoomWorld[N, P]]
+class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
+    world: type[RoomWorld[N, P]]
     family_dir = Path(__file__).parent
 
-    def world(self, state: G) -> RoomWorld[N, P]:
+    def world_of(self, state: G) -> RoomWorld[N, P]:
         return state.payload
 
     def map_draft(self) -> type[MapDraft[N]]:
         """Pydantic parametrizes the subscript at runtime, so the npc type reaches the schema."""
-        return MapDraft[self.dweller]
+        return MapDraft[self.member]
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> RoomWorld[N, P]:
         draft: MapDraft[N] = scenario.payload
         check_map(draft)
         player = self.player_of(character)
         taken = (*draft.places, *draft.npcs, *draft.items)
-        return self.world_type.opening(
+        return self.world.opening(
             draft, player, self.starting_items(player, taken), scenario.source
         )
 
@@ -83,11 +74,11 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
 
     def family_sections(self, draft: G | None) -> Pairs:
         return map_sections(
-            None if draft is None else self.world(draft), () if draft is None else draft.log
+            None if draft is None else self.world_of(draft), () if draft is None else draft.log
         )
 
     def master_sections(self, state: G) -> Pairs:
-        world = self.world(state)
+        world = self.world_of(state)
         place = world.current
         player = world.player
         return (
@@ -101,7 +92,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         )
 
     def narrator_view(self, state: G) -> NarratorView:
-        world = self.world(state)
+        world = self.world_of(state)
         place = world.current
         here = tuple(entity for entity in world.here() if entity.known)
         carrying = ", ".join(item.name for item in world.carried(world.player.id))
@@ -118,7 +109,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         )
 
     def player_view(self, state: G) -> PlayerView:
-        world = self.world(state)
+        world = self.world_of(state)
         player = world.player
         ways = world.ways.get(world.current.id, ())
         me = player.subject()
@@ -175,7 +166,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         return await compose(worldsmith, prompt, self.map_draft(), built, check)
 
     def act(self, draft: G, action: Slug, words: str) -> None:
-        if action != EXTEND or self.world(draft).frontier():
+        if action != EXTEND or self.world_of(draft).frontier():
             raise Refusal("the map still has ways to walk; the page was drawn before them")
         if not words:
             raise Refusal("say where you push on")
@@ -186,48 +177,29 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         return (), None
 
     def worldsmith_requests(self) -> dict[Slug, Request[G]]:
-        return {EXTEND: Request(MAP_UNWRITTEN, self.extend)}
+        return {**super().worldsmith_requests(), EXTEND: Request(MAP_UNWRITTEN, self.extend)}
 
     def master_tools(self) -> tuple[MasterTool[G], ...]:
         return (
             *super().master_tools(),
-            master_tool("reveal", REVEAL, Reveal, self.reveal),
             master_tool("move_item", MOVE_ITEM, MoveItem, self.move_item),
-            master_tool("kill", KILL, Kill, self.kill),
-            master_tool("join_party", JOIN_PARTY, JoinParty, self.join_party),
-            master_tool("leave_party", LEAVE_PARTY, LeaveParty, self.leave_party),
             master_tool("unlock_way", UNLOCK_WAY, UnlockWay, self.unlock_way),
             master_tool("move", MOVE, Move, self.move),
         )
 
-    def reveal(self, draft: G, args: Reveal, _rng: Random) -> list[Fact]:
-        return self.world(draft).reveal_hidden(args.entity_id)
-
     def move_item(self, draft: G, args: MoveItem, _rng: Random) -> list[Fact]:
-        return self.world(draft).move_item(args.item_id, args.to)
-
-    def kill(self, draft: G, args: Kill, _rng: Random) -> list[Fact]:
-        world = self.world(draft)
-        return world.kill(world.require_member_here(args.entity_id))
-
-    def join_party(self, draft: G, args: JoinParty, _rng: Random) -> list[Fact]:
-        return self.world(draft).join_party(args.entity_id)
-
-    def leave_party(self, draft: G, args: LeaveParty, _rng: Random) -> list[Fact]:
-        return self.world(draft).leave_party(args.entity_id)
+        return self.world_of(draft).move_item(args.item_id, args.to)
 
     def unlock_way(self, draft: G, args: UnlockWay, _rng: Random) -> list[Fact]:
-        return self.world(draft).unlock_way(args.to_id)
+        return self.world_of(draft).unlock_way(args.to_id)
 
     def move(self, draft: G, args: Move, _rng: Random) -> list[Fact]:
-        facts = self.world(draft).move(args.to_id, args.with_ids)
-        if not draft.log[-1].exchanges:
-            draft.log.pop()
+        facts = self.world_of(draft).move(args.to_id, args.with_ids)
         self.open_chapter(draft)
         return facts
 
     async def write_next(self, draft: G, intent: str, worldsmith: WorldsmithAnswer) -> MapDraft[N]:
-        world = self.world(draft)
+        world = self.world_of(draft)
         prompt = self.render_request(
             draft, intent=intent, guidance=self.guidance(), answer=self.map_draft()
         )
@@ -237,7 +209,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
 
     def install(self, draft: G, extension: MapDraft[N]) -> None:
         """Hidden, so nothing is told: the region reaches the player only as they walk it."""
-        self.world(draft).attach(extension, extension.start)
+        self.world_of(draft).attach(extension, extension.start)
 
     @abstractmethod
     def guidance(self) -> str: ...

@@ -10,14 +10,8 @@ NEXT_SCENE = (
     "once the player has left this place. Set `complication` instead to bring a new situation "
     "down on this place."
 )
-REVEAL = "A hidden entity here becomes known to the player."
 ENTER = "A cast member comes into the scene."
 LEAVE = "A cast member goes out of the scene."
-KILL = "Someone here dies."
-
-
-class Reveal(Frozen):
-    entity_id: Slug = Field(description="Exact id of an entity listed as hidden here.")
 
 
 class Enter(Frozen):
@@ -26,10 +20,6 @@ class Enter(Frozen):
 
 class Leave(Frozen):
     entity_id: Slug = Field(description="Exact id of someone here.")
-
-
-class Kill(Frozen):
-    entity_id: Slug = Field(description="Exact id of who here died.")
 
 
 class NextScene(Frozen):

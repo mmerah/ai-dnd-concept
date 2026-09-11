@@ -123,5 +123,56 @@ shape won, on the maintainer's instruction:
 
 - `SceneDraft`/`NextDraft` are `Mutable` state inside a `Frozen` `Scenario`; `new_game` deep-copies
   once so a restart reopens the file unchanged.
-- `world_type`, `cast`, `dweller`, `Hiring` mixin, `hire_answer`, `AbilitiesDraft`, `HIRE_TOOL`
-  stay for phase 3.
+- `AbilitiesDraft` and `HIRE_TOOL` stay for phase 3.
+
+## Phase 3, part A: the seam and the families
+
+| dir   | before | after |
+| ----- | ------ | ----- |
+| src   | 9,907  | 9,903 |
+| tests | 9,256  | 9,286 |
+| qa    | 1,788  | 1,788 |
+
+PLAN.md phase 3 steps 1 to 8. Full check green; goldens changed on the four
+`schemas/*/master_tools.json` only (tool order seam, family, engine; the shared `reveal`/`kill`
+texts). QA harness green on goons, breathless and 24XX; loner reports two issues ("no crash
+notification", "no live turn after a reload mid-turn") that reproduce on the base commit and are
+not this phase's. Reviewed by two adversarial readers (Fable and Opus; no Codex on the machine).
+Part B (steps 9 to 16) is the next commit.
+
+### Decisions off-plan
+
+- Step 2, `world_of`: tunnelgoons overrides too (`-> TunnelGoonsWorld`), not only loner3e and
+  24XX: `rest` and `level_up` call `TunnelGoonsWorld.rest()` and `next_to_level()`, which
+  `RoomWorld[Npc, Goon]` lacks. Breathless alone inherits.
+- Step 3, `Hiring`: a `type` alias over the write callable, not a one-field frozen dataclass;
+  `hiring(...)` returns the closure and `write_hire` calls it (both reviews). `hireable(draft,
+  entity_id)` did not move onto the seam: with `world_of` typed `World[M, P]`,
+  `require_hireable` already returns `M`, so its two callers call the world directly.
+- Step 4, `Reveal.entity_id`: the shared field text "Exact id of something hidden here." is the
+  plan's; the three scene engines' `master_tools.json` change on it too, and the rooms family
+  loses its ": an npc or an item" hint. Accepted: `RoomWorld.reveal_hidden` still reveals a
+  `Prop`, and the master sees hidden items listed under HIDDEN HERE.
+- Step 4, `World.join_party` is concrete (`self.join(self.require_member_here(entity_id))`):
+  both families spelled it the same way (review finding). `leave_party` differs and stays abstract.
+- Step 4, `RoomWorld.kill(entity_id)` refuses a dead player with "is already dead", as
+  `SceneWorld.kill` does; one test.
+- Step 6, the base validator also holds "the player cannot travel with themselves", before the
+  member lookup: the player is never in `cast` or `npcs`, so the families' own check had become
+  unreachable behind "is not known".
+- Step 7, `open_chapter`'s pop now runs on every scene install too; two tests that installed a
+  scene on a chapter with no exchanges give it one first.
+- `tests/core/test_golden_turn.py` picks the family's own request by name rather than the first
+  in dict order, since the seam's `hire` now comes first (families spread `super()` first).
+
+### Refuted review findings
+
+- None refuted outright. The `Reveal` wording finding is recorded above as an accepted loss
+  rather than reworded: the field text is the plan's.
+
+### Known and accepted
+
+- `AbilitiesDraft`, `HIRE_TOOL`, `require_here(alive=True)`, `Gauge.change(owner, ...)`, the
+  hand-built `DiceEvent`s and `ItemSheet.drop_item(item_id, owner)` stay for part B.
+- The `hiring()` method on an engine returns the module-level `hiring(...)`: same name, no
+  shadowing (a method is a class attribute; the call resolves in module scope).

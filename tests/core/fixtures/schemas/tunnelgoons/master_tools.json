@@ -1,12 +1,12 @@
 [
   {
     "name": "reveal",
-    "description": "Something hidden here becomes known to the player.",
+    "description": "A hidden entity here becomes known to the player.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "entity_id": {
-          "description": "Exact id of something hidden here: an npc or an item.",
+          "description": "Exact id of something hidden here.",
           "type": "string"
         }
       },
@@ -17,35 +17,13 @@
     }
   },
   {
-    "name": "move_item",
-    "description": "An item moves to a new holder.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "item_id": {
-          "description": "Exact id of an item here or carried.",
-          "type": "string"
-        },
-        "to": {
-          "description": "Exact id of the player, an npc here, or this place.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "item_id",
-        "to"
-      ],
-      "type": "object"
-    }
-  },
-  {
     "name": "kill",
-    "description": "An npc here dies.",
+    "description": "Someone here dies.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "entity_id": {
-          "description": "Exact id of an npc here.",
+          "description": "Exact id of who here died.",
           "type": "string"
         }
       },
@@ -90,6 +68,50 @@
     }
   },
   {
+    "name": "hire",
+    "description": "Call this when the player hires someone here to work. Someone already travelling with the player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing more lands this turn. A sheet is for someone hired to work, never for one who only comes along.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of who here signs on.",
+          "type": "string"
+        },
+        "terms": {
+          "description": "What they are hired for, and on what terms, as agreed.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "terms"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "move_item",
+    "description": "An item moves to a new holder.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "item_id": {
+          "description": "Exact id of an item here or carried.",
+          "type": "string"
+        },
+        "to": {
+          "description": "Exact id of the player, an npc here, or this place.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_id",
+        "to"
+      ],
+      "type": "object"
+    }
+  },
+  {
     "name": "unlock_way",
     "description": "A locked way out of this place opens.",
     "parameters": {
@@ -127,28 +149,6 @@
       },
       "required": [
         "to_id"
-      ],
-      "type": "object"
-    }
-  },
-  {
-    "name": "hire",
-    "description": "Call this when the player hires someone here to work. Someone already travelling with the player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing more lands this turn. A sheet is for someone hired to work, never for one who only comes along.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "entity_id": {
-          "description": "Exact id of who here signs on.",
-          "type": "string"
-        },
-        "terms": {
-          "description": "What they are hired for, and on what terms, as agreed.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id",
-        "terms"
       ],
       "type": "object"
     }

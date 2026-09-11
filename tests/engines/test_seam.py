@@ -49,9 +49,9 @@ class FifthEngine(SceneEngine[Person, FifthGame, ScenePack]):
     game = FifthGame
     scenario = FifthScenario
     character = FifthCharacter
-    cast = Person
+    member = Person
     pack = ScenePack
-    world_type = FifthState
+    world = FifthState
 
     def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
         return (CreationStep(id="pack", label="Choose a table set", options=self.pack_options()),)
@@ -67,7 +67,7 @@ class FifthEngine(SceneEngine[Person, FifthGame, ScenePack]):
         return "Write the taproom plainly."
 
     def master_sections(self, state: FifthGame) -> Pairs:
-        return (("SCENE", self.world(state).run.title),)
+        return (("SCENE", self.world_of(state).run.title),)
 
 
 def _engine_at(tmp_path: Path) -> type[FifthEngine]:
@@ -158,11 +158,11 @@ def test_a_game_with_no_chapter_open_is_refused(tmp_path: Path) -> None:
 def test_a_scene_engine_offers_the_familys_tools_without_naming_them(tmp_path: Path) -> None:
     assert list(_installed(tmp_path).tools) == [
         "reveal",
-        "enter",
-        "leave",
         "kill",
         "join_party",
         "leave_party",
+        "enter",
+        "leave",
         "next_scene",
     ]
 
