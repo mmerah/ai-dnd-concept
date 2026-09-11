@@ -146,7 +146,7 @@ class SceneWorld[C: Person](World[C, C]):
         )
 
     def cast_lines(self) -> str:
-        lines = [self.player.line()]
+        lines = [self.player.line(rows=self.sheet_rows())]
         for entry in self.cast.values():
             where = (
                 "travels with the player" if entry.id in self.party else self.last_seen(entry.id)
