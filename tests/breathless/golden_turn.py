@@ -17,7 +17,7 @@ def behind(state: AnyGame) -> AnyGame:
     draft = state.draft()
     draft.log[0].exchanges.append(
         Exchange(
-            prompt="I look around the Bell House before going further.",
+            words="I look around the Bell House before going further.",
             lines=(SpokenLine(text="Ovid Sarn watches you from the cracked window."),),
         )
     )

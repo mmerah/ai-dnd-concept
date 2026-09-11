@@ -32,8 +32,8 @@ class LaunchTarget:
 @dataclass(frozen=True, slots=True)
 class SaveOption:
     target: LaunchTarget
-    scenario_title: str
-    character_title: str
+    scenario_label: str
+    character_label: str
     turn: int
     where: str
     rules: str
@@ -87,35 +87,45 @@ class LauncherCatalog:
         )
         titles = {(entry.id, entry.engine): entry.label for entry in characters}
         played_by = {entry.id: entry.engine for entry in scenarios}
-        saves: list[SaveOption] = []
-        for slug in store.slugs():
-            try:
-                raw = store.load(slug)
-                if raw is None:
-                    continue
-                value = decode(raw)
-                engine = routed(value, engines)
-                state = engine.restore(value)
-            except Refusal as unreadable:
-                # Skip rather than raise: one save the app could not resume must not hide the rest.
-                LOGGER.warning("skipping save %r: %s", slug, unreadable)
-                continue
-            title = titles.get((state.character_id, state.engine))
-            if played_by.get(state.scenario_id) != state.engine or title is None:
-                LOGGER.warning("skipping save %r: its scenario or character is gone", slug)
-                continue
-            target = LaunchTarget(scenario_id=state.scenario_id, character_id=state.character_id)
-            if slug != target.slug:
-                LOGGER.warning("skipping save %r: filed under another name", slug)
-                continue
-            saves.append(
-                SaveOption(
-                    target=target,
-                    scenario_title=state.scenario.title,
-                    character_title=title,
-                    turn=len(state.exchanges()),
-                    where=state.log[-1].title,
-                    rules=engine.title,
-                )
-            )
-        return cls(scenarios=scenarios, characters=characters, saves=tuple(saves))
+        saves = tuple(
+            option
+            for slug in store.slugs()
+            if (option := _save_option(slug, store, engines, titles, played_by)) is not None
+        )
+        return cls(scenarios=scenarios, characters=characters, saves=saves)
+
+
+def _save_option(
+    slug: str,
+    store: FileStore,
+    engines: Mapping[EngineId, AnyEngine],
+    titles: Mapping[tuple[Slug, EngineId], str],
+    played_by: Mapping[Slug, EngineId],
+) -> SaveOption | None:
+    try:
+        raw = store.read(slug)
+        if raw is None:
+            return None
+        value = decode(raw)
+        engine = routed(value, engines)
+        state = engine.restore(value)
+    except Refusal as unreadable:
+        # Skip rather than raise: one save the app could not resume must not hide the rest.
+        LOGGER.warning("skipping save %r: %s", slug, unreadable)
+        return None
+    title = titles.get((state.character_id, state.engine))
+    if played_by.get(state.scenario_id) != state.engine or title is None:
+        LOGGER.warning("skipping save %r: its scenario or character is gone", slug)
+        return None
+    target = LaunchTarget(scenario_id=state.scenario_id, character_id=state.character_id)
+    if slug != target.slug:
+        LOGGER.warning("skipping save %r: filed under another name", slug)
+        return None
+    return SaveOption(
+        target=target,
+        scenario_label=state.scenario.title,
+        character_label=title,
+        turn=len(state.exchanges()),
+        where=state.log[-1].title,
+        rules=engine.title,
+    )

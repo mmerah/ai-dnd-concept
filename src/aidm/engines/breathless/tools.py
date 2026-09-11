@@ -9,6 +9,22 @@ from aidm.engines.hiring import ACTOR
 
 CHANGE_STRESS = "The actor's stress goes up or down."
 USE_MED_KIT = "The actor spends their med kit."
+ROLL = (
+    "Call this for an action with a real cost. Roll one thing: a skill, a carried "
+    "item, or a stunt. The engine rolls, reads the result, and wears the die down."
+)
+CATCH_BREATH = (
+    "Call this after a lull in the danger. The engine resets the actor's skills, "
+    "loot die and stunt, and brings a new complication."
+)
+LOOT_CHECK = (
+    "Call this to scavenge for an item. The engine rolls the loot die and asks the "
+    "player what to do with a find."
+)
+TEST_LUCK = (
+    "Call this to ask about the world when nobody acts. The engine rolls the die "
+    "you pick and reads it."
+)
 
 
 class ChangeStress(Frozen):
@@ -23,7 +39,7 @@ class UseMedKit(Frozen):
     actor_id: Slug | None = Field(default=None, description=ACTOR)
 
 
-class Check(Attempt):
+class Roll(Attempt):
     actor_id: Slug | None = Field(default=None, description=ACTOR)
     skill: Skill | None = Field(
         default=None, description="Which of the six skills the action calls on."

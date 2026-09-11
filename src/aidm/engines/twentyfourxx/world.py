@@ -6,7 +6,7 @@ from pydantic import Field
 from aidm.core.entities import Frozen, Refusal, Slug, check_unique, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
-from aidm.core.views import Pairs
+from aidm.core.prompt import Pairs
 from aidm.engines.base import Item, ItemSheet, Sheeted
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
@@ -48,7 +48,7 @@ class Gear(Item):
     def broken(self) -> bool:
         return self.broken_times >= self.breaks
 
-    def detail(self) -> str:
+    def notes(self) -> str:
         parts: list[str] = []
         if self.bulky:
             parts.append("bulky")
@@ -63,7 +63,7 @@ class Gear(Item):
         return ", ".join(parts)
 
 
-class Sheet(ItemSheet[Gear]):
+class CrewSheet(ItemSheet[Gear]):
     """The dice a crew member rolls."""
 
     specialty: str
@@ -92,15 +92,15 @@ class Sheet(ItemSheet[Gear]):
         )
 
 
-class Crewmate(Sheeted[Sheet]):
+class Crewmate(Sheeted[CrewSheet]):
     def pay(self, cost: int) -> None:
-        sheet = self.dice()
+        sheet = self.require_sheet()
         if cost > sheet.credits:
             raise Refusal(f"{self.name} has only ₡{sheet.credits}, not ₡{cost}")
         sheet.credits -= cost
 
     def change_hindrances(self, gained: Sequence[str], lost: Sequence[str]) -> list[Fact]:
-        sheet = self.dice()
+        sheet = self.require_sheet()
         check_unique("gained hindrances", gained)
         for hindrance in gained:
             if hindrance in sheet.hindrances:
@@ -122,7 +122,7 @@ class Crewmate(Sheeted[Sheet]):
 
     def gain_item(self, name: str, *, bulky: bool, breaks: int, cost: int) -> list[Fact]:
         self.pay(cost)
-        items = self.dice().items
+        items = self.require_sheet().items
         items[slug(name, items)] = Gear(name=name, bulky=bulky, breaks=breaks)
         suffix = f" (₡{cost})" if cost > 0 else ""
         card = f"Gained {name}{suffix}"
@@ -146,7 +146,7 @@ class Crewmate(Sheeted[Sheet]):
         if self.sheet is None:
             return ()
         gear = ", ".join(
-            item.name + (f" ({detail})" if (detail := item.detail()) else "")
+            item.name + (f" ({detail})" if (detail := item.notes()) else "")
             for item in self.sheet.items.values()
         )
         return (*self.sheet.rows(), *((("Gear", gear),) if gear else ()))
@@ -162,11 +162,11 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
     )
 
     def sheeted_members(self) -> list[Crewmate]:
-        return [member for member in self.members() if member.hired()]
+        return [member for member in self.members() if member.hired]
 
     def require_gear(self, actor: Crewmate, item_id: Slug) -> Gear:
         """The actor's item or a ship function: both break to defend and both are repaired."""
-        item = actor.dice().items.get(item_id) or self.ship.get(item_id)
+        item = actor.require_sheet().items.get(item_id) or self.ship.get(item_id)
         if item is None:
             raise Refusal(f"{item_id!r} is not among {actor.name}'s items or the ship's functions")
         return item
@@ -184,7 +184,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
             return [actor.fact(trace, card=f"{item.name} breaks")]
         if not hindrance:
             raise Refusal("name the hindrance the hit becomes")
-        sheet = actor.dice()
+        sheet = actor.require_sheet()
         if hindrance in sheet.hindrances:
             raise Refusal(f"{hindrance!r} is already among {actor.name}'s hindrances")
         item.broken_times += 1
@@ -206,7 +206,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         return [self.player.fact(trace, card=card)]
 
     def take_lead(self, member_id: Slug) -> list[Fact]:
-        """Decision 6: ids are kept. The new lead keeps theirs; the dead lead goes into the cast."""
+        """The new lead keeps their id; the dead lead is filed in the cast under theirs."""
         dead = self.player
         if dead.alive:
             raise Refusal(f"{dead.name} lives and leads")

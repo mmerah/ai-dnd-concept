@@ -5,13 +5,14 @@ from support.table import change
 
 from aidm.core.facts import cards
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.loner3e.tools import Question, outcome_for
+from aidm.engines.loner3e.tools import Roll
+from aidm.engines.loner3e.world import outcome_for
 
 FOE = "mara"
 
 
-def _seal(**args: object) -> Question:
-    return Question.model_validate(
+def _seal(**args: object) -> Roll:
+    return Roll.model_validate(
         {
             "what": "Force the seal",
             "actor_id": PLAYER_ID,
@@ -66,7 +67,7 @@ def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
     draft = state.draft()
     loner_sheet(draft, FOE).luck.current = 1
     weakened = draft.commit()
-    duel = Question(
+    duel = Roll(
         what="Force her back",
         actor_id=PLAYER_ID,
         question="Does he force her back from the door?",
@@ -78,9 +79,9 @@ def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
     (oracle,) = cards(facts)
 
     assert oracle.card.split("\n")[1:] == [
-        "Mara: Luck -1 -> 0/6",
+        "Mara: Luck -1 → 0/6",
         "Mara is out of luck",
-        "Mara: Luck +6 -> 6/6",
+        "Mara: Luck +6 → 6/6",
     ]
 
 
@@ -92,4 +93,4 @@ def test_restoring_luck_shows_as_a_counter_card() -> None:
 
     facts = tuple(change(ENGINE, spent.draft(), "restore_luck", entity_id=PLAYER_ID))
     (event,) = cards(facts)
-    assert event.card == "Luck +5 -> 6/6"
+    assert event.card == "Luck +5 → 6/6"

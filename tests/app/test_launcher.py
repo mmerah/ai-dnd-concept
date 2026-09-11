@@ -109,7 +109,7 @@ def test_a_character_is_offered_only_to_the_rules_it_is_written_for(tmp_path: Pa
 
 
 def test_a_save_whose_engine_is_not_the_scenarios_is_not_listed(tmp_path: Path) -> None:
-    FileStore(tmp_path).save("whispering-vault--kael", _opening_state(offline_settings(tmp_path)))
+    FileStore(tmp_path).write("whispering-vault--kael", _opening_state(offline_settings(tmp_path)))
 
     catalog = _catalog(offline_settings(tmp_path, _declaring(tmp_path, MIRROR)), INSTALLED)
 
@@ -120,12 +120,12 @@ def test_a_save_whose_engine_is_not_the_scenarios_is_not_listed(tmp_path: Path) 
 
 def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     settings = offline_settings(tmp_path)
-    FileStore(tmp_path).save("whispering-vault--kael", _opening_state(settings))
+    FileStore(tmp_path).write("whispering-vault--kael", _opening_state(settings))
 
     catalog = _catalog(settings, ENGINES_BUILT)
     (saved,) = catalog.saves
 
-    assert (saved.scenario_title, saved.character_title, saved.turn, saved.rules) == (
+    assert (saved.scenario_label, saved.character_label, saved.turn, saved.rules) == (
         "The Whispering Vault",
         "Kael",
         0,
@@ -139,7 +139,7 @@ def test_a_save_filed_under_another_stem_is_not_listed(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     settings = offline_settings(tmp_path)
-    FileStore(tmp_path).save("old-game", _opening_state(settings))
+    FileStore(tmp_path).write("old-game", _opening_state(settings))
 
     assert not _catalog(settings, ENGINES_BUILT).saves
     assert "filed under another name" in caplog.text
@@ -163,7 +163,7 @@ def test_a_save_that_fails_to_restore_is_skipped_not_listed(tmp_path: Path) -> N
     """A stale save is invalid outright: the catalog skips it rather than listing it unopenable."""
     settings = offline_settings(tmp_path)
     state = _opening_state(settings)
-    FileStore(tmp_path).save("whispering-vault--kael", state)
+    FileStore(tmp_path).write("whispering-vault--kael", state)
     broken = state.model_dump(mode="json")
     broken["payload"]["cast"]["ghost"] = {"name": "Ghost"}
     _ = (tmp_path / "unopenable.json").write_text(json.dumps(broken), encoding=ENCODING)
@@ -186,7 +186,7 @@ def test_the_catalog_reports_where_a_save_left_off(tmp_path: Path) -> None:
 def test_a_save_the_app_cannot_read_does_not_hide_the_others(tmp_path: Path) -> None:
     settings = offline_settings(tmp_path)
     state = _opening_state(settings)
-    FileStore(tmp_path).save("whispering-vault--kael", state)
+    FileStore(tmp_path).write("whispering-vault--kael", state)
     _ = (tmp_path / "broken.json").write_text("{not json", encoding=ENCODING)
     stale: dict[str, JsonValue] = json.loads(state.model_dump_json()) | {"turn": -1}
     _ = (tmp_path / "stale.json").write_text(json.dumps(stale), encoding=ENCODING)
@@ -200,7 +200,7 @@ def test_a_save_that_is_not_utf8_is_skipped_not_raised(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     settings = offline_settings(tmp_path)
-    FileStore(tmp_path).save("whispering-vault--kael", _opening_state(settings))
+    FileStore(tmp_path).write("whispering-vault--kael", _opening_state(settings))
     _ = (tmp_path / "binary.json").write_bytes(b"\xff\xfe not text")
 
     catalog = _catalog(settings, ENGINES_BUILT)

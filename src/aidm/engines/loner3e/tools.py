@@ -1,26 +1,18 @@
-from collections.abc import Sequence
 from typing import Literal
 
 from pydantic import Field
 
 from aidm.core.entities import Frozen, Slug
-from aidm.core.play import DecisionOption
 from aidm.engines.base import Attempt
 from aidm.engines.loner3e.world import TagKind
 
-AND_AT = 4  # both dice 4+ sharpens the answer to -and
-BUT_AT = 3  # both dice 3 or under softens it to -but
-TOLD: dict[str, str] = {
-    "yes-and": "yes, and better than hoped",
-    "yes": "yes",
-    "yes-but": "yes, but at a cost",
-    "no-but": "no, but not badly",
-    "no": "no",
-    "no-and": "no, and worse",
-}
 CHANGE_TAGS = "A character here gains tags, loses tags, or both."
 DRIVE = "A living character's goal, motive or nemesis changes."
 RESTORE_LUCK = "A character's luck refills."
+ROLL = (
+    "Call this for one closed dramatic question. The engine rolls Chance against "
+    "Risk, reads the answer, and moves luck in a conflict."
+)
 
 type Position = Literal["advantage", "neutral", "disadvantage"]
 
@@ -53,7 +45,7 @@ class RestoreLuck(Frozen):
     entity_id: Slug = Field(description="Exact id of the player or a character here.")
 
 
-class Question(Attempt):
+class Roll(Attempt):
     actor_id: Slug = Field(description="Exact id of the character here who acts.")
     question: str = Field(
         min_length=1,
@@ -73,54 +65,3 @@ class Question(Attempt):
         default=None,
         description="Exact id of the character here that resists. Null when nothing fights back.",
     )
-
-
-class Outcome(Frozen):
-    name: Slug
-    harm: int
-
-    @property
-    def wording(self) -> str:
-        """The answer in story words: the narrator never reads the rules."""
-        return TOLD[self.name]
-
-
-def outcome_for(chance: int, risk: int) -> Outcome:
-    if chance == risk:
-        return Outcome(name="yes-but", harm=1)
-    side, sign = ("yes", 1) if chance > risk else ("no", -1)
-    if min(chance, risk) >= AND_AT:
-        return Outcome(name=f"{side}-and", harm=3 * sign)
-    if max(chance, risk) <= BUT_AT:
-        return Outcome(name=f"{side}-but", harm=sign)
-    return Outcome(name=side, harm=2 * sign)
-
-
-def twist_pairing(
-    subject: int, action: int, twists: tuple[tuple[str, str], ...]
-) -> tuple[str, str]:
-    return twists[subject - 1][0], twists[action - 1][1]
-
-
-def twist_note(subject: str, action: str) -> str:
-    return (
-        f"A twist has just interrupted the scene: {subject.upper()} / {action.upper()}. The "
-        "narration showed it arriving. Develop it this turn. Say what it set in motion, what "
-        "it costs, and what it changes."
-    )
-
-
-def defeat_note(name: str) -> str:
-    return (
-        f"{name} has run out of luck and lost this conflict. Roll nothing more for it. Say "
-        "how it ends for them: taken, severely injured, broken off, cornered, or conceding. "
-        "Write any lasting mark with `change_tags`, as a `condition`. Then let the story move "
-        "on."
-    )
-
-
-def pack_meanings(
-    entries: Sequence[DecisionOption], tags: Sequence[str]
-) -> tuple[tuple[str, str], ...]:
-    detail_of = {entry.label: entry.detail for entry in entries if entry.detail}
-    return tuple((tag, detail_of[tag]) for tag in tags if tag in detail_of)

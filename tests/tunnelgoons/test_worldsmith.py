@@ -4,7 +4,7 @@ from support.table import TUNNELGOONS, game, narrowed
 from support.tunnelgoons import ENGINE, small_world
 
 from aidm.core.entities import Refusal
-from aidm.core.model import Objection, ScenarioMeta
+from aidm.core.model import Check, ScenarioMeta
 from aidm.engines.rooms.engine import MORE_MAP
 from aidm.engines.rooms.world import MapDraft, Place, Prop, Way
 from aidm.engines.rooms.worldsmith import check_extension, check_map
@@ -158,7 +158,7 @@ async def test_write_next_asks_for_the_map_draft() -> None:
     recorded: list[type[BaseModel]] = []
     prompts: list[str] = []
 
-    async def answer[M: BaseModel](prompt: str, model: type[M], _refusal: Objection[M]) -> M:
+    async def answer[M: BaseModel](prompt: str, model: type[M], _check: Check[M]) -> M:
         recorded.append(model)
         prompts.append(prompt)
         return model.model_validate(THIN.model_dump())
@@ -173,7 +173,7 @@ async def test_write_next_asks_for_the_map_draft() -> None:
 async def test_write_next_prompt_carries_scenes_so_far() -> None:
     prompts: list[str] = []
 
-    async def answer[M: BaseModel](prompt: str, model: type[M], _refusal: Objection[M]) -> M:
+    async def answer[M: BaseModel](prompt: str, model: type[M], _check: Check[M]) -> M:
         prompts.append(prompt)
         return model.model_validate(THIN.model_dump())
 

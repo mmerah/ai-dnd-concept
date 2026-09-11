@@ -8,7 +8,7 @@ from aidm.core.entities import Refusal
 from aidm.core.model import AnyScenario, ScenarioMeta
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.worldsmith import check_scene
-from aidm.engines.twentyfourxx.world import Crewmate, Sheet, TwentyfourxxCharacter
+from aidm.engines.twentyfourxx.world import Crewmate, CrewSheet, TwentyfourxxCharacter
 from aidm.engines.twentyfourxx.worldsmith import SheetDraft
 
 SRD = ENGINE.packs["srd"]
@@ -141,7 +141,7 @@ def test_a_sheeted_draft_cast_member_is_refused() -> None:
         present=("kestrel", "stranger"),
         cast={
             stranger: Crewmate(
-                id=stranger, name="Stranger", brief="", sheet=Sheet(specialty="Muscle")
+                id=stranger, name="Stranger", brief="", sheet=CrewSheet(specialty="Muscle")
             )
         },
     )

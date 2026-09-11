@@ -87,9 +87,7 @@ async def test_a_writer_is_asked_once_and_its_fenced_answer_is_unwrapped(
     sent = _post(monkeypatch, _said(FENCED))
     narrator = RoleConfig(provider="local", model="qwen", effort="low")
 
-    spoken = await RoleRunner(_settings(narrator=narrator)).run(
-        "narrator", "THE WHOLE BRIEF", None, _Tools(STATE)
-    )
+    spoken = await RoleRunner(_settings(narrator=narrator)).run("narrator", "THE WHOLE BRIEF", None)
 
     assert (json.loads(spoken.text), spoken.session) == ({"lines": []}, None)
     assert len(sent) == 1
@@ -216,13 +214,11 @@ async def test_a_writer_that_calls_a_tool_is_refused_before_anything_lands(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _ = _post(monkeypatch, _said(None, _call("a", "change_tags", "{}")))
-    tools = _Tools(STATE)
 
     with pytest.raises(Refusal, match="no tools, yet called 'change_tags'"):
         _ = await RoleRunner(_settings(narrator=RoleConfig(provider="local", model="m"))).run(
-            "narrator", "BRIEF", None, tools
+            "narrator", "BRIEF", None
         )
-    assert tools.calls == []
 
 
 async def test_the_runtime_sends_each_role_where_its_settings_say(

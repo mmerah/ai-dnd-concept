@@ -18,10 +18,10 @@ from support.twentyfourxx import SITUATION as TWENTYFOURXX_SITUATION
 from support.twentyfourxx import small_world as twentyfourxx_world
 
 from aidm.core.entities import Refusal, Slug
-from aidm.core.model import AnyGame, Generation, Objection
+from aidm.core.model import AnyGame, Check, Generation
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.breathless.world import BreathlessWorld, Survivor
-from aidm.engines.loner3e.world import Loner3eSheet, Loner3eWorld
+from aidm.engines.loner3e.world import Loner3eCast, Loner3eWorld
 from aidm.engines.scenes.engine import DEPARTURE
 from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.scenes.tools import SceneDraft
@@ -102,7 +102,7 @@ CASES = (
         engine=LONER3E_ENGINE,
         game=lambda: initialized()[1],
         base=LONER3E_BASE,
-        bar=_bar(SceneDraft[Loner3eSheet], Loner3eWorld, LONER3E_BASE, lambda: initialized()[1]),
+        bar=_bar(SceneDraft[Loner3eCast], Loner3eWorld, LONER3E_BASE, lambda: initialized()[1]),
         player="Kael",
         met=MARA,
         unmet=MAP,
@@ -185,7 +185,7 @@ async def test_install_scene_appends_a_run_and_returns_the_opened_fact(case: Sce
         "recap": "They leave the mess behind and press on toward what waits next.",
     }
     facts, _ = await case.engine.advance(
-        draft, Generation(operation=DEPARTURE, brief="Onward."), stub_worldsmith(answer)
+        draft, Generation(operation=DEPARTURE, detail="Onward."), stub_worldsmith(answer)
     )
     assert len(draft.log) == chapters_before + 1
     assert any(fact.card.startswith("New scene:") for fact in facts)
@@ -195,13 +195,13 @@ async def test_install_scene_appends_a_run_and_returns_the_opened_fact(case: Sce
 async def test_render_worldsmith_lists_the_player_first(case: SceneCase) -> None:
     prompts: list[str] = []
 
-    async def recording[M: BaseModel](prompt: str, _model: type[M], _refusal: Objection[M]) -> M:
+    async def recording[M: BaseModel](prompt: str, _model: type[M], _check: Check[M]) -> M:
         prompts.append(prompt)
         raise Refusal("recorded")
 
     with pytest.raises(Refusal, match="recorded"):
         await case.engine.advance(
-            case.game().draft(), Generation(operation=DEPARTURE, brief="Onward."), recording
+            case.game().draft(), Generation(operation=DEPARTURE, detail="Onward."), recording
         )
 
     cast_section = prompts[0].split("THE WHOLE CAST:\n", 1)[1].split("\n\n", 1)[0]

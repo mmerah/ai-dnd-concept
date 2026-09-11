@@ -108,6 +108,7 @@ def start() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     settings = read_settings()
     _register_pages(Runtime(settings, RoleRunner(settings)))
+    theme.install()
     ui.run(  # pyright: ignore[reportUnknownMemberType]
         title="AI Dungeon Master",
         port=settings.server_port,
@@ -140,9 +141,9 @@ def _saved_card(saved: SaveOption) -> None:
     with ui.card().classes("w-full"):
         with ui.row().classes("w-full items-center").style("gap: 1rem"):
             with ui.column().classes("col").style("gap: 0.25rem"):
-                ui.label(saved.scenario_title).classes("text-h6 game-title")
+                ui.label(saved.scenario_label).classes("text-h6 game-title")
                 ui.label(
-                    f"{saved.character_title} · turn {saved.turn}"
+                    f"{saved.character_label} · turn {saved.turn}"
                     + (f" · {saved.where}" if saved.where else "")
                 ).classes("text-sm opacity-70")
                 with ui.row().style("gap: 0.5rem"):

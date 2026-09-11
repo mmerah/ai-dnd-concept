@@ -3,8 +3,7 @@ from collections.abc import Iterable, Mapping, Sequence
 
 from aidm.core.entities import Refusal, Slug
 from aidm.core.play import Chapter
-from aidm.core.prompt import render_history
-from aidm.core.views import Pairs
+from aidm.core.prompt import Pairs, render_history
 from aidm.engines.base import Person, Thing
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld, resolved_id
@@ -31,13 +30,13 @@ TURNING = (
 
 
 def check_scene[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None = None) -> None:
-    """Free: the drafts may not import the world, and the authoring call has no world."""
+    """The drafts may not import the world, and the authoring call has no world."""
     if unmet := scene_unmet(draft, world):
         raise Refusal("the scene needs " + "; ".join(unmet))
 
 
 def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) -> list[str]:
-    """The one bar: every refusal the install makes, so the worldsmith's one retry sees them all."""
+    """Every refusal the install makes, so the worldsmith's one retry sees them all."""
     filed: Mapping[Slug, C] = {} if world is None else world.cast
     everyone: Mapping[Slug, Thing] = (
         dict(draft.cast)

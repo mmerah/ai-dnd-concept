@@ -1,10 +1,10 @@
 from aidm.core.entities import EngineId, Slug
 from aidm.core.model import ScenarioMeta
 from aidm.core.play import Chapter
-from aidm.engines.base import PLAYER_ID, Counter
+from aidm.engines.base import PLAYER_ID, Gauge
 from aidm.engines.rooms.world import Place, Prop, Way
 from aidm.engines.tunnelgoons.engine import TunnelGoonsEngine
-from aidm.engines.tunnelgoons.world import Abilities, Goon, Npc, TunnelGoonsGame, TunnelGoonsWorld
+from aidm.engines.tunnelgoons.world import Goon, GoonSheet, Npc, TunnelGoonsGame, TunnelGoonsWorld
 from support.table import ENGINES_BUILT, TUNNELGOONS, narrowed
 
 START: Slug = "start"
@@ -69,7 +69,7 @@ def _map_pieces() -> tuple[
         brief="A cautious guide",
         known=True,
         place=START,
-        hp=Counter(current=8, maximum=8),
+        hp=Gauge(current=8, maximum=8),
     )
     mantis = Npc(
         id=MANTIS,
@@ -77,7 +77,7 @@ def _map_pieces() -> tuple[
         brief="A clicking husk of gears",
         known=False,
         place=HALL,
-        hp=Counter(current=4, maximum=4),
+        hp=Gauge(current=4, maximum=4),
     )
     items = {
         ROPE: Prop(id=ROPE, name="Rope", brief="A coil of rope", known=True, on=PLAYER_ID),
@@ -94,7 +94,7 @@ def _kael() -> Goon:
         name="Kael",
         brief="A wiry scavenger",
         known=True,
-        sheet=Abilities(abilities={"brute": 1, "skulker": 1, "erudite": 1}),
+        sheet=GoonSheet(abilities={"brute": 1, "skulker": 1, "erudite": 1}),
         kit=("Rope", "Torch", "Lantern"),
     )
 

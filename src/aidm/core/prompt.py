@@ -1,7 +1,8 @@
 from collections.abc import Iterable, Sequence
 
 from aidm.core.play import Chapter, Exchange
-from aidm.core.views import Pairs
+
+type Pairs = tuple[tuple[str, str], ...]
 
 SCENE_EXCHANGES = 20
 WHOLE_SCENES = 2
@@ -62,4 +63,4 @@ def _entry(exchange: Exchange) -> str:
         return f"{INTERJECTED}\n{exchange.transcript}"
     if exchange.mark:
         return exchange.transcript
-    return f"> {exchange.prompt}\n{exchange.transcript}"
+    return f"> {exchange.words}\n{exchange.transcript}"

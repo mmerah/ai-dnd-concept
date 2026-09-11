@@ -9,7 +9,8 @@ from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.io import ENCODING, decode, read_prompt
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
 from aidm.core.play import DecisionOption, SpokenLine
-from aidm.core.views import NarratorView, Pairs
+from aidm.core.prompt import Pairs
+from aidm.core.views import NarratorView
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.packs import ScenePack
@@ -53,7 +54,7 @@ class FifthEngine(SceneEngine[Person, FifthGame, ScenePack]):
     world_type = FifthState
 
     def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
-        return (CreationStep(id="pack", prompt="Choose a table set", options=self.pack_options()),)
+        return (CreationStep(id="pack", label="Choose a table set", options=self.pack_options()),)
 
     def create_character(self, name: str, brief: str, _picks: Picks) -> AnyCharacter:
         return FifthCharacter(
@@ -132,7 +133,7 @@ def test_a_fifth_scene_engine_begins_a_playable_game(tmp_path: Path) -> None:
 
     assert engine.pack_options() == (DecisionOption(id="srd", label="The SRD"),)
     assert engine.instructions.startswith("Roll high.")
-    assert engine.instructions.endswith(read_prompt(engine.family_prompt))
+    assert engine.instructions.endswith(read_prompt(engine.family_dir / "rules.md"))
     assert engine.narrator_view(state).title == "The Taproom"
     assert engine.master_sections(state) == (("SCENE", "The Taproom"),)
     assert [row.label for row in engine.player_view(state).panels[-2].rows] == ["Keeper"]
@@ -179,10 +180,10 @@ def test_close_builds_no_narrator_view(tmp_path: Path) -> None:
     state = engine.begin("the-taproom", _scenario(), character)
     before = engine.narrator_view_calls
 
-    closed = engine.close(state.draft(), (SpokenLine(text="Nothing stirs."),), (), prompt="I wait.")
+    closed = engine.close(state.draft(), (SpokenLine(text="Nothing stirs."),), (), words="I wait.")
 
     assert engine.narrator_view_calls == before
-    assert closed.exchanges()[-1].prompt == "I wait."
+    assert closed.exchanges()[-1].words == "I wait."
 
 
 @pytest.mark.parametrize("engine_id", ENGINE_IDS)

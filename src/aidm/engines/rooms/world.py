@@ -5,8 +5,7 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import Mutable, Refusal, Slug, check_unique, parse
 from aidm.core.facts import Fact
-from aidm.core.prompt import lines_of
-from aidm.core.views import Pairs
+from aidm.core.prompt import Pairs, lines_of
 from aidm.engines.base import IS_DEAD, PLAYER_ID, UNKNOWN_ID, Person, Thing, World, check_filing
 
 
@@ -133,7 +132,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         return self
 
     @classmethod
-    def begin(cls, draft: MapDraft[N], player: P, items: Iterable[Prop], source: str) -> Self:
+    def opening(cls, draft: MapDraft[N], player: P, items: Iterable[Prop], source: str) -> Self:
         return parse(
             cls,
             {
@@ -311,7 +310,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         return facts
 
     def attach(self, region: Dungeon[N], start: Slug) -> None:
-        """No bar runs here: every caller refuses first, so a refused region leaves it alone."""
+        """No check runs here: every caller refuses first, so a refused region leaves it alone."""
         anchor_id = self.current.id
         self.places.update(region.places)
         # Copied: the anchor ways appended below must not land in the draft's own lists.

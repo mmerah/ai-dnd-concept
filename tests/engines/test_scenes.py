@@ -8,7 +8,7 @@ from aidm.core.entities import Refusal, Slug
 from aidm.core.model import Generation
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
+from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
 from aidm.engines.scenes.engine import MOVE_ON
 from aidm.engines.scenes.tools import NextDraft, NextScene
 from aidm.engines.scenes.world import SceneRun, SceneWorld
@@ -138,13 +138,13 @@ def test_a_departure_over_an_offer_requests_the_crossing_and_leaves_the_offer() 
     _ = engine.tools["next_scene"].call(draft, {"pursuit": "Down the stair."}, Random(0))
 
     assert draft.generation is not None
-    assert draft.generation.brief == "Down the stair."
+    assert draft.generation.detail == "Down the stair."
 
 
 def test_a_scene_engine_refuses_to_write_an_operation_not_its_own() -> None:
     engine, state = game(LONER3E)
     draft = narrowed(state, Loner3eGame).draft()
-    draft.generation = Generation(operation="hire", brief="Hire a fixer.")
+    draft.generation = Generation(operation="hire", detail="Hire a fixer.")
 
     with pytest.raises(Refusal, match="writes no 'hire'"):
         engine.validate(draft)
@@ -194,7 +194,7 @@ def test_a_scene_without_a_focus_installs_and_shows_no_scene_panel() -> None:
     engine, state = game(LONER3E)
     assert isinstance(engine, Loner3eEngine)
     draft = narrowed(state, Loner3eGame).draft()
-    scene = NextDraft[Loner3eSheet](place="a2", title="A2", situation=SITUATION, recap=RECAP)
+    scene = NextDraft[Loner3eCast](place="a2", title="A2", situation=SITUATION, recap=RECAP)
 
     _ = engine.install(draft, scene)
 

@@ -3,11 +3,11 @@ from pydantic import ValidationError
 from support.game import initialized
 
 from aidm.core.views import PanelRow, Subject
-from aidm.engines.base import Counter, Person, Thing, here_panel, party_panel, party_section
-from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
+from aidm.engines.base import Gauge, Person, Thing, here_panel, party_panel, party_section
+from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
 from aidm.engines.scenes.worldsmith import named_unmet
 
-KAEL = Loner3eSheet(id="kael", name="Kael", brief="", known=True)
+KAEL = Loner3eCast(id="kael", name="Kael", brief="", known=True)
 
 
 def _state() -> Loner3eGame:
@@ -30,7 +30,7 @@ def test_party_section_is_empty_for_nobody_and_party_panel_orders_entity_before_
     assert party_section(()) == ()
     assert party_panel(()) == ()
 
-    member = Loner3eSheet(
+    member = Loner3eCast(
         id="mara", name="Mara", brief="Keeps to herself.", known=True, concept="A Watcher"
     )
 
@@ -67,23 +67,23 @@ def test_a_person_defaults_to_normal_chattiness_and_refuses_an_unknown_one() -> 
 
 def test_counter_rejects_current_outside_its_bounds() -> None:
     with pytest.raises(ValidationError, match="below zero"):
-        Counter(current=-1, maximum=10)
+        Gauge(current=-1, maximum=10)
     with pytest.raises(ValidationError, match="above maximum"):
-        Counter(current=11, maximum=10)
+        Gauge(current=11, maximum=10)
 
 
 def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> None:
     state = _state()
     KAEL.luck.current = 0
     (changed,) = KAEL.luck.change(KAEL, 99, "Luck", "the strain")
-    assert (changed.card, KAEL.luck.current) == ("Kael: Luck +6 -> 6/6", 6)
+    assert (changed.card, KAEL.luck.current) == ("Kael: Luck +6 → 6/6", 6)
     assert KAEL.luck.change(KAEL, 99, "Luck", "the strain") == []
     assert KAEL.luck.adjust(-2) == -2
 
     player = state.payload.player
     player.luck.current = 0
     (own,) = player.luck.change(player, 1, "Luck", "the strain")
-    assert own.card == "Luck +1 -> 1/6"
+    assert own.card == "Luck +1 → 1/6"
 
 
 def test_named_unmet_finds_multi_word_names_case_folded_and_bare_ids() -> None:

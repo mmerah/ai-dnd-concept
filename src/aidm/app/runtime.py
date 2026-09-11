@@ -61,7 +61,7 @@ class GameService:
     state: AnyGame = field(init=False)
 
     def __post_init__(self) -> None:
-        saved = self.store.load(self.slug)
+        saved = self.store.read(self.slug)
         if saved is None:
             self.state = self._begin()
             return
@@ -78,14 +78,6 @@ class GameService:
     @property
     def presents(self) -> bool:
         return self.media is not None or self.reader is not None
-
-    @property
-    def engine_title(self) -> str:
-        return self.engine.title
-
-    @property
-    def engine_id(self) -> EngineId:
-        return self.engine.id
 
     def unopened(self) -> bool:
         return not self.busy and not self.state.exchanges()
@@ -138,7 +130,7 @@ class GameService:
             if turn.narrates():
                 self.phase = "narrator"
                 lines = await self.roles.narrate(
-                    self.engine, turn.draft, tuple(turn.facts), turn.prompt, fatal=True
+                    self.engine, turn.draft, tuple(turn.facts), turn.words, fatal=True
                 )
             state = turn.finish(lines)
         finally:
@@ -212,7 +204,7 @@ class GameService:
             else:
                 self.phase = "narrator"
                 lines = await self.roles.narrate(self.engine, draft, facts, telling, fatal=False)
-                self.save(self.engine.close(draft, lines, facts, prompt=words, mark=mark))
+                self.save(self.engine.close(draft, lines, facts, words=words, mark=mark))
         except (OSError, Refusal) as failed:
             LOGGER.warning("the world did not grow: %s", failed)
             draft = self.state.draft()
@@ -222,7 +214,7 @@ class GameService:
                     draft,
                     (),
                     (self.engine.requests[request.operation].unwritten,),
-                    prompt=words,
+                    words=words,
                     mark=mark,
                 )
             )
@@ -288,7 +280,7 @@ class GameService:
         self.state = opening
 
     def save(self, state: AnyGame) -> None:
-        self.store.save(self.slug, state)
+        self.store.write(self.slug, state)
         self.state = state
 
     def _begin(self) -> AnyGame:
@@ -377,10 +369,10 @@ class Runtime:
         source = given_text(meta.premise, document, self.settings.source_max_chars)
         name = slug(meta.title, self.library.scenario_ids())
 
-        def playable(built: AnyScenario) -> None:
+        def check(built: AnyScenario) -> None:
             engine.begin(name, built, character)
 
-        scenario = await engine.author(meta, source, packs, worldsmith(self.spawner), playable)
+        scenario = await engine.author(meta, source, packs, worldsmith(self.spawner), check)
         self.library.write_scenario(name, scenario)
         LOGGER.info("scenario written: slug=%s title=%r", name, meta.title)
         return name

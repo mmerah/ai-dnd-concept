@@ -4,7 +4,7 @@ from support.table import ENGINES_BUILT, LONER3E
 from aidm.app.roles import render_narrator
 from aidm.core.play import Chapter, Exchange, SpokenLine
 from aidm.core.views import NarratorView
-from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
+from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
 from aidm.engines.seam import AnyEngine
 from aidm.turn.run import ANSWERED_BY_OPTION, render_master
 
@@ -17,11 +17,11 @@ def _state() -> Loner3eGame:
     _, state = initialized()
     state = with_entity(
         state,
-        Loner3eSheet(id=SECRET, name="The Secret", brief=UNREVEALED, concept="A Watcher"),
+        Loner3eCast(id=SECRET, name="The Secret", brief=UNREVEALED, concept="A Watcher"),
     )
     return with_entity(
         state,
-        Loner3eSheet(id="ledger", name="a ledger", brief="Mara's notes.", known=True),
+        Loner3eCast(id="ledger", name="a ledger", brief="Mara's notes.", known=True),
     )
 
 
@@ -34,7 +34,6 @@ def _master_prompt(state: Loner3eGame, prompt: str, *, notes: tuple[str, ...] = 
         _engine().instructions,
         _engine().master_sections(state),
         state,
-        state.log,
         prompt,
         notes=notes,
     )
@@ -158,7 +157,7 @@ def test_the_narrator_prompt_carries_only_what_the_player_has_read() -> None:
             Chapter(
                 title="t",
                 focus="q",
-                exchanges=[Exchange(prompt="p", lines=(SpokenLine(text="Water drips."),))],
+                exchanges=[Exchange(words="p", lines=(SpokenLine(text="Water drips."),))],
             ),
         ),
     )

@@ -12,9 +12,9 @@ from aidm.core.facts import Fact, traced
 from aidm.core.io import read_prompt
 from aidm.core.model import AnyGame
 from aidm.core.play import Chapter, Interjection, Narration, SpokenLine
-from aidm.core.prompt import lines_of, sections, told_history
+from aidm.core.prompt import Pairs, lines_of, sections, told_history
 from aidm.core.tools import schema_text
-from aidm.core.views import NarratorView, Pairs, Subject
+from aidm.core.views import NarratorView, Subject
 from aidm.engines.base import Person
 from aidm.engines.seam import AnyEngine
 from aidm.turn.run import Turn
@@ -58,18 +58,21 @@ class Roles:
     async def master(self, turn: Turn) -> None:
         """A crashed game master still played the turn, if it applied anything legal first."""
         prompt = turn.picture()
-        try:
-            await self.spawner.run("master", prompt, None, turn)
-            return
-        except (OSError, Refusal) as failed:
-            if _landed(turn, failed):
+        for attempt in (1, 2):
+            try:
+                await self.spawner.run("master", prompt, None, turn)
                 return
-            LOGGER.warning("the game master landed nothing, spawning it again: %s", failed)
-        try:
-            await self.spawner.run("master", prompt, None, turn)
-        except (OSError, Refusal) as failed:
-            if not _landed(turn, failed):
-                raise
+            except (OSError, Refusal) as failed:
+                if _landed(turn):
+                    LOGGER.warning(
+                        "the game master failed after applying %d facts: %s",
+                        len(turn.facts),
+                        failed,
+                    )
+                    return
+                if attempt == 2:
+                    raise
+                LOGGER.warning("the game master landed nothing, spawning it again: %s", failed)
 
     async def narrate(
         self,
@@ -187,8 +190,5 @@ def _picture(
     )
 
 
-def _landed(turn: Turn, failed: Exception) -> bool:
-    if not turn.facts and turn.draft.pending is None:
-        return False
-    LOGGER.warning("the game master failed after applying %d facts: %s", len(turn.facts), failed)
-    return True
+def _landed(turn: Turn) -> bool:
+    return bool(turn.facts) or turn.draft.pending is not None

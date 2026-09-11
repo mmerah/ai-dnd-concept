@@ -18,7 +18,7 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
     draft = state.draft()
     draft.log[-1].exchanges = [
         Exchange(
-            prompt="I take the map.",
+            words="I take the map.",
             lines=(),
             facts=(
                 Fact(
@@ -32,8 +32,8 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
     saved = draft.commit()
     store = FileStore(tmp_path)
 
-    store.save("roundtrip", saved)
-    reloaded = store.load("roundtrip")
+    store.write("roundtrip", saved)
+    reloaded = store.read("roundtrip")
 
     assert reloaded is not None
     assert engine.restore(decode(reloaded)).exchanges() == saved.exchanges()
@@ -44,7 +44,7 @@ def test_storage_rejects_unsafe_slugs(tmp_path: Path, slug: str) -> None:
     store = FileStore(tmp_path)
 
     with pytest.raises(ValueError, match="invalid storage slug"):
-        store.load(slug)
+        store.read(slug)
 
 
 def test_content_paths_reject_an_unsafe_id(tmp_path: Path) -> None:

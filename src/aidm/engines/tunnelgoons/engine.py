@@ -3,29 +3,31 @@ from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, picked
-from aidm.core.entities import EngineId, Frozen, Refusal, slug
+from aidm.core.entities import EngineId, Refusal, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption, PendingDecision
-from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import Pairs
+from aidm.core.prompt import Pairs
+from aidm.core.tools import MasterTool, NoArgs, master_tool
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.hiring import Hiring
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.world import Prop
 from aidm.engines.tunnelgoons.tools import (
+    LEVEL_UP,
     REST,
-    ActionRoll,
+    ROLL,
     LevelUp,
+    Roll,
     level_options,
 )
 from aidm.engines.tunnelgoons.world import (
     ABILITIES,
     ABILITY_POINTS,
     STARTING_ITEMS,
-    Abilities,
     Ability,
     Goon,
+    GoonSheet,
     Npc,
     TunnelGoonsCharacter,
     TunnelGoonsGame,
@@ -78,35 +80,23 @@ class TunnelGoonsEngine(
     def master_tools(self) -> tuple[MasterTool[TunnelGoonsGame], ...]:
         return (
             *super().master_tools(),
-            master_tool("rest", REST, Frozen, self.rest),
-            master_tool(
-                "roll",
-                "Call this for an uncertain action that carries a real cost. The engine rolls "
-                "2d6, adds the ability and the items, and reads the total.",
-                ActionRoll,
-                self.roll,
-            ),
-            master_tool(
-                "level_up",
-                "Call this once, when the whole adventure ends. The engine opens the pick to "
-                "the player, then to each living hired member in turn.",
-                LevelUp,
-                self.level_up,
-            ),
+            master_tool("rest", REST, NoArgs, self.rest),
+            master_tool("roll", ROLL, Roll, self.roll),
+            master_tool("level_up", LEVEL_UP, LevelUp, self.level_up),
         )
 
     def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
         ability_steps = tuple(
             CreationStep(
                 id=ability,
-                prompt=f"Points in {ability.capitalize()}",
+                label=f"Points in {ability.capitalize()}",
                 options=POINT_OPTIONS,
                 hint=f"{ABILITY_POINTS} points across the three",
             )
             for ability in ABILITIES
         )
         item_steps = tuple(
-            CreationStep(id=f"item-{n}", prompt=f"Item {n}", hint=", ".join(STARTING_ITEM_LIST))
+            CreationStep(id=f"item-{n}", label=f"Item {n}", hint=", ".join(STARTING_ITEM_LIST))
             for n in range(1, STARTING_ITEMS + 1)
         )
         return (*ability_steps, *item_steps)
@@ -123,7 +113,7 @@ class TunnelGoonsEngine(
             name=name,
             brief=brief,
             known=True,
-            sheet=Abilities(abilities=abilities),
+            sheet=GoonSheet(abilities=abilities),
             kit=tuple(picked(picks, f"item-{n}") for n in range(1, STARTING_ITEMS + 1)),
         )
         return TunnelGoonsCharacter(id=slug(name, ()), engine=self.id, payload=sheet)
@@ -138,7 +128,7 @@ class TunnelGoonsEngine(
     def guidance(self) -> str:
         return AUTHORING
 
-    def rest(self, draft: TunnelGoonsGame, _args: Frozen, _rng: Random) -> list[Fact]:
+    def rest(self, draft: TunnelGoonsGame, _args: NoArgs, _rng: Random) -> list[Fact]:
         return draft.payload.rest()
 
     def hire_prompt(self, draft: TunnelGoonsGame, member: Npc, terms: str) -> str:
@@ -150,15 +140,15 @@ class TunnelGoonsEngine(
         )
 
     def install_sheet(self, member: Npc, answer: AbilitiesDraft) -> str:
-        sheet = member.sheet = Abilities(abilities=dict(answer.abilities))
+        sheet = member.sheet = GoonSheet(abilities=dict(answer.abilities))
         return ", ".join(
             f"{ability.capitalize()} {sheet.abilities[ability]}" for ability in ABILITIES
         )
 
-    def roll(self, draft: TunnelGoonsGame, args: ActionRoll, rng: Random) -> list[Fact]:
+    def roll(self, draft: TunnelGoonsGame, args: Roll, rng: Random) -> list[Fact]:
         world = draft.payload
         actor = world.require_actor(args.actor_id)
-        sheet = actor.dice()
+        sheet = actor.require_sheet()
         items = world.carried_items(actor, args.items)
         npc = world.require_member_here(args.against) if args.against is not None else None
         if npc is actor:
@@ -210,7 +200,7 @@ class TunnelGoonsEngine(
         if args.ability is None or args.boost is None:
             raise Refusal("level_up takes both an ability and a boost, or neither")
         actor = world.require_actor(args.actor_id)
-        sheet = actor.dice()
+        sheet = actor.require_sheet()
         sheet.abilities[args.ability] += 1
         if args.boost == "health":
             actor.hp.maximum += 1

@@ -76,7 +76,7 @@ ANSWER WITH:
       ],
       "type": "string"
     },
-    "Counter": {
+    "Gauge": {
       "additionalProperties": false,
       "properties": {
         "current": {
@@ -92,7 +92,7 @@ ANSWER WITH:
       ],
       "type": "object"
     },
-    "Loner3eSheet": {
+    "Loner3eCast": {
       "additionalProperties": false,
       "description": "A character: a person, an object, a vehicle or a curse alike.",
       "properties": {
@@ -152,7 +152,7 @@ ANSWER WITH:
           "type": "string"
         },
         "luck": {
-          "$ref": "#/$defs/Counter"
+          "$ref": "#/$defs/Gauge"
         }
       },
       "required": [
@@ -202,7 +202,7 @@ ANSWER WITH:
       "description": "New people and things, each filed under its own id.",
       "patternProperties": {
         "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
-          "$ref": "#/$defs/Loner3eSheet"
+          "$ref": "#/$defs/Loner3eCast"
         }
       },
       "propertyNames": {},

@@ -24,6 +24,8 @@ Tests run offline. They are deterministic.
   is one of our objects is a method; a free function is for what has no owner. A function stays
   free when its object's class lives in a lower layer, when it renders or builds at an edge, or
   when it is unit-tested on its own.
+- A property takes no argument, has no side effect and reads its own fields; anything else is a
+  method.
 - Side effects live at the edges (files, network, UI). Rules code changes only the draft it is
   handed and rolls only the `Random` it is handed.
 - State models are mutable. Value models are frozen.

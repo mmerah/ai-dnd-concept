@@ -27,7 +27,7 @@ KAEL = "kael"
 
 def _exchange() -> Exchange:
     return Exchange(
-        prompt="wait",
+        words="wait",
         lines=(
             SpokenLine(text="The door groans open."),
             SpokenLine(speaker_id=KAEL, speaker="Kael", text="I step through."),
@@ -145,7 +145,7 @@ async def test_speak_reads_and_caches_the_newest_committed_exchange(
     session = loner_session(tmp_path)
     draft = session.state.draft()
     session.save(
-        session.engine.close(draft, (SpokenLine(text="The door groans open."),), (), prompt="wait")
+        session.engine.close(draft, (SpokenLine(text="The door groans open."),), (), words="wait")
     )
 
     async def _fake_post_bearer(

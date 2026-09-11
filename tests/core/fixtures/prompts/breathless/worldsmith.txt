@@ -78,7 +78,17 @@ ANSWER WITH:
       ],
       "type": "string"
     },
-    "Counter": {
+    "Die": {
+      "enum": [
+        4,
+        6,
+        8,
+        10,
+        12
+      ],
+      "type": "integer"
+    },
+    "Gauge": {
       "additionalProperties": false,
       "properties": {
         "current": {
@@ -93,16 +103,6 @@ ANSWER WITH:
         "maximum"
       ],
       "type": "object"
-    },
-    "Die": {
-      "enum": [
-        4,
-        6,
-        8,
-        10,
-        12
-      ],
-      "type": "integer"
     },
     "Skill": {
       "enum": [
@@ -228,7 +228,7 @@ ANSWER WITH:
           "default": 12
         },
         "stress": {
-          "$ref": "#/$defs/Counter"
+          "$ref": "#/$defs/Gauge"
         },
         "stunted": {
           "default": false,

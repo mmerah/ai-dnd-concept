@@ -13,6 +13,20 @@ SPEND = "The actor pays credits for something that is not an item or a repair."
 TAKE_LEAD = "A hired member takes the lead after the player dies."
 SHIP_UPGRADE = "The player upgrades one ship function."
 DEFEND = "A carried item or a ship function breaks so a hit becomes a hindrance."
+ROLL = (
+    "Call this when the outcome of an action matters. The engine picks the dice, "
+    "rolls them, and reads the result."
+)
+TEST_LUCK = (
+    "Call this to ask about the world's bad luck when nobody acts. The engine "
+    "rolls one d6 and reads it."
+)
+JOB = (
+    "Call this to look for work with `find`, to record agreed work with `take`, "
+    "and to close the job with `finish`. With `find` the engine rolls the SRD's "
+    "d6. With `finish` it raises one skill for each operator and pays each of "
+    "them d6 credits."
+)
 
 
 class ChangeHindrances(Frozen):

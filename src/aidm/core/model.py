@@ -20,7 +20,7 @@ type AnyScenario = Scenario[Any]
 type AnyCharacter = Character[Any]
 type AnyGame = Game[Any]
 # What `ask` asks of the value it parsed, beyond its own schema; it raises the reason to re-prompt.
-type Objection[T] = Callable[[T], None]
+type Check[T] = Callable[[T], None]
 
 
 class ScenarioMeta(Frozen):
@@ -79,7 +79,7 @@ class Character[P: BaseModel](Frozen):
 
 class WorldsmithAnswer(Protocol):
     async def __call__[M: BaseModel](
-        self, prompt: str, model: type[M], refusal: Objection[M], /
+        self, prompt: str, model: type[M], check: Check[M], /
     ) -> M: ...
 
 
@@ -87,7 +87,7 @@ class Generation(Frozen):
     """An engine's one request to the worldsmith; the platform runs it once the turn ends."""
 
     operation: Slug  # the engine's own name for what it will author and install
-    brief: str = Field(min_length=1)
+    detail: str = Field(min_length=1)
     target: Slug | None = None
 
 
@@ -99,7 +99,7 @@ class Game[P: BaseModel](Mutable):
     packs: tuple[Slug, ...] = ()
     pending: PendingDecision | None = None
     generation: Generation | None = Field(default=None, exclude=True)
-    notes: list[str] = []
+    notes: list[str] = Field(default_factory=list)
     log: list[Chapter] = Field(default_factory=list)
     payload: P
 

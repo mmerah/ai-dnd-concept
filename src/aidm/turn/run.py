@@ -12,13 +12,13 @@ from aidm.core.entities import Refusal
 from aidm.core.facts import NOTHING, Fact, traced
 from aidm.core.io import read_prompt
 from aidm.core.model import AnyGame
-from aidm.core.play import Answer, Chapter, SpokenLine
-from aidm.core.prompt import lines_of, render_history, sections
+from aidm.core.play import Answer, SpokenLine
+from aidm.core.prompt import Pairs, lines_of, render_history, sections
 from aidm.core.tools import MasterTool, Play
-from aidm.core.views import Pairs
 from aidm.engines.seam import AnyEngine
 
 MASTER_PROMPT = Path(__file__).parent / "prompts" / "master.md"
+PAUSED_TO_ASK = 'The rules paused play to ask the player: "{prompt}" '
 RULES_WAIT = "the rules now wait on the player's decision"
 REQUEST_WAIT = "the worldsmith writes what you asked for once this turn ends. Stop here and exit."
 ANSWERED_BY_OPTION = (
@@ -35,8 +35,8 @@ class Turn:
     draft: AnyGame
     rng: Random
     facts: list[Fact] = field(default_factory=list)
-    prompt: str = ""
-    # What the master reads as PLAYER ACTION: the prompt, or the marker for a chosen option.
+    words: str = ""
+    # What the master reads as PLAYER ACTION: the words, or the marker for a chosen option.
     action: str = ""
     notes: list[str] = field(default_factory=list)
 
@@ -60,10 +60,10 @@ class Turn:
         if chosen is None:
             if consumed is not None:
                 draft.note(
-                    f'The rules paused play to ask the player: "{consumed.prompt}" '
-                    "The PLAYER ACTION is their answer."
+                    PAUSED_TO_ASK.format(prompt=consumed.prompt)
+                    + "The PLAYER ACTION is their answer."
                 )
-            self.prompt = self.action = answer.text
+            self.words = self.action = answer.text
             return
         if consumed is None:
             raise Refusal(f"no decision is open, so option {chosen!r} answers nothing")
@@ -71,16 +71,16 @@ class Turn:
         if option is None:
             raise Refusal(f"the {consumed.kind!r} decision offers no option {chosen!r}")
         # A refusal raises: the engine enumerated the option, so it is never model error.
-        facts = self._apply(lambda copy, dice: engine.answer(copy, option, dice))
+        facts = self._apply(lambda copy, dice: tuple(engine.answer(copy, option, dice)))
         traces = traced(facts)
         # An answer that re-suspended has no tool answer to carry the wait, so the note says it.
         if self.draft.pending is not None:
             traces += f"\n- {RULES_WAIT}"
         self.draft.note(
-            f'The rules paused play to ask the player: "{consumed.prompt}" '
-            f"They chose: {option.label}. Already resolved:\n{traces}"
+            PAUSED_TO_ASK.format(prompt=consumed.prompt)
+            + f"They chose: {option.label}. Already resolved:\n{traces}"
         )
-        self.prompt, self.action = option.label, ANSWERED_BY_OPTION
+        self.words, self.action = option.label, ANSWERED_BY_OPTION
 
     def told(self) -> bool:
         return any(fact.told for fact in self.facts)
@@ -97,7 +97,6 @@ class Turn:
             self.engine.instructions,
             self.engine.master_sections(self.draft),
             self.draft,
-            self.draft.log,
             self.action,
             notes=self.notes,
         )
@@ -130,7 +129,7 @@ class Turn:
         return tuple(self.engine.tools.values())
 
     def finish(self, lines: tuple[SpokenLine, ...]) -> AnyGame:
-        return self.engine.close(self.draft, lines, tuple(self.facts), prompt=self.prompt)
+        return self.engine.close(self.draft, lines, tuple(self.facts), words=self.words)
 
     def _apply(self, play: Play[AnyGame]) -> tuple[Fact, ...]:
         """One execution against a candidate; a refused call leaves the draft and the dice alone."""
@@ -146,19 +145,18 @@ def render_master(
     instructions: str,
     engine_sections: Pairs,
     state: AnyGame,
-    scenes: Sequence[Chapter],
     action: str,
     *,
     notes: Sequence[str] = (),
 ) -> str:
-    played = sum(len(chapter.exchanges) for chapter in scenes)
+    played = sum(len(chapter.exchanges) for chapter in state.log)
     return sections(
         (
             ("YOUR ROLE", read_prompt(MASTER_PROMPT)),
             ("THE RULES OF THIS GAME", instructions),
             ("SCENARIO", f"{state.scenario.title}\n{state.scenario.premise}"),
             ("THE SCOPE OF PLAY", state.scenario.scope),
-            (f"RECENT PLAY (this is turn {played + 1})", render_history(scenes)),
+            (f"RECENT PLAY (this is turn {played + 1})", render_history(state.log)),
             *engine_sections,
             ("NOTES FROM THE RULES", lines_of(f"- {note}" for note in notes)),
             ("PLAYER ACTION", action),

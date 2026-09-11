@@ -23,6 +23,7 @@ from aidm.app import runtime as runtime_module
 from aidm.app.runtime import Runtime
 from aidm.config import MediaConfig, Settings
 from aidm.core.io import FileStore
+from aidm.ui import theme
 from aidm.ui.app import _register_pages  # pyright: ignore[reportPrivateUsage]
 
 REPOSITORY_ROOT = Path(__file__).parents[1]
@@ -90,6 +91,7 @@ def main() -> None:
     def _faults() -> dict[str, list[str]]:  # pyright: ignore[reportUnusedFunction]
         return {role: list(armed) for role, armed in agents.faults.items()}
 
+    theme.install()
     ui.run(  # pyright: ignore[reportUnknownMemberType]
         title="AI Dungeon Master (QA)",
         port=parsed.port,

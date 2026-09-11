@@ -37,9 +37,9 @@
     ]
   },
   {
-    "trace": "the player Kael[player] Health -1 -> 9/10 (Wade through the flooded cellar)",
+    "trace": "the player Kael[player] Health -1 → 9/10 (Wade through the flooded cellar)",
     "told": true,
-    "card": "Health -1 -> 9/10",
+    "card": "Health -1 → 9/10",
     "dice": []
   },
   {

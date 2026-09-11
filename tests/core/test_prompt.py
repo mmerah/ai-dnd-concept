@@ -2,8 +2,8 @@ from aidm.core.play import Chapter, Exchange, SpokenLine
 from aidm.core.prompt import INTERJECTED, TAIL_EXCHANGES, render_history, told_history
 
 
-def _told(prompt: str) -> Exchange:
-    return Exchange(prompt=prompt, lines=(SpokenLine(text=f"{prompt} happens."),))
+def _told(words: str) -> Exchange:
+    return Exchange(words=words, lines=(SpokenLine(text=f"{words} happens."),))
 
 
 def test_render_history_prints_an_older_scenes_recap_and_not_its_exchanges() -> None:
@@ -34,15 +34,15 @@ def test_render_history_prints_the_last_two_scenes_whole() -> None:
 
 
 def test_render_history_shows_an_older_scenes_last_tail_exchanges_only() -> None:
-    prompts = [f"p{number}" for number in range(TAIL_EXCHANGES + 2)]
-    older = Chapter(title="Hub", focus="q0", exchanges=[_told(p) for p in prompts])
+    words_list = [f"p{number}" for number in range(TAIL_EXCHANGES + 2)]
+    older = Chapter(title="Hub", focus="q0", exchanges=[_told(w) for w in words_list])
     scenes = [older, Chapter(title="A1", focus="q1"), Chapter(title="A2", focus="q2")]
 
     history = render_history(scenes)
 
-    for kept in prompts[-TAIL_EXCHANGES:]:
+    for kept in words_list[-TAIL_EXCHANGES:]:
         assert f"> {kept}" in history
-    for dropped in prompts[:-TAIL_EXCHANGES]:
+    for dropped in words_list[:-TAIL_EXCHANGES]:
         assert f"> {dropped}\n" not in history
 
 
@@ -62,7 +62,7 @@ def test_told_history_reads_as_the_master_does_without_the_recap() -> None:
 
 def test_history_keeps_who_said_what() -> None:
     exchange = Exchange(
-        prompt="I ask Mara.",
+        words="I ask Mara.",
         lines=(
             SpokenLine(speaker_id="mara", speaker="Mara", text="Not for sale."),
             SpokenLine(text="She goes back to her ledger."),
@@ -77,9 +77,9 @@ def test_history_keeps_who_said_what() -> None:
 
 
 def test_a_marked_exchange_carries_no_prompt_line() -> None:
-    story = Exchange(prompt="", mark="story", lines=(SpokenLine(text="Quiet falls."),))
+    story = Exchange(words="", mark="story", lines=(SpokenLine(text="Quiet falls."),))
     party = Exchange(
-        prompt="",
+        words="",
         mark="interjection",
         lines=(SpokenLine(speaker_id="vessa", speaker="Vessa", text="Wait."),),
     )

@@ -18,7 +18,7 @@ from aidm.config import ProviderConfig, Providers, Role, Settings
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.io import Library, decode
-from aidm.core.model import AnyGame, Objection, WorldsmithAnswer
+from aidm.core.model import AnyGame, Check, WorldsmithAnswer
 from aidm.core.play import Answer
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
@@ -144,7 +144,7 @@ class ScriptedSpawner:
 
 
 def stub_worldsmith(answer: Mapping[str, object]) -> WorldsmithAnswer:
-    async def answered[M: BaseModel](_prompt: str, model: type[M], _refusal: Objection[M]) -> M:
+    async def answered[M: BaseModel](_prompt: str, model: type[M], _check: Check[M]) -> M:
         return model.model_validate(answer)
 
     return answered
@@ -191,7 +191,7 @@ class Table[G: AnyGame]:
         return state
 
     def saved(self) -> G:
-        raw = self.service.store.load(self.service.slug)
+        raw = self.service.store.read(self.service.slug)
         assert raw is not None
         restored = self.service.engine.restore(decode(raw))
         assert isinstance(restored, self.state_type), (

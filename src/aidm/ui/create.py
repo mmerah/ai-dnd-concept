@@ -77,7 +77,7 @@ class CharacterForm:
         given = picked(self.picks, step.id)
         if not step.options:
             typed = ui.input(
-                label=step.prompt,
+                label=step.label,
                 placeholder=step.hint or "In your own words",
                 value=given,
                 on_change=partial(self.write, step.id),
@@ -91,7 +91,7 @@ class CharacterForm:
                 for option in step.options
             },
             value=given or None,
-            label=step.prompt,
+            label=step.label,
             on_change=partial(self.choose, step.id),
         ).classes("w-full")
         if step.hint:
@@ -169,7 +169,7 @@ class ScenarioForm:
                 _engine_select(self.runtime, self.engine_id, self.choose_engine)
                 self.form()
 
-    async def took(self, event: UploadEventArguments) -> None:
+    async def uploaded(self, event: UploadEventArguments) -> None:
         # The source reader opens a path, and a PDF cannot be parsed from bytes.
         path = Path(mkdtemp()) / Path(event.file.name).name
         await event.file.save(path)
@@ -222,7 +222,7 @@ class ScenarioForm:
         ).classes("w-full")
         heading("Or upload the adventure")
         (
-            ui.upload(on_upload=self.took, max_files=1, auto_upload=True)
+            ui.upload(on_upload=self.uploaded, max_files=1, auto_upload=True)
             .props(f'accept="{",".join(SOURCE_SUFFIXES)}"')
             .classes("w-full")
         )

@@ -43,7 +43,7 @@ WHAT HAPPENED:
 - learned of The Flooded Cellar[cellar]
 - the player arrives at The Flooded Cellar[cellar]
 - Wade through the flooded cellar — Skulker, 9 vs DS 10 → failure
-- the player Kael[player] Health -1 -> 9/10 (Wade through the flooded cellar)
+- the player Kael[player] Health -1 → 9/10 (Wade through the flooded cellar)
 - learned of Cellar Lurker[lurker]
 
 PLAYER ACTION:

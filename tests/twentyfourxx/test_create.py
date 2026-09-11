@@ -59,7 +59,7 @@ def test_human_shows_three_increases() -> None:
 
 def test_create_character_builds_the_sheet() -> None:
     character = ENGINE.create_character("Rook", "A quiet operator", SNEAK)
-    sheet = character.payload.dice()
+    sheet = character.payload.require_sheet()
     assert sheet.skills == {"Stealth": 12, "Climbing": 8, "Piloting": 8}
     assert sheet.specialty == "Sneak"
     assert sheet.origin == "Human"
@@ -83,7 +83,10 @@ def test_items_land_in_order_comm_kit_weapon() -> None:
         "increase-3": "running",
     }
     character = ENGINE.create_character("Rook", "A quiet operator", picks)
-    assert [item.name for item in character.payload.dice().items.values()] == ["Comm", "Firearm"]
+    assert [item.name for item in character.payload.require_sheet().items.values()] == [
+        "Comm",
+        "Firearm",
+    ]
 
 
 def test_preview_character_ends_with_gear_row() -> None:

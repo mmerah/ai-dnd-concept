@@ -11,13 +11,13 @@ from pydantic import BaseModel, JsonValue
 from aidm.core.entities import EngineId, Refusal, Slug, check_unique, content_id, parse
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, CharacterHeader, EngineHeader
 
+LOGGER = logging.getLogger(__name__)
+
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"
 SOURCE_SUFFIXES = (".md", ".txt", ".pdf")
 # Two content ids joined by `--`: a save name is not a `Slug`.
-_SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9-]*"
-
-LOGGER = logging.getLogger(__name__)
+SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9-]*"
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,14 +28,14 @@ class FileStore:
         return tuple(
             path.stem
             for path in sorted(self.directory.glob("*.json"))
-            if fullmatch(_SAVE_SLUG_PATTERN, path.stem) is not None
+            if fullmatch(SAVE_SLUG_PATTERN, path.stem) is not None
         )
 
-    def load(self, slug: str) -> str | None:
+    def read(self, slug: str) -> str | None:
         path = self._save_path(slug)
         return _read_text(path) if path.is_file() else None
 
-    def save(self, slug: str, state: AnyGame, /) -> None:
+    def write(self, slug: str, state: AnyGame, /) -> None:
         write_text(self._save_path(slug), state.model_dump_json(indent=2))
 
     def media_dir(self, slug: str) -> Path:
@@ -53,11 +53,11 @@ class Library:
     scenarios: Path
     characters: Path
 
-    def scenario_folder(self, name: Slug) -> Path:
-        return self.scenarios / content_id(name)
+    def scenario_folder(self, scenario_id: Slug) -> Path:
+        return self.scenarios / content_id(scenario_id)
 
-    def character_folder(self, name: Slug) -> Path:
-        return self.characters / content_id(name)
+    def character_folder(self, character_id: Slug) -> Path:
+        return self.characters / content_id(character_id)
 
     def scenario_ids(self) -> tuple[str, ...]:
         """Every entry, slug or not: a new slug must not collide with a stray folder."""
@@ -100,17 +100,17 @@ class Library:
                 yield name, engine, header
 
     def read_scenario(
-        self, name: Slug, models: Mapping[EngineId, type[AnyScenario]]
+        self, scenario_id: Slug, models: Mapping[EngineId, type[AnyScenario]]
     ) -> AnyScenario:
-        path = self.scenario_folder(name) / WORLD_FILE
+        path = self.scenario_folder(scenario_id) / WORLD_FILE
         value = decode(_read_text(path))
         return parse(routed(value, models), value)
 
     def read_character(
-        self, name: Slug, engine: EngineId, model: type[AnyCharacter]
+        self, character_id: Slug, engine: EngineId, model: type[AnyCharacter]
     ) -> AnyCharacter:
-        character = _read(self.character_folder(name) / f"{engine}.json", model)
-        _check_filed(character.id, character.engine, content_id(name), engine)
+        character = _read(self.character_folder(character_id) / f"{engine}.json", model)
+        _check_filed(character.id, character.engine, content_id(character_id), engine)
         return character
 
     def write_character(self, character: AnyCharacter) -> None:
@@ -126,10 +126,10 @@ class Library:
                 raise Refusal(f"character {character.id!r} is {filed!r}, not {named!r}")
         write_text(path, character.model_dump_json(indent=2))
 
-    def write_scenario(self, name: Slug, scenario: AnyScenario) -> None:
-        folder = self.scenario_folder(name)
+    def write_scenario(self, scenario_id: Slug, scenario: AnyScenario) -> None:
+        folder = self.scenario_folder(scenario_id)
         if folder.exists():
-            raise Refusal(f"scenario {name!r} already exists")
+            raise Refusal(f"scenario {scenario_id!r} already exists")
         write_text(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
 
 
@@ -175,11 +175,11 @@ def _read[T: BaseModel](path: Path, model: type[T]) -> T:
     return parse(model, decode(_read_text(path)))
 
 
-def _check_filed(character_id: str, plays: EngineId, name: Slug, engine: EngineId) -> None:
+def _check_filed(character_id: str, plays: EngineId, filed_under: Slug, engine: EngineId) -> None:
     if plays != engine:
         raise Refusal(f"the character plays {plays!r}, not {engine!r}")
-    if character_id != name:
-        raise Refusal(f"character {character_id!r} is filed under {name!r}")
+    if character_id != filed_under:
+        raise Refusal(f"character {character_id!r} is filed under {filed_under!r}")
 
 
 def _unique_keys(pairs: list[tuple[str, JsonValue]]) -> dict[str, JsonValue]:
@@ -188,6 +188,6 @@ def _unique_keys(pairs: list[tuple[str, JsonValue]]) -> dict[str, JsonValue]:
 
 
 def _safe_path(directory: Path, stem: str, suffix: str) -> Path:
-    if fullmatch(_SAVE_SLUG_PATTERN, stem) is None:
+    if fullmatch(SAVE_SLUG_PATTERN, stem) is None:
         raise ValueError(f"invalid storage slug {stem!r}")
     return directory / f"{stem}{suffix}"

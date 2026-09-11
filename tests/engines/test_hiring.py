@@ -25,7 +25,7 @@ from aidm.engines.breathless.world import BreathlessGame
 from aidm.engines.hiring import HIRE, SIGNED_ON
 from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.seam import AnyEngine
-from aidm.engines.tunnelgoons.world import Abilities, TunnelGoonsGame
+from aidm.engines.tunnelgoons.world import GoonSheet, TunnelGoonsGame
 from aidm.engines.twentyfourxx.world import TwentyfourxxGame
 
 TERMS = "Watch our backs"
@@ -51,7 +51,7 @@ def _twentyfourxx_sheeted(game: AnyGame) -> AnyGame:
 
 def _tunnelgoons_sheeted(game: AnyGame) -> AnyGame:
     tunnelgoons_game = narrowed(game, TunnelGoonsGame)
-    tunnelgoons_game.payload.npcs[TUNNELGOONS_MIRA].sheet = Abilities(
+    tunnelgoons_game.payload.npcs[TUNNELGOONS_MIRA].sheet = GoonSheet(
         abilities={"brute": 1, "skulker": 1, "erudite": 1}
     )
     return game
@@ -101,7 +101,7 @@ def _hire(case: HireCase, draft: AnyGame) -> None:
 def test_hire_sets_the_generation_and_ends_the_turn(case: HireCase) -> None:
     draft = case.game().draft()
     _hire(case, draft)
-    assert draft.generation == Generation(operation=HIRE, brief=TERMS, target=case.member)
+    assert draft.generation == Generation(operation=HIRE, detail=TERMS, target=case.member)
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
@@ -114,10 +114,10 @@ def test_hire_refuses_a_sheeted_member(case: HireCase) -> None:
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 async def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party(case: HireCase) -> None:
     draft = case.game().draft()
-    generation = Generation(operation=HIRE, brief=TERMS, target=case.member)
+    generation = Generation(operation=HIRE, detail=TERMS, target=case.member)
     _, told = await case.engine.advance(draft, generation, stub_worldsmith(case.answer))
     world = case.engine.world(draft)
     member = world.require_member_here(case.member)
-    assert member.hired()
+    assert member.hired
     assert case.member in world.party
     assert told == SIGNED_ON.format(name=member.name)

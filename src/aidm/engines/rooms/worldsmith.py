@@ -2,8 +2,7 @@ from collections.abc import Sequence
 
 from aidm.core.entities import Refusal
 from aidm.core.play import Chapter
-from aidm.core.prompt import render_history
-from aidm.core.views import Pairs
+from aidm.core.prompt import Pairs, render_history
 from aidm.engines.base import Person
 from aidm.engines.rooms.world import Dungeon, Dweller, MapDraft, RoomWorld
 

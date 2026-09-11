@@ -8,9 +8,9 @@ from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
     SHIP_FUNCTIONS,
     Crewmate,
+    CrewSheet,
     Gear,
     Kit,
-    Sheet,
     TwentyfourxxWorld,
     raised,
 )
@@ -37,13 +37,13 @@ def test_raised_refuses_past_d12() -> None:
 
 
 def test_sheet_die_returns_skill_or_default() -> None:
-    sheet = small_world().payload.player.dice()
+    sheet = small_world().payload.player.require_sheet()
     assert sheet.die("Stealth") == 10
     assert sheet.die("Piloting") == DEFAULT_DIE
 
 
 def test_rows_drops_empties_and_shows_credits() -> None:
-    sheet = Sheet(specialty="Sneak", origin="Human", skills={"Stealth": 12})
+    sheet = CrewSheet(specialty="Sneak", origin="Human", skills={"Stealth": 12})
     rows = dict(sheet.rows())
     assert rows["Skills"] == "Stealth d12"
     assert rows["Credits"] == "₡2"
@@ -54,7 +54,7 @@ def test_rows_drops_empties_and_shows_credits() -> None:
 def test_dice_refuses_on_an_unsheeted_member() -> None:
     world = small_world().payload
     with pytest.raises(Refusal, match="carries no dice"):
-        world.cast[KESTREL].dice()
+        world.cast[KESTREL].require_sheet()
 
 
 def test_a_player_with_no_sheet_is_refused() -> None:
@@ -153,7 +153,7 @@ def test_require_gear_finds_a_ship_function_and_refuses_a_stranger() -> None:
 
 
 def test_item_detail_shows_upgraded() -> None:
-    assert Gear(name="Comms", upgraded=True).detail() == "upgraded"
+    assert Gear(name="Comms", upgraded=True).notes() == "upgraded"
 
 
 def test_every_crew_starts_with_the_seven_ship_functions() -> None:

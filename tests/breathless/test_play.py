@@ -32,13 +32,13 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
         tool_call("loot_check", item="First aid kit"),
     )
     world = state.payload
-    assert world.player.dice().worn["bash"] == 4
+    assert world.player.require_sheet().worn["bash"] == 4
     assert state.pending is not None
     assert [option.id for option in state.pending.options] == ["take"]
 
     state = await play_turn(table, Answer(option_id="take"))
     assert state.pending is None
-    assert state.payload.player.dice().items["first-aid-kit"].die == 8
+    assert state.payload.player.require_sheet().items["first-aid-kit"].die == 8
 
     state = await play_turn(table, "Ask what lies past the Bell House.", the_way_on())
     assert state.payload.run.offered
@@ -55,5 +55,5 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
     )
 
     assert state.payload.run.title == "The Causeway"
-    assert state.exchanges()[before].prompt == pursuit
+    assert state.exchanges()[before].words == pursuit
     assert table.saved() == table.state

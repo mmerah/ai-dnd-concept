@@ -15,9 +15,9 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption
-from aidm.core.prompt import lines_of
+from aidm.core.prompt import Pairs, lines_of
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import NarratorView, Pairs, Panel, PanelRow, PlayerView
+from aidm.core.views import NarratorView, Panel, PanelRow, PlayerView
 from aidm.engines.base import (
     JOIN_PARTY,
     LEAVE_PARTY,
@@ -44,10 +44,8 @@ from aidm.engines.rooms.tools import (
 )
 from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RoomWorld
 from aidm.engines.rooms.worldsmith import MAP_ASK, check_extension, check_map, map_sections
-from aidm.engines.seam import Engine, Request, Written
+from aidm.engines.seam import Engine, Request, Written, compose
 
-WORLDSMITH_PROMPT = Path(__file__).parent / "worldsmith.md"
-RULES_PROMPT = Path(__file__).parent / "rules.md"
 EXTEND: Slug = "extend"
 MORE_MAP = DecisionOption(
     id=EXTEND, label="More map", detail="The map runs out here: say where you push on."
@@ -62,8 +60,7 @@ MAP_UNWRITTEN = Fact(
 class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
     dweller: type[N]
     world_type: type[RoomWorld[N, P]]
-    family_prompt = RULES_PROMPT
-    worldsmith_prompt = WORLDSMITH_PROMPT
+    family_dir = Path(__file__).parent
 
     def world(self, state: G) -> RoomWorld[N, P]:
         return state.payload
@@ -77,7 +74,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         check_map(draft)
         player = self.player_of(character)
         taken = (*draft.places, *draft.npcs, *draft.items)
-        return self.world_type.begin(
+        return self.world_type.opening(
             draft, player, self.starting_items(player, taken), scenario.source
         )
 
@@ -154,7 +151,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
                 ),
                 trail_panel(world.require_place(place_id).name for place_id in world.visits),
             ),
-            prompt=state.pending,
+            decision=state.pending,
             action=MORE_MAP if world.frontier() == 0 else None,
             over=self.over(state),
         )
@@ -165,7 +162,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         source: str,
         packs: Sequence[Slug],
         worldsmith: WorldsmithAnswer,
-        playable: Callable[[AnyScenario], None],
+        check: Callable[[AnyScenario], None],
     ) -> AnyScenario:
         def built(draft: MapDraft[N]) -> AnyScenario:
             start = draft.places.get(draft.start)
@@ -175,17 +172,17 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         prompt = self.render_opening(
             source, meta.scope, intent=MAP_ASK, guidance=self.guidance(), answer=self.map_draft()
         )
-        return await self.compose(worldsmith, prompt, self.map_draft(), built, playable)
+        return await compose(worldsmith, prompt, self.map_draft(), built, check)
 
     def act(self, draft: G, action: Slug, words: str) -> None:
         if action != EXTEND or self.world(draft).frontier():
             raise Refusal("the map still has ways to walk; the page was drawn before them")
         if not words:
             raise Refusal("say where you push on")
-        draft.generation = Generation(operation=EXTEND, brief=words)
+        draft.generation = Generation(operation=EXTEND, detail=words)
 
     async def extend(self, draft: G, request: Generation, worldsmith: WorldsmithAnswer) -> Written:
-        self.install(draft, await self.write_next(draft, request.brief, worldsmith))
+        self.install(draft, await self.write_next(draft, request.detail, worldsmith))
         return (), None
 
     def worldsmith_requests(self) -> dict[Slug, Request[G]]:
