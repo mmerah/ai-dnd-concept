@@ -5,6 +5,7 @@ from support.table import change
 from support.table import refused as change_refused
 
 from aidm.core.entities import Refusal
+from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eCast, Loner3eGame
 from aidm.engines.scenes.tools import NextDraft, SceneDraft
@@ -94,6 +95,8 @@ def test_someone_left_behind_is_refilled_when_the_scene_moves_on() -> None:
 def test_install_stamps_the_recap_on_the_chapter_left() -> None:
     _, state = initialized()
     draft = state.draft()
+    # A chapter with no exchanges yet is dropped, not kept as the one left; give it one first.
+    draft.log[-1].exchanges.append(Exchange(words="They wait.", lines=()))
 
     _ = ENGINE.install(draft, NextDraft[Loner3eCast](**_next_scene().model_dump(), recap=RECAP))
 

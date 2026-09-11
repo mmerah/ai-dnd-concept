@@ -19,6 +19,7 @@ from support.twentyfourxx import small_world as twentyfourxx_world
 
 from aidm.core.entities import Refusal, Slug
 from aidm.core.model import AnyGame, Check, Generation
+from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.breathless.world import BreathlessWorld, Survivor
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eWorld
@@ -67,14 +68,13 @@ class SceneCase:
 
 def _bar[C: Person](
     draft_type: type[SceneDraft[C]],
-    world_type: type[SceneWorld[C]],
+    world: type[SceneWorld[C]],
     base: Mapping[str, object],
     game: Callable[[], AnyGame],
 ) -> Callable[[Mapping[str, object]], None]:
     def bar(fields: Mapping[str, object]) -> None:
         draft = draft_type.model_validate(dict(base) | dict(fields))
-        world = narrowed(game().payload, world_type)
-        check_scene(draft, world)
+        check_scene(draft, narrowed(game().payload, world))
 
     return bar
 
@@ -177,6 +177,8 @@ def test_a_scenario_with_no_packs_is_refused_by_check_packs(case: SceneCase) -> 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 async def test_install_scene_appends_a_run_and_returns_the_opened_fact(case: SceneCase) -> None:
     draft = case.game().draft()
+    # A chapter with no exchanges yet is dropped, not appended to; give it one first.
+    draft.log[-1].exchanges.append(Exchange(words="They wait.", lines=()))
     chapters_before = len(draft.log)
     answer = {
         **case.base,

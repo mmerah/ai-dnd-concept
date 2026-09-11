@@ -11,7 +11,7 @@ from aidm.core.prompt import Pairs
 from aidm.core.tools import MasterTool, NoArgs, master_tool
 from aidm.core.views import DiceLook, Look
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.hiring import Hiring
+from aidm.engines.hiring import Hiring, hiring
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.world import Prop
 from aidm.engines.tunnelgoons.tools import (
@@ -62,10 +62,7 @@ POINT_OPTIONS: tuple[DecisionOption, ...] = tuple(
 )
 
 
-class TunnelGoonsEngine(
-    Hiring[Goon, Npc, TunnelGoonsGame, AbilitiesDraft],
-    RoomEngine[Npc, Goon, TunnelGoonsGame],
-):
+class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
     id = EngineId("tunnelgoons")
     title = "TUNNEL GOONS"
     art_style = "Old-school fantasy illustration in black ink, cross-hatched, no text or lettering."
@@ -87,10 +84,14 @@ class TunnelGoonsEngine(
     game = TunnelGoonsGame
     scenario = TunnelGoonsScenario
     character = TunnelGoonsCharacter
-    dweller = Npc
-    world_type = TunnelGoonsWorld
+    world = TunnelGoonsWorld
     member = Npc
-    hire_answer = AbilitiesDraft
+
+    def world_of(self, state: TunnelGoonsGame) -> TunnelGoonsWorld:
+        return state.payload
+
+    def hiring(self) -> Hiring[TunnelGoonsGame, Npc]:
+        return hiring(AbilitiesDraft, self.hire_prompt, self.install_sheet)
 
     def master_tools(self) -> tuple[MasterTool[TunnelGoonsGame], ...]:
         return (
@@ -144,7 +145,7 @@ class TunnelGoonsEngine(
         return AUTHORING
 
     def rest(self, draft: TunnelGoonsGame, _args: NoArgs, _rng: Random) -> list[Fact]:
-        return draft.payload.rest()
+        return self.world_of(draft).rest()
 
     def hire_prompt(self, draft: TunnelGoonsGame, member: Npc, terms: str) -> str:
         return self.render_request(
@@ -161,7 +162,7 @@ class TunnelGoonsEngine(
         )
 
     def roll(self, draft: TunnelGoonsGame, args: Roll, rng: Random) -> list[Fact]:
-        world = draft.payload
+        world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
         sheet = actor.require_sheet()
         items = world.carried_items(actor, args.items)
@@ -199,15 +200,15 @@ class TunnelGoonsEngine(
         if npc is not None and success:
             facts.extend(npc.hp.change(npc, -margin, "Health", f"{actor.name}'s action"))
             if npc.hp.current == 0:
-                facts.extend(world.kill(npc))
+                facts.extend(world.kill(npc.id))
         elif not success:
             facts.extend(actor.hp.change(actor, margin, "Health", args.what))
             if actor.hp.current == 0:
-                facts.extend(world.kill(actor))
+                facts.extend(world.kill(actor.id))
         return facts
 
     def level_up(self, draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
-        world = draft.payload
+        world = self.world_of(draft)
         # Both or neither, by `LevelUp`; `or` narrows both for the fall-through.
         if args.ability is None or args.boost is None:
             actor = world.require_actor(args.actor_id)

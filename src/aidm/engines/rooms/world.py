@@ -5,7 +5,7 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import Mutable, Refusal, Slug, check_unique, parse
 from aidm.core.facts import Fact
-from aidm.core.prompt import Pairs, lines_of
+from aidm.core.prompt import lines_of
 from aidm.engines.base import IS_DEAD, PLAYER_ID, UNKNOWN_ID, Person, Thing, World, check_filing
 
 
@@ -120,13 +120,8 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
             raise ValueError("the player is unknown to themselves")
         for place_id in self.visits:
             self.require_place(place_id)
-        check_unique("party", self.party)
         for member_id in self.party:
-            npc = self.npcs.get(member_id)
-            if npc is None or not npc.known:
-                raise ValueError(f"{member_id!r} travels with the player but is not a known npc")
-            if not npc.alive:
-                raise ValueError(f"{member_id!r} is dead and cannot travel with the player")
+            npc = self.npcs[member_id]  # the base validator has proven every party id a known npc
             if npc.place != self.current.id:
                 raise ValueError(f"{member_id!r} travels with the player but is not at their place")
         return self
@@ -155,6 +150,9 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
 
     def members(self) -> list[N]:
         return [self.npcs[member_id] for member_id in self.party]
+
+    def member_of(self, member_id: Slug) -> N | None:
+        return self.npcs.get(member_id)
 
     def here(self) -> Iterator[P | N]:
         yield self.player
@@ -188,9 +186,6 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
                 raise Refusal(f"{item_id!r} is not in {holder.name}'s hands")
             items.append(item)
         return tuple(items)
-
-    def join_party(self, entity_id: Slug) -> list[Fact]:
-        return self.join(self.require_member_here(entity_id))
 
     def leave_party(self, entity_id: Slug) -> list[Fact]:
         npc = self.npcs.get(entity_id)
@@ -294,7 +289,12 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         trace = f"{item.mention} moves to {holder.mention}"
         return [*facts, item.fact(trace, card=card)]
 
-    def kill(self, actor: P | N) -> list[Fact]:
+    def kill(self, entity_id: Slug) -> list[Fact]:
+        actor: P | N = (
+            self.player if entity_id == self.player.id else self.require_member_here(entity_id)
+        )
+        if not actor.alive:
+            raise Refusal(f"{actor.name} is already dead")
         facts = actor.reveal()
         if actor.id in self.party:
             self.party.remove(actor.id)
@@ -361,10 +361,6 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
             )
         lines.append("ids in use: " + ", ".join(sorted((*self.places, *self.npcs, *self.items))))
         return "\n".join(lines)
-
-    def sheet_rows(self) -> Pairs:
-        """Overridable: a rule may amend a row."""
-        return self.player.rows()
 
 
 def _walk(ways: dict[Slug, list[Way]], start: Slug) -> set[Slug]:

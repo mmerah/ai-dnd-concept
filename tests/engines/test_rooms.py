@@ -47,8 +47,8 @@ class SixthEngine(RoomEngine[Dweller, Person, SixthGame]):
     game = SixthGame
     scenario = SixthScenario
     character = SixthCharacter
-    dweller = Dweller
-    world_type = SixthWorld
+    member = Dweller
+    world = SixthWorld
 
     def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
         return ()
@@ -162,10 +162,10 @@ def test_the_familys_tools_are_offered_in_order(tmp_path: Path) -> None:
     engine = _installed(tmp_path)
     assert list(engine.tools) == [
         "reveal",
-        "move_item",
         "kill",
         "join_party",
         "leave_party",
+        "move_item",
         "unlock_way",
         "move",
     ]
@@ -224,11 +224,27 @@ def test_killing_a_party_member_drops_them_from_the_party(tmp_path: Path) -> Non
     world = state.payload
     world.party.append(WARDEN)
 
-    facts = world.kill(world.npcs[WARDEN])
+    facts = world.kill(WARDEN)
 
     assert world.party == []
     assert not world.npcs[WARDEN].alive
     assert any(fact.card == "Warden is dead" for fact in facts)
+
+
+def test_killing_the_player_leaves_them_dead_and_a_second_kill_is_refused(tmp_path: Path) -> None:
+    engine = _installed(tmp_path)
+    character = engine.create_character("Wren", "A quiet scout", {})
+    state = engine.begin("the-keep", _scenario(), character)
+    draft = state.draft()
+
+    facts = change(engine, draft, "kill", entity_id=PLAYER_ID)
+
+    assert not draft.payload.player.alive
+    assert any(fact.card == "You are dead" for fact in facts)
+
+    message = refused(engine, draft, "kill", entity_id=PLAYER_ID)
+
+    assert "already dead" in message
 
 
 def test_a_party_member_who_is_not_at_the_players_place_is_refused(tmp_path: Path) -> None:

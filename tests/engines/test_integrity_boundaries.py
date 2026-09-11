@@ -75,6 +75,14 @@ def test_the_party_rules_refuse_the_dead_and_the_doubled() -> None:
         _ = twice.commit()
 
 
+def test_an_unknown_party_id_is_refused_by_the_base_validator() -> None:
+    _, state = initialized()
+    draft = state.draft()
+    draft.payload.party.append("ghost")
+    with pytest.raises(Refusal, match="travels with the player but is not known"):
+        _ = draft.commit()
+
+
 def test_a_committed_game_refuses_a_player_who_travels_with_themselves() -> None:
     _, state = initialized()
     draft = state.draft()

@@ -5,13 +5,15 @@ from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from aidm.core.entities import Frozen, Mutable, Refusal, Slug
+from aidm.core.entities import Frozen, Mutable, Refusal, Slug, check_unique
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.prompt import Pairs, sections
 from aidm.core.tools import schema_text
 from aidm.core.views import Chattiness, Panel, PanelRow, Subject
 
 PLAYER_ID: Slug = "player"
+REVEAL = "A hidden entity here becomes known to the player."
+KILL = "Someone here dies."
 JOIN_PARTY = "A character here starts travelling with the player."
 LEAVE_PARTY = "A party member stops travelling with the player."
 UNKNOWN_ID = "unknown id {entity_id!r}. Use only the ids you were shown."
@@ -147,11 +149,36 @@ class World[M: Person, P: Person](Mutable):
             raise ValueError("the player carries no sheet")
         return self
 
+    @model_validator(mode="after")
+    def _party_travels(self) -> Self:
+        check_unique("party", self.party)
+        if self.player.id in self.party:
+            raise ValueError("the player cannot travel with themselves")
+        for member_id in self.party:
+            member = self.member_of(member_id)
+            if member is None or not member.known:
+                raise ValueError(f"{member_id!r} travels with the player but is not known")
+            if not member.alive:
+                raise ValueError(f"{member_id!r} is dead and cannot travel with the player")
+        return self
+
     @abstractmethod
     def members(self) -> Sequence[M]: ...
     @abstractmethod
+    def member_of(self, member_id: Slug) -> M | None: ...
+    @abstractmethod
     def require_member_here(self, entity_id: Slug) -> M:
         """Alive and here with the player."""
+
+    @abstractmethod
+    def reveal_hidden(self, entity_id: Slug) -> list[Fact]: ...
+    @abstractmethod
+    def kill(self, entity_id: Slug) -> list[Fact]: ...
+    @abstractmethod
+    def leave_party(self, entity_id: Slug) -> list[Fact]: ...
+
+    def join_party(self, entity_id: Slug) -> list[Fact]:
+        return self.join(self.require_member_here(entity_id))
 
     def require_actor(self, actor_id: Slug | None) -> M | P:
         if actor_id is None or actor_id == self.player.id:
@@ -183,6 +210,10 @@ class World[M: Person, P: Person](Mutable):
         trace = f"{member.tag} no longer travels with the player"
         return [member.fact(trace, card=f"{member.name} leaves your party")]
 
+    def sheet_rows(self) -> Pairs:
+        """Overridable: a rule may amend a row."""
+        return self.player.rows()
+
 
 class Attempt(Frozen):
     """An attempt at something uncertain."""
@@ -191,6 +222,14 @@ class Attempt(Frozen):
         min_length=1,
         description="The attempt, in a few words the player reads.",
     )
+
+
+class Reveal(Frozen):
+    entity_id: Slug = Field(description="Exact id of something hidden here.")
+
+
+class Kill(Frozen):
+    entity_id: Slug = Field(description="Exact id of who here died.")
 
 
 class JoinParty(Frozen):

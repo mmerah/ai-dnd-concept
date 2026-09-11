@@ -1,4 +1,3 @@
-import json
 from collections.abc import Sequence
 from pathlib import Path
 from random import Random
@@ -47,14 +46,11 @@ from aidm.engines.breathless.world import (
     stepped,
 )
 from aidm.engines.breathless.worldsmith import AUTHORING, HIRING, Pack, SheetDraft
-from aidm.engines.hiring import DROP_ITEM, DropItem, Hiring
+from aidm.engines.hiring import DROP_ITEM, DropItem, Hiring, hiring
 from aidm.engines.scenes.engine import SceneEngine
 
 
-class BreathlessEngine(
-    Hiring[Survivor, Survivor, BreathlessGame, SheetDraft],
-    SceneEngine[Survivor, BreathlessGame, Pack],
-):
+class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
     id = EngineId("breathless")
     title = "BREATHLESS"
     art_style = (
@@ -79,11 +75,12 @@ class BreathlessEngine(
     game = BreathlessGame
     scenario = BreathlessScenario
     character = BreathlessCharacter
-    cast = Survivor
     pack = Pack
-    world_type = BreathlessWorld
+    world = BreathlessWorld
     member = Survivor
-    hire_answer = SheetDraft
+
+    def hiring(self) -> Hiring[BreathlessGame, Survivor]:
+        return hiring(SheetDraft, self.hire_prompt, self.install_sheet)
 
     def master_tools(self) -> tuple[MasterTool[BreathlessGame], ...]:
         return (
@@ -143,23 +140,18 @@ class BreathlessEngine(
         return (*sheet.rows(), ("Backpack", ", ".join(item.name for item in sheet.items.values())))
 
     def guidance(self, picks: Sequence[Slug]) -> str:
-        selected = {
-            pack_id: self.packs[pack_id].model_dump(
-                mode="json", include={"locations", "complications", "missions"}
-            )
-            for pack_id in picks
-        }
-        return f"{AUTHORING}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"
+        include = {"locations", "complications", "missions"}
+        return f"{AUTHORING}\n\n{self.pack_content(picks, include=include)}"
 
     def sheet_sections(self, state: BreathlessGame) -> Pairs:
-        sheet = state.payload.player.require_sheet()
+        sheet = self.world_of(state).player.require_sheet()
         lines = [f"- {item.name}[{key}] — d{item.die}" for key, item in sheet.items.items()]
         if sheet.med_kit:
             lines.append("- med kit")
         return (("BACKPACK", lines_of(lines)),)
 
     def panels(self, state: BreathlessGame) -> tuple[Panel, ...]:
-        sheet = state.payload.player.require_sheet()
+        sheet = self.world_of(state).player.require_sheet()
         rows = [PanelRow(label=item.name, detail=f"d{item.die}") for item in sheet.items.values()]
         if sheet.med_kit:
             rows.append(PanelRow(label="Med kit", detail="held"))
@@ -170,17 +162,19 @@ class BreathlessEngine(
         return self.srd_pack().complications
 
     def drop_item(self, draft: BreathlessGame, args: DropItem, _rng: Random) -> list[Fact]:
-        actor = draft.payload.require_actor(args.actor_id)
+        actor = self.world_of(draft).require_actor(args.actor_id)
         return actor.require_sheet().drop_item(args.item_id, actor)
 
     def change_stress(self, draft: BreathlessGame, args: ChangeStress, _rng: Random) -> list[Fact]:
-        return draft.payload.require_actor(args.actor_id).change_stress(args.amount, args.why)
+        return (
+            self.world_of(draft).require_actor(args.actor_id).change_stress(args.amount, args.why)
+        )
 
     def use_med_kit(self, draft: BreathlessGame, args: UseMedKit, _rng: Random) -> list[Fact]:
-        return draft.payload.require_actor(args.actor_id).use_med_kit()
+        return self.world_of(draft).require_actor(args.actor_id).use_med_kit()
 
     def hire_prompt(self, draft: BreathlessGame, member: Survivor, terms: str) -> str:
-        pack = self.packs[draft.packs[0]]
+        pack = self.first_pack(draft)
         return self.render_request(
             draft,
             guidance=AUTHORING,
@@ -205,7 +199,7 @@ class BreathlessEngine(
         return answer.job
 
     def roll(self, draft: BreathlessGame, args: Roll, rng: Random) -> list[Fact]:
-        world = draft.payload
+        world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
         sheet = actor.require_sheet()
 
@@ -270,7 +264,7 @@ class BreathlessEngine(
         return facts
 
     def catch_breath(self, draft: BreathlessGame, args: Actor, rng: Random) -> list[Fact]:
-        world = draft.payload
+        world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
         sheet = actor.require_sheet()
         sheet.worn = dict(sheet.skills)
@@ -296,10 +290,10 @@ class BreathlessEngine(
         if chosen.name != TAKE_LOOT:
             return super().answer(draft, chosen, rng)
         taken = parse(TakeLoot, chosen.args)
-        return (draft.payload.player.take_loot(taken.item, taken.granted, taken.choice),)
+        return (self.world_of(draft).player.take_loot(taken.item, taken.granted, taken.choice),)
 
     def loot_check(self, draft: BreathlessGame, args: LootCheck, rng: Random) -> list[Fact]:
-        item, player = args.item, draft.payload.player
+        item, player = args.item, self.world_of(draft).player
         sheet = player.require_sheet()
         before = sheet.loot
         rolled, dice_fact = roll((before,), f"scavenging — {item}", rng)

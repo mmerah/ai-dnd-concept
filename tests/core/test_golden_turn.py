@@ -11,6 +11,7 @@ from support.table import ENGINE_IDS, ENGINES_BUILT, Call, drain, game, open_tab
 
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.model import AnyGame, Check, Generation
+from aidm.engines.hiring import HIRE
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
 SEED = 19
@@ -46,7 +47,7 @@ async def test_a_scripted_turn_renders_and_records_unchanged(
         [fact.model_dump(mode="json") for fact in table.facts],
     )
     # Only a party spawns the interjection; an engine with none leaves the answer unused.
-    if table.service.engine.world(table.state).members():
+    if table.service.engine.world_of(table.state).members():
         golden(
             FIXTURES / "prompts" / engine_id / "interjection.txt",
             table.spawner.prompt("narrator", 1),
@@ -62,9 +63,9 @@ async def test_a_worldsmith_request_renders_unchanged(engine_id: EngineId) -> No
         prompts.append(prompt)
         raise Refusal("recorded")
 
-    request = Generation(
-        operation=next(iter(engine.requests)), detail="Deeper in, toward the sound."
-    )
+    # The family's own write, not the seam's `hire`: the detail is a place to go.
+    operation = next(operation for operation in engine.requests if operation != HIRE)
+    request = Generation(operation=operation, detail="Deeper in, toward the sound.")
     with pytest.raises(Refusal, match="recorded"):
         await engine.advance(state.draft(), request, recording)
     golden(FIXTURES / "prompts" / engine_id / "worldsmith.txt", prompts[0])

@@ -1,15 +1,12 @@
-from abc import abstractmethod
-from random import Random
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-from aidm.core.entities import Frozen, Refusal, Slug
+from aidm.core.entities import Frozen, Slug
 from aidm.core.facts import Fact
-from aidm.core.model import Check, Game, Generation, WorldsmithAnswer
-from aidm.core.tools import MasterTool, master_tool
+from aidm.core.model import Check, Game, WorldsmithAnswer
 from aidm.engines.base import Person
-from aidm.engines.seam import Engine, Request, Written
 
 HIRE: Slug = "hire"
 ACTOR = "Exact id of a hired party member here who acts. Null for the player."
@@ -41,56 +38,18 @@ class DropItem(Frozen):
     actor_id: Slug | None = Field(default=None, description=ACTOR)
 
 
-class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
-    """Bringing in someone whose sheet the worldsmith authors."""
+# The worldsmith's write of one member's sheet: the summary the sign-on is told in.
+type Hiring[G: Game[Any], M: Person] = Callable[[G, M, str, WorldsmithAnswer], Awaitable[str]]
 
-    member: type[M]
-    hire_answer: type[A]
 
-    def hire(self, draft: G, args: Hire, _rng: Random) -> list[Fact]:
-        member = self.hireable(draft, args.entity_id)
-        draft.generation = Generation(operation=HIRE, detail=args.terms, target=member.id)
-        trace = (
-            f"the worldsmith writes {member.name}'s sheet once this turn ends: {args.terms}. "
-            "Nothing more lands this turn; stop and exit"
-        )
-        return [Fact(trace=trace)]
+def hiring[G: Game[Any], M: Person, A: BaseModel](
+    answer: type[A],
+    prompt: Callable[[G, M, str], str],
+    install: Callable[[M, A], str],
+    check: Callable[[G], Check[A]] = lambda _draft: lambda _answer: None,
+) -> Hiring[G, M]:
+    async def write(draft: G, member: M, terms: str, worldsmith: WorldsmithAnswer) -> str:
+        answered = await worldsmith(prompt(draft, member, terms), answer, check(draft))
+        return install(member, answered)
 
-    def master_tools(self) -> tuple[MasterTool[G], ...]:
-        return (*super().master_tools(), master_tool("hire", HIRE_TOOL, Hire, self.hire))
-
-    def worldsmith_requests(self) -> dict[Slug, Request[G]]:
-        return {**super().worldsmith_requests(), HIRE: Request(HIRE_UNWRITTEN, self.write_hire)}
-
-    async def write_hire(
-        self, draft: G, request: Generation, worldsmith: WorldsmithAnswer
-    ) -> Written:
-        if request.target is None:
-            raise Refusal("a hire request names no target")
-        member = self.hireable(draft, request.target)
-        answer = await worldsmith(
-            self.hire_prompt(draft, member, request.detail),
-            self.hire_answer,
-            self.hire_check(draft),
-        )
-        summary = self.install_sheet(member, answer)
-        world = self.world(draft)
-        facts = world.join(member) if member.id not in world.party else []
-        trace = f"{member.mention} signs on — {summary}"
-        facts.append(member.fact(trace, card=f"{member.name} signs on — {summary}"))
-        return tuple(facts), SIGNED_ON.format(name=member.name)
-
-    def hire_check(self, _draft: G) -> Check[A]:
-        return lambda _answer: None
-
-    def hireable(self, draft: G, entity_id: Slug) -> M:
-        member = self.world(draft).require_hireable(entity_id)
-        if not isinstance(member, self.member):
-            raise ValueError(f"{member.id!r} is not a {self.member.__name__}")
-        return member
-
-    @abstractmethod
-    def hire_prompt(self, draft: G, member: M, terms: str) -> str: ...
-    @abstractmethod
-    def install_sheet(self, member: M, answer: A) -> str:
-        """Write the sheet onto the member; the summary the sign-on is told in."""
+    return write
