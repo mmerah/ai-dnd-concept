@@ -40,7 +40,7 @@ SCENES SO FAR:
 
 THE WHOLE CAST:
 - Kael[player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
-  specialty: Sneak; origin: Human; skills: Stealth d12, Climbing d8, Piloting d8; credits: ₡2; gear: Comm, Climbing gear, Night vision goggles
+  specialty: Sneak; origin: Human; skills: Stealth d12, Climbing d8, Piloting d8; credits: ₡2
 - Vessa Rune[vessa-rune] — QV-9's keeper for eleven years, she knows every corridor by feel and won't say why she hasn't left the docking ring in six days; her override codes can lock Kael out of the whole station.
   met; last seen in: The Docking Ring
 - Harl Odum[harl-odum] — A salvage pilot who claims he only just made port, though his skiff has sat cold at the outer berth since before the relay went dark; his cutting torch opens more than hull plate.

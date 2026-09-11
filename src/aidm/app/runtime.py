@@ -202,15 +202,13 @@ class GameService:
             return False
         self.phase, grown = "worldsmith", True
         try:
-            facts, telling = await self.engine.advance(
-                draft, request, worldsmith(self.roles.spawner)
-            )
-            if telling is None:
+            written = await self.engine.advance(draft, request, worldsmith(self.roles.spawner))
+            if written.telling is None:
                 self.save(self.engine.land(draft))
             else:
                 self.phase = "narrator"
-                lines = await self._narrated(draft, facts, telling)
-                self.save(self.engine.close(draft, lines, facts, words=words, mark=mark))
+                lines = await self._narrated(draft, written.facts, written.telling)
+                self.save(self.engine.close(draft, lines, written.facts, words=words, mark=mark))
         except Refusal as failed:
             LOGGER.warning("the world did not grow: %s", failed)
             draft = self.state.draft()

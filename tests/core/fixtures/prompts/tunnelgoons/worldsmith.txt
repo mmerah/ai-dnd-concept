@@ -28,7 +28,7 @@ SCENES SO FAR:
 
 THE PLAYER:
 - Kael[player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
-  brute: 1; skulker: 2; erudite: 0; health: 10/10; inventory: 3/8; level: 1
+  health: 10/10; brute: 1; skulker: 2; erudite: 0; inventory: 3/8; level: 1
 
 WHAT COMES NEXT:
 Deeper in, toward the sound.

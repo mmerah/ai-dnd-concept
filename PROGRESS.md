@@ -176,3 +176,68 @@ Part B (steps 9 to 16) is the next commit.
   hand-built `DiceEvent`s and `ItemSheet.drop_item(item_id, owner)` stay for part B.
 - The `hiring()` method on an engine returns the module-level `hiring(...)`: same name, no
   shadowing (a method is a class attribute; the call resolves in module scope).
+
+## Phase 3, part B: the rules code
+
+| dir   | before | after  |
+| ----- | ------ | ------ |
+| src   | 9,903  | 10,135 |
+| tests | 9,286  | 9,533  |
+| qa    | 1,788  | 1,788  |
+
+PLAN.md phase 3 steps 9 to 16. Full check green; goldens changed as step 16 says: the three
+`turn/*.json` with a single-die trace (`1d10` → `d10`), the tunnelgoons prompts on the Health row
+coming first, the 24XX prompts on the Gear row leaving the sheet (`worldsmith.txt` too: the
+player's line is in THE WHOLE CAST). QA harness green on goons, breathless and 24XX; loner reports
+the two issues part A recorded as reproducing on the base commit. Reviewed by two adversarial
+readers (Fable and Opus; no Codex on the machine). Implemented as three sequential shape rounds
+(dice; owners and lookups; inventory and refusal helpers) then four parallel per-engine rounds.
+
+### Decisions off-plan
+
+- Step 9, dice labels: `roll_pool` with an empty label spells a same-faced pool `2d8`, where the
+  card said `d8+d8` (a helped roll on the same die). The plan's "card labels keep their spelling"
+  holds only because breathless and 24XX pass `label="+".join(...)` (review finding).
+- Step 9, `roll` and `roll_pool` share a private `_rolled(...)` that builds the event once with
+  its highlight, so `DiceEvent`'s validator runs on every event (review finding).
+- Step 11, `SurvivorSheet.spend_stunt(owner: str)` takes the actor's name, as `ItemSheet.require`
+  does, so the refusal still says whose breath must be caught.
+- Step 12, `Pool` is a frozen dataclass, not a `Frozen` pydantic model: it holds live entities
+  (`Survivor`, `Npc`) that pydantic must not copy. Breathless's `Pool` has no `item` field: `_wear`
+  goes through `Survivor.wear_item(item_id)`, so the field was never read (review finding).
+  `_pool`, `_wear`, `_line` and `_consequence` are module-level private functions where they read
+  no engine state; 24XX's `_pool` stays a method for `resolve_skill` (review finding).
+- Step 12, breathless `_wear(actor, args, pool)` rather than `_wear(sheet, pool)`: the item branch
+  is `actor.wear_item(args.item_id)`, the owner method step 11 adds.
+- Step 13, `require_living_here` checks presence before life, so a dead entity elsewhere is now
+  refused as "not here" first; no test depended on the old order.
+- Step 14, `Sheeted.line` appends `carried()` to the caller's detail with `; `, where
+  `Survivor.line` replaced the detail (so a hired survivor's cast line lost "met; travels with the
+  player"); `Survivor.carried` has no "backpack:" prefix. No golden shows a hired survivor.
+- Step 15, `scene_unmet` is `[*_listing_unmet, *_cast_unmet, *_hidden_unmet]` as the plan says
+  "concatenated": the messages inside the one refusal now group by kind (listed, stray, overlap;
+  rewritten, misfiled, forbidden; situation, met) instead of the install order. Both reviews
+  flagged the reorder; kept as the plan's letter, the order being prose.
+- Step 15, the test that imported the private `_operators_unmet` is gone (phase 2: tests stop
+  reaching private state); the refusal is covered through the `job` tool.
+- The tunnelgoons `Adventurer.rows` puts Health first, so `GoonSheet.rows` is the sheet's alone.
+
+### Refuted review findings
+
+- "Delete `Rolled.faces`, nothing in `src` reads it" (both reviews): PLAN step 9 spells the shape;
+  left to the maintainer.
+- "Tunnelgoons `Pool.faces` and `label` are constants": PLAN step 12 spells the field list.
+- "`roll` and `_pool` both call `require_sheet()`": `_pool(world, actor, args)` is the plan's
+  signature; the call is a field read behind a refusal.
+- "Breathless `_consequence` returns `None`": the plan names `_wear` and `_consequence` both for
+  breathless; the vulnerable note is what a dangerous fail does.
+- "Drop `world` from `_line` and test `actor.id == PLAYER_ID`": 24XX's lead keeps their own id
+  after `take_lead`, so `actor is world.player` is the check there; the three `_line`s stay alike.
+- "`wear_item` looks the item up twice": `remove_item` is the sheet's one door that deletes.
+
+### Known and accepted
+
+- `Rolled.faces` duplicates `event.faces` (see above).
+- `Thing.change` and `Survivor.catch_breath` card the player by `self.id == PLAYER_ID`, as
+  `Gauge.change` did; a 24XX lead who took over carries their own id and is carded by name.
+- The 24XX `Pool` holds `helped_by` as the finished clause, not the helper's id and die.

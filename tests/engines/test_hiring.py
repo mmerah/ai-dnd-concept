@@ -115,9 +115,9 @@ def test_hire_refuses_a_sheeted_member(case: HireCase) -> None:
 async def test_advance_on_a_hire_installs_the_sheet_and_joins_the_party(case: HireCase) -> None:
     draft = case.game().draft()
     generation = Generation(operation=HIRE, detail=TERMS, target=case.member)
-    _, told = await case.engine.advance(draft, generation, stub_worldsmith(case.answer))
+    written = await case.engine.advance(draft, generation, stub_worldsmith(case.answer))
     world = case.engine.world_of(draft)
     member = world.require_member_here(case.member)
     assert member.hired
     assert case.member in world.party
-    assert told == SIGNED_ON.format(name=member.name)
+    assert written.telling == SIGNED_ON.format(name=member.name)

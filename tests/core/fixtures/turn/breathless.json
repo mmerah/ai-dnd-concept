@@ -6,7 +6,7 @@
     "dice": []
   },
   {
-    "trace": "Listen for what moves on the flats — think: 1d10 [1]",
+    "trace": "Listen for what moves on the flats — think: d10 [1]",
     "told": false,
     "card": "",
     "dice": []

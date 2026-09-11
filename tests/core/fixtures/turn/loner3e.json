@@ -12,7 +12,7 @@
     "dice": []
   },
   {
-    "trace": "Does he hear what waits past the vault door without being heard? — risk: 1d6 [5]",
+    "trace": "Does he hear what waits past the vault door without being heard? — risk: d6 [5]",
     "told": false,
     "card": "",
     "dice": []

@@ -1,9 +1,9 @@
-from support.breathless import DAX, ENGINE, small_world
+from support.breathless import DAX, ENGINE, MIRA, hired, small_world
 from support.table import BREATHLESS, change, game, narrowed
 
 from aidm.core.views import PanelRow
 from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.breathless.world import STARTING_ITEM, BreathlessGame
+from aidm.engines.breathless.world import STARTING_ITEM, BreathlessGame, Supply
 from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.seam import AnyEngine
 
@@ -73,6 +73,19 @@ def test_entity_line_marks_a_dead_one_after_the_brief() -> None:
     dead = Person(id=DAX, name="Dax", brief="A looter", known=True, alive=False)
     line = dead.line()
     assert line.startswith("- Dax[dax] — A looter (dead)")
+
+
+def test_a_hired_survivors_line_carries_the_backpack_after_the_detail() -> None:
+    world = small_world()
+    mira = hired(world.payload, MIRA)
+    sheet = mira.require_sheet()
+    sheet.items["knife"] = Supply(name="knife", die=10)
+    sheet.med_kit = True
+
+    line = mira.line(detail="met; travels with the player")
+
+    assert "met; travels with the player; knife[knife] d10, med kit" in line
+    assert "Wrench[" not in world.payload.player.line()
 
 
 def test_skill_steps_exclude_earlier_picks() -> None:

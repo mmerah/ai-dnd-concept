@@ -3,7 +3,7 @@ from support.tunnelgoons import HALL, MIRA, START, small_world
 
 from aidm.core.entities import Refusal
 from aidm.engines.rooms.world import MapDraft, Prop, Way
-from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsWorld
+from aidm.engines.tunnelgoons.world import GoonSheet, Npc, TunnelGoonsWorld
 
 GHOST = "ghost"
 
@@ -55,6 +55,47 @@ def test_walk_reaches_every_place_along_the_ways() -> None:
 def test_frontier_counts_the_one_unknown_place_past_a_known_one() -> None:
     world = small_world().payload
     assert world.frontier() == 1
+
+
+def test_a_goons_rows_put_health_before_the_sheets_rows() -> None:
+    world = small_world().payload
+
+    labels = [label for label, _ in world.player.rows()]
+
+    assert labels == ["Health", "Brute", "Skulker", "Erudite", "Inventory", "Level"]
+
+
+def test_the_player_levels_up_their_ability_and_health_with_no_name_prefix() -> None:
+    world = small_world().payload
+    player = world.player
+    sheet = player.require_sheet()
+    before_ability = sheet.abilities["brute"]
+    before_hp = player.hp.maximum
+
+    facts = player.level("brute", "health")
+
+    assert sheet.abilities["brute"] == before_ability + 1
+    assert player.hp.maximum == before_hp + 1
+    assert player.hp.current == before_hp + 1
+    assert sheet.level == 2
+    assert len(facts) == 1
+    assert facts[0].card == "Level 2: Brute +1, Health +1"
+    assert facts[0].trace == facts[0].card
+
+
+def test_a_hired_npc_levels_up_their_ability_and_inventory_with_a_name_prefix() -> None:
+    world = small_world().payload
+    mira = world.npcs[MIRA]
+    mira.sheet = GoonSheet(abilities={"brute": 0, "skulker": 0, "erudite": 0})
+    before_inventory = mira.require_sheet().inventory
+
+    facts = mira.level("skulker", "inventory")
+
+    assert mira.require_sheet().abilities["skulker"] == 1
+    assert mira.require_sheet().inventory == before_inventory + 1
+    assert mira.require_sheet().level == 2
+    assert len(facts) == 1
+    assert facts[0].card == "Mira: Level 2: Skulker +1, Inventory +1"
 
 
 def test_the_map_so_far_names_who_stands_where_and_every_id_in_use() -> None:

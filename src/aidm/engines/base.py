@@ -21,6 +21,31 @@ IS_DEAD = "{name} is dead and takes no further part."
 SOURCELESS = "(none — write from what is below)"
 
 
+class Gauge(Mutable):
+    current: int
+    maximum: int
+
+    @model_validator(mode="after")
+    def _within_bounds(self) -> Self:
+        if self.current < 0:
+            raise ValueError(f"{self.current} is below zero")
+        if self.current > self.maximum:
+            raise ValueError(f"{self.current} is above maximum {self.maximum}")
+        return self
+
+    def __str__(self) -> str:
+        return f"{self.current}/{self.maximum}"
+
+    @property
+    def shortfall(self) -> int:
+        return self.maximum - self.current
+
+    def adjust(self, amount: int) -> int:
+        before = self.current
+        self.current = min(max(before + amount, 0), self.maximum)
+        return self.current - before
+
+
 class Thing(Mutable):
     id: Slug
     name: str
@@ -60,6 +85,14 @@ class Thing(Mutable):
         """`told` only when the player has learned of this thing, so no unknown name leaks."""
         return Fact(trace=trace, told=self.known, card=card, dice=dice)
 
+    def change(self, gauge: Gauge, amount: int, label: str, why: str) -> list[Fact]:
+        delta = gauge.adjust(amount)
+        if delta == 0:
+            return []
+        moved = f"{label} {delta:+d} → {gauge}"
+        card = moved if self.id == PLAYER_ID else f"{self.name}: {moved}"
+        return [self.fact(f"{self.mention} {moved} ({why})", card=card)]
+
     def reveal(self, *, card: str = "") -> list[Fact]:
         """Leave cards to the containing action or the standalone `reveal` tool."""
         if self.known:
@@ -97,6 +130,9 @@ class Person(Thing):
         """Whether a sheet could still be written for them."""
         return False
 
+    def drop_item(self, _item_id: Slug) -> list[Fact]:
+        raise Refusal(f"{self.name} carries no items")
+
 
 class Sheeted[S: BaseModel](Person):
     sheet: S | None = Field(default=None, description="Leave empty.")
@@ -105,6 +141,19 @@ class Sheeted[S: BaseModel](Person):
         if self.sheet is None:
             raise Refusal(f"{self.name} carries no dice")
         return self.sheet
+
+    def take_sheet(self, sheet: S) -> None:
+        if self.sheet is not None:
+            raise Refusal(f"{self.name} already carries a sheet")
+        self.sheet = sheet
+
+    def carried(self) -> str:
+        return ""
+
+    def line(self, *, rows: Pairs | None = None, detail: str = "") -> str:
+        if self.id != PLAYER_ID and (carried := self.carried()):
+            detail = "; ".join(part for part in (detail, carried) if part)
+        return super().line(rows=rows, detail=detail)
 
     def forbidden(self) -> str:
         parts = (super().forbidden(), "a sheet" if self.sheet is not None else "")
@@ -122,6 +171,9 @@ class Sheeted[S: BaseModel](Person):
 class Item(Mutable):
     name: str
 
+    def notes(self) -> str:
+        return ""
+
 
 class ItemSheet[I: Item](Mutable):
     items: dict[Slug, I] = Field(default_factory=dict)
@@ -132,10 +184,10 @@ class ItemSheet[I: Item](Mutable):
             raise Refusal(f"{item_id!r} is not among {owner}'s items")
         return item
 
-    def drop_item(self, item_id: Slug, owner: Thing) -> list[Fact]:
-        item = self.require(item_id, owner.name)
+    def remove_item(self, item_id: Slug, owner: str) -> I:
+        item = self.require(item_id, owner)
         del self.items[item_id]
-        return [owner.fact(f"{owner.mention} drops {item.name}", card=f"Dropped {item.name}")]
+        return item
 
 
 class World[M: Person, P: Person](Mutable):
@@ -240,39 +292,6 @@ class LeaveParty(Frozen):
     entity_id: Slug = Field(description="Exact id of the party member leaving.")
 
 
-class Gauge(Mutable):
-    current: int
-    maximum: int
-
-    @model_validator(mode="after")
-    def _within_bounds(self) -> Self:
-        if self.current < 0:
-            raise ValueError(f"{self.current} is below zero")
-        if self.current > self.maximum:
-            raise ValueError(f"{self.current} is above maximum {self.maximum}")
-        return self
-
-    def __str__(self) -> str:
-        return f"{self.current}/{self.maximum}"
-
-    @property
-    def shortfall(self) -> int:
-        return self.maximum - self.current
-
-    def adjust(self, amount: int) -> int:
-        before = self.current
-        self.current = min(max(before + amount, 0), self.maximum)
-        return self.current - before
-
-    def change(self, owner: Thing, amount: int, label: str, why: str) -> list[Fact]:
-        delta = self.adjust(amount)
-        if delta == 0:
-            return []
-        moved = f"{label} {delta:+d} → {self}"
-        card = moved if owner.id == PLAYER_ID else f"{owner.name}: {moved}"
-        return [owner.fact(f"{owner.mention} {moved} ({why})", card=card)]
-
-
 def character_panel(rows: Pairs) -> Panel:
     return Panel(
         title="Character",
@@ -322,9 +341,9 @@ def banded(face: int, low: str, mid: str, high: str) -> str:
 
 def luck_test(question: str, die: int, bands: tuple[str, str, str], rng: Random) -> list[Fact]:
     """A question about the world when nobody acts: the dice trace, the answer is never told."""
-    rolled, dice_fact = roll((die,), question, rng)
-    result = banded(rolled[0], *bands)
-    return [dice_fact, Fact(trace=f"{question} — d{die} [{rolled[0]}] → {result}")]
+    rolled = roll((die,), question, rng)
+    result = banded(rolled.rolled[0], *bands)
+    return [rolled.fact, Fact(trace=f"{question} — d{die} [{rolled.rolled[0]}] → {result}")]
 
 
 def render_worldsmith(

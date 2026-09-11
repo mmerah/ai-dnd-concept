@@ -1,10 +1,11 @@
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked
 from aidm.core.entities import EngineId, Refusal, Slug, parse, slug
-from aidm.core.facts import DiceEvent, Fact, roll, roll_pool
+from aidm.core.facts import Fact, roll, roll_pool
 from aidm.core.model import AnyCharacter
 from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.prompt import Pairs, lines_of, sentence
@@ -28,7 +29,6 @@ from aidm.engines.breathless.tools import (
 )
 from aidm.engines.breathless.world import (
     LADDER,
-    LOOT_START,
     SKILLS,
     STARTING_DICE,
     STARTING_ITEM,
@@ -43,11 +43,17 @@ from aidm.engines.breathless.world import (
     Supply,
     Survivor,
     SurvivorSheet,
-    stepped,
 )
 from aidm.engines.breathless.worldsmith import AUTHORING, HIRING, Pack, SheetDraft
 from aidm.engines.hiring import DROP_ITEM, DropItem, Hiring, hiring
 from aidm.engines.scenes.engine import SceneEngine
+
+
+@dataclass(frozen=True, slots=True)
+class Pool:
+    die: Die
+    label: str
+    helper: tuple[Survivor, Die] | None
 
 
 class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
@@ -161,10 +167,6 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         """Always the SRD's own table: no other pack publishes one."""
         return self.srd_pack().complications
 
-    def drop_item(self, draft: BreathlessGame, args: DropItem, _rng: Random) -> list[Fact]:
-        actor = self.world_of(draft).require_actor(args.actor_id)
-        return actor.require_sheet().drop_item(args.item_id, actor)
-
     def change_stress(self, draft: BreathlessGame, args: ChangeStress, _rng: Random) -> list[Fact]:
         return (
             self.world_of(draft).require_actor(args.actor_id).change_stress(args.amount, args.why)
@@ -189,102 +191,45 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         )
 
     def install_sheet(self, member: Survivor, answer: SheetDraft) -> str:
-        member.sheet = SurvivorSheet(
-            pronouns=answer.pronouns,
-            job=answer.job,
-            skills=dict(answer.skills),
-            worn=dict(answer.skills),
-            items={slug(answer.item, ()): Supply(name=answer.item, die=STARTING_ITEM)},
+        member.take_sheet(
+            SurvivorSheet(
+                pronouns=answer.pronouns,
+                job=answer.job,
+                skills=dict(answer.skills),
+                worn=dict(answer.skills),
+                items={slug(answer.item, ()): Supply(name=answer.item, die=STARTING_ITEM)},
+            )
         )
         return answer.job
 
     def roll(self, draft: BreathlessGame, args: Roll, rng: Random) -> list[Fact]:
         world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
-        sheet = actor.require_sheet()
+        pool = _pool(world, actor, args)
 
-        item: Supply | None = None
-        helper: tuple[Survivor, Die] | None = None
-        if args.skill is not None:
-            die = sheet.worn[args.skill]
-            label = args.skill
-            if args.helped_by is not None:
-                partner = world.require_actor(args.helped_by)
-                if partner is actor:
-                    raise Refusal(f"{actor.name} cannot help their own roll")
-                helper = (partner, partner.require_sheet().worn[args.skill])
-        elif args.item_id is not None:
-            item = sheet.require(args.item_id, actor.name)
-            die = item.die
-            label = item.name
-        else:
-            if sheet.stunted:
-                raise Refusal(f"the stunt is spent until {actor.name} catches their breath")
-            die = STUNT_DIE
-            label = "stunt"
-            sheet.stunted = True
+        faces = (pool.die,) if pool.helper is None else (pool.die, pool.helper[1])
+        label = "+".join(f"d{face}" for face in faces)
+        rolled = roll_pool(faces, f"{args.what} — {pool.label}", rng, label=label)
+        result = banded(rolled.kept, "fail", "success-but", "success")
 
-        reason = f"{args.what} — {label}"
-        pool = (die,) if helper is None else (die, helper[1])
-        face, event, dice_fact = roll_pool(pool, reason, rng, label="+".join(f"d{f}" for f in pool))
+        worn_facts = _wear(actor, args, pool)
+        line = _line(world, actor, args, pool, result)
+        _consequence(draft, actor, pool, args, result)
 
-        result = banded(face, "fail", "success-but", "success")
-        worn = stepped(die)
-
-        if args.skill is not None:
-            sheet.worn[args.skill] = worn
-            if helper is not None:
-                helper[0].require_sheet().worn[args.skill] = stepped(helper[1])
-        elif item is not None and args.item_id is not None:
-            # SRD: "When reduced to a d4, the item either breaks, gets lost, or fades away".
-            if worn == 4:
-                del sheet.items[args.item_id]
-            else:
-                item.die = worn
-
-        prefix = "" if actor is world.player else f"{actor.name}: "
-        line = f"{args.what} — {prefix}{sentence(label)} d{die}"
-        if helper is not None:
-            line += f", helped by {helper[0].name} (d{helper[1]})"
-        line += f" → {result}"
-
-        facts = [dice_fact, actor.fact(line, card=line, dice=(event,))]
-        if item is not None and worn == 4:
-            gone = f"{item.name} is gone"
-            facts.append(actor.fact(gone, card=gone))
-
-        if args.dangerous and result == "fail":
-            for who in (actor, *((helper[0],) if helper else ())):
-                if who.require_sheet().vulnerable:
-                    draft.note(
-                        f"{who.name} is vulnerable and this dangerous roll failed: rule "
-                        "whether they are taken out of the scene or dead. Death is "
-                        f"`kill` on {who.name}."
-                    )
-        return facts
+        return [rolled.fact, actor.fact(line, card=line, dice=(rolled.event,)), *worn_facts]
 
     def catch_breath(self, draft: BreathlessGame, args: Actor, rng: Random) -> list[Fact]:
         world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
-        sheet = actor.require_sheet()
-        sheet.worn = dict(sheet.skills)
-        sheet.loot = LOOT_START
-        sheet.stunted = False
+        facts = actor.catch_breath()
 
-        rolled, dice_fact = roll((12,), "a new complication", rng)
-        text = self._complications()[rolled[0] - 1]
+        rolled = roll((12,), "a new complication", rng)
+        text = self._complications()[rolled.rolled[0] - 1]
         draft.note(
             f"Catching breath brings a new complication. The SRD's table suggests: {text} Bring "
             "it in through the story, or one that fits better."
         )
-        trace = f"{actor.mention} catches their breath: skills and loot die restored"
-        card = (
-            "Caught breath — skills and loot die restored"
-            if actor is world.player
-            else f"{actor.name} caught breath — skills and loot die restored"
-        )
-        fact = actor.fact(trace, card=card)
-        return [dice_fact, fact]
+        return [rolled.fact, *facts]
 
     def answer(self, draft: BreathlessGame, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
         if chosen.name != TAKE_LOOT:
@@ -296,9 +241,9 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         item, player = args.item, self.world_of(draft).player
         sheet = player.require_sheet()
         before = sheet.loot
-        rolled, dice_fact = roll((before,), f"scavenging — {item}", rng)
-        face = rolled[0]
-        sheet.loot = stepped(before)
+        rolled = roll((before,), f"scavenging — {item}", rng)
+        face = rolled.rolled[0]
+        sheet.step_loot()
 
         found: Die | None = None
         if face <= 2:
@@ -310,9 +255,8 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
 
         result = f"found {item} (d{found})" if found is not None else "nothing"
         line = f"Scavenge — d{before} → {result}"
-        event = DiceEvent(label=f"d{before}", faces=(before,), rolled=rolled)
-        fact = player.fact(line, card=line, dice=(event,))
-        facts = [dice_fact, fact]
+        fact = player.fact(line, card=line, dice=(rolled.event,))
+        facts = [rolled.fact, fact]
 
         if found is not None:
             draft.pending = PendingDecision(
@@ -325,6 +269,56 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
 
     def test_luck(self, _draft: BreathlessGame, args: TestLuck, rng: Random) -> list[Fact]:
         return luck_test(args.question, args.die, ("fail", "success-but", "success"), rng)
+
+
+def _pool(world: BreathlessWorld, actor: Survivor, args: Roll) -> Pool:
+    sheet = actor.require_sheet()
+    if args.skill is not None:
+        helper: tuple[Survivor, Die] | None = None
+        if args.helped_by is not None:
+            partner = world.require_actor(args.helped_by)
+            if partner is actor:
+                raise Refusal(f"{actor.name} cannot help their own roll")
+            helper = (partner, partner.require_sheet().worn[args.skill])
+        return Pool(die=sheet.worn[args.skill], label=args.skill, helper=helper)
+    if args.item_id is not None:
+        item = sheet.require(args.item_id, actor.name)
+        return Pool(die=item.die, label=item.name, helper=None)
+    sheet.spend_stunt(actor.name)
+    return Pool(die=STUNT_DIE, label="stunt", helper=None)
+
+
+def _wear(actor: Survivor, args: Roll, pool: Pool) -> list[Fact]:
+    if args.skill is not None:
+        actor.require_sheet().wear(args.skill)
+        if pool.helper is not None:
+            pool.helper[0].require_sheet().wear(args.skill)
+        return []
+    if args.item_id is not None:
+        return actor.wear_item(args.item_id)
+    return []
+
+
+def _line(world: BreathlessWorld, actor: Survivor, args: Roll, pool: Pool, result: str) -> str:
+    prefix = "" if actor is world.player else f"{actor.name}: "
+    line = f"{args.what} — {prefix}{sentence(pool.label)} d{pool.die}"
+    if pool.helper is not None:
+        line += f", helped by {pool.helper[0].name} (d{pool.helper[1]})"
+    return f"{line} → {result}"
+
+
+def _consequence(
+    draft: BreathlessGame, actor: Survivor, pool: Pool, args: Roll, result: str
+) -> None:
+    if not (args.dangerous and result == "fail"):
+        return
+    for who in (actor, *((pool.helper[0],) if pool.helper else ())):
+        if who.require_sheet().vulnerable:
+            draft.note(
+                f"{who.name} is vulnerable and this dangerous roll failed: rule "
+                "whether they are taken out of the scene or dead. Death is "
+                f"`kill` on {who.name}."
+            )
 
 
 def _skill(name: str) -> Skill:

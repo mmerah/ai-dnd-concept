@@ -186,11 +186,11 @@ async def test_install_scene_appends_a_run_and_returns_the_opened_fact(case: Sce
         "hidden": [case.unmet],
         "recap": "They leave the mess behind and press on toward what waits next.",
     }
-    facts, _ = await case.engine.advance(
+    written = await case.engine.advance(
         draft, Generation(operation=DEPARTURE, detail="Onward."), stub_worldsmith(answer)
     )
     assert len(draft.log) == chapters_before + 1
-    assert any(fact.card.startswith("New scene:") for fact in facts)
+    assert any(fact.card.startswith("New scene:") for fact in written.facts)
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)

@@ -39,11 +39,25 @@ from aidm.engines.base import (
     World,
     render_worldsmith,
 )
-from aidm.engines.hiring import HIRE, HIRE_TOOL, HIRE_UNWRITTEN, SIGNED_ON, Hire, Hiring
+from aidm.engines.hiring import (
+    HIRE,
+    HIRE_TOOL,
+    HIRE_UNWRITTEN,
+    SIGNED_ON,
+    DropItem,
+    Hire,
+    Hiring,
+)
 
 type AnyEngine = Engine[Any, Any, Any]
-# What a worldsmith write leaves: the facts, and what to tell the narrator, if anything.
-type Written = tuple[tuple[Fact, ...], str | None]
+
+
+@dataclass(frozen=True, slots=True)
+class Written:
+    """What a worldsmith write leaves: the facts, and what to tell the narrator, if anything."""
+
+    facts: tuple[Fact, ...]
+    telling: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,6 +120,9 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     def leave_party(self, draft: G, args: LeaveParty, _rng: Random) -> list[Fact]:
         return self.world_of(draft).leave_party(args.entity_id)
 
+    def drop_item(self, draft: G, args: DropItem, _rng: Random) -> list[Fact]:
+        return self.world_of(draft).require_actor(args.actor_id).drop_item(args.item_id)
+
     def hiring(self) -> Hiring[G, M] | None:
         """The write of a hired member's sheet; `None` when this engine hires nobody."""
         return None
@@ -133,7 +150,7 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
         facts = world.join(member) if member.id not in world.party else []
         trace = f"{member.mention} signs on — {summary}"
         facts.append(member.fact(trace, card=f"{member.name} signs on — {summary}"))
-        return tuple(facts), SIGNED_ON.format(name=member.name)
+        return Written(tuple(facts), SIGNED_ON.format(name=member.name))
 
     async def advance(self, draft: G, request: Generation, worldsmith: WorldsmithAnswer) -> Written:
         """Write and install on `draft`; the facts, and what to tell the narrator, if anything."""

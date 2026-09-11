@@ -102,10 +102,8 @@ class SceneWorld[C: Person](World[C, C]):
             raise Refusal(UNKNOWN_ID.format(entity_id=entity_id))
         return entity
 
-    def require_here(self, entity_id: Slug, *, alive: bool = False) -> C:
+    def require_here(self, entity_id: Slug) -> C:
         entity = self.require(entity_id)
-        if alive and not entity.alive:
-            raise Refusal(IS_DEAD.format(name=entity.name))
         if entity.id == self.player.id:
             return entity
         if entity.id not in self.run.here or not entity.known:
@@ -115,13 +113,19 @@ class SceneWorld[C: Person](World[C, C]):
             )
         return entity
 
+    def require_living_here(self, entity_id: Slug) -> C:
+        entity = self.require_here(entity_id)
+        if not entity.alive:
+            raise Refusal(IS_DEAD.format(name=entity.name))
+        return entity
+
     def here(self) -> Iterator[C]:
         yield self.player
         for entity_id in self.present():
             yield self.cast[entity_id]
 
     def require_member_here(self, entity_id: Slug) -> C:
-        return self.require_here(entity_id, alive=True)
+        return self.require_living_here(entity_id)
 
     def others(self) -> Iterator[C]:
         return (self.cast[entity_id] for entity_id in self.present() if entity_id not in self.party)

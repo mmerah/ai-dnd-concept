@@ -29,34 +29,49 @@ class GoonSheet(Mutable):
     inventory: int = Field(default=INVENTORY_START, ge=0)
     level: int = Field(default=1, ge=1)
 
-    def rows(self, hp: Gauge) -> Pairs:
+    def rows(self) -> Pairs:
         return (
             *((ability.capitalize(), str(self.abilities[ability])) for ability in ABILITIES),
-            ("Health", str(hp)),
             ("Inventory", str(self.inventory)),
             ("Level", str(self.level)),
         )
 
 
-class Npc(Sheeted[GoonSheet], Dweller):
-    """A non-player character, friend or foe."""
-
-    # SRD: an NPC's Difficulty Score is also its Health Points, so one counter serves both.
+class Adventurer(Sheeted[GoonSheet]):
     hp: Gauge
 
     def rows(self) -> Pairs:
+        return (("Health", str(self.hp)), *self.require_sheet().rows())
+
+    def level(self, ability: Ability, boost: Boost) -> list[Fact]:
+        sheet = self.require_sheet()
+        sheet.abilities[ability] += 1
+        if boost == "health":
+            self.hp.maximum += 1
+            self.hp.current += 1
+        else:
+            sheet.inventory += 1
+        sheet.level += 1
+        card = f"Level {sheet.level}: {ability.capitalize()} +1, {boost.capitalize()} +1"
+        if self.id != PLAYER_ID:
+            card = f"{self.name}: {card}"
+        return [self.fact(card, card=card)]
+
+
+class Npc(Adventurer, Dweller):
+    """A non-player character, friend or foe."""
+
+    def rows(self) -> Pairs:
         if self.hired:
-            return self.require_sheet().rows(self.hp)
+            return super().rows()
+        # SRD: an NPC's Difficulty Score is also its Health Points, so one counter serves both.
         return (("Health", f"{self.hp} (its Difficulty Score)"),)
 
 
-class Goon(Sheeted[GoonSheet]):
+class Goon(Adventurer):
     hp: Gauge = Field(default_factory=lambda: Gauge(current=HP_START, maximum=HP_START))
     # The starting items by name; `new_game` files them as `Prop`s on the player.
     kit: tuple[str, ...] = Field(min_length=STARTING_ITEMS, max_length=STARTING_ITEMS)
-
-    def rows(self) -> Pairs:
-        return self.require_sheet().rows(self.hp)
 
     def unpack_kit(self, taken: Iterable[str]) -> tuple[Prop, ...]:
         made = list(taken)
@@ -81,14 +96,14 @@ class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
     def rest(self) -> list[Fact]:
         player = self.player
         members = self.members()
-        facts = player.hp.change(player, player.hp.shortfall, "Health", "resting")
+        facts = player.change(player.hp, player.hp.shortfall, "Health", "resting")
         for member in members:
-            facts.extend(member.hp.change(member, member.hp.shortfall, "Health", "resting"))
+            facts.extend(member.change(member.hp, member.hp.shortfall, "Health", "resting"))
         trace = f"{'the party' if members else 'the player'} rests at {self.current.mention}"
         facts.append(player.fact(trace, card=f"Rested — Health {player.hp}"))
         return facts
 
-    def next_to_level(self, actor: Goon | Npc) -> Npc | None:
+    def next_to_level(self, actor: Adventurer) -> Npc | None:
         members = [member for member in self.members() if member.hired]
         order = [self.player.id, *(member.id for member in members)]
         index = order.index(actor.id)

@@ -158,7 +158,7 @@ Can Kael get through Vessa's airlock and into the station, and on whose terms?
 
 YOU PLAY FOR:
 - Kael[player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.
-  specialty: Sneak; origin: Human; skills: Stealth d12, Climbing d8, Piloting d8; credits: ₡2; gear: Comm, Climbing gear, Night vision goggles
+  specialty: Sneak; origin: Human; skills: Stealth d12, Climbing d8, Piloting d8; credits: ₡2
 
 GEAR:
 - Comm[comm]

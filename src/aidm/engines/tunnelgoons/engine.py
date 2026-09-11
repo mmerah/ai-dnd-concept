@@ -1,10 +1,11 @@
 from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, picked
 from aidm.core.entities import EngineId, Refusal, slug
-from aidm.core.facts import DiceEvent, Fact, roll
+from aidm.core.facts import Fact, roll
 from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption, PendingDecision
 from aidm.core.prompt import Pairs
@@ -27,6 +28,7 @@ from aidm.engines.tunnelgoons.world import (
     ABILITY_POINTS,
     STARTING_ITEMS,
     Ability,
+    Adventurer,
     Goon,
     GoonSheet,
     Npc,
@@ -60,6 +62,16 @@ STARTING_ITEM_LIST: tuple[str, ...] = (
 POINT_OPTIONS: tuple[DecisionOption, ...] = tuple(
     DecisionOption(id=str(points), label=str(points)) for points in range(ABILITY_POINTS + 1)
 )
+
+
+@dataclass(frozen=True, slots=True)
+class Pool:
+    faces: tuple[int, ...]
+    label: str
+    items: tuple[Prop, ...]
+    npc: Npc | None
+    difficulty: int
+    penalty: int
 
 
 class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
@@ -156,7 +168,8 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         )
 
     def install_sheet(self, member: Npc, answer: AbilitiesDraft) -> str:
-        sheet = member.sheet = GoonSheet(abilities=dict(answer.abilities))
+        sheet = GoonSheet(abilities=dict(answer.abilities))
+        member.take_sheet(sheet)
         return ", ".join(
             f"{ability.capitalize()} {sheet.abilities[ability]}" for ability in ABILITIES
         )
@@ -165,46 +178,14 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
         sheet = actor.require_sheet()
-        items = world.carried_items(actor, args.items)
-        npc = world.require_member_here(args.against) if args.against is not None else None
-        if npc is actor:
-            raise Refusal(f"{actor.name} cannot roll against themselves")
-        facts = npc.reveal() if npc is not None else []
-        ds = npc.hp.current if npc is not None else args.difficulty
-        if ds is None:
-            raise Refusal("give a difficulty, or an npc to roll against")
-
-        penalty = 0
-        if args.ability in ("brute", "skulker"):
-            penalty = max(0, len(list(world.carried(actor.id))) - sheet.inventory)
-        rolled, dice_fact = roll((6, 6), f"{args.what} — {args.ability}", rng)
-        total = sum(rolled) + sheet.abilities[args.ability] + len(items) - penalty
-        success = total >= ds
-        margin = total - ds
-        outcome = "success" if success else "failure"
-
-        facts.append(dice_fact)
-        who = "" if actor is world.player else f"{actor.name}: "
-        line = (
-            f"{args.what} — {who}{args.ability.capitalize()}"
-            + (f" with {', '.join(item.name for item in items)}" if items else "")
-            + (f" against {npc.name}" if npc is not None else "")
-            + f", {total} vs DS {ds} → {outcome}"
-        )
-        event = DiceEvent(label="2d6", faces=(6, 6), rolled=rolled)
-        facts.append(actor.fact(line, card=line, dice=(event,)))
-
-        # SRD: only a dangerous action turns the margin into damage; an npc's DS alone does not.
-        if not args.dangerous:
-            return facts
-        if npc is not None and success:
-            facts.extend(npc.hp.change(npc, -margin, "Health", f"{actor.name}'s action"))
-            if npc.hp.current == 0:
-                facts.extend(world.kill(npc.id))
-        elif not success:
-            facts.extend(actor.hp.change(actor, margin, "Health", args.what))
-            if actor.hp.current == 0:
-                facts.extend(world.kill(actor.id))
+        pool = _pool(world, actor, args)
+        facts = pool.npc.reveal() if pool.npc else []
+        rolled = roll(pool.faces, f"{args.what} — {pool.label}", rng)
+        total = rolled.total + sheet.abilities[args.ability] + len(pool.items) - pool.penalty
+        success = total >= pool.difficulty
+        line = _line(world, actor, args, pool, total, success)
+        facts += [rolled.fact, actor.fact(line, card=line, dice=(rolled.event,))]
+        facts += _consequence(world, actor, args, pool, total, success)
         return facts
 
     def level_up(self, draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
@@ -215,26 +196,68 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
             draft.pending = _level_decision(actor)
             return []
         actor = world.require_actor(args.actor_id)
-        sheet = actor.require_sheet()
-        sheet.abilities[args.ability] += 1
-        if args.boost == "health":
-            actor.hp.maximum += 1
-            actor.hp.current += 1
-        else:
-            sheet.inventory += 1
-        sheet.level += 1
-        card = f"Level {sheet.level}: {args.ability.capitalize()} +1, {args.boost.capitalize()} +1"
-        if actor is not world.player:
-            card = f"{actor.name}: {card}"
-        facts = [actor.fact(card, card=card)]
+        facts = actor.level(args.ability, args.boost)
         following = world.next_to_level(actor)
         if following is not None:
             draft.pending = _level_decision(following)
         return facts
 
 
-def _level_decision(actor: Goon | Npc) -> PendingDecision:
+def _level_decision(actor: Adventurer) -> PendingDecision:
     prompt = f"Level up: {actor.name} — raise one ability by 1, and Health or Inventory by 1."
     return PendingDecision(
         kind="level-up", prompt=prompt, options=level_options(actor.id), allows_text=False
     )
+
+
+def _pool(world: TunnelGoonsWorld, actor: Adventurer, args: Roll) -> Pool:
+    items = world.carried_items(actor, args.items)
+    npc = world.require_member_here(args.against) if args.against is not None else None
+    if npc is actor:
+        raise Refusal(f"{actor.name} cannot roll against themselves")
+    difficulty = npc.hp.current if npc is not None else args.difficulty
+    if difficulty is None:
+        raise Refusal("give a difficulty, or an npc to roll against")
+    penalty = 0
+    if args.ability in ("brute", "skulker"):
+        penalty = max(0, len(list(world.carried(actor.id))) - actor.require_sheet().inventory)
+    return Pool(
+        faces=(6, 6),
+        label=args.ability,
+        items=items,
+        npc=npc,
+        difficulty=difficulty,
+        penalty=penalty,
+    )
+
+
+def _line(
+    world: TunnelGoonsWorld, actor: Adventurer, args: Roll, pool: Pool, total: int, success: bool
+) -> str:
+    who = "" if actor is world.player else f"{actor.name}: "
+    outcome = "success" if success else "failure"
+    return (
+        f"{args.what} — {who}{args.ability.capitalize()}"
+        + (f" with {', '.join(item.name for item in pool.items)}" if pool.items else "")
+        + (f" against {pool.npc.name}" if pool.npc is not None else "")
+        + f", {total} vs DS {pool.difficulty} → {outcome}"
+    )
+
+
+def _consequence(
+    world: TunnelGoonsWorld, actor: Adventurer, args: Roll, pool: Pool, total: int, success: bool
+) -> list[Fact]:
+    # SRD: only a dangerous action turns the margin into damage; an npc's DS alone does not.
+    if not args.dangerous:
+        return []
+    margin = total - pool.difficulty
+    facts: list[Fact] = []
+    if pool.npc is not None and success:
+        facts.extend(pool.npc.change(pool.npc.hp, -margin, "Health", f"{actor.name}'s action"))
+        if pool.npc.hp.current == 0:
+            facts.extend(world.kill(pool.npc.id))
+    elif not success:
+        facts.extend(actor.change(actor.hp, margin, "Health", args.what))
+        if actor.hp.current == 0:
+            facts.extend(world.kill(actor.id))
+    return facts
