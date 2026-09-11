@@ -7,7 +7,7 @@ from support.table import refused as change_refused
 from aidm.core.entities import Refusal
 from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.loner3e.world import LUCK_MAX, Loner3eCast, Loner3eGame
+from aidm.engines.loner3e.world import LUCK_MAX, TIES_PER_TWIST, Loner3eCast, Loner3eGame
 from aidm.engines.scenes.tools import NextDraft, SceneDraft
 from aidm.engines.scenes.worldsmith import check_scene
 
@@ -226,6 +226,18 @@ def test_drive_writes_what_play_revealed() -> None:
     _ = changed(draft, "kill", entity_id=MARA)
     assert "dead" in refused(draft, "drive", entity_id=MARA, motive="Survive")
     _ = draft.commit()
+
+
+def test_tick_twist_turns_over_on_the_third_call_and_resets() -> None:
+    _, state = initialized()
+    draft = state.draft()
+
+    assert draft.payload.tick_twist() is False
+    assert draft.payload.twist.current == 1
+    assert draft.payload.tick_twist() is False
+    assert draft.payload.twist.current == TIES_PER_TWIST - 1
+    assert draft.payload.tick_twist() is True
+    assert draft.payload.twist.current == 0
 
 
 def test_the_cast_lines_say_who_the_player_has_met() -> None:

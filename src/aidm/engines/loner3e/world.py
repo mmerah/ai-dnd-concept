@@ -110,12 +110,20 @@ class Loner3eCast(Person):
         return [self.fact(trace, card=card)]
 
     def refill(self, why: str) -> list[Fact]:
-        return self.luck.change(self, self.luck.shortfall, "Luck", why)
+        return self.change(self.luck, self.luck.shortfall, "Luck", why)
 
 
 class Loner3eWorld(SceneWorld[Loner3eCast]):
     # The played character's tally paces the whole game, so no sheet carries one.
     twist: Gauge = Field(default_factory=lambda: Gauge(current=0, maximum=TIES_PER_TWIST))
+
+    def tick_twist(self) -> bool:
+        """True when the counter turns over, which resets it."""
+        self.twist.current += 1
+        if self.twist.shortfall == 0:
+            self.twist.current = 0
+            return True
+        return False
 
     def conflict_prompt(self, actor: Loner3eCast, opponent: Loner3eCast) -> str:
         foe = actor if opponent.id == self.player.id else opponent

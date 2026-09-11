@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import Field
 
 from aidm.core.entities import Frozen, Refusal, Slug, check_unique, slug
-from aidm.core.facts import Fact
+from aidm.core.facts import DiceEvent, Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.prompt import Pairs
 from aidm.engines.base import Item, ItemSheet, Sheeted
@@ -142,14 +142,50 @@ class Crewmate(Sheeted[CrewSheet]):
         trace = f"{self.mention} spends ₡{amount} — {why}"
         return [self.fact(trace, card=f"₡{amount} spent — {why}")]
 
+    def maim(self) -> list[Fact]:
+        sheet = self.require_sheet()
+        if MAIMED in sheet.hindrances:
+            return []
+        sheet.hindrances.append(MAIMED)
+        return [self.fact(f"{self.mention} is maimed", card="Maimed")]
+
+    def raise_skill(self, label: str) -> list[Fact]:
+        sheet = self.require_sheet()
+        try:
+            new_die = raised(sheet.skills.get(label))
+        except Refusal as maxed:
+            raise Refusal(
+                f"{self.name}'s {label} is already at d12; raise another skill for them"
+            ) from maxed
+        sheet.skills[label] = new_die
+        trace = f"{self.mention} — {label} rises to d{new_die}"
+        return [self.fact(trace, card=f"Job done: {label} d{new_die}")]
+
+    def earn(self, credits: int, event: DiceEvent) -> list[Fact]:
+        sheet = self.require_sheet()
+        sheet.credits += credits
+        return [
+            self.fact(
+                f"{self.mention} earns ₡{credits} → ₡{sheet.credits}",
+                card=f"+₡{credits} → ₡{sheet.credits}",
+                dice=(event,),
+            )
+        ]
+
+    def drop_item(self, item_id: Slug) -> list[Fact]:
+        item = self.require_sheet().remove_item(item_id, self.name)
+        return [self.fact(f"{self.mention} drops {item.name}", card=f"Dropped {item.name}")]
+
     def rows(self) -> Pairs:
+        return self.sheet.rows() if self.sheet is not None else ()
+
+    def carried(self) -> str:
         if self.sheet is None:
-            return ()
-        gear = ", ".join(
-            item.name + (f" ({detail})" if (detail := item.notes()) else "")
-            for item in self.sheet.items.values()
+            return ""
+        return ", ".join(
+            f"{item.name}[{key}]" + (f" ({notes})" if (notes := item.notes()) else "")
+            for key, item in self.sheet.items.items()
         )
-        return (*self.sheet.rows(), *((("Gear", gear),) if gear else ()))
 
 
 class TwentyfourxxWorld(SceneWorld[Crewmate]):
@@ -221,6 +257,15 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         self.run.here.append(dead.id)
         trace = f"{member.tag} takes the lead; {dead.tag} is dead"
         return [member.fact(trace, card=f"{member.name} leads now")]
+
+    def take_job(self, terms: str) -> list[Fact]:
+        if self.job:
+            raise Refusal(f"a job is open: {self.job}")
+        self.job = terms
+        return [self.player.fact(f"the job is taken: {terms}", card=f"Job taken\n{terms}")]
+
+    def close_job(self) -> None:
+        self.job = ""
 
 
 TwentyfourxxGame = Game[TwentyfourxxWorld]

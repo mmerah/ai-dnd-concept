@@ -56,6 +56,15 @@ def test_killing_a_party_member_drops_them_from_the_party() -> None:
     assert any(fact.card == "Mara is dead" for fact in facts)
 
 
+def test_require_living_here_refuses_the_dead_where_require_here_does_not() -> None:
+    mara = Person(id=MARA, name="Mara", brief="A guide", known=True, alive=False)
+    world = _world(_run("a1", "A1", here=[MARA]), cast={MARA: mara})
+
+    assert world.require_here(MARA).id == MARA
+    with pytest.raises(Refusal, match="dead"):
+        _ = world.require_living_here(MARA)
+
+
 def test_a_party_member_who_is_not_in_this_scene_is_refused() -> None:
     world = _travelling()
     world.run.here.remove(MARA)

@@ -174,7 +174,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
 
     async def extend(self, draft: G, request: Generation, worldsmith: WorldsmithAnswer) -> Written:
         self.install(draft, await self.write_next(draft, request.detail, worldsmith))
-        return (), None
+        return Written((), None)
 
     def worldsmith_requests(self) -> dict[Slug, Request[G]]:
         return {**super().worldsmith_requests(), EXTEND: Request(MAP_UNWRITTEN, self.extend)}

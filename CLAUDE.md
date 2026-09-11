@@ -29,6 +29,8 @@ Tests run offline. They are deterministic.
 - Side effects live at the edges (files, network, UI). Rules code changes only the draft it is
   handed and rolls only the `Random` it is handed.
 - State models are mutable. Value models are frozen.
+- An engine tool method resolves ids and rolls dice; a world or entity method changes fields and
+  writes the facts.
 - Names shown to a role, the player or the launcher are `id`, `label`, `detail`. Things saved to
   disk keep `name` and `brief`.
 - Do not use `Any`. Use exact types. The one exception: a class or function generic on the game

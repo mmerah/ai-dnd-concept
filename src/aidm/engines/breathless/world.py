@@ -3,7 +3,7 @@ from typing import Literal, Self
 
 from pydantic import Field, JsonValue, model_validator
 
-from aidm.core.entities import Refusal, slug
+from aidm.core.entities import Refusal, Slug, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import PendingOption
@@ -30,6 +30,9 @@ TAKE_LOOT = "take_loot"
 
 class Supply(Item):
     die: Die
+
+    def notes(self) -> str:
+        return f"d{self.die}"
 
 
 class SurvivorSheet(ItemSheet[Supply]):
@@ -100,20 +103,60 @@ class SurvivorSheet(ItemSheet[Supply]):
             )
         return tuple(options)
 
+    def wear(self, skill: Skill) -> None:
+        self.worn[skill] = stepped(self.worn[skill])
+
+    def spend_stunt(self, owner: str) -> None:
+        if self.stunted:
+            raise Refusal(f"the stunt is spent until {owner} catches their breath")
+        self.stunted = True
+
+    def step_loot(self) -> None:
+        self.loot = stepped(self.loot)
+
 
 class Survivor(Sheeted[SurvivorSheet]):
     def change_stress(self, amount: int, why: str) -> list[Fact]:
-        return self.require_sheet().stress.change(self, amount, "Stress", why)
+        return self.change(self.require_sheet().stress, amount, "Stress", why)
 
     def use_med_kit(self) -> list[Fact]:
         sheet = self.require_sheet()
         if not sheet.med_kit:
             raise Refusal(f"{self.name} holds no med kit")
         sheet.med_kit = False
-        facts = sheet.stress.change(self, -MED_KIT_CLEARS, "Stress", "the med kit")
+        facts = self.change(sheet.stress, -MED_KIT_CLEARS, "Stress", "the med kit")
         used = f"{self.name} uses the med kit"
         facts.append(self.fact(used, card="Med kit used"))
         return facts
+
+    def drop_item(self, item_id: Slug) -> list[Fact]:
+        item = self.require_sheet().remove_item(item_id, self.name)
+        return [self.fact(f"{self.mention} drops {item.name}", card=f"Dropped {item.name}")]
+
+    def wear_item(self, item_id: Slug) -> list[Fact]:
+        sheet = self.require_sheet()
+        item = sheet.require(item_id, self.name)
+        worn = stepped(item.die)
+        # SRD: "When reduced to a d4, the item either breaks, gets lost, or fades away".
+        if worn == 4:
+            sheet.remove_item(item_id, self.name)
+            gone = f"{item.name} is gone"
+            return [self.fact(gone, card=gone)]
+        item.die = worn
+        return []
+
+    def catch_breath(self) -> list[Fact]:
+        sheet = self.require_sheet()
+        sheet.worn = dict(sheet.skills)
+        sheet.loot = LOOT_START
+        sheet.stunted = False
+        trace = f"{self.mention} catches their breath: skills and loot die restored"
+        card = (
+            "Caught breath — skills and loot die restored"
+            if self.id == PLAYER_ID
+            else f"{self.name} caught breath — skills and loot die restored"
+        )
+        return [self.fact(trace, card=card)]
 
     def take_loot(self, item: str, granted: Die, choice: str) -> Fact:
         sheet = self.require_sheet()
@@ -140,16 +183,15 @@ class Survivor(Sheeted[SurvivorSheet]):
     def rows(self) -> Pairs:
         return self.sheet.rows() if self.sheet is not None else ()
 
-    def line(self, *, rows: Pairs | None = None, detail: str = "") -> str:
-        # the player's backpack is the BACKPACK section
-        if self.sheet is not None and self.id != PLAYER_ID:
-            items = ", ".join(
-                f"{item.name}[{key}] d{item.die}" for key, item in self.sheet.items.items()
-            )
-            detail = f"backpack: {items or '(empty)'}"
-            if self.sheet.med_kit:
-                detail += ", med kit"
-        return super().line(rows=rows, detail=detail)
+    def carried(self) -> str:
+        if self.sheet is None:
+            return ""
+        items = ", ".join(
+            f"{item.name}[{key}] {item.notes()}" for key, item in self.sheet.items.items()
+        )
+        if self.sheet.med_kit:
+            return f"{items}, med kit" if items else "med kit"
+        return items
 
 
 BreathlessWorld = SceneWorld[Survivor]

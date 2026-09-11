@@ -12,7 +12,7 @@
     "dice": []
   },
   {
-    "trace": "Slip along the dark gantry — Stealth: 1d12 [11]",
+    "trace": "Slip along the dark gantry — Stealth: d12 [11]",
     "told": false,
     "card": "",
     "dice": []

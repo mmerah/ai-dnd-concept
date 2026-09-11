@@ -3,10 +3,12 @@ import pytest
 from aidm.core.entities import Refusal, Slug
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.world import (
+    LOOT_START,
     SKILLS,
     BreathlessWorld,
     Die,
     Skill,
+    Supply,
     Survivor,
     SurvivorSheet,
     stepped,
@@ -101,3 +103,54 @@ def test_require_actor_accepts_a_sheeted_party_member_and_refuses_an_unsheeted_o
     assert world.require_actor(MIRA) is world.cast[MIRA]
     with pytest.raises(Refusal, match="not the player or a hired party member"):
         world.require_actor(DAX)
+
+
+def test_wear_steps_the_worn_skill() -> None:
+    sheet = _player().require_sheet()
+    sheet.wear("bash")
+    assert sheet.worn["bash"] == stepped(10)
+
+
+def test_spend_stunt_refuses_a_second_time() -> None:
+    sheet = _player().require_sheet()
+    sheet.spend_stunt("Jax")
+    assert sheet.stunted
+    with pytest.raises(Refusal, match="catches their breath"):
+        sheet.spend_stunt("Jax")
+
+
+def test_step_loot_steps_the_loot_die() -> None:
+    sheet = _player().require_sheet()
+    sheet.step_loot()
+    assert sheet.loot == stepped(LOOT_START)
+
+
+def test_wear_item_at_d4_removes_it_and_writes_the_fact() -> None:
+    player = _player()
+    player.require_sheet().items["knife"] = Supply(name="Knife", die=6)
+    facts = player.wear_item("knife")
+    assert "knife" not in player.require_sheet().items
+    assert facts[0].card == "Knife is gone"
+
+
+def test_wear_item_above_d4_steps_the_die_and_writes_no_fact() -> None:
+    player = _player()
+    player.require_sheet().items["knife"] = Supply(name="Knife", die=10)
+    facts = player.wear_item("knife")
+    assert player.require_sheet().items["knife"].die == stepped(10)
+    assert facts == []
+
+
+def test_catch_breath_restores_worn_loot_and_stunt() -> None:
+    player = _player()
+    sheet = player.require_sheet()
+    sheet.worn["bash"] = 4
+    sheet.loot = 6
+    sheet.stunted = True
+
+    facts = player.catch_breath()
+
+    assert sheet.worn == sheet.skills
+    assert sheet.loot == LOOT_START
+    assert not sheet.stunted
+    assert facts[0].card == "Caught breath — skills and loot die restored"

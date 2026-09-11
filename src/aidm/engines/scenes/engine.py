@@ -288,13 +288,13 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
         scene = await self.write_next(draft, request.detail, worldsmith)
         # The engine's own closing reads the scene being left, so it runs before the install.
         facts = [*self.leaving(draft), *self.install(draft, scene)]
-        return tuple(facts), CROSSING.format(left=left, pursuit=request.detail)
+        return Written(tuple(facts), CROSSING.format(left=left, pursuit=request.detail))
 
     async def complicate(
         self, draft: G, request: Generation, worldsmith: WorldsmithAnswer
     ) -> Written:
         scene = await self.write_next(draft, COMPLICATING.format(brief=request.detail), worldsmith)
-        return tuple(self.install(draft, scene)), TURNING
+        return Written(tuple(self.install(draft, scene)), TURNING)
 
     def panels(self, _state: G) -> tuple[Panel, ...]:
         return ()

@@ -37,6 +37,21 @@ class Fact(Frozen):
     dice: tuple[DiceEvent, ...] = ()
 
 
+class Rolled(Frozen):
+    faces: tuple[int, ...]
+    rolled: tuple[int, ...]
+    event: DiceEvent
+    fact: Fact
+
+    @property
+    def kept(self) -> int:
+        return max(self.rolled)
+
+    @property
+    def total(self) -> int:
+        return sum(self.rolled)
+
+
 def cards(facts: Sequence[Fact]) -> tuple[Fact, ...]:
     """The narrator's gate is the player's: an unrevealed entity earns no card of its own."""
     return tuple(fact for fact in facts if fact.told and fact.card)
@@ -46,25 +61,33 @@ def traced(facts: Sequence[Fact], *, told_only: bool = False) -> str:
     return "\n".join(f"- {fact.trace}" for fact in facts if fact.told or not told_only) or NOTHING
 
 
-def roll(faces: Sequence[int], reason: str, rng: Random) -> tuple[tuple[int, ...], Fact]:
+def roll(faces: Sequence[int], reason: str, rng: Random, *, label: str = "") -> Rolled:
+    return _rolled(faces, reason, rng, label, highlight_kept=False)
+
+
+def roll_pool(faces: Sequence[int], reason: str, rng: Random, *, label: str = "") -> Rolled:
+    return _rolled(faces, reason, rng, label, highlight_kept=len(faces) > 1)
+
+
+def _rolled(
+    faces: Sequence[int], reason: str, rng: Random, label: str, *, highlight_kept: bool
+) -> Rolled:
     if not faces:
         raise ValueError("a dice pool rolls at least one die")
     drawn = tuple(rng.randint(1, face) for face in faces)
+    highlight = (drawn.index(max(drawn)),) if highlight_kept else ()
+    notation = _notation(faces)
+    event = DiceEvent(
+        label=label or notation, faces=tuple(faces), rolled=drawn, highlight=highlight
+    )
     shown = ", ".join(str(die) for die in drawn)
-    return drawn, Fact(trace=f"{reason}: {_notation(faces)} [{shown}]")
-
-
-def roll_pool(
-    faces: Sequence[int], reason: str, rng: Random, *, label: str
-) -> tuple[int, DiceEvent, Fact]:
-    rolled, fact = roll(faces, reason, rng)
-    kept = max(rolled)
-    highlight = (rolled.index(kept),) if len(faces) > 1 else ()
-    event = DiceEvent(label=label, faces=tuple(faces), rolled=rolled, highlight=highlight)
-    return kept, event, fact
+    fact = Fact(trace=f"{reason}: {notation} [{shown}]")
+    return Rolled(faces=tuple(faces), rolled=drawn, event=event, fact=fact)
 
 
 def _notation(faces: Sequence[int]) -> str:
+    if len(faces) == 1:
+        return f"d{faces[0]}"
     if len(set(faces)) == 1:
         return f"{len(faces)}d{faces[0]}"
     return "+".join(f"d{face}" for face in faces)

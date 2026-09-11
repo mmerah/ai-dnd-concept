@@ -7,10 +7,21 @@ from aidm.core.facts import DiceEvent, roll, roll_pool
 
 
 def test_roll_traces_every_die() -> None:
-    rolled, fact = roll((6, 6), "a forced door", Random(0))
+    rolled = roll((6, 6), "a forced door", Random(0))
 
-    assert len(rolled) == 2
-    assert fact.trace == f"a forced door: 2d6 [{rolled[0]}, {rolled[1]}]"
+    assert len(rolled.rolled) == 2
+    assert rolled.fact.trace == f"a forced door: 2d6 [{rolled.rolled[0]}, {rolled.rolled[1]}]"
+
+
+def test_roll_labels_a_single_die_by_notation_unless_given_one() -> None:
+    rolled = roll((10,), "a listen check", Random(0))
+
+    assert rolled.fact.trace == f"a listen check: d10 [{rolled.rolled[0]}]"
+    assert rolled.event.label == "d10"
+
+    labelled = roll((10,), "a listen check", Random(0), label="Listen")
+
+    assert labelled.event.label == "Listen"
 
 
 def test_a_dice_event_refuses_an_out_of_range_highlight() -> None:
@@ -19,12 +30,18 @@ def test_a_dice_event_refuses_an_out_of_range_highlight() -> None:
 
 
 def test_roll_pool_highlights_the_kept_die_only_in_a_pool() -> None:
-    kept, event, _ = roll_pool((6, 6, 6), "a forced door", Random(0), label="Pool")
+    rolled = roll_pool((6, 6, 6), "a forced door", Random(0), label="Pool")
 
-    assert kept == 4
-    assert event.rolled == (4, 4, 1)
-    assert event.highlight == (0,)
+    assert rolled.kept == 4
+    assert rolled.event.rolled == (4, 4, 1)
+    assert rolled.event.highlight == (0,)
 
-    _, single_event, _ = roll_pool((6,), "a forced door", Random(0), label="d6")
+    single = roll_pool((6,), "a forced door", Random(0), label="d6")
 
-    assert single_event.highlight == ()
+    assert single.event.highlight == ()
+
+
+def test_rolled_total_sums_the_pool() -> None:
+    rolled = roll_pool((6, 6, 6), "a forced door", Random(0), label="Pool")
+
+    assert rolled.total == sum(rolled.rolled)

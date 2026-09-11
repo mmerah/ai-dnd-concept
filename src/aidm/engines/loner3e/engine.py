@@ -4,7 +4,7 @@ from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, other_than, picked
 from aidm.core.entities import EngineId, Refusal, Slug, slug
-from aidm.core.facts import DiceEvent, Fact, roll, roll_pool
+from aidm.core.facts import Fact, Rolled, roll, roll_pool
 from aidm.core.play import PendingDecision
 from aidm.core.prompt import Pairs
 from aidm.core.tools import MasterTool, master_tool
@@ -180,15 +180,15 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         ]
 
     def change_tags(self, draft: Loner3eGame, args: ChangeTags, _rng: Random) -> list[Fact]:
-        actor = self.world_of(draft).require_here(args.entity_id, alive=True)
+        actor = self.world_of(draft).require_living_here(args.entity_id)
         return actor.change_tags(args.kind, args.gained, args.lost)
 
     def drive(self, draft: Loner3eGame, args: Drive, _rng: Random) -> list[Fact]:
-        actor = self.world_of(draft).require_here(args.entity_id, alive=True)
+        actor = self.world_of(draft).require_living_here(args.entity_id)
         return actor.drive(goal=args.goal, motive=args.motive, nemesis=args.nemesis)
 
     def restore_luck(self, draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
-        actor = self.world_of(draft).require_here(args.entity_id, alive=True)
+        actor = self.world_of(draft).require_living_here(args.entity_id)
         facts = actor.reveal()
         # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
         facts.extend(actor.refill("the conflict is behind them"))
@@ -196,28 +196,23 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
 
     def roll(self, draft: Loner3eGame, args: Roll, rng: Random) -> list[Fact]:
         world = self.world_of(draft)
-        actor = world.require_here(args.actor_id, alive=True)
-        facts = actor.reveal()
+        actor = world.require_living_here(args.actor_id)
+        reveals = actor.reveal()
         opponent = None
         if args.opponent_id is not None:
-            opponent = world.require_here(args.opponent_id, alive=True)
-            facts.extend(opponent.reveal())
+            opponent = world.require_living_here(args.opponent_id)
+            reveals.extend(opponent.reveal())
         _check_ready(actor, opponent)
 
-        chance_kept, chance, risk_kept, risk, facts_rolled = _pair(args, rng)
-        facts.extend(facts_rolled)
+        chance, risk = _pair(args, rng)
 
-        outcome = outcome_for(chance_kept, risk_kept)
-        # The question is master-authored and may name unrevealed canon: never told.
-        facts.append(Fact(trace=f"asked: {args.question}"))
+        outcome = outcome_for(chance.kept, risk.kept)
         line = _oracle_line(args, opponent, outcome)
-        answered_at = len(facts)
-        facts.append(actor.fact(line))
+        exchange: list[Fact] = []
         effects: tuple[str, ...] = ()
         if opponent is not None:
             struck, ended = _strike(draft, actor, opponent, outcome)
             exchange, effects = _absorbed(struck)
-            facts.extend(exchange)
             if not ended:
                 draft.pending = PendingDecision(
                     kind="conflict",
@@ -225,30 +220,35 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
                     options=(),
                     allows_text=True,
                 )
+        twist_facts: list[Fact] = []
         # SRD: the Twist Counter skips Harm & Luck, so a tied conflict roll never ticks it.
-        if chance_kept == risk_kept and opponent is None:
-            world.twist.current += 1
-            if world.twist.shortfall == 0:
-                world.twist.current = 0
-                facts.extend(self._twist(draft, actor, rng))
-        facts[answered_at] = facts[answered_at].model_copy(
-            update={"card": "\n".join((line, *effects)), "dice": (chance, risk)}
-        )
-        return facts
+        if chance.kept == risk.kept and opponent is None and world.tick_twist():
+            twist_facts = self._twist(draft, actor, rng)
+        oracle = actor.fact(line, card="\n".join((line, *effects)), dice=(chance.event, risk.event))
+        return [
+            *reveals,
+            chance.fact,
+            risk.fact,
+            # The question is master-authored and may name unrevealed canon: never told.
+            Fact(trace=f"asked: {args.question}"),
+            oracle,
+            *exchange,
+            *twist_facts,
+        ]
 
     def _twist(self, draft: Loner3eGame, actor: Loner3eCast, rng: Random) -> list[Fact]:
         """The SRD's table is rolled here so the dice trace; the model only reads the pairing."""
         faces = (DIE_FACE, DIE_FACE)
-        rolled, rolled_fact = roll(faces, "twist — subject, action", rng)
-        subject, action = twist_pairing(rolled[0], rolled[1], self.twist_table())
+        rolled = roll(faces, "twist — subject, action", rng, label="Twist")
+        subject, action = twist_pairing(rolled.rolled[0], rolled.rolled[1], self.twist_table())
         draft.note(TWIST_NOTE.format(subject=subject.upper(), action=action.upper()))
         # Echo the unnamed SRD intrusion in the call that rolled it without adding canon.
         due = actor.fact(
             f"a twist interrupts the scene: {subject} / {action}",
             card=f"Twist — {subject} / {action}",
-            dice=(DiceEvent(label="Twist", faces=faces, rolled=rolled),),
+            dice=(rolled.event,),
         )
-        return [rolled_fact, due]
+        return [rolled.fact, due]
 
 
 def _oracle_line(args: Roll, opponent: Loner3eCast | None, outcome: Outcome) -> str:
@@ -269,7 +269,7 @@ def _strike(
     harm = outcome.harm
     hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
     why = f"{striker.name} gets the better of the exchange"
-    facts = hit.luck.change(hit, -abs(harm), "Luck", why)
+    facts = hit.change(hit.luck, -abs(harm), "Luck", why)
     if hit.luck.current != 0:
         return facts, False
     draft.note(DEFEAT_NOTE.format(name=hit.name))
@@ -294,12 +294,10 @@ def _check_ready(actor: Loner3eCast, opponent: Loner3eCast | None) -> None:
             )
 
 
-def _pair(args: Roll, rng: Random) -> tuple[int, DiceEvent, int, DiceEvent, list[Fact]]:
+def _pair(args: Roll, rng: Random) -> tuple[Rolled, Rolled]:
     chance_faces = (DIE_FACE, DIE_FACE) if args.position == "advantage" else (DIE_FACE,)
     risk_faces = (DIE_FACE, DIE_FACE) if args.position == "disadvantage" else (DIE_FACE,)
     asked = args.question
-    chance_kept, chance, chance_fact = roll_pool(
-        chance_faces, f"{asked} — chance", rng, label="Chance"
-    )
-    risk_kept, risk, risk_fact = roll_pool(risk_faces, f"{asked} — risk", rng, label="Risk")
-    return chance_kept, chance, risk_kept, risk, [chance_fact, risk_fact]
+    chance = roll_pool(chance_faces, f"{asked} — chance", rng, label="Chance")
+    risk = roll_pool(risk_faces, f"{asked} — risk", rng, label="Risk")
+    return chance, risk

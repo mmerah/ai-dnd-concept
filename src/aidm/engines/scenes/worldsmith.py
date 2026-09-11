@@ -45,25 +45,6 @@ def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) ->
     )
     followers = () if world is None else (world.player.id, *world.party)
     others = (*draft.present, *draft.hidden)
-    unmet: list[str] = []
-    if named := sorted(name for name in others if resolved_id(name, everyone) in followers):
-        unmet.append(
-            "a scene that does not list the player or the party; "
-            f"they are put there by code: {named}"
-        )
-    if world is not None and world.player.id in draft.cast:
-        unmet.append("a cast that never rewrites the player")
-    if misfiled := [
-        f"{entry.id!r} is filed under {key!r}"
-        for key, entry in draft.cast.items()
-        if key != entry.id
-    ]:
-        unmet.append("cast entries under their own id: " + "; ".join(misfiled))
-    if stray := sorted(name for name in others if resolved_id(name, everyone) is None):
-        unmet.append(f"ids that exist; these name nobody: {stray}")
-    # `situation` is read to the player, so naming a hidden entity there hands them the find.
-    if named := sorted(named_in(draft.situation, draft.hidden, everyone)):
-        unmet.append(f"a situation that does not name what is hidden: {named}")
     present = [
         entity_id
         for name in draft.present
@@ -72,19 +53,12 @@ def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) ->
     hidden = [
         entity_id for name in draft.hidden if (entity_id := resolved_id(name, everyone)) is not None
     ]
-    if overlap := sorted(set(present) & set(hidden)):
-        unmet.append(f"nobody listed as both present and hidden: {overlap}")
-    if met := sorted(
-        entity_id for entity_id in set(hidden) - set(followers) if everyone[entity_id].known
-    ):
-        unmet.append(f"a hidden list without {met}, whom the player has already met")
-    if broken := [
-        f"{eid}: {why}"
-        for eid, entry in draft.cast.items()
-        if eid not in filed and (why := entry.forbidden())
-    ]:
-        unmet.append(f"cast members as the worldsmith may write them: {broken}")
-    return unmet
+    player_id = None if world is None else world.player.id
+    return [
+        *_listing_unmet(others, everyone, followers, present, hidden),
+        *_cast_unmet(draft.cast, player_id, filed),
+        *_hidden_unmet(draft.situation, draft.hidden, everyone, hidden, followers),
+    ]
 
 
 def scene_sections[C: Person](world: SceneWorld[C] | None, log: Sequence[Chapter]) -> Pairs:
@@ -121,3 +95,63 @@ def named_in(situation: str, hidden: Iterable[str], cast: Mapping[Slug, Thing]) 
             if (entity_id := resolved_id(wanted, cast)) is not None
         ),
     )
+
+
+def _listing_unmet(
+    others: Sequence[str],
+    everyone: Mapping[Slug, Thing],
+    followers: Sequence[Slug],
+    present: Sequence[Slug],
+    hidden: Sequence[Slug],
+) -> list[str]:
+    """The player/party listed, stray ids, and present/hidden overlap."""
+    unmet: list[str] = []
+    if named := sorted(name for name in others if resolved_id(name, everyone) in followers):
+        unmet.append(
+            "a scene that does not list the player or the party; "
+            f"they are put there by code: {named}"
+        )
+    if names := sorted(name for name in others if resolved_id(name, everyone) is None):
+        unmet.append(f"ids that exist; these name nobody: {names}")
+    if shared := sorted(set(present) & set(hidden)):
+        unmet.append(f"nobody listed as both present and hidden: {shared}")
+    return unmet
+
+
+def _cast_unmet(
+    cast: Mapping[Slug, Person], player_id: Slug | None, filed: Mapping[Slug, Person]
+) -> list[str]:
+    """The player rewritten, misfiled entries, and forbidden cast members."""
+    unmet: list[str] = []
+    if player_id is not None and player_id in cast:
+        unmet.append("a cast that never rewrites the player")
+    if entries := [
+        f"{entry.id!r} is filed under {key!r}" for key, entry in cast.items() if key != entry.id
+    ]:
+        unmet.append("cast entries under their own id: " + "; ".join(entries))
+    if broken := [
+        f"{eid}: {why}"
+        for eid, entry in cast.items()
+        if eid not in filed and (why := entry.forbidden())
+    ]:
+        unmet.append(f"cast members as the worldsmith may write them: {broken}")
+    return unmet
+
+
+def _hidden_unmet(
+    situation: str,
+    hidden_names: Iterable[str],
+    everyone: Mapping[Slug, Thing],
+    hidden: Sequence[Slug],
+    followers: Sequence[Slug],
+) -> list[str]:
+    """The situation naming what is hidden, and a hidden entity already met."""
+    unmet: list[str] = []
+    # `situation` is read to the player, so naming a hidden entity there hands them the find.
+    if named := sorted(named_in(situation, hidden_names, everyone)):
+        unmet.append(f"a situation that does not name what is hidden: {named}")
+    if entities := sorted(
+        entity_id for entity_id in set(hidden) - set(followers) if everyone[entity_id].known
+    ):
+        unmet.append(f"a hidden list without {entities}, whom the player has already met")
+    return unmet

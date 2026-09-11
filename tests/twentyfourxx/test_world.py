@@ -2,6 +2,7 @@ import pytest
 from support.twentyfourxx import KESTREL, hired, small_world
 
 from aidm.core.entities import Refusal
+from aidm.core.facts import DiceEvent
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.twentyfourxx.engine import items_from_kits
 from aidm.engines.twentyfourxx.world import (
@@ -40,6 +41,17 @@ def test_sheet_die_returns_skill_or_default() -> None:
     sheet = small_world().payload.player.require_sheet()
     assert sheet.die("Stealth") == 10
     assert sheet.die("Piloting") == DEFAULT_DIE
+
+
+def test_carried_spells_item_notes() -> None:
+    crewmate = Crewmate(
+        id=KESTREL,
+        name="Kestrel",
+        brief="A dockhand",
+        known=True,
+        sheet=CrewSheet(specialty="Muscle", items={"vest": Gear(name="Vest", bulky=True)}),
+    )
+    assert crewmate.carried() == "Vest[vest] (bulky)"
 
 
 def test_rows_drops_empties_and_shows_credits() -> None:
@@ -94,7 +106,7 @@ def test_require_here_alive_refuses_dead_cast_member() -> None:
     world = small_world().payload
     world.cast[KESTREL].alive = False
     with pytest.raises(Refusal):
-        world.require_here(KESTREL, alive=True)
+        world.require_living_here(KESTREL)
 
 
 def test_require_actor_none_is_the_player() -> None:
@@ -160,3 +172,51 @@ def test_every_crew_starts_with_the_seven_ship_functions() -> None:
     ship = small_world().payload.ship
     assert [item.name for item in ship.values()] == list(SHIP_FUNCTIONS)
     assert list(ship)[4] == "hull-armor"
+
+
+def test_maim_twice_writes_only_one_fact() -> None:
+    player = small_world().payload.player
+    facts = player.maim()
+    assert [fact.card for fact in facts] == ["Maimed"]
+    assert player.require_sheet().hindrances == ["Maimed"]
+    assert player.maim() == []
+
+
+def test_raise_skill_sets_the_die_and_reports_it() -> None:
+    player = small_world().payload.player
+    facts = player.raise_skill("Stealth")
+    assert player.require_sheet().skills["Stealth"] == 12
+    assert [fact.card for fact in facts] == ["Job done: Stealth d12"]
+
+
+def test_raise_skill_at_d12_refuses_with_the_actors_name() -> None:
+    player = small_world().payload.player
+    player.require_sheet().skills["Stealth"] = 12
+    with pytest.raises(Refusal, match="Rook's Stealth is already at d12"):
+        player.raise_skill("Stealth")
+
+
+def test_earn_adds_credits_and_carries_the_event() -> None:
+    player = small_world().payload.player
+    before = player.require_sheet().credits
+    event = DiceEvent(label="d6", faces=(6,), rolled=(4,))
+    facts = player.earn(4, event)
+    assert player.require_sheet().credits == before + 4
+    assert facts[0].dice == (event,)
+    assert facts[0].card == f"+₡4 → ₡{before + 4}"
+
+
+def test_take_job_refuses_when_one_is_already_open() -> None:
+    world = small_world().payload
+    world.job = "smuggle the crates"
+    with pytest.raises(Refusal, match="a job is open"):
+        world.take_job("a new job")
+
+
+def test_take_job_sets_the_job_and_close_job_clears_it() -> None:
+    world = small_world().payload
+    facts = world.take_job("smuggle the crates")
+    assert world.job == "smuggle the crates"
+    assert facts[0].card == "Job taken\nsmuggle the crates"
+    world.close_job()
+    assert world.job == ""
