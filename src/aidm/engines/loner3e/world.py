@@ -3,22 +3,44 @@ from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.entities import Refusal, check_unique
+from aidm.core.entities import Frozen, Refusal, Slug, check_unique
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
-from aidm.core.views import Pairs
-from aidm.engines.base import Counter, Person
+from aidm.core.play import DecisionOption
+from aidm.core.prompt import Pairs
+from aidm.engines.base import Gauge, Person
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 
 LUCK_MAX = 6
 DIE_FACE = 6  # every roll in the game is one d6, and every table is six rows
 TIES_PER_TWIST = 3
+AND_AT = 4  # both dice 4+ sharpens the answer to -and
+BUT_AT = 3  # both dice 3 or under softens it to -but
+TOLD: dict[str, str] = {
+    "yes-and": "yes, and better than hoped",
+    "yes": "yes",
+    "yes-but": "yes, but at a cost",
+    "no-but": "no, but not badly",
+    "no": "no",
+    "no-and": "no, and worse",
+}
 
+# assignments, not `type`: a `type` alias becomes a `$defs` entry in every schema that reads it
 TagKind = Literal["skill", "frailty", "gear", "condition"]
 
 
-class Loner3eSheet(Person):
+class Outcome(Frozen):
+    id: Slug
+    harm: int
+
+    @property
+    def wording(self) -> str:
+        """The answer in story words: the narrator never reads the rules."""
+        return TOLD[self.id]
+
+
+class Loner3eCast(Person):
     """A character: a person, an object, a vehicle or a curse alike."""
 
     concept: str = ""
@@ -27,7 +49,7 @@ class Loner3eSheet(Person):
     goal: str = ""
     motive: str = ""
     nemesis: str = ""
-    luck: Counter = Field(default_factory=lambda: Counter(current=LUCK_MAX, maximum=LUCK_MAX))
+    luck: Gauge = Field(default_factory=lambda: Gauge(current=LUCK_MAX, maximum=LUCK_MAX))
 
     def tagged(self, kind: TagKind) -> list[str]:
         return self.tags.get(kind, [])
@@ -96,11 +118,11 @@ class Loner3eSheet(Person):
         return self.luck.change(self, self.luck.shortfall, "Luck", why)
 
 
-class Loner3eWorld(SceneWorld[Loner3eSheet]):
+class Loner3eWorld(SceneWorld[Loner3eCast]):
     # The played character's tally paces the whole game, so no sheet carries one.
-    twist: Counter = Field(default_factory=lambda: Counter(current=0, maximum=TIES_PER_TWIST))
+    twist: Gauge = Field(default_factory=lambda: Gauge(current=0, maximum=TIES_PER_TWIST))
 
-    def conflict_prompt(self, actor: Loner3eSheet, opponent: Loner3eSheet) -> str:
+    def conflict_prompt(self, actor: Loner3eCast, opponent: Loner3eCast) -> str:
         foe = actor if opponent.id == self.player.id else opponent
         return (
             f"The conflict with {foe.name} runs on: neither side is out of luck yet. Press the "
@@ -110,6 +132,26 @@ class Loner3eWorld(SceneWorld[Loner3eSheet]):
 
 Loner3eGame = Game[Loner3eWorld]
 
-Loner3eScenario = Scenario[SceneDraft[Loner3eSheet]]
+Loner3eScenario = Scenario[SceneDraft[Loner3eCast]]
 
-Loner3eCharacter = Character[Loner3eSheet]
+Loner3eCharacter = Character[Loner3eCast]
+
+
+def outcome_for(chance: int, risk: int) -> Outcome:
+    if chance == risk:
+        return Outcome(id="yes-but", harm=1)
+    side, sign = ("yes", 1) if chance > risk else ("no", -1)
+    if min(chance, risk) >= AND_AT:
+        return Outcome(id=f"{side}-and", harm=3 * sign)
+    if max(chance, risk) <= BUT_AT:
+        return Outcome(id=f"{side}-but", harm=sign)
+    return Outcome(id=side, harm=2 * sign)
+
+
+def twist_pairing(subject: int, action: int, twists: Pairs) -> tuple[str, str]:
+    return twists[subject - 1][0], twists[action - 1][1]
+
+
+def pack_meanings(entries: Sequence[DecisionOption], tags: Sequence[str]) -> Pairs:
+    detail_of = {entry.label: entry.detail for entry in entries if entry.detail}
+    return tuple((tag, detail_of[tag]) for tag in tags if tag in detail_of)

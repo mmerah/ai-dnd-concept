@@ -72,7 +72,7 @@ class PendingOption(DecisionOption):
     """The frozen call an engine plays this option by; not every name is a tool."""
 
     name: str = Field(min_length=1)
-    args: dict[str, JsonValue] = {}
+    args: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class PendingDecision(Frozen):
@@ -109,7 +109,7 @@ class Answer(Frozen):
 
 
 class Exchange(Frozen):
-    prompt: str
+    words: str
     mark: Mark = ""
     lines: tuple[SpokenLine, ...]
     # every fact, told or not; `cards` picks the player's

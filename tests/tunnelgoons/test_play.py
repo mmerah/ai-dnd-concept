@@ -97,7 +97,7 @@ async def test_the_shipped_map_plays_start_to_finish(tmp_path: Path) -> None:
     assert all(not after.payload.places[place].known for place in REGION["places"])
     assert [role for role, _ in table.spawner.prompts[-3:]] == ["worldsmith", "master", "narrator"]
     assert "Deep Vault" in table.spawner.prompts[-2][1]
-    assert after.exchanges()[before_turn].prompt == "Deeper in."
+    assert after.exchanges()[before_turn].words == "Deeper in."
     assert table.service.player_view().action is None
 
 
@@ -121,7 +121,7 @@ async def test_a_region_that_cannot_be_written_files_the_players_words(tmp_path:
 
     unwritten = after.exchanges()
     assert len(unwritten) == before + 1
-    assert unwritten[-1].prompt == "Deeper in."
+    assert unwritten[-1].words == "Deeper in."
     assert (
         unwritten[-1].facts[0].card == "The map could not be written. You are still where you were."
     )

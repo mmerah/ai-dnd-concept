@@ -31,7 +31,7 @@ def test_the_shipped_game_begins_with_the_srd_pack_and_the_players_item() -> Non
     _, state = _breathless_game()
     assert state.packs == (SRD_PACK,)
     world = state.payload
-    sheet = world.player.dice()
+    sheet = world.player.require_sheet()
     assert sheet.items[FIRE_AXE].die == STARTING_ITEM
     assert sheet.pronouns == "he/him"
     assert sheet.job == "Park Ranger"
@@ -49,7 +49,7 @@ def test_join_party_lands_a_party_joined_fact_and_adds_the_member() -> None:
 
 def test_the_player_views_backpack_panel_lists_items_and_the_med_kit() -> None:
     world = small_world()
-    world.payload.player.dice().med_kit = True
+    world.payload.player.require_sheet().med_kit = True
     view = ENGINE.player_view(world)
     backpack = next(panel for panel in view.panels if panel.title == "Backpack")
     assert PanelRow(label="Wrench", detail="d10") in backpack.rows
@@ -64,7 +64,7 @@ def test_master_sections_never_lists_the_player_under_here() -> None:
 
 def test_master_sections_lists_the_backpack() -> None:
     world = small_world()
-    world.payload.player.dice().med_kit = True
+    world.payload.player.require_sheet().med_kit = True
     sections = dict(ENGINE.master_sections(world))
     assert sections["BACKPACK"] == "- Wrench[wrench] — d10\n- med kit"
 
@@ -85,7 +85,7 @@ def test_skill_steps_exclude_earlier_picks() -> None:
 
 def test_create_character_round_trip() -> None:
     character = ENGINE.create_character("Jax", "A wiry mechanic", PICKS)
-    sheet = character.payload.dice()
+    sheet = character.payload.require_sheet()
     assert sheet.skills == {"bash": 10, "dash": 8, "sneak": 6, "shoot": 4, "think": 4, "sway": 4}
     assert sheet.worn == sheet.skills
     assert [(item.name, item.die) for item in sheet.items.values()] == [

@@ -7,8 +7,8 @@ from pypdf import PdfReader
 from aidm.core.entities import Refusal
 
 MIN_PASSAGE = 24
-_BLANK_LINE = re.compile(r"\n\s*\n")
-_LINE_BREAK_HYPHEN = re.compile(r"(\w)-\s+(\w)")
+BLANK_LINE = re.compile(r"\n\s*\n")
+LINE_BREAK_HYPHEN = re.compile(r"(\w)-\s+(\w)")
 
 
 def given_text(premise: str, document: Path | None, max_chars: int) -> str:
@@ -37,8 +37,8 @@ def _pdf_pages(path: Path) -> tuple[str, ...]:
 
 
 def _passages(body: str) -> Iterator[str]:
-    for block in _BLANK_LINE.split(body.strip()):
-        text = " ".join(_LINE_BREAK_HYPHEN.sub(r"\1-\2", _unquoted(block)).split())
+    for block in BLANK_LINE.split(body.strip()):
+        text = " ".join(LINE_BREAK_HYPHEN.sub(r"\1-\2", _unquoted(block)).split())
         # A page number or a running header is not a passage.
         if len(text) >= MIN_PASSAGE:
             yield text

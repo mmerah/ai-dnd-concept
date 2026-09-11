@@ -25,7 +25,7 @@ def test_the_shipped_game_begins_with_the_srd_pack_and_the_operators_gear() -> N
     _, state = _twentyfourxx_game()
     assert state.packs == (SRD_PACK,)
     world = state.payload
-    assert list(world.player.dice().items) == [COMM, CLIMBING_GEAR, NIGHT_VISION_GOGGLES]
+    assert list(world.player.require_sheet().items) == [COMM, CLIMBING_GEAR, NIGHT_VISION_GOGGLES]
     assert world.run.place == "docking-ring"
     assert PLAYER_ID not in world.present()
 
@@ -46,20 +46,20 @@ def test_a_scenario_with_an_uninstalled_pack_is_refused_by_check_packs() -> None
 
 
 def test_item_detail_of_a_plain_item_is_empty() -> None:
-    assert Gear(name="Lockpick set").detail() == ""
+    assert Gear(name="Lockpick set").notes() == ""
 
 
 def test_item_detail_of_a_bulky_item() -> None:
-    assert Gear(name="Crate", bulky=True).detail() == "bulky"
+    assert Gear(name="Crate", bulky=True).notes() == "bulky"
 
 
 def test_item_detail_of_a_broken_item() -> None:
-    assert Gear(name="Scanner", broken_times=1).detail() == "broken"
+    assert Gear(name="Scanner", broken_times=1).notes() == "broken"
 
 
 def test_item_detail_of_a_multi_break_partly_broken_item() -> None:
     item = Gear(name="Battle armor", breaks=3, broken_times=1)
-    assert item.detail() == "broken 1/3"
+    assert item.notes() == "broken 1/3"
 
 
 def test_player_view_character_panel_lists_gear() -> None:
@@ -76,7 +76,7 @@ def test_master_sections_shows_hidden_entities() -> None:
 
 def test_master_sections_gear_shows_none_for_empty_gear() -> None:
     world = small_world()
-    world.payload.player.dice().items.clear()
+    world.payload.player.require_sheet().items.clear()
     sections = dict(ENGINE.master_sections(world))
     assert sections["GEAR"] == "- (none)"
 

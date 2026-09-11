@@ -166,7 +166,7 @@ def open_illustrator(
 
 
 def scene_key(scene: NarratorView) -> str:
-    """Hashed because `place` names a file; free because the view does not know it is cached."""
+    """Hashed because `place` names a file."""
     return sha1(scene.place.encode(), usedforsecurity=False).hexdigest()[:12]
 
 

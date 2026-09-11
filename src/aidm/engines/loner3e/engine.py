@@ -7,37 +7,47 @@ from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, 
 from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, roll, roll_pool
 from aidm.core.play import PendingDecision
+from aidm.core.prompt import Pairs
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import Pairs
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import (
     CHANGE_TAGS,
     DRIVE,
     RESTORE_LUCK,
+    ROLL,
     ChangeTags,
     Drive,
-    Outcome,
-    Question,
     RestoreLuck,
-    defeat_note,
-    outcome_for,
-    pack_meanings,
-    twist_note,
-    twist_pairing,
+    Roll,
 )
 from aidm.engines.loner3e.world import (
     DIE_FACE,
+    Loner3eCast,
     Loner3eCharacter,
     Loner3eGame,
     Loner3eScenario,
-    Loner3eSheet,
     Loner3eWorld,
+    Outcome,
+    outcome_for,
+    pack_meanings,
+    twist_pairing,
 )
 from aidm.engines.loner3e.worldsmith import AUTHORING, Pack
 from aidm.engines.scenes.engine import SceneEngine
 
+TWIST_NOTE = (
+    "A twist has just interrupted the scene: {subject} / {action}. The narration showed it "
+    "arriving. Develop it this turn. Say what it set in motion, what it costs, and what it "
+    "changes."
+)
+DEFEAT_NOTE = (
+    "{name} has run out of luck and lost this conflict. Roll nothing more for it. Say how it "
+    "ends for them: taken, severely injured, broken off, cornered, or conceding. Write any "
+    "lasting mark with `change_tags`, as a `condition`. Then let the story move on."
+)
 
-class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eGame, Pack]):
+
+class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
     id = EngineId("loner3e")
     title = "LONER 3E"
     art_style = "Painterly illustration, muted colours, no text or lettering."
@@ -45,7 +55,7 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eGame, Pack]):
     game = Loner3eGame
     scenario = Loner3eScenario
     character = Loner3eCharacter
-    cast = Loner3eSheet
+    cast = Loner3eCast
     pack = Pack
     world_type = Loner3eWorld
 
@@ -55,13 +65,7 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eGame, Pack]):
             master_tool("change_tags", CHANGE_TAGS, ChangeTags, self.change_tags),
             master_tool("drive", DRIVE, Drive, self.drive),
             master_tool("restore_luck", RESTORE_LUCK, RestoreLuck, self.restore_luck),
-            master_tool(
-                "roll",
-                "Call this for one closed dramatic question. The engine rolls Chance against "
-                "Risk, reads the answer, and moves luck in a conflict.",
-                Question,
-                self.roll,
-            ),
+            master_tool("roll", ROLL, Roll, self.roll),
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
@@ -73,22 +77,22 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eGame, Pack]):
             first,
             CreationStep(
                 id="concept",
-                prompt="Write a one-line concept",
+                label="Write a one-line concept",
                 hint=", ".join(entry.label for entry in pack.concepts[:3]),
             ),
-            CreationStep(id="goal", prompt="What does your character want?"),
-            CreationStep(id="motive", prompt="Why do they want it?"),
-            CreationStep(id="skill-1", prompt="Choose skill 1", options=pack.skills),
+            CreationStep(id="goal", label="What does your character want?"),
+            CreationStep(id="motive", label="Why do they want it?"),
+            CreationStep(id="skill-1", label="Choose skill 1", options=pack.skills),
             CreationStep(
                 id="skill-2",
-                prompt="Choose skill 2",
+                label="Choose skill 2",
                 options=other_than(pack.skills, picked(picks, "skill-1")),
             ),
-            CreationStep(id="frailty", prompt="Choose a frailty", options=pack.frailties),
-            CreationStep(id="gear-1", prompt="Choose gear 1", options=pack.gear),
+            CreationStep(id="frailty", label="Choose a frailty", options=pack.frailties),
+            CreationStep(id="gear-1", label="Choose gear 1", options=pack.gear),
             CreationStep(
                 id="gear-2",
-                prompt="Choose gear 2",
+                label="Choose gear 2",
                 options=other_than(pack.gear, picked(picks, "gear-1")),
             ),
         )
@@ -96,7 +100,7 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eGame, Pack]):
     def create_character(self, name: str, brief: str, picks: Picks) -> Loner3eCharacter:
         check_picks(self.creation_steps(picks), picks)
         pack = self.packs[picked(picks, "pack")]
-        sheet = Loner3eSheet(
+        sheet = Loner3eCast(
             id=PLAYER_ID,
             name=name,
             brief=brief,
@@ -128,13 +132,11 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eGame, Pack]):
     def glossary(self, state: Loner3eGame) -> Pairs:
         spelled: dict[str, str] = {}
         for member in state.payload.here():
-            spelled.update(self.meanings(state.packs, member))
+            spelled.update(self._meanings(state.packs, member))
         lines = "\n".join(f"- {tag}: {detail}" for tag, detail in spelled.items())
         return (("WHAT THE TAGS IN PLAY MEAN", lines),) if spelled else ()
 
-    def meanings(
-        self, selected: Sequence[Slug], sheet: Loner3eSheet
-    ) -> tuple[tuple[str, str], ...]:
+    def _meanings(self, selected: Sequence[Slug], sheet: Loner3eCast) -> Pairs:
         chosen = tuple(self.packs[pack_id] for pack_id in selected)
         # The concept's pack blurb is generic where the entity's own brief is not: skip it.
         return pack_meanings(
@@ -144,21 +146,21 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eGame, Pack]):
             (*sheet.tagged("skill"), *sheet.tagged("frailty"), *sheet.tagged("gear")),
         )
 
-    def twist_table(self) -> tuple[tuple[str, str], ...]:
+    def twist_table(self) -> Pairs:
         """Always the SRD's own table: no other pack publishes one."""
         srd = self.srd_pack()
         if srd.twist_subjects is None or srd.twist_actions is None:
             raise Refusal("the SRD table set has no twist columns")
         return tuple(zip(srd.twist_subjects, srd.twist_actions, strict=True))
 
-    def leaving(self, state: Loner3eGame) -> tuple[Fact, ...]:
+    def leaving(self, draft: Loner3eGame) -> list[Fact]:
         """A scene ends its conflicts so nobody carries a spent pool on; the dead keep theirs."""
-        return tuple(
+        return [
             fact
-            for member in state.payload.here()
+            for member in draft.payload.here()
             if member.alive
             for fact in member.refill("the scene is over")
-        )
+        ]
 
     def change_tags(self, draft: Loner3eGame, args: ChangeTags, _rng: Random) -> list[Fact]:
         actor = draft.payload.require_here(args.entity_id, alive=True)
@@ -175,23 +177,23 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eGame, Pack]):
         facts.extend(actor.refill("the conflict is behind them"))
         return facts
 
-    def roll(self, draft: Loner3eGame, action: Question, rng: Random) -> list[Fact]:
+    def roll(self, draft: Loner3eGame, args: Roll, rng: Random) -> list[Fact]:
         world = draft.payload
-        actor = world.require_here(action.actor_id, alive=True)
+        actor = world.require_here(args.actor_id, alive=True)
         facts = actor.reveal()
         opponent = None
-        if action.opponent_id is not None:
-            opponent = world.require_here(action.opponent_id, alive=True)
+        if args.opponent_id is not None:
+            opponent = world.require_here(args.opponent_id, alive=True)
             facts.extend(opponent.reveal())
         _check_ready(actor, opponent)
 
-        chance_kept, chance, risk_kept, risk, facts_rolled = _pair(action, rng)
+        chance_kept, chance, risk_kept, risk, facts_rolled = _pair(args, rng)
         facts.extend(facts_rolled)
 
         outcome = outcome_for(chance_kept, risk_kept)
         # The question is master-authored and may name unrevealed canon: never told.
-        facts.append(Fact(trace=f"asked: {action.question}"))
-        line = _oracle_line(action, opponent, outcome)
+        facts.append(Fact(trace=f"asked: {args.question}"))
+        line = _oracle_line(args, opponent, outcome)
         answered_at = len(facts)
         facts.append(actor.fact(line))
         effects: tuple[str, ...] = ()
@@ -217,12 +219,12 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eGame, Pack]):
         )
         return facts
 
-    def _twist(self, draft: Loner3eGame, actor: Loner3eSheet, rng: Random) -> list[Fact]:
+    def _twist(self, draft: Loner3eGame, actor: Loner3eCast, rng: Random) -> list[Fact]:
         """The SRD's table is rolled here so the dice trace; the model only reads the pairing."""
         faces = (DIE_FACE, DIE_FACE)
         rolled, rolled_fact = roll(faces, "twist — subject, action", rng)
         subject, action = twist_pairing(rolled[0], rolled[1], self.twist_table())
-        draft.note(twist_note(subject, action))
+        draft.note(TWIST_NOTE.format(subject=subject.upper(), action=action.upper()))
         # Echo the unnamed SRD intrusion in the call that rolled it without adding canon.
         due = actor.fact(
             f"a twist interrupts the scene: {subject} / {action}",
@@ -232,10 +234,10 @@ class Loner3eEngine(SceneEngine[Loner3eSheet, Loner3eGame, Pack]):
         return [rolled_fact, due]
 
 
-def _oracle_line(action: Question, opponent: Loner3eSheet | None, outcome: Outcome) -> str:
-    footing = action.position + (f" ({action.edge})" if action.edge else "")
+def _oracle_line(args: Roll, opponent: Loner3eCast | None, outcome: Outcome) -> str:
+    footing = args.position + (f" ({args.edge})" if args.edge else "")
     against = f" against {opponent.name}" if opponent is not None else ""
-    return f"{action.what}{against} — oracle, {footing}: {outcome.wording}"
+    return f"{args.what}{against} — oracle, {footing}: {outcome.wording}"
 
 
 def _absorbed(exchange: list[Fact]) -> tuple[list[Fact], tuple[str, ...]]:
@@ -245,7 +247,7 @@ def _absorbed(exchange: list[Fact]) -> tuple[list[Fact], tuple[str, ...]]:
 
 
 def _strike(
-    draft: Loner3eGame, actor: Loner3eSheet, opponent: Loner3eSheet, outcome: Outcome
+    draft: Loner3eGame, actor: Loner3eCast, opponent: Loner3eCast, outcome: Outcome
 ) -> tuple[list[Fact], bool]:
     harm = outcome.harm
     hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
@@ -253,7 +255,7 @@ def _strike(
     facts = hit.luck.change(hit, -abs(harm), "Luck", why)
     if hit.luck.current != 0:
         return facts, False
-    draft.note(defeat_note(hit.name))
+    draft.note(DEFEAT_NOTE.format(name=hit.name))
     lost = f"{hit.name} is out of luck"
     facts.append(hit.fact(lost, card=lost))
     # SRD: luck resets after conflicts, and a side at 0 is the only end the engine sees.
@@ -262,7 +264,7 @@ def _strike(
     return facts, True
 
 
-def _check_ready(actor: Loner3eSheet, opponent: Loner3eSheet | None) -> None:
+def _check_ready(actor: Loner3eCast, opponent: Loner3eCast | None) -> None:
     if opponent is None:
         return
     if opponent.id == actor.id:
@@ -275,10 +277,10 @@ def _check_ready(actor: Loner3eSheet, opponent: Loner3eSheet | None) -> None:
             )
 
 
-def _pair(action: Question, rng: Random) -> tuple[int, DiceEvent, int, DiceEvent, list[Fact]]:
-    chance_faces = (DIE_FACE, DIE_FACE) if action.position == "advantage" else (DIE_FACE,)
-    risk_faces = (DIE_FACE, DIE_FACE) if action.position == "disadvantage" else (DIE_FACE,)
-    asked = action.question
+def _pair(args: Roll, rng: Random) -> tuple[int, DiceEvent, int, DiceEvent, list[Fact]]:
+    chance_faces = (DIE_FACE, DIE_FACE) if args.position == "advantage" else (DIE_FACE,)
+    risk_faces = (DIE_FACE, DIE_FACE) if args.position == "disadvantage" else (DIE_FACE,)
+    asked = args.question
     chance_kept, chance, chance_fact = roll_pool(
         chance_faces, f"{asked} — chance", rng, label="Chance"
     )

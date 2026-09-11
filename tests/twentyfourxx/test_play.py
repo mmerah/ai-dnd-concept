@@ -34,7 +34,7 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
     )
     world = state.payload
     assert world.player.alive
-    assert world.player.dice().hindrances == ["Maimed"]
+    assert world.player.require_sheet().hindrances == ["Maimed"]
 
     state = await play_turn(table, "Ask what else this shift wants of Kael.", the_way_on())
     assert state.payload.run.offered
@@ -51,7 +51,7 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
     )
 
     assert state.payload.run.title == "The Cargo Bay"
-    assert state.exchanges()[before].prompt == pursuit
+    assert state.exchanges()[before].words == pursuit
     assert table.saved() == table.state
 
 

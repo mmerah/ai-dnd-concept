@@ -12,8 +12,7 @@ from aidm.core.facts import Fact, cards
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.loner3e.tools import outcome_for
-from aidm.engines.loner3e.world import Loner3eGame
+from aidm.engines.loner3e.world import Loner3eGame, outcome_for
 from aidm.engines.scenes.engine import WAY_UNWRITTEN
 from aidm.turn.run import REQUEST_WAIT, Turn
 
@@ -60,7 +59,7 @@ async def test_a_turn_runs_the_master_then_the_narrator_on_a_safe_prompt(tmp_pat
     # The sheets are the game master's: no tag the engine rolls by reaches the narrator.
     assert "concept" not in narrator
     assert len(state.exchanges()) == 1
-    assert state.exchanges()[-1].prompt == "I search beneath the desk."
+    assert state.exchanges()[-1].words == "I search beneath the desk."
 
 
 async def test_the_turn_holds_its_facts_in_resolver_order(tmp_path: Path) -> None:

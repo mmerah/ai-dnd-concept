@@ -54,9 +54,7 @@ async def run_builtin(
     started = monotonic()
     try:
         async with timeout(config.timeout):
-            said, rounds = await _converse(
-                role, config, provider, prompt, tools if role == "master" else None
-            )
+            said, rounds = await _converse(role, config, provider, prompt, tools)
     except HTTPError as failed:
         raise Refusal(f"the {role}'s provider failed: {_detail(failed)}") from failed
     LOGGER.info(

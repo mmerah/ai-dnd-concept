@@ -15,7 +15,7 @@ def test_begin_refuses_a_draft_whose_npc_stands_in_no_place() -> None:
     )
     draft.npcs[MIRA].place = GHOST
     with pytest.raises(Refusal, match="in no place"):
-        _ = TunnelGoonsWorld.begin(draft, world.player, (), "")
+        _ = TunnelGoonsWorld.opening(draft, world.player, (), "")
 
 
 def test_an_item_on_nothing_is_refused() -> None:

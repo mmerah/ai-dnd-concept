@@ -11,7 +11,7 @@ from aidm.core.facts import Fact
 from aidm.core.io import decode
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, PendingDecision, PendingOption
-from aidm.core.tools import MasterTool, master_tool
+from aidm.core.tools import MasterTool, NoArgs, master_tool
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
 from aidm.engines.seam import AnyEngine
@@ -68,33 +68,29 @@ DECISION = _decision(TURN_THE_HIT)
 CHAINING = _decision(CHAIN_THE_HIT)
 
 
-def _hit(draft: AnyGame, *, narrate: bool) -> tuple[Fact, ...]:
+def _hit(draft: AnyGame, *, told: bool) -> tuple[Fact, ...]:
     _loner(draft).pending = DECISION
-    return (Fact(trace="the blow reaches the player", told=narrate),)
+    return (Fact(trace="the blow reaches the player", told=told),)
 
 
-class _NoArgs(Frozen):
-    pass
-
-
-def _strike_tool(*, narrate: bool) -> MasterTool[Loner3eGame]:
+def _strike_tool(*, told: bool) -> MasterTool[Loner3eGame]:
     return master_tool(
         "strike",
         "Take a hit the player may turn by breaking something of theirs.",
-        _NoArgs,
-        lambda draft, _args, _rng: _hit(draft, narrate=narrate),
+        NoArgs,
+        lambda draft, _args, _rng: _hit(draft, told=told),
     )
 
 
-def _engine(*, narrate: bool = True) -> AnyEngine:
+def _engine(*, told: bool = True) -> AnyEngine:
     engine = Loner3eEngine()
-    tools = (_strike_tool(narrate=narrate), TURN_THE_HIT, CHAIN_THE_HIT)
+    tools = (_strike_tool(told=told), TURN_THE_HIT, CHAIN_THE_HIT)
     engine.tools = {tool.name: tool for tool in tools}
     return engine
 
 
-def _deciding(saves: Path, *, narrate: bool = True) -> Table[Loner3eGame]:
-    return open_game(saves, engine=_engine(narrate=narrate))
+def _deciding(saves: Path, *, told: bool = True) -> Table[Loner3eGame]:
+    return open_game(saves, engine=_engine(told=told))
 
 
 def _suspend(table: Table[Loner3eGame], decision: PendingDecision = DECISION) -> None:
@@ -120,7 +116,7 @@ async def test_a_suspending_resolver_ends_the_run_and_records_the_pause(tmp_path
 
 
 async def test_a_hand_back_that_moved_no_fiction_gets_no_prose(tmp_path: Path) -> None:
-    table = _deciding(tmp_path, narrate=False)
+    table = _deciding(tmp_path, told=False)
     table.spawner.turns.append(table.plays((tool_call("strike"),)))
 
     await table.service.play(Answer(text="I charge the guard."))
@@ -141,7 +137,7 @@ async def test_a_closed_answer_resolves_in_engine_code_before_the_master_continu
 
     assert [fact.trace for fact in table.facts] == ["lantern broke to turn the hit"]
     assert "lantern broke to turn the hit" in table.spawner.prompt("master")
-    assert state.exchanges()[-1].prompt == "Break the lantern"
+    assert state.exchanges()[-1].words == "Break the lantern"
     assert state.pending is None
 
 

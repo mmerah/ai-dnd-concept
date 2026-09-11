@@ -6,7 +6,7 @@ from support.table import refused as change_refused
 
 from aidm.core.entities import Refusal
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, Loner3eSheet
+from aidm.engines.loner3e.world import LUCK_MAX, Loner3eCast, Loner3eGame
 from aidm.engines.scenes.tools import NextDraft, SceneDraft
 from aidm.engines.scenes.worldsmith import check_scene
 
@@ -55,8 +55,8 @@ def test_someone_hidden_here_cannot_be_acted_on_before_the_reveal() -> None:
 
 def _next_scene(
     present: tuple[str, ...] = (MARA,), hidden: tuple[str, ...] = (TOMAS,)
-) -> SceneDraft[Loner3eSheet]:
-    return SceneDraft[Loner3eSheet](
+) -> SceneDraft[Loner3eCast]:
+    return SceneDraft[Loner3eCast](
         place="cloister",
         title="The Cloister",
         focus="Does the cloister walk still reach the stair?",
@@ -95,7 +95,7 @@ def test_install_stamps_the_recap_on_the_chapter_left() -> None:
     _, state = initialized()
     draft = state.draft()
 
-    _ = ENGINE.install(draft, NextDraft[Loner3eSheet](**_next_scene().model_dump(), recap=RECAP))
+    _ = ENGINE.install(draft, NextDraft[Loner3eCast](**_next_scene().model_dump(), recap=RECAP))
 
     assert draft.log[-2].recap == RECAP
     assert draft.log[-1].recap == ""

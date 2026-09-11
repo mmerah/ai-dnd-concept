@@ -22,8 +22,9 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import Chapter, DecisionOption, Exchange, Mark, PendingOption, SpokenLine
+from aidm.core.prompt import Pairs
 from aidm.core.tools import MasterTool
-from aidm.core.views import NarratorView, Pairs, PlayerView
+from aidm.core.views import NarratorView, PlayerView
 from aidm.engines.base import PLAYER_ID, Person, World, render_worldsmith
 
 type AnyEngine = Engine[Any, Any]
@@ -45,8 +46,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
     title: str
     art_style: str
     directory: Path  # rules.md; a scene engine's packs/
-    family_prompt: Path
-    worldsmith_prompt: Path
+    family_dir: Path
     game: type[G]
     scenario: type[AnyScenario]
     character: type[AnyCharacter]
@@ -56,7 +56,8 @@ class Engine[P: Person, G: Game[Any]](ABC):
 
     def __init__(self) -> None:
         self.instructions = (
-            f"{read_prompt(self.directory / 'rules.md')}\n{read_prompt(self.family_prompt)}"
+            f"{read_prompt(self.directory / 'rules.md')}\n"
+            f"{read_prompt(self.family_dir / 'rules.md')}"
         )
         tools = self.master_tools()
         names = [tool.name for tool in tools]
@@ -86,23 +87,13 @@ class Engine[P: Person, G: Game[Any]](ABC):
         self.validate(state)
         return state
 
-    def answer(self, draft: G, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
+    def answer(self, draft: G, chosen: PendingOption, rng: Random) -> list[Fact]:
         found = self.tools.get(chosen.name)
         if found is None:
             raise Refusal(
                 f"the {self.id!r} engine has no tool {chosen.name!r} to play option {chosen.id!r}"
             )
-        return found.call(draft, chosen.args, rng)
-
-    async def compose[M: BaseModel](
-        self,
-        worldsmith: WorldsmithAnswer,
-        prompt: str,
-        model: type[M],
-        build: Callable[[M], AnyScenario],
-        playable: Callable[[AnyScenario], None],
-    ) -> AnyScenario:
-        return build(await worldsmith(prompt, model, lambda answer: playable(build(answer))))
+        return list(found.call(draft, chosen.args, rng))
 
     def render_request(
         self, draft: G, *, intent: str, guidance: str, answer: type[BaseModel]
@@ -132,7 +123,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
         source: str,
         premise: str,
     ) -> AnyScenario:
-        """No bar: `begin` is the one bar an opening meets, and `playable` always runs it."""
+        """No check here: `begin` is the one check an opening meets, and `check` always runs it."""
         return self.scenario(
             meta=meta.with_premise(premise),
             engine=self.id,
@@ -147,12 +138,12 @@ class Engine[P: Person, G: Game[Any]](ABC):
         lines: tuple[SpokenLine, ...],
         facts: tuple[Fact, ...],
         *,
-        prompt: str = "",
+        words: str = "",
         mark: Mark = "",
         proposal: str = "",
     ) -> G:
         exchange = Exchange(
-            prompt=prompt,
+            words=words,
             mark=mark,
             lines=lines,
             facts=facts,
@@ -239,7 +230,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
         source: str,
         packs: Sequence[Slug],
         worldsmith: WorldsmithAnswer,
-        playable: Callable[[AnyScenario], None],
+        check: Callable[[AnyScenario], None],
     ) -> AnyScenario: ...
     @abstractmethod
     def act(self, draft: G, action: Slug, words: str, /) -> None:
@@ -256,7 +247,7 @@ class Engine[P: Person, G: Game[Any]](ABC):
         answer: type[BaseModel],
     ) -> str:
         return render_worldsmith(
-            role=read_prompt(self.worldsmith_prompt),
+            role=read_prompt(self.family_dir / "worldsmith.md"),
             source=source,
             scope=scope,
             family=family,
@@ -264,3 +255,13 @@ class Engine[P: Person, G: Game[Any]](ABC):
             guidance=guidance,
             answer=answer,
         )
+
+
+async def compose[M: BaseModel](
+    worldsmith: WorldsmithAnswer,
+    prompt: str,
+    model: type[M],
+    build: Callable[[M], AnyScenario],
+    check: Callable[[AnyScenario], None],
+) -> AnyScenario:
+    return build(await worldsmith(prompt, model, lambda answer: check(build(answer))))

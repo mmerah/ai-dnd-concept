@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from aidm.core.entities import Frozen, Refusal, Slug
 from aidm.core.facts import Fact
-from aidm.core.model import Game, Generation, Objection, WorldsmithAnswer
+from aidm.core.model import Check, Game, Generation, WorldsmithAnswer
 from aidm.core.tools import MasterTool, master_tool
 from aidm.engines.base import Person
 from aidm.engines.seam import Engine, Request, Written
@@ -49,7 +49,7 @@ class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
 
     def hire(self, draft: G, args: Hire, _rng: Random) -> list[Fact]:
         member = self.hireable(draft, args.entity_id)
-        draft.generation = Generation(operation=HIRE, brief=args.terms, target=member.id)
+        draft.generation = Generation(operation=HIRE, detail=args.terms, target=member.id)
         trace = (
             f"the worldsmith writes {member.name}'s sheet once this turn ends: {args.terms}. "
             "Nothing more lands this turn; stop and exit"
@@ -69,7 +69,9 @@ class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
             raise Refusal("a hire request names no target")
         member = self.hireable(draft, request.target)
         answer = await worldsmith(
-            self.hire_prompt(draft, member, request.brief), self.hire_answer, self.hire_bar(draft)
+            self.hire_prompt(draft, member, request.detail),
+            self.hire_answer,
+            self.hire_check(draft),
         )
         summary = self.install_sheet(member, answer)
         world = self.world(draft)
@@ -78,7 +80,7 @@ class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
         facts.append(member.fact(trace, card=f"{member.name} signs on — {summary}"))
         return tuple(facts), SIGNED_ON.format(name=member.name)
 
-    def hire_bar(self, _draft: G) -> Objection[A]:
+    def hire_check(self, _draft: G) -> Check[A]:
         return lambda _answer: None
 
     def hireable(self, draft: G, entity_id: Slug) -> M:

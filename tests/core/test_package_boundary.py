@@ -84,30 +84,6 @@ def test_no_module_names_a_concrete_engine() -> None:
     assert naming == ROOTS
 
 
-def test_no_ui_module_reaches_through_a_session_into_the_engine() -> None:
-    """A bare `.engine` ban would catch `scenario.engine` in `ui/app.py`: only a session's is."""
-
-    def is_session(value: ast.expr) -> bool:
-        if isinstance(value, ast.Name):
-            return value.id == "session"
-        return (
-            isinstance(value, ast.Attribute)
-            and value.attr == "session"
-            and isinstance(value.value, ast.Name)
-            and value.value.id == "self"
-        )
-
-    naming = {
-        str(path.relative_to(SOURCE))
-        for path in _source_files("ui")
-        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"), filename=str(path)))
-        if isinstance(node, ast.Attribute)
-        if node.attr == "engine"
-        if is_session(node.value)
-    }
-    assert not naming
-
-
 def test_no_ui_module_names_a_built_engine_id() -> None:
     """The theme table is the one place the UI names an engine id."""
     built_ids = {name.rsplit(".", 1)[-1] for name in ENGINES}

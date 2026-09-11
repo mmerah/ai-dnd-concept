@@ -29,9 +29,9 @@
     ]
   },
   {
-    "trace": "the player Kael[player] Stress +1 -> 1/4 (the bell rang twice)",
+    "trace": "the player Kael[player] Stress +1 → 1/4 (the bell rang twice)",
     "told": true,
-    "card": "Stress +1 -> 1/4",
+    "card": "Stress +1 → 1/4",
     "dice": []
   }
 ]

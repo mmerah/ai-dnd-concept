@@ -8,8 +8,8 @@ from aidm.engines.scenes.world import SceneRun
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.engines.twentyfourxx.world import (
     Crewmate,
+    CrewSheet,
     Gear,
-    Sheet,
     SkillDie,
     TwentyfourxxGame,
     TwentyfourxxWorld,
@@ -56,7 +56,7 @@ def hired(
 ) -> TwentyfourxxGame:
     """Give a cast member a sheet and put them in the party, for tests that need a hired hand."""
     draft = state.draft()
-    draft.payload.cast[entity_id].sheet = Sheet(specialty="Muscle", skills=skills)
+    draft.payload.cast[entity_id].sheet = CrewSheet(specialty="Muscle", skills=skills)
     draft.payload.party.append(entity_id)
     return draft.commit()
 
@@ -77,7 +77,7 @@ def _player() -> Crewmate:
         name="Rook",
         brief="A quiet operator",
         known=True,
-        sheet=Sheet(
+        sheet=CrewSheet(
             specialty="Sneak",
             origin="Human",
             skills={"Stealth": 10},

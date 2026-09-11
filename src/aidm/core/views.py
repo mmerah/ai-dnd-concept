@@ -12,8 +12,7 @@ from aidm.core.play import (
     PendingDecision,
     SpokenLine,
 )
-
-type Pairs = tuple[tuple[str, str], ...]
+from aidm.core.prompt import Pairs
 
 
 # Three row shapes, in order: entity (`icon_id`), labelled value (`detail`), or bare label.
@@ -114,6 +113,6 @@ class PlayerView(Frozen):
     scene_title: str
     situation: str
     panels: tuple[Panel, ...]
-    prompt: PendingDecision | None
+    decision: PendingDecision | None
     action: DecisionOption | None
     over: str | None

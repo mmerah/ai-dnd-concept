@@ -21,14 +21,14 @@ from aidm.core.entities import Refusal
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.rooms.tools import Move
 from aidm.engines.rooms.world import Prop
-from aidm.engines.tunnelgoons.tools import ActionRoll, LevelUp
-from aidm.engines.tunnelgoons.world import Abilities
+from aidm.engines.tunnelgoons.tools import LevelUp, Roll
+from aidm.engines.tunnelgoons.world import GoonSheet
 
 TOTAL_RE = re.compile(r"(-?\d+) vs DS")
 
 
-def _sheeted(*, brute: int = 0, skulker: int = 0, erudite: int = 0) -> Abilities:
-    return Abilities(abilities={"brute": brute, "skulker": skulker, "erudite": erudite})
+def _sheeted(*, brute: int = 0, skulker: int = 0, erudite: int = 0) -> GoonSheet:
+    return GoonSheet(abilities={"brute": brute, "skulker": skulker, "erudite": erudite})
 
 
 def _total(card: str) -> int:
@@ -40,39 +40,41 @@ def _total(card: str) -> int:
 def test_the_roll_adds_ability_and_items_and_penalizes_brute_and_skulker_over_inventory() -> None:
     draft = small_world().draft()
     world = draft.payload
-    world.player.dice().abilities["skulker"] = 2
-    world.player.dice().inventory = 1  # carrying rope + torch (2) is 1 over
+    world.player.require_sheet().abilities["skulker"] = 2
+    world.player.require_sheet().inventory = 1  # carrying rope + torch (2) is 1 over
     facts = ENGINE.roll(
         draft,
-        ActionRoll(what="Sneak past", ability="skulker", items=(ROPE,), difficulty=10),
+        Roll(what="Sneak past", ability="skulker", items=(ROPE,), difficulty=10),
         Random(1),
     )
     rolled = facts[1]
     dice = rolled.dice[0].rolled
-    assert _total(rolled.card) == sum(dice) + world.player.dice().abilities["skulker"] + 1 - 1
+    assert (
+        _total(rolled.card) == sum(dice) + world.player.require_sheet().abilities["skulker"] + 1 - 1
+    )
 
 
 def test_erudite_rolls_are_not_penalized_for_over_inventory() -> None:
     draft = small_world().draft()
     world = draft.payload
-    world.player.dice().abilities["erudite"] = 2
-    world.player.dice().inventory = 1
+    world.player.require_sheet().abilities["erudite"] = 2
+    world.player.require_sheet().inventory = 1
     facts = ENGINE.roll(
-        draft, ActionRoll(what="Read the runes", ability="erudite", difficulty=8), Random(2)
+        draft, Roll(what="Read the runes", ability="erudite", difficulty=8), Random(2)
     )
     rolled = facts[1]
     dice = rolled.dice[0].rolled
-    assert _total(rolled.card) == sum(dice) + world.player.dice().abilities["erudite"]
+    assert _total(rolled.card) == sum(dice) + world.player.require_sheet().abilities["erudite"]
 
 
 def test_a_roll_against_an_npc_that_hits_can_slay_it() -> None:
     draft = small_world().draft()
     world = draft.payload
     world.npcs[MANTIS].place = START
-    world.player.dice().abilities["brute"] = 10  # min total 12 always beats DS 4
+    world.player.require_sheet().abilities["brute"] = 10  # min total 12 always beats DS 4
     _ = ENGINE.roll(
         draft,
-        ActionRoll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
+        Roll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
         Random(3),
     )
     mantis = world.npcs[MANTIS]
@@ -85,10 +87,10 @@ def test_an_npc_killed_by_a_roll_drops_what_it_carried_here() -> None:
     world = draft.payload
     world.npcs[MANTIS].place = START
     world.items[KEY].on = MANTIS
-    world.player.dice().abilities["brute"] = 10  # min total 12 always beats DS 4
+    world.player.require_sheet().abilities["brute"] = 10  # min total 12 always beats DS 4
     _ = ENGINE.roll(
         draft,
-        ActionRoll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
+        Roll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
         Random(3),
     )
     assert world.items[KEY].on == START
@@ -100,11 +102,11 @@ def test_a_miss_against_an_npc_can_kill_the_player() -> None:
     world.npcs[MANTIS].place = START
     world.npcs[MANTIS].hp.maximum = 20
     world.npcs[MANTIS].hp.current = 20  # max total 12 never beats DS 20
-    world.player.dice().abilities["brute"] = 0
+    world.player.require_sheet().abilities["brute"] = 0
     world.player.hp.current = 1
     _ = ENGINE.roll(
         draft,
-        ActionRoll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
+        Roll(what="Smash it", ability="brute", against=MANTIS, dangerous=True),
         Random(4),
     )
     assert world.player.hp.current == 0
@@ -117,9 +119,7 @@ def test_a_roll_against_an_npc_wounds_nobody_unless_it_is_dangerous() -> None:
     draft = small_world().draft()
     world = draft.payload
     world.npcs[MANTIS].place = START
-    _ = ENGINE.roll(
-        draft, ActionRoll(what="Talk it down", ability="erudite", against=MANTIS), Random(3)
-    )
+    _ = ENGINE.roll(draft, Roll(what="Talk it down", ability="erudite", against=MANTIS), Random(3))
     assert world.npcs[MANTIS].hp.current == world.npcs[MANTIS].hp.maximum
     assert world.player.hp.current == world.player.hp.maximum
 
@@ -127,18 +127,18 @@ def test_a_roll_against_an_npc_wounds_nobody_unless_it_is_dangerous() -> None:
 def test_dangerous_hurts_only_on_a_miss() -> None:
     draft = small_world().draft()
     world = draft.payload
-    world.player.dice().abilities["erudite"] = 12  # min total 14 always beats DS 8
+    world.player.require_sheet().abilities["erudite"] = 12  # min total 14 always beats DS 8
     before = world.player.hp.current
     _ = ENGINE.roll(
         draft,
-        ActionRoll(what="Cross the gap", ability="erudite", difficulty=8, dangerous=True),
+        Roll(what="Cross the gap", ability="erudite", difficulty=8, dangerous=True),
         Random(0),
     )
     assert world.player.hp.current == before
 
     draft2 = small_world().draft()
     world2 = draft2.payload
-    world2.player.dice().inventory = 0
+    world2.player.require_sheet().inventory = 0
     world2.items.update(
         {
             f"junk-{n}": Prop(
@@ -153,7 +153,7 @@ def test_dangerous_hurts_only_on_a_miss() -> None:
     )  # carried (13) - inventory (0) = 13 penalty, always below any legal DS
     _ = ENGINE.roll(
         draft2,
-        ActionRoll(what="Cross the gap", ability="brute", difficulty=8, dangerous=True),
+        Roll(what="Cross the gap", ability="brute", difficulty=8, dangerous=True),
         Random(0),
     )
     assert world2.player.hp.current < world2.player.hp.maximum
@@ -161,9 +161,9 @@ def test_dangerous_hurts_only_on_a_miss() -> None:
 
 def test_neither_or_both_of_difficulty_and_against_is_refused() -> None:
     with pytest.raises(ValueError, match="not both/neither"):
-        ActionRoll(what="Push", ability="brute")
+        Roll(what="Push", ability="brute")
     with pytest.raises(ValueError, match="not both/neither"):
-        ActionRoll(what="Push", ability="brute", difficulty=8, against=MANTIS)
+        Roll(what="Push", ability="brute", difficulty=8, against=MANTIS)
 
 
 def test_an_item_not_in_the_players_hands_is_refused() -> None:
@@ -171,7 +171,7 @@ def test_an_item_not_in_the_players_hands_is_refused() -> None:
     with pytest.raises(Refusal, match="not in Kael's hands"):
         _ = ENGINE.roll(
             draft,
-            ActionRoll(what="Pick lock", ability="skulker", items=(KEY,), difficulty=8),
+            Roll(what="Pick lock", ability="skulker", items=(KEY,), difficulty=8),
             Random(0),
         )
 
@@ -195,10 +195,10 @@ def test_level_up_with_no_args_opens_the_six_option_decision() -> None:
 def test_level_up_with_both_raises_the_ability_and_the_boost_and_the_level() -> None:
     draft = small_world().draft()
     world = draft.payload
-    before = world.player.dice().level
+    before = world.player.require_sheet().level
     _ = ENGINE.level_up(draft, LevelUp(ability="brute", boost="health"), Random(0))
-    assert world.player.dice().abilities["brute"] == 2
-    assert world.player.dice().level == before + 1
+    assert world.player.require_sheet().abilities["brute"] == 2
+    assert world.player.require_sheet().level == before + 1
 
 
 def test_level_up_with_one_argument_is_refused() -> None:
@@ -327,9 +327,7 @@ def test_action_roll_a_member_rolls_on_their_own_abilities_and_items() -> None:
     world.items[ROPE].on = MIRA
     facts = ENGINE.roll(
         draft,
-        ActionRoll(
-            what="Sneak past", ability="skulker", items=(ROPE,), difficulty=10, actor_id=MIRA
-        ),
+        Roll(what="Sneak past", ability="skulker", items=(ROPE,), difficulty=10, actor_id=MIRA),
         Random(1),
     )
     rolled = facts[1]
@@ -346,7 +344,7 @@ def test_action_roll_refuses_rolling_against_oneself() -> None:
     with pytest.raises(Refusal, match="cannot roll against themselves"):
         _ = ENGINE.roll(
             draft,
-            ActionRoll(what="Wrestle", ability="brute", against=MIRA, actor_id=MIRA),
+            Roll(what="Wrestle", ability="brute", against=MIRA, actor_id=MIRA),
             Random(0),
         )
 
@@ -359,9 +357,7 @@ def test_a_members_miss_damages_them_and_kills_them_at_zero() -> None:
     world.party.append(MIRA)
     _ = ENGINE.roll(
         draft,
-        ActionRoll(
-            what="Leap the gap", ability="brute", difficulty=20, dangerous=True, actor_id=MIRA
-        ),
+        Roll(what="Leap the gap", ability="brute", difficulty=20, dangerous=True, actor_id=MIRA),
         Random(0),
     )
     assert world.npcs[MIRA].hp.current == 0

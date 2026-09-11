@@ -238,7 +238,7 @@ class SceneWorld[C: Person](World[C, C]):
 def settled[C: Person](
     draft: SceneDraft[C], player: Person, cast: dict[Slug, C], party: Sequence[Slug]
 ) -> tuple[dict[Slug, C], SceneRun]:
-    """Free: it marks the present met and files the run, for a world that may not exist yet."""
+    """It marks the present met and files the run, for a world that may not exist yet."""
     everyone: Mapping[Slug, Thing] = {player.id: player, **cast}
     present = _resolve_ids(draft.present, everyone, "present")
     hidden = _resolve_ids(draft.hidden, everyone, "hidden")

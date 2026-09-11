@@ -45,7 +45,7 @@ def behind(state: AnyGame) -> AnyGame:
             focus="Is there a way past the vault door from the stair?",
             exchanges=[
                 Exchange(
-                    prompt="I try the vault door.",
+                    words="I try the vault door.",
                     lines=(SpokenLine(text="The iron handle does not turn."),),
                 )
             ],
@@ -53,7 +53,7 @@ def behind(state: AnyGame) -> AnyGame:
     )
     draft.log[-1].exchanges = [
         Exchange(
-            prompt="I look for another way in.",
+            words="I look for another way in.",
             lines=(SpokenLine(text="A flagstone by the wall sits proud of its neighbours."),),
         )
     ]

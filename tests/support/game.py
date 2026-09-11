@@ -5,7 +5,7 @@ from aidm.app.runtime import GameService, LaunchTarget
 from aidm.config import Settings
 from aidm.core.entities import Slug
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.loner3e.world import Loner3eCharacter, Loner3eGame, Loner3eScenario, Loner3eSheet
+from aidm.engines.loner3e.world import Loner3eCast, Loner3eCharacter, Loner3eGame, Loner3eScenario
 from aidm.engines.seam import AnyEngine
 from support.table import (
     ENGINES_BUILT,
@@ -28,7 +28,7 @@ SITUATION = (
 ENGINE = narrowed(ENGINES_BUILT[LONER3E], Loner3eEngine)
 
 
-def with_entity(state: Loner3eGame, entity: Loner3eSheet) -> Loner3eGame:
+def with_entity(state: Loner3eGame, entity: Loner3eCast) -> Loner3eGame:
     """Added to the cast and to the scene; `known` alone decides present or hidden."""
     draft = state.draft()
     draft.payload.cast[entity.id] = entity
@@ -36,7 +36,7 @@ def with_entity(state: Loner3eGame, entity: Loner3eSheet) -> Loner3eGame:
     return draft.commit()
 
 
-def loner_sheet(state: Loner3eGame, entity_id: Slug) -> Loner3eSheet:
+def loner_sheet(state: Loner3eGame, entity_id: Slug) -> Loner3eCast:
     return state.payload.require(entity_id)
 
 

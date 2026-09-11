@@ -40,7 +40,31 @@ Every npc needs `hp`. It is the npc's Health and its Difficulty Score at once. G
 ANSWER WITH:
 {
   "$defs": {
-    "Abilities": {
+    "Chattiness": {
+      "enum": [
+        "quiet",
+        "normal",
+        "chatty"
+      ],
+      "type": "string"
+    },
+    "Gauge": {
+      "additionalProperties": false,
+      "properties": {
+        "current": {
+          "type": "integer"
+        },
+        "maximum": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "current",
+        "maximum"
+      ],
+      "type": "object"
+    },
+    "GoonSheet": {
       "additionalProperties": false,
       "description": "The three ability scores a goon rolls with.",
       "properties": {
@@ -71,30 +95,6 @@ ANSWER WITH:
           "type": "integer"
         }
       },
-      "type": "object"
-    },
-    "Chattiness": {
-      "enum": [
-        "quiet",
-        "normal",
-        "chatty"
-      ],
-      "type": "string"
-    },
-    "Counter": {
-      "additionalProperties": false,
-      "properties": {
-        "current": {
-          "type": "integer"
-        },
-        "maximum": {
-          "type": "integer"
-        }
-      },
-      "required": [
-        "current",
-        "maximum"
-      ],
       "type": "object"
     },
     "Npc": {
@@ -129,7 +129,7 @@ ANSWER WITH:
         "sheet": {
           "anyOf": [
             {
-              "$ref": "#/$defs/Abilities"
+              "$ref": "#/$defs/GoonSheet"
             },
             {
               "type": "null"
@@ -139,7 +139,7 @@ ANSWER WITH:
           "description": "Leave empty."
         },
         "hp": {
-          "$ref": "#/$defs/Counter"
+          "$ref": "#/$defs/Gauge"
         }
       },
       "required": [

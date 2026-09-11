@@ -7,8 +7,8 @@ from aidm.core.entities import Refusal, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import PendingOption
-from aidm.core.views import Pairs
-from aidm.engines.base import PLAYER_ID, Counter, Item, ItemSheet, Sheeted
+from aidm.core.prompt import Pairs
+from aidm.engines.base import PLAYER_ID, Gauge, Item, ItemSheet, Sheeted
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 
@@ -42,7 +42,7 @@ class SurvivorSheet(ItemSheet[Supply]):
     worn: dict[Skill, Die] = Field(min_length=6, max_length=6)
     med_kit: bool = False
     loot: Die = LOOT_START
-    stress: Counter = Field(default_factory=lambda: Counter(current=0, maximum=STRESS_MAX))
+    stress: Gauge = Field(default_factory=lambda: Gauge(current=0, maximum=STRESS_MAX))
     stunted: bool = False
 
     @model_validator(mode="after")
@@ -105,10 +105,10 @@ class Survivor(Sheeted[SurvivorSheet]):
     def change_stress(self, amount: int, why: str) -> list[Fact]:
         if amount == 0:
             raise Refusal("change_stress needs a non-zero amount")
-        return self.dice().stress.change(self, amount, "Stress", why)
+        return self.require_sheet().stress.change(self, amount, "Stress", why)
 
     def use_med_kit(self) -> list[Fact]:
-        sheet = self.dice()
+        sheet = self.require_sheet()
         if not sheet.med_kit:
             raise Refusal(f"{self.name} holds no med kit")
         sheet.med_kit = False
@@ -118,7 +118,7 @@ class Survivor(Sheeted[SurvivorSheet]):
         return facts
 
     def take_loot(self, item: str, granted: Die, choice: str) -> Fact:
-        sheet = self.dice()
+        sheet = self.require_sheet()
         if choice == "take":
             if len(sheet.items) >= CARRY:
                 raise Refusal("the backpack is full; swap for something carried instead")

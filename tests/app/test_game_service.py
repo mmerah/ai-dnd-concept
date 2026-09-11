@@ -27,13 +27,13 @@ from aidm.core.io import FileStore
 from aidm.core.model import AnyGame, Generation, ScenarioMeta
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.world import BreathlessGame
-from aidm.engines.loner3e.world import Loner3eSheet
+from aidm.engines.loner3e.world import Loner3eCast
 
 
 class _UnsavableStore(FileStore):
     """Overrides `save` alone: `FileStore` is frozen and slotted, so this cannot monkeypatch it."""
 
-    def save(self, _slug: str, _state: AnyGame, /) -> None:
+    def write(self, _slug: str, _state: AnyGame, /) -> None:
         raise OSError("disk is gone")
 
 
@@ -42,13 +42,13 @@ def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path
     game = session(tmp_path)
     assert store.slugs() == ()
 
-    store.save(TARGET.slug, game.state.model_copy(update={"notes": ["kept"]}).commit())
+    store.write(TARGET.slug, game.state.model_copy(update={"notes": ["kept"]}).commit())
     assert session(tmp_path).state.notes == ["kept"]
 
     game = session(tmp_path)
     game.restart()
     assert game.state.notes == []
-    assert store.load(TARGET.slug) is None
+    assert store.read(TARGET.slug) is None
 
 
 def test_restart_keeps_scene_art_a_replayed_scene_would_reuse(tmp_path: Path) -> None:
@@ -81,7 +81,7 @@ def test_resume_refuses_a_save_that_is_not_this_game(
     tmp_path: Path, change: dict[str, object], message: str
 ) -> None:
     game = session(tmp_path)
-    FileStore(tmp_path).save(TARGET.slug, game.state.model_copy(update=change).commit())
+    FileStore(tmp_path).write(TARGET.slug, game.state.model_copy(update=change).commit())
 
     with pytest.raises(Refusal, match=message):
         session(tmp_path)
@@ -158,7 +158,7 @@ async def test_a_complication_writes_and_installs_at_the_same_place(tmp_path: Pa
 
     exchanges = state.exchanges()
     assert len(exchanges) == 2
-    assert exchanges[0].prompt == "I keep watch on the study door."
+    assert exchanges[0].words == "I keep watch on the study door."
     assert exchanges[1].mark == "story"
     assert state.payload.run.place == place
     assert all(entity_id in state.payload.cast for entity_id in here_before)
@@ -277,10 +277,10 @@ async def test_no_generation_runs_once_the_game_is_over(tmp_path: Path) -> None:
 def test_a_save_never_carries_a_request(tmp_path: Path) -> None:
     game = session(tmp_path)
     draft = game.state.draft()
-    draft.generation = Generation(operation="complication", brief="A crew breaks in.")
-    FileStore(tmp_path).save(TARGET.slug, draft)
+    draft.generation = Generation(operation="complication", detail="A crew breaks in.")
+    FileStore(tmp_path).write(TARGET.slug, draft)
 
-    assert "generation" not in json.loads(FileStore(tmp_path).load(TARGET.slug) or "")
+    assert "generation" not in json.loads(FileStore(tmp_path).read(TARGET.slug) or "")
 
 
 @dataclass(slots=True)
@@ -314,9 +314,9 @@ class _StillSpeaking:
         return await self.inner.run(role, prompt, session, tools)
 
 
-def _party_of_one(service: GameService) -> Loner3eSheet:
+def _party_of_one(service: GameService) -> Loner3eCast:
     """One chatty companion, met and travelling: she passes the d10 on three faces in ten."""
-    member = Loner3eSheet(
+    member = Loner3eCast(
         id="vessa-rune",
         name="Vessa Rune",
         brief="A sharp-eyed pilot.",

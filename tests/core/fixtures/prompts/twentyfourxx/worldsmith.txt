@@ -72,6 +72,56 @@ ANSWER WITH:
       ],
       "type": "string"
     },
+    "CrewSheet": {
+      "additionalProperties": false,
+      "description": "The dice a crew member rolls.",
+      "properties": {
+        "items": {
+          "patternProperties": {
+            "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
+              "$ref": "#/$defs/Gear"
+            }
+          },
+          "propertyNames": {},
+          "type": "object"
+        },
+        "specialty": {
+          "type": "string"
+        },
+        "origin": {
+          "default": "",
+          "type": "string"
+        },
+        "traits": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "skills": {
+          "additionalProperties": {
+            "$ref": "#/$defs/SkillDie"
+          },
+          "type": "object"
+        },
+        "credits": {
+          "default": 2,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "hindrances": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "specialty"
+      ],
+      "type": "object"
+    },
     "Crewmate": {
       "additionalProperties": false,
       "properties": {
@@ -100,7 +150,7 @@ ANSWER WITH:
         "sheet": {
           "anyOf": [
             {
-              "$ref": "#/$defs/Sheet"
+              "$ref": "#/$defs/CrewSheet"
             },
             {
               "type": "null"
@@ -148,56 +198,6 @@ ANSWER WITH:
       },
       "required": [
         "name"
-      ],
-      "type": "object"
-    },
-    "Sheet": {
-      "additionalProperties": false,
-      "description": "The dice a crew member rolls.",
-      "properties": {
-        "items": {
-          "patternProperties": {
-            "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
-              "$ref": "#/$defs/Gear"
-            }
-          },
-          "propertyNames": {},
-          "type": "object"
-        },
-        "specialty": {
-          "type": "string"
-        },
-        "origin": {
-          "default": "",
-          "type": "string"
-        },
-        "traits": {
-          "default": [],
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "skills": {
-          "additionalProperties": {
-            "$ref": "#/$defs/SkillDie"
-          },
-          "type": "object"
-        },
-        "credits": {
-          "default": 2,
-          "minimum": 0,
-          "type": "integer"
-        },
-        "hindrances": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "specialty"
       ],
       "type": "object"
     },

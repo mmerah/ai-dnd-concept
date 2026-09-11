@@ -29,7 +29,9 @@ from aidm.ui.widgets import (
     section,
 )
 
-_STEP_COPY: dict[Role, tuple[str, str]] = {
+LOGGER = logging.getLogger(__name__)
+
+STEP_COPY: dict[Role, tuple[str, str]] = {
     "master": (
         "Game Master",
         "Works out what your action actually does: who reacts, what changes, "
@@ -43,7 +45,7 @@ _STEP_COPY: dict[Role, tuple[str, str]] = {
     ),
 }
 
-_DICTATION_FAILURES = {
+DICTATION_FAILURES = {
     "not-allowed": "The browser refused the microphone (a secure context is needed).",
     "audio-capture": "No microphone.",
     "no-speech": "Nothing was heard.",
@@ -61,8 +63,6 @@ MARK_LABELS: dict[Marked, str] = {
     "story": "(the story goes on)",
     "interjection": "(the party speaks)",
 }
-
-LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,7 +124,7 @@ class GamePage:
         else:
             session.illustrate()
         with page_header(
-            session.state.scenario.title, session.engine_title, engine=session.engine_id
+            session.state.scenario.title, session.engine.title, engine=session.engine.id
         ):
             ui.space()
             self.sound = ui.button(icon="volume_up", on_click=self.toggle_sound).props("flat round")
@@ -178,7 +178,7 @@ class GamePage:
                 ui.button("Keep playing", on_click=self.restart_dialog.close).props("flat")
                 ui.button("Restart", on_click=self.confirmed_restart)
 
-        self.dice = DiceTray(theme.dice_look(session.engine_id))
+        self.dice = DiceTray(theme.dice_look(session.engine.id))
         self.dice.on("sound", self.sound_state)
         # A cached clip never autoplays on a page load, only one landing after.
         self.shown_clip = session.newest_clip()
@@ -273,7 +273,7 @@ class GamePage:
                     "w-full text-center text-xs italic opacity-60"
                 )
             else:
-                _bubble(session, player.id, player.label, exchange.prompt, sent=True)
+                _bubble(session, player.id, player.label, exchange.words, sent=True)
             for fact in cards(exchange.facts):
                 _card(fact)
             for line in exchange.lines:
@@ -310,7 +310,7 @@ class GamePage:
         turn = session.turn
         player = self.view.player
         if turn is not None:
-            _bubble(session, player.id, player.label, turn.prompt, sent=True)
+            _bubble(session, player.id, player.label, turn.words, sent=True)
             shown = cards(turn.facts)
             for fact in shown:
                 _card(fact, live=fact is shown[-1])
@@ -340,7 +340,7 @@ class GamePage:
 
     @ui.refreshable_method
     def decision_panel(self) -> None:
-        pending = self.view.prompt
+        pending = self.view.decision
         if pending is None:
             return
 
@@ -388,7 +388,7 @@ class GamePage:
         heading("Chronicle")
         played = self.history
         for number, exchange in reversed(list(enumerate(played, start=1))):
-            title = MARK_LABELS[exchange.mark] if exchange.mark else exchange.prompt
+            title = MARK_LABELS[exchange.mark] if exchange.mark else exchange.words
             with ui.expansion(f"turn {number}: {title}").classes("w-full game-card"):
                 # A speaker is named, because a bare quote reads as narration without bubbles.
                 for line in exchange.lines:
@@ -455,7 +455,7 @@ class GamePage:
 
     def _clear_spent_draft(self) -> None:
         history = self.history
-        newest_prompt = history[-1].prompt if history else ""
+        newest_prompt = history[-1].words if history else ""
         if draft_spent((self.box.value or "").strip(), newest_prompt):
             self.box.value = ""
             # Quasar never saw the value change, so only an explicit push empties the composer.
@@ -541,7 +541,7 @@ class GamePage:
         self.box.run_method("updateValue")
 
     def dictation_failed(self, e: GenericEventArguments) -> None:
-        ui.notify(_DICTATION_FAILURES.get(e.args, str(e.args)), type="warning", position="top")
+        ui.notify(DICTATION_FAILURES.get(e.args, str(e.args)), type="warning", position="top")
 
     def _set_composer(self) -> None:
         session = self.session
@@ -605,8 +605,8 @@ def game_page(runtime: Runtime, session: GameService) -> None:
 
 
 def can_type(player: PlayerView, phase: Role | None) -> bool:
-    prompt = player.prompt
-    return phase is None and (prompt is None or prompt.allows_text) and player.over is None
+    decision = player.decision
+    return phase is None and (decision is None or decision.allows_text) and player.over is None
 
 
 def standing_proposal(
@@ -615,7 +615,7 @@ def standing_proposal(
     newest = history[-1] if history else None
     if newest is None or not newest.proposal:
         return None
-    return newest if can_type(player, phase) and player.prompt is None else None
+    return newest if can_type(player, phase) and player.decision is None else None
 
 
 def near_end(position: float, size: float, container: float, slack: float = 48) -> bool:
@@ -639,10 +639,10 @@ def placeholder(player: PlayerView, phase: Role | None) -> str:
     if player.over is not None:
         return "The game is over. Restart it from the menu."
     if phase is not None:
-        return f"{_STEP_COPY[phase][0]} is working..."
-    if player.prompt is None:
+        return f"{STEP_COPY[phase][0]} is working..."
+    if player.decision is None:
         return "What do you do?"
-    if player.prompt.allows_text:
+    if player.decision.allows_text:
         return "The game is waiting on your answer."
     return "Choose an option above."
 
@@ -691,7 +691,7 @@ def _bubble(
 
 
 def _inline_status(step: Role, elapsed: float) -> ui.label:
-    label, description = _STEP_COPY[step]
+    label, description = STEP_COPY[step]
     with ui.row().classes("items-center no-wrap q-py-xs").style("gap: 0.4rem"):
         ui.spinner(size="1.1rem")
         ui.label(label).classes("text-sm font-bold")

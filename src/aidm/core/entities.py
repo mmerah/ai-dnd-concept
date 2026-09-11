@@ -1,5 +1,5 @@
 import re
-from collections import Counter as Tally
+from collections import Counter
 from collections.abc import Iterable
 from typing import Annotated, NewType
 
@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 SLUG_MAX = 64
+# assignment, not `type`: pydantic reads the metadata
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
 EngineId = NewType("EngineId", str)
@@ -51,7 +52,7 @@ def slug(text: str, taken: Iterable[str]) -> Slug:
 
 
 def check_unique(what: str, ids: Iterable[str]) -> None:
-    if found := sorted(name for name, count in Tally(ids).items() if count > 1):
+    if found := sorted(name for name, count in Counter(ids).items() if count > 1):
         raise Refusal(f"duplicate {what}: {found}")
 
 

@@ -16,8 +16,9 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption
+from aidm.core.prompt import Pairs
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import NarratorView, Pairs, Panel, PlayerView
+from aidm.core.views import NarratorView, Panel, PlayerView
 from aidm.engines.base import (
     JOIN_PARTY,
     LEAVE_PARTY,
@@ -53,10 +54,8 @@ from aidm.engines.scenes.worldsmith import (
     check_scene,
     scene_sections,
 )
-from aidm.engines.seam import Engine, Request, Written
+from aidm.engines.seam import Engine, Request, Written, compose
 
-WORLDSMITH_PROMPT = Path(__file__).parent / "worldsmith.md"
-RULES_PROMPT = Path(__file__).parent / "rules.md"
 DEPARTURE: Slug = "departure"
 COMPLICATION: Slug = "complication"
 MOVE_ON = DecisionOption(
@@ -92,8 +91,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
     pack: type[K]
     world_type: type[SceneWorld[C]]
     packs: dict[str, K]
-    family_prompt = RULES_PROMPT
-    worldsmith_prompt = WORLDSMITH_PROMPT
+    family_dir = Path(__file__).parent
 
     def __init__(self) -> None:
         self.packs = read_packs(self.directory / "packs", self.pack)
@@ -175,7 +173,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
                 here_panel(other.subject() for other in world.others()),
                 trail_panel(run.title for run in world.runs),
             ),
-            prompt=state.pending,
+            decision=state.pending,
             action=MOVE_ON if world.run.offered else None,
             over=self.over(state),
         )
@@ -214,11 +212,11 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
         if args.pursuit and args.complication:
             raise Refusal("a pursuit or a complication, not both")
         if args.pursuit:
-            draft.generation = Generation(operation=DEPARTURE, brief=args.pursuit)
+            draft.generation = Generation(operation=DEPARTURE, detail=args.pursuit)
             return [SCENE_LEFT]
         if not args.complication:
             return self.world(draft).offer()
-        draft.generation = Generation(operation=COMPLICATION, brief=args.complication)
+        draft.generation = Generation(operation=COMPLICATION, detail=args.complication)
         return [
             Fact(
                 trace=f"the worldsmith writes the complication once this turn ends: "
@@ -232,7 +230,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
         draft.note(MOVING_ON)
 
     def pack_step(self) -> CreationStep:
-        return CreationStep(id="pack", prompt="Choose a table set", options=self.pack_options())
+        return CreationStep(id="pack", label="Choose a table set", options=self.pack_options())
 
     def srd_pack(self) -> K:
         pack = self.packs.get(SRD_PACK)
@@ -276,7 +274,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
         source: str,
         packs: Sequence[Slug],
         worldsmith: WorldsmithAnswer,
-        playable: Callable[[AnyScenario], None],
+        check: Callable[[AnyScenario], None],
     ) -> AnyScenario:
         def built(draft: SceneDraft[C]) -> AnyScenario:
             return self.build_scenario(meta, tuple(packs), draft, source, draft.situation)
@@ -285,7 +283,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
         prompt = self.render_opening(
             source, meta.scope, intent=OPENING, guidance=guidance, answer=SceneDraft[self.cast]
         )
-        return await self.compose(worldsmith, prompt, SceneDraft[self.cast], built, playable)
+        return await compose(worldsmith, prompt, SceneDraft[self.cast], built, check)
 
     def worldsmith_requests(self) -> dict[Slug, Request[G]]:
         return {
@@ -295,22 +293,23 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
 
     async def depart(self, draft: G, request: Generation, worldsmith: WorldsmithAnswer) -> Written:
         left = self.world(draft).run.title
-        scene = await self.write_next(draft, request.brief, worldsmith)
+        scene = await self.write_next(draft, request.detail, worldsmith)
         # The engine's own closing reads the scene being left, so it runs before the install.
-        facts = (*self.leaving(draft), *self.install(draft, scene))
-        return facts, CROSSING.format(left=left, pursuit=request.brief)
+        facts = [*self.leaving(draft), *self.install(draft, scene)]
+        return tuple(facts), CROSSING.format(left=left, pursuit=request.detail)
 
     async def complicate(
         self, draft: G, request: Generation, worldsmith: WorldsmithAnswer
     ) -> Written:
-        scene = await self.write_next(draft, COMPLICATING.format(brief=request.brief), worldsmith)
+        scene = await self.write_next(draft, COMPLICATING.format(brief=request.detail), worldsmith)
         return tuple(self.install(draft, scene)), TURNING
 
     def panels(self, _state: G) -> tuple[Panel, ...]:
         return ()
 
-    def leaving(self, _state: G) -> tuple[Fact, ...]:
-        return ()
+    def leaving(self, _draft: G) -> list[Fact]:
+        """The engine's own closing before the next scene installs; it may change the draft."""
+        return []
 
     @abstractmethod
     def guidance(self, picks: Sequence[Slug], /) -> str: ...

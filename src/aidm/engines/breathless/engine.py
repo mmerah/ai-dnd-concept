@@ -8,17 +8,21 @@ from aidm.core.entities import EngineId, Refusal, Slug, parse, slug
 from aidm.core.facts import DiceEvent, Fact, roll, roll_pool
 from aidm.core.model import AnyCharacter
 from aidm.core.play import PendingDecision, PendingOption
-from aidm.core.prompt import lines_of, sentence
+from aidm.core.prompt import Pairs, lines_of, sentence
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import Pairs, Panel, PanelRow
+from aidm.core.views import Panel, PanelRow
 from aidm.engines.base import PLAYER_ID, banded, luck_test
 from aidm.engines.breathless.tools import (
+    CATCH_BREATH,
     CHANGE_STRESS,
+    LOOT_CHECK,
+    ROLL,
+    TEST_LUCK,
     USE_MED_KIT,
     Actor,
     ChangeStress,
-    Check,
     LootCheck,
+    Roll,
     TakeLoot,
     TestLuck,
     UseMedKit,
@@ -72,34 +76,10 @@ class BreathlessEngine(
             master_tool("drop_item", DROP_ITEM, DropItem, self.drop_item),
             master_tool("change_stress", CHANGE_STRESS, ChangeStress, self.change_stress),
             master_tool("use_med_kit", USE_MED_KIT, UseMedKit, self.use_med_kit),
-            master_tool(
-                "roll",
-                "Call this for an action with a real cost. Roll one thing: a skill, a carried "
-                "item, or a stunt. The engine rolls, reads the result, and wears the die down.",
-                Check,
-                self.roll,
-            ),
-            master_tool(
-                "catch_breath",
-                "Call this after a lull in the danger. The engine resets the actor's skills, "
-                "loot die and stunt, and brings a new complication.",
-                Actor,
-                self.catch_breath,
-            ),
-            master_tool(
-                "loot_check",
-                "Call this to scavenge for an item. The engine rolls the loot die and asks the "
-                "player what to do with a find.",
-                LootCheck,
-                self.loot_check,
-            ),
-            master_tool(
-                "test_luck",
-                "Call this to ask about the world when nobody acts. The engine rolls the die "
-                "you pick and reads it.",
-                TestLuck,
-                self.test_luck,
-            ),
+            master_tool("roll", ROLL, Roll, self.roll),
+            master_tool("catch_breath", CATCH_BREATH, Actor, self.catch_breath),
+            master_tool("loot_check", LOOT_CHECK, LootCheck, self.loot_check),
+            master_tool("test_luck", TEST_LUCK, TestLuck, self.test_luck),
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
@@ -111,16 +91,16 @@ class BreathlessEngine(
         d8 = picked(picks, "skill-d8")
         return (
             first,
-            CreationStep(id="pronouns", prompt="Pronouns"),
-            CreationStep(id="job", prompt="Job", hint=", ".join(pack.jobs[:3])),
-            CreationStep(id="skill-d10", prompt="Skill at d10", options=pack.skills),
-            CreationStep(id="skill-d8", prompt="Skill at d8", options=other_than(pack.skills, d10)),
+            CreationStep(id="pronouns", label="Pronouns"),
+            CreationStep(id="job", label="Job", hint=", ".join(pack.jobs[:3])),
+            CreationStep(id="skill-d10", label="Skill at d10", options=pack.skills),
+            CreationStep(id="skill-d8", label="Skill at d8", options=other_than(pack.skills, d10)),
             CreationStep(
                 id="skill-d6",
-                prompt="Skill at d6",
+                label="Skill at d6",
                 options=other_than(other_than(pack.skills, d10), d8),
             ),
-            CreationStep(id="item", prompt="Your one item", hint=", ".join(pack.weapons[:3])),
+            CreationStep(id="item", label="Your one item", hint=", ".join(pack.weapons[:3])),
         )
 
     def create_character(self, name: str, brief: str, picks: Picks) -> BreathlessCharacter:
@@ -144,7 +124,7 @@ class BreathlessEngine(
         return BreathlessCharacter(id=slug(name, ()), engine=self.id, payload=player)
 
     def preview_character(self, character: AnyCharacter) -> Pairs:
-        sheet = self.player_of(character).dice()
+        sheet = self.player_of(character).require_sheet()
         return (*sheet.rows(), ("Backpack", ", ".join(item.name for item in sheet.items.values())))
 
     def guidance(self, picks: Sequence[Slug]) -> str:
@@ -157,26 +137,26 @@ class BreathlessEngine(
         return f"{AUTHORING}\n\nSELECTED PACK CONTENT\n{json.dumps(selected)}"
 
     def sheet_sections(self, state: BreathlessGame) -> Pairs:
-        sheet = state.payload.player.dice()
+        sheet = state.payload.player.require_sheet()
         lines = [f"- {item.name}[{key}] — d{item.die}" for key, item in sheet.items.items()]
         if sheet.med_kit:
             lines.append("- med kit")
         return (("BACKPACK", lines_of(lines)),)
 
     def panels(self, state: BreathlessGame) -> tuple[Panel, ...]:
-        sheet = state.payload.player.dice()
+        sheet = state.payload.player.require_sheet()
         rows = [PanelRow(label=item.name, detail=f"d{item.die}") for item in sheet.items.values()]
         if sheet.med_kit:
             rows.append(PanelRow(label="Med kit", detail="held"))
         return (Panel(title="Backpack", rows=tuple(rows)),)
 
-    def complications(self) -> tuple[str, ...]:
+    def _complications(self) -> tuple[str, ...]:
         """Always the SRD's own table: no other pack publishes one."""
         return self.srd_pack().complications
 
     def drop_item(self, draft: BreathlessGame, args: DropItem, _rng: Random) -> list[Fact]:
         actor = draft.payload.require_actor(args.actor_id)
-        return actor.dice().drop_item(args.item_id, actor)
+        return actor.require_sheet().drop_item(args.item_id, actor)
 
     def change_stress(self, draft: BreathlessGame, args: ChangeStress, _rng: Random) -> list[Fact]:
         return draft.payload.require_actor(args.actor_id).change_stress(args.amount, args.why)
@@ -209,10 +189,10 @@ class BreathlessEngine(
         )
         return answer.job
 
-    def roll(self, draft: BreathlessGame, args: Check, rng: Random) -> list[Fact]:
+    def roll(self, draft: BreathlessGame, args: Roll, rng: Random) -> list[Fact]:
         world = draft.payload
         actor = world.require_actor(args.actor_id)
-        sheet = actor.dice()
+        sheet = actor.require_sheet()
 
         item: Supply | None = None
         helper: tuple[Survivor, Die] | None = None
@@ -223,7 +203,7 @@ class BreathlessEngine(
                 partner = world.require_actor(args.helped_by)
                 if partner is actor:
                     raise Refusal(f"{actor.name} cannot help their own roll")
-                helper = (partner, partner.dice().worn[args.skill])
+                helper = (partner, partner.require_sheet().worn[args.skill])
         elif args.item_id is not None:
             item = sheet.require(args.item_id, actor.name)
             die = item.die
@@ -245,7 +225,7 @@ class BreathlessEngine(
         if args.skill is not None:
             sheet.worn[args.skill] = worn
             if helper is not None:
-                helper[0].dice().worn[args.skill] = stepped(helper[1])
+                helper[0].require_sheet().worn[args.skill] = stepped(helper[1])
         elif item is not None and args.item_id is not None:
             # SRD: "When reduced to a d4, the item either breaks, gets lost, or fades away".
             if worn == 4:
@@ -266,7 +246,7 @@ class BreathlessEngine(
 
         if args.dangerous and result == "fail":
             for who in (actor, *((helper[0],) if helper else ())):
-                if who.dice().vulnerable:
+                if who.require_sheet().vulnerable:
                     draft.note(
                         f"{who.name} is vulnerable and this dangerous roll failed: rule "
                         "whether they are taken out of the scene or dead. Death is "
@@ -277,13 +257,13 @@ class BreathlessEngine(
     def catch_breath(self, draft: BreathlessGame, args: Actor, rng: Random) -> list[Fact]:
         world = draft.payload
         actor = world.require_actor(args.actor_id)
-        sheet = actor.dice()
+        sheet = actor.require_sheet()
         sheet.worn = dict(sheet.skills)
         sheet.loot = LOOT_START
         sheet.stunted = False
 
         rolled, dice_fact = roll((12,), "a new complication", rng)
-        text = self.complications()[rolled[0] - 1]
+        text = self._complications()[rolled[0] - 1]
         draft.note(
             f"Catching breath brings a new complication. The SRD's table suggests: {text} Bring "
             "it in through the story, or one that fits better."
@@ -297,15 +277,15 @@ class BreathlessEngine(
         fact = actor.fact(trace, card=card)
         return [dice_fact, fact]
 
-    def answer(self, draft: BreathlessGame, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
+    def answer(self, draft: BreathlessGame, chosen: PendingOption, rng: Random) -> list[Fact]:
         if chosen.name != TAKE_LOOT:
             return super().answer(draft, chosen, rng)
         taken = parse(TakeLoot, chosen.args)
-        return (draft.payload.player.take_loot(taken.item, taken.granted, taken.choice),)
+        return [draft.payload.player.take_loot(taken.item, taken.granted, taken.choice)]
 
     def loot_check(self, draft: BreathlessGame, args: LootCheck, rng: Random) -> list[Fact]:
         item, player = args.item, draft.payload.player
-        sheet = player.dice()
+        sheet = player.require_sheet()
         before = sheet.loot
         rolled, dice_fact = roll((before,), f"scavenging — {item}", rng)
         face = rolled[0]

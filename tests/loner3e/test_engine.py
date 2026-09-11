@@ -8,17 +8,18 @@ from aidm.core.entities import Refusal
 from aidm.core.facts import cards
 from aidm.core.io import decode
 from aidm.core.play import PendingDecision
-from aidm.engines.base import PLAYER_ID, Counter
-from aidm.engines.loner3e.tools import Question, defeat_note, outcome_for, twist_note, twist_pairing
-from aidm.engines.loner3e.world import LUCK_MAX, TIES_PER_TWIST
+from aidm.engines.base import PLAYER_ID, Gauge
+from aidm.engines.loner3e.engine import DEFEAT_NOTE, TWIST_NOTE
+from aidm.engines.loner3e.tools import Roll
+from aidm.engines.loner3e.world import LUCK_MAX, TIES_PER_TWIST, outcome_for, twist_pairing
 from aidm.engines.scenes.packs import SRD_PACK
 
 FOE = "mara"
 MAP = "vault-map"
 
 
-def _seal(**args: object) -> Question:
-    return Question.model_validate(
+def _seal(**args: object) -> Roll:
+    return Roll.model_validate(
         {
             "what": "Force the seal",
             "actor_id": PLAYER_ID,
@@ -28,8 +29,8 @@ def _seal(**args: object) -> Question:
     )
 
 
-def _duel() -> Question:
-    return Question(
+def _duel() -> Roll:
+    return Roll(
         what="Force her back from the door",
         actor_id=PLAYER_ID,
         question="Does he force her back from the door?",
@@ -42,7 +43,7 @@ def test_the_outcome_ladder_covers_every_pair_of_dice() -> None:
     for chance in range(1, 7):
         for risk in range(1, 7):
             outcome = outcome_for(chance, risk)
-            tally[outcome.name] = tally.get(outcome.name, 0) + 1
+            tally[outcome.id] = tally.get(outcome.id, 0) + 1
     assert tally == {
         "yes-and": 3,
         "yes": 9,
@@ -56,8 +57,11 @@ def test_the_outcome_ladder_covers_every_pair_of_dice() -> None:
 def test_the_twist_table_reads_a_subject_off_one_die_and_an_action_off_the_other() -> None:
     twists = ENGINE.twist_table()
     assert len(twists) == 6
-    assert twist_pairing(4, 2, twists) == ("A physical event", "Alters the location")
-    assert "A PHYSICAL EVENT / ALTERS THE LOCATION" in twist_note(*twist_pairing(4, 2, twists))
+    subject, action = twist_pairing(4, 2, twists)
+    assert (subject, action) == ("A physical event", "Alters the location")
+    assert "A PHYSICAL EVENT / ALTERS THE LOCATION" in TWIST_NOTE.format(
+        subject=subject.upper(), action=action.upper()
+    )
 
 
 def test_a_question_puts_two_dice_to_the_answer_and_costs_no_luck_on_its_own() -> None:
@@ -98,7 +102,7 @@ def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> Non
 
 def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
     _, state = initialized()
-    action = Question(
+    action = Roll(
         what="Force the seal",
         actor_id=PLAYER_ID,
         question="Does he force the seal before the whispering finds him?",
@@ -119,14 +123,14 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     draft.payload.twist.current = TIES_PER_TWIST - 1
     primed = draft.commit()
 
-    action = Question(what="Slip past", actor_id=PLAYER_ID, question="Does he slip past unheard?")
+    action = Roll(what="Slip past", actor_id=PLAYER_ID, question="Does he slip past unheard?")
     draft = primed.draft()
     # Seed 0 rolls chance 4 against risk 4: the tie that ticks the twist over.
     facts = ENGINE.roll(draft, action, Random(0))
 
     _, twist = cards(facts)
     subject, action_name = twist.card.removeprefix("Twist — ").split(" / ")
-    rolled = twist_note(subject, action_name)
+    rolled = TWIST_NOTE.format(subject=subject.upper(), action=action_name.upper())
     assert draft.payload.twist.current == 0
     assert rolled in draft.notes
 
@@ -161,7 +165,7 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
         loser, unharmed = (FOE, PLAYER_ID) if harm > 0 else (PLAYER_ID, FOE)
         assert loner_sheet(draft, loser).luck.current == LUCK_MAX - abs(harm)
         assert loner_sheet(draft, unharmed).luck.current == LUCK_MAX
-        # SRD: the Twist Counter does not apply to Harm & Luck, so a conflict tie never ticks it.
+        # SRD: the Twist Gauge does not apply to Harm & Luck, so a conflict tie never ticks it.
         assert draft.payload.twist.current == 0
 
 
@@ -169,7 +173,7 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     _, state = initialized()
     draft = state.draft()
     # A 10-max pool proves the reset lands on the sheet's own maximum, not on a +luck_max delta.
-    loner_sheet(draft, FOE).luck = Counter(current=1, maximum=10)
+    loner_sheet(draft, FOE).luck = Gauge(current=1, maximum=10)
     hurt = draft.commit()
 
     draft = hurt.draft()
@@ -178,7 +182,7 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
 
     assert loner_sheet(draft, FOE).luck.current == 10
     assert loner_sheet(draft, PLAYER_ID).luck.current == LUCK_MAX
-    assert defeat_note(draft.payload.require(FOE).name) in draft.notes
+    assert DEFEAT_NOTE.format(name=draft.payload.require(FOE).name) in draft.notes
     # The conflict is over, so the defeat note steers the same run instead of handing control back.
     assert draft.pending is None
 

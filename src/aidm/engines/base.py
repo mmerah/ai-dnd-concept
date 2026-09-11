@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.entities import Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import DiceEvent, Fact, roll
-from aidm.core.prompt import sections
+from aidm.core.prompt import Pairs, sections
 from aidm.core.tools import schema_text
-from aidm.core.views import Pairs, Panel, PanelRow, Subject
+from aidm.core.views import Panel, PanelRow, Subject
 
 PLAYER_ID: Slug = "player"
 JOIN_PARTY = "A character here starts travelling with the player."
@@ -56,16 +56,9 @@ class Thing(Mutable):
             parts.append(f"  {detail}")
         return "\n".join(parts)
 
-    def fact(
-        self,
-        trace: str,
-        *,
-        narrate: bool = True,
-        card: str = "",
-        dice: tuple[DiceEvent, ...] = (),
-    ) -> Fact:
+    def fact(self, trace: str, *, card: str = "", dice: tuple[DiceEvent, ...] = ()) -> Fact:
         """`told` only when the player has learned of this thing, so no unknown name leaks."""
-        return Fact(trace=trace, told=narrate and self.known, card=card, dice=dice)
+        return Fact(trace=trace, told=self.known, card=card, dice=dice)
 
     def reveal(self, *, card: str = "") -> list[Fact]:
         """Leave cards to the containing action or the standalone `reveal` tool."""
@@ -94,10 +87,12 @@ class Person(Thing):
         """What the worldsmith may not write into a fresh cast member; empty when nothing."""
         return "" if self.alive else "alive"
 
+    @property
     def hired(self) -> bool:
         """Whether they carry a sheet. A kind that never does answers no."""
         return False
 
+    @property
     def hireable(self) -> bool:
         """Whether a sheet could still be written for them."""
         return False
@@ -106,7 +101,7 @@ class Person(Thing):
 class Sheeted[S: BaseModel](Person):
     sheet: S | None = Field(default=None, description="Leave empty.")
 
-    def dice(self) -> S:
+    def require_sheet(self) -> S:
         if self.sheet is None:
             raise Refusal(f"{self.name} carries no dice")
         return self.sheet
@@ -115,9 +110,11 @@ class Sheeted[S: BaseModel](Person):
         parts = (super().forbidden(), "a sheet" if self.sheet is not None else "")
         return ", ".join(part for part in parts if part)
 
+    @property
     def hired(self) -> bool:
         return self.sheet is not None
 
+    @property
     def hireable(self) -> bool:
         return self.sheet is None
 
@@ -148,7 +145,7 @@ class World[M: Person, P: Person](Mutable):
 
     @model_validator(mode="after")
     def _player_carries_a_sheet(self) -> Self:
-        if self.player.hireable():
+        if self.player.hireable:
             raise ValueError("the player carries no sheet")
         return self
 
@@ -162,13 +159,13 @@ class World[M: Person, P: Person](Mutable):
         if actor_id is None or actor_id == self.player.id:
             return self.player
         member = self.require_member_here(actor_id)
-        if member.hired() and member.id in self.party:
+        if member.hired and member.id in self.party:
             return member
         raise Refusal(f"{member.name} is not the player or a hired party member")
 
     def require_hireable(self, entity_id: Slug) -> M:
         member = self.require_member_here(entity_id)
-        if member.hired():
+        if member.hired:
             raise Refusal(f"{member.name} already carries a sheet")
         return member
 
@@ -206,7 +203,7 @@ class LeaveParty(Frozen):
     entity_id: Slug = Field(description="Exact id of the party member leaving.")
 
 
-class Counter(Mutable):
+class Gauge(Mutable):
     current: int
     maximum: int
 
@@ -234,7 +231,7 @@ class Counter(Mutable):
         delta = self.adjust(amount)
         if delta == 0:
             return []
-        moved = f"{label} {delta:+d} -> {self}"
+        moved = f"{label} {delta:+d} → {self}"
         card = moved if owner.id == PLAYER_ID else f"{owner.name}: {moved}"
         return [owner.fact(f"{owner.mention} {moved} ({why})", card=card)]
 
@@ -290,7 +287,7 @@ def luck_test(question: str, die: int, bands: tuple[str, str, str], rng: Random)
     """A question about the world when nobody acts: the dice trace, the answer is never told."""
     rolled, dice_fact = roll((die,), question, rng)
     result = banded(rolled[0], *bands)
-    return [dice_fact, Fact(trace=f"{question} — d{die} [{rolled[0]}] -> {result}")]
+    return [dice_fact, Fact(trace=f"{question} — d{die} [{rolled[0]}] → {result}")]
 
 
 def render_worldsmith(

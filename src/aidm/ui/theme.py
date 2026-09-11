@@ -1,6 +1,5 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
-from functools import cache
 
 from nicegui import ui
 
@@ -113,7 +112,7 @@ FONT_LINK = (
     '?family=EB+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">'
 )
 
-_STATIC_CSS = """
+STATIC_CSS = """
 .q-page {
   background: radial-gradient(ellipse at 15% 0, var(--game-wash), transparent 65%), var(--game-bg);
 }
@@ -438,7 +437,6 @@ body, body.body--dark {
 
 def apply(engine: EngineId | None = None) -> None:
     ui.dark_mode(True)
-    _install()
     set_engine(engine)
 
 
@@ -461,8 +459,7 @@ def dice_look(engine: EngineId) -> DiceLook:
     return NEUTRAL_DICE if theme is None else theme.dice
 
 
-@cache
-def _install() -> None:
+def install() -> None:
     # One look for every call site: the defaults live here so no widget repeats a prop.
     ui.button.default_props("no-caps")
     ui.badge.default_props("outline")
@@ -471,9 +468,9 @@ def _install() -> None:
     ui.select.default_props("outlined stack-label")
     ui.number.default_props("outlined stack-label")
     ui.card.default_classes("game-card")
-    # `shared=True` appends to the app-wide head on every call; injected once per process.
+    # `shared=True` appends to the app-wide head on every call; `start` calls this once.
     ui.add_head_html(FONT_LINK, shared=True)
     # NiceGUI layers Quasar's own `!important` rules; only a layer before theirs outranks them.
     # The palette lands on `body` only once the page mounts; `:root` keeps the first paint dark.
     root = "".join(f"--{key}: {value};" for key, value in NEUTRAL_PALETTE.items())
-    ui.add_css(f":root {{{root}}}@layer overrides {{{_STATIC_CSS}}}", shared=True)
+    ui.add_css(f":root {{{root}}}@layer overrides {{{STATIC_CSS}}}", shared=True)

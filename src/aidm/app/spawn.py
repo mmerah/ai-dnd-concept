@@ -15,16 +15,15 @@ from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
 from aidm.config import CliProvider, Role, RoleConfig
 from aidm.core.entities import Loose, Refusal, parse
 from aidm.core.io import decode
-from aidm.core.model import AnyGame, Objection, WorldsmithAnswer
+from aidm.core.model import AnyGame, Check, WorldsmithAnswer
 from aidm.core.tools import MasterTool
+
+LOGGER = logging.getLogger(__name__)
 
 RETRIES = 1
 # The child inherits nothing else: the shell that started the app may hold keys no role should see.
 KEPT_ENV = ("PATH", "HOME", "LANG", "TERM")
-
-LOGGER = logging.getLogger(__name__)
-
-_EVENT: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
+EVENT: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
 
 
 @dataclass(frozen=True, slots=True)
@@ -188,7 +187,7 @@ def final_message(output: str) -> str:
 
 
 async def ask[T: BaseModel](
-    spawner: Spawner, role: Role, prompt: str, model: type[T], refusal: Objection[T]
+    spawner: Spawner, role: Role, prompt: str, model: type[T], check: Check[T]
 ) -> T:
     asked, refused, session = prompt, "", None
     for _ in range(RETRIES + 1):
@@ -196,7 +195,7 @@ async def ask[T: BaseModel](
         session = spoken.session
         try:
             answer = parse(model, decode(spoken.text))
-            refusal(answer)
+            check(answer)
         except Refusal as invalid:
             refused = str(invalid)
         else:
@@ -264,7 +263,7 @@ def _object(line: str) -> JsonValue | None:
     if not line.startswith("{"):
         return None
     try:
-        return _EVENT.validate_json(line)
+        return EVENT.validate_json(line)
     except ValidationError:
         return None
 

@@ -17,7 +17,7 @@ def claim(generating: set[str], key: str) -> bool:
 async def post_bearer(
     provider: ProviderConfig, path: str, body: Mapping[str, JsonValue], timeout: float
 ) -> bytes:
-    """Returns bytes: one reply is JSON, another audio; free since a provider config is settings."""
+    """Returns bytes: one reply is JSON, another audio."""
     async with AsyncClient(timeout=timeout) as client:
         reply = await client.post(
             f"{provider.base_url}{path}",

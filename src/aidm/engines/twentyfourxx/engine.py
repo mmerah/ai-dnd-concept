@@ -6,11 +6,11 @@ from random import Random
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, option_of, picked
 from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, roll, roll_pool
-from aidm.core.model import Objection
+from aidm.core.model import Check
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
-from aidm.core.prompt import lines_of, sentence
+from aidm.core.prompt import Pairs, lines_of, sentence
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import Pairs, Panel, PanelRow
+from aidm.core.views import Panel, PanelRow
 from aidm.engines.base import PLAYER_ID, banded, luck_test
 from aidm.engines.hiring import DROP_ITEM, DropItem, Hiring
 from aidm.engines.scenes.engine import SceneEngine
@@ -19,10 +19,13 @@ from aidm.engines.twentyfourxx.tools import (
     CHANGE_HINDRANCES,
     DEFEND,
     GAIN_ITEM,
+    JOB,
     REPAIR_ITEM,
+    ROLL,
     SHIP_UPGRADE,
     SPEND,
     TAKE_LEAD,
+    TEST_LUCK,
     ChangeHindrances,
     Defend,
     GainItem,
@@ -41,9 +44,9 @@ from aidm.engines.twentyfourxx.world import (
     HINDERED_DIE,
     MAIMED,
     Crewmate,
+    CrewSheet,
     Gear,
     Kit,
-    Sheet,
     SkillDie,
     TwentyfourxxCharacter,
     TwentyfourxxGame,
@@ -87,29 +90,9 @@ class TwentyfourxxEngine(
             master_tool("take_lead", TAKE_LEAD, TakeLead, self.take_lead),
             master_tool("ship_upgrade", SHIP_UPGRADE, ShipUpgrade, self.ship_upgrade),
             master_tool("defend", DEFEND, Defend, self.defend),
-            master_tool(
-                "roll",
-                "Call this when the outcome of an action matters. The engine picks the dice, "
-                "rolls them, and reads the result.",
-                Roll,
-                self.roll,
-            ),
-            master_tool(
-                "test_luck",
-                "Call this to ask about the world's bad luck when nobody acts. The engine "
-                "rolls one d6 and reads it.",
-                TestLuck,
-                self.test_luck,
-            ),
-            master_tool(
-                "job",
-                "Call this to look for work with `find`, to record agreed work with `take`, "
-                "and to close the job with `finish`. With `find` the engine rolls the SRD's "
-                "d6. With `finish` it raises one skill for each operator and pays each of "
-                "them d6 credits.",
-                Job,
-                self.job,
-            ),
+            master_tool("roll", ROLL, Roll, self.roll),
+            master_tool("test_luck", TEST_LUCK, TestLuck, self.test_luck),
+            master_tool("job", JOB, Job, self.job),
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
@@ -119,7 +102,7 @@ class TwentyfourxxEngine(
             return (first,)
         steps = [
             first,
-            CreationStep(id="specialty", prompt="Specialty", options=pack.specialties),
+            CreationStep(id="specialty", label="Specialty", options=pack.specialties),
         ]
         specialty = option_of(pack.specialties, picked(picks, "specialty"))
         if specialty is None:
@@ -127,33 +110,33 @@ class TwentyfourxxEngine(
         if specialty.choice:
             steps.append(
                 CreationStep(
-                    id="specialty-choice", prompt="Specialty skill", options=specialty.choice
+                    id="specialty-choice", label="Specialty skill", options=specialty.choice
                 )
             )
         if specialty.kit_choice:
             steps.append(
                 CreationStep(
                     id="weapon",
-                    prompt="Weapon",
+                    label="Weapon",
                     options=tuple(
                         DecisionOption(id=slug(kit.name, ()), label=kit.name)
                         for kit in specialty.kit_choice
                     ),
                 )
             )
-        steps.append(CreationStep(id="origin", prompt="Origin", options=pack.origins))
+        steps.append(CreationStep(id="origin", label="Origin", options=pack.origins))
         origin = option_of(pack.origins, picked(picks, "origin"))
         if origin is None:
             return tuple(steps)
         for number in range(1, origin.invents + 1):
             steps.append(
-                CreationStep(id=f"trait-{number}", prompt=f"Trait {number}", hint=origin.detail)
+                CreationStep(id=f"trait-{number}", label=f"Trait {number}", hint=origin.detail)
             )
         if origin.choice:
-            steps.append(CreationStep(id="body", prompt="Body", options=origin.choice))
+            steps.append(CreationStep(id="body", label="Body", options=origin.choice))
         for number in range(1, origin.increases + 1):
             steps.append(
-                CreationStep(id=f"increase-{number}", prompt="Skill increase", options=pack.skills)
+                CreationStep(id=f"increase-{number}", label="Skill increase", options=pack.skills)
             )
         return tuple(steps)
 
@@ -197,7 +180,7 @@ class TwentyfourxxEngine(
             name=name,
             brief=brief,
             known=True,
-            sheet=Sheet(
+            sheet=CrewSheet(
                 specialty=specialty.label,
                 origin=origin.label,
                 traits=traits,
@@ -215,7 +198,7 @@ class TwentyfourxxEngine(
         world = state.payload
         job = world.job
         return (
-            ("GEAR", _item_lines(world.player.dice().items)),
+            ("GEAR", _item_lines(world.player.require_sheet().items)),
             *((("THE JOB", job),) if job else ()),
             ("THE SHIP", _item_lines(world.ship)),
         )
@@ -227,13 +210,13 @@ class TwentyfourxxEngine(
         ship_panel = Panel(
             title="Ship",
             rows=tuple(
-                PanelRow(label=function.name, detail=function.detail())
+                PanelRow(label=function.name, detail=function.notes())
                 for function in world.ship.values()
             ),
         )
         return (*job_panel, ship_panel)
 
-    def resolve_skill(self, sheet: Sheet, wanted: str) -> str:
+    def resolve_skill(self, sheet: CrewSheet, wanted: str) -> str:
         folded = wanted.casefold()
         for key in sheet.skills:
             if key.casefold() == folded:
@@ -263,7 +246,7 @@ class TwentyfourxxEngine(
 
     def drop_item(self, draft: TwentyfourxxGame, args: DropItem, _rng: Random) -> list[Fact]:
         actor = draft.payload.require_actor(args.actor_id)
-        return actor.dice().drop_item(args.item_id, actor)
+        return actor.require_sheet().drop_item(args.item_id, actor)
 
     def repair_item(self, draft: TwentyfourxxGame, args: RepairItem, _rng: Random) -> list[Fact]:
         world = draft.payload
@@ -282,8 +265,8 @@ class TwentyfourxxEngine(
     def defend(self, draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
         return draft.payload.defend(args.actor_id, args.item_id, args.hindrance)
 
-    def kill(self, draft: TwentyfourxxGame, args: Kill, _rng: Random) -> list[Fact]:
-        facts = super().kill(draft, args, _rng)
+    def kill(self, draft: TwentyfourxxGame, args: Kill, rng: Random) -> list[Fact]:
+        facts = super().kill(draft, args, rng)
         self._succession(draft)
         return facts
 
@@ -320,12 +303,12 @@ class TwentyfourxxEngine(
             answer=SheetDraft,
         )
 
-    def hire_bar(self, draft: TwentyfourxxGame) -> Objection[SheetDraft]:
+    def hire_check(self, draft: TwentyfourxxGame) -> Check[SheetDraft]:
         pack = self._pack(draft)
         return lambda sheet: sheet.check(pack)
 
     def install_sheet(self, member: Crewmate, answer: SheetDraft) -> str:
-        member.sheet = Sheet(
+        member.sheet = CrewSheet(
             specialty=answer.specialty,
             skills=dict(answer.skills),
             credits=0,
@@ -340,7 +323,7 @@ class TwentyfourxxEngine(
     def roll(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
         world = draft.payload
         actor = world.require_actor(args.actor_id)
-        sheet = actor.dice()
+        sheet = actor.require_sheet()
         helper = None
         if args.helped_by is not None:
             helper = world.require_actor(args.helped_by)
@@ -361,7 +344,7 @@ class TwentyfourxxEngine(
             pool.append(HELP_DIE)
         helped_by_clause = ""
         if helper is not None:
-            helper_die = helper.dice().die(label)
+            helper_die = helper.require_sheet().die(label)
             pool.append(helper_die)
             helped_by_clause = f", helped by {helper.name} (d{helper_die})"
 
@@ -468,7 +451,7 @@ class TwentyfourxxEngine(
         facts: list[Fact] = []
         for raise_ in raises:
             actor = world.require_actor(raise_.actor_id)
-            sheet = actor.dice()
+            sheet = actor.require_sheet()
             label = self.resolve_skill(sheet, raise_.skill)
             try:
                 new_die = raised(sheet.skills.get(label))
@@ -486,8 +469,8 @@ class TwentyfourxxEngine(
             facts.append(dice_fact)
             facts.append(
                 actor.fact(
-                    f"{actor.mention} earns ₡{gained} -> ₡{sheet.credits}",
-                    card=f"+₡{gained} -> ₡{sheet.credits}",
+                    f"{actor.mention} earns ₡{gained} → ₡{sheet.credits}",
+                    card=f"+₡{gained} → ₡{sheet.credits}",
                     dice=(DiceEvent(label="d6", faces=(6,), rolled=rolled),),
                 )
             )
@@ -507,6 +490,6 @@ def items_from_kits(kits: Sequence[Kit]) -> dict[Slug, Gear]:
 
 def _item_lines(items: Mapping[Slug, Gear]) -> str:
     return lines_of(
-        f"- {item.name}[{key}]" + (f" — {detail}" if (detail := item.detail()) else "")
+        f"- {item.name}[{key}]" + (f" — {detail}" if (detail := item.notes()) else "")
         for key, item in items.items()
     )
