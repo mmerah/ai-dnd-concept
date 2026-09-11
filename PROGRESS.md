@@ -6,8 +6,8 @@ One entry per commit. Line counts are `find <dir> -name '*.py' | xargs cat | wc 
 
 | dir   | before | after |
 | ----- | ------ | ----- |
-| src   | 9,827  | 9,798 |
-| tests | 9,146  | 9,119 |
+| src   | 9,827  | 9,817 |
+| tests | 9,146  | 9,132 |
 | qa    | 1,786  | 1,788 |
 
 Full check green; app smoke green (home, settings, create and scenario pages serve). Reviewed by
@@ -15,16 +15,16 @@ two adversarial readers (Fable and Opus; no Codex on the machine).
 
 ### Decisions off-plan
 
-- Step 6, `type TagKind` / `type Ability` / `type Boost` / `type AbilityScores`: not done. Measured
-  on pydantic 2.13.4: a PEP 695 `type` alias becomes a `$defs` entry and a `$ref` in every schema
-  that reads it, so the four would have changed `schemas/loner3e/master_tools.json`,
-  `schemas/tunnelgoons/master_tools.json` and two `worldsmith.txt` goldens, against step 9 and
-  the phase's "no behaviour changes". They stay assignments, each group with a one-line comment.
-  **Awaiting the maintainer's call**: keep as is, or spell them `type` and accept the schema change.
-- Step 9's prediction was wrong on the worldsmith prompts: pydantic keys `$defs` by class name, so
-  the step 1 renames (`Loner3eCast`, `GoonSheet`, `Gauge`, `CrewSheet`) rename and re-sort `$defs`
-  keys in the four `prompts/*/worldsmith.txt`. Verified identical modulo rename and reorder;
-  regenerated. The `schemas/*` goldens are byte-identical.
+- Step 6, `type TagKind` / `type Ability` / `type Boost` / `type AbilityScores`: done, with one
+  change under it. Pydantic publishes a PEP 695 `type` alias as a `$defs` entry and a `$ref`, which
+  `_collapse_nullable` cannot fold, so `LevelUp.ability` would have read as an `anyOf`. `schema_of`
+  now inlines `$defs` before normalizing (`_inline_refs`, one test): every schema is one tree, no
+  class name reaches a prompt, `T | None` folds everywhere. Every schema and prompt golden with
+  a `$ref` in it changed accordingly (`Die`, `Skill`, `SkillDie`, `Chattiness`, `Line` and the
+  cast classes inlined); the master tool schemas for loner3e and tunnelgoons are byte-identical
+  to the pre-phase ones.
+- Step 3, `Engine.answer` returns the tuple the tool call builds; only `SceneEngine.leaving` and
+  `depart` moved to lists. A list there was re-tupled by `Turn._consume` in the same expression.
 - Step 8, `_save_option` takes `store: FileStore`, not `raw`: the read's own refusal (a save that
   is not UTF-8) is still skipped with a warning, as the loop did.
 - Step 8, `theme.install()`: `qa/server.py` is a second entry point that mirrors `start()`, so it
@@ -42,8 +42,6 @@ two adversarial readers (Fable and Opus; no Codex on the machine).
 
 ### Refuted review findings
 
-- "`Engine.answer` returns a list only for `Turn._consume` to re-tuple it": PLAN step 3 asks for
-  exactly this; rules code returns lists, the `Play` boundary stays a tuple.
 - "`Pairs` belongs in `core/views.py`, the dependency now points the wrong way": PLAN step 6 moves
   it to `core/prompt.py`; `views` importing from `prompt` makes no cycle.
 - "Fold `apply` and `set_engine` into one function": `set_engine` has three callers

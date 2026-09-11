@@ -220,19 +220,6 @@
     "name": "roll",
     "description": "Call this for an action with a real cost. Roll one thing: a skill, a carried item, or a stunt. The engine rolls, reads the result, and wears the die down.",
     "parameters": {
-      "$defs": {
-        "Skill": {
-          "enum": [
-            "bash",
-            "dash",
-            "sneak",
-            "shoot",
-            "think",
-            "sway"
-          ],
-          "type": "string"
-        }
-      },
       "additionalProperties": false,
       "properties": {
         "what": {
@@ -248,13 +235,17 @@
           "description": "Exact id of a hired party member here who acts. Null for the player."
         },
         "skill": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Skill"
-            },
-            {
-              "type": "null"
-            }
+          "enum": [
+            "bash",
+            "dash",
+            "sneak",
+            "shoot",
+            "think",
+            "sway"
+          ],
+          "type": [
+            "string",
+            "null"
           ],
           "default": null,
           "description": "Which of the six skills the action calls on."
@@ -331,8 +322,14 @@
     "name": "test_luck",
     "description": "Call this to ask about the world when nobody acts. The engine rolls the die you pick and reads it.",
     "parameters": {
-      "$defs": {
-        "Die": {
+      "additionalProperties": false,
+      "properties": {
+        "question": {
+          "description": "A closed question about the world where nobody is acting.",
+          "type": "string"
+        },
+        "die": {
+          "description": "Which die to roll, picked by the odds.",
           "enum": [
             4,
             6,
@@ -341,17 +338,6 @@
             12
           ],
           "type": "integer"
-        }
-      },
-      "additionalProperties": false,
-      "properties": {
-        "question": {
-          "description": "A closed question about the world where nobody is acting.",
-          "type": "string"
-        },
-        "die": {
-          "$ref": "#/$defs/Die",
-          "description": "Which die to roll, picked by the odds."
         }
       },
       "required": [

@@ -444,29 +444,6 @@
     "name": "job",
     "description": "Call this to look for work with `find`, to record agreed work with `take`, and to close the job with `finish`. With `find` the engine rolls the SRD's d6. With `finish` it raises one skill for each operator and pays each of them d6 credits.",
     "parameters": {
-      "$defs": {
-        "Raise": {
-          "additionalProperties": false,
-          "properties": {
-            "actor_id": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null,
-              "description": "Exact id of a hired party member here who acts. Null for the player."
-            },
-            "skill": {
-              "description": "The skill the job called on for them.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "skill"
-          ],
-          "type": "object"
-        }
-      },
       "additionalProperties": false,
       "properties": {
         "verb": {
@@ -492,7 +469,25 @@
           "default": [],
           "description": "One per operator: the player and every living hired member. Required with `finish`.",
           "items": {
-            "$ref": "#/$defs/Raise"
+            "additionalProperties": false,
+            "properties": {
+              "actor_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "default": null,
+                "description": "Exact id of a hired party member here who acts. Null for the player."
+              },
+              "skill": {
+                "description": "The skill the job called on for them.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "skill"
+            ],
+            "type": "object"
           },
           "type": "array"
         }

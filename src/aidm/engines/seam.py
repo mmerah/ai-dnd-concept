@@ -87,13 +87,13 @@ class Engine[P: Person, G: Game[Any]](ABC):
         self.validate(state)
         return state
 
-    def answer(self, draft: G, chosen: PendingOption, rng: Random) -> list[Fact]:
+    def answer(self, draft: G, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
         found = self.tools.get(chosen.name)
         if found is None:
             raise Refusal(
                 f"the {self.id!r} engine has no tool {chosen.name!r} to play option {chosen.id!r}"
             )
-        return list(found.call(draft, chosen.args, rng))
+        return found.call(draft, chosen.args, rng)
 
     def render_request(
         self, draft: G, *, intent: str, guidance: str, answer: type[BaseModel]

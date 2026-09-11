@@ -218,16 +218,6 @@
     "name": "roll",
     "description": "Call this for one closed dramatic question. The engine rolls Chance against Risk, reads the answer, and moves luck in a conflict.",
     "parameters": {
-      "$defs": {
-        "Position": {
-          "enum": [
-            "advantage",
-            "neutral",
-            "disadvantage"
-          ],
-          "type": "string"
-        }
-      },
       "additionalProperties": false,
       "properties": {
         "what": {
@@ -243,9 +233,14 @@
           "type": "string"
         },
         "position": {
-          "$ref": "#/$defs/Position",
           "default": "neutral",
-          "description": "Which side the relevant tags and situation favour."
+          "description": "Which side the relevant tags and situation favour.",
+          "enum": [
+            "advantage",
+            "neutral",
+            "disadvantage"
+          ],
+          "type": "string"
         },
         "edge": {
           "default": "",

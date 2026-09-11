@@ -277,11 +277,11 @@ class BreathlessEngine(
         fact = actor.fact(trace, card=card)
         return [dice_fact, fact]
 
-    def answer(self, draft: BreathlessGame, chosen: PendingOption, rng: Random) -> list[Fact]:
+    def answer(self, draft: BreathlessGame, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
         if chosen.name != TAKE_LOOT:
             return super().answer(draft, chosen, rng)
         taken = parse(TakeLoot, chosen.args)
-        return [draft.payload.player.take_loot(taken.item, taken.granted, taken.choice)]
+        return (draft.payload.player.take_loot(taken.item, taken.granted, taken.choice),)
 
     def loot_check(self, draft: BreathlessGame, args: LootCheck, rng: Random) -> list[Fact]:
         item, player = args.item, draft.payload.player

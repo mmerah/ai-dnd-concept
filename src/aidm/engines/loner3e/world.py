@@ -26,8 +26,7 @@ TOLD: dict[str, str] = {
     "no-and": "no, and worse",
 }
 
-# assignments, not `type`: a `type` alias becomes a `$defs` entry in every schema that reads it
-TagKind = Literal["skill", "frailty", "gear", "condition"]
+type TagKind = Literal["skill", "frailty", "gear", "condition"]
 
 
 class Outcome(Frozen):
