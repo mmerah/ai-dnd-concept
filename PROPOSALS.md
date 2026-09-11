@@ -17,6 +17,8 @@ reasoning is new; those cases are marked "reopened".
 
 ### 1. One way to refuse a model answer: a bar raises `Refusal`, nothing returns `str | None`
 
+**Decided: accepted.**
+
 **Concept.** CLAUDE.md says a message a role reads is a `Refusal`. The code has a second idiom
 beside it: a bar that returns `str | None` (`Objection[T]`). Every string bar is converted back to
 a raise at its consumer, and `Engine.compose` does the reverse (catches a `Refusal` from `build`,
@@ -44,6 +46,8 @@ untouched. **Confidence.** High. **Time.** About 2 hours. Unblocks 3.
 
 ### 2. One request table replaces `unwritten`, the `advance` if-chain and the `Hiring` MRO rule
 
+**Decided: accepted.**
+
 **Concept.** A worldsmith request is keyed by `operation` in three places: `unwritten:
 dict[Slug, Fact]` (read by `Engine.validate` and `GameService._generate`), the `advance()`
 dispatch (an if-chain in `SceneEngine.advance`, a `raise ValueError` guard in
@@ -66,6 +70,8 @@ HIRE_UNWRITTEN}` lines go.
 **Confidence.** High. **Time.** About 1.5 hours.
 
 ### 3. Author once: one seam `author`, the opening bar run once, the scenario built once
+
+**Decided: accepted, option (b).**
 
 **Concept.** Authoring runs the same check three times per worldsmith answer: `build_scenario`
 runs `scene_refusal`/`map_refusal`, then `playable` → `engine.begin` → `new_game` runs it again
