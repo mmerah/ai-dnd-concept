@@ -13,7 +13,7 @@ with 6 luck.
 
 ## Tags and drives
 
-Use the `change_tags` arm when the story plainly writes a tag or lifts one. Use the `drive` arm
+Call `change_tags` when the story plainly writes a tag or lifts one. Call `drive`
 when play shows what a character wants, why, or who stands in their way.
 
 ## When to roll
@@ -23,8 +23,8 @@ doubt, roll. Any real cost for no is enough. Danger, combat, pursuit, stealth an
 qualify. Roll before you tell the outcome.
 
 Do not roll for a quiet arrival, plain conversation, or a certain outcome. Finishing a
-helpless foe is certain. Use the `kill` arm or the fitting arm instead. A dangerous arrival or
-departure is a roll first and an `enter` or `leave` arm after.
+helpless foe is certain. Call `kill` or the fitting tool instead. A dangerous arrival or
+departure is a roll first and `enter` or `leave` after.
 
 The actor is the one doing the uncertain thing. If a monster lunges, ask about the monster.
 
@@ -55,10 +55,10 @@ landed blow.
 
 A character at 0 luck loses the conflict. Say how it ends for them in the story. They can be
 captured, injured, driven off, cornered, or forced to concede. This does not mean death. Write
-any lasting mark now with the `change_tags` arm. This is the one point in a conflict where that
+any lasting mark now with `change_tags`. This is the one point in a conflict where that
 is right. The engine restores the luck of both sides.
 
-Use the `restore_luck` arm after a conflict ends another way and the character has had a breath.
+Call `restore_luck` after a conflict ends another way and the character has had a breath.
 
 ## Twists
 
@@ -70,7 +70,7 @@ roll it again.
 ## The end of the adventure
 
 Ask the player what their character learned when the whole adventure closes. Then write it once.
-Use the `change_tags` arm for a new or changed skill, gear or frailty. Use the `drive` arm for a
+Call `change_tags` for a new or changed skill, gear or frailty. Call `drive` for a
 new nemesis. Do not grow skills or frailties before the adventure closes.
 
 ## A member's help

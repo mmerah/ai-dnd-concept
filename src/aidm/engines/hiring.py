@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from aidm.core.entities import Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import Game, Generation, Objection, WorldsmithAnswer
+from aidm.core.tools import MasterTool, master_tool
 from aidm.engines.base import Person
 from aidm.engines.seam import Engine
 
@@ -19,6 +20,7 @@ HIRE_TOOL = (
     "more lands this turn. A sheet is for someone hired to work, never for one who only comes "
     "along."
 )
+DROP_ITEM = "The actor loses an item for good."
 HIRE_UNWRITTEN = Fact(
     told=True,
     trace="the hire could not be written",
@@ -49,6 +51,11 @@ class Hire(Frozen):
     )
 
 
+class DropItem(Frozen):
+    item_id: Slug = Field(description="Exact id of an item the actor carries.")
+    actor_id: Slug | None = Field(default=None, description=ACTOR)
+
+
 class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
     """Bringing in someone whose sheet the worldsmith authors. List it first in the bases."""
 
@@ -62,6 +69,9 @@ class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
             "Nothing more lands this turn; stop and exit"
         )
         return [Fact(trace=trace)]
+
+    def master_tools(self) -> tuple[MasterTool[G], ...]:
+        return (*super().master_tools(), master_tool("hire", HIRE_TOOL, Hire, self.hire))
 
     async def advance(
         self, draft: G, request: Generation, worldsmith: WorldsmithAnswer

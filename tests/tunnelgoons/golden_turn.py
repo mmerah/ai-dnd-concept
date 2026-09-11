@@ -1,4 +1,4 @@
-from support.table import Call, changed, narrowed, tool_call
+from support.table import Call, narrowed, tool_call
 
 from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, SpokenLine
@@ -13,7 +13,7 @@ SCRIPT: tuple[Call, ...] = (
         difficulty=10,
         dangerous=True,
     ),
-    changed("reveal", entity_id="lurker"),
+    tool_call("reveal", entity_id="lurker"),
 )
 
 

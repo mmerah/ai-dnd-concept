@@ -1,26 +1,14 @@
-from typing import Annotated, Literal, Self
+from typing import Self
 
-from pydantic import Discriminator, Field, model_validator
+from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Slug
 from aidm.core.play import PendingOption
-from aidm.engines import base
-from aidm.engines.base import Attempt, JoinParty, LeaveParty
+from aidm.engines.base import Attempt
 from aidm.engines.hiring import ACTOR
-from aidm.engines.rooms.tools import Kill, MoveItem, Reveal, UnlockWay
 from aidm.engines.tunnelgoons.world import ABILITIES, Ability, Boost
 
-
-class Rest(Frozen):
-    """The player and the party spend a night here and heal to full Health."""
-
-    verb: Literal["rest"]
-
-
-type WorldChange = Reveal | MoveItem | Kill | JoinParty | LeaveParty | UnlockWay | Rest
-
-
-ChangeWorld = base.ChangeWorld[Annotated[WorldChange, Discriminator("verb")]]
+REST = "The player and the party spend a night here and heal to full Health."
 
 
 class ActionRoll(Attempt):

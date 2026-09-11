@@ -51,9 +51,9 @@ It is treated as covered by the site's licence. One email to the publisher would
 
 ## The tools
 
-A named tool rolls dice, opens a decision, or ends the turn. Every other change is an arm of `change_world`: set `verb`, fill that verb's fields.
+Every tool makes one change, rolls dice, opens a decision, or ends the turn.
 
-- `change_world` — arms: `reveal`, `enter`, `leave`, `kill`, `join_party`, `leave_party`,
+- `reveal`, `enter`, `leave`, `kill`, `join_party`, `leave_party`,
   `change_tags` (an actor's gear or condition tags), `drive` (goal, motive, nemesis) and
   `restore_luck` (refill an actor's Luck once their conflict is behind them).
 - `next_scene` — offer the player the way on at a stopping point; or say that they left this

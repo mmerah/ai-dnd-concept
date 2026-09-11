@@ -19,8 +19,11 @@ from aidm.core.model import (
 )
 from aidm.core.play import DecisionOption
 from aidm.core.prompt import lines_of
+from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import NarratorView, Pairs, Panel, PanelRow, PlayerView
 from aidm.engines.base import (
+    JOIN_PARTY,
+    LEAVE_PARTY,
     JoinParty,
     LeaveParty,
     Person,
@@ -31,7 +34,18 @@ from aidm.engines.base import (
     render_worldsmith,
     trail_panel,
 )
-from aidm.engines.rooms.tools import Kill, Move, MoveItem, Reveal, SharedChange, UnlockWay
+from aidm.engines.rooms.tools import (
+    KILL,
+    MOVE,
+    MOVE_ITEM,
+    REVEAL,
+    UNLOCK_WAY,
+    Kill,
+    Move,
+    MoveItem,
+    Reveal,
+    UnlockWay,
+)
 from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RoomWorld
 from aidm.engines.rooms.worldsmith import MAP_ASK, extension_refusal, map_refusal, map_sections
 from aidm.engines.seam import Engine
@@ -175,20 +189,36 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, G]):
         self.install(draft, extension)
         return (), None
 
-    def shared_change(self, world: RoomWorld[N, P], change: SharedChange) -> list[Fact]:
-        match change:
-            case Reveal():
-                return world.reveal_hidden(change.entity_id)
-            case MoveItem():
-                return world.move_item(change.item_id, change.to)
-            case Kill():
-                return world.kill(world.require_member_here(change.entity_id))
-            case JoinParty():
-                return world.join_party(change.entity_id)
-            case LeaveParty():
-                return world.leave_party(change.entity_id)
-            case UnlockWay():
-                return world.unlock_way(change.to_id)
+    def master_tools(self) -> tuple[MasterTool[G], ...]:
+        return (
+            *super().master_tools(),
+            master_tool("reveal", REVEAL, Reveal, self.reveal),
+            master_tool("move_item", MOVE_ITEM, MoveItem, self.move_item),
+            master_tool("kill", KILL, Kill, self.kill),
+            master_tool("join_party", JOIN_PARTY, JoinParty, self.join_party),
+            master_tool("leave_party", LEAVE_PARTY, LeaveParty, self.leave_party),
+            master_tool("unlock_way", UNLOCK_WAY, UnlockWay, self.unlock_way),
+            master_tool("move", MOVE, Move, self.move),
+        )
+
+    def reveal(self, draft: G, args: Reveal, _rng: Random) -> list[Fact]:
+        return self.world(draft).reveal_hidden(args.entity_id)
+
+    def move_item(self, draft: G, args: MoveItem, _rng: Random) -> list[Fact]:
+        return self.world(draft).move_item(args.item_id, args.to)
+
+    def kill(self, draft: G, args: Kill, _rng: Random) -> list[Fact]:
+        world = self.world(draft)
+        return world.kill(world.require_member_here(args.entity_id))
+
+    def join_party(self, draft: G, args: JoinParty, _rng: Random) -> list[Fact]:
+        return self.world(draft).join_party(args.entity_id)
+
+    def leave_party(self, draft: G, args: LeaveParty, _rng: Random) -> list[Fact]:
+        return self.world(draft).leave_party(args.entity_id)
+
+    def unlock_way(self, draft: G, args: UnlockWay, _rng: Random) -> list[Fact]:
+        return self.world(draft).unlock_way(args.to_id)
 
     def move(self, draft: G, args: Move, _rng: Random) -> list[Fact]:
         return self.world(draft).move(args.to_id, args.with_ids)

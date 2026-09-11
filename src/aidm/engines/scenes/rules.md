@@ -14,7 +14,7 @@ Play the leaving like any other action. An obstacle in the way is a roll or a re
 The player can stay. The scene stays open until the player says where they go. Their answer
 builds the next scene.
 
-Set `complication` only when no `change_world` arm can bring the new situation out of what is
+Set `complication` only when no other tool can bring the new situation out of what is
 already here.
 
 `next_scene` with nothing set does not end the turn. Finish what the player's action caused,
@@ -29,5 +29,5 @@ the arc yourself.
 ## The party
 
 A party member travels with the player from scene to scene. The player commands them and you
-voice them. Use the `join_party` arm when someone here comes along. Use the `leave_party` arm
+voice them. Call `join_party` when someone here comes along. Call `leave_party`
 when they stop. Never volunteer a member's action to soften a scene the player must face alone.

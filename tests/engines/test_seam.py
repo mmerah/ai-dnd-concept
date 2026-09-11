@@ -9,7 +9,6 @@ from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.io import ENCODING, decode, read_prompt
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
 from aidm.core.play import DecisionOption, SpokenLine
-from aidm.core.tools import MasterTool
 from aidm.core.views import NarratorView, Pairs
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.scenes.engine import SceneEngine
@@ -41,7 +40,7 @@ class FifthCharacter(Character[Person]):
 
 
 class FifthEngine(SceneEngine[Person, FifthGame, ScenePack]):
-    """A fifth scene engine: its state model, its creation, its tools and its sections."""
+    """A fifth scene engine: its state model, its creation, its sections."""
 
     id = FIFTH
     title = "FIFTH"
@@ -52,9 +51,6 @@ class FifthEngine(SceneEngine[Person, FifthGame, ScenePack]):
     cast = Person
     pack = ScenePack
     world_type = FifthState
-
-    def master_tools(self) -> tuple[MasterTool[FifthGame], ...]:
-        return ()
 
     def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
         return (CreationStep(id="pack", prompt="Choose a table set", options=self.pack_options()),)
@@ -140,6 +136,18 @@ def test_a_fifth_scene_engine_begins_a_playable_game(tmp_path: Path) -> None:
     assert engine.narrator_view(state).title == "The Taproom"
     assert engine.master_sections(state) == (("SCENE", "The Taproom"),)
     assert [row.label for row in engine.player_view(state).panels[-2].rows] == ["Keeper"]
+
+
+def test_a_scene_engine_offers_the_familys_tools_without_naming_them(tmp_path: Path) -> None:
+    assert list(_installed(tmp_path).tools) == [
+        "reveal",
+        "enter",
+        "leave",
+        "kill",
+        "join_party",
+        "leave_party",
+        "next_scene",
+    ]
 
 
 class _CountingFifthEngine(FifthEngine):

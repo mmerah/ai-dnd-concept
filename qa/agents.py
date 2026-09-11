@@ -2,8 +2,8 @@
 
 The master reads PLAYER ACTION from its prompt like the real one. A line that starts with `!` is
 a script: `!roll what="Try the door" actor_id=player question="Does it give?"` calls that tool,
-`!change verb=reveal entity_id=vault-map` wraps a `change_world` call, `!crash` and `!refuse`
-fail the spawn, `!fail narrator` and `!bad worldsmith` arm a one-shot failure of another role.
+`!crash` and `!refuse` fail the spawn, `!fail narrator` and `!bad worldsmith` arm a one-shot
+failure of another role.
 Plain words with no script get one engine-appropriate roll, so dice show up in the page.
 
 The narrator echoes what it was given, so every screenshot shows what the page was told. The
@@ -116,8 +116,6 @@ class ScriptedAgents:
                 case "fail" | "bad" | "slow":
                     role = _role(rest[0])
                     self.faults.setdefault(role, []).append(head)
-                case "change":
-                    await self._call("change_world", {"change": _args(rest)}, spoken)
                 case _:
                     await self._call(head, _args(rest), spoken)
 

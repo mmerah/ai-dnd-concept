@@ -72,22 +72,15 @@ def game(engine_id: EngineId) -> tuple[AnyEngine, AnyGame]:
     return engine, begun
 
 
-def change_args(verb: str, **fields: JsonValue) -> dict[str, JsonValue]:
-    return {"change": {"verb": verb, **fields}}
+def change(engine: AnyEngine, draft: AnyGame, name: str, /, **args: JsonValue) -> list[Fact]:
+    """`name` is positional-only: a tool's own `name` field must pass through as an argument."""
+    return list(engine.tools[name].call(draft, args, Random(0)))
 
 
-def changed(verb: str, **fields: JsonValue) -> Call:
-    return "change_world", change_args(verb, **fields)
-
-
-def change(engine: AnyEngine, draft: AnyGame, verb: str, **fields: JsonValue) -> list[Fact]:
-    return list(engine.tools["change_world"].call(draft, change_args(verb, **fields), Random(0)))
-
-
-def refused(engine: AnyEngine, draft: AnyGame, verb: str, **fields: JsonValue) -> str:
+def refused(engine: AnyEngine, draft: AnyGame, name: str, /, **args: JsonValue) -> str:
     """The refusal's text, from `pytest.raises(Refusal)`."""
     with pytest.raises(Refusal) as raised:
-        _ = change(engine, draft, verb, **fields)
+        _ = change(engine, draft, name, **args)
     return str(raised.value)
 
 

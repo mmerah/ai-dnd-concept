@@ -54,6 +54,10 @@ class Engine[P: Person, G: Game[Any]](ABC):
             raise ValueError(f"the {self.id!r} engine names a tool twice: {names}")
         self.tools = {tool.name: tool for tool in tools}
 
+    def master_tools(self) -> tuple[MasterTool[G], ...]:
+        """Each layer adds its own after `super()`'s: family, then `hire`, then the engine."""
+        return ()
+
     def pack_options(self) -> tuple[DecisionOption, ...]:
         return ()
 
@@ -67,19 +71,12 @@ class Engine[P: Person, G: Game[Any]](ABC):
         self.validate(state)
         return state
 
-    def tool(self, name: str) -> MasterTool[G]:
-        found = self.tools.get(name)
-        if found is None:
-            raise Refusal(f"{name!r} is not a tool of the {self.id!r} engine.")
-        return found
-
     def answer(self, draft: G, chosen: PendingOption, rng: Random) -> tuple[Fact, ...]:
-        try:
-            found = self.tool(chosen.name)
-        except Refusal as missing:
+        found = self.tools.get(chosen.name)
+        if found is None:
             raise Refusal(
                 f"the {self.id!r} engine has no tool {chosen.name!r} to play option {chosen.id!r}"
-            ) from missing
+            )
         return found.call(draft, chosen.args, rng)
 
     async def compose[M: BaseModel](
@@ -163,8 +160,6 @@ class Engine[P: Person, G: Game[Any]](ABC):
         if request is not None and request.operation not in self.unwritten:
             raise Refusal(f"the {self.id!r} engine writes no {request.operation!r}")
 
-    @abstractmethod
-    def master_tools(self) -> tuple[MasterTool[G], ...]: ...
     @abstractmethod
     def creation_steps(self, picks: Picks, /) -> tuple[CreationStep, ...]: ...
     @abstractmethod

@@ -12,10 +12,8 @@ from aidm.core.tools import schema_text
 from aidm.core.views import Pairs, Panel, PanelRow, Subject
 
 PLAYER_ID: Slug = "player"
-CHANGE_WORLD = (
-    "Call this when the story has settled a change to the world. Fill the fields of the verb "
-    "you pick. One call makes one change."
-)
+JOIN_PARTY = "A character here starts travelling with the player."
+LEAVE_PARTY = "A party member stops travelling with the player."
 UNKNOWN_ID = "unknown id {entity_id!r}. Use only the ids you were shown."
 IS_DEAD = "{name} is dead and takes no further part."
 SOURCELESS = "(none — write from what is below)"
@@ -70,7 +68,7 @@ class Thing(Mutable):
         return Fact(trace=trace, told=narrate and self.known, card=card, dice=dice)
 
     def reveal(self, *, card: str = "") -> list[Fact]:
-        """Leave cards to the containing action or the standalone reveal arm."""
+        """Leave cards to the containing action or the standalone `reveal` tool."""
         if self.known:
             return []
         self.known = True
@@ -189,21 +187,11 @@ class Attempt(Frozen):
 
 
 class JoinParty(Frozen):
-    """A character here starts travelling with the player."""
-
-    verb: Literal["join_party"]
     entity_id: Slug = Field(description="Exact id of who is joining.")
 
 
 class LeaveParty(Frozen):
-    """A party member stops travelling with the player."""
-
-    verb: Literal["leave_party"]
     entity_id: Slug = Field(description="Exact id of the party member leaving.")
-
-
-class ChangeWorld[C](Frozen):
-    change: C = Field(description="The change to apply. `verb` picks which one.")
 
 
 class Counter(Mutable):

@@ -5,7 +5,7 @@ from random import Random
 
 import pytest
 from support.game import initialized, loner_sheet, open_game
-from support.table import Table, changed, narrated, play_turn, tool_call
+from support.table import Table, narrated, play_turn, tool_call
 
 from aidm.core.entities import Refusal
 from aidm.core.facts import Fact, cards
@@ -18,8 +18,8 @@ from aidm.engines.scenes.engine import WAY_UNWRITTEN
 from aidm.turn.run import REQUEST_WAIT, Turn
 
 MAP = "vault-map"
-FOUND = changed("reveal", entity_id="vault-map")
-TAKEN = changed("change_tags", entity_id=PLAYER_ID, kind="gear", gained=["the vault map"])
+FOUND = tool_call("reveal", entity_id="vault-map")
+TAKEN = tool_call("change_tags", entity_id=PLAYER_ID, kind="gear", gained=["the vault map"])
 ASKED = tool_call("roll", what="Try the door", actor_id=PLAYER_ID, question="Does the door give?")
 
 
@@ -71,7 +71,7 @@ async def test_the_turn_holds_its_facts_in_resolver_order(tmp_path: Path) -> Non
         "I take the map and listen.",
         FOUND,
         TAKEN,
-        changed("change_tags", entity_id="player", kind="condition", gained=["Listening"]),
+        tool_call("change_tags", entity_id="player", kind="condition", gained=["Listening"]),
     )
 
     expected = ["The vault map discovered", "Took the vault map", "Now: Listening"]
@@ -126,8 +126,8 @@ async def test_the_master_reacts_in_run_to_its_own_earlier_tool_call(tmp_path: P
     state = await play_turn(
         table,
         "I call the old porter over.",
-        changed("enter", entity_id="tomas"),
-        changed("join_party", entity_id="tomas"),
+        tool_call("enter", entity_id="tomas"),
+        tool_call("join_party", entity_id="tomas"),
     )
 
     assert state.payload.party == ["tomas"]
@@ -136,7 +136,7 @@ async def test_the_master_reacts_in_run_to_its_own_earlier_tool_call(tmp_path: P
 async def test_an_illegal_tool_call_is_refused_with_the_reason(tmp_path: Path) -> None:
     table = open_game(tmp_path)
 
-    state = await play_turn(table, "I wait.", changed("reveal", entity_id="nowhere"), FOUND)
+    state = await play_turn(table, "I wait.", tool_call("reveal", entity_id="nowhere"), FOUND)
 
     assert state.payload.require(MAP).known
     assert any("unknown id 'nowhere'" in refusal for refusal in table.refusals)
@@ -148,8 +148,8 @@ async def test_a_call_its_own_fields_refuse_does_not_kill_the_turn(tmp_path: Pat
     state = await play_turn(
         table,
         "I press on.",
-        changed("drive", entity_id=PLAYER_ID),
-        changed("drive", entity_id=PLAYER_ID, goal="Find the way down."),
+        tool_call("drive", entity_id=PLAYER_ID),
+        tool_call("drive", entity_id=PLAYER_ID, goal="Find the way down."),
     )
 
     assert state.payload.player.goal == "Find the way down."
@@ -301,7 +301,7 @@ async def test_crossing_keeps_a_drive_set_after_the_worldsmith_snapshot(
     state = await play_turn(
         table,
         "Out into the cloister walk.",
-        changed("drive", entity_id=PLAYER_ID, goal="Get the vault map out safely"),
+        tool_call("drive", entity_id=PLAYER_ID, goal="Get the vault map out safely"),
         tool_call("next_scene", pursuit="Out into the cloister walk."),
         arrival="Rain takes the arcade.",
     )

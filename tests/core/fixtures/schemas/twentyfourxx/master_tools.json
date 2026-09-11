@@ -1,421 +1,102 @@
 [
   {
-    "name": "change_world",
-    "description": "Call this when the story has settled a change to the world. Fill the fields of the verb you pick. One call makes one change.",
+    "name": "reveal",
+    "description": "A hidden entity here becomes known to the player.",
     "parameters": {
-      "$defs": {
-        "ChangeHindrances": {
-          "additionalProperties": false,
-          "description": "The actor picks up hindrances, sheds them, or both at once.",
-          "properties": {
-            "verb": {
-              "const": "change_hindrances",
-              "type": "string"
-            },
-            "gained": {
-              "default": [],
-              "description": "Hindrances the actor now carries.",
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "lost": {
-              "default": [],
-              "description": "Hindrances the actor no longer carries.",
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "actor_id": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null,
-              "description": "Exact id of a hired party member here who acts. Null for the player."
-            }
-          },
-          "required": [
-            "verb"
-          ],
-          "type": "object"
-        },
-        "Defend": {
-          "additionalProperties": false,
-          "description": "A carried item or a ship function breaks so a hit becomes a hindrance.",
-          "properties": {
-            "verb": {
-              "const": "defend",
-              "type": "string"
-            },
-            "item_id": {
-              "description": "Exact id of an item the actor carries, or a ship function.",
-              "type": "string"
-            },
-            "hindrance": {
-              "default": "",
-              "description": "What the harm becomes, as a hindrance. Empty for an item that breaks harmlessly.",
-              "type": "string"
-            },
-            "actor_id": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null,
-              "description": "Exact id of a hired party member here who acts. Null for the player."
-            }
-          },
-          "required": [
-            "verb",
-            "item_id"
-          ],
-          "type": "object"
-        },
-        "DropItem": {
-          "additionalProperties": false,
-          "description": "The actor loses an item for good.",
-          "properties": {
-            "verb": {
-              "const": "drop_item",
-              "type": "string"
-            },
-            "item_id": {
-              "description": "Exact id of an item the actor carries.",
-              "type": "string"
-            },
-            "actor_id": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null,
-              "description": "Exact id of a hired party member here who acts. Null for the player."
-            }
-          },
-          "required": [
-            "verb",
-            "item_id"
-          ],
-          "type": "object"
-        },
-        "Enter": {
-          "additionalProperties": false,
-          "description": "A cast member comes into the scene.",
-          "properties": {
-            "verb": {
-              "const": "enter",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of a cast member not already here.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "GainItem": {
-          "additionalProperties": false,
-          "description": "The actor gains an item and pays for it.",
-          "properties": {
-            "verb": {
-              "const": "gain_item",
-              "type": "string"
-            },
-            "name": {
-              "description": "The item's name.",
-              "type": "string"
-            },
-            "bulky": {
-              "default": false,
-              "description": "True when the item takes real space to carry.",
-              "type": "boolean"
-            },
-            "breaks": {
-              "default": 1,
-              "description": "How many times the item can break before it is ruined.",
-              "minimum": 1,
-              "type": "integer"
-            },
-            "cost": {
-              "default": 0,
-              "description": "Credits paid. 0 for a thing found or given.",
-              "minimum": 0,
-              "type": "integer"
-            },
-            "actor_id": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null,
-              "description": "Exact id of a hired party member here who acts. Null for the player."
-            }
-          },
-          "required": [
-            "verb",
-            "name"
-          ],
-          "type": "object"
-        },
-        "JoinParty": {
-          "additionalProperties": false,
-          "description": "A character here starts travelling with the player.",
-          "properties": {
-            "verb": {
-              "const": "join_party",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of who is joining.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "Kill": {
-          "additionalProperties": false,
-          "description": "Someone here dies.",
-          "properties": {
-            "verb": {
-              "const": "kill",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of who here died.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "Leave": {
-          "additionalProperties": false,
-          "description": "A cast member goes out of the scene.",
-          "properties": {
-            "verb": {
-              "const": "leave",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of someone here.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "LeaveParty": {
-          "additionalProperties": false,
-          "description": "A party member stops travelling with the player.",
-          "properties": {
-            "verb": {
-              "const": "leave_party",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of the party member leaving.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "RepairItem": {
-          "additionalProperties": false,
-          "description": "The actor mends a broken item.",
-          "properties": {
-            "verb": {
-              "const": "repair_item",
-              "type": "string"
-            },
-            "item_id": {
-              "description": "Exact id of an item the actor carries, or a ship function.",
-              "type": "string"
-            },
-            "cost": {
-              "default": 0,
-              "description": "Credits spent on the repair.",
-              "minimum": 0,
-              "type": "integer"
-            },
-            "actor_id": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null,
-              "description": "Exact id of a hired party member here who acts. Null for the player."
-            }
-          },
-          "required": [
-            "verb",
-            "item_id"
-          ],
-          "type": "object"
-        },
-        "Reveal": {
-          "additionalProperties": false,
-          "description": "A hidden entity here becomes known to the player.",
-          "properties": {
-            "verb": {
-              "const": "reveal",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of an entity listed as hidden here.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "ShipUpgrade": {
-          "additionalProperties": false,
-          "description": "The player upgrades one ship function.",
-          "properties": {
-            "verb": {
-              "const": "ship_upgrade",
-              "type": "string"
-            },
-            "function_id": {
-              "description": "Exact id of a ship function. The player pays ₡10.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "function_id"
-          ],
-          "type": "object"
-        },
-        "Spend": {
-          "additionalProperties": false,
-          "description": "The actor pays credits for something that is not an item or a repair.",
-          "properties": {
-            "verb": {
-              "const": "spend",
-              "type": "string"
-            },
-            "amount": {
-              "description": "Credits spent.",
-              "exclusiveMinimum": 0,
-              "type": "integer"
-            },
-            "why": {
-              "description": "What the credits pay for, in a few words.",
-              "type": "string"
-            },
-            "actor_id": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null,
-              "description": "Exact id of a hired party member here who acts. Null for the player."
-            }
-          },
-          "required": [
-            "verb",
-            "amount",
-            "why"
-          ],
-          "type": "object"
-        },
-        "TakeLead": {
-          "additionalProperties": false,
-          "description": "A hired member takes the lead after the player dies.",
-          "properties": {
-            "verb": {
-              "const": "take_lead",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of the living hired member who takes the lead.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        }
-      },
       "additionalProperties": false,
       "properties": {
-        "change": {
-          "description": "The change to apply. `verb` picks which one.",
-          "oneOf": [
-            {
-              "$ref": "#/$defs/Reveal"
-            },
-            {
-              "$ref": "#/$defs/Enter"
-            },
-            {
-              "$ref": "#/$defs/Leave"
-            },
-            {
-              "$ref": "#/$defs/Kill"
-            },
-            {
-              "$ref": "#/$defs/JoinParty"
-            },
-            {
-              "$ref": "#/$defs/LeaveParty"
-            },
-            {
-              "$ref": "#/$defs/ChangeHindrances"
-            },
-            {
-              "$ref": "#/$defs/GainItem"
-            },
-            {
-              "$ref": "#/$defs/DropItem"
-            },
-            {
-              "$ref": "#/$defs/RepairItem"
-            },
-            {
-              "$ref": "#/$defs/Spend"
-            },
-            {
-              "$ref": "#/$defs/TakeLead"
-            },
-            {
-              "$ref": "#/$defs/ShipUpgrade"
-            },
-            {
-              "$ref": "#/$defs/Defend"
-            }
-          ]
+        "entity_id": {
+          "description": "Exact id of an entity listed as hidden here.",
+          "type": "string"
         }
       },
       "required": [
-        "change"
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "enter",
+    "description": "A cast member comes into the scene.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of a cast member not already here.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "leave",
+    "description": "A cast member goes out of the scene.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of someone here.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "kill",
+    "description": "Someone here dies.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of who here died.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "join_party",
+    "description": "A character here starts travelling with the player.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of who is joining.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "leave_party",
+    "description": "A party member stops travelling with the player.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of the party member leaving.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
       ],
       "type": "object"
     }
@@ -437,6 +118,255 @@
           "type": "string"
         }
       },
+      "type": "object"
+    }
+  },
+  {
+    "name": "hire",
+    "description": "Call this when the player hires someone here to work. Someone already travelling with the player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing more lands this turn. A sheet is for someone hired to work, never for one who only comes along.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of who here signs on.",
+          "type": "string"
+        },
+        "terms": {
+          "description": "What they are hired for, and on what terms, as agreed.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "terms"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "change_hindrances",
+    "description": "The actor picks up hindrances, sheds them, or both at once.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "gained": {
+          "default": [],
+          "description": "Hindrances the actor now carries.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "lost": {
+          "default": [],
+          "description": "Hindrances the actor no longer carries.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "actor_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of a hired party member here who acts. Null for the player."
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "gain_item",
+    "description": "The actor gains an item and pays for it.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "The item's name.",
+          "type": "string"
+        },
+        "bulky": {
+          "default": false,
+          "description": "True when the item takes real space to carry.",
+          "type": "boolean"
+        },
+        "breaks": {
+          "default": 1,
+          "description": "How many times the item can break before it is ruined.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "cost": {
+          "default": 0,
+          "description": "Credits paid. 0 for a thing found or given.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "actor_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of a hired party member here who acts. Null for the player."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "drop_item",
+    "description": "The actor loses an item for good.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "item_id": {
+          "description": "Exact id of an item the actor carries.",
+          "type": "string"
+        },
+        "actor_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of a hired party member here who acts. Null for the player."
+        }
+      },
+      "required": [
+        "item_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "repair_item",
+    "description": "The actor mends a broken item.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "item_id": {
+          "description": "Exact id of an item the actor carries, or a ship function.",
+          "type": "string"
+        },
+        "cost": {
+          "default": 0,
+          "description": "Credits spent on the repair.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "actor_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of a hired party member here who acts. Null for the player."
+        }
+      },
+      "required": [
+        "item_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "spend",
+    "description": "The actor pays credits for something that is not an item or a repair.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "description": "Credits spent.",
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        "why": {
+          "description": "What the credits pay for, in a few words.",
+          "type": "string"
+        },
+        "actor_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of a hired party member here who acts. Null for the player."
+        }
+      },
+      "required": [
+        "amount",
+        "why"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "take_lead",
+    "description": "A hired member takes the lead after the player dies.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of the living hired member who takes the lead.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "ship_upgrade",
+    "description": "The player upgrades one ship function.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "function_id": {
+          "description": "Exact id of a ship function. The player pays ₡10.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "function_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "defend",
+    "description": "A carried item or a ship function breaks so a hit becomes a hindrance.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "item_id": {
+          "description": "Exact id of an item the actor carries, or a ship function.",
+          "type": "string"
+        },
+        "hindrance": {
+          "default": "",
+          "description": "What the harm becomes, as a hindrance. Empty for an item that breaks harmlessly.",
+          "type": "string"
+        },
+        "actor_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of a hired party member here who acts. Null for the player."
+        }
+      },
+      "required": [
+        "item_id"
+      ],
       "type": "object"
     }
   },
@@ -569,28 +499,6 @@
       },
       "required": [
         "verb"
-      ],
-      "type": "object"
-    }
-  },
-  {
-    "name": "hire",
-    "description": "Call this when the player hires someone here to work. Someone already travelling with the player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing more lands this turn. A sheet is for someone hired to work, never for one who only comes along.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "entity_id": {
-          "description": "Exact id of who here signs on.",
-          "type": "string"
-        },
-        "terms": {
-          "description": "What they are hired for, and on what terms, as agreed.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id",
-        "terms"
       ],
       "type": "object"
     }

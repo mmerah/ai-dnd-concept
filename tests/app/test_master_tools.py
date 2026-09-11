@@ -4,14 +4,12 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
-from typing import Literal
 
 import pytest
 from pydantic import BaseModel, Field, JsonValue
 from support.game import open_game
 from support.table import (
     ScriptedSpawner,
-    change_args,
     narrated,
     offline_settings,
     play_turn,
@@ -39,16 +37,7 @@ from aidm.engines.scenes.tools import SceneDraft
 from aidm.turn.run import NO_TURN, Turn
 
 
-class _ArmA(Frozen):
-    verb: Literal["a"]
-
-
-class _ArmB(Frozen):
-    verb: Literal["b"]
-
-
 class _SchemaProbe(Frozen):
-    change: _ArmA | _ArmB = Field(discriminator="verb", description="which arm")
     actor_id: Slug | None = Field(default=None, description=ACTOR)
     title: str = Field(default="", description="a field whose name spells a noise key")
 
@@ -58,7 +47,6 @@ def test_schema_of_drops_noise_and_collapses_a_nullable() -> None:
 
     dumped = json.dumps(schema)
     assert '"pattern"' not in dumped
-    assert '"discriminator"' not in dumped
     assert "title" not in schema
     properties = schema["properties"]
     assert isinstance(properties, dict)
@@ -124,7 +112,7 @@ def test_no_tool_runs_before_a_turn_is_open(tmp_path: Path) -> None:
 
     assert list_tools(table.runtime) == []
     with pytest.raises(ValueError, match=NO_TURN):
-        _ = table.runtime.call("change_world", {})
+        _ = table.runtime.call("reveal", {})
 
 
 async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(
@@ -135,8 +123,8 @@ async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(
     table = open_game(tmp_path)
 
     def script() -> None:
-        _ = table.call("change_world", change_args("reveal", entity_id=VAULT_MAP) | {"junk": 1})
-        _ = table.call("change_world", change_args("reveal", entity_id=VAULT_MAP))
+        _ = table.call("reveal", {"entity_id": VAULT_MAP, "junk": 1})
+        _ = table.call("reveal", {"entity_id": VAULT_MAP})
         turn = table.service.turn
         assert turn is not None
         counts.append(len(turn.facts))
@@ -162,7 +150,7 @@ async def test_an_open_decision_blocks_every_other_tool_until_the_player_answers
         table,
         "I grab for the ledger in her hands.",
         ("roll", A_CONFLICT),
-        ("change_world", change_args("reveal", entity_id=VAULT_MAP)),
+        tool_call("reveal", entity_id=VAULT_MAP),
         narration="She holds on.",
     )
 
@@ -215,7 +203,7 @@ async def test_the_offer_does_not_close_the_scene_or_stop_the_player(tmp_path: P
     state = await play_turn(
         table,
         "I go back to the shelves and read the spines.",
-        ("change_world", change_args("reveal", entity_id=VAULT_MAP)),
+        tool_call("reveal", entity_id=VAULT_MAP),
         narration="Dust comes away on your sleeve.",
     )
 
@@ -405,9 +393,7 @@ async def test_a_scene_the_world_has_outgrown_is_dropped_and_the_offer_kept(
     table.spawner.answers["worldsmith"] = [_scene(), _scene()]
 
     _ = await play_turn(table, "I have what I came for.", the_way_on())
-    state = await play_turn(
-        table, PURSUIT, ("change_world", change_args("enter", entity_id="tomas")), LEFT
-    )
+    state = await play_turn(table, PURSUIT, tool_call("enter", entity_id="tomas"), LEFT)
 
     assert "already met" in caplog.text
     unwritten = table.service.engine.world(state).exchanges()[-1]

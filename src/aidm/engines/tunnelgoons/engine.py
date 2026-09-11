@@ -3,22 +3,20 @@ from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, picked
-from aidm.core.entities import EngineId, Refusal, Slug, slug
+from aidm.core.entities import EngineId, Frozen, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.model import AnyCharacter
 from aidm.core.play import DecisionOption, PendingDecision
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Pairs
-from aidm.engines.base import CHANGE_WORLD, PLAYER_ID
-from aidm.engines.hiring import HIRE, HIRE_TOOL, HIRE_UNWRITTEN, Hire, Hiring
+from aidm.engines.base import PLAYER_ID
+from aidm.engines.hiring import HIRE, HIRE_UNWRITTEN, Hiring
 from aidm.engines.rooms.engine import RoomEngine
-from aidm.engines.rooms.tools import Move
 from aidm.engines.rooms.world import Prop
 from aidm.engines.tunnelgoons.tools import (
+    REST,
     ActionRoll,
-    ChangeWorld,
     LevelUp,
-    Rest,
     level_options,
 )
 from aidm.engines.tunnelgoons.world import (
@@ -91,13 +89,8 @@ class TunnelGoonsEngine(
 
     def master_tools(self) -> tuple[MasterTool[TunnelGoonsGame], ...]:
         return (
-            master_tool("change_world", CHANGE_WORLD, ChangeWorld, self.change_world),
-            master_tool(
-                "move",
-                "Call this to carry the player through an unlocked way out of this place.",
-                Move,
-                self.move,
-            ),
+            *super().master_tools(),
+            master_tool("rest", REST, Frozen, self.rest),
             master_tool(
                 "roll",
                 "Call this for an uncertain action that carries a real cost. The engine rolls "
@@ -112,7 +105,6 @@ class TunnelGoonsEngine(
                 LevelUp,
                 self.level_up,
             ),
-            master_tool("hire", HIRE_TOOL, Hire, self.hire),
         )
 
     def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
@@ -158,13 +150,8 @@ class TunnelGoonsEngine(
     def guidance(self) -> str:
         return AUTHORING
 
-    def change_world(self, draft: TunnelGoonsGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-        world, change = draft.payload, args.change
-        match change:
-            case Rest():
-                return world.rest()
-            case _:
-                return self.shared_change(world, change)
+    def rest(self, draft: TunnelGoonsGame, _args: Frozen, _rng: Random) -> list[Fact]:
+        return draft.payload.rest()
 
     def hireable(self, draft: TunnelGoonsGame, entity_id: Slug) -> Npc:
         return draft.payload.require_hireable(entity_id)

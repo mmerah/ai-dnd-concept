@@ -9,7 +9,6 @@ from support.game import TARGET, open_game, session, with_entity
 from support.table import (
     BREATHLESS,
     ScriptedSpawner,
-    changed,
     narrated,
     offline_settings,
     open_table,
@@ -264,7 +263,7 @@ async def test_no_generation_runs_once_the_game_is_over(tmp_path: Path) -> None:
     state = await play_turn(
         table,
         "I keep watch, whatever comes.",
-        changed("kill", entity_id=PLAYER_ID),
+        tool_call("kill", entity_id=PLAYER_ID),
         tool_call("next_scene", complication="A second crew breaches the study door."),
     )
 

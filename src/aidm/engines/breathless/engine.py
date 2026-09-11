@@ -11,13 +11,13 @@ from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.prompt import lines_of
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Pairs, Panel, PanelRow
-from aidm.engines.base import CHANGE_WORLD, PLAYER_ID, banded
+from aidm.engines.base import PLAYER_ID, banded
 from aidm.engines.breathless.tools import (
+    CHANGE_STRESS,
+    USE_MED_KIT,
     Actor,
     ChangeStress,
-    ChangeWorld,
     Check,
-    DropItem,
     LootCheck,
     TakeLoot,
     TestLuck,
@@ -43,9 +43,8 @@ from aidm.engines.breathless.world import (
     stepped,
 )
 from aidm.engines.breathless.worldsmith import AUTHORING, HIRING, Pack, SheetDraft
-from aidm.engines.hiring import HIRE, HIRE_TOOL, HIRE_UNWRITTEN, Hire, Hiring
+from aidm.engines.hiring import DROP_ITEM, HIRE, HIRE_UNWRITTEN, DropItem, Hiring
 from aidm.engines.scenes.engine import SceneEngine
-from aidm.engines.scenes.tools import NEXT_SCENE, NextScene
 from aidm.engines.scenes.world import sentence
 
 
@@ -83,8 +82,10 @@ class BreathlessEngine(
 
     def master_tools(self) -> tuple[MasterTool[BreathlessGame], ...]:
         return (
-            master_tool("change_world", CHANGE_WORLD, ChangeWorld, self.change_world),
-            master_tool("next_scene", NEXT_SCENE, NextScene, self.next_scene),
+            *super().master_tools(),
+            master_tool("drop_item", DROP_ITEM, DropItem, self.drop_item),
+            master_tool("change_stress", CHANGE_STRESS, ChangeStress, self.change_stress),
+            master_tool("use_med_kit", USE_MED_KIT, UseMedKit, self.use_med_kit),
             master_tool(
                 "roll",
                 "Call this for an action with a real cost. Roll one thing: a skill, a carried "
@@ -113,7 +114,6 @@ class BreathlessEngine(
                 TestLuck,
                 self.test_luck,
             ),
-            master_tool("hire", HIRE_TOOL, Hire, self.hire),
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
@@ -188,17 +188,14 @@ class BreathlessEngine(
         """Always the SRD's own table: no other pack publishes one."""
         return self.srd_pack().complications
 
-    def change_world(self, draft: BreathlessGame, args: ChangeWorld, _rng: Random) -> list[Fact]:
-        world, change = draft.payload, args.change
-        match change:
-            case DropItem():
-                return world.require_actor(change.actor_id).drop_item(change.item_id)
-            case ChangeStress():
-                return world.require_actor(change.actor_id).change_stress(change.amount, change.why)
-            case UseMedKit():
-                return world.require_actor(change.actor_id).use_med_kit()
-            case _:
-                return self.shared_change(world, change)
+    def drop_item(self, draft: BreathlessGame, args: DropItem, _rng: Random) -> list[Fact]:
+        return draft.payload.require_actor(args.actor_id).drop_item(args.item_id)
+
+    def change_stress(self, draft: BreathlessGame, args: ChangeStress, _rng: Random) -> list[Fact]:
+        return draft.payload.require_actor(args.actor_id).change_stress(args.amount, args.why)
+
+    def use_med_kit(self, draft: BreathlessGame, args: UseMedKit, _rng: Random) -> list[Fact]:
+        return draft.payload.require_actor(args.actor_id).use_med_kit()
 
     def hireable(self, draft: BreathlessGame, entity_id: Slug) -> Survivor:
         return draft.payload.require_hireable(entity_id)
@@ -295,7 +292,7 @@ class BreathlessEngine(
                     draft.note(
                         f"{who.name} is vulnerable and this dangerous roll failed: rule "
                         "whether they are taken out of the scene or dead. Death is "
-                        f"`change_world` `kill` on {who.name}."
+                        f"`kill` on {who.name}."
                     )
         return facts
 

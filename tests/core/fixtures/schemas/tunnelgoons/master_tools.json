@@ -1,174 +1,107 @@
 [
   {
-    "name": "change_world",
-    "description": "Call this when the story has settled a change to the world. Fill the fields of the verb you pick. One call makes one change.",
+    "name": "reveal",
+    "description": "Something hidden here becomes known to the player.",
     "parameters": {
-      "$defs": {
-        "JoinParty": {
-          "additionalProperties": false,
-          "description": "A character here starts travelling with the player.",
-          "properties": {
-            "verb": {
-              "const": "join_party",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of who is joining.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "Kill": {
-          "additionalProperties": false,
-          "description": "An npc here dies.",
-          "properties": {
-            "verb": {
-              "const": "kill",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of an npc here.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "LeaveParty": {
-          "additionalProperties": false,
-          "description": "A party member stops travelling with the player.",
-          "properties": {
-            "verb": {
-              "const": "leave_party",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of the party member leaving.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "MoveItem": {
-          "additionalProperties": false,
-          "description": "An item moves to a new holder.",
-          "properties": {
-            "verb": {
-              "const": "move_item",
-              "type": "string"
-            },
-            "item_id": {
-              "description": "Exact id of an item here or carried.",
-              "type": "string"
-            },
-            "to": {
-              "description": "Exact id of the player, an npc here, or this place.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "item_id",
-            "to"
-          ],
-          "type": "object"
-        },
-        "Rest": {
-          "additionalProperties": false,
-          "description": "The player and the party spend a night here and heal to full Health.",
-          "properties": {
-            "verb": {
-              "const": "rest",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb"
-          ],
-          "type": "object"
-        },
-        "Reveal": {
-          "additionalProperties": false,
-          "description": "Something hidden here becomes known to the player.",
-          "properties": {
-            "verb": {
-              "const": "reveal",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of something hidden here: an npc or an item.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "UnlockWay": {
-          "additionalProperties": false,
-          "description": "A locked way out of this place opens.",
-          "properties": {
-            "verb": {
-              "const": "unlock_way",
-              "type": "string"
-            },
-            "to_id": {
-              "description": "Exact id of the locked way's destination.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "to_id"
-          ],
-          "type": "object"
-        }
-      },
       "additionalProperties": false,
       "properties": {
-        "change": {
-          "description": "The change to apply. `verb` picks which one.",
-          "oneOf": [
-            {
-              "$ref": "#/$defs/Reveal"
-            },
-            {
-              "$ref": "#/$defs/MoveItem"
-            },
-            {
-              "$ref": "#/$defs/Kill"
-            },
-            {
-              "$ref": "#/$defs/JoinParty"
-            },
-            {
-              "$ref": "#/$defs/LeaveParty"
-            },
-            {
-              "$ref": "#/$defs/UnlockWay"
-            },
-            {
-              "$ref": "#/$defs/Rest"
-            }
-          ]
+        "entity_id": {
+          "description": "Exact id of something hidden here: an npc or an item.",
+          "type": "string"
         }
       },
       "required": [
-        "change"
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "move_item",
+    "description": "An item moves to a new holder.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "item_id": {
+          "description": "Exact id of an item here or carried.",
+          "type": "string"
+        },
+        "to": {
+          "description": "Exact id of the player, an npc here, or this place.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_id",
+        "to"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "kill",
+    "description": "An npc here dies.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of an npc here.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "join_party",
+    "description": "A character here starts travelling with the player.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of who is joining.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "leave_party",
+    "description": "A party member stops travelling with the player.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of the party member leaving.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "unlock_way",
+    "description": "A locked way out of this place opens.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "to_id": {
+          "description": "Exact id of the locked way's destination.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "to_id"
       ],
       "type": "object"
     }
@@ -195,6 +128,37 @@
       "required": [
         "to_id"
       ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "hire",
+    "description": "Call this when the player hires someone here to work. Someone already travelling with the player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing more lands this turn. A sheet is for someone hired to work, never for one who only comes along.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of who here signs on.",
+          "type": "string"
+        },
+        "terms": {
+          "description": "What they are hired for, and on what terms, as agreed.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "terms"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "rest",
+    "description": "The player and the party spend a night here and heal to full Health.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {},
       "type": "object"
     }
   },
@@ -303,28 +267,6 @@
           "description": "Exact id of a hired party member here who acts. Null for the player."
         }
       },
-      "type": "object"
-    }
-  },
-  {
-    "name": "hire",
-    "description": "Call this when the player hires someone here to work. Someone already travelling with the player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing more lands this turn. A sheet is for someone hired to work, never for one who only comes along.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "entity_id": {
-          "description": "Exact id of who here signs on.",
-          "type": "string"
-        },
-        "terms": {
-          "description": "What they are hired for, and on what terms, as agreed.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id",
-        "terms"
-      ],
       "type": "object"
     }
   }

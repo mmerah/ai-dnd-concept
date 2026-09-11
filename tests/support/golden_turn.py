@@ -1,6 +1,6 @@
 import json
 
-from support.table import changed
+from support.table import tool_call
 
 NARRATION = "The flagstone lifts. Beyond the door, something shifts its weight and waits."
 INTERJECTION = json.dumps(
@@ -10,7 +10,7 @@ INTERJECTION = json.dumps(
     }
 )
 
-LISTENING = changed(
+LISTENING = tool_call(
     "change_tags",
     entity_id="player",
     kind="condition",

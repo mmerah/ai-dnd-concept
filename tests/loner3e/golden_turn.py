@@ -1,5 +1,5 @@
 from support.golden_turn import LISTENING
-from support.table import Call, changed, narrowed, tool_call
+from support.table import Call, narrowed, tool_call
 
 from aidm.core.model import AnyGame
 from aidm.core.play import Exchange, SpokenLine
@@ -8,7 +8,7 @@ from aidm.engines.loner3e.world import Loner3eGame
 from aidm.engines.scenes.world import SceneRun
 
 SCRIPT: tuple[Call, ...] = (
-    changed("reveal", entity_id="vault-map"),
+    tool_call("reveal", entity_id="vault-map"),
     tool_call(
         "roll",
         what="Listen at the vault door",

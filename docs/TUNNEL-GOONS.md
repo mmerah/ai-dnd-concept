@@ -43,9 +43,9 @@ None. The starting item list is in the SRD's character creation.
 
 ## The tools
 
-A named tool rolls dice, opens a decision, or ends the turn. Every other change is an arm of `change_world`: set `verb`, fill that verb's fields.
+Every tool makes one change, rolls dice, opens a decision, or ends the turn.
 
-- `change_world` — arms: `reveal`, `move_item`, `kill`, `join_party`, `leave_party`, `unlock_way` (open a locked way once the story has dealt with it) and `rest` (heal the player and every party member to full Health in a safe spot).
+- `reveal`, `move_item`, `kill`, `join_party`, `leave_party`, `unlock_way` (open a locked way once the story has dealt with it) and `rest` (heal the player and every party member to full Health in a safe spot).
 - `move` — carry the player, the party, and any NPCs named in `with_ids`, through an unlocked way listed in WAYS OUT.
 - `roll` — 2d6 plus an ability and helpful items, against a Difficulty Score or an npc; `actor_id` when a hired member acts instead of the player.
 - `level_up` — raise one ability and either Health or Inventory by 1, once, at the adventure's end: the player first, then each hired member in turn.

@@ -1,14 +1,12 @@
 from collections.abc import Sequence
-from typing import Annotated, Literal
+from typing import Literal
 
-from pydantic import Discriminator, Field
+from pydantic import Field
 
 from aidm.core.entities import Frozen, Slug
 from aidm.core.play import DecisionOption
-from aidm.engines import base
-from aidm.engines.base import Attempt, JoinParty, LeaveParty
+from aidm.engines.base import Attempt
 from aidm.engines.loner3e.world import TagKind
-from aidm.engines.scenes.tools import Enter, Kill, Leave, Reveal
 
 AND_AT = 4  # both dice 4+ sharpens the answer to -and
 BUT_AT = 3  # both dice 3 or under softens it to -but
@@ -20,14 +18,14 @@ TOLD: dict[str, str] = {
     "no": "no",
     "no-and": "no, and worse",
 }
+CHANGE_TAGS = "A character here gains tags, loses tags, or both."
+DRIVE = "A living character's goal, motive or nemesis changes."
+RESTORE_LUCK = "A character's luck refills."
 
 type Position = Literal["advantage", "neutral", "disadvantage"]
 
 
 class ChangeTags(Frozen):
-    """A character here gains tags, loses tags, or both."""
-
-    verb: Literal["change_tags"]
     entity_id: Slug = Field(description="Exact id of the player or someone here.")
     kind: TagKind = Field(
         description="`gear` for a thing taken or lost. `condition` for a lasting mark such as "
@@ -40,9 +38,6 @@ class ChangeTags(Frozen):
 
 
 class Drive(Frozen):
-    """A living character's goal, motive or nemesis changes."""
-
-    verb: Literal["drive"]
     entity_id: Slug = Field(description="Exact id of the player or a living character here.")
     goal: str = Field(
         default="",
@@ -55,18 +50,7 @@ class Drive(Frozen):
 
 
 class RestoreLuck(Frozen):
-    """A character's luck refills."""
-
-    verb: Literal["restore_luck"]
     entity_id: Slug = Field(description="Exact id of the player or a character here.")
-
-
-type WorldChange = (
-    Reveal | Enter | Leave | ChangeTags | Drive | Kill | JoinParty | LeaveParty | RestoreLuck
-)
-
-
-ChangeWorld = base.ChangeWorld[Annotated[WorldChange, Discriminator("verb")]]
 
 
 class Question(Attempt):
@@ -128,10 +112,10 @@ def twist_note(subject: str, action: str) -> str:
 
 def defeat_note(name: str) -> str:
     return (
-        f"{name} has run out of luck and lost this conflict. Roll nothing more for it. Say how "
-        "it ends for them: taken, severely injured, broken off, cornered, or conceding. Write "
-        "any lasting mark with the `change_tags` arm, as a `condition`. Then let the story "
-        "move on."
+        f"{name} has run out of luck and lost this conflict. Roll nothing more for it. Say "
+        "how it ends for them: taken, severely injured, broken off, cornered, or conceding. "
+        "Write any lasting mark with `change_tags`, as a `condition`. Then let the story move "
+        "on."
     )
 
 

@@ -1,242 +1,102 @@
 [
   {
-    "name": "change_world",
-    "description": "Call this when the story has settled a change to the world. Fill the fields of the verb you pick. One call makes one change.",
+    "name": "reveal",
+    "description": "A hidden entity here becomes known to the player.",
     "parameters": {
-      "$defs": {
-        "ChangeStress": {
-          "additionalProperties": false,
-          "description": "The actor's stress goes up or down.",
-          "properties": {
-            "verb": {
-              "const": "change_stress",
-              "type": "string"
-            },
-            "amount": {
-              "description": "How much stress changes. Positive costs stress, negative clears it.",
-              "type": "integer"
-            },
-            "why": {
-              "description": "What causes the change, in a few words.",
-              "type": "string"
-            },
-            "actor_id": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null,
-              "description": "Exact id of a hired party member here who acts. Null for the player."
-            }
-          },
-          "required": [
-            "verb",
-            "amount",
-            "why"
-          ],
-          "type": "object"
-        },
-        "DropItem": {
-          "additionalProperties": false,
-          "description": "The actor loses an item for good.",
-          "properties": {
-            "verb": {
-              "const": "drop_item",
-              "type": "string"
-            },
-            "item_id": {
-              "description": "Exact id of an item the actor carries.",
-              "type": "string"
-            },
-            "actor_id": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null,
-              "description": "Exact id of a hired party member here who acts. Null for the player."
-            }
-          },
-          "required": [
-            "verb",
-            "item_id"
-          ],
-          "type": "object"
-        },
-        "Enter": {
-          "additionalProperties": false,
-          "description": "A cast member comes into the scene.",
-          "properties": {
-            "verb": {
-              "const": "enter",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of a cast member not already here.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "JoinParty": {
-          "additionalProperties": false,
-          "description": "A character here starts travelling with the player.",
-          "properties": {
-            "verb": {
-              "const": "join_party",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of who is joining.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "Kill": {
-          "additionalProperties": false,
-          "description": "Someone here dies.",
-          "properties": {
-            "verb": {
-              "const": "kill",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of who here died.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "Leave": {
-          "additionalProperties": false,
-          "description": "A cast member goes out of the scene.",
-          "properties": {
-            "verb": {
-              "const": "leave",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of someone here.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "LeaveParty": {
-          "additionalProperties": false,
-          "description": "A party member stops travelling with the player.",
-          "properties": {
-            "verb": {
-              "const": "leave_party",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of the party member leaving.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "Reveal": {
-          "additionalProperties": false,
-          "description": "A hidden entity here becomes known to the player.",
-          "properties": {
-            "verb": {
-              "const": "reveal",
-              "type": "string"
-            },
-            "entity_id": {
-              "description": "Exact id of an entity listed as hidden here.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "verb",
-            "entity_id"
-          ],
-          "type": "object"
-        },
-        "UseMedKit": {
-          "additionalProperties": false,
-          "description": "The actor spends their med kit.",
-          "properties": {
-            "verb": {
-              "const": "use_med_kit",
-              "type": "string"
-            },
-            "actor_id": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "default": null,
-              "description": "Exact id of a hired party member here who acts. Null for the player."
-            }
-          },
-          "required": [
-            "verb"
-          ],
-          "type": "object"
-        }
-      },
       "additionalProperties": false,
       "properties": {
-        "change": {
-          "description": "The change to apply. `verb` picks which one.",
-          "oneOf": [
-            {
-              "$ref": "#/$defs/Reveal"
-            },
-            {
-              "$ref": "#/$defs/Enter"
-            },
-            {
-              "$ref": "#/$defs/Leave"
-            },
-            {
-              "$ref": "#/$defs/Kill"
-            },
-            {
-              "$ref": "#/$defs/JoinParty"
-            },
-            {
-              "$ref": "#/$defs/LeaveParty"
-            },
-            {
-              "$ref": "#/$defs/DropItem"
-            },
-            {
-              "$ref": "#/$defs/ChangeStress"
-            },
-            {
-              "$ref": "#/$defs/UseMedKit"
-            }
-          ]
+        "entity_id": {
+          "description": "Exact id of an entity listed as hidden here.",
+          "type": "string"
         }
       },
       "required": [
-        "change"
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "enter",
+    "description": "A cast member comes into the scene.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of a cast member not already here.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "leave",
+    "description": "A cast member goes out of the scene.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of someone here.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "kill",
+    "description": "Someone here dies.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of who here died.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "join_party",
+    "description": "A character here starts travelling with the player.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of who is joining.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "leave_party",
+    "description": "A party member stops travelling with the player.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of the party member leaving.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
       ],
       "type": "object"
     }
@@ -256,6 +116,101 @@
           "default": "",
           "description": "What arrives or turns here, and why. Empty otherwise.",
           "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "hire",
+    "description": "Call this when the player hires someone here to work. Someone already travelling with the player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing more lands this turn. A sheet is for someone hired to work, never for one who only comes along.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of who here signs on.",
+          "type": "string"
+        },
+        "terms": {
+          "description": "What they are hired for, and on what terms, as agreed.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "terms"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "drop_item",
+    "description": "The actor loses an item for good.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "item_id": {
+          "description": "Exact id of an item the actor carries.",
+          "type": "string"
+        },
+        "actor_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of a hired party member here who acts. Null for the player."
+        }
+      },
+      "required": [
+        "item_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "change_stress",
+    "description": "The actor's stress goes up or down.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "description": "How much stress changes. Positive costs stress, negative clears it.",
+          "type": "integer"
+        },
+        "why": {
+          "description": "What causes the change, in a few words.",
+          "type": "string"
+        },
+        "actor_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of a hired party member here who acts. Null for the player."
+        }
+      },
+      "required": [
+        "amount",
+        "why"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "use_med_kit",
+    "description": "The actor spends their med kit.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of a hired party member here who acts. Null for the player."
         }
       },
       "type": "object"
@@ -402,28 +357,6 @@
       "required": [
         "question",
         "die"
-      ],
-      "type": "object"
-    }
-  },
-  {
-    "name": "hire",
-    "description": "Call this when the player hires someone here to work. Someone already travelling with the player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing more lands this turn. A sheet is for someone hired to work, never for one who only comes along.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "entity_id": {
-          "description": "Exact id of who here signs on.",
-          "type": "string"
-        },
-        "terms": {
-          "description": "What they are hired for, and on what terms, as agreed.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id",
-        "terms"
       ],
       "type": "object"
     }
