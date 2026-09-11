@@ -67,7 +67,7 @@ class SettingsForm:
         try:
             Settings.model_validate(merged)
         except ValidationError as error:
-            ui.notify(_refusal_text(error), type="negative", multi_line=True)
+            ui.notify(refusal_text(error), type="negative", multi_line=True)
             return
         save_settings(changed)
         refusal = self.apply()
@@ -99,7 +99,7 @@ def changes(settings: Settings, typed: Mapping[tuple[str, ...], object]) -> Chan
     return changed
 
 
-def _refusal_text(error: ValidationError) -> str:
+def refusal_text(error: ValidationError) -> str:
     return "\n".join(
         f"{'.'.join(str(part) for part in issue['loc'])}: {issue['msg']}"
         for issue in error.errors()

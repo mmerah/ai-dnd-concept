@@ -46,7 +46,7 @@ class LaunchForm:
     def form(self) -> None:
         catalog = self.catalog
         scenario = catalog.scenario(self.scenario_id)
-        theme.set_engine(scenario.engine)
+        theme.set_look(scenario.look)
         ui.select(
             options={entry.id: f"{entry.label} · {entry.rules}" for entry in catalog.scenarios},
             value=self.scenario_id,
@@ -80,7 +80,9 @@ class LaunchForm:
 
 
 def home_page(runtime: Runtime) -> None:
-    catalog = LauncherCatalog.read(runtime.library, runtime.store, runtime.engines)
+    catalog = LauncherCatalog.read(
+        runtime.library, runtime.store, runtime.engines, runtime.scenario_models()
+    )
     with page_header("AI Dungeon Master", home=False):
         ui.button("Settings", icon="settings", on_click=lambda: ui.navigate.to("/settings")).props(
             "flat"

@@ -86,12 +86,18 @@ def _installed(tmp_path: Path) -> FifthEngine:
     return _engine_at(tmp_path)()
 
 
-def test_srd_pack_refuses_when_no_srd_table_set_is_installed(tmp_path: Path) -> None:
+def test_construction_refuses_when_no_srd_table_set_is_installed(tmp_path: Path) -> None:
     engine_type = type(_installed(tmp_path))
     (tmp_path / "packs" / "srd.json").rename(tmp_path / "packs" / "other.json")
-    engine = engine_type()
-    with pytest.raises(Refusal, match="the SRD table set is not installed"):
-        _ = engine.srd_pack()
+    with pytest.raises(ValueError, match="ships no 'srd' pack"):
+        engine_type()
+
+
+def test_construction_refuses_when_the_packs_dir_has_no_srd(tmp_path: Path) -> None:
+    (tmp_path / "rules.md").write_text("Roll high.", encoding=ENCODING)
+    (tmp_path / "packs").mkdir()
+    with pytest.raises(ValueError, match="ships no 'srd' pack"):
+        _engine_at(tmp_path)()
 
 
 def test_a_pack_with_doubled_keys_is_refused(tmp_path: Path) -> None:

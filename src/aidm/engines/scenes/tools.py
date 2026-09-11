@@ -1,6 +1,8 @@
-from pydantic import Field
+from typing import Self
 
-from aidm.core.entities import Frozen, Slug
+from pydantic import Field, model_validator
+
+from aidm.core.entities import Frozen, Mutable, Slug
 from aidm.engines.base import Person
 
 NEXT_SCENE = (
@@ -40,8 +42,14 @@ class NextScene(Frozen):
         description="What arrives or turns here, and why. Empty otherwise.",
     )
 
+    @model_validator(mode="after")
+    def _one_or_none(self) -> Self:
+        if self.pursuit and self.complication:
+            raise ValueError("a pursuit or a complication, not both")
+        return self
 
-class SceneDraft[C: Person](Frozen):
+
+class SceneDraft[C: Person](Mutable):
     """The next scene the player walks into."""
 
     place: Slug = Field(description="Slug naming the place. Reuse it when the player returns here.")

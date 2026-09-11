@@ -92,5 +92,5 @@ def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
     return Server(SERVER_NAME, on_list_tools=on_list_tools, on_call_tool=on_call_tool)
 
 
-def _content(body: str, error: bool = False) -> types.CallToolResult:
+def _content(body: str, *, error: bool = False) -> types.CallToolResult:
     return types.CallToolResult(content=[types.TextContent(text=body)], is_error=error)

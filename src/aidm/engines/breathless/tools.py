@@ -1,6 +1,6 @@
 from typing import Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from aidm.core.entities import Frozen, Slug
 from aidm.engines.base import Attempt
@@ -33,6 +33,13 @@ class ChangeStress(Frozen):
     )
     why: str = Field(min_length=1, description="What causes the change, in a few words.")
     actor_id: Slug | None = Field(default=None, description=ACTOR)
+
+    @field_validator("amount")
+    @classmethod
+    def _non_zero(cls, amount: int) -> int:
+        if amount == 0:
+            raise ValueError("a non-zero amount")
+        return amount
 
 
 class UseMedKit(Frozen):

@@ -103,8 +103,6 @@ class SurvivorSheet(ItemSheet[Supply]):
 
 class Survivor(Sheeted[SurvivorSheet]):
     def change_stress(self, amount: int, why: str) -> list[Fact]:
-        if amount == 0:
-            raise Refusal("change_stress needs a non-zero amount")
         return self.require_sheet().stress.change(self, amount, "Stress", why)
 
     def use_med_kit(self) -> list[Fact]:

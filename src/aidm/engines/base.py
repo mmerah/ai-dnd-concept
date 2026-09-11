@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
 from random import Random
-from typing import Literal, Self
+from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -9,7 +9,7 @@ from aidm.core.entities import Frozen, Mutable, Refusal, Slug
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.prompt import Pairs, sections
 from aidm.core.tools import schema_text
-from aidm.core.views import Panel, PanelRow, Subject
+from aidm.core.views import Chattiness, Panel, PanelRow, Subject
 
 PLAYER_ID: Slug = "player"
 JOIN_PARTY = "A character here starts travelling with the player."
@@ -17,8 +17,6 @@ LEAVE_PARTY = "A party member stops travelling with the player."
 UNKNOWN_ID = "unknown id {entity_id!r}. Use only the ids you were shown."
 IS_DEAD = "{name} is dead and takes no further part."
 SOURCELESS = "(none — write from what is below)"
-
-type Chattiness = Literal["quiet", "normal", "chatty"]
 
 
 class Thing(Mutable):
@@ -275,7 +273,7 @@ def trail_panel(titles: Iterable[str]) -> Panel:
 def check_filing(pool: Mapping[Slug, Thing]) -> None:
     for key, entity in pool.items():
         if key != entity.id:
-            raise ValueError(f"entity {entity.id!r} is filed under {key!r}")
+            raise Refusal(f"entity {entity.id!r} is filed under {key!r}")
 
 
 def banded(face: int, low: str, mid: str, high: str) -> str:

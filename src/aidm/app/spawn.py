@@ -82,8 +82,8 @@ class ClaudeDriver:
 
     def read_result(self, output: str) -> RunResult:
         try:
-            result = _ClaudeResult.model_validate_json(output)
-        except ValidationError as broken:
+            result = parse(_ClaudeResult, decode(output))
+        except Refusal as broken:
             raise Refusal(f"claude printed no JSON result: {output[-500:]}") from broken
         if result.is_error:
             raise Refusal(f"the run failed: {result.result[-500:]}")
@@ -179,7 +179,7 @@ def final_message(output: str) -> str:
             continue
         try:
             _, end = decoder.raw_decode(tail, start)
-        except ValueError:
+        except json.JSONDecodeError:
             continue
         if end == len(tail):
             return tail[start:]
@@ -222,19 +222,24 @@ async def _spawn(
     secrets: Sequence[str],
     cwd: str,
 ) -> str:
-    process = await subprocess.create_subprocess_exec(
-        *argv,
-        prompt,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        cwd=cwd,
-        env=child_environment(secrets),
-        # Its own group, so an abandoned spawn cannot leave children playing on.
-        start_new_session=True,
-    )
+    try:
+        process = await subprocess.create_subprocess_exec(
+            *argv,
+            prompt,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            cwd=cwd,
+            env=child_environment(secrets),
+            # Its own group, so an abandoned spawn cannot leave children playing on.
+            start_new_session=True,
+        )
+    except OSError as failed:
+        raise Refusal(f"the {role} could not be started: {failed}") from failed
     try:
         streamed = await wait_for(process.communicate(), timeout)
+    except TimeoutError:
+        raise Refusal(f"the {role} answered nothing in {timeout:.0f}s") from None
     finally:
         # A no-op once it exited; an abandoned or timed-out spawn dies with its children.
         _kill(process)
@@ -290,7 +295,7 @@ def _found(node: JsonValue, name: str) -> JsonValue | None:
 def _decodes(body: str) -> bool:
     try:
         json.loads(body)
-    except ValueError:
+    except json.JSONDecodeError:
         return False
     return True
 

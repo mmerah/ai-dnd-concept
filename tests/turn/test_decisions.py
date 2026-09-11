@@ -168,7 +168,7 @@ def test_a_change_may_run_on_a_state_already_suspended_on_a_decision(tmp_path: P
         return ()
 
     turn = Turn(engine=engine, draft=_pending(state).draft(), rng=Random(0))
-    _ = turn._apply(nothing)  # pyright: ignore[reportPrivateUsage]
+    _ = turn.apply(nothing)
     assert turn.draft.pending == DECISION
 
 

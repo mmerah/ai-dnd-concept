@@ -85,7 +85,7 @@ def test_no_module_names_a_concrete_engine() -> None:
 
 
 def test_no_ui_module_names_a_built_engine_id() -> None:
-    """The theme table is the one place the UI names an engine id."""
+    """The seam hands the UI `Companion`s and a `Look`; no page names an engine id."""
     built_ids = {name.rsplit(".", 1)[-1] for name in ENGINES}
     naming = {
         str(path.relative_to(SOURCE))
@@ -94,4 +94,4 @@ def test_no_ui_module_names_a_built_engine_id() -> None:
         if isinstance(node, ast.Constant)
         if isinstance(node.value, str) and node.value in built_ids
     }
-    assert naming == {"ui/theme.py"}
+    assert naming == set()

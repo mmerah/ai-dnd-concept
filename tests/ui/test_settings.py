@@ -7,10 +7,7 @@ from support.table import ScriptedSpawner, offline_settings
 
 from aidm.app.runtime import Runtime
 from aidm.config import RoleConfig, RoleSettings, Settings, read_settings, save_settings
-from aidm.ui.settings import (
-    _refusal_text,  # pyright: ignore[reportPrivateUsage]
-    changes,
-)
+from aidm.ui.settings import changes, refusal_text
 
 
 def test_only_a_real_edit_is_written(tmp_path: Path) -> None:
@@ -85,7 +82,7 @@ def test_a_validation_error_reads_as_one_line_per_field() -> None:
     with pytest.raises(ValidationError) as raised:
         _ = Settings.model_validate({"roles": {"master": {"timeout": -1}}})
 
-    text = _refusal_text(raised.value)
+    text = refusal_text(raised.value)
     assert text.startswith("roles.master.timeout: ")
     assert "type=" not in text
     assert "http" not in text

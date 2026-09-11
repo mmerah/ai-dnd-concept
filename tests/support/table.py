@@ -1,5 +1,4 @@
 import json
-from asyncio import gather
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import partial
@@ -259,7 +258,7 @@ async def take[G: AnyGame](
 
 
 async def drain(service: GameService) -> None:
-    await gather(*service._background)  # pyright: ignore[reportPrivateUsage]
+    await service.settled()
 
 
 def narrowed[M](value: object, model: type[M]) -> M:

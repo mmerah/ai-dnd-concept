@@ -1,11 +1,36 @@
 import json
+from dataclasses import dataclass
 
 import pytest
 
-from aidm.app.spawn import ClaudeDriver, CodexDriver, RunResult, Tools, ask, child_environment
+from aidm.app.spawn import (
+    ClaudeDriver,
+    CodexDriver,
+    RunResult,
+    Tools,
+    ask,
+    child_environment,
+    run_cli,
+)
 from aidm.config import Role, RoleConfig
 from aidm.core.entities import Refusal
 from aidm.core.play import Narration
+
+
+@dataclass(frozen=True, slots=True)
+class _NoSuchBinary:
+    secrets: tuple[str, ...] = ()
+
+    def command(
+        self, role: Role, config: RoleConfig, session: str | None, url: str
+    ) -> tuple[str, ...]:
+        del role, config, session, url
+        return ("aidm-no-such-binary",)
+
+    def read_result(self, output: str) -> RunResult:
+        del output
+        raise AssertionError("exec fails before there is any output to read")
+
 
 CODEX_OUTPUT = "\n".join(
     (
@@ -60,8 +85,15 @@ def test_only_the_master_is_let_out_of_the_sandbox_and_no_role_sees_the_account(
 
 
 def test_a_claude_reply_that_is_not_json_is_a_broken_run() -> None:
-    with pytest.raises(Refusal, match="no JSON result"):
+    with pytest.raises(Refusal, match="no JSON result: I ask in prose."):
         _ = ClaudeDriver().read_result("I ask in prose.")
+
+
+async def test_a_missing_cli_binary_is_a_refusal_not_a_crash() -> None:
+    config = RoleConfig(model="opus", effort="high")
+
+    with pytest.raises(Refusal, match="could not be started"):
+        _ = await run_cli("master", config, _NoSuchBinary(), 1, "PLAY", None)
 
 
 @pytest.mark.parametrize(

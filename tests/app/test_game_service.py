@@ -1,5 +1,5 @@
 import json
-from asyncio import Event, create_task, gather, sleep
+from asyncio import CancelledError, Event, sleep
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
@@ -25,6 +25,7 @@ from aidm.config import Role
 from aidm.core.entities import Refusal
 from aidm.core.io import FileStore
 from aidm.core.model import AnyGame, Generation, ScenarioMeta
+from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.world import BreathlessGame
 from aidm.engines.loner3e.world import Loner3eCast
@@ -305,12 +306,17 @@ class _StillSpeaking:
     """Never answers the member: their interjection stays in flight until something silences it."""
 
     inner: ScriptedSpawner
+    cancelled: bool = False
 
     async def run(
         self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
     ) -> RunResult:
         if role == "narrator" and prompt.startswith("YOUR ROLE:\nYou are Vessa Rune"):
-            await Event().wait()
+            try:
+                await Event().wait()
+            except CancelledError:
+                self.cancelled = True
+                raise
         return await self.inner.run(role, prompt, session, tools)
 
 
@@ -392,34 +398,41 @@ async def test_interjections_disabled_starts_no_background_task(tmp_path: Path) 
 
     _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
 
-    assert table.service._speaking is None  # pyright: ignore[reportPrivateUsage]
+    assert not table.service.speaking
 
 
 async def test_a_new_turn_silences_the_member_still_speaking(tmp_path: Path) -> None:
     table = open_game(tmp_path, rng=Random(1))
     _party_of_one(table.service)
-    table.service.roles = Roles(_StillSpeaking(table.spawner))
+    stalled = _StillSpeaking(table.spawner)
+    table.service.roles = Roles(stalled)
     _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
     await sleep(0)
-    speaking = table.service._speaking  # pyright: ignore[reportPrivateUsage]
-    assert speaking is not None
+    assert table.service.speaking
     table.service.interjections = False
 
     _ = await play_turn(table, "I wait on.", narration="Still nothing.")
+    await sleep(0)
 
-    _ = await gather(speaking, return_exceptions=True)
-    assert speaking.cancelled()
+    assert not table.service.speaking
+    assert stalled.cancelled
 
 
 async def test_reload_settings_cancels_an_evicted_sessions_background_task(
     tmp_path: Path,
 ) -> None:
-    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), ScriptedSpawner())
+    spawner = ScriptedSpawner()
+    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), spawner)
     opened = runtime.session(TARGET)
-    task = create_task(sleep(3600))
-    opened._retain(task)  # pyright: ignore[reportPrivateUsage]
+    opened.rng = Random(1)
+    _party_of_one(opened)
+    opened.roles = Roles(_StillSpeaking(spawner))
+    spawner.answers["narrator"] = [narrated("Nothing stirs.")]
+
+    await opened.play(Answer(text="I wait."))
+    await sleep(0)
+    assert opened.speaking
 
     runtime.reload_settings()
 
-    _ = await gather(task, return_exceptions=True)
-    assert task.cancelled()
+    assert not opened.speaking

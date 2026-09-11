@@ -10,7 +10,7 @@ from aidm.core.model import AnyCharacter
 from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.prompt import Pairs, lines_of, sentence
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import Panel, PanelRow
+from aidm.core.views import DiceLook, Look, Panel, PanelRow
 from aidm.engines.base import PLAYER_ID, banded, luck_test
 from aidm.engines.breathless.tools import (
     CATCH_BREATH,
@@ -59,6 +59,21 @@ class BreathlessEngine(
     title = "BREATHLESS"
     art_style = (
         "Grim survival-horror illustration: dim, desaturated, wet surfaces, no text or lettering."
+    )
+    look = Look(
+        palette={
+            "game-bg": "#0d1818",
+            "game-surface": "#162525",
+            "game-surface-raised": "#203332",
+            "game-text": "#e0eeea",
+            "game-muted": "#a8c1bb",
+            "game-border": "#35504b",
+            "game-accent": "#94d5be",
+            "game-wash": "rgba(148, 213, 190, .07)",
+            "game-radius": "5px",
+            "game-heading": "'Arial Narrow', 'Helvetica Neue', Arial, sans-serif",
+        },
+        dice=DiceLook(body="#5a1216", ink="#efe1d3", glow="#e0393e"),
     )
     directory = Path(__file__).parent
     game = BreathlessGame

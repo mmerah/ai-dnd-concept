@@ -3,6 +3,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from pypdf import PdfReader
+from pypdf.errors import PyPdfError
 
 from aidm.core.entities import Refusal
 
@@ -20,9 +21,14 @@ def given_text(premise: str, document: Path | None, max_chars: int) -> str:
 
 
 def whole_text(path: Path, max_chars: int) -> str:
-    pages = (
-        _pdf_pages(path) if path.suffix.lower() == ".pdf" else (path.read_text(encoding="utf-8"),)
-    )
+    try:
+        pages = (
+            _pdf_pages(path)
+            if path.suffix.lower() == ".pdf"
+            else (path.read_text(encoding="utf-8"),)
+        )
+    except (UnicodeDecodeError, PyPdfError) as broken:
+        raise Refusal(f"{path.name} cannot be read: {broken}") from broken
     text = "\n\n".join(passage for page in pages for passage in _passages(page))
     if not text:
         raise Refusal(f"{path.name} holds no readable text")

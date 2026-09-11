@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from dataclasses import dataclass, field
 
 from httpx import AsyncClient
 from pydantic import JsonValue
@@ -6,12 +7,21 @@ from pydantic import JsonValue
 from aidm.config import ProviderConfig
 
 
-def claim(generating: set[str], key: str) -> bool:
-    # Synchronous: an await between the read and the write would let two callers both pay.
-    if key in generating:
-        return False
-    generating.add(key)
-    return True
+@dataclass(slots=True)
+class Claims:
+    """Keys being generated now, so two callers never both pay for one image or clip."""
+
+    held: set[str] = field(default_factory=set)
+
+    def claim(self, key: str) -> bool:
+        # Synchronous: an await between the read and the write would let two callers both pay.
+        if key in self.held:
+            return False
+        self.held.add(key)
+        return True
+
+    def release(self, key: str) -> None:
+        self.held.discard(key)
 
 
 async def post_bearer(

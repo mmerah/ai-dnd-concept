@@ -14,8 +14,7 @@ from aidm.core.model import AnyGame
 from aidm.core.play import Chapter, Interjection, Narration, SpokenLine
 from aidm.core.prompt import Pairs, lines_of, sections, told_history
 from aidm.core.tools import schema_text
-from aidm.core.views import NarratorView, Subject
-from aidm.engines.base import Person
+from aidm.core.views import Companion, NarratorView, Subject
 from aidm.engines.seam import AnyEngine
 from aidm.turn.run import Turn
 
@@ -62,7 +61,7 @@ class Roles:
             try:
                 await self.spawner.run("master", prompt, None, turn)
                 return
-            except (OSError, Refusal) as failed:
+            except Refusal as failed:
                 if _landed(turn):
                     LOGGER.warning(
                         "the game master failed after applying %d facts: %s",
@@ -80,8 +79,6 @@ class Roles:
         draft: AnyGame,
         facts: tuple[Fact, ...],
         prompt: str,
-        *,
-        fatal: bool,
     ) -> tuple[SpokenLine, ...]:
         view = engine.narrator_view(draft)
         evidence = traced(facts, told_only=True)
@@ -89,29 +86,22 @@ class Roles:
             evidence += f"\n- {PAUSED.format(prompt=pending.prompt)}"
         if draft.generation is not None:
             evidence += f"\n- {REQUESTED}"
-        try:
-            narration = await ask(
-                self.spawner,
-                "narrator",
-                render_narrator(
-                    view,
-                    evidence=evidence,
-                    prompt=prompt,
-                    scenes=draft.log,
-                ),
-                Narration,
-                view.check_narration,
-            )
-        except (OSError, Refusal) as failed:
-            if fatal:
-                raise
-            # The scene cost minutes to write; an unwritable arrival must not throw it away.
-            LOGGER.warning("the arrival went unnarrated: %s", failed)
-            return ()
+        narration = await ask(
+            self.spawner,
+            "narrator",
+            render_narrator(
+                view,
+                evidence=evidence,
+                prompt=prompt,
+                scenes=draft.log,
+            ),
+            Narration,
+            view.check_narration,
+        )
         return view.spoken(narration.lines)
 
     async def interject(
-        self, engine: AnyEngine, state: AnyGame, member: Person
+        self, engine: AnyEngine, state: AnyGame, member: Companion
     ) -> tuple[tuple[SpokenLine, ...], str]:
         view = engine.narrator_view(state)
         history = state.exchanges()
@@ -119,7 +109,7 @@ class Roles:
         answer = await ask(
             self.spawner,
             "narrator",
-            render_interjection(view, member.subject(), member.rows(), state.log, evidence),
+            render_interjection(view, member, state.log, evidence),
             Interjection,
             partial(view.check_interjection, member.id),
         )
@@ -140,11 +130,7 @@ def render_narrator(
 
 
 def render_interjection(
-    view: NarratorView,
-    member: Subject,
-    sheet: Pairs,
-    scenes: Sequence[Chapter],
-    evidence: str,
+    view: NarratorView, member: Companion, scenes: Sequence[Chapter], evidence: str
 ) -> str:
     role = read_prompt(PROMPTS_DIR / "interjection.md").format(
         name=member.label, brief=member.detail, id=member.id
@@ -154,7 +140,7 @@ def render_interjection(
             ("YOUR ROLE", role),
             (
                 "YOUR SHEET",
-                "\n".join(f"- {label}: {value}" for label, value in sheet) or "(none)",
+                "\n".join(f"- {label}: {value}" for label, value in member.sheet) or "(none)",
             ),
             *_picture(view, scenes, evidence, reader=member),
             ("ANSWER WITH", schema_text(Interjection)),

@@ -1,3 +1,4 @@
+import binascii
 import logging
 from base64 import b64decode, b64encode
 from collections.abc import Sequence
@@ -8,10 +9,10 @@ from pathlib import Path
 from httpx import HTTPError
 from pydantic import JsonValue
 
-from aidm.app.providers import claim, post_bearer
+from aidm.app.providers import Claims, post_bearer
 from aidm.config import MediaConfig, ProviderConfig, Settings
-from aidm.core.entities import Loose, Slug
-from aidm.core.io import FileStore
+from aidm.core.entities import Loose, Refusal, Slug, parse
+from aidm.core.io import FileStore, decode
 from aidm.core.views import NarratorView, Subject
 
 LOGGER = logging.getLogger(__name__)
@@ -38,7 +39,7 @@ class Illustrator:
     saves: Path
     icon_dirs: tuple[Path, ...]
     style: str
-    generating: set[str] = field(default_factory=set)
+    claims: Claims = field(default_factory=Claims)
 
     def scene_art(self, scene: NarratorView) -> Path | None:
         return _existing(self.saves, scene_key(scene))
@@ -52,7 +53,7 @@ class Illustrator:
 
     async def illustrate(self, scene: NarratorView, player: Subject, narration: str) -> None:
         key = scene_key(scene)
-        drawing = _existing(self.saves, key) is None and claim(self.generating, key)
+        drawing = _existing(self.saves, key) is None and self.claims.claim(key)
         # The chat avatar wants the player's icon even when this scene's art is already cached.
         await self._drawn_icon(player)
         if not drawing:
@@ -60,7 +61,7 @@ class Illustrator:
         try:
             await self._draw(scene, key, narration)
         finally:
-            self.generating.discard(key)
+            self.claims.release(key)
 
     async def _draw(self, scene: NarratorView, key: str, narration: str) -> None:
         icons = {
@@ -83,12 +84,12 @@ class Illustrator:
             return found
         # An entity id is `[a-z0-9_-]+`, so the colon keeps icon claims off the scene keys.
         claim_key = f"icon:{subject.id}"
-        if not claim(self.generating, claim_key):
+        if not self.claims.claim(claim_key):
             return None
         try:
             generated = await self._generate(_icon_request(subject, self.style), ICON_RATIO)
         finally:
-            self.generating.discard(claim_key)
+            self.claims.release(claim_key)
         if generated is None:
             return None
         # Authored directories stay authored: a drawn icon is the save's own.
@@ -116,13 +117,12 @@ class Illustrator:
                 },
                 self.config.timeout,
             )
-            url = _ImageReply.model_validate_json(content).url()
+            url = parse(_ImageReply, decode(content.decode(errors="replace"))).url()
             if url is None:
-                LOGGER.warning("image reply held no image")
-                return None
+                raise Refusal("image reply held no image")
             return _decode(url)
-        except (HTTPError, ValueError):
-            LOGGER.exception("image generation failed")
+        except (HTTPError, Refusal) as failed:
+            LOGGER.warning("image generation failed: %s", failed)
             return None
 
 
@@ -198,13 +198,16 @@ def _icon_request(subject: Subject, style: str) -> str:
     )
 
 
-def _decode(url: str) -> GeneratedImage | None:
+def _decode(url: str) -> GeneratedImage:
     header, _, payload = url.partition(",")
     suffix = SUFFIXES.get(header.removeprefix("data:").removesuffix(";base64"))
     if suffix is None or not payload:
-        LOGGER.warning("image reply is not a supported data uri: %r", header[:40])
-        return None
-    return GeneratedImage(data=b64decode(payload), suffix=suffix)
+        raise Refusal(f"image reply is not a supported data uri: {header[:40]!r}")
+    try:
+        data = b64decode(payload)
+    except binascii.Error as broken:
+        raise Refusal(f"image reply is not base64: {broken}") from broken
+    return GeneratedImage(data=data, suffix=suffix)
 
 
 def _data_uri(path: Path) -> str:

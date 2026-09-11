@@ -7,7 +7,7 @@ from pathlib import Path
 
 from httpx import HTTPError
 
-from aidm.app.providers import claim, post_bearer
+from aidm.app.providers import Claims, post_bearer
 from aidm.config import ProviderConfig, Settings, SpeechConfig
 from aidm.core.entities import Slug
 from aidm.core.io import FileStore
@@ -27,7 +27,7 @@ class Reader:
     provider: ProviderConfig
     saves: Path
     voice: str
-    generating: set[str] = field(default_factory=set)
+    claims: Claims = field(default_factory=Claims)
 
     def clip(self, exchange: Exchange) -> Path | None:
         requests = requests_of(exchange, self.voice, self.config.voices)
@@ -41,7 +41,7 @@ class Reader:
             return
         key = clip_key(self.config.model, requests)
         path = self._path(key)
-        if path.is_file() or not claim(self.generating, key):
+        if path.is_file() or not self.claims.claim(key):
             return
         try:
             chunks = [
@@ -62,10 +62,11 @@ class Reader:
                 clip_file.setframerate(self.config.sample_rate)
                 clip_file.writeframes(b"".join(chunks))
             part.replace(path)
-        except (HTTPError, OSError, ValueError, wave.Error):
+        # A full disk is not a bug.
+        except (HTTPError, OSError, wave.Error):
             LOGGER.exception("speech generation failed")
         finally:
-            self.generating.discard(key)
+            self.claims.release(key)
 
     def _path(self, key: str) -> Path:
         return self.saves / f"{key}.wav"

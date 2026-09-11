@@ -90,11 +90,13 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
     cast: type[C]
     pack: type[K]
     world_type: type[SceneWorld[C]]
-    packs: dict[str, K]
+    packs: dict[Slug, K]
     family_dir = Path(__file__).parent
 
     def __init__(self) -> None:
         self.packs = read_packs(self.directory / "packs", self.pack)
+        if SRD_PACK not in self.packs:
+            raise ValueError(f"the {self.id!r} engine ships no {SRD_PACK!r} pack")
         super().__init__()
 
     def world(self, state: G) -> SceneWorld[C]:
@@ -111,7 +113,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
             raise Refusal(f"the game names packs not installed: {missing}")
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> SceneWorld[C]:
-        # A restart opens the same scenario again, so the present is marked met on a copy.
+        # a restart reopens the same scenario file
         draft: SceneDraft[C] = scenario.payload.model_copy(deep=True)
         check_scene(draft)
         return self.world_type.opening(draft, self.player_of(character), scenario.source)
@@ -209,8 +211,6 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
         return self.world(draft).leave_party(args.entity_id)
 
     def next_scene(self, draft: G, args: NextScene, _rng: Random) -> list[Fact]:
-        if args.pursuit and args.complication:
-            raise Refusal("a pursuit or a complication, not both")
         if args.pursuit:
             draft.generation = Generation(operation=DEPARTURE, detail=args.pursuit)
             return [SCENE_LEFT]
@@ -233,10 +233,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
         return CreationStep(id="pack", label="Choose a table set", options=self.pack_options())
 
     def srd_pack(self) -> K:
-        pack = self.packs.get(SRD_PACK)
-        if pack is None:
-            raise Refusal("the SRD table set is not installed")
-        return pack
+        return self.packs[SRD_PACK]
 
     def render_next(self, draft: G, intent: str) -> str:
         world = self.world(draft)
@@ -260,7 +257,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, G]):
         world = self.world(draft)
         if isinstance(scene, NextDraft):
             draft.log[-1].recap = scene.recap
-        world.apply_scene(scene.model_copy(deep=True))
+        world.apply_scene(scene)
         self.open_chapter(draft)
         trace = f"the scene opens: {scene.title}"
         if travelling := [member.name for member in world.members()]:

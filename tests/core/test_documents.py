@@ -34,3 +34,17 @@ def test_whole_text_refuses_a_document_too_large_to_hand_to_a_model_whole(tmp_pa
     big.write_text("a" * (MAX_CHARS + 1), encoding="utf-8")
     with pytest.raises(Refusal, match="too large"):
         _ = whole_text(big, MAX_CHARS)
+
+
+def test_whole_text_refuses_a_markdown_document_that_is_not_utf8(tmp_path: Path) -> None:
+    broken = tmp_path / "broken.md"
+    broken.write_bytes(b"caf\xe9")
+    with pytest.raises(Refusal, match="cannot be read"):
+        _ = whole_text(broken, MAX_CHARS)
+
+
+def test_whole_text_refuses_a_pdf_that_is_not_readable(tmp_path: Path) -> None:
+    broken = tmp_path / "broken.pdf"
+    broken.write_bytes(b"%PDF-1.4 broken")
+    with pytest.raises(Refusal, match="cannot be read"):
+        _ = whole_text(broken, MAX_CHARS)

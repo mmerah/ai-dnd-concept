@@ -9,6 +9,7 @@ from aidm.core.facts import DiceEvent, Fact, roll, roll_pool
 from aidm.core.play import PendingDecision
 from aidm.core.prompt import Pairs
 from aidm.core.tools import MasterTool, master_tool
+from aidm.core.views import DiceLook, Look
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import (
     CHANGE_TAGS,
@@ -51,6 +52,20 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
     id = EngineId("loner3e")
     title = "LONER 3E"
     art_style = "Painterly illustration, muted colours, no text or lettering."
+    look = Look(
+        palette={
+            "game-bg": "#14121e",
+            "game-surface": "#201c2d",
+            "game-surface-raised": "#2c263c",
+            "game-text": "#eee7f4",
+            "game-muted": "#bdb0ce",
+            "game-border": "#443951",
+            "game-accent": "#c5a4ed",
+            "game-wash": "rgba(197, 164, 237, .09)",
+            "game-radius": "18px",
+        },
+        dice=DiceLook(body="#efe4c8", ink="#7a2e2e", glow="#c89b5a"),
+    )
     directory = Path(__file__).parent
     game = Loner3eGame
     scenario = Loner3eScenario
@@ -58,6 +73,10 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
     cast = Loner3eCast
     pack = Pack
     world_type = Loner3eWorld
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.twist_table()  # fails at start, not mid-scene
 
     def master_tools(self) -> tuple[MasterTool[Loner3eGame], ...]:
         return (
@@ -150,7 +169,7 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         """Always the SRD's own table: no other pack publishes one."""
         srd = self.srd_pack()
         if srd.twist_subjects is None or srd.twist_actions is None:
-            raise Refusal("the SRD table set has no twist columns")
+            raise ValueError("the SRD table set has no twist columns")
         return tuple(zip(srd.twist_subjects, srd.twist_actions, strict=True))
 
     def leaving(self, draft: Loner3eGame) -> list[Fact]:

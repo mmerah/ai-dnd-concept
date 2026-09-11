@@ -485,7 +485,7 @@ async def test_abandoning_a_spawn_kills_the_process_group_it_started(
         roles={"master": {"timeout": 0.01}},
     )
 
-    with pytest.raises(asyncio.TimeoutError):
+    with pytest.raises(Refusal, match="answered nothing in"):
         await RoleRunner(settings).run("master", "go", None)
     assert killed == [(1234, spawn_module.SIGKILL)]
 

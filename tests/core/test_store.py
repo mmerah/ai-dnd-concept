@@ -7,7 +7,7 @@ from support.table import ENGINES_BUILT, LONER3E, SCENARIO_MODELS, updated
 
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.facts import Fact
-from aidm.core.io import ENCODING, FileStore, Library, decode
+from aidm.core.io import ENCODING, FileStore, Library, decode, write_text
 from aidm.core.play import Exchange
 
 MIRROR = EngineId("mirror")
@@ -137,3 +137,11 @@ def test_read_scenarios_of_a_missing_directory_yields_nothing(tmp_path: Path) ->
     missing = tmp_path / "scenarios"
 
     assert list(Library(missing, missing).read_scenarios(SCENARIO_MODELS)) == []
+
+
+def test_a_save_that_cannot_be_written_refuses(tmp_path: Path) -> None:
+    blocking = tmp_path / "saves"
+    blocking.write_text("", encoding=ENCODING)
+
+    with pytest.raises(Refusal, match="cannot be written"):
+        write_text(blocking / "game.json", "{}")

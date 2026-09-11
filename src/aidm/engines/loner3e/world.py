@@ -75,8 +75,6 @@ class Loner3eCast(Person):
         return ", ".join(part for part in parts if part)
 
     def change_tags(self, kind: TagKind, gained: Sequence[str], lost: Sequence[str]) -> list[Fact]:
-        if not gained and not lost:
-            raise Refusal("change_tags needs at least one gained or lost tag")
         check_unique(f"{kind} tags", (*gained, *lost))
         current = self.tagged(kind)
         if carried := [tag for tag in gained if tag in current]:
@@ -97,8 +95,6 @@ class Loner3eCast(Person):
         return [self.fact(trace, card="; ".join(parts))]
 
     def drive(self, *, goal: str, motive: str, nemesis: str) -> list[Fact]:
-        if not goal and not motive and not nemesis:
-            raise Refusal("drive needs a goal, a motive or a nemesis to set")
         parts: list[str] = []
         if goal:
             self.goal = goal

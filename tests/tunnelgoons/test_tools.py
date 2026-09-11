@@ -17,7 +17,7 @@ from support.tunnelgoons import (
     small_world,
 )
 
-from aidm.core.entities import Refusal
+from aidm.core.entities import Refusal, parse
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.rooms.tools import Move
 from aidm.engines.rooms.world import Prop
@@ -201,10 +201,9 @@ def test_level_up_with_both_raises_the_ability_and_the_boost_and_the_level() -> 
     assert world.player.require_sheet().level == before + 1
 
 
-def test_level_up_with_one_argument_is_refused() -> None:
-    draft = small_world().draft()
-    with pytest.raises(Refusal, match="takes both"):
-        _ = ENGINE.level_up(draft, LevelUp(ability="brute"), Random(0))
+def test_level_up_needs_both_an_ability_and_a_boost_or_neither() -> None:
+    with pytest.raises(Refusal, match="both an ability and a boost, or neither"):
+        _ = parse(LevelUp, {"ability": "brute"})
 
 
 def test_move_refuses_a_locked_way() -> None:

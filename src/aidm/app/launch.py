@@ -5,6 +5,8 @@ from typing import Self
 
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.io import FileStore, Library, decode, routed
+from aidm.core.model import AnyScenario
+from aidm.core.views import Look
 from aidm.engines.seam import AnyEngine
 
 LOGGER = logging.getLogger(__name__)
@@ -17,6 +19,7 @@ class CatalogEntry:
     label: str
     detail: str
     rules: str
+    look: Look
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,9 +65,12 @@ class LauncherCatalog:
 
     @classmethod
     def read(
-        cls, library: Library, store: FileStore, engines: Mapping[EngineId, AnyEngine]
+        cls,
+        library: Library,
+        store: FileStore,
+        engines: Mapping[EngineId, AnyEngine],
+        scenario_models: Mapping[EngineId, type[AnyScenario]],
     ) -> Self:
-        scenario_models = {engine_id: engine.scenario for engine_id, engine in engines.items()}
         scenarios = tuple(
             CatalogEntry(
                 id=name,
@@ -72,6 +78,7 @@ class LauncherCatalog:
                 label=scenario.meta.title,
                 detail=scenario.meta.premise,
                 rules=engines[scenario.engine].title,
+                look=engines[scenario.engine].look,
             )
             for name, scenario in library.read_scenarios(scenario_models)
         )
@@ -82,6 +89,7 @@ class LauncherCatalog:
                 label=header.payload.name,
                 detail=header.payload.brief,
                 rules=engines[engine].title,
+                look=engines[engine].look,
             )
             for name, engine, header in library.read_characters(engines)
         )
