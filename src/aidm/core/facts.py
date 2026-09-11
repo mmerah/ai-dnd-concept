@@ -38,7 +38,6 @@ class Fact(Frozen):
 
 
 class Rolled(Frozen):
-    faces: tuple[int, ...]
     rolled: tuple[int, ...]
     event: DiceEvent
     fact: Fact
@@ -82,7 +81,7 @@ def _rolled(
     )
     shown = ", ".join(str(die) for die in drawn)
     fact = Fact(trace=f"{reason}: {notation} [{shown}]")
-    return Rolled(faces=tuple(faces), rolled=drawn, event=event, fact=fact)
+    return Rolled(rolled=drawn, event=event, fact=fact)
 
 
 def _notation(faces: Sequence[int]) -> str:
