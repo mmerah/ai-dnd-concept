@@ -339,3 +339,48 @@ Each is small; together about −250 lines and one afternoon.
    before any long game is worth keeping.
 
 Next: pick one letter each for 5, 6, 7, 8 and 9, or say "go" on 1 to 4 to start there.
+
+## Appendix: feature cuts (asked for after the ten were decided)
+
+Each row is a feature that could be cut whole, or replaced by a smaller version that keeps most of
+it. Lines are `src` + `tests`, ±20 %. None of these is decided; name a letter to turn it into a
+decision.
+
+### Big (over 500 lines)
+
+| | Feature | Lines | Cut whole loses | Smaller version |
+|---|---|---|---|---|
+| A | One engine. Tunnel Goons with the whole `rooms/` family: 1,242 + 1,345. 24XX: 1,053 + 1,125. Breathless or Loner: about 1,300 each. | 1,300 to 2,600 | one of the four games; dropping Tunnel Goons also drops the map family and the `World[M, P]` generality it exists for (about −60 more in `base.py`) | none: a rule system is its rules |
+| B | The character creation page: per-engine `creation_steps`/`create_character`/`preview_character`, `core/creation.py`, the form, two `test_create.py` | about 700 | point-buy control and the live preview | the worldsmith writes the sheet from name, brief and a one-line concept, through the `SheetDraft`/`install_sheet` path that hiring already uses in three engines (Loner gains one). The page becomes rules, name, brief, "Write". About −450 net |
+| C | Hiring: `hiring.py`, per-engine `hire_prompt`/`install_sheet`/`SheetDraft`, `Sheeted`, `helped_by`, `actor_id` on the sheet arms, 24XX succession and `take_lead`, the tests | about 600 | hired party members with dice, helpers on a roll, 24XX succession | none good; see T for the combined cut |
+| D | Illustration and speech: `media.py`, `speech.py`, `providers.py`, their settings, the UI art and audio, `qa/art.py`, the tests | about 750 | scene art, entity icons, spoken narration | (1) speech through the browser's own `speechSynthesis`: a 30-line JS component, no key, no cache, no wav, a browser voice per speaker; about −300 while narration is still read aloud. (2) scene art without entity icons (no `icon_dirs`, references, avatar images, `max_references`): about −120 while the header keeps its picture |
+| E | One transport. CLI-only removes `builtin.py`, its 239 test lines and the API role settings: about −400, loses OpenRouter and Ollama roles. API-only removes `spawn.py`, `mcp.py`, `MountedLifespan`, the port, `KEPT_ENV`, `.mcp.json`, `.codex/`, three test files: about −650, loses playing on the CLI subscription and the whole MCP server | 400 or 650 | one of the two README promises | none; both transports are half of one feature |
+| F | `qa/` | 1,400 | the screenshot harness (kept in the previous round as the only UI coverage) | keep `server.py`, `agents.py`, `art.py` as an offline demo server, drop the Playwright driver and the eight scripts: about −1,000 |
+
+### Medium (150 to 500 lines)
+
+| | Feature | Lines | Cut whole loses | Smaller version |
+|---|---|---|---|---|
+| G | Interjections: a party member speaks after a turn, unprompted, and may propose a move | about 350 | the party ever speaking first | drop the proposal and its "Accept" button, keep the line of dialogue: about −70 |
+| H | Settings page: the reflection form, `save_settings`, dotenv, the tests | about 290 | changing keys in the app | edit `.env` by hand; README lists the keys. Also removes proposal 8's live-reload machinery for free |
+| I | 3D dice: `dice.py`, `dice_tray.js`, `DiceLook`, the sound toggle, 924 KB of vendored library and assets | about 170 + 924 KB | the physics toss | the result card already shows every face; a CSS tumble was the earlier version. Kept in the previous round (D10) |
+| J | Multiple saves and sessions: `_sessions`, `playing()`, `busy_refusal`, `LauncherCatalog.saves`, the saved-games cards, per-slug files | about 150 | the "Resume" list; several games in progress | one game at a time, one save file |
+| K | Source document upload: `core/source.py`, pypdf, the upload widget, `source_max_chars`, `World.source` carried inside every save, the tests | about 150 | authoring a scenario from a PDF adventure | keep `.md`/`.txt` and drop pypdf (−25); or paste the text into the premise box |
+| L | Packs (several table sets per engine): `packs.py`, the pack step, `Scenario.packs`/`Game.packs` and their checks, guidance selection, `ap01-fantasy.json` | about 150 | the second Loner table set | one SRD pack per engine, hard-wired. Kept in the previous round (option c) |
+| M | Multi-tab play: `Observed` polling, `own_move`, `at_end`, "New activity", the draft in tab storage, staleness checks | about 100 | two tabs on one game | one tab, always scroll to the end |
+| N | Per-engine theming: four palettes, four dice looks, the switching CSS | about 120 after 7(a) | each game's own look | one neutral theme |
+
+### Small (under 150 lines)
+
+| | Feature | Lines | Cut whole loses | Smaller version |
+|---|---|---|---|---|
+| O | The Codex driver, `.codex/config.toml`, its tests | about 70 | playing through the Codex CLI | Claude CLI only |
+| P | Dictation: `dictation.js`, the element, the handlers, the failure map | about 130 | the mic button | none; it is already the browser's own |
+| Q | The Journal tab | about 30 | the chronicle view (the chat already shows everything) | none |
+| R | Scenario-level `art_style` and `voice` overrides | about 15 | a scenario choosing its own look and voice | the engine's defaults only |
+
+### The combined cut
+
+| | Feature | Lines | Cut whole loses | Smaller version |
+|---|---|---|---|---|
+| T | "Solo means solo": party, hiring and interjections together (`World.party`, `join`/`part`, `require_actor`, `party_panel`, `NarratorView.party`, everything in C and G) | about 1,000 | companions of any kind | none; this is the one cut that simplifies `World`, the narrator view and every engine's arms at once |
