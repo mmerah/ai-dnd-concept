@@ -3,7 +3,7 @@
 Sources: a full read of `src/aidm` plus two independent reviews (structure, idiom); every ref was
 checked against the source. Each entry is "Now / Change"; unsure ones carry "Decision" with
 options. Size: S under 30 min, M one to two hours, L half a day. Ordered by how much a senior
-Python reader would care, so groups of three close in order.
+Python reader would care. Every entry carries its decision.
 
 ## A. Error contract
 
@@ -254,6 +254,7 @@ Now: breathless `Survivor` + `SurvivorSheet`; 24xx `Crewmate` + `Sheet`; tunnelg
 Change: person is a noun, dice sheet is `<Noun>Sheet`: `Sheet` → `CrewSheet`, `Abilities` →
 `GoonSheet`, `Loner3eSheet` → `Loner`.
 Decision: `Loner` vs `Loner3eCast` for the loner3e person.
+Decided: yes; the loner3e person is `Loner3eCast`.
 
 ### 21. Three names for the npc type across one hierarchy (S)
 
@@ -294,6 +295,7 @@ Change: `PlayerView.prompt` → `decision`; `CreationStep.prompt` → `label` (C
 names are `id`, `label`, `detail`); `Exchange.prompt`/`Turn.prompt` → `words`. Leave
 `PendingDecision.prompt` and the model prompt. (`Exchange` is saved to disk: existing saves become
 stale, which CLAUDE.md allows.)
+Decided: yes, including the `Exchange` rename (existing saves go stale).
 
 ### 25. `engines.base.Counter` collides with `collections.Counter` (S)
 
@@ -340,6 +342,7 @@ Decision:
 Also: `world_type` is the one type attribute not named as a bare noun (`game`, `scenario`,
 `character`, `member`...). With A, rename the method `world_of(draft)` and the attribute `world`,
 or accept the exception.
+Decided: A, with `world_type` -> `world` and the method `world_of(draft)`.
 
 ### 28. `Reveal`/`Kill` duplicated per family; four identical wrappers; `kill` takes an object in one family and an id in the other (M)
 
@@ -402,6 +405,7 @@ Change: `rows()` is the sheet without inventory; inventory is a `sheet_sections`
 and a `preview_character` row, in all three sheeted engines; drop the Gear row from
 `Crewmate.rows()`; delete the `Survivor.line` override. `sheet_rows()` moves to `World` in
 `base.py` (default `self.player.rows()`), read by both families' views.
+Decided: yes.
 
 ### 33. `TwentyfourxxEngine._finish` and `scene_unmet` hide their structure (S)
 
@@ -421,6 +425,7 @@ Decision:
 - A: lift the shared part to a `World` validator with an abstract `member_of(id) -> M | None`; the
   "with the player" test stays per family.
 - B: leave; the shared part is four lines and the families differ (place vs scene).
+Decided: A.
 
 ### 35. Small duplications with exactly two users (S)
 
@@ -465,6 +470,7 @@ Decided: yes (no feature impact; accepted without review).
   → `→`.
 - `Pairs` is defined in `core/views.py:16` but is a prompt type; `core/prompt.py` imports views
   only for it. → move to `core/prompt.py`.
+Decided: no underscore on module constants.
 
 ### 38. `Hiring` is a four-parameter mixin whose tool order depends on the MRO (S or M)
 
@@ -476,6 +482,7 @@ Decision:
 - A (S): keep; one line on `Hiring`: "listed first so its tools follow the family's".
 - B (M): fold hiring into `Engine` as an optional feature (`hire_answer: type[A] | None = None`);
   no mixin, no MRO.
+Decided: B.
 
 ## G. Ceremony, comments, tests
 
@@ -506,6 +513,7 @@ Decided: yes (no feature impact; accepted without review).
 - "Free:"/"free because" docstrings (`scenes/world.py:241`, `scenes/worldsmith.py:34`,
   `app/providers.py:20`, `app/media.py:169`) justify a CLAUDE.md rule, not the code.
   Decision: drop the clause or keep it.
+Decided: drop the clauses.
 
 ### 41. Tests reach private state (S)
 
