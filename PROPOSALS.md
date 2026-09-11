@@ -194,6 +194,8 @@ Recommend (a): it is the last place the app reaches into the world. **Confidence
 
 ### 7. Decision: engines stop knowing hex colours (reopened, widened)
 
+**Decided: accepted, option (a). Palette and dice look move to a ui table keyed by engine id.**
+
 **Concept.** `Engine` carries `palette` (a dict of CSS custom properties), `dice_look` (three
 hex colours) and `art_style` (a prompt). The first two are UI; `core/views.py` holds `Palette`
 and `DiceLook` only to type them. `ui/theme.py` then keeps a module-level `_PALETTES` registry
@@ -220,6 +222,8 @@ Recommend (a). **Confidence.** Medium (needs a visual check of drawer and menu c
 
 ### 8. Decision: settings apply at the next start, not live
 
+**Decided: refused, option (b). Live apply stays.**
+
 **Concept.** Live apply needs `Runtime.reload_settings`, `busy_refusal`, `play_refusal`, the
 `_mount` split, `GameService.stop`, the `apply_settings` closure in `ui/app.py`,
 `GamePage.refuse_play` (four call sites), the "The settings changed. Reload this page" message,
@@ -236,6 +240,8 @@ applies at the next start".
 **Confidence.** Medium; only worth it if the restart is acceptable. **Time.** About 40 minutes.
 
 ### 9. Decision: every spawn is cold, drop CLI session resume (reopened)
+
+**Decided: refused, option (b). Session resume stays.**
 
 **Concept.** `ask()` re-prompts a refused answer with `--resume <session>` / `codex exec resume
 <thread>`. For that one path there are `RunResult.session`, `Driver.command(..., session, ...)`,
