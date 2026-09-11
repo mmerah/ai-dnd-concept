@@ -122,6 +122,7 @@ Change: `core/views.py` gets `class Companion(Frozen): id, label, detail, sheet:
 chattiness`; `Chattiness` moves to `core`; `Engine.companions(state) -> tuple[Companion, ...]` on
 the seam; `Roles.interject` takes a `Companion`; `GameService` picks from
 `engine.companions(state)`. `app` then imports nothing from `engines.base`.
+Decided: yes.
 
 ### 10. The UI names engines (M)
 
@@ -134,6 +135,7 @@ Decision:
   `art_style`; `theme.set_engine(look)` and `dice_look(look)` take the look, not the id.
 - B: move `art_style` out to `ui/theme.py` beside the palette, so engines carry no presentation.
 A is smaller and matches the precedent.
+Decided: A.
 
 ## D. API shape
 
@@ -150,6 +152,7 @@ Change: `class Rolled(Frozen): faces, rolled, kept, event, fact` returned by one
 reason, rng, *, label: str = "")` (label defaults to the notation); `roll_pool` becomes the
 keep-highest variant on top of it or is deleted. `Written` becomes a frozen dataclass
 `Written(facts, telling)`. Delete the five hand-built events.
+Decided: yes.
 
 ### 12. Boolean-flag methods and parameters (M)
 
@@ -164,6 +167,7 @@ keep-highest variant on top of it or is deleted. `Written` becomes a frozen data
 - `GamePage.submit(acting: bool = False)` (`ui/game.py:484`). → `submit()` and `act()` sharing
   `_send(typed, playing)`.
 - `mcp._content(body, error: bool = False)` (`app/mcp.py:95`). → keyword-only.
+Decided: yes.
 
 ### 13. A part emits facts about its owner by being handed the owner (M)
 
@@ -174,6 +178,7 @@ Decision:
 - A: keep; smallest code, and the fact needs `owner.mention`.
 - B: owner methods: `Thing.change(gauge, amount, label, why)`, `Person.drop_item(item_id)`; the
   gauge and the sheet stop knowing `Fact`.
+Decided: B.
 
 ### 14. `list[Fact]` and `tuple[Fact, ...]` mixed on fact-returning APIs (S)
 
