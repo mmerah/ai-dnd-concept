@@ -5,13 +5,13 @@ from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked
 from aidm.core.entities import EngineId, Refusal, Slug, parse, slug
-from aidm.core.facts import DiceEvent, Fact, keep_highest, roll
+from aidm.core.facts import DiceEvent, Fact, roll, roll_pool
 from aidm.core.model import AnyCharacter
 from aidm.core.play import PendingDecision, PendingOption
-from aidm.core.prompt import lines_of
+from aidm.core.prompt import lines_of, sentence
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Pairs, Panel, PanelRow
-from aidm.engines.base import PLAYER_ID, banded
+from aidm.engines.base import PLAYER_ID, banded, luck_test
 from aidm.engines.breathless.tools import (
     CHANGE_STRESS,
     USE_MED_KIT,
@@ -43,9 +43,8 @@ from aidm.engines.breathless.world import (
     stepped,
 )
 from aidm.engines.breathless.worldsmith import AUTHORING, HIRING, Pack, SheetDraft
-from aidm.engines.hiring import DROP_ITEM, HIRE, HIRE_UNWRITTEN, DropItem, Hiring
+from aidm.engines.hiring import DROP_ITEM, DropItem, Hiring
 from aidm.engines.scenes.engine import SceneEngine
-from aidm.engines.scenes.world import sentence
 
 
 class BreathlessEngine(
@@ -77,8 +76,8 @@ class BreathlessEngine(
     cast = Survivor
     pack = Pack
     world_type = BreathlessWorld
+    member = Survivor
     hire_answer = SheetDraft
-    unwritten = {**SceneEngine.unwritten, HIRE: HIRE_UNWRITTEN}
 
     def master_tools(self) -> tuple[MasterTool[BreathlessGame], ...]:
         return (
@@ -189,16 +188,14 @@ class BreathlessEngine(
         return self.srd_pack().complications
 
     def drop_item(self, draft: BreathlessGame, args: DropItem, _rng: Random) -> list[Fact]:
-        return draft.payload.require_actor(args.actor_id).drop_item(args.item_id)
+        actor = draft.payload.require_actor(args.actor_id)
+        return actor.dice().drop_item(args.item_id, actor)
 
     def change_stress(self, draft: BreathlessGame, args: ChangeStress, _rng: Random) -> list[Fact]:
         return draft.payload.require_actor(args.actor_id).change_stress(args.amount, args.why)
 
     def use_med_kit(self, draft: BreathlessGame, args: UseMedKit, _rng: Random) -> list[Fact]:
         return draft.payload.require_actor(args.actor_id).use_med_kit()
-
-    def hireable(self, draft: BreathlessGame, entity_id: Slug) -> Survivor:
-        return draft.payload.require_hireable(entity_id)
 
     def hire_prompt(self, draft: BreathlessGame, member: Survivor, terms: str) -> str:
         pack = self.packs[draft.packs[0]]
@@ -241,7 +238,7 @@ class BreathlessEngine(
                     raise Refusal(f"{actor.name} cannot help their own roll")
                 helper = (partner, partner.dice().worn[args.skill])
         elif args.item_id is not None:
-            item = actor.require_item(args.item_id)
+            item = sheet.require(args.item_id, actor.name)
             die = item.die
             label = item.name
         else:
@@ -252,14 +249,8 @@ class BreathlessEngine(
             sheet.stunted = True
 
         reason = f"{args.what} — {label}"
-        if helper is None:
-            rolled, dice_fact = roll((die,), reason, rng)
-            face = rolled[0]
-            event = DiceEvent(label=f"d{die}", faces=(die,), rolled=rolled)
-        else:
-            face, event, dice_fact = keep_highest(
-                (die, helper[1]), reason, rng, label=f"d{die}+d{helper[1]}"
-            )
+        pool = (die,) if helper is None else (die, helper[1])
+        face, event, dice_fact = roll_pool(pool, reason, rng, label="+".join(f"d{f}" for f in pool))
 
         result = banded(face, "fail", "success-but", "success")
         worn = stepped(die)
@@ -357,10 +348,7 @@ class BreathlessEngine(
         return facts
 
     def test_luck(self, _draft: BreathlessGame, args: TestLuck, rng: Random) -> list[Fact]:
-        rolled, dice_fact = roll((args.die,), args.question, rng)
-        result = banded(rolled[0], "fail", "success-but", "success")
-        trace = f"{args.question} — d{args.die} [{rolled[0]}] -> {result}"
-        return [dice_fact, Fact(trace=trace)]
+        return luck_test(args.question, args.die, ("fail", "success-but", "success"), rng)
 
 
 def _skill(name: str) -> Skill:

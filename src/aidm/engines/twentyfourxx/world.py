@@ -3,12 +3,11 @@ from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.entities import Frozen, Mutable, Refusal, Slug, check_unique, slug
+from aidm.core.entities import Frozen, Refusal, Slug, check_unique, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Pairs
-from aidm.engines.base import Sheeted
-from aidm.engines.hiring import ItemSheet
+from aidm.engines.base import Item, ItemSheet, Sheeted
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 
@@ -38,8 +37,7 @@ class Kit(Frozen):
     harmless: bool = False  # SRD: "break harmlessly for defense"
 
 
-class Gear(Mutable):
-    name: str
+class Gear(Item):
     bulky: bool = False
     breaks: int = Field(default=1, ge=1)  # a vest breaks once; battle armor "up to 3x"
     broken_times: int = Field(default=0, ge=0)
@@ -95,9 +93,6 @@ class Sheet(ItemSheet[Gear]):
 
 
 class Crewmate(Sheeted[Sheet]):
-    def require_item(self, item_id: Slug) -> Gear:
-        return self.dice().require(item_id, self.name)
-
     def pay(self, cost: int) -> None:
         sheet = self.dice()
         if cost > sheet.credits:
@@ -133,11 +128,6 @@ class Crewmate(Sheeted[Sheet]):
         card = f"Gained {name}{suffix}"
         trace = f"{self.mention} gains {name}{suffix}"
         return [self.fact(trace, card=card)]
-
-    def drop_item(self, item_id: Slug) -> list[Fact]:
-        item = self.dice().drop(item_id, self.name)
-        trace = f"{self.mention} drops {item.name}"
-        return [self.fact(trace, card=f"Dropped {item.name}")]
 
     def repair_item(self, item: Gear, cost: int) -> list[Fact]:
         if item.broken_times == 0:

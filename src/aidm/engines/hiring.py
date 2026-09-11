@@ -4,12 +4,12 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from aidm.core.entities import Frozen, Mutable, Refusal, Slug
+from aidm.core.entities import Frozen, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import Game, Generation, Objection, WorldsmithAnswer
 from aidm.core.tools import MasterTool, master_tool
 from aidm.engines.base import Person
-from aidm.engines.seam import Engine
+from aidm.engines.seam import Engine, Request, Written
 
 HIRE: Slug = "hire"
 ACTOR = "Exact id of a hired party member here who acts. Null for the player."
@@ -28,21 +28,6 @@ HIRE_UNWRITTEN = Fact(
 )
 
 
-class ItemSheet[I: BaseModel](Mutable):
-    items: dict[Slug, I] = Field(default_factory=dict)
-
-    def require(self, item_id: Slug, owner: str) -> I:
-        item = self.items.get(item_id)
-        if item is None:
-            raise Refusal(f"{item_id!r} is not among {owner}'s items")
-        return item
-
-    def drop(self, item_id: Slug, owner: str) -> I:
-        item = self.require(item_id, owner)
-        del self.items[item_id]
-        return item
-
-
 class Hire(Frozen):
     entity_id: Slug = Field(description="Exact id of who here signs on.")
     terms: str = Field(
@@ -57,8 +42,9 @@ class DropItem(Frozen):
 
 
 class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
-    """Bringing in someone whose sheet the worldsmith authors. List it first in the bases."""
+    """Bringing in someone whose sheet the worldsmith authors."""
 
+    member: type[M]
     hire_answer: type[A]
 
     def hire(self, draft: G, args: Hire, _rng: Random) -> list[Fact]:
@@ -73,12 +59,15 @@ class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
     def master_tools(self) -> tuple[MasterTool[G], ...]:
         return (*super().master_tools(), master_tool("hire", HIRE_TOOL, Hire, self.hire))
 
-    async def advance(
+    def worldsmith_requests(self) -> dict[Slug, Request[G]]:
+        return {**super().worldsmith_requests(), HIRE: Request(HIRE_UNWRITTEN, self.write_hire)}
+
+    async def write_hire(
         self, draft: G, request: Generation, worldsmith: WorldsmithAnswer
-    ) -> tuple[tuple[Fact, ...], str | None]:
-        if request.operation != HIRE:
-            return await super().advance(draft, request, worldsmith)
-        member = self.hireable(draft, request.require_target())
+    ) -> Written:
+        if request.target is None:
+            raise Refusal("a hire request names no target")
+        member = self.hireable(draft, request.target)
         answer = await worldsmith(
             self.hire_prompt(draft, member, request.brief), self.hire_answer, self.hire_bar(draft)
         )
@@ -92,8 +81,12 @@ class Hiring[P: Person, M: Person, G: Game[Any], A: BaseModel](Engine[P, G]):
     def hire_bar(self, _draft: G) -> Objection[A]:
         return lambda _answer: None
 
-    @abstractmethod
-    def hireable(self, draft: G, entity_id: Slug) -> M: ...
+    def hireable(self, draft: G, entity_id: Slug) -> M:
+        member = self.world(draft).require_hireable(entity_id)
+        if not isinstance(member, self.member):
+            raise ValueError(f"{member.id!r} is not a {self.member.__name__}")
+        return member
+
     @abstractmethod
     def hire_prompt(self, draft: G, member: M, terms: str) -> str: ...
     @abstractmethod

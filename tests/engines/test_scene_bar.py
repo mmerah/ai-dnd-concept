@@ -26,7 +26,7 @@ from aidm.engines.scenes.engine import DEPARTURE
 from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
-from aidm.engines.scenes.worldsmith import scene_refusal
+from aidm.engines.scenes.worldsmith import check_scene
 from aidm.engines.seam import AnyEngine
 from aidm.engines.twentyfourxx.world import Crewmate, TwentyfourxxWorld
 
@@ -59,7 +59,7 @@ class SceneCase:
     engine: AnyEngine
     game: Callable[[], AnyGame]
     base: Mapping[str, object]  # the draft fields every scene of this case starts from
-    bar: Callable[[Mapping[str, object]], str | None]
+    bar: Callable[[Mapping[str, object]], None]
     player: str
     met: Slug
     unmet: Slug
@@ -70,11 +70,11 @@ def _bar[C: Person](
     world_type: type[SceneWorld[C]],
     base: Mapping[str, object],
     game: Callable[[], AnyGame],
-) -> Callable[[Mapping[str, object]], str | None]:
-    def bar(fields: Mapping[str, object]) -> str | None:
+) -> Callable[[Mapping[str, object]], None]:
+    def bar(fields: Mapping[str, object]) -> None:
         draft = draft_type.model_validate(dict(base) | dict(fields))
         world = narrowed(game().payload, world_type)
-        return scene_refusal(draft, world)
+        check_scene(draft, world)
 
     return bar
 
@@ -116,40 +116,41 @@ def _case_id(case: SceneCase) -> str:
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_the_bar_refuses_a_scene_that_lists_the_player(case: SceneCase) -> None:
-    assert "put there by code" in (case.bar({"present": (case.player, case.met)}) or "")
+    with pytest.raises(Refusal, match="put there by code"):
+        case.bar({"present": (case.player, case.met)})
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_the_bar_refuses_a_draft_cast_entry_under_player_id(case: SceneCase) -> None:
-    result = case.bar({"cast": {PLAYER_ID: DECOY_CAST_ENTRY}})
-    assert result is not None and "rewrites the player" in result
+    with pytest.raises(Refusal, match="rewrites the player"):
+        case.bar({"cast": {PLAYER_ID: DECOY_CAST_ENTRY}})
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_the_bar_refuses_hiding_someone_met(case: SceneCase) -> None:
-    result = case.bar({"hidden": (case.met,)})
-    assert result is not None and "already met" in result
+    with pytest.raises(Refusal, match="already met"):
+        case.bar({"hidden": (case.met,)})
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_a_dead_draft_cast_member_is_refused(case: SceneCase) -> None:
     ghost = {"id": "ghost", "name": "Ghost", "brief": "", "alive": False}
-    result = case.bar({"present": (case.met,), "cast": {"ghost": ghost}})
-    assert result is not None and "may write them" in result
+    with pytest.raises(Refusal, match="may write them"):
+        case.bar({"present": (case.met,), "cast": {"ghost": ghost}})
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_a_hidden_multi_word_name_in_situation_is_refused(case: SceneCase) -> None:
     stalker = {"id": "stalker", "name": "Old Man Riley", "brief": ""}
-    result = case.bar(
-        {
-            "situation": f"{case.base['situation']} Old Man Riley waits by the door.",
-            "present": (case.met,),
-            "hidden": ("stalker",),
-            "cast": {"stalker": stalker},
-        }
-    )
-    assert result is not None and "does not name what is hidden" in result
+    with pytest.raises(Refusal, match="does not name what is hidden"):
+        case.bar(
+            {
+                "situation": f"{case.base['situation']} Old Man Riley waits by the door.",
+                "present": (case.met,),
+                "hidden": ("stalker",),
+                "cast": {"stalker": stalker},
+            }
+        )
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)

@@ -8,7 +8,7 @@ from aidm.core.entities import Refusal
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, Loner3eSheet
 from aidm.engines.scenes.tools import SceneDraft
-from aidm.engines.scenes.worldsmith import scene_refusal
+from aidm.engines.scenes.worldsmith import check_scene
 
 TOMAS = "tomas"
 
@@ -108,7 +108,7 @@ def test_a_one_word_name_is_a_word_the_situation_may_use() -> None:
     scene = _next_scene()
     scene = scene.model_copy(update={"situation": f"{SITUATION} The bell tower stands over it."})
 
-    assert scene_refusal(scene, draft.payload) is None
+    check_scene(scene, draft.payload)
 
 
 def test_an_entity_is_never_lost_when_a_scene_leaves_it_behind() -> None:

@@ -1,14 +1,13 @@
-from collections.abc import Callable
-
 import pytest
 from pydantic import BaseModel, ValidationError
 from support.table import TUNNELGOONS, game, narrowed
 from support.tunnelgoons import ENGINE, small_world
 
-from aidm.core.model import Generation, ScenarioMeta
+from aidm.core.entities import Refusal
+from aidm.core.model import Objection, ScenarioMeta
 from aidm.engines.rooms.engine import MORE_MAP
 from aidm.engines.rooms.world import MapDraft, Place, Prop, Way
-from aidm.engines.rooms.worldsmith import extension_refusal, map_refusal
+from aidm.engines.rooms.worldsmith import check_extension, check_map
 from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsGame
 from aidm.engines.tunnelgoons.worldsmith import AUTHORING, AbilitiesDraft
 
@@ -57,10 +56,14 @@ def _wide_region() -> MapDraft[Npc]:
 
 
 def test_a_one_place_map_with_no_ways_passes_the_map_bar_and_builds() -> None:
-    assert map_refusal(THIN) is None
+    check_map(THIN)
 
     built = ENGINE.build_scenario(
-        ScenarioMeta(title="Only", premise="", scope="One room, one visit."), (), THIN, "source"
+        ScenarioMeta(title="Only", premise="", scope="One room, one visit."),
+        (),
+        THIN,
+        "source",
+        "d",
     )
 
     assert built.payload.start == ONLY
@@ -72,7 +75,7 @@ def test_an_extension_of_one_hidden_place_with_no_ways_installs_hidden() -> None
         places={HIDDEN: Place(id=HIDDEN, name="Hidden", brief="b", known=False, description="d")},
         start=HIDDEN,
     )
-    assert extension_refusal(extension, draft.payload) is None
+    check_extension(extension, draft.payload)
 
     ENGINE.install(draft, extension)
 
@@ -81,7 +84,7 @@ def test_an_extension_of_one_hidden_place_with_no_ways_installs_hidden() -> None
 
 
 def test_the_shipped_scenario_passes_the_map_bar() -> None:
-    assert map_refusal(_wide_region()) is None
+    check_map(_wide_region())
 
 
 def test_attach_joins_at_the_current_place_and_the_world_validates() -> None:
@@ -113,9 +116,8 @@ def test_a_region_reusing_an_id_already_in_the_world_is_refused() -> None:
         }
     )
 
-    refused = extension_refusal(reused, state.payload)
-    assert refused is not None
-    assert "not already in the world" in refused
+    with pytest.raises(Refusal, match="not already in the world"):
+        check_extension(reused, state.payload)
 
 
 def test_more_map_is_offered_only_once_every_place_is_known() -> None:
@@ -156,9 +158,7 @@ async def test_write_next_asks_for_the_map_draft() -> None:
     recorded: list[type[BaseModel]] = []
     prompts: list[str] = []
 
-    async def answer[M: BaseModel](
-        prompt: str, model: type[M], _refusal: Callable[[M], str | None]
-    ) -> M:
+    async def answer[M: BaseModel](prompt: str, model: type[M], _refusal: Objection[M]) -> M:
         recorded.append(model)
         prompts.append(prompt)
         return model.model_validate(THIN.model_dump())
@@ -173,27 +173,13 @@ async def test_write_next_asks_for_the_map_draft() -> None:
 async def test_write_next_prompt_carries_scenes_so_far() -> None:
     prompts: list[str] = []
 
-    async def answer[M: BaseModel](
-        prompt: str, model: type[M], _refusal: Callable[[M], str | None]
-    ) -> M:
+    async def answer[M: BaseModel](prompt: str, model: type[M], _refusal: Objection[M]) -> M:
         prompts.append(prompt)
         return model.model_validate(THIN.model_dump())
 
     _ = await ENGINE.write_next(small_world(), "Nose around the docks.", answer)
 
     assert "SCENES SO FAR" in prompts[0]
-
-
-async def test_advance_raises_on_an_operation_the_engine_does_not_write() -> None:
-    async def answer[M: BaseModel](
-        _prompt: str, _model: type[M], _refusal: Callable[[M], str | None]
-    ) -> M:
-        raise AssertionError("the worldsmith is not asked")
-
-    with pytest.raises(ValueError, match="writes no 'departure'"):
-        _ = await ENGINE.advance(
-            small_world().draft(), Generation(operation="departure", brief="x"), answer
-        )
 
 
 def test_abilities_draft_refuses_a_wrong_point_total() -> None:

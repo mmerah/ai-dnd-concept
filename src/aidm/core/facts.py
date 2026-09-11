@@ -54,14 +54,13 @@ def roll(faces: Sequence[int], reason: str, rng: Random) -> tuple[tuple[int, ...
     return drawn, Fact(trace=f"{reason}: {_notation(faces)} [{shown}]")
 
 
-def keep_highest(
+def roll_pool(
     faces: Sequence[int], reason: str, rng: Random, *, label: str
 ) -> tuple[int, DiceEvent, Fact]:
     rolled, fact = roll(faces, reason, rng)
     kept = max(rolled)
-    event = DiceEvent(
-        label=label, faces=tuple(faces), rolled=rolled, highlight=(rolled.index(kept),)
-    )
+    highlight = (rolled.index(kept),) if len(faces) > 1 else ()
+    event = DiceEvent(label=label, faces=tuple(faces), rolled=rolled, highlight=highlight)
     return kept, event, fact
 
 

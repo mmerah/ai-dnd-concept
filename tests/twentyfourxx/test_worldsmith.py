@@ -1,35 +1,41 @@
+import re
+
+import pytest
 from support.table import LIBRARY, TWENTYFOURXX
 from support.twentyfourxx import ENGINE, KESTREL, SABLE, SITUATION, small_world
 
+from aidm.core.entities import Refusal
 from aidm.core.model import AnyScenario, ScenarioMeta
 from aidm.engines.scenes.tools import SceneDraft
-from aidm.engines.scenes.worldsmith import scene_refusal
+from aidm.engines.scenes.worldsmith import check_scene
 from aidm.engines.twentyfourxx.world import Crewmate, Sheet, TwentyfourxxCharacter
 from aidm.engines.twentyfourxx.worldsmith import SheetDraft
 
 SRD = ENGINE.packs["srd"]
 
 
-def test_sheet_refusal_accepts_a_muscle_with_intimidation_and_shooting() -> None:
+def test_sheet_check_accepts_a_muscle_with_intimidation_and_shooting() -> None:
     draft = SheetDraft(
         specialty="Muscle", skills={"Intimidation": 8, "Shooting": 8}, items=("Firearm",)
     )
-    assert draft.refusal(SRD) is None
+    draft.check(SRD)
 
 
-def test_sheet_refusal_refuses_an_unknown_specialty() -> None:
+def test_sheet_check_refuses_an_unknown_specialty() -> None:
     draft = SheetDraft(specialty="Wizard", skills={"Shooting": 8}, items=())
-    assert "Wizard" in (draft.refusal(SRD) or "")
+    with pytest.raises(Refusal, match="Wizard"):
+        draft.check(SRD)
 
 
-def test_sheet_refusal_refuses_a_skill_neither_listed_nor_granted() -> None:
+def test_sheet_check_refuses_a_skill_neither_listed_nor_granted() -> None:
     draft = SheetDraft(specialty="Muscle", skills={"Sorcery": 8}, items=())
-    assert "Sorcery" in (draft.refusal(SRD) or "")
+    with pytest.raises(Refusal, match="Sorcery"):
+        draft.check(SRD)
 
 
-def test_sheet_refusal_accepts_medicine_granted_by_medic() -> None:
+def test_sheet_check_accepts_medicine_granted_by_medic() -> None:
     draft = SheetDraft(specialty="Face", skills={"Medicine": 8}, items=())
-    assert draft.refusal(SRD) is None
+    draft.check(SRD)
 
 
 def test_the_pack_s_android_case_carries_the_kit() -> None:
@@ -52,7 +58,11 @@ def _draft(**fields: object) -> SceneDraft[Crewmate]:
 
 def _built(draft: SceneDraft[Crewmate]) -> AnyScenario:
     return ENGINE.build_scenario(
-        ScenarioMeta(title="Loading Bay", premise="", scope="One tense night shift."), (), draft, ""
+        ScenarioMeta(title="Loading Bay", premise="", scope="One tense night shift."),
+        (),
+        draft,
+        "",
+        draft.situation,
     )
 
 
@@ -106,19 +116,22 @@ def test_the_bar_refuses_a_misfiled_cast_entry() -> None:
         present=("stranger",),
         cast={stranger: Crewmate(id=other, name="A Stranger", brief="filed wrongly")},
     )
-    assert "is filed under" in (scene_refusal(draft, world) or "")
+    with pytest.raises(Refusal, match="is filed under"):
+        check_scene(draft, world)
 
 
 def test_the_bar_refuses_present_hidden_overlap() -> None:
     world = small_world().payload
-    assert scene_refusal(_draft(present=("sable",), hidden=("sable",)), world) == (
-        "the scene needs nobody listed as both present and hidden: ['sable']"
-    )
+    with pytest.raises(
+        Refusal, match=re.escape("nobody listed as both present and hidden: ['sable']")
+    ):
+        check_scene(_draft(present=("sable",), hidden=("sable",)), world)
 
 
 def test_the_opening_refuses_a_present_name_that_exists_nowhere() -> None:
     draft = _draft(present=("nobody",))
-    assert scene_refusal(draft) == "the scene needs ids that exist; these name nobody: ['nobody']"
+    with pytest.raises(Refusal, match="these name nobody"):
+        check_scene(draft)
 
 
 def test_a_sheeted_draft_cast_member_is_refused() -> None:
@@ -132,20 +145,19 @@ def test_a_sheeted_draft_cast_member_is_refused() -> None:
             )
         },
     )
-    assert "a sheet" in (scene_refusal(draft, world) or "")
+    with pytest.raises(Refusal, match="a sheet"):
+        check_scene(draft, world)
 
 
 def test_the_bar_refuses_a_scene_that_lists_the_player_or_the_party() -> None:
     world = small_world().payload
     world.party = [KESTREL]
-    assert scene_refusal(_draft(present=("kestrel", "sable")), world) == (
-        "the scene needs a scene that does not list the player or the party; "
-        "they are put there by code: ['kestrel']"
-    )
-    assert scene_refusal(_draft(present=("player", "kestrel")), world) == (
-        "the scene needs a scene that does not list the player or the party; "
-        "they are put there by code: ['kestrel', 'player']"
-    )
+    with pytest.raises(Refusal, match=re.escape("they are put there by code: ['kestrel']")):
+        check_scene(_draft(present=("kestrel", "sable")), world)
+    with pytest.raises(
+        Refusal, match=re.escape("they are put there by code: ['kestrel', 'player']")
+    ):
+        check_scene(_draft(present=("player", "kestrel")), world)
 
 
 def test_apply_scene_puts_the_party_first_in_the_new_run() -> None:

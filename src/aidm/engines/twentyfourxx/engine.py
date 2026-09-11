@@ -5,17 +5,16 @@ from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, option_of, picked
 from aidm.core.entities import EngineId, Refusal, Slug, slug
-from aidm.core.facts import DiceEvent, Fact, keep_highest, roll
+from aidm.core.facts import DiceEvent, Fact, roll, roll_pool
 from aidm.core.model import Objection
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
-from aidm.core.prompt import lines_of
+from aidm.core.prompt import lines_of, sentence
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Pairs, Panel, PanelRow
-from aidm.engines.base import PLAYER_ID, banded
-from aidm.engines.hiring import DROP_ITEM, HIRE, HIRE_UNWRITTEN, DropItem, Hiring
+from aidm.engines.base import PLAYER_ID, banded, luck_test
+from aidm.engines.hiring import DROP_ITEM, DropItem, Hiring
 from aidm.engines.scenes.engine import SceneEngine
 from aidm.engines.scenes.tools import Kill
-from aidm.engines.scenes.world import sentence
 from aidm.engines.twentyfourxx.tools import (
     CHANGE_HINDRANCES,
     DEFEND,
@@ -85,8 +84,8 @@ class TwentyfourxxEngine(
     cast = Crewmate
     pack = Pack
     world_type = TwentyfourxxWorld
+    member = Crewmate
     hire_answer = SheetDraft
-    unwritten = {**SceneEngine.unwritten, HIRE: HIRE_UNWRITTEN}
 
     def master_tools(self) -> tuple[MasterTool[TwentyfourxxGame], ...]:
         return (
@@ -276,7 +275,8 @@ class TwentyfourxxEngine(
         )
 
     def drop_item(self, draft: TwentyfourxxGame, args: DropItem, _rng: Random) -> list[Fact]:
-        return draft.payload.require_actor(args.actor_id).drop_item(args.item_id)
+        actor = draft.payload.require_actor(args.actor_id)
+        return actor.dice().drop_item(args.item_id, actor)
 
     def repair_item(self, draft: TwentyfourxxGame, args: RepairItem, _rng: Random) -> list[Fact]:
         world = draft.payload
@@ -325,9 +325,6 @@ class TwentyfourxxEngine(
         """A dead lead with a hired member alive is a succession, not an ending."""
         return None if state.payload.sheeted_members() else super().over(state)
 
-    def hireable(self, draft: TwentyfourxxGame, entity_id: Slug) -> Crewmate:
-        return draft.payload.require_hireable(entity_id)
-
     def hire_prompt(self, draft: TwentyfourxxGame, member: Crewmate, terms: str) -> str:
         return self.render_request(
             draft,
@@ -338,7 +335,7 @@ class TwentyfourxxEngine(
 
     def hire_bar(self, draft: TwentyfourxxGame) -> Objection[SheetDraft]:
         pack = self._pack(draft)
-        return lambda sheet: sheet.refusal(pack)
+        return lambda sheet: sheet.check(pack)
 
     def install_sheet(self, member: Crewmate, answer: SheetDraft) -> str:
         member.sheet = Sheet(
@@ -382,13 +379,7 @@ class TwentyfourxxEngine(
             helped_by_clause = f", helped by {helper.name} (d{helper_die})"
 
         reason = f"{args.what} — {label}"
-        if len(pool) == 1:
-            rolled, dice_fact = roll((die,), reason, rng)
-            face = rolled[0]
-            event = DiceEvent(label=f"d{die}", faces=(die,), rolled=rolled)
-        else:
-            die_label = "+".join(f"d{face}" for face in pool)
-            face, event, dice_fact = keep_highest(pool, reason, rng, label=die_label)
+        face, event, dice_fact = roll_pool(pool, reason, rng, label="+".join(f"d{f}" for f in pool))
 
         result = banded(face, "disaster", "setback", "success")
         line = (
@@ -416,11 +407,7 @@ class TwentyfourxxEngine(
         return facts
 
     def test_luck(self, _draft: TwentyfourxxGame, args: TestLuck, rng: Random) -> list[Fact]:
-        rolled, dice_fact = roll((6,), args.question, rng)
-        face = rolled[0]
-        result = banded(face, "trouble now", "signs of it", "nothing")
-        trace = f"{args.question} — d6 [{face}] -> {result}"
-        return [dice_fact, Fact(trace=trace)]
+        return luck_test(args.question, 6, ("trouble now", "signs of it", "nothing"), rng)
 
     def job(self, draft: TwentyfourxxGame, args: Job, rng: Random) -> list[Fact]:
         match args.verb:

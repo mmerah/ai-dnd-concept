@@ -1,3 +1,4 @@
+from aidm.core.entities import Refusal
 from aidm.core.prompt import render_history
 from aidm.core.views import Pairs
 from aidm.engines.base import Person
@@ -20,14 +21,14 @@ def map_sections[N: Dweller, P: Person](world: RoomWorld[N, P] | None) -> Pairs:
     )
 
 
-def map_refusal[N: Dweller](draft: MapDraft[N]) -> str | None:
-    unmet = _start_unmet(draft)
-    return None if not unmet else "the map needs " + "; ".join(unmet)
+def check_map[N: Dweller](draft: MapDraft[N]) -> None:
+    if unmet := _start_unmet(draft):
+        raise Refusal("the map needs " + "; ".join(unmet))
 
 
-def extension_refusal[N: Dweller](draft: MapDraft[N], world: Dungeon[N]) -> str | None:
-    unmet = _extension_unmet(draft) + _overlap_unmet(draft, world)
-    return None if not unmet else "the extension needs " + "; ".join(unmet)
+def check_extension[N: Dweller](draft: MapDraft[N], world: Dungeon[N]) -> None:
+    if unmet := _extension_unmet(draft) + _overlap_unmet(draft, world):
+        raise Refusal("the extension needs " + "; ".join(unmet))
 
 
 def _start_unmet[N: Dweller](draft: MapDraft[N]) -> list[str]:

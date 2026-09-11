@@ -122,7 +122,7 @@ def test_spoken_refuses_a_subject_who_is_not_a_speaker() -> None:
         view.spoken((Line(speaker_id="mara", text="Hello."),))
 
 
-def test_interjection_refusal_accepts_the_members_own_lines_and_refuses_the_rest() -> None:
+def test_check_interjection_accepts_the_members_own_lines_and_refuses_the_rest() -> None:
     member_id = "mara"
     accepted = Interjection(
         lines=(Line(speaker_id=member_id, text="Careful."),), proposal="I check the door."
@@ -142,14 +142,11 @@ def test_interjection_refusal_accepts_the_members_own_lines_and_refuses_the_rest
         sheet=(),
     )
 
-    assert view.interjection_refusal(member_id, accepted) is None
-    assert view.interjection_refusal(member_id, stranger) == (
-        f"only {member_id} speaks here: every `speaker_id` is {member_id!r}"
-    )
-    assert view.interjection_refusal(member_id, bare_proposal) == (
-        "a proposal comes with at least one line of dialogue; keep quiet with no lines and no "
-        "proposal"
-    )
+    view.check_interjection(member_id, accepted)
+    with pytest.raises(Refusal, match=f"only {member_id} speaks here"):
+        view.check_interjection(member_id, stranger)
+    with pytest.raises(Refusal, match="a proposal comes with at least one line"):
+        view.check_interjection(member_id, bare_proposal)
 
 
 def test_a_proposal_is_stripped_so_accept_plays_what_the_composer_would() -> None:

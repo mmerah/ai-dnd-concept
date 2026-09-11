@@ -50,14 +50,8 @@ class Loner3eSheet(Person):
         )
 
     def forbidden(self) -> str:
-        return ", ".join(
-            why
-            for why, satisfied in (
-                ("alive", self.alive),
-                ("full luck", self.luck.current == LUCK_MAX),
-            )
-            if not satisfied
-        )
+        parts = (super().forbidden(), "full luck" if self.luck.current != LUCK_MAX else "")
+        return ", ".join(part for part in parts if part)
 
     def change_tags(self, kind: TagKind, gained: Sequence[str], lost: Sequence[str]) -> list[Fact]:
         if not gained and not lost:

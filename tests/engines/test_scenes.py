@@ -13,7 +13,7 @@ from aidm.engines.loner3e.world import Loner3eGame, Loner3eSheet
 from aidm.engines.scenes.engine import MOVE_ON
 from aidm.engines.scenes.tools import NextDraft, NextScene
 from aidm.engines.scenes.world import SceneRun, SceneWorld
-from aidm.engines.scenes.worldsmith import scene_refusal
+from aidm.engines.scenes.worldsmith import check_scene
 
 PLAYER = Person(id=PLAYER_ID, name="Player", brief="", known=True)
 MARA = "mara"
@@ -133,7 +133,7 @@ def test_a_next_draft_naming_no_one_but_the_player_passes_and_installs() -> None
         recap=RECAP,
     )
 
-    assert scene_refusal(draft, world) is None
+    check_scene(draft, world)
 
     world.apply_scene(draft)
 

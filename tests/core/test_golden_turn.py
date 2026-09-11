@@ -63,7 +63,7 @@ async def test_a_worldsmith_request_renders_unchanged(engine_id: EngineId) -> No
         raise Refusal("recorded")
 
     request = Generation(
-        operation=next(iter(engine.unwritten)), brief="Deeper in, toward the sound."
+        operation=next(iter(engine.requests)), brief="Deeper in, toward the sound."
     )
     with pytest.raises(Refusal, match="recorded"):
         await engine.advance(state.draft(), request, recording)

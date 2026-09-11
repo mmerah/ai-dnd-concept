@@ -98,30 +98,24 @@ class NarratorView(Frozen):
 
         return tuple(spoken_line(line) for line in lines)
 
-    def speakers_refusal(self, lines: Sequence[Line]) -> str | None:
-        spoken = {line.speaker_id for line in lines if line.speaker_id is not None}
-        strangers = sorted(spoken - set(self.speakers))
-        if not strangers:
-            return None
-        return (
-            f"nobody here has id {', '.join(strangers)}. Only the player or someone here with "
-            "them speaks; leave `speaker_id` null for narration."
-        )
-
-    def narration_refusal(self, narration: Narration) -> str | None:
+    def check_narration(self, narration: Narration) -> None:
         if not narration.lines:
-            return "write the narration lines: an empty answer shows the player nothing."
-        return self.speakers_refusal(narration.lines)
+            raise Refusal("write the narration lines: an empty answer shows the player nothing.")
+        spoken = {line.speaker_id for line in narration.lines if line.speaker_id is not None}
+        if strangers := sorted(spoken - set(self.speakers)):
+            raise Refusal(
+                f"nobody here has id {', '.join(strangers)}. Only the player or someone here "
+                "with them speaks; leave `speaker_id` null for narration."
+            )
 
-    def interjection_refusal(self, member_id: Slug, answer: Interjection) -> str | None:
+    def check_interjection(self, member_id: Slug, answer: Interjection) -> None:
         if any(line.speaker_id != member_id for line in answer.lines):
-            return f"only {member_id} speaks here: every `speaker_id` is {member_id!r}"
+            raise Refusal(f"only {member_id} speaks here: every `speaker_id` is {member_id!r}")
         if answer.proposal and not answer.lines:
-            return (
+            raise Refusal(
                 "a proposal comes with at least one line of dialogue; keep quiet with no lines "
                 "and no proposal"
             )
-        return None
 
 
 class PlayerView(Frozen):

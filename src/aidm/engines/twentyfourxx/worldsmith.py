@@ -2,7 +2,7 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import Frozen
+from aidm.core.entities import Frozen, Refusal
 from aidm.core.play import DecisionOption
 from aidm.engines.scenes.packs import ScenePack
 from aidm.engines.twentyfourxx.world import Kit, SkillDie
@@ -81,7 +81,7 @@ class SheetDraft(Frozen):
         description="What already slows them down, if anything: an injury, a debt, a fear.",
     )
 
-    def refusal(self, pack: Pack) -> str | None:
+    def check(self, pack: Pack) -> None:
         problems: list[str] = []
         if self.specialty not in {specialty.label for specialty in pack.specialties}:
             problems.append(f"{self.specialty!r} is not a specialty this pack lists")
@@ -98,7 +98,8 @@ class SheetDraft(Frozen):
             problems.append(f"{', '.join(unknown)} is not a skill this pack lists or grants")
         if len(set(self.items)) != len(self.items):
             problems.append("an item repeats")
-        return "; ".join(problems) or None
+        if problems:
+            raise Refusal("; ".join(problems))
 
 
 def _specialty_line(specialty: Specialty) -> str:

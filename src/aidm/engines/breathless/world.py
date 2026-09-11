@@ -3,13 +3,12 @@ from typing import Literal, Self
 
 from pydantic import Field, JsonValue, model_validator
 
-from aidm.core.entities import Mutable, Refusal, Slug, slug
+from aidm.core.entities import Refusal, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import PendingOption
 from aidm.core.views import Pairs
-from aidm.engines.base import PLAYER_ID, Counter, Sheeted
-from aidm.engines.hiring import ItemSheet
+from aidm.engines.base import PLAYER_ID, Counter, Item, ItemSheet, Sheeted
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 
@@ -29,8 +28,7 @@ SWAP = "swap-"
 TAKE_LOOT = "take_loot"
 
 
-class Supply(Mutable):
-    name: str
+class Supply(Item):
     die: Die
 
 
@@ -104,14 +102,6 @@ class SurvivorSheet(ItemSheet[Supply]):
 
 
 class Survivor(Sheeted[SurvivorSheet]):
-    def require_item(self, item_id: Slug) -> Supply:
-        return self.dice().require(item_id, self.name)
-
-    def drop_item(self, item_id: Slug) -> list[Fact]:
-        item = self.dice().drop(item_id, self.name)
-        trace = f"{self.mention} drops {item.name}"
-        return [self.fact(trace, card=f"Dropped {item.name}")]
-
     def change_stress(self, amount: int, why: str) -> list[Fact]:
         if amount == 0:
             raise Refusal("change_stress needs a non-zero amount")
