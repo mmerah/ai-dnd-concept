@@ -23,8 +23,8 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import Chapter, DecisionOption, Exchange, Mark, PendingOption, SpokenLine
-from aidm.core.prompt import Sections
-from aidm.core.tools import MasterTool, master_tool
+from aidm.core.prompt import Sections, sections
+from aidm.core.tools import MasterTool, master_tool, schema_text
 from aidm.core.views import Companion, Look, NarratorView, PlayerView, Rows
 from aidm.engines.base import (
     JOIN_PARTY,
@@ -38,9 +38,10 @@ from aidm.engines.base import (
     Person,
     Reveal,
     World,
-    render_worldsmith,
 )
 from aidm.engines.hiring import HIRE, HIRE_TOOL, HIRE_UNWRITTEN, SIGNED_ON, Hire, Hiring
+
+SOURCELESS = "(none — write from what is below)"
 
 type AnyEngine = Engine[Any, Any, Any]
 
@@ -192,27 +193,32 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
         self, draft: G, *, intent: str, guidance: str, answer: type[BaseModel]
     ) -> str:
         world = self.world_of(draft)
-        return render_worldsmith(
-            role=read_prompt(self.family_dir / "worldsmith.md"),
-            source=world.source,
-            scope=draft.scenario.scope,
-            family=self.family_sections(draft),
-            intent=intent,
-            guidance=guidance,
-            answer=answer,
-        )
+        return self._render(draft, world.source, draft.scenario.scope, intent, guidance, answer)
 
     def render_opening(
         self, source: str, scope: str, *, intent: str, guidance: str, answer: type[BaseModel]
     ) -> str:
-        return render_worldsmith(
-            role=read_prompt(self.family_dir / "worldsmith.md"),
-            source=source,
-            scope=scope,
-            family=self.family_sections(None),
-            intent=intent,
-            guidance=guidance,
-            answer=answer,
+        return self._render(None, source, scope, intent, guidance, answer)
+
+    def _render(
+        self,
+        draft: G | None,
+        source: str,
+        scope: str,
+        intent: str,
+        guidance: str,
+        answer: type[BaseModel],
+    ) -> str:
+        return sections(
+            (
+                ("YOUR ROLE", read_prompt(self.family_dir / "worldsmith.md")),
+                ("SOURCE MATERIAL", source or SOURCELESS),
+                ("THE SCOPE OF PLAY", scope),
+                *self.family_sections(draft),
+                ("WHAT COMES NEXT", intent),
+                ("ENGINE GUIDANCE", guidance),
+                ("ANSWER WITH", schema_text(answer)),
+            )
         )
 
     def build_scenario(

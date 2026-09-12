@@ -3,12 +3,11 @@ from collections.abc import Iterable, Mapping, Sequence
 from random import Random
 from typing import Self
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Mutable, Refusal, Slug, check_unique
 from aidm.core.facts import DiceEvent, Fact, roll
-from aidm.core.prompt import Sections, sections
-from aidm.core.tools import schema_text
+from aidm.core.prompt import Sections
 from aidm.core.views import Chattiness, Panel, PanelRow, Rows, Subject
 
 PLAYER_ID: Slug = "player"
@@ -18,7 +17,6 @@ JOIN_PARTY = "A character here starts travelling with the player."
 LEAVE_PARTY = "A party member stops travelling with the player."
 UNKNOWN_ID = "unknown id {entity_id!r}. Use only the ids you were shown."
 IS_DEAD = "{name} is dead and takes no further part."
-SOURCELESS = "(none — write from what is below)"
 
 
 class Gauge(Mutable):
@@ -348,26 +346,3 @@ def luck_test(question: str, die: int, bands: tuple[str, str, str], rng: Random)
     rolled = roll((die,), question, rng)
     result = banded(rolled.face, *bands)
     return [rolled.fact, Fact(trace=f"{question} — d{die} [{rolled.face}] → {result}")]
-
-
-def render_worldsmith(
-    *,
-    role: str,
-    source: str,
-    scope: str,
-    family: Sections,
-    intent: str,
-    guidance: str,
-    answer: type[BaseModel],
-) -> str:
-    return sections(
-        (
-            ("YOUR ROLE", role),
-            ("SOURCE MATERIAL", source or SOURCELESS),
-            ("THE SCOPE OF PLAY", scope),
-            *family,
-            ("WHAT COMES NEXT", intent),
-            ("ENGINE GUIDANCE", guidance),
-            ("ANSWER WITH", schema_text(answer)),
-        )
-    )
