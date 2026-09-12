@@ -549,6 +549,31 @@ def test_finish_job_raises_a_skill_enters_a_new_one_refuses_at_d12_adds_credits(
         _ = ENGINE.job(draft, Job(verb="finish", raises=(Raise(skill="Stealth"),)), Random(0))
 
 
+def test_finish_job_names_a_skill_nobody_has_and_adds_it_at_d8() -> None:
+    draft = small_world().draft()
+    player = draft.payload.player
+    draft.payload.job = "Improvise a bypass"
+    facts = ENGINE.job(draft, Job(verb="finish", raises=(Raise(skill="Sabotage"),)), Random(0))
+    assert player.require_sheet().skills["Sabotage"] == 8
+    assert any(fact.card == "Job done: Sabotage d8" for fact in facts)
+
+
+def test_finish_job_names_lowercase_stealth_and_raises_the_existing_key() -> None:
+    draft = hired(small_world(), KESTREL, skills={"Stealth": 8}).draft()
+    member = draft.payload.cast[KESTREL]
+    draft.payload.job = "Escort the crate"
+    _ = ENGINE.job(
+        draft,
+        Job(
+            verb="finish",
+            raises=(Raise(skill="Stealth"), Raise(actor_id=KESTREL, skill="stealth")),
+        ),
+        Random(0),
+    )
+    assert member.require_sheet().skills == {"Stealth": 10}
+    assert len(member.require_sheet().skills) == 1
+
+
 def test_finish_job_names_a_hired_members_skill_when_already_at_d12() -> None:
     draft = hired(small_world(), KESTREL, skills={"Shooting": 12}).draft()
     draft.payload.job = "Escort the crate"

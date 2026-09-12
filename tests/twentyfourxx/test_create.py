@@ -70,6 +70,20 @@ def test_create_character_records_the_picked_pack() -> None:
     assert character.packs == PackSelection(ids=(SRD_PACK,))
 
 
+def test_create_character_with_a_typed_skill_name_adds_it_at_d8() -> None:
+    picks = {**SNEAK, "increase-3": "Sabotage"}
+    character = ENGINE.create_character("Rook", "A quiet operator", picks)
+    sheet = character.payload.require_sheet()
+    assert sheet.skills["Sabotage"] == 8
+
+
+def test_create_character_with_a_typed_name_matching_a_printed_skill_canonicalises() -> None:
+    picks = {**SNEAK, "increase-3": "PILOTING"}
+    character = ENGINE.create_character("Rook", "A quiet operator", picks)
+    sheet = character.payload.require_sheet()
+    assert sheet.skills == {"Stealth": 12, "Climbing": 8, "Piloting": 8}
+
+
 def test_pick_past_d12_is_refused() -> None:
     with pytest.raises(Refusal):
         ENGINE.create_character("Rook", "A quiet operator", {**SNEAK, "increase-3": "stealth"})

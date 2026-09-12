@@ -155,7 +155,11 @@ class TestLuck(Frozen):
 
 class Raise(Frozen):
     actor_id: Slug | None = Field(default=None, description=ACTOR)
-    skill: str = Field(min_length=1, description="The skill the job called on for them.")
+    skill: str = Field(
+        min_length=1,
+        description="The skill the job called on for them. A skill not on their sheet is added "
+        "at d8.",
+    )
 
 
 class Job(Frozen):

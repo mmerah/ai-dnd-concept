@@ -92,8 +92,11 @@ class CharacterForm:
             # Rebuilding the whole form on blur would destroy the field Tab just moved to.
             typed.classes("w-full").on("blur", self.preview.refresh)
             return
+        # Quasar returns typed text as its own key, so a typed answer only lands on a keyed label.
         options = {
-            option.id: f"{option.label} — {option.detail}" if option.detail else option.label
+            (option.label if step.allows_text else option.id): (
+                f"{option.label} — {option.detail}" if option.detail else option.label
+            )
             for option in step.options
         }
         if step.multiple:
@@ -110,6 +113,8 @@ class CharacterForm:
                 value=given or None,
                 label=step.label,
                 on_change=partial(self.choose, step.id),
+                with_input=step.allows_text,
+                new_value_mode="add-unique" if step.allows_text else None,
             ).classes("w-full")
         if step.hint:
             chosen.props(f'hint="{step.hint}"')

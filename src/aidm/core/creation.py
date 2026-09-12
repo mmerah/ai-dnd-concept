@@ -16,6 +16,7 @@ class CreationStep(Frozen):
     options: tuple[DecisionOption, ...] = ()
     hint: str = ""
     multiple: bool = False
+    allows_text: bool = False
 
 
 def picked(picks: Picks, step_id: Slug) -> str:
@@ -37,7 +38,7 @@ def check_picks(steps: Sequence[CreationStep], picks: Picks) -> None:
             raise Refusal(f"{step.id!r} is unanswered")
         if len(answer) > ANSWER_MAX:
             raise Refusal(f"{step.id!r} takes at most {ANSWER_MAX} characters")
-        if not step.options:
+        if not step.options or step.allows_text:
             continue
         offered = {option.id for option in step.options}
         given = picked_many(picks, step.id) if step.multiple else (answer,)

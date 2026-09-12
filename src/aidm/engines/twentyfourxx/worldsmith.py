@@ -17,8 +17,9 @@ AUTHORING = (
 )
 HIRING = (
     "The player has hired {name}, {brief}, on these terms: {terms}. Write their sheet from the "
-    "specialties and skills in ENGINE GUIDANCE. Write someone who could plausibly be hired for "
-    "this work. The specialty's own skills belong in `skills`."
+    "specialties in ENGINE GUIDANCE. Write someone who could plausibly be hired for this work. "
+    "The specialty's own skills belong in `skills`; invent a fitting skill beyond that list when "
+    "none printed suits them."
 )
 
 
@@ -73,7 +74,8 @@ class SheetDraft(Frozen):
     skills: dict[str, SkillDie] = Field(
         min_length=1,
         max_length=3,
-        description="One to three skills from ENGINE GUIDANCE, at d8, d10 or d12.",
+        description="One to three skills, at d8, d10 or d12. Prefer ENGINE GUIDANCE; invent one "
+        "that fits when none printed does.",
     )
     items: tuple[str, ...] = Field(
         max_length=3, description="What they carry, three at most, named plainly."
@@ -88,18 +90,6 @@ class SheetDraft(Frozen):
         specialties = {specialty.label for pack in packs for specialty in pack.specialties}
         if self.specialty not in specialties:
             problems.append(f"{self.specialty!r} is not a specialty these packs list")
-        listed = {option.label for pack in packs for option in pack.skills}
-        granted = {
-            skill
-            for pack in packs
-            for specialty in pack.specialties
-            for skill in (
-                *specialty.skills,
-                *(name for option in specialty.choice for name in option.skills),
-            )
-        }
-        if unknown := sorted(set(self.skills) - listed - granted):
-            problems.append(f"{', '.join(unknown)} is not a skill these packs list or grant")
         if len(set(self.items)) != len(self.items):
             problems.append("an item repeats")
         if problems:
