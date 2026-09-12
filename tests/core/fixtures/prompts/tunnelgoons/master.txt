@@ -15,7 +15,7 @@ No tool ends the turn by itself. A tool that hands the turn to the worldsmith or
 
 ## Use the dice
 
-The rules below say when to roll. Roll only for an uncertain result with a real cost. The player's words settle what they did and any outcome they declared. Apply those facts directly. Keep the settled parts whatever the roll says.
+The rules below say when to roll. Roll only for an uncertain result with a real cost. The player's words settle what they attempt and what they choose. An outcome they state is an attempt: whether an uncertain one succeeds is the engine's to answer. Apply the certain parts directly. Keep the settled parts whatever the roll says.
 
 After a roll, call a tool for every lasting consequence. A death, a condition, an arrival, a departure, or a moved item all count. Narrating a change does not make it. Only the tool call makes it.
 

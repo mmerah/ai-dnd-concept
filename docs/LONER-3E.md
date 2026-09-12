@@ -55,7 +55,7 @@ Every tool makes one change, rolls dice, opens a decision, or ends the turn.
 
 - `reveal`, `enter`, `leave`, `kill`, `join_party`, `leave_party`,
   `change_tags` (an actor's gear or condition tags), `drive` (goal, motive, nemesis) and
-  `restore_luck` (refill an actor's Luck once their conflict is behind them).
+  `restore_luck` (refill an actor's Luck and clear their defeat once the conflict is behind them).
 - `next_scene` — offer the player the way on at a stopping point; or say that they left this
   place, and the worldsmith writes where they land; or hand the worldsmith a complication to
   bring down on this place. The last two end the turn.
@@ -94,6 +94,13 @@ a rule of this one.
    SRD's own step, written with `change_tags` and `drive` when the adventure closes: no advance is
    counted or owed.
 
+## Readings where the SRD is open
+
+- **Luck pools other than 6.** Every printed example character carries Luck 6, but "Treat the
+  Opponents as a Single Entity" gives a group "a single Luck pool that represents their overall
+  strength" and fixes no size. Minor opposition is therefore authored below 6 and a group may go
+  above it. A player character starts at 6 as printed.
+
 ## What the AI game master adds
 
 Fields and tools that exist for the app around the rules, not the rules themselves — each earns
@@ -101,6 +108,9 @@ its keep for a reason the SRD has no need of.
 
 - `known` and `hidden` — the told-fact gate: no unknown name reaches the narrator.
 - `alive` and `kill` — the SRD leaves death to narration; the gate needs a flag.
+- `defeated` — the SRD's solo player simply remembers they won; Luck resets at once, so the
+  engine needs a flag to refuse a duel reopened after the reset. `restore_luck` and the scene's
+  end clear it.
 - `next_scene` and the scene's `offered` flag — a stopping point the player may stay at.
 - No mood roll — the SRD offers it "when unsure"; the game master holds that judgment.
 

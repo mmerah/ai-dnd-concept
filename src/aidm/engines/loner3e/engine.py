@@ -51,7 +51,8 @@ TWIST_NOTE = (
 DEFEAT_NOTE = (
     "{name} has run out of luck and lost this conflict. Roll nothing more for it. Say how it "
     "ends for them: taken, severely injured, broken off, cornered, or conceding. Write any "
-    "lasting mark with `change_tags`, as a `condition`. Then let the story move on."
+    "lasting mark with `change_tags`, as a `condition`. Then let the story move on. They are "
+    "marked defeated and take no new conflict until `restore_luck` says it is behind them."
 )
 
 
@@ -181,12 +182,14 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         return tuple(zip(srd.twist_subjects, srd.twist_actions, strict=True))
 
     def leaving(self, draft: Loner3eGame) -> list[Fact]:
-        """A scene ends its conflicts so nobody carries a spent pool on; the dead keep theirs."""
+        """A scene ends its conflicts so nobody carries a spent pool or a defeat on; the dead
+        keep theirs."""
+        world = self.world_of(draft)
         return [
             fact
-            for member in self.world_of(draft).here()
+            for member in (world.player, *world.cast.values())
             if member.alive
-            for fact in member.refill("the scene is over")
+            for fact in member.recover("the scene is over")
         ]
 
     def change_tags(self, draft: Loner3eGame, args: ChangeTags, _rng: Random) -> list[Fact]:
@@ -200,8 +203,8 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
     def restore_luck(self, draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
         actor = self.world_of(draft).require_living_here(args.entity_id)
         facts = actor.reveal()
-        # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
-        facts.extend(actor.refill("the conflict is behind them"))
+        # Already full and undefeated is a quiet no-op: `adjust` writes no fact for a zero delta.
+        facts.extend(actor.recover("the conflict is behind them"))
         return facts
 
     def roll(self, draft: Loner3eGame, args: Roll, rng: Random) -> list[Fact]:

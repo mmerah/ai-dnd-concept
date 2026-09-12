@@ -44,21 +44,33 @@ truth that makes it fit. If no result fits, treat it as `yes-but` with a small c
 
 ## Conflicts
 
-A conflict has two active sides, such as a fight, a chase, a hunt or an argument. Set
-`opponent_id` when another character resists. A person, a vehicle, a machine and a cursed object
-all resist the same way. Leave `opponent_id` null when nothing fights back, such as forcing a
-lock or surviving a storm.
+A conflict has two active sides, such as a fight, a chase, a hunt or an argument. You choose how
+much detail it deserves.
 
-Run one conflict exchange per turn. The engine takes luck from the result. A strong yes costs
-the opponent more luck. A strong no costs the acting side more. Do not add a second effect for a
-landed blow.
+One question can settle a whole conflict: leave `opponent_id` null, ask whether the actor wins
+it, and let the answer stand. Use this when the opposition is minor, or when the story wants the
+contest over in a line.
+
+A series of questions plays the key actions out: leave `opponent_id` null and roll each one. Use
+this when the steps matter but holding out does not.
+
+Luck exchanges run a contest of endurance: set `opponent_id`. Use this when both sides can lose
+ground over several exchanges and how long each holds out is the point. A person, a vehicle, a
+machine and a cursed object all resist the same way. Run one exchange per turn. The engine takes
+luck from the result. A strong yes costs the opponent more luck. A strong no costs the acting
+side more. Do not add a second effect for a landed blow.
+
+A changed approach can change `position`. The same approach repeated keeps it. Breaking off is
+free: roll the escape with no opponent, or call `leave`.
 
 A character at 0 luck loses the conflict. Say how it ends for them in the story. They can be
 captured, injured, driven off, cornered, or forced to concede. This does not mean death. Write
 any lasting mark now with `change_tags`. This is the one point in a conflict where that
-is right. The engine restores the luck of both sides.
+is right. The engine restores the luck of both sides and marks the loser defeated.
 
-Call `restore_luck` after a conflict ends another way and the character has had a breath.
+A defeated character takes no new conflict. Call `restore_luck` when the defeat is behind them
+and a new contest begins: it clears the mark. Call it too after a conflict ends another way and
+the character has had a breath.
 
 ## Twists
 
