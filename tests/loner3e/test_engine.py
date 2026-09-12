@@ -260,19 +260,17 @@ def test_restoring_a_defeated_character_at_full_luck_clears_the_mark() -> None:
     assert event.card == "Mara is no longer defeated"
 
 
-def test_the_scenes_end_clears_the_mark_of_someone_no_longer_here() -> None:
+def test_the_scenes_end_leaves_a_defeat_for_the_game_master_to_settle() -> None:
     _, state = initialized()
     draft = state.draft()
     # Seed 0 rolls chance 4 against risk 4: a yes-but, one luck off the foe's last point.
     loner_sheet(draft, FOE).luck.current = 1
     _ = ENGINE.roll(draft, _duel(), Random(0))
     assert loner_sheet(draft, FOE).defeated is True
-    _ = change(ENGINE, draft, "leave", entity_id=FOE)
-    assert FOE not in draft.payload.run.here
 
     _ = ENGINE.leaving(draft)
 
-    assert loner_sheet(draft, FOE).defeated is False
+    assert loner_sheet(draft, FOE).defeated is True
 
 
 def test_the_scenes_end_refills_someone_driven_off_before_it() -> None:

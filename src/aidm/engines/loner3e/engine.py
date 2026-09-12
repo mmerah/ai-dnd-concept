@@ -52,8 +52,7 @@ DEFEAT_NOTE = (
     "{name} has run out of luck and lost this conflict. Roll nothing more for it. Say how it "
     "ends for them: taken, severely injured, broken off, cornered, or conceding. Write any "
     "lasting mark with `change_tags`, as a `condition`. Then let the story move on. They are "
-    "marked defeated and take no new luck exchange until `restore_luck`, or the player's "
-    "leaving this place, puts it behind them."
+    "marked defeated and take no new luck exchange until `restore_luck` puts it behind them."
 )
 
 
@@ -183,14 +182,13 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         return tuple(zip(srd.twist_subjects, srd.twist_actions, strict=True))
 
     def leaving(self, draft: Loner3eGame) -> list[Fact]:
-        """A scene ends its conflicts so nobody carries a spent pool or a defeat on; the dead
-        keep theirs."""
+        """Departure refills every living pool; a defeat is settled by the master, not slept off."""
         world = self.world_of(draft)
         return [
             fact
             for member in (world.player, *world.cast.values())
             if member.alive
-            for fact in member.recover("the scene is over")
+            for fact in member.refill("the scene is over")
         ]
 
     def change_tags(self, draft: Loner3eGame, args: ChangeTags, _rng: Random) -> list[Fact]:
