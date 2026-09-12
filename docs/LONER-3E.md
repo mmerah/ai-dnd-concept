@@ -113,8 +113,8 @@ its keep for a reason the SRD has no need of.
 - `known` and `hidden` — the told-fact gate: no unknown name reaches the narrator.
 - `alive` and `kill` — the SRD leaves death to narration; the gate needs a flag.
 - `defeated` — the SRD's solo player simply remembers they won; Luck resets at once, so the
-  engine needs a flag to refuse a duel reopened after the reset. `restore_luck` clears it, and so
-  does the player's leaving the place — `leaving` runs on departure, not on a complication.
+  engine needs a flag to refuse a duel reopened after the reset. Only `restore_luck` clears it:
+  a defeat is settled by the game master, never slept off by moving to the next place.
 - `next_scene` and the scene's `offered` flag — a stopping point the player may stay at.
 - No mood roll — the SRD offers it "when unsure"; the game master holds that judgment.
 
