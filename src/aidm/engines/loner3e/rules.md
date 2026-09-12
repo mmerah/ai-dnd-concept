@@ -8,8 +8,8 @@ Everything here is a character: a person, an object, a vehicle or a curse. Each 
 one-line concept and tags by kind: skills, frailties, gear and conditions. Tags are words, not
 numbers. A living character also has a goal, a motive and a nemesis.
 
-Luck is not health. It shows how long a character can hold out in a conflict. A character starts
-with 6 luck.
+Luck is not health. It shows how long a character can hold out in a conflict. The player starts
+with 6 luck. Anyone else holds out for as long as their own pool says.
 
 ## Tags and drives
 
@@ -68,9 +68,9 @@ captured, injured, driven off, cornered, or forced to concede. This does not mea
 any lasting mark now with `change_tags`. This is the one point in a conflict where that
 is right. The engine restores the luck of both sides and marks the loser defeated.
 
-A defeated character takes no new conflict. Call `restore_luck` when the defeat is behind them
-and a new contest begins: it clears the mark. Call it too after a conflict ends another way and
-the character has had a breath.
+A defeated character takes no new luck exchange. Call `restore_luck` when the defeat is behind
+them and a new contest begins: it clears the mark. Call it too after a conflict ends another way
+and the character has had a breath.
 
 ## Twists
 

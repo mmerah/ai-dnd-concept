@@ -152,6 +152,20 @@ def test_a_fresh_cast_member_with_a_spent_pool_is_refused() -> None:
         bar({"cast": {"spent": spent}})
 
 
+def test_a_fresh_cast_member_with_an_empty_pool_is_refused() -> None:
+    bar = next(case.bar for case in CASES if case.engine is LONER3E_ENGINE)
+    hollow = {"id": "hollow", "name": "Hollow", "brief": "", "luck": {"current": 0, "maximum": 0}}
+    with pytest.raises(Refusal, match="may write them"):
+        bar({"cast": {"hollow": hollow}})
+
+
+def test_a_fresh_cast_member_already_defeated_is_refused() -> None:
+    bar = next(case.bar for case in CASES if case.engine is LONER3E_ENGINE)
+    beaten = {"id": "beaten", "name": "Beaten", "brief": "", "defeated": True}
+    with pytest.raises(Refusal, match="may write them"):
+        bar({"cast": {"beaten": beaten}})
+
+
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_a_hidden_multi_word_name_in_situation_is_refused(case: SceneCase) -> None:
     stalker = {"id": "stalker", "name": "Old Man Riley", "brief": ""}
