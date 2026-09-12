@@ -1,5 +1,5 @@
 import json
-from asyncio import gather, sleep
+from asyncio import CancelledError, Event, create_task, gather, sleep
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -8,13 +8,7 @@ from pydantic import SecretStr
 from support.game import TARGET, initialized, with_entity
 from support.table import offline_settings
 
-from aidm.app.media import (
-    GeneratedImage,
-    Illustrator,
-    illustration_request,
-    open_illustrator,
-    scene_key,
-)
+from aidm.app.media import GeneratedImage, Illustrator, illustration_request, scene_key
 from aidm.config import MediaConfig, ProviderConfig
 from aidm.core.io import FileStore
 from aidm.core.views import NarratorView
@@ -119,6 +113,43 @@ async def test_concurrent_illustrations_of_one_scene_generate_it_once(
     assert illustrator.claims.held == set()
 
 
+async def test_cancelling_illustrate_during_the_icon_await_releases_the_scene_claim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    engine, state = initialized()
+    scene = engine.narrator_view(state)
+    player = engine.player_view(state).player
+    entered = Event()
+
+    async def _hang(_self: Illustrator, _subject: object) -> Path | None:
+        entered.set()
+        await sleep(1e9)
+        return None
+
+    async def _generate(
+        _self: Illustrator, _prompt: str, _ratio: str, _references: Sequence[Path] = ()
+    ) -> GeneratedImage:
+        return GeneratedImage(data=b"\x89PNG", suffix=".png")
+
+    monkeypatch.setattr(Illustrator, "_drawn_icon", _hang)
+    monkeypatch.setattr(Illustrator, "_generate", _generate)
+    illustrator = _illustrator(tmp_path / "save.media")
+
+    task = create_task(illustrator.illustrate(scene, player, NARRATION))
+    await entered.wait()
+    task.cancel()
+    with pytest.raises(CancelledError):
+        await task
+
+    assert illustrator.claims.held == set()
+
+    monkeypatch.undo()
+    monkeypatch.setattr(Illustrator, "_generate", _generate)
+    await illustrator.illustrate(scene, player, NARRATION)
+
+    assert illustrator.scene_art(scene) is not None
+
+
 async def test_a_reply_holding_unreadable_base64_leaves_illustrate_quiet(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -143,14 +174,14 @@ async def test_a_reply_holding_unreadable_base64_leaves_illustrate_quiet(
     assert illustrator.claims.held == set()
 
 
-def test_open_illustrator_takes_the_passed_style_and_is_none_when_media_is_off(
+def test_illustrator_open_takes_the_passed_style_and_is_none_when_media_is_off(
     tmp_path: Path,
 ) -> None:
     store = FileStore(tmp_path)
     on = offline_settings(tmp_path).model_copy(update={"media": MediaConfig(enabled=True)})
-    illustrator = open_illustrator(on, store, TARGET.slug, style="woodcut", icon_dirs=())
+    illustrator = Illustrator.open(on, store, TARGET.slug, style="woodcut", icon_dirs=())
     assert illustrator is not None
     assert illustrator.style == "woodcut"
 
     off = offline_settings(tmp_path)
-    assert open_illustrator(off, store, TARGET.slug, style="woodcut", icon_dirs=()) is None
+    assert Illustrator.open(off, store, TARGET.slug, style="woodcut", icon_dirs=()) is None

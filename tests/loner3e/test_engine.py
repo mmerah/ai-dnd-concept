@@ -6,7 +6,6 @@ from support.table import change, updated
 
 from aidm.core.entities import Refusal
 from aidm.core.facts import cards
-from aidm.core.io import decode
 from aidm.core.play import PendingDecision
 from aidm.engines.base import PLAYER_ID, Gauge
 from aidm.engines.loner3e.engine import DEFEAT_NOTE, TWIST_NOTE
@@ -225,7 +224,7 @@ def test_the_open_ended_hand_back_survives_a_save() -> None:
     draft = state.draft()
     draft.pending = hand_back
 
-    assert engine.restore(decode(draft.commit().model_dump_json())).pending == hand_back
+    assert engine.restore(draft.commit().model_dump_json()).pending == hand_back
 
 
 def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:

@@ -4,7 +4,7 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Slug
 from aidm.engines.base import Attempt
-from aidm.engines.loner3e.world import TagKind
+from aidm.engines.loner3e.world import DIE_FACE, TagKind
 
 CHANGE_TAGS = "A character here gains tags, loses tags, or both."
 DRIVE = "A living character's goal, motive or nemesis changes."
@@ -77,3 +77,9 @@ class Roll(Attempt):
         default=None,
         description="Exact id of the character here that resists. Null when nothing fights back.",
     )
+
+    def faces(self) -> tuple[tuple[int, ...], tuple[int, ...]]:
+        """The chance faces and the risk faces, one die each unless the position doubles one."""
+        chance = (DIE_FACE, DIE_FACE) if self.position == "advantage" else (DIE_FACE,)
+        risk = (DIE_FACE, DIE_FACE) if self.position == "disadvantage" else (DIE_FACE,)
+        return chance, risk

@@ -12,9 +12,9 @@ from aidm.core.play import (
     PendingDecision,
     SpokenLine,
 )
-from aidm.core.prompt import Pairs
 
 type Chattiness = Literal["quiet", "normal", "chatty"]
+type Rows = tuple[tuple[str, str], ...]
 
 
 # Three row shapes, in order: entity (`icon_id`), labelled value (`detail`), or bare label.
@@ -44,7 +44,7 @@ class Subject(Frozen):
 class Companion(Subject):
     """A party member as the app sees them: what they show, and how readily they speak."""
 
-    sheet: Pairs
+    sheet: Rows
     chattiness: Chattiness
 
 
@@ -66,7 +66,7 @@ class NarratorView(Frozen):
     # The player first, then who travels with them.
     party: tuple[Slug, ...] = Field(min_length=1)
     # The player's own sheet: theirs to know, so the narrator may show it through detail.
-    sheet: Pairs
+    sheet: Rows
 
     @model_validator(mode="after")
     def _everyone_is_a_subject(self) -> Self:

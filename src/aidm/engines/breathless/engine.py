@@ -8,9 +8,9 @@ from aidm.core.entities import EngineId, Refusal, Slug, parse, slug
 from aidm.core.facts import Fact, roll, roll_pool
 from aidm.core.model import AnyCharacter
 from aidm.core.play import PendingDecision, PendingOption
-from aidm.core.prompt import Pairs, lines_of, sentence
+from aidm.core.prompt import Sections, lines_of, sentence
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import DiceLook, Look, Panel, PanelRow
+from aidm.core.views import DiceLook, Look, Panel, PanelRow, Rows
 from aidm.engines.base import PLAYER_ID, banded, luck_test
 from aidm.engines.breathless.tools import (
     CATCH_BREATH,
@@ -141,7 +141,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         )
         return BreathlessCharacter(id=slug(name, ()), engine=self.id, payload=player)
 
-    def preview_character(self, character: AnyCharacter) -> Pairs:
+    def preview_character(self, character: AnyCharacter) -> Rows:
         sheet = self.player_of(character).require_sheet()
         return (*sheet.rows(), ("Backpack", ", ".join(item.name for item in sheet.items.values())))
 
@@ -149,7 +149,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         include = {"locations", "complications", "missions"}
         return f"{AUTHORING}\n\n{self.pack_content(picks, include=include)}"
 
-    def sheet_sections(self, state: BreathlessGame) -> Pairs:
+    def sheet_sections(self, state: BreathlessGame) -> Sections:
         sheet = self.world_of(state).player.require_sheet()
         lines = [f"- {item.name}[{key}] — d{item.die}" for key, item in sheet.items.items()]
         if sheet.med_kit:
@@ -207,7 +207,9 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
     def roll(self, draft: BreathlessGame, args: Roll, rng: Random) -> list[Fact]:
         world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
-        pool = _pool(world, actor, args)
+        pool = self._pool(world, actor, args)
+        if args.stunt:
+            actor.require_sheet().spend_stunt(actor.name)
 
         faces = (pool.die,) if pool.helper is None else (pool.die, pool.helper[1])
         label = "+".join(f"d{face}" for face in faces)
@@ -241,7 +243,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
     def catch_breath(self, draft: BreathlessGame, args: Actor, rng: Random) -> list[Fact]:
         actor = self.world_of(draft).require_actor(args.actor_id)
         rolled = roll((12,), "a new complication", rng)
-        text = self._complications()[rolled.rolled[0] - 1]
+        text = self._complications()[rolled.face - 1]
         draft.note(
             f"Catching breath brings a new complication. The SRD's table suggests: {text} Bring "
             "it in through the story, or one that fits better."
@@ -259,7 +261,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         sheet = player.require_sheet()
         before = sheet.loot
         rolled = roll((before,), f"scavenging — {item}", rng)
-        face = rolled.rolled[0]
+        face = rolled.face
         sheet.step_loot()
 
         found: Die | None = None
@@ -285,22 +287,20 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
     def test_luck(self, _draft: BreathlessGame, args: TestLuck, rng: Random) -> list[Fact]:
         return luck_test(args.question, args.die, ("fail", "success-but", "success"), rng)
 
-
-def _pool(world: BreathlessWorld, actor: Survivor, args: Roll) -> Pool:
-    sheet = actor.require_sheet()
-    if args.skill is not None:
-        helper: tuple[Survivor, Die] | None = None
-        if args.helped_by is not None:
-            partner = world.require_actor(args.helped_by)
-            if partner is actor:
-                raise Refusal(f"{actor.name} cannot help their own roll")
-            helper = (partner, partner.require_sheet().worn[args.skill])
-        return Pool(die=sheet.worn[args.skill], label=args.skill, helper=helper)
-    if args.item_id is not None:
-        item = sheet.require(args.item_id, actor.name)
-        return Pool(die=item.die, label=item.name, helper=None)
-    sheet.spend_stunt(actor.name)
-    return Pool(die=STUNT_DIE, label="stunt", helper=None)
+    def _pool(self, world: BreathlessWorld, actor: Survivor, args: Roll) -> Pool:
+        sheet = actor.require_sheet()
+        if args.skill is not None:
+            helper: tuple[Survivor, Die] | None = None
+            if args.helped_by is not None:
+                partner = world.require_actor(args.helped_by)
+                if partner is actor:
+                    raise Refusal(f"{actor.name} cannot help their own roll")
+                helper = (partner, partner.require_sheet().worn[args.skill])
+            return Pool(die=sheet.worn[args.skill], label=args.skill, helper=helper)
+        if args.item_id is not None:
+            item = sheet.require(args.item_id, actor.name)
+            return Pool(die=item.die, label=item.name, helper=None)
+        return Pool(die=STUNT_DIE, label="stunt", helper=None)
 
 
 def _skill(name: str) -> Skill:

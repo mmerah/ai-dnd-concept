@@ -64,7 +64,7 @@ MARK_LABELS: dict[Marked, str] = {
 }
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Observed:
     phase: Role | None
     facts: int
@@ -75,11 +75,11 @@ class Observed:
     @classmethod
     def of(cls, session: GameService, view: PlayerView, history: Sequence[Exchange]) -> Self:
         return cls(
-            session.phase,
-            0 if session.turn is None else len(session.turn.facts),
-            len(history),
-            view.action,
-            view.over,
+            phase=session.phase,
+            facts=0 if session.turn is None else len(session.turn.facts),
+            exchanges=len(history),
+            action=view.action,
+            over=view.over,
         )
 
 
@@ -103,7 +103,7 @@ class GamePage:
         self.scene_card: ui.element
         self.restart_dialog: ui.dialog
         self.restart_label: ui.label
-        self.seen: Observed = Observed(None, 0, 0, None, None)
+        self.seen: Observed = Observed(phase=None, facts=0, exchanges=0, action=None, over=None)
         self.view: PlayerView
         self.history: tuple[Exchange, ...]
         self.step_started: float | None = None
@@ -140,8 +140,7 @@ class GamePage:
                 .style("gap: 0; min-width: 0")
             ):
                 self.scene_header()
-                # No padding class: NiceGUI already pads the scroll content, and twice would
-                # push every bubble off the measure the scene title and composer sit on.
+                # No padding class: NiceGUI already pads the scroll content; twice would misalign.
                 with ui.scroll_area().classes("w-full flex-grow game-transcript") as transcript:
                     self.chat()
                     self.live_turn()
@@ -156,7 +155,7 @@ class GamePage:
             ui.column().classes("game-panel game-drawer-panel").style("gap: 0"),
         ):
             with ui.row().classes("w-full items-center no-wrap").style("gap: 0"):
-                with ui.tabs(on_change=lambda e: self.mark_rail(str(e.value))).classes(
+                with ui.tabs(on_change=lambda event: self.mark_rail(str(event.value))).classes(
                     "flex-grow"
                 ) as self.tabs:
                     ui.tab(SCENE_TAB, label="Scene")
@@ -251,9 +250,7 @@ class GamePage:
                     ui.label(self.view.scene_title).classes("game-title game-scene-title")
                     ui.label(self.view.situation).classes("text-sm opacity-80 game-scene-situation")
                 if art is not None:
-                    # Whole frame, bled to the edges: a drawn scene puts what matters anywhere,
-                    # so it is faded into the header rather than cropped to fit a band;
-                    # only the phone strip crops it.
+                    # Whole frame, faded into the header, not cropped; only the phone strip crops.
                     ui.image(art).props("fit=contain").classes("game-scene-art")
             ui.icon("expand_more").classes("game-scene-chevron lt-sm")
 
@@ -280,13 +277,6 @@ class GamePage:
             if exchange.decision and exchange is not last:
                 ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
         if (proposed := standing_proposal(history, self.view, session.phase)) is not None:
-
-            async def accept() -> None:
-                if self.refuse_play():
-                    return
-                self.own_move = True
-                await self._run(lambda: self.session.play(Answer(text=proposed.proposal)))
-
             with (
                 ui.row()
                 .classes("game-card game-decision w-full items-center no-wrap")
@@ -296,7 +286,9 @@ class GamePage:
                 ui.label(f"{proposed.lines[0].speaker} proposes: {proposed.proposal}").classes(
                     "text-sm"
                 )
-                ui.button("Accept", on_click=accept).props("outline dense")
+                ui.button(
+                    "Accept", on_click=partial(self.play, Answer(text=proposed.proposal))
+                ).props("outline dense")
         # The newest clip only: every `ui.audio` registers a route, and a refresh rebuilds them all.
         if clip := session.newest_clip():
             ui.audio(clip, autoplay=clip == self.autoplay_clip)
@@ -342,19 +334,12 @@ class GamePage:
         pending = self.view.decision
         if pending is None:
             return
-
-        async def answer(option_id: str) -> None:
-            if self.refuse_play():
-                return
-            self.own_move = True
-            await self._run(lambda: self.session.play(Answer(option_id=option_id)))
-
         with ui.column().classes("game-card game-decision w-full").style("gap: 0.5rem"):
             with ui.row().classes("items-center no-wrap").style("gap: 0.4rem"):
                 ui.icon("pause_circle").classes("game-card-icon")
                 ui.label(pending.kind).classes("text-xs font-bold game-outcome")
                 ui.label("the game is waiting on you").classes("text-xs opacity-60")
-            decision_widget(pending.prompt, pending.options, answer)
+            decision_widget(pending.prompt, pending.options, self.answered)
             if pending.allows_text:
                 pointer = "Or answer" if pending.options else "Answer"
                 ui.label(f"{pointer} in your own words below.").classes("text-xs opacity-60")
@@ -366,8 +351,7 @@ class GamePage:
         player = view.player
         with ui.column().classes("w-full").style("gap: 0.75rem"):
             for index, panel in enumerate(view.panels):
-                # The sheet leads in both engine families, so it carries the portrait: one card
-                # for one character, rather than a name and a brief said twice down the drawer.
+                # The sheet leads in both engine families, so it alone carries the portrait.
                 sheet = index == 0
                 with section(panel.title, classes="game-portrait" if sheet else ""):
                     if sheet:
@@ -456,9 +440,12 @@ class GamePage:
         history = self.history
         newest_prompt = history[-1].words if history else ""
         if draft_spent((self.box.value or "").strip(), newest_prompt):
-            self.box.value = ""
-            # Quasar never saw the value change, so only an explicit push empties the composer.
-            self.box.run_method("updateValue")
+            self._clear_box()
+
+    def _clear_box(self) -> None:
+        self.box.value = ""
+        # Quasar never saw the value change, so only an explicit push empties the composer.
+        self.box.run_method("updateValue")
 
     def poll_media(self) -> None:
         session = self.session
@@ -473,38 +460,37 @@ class GamePage:
                 self.autoplay_clip = clip
             self.chat.refresh()
 
-    def refuse_play(self) -> bool:
-        refusal = self.runtime.play_refusal(self.session)
-        if refusal is None:
-            return False
-        ui.notify(refusal, type="warning", position="top")
-        return True
-
-    async def _send(self, playing: Callable[[str], Awaitable[None]]) -> None:
-        typed = (self.box.value or "").strip()
-        LOGGER.info("player submitted prompt: non_empty=%s busy=%s", bool(typed), self.session.busy)
-        if not typed or self.refuse_play():
-            return
+    async def play(self, answer: Answer) -> bool:
         self.own_move = True
-        if await self._run(lambda: playing(typed)):
-            self.box.value = ""
-            # Quasar never saw the value change, so only an explicit push empties the composer.
-            self.box.run_method("updateValue")
+        return await self._run(lambda: self.runtime.play(self.session, answer))
+
+    async def answered(self, option_id: str) -> None:
+        await self.play(Answer(option_id=option_id))
 
     async def submit(self) -> None:
-        await self._send(lambda typed: self.session.play(Answer(text=typed)))
+        typed = (self.box.value or "").strip()
+        LOGGER.info("player submitted prompt: non_empty=%s busy=%s", bool(typed), self.session.busy)
+        if not typed:
+            return
+        self.own_move = True
+        if await self._run(lambda: self.runtime.play(self.session, Answer(text=typed))):
+            self._clear_box()
 
     async def act(self) -> None:
         action = self.view.action
         if action is None:
             ui.notify("The way on has changed.", type="warning", position="top")
             return
-        await self._send(lambda typed: self.session.act(action.id, typed))
+        typed = (self.box.value or "").strip()
+        if not typed:
+            return
+        self.own_move = True
+        if await self._run(lambda: self.runtime.act(self.session, action.id, typed)):
+            self._clear_box()
 
     async def restart(self) -> None:
-        if self.refuse_play():
+        if not await self._run(partial(self.runtime.restart, self.session)):
             return
-        self.session.restart()
         self.poll_turn()
         await self._open()
 
@@ -524,11 +510,13 @@ class GamePage:
     def toggle_sound(self) -> None:
         self.dice.run_method("toggleSound")
 
-    def sound_state(self, e: GenericEventArguments) -> None:
-        self.sound.set_icon("volume_up" if e.args else "volume_off")
+    def sound_state(self, event: GenericEventArguments) -> None:
+        self.sound.set_icon("volume_up" if event.args else "volume_off")
 
-    def scrolled(self, e: ScrollEventArguments) -> None:
-        self.at_end = near_end(e.vertical_position, e.vertical_size, e.vertical_container_size)
+    def scrolled(self, event: ScrollEventArguments) -> None:
+        self.at_end = near_end(
+            event.vertical_position, event.vertical_size, event.vertical_container_size
+        )
         if self.at_end:
             self.new_activity.set_visibility(False)
 
@@ -536,12 +524,16 @@ class GamePage:
         self.transcript.scroll_to(percent=1.0)
         self.new_activity.set_visibility(False)
 
-    def dictated(self, e: GenericEventArguments) -> None:
-        self.box.value = insert_at_caret(self.box.value or "", e.args["text"], e.args["caret"])
+    def dictated(self, event: GenericEventArguments) -> None:
+        self.box.value = insert_at_caret(
+            self.box.value or "", event.args["text"], event.args["caret"]
+        )
         self.box.run_method("updateValue")
 
-    def dictation_failed(self, e: GenericEventArguments) -> None:
-        ui.notify(DICTATION_FAILURES.get(e.args, str(e.args)), type="warning", position="top")
+    def dictation_failed(self, event: GenericEventArguments) -> None:
+        ui.notify(
+            DICTATION_FAILURES.get(event.args, str(event.args)), type="warning", position="top"
+        )
 
     def _set_composer(self) -> None:
         session = self.session
@@ -592,10 +584,7 @@ class GamePage:
         return True
 
     async def _open(self) -> None:
-        # A second tab's timer must not run the page reset over an opening already in flight.
-        if not self.session.unopened():
-            return
-        await self._run(self.session.open)
+        await self._run(lambda: self.runtime.open(self.session))
 
 
 def game_page(runtime: Runtime, session: GameService) -> None:

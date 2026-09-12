@@ -14,19 +14,19 @@ EngineId = NewType("EngineId", str)
 
 
 class Frozen(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
 
 class Mutable(BaseModel):
     """State a resolution mutates in place; commit revalidates the whole draft once."""
 
-    model_config = ConfigDict(extra="forbid", revalidate_instances="always")
+    model_config = ConfigDict(extra="forbid", revalidate_instances="always", strict=True)
 
 
 class Loose(BaseModel):
     """A foreign shape read for a few of its keys."""
 
-    model_config = ConfigDict(extra="ignore", frozen=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True)
 
 
 class Echoed(BaseModel):
@@ -36,8 +36,7 @@ class Echoed(BaseModel):
 
 
 class Refusal(ValueError):
-    """A message a role or the player is meant to read. Any other exception is a bug. A
-    `ValueError`, so a check helper may raise it inside a validator too."""
+    """A message a role or the player is meant to read; any other exception is a bug."""
 
 
 def content_id(value: str) -> Slug:
@@ -61,9 +60,21 @@ def parse[T: BaseModel](model: type[T], value: object) -> T:
     try:
         return model.model_validate(value)
     except ValidationError as broken:
-        first = broken.errors()[0]
-        where = ".".join(str(part) for part in first["loc"])
-        raise Refusal(f"{where}: {first['msg']}" if where else first["msg"]) from broken
+        raise _refused(broken) from broken
+
+
+def parse_json[T: BaseModel](model: type[T], raw: str | bytes) -> T:
+    """Strict mode reaches a tuple field only from JSON, so text is validated as text."""
+    try:
+        return model.model_validate_json(raw)
+    except ValidationError as broken:
+        raise _refused(broken) from broken
+
+
+def _refused(broken: ValidationError) -> Refusal:
+    first = broken.errors()[0]
+    where = ".".join(str(part) for part in first["loc"])
+    return Refusal(f"{where}: {first['msg']}" if where else first["msg"])
 
 
 def _unused(base: str, taken: Iterable[str]) -> str:

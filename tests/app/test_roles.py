@@ -1,8 +1,7 @@
 from support.game import initialized, with_entity
 
 from aidm.app.roles import render_interjection
-from aidm.core.prompt import Pairs
-from aidm.core.views import Companion, NarratorView, Subject
+from aidm.core.views import Companion, NarratorView, Rows, Subject
 from aidm.engines.loner3e.world import Loner3eCast
 
 
@@ -19,7 +18,7 @@ def _view(subject: Subject) -> NarratorView:
     )
 
 
-def _companion(subject: Subject, sheet: Pairs) -> Companion:
+def _companion(subject: Subject, sheet: Rows) -> Companion:
     return Companion(
         id=subject.id, label=subject.label, detail=subject.detail, sheet=sheet, chattiness="normal"
     )

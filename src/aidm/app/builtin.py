@@ -9,7 +9,7 @@ from pydantic import JsonValue
 from aidm.app.providers import post_bearer
 from aidm.app.spawn import RunResult, Tools, final_message
 from aidm.config import ProviderConfig, Role, RoleConfig
-from aidm.core.entities import Echoed, Loose, Refusal, parse
+from aidm.core.entities import Echoed, Loose, Refusal, parse_json
 from aidm.core.io import decode
 from aidm.core.model import AnyGame
 from aidm.core.tools import MasterTool, schema_of
@@ -114,7 +114,7 @@ async def _complete(
     if tools:
         body["tools"] = tools
     raw = await post_bearer(provider, "/chat/completions", body, config.timeout)
-    reply = parse(_Completion, decode(raw.decode(errors="replace")))
+    reply = parse_json(_Completion, raw)
     if reply.error is not None:
         raise Refusal(f"the provider answered an error: {reply.error.message}")
     if not reply.choices:

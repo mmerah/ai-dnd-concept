@@ -1,5 +1,5 @@
 import json
-from asyncio import CancelledError, Event, sleep
+from asyncio import CancelledError, Event, create_task, sleep
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
@@ -13,13 +13,14 @@ from support.table import (
     offline_settings,
     open_table,
     play_turn,
+    scenario_for,
     the_way_on,
     tool_call,
     updated,
 )
 
 from aidm.app.roles import REQUESTED, Roles
-from aidm.app.runtime import GameService, Runtime
+from aidm.app.runtime import GameService, LaunchTarget, Runtime
 from aidm.app.spawn import RunResult, Tools
 from aidm.config import Role
 from aidm.core.entities import Refusal
@@ -89,7 +90,9 @@ def test_resume_refuses_a_save_that_is_not_this_game(
 
 
 def test_one_open_game_per_slug(tmp_path: Path) -> None:
-    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), ScriptedSpawner())
+    runtime = Runtime.start(
+        updated(offline_settings(), saves_dir=tmp_path), lambda _: ScriptedSpawner()
+    )
     opened = runtime.session(TARGET)
 
     assert runtime.session(TARGET) is opened
@@ -99,13 +102,13 @@ async def test_the_opening_is_narrated_once_and_costs_a_turn(tmp_path: Path) -> 
     table = open_game(tmp_path)
     table.spawner.answers["narrator"] = [narrated("The abbot's study holds its breath.")]
 
-    await table.service.open()
+    await table.runtime.open(table.service)
 
     history = table.service.state.exchanges()
     assert [exchange.mark for exchange in history] == ["opening"]
     assert len(history) == 1
 
-    await table.service.open()
+    await table.runtime.open(table.service)
     assert len(table.service.state.exchanges()) == 1
 
 
@@ -113,7 +116,7 @@ async def test_an_opening_the_narrator_will_not_write_commits_nothing(tmp_path: 
     """The premise still stands in for it; a page reload asks again."""
     table = open_game(tmp_path)
 
-    await table.service.open()
+    await table.runtime.open(table.service)
 
     assert table.service.state.exchanges() == ()
     assert not table.service.busy
@@ -127,6 +130,16 @@ async def test_a_failed_commit_still_frees_the_game(tmp_path: Path) -> None:
         _ = await play_turn(table, "I take the map.")
 
     assert (table.service.busy, table.service.turn) == (False, None)
+
+
+async def test_a_turn_whose_narrator_fails_leaves_the_rng_alone(tmp_path: Path) -> None:
+    table = open_game(tmp_path)
+    before = table.service.rng.getstate()
+
+    with pytest.raises(Refusal):
+        await table.runtime.play(table.service, Answer(text="I wait."))
+
+    assert table.service.rng.getstate() == before
 
 
 def _scene(**changes: object) -> str:
@@ -337,7 +350,8 @@ def _party_of_one(service: GameService) -> Loner3eCast:
 
 
 async def test_a_member_who_passes_the_d10_speaks_after_the_turn(tmp_path: Path) -> None:
-    table = open_game(tmp_path, rng=Random(1))
+    table = open_game(tmp_path)
+    table.service.chatter = Random(1)
     member = _party_of_one(table.service)
     table.spawner.answers["narrator"] = [
         json.dumps(
@@ -360,7 +374,8 @@ async def test_a_member_who_passes_the_d10_speaks_after_the_turn(tmp_path: Path)
 
 
 async def test_nobody_passing_the_d10_spawns_no_narrator(tmp_path: Path) -> None:
-    table = open_game(tmp_path, rng=Random(0))
+    table = open_game(tmp_path)
+    table.service.chatter = Random(0)
     _party_of_one(table.service)
 
     await table.service.interject()
@@ -370,7 +385,8 @@ async def test_nobody_passing_the_d10_spawns_no_narrator(tmp_path: Path) -> None
 
 
 async def test_a_turn_that_lands_first_drops_the_interjection(tmp_path: Path) -> None:
-    table = open_game(tmp_path, rng=Random(1))
+    table = open_game(tmp_path)
+    table.service.chatter = Random(1)
     member = _party_of_one(table.service)
     table.spawner.answers["narrator"] = [narrated("Wait.", member.id)]
     table.service.roles = Roles(_TurnLandsFirst(table.service, table.spawner))
@@ -381,7 +397,8 @@ async def test_a_turn_that_lands_first_drops_the_interjection(tmp_path: Path) ->
 
 
 async def test_an_answer_with_no_lines_records_nothing(tmp_path: Path) -> None:
-    table = open_game(tmp_path, rng=Random(1))
+    table = open_game(tmp_path)
+    table.service.chatter = Random(1)
     _party_of_one(table.service)
     before = table.service.state.exchanges()
     table.spawner.answers["narrator"] = [json.dumps({"lines": []})]
@@ -402,7 +419,8 @@ async def test_interjections_disabled_starts_no_background_task(tmp_path: Path) 
 
 
 async def test_a_new_turn_silences_the_member_still_speaking(tmp_path: Path) -> None:
-    table = open_game(tmp_path, rng=Random(1))
+    table = open_game(tmp_path)
+    table.service.chatter = Random(1)
     _party_of_one(table.service)
     stalled = _StillSpeaking(table.spawner)
     table.service.roles = Roles(stalled)
@@ -422,9 +440,9 @@ async def test_reload_settings_cancels_an_evicted_sessions_background_task(
     tmp_path: Path,
 ) -> None:
     spawner = ScriptedSpawner()
-    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), spawner)
+    runtime = Runtime.start(updated(offline_settings(), saves_dir=tmp_path), lambda _: spawner)
     opened = runtime.session(TARGET)
-    opened.rng = Random(1)
+    opened.chatter = Random(1)
     _party_of_one(opened)
     opened.roles = Roles(_StillSpeaking(spawner))
     spawner.answers["narrator"] = [narrated("Nothing stirs.")]
@@ -433,6 +451,102 @@ async def test_reload_settings_cancels_an_evicted_sessions_background_task(
     await sleep(0)
     assert opened.speaking
 
-    runtime.reload_settings()
+    await runtime.reload_settings()
 
     assert not opened.speaking
+
+
+async def test_a_page_holding_an_evicted_session_is_refused(tmp_path: Path) -> None:
+    """The reload drops every session, and a tab that kept one would open a second writer."""
+    runtime = Runtime.start(
+        updated(offline_settings(), saves_dir=tmp_path), lambda _: ScriptedSpawner()
+    )
+    game = runtime.session(TARGET)
+
+    await runtime.reload_settings()
+
+    with pytest.raises(Refusal, match="The settings changed. Reload this page before you play on."):
+        await runtime.play(game, Answer(text="I wait."))
+
+
+async def test_a_reload_under_a_turn_in_flight_is_refused(tmp_path: Path) -> None:
+    runtime = Runtime.start(
+        updated(offline_settings(), saves_dir=tmp_path), lambda _: ScriptedSpawner()
+    )
+    game = runtime.session(TARGET)
+
+    async with runtime.admit(game):
+        with pytest.raises(Refusal, match="A turn is in flight in 'whispering-vault--kael'."):
+            await runtime.reload_settings()
+
+
+@dataclass(slots=True)
+class _Blocking:
+    """Holds the master role until released, so two sessions can race for the one admission."""
+
+    inner: ScriptedSpawner
+    gate: Event
+
+    async def run(
+        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+    ) -> RunResult:
+        if role == "master":
+            await self.gate.wait()
+        return await self.inner.run(role, prompt, session, tools)
+
+
+async def test_two_concurrent_plays_on_different_sessions_cannot_both_open_a_turn(
+    tmp_path: Path,
+) -> None:
+    spawner = ScriptedSpawner()
+    gate = Event()
+    runtime = Runtime.start(
+        updated(offline_settings(), saves_dir=tmp_path), lambda _: _Blocking(spawner, gate)
+    )
+    first = runtime.session(TARGET)
+    second = runtime.session(
+        LaunchTarget(scenario_id=scenario_for(BREATHLESS), character_id="kael")
+    )
+    spawner.turns.append(lambda: None)
+    spawner.answers["narrator"] = [narrated("You wait.")]
+
+    first_play = create_task(runtime.play(first, Answer(text="I wait.")))
+    await sleep(0)
+
+    with pytest.raises(Refusal, match="A turn is in flight in 'whispering-vault--kael'."):
+        await runtime.play(second, Answer(text="I wait."))
+
+    gate.set()
+    await first_play
+
+    assert len(first.state.exchanges()) == 1
+
+
+async def test_a_failing_background_task_is_logged_and_close_leaves_no_live_task(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    game = session(tmp_path)
+
+    async def _boom() -> None:
+        raise ValueError("boom")
+
+    async def _hang() -> None:
+        await Event().wait()
+
+    game._retain(create_task(_boom()))  # pyright: ignore[reportPrivateUsage]
+    game._retain(create_task(_hang()))  # pyright: ignore[reportPrivateUsage]
+    await sleep(0)
+
+    await game.close()
+
+    assert game._background == set()  # pyright: ignore[reportPrivateUsage]
+    assert "background task failed" in caplog.text
+
+
+async def test_reload_settings_keeps_the_injected_spawner(tmp_path: Path) -> None:
+    spawner = ScriptedSpawner()
+    runtime = Runtime.start(updated(offline_settings(), saves_dir=tmp_path), lambda _: spawner)
+
+    await runtime.reload_settings()
+
+    assert runtime.spawner is spawner

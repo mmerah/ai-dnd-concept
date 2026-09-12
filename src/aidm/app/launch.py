@@ -5,7 +5,6 @@ from typing import Self
 
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.io import FileStore, Library, decode, routed
-from aidm.core.model import AnyScenario
 from aidm.core.views import Look
 from aidm.engines.seam import AnyEngine
 
@@ -65,12 +64,9 @@ class LauncherCatalog:
 
     @classmethod
     def read(
-        cls,
-        library: Library,
-        store: FileStore,
-        engines: Mapping[EngineId, AnyEngine],
-        scenario_models: Mapping[EngineId, type[AnyScenario]],
+        cls, library: Library, store: FileStore, engines: Mapping[EngineId, AnyEngine]
     ) -> Self:
+        scenario_models = {engine_id: engine.scenario for engine_id, engine in engines.items()}
         scenarios = tuple(
             CatalogEntry(
                 id=name,
@@ -114,9 +110,8 @@ def _save_option(
         raw = store.read(slug)
         if raw is None:
             return None
-        value = decode(raw)
-        engine = routed(value, engines)
-        state = engine.restore(value)
+        engine = routed(decode(raw), engines)
+        state = engine.restore(raw)
     except Refusal as unreadable:
         # Skip rather than raise: one save the app could not resume must not hide the rest.
         LOGGER.warning("skipping save %r: %s", slug, unreadable)

@@ -22,22 +22,10 @@ from art import PlaceholderIllustrator
 from aidm.app import runtime as runtime_module
 from aidm.app.runtime import Runtime
 from aidm.config import MediaConfig, Settings
-from aidm.core.io import FileStore
 from aidm.ui import theme
 from aidm.ui.app import _register_pages  # pyright: ignore[reportPrivateUsage]
 
 REPOSITORY_ROOT = Path(__file__).parents[1]
-
-
-class QaRuntime(Runtime):
-    """Keeps the scripted roles across a settings reload, which rebuilds the real spawner."""
-
-    stubbed: ScriptedAgents | None = None
-
-    def reload_settings(self) -> None:
-        super().reload_settings()
-        if self.stubbed is not None:
-            self.spawner = self.stubbed
 
 
 def main() -> None:
@@ -69,8 +57,8 @@ def main() -> None:
         media=MediaConfig(enabled=True, provider="local") if parsed.art else MediaConfig(),
     )
     agents = ScriptedAgents(delay=parsed.delay)
-    runtime = QaRuntime(settings, agents)
-    runtime.stubbed = agents
+    # `lambda _: agents` keeps the scripted roles across a reload, which rebuilds the spawner.
+    runtime = Runtime.start(settings, lambda _: agents)
     agents.runtime = runtime
     _register_pages(runtime)
 
@@ -103,24 +91,7 @@ def main() -> None:
 
 def _draw_offline() -> None:
     """The real illustrator, with the provider call swapped for a gradient."""
-
-    def open_placeholder(
-        settings: Settings,
-        store: FileStore,
-        slug: str,
-        *,
-        style: str,
-        icon_dirs: tuple[Path, ...],
-    ) -> PlaceholderIllustrator:
-        return PlaceholderIllustrator(
-            config=settings.media,
-            provider=settings.providers.for_name(settings.media.provider),
-            saves=store.media_dir(slug),
-            icon_dirs=icon_dirs,
-            style=style,
-        )
-
-    runtime_module.open_illustrator = open_placeholder  # pyright: ignore[reportAttributeAccessIssue]
+    runtime_module.Illustrator = PlaceholderIllustrator  # pyright: ignore[reportAttributeAccessIssue]
 
 
 if __name__ in {"__main__", "__mp_main__"}:

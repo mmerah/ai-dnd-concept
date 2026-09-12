@@ -13,7 +13,7 @@ from aidm.core.facts import NOTHING, Fact, traced
 from aidm.core.io import read_prompt
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, SpokenLine
-from aidm.core.prompt import Pairs, lines_of, render_history, sections
+from aidm.core.prompt import Sections, lines_of, render_history, sections
 from aidm.core.tools import MasterTool, Play
 from aidm.engines.seam import AnyEngine
 
@@ -42,7 +42,7 @@ class Turn:
 
     @classmethod
     def begin(cls, engine: AnyEngine, state: AnyGame, answer: Answer, rng: Random) -> Self:
-        turn = cls(engine=engine, draft=state.draft(), rng=rng)
+        turn = cls(engine=engine, draft=state.draft(), rng=deepcopy(rng))
         turn._consume(answer)
         # Notes are read once; a note a tool writes after this steers the next turn.
         turn.notes, turn.draft.notes = turn.draft.notes, []
@@ -91,6 +91,9 @@ class Turn:
     def narrates(self) -> bool:
         """A hand-over that moved no fiction gets no prose."""
         return self.told() or not self.handed_over()
+
+    def landed(self) -> bool:
+        return bool(self.facts) or self.draft.pending is not None
 
     def picture(self) -> str:
         return render_master(
@@ -143,7 +146,7 @@ class Turn:
 
 def render_master(
     instructions: str,
-    engine_sections: Pairs,
+    engine_sections: Sections,
     state: AnyGame,
     action: str,
     *,

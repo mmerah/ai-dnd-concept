@@ -6,7 +6,7 @@ from pydantic import Field
 from aidm.core.entities import Frozen, Refusal, Slug, check_unique, slug
 from aidm.core.facts import DiceEvent, Fact
 from aidm.core.model import Character, Game, Scenario
-from aidm.core.prompt import Pairs
+from aidm.core.views import Rows
 from aidm.engines.base import Item, ItemSheet, Sheeted
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
@@ -76,7 +76,7 @@ class CrewSheet(ItemSheet[Gear]):
     def die(self, skill: str) -> int:
         return self.skills.get(skill, DEFAULT_DIE)
 
-    def rows(self) -> Pairs:
+    def rows(self) -> Rows:
         skills = ", ".join(f"{skill} d{die}" for skill, die in self.skills.items())
         return tuple(
             (label, value)
@@ -172,9 +172,6 @@ class Crewmate(Sheeted[CrewSheet]):
             )
         ]
 
-    def rows(self) -> Pairs:
-        return self.sheet.rows() if self.sheet is not None else ()
-
     def carried(self) -> str:
         if self.sheet is None:
             return ""
@@ -193,13 +190,14 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         }
     )
 
-    def sheet_rows(self) -> Pairs:
+    def sheet_rows(self) -> Rows:
         """The narrator and the page read the kit here; the master has its GEAR section."""
         gear = ", ".join(
             item.name + (f" ({notes})" if (notes := item.notes()) else "")
             for item in self.player.require_sheet().items.values()
         )
-        return (*self.player.rows(), *((("Gear", gear),) if gear else ()))
+        rows = self.player.rows()
+        return (*rows, ("Gear", gear)) if gear else rows
 
     def sheeted_members(self) -> list[Crewmate]:
         return [member for member in self.members() if member.hired]

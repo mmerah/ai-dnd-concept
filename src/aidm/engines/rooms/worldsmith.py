@@ -2,7 +2,7 @@ from collections.abc import Sequence
 
 from aidm.core.entities import Refusal
 from aidm.core.play import Chapter
-from aidm.core.prompt import Pairs, render_history
+from aidm.core.prompt import Sections, render_history
 from aidm.engines.base import Person
 from aidm.engines.rooms.world import Dungeon, Dweller, MapDraft, RoomWorld
 
@@ -11,7 +11,7 @@ MAP_ASK = "Write the opening map."
 
 def map_sections[N: Dweller, P: Person](
     world: RoomWorld[N, P] | None, log: Sequence[Chapter]
-) -> Pairs:
+) -> Sections:
     if world is None:
         return (
             ("MAP SO FAR", "(no map yet)"),

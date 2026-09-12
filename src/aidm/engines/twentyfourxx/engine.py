@@ -1,4 +1,3 @@
-from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,9 +8,9 @@ from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import Fact, roll, roll_pool
 from aidm.core.model import AnyCharacter, Check
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
-from aidm.core.prompt import Pairs, lines_of, sentence
+from aidm.core.prompt import Sections, lines_of, section_if, sentence
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import DiceLook, Look, Panel, PanelRow
+from aidm.core.views import DiceLook, Look, Panel, PanelRow, Rows
 from aidm.engines.base import PLAYER_ID, Kill, banded, luck_test
 from aidm.engines.hiring import DROP_ITEM, DropItem, Hiring, hiring
 from aidm.engines.scenes.engine import SceneEngine
@@ -192,12 +191,11 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             body = chosen_option(origin.choice, picked(picks, "body"))
             traits = (*traits, body.label)
 
-        kits = (
-            pack.starting_kit
-            + specialty.kit
-            + ((weapon,) if weapon is not None else ())
-            + ((body.kit,) if body is not None and body.kit is not None else ())
-        )
+        kits = [*pack.starting_kit, *specialty.kit]
+        if weapon is not None:
+            kits.append(weapon)
+        if body is not None and body.kit is not None:
+            kits.append(body.kit)
         player = Crewmate(
             id=PLAYER_ID,
             name=name,
@@ -213,7 +211,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         )
         return TwentyfourxxCharacter(id=slug(name, ()), engine=self.id, payload=player)
 
-    def preview_character(self, character: AnyCharacter) -> Pairs:
+    def preview_character(self, character: AnyCharacter) -> Rows:
         sheet = self.player_of(character).require_sheet()
         return (*sheet.rows(), ("Gear", ", ".join(item.name for item in sheet.items.values())))
 
@@ -221,12 +219,12 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         """This pack holds creation tables, not setting vocabulary: the preamble alone suffices."""
         return AUTHORING
 
-    def sheet_sections(self, state: TwentyfourxxGame) -> Pairs:
+    def sheet_sections(self, state: TwentyfourxxGame) -> Sections:
         world = self.world_of(state)
         job = world.job
         return (
             ("GEAR", _item_lines(world.player.require_sheet().items)),
-            *((("THE JOB", job),) if job else ()),
+            *section_if("THE JOB", job),
             ("THE SHIP", _item_lines(world.ship)),
         )
 
@@ -420,7 +418,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         if world.job:
             raise Refusal(f"a job is open: {world.job}")
         rolled = roll((6,), where, rng)
-        face = rolled.rolled[0]
+        face = rolled.face
         result = banded(
             face,
             "nothing; the player owes somebody to get in on a job",
@@ -434,33 +432,13 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         world = self.world_of(draft)
         if not world.job:
             raise Refusal("no job is open to finish")
-        expected = [None, *(member.id for member in world.sheeted_members())]
-        got = [raise_.actor_id for raise_ in raises]
-        expected_count, got_count = Counter(expected), Counter(got)
-        if got_count != expected_count:
-
-            def named(actor_id: Slug | None) -> str:
-                return "the player" if actor_id is None else actor_id
-
-            missing = sorted(named(actor_id) for actor_id in set(expected) - set(got))
-            extra = sorted(named(actor_id) for actor_id in set(got) - set(expected))
-            repeated = sorted(
-                named(actor_id)
-                for actor_id, count in got_count.items()
-                if count > 1 and actor_id in expected_count
-            )
-            parts = [
-                part
-                for part in (
-                    f"missing {', '.join(missing)}" if missing else "",
-                    f"extra {', '.join(extra)}" if extra else "",
-                    f"repeated {', '.join(repeated)}" if repeated else "",
-                )
-                if part
-            ]
+        owed = [None, *(member.id for member in world.sheeted_members())]
+        expected = sorted(_named(actor_id) for actor_id in owed)
+        given = sorted(_named(raise_.actor_id) for raise_ in raises)
+        if given != expected:
             raise Refusal(
                 "`job` `finish` names the player and every living hired member once each: "
-                + "; ".join(parts)
+                f"expected {', '.join(expected)}; given {', '.join(given) or '(nobody)'}"
             )
 
         facts: list[Fact] = []
@@ -471,7 +449,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
 
             rolled = roll((6,), f"credits earned by {actor.name}", rng)
             facts.append(rolled.fact)
-            facts.extend(actor.earn(rolled.rolled[0], rolled.event))
+            facts.extend(actor.earn(rolled.face, rolled.event))
         world.close_job()
         return facts
 
@@ -491,3 +469,7 @@ def _item_lines(items: Mapping[Slug, Gear]) -> str:
         f"- {item.name}[{key}]" + (f" — {detail}" if (detail := item.notes()) else "")
         for key, item in items.items()
     )
+
+
+def _named(actor_id: Slug | None) -> str:
+    return "the player" if actor_id is None else actor_id

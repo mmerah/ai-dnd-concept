@@ -6,10 +6,9 @@ from aidm.core.creation import CreationStep, Picks, check_picks, picked
 from aidm.core.entities import EngineId, Refusal, slug
 from aidm.core.facts import Fact, roll
 from aidm.core.model import AnyCharacter
-from aidm.core.play import DecisionOption, PendingDecision
-from aidm.core.prompt import Pairs
+from aidm.core.play import DecisionOption
 from aidm.core.tools import MasterTool, NoArgs, master_tool
-from aidm.core.views import DiceLook, Look
+from aidm.core.views import DiceLook, Look, Rows
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.hiring import Hiring, hiring
 from aidm.engines.rooms.engine import RoomEngine
@@ -20,14 +19,12 @@ from aidm.engines.tunnelgoons.tools import (
     ROLL,
     LevelUp,
     Roll,
-    level_options,
 )
 from aidm.engines.tunnelgoons.world import (
     ABILITIES,
     ABILITY_POINTS,
     STARTING_ITEMS,
     Ability,
-    Adventurer,
     Goon,
     GoonSheet,
     Npc,
@@ -113,8 +110,10 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
             for ability in ABILITIES
         )
         item_steps = tuple(
-            CreationStep(id=f"item-{n}", label=f"Item {n}", hint=", ".join(STARTING_ITEM_LIST))
-            for n in range(1, STARTING_ITEMS + 1)
+            CreationStep(
+                id=f"item-{number}", label=f"Item {number}", hint=", ".join(STARTING_ITEM_LIST)
+            )
+            for number in range(1, STARTING_ITEMS + 1)
         )
         return (*ability_steps, *item_steps)
 
@@ -131,11 +130,11 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
             brief=brief,
             known=True,
             sheet=GoonSheet(abilities=abilities),
-            kit=tuple(picked(picks, f"item-{n}") for n in range(1, STARTING_ITEMS + 1)),
+            kit=tuple(picked(picks, f"item-{number}") for number in range(1, STARTING_ITEMS + 1)),
         )
         return TunnelGoonsCharacter(id=slug(name, ()), engine=self.id, payload=sheet)
 
-    def preview_character(self, character: AnyCharacter) -> Pairs:
+    def preview_character(self, character: AnyCharacter) -> Rows:
         sheet = self.player_of(character)
         return (*sheet.rows(), ("Items", ", ".join(sheet.kit)))
 
@@ -210,17 +209,10 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         actor = world.require_actor(args.actor_id)
         # Both or neither, by `LevelUp`; `or` narrows both for the fall-through.
         if args.ability is None or args.boost is None:
-            draft.pending = _level_decision(actor)
+            draft.pending = actor.level_decision()
             return []
         facts = actor.level(args.ability, args.boost)
         following = world.next_to_level(actor)
         if following is not None:
-            draft.pending = _level_decision(following)
+            draft.pending = following.level_decision()
         return facts
-
-
-def _level_decision(actor: Adventurer) -> PendingDecision:
-    prompt = f"Level up: {actor.name} — raise one ability by 1, and Health or Inventory by 1."
-    return PendingDecision(
-        kind="level-up", prompt=prompt, options=level_options(actor.id), allows_text=False
-    )

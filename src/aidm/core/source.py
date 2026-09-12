@@ -27,7 +27,7 @@ def whole_text(path: Path, max_chars: int) -> str:
             if path.suffix.lower() == ".pdf"
             else (path.read_text(encoding="utf-8"),)
         )
-    except (UnicodeDecodeError, PyPdfError) as broken:
+    except (OSError, UnicodeDecodeError, PyPdfError) as broken:
         raise Refusal(f"{path.name} cannot be read: {broken}") from broken
     text = "\n\n".join(passage for page in pages for passage in _passages(page))
     if not text:

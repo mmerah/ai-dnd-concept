@@ -7,7 +7,7 @@ from support.table import ENGINES_BUILT, LONER3E, SCENARIO_MODELS, updated
 
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.facts import Fact
-from aidm.core.io import ENCODING, FileStore, Library, decode, write_text
+from aidm.core.io import ENCODING, WORLD_FILE, FileStore, Library, publish, write_text
 from aidm.core.play import Exchange
 
 MIRROR = EngineId("mirror")
@@ -36,7 +36,7 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
     reloaded = store.read("roundtrip")
 
     assert reloaded is not None
-    assert engine.restore(decode(reloaded)).exchanges() == saved.exchanges()
+    assert engine.restore(reloaded).exchanges() == saved.exchanges()
 
 
 @pytest.mark.parametrize("slug", ("../escape", "/absolute", "bad slug", ""))
@@ -103,7 +103,7 @@ def test_read_scenarios_skips_a_world_that_is_not_utf8(
         read = [slug for slug, _ in library.read_scenarios(SCENARIO_MODELS)]
 
     assert read == ["good"]
-    assert "is not utf-8" in caplog.text
+    assert "cannot be read" in caplog.text
 
 
 def test_a_character_written_for_two_engines_is_read_once_for_each(tmp_path: Path) -> None:
@@ -145,3 +145,42 @@ def test_a_save_that_cannot_be_written_refuses(tmp_path: Path) -> None:
 
     with pytest.raises(Refusal, match="cannot be written"):
         write_text(blocking / "game.json", "{}")
+
+
+def test_a_write_that_fails_midway_leaves_the_old_file_and_no_staged_file(tmp_path: Path) -> None:
+    path = tmp_path / "game.json"
+    path.write_text("old", encoding=ENCODING)
+
+    def _broken(staged: Path) -> None:
+        staged.write_text("partial", encoding=ENCODING)
+        raise OSError("disk full")
+
+    with pytest.raises(Refusal, match="cannot be written"):
+        publish(path, _broken)
+
+    assert path.read_text(encoding=ENCODING) == "old"
+    assert list(tmp_path.iterdir()) == [path]
+
+
+def test_read_scenarios_skips_a_scenario_whose_world_is_unreadable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    library = Library(tmp_path, tmp_path)
+    library.write_scenario("good", scenario())
+    broken = tmp_path / "broken" / WORLD_FILE
+    broken.parent.mkdir()
+    broken.write_text("{}", encoding=ENCODING)
+    original_read_text = Path.read_text
+
+    def _read_text(self: Path, encoding: str | None = None, errors: str | None = None) -> str:
+        if self == broken:
+            raise OSError("permission denied")
+        return original_read_text(self, encoding=encoding, errors=errors)
+
+    monkeypatch.setattr(Path, "read_text", _read_text)
+
+    with caplog.at_level(logging.WARNING, logger="aidm.core.io"):
+        read = [slug for slug, _ in library.read_scenarios(SCENARIO_MODELS)]
+
+    assert read == ["good"]
+    assert "cannot be read" in caplog.text

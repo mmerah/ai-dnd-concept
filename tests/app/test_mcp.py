@@ -72,7 +72,7 @@ async def rpc(client: AsyncClient, method: str, params: dict[str, object]) -> Re
 
 async def test_master_tools_over_the_mcp_endpoint(tmp_path: Path) -> None:
     master = HttpMaster()
-    runtime = Runtime(offline_settings(tmp_path), master)
+    runtime = Runtime.start(offline_settings(tmp_path), lambda _: master)
     asgi, manager = endpoint(runtime)
     lifespan = MountedLifespan(manager)
     await lifespan.start()
@@ -93,7 +93,7 @@ async def test_master_tools_over_the_mcp_endpoint(tmp_path: Path) -> None:
             service = runtime.session(
                 LaunchTarget(scenario_id="whispering-vault", character_id="kael")
             )
-            await service.play(Answer(text="I search the vault."))
+            await runtime.play(service, Answer(text="I search the vault."))
             assert "roll" in master.tools_seen
             assert "reveal" in master.tools_seen
             change_result = master.change_result

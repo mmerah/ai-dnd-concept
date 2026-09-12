@@ -48,3 +48,10 @@ def test_whole_text_refuses_a_pdf_that_is_not_readable(tmp_path: Path) -> None:
     broken.write_bytes(b"%PDF-1.4 broken")
     with pytest.raises(Refusal, match="cannot be read"):
         _ = whole_text(broken, MAX_CHARS)
+
+
+def test_whole_text_refuses_a_document_it_cannot_open_naming_it(tmp_path: Path) -> None:
+    unreadable = tmp_path / "unreadable.md"
+    unreadable.mkdir()
+    with pytest.raises(Refusal, match="unreadable.md cannot be read"):
+        _ = whole_text(unreadable, MAX_CHARS)

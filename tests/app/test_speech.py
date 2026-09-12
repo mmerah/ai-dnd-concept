@@ -8,14 +8,7 @@ from support.game import TARGET
 from support.game import session as loner_session
 from support.table import drain, offline_settings
 
-from aidm.app.speech import (
-    Reader,
-    clip_key,
-    open_reader,
-    requests_of,
-    speech_body,
-    voice_of,
-)
+from aidm.app.speech import Reader, clip_key, requests_of, speech_body, voice_of
 from aidm.config import ProviderConfig, SpeechConfig
 from aidm.core.io import FileStore
 from aidm.core.play import Exchange, SpokenLine
@@ -123,20 +116,19 @@ async def test_read_leaves_no_file_when_generation_raises(
     assert reader.clip(exchange) is None
 
 
-def test_open_reader_is_none_when_off_and_takes_the_scenarios_voice(tmp_path: Path) -> None:
+def test_reader_open_is_none_when_off_and_takes_the_scenarios_voice(tmp_path: Path) -> None:
     store = FileStore(tmp_path)
     on = offline_settings(tmp_path).model_copy(update={"speech": SpeechConfig(enabled=True)})
-    reader = open_reader(on, store, TARGET.slug, voice="Puck")
+    reader = Reader.open(on, store, TARGET.slug, voice="Puck")
     assert reader is not None
     assert reader.voice == "Puck"
 
-    reader = open_reader(on, store, TARGET.slug, voice=on.speech.voice)
+    reader = Reader.open(on, store, TARGET.slug, voice=on.speech.voice)
     assert reader is not None
     assert reader.voice == on.speech.voice
 
-    assert (
-        open_reader(offline_settings(tmp_path), store, TARGET.slug, voice=on.speech.voice) is None
-    )
+    off = offline_settings(tmp_path)
+    assert Reader.open(off, store, TARGET.slug, voice=on.speech.voice) is None
 
 
 async def test_speak_reads_and_caches_the_newest_committed_exchange(

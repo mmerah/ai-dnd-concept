@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field, model_validator
 
 from aidm.core.entities import Frozen, Mutable, Refusal, Slug, check_unique
 from aidm.core.facts import DiceEvent, Fact, roll
-from aidm.core.prompt import Pairs, sections
+from aidm.core.prompt import Sections, sections
 from aidm.core.tools import schema_text
-from aidm.core.views import Chattiness, Panel, PanelRow, Subject
+from aidm.core.views import Chattiness, Panel, PanelRow, Rows, Subject
 
 PLAYER_ID: Slug = "player"
 REVEAL = "A hidden entity here becomes known to the player."
@@ -69,10 +69,10 @@ class Thing(Mutable):
     def met_label(self) -> str:
         return "met" if self.known else "unmet"
 
-    def rows(self) -> Pairs:
+    def rows(self) -> Rows:
         return ()
 
-    def line(self, *, rows: Pairs | None = None, detail: str = "") -> str:
+    def line(self, *, rows: Rows | None = None, detail: str = "") -> str:
         parts = [f"- {self.headline}"]
         shown = self.rows() if rows is None else rows
         if sheet := "; ".join(f"{label.lower()}: {value}" for label, value in shown):
@@ -131,7 +131,14 @@ class Person(Thing):
         return False
 
 
-class Sheeted[S: BaseModel](Person):
+class Sheet(Mutable):
+    """What a person's dice are written on."""
+
+    def rows(self) -> Rows:
+        return ()
+
+
+class Sheeted[S: Sheet](Person):
     sheet: S | None = Field(default=None, description="Leave empty.")
 
     def require_sheet(self) -> S:
@@ -139,10 +146,13 @@ class Sheeted[S: BaseModel](Person):
             raise Refusal(f"{self.name} carries no dice")
         return self.sheet
 
+    def rows(self) -> Rows:
+        return self.sheet.rows() if self.sheet is not None else ()
+
     def carried(self) -> str:
         return ""
 
-    def line(self, *, rows: Pairs | None = None, detail: str = "") -> str:
+    def line(self, *, rows: Rows | None = None, detail: str = "") -> str:
         if self.id != PLAYER_ID and (carried := self.carried()):
             detail = "; ".join(part for part in (detail, carried) if part)
         return super().line(rows=rows, detail=detail)
@@ -167,7 +177,7 @@ class Item(Mutable):
         return ""
 
 
-class ItemSheet[I: Item](Mutable):
+class ItemSheet[I: Item](Sheet):
     items: dict[Slug, I] = Field(default_factory=dict)
 
     def require(self, item_id: Slug, owner: str) -> I:
@@ -254,7 +264,7 @@ class World[M: Person, P: Person](Mutable):
         trace = f"{member.tag} no longer travels with the player"
         return [member.fact(trace, card=f"{member.name} leaves your party")]
 
-    def sheet_rows(self) -> Pairs:
+    def sheet_rows(self) -> Rows:
         """Overridable: a rule may amend a row."""
         return self.player.rows()
 
@@ -284,7 +294,7 @@ class LeaveParty(Frozen):
     entity_id: Slug = Field(description="Exact id of the party member leaving.")
 
 
-def character_panel(rows: Pairs) -> Panel:
+def character_panel(rows: Rows) -> Panel:
     return Panel(
         title="Character",
         rows=tuple(PanelRow(label=label, detail=detail) for label, detail in rows),
@@ -296,7 +306,7 @@ def here_panel(others: Iterable[Subject]) -> Panel:
     return Panel(title="Also here", rows=tuple(other.row() for other in others))
 
 
-def party_section(members: Sequence[Thing]) -> Pairs:
+def party_section(members: Sequence[Thing]) -> Sections:
     if not members:
         return ()
     return (("THE PARTY (led by the player)", "\n".join(member.line() for member in members)),)
@@ -334,8 +344,8 @@ def banded(face: int, low: str, mid: str, high: str) -> str:
 def luck_test(question: str, die: int, bands: tuple[str, str, str], rng: Random) -> list[Fact]:
     """A question about the world when nobody acts: the dice trace, the answer is never told."""
     rolled = roll((die,), question, rng)
-    result = banded(rolled.rolled[0], *bands)
-    return [rolled.fact, Fact(trace=f"{question} — d{die} [{rolled.rolled[0]}] → {result}")]
+    result = banded(rolled.face, *bands)
+    return [rolled.fact, Fact(trace=f"{question} — d{die} [{rolled.face}] → {result}")]
 
 
 def render_worldsmith(
@@ -343,7 +353,7 @@ def render_worldsmith(
     role: str,
     source: str,
     scope: str,
-    family: Pairs,
+    family: Sections,
     intent: str,
     guidance: str,
     answer: type[BaseModel],

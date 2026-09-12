@@ -8,7 +8,6 @@ from support.table import Table, narrowed, play_turn, tool_call
 
 from aidm.core.entities import Frozen, Refusal
 from aidm.core.facts import Fact
-from aidm.core.io import decode
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, PendingDecision, PendingOption
 from aidm.core.tools import MasterTool, NoArgs, master_tool
@@ -119,7 +118,7 @@ async def test_a_hand_back_that_moved_no_fiction_gets_no_prose(tmp_path: Path) -
     table = _deciding(tmp_path, told=False)
     table.spawner.turns.append(table.plays((tool_call("strike"),)))
 
-    await table.service.play(Answer(text="I charge the guard."))
+    await table.runtime.play(table.service, Answer(text="I charge the guard."))
 
     state = table.service.state
     assert [role for role, _ in table.spawner.prompts] == ["master"]
@@ -184,11 +183,11 @@ def test_an_option_whose_call_names_no_tool_or_carries_args_it_rejects_is_refuse
     engine, suspended = _engine(), _pending(open_game(tmp_path).service.state)
     draft = suspended.draft()
 
-    assert engine.restore(decode(suspended.model_dump_json())).pending == DECISION
+    assert engine.restore(suspended.model_dump_json()).pending == DECISION
 
     with pytest.raises(Refusal, match="no tool 'spend_momentum' to play option 'lantern'"):
         _ = engine.answer(draft, _option(name="spend_momentum"), Random(0))
-    with pytest.raises(Refusal, match="item: Field required"):
+    with pytest.raises(Refusal, match="Extra inputs are not permitted"):
         _ = engine.answer(draft, _option(args={"nothing": "of theirs"}), Random(0))
 
 

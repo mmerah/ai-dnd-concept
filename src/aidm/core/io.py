@@ -1,14 +1,16 @@
 import json
 import logging
-from collections.abc import Collection, Iterator, Mapping
+import os
+import re
+from collections.abc import Callable, Collection, Iterator, Mapping
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
-from re import fullmatch
+from tempfile import mkstemp
 
 from pydantic import BaseModel, JsonValue
 
-from aidm.core.entities import EngineId, Refusal, Slug, check_unique, content_id, parse
+from aidm.core.entities import EngineId, Refusal, Slug, check_unique, content_id, parse, parse_json
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, CharacterHeader, EngineHeader
 
 LOGGER = logging.getLogger(__name__)
@@ -28,7 +30,7 @@ class FileStore:
         return tuple(
             path.stem
             for path in sorted(self.directory.glob("*.json"))
-            if fullmatch(SAVE_SLUG_PATTERN, path.stem) is not None
+            if re.fullmatch(SAVE_SLUG_PATTERN, path.stem) is not None
         )
 
     def read(self, slug: str) -> str | None:
@@ -42,7 +44,10 @@ class FileStore:
         return _safe_path(self.directory, slug, ".media")
 
     def discard(self, slug: str) -> None:
-        self._save_path(slug).unlink(missing_ok=True)
+        try:
+            self._save_path(slug).unlink(missing_ok=True)
+        except OSError as broken:
+            raise Refusal(f"{slug} cannot be discarded: {broken}") from broken
 
     def _save_path(self, slug: str) -> Path:
         return _safe_path(self.directory, slug, ".json")
@@ -70,7 +75,9 @@ class Library:
     ) -> Iterator[tuple[Slug, AnyScenario]]:
         if not self.scenarios.is_dir():
             return
-        for path in sorted(p for p in self.scenarios.iterdir() if (p / WORLD_FILE).is_file()):
+        for path in sorted(
+            entry for entry in self.scenarios.iterdir() if (entry / WORLD_FILE).is_file()
+        ):
             try:
                 scenario = self.read_scenario(path.name, models)
             except Refusal as unreadable:
@@ -85,7 +92,7 @@ class Library:
         """One entry per (character, engine) file, so a shared id never names one engine's rules."""
         if not self.characters.is_dir():
             return
-        for path in sorted(p for p in self.characters.iterdir() if p.is_dir()):
+        for path in sorted(entry for entry in self.characters.iterdir() if entry.is_dir()):
             for engine in engines:
                 file = path / f"{engine}.json"
                 if not file.is_file():
@@ -103,8 +110,8 @@ class Library:
         self, scenario_id: Slug, models: Mapping[EngineId, type[AnyScenario]]
     ) -> AnyScenario:
         path = self.scenario_folder(scenario_id) / WORLD_FILE
-        value = decode(_read_text(path))
-        return parse(routed(value, models), value)
+        raw = _read_text(path)
+        return parse_json(routed(decode(raw), models), raw)
 
     def read_character(
         self, character_id: Slug, engine: EngineId, model: type[AnyCharacter]
@@ -138,15 +145,25 @@ def read_prompt(path: Path) -> str:
     return path.read_text(encoding=ENCODING)
 
 
-def write_text(path: Path, body: str) -> None:
-    """Two processes may read one save; a reader must never see a half-written file."""
+def publish(path: Path, write: Callable[[Path], object]) -> None:
+    """Write beside, then replace: a reader never sees a partial file."""
+    staged: Path | None = None
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        staged = path.with_name(f"{path.name}.writing")
-        staged.write_text(body, encoding=ENCODING)
+        fd, name = mkstemp(dir=path.parent, prefix=f".{path.name}.")
+        os.close(fd)
+        staged = Path(name)
+        write(staged)
         staged.replace(path)
     except OSError as broken:
         raise Refusal(f"{path.name} cannot be written: {broken}") from broken
+    finally:
+        if staged is not None:
+            staged.unlink(missing_ok=True)
+
+
+def write_text(path: Path, body: str) -> None:
+    publish(path, lambda staged: staged.write_text(body, encoding=ENCODING))
 
 
 def decode(raw: str) -> JsonValue:
@@ -170,12 +187,14 @@ def _read_text(path: Path) -> str:
         raise Refusal(f"{path.parent.name!r} has no {path.name}")
     try:
         return path.read_text(encoding=ENCODING)
-    except UnicodeDecodeError as broken:
-        raise Refusal(f"{path.name} is not {ENCODING}: {broken}") from broken
+    except (OSError, UnicodeDecodeError) as broken:
+        raise Refusal(f"{path.name} cannot be read: {broken}") from broken
 
 
 def _read[T: BaseModel](path: Path, model: type[T]) -> T:
-    return parse(model, decode(_read_text(path)))
+    raw = _read_text(path)
+    decode(raw)
+    return parse_json(model, raw)
 
 
 def _check_filed(character_id: str, plays: EngineId, filed_under: Slug, engine: EngineId) -> None:
@@ -191,6 +210,6 @@ def _unique_keys(pairs: list[tuple[str, JsonValue]]) -> dict[str, JsonValue]:
 
 
 def _safe_path(directory: Path, stem: str, suffix: str) -> Path:
-    if fullmatch(SAVE_SLUG_PATTERN, stem) is None:
+    if re.fullmatch(SAVE_SLUG_PATTERN, stem) is None:
         raise ValueError(f"invalid storage slug {stem!r}")
     return directory / f"{stem}{suffix}"

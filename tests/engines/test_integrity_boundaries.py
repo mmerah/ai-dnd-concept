@@ -6,8 +6,9 @@ from pydantic import ValidationError
 from support.game import character, initialized, loner_sheet, scenario
 from support.table import ENGINES_BUILT, LONER3E, SCENARIO_MODELS, SCENARIOS, updated
 
-from aidm.core.entities import EngineId, Refusal
-from aidm.core.io import Library, decode
+from aidm.config import RoleConfig
+from aidm.core.entities import EngineId, Frozen, Refusal, parse_json
+from aidm.core.io import Library
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame, Loner3eWorld
 
@@ -28,7 +29,7 @@ def test_a_doubled_key_in_a_save_is_refused() -> None:
     engine, state = initialized()
     doubled = state.model_dump_json().replace('{"scenario_id"', '{"notes": [], "scenario_id"', 1)
     with pytest.raises(Refusal, match="duplicate keys"):
-        _ = engine.restore(decode(doubled))
+        _ = engine.restore(doubled)
 
 
 def test_a_doubled_key_in_a_character_file_is_refused(tmp_path: Path) -> None:
@@ -142,11 +143,34 @@ def test_a_save_whose_payload_the_engine_rejects_is_refused() -> None:
     raw = state.model_dump(mode="json")
     raw["payload"]["cast"]["ghost"] = {"name": "Ghost"}
     with pytest.raises(Refusal):
-        _ = engine.restore(decode(json.dumps(raw)))
+        _ = engine.restore(json.dumps(raw))
 
 
 def test_a_save_from_other_rules_is_refused_before_it_is_read() -> None:
     engine, state = initialized()
     foreign = json.dumps(state.model_dump(mode="json") | {"engine": OTHER})
     with pytest.raises(Refusal, match="the save plays 'ruleless', not 'loner3e'"):
-        _ = engine.restore(decode(foreign))
+        _ = engine.restore(foreign)
+
+
+class _Typed(Frozen):
+    count: int
+    ready: bool
+    items: tuple[str, ...] = ()
+
+
+def test_a_frozen_model_refuses_a_string_coerced_into_an_int_or_a_bool() -> None:
+    with pytest.raises(ValidationError, match="valid integer"):
+        _Typed.model_validate({"count": "4", "ready": True})
+    with pytest.raises(ValidationError, match="valid boolean"):
+        _Typed.model_validate({"count": 4, "ready": "false"})
+
+
+def test_parse_json_lets_a_json_array_reach_a_tuple_field() -> None:
+    typed = parse_json(_Typed, json.dumps({"count": 1, "ready": True, "items": ["a", "b"]}))
+    assert typed.items == ("a", "b")
+
+
+def test_role_settings_stay_strict_about_an_unknown_field() -> None:
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        RoleConfig.model_validate({"model": "x", "extra_key": 1})
