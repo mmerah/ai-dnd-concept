@@ -1,102 +1,81 @@
 # Meanwhile
 
-Offscreen change: the world moving while the player is not looking at it.
+The world changes while the player is somewhere else.
 
-Notes from a brainstorm, not a plan. Nothing here is decided.
+Brainstorm notes. Nothing is decided.
 
-## The asymmetry
+## The two families need different things
 
-The two engine families do not want the same feature, and the reason is whether the
-player can ever check.
+The difference is whether the player can check.
 
-- **Rooms** — the map persists. `RoomWorld` keeps every place, npc, item and way with
-  its location, and `visits` (`rooms/world.py:115`) records the walk. The player can
-  turn round and go back. An offscreen change is *falsifiable*: they find the treasure
-  gone, the door open, the body moved.
-- **Scenes** — `apply_scene` replaces `run`; a left scene survives only as a title in
-  `runs`. The player never returns. An offscreen change there is indistinguishable from
-  the worldsmith inventing it fresh in the next `NextDraft`, which it already does via
-  `arc` (`scenes/world.py:50`).
+**Rooms** keeps the map. Every place, npc, item and way has a location, and `visits`
+(`rooms/world.py:115`) records the walk. The player can go back and find the change.
 
-So: rooms wants simulation, scenes wants pacing. Same word, two features.
+**Scenes** throws the map away. `apply_scene` replaces `run`, and a scene the player
+left survives only as a title in `runs`. The player never goes back, so a change there
+looks the same as a new scene written through `arc` (`scenes/world.py:50`).
 
-## Ideas — rooms
+Rooms needs a simulation. Scenes needs pacing.
 
-1. **Code-only drift on `move`.** Give `Dweller` a disposition; when `RoomEngine.move`
-   fires, roll the handed `Random` and relocate roaming dwellers along known ways. No
-   role spawn, no latency, deterministic under test. Lands on "Only code changes state
-   or rolls dice". Untold for free: `Thing.fact()` already sets `told=self.known`, so
-   anything the player has not met cannot leak to the narrator.
-   *Cheapest and most in-grain. Current favourite.*
-2. **A `meanwhile` master tool.** Sits naturally beside `move_item` and `unlock_way`.
-   But it hands the master latitude over the whole map every turn and burns tokens
-   whether or not anything should move. Probably no.
-3. **A worldsmith `Generation` on move, like `EXTEND`.** Richest writing, wrong cost.
-   `EXTEND` is the only worldsmith spawn rooms has and it fires rarely, when
-   `frontier() == 0`. `STEP_COPY` already warns the worldsmith takes minutes. Paying
-   that per room walked would wreck the pacing.
-4. **Items drift, not just people.** `move_item` is currently scoped to here. An
-   offscreen variant (a thief carries the idol two rooms over) is the same mechanism
-   with a different noun, and backtracking makes it land.
-5. **Locks re-lock.** A way the player opened and walked away from closes again. One
-   bool, and it changes routing without any new concept.
+## Ideas for rooms
 
-## Ideas — scenes
+1. **Code moves people when the player moves.** Give `Dweller` a disposition. When
+   `RoomEngine.move` runs, roll its `Random` and move roaming dwellers along known ways.
+   No role starts, no wait, tests stay deterministic. `Thing.fact()` sets
+   `told=self.known`, so the facts stay hidden for free. **Best option.**
+2. **A `meanwhile` master tool.** Fits beside `move_item` and `unlock_way`, but gives
+   the master the whole map every turn and costs tokens when nothing should move.
+3. **A worldsmith request on move, like `EXTEND`.** Best writing, worst cost. `EXTEND`
+   is rare (it needs `frontier() == 0`) and `STEP_COPY` says the worldsmith takes
+   minutes. One call per room walked is too slow.
+4. **Move items, not only people.** `move_item` works only in the current place today. A
+   thief could carry the idol two rooms away, and the player finds out on the way back.
+5. **Doors lock again.** The player opens a way and leaves; later it is shut. One bool,
+   and the route changes.
 
-1. **A clock, feeding `arc`.** One counter; when it fires, the next scene's `render_next`
-   intent gains a line saying the offscreen thing has advanced, and the existing `arc`
-   revision does the rest. No new world, no second place, no offscreen register.
-   *Favourite.*
-2. **Tick in `leaving()`.** The hook already exists and loner3e already uses it (luck
-   refill). It runs in `depart()`, before the next scene installs — exactly the seam
-   where "time passed" is true.
-3. **Reuse `COMPLICATION` as the loud version.** When the clock fires hard, it is
-   already a written complication coming down on the current place. No new request type.
-4. **Do not build an offscreen register.** A list of threads with their own state is new
-   machinery only one family would use, against "do not add an abstraction until two
-   things need it".
+## Ideas for scenes
 
-## Family-agnostic
+1. **A clock that feeds `arc`.** When the count is reached, add one line to the
+   `render_next` intent. The existing `arc` revision does the rest. **Best option.**
+2. **Count in `leaving()`.** The hook exists, loner3e already uses it, and it runs in
+   `depart()` before the next scene installs. Time has passed there.
+3. **Use `COMPLICATION` for the loud version.** It already writes something arriving at
+   the current place. No new request type.
+4. **Do not build a list of offscreen threads.** Only one family would use it, against
+   "do not add an abstraction until two things need it".
+
+## An idea for both families
 
 **A meanwhile for the party.** Both families have `party` and `leave_party`. Where did
-the companion who walked out go, what have they been doing, do they come back changed.
-Reuses the interjection machinery. Immediately legible to the player in a way a moved
-crate is not. Possibly the highest payoff per line of anything on this page.
+the companion who left go, and do they come back different? It reuses the interjection
+code, and the player understands it at once. Possibly the best value for the work.
 
 ## Does the clock work for both families?
 
-**The mechanism generalizes. The delivery does not.**
+The counter works for both. The `arc` part does not.
 
-The counter itself can live in one place: `World` in `engines/base.py`, which both
-`SceneWorld` (`scenes/world.py:47`) and `RoomWorld` (`rooms/world.py:114`) already
-inherit. One field, both families, no new abstraction.
-
-What differs is what happens when it fires:
+Put the counter on `World` in `engines/base.py`. `SceneWorld` (`scenes/world.py:47`) and
+`RoomWorld` (`rooms/world.py:114`) both inherit it already: one field, two families, no
+new abstraction.
 
 | | scenes | rooms |
 |---|---|---|
-| `arc` to revise | yes | **no** — rooms has no arc at all |
-| natural tick site | `leaving()`, per scene crossing | `move()`, per room walked |
-| is a worldsmith already spawning? | yes, the `DEPARTURE` write | **no** — `move` spawns nothing |
-| delivery | revise `arc` in the next `NextDraft` | `draft.note(...)` → the master plays it next turn |
+| has an `arc` to revise | yes | **no** |
+| a worldsmith call already running | yes, the `DEPARTURE` write | **no**, `move` starts nothing |
+| how it reaches the game | revise `arc` in the next `NextDraft` | `draft.note(...)`, master plays it next turn |
 
-The rooms half works, but through a different door. `Game.note()`
-(`core/model.py:114`) is on the shared model and drains into the turn
-(`turn/run.py:48`), so a clock firing in rooms can hand the master a directive with no
-extra spawn and no latency. That is the bridge — not `arc`.
+Rooms works by another route. `Game.note()` (`core/model.py:114`) is on the shared model
+and empties into the turn (`turn/run.py:48`), so rooms can instruct the master with no
+extra role and no wait.
 
-One cadence wrinkle: a scene crossing is rare and deliberate, a room walk is frequent.
-The same period would mean very different pacing. The cleaner generalization may be to
-**tick on turns**, which is the one unit both families actually share, rather than on
-crossings and moves.
+One problem: a scene crossing is rare, a room walk is common, so the same count gives
+very different pacing. Better to **count turns** — the one unit both families share.
 
 ## Costs
 
-- **Every existing save dies.** "Saves have no version field. A stale save is invalid."
-  A new `Dweller` field or a clock int invalidates all of them. Fine mid-concept, but
-  decide it deliberately.
-- **The narrator boundary is the thing to get right.** Any meanwhile fact must be
-  untold, or the narrator leaks the world's secrets. `Thing.fact()` defaults the right
-  way; anything hand-rolling a `Fact` does not.
-- **Frequency is the real design knob**, not the mechanism. Too rare and nobody notices;
-  too often and the map stops being trustworthy.
+- **Every save becomes invalid.** A new `Dweller` field or counter breaks them all.
+  Acceptable now, but choose it on purpose.
+- **Keep the facts untold**, or the narrator tells the player a secret. `Thing.fact()`
+  is safe; a hand-built `Fact` is not.
+- **Frequency is the real choice**, not the mechanism. Too rare and nobody notices; too
+  often and the player stops trusting the map.
