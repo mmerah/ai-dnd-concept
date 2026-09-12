@@ -149,7 +149,7 @@ def test_a_save_whose_payload_the_engine_rejects_is_refused() -> None:
 def test_a_save_naming_a_pack_no_longer_installed_is_refused() -> None:
     engine, state = initialized()
     raw = state.model_dump(mode="json")
-    raw["packs"] = {"primary": "srd", "supplements": ["gone"]}
+    raw["packs"] = {"ids": ["srd", "gone"]}
     with pytest.raises(Refusal, match="not installed"):
         _ = engine.restore(json.dumps(raw))
 

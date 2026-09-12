@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Self
 
 from pydantic import Field, model_validator
@@ -58,10 +59,8 @@ class Pack(ScenePack):
             raise ValueError(f"no detail for {', '.join(untold)}")
         return self
 
-    def hire_guidance(self) -> str:
-        lines = [_specialty_line(specialty) for specialty in self.specialties]
-        labels = ", ".join(option.label for option in self.skills)
-        return "\n".join((*lines, f"Skills: {labels}"))
+    def specialty_lines(self) -> str:
+        return "\n".join(_specialty_line(specialty) for specialty in self.specialties)
 
     def defined_ids(self) -> tuple[Slug, ...]:
         return tuple(option.id for option in (*self.specialties, *self.origins))
@@ -84,13 +83,15 @@ class SheetDraft(Frozen):
         description="What already slows them down, if anything: an injury, a debt, a fear.",
     )
 
-    def check(self, pack: Pack) -> None:
+    def check(self, packs: Sequence[Pack]) -> None:
         problems: list[str] = []
-        if self.specialty not in {specialty.label for specialty in pack.specialties}:
-            problems.append(f"{self.specialty!r} is not a specialty this pack lists")
-        listed = {option.label for option in pack.skills}
+        specialties = {specialty.label for pack in packs for specialty in pack.specialties}
+        if self.specialty not in specialties:
+            problems.append(f"{self.specialty!r} is not a specialty these packs list")
+        listed = {option.label for pack in packs for option in pack.skills}
         granted = {
             skill
+            for pack in packs
             for specialty in pack.specialties
             for skill in (
                 *specialty.skills,
@@ -98,7 +99,7 @@ class SheetDraft(Frozen):
             )
         }
         if unknown := sorted(set(self.skills) - listed - granted):
-            problems.append(f"{', '.join(unknown)} is not a skill this pack lists or grants")
+            problems.append(f"{', '.join(unknown)} is not a skill these packs list or grant")
         if len(set(self.items)) != len(self.items):
             problems.append("an item repeats")
         if problems:

@@ -18,24 +18,24 @@ def test_sheet_check_accepts_a_muscle_with_intimidation_and_shooting() -> None:
     draft = SheetDraft(
         specialty="Muscle", skills={"Intimidation": 8, "Shooting": 8}, items=("Firearm",)
     )
-    draft.check(SRD)
+    draft.check((SRD,))
 
 
 def test_sheet_check_refuses_an_unknown_specialty() -> None:
     draft = SheetDraft(specialty="Wizard", skills={"Shooting": 8}, items=())
     with pytest.raises(Refusal, match="Wizard"):
-        draft.check(SRD)
+        draft.check((SRD,))
 
 
 def test_sheet_check_refuses_a_skill_neither_listed_nor_granted() -> None:
     draft = SheetDraft(specialty="Muscle", skills={"Sorcery": 8}, items=())
     with pytest.raises(Refusal, match="Sorcery"):
-        draft.check(SRD)
+        draft.check((SRD,))
 
 
 def test_sheet_check_accepts_medicine_granted_by_medic() -> None:
     draft = SheetDraft(specialty="Face", skills={"Medicine": 8}, items=())
-    draft.check(SRD)
+    draft.check((SRD,))
 
 
 def test_the_pack_s_android_case_carries_the_kit() -> None:
@@ -59,7 +59,7 @@ def _draft(**fields: object) -> SceneDraft[Crewmate]:
 def _built(draft: SceneDraft[Crewmate]) -> AnyScenario:
     return ENGINE.build_scenario(
         ScenarioMeta(title="Loading Bay", premise="", scope="One tense night shift."),
-        PackSelection(primary="srd"),
+        PackSelection(ids=("srd",)),
         draft,
         "",
         draft.situation,

@@ -1,7 +1,11 @@
 {
   "id": "kael",
   "engine": "loner3e",
-  "pack": "srd",
+  "packs": {
+    "ids": [
+      "srd"
+    ]
+  },
   "payload": {
     "id": "player",
     "name": "Kael",

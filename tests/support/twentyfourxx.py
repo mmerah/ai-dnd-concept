@@ -42,7 +42,7 @@ def small_world() -> TwentyfourxxGame:
             title="Loading Bay", premise="A cargo job gone quiet.", scope="One tense night shift."
         ),
         engine=EngineId("twentyfourxx"),
-        packs=PackSelection(primary=SRD_PACK),
+        packs=PackSelection(ids=(SRD_PACK,)),
         log=[
             Chapter(
                 title="The Loading Bay",

@@ -50,49 +50,50 @@ machine).
 
 ## Phase 2: D4, one explicit pack selection
 
-Counts (`src` / `tests` / `qa`): 9,771 / 9,752 / 1,759 before; 9,874 / 9,847 / 1,759 after.
-`PackSelection`, `selected`, `select`, `primary_pack`, `_check_installed`, `defined_ids` and the
-create page's second select are the growth; `first_pack` and the two uniqueness validators went.
-Goldens: zero drift (`selection.ids()` is still `("srd",)`). Reviews: Fable and a second Opus
-reviewer (no `codex` on the machine). Smoke: the offline QA harness (`qa/run_all.sh create loner
-goons breathless 24xx`) creates a scenario through the new page and takes a turn on each shipped
-scenario; its first cold run flaked on the character page and the goons level card, and both
-passed on rerun and on the HEAD baseline.
+Counts (`src` / `tests` / `qa`): 9,771 / 9,752 / 1,759 before; 9,932 / 9,891 /
+1,759 after. Two passes: the plan's primary-plus-supplements shape landed first, then the
+maintainer dropped `primary` (the SRD is always selected, so it carried nothing) and widened the
+character to a selection of its own. Goldens: zero drift. Reviews: Fable and a second Opus
+reviewer on the first pass, one Opus reviewer on the second (no `codex` on the machine). Smoke:
+the offline QA harness creates a scenario through the new page and takes a turn on each shipped
+scenario; the loner script's two issues reproduce on the HEAD baseline.
+
+### The shape as landed
+
+- `PackSelection(ids=(...))`: one ordered, unique, non-empty tuple, on `Scenario`, `Game` and
+  `Character`; `None` for an engine that plays no packs (tunnelgoons). A scene engine refuses a
+  selection without its SRD, an id it does not install, and two packs that both define one
+  option id (`ScenePack.defined_ids`; breathless declares none, twentyfourxx its specialties and
+  origins, loner3e all four lists).
+- A character may start any scenario whose selection is a superset of its own
+  (`SceneEngine.admit`, also run by `Runtime.new_scenario` before the worldsmith is spawned).
+- Character creation pools options across the picked packs through one `multiple` creation
+  step, `supplements`, joined into the pick with `MANY`; the step exists only when the engine
+  ships more than the SRD. Skills stay the SRD's in breathless and twentyfourxx, whose rules fix
+  them.
+- The page composes a selection through `Engine.select_packs(supplements)`, since `ui` may not
+  name a family's SRD; `SceneEngine.author` checks it again at the engine boundary.
 
 ### Decisions made off-plan
 
-- `SceneEngine.select(self, selection: PackSelection) -> PackSelection`, not
-  `select(primary, supplements)`: its one caller, `author`, already holds the validated instance
-  the page built through `parse`, so the plan's signature only re-parsed it. `author` runs
-  `self.select(self.selected(packs))`; the plan named `select` as the authoring-time builder but
-  not its caller.
-- `ScenePack.defined_ids()` is the hook behind "an id that two selected packs both define": a
-  family overrides it with the option lists whose ids it owns. Breathless overrides nothing
-  (every breathless pack must carry the same six SRD skill ids), twentyfourxx declares
-  specialties and origins (its skills are bound to exactly 17, so a supplement repeats them),
-  loner3e declares all four lists.
-- `SceneEngine.pack_options()` lists the SRD first and the create page defaults to the first
-  option: `ui` may not import an engine family's `SRD_PACK`.
-- `TwentyfourxxEngine.resolve_skill(selection, sheet, wanted)`: the selection is the first
-  parameter, and `_pool` takes it too.
+- `select` takes a built `PackSelection`, not `(primary, supplements)`; the plan's signature only
+  re-parsed a value its caller held.
 - `RoomEngine.validate` refuses a non-`None` selection: the seam made the field optional, so the
   rooms family checks its side of that boundary.
-- The create page builds the Supplements select only when the engine offers more than one pack.
-- `PackSelection.ids()` and `defined_ids()` are methods, not properties, as the plan wrote `ids()`.
+- `PackSelection.ids` is a field; `defined_ids()` and `select_packs()` are methods.
 
 ### Refuted review findings
 
-- "`self.supplements.value if self.supplements is not None else []` guards a branch that cannot
-  occur": it can, once the Supplements select exists only for an engine with more than one pack.
-- "The `Choose a table set.` guard is unreachable, the primary select is not clearable": PLAN
-  step 4 asks for the refusal, and it costs two lines.
-- "Make the base `defined_ids` abstract": `ScenePack` is a concrete model (the seam test's
-  engine uses it as its pack) and breathless declares no ids, so an abstract base would force an
-  empty override where the default already says it.
+- "One `ui.select` call for a single and a multiple step": the two handlers take different event
+  types (`str` and `list[str]`), and one call would need a union callable under strict pyright.
+- "The authoring path checks the selection twice": the page must compose the SRD it may not
+  name, and `author` is the boundary the tests call directly.
+- "Make the base `defined_ids` abstract": `ScenePack` is a concrete model and breathless declares
+  no ids, so an abstract base would force an empty override where the default already says it.
 
 ### Known and accepted
 
-- A scene-family character file with no `pack` is refused at launch ("was made from no table
-  set"); the three shipped kael files carry `"pack": "srd"`.
-- `src` grew by 103 lines against the brief's estimate of about 60; the create page's second
-  select is most of the difference.
+- A scene-family character file with no `packs` is refused at launch; the three shipped kael
+  files carry `{"ids": ["srd"]}`.
+- Hidden-then-shown supplements on the character page: an id no longer offered is dropped from
+  the pick by `_drop_stale`, as for single answers.

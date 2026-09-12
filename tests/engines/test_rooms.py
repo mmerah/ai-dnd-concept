@@ -280,7 +280,7 @@ def test_a_room_game_given_a_table_set_is_refused(tmp_path: Path) -> None:
     character = engine.create_character("Wren", "A quiet scout", {})
     state = engine.begin("the-keep", _scenario(), character)
 
-    stranded = updated(state, packs=PackSelection(primary="srd"))
+    stranded = updated(state, packs=PackSelection(ids=("srd",)))
 
     with pytest.raises(Refusal, match="plays no table set"):
         engine.validate(stranded)

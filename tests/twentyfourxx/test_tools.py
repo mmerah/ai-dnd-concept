@@ -290,7 +290,6 @@ def test_finish_job_raises_the_whole_crew_and_pays_each_a_d6() -> None:
 
 def test_android_case_is_an_item_on_creation_and_defend_breaks_it_harmlessly() -> None:
     picks = {
-        "pack": "srd",
         "specialty": "tech",
         "origin": "android",
         "increase-1": "climbing",

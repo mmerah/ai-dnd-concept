@@ -2,9 +2,10 @@ import pytest
 from support.twentyfourxx import ENGINE
 
 from aidm.core.entities import Refusal
+from aidm.core.model import PackSelection
+from aidm.engines.scenes.packs import SRD_PACK
 
 SNEAK = {
-    "pack": "srd",
     "specialty": "sneak",
     "origin": "human",
     "increase-1": "stealth",
@@ -14,33 +15,31 @@ SNEAK = {
 
 
 def test_steps_grow_as_picks_land() -> None:
-    assert [s.id for s in ENGINE.creation_steps({})] == ["pack"]
-    steps = ENGINE.creation_steps({"pack": "srd"})
-    assert [s.id for s in steps] == ["pack", "specialty"]
-    steps = ENGINE.creation_steps({"pack": "srd", "specialty": "sneak"})
-    assert [s.id for s in steps] == ["pack", "specialty", "origin"]
+    assert [s.id for s in ENGINE.creation_steps({})] == ["specialty"]
+    steps = ENGINE.creation_steps({"specialty": "sneak"})
+    assert [s.id for s in steps] == ["specialty", "origin"]
 
 
 def test_muscle_shows_specialty_choice_and_weapon() -> None:
-    ids = [s.id for s in ENGINE.creation_steps({"pack": "srd", "specialty": "muscle"})]
+    ids = [s.id for s in ENGINE.creation_steps({"specialty": "muscle"})]
     assert "specialty-choice" in ids
     assert "weapon" in ids
 
 
 def test_sneak_shows_neither_specialty_choice_nor_weapon() -> None:
-    ids = [s.id for s in ENGINE.creation_steps({"pack": "srd", "specialty": "sneak"})]
+    ids = [s.id for s in ENGINE.creation_steps({"specialty": "sneak"})]
     assert "specialty-choice" not in ids
     assert "weapon" not in ids
 
 
 def test_alien_shows_two_trait_steps() -> None:
-    picks = {"pack": "srd", "specialty": "sneak", "origin": "alien"}
+    picks = {"specialty": "sneak", "origin": "alien"}
     ids = [s.id for s in ENGINE.creation_steps(picks)]
     assert ids[-2:] == ["trait-1", "trait-2"]
 
 
 def test_android_shows_body_and_one_increase() -> None:
-    picks = {"pack": "srd", "specialty": "sneak", "origin": "android"}
+    picks = {"specialty": "sneak", "origin": "android"}
     ids = [s.id for s in ENGINE.creation_steps(picks)]
     assert "body" in ids
     assert ids.count("increase-1") == 1
@@ -48,7 +47,7 @@ def test_android_shows_body_and_one_increase() -> None:
 
 
 def test_human_shows_three_increases() -> None:
-    picks = {"pack": "srd", "specialty": "sneak", "origin": "human"}
+    picks = {"specialty": "sneak", "origin": "human"}
     ids = [s.id for s in ENGINE.creation_steps(picks)]
     assert [i for i in ids if i.startswith("increase-")] == [
         "increase-1",
@@ -68,7 +67,7 @@ def test_create_character_builds_the_sheet() -> None:
 
 def test_create_character_records_the_picked_pack() -> None:
     character = ENGINE.create_character("Rook", "A quiet operator", SNEAK)
-    assert character.pack == "srd"
+    assert character.packs == PackSelection(ids=(SRD_PACK,))
 
 
 def test_pick_past_d12_is_refused() -> None:
@@ -78,7 +77,6 @@ def test_pick_past_d12_is_refused() -> None:
 
 def test_items_land_in_order_comm_kit_weapon() -> None:
     picks = {
-        "pack": "srd",
         "specialty": "muscle",
         "specialty-choice": "shooting",
         "weapon": "firearm",
@@ -101,7 +99,7 @@ def test_preview_character_ends_with_gear_row() -> None:
 
 
 def test_preview_character_refuses_a_sheet_that_is_not_the_players() -> None:
-    picks = {"pack": "srd", "specialty": "sneak", "origin": "alien", "trait-1": "a", "trait-2": "b"}
+    picks = {"specialty": "sneak", "origin": "alien", "trait-1": "a", "trait-2": "b"}
     character = ENGINE.create_character("Rook", "A quiet operator", picks)
     stranger = character.model_copy(
         update={"payload": character.payload.model_copy(update={"id": "rook"})}

@@ -84,12 +84,14 @@ def body(s: Session) -> None:
     page.wait_for_timeout(600)
     s.check(any("Name the character." in n for n in notifications(page)), "empty name not refused")
 
-    # Loner: a pack, then dependent skill and gear picks.
+    # Loner: a supplement pack, then dependent skill and gear picks pooled across both.
     page.goto(BASE + "/create")
     page.wait_for_timeout(800)
     text(page, "Name", "Wren")
-    select(page, "Choose a table set", "Starter tables")
-    s.shot(page, "loner-pack")
+    select(page, "Table sets beyond the SRD", "AP01 Fantasy")
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(400)
+    s.shot(page, "loner-supplements")
     text(page, "Write a one-line concept", "A quiet scout")
     text(page, "What does your character want?", "Out")
     text(page, "Why do they want it?", "Debt")
@@ -117,7 +119,6 @@ def body(s: Session) -> None:
     page.wait_for_timeout(800)
     select(page, "Rules", "BREATHLESS")
     text(page, "Name", "Wren")
-    select(page, "Choose a table set", "Core tables")
     text(page, "Pronouns", "she/her")
     text(page, "Job", "Nurse")
     select(page, "Skill at d10", "Think")
@@ -134,7 +135,6 @@ def body(s: Session) -> None:
     page.wait_for_timeout(800)
     select(page, "Rules", "24XX")
     text(page, "Name", "Wren")
-    select(page, "Choose a table set", "Core tables")
     select(page, "Specialty", "Muscle")
     select(page, "Specialty skill", "Hand-to-hand")
     select(page, "Weapon", "Sword")
@@ -203,7 +203,7 @@ def body(s: Session) -> None:
     page.wait_for_timeout(1000)
     select(page, "Rules", "TUNNEL GOONS")
     s.check(
-        page.locator(".q-select", has_text="Table set").count() == 0,
+        page.locator(".q-select", has_text="Table sets").count() == 0,
         "a room engine offers table sets",
     )
     text(page, "Title", "The Sunken Bell")

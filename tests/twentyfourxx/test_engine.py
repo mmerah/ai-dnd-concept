@@ -24,7 +24,7 @@ def _twentyfourxx_game() -> tuple[AnyEngine, TwentyfourxxGame]:
 
 def test_the_shipped_game_begins_with_the_srd_pack_and_the_operators_gear() -> None:
     _, state = _twentyfourxx_game()
-    assert state.packs == PackSelection(primary=SRD_PACK)
+    assert state.packs == PackSelection(ids=(SRD_PACK,))
     world = state.payload
     assert list(world.player.require_sheet().items) == [COMM, CLIMBING_GEAR, NIGHT_VISION_GOGGLES]
     assert world.run.place == "docking-ring"
@@ -43,9 +43,7 @@ def test_join_party_lands_a_party_joined_fact_and_adds_the_member() -> None:
 def test_a_scenario_with_an_uninstalled_pack_is_refused_by_check_packs() -> None:
     engine, state = _twentyfourxx_game()
     with pytest.raises(Refusal, match="not installed"):
-        engine.validate(
-            updated(state, packs=PackSelection(primary=SRD_PACK, supplements=("uninstalled",)))
-        )
+        engine.validate(updated(state, packs=PackSelection(ids=(SRD_PACK, "uninstalled"))))
 
 
 def test_item_detail_of_a_plain_item_is_empty() -> None:

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -146,8 +146,17 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
         """Write and install on `draft`; the facts, and what to tell the narrator, if anything."""
         return await self.requests[request.operation].write(draft, request, worldsmith)
 
-    def pack_options(self) -> tuple[DecisionOption, ...]:
+    def supplement_options(self) -> tuple[DecisionOption, ...]:
+        """The table sets a page may add to this engine's base; empty when it has no packs."""
         return ()
+
+    def select_packs(self, _supplements: Sequence[Slug]) -> PackSelection | None:
+        """The base plus these supplements, checked; `None` for an engine that plays no packs."""
+        return None
+
+    def admit(self, _packs: PackSelection | None, _character: AnyCharacter) -> None:
+        """Refuse a character these packs cannot start; the seam admits anyone."""
+        return None
 
     def preview_character(self, character: AnyCharacter) -> Rows:
         return self.player_of(character).rows()

@@ -51,7 +51,7 @@ def small_world() -> BreathlessGame:
             title="Diner", premise="A quiet diner, disturbed.", scope="One quiet night in."
         ),
         engine=EngineId("breathless"),
-        packs=PackSelection(primary=SRD_PACK),
+        packs=PackSelection(ids=(SRD_PACK,)),
         log=[Chapter(title="The Diner", focus="Can they reach the back door?")],
         payload=world,
     )

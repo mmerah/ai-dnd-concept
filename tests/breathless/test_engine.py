@@ -12,7 +12,6 @@ FIRE_AXE = "fire-axe"
 OVID = "ovid-sarn"
 SRD = ENGINE.packs["srd"]
 PICKS = {
-    "pack": "srd",
     "pronouns": "she/her",
     "job": SRD.jobs[0],
     "skill-d10": "bash",
@@ -30,7 +29,7 @@ def _breathless_game() -> tuple[AnyEngine, BreathlessGame]:
 
 def test_the_shipped_game_begins_with_the_srd_pack_and_the_players_item() -> None:
     _, state = _breathless_game()
-    assert state.packs == PackSelection(primary=SRD_PACK)
+    assert state.packs == PackSelection(ids=(SRD_PACK,))
     world = state.payload
     sheet = world.player.require_sheet()
     assert sheet.items[FIRE_AXE].die == STARTING_ITEM
@@ -109,7 +108,7 @@ def test_create_character_round_trip() -> None:
 
 def test_create_character_records_the_picked_pack() -> None:
     character = ENGINE.create_character("Jax", "A wiry mechanic", PICKS)
-    assert character.pack == "srd"
+    assert character.packs == PackSelection(ids=(SRD_PACK,))
 
 
 def test_preview_character_shows_the_backpack_row() -> None:

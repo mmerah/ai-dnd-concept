@@ -246,9 +246,9 @@ def test_restoring_luck_that_is_already_full_is_a_quiet_no_op() -> None:
 
 def test_a_game_records_its_table_sets_and_is_refused_without_them() -> None:
     engine, state = initialized()
-    assert state.packs == PackSelection(primary=SRD_PACK)
+    assert state.packs == PackSelection(ids=(SRD_PACK,))
 
-    stranded = updated(state, packs=PackSelection(primary=SRD_PACK, supplements=("uninstalled",)))
+    stranded = updated(state, packs=PackSelection(ids=(SRD_PACK, "uninstalled")))
 
     with pytest.raises(Refusal, match="not installed"):
         engine.validate(stranded)

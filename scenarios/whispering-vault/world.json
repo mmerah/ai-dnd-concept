@@ -6,8 +6,9 @@
   },
   "engine": "loner3e",
   "packs": {
-    "primary": "srd",
-    "supplements": []
+    "ids": [
+      "srd"
+    ]
   },
   "source": "",
   "payload": {
