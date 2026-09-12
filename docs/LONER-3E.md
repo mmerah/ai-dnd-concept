@@ -96,10 +96,14 @@ a rule of this one.
 
 ## Readings where the SRD is open
 
-- **Luck pools other than 6.** Every printed example character carries Luck 6, but "Treat the
-  Opponents as a Single Entity" gives a group "a single Luck pool that represents their overall
-  strength" and fixes no size. Minor opposition is therefore authored below 6 and a group may go
-  above it. A player character starts at 6 as printed.
+- **Luck pools other than 6.** The SRD prints "Start with 6 Luck" and every example character,
+  the alley thug included, carries 6. The one place it leaves the size open is "Treat the
+  Opponents as a Single Entity", where a group gets "a single Luck pool that represents their
+  overall strength" with no number. This repo reads that latitude as covering any opposition,
+  not only groups, so the worldsmith sizes a pool to how long that character should hold out.
+  A player character starts at 6 as printed. The group half is the SRD's own; extending it to a
+  lone minor opponent is this repo's reading, recorded here rather than in the deviations above
+  because it changes no printed rule.
 
 ## What the AI game master adds
 
@@ -109,8 +113,8 @@ its keep for a reason the SRD has no need of.
 - `known` and `hidden` — the told-fact gate: no unknown name reaches the narrator.
 - `alive` and `kill` — the SRD leaves death to narration; the gate needs a flag.
 - `defeated` — the SRD's solo player simply remembers they won; Luck resets at once, so the
-  engine needs a flag to refuse a duel reopened after the reset. `restore_luck` and the scene's
-  end clear it.
+  engine needs a flag to refuse a duel reopened after the reset. `restore_luck` clears it, and so
+  does the player's leaving the place — `leaving` runs on departure, not on a complication.
 - `next_scene` and the scene's `offered` flag — a stopping point the player may stay at.
 - No mood roll — the SRD offers it "when unsure"; the game master holds that judgment.
 

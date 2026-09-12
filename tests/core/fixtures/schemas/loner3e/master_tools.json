@@ -199,7 +199,7 @@
   },
   {
     "name": "restore_luck",
-    "description": "A character's luck refills.",
+    "description": "A character's luck refills and any defeat is behind them.",
     "parameters": {
       "additionalProperties": false,
       "properties": {

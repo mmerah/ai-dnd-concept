@@ -8,7 +8,7 @@ from aidm.engines.loner3e.world import DIE_FACE, TagKind
 
 CHANGE_TAGS = "A character here gains tags, loses tags, or both."
 DRIVE = "A living character's goal, motive or nemesis changes."
-RESTORE_LUCK = "A character's luck refills."
+RESTORE_LUCK = "A character's luck refills and any defeat is behind them."
 ROLL = (
     "Call this for one closed dramatic question. The engine rolls Chance against "
     "Risk, reads the answer, and moves luck in a conflict."

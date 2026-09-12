@@ -52,7 +52,8 @@ DEFEAT_NOTE = (
     "{name} has run out of luck and lost this conflict. Roll nothing more for it. Say how it "
     "ends for them: taken, severely injured, broken off, cornered, or conceding. Write any "
     "lasting mark with `change_tags`, as a `condition`. Then let the story move on. They are "
-    "marked defeated and take no new conflict until `restore_luck` says it is behind them."
+    "marked defeated and take no new luck exchange until `restore_luck`, or the player's "
+    "leaving this place, puts it behind them."
 )
 
 
