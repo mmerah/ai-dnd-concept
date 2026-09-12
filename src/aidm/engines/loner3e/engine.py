@@ -182,7 +182,7 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         return tuple(zip(srd.twist_subjects, srd.twist_actions, strict=True))
 
     def leaving(self, draft: Loner3eGame) -> list[Fact]:
-        """Departure refills every living pool; a defeat is settled by the master, not slept off."""
+        """The dead keep their spent pool; only `restore_luck` clears a defeat."""
         world = self.world_of(draft)
         return [
             fact

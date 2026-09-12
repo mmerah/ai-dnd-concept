@@ -86,7 +86,6 @@ class Thing(Mutable):
         return Fact(trace=trace, told=self.known, card=card, dice=dice)
 
     def card_line(self, line: str) -> str:
-        """The player reads their own cards without a name; everyone else's carries theirs."""
         return line if self.id == PLAYER_ID else f"{self.name}: {line}"
 
     def change(self, gauge: Gauge, amount: int, label: str, why: str) -> list[Fact]:
