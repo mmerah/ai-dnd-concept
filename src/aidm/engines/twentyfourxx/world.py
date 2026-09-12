@@ -231,6 +231,14 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         trace = f"{actor.mention} breaks {item.name} — {hindrance}"
         return [actor.fact(trace, card=card)]
 
+    def take_hit(
+        self, actor: Crewmate, risk: str, item_id: Slug | None, *, lethal: bool
+    ) -> list[Fact]:
+        if item_id is None:
+            return self.kill(actor.id) if lethal else actor.maim()
+        item = self.require_gear(actor, item_id)
+        return self.defend(actor.id, item_id, "" if item.harmless else risk)
+
     def upgrade_ship(self, function_id: Slug) -> list[Fact]:
         function = self.ship.get(function_id)
         if function is None:

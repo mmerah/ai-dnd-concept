@@ -22,7 +22,7 @@ def body(s: Session) -> None:
     for attempt in range(1, 9):
         submit(
             page,
-            f'I cross the fire ({attempt}).\n!roll what="Cross the fire" risking_death=true hindered="Bruised"',  # noqa: E501
+            f'I cross the fire ({attempt}).\n!roll what="Cross the fire" risk="burned" hindered="Bruised"',  # noqa: E501
         )
         page.wait_for_timeout(4000)
         if "Who leads now?" in clean(page.inner_text("body")):
