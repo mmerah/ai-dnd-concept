@@ -9,7 +9,7 @@ from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import DecisionOption
 from aidm.core.views import Rows
-from aidm.engines.base import Gauge, Person
+from aidm.engines.base import PLAYER_ID, Gauge, Person
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 
@@ -50,6 +50,7 @@ class Loner3eCast(Person):
     motive: str = ""
     nemesis: str = ""
     luck: Gauge = Field(default_factory=lambda: Gauge(current=LUCK_MAX, maximum=LUCK_MAX))
+    defeated: bool = False
 
     def tagged(self, kind: TagKind) -> list[str]:
         return self.tags.get(kind, [])
@@ -67,12 +68,13 @@ class Loner3eCast(Person):
                 ("Motive", self.motive),
                 ("Nemesis", self.nemesis),
                 ("Luck", str(self.luck)),
+                ("Defeated", "yes" if self.defeated else ""),
             )
             if value
         )
 
     def forbidden(self) -> str:
-        parts = (super().forbidden(), "full luck" if self.luck.current != LUCK_MAX else "")
+        parts = (super().forbidden(), "full luck" if self.luck.shortfall != 0 else "")
         return ", ".join(part for part in parts if part)
 
     def change_tags(self, kind: TagKind, gained: Sequence[str], lost: Sequence[str]) -> list[Fact]:
@@ -113,6 +115,25 @@ class Loner3eCast(Person):
     def refill(self, why: str) -> list[Fact]:
         return self.change(self.luck, self.luck.shortfall, "Luck", why)
 
+    def lose(self) -> list[Fact]:
+        """The mark the Luck reset cannot carry: this contest stays settled until it is cleared."""
+        self.defeated = True
+        lost = f"{self.name} is out of luck"
+        return [self.fact(lost, card=lost)]
+
+    def recover(self, why: str) -> list[Fact]:
+        facts = self.refill(why)
+        if self.defeated:
+            self.defeated = False
+            trace = f"{self.mention} is no longer defeated ({why})"
+            card = (
+                "No longer defeated"
+                if self.id == PLAYER_ID
+                else f"{self.name} is no longer defeated"
+            )
+            facts.append(self.fact(trace, card=card))
+        return facts
+
 
 @dataclass(frozen=True, slots=True)
 class Struck:
@@ -147,8 +168,7 @@ class Loner3eWorld(SceneWorld[Loner3eCast]):
         facts = hit.change(hit.luck, -abs(harm), "Luck", why)
         if hit.luck.current != 0:
             return Struck(facts=facts)
-        lost = f"{hit.name} is out of luck"
-        facts.append(hit.fact(lost, card=lost))
+        facts.extend(hit.lose())
         # SRD: luck resets after conflicts, and a side at 0 is the only end the engine sees.
         facts.extend(hit.refill("the conflict is over"))
         facts.extend(striker.refill("the conflict is over"))
@@ -160,10 +180,11 @@ class Loner3eWorld(SceneWorld[Loner3eCast]):
         if opponent.id == actor.id:
             raise Refusal(f"{actor.name} cannot be their own opposition in a conflict.")
         for side in (actor, opponent):
-            if side.luck.current == 0:
+            if side.defeated:
                 raise Refusal(
-                    f"{side.name} is already out of luck, so that conflict is over. Settle what "
-                    "it costs them instead of rolling it again."
+                    f"{side.name} lost their last conflict, so it is settled, not reopened. "
+                    "Settle what it cost them, or call `restore_luck` first if this is a "
+                    "genuinely new contest."
                 )
 
 

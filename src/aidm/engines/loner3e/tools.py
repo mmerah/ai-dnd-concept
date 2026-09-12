@@ -75,7 +75,9 @@ class Roll(Attempt):
     )
     opponent_id: Slug | None = Field(
         default=None,
-        description="Exact id of the character here that resists. Null when nothing fights back.",
+        description="Exact id of the character here whose endurance is worn down, for a contest "
+        "run as luck exchanges. Null for one decisive question or a single key action, even "
+        "against someone who resists.",
     )
 
     def faces(self) -> tuple[tuple[int, ...], tuple[int, ...]]:

@@ -169,7 +169,7 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
         assert draft.payload.twist.current == 0
 
 
-def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
+def test_luck_running_out_resets_both_pools_but_the_defeat_mark_survives() -> None:
     _, state = initialized()
     draft = state.draft()
     # A 10-max pool proves the reset lands on the sheet's own maximum, not on a +luck_max delta.
@@ -182,6 +182,8 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
 
     assert loner_sheet(draft, FOE).luck.current == 10
     assert loner_sheet(draft, PLAYER_ID).luck.current == LUCK_MAX
+    assert loner_sheet(draft, FOE).defeated is True
+    assert loner_sheet(draft, PLAYER_ID).defeated is False
     assert DEFEAT_NOTE.format(name=draft.payload.require(FOE).name) in draft.notes
     # The conflict is over, so the defeat note steers the same run instead of handing control back.
     assert draft.pending is None
@@ -231,10 +233,10 @@ def test_the_open_ended_hand_back_survives_a_save() -> None:
 def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
     _, state = initialized()
     draft = state.draft()
-    loner_sheet(draft, FOE).luck.current = 0
+    loner_sheet(draft, FOE).defeated = True
     spent = draft.commit()
 
-    with pytest.raises(Refusal, match="already out of luck"):
+    with pytest.raises(Refusal, match="lost their last conflict"):
         _ = ENGINE.roll(spent.draft(), _duel(), Random(0))
 
 
@@ -242,6 +244,43 @@ def test_restoring_luck_that_is_already_full_is_a_quiet_no_op() -> None:
     _, state = initialized()
 
     assert change(ENGINE, state.draft(), "restore_luck", entity_id=PLAYER_ID) == []
+
+
+def test_restoring_a_defeated_character_at_full_luck_clears_the_mark() -> None:
+    _, state = initialized()
+    draft = state.draft()
+    loner_sheet(draft, FOE).defeated = True
+    marked = draft.commit()
+
+    draft = marked.draft()
+    facts = change(ENGINE, draft, "restore_luck", entity_id=FOE)
+
+    assert loner_sheet(draft, FOE).defeated is False
+    (event,) = cards(facts)
+    assert event.card == "Mara is no longer defeated"
+
+
+def test_the_scenes_end_clears_the_mark_and_refills_someone_no_longer_here() -> None:
+    _, state = initialized()
+    draft = state.draft()
+    # A 10-max pool proves the reset lands on the sheet's own maximum, not on a +luck_max delta.
+    loner_sheet(draft, FOE).luck = Gauge(current=1, maximum=10)
+    hurt = draft.commit()
+
+    draft = hurt.draft()
+    # Seed 0 rolls chance 4 against risk 4: a yes-but, one luck off the foe's last point.
+    _ = ENGINE.roll(draft, _duel(), Random(0))
+    defeated = draft.commit()
+
+    draft = defeated.draft()
+    assert loner_sheet(draft, FOE).defeated is True
+    _ = change(ENGINE, draft, "leave", entity_id=FOE)
+    assert FOE not in draft.payload.run.here
+
+    _ = ENGINE.leaving(draft)
+
+    assert loner_sheet(draft, FOE).luck.current == 10
+    assert loner_sheet(draft, FOE).defeated is False
 
 
 def test_a_game_records_its_table_sets_and_is_refused_without_them() -> None:

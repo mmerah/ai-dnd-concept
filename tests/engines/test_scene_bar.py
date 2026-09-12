@@ -139,6 +139,19 @@ def test_a_dead_draft_cast_member_is_refused(case: SceneCase) -> None:
         case.bar({"present": (case.met,), "cast": {"ghost": ghost}})
 
 
+def test_a_fresh_cast_member_may_be_authored_with_a_smaller_full_pool() -> None:
+    bar = next(case.bar for case in CASES if case.engine is LONER3E_ENGINE)
+    minor = {"id": "minor", "name": "Minor", "brief": "", "luck": {"current": 2, "maximum": 2}}
+    bar({"cast": {"minor": minor}})
+
+
+def test_a_fresh_cast_member_with_a_spent_pool_is_refused() -> None:
+    bar = next(case.bar for case in CASES if case.engine is LONER3E_ENGINE)
+    spent = {"id": "spent", "name": "Spent", "brief": "", "luck": {"current": 1, "maximum": 6}}
+    with pytest.raises(Refusal, match="may write them"):
+        bar({"cast": {"spent": spent}})
+
+
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_a_hidden_multi_word_name_in_situation_is_refused(case: SceneCase) -> None:
     stalker = {"id": "stalker", "name": "Old Man Riley", "brief": ""}
