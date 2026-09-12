@@ -87,7 +87,8 @@ luck from the result. A strong yes costs the opponent more luck. A strong no cos
 side more. Do not add a second effect for a landed blow.
 
 A changed approach can change `position`. The same approach repeated keeps it. Breaking off is
-free: roll the escape with no opponent, or call `leave`.
+free: roll the escape with no opponent. Call `leave` for an opponent who walks away; the player
+leaves a place through `next_scene`.
 
 A character at 0 luck loses the conflict. Say how it ends for them in the story. They can be
 captured, injured, driven off, cornered, or forced to concede. This does not mean death. Write
