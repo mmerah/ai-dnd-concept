@@ -80,8 +80,31 @@ def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
 
     assert oracle.card.split("\n")[1:] == [
         "Mara: Luck -1 → 0/6",
-        "Mara is out of luck",
+        "Mara: Out of luck",
         "Mara: Luck +6 → 6/6",
+    ]
+
+
+def test_the_players_own_defeat_reads_without_their_name() -> None:
+    _, state = initialized()
+    draft = state.draft()
+    loner_sheet(draft, PLAYER_ID).luck.current = 1
+    weakened = draft.commit()
+    lunge = Roll(
+        what="Hold the doorway",
+        actor_id=FOE,
+        question="Does she drive him off the doorway?",
+        opponent_id=PLAYER_ID,
+    )
+
+    # Seed 0 rolls chance 4 against risk 4: a yes-but, one luck off the player's last point.
+    facts = ENGINE.roll(weakened.draft(), lunge, Random(0))
+    (oracle,) = cards(facts)
+
+    assert oracle.card.split("\n")[1:] == [
+        "Luck -1 → 0/6",
+        "Out of luck",
+        "Luck +6 → 6/6",
     ]
 
 

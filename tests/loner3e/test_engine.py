@@ -257,7 +257,7 @@ def test_restoring_a_defeated_character_at_full_luck_clears_the_mark() -> None:
 
     assert loner_sheet(draft, FOE).defeated is False
     (event,) = cards(facts)
-    assert event.card == "Mara is no longer defeated"
+    assert event.card == "Mara: No longer defeated"
 
 
 def test_the_scenes_end_leaves_a_defeat_for_the_game_master_to_settle() -> None:
