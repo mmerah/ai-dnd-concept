@@ -1,4 +1,5 @@
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 from httpx import AsyncClient
@@ -13,14 +14,24 @@ class Claims:
 
     held: set[str] = field(default_factory=set)
 
-    def claim(self, key: str) -> bool:
+    @contextmanager
+    def hold(self, key: str) -> Generator[bool]:
+        """Yields whether this caller won the claim; releases only what it won."""
+        won = self._claim(key)
+        try:
+            yield won
+        finally:
+            if won:
+                self._release(key)
+
+    def _claim(self, key: str) -> bool:
         # Synchronous: an await between the read and the write would let two callers both pay.
         if key in self.held:
             return False
         self.held.add(key)
         return True
 
-    def release(self, key: str) -> None:
+    def _release(self, key: str) -> None:
         self.held.discard(key)
 
 

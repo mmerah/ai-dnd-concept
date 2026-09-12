@@ -238,7 +238,7 @@ class ScriptedAgents:
         return self.runtime
 
     def _engine_id(self) -> str:
-        playing = self._runtime().playing()
+        playing = self._runtime().turn
         assert playing is not None
         return playing.engine.id
 

@@ -258,7 +258,7 @@ def test_finish_job_refuses_raises_missing_a_hired_member() -> None:
 def test_finish_job_refuses_raises_that_name_the_player_twice() -> None:
     draft = small_world().draft()
     draft.payload.job = "Escort the crate"
-    with pytest.raises(Refusal, match="repeated the player"):
+    with pytest.raises(Refusal, match="given the player, the player"):
         _ = ENGINE.job(
             draft,
             Job(verb="finish", raises=(Raise(skill="Stealth"), Raise(skill="Climbing"))),

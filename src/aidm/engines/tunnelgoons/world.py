@@ -3,11 +3,12 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from aidm.core.entities import Mutable, slug
+from aidm.core.entities import Slug, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
-from aidm.core.prompt import Pairs
-from aidm.engines.base import PLAYER_ID, Gauge, Sheeted
+from aidm.core.play import PendingDecision, PendingOption
+from aidm.core.views import Rows
+from aidm.engines.base import PLAYER_ID, Gauge, Sheet, Sheeted
 from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RoomWorld
 
 type Ability = Literal["brute", "skulker", "erudite"]
@@ -20,7 +21,7 @@ ABILITY_POINTS = 3
 STARTING_ITEMS = 3
 
 
-class GoonSheet(Mutable):
+class GoonSheet(Sheet):
     """The three ability scores a goon rolls with."""
 
     abilities: AbilityScores = Field(
@@ -29,7 +30,7 @@ class GoonSheet(Mutable):
     inventory: int = Field(default=INVENTORY_START, ge=0)
     level: int = Field(default=1, ge=1)
 
-    def rows(self) -> Pairs:
+    def rows(self) -> Rows:
         return (
             *((ability.capitalize(), str(self.abilities[ability])) for ability in ABILITIES),
             ("Inventory", str(self.inventory)),
@@ -40,7 +41,7 @@ class GoonSheet(Mutable):
 class Adventurer(Sheeted[GoonSheet]):
     hp: Gauge
 
-    def rows(self) -> Pairs:
+    def rows(self) -> Rows:
         return (("Health", str(self.hp)), *self.require_sheet().rows())
 
     def level(self, ability: Ability, boost: Boost) -> list[Fact]:
@@ -57,11 +58,17 @@ class Adventurer(Sheeted[GoonSheet]):
             card = f"{self.name}: {card}"
         return [self.fact(card, card=card)]
 
+    def level_decision(self) -> PendingDecision:
+        prompt = f"Level up: {self.name} — raise one ability by 1, and Health or Inventory by 1."
+        return PendingDecision(
+            kind="level-up", prompt=prompt, options=level_options(self.id), allows_text=False
+        )
+
 
 class Npc(Adventurer, Dweller):
     """A non-player character, friend or foe."""
 
-    def rows(self) -> Pairs:
+    def rows(self) -> Rows:
         if self.hired:
             return super().rows()
         # SRD: an NPC's Difficulty Score is also its Health Points, so one counter serves both.
@@ -84,7 +91,7 @@ class Goon(Adventurer):
 
 
 class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
-    def sheet_rows(self) -> Pairs:
+    def sheet_rows(self) -> Rows:
         carried = len(list(self.carried(self.player.id)))
         return tuple(
             (label, f"{carried}/{self.player.require_sheet().inventory}")
@@ -115,3 +122,16 @@ TunnelGoonsGame = Game[TunnelGoonsWorld]
 TunnelGoonsScenario = Scenario[MapDraft[Npc]]
 
 TunnelGoonsCharacter = Character[Goon]
+
+
+def level_options(actor_id: Slug) -> tuple[PendingOption, ...]:
+    return tuple(
+        PendingOption(
+            id=f"{ability}-{boost}",
+            label=f"{ability.capitalize()} +1, {boost.capitalize()} +1",
+            name="level_up",
+            args={"ability": ability, "boost": boost, "actor_id": actor_id},
+        )
+        for ability in ABILITIES
+        for boost in ("health", "inventory")
+    )

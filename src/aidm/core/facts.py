@@ -38,17 +38,23 @@ class Fact(Frozen):
 
 
 class Rolled(Frozen):
-    rolled: tuple[int, ...]
     event: DiceEvent
     fact: Fact
 
     @property
     def kept(self) -> int:
-        return max(self.rolled)
+        return max(self.event.rolled)
 
     @property
     def total(self) -> int:
-        return sum(self.rolled)
+        return sum(self.event.rolled)
+
+    @property
+    def face(self) -> int:
+        """The one die of a single roll."""
+        if len(self.event.rolled) != 1:
+            raise ValueError(f"{self.event.label} rolled {len(self.event.rolled)} dice, not one")
+        return self.event.rolled[0]
 
 
 def cards(facts: Sequence[Fact]) -> tuple[Fact, ...]:
@@ -81,7 +87,7 @@ def _rolled(
     )
     shown = ", ".join(str(die) for die in drawn)
     fact = Fact(trace=f"{reason}: {notation} [{shown}]")
-    return Rolled(rolled=drawn, event=event, fact=fact)
+    return Rolled(event=event, fact=fact)
 
 
 def _notation(faces: Sequence[int]) -> str:

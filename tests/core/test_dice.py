@@ -9,14 +9,17 @@ from aidm.core.facts import DiceEvent, roll, roll_pool
 def test_roll_traces_every_die() -> None:
     rolled = roll((6, 6), "a forced door", Random(0))
 
-    assert len(rolled.rolled) == 2
-    assert rolled.fact.trace == f"a forced door: 2d6 [{rolled.rolled[0]}, {rolled.rolled[1]}]"
+    assert len(rolled.event.rolled) == 2
+    assert (
+        rolled.fact.trace
+        == f"a forced door: 2d6 [{rolled.event.rolled[0]}, {rolled.event.rolled[1]}]"
+    )
 
 
 def test_roll_labels_a_single_die_by_notation_unless_given_one() -> None:
     rolled = roll((10,), "a listen check", Random(0))
 
-    assert rolled.fact.trace == f"a listen check: d10 [{rolled.rolled[0]}]"
+    assert rolled.fact.trace == f"a listen check: d10 [{rolled.event.rolled[0]}]"
     assert rolled.event.label == "d10"
 
     labelled = roll((10,), "a listen check", Random(0), label="Listen")
@@ -44,4 +47,14 @@ def test_roll_pool_highlights_the_kept_die_only_in_a_pool() -> None:
 def test_rolled_total_sums_the_pool() -> None:
     rolled = roll_pool((6, 6, 6), "a forced door", Random(0), label="Pool")
 
-    assert rolled.total == sum(rolled.rolled)
+    assert rolled.total == sum(rolled.event.rolled)
+
+
+def test_face_gives_the_single_die_and_refuses_a_pool() -> None:
+    rolled = roll((10,), "a listen check", Random(0))
+
+    assert rolled.face == rolled.event.rolled[0]
+
+    pool = roll_pool((6, 6), "a forced door", Random(0))
+    with pytest.raises(ValueError, match="rolled 2 dice, not one"):
+        _ = pool.face

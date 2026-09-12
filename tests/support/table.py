@@ -16,7 +16,7 @@ from aidm.app.spawn import RunResult, Tools
 from aidm.config import ProviderConfig, Providers, Role, Settings
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.facts import Fact
-from aidm.core.io import Library, decode
+from aidm.core.io import Library
 from aidm.core.model import AnyGame, Check, WorldsmithAnswer
 from aidm.core.play import Answer
 from aidm.engines.registry import build_engines
@@ -144,7 +144,7 @@ class ScriptedSpawner:
 
 def stub_worldsmith(answer: Mapping[str, object]) -> WorldsmithAnswer:
     async def answered[M: BaseModel](_prompt: str, model: type[M], _check: Check[M]) -> M:
-        return model.model_validate(answer)
+        return model.model_validate_json(json.dumps(answer))
 
     return answered
 
@@ -192,7 +192,7 @@ class Table[G: AnyGame]:
     def saved(self) -> G:
         raw = self.service.store.read(self.service.slug)
         assert raw is not None
-        restored = self.service.engine.restore(decode(raw))
+        restored = self.service.engine.restore(raw)
         assert isinstance(restored, self.state_type), (
             f"the save restored an unexpected {self.state_type.__name__}"
         )
@@ -210,7 +210,7 @@ def open_table[G: AnyGame](
 ) -> Table[G]:
     settings = settings or offline_settings(saves)
     spawner = ScriptedSpawner()
-    runtime = Runtime(settings, spawner)
+    runtime = Runtime.start(settings, lambda _: spawner)
     selected_engine = ENGINES_BUILT[engine_id] if engine is None else engine
     runtime.engines[engine_id] = selected_engine
     scenario_id = scenario_for(engine_id)
@@ -241,9 +241,10 @@ async def play_turn[G: AnyGame](
     canned.extend(then)
     if action is not None:
         assert isinstance(prompt, str)
-        await table.service.act(action, prompt)
+        await table.runtime.act(table.service, action, prompt)
     else:
-        await table.service.play(Answer(text=prompt) if isinstance(prompt, str) else prompt)
+        answer = Answer(text=prompt) if isinstance(prompt, str) else prompt
+        await table.runtime.play(table.service, answer)
     return table.state
 
 
@@ -253,12 +254,14 @@ async def take[G: AnyGame](
     """The page's own action that opens no turn: the worldsmith writes, the narrator may tell."""
     if arrival is not None:
         table.spawner.answers.setdefault("narrator", []).append(narrated(arrival))
-    await table.service.act(action, words)
+    await table.runtime.act(table.service, action, words)
     return table.state
 
 
 async def drain(service: GameService) -> None:
+    """Every background task lands before the session closes: `close` cancels what has not."""
     await service.settled()
+    await service.close()
 
 
 def narrowed[M](value: object, model: type[M]) -> M:

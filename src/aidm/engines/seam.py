@@ -6,12 +6,12 @@ from pathlib import Path
 from random import Random
 from typing import Any
 
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel
 
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, Refusal, Slug, parse
+from aidm.core.entities import EngineId, Refusal, Slug, parse, parse_json
 from aidm.core.facts import Fact
-from aidm.core.io import read_prompt
+from aidm.core.io import decode, read_prompt
 from aidm.core.model import (
     AnyCharacter,
     AnyScenario,
@@ -22,9 +22,9 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import Chapter, DecisionOption, Exchange, Mark, PendingOption, SpokenLine
-from aidm.core.prompt import Pairs
+from aidm.core.prompt import Sections
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import Companion, Look, NarratorView, PlayerView
+from aidm.core.views import Companion, Look, NarratorView, PlayerView, Rows
 from aidm.engines.base import (
     JOIN_PARTY,
     KILL,
@@ -148,7 +148,7 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     def pack_options(self) -> tuple[DecisionOption, ...]:
         return ()
 
-    def preview_character(self, character: AnyCharacter) -> Pairs:
+    def preview_character(self, character: AnyCharacter) -> Rows:
         return self.player_of(character).rows()
 
     def companions(self, state: G) -> tuple[Companion, ...]:
@@ -163,10 +163,10 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
             for member in self.world_of(state).members()
         )
 
-    def restore(self, value: JsonValue) -> G:
-        if (header := parse(EngineHeader, value)).engine != self.id:
+    def restore(self, raw: str) -> G:
+        if (header := parse(EngineHeader, decode(raw))).engine != self.id:
             raise Refusal(f"the save plays {header.engine!r}, not {self.id!r}")
-        state = parse(self.game, value)
+        state = parse_json(self.game, raw)
         self.validate(state)
         return state
 
@@ -182,11 +182,11 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
         self, draft: G, *, intent: str, guidance: str, answer: type[BaseModel]
     ) -> str:
         world = self.world_of(draft)
-        family = self.family_sections(draft)
-        return self._render(
-            world.source,
-            draft.scenario.scope,
-            family,
+        return render_worldsmith(
+            role=read_prompt(self.family_dir / "worldsmith.md"),
+            source=world.source,
+            scope=draft.scenario.scope,
+            family=self.family_sections(draft),
             intent=intent,
             guidance=guidance,
             answer=answer,
@@ -195,8 +195,15 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     def render_opening(
         self, source: str, scope: str, *, intent: str, guidance: str, answer: type[BaseModel]
     ) -> str:
-        family = self.family_sections(None)
-        return self._render(source, scope, family, intent=intent, guidance=guidance, answer=answer)
+        return render_worldsmith(
+            role=read_prompt(self.family_dir / "worldsmith.md"),
+            source=source,
+            scope=scope,
+            family=self.family_sections(None),
+            intent=intent,
+            guidance=guidance,
+            answer=answer,
+        )
 
     def build_scenario(
         self,
@@ -297,9 +304,9 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     @abstractmethod
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> World[M, P]: ...
     @abstractmethod
-    def master_sections(self, state: G) -> Pairs: ...
+    def master_sections(self, state: G) -> Sections: ...
     @abstractmethod
-    def family_sections(self, draft: G | None) -> Pairs: ...
+    def family_sections(self, draft: G | None) -> Sections: ...
 
     def worldsmith_requests(self) -> dict[Slug, Request[G]]:
         """Each layer adds its own after `super()`'s: the seam's `hire`, then the family."""
@@ -323,26 +330,6 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     @abstractmethod
     def act(self, draft: G, action: Slug, words: str, /) -> None:
         """The page's action against the state now: refuse it stale, else request or note."""
-
-    def _render(
-        self,
-        source: str,
-        scope: str,
-        family: Pairs,
-        *,
-        intent: str,
-        guidance: str,
-        answer: type[BaseModel],
-    ) -> str:
-        return render_worldsmith(
-            role=read_prompt(self.family_dir / "worldsmith.md"),
-            source=source,
-            scope=scope,
-            family=family,
-            intent=intent,
-            guidance=guidance,
-            answer=answer,
-        )
 
 
 async def compose[M: BaseModel](

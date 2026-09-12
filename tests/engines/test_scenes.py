@@ -2,7 +2,15 @@ from collections.abc import Sequence
 from random import Random
 
 import pytest
-from support.table import LONER3E, game, narrowed
+from support.table import (
+    ENGINES_BUILT,
+    LIBRARY,
+    LONER3E,
+    SCENARIO_MODELS,
+    game,
+    narrowed,
+    scenario_for,
+)
 
 from aidm.core.entities import Refusal, Slug, parse
 from aidm.core.model import Generation
@@ -204,3 +212,17 @@ def test_a_scene_without_a_focus_installs_and_shows_no_scene_panel() -> None:
 
     assert "This scene" not in [panel.title for panel in engine.player_view(draft).panels]
     assert "WHAT THIS SCENE IS ABOUT" not in str(engine.master_sections(draft))
+
+
+def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:
+    engine = ENGINES_BUILT[LONER3E]
+    scenario_id = scenario_for(LONER3E)
+    scenario = LIBRARY.read_scenario(scenario_id, SCENARIO_MODELS)
+    before = scenario.payload.model_dump()
+    character = LIBRARY.read_character("kael", engine.id, engine.character)
+    draft = engine.begin(scenario_id, scenario, character)
+    world = narrowed(draft, Loner3eGame).payload
+
+    world.cast[MARA].name = "Someone else"
+
+    assert scenario.payload.model_dump() == before

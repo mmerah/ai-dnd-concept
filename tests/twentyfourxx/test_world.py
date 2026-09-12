@@ -147,7 +147,7 @@ def test_take_lead_swaps_player_and_cast_entry_and_keeps_ids() -> None:
     assert not world.cast[dead_id].alive
     assert dead_id in world.run.here
     assert any(fact.card == "Kestrel leads now" for fact in facts)
-    TwentyfourxxWorld.model_validate(world.model_dump(mode="json"))
+    TwentyfourxxWorld.model_validate_json(world.model_dump_json())
 
 
 def test_take_lead_refused_while_the_player_lives() -> None:

@@ -4,13 +4,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from hashlib import sha1
 from pathlib import Path
+from typing import Self
 
 from httpx import HTTPError
 
 from aidm.app.providers import Claims, post_bearer
 from aidm.config import ProviderConfig, Settings, SpeechConfig
-from aidm.core.entities import Slug
-from aidm.core.io import FileStore
+from aidm.core.entities import Refusal, Slug
+from aidm.core.io import FileStore, publish
 from aidm.core.play import Exchange
 
 LOGGER = logging.getLogger(__name__)
@@ -29,6 +30,17 @@ class Reader:
     voice: str
     claims: Claims = field(default_factory=Claims)
 
+    @classmethod
+    def open(cls, settings: Settings, store: FileStore, slug: str, *, voice: str) -> Self | None:
+        if not settings.speech.enabled:
+            return None
+        return cls(
+            config=settings.speech,
+            provider=settings.providers.for_name(settings.speech.provider),
+            saves=store.media_dir(slug) / SPEECH_DIR,
+            voice=voice,
+        )
+
     def clip(self, exchange: Exchange) -> Path | None:
         requests = requests_of(exchange, self.voice, self.config.voices)
         path = self._path(clip_key(self.config.model, requests))
@@ -41,46 +53,35 @@ class Reader:
             return
         key = clip_key(self.config.model, requests)
         path = self._path(key)
-        if path.is_file() or not self.claims.claim(key):
+        if path.is_file():
             return
         try:
-            chunks = [
-                await post_bearer(
-                    self.provider,
-                    "/audio/speech",
-                    speech_body(self.config.model, voice, text),
-                    self.config.timeout,
-                )
-                for voice, text in requests
-            ]
-            self.saves.mkdir(parents=True, exist_ok=True)
-            # Written beside, then moved: a write that dies half-way must not cache a broken clip.
-            part = path.with_suffix(".part")
-            with wave.open(str(part), "wb") as clip_file:
-                clip_file.setnchannels(1)
-                clip_file.setsampwidth(SAMPLE_WIDTH)
-                clip_file.setframerate(self.config.sample_rate)
-                clip_file.writeframes(b"".join(chunks))
-            part.replace(path)
-        # A full disk is not a bug.
-        except (HTTPError, OSError, wave.Error):
-            LOGGER.exception("speech generation failed")
-        finally:
-            self.claims.release(key)
+            with self.claims.hold(key) as reading:
+                if not reading:
+                    return
+                chunks = [
+                    await post_bearer(
+                        self.provider,
+                        "/audio/speech",
+                        speech_body(self.config.model, voice, text),
+                        self.config.timeout,
+                    )
+                    for voice, text in requests
+                ]
+
+                def write(staged: Path) -> None:
+                    with wave.open(str(staged), "wb") as clip_file:
+                        clip_file.setnchannels(1)
+                        clip_file.setsampwidth(SAMPLE_WIDTH)
+                        clip_file.setframerate(self.config.sample_rate)
+                        clip_file.writeframes(b"".join(chunks))
+
+                publish(path, write)
+        except (HTTPError, OSError, Refusal, wave.Error) as failed:
+            LOGGER.warning("speech generation failed: %s", failed)
 
     def _path(self, key: str) -> Path:
         return self.saves / f"{key}.wav"
-
-
-def open_reader(settings: Settings, store: FileStore, slug: str, *, voice: str) -> Reader | None:
-    if not settings.speech.enabled:
-        return None
-    return Reader(
-        config=settings.speech,
-        provider=settings.providers.for_name(settings.speech.provider),
-        saves=store.media_dir(slug) / SPEECH_DIR,
-        voice=voice,
-    )
 
 
 def voice_of(speaker_id: Slug | None, narrator: str, pool: Sequence[str]) -> str:

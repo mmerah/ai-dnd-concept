@@ -2,7 +2,16 @@ from pathlib import Path
 from random import Random
 
 import pytest
-from support.table import change, refused
+from support.table import (
+    ENGINES_BUILT,
+    LIBRARY,
+    SCENARIO_MODELS,
+    TUNNELGOONS,
+    change,
+    narrowed,
+    refused,
+    scenario_for,
+)
 
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Refusal, Slug, slug
@@ -12,6 +21,7 @@ from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.tools import Move
 from aidm.engines.rooms.world import Dweller, MapDraft, Place, Prop, RoomWorld, Way
+from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 
 SIXTH = EngineId("sixth")
 GATE = "gate"
@@ -263,3 +273,17 @@ def test_a_party_member_who_is_not_at_the_players_place_is_refused(tmp_path: Pat
             visits=[YARD],
             party=[WARDEN],
         )
+
+
+def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:
+    engine = ENGINES_BUILT[TUNNELGOONS]
+    scenario_id = scenario_for(TUNNELGOONS)
+    scenario = LIBRARY.read_scenario(scenario_id, SCENARIO_MODELS)
+    before = scenario.payload.model_dump()
+    character = LIBRARY.read_character("kael", engine.id, engine.character)
+    draft = engine.begin(scenario_id, scenario, character)
+    world = narrowed(draft, TunnelGoonsGame).payload
+
+    next(iter(world.npcs.values())).name = "Someone else"
+
+    assert scenario.payload.model_dump() == before

@@ -354,7 +354,9 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
             known_ways = ", ".join(
                 self.require_place(way.to).name for way in self.ways.get(place.id, ()) if way.known
             )
-            here = ", ".join(f"{e.tag} ({e.met_label})" for e in self.things_at(place.id))
+            here = ", ".join(
+                f"{entity.tag} ({entity.met_label})" for entity in self.things_at(place.id)
+            )
             lines.append(
                 f"{place.tag} — {place.description}\n  known ways out: {known_ways or '(none)'}"
                 f"\n  here: {here or '(nobody, nothing)'}"

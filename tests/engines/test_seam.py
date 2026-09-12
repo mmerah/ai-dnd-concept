@@ -6,10 +6,10 @@ from support.table import ENGINE_IDS, game
 
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Refusal, Slug, slug
-from aidm.core.io import ENCODING, decode, read_prompt
+from aidm.core.io import ENCODING, read_prompt
 from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
 from aidm.core.play import DecisionOption, SpokenLine
-from aidm.core.prompt import Pairs
+from aidm.core.prompt import Sections
 from aidm.core.views import NarratorView
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.scenes.engine import SceneEngine
@@ -66,7 +66,7 @@ class FifthEngine(SceneEngine[Person, FifthGame, ScenePack]):
     def guidance(self, _picks: Sequence[Slug]) -> str:
         return "Write the taproom plainly."
 
-    def master_sections(self, state: FifthGame) -> Pairs:
+    def master_sections(self, state: FifthGame) -> Sections:
         return (("SCENE", self.world_of(state).run.title),)
 
 
@@ -195,4 +195,4 @@ def test_close_builds_no_narrator_view(tmp_path: Path) -> None:
 @pytest.mark.parametrize("engine_id", ENGINE_IDS)
 def test_restored_round_trips(engine_id: EngineId) -> None:
     engine, state = game(engine_id)
-    assert engine.restore(decode(state.model_dump_json())) == state
+    assert engine.restore(state.model_dump_json()) == state

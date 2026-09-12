@@ -3,7 +3,7 @@ from collections.abc import Iterable, Mapping, Sequence
 
 from aidm.core.entities import Refusal, Slug
 from aidm.core.play import Chapter
-from aidm.core.prompt import Pairs, render_history
+from aidm.core.prompt import Sections, render_history
 from aidm.engines.base import Person, Thing
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld, resolved_id
@@ -87,7 +87,7 @@ def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) ->
     return unmet
 
 
-def scene_sections[C: Person](world: SceneWorld[C] | None, log: Sequence[Chapter]) -> Pairs:
+def scene_sections[C: Person](world: SceneWorld[C] | None, log: Sequence[Chapter]) -> Sections:
     if world is None:
         return (
             ("SCENES SO FAR", "(no scenes yet — write the opening)"),

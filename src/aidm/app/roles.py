@@ -5,14 +5,14 @@ from functools import partial
 from pathlib import Path
 
 from aidm.app.builtin import run_builtin
-from aidm.app.spawn import DRIVERS, RunResult, Spawner, Tools, ask, run_cli
+from aidm.app.spawn import DRIVERS, RETRIES, RunResult, Spawner, Tools, ask, run_cli
 from aidm.config import Role, Settings
 from aidm.core.entities import Refusal
 from aidm.core.facts import Fact, traced
 from aidm.core.io import read_prompt
 from aidm.core.model import AnyGame
 from aidm.core.play import Chapter, Interjection, Narration, SpokenLine
-from aidm.core.prompt import Pairs, lines_of, sections, told_history
+from aidm.core.prompt import Sections, lines_of, section_if, sections, told_history
 from aidm.core.tools import schema_text
 from aidm.core.views import Companion, NarratorView, Subject
 from aidm.engines.seam import AnyEngine
@@ -57,19 +57,19 @@ class Roles:
     async def master(self, turn: Turn) -> None:
         """A crashed game master still played the turn, if it applied anything legal first."""
         prompt = turn.picture()
-        for attempt in (1, 2):
+        for attempt in range(RETRIES + 1):
             try:
                 await self.spawner.run("master", prompt, None, turn)
                 return
             except Refusal as failed:
-                if _landed(turn):
+                if turn.landed():
                     LOGGER.warning(
                         "the game master failed after applying %d facts: %s",
                         len(turn.facts),
                         failed,
                     )
                     return
-                if attempt == 2:
+                if attempt == RETRIES:
                     raise
                 LOGGER.warning("the game master landed nothing, spawning it again: %s", failed)
 
@@ -154,7 +154,7 @@ def _picture(
     evidence: str,
     *,
     reader: Subject | None = None,
-) -> Pairs:
+) -> Sections:
     """`reader` is who reads it: nobody (the player themself) or a member reading about them."""
     lead, beside = ("you are", "with you") if reader is None else ("the player is", "with them")
     subjects = {subject.id: subject for subject in view.subjects}
@@ -168,13 +168,9 @@ def _picture(
     return (
         ("WHAT THE PLAYER HAS READ", told_history(scenes)),
         ("SCENE", f"{view.title}\n{view.situation}"),
-        *((("WHAT THIS SCENE IS ABOUT", view.focus),) if view.focus else ()),
+        *section_if("WHAT THIS SCENE IS ABOUT", view.focus),
         ("WHO IS HERE", who_is_here),
         ("YOUR PARTY", party),
         ("THE PLAYER'S SHEET", lines_of(f"- {label}: {value}" for label, value in view.sheet)),
         ("WHAT HAPPENED", evidence),
     )
-
-
-def _landed(turn: Turn) -> bool:
-    return bool(turn.facts) or turn.draft.pending is not None

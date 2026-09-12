@@ -130,7 +130,7 @@ async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(
 
     table.spawner.turns.append(script)
     table.spawner.answers["narrator"] = [narrated("A chart, under the stone.")]
-    await table.service.play(Answer(text="I lever up the flagstone."))
+    await table.runtime.play(table.service, Answer(text="I lever up the flagstone."))
 
     assert "not permitted" in table.refusals[0]
     assert counts == [1]
@@ -269,10 +269,10 @@ async def test_a_turn_that_suspends_tells_the_narrator_where_play_pauses(tmp_pat
 
 async def test_authoring_raises_when_the_worldsmith_never_meets_the_bar(tmp_path: Path) -> None:
     table = open_game(tmp_path)
-    thin = SceneDraft[Loner3eCast].model_validate(json.loads(_bare_scene(present=["nobody-here"])))
+    thin = SceneDraft[Loner3eCast].model_validate_json(_bare_scene(present=["nobody-here"]))
 
     async def answer[M: BaseModel](_prompt: str, model: type[M], check: Check[M]) -> M:
-        answer = model.model_validate(thin.model_dump())
+        answer = model.model_validate_json(thin.model_dump_json())
         check(answer)
         return answer
 
@@ -490,7 +490,9 @@ async def test_abandoning_a_spawn_kills_the_process_group_it_started(
     assert killed == [(1234, spawn_module.SIGKILL)]
 
 
-def test_the_surface_publishes_for_the_engine_whose_turn_is_in_flight(tmp_path: Path) -> None:
+async def test_the_surface_publishes_for_the_engine_whose_turn_is_in_flight(
+    tmp_path: Path,
+) -> None:
     table = open_game(tmp_path)
     toolless = Loner3eEngine()
     toolless.id = EngineId("mirror")
@@ -500,10 +502,11 @@ def test_the_surface_publishes_for_the_engine_whose_turn_is_in_flight(tmp_path: 
     state = table.service.state
     table.service.turn = Turn.begin(table.service.engine, state, Answer(text="I look."), Random(0))
 
-    assert "roll" in [tool.name for tool in table.runtime.published_tools()]
+    async with table.runtime.admit(table.service):
+        assert "roll" in [tool.name for tool in table.runtime.published_tools()]
 
-    table.service.turn = None
-    assert [tool.name for tool in table.runtime.published_tools()] == []
+        table.service.turn = None
+        assert [tool.name for tool in table.runtime.published_tools()] == []
 
 
 # What `codex exec --json` actually printed, banner line and all.

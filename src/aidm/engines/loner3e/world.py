@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Literal
 
 from pydantic import Field
@@ -7,7 +8,7 @@ from aidm.core.entities import Frozen, Refusal, Slug, check_unique
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import DecisionOption
-from aidm.core.prompt import Pairs
+from aidm.core.views import Rows
 from aidm.engines.base import Gauge, Person
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
@@ -53,7 +54,7 @@ class Loner3eCast(Person):
     def tagged(self, kind: TagKind) -> list[str]:
         return self.tags.get(kind, [])
 
-    def rows(self) -> Pairs:
+    def rows(self) -> Rows:
         return tuple(
             (label, value)
             for label, value in (
@@ -113,6 +114,14 @@ class Loner3eCast(Person):
         return self.change(self.luck, self.luck.shortfall, "Luck", why)
 
 
+@dataclass(frozen=True, slots=True)
+class Struck:
+    """One exchange of a conflict: what it cost, and who lost it, if anyone."""
+
+    facts: list[Fact]
+    loser: str = ""
+
+
 class Loner3eWorld(SceneWorld[Loner3eCast]):
     # The played character's tally paces the whole game, so no sheet carries one.
     twist: Gauge = Field(default_factory=lambda: Gauge(current=0, maximum=TIES_PER_TWIST))
@@ -130,6 +139,32 @@ class Loner3eWorld(SceneWorld[Loner3eCast]):
             f"The conflict with {foe.name} runs on: neither side is out of luck yet. Press the "
             "attack, try something else, or break away — what do you do?"
         )
+
+    def strike(self, actor: Loner3eCast, opponent: Loner3eCast, outcome: Outcome) -> Struck:
+        harm = outcome.harm
+        hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
+        why = f"{striker.name} gets the better of the exchange"
+        facts = hit.change(hit.luck, -abs(harm), "Luck", why)
+        if hit.luck.current != 0:
+            return Struck(facts=facts)
+        lost = f"{hit.name} is out of luck"
+        facts.append(hit.fact(lost, card=lost))
+        # SRD: luck resets after conflicts, and a side at 0 is the only end the engine sees.
+        facts.extend(hit.refill("the conflict is over"))
+        facts.extend(striker.refill("the conflict is over"))
+        return Struck(facts=facts, loser=hit.name)
+
+    def check_conflict(self, actor: Loner3eCast, opponent: Loner3eCast | None) -> None:
+        if opponent is None:
+            return
+        if opponent.id == actor.id:
+            raise Refusal(f"{actor.name} cannot be their own opposition in a conflict.")
+        for side in (actor, opponent):
+            if side.luck.current == 0:
+                raise Refusal(
+                    f"{side.name} is already out of luck, so that conflict is over. Settle what "
+                    "it costs them instead of rolling it again."
+                )
 
 
 Loner3eGame = Game[Loner3eWorld]
@@ -150,10 +185,10 @@ def outcome_for(chance: int, risk: int) -> Outcome:
     return Outcome(id=side, harm=2 * sign)
 
 
-def twist_pairing(subject: int, action: int, twists: Pairs) -> tuple[str, str]:
+def twist_pairing(subject: int, action: int, twists: Rows) -> tuple[str, str]:
     return twists[subject - 1][0], twists[action - 1][1]
 
 
-def pack_meanings(entries: Sequence[DecisionOption], tags: Sequence[str]) -> Pairs:
+def pack_meanings(entries: Sequence[DecisionOption], tags: Sequence[str]) -> Rows:
     detail_of = {entry.label: entry.detail for entry in entries if entry.detail}
     return tuple((tag, detail_of[tag]) for tag in tags if tag in detail_of)

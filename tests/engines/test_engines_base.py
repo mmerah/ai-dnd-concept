@@ -6,6 +6,8 @@ from aidm.core.views import PanelRow, Subject
 from aidm.engines.base import (
     Gauge,
     Person,
+    Sheet,
+    Sheeted,
     Thing,
     here_panel,
     party_panel,
@@ -91,6 +93,12 @@ def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> 
     player.luck.current = 0
     (own,) = player.change(player.luck, 1, "Luck", "the strain")
     assert own.card == "Luck +1 → 1/6"
+
+
+def test_a_sheeted_person_with_no_sheet_has_no_rows() -> None:
+    nobody = Sheeted[Sheet](id="nobody", name="Nobody", brief="")
+
+    assert nobody.rows() == ()
 
 
 def test_named_unmet_finds_multi_word_names_case_folded_and_bare_ids() -> None:

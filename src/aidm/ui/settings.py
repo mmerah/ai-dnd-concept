@@ -1,5 +1,5 @@
 import os
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from pathlib import Path
 from typing import Literal, TypeAliasType, get_args, get_origin
 
@@ -16,7 +16,7 @@ type Changes = dict[tuple[str, ...], str | None]
 
 
 class SettingsForm:
-    def __init__(self, settings: Settings, apply: Callable[[], str | None]) -> None:
+    def __init__(self, settings: Settings, apply: Callable[[], Awaitable[str | None]]) -> None:
         self.settings = settings
         self.apply = apply
         self.boxes: dict[tuple[str, ...], Widget] = {}
@@ -53,7 +53,7 @@ class SettingsForm:
             else:
                 self.render(nested_value, nested, (*path, name))
 
-    def save(self) -> None:
+    async def save(self) -> None:
         changed = changes(self.settings, {path: box.value for path, box in self.boxes.items()})
         if not changed:
             ui.notify("Nothing changed.", type="info")
@@ -70,7 +70,7 @@ class SettingsForm:
             ui.notify(refusal_text(error), type="negative", multi_line=True)
             return
         save_settings(changed)
-        refusal = self.apply()
+        refusal = await self.apply()
         if refusal is not None:
             ui.notify(
                 f"{refusal} The keys are written; they apply on the next restart.", type="warning"
@@ -80,7 +80,7 @@ class SettingsForm:
         ui.navigate.reload()
 
 
-def settings_page(settings: Settings, apply: Callable[[], str | None]) -> None:
+def settings_page(settings: Settings, apply: Callable[[], Awaitable[str | None]]) -> None:
     SettingsForm(settings, apply).build()
 
 
@@ -109,9 +109,9 @@ def refusal_text(error: ValidationError) -> str:
 def _shown(model: BaseModel) -> list[tuple[str, FieldInfo, object]]:
     """A directory is left out (repointing one hides the save library); a tuple has no widget."""
     return [
-        (n, f, getattr(model, n))
-        for n, f in type(model).model_fields.items()
-        if not isinstance(getattr(model, n), Path | tuple)
+        (name, field, getattr(model, name))
+        for name, field in type(model).model_fields.items()
+        if not isinstance(getattr(model, name), Path | tuple)
     ]
 
 

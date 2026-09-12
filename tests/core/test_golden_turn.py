@@ -34,6 +34,8 @@ async def test_a_scripted_turn_renders_and_records_unchanged(
     table = open_table(
         tmp_path, engine_id=engine_id, state_type=ENGINES_BUILT[engine_id].game, rng=Random(SEED)
     )
+    # Deterministic so the interjection this engine's script triggers fires every run.
+    table.service.chatter = Random(SEED)
     table.service.save(_behind(engine_id, table.state))
 
     await play_turn(table, PROMPT, *_script(engine_id), narration=NARRATION, then=(INTERJECTION,))

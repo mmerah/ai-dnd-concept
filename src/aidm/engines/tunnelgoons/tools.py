@@ -3,10 +3,9 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Slug
-from aidm.core.play import PendingOption
 from aidm.engines.base import Attempt
 from aidm.engines.hiring import ACTOR
-from aidm.engines.tunnelgoons.world import ABILITIES, Ability, Boost
+from aidm.engines.tunnelgoons.world import Ability, Boost
 
 REST = "The player and the party spend a night here and heal to full Health."
 ROLL = (
@@ -61,16 +60,3 @@ class LevelUp(Frozen):
         if (self.ability is None) != (self.boost is None):
             raise ValueError("both an ability and a boost, or neither")
         return self
-
-
-def level_options(actor_id: Slug | None) -> tuple[PendingOption, ...]:
-    return tuple(
-        PendingOption(
-            id=f"{ability}-{boost}",
-            label=f"{ability.capitalize()} +1, {boost.capitalize()} +1",
-            name="level_up",
-            args={"ability": ability, "boost": boost, "actor_id": actor_id},
-        )
-        for ability in ABILITIES
-        for boost in ("health", "inventory")
-    )

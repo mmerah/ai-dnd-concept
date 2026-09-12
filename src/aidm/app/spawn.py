@@ -1,6 +1,6 @@
 import json
 import logging
-from asyncio import subprocess, wait_for
+from asyncio import subprocess, timeout
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
@@ -13,7 +13,7 @@ from typing import Protocol
 from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
 
 from aidm.config import CliProvider, Role, RoleConfig
-from aidm.core.entities import Loose, Refusal, parse
+from aidm.core.entities import Loose, Refusal, parse_json
 from aidm.core.io import decode
 from aidm.core.model import AnyGame, Check, WorldsmithAnswer
 from aidm.core.tools import MasterTool
@@ -82,7 +82,7 @@ class ClaudeDriver:
 
     def read_result(self, output: str) -> RunResult:
         try:
-            result = parse(_ClaudeResult, decode(output))
+            result = parse_json(_ClaudeResult, output)
         except Refusal as broken:
             raise Refusal(f"claude printed no JSON result: {output[-500:]}") from broken
         if result.is_error:
@@ -194,7 +194,8 @@ async def ask[T: BaseModel](
         spoken = await spawner.run(role, asked, session)
         session = spoken.session
         try:
-            answer = parse(model, decode(spoken.text))
+            decode(spoken.text)
+            answer = parse_json(model, spoken.text)
             check(answer)
         except Refusal as invalid:
             refused = str(invalid)
@@ -218,7 +219,7 @@ async def _spawn(
     role: Role,
     argv: Sequence[str],
     prompt: str,
-    timeout: float,
+    seconds: float,
     secrets: Sequence[str],
     cwd: str,
 ) -> str:
@@ -237,9 +238,10 @@ async def _spawn(
     except OSError as failed:
         raise Refusal(f"the {role} could not be started: {failed}") from failed
     try:
-        streamed = await wait_for(process.communicate(), timeout)
+        async with timeout(seconds):
+            streamed = await process.communicate()
     except TimeoutError:
-        raise Refusal(f"the {role} answered nothing in {timeout:.0f}s") from None
+        raise Refusal(f"the {role} answered nothing in {seconds:.0f}s") from None
     finally:
         # A no-op once it exited; an abandoned or timed-out spawn dies with its children.
         _kill(process)

@@ -42,11 +42,19 @@ class DropItem(Frozen):
 type Hiring[G: Game[Any], M: Person] = Callable[[G, M, str, WorldsmithAnswer], Awaitable[str]]
 
 
+def _no_check[A: BaseModel](_draft: object) -> Check[A]:
+    """A write whose only bar is its own schema."""
+
+    def unchecked(_answer: A) -> None: ...
+
+    return unchecked
+
+
 def hiring[G: Game[Any], M: Person, A: BaseModel](
     answer: type[A],
     prompt: Callable[[G, M, str], str],
     install: Callable[[M, A], str],
-    check: Callable[[G], Check[A]] = lambda _draft: lambda _answer: None,
+    check: Callable[[G], Check[A]] = _no_check,
 ) -> Hiring[G, M]:
     async def write(draft: G, member: M, terms: str, worldsmith: WorldsmithAnswer) -> str:
         answered = await worldsmith(prompt(draft, member, terms), answer, check(draft))

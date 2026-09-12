@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, JsonValue
 
-from aidm.core.entities import Frozen, parse
+from aidm.core.entities import Frozen, parse_json
 from aidm.core.facts import Fact
 from aidm.core.model import Game
 
@@ -39,7 +39,7 @@ def master_tool[G: Game[Any], A: BaseModel](
         raise ValueError(f"{name} parameters the model reads carry no description: {bare}")
 
     def call(draft: G, raw: JsonValue, rng: Random) -> tuple[Fact, ...]:
-        return tuple(resolve(draft, parse(args, raw), rng))
+        return tuple(resolve(draft, parse_json(args, json.dumps(raw)), rng))
 
     return MasterTool(name, description, args, call)
 

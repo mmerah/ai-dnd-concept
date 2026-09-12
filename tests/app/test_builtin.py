@@ -146,7 +146,7 @@ async def test_the_master_plays_its_tools_in_process_and_echoes_each_reply_whole
     refused = answers[1]
     assert isinstance(refused, dict)
     assert refused["tool_call_id"] == "b"
-    assert "Input should be a valid dictionary" in str(refused["content"])
+    assert "Input should be an object" in str(refused["content"])
     assert answers[2] == {
         "role": "tool",
         "tool_call_id": "c",

@@ -3,12 +3,12 @@ from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, other_than, picked
-from aidm.core.entities import EngineId, Refusal, Slug, slug
-from aidm.core.facts import Fact, Rolled, roll, roll_pool
+from aidm.core.entities import EngineId, Slug, slug
+from aidm.core.facts import Fact, roll, roll_pool
 from aidm.core.play import PendingDecision
-from aidm.core.prompt import Pairs
+from aidm.core.prompt import Sections
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import DiceLook, Look
+from aidm.core.views import DiceLook, Look, Rows
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import (
     CHANGE_TAGS,
@@ -146,14 +146,14 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         """Defaults restate rules the guidance already carries; dropping them halves the prompt."""
         return f"{AUTHORING}\n\n{self.pack_content(picks, exclude_defaults=True)}"
 
-    def glossary(self, state: Loner3eGame) -> Pairs:
+    def glossary(self, state: Loner3eGame) -> Sections:
         spelled: dict[str, str] = {}
         for member in self.world_of(state).here():
             spelled.update(self._meanings(state.packs, member))
         lines = "\n".join(f"- {tag}: {detail}" for tag, detail in spelled.items())
         return (("WHAT THE TAGS IN PLAY MEAN", lines),) if spelled else ()
 
-    def _meanings(self, selected: Sequence[Slug], sheet: Loner3eCast) -> Pairs:
+    def _meanings(self, selected: Sequence[Slug], sheet: Loner3eCast) -> Rows:
         chosen = tuple(self.packs[pack_id] for pack_id in selected)
         # The concept's pack blurb is generic where the entity's own brief is not: skip it.
         return pack_meanings(
@@ -163,7 +163,7 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
             (*sheet.tagged("skill"), *sheet.tagged("frailty"), *sheet.tagged("gear")),
         )
 
-    def twist_table(self) -> Pairs:
+    def twist_table(self) -> Rows:
         """Always the SRD's own table: no other pack publishes one."""
         srd = self.srd_pack()
         if srd.twist_subjects is None or srd.twist_actions is None:
@@ -202,18 +202,22 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         if args.opponent_id is not None:
             opponent = world.require_living_here(args.opponent_id)
             reveals.extend(opponent.reveal())
-        _check_ready(actor, opponent)
+        world.check_conflict(actor, opponent)
 
-        chance, risk = _pair(args, rng)
+        chance_faces, risk_faces = args.faces()
+        chance = roll_pool(chance_faces, f"{args.question} — chance", rng, label="Chance")
+        risk = roll_pool(risk_faces, f"{args.question} — risk", rng, label="Risk")
 
         outcome = outcome_for(chance.kept, risk.kept)
         line = _oracle_line(args, opponent, outcome)
         exchange: list[Fact] = []
         effects: tuple[str, ...] = ()
         if opponent is not None:
-            struck, ended = _strike(draft, actor, opponent, outcome)
-            exchange, effects = _absorbed(struck)
-            if not ended:
+            struck = world.strike(actor, opponent, outcome)
+            exchange, effects = _absorbed(struck.facts)
+            if struck.loser:
+                draft.note(DEFEAT_NOTE.format(name=struck.loser))
+            else:
                 draft.pending = PendingDecision(
                     kind="conflict",
                     prompt=world.conflict_prompt(actor, opponent),
@@ -237,7 +241,8 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
     def _twist(self, draft: Loner3eGame, actor: Loner3eCast, rng: Random) -> list[Fact]:
         """The SRD's table is rolled here so the dice trace; the model only reads the pairing."""
         rolled = roll((DIE_FACE, DIE_FACE), "twist — subject, action", rng, label="Twist")
-        subject, action = twist_pairing(rolled.rolled[0], rolled.rolled[1], self.twist_table())
+        subject_face, action_face = rolled.event.rolled
+        subject, action = twist_pairing(subject_face, action_face, self.twist_table())
         draft.note(TWIST_NOTE.format(subject=subject.upper(), action=action.upper()))
         # Echo the unnamed SRD intrusion in the call that rolled it without adding canon.
         due = actor.fact(
@@ -258,43 +263,3 @@ def _absorbed(exchange: list[Fact]) -> tuple[list[Fact], tuple[str, ...]]:
     """The exchange reads as lines inside the Oracle card, so it shows no cards of its own."""
     lines = tuple(fact.card for fact in exchange if fact.told and fact.card)
     return [fact.model_copy(update={"card": ""}) for fact in exchange], lines
-
-
-def _strike(
-    draft: Loner3eGame, actor: Loner3eCast, opponent: Loner3eCast, outcome: Outcome
-) -> tuple[list[Fact], bool]:
-    harm = outcome.harm
-    hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
-    why = f"{striker.name} gets the better of the exchange"
-    facts = hit.change(hit.luck, -abs(harm), "Luck", why)
-    if hit.luck.current != 0:
-        return facts, False
-    draft.note(DEFEAT_NOTE.format(name=hit.name))
-    lost = f"{hit.name} is out of luck"
-    facts.append(hit.fact(lost, card=lost))
-    # SRD: luck resets after conflicts, and a side at 0 is the only end the engine sees.
-    facts.extend(hit.refill("the conflict is over"))
-    facts.extend(striker.refill("the conflict is over"))
-    return facts, True
-
-
-def _check_ready(actor: Loner3eCast, opponent: Loner3eCast | None) -> None:
-    if opponent is None:
-        return
-    if opponent.id == actor.id:
-        raise Refusal(f"{actor.name} cannot be their own opposition in a conflict.")
-    for side in (actor, opponent):
-        if side.luck.current == 0:
-            raise Refusal(
-                f"{side.name} is already out of luck, so that conflict is over. Settle what it "
-                "costs them instead of rolling it again."
-            )
-
-
-def _pair(args: Roll, rng: Random) -> tuple[Rolled, Rolled]:
-    chance_faces = (DIE_FACE, DIE_FACE) if args.position == "advantage" else (DIE_FACE,)
-    risk_faces = (DIE_FACE, DIE_FACE) if args.position == "disadvantage" else (DIE_FACE,)
-    asked = args.question
-    chance = roll_pool(chance_faces, f"{asked} — chance", rng, label="Chance")
-    risk = roll_pool(risk_faces, f"{asked} — risk", rng, label="Risk")
-    return chance, risk

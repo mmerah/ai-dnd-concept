@@ -48,8 +48,7 @@ class CharacterForm:
                 self.steps()
                 heading("Preview")
                 self.preview()
-                # Outside the preview refreshable: a rebuild on blur must not destroy the button
-                # focus just moved to.
+                # Outside the preview refreshable: a rebuild on blur must not destroy button focus.
                 self.create_button = (
                     ui.button("Create", icon="person_add", on_click=self.create)
                     .props("color=primary")
@@ -148,6 +147,7 @@ class ScenarioForm:
         self.catalog = catalog
         self.engine_id = runtime.default_engine()
         self.document: Path | None = None
+        self.uploads: Path | None = None
         self.title: ui.input
         self.packs: ui.select | None = None
         self.character: ui.select
@@ -172,7 +172,11 @@ class ScenarioForm:
 
     async def uploaded(self, event: UploadEventArguments) -> None:
         # The source reader opens a path, and a PDF cannot be parsed from bytes.
-        path = Path(mkdtemp()) / Path(event.file.name).name
+        if self.uploads is None:
+            self.uploads = Path(mkdtemp())
+        if self.document is not None:
+            self.document.unlink(missing_ok=True)
+        path = self.uploads / Path(event.file.name).name
         await event.file.save(path)
         self.document = path
         ui.notify(f"Read {event.file.name}.")
@@ -271,15 +275,16 @@ class ScenarioForm:
             return
         finally:
             self.button.props(remove="loading")
-            self._discard_upload()
+        self._discard_uploads()
         LOGGER.info("scenario created: slug=%s", name)
         ui.navigate.to(game_path(opened))
 
-    def _discard_upload(self) -> None:
-        """A retry must not read a deleted file; a temp dir left behind is not a bug."""
-        if self.document is not None:
-            shutil.rmtree(self.document.parent, ignore_errors=True)
-            self.document = None
+    def _discard_uploads(self) -> None:
+        # An abandoned page leaves one temp directory to the OS.
+        if self.uploads is not None:
+            shutil.rmtree(self.uploads, ignore_errors=True)
+        self.uploads = None
+        self.document = None
 
 
 def character_page(runtime: Runtime) -> None:
@@ -287,9 +292,7 @@ def character_page(runtime: Runtime) -> None:
 
 
 def scenario_page(runtime: Runtime) -> None:
-    catalog = LauncherCatalog.read(
-        runtime.library, runtime.store, runtime.engines, runtime.scenario_models()
-    )
+    catalog = LauncherCatalog.read(runtime.library, runtime.store, runtime.engines)
     ScenarioForm(runtime, catalog).build()
 
 

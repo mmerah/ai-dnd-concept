@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Literal, Self
 
 from dotenv import set_key, unset_key
-from pydantic import Field, SecretStr, model_validator
+from pydantic import ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from aidm.core.entities import Frozen
@@ -17,12 +17,18 @@ type Effort = Literal["low", "medium", "high"]
 ENV_FILE = ".env"
 
 
-class ProviderConfig(Frozen):
+class Configured(Frozen):
+    """Settings arrive as env strings, so these read them lax; every other model is strict."""
+
+    model_config = ConfigDict(strict=False)
+
+
+class ProviderConfig(Configured):
     base_url: str
     api_key: SecretStr
 
 
-class RoleConfig(Frozen):
+class RoleConfig(Configured):
     provider: RoleProvider = "claude"
     # A string, not a `Literal`: model aliases move faster than this file.
     model: str = Field(min_length=1)
@@ -32,14 +38,14 @@ class RoleConfig(Frozen):
     max_rounds: int = Field(default=30, gt=0)
 
 
-class MediaConfig(Frozen):
+class MediaConfig(Configured):
     enabled: bool = False
     provider: ProviderName = "openrouter"
     model: str = "google/gemini-3.1-flash-lite-image"
     timeout: float = Field(default=180.0, gt=0.0)
 
 
-class SpeechConfig(Frozen):
+class SpeechConfig(Configured):
     enabled: bool = False
     provider: ProviderName = "openrouter"
     model: str = "google/gemini-3.1-flash-tts-preview"
@@ -52,7 +58,7 @@ class SpeechConfig(Frozen):
     timeout: float = Field(default=60.0, gt=0.0)
 
 
-class RoleSettings(Frozen):
+class RoleSettings(Configured):
     master: RoleConfig = RoleConfig(model="opus", effort="high")
     narrator: RoleConfig = RoleConfig(model="sonnet", effort="low", timeout=120.0)
     # A whole scene from the source, the cast and the history: measured at 335 seconds.
@@ -68,7 +74,7 @@ class RoleSettings(Frozen):
                 return self.worldsmith
 
 
-class Providers(Frozen):
+class Providers(Configured):
     openrouter: ProviderConfig = ProviderConfig(
         base_url="https://openrouter.ai/api/v1",
         api_key=SecretStr(""),

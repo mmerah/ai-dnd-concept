@@ -159,7 +159,7 @@ def test_a_player_id_cast_entry_is_refused_by_new_game(case: SceneCase) -> None:
         {
             "meta": {"title": "Test", "premise": "A test scenario.", "scope": "One tense evening."},
             "engine": case.engine.id,
-            "packs": [SRD_PACK],
+            "packs": (SRD_PACK,),
             "payload": {**case.base, "cast": {PLAYER_ID: DECOY_CAST_ENTRY}},
         }
     )

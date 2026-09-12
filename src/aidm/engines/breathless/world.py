@@ -7,7 +7,7 @@ from aidm.core.entities import Refusal, Slug, slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import PendingOption
-from aidm.core.prompt import Pairs
+from aidm.core.views import Rows
 from aidm.engines.base import PLAYER_ID, Gauge, Item, ItemSheet, Sheeted
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
@@ -57,7 +57,7 @@ class SurvivorSheet(ItemSheet[Supply]):
     def vulnerable(self) -> bool:
         return self.stress.current >= STRESS_MAX
 
-    def rows(self) -> Pairs:
+    def rows(self) -> Rows:
         skills = ", ".join(
             f"{skill.capitalize()} d{self.worn[skill]}"
             + ("" if self.worn[skill] == self.skills[skill] else f" (rated d{self.skills[skill]})")
@@ -175,9 +175,6 @@ class Survivor(Sheeted[SurvivorSheet]):
         else:
             raise Refusal(f"{choice!r} is not a valid loot choice")
         return self.fact(card, card=card)
-
-    def rows(self) -> Pairs:
-        return self.sheet.rows() if self.sheet is not None else ()
 
     def carried(self) -> str:
         if self.sheet is None:

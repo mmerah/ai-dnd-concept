@@ -6,7 +6,6 @@ from nicegui.events import ValueChangeEventArguments
 
 from aidm.app.launch import LauncherCatalog, LaunchTarget, SaveOption
 from aidm.app.mcp import MOUNT_PATH, MountedLifespan, endpoint
-from aidm.app.roles import RoleRunner
 from aidm.app.runtime import Runtime
 from aidm.config import read_settings
 from aidm.core.entities import Refusal, Slug, content_id
@@ -80,9 +79,7 @@ class LaunchForm:
 
 
 def home_page(runtime: Runtime) -> None:
-    catalog = LauncherCatalog.read(
-        runtime.library, runtime.store, runtime.engines, runtime.scenario_models()
-    )
+    catalog = LauncherCatalog.read(runtime.library, runtime.store, runtime.engines)
     with page_header("AI Dungeon Master", home=False):
         ui.button("Settings", icon="settings", on_click=lambda: ui.navigate.to("/settings")).props(
             "flat"
@@ -109,7 +106,7 @@ def start() -> None:
     # Without a handler the root logger drops every INFO record, spawns included.
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     settings = read_settings()
-    _register_pages(Runtime(settings, RoleRunner(settings)))
+    _register_pages(Runtime.start(settings))
     theme.install()
     ui.run(  # pyright: ignore[reportUnknownMemberType]
         title="AI Dungeon Master",
@@ -181,12 +178,14 @@ def _register_pages(runtime: Runtime) -> None:
     lifespan = MountedLifespan(manager)
     app.on_startup(lifespan.start)  # pyright: ignore[reportUnknownMemberType]
     app.on_shutdown(lifespan.stop)  # pyright: ignore[reportUnknownMemberType]
+    app.on_shutdown(runtime.close)  # pyright: ignore[reportUnknownMemberType]
 
-    def apply_settings() -> str | None:
-        refusal = runtime.busy_refusal()
-        if refusal is None:
-            runtime.reload_settings()
-        return refusal
+    async def apply_settings() -> str | None:
+        try:
+            await runtime.reload_settings()
+        except Refusal as refused:
+            return str(refused)
+        return None
 
     @ui.page("/")
     def _index() -> None:  # pyright: ignore[reportUnusedFunction]

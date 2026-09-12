@@ -2,7 +2,7 @@ from collections.abc import Iterable, Sequence
 
 from aidm.core.play import Chapter, Exchange
 
-type Pairs = tuple[tuple[str, str], ...]
+type Sections = tuple[tuple[str, str], ...]
 
 SCENE_EXCHANGES = 20
 WHOLE_SCENES = 2
@@ -10,8 +10,13 @@ TAIL_EXCHANGES = 3
 INTERJECTED = "(a party member speaks, unprompted)"
 
 
-def sections(parts: Pairs) -> str:
+def sections(parts: Sections) -> str:
     return "\n\n".join(f"{name}:\n{body.strip()}" for name, body in parts)
+
+
+def section_if(title: str, body: str) -> Sections:
+    """One prompt section, or none when the body is empty."""
+    return ((title, body),) if body else ()
 
 
 def lines_of(parts: Iterable[str]) -> str:

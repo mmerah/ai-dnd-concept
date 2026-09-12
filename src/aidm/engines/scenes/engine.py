@@ -17,7 +17,7 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption
-from aidm.core.prompt import Pairs
+from aidm.core.prompt import Sections, section_if
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import NarratorView, Panel, PlayerView
 from aidm.engines.base import (
@@ -110,28 +110,28 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
         check_scene(draft)
         return self.world.opening(draft, self.player_of(character), scenario.source)
 
-    def master_sections(self, state: G) -> Pairs:
+    def master_sections(self, state: G) -> Sections:
         world = self.world_of(state)
         scene = world.run
         return (
             ("SCENE", f"{scene.title}\n{scene.situation}"),
-            *((("WHAT THIS SCENE IS ABOUT", scene.focus),) if scene.focus else ()),
+            *section_if("WHAT THIS SCENE IS ABOUT", scene.focus),
             ("YOU PLAY FOR", world.player.line()),
             *self.sheet_sections(state),
             ("HERE WITH THE PLAYER", world.here_lines()),
             *party_section(world.members()),
             ("HIDDEN HERE (the player has not found these)", world.hidden_lines()),
-            *((("THE ARC (the player has not found this)", world.arc),) if world.arc else ()),
+            *section_if("THE ARC (the player has not found this)", world.arc),
             *self.glossary(state),
         )
 
-    def sheet_sections(self, _state: G) -> Pairs:
+    def sheet_sections(self, _state: G) -> Sections:
         return ()
 
-    def glossary(self, _state: G) -> Pairs:
+    def glossary(self, _state: G) -> Sections:
         return ()
 
-    def family_sections(self, draft: G | None) -> Pairs:
+    def family_sections(self, draft: G | None) -> Sections:
         return scene_sections(
             None if draft is None else self.world_of(draft), () if draft is None else draft.log
         )

@@ -15,7 +15,7 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption
-from aidm.core.prompt import Pairs, lines_of
+from aidm.core.prompt import Sections, lines_of
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import NarratorView, Panel, PanelRow, PlayerView
 from aidm.engines.base import (
@@ -72,12 +72,12 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
     def starting_items(self, _player: P, _taken: Iterable[str]) -> tuple[Prop, ...]:
         return ()
 
-    def family_sections(self, draft: G | None) -> Pairs:
+    def family_sections(self, draft: G | None) -> Sections:
         return map_sections(
             None if draft is None else self.world_of(draft), () if draft is None else draft.log
         )
 
-    def master_sections(self, state: G) -> Pairs:
+    def master_sections(self, state: G) -> Sections:
         world = self.world_of(state)
         place = world.current
         player = world.player

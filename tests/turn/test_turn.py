@@ -86,7 +86,7 @@ async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: 
     table.spawner.turns.append(table.plays((FOUND, TAKEN)))
 
     with pytest.raises(Refusal, match="no answer left"):
-        await table.service.play(Answer(text="I take the map."))
+        await table.runtime.play(table.service, Answer(text="I take the map."))
 
     assert table.service.state.model_dump_json() == before
     assert table.service.state.exchanges() == ()
@@ -192,7 +192,7 @@ async def test_a_line_spoken_by_someone_not_here_is_re_prompted_with_the_id(
     ]
     table.spawner.turns.append(table.plays(()))
 
-    await table.service.play(Answer(text="I wait."))
+    await table.runtime.play(table.service, Answer(text="I wait."))
 
     assert any("elena" in prompt for role, prompt in table.spawner.prompts if role == "narrator")
     assert table.service.state.exchanges()[-1].narration == "The door settles."
@@ -218,7 +218,7 @@ async def test_a_master_that_crashes_after_applying_still_commits_what_it_applie
     table.spawner.turns.append(_exploding_after_the_find(table))
     table.spawner.answers["narrator"] = [narrated("The map is in hand.")]
 
-    await table.service.play(Answer(text="I take the map and read it."))
+    await table.runtime.play(table.service, Answer(text="I take the map and read it."))
 
     assert len(table.service.state.exchanges()) == 1
     assert table.service.state.payload.require(MAP).known
@@ -234,7 +234,7 @@ async def test_a_master_that_crashed_after_a_tool_landed_is_not_spawned_again(
     table.spawner.answers["narrator"] = [narrated("The map is in hand.")]
     spawned = len(table.spawner.prompts)
 
-    await table.service.play(Answer(text="I take the map."))
+    await table.runtime.play(table.service, Answer(text="I take the map."))
 
     assert [role for role, _ in table.spawner.prompts[spawned:]].count("master") == 1
 
@@ -246,7 +246,7 @@ async def test_a_master_that_landed_nothing_is_spawned_once_more(tmp_path: Path)
     spawned = len(table.spawner.prompts)
 
     with pytest.raises(Refusal, match="never started"):
-        await table.service.play(Answer(text="I take the map."))
+        await table.runtime.play(table.service, Answer(text="I take the map."))
 
     assert [session for role, session in table.spawner.resumed[spawned:] if role == "master"] == [
         None,
@@ -260,7 +260,7 @@ async def test_a_turn_that_applied_nothing_and_failed_is_refused(tmp_path: Path)
     table.spawner.turns += [_never_started, _never_started]
 
     with pytest.raises(Refusal, match="never started"):
-        await table.service.play(Answer(text="I take the map."))
+        await table.runtime.play(table.service, Answer(text="I take the map."))
 
     assert table.service.state.model_dump_json() == before
 
