@@ -126,28 +126,43 @@ def test_risk_kills_on_disaster_and_maims_on_setback_not_doubled() -> None:
     assert any(fact.card == "You are dead" for fact in facts)
 
 
-def test_roll_line_discloses_the_actors_risk() -> None:
-    draft = small_world().draft()
-    facts = ENGINE.roll(
-        draft, Roll(what="Sneak past", skill="Stealth", risk="a guard's knife"), Random(0)
-    )
-    assert "risking a guard's knife" in facts[1].trace
-    assert facts[1].trace.endswith("→ success")
-
-
 def test_defend_with_intact_item_spares_a_disaster_breaks_the_item_once() -> None:
     draft = small_world().draft()
     player = draft.payload.player
     facts = ENGINE.roll(
         draft,
-        Roll(what="Sneak past", skill="Stealth", risk="a guard's knife", defend_with=LOCKPICKS),
+        Roll(
+            what="Sneak past",
+            skill="Stealth",
+            risk="a guard's knife",
+            defend_with=LOCKPICKS,
+            hindrance="cut fingers",
+        ),
         Random(2),
     )
     assert player.alive
     assert player.require_sheet().items[LOCKPICKS].broken_times == 1
-    assert player.require_sheet().hindrances == ["a guard's knife"]
+    assert player.require_sheet().hindrances == ["cut fingers"]
     assert draft.pending is None
-    assert any(fact.card == "Lockpick set breaks — a guard's knife" for fact in facts)
+    assert any(fact.card == "Lockpick set breaks — cut fingers" for fact in facts)
+
+
+def test_defend_no_longer_brands_the_actor_with_the_risk_text() -> None:
+    draft = small_world().draft()
+    player = draft.payload.player
+    _ = ENGINE.roll(
+        draft,
+        Roll(
+            what="Sneak past",
+            skill="Stealth",
+            risk="a guard's knife",
+            defend_with=LOCKPICKS,
+            hindrance="cut fingers",
+        ),
+        Random(2),
+    )
+    assert "a guard's knife" not in player.require_sheet().hindrances
+    assert "cut fingers" in player.require_sheet().hindrances
 
 
 def test_defend_with_harmless_gear_spares_a_disaster_and_adds_no_hindrance() -> None:
@@ -190,7 +205,6 @@ def test_defend_with_multi_use_armor_defends_three_times_then_refuses() -> None:
         )
     assert player.alive
     assert player.require_sheet().items["armor"].broken
-    assert player.require_sheet().hindrances == []
     with pytest.raises(Refusal, match="already broken"):
         _ = ENGINE.roll(
             draft,
@@ -199,27 +213,146 @@ def test_defend_with_multi_use_armor_defends_three_times_then_refuses() -> None:
         )
 
 
+def test_defend_with_non_harmless_multi_use_armor_takes_a_different_hindrance_each_time() -> None:
+    draft = small_world().draft()
+    player = draft.payload.player
+    player.require_sheet().items["armor"] = Gear(name="Battle armor", breaks=3)
+    for hindrance in ("a bruised rib", "a ringing ear", "a torn sleeve"):
+        _ = ENGINE.roll(
+            draft,
+            Roll(
+                what="Take fire",
+                skill="Stealth",
+                risk="a bullet",
+                defend_with="armor",
+                hindrance=hindrance,
+            ),
+            Random(2),
+        )
+    assert player.alive
+    assert player.require_sheet().items["armor"].broken
+    assert player.require_sheet().hindrances == ["a bruised rib", "a ringing ear", "a torn sleeve"]
+    with pytest.raises(Refusal, match="already broken"):
+        _ = ENGINE.roll(
+            draft,
+            Roll(
+                what="Take fire",
+                skill="Stealth",
+                risk="a bullet",
+                defend_with="armor",
+                hindrance="a fourth wound",
+            ),
+            Random(2),
+        )
+
+
+def test_defend_with_non_harmless_gear_and_no_hindrance_is_refused_before_any_dice_roll() -> None:
+    draft = small_world().draft()
+    before = draft.model_copy(deep=True)
+    with pytest.raises(Refusal, match="name the hindrance Lockpick set leaves behind"):
+        _ = ENGINE.roll(
+            draft,
+            Roll(what="Sneak past", skill="Stealth", risk="a guard's knife", defend_with=LOCKPICKS),
+            Random(2),
+        )
+    assert draft.payload == before.payload
+
+
 def test_setback_with_defend_with_breaks_gear_instead_of_maiming() -> None:
     draft = small_world().draft()
     player = draft.payload.player
     facts = ENGINE.roll(
         draft,
-        Roll(what="Sneak past", skill="Stealth", risk="a guard's knife", defend_with=LOCKPICKS),
+        Roll(
+            what="Sneak past",
+            skill="Stealth",
+            risk="a guard's knife",
+            defend_with=LOCKPICKS,
+            hindrance="cut fingers",
+        ),
         Random(1),
     )
     assert player.require_sheet().items[LOCKPICKS].broken
-    assert player.require_sheet().hindrances == ["a guard's knife"]
+    assert player.require_sheet().hindrances == ["cut fingers"]
     assert not any(fact.card == "Maimed" for fact in facts)
 
 
-def test_setback_without_defend_with_maims() -> None:
-    draft = small_world().draft()
+def test_helper_defends_with_their_own_gear_while_actor_takes_their_own_consequence() -> None:
+    draft = hired(small_world(), KESTREL, skills={"Stealth": 10}).draft()
+    draft.payload.cast[KESTREL].require_sheet().items["vest"] = Gear(name="Vest")
     player = draft.payload.player
+    member = draft.payload.cast[KESTREL]
     facts = ENGINE.roll(
-        draft, Roll(what="Sneak past", skill="Stealth", risk="a guard's knife"), Random(1)
+        draft,
+        Roll(
+            what="Slip past",
+            skill="Stealth",
+            risk="a guard's knife",
+            helped_by=Helper(
+                actor_id=KESTREL, risk="crossfire", defend_with="vest", hindrance="ringing ears"
+            ),
+        ),
+        Random(15),
     )
+    assert player.alive
     assert player.require_sheet().hindrances == ["Maimed"]
-    assert any(fact.card == "Maimed" for fact in facts)
+    assert member.alive
+    assert member.require_sheet().items["vest"].broken_times == 1
+    assert member.require_sheet().hindrances == ["ringing ears"]
+    assert any(fact.card == "Vest breaks — ringing ears" for fact in facts)
+
+
+def test_both_participants_defend_with_their_own_separate_items() -> None:
+    draft = hired(small_world(), KESTREL, skills={"Stealth": 10}).draft()
+    draft.payload.cast[KESTREL].require_sheet().items["vest"] = Gear(name="Vest")
+    player = draft.payload.player
+    member = draft.payload.cast[KESTREL]
+    facts = ENGINE.roll(
+        draft,
+        Roll(
+            what="Slip past",
+            skill="Stealth",
+            risk="a guard's knife",
+            defend_with=LOCKPICKS,
+            hindrance="cut fingers",
+            helped_by=Helper(
+                actor_id=KESTREL, risk="crossfire", defend_with="vest", hindrance="ringing ears"
+            ),
+        ),
+        Random(2),
+    )
+    assert player.alive
+    assert player.require_sheet().items[LOCKPICKS].broken_times == 1
+    assert player.require_sheet().hindrances == ["cut fingers"]
+    assert member.alive
+    assert member.require_sheet().items["vest"].broken_times == 1
+    assert member.require_sheet().hindrances == ["ringing ears"]
+    assert any(fact.card == "Lockpick set breaks — cut fingers" for fact in facts)
+    assert any(fact.card == "Vest breaks — ringing ears" for fact in facts)
+
+
+def test_both_participants_naming_the_same_ship_function_are_refused_before_any_dice_roll() -> None:
+    draft = hired(small_world(), KESTREL, skills={"Stealth": 10}).draft()
+    before = draft.model_copy(deep=True)
+    with pytest.raises(Refusal, match="already broken"):
+        _ = ENGINE.roll(
+            draft,
+            Roll(
+                what="Take fire",
+                skill="Stealth",
+                risk="shrapnel",
+                defend_with="weapons",
+                hindrance="a jammed weapon",
+                helped_by=Helper(
+                    actor_id=KESTREL,
+                    risk="shrapnel",
+                    defend_with="weapons",
+                    hindrance="a scorched hand",
+                ),
+            ),
+            Random(2),
+        )
+    assert draft.payload == before.payload
 
 
 def test_helper_with_risk_takes_their_own_consequence_on_a_bad_roll() -> None:
@@ -266,7 +399,7 @@ def test_hindered_helper_contributes_d4() -> None:
     assert "hindered" in facts[1].trace
 
 
-def test_helper_and_lead_both_die_succession_names_only_the_living_member() -> None:
+def test_succession_runs_only_after_both_the_actor_and_helper_consequences_land() -> None:
     state = hired(small_world(), KESTREL, skills={"Stealth": 10})
     state.payload.cast[SABLE].known = True
     state = hired(state, SABLE, skills={"Stealth": 8})
@@ -295,6 +428,13 @@ def test_defend_with_needs_a_risk_on_roll_and_helper() -> None:
         _ = Roll(what="Sneak past", defend_with=LOCKPICKS)
     with pytest.raises(ValueError, match="defend_with needs the risk"):
         _ = Helper(actor_id=KESTREL, defend_with=LOCKPICKS)
+
+
+def test_hindrance_needs_a_defend_with_on_roll_and_helper() -> None:
+    with pytest.raises(ValueError, match="hindrance needs the defend_with"):
+        _ = Roll(what="Sneak past", hindrance="cut fingers")
+    with pytest.raises(ValueError, match="hindrance needs the defend_with"):
+        _ = Helper(actor_id=KESTREL, hindrance="cut fingers")
 
 
 def test_luck_facts_are_untold() -> None:

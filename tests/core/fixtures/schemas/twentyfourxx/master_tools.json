@@ -400,7 +400,6 @@
         },
         "helped_by": {
           "additionalProperties": false,
-          "description": "The hired member who rolls their own die. Null when none helps.",
           "properties": {
             "actor_id": {
               "description": "Exact id of the hired member who helps.",
@@ -423,6 +422,11 @@
               ],
               "default": null,
               "description": "Exact id of the helper's item or a ship function that breaks to spare them. Null when nothing shields them."
+            },
+            "hindrance": {
+              "default": "",
+              "description": "What the hit leaves behind once the gear absorbs it, as a hindrance. Empty when the gear breaks harmlessly.",
+              "type": "string"
             }
           },
           "required": [
@@ -432,7 +436,8 @@
             "object",
             "null"
           ],
-          "default": null
+          "default": null,
+          "description": "The hired member who rolls their own die. Null when none helps."
         },
         "hindered": {
           "default": "",
@@ -451,6 +456,11 @@
           ],
           "default": null,
           "description": "Exact id of the actor's item or a ship function that breaks to spare them. Null when nothing shields them."
+        },
+        "hindrance": {
+          "default": "",
+          "description": "What the hit leaves behind once the gear absorbs it, as a hindrance. Empty when the gear breaks harmlessly.",
+          "type": "string"
         }
       },
       "required": [

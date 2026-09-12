@@ -24,8 +24,10 @@ Set `hindered` when something slows the actor. The die drops to d4.
 Set `risk` before the roll, naming only harm the player has already been told about in the
 story. A disaster then kills the actor; a setback then maims them. Set `defend_with` when the
 player has said what shields them — an item they carry or a ship function. Naming it spares
-them: the gear breaks instead, and a setback's harm becomes a hindrance instead of `Maimed`.
-Naming nothing lets the consequence land in full.
+them: the gear breaks instead. Set `hindrance` to the lesser thing the hit leaves behind once
+the gear absorbs it — not `risk` itself, which is only the danger disclosed before the roll.
+Leave `hindrance` empty for gear that breaks harmlessly. Naming no `defend_with` lets the
+consequence land in full.
 
 ## Gear and credits
 
@@ -66,8 +68,9 @@ for the player and one for each living hired member. A job the player never take
 ## A member's help
 
 A member without a sheet helps through `helped` only. A hired member's help is `helped_by`: set
-their own `risk` when helping shares the danger with them, and their own `defend_with` when
-their own gear can shield them. A hindered helper rolls d4.
+their own `risk` when helping shares the danger with them, their own `defend_with` when their
+own gear can shield them, and their own `hindrance` for what that gear leaves behind. A
+hindered helper rolls d4.
 
 ## Hiring
 

@@ -213,7 +213,36 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         actor = self.require_actor(actor_id)
         item = self.require_gear(actor, item_id)
         if item.broken:
-            raise Refusal(f"{item.name} is already broken")
+            raise Refusal(_broken(item))
+        return self._break(actor, item, hindrance)
+
+    def take_hit(
+        self, actor: Crewmate, item_id: Slug | None, hindrance: str, *, lethal: bool
+    ) -> list[Fact]:
+        if item_id is None:
+            return self.kill(actor.id) if lethal else actor.maim()
+        item = self.require_gear(actor, item_id)
+        return self._break(actor, item, "" if item.harmless else hindrance)
+
+    def check_defenses(self, claims: Sequence[tuple[Crewmate, Slug, str]]) -> None:
+        resolved = [
+            (actor, self.require_gear(actor, item_id), hindrance)
+            for actor, item_id, hindrance in claims
+        ]
+        claimed: dict[int, int] = {}
+        for _, item, _ in resolved:
+            claimed[id(item)] = claimed.get(id(item), 0) + 1
+        for actor, item, hindrance in resolved:
+            if item.breaks - item.broken_times < claimed[id(item)]:
+                raise Refusal(_broken(item))
+            if item.harmless:
+                continue
+            if not hindrance:
+                raise Refusal(f"name the hindrance {item.name} leaves behind")
+            if hindrance in actor.require_sheet().hindrances:
+                raise Refusal(f"{hindrance!r} is already among {actor.name}'s hindrances")
+
+    def _break(self, actor: Crewmate, item: Gear, hindrance: str) -> list[Fact]:
         if item.harmless:
             if hindrance:
                 raise Refusal(f"{item.name} breaks harmlessly: leave `hindrance` empty")
@@ -230,14 +259,6 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         card = f"{item.name} breaks — {hindrance}"
         trace = f"{actor.mention} breaks {item.name} — {hindrance}"
         return [actor.fact(trace, card=card)]
-
-    def take_hit(
-        self, actor: Crewmate, risk: str, item_id: Slug | None, *, lethal: bool
-    ) -> list[Fact]:
-        if item_id is None:
-            return self.kill(actor.id) if lethal else actor.maim()
-        item = self.require_gear(actor, item_id)
-        return self.defend(actor.id, item_id, "" if item.harmless else risk)
 
     def upgrade_ship(self, function_id: Slug) -> list[Fact]:
         function = self.ship.get(function_id)
@@ -291,3 +312,7 @@ def raised(current: SkillDie | None) -> SkillDie:
     if current == LADDER[-1]:
         raise Refusal("the skill is already at d12")
     return LADDER[LADDER.index(current) + 1]
+
+
+def _broken(item: Gear) -> str:
+    return f"{item.name} is already broken"
