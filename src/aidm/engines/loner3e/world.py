@@ -9,7 +9,7 @@ from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import DecisionOption
 from aidm.core.views import Rows
-from aidm.engines.base import PLAYER_ID, Gauge, Person
+from aidm.engines.base import Gauge, Person
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 
@@ -100,7 +100,7 @@ class Loner3eCast(Person):
         if lost:
             lost_line = ", ".join(lost)
             parts.append(f"Lost {lost_line}" if kind == "gear" else f"No longer: {lost_line}")
-        return [self.fact(trace, card="; ".join(parts))]
+        return [self.fact(trace, card=self.card_line("; ".join(parts)) if parts else "")]
 
     def drive(self, *, goal: str, motive: str, nemesis: str) -> list[Fact]:
         parts: list[str] = []
@@ -114,7 +114,7 @@ class Loner3eCast(Person):
             self.nemesis = nemesis
             parts.append(f"nemesis: {nemesis}")
         trace = f"{self.mention} " + "; ".join(parts)
-        card = f"{self.name}: {goal}" if goal else ""
+        card = self.card_line(goal) if goal else ""
         return [self.fact(trace, card=card)]
 
     def refill(self, why: str) -> list[Fact]:
@@ -123,20 +123,15 @@ class Loner3eCast(Person):
     def lose(self) -> list[Fact]:
         """The mark the Luck reset cannot carry: this contest stays settled until it is cleared."""
         self.defeated = True
-        lost = f"{self.name} is out of luck"
-        return [self.fact(lost, card=lost)]
+        trace = f"{self.mention} is out of luck"
+        return [self.fact(trace, card=self.card_line("Out of luck"))]
 
     def recover(self, why: str) -> list[Fact]:
         facts = self.refill(why)
         if self.defeated:
             self.defeated = False
             trace = f"{self.mention} is no longer defeated ({why})"
-            card = (
-                "No longer defeated"
-                if self.id == PLAYER_ID
-                else f"{self.name} is no longer defeated"
-            )
-            facts.append(self.fact(trace, card=card))
+            facts.append(self.fact(trace, card=self.card_line("No longer defeated")))
         return facts
 
 

@@ -85,13 +85,16 @@ class Thing(Mutable):
         """`told` only when the player has learned of this thing, so no unknown name leaks."""
         return Fact(trace=trace, told=self.known, card=card, dice=dice)
 
+    def card_line(self, line: str) -> str:
+        """The player reads their own cards without a name; everyone else's carries theirs."""
+        return line if self.id == PLAYER_ID else f"{self.name}: {line}"
+
     def change(self, gauge: Gauge, amount: int, label: str, why: str) -> list[Fact]:
         delta = gauge.adjust(amount)
         if delta == 0:
             return []
         moved = f"{label} {delta:+d} → {gauge}"
-        card = moved if self.id == PLAYER_ID else f"{self.name}: {moved}"
-        return [self.fact(f"{self.mention} {moved} ({why})", card=card)]
+        return [self.fact(f"{self.mention} {moved} ({why})", card=self.card_line(moved))]
 
     def reveal(self, *, card: str = "") -> list[Fact]:
         """Leave cards to the containing action or the standalone `reveal` tool."""
