@@ -1,6 +1,6 @@
 import logging
 from asyncio import Task, create_task, gather, to_thread
-from collections.abc import AsyncGenerator, Callable, Sequence
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -18,7 +18,7 @@ from aidm.config import Role, Settings, read_settings
 from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import Fact
 from aidm.core.io import FileStore, Library
-from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, ScenarioMeta
+from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, PackSelection, ScenarioMeta
 from aidm.core.play import Answer, Exchange, Mark, SpokenLine
 from aidm.core.source import given_text
 from aidm.core.tools import MasterTool
@@ -433,7 +433,7 @@ class Runtime:
         engine_id: EngineId,
         meta: ScenarioMeta,
         document: Path | None,
-        packs: Sequence[Slug],
+        packs: PackSelection | None,
         character_id: Slug,
     ) -> Slug:
         engine = self.engines[engine_id]

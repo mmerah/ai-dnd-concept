@@ -5,7 +5,7 @@
     "scope": "One descent into the keep. The dark below has an end, and reaching it or turning back is the adventure's; a way out that opens onto more of the world is the worldsmith's to write."
   },
   "engine": "tunnelgoons",
-  "packs": [],
+  "packs": null,
   "source": "",
   "payload": {
     "places": {

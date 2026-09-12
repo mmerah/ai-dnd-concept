@@ -42,6 +42,11 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     assert made.luck.current == LUCK_MAX
 
 
+def test_create_character_records_the_picked_pack() -> None:
+    created = ENGINE.create_character("Fen", "A wandering scribe.", _answered({"pack": "srd"}))
+    assert created.pack == "srd"
+
+
 def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:
     legal = _answered({"pack": "srd"})
     with pytest.raises(Refusal, match="no creation step"):

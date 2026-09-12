@@ -1,3 +1,4 @@
+import copy
 from collections.abc import Sequence
 from random import Random
 
@@ -7,20 +8,25 @@ from support.table import (
     LIBRARY,
     LONER3E,
     SCENARIO_MODELS,
+    TWENTYFOURXX,
     game,
     narrowed,
     scenario_for,
 )
 
 from aidm.core.entities import Refusal, Slug, parse
-from aidm.core.model import Generation
+from aidm.core.model import Generation, PackSelection
+from aidm.core.play import DecisionOption
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
 from aidm.engines.scenes.engine import MOVE_ON
+from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.scenes.tools import NextDraft, NextScene
 from aidm.engines.scenes.world import SceneRun, SceneWorld
 from aidm.engines.scenes.worldsmith import check_scene
+from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
+from aidm.engines.twentyfourxx.world import CrewSheet
 
 PLAYER = Person(id=PLAYER_ID, name="Player", brief="", known=True)
 MARA = "mara"
@@ -226,3 +232,45 @@ def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:
     world.cast[MARA].name = "Someone else"
 
     assert scenario.payload.model_dump() == before
+
+
+def test_new_game_refuses_a_character_made_from_an_unselected_pack() -> None:
+    engine = ENGINES_BUILT[LONER3E]
+    scenario_id = scenario_for(LONER3E)
+    scenario = LIBRARY.read_scenario(scenario_id, SCENARIO_MODELS)
+    character = LIBRARY.read_character("kael", engine.id, engine.character)
+    stranded = character.model_copy(update={"pack": "other"})
+
+    with pytest.raises(Refusal, match="'kael' was made from the 'other' table set"):
+        engine.new_game(scenario, stranded)
+
+
+def test_select_refuses_two_packs_that_define_the_same_id() -> None:
+    engine = copy.copy(narrowed(ENGINES_BUILT[LONER3E], Loner3eEngine))
+    engine.packs = {**engine.packs, "twin": engine.packs[SRD_PACK]}
+
+    with pytest.raises(Refusal, match="both define"):
+        engine.select(PackSelection(primary=SRD_PACK, supplements=("twin",)))
+
+
+def test_resolve_skill_refuses_a_skill_installed_but_not_selected() -> None:
+    engine = copy.copy(narrowed(ENGINES_BUILT[TWENTYFOURXX], TwentyfourxxEngine))
+    srd = engine.packs[SRD_PACK]
+    extra = srd.model_copy(
+        update={
+            "skills": (
+                *srd.skills[:-1],
+                DecisionOption(id="xenolinguistics", label="Xenolinguistics"),
+            )
+        }
+    )
+    engine.packs = {**engine.packs, "extra": extra}
+    sheet = CrewSheet(specialty="Sneak")
+
+    with pytest.raises(Refusal, match="srd"):
+        engine.resolve_skill(PackSelection(primary=SRD_PACK), sheet, "Xenolinguistics")
+
+    resolved = engine.resolve_skill(
+        PackSelection(primary=SRD_PACK, supplements=("extra",)), sheet, "Xenolinguistics"
+    )
+    assert resolved == "Xenolinguistics"

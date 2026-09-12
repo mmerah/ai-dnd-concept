@@ -1,12 +1,11 @@
-from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked
-from aidm.core.entities import EngineId, Refusal, Slug, parse, slug
+from aidm.core.entities import EngineId, Refusal, parse, slug
 from aidm.core.facts import Fact, roll, roll_pool
-from aidm.core.model import AnyCharacter
+from aidm.core.model import AnyCharacter, PackSelection
 from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, sentence
 from aidm.core.tools import MasterTool, master_tool
@@ -139,15 +138,21 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
                 items={slug(item, ()): Supply(name=item, die=STARTING_ITEM)},
             ),
         )
-        return BreathlessCharacter(id=slug(name, ()), engine=self.id, payload=player)
+        return BreathlessCharacter(
+            id=slug(name, ()),
+            engine=self.id,
+            pack=picked(picks, "pack"),
+            payload=player,
+        )
 
     def preview_character(self, character: AnyCharacter) -> Rows:
         sheet = self.player_of(character).require_sheet()
         return (*sheet.rows(), ("Backpack", ", ".join(item.name for item in sheet.items.values())))
 
-    def guidance(self, picks: Sequence[Slug]) -> str:
+    def guidance(self, selection: PackSelection | None) -> str:
+        chosen = self.selected(selection)
         include = {"locations", "complications", "missions"}
-        return f"{AUTHORING}\n\n{self.pack_content(picks, include=include)}"
+        return f"{AUTHORING}\n\n{self.pack_content(chosen, include=include)}"
 
     def sheet_sections(self, state: BreathlessGame) -> Sections:
         sheet = self.world_of(state).player.require_sheet()
@@ -176,7 +181,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         return self.world_of(draft).require_actor(args.actor_id).use_med_kit()
 
     def hire_prompt(self, draft: BreathlessGame, member: Survivor, terms: str) -> str:
-        pack = self.first_pack(draft)
+        pack = self.primary_pack(draft)
         return self.render_request(
             draft,
             guidance=AUTHORING,

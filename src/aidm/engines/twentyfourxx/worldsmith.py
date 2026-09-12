@@ -2,7 +2,7 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import Frozen, Refusal
+from aidm.core.entities import Frozen, Refusal, Slug
 from aidm.core.play import DecisionOption
 from aidm.engines.scenes.packs import ScenePack
 from aidm.engines.twentyfourxx.world import Kit, SkillDie
@@ -62,6 +62,9 @@ class Pack(ScenePack):
         lines = [_specialty_line(specialty) for specialty in self.specialties]
         labels = ", ".join(option.label for option in self.skills)
         return "\n".join((*lines, f"Skills: {labels}"))
+
+    def defined_ids(self) -> tuple[Slug, ...]:
+        return tuple(option.id for option in (*self.specialties, *self.origins))
 
 
 class SheetDraft(Frozen):

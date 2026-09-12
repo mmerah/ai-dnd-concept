@@ -1,6 +1,6 @@
 import json
 from abc import abstractmethod
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from pathlib import Path
 from random import Random
 from typing import Any
@@ -13,6 +13,7 @@ from aidm.core.model import (
     AnyScenario,
     Game,
     Generation,
+    PackSelection,
     ScenarioMeta,
     WorldsmithAnswer,
 )
@@ -95,20 +96,38 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
         return state.payload
 
     def pack_options(self) -> tuple[DecisionOption, ...]:
-        return tuple(DecisionOption(id=key, label=pack.name) for key, pack in self.packs.items())
+        # The ui may not import a family's SRD_PACK: the create page defaults to the first option.
+        ordered = (SRD_PACK, *(key for key in self.packs if key != SRD_PACK))
+        return tuple(DecisionOption(id=key, label=self.packs[key].name) for key in ordered)
 
     def validate(self, state: G) -> None:
         super().validate(state)
-        if not state.packs:
-            raise Refusal(f"a {state.engine!r} game needs at least one table set")
-        if missing := sorted(set(state.packs) - set(self.packs)):
-            raise Refusal(f"the game names packs not installed: {missing}")
+        self._check_installed(self.selected(state.packs))
+
+    def selected(self, packs: PackSelection | None) -> PackSelection:
+        if packs is None:
+            raise Refusal(f"a {self.id!r} game needs a table set")
+        return packs
+
+    def primary_pack(self, draft: G) -> K:
+        return self.packs[self.selected(draft.packs).primary]
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> SceneWorld[C]:
         # a restart reopens the same scenario file
         draft: SceneDraft[C] = scenario.payload.model_copy(deep=True)
         check_scene(draft)
+        selection = self.selected(scenario.packs)
+        if character.pack not in selection.ids():
+            made = "no table set" if character.pack is None else f"the {character.pack!r} table set"
+            raise Refusal(
+                f"{character.id!r} was made from {made}; "
+                f"this scenario plays {', '.join(selection.ids())}"
+            )
         return self.world.opening(draft, self.player_of(character), scenario.source)
+
+    def _check_installed(self, selection: PackSelection) -> None:
+        if missing := sorted(set(selection.ids()) - set(self.packs)):
+            raise Refusal(f"packs not installed for {self.id!r}: {missing}")
 
     def master_sections(self, state: G) -> Sections:
         world = self.world_of(state)
@@ -213,7 +232,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
 
     def pack_content(
         self,
-        picks: Sequence[Slug],
+        selection: PackSelection,
         *,
         include: set[str] | None = None,
         exclude_defaults: bool = False,
@@ -222,12 +241,19 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
             pack_id: self.packs[pack_id].model_dump(
                 mode="json", include=include, exclude_defaults=exclude_defaults
             )
-            for pack_id in picks
+            for pack_id in selection.ids()
         }
         return f"SELECTED PACK CONTENT\n{json.dumps(selected)}"
 
-    def first_pack(self, draft: G) -> K:
-        return self.packs[draft.packs[0]]
+    def select(self, selection: PackSelection) -> PackSelection:
+        self._check_installed(selection)
+        defined: dict[Slug, Slug] = {}
+        for pack_id in selection.ids():
+            ids = set(self.packs[pack_id].defined_ids())
+            if shared := sorted(ids & defined.keys()):
+                raise Refusal(f"{pack_id!r} and {defined[shared[0]]!r} both define {shared[0]!r}")
+            defined.update(dict.fromkeys(ids, pack_id))
+        return selection
 
     def render_next(self, draft: G, intent: str) -> str:
         world = self.world_of(draft)
@@ -263,14 +289,16 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
         self,
         meta: ScenarioMeta,
         source: str,
-        packs: Sequence[Slug],
+        packs: PackSelection | None,
         worldsmith: WorldsmithAnswer,
         check: Callable[[AnyScenario], None],
     ) -> AnyScenario:
-        def built(draft: SceneDraft[C]) -> AnyScenario:
-            return self.build_scenario(meta, tuple(packs), draft, source, draft.situation)
+        selection = self.select(self.selected(packs))
 
-        guidance = self.guidance(packs)
+        def built(draft: SceneDraft[C]) -> AnyScenario:
+            return self.build_scenario(meta, selection, draft, source, draft.situation)
+
+        guidance = self.guidance(selection)
         prompt = self.render_opening(
             source, meta.scope, intent=OPENING, guidance=guidance, answer=SceneDraft[self.member]
         )
@@ -304,4 +332,4 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
         return []
 
     @abstractmethod
-    def guidance(self, picks: Sequence[Slug], /) -> str: ...
+    def guidance(self, selection: PackSelection | None, /) -> str: ...

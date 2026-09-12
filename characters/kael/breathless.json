@@ -1,6 +1,7 @@
 {
   "id": "kael",
   "engine": "breathless",
+  "pack": "srd",
   "payload": {
     "id": "player",
     "name": "Kael",

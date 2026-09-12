@@ -24,7 +24,7 @@ from aidm.app.runtime import Runtime
 from aidm.config import Settings
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.io import ENCODING, FileStore, Library
-from aidm.core.model import ScenarioMeta
+from aidm.core.model import PackSelection, ScenarioMeta
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
 from aidm.engines.seam import AnyEngine
@@ -250,7 +250,7 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
         scope="One crossing, before the tide turns.",
         art_style="woodcut",
     )
-    name = await runtime.new_scenario(LONER3E, meta, None, ("srd",), "kael")
+    name = await runtime.new_scenario(LONER3E, meta, None, PackSelection(primary="srd"), "kael")
 
     # The scene bar refuses the first answer, and the reason goes back with the re-prompt.
     assert "these name nobody" in spawner.prompts[1][1]
@@ -285,7 +285,7 @@ async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: P
             LONER3E,
             ScenarioMeta(title="The Sunken Bell", premise="The tide.", scope="One crossing."),
             None,
-            ("srd",),
+            PackSelection(primary="srd"),
             "kael",
         )
 
@@ -301,7 +301,7 @@ async def test_a_scenario_written_from_a_document_carries_its_text(tmp_path: Pat
         LONER3E,
         ScenarioMeta(title="The Sunken Bell", premise="", scope="One crossing."),
         SOURCE_MD,
-        ("srd",),
+        PackSelection(primary="srd"),
         "kael",
     )
 

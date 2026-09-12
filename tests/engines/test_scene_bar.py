@@ -18,7 +18,7 @@ from support.twentyfourxx import SITUATION as TWENTYFOURXX_SITUATION
 from support.twentyfourxx import small_world as twentyfourxx_world
 
 from aidm.core.entities import Refusal, Slug
-from aidm.core.model import AnyGame, Check, Generation
+from aidm.core.model import AnyGame, Check, Generation, PackSelection
 from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.breathless.world import BreathlessWorld, Survivor
@@ -159,7 +159,7 @@ def test_a_player_id_cast_entry_is_refused_by_new_game(case: SceneCase) -> None:
         {
             "meta": {"title": "Test", "premise": "A test scenario.", "scope": "One tense evening."},
             "engine": case.engine.id,
-            "packs": (SRD_PACK,),
+            "packs": PackSelection(primary=SRD_PACK),
             "payload": {**case.base, "cast": {PLAYER_ID: DECOY_CAST_ENTRY}},
         }
     )
@@ -170,8 +170,8 @@ def test_a_player_id_cast_entry_is_refused_by_new_game(case: SceneCase) -> None:
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_a_scenario_with_no_packs_is_refused_by_check_packs(case: SceneCase) -> None:
-    with pytest.raises(Refusal, match="at least one table set"):
-        case.engine.validate(updated(case.game(), packs=()))
+    with pytest.raises(Refusal, match="needs a table set"):
+        case.engine.validate(updated(case.game(), packs=None))
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)

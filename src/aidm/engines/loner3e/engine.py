@@ -1,10 +1,10 @@
-from collections.abc import Sequence
 from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, other_than, picked
-from aidm.core.entities import EngineId, Slug, slug
+from aidm.core.entities import EngineId, slug
 from aidm.core.facts import Fact, roll, roll_pool
+from aidm.core.model import PackSelection
 from aidm.core.play import PendingDecision
 from aidm.core.prompt import Sections
 from aidm.core.tools import MasterTool, master_tool
@@ -120,7 +120,8 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
 
     def create_character(self, name: str, brief: str, picks: Picks) -> Loner3eCharacter:
         check_picks(self.creation_steps(picks), picks)
-        pack = self.packs[picked(picks, "pack")]
+        pack_id = picked(picks, "pack")
+        pack = self.packs[pack_id]
         sheet = Loner3eCast(
             id=PLAYER_ID,
             name=name,
@@ -140,21 +141,23 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
             goal=picked(picks, "goal"),
             motive=picked(picks, "motive"),
         )
-        return Loner3eCharacter(id=slug(name, ()), engine=self.id, payload=sheet)
+        return Loner3eCharacter(id=slug(name, ()), engine=self.id, pack=pack_id, payload=sheet)
 
-    def guidance(self, picks: Sequence[Slug]) -> str:
+    def guidance(self, selection: PackSelection | None) -> str:
         """Defaults restate rules the guidance already carries; dropping them halves the prompt."""
-        return f"{AUTHORING}\n\n{self.pack_content(picks, exclude_defaults=True)}"
+        chosen = self.selected(selection)
+        return f"{AUTHORING}\n\n{self.pack_content(chosen, exclude_defaults=True)}"
 
     def glossary(self, state: Loner3eGame) -> Sections:
+        selection = self.selected(state.packs)
         spelled: dict[str, str] = {}
         for member in self.world_of(state).here():
-            spelled.update(self._meanings(state.packs, member))
+            spelled.update(self._meanings(selection, member))
         lines = "\n".join(f"- {tag}: {detail}" for tag, detail in spelled.items())
         return (("WHAT THE TAGS IN PLAY MEAN", lines),) if spelled else ()
 
-    def _meanings(self, selected: Sequence[Slug], sheet: Loner3eCast) -> Rows:
-        chosen = tuple(self.packs[pack_id] for pack_id in selected)
+    def _meanings(self, selection: PackSelection, sheet: Loner3eCast) -> Rows:
+        chosen = tuple(self.packs[pack_id] for pack_id in selection.ids())
         # The concept's pack blurb is generic where the entity's own brief is not: skip it.
         return pack_meanings(
             tuple(

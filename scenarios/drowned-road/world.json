@@ -5,9 +5,10 @@
     "scope": "One crossing, while the tide allows it. Reaching Saint Ferrant, or failing to, ends the scenario; nothing owes a sequel."
   },
   "engine": "breathless",
-  "packs": [
-    "srd"
-  ],
+  "packs": {
+    "primary": "srd",
+    "supplements": []
+  },
   "source": "# The Drowned Road\n\nThe causeway to Saint Ferrant runs three miles over tidal flats and is walkable\nfor four hours either side of low water.\n\n> The bell rings twice. The water is already over your boots, and the chapel\n> lamp is still a mile off.\n\nThe Bell House stands at the causeway's landward end. Its keeper, Ovid Sarn,\nrings the tide bell twice a day.\n\np. 3\n",
   "payload": {
     "place": "bell-house",

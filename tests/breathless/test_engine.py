@@ -1,6 +1,7 @@
 from support.breathless import DAX, ENGINE, MIRA, hired, small_world
 from support.table import BREATHLESS, change, game, narrowed
 
+from aidm.core.model import PackSelection
 from aidm.core.views import PanelRow
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.breathless.world import STARTING_ITEM, BreathlessGame, Supply
@@ -29,7 +30,7 @@ def _breathless_game() -> tuple[AnyEngine, BreathlessGame]:
 
 def test_the_shipped_game_begins_with_the_srd_pack_and_the_players_item() -> None:
     _, state = _breathless_game()
-    assert state.packs == (SRD_PACK,)
+    assert state.packs == PackSelection(primary=SRD_PACK)
     world = state.payload
     sheet = world.player.require_sheet()
     assert sheet.items[FIRE_AXE].die == STARTING_ITEM
@@ -104,6 +105,11 @@ def test_create_character_round_trip() -> None:
     assert [(item.name, item.die) for item in sheet.items.values()] == [
         (SRD.weapons[0], STARTING_ITEM)
     ]
+
+
+def test_create_character_records_the_picked_pack() -> None:
+    character = ENGINE.create_character("Jax", "A wiry mechanic", PICKS)
+    assert character.pack == "srd"
 
 
 def test_preview_character_shows_the_backpack_row() -> None:

@@ -2,6 +2,7 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
+from aidm.core.entities import Slug
 from aidm.core.play import DecisionOption
 from aidm.engines.loner3e.world import DIE_FACE
 from aidm.engines.scenes.packs import ScenePack
@@ -38,3 +39,8 @@ class Pack(ScenePack):
             if column is not None and len(column) != DIE_FACE:
                 raise ValueError("a twist column is one d6: exactly six entries")
         return self
+
+    def defined_ids(self) -> tuple[Slug, ...]:
+        return tuple(
+            option.id for option in (*self.concepts, *self.skills, *self.frailties, *self.gear)
+        )

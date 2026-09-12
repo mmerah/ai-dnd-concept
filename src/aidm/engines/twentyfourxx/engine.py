@@ -6,7 +6,7 @@ from random import Random
 from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, option_of, picked
 from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import Fact, roll, roll_pool
-from aidm.core.model import AnyCharacter, Check
+from aidm.core.model import AnyCharacter, Check, PackSelection
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, section_if, sentence
 from aidm.core.tools import MasterTool, master_tool
@@ -164,7 +164,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
 
     def create_character(self, name: str, brief: str, picks: Picks) -> TwentyfourxxCharacter:
         check_picks(self.creation_steps(picks), picks)
-        pack = self.packs[picked(picks, "pack")]
+        pack_id = picked(picks, "pack")
+        pack = self.packs[pack_id]
         specialty = chosen_option(pack.specialties, picked(picks, "specialty"))
         origin = chosen_option(pack.origins, picked(picks, "origin"))
 
@@ -209,13 +210,18 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
                 items=items_from_kits(kits),
             ),
         )
-        return TwentyfourxxCharacter(id=slug(name, ()), engine=self.id, payload=player)
+        return TwentyfourxxCharacter(
+            id=slug(name, ()),
+            engine=self.id,
+            pack=pack_id,
+            payload=player,
+        )
 
     def preview_character(self, character: AnyCharacter) -> Rows:
         sheet = self.player_of(character).require_sheet()
         return (*sheet.rows(), ("Gear", ", ".join(item.name for item in sheet.items.values())))
 
-    def guidance(self, _picks: Sequence[Slug]) -> str:
+    def guidance(self, _selection: PackSelection | None) -> str:
         """This pack holds creation tables, not setting vocabulary: the preamble alone suffices."""
         return AUTHORING
 
@@ -241,22 +247,22 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         )
         return (*job_panel, ship_panel)
 
-    def resolve_skill(self, sheet: CrewSheet, wanted: str) -> str:
+    def resolve_skill(self, selection: PackSelection, sheet: CrewSheet, wanted: str) -> str:
         folded = wanted.casefold()
         for key in sheet.skills:
             if key.casefold() == folded:
                 return key
         labels: list[str] = []
-        for pack in self.packs.values():
-            for option in pack.skills:
+        for pack_id in selection.ids():
+            for option in self.packs[pack_id].skills:
                 if option.label.casefold() == folded:
                     return option.label
                 if option.label not in labels:
                     labels.append(option.label)
         known = ", ".join(sorted(sheet.skills)) or "none"
         raise Refusal(
-            f"{wanted!r} is not a skill on the sheet ({known}) or in the packs "
-            f"({', '.join(labels)})"
+            f"{wanted!r} is not a skill on the sheet ({known}) or in the selected packs "
+            f"{', '.join(selection.ids())} ({', '.join(labels)})"
         )
 
     def change_hindrances(
@@ -327,15 +333,16 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         return None if self.world_of(state).sheeted_members() else super().over(state)
 
     def hire_prompt(self, draft: TwentyfourxxGame, member: Crewmate, terms: str) -> str:
+        pack = self.primary_pack(draft)
         return self.render_request(
             draft,
-            guidance=self.first_pack(draft).hire_guidance(),
+            guidance=pack.hire_guidance(),
             intent=HIRING.format(name=member.name, brief=member.brief, terms=terms),
             answer=SheetDraft,
         )
 
     def hire_check(self, draft: TwentyfourxxGame) -> Check[SheetDraft]:
-        pack = self.first_pack(draft)
+        pack = self.primary_pack(draft)
         return lambda sheet: sheet.check(pack)
 
     def install_sheet(self, member: Crewmate, answer: SheetDraft) -> str:
@@ -351,7 +358,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
     def roll(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
         world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
-        pool = self._pool(world, actor, args)
+        selection = self.selected(draft.packs)
+        pool = self._pool(world, selection, actor, args)
         label = "+".join(f"d{face}" for face in pool.faces)
         rolled = roll_pool(pool.faces, f"{args.what} — {pool.label}", rng, label=label)
         result = banded(rolled.kept, "disaster", "setback", "success")
@@ -373,7 +381,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         self._succession(draft)
         return facts
 
-    def _pool(self, world: TwentyfourxxWorld, actor: Crewmate, args: Roll) -> Pool:
+    def _pool(
+        self, world: TwentyfourxxWorld, selection: PackSelection, actor: Crewmate, args: Roll
+    ) -> Pool:
         sheet = actor.require_sheet()
         helper = None
         if args.helped_by is not None:
@@ -382,7 +392,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
                 raise Refusal(f"{actor.name} cannot help their own roll")
 
         if args.skill:
-            label = self.resolve_skill(sheet, args.skill)
+            label = self.resolve_skill(selection, sheet, args.skill)
             die = sheet.die(label)
         else:
             label = "unskilled"
@@ -441,11 +451,12 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
                 f"expected {', '.join(expected)}; given {', '.join(given) or '(nobody)'}"
             )
 
+        selection = self.selected(draft.packs)
         facts: list[Fact] = []
         for raise_ in raises:
             actor = world.require_actor(raise_.actor_id)
             sheet = actor.require_sheet()
-            facts.extend(actor.raise_skill(self.resolve_skill(sheet, raise_.skill)))
+            facts.extend(actor.raise_skill(self.resolve_skill(selection, sheet, raise_.skill)))
 
             rolled = roll((6,), f"credits earned by {actor.name}", rng)
             facts.append(rolled.fact)

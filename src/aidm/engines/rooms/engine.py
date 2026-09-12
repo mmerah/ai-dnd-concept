@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable
 from pathlib import Path
 from random import Random
 from typing import Any
@@ -11,6 +11,7 @@ from aidm.core.model import (
     AnyScenario,
     Game,
     Generation,
+    PackSelection,
     ScenarioMeta,
     WorldsmithAnswer,
 )
@@ -59,6 +60,11 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
     def map_draft(self) -> type[MapDraft[N]]:
         """Pydantic parametrizes the subscript at runtime, so the npc type reaches the schema."""
         return MapDraft[self.member]
+
+    def validate(self, state: G) -> None:
+        super().validate(state)
+        if state.packs is not None:
+            raise Refusal(f"a {self.id!r} game plays no table set")
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> RoomWorld[N, P]:
         draft: MapDraft[N] = scenario.payload
@@ -151,14 +157,14 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
         self,
         meta: ScenarioMeta,
         source: str,
-        packs: Sequence[Slug],
+        packs: PackSelection | None,
         worldsmith: WorldsmithAnswer,
         check: Callable[[AnyScenario], None],
     ) -> AnyScenario:
         def built(draft: MapDraft[N]) -> AnyScenario:
             start = draft.places.get(draft.start)
             premise = "" if start is None else start.description
-            return self.build_scenario(meta, tuple(packs), draft, source, premise)
+            return self.build_scenario(meta, packs, draft, source, premise)
 
         prompt = self.render_opening(
             source, meta.scope, intent=MAP_ASK, guidance=self.guidance(), answer=self.map_draft()
