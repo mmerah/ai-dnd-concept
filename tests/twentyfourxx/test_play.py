@@ -30,7 +30,7 @@ async def test_the_shipped_scenario_plays_several_turns(tmp_path: Path) -> None:
     state = await play_turn(
         table,
         "Slip past the dockhand before she clocks the override key.",
-        tool_call("roll", what="Slip past the dockhand", skill="Stealth", risking_death=True),
+        tool_call("roll", what="Slip past the dockhand", skill="Stealth", risk="a fall"),
     )
     world = state.payload
     assert world.player.alive
@@ -87,7 +87,7 @@ async def test_a_hired_member_survives_a_save_and_succeeds_the_dead_lead(tmp_pat
     state = await play_turn(
         table,
         "Slip past the dockhand before she clocks the override key.",
-        tool_call("roll", what="Slip past", skill="Stealth", risking_death=True),
+        tool_call("roll", what="Slip past", skill="Stealth", risk="a fall"),
     )
     assert not state.payload.player.alive
     assert state.pending is not None

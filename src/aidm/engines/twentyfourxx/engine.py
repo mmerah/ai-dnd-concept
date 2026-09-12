@@ -36,6 +36,7 @@ from aidm.engines.twentyfourxx.tools import (
     ChangeHindrances,
     Defend,
     GainItem,
+    Helper,
     Job,
     Raise,
     RepairItem,
@@ -377,6 +378,18 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
         pool = self._pool(world, actor, args)
+        helping = self._helping(world, args.helped_by)
+
+        defended = [(actor, args.defend_with)]
+        if helping is not None:
+            defended.append((helping[0], helping[1].defend_with))
+        for who, item_id in defended:
+            if item_id is None:
+                continue
+            item = world.require_gear(who, item_id)
+            if item.broken:
+                raise Refusal(f"{item.name} is already broken")
+
         label = "+".join(f"d{face}" for face in pool.faces)
         rolled = roll_pool(pool.faces, f"{args.what} — {pool.label}", rng, label=label)
         result = banded(rolled.kept, "disaster", "setback", "success")
@@ -388,23 +401,37 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         line += pool.helped_by
         if args.hindered:
             line += f", hindered ({args.hindered})"
+        if helping is not None and helping[1].risk:
+            line += f", {helping[0].name} risking {helping[1].risk}"
+        if args.risk:
+            line += f", risking {args.risk}"
         line += f" → {result}"
 
         facts = [rolled.fact, actor.fact(line, card=line, dice=(rolled.event,))]
-        if args.risking_death and result == "disaster":
-            facts.extend(world.kill(actor.id))
-        elif args.risking_death and result == "setback":
-            facts.extend(actor.maim())
+        if result != "success":
+            lethal = result == "disaster"
+            if helping is not None and helping[1].risk:
+                helper, helper_args = helping
+                facts.extend(
+                    world.take_hit(helper, helper_args.risk, helper_args.defend_with, lethal=lethal)
+                )
+            if args.risk:
+                facts.extend(world.take_hit(actor, args.risk, args.defend_with, lethal=lethal))
         self._succession(draft)
         return facts
 
+    def _helping(
+        self, world: TwentyfourxxWorld, helper_args: Helper | None
+    ) -> tuple[Crewmate, Helper] | None:
+        if helper_args is None:
+            return None
+        return world.require_actor(helper_args.actor_id), helper_args
+
     def _pool(self, world: TwentyfourxxWorld, actor: Crewmate, args: Roll) -> Pool:
         sheet = actor.require_sheet()
-        helper = None
-        if args.helped_by is not None:
-            helper = world.require_actor(args.helped_by)
-            if helper is actor:
-                raise Refusal(f"{actor.name} cannot help their own roll")
+        helping = self._helping(world, args.helped_by)
+        if helping is not None and helping[0] is actor:
+            raise Refusal(f"{actor.name} cannot help their own roll")
 
         if args.skill:
             label = self.resolve_skill(sheet, args.skill)
@@ -419,10 +446,16 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         if args.helped:
             faces.append(HELP_DIE)
         helped_by = ""
-        if helper is not None:
-            helper_die = helper.require_sheet().die(label)
+        if helping is not None:
+            helper, helper_args = helping
+            if helper_args.hindered:
+                helper_die = HINDERED_DIE
+                hindered_note = ", hindered"
+            else:
+                helper_die = helper.require_sheet().die(label)
+                hindered_note = ""
             faces.append(helper_die)
-            helped_by = f", helped by {helper.name} (d{helper_die})"
+            helped_by = f", helped by {helper.name} (d{helper_die}{hindered_note})"
 
         return Pool(faces=tuple(faces), label=label, die=die, helped_by=helped_by)
 

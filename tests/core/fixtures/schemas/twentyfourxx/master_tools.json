@@ -399,22 +399,58 @@
           "type": "string"
         },
         "helped_by": {
+          "additionalProperties": false,
+          "description": "The hired member who rolls their own die. Null when none helps.",
+          "properties": {
+            "actor_id": {
+              "description": "Exact id of the hired member who helps.",
+              "type": "string"
+            },
+            "hindered": {
+              "default": "",
+              "description": "Why the helper is hindered. Empty when none is.",
+              "type": "string"
+            },
+            "risk": {
+              "default": "",
+              "description": "The harm the helper faces if this goes badly. Empty when helping puts them in no danger.",
+              "type": "string"
+            },
+            "defend_with": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "Exact id of the helper's item or a ship function that breaks to spare them. Null when nothing shields them."
+            }
+          },
+          "required": [
+            "actor_id"
+          ],
           "type": [
-            "string",
+            "object",
             "null"
           ],
-          "default": null,
-          "description": "Exact id of a hired member who rolls their own die. Null when none helps."
+          "default": null
         },
         "hindered": {
           "default": "",
           "description": "Why the actor is hindered. Empty when none is.",
           "type": "string"
         },
-        "risking_death": {
-          "default": false,
-          "description": "True when the actor risks death on this roll.",
-          "type": "boolean"
+        "risk": {
+          "default": "",
+          "description": "The harm the actor faces if this goes badly, named before the roll. Empty when they are in no danger.",
+          "type": "string"
+        },
+        "defend_with": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of the actor's item or a ship function that breaks to spare them. Null when nothing shields them."
         }
       },
       "required": [

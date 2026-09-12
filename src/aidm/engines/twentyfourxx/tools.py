@@ -85,19 +85,54 @@ class Defend(Frozen):
     actor_id: Slug | None = Field(default=None, description=ACTOR)
 
 
+class Helper(Frozen):
+    """A hired member who rolls their own die, and what helping costs them."""
+
+    actor_id: Slug = Field(description="Exact id of the hired member who helps.")
+    hindered: str = Field(default="", description="Why the helper is hindered. Empty when none is.")
+    risk: str = Field(
+        default="",
+        description="The harm the helper faces if this goes badly. Empty when helping puts "
+        "them in no danger.",
+    )
+    defend_with: Slug | None = Field(
+        default=None,
+        description="Exact id of the helper's item or a ship function that breaks to spare "
+        "them. Null when nothing shields them.",
+    )
+
+    @model_validator(mode="after")
+    def _defend_needs_risk(self) -> Self:
+        if self.defend_with is not None and not self.risk:
+            raise ValueError("defend_with needs the risk it shields against")
+        return self
+
+
 class Roll(Attempt):
     actor_id: Slug | None = Field(default=None, description=ACTOR)
     skill: str = Field(default="", description="Which skill to roll. Empty rolls the plain d6.")
     helped: str = Field(default="", description="Why circumstances help. Empty when none do.")
-    helped_by: Slug | None = Field(
+    helped_by: Helper | None = Field(
         default=None,
-        description="Exact id of a hired member who rolls their own die. Null when none helps.",
+        description="The hired member who rolls their own die. Null when none helps.",
     )
     hindered: str = Field(default="", description="Why the actor is hindered. Empty when none is.")
-    risking_death: bool = Field(
-        default=False,
-        description="True when the actor risks death on this roll.",
+    risk: str = Field(
+        default="",
+        description="The harm the actor faces if this goes badly, named before the roll. "
+        "Empty when they are in no danger.",
     )
+    defend_with: Slug | None = Field(
+        default=None,
+        description="Exact id of the actor's item or a ship function that breaks to spare "
+        "them. Null when nothing shields them.",
+    )
+
+    @model_validator(mode="after")
+    def _defend_needs_risk(self) -> Self:
+        if self.defend_with is not None and not self.risk:
+            raise ValueError("defend_with needs the risk it shields against")
+        return self
 
 
 class TestLuck(Frozen):
