@@ -1,12 +1,12 @@
 import json
 from abc import abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from random import Random
 from typing import Any
 
-from aidm.core.creation import CreationStep
-from aidm.core.entities import Refusal, Slug
+from aidm.core.creation import CreationStep, Picks, picked_many
+from aidm.core.entities import Refusal, Slug, parse
 from aidm.core.facts import Fact
 from aidm.core.model import (
     AnyCharacter,
@@ -52,6 +52,7 @@ from aidm.engines.seam import Engine, Request, Written, compose
 
 DEPARTURE: Slug = "departure"
 COMPLICATION: Slug = "complication"
+SUPPLEMENTS: Slug = "supplements"
 MOVE_ON = DecisionOption(
     id="move-on", label="Move on", detail="Keep playing, or say where you go and move on."
 )
@@ -95,39 +96,49 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
     def world_of(self, state: G) -> SceneWorld[C]:
         return state.payload
 
-    def pack_options(self) -> tuple[DecisionOption, ...]:
-        # The ui may not import a family's SRD_PACK: the create page defaults to the first option.
-        ordered = (SRD_PACK, *(key for key in self.packs if key != SRD_PACK))
-        return tuple(DecisionOption(id=key, label=self.packs[key].name) for key in ordered)
+    def supplement_options(self) -> tuple[DecisionOption, ...]:
+        return tuple(
+            DecisionOption(id=key, label=pack.name)
+            for key, pack in self.packs.items()
+            if key != SRD_PACK
+        )
+
+    def select_packs(self, supplements: Sequence[Slug]) -> PackSelection:
+        return self.select(parse(PackSelection, {"ids": (SRD_PACK, *supplements)}))
 
     def validate(self, state: G) -> None:
         super().validate(state)
-        self._check_installed(self.selected(state.packs))
+        self.select(self.selected(state.packs))
 
     def selected(self, packs: PackSelection | None) -> PackSelection:
         if packs is None:
             raise Refusal(f"a {self.id!r} game needs a table set")
         return packs
 
-    def primary_pack(self, draft: G) -> K:
-        return self.packs[self.selected(draft.packs).primary]
+    def selected_packs(self, state: G) -> tuple[K, ...]:
+        return tuple(self.packs[pack_id] for pack_id in self.selected(state.packs).ids)
+
+    def chosen_packs(self, picks: Picks) -> tuple[K, ...]:
+        """An uninstalled id is skipped: the page calls this on every change and cannot raise."""
+        wanted = (SRD_PACK, *picked_many(picks, SUPPLEMENTS))
+        return tuple(self.packs[pack_id] for pack_id in wanted if pack_id in self.packs)
+
+    def admit(self, packs: PackSelection | None, character: AnyCharacter) -> None:
+        selection = self.selected(packs)
+        if character.packs is None:
+            raise Refusal(f"{character.id!r} was made with no table set")
+        if not set(character.packs.ids) <= set(selection.ids):
+            raise Refusal(
+                f"{character.id!r} was made with {', '.join(character.packs.ids)}; "
+                f"this scenario plays {', '.join(selection.ids)}"
+            )
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> SceneWorld[C]:
         # a restart reopens the same scenario file
         draft: SceneDraft[C] = scenario.payload.model_copy(deep=True)
         check_scene(draft)
-        selection = self.selected(scenario.packs)
-        if character.pack not in selection.ids():
-            made = "no table set" if character.pack is None else f"the {character.pack!r} table set"
-            raise Refusal(
-                f"{character.id!r} was made from {made}; "
-                f"this scenario plays {', '.join(selection.ids())}"
-            )
+        self.admit(scenario.packs, character)
         return self.world.opening(draft, self.player_of(character), scenario.source)
-
-    def _check_installed(self, selection: PackSelection) -> None:
-        if missing := sorted(set(selection.ids()) - set(self.packs)):
-            raise Refusal(f"packs not installed for {self.id!r}: {missing}")
 
     def master_sections(self, state: G) -> Sections:
         world = self.world_of(state)
@@ -224,8 +235,19 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
             raise Refusal("the way on has changed since the page was drawn")
         draft.note(MOVING_ON)
 
-    def pack_step(self) -> CreationStep:
-        return CreationStep(id="pack", label="Choose a table set", options=self.pack_options())
+    def supplement_steps(self) -> tuple[CreationStep, ...]:
+        """Empty for an engine that ships only the SRD, so it shows no table-set step at all."""
+        options = self.supplement_options()
+        if not options:
+            return ()
+        return (
+            CreationStep(
+                id=SUPPLEMENTS,
+                label="Table sets beyond the SRD",
+                options=options,
+                multiple=True,
+            ),
+        )
 
     def srd_pack(self) -> K:
         return self.packs[SRD_PACK]
@@ -241,14 +263,17 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
             pack_id: self.packs[pack_id].model_dump(
                 mode="json", include=include, exclude_defaults=exclude_defaults
             )
-            for pack_id in selection.ids()
+            for pack_id in selection.ids
         }
         return f"SELECTED PACK CONTENT\n{json.dumps(selected)}"
 
     def select(self, selection: PackSelection) -> PackSelection:
-        self._check_installed(selection)
+        if missing := sorted(set(selection.ids) - set(self.packs)):
+            raise Refusal(f"packs not installed for {self.id!r}: {missing}")
+        if SRD_PACK not in selection.ids:
+            raise Refusal(f"a {self.id!r} game plays the {SRD_PACK!r} tables")
         defined: dict[Slug, Slug] = {}
-        for pack_id in selection.ids():
+        for pack_id in selection.ids:
             ids = set(self.packs[pack_id].defined_ids())
             if shared := sorted(ids & defined.keys()):
                 raise Refusal(f"{pack_id!r} and {defined[shared[0]]!r} both define {shared[0]!r}")

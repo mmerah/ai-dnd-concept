@@ -57,7 +57,7 @@ def test_create_character_on_the_legal_path() -> None:
 
 def test_create_character_records_no_pack() -> None:
     character = ENGINE.create_character("Kael", "A wiry scavenger", PICKS)
-    assert character.pack is None
+    assert character.packs is None
 
 
 def test_a_sum_not_equal_to_three_is_refused() -> None:

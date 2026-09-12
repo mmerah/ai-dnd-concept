@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from random import Random
 
-from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked
+from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked, picked_many
 from aidm.core.entities import EngineId, Refusal, parse, slug
 from aidm.core.facts import Fact, roll, roll_pool
 from aidm.core.model import AnyCharacter, PackSelection
@@ -45,7 +45,7 @@ from aidm.engines.breathless.world import (
 )
 from aidm.engines.breathless.worldsmith import AUTHORING, HIRING, Pack, SheetDraft
 from aidm.engines.hiring import DROP_ITEM, DropItem, Hiring, hiring
-from aidm.engines.scenes.engine import SceneEngine
+from aidm.engines.scenes.engine import SUPPLEMENTS, SceneEngine
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,28 +100,30 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
-        first = self.pack_step()
-        pack = self.packs.get(picked(picks, "pack"))
-        if pack is None:
-            return (first,)
+        chosen = self.chosen_packs(picks)
+        jobs = tuple(job for pack in chosen for job in pack.jobs)
+        weapons = tuple(weapon for pack in chosen for weapon in pack.weapons)
+        # Every breathless pack rates the same six skills, by validator.
+        skills = self.srd_pack().skills
         d10 = picked(picks, "skill-d10")
         d8 = picked(picks, "skill-d8")
         return (
-            first,
+            *self.supplement_steps(),
             CreationStep(id="pronouns", label="Pronouns"),
-            CreationStep(id="job", label="Job", hint=", ".join(pack.jobs[:3])),
-            CreationStep(id="skill-d10", label="Skill at d10", options=pack.skills),
-            CreationStep(id="skill-d8", label="Skill at d8", options=other_than(pack.skills, d10)),
+            CreationStep(id="job", label="Job", hint=", ".join(jobs[:3])),
+            CreationStep(id="skill-d10", label="Skill at d10", options=skills),
+            CreationStep(id="skill-d8", label="Skill at d8", options=other_than(skills, d10)),
             CreationStep(
                 id="skill-d6",
                 label="Skill at d6",
-                options=other_than(other_than(pack.skills, d10), d8),
+                options=other_than(other_than(skills, d10), d8),
             ),
-            CreationStep(id="item", label="Your one item", hint=", ".join(pack.weapons[:3])),
+            CreationStep(id="item", label="Your one item", hint=", ".join(weapons[:3])),
         )
 
     def create_character(self, name: str, brief: str, picks: Picks) -> BreathlessCharacter:
         check_picks(self.creation_steps(picks), picks)
+        packs = self.select_packs(picked_many(picks, SUPPLEMENTS))
         skills: dict[Skill, Die] = dict.fromkeys(SKILLS, 4)
         skills.update({_skill(picked(picks, f"skill-d{die}")): die for die in STARTING_DICE})
         item = picked(picks, "item")
@@ -141,7 +143,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         return BreathlessCharacter(
             id=slug(name, ()),
             engine=self.id,
-            pack=picked(picks, "pack"),
+            packs=packs,
             payload=player,
         )
 
@@ -181,7 +183,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         return self.world_of(draft).require_actor(args.actor_id).use_med_kit()
 
     def hire_prompt(self, draft: BreathlessGame, member: Survivor, terms: str) -> str:
-        pack = self.primary_pack(draft)
+        packs = self.selected_packs(draft)
         return self.render_request(
             draft,
             guidance=AUTHORING,
@@ -189,8 +191,8 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
                 name=member.name,
                 brief=member.brief,
                 terms=terms,
-                jobs=", ".join(pack.jobs),
-                weapons=", ".join(pack.weapons),
+                jobs=", ".join(job for pack in packs for job in pack.jobs),
+                weapons=", ".join(weapon for pack in packs for weapon in pack.weapons),
             ),
             answer=SheetDraft,
         )

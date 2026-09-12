@@ -55,18 +55,15 @@ class CharacterHeader(EngineHeader):
 
 
 class PackSelection(Frozen):
-    """The table sets one game plays by: the primary first, then what supplements it."""
+    """The table sets a game or a character is made from, in order; every scene family leads
+    with its SRD."""
 
-    primary: Slug
-    supplements: tuple[Slug, ...] = ()
+    ids: tuple[Slug, ...] = Field(min_length=1)
 
     @model_validator(mode="after")
     def _distinct(self) -> Self:
-        check_unique("selected pack ids", self.ids())
+        check_unique("selected pack ids", self.ids)
         return self
-
-    def ids(self) -> tuple[Slug, ...]:
-        return (self.primary, *self.supplements)
 
 
 class Scenario[P: BaseModel](Frozen):
@@ -84,7 +81,7 @@ class Character[P: BaseModel](Frozen):
 
     id: Slug
     engine: EngineId
-    pack: Slug | None = None
+    packs: PackSelection | None = None
     payload: P
 
 

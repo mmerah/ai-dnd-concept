@@ -1,8 +1,16 @@
 from pathlib import Path
 from random import Random
 
-from aidm.core.creation import CreationStep, Picks, check_picks, chosen_option, other_than, picked
-from aidm.core.entities import EngineId, slug
+from aidm.core.creation import (
+    CreationStep,
+    Picks,
+    check_picks,
+    chosen_option,
+    other_than,
+    picked,
+    picked_many,
+)
+from aidm.core.entities import EngineId, Slug, slug
 from aidm.core.facts import Fact, roll, roll_pool
 from aidm.core.model import PackSelection
 from aidm.core.play import PendingDecision
@@ -33,7 +41,7 @@ from aidm.engines.loner3e.world import (
     twist_pairing,
 )
 from aidm.engines.loner3e.worldsmith import AUTHORING, Pack
-from aidm.engines.scenes.engine import SceneEngine
+from aidm.engines.scenes.engine import SUPPLEMENTS, SceneEngine
 
 TWIST_NOTE = (
     "A twist has just interrupted the scene: {subject} / {action}. The narration showed it "
@@ -90,38 +98,45 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
-        first = self.pack_step()
-        pack = self.packs.get(picked(picks, "pack"))
-        if pack is None:
-            return (first,)
+        chosen = self.chosen_packs(picks)
+        concepts = tuple(entry for pack in chosen for entry in pack.concepts)
+        skills = tuple(option for pack in chosen for option in pack.skills)
+        frailties = tuple(option for pack in chosen for option in pack.frailties)
+        gear = tuple(option for pack in chosen for option in pack.gear)
         return (
-            first,
+            *self.supplement_steps(),
             CreationStep(
                 id="concept",
                 label="Write a one-line concept",
-                hint=", ".join(entry.label for entry in pack.concepts[:3]),
+                hint=", ".join(entry.label for entry in concepts[:3]),
             ),
             CreationStep(id="goal", label="What does your character want?"),
             CreationStep(id="motive", label="Why do they want it?"),
-            CreationStep(id="skill-1", label="Choose skill 1", options=pack.skills),
+            CreationStep(id="skill-1", label="Choose skill 1", options=skills),
             CreationStep(
                 id="skill-2",
                 label="Choose skill 2",
-                options=other_than(pack.skills, picked(picks, "skill-1")),
+                options=other_than(skills, picked(picks, "skill-1")),
             ),
-            CreationStep(id="frailty", label="Choose a frailty", options=pack.frailties),
-            CreationStep(id="gear-1", label="Choose gear 1", options=pack.gear),
+            CreationStep(id="frailty", label="Choose a frailty", options=frailties),
+            CreationStep(id="gear-1", label="Choose gear 1", options=gear),
             CreationStep(
                 id="gear-2",
                 label="Choose gear 2",
-                options=other_than(pack.gear, picked(picks, "gear-1")),
+                options=other_than(gear, picked(picks, "gear-1")),
             ),
         )
 
     def create_character(self, name: str, brief: str, picks: Picks) -> Loner3eCharacter:
-        check_picks(self.creation_steps(picks), picks)
-        pack_id = picked(picks, "pack")
-        pack = self.packs[pack_id]
+        steps = self.creation_steps(picks)
+        check_picks(steps, picks)
+        packs = self.select_packs(picked_many(picks, SUPPLEMENTS))
+        # The steps already carry the options pooled across the picked packs.
+        by_id = {step.id: step for step in steps}
+
+        def taken(step_id: Slug) -> str:
+            return chosen_option(by_id[step_id].options, picked(picks, step_id)).label
+
         sheet = Loner3eCast(
             id=PLAYER_ID,
             name=name,
@@ -129,19 +144,14 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
             known=True,
             concept=picked(picks, "concept"),
             tags={
-                "skill": [
-                    chosen_option(pack.skills, picked(picks, f"skill-{slot}")).label
-                    for slot in (1, 2)
-                ],
-                "frailty": [chosen_option(pack.frailties, picked(picks, "frailty")).label],
-                "gear": [
-                    chosen_option(pack.gear, picked(picks, f"gear-{slot}")).label for slot in (1, 2)
-                ],
+                "skill": [taken(f"skill-{slot}") for slot in (1, 2)],
+                "frailty": [taken("frailty")],
+                "gear": [taken(f"gear-{slot}") for slot in (1, 2)],
             },
             goal=picked(picks, "goal"),
             motive=picked(picks, "motive"),
         )
-        return Loner3eCharacter(id=slug(name, ()), engine=self.id, pack=pack_id, payload=sheet)
+        return Loner3eCharacter(id=slug(name, ()), engine=self.id, packs=packs, payload=sheet)
 
     def guidance(self, selection: PackSelection | None) -> str:
         """Defaults restate rules the guidance already carries; dropping them halves the prompt."""
@@ -149,20 +159,17 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         return f"{AUTHORING}\n\n{self.pack_content(chosen, exclude_defaults=True)}"
 
     def glossary(self, state: Loner3eGame) -> Sections:
-        selection = self.selected(state.packs)
+        packs = self.selected_packs(state)
         spelled: dict[str, str] = {}
         for member in self.world_of(state).here():
-            spelled.update(self._meanings(selection, member))
+            spelled.update(self._meanings(packs, member))
         lines = "\n".join(f"- {tag}: {detail}" for tag, detail in spelled.items())
         return (("WHAT THE TAGS IN PLAY MEAN", lines),) if spelled else ()
 
-    def _meanings(self, selection: PackSelection, sheet: Loner3eCast) -> Rows:
-        chosen = tuple(self.packs[pack_id] for pack_id in selection.ids())
+    def _meanings(self, packs: tuple[Pack, ...], sheet: Loner3eCast) -> Rows:
         # The concept's pack blurb is generic where the entity's own brief is not: skip it.
         return pack_meanings(
-            tuple(
-                entry for pack in chosen for entry in (*pack.skills, *pack.frailties, *pack.gear)
-            ),
+            tuple(entry for pack in packs for entry in (*pack.skills, *pack.frailties, *pack.gear)),
             (*sheet.tagged("skill"), *sheet.tagged("frailty"), *sheet.tagged("gear")),
         )
 

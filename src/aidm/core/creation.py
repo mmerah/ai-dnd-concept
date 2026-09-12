@@ -5,19 +5,25 @@ from aidm.core.play import DecisionOption
 
 type Picks = Mapping[Slug, str]
 ANSWER_MAX = 100
+MANY = ","  # how a page joins several answers to one step into one pick
 
 
 class CreationStep(Frozen):
-    """No options means the player writes the answer."""
+    """No options means the player writes the answer; `multiple` takes several of them."""
 
     id: Slug
     label: str
     options: tuple[DecisionOption, ...] = ()
     hint: str = ""
+    multiple: bool = False
 
 
 def picked(picks: Picks, step_id: Slug) -> str:
     return picks.get(step_id, "")
+
+
+def picked_many(picks: Picks, step_id: Slug) -> tuple[str, ...]:
+    return tuple(part for part in picked(picks, step_id).split(MANY) if part)
 
 
 def check_picks(steps: Sequence[CreationStep], picks: Picks) -> None:
@@ -27,12 +33,17 @@ def check_picks(steps: Sequence[CreationStep], picks: Picks) -> None:
         raise Refusal(f"no creation step is called {unknown}")
     for step in steps:
         answer = picked(picks, step.id)
-        if not answer.strip():
+        if not answer.strip() and not step.multiple:
             raise Refusal(f"{step.id!r} is unanswered")
         if len(answer) > ANSWER_MAX:
             raise Refusal(f"{step.id!r} takes at most {ANSWER_MAX} characters")
-        if step.options and answer not in {option.id for option in step.options}:
-            raise Refusal(f"{step.id!r} offers no {answer!r}")
+        if not step.options:
+            continue
+        offered = {option.id for option in step.options}
+        given = picked_many(picks, step.id) if step.multiple else (answer,)
+        for part in given:
+            if part not in offered:
+                raise Refusal(f"{step.id!r} offers no {part!r}")
 
 
 def other_than(options: Sequence[DecisionOption], taken: str) -> tuple[DecisionOption, ...]:

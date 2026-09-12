@@ -1,7 +1,11 @@
 {
   "id": "kael",
   "engine": "breathless",
-  "pack": "srd",
+  "packs": {
+    "ids": [
+      "srd"
+    ]
+  },
   "payload": {
     "id": "player",
     "name": "Kael",

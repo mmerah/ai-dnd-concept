@@ -10,10 +10,10 @@ from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
 from aidm.app.launch import LauncherCatalog, LaunchTarget
 from aidm.app.runtime import Runtime
-from aidm.core.creation import CreationStep, picked
-from aidm.core.entities import EngineId, Refusal, Slug, content_id, parse
+from aidm.core.creation import MANY, CreationStep, picked, picked_many
+from aidm.core.entities import EngineId, Refusal, Slug, content_id
 from aidm.core.io import SOURCE_SUFFIXES
-from aidm.core.model import PackSelection, ScenarioMeta
+from aidm.core.model import ScenarioMeta
 from aidm.ui import theme
 from aidm.ui.widgets import game_path, heading, labeled_value, page_body, page_header, page_intro
 
@@ -69,6 +69,13 @@ class CharacterForm:
 
     def choose(self, step_id: Slug, event: ValueChangeEventArguments[str]) -> None:
         self.picks[step_id] = event.value
+        self.answered()
+
+    def choose_many(self, step_id: Slug, event: ValueChangeEventArguments[list[str]]) -> None:
+        self.picks[step_id] = MANY.join(event.value)
+        self.answered()
+
+    def answered(self) -> None:
         _drop_stale(self.runtime.engines[self.engine_id].creation_steps(self.picks), self.picks)
         self.steps.refresh()
         self.preview.refresh()
@@ -85,15 +92,25 @@ class CharacterForm:
             # Rebuilding the whole form on blur would destroy the field Tab just moved to.
             typed.classes("w-full").on("blur", self.preview.refresh)
             return
-        chosen = ui.select(
-            options={
-                option.id: f"{option.label} — {option.detail}" if option.detail else option.label
-                for option in step.options
-            },
-            value=given or None,
-            label=step.label,
-            on_change=partial(self.choose, step.id),
-        ).classes("w-full")
+        options = {
+            option.id: f"{option.label} — {option.detail}" if option.detail else option.label
+            for option in step.options
+        }
+        if step.multiple:
+            chosen = ui.select(
+                options=options,
+                value=list(picked_many(self.picks, step.id)),
+                label=step.label,
+                multiple=True,
+                on_change=partial(self.choose_many, step.id),
+            ).classes("w-full")
+        else:
+            chosen = ui.select(
+                options=options,
+                value=given or None,
+                label=step.label,
+                on_change=partial(self.choose, step.id),
+            ).classes("w-full")
         if step.hint:
             chosen.props(f'hint="{step.hint}"')
 
@@ -149,9 +166,7 @@ class ScenarioForm:
         self.document: Path | None = None
         self.uploads: Path | None = None
         self.title: ui.input
-        self.primary: ui.select | None = None
         self.supplements: ui.select | None = None
-        self.pack_labels: dict[str, str] = {}
         self.character: ui.select
         self.premise: ui.textarea
         self.scope: ui.textarea
@@ -188,44 +203,22 @@ class ScenarioForm:
         theme.set_look(self.runtime.engines[self.engine_id].look)
         self.form.refresh()
 
-    def choose_primary(self, event: ValueChangeEventArguments[str]) -> None:
-        if self.supplements is None:
-            return
-        current: list[str] = self.supplements.value or []
-        options = self._supplement_options(event.value)
-        self.supplements.set_options(  # pyright: ignore[reportUnknownMemberType]
-            options, value=[pick for pick in current if pick != event.value]
-        )
-
-    def _supplement_options(self, primary: str) -> dict[str, str]:
-        return {pick: label for pick, label in self.pack_labels.items() if pick != primary}
-
     @ui.refreshable_method
     def form(self) -> None:
         engine = self.runtime.engines[self.engine_id]
         characters = self.catalog.characters_for(self.engine_id)
         self.title = ui.input(label="Title").classes("w-full")
-        self.pack_labels = {pack.id: pack.label for pack in engine.pack_options()}
-        if self.pack_labels:
-            self.primary = ui.select(
-                options=self.pack_labels,
-                value=next(iter(self.pack_labels)),
-                label="Table set",
-                on_change=self.choose_primary,
+        offered = {pack.id: pack.label for pack in engine.supplement_options()}
+        self.supplements = (
+            ui.select(
+                options=offered,
+                value=[],
+                label="Table sets beyond the SRD",
+                multiple=True,
             ).classes("w-full")
-            self.supplements = (
-                ui.select(
-                    options=self._supplement_options(self.primary.value),
-                    value=[],
-                    label="Supplements",
-                    multiple=True,
-                ).classes("w-full")
-                if len(self.pack_labels) > 1
-                else None
-            )
-        else:
-            self.primary = None
-            self.supplements = None
+            if offered
+            else None
+        )
         self.character = ui.select(
             options={entry.id: f"{entry.label} — {entry.detail}" for entry in characters},
             value=characters[0].id if characters else None,
@@ -273,9 +266,6 @@ class ScenarioForm:
         if not title or not scope or not (premise or self.document) or character_id is None:
             ui.notify("A title, a scope, a character, and a premise or a document.", type="warning")
             return
-        if self.primary is not None and not self.primary.value:
-            ui.notify("Choose a table set.", type="warning")
-            return
         self.button.props("loading")
         meta = ScenarioMeta(
             title=title,
@@ -284,17 +274,10 @@ class ScenarioForm:
             art_style=(self.style.value or "").strip(),
             voice=(self.voice.value or "").strip(),
         )
+        engine = self.runtime.engines[self.engine_id]
         try:
-            packs = None
-            if self.primary is not None:
-                chosen: list[str] = self.supplements.value if self.supplements is not None else []
-                packs = parse(
-                    PackSelection,
-                    {
-                        "primary": content_id(self.primary.value),
-                        "supplements": tuple(content_id(pick) for pick in chosen),
-                    },
-                )
+            chosen: list[str] = self.supplements.value or [] if self.supplements is not None else []
+            packs = engine.select_packs(tuple(content_id(pick) for pick in chosen))
             character_id = content_id(character_id)
             name = await self.runtime.new_scenario(
                 self.engine_id, meta, self.document, packs, character_id
@@ -340,5 +323,13 @@ def _engine_select(
 def _drop_stale(steps: tuple[CreationStep, ...], picks: dict[Slug, str]) -> None:
     """A new pack, or a skill moved onto its twin, can leave an answer its step no longer offers."""
     for step in steps:
-        if step.options and picked(picks, step.id) not in {option.id for option in step.options}:
-            picks.pop(step.id, None)
+        if not step.options:
+            continue
+        offered = {option.id for option in step.options}
+        if not step.multiple:
+            if picked(picks, step.id) not in offered:
+                picks.pop(step.id, None)
+        elif step.id in picks:
+            picks[step.id] = MANY.join(
+                part for part in picked_many(picks, step.id) if part in offered
+            )

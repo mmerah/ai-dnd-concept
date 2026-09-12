@@ -438,6 +438,7 @@ class Runtime:
     ) -> Slug:
         engine = self.engines[engine_id]
         character = self.library.read_character(character_id, engine.id, engine.character)
+        engine.admit(packs, character)
         source = await to_thread(given_text, meta.premise, document, self.settings.source_max_chars)
         name = slug(meta.title, self.library.scenario_ids())
 

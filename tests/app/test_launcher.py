@@ -250,7 +250,7 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
         scope="One crossing, before the tide turns.",
         art_style="woodcut",
     )
-    name = await runtime.new_scenario(LONER3E, meta, None, PackSelection(primary="srd"), "kael")
+    name = await runtime.new_scenario(LONER3E, meta, None, PackSelection(ids=("srd",)), "kael")
 
     # The scene bar refuses the first answer, and the reason goes back with the re-prompt.
     assert "these name nobody" in spawner.prompts[1][1]
@@ -285,11 +285,38 @@ async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: P
             LONER3E,
             ScenarioMeta(title="The Sunken Bell", premise="The tide.", scope="One crossing."),
             None,
-            PackSelection(primary="srd"),
+            PackSelection(ids=("srd",)),
             "kael",
         )
 
     assert not scenarios.exists()
+
+
+async def test_new_scenario_refuses_a_character_the_selection_cannot_start(tmp_path: Path) -> None:
+    """The mismatch is caught before the worldsmith is spawned, not after it has written."""
+    characters = tmp_path / "characters"
+    shutil.copytree(REPOSITORY_ROOT / "characters", characters)
+    sheet = characters / "kael" / "loner3e.json"
+    widened = json.loads(sheet.read_text(encoding=ENCODING)) | {
+        "packs": {"ids": ["srd", "ap01-fantasy"]}
+    }
+    sheet.write_text(json.dumps(widened), encoding=ENCODING)
+    settings = offline_settings(tmp_path, tmp_path / "scenarios").model_copy(
+        update={"characters_dir": characters}
+    )
+    spawner = ScriptedSpawner()
+    runtime = Runtime.start(settings, lambda _: spawner)
+
+    with pytest.raises(Refusal, match="this scenario plays srd"):
+        _ = await runtime.new_scenario(
+            LONER3E,
+            ScenarioMeta(title="The Sunken Bell", premise="The tide.", scope="One crossing."),
+            None,
+            PackSelection(ids=("srd",)),
+            "kael",
+        )
+
+    assert spawner.prompts == []
 
 
 async def test_a_scenario_written_from_a_document_carries_its_text(tmp_path: Path) -> None:
@@ -301,7 +328,7 @@ async def test_a_scenario_written_from_a_document_carries_its_text(tmp_path: Pat
         LONER3E,
         ScenarioMeta(title="The Sunken Bell", premise="", scope="One crossing."),
         SOURCE_MD,
-        PackSelection(primary="srd"),
+        PackSelection(ids=("srd",)),
         "kael",
     )
 

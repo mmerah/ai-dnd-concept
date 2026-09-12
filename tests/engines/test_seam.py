@@ -7,7 +7,7 @@ from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Refusal, slug
 from aidm.core.io import ENCODING, read_prompt
 from aidm.core.model import AnyCharacter, Character, Game, PackSelection, Scenario, ScenarioMeta
-from aidm.core.play import DecisionOption, SpokenLine
+from aidm.core.play import SpokenLine
 from aidm.core.prompt import Sections
 from aidm.core.views import NarratorView
 from aidm.engines.base import PLAYER_ID, Person
@@ -53,13 +53,13 @@ class FifthEngine(SceneEngine[Person, FifthGame, ScenePack]):
     world = FifthState
 
     def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
-        return (CreationStep(id="pack", label="Choose a table set", options=self.pack_options()),)
+        return self.supplement_steps()
 
     def create_character(self, name: str, brief: str, _picks: Picks) -> AnyCharacter:
         return FifthCharacter(
             id=slug(name, ()),
             engine=FIFTH,
-            pack="srd",
+            packs=PackSelection(ids=("srd",)),
             payload=Person(id=PLAYER_ID, name=name, brief=brief, known=True),
         )
 
@@ -119,7 +119,7 @@ def _scenario() -> FifthScenario:
             scope="One evening at the taproom, start to close.",
         ),
         engine=FIFTH,
-        packs=PackSelection(primary="srd"),
+        packs=PackSelection(ids=("srd",)),
         payload=SceneDraft[Person](
             place="taproom",
             title="The Taproom",
@@ -137,7 +137,7 @@ def test_a_fifth_scene_engine_begins_a_playable_game(tmp_path: Path) -> None:
 
     state = engine.begin("the-taproom", _scenario(), character)
 
-    assert engine.pack_options() == (DecisionOption(id="srd", label="The SRD"),)
+    assert engine.supplement_options() == ()
     assert engine.instructions.startswith("Roll high.")
     assert engine.instructions.endswith(read_prompt(engine.family_dir / "rules.md"))
     assert engine.narrator_view(state).title == "The Taproom"
