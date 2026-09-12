@@ -121,7 +121,6 @@ class Loner3eCast(Person):
         return self.change(self.luck, self.luck.shortfall, "Luck", why)
 
     def lose(self) -> list[Fact]:
-        """The mark the Luck reset cannot carry: this contest stays settled until it is cleared."""
         self.defeated = True
         trace = f"{self.mention} is out of luck"
         return [self.fact(trace, card=self.card_line("Out of luck"))]
