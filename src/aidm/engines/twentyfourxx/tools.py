@@ -86,8 +86,6 @@ class Defend(Frozen):
 
 
 class Helper(Frozen):
-    """A hired member who rolls their own die, and what helping costs them."""
-
     actor_id: Slug = Field(description="Exact id of the hired member who helps.")
     hindered: str = Field(default="", description="Why the helper is hindered. Empty when none is.")
     risk: str = Field(
@@ -100,11 +98,18 @@ class Helper(Frozen):
         description="Exact id of the helper's item or a ship function that breaks to spare "
         "them. Null when nothing shields them.",
     )
+    hindrance: str = Field(
+        default="",
+        description="What the hit leaves behind once the gear absorbs it, as a hindrance. "
+        "Empty when the gear breaks harmlessly.",
+    )
 
     @model_validator(mode="after")
-    def _defend_needs_risk(self) -> Self:
+    def _defend_fields(self) -> Self:
         if self.defend_with is not None and not self.risk:
             raise ValueError("defend_with needs the risk it shields against")
+        if self.hindrance and self.defend_with is None:
+            raise ValueError("hindrance needs the defend_with that earns it")
         return self
 
 
@@ -127,11 +132,18 @@ class Roll(Attempt):
         description="Exact id of the actor's item or a ship function that breaks to spare "
         "them. Null when nothing shields them.",
     )
+    hindrance: str = Field(
+        default="",
+        description="What the hit leaves behind once the gear absorbs it, as a hindrance. "
+        "Empty when the gear breaks harmlessly.",
+    )
 
     @model_validator(mode="after")
-    def _defend_needs_risk(self) -> Self:
+    def _defend_fields(self) -> Self:
         if self.defend_with is not None and not self.risk:
             raise ValueError("defend_with needs the risk it shields against")
+        if self.hindrance and self.defend_with is None:
+            raise ValueError("hindrance needs the defend_with that earns it")
         return self
 
 
