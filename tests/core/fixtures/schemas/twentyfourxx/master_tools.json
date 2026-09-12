@@ -526,7 +526,7 @@
                 "description": "Exact id of a hired party member here who acts. Null for the player."
               },
               "skill": {
-                "description": "The skill the job called on for them.",
+                "description": "The skill the job called on for them. A skill not on their sheet is added at d8.",
                 "type": "string"
               }
             },

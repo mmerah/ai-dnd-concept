@@ -173,7 +173,12 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             steps.append(CreationStep(id="body", label="Body", options=origin.choice))
         for number in range(1, origin.increases + 1):
             steps.append(
-                CreationStep(id=f"increase-{number}", label="Skill increase", options=skills)
+                CreationStep(
+                    id=f"increase-{number}",
+                    label="Skill increase",
+                    options=skills,
+                    allows_text=True,
+                )
             )
         return tuple(steps)
 
@@ -189,8 +194,12 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             picked_skills = chosen_option(specialty.choice, picked(picks, "specialty-choice"))
             skills.update(picked_skills.skills)
         for number in range(1, origin.increases + 1):
-            option = chosen_option(self.srd_pack().skills, picked(picks, f"increase-{number}"))
-            skills[option.label] = raised(skills.get(option.label))
+            typed = picked(picks, f"increase-{number}")
+            option = option_of(self.srd_pack().skills, typed)
+            label = (
+                option.label if option is not None else self._match_skill(skills, typed) or typed
+            )
+            skills[label] = raised(skills.get(label))
 
         weapon: Kit | None = None
         if specialty.kit_choice:
@@ -263,18 +272,26 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         return (*job_panel, ship_panel)
 
     def resolve_skill(self, sheet: CrewSheet, wanted: str) -> str:
-        folded = wanted.casefold()
-        for key in sheet.skills:
-            if key.casefold() == folded:
-                return key
-        for option in self.srd_pack().skills:
-            if option.label.casefold() == folded:
-                return option.label
+        if (match := self._match_skill(sheet.skills, wanted)) is not None:
+            return match
         known = ", ".join(sorted(sheet.skills)) or "none"
         listed = ", ".join(option.label for option in self.srd_pack().skills)
         raise Refusal(
             f"{wanted!r} is not a skill on the sheet ({known}) or in the rules ({listed})"
         )
+
+    def taught_skill(self, sheet: CrewSheet, wanted: str) -> str:
+        return self._match_skill(sheet.skills, wanted) or wanted
+
+    def _match_skill(self, known: Mapping[str, SkillDie], wanted: str) -> str | None:
+        folded = wanted.casefold()
+        for key in known:
+            if key.casefold() == folded:
+                return key
+        for option in self.srd_pack().skills:
+            if option.label.casefold() == folded:
+                return option.label
+        return None
 
     def change_hindrances(
         self, draft: TwentyfourxxGame, args: ChangeHindrances, _rng: Random
@@ -499,7 +516,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         for raise_ in raises:
             actor = world.require_actor(raise_.actor_id)
             sheet = actor.require_sheet()
-            facts.extend(actor.raise_skill(self.resolve_skill(sheet, raise_.skill)))
+            facts.extend(actor.raise_skill(self.taught_skill(sheet, raise_.skill)))
 
             rolled = roll((6,), f"credits earned by {actor.name}", rng)
             facts.append(rolled.fact)

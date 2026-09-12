@@ -89,7 +89,7 @@ terms. The engine refuses a second job while one is open.
 
 Call `job` with `finish` when the story and the crew close the job. Give one `raises` entry
 for the player and one for each living hired member. A job the player never takes needs no
-`take` and no `finish`.
+`take` and no `finish`. A `raises` skill the actor does not have is invented and enters at d8.
 
 ## A member's help
 

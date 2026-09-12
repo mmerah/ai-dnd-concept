@@ -27,10 +27,20 @@ def test_sheet_check_refuses_an_unknown_specialty() -> None:
         draft.check((SRD,))
 
 
-def test_sheet_check_refuses_a_skill_neither_listed_nor_granted() -> None:
-    draft = SheetDraft(specialty="Muscle", skills={"Sorcery": 8}, items=())
-    with pytest.raises(Refusal, match="Sorcery"):
+def test_sheet_check_accepts_an_invented_skill_but_still_refuses_an_unknown_specialty() -> None:
+    draft = SheetDraft(specialty="Muscle", skills={"Sabotage": 8}, items=())
+    draft.check((SRD,))
+
+    draft = SheetDraft(specialty="Wizard", skills={"Sabotage": 8}, items=())
+    with pytest.raises(Refusal, match="Wizard"):
         draft.check((SRD,))
+
+
+def test_sheet_skill_die_still_rejects_a_d6_or_a_d20() -> None:
+    with pytest.raises(ValueError):
+        SheetDraft.model_validate({"specialty": "Muscle", "skills": {"Sabotage": 6}, "items": ()})
+    with pytest.raises(ValueError):
+        SheetDraft.model_validate({"specialty": "Muscle", "skills": {"Sabotage": 20}, "items": ()})
 
 
 def test_sheet_check_accepts_medicine_granted_by_medic() -> None:
