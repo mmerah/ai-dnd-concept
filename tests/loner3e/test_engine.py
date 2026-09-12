@@ -6,6 +6,7 @@ from support.table import change, updated
 
 from aidm.core.entities import Refusal
 from aidm.core.facts import cards
+from aidm.core.model import PackSelection
 from aidm.core.play import PendingDecision
 from aidm.engines.base import PLAYER_ID, Gauge
 from aidm.engines.loner3e.engine import DEFEAT_NOTE, TWIST_NOTE
@@ -245,9 +246,9 @@ def test_restoring_luck_that_is_already_full_is_a_quiet_no_op() -> None:
 
 def test_a_game_records_its_table_sets_and_is_refused_without_them() -> None:
     engine, state = initialized()
-    assert state.packs == (SRD_PACK,)
+    assert state.packs == PackSelection(primary=SRD_PACK)
 
-    stranded = updated(state, packs=(SRD_PACK, "uninstalled"))
+    stranded = updated(state, packs=PackSelection(primary=SRD_PACK, supplements=("uninstalled",)))
 
     with pytest.raises(Refusal, match="not installed"):
         engine.validate(stranded)

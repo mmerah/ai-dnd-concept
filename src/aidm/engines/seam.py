@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,6 +18,7 @@ from aidm.core.model import (
     EngineHeader,
     Game,
     Generation,
+    PackSelection,
     ScenarioMeta,
     WorldsmithAnswer,
 )
@@ -208,7 +209,7 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     def build_scenario(
         self,
         meta: ScenarioMeta,
-        packs: tuple[Slug, ...],
+        packs: PackSelection | None,
         draft: BaseModel,
         source: str,
         premise: str,
@@ -323,7 +324,7 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
         self,
         meta: ScenarioMeta,
         source: str,
-        packs: Sequence[Slug],
+        packs: PackSelection | None,
         worldsmith: WorldsmithAnswer,
         check: Callable[[AnyScenario], None],
     ) -> AnyScenario: ...

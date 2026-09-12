@@ -5,7 +5,7 @@ from support.table import LIBRARY, TWENTYFOURXX
 from support.twentyfourxx import ENGINE, KESTREL, SABLE, SITUATION, small_world
 
 from aidm.core.entities import Refusal
-from aidm.core.model import AnyScenario, ScenarioMeta
+from aidm.core.model import AnyScenario, PackSelection, ScenarioMeta
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.worldsmith import check_scene
 from aidm.engines.twentyfourxx.world import Crewmate, CrewSheet, TwentyfourxxCharacter
@@ -59,7 +59,7 @@ def _draft(**fields: object) -> SceneDraft[Crewmate]:
 def _built(draft: SceneDraft[Crewmate]) -> AnyScenario:
     return ENGINE.build_scenario(
         ScenarioMeta(title="Loading Bay", premise="", scope="One tense night shift."),
-        (),
+        PackSelection(primary="srd"),
         draft,
         "",
         draft.situation,

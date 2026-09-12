@@ -10,7 +10,7 @@ from support.breathless import MIRA as BREATHLESS_MIRA
 from support.breathless import SKILLS_RATED
 from support.breathless import hired as breathless_hired
 from support.breathless import small_world as breathless_world
-from support.table import narrowed, stub_worldsmith, updated
+from support.table import narrowed, stub_worldsmith
 from support.tunnelgoons import ENGINE as TUNNELGOONS_ENGINE
 from support.tunnelgoons import MIRA as TUNNELGOONS_MIRA
 from support.tunnelgoons import small_world as tunnelgoons_world
@@ -23,7 +23,6 @@ from aidm.core.entities import Refusal, Slug
 from aidm.core.model import AnyGame, Generation
 from aidm.engines.breathless.world import BreathlessGame
 from aidm.engines.hiring import HIRE, SIGNED_ON
-from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.seam import AnyEngine
 from aidm.engines.tunnelgoons.world import GoonSheet, TunnelGoonsGame
 from aidm.engines.twentyfourxx.world import TwentyfourxxGame
@@ -61,7 +60,7 @@ def _tunnelgoons_sheeted(game: AnyGame) -> AnyGame:
 CASES = (
     HireCase(
         engine=BREATHLESS_ENGINE,
-        game=lambda: updated(breathless_world(), packs=(SRD_PACK,)),
+        game=breathless_world,
         member=BREATHLESS_MIRA,
         sheeted=_breathless_sheeted,
         answer={
@@ -73,7 +72,7 @@ CASES = (
     ),
     HireCase(
         engine=TWENTYFOURXX_ENGINE,
-        game=lambda: updated(twentyfourxx_world(), packs=(SRD_PACK,)),
+        game=twentyfourxx_world,
         member=KESTREL,
         sheeted=_twentyfourxx_sheeted,
         answer={"specialty": "Muscle", "skills": {"Intimidation": 8}, "items": ["Crowbar"]},

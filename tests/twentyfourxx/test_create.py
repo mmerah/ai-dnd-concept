@@ -66,6 +66,11 @@ def test_create_character_builds_the_sheet() -> None:
     assert sheet.traits == ()
 
 
+def test_create_character_records_the_picked_pack() -> None:
+    character = ENGINE.create_character("Rook", "A quiet operator", SNEAK)
+    assert character.pack == "srd"
+
+
 def test_pick_past_d12_is_refused() -> None:
     with pytest.raises(Refusal):
         ENGINE.create_character("Rook", "A quiet operator", {**SNEAK, "increase-3": "stealth"})

@@ -11,9 +11,9 @@ from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 from aidm.app.launch import LauncherCatalog, LaunchTarget
 from aidm.app.runtime import Runtime
 from aidm.core.creation import CreationStep, picked
-from aidm.core.entities import EngineId, Refusal, Slug, content_id
+from aidm.core.entities import EngineId, Refusal, Slug, content_id, parse
 from aidm.core.io import SOURCE_SUFFIXES
-from aidm.core.model import ScenarioMeta
+from aidm.core.model import PackSelection, ScenarioMeta
 from aidm.ui import theme
 from aidm.ui.widgets import game_path, heading, labeled_value, page_body, page_header, page_intro
 
@@ -149,7 +149,9 @@ class ScenarioForm:
         self.document: Path | None = None
         self.uploads: Path | None = None
         self.title: ui.input
-        self.packs: ui.select | None = None
+        self.primary: ui.select | None = None
+        self.supplements: ui.select | None = None
+        self.pack_labels: dict[str, str] = {}
         self.character: ui.select
         self.premise: ui.textarea
         self.scope: ui.textarea
@@ -186,21 +188,44 @@ class ScenarioForm:
         theme.set_look(self.runtime.engines[self.engine_id].look)
         self.form.refresh()
 
+    def choose_primary(self, event: ValueChangeEventArguments[str]) -> None:
+        if self.supplements is None:
+            return
+        current: list[str] = self.supplements.value or []
+        options = self._supplement_options(event.value)
+        self.supplements.set_options(  # pyright: ignore[reportUnknownMemberType]
+            options, value=[pick for pick in current if pick != event.value]
+        )
+
+    def _supplement_options(self, primary: str) -> dict[str, str]:
+        return {pick: label for pick, label in self.pack_labels.items() if pick != primary}
+
     @ui.refreshable_method
     def form(self) -> None:
         engine = self.runtime.engines[self.engine_id]
         characters = self.catalog.characters_for(self.engine_id)
         self.title = ui.input(label="Title").classes("w-full")
-        self.packs = (
-            ui.select(
-                options={pack.id: pack.label for pack in engine.pack_options()},
-                value=[pack.id for pack in engine.pack_options()],
-                label="Table sets",
-                multiple=True,
+        self.pack_labels = {pack.id: pack.label for pack in engine.pack_options()}
+        if self.pack_labels:
+            self.primary = ui.select(
+                options=self.pack_labels,
+                value=next(iter(self.pack_labels)),
+                label="Table set",
+                on_change=self.choose_primary,
             ).classes("w-full")
-            if engine.pack_options()
-            else None
-        )
+            self.supplements = (
+                ui.select(
+                    options=self._supplement_options(self.primary.value),
+                    value=[],
+                    label="Supplements",
+                    multiple=True,
+                ).classes("w-full")
+                if len(self.pack_labels) > 1
+                else None
+            )
+        else:
+            self.primary = None
+            self.supplements = None
         self.character = ui.select(
             options={entry.id: f"{entry.label} — {entry.detail}" for entry in characters},
             value=characters[0].id if characters else None,
@@ -248,8 +273,8 @@ class ScenarioForm:
         if not title or not scope or not (premise or self.document) or character_id is None:
             ui.notify("A title, a scope, a character, and a premise or a document.", type="warning")
             return
-        if self.packs is not None and not self.packs.value:
-            ui.notify("Choose at least one table set.", type="warning")
+        if self.primary is not None and not self.primary.value:
+            ui.notify("Choose a table set.", type="warning")
             return
         self.button.props("loading")
         meta = ScenarioMeta(
@@ -260,11 +285,16 @@ class ScenarioForm:
             voice=(self.voice.value or "").strip(),
         )
         try:
-            packs = (
-                tuple(content_id(pick) for pick in self.packs.value)
-                if self.packs is not None
-                else ()
-            )
+            packs = None
+            if self.primary is not None:
+                chosen: list[str] = self.supplements.value if self.supplements is not None else []
+                packs = parse(
+                    PackSelection,
+                    {
+                        "primary": content_id(self.primary.value),
+                        "supplements": tuple(content_id(pick) for pick in chosen),
+                    },
+                )
             character_id = content_id(character_id)
             name = await self.runtime.new_scenario(
                 self.engine_id, meta, self.document, packs, character_id

@@ -13,6 +13,10 @@ class ScenePack(Frozen):
     source: str
     license: str
 
+    def defined_ids(self) -> tuple[Slug, ...]:
+        """The option ids this pack defines; two selected packs may not share one."""
+        return ()
+
 
 def read_packs[P: BaseModel](directory: Path, model: type[P]) -> dict[Slug, P]:
     packs: dict[Slug, P] = {}

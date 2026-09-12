@@ -1,13 +1,12 @@
-from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 from support.table import ENGINE_IDS, game
 
 from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, Refusal, Slug, slug
+from aidm.core.entities import EngineId, Refusal, slug
 from aidm.core.io import ENCODING, read_prompt
-from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
+from aidm.core.model import AnyCharacter, Character, Game, PackSelection, Scenario, ScenarioMeta
 from aidm.core.play import DecisionOption, SpokenLine
 from aidm.core.prompt import Sections
 from aidm.core.views import NarratorView
@@ -60,10 +59,11 @@ class FifthEngine(SceneEngine[Person, FifthGame, ScenePack]):
         return FifthCharacter(
             id=slug(name, ()),
             engine=FIFTH,
+            pack="srd",
             payload=Person(id=PLAYER_ID, name=name, brief=brief, known=True),
         )
 
-    def guidance(self, _picks: Sequence[Slug]) -> str:
+    def guidance(self, _selection: PackSelection | None) -> str:
         return "Write the taproom plainly."
 
     def master_sections(self, state: FifthGame) -> Sections:
@@ -119,7 +119,7 @@ def _scenario() -> FifthScenario:
             scope="One evening at the taproom, start to close.",
         ),
         engine=FIFTH,
-        packs=("srd",),
+        packs=PackSelection(primary="srd"),
         payload=SceneDraft[Person](
             place="taproom",
             title="The Taproom",

@@ -1,6 +1,7 @@
 {
   "id": "kael",
   "engine": "twentyfourxx",
+  "pack": "srd",
   "payload": {
     "id": "player",
     "name": "Kael",

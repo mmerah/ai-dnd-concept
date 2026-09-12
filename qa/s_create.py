@@ -203,7 +203,7 @@ def body(s: Session) -> None:
     page.wait_for_timeout(1000)
     select(page, "Rules", "TUNNEL GOONS")
     s.check(
-        page.locator(".q-select", has_text="Table sets").count() == 0,
+        page.locator(".q-select", has_text="Table set").count() == 0,
         "a room engine offers table sets",
     )
     text(page, "Title", "The Sunken Bell")

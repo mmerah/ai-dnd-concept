@@ -11,12 +11,13 @@ from support.table import (
     narrowed,
     refused,
     scenario_for,
+    updated,
 )
 
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.io import ENCODING
-from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
+from aidm.core.model import AnyCharacter, Character, Game, PackSelection, Scenario, ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.tools import Move
@@ -93,7 +94,6 @@ def _scenario() -> SixthScenario:
             title="The Keep", premise="A keep with one gate.", scope="One keep, one visit."
         ),
         engine=SIXTH,
-        packs=(),
         payload=MapDraft[Dweller](
             places={
                 GATE: _place(GATE, "Gate", known=True),
@@ -273,6 +273,17 @@ def test_a_party_member_who_is_not_at_the_players_place_is_refused(tmp_path: Pat
             visits=[YARD],
             party=[WARDEN],
         )
+
+
+def test_a_room_game_given_a_table_set_is_refused(tmp_path: Path) -> None:
+    engine = _installed(tmp_path)
+    character = engine.create_character("Wren", "A quiet scout", {})
+    state = engine.begin("the-keep", _scenario(), character)
+
+    stranded = updated(state, packs=PackSelection(primary="srd"))
+
+    with pytest.raises(Refusal, match="plays no table set"):
+        engine.validate(stranded)
 
 
 def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:

@@ -25,7 +25,7 @@ def _tunnelgoons_game() -> tuple[AnyEngine, TunnelGoonsGame]:
 
 def test_the_shipped_game_begins_on_the_maps_start_with_the_starting_items() -> None:
     _, state = _tunnelgoons_game()
-    assert state.packs == ()
+    assert state.packs is None
     world = state.payload
     assert world.visits[0] == world.current.id
     assert {item.name for item in world.carried(world.player.id)} == {
@@ -53,6 +53,11 @@ def test_create_character_on_the_legal_path() -> None:
     character = ENGINE.create_character("Kael", "A wiry scavenger", PICKS)
     assert character.payload.kit == ("Rope", "Torch", "Melee Weapon (dagger)")
     assert character.payload.require_sheet().abilities == {"brute": 1, "skulker": 1, "erudite": 1}
+
+
+def test_create_character_records_no_pack() -> None:
+    character = ENGINE.create_character("Kael", "A wiry scavenger", PICKS)
+    assert character.pack is None
 
 
 def test_a_sum_not_equal_to_three_is_refused() -> None:

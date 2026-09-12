@@ -54,19 +54,29 @@ class CharacterHeader(EngineHeader):
     payload: SheetHeader
 
 
+class PackSelection(Frozen):
+    """The table sets one game plays by: the primary first, then what supplements it."""
+
+    primary: Slug
+    supplements: tuple[Slug, ...] = ()
+
+    @model_validator(mode="after")
+    def _distinct(self) -> Self:
+        check_unique("selected pack ids", self.ids())
+        return self
+
+    def ids(self) -> tuple[Slug, ...]:
+        return (self.primary, *self.supplements)
+
+
 class Scenario[P: BaseModel](Frozen):
     """`scenarios/<id>/world.json`: the envelope around the worldsmith's accepted draft."""
 
     meta: ScenarioMeta
     engine: EngineId
-    packs: tuple[Slug, ...] = ()
+    packs: PackSelection | None = None
     source: str = ""
     payload: P
-
-    @model_validator(mode="after")
-    def _unique_packs(self) -> Self:
-        check_unique("scenario pack ids", self.packs)
-        return self
 
 
 class Character[P: BaseModel](Frozen):
@@ -74,6 +84,7 @@ class Character[P: BaseModel](Frozen):
 
     id: Slug
     engine: EngineId
+    pack: Slug | None = None
     payload: P
 
 
@@ -96,17 +107,12 @@ class Game[P: BaseModel](Mutable):
     character_id: Slug
     scenario: ScenarioMeta
     engine: EngineId
-    packs: tuple[Slug, ...] = ()
+    packs: PackSelection | None = None
     pending: PendingDecision | None = None
     generation: Generation | None = Field(default=None, exclude=True)
     notes: list[str] = Field(default_factory=list)
     log: list[Chapter] = Field(default_factory=list)
     payload: P
-
-    @model_validator(mode="after")
-    def _playable_game(self) -> Self:
-        check_unique("game pack ids", self.packs)
-        return self
 
     def note(self, text: str) -> None:
         self.notes.append(text)

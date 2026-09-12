@@ -60,7 +60,7 @@ def test_a_one_place_map_with_no_ways_passes_the_map_bar_and_builds() -> None:
 
     built = ENGINE.build_scenario(
         ScenarioMeta(title="Only", premise="", scope="One room, one visit."),
-        (),
+        None,
         THIN,
         "source",
         "d",

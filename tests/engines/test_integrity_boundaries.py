@@ -146,6 +146,14 @@ def test_a_save_whose_payload_the_engine_rejects_is_refused() -> None:
         _ = engine.restore(json.dumps(raw))
 
 
+def test_a_save_naming_a_pack_no_longer_installed_is_refused() -> None:
+    engine, state = initialized()
+    raw = state.model_dump(mode="json")
+    raw["packs"] = {"primary": "srd", "supplements": ["gone"]}
+    with pytest.raises(Refusal, match="not installed"):
+        _ = engine.restore(json.dumps(raw))
+
+
 def test_a_save_from_other_rules_is_refused_before_it_is_read() -> None:
     engine, state = initialized()
     foreign = json.dumps(state.model_dump(mode="json") | {"engine": OTHER})
