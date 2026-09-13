@@ -3,17 +3,23 @@
 Phase 1 is `core` and the engines; phase 2 is `app`, `config` and the pages. Two phases, because
 the two halves touch disjoint files and are checked in different ways: phase 1 is guarded by the
 golden fixtures, phase 2 by the QA screenshots. The wider ruff rule set has already landed, so
-nothing here selects a rule. Counted against the real code, `src` **grows by about 20 lines**,
-from 10,069 to about 10,090. It does not shrink, and the review's −138 was wrong: a duplicate
-traded for a shared helper costs the helper's own lines, and a fix that closes a defect often
-costs more than it saves. Phase 1 takes about 20 lines out; phase 2 puts about 40 back. A step
-that lands correctly can make `src` bigger, so do not read growth as a mistake.
+nothing here selects a rule. Counted against the real code, the plan takes about **60 lines** out
+of `src`, from 10,069 to about 10,009: phase 1 about −56, phase 2 about −4. Roughly half of that
+is the fixes themselves and half is indirection removed along the way — a private helper with one
+caller, an alias used once, a wrapper that only forwards. Every step names what it deletes, so a
+step that lands and leaves `src` larger has gone wrong.
 
 The pages keep their half-built constructors. `GamePage`, `ScenarioForm` and `CharacterForm`
 declare widget attributes with no value, so reading one before `build()` raises `AttributeError`
 while the type checker believes it is always there. Fixing it honestly needs a frozen widget
 record and a guarded accessor at some forty read sites, about +57 lines, and the maintainer chose
 not to pay that. Nothing in this plan touches those attributes; leave them as they are.
+
+Three more helpers were weighed for deletion and kept, so nobody re-proposes them:
+`GameService.presents` and `GameService.history` (folding them makes `ui/game.py` read
+`session.media`, `session.reader` and `session.state` directly, which trades ten lines for a
+broken seam), and `ScenarioMeta.with_premise` (a value model's own copy-with, which is where
+CLAUDE.md puts it).
 
 ## How to work
 
@@ -60,7 +66,7 @@ uv run basedpyright
 
 ## Phase 1: core and the engines
 
-About **−20** lines in `src`. No golden moves.
+About **−56** lines in `src`. No golden moves.
 
 ### Steps
 
@@ -108,18 +114,13 @@ About **−20** lines in `src`. No golden moves.
      violation in `src`. `hiring`'s parameter becomes
      `check: Callable[[G], Check[A]] | None = None`, and `write` picks the check itself:
 
+     `WorldsmithAnswer.__call__` takes a check, never `None`, so something stands in for the
+     missing one. A lambda, not a module-level function — it is two words and needs no generics:
+
      ```python
-     checked: Check[A] = _unchecked if check is None else check(draft)
+     # A write whose only bar is its own schema.
+     checked: Check[A] = (lambda _answer: None) if check is None else check(draft)
      answered = await worldsmith(prompt(draft, member, terms), answer, checked)
-     ```
-
-     `WorldsmithAnswer.__call__` takes a check, never `None`, so one plain function stands in for
-     the missing one, under `hiring` where a private function belongs — a
-     `Callable[[BaseModel], None]` satisfies `Check[A]` for any `A`, so it needs no generics:
-
-     ```python
-     def _unchecked(_answer: BaseModel) -> None:
-         """A write whose only bar is its own schema."""
      ```
    - `engines/hiring.py` → `engines/base.py`: move `ACTOR`, `DROP_ITEM` and `DropItem` beside
      `REVEAL`/`KILL`/`JOIN_PARTY`/`LEAVE_PARTY` and their arg models, which are exactly this
@@ -145,6 +146,9 @@ About **−20** lines in `src`. No golden moves.
      thing. Then split the annotation block at the top of `Engine` in two, with one comment on
      each half: the ten a subclass sets (`id` … `character`), and the four `__init__` derives
      (`instructions`, `tools`, `requests`, `hire_writer: Hiring[G, M] | None`).
+   - `engines/base.py`: `Attempt`'s docstring restates its one field. It is never a published
+     args model — only a base for four `Roll` classes, whose own `__doc__` is `None` — so no
+     schema carries it. Delete it.
    - `engines/twentyfourxx/tools.py`: `Helper` and `Roll` repeat three fields and one validator,
      the largest verbatim clone in `src`. **No shared base class**: pydantic puts a base's fields
      first, which would reorder the published schema and move
@@ -211,18 +215,6 @@ About **−20** lines in `src`. No golden moves.
          engine: EngineId
          installed: Mapping[Slug, K]
 
-         @classmethod
-         def read[P: ScenePack](
-             cls, engine: EngineId, directory: Path, model: type[P]
-         ) -> "PackSet[P]":
-             packs = {
-                 content_id(path.stem): read_model(path, model)
-                 for path in sorted(directory.glob("*.json"))
-             }
-             if SRD_PACK not in packs:
-                 raise ValueError(f"the {engine!r} engine ships no {SRD_PACK!r} pack")
-             return PackSet(engine, packs)
-
          def srd(self) -> K:
              return self.installed[SRD_PACK]
 
@@ -242,15 +234,25 @@ About **−20** lines in `src`. No golden moves.
              return f"SELECTED PACK CONTENT\n{json.dumps(selected)}"
      ```
 
-     `read` takes its own type parameter and returns `PackSet[P]`, not `Self`. With the
-     class-scoped `K`, basedpyright cannot solve it from an unsubscripted `PackSet.read(...)`:
-     it reports the result partially unknown, `SceneEngine.packs` becomes `PackSet[Unknown]`,
-     and the gate fails.
+     The reader is a free function under the class, not a classmethod: with a class-scoped `K`,
+     basedpyright cannot solve `PackSet.read(...)` from an unsubscripted call, `SceneEngine.packs`
+     becomes `PackSet[Unknown]` and the gate fails. Its own type parameter solves cleanly:
 
-     `select(selection)` moves here too, body unchanged but reading `self.installed` and naming
-     `self.engine` in its three refusals.
+     ```python
+     def read_packs[P: ScenePack](engine: EngineId, directory: Path, model: type[P]) -> PackSet[P]:
+         packs = {
+             content_id(path.stem): read_model(path, model)
+             for path in sorted(directory.glob("*.json"))
+         }
+         if SRD_PACK not in packs:
+             raise ValueError(f"the {engine!r} engine ships no {SRD_PACK!r} pack")
+         return PackSet(engine, packs)
+     ```
+
+     `select(selection)` moves onto the class too, body unchanged but reading `self.installed`
+     and naming `self.engine` in its three refusals.
    - `engines/scenes/engine.py`: `packs: dict[Slug, K]` becomes `packs: PackSet[K]`, built in
-     `__init__` as `self.packs = PackSet.read(self.id, self.directory / "packs", self.pack)` —
+     `__init__` as `self.packs = read_packs(self.id, self.directory / "packs", self.pack)` —
      the SRD check moves with it. Delete `selected`, `selected_packs`, `srd_pack`,
      `pack_content` and `select`. Keep the three the seam contract needs, each now one line:
      `supplement_options` builds its `DecisionOption`s from `self.packs.supplements()`,
@@ -286,6 +288,10 @@ About **−20** lines in `src`. No golden moves.
      taking the docstring off `guidance`. `twentyfourxx` never called it. The dumps are the same
      dicts as today, so the worldsmith prompt goldens must not move — **verify, do not
      regenerate.**
+   - `engines/loner3e/engine.py`: `_meanings` has one caller and exists only to name a list
+     comprehension. Fold it into `glossary`: build the pack entries once before the loop over
+     `world.here()`, then `spelled.update(pack_meanings(entries, (*member.tagged("skill"), ...)))`
+     inside it.
    - `engines/scenes/world.py`: `require_member_here` is a bare alias for `require_living_here`,
      which returns the player for their own id — so in a scene game `join_party("player")` does
      not refuse; it appends the player to `party` and only blows up at commit with *the player
@@ -319,28 +325,22 @@ About **−20** lines in `src`. No golden moves.
      `aidm.engines.base`, which step 2 moves them to. One import line each.
    - `twentyfourxx/engine.py`: `roll` is the least readable block in the engines. `_helping`
      returns `Crewmate | None` while `args.helped_by` stays a separate `Helper | None`, so four
-     conditions re-narrow both. Return the pair as one thing, beside `Pool`:
+     conditions re-narrow both. Return the pair as a plain tuple — no dataclass; breathless's
+     `Pool.helper: tuple[Survivor, Die] | None` already spells a pair this way — in the private
+     run under the classes, free rather than a method because it builds an engine-side value from
+     the layer below:
 
      ```python
-     @dataclass(frozen=True, slots=True)
-     class Helping:
-         member: Crewmate
-         args: Helper
-     ```
-
-     and, in the private run under the classes — free, not a method, because it builds an
-     engine-side value and the world it reads is the layer below:
-
-     ```python
-     def _helping(world: TwentyfourxxWorld, args: Helper | None) -> Helping | None:
-         return None if args is None else Helping(world.require_actor(args.actor_id), args)
+     def _helping(world: TwentyfourxxWorld, args: Helper | None) -> tuple[Crewmate, Helper] | None:
+         return None if args is None else (world.require_actor(args.actor_id), args)
      ```
 
      `roll` calls `helping = _helping(world, args.helped_by)` and drops the `helper_args =
      args.helped_by` local; every `helper is not None and helper_args is not None` becomes
-     `helping is not None`, and the reads become `helping.member` and `helping.args`. `_pool`
-     takes `helping: Helping | None` in place of `helper`, checks `helping.member is actor` for
-     the "cannot help their own roll" refusal, and its walrus on `args.helped_by` goes.
+     `helping is not None`, and the reads become `helping[0]` and `helping[1]`. One `is not None`
+     narrows both halves. `_pool` takes `helping: tuple[Crewmate, Helper] | None` in place of
+     `helper`, checks `helping[0] is actor` for the "cannot help their own roll" refusal, and its
+     walrus on `args.helped_by` goes.
    - `breathless/engine.py`: `loot_check` hand-rolls the 1-2 / 3-4 / 5+ bands twenty lines after
      `roll` reads exactly those bands through `banded`. Lift the two notes to module constants
      beside the engine's other master-facing prose, as `loner3e` does with `TWIST_NOTE` and
@@ -375,6 +375,12 @@ About **−20** lines in `src`. No golden moves.
      `raise_skill` and `earn` all wrap their card, so a hired crew member's card stops reading
      "Gained Rope" with no name on it. The break cards written by `take_hit` are not touched.
      `take_loot` is the player's own and keeps its card as it is.
+   - `engines/breathless/engine.py`: `_complications` forwards to `self.packs.srd().complications`
+     and nothing else. `catch_breath` reads it directly, keeping the one-line reason as a comment
+     above the read.
+   - `engines/twentyfourxx/engine.py`: `taught_skill` forwards to `_match_skill` with a fallback.
+     Its one caller, `_finish`, reads `self._match_skill(sheet.skills, raise_.skill) or
+     raise_.skill`.
    - The mid-line roll prefix (the name sits inside the sentence) cannot use `card_line`;
      `breathless/engine.py` and `twentyfourxx/engine.py` already call that local `prefix` and stay
      as they are.
@@ -449,6 +455,10 @@ About **−20** lines in `src`. No golden moves.
      `RoomEngine.player_view` then asks: `here_panel(other.subject() for other in world.others())`,
      the same line `SceneEngine.player_view` already has. `place_lines` keeps its own filter: it
      lists props as well as npcs, so `others()` cannot stand in for it.
+   - `rooms/world.py`: `_walk` is a module function with one caller and no test of its own —
+     `test_walk_reaches…` goes through `reachable`. Fold its body into `Dungeon.reachable`.
+   - `tunnelgoons/world.py`: `level_options` has one caller, `Adventurer.level_decision`, and its
+     `actor_id` argument is always `self.id`. Fold it into the method.
    - `tunnelgoons/engine.py`: `roll` raises a `Refusal` for a state `Roll._one_target` has already
      made impossible, duplicating the validator's own message. The narrowing becomes honest, the
      way `level_up` already handles the `LevelUp` pair: the two-line guard goes and the read
@@ -468,23 +478,40 @@ About **−20** lines in `src`. No golden moves.
      `tests/tunnelgoons/test_world.py` stays green. In `tunnelgoons/engine.py`, the mid-line roll
      prefix local `who` is renamed `prefix`, the name the other two engines use.
 
-6. **[sequential after 5] One name for the cached reader.** Files: `core/io.py`,
-   `engines/seam.py`, `app/roles.py`, `turn/run.py`, `ui/theme.py`, `tests/engines/test_seam.py`.
-   `read_prompt` also reads CSS, in `ui/theme.py`'s `install`. Rename it `read_cached_text` and
-   change its eight call sites (three in `engines/seam.py`, two in `app/roles.py`, one each in
-   `turn/run.py`, `ui/theme.py` and `tests/engines/test_seam.py`) and their five import lines.
-   Nothing else changes; it runs last so that no parallel worker is holding one of these files.
+6. **[sequential after 5] One name for the cached reader, and two helpers with one caller.**
+   Files: `core/io.py`, `core/tools.py`, `engines/seam.py`, `app/roles.py`, `turn/run.py`,
+   `ui/theme.py`, `tests/engines/test_seam.py`. It runs last so no parallel worker is holding one
+   of these files.
+
+   - `read_prompt` also reads CSS, in `ui/theme.py`'s `install`. Rename it `read_cached_text` and
+     change its eight call sites (three in `engines/seam.py`, two in `app/roles.py`, one each in
+     `turn/run.py`, `ui/theme.py` and `tests/engines/test_seam.py`) and their five import lines.
+   - `turn/run.py`: `Turn.told` and `Turn.handed_over` are each called once, both from
+     `narrates`, and no test names either. Fold them in:
+
+     ```python
+     def narrates(self) -> bool:
+         """A hand-over that moved no fiction gets no prose."""
+         waiting = self.draft.pending is not None or self.draft.generation is not None
+         return any(fact.told for fact in self.facts) or not waiting
+     ```
+
+     `Turn.landed` stays: `Roles.master` calls it.
+   - `core/tools.py`: `type Play` is used once, as `Play[AnyGame]` in `Turn.apply`. Spell it there
+     — `play: Callable[[AnyGame, Random], tuple[Fact, ...]]` — and delete the alias; `apply`'s
+     docstring already carries the reason the rng is a parameter.
 
 ## Phase 2: the app, the settings and the pages
 
-About **+40** lines in `src`, most of it the shared connection pool and the task nursery. No
-golden moves, and no step changes text a role or the player reads. The check for the pages is
+About **−4** lines in `src`: the connection pool and the task nursery cost more than they save,
+and the helpers folded away pay for them. No golden moves, and no step changes text a role or the
+player reads. The check for the pages is
 `qa/run_all.sh` — its screenshots must show the same pixels.
 
 ### Steps
 
-1. **[sequential after 2] The session builds itself, and the background tasks move out.** Files:
-   `app/runtime.py`, new `app/background.py`, `tests/app/test_game_service.py`,
+1. **[sequential after 2] The session builds itself, and the background tasks get a class.** Files:
+   `app/runtime.py`, `tests/app/test_game_service.py`,
    `tests/app/test_mcp.py`, `tests/app/test_launcher.py`, `tests/support/table.py`,
    `qa/server.py`. It runs after step 2 because it calls `close_posting`, which step 2 writes.
    It does **not** touch `ui/app.py`; step 4 owns that file and makes the one call-site change
@@ -508,7 +535,10 @@ golden moves, and no step changes text a role or the player reads. The check for
      `tests/app/test_mcp.py`, `tests/support/table.py`, `qa/server.py` and `ui/app.py`. The last
      one is step 4's, since step 4 owns `ui/app.py`; the other fourteen are this step's.
    - `GameService` does six jobs in ~295 lines. The task nursery is the half that has nothing to
-     do with playing a turn, so it moves to a new `app/background.py`:
+     do with playing a turn, so it becomes its own class — **in `runtime.py`, above
+     `GameService`**, not a new module: `Task`, `gather`, `dataclass`, `field` and `LOGGER` are
+     already imported there, so a separate file would cost an import block and a second logger for
+     nothing.
 
      ```python
      @dataclass(slots=True)
@@ -539,15 +569,13 @@ golden moves, and no step changes text a role or the player reads. The check for
                  LOGGER.exception("background task failed", exc_info=failed)
      ```
 
-     `app/background.py` declares its own `LOGGER = logging.getLogger(__name__)`; the log text
-     `"background task failed"` is asserted in `tests/app/test_game_service.py` and survives the
-     logger-name change, because the assertion reads `caplog.text`.
-
      `GameService` loses `_background`, `_retain`, `_settled`, `settled` and the cancelling half of
      `close`, and gains `tasks: Tasks = field(default_factory=Tasks)`. Every `self._retain(x)`
      becomes `self.tasks.retain(x)`; `close` becomes `self.hush()` then `await
      self.tasks.close()`. The media fan-out **stays** on `GameService` — it is at least about a
      game session — so `Illustrator | None` and `Reader | None` keep threading through `resume`.
+   - `GameService._speaks` is a one-line predicate with one caller. Fold it into `interject`'s
+     generator, keeping its comment (the one die that is not the game's) above the expression.
    - `Runtime.close` also closes the shared HTTP pool that step 2 adds, as its last line:
      `await close_posting()`, imported from `aidm.app.providers`.
    - Tests: `tests/app/test_game_service.py` pokes `game._retain(...)` and `game._background`;
@@ -571,9 +599,8 @@ golden moves, and no step changes text a role or the player reads. The check for
 
 
      async def close_posting() -> None:
-         if posting.cache_info().currsize:
-             await posting().aclose()
-             posting.cache_clear()
+         await posting().aclose()
+         posting.cache_clear()
      ```
 
      `post_bearer` keeps its signature and passes the per-call timeout to the request:
@@ -581,6 +608,20 @@ golden moves, and no step changes text a role or the player reads. The check for
      function in this module, because `tests/app/test_builtin.py`, `test_speech.py` and
      `test_media.py` monkeypatch it by name in each consumer module. `Runtime.close` calls
      `close_posting` (step 1).
+   - `app/providers.py`: `Claims._claim` and `Claims._release` are private one-liners with one
+     caller each, both `hold`. Fold them in — `won = key not in self.held`, then
+     `self.held.add(key)`, and `self.held.discard(key)` in the `finally`. `tests/app/test_media.py` reads
+     `claims.held` and sees the same values.
+   - `app/spawn.py`: `_decodes` exists to turn an exception into a bool for one `if`. At its one
+     call in `final_message`, `suppress` is already imported:
+
+     ```python
+     with suppress(json.JSONDecodeError):
+         json.loads(body)
+         return body
+     ```
+
+     The comment above it (a fence holding something else is prose, not the answer) stays.
    - `app/speech.py` and `app/media.py`: four blocking disk calls run on the event loop that also
      serves every open tab's poll. Both files need `to_thread` from `asyncio`; neither imports it
      today. while `Runtime.new_scenario` already threads its blocking read.
@@ -607,16 +648,6 @@ golden moves, and no step changes text a role or the player reads. The check for
      becomes `await _kill(process)`. The shield is the point: `GameService.hush` cancels the
      interjection task, so the common path reaches this `finally` already cancelled, and a bare
      `await` there would raise before reaping anything.
-   - `app/spawn.py`: `CodexDriver.read_result` and `_last_said` hold the same event-stream parse
-     verbatim. One private function beside `_object`:
-
-     ```python
-     def _events(output: str) -> list[JsonValue]:
-         return [event for line in output.splitlines() if (event := _object(line)) is not None]
-     ```
-
-     Both call sites become `events = _events(output)`. This costs three lines and buys one
-     parse; it is here because the two copies must not drift.
    - `app/speech.py`: `Reader.clip` and `Reader.read` open with the same three-step walk
      (`requests_of` → `clip_key` → `_path`). One private method replaces `_path`:
 
@@ -628,8 +659,9 @@ golden moves, and no step changes text a role or the player reads. The check for
          return requests, key, self.saves / f"{key}.wav"
      ```
 
-     `clip` becomes `_, _, path = self._planned(exchange)`; `read` becomes
-     `requests, key, path = self._planned(exchange)`.
+     `clip` becomes `_, _, path = self._planned(exchange)`; `read` opens
+     `requests, key, path = self._planned(exchange)` and folds its two early returns into one:
+     `if not requests or path.is_file(): return`.
 
 3. **[part B] The settings name their roles once and freeze.** Files: `config.py`,
    `tests/ui/test_settings.py`.
@@ -687,19 +719,17 @@ golden moves, and no step changes text a role or the player reads. The check for
          return
      ```
 
-   - `ui/widgets.py` and `ui/game.py`: the decision banner is verbatim in `GamePage.chat` and
-     `GamePage.way_on_panel`. One context manager beside `section()`:
+   - `ui/game.py`: the decision banner is verbatim in `GamePage.chat` and `GamePage.way_on_panel`.
+     Name the class string once, in the module's constant block — a context manager in
+     `widgets.py` would cost more lines than the duplication does:
 
      ```python
-     @contextmanager
-     def banner(icon: str) -> Generator[None]:
-         """The decision strip: one card row with the icon that names it."""
-         with ui.row().classes("game-card game-decision w-full items-center no-wrap game-gap-md"):
-             ui.icon(icon).classes("game-card-icon")
-             yield
+     DECISION_ROW = "game-card game-decision w-full items-center no-wrap game-gap-md"
      ```
 
-     Both sites become `with banner("record_voice_over"):` and `with banner("arrow_forward"):`.
+     Both sites become `with ui.row().classes(DECISION_ROW):` followed by their own
+     `ui.icon("record_voice_over")` / `ui.icon("arrow_forward")`. The gap class comes with it, so
+     each site loses its `.style(...)` line too.
    - `ui/theme.css` and every `ui/*.py`: `theme.py` calls itself the single source for every hex
      value; the spacing scale belongs with it. The ten gap values the pages use today, each kept
      exactly:
@@ -727,7 +757,12 @@ golden moves, and no step changes text a role or the player reads. The check for
      screenshots must be pixel-identical.
    - The imports these edits need, none of which the files carry today: `Refusal` from
      `aidm.core.entities` in `ui/settings.py`; `banner` from `aidm.ui.widgets` and `replace` from
-     `dataclasses` in `ui/game.py`.
+     `dataclasses` in `ui/game.py`. No `banner` import: the constant lives in `game.py`.
+   - `ui/theme.py` and `ui/widgets.py`: `apply` is a two-line wrapper with one caller. In
+     `page_header`, `theme.apply(look)` becomes `ui.dark_mode(value=True)` and
+     `theme.set_look(look)`; delete `apply`.
+   - `ui/theme.py`: `type Palette` is used once, on `NEUTRAL_PALETTE`. Spell it
+     `NEUTRAL_PALETTE: Mapping[str, str]` and delete the alias.
    - `ui/create.py`: `ScenarioForm._discard_uploads` runs only after a successful write — the
      refusal path returns before it, and an abandoned page leaks its temp directory, which the
      comment there admits. `build()` registers it instead:
