@@ -16,9 +16,10 @@ you can refuse them on that basis alone.
 
 | | Net `src` LOC |
 |---|---|
-| Part 1 (proposals 1-12) | **−167** |
-| Part 2 (proposals 13-15) | **+87** |
-| Both | **−80** |
+| Part 1 (proposals 1-12) — **all settled** | **−167** |
+| Part 2 — 13 settled (option C) | **+5** |
+| Part 2 — 14, 15 pending | +0 to +47 |
+| Settled so far | **−162** |
 
 LOC figures are estimates from the actual blocks, ±20%.
 
@@ -33,6 +34,7 @@ across twelve small, verifiable deletions. Anything bigger would be re-architect
 | **AUTO** | No feature impact and the code shrinks. Accepted unless you object. |
 | **CALL** | Needs your decision — options listed. |
 | **BEHAVIOUR** | Something a player or a role would notice. Never auto-accepted. |
+| **SETTLED** | Your decision is recorded on the proposal. |
 
 ---
 
@@ -66,7 +68,7 @@ Strike any row you disagree with.
 
 ---
 
-## 2. 24XX's `Roll` and `Helper` duplicate what they stake — **−18 lines** — **CALL**
+## 2. 24XX's `Roll` and `Helper` duplicate what they stake — **−18 lines** — **SETTLED: A**
 
 **Now.** `twentyfourxx/tools.py:85-146`. `Helper` and `Roll` repeat the same three fields and the
 same validator. `hindrance` (5 lines) and `_defend_fields` (7 lines) are **byte-identical**;
@@ -101,14 +103,10 @@ This is the largest verbatim clone in `src`.
 
 **Feature impact.** None, under option A.
 
-**Decision 2 — what to do about the two differing words.**
-- **A (recommended).** Build the two descriptions from one template with a `{who}` slot:
-  `DEFEND_WITH.format(who="the helper's")`. Renders byte-identical, so the schema goldens in
-  `tests/core/fixtures/schemas/twentyfourxx/master_tools.json` do **not** move. −18 lines.
-- **B.** Unify the wording to "the roller's" and share the plain strings. −22 lines, and two
-  strings in the tool schema the game master reads change. Regenerate the golden.
-- **C.** Share only `hindrance` and the validator, leave `risk`/`defend_with` on each class.
-  −12 lines, zero risk.
+**Decision 2 — settled: A.** Build the two descriptions from one template with a `{who}` slot:
+`DEFEND_WITH.format(who="the helper's")` / `.format(who="the actor's")`. The rendered text is
+byte-identical, so `tests/core/fixtures/schemas/twentyfourxx/master_tools.json` must **not** move
+— that golden staying green is the acceptance test for this change.
 
 **Size.** 1 file, **25 min.**
 
@@ -228,7 +226,7 @@ Field(min_length=1)` (the length rule is live; the prose is not).
 
 ---
 
-## 7. Collapse the repeated NiceGUI boilerplate — **−25 lines** — **CALL**
+## 7. Collapse the repeated NiceGUI boilerplate — **−25 lines** — **SETTLED: A**
 
 **Now.** Two things, both in `ui/`:
 
@@ -253,10 +251,9 @@ inline styles are the third line of a chained builder call, so each one removed 
 
 **Feature impact.** None if the classes carry the same gap values — pixel-identical.
 
-**Decision 7 — how far.**
-- **A (recommended).** Banner + the full gap sweep. −25 lines, 6 files, **40 min.**
-- **B.** Banner only. −8 lines, 3 files, **15 min.**
-- **C.** Neither. The 32 inline gaps stay, and `theme.py`'s claim stays half-true.
+**Decision 7 — settled: A.** Banner **and** the full gap sweep: every inline `gap:` in `ui/*.py`
+becomes a `.game-gap-*` class in `theme.css`. −25 lines, 6 files, **40 min.** The `qa/` Playwright
+screenshots are the check that nothing moved a pixel.
 
 ---
 
@@ -313,7 +310,7 @@ engines. **60 min.**
 
 ---
 
-## 10. Delete the hand-rolled card prefixes — and give 24XX the names it never prints — **−8 lines** — **BEHAVIOUR**
+## 10. Delete the hand-rolled card prefixes — and give 24XX the names it never prints — **−8 lines** — **ACCEPTED**
 
 **Now.** `base.py:86` exists for exactly this, and is used in `base.py:94` and four times in
 `loner3e/world.py`:
@@ -342,7 +339,7 @@ Everywhere else the decision is re-made by hand, or not made at all:
 
 **Feature impact.** Card text changes for hired members: `"Caught breath — …"` becomes
 `"Mira: Caught breath — …"`, and 24XX crew cards gain a name they never had. This fixes a real
-readability bug, but it is visible, so it is your call. Tests assert the old strings at
+readability bug, and you have accepted the visible change. Tests assert the old strings at
 `tests/breathless/test_world.py:156`, `tests/breathless/test_tools.py:105`,
 `tests/tunnelgoons/test_world.py:98`.
 
@@ -350,7 +347,7 @@ readability bug, but it is visible, so it is your call. Tests assert the old str
 
 ---
 
-## 11. `require_member_here` means two different things in the two families — **−3 lines** — **BEHAVIOUR**
+## 11. `require_member_here` means two different things in the two families — **−3 lines** — **ACCEPTED**
 
 **Now.** `base.py:224` declares the contract: *"Alive and here with the player."*
 
@@ -415,45 +412,55 @@ Part 1; it earns its place because it is a live bug and costs five minutes.
 
 # Part 2 — costs lines, buys legibility
 
-These three do **not** reduce LOC. They exist because a senior reader's first judgement is formed
-by file size and class shape, and `ui/game.py` and `GameService` are what they will open first.
-Refuse any of them on the LOC ground alone and nothing else in the report is affected.
+These do **not** reduce LOC. They exist because a senior reader's first judgement is formed by
+file size and class shape, and `ui/game.py` and `GameService` are what they will open first.
+Refusing any of them on the LOC ground alone affects nothing else in the report — as 13 shows,
+where the split was refused and the defect under it fixed in place for +5 lines instead of +40.
 
-## 13. Split `ui/game.py` — 692 lines, one class, 31 methods, 27 attributes — **+40 lines** — **CALL**
+## 13. Constructors that leave the object half-built — **+5 lines** — **SETTLED: C**
 
-**Now.** `GamePage` (`ui/game.py:86`) does page layout, seven `@ui.refreshable_method` panels, two
-polling timers, ten browser event handlers, the composer, the restart dialog, the dice tray and the
-async play calls. Largest file in the repo by 150 lines.
+*(Proposed as a three-way split of `ui/game.py`. Split refused on the LOC ground; this is option C
+— the underlying defect fixed in place.)*
 
-It also declares **14 attributes as bare annotations with no value** (`:96-116`), so
-`GamePage(runtime, session)` returns an object on which almost every method raises `AttributeError`
-until `build()` runs 70 lines later. `ScenarioForm` (`ui/create.py:157-170`) has 7 more and
-`CharacterForm` (`:24-31`) 2. This is the one pattern in `src` that reads as unfinished, and the
-split is what fixes it: each collaborator's `__init__` builds its own widgets.
+**Now.** Three UI classes declare attributes as bare annotations with **no value**, so the object
+is unusable until a second method runs, and the type checker believes the attributes are always
+there:
 
-**Change to.** `ui/transcript.py` (`chat`, `live_turn`, `journal`, `_card`, `_dice_group`,
-`_bubble`, `_inline_status`, `_clock`, `STEP_COPY`, `MARK_LABELS`) and `ui/composer.py` (a
-`Composer` owning `box`, `send`, `action_button`, `over_label`, `Dictation`, and `submit`, `act`,
-`dictated`, `dictation_failed`, `_set_composer`, `_clear_box`, `_clear_spent_draft`, plus the free
-`can_type`, `placeholder`, `draft_spent`, `insert_at_caret`). `game.py` keeps the shell, the
-polling loop and the runtime calls — about 300 lines, ~18 methods.
+| Class | Where | Unset attributes | Made valid by |
+|---|---|---|---|
+| `GamePage` | `ui/game.py:96-116` | 14 | `build()`, 70 lines later |
+| `ScenarioForm` | `ui/create.py:157-170` | 7 | `build()` → `form()` |
+| `CharacterForm` | `ui/create.py:24-31` | 2 | `build()` |
 
-**Code impact.** ~700 lines moved, no logic edited. `tests/ui/test_game.py:14-23` imports six free
-functions from `aidm.ui.game` — repoint them. The Playwright suite in `qa/` must still pass.
+`GamePage(runtime, session).refresh()` raises `AttributeError`. This is the one pattern in `src`
+that reads as unfinished to an outside reader: a constructor that does not establish the object's
+invariants, with the type system asserting otherwise.
+
+(`Runtime`'s four `field(init=False)` attributes are the same defect and are already fixed in the
+sweep, S4.)
+
+**Change to.** Build the widgets where they are declared, and drop the bare annotations.
+
+- `GamePage`: move the widget construction from `build()` into `__init__` where it does not depend
+  on NiceGUI slot context, and give the rest honest `| None = None` types with the one assignment
+  in `build()`. No attribute keeps a bare annotation.
+- `CharacterForm`: `self.name` / `self.brief` are built at `create.py:43-47` inside `build()` —
+  move them up.
+- `ScenarioForm`: `form()` is `@ui.refreshable_method` and legitimately rebuilds its seven widgets
+  on every engine change, so pre-declaring cannot be avoided by moving code. Instead, have `form()`
+  **return** its widget set as a small frozen `Fields` dataclass and assign
+  `self.fields: Fields | None = None` in `__init__`. One honest optional replaces seven lies.
+
+**Code impact.** ~40 lines touched across `ui/game.py` and `ui/create.py`. `ui/game.py` stays one
+file at 692 lines. `tests/ui/test_game.py` constructs `GamePage` — check it still does.
+**30 min.**
 
 **Feature impact.** None.
 
-**Decision 13.**
-- **A.** Three modules (transcript + composer + page). Best cohesion; removes all 14 unset
-  attributes; `Composer` becomes independently testable. **60-90 min, +40 lines.**
-- **B.** Two modules — `transcript.py` only. Half the work, leaves ~10 unset attributes.
-  **+25 lines.**
-- **C (recommended, given the LOC preference).** Leave the file whole, and fix only the unset
-  attributes by building the widgets in `__init__` — the actual defect, without the +40.
-  **20 min, +5 lines.**
-- **D.** Leave it entirely.
-
----
+**What C gives up.** `ui/game.py` remains the largest file in the repo, `GamePage` keeps 31
+methods, and the transcript renderers stay stranded in a page module. If a reviewer's first move is
+`wc -l src/aidm/ui/*.py`, that is what they see. The defect that actually breaks — the unset
+attributes — is fixed either way.
 
 ## 14. `GameService` does six jobs — **+35 lines** — **CALL**
 
