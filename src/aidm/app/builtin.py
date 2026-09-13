@@ -86,10 +86,10 @@ async def _converse(
         if tools is None:
             called = said.tool_calls[0].function.name
             raise Refusal(f"the {role} has no tools, yet called {called!r}")
-        for call in said.tool_calls:
-            messages.append(
-                {"role": "tool", "tool_call_id": call.id, "content": _answer(tools, call)}
-            )
+        messages.extend(
+            {"role": "tool", "tool_call_id": call.id, "content": _answer(tools, call)}
+            for call in said.tool_calls
+        )
     raise Refusal(
         f"the {role} made {config.max_rounds} rounds of tool calls without ending the turn"
     )

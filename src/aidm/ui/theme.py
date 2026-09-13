@@ -37,7 +37,7 @@ FONT_LINK = (
 
 
 def apply(look: Look | None) -> None:
-    ui.dark_mode(True)
+    ui.dark_mode(value=True)
     set_look(look)
 
 

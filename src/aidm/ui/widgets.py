@@ -20,7 +20,7 @@ def game_path(target: LaunchTarget) -> str:
 
 @contextmanager
 def page_header(
-    title: str, badge: str | None = None, home: bool = True, *, look: Look | None = None
+    title: str, badge: str | None = None, *, home: bool = True, look: Look | None = None
 ) -> Generator[None]:
     theme.apply(look)
     with ui.header().classes("items-center no-wrap"):

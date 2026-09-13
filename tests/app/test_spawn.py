@@ -1,4 +1,5 @@
 import json
+import re
 from dataclasses import dataclass
 
 import pytest
@@ -85,7 +86,7 @@ def test_only_the_master_is_let_out_of_the_sandbox_and_no_role_sees_the_account(
 
 
 def test_a_claude_reply_that_is_not_json_is_a_broken_run() -> None:
-    with pytest.raises(Refusal, match="no JSON result: I ask in prose."):
+    with pytest.raises(Refusal, match=re.escape("no JSON result: I ask in prose.")):
         _ = ClaudeDriver().read_result("I ask in prose.")
 
 

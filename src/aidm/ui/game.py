@@ -431,7 +431,7 @@ class GamePage:
             if landed:
                 self._clear_spent_draft()
             self.refresh()
-            self._scroll(self.at_end or self.own_move)
+            self._scroll(follow=self.at_end or self.own_move)
         ticker, started = self.ticker, self.step_started
         if ticker is not None and started is not None and not ticker.is_deleted:
             ticker.set_text(_clock(monotonic() - started))
@@ -559,7 +559,7 @@ class GamePage:
         live = () if session.turn is None else rolled_since(session.turn.facts, since)
         return closed + live
 
-    def _scroll(self, follow: bool) -> None:
+    def _scroll(self, *, follow: bool) -> None:
         if not follow:
             self.new_activity.set_visibility(True)
             return

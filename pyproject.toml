@@ -52,11 +52,14 @@ reportUnannotatedClassAttribute = false # pydantic's `model_config` is unannotat
 
 [tool.ruff]
 line-length = 100
-extend-exclude = [".agents"] # ruff 0.16 formats md code blocks
+extend-exclude = [".agents", "PROPOSALS.md"] # ruff 0.16 formats md code blocks
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "TID252", "N", "ARG"]
+select = ["E", "F", "I", "UP", "B", "TID252", "N", "ARG", "SIM", "RUF", "C4", "RET", "PERF", "FBT"]
 ignore = ["N818"]
+
+[tool.ruff.lint.per-file-ignores]
+"qa/*" = ["FBT"] # `check(condition, message)` is the `assert` shape, not a boolean trap
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

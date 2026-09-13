@@ -2,6 +2,7 @@ import json
 import logging
 from asyncio import subprocess, timeout
 from collections.abc import Mapping, Sequence
+from contextlib import suppress
 from dataclasses import dataclass
 from functools import partial
 from os import environ, killpg
@@ -305,7 +306,5 @@ def _decodes(body: str) -> bool:
 def _kill(process: subprocess.Process) -> None:
     if process.returncode is not None:
         return
-    try:
+    with suppress(ProcessLookupError):
         killpg(process.pid, SIGKILL)
-    except ProcessLookupError:
-        pass
