@@ -72,7 +72,7 @@ async def rpc(client: AsyncClient, method: str, params: dict[str, object]) -> Re
 
 async def test_master_tools_over_the_mcp_endpoint(tmp_path: Path) -> None:
     master = HttpMaster()
-    runtime = Runtime.start(offline_settings(tmp_path), lambda _: master)
+    runtime = Runtime(offline_settings(tmp_path), lambda _: master)
     asgi, manager = endpoint(runtime)
     lifespan = MountedLifespan(manager)
     await lifespan.start()

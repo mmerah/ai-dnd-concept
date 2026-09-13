@@ -1,6 +1,6 @@
 import json
 import logging
-from asyncio import subprocess, timeout
+from asyncio import shield, subprocess, timeout
 from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
@@ -170,7 +170,8 @@ def final_message(output: str) -> str:
         body = fenced[1]
         body = body.split("\n", 1)[1] if body.startswith("json") else body
         # A fence holding something else is prose about the answer, not the answer.
-        if _decodes(body):
+        with suppress(json.JSONDecodeError):
+            json.loads(body)
             return body
     tail = output.rstrip()
     decoder = json.JSONDecoder()
@@ -245,7 +246,7 @@ async def _spawn(
         raise Refusal(f"the {role} answered nothing in {seconds:.0f}s") from None
     finally:
         # A no-op once it exited; an abandoned or timed-out spawn dies with its children.
-        _kill(process)
+        await _kill(process)
     output = streamed[0].decode(errors="replace")
     if process.returncode != 0:
         raise Refusal(f"the {role} exited {process.returncode}: {output[-500:]}")
@@ -295,16 +296,10 @@ def _found(node: JsonValue, name: str) -> JsonValue | None:
     return None
 
 
-def _decodes(body: str) -> bool:
-    try:
-        json.loads(body)
-    except json.JSONDecodeError:
-        return False
-    return True
-
-
-def _kill(process: subprocess.Process) -> None:
+async def _kill(process: subprocess.Process) -> None:
     if process.returncode is not None:
         return
     with suppress(ProcessLookupError):
         killpg(process.pid, SIGKILL)
+    # Shielded: a second cancel (`Tasks.close` after `hush`) would abandon a bare await mid-reap.
+    await shield(process.wait())

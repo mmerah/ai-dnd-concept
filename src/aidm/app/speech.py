@@ -1,5 +1,6 @@
 import logging
 import wave
+from asyncio import to_thread
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from hashlib import sha1
@@ -42,18 +43,13 @@ class Reader:
         )
 
     def clip(self, exchange: Exchange) -> Path | None:
-        requests = requests_of(exchange, self.voice, self.config.voices)
-        path = self._path(clip_key(self.config.model, requests))
+        _, _, path = self._planned(exchange)
         return path if path.is_file() else None
 
     async def read(self, exchange: Exchange) -> None:
         """A failed generation costs a log line and nothing else: speech is outside the game."""
-        requests = requests_of(exchange, self.voice, self.config.voices)
-        if not requests:
-            return
-        key = clip_key(self.config.model, requests)
-        path = self._path(key)
-        if path.is_file():
+        requests, key, path = self._planned(exchange)
+        if not requests or path.is_file():
             return
         try:
             with self.claims.hold(key) as reading:
@@ -76,12 +72,15 @@ class Reader:
                         clip_file.setframerate(self.config.sample_rate)
                         clip_file.writeframes(b"".join(chunks))
 
-                publish(path, write)
+                await to_thread(publish, path, write)
         except (HTTPError, OSError, Refusal, wave.Error) as failed:
             LOGGER.warning("speech generation failed: %s", failed)
 
-    def _path(self, key: str) -> Path:
-        return self.saves / f"{key}.wav"
+    def _planned(self, exchange: Exchange) -> tuple[tuple[tuple[str, str], ...], str, Path]:
+        """What to speak, the key it hashes to, and the file that key names."""
+        requests = requests_of(exchange, self.voice, self.config.voices)
+        key = clip_key(self.config.model, requests)
+        return requests, key, self.saves / f"{key}.wav"
 
 
 def voice_of(speaker_id: Slug | None, narrator: str, pool: Sequence[str]) -> str:

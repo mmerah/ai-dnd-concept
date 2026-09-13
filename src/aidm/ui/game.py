@@ -1,7 +1,7 @@
 import logging
 from asyncio import get_running_loop
 from collections.abc import Awaitable, Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import partial
 from pathlib import Path
 from time import monotonic
@@ -62,6 +62,7 @@ MARK_LABELS: dict[Marked, str] = {
     "story": "(the story goes on)",
     "interjection": "(the party speaks)",
 }
+DECISION_ROW = "game-card game-decision w-full items-center no-wrap game-gap-md"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -132,12 +133,12 @@ class GamePage:
                 ui.menu_item("Restart this game", on_click=self.confirm_restart)
 
         ui.query(".nicegui-content").style("padding: 0; gap: 0")
-        with ui.row().classes("w-full h-full no-wrap").style("gap: 0"):
+        with ui.row().classes("w-full h-full no-wrap game-gap-0"):
             self.nav_rail()
             with (
                 ui.column()
-                .classes("self-stretch flex-grow game-panel game-main")
-                .style("gap: 0; min-width: 0")
+                .classes("self-stretch flex-grow game-panel game-main game-gap-0")
+                .style("min-width: 0")
             ):
                 self.scene_header()
                 # No padding class: NiceGUI already pads the scroll content; twice would misalign.
@@ -152,9 +153,9 @@ class GamePage:
         self.drawer = ui.right_drawer(value=None).props("width=420").classes("game-drawer")
         with (
             self.drawer,
-            ui.column().classes("game-panel game-drawer-panel").style("gap: 0"),
+            ui.column().classes("game-panel game-drawer-panel game-gap-0"),
         ):
-            with ui.row().classes("w-full items-center no-wrap").style("gap: 0"):
+            with ui.row().classes("w-full items-center no-wrap game-gap-0"):
                 with ui.tabs(on_change=lambda event: self.mark_rail(str(event.value))).classes(
                     "flex-grow"
                 ) as self.tabs:
@@ -188,12 +189,14 @@ class GamePage:
         if session.presents:
             ui.timer(3.0, self.poll_media)
 
-    def refresh(self) -> None:
-        self.scene_header.refresh()
-        self.chat.refresh()
+    def refresh(self, *, whole: bool) -> None:
         self.live_turn.refresh()
         self.decision_panel.refresh()
         self.way_on_panel.refresh()
+        if not whole:
+            return
+        self.scene_header.refresh()
+        self.chat.refresh()
         self.sidebar.refresh()
         self.journal.refresh()
 
@@ -212,7 +215,7 @@ class GamePage:
             self.composer()
 
     def nav_rail(self) -> None:
-        with ui.column().classes("game-rail h-full items-center q-pt-md").style("gap: 0.4rem"):
+        with ui.column().classes("game-rail h-full items-center q-pt-md game-gap-md"):
             for name, icon, label in RAIL:
                 self.rail[name] = (
                     ui.button(label, icon=icon, on_click=partial(self.show_tab, name))
@@ -244,8 +247,8 @@ class GamePage:
         with self.scene_card:
             if art is not None:
                 ui.image(art).classes("game-scene-wash")
-            with ui.row().classes("game-scene-body w-full no-wrap").style("gap: 0"):
-                with ui.column().classes("game-scene-text").style("gap: 0.15rem"):
+            with ui.row().classes("game-scene-body w-full no-wrap game-gap-0"):
+                with ui.column().classes("game-scene-text game-gap-3xs"):
                     ui.label("current scene").classes("text-xs game-eyebrow")
                     ui.label(self.view.scene_title).classes("game-title game-scene-title")
                     ui.label(self.view.situation).classes("text-sm opacity-80 game-scene-situation")
@@ -277,11 +280,7 @@ class GamePage:
             if exchange.decision and exchange is not last:
                 ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
         if (proposed := standing_proposal(history, self.view, session.phase)) is not None:
-            with (
-                ui.row()
-                .classes("game-card game-decision w-full items-center no-wrap")
-                .style("gap: 0.4rem")
-            ):
+            with ui.row().classes(DECISION_ROW):
                 ui.icon("record_voice_over").classes("game-card-icon")
                 ui.label(f"{proposed.lines[0].speaker} proposes: {proposed.proposal}").classes(
                     "text-sm"
@@ -318,11 +317,7 @@ class GamePage:
         action = self.view.action
         if action is None:
             return
-        with (
-            ui.row()
-            .classes("game-card game-decision w-full items-center no-wrap")
-            .style("gap: 0.4rem")
-        ):
+        with ui.row().classes(DECISION_ROW):
             ui.icon("arrow_forward").classes("game-card-icon")
             ui.label("there is more beyond here").classes("text-xs font-bold game-outcome")
             ui.label(f"{action.detail} Press {action.label} with your words.").classes(
@@ -334,8 +329,8 @@ class GamePage:
         pending = self.view.decision
         if pending is None:
             return
-        with ui.column().classes("game-card game-decision w-full").style("gap: 0.5rem"):
-            with ui.row().classes("items-center no-wrap").style("gap: 0.4rem"):
+        with ui.column().classes("game-card game-decision w-full game-gap-lg"):
+            with ui.row().classes("items-center no-wrap game-gap-md"):
                 ui.icon("pause_circle").classes("game-card-icon")
                 ui.label(pending.kind).classes("text-xs font-bold game-outcome")
                 ui.label("the game is waiting on you").classes("text-xs opacity-60")
@@ -349,7 +344,7 @@ class GamePage:
         session = self.session
         view = self.view
         player = view.player
-        with ui.column().classes("w-full").style("gap: 0.75rem"):
+        with ui.column().classes("w-full game-gap-xl"):
             for index, panel in enumerate(view.panels):
                 # The sheet leads in both engine families, so it alone carries the portrait.
                 sheet = index == 0
@@ -378,16 +373,14 @@ class GamePage:
                     if line.speaker_id is None:
                         ui.label(line.text).classes("whitespace-pre-wrap text-sm")
                     else:
-                        with ui.row().classes("items-start no-wrap").style("gap: 0.3rem"):
+                        with ui.row().classes("items-start no-wrap game-gap-sm"):
                             ui.label(f"{line.speaker}:").classes(
                                 "font-bold whitespace-nowrap text-sm"
                             )
                             ui.label(line.text).classes("whitespace-pre-wrap text-sm")
 
     def composer(self) -> None:
-        with (
-            ui.row().classes("w-full no-wrap items-end game-composer q-pa-sm").style("gap: 0.5rem")
-        ):
+        with ui.row().classes("w-full no-wrap items-end game-composer q-pa-sm game-gap-lg"):
             self.over_label = (
                 ui.label("").classes("text-xs self-center").style("color: var(--game-danger)")
             )
@@ -426,11 +419,13 @@ class GamePage:
         if now != self.seen:
             self.dice.toss(self._landed(now))
             landed = now.exchanges > self.seen.exchanges
+            # Both reads are of the old `seen`, so neither may move below this line.
+            whole = whole_page(now, self.seen)
             self.seen = now
             self._set_composer()
             if landed:
                 self._clear_spent_draft()
-            self.refresh()
+            self.refresh(whole=whole)
             self._scroll(follow=self.at_end or self.own_move)
         ticker, started = self.ticker, self.step_started
         if ticker is not None and started is not None and not ticker.is_deleted:
@@ -614,6 +609,11 @@ def draft_spent(draft: str, newest_prompt: str) -> bool:
     return bool(draft) and draft == newest_prompt
 
 
+def whole_page(now: Observed, seen: Observed) -> bool:
+    """False when only the fact count moved: the live turn is then the one part that can differ."""
+    return replace(now, facts=0) != replace(seen, facts=0)
+
+
 def insert_at_caret(draft: str, text: str, caret: int) -> str:
     """A space on each side, unless the neighbour is already whitespace or the draft edge."""
     before, after = draft[:caret], draft[caret:]
@@ -636,29 +636,25 @@ def placeholder(player: PlayerView, phase: Role | None) -> str:
 
 def _card(fact: Fact, *, live: bool = False) -> None:
     headline, *detail = fact.card.split("\n")
-    with ui.column().classes("game-card w-full").style("gap: 0.3rem"):
+    with ui.column().classes("game-card w-full game-gap-sm"):
         ui.label(headline).classes("text-sm font-bold")
         for line in detail:
             ui.label(line).classes("text-xs opacity-80")
         if fact.dice:
-            with ui.row().classes("items-start").style("gap: 1rem"):
+            with ui.row().classes("items-start game-gap-2xl"):
                 for group in fact.dice:
                     _dice_group(group, live=live)
 
 
 def _dice_group(die: DiceEvent, *, live: bool) -> None:
-    with ui.column().style("gap: 0.2rem"):
+    with ui.column().classes("game-gap-2xs"):
         ui.label(die.label).classes("text-xs opacity-60")
-        with ui.row().classes("no-wrap").style("gap: 0.3rem"):
+        with ui.row().classes("no-wrap game-gap-sm"):
             for index, (face, value) in enumerate(zip(die.faces, die.rolled, strict=True)):
-                with (
-                    ui.column()
-                    .classes(
-                        "game-die"
-                        + (" game-die-kept" if index in die.highlight else "")
-                        + (" game-die-live" if live else "")
-                    )
-                    .style("gap: 0")
+                with ui.column().classes(
+                    "game-die game-gap-0"
+                    + (" game-die-kept" if index in die.highlight else "")
+                    + (" game-die-live" if live else "")
                 ):
                     ui.label(f"d{face}").classes("game-die-face")
                     ui.label(str(value)).classes("game-die-value")
@@ -679,7 +675,7 @@ def _bubble(
 
 def _inline_status(step: Role, elapsed: float) -> ui.label:
     label, description = STEP_COPY[step]
-    with ui.row().classes("items-center no-wrap q-py-xs").style("gap: 0.4rem"):
+    with ui.row().classes("items-center no-wrap q-py-xs game-gap-md"):
         ui.spinner(size="1.1rem")
         ui.label(label).classes("text-sm font-bold")
         ticker = ui.label(_clock(elapsed)).classes("text-xs font-mono")

@@ -22,7 +22,8 @@ def game_path(target: LaunchTarget) -> str:
 def page_header(
     title: str, badge: str | None = None, *, home: bool = True, look: Look | None = None
 ) -> Generator[None]:
-    theme.apply(look)
+    ui.dark_mode(value=True)
+    theme.set_look(look)
     with ui.header().classes("items-center no-wrap"):
         if home:
             ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props("flat round")
@@ -37,13 +38,13 @@ def page_body() -> Generator[None]:
     """The centred column every page but the game puts its content in."""
     with (
         ui.column().classes("w-full q-pa-lg items-center"),
-        ui.column().classes("w-full").style("max-width: var(--game-measure); gap: 1.25rem"),
+        ui.column().classes("w-full game-gap-3xl").style("max-width: var(--game-measure)"),
     ):
         yield
 
 
 def page_intro(eyebrow: str, title: str, lead: str) -> None:
-    with ui.column().style("gap: .2rem"):
+    with ui.column().classes("game-gap-2xs"):
         ui.label(eyebrow).classes("game-eyebrow")
         ui.label(title).classes("text-h4 game-title")
         ui.label(lead).classes("text-body1 game-lead")
@@ -52,7 +53,7 @@ def page_intro(eyebrow: str, title: str, lead: str) -> None:
 @contextmanager
 def section(title: str, *, classes: str = "") -> Generator[None]:
     """A card with the eyebrow that names it: the sidebar panels, the launcher, settings tabs."""
-    with ui.card().classes(f"w-full {classes}").style("gap: .5rem"):
+    with ui.card().classes(f"w-full game-gap-lg {classes}"):
         heading(title)
         yield
 
@@ -64,7 +65,7 @@ def heading(title: str) -> None:
 def entity_row(icon: Path | None, name: str, sub: str) -> None:
     with ui.element("div").classes("game-entity"):
         avatar(icon, name)
-        with ui.column().style("gap: 0"):
+        with ui.column().classes("game-gap-0"):
             ui.label(name).classes("game-entity-name game-title")
             ui.label(sub).classes("game-entity-sub")
 
@@ -95,14 +96,14 @@ def decision_widget(
     ui.label(prompt).classes("text-base whitespace-pre-wrap")
     if not options:
         return
-    with ui.row().classes("w-full items-start").style("gap: 0.5rem"):
+    with ui.row().classes("w-full items-start game-gap-lg"):
         for option in options:
             # A label in the button's own slot sits beside the detail, not above it.
             with (
                 ui.button(on_click=partial(answer, option.id))
                 .props("outline")
                 .style("min-height: 44px"),
-                ui.column().style("gap: 0"),
+                ui.column().classes("game-gap-0"),
             ):
                 ui.label(option.label)
                 if option.detail:

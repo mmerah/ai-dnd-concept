@@ -3,6 +3,73 @@
 One entry per phase: line counts before and after, decisions made off-plan, and refuted review
 findings with the reason.
 
+## Phase 2 — the app, the settings and the pages
+
+| | before | after |
+| --- | --- | --- |
+| `src` | 10,031 | 10,020 |
+| `tests` | 10,368 | 10,412 |
+| `qa` | 1,825 | 1,825 |
+
+656 tests before, 659 after. The three added tests are the three behaviours this phase introduced
+that nothing asserted: `Settings` is frozen, a facts-only tick spares the whole page
+(`whole_page`), and a drawn icon still holds its claim while its file is written. A fourth
+assertion joined an existing test: the killed spawn is reaped. No golden under
+`tests/core/fixtures/` moved, and no text a role or the player reads changed.
+
+`src` lands at −11 against the plan's estimate of about −4. `qa/run_all.sh` was run against a
+pristine worktree at the phase-1 commit and again after, and reports the same issues in the same
+scenarios (`loner` 2, `create` 1, all pre-existing).
+
+### Decisions made off-plan
+
+- **`ui/theme.css`, the gap scale.** Every one of the ten rules carries `!important`, which the
+  plan does not ask for. Measured: `theme.css` is injected inside `@layer overrides`, NiceGUI's own
+  `nicegui.css` is unlayered, and an unlayered `.nicegui-row, .nicegui-column { gap:
+  var(--nicegui-default-gap) }` (1rem) beats a layered rule whatever the specificity — in the QA
+  chromium a layered `gap: .4rem` computes to 16px and the same rule with `!important` to 6.4px.
+  Without it the plan's step would have been dead CSS and every gap on every page would have become
+  1rem. Costs one comment line.
+- **`ui/create.py`, the discard hook.** The plan says
+  `ui.context.client.on_disconnect(self._discard_uploads)`. In the pinned nicegui 3.16
+  `on_disconnect` also fires on a reconnect, before the client is really dropped, so a backgrounded
+  tab or a wifi blip would `rmtree` the upload of a page still open and leave `write` refusing for a
+  document the uploader still shows. Registered `on_delete` instead, which fires only when the
+  client is discarded. The two trailing resets in `_discard_uploads` went with it: the object dies
+  with the page.
+- **`ui/game.py`, the refresh flag.** The comparison the plan spells inline in `poll_turn` is a free
+  function, `whole_page(now, seen)`, in the public run beside `draft_spent` and `near_end` — which
+  is where CLAUDE.md puts a function that is unit-tested on its own, and it is the only way to test
+  a flag whose failure mode (computing it after `self.seen = now`) is silent. +4 lines.
+- **`tests/app/test_master_tools.py`.** In no part-brief's file list, and part A's brief said it
+  changed no test file, but the now-awaited `_kill` calls `process.wait()` and that file's
+  `FakeProcess` had no `wait`. It gained one, and the reap is now asserted.
+- **`app/providers.py`, `close_posting`.** Guarded with `if posting.cache_info().currsize:`: the
+  pool is lazy so an offline run builds none, and the plan's shape would have constructed a client
+  at every shutdown only to close it.
+- **`app/spawn.py`, the `shield` comment.** The reason first written for it was wrong: after
+  `hush`'s single cancel the `finally` is no longer cancelled and a bare `await process.wait()`
+  would complete. The `shield` earns its place against the *second* cancel — `Tasks.close` cancels
+  a task `hush` already cancelled — and the comment now says that.
+
+### Refuted review findings
+
+Two adversarial Opus reviews ran (no `codex` on this machine, and the run asked for Opus reviewers
+only). Both returned *phase complete: yes*. Every finding was fixed except one cut:
+
+- **Delete `Tasks.settled`; let `drain` await `gather(*service.tasks.running)`.** Refuted: phase 2
+  step 1 names `settled` in the `Tasks` shape, and the alternative moves asyncio plumbing into
+  `tests/support/table.py` for a class whose whole point is that it owns those tasks. Its one
+  caller being a test is what `drain` is for.
+
+### Known and accepted
+
+- `uv run basedpyright src tests` is the gate. Plain `uv run basedpyright` also walks `qa/`, which
+  needs `uv sync --group qa` (that group is now installed in this container, so `qa/` type-checks
+  too; phase 1 recorded ~1,100 errors there from the missing `playwright`).
+- The pages keep their half-built constructors, as the plan says. Nothing here touched them.
+- `GameService` still does five jobs; only the task nursery moved out.
+
 ## Phase 1 — core and the engines
 
 | | before | after |

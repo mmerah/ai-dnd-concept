@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Literal, Self
+from typing import Literal, Self, get_args
 
 from dotenv import set_key, unset_key
 from pydantic import ConfigDict, Field, SecretStr, model_validator
@@ -98,6 +98,7 @@ class Settings(BaseSettings):
         extra="ignore",
         env_nested_delimiter="__",
         nested_model_default_partial_update=True,
+        frozen=True,
     )
 
     providers: Providers = Providers()
@@ -121,11 +122,11 @@ class Settings(BaseSettings):
             for what, feature in (("media", self.media), ("speech", self.speech))
             if feature.enabled
         ]
-        for role, config in (
-            ("master", self.roles.master),
-            ("narrator", self.roles.narrator),
-            ("worldsmith", self.roles.worldsmith),
-        ):
+        # `Role.__value__`, not `Role`: `get_args` on a PEP 695 alias returns `()` and would skip
+        # every check in silence. `ui/settings.py`'s `_unaliased` unwraps the alias the same way.
+        role_names: tuple[Role, ...] = get_args(Role.__value__)
+        for role in role_names:
+            config = self.roles.for_name(role)
             if config.provider in ("openrouter", "local"):
                 posting.append((role, config.provider))
         for what, name in posting:

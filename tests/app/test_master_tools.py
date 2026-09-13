@@ -459,8 +459,9 @@ async def test_the_worldsmith_is_shown_the_source_the_cast_and_what_actually_hap
 async def test_abandoning_a_spawn_kills_the_process_group_it_started(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """The CLI's own children must not outlive the turn."""
+    """The CLI's own children must not outlive the turn, and the killed child is reaped."""
     killed: list[tuple[int, int]] = []
+    reaped: list[int] = []
 
     class FakeProcess:
         pid = 1234
@@ -469,6 +470,10 @@ async def test_abandoning_a_spawn_kills_the_process_group_it_started(
         async def communicate(self) -> tuple[bytes, bytes]:
             await asyncio.Future()
             return b"", b""
+
+        async def wait(self) -> int:
+            reaped.append(self.pid)
+            return 0
 
     async def fake_create(*_argv: str, **_kwargs: object) -> FakeProcess:
         return FakeProcess()
@@ -487,6 +492,7 @@ async def test_abandoning_a_spawn_kills_the_process_group_it_started(
     with pytest.raises(Refusal, match="answered nothing in"):
         await RoleRunner(settings).run("master", "go", None)
     assert killed == [(1234, spawn_module.SIGKILL)]
+    assert reaped == [1234]
 
 
 async def test_the_surface_publishes_for_the_engine_whose_turn_is_in_flight(

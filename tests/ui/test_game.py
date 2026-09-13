@@ -1,6 +1,7 @@
 from asyncio import get_running_loop
 from collections.abc import Generator
 from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
 
 from nicegui import Client, core, ui
@@ -20,6 +21,7 @@ from aidm.ui.game import (
     near_end,
     placeholder,
     standing_proposal,
+    whole_page,
 )
 
 WREN = Subject(id="player", label="Wren", detail="A quiet scout")
@@ -112,6 +114,13 @@ def test_draft_spent_ignores_an_unrelated_landed_prompt() -> None:
 
 def test_draft_spent_is_false_for_an_empty_draft() -> None:
     assert not draft_spent("", "")
+
+
+def test_only_a_moving_fact_count_spares_the_whole_page() -> None:
+    seen = Observed(phase="master", facts=2, exchanges=1, action=None, over=None)
+    assert not whole_page(replace(seen, facts=3), seen)
+    assert whole_page(replace(seen, facts=3, exchanges=2), seen)
+    assert whole_page(replace(seen, phase=None), seen)
 
 
 @contextmanager

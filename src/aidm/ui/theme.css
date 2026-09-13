@@ -11,6 +11,19 @@ body, body.body--dark {
 .q-page-container { height: 100dvh; box-sizing: border-box; display: flex; flex-direction: column }
 .q-page { flex: 1 1 0; min-height: 0 !important; display: flex; flex-direction: column }
 .nicegui-content { flex: 1 1 0; min-height: 0 }
+
+/* Unlayered nicegui.css sets `.nicegui-row, .nicegui-column { gap: var(--nicegui-default-gap) }`
+   (1rem), and an unlayered rule beats a layered one whatever the specificity: hence `!important`. */
+.game-gap-0 { gap: 0 !important }
+.game-gap-3xs { gap: .15rem !important }
+.game-gap-2xs { gap: .2rem !important }
+.game-gap-xs { gap: .25rem !important }
+.game-gap-sm { gap: .3rem !important }
+.game-gap-md { gap: .4rem !important }
+.game-gap-lg { gap: .5rem !important }
+.game-gap-xl { gap: .75rem !important }
+.game-gap-2xl { gap: 1rem !important }
+.game-gap-3xl { gap: 1.25rem !important }
 .game-foot {
   flex: none; gap: .5rem;
   max-height: 50dvh; overflow-y: auto;

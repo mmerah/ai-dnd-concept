@@ -93,9 +93,7 @@ def test_resume_refuses_a_save_that_is_not_this_game(
 
 
 def test_one_open_game_per_slug(tmp_path: Path) -> None:
-    runtime = Runtime.start(
-        updated(offline_settings(), saves_dir=tmp_path), lambda _: ScriptedSpawner()
-    )
+    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), lambda _: ScriptedSpawner())
     opened = runtime.session(TARGET)
 
     assert runtime.session(TARGET) is opened
@@ -443,7 +441,7 @@ async def test_reload_settings_cancels_an_evicted_sessions_background_task(
     tmp_path: Path,
 ) -> None:
     spawner = ScriptedSpawner()
-    runtime = Runtime.start(updated(offline_settings(), saves_dir=tmp_path), lambda _: spawner)
+    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), lambda _: spawner)
     opened = runtime.session(TARGET)
     opened.chatter = Random(1)
     _party_of_one(opened)
@@ -461,9 +459,7 @@ async def test_reload_settings_cancels_an_evicted_sessions_background_task(
 
 async def test_a_page_holding_an_evicted_session_is_refused(tmp_path: Path) -> None:
     """The reload drops every session, and a tab that kept one would open a second writer."""
-    runtime = Runtime.start(
-        updated(offline_settings(), saves_dir=tmp_path), lambda _: ScriptedSpawner()
-    )
+    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), lambda _: ScriptedSpawner())
     game = runtime.session(TARGET)
 
     await runtime.reload_settings()
@@ -474,9 +470,7 @@ async def test_a_page_holding_an_evicted_session_is_refused(tmp_path: Path) -> N
 
 
 async def test_a_reload_under_a_turn_in_flight_is_refused(tmp_path: Path) -> None:
-    runtime = Runtime.start(
-        updated(offline_settings(), saves_dir=tmp_path), lambda _: ScriptedSpawner()
-    )
+    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), lambda _: ScriptedSpawner())
     game = runtime.session(TARGET)
 
     async with runtime.admit(game):
@@ -504,7 +498,7 @@ async def test_two_concurrent_plays_on_different_sessions_cannot_both_open_a_tur
 ) -> None:
     spawner = ScriptedSpawner()
     gate = Event()
-    runtime = Runtime.start(
+    runtime = Runtime(
         updated(offline_settings(), saves_dir=tmp_path), lambda _: _Blocking(spawner, gate)
     )
     first = runtime.session(TARGET)
@@ -537,19 +531,19 @@ async def test_a_failing_background_task_is_logged_and_close_leaves_no_live_task
     async def _hang() -> None:
         await Event().wait()
 
-    game._retain(create_task(_boom()))  # pyright: ignore[reportPrivateUsage]
-    game._retain(create_task(_hang()))  # pyright: ignore[reportPrivateUsage]
+    game.tasks.retain(create_task(_boom()))
+    game.tasks.retain(create_task(_hang()))
     await sleep(0)
 
     await game.close()
 
-    assert game._background == set()  # pyright: ignore[reportPrivateUsage]
+    assert game.tasks.running == set()
     assert "background task failed" in caplog.text
 
 
 async def test_reload_settings_keeps_the_injected_spawner(tmp_path: Path) -> None:
     spawner = ScriptedSpawner()
-    runtime = Runtime.start(updated(offline_settings(), saves_dir=tmp_path), lambda _: spawner)
+    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), lambda _: spawner)
 
     await runtime.reload_settings()
 

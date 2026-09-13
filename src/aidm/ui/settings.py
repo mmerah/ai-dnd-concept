@@ -8,6 +8,7 @@ from pydantic import BaseModel, SecretStr, ValidationError
 from pydantic.fields import FieldInfo
 
 from aidm.config import Settings, env_key, save_settings
+from aidm.core.entities import Refusal
 from aidm.ui.widgets import page_body, page_header, page_intro
 
 type Widget = ui.input | ui.switch | ui.select | ui.number
@@ -16,7 +17,7 @@ type Changes = dict[tuple[str, ...], str | None]
 
 
 class SettingsForm:
-    def __init__(self, settings: Settings, apply: Callable[[], Awaitable[str | None]]) -> None:
+    def __init__(self, settings: Settings, apply: Callable[[], Awaitable[None]]) -> None:
         self.settings = settings
         self.apply = apply
         self.boxes: dict[tuple[str, ...], Widget] = {}
@@ -70,17 +71,18 @@ class SettingsForm:
             ui.notify(refusal_text(error), type="negative", multi_line=True)
             return
         save_settings(changed)
-        refusal = await self.apply()
-        if refusal is not None:
+        try:
+            await self.apply()
+        except Refusal as refused:
             ui.notify(
-                f"{refusal} The keys are written; they apply on the next restart.", type="warning"
+                f"{refused} The keys are written; they apply on the next restart.", type="warning"
             )
             return
         ui.notify(f"Applied {len(changed)} keys.", type="positive")
         ui.navigate.reload()
 
 
-def settings_page(settings: Settings, apply: Callable[[], Awaitable[str | None]]) -> None:
+def settings_page(settings: Settings, apply: Callable[[], Awaitable[None]]) -> None:
     SettingsForm(settings, apply).build()
 
 

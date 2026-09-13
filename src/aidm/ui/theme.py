@@ -6,11 +6,8 @@ from nicegui import ui
 from aidm.core.io import read_cached_text
 from aidm.core.views import Look
 
-type Palette = Mapping[str, str]
-
-
 # The single source for every hex value: the first paint, `set_look` and the Quasar colours.
-NEUTRAL_PALETTE: Palette = {
+NEUTRAL_PALETTE: Mapping[str, str] = {
     "game-bg": "#111519",
     "game-surface": "#1a2026",
     "game-surface-raised": "#232c33",
@@ -34,11 +31,6 @@ FONT_LINK = (
     '<link rel="stylesheet" href="https://fonts.googleapis.com/css2'
     '?family=EB+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">'
 )
-
-
-def apply(look: Look | None) -> None:
-    ui.dark_mode(value=True)
-    set_look(look)
 
 
 def set_look(look: Look | None) -> None:

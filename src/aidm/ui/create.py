@@ -191,6 +191,8 @@ class ScenarioForm:
             with ui.card().classes("w-full"):
                 _engine_select(self.runtime, self.engine_id, self.choose_engine)
                 self.form()
+        # `on_disconnect` also fires on a reconnect, which would discard a live page's upload.
+        ui.context.client.on_delete(self._discard_uploads)  # pyright: ignore[reportUnknownMemberType]
 
     async def uploaded(self, event: UploadEventArguments) -> None:
         # The source reader opens a path, and a PDF cannot be parsed from bytes.
@@ -254,7 +256,7 @@ class ScenarioForm:
             .props(f'accept="{",".join(SOURCE_SUFFIXES)}"')
             .classes("w-full")
         )
-        with ui.row().classes("w-full items-center").style("gap: 0.75rem"):
+        with ui.row().classes("w-full items-center game-gap-xl"):
             self.button = ui.button(
                 "Write the opening", icon="auto_stories", on_click=self.write
             ).props("color=primary")
@@ -293,16 +295,12 @@ class ScenarioForm:
             return
         finally:
             self.button.props(remove="loading")
-        self._discard_uploads()
         LOGGER.info("scenario created: slug=%s", name)
         ui.navigate.to(game_path(opened))
 
     def _discard_uploads(self) -> None:
-        # An abandoned page leaves one temp directory to the OS.
         if self.uploads is not None:
             shutil.rmtree(self.uploads, ignore_errors=True)
-        self.uploads = None
-        self.document = None
 
 
 def character_page(runtime: Runtime) -> None:
