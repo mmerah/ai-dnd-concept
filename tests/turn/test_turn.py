@@ -351,13 +351,17 @@ async def test_the_clock_counts_only_a_turn_that_played_and_landed_facts(tmp_pat
     assert state.payload.turns_played == 1
 
 
-async def test_the_switch_off_leaves_the_clock_inert_and_clears_the_flag(tmp_path: Path) -> None:
-    """Pinning the whole chain: Settings -> Runtime._open -> GameService.resume -> Turn."""
+async def test_the_switch_off_disarms_the_save_and_leaves_the_clock_inert(tmp_path: Path) -> None:
+    """The whole chain: Settings -> Runtime._open -> GameService.resume -> Turn.finish."""
+    filed = open_game(tmp_path)
+    armed = filed.state.draft()
+    armed.payload.meanwhile_due = True
+    filed.service.save(armed.commit())
+
     off = offline_settings(tmp_path).model_copy(update={"meanwhile": False})
     table = open_game(tmp_path, settings=off)
-    armed = table.state.draft()
-    armed.payload.meanwhile_due = True
-    table.service.save(armed.commit())
+
+    assert table.state.payload.meanwhile_due is False
 
     state = await play_turn(table, "I search beneath the desk.", FOUND)
 

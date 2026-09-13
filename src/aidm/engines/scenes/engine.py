@@ -266,7 +266,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
         if isinstance(scene, NextDraft):
             draft.log[-1].recap = scene.recap
         world.apply_scene(scene)
-        world.meanwhile_due = False
+        world.disarm()
         self.open_chapter(draft)
         trace = f"the scene opens: {scene.title}"
         if travelling := [member.name for member in world.members()]:

@@ -235,6 +235,16 @@ class World[M: Person, P: Person](Mutable):
     @abstractmethod
     def leave_party(self, entity_id: Slug) -> list[Fact]: ...
 
+    def count_turn(self, tempo: int) -> None:
+        """One turn against the clock; at the tempo it starts over and arms the flag."""
+        self.turns_played += 1
+        if self.turns_played >= tempo:
+            self.turns_played = 0
+            self.meanwhile_due = True
+
+    def disarm(self) -> None:
+        self.meanwhile_due = False
+
     def join_party(self, entity_id: Slug) -> list[Fact]:
         return self.join(self.require_member_here(entity_id))
 

@@ -39,22 +39,16 @@ class Turn:
     # What the master reads as PLAYER ACTION: the words, or the marker for a chosen option.
     action: str = ""
     notes: list[str] = field(default_factory=list)
-    meanwhile: bool = True
+    # Whether the master plays: an answer that re-suspended leaves every tool refused.
+    played: bool = True
 
     @classmethod
-    def begin(
-        cls,
-        engine: AnyEngine,
-        state: AnyGame,
-        answer: Answer,
-        rng: Random,
-        *,
-        meanwhile: bool = True,
-    ) -> Self:
-        turn = cls(engine=engine, draft=state.draft(), rng=deepcopy(rng), meanwhile=meanwhile)
+    def begin(cls, engine: AnyEngine, state: AnyGame, answer: Answer, rng: Random) -> Self:
+        turn = cls(engine=engine, draft=state.draft(), rng=deepcopy(rng))
         turn._consume(answer)
+        turn.played = turn.draft.pending is None
         # Notes are read once; a note a tool writes after this steers the next turn.
-        if turn.draft.pending is None:
+        if turn.played:
             turn.notes, turn.draft.notes = turn.draft.notes, []
         return turn
 
@@ -136,8 +130,8 @@ class Turn:
     def published_tools(self) -> tuple[MasterTool[AnyGame], ...]:
         return tuple(self.engine.tools.values())
 
-    def finish(self, lines: tuple[SpokenLine, ...], *, played: bool) -> AnyGame:
-        self.engine.tick(self.draft, counted=played and bool(self.facts), enabled=self.meanwhile)
+    def finish(self, lines: tuple[SpokenLine, ...], *, enabled: bool) -> AnyGame:
+        self.engine.tick(self.draft, counted=enabled and self.played and bool(self.facts))
         return self.engine.close(self.draft, lines, tuple(self.facts), words=self.words)
 
     def apply(self, play: Callable[[AnyGame, Random], tuple[Fact, ...]]) -> tuple[Fact, ...]:

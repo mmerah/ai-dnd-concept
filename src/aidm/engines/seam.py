@@ -281,17 +281,10 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
         self.validate(draft)
         return draft.commit()
 
-    def tick(self, draft: G, *, counted: bool, enabled: bool) -> None:
-        world = self.world_of(draft)
-        if not enabled:
-            world.meanwhile_due = False
-            return
-        if not counted:
-            return
-        world.turns_played += 1
-        if world.turns_played >= self.meanwhile_turns:
-            world.turns_played = 0
-            world.meanwhile_due = True
+    def tick(self, draft: G, *, counted: bool) -> None:
+        """One player turn against the clock; a family spends the flag by overriding this."""
+        if counted:
+            self.world_of(draft).count_turn(self.meanwhile_turns)
 
     def begin(self, scenario_id: Slug, scenario: AnyScenario, character: AnyCharacter) -> G:
         if scenario.engine != self.id:
