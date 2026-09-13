@@ -18,7 +18,7 @@ from aidm.core.model import Generation, PackSelection
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
-from aidm.engines.scenes.engine import MOVE_ON
+from aidm.engines.scenes.engine import MEANWHILE_NUDGE, MOVE_ON
 from aidm.engines.scenes.packs import SRD_PACK, PackSet
 from aidm.engines.scenes.tools import NextDraft, NextScene
 from aidm.engines.scenes.world import SceneRun, SceneWorld
@@ -91,6 +91,22 @@ def test_the_next_scene_prompt_carries_the_scene_as_it_stands() -> None:
 
     assert f"THE SCENE NOW:\n{run.title} [{run.place}]\n{run.situation}" in prompt
     assert "present: Mara[mara]\nhidden: the vault map[vault-map]" in prompt
+
+
+def test_render_next_carries_the_meanwhile_nudge_only_when_armed_and_install_clears_it() -> None:
+    engine, state = game(LONER3E)
+    assert isinstance(engine, Loner3eEngine)
+    draft = narrowed(state, Loner3eGame).draft()
+
+    assert MEANWHILE_NUDGE not in engine.render_next(draft, "Down the stair.")
+
+    draft.payload.meanwhile_due = True
+    assert MEANWHILE_NUDGE in engine.render_next(draft, "Down the stair.")
+
+    scene = NextDraft[Loner3eCast](place="a2", title="A2", situation=SITUATION, recap=RECAP)
+    engine.install(draft, scene)
+
+    assert draft.payload.meanwhile_due is False
 
 
 def test_apply_scene_with_an_empty_arc_keeps_the_worlds_arc() -> None:

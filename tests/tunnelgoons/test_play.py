@@ -4,8 +4,11 @@ from random import Random
 
 from support.table import TUNNELGOONS, open_table, play_turn, take, tool_call
 
+from aidm.core.play import Answer
 from aidm.engines.rooms.engine import MORE_MAP
-from aidm.engines.tunnelgoons.world import TunnelGoonsGame
+from aidm.engines.tunnelgoons.world import GoonSheet, TunnelGoonsGame
+
+GRIX = "grix"
 
 # A miss against the crawler's DS 6 (brute 1 + 2d6[1,1] = 3): the margin lands on the player.
 FIGHT_SEED = 2
@@ -127,3 +130,20 @@ async def test_a_region_that_cannot_be_written_files_the_players_words(tmp_path:
     )
     assert table.spawner.prompts[-1][0] == "worldsmith"
     assert table.service.player_view().action == MORE_MAP
+
+
+async def test_the_clock_does_not_count_a_turn_the_master_never_played(tmp_path: Path) -> None:
+    """A level-up cascade re-suspends without a master, so `Turn.landed()` would over-count it."""
+    table = open_table(tmp_path, engine_id=TUNNELGOONS, state_type=TunnelGoonsGame)
+    world = table.state.payload
+    world.npcs[GRIX].sheet = GoonSheet(abilities={"brute": 1, "skulker": 1, "erudite": 1})
+    world.party.append(GRIX)
+    suspended = table.state.draft()
+    suspended.pending = suspended.payload.player.level_decision()
+    table.service.save(suspended.commit())
+
+    state = await play_turn(table, Answer(option_id="brute-health"))
+
+    assert state.exchanges()[-1].facts
+    assert state.payload.turns_played == 0
+    assert "master" not in [role for role, _ in table.spawner.prompts]

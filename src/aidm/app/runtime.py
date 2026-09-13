@@ -83,6 +83,7 @@ class GameService:
     media: Illustrator | None = None
     reader: Reader | None = None
     interjections: bool = True
+    meanwhile: bool = True
     rng: Random = field(default_factory=Random)
     chatter: Random = field(default_factory=Random)
     phase: Role | None = None
@@ -106,6 +107,7 @@ class GameService:
         media: Illustrator | None = None,
         reader: Reader | None = None,
         interjections: bool = True,
+        meanwhile: bool = True,
     ) -> Self:
         """The filed save if there is one, else a fresh opening."""
         saved = store.read(target.slug)
@@ -125,6 +127,7 @@ class GameService:
             media=media,
             reader=reader,
             interjections=interjections,
+            meanwhile=meanwhile,
         )
 
     @property
@@ -182,11 +185,12 @@ class GameService:
 
     async def _turn(self, answer: Answer, state: AnyGame) -> None:
         self.hush()
-        turn = Turn.begin(self.engine, state, answer, self.rng)
+        turn = Turn.begin(self.engine, state, answer, self.rng, meanwhile=self.meanwhile)
         self.turn, self.phase = turn, "master"
         try:
             # An answer that re-suspended leaves every tool refused: nothing for a master to do.
-            if turn.draft.pending is None:
+            played = turn.draft.pending is None
+            if played:
                 await self.roles.master(turn)
             lines: tuple[SpokenLine, ...] = ()
             if turn.narrates():
@@ -194,7 +198,7 @@ class GameService:
                 lines = await self.roles.narrate(
                     self.engine, turn.draft, tuple(turn.facts), turn.words
                 )
-            state = turn.finish(lines)
+            state = turn.finish(lines, played=played)
         finally:
             # Cleared before arrival: the tool surface must not reach a turn nobody plays.
             self.turn, self.phase = None, None
@@ -476,6 +480,7 @@ class Runtime:
             Roles(self.spawner),
             self.store,
             interjections=settings.interjections,
+            meanwhile=settings.meanwhile,
             media=Illustrator.open(
                 settings,
                 self.store,

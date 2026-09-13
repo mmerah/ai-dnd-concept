@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 
@@ -37,6 +38,22 @@ def test_a_saved_games_history_round_trips(tmp_path: Path) -> None:
 
     assert reloaded is not None
     assert engine.restore(reloaded).exchanges() == saved.exchanges()
+
+
+def test_a_save_without_the_clock_fields_still_loads(tmp_path: Path) -> None:
+    engine, state = initialized()
+    payload = json.loads(state.model_dump_json())
+    del payload["payload"]["turns_played"]
+    del payload["payload"]["meanwhile_due"]
+    write_text(tmp_path / "stale.json", json.dumps(payload))
+    store = FileStore(tmp_path)
+
+    raw = store.read("stale")
+
+    assert raw is not None
+    restored = engine.restore(raw)
+    assert restored.payload.turns_played == 0
+    assert restored.payload.meanwhile_due is False
 
 
 @pytest.mark.parametrize("slug", ("../escape", "/absolute", "bad slug", ""))

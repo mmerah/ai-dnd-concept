@@ -86,6 +86,31 @@ def _installed(tmp_path: Path) -> FifthEngine:
     return _engine_at(tmp_path)()
 
 
+def test_the_tempo_floor_refuses_a_tempo_below_two(tmp_path: Path) -> None:
+    class TooFast(type(_installed(tmp_path))):
+        meanwhile_turns = 1
+
+    with pytest.raises(ValueError, match="ticks every"):
+        TooFast()
+
+
+def test_the_clock_arms_on_reaching_the_tempo_and_starts_over(tmp_path: Path) -> None:
+    engine = _installed(tmp_path)
+    character = engine.create_character("Wren", "A quiet scout", {})
+    draft = engine.begin("the-taproom", _scenario(), character).draft()
+
+    for _ in range(engine.meanwhile_turns - 1):
+        engine.tick(draft, counted=True, enabled=True)
+    assert (draft.payload.turns_played, draft.payload.meanwhile_due) == (
+        engine.meanwhile_turns - 1,
+        False,
+    )
+
+    engine.tick(draft, counted=True, enabled=True)
+
+    assert (draft.payload.turns_played, draft.payload.meanwhile_due) == (0, True)
+
+
 def test_construction_refuses_when_no_srd_table_set_is_installed(tmp_path: Path) -> None:
     engine_type = type(_installed(tmp_path))
     (tmp_path / "packs" / "srd.json").rename(tmp_path / "packs" / "other.json")

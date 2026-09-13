@@ -198,6 +198,8 @@ class World[M: Person, P: Person](Mutable):
     player: P
     source: str = ""
     party: list[Slug] = Field(default_factory=list)
+    turns_played: int = Field(default=0, ge=0)  # counted turns since the last fire
+    meanwhile_due: bool = False  # the clock has fired and nothing has spent it yet
 
     @model_validator(mode="after")
     def _player_carries_a_sheet(self) -> Self:

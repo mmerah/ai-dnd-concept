@@ -107,6 +107,8 @@ class Settings(BaseSettings):
     speech: SpeechConfig = SpeechConfig()
     # A party member may speak after a turn: one narrator spawn the player never waits on.
     interjections: bool = True
+    # The world moves offscreen every few turns; off stops the clock and disarms it.
+    meanwhile: bool = True
     # This ~30k-token ceiling admits a 76-page adventure without swallowing the context.
     source_max_chars: int = Field(default=120_000, ge=1)
     # Not `PORT`, set by too many shells.
