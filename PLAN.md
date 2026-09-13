@@ -610,8 +610,8 @@ player reads. The check for the pages is
      `close_posting` (step 1).
    - `app/providers.py`: `Claims._claim` and `Claims._release` are private one-liners with one
      caller each, both `hold`. Fold them in — `won = key not in self.held`, then
-     `self.held.add(key)`, and `self.held.discard(key)` in the `finally`. `tests/app/test_media.py` reads
-     `claims.held` and sees the same values.
+     `self.held.add(key)`, and `self.held.discard(key)` in the `finally`.
+     `tests/app/test_media.py` reads `claims.held` and sees the same values.
    - `app/spawn.py`: `_decodes` exists to turn an exception into a bool for one `if`. At its one
      call in `final_message`, `suppress` is already imported:
 
