@@ -19,6 +19,12 @@ lost.** Every proposal marked DECISION needs one word from you before it can be 
 | 2 — per-engine duplicate tests | **Accepted.** |
 | 4 — the `rooms` family | **Accepted, option (a)**: de-generify in place, keep the package as a seam. |
 | 5 — the room family tested twice | **Accepted, option (a)**: `SixthEngine` keeps one boundary test, family behaviour moves to `tests/tunnelgoons/`. |
+| 6 — `Runtime` and `GameService` | **Accepted whole**: 6a, 6b, and 6c option (a) — live settings reload goes; settings apply at the next start. |
+| 8 — three seam indirections | **Accepted.** |
+| 9 — test scaffolding | **Accepted.** |
+| 10 — small collapses | **Accepted, every item.** |
+
+All ten are accepted. Nothing in "Considered and excluded" is in scope.
 
 ---
 
