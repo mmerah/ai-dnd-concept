@@ -78,6 +78,10 @@ MOVING_ON = (
     "Play their leaving if nothing stops them. Then call `next_scene` with `pursuit` in their "
     "own words. The crossing is written after this turn."
 )
+MEANWHILE_NUDGE = (
+    "Time has passed since the player last saw the people they are not with. Let one of "
+    "them have moved on without the player, if the scene has room for it."
+)
 
 
 class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
@@ -244,6 +248,8 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
                 f"\n\nThe arc as last written:\n{world.arc}\n"
                 "Revise `arc` only where what happened warrants it. Leave it empty to keep it."
             )
+        if world.meanwhile_due:
+            intent += f"\n\n{MEANWHILE_NUDGE}"
         return self.render_request(
             draft, guidance=self.guidance(draft.packs), intent=intent, answer=NextDraft[self.member]
         )
@@ -260,6 +266,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
         if isinstance(scene, NextDraft):
             draft.log[-1].recap = scene.recap
         world.apply_scene(scene)
+        world.meanwhile_due = False
         self.open_chapter(draft)
         trace = f"the scene opens: {scene.title}"
         if travelling := [member.name for member in world.members()]:

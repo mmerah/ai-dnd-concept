@@ -68,6 +68,7 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     title: str
     art_style: str
     look: Look
+    meanwhile_turns: int = 6
     directory: Path  # rules.md; a scene engine's packs/
     family_dir: Path
     game: type[G]
@@ -90,6 +91,8 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
         names = [tool.name for tool in tools]
         if len(set(names)) != len(names):
             raise ValueError(f"the {self.id!r} engine names a tool twice: {names}")
+        if self.meanwhile_turns < 2:
+            raise ValueError(f"the {self.id!r} engine ticks every {self.meanwhile_turns} turns")
         self.tools = {tool.name: tool for tool in tools}
         self.requests = self.worldsmith_requests()
 
@@ -277,6 +280,18 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     def land(self, draft: G) -> G:
         self.validate(draft)
         return draft.commit()
+
+    def tick(self, draft: G, *, counted: bool, enabled: bool) -> None:
+        world = self.world_of(draft)
+        if not enabled:
+            world.meanwhile_due = False
+            return
+        if not counted:
+            return
+        world.turns_played += 1
+        if world.turns_played >= self.meanwhile_turns:
+            world.turns_played = 0
+            world.meanwhile_due = True
 
     def begin(self, scenario_id: Slug, scenario: AnyScenario, character: AnyCharacter) -> G:
         if scenario.engine != self.id:

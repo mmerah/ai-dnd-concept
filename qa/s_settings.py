@@ -31,6 +31,7 @@ def body(s: Session) -> None:
             "media",
             "speech",
             "interjections",
+            "meanwhile",
             "source max chars",
             "server port",
         ],

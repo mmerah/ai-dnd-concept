@@ -5,7 +5,7 @@ from random import Random
 
 import pytest
 from support.game import initialized, loner_sheet, open_game
-from support.table import Table, narrated, play_turn, tool_call
+from support.table import Table, narrated, offline_settings, play_turn, tool_call
 
 from aidm.core.entities import Refusal
 from aidm.core.facts import Fact, cards
@@ -339,3 +339,27 @@ async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_a
     assert mara.brief == "Waiting under the arcade with the lantern shuttered."
     assert (mara.concept, mara.tags) == (before.concept, before.tags)
     assert WAY_UNWRITTEN not in state.exchanges()[-1].facts
+
+
+async def test_the_clock_counts_only_a_turn_that_played_and_landed_facts(tmp_path: Path) -> None:
+    table = open_game(tmp_path)
+
+    state = await play_turn(table, "I search beneath the desk.", FOUND)
+    assert state.payload.turns_played == 1
+
+    state = await play_turn(table, "I wait.")
+    assert state.payload.turns_played == 1
+
+
+async def test_the_switch_off_leaves_the_clock_inert_and_clears_the_flag(tmp_path: Path) -> None:
+    """Pinning the whole chain: Settings -> Runtime._open -> GameService.resume -> Turn."""
+    off = offline_settings(tmp_path).model_copy(update={"meanwhile": False})
+    table = open_game(tmp_path, settings=off)
+    armed = table.state.draft()
+    armed.payload.meanwhile_due = True
+    table.service.save(armed.commit())
+
+    state = await play_turn(table, "I search beneath the desk.", FOUND)
+
+    assert state.payload.turns_played == 0
+    assert state.payload.meanwhile_due is False

@@ -14,7 +14,7 @@ from aidm.core.tools import MasterTool, NoArgs, master_tool
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eGame
 from aidm.engines.seam import AnyEngine
-from aidm.turn.run import RULES_WAIT, Turn
+from aidm.turn.run import PAUSED_TO_ASK, RULES_WAIT, Turn
 
 
 class Broken(Frozen):
@@ -149,6 +149,23 @@ async def test_an_answer_that_re_suspends_spawns_no_master(tmp_path: Path) -> No
 
     assert state.pending == DECISION
     assert [role for role, _ in table.spawner.prompts] == ["narrator"]
+
+
+async def test_a_re_suspended_turns_note_survives_to_the_next_masters_prompt(
+    tmp_path: Path,
+) -> None:
+    """`_consume` writes the note one line before `begin` used to drain it unconditionally."""
+    table = _deciding(tmp_path)
+    _suspend(table, CHAINING)
+    note = PAUSED_TO_ASK.format(prompt=CHAINING.prompt)
+
+    state = await play_turn(table, Answer(option_id="lantern"))
+
+    assert any(entry.startswith(note) for entry in state.notes)
+
+    _ = await play_turn(table, Answer(option_id="lantern"))
+
+    assert note in table.spawner.prompt("master")
 
 
 async def test_an_option_the_decision_never_offered_raises(tmp_path: Path) -> None:
