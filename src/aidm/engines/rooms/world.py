@@ -201,11 +201,11 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
             raise Refusal(UNKNOWN_ID.format(entity_id=entity_id))
         return self.part(npc)
 
-    def _open_way(self, here: Place, destination: Place) -> None:
+    def _open_way(self, way: Way, destination: Place) -> None:
         """Walked or unlocked, a way is known from both sides."""
-        for way in (self.way(here.id, destination.id), self.way(destination.id, here.id)):
-            if way is not None:
-                way.known = True
+        way.known = True
+        if (back := self.way(destination.id, self.current.id)) is not None:
+            back.known = True
 
     def move(self, to_id: Slug, with_ids: tuple[Slug, ...]) -> list[Fact]:
         here = self.current
@@ -221,7 +221,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
             )
         if way.locked:
             raise Refusal(f"the way to {destination.name} is locked and must be dealt with first")
-        self._open_way(here, destination)
+        self._open_way(way, destination)
         facts = destination.reveal()
         check_unique("with_ids", with_ids)
         coming: list[N] = []
@@ -255,7 +255,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         if not way.locked:
             raise Refusal(f"the way from {here.name} to {destination.name} is not locked")
         way.locked = False
-        self._open_way(here, destination)
+        self._open_way(way, destination)
         trace = f"the way from {here.mention} to {destination.mention} is unlocked"
         card = f"{destination.name} unlocked"
         return [here.fact(trace, card=card)]
