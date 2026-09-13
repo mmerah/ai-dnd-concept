@@ -3,12 +3,17 @@
 Phase 1 is `core` and the engines; phase 2 is `app`, `config` and the pages. Two phases, because
 the two halves touch disjoint files and are checked in different ways: phase 1 is guarded by the
 golden fixtures, phase 2 by the QA screenshots. The wider ruff rule set has already landed, so
-nothing here selects a rule. Counted against the real code, `src` **grows by about 75 lines**,
-from 10,069 to about 10,145. It does not shrink, and the review's −138 was wrong: a duplicate
-traded for a shared helper costs the helper's own lines, and every fix that closes a defect costs
-more than it saves. The game page's half-built widgets alone are about +32, and the scenario form
-about +25. Phase 1 takes about 20 lines out; phase 2 puts about 95 back. A step that lands
-correctly makes `src` bigger, so do not read growth as a mistake.
+nothing here selects a rule. Counted against the real code, `src` **grows by about 20 lines**,
+from 10,069 to about 10,090. It does not shrink, and the review's −138 was wrong: a duplicate
+traded for a shared helper costs the helper's own lines, and a fix that closes a defect often
+costs more than it saves. Phase 1 takes about 20 lines out; phase 2 puts about 40 back. A step
+that lands correctly can make `src` bigger, so do not read growth as a mistake.
+
+The pages keep their half-built constructors. `GamePage`, `ScenarioForm` and `CharacterForm`
+declare widget attributes with no value, so reading one before `build()` raises `AttributeError`
+while the type checker believes it is always there. Fixing it honestly needs a frozen widget
+record and a guarded accessor at some forty read sites, about +57 lines, and the maintainer chose
+not to pay that. Nothing in this plan touches those attributes; leave them as they are.
 
 ## How to work
 
@@ -472,10 +477,9 @@ About **−20** lines in `src`. No golden moves.
 
 ## Phase 2: the app, the settings and the pages
 
-About **+95** lines in `src`: the pages step alone costs about +55, and buys forms and a game
-page whose constructors leave nothing half-built. No golden moves, and no step changes text a
-role or the player reads. The check for the pages is `qa/run_all.sh` — its screenshots must show
-the same pixels.
+About **+40** lines in `src`, most of it the shared connection pool and the task nursery. No
+golden moves, and no step changes text a role or the player reads. The check for the pages is
+`qa/run_all.sh` — its screenshots must show the same pixels.
 
 ### Steps
 
@@ -659,9 +663,10 @@ the same pixels.
      )
      ```
 
-4. **[part C] The pages: one banner, one gap scale, and no half-built object.** Files:
-   `ui/widgets.py`, `ui/theme.css`, `ui/app.py`, `ui/settings.py`, `ui/create.py`, `ui/game.py`,
-   `tests/ui/test_game.py`.
+4. **[part C] The pages: one banner, one gap scale, one error convention.** Files:
+   `ui/widgets.py`, `ui/theme.css`, `ui/app.py`, `ui/settings.py`, `ui/create.py`, `ui/game.py`.
+   No test changes: `_page` in `tests/ui/test_game.py` sets the widget attributes directly, and
+   those attributes are not touched.
 
    - `ui/app.py`: `Runtime.start` is gone (step 1), so `_register_pages`'s caller becomes
      `Runtime(settings)`. This step owns the file, so it makes that one-line change.
@@ -720,86 +725,9 @@ the same pixels.
      `ui.query(".nicegui-content").style("padding: 0; gap: 0")` — it reaches NiceGUI's own div,
      which the page never builds and cannot give a class. The values are unchanged, so the QA
      screenshots must be pixel-identical.
-   - `ui/game.py`: `GamePage` declares fifteen attributes as bare annotations with no value, so
-     `GamePage(runtime, session).refresh()` raises `AttributeError` while the type checker
-     believes the attributes are always there. Two of them are data and become real in `__init__`:
-     `self.view, self.history = session.player_view(), session.history()` (`build` drops its
-     duplicate of that line). `scene_card` goes away: `scene_header` keeps its card as a local and
-     binds `card.on("click", partial(self.toggle_scene, card))`, with
-     `def toggle_scene(self, card: ui.element) -> None`. The twelve widgets `build()` makes become
-     one honest optional, not twelve lies:
-
-     ```python
-     @dataclass(frozen=True, slots=True, kw_only=True)
-     class Parts:
-         """Every widget `build()` makes; before it, the page has none."""
-
-         transcript: ui.scroll_area
-         drawer: ui.right_drawer
-         tabs: ui.tabs
-         dice: DiceTray
-         sound: ui.button
-         new_activity: ui.button
-         restart_dialog: ui.dialog
-         restart_label: ui.label
-         box: ui.input
-         send: ui.button
-         action_button: ui.button
-         over_label: ui.label
-     ```
-
-     `__init__` sets `self.parts: Parts | None = None`. `foot()` returns its `new_activity` button
-     and what `composer()` returns (the box, the send button, the action button and the over
-     label), so `build()` holds every widget as a local and ends — before `_set_composer()` —
-     with one `self.parts = Parts(...)`. One property carries the invariant:
-
-     ```python
-     @property
-     def built(self) -> Parts:
-         """Reading a widget before `build()` is a bug, not a message."""
-         if self.parts is None:
-             raise ValueError("the game page is not built")
-         return self.parts
-     ```
-
-     Every read outside `build` goes through it (`self.built.box`, `self.built.dice`, …); methods
-     that touch several take one local first (`parts = self.built`). No attribute keeps a bare
-     annotation. `Parts` is frozen and keyword-only with no defaults, so in
-     `tests/ui/test_game.py`, `_page` must build **all twelve** — the seven it makes today plus
-     `ui.right_drawer(value=None)`, `ui.tabs()`, a `ui.button()` for `sound`, `ui.dialog()` and
-     `ui.label()`, all of which construct inside its bare client — and assign them in one
-     `page.parts = Parts(...)`. `page.view` and `page.history` are already set by the constructor.
-   - `ui/create.py`: `ScenarioForm`'s seven bare annotations and `CharacterForm.name` and
-     `.brief` are the same defect. They cannot move to `__init__` — a NiceGUI element joins the
-     slot that is open when it is made, and these are made inside the page's card. `ScenarioForm`
-     gets one frozen `Fields` dataclass holding all eight widgets (`title`, `supplements:
-     ui.select | None`, `character`, `premise`, `scope`, `style`, `voice`, `button`) and
-     `self.fields: Fields | None = None` in `__init__`. `form` is `@ui.refreshable_method` and
-     legitimately rebuilds its widgets on every engine change, so it **assigns** `self.fields` as
-     its last line rather than returning it — a refresh must replace the set, not leave a stale
-     one. `write`, its one reader, opens with `fields = self.fields` and returns if that is
-     `None`. One honest optional replaces seven lies.
-   - `ui/create.py`: `CharacterForm` needs no dataclass for two widgets. `self.name: ui.input |
-     None = None` and `self.brief: ui.input | None = None`, assigned in `build()`, and its two
-     readers — `create` and `preview` — go through one method:
-
-     ```python
-     def typed(self) -> tuple[str, str]:
-         """The name and the brief as typed, stripped; empty before `build()`."""
-         if self.name is None or self.brief is None:
-             return "", ""
-         return (self.name.value or "").strip(), (self.brief.value or "").strip()
-     ```
-
-     `create` opens `title, brief = self.typed()` and keeps its empty-name notify; `preview`
-     opens the same way and keeps `title or "Unnamed"`.
    - The imports these edits need, none of which the files carry today: `Refusal` from
      `aidm.core.entities` in `ui/settings.py`; `banner` from `aidm.ui.widgets` and `replace` from
      `dataclasses` in `ui/game.py`.
-   - `foot` and `composer` now hand their widgets back, so they take return types:
-     `def composer(self) -> tuple[ui.input, ui.button, ui.button, ui.label]` and
-     `def foot(self) -> tuple[ui.button, ui.input, ui.button, ui.button, ui.label]`.
-
    - `ui/create.py`: `ScenarioForm._discard_uploads` runs only after a successful write — the
      refusal path returns before it, and an abandoned page leaks its temp directory, which the
      comment there admits. `build()` registers it instead:
