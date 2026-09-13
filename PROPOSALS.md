@@ -14,12 +14,13 @@ a clone scan. Every factual claim was re-verified against the running code.
 that *cost* lines and buy reviewer-legibility instead — kept, ranked last, and labelled honestly so
 you can refuse them on that basis alone.
 
+**All fifteen are settled.** Every decision is recorded on its proposal.
+
 | | Net `src` LOC |
 |---|---|
-| Part 1 (proposals 1-12) — **all settled** | **−167** |
-| Part 2 — 13 settled (option C) | **+5** |
-| Part 2 — 14, 15 pending | +0 to +47 |
-| Settled so far | **−162** |
+| Part 1 (1-12) — deletions | **−167** |
+| Part 2 (13-15) — 13 as option C, 14 as option B, 15 in full | **+29** |
+| **Net** | **−138** |
 
 LOC figures are estimates from the actual blocks, ±20%.
 
@@ -35,6 +36,27 @@ across twelve small, verifiable deletions. Anything bigger would be re-architect
 | **CALL** | Needs your decision — options listed. |
 | **BEHAVIOUR** | Something a player or a role would notice. Never auto-accepted. |
 | **SETTLED** | Your decision is recorded on the proposal. |
+
+---
+
+# Suggested order
+
+Five phases. Each ends green (`pytest`, `ruff check`, `ruff format --check`, `basedpyright`) and is
+one commit. Phases 1-2 touch no player-visible text, so they land first and de-risk the rest.
+
+| Phase | Proposals | Net LOC | Goldens | Est. |
+|---|---|---|---|---|
+| **1 — deletions** | 1 (sweep), 3, 4, 5, 6, 12 | **−93** | none move | 2.5 h |
+| **2 — engines, schema-adjacent** | 2, 9 | **−25** | must stay **byte-identical** — that is the test | 1.5 h |
+| **3 — visible text** | 10, 11 | **−11** | 5 test files assert old strings | 1 h |
+| **4 — `ui/`** | 7, 13 | **−20** | `qa/` screenshots are the check | 1.5 h |
+| **5 — `app/` async** | 14, 15 | **+24** | none | 1.5 h |
+
+Total about **8 hours**, **−125** in `src` before counting phase 5's `+24` against it.
+
+Phase 2 is the one to slow down on: proposals 2 and 9 both touch text the game master reads, and
+in both cases the acceptance test is that `tests/core/fixtures/` does **not** change. If a golden
+moves, the refactor changed a prompt — stop and find out why rather than regenerating.
 
 ---
 
@@ -462,34 +484,35 @@ methods, and the transcript renderers stay stranded in a page module. If a revie
 `wc -l src/aidm/ui/*.py`, that is what they see. The defect that actually breaks — the unset
 attributes — is fixed either way.
 
-## 14. `GameService` does six jobs — **+35 lines** — **CALL**
+## 14. `GameService` does six jobs — **+12 lines** — **SETTLED: B**
 
 **Now.** `app/runtime.py:45-338`, ~295 lines, 17 fields, 30 members: session lifecycle, turn
 orchestration, worldsmith growth, party interjections, an asyncio task nursery, **and** media
 fan-out. The `Illustrator | None` / `Reader | None` pair is threaded through `resume()`'s keyword
 list (`:68-99`), `Runtime._open` (`:465`) and nine methods purely to answer "is media on?".
 
-**Change to.** `app/present.py` — a `Presenter` owning `presents`, `scene_art`, `icon`,
-`newest_clip`, `illustrate`, `speak`, `_present`; and `app/background.py` — a `Tasks` nursery
-owning `_background`, `_retain`, `_settled`, `settled` and the cancelling half of `close`.
-`GameService` lands at ~17 members and reads as one job.
+**Decision 14 — settled: B.** Extract the task nursery only.
 
-**Code impact.** 2 new files, `runtime.py` −90. `tests/app/test_game_service.py:536-542` pokes
-`game._retain`/`game._background`; `tests/support/table.py:263` calls `service.settled()`.
-**60 min.**
+**Change to.** `app/background.py` — a `Tasks` dataclass owning `_background` (`:65`), `_retain`
+(`:308`), `_settled` (`:313`), `settled` (`:320`) and the cancelling half of `close` (`:323`), with
+the done-callback logging. `GameService` holds `tasks: Tasks`, loses 4 methods and 1 field, and
+lands at ~25 members.
+
+The media fan-out **stays** on `GameService`: it is at least about a game session, whereas the
+nursery is generic asyncio plumbing with no relation to playing a turn — that is the half that
+reads as misplaced. `Illustrator | None` / `Reader | None` keep threading through `resume()`; noted
+as the cost of stopping here.
+
+**Code impact.** 1 new file (~40 lines), `runtime.py` −28.
+`tests/app/test_game_service.py:536-542` pokes `game._retain` / `game._background` and
+`tests/support/table.py:263` calls `service.settled()` — both repoint to `service.tasks`.
+**25 min.**
 
 **Feature impact.** None.
 
-**Decision 14.**
-- **A.** Both extractions, keeping four one-line delegating methods on `GameService` so `ui/` is
-  untouched. **+35 lines.**
-- **B (recommended, given the LOC preference).** `Tasks` only — it is generic plumbing with no
-  relation to playing a turn, and it is the half that reads as misplaced. **+12 lines.**
-- **C.** Neither.
-
 ---
 
-## 15. Four async and resource defects — **+12 lines** — **CALL**
+## 15. Four async and resource defects — **+12 lines** — **SETTLED: A (all four)**
 
 Four unrelated small defects in the same area, cheapest to fix together.
 
@@ -519,11 +542,9 @@ line of every exchange) and the **entire** chronicle (one `ui.expansion` per tur
 closed", so the fix is a `whole: bool` parameter. *+3 lines.* **BEHAVIOUR** — visible as *less*
 flicker mid-turn.
 
-**Decision 15 — which to take.**
-- **A (recommended).** All four. **+12 lines, ~75 min.**
-- **B.** 15b + 15c only (the resource leaks), leave the client and the refresh. **+7 lines.**
-- **C.** 15d only — the one a player can see. **+3 lines, 15 min.**
-- **D.** None.
+**Decision 15 — settled: A.** All four. **+12 lines, ~75 min.** 15d is the only one a player
+sees, and the change is strictly less rebuilding — the live fact cards still update every tick
+because `live_turn` refreshes unconditionally.
 
 ---
 
