@@ -16,6 +16,9 @@ lost.** Every proposal marked DECISION needs one word from you before it can be 
 | 1 — goldens store derived text | **Accepted, option (a)**: full substitution, markers for both the rules splice and the schema tail. |
 | 3 — no pytest fixtures | **Accepted.** |
 | 7 — golden-turn dynamic import | **Accepted.** |
+| 2 — per-engine duplicate tests | **Accepted.** |
+| 4 — the `rooms` family | **Accepted, option (a)**: de-generify in place, keep the package as a seam. |
+| 5 — the room family tested twice | **Accepted, option (a)**: `SixthEngine` keeps one boundary test, family behaviour moves to `tests/tunnelgoons/`. |
 
 ---
 
