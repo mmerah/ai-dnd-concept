@@ -14,3 +14,4 @@
 - [x] 17: Real 3D dice: a physics canvas; the CSS tumble is the cheap version.
 - [] 18: Maze Rats returns, self-contained on the same seam: the audited rules live in git at 2c3e8a5 and its docs/MAZE-RATS.md at 62f95c6; the return rewrites the world on its own strict actor/item/place model and fits 2,000 lines by dropping nothing the SRD prints.
 - [] 19: A Pokémon-style engine with battles delegated to Pokémon Showdown. The point is the boundary: AIDM runs the RPG, Showdown runs the fight, neither reads the other's internals.
+- [] 20: A meanwhile for the party. Both families have `party` and `leave_party`, and neither remembers where a member went or brings them back changed. It reuses the interjection code and the player understands it at once. Cut from the Meanwhile plan, which took the turn clock instead; the notes rated this the best value for the work.
