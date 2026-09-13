@@ -2,6 +2,87 @@
 
 Newest first. One entry per landed phase.
 
+## Phase 2 — the rooms tool, the ELSEWHERE section, the arm guard and the two goldens
+
+| count | before | after | planned |
+| --- | --- | --- | --- |
+| `src` | 10,061 | 10,239 | ~10,209 |
+| `tests` | 10,535 | 10,757 | ~10,676 |
+| `qa` | 1,760 | 1,760 | 1,760 |
+| tests passing | 667 | 675 | ~672 |
+
+Two golden fixtures moved, both tunnelgoons and both named by the plan:
+`schemas/tunnelgoons/master_tools.json` (the new tool entry) and `prompts/tunnelgoons/master.txt`
+(the `rooms/rules.md` section). Thirteen others untouched. The overshoot on both counts is the
+review fold below, which is larger than the plan's arithmetic assumed.
+
+### The two shapes the plan drew that did not survive
+
+- **`RoomEngine.tick` follows phase 1, not PLAN.md.** No `enabled` parameter, and the flag goes
+  down through `World.disarm()`. `PROGRESS.md`'s phase 1 entry already called this; it is recorded
+  again here because the plan's step 6 still reads the other way.
+- **`ELSEWHERE` lists the ways out of each offscreen place, which the plan's `elsewhere_lines()`
+  did not.** A reviewer showed the section is the master's *only* view of offscreen geography —
+  `map_so_far()` is worldsmith-only and `WAYS OUT` covers the current place — so `shut_from`,
+  `shut_to` and a dweller's reachability were blind guesses that mostly refused and burned the one
+  armed turn. Each line now ends `; ways: <tag>, <tag> (unfound)`: destinations as tags so the
+  master can echo the id straight back, locked ways omitted since neither power can use one, and
+  the `(unfound)` marker because a dweller may walk a way the player has not found while a shut
+  may not. The maintainer cleared the deviation. No golden moved — the section renders only when
+  armed, and no golden turn arms it.
+
+### Decisions made off-plan
+
+- **The arm guard counts only what the section shows.** The plan's `can_move_offscreen()` counted
+  an item as movable on `item.on not in (here, player.id)`, which is true of an item in the hands
+  of a dweller standing beside the player — the one item the tool must refuse (the plan's own Open
+  concern 2) — and true of everything in never-visited places, whose ids the master is never
+  shown. Either way the clock armed with nothing legal to do, the exact failure the guard exists
+  to prevent. It now counts things in `elsewhere()` places only. The maintainer approved the first
+  half before implementation; the second came out of review.
+- **Open concern 1 is closed, not carried.** The guard now counts the shut-a-way power alongside
+  the two that need a destination, so a state whose only legal move is a shut arms the clock. The
+  plan recorded this gap as overflow past a twelve-line budget; there was no budget here.
+- **`meanwhile` refuses an item already at its destination.** Both sibling powers refuse their
+  no-op and `move_item` refuses this exact case. Without it the master could fire the player's
+  `MOVED_CARD` — "Elsewhere, something moves." — for a call that moved nothing, which decision 14
+  forbids.
+- **A dead dweller is not listed in `ELSEWHERE`.** `thing.tag` carries no "(dead)", so the
+  section offered corpses as movable while `can_move_offscreen()` and the tool's `IS_DEAD` refusal
+  both treat them as immovable. Their carried items still list; those stay movable.
+- **`RoomWorld.holders_here`.** The set `{current.id, whoever stands here}` was spelled three
+  times once this phase added its own copy; the guard and the tool are only correct while they
+  agree. Two of the three call sites are older code (`require_item_here`, `reveal_hidden`).
+- **`RoomWorld._visited()`.** `map_so_far()`'s dedup loop was `elsewhere()`'s body minus one
+  filter. Shared; `map_so_far()`'s output is byte-identical, which its untouched goldens prove.
+- **`NOTHING_OFFSCREEN` reworded** to "no time has passed offscreen; call this only while
+  ELSEWHERE is shown". The old text described a state that is also true right after a successful
+  call and invited the master to retry.
+
+### Review findings refuted
+
+None. Two independent Opus reviewers read the staged phase (`codex` is not installed on this
+machine, so the second Codex Sol review was again replaced by a second Opus reviewer, at the
+maintainer's instruction). Both returned "phase complete: yes"; their six overlapping findings and
+all three offered cuts were fixed rather than argued with.
+
+### Known and accepted
+
+- **The tool is wider than the section.** `meanwhile` still accepts a source in a never-visited
+  place — an item lying in a room the player has never entered may be moved to one they have. The
+  guard no longer arms for it, so the master is never invited to try, but a master that guesses a
+  legal id is not refused. Narrowing the tool as well would refuse a write nobody could see
+  either way.
+- **A refusal partway through a three-power call leaves the earlier pair's mutation on the draft.**
+  `move` behaves the same (it opens the way, then can refuse a `with_ids` entry). Not this phase's
+  to fix.
+- **`uv run aidm` was smoke-launched, not played.** The server comes up clean; driving a turn
+  through the page needs the by-hand Playwright scripts in `qa/`. The suite's scripted golden turn
+  runs the same runtime path.
+- **`uv run basedpyright` with no arguments reports ~1,100 errors, every one in `qa/`** from
+  Playwright's untyped API. Pre-existing and untouched here; `uv run basedpyright src tests` is
+  clean.
+
 ## Phase 1 — the note-drop fix, the clock, the switch and the scenes nudge
 
 | count | before | after | planned |

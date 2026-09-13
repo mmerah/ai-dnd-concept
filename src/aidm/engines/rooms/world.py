@@ -8,6 +8,10 @@ from aidm.core.facts import Fact
 from aidm.core.prompt import lines_of
 from aidm.engines.base import IS_DEAD, PLAYER_ID, UNKNOWN_ID, Person, Thing, World, check_filing
 
+NOTHING_OFFSCREEN = "no time has passed offscreen; call this only while ELSEWHERE is shown"
+MOVES_OFFSCREEN = "something moves where the player cannot see"
+MOVED_CARD = "Elsewhere, something moves."
+
 
 class Dweller(Person):
     place: Slug
@@ -166,6 +170,11 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         yield self.player
         yield from self.at(self.current.id)
 
+    @property
+    def holders_here(self) -> set[Slug]:
+        """The player, whoever stands with them, and the place itself."""
+        return {self.current.id, *(entity.id for entity in self.here())}
+
     def require_member_here(self, entity_id: Slug) -> N:
         npc = self.npcs.get(entity_id)
         if npc is None:
@@ -180,8 +189,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         item = self.require(item_id)
         if not isinstance(item, Prop):
             raise Refusal(f"{item_id!r} is not an item")
-        holders = {self.current.id, *(entity.id for entity in self.here())}
-        if item.on not in holders:
+        if item.on not in self.holders_here:
             raise Refusal(f"{item.name} is not here with the player")
         return item
 
@@ -262,7 +270,6 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
 
     def reveal_hidden(self, entity_id: Slug) -> list[Fact]:
         entity = self.require(entity_id)
-        holders = {self.current.id, *(member.id for member in self.here())}
         location = (
             entity.place
             if isinstance(entity, Dweller)
@@ -270,7 +277,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
             if isinstance(entity, Prop)
             else None
         )
-        if location not in holders:
+        if location not in self.holders_here:
             raise Refusal(f"{entity.name} is not here with the player")
         found = "found" if isinstance(entity, Prop) else "discovered"
         if entity.known:
@@ -296,6 +303,71 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         card = f"Took {item.name}" if to == self.player.id else f"{item.name} → {holder.name}"
         trace = f"{item.mention} moves to {holder.mention}"
         return [*facts, item.fact(trace, card=card)]
+
+    def _offscreen_place(self, place_id: Slug) -> Place:
+        away = self.elsewhere()
+        found = next((place for place in away if place.id == place_id), None)
+        if found is None:
+            options = ", ".join(place.name for place in away) or "(none)"
+            raise Refusal(f"{place_id!r} is not a place the player has walked away from: {options}")
+        return found
+
+    def meanwhile(
+        self,
+        *,
+        dweller_id: Slug | None,
+        dweller_to: Slug | None,
+        item_id: Slug | None,
+        item_to: Slug | None,
+        shut_from: Slug | None,
+        shut_to: Slug | None,
+    ) -> list[Fact]:
+        if not self.meanwhile_due:
+            raise Refusal(NOTHING_OFFSCREEN)
+        facts: list[Fact] = []
+        if dweller_id is not None and dweller_to is not None:
+            npc = self.npcs.get(dweller_id)
+            if npc is None:
+                raise Refusal(UNKNOWN_ID.format(entity_id=dweller_id))
+            if not npc.alive:
+                raise Refusal(IS_DEAD.format(name=npc.name))
+            if npc.place == self.current.id:
+                raise Refusal(f"{npc.name} stands with the player; that is not offscreen")
+            destination = self._offscreen_place(dweller_to)
+            walked = self.way(npc.place, destination.id)
+            if walked is None or walked.locked:
+                origin = self.require_place(npc.place).name
+                raise Refusal(f"no unlocked way leads from {origin} to {destination.name}")
+            npc.place = destination.id
+            facts.append(Fact(trace=f"{npc.name} walks to {destination.name}"))
+        if item_id is not None and item_to is not None:
+            item = self.items.get(item_id)
+            if item is None:
+                raise Refusal(UNKNOWN_ID.format(entity_id=item_id))
+            if item.on in self.holders_here:
+                raise Refusal(f"{item.name} is here with the player")
+            where = self._offscreen_place(item_to)
+            if item.on == where.id:
+                raise Refusal(f"{item.name} is already there")
+            item.on = where.id
+            facts.append(Fact(trace=f"{item.name} moves to {where.name}"))
+        if shut_from is not None and shut_to is not None:
+            start = self.require_place(shut_from)
+            end = self.require_place(shut_to)
+            if self.current.id in (start.id, end.id):
+                raise Refusal("a way at the player's place cannot shut offscreen")
+            shut = self.way(start.id, end.id)
+            if shut is None:
+                raise Refusal(f"no way leads from {start.name} to {end.name}")
+            if shut.locked:
+                raise Refusal(f"the way from {start.name} to {end.name} is already shut")
+            if not shut.known:
+                raise Refusal(f"the player has not found the way from {start.name} to {end.name}")
+            shut.locked = True
+            facts.append(Fact(trace=f"the way from {start.name} to {end.name} shuts"))
+        facts.append(Fact(trace=MOVES_OFFSCREEN, told=True, card=MOVED_CARD))
+        self.disarm()
+        return facts
 
     def kill(self, entity_id: Slug) -> list[Fact]:
         actor: P | N = (
@@ -356,12 +428,53 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
             for way in self.ways.get(self.current.id, ())
         )
 
-    def map_so_far(self) -> str:
+    def elsewhere_lines(self) -> str:
+        return lines_of(self._offscreen_line(place) for place in self.elsewhere())
+
+    def _offscreen_line(self, place: Place) -> str:
+        standing = ", ".join(
+            thing.tag
+            for thing in self.things_at(place.id)
+            if not isinstance(thing, Person) or thing.alive
+        )
+        ways = ", ".join(
+            f"{self.require_place(way.to).tag}{'' if way.known else ' (unfound)'}"
+            for way in self.ways.get(place.id, ())
+            if not way.locked
+        )
+        return f"- {place.tag} — {standing or '(nobody, nothing)'}; ways: {ways or '(none)'}"
+
+    def elsewhere(self) -> list[Place]:
+        """Visited, de-duplicated in order, minus where the player stands."""
+        return [place for place in self._visited() if place.id != self.current.id]
+
+    def can_move_offscreen(self) -> bool:
+        """Something the master is shown offscreen that one of the three powers could touch."""
+        here = self.current.id
+        away = {place.id for place in self.elsewhere()}
+        if not away:
+            return False
+        offscreen = {npc.id for npc in self.npcs.values() if npc.place in away}
+        if any(item.on in away or item.on in offscreen for item in self.items.values()):
+            return True
+        walkers = {npc.place for npc in self.npcs.values() if npc.alive and npc.place in away}
+        return any(
+            (way.to in away and place_id in walkers) or (way.known and way.to != here)
+            for place_id in away
+            for way in self.ways.get(place_id, ())
+            if not way.locked
+        )
+
+    def _visited(self) -> list[Place]:
+        """Every visited place, de-duplicated in order of first visit."""
         seen: dict[Slug, Place] = {}
         for place_id in self.visits:
             seen.setdefault(place_id, self.require_place(place_id))
+        return list(seen.values())
+
+    def map_so_far(self) -> str:
         lines: list[str] = []
-        for place in seen.values():
+        for place in self._visited():
             known_ways = ", ".join(
                 self.require_place(way.to).name for way in self.ways.get(place.id, ()) if way.known
             )

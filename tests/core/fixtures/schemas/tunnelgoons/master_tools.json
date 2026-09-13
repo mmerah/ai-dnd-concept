@@ -154,6 +154,64 @@
     }
   },
   {
+    "name": "meanwhile",
+    "description": "Time has passed where the player is not. Move a dweller, move a loose item, and shut a way they know — any combination, in one call, while ELSEWHERE is shown.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "dweller_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of a dweller elsewhere who walks to a new place."
+        },
+        "dweller_to": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of the place the dweller walks to."
+        },
+        "item_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of a loose item elsewhere that moves to a new place."
+        },
+        "item_to": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of the place the item moves to."
+        },
+        "shut_from": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of one end of the way that shuts."
+        },
+        "shut_to": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of the other end of the way that shuts."
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
     "name": "rest",
     "description": "The player and the party spend a night here and heal to full Health.",
     "parameters": {
