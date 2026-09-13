@@ -79,6 +79,14 @@ class Pool:
     helped_by: str
 
 
+@dataclass(frozen=True, slots=True)
+class Helping:
+    """The hired member who helps a roll, and the terms they help on."""
+
+    who: Crewmate
+    terms: Helper
+
+
 class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
     id = EngineId("twentyfourxx")
     title = "24XX"
@@ -397,8 +405,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         claims: list[tuple[Crewmate, Slug, str]] = []
         if (item_id := args.defend_with) is not None:
             claims.append((actor, item_id, args.hindrance))
-        if helping is not None and helping[1].defend_with is not None:
-            claims.append((helping[0], helping[1].defend_with, helping[1].hindrance))
+        if helping is not None and helping.terms.defend_with is not None:
+            claims.append((helping.who, helping.terms.defend_with, helping.terms.hindrance))
         world.check_defenses(claims)
 
         label = "+".join(f"d{face}" for face in pool.faces)
@@ -412,8 +420,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         line += pool.helped_by
         if args.hindered:
             line += f", hindered ({args.hindered})"
-        if helping is not None and helping[1].risk:
-            line += f", {helping[0].name} risking {helping[1].risk}"
+        if helping is not None and helping.terms.risk:
+            line += f", {helping.who.name} risking {helping.terms.risk}"
         if args.risk:
             line += f", risking {args.risk}"
         line += f" → {result}"
@@ -421,10 +429,13 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         facts = [rolled.fact, actor.fact(line, card=line, dice=(rolled.event,))]
         if result != "success":
             lethal = result == "disaster"
-            if helping is not None and helping[1].risk:
+            if helping is not None and helping.terms.risk:
                 facts.extend(
                     world.take_hit(
-                        helping[0], helping[1].defend_with, helping[1].hindrance, lethal=lethal
+                        helping.who,
+                        helping.terms.defend_with,
+                        helping.terms.hindrance,
+                        lethal=lethal,
                     )
                 )
             if args.risk:
@@ -432,9 +443,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         self._succession(draft)
         return facts
 
-    def _pool(self, actor: Crewmate, helping: tuple[Crewmate, Helper] | None, args: Roll) -> Pool:
+    def _pool(self, actor: Crewmate, helping: Helping | None, args: Roll) -> Pool:
         sheet = actor.require_sheet()
-        if helping is not None and helping[0] is actor:
+        if helping is not None and helping.who is actor:
             raise Refusal(f"{actor.name} cannot help their own roll")
 
         if args.skill:
@@ -451,15 +462,14 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             faces.append(HELP_DIE)
         helped_by = ""
         if helping is not None:
-            helper, helper_args = helping
-            if helper_args.hindered:
+            if helping.terms.hindered:
                 helper_die = HINDERED_DIE
-                hindered_note = f", hindered ({helper_args.hindered})"
+                hindered_note = f", hindered ({helping.terms.hindered})"
             else:
-                helper_die = helper.require_sheet().die(label)
+                helper_die = helping.who.require_sheet().die(label)
                 hindered_note = ""
             faces.append(helper_die)
-            helped_by = f", helped by {helper.name} (d{helper_die}{hindered_note})"
+            helped_by = f", helped by {helping.who.name} (d{helper_die}{hindered_note})"
 
         return Pool(faces=tuple(faces), label=label, die=die, helped_by=helped_by)
 
@@ -538,5 +548,5 @@ def _named(actor_id: Slug | None) -> str:
     return "the player" if actor_id is None else actor_id
 
 
-def _helping(world: TwentyfourxxWorld, args: Helper | None) -> tuple[Crewmate, Helper] | None:
-    return None if args is None else (world.require_actor(args.actor_id), args)
+def _helping(world: TwentyfourxxWorld, args: Helper | None) -> Helping | None:
+    return None if args is None else Helping(world.require_actor(args.actor_id), args)

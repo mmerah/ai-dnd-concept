@@ -169,8 +169,9 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         npc = world.require_member_here(args.against) if args.against is not None else None
         if npc is actor:
             raise Refusal(f"{actor.name} cannot roll against themselves")
-        # `Roll._one_target` has held one of the two: with no npc, a difficulty was named.
-        ds = npc.hp.current if npc is not None else (args.difficulty or 0)
+        ds = npc.hp.current if npc is not None else args.difficulty
+        if ds is None:
+            raise ValueError("a roll names an npc or a difficulty, by `Roll._one_target`")
         penalty = 0
         if args.ability in ("brute", "skulker"):
             penalty = max(0, len(list(world.carried(actor.id))) - sheet.inventory)
