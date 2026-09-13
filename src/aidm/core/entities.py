@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 SLUG_MAX = 64
-# assignment, not `type`: pydantic reads the metadata
+# assignment, not `type`: an alias publishes a dict key as `propertyNames`, without the pattern
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
 EngineId = NewType("EngineId", str)

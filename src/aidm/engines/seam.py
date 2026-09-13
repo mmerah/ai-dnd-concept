@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Refusal, Slug, parse, parse_json
 from aidm.core.facts import Fact
-from aidm.core.io import decode, read_prompt
+from aidm.core.io import decode, read_cached_text
 from aidm.core.model import (
     AnyCharacter,
     AnyScenario,
@@ -74,15 +74,18 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     member: type[M]
     scenario: type[AnyScenario]
     character: type[AnyCharacter]
+    # Derived by __init__ from the above.
     instructions: str
     tools: dict[str, MasterTool[G]]
     requests: dict[Slug, Request[G]]
+    hire_writer: Hiring[G, M] | None
 
     def __init__(self) -> None:
         self.instructions = (
-            f"{read_prompt(self.directory / 'rules.md')}\n"
-            f"{read_prompt(self.family_dir / 'rules.md')}"
+            f"{read_cached_text(self.directory / 'rules.md')}\n"
+            f"{read_cached_text(self.family_dir / 'rules.md')}"
         )
+        self.hire_writer = self.hiring()
         tools = self.master_tools()
         names = [tool.name for tool in tools]
         if len(set(names)) != len(names):
@@ -98,9 +101,15 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
             master_tool("join_party", JOIN_PARTY, JoinParty, self.join_party),
             master_tool("leave_party", LEAVE_PARTY, LeaveParty, self.leave_party),
         )
-        if self.hiring() is None:
+        if self.hire_writer is None:
             return shared
         return (*shared, master_tool("hire", HIRE_TOOL, Hire, self.hire))
+
+    def worldsmith_requests(self) -> dict[Slug, Request[G]]:
+        """Each layer adds its own after `super()`'s: the seam's `hire`, then the family."""
+        if self.hire_writer is None:
+            return {}
+        return {HIRE: Request(HIRE_UNWRITTEN, self.write_hire)}
 
     def reveal(self, draft: G, args: Reveal, _rng: Random) -> list[Fact]:
         return self.world_of(draft).reveal_hidden(args.entity_id)
@@ -130,13 +139,12 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     async def write_hire(
         self, draft: G, request: Generation, worldsmith: WorldsmithAnswer
     ) -> Written:
-        hiring = self.hiring()
-        if hiring is None:
+        if self.hire_writer is None:
             raise ValueError(f"the {self.id!r} engine hires nobody")
         if request.target is None:
             raise Refusal("a hire request names no target")
         member = self.world_of(draft).require_hireable(request.target)
-        summary = await hiring(draft, member, request.detail, worldsmith)
+        summary = await self.hire_writer(draft, member, request.detail, worldsmith)
         world = self.world_of(draft)
         facts = world.join(member) if member.id not in world.party else []
         trace = f"{member.mention} signs on — {summary}"
@@ -211,7 +219,7 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     ) -> str:
         return sections(
             (
-                ("YOUR ROLE", read_prompt(self.family_dir / "worldsmith.md")),
+                ("YOUR ROLE", read_cached_text(self.family_dir / "worldsmith.md")),
                 ("SOURCE MATERIAL", source or SOURCELESS),
                 ("THE SCOPE OF PLAY", scope),
                 *self.family_sections(draft),
@@ -323,13 +331,6 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     def master_sections(self, state: G) -> Sections: ...
     @abstractmethod
     def family_sections(self, draft: G | None) -> Sections: ...
-
-    def worldsmith_requests(self) -> dict[Slug, Request[G]]:
-        """Each layer adds its own after `super()`'s: the seam's `hire`, then the family."""
-        if self.hiring() is None:
-            return {}
-        return {HIRE: Request(HIRE_UNWRITTEN, self.write_hire)}
-
     @abstractmethod
     def narrator_view(self, state: G) -> NarratorView: ...
     @abstractmethod

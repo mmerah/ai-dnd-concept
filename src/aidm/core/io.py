@@ -99,7 +99,7 @@ class Library:
                     continue
                 try:
                     name = content_id(path.name)
-                    header = _read(file, CharacterHeader)
+                    header = read_model(file, CharacterHeader)
                     _check_filed(header.id, header.engine, name, engine)
                 except Refusal as unreadable:
                     LOGGER.warning("skipping character %r: %s", path.name, unreadable)
@@ -116,7 +116,7 @@ class Library:
     def read_character(
         self, character_id: Slug, engine: EngineId, model: type[AnyCharacter]
     ) -> AnyCharacter:
-        character = _read(self.character_folder(character_id) / f"{engine}.json", model)
+        character = read_model(self.character_folder(character_id) / f"{engine}.json", model)
         _check_filed(character.id, character.engine, content_id(character_id), engine)
         return character
 
@@ -128,7 +128,7 @@ class Library:
         # One folder is one person played by several engines, so any sibling settles who that is.
         sibling = next(folder.glob("*.json"), None)
         if sibling is not None:
-            filed, named = _read(sibling, CharacterHeader).payload.name, character.payload.name
+            filed, named = read_model(sibling, CharacterHeader).payload.name, character.payload.name
             if filed != named:
                 raise Refusal(f"character {character.id!r} is {filed!r}, not {named!r}")
         write_text(path, character.model_dump_json(indent=2))
@@ -141,7 +141,7 @@ class Library:
 
 
 @cache
-def read_prompt(path: Path) -> str:
+def read_cached_text(path: Path) -> str:
     return path.read_text(encoding=ENCODING)
 
 
@@ -182,6 +182,12 @@ def routed[T](value: JsonValue, by_engine: Mapping[EngineId, T]) -> T:
     return found
 
 
+def read_model[T: BaseModel](path: Path, model: type[T]) -> T:
+    raw = _read_text(path)
+    decode(raw)
+    return parse_json(model, raw)
+
+
 def _read_text(path: Path) -> str:
     if not path.is_file():
         raise Refusal(f"{path.parent.name!r} has no {path.name}")
@@ -189,12 +195,6 @@ def _read_text(path: Path) -> str:
         return path.read_text(encoding=ENCODING)
     except (OSError, UnicodeDecodeError) as broken:
         raise Refusal(f"{path.name} cannot be read: {broken}") from broken
-
-
-def _read[T: BaseModel](path: Path, model: type[T]) -> T:
-    raw = _read_text(path)
-    decode(raw)
-    return parse_json(model, raw)
 
 
 def _check_filed(character_id: str, plays: EngineId, filed_under: Slug, engine: EngineId) -> None:

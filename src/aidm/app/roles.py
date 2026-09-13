@@ -9,7 +9,7 @@ from aidm.app.spawn import DRIVERS, RETRIES, RunResult, Spawner, Tools, ask, run
 from aidm.config import Role, Settings
 from aidm.core.entities import Refusal
 from aidm.core.facts import Fact, traced
-from aidm.core.io import read_prompt
+from aidm.core.io import read_cached_text
 from aidm.core.model import AnyGame
 from aidm.core.play import Chapter, Interjection, Narration, SpokenLine
 from aidm.core.prompt import Sections, lines_of, section_if, sections, told_history
@@ -121,7 +121,7 @@ def render_narrator(
 ) -> str:
     return sections(
         (
-            ("YOUR ROLE", read_prompt(PROMPTS_DIR / "narrator.md")),
+            ("YOUR ROLE", read_cached_text(PROMPTS_DIR / "narrator.md")),
             *_picture(view, scenes, evidence),
             ("PLAYER ACTION", prompt),
             ("ANSWER WITH", schema_text(Narration)),
@@ -132,7 +132,7 @@ def render_narrator(
 def render_interjection(
     view: NarratorView, member: Companion, scenes: Sequence[Chapter], evidence: str
 ) -> str:
-    role = read_prompt(PROMPTS_DIR / "interjection.md").format(
+    role = read_cached_text(PROMPTS_DIR / "interjection.md").format(
         name=member.label, brief=member.detail, id=member.id
     )
     return sections(

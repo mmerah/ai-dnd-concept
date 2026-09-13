@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -10,11 +10,11 @@ from pydantic import JsonValue
 from aidm.core.creation import option_of
 from aidm.core.entities import Refusal
 from aidm.core.facts import NOTHING, Fact, traced
-from aidm.core.io import read_prompt
+from aidm.core.io import read_cached_text
 from aidm.core.model import AnyGame
 from aidm.core.play import Answer, SpokenLine
 from aidm.core.prompt import Sections, lines_of, render_history, sections
-from aidm.core.tools import MasterTool, Play
+from aidm.core.tools import MasterTool
 from aidm.engines.seam import AnyEngine
 
 MASTER_PROMPT = Path(__file__).parent / "prompts" / "master.md"
@@ -82,15 +82,10 @@ class Turn:
         )
         self.words, self.action = option.label, ANSWERED_BY_OPTION
 
-    def told(self) -> bool:
-        return any(fact.told for fact in self.facts)
-
-    def handed_over(self) -> bool:
-        return self.draft.pending is not None or self.draft.generation is not None
-
     def narrates(self) -> bool:
         """A hand-over that moved no fiction gets no prose."""
-        return self.told() or not self.handed_over()
+        waiting = self.draft.pending is not None or self.draft.generation is not None
+        return any(fact.told for fact in self.facts) or not waiting
 
     def landed(self) -> bool:
         return bool(self.facts) or self.draft.pending is not None
@@ -134,7 +129,7 @@ class Turn:
     def finish(self, lines: tuple[SpokenLine, ...]) -> AnyGame:
         return self.engine.close(self.draft, lines, tuple(self.facts), words=self.words)
 
-    def apply(self, play: Play[AnyGame]) -> tuple[Fact, ...]:
+    def apply(self, play: Callable[[AnyGame, Random], tuple[Fact, ...]]) -> tuple[Fact, ...]:
         """One execution against a candidate; a refused call leaves the draft and the dice alone."""
         candidate, dice = self.draft.draft(), deepcopy(self.rng)
         facts = play(candidate, dice)
@@ -155,7 +150,7 @@ def render_master(
     played = sum(len(chapter.exchanges) for chapter in state.log)
     return sections(
         (
-            ("YOUR ROLE", read_prompt(MASTER_PROMPT)),
+            ("YOUR ROLE", read_cached_text(MASTER_PROMPT)),
             ("THE RULES OF THIS GAME", instructions),
             ("SCENARIO", f"{state.scenario.title}\n{state.scenario.premise}"),
             ("THE SCOPE OF PLAY", state.scenario.scope),

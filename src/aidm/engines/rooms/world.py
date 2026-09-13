@@ -99,7 +99,15 @@ class Dungeon[N: Dweller](Mutable):
         )
 
     def reachable(self, start: Slug) -> set[Slug]:
-        return _walk(self.ways, start)
+        reached = {start}
+        pending = [start]
+        while pending:
+            current = pending.pop()
+            for way in self.ways.get(current, ()):
+                if way.to not in reached:
+                    reached.add(way.to)
+                    pending.append(way.to)
+        return reached
 
     def add_way(self, from_id: Slug, to_id: Slug, *, known: bool) -> None:
         self.ways.setdefault(from_id, []).append(Way(to=to_id, known=known))
@@ -193,6 +201,12 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
             raise Refusal(UNKNOWN_ID.format(entity_id=entity_id))
         return self.part(npc)
 
+    def _open_way(self, here: Place, destination: Place) -> None:
+        """Walked or unlocked, a way is known from both sides."""
+        for way in (self.way(here.id, destination.id), self.way(destination.id, here.id)):
+            if way is not None:
+                way.known = True
+
     def move(self, to_id: Slug, with_ids: tuple[Slug, ...]) -> list[Fact]:
         here = self.current
         destination = self.require_place(to_id)
@@ -207,10 +221,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
             )
         if way.locked:
             raise Refusal(f"the way to {destination.name} is locked and must be dealt with first")
-        way.known = True
-        back = self.way(destination.id, here.id)
-        if back is not None:
-            back.known = True
+        self._open_way(here, destination)
         facts = destination.reveal()
         check_unique("with_ids", with_ids)
         coming: list[N] = []
@@ -244,10 +255,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         if not way.locked:
             raise Refusal(f"the way from {here.name} to {destination.name} is not locked")
         way.locked = False
-        way.known = True
-        back = self.way(destination.id, here.id)
-        if back is not None:
-            back.known = True
+        self._open_way(here, destination)
         trace = f"the way from {here.mention} to {destination.mention} is unlocked"
         card = f"{destination.name} unlocked"
         return [here.fact(trace, card=card)]
@@ -329,6 +337,9 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         for holder in (place_id, *(npc.id for npc in npcs)):
             yield from self.carried(holder)
 
+    def others(self) -> Iterator[N]:
+        return (npc for npc in self.at(self.current.id) if npc.known and npc.id not in self.party)
+
     def place_lines(self, *, known: bool) -> str:
         """A member prints under THE PARTY instead; what they carry stays listed here."""
         return lines_of(
@@ -363,15 +374,3 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
             )
         lines.append("ids in use: " + ", ".join(sorted((*self.places, *self.npcs, *self.items))))
         return "\n".join(lines)
-
-
-def _walk(ways: dict[Slug, list[Way]], start: Slug) -> set[Slug]:
-    reached = {start}
-    pending = [start]
-    while pending:
-        current = pending.pop()
-        for way in ways.get(current, ()):
-            if way.to not in reached:
-                reached.add(way.to)
-                pending.append(way.to)
-    return reached

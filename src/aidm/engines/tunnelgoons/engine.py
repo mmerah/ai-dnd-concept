@@ -169,9 +169,8 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         npc = world.require_member_here(args.against) if args.against is not None else None
         if npc is actor:
             raise Refusal(f"{actor.name} cannot roll against themselves")
-        ds = npc.hp.current if npc is not None else args.difficulty
-        if ds is None:
-            raise Refusal("give a difficulty, or an npc to roll against")
+        # `Roll._one_target` has held one of the two: with no npc, a difficulty was named.
+        ds = npc.hp.current if npc is not None else (args.difficulty or 0)
         penalty = 0
         if args.ability in ("brute", "skulker"):
             penalty = max(0, len(list(world.carried(actor.id))) - sheet.inventory)
@@ -181,9 +180,9 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         total = rolled.total + sheet.abilities[args.ability] + len(items) - penalty
         success = total >= ds
         outcome = "success" if success else "failure"
-        who = "" if actor is world.player else f"{actor.name}: "
+        prefix = "" if actor is world.player else f"{actor.name}: "
         line = (
-            f"{args.what} — {who}{args.ability.capitalize()}"
+            f"{args.what} — {prefix}{args.ability.capitalize()}"
             + (f" with {', '.join(item.name for item in items)}" if items else "")
             + (f" against {npc.name}" if npc is not None else "")
             + f", {total} vs DS {ds} → {outcome}"

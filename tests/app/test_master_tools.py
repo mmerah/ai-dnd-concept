@@ -27,8 +27,7 @@ from aidm.core.entities import EngineId, Frozen, Refusal, Slug
 from aidm.core.model import Check, ScenarioMeta
 from aidm.core.play import Answer, Narration, narration_text
 from aidm.core.tools import schema_of
-from aidm.engines.base import PLAYER_ID
-from aidm.engines.hiring import ACTOR
+from aidm.engines.base import ACTOR, PLAYER_ID
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCast
 from aidm.engines.scenes.engine import MOVE_ON, WAY_UNWRITTEN

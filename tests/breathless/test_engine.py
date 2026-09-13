@@ -10,7 +10,7 @@ from aidm.engines.seam import AnyEngine
 
 FIRE_AXE = "fire-axe"
 OVID = "ovid-sarn"
-SRD = ENGINE.packs["srd"]
+SRD = ENGINE.packs.srd()
 PICKS = {
     "pronouns": "she/her",
     "job": SRD.jobs[0],

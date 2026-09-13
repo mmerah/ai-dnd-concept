@@ -11,7 +11,7 @@ from aidm.engines.scenes.worldsmith import check_scene
 from aidm.engines.twentyfourxx.world import Crewmate, CrewSheet, TwentyfourxxCharacter
 from aidm.engines.twentyfourxx.worldsmith import SheetDraft
 
-SRD = ENGINE.packs["srd"]
+SRD = ENGINE.packs.srd()
 
 
 def test_sheet_check_accepts_a_muscle_with_intimidation_and_shooting() -> None:

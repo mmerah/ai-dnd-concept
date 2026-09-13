@@ -19,8 +19,8 @@ from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, section_if, sentence
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Look, Panel, PanelRow, Rows
-from aidm.engines.base import PLAYER_ID, Kill, banded, luck_test
-from aidm.engines.hiring import DROP_ITEM, DropItem, Hiring, hiring
+from aidm.engines.base import DROP_ITEM, PLAYER_ID, DropItem, Kill, banded, luck_test
+from aidm.engines.hiring import Hiring, hiring
 from aidm.engines.scenes.engine import SUPPLEMENTS, SceneEngine
 from aidm.engines.twentyfourxx.tools import (
     CHANGE_HINDRANCES,
@@ -136,7 +136,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
         specialties, origins = self._offered(picks)
         # The rules fix the seventeen skills; a pack adds specialties and origins, not skills.
-        skills = self.srd_pack().skills
+        skills = self.packs.srd().skills
         steps = [
             *self.supplement_steps(),
             CreationStep(id="specialty", label="Specialty", options=specialties),
@@ -195,7 +195,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             skills.update(picked_skills.skills)
         for number in range(1, origin.increases + 1):
             typed = picked(picks, f"increase-{number}")
-            option = option_of(self.srd_pack().skills, typed)
+            option = option_of(self.packs.srd().skills, typed)
             label = (
                 option.label if option is not None else self._match_skill(skills, typed) or typed
             )
@@ -216,7 +216,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             body = chosen_option(origin.choice, picked(picks, "body"))
             traits = (*traits, body.label)
 
-        kits = [*self.srd_pack().starting_kit, *specialty.kit]
+        kits = [*self.packs.srd().starting_kit, *specialty.kit]
         if weapon is not None:
             kits.append(weapon)
         if body is not None and body.kit is not None:
@@ -275,20 +275,17 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         if (match := self._match_skill(sheet.skills, wanted)) is not None:
             return match
         known = ", ".join(sorted(sheet.skills)) or "none"
-        listed = ", ".join(option.label for option in self.srd_pack().skills)
+        listed = ", ".join(option.label for option in self.packs.srd().skills)
         raise Refusal(
             f"{wanted!r} is not a skill on the sheet ({known}) or in the rules ({listed})"
         )
-
-    def taught_skill(self, sheet: CrewSheet, wanted: str) -> str:
-        return self._match_skill(sheet.skills, wanted) or wanted
 
     def _match_skill(self, known: Mapping[str, SkillDie], wanted: str) -> str | None:
         folded = wanted.casefold()
         for key in known:
             if key.casefold() == folded:
                 return key
-        for option in self.srd_pack().skills:
+        for option in self.packs.srd().skills:
             if option.label.casefold() == folded:
                 return option.label
         return None
@@ -368,8 +365,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         return None if self.world_of(state).sheeted_members() else super().over(state)
 
     def hire_prompt(self, draft: TwentyfourxxGame, member: Crewmate, terms: str) -> str:
-        lines = [pack.specialty_lines() for pack in self.selected_packs(draft)]
-        lines.append(f"Skills: {', '.join(option.label for option in self.srd_pack().skills)}")
+        lines = [pack.specialty_lines() for pack in self.packs.chosen(draft.packs)]
+        lines.append(f"Skills: {', '.join(option.label for option in self.packs.srd().skills)}")
         return self.render_request(
             draft,
             guidance="\n".join(lines),
@@ -378,7 +375,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         )
 
     def hire_check(self, draft: TwentyfourxxGame) -> Check[SheetDraft]:
-        packs = self.selected_packs(draft)
+        packs = self.packs.chosen(draft.packs)
         return lambda sheet: sheet.check(packs)
 
     def install_sheet(self, member: Crewmate, answer: SheetDraft) -> str:
@@ -394,15 +391,14 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
     def roll(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
         world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
-        helper = self._helping(world, args.helped_by)
-        helper_args = args.helped_by
-        pool = self._pool(actor, helper, args)
+        helping = _helping(world, args.helped_by)
+        pool = self._pool(actor, helping, args)
 
         claims: list[tuple[Crewmate, Slug, str]] = []
         if (item_id := args.defend_with) is not None:
             claims.append((actor, item_id, args.hindrance))
-        if helper is not None and helper_args is not None and helper_args.defend_with is not None:
-            claims.append((helper, helper_args.defend_with, helper_args.hindrance))
+        if helping is not None and helping[1].defend_with is not None:
+            claims.append((helping[0], helping[1].defend_with, helping[1].hindrance))
         world.check_defenses(claims)
 
         label = "+".join(f"d{face}" for face in pool.faces)
@@ -416,8 +412,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         line += pool.helped_by
         if args.hindered:
             line += f", hindered ({args.hindered})"
-        if helper is not None and helper_args is not None and helper_args.risk:
-            line += f", {helper.name} risking {helper_args.risk}"
+        if helping is not None and helping[1].risk:
+            line += f", {helping[0].name} risking {helping[1].risk}"
         if args.risk:
             line += f", risking {args.risk}"
         line += f" → {result}"
@@ -425,10 +421,10 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         facts = [rolled.fact, actor.fact(line, card=line, dice=(rolled.event,))]
         if result != "success":
             lethal = result == "disaster"
-            if helper is not None and helper_args is not None and helper_args.risk:
+            if helping is not None and helping[1].risk:
                 facts.extend(
                     world.take_hit(
-                        helper, helper_args.defend_with, helper_args.hindrance, lethal=lethal
+                        helping[0], helping[1].defend_with, helping[1].hindrance, lethal=lethal
                     )
                 )
             if args.risk:
@@ -436,14 +432,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         self._succession(draft)
         return facts
 
-    def _helping(self, world: TwentyfourxxWorld, helper_args: Helper | None) -> Crewmate | None:
-        if helper_args is None:
-            return None
-        return world.require_actor(helper_args.actor_id)
-
-    def _pool(self, actor: Crewmate, helper: Crewmate | None, args: Roll) -> Pool:
+    def _pool(self, actor: Crewmate, helping: tuple[Crewmate, Helper] | None, args: Roll) -> Pool:
         sheet = actor.require_sheet()
-        if helper is not None and helper is actor:
+        if helping is not None and helping[0] is actor:
             raise Refusal(f"{actor.name} cannot help their own roll")
 
         if args.skill:
@@ -459,7 +450,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         if args.helped:
             faces.append(HELP_DIE)
         helped_by = ""
-        if helper is not None and (helper_args := args.helped_by) is not None:
+        if helping is not None:
+            helper, helper_args = helping
             if helper_args.hindered:
                 helper_die = HINDERED_DIE
                 hindered_note = f", hindered ({helper_args.hindered})"
@@ -515,7 +507,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         for raise_ in raises:
             actor = world.require_actor(raise_.actor_id)
             sheet = actor.require_sheet()
-            facts.extend(actor.raise_skill(self.taught_skill(sheet, raise_.skill)))
+            skill = self._match_skill(sheet.skills, raise_.skill) or raise_.skill
+            facts.extend(actor.raise_skill(skill))
 
             rolled = roll((6,), f"credits earned by {actor.name}", rng)
             facts.append(rolled.fact)
@@ -543,3 +536,7 @@ def _item_lines(items: Mapping[Slug, Gear]) -> str:
 
 def _named(actor_id: Slug | None) -> str:
     return "the player" if actor_id is None else actor_id
+
+
+def _helping(world: TwentyfourxxWorld, args: Helper | None) -> tuple[Crewmate, Helper] | None:
+    return None if args is None else (world.require_actor(args.actor_id), args)

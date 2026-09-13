@@ -19,7 +19,7 @@ from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
 from aidm.engines.scenes.engine import MOVE_ON
-from aidm.engines.scenes.packs import SRD_PACK
+from aidm.engines.scenes.packs import SRD_PACK, PackSet
 from aidm.engines.scenes.tools import NextDraft, NextScene
 from aidm.engines.scenes.world import SceneRun, SceneWorld
 from aidm.engines.scenes.worldsmith import check_scene
@@ -255,12 +255,18 @@ def test_select_refuses_a_selection_without_the_srd() -> None:
     engine = narrowed(ENGINES_BUILT[LONER3E], Loner3eEngine)
 
     with pytest.raises(Refusal, match="plays the 'srd' tables"):
-        engine.select(PackSelection(ids=("ap01-fantasy",)))
+        engine.packs.select(PackSelection(ids=("ap01-fantasy",)))
 
 
 def test_select_refuses_two_packs_that_define_the_same_id() -> None:
     engine = copy.copy(narrowed(ENGINES_BUILT[LONER3E], Loner3eEngine))
-    engine.packs = {**engine.packs, "twin": engine.packs[SRD_PACK]}
+    engine.packs = PackSet(engine.id, {**engine.packs.installed, "twin": engine.packs.srd()})
 
     with pytest.raises(Refusal, match="both define"):
-        engine.select(PackSelection(ids=(SRD_PACK, "twin")))
+        engine.packs.select(PackSelection(ids=(SRD_PACK, "twin")))
+
+
+def test_join_party_on_the_players_own_id_refuses() -> None:
+    world = _world(_run("a1", "A1"))
+    with pytest.raises(Refusal, match="not a party member"):
+        _ = world.join_party(PLAYER_ID)

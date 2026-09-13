@@ -26,40 +26,30 @@ def map_sections[N: Dweller, P: Person](
 
 
 def check_map[N: Dweller](draft: MapDraft[N]) -> None:
-    if unmet := _start_unmet(draft):
+    if unmet := _map_unmet(draft, start_known=True):
         raise Refusal("the map needs " + "; ".join(unmet))
 
 
 def check_extension[N: Dweller](draft: MapDraft[N], world: Dungeon[N]) -> None:
-    if unmet := _extension_unmet(draft) + _overlap_unmet(draft, world):
+    if not draft.places:
+        raise Refusal("the extension needs at least one new place")
+    if unmet := _map_unmet(draft, start_known=False) + _overlap_unmet(draft, world):
         raise Refusal("the extension needs " + "; ".join(unmet))
 
 
-def _start_unmet[N: Dweller](draft: MapDraft[N]) -> list[str]:
+def _map_unmet[N: Dweller](draft: MapDraft[N], *, start_known: bool) -> list[str]:
     places = draft.places
-    unmet: list[str] = []
     if draft.start not in places:
-        unmet.append(f"a starting place {draft.start!r}")
-    else:
-        if not places[draft.start].known:
-            unmet.append("the starting place known to the player")
-        if missing := sorted(set(places) - draft.reachable(draft.start)):
-            unmet.append(f"places no walk of ways reaches from {draft.start!r}: {missing}")
-    return unmet
-
-
-def _extension_unmet[N: Dweller](draft: MapDraft[N]) -> list[str]:
-    places = draft.places
-    if not places:
-        return ["at least one new place"]
+        return [f"a starting place {draft.start!r}"]
     unmet: list[str] = []
-    if draft.start not in places:
-        unmet.append(f"a starting place {draft.start!r}")
-    else:
-        if places[draft.start].known:
-            unmet.append("a starting place hidden from the player")
-        if missing := sorted(set(places) - draft.reachable(draft.start)):
-            unmet.append(f"places no walk of ways reaches from {draft.start!r}: {missing}")
+    if places[draft.start].known != start_known:
+        unmet.append(
+            "the starting place known to the player"
+            if start_known
+            else "a starting place hidden from the player"
+        )
+    if missing := sorted(set(places) - draft.reachable(draft.start)):
+        unmet.append(f"places no walk of ways reaches from {draft.start!r}: {missing}")
     return unmet
 
 

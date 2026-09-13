@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from random import Random
 
+from pydantic import JsonValue
+
 from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked, picked_many
 from aidm.core.entities import EngineId, Refusal, parse, slug
 from aidm.core.facts import Fact, roll, roll_pool
@@ -10,7 +12,7 @@ from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, sentence
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Look, Panel, PanelRow, Rows
-from aidm.engines.base import PLAYER_ID, banded, luck_test
+from aidm.engines.base import DROP_ITEM, PLAYER_ID, DropItem, banded, luck_test
 from aidm.engines.breathless.tools import (
     CATCH_BREATH,
     CHANGE_STRESS,
@@ -44,8 +46,12 @@ from aidm.engines.breathless.world import (
     SurvivorSheet,
 )
 from aidm.engines.breathless.worldsmith import AUTHORING, HIRING, Pack, SheetDraft
-from aidm.engines.hiring import DROP_ITEM, DropItem, Hiring, hiring
+from aidm.engines.hiring import Hiring, hiring
 from aidm.engines.scenes.engine import SUPPLEMENTS, SceneEngine
+
+AUTHORED = {"locations", "complications", "missions"}
+TROUBLE_NOTE = "The scavenge turns up trouble right here; nothing is found."
+NOTHING_NOTE = "The scavenge finds nothing, and trouble is coming."
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,7 +110,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         jobs = tuple(job for pack in chosen for job in pack.jobs)
         weapons = tuple(weapon for pack in chosen for weapon in pack.weapons)
         # Every breathless pack rates the same six skills, by validator.
-        skills = self.srd_pack().skills
+        skills = self.packs.srd().skills
         d10 = picked(picks, "skill-d10")
         d8 = picked(picks, "skill-d8")
         return (
@@ -152,9 +158,8 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         return (*sheet.rows(), ("Backpack", ", ".join(item.name for item in sheet.items.values())))
 
     def guidance(self, selection: PackSelection | None) -> str:
-        chosen = self.selected(selection)
-        include = {"locations", "complications", "missions"}
-        return f"{AUTHORING}\n\n{self.pack_content(chosen, include=include)}"
+        chosen = self.packs.require(selection)
+        return f"{AUTHORING}\n\n{self.packs.content(chosen, _authored)}"
 
     def sheet_sections(self, state: BreathlessGame) -> Sections:
         sheet = self.world_of(state).player.require_sheet()
@@ -170,10 +175,6 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
             rows.append(PanelRow(label="Med kit", detail="held"))
         return (Panel(title="Backpack", rows=tuple(rows)),)
 
-    def _complications(self) -> tuple[str, ...]:
-        """Always the SRD's own table: no other pack publishes one."""
-        return self.srd_pack().complications
-
     def change_stress(self, draft: BreathlessGame, args: ChangeStress, _rng: Random) -> list[Fact]:
         return (
             self.world_of(draft).require_actor(args.actor_id).change_stress(args.amount, args.why)
@@ -183,7 +184,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         return self.world_of(draft).require_actor(args.actor_id).use_med_kit()
 
     def hire_prompt(self, draft: BreathlessGame, member: Survivor, terms: str) -> str:
-        packs = self.selected_packs(draft)
+        packs = self.packs.chosen(draft.packs)
         return self.render_request(
             draft,
             guidance=AUTHORING,
@@ -250,7 +251,8 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
     def catch_breath(self, draft: BreathlessGame, args: Actor, rng: Random) -> list[Fact]:
         actor = self.world_of(draft).require_actor(args.actor_id)
         rolled = roll((12,), "a new complication", rng)
-        text = self._complications()[rolled.face - 1]
+        # Always the SRD's own table: no other pack publishes one.
+        text = self.packs.srd().complications[rolled.face - 1]
         draft.note(
             f"Catching breath brings a new complication. The SRD's table suggests: {text} Bring "
             "it in through the story, or one that fits better."
@@ -261,7 +263,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         if chosen.name != TAKE_LOOT:
             return super().answer(draft, chosen, rng)
         taken = parse(TakeLoot, chosen.args)
-        return (self.world_of(draft).player.take_loot(taken.item, taken.granted, taken.choice),)
+        return tuple(self.world_of(draft).player.take_loot(taken.item, taken.granted, taken.choice))
 
     def loot_check(self, draft: BreathlessGame, args: LootCheck, rng: Random) -> list[Fact]:
         item, player = args.item, self.world_of(draft).player
@@ -271,13 +273,12 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         face = rolled.face
         sheet.step_loot()
 
+        outcome = banded(face, "trouble", "nothing", "found")
         found: Die | None = None
-        if face <= 2:
-            draft.note("The scavenge turns up trouble right here; nothing is found.")
-        elif face <= 4:
-            draft.note("The scavenge finds nothing, and trouble is coming.")
-        else:
+        if outcome == "found":
             found = next(die for die in LADDER if face <= die)
+        else:
+            draft.note(TROUBLE_NOTE if outcome == "trouble" else NOTHING_NOTE)
 
         result = f"found {item} (d{found})" if found is not None else "nothing"
         line = f"Scavenge — d{before} → {result}"
@@ -313,3 +314,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
 def _skill(name: str) -> Skill:
     """`check_picks` has already held the answer to the pack's six ids, which are the SRD's."""
     return next(skill for skill in SKILLS if skill == name)
+
+
+def _authored(pack: Pack) -> JsonValue:
+    return pack.model_dump(mode="json", include=AUTHORED)

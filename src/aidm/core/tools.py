@@ -11,8 +11,6 @@ from aidm.core.entities import Frozen, parse_json
 from aidm.core.facts import Fact
 from aidm.core.model import Game
 
-# The rng is a parameter so a trial run against a throwaway copy cannot consume the turn's dice.
-type Play[G: Game[Any]] = Callable[[G, Random], tuple[Fact, ...]]
 NOISE_KEYS = ("title", "pattern", "maxLength", "minLength")
 
 

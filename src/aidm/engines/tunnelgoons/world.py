@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from aidm.core.entities import Slug, slug
+from aidm.core.entities import slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import PendingDecision, PendingOption
@@ -54,15 +54,22 @@ class Adventurer(Sheeted[GoonSheet]):
             sheet.inventory += 1
         sheet.level += 1
         card = f"Level {sheet.level}: {ability.capitalize()} +1, {boost.capitalize()} +1"
-        if self.id != PLAYER_ID:
-            card = f"{self.name}: {card}"
+        card = self.card_line(card)
         return [self.fact(card, card=card)]
 
     def level_decision(self) -> PendingDecision:
         prompt = f"Level up: {self.name} — raise one ability by 1, and Health or Inventory by 1."
-        return PendingDecision(
-            kind="level-up", prompt=prompt, options=level_options(self.id), allows_text=False
+        options = tuple(
+            PendingOption(
+                id=f"{ability}-{boost}",
+                label=f"{ability.capitalize()} +1, {boost.capitalize()} +1",
+                name="level_up",
+                args={"ability": ability, "boost": boost, "actor_id": self.id},
+            )
+            for ability in ABILITIES
+            for boost in ("health", "inventory")
         )
+        return PendingDecision(kind="level-up", prompt=prompt, options=options, allows_text=False)
 
 
 class Npc(Adventurer, Dweller):
@@ -122,16 +129,3 @@ TunnelGoonsGame = Game[TunnelGoonsWorld]
 TunnelGoonsScenario = Scenario[MapDraft[Npc]]
 
 TunnelGoonsCharacter = Character[Goon]
-
-
-def level_options(actor_id: Slug) -> tuple[PendingOption, ...]:
-    return tuple(
-        PendingOption(
-            id=f"{ability}-{boost}",
-            label=f"{ability.capitalize()} +1, {boost.capitalize()} +1",
-            name="level_up",
-            args={"ability": ability, "boost": boost, "actor_id": actor_id},
-        )
-        for ability in ABILITIES
-        for boost in ("health", "inventory")
-    )

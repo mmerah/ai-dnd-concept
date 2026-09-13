@@ -5,7 +5,7 @@ from support.table import ENGINE_IDS, game
 
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Refusal, slug
-from aidm.core.io import ENCODING, read_prompt
+from aidm.core.io import ENCODING, read_cached_text
 from aidm.core.model import AnyCharacter, Character, Game, PackSelection, Scenario, ScenarioMeta
 from aidm.core.play import SpokenLine
 from aidm.core.prompt import Sections
@@ -139,7 +139,7 @@ def test_a_fifth_scene_engine_begins_a_playable_game(tmp_path: Path) -> None:
 
     assert engine.supplement_options() == ()
     assert engine.instructions.startswith("Roll high.")
-    assert engine.instructions.endswith(read_prompt(engine.family_dir / "rules.md"))
+    assert engine.instructions.endswith(read_cached_text(engine.family_dir / "rules.md"))
     assert engine.narrator_view(state).title == "The Taproom"
     assert engine.master_sections(state) == (("SCENE", "The Taproom"),)
     assert [row.label for row in engine.player_view(state).panels[-2].rows] == ["Keeper"]

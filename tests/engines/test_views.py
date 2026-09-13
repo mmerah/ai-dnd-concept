@@ -73,7 +73,7 @@ def test_a_narrator_views_party_refuses_a_stranger_or_a_repeat_and_others_exclud
             party=("stranger",),
             sheet=(),
         )
-    with pytest.raises(ValidationError, match="repeats"):
+    with pytest.raises(ValidationError, match="duplicate party members"):
         _ = NarratorView(
             place="p",
             title="t",

@@ -3,8 +3,7 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Slug
-from aidm.engines.base import Attempt
-from aidm.engines.hiring import ACTOR
+from aidm.engines.base import ACTOR, Attempt
 
 CHANGE_HINDRANCES = "The actor picks up hindrances, sheds them, or both at once."
 GAIN_ITEM = "The actor gains an item and pays for it."
@@ -26,6 +25,14 @@ JOB = (
     "and to close the job with `finish`. With `find` the engine rolls the SRD's "
     "d6. With `finish` it raises one skill for each operator and pays each of "
     "them d6 credits."
+)
+DEFEND_WITH = (
+    "Exact id of the {who}'s item or a ship function that breaks to spare them. Null when "
+    "nothing shields them."
+)
+HINDRANCE = (
+    "What the hit leaves behind once the gear absorbs it, as a hindrance. Empty when the "
+    "gear breaks harmlessly."
 )
 
 
@@ -93,23 +100,12 @@ class Helper(Frozen):
         description="The harm the helper faces if this goes badly. Empty when helping puts "
         "them in no danger.",
     )
-    defend_with: Slug | None = Field(
-        default=None,
-        description="Exact id of the helper's item or a ship function that breaks to spare "
-        "them. Null when nothing shields them.",
-    )
-    hindrance: str = Field(
-        default="",
-        description="What the hit leaves behind once the gear absorbs it, as a hindrance. "
-        "Empty when the gear breaks harmlessly.",
-    )
+    defend_with: Slug | None = Field(default=None, description=DEFEND_WITH.format(who="helper"))
+    hindrance: str = Field(default="", description=HINDRANCE)
 
     @model_validator(mode="after")
     def _defend_fields(self) -> Self:
-        if self.defend_with is not None and not self.risk:
-            raise ValueError("defend_with needs the risk it shields against")
-        if self.hindrance and self.defend_with is None:
-            raise ValueError("hindrance needs the defend_with that earns it")
+        check_risk(self.risk, self.defend_with, self.hindrance)
         return self
 
 
@@ -127,23 +123,12 @@ class Roll(Attempt):
         description="The harm the actor faces if this goes badly, named before the roll. "
         "Empty when they are in no danger.",
     )
-    defend_with: Slug | None = Field(
-        default=None,
-        description="Exact id of the actor's item or a ship function that breaks to spare "
-        "them. Null when nothing shields them.",
-    )
-    hindrance: str = Field(
-        default="",
-        description="What the hit leaves behind once the gear absorbs it, as a hindrance. "
-        "Empty when the gear breaks harmlessly.",
-    )
+    defend_with: Slug | None = Field(default=None, description=DEFEND_WITH.format(who="actor"))
+    hindrance: str = Field(default="", description=HINDRANCE)
 
     @model_validator(mode="after")
     def _defend_fields(self) -> Self:
-        if self.defend_with is not None and not self.risk:
-            raise ValueError("defend_with needs the risk it shields against")
-        if self.hindrance and self.defend_with is None:
-            raise ValueError("hindrance needs the defend_with that earns it")
+        check_risk(self.risk, self.defend_with, self.hindrance)
         return self
 
 
@@ -188,3 +173,10 @@ class Job(Frozen):
         if not given.pop(wanted) or any(given.values()):
             raise ValueError(f"{self.verb} takes {wanted} only")
         return self
+
+
+def check_risk(risk: str, defend_with: Slug | None, hindrance: str) -> None:
+    if defend_with is not None and not risk:
+        raise ValueError("defend_with needs the risk it shields against")
+    if hindrance and defend_with is None:
+        raise ValueError("hindrance needs the defend_with that earns it")
