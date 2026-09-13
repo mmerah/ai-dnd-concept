@@ -210,7 +210,7 @@ def open_table[G: AnyGame](
 ) -> Table[G]:
     settings = settings or offline_settings(saves)
     spawner = ScriptedSpawner()
-    runtime = Runtime.start(settings, lambda _: spawner)
+    runtime = Runtime(settings, lambda _: spawner)
     selected_engine = ENGINES_BUILT[engine_id] if engine is None else engine
     runtime.engines[engine_id] = selected_engine
     scenario_id = scenario_for(engine_id)
@@ -260,7 +260,7 @@ async def take[G: AnyGame](
 
 async def drain(service: GameService) -> None:
     """Every background task lands before the session closes: `close` cancels what has not."""
-    await service.settled()
+    await service.tasks.settled()
     await service.close()
 
 

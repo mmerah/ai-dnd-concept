@@ -49,7 +49,7 @@ def _catalog(settings: Settings, engines: Mapping[EngineId, AnyEngine]) -> Launc
 
 def _opening_state(settings: Settings) -> Loner3eGame:
     """The launcher reads saves, so a test needs a state a real game would have written."""
-    runtime = Runtime.start(settings, lambda _: ScriptedSpawner())
+    runtime = Runtime(settings, lambda _: ScriptedSpawner())
     return narrowed(runtime.session(TARGET).state, Loner3eGame)
 
 
@@ -242,7 +242,7 @@ async def test_a_written_opening_becomes_a_playable_scenario(tmp_path: Path) -> 
     settings = offline_settings(tmp_path, tmp_path / "scenarios")
     thin = json.dumps({**_OPENING, "present": ["nobody-here"]})
     spawner = ScriptedSpawner(answers={"worldsmith": [thin, json.dumps(_OPENING)]})
-    runtime = Runtime.start(settings, lambda _: spawner)
+    runtime = Runtime(settings, lambda _: spawner)
 
     meta = ScenarioMeta(
         title="The Sunken Bell",
@@ -278,7 +278,7 @@ async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: P
     }
     broken = json.dumps(_OPENING | {"cast": {**cast, "bell-rope": _OPENING_ITEM}})
     spawner = ScriptedSpawner(answers={"worldsmith": [broken, broken]})
-    runtime = Runtime.start(offline_settings(tmp_path, scenarios), lambda _: spawner)
+    runtime = Runtime(offline_settings(tmp_path, scenarios), lambda _: spawner)
 
     with pytest.raises(Refusal, match="filed under"):
         _ = await runtime.new_scenario(
@@ -305,7 +305,7 @@ async def test_new_scenario_refuses_a_character_the_selection_cannot_start(tmp_p
         update={"characters_dir": characters}
     )
     spawner = ScriptedSpawner()
-    runtime = Runtime.start(settings, lambda _: spawner)
+    runtime = Runtime(settings, lambda _: spawner)
 
     with pytest.raises(Refusal, match="this scenario plays srd"):
         _ = await runtime.new_scenario(
@@ -322,7 +322,7 @@ async def test_new_scenario_refuses_a_character_the_selection_cannot_start(tmp_p
 async def test_a_scenario_written_from_a_document_carries_its_text(tmp_path: Path) -> None:
     scenarios = tmp_path / "scenarios"
     spawner = ScriptedSpawner(answers={"worldsmith": [json.dumps(_OPENING)]})
-    runtime = Runtime.start(offline_settings(tmp_path, scenarios), lambda _: spawner)
+    runtime = Runtime(offline_settings(tmp_path, scenarios), lambda _: spawner)
 
     name = await runtime.new_scenario(
         LONER3E,

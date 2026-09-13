@@ -11,6 +11,7 @@ from pydantic import JsonValue
 
 from aidm.app.launch import LaunchTarget
 from aidm.app.media import ICON_DIR, Illustrator
+from aidm.app.providers import close_posting
 from aidm.app.roles import RoleRunner, Roles
 from aidm.app.spawn import Spawner, worldsmith
 from aidm.app.speech import Reader
@@ -22,7 +23,7 @@ from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, PackSelection, S
 from aidm.core.play import Answer, Exchange, Mark, SpokenLine
 from aidm.core.source import given_text
 from aidm.core.tools import MasterTool
-from aidm.core.views import Chattiness, Companion, PlayerView
+from aidm.core.views import Chattiness, PlayerView
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
 from aidm.turn.run import NO_TURN, Turn
@@ -40,6 +41,34 @@ OPENING_NARRATION = (
     "things they could plainly do first, offered by the place and the people, in prose, never "
     "as a list. Six to eight sentences. They have not acted, so settle nothing."
 )
+
+
+@dataclass(slots=True)
+class Tasks:
+    """Work the session started and does not wait for: retained while it runs."""
+
+    running: set[Task[None]] = field(default_factory=set)
+
+    def retain(self, task: Task[None]) -> None:
+        """Retained because asyncio may collect an unreferenced task early."""
+        self.running.add(task)
+        task.add_done_callback(self._done)
+
+    async def settled(self) -> None:
+        await gather(*self.running)
+
+    async def close(self) -> None:
+        tasks = list(self.running)
+        for task in tasks:
+            task.cancel()
+        await gather(*tasks, return_exceptions=True)
+
+    def _done(self, task: Task[None]) -> None:
+        self.running.discard(task)
+        if task.cancelled():
+            return
+        if (failed := task.exception()) is not None:
+            LOGGER.exception("background task failed", exc_info=failed)
 
 
 @dataclass(slots=True)
@@ -62,7 +91,7 @@ class GameService:
     turn: Turn | None = None
     # The party member speaking after the last turn; a new turn or a reload silences them.
     _speaking: Task[None] | None = field(default=None, repr=False)
-    _background: set[Task[None]] = field(default_factory=set, repr=False)
+    tasks: Tasks = field(default_factory=Tasks, repr=False)
 
     @classmethod
     def resume(
@@ -180,7 +209,7 @@ class GameService:
             and self.engine.over(self.state) is None
         ):
             self._speaking = create_task(self.interject())
-            self._retain(self._speaking)
+            self.tasks.retain(self._speaking)
 
     def hush(self) -> None:
         """Cancelling kills the narrator spawn: an answer nobody will read costs nothing more."""
@@ -193,7 +222,8 @@ class GameService:
             (
                 candidate
                 for candidate in self.engine.companions(self.state)
-                if self._speaks(candidate)
+                # Not the game's die: it spawns a narrator, changes no state, lands no fact.
+                if self.chatter.randint(1, 10) <= INTERJECTION_ODDS[candidate.chattiness]
             ),
             None,
         )
@@ -214,10 +244,6 @@ class GameService:
             self.engine.close(self.state.draft(), lines, (), mark="interjection", proposal=proposal)
         )
         self.speak(self._newest())
-
-    def _speaks(self, candidate: Companion) -> bool:
-        # The one die that is not the game's: it spawns a narrator, changes no state, lands no fact.
-        return self.chatter.randint(1, 10) <= INTERJECTION_ODDS[candidate.chattiness]
 
     async def _grow(self, *, words: str, mark: Mark) -> bool:
         request = self.state.generation
@@ -294,38 +320,20 @@ class GameService:
             return
         view = self.engine.narrator_view(self.state)
         task = create_task(self.media.illustrate(view, self.player_view().player, narration))
-        self._retain(task)
+        self.tasks.retain(task)
 
     def speak(self, newest: Exchange | None) -> None:
         if self.reader is None or newest is None:
             return
-        self._retain(create_task(self.reader.read(newest)))
+        self.tasks.retain(create_task(self.reader.read(newest)))
 
     def _newest(self) -> Exchange | None:
         history = self.state.exchanges()
         return history[-1] if history else None
 
-    def _retain(self, task: Task[None]) -> None:
-        """Retain background tasks because asyncio may collect unreferenced tasks early."""
-        self._background.add(task)
-        task.add_done_callback(self._settled)
-
-    def _settled(self, task: Task[None]) -> None:
-        self._background.discard(task)
-        if task.cancelled():
-            return
-        if (failed := task.exception()) is not None:
-            LOGGER.exception("background task failed", exc_info=failed)
-
-    async def settled(self) -> None:
-        await gather(*self._background)
-
     async def close(self) -> None:
         self.hush()
-        tasks = list(self._background)
-        for task in tasks:
-            task.cancel()
-        await gather(*tasks, return_exceptions=True)
+        await self.tasks.close()
 
     def restart(self) -> None:
         self.hush()
@@ -349,13 +357,10 @@ class Runtime:
     library: Library = field(init=False)
     store: FileStore = field(init=False)
 
-    @classmethod
-    def start(cls, settings: Settings, spawn: Callable[[Settings], Spawner] = RoleRunner) -> Self:
+    def __post_init__(self) -> None:
         """Reads every engine's prompts and packs, then mounts the library and the saves."""
-        instance = cls(settings, spawn)
-        instance.engines = build_engines()
-        instance._mount()
-        return instance
+        self.engines = build_engines()
+        self._mount()
 
     def _mount(self) -> None:
         self.spawner = self.spawn(self.settings)
@@ -427,6 +432,7 @@ class Runtime:
     async def close(self) -> None:
         for session in list(self._sessions.values()):
             await session.close()
+        await close_posting()
 
     async def new_scenario(
         self,

@@ -58,7 +58,7 @@ def main() -> None:
     )
     agents = ScriptedAgents(delay=parsed.delay)
     # `lambda _: agents` keeps the scripted roles across a reload, which rebuilds the spawner.
-    runtime = Runtime.start(settings, lambda _: agents)
+    runtime = Runtime(settings, lambda _: agents)
     agents.runtime = runtime
     _register_pages(runtime)
 

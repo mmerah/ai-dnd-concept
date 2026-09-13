@@ -2,15 +2,17 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
-from support.table import offline_settings
+from support.table import offline_settings, updated
 
 from aidm.config import RoleConfig, RoleSettings, Settings, read_settings, save_settings
 from aidm.ui.settings import changes, refusal_text
 
 
 def test_only_a_real_edit_is_written(tmp_path: Path) -> None:
-    settings = offline_settings(tmp_path)
-    settings.roles = RoleSettings(narrator=RoleConfig(model="sonnet"))
+    settings = updated(
+        offline_settings(tmp_path),
+        roles=RoleSettings(narrator=RoleConfig(model="sonnet")).model_dump(),
+    )
     assert changes(
         settings,
         {
@@ -24,6 +26,11 @@ def test_only_a_real_edit_is_written(tmp_path: Path) -> None:
         ("media", "model"): None,
         ("roles", "narrator", "timeout"): "90",
     }
+
+
+def test_settings_are_frozen(tmp_path: Path) -> None:
+    with pytest.raises(ValidationError, match="frozen"):
+        offline_settings(tmp_path).roles = RoleSettings()
 
 
 def test_a_shell_variable_shadows_its_box(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

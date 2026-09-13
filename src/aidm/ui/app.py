@@ -106,7 +106,7 @@ def start() -> None:
     # Without a handler the root logger drops every INFO record, spawns included.
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     settings = read_settings()
-    _register_pages(Runtime.start(settings))
+    _register_pages(Runtime(settings))
     theme.install()
     ui.run(  # pyright: ignore[reportUnknownMemberType]
         title="AI Dungeon Master",
@@ -117,7 +117,7 @@ def start() -> None:
 
 
 def _new_content() -> None:
-    with ui.row().classes("items-center").style("gap: 0.5rem"):
+    with ui.row().classes("items-center game-gap-lg"):
         ui.button(
             "New character", icon="person_add", on_click=lambda: ui.navigate.to("/create")
         ).props("outline dense")
@@ -131,7 +131,7 @@ def _saved_games(catalog: LauncherCatalog) -> None:
     if not catalog.saves:
         ui.label("No saved games yet.").classes("text-body1 opacity-60")
         return
-    with ui.column().classes("w-full").style("gap: 0.75rem"):
+    with ui.column().classes("w-full game-gap-xl"):
         for saved in catalog.saves:
             _saved_card(saved)
 
@@ -139,15 +139,15 @@ def _saved_games(catalog: LauncherCatalog) -> None:
 def _saved_card(saved: SaveOption) -> None:
     with (
         ui.card().classes("w-full"),
-        ui.row().classes("w-full items-center").style("gap: 1rem"),
+        ui.row().classes("w-full items-center game-gap-2xl"),
     ):
-        with ui.column().classes("col").style("gap: 0.25rem"):
+        with ui.column().classes("col game-gap-xs"):
             ui.label(saved.scenario_label).classes("text-h6 game-title")
             ui.label(
                 f"{saved.character_label} · turn {saved.turn}"
                 + (f" · {saved.where}" if saved.where else "")
             ).classes("text-sm opacity-70")
-            with ui.row().style("gap: 0.5rem"):
+            with ui.row().classes("game-gap-lg"):
                 ui.badge(saved.rules)
         ui.button(
             "Resume",
@@ -167,7 +167,7 @@ def _refused_page(message: str) -> None:
     with (
         page_body(),
         ui.card().classes("w-full"),
-        ui.column().classes("items-center").style("gap: 1rem"),
+        ui.column().classes("items-center game-gap-2xl"),
     ):
         ui.label(message).classes("text-body1")
         ui.button("Home", icon="home", on_click=lambda: ui.navigate.to("/")).props("color=primary")
@@ -181,13 +181,6 @@ def _register_pages(runtime: Runtime) -> None:
     app.on_startup(lifespan.start)  # pyright: ignore[reportUnknownMemberType]
     app.on_shutdown(lifespan.stop)  # pyright: ignore[reportUnknownMemberType]
     app.on_shutdown(runtime.close)  # pyright: ignore[reportUnknownMemberType]
-
-    async def apply_settings() -> str | None:
-        try:
-            await runtime.reload_settings()
-        except Refusal as refused:
-            return str(refused)
-        return None
 
     @ui.page("/")
     def _index() -> None:  # pyright: ignore[reportUnusedFunction]
@@ -216,4 +209,4 @@ def _register_pages(runtime: Runtime) -> None:
 
     @ui.page("/settings")
     def _settings() -> None:  # pyright: ignore[reportUnusedFunction]
-        settings_page(runtime.settings, apply_settings)
+        settings_page(runtime.settings, runtime.reload_settings)

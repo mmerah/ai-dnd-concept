@@ -1,6 +1,6 @@
 import json
 from asyncio import CancelledError, Event, create_task, gather, sleep
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import pytest
@@ -10,7 +10,7 @@ from support.table import offline_settings
 
 from aidm.app.media import GeneratedImage, Illustrator, illustration_request, scene_key
 from aidm.config import MediaConfig, ProviderConfig
-from aidm.core.io import FileStore
+from aidm.core.io import FileStore, publish
 from aidm.core.views import NarratorView
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
 from aidm.engines.seam import AnyEngine
@@ -148,6 +148,34 @@ async def test_cancelling_illustrate_during_the_icon_await_releases_the_scene_cl
     await illustrator.illustrate(scene, player, NARRATION)
 
     assert illustrator.scene_art(scene) is not None
+
+
+async def test_a_drawn_icon_still_holds_its_claim_while_the_file_is_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A claim freed before the write lets a second caller miss the cache and pay again."""
+    engine, state = initialized()
+    scene = engine.narrator_view(state)
+    player = engine.player_view(state).player
+    held_while_writing: dict[str, set[str]] = {}
+
+    async def _generate(
+        _self: Illustrator, _prompt: str, _ratio: str, _references: Sequence[Path] = ()
+    ) -> GeneratedImage:
+        return GeneratedImage(data=b"\x89PNG", suffix=".png")
+
+    def _publish(path: Path, write: Callable[[Path], None]) -> None:
+        held_while_writing[path.stem] = set(illustrator.claims.held)
+        publish(path, write)
+
+    monkeypatch.setattr(Illustrator, "_generate", _generate)
+    monkeypatch.setattr("aidm.app.media.publish", _publish)
+    illustrator = _illustrator(tmp_path / "save.media")
+
+    await illustrator.illustrate(scene, player, NARRATION)
+
+    assert f"icon:{player.id}" in held_while_writing[player.id]
+    assert illustrator.claims.held == set()
 
 
 async def test_a_reply_holding_unreadable_base64_leaves_illustrate_quiet(

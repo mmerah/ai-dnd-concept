@@ -1,5 +1,6 @@
 import binascii
 import logging
+from asyncio import to_thread
 from base64 import b64decode, b64encode
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -95,7 +96,8 @@ class Illustrator:
             SCENE_RATIO,
             tuple(icons.values()),
         )
-        publish(
+        await to_thread(
+            publish,
             self.saves / f"{key}{generated.suffix}",
             lambda staged: staged.write_bytes(generated.data),
         )
@@ -110,18 +112,17 @@ class Illustrator:
             if not drawing:
                 return None
             generated = await self._generate(_icon_request(subject, self.style), ICON_RATIO)
-        # Authored directories stay authored: a drawn icon is the save's own.
-        path = self.saves / ICON_DIR / f"{subject.id}{generated.suffix}"
-        publish(path, lambda staged: staged.write_bytes(generated.data))
-        return path
+            # Authored directories stay authored: a drawn icon is the save's own.
+            path = self.saves / ICON_DIR / f"{subject.id}{generated.suffix}"
+            await to_thread(publish, path, lambda staged: staged.write_bytes(generated.data))
+            return path
 
     async def _generate(
         self, prompt: str, ratio: str, references: Sequence[Path] = ()
     ) -> GeneratedImage:
         parts: list[JsonValue] = [{"type": "text", "text": prompt}]
-        parts.extend(
-            {"type": "image_url", "image_url": {"url": _data_uri(path)}} for path in references
-        )
+        uris = await to_thread(lambda: [_data_uri(path) for path in references])
+        parts.extend({"type": "image_url", "image_url": {"url": uri}} for uri in uris)
         content = await post_bearer(
             self.provider,
             "/chat/completions",
