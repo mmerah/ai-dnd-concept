@@ -1,4 +1,5 @@
 import json
+import re
 from asyncio import CancelledError, Event, create_task, sleep
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,6 +31,8 @@ from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.world import BreathlessGame
 from aidm.engines.loner3e.world import Loner3eCast
+
+IN_FLIGHT = re.escape("A turn is in flight in 'whispering-vault--kael'.")
 
 
 class _UnsavableStore(FileStore):
@@ -465,7 +468,8 @@ async def test_a_page_holding_an_evicted_session_is_refused(tmp_path: Path) -> N
 
     await runtime.reload_settings()
 
-    with pytest.raises(Refusal, match="The settings changed. Reload this page before you play on."):
+    reloaded = re.escape("The settings changed. Reload this page before you play on.")
+    with pytest.raises(Refusal, match=reloaded):
         await runtime.play(game, Answer(text="I wait."))
 
 
@@ -476,7 +480,7 @@ async def test_a_reload_under_a_turn_in_flight_is_refused(tmp_path: Path) -> Non
     game = runtime.session(TARGET)
 
     async with runtime.admit(game):
-        with pytest.raises(Refusal, match="A turn is in flight in 'whispering-vault--kael'."):
+        with pytest.raises(Refusal, match=IN_FLIGHT):
             await runtime.reload_settings()
 
 
@@ -513,7 +517,7 @@ async def test_two_concurrent_plays_on_different_sessions_cannot_both_open_a_tur
     first_play = create_task(runtime.play(first, Answer(text="I wait.")))
     await sleep(0)
 
-    with pytest.raises(Refusal, match="A turn is in flight in 'whispering-vault--kael'."):
+    with pytest.raises(Refusal, match=IN_FLIGHT):
         await runtime.play(second, Answer(text="I wait."))
 
     gate.set()

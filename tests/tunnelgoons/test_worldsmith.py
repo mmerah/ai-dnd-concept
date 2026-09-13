@@ -26,8 +26,7 @@ THIN = MapDraft[Npc](
 
 def _tunnelgoons_game() -> TunnelGoonsGame:
     _, state = game(TUNNELGOONS)
-    state = narrowed(state, TunnelGoonsGame)
-    return state
+    return narrowed(state, TunnelGoonsGame)
 
 
 def _region() -> MapDraft[Npc]:

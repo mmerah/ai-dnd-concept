@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -53,5 +54,5 @@ def test_whole_text_refuses_a_pdf_that_is_not_readable(tmp_path: Path) -> None:
 def test_whole_text_refuses_a_document_it_cannot_open_naming_it(tmp_path: Path) -> None:
     unreadable = tmp_path / "unreadable.md"
     unreadable.mkdir()
-    with pytest.raises(Refusal, match="unreadable.md cannot be read"):
+    with pytest.raises(Refusal, match=re.escape("unreadable.md cannot be read")):
         _ = whole_text(unreadable, MAX_CHARS)

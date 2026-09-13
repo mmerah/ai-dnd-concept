@@ -137,21 +137,23 @@ def _saved_games(catalog: LauncherCatalog) -> None:
 
 
 def _saved_card(saved: SaveOption) -> None:
-    with ui.card().classes("w-full"):
-        with ui.row().classes("w-full items-center").style("gap: 1rem"):
-            with ui.column().classes("col").style("gap: 0.25rem"):
-                ui.label(saved.scenario_label).classes("text-h6 game-title")
-                ui.label(
-                    f"{saved.character_label} · turn {saved.turn}"
-                    + (f" · {saved.where}" if saved.where else "")
-                ).classes("text-sm opacity-70")
-                with ui.row().style("gap: 0.5rem"):
-                    ui.badge(saved.rules)
-            ui.button(
-                "Resume",
-                icon="play_arrow",
-                on_click=partial(_open_game, saved.target),
-            ).props("color=primary").classes("col-12 col-sm-auto")
+    with (
+        ui.card().classes("w-full"),
+        ui.row().classes("w-full items-center").style("gap: 1rem"),
+    ):
+        with ui.column().classes("col").style("gap: 0.25rem"):
+            ui.label(saved.scenario_label).classes("text-h6 game-title")
+            ui.label(
+                f"{saved.character_label} · turn {saved.turn}"
+                + (f" · {saved.where}" if saved.where else "")
+            ).classes("text-sm opacity-70")
+            with ui.row().style("gap: 0.5rem"):
+                ui.badge(saved.rules)
+        ui.button(
+            "Resume",
+            icon="play_arrow",
+            on_click=partial(_open_game, saved.target),
+        ).props("color=primary").classes("col-12 col-sm-auto")
 
 
 def _open_game(target: LaunchTarget) -> None:
@@ -162,13 +164,13 @@ def _open_game(target: LaunchTarget) -> None:
 def _refused_page(message: str) -> None:
     with page_header("AI Dungeon Master"):
         pass
-    with page_body():
-        with ui.card().classes("w-full"):
-            with ui.column().classes("items-center").style("gap: 1rem"):
-                ui.label(message).classes("text-body1")
-                ui.button("Home", icon="home", on_click=lambda: ui.navigate.to("/")).props(
-                    "color=primary"
-                )
+    with (
+        page_body(),
+        ui.card().classes("w-full"),
+        ui.column().classes("items-center").style("gap: 1rem"),
+    ):
+        ui.label(message).classes("text-body1")
+        ui.button("Home", icon="home", on_click=lambda: ui.navigate.to("/")).props("color=primary")
 
 
 def _register_pages(runtime: Runtime) -> None:

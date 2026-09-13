@@ -82,7 +82,7 @@ def body(s: Session) -> None:
     text = clean(page.inner_text("body"))
     s.check("the game is waiting on you" in text, "decision panel missing on a conflict")
     s.check(
-        "The game is waiting on your answer." == placeholder(page),
+        placeholder(page) == "The game is waiting on your answer.",
         f"conflict placeholder: {placeholder(page)!r}",
     )
     s.check(not composer(page).is_disabled(), "composer disabled on a text decision")
@@ -102,7 +102,7 @@ def body(s: Session) -> None:
     # 4. Refused master calls do not kill the turn; the refusal reaches the log.
     submit(
         page,
-        "I do something the rules refuse.\n!reveal entity_id=nowhere\n!reveal entity_id=elena",  # noqa: E501
+        "I do something the rules refuse.\n!reveal entity_id=nowhere\n!reveal entity_id=elena",
     )
     wait_idle(page)
     last = log()[-2]

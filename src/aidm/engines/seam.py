@@ -157,7 +157,7 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
 
     def admit(self, _packs: PackSelection | None, _character: AnyCharacter) -> None:
         """Refuse a character these packs cannot start; the seam admits anyone."""
-        return None
+        return
 
     def preview_character(self, character: AnyCharacter) -> Rows:
         return self.player_of(character).rows()

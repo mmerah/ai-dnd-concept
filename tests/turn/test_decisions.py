@@ -208,5 +208,4 @@ def _pending(state: AnyGame, decision: PendingDecision = DECISION) -> Loner3eGam
 
 
 def _loner(state: AnyGame) -> Loner3eGame:
-    state = narrowed(state, Loner3eGame)
-    return state
+    return narrowed(state, Loner3eGame)

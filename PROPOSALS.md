@@ -12,14 +12,16 @@ a clone scan. Every factual claim was re-verified against the running code.
 
 **Ranked by lines removed, as asked.** Part 1 deletes code. Part 2 is the three reorganisations
 that *cost* lines and buy reviewer-legibility instead — kept, ranked last, and labelled honestly so
-you can refuse them on that basis alone.
+you can refuse them on that basis alone. Part 3 is what has already landed.
 
-**All fifteen are settled.** Every decision is recorded on its proposal.
+**All sixteen are settled**, and 16 has already landed. Every decision is recorded on its
+proposal.
 
 | | Net `src` LOC |
 |---|---|
 | Part 1 (1-12) — deletions | **−167** |
 | Part 2 (13-15) — 13 as option C, 14 as option B, 15 in full | **+29** |
+| Part 3 (16) — the ruff ruleset, **landed** | **0** |
 | **Net** | **−138** |
 
 LOC figures are estimates from the actual blocks, ±20%.
@@ -46,6 +48,7 @@ one commit. Phases 1-2 touch no player-visible text, so they land first and de-r
 
 | Phase | Proposals | Net LOC | Goldens | Est. |
 |---|---|---|---|---|
+| **0 — ruff ruleset** | 16 | **0** | none move | **done** |
 | **1 — deletions** | 1 (sweep), 3, 4, 5, 6, 12 | **−93** | none move | 2.5 h |
 | **2 — engines, schema-adjacent** | 2, 9 | **−25** | must stay **byte-identical** — that is the test | 1.5 h |
 | **3 — visible text** | 10, 11 | **−11** | 5 test files assert old strings | 1 h |
@@ -548,76 +551,39 @@ because `live_turn` refreshes unconditionally.
 
 ---
 
-# Also found, ranked out
+# Part 3 — landed
 
-Promote any of these and I will fold it in. None of them removes more than a handful of lines.
+## 16. Widen the ruff rule set — **DONE** — net 0 lines in `src`
 
-- **Six methods never touch `self`** — the sharpest pair in one file: `twentyfourxx/world.py:245`
-  `TwentyfourxxWorld._break` mutates a `Crewmate`'s sheet and a `Gear` and lives on neither, while
-  its mirror `Crewmate.repair_item` (`:132`) does the same job the right way 113 lines above. Also
-  `loner3e/world.py:163 strike`, `:176 check_conflict`, `breathless/engine.py:297 _pool`,
-  `loner3e/engine.py:170 _meanings`. CLAUDE.md is explicit about this. *±0 lines, 40 min.*
-- **Property-vs-method.** CLAUDE.md: *"A property takes no argument, has no side effect and reads
-  its own fields."* `base.py:58` `Thing.tag` and `:62` `Thing.headline` are **properties literally
-  implemented as** `self.subject().tag` — where `subject()` (`:103`) is a **method** meeting the
-  same definition. Also `Game.exchanges()`, `Thing.rows()`, `Sheeted.carried()`,
-  `Person.forbidden()`, `Item.notes()`, `World.sheet_rows()`. Cheapest honest fix: one line on
-  `Thing` saying hooks stay methods. *−0 to −8 lines depending on scope.*
-- **Bare dice numbers.** LONER 3E names its die once (`DIE_FACE`) and uses it in the tool, the roll
-  and the pack validator. Nobody else does: bare `6` twice in `twentyfourxx/engine.py:476,492`,
-  `roll((12,), ...)` in `breathless/engine.py:252` (whose `12` is silently coupled to a
-  `min_length=12` in `breathless/worldsmith.py:31`), `if worn == 4` in `breathless/world.py:137`,
-  `granted >= 10` twice, `roll((6, 6), ...)` in `tunnelgoons/engine.py:180`, and `"Hull armor"`
-  repeated 162 lines from `SHIP_FUNCTIONS`. Three tool descriptions also retype a constant's value
-  in the text the model reads — a drift that becomes a play bug, not a lint. *+8 lines.*
-- **Widen the ruff rule set.** `pyproject.toml:55` selects `E, F, I, UP, B, TID252, N, ARG`. Adding
-  `SIM, RUF, C4, RET, PERF` catches exactly the drift this report is full of, automatically, for
-  free from here on; `FBT` has at least one real hit (`ui/widgets.py:22`
-  `page_header(title, badge=None, home=True, *, look=None)` takes a positional bool while every
-  other boolean in `src` is keyword-only). A reviewer opens `pyproject.toml` before any source
-  file. *Removes lines wherever it fires. ~1 h.*
-- **Split `app/spawn.py`.** 311 lines holding five jobs. `run_cli`'s docstring says *"The only
-  thing in the codebase that starts a process"* — yet half the file never touches one, and
-  `app/builtin.py:10` imports `final_message` from a module called `spawn` while running an HTTP
-  loop. *+25 lines.*
-- **`app/mcp.py:9` imports `Runtime`** to use two of its members, while `app/spawn.py:130` already
-  declares the `Tools` protocol describing exactly that, which `Runtime` satisfies structurally.
-  *−1 line.*
-- **`(widget.value or "").strip()` — 12 times** across `ui/game.py:442,471,484` and
-  `ui/create.py:123,129,147,151,267,268,269,279,280`. One `def typed(field) -> str` in
-  `ui/widgets.py`. *−6 lines.*
-- **`Look.palette` is mutable in fact.** `core/views.py:141` types it `Mapping[str, str]`; pydantic
-  coerces it to a plain `dict` and I confirmed `Look(...).palette["x"] = "y"` succeeds on the built
-  model — inside a `Frozen` value model. It is also the only `Mapping[...]` field on any model in
-  `src`. Making it `Rows` costs ~30 lines of reshaped engine literals, which is why it is here and
-  not in the sweep. *+30 lines.*
-- **LONER 3E's `Roll.actor_id` is required and non-null** (`loner3e/tools.py:61`) while the other
-  three engines spell it `actor_id: Slug | None = Field(default=None, description=ACTOR)`. The rule
-  genuinely differs (LONER hires nobody), but the field name should not pretend otherwise — its
-  three sibling tools already use `entity_id`. *±0 lines, regenerates one golden.*
-- **`SceneDraft`/`NextDraft` live in `scenes/tools.py`**, so `scenes/world.py:17` imports its own
-  world shape from the *tools* module. Rooms keeps the equivalent `MapDraft` in `rooms/world.py`.
-  *±0 lines, 13 files touched.*
-- **`tunnelgoons/worldsmith.py:25` `AbilitiesDraft` has no docstring**, while breathless and 24XX
-  both name theirs `SheetDraft` *with* one. `schema_of` keeps `description`, so tunnel goons hands
-  the worldsmith one line less than the other two for the same job. *+2 lines.*
-- **`breathless/engine.py:161,168` render an item's die by hand** although `Supply.notes()`
-  (`world.py:34`) returns exactly that, and `world.py:183` uses it correctly. *−2 lines.*
-- **`PendingDecision` is built in the engine three times of five** (`loner3e/engine.py:233`,
-  `breathless/engine.py:286`, `twentyfourxx/engine.py:349`) and in the world/entity twice
-  (`tunnelgoons/world.py:61`, `loner3e/world.py:156`). A pending decision is a view, not a fact.
-- **Three deep-copy spellings** for pydantic models in one layer: `deepcopy(x)` (`seam.py:301`,
-  `model.py:122`) and `x.model_copy(deep=True)` (`scenes/engine.py:138`).
-- **`tunnelgoons/world.py:47`** defines the method `level(ability, boost)` beside the field
-  `GoonSheet.level: int` its own body increments, while the tool, the engine method, the option
-  builder and the decision builder are all `level_*`. Rename to `level_up`.
-- **`Game.generation`** (`core/model.py:109`) is `Field(default=None, exclude=True)` — a pending
-  worldsmith request is silently dropped from every save, with no comment.
-- **`twentyfourxx/world.py:289`** uses `.tag` for the player in a trace where every other engine
-  uses `.mention`; **`:232`** keys a dict by `id(item)` with no line saying why. **`runtime.py:318`**
-  calls `LOGGER.exception(..., exc_info=failed)` outside an `except`. **`ui/create.py:284`** relies
-  on `or` binding tighter than a ternary. **`ui/game.py`** has five bare timer floats, two of them
-  a different `0.1`.
+**Was.** `pyproject.toml:55` selected `E, F, I, UP, B, TID252, N, ARG`.
+
+**Now.** `+ SIM, RUF, C4, RET, PERF, FBT`. Twenty-three findings, all fixed — no `noqa`, no
+comments added to the code:
+
+| Rule | Where | Fix |
+|---|---|---|
+| `PERF401` ×3 | `builtin.py:89`, `twentyfourxx/engine.py:168,174` | `for … : list.append(…)` → `list.extend(… for …)` |
+| `SIM117` ×2 | `ui/app.py:140,165` | three and four nested `with`s → one parenthesised `with` |
+| `SIM105` | `spawn.py:308` | `try/except ProcessLookupError: pass` → `contextlib.suppress` |
+| `SIM102` | `twentyfourxx/engine.py:404` | nested `if` → one `and` chain; the walrus was redundant |
+| `FBT001/002` | `ui/widgets.py:23` | `page_header(…, home: bool = True, *, …)` → `home` moved behind the `*`. Exactly the hit predicted when this rule was proposed |
+| `FBT001` | `ui/game.py:562` | `_scroll(self, follow: bool)` → keyword-only |
+| `FBT003` | `ui/theme.py:40` | `ui.dark_mode(True)` → `ui.dark_mode(value=True)` |
+| `RET501` | `seam.py:160` | `return None` → `return`. The explicit `None` was load-bearing against `B027` (empty method in an ABC); a bare `return` satisfies both |
+| `RUF043` ×5, `RET504` ×2, `SIM300`, `RUF100` | `tests/`, `qa/` | `re.escape` on `pytest.raises(match=)` patterns carrying `.`; dropped two pointless locals; un-Yoda'd one comparison; removed a `noqa` that no longer applied |
+
+**Two config decisions, both recorded in `pyproject.toml`:**
+
+- `per-file-ignores` for `"qa/*" = ["FBT"]` — `drive.py`'s `check(condition, message)` is the
+  `assert cond, msg` shape across 142 call sites, which is the known `FBT` false positive, not a
+  boolean trap.
+- `PROPOSALS.md` added to `extend-exclude` — ruff 0.16 formats Python inside markdown fences, and
+  this file's snippets are deliberately-indented class-body fragments. `.agents` was already
+  excluded for the same reason.
+
+**Result.** All four gates green: `ruff check`, `ruff format --check`, `basedpyright` (0 errors),
+`pytest` (655 passed). `src` is net 0 lines — every fix traded a line for a line. The value is
+that the next drift of this kind is caught by CI instead of by a review.
 
 ---
 

@@ -62,7 +62,7 @@ class Session:
         self.counter += 1
         page.screenshot(path=str(self.shots / f"{self.counter:03d}-{name}.png"), full_page=False)
 
-    def check(self, condition: bool, message: str) -> bool:
+    def check(self, condition: bool, message: str, /) -> bool:
         if not condition:
             self.issues.append(message)
             print("ISSUE:", message)

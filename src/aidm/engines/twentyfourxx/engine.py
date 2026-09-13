@@ -165,21 +165,21 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         origin = option_of(origins, picked(picks, "origin"))
         if origin is None:
             return tuple(steps)
-        for number in range(1, origin.invents + 1):
-            steps.append(
-                CreationStep(id=f"trait-{number}", label=f"Trait {number}", hint=origin.detail)
-            )
+        steps.extend(
+            CreationStep(id=f"trait-{number}", label=f"Trait {number}", hint=origin.detail)
+            for number in range(1, origin.invents + 1)
+        )
         if origin.choice:
             steps.append(CreationStep(id="body", label="Body", options=origin.choice))
-        for number in range(1, origin.increases + 1):
-            steps.append(
-                CreationStep(
-                    id=f"increase-{number}",
-                    label="Skill increase",
-                    options=skills,
-                    allows_text=True,
-                )
+        steps.extend(
+            CreationStep(
+                id=f"increase-{number}",
+                label="Skill increase",
+                options=skills,
+                allows_text=True,
             )
+            for number in range(1, origin.increases + 1)
+        )
         return tuple(steps)
 
     def create_character(self, name: str, brief: str, picks: Picks) -> TwentyfourxxCharacter:
@@ -401,9 +401,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         claims: list[tuple[Crewmate, Slug, str]] = []
         if (item_id := args.defend_with) is not None:
             claims.append((actor, item_id, args.hindrance))
-        if helper is not None and helper_args is not None:
-            if (helper_item_id := helper_args.defend_with) is not None:
-                claims.append((helper, helper_item_id, helper_args.hindrance))
+        if helper is not None and helper_args is not None and helper_args.defend_with is not None:
+            claims.append((helper, helper_args.defend_with, helper_args.hindrance))
         world.check_defenses(claims)
 
         label = "+".join(f"d{face}" for face in pool.faces)
