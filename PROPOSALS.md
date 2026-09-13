@@ -9,6 +9,14 @@ Baseline: `src` 10,239 lines, `tests` 10,757 lines, golden fixtures 3,858 lines,
 Total on offer: **about −1,300 fixture lines and −1,050 to −1,270 Python lines, with no feature
 lost.** Every proposal marked DECISION needs one word from you before it can be planned.
 
+## Decisions taken
+
+| Proposal | Decision |
+| --- | --- |
+| 1 — goldens store derived text | **Accepted, option (a)**: full substitution, markers for both the rules splice and the schema tail. |
+| 3 — no pytest fixtures | **Accepted.** |
+| 7 — golden-turn dynamic import | **Accepted.** |
+
 ---
 
 ## 1. The goldens store text the code under test did not write
