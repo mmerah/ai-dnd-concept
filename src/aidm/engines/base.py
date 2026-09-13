@@ -15,6 +15,8 @@ REVEAL = "A hidden entity here becomes known to the player."
 KILL = "Someone here dies."
 JOIN_PARTY = "A character here starts travelling with the player."
 LEAVE_PARTY = "A party member stops travelling with the player."
+ACTOR = "Exact id of a hired party member here who acts. Null for the player."
+DROP_ITEM = "The actor loses an item for good."
 UNKNOWN_ID = "unknown id {entity_id!r}. Use only the ids you were shown."
 IS_DEAD = "{name} is dead and takes no further part."
 
@@ -270,8 +272,6 @@ class World[M: Person, P: Person](Mutable):
 
 
 class Attempt(Frozen):
-    """An attempt at something uncertain."""
-
     what: str = Field(
         min_length=1,
         description="The attempt, in a few words the player reads.",
@@ -292,6 +292,11 @@ class JoinParty(Frozen):
 
 class LeaveParty(Frozen):
     entity_id: Slug = Field(description="Exact id of the party member leaving.")
+
+
+class DropItem(Frozen):
+    item_id: Slug = Field(description="Exact id of an item the actor carries.")
+    actor_id: Slug | None = Field(default=None, description=ACTOR)
 
 
 def character_panel(rows: Rows) -> Panel:
@@ -337,7 +342,7 @@ def check_filing(pool: Mapping[Slug, Thing]) -> None:
 
 
 def banded(face: int, low: str, mid: str, high: str) -> str:
-    """The three bands of a six-sided read: 1 to 2, 3 to 4, 5 and up."""
+    """Three bands, whatever the die: 1 to 2, 3 to 4, 5 and up."""
     return low if face <= 2 else mid if face <= 4 else high
 
 

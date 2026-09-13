@@ -3,7 +3,7 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import Frozen, Refusal, Slug
+from aidm.core.entities import Frozen, Refusal, Slug, check_unique
 from aidm.core.play import (
     DecisionOption,
     Interjection,
@@ -57,7 +57,7 @@ class NarratorView(Frozen):
     """The Narrator's input type: it has no field that can hold hidden canon."""
 
     # The place, as the art cache names it: two scenes in one place share one picture.
-    place: str
+    place: Slug
     title: str
     focus: str
     situation: str
@@ -75,8 +75,7 @@ class NarratorView(Frozen):
             raise ValueError(f"speakers who are not subjects: {strangers}")
         if party_strangers := sorted(set(self.party) - here):
             raise ValueError(f"party members who are not subjects: {party_strangers}")
-        if len(set(self.party)) != len(self.party):
-            raise ValueError("the party repeats an id")
+        check_unique("party members", self.party)
         return self
 
     def others(self) -> tuple[Subject, ...]:

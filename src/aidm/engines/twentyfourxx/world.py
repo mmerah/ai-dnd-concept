@@ -118,7 +118,7 @@ class Crewmate(Sheeted[CrewSheet]):
             parts.append(f"Recovered: {', '.join(lost)}")
         card = " / ".join(parts)
         trace = f"{self.mention} — {card}"
-        return [self.fact(trace, card=card)]
+        return [self.fact(trace, card=self.card_line(card))]
 
     def gain_item(self, name: str, *, bulky: bool, breaks: int, cost: int) -> list[Fact]:
         self.pay(cost)
@@ -127,7 +127,7 @@ class Crewmate(Sheeted[CrewSheet]):
         suffix = f" (₡{cost})" if cost > 0 else ""
         card = f"Gained {name}{suffix}"
         trace = f"{self.mention} gains {name}{suffix}"
-        return [self.fact(trace, card=card)]
+        return [self.fact(trace, card=self.card_line(card))]
 
     def repair_item(self, item: Gear, cost: int) -> list[Fact]:
         if item.broken_times == 0:
@@ -135,19 +135,19 @@ class Crewmate(Sheeted[CrewSheet]):
         self.pay(cost)
         item.broken_times = 0
         trace = f"{self.mention} repairs {item.name}"
-        return [self.fact(trace, card=f"Repaired {item.name}")]
+        return [self.fact(trace, card=self.card_line(f"Repaired {item.name}"))]
 
     def spend(self, amount: int, why: str) -> list[Fact]:
         self.pay(amount)
         trace = f"{self.mention} spends ₡{amount} — {why}"
-        return [self.fact(trace, card=f"₡{amount} spent — {why}")]
+        return [self.fact(trace, card=self.card_line(f"₡{amount} spent — {why}"))]
 
     def maim(self) -> list[Fact]:
         sheet = self.require_sheet()
         if MAIMED in sheet.hindrances:
             return []
         sheet.hindrances.append(MAIMED)
-        return [self.fact(f"{self.mention} is maimed", card="Maimed")]
+        return [self.fact(f"{self.mention} is maimed", card=self.card_line("Maimed"))]
 
     def raise_skill(self, label: str) -> list[Fact]:
         sheet = self.require_sheet()
@@ -159,7 +159,7 @@ class Crewmate(Sheeted[CrewSheet]):
             ) from maxed
         sheet.skills[label] = new_die
         trace = f"{self.mention} — {label} rises to d{new_die}"
-        return [self.fact(trace, card=f"Job done: {label} d{new_die}")]
+        return [self.fact(trace, card=self.card_line(f"Job done: {label} d{new_die}"))]
 
     def earn(self, credits: int, event: DiceEvent) -> list[Fact]:
         sheet = self.require_sheet()
@@ -167,7 +167,7 @@ class Crewmate(Sheeted[CrewSheet]):
         return [
             self.fact(
                 f"{self.mention} earns ₡{credits} → ₡{sheet.credits}",
-                card=f"+₡{credits} → ₡{sheet.credits}",
+                card=self.card_line(f"+₡{credits} → ₡{sheet.credits}"),
                 dice=(event,),
             )
         ]

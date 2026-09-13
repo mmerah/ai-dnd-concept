@@ -125,6 +125,8 @@ class SceneWorld[C: Person](World[C, C]):
             yield self.cast[entity_id]
 
     def require_member_here(self, entity_id: Slug) -> C:
+        if entity_id == self.player.id:
+            raise Refusal("the player is not a party member")
         return self.require_living_here(entity_id)
 
     def others(self) -> Iterator[C]:

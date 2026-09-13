@@ -3,7 +3,7 @@ from pathlib import Path
 
 from nicegui import ui
 
-from aidm.core.io import read_prompt
+from aidm.core.io import read_cached_text
 from aidm.core.views import Look
 
 type Palette = Mapping[str, str]
@@ -67,5 +67,5 @@ def install() -> None:
     ui.add_head_html(FONT_LINK, shared=True)
     # A layer before Quasar's own outranks it; `:root` keeps the first paint dark before `body`.
     root = "".join(f"--{key}: {value};" for key, value in NEUTRAL_PALETTE.items())
-    css = read_prompt(Path(__file__).parent / "theme.css")
+    css = read_cached_text(Path(__file__).parent / "theme.css")
     ui.add_css(f":root {{{root}}}@layer overrides {{{css}}}", shared=True)

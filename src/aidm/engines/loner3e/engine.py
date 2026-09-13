@@ -1,6 +1,8 @@
 from pathlib import Path
 from random import Random
 
+from pydantic import JsonValue
+
 from aidm.core.creation import (
     CreationStep,
     Picks,
@@ -155,28 +157,29 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         return Loner3eCharacter(id=slug(name, ()), engine=self.id, packs=packs, payload=sheet)
 
     def guidance(self, selection: PackSelection | None) -> str:
-        """Defaults restate rules the guidance already carries; dropping them halves the prompt."""
-        chosen = self.selected(selection)
-        return f"{AUTHORING}\n\n{self.pack_content(chosen, exclude_defaults=True)}"
+        chosen = self.packs.require(selection)
+        return f"{AUTHORING}\n\n{self.packs.content(chosen, _revised)}"
 
     def glossary(self, state: Loner3eGame) -> Sections:
-        packs = self.selected_packs(state)
+        packs = self.packs.chosen(state.packs)
+        # The concept's pack blurb is generic where the entity's own brief is not: skip it.
+        entries = tuple(
+            entry for pack in packs for entry in (*pack.skills, *pack.frailties, *pack.gear)
+        )
         spelled: dict[str, str] = {}
         for member in self.world_of(state).here():
-            spelled.update(self._meanings(packs, member))
+            spelled.update(
+                pack_meanings(
+                    entries,
+                    (*member.tagged("skill"), *member.tagged("frailty"), *member.tagged("gear")),
+                )
+            )
         lines = "\n".join(f"- {tag}: {detail}" for tag, detail in spelled.items())
         return (("WHAT THE TAGS IN PLAY MEAN", lines),) if spelled else ()
 
-    def _meanings(self, packs: tuple[Pack, ...], sheet: Loner3eCast) -> Rows:
-        # The concept's pack blurb is generic where the entity's own brief is not: skip it.
-        return pack_meanings(
-            tuple(entry for pack in packs for entry in (*pack.skills, *pack.frailties, *pack.gear)),
-            (*sheet.tagged("skill"), *sheet.tagged("frailty"), *sheet.tagged("gear")),
-        )
-
     def twist_table(self) -> Rows:
         """Always the SRD's own table: no other pack publishes one."""
-        srd = self.srd_pack()
+        srd = self.packs.srd()
         if srd.twist_subjects is None or srd.twist_actions is None:
             raise ValueError("the SRD table set has no twist columns")
         return tuple(zip(srd.twist_subjects, srd.twist_actions, strict=True))
@@ -275,3 +278,8 @@ def _absorbed(exchange: list[Fact]) -> tuple[list[Fact], tuple[str, ...]]:
     """The exchange reads as lines inside the Oracle card, so it shows no cards of its own."""
     lines = tuple(fact.card for fact in exchange if fact.told and fact.card)
     return [fact.model_copy(update={"card": ""}) for fact in exchange], lines
+
+
+def _revised(pack: Pack) -> JsonValue:
+    """Defaults restate rules the guidance already carries; dropping them halves the prompt."""
+    return pack.model_dump(mode="json", exclude_defaults=True)

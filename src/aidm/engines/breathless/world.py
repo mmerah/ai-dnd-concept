@@ -8,7 +8,7 @@ from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import PendingOption
 from aidm.core.views import Rows
-from aidm.engines.base import PLAYER_ID, Gauge, Item, ItemSheet, Sheeted
+from aidm.engines.base import Gauge, Item, ItemSheet, Sheeted
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 
@@ -126,7 +126,7 @@ class Survivor(Sheeted[SurvivorSheet]):
         sheet.med_kit = False
         facts = self.change(sheet.stress, -MED_KIT_CLEARS, "Stress", "the med kit")
         used = f"{self.name} uses the med kit"
-        facts.append(self.fact(used, card="Med kit used"))
+        facts.append(self.fact(used, card=self.card_line("Med kit used")))
         return facts
 
     def wear_item(self, item_id: Slug) -> list[Fact]:
@@ -147,14 +147,10 @@ class Survivor(Sheeted[SurvivorSheet]):
         sheet.loot = LOOT_START
         sheet.stunted = False
         trace = f"{self.mention} catches their breath: skills and loot die restored"
-        card = (
-            "Caught breath — skills and loot die restored"
-            if self.id == PLAYER_ID
-            else f"{self.name} caught breath — skills and loot die restored"
-        )
+        card = self.card_line("Caught breath — skills and loot die restored")
         return [self.fact(trace, card=card)]
 
-    def take_loot(self, item: str, granted: Die, choice: str) -> Fact:
+    def take_loot(self, item: str, granted: Die, choice: str) -> list[Fact]:
         sheet = self.require_sheet()
         if choice == "take":
             if len(sheet.items) >= CARRY:
@@ -174,7 +170,7 @@ class Survivor(Sheeted[SurvivorSheet]):
             card = f"Swapped {old.name} for {item} (d{granted})"
         else:
             raise Refusal(f"{choice!r} is not a valid loot choice")
-        return self.fact(card, card=card)
+        return [self.fact(card, card=card)]
 
     def carried(self) -> str:
         if self.sheet is None:

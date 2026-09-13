@@ -26,11 +26,7 @@ type Check[T] = Callable[[T], None]
 class ScenarioMeta(Frozen):
     title: str
     premise: str
-    scope: str = Field(
-        min_length=1,
-        description="How far this adventure reaches, how its consequences develop, and whether "
-        "it tends toward an ending or toward continuing concerns; guidance, not a rule.",
-    )
+    scope: str = Field(min_length=1)
     art_style: str = ""  # empty: the engine's own
     voice: str = ""  # empty: the settings' narrator voice
 

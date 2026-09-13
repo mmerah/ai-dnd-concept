@@ -625,7 +625,7 @@ def test_finish_job_raises_the_whole_crew_and_pays_each_a_d6() -> None:
     assert player.require_sheet().skills["Stealth"] == 12
     assert member.require_sheet().skills["Shooting"] == 10
     assert member.require_sheet().credits > before_member_credits
-    assert any(fact.card == "Job done: Shooting d10" for fact in facts)
+    assert any(fact.card == "Kestrel: Job done: Shooting d10" for fact in facts)
 
 
 def test_android_case_is_an_item_on_creation_and_defend_breaks_it_harmlessly() -> None:

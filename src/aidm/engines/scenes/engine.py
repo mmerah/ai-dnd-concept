@@ -1,4 +1,3 @@
-import json
 from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -29,7 +28,7 @@ from aidm.engines.base import (
     party_section,
     trail_panel,
 )
-from aidm.engines.scenes.packs import SRD_PACK, ScenePack, read_packs
+from aidm.engines.scenes.packs import SRD_PACK, PackSet, ScenePack, read_packs
 from aidm.engines.scenes.tools import (
     ENTER,
     LEAVE,
@@ -84,13 +83,11 @@ MOVING_ON = (
 class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
     pack: type[K]
     world: type[SceneWorld[C]]
-    packs: dict[Slug, K]
+    packs: PackSet[K]
     family_dir = Path(__file__).parent
 
     def __init__(self) -> None:
-        self.packs = read_packs(self.directory / "packs", self.pack)
-        if SRD_PACK not in self.packs:
-            raise ValueError(f"the {self.id!r} engine ships no {SRD_PACK!r} pack")
+        self.packs = read_packs(self.id, self.directory / "packs", self.pack)
         super().__init__()
 
     def world_of(self, state: G) -> SceneWorld[C]:
@@ -98,33 +95,24 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
 
     def supplement_options(self) -> tuple[DecisionOption, ...]:
         return tuple(
-            DecisionOption(id=key, label=pack.name)
-            for key, pack in self.packs.items()
-            if key != SRD_PACK
+            DecisionOption(id=key, label=pack.name) for key, pack in self.packs.supplements()
         )
 
     def select_packs(self, supplements: Sequence[Slug]) -> PackSelection:
-        return self.select(parse(PackSelection, {"ids": (SRD_PACK, *supplements)}))
+        return self.packs.select(parse(PackSelection, {"ids": (SRD_PACK, *supplements)}))
 
     def validate(self, state: G) -> None:
         super().validate(state)
-        self.select(self.selected(state.packs))
-
-    def selected(self, packs: PackSelection | None) -> PackSelection:
-        if packs is None:
-            raise Refusal(f"a {self.id!r} game needs a table set")
-        return packs
-
-    def selected_packs(self, state: G) -> tuple[K, ...]:
-        return tuple(self.packs[pack_id] for pack_id in self.selected(state.packs).ids)
+        self.packs.select(self.packs.require(state.packs))
 
     def chosen_packs(self, picks: Picks) -> tuple[K, ...]:
         """An uninstalled id is skipped: the page calls this on every change and cannot raise."""
         wanted = (SRD_PACK, *picked_many(picks, SUPPLEMENTS))
-        return tuple(self.packs[pack_id] for pack_id in wanted if pack_id in self.packs)
+        installed = self.packs.installed
+        return tuple(installed[pack_id] for pack_id in wanted if pack_id in installed)
 
     def admit(self, packs: PackSelection | None, character: AnyCharacter) -> None:
-        selection = self.selected(packs)
+        selection = self.packs.require(packs)
         if character.packs is None:
             raise Refusal(f"{character.id!r} was made with no table set")
         if not set(character.packs.ids) <= set(selection.ids):
@@ -249,37 +237,6 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
             ),
         )
 
-    def srd_pack(self) -> K:
-        return self.packs[SRD_PACK]
-
-    def pack_content(
-        self,
-        selection: PackSelection,
-        *,
-        include: set[str] | None = None,
-        exclude_defaults: bool = False,
-    ) -> str:
-        selected = {
-            pack_id: self.packs[pack_id].model_dump(
-                mode="json", include=include, exclude_defaults=exclude_defaults
-            )
-            for pack_id in selection.ids
-        }
-        return f"SELECTED PACK CONTENT\n{json.dumps(selected)}"
-
-    def select(self, selection: PackSelection) -> PackSelection:
-        if missing := sorted(set(selection.ids) - set(self.packs)):
-            raise Refusal(f"packs not installed for {self.id!r}: {missing}")
-        if SRD_PACK not in selection.ids:
-            raise Refusal(f"a {self.id!r} game plays the {SRD_PACK!r} tables")
-        defined: dict[Slug, Slug] = {}
-        for pack_id in selection.ids:
-            ids = set(self.packs[pack_id].defined_ids())
-            if shared := sorted(ids & defined.keys()):
-                raise Refusal(f"{pack_id!r} and {defined[shared[0]]!r} both define {shared[0]!r}")
-            defined.update(dict.fromkeys(ids, pack_id))
-        return selection
-
     def render_next(self, draft: G, intent: str) -> str:
         world = self.world_of(draft)
         if world.arc:
@@ -318,7 +275,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
         worldsmith: WorldsmithAnswer,
         check: Callable[[AnyScenario], None],
     ) -> AnyScenario:
-        selection = self.select(self.selected(packs))
+        selection = self.packs.select(self.packs.require(packs))
 
         def built(draft: SceneDraft[C]) -> AnyScenario:
             return self.build_scenario(meta, selection, draft, source, draft.situation)
