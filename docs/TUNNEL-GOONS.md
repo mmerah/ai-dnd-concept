@@ -47,6 +47,7 @@ Every tool makes one change, rolls dice, opens a decision, or ends the turn.
 
 - `reveal`, `move_item`, `kill`, `join_party`, `leave_party`, `unlock_way` (open a locked way once the story has dealt with it) and `rest` (heal the player and every party member to full Health in a safe spot).
 - `move` — carry the player, the party, and any NPCs named in `with_ids`, through an unlocked way listed in WAYS OUT.
+- `meanwhile` — move a dweller, move a loose item and shut a known way, offscreen, on a turn ELSEWHERE is shown.
 - `roll` — 2d6 plus an ability and helpful items, against a Difficulty Score or an npc; `actor_id` when a hired member acts instead of the player.
 - `level_up` — raise one ability and either Health or Inventory by 1, once, at the adventure's end: the player first, then each hired member in turn.
 - `hire` — the player hires someone here to work; the worldsmith writes their sheet once the turn ends, and they join the party.

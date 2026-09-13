@@ -28,9 +28,11 @@ from aidm.engines.base import (
     trail_panel,
 )
 from aidm.engines.rooms.tools import (
+    MEANWHILE,
     MOVE,
     MOVE_ITEM,
     UNLOCK_WAY,
+    Meanwhile,
     Move,
     MoveItem,
     UnlockWay,
@@ -48,6 +50,7 @@ MAP_UNWRITTEN = Fact(
     trace="the map could not be written",
     card="The map could not be written. You are still where you were.",
 )
+ELSEWHERE = "ELSEWHERE (time has passed; you may move what the player cannot see)"
 
 
 class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
@@ -95,6 +98,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
             *party_section(world.members()),
             ("HIDDEN HERE (the player has not found these)", world.place_lines(known=False)),
             ("WAYS OUT", world.ways_lines()),
+            *(((ELSEWHERE, world.elsewhere_lines()),) if world.meanwhile_due else ()),
         )
 
     def narrator_view(self, state: G) -> NarratorView:
@@ -187,6 +191,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
             master_tool("move_item", MOVE_ITEM, MoveItem, self.move_item),
             master_tool("unlock_way", UNLOCK_WAY, UnlockWay, self.unlock_way),
             master_tool("move", MOVE, Move, self.move),
+            master_tool("meanwhile", MEANWHILE, Meanwhile, self.meanwhile),
         )
 
     def move_item(self, draft: G, args: MoveItem, _rng: Random) -> list[Fact]:
@@ -199,6 +204,25 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
         facts = self.world_of(draft).move(args.to_id, args.with_ids)
         self.open_chapter(draft)
         return facts
+
+    def meanwhile(self, draft: G, args: Meanwhile, _rng: Random) -> list[Fact]:
+        return self.world_of(draft).meanwhile(
+            dweller_id=args.dweller_id,
+            dweller_to=args.dweller_to,
+            item_id=args.item_id,
+            item_to=args.item_to,
+            shut_from=args.shut_from,
+            shut_to=args.shut_to,
+        )
+
+    def tick(self, draft: G, *, counted: bool) -> None:
+        world = self.world_of(draft)
+        was_armed = world.meanwhile_due
+        if not was_armed and not world.can_move_offscreen():
+            return
+        super().tick(draft, counted=counted)
+        if was_armed and counted:
+            world.disarm()  # the armed turn is spent; one chance, not several
 
     async def write_next(self, draft: G, intent: str, worldsmith: WorldsmithAnswer) -> MapDraft[N]:
         world = self.world_of(draft)

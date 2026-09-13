@@ -16,12 +16,23 @@ from support.table import (
 
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Refusal, Slug, slug
+from aidm.core.facts import Fact, cards
 from aidm.core.io import ENCODING
 from aidm.core.model import AnyCharacter, Character, Game, PackSelection, Scenario, ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.rooms.engine import RoomEngine
+from aidm.engines.rooms.engine import ELSEWHERE, RoomEngine
 from aidm.engines.rooms.tools import Move
-from aidm.engines.rooms.world import Dweller, MapDraft, Place, Prop, RoomWorld, Way
+from aidm.engines.rooms.world import (
+    MOVED_CARD,
+    MOVES_OFFSCREEN,
+    NOTHING_OFFSCREEN,
+    Dweller,
+    MapDraft,
+    Place,
+    Prop,
+    RoomWorld,
+    Way,
+)
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 
 SIXTH = EngineId("sixth")
@@ -30,6 +41,7 @@ YARD = "yard"
 CELLAR = "cellar"
 WELL = "well"
 WARDEN = "warden"
+LANTERN = "lantern"
 
 
 class SixthWorld(RoomWorld[Dweller, Person]):
@@ -107,6 +119,11 @@ def _scenario() -> SixthScenario:
                 CELLAR: [Way(to=WELL)],
             },
             npcs={WARDEN: warden},
+            items={
+                LANTERN: Prop(
+                    id=LANTERN, name="Lantern", brief="A dim lantern", known=False, on=YARD
+                )
+            },
             start=GATE,
         ),
     )
@@ -178,6 +195,7 @@ def test_the_familys_tools_are_offered_in_order(tmp_path: Path) -> None:
         "move_item",
         "unlock_way",
         "move",
+        "meanwhile",
     ]
     character = engine.create_character("Wren", "A quiet scout", {})
     state = engine.begin("the-keep", _scenario(), character)
@@ -298,3 +316,207 @@ def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:
     next(iter(world.npcs.values())).name = "Someone else"
 
     assert scenario.payload.model_dump() == before
+
+
+def _walked(tmp_path: Path) -> tuple[SixthEngine, SixthGame]:
+    """At CELLAR, having walked GATE and YARD: every power has something legal."""
+    engine = _installed(tmp_path)
+    character = engine.create_character("Wren", "A quiet scout", {})
+    state = engine.begin("the-keep", _scenario(), character)
+    engine.move(state, Move(to_id=YARD), Random(0))
+    engine.move(state, Move(to_id=CELLAR), Random(0))
+    return engine, state.draft()
+
+
+def _all_three(engine: SixthEngine, draft: SixthGame) -> list[Fact]:
+    """One armed call spending every power: the warden walks, the lantern moves, a way shuts."""
+    draft.payload.meanwhile_due = True
+    return change(
+        engine,
+        draft,
+        "meanwhile",
+        dweller_id=WARDEN,
+        dweller_to=YARD,
+        item_id=LANTERN,
+        item_to=GATE,
+        shut_from=GATE,
+        shut_to=YARD,
+    )
+
+
+def test_meanwhile_moves_all_three_things_in_one_call(tmp_path: Path) -> None:
+    engine, draft = _walked(tmp_path)
+
+    _ = _all_three(engine, draft)
+
+    world = draft.payload
+    assert world.npcs[WARDEN].place == YARD
+    assert world.items[LANTERN].on == GATE
+    way = world.way(GATE, YARD)
+    assert way is not None
+    assert way.locked
+    assert not world.meanwhile_due
+
+
+def test_meanwhile_never_reaches_the_narrator(tmp_path: Path) -> None:
+    engine, draft = _walked(tmp_path)
+
+    facts = _all_three(engine, draft)
+
+    told = [fact for fact in facts if fact.told]
+    assert len(told) == 1
+    only = told[0]
+    assert only.card == MOVED_CARD
+    assert only.trace == MOVES_OFFSCREEN
+    for name in ("Warden", "Lantern", "Gate", "Yard"):
+        assert name not in only.trace
+        assert name not in only.card
+    assert cards(facts) == (only,)
+
+
+def test_meanwhile_refusals(tmp_path: Path) -> None:
+    engine, draft = _walked(tmp_path)
+    world = draft.payload
+
+    assert NOTHING_OFFSCREEN in refused(
+        engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=YARD
+    )
+
+    world.meanwhile_due = True
+    assert "give a dweller, an item or a way to shut" in refused(engine, draft, "meanwhile")
+    assert "both ends or neither" in refused(engine, draft, "meanwhile", dweller_id=WARDEN)
+    assert "unknown id" in refused(engine, draft, "meanwhile", dweller_id="nobody", dweller_to=YARD)
+    assert "unknown id" in refused(engine, draft, "meanwhile", dweller_id=GATE, dweller_to=YARD)
+
+    world.npcs[WARDEN].place = CELLAR
+    assert "stands with the player" in refused(
+        engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=YARD
+    )
+    world.npcs[WARDEN].place = GATE
+
+    world.items[LANTERN].on = CELLAR
+    assert "is here with the player" in refused(
+        engine, draft, "meanwhile", item_id=LANTERN, item_to=GATE
+    )
+
+    world.npcs[WARDEN].place = CELLAR
+    world.items[LANTERN].on = WARDEN
+    assert "is here with the player" in refused(
+        engine, draft, "meanwhile", item_id=LANTERN, item_to=GATE
+    )
+    world.npcs[WARDEN].place = GATE
+    world.items[LANTERN].on = YARD
+
+    assert "is already there" in refused(engine, draft, "meanwhile", item_id=LANTERN, item_to=YARD)
+
+    world.npcs[WARDEN].alive = False
+    assert "takes no further part" in refused(
+        engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=YARD
+    )
+    world.npcs[WARDEN].alive = True
+
+    world.npcs[WARDEN].place = YARD
+    assert "no unlocked way leads" in refused(
+        engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=GATE
+    )
+    world.npcs[WARDEN].place = GATE
+
+    message = refused(engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=WELL)
+    assert "Gate" in message and "Yard" in message
+
+    message = refused(engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=CELLAR)
+    assert "Gate" in message and "Yard" in message
+
+    way = world.way(GATE, YARD)
+    assert way is not None
+    way.known = False
+    assert "has not found" in refused(engine, draft, "meanwhile", shut_from=GATE, shut_to=YARD)
+    way.known = True
+
+    assert "cannot shut offscreen" in refused(
+        engine, draft, "meanwhile", shut_from=YARD, shut_to=CELLAR
+    )
+
+
+def test_the_armed_flag_is_spent_only_on_a_counted_tick(tmp_path: Path) -> None:
+    engine, draft = _walked(tmp_path)
+    draft.payload.meanwhile_due = True
+
+    engine.tick(draft, counted=True)
+
+    assert not draft.payload.meanwhile_due
+
+    draft.payload.meanwhile_due = True
+
+    engine.tick(draft, counted=False)
+
+    assert draft.payload.meanwhile_due
+
+
+def test_the_clock_does_not_arm_with_nothing_to_move_and_keeps_the_count(tmp_path: Path) -> None:
+    engine = _installed(tmp_path)
+    character = engine.create_character("Wren", "A quiet scout", {})
+    state = engine.begin("the-keep", _scenario(), character)
+    draft = state.draft()
+    world = draft.payload
+    assert world.elsewhere() == []
+    assert not world.can_move_offscreen()
+
+    world.turns_played = 3
+    engine.tick(draft, counted=True)
+
+    assert world.turns_played == 3
+    assert not world.meanwhile_due
+
+    engine.move(draft, Move(to_id=YARD), Random(0))
+    engine.move(draft, Move(to_id=CELLAR), Random(0))
+    engine.tick(draft, counted=True)
+
+    assert world.turns_played == 4
+
+
+def test_can_move_offscreen_is_false_when_the_only_item_sits_in_a_here_dwellers_hands(
+    tmp_path: Path,
+) -> None:
+    _, draft = _walked(tmp_path)
+    world = draft.payload
+    world.npcs[WARDEN].place = CELLAR
+    world.items[LANTERN].on = WARDEN
+    way = world.way(GATE, YARD)
+    assert way is not None
+    way.known = False  # neutralise the shut power: this test pins the holder set alone
+
+    assert not world.can_move_offscreen()
+
+
+def test_can_move_offscreen_counts_the_shut_power_and_ignores_a_never_visited_place(
+    tmp_path: Path,
+) -> None:
+    _, draft = _walked(tmp_path)
+    world = draft.payload
+    world.items[LANTERN].on = WELL
+    world.npcs[WARDEN].place = WELL
+    way = world.way(GATE, YARD)
+    assert way is not None
+
+    way.known = False
+    assert not world.can_move_offscreen()
+
+    way.known = True
+    assert world.can_move_offscreen()
+
+
+def test_the_elsewhere_section_shows_only_when_the_clock_is_armed(tmp_path: Path) -> None:
+    engine, draft = _walked(tmp_path)
+    assert ELSEWHERE not in dict(engine.master_sections(draft))
+
+    draft.payload.meanwhile_due = True
+
+    section = dict(engine.master_sections(draft))[ELSEWHERE]
+
+    assert "Gate" in section
+    assert "Yard" in section
+    assert "Warden" in section
+    assert "Lantern" in section
+    assert "Cellar" in section
+    assert "Well" not in section
