@@ -116,6 +116,9 @@ class GameService:
             if saved is None
             else _resumable(engine.restore(saved), target, scenario, character)
         )
+        # A save armed before the switch went off must not spend itself on the next write.
+        if not meanwhile:
+            engine.world_of(state).disarm()
         return cls(
             target,
             scenario,
@@ -185,12 +188,10 @@ class GameService:
 
     async def _turn(self, answer: Answer, state: AnyGame) -> None:
         self.hush()
-        turn = Turn.begin(self.engine, state, answer, self.rng, meanwhile=self.meanwhile)
+        turn = Turn.begin(self.engine, state, answer, self.rng)
         self.turn, self.phase = turn, "master"
         try:
-            # An answer that re-suspended leaves every tool refused: nothing for a master to do.
-            played = turn.draft.pending is None
-            if played:
+            if turn.played:
                 await self.roles.master(turn)
             lines: tuple[SpokenLine, ...] = ()
             if turn.narrates():
@@ -198,7 +199,7 @@ class GameService:
                 lines = await self.roles.narrate(
                     self.engine, turn.draft, tuple(turn.facts), turn.words
                 )
-            state = turn.finish(lines, played=played)
+            state = turn.finish(lines, enabled=self.meanwhile)
         finally:
             # Cleared before arrival: the tool surface must not reach a turn nobody plays.
             self.turn, self.phase = None, None

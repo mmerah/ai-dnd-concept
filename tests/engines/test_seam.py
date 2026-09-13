@@ -100,13 +100,13 @@ def test_the_clock_arms_on_reaching_the_tempo_and_starts_over(tmp_path: Path) ->
     draft = engine.begin("the-taproom", _scenario(), character).draft()
 
     for _ in range(engine.meanwhile_turns - 1):
-        engine.tick(draft, counted=True, enabled=True)
+        engine.tick(draft, counted=True)
     assert (draft.payload.turns_played, draft.payload.meanwhile_due) == (
         engine.meanwhile_turns - 1,
         False,
     )
 
-    engine.tick(draft, counted=True, enabled=True)
+    engine.tick(draft, counted=True)
 
     assert (draft.payload.turns_played, draft.payload.meanwhile_due) == (0, True)
 
