@@ -10,11 +10,11 @@ from aidm.engines.base import (
     Sheeted,
     Thing,
     here_panel,
+    named_unmet,
     party_panel,
     party_section,
 )
 from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
-from aidm.engines.scenes.worldsmith import named_unmet
 
 KAEL = Loner3eCast(id="kael", name="Kael", brief="", known=True)
 

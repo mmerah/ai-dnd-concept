@@ -139,7 +139,7 @@ class Survivor(Sheeted[SurvivorSheet]):
         if worn == 4:
             del sheet.items[item_id]
             gone = f"{item.name} is gone"
-            return [self.fact(gone, card=self.card_line(gone))]
+            return [self.fact(f"{self.name} loses {item.name}", card=self.card_line(gone))]
         item.die = worn
         return []
 

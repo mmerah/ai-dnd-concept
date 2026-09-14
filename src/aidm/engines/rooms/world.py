@@ -95,6 +95,12 @@ class Dungeon[N: Dweller](Mutable):
         """A place holds what lies loose in it, the same way an npc holds what it carries."""
         return (item for item in self.items.values() if item.on == holder_id)
 
+    def things_at(self, place_id: Slug) -> Iterator[N | Prop]:
+        npcs = list(self.at(place_id))
+        yield from npcs
+        for holder in (place_id, *(npc.id for npc in npcs)):
+            yield from self.carried(holder)
+
     def frontier(self) -> int:
         return len(
             {
@@ -369,6 +375,8 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
             if not shut.known:
                 raise Refusal(f"the player has not found the way from {start.name} to {end.name}")
             shut.locked = True
+            if (back := self.way(end.id, start.id)) is not None:
+                back.locked = True
             facts.append(Fact(trace=f"the way from {start.name} to {end.name} shuts"))
         facts.append(Fact(trace=MOVES_OFFSCREEN, told=True, card=MOVED_CARD))
         self.disarm()
@@ -407,12 +415,6 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
 
     def line(self, entity: P | N | Prop) -> str:
         return entity.line(rows=self.sheet_rows()) if entity.id == self.player.id else entity.line()
-
-    def things_at(self, place_id: Slug) -> Iterator[N | Prop]:
-        npcs = list(self.at(place_id))
-        yield from npcs
-        for holder in (place_id, *(npc.id for npc in npcs)):
-            yield from self.carried(holder)
 
     def others(self) -> Iterator[N]:
         return (npc for npc in self.at(self.current.id) if npc.known and npc.id not in self.party)
