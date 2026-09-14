@@ -93,7 +93,7 @@ async def test_master_tools_over_the_mcp_endpoint(tmp_path: Path) -> None:
             service = runtime.session(
                 LaunchTarget(scenario_id="whispering-vault", character_id="kael")
             )
-            await runtime.play(service, Answer(text="I search the vault."))
+            await service.play(Answer(text="I search the vault."))
             assert "roll" in master.tools_seen
             assert "reveal" in master.tools_seen
             change_result = master.change_result

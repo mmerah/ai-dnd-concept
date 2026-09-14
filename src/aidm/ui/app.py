@@ -197,7 +197,7 @@ def _register_pages(runtime: Runtime) -> None:
             return
         # Tab storage (the composer draft) is readable only after the handshake.
         await ui.context.client.connected()
-        game_page(runtime, session)
+        game_page(session)
 
     @ui.page("/create")
     def _create() -> None:  # pyright: ignore[reportUnusedFunction]
@@ -209,4 +209,4 @@ def _register_pages(runtime: Runtime) -> None:
 
     @ui.page("/settings")
     def _settings() -> None:  # pyright: ignore[reportUnusedFunction]
-        settings_page(runtime.settings, runtime.reload_settings)
+        settings_page(runtime.settings)

@@ -135,7 +135,7 @@ def _nicegui_loop() -> Generator[None]:
 
 def _page[G: AnyGame](table: Table[G]) -> GamePage:
     """The few elements `poll_turn` touches, built without a socket connection."""
-    page = GamePage(table.runtime, table.service)
+    page = GamePage(table.service)
     page.transcript = ui.scroll_area()
     page.new_activity = ui.button("New activity")
     page.dice = DiceTray(table.service.engine.look.dice)

@@ -23,7 +23,7 @@ LOGGER = logging.getLogger(__name__)
 class CharacterForm:
     def __init__(self, runtime: Runtime) -> None:
         self.runtime = runtime
-        self.engine_id = runtime.default_engine()
+        self.engine_id = runtime.default_engine
         self.picks: dict[Slug, str] = {}
         self.name: ui.input
         self.brief: ui.input
@@ -167,7 +167,7 @@ class ScenarioForm:
     def __init__(self, runtime: Runtime, catalog: LauncherCatalog) -> None:
         self.runtime = runtime
         self.catalog = catalog
-        self.engine_id = runtime.default_engine()
+        self.engine_id = runtime.default_engine
         self.document: Path | None = None
         self.uploads: Path | None = None
         self.title: ui.input

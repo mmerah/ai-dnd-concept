@@ -48,7 +48,8 @@ You need `uv` and an AI command-line program (Claude, Codex). The default settin
 
 3. Open the address that the command shows.
 
-Open Settings in the app to change the AI commands or other settings.
+Open Settings in the app to change the AI commands or other settings; the keys are written
+to `.env` and apply the next time the server starts.
 
 A role can play over a completion API instead of a command. Under Roles, set its provider to `openrouter` or `local` and name a model that supports tool calls, such as `deepseek/deepseek-v4-flash-0731` on OpenRouter or a tool-capable model served by Ollama at the local default `http://localhost:11434/v1`. The provider's base URL and key live under Providers. The narrator and the worldsmith then answer in one request each; the master plays its tools in the app's own process.
 

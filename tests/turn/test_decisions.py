@@ -118,7 +118,7 @@ async def test_a_hand_back_that_moved_no_fiction_gets_no_prose(tmp_path: Path) -
     table = _deciding(tmp_path, told=False)
     table.spawner.turns.append(table.plays((tool_call("strike"),)))
 
-    await table.runtime.play(table.service, Answer(text="I charge the guard."))
+    await table.service.play(Answer(text="I charge the guard."))
 
     state = table.service.state
     assert [role for role, _ in table.spawner.prompts] == ["master"]

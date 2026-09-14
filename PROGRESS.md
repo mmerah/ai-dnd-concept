@@ -2,6 +2,110 @@
 
 Newest first. One entry per phase of `PLAN.md`.
 
+## Phase 3 — `app` and `ui`
+
+Proposal 6 whole (6a, 6b, 6c) and the two rows of proposal 10 that live here. No golden moves,
+and none drifted. The plan's only behaviour change lands: **settings apply at the next start,
+not live.** Two implementers in parallel: part A took PLAN steps 1–5, 7, 8, part B step 6.
+
+### Counts
+
+| count | before | after | net |
+| --- | --- | --- | --- |
+| `src` | 10,176 | 10,100 | −76 |
+| `tests` | 10,537 | 10,500 | −37 |
+| `qa` | 1,760 | 1,760 | 0 |
+| prompt fixtures | 813 | 813 | 0 |
+| schema fixtures | 2,366 | 2,366 | 0 |
+
+`uv run pytest` 711 → 708 passing: four tests of the deleted reload plumbing removed, one added
+for the codex event models. `uv run basedpyright` 1,101 errors, every one in `qa/`, unchanged.
+`uv run aidm` serves `/` and `/settings` (HTTP 200); no live turn — this container runs no AI
+role — so the turn path rests on the suite.
+
+PLAN predicted `src` −100 and the phase landed at −76. The gap is arithmetic, not retained fat,
+and all of it was measured: the four cancelled `config.py` rows (−8 the maintainer refused, see
+below), step 1's −32 against a ceiling near −20 once the free function stopped re-declaring the
+caller's own fields, and step 6's −20 against a ceiling near −9 because the two Pydantic models
+CLAUDE.md requires cost about eleven lines the untyped scavenger did not.
+
+### Decisions made off-plan
+
+- **PLAN step 7's first four rows are refused by the maintainer.** `SpeechConfig.voices` and
+  `sample_rate`, `RoleConfig.max_rounds` and `Settings.source_max_chars` **stay settings**; they
+  were not turned into constants. `src/aidm/config.py` is untouched by this phase. The
+  `.env`-breakage line PLAN asks to record here does not apply: no key changed, so no stale
+  `SPEECH__SAMPLE_RATE`, `SPEECH__VOICES`, `<ROLE>__MAX_ROUNDS` or `SOURCE_MAX_CHARS` starts
+  refusing. Worth −8 of the predicted −100.
+- **`Runtime.default_engine` became a property, not a deletion.** PLAN says delete it and
+  "inline it at its caller"; it has **two** callers, `ui/create.py:26` and `:170`, so inlining
+  pushes `next(iter(runtime.engines))` into `ui` twice. It takes no argument, has no side effect
+  and reads its own field, which is CLAUDE.md's definition of a property. Net 0 against PLAN's
+  −3.
+- **`resumed` is `Runtime._resumed`, not the free function PLAN step 1 names.** Written as a free
+  function it took six parameters, two of which — `store` and `meanwhile` — are constants at its
+  one call site and already owned by the `Runtime` that calls it. Re-declaring a caller's own
+  state to pass it straight through is the exact fault 6a set out to remove from the classmethod,
+  so the free form reproduced it at a smaller scale. As a private method reading `self.store` and
+  `self.settings.meanwhile` it is −3 and the call site fits on one line.
+- **`GameService.unopened` became a property.** Same rule as `default_engine`, in the same file,
+  which the phase would otherwise have applied to one construct and not the other; `busy`,
+  `presents` and `speaking` beside it are already properties doing the same work.
+- **`final_message` no longer reads codex event streams.** Its codex branch was reachable only
+  from a test: `CodexDriver.read_result` is the sole holder of a stream and only falls back to
+  `final_message` once `_said` has already returned `None`, while the other two callers pass a
+  completion's text. Deleting it is what finally makes step 6's "parse once" true; the stream
+  case moved onto `CodexDriver().read_result(...)`, where it belongs.
+- **`GamePage._open` was inlined.** Once the admission fold landed it was a two-line
+  pass-through to `self._run(self.session.open)` with two callers.
+- **`README.md` gained a sentence.** It told the player to open Settings to change the AI
+  commands, which is now only half true — the keys are written and apply at the next start. This
+  phase's behaviour change had no other documentation.
+
+### What the review fold bought
+
+Two Opus reviews (no `codex` in this container, and the maintainer asked for Opus reviewers).
+They agreed on twelve findings and split on two. The fold removed a further 16 `src` lines and
+five docstrings, and fixed one behaviour the suite cannot see:
+
+- **`ui/settings.py` reloaded the page onto stale values.** `ui.navigate.reload()` outlived the
+  `await self.apply()` it belonged to. `settings_page` renders from `runtime.settings`, which is
+  built once at startup and — with `reload_settings` gone — is never re-read, so a save wrote
+  `.env` correctly and then repainted the form with the **pre-save** values under a
+  "Wrote N keys." toast. Both reviews found it independently. The reload is deleted; the boxes
+  keep what was typed, which is what `.env` now holds.
+
+One bug was caught in verification, before the reviews: the disarm in `resumed` had been indented
+into the restored-save branch, so a **fresh** opening started with `meanwhile` off was no longer
+disarmed. `GameService.resume` applied it to both paths. The suite was green either way.
+
+Two tests were rewritten because they could not fail. `tests/app/test_spawn.py`'s new case
+asserted `final_message('{"lines": []}')` returns its input, which the pre-change code did too;
+it now pins the rule the phase actually introduced — only an `agent_message` item is the answer,
+where the old recursive scavenger took `text` from any event. Verified by breaking the filter in
+`src` and watching it fail.
+
+### Refuted findings
+
+| finding | reason |
+| --- | --- |
+| Extract `admitted` + `admit` into an `Admission` class so `GameService` holds that instead of the whole `Runtime` | **Costs lines and an abstraction, against CLAUDE.md twice.** The reviewer measured it at **+4** in a phase whose purpose is removal, and "do not add an abstraction until two things need it" — one thing needs it. The same reviewer records that the cycle itself is harmless: slotted dataclasses are GC-tracked, and `Runtime.close()` never clears `_sessions`, so a session lives as long as its runtime either way. The real defect it named — the width of the reference — is `__repr__` dragging in every built engine and `__eq__` walking `_sessions` back into `GameService`. The other review's fix takes that at **zero** lines: `gate: "Runtime" = field(repr=False, compare=False)`, matching `_speaking` and `tasks` beside it. Landed. |
+
+### Known and accepted
+
+- `GameService` holds a back-reference to its `Runtime`. It is what lets the UI hold one object,
+  which is the whole of 6b. It is kept out of the generated `repr` and `eq`; nothing else guards
+  it.
+- Dropping the session-identity check from `Runtime.admit` removed a guard nothing still needs:
+  `_sessions` is only ever inserted into, by `session()`, and never replaced or cleared now that
+  `reload_settings` is gone. Both reviews confirmed this independently.
+- `SettingsForm.save` leaves the form holding the typed values while `self.settings` stays at
+  the process-start snapshot. A second save of the same box therefore rewrites the same key and
+  reports it as written again. Harmless — `set_key` is idempotent — and the alternative is
+  re-reading settings into a page that no longer applies them.
+- The phase changes what a player sees: a settings change needs a server restart. `README.md`
+  and the settings page intro both say so; nothing else in the app does.
+
 ## Phase 2 — `core` and `engines`
 
 Proposals 4, 8, and the rows of proposal 10 that live in those two layers. One golden

@@ -1,5 +1,5 @@
 import os
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Literal, TypeAliasType, get_args, get_origin
 
@@ -8,7 +8,6 @@ from pydantic import BaseModel, SecretStr, ValidationError
 from pydantic.fields import FieldInfo
 
 from aidm.config import Settings, env_key, save_settings
-from aidm.core.entities import Refusal
 from aidm.ui.widgets import page_body, page_header, page_intro
 
 type Widget = ui.input | ui.switch | ui.select | ui.number
@@ -17,9 +16,8 @@ type Changes = dict[tuple[str, ...], str | None]
 
 
 class SettingsForm:
-    def __init__(self, settings: Settings, apply: Callable[[], Awaitable[None]]) -> None:
+    def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.apply = apply
         self.boxes: dict[tuple[str, ...], Widget] = {}
 
     def build(self) -> None:
@@ -32,8 +30,8 @@ class SettingsForm:
             page_intro(
                 "Configuration",
                 "Settings",
-                "Each box is one key in .env. Saving applies it; reopen an open game to pick "
-                "it up. The server port applies at the next start.",
+                "Each box is one key in .env. Saving writes it; the keys apply the next time "
+                "the server starts.",
             )
             with ui.tabs().props("dense outside-arrows mobile-arrows").classes("w-full") as tabs:
                 for name, _, _ in groups:
@@ -54,7 +52,7 @@ class SettingsForm:
             else:
                 self.render(nested_value, nested, (*path, name))
 
-    async def save(self) -> None:
+    def save(self) -> None:
         changed = changes(self.settings, {path: box.value for path, box in self.boxes.items()})
         if not changed:
             ui.notify("Nothing changed.", type="info")
@@ -71,19 +69,11 @@ class SettingsForm:
             ui.notify(refusal_text(error), type="negative", multi_line=True)
             return
         save_settings(changed)
-        try:
-            await self.apply()
-        except Refusal as refused:
-            ui.notify(
-                f"{refused} The keys are written; they apply on the next restart.", type="warning"
-            )
-            return
-        ui.notify(f"Applied {len(changed)} keys.", type="positive")
-        ui.navigate.reload()
+        ui.notify(f"Wrote {len(changed)} keys.", type="positive")
 
 
-def settings_page(settings: Settings, apply: Callable[[], Awaitable[None]]) -> None:
-    SettingsForm(settings, apply).build()
+def settings_page(settings: Settings) -> None:
+    SettingsForm(settings).build()
 
 
 def changes(settings: Settings, typed: Mapping[tuple[str, ...], object]) -> Changes:

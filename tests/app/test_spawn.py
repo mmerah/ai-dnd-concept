@@ -133,6 +133,18 @@ async def test_a_retry_carries_on_the_refused_attempt_and_sends_only_the_error()
     assert "THE WHOLE BRIEF" not in asked[1][0]
 
 
+def test_only_an_agent_message_is_read_as_the_answer() -> None:
+    """The old scavenger took `text` from any event; a reasoning event is not the answer."""
+    output = "\n".join(
+        (
+            '{"type":"item.completed","item":{"type":"agent_message","text":"{}"}}',
+            '{"type":"item.completed","item":{"type":"reasoning","text":"I should say more."}}',
+        )
+    )
+
+    assert CodexDriver().read_result(output).text == "{}"
+
+
 def test_the_child_environment_holds_nothing_but_the_allowlist(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

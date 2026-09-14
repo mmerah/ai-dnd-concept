@@ -244,10 +244,10 @@ async def play_turn[G: AnyGame](
     canned.extend(then)
     if action is not None:
         assert isinstance(prompt, str)
-        await table.runtime.act(table.service, action, prompt)
+        await table.service.act(action, prompt)
     else:
         answer = Answer(text=prompt) if isinstance(prompt, str) else prompt
-        await table.runtime.play(table.service, answer)
+        await table.service.play(answer)
     return table.state
 
 
@@ -257,7 +257,7 @@ async def take[G: AnyGame](
     """The page's own action that opens no turn: the worldsmith writes, the narrator may tell."""
     if arrival is not None:
         table.spawner.answers.setdefault("narrator", []).append(narrated(arrival))
-    await table.runtime.act(table.service, action, words)
+    await table.service.act(action, words)
     return table.state
 
 

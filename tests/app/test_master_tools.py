@@ -18,7 +18,7 @@ from support.table import (
 
 import aidm.app.spawn as spawn_module
 from aidm.app.roles import RoleRunner
-from aidm.app.spawn import final_message
+from aidm.app.spawn import CodexDriver, final_message
 from aidm.config import Role
 from aidm.core.entities import EngineId, Frozen, Refusal, Slug
 from aidm.core.model import Check, ScenarioMeta
@@ -111,7 +111,7 @@ async def test_a_change_lands_on_the_draft_as_it_is_made_and_on_disk_at_the_end(
 
     table.spawner.turns.append(script)
     table.spawner.answers["narrator"] = [narrated("A chart, under the stone.")]
-    await table.runtime.play(table.service, Answer(text="I lever up the flagstone."))
+    await table.service.play(Answer(text="I lever up the flagstone."))
 
     assert "not permitted" in table.refusals[0]
     assert counts == [1]
@@ -507,10 +507,16 @@ CODEX_STREAM = """Reading additional input from stdin...
 """
 
 
+def test_a_codex_event_stream_reads_as_the_agent_message_it_carries() -> None:
+    said = CodexDriver().read_result(CODEX_STREAM).text
+
+    assert said == '{"lines": [{"speaker_id": null, "text": "ok"}]}'
+    assert narration_text(Narration.model_validate_json(said).lines) == "ok"
+
+
 @pytest.mark.parametrize(
     ("output", "wanted"),
     (
-        (CODEX_STREAM, '{"lines": [{"speaker_id": null, "text": "ok"}]}'),
         ('{"lines": [{"speaker_id": null, "text": "ok"}]}', None),
         ('Here it is:\n{"lines": [{"speaker_id": null, "text": "ok"}]}', None),
         ('```json\n{"lines": [{"speaker_id": null, "text": "ok"}]}\n```', None),
@@ -519,7 +525,7 @@ CODEX_STREAM = """Reading additional input from stdin...
             None,
         ),
     ),
-    ids=("a codex event stream", "bare", "after prose", "fenced", "a fence that is not the answer"),
+    ids=("bare", "after prose", "fenced", "a fence that is not the answer"),
 )
 def test_every_shape_a_cli_answers_in_parses_to_the_same_narration(
     output: str, wanted: str | None
