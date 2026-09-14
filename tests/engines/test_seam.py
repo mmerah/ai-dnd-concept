@@ -136,3 +136,11 @@ def test_restore_refuses_a_save_smuggling_a_pending_generation() -> None:
 
     with pytest.raises(Refusal, match="generation"):
         engine.restore(json.dumps(raw))
+
+
+def test_restore_accepts_a_save_with_a_null_generation() -> None:
+    engine, state = game(ENGINE_IDS[0])
+    raw = json.loads(state.model_dump_json())
+    raw["generation"] = None
+
+    assert engine.restore(json.dumps(raw)) == state

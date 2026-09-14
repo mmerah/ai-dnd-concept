@@ -49,7 +49,14 @@ def _named_unmet[N: Dweller](draft: MapDraft[N]) -> list[str]:
             name
             for place_id, place in draft.places.items()
             for name in named_unmet(
-                f"{place.name}\n{place.brief}\n{place.description}",
+                "\n".join(
+                    (
+                        place.name,
+                        place.brief,
+                        place.description,
+                        *(thing.brief for thing in draft.things_at(place_id) if thing.known),
+                    )
+                ),
                 (thing for thing in draft.things_at(place_id) if not thing.known),
             )
         }

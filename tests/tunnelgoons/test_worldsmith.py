@@ -87,7 +87,39 @@ def test_the_shipped_scenario_passes_the_map_bar() -> None:
     check_map(_wide_region())
 
 
+def _hiding_gremlin(place_id: str, *, known: bool, brief: str, description: str) -> MapDraft[Npc]:
+    gremlin = Npc(
+        id="gremlin",
+        name="Gremlin",
+        brief="",
+        place=place_id,
+        known=False,
+        hp=Gauge(current=4, maximum=4),
+    )
+    place = Place(
+        id=place_id, name=place_id.title(), brief=brief, known=known, description=description
+    )
+    return MapDraft[Npc](places={place_id: place}, npcs={gremlin.id: gremlin}, start=place_id)
+
+
 def test_check_map_refuses_a_start_description_naming_a_hidden_dweller() -> None:
+    draft = _hiding_gremlin(
+        ONLY, known=True, brief="b", description="A Gremlin hides in the shadows."
+    )
+    with pytest.raises(Refusal, match="do not name what is hidden there"):
+        check_map(draft)
+
+
+def test_an_extension_hiding_a_dweller_named_in_brief_is_refused() -> None:
+    world = _tunnelgoons_game().payload
+    extension = _hiding_gremlin(
+        HIDDEN, known=False, brief="A Gremlin waits in the dark.", description="d"
+    )
+    with pytest.raises(Refusal, match="do not name what is hidden there"):
+        check_extension(extension, world)
+
+
+def test_check_map_refuses_a_known_dwellers_brief_naming_a_hidden_dweller() -> None:
     gremlin = Npc(
         id="gremlin",
         name="Gremlin",
@@ -96,48 +128,21 @@ def test_check_map_refuses_a_start_description_naming_a_hidden_dweller() -> None
         known=False,
         hp=Gauge(current=4, maximum=4),
     )
+    sentry = Npc(
+        id="sentry",
+        name="Sentry",
+        brief="He watches for the Gremlin.",
+        place=ONLY,
+        known=True,
+        hp=Gauge(current=4, maximum=4),
+    )
     draft = MapDraft[Npc](
-        places={
-            ONLY: Place(
-                id=ONLY,
-                name="Only",
-                brief="b",
-                known=True,
-                description="A Gremlin hides in the shadows.",
-            )
-        },
-        npcs={gremlin.id: gremlin},
+        places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
+        npcs={gremlin.id: gremlin, sentry.id: sentry},
         start=ONLY,
     )
     with pytest.raises(Refusal, match="do not name what is hidden there"):
         check_map(draft)
-
-
-def test_an_extension_hiding_a_dweller_named_in_brief_is_refused() -> None:
-    draft = _tunnelgoons_game().draft()
-    gremlin = Npc(
-        id="gremlin",
-        name="Gremlin",
-        brief="",
-        place=HIDDEN,
-        known=False,
-        hp=Gauge(current=4, maximum=4),
-    )
-    extension = MapDraft[Npc](
-        places={
-            HIDDEN: Place(
-                id=HIDDEN,
-                name="Hidden",
-                brief="A Gremlin waits in the dark.",
-                known=False,
-                description="d",
-            )
-        },
-        npcs={gremlin.id: gremlin},
-        start=HIDDEN,
-    )
-    with pytest.raises(Refusal, match="do not name what is hidden there"):
-        check_extension(extension, draft.payload)
 
 
 def test_attach_joins_at_the_current_place_and_the_world_validates() -> None:

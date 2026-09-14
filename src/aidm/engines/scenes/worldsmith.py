@@ -74,7 +74,9 @@ def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) ->
         if eid not in filed and (why := entry.required())
     ]:
         unmet.append(f"cast members as the worldsmith may write them: {broken}")
-    read = f"{draft.title}\n{draft.focus}\n{draft.situation}"
+    read = "\n".join(
+        (draft.title, draft.focus, draft.situation, *(everyone[eid].brief for eid in present))
+    )
     if named := sorted(named_unmet(read, (everyone[entity_id] for entity_id in hidden))):
         unmet.append(f"a scene that does not name what is hidden: {named}")
     if met := sorted(

@@ -185,12 +185,11 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
         )
 
     def restore(self, raw: str) -> G:
-        decoded = decode(raw)
-        if (header := parse(EngineHeader, decoded)).engine != self.id:
+        if (header := parse(EngineHeader, decode(raw))).engine != self.id:
             raise Refusal(f"the save plays {header.engine!r}, not {self.id!r}")
-        if isinstance(decoded, dict) and "generation" in decoded:
-            raise Refusal("the save carries a pending generation request")
         state = parse_json(self.game, raw)
+        if state.generation is not None:
+            raise Refusal("the save carries a pending generation request")
         self.validate(state)
         return state
 

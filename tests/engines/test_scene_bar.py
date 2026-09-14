@@ -319,12 +319,13 @@ def test_a_one_word_name_inside_another_word_is_not_refused(case: SceneCase) -> 
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
-def test_a_hidden_name_in_title_is_refused(case: SceneCase) -> None:
+@pytest.mark.parametrize("field", ("title", "focus"))
+def test_a_hidden_name_in_title_or_focus_is_refused(case: SceneCase, field: str) -> None:
     bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
     with pytest.raises(Refusal, match="does not name what is hidden"):
         case.bar(
             {
-                "title": f"{case.base['title']}: the Bell",
+                field: f"{case.base[field]} A bell tolls somewhere close.",
                 "present": (case.met,),
                 "hidden": ("bell-prop",),
                 "cast": {"bell-prop": bell},
@@ -333,15 +334,15 @@ def test_a_hidden_name_in_title_is_refused(case: SceneCase) -> None:
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
-def test_a_hidden_name_in_focus_is_refused(case: SceneCase) -> None:
+def test_a_hidden_name_in_a_present_entitys_brief_is_refused(case: SceneCase) -> None:
     bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
+    watchman = {"id": "watchman", "name": "Watchman", "brief": "He is posted to guard the Bell."}
     with pytest.raises(Refusal, match="does not name what is hidden"):
         case.bar(
             {
-                "focus": f"{case.base['focus']} A bell tolls somewhere close.",
-                "present": (case.met,),
+                "present": (case.met, "watchman"),
                 "hidden": ("bell-prop",),
-                "cast": {"bell-prop": bell},
+                "cast": {"bell-prop": bell, "watchman": watchman},
             }
         )
 
