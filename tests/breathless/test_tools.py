@@ -1,7 +1,7 @@
 from random import Random
 
 import pytest
-from support.breathless import ENGINE, MIRA, WRENCH, hired, small_world
+from support.breathless import ENGINE, MIRA, WRENCH, hired
 from support.table import change, refused
 
 from aidm.core.entities import Refusal, parse
@@ -15,30 +15,26 @@ from aidm.engines.scenes.tools import NextScene
 from aidm.engines.scenes.world import SCENE_LEFT
 
 
-def test_check_on_a_skill_wears_it() -> None:
-    draft = small_world().draft()
+def test_check_on_a_skill_wears_it(draft: BreathlessGame) -> None:
     player = draft.payload.player
     _ = ENGINE.roll(draft, Roll(what="Force the door", skill="bash"), Random(0))
     assert player.require_sheet().worn["bash"] == stepped(6)
 
 
-def test_check_at_d4_stays_d4() -> None:
-    draft = small_world().draft()
+def test_check_at_d4_stays_d4(draft: BreathlessGame) -> None:
     player = draft.payload.player
     _ = ENGINE.roll(draft, Roll(what="Spot a way through", skill="dash"), Random(1))
     assert player.require_sheet().worn["dash"] == 4
 
 
-def test_an_item_reduced_to_d4_is_gone() -> None:
-    draft = small_world().draft()
+def test_an_item_reduced_to_d4_is_gone(draft: BreathlessGame) -> None:
     player = draft.payload.player
     player.require_sheet().items[WRENCH].die = 6
     _ = ENGINE.roll(draft, Roll(what="Swing the axe", item_id=WRENCH), Random(0))
     assert WRENCH not in player.require_sheet().items
 
 
-def test_stunt_refused_twice() -> None:
-    draft = small_world().draft()
+def test_stunt_refused_twice(draft: BreathlessGame) -> None:
     player = draft.payload.player
     _ = ENGINE.roll(draft, Roll(what="Leap the gap", stunt=True), Random(0))
     assert player.require_sheet().stunted
@@ -46,16 +42,14 @@ def test_stunt_refused_twice() -> None:
         _ = ENGINE.roll(draft, Roll(what="Leap again", stunt=True), Random(0))
 
 
-def test_check_with_actor_id_rolls_and_wears_the_members_die() -> None:
-    draft = small_world().draft()
+def test_check_with_actor_id_rolls_and_wears_the_members_die(draft: BreathlessGame) -> None:
     member = hired(draft.payload, MIRA)
     facts = ENGINE.roll(draft, Roll(what="Slip past", skill="sneak", actor_id=MIRA), Random(0))
     assert member.require_sheet().worn["sneak"] == stepped(8)
     assert any("Mira" in fact.trace for fact in facts)
 
 
-def test_check_with_helped_by_keeps_the_highest_and_wears_both_dice() -> None:
-    draft = small_world().draft()
+def test_check_with_helped_by_keeps_the_highest_and_wears_both_dice(draft: BreathlessGame) -> None:
     player = draft.payload.player
     member = hired(draft.payload, MIRA)
     facts = ENGINE.roll(draft, Roll(what="Force the door", skill="bash", helped_by=MIRA), Random(0))
@@ -76,16 +70,16 @@ def test_helped_by_refused_on_an_item_or_stunt_check() -> None:
         Roll(what="Swing the axe", item_id=WRENCH, helped_by=MIRA)
 
 
-def test_vulnerable_fail_leaves_a_note() -> None:
-    draft = small_world().draft()
+def test_vulnerable_fail_leaves_a_note(draft: BreathlessGame) -> None:
     player = draft.payload.player
     player.require_sheet().stress.current = 4
     _ = ENGINE.roll(draft, Roll(what="Force the door", skill="bash", dangerous=True), Random(2))
     assert any("vulnerable" in note for note in draft.notes)
 
 
-def test_catch_breath_resets_worn_loot_and_stunt_but_keeps_stress_and_item_dice() -> None:
-    draft = small_world().draft()
+def test_catch_breath_resets_worn_loot_and_stunt_but_keeps_stress_and_item_dice(
+    draft: BreathlessGame,
+) -> None:
     player = draft.payload.player
     sheet = player.require_sheet()
     sheet.worn["bash"] = 4
@@ -105,8 +99,7 @@ def test_catch_breath_resets_worn_loot_and_stunt_but_keeps_stress_and_item_dice(
     assert facts[1].card == "Caught breath — skills and loot die restored"
 
 
-def test_catch_breath_with_actor_id_resets_only_the_members_sheet() -> None:
-    draft = small_world().draft()
+def test_catch_breath_with_actor_id_resets_only_the_members_sheet(draft: BreathlessGame) -> None:
     player = draft.payload.player
     member = hired(draft.payload, MIRA)
     player.require_sheet().worn["bash"] = 4
@@ -118,13 +111,11 @@ def test_catch_breath_with_actor_id_resets_only_the_members_sheet() -> None:
     assert player.require_sheet().worn["bash"] == 4
 
 
-def test_use_med_kit_refused_without_a_kit() -> None:
-    draft = small_world().draft()
+def test_use_med_kit_refused_without_a_kit(draft: BreathlessGame) -> None:
     assert "holds no med kit" in refused(ENGINE, draft, "use_med_kit")
 
 
-def test_use_med_kit_clears_two_stress() -> None:
-    draft = small_world().draft()
+def test_use_med_kit_clears_two_stress(draft: BreathlessGame) -> None:
     sheet = draft.payload.player.require_sheet()
     sheet.med_kit = True
     sheet.stress.current = 3
@@ -133,20 +124,17 @@ def test_use_med_kit_clears_two_stress() -> None:
     assert sheet.stress.current == 1
 
 
-def test_change_stress_refuses_a_zero_amount() -> None:
-    draft = small_world().draft()
+def test_change_stress_refuses_a_zero_amount(draft: BreathlessGame) -> None:
     assert "non-zero" in refused(ENGINE, draft, "change_stress", amount=0, why="nothing")
 
 
-def test_change_stress_acts_on_the_member() -> None:
-    draft = small_world().draft()
+def test_change_stress_acts_on_the_member(draft: BreathlessGame) -> None:
     member = hired(draft.payload, MIRA)
     _ = change(ENGINE, draft, "change_stress", amount=1, why="a close call", actor_id=MIRA)
     assert member.require_sheet().stress.current == 1
 
 
-def test_use_med_kit_acts_on_the_member() -> None:
-    draft = small_world().draft()
+def test_use_med_kit_acts_on_the_member(draft: BreathlessGame) -> None:
     member = hired(draft.payload, MIRA)
     member.require_sheet().med_kit = True
     member.require_sheet().stress.current = 3
@@ -155,30 +143,26 @@ def test_use_med_kit_acts_on_the_member() -> None:
     assert member.require_sheet().stress.current == 1
 
 
-def test_drop_item_acts_on_the_member() -> None:
-    draft = small_world().draft()
+def test_drop_item_acts_on_the_member(draft: BreathlessGame) -> None:
     member = hired(draft.payload, MIRA)
     member.require_sheet().items["rope"] = Supply(name="Rope", die=6)
     _ = change(ENGINE, draft, "drop_item", item_id="rope", actor_id=MIRA)
     assert "rope" not in member.require_sheet().items
 
 
-def test_loot_1_or_2_leaves_a_note_and_no_pending() -> None:
-    draft = small_world().draft()
+def test_loot_1_or_2_leaves_a_note_and_no_pending(draft: BreathlessGame) -> None:
     _ = ENGINE.loot_check(draft, LootCheck(item="Rope"), Random(2))
     assert draft.pending is None
     assert any("nothing is found" in note for note in draft.notes)
 
 
-def test_loot_on_an_item_with_room_offers_take() -> None:
-    draft = small_world().draft()
+def test_loot_on_an_item_with_room_offers_take(draft: BreathlessGame) -> None:
     _ = ENGINE.loot_check(draft, LootCheck(item="Crowbar"), Random(0))
     assert draft.pending is not None
     assert [option.id for option in draft.pending.options] == ["take"]
 
 
-def test_loot_on_an_item_with_a_full_backpack_offers_swaps() -> None:
-    draft = small_world().draft()
+def test_loot_on_an_item_with_a_full_backpack_offers_swaps(draft: BreathlessGame) -> None:
     sheet = draft.payload.player.require_sheet()
     sheet.items["rope"] = Supply(name="Rope", die=6)
     sheet.items["torch"] = Supply(name="Torch", die=6)
@@ -190,8 +174,7 @@ def test_loot_on_an_item_with_a_full_backpack_offers_swaps() -> None:
     assert "rope" not in sheet.items and sheet.items["crowbar"].die == 8
 
 
-def test_loot_at_d10_or_better_also_offers_a_med_kit() -> None:
-    draft = small_world().draft()
+def test_loot_at_d10_or_better_also_offers_a_med_kit(draft: BreathlessGame) -> None:
     _ = ENGINE.loot_check(draft, LootCheck(item="Shotgun"), Random(17))
     assert draft.pending is not None
     ids = [option.id for option in draft.pending.options]
@@ -203,8 +186,7 @@ def _option(draft: BreathlessGame, option_id: str) -> PendingOption:
     return next(option for option in draft.pending.options if option.id == option_id)
 
 
-def test_loot_replay_applies_the_option_the_roll_wrote() -> None:
-    draft = small_world().draft()
+def test_loot_replay_applies_the_option_the_roll_wrote(draft: BreathlessGame) -> None:
     sheet = draft.payload.player.require_sheet()
     _ = ENGINE.loot_check(draft, LootCheck(item="Machete"), Random(17))
     take = _option(draft, "take")
@@ -216,19 +198,17 @@ def test_loot_replay_applies_the_option_the_roll_wrote() -> None:
     assert any(fact.card == f"Took Machete (d{granted})" for fact in facts)
 
 
-def test_the_master_cannot_award_loot_without_rolling_for_it() -> None:
+def test_the_master_cannot_award_loot_without_rolling_for_it(draft: BreathlessGame) -> None:
     with pytest.raises(Refusal):
         _ = parse(LootCheck, {"item": "Machete", "granted": 12, "choice": "take"})
 
-    draft = small_world().draft()
     _ = ENGINE.tools["loot_check"].call(draft, {"item": "Machete"}, Random(17))
 
     assert "machete" not in draft.payload.player.require_sheet().items
     assert draft.pending is not None and draft.pending.kind == "loot"
 
 
-def test_luck_facts_are_untold() -> None:
-    draft = small_world().draft()
+def test_luck_facts_are_untold(draft: BreathlessGame) -> None:
     dice_fact, luck_fact = ENGINE.test_luck(
         draft, LuckTest(question="Is anyone home?", die=6), Random(0)
     )
@@ -237,28 +217,24 @@ def test_luck_facts_are_untold() -> None:
     assert luck_fact.card == ""
 
 
-def test_leave_and_enter_on_the_player_are_refused() -> None:
-    draft = small_world().draft()
+def test_leave_and_enter_on_the_player_are_refused(draft: BreathlessGame) -> None:
     assert "in every scene" in refused(ENGINE, draft, "leave", entity_id=PLAYER_ID)
     assert "in every scene" in refused(ENGINE, draft, "enter", entity_id=PLAYER_ID)
 
 
-def test_kill_on_the_player_ends_the_game() -> None:
-    draft = small_world().draft()
+def test_kill_on_the_player_ends_the_game(draft: BreathlessGame) -> None:
     facts = change(ENGINE, draft, "kill", entity_id=PLAYER_ID)
     assert not draft.payload.player.alive
     assert ENGINE.over(draft) == "You died."
     assert any(fact.card == "You are dead" for fact in facts)
 
 
-def test_drop_item_removes_the_key() -> None:
-    draft = small_world().draft()
+def test_drop_item_removes_the_key(draft: BreathlessGame) -> None:
     _ = change(ENGINE, draft, "drop_item", item_id=WRENCH)
     assert WRENCH not in draft.payload.player.require_sheet().items
 
 
-def test_next_scene_with_pursuit_requests_the_crossing() -> None:
-    draft = small_world()
+def test_next_scene_with_pursuit_requests_the_crossing(draft: BreathlessGame) -> None:
     facts = ENGINE.next_scene(draft, NextScene(pursuit="the control deck"), Random(0))
     assert draft.generation is not None and draft.generation.detail == "the control deck"
     assert SCENE_LEFT in facts
