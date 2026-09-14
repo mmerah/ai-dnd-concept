@@ -526,9 +526,8 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         world = self.world_of(draft)
         if not world.job:
             raise Refusal("no job is open to finish")
-        owed = [None, *(member.id for member in world.sheeted_members())]
-        expected = sorted(_named(actor_id) for actor_id in owed)
-        given = sorted(_named(raise_.actor_id) for raise_ in raises)
+        expected = sorted((world.player.id, *(member.id for member in world.sheeted_members())))
+        given = sorted(world.require_actor(raise_.actor_id).id for raise_ in raises)
         if given != expected:
             raise Refusal(
                 "`job` `finish` names the player and every living hired member once each: "
@@ -568,10 +567,6 @@ def _item_lines(items: Mapping[Slug, Gear]) -> str:
 
 def _staked(risk: str, *, deadly: bool) -> str:
     return f"{risk} (deadly)" if deadly else risk
-
-
-def _named(actor_id: Slug | None) -> str:
-    return "the player" if actor_id is None else actor_id
 
 
 def _helping(world: TwentyfourxxWorld, args: Helper | None) -> Helping | None:

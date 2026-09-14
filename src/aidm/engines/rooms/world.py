@@ -202,7 +202,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         items: list[Prop] = []
         for item_id in item_ids:
             item = self.items.get(item_id)
-            if item is None or item.on != holder.id:
+            if item is None or item.on != holder.id or not item.known:
                 raise Refusal(f"{item_id!r} is not in {holder.name}'s hands")
             items.append(item)
         return tuple(items)
@@ -218,6 +218,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         way.known = True
         if (back := self.way(destination.id, self.current.id)) is not None:
             back.known = True
+            back.locked = way.locked
 
     def move(self, to_id: Slug, with_ids: tuple[Slug, ...]) -> list[Fact]:
         here = self.current
