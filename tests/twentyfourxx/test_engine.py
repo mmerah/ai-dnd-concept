@@ -1,8 +1,7 @@
 import pytest
-from support.table import TWENTYFOURXX, change, game, narrowed, updated
+from support.table import TWENTYFOURXX, game, narrowed
 from support.twentyfourxx import ENGINE, LOCKPICKS, small_world
 
-from aidm.core.entities import Refusal
 from aidm.core.model import PackSelection
 from aidm.core.views import PanelRow
 from aidm.engines.base import PLAYER_ID
@@ -13,7 +12,6 @@ from aidm.engines.twentyfourxx.world import Gear, TwentyfourxxGame
 COMM = "comm"
 CLIMBING_GEAR = "climbing-gear"
 NIGHT_VISION_GOGGLES = "night-vision-goggles"
-VESSA = "vessa-rune"
 
 
 def _twentyfourxx_game() -> tuple[AnyEngine, TwentyfourxxGame]:
@@ -31,36 +29,17 @@ def test_the_shipped_game_begins_with_the_srd_pack_and_the_operators_gear() -> N
     assert PLAYER_ID not in world.present()
 
 
-def test_join_party_lands_a_party_joined_fact_and_adds_the_member() -> None:
-    engine, state = _twentyfourxx_game()
-    draft = state.draft()
-
-    _ = change(engine, draft, "join_party", entity_id=VESSA)
-
-    assert VESSA in draft.payload.party
-
-
-def test_a_scenario_with_an_uninstalled_pack_is_refused_by_check_packs() -> None:
-    engine, state = _twentyfourxx_game()
-    with pytest.raises(Refusal, match="not installed"):
-        engine.validate(updated(state, packs=PackSelection(ids=(SRD_PACK, "uninstalled"))))
-
-
-def test_item_detail_of_a_plain_item_is_empty() -> None:
-    assert Gear(name="Lockpick set").notes() == ""
-
-
-def test_item_detail_of_a_bulky_item() -> None:
-    assert Gear(name="Crate", bulky=True).notes() == "bulky"
-
-
-def test_item_detail_of_a_broken_item() -> None:
-    assert Gear(name="Scanner", broken_times=1).notes() == "broken"
-
-
-def test_item_detail_of_a_multi_break_partly_broken_item() -> None:
-    item = Gear(name="Battle armor", breaks=3, broken_times=1)
-    assert item.notes() == "broken 1/3"
+@pytest.mark.parametrize(
+    ("gear", "expected"),
+    [
+        (Gear(name="Lockpick set"), ""),
+        (Gear(name="Crate", bulky=True), "bulky"),
+        (Gear(name="Scanner", broken_times=1), "broken"),
+        (Gear(name="Battle armor", breaks=3, broken_times=1), "broken 1/3"),
+    ],
+)
+def test_gear_notes(gear: Gear, expected: str) -> None:
+    assert gear.notes() == expected
 
 
 def test_player_view_character_panel_carries_the_gear_row() -> None:

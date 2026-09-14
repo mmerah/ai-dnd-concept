@@ -1,5 +1,5 @@
 from support.breathless import DAX, ENGINE, MIRA, hired, small_world
-from support.table import BREATHLESS, change, game, narrowed
+from support.table import BREATHLESS, game, narrowed
 
 from aidm.core.model import PackSelection
 from aidm.core.views import PanelRow
@@ -9,7 +9,6 @@ from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.seam import AnyEngine
 
 FIRE_AXE = "fire-axe"
-OVID = "ovid-sarn"
 SRD = ENGINE.packs.srd()
 PICKS = {
     "pronouns": "she/her",
@@ -36,15 +35,6 @@ def test_the_shipped_game_begins_with_the_srd_pack_and_the_players_item() -> Non
     assert sheet.pronouns == "he/him"
     assert sheet.job == "Park Ranger"
     assert PLAYER_ID not in world.present()
-
-
-def test_join_party_lands_a_party_joined_fact_and_adds_the_member() -> None:
-    engine, state = _breathless_game()
-    draft = state.draft()
-
-    _ = change(engine, draft, "join_party", entity_id=OVID)
-
-    assert OVID in draft.payload.party
 
 
 def test_the_player_views_backpack_panel_lists_items_and_the_med_kit() -> None:

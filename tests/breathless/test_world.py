@@ -1,11 +1,10 @@
 import pytest
 
-from aidm.core.entities import Refusal, Slug
+from aidm.core.entities import Refusal
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.world import (
     LOOT_START,
     SKILLS,
-    BreathlessWorld,
     Die,
     Skill,
     Supply,
@@ -13,20 +12,6 @@ from aidm.engines.breathless.world import (
     SurvivorSheet,
     stepped,
 )
-from aidm.engines.scenes.world import SceneRun
-
-MIRA = "mira"
-DAX = "dax"
-
-
-def _scene(*, here: list[Slug] | None = None) -> SceneRun:
-    return SceneRun(
-        place="diner",
-        title="The Diner",
-        focus="Can they reach the back door?",
-        situation="Booths overturned, glass everywhere, the front door barred shut.",
-        here=here or [],
-    )
 
 
 def _player() -> Survivor:
@@ -38,10 +23,6 @@ def _player() -> Survivor:
         known=True,
         sheet=SurvivorSheet(skills=rated, worn=rated),
     )
-
-
-def _world() -> BreathlessWorld:
-    return BreathlessWorld(cast={}, player=_player(), runs=[_scene()])
 
 
 def test_a_sheet_short_of_the_six_skills_is_refused() -> None:
@@ -57,52 +38,6 @@ def test_a_sheet_rated_off_the_creation_spread_is_refused() -> None:
 def test_stepped_floors_at_d4() -> None:
     assert stepped(4) == 4
     assert stepped(12) == 10
-
-
-def test_a_cast_that_holds_the_player_is_refused() -> None:
-    decoy = Survivor(id=PLAYER_ID, name="Someone", brief="filed wrongly", known=True)
-    with pytest.raises(ValueError, match="the player is in the cast"):
-        BreathlessWorld(
-            cast={PLAYER_ID: decoy},
-            player=_player(),
-            runs=[_scene(here=[PLAYER_ID])],
-        )
-
-
-def test_require_returns_the_player_for_player_id() -> None:
-    world = _world()
-    assert world.require(PLAYER_ID) is world.player
-
-
-def test_here_yields_the_player_first_then_present_cast() -> None:
-    mira = Survivor(id=MIRA, name="Mira", brief="A neighbor", known=True)
-    world = BreathlessWorld(
-        cast={MIRA: mira},
-        player=_player(),
-        runs=[_scene(here=[MIRA])],
-    )
-    assert list(world.here()) == [world.player, mira]
-
-
-def test_require_actor_accepts_a_sheeted_party_member_and_refuses_an_unsheeted_one() -> None:
-    rated: dict[Skill, Die] = {**dict.fromkeys(SKILLS, 4), "bash": 10, "dash": 8, "sneak": 6}
-    mira = Survivor(
-        id=MIRA,
-        name="Mira",
-        brief="A neighbor",
-        known=True,
-        sheet=SurvivorSheet(skills=rated, worn=rated),
-    )
-    dax = Survivor(id=DAX, name="Dax", brief="A looter", known=True)
-    world = BreathlessWorld(
-        cast={MIRA: mira, DAX: dax},
-        player=_player(),
-        runs=[_scene(here=[MIRA, DAX])],
-        party=[MIRA, DAX],
-    )
-    assert world.require_actor(MIRA) is world.cast[MIRA]
-    with pytest.raises(Refusal, match="not the player or a hired party member"):
-        world.require_actor(DAX)
 
 
 def test_wear_steps_the_worn_skill() -> None:
