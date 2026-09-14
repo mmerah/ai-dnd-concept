@@ -3,7 +3,16 @@ from pathlib import Path
 from typing import Annotated, Literal, Self, get_args
 
 from dotenv import set_key, unset_key
-from pydantic import ConfigDict, Field, SecretStr, StringConstraints, model_validator
+from pydantic import (
+    AnyHttpUrl,
+    ConfigDict,
+    Field,
+    SecretStr,
+    StringConstraints,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from aidm.core.entities import Frozen
@@ -15,6 +24,7 @@ type CliProvider = Literal["claude", "codex"]
 type RoleProvider = Literal["claude", "codex", "openrouter", "local"]
 type Effort = Literal["low", "medium", "high"]
 ENV_FILE = ".env"
+_HTTP_URL_ADAPTER = TypeAdapter(AnyHttpUrl)
 
 
 class Configured(Frozen):
@@ -26,6 +36,13 @@ class Configured(Frozen):
 class ProviderConfig(Configured):
     base_url: str
     api_key: SecretStr
+
+    @field_validator("base_url")
+    @classmethod
+    def _valid_base_url(cls, base_url: str) -> str:
+        """Kept as the original string: `AnyHttpUrl` would double a bare host's trailing slash."""
+        _HTTP_URL_ADAPTER.validate_python(base_url)
+        return base_url
 
 
 class RoleConfig(Configured):

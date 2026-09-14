@@ -150,6 +150,7 @@ def _page[G: AnyGame](table: Table[G]) -> GamePage:
     page.send = ui.button()
     page.action_button = ui.button()
     page.over_label = ui.label()
+    page.restart_item = ui.menu_item("Restart this game")
     page.view, page.history = table.service.player_view(), table.service.history()
     page.seen = Observed.of(table.service, page.view, page.history)
     return page
@@ -241,7 +242,7 @@ async def test_decision_buttons_grey_out_while_a_turn_is_in_flight(
     assert seen == [True, False]
 
 
-async def test_any_games_in_flight_guard_is_kept_from_the_player(
+async def test_this_games_own_in_flight_guard_is_kept_from_the_player(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     table = open_game(tmp_path)
@@ -255,6 +256,30 @@ async def test_any_games_in_flight_guard_is_kept_from_the_player(
     async def busy_here() -> None:
         raise Refusal(IN_FLIGHT.format(slug=table.service.slug))
 
+    client = Client(ui.page("/"))
+    try:
+        with _nicegui_loop(), client:
+            page = _page(table)
+            landed = await page._run(busy_here)  # pyright: ignore[reportPrivateUsage]
+    finally:
+        client.delete()
+
+    assert landed is False
+    assert notified == []
+
+
+async def test_another_games_in_flight_guard_still_reaches_this_player(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A second game's move must not be swallowed by the first game's own busy guard."""
+    table = open_game(tmp_path)
+    notified: list[str] = []
+
+    def spy_notify(message: str, **_kwargs: object) -> None:
+        notified.append(message)
+
+    monkeypatch.setattr("aidm.ui.game.ui.notify", spy_notify)
+
     async def busy_elsewhere() -> None:
         raise Refusal(IN_FLIGHT.format(slug="some-other-save"))
 
@@ -262,13 +287,31 @@ async def test_any_games_in_flight_guard_is_kept_from_the_player(
     try:
         with _nicegui_loop(), client:
             page = _page(table)
-            landed = await page._run(busy_here)  # pyright: ignore[reportPrivateUsage]
-            _ = await page._run(busy_elsewhere)  # pyright: ignore[reportPrivateUsage]
+            landed = await page._run(busy_elsewhere)  # pyright: ignore[reportPrivateUsage]
     finally:
         client.delete()
 
     assert landed is False
-    assert notified == []
+    assert notified == [IN_FLIGHT.format(slug="some-other-save")]
+
+
+async def test_restart_item_greys_out_while_a_turn_is_in_flight(tmp_path: Path) -> None:
+    table = open_game(tmp_path)
+    client = Client(ui.page("/"))
+    try:
+        with _nicegui_loop(), client:
+            page = _page(table)
+            assert page.restart_item.enabled is True
+
+            table.service.phase = "master"  # a turn starts; the destructive action must wait
+            page.poll_turn()
+            assert page.restart_item.enabled is False
+
+            table.service.phase = None
+            page.poll_turn()
+            assert page.restart_item.enabled is True
+    finally:
+        client.delete()
 
 
 async def test_a_refusal_that_is_not_the_in_flight_guard_still_toasts(
