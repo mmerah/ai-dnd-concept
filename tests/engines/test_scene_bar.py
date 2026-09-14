@@ -17,7 +17,7 @@ from support.game import SITUATION as LONER3E_SITUATION
 from support.table import LIBRARY, narrowed, stub_worldsmith, updated
 from support.twentyfourxx import ENGINE as TWENTYFOURXX_ENGINE
 from support.twentyfourxx import KESTREL, SABLE
-from support.twentyfourxx import SITUATION as TWENTYFOURXX_SITUATION
+from support.twentyfourxx import SCENE_BASE as TWENTYFOURXX_BASE
 from support.twentyfourxx import hired as twentyfourxx_hired
 from support.twentyfourxx import small_world as twentyfourxx_world
 
@@ -42,13 +42,6 @@ BREATHLESS_BASE: Mapping[str, object] = {
     "situation": BREATHLESS_SITUATION,
     "arc": "Farther on, the mob's own paymaster still doesn't know Jax's face.",
 }
-TWENTYFOURXX_BASE: Mapping[str, object] = {
-    "place": "bay-office",
-    "title": "The Bay Office",
-    "focus": "Can they slip past the night crew before the lights return?",
-    "situation": TWENTYFOURXX_SITUATION,
-    "arc": "Farther in, the fixer's own supplier still owes for the last load.",
-}
 LONER3E_BASE: Mapping[str, object] = {
     "place": "cloister",
     "title": "The Cloister",
@@ -56,16 +49,20 @@ LONER3E_BASE: Mapping[str, object] = {
     "situation": LONER3E_SITUATION,
     "arc": "Farther along, the stair still leads down to what Tomas would not speak of.",
 }
+# `SceneEngine`'s three type parameters are erased here on purpose: a tuple of concrete engines
+# needs one shared type, and only the middle one (`G: Game[Any]`) is CLAUDE.md's sanctioned `Any`.
+type AnySceneEngine = SceneEngine[Any, Any, Any]
 
 
 @dataclass(frozen=True, slots=True)
 class SceneCase:
-    engine: SceneEngine[Any, Any, Any]
+    engine: AnySceneEngine
     game: Callable[[], AnyGame]
     base: Mapping[str, object]  # the draft fields every scene of this case starts from
     bar: Callable[[Mapping[str, object]], None]
     apply: Callable[[AnyGame, Mapping[str, object]], None]
     hire: Callable[[AnyGame, Slug], AnyGame] | None  # None where the engine hires nobody
+    sheets_the_player: bool  # whether the player's own `Person` subtype carries a `sheet`
     player: str
     met: Slug
     unmet: Slug
@@ -117,6 +114,7 @@ CASES = (
         bar=_bar(SceneDraft[Survivor], BreathlessWorld, BREATHLESS_BASE, breathless_world),
         apply=_apply(SceneDraft[Survivor], BREATHLESS_BASE),
         hire=_breathless_hire,
+        sheets_the_player=True,
         player="Jax",
         met=BREATHLESS_MIRA,
         unmet=BREATHLESS_DAX,
@@ -128,6 +126,7 @@ CASES = (
         bar=_bar(SceneDraft[Crewmate], TwentyfourxxWorld, TWENTYFOURXX_BASE, twentyfourxx_world),
         apply=_apply(SceneDraft[Crewmate], TWENTYFOURXX_BASE),
         hire=_twentyfourxx_hire,
+        sheets_the_player=True,
         player="Rook",
         met=KESTREL,
         unmet=SABLE,
@@ -139,6 +138,7 @@ CASES = (
         bar=_bar(SceneDraft[Loner3eCast], Loner3eWorld, LONER3E_BASE, lambda: initialized()[1]),
         apply=_apply(SceneDraft[Loner3eCast], LONER3E_BASE),
         hire=None,  # loner3e plays solo: nobody but the player ever acts
+        sheets_the_player=False,  # Loner3eCast is a plain Person: no `Sheeted` mixin at all
         player="Kael",
         met=MARA,
         unmet=MAP,
@@ -148,6 +148,10 @@ CASES = (
 
 def _case_id(case: SceneCase) -> str:
     return case.engine.id
+
+
+SHEETED_CASES = tuple(case for case in CASES if case.sheets_the_player)
+HIRING_CASES = tuple((case, case.hire) for case in CASES if case.hire is not None)
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
@@ -184,8 +188,9 @@ def test_the_bar_refuses_a_misfiled_cast_entry(case: SceneCase) -> None:
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_the_bar_refuses_present_hidden_overlap(case: SceneCase) -> None:
-    with pytest.raises(Refusal, match="both present and hidden"):
-        case.bar({"present": (case.met,), "hidden": (case.met,)})
+    message = f"nobody listed as both present and hidden: ['{case.unmet}']"
+    with pytest.raises(Refusal, match=re.escape(message)):
+        case.bar({"present": (case.unmet,), "hidden": (case.unmet,)})
 
 
 def test_a_fresh_cast_member_may_be_authored_with_a_smaller_full_pool() -> None:
@@ -382,7 +387,7 @@ def test_render_worldsmith_says_who_travels_with_the_player(case: SceneCase) -> 
     assert "travels with the player" in prompt
 
 
-@pytest.mark.parametrize("case", [case for case in CASES if case.hire is not None], ids=_case_id)
+@pytest.mark.parametrize("case", SHEETED_CASES, ids=_case_id)
 def test_a_player_with_no_sheet_is_refused(case: SceneCase) -> None:
     world = case.game().payload
     unsheeted = world.player.model_copy(update={"sheet": None})
@@ -402,14 +407,14 @@ def test_a_cast_that_holds_the_player_is_refused(case: SceneCase) -> None:
 def test_player_is_never_listed_in_the_scene(case: SceneCase) -> None:
     world = case.game().payload
     bad_run = world.run.model_copy(update={"here": [*world.run.here, PLAYER_ID]})
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="never listed in it"):
         type(world)(cast=world.cast, player=world.player, runs=[bad_run])
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_check_filing_rejects_mis_filed_cast(case: SceneCase) -> None:
     world = case.game().payload
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="is filed under"):
         type(world)(cast={"wrong-key": world.cast[case.met]}, player=world.player, runs=world.runs)
 
 
@@ -428,10 +433,25 @@ def test_require_actor_none_is_the_player(case: SceneCase) -> None:
     assert world.require_actor(PLAYER_ID) is world.player
 
 
-@pytest.mark.parametrize("case", [case for case in CASES if case.hire is not None], ids=_case_id)
-def test_require_actor_accepts_a_living_sheeted_party_member(case: SceneCase) -> None:
-    assert case.hire is not None
-    world = case.hire(case.game(), case.met).payload
+@pytest.mark.parametrize("case", CASES, ids=_case_id)
+def test_require_returns_the_player_for_player_id(case: SceneCase) -> None:
+    world = case.game().payload
+    assert world.require(PLAYER_ID) is world.player
+
+
+@pytest.mark.parametrize("case", CASES, ids=_case_id)
+def test_here_yields_the_player_first(case: SceneCase) -> None:
+    world = case.game().payload
+    assert next(world.here()) is world.player
+
+
+@pytest.mark.parametrize(
+    ("case", "hire"), HIRING_CASES, ids=[case.engine.id for case, _ in HIRING_CASES]
+)
+def test_require_actor_accepts_a_living_sheeted_party_member(
+    case: SceneCase, hire: Callable[[AnyGame, Slug], AnyGame]
+) -> None:
+    world = hire(case.game(), case.met).payload
     assert world.require_actor(case.met) is world.cast[case.met]
 
 

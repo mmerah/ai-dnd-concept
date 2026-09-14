@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from aidm.core.entities import EngineId, Slug
 from aidm.core.model import PackSelection, ScenarioMeta
@@ -25,6 +25,15 @@ SITUATION = (
     "has just killed the lights for a scheduled power-saving cycle."
 )
 ENGINE = narrowed(ENGINES_BUILT[TWENTYFOURXX], TwentyfourxxEngine)
+# Shared by every test that builds a scene draft from scratch: `tests/engines/test_scene_bar.py`
+# and `tests/twentyfourxx/test_worldsmith.py` both started with a byte-for-byte copy of this.
+SCENE_BASE: Mapping[str, object] = {
+    "place": "bay-office",
+    "title": "The Bay Office",
+    "focus": "Can they slip past the night crew before the lights return?",
+    "situation": SITUATION,
+    "arc": "Farther in, the fixer's own supplier still owes for the last load.",
+}
 
 
 def small_world() -> TwentyfourxxGame:
