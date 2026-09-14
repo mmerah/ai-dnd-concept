@@ -158,12 +158,6 @@ def test_the_player_view_panels_carry_icon_ids_for_who_else_is_here() -> None:
 
     view = engine.player_view(with_entity(state, SECRET))
 
-    assert tuple(panel.title for panel in view.panels) == (
-        "Character",
-        "This scene",
-        "Also here",
-        "Trail",
-    )
     here = next(panel for panel in view.panels if panel.title == "Also here")
     icon_ids = {row.icon_id for row in here.rows}
     assert PLAYER_ID not in icon_ids

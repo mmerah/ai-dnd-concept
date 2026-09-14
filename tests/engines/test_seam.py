@@ -1,118 +1,44 @@
 from pathlib import Path
 
 import pytest
+from support.fifth import FifthEngine, FifthGame, engine_at, scenario
 from support.table import ENGINE_IDS, game
 
-from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, Refusal, slug
+from aidm.core.entities import EngineId, Refusal
 from aidm.core.io import ENCODING, read_cached_text
-from aidm.core.model import AnyCharacter, Character, Game, PackSelection, Scenario, ScenarioMeta
 from aidm.core.play import SpokenLine
-from aidm.core.prompt import Sections
 from aidm.core.views import NarratorView
-from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.scenes.engine import SceneEngine
-from aidm.engines.scenes.packs import ScenePack
-from aidm.engines.scenes.tools import SceneDraft
-from aidm.engines.scenes.world import SceneWorld
-
-FIFTH = EngineId("fifth")
-KEEPER = "keeper"
-SITUATION = (
-    "The taproom is half empty, the fire is down to embers, and the keeper is watching the door."
-)
 
 
-class FifthState(SceneWorld[Person]):
-    pass
-
-
-class FifthGame(Game[FifthState]):
-    pass
-
-
-class FifthScenario(Scenario[SceneDraft[Person]]):
-    pass
-
-
-class FifthCharacter(Character[Person]):
-    pass
-
-
-class FifthEngine(SceneEngine[Person, FifthGame, ScenePack]):
-    """A fifth scene engine: its state model, its creation, its sections."""
-
-    id = FIFTH
-    title = "FIFTH"
-    art_style = "Ink."
-    game = FifthGame
-    scenario = FifthScenario
-    character = FifthCharacter
-    member = Person
-    pack = ScenePack
-    world = FifthState
-
-    def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
-        return self.supplement_steps()
-
-    def create_character(self, name: str, brief: str, _picks: Picks) -> AnyCharacter:
-        return FifthCharacter(
-            id=slug(name, ()),
-            engine=FIFTH,
-            packs=PackSelection(ids=("srd",)),
-            payload=Person(id=PLAYER_ID, name=name, brief=brief, known=True),
-        )
-
-    def guidance(self, _selection: PackSelection | None) -> str:
-        return "Write the taproom plainly."
-
-    def master_sections(self, state: FifthGame) -> Sections:
-        return (("SCENE", self.world_of(state).run.title),)
-
-
-def _engine_at(tmp_path: Path) -> type[FifthEngine]:
-    class Installed(FifthEngine):
-        directory = tmp_path
-
-    return Installed
-
-
-def _installed(tmp_path: Path) -> FifthEngine:
-    (tmp_path / "rules.md").write_text("Roll high.", encoding=ENCODING)
-    (tmp_path / "packs").mkdir()
-    (tmp_path / "packs" / "srd.json").write_text(
-        '{"name": "The SRD", "source": "the test", "license": "CC0"}', encoding=ENCODING
-    )
-    return _engine_at(tmp_path)()
-
-
-def test_the_tempo_floor_refuses_a_tempo_below_two(tmp_path: Path) -> None:
-    class TooFast(type(_installed(tmp_path))):
+def test_the_tempo_floor_refuses_a_tempo_below_two(scene_engine: FifthEngine) -> None:
+    class TooFast(type(scene_engine)):
         meanwhile_turns = 1
 
     with pytest.raises(ValueError, match="ticks every"):
         TooFast()
 
 
-def test_the_clock_arms_on_reaching_the_tempo_and_starts_over(tmp_path: Path) -> None:
-    engine = _installed(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-    draft = engine.begin("the-taproom", _scenario(), character).draft()
+def test_the_clock_arms_on_reaching_the_tempo_and_starts_over(
+    scene_engine: FifthEngine, begun_scene: FifthGame
+) -> None:
+    draft = begun_scene.draft()
 
-    for _ in range(engine.meanwhile_turns - 1):
-        engine.tick(draft, counted=True)
+    for _ in range(scene_engine.meanwhile_turns - 1):
+        scene_engine.tick(draft, counted=True)
     assert (draft.payload.turns_played, draft.payload.meanwhile_due) == (
-        engine.meanwhile_turns - 1,
+        scene_engine.meanwhile_turns - 1,
         False,
     )
 
-    engine.tick(draft, counted=True)
+    scene_engine.tick(draft, counted=True)
 
     assert (draft.payload.turns_played, draft.payload.meanwhile_due) == (0, True)
 
 
-def test_construction_refuses_when_no_srd_table_set_is_installed(tmp_path: Path) -> None:
-    engine_type = type(_installed(tmp_path))
+def test_construction_refuses_when_no_srd_table_set_is_installed(
+    scene_engine: FifthEngine, tmp_path: Path
+) -> None:
+    engine_type = type(scene_engine)
     (tmp_path / "packs" / "srd.json").rename(tmp_path / "packs" / "other.json")
     with pytest.raises(ValueError, match="ships no 'srd' pack"):
         engine_type()
@@ -122,7 +48,7 @@ def test_construction_refuses_when_the_packs_dir_has_no_srd(tmp_path: Path) -> N
     (tmp_path / "rules.md").write_text("Roll high.", encoding=ENCODING)
     (tmp_path / "packs").mkdir()
     with pytest.raises(ValueError, match="ships no 'srd' pack"):
-        _engine_at(tmp_path)()
+        engine_at(tmp_path)()
 
 
 def test_a_pack_with_doubled_keys_is_refused(tmp_path: Path) -> None:
@@ -132,56 +58,37 @@ def test_a_pack_with_doubled_keys_is_refused(tmp_path: Path) -> None:
         '{"name": "The SRD", "name": "Twice"}', encoding=ENCODING
     )
     with pytest.raises(Refusal, match="duplicate keys"):
-        _engine_at(tmp_path)()
+        engine_at(tmp_path)()
 
 
-def _scenario() -> FifthScenario:
-    keeper = Person(id=KEEPER, name="Keeper", brief="Keeps the taproom", known=True)
-    return FifthScenario(
-        meta=ScenarioMeta(
-            title="The Taproom",
-            premise="A quiet night that will not stay quiet.",
-            scope="One evening at the taproom, start to close.",
-        ),
-        engine=FIFTH,
-        packs=PackSelection(ids=("srd",)),
-        payload=SceneDraft[Person](
-            place="taproom",
-            title="The Taproom",
-            focus="Who is asking after Wren?",
-            situation=SITUATION,
-            present=("keeper",),
-            cast={KEEPER: keeper},
-        ),
+def test_a_fifth_scene_engine_begins_a_playable_game(
+    scene_engine: FifthEngine, begun_scene: FifthGame
+) -> None:
+    assert scene_engine.supplement_options() == ()
+    assert scene_engine.instructions.startswith("Roll high.")
+    assert scene_engine.instructions.endswith(
+        read_cached_text(scene_engine.family_dir / "rules.md")
     )
+    assert scene_engine.narrator_view(begun_scene).title == "The Taproom"
+    assert scene_engine.master_sections(begun_scene) == (("SCENE", "The Taproom"),)
+    assert [row.label for row in scene_engine.player_view(begun_scene).panels[-2].rows] == [
+        "Keeper"
+    ]
 
 
-def test_a_fifth_scene_engine_begins_a_playable_game(tmp_path: Path) -> None:
-    engine = _installed(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-
-    state = engine.begin("the-taproom", _scenario(), character)
-
-    assert engine.supplement_options() == ()
-    assert engine.instructions.startswith("Roll high.")
-    assert engine.instructions.endswith(read_cached_text(engine.family_dir / "rules.md"))
-    assert engine.narrator_view(state).title == "The Taproom"
-    assert engine.master_sections(state) == (("SCENE", "The Taproom"),)
-    assert [row.label for row in engine.player_view(state).panels[-2].rows] == ["Keeper"]
-
-
-def test_a_game_with_no_chapter_open_is_refused(tmp_path: Path) -> None:
-    engine = _installed(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-    state = engine.begin("the-taproom", _scenario(), character)
-    state.log.clear()
+def test_a_game_with_no_chapter_open_is_refused(
+    scene_engine: FifthEngine, begun_scene: FifthGame
+) -> None:
+    begun_scene.log.clear()
 
     with pytest.raises(Refusal, match="no chapter open"):
-        engine.validate(state)
+        scene_engine.validate(begun_scene)
 
 
-def test_a_scene_engine_offers_the_familys_tools_without_naming_them(tmp_path: Path) -> None:
-    assert list(_installed(tmp_path).tools) == [
+def test_a_scene_engine_offers_the_familys_tools_without_naming_them(
+    scene_engine: FifthEngine,
+) -> None:
+    assert list(scene_engine.tools) == [
         "reveal",
         "kill",
         "join_party",
@@ -204,11 +111,11 @@ class _CountingFifthEngine(FifthEngine):
         return super().narrator_view(state)
 
 
+@pytest.mark.usefixtures("scene_engine")
 def test_close_builds_no_narrator_view(tmp_path: Path) -> None:
-    _ = _installed(tmp_path)  # writes rules.md and packs/srd.json onto tmp_path
     engine = _CountingFifthEngine(tmp_path)
     character = engine.create_character("Wren", "A quiet scout", {})
-    state = engine.begin("the-taproom", _scenario(), character)
+    state = engine.begin("the-taproom", scenario(), character)
     before = engine.narrator_view_calls
 
     closed = engine.close(state.draft(), (SpokenLine(text="Nothing stirs."),), (), words="I wait.")

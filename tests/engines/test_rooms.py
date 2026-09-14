@@ -1,7 +1,7 @@
-from pathlib import Path
 from random import Random
 
 import pytest
+from support.sixth import CELLAR, GATE, LANTERN, WARDEN, WELL, YARD, SixthEngine, SixthGame
 from support.table import (
     ENGINES_BUILT,
     LIBRARY,
@@ -14,180 +14,32 @@ from support.table import (
     updated,
 )
 
-from aidm.core.creation import CreationStep, Picks
-from aidm.core.entities import EngineId, Refusal, Slug, slug
+from aidm.core.entities import Refusal
 from aidm.core.facts import Fact, cards
-from aidm.core.io import ENCODING
-from aidm.core.model import AnyCharacter, Character, Game, PackSelection, Scenario, ScenarioMeta
-from aidm.engines.base import PLAYER_ID, Person
-from aidm.engines.rooms.engine import ELSEWHERE, RoomEngine
+from aidm.core.model import PackSelection
+from aidm.engines.base import PLAYER_ID
+from aidm.engines.rooms.engine import ELSEWHERE
 from aidm.engines.rooms.tools import Move
-from aidm.engines.rooms.world import (
-    MOVED_CARD,
-    MOVES_OFFSCREEN,
-    NOTHING_OFFSCREEN,
-    Dweller,
-    MapDraft,
-    Place,
-    Prop,
-    RoomWorld,
-    Way,
-)
+from aidm.engines.rooms.world import MOVED_CARD, MOVES_OFFSCREEN, NOTHING_OFFSCREEN, Prop
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 
-SIXTH = EngineId("sixth")
-GATE = "gate"
-YARD = "yard"
-CELLAR = "cellar"
-WELL = "well"
-WARDEN = "warden"
-LANTERN = "lantern"
 
-
-class SixthWorld(RoomWorld[Dweller, Person]):
-    pass
-
-
-class SixthGame(Game[SixthWorld]):
-    pass
-
-
-class SixthScenario(Scenario[MapDraft[Dweller]]):
-    pass
-
-
-class SixthCharacter(Character[Person]):
-    pass
-
-
-class SixthEngine(RoomEngine[Dweller, Person, SixthGame]):
-    """A sixth engine, a room crawler: its state model and its creation; the tools are the
-    family's."""
-
-    id = SIXTH
-    title = "SIXTH"
-    art_style = "Ink."
-    game = SixthGame
-    scenario = SixthScenario
-    character = SixthCharacter
-    member = Dweller
-    world = SixthWorld
-
-    def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
-        return ()
-
-    def create_character(self, name: str, brief: str, _picks: Picks) -> AnyCharacter:
-        return SixthCharacter(
-            id=slug(name, ()),
-            engine=SIXTH,
-            payload=Person(id=PLAYER_ID, name=name, brief=brief, known=True),
-        )
-
-    def guidance(self) -> str:
-        return "Write the keep plainly."
-
-
-def _installed(tmp_path: Path) -> SixthEngine:
-    class Installed(SixthEngine):
-        directory = tmp_path
-
-    (tmp_path / "rules.md").write_text("Roll high.", encoding=ENCODING)
-    return Installed()
-
-
-def _place(place_id: Slug, name: str, *, known: bool) -> Place:
-    return Place(id=place_id, name=name, brief=f"The {name.lower()}", known=known, description=name)
-
-
-def _scenario() -> SixthScenario:
-    warden = Dweller(id=WARDEN, name="Warden", brief="Keeps the gate", known=True, place=GATE)
-    return SixthScenario(
-        meta=ScenarioMeta(
-            title="The Keep", premise="A keep with one gate.", scope="One keep, one visit."
-        ),
-        engine=SIXTH,
-        payload=MapDraft[Dweller](
-            places={
-                GATE: _place(GATE, "Gate", known=True),
-                YARD: _place(YARD, "Yard", known=False),
-                CELLAR: _place(CELLAR, "Cellar", known=False),
-                WELL: _place(WELL, "Well", known=False),
-            },
-            ways={
-                GATE: [Way(to=YARD, known=True)],
-                YARD: [Way(to=CELLAR), Way(to=WELL, locked=True)],
-                CELLAR: [Way(to=WELL)],
-            },
-            npcs={WARDEN: warden},
-            items={
-                LANTERN: Prop(
-                    id=LANTERN, name="Lantern", brief="A dim lantern", known=False, on=YARD
-                )
-            },
-            start=GATE,
-        ),
-    )
-
-
-def test_a_sixth_room_engine_begins_a_playable_game(tmp_path: Path) -> None:
-    engine = _installed(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-
-    state = engine.begin("the-keep", _scenario(), character)
-
-    assert engine.master_sections(state)[0] == ("CURRENT PLACE", "Gate[gate]\nGate")
+def test_a_sixth_room_engine_begins_a_playable_game(
+    room_engine: SixthEngine, begun_room: SixthGame
+) -> None:
+    assert room_engine.master_sections(begun_room)[0] == ("CURRENT PLACE", "Gate[gate]\nGate")
     ways_out = next(
-        panel for panel in engine.player_view(state).panels if panel.title == "Ways out"
+        panel for panel in room_engine.player_view(begun_room).panels if panel.title == "Ways out"
     )
     assert [row.label for row in ways_out.rows] == ["Yard"]
-    engine.move(state, Move(to_id=YARD), Random(0))
-    assert state.payload.visits == [GATE, YARD]
+    room_engine.move(begun_room, Move(to_id=YARD), Random(0))
+    assert begun_room.payload.visits == [GATE, YARD]
 
 
-def test_unlocking_a_way_makes_it_known_and_tells_a_card(tmp_path: Path) -> None:
-    engine = _installed(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-    state = engine.begin("the-keep", _scenario(), character)
-    engine.move(state, Move(to_id=YARD), Random(0))
-    draft = state.draft()
-    before = next(panel for panel in engine.player_view(draft).panels if panel.title == "Ways out")
-    assert [row.label for row in before.rows] == []
-
-    facts = change(engine, draft, "unlock_way", to_id=WELL)
-
-    way = draft.payload.way(YARD, WELL)
-    assert way is not None
-    assert way.known
-    assert any(fact.told and fact.card == "Well unlocked" for fact in facts)
-    after = next(panel for panel in engine.player_view(draft).panels if panel.title == "Ways out")
-    assert [row.label for row in after.rows] == ["Well"]
-
-
-def test_a_party_member_moves_with_the_player_and_is_named_in_the_trace(tmp_path: Path) -> None:
-    engine = _installed(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-    state = engine.begin("the-keep", _scenario(), character)
-    state.payload.party.append(WARDEN)
-
-    facts = engine.move(state, Move(to_id=YARD), Random(0))
-
-    assert state.payload.npcs[WARDEN].place == YARD
-    assert any("Warden" in fact.trace and "along" in fact.trace for fact in facts)
-
-
-def test_a_with_ids_entry_who_is_a_party_member_is_refused(tmp_path: Path) -> None:
-    engine = _installed(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-    state = engine.begin("the-keep", _scenario(), character)
-    state.payload.party.append(WARDEN)
-
-    with pytest.raises(Refusal, match="without with_ids"):
-        engine.move(state, Move(to_id=YARD, with_ids=(WARDEN,)), Random(0))
-
-
-def test_the_familys_tools_are_offered_in_order(tmp_path: Path) -> None:
-    engine = _installed(tmp_path)
-    assert list(engine.tools) == [
+def test_the_familys_tools_are_offered_in_order(
+    room_engine: SixthEngine, begun_room: SixthGame
+) -> None:
+    assert list(room_engine.tools) == [
         "reveal",
         "kill",
         "join_party",
@@ -197,37 +49,31 @@ def test_the_familys_tools_are_offered_in_order(tmp_path: Path) -> None:
         "move",
         "meanwhile",
     ]
-    character = engine.create_character("Wren", "A quiet scout", {})
-    state = engine.begin("the-keep", _scenario(), character)
-    draft = state.draft()
+    draft = begun_room.draft()
 
-    _ = change(engine, draft, "join_party", entity_id=WARDEN)
+    _ = change(room_engine, draft, "join_party", entity_id=WARDEN)
 
     assert WARDEN in draft.payload.party
 
-    _ = change(engine, draft, "leave_party", entity_id=WARDEN)
+    _ = change(room_engine, draft, "leave_party", entity_id=WARDEN)
 
     assert draft.payload.party == []
 
 
-def test_leave_party_on_a_non_member_is_refused(tmp_path: Path) -> None:
-    engine = _installed(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-    state = engine.begin("the-keep", _scenario(), character)
-    draft = state.draft()
+def test_leave_party_on_a_non_member_is_refused(
+    room_engine: SixthEngine, begun_room: SixthGame
+) -> None:
+    draft = begun_room.draft()
 
-    message = refused(engine, draft, "leave_party", entity_id=WARDEN)
+    message = refused(room_engine, draft, "leave_party", entity_id=WARDEN)
 
     assert "does not travel with the player" in message
 
 
 def test_a_party_member_is_absent_from_place_lines_while_their_items_stay(
-    tmp_path: Path,
+    room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    engine = _installed(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-    state = engine.begin("the-keep", _scenario(), character)
-    world = state.payload
+    world = begun_room.payload
     key = "warden-key"
     world.items[key] = Prop(id=key, name="Key", brief="A rusty key", known=True, on=WARDEN)
     world.party.append(WARDEN)
@@ -237,7 +83,7 @@ def test_a_party_member_is_absent_from_place_lines_while_their_items_stay(
     assert "Warden[warden]" not in lines
     assert "Key[warden-key]" in lines
 
-    panels = engine.player_view(state).panels
+    panels = room_engine.player_view(begun_room).panels
     party_rows = next(panel for panel in panels if panel.title == "Party").rows
     here_rows = next(panel for panel in panels if panel.title == "Also here").rows
 
@@ -245,63 +91,28 @@ def test_a_party_member_is_absent_from_place_lines_while_their_items_stay(
     assert all(row.icon_id != WARDEN for row in here_rows)
 
 
-def test_killing_a_party_member_drops_them_from_the_party(tmp_path: Path) -> None:
-    engine = _installed(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-    state = engine.begin("the-keep", _scenario(), character)
-    world = state.payload
-    world.party.append(WARDEN)
+def test_killing_the_player_leaves_them_dead_and_a_second_kill_is_refused(
+    room_engine: SixthEngine, begun_room: SixthGame
+) -> None:
+    draft = begun_room.draft()
 
-    facts = world.kill(WARDEN)
-
-    assert world.party == []
-    assert not world.npcs[WARDEN].alive
-    assert any(fact.card == "Warden is dead" for fact in facts)
-
-
-def test_killing_the_player_leaves_them_dead_and_a_second_kill_is_refused(tmp_path: Path) -> None:
-    engine = _installed(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-    state = engine.begin("the-keep", _scenario(), character)
-    draft = state.draft()
-
-    facts = change(engine, draft, "kill", entity_id=PLAYER_ID)
+    facts = change(room_engine, draft, "kill", entity_id=PLAYER_ID)
 
     assert not draft.payload.player.alive
     assert any(fact.card == "You are dead" for fact in facts)
 
-    message = refused(engine, draft, "kill", entity_id=PLAYER_ID)
+    message = refused(room_engine, draft, "kill", entity_id=PLAYER_ID)
 
     assert "already dead" in message
 
 
-def test_a_party_member_who_is_not_at_the_players_place_is_refused(tmp_path: Path) -> None:
-    engine = _installed(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-    state = engine.begin("the-keep", _scenario(), character)
-    world = state.payload
-
-    with pytest.raises(ValueError, match="not at their place"):
-        SixthWorld(
-            places=world.places,
-            ways=world.ways,
-            npcs=world.npcs,
-            items=world.items,
-            player=world.player,
-            visits=[YARD],
-            party=[WARDEN],
-        )
-
-
-def test_a_room_game_given_a_table_set_is_refused(tmp_path: Path) -> None:
-    engine = _installed(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-    state = engine.begin("the-keep", _scenario(), character)
-
-    stranded = updated(state, packs=PackSelection(ids=("srd",)))
+def test_a_room_game_given_a_table_set_is_refused(
+    room_engine: SixthEngine, begun_room: SixthGame
+) -> None:
+    stranded = updated(begun_room, packs=PackSelection(ids=("srd",)))
 
     with pytest.raises(Refusal, match="plays no table set"):
-        engine.validate(stranded)
+        room_engine.validate(stranded)
 
 
 def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:
@@ -318,14 +129,11 @@ def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:
     assert scenario.payload.model_dump() == before
 
 
-def _walked(tmp_path: Path) -> tuple[SixthEngine, SixthGame]:
+def _walked(room_engine: SixthEngine, begun_room: SixthGame) -> tuple[SixthEngine, SixthGame]:
     """At CELLAR, having walked GATE and YARD: every power has something legal."""
-    engine = _installed(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-    state = engine.begin("the-keep", _scenario(), character)
-    engine.move(state, Move(to_id=YARD), Random(0))
-    engine.move(state, Move(to_id=CELLAR), Random(0))
-    return engine, state.draft()
+    room_engine.move(begun_room, Move(to_id=YARD), Random(0))
+    room_engine.move(begun_room, Move(to_id=CELLAR), Random(0))
+    return room_engine, begun_room.draft()
 
 
 def _all_three(engine: SixthEngine, draft: SixthGame) -> list[Fact]:
@@ -344,8 +152,10 @@ def _all_three(engine: SixthEngine, draft: SixthGame) -> list[Fact]:
     )
 
 
-def test_meanwhile_moves_all_three_things_in_one_call(tmp_path: Path) -> None:
-    engine, draft = _walked(tmp_path)
+def test_meanwhile_moves_all_three_things_in_one_call(
+    room_engine: SixthEngine, begun_room: SixthGame
+) -> None:
+    engine, draft = _walked(room_engine, begun_room)
 
     _ = _all_three(engine, draft)
 
@@ -358,8 +168,10 @@ def test_meanwhile_moves_all_three_things_in_one_call(tmp_path: Path) -> None:
     assert not world.meanwhile_due
 
 
-def test_meanwhile_never_reaches_the_narrator(tmp_path: Path) -> None:
-    engine, draft = _walked(tmp_path)
+def test_meanwhile_never_reaches_the_narrator(
+    room_engine: SixthEngine, begun_room: SixthGame
+) -> None:
+    engine, draft = _walked(room_engine, begun_room)
 
     facts = _all_three(engine, draft)
 
@@ -374,8 +186,8 @@ def test_meanwhile_never_reaches_the_narrator(tmp_path: Path) -> None:
     assert cards(facts) == (only,)
 
 
-def test_meanwhile_refusals(tmp_path: Path) -> None:
-    engine, draft = _walked(tmp_path)
+def test_meanwhile_refusals(room_engine: SixthEngine, begun_room: SixthGame) -> None:
+    engine, draft = _walked(room_engine, begun_room)
     world = draft.payload
 
     assert NOTHING_OFFSCREEN in refused(
@@ -438,8 +250,10 @@ def test_meanwhile_refusals(tmp_path: Path) -> None:
     )
 
 
-def test_the_armed_flag_is_spent_only_on_a_counted_tick(tmp_path: Path) -> None:
-    engine, draft = _walked(tmp_path)
+def test_the_armed_flag_is_spent_only_on_a_counted_tick(
+    room_engine: SixthEngine, begun_room: SixthGame
+) -> None:
+    engine, draft = _walked(room_engine, begun_room)
     draft.payload.meanwhile_due = True
 
     engine.tick(draft, counted=True)
@@ -453,32 +267,31 @@ def test_the_armed_flag_is_spent_only_on_a_counted_tick(tmp_path: Path) -> None:
     assert draft.payload.meanwhile_due
 
 
-def test_the_clock_does_not_arm_with_nothing_to_move_and_keeps_the_count(tmp_path: Path) -> None:
-    engine = _installed(tmp_path)
-    character = engine.create_character("Wren", "A quiet scout", {})
-    state = engine.begin("the-keep", _scenario(), character)
-    draft = state.draft()
+def test_the_clock_does_not_arm_with_nothing_to_move_and_keeps_the_count(
+    room_engine: SixthEngine, begun_room: SixthGame
+) -> None:
+    draft = begun_room.draft()
     world = draft.payload
     assert world.elsewhere() == []
     assert not world.can_move_offscreen()
 
     world.turns_played = 3
-    engine.tick(draft, counted=True)
+    room_engine.tick(draft, counted=True)
 
     assert world.turns_played == 3
     assert not world.meanwhile_due
 
-    engine.move(draft, Move(to_id=YARD), Random(0))
-    engine.move(draft, Move(to_id=CELLAR), Random(0))
-    engine.tick(draft, counted=True)
+    room_engine.move(draft, Move(to_id=YARD), Random(0))
+    room_engine.move(draft, Move(to_id=CELLAR), Random(0))
+    room_engine.tick(draft, counted=True)
 
     assert world.turns_played == 4
 
 
 def test_can_move_offscreen_is_false_when_the_only_item_sits_in_a_here_dwellers_hands(
-    tmp_path: Path,
+    room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    _, draft = _walked(tmp_path)
+    _, draft = _walked(room_engine, begun_room)
     world = draft.payload
     world.npcs[WARDEN].place = CELLAR
     world.items[LANTERN].on = WARDEN
@@ -490,9 +303,9 @@ def test_can_move_offscreen_is_false_when_the_only_item_sits_in_a_here_dwellers_
 
 
 def test_can_move_offscreen_counts_the_shut_power_and_ignores_a_never_visited_place(
-    tmp_path: Path,
+    room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    _, draft = _walked(tmp_path)
+    _, draft = _walked(room_engine, begun_room)
     world = draft.payload
     world.items[LANTERN].on = WELL
     world.npcs[WARDEN].place = WELL
@@ -506,8 +319,10 @@ def test_can_move_offscreen_counts_the_shut_power_and_ignores_a_never_visited_pl
     assert world.can_move_offscreen()
 
 
-def test_the_elsewhere_section_shows_only_when_the_clock_is_armed(tmp_path: Path) -> None:
-    engine, draft = _walked(tmp_path)
+def test_the_elsewhere_section_shows_only_when_the_clock_is_armed(
+    room_engine: SixthEngine, begun_room: SixthGame
+) -> None:
+    engine, draft = _walked(room_engine, begun_room)
     assert ELSEWHERE not in dict(engine.master_sections(draft))
 
     draft.payload.meanwhile_due = True
