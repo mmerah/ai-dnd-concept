@@ -1,11 +1,22 @@
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 from support.table import offline_settings, updated
 
-from aidm.config import RoleConfig, RoleSettings, Settings, read_settings, save_settings
-from aidm.ui.settings import changes, refusal_text
+from aidm.config import (
+    ProviderConfig,
+    RoleConfig,
+    RoleSettings,
+    Settings,
+    read_settings,
+    save_settings,
+)
+from aidm.ui.settings import (
+    _widget,  # pyright: ignore[reportPrivateUsage]
+    changes,
+    refusal_text,
+)
 
 
 def test_only_a_real_edit_is_written(tmp_path: Path) -> None:
@@ -17,11 +28,13 @@ def test_only_a_real_edit_is_written(tmp_path: Path) -> None:
         settings,
         {
             ("providers", "openrouter", "api_key"): "",
+            ("providers", "openrouter", "base_url"): "",
             ("media", "enabled"): True,
             ("media", "model"): None,
             ("roles", "narrator", "timeout"): 90.0,
         },
     ) == {
+        ("providers", "openrouter", "base_url"): None,
         ("media", "enabled"): "true",
         ("media", "model"): None,
         ("roles", "narrator", "timeout"): "90",
@@ -68,3 +81,13 @@ def test_a_validation_error_reads_as_one_line_per_field() -> None:
     assert text.startswith("roles.master.timeout: ")
     assert "type=" not in text
     assert "http" not in text
+
+
+def test_a_stored_secret_is_never_read_back_into_the_page() -> None:
+    field = ProviderConfig.model_fields["api_key"]
+    stored = _widget("api key", field, SecretStr("sk-live-123"))
+    blank = _widget("api key", field, SecretStr(""))
+
+    assert stored.value in (None, "")
+    assert stored.props["placeholder"] == "set — type to replace"
+    assert blank.props["placeholder"] == "not set"

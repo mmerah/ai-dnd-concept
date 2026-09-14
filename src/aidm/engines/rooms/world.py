@@ -44,7 +44,9 @@ class Dungeon[N: Dweller](Mutable):
         check_filing(self.places)
         check_filing(self.npcs)
         check_filing(self.items)
-        check_unique("ids across places, npcs and items", (*self.places, *self.npcs, *self.items))
+        check_unique(
+            "ids across places, npcs and items", (*self.places, *self.npcs, *self.items, PLAYER_ID)
+        )
         for npc in self.npcs.values():
             if npc.place not in self.places:
                 raise ValueError(f"{npc.name} is in no place: {npc.place!r}")
@@ -53,6 +55,8 @@ class Dungeon[N: Dweller](Mutable):
         for item in self.items.values():
             if item.on not in holders:
                 raise ValueError(f"{item.name} is on nothing: {item.on!r}")
+            if item.on == PLAYER_ID and not item.known:
+                raise ValueError(f"{item.name} is on the player but unknown to them")
         for from_id, ways in self.ways.items():
             if from_id not in self.places:
                 raise ValueError(f"ways are filed under {from_id!r}, which is not a place")
@@ -181,7 +185,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
             raise Refusal(UNKNOWN_ID.format(entity_id=entity_id))
         if not npc.alive:
             raise Refusal(IS_DEAD.format(name=npc.name))
-        if npc.place != self.current.id:
+        if npc.place != self.current.id or not npc.known:
             raise Refusal(f"{npc.name} is not here with the player")
         return npc
 
@@ -375,7 +379,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         )
         if not actor.alive:
             raise Refusal(f"{actor.name} is already dead")
-        facts = actor.reveal()
+        facts: list[Fact] = []
         if actor.id in self.party:
             self.party.remove(actor.id)
         actor.alive = False

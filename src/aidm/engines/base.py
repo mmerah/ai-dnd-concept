@@ -118,8 +118,8 @@ class Person(Thing):
     def headline(self) -> str:
         return super().headline + ("" if self.alive else " (dead)")
 
-    def forbidden(self) -> str:
-        """What the worldsmith may not write into a fresh cast member; empty when nothing."""
+    def required(self) -> str:
+        """What a fresh cast member must be for the worldsmith to write it; empty when nothing."""
         return "" if self.alive else "alive"
 
     def changed_tags(
@@ -169,8 +169,8 @@ class Sheeted[S: Sheet](Person):
             detail = "; ".join(part for part in (detail, carried) if part)
         return super().line(rows=rows, detail=detail)
 
-    def forbidden(self) -> str:
-        parts = (super().forbidden(), "a sheet" if self.sheet is not None else "")
+    def required(self) -> str:
+        parts = (super().required(), "no sheet" if self.sheet is not None else "")
         return ", ".join(part for part in parts if part)
 
     @property
@@ -275,11 +275,9 @@ class World[M: Person, P: Person](Mutable):
     def join(self, member: Person) -> list[Fact]:
         if member.id in self.party:
             raise Refusal(f"{member.name} already travels with the player")
-        facts = member.reveal()
         self.party.append(member.id)
         trace = f"{member.tag} travels with the player"
-        facts.append(member.fact(trace, card=f"{member.name} joins your party"))
-        return facts
+        return [member.fact(trace, card=f"{member.name} joins your party")]
 
     def part(self, member: Person) -> list[Fact]:
         if member.id not in self.party:

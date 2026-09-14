@@ -72,7 +72,7 @@ def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) ->
     if broken := [
         f"{eid}: {why}"
         for eid, entry in draft.cast.items()
-        if eid not in filed and (why := entry.forbidden())
+        if eid not in filed and (why := entry.required())
     ]:
         unmet.append(f"cast members as the worldsmith may write them: {broken}")
     # `situation` is read to the player, so naming a hidden entity there hands them the find.
@@ -86,13 +86,12 @@ def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) ->
 
 
 def named_unmet(text: str, entities: Iterable[Thing]) -> list[str]:
-    """A multi-word name or a bare id: a prop called `Bell` shares its word with any bell tower."""
     folded = text.casefold()
     return [
         entity.name
         for entity in entities
-        if (" " in entity.name.strip() and entity.name.casefold() in folded)
-        or re.search(rf"\b{re.escape(entity.id)}\b", text) is not None
+        if (name := entity.name.strip().casefold())
+        and re.search(rf"(?<!\w){re.escape(name)}(?!\w)", folded) is not None
     ]
 
 

@@ -5,7 +5,7 @@ from functools import partial
 from pathlib import Path
 
 from aidm.app.builtin import run_builtin
-from aidm.app.spawn import DRIVERS, RETRIES, RunResult, Spawner, Tools, ask, run_cli
+from aidm.app.spawn import DRIVERS, RunResult, Spawner, Tools, ask, run_cli
 from aidm.config import Role, Settings
 from aidm.core.entities import Refusal
 from aidm.core.facts import Fact, traced
@@ -56,22 +56,14 @@ class Roles:
 
     async def master(self, turn: Turn) -> None:
         """A crashed game master still played the turn, if it applied anything legal first."""
-        prompt = turn.picture()
-        for attempt in range(RETRIES + 1):
-            try:
-                await self.spawner.run("master", prompt, None, turn)
-                return
-            except Refusal as failed:
-                if turn.landed():
-                    LOGGER.warning(
-                        "the game master failed after applying %d facts: %s",
-                        len(turn.facts),
-                        failed,
-                    )
-                    return
-                if attempt == RETRIES:
-                    raise
-                LOGGER.warning("the game master landed nothing, spawning it again: %s", failed)
+        try:
+            await self.spawner.run("master", turn.picture(), None, turn)
+        except Refusal as failed:
+            if not turn.landed():
+                raise
+            LOGGER.warning(
+                "the game master failed after applying %d facts: %s", len(turn.facts), failed
+            )
 
     async def narrate(
         self,

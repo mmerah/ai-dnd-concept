@@ -170,12 +170,14 @@ def test_read_scenarios_of_a_missing_directory_yields_nothing(tmp_path: Path) ->
     assert list(Library(missing, missing).read_scenarios(SCENARIO_MODELS)) == []
 
 
-def test_a_save_that_cannot_be_written_refuses(tmp_path: Path) -> None:
+def test_a_save_that_cannot_be_written_refuses_without_leaking_the_path(tmp_path: Path) -> None:
     blocking = tmp_path / "saves"
     blocking.write_text("", encoding=ENCODING)
 
-    with pytest.raises(Refusal, match="cannot be written"):
+    with pytest.raises(Refusal, match="cannot be written") as raised:
         write_text(blocking / "game.json", "{}")
+
+    assert str(tmp_path) not in str(raised.value)
 
 
 def test_a_write_that_fails_midway_leaves_the_old_file_and_no_staged_file(tmp_path: Path) -> None:
@@ -215,3 +217,24 @@ def test_read_scenarios_skips_a_scenario_whose_world_is_unreadable(
 
     assert read == ["good"]
     assert "cannot be read" in caplog.text
+
+
+def test_a_save_that_cannot_be_read_refuses_without_leaking_the_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = FileStore(tmp_path)
+    broken = tmp_path / "broken.json"
+    broken.write_text("{}", encoding=ENCODING)
+    original_read_text = Path.read_text
+
+    def _read_text(self: Path, encoding: str | None = None, errors: str | None = None) -> str:
+        if self == broken:
+            raise OSError("permission denied")
+        return original_read_text(self, encoding=encoding, errors=errors)
+
+    monkeypatch.setattr(Path, "read_text", _read_text)
+
+    with pytest.raises(Refusal, match="cannot be read") as raised:
+        store.read("broken")
+
+    assert str(tmp_path) not in str(raised.value)

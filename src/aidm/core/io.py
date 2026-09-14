@@ -156,7 +156,7 @@ def publish(path: Path, write: Callable[[Path], object]) -> None:
         write(staged)
         staged.replace(path)
     except OSError as broken:
-        raise Refusal(f"{path.name} cannot be written: {broken}") from broken
+        raise Refusal(f"{path.name} cannot be written: {broken.strerror}") from broken
     finally:
         if staged is not None:
             staged.unlink(missing_ok=True)
@@ -170,7 +170,7 @@ def decode(raw: str) -> JsonValue:
     """`json` keeps the last of two equal keys, so a doubled id would vanish without a word."""
     try:
         return json.loads(raw, object_pairs_hook=_unique_keys)
-    except json.JSONDecodeError as broken:
+    except (json.JSONDecodeError, RecursionError) as broken:
         raise Refusal(f"not JSON: {broken}") from broken
 
 
@@ -194,7 +194,7 @@ def _read_text(path: Path) -> str:
     try:
         return path.read_text(encoding=ENCODING)
     except (OSError, UnicodeDecodeError) as broken:
-        raise Refusal(f"{path.name} cannot be read: {broken}") from broken
+        raise Refusal(f"{path.name} cannot be read") from broken
 
 
 def _check_filed(character_id: str, plays: EngineId, filed_under: Slug, engine: EngineId) -> None:

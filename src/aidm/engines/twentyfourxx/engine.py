@@ -55,6 +55,7 @@ from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
     HELP_DIE,
     HINDERED_DIE,
+    SHIP_IDS,
     Crewmate,
     CrewSheet,
     Gear,
@@ -317,10 +318,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         )
 
     def gain_item(self, draft: TwentyfourxxGame, args: GainItem, _rng: Random) -> list[Fact]:
-        return (
-            self.world_of(draft)
-            .require_actor(args.actor_id)
-            .gain_item(args.name, bulky=args.bulky, breaks=args.breaks, cost=args.cost)
+        world = self.world_of(draft)
+        return world.require_actor(args.actor_id).gain_item(
+            args.name, bulky=args.bulky, breaks=args.breaks, cost=args.cost
         )
 
     def drop_item(self, draft: TwentyfourxxGame, args: DropItem, _rng: Random) -> list[Fact]:
@@ -431,25 +431,37 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         if args.hindered:
             line += f", hindered ({args.hindered})"
         if helping is not None and helping.terms.risk:
-            line += f", {helping.who.name} risking {helping.terms.risk}"
+            terms = helping.terms
+            line += f", {helping.who.name} risking {_staked(terms.risk, deadly=terms.deadly)}"
         if args.risk:
-            line += f", risking {args.risk}"
+            line += f", risking {_staked(args.risk, deadly=args.deadly)}"
         line += f" → {result}"
 
         facts = [rolled.fact, actor.fact(line, card=line, dice=(rolled.event,))]
         if result != "success":
-            lethal = result == "disaster"
+            disaster = result == "disaster"
             if helping is not None and helping.terms.risk:
                 facts.extend(
                     world.take_hit(
                         helping.who,
                         helping.terms.defend_with,
+                        helping.terms.risk,
                         helping.terms.hindrance,
-                        lethal=lethal,
+                        disaster=disaster,
+                        deadly=helping.terms.deadly,
                     )
                 )
             if args.risk:
-                facts.extend(world.take_hit(actor, args.defend_with, args.hindrance, lethal=lethal))
+                facts.extend(
+                    world.take_hit(
+                        actor,
+                        args.defend_with,
+                        args.risk,
+                        args.hindrance,
+                        disaster=disaster,
+                        deadly=args.deadly,
+                    )
+                )
         self._succession(draft)
         return facts
 
@@ -538,7 +550,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
 
 
 def items_from_kits(kits: Sequence[Kit]) -> dict[Slug, Gear]:
-    taken: list[str] = []
+    taken: list[str] = list(SHIP_IDS)
     items: dict[Slug, Gear] = {}
     for kit in kits:
         key = slug(kit.name, taken)
@@ -552,6 +564,10 @@ def _item_lines(items: Mapping[Slug, Gear]) -> str:
         f"- {item.name}[{key}]" + (f" — {detail}" if (detail := item.notes()) else "")
         for key, item in items.items()
     )
+
+
+def _staked(risk: str, *, deadly: bool) -> str:
+    return f"{risk} (deadly)" if deadly else risk
 
 
 def _named(actor_id: Slug | None) -> str:

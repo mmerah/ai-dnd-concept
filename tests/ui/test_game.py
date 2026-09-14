@@ -1,15 +1,21 @@
 from asyncio import get_running_loop
-from collections.abc import Generator
+from collections.abc import Awaitable, Callable, Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
 
-from nicegui import Client, core, ui
+import pytest
+from nicegui import Client, app, core, ui
+from nicegui.events import GenericEventArguments
 from support.game import open_game
-from support.table import Table, play_turn
+from support.table import Table, offline_settings, play_turn, updated
 
+from aidm.app.media import scene_key
+from aidm.app.runtime import IN_FLIGHT
+from aidm.config import MediaConfig
+from aidm.core.entities import Refusal
 from aidm.core.model import AnyGame
-from aidm.core.play import Exchange, PendingDecision, PendingOption, SpokenLine
+from aidm.core.play import DecisionOption, Exchange, PendingDecision, PendingOption, SpokenLine
 from aidm.core.views import PlayerView, Subject
 from aidm.ui.dice import DiceTray
 from aidm.ui.game import (
@@ -17,6 +23,7 @@ from aidm.ui.game import (
     Observed,
     can_type,
     draft_spent,
+    game_page,
     insert_at_caret,
     near_end,
     placeholder,
@@ -197,5 +204,171 @@ async def test_a_change_that_lands_nothing_keeps_a_draft_matching_the_last_promp
         with _nicegui_loop(), client:
             page.poll_turn()
             assert page.box.value == ""
+    finally:
+        client.delete()
+
+
+async def test_decision_buttons_grey_out_while_a_turn_is_in_flight(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    table = open_game(tmp_path)
+    seen: list[bool] = []
+
+    def spy_decision_widget(
+        prompt: str,
+        options: Sequence[DecisionOption],
+        answer: Callable[[str], Awaitable[None]],
+        *,
+        enabled: bool = True,
+    ) -> None:
+        del prompt, options, answer
+        seen.append(enabled)
+
+    monkeypatch.setattr("aidm.ui.game.decision_widget", spy_decision_widget)
+    client = Client(ui.page("/"))
+    try:
+        with _nicegui_loop(), client:
+            page = _page(table)
+            page.view = _view(decision=_pick(allows_text=False))
+
+            table.service.phase = None
+            page.decision_panel()
+            table.service.phase = "master"
+            page.decision_panel()
+    finally:
+        client.delete()
+
+    assert seen == [True, False]
+
+
+async def test_only_this_games_in_flight_guard_is_kept_from_the_player(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    table = open_game(tmp_path)
+    notified: list[str] = []
+
+    def spy_notify(message: str, **_kwargs: object) -> None:
+        notified.append(message)
+
+    monkeypatch.setattr("aidm.ui.game.ui.notify", spy_notify)
+
+    async def busy_here() -> None:
+        raise Refusal(IN_FLIGHT.format(slug=table.service.slug))
+
+    async def busy_elsewhere() -> None:
+        raise Refusal(IN_FLIGHT.format(slug="some-other-save"))
+
+    client = Client(ui.page("/"))
+    try:
+        with _nicegui_loop(), client:
+            page = _page(table)
+            landed = await page._run(busy_here)  # pyright: ignore[reportPrivateUsage]
+            _ = await page._run(busy_elsewhere)  # pyright: ignore[reportPrivateUsage]
+    finally:
+        client.delete()
+
+    assert landed is False
+    assert notified == [IN_FLIGHT.format(slug="some-other-save")]
+
+
+async def test_a_refusal_that_is_not_the_in_flight_guard_still_toasts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    table = open_game(tmp_path)
+    notified: list[str] = []
+
+    def spy_notify(message: str, **_kwargs: object) -> None:
+        notified.append(message)
+
+    monkeypatch.setattr("aidm.ui.game.ui.notify", spy_notify)
+
+    async def refused() -> None:
+        raise Refusal("the rules wait on the player's decision first")
+
+    client = Client(ui.page("/"))
+    try:
+        with _nicegui_loop(), client:
+            page = _page(table)
+            landed = await page._run(refused)  # pyright: ignore[reportPrivateUsage]
+    finally:
+        client.delete()
+
+    assert landed is False
+    assert notified == ["the rules wait on the player's decision first"]
+
+
+async def test_a_page_is_not_built_for_a_client_deleted_before_the_handshake(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    table = open_game(tmp_path)
+    built: list[object] = []
+
+    class _Recorder:
+        def __init__(self, session: object) -> None:
+            built.append(session)
+
+        def build(self) -> None:
+            built.append("built")
+
+    monkeypatch.setattr("aidm.ui.game.GamePage", _Recorder)
+    client = Client(ui.page("/"))
+    client.delete()
+
+    with _nicegui_loop(), client:
+        game_page(table.service)
+
+    assert built == []
+
+
+async def test_build_remembers_scene_art_already_on_disk_like_the_clip(tmp_path: Path) -> None:
+    settings = updated(offline_settings(tmp_path), media=MediaConfig(enabled=True).model_dump())
+    table = open_game(tmp_path, settings=settings)
+    session = table.service
+    assert session.media is not None
+    art_dir = session.media.saves
+    art_dir.mkdir(parents=True, exist_ok=True)
+    key = scene_key(session.engine.narrator_view(session.state))
+    (art_dir / f"{key}.png").write_bytes(b"")
+
+    client = Client(ui.page("/"))
+    client.tab_id = "test-tab"
+    # composer() reads app.storage.tab, which a real handshake would have created for this tab.
+    await app.storage._create_tab_storage(client.tab_id)  # pyright: ignore[reportPrivateUsage]
+    try:
+        with _nicegui_loop(), client:
+            page = GamePage(session)
+            page.build()
+            assert page.shown_art == session.scene_art()
+    finally:
+        client.delete()
+
+
+async def test_dictated_rejects_a_payload_missing_what_dictation_js_promises(
+    tmp_path: Path,
+) -> None:
+    table = open_game(tmp_path)
+    client = Client(ui.page("/"))
+    try:
+        with _nicegui_loop(), client:
+            page = _page(table)
+            event = GenericEventArguments(sender=page.box, client=client, args={"text": "north"})
+            with pytest.raises(Refusal):
+                page.dictated(event)
+    finally:
+        client.delete()
+
+
+async def test_dictated_inserts_a_well_formed_payload_at_the_caret(tmp_path: Path) -> None:
+    table = open_game(tmp_path)
+    client = Client(ui.page("/"))
+    try:
+        with _nicegui_loop(), client:
+            page = _page(table)
+            page.box.value = "I go"
+            event = GenericEventArguments(
+                sender=page.box, client=client, args={"text": "north", "caret": 4}
+            )
+            page.dictated(event)
+            assert page.box.value == "I go north"
     finally:
         client.delete()

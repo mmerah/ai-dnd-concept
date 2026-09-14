@@ -8,8 +8,16 @@ from aidm.core.entities import Refusal
 from aidm.core.facts import Fact
 from aidm.engines.base import PLAYER_ID, AskWorld
 from aidm.engines.scenes.tools import NextScene
+from aidm.engines.twentyfourxx.engine import items_from_kits
 from aidm.engines.twentyfourxx.tools import Helper, Job, Raise, Roll
-from aidm.engines.twentyfourxx.world import STARTING_CREDITS, UPGRADE_COST, Gear, TwentyfourxxGame
+from aidm.engines.twentyfourxx.world import (
+    SHIP_IDS,
+    STARTING_CREDITS,
+    UPGRADE_COST,
+    Gear,
+    TwentyfourxxGame,
+)
+from aidm.engines.twentyfourxx.worldsmith import Kit
 
 
 def _rolled(draft: TwentyfourxxGame, roll: Roll, *, seed: int = 0) -> list[Fact]:
@@ -81,7 +89,7 @@ def test_attempt_actor_id_acts_on_the_member_and_risk_kills_them(draft: Twentyfo
     draft = hired(draft, KESTREL, skills={"Stealth": 10}).draft()
     facts = _rolled(
         draft,
-        Roll(what="Slip past", actor_id=KESTREL, skill="Stealth", risk="a long fall"),
+        Roll(what="Slip past", actor_id=KESTREL, skill="Stealth", risk="a long fall", deadly=True),
         seed=2,
     )
     member = draft.payload.cast[KESTREL]
@@ -91,22 +99,48 @@ def test_attempt_actor_id_acts_on_the_member_and_risk_kills_them(draft: Twentyfo
     assert facts[1].trace.startswith("Slip past — Kestrel: ")
 
 
-def test_risk_kills_on_disaster_and_maims_on_setback_not_doubled() -> None:
+def test_deadly_disaster_kills() -> None:
+    draft = small_world().draft()
+    player = draft.payload.player
+    facts = _rolled(
+        draft, Roll(what="Sneak past", skill="Stealth", risk="a guard's knife", deadly=True), seed=2
+    )
+    assert not player.alive
+    assert any(fact.card == "You are dead" for fact in facts)
+
+
+def test_non_deadly_disaster_leaves_the_named_risk_as_a_hindrance_instead_of_killing() -> None:
+    draft = small_world().draft()
+    player = draft.payload.player
+    facts = _rolled(draft, Roll(what="Sneak past", skill="Stealth", risk="a guard's knife"), seed=2)
+    assert player.alive
+    assert player.require_sheet().hindrances == ["a guard's knife"]
+    assert any(fact.card == "Hindered: a guard's knife" for fact in facts)
+
+
+def test_deadly_setback_maims_not_doubled() -> None:
+    draft = small_world().draft()
+    player = draft.payload.player
+    facts = _rolled(
+        draft, Roll(what="Sneak past", skill="Stealth", risk="a guard's knife", deadly=True), seed=1
+    )
+    assert player.alive
+    assert player.require_sheet().hindrances == ["Maimed"]
+    assert any(fact.card == "Hindered: Maimed" for fact in facts)
+
+    _ = _rolled(
+        draft, Roll(what="Sneak past", skill="Stealth", risk="a guard's knife", deadly=True), seed=1
+    )
+    assert player.require_sheet().hindrances == ["Maimed"]
+
+
+def test_non_deadly_setback_with_no_hindrance_named_lands_nothing() -> None:
     draft = small_world().draft()
     player = draft.payload.player
     facts = _rolled(draft, Roll(what="Sneak past", skill="Stealth", risk="a guard's knife"), seed=1)
     assert player.alive
-    assert player.require_sheet().hindrances == ["Maimed"]
-    assert any(fact.card == "Maimed" for fact in facts)
-
-    _ = _rolled(draft, Roll(what="Sneak past", skill="Stealth", risk="a guard's knife"), seed=1)
-    assert player.require_sheet().hindrances == ["Maimed"]
-
-    draft = small_world().draft()
-    player = draft.payload.player
-    facts = _rolled(draft, Roll(what="Sneak past", skill="Stealth", risk="a guard's knife"), seed=2)
-    assert not player.alive
-    assert any(fact.card == "You are dead" for fact in facts)
+    assert player.require_sheet().hindrances == []
+    assert len(facts) == 2
 
 
 def test_defend_with_intact_item_spares_a_disaster_breaks_the_item_once() -> None:
@@ -255,7 +289,7 @@ def test_setback_with_defend_with_breaks_gear_instead_of_maiming(draft: Twentyfo
     )
     assert player.require_sheet().items[LOCKPICKS].broken
     assert player.require_sheet().hindrances == ["cut fingers"]
-    assert not any(fact.card == "Maimed" for fact in facts)
+    assert not any(fact.card == "Hindered: Maimed" for fact in facts)
 
 
 def test_helper_defends_with_their_own_gear_while_actor_takes_their_own_consequence() -> None:
@@ -276,7 +310,7 @@ def test_helper_defends_with_their_own_gear_while_actor_takes_their_own_conseque
         seed=15,
     )
     assert player.alive
-    assert player.require_sheet().hindrances == ["Maimed"]
+    assert player.require_sheet().hindrances == []
     assert member.alive
     assert member.require_sheet().items["vest"].broken_times == 1
     assert member.require_sheet().hindrances == ["ringing ears"]
@@ -343,7 +377,7 @@ def test_helper_with_risk_takes_their_own_consequence_on_a_bad_roll() -> None:
         Roll(
             what="Slip past",
             skill="Stealth",
-            helped_by=Helper(actor_id=KESTREL, risk="a guard's knife"),
+            helped_by=Helper(actor_id=KESTREL, risk="a guard's knife", deadly=True),
         ),
         seed=2,
     )
@@ -388,7 +422,8 @@ def test_succession_runs_only_after_both_the_actor_and_helper_consequences_land(
             what="Slip past",
             skill="Stealth",
             risk="a guard's knife",
-            helped_by=Helper(actor_id=KESTREL, risk="crossfire"),
+            deadly=True,
+            helped_by=Helper(actor_id=KESTREL, risk="crossfire", deadly=True),
         ),
         seed=2,
     )
@@ -413,6 +448,13 @@ def test_hindrance_needs_a_defend_with_on_roll_and_helper() -> None:
         _ = Roll(what="Sneak past", hindrance="cut fingers")
     with pytest.raises(ValueError, match="hindrance needs the defend_with"):
         _ = Helper(actor_id=KESTREL, hindrance="cut fingers")
+
+
+def test_deadly_needs_a_risk_on_roll_and_helper() -> None:
+    with pytest.raises(ValueError, match="deadly needs the risk"):
+        _ = Roll(what="Sneak past", deadly=True)
+    with pytest.raises(ValueError, match="deadly needs the risk"):
+        _ = Helper(actor_id=KESTREL, deadly=True)
 
 
 def test_ask_world_facts_are_untold(draft: TwentyfourxxGame) -> None:
@@ -461,6 +503,20 @@ def test_gain_item_spends_and_refuses_short_credits(draft: TwentyfourxxGame) -> 
     assert player.require_sheet().items["rope"].name == "Rope"
 
     assert "only" in refused(ENGINE, draft, "gain_item", name="Grenade", cost=99)
+
+
+def test_gain_item_slugs_against_the_ships_functions_too(draft: TwentyfourxxGame) -> None:
+    player = draft.payload.player
+    _ = change(ENGINE, draft, "gain_item", name="Sensors")
+    assert "sensors" not in player.require_sheet().items
+    assert player.require_sheet().items["sensors-2"].name == "Sensors"
+    assert draft.payload.ship["sensors"].name == "Sensors"
+
+
+def test_a_hired_members_kit_slugs_against_the_ships_functions_too() -> None:
+    made = items_from_kits([Kit(name="Sensors"), Kit(name="Hull armor"), Kit(name="Rope")])
+    assert [key for key in made if key in SHIP_IDS] == []
+    assert made["sensors-2"].name == "Sensors"
 
 
 def test_spend_refuses_short_credits(draft: TwentyfourxxGame) -> None:
@@ -693,7 +749,9 @@ def test_kill_on_the_player_flips_player_over(draft: TwentyfourxxGame) -> None:
 
 def test_risk_disaster_with_hired_member_sets_succession_and_over_stays_none() -> None:
     draft = hired(small_world(), KESTREL, skills={"Shooting": 8}).draft()
-    facts = _rolled(draft, Roll(what="Slip past", skill="Stealth", risk="a long fall"), seed=2)
+    facts = _rolled(
+        draft, Roll(what="Slip past", skill="Stealth", risk="a long fall", deadly=True), seed=2
+    )
     assert not draft.payload.player.alive
     assert draft.pending is not None
     assert draft.pending.kind == "succession"
@@ -711,7 +769,9 @@ def test_kill_on_the_lead_with_a_hired_member_opens_the_succession() -> None:
 
 
 def test_risk_disaster_with_none_hired_ends_the_game(draft: TwentyfourxxGame) -> None:
-    _ = _rolled(draft, Roll(what="Slip past", skill="Stealth", risk="a long fall"), seed=2)
+    _ = _rolled(
+        draft, Roll(what="Slip past", skill="Stealth", risk="a long fall", deadly=True), seed=2
+    )
     assert not draft.payload.player.alive
     assert draft.pending is None
     assert ENGINE.over(draft) == "You died."
@@ -719,7 +779,9 @@ def test_risk_disaster_with_none_hired_ends_the_game(draft: TwentyfourxxGame) ->
 
 def test_answering_the_succession_decision_makes_the_member_the_player() -> None:
     draft = hired(small_world(), KESTREL, skills={"Shooting": 8}).draft()
-    _ = _rolled(draft, Roll(what="Slip past", skill="Stealth", risk="a long fall"), seed=2)
+    _ = _rolled(
+        draft, Roll(what="Slip past", skill="Stealth", risk="a long fall", deadly=True), seed=2
+    )
     assert draft.pending is not None
     option = draft.pending.options[0]
     facts = ENGINE.answer(draft, option, Random(0))

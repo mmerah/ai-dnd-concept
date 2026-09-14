@@ -11,10 +11,12 @@ from aidm.app.spawn import (
     Tools,
     ask,
     child_environment,
+    final_message,
     run_cli,
 )
 from aidm.config import Role, RoleConfig
 from aidm.core.entities import Refusal
+from aidm.core.io import decode
 from aidm.core.play import Narration
 
 
@@ -131,6 +133,23 @@ async def test_a_retry_carries_on_the_refused_attempt_and_sends_only_the_error()
     assert asked[0] == ("THE WHOLE BRIEF", None)
     assert asked[1][1] == "abc-123"
     assert "THE WHOLE BRIEF" not in asked[1][0]
+
+
+def test_final_message_tries_only_the_first_brace_not_every_one() -> None:
+    """The old scavenger would dig past a broken `{` to the real answer; this must not."""
+    output = 'garbled prefix {not valid} then the real one {"lines": []}'
+
+    assert final_message(output) == output
+
+
+def test_a_deeply_nested_answer_is_refused_not_a_bare_recursion_error() -> None:
+    depth = 12000
+    nested = '{"lines": ' + "[" * depth + "]" * depth + "}"
+
+    assert final_message(nested) == nested
+    assert final_message(f"```json\n{nested}\n```") is not None
+    with pytest.raises(Refusal, match="not JSON"):
+        _ = decode(nested)
 
 
 def test_only_an_agent_message_is_read_as_the_answer() -> None:

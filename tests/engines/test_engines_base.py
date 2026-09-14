@@ -101,7 +101,15 @@ def test_a_sheeted_person_with_no_sheet_has_no_rows() -> None:
     assert nobody.rows() == ()
 
 
-def test_named_unmet_finds_multi_word_names_case_folded_and_bare_ids() -> None:
+def test_sheeted_required_names_the_missing_state_not_the_carried_one() -> None:
+    carrying = Sheeted[Sheet](id="carries", name="Carries", brief="", sheet=Sheet())
+    assert carrying.required() == "no sheet"
+
+    empty = Sheeted[Sheet](id="empty", name="Empty", brief="")
+    assert empty.required() == ""
+
+
+def test_named_unmet_finds_whole_words_and_phrases_case_folded() -> None:
     text = "The Bell Tower looms over the square; a bell rings, and old-tom watches."
     entities = [
         Thing(id="bell-tower", name="Bell Tower", brief=""),
@@ -109,4 +117,9 @@ def test_named_unmet_finds_multi_word_names_case_folded_and_bare_ids() -> None:
         Thing(id="town-square", name="town square", brief=""),
         Thing(id="old-tom", name="Tom", brief=""),
     ]
-    assert named_unmet(text, entities) == ["Bell Tower", "Tom"]
+    assert named_unmet(text, entities) == ["Bell Tower", "Bell", "Tom"]
+
+
+def test_named_unmet_does_not_match_a_name_glued_inside_another_word() -> None:
+    entities = [Thing(id="the-bell", name="Bell", brief="")]
+    assert named_unmet("A doorbell rings somewhere close.", entities) == []

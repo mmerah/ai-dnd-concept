@@ -10,9 +10,9 @@ from typing import Self
 from nicegui import app, ui
 from nicegui.events import GenericEventArguments, ScrollEventArguments
 
-from aidm.app.runtime import GameService
+from aidm.app.runtime import IN_FLIGHT, GameService
 from aidm.config import Role
-from aidm.core.entities import Refusal, Slug
+from aidm.core.entities import Frozen, Refusal, Slug, parse
 from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import Answer, DecisionOption, Exchange, Marked
 from aidm.core.views import PlayerView
@@ -24,6 +24,7 @@ from aidm.ui.widgets import (
     entity_row,
     heading,
     labeled_value,
+    media_url,
     page_header,
     section,
 )
@@ -63,6 +64,13 @@ MARK_LABELS: dict[Marked, str] = {
     "interjection": "(the party speaks)",
 }
 DECISION_ROW = "game-card game-decision w-full items-center no-wrap game-gap-md"
+
+
+class DictatedSpeech(Frozen):
+    """`ui/dictation.js`'s payload."""
+
+    text: str
+    caret: int
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -180,6 +188,7 @@ class GamePage:
         self.dice.on("sound", self.sound_state)
         # A cached clip never autoplays on a page load, only one landing after.
         self.shown_clip = session.newest_clip()
+        self.shown_art = session.scene_art()
         self.seen = Observed.of(session, self.view, self.history)
         self._set_composer()
         self._clear_spent_draft()
@@ -245,7 +254,7 @@ class GamePage:
         self.scene_card.on("click", self.toggle_scene)
         with self.scene_card:
             if art is not None:
-                ui.image(art).classes("game-scene-wash")
+                ui.image(media_url(art)).classes("game-scene-wash")
             with ui.row().classes("game-scene-body w-full no-wrap game-gap-0"):
                 with ui.column().classes("game-scene-text game-gap-3xs"):
                     ui.label("current scene").classes("text-xs game-eyebrow")
@@ -253,7 +262,7 @@ class GamePage:
                     ui.label(self.view.situation).classes("text-sm opacity-80 game-scene-situation")
                 if art is not None:
                     # Whole frame, faded into the header, not cropped; only the phone strip crops.
-                    ui.image(art).props("fit=contain").classes("game-scene-art")
+                    ui.image(media_url(art)).props("fit=contain").classes("game-scene-art")
             ui.icon("expand_more").classes("game-scene-chevron lt-sm")
 
     @ui.refreshable_method
@@ -333,7 +342,12 @@ class GamePage:
                 ui.icon("pause_circle").classes("game-card-icon")
                 ui.label(pending.kind).classes("text-xs font-bold game-outcome")
                 ui.label("the game is waiting on you").classes("text-xs opacity-60")
-            decision_widget(pending.prompt, pending.options, self.answered)
+            decision_widget(
+                pending.prompt,
+                pending.options,
+                self.answered,
+                enabled=not self.session.busy,
+            )
             if pending.allows_text:
                 pointer = "Or answer" if pending.options else "Answer"
                 ui.label(f"{pointer} in your own words below.").classes("text-xs opacity-60")
@@ -519,15 +533,13 @@ class GamePage:
         self.new_activity.set_visibility(False)
 
     def dictated(self, event: GenericEventArguments) -> None:
-        self.box.value = insert_at_caret(
-            self.box.value or "", event.args["text"], event.args["caret"]
-        )
+        speech = parse(DictatedSpeech, event.args)
+        self.box.value = insert_at_caret(self.box.value or "", speech.text, speech.caret)
         self.box.run_method("updateValue")
 
     def dictation_failed(self, event: GenericEventArguments) -> None:
-        ui.notify(
-            DICTATION_FAILURES.get(event.args, str(event.args)), type="warning", position="top"
-        )
+        reason = str(event.args)
+        ui.notify(DICTATION_FAILURES.get(reason, reason), type="warning", position="top")
 
     def _set_composer(self) -> None:
         session = self.session
@@ -568,7 +580,10 @@ class GamePage:
         try:
             await playing()
         except Refusal as error:
-            ui.notify(str(error), type="negative", multi_line=True, position="top")
+            message = str(error)
+            # A double-click guard, not a message for the player: the greyed-out composer said so.
+            if message != IN_FLIGHT.format(slug=self.session.slug):
+                ui.notify(message, type="negative", multi_line=True, position="top")
             return False
         finally:
             self._set_composer()
@@ -579,6 +594,8 @@ class GamePage:
 
 
 def game_page(session: GameService) -> None:
+    if ui.context.client.is_deleted:
+        return
     GamePage(session).build()
 
 

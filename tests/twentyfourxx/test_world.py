@@ -115,12 +115,12 @@ def test_every_crew_starts_with_the_seven_ship_functions(world: TwentyfourxxWorl
     assert list(ship)[4] == "hull-armor"
 
 
-def test_maim_twice_writes_only_one_fact(world: TwentyfourxxWorld) -> None:
+def test_hinder_twice_writes_only_one_fact(world: TwentyfourxxWorld) -> None:
     player = world.player
-    facts = player.maim()
-    assert [fact.card for fact in facts] == ["Maimed"]
-    assert player.require_sheet().hindrances == ["Maimed"]
-    assert player.maim() == []
+    facts = player.hinder("Winded")
+    assert [fact.card for fact in facts] == ["Hindered: Winded"]
+    assert player.require_sheet().hindrances == ["Winded"]
+    assert player.hinder("Winded") == []
 
 
 def test_raise_skill_sets_the_die_and_reports_it(world: TwentyfourxxWorld) -> None:

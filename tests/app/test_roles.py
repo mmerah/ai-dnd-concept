@@ -1,10 +1,19 @@
+import logging
+from dataclasses import dataclass
+from random import Random
+
+import pytest
 from support.game import initialized, with_entity
 
-from aidm.app.roles import render_interjection, render_narrator
-from aidm.core.play import Interjection, Narration
+from aidm.app.roles import Roles, render_interjection, render_narrator
+from aidm.app.spawn import RunResult, Tools
+from aidm.config import Role
+from aidm.core.entities import Refusal
+from aidm.core.play import Answer, Interjection, Narration
 from aidm.core.tools import schema_text
 from aidm.core.views import Companion, NarratorView, Rows, Subject
 from aidm.engines.loner3e.world import Loner3eCast
+from aidm.turn.run import Turn
 
 
 def _view(subject: Subject) -> NarratorView:
@@ -76,3 +85,46 @@ def test_companions_returns_the_partys_members_with_their_rows() -> None:
             chattiness=member.chattiness,
         ),
     )
+
+
+@dataclass(slots=True)
+class _AlwaysRefuses:
+    calls: int = 0
+
+    async def run(
+        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+    ) -> RunResult:
+        del role, prompt, session, tools
+        self.calls += 1
+        raise Refusal("boom")
+
+
+def _turn_of() -> Turn:
+    engine, state = initialized()
+    return Turn.begin(engine, state, Answer(text="I wait."), Random(0))
+
+
+async def test_a_master_that_lands_nothing_is_asked_once_not_retried() -> None:
+    turn = _turn_of()
+    spawner = _AlwaysRefuses()
+
+    with pytest.raises(Refusal, match="boom"):
+        await Roles(spawner).master(turn)
+
+    assert spawner.calls == 1
+
+
+async def test_a_master_that_already_landed_facts_is_not_retried_and_does_not_raise(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    turn = _turn_of()
+    _ = turn.call(
+        "change_tags", {"entity_id": "player", "kind": "condition", "gained": ["Listening"]}
+    )
+    spawner = _AlwaysRefuses()
+
+    with caplog.at_level(logging.WARNING, logger="aidm.app.roles"):
+        await Roles(spawner).master(turn)
+
+    assert spawner.calls == 1
+    assert "applying 1 facts" in caplog.text

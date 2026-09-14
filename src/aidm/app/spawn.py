@@ -181,21 +181,20 @@ def final_message(output: str) -> str:
         body = fenced[1]
         body = body.split("\n", 1)[1] if body.startswith("json") else body
         # A fence holding something else is prose about the answer, not the answer.
-        with suppress(json.JSONDecodeError):
+        with suppress(json.JSONDecodeError, RecursionError):
             json.loads(body)
             return body
     tail = output.rstrip()
-    decoder = json.JSONDecoder()
-    # The first `{` that decodes all the way to the end is the outermost object, not a nested one.
-    for start in range(len(tail)):
-        if tail[start] != "{":
-            continue
+    # Only the first `{`: digging past a broken one costs a whole re-prompt on a chatty answer.
+    start = tail.find("{")
+    if start != -1:
         try:
-            _, end = decoder.raw_decode(tail, start)
-        except json.JSONDecodeError:
-            continue
-        if end == len(tail):
-            return tail[start:]
+            _, end = json.JSONDecoder().raw_decode(tail, start)
+        except (json.JSONDecodeError, RecursionError):
+            pass
+        else:
+            if end == len(tail):
+                return tail[start:]
     return output
 
 

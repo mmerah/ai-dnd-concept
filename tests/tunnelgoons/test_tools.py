@@ -69,6 +69,7 @@ def test_erudite_rolls_are_not_penalized_for_over_inventory(draft: TunnelGoonsGa
 def test_a_roll_against_an_npc_that_hits_can_slay_it(draft: TunnelGoonsGame) -> None:
     world = draft.payload
     world.npcs[MANTIS].place = START
+    world.npcs[MANTIS].known = True
     world.player.require_sheet().abilities["brute"] = 10  # min total 12 always beats DS 4
     _ = ENGINE.roll(
         draft,
@@ -83,6 +84,7 @@ def test_a_roll_against_an_npc_that_hits_can_slay_it(draft: TunnelGoonsGame) -> 
 def test_an_npc_killed_by_a_roll_drops_what_it_carried_here(draft: TunnelGoonsGame) -> None:
     world = draft.payload
     world.npcs[MANTIS].place = START
+    world.npcs[MANTIS].known = True
     world.items[KEY].on = MANTIS
     world.player.require_sheet().abilities["brute"] = 10  # min total 12 always beats DS 4
     _ = ENGINE.roll(
@@ -96,6 +98,7 @@ def test_an_npc_killed_by_a_roll_drops_what_it_carried_here(draft: TunnelGoonsGa
 def test_a_miss_against_an_npc_can_kill_the_player(draft: TunnelGoonsGame) -> None:
     world = draft.payload
     world.npcs[MANTIS].place = START
+    world.npcs[MANTIS].known = True
     world.npcs[MANTIS].hp.maximum = 20
     world.npcs[MANTIS].hp.current = 20  # max total 12 never beats DS 20
     world.player.require_sheet().abilities["brute"] = 0
@@ -114,6 +117,7 @@ def test_a_roll_against_an_npc_wounds_nobody_unless_it_is_dangerous(draft: Tunne
     """SRD: only a dangerous action turns the margin into damage; talk against a DS does not."""
     world = draft.payload
     world.npcs[MANTIS].place = START
+    world.npcs[MANTIS].known = True
     _ = ENGINE.roll(draft, Roll(what="Talk it down", ability="erudite", against=MANTIS), Random(3))
     assert world.npcs[MANTIS].hp.current == world.npcs[MANTIS].hp.maximum
     assert world.player.hp.current == world.player.hp.maximum
@@ -233,6 +237,19 @@ def test_move_with_ids_brings_an_npc_here_and_refuses_one_standing_elsewhere() -
     elsewhere = small_world().draft()
     with pytest.raises(Refusal, match="not here"):
         _ = ENGINE.move(elsewhere, Move(to_id=VAULT, with_ids=(MANTIS,)), Random(0))
+
+
+def test_move_with_ids_refuses_a_co_located_npc_the_player_has_not_met() -> None:
+    draft = small_world().draft()
+    world = draft.payload
+    world.visits.append(HALL)  # the player stands with Mantis, who is here but still unmet
+    assert world.npcs[MANTIS].place == HALL
+    assert not world.npcs[MANTIS].known
+
+    with pytest.raises(Refusal, match="not here with the player"):
+        _ = ENGINE.move(draft, Move(to_id=START, with_ids=(MANTIS,)), Random(0))
+
+    assert not world.npcs[MANTIS].known
 
 
 def test_a_party_member_moves_with_the_player_and_is_named_in_the_trace() -> None:

@@ -235,7 +235,7 @@ def test_a_sheeted_draft_cast_member_is_refused() -> None:
             },
         }
     )
-    with pytest.raises(Refusal, match="a sheet"):
+    with pytest.raises(Refusal, match="no sheet"):
         check_scene(draft, world)
 
 
@@ -277,12 +277,40 @@ def test_a_hidden_multi_word_name_in_situation_is_refused(case: SceneCase) -> No
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
-def test_a_one_word_name_is_a_word_the_situation_may_use(case: SceneCase) -> None:
-    """A prop called `Bell` shares its word with any bell tower; refusing that costs a crossing."""
+def test_a_hidden_one_word_name_in_situation_is_refused(case: SceneCase) -> None:
+    bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
+    with pytest.raises(Refusal, match="does not name what is hidden"):
+        case.bar(
+            {
+                "situation": f"{case.base['situation']} A bell tolls somewhere close.",
+                "present": (case.met,),
+                "hidden": ("bell-prop",),
+                "cast": {"bell-prop": bell},
+            }
+        )
+
+
+@pytest.mark.parametrize("case", CASES, ids=_case_id)
+def test_a_hidden_one_word_name_matches_case_insensitively(case: SceneCase) -> None:
+    bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
+    with pytest.raises(Refusal, match="does not name what is hidden"):
+        case.bar(
+            {
+                "situation": f"{case.base['situation']} a bell tolls somewhere close.",
+                "present": (case.met,),
+                "hidden": ("bell-prop",),
+                "cast": {"bell-prop": bell},
+            }
+        )
+
+
+@pytest.mark.parametrize("case", CASES, ids=_case_id)
+def test_a_one_word_name_inside_another_word_is_not_refused(case: SceneCase) -> None:
+    """Word boundaries stop `Bell` matching inside `doorbell`, unlike a bell on its own."""
     bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
     case.bar(
         {
-            "situation": f"{case.base['situation']} The bell tower stands over it.",
+            "situation": f"{case.base['situation']} A doorbell rings somewhere close.",
             "present": (case.met,),
             "hidden": ("bell-prop",),
             "cast": {"bell-prop": bell},

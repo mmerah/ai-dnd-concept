@@ -122,6 +122,16 @@ def test_use_med_kit_clears_two_stress(draft: BreathlessGame) -> None:
     assert sheet.stress.current == 1
 
 
+def test_use_med_kit_at_no_stress_is_refused_and_keeps_the_kit(draft: BreathlessGame) -> None:
+    sheet = draft.payload.player.require_sheet()
+    sheet.med_kit = True
+    assert sheet.stress.current == 0
+
+    assert "no stress" in refused(ENGINE, draft, "use_med_kit")
+
+    assert sheet.med_kit
+
+
 def test_change_stress_refuses_a_zero_amount(draft: BreathlessGame) -> None:
     assert "non-zero" in refused(ENGINE, draft, "change_stress", amount=0, why="nothing")
 

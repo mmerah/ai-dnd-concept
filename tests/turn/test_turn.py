@@ -80,16 +80,28 @@ async def test_the_turn_holds_its_facts_in_resolver_order(tmp_path: Path) -> Non
     assert len(exchange.facts) >= len(cards(exchange.facts))
 
 
-async def test_a_narrator_failure_leaves_the_committed_game_untouched(tmp_path: Path) -> None:
+async def test_a_narrator_failure_still_commits_the_turn_with_no_prose(tmp_path: Path) -> None:
     table = open_game(tmp_path)
-    before = table.service.state.model_dump_json()
     table.spawner.turns.append(table.plays((FOUND, TAKEN)))
 
-    with pytest.raises(Refusal, match="no answer left"):
+    await table.service.play(Answer(text="I take the map."))
+
+    exchange = table.service.state.exchanges()[-1]
+    assert exchange.lines == ()
+    assert "the vault map" in table.service.state.payload.player.tagged("gear")
+
+
+async def test_a_narrator_failure_with_nothing_landed_refuses_and_keeps_the_words(
+    tmp_path: Path,
+) -> None:
+    table = open_game(tmp_path)
+    table.spawner.turns.append(table.plays(()))
+    before = len(table.service.state.exchanges())
+
+    with pytest.raises(Refusal, match="narrator"):
         await table.service.play(Answer(text="I take the map."))
 
-    assert table.service.state.model_dump_json() == before
-    assert table.service.state.exchanges() == ()
+    assert len(table.service.state.exchanges()) == before
 
 
 async def test_the_engine_rolls_the_outcome_the_facts_then_record(tmp_path: Path) -> None:
@@ -237,21 +249,6 @@ async def test_a_master_that_crashed_after_a_tool_landed_is_not_spawned_again(
     await table.service.play(Answer(text="I take the map."))
 
     assert [role for role, _ in table.spawner.prompts[spawned:]].count("master") == 1
-
-
-async def test_a_master_that_landed_nothing_is_spawned_once_more(tmp_path: Path) -> None:
-    table = open_game(tmp_path)
-    _ = await play_turn(table, "I look around.")
-    table.spawner.turns += [_never_started, _never_started]
-    spawned = len(table.spawner.prompts)
-
-    with pytest.raises(Refusal, match="never started"):
-        await table.service.play(Answer(text="I take the map."))
-
-    assert [session for role, session in table.spawner.resumed[spawned:] if role == "master"] == [
-        None,
-        None,
-    ]
 
 
 async def test_a_turn_that_applied_nothing_and_failed_is_refused(tmp_path: Path) -> None:
