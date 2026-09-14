@@ -68,7 +68,7 @@ def installed(tmp_path: Path) -> SixthEngine:
     return Installed()
 
 
-def place(place_id: Slug, name: str, *, known: bool) -> Place:
+def _place(place_id: Slug, name: str, *, known: bool) -> Place:
     return Place(id=place_id, name=name, brief=f"The {name.lower()}", known=known, description=name)
 
 
@@ -81,10 +81,10 @@ def scenario() -> SixthScenario:
         engine=SIXTH,
         payload=MapDraft[Dweller](
             places={
-                GATE: place(GATE, "Gate", known=True),
-                YARD: place(YARD, "Yard", known=False),
-                CELLAR: place(CELLAR, "Cellar", known=False),
-                WELL: place(WELL, "Well", known=False),
+                GATE: _place(GATE, "Gate", known=True),
+                YARD: _place(YARD, "Yard", known=False),
+                CELLAR: _place(CELLAR, "Cellar", known=False),
+                WELL: _place(WELL, "Well", known=False),
             },
             ways={
                 GATE: [Way(to=YARD, known=True)],

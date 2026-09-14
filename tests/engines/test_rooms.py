@@ -129,11 +129,11 @@ def test_beginning_the_game_does_not_mutate_the_authored_scenario() -> None:
     assert scenario.payload.model_dump() == before
 
 
-def _walked(room_engine: SixthEngine, begun_room: SixthGame) -> tuple[SixthEngine, SixthGame]:
+def _walked(room_engine: SixthEngine, begun_room: SixthGame) -> SixthGame:
     """At CELLAR, having walked GATE and YARD: every power has something legal."""
     room_engine.move(begun_room, Move(to_id=YARD), Random(0))
     room_engine.move(begun_room, Move(to_id=CELLAR), Random(0))
-    return room_engine, begun_room.draft()
+    return begun_room.draft()
 
 
 def _all_three(engine: SixthEngine, draft: SixthGame) -> list[Fact]:
@@ -155,9 +155,9 @@ def _all_three(engine: SixthEngine, draft: SixthGame) -> list[Fact]:
 def test_meanwhile_moves_all_three_things_in_one_call(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    engine, draft = _walked(room_engine, begun_room)
+    draft = _walked(room_engine, begun_room)
 
-    _ = _all_three(engine, draft)
+    _ = _all_three(room_engine, draft)
 
     world = draft.payload
     assert world.npcs[WARDEN].place == YARD
@@ -171,9 +171,9 @@ def test_meanwhile_moves_all_three_things_in_one_call(
 def test_meanwhile_never_reaches_the_narrator(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    engine, draft = _walked(room_engine, begun_room)
+    draft = _walked(room_engine, begun_room)
 
-    facts = _all_three(engine, draft)
+    facts = _all_three(room_engine, draft)
 
     told = [fact for fact in facts if fact.told]
     assert len(told) == 1
@@ -187,82 +187,88 @@ def test_meanwhile_never_reaches_the_narrator(
 
 
 def test_meanwhile_refusals(room_engine: SixthEngine, begun_room: SixthGame) -> None:
-    engine, draft = _walked(room_engine, begun_room)
+    draft = _walked(room_engine, begun_room)
     world = draft.payload
 
     assert NOTHING_OFFSCREEN in refused(
-        engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=YARD
+        room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=YARD
     )
 
     world.meanwhile_due = True
-    assert "give a dweller, an item or a way to shut" in refused(engine, draft, "meanwhile")
-    assert "both ends or neither" in refused(engine, draft, "meanwhile", dweller_id=WARDEN)
-    assert "unknown id" in refused(engine, draft, "meanwhile", dweller_id="nobody", dweller_to=YARD)
-    assert "unknown id" in refused(engine, draft, "meanwhile", dweller_id=GATE, dweller_to=YARD)
+    assert "give a dweller, an item or a way to shut" in refused(room_engine, draft, "meanwhile")
+    assert "both ends or neither" in refused(room_engine, draft, "meanwhile", dweller_id=WARDEN)
+    assert "unknown id" in refused(
+        room_engine, draft, "meanwhile", dweller_id="nobody", dweller_to=YARD
+    )
+    assert "unknown id" in refused(
+        room_engine, draft, "meanwhile", dweller_id=GATE, dweller_to=YARD
+    )
 
     world.npcs[WARDEN].place = CELLAR
     assert "stands with the player" in refused(
-        engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=YARD
+        room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=YARD
     )
     world.npcs[WARDEN].place = GATE
 
     world.items[LANTERN].on = CELLAR
     assert "is here with the player" in refused(
-        engine, draft, "meanwhile", item_id=LANTERN, item_to=GATE
+        room_engine, draft, "meanwhile", item_id=LANTERN, item_to=GATE
     )
 
     world.npcs[WARDEN].place = CELLAR
     world.items[LANTERN].on = WARDEN
     assert "is here with the player" in refused(
-        engine, draft, "meanwhile", item_id=LANTERN, item_to=GATE
+        room_engine, draft, "meanwhile", item_id=LANTERN, item_to=GATE
     )
     world.npcs[WARDEN].place = GATE
     world.items[LANTERN].on = YARD
 
-    assert "is already there" in refused(engine, draft, "meanwhile", item_id=LANTERN, item_to=YARD)
+    assert "is already there" in refused(
+        room_engine, draft, "meanwhile", item_id=LANTERN, item_to=YARD
+    )
 
     world.npcs[WARDEN].alive = False
     assert "takes no further part" in refused(
-        engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=YARD
+        room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=YARD
     )
     world.npcs[WARDEN].alive = True
 
     world.npcs[WARDEN].place = YARD
     assert "no unlocked way leads" in refused(
-        engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=GATE
+        room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=GATE
     )
     world.npcs[WARDEN].place = GATE
 
-    message = refused(engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=WELL)
+    message = refused(room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=WELL)
     assert "Gate" in message and "Yard" in message
 
-    message = refused(engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=CELLAR)
+    message = refused(room_engine, draft, "meanwhile", dweller_id=WARDEN, dweller_to=CELLAR)
     assert "Gate" in message and "Yard" in message
 
     way = world.way(GATE, YARD)
     assert way is not None
     way.known = False
-    assert "has not found" in refused(engine, draft, "meanwhile", shut_from=GATE, shut_to=YARD)
+    assert "has not found" in refused(room_engine, draft, "meanwhile", shut_from=GATE, shut_to=YARD)
     way.known = True
 
     assert "cannot shut offscreen" in refused(
-        engine, draft, "meanwhile", shut_from=YARD, shut_to=CELLAR
+        room_engine, draft, "meanwhile", shut_from=YARD, shut_to=CELLAR
     )
 
 
 def test_the_armed_flag_is_spent_only_on_a_counted_tick(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    engine, draft = _walked(room_engine, begun_room)
+    draft = _walked(room_engine, begun_room)
     draft.payload.meanwhile_due = True
 
-    engine.tick(draft, counted=True)
+    room_engine.tick(draft, counted=True)
 
     assert not draft.payload.meanwhile_due
 
     draft.payload.meanwhile_due = True
 
-    engine.tick(draft, counted=False)
+    room_engine.tick(draft, counted=False)
 
     assert draft.payload.meanwhile_due
 
@@ -291,7 +297,7 @@ def test_the_clock_does_not_arm_with_nothing_to_move_and_keeps_the_count(
 def test_can_move_offscreen_is_false_when_the_only_item_sits_in_a_here_dwellers_hands(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    _, draft = _walked(room_engine, begun_room)
+    draft = _walked(room_engine, begun_room)
     world = draft.payload
     world.npcs[WARDEN].place = CELLAR
     world.items[LANTERN].on = WARDEN
@@ -305,7 +311,7 @@ def test_can_move_offscreen_is_false_when_the_only_item_sits_in_a_here_dwellers_
 def test_can_move_offscreen_counts_the_shut_power_and_ignores_a_never_visited_place(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    _, draft = _walked(room_engine, begun_room)
+    draft = _walked(room_engine, begun_room)
     world = draft.payload
     world.items[LANTERN].on = WELL
     world.npcs[WARDEN].place = WELL
@@ -322,12 +328,12 @@ def test_can_move_offscreen_counts_the_shut_power_and_ignores_a_never_visited_pl
 def test_the_elsewhere_section_shows_only_when_the_clock_is_armed(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:
-    engine, draft = _walked(room_engine, begun_room)
-    assert ELSEWHERE not in dict(engine.master_sections(draft))
+    draft = _walked(room_engine, begun_room)
+    assert ELSEWHERE not in dict(room_engine.master_sections(draft))
 
     draft.payload.meanwhile_due = True
 
-    section = dict(engine.master_sections(draft))[ELSEWHERE]
+    section = dict(room_engine.master_sections(draft))[ELSEWHERE]
 
     assert "Gate" in section
     assert "Yard" in section
