@@ -1,8 +1,14 @@
+from collections.abc import Callable
+
 import pytest
 from pydantic import ValidationError
-from support.game import initialized, with_entity
+from support.game import MARA, initialized, with_entity
+from support.table import ENGINE_IDS, game
+from support.tunnelgoons import ENGINE as TUNNELGOONS_ENGINE
+from support.tunnelgoons import MIRA as TUNNELGOONS_MIRA
+from support.tunnelgoons import small_world as tunnelgoons_world
 
-from aidm.core.entities import Refusal
+from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.play import Interjection, Line, SpokenLine
 from aidm.core.views import NarratorView, Subject
 from aidm.engines.base import PLAYER_ID
@@ -23,15 +29,64 @@ OBJECT = Loner3eCast(
 )
 
 
-def test_the_narrator_view_names_nobody_in_the_scene_the_player_has_not_met() -> None:
+def _loner3e_hidden_shown() -> str:
     engine, state = initialized()
+    return str(engine.narrator_view(with_entity(state, SECRET)).model_dump())
 
-    shown = str(engine.narrator_view(with_entity(state, SECRET)).model_dump())
 
-    assert "The Secret" not in shown
-    # The vault map is hidden here, and Mara is standing in the room.
-    assert "vault map" not in shown
-    assert "Mara" in shown
+def _tunnelgoons_hidden_shown() -> str:
+    return str(TUNNELGOONS_ENGINE.narrator_view(tunnelgoons_world()).model_dump())
+
+
+@pytest.mark.parametrize(
+    ("shown_of", "hidden"),
+    [
+        (_loner3e_hidden_shown, ("The Secret", "vault map")),
+        (_tunnelgoons_hidden_shown, ("Robo Mantis",)),
+    ],
+    ids=["loner3e", "tunnelgoons"],
+)
+def test_the_narrator_view_names_nobody_the_player_has_not_met(
+    shown_of: Callable[[], str], hidden: tuple[str, ...]
+) -> None:
+    shown = shown_of()
+    for label in hidden:
+        assert label not in shown
+
+
+def _loner3e_dead_view() -> tuple[NarratorView, Slug]:
+    engine, state = initialized()
+    draft = state.draft()
+    _ = draft.payload.kill(MARA)
+    return engine.narrator_view(draft), MARA
+
+
+def _tunnelgoons_dead_view() -> tuple[NarratorView, Slug]:
+    state = tunnelgoons_world()
+    state.payload.npcs[TUNNELGOONS_MIRA].alive = False
+    return TUNNELGOONS_ENGINE.narrator_view(state), TUNNELGOONS_MIRA
+
+
+@pytest.mark.parametrize(
+    "build", [_loner3e_dead_view, _tunnelgoons_dead_view], ids=["loner3e", "tunnelgoons"]
+)
+def test_the_dead_stay_in_the_scene_but_do_not_speak(
+    build: Callable[[], tuple[NarratorView, Slug]],
+) -> None:
+    view, known = build()
+    assert known in [subject.id for subject in view.subjects]
+    assert known not in view.speakers
+
+
+@pytest.mark.parametrize("engine_id", ENGINE_IDS)
+def test_the_player_is_never_listed_as_someone_else_here(engine_id: EngineId) -> None:
+    engine, state = game(engine_id)
+
+    here = next(panel for panel in engine.player_view(state).panels if panel.title == "Also here")
+    assert all(row.icon_id != PLAYER_ID for row in here.rows)
+
+    sections = dict(engine.master_sections(state))
+    assert f"[{PLAYER_ID}]" not in sections["HERE WITH THE PLAYER"]
 
 
 def test_everyone_known_and_present_may_speak() -> None:
@@ -160,6 +215,5 @@ def test_the_player_view_panels_carry_icon_ids_for_who_else_is_here() -> None:
 
     here = next(panel for panel in view.panels if panel.title == "Also here")
     icon_ids = {row.icon_id for row in here.rows}
-    assert PLAYER_ID not in icon_ids
     assert "mara" in icon_ids
     assert all(row.label != "The Secret" for panel in view.panels for row in panel.rows)

@@ -4,7 +4,6 @@ from support.twentyfourxx import ENGINE, LOCKPICKS, small_world
 
 from aidm.core.model import PackSelection
 from aidm.core.views import PanelRow
-from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.seam import AnyEngine
 from aidm.engines.twentyfourxx.world import Gear, TwentyfourxxGame
@@ -26,7 +25,6 @@ def test_the_shipped_game_begins_with_the_srd_pack_and_the_operators_gear() -> N
     world = state.payload
     assert list(world.player.require_sheet().items) == [COMM, CLIMBING_GEAR, NIGHT_VISION_GOGGLES]
     assert world.run.place == "docking-ring"
-    assert PLAYER_ID not in world.present()
 
 
 @pytest.mark.parametrize(
