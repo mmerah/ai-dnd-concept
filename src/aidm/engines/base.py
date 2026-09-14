@@ -122,6 +122,16 @@ class Person(Thing):
         """What the worldsmith may not write into a fresh cast member; empty when nothing."""
         return "" if self.alive else "alive"
 
+    def changed_tags(
+        self, kind: str, current: Sequence[str], gained: Sequence[str], lost: Sequence[str]
+    ) -> list[str]:
+        check_unique(f"{kind} tags", (*gained, *lost))
+        if carried := [tag for tag in gained if tag in current]:
+            raise Refusal(f"{self.name} already carries the {kind} {carried[0]!r}")
+        if missing := [tag for tag in lost if tag not in current]:
+            raise Refusal(f"{self.name} carries no {kind} {missing[0]!r}")
+        return [tag for tag in (*current, *gained) if tag not in lost]
+
     @property
     def hired(self) -> bool:
         """Whether they carry a sheet. A kind that never does answers no."""
@@ -364,19 +374,8 @@ def banded(face: int, low: str, mid: str, high: str) -> str:
     return low if face <= 2 else mid if face <= 4 else high
 
 
-def luck_test(question: str, die: int, bands: tuple[str, str, str], rng: Random) -> list[Fact]:
+def oracle_roll(question: str, die: int, bands: tuple[str, str, str], rng: Random) -> list[Fact]:
     """A question about the world when nobody acts: the dice trace, the answer is never told."""
     rolled = roll((die,), question, rng)
     result = banded(rolled.face, *bands)
     return [rolled.fact, Fact(trace=f"{question} — d{die} [{rolled.face}] → {result}")]
-
-
-def changed_tags(
-    name: str, kind: str, current: Sequence[str], gained: Sequence[str], lost: Sequence[str]
-) -> list[str]:
-    check_unique(f"{kind} tags", (*gained, *lost))
-    if carried := [tag for tag in gained if tag in current]:
-        raise Refusal(f"{name} already carries the {kind} {carried[0]!r}")
-    if missing := [tag for tag in lost if tag not in current]:
-        raise Refusal(f"{name} carries no {kind} {missing[0]!r}")
-    return [tag for tag in (*current, *gained) if tag not in lost]

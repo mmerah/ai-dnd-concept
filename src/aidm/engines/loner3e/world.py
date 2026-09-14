@@ -9,7 +9,7 @@ from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import DecisionOption
 from aidm.core.views import Rows
-from aidm.engines.base import Gauge, Person, changed_tags
+from aidm.engines.base import Gauge, Person
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 
@@ -83,7 +83,7 @@ class Loner3eCast(Person):
         return ", ".join(part for part in parts if part)
 
     def change_tags(self, kind: TagKind, gained: Sequence[str], lost: Sequence[str]) -> list[Fact]:
-        self.tags[kind] = changed_tags(self.name, kind, self.tagged(kind), gained, lost)
+        self.tags[kind] = self.changed_tags(kind, self.tagged(kind), gained, lost)
         trace = f"{self.mention} {kind} " + ", ".join(
             (*(f"+{tag}" for tag in gained), *(f"-{tag}" for tag in lost))
         )

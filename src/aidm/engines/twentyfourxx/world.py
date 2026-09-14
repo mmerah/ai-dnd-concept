@@ -7,7 +7,7 @@ from aidm.core.entities import Frozen, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
-from aidm.engines.base import Item, ItemSheet, Sheeted, changed_tags
+from aidm.engines.base import Item, ItemSheet, Sheeted
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 
@@ -101,7 +101,7 @@ class Crewmate(Sheeted[CrewSheet]):
 
     def change_hindrances(self, gained: Sequence[str], lost: Sequence[str]) -> list[Fact]:
         sheet = self.require_sheet()
-        sheet.hindrances = changed_tags(self.name, "hindrance", sheet.hindrances, gained, lost)
+        sheet.hindrances = self.changed_tags("hindrance", sheet.hindrances, gained, lost)
         parts: list[str] = []
         if gained:
             parts.append(f"Hindered: {', '.join(gained)}")
@@ -243,7 +243,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         if not hindrance:
             raise Refusal("name the hindrance the hit becomes")
         sheet = actor.require_sheet()
-        sheet.hindrances = changed_tags(actor.name, "hindrance", sheet.hindrances, (hindrance,), ())
+        sheet.hindrances = actor.changed_tags("hindrance", sheet.hindrances, (hindrance,), ())
         item.broken_times += 1
         card = f"{item.name} breaks — {hindrance}"
         trace = f"{actor.mention} breaks {item.name} — {hindrance}"

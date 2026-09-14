@@ -12,7 +12,7 @@ from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, sentence
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Look, Panel, PanelRow, Rows
-from aidm.engines.base import DROP_ITEM, PLAYER_ID, DropItem, banded, luck_test
+from aidm.engines.base import DROP_ITEM, PLAYER_ID, DropItem, banded, oracle_roll
 from aidm.engines.breathless.tools import (
     ASK_WORLD,
     CATCH_BREATH,
@@ -295,7 +295,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         return facts
 
     def ask_world(self, _draft: BreathlessGame, args: AskWorldDie, rng: Random) -> list[Fact]:
-        return luck_test(args.question, args.die, ("fail", "success-but", "success"), rng)
+        return oracle_roll(args.question, args.die, ("fail", "success-but", "success"), rng)
 
     def _pool(self, world: BreathlessWorld, actor: Survivor, args: Roll) -> Pool:
         sheet = actor.require_sheet()
