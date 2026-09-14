@@ -1,5 +1,5 @@
 import pytest
-from support.tunnelgoons import HALL, MIRA, START
+from support.tunnelgoons import HALL, MIRA, START, small_world
 
 from aidm.core.entities import Refusal
 from aidm.engines.rooms.world import MapDraft, Prop, Way
@@ -52,9 +52,8 @@ def test_killing_a_party_member_drops_them_from_the_party(world: TunnelGoonsWorl
     assert any(fact.card == "Mira is dead" for fact in facts)
 
 
-def test_a_party_member_who_is_not_at_the_players_place_is_refused(
-    world: TunnelGoonsWorld,
-) -> None:
+def test_a_party_member_who_is_not_at_the_players_place_is_refused() -> None:
+    world = small_world().payload
     with pytest.raises(ValueError, match="not at their place"):
         TunnelGoonsWorld(
             places=world.places,
@@ -81,9 +80,8 @@ def test_a_goons_rows_put_health_before_the_sheets_rows(world: TunnelGoonsWorld)
     assert labels == ["Health", "Brute", "Skulker", "Erudite", "Inventory", "Level"]
 
 
-def test_the_player_levels_up_their_ability_and_health_with_no_name_prefix(
-    world: TunnelGoonsWorld,
-) -> None:
+def test_the_player_levels_up_their_ability_and_health_with_no_name_prefix() -> None:
+    world = small_world().payload
     player = world.player
     sheet = player.require_sheet()
     before_ability = sheet.abilities["brute"]
@@ -100,9 +98,8 @@ def test_the_player_levels_up_their_ability_and_health_with_no_name_prefix(
     assert facts[0].trace == facts[0].card
 
 
-def test_a_hired_npc_levels_up_their_ability_and_inventory_with_a_name_prefix(
-    world: TunnelGoonsWorld,
-) -> None:
+def test_a_hired_npc_levels_up_their_ability_and_inventory_with_a_name_prefix() -> None:
+    world = small_world().payload
     mira = world.npcs[MIRA]
     mira.sheet = GoonSheet(abilities={"brute": 0, "skulker": 0, "erudite": 0})
     before_inventory = mira.require_sheet().inventory
@@ -116,9 +113,8 @@ def test_a_hired_npc_levels_up_their_ability_and_inventory_with_a_name_prefix(
     assert facts[0].card == "Mira: Level 2: Skulker +1, Inventory +1"
 
 
-def test_the_map_so_far_names_who_stands_where_and_every_id_in_use(
-    world: TunnelGoonsWorld,
-) -> None:
+def test_the_map_so_far_names_who_stands_where_and_every_id_in_use() -> None:
+    world = small_world().payload
     shown = world.map_so_far()
 
     assert "  here: Mira[mira] (met), Lantern[lantern] (met)" in shown
