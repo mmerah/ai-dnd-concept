@@ -8,8 +8,7 @@ from aidm.core.entities import Refusal, parse
 from aidm.core.play import PendingOption
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.engine import BreathlessGame
-from aidm.engines.breathless.tools import Actor, LootCheck, Roll, TakeLoot
-from aidm.engines.breathless.tools import TestLuck as LuckTest
+from aidm.engines.breathless.tools import Actor, AskWorldDie, LootCheck, Roll, TakeLoot
 from aidm.engines.breathless.world import Supply, stepped
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.scenes.world import SCENE_LEFT
@@ -207,9 +206,9 @@ def test_the_master_cannot_award_loot_without_rolling_for_it(draft: BreathlessGa
     assert draft.pending is not None and draft.pending.kind == "loot"
 
 
-def test_luck_facts_are_untold(draft: BreathlessGame) -> None:
-    dice_fact, luck_fact = ENGINE.test_luck(
-        draft, LuckTest(question="Is anyone home?", die=6), Random(0)
+def test_ask_world_facts_are_untold(draft: BreathlessGame) -> None:
+    dice_fact, luck_fact = ENGINE.ask_world(
+        draft, AskWorldDie(question="Is anyone home?", die=6), Random(0)
     )
     assert not dice_fact.told
     assert not luck_fact.told

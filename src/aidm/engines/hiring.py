@@ -1,15 +1,11 @@
-from collections.abc import Awaitable, Callable
-from typing import Any
-
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from aidm.core.entities import Frozen, Slug
 from aidm.core.facts import Fact
-from aidm.core.model import Check, Game, WorldsmithAnswer
-from aidm.engines.base import Person
 
 HIRE: Slug = "hire"
 SIGNED_ON = "{name} has signed on with the player. Tell it in a line or two. Settle nothing else."
+HIRED = "The player has hired {name}, {brief}, on these terms: {terms}. "
 HIRE_TOOL = (
     "Call this when the player hires someone here to work. Someone already travelling with the "
     "player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing "
@@ -29,22 +25,3 @@ class Hire(Frozen):
         min_length=1,
         description="What they are hired for, and on what terms, as agreed.",
     )
-
-
-# The worldsmith's write of one member's sheet: the summary the sign-on is told in.
-type Hiring[G: Game[Any], M: Person] = Callable[[G, M, str, WorldsmithAnswer], Awaitable[str]]
-
-
-def hiring[G: Game[Any], M: Person, A: BaseModel](
-    answer: type[A],
-    prompt: Callable[[G, M, str], str],
-    install: Callable[[M, A], str],
-    check: Callable[[G], Check[A]] | None = None,
-) -> Hiring[G, M]:
-    async def write(draft: G, member: M, terms: str, worldsmith: WorldsmithAnswer) -> str:
-        # A write whose only bar is its own schema.
-        checked: Check[A] = (lambda _answer: None) if check is None else check(draft)
-        answered = await worldsmith(prompt(draft, member, terms), answer, checked)
-        return install(member, answered)
-
-    return write

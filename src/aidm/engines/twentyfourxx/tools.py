@@ -16,7 +16,7 @@ ROLL = (
     "Call this when the outcome of an action matters. The engine picks the dice, "
     "rolls them, and reads the result."
 )
-TEST_LUCK = (
+ASK_WORLD = (
     "Call this to ask about the world's bad luck when nobody acts. The engine "
     "rolls one d6 and reads it."
 )
@@ -130,12 +130,6 @@ class Roll(Attempt):
     def _defend_fields(self) -> Self:
         check_risk(self.risk, self.defend_with, self.hindrance)
         return self
-
-
-class TestLuck(Frozen):
-    question: str = Field(
-        min_length=1, description="A closed question about the world where nobody is acting."
-    )
 
 
 class Raise(Frozen):

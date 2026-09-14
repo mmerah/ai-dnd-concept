@@ -6,23 +6,30 @@ from random import Random
 from aidm.core.creation import (
     CreationStep,
     Picks,
-    check_picks,
     chosen_option,
     option_of,
     picked,
     picked_many,
 )
 from aidm.core.entities import EngineId, Refusal, Slug, slug
-from aidm.core.facts import Fact, roll, roll_pool
-from aidm.core.model import AnyCharacter, Check, PackSelection
+from aidm.core.facts import Fact, roll
+from aidm.core.model import AnyCharacter, Check, PackSelection, WorldsmithAnswer
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, section_if, sentence
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Look, Panel, PanelRow, Rows
-from aidm.engines.base import DROP_ITEM, PLAYER_ID, DropItem, Kill, banded, luck_test
-from aidm.engines.hiring import Hiring, hiring
+from aidm.engines.base import (
+    DROP_ITEM,
+    PLAYER_ID,
+    AskWorld,
+    DropItem,
+    Kill,
+    banded,
+    luck_test,
+)
 from aidm.engines.scenes.engine import SUPPLEMENTS, SceneEngine
 from aidm.engines.twentyfourxx.tools import (
+    ASK_WORLD,
     CHANGE_HINDRANCES,
     DEFEND,
     GAIN_ITEM,
@@ -32,7 +39,6 @@ from aidm.engines.twentyfourxx.tools import (
     SHIP_UPGRADE,
     SPEND,
     TAKE_LEAD,
-    TEST_LUCK,
     ChangeHindrances,
     Defend,
     GainItem,
@@ -44,7 +50,6 @@ from aidm.engines.twentyfourxx.tools import (
     ShipUpgrade,
     Spend,
     TakeLead,
-    TestLuck,
 )
 from aidm.engines.twentyfourxx.world import (
     DEFAULT_DIE,
@@ -116,12 +121,17 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
     pack = Pack
     world = TwentyfourxxWorld
     member = Crewmate
+    hires = True
 
     def world_of(self, state: TwentyfourxxGame) -> TwentyfourxxWorld:
         return state.payload
 
-    def hiring(self) -> Hiring[TwentyfourxxGame, Crewmate]:
-        return hiring(SheetDraft, self.hire_prompt, self.install_sheet, self.hire_check)
+    async def write_sheet(
+        self, draft: TwentyfourxxGame, member: Crewmate, terms: str, worldsmith: WorldsmithAnswer, /
+    ) -> str:
+        prompt = self.hire_prompt(draft, member, terms)
+        answer = await worldsmith(prompt, SheetDraft, self.hire_check(draft))
+        return self.install_sheet(member, answer)
 
     def master_tools(self) -> tuple[MasterTool[TwentyfourxxGame], ...]:
         return (
@@ -137,7 +147,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             master_tool("ship_upgrade", SHIP_UPGRADE, ShipUpgrade, self.ship_upgrade),
             master_tool("defend", DEFEND, Defend, self.defend),
             master_tool("roll", ROLL, Roll, self.roll),
-            master_tool("test_luck", TEST_LUCK, TestLuck, self.test_luck),
+            master_tool("ask_world", ASK_WORLD, AskWorld, self.ask_world),
             master_tool("job", JOB, Job, self.job),
         )
 
@@ -190,8 +200,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         )
         return tuple(steps)
 
-    def create_character(self, name: str, brief: str, picks: Picks) -> TwentyfourxxCharacter:
-        check_picks(self.creation_steps(picks), picks)
+    def build_character(self, name: str, brief: str, picks: Picks) -> TwentyfourxxCharacter:
         packs = self.select_packs(picked_many(picks, SUPPLEMENTS))
         offered_specialties, offered_origins = self._offered(picks)
         specialty = chosen_option(offered_specialties, picked(picks, "specialty"))
@@ -410,11 +419,12 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         world.check_defenses(claims)
 
         label = "+".join(f"d{face}" for face in pool.faces)
-        rolled = roll_pool(pool.faces, f"{args.what} — {pool.label}", rng, label=label)
+        rolled = roll(
+            pool.faces, f"{args.what} — {pool.label}", rng, label=label, highlight_kept=True
+        )
         result = banded(rolled.kept, "disaster", "setback", "success")
 
-        prefix = "" if actor is world.player else f"{actor.name}: "
-        line = f"{args.what} — {prefix}{sentence(pool.label)} d{pool.die}"
+        line = f"{args.what} — {actor.card_line(sentence(pool.label))} d{pool.die}"
         if args.helped:
             line += f", helped ({args.helped})"
         line += pool.helped_by
@@ -473,7 +483,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
 
         return Pool(faces=tuple(faces), label=label, die=die, helped_by=helped_by)
 
-    def test_luck(self, _draft: TwentyfourxxGame, args: TestLuck, rng: Random) -> list[Fact]:
+    def ask_world(self, _draft: TwentyfourxxGame, args: AskWorld, rng: Random) -> list[Fact]:
         return luck_test(args.question, 6, ("trouble now", "signs of it", "nothing"), rng)
 
     def job(self, draft: TwentyfourxxGame, args: Job, rng: Random) -> list[Fact]:

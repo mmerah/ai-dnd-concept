@@ -2,6 +2,91 @@
 
 Newest first. One entry per phase of `PLAN.md`.
 
+## Phase 2 — `core` and `engines`
+
+Proposals 4, 8, and the rows of proposal 10 that live in those two layers. One golden
+regeneration, at step 12. Two sequential implementers: part A took PLAN steps 1–4 (the seam),
+part B steps 5–12.
+
+### Counts
+
+| count | before | after | net |
+| --- | --- | --- | --- |
+| `src` | 10,240 | 10,177 | −63 |
+| `tests` | 10,540 | 10,537 | −3 |
+| `qa` | 1,760 | 1,760 | 0 |
+| prompt fixtures (13 files, `wc` under-reports by four) | 813 | 813 | 0 |
+| schema fixtures | 2,366 | 2,366 | 0 |
+
+`uv run pytest` 711 → 711 passing. `uv run basedpyright` 1,101 errors, every one in `qa/`,
+unchanged. `uv run aidm` serves its page (HTTP 200); a live turn was not played — this container
+runs no AI role — so the turn path rests on the suite.
+
+PLAN predicted `src` −38. The actual is −63: the review fold found 25 lines of fat the plan had
+not priced, all of it created by the phase's own shapes. Only two fixture lines moved, both
+step 8's rename: `"name": "test_luck"` → `"ask_world"` in the two `master_tools.json`. No
+`turn/*.json` moved, so step 7's roll merge kept its `len(faces) > 1` computation; no
+`prompts/*.txt` moved, so the hire sentence, the card-line fragment and the item-line collapse
+all render byte-identically.
+
+### Decisions made off-plan
+
+- **PLAN step 10, row 1 — hoisting `drop_item` to `SceneEngine` — is refused.** It does not
+  type-check. `SceneEngine[C: Person, ...]`, so `require_actor()` returns a `Person`, and
+  `require_sheet` is declared on `Sheeted[S]` (`base.py:143`). `C` cannot be narrowed:
+  `Loner3eEngine` is `SceneEngine[Loner3eCast, ...]` and `Loner3eCast(Person)` carries no sheet.
+  Measured before implementation: the hoist written verbatim into `scenes/engine.py` gives four
+  basedpyright errors, the load-bearing one `Cannot access attribute "require_sheet" for class
+  "Person*"`. Landing it needs a new intermediate engine class over `Sheeted[ItemSheet[I]]`,
+  whose header and generics cost more than the four lines the hoist saves. The same failure mode
+  PLAN.md itself records for proposal 4 option (a). Worth −4 of the predicted −38.
+- **`opening_sections` is a class attribute, not the abstract method PLAN step 3 names.** Both
+  reviews caught that a constant-returning abstract method is the exact shape steps 5 and 6
+  remove for `RoomEngine.guidance()`; the phase would have applied opposite rules to two
+  identical constructs in one diff. Taken on the standing decision that the cleanest fix wins.
+- **`scene_sections` and `map_sections` are gone, folded into each family's `family_sections`.**
+  Once step 3 stripped their `| None` branch, each had exactly one caller and `family_sections`
+  was a two-line pass-through. Folding them also puts a family's request sections in the same
+  file as the opening sections the decision above moved there.
+- **The merged roll flag is `highlight_kept`, not PLAN's `keep_highest`.** `Rolled.kept` is
+  `max(self.event.rolled)` whatever the flag; the flag only fills `DiceEvent.highlight`. A call
+  site reading `keep_highest=True` beside `rolled.kept` would believe the dice rule changed.
+- **`_break` in `twentyfourxx/world.py` now goes through `changed_tags` too.** Step 9 changed
+  `change_hindrances` to loner3e's wording and left `_break` and `check_defenses` saying
+  `'X' is already among NAME's hindrances` — two messages for one rejected state, invisible to a
+  suite that only asserts `"already"`. Both reworded; `_break`'s guard and `append` became one
+  `changed_tags` assignment.
+- **`item_line` was added by step 10 row 3 and then deleted.** It landed in `engines/base.py`
+  with exactly one caller, and the collapse measured net **+1** line, not a cut. The other two
+  candidate sites are the `carried()` pair PLAN refuses, so a second user can never arrive.
+
+### What the review fold bought
+
+Two Opus reviews (no `codex` in this container, and the maintainer asked for Opus reviewers).
+They agreed on six findings and split on five. The fold removed 25 lines and two docstrings, and
+fixed two behaviours the suite could not see: the split hindrance wording above, and
+`docs/BREATHLESS.md` / `docs/24XX.md`, which still listed the master tool as `test_luck`.
+
+### Refuted findings
+
+| finding | reason |
+| --- | --- |
+| `changed_tags` should be a `Person` method | Its first argument is a `str`, not one of our objects, so CLAUDE.md's "first argument is one of our objects" rule does not reach it. It owns no storage either: loner3e assigns the result to `self.tags[kind]`, twentyfourxx to `sheet.hindrances`. PLAN specifies a free function. |
+| Guard `hires` against a missing `write_sheet` override in `__init__` | +2 lines of `type(self).write_sheet is Engine.write_sheet` reflection in a phase whose point is removal, and it catches only one of the two directions the finding names — an override without `hires = True` still registers no hire tool silently. The failure it does catch already raises a named `ValueError` naming the engine. |
+| Rename `luck_test` to `oracle_roll` | `luck_test` is an internal helper name; it never reaches a role, the player or a schema. The collision step 8 fixed was the tool string `test_luck` that the master reads beside loner3e's luck gauge. Zero lines either way. |
+| Make `_render`'s `intent`, `guidance`, `answer` keyword-only | It would cost back the six lines one-lining the `render_request` call buys, by exploding it to one argument per line again. `_render` is private with two callers in the same file, and both public entry points, `render_request` and `render_opening`, already take those three keyword-only, so a transposition cannot reach a caller outside `seam.py`. |
+
+### Known and accepted
+
+- `hires = True` and a `write_sheet` override are two spellings of one fact and nothing holds
+  them together; the deleted `hiring()` hook could not disagree with itself. See the refutation
+  above. If a fourth hiring engine is ever written, this is the trap.
+- `tests/core/test_dice.py` was edited although no PLAN step names it: it imported `roll_pool`
+  directly, so step 7 could not land without it.
+- `hire_prompt` and `install_sheet` now have exactly one caller each, their own `write_sheet`.
+  Inlining them is about six lines, but it would bury three different prompt shapes inside three
+  `write_sheet` bodies; left as they are.
+
 ## Phase 1 — the goldens and the test scaffold
 
 Proposals 1, 2, 3, 5, 7, 9, plus an audit of `tests/loner3e/` that no proposal covered.

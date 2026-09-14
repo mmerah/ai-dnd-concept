@@ -5,6 +5,7 @@ from pydantic import Field, model_validator
 from aidm.core.entities import Frozen
 from aidm.core.play import DecisionOption
 from aidm.engines.breathless.world import SKILLS, Die, Skill, check_spread
+from aidm.engines.hiring import HIRED
 from aidm.engines.scenes.packs import ScenePack
 
 AUTHORING = (
@@ -15,10 +16,9 @@ AUTHORING = (
     "setting's vocabulary."
 )
 HIRING = (
-    "The player has hired {name}, {brief}, on these terms: {terms}. Write their sheet as "
-    "someone who could plausibly be hired for this work. Give them pronouns and a job from "
-    "this pack's list: {jobs}. Rate the six skills, with the best where the job and the terms "
-    "point. Give them one item. This pack's weapons are: {weapons}."
+    f"{HIRED}Write their sheet as someone who could plausibly be hired for this work. Give "
+    "them pronouns and a job from this pack's list: {jobs}. Rate the six skills, with the best "
+    "where the job and the terms point. Give them one item. This pack's weapons are: {weapons}."
 )
 
 

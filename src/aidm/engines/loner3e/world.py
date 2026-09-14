@@ -4,12 +4,12 @@ from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.entities import Frozen, Refusal, Slug, check_unique
+from aidm.core.entities import Frozen, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import DecisionOption
 from aidm.core.views import Rows
-from aidm.engines.base import Gauge, Person
+from aidm.engines.base import Gauge, Person, changed_tags
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 
@@ -83,13 +83,7 @@ class Loner3eCast(Person):
         return ", ".join(part for part in parts if part)
 
     def change_tags(self, kind: TagKind, gained: Sequence[str], lost: Sequence[str]) -> list[Fact]:
-        check_unique(f"{kind} tags", (*gained, *lost))
-        current = self.tagged(kind)
-        if carried := [tag for tag in gained if tag in current]:
-            raise Refusal(f"{self.name} already carries the {kind} {carried[0]!r}")
-        if missing := [tag for tag in lost if tag not in current]:
-            raise Refusal(f"{self.name} carries no {kind} {missing[0]!r}")
-        self.tags[kind] = [tag for tag in (*current, *gained) if tag not in lost]
+        self.tags[kind] = changed_tags(self.name, kind, self.tagged(kind), gained, lost)
         trace = f"{self.mention} {kind} " + ", ".join(
             (*(f"+{tag}" for tag in gained), *(f"-{tag}" for tag in lost))
         )

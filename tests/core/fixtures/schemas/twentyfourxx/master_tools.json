@@ -470,7 +470,7 @@
     }
   },
   {
-    "name": "test_luck",
+    "name": "ask_world",
     "description": "Call this to ask about the world's bad luck when nobody acts. The engine rolls one d6 and reads it.",
     "parameters": {
       "additionalProperties": false,

@@ -50,7 +50,7 @@ class FifthEngine(SceneEngine[Person, FifthGame, ScenePack]):
     def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
         return self.supplement_steps()
 
-    def create_character(self, name: str, brief: str, _picks: Picks) -> AnyCharacter:
+    def build_character(self, name: str, brief: str, _picks: Picks) -> AnyCharacter:
         return FifthCharacter(
             id=slug(name, ()),
             engine=FIFTH,

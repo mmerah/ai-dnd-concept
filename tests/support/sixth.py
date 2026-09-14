@@ -45,19 +45,18 @@ class SixthEngine(RoomEngine[Dweller, Person, SixthGame]):
     character = SixthCharacter
     member = Dweller
     world = SixthWorld
+    guidance = "Write the keep plainly."
+    map_model = MapDraft[Dweller]
 
     def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
         return ()
 
-    def create_character(self, name: str, brief: str, _picks: Picks) -> AnyCharacter:
+    def build_character(self, name: str, brief: str, _picks: Picks) -> AnyCharacter:
         return SixthCharacter(
             id=slug(name, ()),
             engine=SIXTH,
             payload=Person(id=PLAYER_ID, name=name, brief=brief, known=True),
         )
-
-    def guidance(self) -> str:
-        return "Write the keep plainly."
 
 
 def installed(tmp_path: Path) -> SixthEngine:

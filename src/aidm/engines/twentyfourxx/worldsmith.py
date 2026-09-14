@@ -5,6 +5,7 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Refusal, Slug
 from aidm.core.play import DecisionOption
+from aidm.engines.hiring import HIRED
 from aidm.engines.scenes.packs import ScenePack
 from aidm.engines.twentyfourxx.world import Kit, SkillDie
 
@@ -16,10 +17,9 @@ AUTHORING = (
     "Write scenes as work sites, stations, ships, and the people who hold them."
 )
 HIRING = (
-    "The player has hired {name}, {brief}, on these terms: {terms}. Write their sheet from the "
-    "specialties in ENGINE GUIDANCE. Write someone who could plausibly be hired for this work. "
-    "The specialty's own skills belong in `skills`; invent a fitting skill beyond that list when "
-    "none printed suits them."
+    f"{HIRED}Write their sheet from the specialties in ENGINE GUIDANCE. Write someone who "
+    "could plausibly be hired for this work. The specialty's own skills belong in `skills`; "
+    "invent a fitting skill beyond that list when none printed suits them."
 )
 
 

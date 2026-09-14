@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from collections.abc import Callable, Iterable
 from pathlib import Path
 from random import Random
@@ -16,7 +15,7 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption
-from aidm.core.prompt import Sections, lines_of
+from aidm.core.prompt import Sections, lines_of, render_history
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import NarratorView, Panel, PanelRow, PlayerView
 from aidm.engines.base import (
@@ -38,8 +37,8 @@ from aidm.engines.rooms.tools import (
     UnlockWay,
 )
 from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RoomWorld
-from aidm.engines.rooms.worldsmith import MAP_ASK, check_extension, check_map, map_sections
-from aidm.engines.seam import Engine, Request, Written, compose
+from aidm.engines.rooms.worldsmith import MAP_ASK, check_extension, check_map
+from aidm.engines.seam import Engine, Request, Written
 
 EXTEND: Slug = "extend"
 MORE_MAP = DecisionOption(
@@ -56,13 +55,16 @@ ELSEWHERE = "ELSEWHERE (time has passed; you may move what the player cannot see
 class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
     world: type[RoomWorld[N, P]]
     family_dir = Path(__file__).parent
+    guidance: str
+    map_model: type[MapDraft[N]]
+    opening_sections = (
+        ("MAP SO FAR", "(no map yet)"),
+        ("SCENES SO FAR", "(no scenes yet — write the opening)"),
+        ("THE PLAYER", "(no player yet — the map is authored before anyone stands in it)"),
+    )
 
     def world_of(self, state: G) -> RoomWorld[N, P]:
         return state.payload
-
-    def map_draft(self) -> type[MapDraft[N]]:
-        """Pydantic parametrizes the subscript at runtime, so the npc type reaches the schema."""
-        return MapDraft[self.member]
 
     def validate(self, state: G) -> None:
         super().validate(state)
@@ -81,9 +83,12 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
     def starting_items(self, _player: P, _taken: Iterable[str]) -> tuple[Prop, ...]:
         return ()
 
-    def family_sections(self, draft: G | None) -> Sections:
-        return map_sections(
-            None if draft is None else self.world_of(draft), () if draft is None else draft.log
+    def family_sections(self, draft: G) -> Sections:
+        world = self.world_of(draft)
+        return (
+            ("MAP SO FAR", world.map_so_far()),
+            ("SCENES SO FAR", render_history(draft.log)),
+            ("THE PLAYER", world.line(world.player)),
         )
 
     def master_sections(self, state: G) -> Sections:
@@ -167,9 +172,9 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
             return self.build_scenario(meta, packs, draft, source, premise)
 
         prompt = self.render_opening(
-            source, meta.scope, intent=MAP_ASK, guidance=self.guidance(), answer=self.map_draft()
+            source, meta.scope, intent=MAP_ASK, guidance=self.guidance, answer=self.map_model
         )
-        return await compose(worldsmith, prompt, self.map_draft(), built, check)
+        return built(await worldsmith(prompt, self.map_model, lambda answer: check(built(answer))))
 
     def act(self, draft: G, action: Slug, words: str) -> None:
         if action != EXTEND or self.world_of(draft).frontier():
@@ -227,15 +232,12 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
     async def write_next(self, draft: G, intent: str, worldsmith: WorldsmithAnswer) -> MapDraft[N]:
         world = self.world_of(draft)
         prompt = self.render_request(
-            draft, intent=intent, guidance=self.guidance(), answer=self.map_draft()
+            draft, intent=intent, guidance=self.guidance, answer=self.map_model
         )
         return await worldsmith(
-            prompt, self.map_draft(), lambda answer: check_extension(answer, world)
+            prompt, self.map_model, lambda answer: check_extension(answer, world)
         )
 
     def install(self, draft: G, extension: MapDraft[N]) -> None:
         """Hidden, so nothing is told: the region reaches the player only as they walk it."""
         self.world_of(draft).attach(extension, extension.start)
-
-    @abstractmethod
-    def guidance(self) -> str: ...

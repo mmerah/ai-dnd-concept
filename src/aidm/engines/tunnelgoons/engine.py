@@ -2,17 +2,16 @@ from collections.abc import Iterable
 from pathlib import Path
 from random import Random
 
-from aidm.core.creation import CreationStep, Picks, check_picks, picked
+from aidm.core.creation import CreationStep, Picks, picked
 from aidm.core.entities import EngineId, Refusal, slug
 from aidm.core.facts import Fact, roll
-from aidm.core.model import AnyCharacter
+from aidm.core.model import AnyCharacter, WorldsmithAnswer
 from aidm.core.play import DecisionOption
 from aidm.core.tools import MasterTool, NoArgs, master_tool
 from aidm.core.views import DiceLook, Look, Rows
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.hiring import Hiring, hiring
 from aidm.engines.rooms.engine import RoomEngine
-from aidm.engines.rooms.world import Prop
+from aidm.engines.rooms.world import MapDraft, Prop
 from aidm.engines.tunnelgoons.tools import (
     LEVEL_UP,
     REST,
@@ -85,12 +84,19 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
     character = TunnelGoonsCharacter
     world = TunnelGoonsWorld
     member = Npc
+    hires = True
+    guidance = AUTHORING
+    map_model = MapDraft[Npc]
 
     def world_of(self, state: TunnelGoonsGame) -> TunnelGoonsWorld:
         return state.payload
 
-    def hiring(self) -> Hiring[TunnelGoonsGame, Npc]:
-        return hiring(AbilitiesDraft, self.hire_prompt, self.install_sheet)
+    async def write_sheet(
+        self, draft: TunnelGoonsGame, member: Npc, terms: str, worldsmith: WorldsmithAnswer, /
+    ) -> str:
+        prompt = self.hire_prompt(draft, member, terms)
+        answer = await worldsmith(prompt, AbilitiesDraft, lambda _answer: None)
+        return self.install_sheet(member, answer)
 
     def master_tools(self) -> tuple[MasterTool[TunnelGoonsGame], ...]:
         return (
@@ -118,8 +124,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         )
         return (*ability_steps, *item_steps)
 
-    def create_character(self, name: str, brief: str, picks: Picks) -> TunnelGoonsCharacter:
-        check_picks(self.creation_steps(picks), picks)
+    def build_character(self, name: str, brief: str, picks: Picks) -> TunnelGoonsCharacter:
         abilities: dict[Ability, int] = {
             ability: int(picked(picks, ability)) for ability in ABILITIES
         }
@@ -141,9 +146,6 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
 
     def starting_items(self, player: Goon, taken: Iterable[str]) -> tuple[Prop, ...]:
         return player.unpack_kit(taken)
-
-    def guidance(self) -> str:
-        return AUTHORING
 
     def rest(self, draft: TunnelGoonsGame, _args: NoArgs, _rng: Random) -> list[Fact]:
         return self.world_of(draft).rest()
@@ -182,9 +184,8 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         total = rolled.total + sheet.abilities[args.ability] + len(items) - penalty
         success = total >= ds
         outcome = "success" if success else "failure"
-        prefix = "" if actor is world.player else f"{actor.name}: "
         line = (
-            f"{args.what} — {prefix}{args.ability.capitalize()}"
+            f"{args.what} — {actor.card_line(args.ability.capitalize())}"
             + (f" with {', '.join(item.name for item in items)}" if items else "")
             + (f" against {npc.name}" if npc is not None else "")
             + f", {total} vs DS {ds} → {outcome}"

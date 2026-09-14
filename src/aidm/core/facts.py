@@ -66,21 +66,13 @@ def traced(facts: Sequence[Fact], *, told_only: bool = False) -> str:
     return "\n".join(f"- {fact.trace}" for fact in facts if fact.told or not told_only) or NOTHING
 
 
-def roll(faces: Sequence[int], reason: str, rng: Random, *, label: str = "") -> Rolled:
-    return _rolled(faces, reason, rng, label, highlight_kept=False)
-
-
-def roll_pool(faces: Sequence[int], reason: str, rng: Random, *, label: str = "") -> Rolled:
-    return _rolled(faces, reason, rng, label, highlight_kept=len(faces) > 1)
-
-
-def _rolled(
-    faces: Sequence[int], reason: str, rng: Random, label: str, *, highlight_kept: bool
+def roll(
+    faces: Sequence[int], reason: str, rng: Random, *, label: str = "", highlight_kept: bool = False
 ) -> Rolled:
     if not faces:
         raise ValueError("a dice pool rolls at least one die")
     drawn = tuple(rng.randint(1, face) for face in faces)
-    highlight = (drawn.index(max(drawn)),) if highlight_kept else ()
+    highlight = (drawn.index(max(drawn)),) if highlight_kept and len(faces) > 1 else ()
     notation = _notation(faces)
     event = DiceEvent(
         label=label or notation, faces=tuple(faces), rolled=drawn, highlight=highlight

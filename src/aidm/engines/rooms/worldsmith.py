@@ -1,28 +1,7 @@
-from collections.abc import Sequence
-
 from aidm.core.entities import Refusal
-from aidm.core.play import Chapter
-from aidm.core.prompt import Sections, render_history
-from aidm.engines.base import Person
-from aidm.engines.rooms.world import Dungeon, Dweller, MapDraft, RoomWorld
+from aidm.engines.rooms.world import Dungeon, Dweller, MapDraft
 
 MAP_ASK = "Write the opening map."
-
-
-def map_sections[N: Dweller, P: Person](
-    world: RoomWorld[N, P] | None, log: Sequence[Chapter]
-) -> Sections:
-    if world is None:
-        return (
-            ("MAP SO FAR", "(no map yet)"),
-            ("SCENES SO FAR", "(no scenes yet — write the opening)"),
-            ("THE PLAYER", "(no player yet — the map is authored before anyone stands in it)"),
-        )
-    return (
-        ("MAP SO FAR", world.map_so_far()),
-        ("SCENES SO FAR", render_history(log)),
-        ("THE PLAYER", world.line(world.player)),
-    )
 
 
 def check_map[N: Dweller](draft: MapDraft[N]) -> None:
