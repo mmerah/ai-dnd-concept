@@ -48,7 +48,7 @@ class Gauge(Mutable):
 
 class Thing(Mutable):
     id: Slug
-    name: str
+    name: str = Field(min_length=1)
     brief: str
     known: bool = False
 

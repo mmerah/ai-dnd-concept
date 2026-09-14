@@ -626,7 +626,7 @@ def test_finish_job_refuses_raises_missing_a_hired_member(draft: TwentyfourxxGam
 
 def test_finish_job_refuses_raises_that_name_the_player_twice(draft: TwentyfourxxGame) -> None:
     draft.payload.job = "Escort the crate"
-    with pytest.raises(Refusal, match="given the player, the player"):
+    with pytest.raises(Refusal, match="given player, player"):
         _ = ENGINE.job(
             draft,
             Job(verb="finish", raises=(Raise(skill="Stealth"), Raise(skill="Climbing"))),

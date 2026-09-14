@@ -1,5 +1,6 @@
 from aidm.core.entities import Refusal
 from aidm.engines.rooms.world import Dungeon, Dweller, MapDraft
+from aidm.engines.scenes.worldsmith import named_unmet
 
 MAP_ASK = "Write the opening map."
 
@@ -29,6 +30,28 @@ def _map_unmet[N: Dweller](draft: MapDraft[N], *, start_known: bool) -> list[str
         )
     if missing := sorted(set(places) - draft.reachable(draft.start)):
         unmet.append(f"places no walk of ways reaches from {draft.start!r}: {missing}")
+    if named := sorted(
+        {
+            name
+            for place_id, place in places.items()
+            for name in named_unmet(
+                place.description,
+                (
+                    *(
+                        npc
+                        for npc in draft.npcs.values()
+                        if npc.place == place_id and not npc.known
+                    ),
+                    *(
+                        item
+                        for item in draft.items.values()
+                        if item.on == place_id and not item.known
+                    ),
+                ),
+            )
+        }
+    ):
+        unmet.append(f"place descriptions that do not name what is hidden there: {named}")
     return unmet
 
 
