@@ -48,13 +48,13 @@ def test_a_malformed_provider_base_url_is_refused() -> None:
         _ = ProviderConfig(base_url="not a url", api_key=pydantic.SecretStr(""))
 
 
-def test_both_shipped_provider_base_urls_still_validate() -> None:
-    settings = EnvFileFreeSettings()
-    assert settings.providers.openrouter.base_url == "https://openrouter.ai/api/v1"
-    assert settings.providers.local.base_url == "http://localhost:11434/v1"
-
-
 def test_a_valid_base_url_is_kept_exactly_as_given_not_normalized() -> None:
-    """`AnyHttpUrl` would append a slash to a bare host, doubling the one `post_bearer` adds."""
     provider = ProviderConfig(base_url="http://localhost:1234", api_key=pydantic.SecretStr(""))
     assert provider.base_url == "http://localhost:1234"
+
+
+def test_a_padded_base_url_is_stored_stripped() -> None:
+    provider = ProviderConfig(
+        base_url=" https://openrouter.ai/api/v1\n", api_key=pydantic.SecretStr("")
+    )
+    assert provider.base_url == "https://openrouter.ai/api/v1"

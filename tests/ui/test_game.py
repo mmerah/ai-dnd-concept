@@ -1,4 +1,4 @@
-from asyncio import get_running_loop
+from asyncio import Event, create_task, get_running_loop, sleep
 from collections.abc import Awaitable, Callable, Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import replace
@@ -8,14 +8,29 @@ import pytest
 from nicegui import Client, app, core, ui
 from nicegui.events import GenericEventArguments
 from support.game import open_game
-from support.table import Table, offline_settings, play_turn, updated
+from support.table import (
+    BREATHLESS,
+    Table,
+    narrated,
+    offline_settings,
+    play_turn,
+    scenario_for,
+    updated,
+)
 
 from aidm.app.media import scene_key
-from aidm.app.runtime import IN_FLIGHT
-from aidm.config import MediaConfig
+from aidm.app.runtime import IN_FLIGHT, LaunchTarget
+from aidm.config import MediaConfig, Role
 from aidm.core.entities import Refusal
 from aidm.core.model import AnyGame
-from aidm.core.play import DecisionOption, Exchange, PendingDecision, PendingOption, SpokenLine
+from aidm.core.play import (
+    Answer,
+    DecisionOption,
+    Exchange,
+    PendingDecision,
+    PendingOption,
+    SpokenLine,
+)
 from aidm.core.views import PlayerView, Subject
 from aidm.ui.dice import DiceTray
 from aidm.ui.game import (
@@ -271,7 +286,6 @@ async def test_this_games_own_in_flight_guard_is_kept_from_the_player(
 async def test_another_games_in_flight_guard_still_reaches_this_player(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """A second game's move must not be swallowed by the first game's own busy guard."""
     table = open_game(tmp_path)
     notified: list[str] = []
 
@@ -295,6 +309,56 @@ async def test_another_games_in_flight_guard_still_reaches_this_player(
     assert notified == [IN_FLIGHT.format(slug="some-other-save")]
 
 
+class _FakeTimer:
+    def __init__(self) -> None:
+        self.cancelled = False
+
+    def cancel(self) -> None:
+        self.cancelled = True
+
+
+async def test_opened_retries_silently_while_the_gate_is_held_by_another_game(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    table = open_game(tmp_path)
+    gate = Event()
+
+    async def hold_narrator(role: Role, prompt: str) -> None:
+        del prompt
+        if role == "narrator":
+            await gate.wait()
+
+    table.spawner.hooks.append(hold_narrator)
+    table.spawner.answers["narrator"] = [narrated("Elsewhere begins.")]
+    elsewhere = table.runtime.session(
+        LaunchTarget(scenario_id=scenario_for(BREATHLESS), character_id="kael")
+    )
+    held = create_task(elsewhere.open())
+    await sleep(0)
+
+    notified: list[str] = []
+
+    def spy_notify(message: str, **_kwargs: object) -> None:
+        notified.append(message)
+
+    monkeypatch.setattr("aidm.ui.game.ui.notify", spy_notify)
+
+    opener = _FakeTimer()
+    client = Client(ui.page("/"))
+    try:
+        with _nicegui_loop(), client:
+            page = _page(table)
+            await page._opened(opener)  # pyright: ignore[reportPrivateUsage, reportArgumentType]
+    finally:
+        client.delete()
+
+    assert notified == []
+    assert not opener.cancelled
+
+    gate.set()
+    await held
+
+
 async def test_restart_item_greys_out_while_a_turn_is_in_flight(tmp_path: Path) -> None:
     table = open_game(tmp_path)
     client = Client(ui.page("/"))
@@ -303,7 +367,7 @@ async def test_restart_item_greys_out_while_a_turn_is_in_flight(tmp_path: Path) 
             page = _page(table)
             assert page.restart_item.enabled is True
 
-            table.service.phase = "master"  # a turn starts; the destructive action must wait
+            table.service.phase = "master"
             page.poll_turn()
             assert page.restart_item.enabled is False
 
@@ -312,6 +376,45 @@ async def test_restart_item_greys_out_while_a_turn_is_in_flight(tmp_path: Path) 
             assert page.restart_item.enabled is True
     finally:
         client.delete()
+
+
+async def test_a_restart_refused_by_this_games_own_gate_still_reaches_the_player(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    table = open_game(tmp_path)
+    gate = Event()
+
+    async def hold_master(role: Role, prompt: str) -> None:
+        del prompt
+        if role == "master":
+            await gate.wait()
+
+    table.spawner.hooks.append(hold_master)
+    table.spawner.turns.append(lambda: None)
+    table.spawner.answers["narrator"] = [narrated("You wait.")]
+    playing = create_task(table.service.play(Answer(text="I wait.")))
+    await sleep(0)
+
+    notified: list[str] = []
+
+    def spy_notify(message: str, **_kwargs: object) -> None:
+        notified.append(message)
+
+    monkeypatch.setattr("aidm.ui.game.ui.notify", spy_notify)
+
+    client = Client(ui.page("/"))
+    try:
+        with _nicegui_loop(), client:
+            page = _page(table)
+            await page.restart()
+    finally:
+        client.delete()
+
+    assert notified == [IN_FLIGHT.format(slug=table.service.slug)]
+    assert table.service.history() == ()
+
+    gate.set()
+    await playing
 
 
 async def test_a_refusal_that_is_not_the_in_flight_guard_still_toasts(

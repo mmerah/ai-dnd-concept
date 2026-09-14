@@ -499,7 +499,11 @@ class GamePage:
             self._clear_box()
 
     async def restart(self) -> None:
-        if not await self._run(self.session.restart):
+        # A menu action, not a composer double-click: any refusal here must reach the player.
+        try:
+            await self.session.restart()
+        except Refusal as error:
+            ui.notify(str(error), type="negative", multi_line=True, position="top")
             return
         self.poll_turn()
         await self._run(self.session.open)
@@ -585,10 +589,12 @@ class GamePage:
             try:
                 await self.session.open()
             except Refusal as error:
-                blocked = _in_flight(str(error))
+                if blocked := str(error).startswith(_IN_FLIGHT_PREFIX):
+                    return
                 raise
 
-        if await self._run(opening) or not blocked:
+        _ = await self._run(opening)
+        if not blocked:
             opener.cancel()
 
     async def _run(self, playing: Callable[[], Awaitable[None]]) -> bool:
@@ -663,10 +669,6 @@ def placeholder(player: PlayerView, phase: Role | None) -> str:
     if player.decision.allows_text:
         return "The game is waiting on your answer."
     return "Choose an option above."
-
-
-def _in_flight(message: str) -> bool:
-    return message.startswith(_IN_FLIGHT_PREFIX)
 
 
 def _card(fact: Fact, *, live: bool = False) -> None:
