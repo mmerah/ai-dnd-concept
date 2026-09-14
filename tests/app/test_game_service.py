@@ -211,7 +211,7 @@ async def test_a_write_requested_after_something_told_ends_the_narration_there(
 
 
 async def test_a_complication_does_not_refill_the_players_spent_luck(tmp_path: Path) -> None:
-    """The scene turns, it does not end: a complication runs no scene-closing refill."""
+    """A complication changes the scene in place; it never touches the player's luck."""
     table = open_game(tmp_path)
     table.state.payload.player.luck.current = 2
     table.service.save(table.state)

@@ -208,6 +208,8 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
     def level_up(self, draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
         world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
+        if actor.require_sheet().level > 1:
+            raise Refusal(f"{actor.name} has already levelled up this adventure")
         # Both or neither, by `LevelUp`; `or` narrows both for the fall-through.
         if args.ability is None or args.boost is None:
             draft.pending = actor.level_decision()

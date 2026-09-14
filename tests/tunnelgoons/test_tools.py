@@ -201,6 +201,22 @@ def test_level_up_needs_both_an_ability_and_a_boost_or_neither() -> None:
         _ = parse(LevelUp, {"ability": "brute"})
 
 
+def test_level_up_refuses_a_second_call_for_a_character_already_levelled(
+    draft: TunnelGoonsGame,
+) -> None:
+    _ = ENGINE.level_up(draft, LevelUp(ability="brute", boost="health"), Random(0))
+    with pytest.raises(Refusal, match="already levelled up"):
+        _ = ENGINE.level_up(draft, LevelUp(ability="skulker", boost="inventory"), Random(0))
+
+
+def test_level_up_with_no_args_does_not_offer_a_character_already_levelled(
+    draft: TunnelGoonsGame,
+) -> None:
+    _ = ENGINE.level_up(draft, LevelUp(ability="brute", boost="health"), Random(0))
+    with pytest.raises(Refusal, match="already levelled up"):
+        _ = ENGINE.level_up(draft, LevelUp(), Random(0))
+
+
 def test_move_refuses_a_locked_way(draft: TunnelGoonsGame, world: TunnelGoonsWorld) -> None:
     world.visits.append(HALL)
     with pytest.raises(Refusal, match="locked"):

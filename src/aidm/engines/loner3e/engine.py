@@ -182,16 +182,6 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
             raise ValueError("the SRD table set has no twist columns")
         return tuple(zip(srd.twist_subjects, srd.twist_actions, strict=True))
 
-    def leaving(self, draft: Loner3eGame) -> list[Fact]:
-        """The dead keep their spent pool; only `restore_luck` clears a defeat."""
-        world = self.world_of(draft)
-        return [
-            fact
-            for member in (world.player, *world.cast.values())
-            if member.alive
-            for fact in member.refill("the scene is over")
-        ]
-
     def change_tags(self, draft: Loner3eGame, args: ChangeTags, _rng: Random) -> list[Fact]:
         actor = self.world_of(draft).require_living_here(args.entity_id)
         return actor.change_tags(args.kind, args.gained, args.lost)

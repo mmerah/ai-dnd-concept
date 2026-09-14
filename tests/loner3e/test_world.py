@@ -1,13 +1,10 @@
 from pydantic import JsonValue
-from support.game import ENGINE, MARA, SITUATION, initialized
+from support.game import ENGINE, MARA, initialized
 from support.table import change
 from support.table import refused as change_refused
 
 from aidm.engines.base import PLAYER_ID
-from aidm.engines.loner3e.world import LUCK_MAX, TIES_PER_TWIST, Loner3eCast, Loner3eGame
-from aidm.engines.scenes.tools import SceneDraft
-
-TOMAS = "tomas"
+from aidm.engines.loner3e.world import TIES_PER_TWIST, Loner3eGame
 
 
 def changed(draft: Loner3eGame, name: str, **fields: JsonValue) -> list[str]:
@@ -16,32 +13,6 @@ def changed(draft: Loner3eGame, name: str, **fields: JsonValue) -> list[str]:
 
 def refused(draft: Loner3eGame, name: str, **fields: JsonValue) -> str:
     return change_refused(ENGINE, draft, name, **fields)
-
-
-def _next_scene(
-    present: tuple[str, ...] = (MARA,), hidden: tuple[str, ...] = (TOMAS,)
-) -> SceneDraft[Loner3eCast]:
-    return SceneDraft[Loner3eCast](
-        place="cloister",
-        title="The Cloister",
-        focus="Does the cloister walk still reach the stair?",
-        situation=SITUATION,
-        present=present,
-        hidden=hidden,
-        arc="Farther along, the stair still leads down to what Tomas would not speak of.",
-    )
-
-
-def test_someone_left_behind_is_refilled_when_the_scene_moves_on() -> None:
-    _, state = initialized()
-    draft = state.draft()
-    draft.payload.require(MARA).luck.current = LUCK_MAX - 2
-
-    _ = ENGINE.leaving(draft)
-    _ = ENGINE.install(draft, _next_scene(present=(), hidden=(TOMAS,)))
-
-    assert MARA not in draft.payload.party
-    assert draft.payload.require(MARA).luck.current == LUCK_MAX
 
 
 def test_change_tags_edits_one_list_and_refuses_what_it_cannot_move() -> None:
