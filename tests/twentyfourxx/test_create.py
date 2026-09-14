@@ -14,46 +14,25 @@ SNEAK = {
 }
 
 
-def test_steps_grow_as_picks_land() -> None:
-    assert [s.id for s in ENGINE.creation_steps({})] == ["specialty"]
-    steps = ENGINE.creation_steps({"specialty": "sneak"})
-    assert [s.id for s in steps] == ["specialty", "origin"]
-
-
-def test_muscle_shows_specialty_choice_and_weapon() -> None:
-    ids = [s.id for s in ENGINE.creation_steps({"specialty": "muscle"})]
-    assert "specialty-choice" in ids
-    assert "weapon" in ids
-
-
-def test_sneak_shows_neither_specialty_choice_nor_weapon() -> None:
-    ids = [s.id for s in ENGINE.creation_steps({"specialty": "sneak"})]
-    assert "specialty-choice" not in ids
-    assert "weapon" not in ids
-
-
-def test_alien_shows_two_trait_steps() -> None:
-    picks = {"specialty": "sneak", "origin": "alien"}
-    ids = [s.id for s in ENGINE.creation_steps(picks)]
-    assert ids[-2:] == ["trait-1", "trait-2"]
-
-
-def test_android_shows_body_and_one_increase() -> None:
-    picks = {"specialty": "sneak", "origin": "android"}
-    ids = [s.id for s in ENGINE.creation_steps(picks)]
-    assert "body" in ids
-    assert ids.count("increase-1") == 1
-    assert "increase-2" not in ids
-
-
-def test_human_shows_three_increases() -> None:
-    picks = {"specialty": "sneak", "origin": "human"}
-    ids = [s.id for s in ENGINE.creation_steps(picks)]
-    assert [i for i in ids if i.startswith("increase-")] == [
-        "increase-1",
-        "increase-2",
-        "increase-3",
-    ]
+@pytest.mark.parametrize(
+    ("picks", "expected"),
+    [
+        ({}, ["specialty"]),
+        ({"specialty": "sneak"}, ["specialty", "origin"]),
+        ({"specialty": "muscle"}, ["specialty", "specialty-choice", "weapon", "origin"]),
+        ({"specialty": "sneak", "origin": "alien"}, ["specialty", "origin", "trait-1", "trait-2"]),
+        (
+            {"specialty": "sneak", "origin": "android"},
+            ["specialty", "origin", "body", "increase-1"],
+        ),
+        (
+            {"specialty": "sneak", "origin": "human"},
+            ["specialty", "origin", "increase-1", "increase-2", "increase-3"],
+        ),
+    ],
+)
+def test_creation_steps_grow_with_picks(picks: dict[str, str], expected: list[str]) -> None:
+    assert [s.id for s in ENGINE.creation_steps(picks)] == expected
 
 
 def test_create_character_builds_the_sheet() -> None:
