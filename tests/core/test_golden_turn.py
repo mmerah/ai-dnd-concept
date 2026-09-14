@@ -1,30 +1,19 @@
-from importlib import import_module
 from pathlib import Path
 from random import Random
-from typing import cast
 
 import pytest
 from pydantic import BaseModel
-from support.golden import FIXTURES, golden, golden_json
-from support.golden_turn import INTERJECTION, NARRATION
-from support.table import ENGINE_IDS, ENGINES_BUILT, Call, drain, game, open_table, play_turn
+from support.golden import FIXTURES, golden, golden_json, masked
+from support.golden_turn import INTERJECTION, NARRATION, SCRIPTS
+from support.table import ENGINE_IDS, ENGINES_BUILT, drain, game, open_table, play_turn
 
 from aidm.core.entities import EngineId, Refusal
-from aidm.core.model import AnyGame, Check, Generation
+from aidm.core.model import Check, Generation
+from aidm.core.tools import schema_of
 from aidm.engines.hiring import HIRE
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
 SEED = 19
-
-
-def _script(engine_id: EngineId) -> tuple[Call, ...]:
-    """Each engine's own package holds its scripted turn, so a new engine needs no core edit."""
-    return cast(tuple[Call, ...], import_module(f"tests.{engine_id}.golden_turn").SCRIPT)
-
-
-def _behind(engine_id: EngineId, state: AnyGame) -> AnyGame:
-    """Each engine's own package holds how one prior exchange is added to its state."""
-    return cast(AnyGame, import_module(f"tests.{engine_id}.golden_turn").behind(state))
 
 
 @pytest.mark.parametrize("engine_id", ENGINE_IDS)
@@ -36,13 +25,21 @@ async def test_a_scripted_turn_renders_and_records_unchanged(
     )
     # Deterministic so the interjection this engine's script triggers fires every run.
     table.service.chatter = Random(SEED)
-    table.service.save(_behind(engine_id, table.state))
+    script, behind = SCRIPTS[engine_id]
+    table.service.save(behind(table.state))
 
-    await play_turn(table, PROMPT, *_script(engine_id), narration=NARRATION, then=(INTERJECTION,))
+    await play_turn(table, PROMPT, *script, narration=NARRATION, then=(INTERJECTION,))
     await drain(table.service)
 
-    golden(FIXTURES / "prompts" / engine_id / "master.txt", table.spawner.prompt("master"))
-    golden(FIXTURES / "prompts" / engine_id / "narrator.txt", table.spawner.prompt("narrator"))
+    engine = table.service.engine
+    golden(
+        FIXTURES / "prompts" / engine_id / "master.txt",
+        masked(table.spawner.prompt("master"), engine.instructions),
+    )
+    golden(
+        FIXTURES / "prompts" / engine_id / "narrator.txt",
+        masked(table.spawner.prompt("narrator")),
+    )
     # The prompts live in their own fixtures; these are everything else the turn produced.
     golden_json(
         FIXTURES / "turn" / f"{engine_id}.json",
@@ -52,7 +49,7 @@ async def test_a_scripted_turn_renders_and_records_unchanged(
     if table.service.engine.world_of(table.state).members():
         golden(
             FIXTURES / "prompts" / engine_id / "interjection.txt",
-            table.spawner.prompt("narrator", 1),
+            masked(table.spawner.prompt("narrator", 1)),
         )
 
 
@@ -60,9 +57,11 @@ async def test_a_scripted_turn_renders_and_records_unchanged(
 async def test_a_worldsmith_request_renders_unchanged(engine_id: EngineId) -> None:
     engine, state = game(engine_id)
     prompts: list[str] = []
+    models: list[type[BaseModel]] = []
 
-    async def recording[M: BaseModel](prompt: str, _model: type[M], _check: Check[M]) -> M:
+    async def recording[M: BaseModel](prompt: str, model: type[M], _check: Check[M]) -> M:
         prompts.append(prompt)
+        models.append(model)
         raise Refusal("recorded")
 
     # The family's own write, not the seam's `hire`: the detail is a place to go.
@@ -70,4 +69,5 @@ async def test_a_worldsmith_request_renders_unchanged(engine_id: EngineId) -> No
     request = Generation(operation=operation, detail="Deeper in, toward the sound.")
     with pytest.raises(Refusal, match="recorded"):
         await engine.advance(state.draft(), request, recording)
-    golden(FIXTURES / "prompts" / engine_id / "worldsmith.txt", prompts[0])
+    golden(FIXTURES / "prompts" / engine_id / "worldsmith.txt", masked(prompts[0]))
+    golden_json(FIXTURES / "schemas" / engine_id / "worldsmith_answer.json", schema_of(models[0]))

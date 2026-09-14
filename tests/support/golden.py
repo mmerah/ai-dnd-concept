@@ -8,6 +8,21 @@ ENCODING = "utf-8"
 FIXTURES = Path(__file__).parents[1] / "core" / "fixtures"
 REGENERATE = os.environ.get("AIDM_GOLDEN_REGEN") == "1"
 DIFF_LINES = 40
+RULES_MARKER = "<<rules.md>>"
+SCHEMA_MARKER = "<<schema>>"
+ANSWER_WITH = "ANSWER WITH:\n"
+
+
+def masked(prompt: str, instructions: str = "") -> str:
+    """The engine's rules and the answer schema are rendered and checked elsewhere; a marker
+    keeps a prompt fixture from rewriting whenever either one moves."""
+    if instructions:
+        needle = instructions.strip()
+        if needle not in prompt:
+            raise AssertionError("the instructions are not spliced into the prompt verbatim")
+        prompt = prompt.replace(needle, RULES_MARKER)
+    head, sep, _ = prompt.partition(ANSWER_WITH)
+    return f"{head}{sep}{SCHEMA_MARKER}\n" if sep else prompt
 
 
 def golden(path: Path, actual: str) -> None:
