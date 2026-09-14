@@ -70,8 +70,8 @@ def test_walk_reaches_every_place_along_the_ways(world: TunnelGoonsWorld) -> Non
     assert world.reachable(START) == set(world.places)
 
 
-def test_frontier_counts_the_one_unknown_place_past_a_known_one(world: TunnelGoonsWorld) -> None:
-    assert world.frontier() == 1
+def test_frontier_counts_every_unknown_place_reachable_from_here(world: TunnelGoonsWorld) -> None:
+    assert world.frontier() == 2
 
 
 def test_a_goons_rows_put_health_before_the_sheets_rows(world: TunnelGoonsWorld) -> None:
