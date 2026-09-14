@@ -157,6 +157,9 @@ class ScriptedAgents:
     def _worldsmith(self, prompt: str) -> str:
         schema = _section(prompt, "ANSWER WITH")
         number = next(self.scenes)
+        # A scene draft nests its cast sheet, so its schema also carries the hire probes below.
+        if '"situation"' in schema:
+            return self._scene(schema, number)
         if '"places"' in schema:
             opening = "(no map yet)" in prompt
             room = f"qa-room-{number}"
@@ -213,6 +216,9 @@ class ScriptedAgents:
                     "hindrances": [],
                 }
             )
+        raise Refusal(f"scripted: no worldsmith answer for this schema: {schema[:200]}")
+
+    def _scene(self, schema: str, number: int) -> str:
         scene: dict[str, JsonValue] = {
             "place": f"qa-place-{number}",
             "title": f"QA Scene {number}",
