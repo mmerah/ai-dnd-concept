@@ -90,8 +90,9 @@ def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
                 answered = runtime.call(params.name, params.arguments or {})
             except Refusal as refused:
                 return _content(str(refused), error=True)
-            except Exception as broken:
-                LOGGER.exception("tool %s failed", params.name, exc_info=broken)
+            except Exception:
+                # The mcp framework would otherwise swallow this traceback.
+                LOGGER.exception("tool %s failed", params.name)
                 raise
         return _content(answered)
 

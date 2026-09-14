@@ -1,9 +1,9 @@
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Literal, Self, get_args
+from typing import Annotated, Literal, Self, get_args
 
 from dotenv import set_key, unset_key
-from pydantic import ConfigDict, Field, SecretStr, field_validator, model_validator
+from pydantic import ConfigDict, Field, SecretStr, StringConstraints, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from aidm.core.entities import Frozen
@@ -31,18 +31,11 @@ class ProviderConfig(Configured):
 class RoleConfig(Configured):
     provider: RoleProvider = "claude"
     # A string, not a `Literal`: model aliases move faster than this file.
-    model: str = Field(min_length=1)
+    model: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
     effort: Effort = "medium"
     timeout: float = Field(default=300.0, gt=0.0)
     # The replies a master may make in one turn over an API; a CLI paces itself.
     max_rounds: int = Field(default=30, gt=0)
-
-    @field_validator("model")
-    @classmethod
-    def _not_blank(cls, model: str) -> str:
-        if not model.strip():
-            raise ValueError("model must not be blank")
-        return model
 
 
 class MediaConfig(Configured):
@@ -116,7 +109,7 @@ class Settings(BaseSettings):
     interjections: bool = True
     # The world moves offscreen every few turns; off stops the clock and disarms it.
     meanwhile: bool = True
-    # Held clear of the 131072-byte cap on the one argv element that carries the prompt.
+    # Enforced as a byte count in core/source.py, clear of the 131072-byte argv cap.
     source_max_chars: int = Field(default=96_000, ge=1)
     # Not `PORT`, set by too many shells.
     server_port: int = Field(default=8080, gt=0, lt=65536)
