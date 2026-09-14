@@ -58,3 +58,14 @@ def test_a_padded_base_url_is_stored_stripped() -> None:
         base_url=" https://openrouter.ai/api/v1\n", api_key=pydantic.SecretStr("")
     )
     assert provider.base_url == "https://openrouter.ai/api/v1"
+
+
+def test_a_base_url_with_an_interior_tab_or_newline_is_refused() -> None:
+    for base_url in (
+        "https://open\trouter.ai/api/v1",
+        "https://openrouter.ai/api\r/v1",
+        "https://open\nrouter.ai/v1",
+        "https://openrouter.ai/api/v1\x00",
+    ):
+        with pytest.raises(pydantic.ValidationError, match="base_url"):
+            _ = ProviderConfig(base_url=base_url, api_key=pydantic.SecretStr(""))

@@ -39,6 +39,8 @@ class ProviderConfig(Configured):
     @classmethod
     def _valid_base_url(cls, base_url: str) -> str:
         """Kept as a plain string, not `AnyHttpUrl`: that type would double a bare host's slash."""
+        if any(not char.isprintable() or char.isspace() for char in base_url):
+            raise ValueError("a base url holds no spaces or control characters")
         AnyHttpUrl(base_url)
         return base_url
 
