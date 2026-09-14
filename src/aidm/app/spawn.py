@@ -226,7 +226,8 @@ async def ask[T: BaseModel](
         correction = f"Your last answer was refused: {refused}\nAnswer again, fixed."
         # The retry carries on the refused attempt, which has read the prompt already.
         asked = correction if session is not None else f"{prompt}\n\n{correction}"
-    raise Refusal(f"the {role} answered nothing usable: {refused}")
+    LOGGER.warning("the %s answered nothing usable: %s", role, refused)
+    raise Refusal(f"the {role} answered nothing usable")
 
 
 def worldsmith(spawner: Spawner) -> WorldsmithAnswer:

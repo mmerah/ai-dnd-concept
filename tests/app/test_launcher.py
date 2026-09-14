@@ -280,7 +280,7 @@ async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: P
     spawner = ScriptedSpawner(answers={"worldsmith": [broken, broken]})
     runtime = Runtime(offline_settings(tmp_path, scenarios), lambda _: spawner)
 
-    with pytest.raises(Refusal, match="filed under"):
+    with pytest.raises(Refusal, match="the worldsmith answered nothing usable") as failed:
         _ = await runtime.new_scenario(
             LONER3E,
             ScenarioMeta(title="The Sunken Bell", premise="The tide.", scope="One crossing."),
@@ -289,6 +289,7 @@ async def test_an_opening_the_rules_will_not_play_never_reaches_disk(tmp_path: P
             "kael",
         )
 
+    assert "filed under" not in str(failed.value)
     assert not scenarios.exists()
 
 

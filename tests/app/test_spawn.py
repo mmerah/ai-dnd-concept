@@ -1,9 +1,9 @@
 import json
-import sys
 from dataclasses import dataclass
 
 import pytest
 
+import aidm.app.spawn as spawn
 from aidm.app.spawn import (
     ClaudeDriver,
     CodexDriver,
@@ -43,7 +43,7 @@ class _CrashingProcess:
         self, role: Role, config: RoleConfig, session: str | None, url: str
     ) -> tuple[str, ...]:
         del role, config, session, url
-        return (sys.executable, "-c", "print('HIDDEN HERE the arc'); exit(3)")
+        return ("aidm-crashing",)
 
     def read_result(self, output: str) -> RunResult:
         del output
@@ -127,7 +127,19 @@ async def test_a_missing_cli_binary_is_a_refusal_not_a_crash() -> None:
         _ = await run_cli("master", config, _NoSuchBinary(), 1, "PLAY", None)
 
 
-async def test_a_crashed_roles_raw_output_never_reaches_the_player() -> None:
+async def test_a_crashed_roles_raw_output_never_reaches_the_player(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeProcess:
+        returncode = 3
+
+        async def communicate(self) -> tuple[bytes, bytes]:
+            return b"HIDDEN HERE the arc", b""
+
+    async def fake_create(*_argv: str, **_kwargs: object) -> FakeProcess:
+        return FakeProcess()
+
+    monkeypatch.setattr(spawn.subprocess, "create_subprocess_exec", fake_create)
     config = RoleConfig(model="opus", effort="high")
 
     with pytest.raises(Refusal, match="master exited 3") as failed:
@@ -170,6 +182,23 @@ async def test_a_retry_carries_on_the_refused_attempt_and_sends_only_the_error()
     assert asked[0] == ("THE WHOLE BRIEF", None)
     assert asked[1][1] == "abc-123"
     assert "THE WHOLE BRIEF" not in asked[1][0]
+
+
+async def test_answered_nothing_usable_does_not_quote_the_checks_message() -> None:
+    class _Spawner:
+        async def run(
+            self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
+        ) -> RunResult:
+            del role, prompt, tools
+            return RunResult('{"lines": []}', session or "abc-123")
+
+    def _check(_: Narration) -> None:
+        raise Refusal("a scene that does not name what is hidden: ['Bell']")
+
+    with pytest.raises(Refusal, match="the narrator answered nothing usable") as failed:
+        _ = await ask(_Spawner(), "narrator", "PROMPT", Narration, _check)
+
+    assert "Bell" not in str(failed.value)
 
 
 def test_final_message_tries_only_the_first_brace_not_every_one() -> None:

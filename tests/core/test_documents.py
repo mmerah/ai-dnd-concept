@@ -51,14 +51,30 @@ def test_whole_text_refuses_a_pdf_that_is_not_readable(tmp_path: Path) -> None:
         _ = whole_text(broken, MAX_CHARS)
 
 
-def test_whole_text_refuses_a_pdf_pypdf_breaks_on_with_a_plain_exception(
-    tmp_path: Path,
-) -> None:
+def test_whole_text_refuses_a_pdf_whose_catalog_has_no_pages(tmp_path: Path) -> None:
     """A trailer whose catalog has no /Pages makes pypdf raise a bare AttributeError."""
     broken = tmp_path / "no_pages.pdf"
     broken.write_bytes(
         b"%PDF-1.4\n"
         b"1 0 obj\n<< /Type /Catalog >>\nendobj\n"
+        b"xref\n0 2\n0000000000 65535 f \n0000000009 00000 n \n"
+        b"trailer\n<< /Size 2 /Root 1 0 R >>\nstartxref\n45\n%%EOF\n"
+    )
+    with pytest.raises(Refusal, match="cannot be read"):
+        _ = whole_text(broken, MAX_CHARS)
+
+
+def test_whole_text_refuses_a_pdf_whose_font_has_no_descendant_fonts(tmp_path: Path) -> None:
+    """A composite font with no /DescendantFonts makes pypdf raise a bare KeyError."""
+    broken = tmp_path / "no_descendants.pdf"
+    broken.write_bytes(
+        b"%PDF-1.4\n"
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+        b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n"
+        b"4 0 obj\n<< /Type /Font /Subtype /Type0 /BaseFont /Identity-H >>\nendobj\n"
+        b"5 0 obj\n<< /Length 34 >>\nstream\nBT /F1 11 Tf 72 720 Td (Hi) Tj ET\nendstream\nendobj\n"
         b"xref\n0 2\n0000000000 65535 f \n0000000009 00000 n \n"
         b"trailer\n<< /Size 2 /Root 1 0 R >>\nstartxref\n45\n%%EOF\n"
     )
