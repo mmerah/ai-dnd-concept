@@ -3,6 +3,7 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen
+from aidm.engines.hiring import HIRED
 from aidm.engines.tunnelgoons.world import ABILITY_POINTS, AbilityScores
 
 AUTHORING = (
@@ -17,8 +18,8 @@ HIRE_GUIDANCE = (
     "perception and speaking. Answer with the abilities alone."
 )
 HIRING = (
-    "The player has hired {name}, {brief}, on these terms: {terms}. Write their three "
-    "abilities from ENGINE GUIDANCE, to fit who they are and what they were hired for."
+    f"{HIRED}Write their three abilities from ENGINE GUIDANCE, to fit who they are and what "
+    "they were hired for."
 )
 
 

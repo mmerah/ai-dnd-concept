@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from aidm.core.creation import CreationStep, Picks
+from aidm.core.creation import CreationStep, Picks, check_picks
 from aidm.core.entities import EngineId, Refusal, Slug, parse, parse_json
 from aidm.core.facts import Fact
 from aidm.core.io import decode, read_cached_text
@@ -39,7 +39,7 @@ from aidm.engines.base import (
     Reveal,
     World,
 )
-from aidm.engines.hiring import HIRE, HIRE_TOOL, HIRE_UNWRITTEN, SIGNED_ON, Hire, Hiring
+from aidm.engines.hiring import HIRE, HIRE_TOOL, HIRE_UNWRITTEN, SIGNED_ON, Hire
 
 SOURCELESS = "(none — write from what is below)"
 
@@ -69,8 +69,10 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     art_style: str
     look: Look
     meanwhile_turns: int = 6
+    hires: bool = False
     directory: Path  # rules.md; a scene engine's packs/
     family_dir: Path
+    opening_sections: Sections
     game: type[G]
     member: type[M]
     scenario: type[AnyScenario]
@@ -79,14 +81,12 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     instructions: str
     tools: dict[str, MasterTool[G]]
     requests: dict[Slug, Request[G]]
-    hire_writer: Hiring[G, M] | None
 
     def __init__(self) -> None:
         self.instructions = (
             f"{read_cached_text(self.directory / 'rules.md')}\n"
             f"{read_cached_text(self.family_dir / 'rules.md')}"
         )
-        self.hire_writer = self.hiring()
         tools = self.master_tools()
         names = [tool.name for tool in tools]
         if len(set(names)) != len(names):
@@ -104,13 +104,13 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
             master_tool("join_party", JOIN_PARTY, JoinParty, self.join_party),
             master_tool("leave_party", LEAVE_PARTY, LeaveParty, self.leave_party),
         )
-        if self.hire_writer is None:
+        if not self.hires:
             return shared
         return (*shared, master_tool("hire", HIRE_TOOL, Hire, self.hire))
 
     def worldsmith_requests(self) -> dict[Slug, Request[G]]:
         """Each layer adds its own after `super()`'s: the seam's `hire`, then the family."""
-        if self.hire_writer is None:
+        if not self.hires:
             return {}
         return {HIRE: Request(HIRE_UNWRITTEN, self.write_hire)}
 
@@ -126,9 +126,10 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     def leave_party(self, draft: G, args: LeaveParty, _rng: Random) -> list[Fact]:
         return self.world_of(draft).leave_party(args.entity_id)
 
-    def hiring(self) -> Hiring[G, M] | None:
-        """The write of a hired member's sheet; `None` when this engine hires nobody."""
-        return None
+    async def write_sheet(
+        self, _draft: G, _member: M, _terms: str, _worldsmith: WorldsmithAnswer, /
+    ) -> str:
+        raise ValueError(f"the {self.id!r} engine hires nobody")
 
     def hire(self, draft: G, args: Hire, _rng: Random) -> list[Fact]:
         member = self.world_of(draft).require_hireable(args.entity_id)
@@ -142,12 +143,10 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     async def write_hire(
         self, draft: G, request: Generation, worldsmith: WorldsmithAnswer
     ) -> Written:
-        if self.hire_writer is None:
-            raise ValueError(f"the {self.id!r} engine hires nobody")
         if request.target is None:
             raise Refusal("a hire request names no target")
         member = self.world_of(draft).require_hireable(request.target)
-        summary = await self.hire_writer(draft, member, request.detail, worldsmith)
+        summary = await self.write_sheet(draft, member, request.detail, worldsmith)
         world = self.world_of(draft)
         facts = world.join(member) if member.id not in world.party else []
         trace = f"{member.mention} signs on — {summary}"
@@ -204,18 +203,19 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
         self, draft: G, *, intent: str, guidance: str, answer: type[BaseModel]
     ) -> str:
         world = self.world_of(draft)
-        return self._render(draft, world.source, draft.scenario.scope, intent, guidance, answer)
+        family = self.family_sections(draft)
+        return self._render(world.source, draft.scenario.scope, family, intent, guidance, answer)
 
     def render_opening(
         self, source: str, scope: str, *, intent: str, guidance: str, answer: type[BaseModel]
     ) -> str:
-        return self._render(None, source, scope, intent, guidance, answer)
+        return self._render(source, scope, self.opening_sections, intent, guidance, answer)
 
     def _render(
         self,
-        draft: G | None,
         source: str,
         scope: str,
+        family: Sections,
         intent: str,
         guidance: str,
         answer: type[BaseModel],
@@ -225,7 +225,7 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
                 ("YOUR ROLE", read_cached_text(self.family_dir / "worldsmith.md")),
                 ("SOURCE MATERIAL", source or SOURCELESS),
                 ("THE SCOPE OF PLAY", scope),
-                *self.family_sections(draft),
+                *family,
                 ("WHAT COMES NEXT", intent),
                 ("ENGINE GUIDANCE", guidance),
                 ("ANSWER WITH", schema_text(answer)),
@@ -319,6 +319,10 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     def over(self, state: G) -> str | None:
         return "You died." if not self.world_of(state).player.alive else None
 
+    def create_character(self, name: str, brief: str, picks: Picks) -> AnyCharacter:
+        check_picks(self.creation_steps(picks), picks)
+        return self.build_character(name, brief, picks)
+
     def validate(self, state: G) -> None:
         """Refuse a state this engine cannot play; a family adds its check after `super()`."""
         if not state.log:
@@ -330,7 +334,7 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     @abstractmethod
     def creation_steps(self, picks: Picks, /) -> tuple[CreationStep, ...]: ...
     @abstractmethod
-    def create_character(self, name: str, brief: str, picks: Picks, /) -> AnyCharacter: ...
+    def build_character(self, name: str, brief: str, picks: Picks, /) -> AnyCharacter: ...
     @abstractmethod
     def world_of(self, state: G) -> World[M, P]: ...
     @abstractmethod
@@ -338,7 +342,7 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     @abstractmethod
     def master_sections(self, state: G) -> Sections: ...
     @abstractmethod
-    def family_sections(self, draft: G | None) -> Sections: ...
+    def family_sections(self, draft: G, /) -> Sections: ...
     @abstractmethod
     def narrator_view(self, state: G) -> NarratorView: ...
     @abstractmethod
@@ -355,13 +359,3 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     @abstractmethod
     def act(self, draft: G, action: Slug, words: str, /) -> None:
         """The page's action against the state now: refuse it stale, else request or note."""
-
-
-async def compose[M: BaseModel](
-    worldsmith: WorldsmithAnswer,
-    prompt: str,
-    model: type[M],
-    build: Callable[[M], AnyScenario],
-    check: Callable[[AnyScenario], None],
-) -> AnyScenario:
-    return build(await worldsmith(prompt, model, lambda answer: check(build(answer))))

@@ -3,11 +3,11 @@ from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.entities import Frozen, Refusal, Slug, check_unique, slug
+from aidm.core.entities import Frozen, Refusal, Slug, slug
 from aidm.core.facts import DiceEvent, Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.views import Rows
-from aidm.engines.base import Item, ItemSheet, Sheeted
+from aidm.engines.base import Item, ItemSheet, Sheeted, changed_tags
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 
@@ -101,16 +101,7 @@ class Crewmate(Sheeted[CrewSheet]):
 
     def change_hindrances(self, gained: Sequence[str], lost: Sequence[str]) -> list[Fact]:
         sheet = self.require_sheet()
-        check_unique("gained hindrances", gained)
-        for hindrance in gained:
-            if hindrance in sheet.hindrances:
-                raise Refusal(f"{hindrance!r} is already among {self.name}'s hindrances")
-        for hindrance in lost:
-            if hindrance not in sheet.hindrances:
-                raise Refusal(f"{hindrance!r} is not among {self.name}'s hindrances")
-        for hindrance in lost:
-            sheet.hindrances.remove(hindrance)
-        sheet.hindrances.extend(gained)
+        sheet.hindrances = changed_tags(self.name, "hindrance", sheet.hindrances, gained, lost)
         parts: list[str] = []
         if gained:
             parts.append(f"Hindered: {', '.join(gained)}")
@@ -240,7 +231,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
             if not hindrance:
                 raise Refusal(f"name the hindrance {item.name} leaves behind")
             if hindrance in actor.require_sheet().hindrances:
-                raise Refusal(f"{hindrance!r} is already among {actor.name}'s hindrances")
+                raise Refusal(f"{actor.name} already carries the hindrance {hindrance!r}")
 
     def _break(self, actor: Crewmate, item: Gear, hindrance: str) -> list[Fact]:
         if item.harmless:
@@ -252,10 +243,8 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         if not hindrance:
             raise Refusal("name the hindrance the hit becomes")
         sheet = actor.require_sheet()
-        if hindrance in sheet.hindrances:
-            raise Refusal(f"{hindrance!r} is already among {actor.name}'s hindrances")
+        sheet.hindrances = changed_tags(actor.name, "hindrance", sheet.hindrances, (hindrance,), ())
         item.broken_times += 1
-        sheet.hindrances.append(hindrance)
         card = f"{item.name} breaks — {hindrance}"
         trace = f"{actor.mention} breaks {item.name} — {hindrance}"
         return [actor.fact(trace, card=card)]

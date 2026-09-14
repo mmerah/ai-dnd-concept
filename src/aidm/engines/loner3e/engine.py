@@ -6,14 +6,13 @@ from pydantic import JsonValue
 from aidm.core.creation import (
     CreationStep,
     Picks,
-    check_picks,
     chosen_option,
     other_than,
     picked,
     picked_many,
 )
 from aidm.core.entities import EngineId, Slug, slug
-from aidm.core.facts import Fact, roll, roll_pool
+from aidm.core.facts import Fact, roll
 from aidm.core.model import PackSelection
 from aidm.core.play import PendingDecision
 from aidm.core.prompt import Sections
@@ -130,9 +129,8 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
             ),
         )
 
-    def create_character(self, name: str, brief: str, picks: Picks) -> Loner3eCharacter:
+    def build_character(self, name: str, brief: str, picks: Picks) -> Loner3eCharacter:
         steps = self.creation_steps(picks)
-        check_picks(steps, picks)
         packs = self.select_packs(picked_many(picks, SUPPLEMENTS))
         # The steps already carry the options pooled across the picked packs.
         by_id = {step.id: step for step in steps}
@@ -220,8 +218,10 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         world.check_conflict(actor, opponent)
 
         chance_faces, risk_faces = args.faces()
-        chance = roll_pool(chance_faces, f"{args.question} — chance", rng, label="Chance")
-        risk = roll_pool(risk_faces, f"{args.question} — risk", rng, label="Risk")
+        chance = roll(
+            chance_faces, f"{args.question} — chance", rng, label="Chance", highlight_kept=True
+        )
+        risk = roll(risk_faces, f"{args.question} — risk", rng, label="Risk", highlight_kept=True)
 
         outcome = outcome_for(chance.kept, risk.kept)
         line = _oracle_line(args, opponent, outcome)

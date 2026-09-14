@@ -1,9 +1,7 @@
 import re
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 
 from aidm.core.entities import Refusal, Slug
-from aidm.core.play import Chapter
-from aidm.core.prompt import Sections, render_history
 from aidm.engines.base import Person, Thing
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld, resolved_id
@@ -85,20 +83,6 @@ def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) ->
     ):
         unmet.append(f"a hidden list without {met}, whom the player has already met")
     return unmet
-
-
-def scene_sections[C: Person](world: SceneWorld[C] | None, log: Sequence[Chapter]) -> Sections:
-    if world is None:
-        return (
-            ("SCENES SO FAR", "(no scenes yet — write the opening)"),
-            ("THE WHOLE CAST", "(no cast yet — write the people and things this scene needs)"),
-            ("THE SCENE NOW", "(none yet)"),
-        )
-    return (
-        ("SCENES SO FAR", render_history(log)),
-        ("THE WHOLE CAST", world.cast_lines()),
-        ("THE SCENE NOW", world.scene_lines()),
-    )
 
 
 def named_unmet(text: str, entities: Iterable[Thing]) -> list[str]:

@@ -40,7 +40,7 @@ Every tool makes one change, rolls dice, opens a decision, or ends the turn.
   complication table goes to the master as a note.
 - `loot_check` — roll the loot die and step it down; a find opens the player's decision: take it,
   swap it for something carried, or take a med kit instead.
-- `test_luck` — one die of the master's choosing, read on the check ladder, for a question about
+- `ask_world` — one die of the master's choosing, read on the check ladder, for a question about
   the world where nobody acts.
 - `hire` — the player hires someone here to work; the worldsmith writes their sheet once the turn
   ends, and they join the party.

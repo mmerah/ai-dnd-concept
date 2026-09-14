@@ -319,7 +319,7 @@
     }
   },
   {
-    "name": "test_luck",
+    "name": "ask_world",
     "description": "Call this to ask about the world when nobody acts. The engine rolls the die you pick and reads it.",
     "parameters": {
       "additionalProperties": false,

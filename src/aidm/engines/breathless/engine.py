@@ -4,28 +4,28 @@ from random import Random
 
 from pydantic import JsonValue
 
-from aidm.core.creation import CreationStep, Picks, check_picks, other_than, picked, picked_many
+from aidm.core.creation import CreationStep, Picks, other_than, picked, picked_many
 from aidm.core.entities import EngineId, Refusal, parse, slug
-from aidm.core.facts import Fact, roll, roll_pool
-from aidm.core.model import AnyCharacter, PackSelection
+from aidm.core.facts import Fact, roll
+from aidm.core.model import AnyCharacter, PackSelection, WorldsmithAnswer
 from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, sentence
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import DiceLook, Look, Panel, PanelRow, Rows
 from aidm.engines.base import DROP_ITEM, PLAYER_ID, DropItem, banded, luck_test
 from aidm.engines.breathless.tools import (
+    ASK_WORLD,
     CATCH_BREATH,
     CHANGE_STRESS,
     LOOT_CHECK,
     ROLL,
-    TEST_LUCK,
     USE_MED_KIT,
     Actor,
+    AskWorldDie,
     ChangeStress,
     LootCheck,
     Roll,
     TakeLoot,
-    TestLuck,
     UseMedKit,
 )
 from aidm.engines.breathless.world import (
@@ -46,7 +46,6 @@ from aidm.engines.breathless.world import (
     SurvivorSheet,
 )
 from aidm.engines.breathless.worldsmith import AUTHORING, HIRING, Pack, SheetDraft
-from aidm.engines.hiring import Hiring, hiring
 from aidm.engines.scenes.engine import SUPPLEMENTS, SceneEngine
 
 AUTHORED = {"locations", "complications", "missions"}
@@ -89,9 +88,14 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
     pack = Pack
     world = BreathlessWorld
     member = Survivor
+    hires = True
 
-    def hiring(self) -> Hiring[BreathlessGame, Survivor]:
-        return hiring(SheetDraft, self.hire_prompt, self.install_sheet)
+    async def write_sheet(
+        self, draft: BreathlessGame, member: Survivor, terms: str, worldsmith: WorldsmithAnswer, /
+    ) -> str:
+        prompt = self.hire_prompt(draft, member, terms)
+        answer = await worldsmith(prompt, SheetDraft, lambda _answer: None)
+        return self.install_sheet(member, answer)
 
     def master_tools(self) -> tuple[MasterTool[BreathlessGame], ...]:
         return (
@@ -102,7 +106,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
             master_tool("roll", ROLL, Roll, self.roll),
             master_tool("catch_breath", CATCH_BREATH, Actor, self.catch_breath),
             master_tool("loot_check", LOOT_CHECK, LootCheck, self.loot_check),
-            master_tool("test_luck", TEST_LUCK, TestLuck, self.test_luck),
+            master_tool("ask_world", ASK_WORLD, AskWorldDie, self.ask_world),
         )
 
     def creation_steps(self, picks: Picks) -> tuple[CreationStep, ...]:
@@ -127,8 +131,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
             CreationStep(id="item", label="Your one item", hint=", ".join(weapons[:3])),
         )
 
-    def create_character(self, name: str, brief: str, picks: Picks) -> BreathlessCharacter:
-        check_picks(self.creation_steps(picks), picks)
+    def build_character(self, name: str, brief: str, picks: Picks) -> BreathlessCharacter:
         packs = self.select_packs(picked_many(picks, SUPPLEMENTS))
         skills: dict[Skill, Die] = dict.fromkeys(SKILLS, 4)
         skills.update({_skill(picked(picks, f"skill-d{die}")): die for die in STARTING_DICE})
@@ -221,7 +224,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
 
         faces = (pool.die,) if pool.helper is None else (pool.die, pool.helper[1])
         label = "+".join(f"d{face}" for face in faces)
-        rolled = roll_pool(faces, f"{args.what} — {pool.label}", rng, label=label)
+        rolled = roll(faces, f"{args.what} — {pool.label}", rng, label=label, highlight_kept=True)
         result = banded(rolled.kept, "fail", "success-but", "success")
 
         worn_facts: list[Fact] = []
@@ -232,8 +235,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         elif args.item_id is not None:
             worn_facts = actor.wear_item(args.item_id)
 
-        prefix = "" if actor is world.player else f"{actor.name}: "
-        line = f"{args.what} — {prefix}{sentence(pool.label)} d{pool.die}"
+        line = f"{args.what} — {actor.card_line(sentence(pool.label))} d{pool.die}"
         if pool.helper is not None:
             line += f", helped by {pool.helper[0].name} (d{pool.helper[1]})"
         line += f" → {result}"
@@ -292,7 +294,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
             )
         return facts
 
-    def test_luck(self, _draft: BreathlessGame, args: TestLuck, rng: Random) -> list[Fact]:
+    def ask_world(self, _draft: BreathlessGame, args: AskWorldDie, rng: Random) -> list[Fact]:
         return luck_test(args.question, args.die, ("fail", "success-but", "success"), rng)
 
     def _pool(self, world: BreathlessWorld, actor: Survivor, args: Roll) -> Pool:

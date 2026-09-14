@@ -3,7 +3,7 @@ from typing import Self
 from pydantic import Field, field_validator, model_validator
 
 from aidm.core.entities import Frozen, Slug
-from aidm.engines.base import ACTOR, Attempt
+from aidm.engines.base import ACTOR, AskWorld, Attempt
 from aidm.engines.breathless.world import Die, Skill
 
 CHANGE_STRESS = "The actor's stress goes up or down."
@@ -20,7 +20,7 @@ LOOT_CHECK = (
     "Call this to scavenge for an item. The engine rolls the loot die and asks the "
     "player what to do with a find."
 )
-TEST_LUCK = (
+ASK_WORLD = (
     "Call this to ask about the world when nobody acts. The engine rolls the die "
     "you pick and reads it."
 )
@@ -89,10 +89,7 @@ class TakeLoot(Frozen):
     choice: str = Field(min_length=1)
 
 
-class TestLuck(Frozen):
-    question: str = Field(
-        min_length=1, description="A closed question about the world where nobody is acting."
-    )
+class AskWorldDie(AskWorld):
     die: Die = Field(description="Which die to roll, picked by the odds.")
 
 

@@ -6,10 +6,9 @@ from support.twentyfourxx import ENGINE, KESTREL, LOCKPICKS, SABLE, hired, small
 
 from aidm.core.entities import Refusal
 from aidm.core.facts import Fact
-from aidm.engines.base import PLAYER_ID
+from aidm.engines.base import PLAYER_ID, AskWorld
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.twentyfourxx.tools import Helper, Job, Raise, Roll
-from aidm.engines.twentyfourxx.tools import TestLuck as LuckTest
 from aidm.engines.twentyfourxx.world import STARTING_CREDITS, UPGRADE_COST, Gear, TwentyfourxxGame
 
 
@@ -416,8 +415,8 @@ def test_hindrance_needs_a_defend_with_on_roll_and_helper() -> None:
         _ = Helper(actor_id=KESTREL, hindrance="cut fingers")
 
 
-def test_luck_facts_are_untold(draft: TwentyfourxxGame) -> None:
-    dice_fact, luck_fact = ENGINE.test_luck(draft, LuckTest(question="Is anyone home?"), Random(0))
+def test_ask_world_facts_are_untold(draft: TwentyfourxxGame) -> None:
+    dice_fact, luck_fact = ENGINE.ask_world(draft, AskWorld(question="Is anyone home?"), Random(0))
     assert not dice_fact.told
     assert not luck_fact.told
     assert luck_fact.card == ""
@@ -497,7 +496,7 @@ def test_change_hindrances_gains_and_loses_refuses_duplicate_and_absent() -> Non
     assert player.require_sheet().hindrances == ["Bleeding"]
 
     assert "already" in refused(ENGINE, draft, "change_hindrances", gained=["Bleeding"])
-    assert "not among" in refused(ENGINE, draft, "change_hindrances", lost=["Scared"])
+    assert "carries no" in refused(ENGINE, draft, "change_hindrances", lost=["Scared"])
 
     _ = change(ENGINE, draft, "change_hindrances", gained=["Scared"], lost=["Bleeding"])
     assert player.require_sheet().hindrances == ["Scared"]

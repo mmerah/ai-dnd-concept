@@ -17,7 +17,7 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption
-from aidm.core.prompt import Sections, section_if
+from aidm.core.prompt import Sections, render_history, section_if
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import NarratorView, Panel, PlayerView
 from aidm.engines.base import (
@@ -40,14 +40,8 @@ from aidm.engines.scenes.tools import (
     SceneDraft,
 )
 from aidm.engines.scenes.world import SCENE_LEFT, SceneWorld
-from aidm.engines.scenes.worldsmith import (
-    COMPLICATING,
-    CROSSING,
-    TURNING,
-    check_scene,
-    scene_sections,
-)
-from aidm.engines.seam import Engine, Request, Written, compose
+from aidm.engines.scenes.worldsmith import COMPLICATING, CROSSING, TURNING, check_scene
+from aidm.engines.seam import Engine, Request, Written
 
 DEPARTURE: Slug = "departure"
 COMPLICATION: Slug = "complication"
@@ -89,6 +83,11 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
     world: type[SceneWorld[C]]
     packs: PackSet[K]
     family_dir = Path(__file__).parent
+    opening_sections = (
+        ("SCENES SO FAR", "(no scenes yet — write the opening)"),
+        ("THE WHOLE CAST", "(no cast yet — write the people and things this scene needs)"),
+        ("THE SCENE NOW", "(none yet)"),
+    )
 
     def __init__(self) -> None:
         self.packs = read_packs(self.id, self.directory / "packs", self.pack)
@@ -153,9 +152,12 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
     def glossary(self, _state: G) -> Sections:
         return ()
 
-    def family_sections(self, draft: G | None) -> Sections:
-        return scene_sections(
-            None if draft is None else self.world_of(draft), () if draft is None else draft.log
+    def family_sections(self, draft: G) -> Sections:
+        world = self.world_of(draft)
+        return (
+            ("SCENES SO FAR", render_history(draft.log)),
+            ("THE WHOLE CAST", world.cast_lines()),
+            ("THE SCENE NOW", world.scene_lines()),
         )
 
     def narrator_view(self, state: G) -> NarratorView:
@@ -291,7 +293,9 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
         prompt = self.render_opening(
             source, meta.scope, intent=OPENING, guidance=guidance, answer=SceneDraft[self.member]
         )
-        return await compose(worldsmith, prompt, SceneDraft[self.member], built, check)
+        return built(
+            await worldsmith(prompt, SceneDraft[self.member], lambda answer: check(built(answer)))
+        )
 
     def worldsmith_requests(self) -> dict[Slug, Request[G]]:
         return {
