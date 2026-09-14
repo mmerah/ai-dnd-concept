@@ -137,6 +137,20 @@ def test_a_character_written_for_two_engines_is_read_once_for_each(tmp_path: Pat
     assert rows == [("kael", LONER3E, "Kael"), ("kael", MIRROR, "Kael")]
 
 
+def test_a_character_written_for_a_second_engine_must_keep_its_name(tmp_path: Path) -> None:
+    engine = ENGINES_BUILT[LONER3E]
+    filed = character()
+    library = Library(tmp_path, tmp_path)
+    library.write_character(filed)
+
+    renamed = updated(filed, engine=MIRROR, payload=updated(filed.payload, name="Mira"))
+    with pytest.raises(Refusal, match="is 'Kael', not 'Mira'"):
+        library.write_character(renamed)
+
+    library.write_character(updated(filed, engine=MIRROR))
+    assert library.read_character("kael", engine.id, engine.character).payload.name == "Kael"
+
+
 def test_read_characters_skips_a_stray_file_and_a_non_slug_folder(tmp_path: Path) -> None:
     library = Library(tmp_path, tmp_path)
     library.write_character(character())

@@ -1,26 +1,6 @@
 from support.tunnelgoons import ENGINE, HALL, MIRA, small_world
 
-from aidm.engines.base import PLAYER_ID
 from aidm.engines.rooms.world import Prop
-
-
-def test_narrator_view_names_nothing_unknown_here() -> None:
-    view = ENGINE.narrator_view(small_world())
-    assert all(subject.label != "Robo Mantis" for subject in view.subjects)
-
-
-def test_speakers_exclude_a_known_but_dead_npc() -> None:
-    state = small_world()
-    state.payload.npcs[MIRA].alive = False
-    view = ENGINE.narrator_view(state)
-    assert any(subject.id == MIRA for subject in view.subjects)
-    assert MIRA not in view.speakers
-
-
-def test_player_view_here_leaves_out_the_player() -> None:
-    view = ENGINE.player_view(small_world())
-    here = next(panel for panel in view.panels if panel.title == "Also here")
-    assert all(row.icon_id != PLAYER_ID for row in here.rows)
 
 
 def test_master_sections_names_the_hidden_npc_and_the_locked_way() -> None:

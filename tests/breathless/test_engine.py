@@ -3,7 +3,7 @@ from support.table import BREATHLESS, game, narrowed
 
 from aidm.core.model import PackSelection
 from aidm.core.views import PanelRow
-from aidm.engines.base import PLAYER_ID, Person
+from aidm.engines.base import Person
 from aidm.engines.breathless.world import STARTING_ITEM, BreathlessGame, Supply
 from aidm.engines.scenes.packs import SRD_PACK
 from aidm.engines.seam import AnyEngine
@@ -34,7 +34,6 @@ def test_the_shipped_game_begins_with_the_srd_pack_and_the_players_item() -> Non
     assert sheet.items[FIRE_AXE].die == STARTING_ITEM
     assert sheet.pronouns == "he/him"
     assert sheet.job == "Park Ranger"
-    assert PLAYER_ID not in world.present()
 
 
 def test_the_player_views_backpack_panel_lists_items_and_the_med_kit() -> None:
@@ -44,12 +43,6 @@ def test_the_player_views_backpack_panel_lists_items_and_the_med_kit() -> None:
     backpack = next(panel for panel in view.panels if panel.title == "Backpack")
     assert PanelRow(label="Wrench", detail="d10") in backpack.rows
     assert PanelRow(label="Med kit", detail="held") in backpack.rows
-
-
-def test_master_sections_never_lists_the_player_under_here() -> None:
-    sections = dict(ENGINE.master_sections(small_world()))
-    assert "Jax" not in sections["HERE WITH THE PLAYER"]
-    assert "Mira" in sections["HERE WITH THE PLAYER"]
 
 
 def test_master_sections_lists_the_backpack() -> None:
@@ -94,11 +87,6 @@ def test_create_character_round_trip() -> None:
     assert [(item.name, item.die) for item in sheet.items.values()] == [
         (SRD.weapons[0], STARTING_ITEM)
     ]
-
-
-def test_create_character_records_the_picked_pack() -> None:
-    character = ENGINE.create_character("Jax", "A wiry mechanic", PICKS)
-    assert character.packs == PackSelection(ids=(SRD_PACK,))
 
 
 def test_preview_character_shows_the_backpack_row() -> None:

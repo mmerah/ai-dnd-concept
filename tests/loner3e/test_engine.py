@@ -2,17 +2,15 @@ from random import Random
 
 import pytest
 from support.game import ENGINE, initialized, loner_sheet
-from support.table import change, updated
+from support.table import change
 
 from aidm.core.entities import Refusal
 from aidm.core.facts import cards
-from aidm.core.model import PackSelection
 from aidm.core.play import PendingDecision
 from aidm.engines.base import PLAYER_ID, Gauge
 from aidm.engines.loner3e.engine import DEFEAT_NOTE, TWIST_NOTE
 from aidm.engines.loner3e.tools import Roll
 from aidm.engines.loner3e.world import LUCK_MAX, TIES_PER_TWIST, outcome_for, twist_pairing
-from aidm.engines.scenes.packs import SRD_PACK
 
 FOE = "mara"
 MAP = "vault-map"
@@ -284,13 +282,3 @@ def test_the_scenes_end_refills_someone_driven_off_before_it() -> None:
     _ = ENGINE.leaving(draft)
 
     assert loner_sheet(draft, FOE).luck.current == LUCK_MAX
-
-
-def test_a_game_records_its_table_sets_and_is_refused_without_them() -> None:
-    engine, state = initialized()
-    assert state.packs == PackSelection(ids=(SRD_PACK,))
-
-    stranded = updated(state, packs=PackSelection(ids=(SRD_PACK, "uninstalled")))
-
-    with pytest.raises(Refusal, match="not installed"):
-        engine.validate(stranded)

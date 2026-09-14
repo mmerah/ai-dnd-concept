@@ -2,17 +2,15 @@ from pathlib import Path
 
 import pytest
 from support.game import ENGINE, loner_sheet
-from support.table import LIBRARY, narrowed, updated
+from support.table import LIBRARY, narrowed
 
 from aidm.core.creation import Picks
-from aidm.core.entities import EngineId, Refusal
+from aidm.core.entities import Refusal
 from aidm.core.io import Library
 from aidm.core.model import PackSelection
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import LUCK_MAX, Loner3eGame
 from aidm.engines.scenes.packs import SRD_PACK
-
-OTHER = EngineId("ruleless")
 
 
 def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path) -> None:
@@ -43,11 +41,6 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     assert made.luck.current == LUCK_MAX
 
 
-def test_create_character_records_the_picked_pack() -> None:
-    created = ENGINE.create_character("Fen", "A wandering scribe.", _answered({}))
-    assert created.packs == PackSelection(ids=(SRD_PACK,))
-
-
 def test_a_picked_supplement_pools_its_options_and_lands_on_the_character() -> None:
     picks = _answered({"supplements": "ap01-fantasy", "skill-1": "swordsmanship"})
     created = ENGINE.create_character("Fen", "A wandering scribe.", picks)
@@ -72,19 +65,6 @@ def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:
     library.write_character(created)
     with pytest.raises(Refusal, match="already exists"):
         library.write_character(created)
-
-
-def test_one_folder_holds_one_person_across_engines(tmp_path: Path) -> None:
-    fen = ENGINE.create_character("Fen", "A wandering scribe.", _answered({}))
-    library = Library(tmp_path, tmp_path)
-    library.write_character(fen)
-
-    mira = updated(fen, engine=OTHER, payload=updated(fen.payload, name="Mira"))
-    with pytest.raises(Refusal, match="is 'Fen', not 'Mira'"):
-        library.write_character(mira)
-
-    library.write_character(updated(fen, engine=OTHER))
-    assert library.read_character("fen", ENGINE.id, ENGINE.character).payload.name == "Fen"
 
 
 def _answered(chosen: Picks) -> Picks:

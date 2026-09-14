@@ -14,7 +14,7 @@ from support.breathless import small_world as breathless_world
 from support.game import ENGINE as LONER3E_ENGINE
 from support.game import MAP, MARA, initialized
 from support.game import SITUATION as LONER3E_SITUATION
-from support.table import LIBRARY, narrowed, stub_worldsmith, updated
+from support.table import LIBRARY, narrowed, refused, stub_worldsmith, updated
 from support.twentyfourxx import ENGINE as TWENTYFOURXX_ENGINE
 from support.twentyfourxx import KESTREL, SABLE
 from support.twentyfourxx import SCENE_BASE as TWENTYFOURXX_BASE
@@ -277,6 +277,20 @@ def test_a_hidden_multi_word_name_in_situation_is_refused(case: SceneCase) -> No
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
+def test_a_one_word_name_is_a_word_the_situation_may_use(case: SceneCase) -> None:
+    """A prop called `Bell` shares its word with any bell tower; refusing that costs a crossing."""
+    bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
+    case.bar(
+        {
+            "situation": f"{case.base['situation']} The bell tower stands over it.",
+            "present": (case.met,),
+            "hidden": ("bell-prop",),
+            "cast": {"bell-prop": bell},
+        }
+    )
+
+
+@pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_a_player_id_cast_entry_is_refused_by_new_game(case: SceneCase) -> None:
     scenario = case.engine.scenario.model_validate(
         {
@@ -368,6 +382,24 @@ def test_apply_scene_puts_the_party_first_in_the_new_run(case: SceneCase) -> Non
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
+def test_apply_scene_refuses_a_present_name_that_resolves_to_nobody(case: SceneCase) -> None:
+    state = case.game()
+    with pytest.raises(Refusal, match="no such id or name exists"):
+        case.apply(state, {"present": ("nobody",)})
+
+
+@pytest.mark.parametrize("case", CASES, ids=_case_id)
+def test_an_entity_is_never_lost_when_a_scene_leaves_it_behind(case: SceneCase) -> None:
+    state = case.game()
+    left_title = state.payload.run.title
+    runs_before = len(state.payload.runs)
+    case.apply(state, {"present": (str(case.met),)})
+    assert state.payload.last_seen(case.unmet) == f"last seen in: {left_title}"
+    assert case.unmet in state.payload.cast
+    assert len(state.payload.runs) == runs_before + 1
+
+
+@pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_install_scene_names_who_travelled_in_the_trace(case: SceneCase) -> None:
     state = case.game()
     state.payload.party = [case.met]
@@ -419,6 +451,12 @@ def test_check_filing_rejects_mis_filed_cast(case: SceneCase) -> None:
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
+def test_only_what_is_hidden_here_can_be_revealed(case: SceneCase) -> None:
+    state = case.game()
+    assert "not hidden here" in refused(case.engine, state.draft(), "reveal", entity_id=case.met)
+
+
+@pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_require_here_alive_refuses_dead_cast_member(case: SceneCase) -> None:
     world = case.game().payload
     world.cast[case.met].alive = False
@@ -464,22 +502,29 @@ def test_require_actor_refuses_an_unsheeted_member(case: SceneCase) -> None:
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
+def test_a_party_member_stops_travelling_when_they_leave_the_party(case: SceneCase) -> None:
+    world = case.game().payload
+    world.party = [case.met]
+    assert world.leave_party(case.met)
+    assert case.met not in world.party
+
+
+@pytest.mark.parametrize("case", CASES, ids=_case_id)
 async def test_install_scene_appends_a_run_and_returns_the_opened_fact(case: SceneCase) -> None:
     draft = case.game().draft()
     # A chapter with no exchanges yet is dropped, not appended to; give it one first.
     draft.log[-1].exchanges.append(Exchange(words="They wait.", lines=()))
     chapters_before = len(draft.log)
-    answer = {
-        **case.base,
-        "present": [case.met],
-        "hidden": [case.unmet],
-        "recap": "They leave the mess behind and press on toward what waits next.",
-    }
+    recap = "They leave the mess behind and press on toward what waits next."
+    answer = {**case.base, "present": [case.met], "hidden": [case.unmet], "recap": recap}
     written = await case.engine.advance(
         draft, Generation(operation=DEPARTURE, detail="Onward."), stub_worldsmith(answer)
     )
     assert len(draft.log) == chapters_before + 1
     assert any(fact.card.startswith("New scene:") for fact in written.facts)
+    # `install` stamps the recap on the chapter being left, not the fresh one it opens.
+    assert draft.log[-2].recap == recap
+    assert draft.log[-1].recap == ""
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
