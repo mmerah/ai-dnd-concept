@@ -1,6 +1,6 @@
 import pytest
 from support.table import LIBRARY, TWENTYFOURXX
-from support.twentyfourxx import ENGINE, SITUATION
+from support.twentyfourxx import ENGINE, SCENE_BASE
 
 from aidm.core.entities import Refusal
 from aidm.core.model import AnyScenario, PackSelection, ScenarioMeta
@@ -53,14 +53,7 @@ def test_the_pack_s_android_case_carries_the_kit() -> None:
 
 
 def _draft(**fields: object) -> SceneDraft[Crewmate]:
-    base = {
-        "place": "bay-office",
-        "title": "The Bay Office",
-        "focus": "Can they slip past the night crew before the lights return?",
-        "situation": SITUATION,
-        "arc": "Farther in, the fixer's own supplier still owes for the last load.",
-    }
-    return SceneDraft[Crewmate].model_validate(base | fields)
+    return SceneDraft[Crewmate].model_validate(dict(SCENE_BASE) | fields)
 
 
 def _built(draft: SceneDraft[Crewmate]) -> AnyScenario:

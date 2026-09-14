@@ -52,13 +52,14 @@ class SceneWorld[C: Person](World[C, C]):
     @model_validator(mode="after")
     def _consistent(self) -> Self:
         check_filing(self.cast)
-        check_named(self.run.here, self.cast)
         if not self.player.known:
             raise ValueError("the player is unknown to themselves")
         if self.player.id in self.cast:
             raise ValueError("the player is in the cast")
+        # Ahead of `check_named`, whose generic "not in the cast" message would win instead.
         if self.player.id in self.run.here:
             raise ValueError("the player is in every scene and is never listed in it")
+        check_named(self.run.here, self.cast)
         if left := sorted(set(self.party) - set(self.run.here)):
             raise ValueError(f"the party is in every scene; {left} are not in this one")
         return self
