@@ -73,6 +73,12 @@ def test_a_missing_item_is_refused() -> None:
         _ = ENGINE.create_character("Kael", "A wiry scavenger", bad)
 
 
+def test_an_unnameable_item_is_refused_at_creation() -> None:
+    bad = dict(PICKS, **{"item-3": "???"})
+    with pytest.raises(Refusal, match="makes no id"):
+        _ = ENGINE.create_character("Kael", "A wiry scavenger", bad)
+
+
 def test_preview_character_rows() -> None:
     character = ENGINE.create_character("Kael", "A wiry scavenger", PICKS)
     rows = ENGINE.preview_character(character)

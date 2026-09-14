@@ -88,7 +88,7 @@ class Goon(Adventurer):
     kit: tuple[str, ...] = Field(min_length=STARTING_ITEMS, max_length=STARTING_ITEMS)
 
     def unpack_kit(self, taken: Iterable[str]) -> tuple[Prop, ...]:
-        made = list(taken)
+        made = [PLAYER_ID, *taken]
         items: list[Prop] = []
         for name in self.kit:
             item_id = slug(name, made)
