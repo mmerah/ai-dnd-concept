@@ -319,6 +319,34 @@ def test_a_one_word_name_inside_another_word_is_not_refused(case: SceneCase) -> 
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
+def test_a_hidden_name_in_title_is_refused(case: SceneCase) -> None:
+    bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
+    with pytest.raises(Refusal, match="does not name what is hidden"):
+        case.bar(
+            {
+                "title": f"{case.base['title']}: the Bell",
+                "present": (case.met,),
+                "hidden": ("bell-prop",),
+                "cast": {"bell-prop": bell},
+            }
+        )
+
+
+@pytest.mark.parametrize("case", CASES, ids=_case_id)
+def test_a_hidden_name_in_focus_is_refused(case: SceneCase) -> None:
+    bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
+    with pytest.raises(Refusal, match="does not name what is hidden"):
+        case.bar(
+            {
+                "focus": f"{case.base['focus']} A bell tolls somewhere close.",
+                "present": (case.met,),
+                "hidden": ("bell-prop",),
+                "cast": {"bell-prop": bell},
+            }
+        )
+
+
+@pytest.mark.parametrize("case", CASES, ids=_case_id)
 def test_a_player_id_cast_entry_is_refused_by_new_game(case: SceneCase) -> None:
     scenario = case.engine.scenario.model_validate(
         {

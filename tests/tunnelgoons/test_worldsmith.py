@@ -5,6 +5,7 @@ from support.tunnelgoons import ENGINE, small_world
 
 from aidm.core.entities import Refusal
 from aidm.core.model import Check, ScenarioMeta
+from aidm.engines.base import Gauge
 from aidm.engines.rooms.engine import MORE_MAP
 from aidm.engines.rooms.world import MapDraft, Place, Prop, Way
 from aidm.engines.rooms.worldsmith import check_extension, check_map
@@ -84,6 +85,59 @@ def test_an_extension_of_one_hidden_place_with_no_ways_installs_hidden() -> None
 
 def test_the_shipped_scenario_passes_the_map_bar() -> None:
     check_map(_wide_region())
+
+
+def test_check_map_refuses_a_start_description_naming_a_hidden_dweller() -> None:
+    gremlin = Npc(
+        id="gremlin",
+        name="Gremlin",
+        brief="",
+        place=ONLY,
+        known=False,
+        hp=Gauge(current=4, maximum=4),
+    )
+    draft = MapDraft[Npc](
+        places={
+            ONLY: Place(
+                id=ONLY,
+                name="Only",
+                brief="b",
+                known=True,
+                description="A Gremlin hides in the shadows.",
+            )
+        },
+        npcs={gremlin.id: gremlin},
+        start=ONLY,
+    )
+    with pytest.raises(Refusal, match="do not name what is hidden there"):
+        check_map(draft)
+
+
+def test_an_extension_hiding_a_dweller_named_in_brief_is_refused() -> None:
+    draft = _tunnelgoons_game().draft()
+    gremlin = Npc(
+        id="gremlin",
+        name="Gremlin",
+        brief="",
+        place=HIDDEN,
+        known=False,
+        hp=Gauge(current=4, maximum=4),
+    )
+    extension = MapDraft[Npc](
+        places={
+            HIDDEN: Place(
+                id=HIDDEN,
+                name="Hidden",
+                brief="A Gremlin waits in the dark.",
+                known=False,
+                description="d",
+            )
+        },
+        npcs={gremlin.id: gremlin},
+        start=HIDDEN,
+    )
+    with pytest.raises(Refusal, match="do not name what is hidden there"):
+        check_extension(extension, draft.payload)
 
 
 def test_attach_joins_at_the_current_place_and_the_world_validates() -> None:
