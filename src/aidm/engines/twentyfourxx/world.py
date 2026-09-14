@@ -253,13 +253,13 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
                 raise Refusal(f"{item.name} breaks harmlessly: leave `hindrance` empty")
             item.broken_times += 1
             trace = f"{actor.mention} breaks {item.name}, harmlessly"
-            return [actor.fact(trace, card=f"{item.name} breaks")]
+            return [actor.fact(trace, card=actor.card_line(f"{item.name} breaks"))]
         if not hindrance:
             raise Refusal("name the hindrance the hit becomes")
         sheet = actor.require_sheet()
         sheet.hindrances = actor.changed_tags("hindrance", sheet.hindrances, (hindrance,), ())
         item.broken_times += 1
-        card = f"{item.name} breaks — {hindrance}"
+        card = actor.card_line(f"{item.name} breaks — {hindrance}")
         trace = f"{actor.mention} breaks {item.name} — {hindrance}"
         return [actor.fact(trace, card=card)]
 

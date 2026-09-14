@@ -1,8 +1,7 @@
-import re
 from collections.abc import Iterable, Mapping
 
 from aidm.core.entities import Refusal, Slug
-from aidm.engines.base import Person, Thing
+from aidm.engines.base import Person, Thing, named_unmet
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld, resolved_id
 
@@ -83,16 +82,6 @@ def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) ->
     ):
         unmet.append(f"a hidden list without {met}, whom the player has already met")
     return unmet
-
-
-def named_unmet(text: str, entities: Iterable[Thing]) -> list[str]:
-    folded = text.casefold()
-    return [
-        entity.name
-        for entity in entities
-        if (name := entity.name.strip().casefold())
-        and re.search(rf"(?<!\w){re.escape(name)}(?!\w)", folded) is not None
-    ]
 
 
 def named_in(situation: str, hidden: Iterable[str], cast: Mapping[Slug, Thing]) -> list[str]:

@@ -1,3 +1,4 @@
+import re
 from abc import abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
 from random import Random
@@ -365,6 +366,16 @@ def check_filing(pool: Mapping[Slug, Thing]) -> None:
     for key, entity in pool.items():
         if key != entity.id:
             raise Refusal(f"entity {entity.id!r} is filed under {key!r}")
+
+
+def named_unmet(text: str, entities: Iterable[Thing]) -> list[str]:
+    folded = text.casefold()
+    return [
+        entity.name
+        for entity in entities
+        if (name := entity.name.strip().casefold())
+        and re.search(rf"(?<!\w){re.escape(name)}(?!\w)", folded) is not None
+    ]
 
 
 def banded(face: int, low: str, mid: str, high: str) -> str:

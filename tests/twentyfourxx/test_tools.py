@@ -314,7 +314,7 @@ def test_helper_defends_with_their_own_gear_while_actor_takes_their_own_conseque
     assert member.alive
     assert member.require_sheet().items["vest"].broken_times == 1
     assert member.require_sheet().hindrances == ["ringing ears"]
-    assert any(fact.card == "Vest breaks — ringing ears" for fact in facts)
+    assert any(fact.card == "Kestrel: Vest breaks — ringing ears" for fact in facts)
 
 
 def test_both_participants_defend_with_their_own_separate_items(draft: TwentyfourxxGame) -> None:
@@ -343,7 +343,7 @@ def test_both_participants_defend_with_their_own_separate_items(draft: Twentyfou
     assert member.require_sheet().items["vest"].broken_times == 1
     assert member.require_sheet().hindrances == ["ringing ears"]
     assert any(fact.card == "Lockpick set breaks — cut fingers" for fact in facts)
-    assert any(fact.card == "Vest breaks — ringing ears" for fact in facts)
+    assert any(fact.card == "Kestrel: Vest breaks — ringing ears" for fact in facts)
 
 
 def test_both_participants_naming_the_same_ship_function_are_refused_before_any_dice_roll() -> None:
