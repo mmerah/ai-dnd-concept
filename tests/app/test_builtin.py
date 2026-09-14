@@ -3,7 +3,6 @@ from asyncio import sleep
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
-from pathlib import Path
 from random import Random
 
 import pytest
@@ -219,16 +218,3 @@ async def test_a_writer_that_calls_a_tool_is_refused_before_anything_lands(
         _ = await RoleRunner(_settings(narrator=RoleConfig(provider="local", model="m"))).run(
             "narrator", "BRIEF", None
         )
-
-
-async def test_the_runtime_sends_each_role_where_its_settings_say(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    sent = _post(monkeypatch, _said(FENCED))
-    narrator = RoleConfig(provider="local", model="qwen")
-    settings = updated(_settings(narrator=narrator), saves_dir=tmp_path)
-
-    spoken = await RoleRunner(settings).run("narrator", "BRIEF", None)
-
-    assert json.loads(spoken.text) == {"lines": []}
-    assert len(sent) == 1

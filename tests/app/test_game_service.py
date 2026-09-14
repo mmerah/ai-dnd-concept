@@ -1,7 +1,6 @@
 import json
 import re
 from asyncio import CancelledError, Event, create_task, sleep
-from dataclasses import dataclass
 from pathlib import Path
 from random import Random
 
@@ -20,9 +19,8 @@ from support.table import (
     updated,
 )
 
-from aidm.app.roles import REQUESTED, Roles
+from aidm.app.roles import REQUESTED
 from aidm.app.runtime import GameService, LaunchTarget, Runtime
-from aidm.app.spawn import RunResult, Tools
 from aidm.config import Role
 from aidm.core.entities import Refusal
 from aidm.core.io import FileStore
@@ -298,42 +296,6 @@ def test_a_save_never_carries_a_request(tmp_path: Path) -> None:
     assert "generation" not in json.loads(FileStore(tmp_path).read(TARGET.slug) or "")
 
 
-@dataclass(slots=True)
-class _TurnLandsFirst:
-    """Commits an unrelated turn before answering, so `interject` sees history move on."""
-
-    service: GameService
-    inner: ScriptedSpawner
-
-    async def run(
-        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
-    ) -> RunResult:
-        if role == "narrator":
-            self.service.save(
-                self.service.engine.close(self.service.state.draft(), (), (), mark="story")
-            )
-        return await self.inner.run(role, prompt, session, tools)
-
-
-@dataclass(slots=True)
-class _StillSpeaking:
-    """Never answers the member: their interjection stays in flight until something silences it."""
-
-    inner: ScriptedSpawner
-    cancelled: bool = False
-
-    async def run(
-        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
-    ) -> RunResult:
-        if role == "narrator" and prompt.startswith("YOUR ROLE:\nYou are Vessa Rune"):
-            try:
-                await Event().wait()
-            except CancelledError:
-                self.cancelled = True
-                raise
-        return await self.inner.run(role, prompt, session, tools)
-
-
 def _party_of_one(service: GameService) -> Loner3eCast:
     """One chatty companion, met and travelling: she passes the d10 on three faces in ten."""
     member = Loner3eCast(
@@ -390,7 +352,15 @@ async def test_a_turn_that_lands_first_drops_the_interjection(tmp_path: Path) ->
     table.service.chatter = Random(1)
     member = _party_of_one(table.service)
     table.spawner.answers["narrator"] = [narrated("Wait.", member.id)]
-    table.service.roles = Roles(_TurnLandsFirst(table.service, table.spawner))
+
+    async def land_turn_first(role: Role, prompt: str) -> None:
+        del prompt
+        if role == "narrator":
+            table.service.save(
+                table.service.engine.close(table.service.state.draft(), (), (), mark="story")
+            )
+
+    table.spawner.hooks.append(land_turn_first)
 
     await table.service.interject()
 
@@ -423,8 +393,17 @@ async def test_a_new_turn_silences_the_member_still_speaking(tmp_path: Path) -> 
     table = open_game(tmp_path)
     table.service.chatter = Random(1)
     _party_of_one(table.service)
-    stalled = _StillSpeaking(table.spawner)
-    table.service.roles = Roles(stalled)
+    cancelled = [False]
+
+    async def still_speaking(role: Role, prompt: str) -> None:
+        if role == "narrator" and prompt.startswith("YOUR ROLE:\nYou are Vessa Rune"):
+            try:
+                await Event().wait()
+            except CancelledError:
+                cancelled[0] = True
+                raise
+
+    table.spawner.hooks.append(still_speaking)
     _ = await play_turn(table, "I wait.", narration="Nothing stirs.")
     await sleep(0)
     assert table.service.speaking
@@ -434,7 +413,7 @@ async def test_a_new_turn_silences_the_member_still_speaking(tmp_path: Path) -> 
     await sleep(0)
 
     assert not table.service.speaking
-    assert stalled.cancelled
+    assert cancelled[0]
 
 
 async def test_reload_settings_cancels_an_evicted_sessions_background_task(
@@ -445,7 +424,12 @@ async def test_reload_settings_cancels_an_evicted_sessions_background_task(
     opened = runtime.session(TARGET)
     opened.chatter = Random(1)
     _party_of_one(opened)
-    opened.roles = Roles(_StillSpeaking(spawner))
+
+    async def still_speaking(role: Role, prompt: str) -> None:
+        if role == "narrator" and prompt.startswith("YOUR ROLE:\nYou are Vessa Rune"):
+            await Event().wait()
+
+    spawner.hooks.append(still_speaking)
     spawner.answers["narrator"] = [narrated("Nothing stirs.")]
 
     await opened.play(Answer(text="I wait."))
@@ -478,29 +462,19 @@ async def test_a_reload_under_a_turn_in_flight_is_refused(tmp_path: Path) -> Non
             await runtime.reload_settings()
 
 
-@dataclass(slots=True)
-class _Blocking:
-    """Holds the master role until released, so two sessions can race for the one admission."""
-
-    inner: ScriptedSpawner
-    gate: Event
-
-    async def run(
-        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
-    ) -> RunResult:
-        if role == "master":
-            await self.gate.wait()
-        return await self.inner.run(role, prompt, session, tools)
-
-
 async def test_two_concurrent_plays_on_different_sessions_cannot_both_open_a_turn(
     tmp_path: Path,
 ) -> None:
     spawner = ScriptedSpawner()
     gate = Event()
-    runtime = Runtime(
-        updated(offline_settings(), saves_dir=tmp_path), lambda _: _Blocking(spawner, gate)
-    )
+
+    async def hold_master(role: Role, prompt: str) -> None:
+        del prompt
+        if role == "master":
+            await gate.wait()
+
+    spawner.hooks.append(hold_master)
+    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), lambda _: spawner)
     first = runtime.session(TARGET)
     second = runtime.session(
         LaunchTarget(scenario_id=scenario_for(BREATHLESS), character_id="kael")

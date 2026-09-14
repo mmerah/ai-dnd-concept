@@ -1,5 +1,5 @@
 import json
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import partial
 from itertools import islice
@@ -118,11 +118,14 @@ class ScriptedSpawner:
     answers: dict[Role, list[str]] = field(default_factory=dict)
     prompts: list[tuple[Role, str]] = field(default_factory=list)
     resumed: list[tuple[Role, str | None]] = field(default_factory=list)
+    hooks: list[Callable[[Role, str], Awaitable[None]]] = field(default_factory=list)
 
     async def run(
         self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
     ) -> RunResult:
         del tools
+        for hook in self.hooks:
+            await hook(role, prompt)
         self.prompts.append((role, prompt))
         self.resumed.append((role, session))
         # A session every time, so a test exercises the resumed path the real CLIs take.
