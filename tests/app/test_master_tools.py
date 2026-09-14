@@ -1,7 +1,5 @@
 import asyncio
 import json
-from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 from random import Random
 
@@ -9,7 +7,6 @@ import pytest
 from pydantic import BaseModel, Field, JsonValue
 from support.game import open_game
 from support.table import (
-    ScriptedSpawner,
     narrated,
     offline_settings,
     play_turn,
@@ -20,8 +17,8 @@ from support.table import (
 )
 
 import aidm.app.spawn as spawn_module
-from aidm.app.roles import RoleRunner, Roles
-from aidm.app.spawn import RunResult, Tools, final_message
+from aidm.app.roles import RoleRunner
+from aidm.app.spawn import final_message
 from aidm.config import Role
 from aidm.core.entities import EngineId, Frozen, Refusal, Slug
 from aidm.core.model import Check, ScenarioMeta
@@ -52,21 +49,6 @@ def test_schema_of_drops_noise_and_collapses_a_nullable() -> None:
     actor_id = properties["actor_id"]
     assert isinstance(actor_id, dict)
     assert actor_id["type"] == ["string", "null"]
-
-
-@dataclass(frozen=True, slots=True)
-class _Watched:
-    """The scripted spawner, with a look at the game before each worldsmith spawn."""
-
-    inner: ScriptedSpawner
-    seen: Callable[[], None]
-
-    async def run(
-        self, role: Role, prompt: str, session: str | None, tools: Tools | None = None
-    ) -> RunResult:
-        if role == "worldsmith":
-            self.seen()
-        return await self.inner.run(role, prompt, session, tools)
 
 
 VAULT_MAP = "vault-map"
@@ -360,12 +342,13 @@ async def test_the_turn_is_filed_before_the_worldsmith_is_asked(tmp_path: Path) 
     """The turn's own narration must reach the player while the slow write runs."""
     table = open_game(tmp_path)
     filed: list[int] = []
-    table.service.roles = Roles(
-        _Watched(
-            table.spawner,
-            lambda: filed.append(len(table.service.state.exchanges())),
-        )
-    )
+
+    async def watch_worldsmith(role: Role, prompt: str) -> None:
+        del prompt
+        if role == "worldsmith":
+            filed.append(len(table.service.state.exchanges()))
+
+    table.spawner.hooks.append(watch_worldsmith)
     table.spawner.answers["worldsmith"] = [_scene()]
     before = len(table.service.state.exchanges())
 

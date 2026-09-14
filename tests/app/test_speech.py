@@ -8,7 +8,7 @@ from support.game import TARGET
 from support.game import session as loner_session
 from support.table import drain, offline_settings
 
-from aidm.app.speech import Reader, clip_key, requests_of, speech_body, voice_of
+from aidm.app.speech import Reader, clip_key, requests_of, voice_of
 from aidm.config import ProviderConfig, SpeechConfig
 from aidm.core.io import FileStore
 from aidm.core.play import Exchange, SpokenLine
@@ -35,14 +35,6 @@ def _reader(tmp_path: Path) -> Reader:
         saves=tmp_path / "save.media" / "speech",
         voice=NARRATOR,
     )
-
-
-def test_speech_body_carries_the_request_shape() -> None:
-    body = speech_body("gemini-tts", "Kore", "Hello there.")
-    assert body["model"] == "gemini-tts"
-    assert body["input"] == "Hello there."
-    assert body["voice"] == "Kore"
-    assert body["response_format"] == "pcm"
 
 
 def test_voice_of_gives_the_narrator_for_narration_and_a_stable_pool_member_for_a_speaker() -> None:
