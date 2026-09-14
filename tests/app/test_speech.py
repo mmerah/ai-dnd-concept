@@ -8,7 +8,7 @@ from support.game import TARGET
 from support.game import session as loner_session
 from support.table import drain, offline_settings
 
-from aidm.app.speech import Reader, clip_key, requests_of, voice_of
+from aidm.app.speech import Reader, clip_key, requests_of, speech_body, voice_of
 from aidm.config import ProviderConfig, SpeechConfig
 from aidm.core.io import FileStore
 from aidm.core.play import Exchange, SpokenLine
@@ -84,7 +84,11 @@ async def test_read_writes_a_wav_and_caches_it(
         assert wav.getframerate() == reader.config.sample_rate
         assert wav.readframes(wav.getnframes()) == chunks["first"] + chunks["second"]
     assert len(bodies) == 2
-    assert bodies[0]["voice"] == requests[0][0] == NARRATOR
+    assert requests[0][0] == NARRATOR
+    assert bodies[0] == speech_body(reader.config.model, *requests[0])
+    assert bodies[0]["response_format"] == "pcm"
+    assert bodies[0]["input"] == requests[0][1]
+    assert bodies[0]["model"] == reader.config.model
     assert bodies[1]["voice"] == requests[1][0]
 
     await reader.read(exchange)
