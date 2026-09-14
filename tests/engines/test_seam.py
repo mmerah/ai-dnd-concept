@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from support.fifth import FifthEngine, FifthGame, engine_at, scenario
+from support.fifth import FifthEngine, FifthGame, engine_at, installed, scenario
 from support.table import ENGINE_IDS, game
 
 from aidm.core.entities import EngineId, Refusal
@@ -10,8 +10,8 @@ from aidm.core.play import SpokenLine
 from aidm.core.views import NarratorView
 
 
-def test_the_tempo_floor_refuses_a_tempo_below_two(scene_engine: FifthEngine) -> None:
-    class TooFast(type(scene_engine)):
+def test_the_tempo_floor_refuses_a_tempo_below_two(tmp_path: Path) -> None:
+    class TooFast(type(installed(tmp_path))):
         meanwhile_turns = 1
 
     with pytest.raises(ValueError, match="ticks every"):
@@ -35,10 +35,8 @@ def test_the_clock_arms_on_reaching_the_tempo_and_starts_over(
     assert (draft.payload.turns_played, draft.payload.meanwhile_due) == (0, True)
 
 
-def test_construction_refuses_when_no_srd_table_set_is_installed(
-    scene_engine: FifthEngine, tmp_path: Path
-) -> None:
-    engine_type = type(scene_engine)
+def test_construction_refuses_when_no_srd_table_set_is_installed(tmp_path: Path) -> None:
+    engine_type = type(installed(tmp_path))
     (tmp_path / "packs" / "srd.json").rename(tmp_path / "packs" / "other.json")
     with pytest.raises(ValueError, match="ships no 'srd' pack"):
         engine_type()
@@ -111,8 +109,8 @@ class _CountingFifthEngine(FifthEngine):
         return super().narrator_view(state)
 
 
-@pytest.mark.usefixtures("scene_engine")
 def test_close_builds_no_narrator_view(tmp_path: Path) -> None:
+    _ = installed(tmp_path)  # writes rules.md and packs/srd.json onto tmp_path
     engine = _CountingFifthEngine(tmp_path)
     character = engine.create_character("Wren", "A quiet scout", {})
     state = engine.begin("the-taproom", scenario(), character)

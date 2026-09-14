@@ -273,14 +273,15 @@ def test_unlocking_an_unwalked_way_tells_a_card_becomes_known_and_appears_in_way
     way = world.way(HALL, VAULT)
     assert way is not None
     way.known = False
+    before = next(panel for panel in ENGINE.player_view(draft).panels if panel.title == "Ways out")
+    assert [row.label for row in before.rows] == ["Start"]
 
     facts = change(ENGINE, draft, "unlock_way", to_id=VAULT)
 
     assert way.known
     assert any(fact.told and fact.card == "Vault unlocked" for fact in facts)
-    panels = ENGINE.player_view(draft).panels
-    ways_out = next(panel for panel in panels if panel.title == "Ways out")
-    assert "Vault" in [row.label for row in ways_out.rows]
+    after = next(panel for panel in ENGINE.player_view(draft).panels if panel.title == "Ways out")
+    assert [row.label for row in after.rows] == ["Start", "Vault"]
 
 
 def test_move_item_to_the_player_to_an_npc_here_and_to_the_place(
