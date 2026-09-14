@@ -1,7 +1,7 @@
 import logging
-from asyncio import Task, create_task, gather, to_thread
+from asyncio import CancelledError, Task, create_task, gather, to_thread
 from collections.abc import AsyncGenerator, Callable
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
@@ -54,7 +54,8 @@ class Tasks:
         task.add_done_callback(self._done)
 
     async def settled(self) -> None:
-        await gather(*self.running, return_exceptions=True)
+        with suppress(CancelledError):
+            await gather(*self.running)
 
     async def close(self) -> None:
         tasks = list(self.running)

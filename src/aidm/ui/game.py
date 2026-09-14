@@ -64,6 +64,7 @@ MARK_LABELS: dict[Marked, str] = {
     "interjection": "(the party speaks)",
 }
 DECISION_ROW = "game-card game-decision w-full items-center no-wrap game-gap-md"
+_IN_FLIGHT_PREFIX = IN_FLIGHT.partition("{slug!r}")[0]
 
 
 class DictatedSpeech(Frozen):
@@ -574,7 +575,18 @@ class GamePage:
         get_running_loop().call_later(0.1, lambda: self.transcript.scroll_to(percent=1.0))
 
     async def _opened(self, opener: ui.timer) -> None:
-        if await self._run(self.session.open):
+        """Retries only while the gate is held elsewhere; any other refusal is persistent."""
+        blocked = False
+
+        async def opening() -> None:
+            nonlocal blocked
+            try:
+                await self.session.open()
+            except Refusal as error:
+                blocked = _in_flight(str(error))
+                raise
+
+        if await self._run(opening) or not blocked:
             opener.cancel()
 
     async def _run(self, playing: Callable[[], Awaitable[None]]) -> bool:
@@ -586,8 +598,7 @@ class GamePage:
         except Refusal as error:
             message = str(error)
             # A double-click guard, not a message for the player: whichever game is in flight.
-            prefix, _, suffix = IN_FLIGHT.partition("{slug!r}")
-            if not (message.startswith(prefix) and message.endswith(suffix)):
+            if not _in_flight(message):
                 ui.notify(message, type="negative", multi_line=True, position="top")
             return False
         finally:
@@ -650,6 +661,10 @@ def placeholder(player: PlayerView, phase: Role | None) -> str:
     if player.decision.allows_text:
         return "The game is waiting on your answer."
     return "Choose an option above."
+
+
+def _in_flight(message: str) -> bool:
+    return message.startswith(_IN_FLIGHT_PREFIX)
 
 
 def _card(fact: Fact, *, live: bool = False) -> None:

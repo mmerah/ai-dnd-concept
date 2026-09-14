@@ -32,8 +32,9 @@ def whole_text(path: Path, max_chars: int) -> str:
     text = "\n\n".join(passage for page in pages for passage in _passages(page))
     if not text:
         raise Refusal(f"{path.name} holds no readable text")
-    if len(text) > max_chars:
-        raise Refusal(f"{path.name} is {len(text)} characters, too large to hand to a model whole")
+    size = len(text.encode("utf-8"))
+    if size > max_chars:
+        raise Refusal(f"{path.name} is {size} bytes, too large to hand to a model whole")
     return text
 
 

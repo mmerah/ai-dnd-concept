@@ -97,9 +97,12 @@ class ClaudeDriver:
 
     def read_result(self, output: str) -> RunResult:
         try:
-            result = parse_json(_ClaudeResult, final_message(output))
-        except Refusal as broken:
-            raise Refusal(f"claude printed no JSON result: {output[-500:]}") from broken
+            result = parse_json(_ClaudeResult, output)
+        except Refusal:
+            try:
+                result = parse_json(_ClaudeResult, final_message(output))
+            except Refusal as broken:
+                raise Refusal(f"claude printed no JSON result: {output[-500:]}") from broken
         if result.is_error:
             raise Refusal(f"the run failed: {result.result[-500:]}")
         return RunResult(final_message(result.result), result.session_id)
@@ -180,7 +183,11 @@ async def run_cli(
 def final_message(output: str) -> str:
     fenced = output.rsplit("```", 2)
     if len(fenced) == 3:
-        body = fenced[1].removeprefix("json")
+        body = fenced[1]
+        if body.startswith("json") and "\n" in body:
+            body = body.split("\n", 1)[1]
+        else:
+            body = body.removeprefix("json")
         # A fence holding something else is prose about the answer, not the answer.
         with suppress(json.JSONDecodeError, RecursionError):
             json.loads(body)
