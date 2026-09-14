@@ -2,8 +2,9 @@ import pytest
 from support.tunnelgoons import HALL, MIRA, START, small_world
 
 from aidm.core.entities import Refusal
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.rooms.world import MapDraft, Prop, Way
-from aidm.engines.tunnelgoons.world import GoonSheet, Npc, TunnelGoonsGame, TunnelGoonsWorld
+from aidm.engines.tunnelgoons.world import Goon, GoonSheet, Npc, TunnelGoonsGame, TunnelGoonsWorld
 
 GHOST = "ghost"
 
@@ -111,6 +112,23 @@ def test_a_hired_npc_levels_up_their_ability_and_inventory_with_a_name_prefix() 
     assert mira.require_sheet().level == 2
     assert len(facts) == 1
     assert facts[0].card == "Mira: Level 2: Skulker +1, Inventory +1"
+
+
+def test_unpack_kit_seeds_the_player_id_so_an_item_named_player_does_not_collide() -> None:
+    goon = Goon(
+        id=PLAYER_ID,
+        name="Kael",
+        brief="A wiry scavenger",
+        known=True,
+        sheet=GoonSheet(abilities={"brute": 1, "skulker": 1, "erudite": 1}),
+        kit=("Player", "Rope", "Torch"),
+    )
+
+    items = goon.unpack_kit(())
+
+    ids = [item.id for item in items]
+    assert PLAYER_ID not in ids
+    assert len(set(ids)) == 3
 
 
 def test_the_map_so_far_names_who_stands_where_and_every_id_in_use() -> None:

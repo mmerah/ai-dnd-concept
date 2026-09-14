@@ -216,6 +216,14 @@ def test_the_master_cannot_award_loot_without_rolling_for_it(draft: BreathlessGa
     assert draft.pending is not None and draft.pending.kind == "loot"
 
 
+def test_loot_check_on_an_unnameable_item_is_refused_before_anything_is_rolled(
+    draft: BreathlessGame,
+) -> None:
+    with pytest.raises(Refusal, match="makes no id"):
+        _ = ENGINE.tools["loot_check"].call(draft, {"item": "???"}, Random(0))
+    assert draft.pending is None
+
+
 def test_ask_world_facts_are_untold(draft: BreathlessGame) -> None:
     dice_fact, luck_fact = ENGINE.ask_world(
         draft, AskWorldDie(question="Is anyone home?", die=6), Random(0)

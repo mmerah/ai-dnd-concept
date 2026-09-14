@@ -138,6 +138,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
             sheet=GoonSheet(abilities=abilities),
             kit=tuple(picked(picks, f"item-{number}") for number in range(1, STARTING_ITEMS + 1)),
         )
+        sheet.unpack_kit(())
         return TunnelGoonsCharacter(id=slug(name, ()), engine=self.id, payload=sheet)
 
     def preview_character(self, character: AnyCharacter) -> Rows:

@@ -20,7 +20,7 @@ from aidm.core.model import PackSelection
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.rooms.engine import ELSEWHERE
 from aidm.engines.rooms.tools import Move
-from aidm.engines.rooms.world import MOVED_CARD, MOVES_OFFSCREEN, NOTHING_OFFSCREEN, Prop
+from aidm.engines.rooms.world import MOVED_CARD, MOVES_OFFSCREEN, NOTHING_OFFSCREEN, Prop, Way
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 
 
@@ -142,6 +142,19 @@ def test_killing_the_player_leaves_them_dead_and_a_second_kill_is_refused(
     message = refused(room_engine, draft, "kill", entity_id=PLAYER_ID)
 
     assert "already dead" in message
+
+
+def test_move_does_not_clear_an_authored_lock_on_the_way_back(
+    room_engine: SixthEngine, begun_room: SixthGame
+) -> None:
+    world = begun_room.payload
+    world.ways[YARD].append(Way(to=GATE, locked=True))
+
+    room_engine.move(begun_room, Move(to_id=YARD), Random(0))
+
+    back = world.way(YARD, GATE)
+    assert back is not None
+    assert back.locked
 
 
 def test_a_room_game_given_a_table_set_is_refused(

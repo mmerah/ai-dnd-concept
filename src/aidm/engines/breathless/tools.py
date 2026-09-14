@@ -2,7 +2,7 @@ from typing import Self
 
 from pydantic import Field, field_validator, model_validator
 
-from aidm.core.entities import Frozen, Slug
+from aidm.core.entities import Frozen, Slug, slug
 from aidm.engines.base import ACTOR, AskWorld, Attempt
 from aidm.engines.breathless.world import Die, Skill
 
@@ -79,6 +79,12 @@ class LootCheck(Frozen):
         min_length=1,
         description="What is found if the roll finds anything.",
     )
+
+    @field_validator("item")
+    @classmethod
+    def _nameable(cls, item: str) -> str:
+        slug(item, ())
+        return item
 
 
 class TakeLoot(Frozen):

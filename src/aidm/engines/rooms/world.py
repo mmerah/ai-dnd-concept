@@ -218,7 +218,6 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         way.known = True
         if (back := self.way(destination.id, self.current.id)) is not None:
             back.known = True
-            back.locked = way.locked
 
     def move(self, to_id: Slug, with_ids: tuple[Slug, ...]) -> list[Fact]:
         here = self.current
@@ -269,6 +268,8 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
             raise Refusal(f"the way from {here.name} to {destination.name} is not locked")
         way.locked = False
         self._open_way(way, destination)
+        if (back := self.way(destination.id, here.id)) is not None:
+            back.locked = False
         trace = f"the way from {here.mention} to {destination.mention} is unlocked"
         card = f"{destination.name} unlocked"
         return [here.fact(trace, card=card)]
