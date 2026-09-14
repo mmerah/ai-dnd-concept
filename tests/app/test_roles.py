@@ -1,6 +1,8 @@
 from support.game import initialized, with_entity
 
-from aidm.app.roles import render_interjection
+from aidm.app.roles import render_interjection, render_narrator
+from aidm.core.play import Interjection, Narration
+from aidm.core.tools import schema_text
 from aidm.core.views import Companion, NarratorView, Rows, Subject
 from aidm.engines.loner3e.world import Loner3eCast
 
@@ -33,6 +35,22 @@ def test_render_interjection_prints_the_members_own_sheet_or_none() -> None:
 
     assert "YOUR SHEET:\n- Skill: Stealth d8" in with_sheet
     assert "YOUR SHEET:\n(none)" in without_sheet
+
+
+def test_render_narrator_asks_for_the_narration_shape_not_the_interjections() -> None:
+    mara = Subject(id="mara", label="Mara", detail="A ferrywoman.")
+
+    rendered = render_narrator(_view(mara), evidence="", prompt="", scenes=())
+
+    assert rendered.endswith(schema_text(Narration))
+
+
+def test_render_interjection_asks_for_the_interjection_shape_not_the_narrations() -> None:
+    mara = Subject(id="mara", label="Mara", detail="A ferrywoman.")
+
+    rendered = render_interjection(_view(mara), _companion(mara, ()), (), "")
+
+    assert rendered.endswith(schema_text(Interjection))
 
 
 def test_companions_returns_the_partys_members_with_their_rows() -> None:
