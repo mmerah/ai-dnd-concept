@@ -1,25 +1,23 @@
 import pytest
-from support.tunnelgoons import HALL, MIRA, START, small_world
+from support.tunnelgoons import HALL, MIRA, START
 
 from aidm.core.entities import Refusal
 from aidm.engines.rooms.world import MapDraft, Prop, Way
-from aidm.engines.tunnelgoons.world import GoonSheet, Npc, TunnelGoonsWorld
+from aidm.engines.tunnelgoons.world import GoonSheet, Npc, TunnelGoonsGame, TunnelGoonsWorld
 
 GHOST = "ghost"
 
 
-def test_begin_refuses_a_draft_whose_npc_stands_in_no_place() -> None:
-    world = small_world().payload
-    draft = MapDraft[Npc](
+def test_begin_refuses_a_draft_whose_npc_stands_in_no_place(world: TunnelGoonsWorld) -> None:
+    map_draft = MapDraft[Npc](
         places=world.places, ways=world.ways, npcs=world.npcs, items=world.items, start=START
     )
-    draft.npcs[MIRA].place = GHOST
+    map_draft.npcs[MIRA].place = GHOST
     with pytest.raises(Refusal, match="in no place"):
-        _ = TunnelGoonsWorld.opening(draft, world.player, (), "")
+        _ = TunnelGoonsWorld.opening(map_draft, world.player, (), "")
 
 
-def test_an_item_on_nothing_is_refused() -> None:
-    draft = small_world().draft()
+def test_an_item_on_nothing_is_refused(draft: TunnelGoonsGame) -> None:
     draft.payload.items["stray"] = Prop(
         id="stray", name="Stray", brief="Nobody's", known=True, on=GHOST
     )
@@ -27,28 +25,24 @@ def test_an_item_on_nothing_is_refused() -> None:
         _ = draft.commit()
 
 
-def test_an_npc_in_no_place_is_refused() -> None:
-    draft = small_world().draft()
+def test_an_npc_in_no_place_is_refused(draft: TunnelGoonsGame) -> None:
     draft.payload.npcs[MIRA].place = GHOST
     with pytest.raises(Refusal, match="no place"):
         _ = draft.commit()
 
 
-def test_a_way_to_a_non_place_is_refused() -> None:
-    draft = small_world().draft()
+def test_a_way_to_a_non_place_is_refused(draft: TunnelGoonsGame) -> None:
     draft.payload.ways[START].append(Way(to=GHOST))
     with pytest.raises(Refusal, match="not a place"):
         _ = draft.commit()
 
 
-def test_the_player_stands_at_the_last_visit() -> None:
-    draft = small_world().draft()
+def test_the_player_stands_at_the_last_visit(draft: TunnelGoonsGame) -> None:
     draft.payload.visits.append(HALL)
     assert draft.commit().payload.current.id == HALL
 
 
-def test_killing_a_party_member_drops_them_from_the_party() -> None:
-    world = small_world().payload
+def test_killing_a_party_member_drops_them_from_the_party(world: TunnelGoonsWorld) -> None:
     world.party.append(MIRA)
 
     facts = world.kill(MIRA)
@@ -58,9 +52,9 @@ def test_killing_a_party_member_drops_them_from_the_party() -> None:
     assert any(fact.card == "Mira is dead" for fact in facts)
 
 
-def test_a_party_member_who_is_not_at_the_players_place_is_refused() -> None:
-    world = small_world().payload
-
+def test_a_party_member_who_is_not_at_the_players_place_is_refused(
+    world: TunnelGoonsWorld,
+) -> None:
     with pytest.raises(ValueError, match="not at their place"):
         TunnelGoonsWorld(
             places=world.places,
@@ -73,26 +67,23 @@ def test_a_party_member_who_is_not_at_the_players_place_is_refused() -> None:
         )
 
 
-def test_walk_reaches_every_place_along_the_ways() -> None:
-    world = small_world().payload
+def test_walk_reaches_every_place_along_the_ways(world: TunnelGoonsWorld) -> None:
     assert world.reachable(START) == set(world.places)
 
 
-def test_frontier_counts_the_one_unknown_place_past_a_known_one() -> None:
-    world = small_world().payload
+def test_frontier_counts_the_one_unknown_place_past_a_known_one(world: TunnelGoonsWorld) -> None:
     assert world.frontier() == 1
 
 
-def test_a_goons_rows_put_health_before_the_sheets_rows() -> None:
-    world = small_world().payload
-
+def test_a_goons_rows_put_health_before_the_sheets_rows(world: TunnelGoonsWorld) -> None:
     labels = [label for label, _ in world.player.rows()]
 
     assert labels == ["Health", "Brute", "Skulker", "Erudite", "Inventory", "Level"]
 
 
-def test_the_player_levels_up_their_ability_and_health_with_no_name_prefix() -> None:
-    world = small_world().payload
+def test_the_player_levels_up_their_ability_and_health_with_no_name_prefix(
+    world: TunnelGoonsWorld,
+) -> None:
     player = world.player
     sheet = player.require_sheet()
     before_ability = sheet.abilities["brute"]
@@ -109,8 +100,9 @@ def test_the_player_levels_up_their_ability_and_health_with_no_name_prefix() -> 
     assert facts[0].trace == facts[0].card
 
 
-def test_a_hired_npc_levels_up_their_ability_and_inventory_with_a_name_prefix() -> None:
-    world = small_world().payload
+def test_a_hired_npc_levels_up_their_ability_and_inventory_with_a_name_prefix(
+    world: TunnelGoonsWorld,
+) -> None:
     mira = world.npcs[MIRA]
     mira.sheet = GoonSheet(abilities={"brute": 0, "skulker": 0, "erudite": 0})
     before_inventory = mira.require_sheet().inventory
@@ -124,10 +116,10 @@ def test_a_hired_npc_levels_up_their_ability_and_inventory_with_a_name_prefix() 
     assert facts[0].card == "Mira: Level 2: Skulker +1, Inventory +1"
 
 
-def test_the_map_so_far_names_who_stands_where_and_every_id_in_use() -> None:
-    state = small_world()
-
-    shown = state.payload.map_so_far()
+def test_the_map_so_far_names_who_stands_where_and_every_id_in_use(
+    world: TunnelGoonsWorld,
+) -> None:
+    shown = world.map_so_far()
 
     assert "  here: Mira[mira] (met), Lantern[lantern] (met)" in shown
     assert "Robo Mantis" not in shown
