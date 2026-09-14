@@ -40,7 +40,7 @@ class _UnsavableStore(FileStore):
         raise OSError("disk is gone")
 
 
-def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path) -> None:
+async def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path) -> None:
     store = FileStore(tmp_path)
     game = session(tmp_path)
     assert store.slugs() == ()
@@ -49,18 +49,18 @@ def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path
     assert session(tmp_path).state.notes == ["kept"]
 
     game = session(tmp_path)
-    game.restart()
+    await game.restart()
     assert game.state.notes == []
     assert store.read(TARGET.slug) is None
 
 
-def test_restart_keeps_scene_art_a_replayed_scene_would_reuse(tmp_path: Path) -> None:
+async def test_restart_keeps_scene_art_a_replayed_scene_would_reuse(tmp_path: Path) -> None:
     game = session(tmp_path)
     art = FileStore(tmp_path).media_dir(TARGET.slug) / "abc123def456.jpg"
     art.parent.mkdir(parents=True, exist_ok=True)
     _ = art.write_bytes(b"art")
 
-    game.restart()
+    await game.restart()
 
     assert art.read_bytes() == b"art"
 
@@ -101,13 +101,13 @@ async def test_the_opening_is_narrated_once_and_costs_a_turn(tmp_path: Path) -> 
     table = open_game(tmp_path)
     table.spawner.answers["narrator"] = [narrated("The abbot's study holds its breath.")]
 
-    await table.runtime.open(table.service)
+    await table.service.open()
 
     history = table.service.state.exchanges()
     assert [exchange.mark for exchange in history] == ["opening"]
     assert len(history) == 1
 
-    await table.runtime.open(table.service)
+    await table.service.open()
     assert len(table.service.state.exchanges()) == 1
 
 
@@ -115,7 +115,7 @@ async def test_an_opening_the_narrator_will_not_write_commits_nothing(tmp_path: 
     """The premise still stands in for it; a page reload asks again."""
     table = open_game(tmp_path)
 
-    await table.runtime.open(table.service)
+    await table.service.open()
 
     assert table.service.state.exchanges() == ()
     assert not table.service.busy
@@ -136,7 +136,7 @@ async def test_a_turn_whose_narrator_fails_leaves_the_rng_alone(tmp_path: Path) 
     before = table.service.rng.getstate()
 
     with pytest.raises(Refusal):
-        await table.runtime.play(table.service, Answer(text="I wait."))
+        await table.service.play(Answer(text="I wait."))
 
     assert table.service.rng.getstate() == before
 
@@ -416,52 +416,6 @@ async def test_a_new_turn_silences_the_member_still_speaking(tmp_path: Path) -> 
     assert cancelled[0]
 
 
-async def test_reload_settings_cancels_an_evicted_sessions_background_task(
-    tmp_path: Path,
-) -> None:
-    spawner = ScriptedSpawner()
-    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), lambda _: spawner)
-    opened = runtime.session(TARGET)
-    opened.chatter = Random(1)
-    _party_of_one(opened)
-
-    async def still_speaking(role: Role, prompt: str) -> None:
-        if role == "narrator" and prompt.startswith("YOUR ROLE:\nYou are Vessa Rune"):
-            await Event().wait()
-
-    spawner.hooks.append(still_speaking)
-    spawner.answers["narrator"] = [narrated("Nothing stirs.")]
-
-    await opened.play(Answer(text="I wait."))
-    await sleep(0)
-    assert opened.speaking
-
-    await runtime.reload_settings()
-
-    assert not opened.speaking
-
-
-async def test_a_page_holding_an_evicted_session_is_refused(tmp_path: Path) -> None:
-    """The reload drops every session, and a tab that kept one would open a second writer."""
-    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), lambda _: ScriptedSpawner())
-    game = runtime.session(TARGET)
-
-    await runtime.reload_settings()
-
-    reloaded = re.escape("The settings changed. Reload this page before you play on.")
-    with pytest.raises(Refusal, match=reloaded):
-        await runtime.play(game, Answer(text="I wait."))
-
-
-async def test_a_reload_under_a_turn_in_flight_is_refused(tmp_path: Path) -> None:
-    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), lambda _: ScriptedSpawner())
-    game = runtime.session(TARGET)
-
-    async with runtime.admit(game):
-        with pytest.raises(Refusal, match=IN_FLIGHT):
-            await runtime.reload_settings()
-
-
 async def test_two_concurrent_plays_on_different_sessions_cannot_both_open_a_turn(
     tmp_path: Path,
 ) -> None:
@@ -482,11 +436,11 @@ async def test_two_concurrent_plays_on_different_sessions_cannot_both_open_a_tur
     spawner.turns.append(lambda: None)
     spawner.answers["narrator"] = [narrated("You wait.")]
 
-    first_play = create_task(runtime.play(first, Answer(text="I wait.")))
+    first_play = create_task(first.play(Answer(text="I wait.")))
     await sleep(0)
 
     with pytest.raises(Refusal, match=IN_FLIGHT):
-        await runtime.play(second, Answer(text="I wait."))
+        await second.play(Answer(text="I wait."))
 
     gate.set()
     await first_play
@@ -513,12 +467,3 @@ async def test_a_failing_background_task_is_logged_and_close_leaves_no_live_task
 
     assert game.tasks.running == set()
     assert "background task failed" in caplog.text
-
-
-async def test_reload_settings_keeps_the_injected_spawner(tmp_path: Path) -> None:
-    spawner = ScriptedSpawner()
-    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path), lambda _: spawner)
-
-    await runtime.reload_settings()
-
-    assert runtime.spawner is spawner

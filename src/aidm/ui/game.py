@@ -10,7 +10,7 @@ from typing import Self
 from nicegui import app, ui
 from nicegui.events import GenericEventArguments, ScrollEventArguments
 
-from aidm.app.runtime import GameService, Runtime
+from aidm.app.runtime import GameService
 from aidm.config import Role
 from aidm.core.entities import Refusal, Slug
 from aidm.core.facts import DiceEvent, Fact, cards
@@ -87,8 +87,7 @@ class Observed:
 class GamePage:
     """One per tab; several tabs may share one session."""
 
-    def __init__(self, runtime: Runtime, session: GameService) -> None:
-        self.runtime = runtime
+    def __init__(self, session: GameService) -> None:
         self.session = session
         self.shown_art: Path | None = None
         self.shown_clip: Path | None = None
@@ -119,8 +118,8 @@ class GamePage:
     def build(self) -> None:
         session = self.session
         self.view, self.history = session.player_view(), session.history()
-        if session.unopened():
-            ui.timer(0.1, self._open, once=True)
+        if session.unopened:
+            ui.timer(0.1, lambda: self._run(self.session.open), once=True)
         else:
             session.illustrate()
         with page_header(
@@ -457,7 +456,7 @@ class GamePage:
 
     async def play(self, answer: Answer) -> bool:
         self.own_move = True
-        return await self._run(lambda: self.runtime.play(self.session, answer))
+        return await self._run(lambda: self.session.play(answer))
 
     async def answered(self, option_id: str) -> None:
         await self.play(Answer(option_id=option_id))
@@ -468,7 +467,7 @@ class GamePage:
         if not typed:
             return
         self.own_move = True
-        if await self._run(lambda: self.runtime.play(self.session, Answer(text=typed))):
+        if await self._run(lambda: self.session.play(Answer(text=typed))):
             self._clear_box()
 
     async def act(self) -> None:
@@ -480,14 +479,14 @@ class GamePage:
         if not typed:
             return
         self.own_move = True
-        if await self._run(lambda: self.runtime.act(self.session, action.id, typed)):
+        if await self._run(lambda: self.session.act(action.id, typed)):
             self._clear_box()
 
     async def restart(self) -> None:
-        if not await self._run(partial(self.runtime.restart, self.session)):
+        if not await self._run(self.session.restart):
             return
         self.poll_turn()
-        await self._open()
+        await self._run(self.session.open)
 
     async def confirm_restart(self) -> None:
         history = self.history
@@ -578,12 +577,9 @@ class GamePage:
             self.own_move = False
         return True
 
-    async def _open(self) -> None:
-        await self._run(lambda: self.runtime.open(self.session))
 
-
-def game_page(runtime: Runtime, session: GameService) -> None:
-    GamePage(runtime, session).build()
+def game_page(session: GameService) -> None:
+    GamePage(session).build()
 
 
 def can_type(player: PlayerView, phase: Role | None) -> bool:

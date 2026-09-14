@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
-from typing import Self
 
 from pydantic import JsonValue
 
@@ -15,7 +14,7 @@ from aidm.app.providers import close_posting
 from aidm.app.roles import RoleRunner, Roles
 from aidm.app.spawn import Spawner, worldsmith
 from aidm.app.speech import Reader
-from aidm.config import Role, Settings, read_settings
+from aidm.config import Role, Settings
 from aidm.core.entities import EngineId, Refusal, Slug, slug
 from aidm.core.facts import Fact
 from aidm.core.io import FileStore, Library
@@ -80,6 +79,7 @@ class GameService:
     roles: Roles
     store: FileStore
     state: AnyGame
+    gate: "Runtime" = field(repr=False, compare=False)
     media: Illustrator | None = None
     reader: Reader | None = None
     interjections: bool = True
@@ -93,45 +93,6 @@ class GameService:
     # The party member speaking after the last turn; a new turn or a reload silences them.
     _speaking: Task[None] | None = field(default=None, repr=False)
     tasks: Tasks = field(default_factory=Tasks, repr=False)
-
-    @classmethod
-    def resume(
-        cls,
-        target: LaunchTarget,
-        scenario: AnyScenario,
-        character: AnyCharacter,
-        engine: AnyEngine,
-        roles: Roles,
-        store: FileStore,
-        *,
-        media: Illustrator | None = None,
-        reader: Reader | None = None,
-        interjections: bool = True,
-        meanwhile: bool = True,
-    ) -> Self:
-        """The filed save if there is one, else a fresh opening."""
-        saved = store.read(target.slug)
-        state = (
-            engine.begin(target.scenario_id, scenario, character)
-            if saved is None
-            else _resumable(engine.restore(saved), target, scenario, character)
-        )
-        # A save armed before the switch went off must not spend itself on the next write.
-        if not meanwhile:
-            engine.world_of(state).disarm()
-        return cls(
-            target,
-            scenario,
-            character,
-            engine,
-            roles,
-            store,
-            state,
-            media=media,
-            reader=reader,
-            interjections=interjections,
-            meanwhile=meanwhile,
-        )
 
     @property
     def slug(self) -> str:
@@ -149,42 +110,49 @@ class GameService:
     def speaking(self) -> bool:
         return self._speaking is not None and not self._speaking.done()
 
+    @property
     def unopened(self) -> bool:
         return not self.busy and not self.state.exchanges()
 
     async def open(self) -> None:
         """A failed narrator leaves the premise to do its work."""
-        self.phase = "narrator"
-        try:
-            draft = self.state.draft()
-            lines = await self._narrated(draft, (), OPENING_NARRATION)
-            if lines:
-                self.save(self.engine.close(draft, lines, (), mark="opening"))
-            self._present()
-        finally:
-            self.phase = None
+        # A second tab's timer must not run the page reset over an opening already in flight.
+        if not self.unopened:
+            return
+        async with self.gate.admit(self):
+            self.phase = "narrator"
+            try:
+                draft = self.state.draft()
+                lines = await self._narrated(draft, (), OPENING_NARRATION)
+                if lines:
+                    self.save(self.engine.close(draft, lines, (), mark="opening"))
+                self._present()
+            finally:
+                self.phase = None
 
     async def play(self, answer: Answer) -> None:
-        await self._turn(answer, self.state)
+        async with self.gate.admit(self):
+            await self._turn(answer, self.state)
 
     async def act(self, action: Slug, words: str) -> None:
-        if (ended := self.engine.over(self.state)) is not None:
-            raise Refusal(f"{ended} The only way on is to restart.")
-        if self.state.pending is not None:
-            raise Refusal("the rules wait on the player's decision first")
-        draft = self.state.draft()
-        self.engine.act(draft, action, words)
-        if draft.generation is None:
-            await self._turn(Answer(text=words), draft)
-            return
-        self.intent = words
-        try:
-            self.save(self.engine.land(draft))
-            written = await self._grow(words=words, mark="")
-        finally:
-            self.intent = ""
-        if written:
-            await self._turn(Answer(text=words), self.state)
+        async with self.gate.admit(self):
+            if (ended := self.engine.over(self.state)) is not None:
+                raise Refusal(f"{ended} The only way on is to restart.")
+            if self.state.pending is not None:
+                raise Refusal("the rules wait on the player's decision first")
+            draft = self.state.draft()
+            self.engine.act(draft, action, words)
+            if draft.generation is None:
+                await self._turn(Answer(text=words), draft)
+                return
+            self.intent = words
+            try:
+                self.save(self.engine.land(draft))
+                written = await self._grow(words=words, mark="")
+            finally:
+                self.intent = ""
+            if written:
+                await self._turn(Answer(text=words), self.state)
 
     async def _turn(self, answer: Answer, state: AnyGame) -> None:
         self.hush()
@@ -340,11 +308,12 @@ class GameService:
         self.hush()
         await self.tasks.close()
 
-    def restart(self) -> None:
-        self.hush()
-        opening = self.engine.begin(self.target.scenario_id, self.scenario, self.character)
-        self.store.discard(self.slug)
-        self.state = opening
+    async def restart(self) -> None:
+        async with self.gate.admit(self):
+            self.hush()
+            opening = self.engine.begin(self.target.scenario_id, self.scenario, self.character)
+            self.store.discard(self.slug)
+            self.state = opening
 
     def save(self, state: AnyGame) -> None:
         self.store.write(self.slug, state)
@@ -363,15 +332,12 @@ class Runtime:
     store: FileStore = field(init=False)
 
     def __post_init__(self) -> None:
-        """Reads every engine's prompts and packs, then mounts the library and the saves."""
         self.engines = build_engines()
-        self._mount()
-
-    def _mount(self) -> None:
         self.spawner = self.spawn(self.settings)
         self.library = Library(self.settings.scenarios_dir, self.settings.characters_dir)
         self.store = FileStore(self.settings.saves_dir)
 
+    @property
     def default_engine(self) -> EngineId:
         """Dict order picks it; a create page has to start somewhere."""
         return next(iter(self.engines))
@@ -394,8 +360,6 @@ class Runtime:
     @asynccontextmanager
     async def admit(self, session: GameService) -> AsyncGenerator[None]:
         """One writer at a time: two turns on one save is the only failure that costs a game."""
-        if self._sessions.get(session.slug) is not session:
-            raise Refusal("The settings changed. Reload this page before you play on.")
         if self.admitted is not None:
             raise Refusal(IN_FLIGHT.format(slug=self.admitted.slug))
         self.admitted = session
@@ -403,36 +367,6 @@ class Runtime:
             yield
         finally:
             self.admitted = None
-
-    async def open(self, session: GameService) -> None:
-        # A second tab's timer must not run the page reset over an opening already in flight.
-        if not session.unopened():
-            return
-        async with self.admit(session):
-            await session.open()
-
-    async def play(self, session: GameService, answer: Answer) -> None:
-        async with self.admit(session):
-            await session.play(answer)
-
-    async def act(self, session: GameService, action: Slug, words: str) -> None:
-        async with self.admit(session):
-            await session.act(action, words)
-
-    async def restart(self, session: GameService) -> None:
-        async with self.admit(session):
-            session.restart()
-
-    async def reload_settings(self) -> None:
-        if self.admitted is not None:
-            raise Refusal(IN_FLIGHT.format(slug=self.admitted.slug))
-        self.settings = read_settings()
-        self._mount()
-        # Evicted before the first await: a play landing meanwhile must not find them admittable.
-        evicted, self._sessions = list(self._sessions.values()), {}
-        # A late answer or image from an evicted session would land where the new session reads.
-        for session in evicted:
-            await session.close()
 
     async def close(self) -> None:
         for session in list(self._sessions.values()):
@@ -467,19 +401,48 @@ class Runtime:
             self._sessions[target.slug] = self._open(target)
         return self._sessions[target.slug]
 
+    def _resumed(
+        self,
+        engine: AnyEngine,
+        target: LaunchTarget,
+        scenario: AnyScenario,
+        character: AnyCharacter,
+    ) -> AnyGame:
+        saved = self.store.read(target.slug)
+        if saved is None:
+            state = engine.begin(target.scenario_id, scenario, character)
+        else:
+            state = engine.restore(saved)
+            if (state.scenario_id, state.character_id) != (target.scenario_id, character.id):
+                raise Refusal(
+                    f"save is {state.scenario_id!r}/{state.character_id!r}, "
+                    f"selected is {target.scenario_id!r}/{character.id!r}"
+                )
+            if state.scenario != scenario.meta:
+                raise Refusal(
+                    f"save scenario is {state.scenario.title!r}, "
+                    f"selected scenario is {scenario.meta.title!r}"
+                )
+        # A save armed before the switch went off must not spend itself on the next write.
+        if not self.settings.meanwhile:
+            engine.world_of(state).disarm()
+        return state
+
     def _open(self, target: LaunchTarget) -> GameService:
         settings = self.settings
         models = {engine_id: engine.scenario for engine_id, engine in self.engines.items()}
         scenario = self.library.read_scenario(target.scenario_id, models)
         engine = self.engines[scenario.engine]
         character = self.library.read_character(target.character_id, engine.id, engine.character)
-        return GameService.resume(
+        return GameService(
             target,
             scenario,
             character,
             engine,
             Roles(self.spawner),
             self.store,
+            self._resumed(engine, target, scenario, character),
+            self,
             interjections=settings.interjections,
             meanwhile=settings.meanwhile,
             media=Illustrator.open(
@@ -499,19 +462,3 @@ class Runtime:
                 voice=scenario.meta.voice or settings.speech.voice,
             ),
         )
-
-
-def _resumable(
-    state: AnyGame, target: LaunchTarget, scenario: AnyScenario, character: AnyCharacter
-) -> AnyGame:
-    if (state.scenario_id, state.character_id) != (target.scenario_id, character.id):
-        raise Refusal(
-            f"save is {state.scenario_id!r}/{state.character_id!r}, "
-            f"selected is {target.scenario_id!r}/{character.id!r}"
-        )
-    if state.scenario != scenario.meta:
-        raise Refusal(
-            f"save scenario is {state.scenario.title!r}, "
-            f"selected scenario is {scenario.meta.title!r}"
-        )
-    return state

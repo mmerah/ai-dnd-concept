@@ -11,7 +11,7 @@ from tempfile import TemporaryDirectory
 from time import monotonic
 from typing import Protocol
 
-from pydantic import BaseModel, JsonValue, TypeAdapter, ValidationError
+from pydantic import BaseModel, JsonValue, ValidationError
 
 from aidm.config import CliProvider, Role, RoleConfig
 from aidm.core.entities import Loose, Refusal, parse_json
@@ -24,7 +24,6 @@ LOGGER = logging.getLogger(__name__)
 RETRIES = 1
 # The child inherits nothing else: the shell that started the app may hold keys no role should see.
 KEPT_ENV = ("PATH", "HOME", "LANG", "TERM")
-EVENT: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +51,19 @@ class _ClaudeResult(Loose):
     session_id: str
     # A failed run can still exit 0 and put its error where the answer goes.
     is_error: bool = False
+
+
+class _CodexItem(Loose):
+    type: str
+    text: str = ""
+
+
+class _CodexEvent(Loose):
+    """`type` is required: a bare answer object must not parse as an event."""
+
+    type: str
+    thread_id: str | None = None
+    item: _CodexItem | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,8 +133,9 @@ class CodexDriver:
         return (*argv, "-c", "sandbox_mode=read-only", "-c", "approval_policy=never")
 
     def read_result(self, output: str) -> RunResult:
-        events = [event for line in output.splitlines() if (event := _object(line)) is not None]
-        return RunResult(final_message(output), _string(events, "thread_id"))
+        events = _codex_events(output)
+        thread = next((event.thread_id for event in events if event.thread_id is not None), None)
+        return RunResult(_said(events) or final_message(output), thread)
 
 
 DRIVERS: Mapping[CliProvider, Driver] = {"claude": ClaudeDriver(), "codex": CodexDriver()}
@@ -163,8 +176,6 @@ async def run_cli(
 
 
 def final_message(output: str) -> str:
-    if (text := _last_said(output)) is not None:
-        return text
     fenced = output.rsplit("```", 2)
     if len(fenced) == 3:
         body = fenced[1]
@@ -258,42 +269,22 @@ def _claude_mcp(url: str) -> str:
     return json.dumps({"mcpServers": {"aidm": {"type": "http", "url": url}}})
 
 
-def _last_said(output: str) -> str | None:
-    """Two JSON objects on their own lines is an event stream; one is the answer itself."""
-    events = [event for line in output.splitlines() if (event := _object(line)) is not None]
-    if len(events) < 2:
-        return None
-    # Backwards: reasoning and tool-call events carry `text` of their own and come first.
-    said = (text for event in reversed(events) if isinstance(text := _found(event, "text"), str))
-    return next(said, None)
+def _codex_events(output: str) -> list[_CodexEvent]:
+    events: list[_CodexEvent] = []
+    for line in output.splitlines():
+        with suppress(ValidationError):
+            events.append(_CodexEvent.model_validate_json(line))
+    return events
 
 
-def _object(line: str) -> JsonValue | None:
-    if not line.startswith("{"):
-        return None
-    try:
-        return EVENT.validate_json(line)
-    except ValidationError:
-        return None
-
-
-def _string(events: Sequence[JsonValue], name: str) -> str | None:
-    """The first event that names it: a stream announces its thread before it says anything."""
-    found = next((match for event in events if (match := _found(event, name)) is not None), None)
-    return found if isinstance(found, str) else None
-
-
-def _found(node: JsonValue, name: str) -> JsonValue | None:
-    if isinstance(node, list):
-        return next((match for item in node if (match := _found(item, name)) is not None), None)
-    if not isinstance(node, dict):
-        return None
-    for key, value in node.items():
-        if key == name:
-            return value
-        if (deeper := _found(value, name)) is not None:
-            return deeper
-    return None
+def _said(events: Sequence[_CodexEvent]) -> str | None:
+    """The last agent message is the answer; a resumed thread carries earlier ones."""
+    spoken = (
+        event.item.text
+        for event in reversed(events)
+        if event.item is not None and event.item.type == "agent_message" and event.item.text
+    )
+    return next(spoken, None)
 
 
 async def _kill(process: subprocess.Process) -> None:
