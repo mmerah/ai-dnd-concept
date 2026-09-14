@@ -102,9 +102,11 @@ class ClaudeDriver:
             try:
                 result = parse_json(_ClaudeResult, final_message(output))
             except Refusal as broken:
-                raise Refusal(f"claude printed no JSON result: {output[-500:]}") from broken
+                LOGGER.warning("claude printed no JSON result: %s", output[-500:])
+                raise Refusal("claude printed no JSON result") from broken
         if result.is_error:
-            raise Refusal(f"the run failed: {result.result[-500:]}")
+            LOGGER.warning("the run failed: %s", result.result[-500:])
+            raise Refusal("the run failed")
         return RunResult(final_message(result.result), result.session_id)
 
 
@@ -267,7 +269,8 @@ async def _spawn(
         await _kill(process)
     output = streamed[0].decode(errors="replace")
     if process.returncode != 0:
-        raise Refusal(f"the {role} exited {process.returncode}: {output[-500:]}")
+        LOGGER.warning("the %s exited %s: %s", role, process.returncode, output[-500:])
+        raise Refusal(f"the {role} exited {process.returncode}")
     return output
 
 
