@@ -1,5 +1,5 @@
 import json
-import re
+import sys
 from dataclasses import dataclass
 
 import pytest
@@ -33,6 +33,21 @@ class _NoSuchBinary:
     def read_result(self, output: str) -> RunResult:
         del output
         raise AssertionError("exec fails before there is any output to read")
+
+
+@dataclass(frozen=True, slots=True)
+class _CrashingProcess:
+    secrets: tuple[str, ...] = ()
+
+    def command(
+        self, role: Role, config: RoleConfig, session: str | None, url: str
+    ) -> tuple[str, ...]:
+        del role, config, session, url
+        return (sys.executable, "-c", "print('HIDDEN HERE the arc'); exit(3)")
+
+    def read_result(self, output: str) -> RunResult:
+        del output
+        raise AssertionError("a nonzero exit is caught before there is a result to read")
 
 
 CODEX_OUTPUT = "\n".join(
@@ -88,8 +103,21 @@ def test_only_the_master_is_let_out_of_the_sandbox_and_no_role_sees_the_account(
 
 
 def test_a_claude_reply_that_is_not_json_is_a_broken_run() -> None:
-    with pytest.raises(Refusal, match=re.escape("no JSON result: I ask in prose.")):
+    with pytest.raises(Refusal, match="printed no JSON result") as failed:
         _ = ClaudeDriver().read_result("I ask in prose.")
+
+    assert "I ask in prose." not in str(failed.value)
+
+
+def test_a_failed_claude_run_does_not_quote_its_raw_result() -> None:
+    output = json.dumps(
+        {"result": "HIDDEN HERE the arc", "session_id": "abc-123", "is_error": True}
+    )
+
+    with pytest.raises(Refusal, match="the run failed") as failed:
+        _ = ClaudeDriver().read_result(output)
+
+    assert "HIDDEN HERE" not in str(failed.value)
 
 
 async def test_a_missing_cli_binary_is_a_refusal_not_a_crash() -> None:
@@ -97,6 +125,15 @@ async def test_a_missing_cli_binary_is_a_refusal_not_a_crash() -> None:
 
     with pytest.raises(Refusal, match="could not be started"):
         _ = await run_cli("master", config, _NoSuchBinary(), 1, "PLAY", None)
+
+
+async def test_a_crashed_roles_raw_output_never_reaches_the_player() -> None:
+    config = RoleConfig(model="opus", effort="high")
+
+    with pytest.raises(Refusal, match="master exited 3") as failed:
+        _ = await run_cli("master", config, _CrashingProcess(), 1, "PLAY", None)
+
+    assert "HIDDEN HERE" not in str(failed.value)
 
 
 @pytest.mark.parametrize(

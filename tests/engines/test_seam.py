@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -126,3 +127,12 @@ def test_close_builds_no_narrator_view(tmp_path: Path) -> None:
 def test_restored_round_trips(engine_id: EngineId) -> None:
     engine, state = game(engine_id)
     assert engine.restore(state.model_dump_json()) == state
+
+
+def test_restore_refuses_a_save_smuggling_a_pending_generation() -> None:
+    engine, state = game(ENGINE_IDS[0])
+    raw = json.loads(state.model_dump_json())
+    raw["generation"] = {"operation": "departure", "detail": "smuggled in by hand"}
+
+    with pytest.raises(Refusal, match="generation"):
+        engine.restore(json.dumps(raw))

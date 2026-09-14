@@ -51,6 +51,21 @@ def test_whole_text_refuses_a_pdf_that_is_not_readable(tmp_path: Path) -> None:
         _ = whole_text(broken, MAX_CHARS)
 
 
+def test_whole_text_refuses_a_pdf_pypdf_breaks_on_with_a_plain_exception(
+    tmp_path: Path,
+) -> None:
+    """A trailer whose catalog has no /Pages makes pypdf raise a bare AttributeError."""
+    broken = tmp_path / "no_pages.pdf"
+    broken.write_bytes(
+        b"%PDF-1.4\n"
+        b"1 0 obj\n<< /Type /Catalog >>\nendobj\n"
+        b"xref\n0 2\n0000000000 65535 f \n0000000009 00000 n \n"
+        b"trailer\n<< /Size 2 /Root 1 0 R >>\nstartxref\n45\n%%EOF\n"
+    )
+    with pytest.raises(Refusal, match="cannot be read"):
+        _ = whole_text(broken, MAX_CHARS)
+
+
 def test_whole_text_refuses_a_document_it_cannot_open_naming_it(tmp_path: Path) -> None:
     unreadable = tmp_path / "unreadable.md"
     unreadable.mkdir()
