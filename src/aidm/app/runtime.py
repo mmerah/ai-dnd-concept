@@ -54,7 +54,7 @@ class Tasks:
         task.add_done_callback(self._done)
 
     async def settled(self) -> None:
-        await gather(*self.running)
+        await gather(*self.running, return_exceptions=True)
 
     async def close(self) -> None:
         tasks = list(self.running)

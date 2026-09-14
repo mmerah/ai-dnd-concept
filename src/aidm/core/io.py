@@ -35,7 +35,7 @@ class FileStore:
 
     def read(self, slug: str) -> str | None:
         path = self._save_path(slug)
-        return _read_text(path) if path.is_file() else None
+        return _read_text(path) if path.exists() else None
 
     def write(self, slug: str, state: AnyGame, /) -> None:
         write_text(self._save_path(slug), state.model_dump_json(indent=2))

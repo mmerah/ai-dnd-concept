@@ -25,13 +25,6 @@ NEUTRAL_PALETTE: Mapping[str, str] = {
     "game-heading": "'EB Garamond', Georgia, 'Times New Roman', serif",
 }
 
-# Offline the fallback stacks in the tokens above apply, which is why every stack names one.
-FONT_LINK = (
-    '<link rel="preconnect" href="https://fonts.googleapis.com">'
-    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2'
-    '?family=EB+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">'
-)
-
 
 def set_look(look: Look | None) -> None:
     palette = {**NEUTRAL_PALETTE, **(look.palette if look is not None else {})}
@@ -55,8 +48,6 @@ def install() -> None:
     ui.select.default_props("outlined stack-label")
     ui.number.default_props("outlined stack-label")
     ui.card.default_classes("game-card")
-    # `shared=True` appends to the app-wide head on every call; `start` calls this once.
-    ui.add_head_html(FONT_LINK, shared=True)
     # A layer before Quasar's own outranks it; `:root` keeps the first paint dark before `body`.
     root = "".join(f"--{key}: {value};" for key, value in NEUTRAL_PALETTE.items())
     css = read_cached_text(Path(__file__).parent / "theme.css")

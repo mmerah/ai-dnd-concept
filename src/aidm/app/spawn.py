@@ -9,9 +9,9 @@ from os import environ, killpg
 from signal import SIGKILL
 from tempfile import TemporaryDirectory
 from time import monotonic
-from typing import Protocol
+from typing import Annotated, Protocol
 
-from pydantic import BaseModel, JsonValue, ValidationError
+from pydantic import BaseModel, Field, JsonValue, ValidationError
 
 from aidm.config import CliProvider, Role, RoleConfig
 from aidm.core.entities import Loose, Refusal, parse_json
@@ -24,6 +24,8 @@ LOGGER = logging.getLogger(__name__)
 RETRIES = 1
 # The child inherits nothing else: the shell that started the app may hold keys no role should see.
 KEPT_ENV = ("PATH", "HOME", "LANG", "TERM")
+# A resumed session id is fed back as an argv element; a leading `-` must not parse as a flag.
+SessionId = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")]
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,7 +50,7 @@ class _ClaudeResult(Loose):
     """What `--output-format json` prints."""
 
     result: str
-    session_id: str
+    session_id: SessionId
     # A failed run can still exit 0 and put its error where the answer goes.
     is_error: bool = False
 
@@ -62,7 +64,7 @@ class _CodexEvent(Loose):
     """`type` is required: a bare answer object must not parse as an event."""
 
     type: str
-    thread_id: str | None = None
+    thread_id: SessionId | None = None
     item: _CodexItem | None = None
 
 
@@ -95,7 +97,7 @@ class ClaudeDriver:
 
     def read_result(self, output: str) -> RunResult:
         try:
-            result = parse_json(_ClaudeResult, output)
+            result = parse_json(_ClaudeResult, final_message(output))
         except Refusal as broken:
             raise Refusal(f"claude printed no JSON result: {output[-500:]}") from broken
         if result.is_error:
@@ -178,8 +180,7 @@ async def run_cli(
 def final_message(output: str) -> str:
     fenced = output.rsplit("```", 2)
     if len(fenced) == 3:
-        body = fenced[1]
-        body = body.split("\n", 1)[1] if body.startswith("json") else body
+        body = fenced[1].removeprefix("json")
         # A fence holding something else is prose about the answer, not the answer.
         with suppress(json.JSONDecodeError, RecursionError):
             json.loads(body)
