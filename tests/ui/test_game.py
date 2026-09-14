@@ -241,7 +241,7 @@ async def test_decision_buttons_grey_out_while_a_turn_is_in_flight(
     assert seen == [True, False]
 
 
-async def test_only_this_games_in_flight_guard_is_kept_from_the_player(
+async def test_any_games_in_flight_guard_is_kept_from_the_player(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     table = open_game(tmp_path)
@@ -268,7 +268,7 @@ async def test_only_this_games_in_flight_guard_is_kept_from_the_player(
         client.delete()
 
     assert landed is False
-    assert notified == [IN_FLIGHT.format(slug="some-other-save")]
+    assert notified == []
 
 
 async def test_a_refusal_that_is_not_the_in_flight_guard_still_toasts(

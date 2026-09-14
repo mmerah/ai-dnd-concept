@@ -127,7 +127,7 @@ class GamePage:
         session = self.session
         self.view, self.history = session.player_view(), session.history()
         if session.unopened:
-            ui.timer(0.1, lambda: self._run(self.session.open), once=True)
+            ui.timer(0.1, lambda: self._run(self.session.open))
         else:
             session.illustrate()
         with page_header(
@@ -581,8 +581,9 @@ class GamePage:
             await playing()
         except Refusal as error:
             message = str(error)
-            # A double-click guard, not a message for the player: the greyed-out composer said so.
-            if message != IN_FLIGHT.format(slug=self.session.slug):
+            # A double-click guard, not a message for the player: whichever game is in flight.
+            prefix, _, suffix = IN_FLIGHT.partition("{slug!r}")
+            if not (message.startswith(prefix) and message.endswith(suffix)):
                 ui.notify(message, type="negative", multi_line=True, position="top")
             return False
         finally:

@@ -1,3 +1,4 @@
+import logging
 from asyncio import Event, Lock, Task, create_task
 from dataclasses import dataclass, field
 
@@ -9,6 +10,8 @@ from mcp.server.transport_security import TransportSecuritySettings
 from aidm.app.runtime import Runtime
 from aidm.core.entities import Refusal
 from aidm.core.tools import schema_of
+
+LOGGER = logging.getLogger(__name__)
 
 SERVER_NAME = "aidm"
 MOUNT_PATH = "/mcp"
@@ -87,6 +90,9 @@ def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
                 answered = runtime.call(params.name, params.arguments or {})
             except Refusal as refused:
                 return _content(str(refused), error=True)
+            except Exception as broken:
+                LOGGER.exception("tool %s failed", params.name, exc_info=broken)
+                raise
         return _content(answered)
 
     return Server(SERVER_NAME, on_list_tools=on_list_tools, on_call_tool=on_call_tool)

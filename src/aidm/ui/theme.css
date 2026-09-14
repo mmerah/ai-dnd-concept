@@ -114,6 +114,7 @@ body, body.body--dark {
   box-shadow: 0 8px 28px #0002;
 }
 .q-menu .q-item--active { color: var(--game-accent) }
+.q-menu .q-item__label { overflow-wrap: anywhere }
 .q-separator { background: var(--game-border) }
 
 .game-stat {
