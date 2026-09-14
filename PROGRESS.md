@@ -12,7 +12,7 @@ part B steps 5–12.
 
 | count | before | after | net |
 | --- | --- | --- | --- |
-| `src` | 10,240 | 10,177 | −63 |
+| `src` | 10,240 | 10,176 | −64 |
 | `tests` | 10,540 | 10,537 | −3 |
 | `qa` | 1,760 | 1,760 | 0 |
 | prompt fixtures (13 files, `wc` under-reports by four) | 813 | 813 | 0 |
@@ -22,8 +22,8 @@ part B steps 5–12.
 unchanged. `uv run aidm` serves its page (HTTP 200); a live turn was not played — this container
 runs no AI role — so the turn path rests on the suite.
 
-PLAN predicted `src` −38. The actual is −63: the review fold found 25 lines of fat the plan had
-not priced, all of it created by the phase's own shapes. Only two fixture lines moved, both
+PLAN predicted `src` −38. The actual is −64: the review fold found the rest, all of it fat the
+phase's own shapes created and the plan had not priced. Only two fixture lines moved, both
 step 8's rename: `"name": "test_luck"` → `"ask_world"` in the two `master_tools.json`. No
 `turn/*.json` moved, so step 7's roll merge kept its `len(faces) > 1` computation; no
 `prompts/*.txt` moved, so the hire sentence, the card-line fragment and the item-line collapse
@@ -56,6 +56,13 @@ all render byte-identically.
   `'X' is already among NAME's hindrances` — two messages for one rejected state, invisible to a
   suite that only asserts `"already"`. Both reworded; `_break`'s guard and `append` became one
   `changed_tags` assignment.
+- **`changed_tags` is a `Person` method, not the free function PLAN step 9 names.** It took
+  `name: str` only because it wanted the person's name for its two refusals; on `Person` it reads
+  `self.name` and all three call sites shorten. It still returns the new list rather than mutating,
+  because the two callers keep it in different places — `self.tags[kind]` and `sheet.hindrances`.
+- **`luck_test` is now `oracle_roll`.** Step 8 renamed the tool away from "luck" because the word
+  collides with loner3e's luck gauge; the helper that implements the tool kept it. `oracle_roll` is
+  the vocabulary the engines already use for a question the dice answer.
 - **`item_line` was added by step 10 row 3 and then deleted.** It landed in `engines/base.py`
   with exactly one caller, and the collapse measured net **+1** line, not a cut. The other two
   candidate sites are the `carried()` pair PLAN refuses, so a second user can never arrive.
@@ -71,21 +78,27 @@ fixed two behaviours the suite could not see: the split hindrance wording above,
 
 | finding | reason |
 | --- | --- |
-| `changed_tags` should be a `Person` method | Its first argument is a `str`, not one of our objects, so CLAUDE.md's "first argument is one of our objects" rule does not reach it. It owns no storage either: loner3e assigns the result to `self.tags[kind]`, twentyfourxx to `sheet.hindrances`. PLAN specifies a free function. |
-| Guard `hires` against a missing `write_sheet` override in `__init__` | +2 lines of `type(self).write_sheet is Engine.write_sheet` reflection in a phase whose point is removal, and it catches only one of the two directions the finding names — an override without `hires = True` still registers no hire tool silently. The failure it does catch already raises a named `ValueError` naming the engine. |
-| Rename `luck_test` to `oracle_roll` | `luck_test` is an internal helper name; it never reaches a role, the player or a schema. The collision step 8 fixed was the tool string `test_luck` that the master reads beside loner3e's luck gauge. Zero lines either way. |
-| Make `_render`'s `intent`, `guidance`, `answer` keyword-only | It would cost back the six lines one-lining the `render_request` call buys, by exploding it to one argument per line again. `_render` is private with two callers in the same file, and both public entry points, `render_request` and `render_opening`, already take those three keyword-only, so a transposition cannot reach a caller outside `seam.py`. |
+| Reconcile `hires` with the `write_sheet` override | **Measured, not judged.** The clean form is to stop declaring `hires` and derive it: `return type(self).write_sheet is not Engine.write_sheet`, which deletes the three `hires = True` lines and makes disagreement impossible. `basedpyright --strict` rejects it — `Type of "write_sheet" is partially unknown (reportUnknownMemberType)`, because `Engine` is generic and the bare class access loses its parameters. That is one new error in `src`, which the project holds at zero, and every other reflective spelling (`getattr_static`, a module-level alias) fails the same way or returns `Any`. The reviewer's `__init__` guard fails identically. Registering the hire tool and request in each hiring engine instead costs +9 lines and scatters the wiring. The bool stays; see **Known and accepted**. |
+| Make `_render`'s parameters keyword-only | **Measured, not judged.** Written out and formatted, `seam.py` goes 361 → 375 lines: +14, because neither call site fits in 100 characters once the six arguments are named, so both explode to one argument per line. `_render` is private, has two callers seven lines above its own definition, and every positional argument's name matches the parameter at that index. +14 lines in a phase whose purpose is removal is the wrong trade. |
 
 ### Known and accepted
 
 - `hires = True` and a `write_sheet` override are two spellings of one fact and nothing holds
-  them together; the deleted `hiring()` hook could not disagree with itself. See the refutation
-  above. If a fourth hiring engine is ever written, this is the trap.
+  them together; the deleted `hiring()` hook could not disagree with itself. The two ways to get it
+  wrong are not equally loud: `hires = True` without an override raises
+  `the 'x' engine hires nobody` at hire time, while an override without `hires = True` silently
+  registers no hire tool at all. Reconciling them is blocked by the type checker — see the
+  refutation above. If a fourth hiring engine is ever written, this is the trap.
 - `tests/core/test_dice.py` was edited although no PLAN step names it: it imported `roll_pool`
   directly, so step 7 could not land without it.
 - `hire_prompt` and `install_sheet` now have exactly one caller each, their own `write_sheet`.
-  Inlining them is about six lines, but it would bury three different prompt shapes inside three
-  `write_sheet` bodies; left as they are.
+  Inlining them is about six lines, but it would bury a 6-line prompt build and an 8-line sheet
+  install inside a single `write_sheet`; the two names carry the two halves. Left as they are.
+- Hoisting `drop_item` needs five type parameters, not one class. Beyond the `Person` bound
+  recorded above, `Sheeted[S]` and `ItemSheet[I]` are both invariant in their parameters, so an
+  intermediate class cannot be spelled `Sheeted[ItemSheet[Item]]`; it needs
+  `[I: Item, S: ItemSheet[I], C: Sheeted[S], G, K]` and every engine restating all five. The
+  refusal is structural, not a preference.
 
 ## Phase 1 — the goldens and the test scaffold
 

@@ -25,7 +25,7 @@ from aidm.engines.base import (
     DropItem,
     Kill,
     banded,
-    luck_test,
+    oracle_roll,
 )
 from aidm.engines.scenes.engine import SUPPLEMENTS, SceneEngine
 from aidm.engines.twentyfourxx.tools import (
@@ -484,7 +484,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         return Pool(faces=tuple(faces), label=label, die=die, helped_by=helped_by)
 
     def ask_world(self, _draft: TwentyfourxxGame, args: AskWorld, rng: Random) -> list[Fact]:
-        return luck_test(args.question, 6, ("trouble now", "signs of it", "nothing"), rng)
+        return oracle_roll(args.question, 6, ("trouble now", "signs of it", "nothing"), rng)
 
     def job(self, draft: TwentyfourxxGame, args: Job, rng: Random) -> list[Fact]:
         match args.verb:
