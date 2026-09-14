@@ -1,5 +1,5 @@
 import pytest
-from support.twentyfourxx import KESTREL, hired
+from support.twentyfourxx import KESTREL, hired, small_world
 
 from aidm.core.entities import Refusal
 from aidm.core.facts import DiceEvent
@@ -97,9 +97,8 @@ def test_take_lead_refused_while_the_player_lives(draft: TwentyfourxxGame) -> No
         world.take_lead(KESTREL)
 
 
-def test_require_gear_finds_a_ship_function_and_refuses_a_stranger(
-    world: TwentyfourxxWorld,
-) -> None:
+def test_require_gear_finds_a_ship_function_and_refuses_a_stranger() -> None:
+    world = small_world().payload
     item = world.require_gear(world.player, "hull-armor")
     assert item.name == "Hull armor"
     with pytest.raises(Refusal, match="not among"):

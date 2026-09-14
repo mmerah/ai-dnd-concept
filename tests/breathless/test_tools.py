@@ -1,7 +1,7 @@
 from random import Random
 
 import pytest
-from support.breathless import ENGINE, MIRA, WRENCH, hired
+from support.breathless import ENGINE, MIRA, WRENCH, hired, small_world
 from support.table import change, refused
 
 from aidm.core.entities import Refusal, parse
@@ -77,9 +77,8 @@ def test_vulnerable_fail_leaves_a_note(draft: BreathlessGame) -> None:
     assert any("vulnerable" in note for note in draft.notes)
 
 
-def test_catch_breath_resets_worn_loot_and_stunt_but_keeps_stress_and_item_dice(
-    draft: BreathlessGame,
-) -> None:
+def test_catch_breath_resets_worn_loot_and_stunt_but_keeps_stress_and_item_dice() -> None:
+    draft = small_world().draft()
     player = draft.payload.player
     sheet = player.require_sheet()
     sheet.worn["bash"] = 4
