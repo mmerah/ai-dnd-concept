@@ -112,6 +112,7 @@ class GamePage:
         self.scene_card: ui.element
         self.restart_dialog: ui.dialog
         self.restart_label: ui.label
+        self.restart_item: ui.menu_item
         self.seen: Observed = Observed(phase=None, facts=0, exchanges=0, action=None, over=None)
         self.view: PlayerView
         self.history: tuple[Exchange, ...]
@@ -138,7 +139,7 @@ class GamePage:
             self.sound = ui.button(icon="volume_up", on_click=self.toggle_sound).props("flat round")
             ui.button(icon="menu_book", on_click=lambda: self.drawer.toggle()).props("flat round")
             with ui.button(icon="more_vert").props("flat round"), ui.menu():
-                ui.menu_item("Restart this game", on_click=self.confirm_restart)
+                self.restart_item = ui.menu_item("Restart this game", on_click=self.confirm_restart)
 
         ui.query(".nicegui-content").style("padding: 0; gap: 0")
         with ui.row().classes("w-full h-full no-wrap game-gap-0"):
@@ -554,6 +555,7 @@ class GamePage:
         self.action_button.set_text("" if action is None else action.label)
         self.over_label.set_text(player.over or "")
         self.box.props(f'placeholder="{placeholder(player, session.phase)}"')
+        self.restart_item.set_enabled(not session.busy)
 
     def _landed(self, now: Observed) -> tuple[DiceEvent, ...]:
         """Since the last poll: the seen turn's tail once it closed, then the live turn's dice."""
@@ -597,8 +599,8 @@ class GamePage:
             await playing()
         except Refusal as error:
             message = str(error)
-            # A double-click guard, not a message for the player: whichever game is in flight.
-            if not _in_flight(message):
+            # A double-click guard, not a message for the player: this game's own turn in flight.
+            if message != IN_FLIGHT.format(slug=self.session.slug):
                 ui.notify(message, type="negative", multi_line=True, position="top")
             return False
         finally:
