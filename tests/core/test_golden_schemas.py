@@ -3,6 +3,7 @@ from support.golden import FIXTURES, golden_json
 from support.table import ENGINE_IDS, game
 
 from aidm.core.entities import EngineId
+from aidm.core.play import Interjection, Narration
 from aidm.core.tools import schema_of
 
 
@@ -16,3 +17,8 @@ def test_the_master_is_offered_the_same_tools(engine_id: EngineId) -> None:
             for tool in engine.tools.values()
         ],
     )
+
+
+def test_the_narrator_answer_shapes_are_shared_by_every_engine() -> None:
+    golden_json(FIXTURES / "schemas" / "narration.json", schema_of(Narration))
+    golden_json(FIXTURES / "schemas" / "interjection.json", schema_of(Interjection))

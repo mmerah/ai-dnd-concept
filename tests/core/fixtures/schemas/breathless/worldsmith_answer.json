@@ -1,0 +1,238 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "place": {
+      "description": "Slug naming the place. Reuse it when the player returns here.",
+      "type": "string"
+    },
+    "title": {
+      "description": "The scene's title, read by the player.",
+      "type": "string"
+    },
+    "focus": {
+      "default": "",
+      "description": "What this scene is about, in one line the player reads. Empty when the situation says it all.",
+      "type": "string"
+    },
+    "situation": {
+      "description": "What the player sees and knows on arrival. Hold nothing hidden here.",
+      "type": "string"
+    },
+    "present": {
+      "default": [],
+      "description": "Ids of who and what is in the scene now.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "hidden": {
+      "default": [],
+      "description": "Ids of what is hidden here.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "cast": {
+      "description": "New people and things, each filed under its own id.",
+      "patternProperties": {
+        "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "brief": {
+              "type": "string"
+            },
+            "known": {
+              "default": false,
+              "type": "boolean"
+            },
+            "alive": {
+              "default": true,
+              "type": "boolean"
+            },
+            "chattiness": {
+              "default": "normal",
+              "description": "How readily they speak unprompted when travelling with the player. Most are normal.",
+              "enum": [
+                "quiet",
+                "normal",
+                "chatty"
+              ],
+              "type": "string"
+            },
+            "sheet": {
+              "additionalProperties": false,
+              "description": "Leave empty.",
+              "properties": {
+                "items": {
+                  "patternProperties": {
+                    "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "die": {
+                          "enum": [
+                            4,
+                            6,
+                            8,
+                            10,
+                            12
+                          ],
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "die"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "propertyNames": {},
+                  "type": "object"
+                },
+                "pronouns": {
+                  "default": "",
+                  "type": "string"
+                },
+                "job": {
+                  "default": "",
+                  "type": "string"
+                },
+                "skills": {
+                  "additionalProperties": {
+                    "enum": [
+                      4,
+                      6,
+                      8,
+                      10,
+                      12
+                    ],
+                    "type": "integer"
+                  },
+                  "maxProperties": 6,
+                  "minProperties": 6,
+                  "propertyNames": {
+                    "enum": [
+                      "bash",
+                      "dash",
+                      "sneak",
+                      "shoot",
+                      "think",
+                      "sway"
+                    ],
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "worn": {
+                  "additionalProperties": {
+                    "enum": [
+                      4,
+                      6,
+                      8,
+                      10,
+                      12
+                    ],
+                    "type": "integer"
+                  },
+                  "maxProperties": 6,
+                  "minProperties": 6,
+                  "propertyNames": {
+                    "enum": [
+                      "bash",
+                      "dash",
+                      "sneak",
+                      "shoot",
+                      "think",
+                      "sway"
+                    ],
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "med_kit": {
+                  "default": false,
+                  "type": "boolean"
+                },
+                "loot": {
+                  "default": 12,
+                  "enum": [
+                    4,
+                    6,
+                    8,
+                    10,
+                    12
+                  ],
+                  "type": "integer"
+                },
+                "stress": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "current": {
+                      "type": "integer"
+                    },
+                    "maximum": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "current",
+                    "maximum"
+                  ],
+                  "type": "object"
+                },
+                "stunted": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "skills",
+                "worn"
+              ],
+              "type": [
+                "object",
+                "null"
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "brief"
+          ],
+          "type": "object"
+        }
+      },
+      "propertyNames": {},
+      "type": "object"
+    },
+    "arc": {
+      "default": "",
+      "description": "The setup beyond this scene: pressures, motives, secrets, what can come. The player never reads it.",
+      "type": "string"
+    },
+    "recap": {
+      "description": "One paragraph on the scene the player leaves: what they did, cost, learned and missed.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "place",
+    "title",
+    "situation",
+    "recap"
+  ],
+  "type": "object"
+}
