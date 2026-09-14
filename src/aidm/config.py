@@ -9,7 +9,6 @@ from pydantic import (
     Field,
     SecretStr,
     StringConstraints,
-    TypeAdapter,
     field_validator,
     model_validator,
 )
@@ -24,7 +23,6 @@ type CliProvider = Literal["claude", "codex"]
 type RoleProvider = Literal["claude", "codex", "openrouter", "local"]
 type Effort = Literal["low", "medium", "high"]
 ENV_FILE = ".env"
-_HTTP_URL_ADAPTER = TypeAdapter(AnyHttpUrl)
 
 
 class Configured(Frozen):
@@ -34,14 +32,14 @@ class Configured(Frozen):
 
 
 class ProviderConfig(Configured):
-    base_url: str
+    base_url: Annotated[str, StringConstraints(strip_whitespace=True)]
     api_key: SecretStr
 
     @field_validator("base_url")
     @classmethod
     def _valid_base_url(cls, base_url: str) -> str:
-        """Kept as the original string: `AnyHttpUrl` would double a bare host's trailing slash."""
-        _HTTP_URL_ADAPTER.validate_python(base_url)
+        """Kept as a plain string, not `AnyHttpUrl`: that type would double a bare host's slash."""
+        AnyHttpUrl(base_url)
         return base_url
 
 
