@@ -6,7 +6,7 @@ MAP_ASK = "Write the opening map."
 
 
 def check_map[N: Dweller](draft: MapDraft[N]) -> None:
-    if unmet := _map_unmet(draft, start_known=True):
+    if unmet := _map_unmet(draft, start_known=True) + _named_unmet(draft):
         raise Refusal("the map needs " + "; ".join(unmet))
 
 
@@ -49,9 +49,10 @@ def _named_unmet[N: Dweller](draft: MapDraft[N]) -> list[str]:
             name
             for place_id, place in draft.places.items()
             for name in named_unmet(
-                place.description, (thing for thing in draft.things_at(place_id) if not thing.known)
+                f"{place.name}\n{place.brief}\n{place.description}",
+                (thing for thing in draft.things_at(place_id) if not thing.known),
             )
         }
     ):
-        return [f"place descriptions that do not name what is hidden there: {named}"]
+        return [f"places that do not name what is hidden there: {named}"]
     return []

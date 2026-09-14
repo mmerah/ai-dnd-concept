@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 
 from aidm.core.entities import Refusal, Slug
 from aidm.engines.base import Person, Thing, named_unmet
@@ -74,22 +74,11 @@ def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) ->
         if eid not in filed and (why := entry.required())
     ]:
         unmet.append(f"cast members as the worldsmith may write them: {broken}")
-    # `situation` is read to the player, so naming a hidden entity there hands them the find.
-    if named := sorted(named_in(draft.situation, draft.hidden, everyone)):
-        unmet.append(f"a situation that does not name what is hidden: {named}")
+    read = f"{draft.title}\n{draft.focus}\n{draft.situation}"
+    if named := sorted(named_unmet(read, (everyone[entity_id] for entity_id in hidden))):
+        unmet.append(f"a scene that does not name what is hidden: {named}")
     if met := sorted(
         entity_id for entity_id in set(hidden) - set(followers) if everyone[entity_id].known
     ):
         unmet.append(f"a hidden list without {met}, whom the player has already met")
     return unmet
-
-
-def named_in(situation: str, hidden: Iterable[str], cast: Mapping[Slug, Thing]) -> list[str]:
-    return named_unmet(
-        situation,
-        (
-            cast[entity_id]
-            for wanted in hidden
-            if (entity_id := resolved_id(wanted, cast)) is not None
-        ),
-    )
