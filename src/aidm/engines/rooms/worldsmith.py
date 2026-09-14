@@ -1,5 +1,5 @@
 from aidm.core.entities import Refusal
-from aidm.engines.base import named_unmet
+from aidm.engines.base import PLAYER_ID, named_unmet
 from aidm.engines.rooms.world import Dungeon, Dweller, MapDraft
 
 MAP_ASK = "Write the opening map."
@@ -44,22 +44,19 @@ def _overlap_unmet[N: Dweller](draft: MapDraft[N], world: Dungeon[N]) -> list[st
 
 
 def _named_unmet[N: Dweller](draft: MapDraft[N]) -> list[str]:
-    if named := sorted(
-        {
-            name
-            for place_id, place in draft.places.items()
-            for name in named_unmet(
-                "\n".join(
-                    (
-                        place.name,
-                        place.brief,
-                        place.description,
-                        *(thing.brief for thing in draft.things_at(place_id) if thing.known),
-                    )
-                ),
-                (thing for thing in draft.things_at(place_id) if not thing.known),
-            )
-        }
-    ):
+    leaked: set[str] = set()
+    for place_id, place in draft.places.items():
+        things = [
+            *draft.things_at(place_id),
+            *(draft.carried(PLAYER_ID) if place_id == draft.start else ()),
+        ]
+        hidden = [thing for thing in things if not thing.known]
+        read = "\n".join((place.name, place.brief, place.description))
+        leaked.update(named_unmet(read, hidden))
+        for thing in things:
+            text = "\n".join((thing.brief, *(value for _, value in thing.rows())))
+            watchers = (other for other in hidden if other.id != thing.id)
+            leaked.update(named_unmet(text, watchers))
+    if named := sorted(leaked):
         return [f"places that do not name what is hidden there: {named}"]
     return []

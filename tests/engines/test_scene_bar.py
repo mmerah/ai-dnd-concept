@@ -220,6 +220,21 @@ def test_a_fresh_cast_member_already_defeated_is_refused() -> None:
         bar({"cast": {"beaten": beaten}})
 
 
+def test_a_present_entitys_row_values_naming_what_is_hidden_is_refused() -> None:
+    """A cast member's rows are free text beyond `brief` alone — screen those too."""
+    bar = next(case.bar for case in CASES if case.engine is LONER3E_ENGINE)
+    newbie = {"id": "newbie", "name": "Newbie", "brief": "", "nemesis": "the Bell"}
+    bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
+    with pytest.raises(Refusal, match="does not name what is hidden"):
+        bar(
+            {
+                "present": ("newbie",),
+                "hidden": ("bell-prop",),
+                "cast": {"newbie": newbie, "bell-prop": bell},
+            }
+        )
+
+
 def test_a_sheeted_draft_cast_member_is_refused() -> None:
     """Only twentyfourxx and breathless carry a sheet at all; pinned once is enough."""
     world = twentyfourxx_world().payload
@@ -253,6 +268,27 @@ def test_the_bar_refuses_a_scene_that_lists_the_player_or_the_party() -> None:
         draft = SceneDraft[Crewmate].model_validate(
             dict(TWENTYFOURXX_BASE) | {"present": ("player", "kestrel")}
         )
+        check_scene(draft, world)
+
+
+def test_a_party_members_own_brief_naming_what_is_hidden_is_refused() -> None:
+    """The party travels unlisted, but its members' briefs are read as closely as anyone's."""
+    world = breathless_world().payload
+    world.join_party(BREATHLESS_MIRA)
+    draft = SceneDraft[Survivor].model_validate(
+        dict(BREATHLESS_BASE)
+        | {
+            "hidden": (BREATHLESS_DAX,),
+            "cast": {
+                BREATHLESS_MIRA: {
+                    "id": BREATHLESS_MIRA,
+                    "name": "Mira",
+                    "brief": "She is watching for Dax.",
+                }
+            },
+        }
+    )
+    with pytest.raises(Refusal, match="does not name what is hidden"):
         check_scene(draft, world)
 
 
@@ -344,6 +380,19 @@ def test_a_hidden_name_in_a_present_entitys_brief_is_refused(case: SceneCase) ->
                 "hidden": ("bell-prop",),
                 "cast": {"bell-prop": bell, "watchman": watchman},
             }
+        )
+
+
+@pytest.mark.parametrize("case", CASES, ids=_case_id)
+def test_a_hidden_entitys_own_brief_naming_another_hidden_entity_is_refused(
+    case: SceneCase,
+) -> None:
+    """The leak a later `reveal` would make must be caught while both are still hidden."""
+    bell = {"id": "bell-prop", "name": "Bell", "brief": ""}
+    watchman = {"id": "watchman", "name": "Watchman", "brief": "He is posted to guard the Bell."}
+    with pytest.raises(Refusal, match="does not name what is hidden"):
+        case.bar(
+            {"hidden": ("watchman", "bell-prop"), "cast": {"bell-prop": bell, "watchman": watchman}}
         )
 
 

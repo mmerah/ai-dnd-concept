@@ -74,10 +74,14 @@ def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) ->
         if eid not in filed and (why := entry.required())
     ]:
         unmet.append(f"cast members as the worldsmith may write them: {broken}")
-    read = "\n".join(
-        (draft.title, draft.focus, draft.situation, *(everyone[eid].brief for eid in present))
-    )
-    if named := sorted(named_unmet(read, (everyone[entity_id] for entity_id in hidden))):
+    read = "\n".join((draft.title, draft.focus, draft.situation))
+    leaked = set(named_unmet(read, (everyone[entity_id] for entity_id in hidden)))
+    for entity_id in (*present, *followers, *hidden):
+        entity = everyone[entity_id]
+        text = "\n".join((entity.brief, *(value for _, value in entity.rows())))
+        watchers = (everyone[other] for other in hidden if other != entity_id)
+        leaked.update(named_unmet(text, watchers))
+    if named := sorted(leaked):
         unmet.append(f"a scene that does not name what is hidden: {named}")
     if met := sorted(
         entity_id for entity_id in set(hidden) - set(followers) if everyone[entity_id].known
