@@ -127,7 +127,7 @@ class GamePage:
         session = self.session
         self.view, self.history = session.player_view(), session.history()
         if session.unopened:
-            ui.timer(0.1, lambda: self._run(self.session.open))
+            opener = ui.timer(0.1, lambda: self._opened(opener))
         else:
             session.illustrate()
         with page_header(
@@ -572,6 +572,10 @@ class GamePage:
         self.new_activity.set_visibility(False)
         # A method call on an existing element needs no NiceGUI slot; `ui.timer` here would.
         get_running_loop().call_later(0.1, lambda: self.transcript.scroll_to(percent=1.0))
+
+    async def _opened(self, opener: ui.timer) -> None:
+        if await self._run(self.session.open):
+            opener.cancel()
 
     async def _run(self, playing: Callable[[], Awaitable[None]]) -> bool:
         """The composer greys at once, not at the next tick: a second Enter has nothing to hit."""
