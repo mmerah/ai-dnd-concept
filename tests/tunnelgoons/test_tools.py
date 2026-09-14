@@ -249,6 +249,25 @@ def test_move_with_ids_brings_an_npc_here_and_refuses_one_standing_elsewhere() -
         _ = ENGINE.move(elsewhere, Move(to_id=VAULT, with_ids=(MANTIS,)), Random(0))
 
 
+def test_a_party_member_moves_with_the_player_and_is_named_in_the_trace() -> None:
+    draft = small_world().draft()
+    world = draft.payload
+    world.party.append(MIRA)
+
+    facts = ENGINE.move(draft, Move(to_id=HALL), Random(0))
+
+    assert world.npcs[MIRA].place == HALL
+    assert any("Mira" in fact.trace and "along" in fact.trace for fact in facts)
+
+
+def test_a_with_ids_entry_who_is_a_party_member_is_refused() -> None:
+    draft = small_world().draft()
+    draft.payload.party.append(MIRA)
+
+    with pytest.raises(Refusal, match="without with_ids"):
+        ENGINE.move(draft, Move(to_id=HALL, with_ids=(MIRA,)), Random(0))
+
+
 def test_unlock_way_then_move_passes() -> None:
     draft = small_world().draft()
     world = draft.payload
@@ -258,7 +277,7 @@ def test_unlock_way_then_move_passes() -> None:
     assert world.current.id == VAULT
 
 
-def test_unlock_way_the_player_has_not_walked_tells_a_card_and_becomes_known() -> None:
+def test_unlocking_an_unwalked_way_tells_a_card_becomes_known_and_appears_in_ways_out() -> None:
     draft = small_world().draft()
     world = draft.payload
     world.visits.append(HALL)
@@ -270,6 +289,9 @@ def test_unlock_way_the_player_has_not_walked_tells_a_card_and_becomes_known() -
 
     assert way.known
     assert any(fact.told and fact.card == "Vault unlocked" for fact in facts)
+    panels = ENGINE.player_view(draft).panels
+    ways_out = next(panel for panel in panels if panel.title == "Ways out")
+    assert "Vault" in [row.label for row in ways_out.rows]
 
 
 def test_move_item_to_the_player_to_an_npc_here_and_to_the_place() -> None:

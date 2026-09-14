@@ -47,6 +47,32 @@ def test_the_player_stands_at_the_last_visit() -> None:
     assert draft.commit().payload.current.id == HALL
 
 
+def test_killing_a_party_member_drops_them_from_the_party() -> None:
+    world = small_world().payload
+    world.party.append(MIRA)
+
+    facts = world.kill(MIRA)
+
+    assert world.party == []
+    assert not world.npcs[MIRA].alive
+    assert any(fact.card == "Mira is dead" for fact in facts)
+
+
+def test_a_party_member_who_is_not_at_the_players_place_is_refused() -> None:
+    world = small_world().payload
+
+    with pytest.raises(ValueError, match="not at their place"):
+        TunnelGoonsWorld(
+            places=world.places,
+            ways=world.ways,
+            npcs=world.npcs,
+            items=world.items,
+            player=world.player,
+            visits=[HALL],
+            party=[MIRA],
+        )
+
+
 def test_walk_reaches_every_place_along_the_ways() -> None:
     world = small_world().payload
     assert world.reachable(START) == set(world.places)
