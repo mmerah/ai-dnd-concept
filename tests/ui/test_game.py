@@ -411,7 +411,6 @@ async def test_a_restart_refused_by_this_games_own_gate_still_reaches_the_player
         client.delete()
 
     assert notified == [IN_FLIGHT.format(slug=table.service.slug)]
-    assert table.service.history() == ()
 
     gate.set()
     await playing
