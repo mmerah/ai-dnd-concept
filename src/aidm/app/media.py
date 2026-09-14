@@ -96,8 +96,7 @@ class Illustrator:
             SCENE_RATIO,
             tuple(icons.values()),
         )
-        await to_thread(
-            publish,
+        publish(
             self.saves / f"{key}{generated.suffix}",
             lambda staged: staged.write_bytes(generated.data),
         )
@@ -114,7 +113,7 @@ class Illustrator:
             generated = await self._generate(_icon_request(subject, self.style), ICON_RATIO)
             # Authored directories stay authored: a drawn icon is the save's own.
             path = self.saves / ICON_DIR / f"{subject.id}{generated.suffix}"
-            await to_thread(publish, path, lambda staged: staged.write_bytes(generated.data))
+            publish(path, lambda staged: staged.write_bytes(generated.data))
             return path
 
     async def _generate(

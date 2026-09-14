@@ -1,7 +1,7 @@
 from random import Random
 
 import pytest
-from support.game import ENGINE, initialized, loner_sheet
+from support.game import ENGINE, initialized, loner_sheet, with_entity
 from support.table import change
 
 from aidm.core.entities import Refusal
@@ -10,7 +10,13 @@ from aidm.core.play import PendingDecision
 from aidm.engines.base import PLAYER_ID, Gauge
 from aidm.engines.loner3e.engine import DEFEAT_NOTE, TWIST_NOTE
 from aidm.engines.loner3e.tools import Roll
-from aidm.engines.loner3e.world import LUCK_MAX, TIES_PER_TWIST, outcome_for, twist_pairing
+from aidm.engines.loner3e.world import (
+    LUCK_MAX,
+    TIES_PER_TWIST,
+    Loner3eCast,
+    outcome_for,
+    twist_pairing,
+)
 
 FOE = "mara"
 MAP = "vault-map"
@@ -200,6 +206,29 @@ def test_an_exchange_both_sides_survive_hands_the_next_key_action_to_the_player(
     assert (decision.kind, decision.prompt) == ("conflict", expected)
     assert foe.name in decision.prompt
     assert decision.options == ()
+
+
+def test_a_conflict_between_two_non_player_sides_never_asks_the_player() -> None:
+    _, state = initialized()
+    wight = Loner3eCast(id="wight", name="Wight", brief="", known=True)
+    hound = Loner3eCast(id="hound", name="Hound", brief="", known=True)
+    state = with_entity(state, wight)
+    state = with_entity(state, hound)
+    draft = state.draft()
+
+    action = Roll(
+        what="Claw",
+        actor_id="wight",
+        question="Does the wight get past the hound?",
+        opponent_id="hound",
+    )
+    _ = ENGINE.roll(draft, action, Random(0))
+
+    assert draft.pending is None
+    assert (
+        loner_sheet(draft, "wight").luck.current < LUCK_MAX
+        or loner_sheet(draft, "hound").luck.current < LUCK_MAX
+    )
 
 
 def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:

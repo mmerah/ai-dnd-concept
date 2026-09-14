@@ -1,4 +1,5 @@
 from aidm.core.facts import DiceEvent, Fact
+from aidm.core.views import DiceLook
 from aidm.ui.dice import rolled_since, thrown
 
 TWO_D6 = DiceEvent(label="2d6", faces=(6, 6), rolled=(2, 5))
@@ -24,3 +25,9 @@ def test_only_the_told_dice_landing_after_the_seen_facts_are_thrown() -> None:
     assert rolled_since(facts, 1) == (KEPT_HIGHEST,)
     assert rolled_since(facts, 0) == (TWO_D6, KEPT_HIGHEST)
     assert rolled_since(facts, 3) == ()
+
+
+def test_dice_look_keys_match_what_dice_tray_js_reads_off_look() -> None:
+    """ui/dice_tray.js reads .ink/.body/.glow off `look.model_dump()`; a rename must fail here."""
+    dumped = DiceLook(body="#202020", ink="#f5f5f5", glow="#ffb703").model_dump()
+    assert set(dumped) == {"body", "ink", "glow"}

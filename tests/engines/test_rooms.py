@@ -70,6 +70,44 @@ def test_leave_party_on_a_non_member_is_refused(
     assert "does not travel with the player" in message
 
 
+def test_require_member_here_refuses_an_unknown_co_located_npc(begun_room: SixthGame) -> None:
+    world = begun_room.payload
+    world.npcs[WARDEN].known = False
+
+    with pytest.raises(Refusal, match="not here with the player"):
+        world.require_member_here(WARDEN)
+
+
+def test_a_room_world_refuses_an_npc_filed_under_the_player_id(begun_room: SixthGame) -> None:
+    world = begun_room.payload
+    decoy = world.npcs[WARDEN].model_copy(update={"id": PLAYER_ID})
+
+    with pytest.raises(ValueError, match="duplicate"):
+        type(world)(
+            places=world.places,
+            ways=world.ways,
+            npcs={**world.npcs, PLAYER_ID: decoy},
+            items=world.items,
+            visits=world.visits,
+            player=world.player,
+        )
+
+
+def test_an_item_on_the_player_must_be_known(begun_room: SixthGame) -> None:
+    world = begun_room.payload
+    hidden = world.items[LANTERN].model_copy(update={"on": PLAYER_ID, "known": False})
+
+    with pytest.raises(ValueError, match="unknown to them"):
+        type(world)(
+            places=world.places,
+            ways=world.ways,
+            npcs=world.npcs,
+            items={**world.items, LANTERN: hidden},
+            visits=world.visits,
+            player=world.player,
+        )
+
+
 def test_a_party_member_is_absent_from_place_lines_while_their_items_stay(
     room_engine: SixthEngine, begun_room: SixthGame
 ) -> None:

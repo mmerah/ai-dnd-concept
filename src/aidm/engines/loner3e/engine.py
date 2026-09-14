@@ -202,19 +202,15 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
 
     def restore_luck(self, draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:
         actor = self.world_of(draft).require_living_here(args.entity_id)
-        facts = actor.reveal()
         # Already full and undefeated is a quiet no-op: `adjust` writes no fact for a zero delta.
-        facts.extend(actor.recover("the conflict is behind them"))
-        return facts
+        return actor.recover("the conflict is behind them")
 
     def roll(self, draft: Loner3eGame, args: Roll, rng: Random) -> list[Fact]:
         world = self.world_of(draft)
         actor = world.require_living_here(args.actor_id)
-        reveals = actor.reveal()
         opponent = None
         if args.opponent_id is not None:
             opponent = world.require_living_here(args.opponent_id)
-            reveals.extend(opponent.reveal())
         world.check_conflict(actor, opponent)
 
         chance_faces, risk_faces = args.faces()
@@ -232,7 +228,7 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
             exchange, effects = _absorbed(struck.facts)
             if struck.loser:
                 draft.note(DEFEAT_NOTE.format(name=struck.loser))
-            else:
+            elif PLAYER_ID in (actor.id, opponent.id):
                 draft.pending = PendingDecision(
                     kind="conflict",
                     prompt=world.conflict_prompt(actor, opponent),
@@ -243,7 +239,6 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         tied = chance.kept == risk.kept and opponent is None
         twist_facts = self._twist(draft, actor, rng) if tied and world.tick_twist() else []
         return [
-            *reveals,
             chance.fact,
             risk.fact,
             # The question is master-authored and may name unrevealed canon: never told.

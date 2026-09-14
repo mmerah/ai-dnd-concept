@@ -412,8 +412,13 @@
             },
             "risk": {
               "default": "",
-              "description": "The harm the helper faces if this goes badly. Empty when helping puts them in no danger.",
+              "description": "What the helper suffers in full on a disaster, named before the roll. Empty when helping puts them in no danger.",
               "type": "string"
+            },
+            "deadly": {
+              "default": false,
+              "description": "Whether `risk` is death. A disaster then kills the helper instead of leaving `risk` on them as a hindrance; a setback then injures them instead of `hindrance` landing.",
+              "type": "boolean"
             },
             "defend_with": {
               "type": [
@@ -446,8 +451,13 @@
         },
         "risk": {
           "default": "",
-          "description": "The harm the actor faces if this goes badly, named before the roll. Empty when they are in no danger.",
+          "description": "What the actor suffers in full on a disaster, named before the roll. Empty when they are in no danger.",
           "type": "string"
+        },
+        "deadly": {
+          "default": false,
+          "description": "Whether `risk` is death. A disaster then kills the actor instead of leaving `risk` on them as a hindrance; a setback then injures them instead of `hindrance` landing.",
+          "type": "boolean"
         },
         "defend_with": {
           "type": [

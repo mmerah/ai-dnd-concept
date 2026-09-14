@@ -14,7 +14,6 @@ from drive import (
     composer,
     drawer_text,
     log,
-    notifications,
     open_drawer,
     placeholder,
     run,
@@ -111,14 +110,13 @@ def body(s: Session) -> None:
         f"master refusal not surfaced: {last['calls']}",
     )
 
-    # 5. The master crashes before anything lands: notified, draft kept, state unchanged.
+    # 5. The master crashes before anything lands: a bug is not caught, so the draft is kept
+    # and the state is unchanged; only a Refusal is ever shown to the player.
     before = len(bubbles(page))
     submit(page, "I try something.\n!crash")
     page.wait_for_timeout(1500)
     wait_idle(page)
     s.shot(page, "crash-notified")
-    notes = notifications(page)
-    s.check(any("crashed" in n for n in notes), f"no crash notification: {notes}")
     s.check(
         composer(page).input_value().startswith("I try something."),
         f"draft lost after a crash: {composer(page).input_value()!r}",
@@ -126,14 +124,12 @@ def body(s: Session) -> None:
     s.check(len(bubbles(page)) == before, "a crashed turn left bubbles")
     composer(page).fill("")
 
-    # 6. A narrator that fails is fatal for the turn; the state stays.
-    submit(page, "I look around.\n!fail narrator")
+    # 6. A narrator that fails does not cost the turn: it lands with no prose.
+    submit(page, 'I look around.\n!fail narrator\n!drive entity_id=player goal="Get out"')
     page.wait_for_timeout(1500)
     wait_idle(page)
-    notes = notifications(page)
-    s.check(any("narrator" in n for n in notes), f"no narrator-failure notification: {notes}")
-    s.check(len(bubbles(page)) == before, "a failed narrator left bubbles")
-    s.check("I look around." in composer(page).input_value(), "draft lost after a narrator failure")
+    s.check("I look around." in clean(page.inner_text(".game-transcript")), "the turn was lost")
+    s.check(not composer(page).is_disabled(), "composer stuck after a narrator failure")
     s.shot(page, "narrator-failed")
     composer(page).fill("")
 

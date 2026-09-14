@@ -18,6 +18,10 @@ class CreationStep(Frozen):
     multiple: bool = False
     allows_text: bool = False
 
+    @property
+    def constrains(self) -> bool:
+        return bool(self.options) and not self.allows_text
+
 
 def picked(picks: Picks, step_id: Slug) -> str:
     return picks.get(step_id, "")
@@ -38,7 +42,7 @@ def check_picks(steps: Sequence[CreationStep], picks: Picks) -> None:
             raise Refusal(f"{step.id!r} is unanswered")
         if len(answer) > ANSWER_MAX:
             raise Refusal(f"{step.id!r} takes at most {ANSWER_MAX} characters")
-        if not step.options or step.allows_text:
+        if not step.constrains:
             continue
         offered = {option.id for option in step.options}
         given = picked_many(picks, step.id) if step.multiple else (answer,)

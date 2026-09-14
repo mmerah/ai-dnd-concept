@@ -30,6 +30,10 @@ DEFEND_WITH = (
     "Exact id of the {who}'s item or a ship function that breaks to spare them. Null when "
     "nothing shields them."
 )
+DEADLY = (
+    "Whether `risk` is death. A disaster then kills the {who} instead of leaving `risk` on "
+    "them as a hindrance; a setback then injures them instead of `hindrance` landing."
+)
 HINDRANCE = (
     "What the hit leaves behind once the gear absorbs it, as a hindrance. Empty when the "
     "gear breaks harmlessly."
@@ -97,15 +101,18 @@ class Helper(Frozen):
     hindered: str = Field(default="", description="Why the helper is hindered. Empty when none is.")
     risk: str = Field(
         default="",
-        description="The harm the helper faces if this goes badly. Empty when helping puts "
-        "them in no danger.",
+        description="What the helper suffers in full on a disaster, named before the roll. "
+        "Empty when helping puts them in no danger.",
     )
+    deadly: bool = Field(default=False, description=DEADLY.format(who="helper"))
     defend_with: Slug | None = Field(default=None, description=DEFEND_WITH.format(who="helper"))
     hindrance: str = Field(default="", description=HINDRANCE)
 
     @model_validator(mode="after")
     def _defend_fields(self) -> Self:
-        check_risk(self.risk, self.defend_with, self.hindrance)
+        check_risk(
+            self.risk, deadly=self.deadly, defend_with=self.defend_with, hindrance=self.hindrance
+        )
         return self
 
 
@@ -120,15 +127,18 @@ class Roll(Attempt):
     hindered: str = Field(default="", description="Why the actor is hindered. Empty when none is.")
     risk: str = Field(
         default="",
-        description="The harm the actor faces if this goes badly, named before the roll. "
+        description="What the actor suffers in full on a disaster, named before the roll. "
         "Empty when they are in no danger.",
     )
+    deadly: bool = Field(default=False, description=DEADLY.format(who="actor"))
     defend_with: Slug | None = Field(default=None, description=DEFEND_WITH.format(who="actor"))
     hindrance: str = Field(default="", description=HINDRANCE)
 
     @model_validator(mode="after")
     def _defend_fields(self) -> Self:
-        check_risk(self.risk, self.defend_with, self.hindrance)
+        check_risk(
+            self.risk, deadly=self.deadly, defend_with=self.defend_with, hindrance=self.hindrance
+        )
         return self
 
 
@@ -169,7 +179,9 @@ class Job(Frozen):
         return self
 
 
-def check_risk(risk: str, defend_with: Slug | None, hindrance: str) -> None:
+def check_risk(risk: str, *, deadly: bool, defend_with: Slug | None, hindrance: str) -> None:
+    if deadly and not risk:
+        raise ValueError("deadly needs the risk it names")
     if defend_with is not None and not risk:
         raise ValueError("defend_with needs the risk it shields against")
     if hindrance and defend_with is None:

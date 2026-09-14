@@ -8,6 +8,7 @@ import pytest
 from support.game import TARGET, open_game, session, with_entity
 from support.table import (
     BREATHLESS,
+    TUNNELGOONS,
     ScriptedSpawner,
     narrated,
     offline_settings,
@@ -29,6 +30,8 @@ from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.world import BreathlessGame
 from aidm.engines.loner3e.world import Loner3eCast
+from aidm.engines.rooms.engine import MORE_MAP
+from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 
 IN_FLIGHT = re.escape("A turn is in flight in 'whispering-vault--kael'.")
 
@@ -131,14 +134,22 @@ async def test_a_failed_commit_still_frees_the_game(tmp_path: Path) -> None:
     assert (table.service.busy, table.service.turn) == (False, None)
 
 
-async def test_a_turn_whose_narrator_fails_leaves_the_rng_alone(tmp_path: Path) -> None:
+async def test_a_turn_whose_narrator_never_answers_still_lands_and_saves_the_facts(
+    tmp_path: Path,
+) -> None:
     table = open_game(tmp_path)
-    before = table.service.rng.getstate()
+    table.spawner.turns.append(
+        table.plays(
+            (tool_call("change_tags", entity_id="player", kind="condition", gained=["Listening"]),)
+        )
+    )
 
-    with pytest.raises(Refusal):
-        await table.service.play(Answer(text="I wait."))
+    await table.service.play(Answer(text="I listen hard."))
 
-    assert table.service.rng.getstate() == before
+    exchange = table.service.state.exchanges()[-1]
+    assert exchange.lines == ()
+    assert exchange.facts and "Listening" in exchange.facts[0].trace
+    assert table.saved().exchanges()[-1].facts == exchange.facts
 
 
 def _scene(**changes: object) -> str:
@@ -467,3 +478,34 @@ async def test_a_failing_background_task_is_logged_and_close_leaves_no_live_task
 
     assert game.tasks.running == set()
     assert "background task failed" in caplog.text
+
+
+async def test_act_hushes_before_it_asks_the_worldsmith_to_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`_grow` alone can run 900s; a stale narrator spawn must not outlive the write."""
+    table = open_table(tmp_path, engine_id=TUNNELGOONS, state_type=TunnelGoonsGame)
+    draft = table.state.draft()
+    for place in draft.payload.places.values():
+        place.known = True
+    table.service.save(draft.commit())
+    calls: list[str] = []
+    original_hush = GameService.hush
+
+    def _tracked_hush(self: GameService) -> None:
+        calls.append("hush")
+        original_hush(self)
+
+    monkeypatch.setattr(GameService, "hush", _tracked_hush)
+
+    async def record_worldsmith(role: Role, prompt: str) -> None:
+        del prompt
+        if role == "worldsmith":
+            calls.append("worldsmith")
+
+    table.spawner.hooks.append(record_worldsmith)
+
+    await table.service.act(MORE_MAP.id, "Deeper in.")
+
+    assert calls[0] == "hush"
+    assert "worldsmith" in calls

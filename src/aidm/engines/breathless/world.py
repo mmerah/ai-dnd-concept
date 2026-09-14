@@ -123,6 +123,8 @@ class Survivor(Sheeted[SurvivorSheet]):
         sheet = self.require_sheet()
         if not sheet.med_kit:
             raise Refusal(f"{self.name} holds no med kit")
+        if sheet.stress.current == 0:
+            raise Refusal(f"{self.name} carries no stress for the med kit to clear")
         sheet.med_kit = False
         facts = self.change(sheet.stress, -MED_KIT_CLEARS, "Stress", "the med kit")
         used = f"{self.name} uses the med kit"

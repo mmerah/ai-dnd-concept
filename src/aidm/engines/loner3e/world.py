@@ -73,9 +73,9 @@ class Loner3eCast(Person):
             if value
         )
 
-    def forbidden(self) -> str:
+    def required(self) -> str:
         parts = (
-            super().forbidden(),
+            super().required(),
             "full luck" if self.luck.shortfall != 0 else "",
             "a luck pool of at least 1" if self.luck.maximum < 1 else "",
             "no defeat behind them" if self.defeated else "",

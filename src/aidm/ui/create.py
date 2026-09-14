@@ -326,7 +326,7 @@ def _engine_select(
 def _drop_stale(steps: tuple[CreationStep, ...], picks: dict[Slug, str]) -> None:
     """A new pack, or a skill moved onto its twin, can leave an answer its step no longer offers."""
     for step in steps:
-        if not step.options:
+        if not step.constrains:
             continue
         offered = {option.id for option in step.options}
         if not step.multiple:

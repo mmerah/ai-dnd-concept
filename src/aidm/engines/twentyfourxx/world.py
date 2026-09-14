@@ -27,6 +27,7 @@ SHIP_FUNCTIONS: tuple[str, ...] = (
     "Sensors",
     "Weapons",
 )  # the SRD's seven, in its order
+SHIP_IDS: tuple[Slug, ...] = tuple(slug(name, ()) for name in SHIP_FUNCTIONS)
 UPGRADE_COST = 10
 
 
@@ -114,7 +115,7 @@ class Crewmate(Sheeted[CrewSheet]):
     def gain_item(self, name: str, *, bulky: bool, breaks: int, cost: int) -> list[Fact]:
         self.pay(cost)
         items = self.require_sheet().items
-        items[slug(name, items)] = Gear(name=name, bulky=bulky, breaks=breaks)
+        items[slug(name, [*items, *SHIP_IDS])] = Gear(name=name, bulky=bulky, breaks=breaks)
         suffix = f" (₡{cost})" if cost > 0 else ""
         card = f"Gained {name}{suffix}"
         trace = f"{self.mention} gains {name}{suffix}"
@@ -133,12 +134,16 @@ class Crewmate(Sheeted[CrewSheet]):
         trace = f"{self.mention} spends ₡{amount} — {why}"
         return [self.fact(trace, card=self.card_line(f"₡{amount} spent — {why}"))]
 
-    def maim(self) -> list[Fact]:
+    def hinder(self, name: str) -> list[Fact]:
         sheet = self.require_sheet()
-        if MAIMED in sheet.hindrances:
+        if name in sheet.hindrances:
             return []
-        sheet.hindrances.append(MAIMED)
-        return [self.fact(f"{self.mention} is maimed", card=self.card_line("Maimed"))]
+        sheet.hindrances.append(name)
+        return [
+            self.fact(
+                f"{self.mention} is hindered — {name}", card=self.card_line(f"Hindered: {name}")
+            )
+        ]
 
     def raise_skill(self, label: str) -> list[Fact]:
         sheet = self.require_sheet()
@@ -176,8 +181,8 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
     job: str = ""
     ship: dict[Slug, Gear] = Field(
         default_factory=lambda: {
-            slug(name, ()): Gear(name=name, harmless=name == "Hull armor")
-            for name in SHIP_FUNCTIONS
+            key: Gear(name=name, harmless=name == "Hull armor")
+            for key, name in zip(SHIP_IDS, SHIP_FUNCTIONS, strict=True)
         }
     )
 
@@ -208,12 +213,21 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         return self._break(actor, item, hindrance)
 
     def take_hit(
-        self, actor: Crewmate, item_id: Slug | None, hindrance: str, *, lethal: bool
+        self,
+        actor: Crewmate,
+        item_id: Slug | None,
+        risk: str,
+        hindrance: str,
+        *,
+        disaster: bool,
+        deadly: bool,
     ) -> list[Fact]:
-        if item_id is None:
-            return self.kill(actor.id) if lethal else actor.maim()
-        item = self.require_gear(actor, item_id)
-        return self._break(actor, item, "" if item.harmless else hindrance)
+        if item_id is not None:
+            item = self.require_gear(actor, item_id)
+            return self._break(actor, item, "" if item.harmless else hindrance)
+        if disaster:
+            return self.kill(actor.id) if deadly else actor.hinder(risk)
+        return actor.hinder(MAIMED) if deadly else []
 
     def check_defenses(self, claims: Sequence[tuple[Crewmate, Slug, str]]) -> None:
         resolved = [

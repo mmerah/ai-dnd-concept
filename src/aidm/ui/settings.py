@@ -62,7 +62,10 @@ class SettingsForm:
             node = merged
             for part in path[:-1]:
                 node = node[part]
-            node[path[-1]] = typed
+            if typed is None:
+                node.pop(path[-1], None)
+            else:
+                node[path[-1]] = typed
         try:
             Settings.model_validate(merged)
         except ValidationError as error:
@@ -87,7 +90,7 @@ def changes(settings: Settings, typed: Mapping[tuple[str, ...], object]) -> Chan
             if isinstance(value, str) and value:
                 changed[path] = value
         elif value != stored:
-            changed[path] = None if value is None else _text(value)
+            changed[path] = None if value is None or value == "" else _text(value)
     return changed
 
 

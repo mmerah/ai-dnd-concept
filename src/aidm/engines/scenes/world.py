@@ -193,13 +193,11 @@ class SceneWorld[C: Person](World[C, C]):
         entity = self.require_here(entity_id)
         if not entity.alive:
             raise Refusal(f"{entity.name} is already dead")
-        facts = entity.reveal()
         if entity.id in self.party:
             self.party.remove(entity.id)
         entity.alive = False
         card = "You are dead" if entity.id == self.player.id else f"{entity.name} is dead"
-        facts.append(entity.fact(f"{entity.mention} is dead", card=card))
-        return facts
+        return [entity.fact(f"{entity.mention} is dead", card=card)]
 
     def leave_party(self, entity_id: Slug) -> list[Fact]:
         return self.part(self.require(entity_id))

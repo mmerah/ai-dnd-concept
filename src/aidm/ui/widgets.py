@@ -1,9 +1,10 @@
 from collections.abc import Awaitable, Callable, Generator, Sequence
 from contextlib import contextmanager
 from functools import partial
+from hashlib import sha1
 from pathlib import Path
 
-from nicegui import ui
+from nicegui import app, ui
 
 from aidm.app.launch import LaunchTarget
 from aidm.core.play import DecisionOption
@@ -12,10 +13,21 @@ from aidm.ui import theme
 
 DM_ICON = "auto_stories"
 GAME_ROUTE = "/game/{scenario}/{character}"
+_media_routes: dict[Path, str] = {}
 
 
 def game_path(target: LaunchTarget) -> str:
     return GAME_ROUTE.format(scenario=target.scenario_id, character=target.character_id)
+
+
+def media_url(path: Path) -> str:
+    """One mount per directory: deleting one element must not break another's shared image."""
+    directory = path.parent
+    if (route := _media_routes.get(directory)) is None:
+        route = f"/media/{sha1(str(directory).encode(), usedforsecurity=False).hexdigest()[:12]}/"
+        app.add_static_files(route, directory)
+        _media_routes[directory] = route
+    return route + path.name
 
 
 @contextmanager
@@ -75,7 +87,7 @@ def avatar(icon: Path | None, name: str | None) -> None:
         "game-avatar" + (" game-avatar-dm" if name is None else "")
     ):
         if icon is not None:
-            ui.image(icon)
+            ui.image(media_url(icon))
         elif name is None:
             ui.icon(DM_ICON)
         else:
@@ -92,6 +104,8 @@ def decision_widget(
     prompt: str,
     options: Sequence[DecisionOption],
     answer: Callable[[str], Awaitable[None]],
+    *,
+    enabled: bool,
 ) -> None:
     ui.label(prompt).classes("text-base whitespace-pre-wrap")
     if not options:
@@ -102,7 +116,8 @@ def decision_widget(
             with (
                 ui.button(on_click=partial(answer, option.id))
                 .props("outline")
-                .style("min-height: 44px"),
+                .style("min-height: 44px")
+                .set_enabled(enabled),
                 ui.column().classes("game-gap-0"),
             ):
                 ui.label(option.label)

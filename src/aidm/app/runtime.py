@@ -136,6 +136,7 @@ class GameService:
 
     async def act(self, action: Slug, words: str) -> None:
         async with self.gate.admit(self):
+            self.hush()
             if (ended := self.engine.over(self.state)) is not None:
                 raise Refusal(f"{ended} The only way on is to restart.")
             if self.state.pending is not None:
@@ -164,8 +165,8 @@ class GameService:
             lines: tuple[SpokenLine, ...] = ()
             if turn.narrates():
                 self.phase = "narrator"
-                lines = await self.roles.narrate(
-                    self.engine, turn.draft, tuple(turn.facts), turn.words
+                lines = await self._narrated(
+                    turn.draft, tuple(turn.facts), turn.words, landed=turn.landed()
                 )
             state = turn.finish(lines, enabled=self.meanwhile)
         finally:
@@ -256,13 +257,15 @@ class GameService:
         return grown
 
     async def _narrated(
-        self, draft: AnyGame, facts: tuple[Fact, ...], prompt: str
+        self, draft: AnyGame, facts: tuple[Fact, ...], prompt: str, *, landed: bool = True
     ) -> tuple[SpokenLine, ...]:
-        """The scene cost minutes to write; an unwritable arrival must not throw it away."""
+        """Nothing landed means nothing to save, so the player hears why and keeps their words."""
         try:
             return await self.roles.narrate(self.engine, draft, facts, prompt)
         except Refusal as failed:
-            LOGGER.warning("the arrival went unnarrated: %s", failed)
+            if not landed:
+                raise
+            LOGGER.warning("the turn went unnarrated: %s", failed)
             return ()
 
     def _present(self) -> None:

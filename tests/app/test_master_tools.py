@@ -267,19 +267,18 @@ async def test_authoring_raises_when_the_worldsmith_never_meets_the_bar(tmp_path
         )
 
 
-async def test_a_turn_that_dies_after_the_leaving_takes_its_request_with_it(
+async def test_a_leaving_the_narrator_never_told_still_lets_the_crossing_write(
     tmp_path: Path,
 ) -> None:
-    """A leaving the narrator never told is not committed, so no crossing is written after it."""
     table = open_game(tmp_path)
     table.spawner.answers["narrator"] = []
     table.spawner.answers["worldsmith"] = [_scene()]
 
-    with pytest.raises(Refusal):
-        _ = await play_turn(table, PURSUIT, LEFT, narration="")
+    state = await play_turn(table, PURSUIT, LEFT, narration="")
 
-    assert table.state.generation is None
-    assert not any(role == "worldsmith" for role, _ in table.spawner.prompts)
+    assert state.generation is None
+    assert any(role == "worldsmith" for role, _ in table.spawner.prompts)
+    assert [exchange.lines for exchange in state.exchanges()] == [(), ()]
 
 
 async def test_the_way_on_is_offered_once_and_a_departure_consumes_it(tmp_path: Path) -> None:

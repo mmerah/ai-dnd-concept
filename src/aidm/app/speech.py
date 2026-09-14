@@ -1,6 +1,5 @@
 import logging
 import wave
-from asyncio import to_thread
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from hashlib import sha1
@@ -72,7 +71,7 @@ class Reader:
                         clip_file.setframerate(self.config.sample_rate)
                         clip_file.writeframes(b"".join(chunks))
 
-                await to_thread(publish, path, write)
+                publish(path, write)
         except (HTTPError, OSError, Refusal, wave.Error) as failed:
             LOGGER.warning("speech generation failed: %s", failed)
 

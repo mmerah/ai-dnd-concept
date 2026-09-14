@@ -179,7 +179,6 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
         if args.ability in ("brute", "skulker"):
             penalty = max(0, len(list(world.carried(actor.id))) - sheet.inventory)
 
-        facts = npc.reveal() if npc is not None else []
         rolled = roll((6, 6), f"{args.what} — {args.ability}", rng)
         total = rolled.total + sheet.abilities[args.ability] + len(items) - penalty
         success = total >= ds
@@ -190,7 +189,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
             + (f" against {npc.name}" if npc is not None else "")
             + f", {total} vs DS {ds} → {outcome}"
         )
-        facts += [rolled.fact, actor.fact(line, card=line, dice=(rolled.event,))]
+        facts = [rolled.fact, actor.fact(line, card=line, dice=(rolled.event,))]
 
         # SRD: only a dangerous action turns the margin into damage; an npc's DS alone does not.
         if not args.dangerous:
