@@ -3,13 +3,12 @@ from random import Random
 
 import pytest
 from pydantic import BaseModel
-from support.golden import FIXTURES, golden, golden_json, masked
+from support.golden import FIXTURES, golden, golden_json, golden_schema, masked, masked_master
 from support.golden_turn import INTERJECTION, NARRATION, SCRIPTS
 from support.table import ENGINE_IDS, ENGINES_BUILT, drain, game, open_table, play_turn
 
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.model import Check, Generation
-from aidm.core.tools import schema_of
 from aidm.engines.hiring import HIRE
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
@@ -34,7 +33,7 @@ async def test_a_scripted_turn_renders_and_records_unchanged(
     engine = table.service.engine
     golden(
         FIXTURES / "prompts" / engine_id / "master.txt",
-        masked(table.spawner.prompt("master"), engine.instructions),
+        masked_master(table.spawner.prompt("master"), engine.instructions),
     )
     golden(
         FIXTURES / "prompts" / engine_id / "narrator.txt",
@@ -70,4 +69,4 @@ async def test_a_worldsmith_request_renders_unchanged(engine_id: EngineId) -> No
     with pytest.raises(Refusal, match="recorded"):
         await engine.advance(state.draft(), request, recording)
     golden(FIXTURES / "prompts" / engine_id / "worldsmith.txt", masked(prompts[0]))
-    golden_json(FIXTURES / "schemas" / engine_id / "worldsmith_answer.json", schema_of(models[0]))
+    golden_schema(FIXTURES / "schemas" / engine_id / "worldsmith_answer.json", models[0])
