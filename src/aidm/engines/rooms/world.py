@@ -101,17 +101,6 @@ class Dungeon[N: Dweller](Mutable):
         for holder in (place_id, *(npc.id for npc in npcs)):
             yield from self.carried(holder)
 
-    def frontier(self) -> int:
-        return len(
-            {
-                way.to
-                for from_id, ways in self.ways.items()
-                if self.require_place(from_id).known
-                for way in ways
-                if not self.require_place(way.to).known
-            }
-        )
-
     def reachable(self, start: Slug) -> set[Slug]:
         reached = {start}
         pending = [start]
@@ -166,6 +155,11 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
     @property
     def current(self) -> Place:
         return self.places[self.visits[-1]]
+
+    def frontier(self) -> int:
+        return sum(
+            not self.require_place(place_id).known for place_id in self.reachable(self.current.id)
+        )
 
     def entity(self, entity_id: Slug) -> Person | Prop | Place | None:
         return self.player if entity_id == self.player.id else super().entity(entity_id)

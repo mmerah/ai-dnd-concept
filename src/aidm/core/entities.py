@@ -48,6 +48,8 @@ def content_id(value: str) -> Slug:
 
 def slug(text: str, taken: Iterable[str]) -> Slug:
     words = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    if not words:
+        raise Refusal(f"{text!r} makes no id; give it a latin letter or a digit to be named by")
     return _unused(_capped(words, SLUG_MAX), taken)
 
 
@@ -86,4 +88,4 @@ def _unused(base: str, taken: Iterable[str]) -> str:
 
 
 def _capped(words: str, limit: int) -> str:
-    return words[:limit].rstrip("-") or "entry"
+    return words[:limit].rstrip("-")
