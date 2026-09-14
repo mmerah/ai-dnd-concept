@@ -1,5 +1,5 @@
 import pytest
-from support.golden import FIXTURES, golden_json
+from support.golden import FIXTURES, golden_json, golden_schema
 from support.table import ENGINE_IDS, game
 
 from aidm.core.entities import EngineId
@@ -20,5 +20,5 @@ def test_the_master_is_offered_the_same_tools(engine_id: EngineId) -> None:
 
 
 def test_the_narrator_answer_shapes_are_shared_by_every_engine() -> None:
-    golden_json(FIXTURES / "schemas" / "narration.json", schema_of(Narration))
-    golden_json(FIXTURES / "schemas" / "interjection.json", schema_of(Interjection))
+    golden_schema(FIXTURES / "schemas" / "narration.json", Narration)
+    golden_schema(FIXTURES / "schemas" / "interjection.json", Interjection)

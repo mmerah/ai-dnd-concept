@@ -4,6 +4,10 @@ from difflib import unified_diff
 from itertools import islice
 from pathlib import Path
 
+from pydantic import BaseModel
+
+from aidm.core.tools import schema_text
+
 ENCODING = "utf-8"
 FIXTURES = Path(__file__).parents[1] / "core" / "fixtures"
 REGENERATE = os.environ.get("AIDM_GOLDEN_REGEN") == "1"
@@ -13,16 +17,23 @@ SCHEMA_MARKER = "<<schema>>"
 ANSWER_WITH = "ANSWER WITH:\n"
 
 
-def masked(prompt: str, instructions: str = "") -> str:
-    """The engine's rules and the answer schema are rendered and checked elsewhere; a marker
-    keeps a prompt fixture from rewriting whenever either one moves."""
-    if instructions:
-        needle = instructions.strip()
-        if needle not in prompt:
-            raise AssertionError("the instructions are not spliced into the prompt verbatim")
-        prompt = prompt.replace(needle, RULES_MARKER)
+def masked(prompt: str) -> str:
+    """The answer schema is rendered and checked elsewhere; a marker keeps a prompt fixture
+    from rewriting whenever it moves."""
     head, sep, _ = prompt.partition(ANSWER_WITH)
     return f"{head}{sep}{SCHEMA_MARKER}\n" if sep else prompt
+
+
+def masked_master(prompt: str, instructions: str) -> str:
+    """The engine's rules are spliced in and checked elsewhere; a marker keeps the master
+    prompt fixture from rewriting whenever they move. `instructions` must be the exact text
+    the splice used, so a caller with nothing to splice cannot silently skip the check."""
+    needle = instructions.strip()
+    if not needle:
+        raise AssertionError("instructions must not be empty")
+    if needle not in prompt:
+        raise AssertionError("the instructions are not spliced into the prompt verbatim")
+    return masked(prompt.replace(needle, RULES_MARKER))
 
 
 def golden(path: Path, actual: str) -> None:
@@ -40,6 +51,12 @@ def golden(path: Path, actual: str) -> None:
 
 def golden_json(path: Path, actual: object) -> None:
     golden(path, json.dumps(actual, indent=2, ensure_ascii=False) + "\n")
+
+
+def golden_schema(path: Path, model: type[BaseModel]) -> None:
+    """Pins `schema_text`, the rendering every role's prompt actually carries, not just the
+    schema dict `schema_of` returns."""
+    golden(path, schema_text(model) + "\n")
 
 
 def _diff(expected: str, actual: str) -> str:
