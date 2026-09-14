@@ -5,7 +5,7 @@ from support.tunnelgoons import ENGINE, small_world
 
 from aidm.core.entities import Refusal
 from aidm.core.model import Check, ScenarioMeta
-from aidm.engines.base import Gauge
+from aidm.engines.base import PLAYER_ID, Gauge
 from aidm.engines.rooms.engine import MORE_MAP
 from aidm.engines.rooms.world import MapDraft, Place, Prop, Way
 from aidm.engines.rooms.worldsmith import check_extension, check_map
@@ -139,6 +139,55 @@ def test_check_map_refuses_a_known_dwellers_brief_naming_a_hidden_dweller() -> N
     draft = MapDraft[Npc](
         places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
         npcs={gremlin.id: gremlin, sentry.id: sentry},
+        start=ONLY,
+    )
+    with pytest.raises(Refusal, match="do not name what is hidden there"):
+        check_map(draft)
+
+
+def test_check_map_refuses_a_hidden_dwellers_own_brief_naming_another_hidden_dweller() -> None:
+    """The leak a later `reveal` would make must be caught while both are still hidden."""
+    gremlin = Npc(
+        id="gremlin",
+        name="Gremlin",
+        brief="",
+        place=ONLY,
+        known=False,
+        hp=Gauge(current=4, maximum=4),
+    )
+    sentry = Npc(
+        id="sentry",
+        name="Sentry",
+        brief="He watches for the Gremlin.",
+        place=ONLY,
+        known=False,
+        hp=Gauge(current=4, maximum=4),
+    )
+    draft = MapDraft[Npc](
+        places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
+        npcs={gremlin.id: gremlin, sentry.id: sentry},
+        start=ONLY,
+    )
+    with pytest.raises(Refusal, match="do not name what is hidden there"):
+        check_map(draft)
+
+
+def test_check_map_refuses_an_item_on_the_player_naming_a_hidden_dweller() -> None:
+    gremlin = Npc(
+        id="gremlin",
+        name="Gremlin",
+        brief="",
+        place=ONLY,
+        known=False,
+        hp=Gauge(current=4, maximum=4),
+    )
+    charm = Prop(
+        id="charm", name="Charm", brief="A ward against the Gremlin.", known=True, on=PLAYER_ID
+    )
+    draft = MapDraft[Npc](
+        places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
+        npcs={gremlin.id: gremlin},
+        items={charm.id: charm},
         start=ONLY,
     )
     with pytest.raises(Refusal, match="do not name what is hidden there"):
