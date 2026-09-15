@@ -40,8 +40,6 @@ class NextScene(Frozen):
 
 
 class SceneDraft[C: Person](Mutable):
-    """The next scene the player walks into."""
-
     place: Slug = Field(description="Slug naming the place. Reuse it when the player returns here.")
     title: str = Field(description="The scene's title, read by the player. Name nothing hidden.")
     focus: str = Field(
