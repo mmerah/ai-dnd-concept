@@ -41,8 +41,10 @@ uv run basedpyright
    is what proves the tree green. Phase 1 step 8 is the **one** step where a regeneration is
    allowed, and it names the four fixtures that may move. A golden that drifts anywhere else is a
    bug in the step, not a fixture to refresh.
-5. `PROGRESS.md` gets one entry per phase, newest first, in the existing shape: line counts before
-   and after, decisions made off-plan with the reason, and refuted review findings with the reason.
+5. `PROGRESS.md` gets one entry per phase, newest first. Phase 1 writes the file. An entry is a
+   `## Phase N — <layer>` heading and, under it, line counts before and after, decisions made
+   off-plan with the reason, refuted review findings with the reason, and anything known and
+   accepted.
 6. Two proposals are **refused**; record them in the phase-3 `PROGRESS.md` entry beside that
    phase's refusals:
    - **Pruning the save log.** Measured 5 KB → 88 KB over 100 turns with short narration, the whole
