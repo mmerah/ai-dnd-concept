@@ -13,7 +13,7 @@ files, then D (step 8 and the regeneration) on the finished tree.
 
 | count | before | after | net |
 | --- | --- | --- | --- |
-| `src` | 10,239 | 10,299 | +60 |
+| `src` | 10,239 | 10,290 | +51 |
 | `tests` | 11,559 | 11,831 | +272 |
 
 `uv run pytest` 782 → 796 passing: 14 tests added, one deleted
@@ -51,7 +51,8 @@ below.
   `[entry for entry in self.cast.values() if not entry.known]` instead. Both reviewers' severity
   ranking put this first; CLAUDE.md's "hidden facts have no path into" the narrator is the rule it
   serves, and the refusal text already promised "what the player has not met". One test added for
-  the case `self.hidden()` missed.
+  the case `self.hidden()` missed. Confirmed by the maintainer after the phase: the clean reading
+  wins over the plan's literal one.
 - **The region model is named `RegionDraft`.** PLAN says "add a `MapDraft` subclass" without
   naming it. `RegionDraft[N](MapDraft[N])` mirrors `NextDraft(SceneDraft)` and matches the word
   PLAN itself uses throughout step 1 ("the region draft is consumed by `attach`").
@@ -81,14 +82,17 @@ below.
   rewording part B made in `tests/loner3e/test_world.py`. The screen catching a leak in the test
   data is the fix working.
 
+- **The answer model is bound once per method, in both families.** A reviewer asked for
+  `model = MapDraft[self.member]` in `rooms/engine.py` instead of spelling it twice per method.
+  Refusing it on PLAN's "the scenes family spells it inline" would have kept a duplication in
+  both families rather than removing it from either, so the alias landed in `RoomEngine.author`,
+  `RoomEngine.write_next` and `SceneEngine.author` together. The families still match, each
+  method names its model once, and `author` and `write_next` lose their wrapped call sites: −9
+  `src`. `SceneEngine.render_next` and `SceneEngine.write_next` keep `NextDraft[self.member]`
+  spelled once each — that is one use per method, not a duplication.
+
 ### Refuted review findings
 
-- **"Bind the model once in `rooms/engine.py` (`model = MapDraft[self.member]`), recovering ~6
-  `src` lines."** Refused. The scenes family spells `SceneDraft[self.member]` twice inline in
-  `author` (`scenes/engine.py:294`, `:297`) and `NextDraft[self.member]` inline in `render_next`
-  (`:256`), and PLAN step 1 names that shape as the one the rooms family should mirror when it
-  deletes `map_model`. An alias in one family and not the other re-opens the inconsistency the
-  step closed. The extra lines are ruff's wrapping, not added logic.
 - **"Read `draft.log[-1].exchanges` instead of `draft.exchanges()` in `depart`."** Refused. PLAN
   step 8 names `Game.exchanges()` as "the flat read" for exactly this, and the flat read is the
   correct one: when the current chapter is empty but earlier chapters are not — reachable, since

@@ -172,16 +172,11 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
             premise = "" if start is None else start.description
             return self.build_scenario(meta, packs, draft, source, premise)
 
+        model = MapDraft[self.member]
         prompt = self.render_opening(
-            source,
-            meta.scope,
-            intent=MAP_ASK,
-            guidance=self.guidance,
-            answer=MapDraft[self.member],
+            source, meta.scope, intent=MAP_ASK, guidance=self.guidance, answer=model
         )
-        return built(
-            await worldsmith(prompt, MapDraft[self.member], lambda answer: check(built(answer)))
-        )
+        return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 
     def act(self, draft: G, action: Slug, words: str) -> None:
         if action != EXTEND or self.world_of(draft).frontier():
@@ -238,12 +233,9 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
         self, draft: G, intent: str, worldsmith: WorldsmithAnswer
     ) -> RegionDraft[N]:
         world = self.world_of(draft)
-        prompt = self.render_request(
-            draft, intent=intent, guidance=self.guidance, answer=RegionDraft[self.member]
-        )
-        return await worldsmith(
-            prompt, RegionDraft[self.member], lambda answer: check_extension(answer, world)
-        )
+        model = RegionDraft[self.member]
+        prompt = self.render_request(draft, intent=intent, guidance=self.guidance, answer=model)
+        return await worldsmith(prompt, model, lambda answer: check_extension(answer, world))
 
     def install(self, draft: G, extension: RegionDraft[N]) -> None:
         """Hidden, so nothing is told: the region reaches the player only as they walk it."""

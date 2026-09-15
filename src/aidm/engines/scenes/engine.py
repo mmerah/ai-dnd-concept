@@ -290,12 +290,11 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
             return self.build_scenario(meta, selection, draft, source, draft.situation)
 
         guidance = self.guidance(selection)
+        model = SceneDraft[self.member]
         prompt = self.render_opening(
-            source, meta.scope, intent=OPENING, guidance=guidance, answer=SceneDraft[self.member]
+            source, meta.scope, intent=OPENING, guidance=guidance, answer=model
         )
-        return built(
-            await worldsmith(prompt, SceneDraft[self.member], lambda answer: check(built(answer)))
-        )
+        return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 
     def worldsmith_requests(self) -> dict[Slug, Request[G]]:
         return {
