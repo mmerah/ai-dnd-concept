@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from random import Random
@@ -318,6 +317,3 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
 
     def panels(self, _state: G) -> tuple[Panel, ...]:
         return ()
-
-    @abstractmethod
-    def guidance(self, selection: PackSelection | None, /) -> str: ...

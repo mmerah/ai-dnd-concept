@@ -6,6 +6,11 @@ from aidm.core.facts import Fact
 HIRE: Slug = "hire"
 SIGNED_ON = "{name} has signed on with the player. Tell it in a line or two. Settle nothing else."
 HIRED = "The player has hired {name}, {brief}, on these terms: {terms}. "
+UNWRITTEN_CAST = (
+    "The cast carries no dice until the player hires them in play. An npc is a name, a brief, "
+    "and whether the player has met them. A threat is a brief that the player's own roll meets, "
+    "never a stat block. "
+)
 HIRE_TOOL = (
     "Call this when the player hires someone here to work. Someone already travelling with the "
     "player can be hired too. The worldsmith writes their sheet once the turn ends. Nothing "

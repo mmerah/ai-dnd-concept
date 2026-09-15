@@ -159,9 +159,9 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         return (Panel(title="Backpack", rows=tuple(rows)),)
 
     def change_stress(self, draft: BreathlessGame, args: ChangeStress, _rng: Random) -> list[Fact]:
-        return (
-            self.world_of(draft).require_actor(args.actor_id).change_stress(args.amount, args.why)
-        )
+        world = self.world_of(draft)
+        world.check_unnamed(args.why)
+        return world.require_actor(args.actor_id).change_stress(args.amount, args.why)
 
     def use_med_kit(self, draft: BreathlessGame, args: UseMedKit, _rng: Random) -> list[Fact]:
         return self.world_of(draft).require_actor(args.actor_id).use_med_kit()

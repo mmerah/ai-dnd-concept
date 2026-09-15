@@ -59,7 +59,7 @@ POINT_OPTIONS: tuple[DecisionOption, ...] = tuple(
 )
 
 
-class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
+class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame]):
     id = EngineId("tunnelgoons")
     title = "TUNNEL GOONS"
     art_style = "Old-school fantasy illustration in black ink, cross-hatched, no text or lettering."
@@ -71,7 +71,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
     world = TunnelGoonsWorld
     member = Npc
     hires = True
-    guidance = AUTHORING
+    authoring = AUTHORING
 
     def world_of(self, state: TunnelGoonsGame) -> TunnelGoonsWorld:
         return state.payload

@@ -17,7 +17,7 @@ WARDEN = "warden"
 LANTERN = "lantern"
 
 
-class SixthWorld(RoomWorld[Dweller, Person]):
+class SixthWorld(RoomWorld[Person, Dweller]):
     pass
 
 
@@ -33,7 +33,7 @@ class SixthCharacter(Character[Person]):
     pass
 
 
-class SixthEngine(RoomEngine[Dweller, Person, SixthGame]):
+class SixthEngine(RoomEngine[Person, Dweller, SixthGame]):
     """A sixth engine, a room crawler; the tools are the family's."""
 
     id = SIXTH
@@ -44,7 +44,7 @@ class SixthEngine(RoomEngine[Dweller, Person, SixthGame]):
     character = SixthCharacter
     member = Dweller
     world = SixthWorld
-    guidance = "Write the keep plainly."
+    authoring = "Write the keep plainly."
 
     def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
         return ()

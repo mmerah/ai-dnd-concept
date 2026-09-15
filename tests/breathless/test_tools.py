@@ -142,6 +142,18 @@ def test_change_stress_acts_on_the_member(draft: BreathlessGame) -> None:
     assert member.require_sheet().stress.current == 1
 
 
+def test_change_stress_refuses_naming_an_unmet_entity_but_allows_a_revealed_one(
+    draft: BreathlessGame,
+) -> None:
+    player = draft.payload.player
+    with pytest.raises(Refusal, match="has not met"):
+        _ = change(ENGINE, draft, "change_stress", amount=1, why="spotting Dax")
+    assert player.require_sheet().stress.current == 0
+
+    _ = change(ENGINE, draft, "change_stress", amount=1, why="spotting Mira")
+    assert player.require_sheet().stress.current == 1
+
+
 def test_use_med_kit_acts_on_the_member(draft: BreathlessGame) -> None:
     member = hired(draft.payload, MIRA)
     member.require_sheet().med_kit = True

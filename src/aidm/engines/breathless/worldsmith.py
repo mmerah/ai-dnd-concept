@@ -5,14 +5,12 @@ from pydantic import Field, model_validator
 from aidm.core.entities import Frozen
 from aidm.core.play import DecisionOption
 from aidm.engines.breathless.world import SKILLS, Die, Skill, check_spread
-from aidm.engines.hiring import HIRED
+from aidm.engines.hiring import HIRED, UNWRITTEN_CAST
 from aidm.engines.scenes.packs import ScenePack
 
 AUTHORING = (
     "BREATHLESS AUTHORING\n"
-    "The cast carries no dice until the player hires them in play. An npc is a name, a brief, "
-    "and whether the player has met them. A threat is a brief that the player's own roll meets, "
-    "never a stat block. Use the pack's `locations`, `complications` and `missions` as the "
+    f"{UNWRITTEN_CAST}Use the pack's `locations`, `complications` and `missions` as the "
     "setting's vocabulary."
 )
 HIRING = (

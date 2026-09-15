@@ -294,14 +294,13 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
     def change_hindrances(
         self, draft: TwentyfourxxGame, args: ChangeHindrances, _rng: Random
     ) -> list[Fact]:
-        return (
-            self.world_of(draft)
-            .require_actor(args.actor_id)
-            .change_hindrances(args.gained, args.lost)
-        )
+        world = self.world_of(draft)
+        world.check_unnamed(*args.gained)
+        return world.require_actor(args.actor_id).change_hindrances(args.gained, args.lost)
 
     def gain_item(self, draft: TwentyfourxxGame, args: GainItem, _rng: Random) -> list[Fact]:
         world = self.world_of(draft)
+        world.check_unnamed(args.name)
         return world.require_actor(args.actor_id).gain_item(
             args.name, bulky=args.bulky, breaks=args.breaks, cost=args.cost
         )
@@ -316,7 +315,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         return actor.repair_item(world.require_gear(actor, args.item_id), args.cost)
 
     def spend(self, draft: TwentyfourxxGame, args: Spend, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).require_actor(args.actor_id).spend(args.amount, args.why)
+        world = self.world_of(draft)
+        world.check_unnamed(args.why)
+        return world.require_actor(args.actor_id).spend(args.amount, args.why)
 
     def take_lead(self, draft: TwentyfourxxGame, args: TakeLead, _rng: Random) -> list[Fact]:
         return self.world_of(draft).take_lead(args.entity_id)

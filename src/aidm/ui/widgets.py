@@ -30,6 +30,14 @@ def media_url(path: Path) -> str:
     return route + path.name
 
 
+def alert(message: str) -> None:
+    ui.notify(message, type="negative", multi_line=True, position="top")
+
+
+def warn(message: str) -> None:
+    ui.notify(message, type="warning", multi_line=True, position="top")
+
+
 def page_header(
     title: str, badge: str | None = None, *, home: bool = True, look: Look | None = None
 ) -> ui.header:

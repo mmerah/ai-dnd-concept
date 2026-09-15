@@ -107,7 +107,7 @@ class Goon(Adventurer):
         return tuple(items)
 
 
-class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
+class TunnelGoonsWorld(RoomWorld[Goon, Npc]):
     def sheet_rows(self) -> Rows:
         carried = len(list(self.carried(self.player.id)))
         return tuple(
