@@ -7,6 +7,12 @@ it, so deal with the lock first. When no way out leads anywhere the player has n
 offers them "More map" and the worldsmith writes what lies beyond. Never invent a place, a way, or
 what waits in them, yourself.
 
+## The arc
+
+THE ARC is the worldsmith's setup beyond the map. It says what can come, never what must
+come. What happened outranks it. The player's choices are their own. Do not settle any part of
+the arc yourself.
+
 ## The party
 
 A party member travels with the player from place to place. The player commands them and you

@@ -43,11 +43,11 @@ class SceneDraft[C: Person](Mutable):
     """The next scene the player walks into."""
 
     place: Slug = Field(description="Slug naming the place. Reuse it when the player returns here.")
-    title: str = Field(description="The scene's title, read by the player.")
+    title: str = Field(description="The scene's title, read by the player. Name nothing hidden.")
     focus: str = Field(
         default="",
-        description="What this scene is about, in one line the player reads. Empty when the "
-        "situation says it all.",
+        description="What this scene is about, in one line the player reads. Name nothing "
+        "hidden. Empty when the situation says it all.",
     )
     situation: str = Field(
         min_length=1,
@@ -59,12 +59,13 @@ class SceneDraft[C: Person](Mutable):
     hidden: tuple[str, ...] = Field(default=(), description="Ids of what is hidden here.")
     cast: dict[Slug, C] = Field(
         default_factory=dict,
-        description="New people and things, each filed under its own id.",
+        description="New people and things, each filed under its own id. A brief and a sheet "
+        "are read once the player meets that entry, so neither names what is still hidden.",
     )
     arc: str = Field(
         default="",
         description="The setup beyond this scene: pressures, motives, secrets, what can come. "
-        "The player never reads it.",
+        "The player never reads it, so what ties one hidden thing to another belongs here.",
     )
 
 

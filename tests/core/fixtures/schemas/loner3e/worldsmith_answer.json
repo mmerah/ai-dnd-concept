@@ -6,12 +6,12 @@
       "type": "string"
     },
     "title": {
-      "description": "The scene's title, read by the player.",
+      "description": "The scene's title, read by the player. Name nothing hidden.",
       "type": "string"
     },
     "focus": {
       "default": "",
-      "description": "What this scene is about, in one line the player reads. Empty when the situation says it all.",
+      "description": "What this scene is about, in one line the player reads. Name nothing hidden. Empty when the situation says it all.",
       "type": "string"
     },
     "situation": {
@@ -35,7 +35,7 @@
       "type": "array"
     },
     "cast": {
-      "description": "New people and things, each filed under its own id.",
+      "description": "New people and things, each filed under its own id. A brief and a sheet are read once the player meets that entry, so neither names what is still hidden.",
       "patternProperties": {
         "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
           "additionalProperties": false,
@@ -136,7 +136,7 @@
     },
     "arc": {
       "default": "",
-      "description": "The setup beyond this scene: pressures, motives, secrets, what can come. The player never reads it.",
+      "description": "The setup beyond this scene: pressures, motives, secrets, what can come. The player never reads it, so what ties one hidden thing to another belongs here.",
       "type": "string"
     },
     "recap": {

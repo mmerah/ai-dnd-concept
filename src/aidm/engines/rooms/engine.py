@@ -15,7 +15,7 @@ from aidm.core.model import (
     WorldsmithAnswer,
 )
 from aidm.core.play import DecisionOption
-from aidm.core.prompt import Sections, lines_of, render_history
+from aidm.core.prompt import Sections, lines_of, render_history, section_if
 from aidm.core.tools import MasterTool, master_tool
 from aidm.core.views import NarratorView, Panel, PanelRow, PlayerView
 from aidm.engines.base import (
@@ -87,6 +87,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
         world = self.world_of(draft)
         return (
             ("MAP SO FAR", world.map_so_far()),
+            *section_if("THE ARC SO FAR", world.arc),
             ("SCENES SO FAR", render_history(draft.log)),
             ("THE PLAYER", world.line(world.player)),
         )
@@ -102,6 +103,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
             ("HERE WITH THE PLAYER", world.place_lines(known=True)),
             *party_section(world.members()),
             ("HIDDEN HERE (the player has not found these)", world.place_lines(known=False)),
+            *section_if("THE ARC (the player has not found this)", world.arc),
             ("WAYS OUT", world.ways_lines()),
             *(((ELSEWHERE, world.elsewhere_lines()),) if world.meanwhile_due else ()),
         )

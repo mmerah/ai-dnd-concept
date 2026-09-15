@@ -203,6 +203,11 @@
       "propertyNames": {},
       "type": "object"
     },
+    "arc": {
+      "default": "",
+      "description": "What is really going on in this map: secrets, what can come, and what ties one hidden thing to another. The player never reads it.",
+      "type": "string"
+    },
     "start": {
       "description": "Exact id of the place this map starts from.",
       "type": "string"

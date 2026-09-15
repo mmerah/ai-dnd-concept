@@ -392,3 +392,19 @@ def test_the_elsewhere_section_shows_only_when_the_clock_is_armed(
     assert "Lantern" in section
     assert "Cellar" in section
     assert "Well" not in section
+
+
+def test_the_arc_reaches_the_master_and_the_worldsmith_and_nobody_else(
+    room_engine: SixthEngine, begun_room: SixthGame
+) -> None:
+    arc = "The Warden answers to the Gremlin Queen."
+    begun_room.payload.arc = arc
+
+    written = room_engine.render_request(
+        begun_room, intent="More map.", guidance="", answer=room_engine.map_model
+    )
+
+    assert arc in str(room_engine.master_sections(begun_room))
+    assert arc in written
+    assert arc not in str(room_engine.narrator_view(begun_room).model_dump())
+    assert arc not in str(room_engine.player_view(begun_room).model_dump())
