@@ -74,6 +74,17 @@ phase removes code is step 5, which deleted `_IN_FLIGHT_PREFIX` and two `.format
 - **The carried slugs are a marker model, `UnresumableSave`.** PLAN says "carry on the catalog, as
   a new field, the slugs"; the shape was the orchestrator's.
 
+### Refused proposals (`PLAN.md` "How to work" §7)
+
+Both were put to the maintainer and refused; recorded here so neither is re-proposed.
+
+- **Pruning the save log.** Measured 5 KB → 88 KB over 100 turns with short narration, the whole
+  file rewritten each turn. The log *is* the journal the player reads, so pruning removes a
+  feature, and 88 KB is negligible in absolute terms.
+- **Paging the transcript in the UI** — the fix for the `IDEAS.md` line step 6 adds. ~30–50 lines
+  of new UI for a cost invisible below ~150 turns; CLAUDE.md says "do not build for future needs".
+  Recorded as idea 21 instead.
+
 ### Refuted review findings
 
 - **"Name the save file, not the slug, in the launcher's line."** Refused. `LauncherCatalog` does
@@ -100,6 +111,20 @@ phase removes code is step 5, which deleted `_IN_FLIGHT_PREFIX` and two `.format
   the other, and PLAN did not ask for one.
 - A save whose scenario drifted is hidden from the launcher, not repaired. Reverting the edit
   brings it back; nothing on disk is touched either way.
+
+### Settled after the phase
+
+The three calls that rest on the orchestrator's reading rather than on PLAN's letter — the
+`server_host` `Literal`, scenario drift as a fourth unresumable path, and keeping `UnresumableSave`
+against a reviewer's cut — were put to the maintainer and confirmed. The clean reading wins over
+the plan's literal one, as in phase 1.
+
+The phase also broke one thing outside the four commands, found and fixed after the reviews:
+`qa/s_settings.py` pins the settings page's tab list exactly, and `server_host` adds a ninth tab
+between "source max chars" and "server port". `qa/server.py` now passes `host=settings.server_host`
+to its own `ui.run` as well, so the QA server binds what the app binds; the suite drives
+`http://localhost:8123`, which loopback still serves. Nothing in `qa/` is covered by the four
+commands beyond `basedpyright`, so a string the UI owns can only be caught by reading it.
 
 ## Phase 2 — `core` and `app`
 

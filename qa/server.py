@@ -82,6 +82,7 @@ def main() -> None:
     theme.install()
     ui.run(  # pyright: ignore[reportUnknownMemberType]
         title="AI Dungeon Master (QA)",
+        host=settings.server_host,
         port=parsed.port,
         reload=False,
         show=False,

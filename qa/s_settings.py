@@ -33,6 +33,7 @@ def body(s: Session) -> None:
             "interjections",
             "meanwhile",
             "source max chars",
+            "server host",
             "server port",
         ],
         f"unexpected tabs: {tabs}",

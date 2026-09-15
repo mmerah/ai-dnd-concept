@@ -1,5 +1,9 @@
 # PLAN: the twenty-three QA findings, in three phases
 
+**Done.** All three phases landed; `PROGRESS.md` holds the entry for each, newest first, with the
+counts, the decisions taken off this plan and the review findings refused. Nothing below is
+outstanding. The file stays as the record of what was asked for, until a new plan replaces it.
+
 Adversarial QA found 23 issues. Every fix the maintainer accepted is below; nothing else belongs
 in this plan. Throughout, prefer removing or simplifying code over adding it.
 
