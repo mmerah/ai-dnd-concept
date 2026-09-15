@@ -63,7 +63,6 @@ def scenario_for(engine_id: EngineId) -> Slug:
 
 
 def game(engine_id: EngineId) -> tuple[AnyEngine, AnyGame]:
-    """The scenario authored for this engine and the shipped character, composed together."""
     engine = ENGINES_BUILT[engine_id]
     scenario_id = scenario_for(engine_id)
     selected_scenario = LIBRARY.read_scenario(scenario_id, SCENARIO_MODELS)
@@ -78,7 +77,6 @@ def change(engine: AnyEngine, draft: AnyGame, name: str, /, **args: JsonValue) -
 
 
 def refused(engine: AnyEngine, draft: AnyGame, name: str, /, **args: JsonValue) -> str:
-    """The refusal's text, from `pytest.raises(Refusal)`."""
     with pytest.raises(Refusal) as raised:
         _ = change(engine, draft, name, **args)
     return str(raised.value)
@@ -112,7 +110,7 @@ def offline_settings(saves: Path | None = None, scenarios: Path = SCENARIOS) -> 
 
 @dataclass(slots=True)
 class ScriptedSpawner:
-    """Answers from a per-role list and records every prompt it was given. Tests use this."""
+    """Answers from a per-role list and records every prompt it was given."""
 
     turns: list[Callable[[], None]] = field(default_factory=list)
     answers: dict[Role, list[str]] = field(default_factory=dict)
@@ -165,7 +163,7 @@ class Table[G: AnyGame]:
     facts: list[Fact] = field(default_factory=list)
 
     def call(self, name: str, args: dict[str, JsonValue]) -> str:
-        """What the server does: a refusal is an error result the CLI reads and carries on from."""
+        """A refusal is an error result the CLI reads and carries on from, not a crash."""
         try:
             answered = self.runtime.call(name, args)
         except Refusal as refused:
@@ -232,9 +230,7 @@ async def play_turn[G: AnyGame](
     action: Slug | None = None,
     then: Sequence[str] = (),
 ) -> G:
-    """One turn, with the game master's tool calls scripted and the narrator's answer canned;
-    `action` is the page's own way of opening it. `then` queues answers for a spawn beyond the
-    turn itself, such as an interjection, which is created inside the `await` below."""
+    """`then` queues answers for a spawn beyond the turn itself, such as an interjection."""
     table.spawner.turns.append(table.plays(calls))
     canned = table.spawner.answers.setdefault("narrator", [])
     canned.append(narrated(narration))

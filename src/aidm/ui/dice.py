@@ -11,8 +11,6 @@ DICE_ASSETS_ROUTE = "/dice/"
 
 
 class DiceTray(ui.element, component="dice_tray.js", dependencies=["lib/dice-box-threejs.es.js"]):
-    """Dice thrown across the whole page as they land; the card below keeps the result."""
-
     def __init__(self, look: DiceLook) -> None:
         super().__init__()
         self._props["look"] = look.model_dump()
@@ -34,5 +32,4 @@ def thrown(events: Sequence[DiceEvent]) -> list[dict[str, int]]:
 
 
 def rolled_since(facts: Sequence[Fact], seen: int) -> tuple[DiceEvent, ...]:
-    """The dice on the cards that landed after the first `seen` facts."""
     return tuple(event for fact in cards(facts[seen:]) for event in fact.dice)

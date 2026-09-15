@@ -125,7 +125,7 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
             )
 
     def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> SceneWorld[C]:
-        # a restart reopens the same scenario file
+        # Copied: a restart reopens the same scenario file.
         draft: SceneDraft[C] = scenario.payload.model_copy(deep=True)
         check_scene(draft)
         self.admit(scenario.packs, character)
@@ -230,7 +230,6 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
         draft.note(MOVING_ON)
 
     def supplement_steps(self) -> tuple[CreationStep, ...]:
-        """Empty for an engine that ships only the SRD, so it shows no table-set step at all."""
         options = self.supplement_options()
         if not options:
             return ()

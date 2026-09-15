@@ -24,8 +24,6 @@ class ScenePack(Frozen):
 
 @dataclass(frozen=True, slots=True)
 class PackSet[K: ScenePack]:
-    """Every pack installed for one engine, and what a game may select from them."""
-
     engine: EngineId
     installed: Mapping[Slug, K]
 

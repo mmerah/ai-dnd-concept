@@ -29,8 +29,6 @@ class DiceEvent(Frozen):
 
 
 class Fact(Frozen):
-    """One thing that occurred, rendered where its values were in scope."""
-
     trace: str
     told: bool = False
     card: str = ""
@@ -51,7 +49,6 @@ class Rolled(Frozen):
 
     @property
     def face(self) -> int:
-        """The one die of a single roll."""
         if len(self.event.rolled) != 1:
             raise ValueError(f"{self.event.label} rolled {len(self.event.rolled)} dice, not one")
         return self.event.rolled[0]

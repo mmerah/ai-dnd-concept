@@ -41,7 +41,7 @@ class SurvivorSheet(ItemSheet[Supply]):
     pronouns: str = ""
     job: str = ""
     skills: dict[Skill, Die] = Field(min_length=6, max_length=6)
-    # where each stands now; `skills` is as created
+    # Where each skill stands now; `skills` is as created.
     worn: dict[Skill, Die] = Field(min_length=6, max_length=6)
     med_kit: bool = False
     loot: Die = LOOT_START

@@ -88,8 +88,7 @@ def test_a_second_save_on_the_same_form_lands(
 
     monkeypatch.setattr("aidm.ui.settings.ui.notify", spy_notify)
 
-    # The stale snapshot's blind spot: a second save that moves a box back to the snapshot's
-    # own value looks like no change at all, so it must be re-read after every save.
+    # A stale snapshot reads a box moved back to its old value as no change at all.
     form = SettingsForm(offline_settings(tmp_path))
     client = Client(ui.page("/"))
     try:

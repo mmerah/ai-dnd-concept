@@ -45,8 +45,6 @@ OPENING_NARRATION = (
 
 @dataclass(slots=True)
 class Tasks:
-    """Work the session started and does not wait for: retained while it runs."""
-
     running: set[Task[None]] = field(default_factory=set)
 
     def retain(self, task: Task[None]) -> None:
@@ -117,7 +115,7 @@ class GameService:
         return not self.busy and not self.state.exchanges()
 
     async def open(self) -> None:
-        """A failed narrator leaves the premise to do its work."""
+        """A failed narrator saves nothing: the premise is what the player reads."""
         # A second tab's timer must not run the page reset over an opening already in flight.
         if not self.unopened:
             return
@@ -175,7 +173,6 @@ class GameService:
             # Cleared before arrival: the tool surface must not reach a turn nobody plays.
             self.turn, self.phase = None, None
         self.save(state)
-        # The dice advance with the turn.
         self.rng.setstate(turn.rng.getstate())
         self._present()
         await self._grow(words="", mark="story")
@@ -338,7 +335,6 @@ class Runtime:
 
     @property
     def default_engine(self) -> EngineId:
-        """Dict order picks it; a create page has to start somewhere."""
         return next(iter(self.engines))
 
     @property

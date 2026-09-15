@@ -148,8 +148,7 @@ class Settings(BaseSettings):
             for what, feature in (("media", self.media), ("speech", self.speech))
             if feature.enabled
         ]
-        # `Role.__value__`, not `Role`: `get_args` on a PEP 695 alias returns `()` and would skip
-        # every check in silence. `ui/settings.py`'s `_unaliased` unwraps the alias the same way.
+        # `Role.__value__`, not `Role`: `get_args` on a PEP 695 alias returns `()` in silence.
         role_names: tuple[Role, ...] = get_args(Role.__value__)
         for role in role_names:
             config = self.roles.for_name(role)

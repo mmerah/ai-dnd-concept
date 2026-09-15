@@ -48,16 +48,12 @@ type AnyEngine = Engine[Any, Any, Any]
 
 @dataclass(frozen=True, slots=True)
 class Written:
-    """What a worldsmith write leaves: the facts, and what to tell the narrator, if anything."""
-
     facts: tuple[Fact, ...]
     telling: str | None
 
 
 @dataclass(frozen=True, slots=True)
 class Request[G: Game[Any]]:
-    """What a failed write tells the player, and the write itself."""
-
     unwritten: Fact
     write: Callable[[G, Generation, WorldsmithAnswer], Awaitable[Written]]
 
@@ -109,7 +105,6 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
         return (*shared, master_tool("hire", HIRE_TOOL, Hire, self.hire))
 
     def worldsmith_requests(self) -> dict[Slug, Request[G]]:
-        """Each layer adds its own after `super()`'s: the seam's `hire`, then the family."""
         if not self.hires:
             return {}
         return {HIRE: Request(HIRE_UNWRITTEN, self.write_hire)}
@@ -154,15 +149,12 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
         return Written(tuple(facts), SIGNED_ON.format(name=member.name))
 
     async def advance(self, draft: G, request: Generation, worldsmith: WorldsmithAnswer) -> Written:
-        """Write and install on `draft`; the facts, and what to tell the narrator, if anything."""
         return await self.requests[request.operation].write(draft, request, worldsmith)
 
     def supplement_options(self) -> tuple[DecisionOption, ...]:
-        """The table sets a page may add to this engine's base; empty when it has no packs."""
         return ()
 
     def select_packs(self, _supplements: Sequence[Slug]) -> PackSelection | None:
-        """The base plus these supplements, checked; `None` for an engine that plays no packs."""
         return None
 
     def admit(self, _packs: PackSelection | None, _character: AnyCharacter) -> None:

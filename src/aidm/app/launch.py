@@ -129,8 +129,7 @@ def _save_option(
     try:
         raw = store.read(slug)
         if raw is None:
-            # The file vanished between `slugs()` and `read`: carrying it would hide the Start
-            # button on a target that would start fine.
+            # Vanished between `slugs()` and `read`: listing it would hide a Start that works.
             return None
         engine = routed(decode(raw), engines)
         state = engine.restore(raw)

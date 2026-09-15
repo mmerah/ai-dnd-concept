@@ -18,14 +18,10 @@ class Frozen(BaseModel):
 
 
 class Mutable(BaseModel):
-    """State a resolution mutates in place; commit revalidates the whole draft once."""
-
     model_config = ConfigDict(extra="forbid", revalidate_instances="always", strict=True)
 
 
 class Loose(BaseModel):
-    """A foreign shape read for a few of its keys."""
-
     model_config = ConfigDict(extra="ignore", frozen=True, strict=True)
 
 

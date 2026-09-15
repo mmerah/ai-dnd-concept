@@ -87,8 +87,6 @@ class Pool:
 
 @dataclass(frozen=True, slots=True)
 class Helping:
-    """The hired member who helps a roll, and the terms they help on."""
-
     who: Crewmate
     terms: Helper
 

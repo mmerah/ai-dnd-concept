@@ -106,7 +106,7 @@ class Exchange(Frozen):
     words: str
     mark: Mark = ""
     lines: tuple[SpokenLine, ...]
-    # every fact, told or not; `cards` picks the player's
+    # Every fact, told or not; `cards` picks the ones the player may see.
     facts: tuple[Fact, ...] = ()
     # The suspending decision's prompt: the pause has to survive after `Game.pending` clears.
     decision: str = ""

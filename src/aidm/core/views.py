@@ -42,8 +42,6 @@ class Subject(Frozen):
 
 
 class Companion(Subject):
-    """A party member as the app sees them: what they show, and how readily they speak."""
-
     sheet: Rows
     chattiness: Chattiness
 
@@ -135,7 +133,5 @@ class DiceLook(Frozen):
 
 
 class Look(Frozen):
-    """An engine's palette overrides and dice, read by the pages."""
-
     palette: Mapping[str, str]
     dice: DiceLook

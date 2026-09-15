@@ -34,7 +34,6 @@ class ScenarioMeta(Frozen):
         return self.model_copy(update={"premise": self.premise or fallback})
 
     def drift(self, other: Self) -> tuple[str, ...]:
-        """The fields that differ, so a refusal names what actually moved."""
         return tuple(
             field
             for field in ScenarioMeta.model_fields
@@ -43,8 +42,6 @@ class ScenarioMeta(Frozen):
 
 
 class EngineHeader(Loose):
-    """Routes a document before its engine is known."""
-
     engine: EngineId
 
 
@@ -59,8 +56,7 @@ class CharacterHeader(EngineHeader):
 
 
 class PackSelection(Frozen):
-    """The table sets a game or a character is made from, in order; every scene family leads
-    with its SRD."""
+    """The table sets a game or a character is made from, in order."""
 
     ids: tuple[Slug, ...] = Field(min_length=1)
 
