@@ -3,7 +3,7 @@ from pathlib import Path
 from aidm.core.creation import CreationStep, Picks
 from aidm.core.entities import EngineId, Slug, slug
 from aidm.core.io import ENCODING
-from aidm.core.model import AnyCharacter, Character, Game, Scenario, ScenarioMeta
+from aidm.core.model import AnyCharacter, Character, Game, PackSelection, Scenario, ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Person
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.world import Dweller, MapDraft, Place, Prop, RoomWorld, Way
@@ -44,7 +44,9 @@ class SixthEngine(RoomEngine[Person, Dweller, SixthGame]):
     character = SixthCharacter
     member = Dweller
     world = SixthWorld
-    authoring = "Write the keep plainly."
+
+    def guidance(self, _selection: PackSelection | None) -> str:
+        return "Write the keep plainly."
 
     def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
         return ()

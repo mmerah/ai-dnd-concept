@@ -175,7 +175,7 @@ def decode(raw: str) -> JsonValue:
 
 
 def check_json_keys(raw: str) -> None:
-    """`decode` for its check alone: `parse_json` would take the last of two equal keys."""
+    """Called for the check alone; the value is thrown away."""
     decode(raw)
 
 

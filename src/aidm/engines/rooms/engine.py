@@ -55,7 +55,6 @@ ELSEWHERE = "ELSEWHERE (time has passed; you may move what the player cannot see
 class RoomEngine[P: Person, N: Dweller, G: Game[Any]](Engine[P, N, G]):
     world: type[RoomWorld[P, N]]
     family_dir = Path(__file__).parent
-    authoring: str
     opening_sections = (
         ("MAP SO FAR", "(no map yet)"),
         ("SCENES SO FAR", "(no scenes yet — write the opening)"),
@@ -64,9 +63,6 @@ class RoomEngine[P: Person, N: Dweller, G: Game[Any]](Engine[P, N, G]):
 
     def world_of(self, state: G) -> RoomWorld[P, N]:
         return state.payload
-
-    def guidance(self, _selection: PackSelection | None) -> str:
-        return self.authoring
 
     def validate(self, state: G) -> None:
         super().validate(state)

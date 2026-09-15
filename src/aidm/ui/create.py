@@ -204,7 +204,8 @@ class ScenarioForm:
                     label="Scope",
                     placeholder="How far does this go, and does it tend toward an ending?",
                 )
-                self.style_field()
+                self.style = ui.input(label="Art style")
+                self._set_style_placeholder()
                 self.voice = ui.input(
                     label="Narrator voice", placeholder="Leave empty for the default voice"
                 )
@@ -231,8 +232,12 @@ class ScenarioForm:
         self.engine_id = EngineId(event.value)
         theme.set_look(self.runtime.engines[self.engine_id].look)
         self.character_fields.refresh()
-        self.style_field.refresh()
+        self._set_style_placeholder()
         self.button_row.refresh()
+
+    def _set_style_placeholder(self) -> None:
+        engine = self.runtime.engines[self.engine_id]
+        self.style.props(f'placeholder="Leave empty for: {engine.art_style}"')
 
     @ui.refreshable_method
     def character_fields(self) -> None:
@@ -254,11 +259,6 @@ class ScenarioForm:
             value=characters[0].id if characters else None,
             label="Character",
         )
-
-    @ui.refreshable_method
-    def style_field(self) -> None:
-        engine = self.runtime.engines[self.engine_id]
-        self.style = ui.input(label="Art style", placeholder=f"Leave empty for: {engine.art_style}")
 
     @ui.refreshable_method
     def button_row(self) -> None:

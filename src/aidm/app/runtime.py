@@ -43,7 +43,7 @@ OPENING_NARRATION = (
 )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class Tasks:
     running: set[Task[None]] = field(default_factory=set)
 
@@ -229,7 +229,7 @@ class GameService:
             return False
         self.phase, grown = "worldsmith", True
         try:
-            written = await self.roles.grow(self.engine, draft, request)
+            written = await self.engine.advance(draft, request, worldsmith(self.roles.spawner))
             if written.telling is None:
                 landed = self.engine.land(draft)
             else:
@@ -283,10 +283,10 @@ class GameService:
         return self.media.icon(entity_id)
 
     def newest_clip(self) -> Path | None:
-        if self.reader is None:
-            return None
         newest = self._newest()
-        return None if newest is None else self.reader.clip(newest)
+        if self.reader is None or newest is None:
+            return None
+        return self.reader.clip(newest)
 
     def illustrate(self, narration: str = "") -> None:
         if self.media is None:

@@ -101,6 +101,7 @@ class LauncherCatalog:
         for slug in store.slugs():
             try:
                 option = _save_option(slug, store, engines, titles, played_by, metas)
+            # Skipped, never deleted: one save the app cannot resume must not hide the rest.
             except Refusal as unreadable:
                 LOGGER.warning("skipping save %r: %s", slug, unreadable)
                 unresumable.append(slug)

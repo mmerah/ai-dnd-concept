@@ -267,7 +267,7 @@ async def test_this_games_own_in_flight_guard_is_kept_from_the_player(
     def spy_notify(message: str, **_kwargs: object) -> None:
         notified.append(message)
 
-    monkeypatch.setattr("aidm.ui.game.ui.notify", spy_notify)
+    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
 
     async def busy_here() -> None:
         raise Refusal(IN_FLIGHT_HERE)
@@ -293,7 +293,7 @@ async def test_another_games_in_flight_guard_still_reaches_this_player(
     def spy_notify(message: str, **_kwargs: object) -> None:
         notified.append(message)
 
-    monkeypatch.setattr("aidm.ui.game.ui.notify", spy_notify)
+    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
 
     async def busy_elsewhere() -> None:
         raise Refusal(IN_FLIGHT_ELSEWHERE)
@@ -342,7 +342,7 @@ async def test_opened_retries_silently_while_the_gate_is_held_by_another_game(
     def spy_notify(message: str, **_kwargs: object) -> None:
         notified.append(message)
 
-    monkeypatch.setattr("aidm.ui.game.ui.notify", spy_notify)
+    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
 
     opener = _FakeTimer()
     client = Client(ui.page("/"))
@@ -401,7 +401,7 @@ async def test_a_restart_refused_by_this_games_own_gate_still_reaches_the_player
     def spy_notify(message: str, **_kwargs: object) -> None:
         notified.append(message)
 
-    monkeypatch.setattr("aidm.ui.game.ui.notify", spy_notify)
+    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
 
     client = Client(ui.page("/"))
     try:
@@ -426,7 +426,7 @@ async def test_a_refusal_that_is_not_the_in_flight_guard_still_toasts(
     def spy_notify(message: str, **_kwargs: object) -> None:
         notified.append(message)
 
-    monkeypatch.setattr("aidm.ui.game.ui.notify", spy_notify)
+    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
 
     async def refused() -> None:
         raise Refusal("the rules wait on the player's decision first")
@@ -452,7 +452,7 @@ async def test_a_non_refusal_failure_still_toasts_and_still_propagates(
     def spy_notify(message: str, **_kwargs: object) -> None:
         notified.append(message)
 
-    monkeypatch.setattr("aidm.ui.game.ui.notify", spy_notify)
+    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
 
     async def broken() -> None:
         raise RuntimeError("secret path")
