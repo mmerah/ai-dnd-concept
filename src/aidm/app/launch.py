@@ -5,6 +5,7 @@ from typing import Self
 
 from aidm.core.entities import EngineId, Refusal, Slug
 from aidm.core.io import FileStore, Library, decode, routed
+from aidm.core.model import ScenarioMeta
 from aidm.core.views import Look
 from aidm.engines.seam import AnyEngine
 
@@ -42,10 +43,19 @@ class SaveOption:
 
 
 @dataclass(frozen=True, slots=True)
+class UnresumableSave:
+    """On disk, and the launcher cannot open it: said on the page, never deleted or migrated."""
+
+    slug: str
+
+
+@dataclass(frozen=True, slots=True)
 class LauncherCatalog:
     scenarios: tuple[CatalogEntry, ...]
     characters: tuple[CatalogEntry, ...]
     saves: tuple[SaveOption, ...]
+    # Only entries whose stem equals a rendered `LaunchTarget.slug` are ever looked up by slug.
+    unresumable: tuple[str, ...]
 
     def scenario(self, scenario_id: Slug) -> CatalogEntry:
         found = next((entry for entry in self.scenarios if entry.id == scenario_id), None)
@@ -67,6 +77,7 @@ class LauncherCatalog:
         cls, library: Library, store: FileStore, engines: Mapping[EngineId, AnyEngine]
     ) -> Self:
         scenario_models = {engine_id: engine.scenario for engine_id, engine in engines.items()}
+        on_disk = dict(library.read_scenarios(scenario_models))
         scenarios = tuple(
             CatalogEntry(
                 id=name,
@@ -76,8 +87,9 @@ class LauncherCatalog:
                 rules=engines[scenario.engine].title,
                 look=engines[scenario.engine].look,
             )
-            for name, scenario in library.read_scenarios(scenario_models)
+            for name, scenario in on_disk.items()
         )
+        metas = {name: scenario.meta for name, scenario in on_disk.items()}
         characters = tuple(
             CatalogEntry(
                 id=name,
@@ -91,12 +103,19 @@ class LauncherCatalog:
         )
         titles = {(entry.id, entry.engine): entry.label for entry in characters}
         played_by = {entry.id: entry.engine for entry in scenarios}
-        saves = tuple(
+        options = tuple(
             option
             for slug in store.slugs()
-            if (option := _save_option(slug, store, engines, titles, played_by)) is not None
+            if (option := _save_option(slug, store, engines, titles, played_by, metas)) is not None
         )
-        return cls(scenarios=scenarios, characters=characters, saves=saves)
+        return cls(
+            scenarios=scenarios,
+            characters=characters,
+            saves=tuple(option for option in options if isinstance(option, SaveOption)),
+            unresumable=tuple(
+                option.slug for option in options if isinstance(option, UnresumableSave)
+            ),
+        )
 
 
 def _save_option(
@@ -105,25 +124,33 @@ def _save_option(
     engines: Mapping[EngineId, AnyEngine],
     titles: Mapping[tuple[Slug, EngineId], str],
     played_by: Mapping[Slug, EngineId],
-) -> SaveOption | None:
+    metas: Mapping[Slug, ScenarioMeta],
+) -> SaveOption | UnresumableSave | None:
     try:
         raw = store.read(slug)
         if raw is None:
+            # The file vanished between `slugs()` and `read`: carrying it would hide the Start
+            # button on a target that would start fine.
             return None
         engine = routed(decode(raw), engines)
         state = engine.restore(raw)
     except Refusal as unreadable:
         # Skip rather than raise: one save the app could not resume must not hide the rest.
         LOGGER.warning("skipping save %r: %s", slug, unreadable)
-        return None
+        return UnresumableSave(slug=slug)
     title = titles.get((state.character_id, state.engine))
     if played_by.get(state.scenario_id) != state.engine or title is None:
         LOGGER.warning("skipping save %r: its scenario or character is gone", slug)
-        return None
+        return UnresumableSave(slug=slug)
     target = LaunchTarget(scenario_id=state.scenario_id, character_id=state.character_id)
     if slug != target.slug:
         LOGGER.warning("skipping save %r: filed under another name", slug)
-        return None
+        return UnresumableSave(slug=slug)
+    if drifted := state.scenario.drift(metas[state.scenario_id]):
+        LOGGER.warning(
+            "skipping save %r: scenario differs from disk in: %s", slug, ", ".join(drifted)
+        )
+        return UnresumableSave(slug=slug)
     return SaveOption(
         target=target,
         scenario_label=state.scenario.title,

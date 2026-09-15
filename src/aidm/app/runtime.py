@@ -31,7 +31,8 @@ LOGGER = logging.getLogger(__name__)
 
 # The faces of a d10 on which a member speaks after a turn.
 INTERJECTION_ODDS: dict[Chattiness, int] = {"quiet": 1, "normal": 2, "chatty": 3}
-IN_FLIGHT = "A turn is in flight in {slug!r}."
+IN_FLIGHT_HERE = "A turn is already in flight in this game."
+IN_FLIGHT_ELSEWHERE = "Another game is taking a turn. Wait for it to finish, then try again."
 OPENING_NARRATION = (
     "The story begins here; the player has read nothing yet. Tell them, in the fiction and in "
     "this order: who they are (YOUR PARTY names them first) and where they stand; what is in "
@@ -359,7 +360,7 @@ class Runtime:
     async def admit(self, session: GameService) -> AsyncGenerator[None]:
         """One writer at a time: two turns on one save is the only failure that costs a game."""
         if self.admitted is not None:
-            raise Refusal(IN_FLIGHT.format(slug=self.admitted.slug))
+            raise Refusal(IN_FLIGHT_HERE if self.admitted is session else IN_FLIGHT_ELSEWHERE)
         self.admitted = session
         try:
             yield
