@@ -25,7 +25,7 @@ from aidm.core.tools import MasterTool
 from aidm.core.views import Chattiness, PlayerView
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
-from aidm.turn.run import NO_TURN, Turn
+from aidm.turn.run import NO_TURN, RESTART, Turn
 
 LOGGER = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ class GameService:
         async with self.gate.admit(self):
             self.hush()
             if (ended := self.engine.over(self.state)) is not None:
-                raise Refusal(f"{ended} The only way on is to restart.")
+                raise Refusal(f"{ended} {RESTART}")
             if self.state.pending is not None:
                 raise Refusal("the rules wait on the player's decision first")
             draft = self.state.draft()
@@ -278,11 +278,15 @@ class GameService:
         return self.media.scene_art(self.engine.narrator_view(self.state))
 
     def icon(self, entity_id: Slug) -> Path | None:
-        return None if self.media is None else self.media.icon(entity_id)
+        if self.media is None:
+            return None
+        return self.media.icon(entity_id)
 
     def newest_clip(self) -> Path | None:
+        if self.reader is None:
+            return None
         newest = self._newest()
-        return None if self.reader is None or newest is None else self.reader.clip(newest)
+        return None if newest is None else self.reader.clip(newest)
 
     def illustrate(self, narration: str = "") -> None:
         if self.media is None:

@@ -7,6 +7,7 @@ from aidm.core.entities import Mutable, Refusal, Slug, check_unique, parse
 from aidm.core.facts import Fact
 from aidm.core.prompt import lines_of
 from aidm.engines.base import IS_DEAD, PLAYER_ID, UNKNOWN_ID, Person, Thing, World, check_filing
+from aidm.engines.rooms.tools import Meanwhile
 
 NOTHING_OFFSCREEN = "no time has passed offscreen; call this only while ELSEWHERE is shown"
 MOVES_OFFSCREEN = "something moves where the player cannot see"
@@ -329,48 +330,39 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
             raise Refusal(f"{place_id!r} is not a place the player has walked away from: {options}")
         return found
 
-    def meanwhile(
-        self,
-        *,
-        dweller_id: Slug | None,
-        dweller_to: Slug | None,
-        item_id: Slug | None,
-        item_to: Slug | None,
-        shut_from: Slug | None,
-        shut_to: Slug | None,
-    ) -> list[Fact]:
+    def meanwhile(self, args: Meanwhile) -> list[Fact]:
         if not self.meanwhile_due:
             raise Refusal(NOTHING_OFFSCREEN)
         facts: list[Fact] = []
-        if dweller_id is not None and dweller_to is not None:
-            npc = self.npcs.get(dweller_id)
+        if args.dweller_id is not None and args.dweller_to is not None:
+            npc = self.npcs.get(args.dweller_id)
             if npc is None:
-                raise Refusal(UNKNOWN_ID.format(entity_id=dweller_id))
+                raise Refusal(UNKNOWN_ID.format(entity_id=args.dweller_id))
             if not npc.alive:
                 raise Refusal(IS_DEAD.format(name=npc.name))
             if npc.place == self.current.id:
                 raise Refusal(f"{npc.name} stands with the player; that is not offscreen")
-            destination = self._offscreen_place(dweller_to)
+            destination = self._offscreen_place(args.dweller_to)
             walked = self.way(npc.place, destination.id)
             if walked is None or walked.locked:
                 origin = self.require_place(npc.place).name
                 raise Refusal(f"no unlocked way leads from {origin} to {destination.name}")
             npc.place = destination.id
             facts.append(Fact(trace=f"{npc.name} walks to {destination.name}"))
-        if item_id is not None and item_to is not None:
-            item = self.items.get(item_id)
+        if args.item_id is not None and args.item_to is not None:
+            item = self.items.get(args.item_id)
             if item is None:
-                raise Refusal(UNKNOWN_ID.format(entity_id=item_id))
+                raise Refusal(UNKNOWN_ID.format(entity_id=args.item_id))
             if item.on in self.holders_here:
                 raise Refusal(f"{item.name} is here with the player")
-            where = self._offscreen_place(item_to)
+            where = self._offscreen_place(args.item_to)
             if item.on == where.id:
                 raise Refusal(f"{item.name} is already there")
             item.on = where.id
             facts.append(Fact(trace=f"{item.name} moves to {where.name}"))
-        if shut_from is not None and shut_to is not None:
-            start = self.require_place(shut_from)
-            end = self.require_place(shut_to)
+        if args.shut_from is not None and args.shut_to is not None:
+            start = self.require_place(args.shut_from)
+            end = self.require_place(args.shut_to)
             if self.current.id in (start.id, end.id):
                 raise Refusal("a way at the player's place cannot shut offscreen")
             shut = self.way(start.id, end.id)

@@ -9,9 +9,9 @@ from typing import Any
 from pydantic import BaseModel
 
 from aidm.core.creation import CreationStep, Picks, check_picks
-from aidm.core.entities import EngineId, Refusal, Slug, parse, parse_json
+from aidm.core.entities import EngineId, Refusal, Slug, parse, parse_json, slug
 from aidm.core.facts import Fact
-from aidm.core.io import decode, read_cached_text
+from aidm.core.io import decode, read_cached_text, read_model
 from aidm.core.model import (
     AnyCharacter,
     AnyScenario,
@@ -63,7 +63,6 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     id: EngineId
     title: str
     art_style: str
-    look: Look
     meanwhile_turns: int = 6
     hires: bool = False
     directory: Path  # rules.md; a scene engine's packs/
@@ -75,6 +74,7 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     character: type[AnyCharacter]
     # Derived by __init__ from the above.
     instructions: str
+    look: Look
     tools: dict[str, MasterTool[G]]
     requests: dict[Slug, Request[G]]
 
@@ -83,6 +83,7 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
             f"{read_cached_text(self.directory / 'rules.md')}\n"
             f"{read_cached_text(self.family_dir / 'rules.md')}"
         )
+        self.look = read_model(self.directory / "look.json", Look)
         tools = self.master_tools()
         names = [tool.name for tool in tools]
         if len(set(names)) != len(names):
@@ -225,6 +226,11 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
                 ("ANSWER WITH", schema_text(answer)),
             )
         )
+
+    def sheet_character(
+        self, name: str, payload: BaseModel, packs: PackSelection | None = None
+    ) -> AnyCharacter:
+        return self.character(id=slug(name, ()), engine=self.id, packs=packs, payload=payload)
 
     def build_scenario(
         self,

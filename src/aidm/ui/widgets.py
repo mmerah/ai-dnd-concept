@@ -30,19 +30,18 @@ def media_url(path: Path) -> str:
     return route + path.name
 
 
-@contextmanager
 def page_header(
     title: str, badge: str | None = None, *, home: bool = True, look: Look | None = None
-) -> Generator[None]:
+) -> ui.header:
     ui.dark_mode(value=True)
     theme.set_look(look)
-    with ui.header().classes("items-center no-wrap"):
+    with ui.header().classes("items-center no-wrap") as header:
         if home:
             ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props("flat round")
         ui.label(title).classes("game-title ellipsis")
         if badge is not None:
             ui.badge(badge).classes("gt-xs")
-        yield
+    return header
 
 
 @contextmanager

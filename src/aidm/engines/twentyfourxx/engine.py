@@ -17,7 +17,7 @@ from aidm.core.model import AnyCharacter, Check, PackSelection, WorldsmithAnswer
 from aidm.core.play import DecisionOption, PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, section_if, sentence
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import DiceLook, Look, Panel, PanelRow, Rows
+from aidm.core.views import Panel, PanelRow, Rows
 from aidm.engines.base import (
     DROP_ITEM,
     PLAYER_ID,
@@ -97,21 +97,6 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
     art_style = (
         "Clean science-fiction illustration: hard light, neon on steel, lived-in "
         "technology, no text or lettering."
-    )
-    look = Look(
-        palette={
-            "game-bg": "#0f1624",
-            "game-surface": "#182236",
-            "game-surface-raised": "#22314b",
-            "game-text": "#e3edf9",
-            "game-muted": "#afc0da",
-            "game-border": "#354968",
-            "game-accent": "#91c8ff",
-            "game-wash": "rgba(145, 200, 255, .08)",
-            "game-radius": "10px",
-            "game-heading": "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
-        },
-        dice=DiceLook(body="#101418", ink="#5ee1ff", glow="#5ee1ff"),
     )
     directory = Path(__file__).parent
     game = TwentyfourxxGame
@@ -250,12 +235,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
                 items=items_from_kits(kits),
             ),
         )
-        return TwentyfourxxCharacter(
-            id=slug(name, ()),
-            engine=self.id,
-            packs=packs,
-            payload=player,
-        )
+        return self.sheet_character(name, player, packs)
 
     def preview_character(self, character: AnyCharacter) -> Rows:
         sheet = self.player_of(character).require_sheet()

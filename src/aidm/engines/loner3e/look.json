@@ -1,0 +1,18 @@
+{
+  "palette": {
+    "game-bg": "#14121e",
+    "game-surface": "#201c2d",
+    "game-surface-raised": "#2c263c",
+    "game-text": "#eee7f4",
+    "game-muted": "#bdb0ce",
+    "game-border": "#443951",
+    "game-accent": "#c5a4ed",
+    "game-wash": "rgba(197, 164, 237, .09)",
+    "game-radius": "18px"
+  },
+  "dice": {
+    "body": "#efe4c8",
+    "ink": "#7a2e2e",
+    "glow": "#c89b5a"
+  }
+}

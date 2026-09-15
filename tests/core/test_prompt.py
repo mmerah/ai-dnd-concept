@@ -1,5 +1,5 @@
 from aidm.core.play import Chapter, Exchange, SpokenLine
-from aidm.core.prompt import INTERJECTED, TAIL_EXCHANGES, render_history, told_history
+from aidm.core.prompt import INTERJECTED, TAIL_EXCHANGES, recent_history, render_history
 
 
 def _told(words: str) -> Exchange:
@@ -46,7 +46,7 @@ def test_render_history_shows_an_older_scenes_last_tail_exchanges_only() -> None
         assert f"> {dropped}\n" not in history
 
 
-def test_told_history_reads_as_the_master_does_without_the_recap() -> None:
+def test_recent_history_reads_as_the_player_does_without_the_recap() -> None:
     older = Chapter(
         title="Hub", focus="q0", recap="What happened before.", exchanges=[_told("dropped")]
     )
@@ -54,10 +54,10 @@ def test_told_history_reads_as_the_master_does_without_the_recap() -> None:
     recent_b = Chapter(title="A2", focus="q2", exchanges=[_told("p2")])
     scenes = [older, recent_a, recent_b]
 
-    read = told_history(scenes)
+    read = recent_history(scenes)
 
     assert read == "SCENE: A1\nq1\n\n> p1\np1 happens.\n\nSCENE: A2\nq2\n\n> p2\np2 happens."
-    assert told_history([Chapter(title="A1", focus="q1")]) == "(nothing yet)"
+    assert recent_history([Chapter(title="A1", focus="q1")]) == "(nothing yet)"
 
 
 def test_history_keeps_who_said_what() -> None:
@@ -70,7 +70,7 @@ def test_history_keeps_who_said_what() -> None:
     )
     scenes = [Chapter(title="A1", focus="", exchanges=[exchange])]
 
-    read = told_history(scenes)
+    read = recent_history(scenes)
 
     assert "> I ask Mara.\nMara: Not for sale.\nShe goes back to her ledger." in read
     assert "Mara: Not for sale." in render_history(scenes)
@@ -85,7 +85,7 @@ def test_a_marked_exchange_carries_no_prompt_line() -> None:
     )
     scenes = [Chapter(title="A1", focus="q1", exchanges=[story, party])]
 
-    read = told_history(scenes)
+    read = recent_history(scenes)
 
     assert "> " not in read
     assert INTERJECTED in read

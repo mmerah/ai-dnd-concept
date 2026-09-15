@@ -11,13 +11,13 @@ from aidm.core.creation import (
     picked,
     picked_many,
 )
-from aidm.core.entities import EngineId, Slug, slug
+from aidm.core.entities import EngineId, Slug
 from aidm.core.facts import Fact, roll
 from aidm.core.model import PackSelection
 from aidm.core.play import PendingDecision
 from aidm.core.prompt import Sections
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import DiceLook, Look, Rows
+from aidm.core.views import Rows
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import (
     CHANGE_TAGS,
@@ -61,20 +61,6 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
     id = EngineId("loner3e")
     title = "LONER 3E"
     art_style = "Painterly illustration, muted colours, no text or lettering."
-    look = Look(
-        palette={
-            "game-bg": "#14121e",
-            "game-surface": "#201c2d",
-            "game-surface-raised": "#2c263c",
-            "game-text": "#eee7f4",
-            "game-muted": "#bdb0ce",
-            "game-border": "#443951",
-            "game-accent": "#c5a4ed",
-            "game-wash": "rgba(197, 164, 237, .09)",
-            "game-radius": "18px",
-        },
-        dice=DiceLook(body="#efe4c8", ink="#7a2e2e", glow="#c89b5a"),
-    )
     directory = Path(__file__).parent
     game = Loner3eGame
     scenario = Loner3eScenario
@@ -152,7 +138,7 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
             goal=picked(picks, "goal"),
             motive=picked(picks, "motive"),
         )
-        return Loner3eCharacter(id=slug(name, ()), engine=self.id, packs=packs, payload=sheet)
+        return self.sheet_character(name, sheet, packs)
 
     def guidance(self, selection: PackSelection | None) -> str:
         chosen = self.packs.require(selection)

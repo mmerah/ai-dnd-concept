@@ -33,25 +33,27 @@ def render_history(log: Sequence[Chapter]) -> str:
     return "\n\n".join(_block(chapter, index, total) for index, chapter in enumerate(log))
 
 
-def told_history(log: Sequence[Chapter]) -> str:
-    """The recent blocks the master reads, without recaps: those are the worldsmith's."""
+def recent_history(log: Sequence[Chapter]) -> str:
+    """What the player has read: the last scenes whole, with no worldsmith recap."""
     recent = [chapter for chapter in log[-WHOLE_SCENES:] if chapter.exchanges]
     if not recent:
         return "(nothing yet)"
-    return "\n\n".join(
-        f"{_header(chapter)}\n\n{_told(chapter.exchanges[-SCENE_EXCHANGES:])}" for chapter in recent
-    )
+    return "\n\n".join(_whole(chapter) for chapter in recent)
 
 
 def _block(chapter: Chapter, index: int, total: int) -> str:
-    header = _header(chapter)
     if index >= total - WHOLE_SCENES:
-        body = _told(chapter.exchanges[-SCENE_EXCHANGES:])
-    elif chapter.recap:
+        return _whole(chapter)
+    header = _header(chapter)
+    if chapter.recap:
         body = f"what happened: {chapter.recap}"
     else:
         body = _told(chapter.exchanges[-TAIL_EXCHANGES:])
     return f"{header}\n\n{body}"
+
+
+def _whole(chapter: Chapter) -> str:
+    return f"{_header(chapter)}\n\n{_told(chapter.exchanges[-SCENE_EXCHANGES:])}"
 
 
 def _header(chapter: Chapter) -> str:
