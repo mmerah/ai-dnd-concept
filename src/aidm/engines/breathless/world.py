@@ -116,6 +116,16 @@ class SurvivorSheet(ItemSheet[Supply]):
 
 
 class Survivor(Sheeted[SurvivorSheet]):
+    def sign_on(self, pronouns: str, job: str, skills: Mapping[Skill, Die], item: str) -> str:
+        self.sheet = SurvivorSheet(
+            pronouns=pronouns,
+            job=job,
+            skills=dict(skills),
+            worn=dict(skills),
+            items={slug(item, ()): Supply(name=item, die=STARTING_ITEM)},
+        )
+        return job
+
     def change_stress(self, amount: int, why: str) -> list[Fact]:
         return self.change(self.require_sheet().stress, amount, "Stress", why)
 

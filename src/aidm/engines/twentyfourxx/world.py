@@ -1,5 +1,5 @@
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Literal
 
 from pydantic import Field
@@ -50,6 +50,15 @@ class Gear(Item):
     def broken(self) -> bool:
         return self.broken_times >= self.breaks
 
+    @property
+    def broken_message(self) -> str:
+        return f"{self.name} is already broken"
+
+    @property
+    def harmless_message(self) -> str:
+        """Raised before the roll and inside the break, so the two must stay the same sentence."""
+        return f"{self.name} breaks harmlessly: leave `hindrance` empty"
+
     def notes(self) -> str:
         parts: list[str] = []
         if self.bulky:
@@ -95,6 +104,22 @@ class CrewSheet(ItemSheet[Gear]):
 
 
 class Crewmate(Sheeted[CrewSheet]):
+    def sign_on(
+        self,
+        specialty: str,
+        skills: Mapping[str, SkillDie],
+        items: dict[Slug, Gear],
+        hindrances: Sequence[str],
+    ) -> str:
+        self.sheet = CrewSheet(
+            specialty=specialty,
+            skills=dict(skills),
+            credits=0,
+            items=items,
+            hindrances=list(hindrances),
+        )
+        return specialty
+
     def pay(self, cost: int) -> None:
         sheet = self.require_sheet()
         if cost > sheet.credits:
@@ -210,7 +235,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         actor = self.require_actor(actor_id)
         item = self.require_gear(actor, item_id)
         if item.broken:
-            raise Refusal(_broken(item))
+            raise Refusal(item.broken_message)
         return self._break(actor, item, hindrance)
 
     def take_hit(
@@ -241,10 +266,10 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         claimed = Counter(id(item) for _, item, _ in resolved)
         for actor, item, hindrance in resolved:
             if item.breaks - item.broken_times < claimed[id(item)]:
-                raise Refusal(_broken(item))
+                raise Refusal(item.broken_message)
             if item.harmless:
                 if hindrance:
-                    raise Refusal(_harmless(item))
+                    raise Refusal(item.harmless_message)
                 continue
             if not hindrance:
                 raise Refusal(f"name the hindrance {item.name} leaves behind")
@@ -254,7 +279,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
     def _break(self, actor: Crewmate, item: Gear, hindrance: str) -> list[Fact]:
         if item.harmless:
             if hindrance:
-                raise Refusal(_harmless(item))
+                raise Refusal(item.harmless_message)
             item.broken_times += 1
             trace = f"{actor.mention} breaks {item.name}, harmlessly"
             return [actor.fact(trace, card=actor.card_line(f"{item.name} breaks"))]
@@ -319,12 +344,3 @@ def raised(current: SkillDie | None) -> SkillDie:
     if current == LADDER[-1]:
         raise Refusal("the skill is already at d12")
     return LADDER[LADDER.index(current) + 1]
-
-
-def _broken(item: Gear) -> str:
-    return f"{item.name} is already broken"
-
-
-def _harmless(item: Gear) -> str:
-    """Raised before the roll and inside the break, so the two must stay the same sentence."""
-    return f"{item.name} breaks harmlessly: leave `hindrance` empty"

@@ -32,7 +32,7 @@ class GeneratedImage:
     suffix: str
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class Illustrator:
     """Scene art and entity icons, both cached on disk and never regenerated once written."""
 

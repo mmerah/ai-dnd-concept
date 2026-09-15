@@ -9,7 +9,7 @@ from pydantic import JsonValue
 from aidm.config import ProviderConfig
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class Claims:
     """Keys being generated now, so two callers never both pay for one image or clip."""
 

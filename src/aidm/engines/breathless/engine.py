@@ -80,7 +80,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
     ) -> str:
         prompt = self.hire_prompt(draft, member, terms)
         answer = await worldsmith(prompt, SheetDraft, lambda _answer: None)
-        return self.install_sheet(member, answer)
+        return member.sign_on(answer.pronouns, answer.job, answer.skills, answer.item)
 
     def master_tools(self) -> tuple[MasterTool[BreathlessGame], ...]:
         return (
@@ -180,16 +180,6 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
             ),
             answer=SheetDraft,
         )
-
-    def install_sheet(self, member: Survivor, answer: SheetDraft) -> str:
-        member.sheet = SurvivorSheet(
-            pronouns=answer.pronouns,
-            job=answer.job,
-            skills=dict(answer.skills),
-            worn=dict(answer.skills),
-            items={slug(answer.item, ()): Supply(name=answer.item, die=STARTING_ITEM)},
-        )
-        return answer.job
 
     def drop_item(self, draft: BreathlessGame, args: DropItem, _rng: Random) -> list[Fact]:
         actor = self.world_of(draft).require_actor(args.actor_id)

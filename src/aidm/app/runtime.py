@@ -43,7 +43,7 @@ OPENING_NARRATION = (
 )
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class Tasks:
     running: set[Task[None]] = field(default_factory=set)
 
@@ -70,7 +70,7 @@ class Tasks:
             LOGGER.exception("background task failed", exc_info=failed)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, kw_only=True)
 class GameService:
     target: LaunchTarget
     scenario: AnyScenario
@@ -229,7 +229,7 @@ class GameService:
             return False
         self.phase, grown = "worldsmith", True
         try:
-            written = await self.engine.advance(draft, request, worldsmith(self.roles.spawner))
+            written = await self.roles.grow(self.engine, draft, request)
             if written.telling is None:
                 landed = self.engine.land(draft)
             else:
@@ -383,7 +383,7 @@ class Runtime:
         engine = self.engines[engine_id]
         character = self.library.read_character(character_id, engine.id, engine.character)
         engine.admit(packs, character)
-        source = await to_thread(given_text, meta.premise, document, self.settings.source_max_chars)
+        source = await to_thread(given_text, meta.premise, document, self.settings.source_max_bytes)
         name = slug(meta.title, self.library.scenario_ids())
 
         def check(built: AnyScenario) -> None:
@@ -421,7 +421,7 @@ class Runtime:
                 raise Refusal(f"save scenario differs from selected in: {', '.join(drifted)}")
         # A save armed before the switch went off must not spend itself on the next write.
         if not self.settings.meanwhile:
-            engine.world_of(state).disarm()
+            engine.disarm(state)
         return state
 
     def _open(self, target: LaunchTarget) -> GameService:
@@ -431,14 +431,14 @@ class Runtime:
         engine = self.engines[scenario.engine]
         character = self.library.read_character(target.character_id, engine.id, engine.character)
         return GameService(
-            target,
-            scenario,
-            character,
-            engine,
-            Roles(self.spawner),
-            self.store,
-            self._resumed(engine, target, scenario, character),
-            self,
+            target=target,
+            scenario=scenario,
+            character=character,
+            engine=engine,
+            roles=Roles(self.spawner),
+            store=self.store,
+            state=self._resumed(engine, target, scenario, character),
+            gate=self,
             interjections=settings.interjections,
             meanwhile=settings.meanwhile,
             media=Illustrator.open(

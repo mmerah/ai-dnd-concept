@@ -20,7 +20,7 @@ SPEECH_DIR = "speech"
 SAMPLE_WIDTH = 2  # 16-bit PCM
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class Reader:
     """Spoken exchanges, cached on disk and never regenerated once written."""
 

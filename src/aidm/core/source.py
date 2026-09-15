@@ -12,15 +12,15 @@ LINE_BREAK_HYPHEN = re.compile(r"(\w)-\s+(\w)")
 CAPS_HEADING = re.compile(r"[A-Z][A-Z '-]+:")
 
 
-def given_text(premise: str, document: Path | None, max_chars: int) -> str:
+def given_text(premise: str, document: Path | None, max_bytes: int) -> str:
     """Both, when the player gave both: a premise beside a document says what to take from it."""
     if document is None:
         return f"PREMISE:\n{premise}"
-    whole = f"SOURCE DOCUMENT:\n{whole_text(document, max_chars)}"
+    whole = f"SOURCE DOCUMENT:\n{whole_text(document, max_bytes)}"
     return f"PREMISE:\n{premise}\n\n{whole}" if premise else whole
 
 
-def whole_text(path: Path, max_chars: int) -> str:
+def whole_text(path: Path, max_bytes: int) -> str:
     try:
         pages = (
             _pdf_pages(path)
@@ -34,7 +34,7 @@ def whole_text(path: Path, max_chars: int) -> str:
     if not text:
         raise Refusal(f"{path.name} holds no readable text")
     size = len(text.encode("utf-8"))
-    if size > max_chars:
+    if size > max_bytes:
         raise Refusal(f"{path.name} is {size} bytes, too large to hand to a model whole")
     return text
 

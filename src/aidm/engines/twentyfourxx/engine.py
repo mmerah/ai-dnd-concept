@@ -115,7 +115,12 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
     ) -> str:
         prompt = self.hire_prompt(draft, member, terms)
         answer = await worldsmith(prompt, SheetDraft, self.hire_check(draft))
-        return self.install_sheet(member, answer)
+        return member.sign_on(
+            answer.specialty,
+            answer.skills,
+            items_from_kits(tuple(Kit(name=name) for name in answer.items)),
+            answer.hindrances,
+        )
 
     def master_tools(self) -> tuple[MasterTool[TwentyfourxxGame], ...]:
         return (
@@ -373,20 +378,11 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         packs = self.packs.chosen(draft.packs)
         return lambda sheet: sheet.check(packs)
 
-    def install_sheet(self, member: Crewmate, answer: SheetDraft) -> str:
-        member.sheet = CrewSheet(
-            specialty=answer.specialty,
-            skills=dict(answer.skills),
-            credits=0,
-            items=items_from_kits(tuple(Kit(name=name) for name in answer.items)),
-            hindrances=list(answer.hindrances),
-        )
-        return answer.specialty
-
     def roll(self, draft: TwentyfourxxGame, args: Roll, rng: Random) -> list[Fact]:
         world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
-        helping = _helping(world, args.helped_by)
+        helper = args.helped_by
+        helping = None if helper is None else Helping(world.require_actor(helper.actor_id), helper)
         pool = self._pool(actor, helping, args)
 
         claims: list[tuple[Crewmate, Slug, str]] = []
@@ -545,7 +541,3 @@ def _item_lines(items: Mapping[Slug, Gear]) -> str:
 
 def _staked(risk: str, *, deadly: bool) -> str:
     return f"{risk} (deadly)" if deadly else risk
-
-
-def _helping(world: TwentyfourxxWorld, args: Helper | None) -> Helping | None:
-    return None if args is None else Helping(world.require_actor(args.actor_id), args)
