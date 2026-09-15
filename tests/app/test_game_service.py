@@ -25,12 +25,14 @@ from aidm.app.runtime import GameService, LaunchTarget, Runtime
 from aidm.config import Role
 from aidm.core.entities import Refusal
 from aidm.core.io import FileStore
-from aidm.core.model import AnyGame, Generation, ScenarioMeta
+from aidm.core.model import AnyGame, Generation, ScenarioMeta, WorldsmithAnswer
 from aidm.core.play import Answer
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.world import BreathlessGame
-from aidm.engines.loner3e.world import Loner3eCast
+from aidm.engines.loner3e.engine import Loner3eEngine
+from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
 from aidm.engines.rooms.engine import MORE_MAP
+from aidm.engines.seam import Written
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 
 IN_FLIGHT = re.escape("A turn is in flight in 'whispering-vault--kael'.")
@@ -41,6 +43,35 @@ class _UnsavableStore(FileStore):
 
     def write(self, _slug: str, _state: AnyGame, /) -> None:
         raise OSError("disk is gone")
+
+
+class _RefusingStore(FileStore):
+    """What a real disk failure looks like once `FileStore.write` has translated it: a `Refusal`."""
+
+    def write(self, _slug: str, _state: AnyGame, /) -> None:
+        raise Refusal("disk is gone")
+
+
+class _LandFailsAfterAdvance(Loner3eEngine):
+    """`close` ends in `land`; failing only the landing right after a successful write proves the
+    worldsmith's scene falls back to the unwritten fact instead of being silently discarded."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._advanced = False
+
+    async def advance(
+        self, draft: Loner3eGame, request: Generation, worldsmith: WorldsmithAnswer
+    ) -> Written:
+        written = await super().advance(draft, request, worldsmith)
+        self._advanced = True
+        return written
+
+    def land(self, draft: Loner3eGame) -> Loner3eGame:
+        if self._advanced:
+            self._advanced = False
+            raise Refusal("the world could not be written down")
+        return super().land(draft)
 
 
 async def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path) -> None:
@@ -78,7 +109,7 @@ async def test_restart_keeps_scene_art_a_replayed_scene_would_reuse(tmp_path: Pa
                     title="Another Vault", premise="Elsewhere.", scope="A single visit, brief."
                 )
             },
-            "Another Vault",
+            "title",
         ),
     ),
     ids=("another origin", "a scenario edited since the save"),
@@ -91,6 +122,19 @@ def test_resume_refuses_a_save_that_is_not_this_game(
 
     with pytest.raises(Refusal, match=message):
         session(tmp_path)
+
+
+def test_resume_refuses_scenario_drift_naming_only_the_fields_that_differ(tmp_path: Path) -> None:
+    game = session(tmp_path)
+    drifted = game.state.scenario.model_copy(update={"scope": "A wholly different scope."})
+    FileStore(tmp_path).write(
+        TARGET.slug, game.state.model_copy(update={"scenario": drifted}).commit()
+    )
+
+    with pytest.raises(Refusal, match="scope") as failed:
+        session(tmp_path)
+
+    assert "title" not in str(failed.value)
 
 
 def test_one_open_game_per_slug(tmp_path: Path) -> None:
@@ -261,6 +305,48 @@ async def test_a_failed_write_after_a_hire_names_the_hire(tmp_path: Path) -> Non
 
     exchange = state.exchanges()[-1]
     assert exchange.facts[0].card == "The hire could not be written; nobody signed on."
+    assert state.generation is None
+
+
+async def test_a_failed_write_during_grow_propagates_without_discarding_the_scene(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    table = open_game(tmp_path)
+    table.spawner.answers["worldsmith"] = [_scene()]
+
+    async def fail_the_write(role: Role, prompt: str) -> None:
+        del prompt
+        if role == "narrator":
+            table.service.store = _RefusingStore(table.service.store.directory)
+
+    table.spawner.hooks.append(fail_the_write)
+
+    with pytest.raises(Refusal, match="disk is gone"):
+        _ = await play_turn(
+            table,
+            "I keep watch on the study door.",
+            tool_call("next_scene", complication="A second crew breaches the study door."),
+        )
+
+    assert "the world did not grow" not in caplog.text
+    assert len(table.service.state.exchanges()) == 1
+
+
+async def test_a_write_that_lands_invalid_falls_back_to_the_unwritten_fact(tmp_path: Path) -> None:
+    """`advance` succeeds; only the landing that follows it fails — the scene must not survive."""
+    table = open_game(tmp_path, engine=_LandFailsAfterAdvance())
+    table.spawner.answers["worldsmith"] = [_scene()]
+
+    state = await play_turn(
+        table,
+        "I keep watch on the study door.",
+        tool_call("next_scene", complication="A second crew breaches the study door."),
+    )
+
+    exchange = state.exchanges()[-1]
+    assert exchange.facts[0].card == (
+        "Nothing new came down on this place after all. You are still where you were."
+    )
     assert state.generation is None
 
 

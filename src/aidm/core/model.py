@@ -33,6 +33,14 @@ class ScenarioMeta(Frozen):
     def with_premise(self, fallback: str) -> Self:
         return self.model_copy(update={"premise": self.premise or fallback})
 
+    def drift(self, other: Self) -> tuple[str, ...]:
+        """The fields that differ, so a refusal names what actually moved."""
+        return tuple(
+            field
+            for field in ScenarioMeta.model_fields
+            if getattr(self, field) != getattr(other, field)
+        )
+
 
 class EngineHeader(Loose):
     """Routes a document before its engine is known."""

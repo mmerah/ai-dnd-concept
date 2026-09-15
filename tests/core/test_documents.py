@@ -18,6 +18,23 @@ def test_a_markdown_document_reads_to_text_without_its_furniture() -> None:
     assert "chapel lamp is still a mile off" in text
 
 
+def test_a_caps_heading_paragraph_is_dropped_but_prose_ending_in_a_colon_survives(
+    tmp_path: Path,
+) -> None:
+    document = tmp_path / "heading.md"
+    document.write_text(
+        "WHAT THE PLAYER HAS READ:\n\n"
+        "The chapel lamp is still a mile off, and the road runs low and wet before it:\n\n"
+        "The bell house stands at the bend, its door hanging loose on one hinge.",
+        encoding="utf-8",
+    )
+
+    text = whole_text(document, MAX_CHARS)
+
+    assert "WHAT THE PLAYER HAS READ" not in text
+    assert "road runs low and wet before it:" in text
+
+
 def test_a_pdf_reads_to_text() -> None:
     text = whole_text(FIXTURES / "drowned-road.pdf", MAX_CHARS)
 

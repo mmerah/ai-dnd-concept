@@ -2,6 +2,81 @@
 
 Newest first. One entry per phase of `PLAN.md`.
 
+## Phase 2 — `core` and `app`
+
+Findings 9–12, in `src/aidm/core`, `src/aidm/config.py` and `src/aidm/app`. No golden moved. One
+implementer (sonnet) on the whole phase; two adversarial reviews, both opus — `codex` is not
+installed in this container, and the maintainer asked for opus reviewers only.
+
+### Counts
+
+| count | before | after | net |
+| --- | --- | --- | --- |
+| `src` | 10,290 | 10,295 | +5 |
+| `tests` | 11,831 | 11,939 | +108 |
+
+`uv run pytest` 796 → 801 passing. `uv run ruff check`, `uv run ruff format --check` and
+`uv run basedpyright` (0 errors) all clean. `uv run aidm` serves `/` and `/settings` (HTTP 200) with
+a clean log; no live turn — this container runs no AI role — so the turn path rests on the suite.
+
+### What landed
+
+- **A stand-alone all-caps heading never reaches `SOURCE MATERIAL`.** One clause on the filter
+  `_passages` already runs (`core/source.py:50`). `MIN_PASSAGE` already dropped the short ones; this
+  covers `WHAT THE PLAYER HAS READ:` and its kin at 24 characters or more.
+- **An IDN base url is refused at the config boundary.** `AnyHttpUrl` punycodes and accepts it,
+  `httpx.URL` does not, and `httpx.InvalidURL` is not an `HTTPError`, so it used to escape every
+  `except HTTPError` in `app/builtin.py`, `app/media.py`, `app/speech.py` and `ui/game.py` as a 500.
+  Both checks stay: they reject different urls.
+- **A disk failure is no longer reported as a failed worldsmith.** `_grow`'s `try` now holds
+  `advance` and `_narrated` only; the three `save(...)` calls are one `self.save(landed)` after the
+  `try/finally`. A `Refusal` from the write propagates to the player instead of discarding the scene
+  the worldsmith just wrote and attempting a second save that fails identically.
+- **A scenario-drift refusal names the fields that differ.** `ScenarioMeta.drift`
+  (`core/model.py:36`) is the comparison; `_resumed` names the joined field names and no values — a
+  `premise` is long and a matching `title` must not appear. The guard stays strict: `scope` is read
+  by the master and the worldsmith every turn.
+
+### Decisions made off-plan
+
+- **The config check is `httpx.URL(base_url)`, without PLAN's `/chat/completions` suffix.** Both
+  reviewers raised it independently. The suffix is inert — verified: `httpx.URL` raises
+  `Invalid IDNA hostname` on `http://☃.example`, `…/v1` and `…/v1/chat/completions` alike, because
+  the host is what fails — so the suffix bought only a third copy of a route literal `config.py` does
+  not own (`app/builtin.py:116`, `app/media.py:127`), and the wrong one for `app/speech.py:60`, which
+  posts to `/audio/speech`. PLAN's stated purpose, "the real request url the providers build", is
+  served by the part of it that can actually be rejected.
+- **`ScenarioMeta.drift` is a method on the value model, not a diff built in `_resumed`.** It reads
+  its own fields and another of its own kind, and `core` sits below `app`.
+- **`CAPS_HEADING` is unanchored with `fullmatch`, not `^…$` with `match`.** Identical on text
+  `_passages` has already collapsed to a single whitespace-normalised line; two fewer metacharacters
+  and no escaped hyphen.
+- **The IDN proof matches the refusal, not the field name.** `match="base_url"` would pass on any
+  validation failure; `match="ascii host name"` pins the check the step adds.
+
+### Refuted review findings
+
+None. Both reviews returned "phase complete: yes", and every finding and cut was taken.
+
+### The orchestrator's own error, recorded so it is not re-derived
+
+The brief spelled `_grow`'s hoist as moving `engine.close`/`engine.land` out of the `try` as well as
+`self.save`. PLAN says to hoist the three `save(...)` calls, and the difference is real: `close` ends
+in `land` → `draft.commit()` → `parse`, which raises `Refusal("the state this leaves is invalid: …")`
+(`core/model.py:126-131`), and `advance` never lands the draft itself. That refusal used to be caught
+and answered with the request's `unwritten` fact; under the briefed shape it escaped to the player
+with `generation` still set, so the next turn would re-run the same request. One reviewer found it by
+reading — the suite could not, because nothing covered a write that lands invalid. The fix binds
+`landed` inside each branch and hoists only `self.save(landed)`, and the phase adds the missing test.
+
+### Known and accepted
+
+- `CAPS_HEADING` also drops a genuine 24-character-plus passage written entirely in capitals and
+  ending in a colon. A document that holds one is a document whose headings are indistinguishable
+  from its prose; the prompt-section injection it prevents is the worse failure.
+- The drift refusal names fields, not values, so a launcher comparing two saves by hand still has to
+  open them. Values are unbounded — a `premise` is a paragraph.
+
 ## Phase 1 — `engines`
 
 Findings 1–8, all inside `src/aidm/engines`. The phase's one golden regeneration ran at the end
