@@ -1,5 +1,10 @@
 # AI Dungeon Master
 
+<p align="center">
+  <img src="docs/demo.gif" width="800"
+       alt="One turn of Loner 3e: the player acts, the oracle answers, and the world grows a scene.">
+</p>
+
 AI Dungeon Master is a browser game for solo role-playing.
 
 The app starts three separate AI roles:
