@@ -174,6 +174,11 @@ def decode(raw: str) -> JsonValue:
         raise Refusal(f"not JSON: {broken}") from broken
 
 
+def check_json_keys(raw: str) -> None:
+    """`decode` for its check alone: `parse_json` would take the last of two equal keys."""
+    decode(raw)
+
+
 def routed[T](value: JsonValue, by_engine: Mapping[EngineId, T]) -> T:
     engine = parse(EngineHeader, value).engine
     found = by_engine.get(engine)
@@ -184,7 +189,7 @@ def routed[T](value: JsonValue, by_engine: Mapping[EngineId, T]) -> T:
 
 def read_model[T: BaseModel](path: Path, model: type[T]) -> T:
     raw = _read_text(path)
-    decode(raw)
+    check_json_keys(raw)
     return parse_json(model, raw)
 
 

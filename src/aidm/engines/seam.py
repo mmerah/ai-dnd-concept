@@ -286,6 +286,9 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
         if counted:
             self.world_of(draft).count_turn(self.meanwhile_turns)
 
+    def disarm(self, state: G) -> None:
+        self.world_of(state).disarm()
+
     def begin(self, scenario_id: Slug, scenario: AnyScenario, character: AnyCharacter) -> G:
         if scenario.engine != self.id:
             raise Refusal(

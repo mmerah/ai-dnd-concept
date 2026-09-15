@@ -131,8 +131,8 @@ class Settings(BaseSettings):
     interjections: bool = True
     # The world moves offscreen every few turns; off stops the clock and disarms it.
     meanwhile: bool = True
-    # Enforced as a byte count in core/source.py, clear of the 131072-byte argv cap.
-    source_max_chars: int = Field(default=96_000, ge=1)
+    # Clear of the 131072-byte argv cap.
+    source_max_bytes: int = Field(default=96_000, ge=1)
     # Loopback by default: `0.0.0.0` publishes `/mcp` too, whose only guard is a Host header.
     server_host: Literal["127.0.0.1", "0.0.0.0"] = "127.0.0.1"
     # Not `PORT`, set by too many shells.

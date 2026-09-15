@@ -81,7 +81,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
     ) -> str:
         prompt = self.hire_prompt(draft, member, terms)
         answer = await worldsmith(prompt, AbilitiesDraft, lambda _answer: None)
-        return self.install_sheet(member, answer)
+        return member.sign_on(answer.abilities)
 
     def master_tools(self) -> tuple[MasterTool[TunnelGoonsGame], ...]:
         return (
@@ -142,12 +142,6 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
             intent=HIRING.format(name=member.name, brief=member.brief, terms=terms),
             guidance=HIRE_GUIDANCE,
             answer=AbilitiesDraft,
-        )
-
-    def install_sheet(self, member: Npc, answer: AbilitiesDraft) -> str:
-        sheet = member.sheet = GoonSheet(abilities=dict(answer.abilities))
-        return ", ".join(
-            f"{ability.capitalize()} {sheet.abilities[ability]}" for ability in ABILITIES
         )
 
     def roll(self, draft: TunnelGoonsGame, args: Roll, rng: Random) -> list[Fact]:

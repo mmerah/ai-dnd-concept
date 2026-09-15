@@ -28,7 +28,7 @@ class Loose(BaseModel):
 class Echoed(BaseModel):
     """Kept whole: a reply goes back in the next request, reasoning and all."""
 
-    model_config = ConfigDict(extra="allow", frozen=True)
+    model_config = ConfigDict(extra="allow", frozen=True, strict=True)
 
 
 class Refusal(ValueError):

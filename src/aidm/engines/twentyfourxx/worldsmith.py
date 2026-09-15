@@ -35,6 +35,18 @@ class Specialty(DecisionOption):
     kit: tuple[Kit, ...] = ()
     kit_choice: tuple[Kit, ...] = ()  # Muscle: "a sword, firearm, or cyber-arm" -- pick one
 
+    def line(self) -> str:
+        fixed = ", ".join(f"{skill} d{die}" for skill, die in self.skills.items())
+        if not self.choice:
+            return f"{self.label}: {fixed}"
+        alternatives = " / ".join(
+            ", ".join(f"{skill} d{die}" for skill, die in option.skills.items())
+            for option in self.choice
+        )
+        if fixed:
+            return f"{self.label}: {fixed} plus one of: {alternatives}"
+        return f"{self.label}: one of: {alternatives}"
+
 
 class Body(DecisionOption):
     kit: Kit | None = None  # the android case is an item that breaks to defend
@@ -61,7 +73,7 @@ class Pack(ScenePack):
         return self
 
     def specialty_lines(self) -> str:
-        return "\n".join(_specialty_line(specialty) for specialty in self.specialties)
+        return "\n".join(specialty.line() for specialty in self.specialties)
 
     def defined_ids(self) -> tuple[Slug, ...]:
         return tuple(option.id for option in (*self.specialties, *self.origins))
@@ -94,16 +106,3 @@ class SheetDraft(Frozen):
             problems.append("an item repeats")
         if problems:
             raise Refusal("; ".join(problems))
-
-
-def _specialty_line(specialty: Specialty) -> str:
-    fixed = ", ".join(f"{skill} d{die}" for skill, die in specialty.skills.items())
-    if not specialty.choice:
-        return f"{specialty.label}: {fixed}"
-    alternatives = " / ".join(
-        ", ".join(f"{skill} d{die}" for skill, die in option.skills.items())
-        for option in specialty.choice
-    )
-    if fixed:
-        return f"{specialty.label}: {fixed} plus one of: {alternatives}"
-    return f"{specialty.label}: one of: {alternatives}"

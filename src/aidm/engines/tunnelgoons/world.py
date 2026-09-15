@@ -75,6 +75,12 @@ class Adventurer(Sheeted[GoonSheet]):
 class Npc(Adventurer, Dweller):
     """A non-player character, friend or foe."""
 
+    def sign_on(self, abilities: AbilityScores) -> str:
+        sheet = self.sheet = GoonSheet(abilities=dict(abilities))
+        return ", ".join(
+            f"{ability.capitalize()} {sheet.abilities[ability]}" for ability in ABILITIES
+        )
+
     def rows(self) -> Rows:
         if self.hired:
             return super().rows()
