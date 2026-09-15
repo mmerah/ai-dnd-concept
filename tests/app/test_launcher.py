@@ -69,6 +69,17 @@ def _declaring(tmp_path: Path, engine: str) -> Path:
     return scenarios
 
 
+def _retitled(tmp_path: Path) -> Path:
+    scenarios = _scenarios_copy(tmp_path)
+    world = scenarios / "whispering-vault" / "world.json"
+    canon: dict[str, JsonValue] = json.loads(world.read_text(encoding=ENCODING))
+    meta = canon["meta"]
+    assert isinstance(meta, dict)
+    canon["meta"] = meta | {"title": "The Vault, Renamed"}
+    _ = world.write_text(json.dumps(canon), encoding=ENCODING)
+    return scenarios
+
+
 def test_the_catalog_pairs_a_scenario_with_a_character(tmp_path: Path) -> None:
     catalog = _catalog(offline_settings(tmp_path), ENGINES_BUILT)
 
@@ -142,8 +153,11 @@ def test_a_save_filed_under_another_stem_is_not_listed(
     settings = offline_settings(tmp_path)
     FileStore(tmp_path).write("old-game", _opening_state(settings))
 
-    assert not _catalog(settings, ENGINES_BUILT).saves
+    catalog = _catalog(settings, ENGINES_BUILT)
+
+    assert not catalog.saves
     assert "filed under another name" in caplog.text
+    assert catalog.unresumable == ("old-game",)
 
 
 @pytest.mark.parametrize(
@@ -157,7 +171,20 @@ def test_a_save_whose_origin_is_gone_is_not_listed(tmp_path: Path, change: dict[
     orphan = json.loads(_opening_state(settings).model_dump_json()) | change
     (tmp_path / "orphan.json").write_text(json.dumps(orphan), encoding="utf-8")
 
-    assert not _catalog(settings, ENGINES_BUILT).saves
+    catalog = _catalog(settings, ENGINES_BUILT)
+
+    assert not catalog.saves
+    assert catalog.unresumable == ("orphan",)
+
+
+def test_a_save_whose_scenario_has_drifted_is_not_listed(tmp_path: Path) -> None:
+    settings = offline_settings(tmp_path)
+    FileStore(tmp_path).write("whispering-vault--kael", _opening_state(settings))
+
+    catalog = _catalog(offline_settings(tmp_path, _retitled(tmp_path)), ENGINES_BUILT)
+
+    assert not catalog.saves
+    assert catalog.unresumable == ("whispering-vault--kael",)
 
 
 def test_a_save_that_fails_to_restore_is_skipped_not_listed(tmp_path: Path) -> None:
@@ -172,6 +199,7 @@ def test_a_save_that_fails_to_restore_is_skipped_not_listed(tmp_path: Path) -> N
     catalog = _catalog(settings, ENGINES_BUILT)
 
     assert [save.target.slug for save in catalog.saves] == ["whispering-vault--kael"]
+    assert catalog.unresumable == ("unopenable",)
 
 
 def test_the_catalog_reports_where_a_save_left_off(tmp_path: Path) -> None:
@@ -208,6 +236,7 @@ def test_a_save_that_is_not_utf8_is_skipped_not_raised(
 
     assert [save.target.slug for save in catalog.saves] == ["whispering-vault--kael"]
     assert "skipping save 'binary'" in caplog.text
+    assert catalog.unresumable == ("binary",)
 
 
 SOURCE_MD = REPOSITORY_ROOT / "tests/core/fixtures/source/drowned-road.md"

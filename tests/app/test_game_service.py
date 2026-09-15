@@ -21,7 +21,7 @@ from support.table import (
 )
 
 from aidm.app.roles import REQUESTED
-from aidm.app.runtime import GameService, LaunchTarget, Runtime
+from aidm.app.runtime import IN_FLIGHT_ELSEWHERE, GameService, LaunchTarget, Runtime
 from aidm.config import Role
 from aidm.core.entities import Refusal
 from aidm.core.io import FileStore
@@ -34,8 +34,6 @@ from aidm.engines.loner3e.world import Loner3eCast, Loner3eGame
 from aidm.engines.rooms.engine import MORE_MAP
 from aidm.engines.seam import Written
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
-
-IN_FLIGHT = re.escape("A turn is in flight in 'whispering-vault--kael'.")
 
 
 class _UnsavableStore(FileStore):
@@ -536,7 +534,7 @@ async def test_two_concurrent_plays_on_different_sessions_cannot_both_open_a_tur
     first_play = create_task(first.play(Answer(text="I wait.")))
     await sleep(0)
 
-    with pytest.raises(Refusal, match=IN_FLIGHT):
+    with pytest.raises(Refusal, match=re.escape(IN_FLIGHT_ELSEWHERE)):
         await second.play(Answer(text="I wait."))
 
     gate.set()

@@ -19,7 +19,7 @@ from support.table import (
 )
 
 from aidm.app.media import scene_key
-from aidm.app.runtime import IN_FLIGHT, LaunchTarget
+from aidm.app.runtime import IN_FLIGHT_ELSEWHERE, IN_FLIGHT_HERE, LaunchTarget
 from aidm.config import MediaConfig, Role
 from aidm.core.entities import Refusal
 from aidm.core.model import AnyGame
@@ -34,6 +34,7 @@ from aidm.core.play import (
 from aidm.core.views import PlayerView, Subject
 from aidm.ui.dice import DiceTray
 from aidm.ui.game import (
+    TURN_FAILED,
     GamePage,
     Observed,
     can_type,
@@ -269,7 +270,7 @@ async def test_this_games_own_in_flight_guard_is_kept_from_the_player(
     monkeypatch.setattr("aidm.ui.game.ui.notify", spy_notify)
 
     async def busy_here() -> None:
-        raise Refusal(IN_FLIGHT.format(slug=table.service.slug))
+        raise Refusal(IN_FLIGHT_HERE)
 
     client = Client(ui.page("/"))
     try:
@@ -295,7 +296,7 @@ async def test_another_games_in_flight_guard_still_reaches_this_player(
     monkeypatch.setattr("aidm.ui.game.ui.notify", spy_notify)
 
     async def busy_elsewhere() -> None:
-        raise Refusal(IN_FLIGHT.format(slug="some-other-save"))
+        raise Refusal(IN_FLIGHT_ELSEWHERE)
 
     client = Client(ui.page("/"))
     try:
@@ -306,7 +307,7 @@ async def test_another_games_in_flight_guard_still_reaches_this_player(
         client.delete()
 
     assert landed is False
-    assert notified == [IN_FLIGHT.format(slug="some-other-save")]
+    assert notified == [IN_FLIGHT_ELSEWHERE]
 
 
 class _FakeTimer:
@@ -410,7 +411,7 @@ async def test_a_restart_refused_by_this_games_own_gate_still_reaches_the_player
     finally:
         client.delete()
 
-    assert notified == [IN_FLIGHT.format(slug=table.service.slug)]
+    assert notified == [IN_FLIGHT_HERE]
 
     gate.set()
     await playing
@@ -440,6 +441,32 @@ async def test_a_refusal_that_is_not_the_in_flight_guard_still_toasts(
 
     assert landed is False
     assert notified == ["the rules wait on the player's decision first"]
+
+
+async def test_a_non_refusal_failure_still_toasts_and_still_propagates(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    table = open_game(tmp_path)
+    notified: list[str] = []
+
+    def spy_notify(message: str, **_kwargs: object) -> None:
+        notified.append(message)
+
+    monkeypatch.setattr("aidm.ui.game.ui.notify", spy_notify)
+
+    async def broken() -> None:
+        raise RuntimeError("secret path")
+
+    client = Client(ui.page("/"))
+    try:
+        with _nicegui_loop(), client:
+            page = _page(table)
+            with pytest.raises(RuntimeError, match="secret path"):
+                await page._run(broken)  # pyright: ignore[reportPrivateUsage]
+    finally:
+        client.delete()
+
+    assert notified == [TURN_FAILED]
 
 
 async def test_a_page_is_not_built_for_a_client_deleted_before_the_handshake(

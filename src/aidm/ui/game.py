@@ -10,7 +10,7 @@ from typing import Self
 from nicegui import app, ui
 from nicegui.events import GenericEventArguments, ScrollEventArguments
 
-from aidm.app.runtime import IN_FLIGHT, GameService
+from aidm.app.runtime import IN_FLIGHT_ELSEWHERE, IN_FLIGHT_HERE, GameService
 from aidm.config import Role
 from aidm.core.entities import Frozen, Refusal, Slug, parse
 from aidm.core.facts import DiceEvent, Fact, cards
@@ -50,6 +50,7 @@ DICTATION_FAILURES = {
     "audio-capture": "No microphone.",
     "no-speech": "Nothing was heard.",
 }
+TURN_FAILED = "Something went wrong. The turn did not land — check the server log."
 
 SCENE_TAB = "scene"
 JOURNAL_TAB = "journal"
@@ -64,7 +65,6 @@ MARK_LABELS: dict[Marked, str] = {
     "interjection": "(the party speaks)",
 }
 DECISION_ROW = "game-card game-decision w-full items-center no-wrap game-gap-md"
-_IN_FLIGHT_PREFIX = IN_FLIGHT.partition("{slug!r}")[0]
 
 
 class DictatedSpeech(Frozen):
@@ -503,7 +503,7 @@ class GamePage:
         try:
             await self.session.restart()
         except Refusal as error:
-            ui.notify(str(error), type="negative", multi_line=True, position="top")
+            _alert(str(error))
             return
         self.poll_turn()
         await self._run(self.session.open)
@@ -581,7 +581,7 @@ class GamePage:
         get_running_loop().call_later(0.1, lambda: self.transcript.scroll_to(percent=1.0))
 
     async def _opened(self, opener: ui.timer) -> None:
-        """Retries only while the gate is held elsewhere; any other refusal is persistent."""
+        """Retries while the gate is held at either end; anything else is persistent."""
         blocked = False
 
         async def opening() -> None:
@@ -589,13 +589,16 @@ class GamePage:
             try:
                 await self.session.open()
             except Refusal as error:
-                if blocked := str(error).startswith(_IN_FLIGHT_PREFIX):
+                if blocked := str(error) in (IN_FLIGHT_HERE, IN_FLIGHT_ELSEWHERE):
                     return
                 raise
 
-        _ = await self._run(opening)
-        if not blocked:
-            opener.cancel()
+        try:
+            _ = await self._run(opening)
+        finally:
+            # A raise must still stop the timer: NiceGUI swallows it and fires again in 0.1s.
+            if not blocked:
+                opener.cancel()
 
     async def _run(self, playing: Callable[[], Awaitable[None]]) -> bool:
         """The composer greys at once, not at the next tick: a second Enter has nothing to hit."""
@@ -606,9 +609,13 @@ class GamePage:
         except Refusal as error:
             message = str(error)
             # A double-click guard, not a message for the player: this game's own turn in flight.
-            if message != IN_FLIGHT.format(slug=self.session.slug):
-                ui.notify(message, type="negative", multi_line=True, position="top")
+            if message != IN_FLIGHT_HERE:
+                _alert(message)
             return False
+        except Exception:
+            # Announced, not handled: the re-raise is what logs the detail kept off the screen.
+            _alert(TURN_FAILED)
+            raise
         finally:
             self._set_composer()
             self.poll_turn()
@@ -718,6 +725,10 @@ def _inline_status(step: Role, elapsed: float) -> ui.label:
         ticker = ui.label(_clock(elapsed)).classes("text-xs font-mono")
     ui.label(description).classes("text-xs opacity-70")
     return ticker
+
+
+def _alert(message: str) -> None:
+    ui.notify(message, type="negative", multi_line=True, position="top")
 
 
 def _clock(seconds: float) -> str:

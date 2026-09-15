@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from nicegui import Client, ui
 from pydantic import SecretStr, ValidationError
 from support.table import offline_settings, updated
 
@@ -13,6 +14,7 @@ from aidm.config import (
     save_settings,
 )
 from aidm.ui.settings import (
+    SettingsForm,
     _widget,  # pyright: ignore[reportPrivateUsage]
     changes,
     refusal_text,
@@ -71,6 +73,39 @@ def test_a_saved_key_reads_back_and_the_rest_of_the_file_survives(
     assert reread.media.model == 'it is "grim"'
     assert reread.media.enabled is False
     assert "# keep me" in env.read_text(encoding="utf-8")
+
+
+def test_a_second_save_on_the_same_form_lands(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("ROLES__NARRATOR__MODEL", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    notified: list[str] = []
+
+    def spy_notify(message: str, **_kwargs: object) -> None:
+        notified.append(message)
+
+    monkeypatch.setattr("aidm.ui.settings.ui.notify", spy_notify)
+
+    # The stale snapshot's blind spot: a second save that moves a box back to the snapshot's
+    # own value looks like no change at all, so it must be re-read after every save.
+    form = SettingsForm(offline_settings(tmp_path))
+    client = Client(ui.page("/"))
+    try:
+        with client:
+            widget = ui.input(value="fable")
+            form.boxes = {("roles", "narrator", "model"): widget}
+            form.save()
+
+            widget.value = "sonnet"
+            notified.clear()
+            form.save()
+    finally:
+        client.delete()
+
+    assert read_settings().roles.narrator.model == "sonnet"
+    assert "Nothing changed." not in notified
 
 
 def test_a_validation_error_reads_as_one_line_per_field() -> None:

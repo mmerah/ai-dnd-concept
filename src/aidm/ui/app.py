@@ -70,6 +70,12 @@ class LaunchForm:
             ui.label("No character is written for these rules.").classes("text-negative")
             return
         target = catalog.target(self.scenario_id, chosen)
+        if target.slug in catalog.unresumable:
+            ui.label(
+                f"A save file exists at {target.slug!r} and cannot be resumed. "
+                "Nothing is deleted or migrated."
+            ).classes("text-negative")
+            return
         started = any(save.target.slug == target.slug for save in catalog.saves)
         ui.button(
             "Continue game" if started else "Start game",
@@ -110,6 +116,7 @@ def start() -> None:
     theme.install()
     ui.run(  # pyright: ignore[reportUnknownMemberType]
         title="AI Dungeon Master",
+        host=settings.server_host,
         port=settings.server_port,
         reload=False,
         show=False,

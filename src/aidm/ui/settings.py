@@ -7,7 +7,7 @@ from nicegui import ui
 from pydantic import BaseModel, SecretStr, ValidationError
 from pydantic.fields import FieldInfo
 
-from aidm.config import Settings, env_key, save_settings
+from aidm.config import Settings, env_key, read_settings, save_settings
 from aidm.ui.widgets import page_body, page_header, page_intro
 
 type Widget = ui.input | ui.switch | ui.select | ui.number
@@ -68,11 +68,13 @@ class SettingsForm:
                 node[path[-1]] = typed
         try:
             Settings.model_validate(merged)
+            save_settings(changed)
+            # The snapshot the boxes are compared against, or a second save reads as no change.
+            self.settings = read_settings()
         except ValidationError as error:
             ui.notify(refusal_text(error), type="negative", multi_line=True)
             return
-        save_settings(changed)
-        ui.notify(f"Wrote {len(changed)} keys.", type="positive")
+        ui.notify("Saved to .env. The keys apply at the next start.", type="positive")
 
 
 def settings_page(settings: Settings) -> None:

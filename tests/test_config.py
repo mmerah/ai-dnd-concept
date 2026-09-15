@@ -14,6 +14,12 @@ def test_a_role_carries_its_own_model_and_inherits_nothing(
     assert settings.roles.for_name("narrator").model == "sonnet"
 
 
+def test_server_host_binds_loopback_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert EnvFileFreeSettings().server_host == "127.0.0.1"
+    monkeypatch.setenv("SERVER_HOST", "0.0.0.0")
+    assert EnvFileFreeSettings().server_host == "0.0.0.0"
+
+
 def test_illustration_without_a_key_is_refused() -> None:
     with pytest.raises(ValueError, match="no api_key"):
         _ = EnvFileFreeSettings(media=MediaConfig(enabled=True))
