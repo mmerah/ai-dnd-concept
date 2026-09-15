@@ -48,6 +48,11 @@ def test_a_malformed_provider_base_url_is_refused() -> None:
         _ = ProviderConfig(base_url="not a url", api_key=pydantic.SecretStr(""))
 
 
+def test_an_idn_base_url_is_refused() -> None:
+    with pytest.raises(pydantic.ValidationError, match="ascii host name"):
+        _ = ProviderConfig(base_url="http://☃.example/v1", api_key=pydantic.SecretStr(""))
+
+
 def test_a_valid_base_url_is_kept_exactly_as_given_not_normalized() -> None:
     provider = ProviderConfig(base_url="http://localhost:1234", api_key=pydantic.SecretStr(""))
     assert provider.base_url == "http://localhost:1234"

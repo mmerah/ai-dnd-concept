@@ -233,27 +233,21 @@ class GameService:
         try:
             written = await self.engine.advance(draft, request, worldsmith(self.roles.spawner))
             if written.telling is None:
-                self.save(self.engine.land(draft))
+                landed = self.engine.land(draft)
             else:
                 self.phase = "narrator"
                 lines = await self._narrated(draft, written.facts, written.telling)
-                self.save(self.engine.close(draft, lines, written.facts, words=words, mark=mark))
+                landed = self.engine.close(draft, lines, written.facts, words=words, mark=mark)
         except Refusal as failed:
             LOGGER.warning("the world did not grow: %s", failed)
             draft = self.state.draft()
             draft.generation = None
-            self.save(
-                self.engine.close(
-                    draft,
-                    (),
-                    (self.engine.requests[request.operation].unwritten,),
-                    words=words,
-                    mark=mark,
-                )
-            )
+            unwritten = self.engine.requests[request.operation].unwritten
+            landed = self.engine.close(draft, (), (unwritten,), words=words, mark=mark)
             grown = False
         finally:
             self.phase = None
+        self.save(landed)
         self._present()
         return grown
 
@@ -422,11 +416,8 @@ class Runtime:
                     f"save is {state.scenario_id!r}/{state.character_id!r}, "
                     f"selected is {target.scenario_id!r}/{character.id!r}"
                 )
-            if state.scenario != scenario.meta:
-                raise Refusal(
-                    f"save scenario is {state.scenario.title!r}, "
-                    f"selected scenario is {scenario.meta.title!r}"
-                )
+            if drifted := state.scenario.drift(scenario.meta):
+                raise Refusal(f"save scenario differs from selected in: {', '.join(drifted)}")
         # A save armed before the switch went off must not spend itself on the next write.
         if not self.settings.meanwhile:
             engine.world_of(state).disarm()

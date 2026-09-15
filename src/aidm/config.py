@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, Literal, Self, get_args
 
+import httpx
 from dotenv import set_key, unset_key
 from pydantic import (
     AnyHttpUrl,
@@ -42,6 +43,10 @@ class ProviderConfig(Configured):
         if any(not char.isprintable() or char.isspace() for char in base_url):
             raise ValueError("a base url holds no spaces or control characters")
         AnyHttpUrl(base_url)
+        try:
+            httpx.URL(base_url)
+        except httpx.InvalidURL as bad:
+            raise ValueError("a base url holds an ascii host name") from bad
         return base_url
 
 
