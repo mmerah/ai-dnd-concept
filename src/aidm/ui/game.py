@@ -404,6 +404,7 @@ class GamePage:
             self.box = (
                 ui.input()
                 .classes("flex-grow")
+                # theme.py's default w-full would fight flex-grow and squeeze the send button.
                 .classes(remove="w-full")
                 .props('autogrow type=textarea borderless input-style="max-height: 9rem"')
             )

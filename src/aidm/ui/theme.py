@@ -40,16 +40,15 @@ def set_look(look: Look | None) -> None:
 
 
 def install() -> None:
-    # One look for every call site: the defaults live here so no widget repeats a prop.
+    # One look for every call site: the defaults live here so no widget repeats a prop or class.
     ui.button.default_props("no-caps")
     ui.badge.default_props("outline")
     ui.input.default_props("outlined stack-label")
-    ui.textarea.default_props("outlined stack-label")
+    ui.textarea.default_props("outlined stack-label autogrow")
     ui.select.default_props("outlined stack-label")
     ui.number.default_props("outlined stack-label")
     for field in (ui.input, ui.textarea, ui.select, ui.number, ui.switch, ui.upload):
         field.default_classes("w-full")
-    ui.textarea.default_props("autogrow")
     ui.card.default_classes("game-card")
     # A layer before Quasar's own outranks it; `:root` keeps the first paint dark before `body`.
     root = "".join(f"--{key}: {value};" for key, value in NEUTRAL_PALETTE.items())

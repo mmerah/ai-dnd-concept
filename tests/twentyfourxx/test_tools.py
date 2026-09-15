@@ -143,6 +143,36 @@ def test_non_deadly_setback_with_no_hindrance_named_lands_nothing() -> None:
     assert len(facts) == 2
 
 
+def test_roll_refuses_naming_an_unmet_entity_in_a_free_text_field(draft: TwentyfourxxGame) -> None:
+    assert "not met" in refused(ENGINE, draft, "roll", what="Slip past Sable", skill="Stealth")
+
+    facts = change(ENGINE, draft, "roll", what="Slip past Kestrel", skill="Stealth")
+    assert "Slip past Kestrel" in facts[1].trace
+
+
+def test_roll_helped_by_refuses_naming_an_unmet_entity_but_allows_a_revealed_one() -> None:
+    draft = hired(small_world(), KESTREL, skills={"Stealth": 8}).draft()
+
+    assert "not met" in refused(
+        ENGINE,
+        draft,
+        "roll",
+        what="Slip past",
+        skill="Stealth",
+        helped_by={"actor_id": KESTREL, "hindered": "Sable spots them"},
+    )
+
+    facts = change(
+        ENGINE,
+        draft,
+        "roll",
+        what="Slip past",
+        skill="Stealth",
+        helped_by={"actor_id": KESTREL, "hindered": "Kestrel trips"},
+    )
+    assert "Kestrel trips" in facts[1].trace
+
+
 def test_defend_with_intact_item_spares_a_disaster_breaks_the_item_once() -> None:
     draft = small_world().draft()
     player = draft.payload.player
@@ -538,6 +568,19 @@ def test_defend_hull_armor_breaks_harmlessly_and_refuses_a_hindrance() -> None:
     )
 
 
+def test_defend_refuses_naming_an_unmet_entity_but_allows_a_revealed_one(
+    draft: TwentyfourxxGame,
+) -> None:
+    player = draft.payload.player
+    assert "not met" in refused(
+        ENGINE, draft, "defend", item_id=LOCKPICKS, hindrance="marked by Sable"
+    )
+    assert player.require_sheet().items[LOCKPICKS].broken_times == 0
+
+    _ = change(ENGINE, draft, "defend", item_id=LOCKPICKS, hindrance="marked by Kestrel")
+    assert player.require_sheet().items[LOCKPICKS].broken_times == 1
+
+
 def test_gain_item_spends_and_refuses_short_credits(draft: TwentyfourxxGame) -> None:
     player = draft.payload.player
     assert player.require_sheet().credits == STARTING_CREDITS
@@ -560,8 +603,7 @@ def test_gain_item_refuses_naming_an_unmet_entity_but_allows_a_revealed_one(
     draft: TwentyfourxxGame,
 ) -> None:
     player = draft.payload.player
-    with pytest.raises(Refusal, match="has not met"):
-        _ = change(ENGINE, draft, "gain_item", name="Sable's shiv")
+    assert "not met" in refused(ENGINE, draft, "gain_item", name="Sable's shiv")
     assert not any(item.name == "Sable's shiv" for item in player.require_sheet().items.values())
 
     _ = change(ENGINE, draft, "gain_item", name="Kestrel's rope")
@@ -594,8 +636,7 @@ def test_spend_refuses_naming_an_unmet_entity_but_allows_a_revealed_one(
     draft: TwentyfourxxGame,
 ) -> None:
     player = draft.payload.player
-    with pytest.raises(Refusal, match="has not met"):
-        _ = change(ENGINE, draft, "spend", amount=1, why="a bribe for Sable")
+    assert "not met" in refused(ENGINE, draft, "spend", amount=1, why="a bribe for Sable")
     assert player.require_sheet().credits == STARTING_CREDITS
 
     _ = change(ENGINE, draft, "spend", amount=1, why="a bribe for Kestrel")
@@ -629,8 +670,7 @@ def test_change_hindrances_refuses_naming_an_unmet_entity_but_allows_a_revealed_
     draft: TwentyfourxxGame,
 ) -> None:
     player = draft.payload.player
-    with pytest.raises(Refusal, match="has not met"):
-        _ = change(ENGINE, draft, "change_hindrances", gained=["Marked by Sable"])
+    assert "not met" in refused(ENGINE, draft, "change_hindrances", gained=["Marked by Sable"])
     assert player.require_sheet().hindrances == []
 
     _ = change(ENGINE, draft, "change_hindrances", gained=["Marked by Kestrel"])
@@ -765,6 +805,16 @@ def test_take_job_opens_a_job_and_refuses_a_second_while_open(draft: Twentyfourx
         _ = ENGINE.job(draft, Job(verb="take", terms="A second job"), Random(0))
 
 
+def test_job_take_refuses_naming_an_unmet_entity_but_allows_a_revealed_one(
+    draft: TwentyfourxxGame,
+) -> None:
+    assert "not met" in refused(ENGINE, draft, "job", verb="take", terms="Steal from Sable")
+    assert draft.payload.job == ""
+
+    _ = change(ENGINE, draft, "job", verb="take", terms="Steal from Kestrel")
+    assert draft.payload.job == "Steal from Kestrel"
+
+
 def test_find_job_reads_the_three_bands_by_seed() -> None:
     draft = small_world().draft()
     facts = ENGINE.job(draft, Job(verb="find", where="Docks"), Random(1))
@@ -783,6 +833,15 @@ def test_find_job_refused_while_a_job_is_open(draft: TwentyfourxxGame) -> None:
     draft.payload.job = "Move the crates by dawn"
     with pytest.raises(Refusal, match="a job is open"):
         _ = ENGINE.job(draft, Job(verb="find", where="Docks"), Random(0))
+
+
+def test_job_find_refuses_naming_an_unmet_entity_but_allows_a_revealed_one(
+    draft: TwentyfourxxGame,
+) -> None:
+    assert "not met" in refused(ENGINE, draft, "job", verb="find", where="Ask Sable's contact")
+
+    facts = change(ENGINE, draft, "job", verb="find", where="Ask Kestrel's contact")
+    assert "Ask Kestrel's contact" in facts[1].trace
 
 
 def test_finish_job_refuses_without_a_job_open(draft: TwentyfourxxGame) -> None:

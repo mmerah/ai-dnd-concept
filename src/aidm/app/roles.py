@@ -5,17 +5,17 @@ from functools import partial
 from pathlib import Path
 
 from aidm.app.builtin import run_builtin
-from aidm.app.spawn import DRIVERS, RunResult, Spawner, Tools, ask, run_cli, worldsmith
+from aidm.app.spawn import DRIVERS, RunResult, Spawner, Tools, ask, run_cli
 from aidm.config import Role, Settings
 from aidm.core.entities import Refusal
 from aidm.core.facts import Fact, traced
 from aidm.core.io import read_cached_text
-from aidm.core.model import AnyGame, Generation
+from aidm.core.model import AnyGame
 from aidm.core.play import Chapter, Interjection, Narration, SpokenLine
 from aidm.core.prompt import Sections, lines_of, recent_history, section_if, sections
 from aidm.core.tools import schema_text
 from aidm.core.views import Companion, NarratorView, Subject
-from aidm.engines.seam import AnyEngine, Written
+from aidm.engines.seam import AnyEngine
 from aidm.turn.run import Turn
 
 LOGGER = logging.getLogger(__name__)
@@ -106,9 +106,6 @@ class Roles:
             partial(view.check_interjection, member.id),
         )
         return view.spoken(answer.lines), answer.proposal
-
-    async def grow(self, engine: AnyEngine, draft: AnyGame, request: Generation) -> Written:
-        return await engine.advance(draft, request, worldsmith(self.spawner))
 
 
 def render_narrator(

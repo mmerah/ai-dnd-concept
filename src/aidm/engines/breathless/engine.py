@@ -188,6 +188,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
     def roll(self, draft: BreathlessGame, args: Roll, rng: Random) -> list[Fact]:
         world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
+        world.check_unnamed(args.what)
         pool = self._pool(world, actor, args)
         if args.stunt:
             actor.require_sheet().spend_stunt(actor.name)
@@ -238,7 +239,9 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
         return tuple(self.world_of(draft).player.take_loot(taken.item, taken.granted, taken.choice))
 
     def loot_check(self, draft: BreathlessGame, args: LootCheck, rng: Random) -> list[Fact]:
-        item, player = args.item, self.world_of(draft).player
+        world = self.world_of(draft)
+        item, player = args.item, world.player
+        world.check_unnamed(item)
         sheet = player.require_sheet()
         before = sheet.loot
         rolled = roll((before,), f"scavenging — {item}", rng)

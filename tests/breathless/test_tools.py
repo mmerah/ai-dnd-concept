@@ -146,12 +146,29 @@ def test_change_stress_refuses_naming_an_unmet_entity_but_allows_a_revealed_one(
     draft: BreathlessGame,
 ) -> None:
     player = draft.payload.player
-    with pytest.raises(Refusal, match="has not met"):
-        _ = change(ENGINE, draft, "change_stress", amount=1, why="spotting Dax")
+    assert "not met" in refused(ENGINE, draft, "change_stress", amount=1, why="spotting Dax")
     assert player.require_sheet().stress.current == 0
 
     _ = change(ENGINE, draft, "change_stress", amount=1, why="spotting Mira")
     assert player.require_sheet().stress.current == 1
+
+
+def test_roll_refuses_naming_an_unmet_entity_but_allows_a_revealed_one(
+    draft: BreathlessGame,
+) -> None:
+    assert "not met" in refused(ENGINE, draft, "roll", what="Slip past Dax", skill="sneak")
+
+    facts = change(ENGINE, draft, "roll", what="Slip past Mira", skill="sneak")
+    assert "Slip past Mira" in facts[1].trace
+
+
+def test_loot_check_refuses_naming_an_unmet_entity_but_allows_a_revealed_one(
+    draft: BreathlessGame,
+) -> None:
+    assert "not met" in refused(ENGINE, draft, "loot_check", item="Dax's badge")
+
+    facts = change(ENGINE, draft, "loot_check", item="Mira's badge")
+    assert "Mira's badge" in facts[1].trace
 
 
 def test_use_med_kit_acts_on_the_member(draft: BreathlessGame) -> None:

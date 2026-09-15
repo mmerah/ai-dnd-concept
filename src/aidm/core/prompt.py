@@ -34,7 +34,7 @@ def render_history(log: Sequence[Chapter]) -> str:
 
 
 def recent_history(log: Sequence[Chapter]) -> str:
-    """What the player has read: the last scenes whole, with no worldsmith recap."""
+    """A recap is the worldsmith's summary, not prose the player read."""
     recent = [chapter for chapter in log[-WHOLE_SCENES:] if chapter.exchanges]
     if not recent:
         return "(nothing yet)"

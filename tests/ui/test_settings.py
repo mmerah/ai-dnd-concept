@@ -116,7 +116,7 @@ def test_an_invalid_save_names_the_first_bad_key(
     def spy_notify(message: str, **_kwargs: object) -> None:
         notified.append(message)
 
-    monkeypatch.setattr("aidm.ui.settings.ui.notify", spy_notify)
+    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
 
     form = SettingsForm(offline_settings(tmp_path))
     client = Client(ui.page("/"))
@@ -133,6 +133,7 @@ def test_an_invalid_save_names_the_first_bad_key(
     assert text.startswith("roles.master.timeout: ")
     assert "type=" not in text
     assert "http" not in text
+    assert not (tmp_path / ".env").exists()
 
 
 def test_a_stored_secret_is_never_read_back_into_the_page() -> None:

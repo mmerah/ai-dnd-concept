@@ -326,7 +326,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         return self.world_of(draft).upgrade_ship(args.function_id)
 
     def defend(self, draft: TwentyfourxxGame, args: Defend, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).defend(args.actor_id, args.item_id, args.hindrance)
+        world = self.world_of(draft)
+        world.check_unnamed(args.hindrance)
+        return world.defend(args.actor_id, args.item_id, args.hindrance)
 
     def kill(self, draft: TwentyfourxxGame, args: Kill, rng: Random) -> list[Fact]:
         facts = super().kill(draft, args, rng)
@@ -383,18 +385,24 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         world = self.world_of(draft)
         actor = world.require_actor(args.actor_id)
         helper = args.helped_by
+        world.check_unnamed(
+            args.what,
+            args.helped,
+            args.hindered,
+            args.risk,
+            args.hindrance,
+            *(() if helper is None else (helper.hindered, helper.risk, helper.hindrance)),
+        )
         helping = None if helper is None else Helping(world.require_actor(helper.actor_id), helper)
         pool = self._pool(actor, helping, args)
 
-        staked: list[tuple[Crewmate, Roll | Helper]] = []
+        staked: list[tuple[Crewmate, Roll | Helper]] = [(actor, args)]
         if helping is not None:
             staked.append((helping.who, helping.terms))
-        staked.append((actor, args))
 
-        # The actor's claim is refused first; the hits land helper-first.
         claims: list[tuple[Crewmate, Slug, str]] = [
             (who, terms.defend_with, terms.hindrance)
-            for who, terms in reversed(staked)
+            for who, terms in staked
             if terms.defend_with is not None
         ]
         world.check_defenses(claims)
@@ -421,17 +429,18 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         facts = [rolled.fact, actor.fact(line, card=line, dice=(rolled.event,))]
         if result != "success":
             disaster = result == "disaster"
-            for who, terms in staked:
-                if not terms.risk:
+            # Hits land helper-first, the reverse of the actor-first claims above.
+            for who, stake in reversed(staked):
+                if not stake.risk:
                     continue
                 facts.extend(
                     world.take_hit(
                         who,
-                        terms.defend_with,
-                        terms.risk,
-                        terms.hindrance,
+                        stake.defend_with,
+                        stake.risk,
+                        stake.hindrance,
                         disaster=disaster,
-                        deadly=terms.deadly,
+                        deadly=stake.deadly,
                     )
                 )
         self._succession(draft)
@@ -475,12 +484,15 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             case "find":
                 return self._find(draft, args.where, rng)
             case "take":
-                return self.world_of(draft).take_job(args.terms)
+                world = self.world_of(draft)
+                world.check_unnamed(args.terms)
+                return world.take_job(args.terms)
             case "finish":
                 return self._finish(draft, args.raises, rng)
 
     def _find(self, draft: TwentyfourxxGame, where: str, rng: Random) -> list[Fact]:
         world = self.world_of(draft)
+        world.check_unnamed(where)
         if world.job:
             raise Refusal(f"a job is open: {world.job}")
         rolled = roll((6,), where, rng)

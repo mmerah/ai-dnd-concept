@@ -69,12 +69,12 @@ class SettingsForm:
                 node[path[-1]] = typed
         try:
             parse(Settings, merged)
-            save_settings(changed)
-            # The snapshot the boxes are compared against, or a second save reads as no change.
-            self.settings = read_settings()
         except Refusal as refused:
             alert(str(refused))
             return
+        save_settings(changed)
+        # The snapshot the boxes are compared against, or a second save reads as no change.
+        self.settings = read_settings()
         ui.notify("Saved to .env. The keys apply at the next start.", type="positive")
 
 
