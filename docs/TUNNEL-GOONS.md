@@ -49,12 +49,12 @@ Every tool makes one change, rolls dice, opens a decision, or ends the turn.
 - `move` — carry the player, the party, and any NPCs named in `with_ids`, through an unlocked way listed in WAYS OUT.
 - `meanwhile` — move a dweller, move a loose item and shut a known way, offscreen, on a turn ELSEWHERE is shown.
 - `roll` — 2d6 plus an ability and helpful items, against a Difficulty Score or an npc; `actor_id` when a hired member acts instead of the player.
-- `level_up` — raise one ability and either Health or Inventory by 1, once, at the adventure's end: the player first, then each hired member in turn.
+- `level_up` — raise one ability and either Health or Inventory by 1, once per game: the player first, then each hired member in turn.
 - `hire` — the player hires someone here to work; the worldsmith writes their sheet once the turn ends, and they join the party.
 
 ## Deviations in this repo
 
-1. Levelling up is an end-of-adventure step the master calls once per adventure. The SRD page says "every 2 game sessions", the 1.1 PDF "at the end of a game session"; an adventure is the closest thing this app has to a session.
+1. Levelling up is a step the master calls once per game. The SRD page says "every 2 game sessions", the 1.1 PDF "at the end of a game session"; one game is the closest thing this app has to a session.
 
 ## What the AI game master adds
 

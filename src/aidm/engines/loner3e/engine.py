@@ -183,11 +183,15 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         return tuple(zip(srd.twist_subjects, srd.twist_actions, strict=True))
 
     def change_tags(self, draft: Loner3eGame, args: ChangeTags, _rng: Random) -> list[Fact]:
-        actor = self.world_of(draft).require_living_here(args.entity_id)
+        world = self.world_of(draft)
+        world.check_unnamed(*args.gained)
+        actor = world.require_living_here(args.entity_id)
         return actor.change_tags(args.kind, args.gained, args.lost)
 
     def drive(self, draft: Loner3eGame, args: Drive, _rng: Random) -> list[Fact]:
-        actor = self.world_of(draft).require_living_here(args.entity_id)
+        world = self.world_of(draft)
+        world.check_unnamed(args.goal, args.motive, args.nemesis)
+        actor = world.require_living_here(args.entity_id)
         return actor.drive(goal=args.goal, motive=args.motive, nemesis=args.nemesis)
 
     def restore_luck(self, draft: Loner3eGame, args: RestoreLuck, _rng: Random) -> list[Fact]:

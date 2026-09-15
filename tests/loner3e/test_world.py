@@ -58,9 +58,9 @@ def test_drive_writes_what_play_revealed() -> None:
     _, state = initialized()
     draft = state.draft()
 
-    traces = changed(draft, "drive", entity_id=PLAYER_ID, goal="Get the vault map out alive")
-    assert draft.payload.player.goal == "Get the vault map out alive"
-    assert "goal: Get the vault map out alive" in traces[0]
+    traces = changed(draft, "drive", entity_id=PLAYER_ID, goal="Get out of the ruin alive")
+    assert draft.payload.player.goal == "Get out of the ruin alive"
+    assert "goal: Get out of the ruin alive" in traces[0]
 
     assert "goal, a motive or a nemesis" in refused(draft, "drive", entity_id=PLAYER_ID)
 

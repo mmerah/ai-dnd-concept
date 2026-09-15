@@ -297,12 +297,12 @@ async def test_crossing_keeps_a_drive_set_after_the_worldsmith_snapshot(
     state = await play_turn(
         table,
         "Out into the cloister walk.",
-        tool_call("drive", entity_id=PLAYER_ID, goal="Get the vault map out safely"),
+        tool_call("drive", entity_id=PLAYER_ID, goal="Get out of the ruin safely"),
         tool_call("next_scene", pursuit="Out into the cloister walk."),
         arrival="Rain takes the arcade.",
     )
 
-    assert state.payload.player.goal == "Get the vault map out safely"
+    assert state.payload.player.goal == "Get out of the ruin safely"
 
 
 async def test_a_re_filed_cast_member_takes_the_new_brief_and_keeps_their_name_and_sheet(

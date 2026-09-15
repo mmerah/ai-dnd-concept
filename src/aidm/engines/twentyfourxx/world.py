@@ -222,12 +222,14 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
         disaster: bool,
         deadly: bool,
     ) -> list[Fact]:
+        if not disaster and not deadly:
+            return []
         if item_id is not None:
             item = self.require_gear(actor, item_id)
-            return self._break(actor, item, "" if item.harmless else hindrance)
+            return self._break(actor, item, hindrance)
         if disaster:
             return self.kill(actor.id) if deadly else actor.hinder(risk)
-        return actor.hinder(MAIMED) if deadly else []
+        return actor.hinder(MAIMED)
 
     def check_defenses(self, claims: Sequence[tuple[Crewmate, Slug, str]]) -> None:
         resolved = [
@@ -241,6 +243,8 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
             if item.breaks - item.broken_times < claimed[id(item)]:
                 raise Refusal(_broken(item))
             if item.harmless:
+                if hindrance:
+                    raise Refusal(_harmless(item))
                 continue
             if not hindrance:
                 raise Refusal(f"name the hindrance {item.name} leaves behind")
@@ -250,7 +254,7 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
     def _break(self, actor: Crewmate, item: Gear, hindrance: str) -> list[Fact]:
         if item.harmless:
             if hindrance:
-                raise Refusal(f"{item.name} breaks harmlessly: leave `hindrance` empty")
+                raise Refusal(_harmless(item))
             item.broken_times += 1
             trace = f"{actor.mention} breaks {item.name}, harmlessly"
             return [actor.fact(trace, card=actor.card_line(f"{item.name} breaks"))]
@@ -319,3 +323,8 @@ def raised(current: SkillDie | None) -> SkillDie:
 
 def _broken(item: Gear) -> str:
     return f"{item.name} is already broken"
+
+
+def _harmless(item: Gear) -> str:
+    """Raised before the roll and inside the break, so the two must stay the same sentence."""
+    return f"{item.name} breaks harmlessly: leave `hindrance` empty"

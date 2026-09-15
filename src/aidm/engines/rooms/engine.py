@@ -36,7 +36,7 @@ from aidm.engines.rooms.tools import (
     MoveItem,
     UnlockWay,
 )
-from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RoomWorld
+from aidm.engines.rooms.world import Dweller, MapDraft, Prop, RegionDraft, RoomWorld
 from aidm.engines.rooms.worldsmith import MAP_ASK, check_extension, check_map
 from aidm.engines.seam import Engine, Request, Written
 
@@ -56,7 +56,6 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
     world: type[RoomWorld[N, P]]
     family_dir = Path(__file__).parent
     guidance: str
-    map_model: type[MapDraft[N]]
     opening_sections = (
         ("MAP SO FAR", "(no map yet)"),
         ("SCENES SO FAR", "(no scenes yet — write the opening)"),
@@ -174,9 +173,15 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
             return self.build_scenario(meta, packs, draft, source, premise)
 
         prompt = self.render_opening(
-            source, meta.scope, intent=MAP_ASK, guidance=self.guidance, answer=self.map_model
+            source,
+            meta.scope,
+            intent=MAP_ASK,
+            guidance=self.guidance,
+            answer=MapDraft[self.member],
         )
-        return built(await worldsmith(prompt, self.map_model, lambda answer: check(built(answer))))
+        return built(
+            await worldsmith(prompt, MapDraft[self.member], lambda answer: check(built(answer)))
+        )
 
     def act(self, draft: G, action: Slug, words: str) -> None:
         if action != EXTEND or self.world_of(draft).frontier():
@@ -208,9 +213,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
         return self.world_of(draft).unlock_way(args.to_id)
 
     def move(self, draft: G, args: Move, _rng: Random) -> list[Fact]:
-        facts = self.world_of(draft).move(args.to_id, args.with_ids)
-        self.open_chapter(draft)
-        return facts
+        return self.world_of(draft).move(args.to_id, args.with_ids)
 
     def meanwhile(self, draft: G, args: Meanwhile, _rng: Random) -> list[Fact]:
         return self.world_of(draft).meanwhile(
@@ -231,15 +234,19 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
         if was_armed and counted:
             world.disarm()  # the armed turn is spent; one chance, not several
 
-    async def write_next(self, draft: G, intent: str, worldsmith: WorldsmithAnswer) -> MapDraft[N]:
+    async def write_next(
+        self, draft: G, intent: str, worldsmith: WorldsmithAnswer
+    ) -> RegionDraft[N]:
         world = self.world_of(draft)
         prompt = self.render_request(
-            draft, intent=intent, guidance=self.guidance, answer=self.map_model
+            draft, intent=intent, guidance=self.guidance, answer=RegionDraft[self.member]
         )
         return await worldsmith(
-            prompt, self.map_model, lambda answer: check_extension(answer, world)
+            prompt, RegionDraft[self.member], lambda answer: check_extension(answer, world)
         )
 
-    def install(self, draft: G, extension: MapDraft[N]) -> None:
+    def install(self, draft: G, extension: RegionDraft[N]) -> None:
         """Hidden, so nothing is told: the region reaches the player only as they walk it."""
         self.world_of(draft).attach(extension, extension.start)
+        draft.log[-1].recap = extension.recap
+        self.open_chapter(draft)

@@ -18,11 +18,12 @@ from support.tunnelgoons import (
 )
 
 from aidm.core.entities import Refusal, parse
-from aidm.engines.base import PLAYER_ID
+from aidm.core.play import Exchange
+from aidm.engines.base import PLAYER_ID, Gauge
 from aidm.engines.rooms.tools import Move
-from aidm.engines.rooms.world import Prop
+from aidm.engines.rooms.world import Place, Prop, RegionDraft
 from aidm.engines.tunnelgoons.tools import LevelUp, Roll
-from aidm.engines.tunnelgoons.world import GoonSheet, TunnelGoonsGame, TunnelGoonsWorld
+from aidm.engines.tunnelgoons.world import GoonSheet, Npc, TunnelGoonsGame, TunnelGoonsWorld
 
 TOTAL_RE = re.compile(r"(-?\d+) vs DS")
 
@@ -210,6 +211,47 @@ def test_level_up_with_no_args_does_not_offer_a_character_already_levelled(
     assert draft.pending is None
 
 
+def test_level_up_with_no_args_and_an_actor_id_opens_the_players_decision(
+    draft: TunnelGoonsGame,
+) -> None:
+    world = draft.payload
+    world.npcs[MIRA].sheet = _sheeted()
+    world.party.append(MIRA)
+
+    facts = ENGINE.level_up(draft, LevelUp(actor_id=MIRA), Random(0))
+
+    assert facts == []
+    assert draft.pending is not None
+    assert draft.pending.options[0].args["actor_id"] == PLAYER_ID
+
+
+def test_a_direct_level_up_for_the_second_of_three_members_does_not_requeue_a_levelled_one(
+    draft: TunnelGoonsGame,
+) -> None:
+    world = draft.payload
+    third = Npc(
+        id="third",
+        name="Third",
+        brief="",
+        place=START,
+        known=True,
+        hp=Gauge(current=8, maximum=8),
+        sheet=_sheeted(),
+    )
+    world.npcs[third.id] = third
+    world.npcs[MIRA].sheet = _sheeted()
+    world.npcs[MIRA].require_sheet().level = 2  # already levelled, ahead of the second member
+    world.npcs[MANTIS].place = START
+    world.npcs[MANTIS].known = True
+    world.npcs[MANTIS].sheet = _sheeted()
+    world.party.extend([MIRA, MANTIS, third.id])
+
+    _ = ENGINE.level_up(draft, LevelUp(ability="brute", boost="health", actor_id=MANTIS), Random(0))
+
+    assert draft.pending is not None
+    assert draft.pending.options[0].args["actor_id"] == third.id
+
+
 def test_move_refuses_a_locked_way(draft: TunnelGoonsGame, world: TunnelGoonsWorld) -> None:
     world.visits.append(HALL)
     with pytest.raises(Refusal, match="locked"):
@@ -230,10 +272,26 @@ def test_move_reveals_the_destination_and_adds_a_visit(draft: TunnelGoonsGame) -
     assert len(world.visits) == before + 1
 
 
-def test_a_place_walked_through_without_a_word_is_no_chapter(draft: TunnelGoonsGame) -> None:
+def test_two_moves_open_no_chapter_and_install_closes_with_the_recap(
+    draft: TunnelGoonsGame,
+) -> None:
     _ = ENGINE.move(draft, Move(to_id=HALL), Random(0))
     _ = ENGINE.move(draft, Move(to_id=START), Random(0))
     assert [chapter.title for chapter in draft.log] == ["Start"]
+    draft.log[-1].exchanges.append(Exchange(words="Look around.", lines=()))
+
+    region = RegionDraft[Npc](
+        places={
+            "beyond": Place(id="beyond", name="Beyond", brief="b", known=False, description="d")
+        },
+        start="beyond",
+        recap="They walked to the hall and back, finding nothing.",
+    )
+    ENGINE.install(draft, region)
+
+    assert [chapter.title for chapter in draft.log] == ["Start", "Start"]
+    assert draft.log[0].recap == region.recap
+    assert draft.log[1].recap == ""
 
 
 def test_move_with_ids_brings_an_npc_here_and_refuses_one_standing_elsewhere() -> None:

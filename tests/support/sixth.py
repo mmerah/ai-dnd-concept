@@ -46,7 +46,6 @@ class SixthEngine(RoomEngine[Dweller, Person, SixthGame]):
     member = Dweller
     world = SixthWorld
     guidance = "Write the keep plainly."
-    map_model = MapDraft[Dweller]
 
     def creation_steps(self, _picks: Picks) -> tuple[CreationStep, ...]:
         return ()

@@ -127,6 +127,14 @@ class MapDraft[N: Dweller](Dungeon[N]):
     start: Slug = Field(description="Exact id of the place this map starts from.")
 
 
+class RegionDraft[N: Dweller](MapDraft[N]):
+    recap: str = Field(
+        min_length=1,
+        description="One paragraph on the part of the map the player leaves behind: what they "
+        "did there, cost, learned and missed.",
+    )
+
+
 class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
     visits: list[Slug] = Field(min_length=1)
 

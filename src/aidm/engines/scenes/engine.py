@@ -306,10 +306,11 @@ class SceneEngine[C: Person, G: Game[Any], K: ScenePack](Engine[C, C, G]):
 
     async def depart(self, draft: G, request: Generation, worldsmith: WorldsmithAnswer) -> Written:
         left = self.world_of(draft).run.title
+        exchanges = draft.exchanges()
+        # The master's `pursuit` is free text; the narrator reads the player's own words instead.
+        asked = exchanges[-1].words if exchanges else ""
         scene = await self.write_next(draft, request.detail, worldsmith)
-        return Written(
-            tuple(self.install(draft, scene)), CROSSING.format(left=left, pursuit=request.detail)
-        )
+        return Written(tuple(self.install(draft, scene)), CROSSING.format(left=left, asked=asked))
 
     async def complicate(
         self, draft: G, request: Generation, worldsmith: WorldsmithAnswer

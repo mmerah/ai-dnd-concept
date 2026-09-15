@@ -274,7 +274,46 @@ def test_defend_with_non_harmless_gear_and_no_hindrance_is_refused_before_any_di
     assert draft.payload == before.payload
 
 
-def test_setback_with_defend_with_breaks_gear_instead_of_maiming(draft: TwentyfourxxGame) -> None:
+def test_defend_with_harmless_gear_and_a_hindrance_is_refused_before_any_dice_roll() -> None:
+    draft = small_world().draft()
+    before = draft.model_copy(deep=True)
+    with pytest.raises(Refusal, match="breaks harmlessly: leave `hindrance` empty"):
+        _ = _rolled(
+            draft,
+            Roll(
+                what="Weather the blast",
+                skill="Stealth",
+                risk="shrapnel",
+                defend_with="hull-armor",
+                hindrance="a dent",
+            ),
+            seed=2,
+        )
+    assert draft.payload == before.payload
+
+
+def test_deadly_setback_with_defend_with_breaks_gear_instead_of_maiming(
+    draft: TwentyfourxxGame,
+) -> None:
+    player = draft.payload.player
+    facts = _rolled(
+        draft,
+        Roll(
+            what="Sneak past",
+            skill="Stealth",
+            risk="a guard's knife",
+            deadly=True,
+            defend_with=LOCKPICKS,
+            hindrance="cut fingers",
+        ),
+        seed=1,
+    )
+    assert player.require_sheet().items[LOCKPICKS].broken
+    assert player.require_sheet().hindrances == ["cut fingers"]
+    assert not any(fact.card == "Hindered: Maimed" for fact in facts)
+
+
+def test_non_deadly_setback_with_defend_with_costs_nothing(draft: TwentyfourxxGame) -> None:
     player = draft.payload.player
     facts = _rolled(
         draft,
@@ -287,9 +326,9 @@ def test_setback_with_defend_with_breaks_gear_instead_of_maiming(draft: Twentyfo
         ),
         seed=1,
     )
-    assert player.require_sheet().items[LOCKPICKS].broken
-    assert player.require_sheet().hindrances == ["cut fingers"]
-    assert not any(fact.card == "Hindered: Maimed" for fact in facts)
+    assert player.require_sheet().items[LOCKPICKS].broken_times == 0
+    assert player.require_sheet().hindrances == []
+    assert len(facts) == 2
 
 
 def test_helper_defends_with_their_own_gear_while_actor_takes_their_own_consequence() -> None:
@@ -304,7 +343,11 @@ def test_helper_defends_with_their_own_gear_while_actor_takes_their_own_conseque
             skill="Stealth",
             risk="a guard's knife",
             helped_by=Helper(
-                actor_id=KESTREL, risk="crossfire", defend_with="vest", hindrance="ringing ears"
+                actor_id=KESTREL,
+                risk="crossfire",
+                deadly=True,
+                defend_with="vest",
+                hindrance="ringing ears",
             ),
         ),
         seed=15,

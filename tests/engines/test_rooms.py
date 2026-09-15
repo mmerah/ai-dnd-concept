@@ -20,7 +20,15 @@ from aidm.core.model import PackSelection
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.rooms.engine import ELSEWHERE
 from aidm.engines.rooms.tools import Move
-from aidm.engines.rooms.world import MOVED_CARD, MOVES_OFFSCREEN, NOTHING_OFFSCREEN, Prop, Way
+from aidm.engines.rooms.world import (
+    MOVED_CARD,
+    MOVES_OFFSCREEN,
+    NOTHING_OFFSCREEN,
+    Dweller,
+    MapDraft,
+    Prop,
+    Way,
+)
 from aidm.engines.tunnelgoons.world import TunnelGoonsGame
 
 
@@ -401,7 +409,7 @@ def test_the_arc_reaches_the_master_and_the_worldsmith_and_nobody_else(
     begun_room.payload.arc = arc
 
     written = room_engine.render_request(
-        begun_room, intent="More map.", guidance="", answer=room_engine.map_model
+        begun_room, intent="More map.", guidance="", answer=MapDraft[Dweller]
     )
 
     assert arc in str(room_engine.master_sections(begun_room))

@@ -84,11 +84,11 @@ class SurvivorSheet(ItemSheet[Supply]):
             take = {**base, "choice": "take"}
             options.append(PendingOption(id="take", label="Take it", name=TAKE_LOOT, args=take))
         else:
-            for key, carried in self.items.items():
+            for index, (key, carried) in enumerate(self.items.items()):
                 swap = {**base, "choice": f"{SWAP}{key}"}
                 options.append(
                     PendingOption(
-                        id=f"{SWAP}{key}",
+                        id=f"swap-{index}",
                         label=f"Swap for {carried.name}",
                         name=TAKE_LOOT,
                         args=swap,

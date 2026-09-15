@@ -1,5 +1,5 @@
 from aidm.core.entities import Refusal
-from aidm.engines.base import PLAYER_ID, named_unmet
+from aidm.engines.base import PLAYER_ID, named_unmet, required_unmet
 from aidm.engines.rooms.world import Dungeon, Dweller, MapDraft
 
 MAP_ASK = "Write the opening map."
@@ -14,9 +14,19 @@ def check_extension[N: Dweller](draft: MapDraft[N], world: Dungeon[N]) -> None:
     if not draft.places:
         raise Refusal("the extension needs at least one new place")
     if unmet := (
-        _map_unmet(draft, start_known=False) + _overlap_unmet(draft, world) + _named_unmet(draft)
+        _map_unmet(draft, start_known=False)
+        + _overlap_unmet(draft, world)
+        + _named_unmet(draft)
+        + _planted_unmet(draft)
     ):
         raise Refusal("the extension needs " + "; ".join(unmet))
+
+
+def _planted_unmet[N: Dweller](draft: MapDraft[N]) -> list[str]:
+    """An extension may not put items straight into the player's pack: no fact, no narration."""
+    if planted := sorted(item.id for item in draft.items.values() if item.on == PLAYER_ID):
+        return [f"no item planted on the player: {planted}"]
+    return []
 
 
 def _map_unmet[N: Dweller](draft: MapDraft[N], *, start_known: bool) -> list[str]:
@@ -24,6 +34,8 @@ def _map_unmet[N: Dweller](draft: MapDraft[N], *, start_known: bool) -> list[str
     if draft.start not in places:
         return [f"a starting place {draft.start!r}"]
     unmet: list[str] = []
+    if broken := required_unmet(draft.npcs, ()):
+        unmet.append(f"npcs as the worldsmith may write them: {broken}")
     if places[draft.start].known != start_known:
         unmet.append(
             "the starting place known to the player"

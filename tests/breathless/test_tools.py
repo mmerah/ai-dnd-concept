@@ -4,12 +4,12 @@ import pytest
 from support.breathless import ENGINE, MIRA, WRENCH, hired, small_world
 from support.table import change, refused
 
-from aidm.core.entities import Refusal, parse
+from aidm.core.entities import Refusal, parse, slug
 from aidm.core.play import PendingOption
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.breathless.engine import BreathlessGame
 from aidm.engines.breathless.tools import Actor, AskWorldDie, LootCheck, Roll, TakeLoot
-from aidm.engines.breathless.world import Supply, stepped
+from aidm.engines.breathless.world import SWAP, Supply, stepped
 from aidm.engines.scenes.tools import NextScene
 from aidm.engines.scenes.world import SCENE_LEFT
 
@@ -177,8 +177,15 @@ def test_loot_on_an_item_with_a_full_backpack_offers_swaps(draft: BreathlessGame
     assert len(sheet.items) == 3
     _ = ENGINE.loot_check(draft, LootCheck(item="Crowbar"), Random(0))
     assert draft.pending is not None
-    assert {option.id for option in draft.pending.options} == {f"swap-{key}" for key in sheet.items}
-    _ = ENGINE.answer(draft, _option(draft, "swap-rope"), Random(0))
+    assert {option.id for option in draft.pending.options} == {
+        f"swap-{index}" for index in range(len(sheet.items))
+    }
+    rope_option = next(
+        option
+        for option in draft.pending.options
+        if parse(TakeLoot, option.args).choice == f"{SWAP}rope"
+    )
+    _ = ENGINE.answer(draft, rope_option, Random(0))
     assert "rope" not in sheet.items and sheet.items["crowbar"].die == 8
 
 
@@ -204,6 +211,33 @@ def test_loot_replay_applies_the_option_the_roll_wrote(draft: BreathlessGame) ->
 
     assert sheet.items["machete"] == Supply(name="Machete", die=granted)
     assert any(fact.card == f"Took Machete (d{granted})" for fact in facts)
+
+
+def test_loot_survives_a_long_carried_item_name_and_a_take_keyed_item(
+    draft: BreathlessGame,
+) -> None:
+    sheet = draft.payload.player.require_sheet()
+    long_name = "Weathered " * 9 + "Coat"
+    long_key = slug(long_name, ())
+    assert len(f"{SWAP}{long_key}") > 64
+    sheet.items = {
+        long_key: Supply(name=long_name, die=6),
+        "take": Supply(name="Take", die=6),
+        "torch": Supply(name="Torch", die=6),
+    }
+
+    _ = ENGINE.loot_check(draft, LootCheck(item="Crowbar"), Random(0))
+
+    assert draft.pending is not None
+    assert {option.id for option in draft.pending.options} == {"swap-0", "swap-1", "swap-2"}
+    option = _option(draft, "swap-0")
+    assert parse(TakeLoot, option.args).choice == f"{SWAP}{long_key}"
+
+    facts = ENGINE.answer(draft, option, Random(0))
+
+    assert long_key not in sheet.items
+    assert sheet.items["crowbar"].die == 8
+    assert any(fact.card.startswith(f"Swapped {long_name}") for fact in facts)
 
 
 def test_the_master_cannot_award_loot_without_rolling_for_it(draft: BreathlessGame) -> None:

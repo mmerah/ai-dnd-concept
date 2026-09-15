@@ -7,7 +7,7 @@ from aidm.core.entities import Refusal
 from aidm.core.model import Check, ScenarioMeta
 from aidm.engines.base import PLAYER_ID, Gauge
 from aidm.engines.rooms.engine import MORE_MAP
-from aidm.engines.rooms.world import MapDraft, Place, Prop, Way
+from aidm.engines.rooms.world import MapDraft, Place, Prop, RegionDraft, Way
 from aidm.engines.rooms.worldsmith import check_extension, check_map
 from aidm.engines.tunnelgoons.world import Npc, TunnelGoonsGame
 from aidm.engines.tunnelgoons.worldsmith import AUTHORING, AbilitiesDraft
@@ -30,8 +30,8 @@ def _tunnelgoons_game() -> TunnelGoonsGame:
     return narrowed(state, TunnelGoonsGame)
 
 
-def _region() -> MapDraft[Npc]:
-    return MapDraft[Npc](
+def _region() -> RegionDraft[Npc]:
+    return RegionDraft[Npc](
         places={
             FAR_HALL: Place(id=FAR_HALL, name="Far Hall", brief="b", known=False, description="d"),
             FAR_VAULT: Place(
@@ -41,6 +41,7 @@ def _region() -> MapDraft[Npc]:
         ways={FAR_HALL: [Way(to=FAR_VAULT)]},
         items={FAR_ITEM: Prop(id=FAR_ITEM, name="Far Item", brief="b", known=False, on=FAR_HALL)},
         start=FAR_HALL,
+        recap="They pushed past the hall and found the vault beyond it.",
     )
 
 
@@ -71,9 +72,10 @@ def test_a_one_place_map_with_no_ways_passes_the_map_bar_and_builds() -> None:
 
 def test_an_extension_of_one_hidden_place_with_no_ways_installs_hidden() -> None:
     draft = _tunnelgoons_game().draft()
-    extension = MapDraft[Npc](
+    extension = RegionDraft[Npc](
         places={HIDDEN: Place(id=HIDDEN, name="Hidden", brief="b", known=False, description="d")},
         start=HIDDEN,
+        recap="They found a hidden way and pushed through it.",
     )
     check_extension(extension, draft.payload)
 
@@ -85,6 +87,55 @@ def test_an_extension_of_one_hidden_place_with_no_ways_installs_hidden() -> None
 
 def test_the_shipped_scenario_passes_the_map_bar() -> None:
     check_map(_wide_region())
+
+
+def test_check_map_refuses_a_dead_npc() -> None:
+    corpse = Npc(
+        id="corpse",
+        name="Corpse",
+        brief="",
+        place=ONLY,
+        known=True,
+        alive=False,
+        hp=Gauge(current=4, maximum=4),
+    )
+    draft = MapDraft[Npc](
+        places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
+        npcs={corpse.id: corpse},
+        start=ONLY,
+    )
+    with pytest.raises(Refusal, match="alive"):
+        check_map(draft)
+
+
+def test_check_map_refuses_an_npc_at_zero_hp() -> None:
+    fallen = Npc(
+        id="fallen",
+        name="Fallen",
+        brief="",
+        place=ONLY,
+        known=True,
+        hp=Gauge(current=0, maximum=4),
+    )
+    draft = MapDraft[Npc](
+        places={ONLY: Place(id=ONLY, name="Only", brief="b", known=True, description="d")},
+        npcs={fallen.id: fallen},
+        start=ONLY,
+    )
+    with pytest.raises(Refusal, match="health above zero"):
+        check_map(draft)
+
+
+def test_check_extension_refuses_an_item_planted_on_the_player() -> None:
+    world = _tunnelgoons_game().payload
+    extension = RegionDraft[Npc](
+        places={HIDDEN: Place(id=HIDDEN, name="Hidden", brief="b", known=False, description="d")},
+        items={"planted": Prop(id="planted", name="Planted", brief="b", known=True, on=PLAYER_ID)},
+        start=HIDDEN,
+        recap="A hand slipped something into their pocket.",
+    )
+    with pytest.raises(Refusal, match="planted on the player"):
+        check_extension(extension, world)
 
 
 def _hiding_gremlin(place_id: str, *, known: bool, brief: str, description: str) -> MapDraft[Npc]:
@@ -268,11 +319,11 @@ async def test_write_next_asks_for_the_map_draft() -> None:
     async def answer[M: BaseModel](prompt: str, model: type[M], _check: Check[M]) -> M:
         recorded.append(model)
         prompts.append(prompt)
-        return model.model_validate(THIN.model_dump())
+        return model.model_validate({**THIN.model_dump(), "recap": "They pushed north."})
 
     _ = await ENGINE.write_next(small_world(), "Push north.", answer)
 
-    assert recorded == [MapDraft[Npc]]
+    assert recorded == [RegionDraft[Npc]]
     # The `hp` rule reaches the worldsmith only through the engine's guidance.
     assert AUTHORING in prompts[0]
 
@@ -282,7 +333,7 @@ async def test_write_next_prompt_carries_scenes_so_far() -> None:
 
     async def answer[M: BaseModel](prompt: str, model: type[M], _check: Check[M]) -> M:
         prompts.append(prompt)
-        return model.model_validate(THIN.model_dump())
+        return model.model_validate({**THIN.model_dump(), "recap": "They nosed around the docks."})
 
     _ = await ENGINE.write_next(small_world(), "Nose around the docks.", answer)
 

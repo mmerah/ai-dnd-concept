@@ -368,6 +368,15 @@ def check_filing(pool: Mapping[Slug, Thing]) -> None:
             raise Refusal(f"entity {entity.id!r} is filed under {key!r}")
 
 
+def required_unmet(pool: Mapping[Slug, Person], filed: Iterable[Slug]) -> list[str]:
+    already = set(filed)
+    return [
+        f"{entity_id}: {why}"
+        for entity_id, entry in pool.items()
+        if entity_id not in already and (why := entry.required())
+    ]
+
+
 def named_unmet(text: str, entities: Iterable[Thing]) -> list[str]:
     folded = text.casefold()
     return [
