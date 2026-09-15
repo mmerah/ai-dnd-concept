@@ -18,16 +18,13 @@ ANSWER_WITH = "ANSWER WITH:\n"
 
 
 def masked(prompt: str) -> str:
-    """The answer schema is rendered and checked elsewhere; a marker keeps a prompt fixture
-    from rewriting whenever it moves."""
+    """The schema is checked elsewhere; a marker keeps this fixture from rewriting."""
     head, sep, _ = prompt.partition(ANSWER_WITH)
     return f"{head}{sep}{SCHEMA_MARKER}\n" if sep else prompt
 
 
 def masked_master(prompt: str, instructions: str) -> str:
-    """The engine's rules are spliced in and checked elsewhere; a marker keeps the master
-    prompt fixture from rewriting whenever they move. `instructions` must be the exact text
-    the splice used, so a caller with nothing to splice cannot silently skip the check."""
+    """`instructions` must be the text the splice used, or the check is skipped in silence."""
     needle = instructions.strip()
     if not needle:
         raise AssertionError("instructions must not be empty")
@@ -54,8 +51,7 @@ def golden_json(path: Path, actual: object) -> None:
 
 
 def golden_schema(path: Path, model: type[BaseModel]) -> None:
-    """Pins `schema_text`, the rendering every role's prompt actually carries, not just the
-    schema dict `schema_of` returns."""
+    """Pins `schema_text`, the rendering every role's prompt carries."""
     golden(path, schema_text(model) + "\n")
 
 

@@ -17,7 +17,6 @@ class Claims:
 
     @contextmanager
     def hold(self, key: str) -> Generator[bool]:
-        """Yields whether this caller won the claim; releases only what it won."""
         # Synchronous: an await between the read and the write would let two callers both pay.
         won = key not in self.held
         self.held.add(key)

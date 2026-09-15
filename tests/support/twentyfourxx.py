@@ -25,8 +25,7 @@ SITUATION = (
     "has just killed the lights for a scheduled power-saving cycle."
 )
 ENGINE = narrowed(ENGINES_BUILT[TWENTYFOURXX], TwentyfourxxEngine)
-# Shared by every test that builds a scene draft from scratch: `tests/engines/test_scene_bar.py`
-# and `tests/twentyfourxx/test_worldsmith.py` both started with a byte-for-byte copy of this.
+# Shared by every test that builds a scene draft from scratch.
 SCENE_BASE: Mapping[str, object] = {
     "place": "bay-office",
     "title": "The Bay Office",

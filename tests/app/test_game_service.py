@@ -51,8 +51,7 @@ class _RefusingStore(FileStore):
 
 
 class _LandFailsAfterAdvance(Loner3eEngine):
-    """`close` ends in `land`; failing only the landing right after a successful write proves the
-    worldsmith's scene falls back to the unwritten fact instead of being silently discarded."""
+    """`close` ends in `land`: only the landing after a successful write fails."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -253,7 +252,6 @@ async def test_a_write_requested_after_something_told_ends_the_narration_there(
 
 
 async def test_a_complication_does_not_refill_the_players_spent_luck(tmp_path: Path) -> None:
-    """A complication changes the scene in place; it never touches the player's luck."""
     table = open_game(tmp_path)
     table.state.payload.player.luck.current = 2
     table.service.save(table.state)

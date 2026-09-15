@@ -49,8 +49,7 @@ LONER3E_BASE: Mapping[str, object] = {
     "situation": LONER3E_SITUATION,
     "arc": "Farther along, the stair still leads down to what Tomas would not speak of.",
 }
-# `SceneEngine`'s three type parameters are erased here on purpose: a tuple of concrete engines
-# needs one shared type, and only the middle one (`G: Game[Any]`) is CLAUDE.md's sanctioned `Any`.
+# `SceneEngine`'s parameters are erased on purpose: a tuple of engines needs one shared type.
 type AnySceneEngine = SceneEngine[Any, Any, Any]
 
 

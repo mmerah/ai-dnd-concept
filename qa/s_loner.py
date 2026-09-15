@@ -110,8 +110,7 @@ def body(s: Session) -> None:
         f"master refusal not surfaced: {last['calls']}",
     )
 
-    # 5. The master crashes before anything lands: a bug is not caught, so the draft is kept
-    # and the state is unchanged; only a Refusal is ever shown to the player.
+    # 5. The master crashes before anything lands: the draft is kept and the state unchanged.
     before = len(bubbles(page))
     submit(page, "I try something.\n!crash")
     page.wait_for_timeout(1500)

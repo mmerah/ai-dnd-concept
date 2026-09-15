@@ -130,8 +130,6 @@ class Loner3eCast(Person):
 
 @dataclass(frozen=True, slots=True)
 class Struck:
-    """One exchange of a conflict: what it cost, and who lost it, if anyone."""
-
     facts: list[Fact]
     loser: str = ""
 
@@ -168,10 +166,7 @@ class Loner3eWorld(SceneWorld[Loner3eCast]):
         return Struck(facts=facts, loser=hit.name)
 
     def check_unnamed(self, *texts: str) -> None:
-        """Master free text lands on the sheet the narrator reads, so it may not name a secret.
-
-        The whole cast, not this scene's hidden list: the row outlives the scene that wrote it.
-        """
+        """The whole cast, not this scene's hidden list: a sheet row outlives its scene."""
         unmet = [entry for entry in self.cast.values() if not entry.known]
         if leaked := sorted(set(named_unmet("\n".join(texts), unmet))):
             raise Refusal(f"this names what the player has not met: {leaked}. Say it another way.")

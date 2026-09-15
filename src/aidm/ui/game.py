@@ -649,7 +649,6 @@ def near_end(position: float, size: float, container: float, slack: float = 48) 
 
 
 def draft_spent(draft: str, newest_prompt: str) -> bool:
-    """The words sent for the turn that just landed."""
     return bool(draft) and draft == newest_prompt
 
 
@@ -659,7 +658,6 @@ def whole_page(now: Observed, seen: Observed) -> bool:
 
 
 def insert_at_caret(draft: str, text: str, caret: int) -> str:
-    """A space on each side, unless the neighbour is already whitespace or the draft edge."""
     before, after = draft[:caret], draft[caret:]
     lead = "" if not before or before[-1].isspace() else " "
     trail = "" if not after or after[0].isspace() else " "

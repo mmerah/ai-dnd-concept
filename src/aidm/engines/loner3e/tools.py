@@ -81,7 +81,6 @@ class Roll(Attempt):
     )
 
     def faces(self) -> tuple[tuple[int, ...], tuple[int, ...]]:
-        """The chance faces and the risk faces, one die each unless the position doubles one."""
         chance = (DIE_FACE, DIE_FACE) if self.position == "advantage" else (DIE_FACE,)
         risk = (DIE_FACE, DIE_FACE) if self.position == "disadvantage" else (DIE_FACE,)
         return chance, risk

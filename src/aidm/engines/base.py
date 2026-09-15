@@ -135,7 +135,6 @@ class Person(Thing):
 
     @property
     def hired(self) -> bool:
-        """Whether they carry a sheet. A kind that never does answers no."""
         return False
 
     @property
@@ -145,8 +144,6 @@ class Person(Thing):
 
 
 class Sheet(Mutable):
-    """What a person's dice are written on."""
-
     def rows(self) -> Rows:
         return ()
 
@@ -288,7 +285,6 @@ class World[M: Person, P: Person](Mutable):
         return [member.fact(trace, card=f"{member.name} leaves your party")]
 
     def sheet_rows(self) -> Rows:
-        """Overridable: a rule may amend a row."""
         return self.player.rows()
 
 
@@ -388,7 +384,6 @@ def named_unmet(text: str, entities: Iterable[Thing]) -> list[str]:
 
 
 def banded(face: int, low: str, mid: str, high: str) -> str:
-    """Three bands, whatever the die: 1 to 2, 3 to 4, 5 and up."""
     return low if face <= 2 else mid if face <= 4 else high
 
 

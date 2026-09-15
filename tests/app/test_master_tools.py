@@ -175,7 +175,6 @@ async def test_next_scene_asks_the_player_and_writes_nothing_yet(tmp_path: Path)
 
 
 async def test_the_offer_does_not_close_the_scene_or_stop_the_player(tmp_path: Path) -> None:
-    """The way on is an offer: the player may keep playing here for as long as they like."""
     table = open_game(tmp_path)
     table.spawner.answers["worldsmith"] = [_scene()]
 

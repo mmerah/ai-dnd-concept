@@ -75,7 +75,7 @@ class ClaudeDriver:
     def command(
         self, role: Role, config: RoleConfig, session: str | None, url: str
     ) -> Sequence[str]:
-        """The last flag takes no list, because the prompt follows it."""
+        """The prompt follows the last flag, so that flag takes no list."""
         argv = [
             "claude",
             "-p",

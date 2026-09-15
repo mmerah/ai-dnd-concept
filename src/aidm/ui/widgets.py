@@ -47,7 +47,6 @@ def page_header(
 
 @contextmanager
 def page_body() -> Generator[None]:
-    """The centred column every page but the game puts its content in."""
     with (
         ui.column().classes("w-full q-pa-lg items-center"),
         ui.column().classes("w-full game-gap-3xl").style("max-width: var(--game-measure)"),
@@ -64,7 +63,6 @@ def page_intro(eyebrow: str, title: str, lead: str) -> None:
 
 @contextmanager
 def section(title: str, *, classes: str = "") -> Generator[None]:
-    """A card with the eyebrow that names it: the sidebar panels, the launcher, settings tabs."""
     with ui.card().classes(f"w-full game-gap-lg {classes}"):
         heading(title)
         yield

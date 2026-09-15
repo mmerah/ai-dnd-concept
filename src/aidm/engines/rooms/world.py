@@ -461,7 +461,6 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         return f"- {place.tag} — {standing or '(nobody, nothing)'}; ways: {ways or '(none)'}"
 
     def elsewhere(self) -> list[Place]:
-        """Visited, de-duplicated in order, minus where the player stands."""
         return [place for place in self._visited() if place.id != self.current.id]
 
     def can_move_offscreen(self) -> bool:
@@ -482,7 +481,6 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         )
 
     def _visited(self) -> list[Place]:
-        """Every visited place, de-duplicated in order of first visit."""
         seen: dict[Slug, Place] = {}
         for place_id in self.visits:
             seen.setdefault(place_id, self.require_place(place_id))

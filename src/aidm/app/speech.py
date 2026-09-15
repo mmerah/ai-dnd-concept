@@ -76,7 +76,6 @@ class Reader:
             LOGGER.warning("speech generation failed: %s", failed)
 
     def _planned(self, exchange: Exchange) -> tuple[tuple[tuple[str, str], ...], str, Path]:
-        """What to speak, the key it hashes to, and the file that key names."""
         requests = requests_of(exchange, self.voice, self.config.voices)
         key = clip_key(self.config.model, requests)
         return requests, key, self.saves / f"{key}.wav"

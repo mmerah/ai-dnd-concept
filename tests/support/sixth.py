@@ -34,8 +34,7 @@ class SixthCharacter(Character[Person]):
 
 
 class SixthEngine(RoomEngine[Dweller, Person, SixthGame]):
-    """A sixth engine, a room crawler: its state model and its creation; the tools are the
-    family's."""
+    """A sixth engine, a room crawler; the tools are the family's."""
 
     id = SIXTH
     title = "SIXTH"

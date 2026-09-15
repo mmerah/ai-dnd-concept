@@ -96,7 +96,7 @@ async def _converse(
 
 
 def _answer(tools: Tools, call: _ToolCall) -> str:
-    """What the server does: a refusal is the result the model reads and carries on from."""
+    """A refusal is a result the model reads and carries on from, not an error."""
     try:
         return tools.call(call.function.name, decode(call.function.arguments))
     except Refusal as refused:

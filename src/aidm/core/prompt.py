@@ -15,7 +15,6 @@ def sections(parts: Sections) -> str:
 
 
 def section_if(title: str, body: str) -> Sections:
-    """One prompt section, or none when the body is empty."""
     return ((title, body),) if body else ()
 
 
