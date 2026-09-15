@@ -134,7 +134,7 @@ class RegionDraft[N: Dweller](MapDraft[N]):
     )
 
 
-class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
+class RoomWorld[P: Person, N: Dweller](Dungeon[N], World[P, N]):
     visits: list[Slug] = Field(min_length=1)
 
     @model_validator(mode="after")

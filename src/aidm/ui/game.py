@@ -19,6 +19,7 @@ from aidm.core.views import PlayerView
 from aidm.ui.dice import DiceTray, rolled_since
 from aidm.ui.dictation import Dictation
 from aidm.ui.widgets import (
+    alert,
     avatar,
     decision_widget,
     entity_row,
@@ -27,6 +28,7 @@ from aidm.ui.widgets import (
     media_url,
     page_header,
     section,
+    warn,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -490,7 +492,7 @@ class GamePage:
     async def act(self) -> None:
         action = self.view.action
         if action is None:
-            ui.notify("The way on has changed.", type="warning", position="top")
+            warn("The way on has changed.")
             return
         typed = (self.box.value or "").strip()
         if not typed:
@@ -504,7 +506,7 @@ class GamePage:
         try:
             await self.session.restart()
         except Refusal as error:
-            _alert(str(error))
+            alert(str(error))
             return
         self.poll_turn()
         await self._run(self.session.open)
@@ -546,7 +548,7 @@ class GamePage:
 
     def dictation_failed(self, event: GenericEventArguments) -> None:
         reason = str(event.args)
-        ui.notify(DICTATION_FAILURES.get(reason, reason), type="warning", position="top")
+        warn(DICTATION_FAILURES.get(reason, reason))
 
     def _set_composer(self) -> None:
         session = self.session
@@ -611,11 +613,11 @@ class GamePage:
             message = str(error)
             # A double-click guard, not a message for the player: this game's own turn in flight.
             if message != IN_FLIGHT_HERE:
-                _alert(message)
+                alert(message)
             return False
         except Exception:
             # Announced, not handled: the re-raise is what logs the detail kept off the screen.
-            _alert(TURN_FAILED)
+            alert(TURN_FAILED)
             raise
         finally:
             self._set_composer()
@@ -724,10 +726,6 @@ def _inline_status(step: Role, elapsed: float) -> ui.label:
         ticker = ui.label(_clock(elapsed)).classes("text-xs font-mono")
     ui.label(description).classes("text-xs opacity-70")
     return ticker
-
-
-def _alert(message: str) -> None:
-    ui.notify(message, type="negative", multi_line=True, position="top")
 
 
 def _clock(seconds: float) -> str:

@@ -52,25 +52,28 @@ MAP_UNWRITTEN = Fact(
 ELSEWHERE = "ELSEWHERE (time has passed; you may move what the player cannot see)"
 
 
-class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
-    world: type[RoomWorld[N, P]]
+class RoomEngine[P: Person, N: Dweller, G: Game[Any]](Engine[P, N, G]):
+    world: type[RoomWorld[P, N]]
     family_dir = Path(__file__).parent
-    guidance: str
+    authoring: str
     opening_sections = (
         ("MAP SO FAR", "(no map yet)"),
         ("SCENES SO FAR", "(no scenes yet — write the opening)"),
         ("THE PLAYER", "(no player yet — the map is authored before anyone stands in it)"),
     )
 
-    def world_of(self, state: G) -> RoomWorld[N, P]:
+    def world_of(self, state: G) -> RoomWorld[P, N]:
         return state.payload
+
+    def guidance(self, _selection: PackSelection | None) -> str:
+        return self.authoring
 
     def validate(self, state: G) -> None:
         super().validate(state)
         if state.packs is not None:
             raise Refusal(f"a {self.id!r} game plays no table set")
 
-    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> RoomWorld[N, P]:
+    def new_game(self, scenario: AnyScenario, character: AnyCharacter) -> RoomWorld[P, N]:
         draft: MapDraft[N] = scenario.payload
         check_map(draft)
         player = self.player_of(character)
@@ -174,7 +177,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
 
         model = MapDraft[self.member]
         prompt = self.render_opening(
-            source, meta.scope, intent=MAP_ASK, guidance=self.guidance, answer=model
+            source, meta.scope, intent=MAP_ASK, guidance=self.guidance(None), answer=model
         )
         return built(await worldsmith(prompt, model, lambda answer: check(built(answer))))
 
@@ -227,7 +230,9 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
     ) -> RegionDraft[N]:
         world = self.world_of(draft)
         model = RegionDraft[self.member]
-        prompt = self.render_request(draft, intent=intent, guidance=self.guidance, answer=model)
+        prompt = self.render_request(
+            draft, intent=intent, guidance=self.guidance(None), answer=model
+        )
         return await worldsmith(prompt, model, lambda answer: check_extension(answer, world))
 
     def install(self, draft: G, extension: RegionDraft[N]) -> None:

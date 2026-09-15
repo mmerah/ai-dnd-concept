@@ -4,11 +4,12 @@ from pathlib import Path
 from typing import Literal, TypeAliasType, get_args, get_origin
 
 from nicegui import ui
-from pydantic import BaseModel, SecretStr, ValidationError
+from pydantic import BaseModel, SecretStr
 from pydantic.fields import FieldInfo
 
 from aidm.config import Settings, env_key, read_settings, save_settings
-from aidm.ui.widgets import page_body, page_header, page_intro
+from aidm.core.entities import Refusal, parse
+from aidm.ui.widgets import alert, page_body, page_header, page_intro
 
 type Widget = ui.input | ui.switch | ui.select | ui.number
 # A cleared box writes no key at all, which is the only way back to a field's own default.
@@ -67,12 +68,12 @@ class SettingsForm:
             else:
                 node[path[-1]] = typed
         try:
-            Settings.model_validate(merged)
+            parse(Settings, merged)
             save_settings(changed)
             # The snapshot the boxes are compared against, or a second save reads as no change.
             self.settings = read_settings()
-        except ValidationError as error:
-            ui.notify(refusal_text(error), type="negative", multi_line=True)
+        except Refusal as refused:
+            alert(str(refused))
             return
         ui.notify("Saved to .env. The keys apply at the next start.", type="positive")
 
@@ -94,13 +95,6 @@ def changes(settings: Settings, typed: Mapping[tuple[str, ...], object]) -> Chan
         elif value != stored:
             changed[path] = None if value is None or value == "" else _text(value)
     return changed
-
-
-def refusal_text(error: ValidationError) -> str:
-    return "\n".join(
-        f"{'.'.join(str(part) for part in issue['loc'])}: {issue['msg']}"
-        for issue in error.errors()
-    )
 
 
 def _shown(model: BaseModel) -> list[tuple[str, FieldInfo, object]]:

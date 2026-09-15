@@ -556,6 +556,18 @@ def test_gain_item_slugs_against_the_ships_functions_too(draft: TwentyfourxxGame
     assert draft.payload.ship["sensors"].name == "Sensors"
 
 
+def test_gain_item_refuses_naming_an_unmet_entity_but_allows_a_revealed_one(
+    draft: TwentyfourxxGame,
+) -> None:
+    player = draft.payload.player
+    with pytest.raises(Refusal, match="has not met"):
+        _ = change(ENGINE, draft, "gain_item", name="Sable's shiv")
+    assert not any(item.name == "Sable's shiv" for item in player.require_sheet().items.values())
+
+    _ = change(ENGINE, draft, "gain_item", name="Kestrel's rope")
+    assert any(item.name == "Kestrel's rope" for item in player.require_sheet().items.values())
+
+
 def test_a_hired_members_kit_slugs_against_the_ships_functions_too() -> None:
     made = items_from_kits([Kit(name="Sensors"), Kit(name="Hull armor"), Kit(name="Rope")])
     assert [key for key in made if key in SHIP_IDS] == []
@@ -576,6 +588,18 @@ def test_spend_with_actor_id_pays_from_the_member_credits(draft: TwentyfourxxGam
     _ = change(ENGINE, draft, "spend", amount=1, why="ammo", actor_id=KESTREL)
     assert member.require_sheet().credits == before - 1
     assert draft.payload.player.require_sheet().credits == STARTING_CREDITS
+
+
+def test_spend_refuses_naming_an_unmet_entity_but_allows_a_revealed_one(
+    draft: TwentyfourxxGame,
+) -> None:
+    player = draft.payload.player
+    with pytest.raises(Refusal, match="has not met"):
+        _ = change(ENGINE, draft, "spend", amount=1, why="a bribe for Sable")
+    assert player.require_sheet().credits == STARTING_CREDITS
+
+    _ = change(ENGINE, draft, "spend", amount=1, why="a bribe for Kestrel")
+    assert player.require_sheet().credits == STARTING_CREDITS - 1
 
 
 def test_repair_item_zeroes_broken_times_and_refuses_an_unbroken_item() -> None:
@@ -599,6 +623,18 @@ def test_change_hindrances_gains_and_loses_refuses_duplicate_and_absent() -> Non
 
     _ = change(ENGINE, draft, "change_hindrances", gained=["Scared"], lost=["Bleeding"])
     assert player.require_sheet().hindrances == ["Scared"]
+
+
+def test_change_hindrances_refuses_naming_an_unmet_entity_but_allows_a_revealed_one(
+    draft: TwentyfourxxGame,
+) -> None:
+    player = draft.payload.player
+    with pytest.raises(Refusal, match="has not met"):
+        _ = change(ENGINE, draft, "change_hindrances", gained=["Marked by Sable"])
+    assert player.require_sheet().hindrances == []
+
+    _ = change(ENGINE, draft, "change_hindrances", gained=["Marked by Kestrel"])
+    assert player.require_sheet().hindrances == ["Marked by Kestrel"]
 
 
 def test_finish_job_raises_a_skill_enters_a_new_one_refuses_at_d12_adds_credits() -> None:

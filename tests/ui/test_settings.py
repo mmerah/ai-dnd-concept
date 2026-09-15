@@ -9,7 +9,6 @@ from aidm.config import (
     ProviderConfig,
     RoleConfig,
     RoleSettings,
-    Settings,
     read_settings,
     save_settings,
 )
@@ -17,7 +16,6 @@ from aidm.ui.settings import (
     SettingsForm,
     _widget,  # pyright: ignore[reportPrivateUsage]
     changes,
-    refusal_text,
 )
 
 
@@ -107,11 +105,31 @@ def test_a_second_save_on_the_same_form_lands(
     assert "Nothing changed." not in notified
 
 
-def test_a_validation_error_reads_as_one_line_per_field() -> None:
-    with pytest.raises(ValidationError) as raised:
-        _ = Settings.model_validate({"roles": {"master": {"timeout": -1}}})
+def test_an_invalid_save_names_the_first_bad_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("ROLES__MASTER__TIMEOUT", raising=False)
+    monkeypatch.chdir(tmp_path)
 
-    text = refusal_text(raised.value)
+    notified: list[str] = []
+
+    def spy_notify(message: str, **_kwargs: object) -> None:
+        notified.append(message)
+
+    monkeypatch.setattr("aidm.ui.settings.ui.notify", spy_notify)
+
+    form = SettingsForm(offline_settings(tmp_path))
+    client = Client(ui.page("/"))
+    try:
+        with client:
+            widget = ui.number(value=-1)
+            form.boxes = {("roles", "master", "timeout"): widget}
+            form.save()
+    finally:
+        client.delete()
+
+    assert notified
+    text = notified[-1]
     assert text.startswith("roles.master.timeout: ")
     assert "type=" not in text
     assert "http" not in text

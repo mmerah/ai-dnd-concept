@@ -15,7 +15,16 @@ from aidm.core.entities import EngineId, Refusal, Slug, content_id
 from aidm.core.io import SOURCE_SUFFIXES
 from aidm.core.model import ScenarioMeta
 from aidm.ui import theme
-from aidm.ui.widgets import game_path, heading, labeled_value, page_body, page_header, page_intro
+from aidm.ui.widgets import (
+    alert,
+    game_path,
+    heading,
+    labeled_value,
+    page_body,
+    page_header,
+    page_intro,
+    warn,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -119,7 +128,7 @@ class CharacterForm:
     def create(self) -> None:
         title = (self.name.value or "").strip()
         if not title:
-            ui.notify("Name the character.", type="warning")
+            warn("Name the character.")
             return
         try:
             made = self.runtime.engines[self.engine_id].create_character(
@@ -127,7 +136,7 @@ class CharacterForm:
             )
             self.runtime.library.write_character(made)
         except Refusal as refused:
-            ui.notify(str(refused), type="negative")
+            alert(str(refused))
             return
         LOGGER.info("character created: slug=%s engine=%s", made.id, made.engine)
         ui.navigate.to("/")
@@ -186,7 +195,24 @@ class ScenarioForm:
             )
             with ui.card().classes("w-full"):
                 _engine_select(self.runtime, self.engine_id, self.choose_engine)
-                self.form()
+                self.title = ui.input(label="Title")
+                self.character_fields()
+                self.premise = ui.textarea(
+                    label="Premise", placeholder="What is this adventure about?"
+                )
+                self.scope = ui.textarea(
+                    label="Scope",
+                    placeholder="How far does this go, and does it tend toward an ending?",
+                )
+                self.style_field()
+                self.voice = ui.input(
+                    label="Narrator voice", placeholder="Leave empty for the default voice"
+                )
+                heading("Or upload the adventure")
+                ui.upload(on_upload=self.uploaded, max_files=1, auto_upload=True).props(
+                    f'accept="{",".join(SOURCE_SUFFIXES)}"'
+                )
+                self.button_row()
         # `on_disconnect` also fires on a reconnect, which would discard a live page's upload.
         ui.context.client.on_delete(self._discard_uploads)  # pyright: ignore[reportUnknownMemberType]
 
@@ -204,13 +230,14 @@ class ScenarioForm:
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
         theme.set_look(self.runtime.engines[self.engine_id].look)
-        self.form.refresh()
+        self.character_fields.refresh()
+        self.style_field.refresh()
+        self.button_row.refresh()
 
     @ui.refreshable_method
-    def form(self) -> None:
+    def character_fields(self) -> None:
         engine = self.runtime.engines[self.engine_id]
         characters = self.catalog.characters_for(self.engine_id)
-        self.title = ui.input(label="Title")
         offered = {pack.id: pack.label for pack in engine.supplement_options()}
         self.supplements = (
             ui.select(
@@ -227,19 +254,15 @@ class ScenarioForm:
             value=characters[0].id if characters else None,
             label="Character",
         )
-        self.premise = ui.textarea(label="Premise", placeholder="What is this adventure about?")
-        self.scope = ui.textarea(
-            label="Scope",
-            placeholder="How far does this go, and does it tend toward an ending?",
-        )
+
+    @ui.refreshable_method
+    def style_field(self) -> None:
+        engine = self.runtime.engines[self.engine_id]
         self.style = ui.input(label="Art style", placeholder=f"Leave empty for: {engine.art_style}")
-        self.voice = ui.input(
-            label="Narrator voice", placeholder="Leave empty for the default voice"
-        )
-        heading("Or upload the adventure")
-        ui.upload(on_upload=self.uploaded, max_files=1, auto_upload=True).props(
-            f'accept="{",".join(SOURCE_SUFFIXES)}"'
-        )
+
+    @ui.refreshable_method
+    def button_row(self) -> None:
+        characters = self.catalog.characters_for(self.engine_id)
         with ui.row().classes("w-full items-center game-gap-xl"):
             self.button = ui.button(
                 "Write the opening", icon="auto_stories", on_click=self.write
@@ -255,7 +278,7 @@ class ScenarioForm:
         scope = (self.scope.value or "").strip()
         character_id = self.character.value
         if not title or not scope or not (premise or self.document) or character_id is None:
-            ui.notify("A title, a scope, a character, and a premise or a document.", type="warning")
+            warn("A title, a scope, a character, and a premise or a document.")
             return
         self.button.props("loading")
         meta = ScenarioMeta(
@@ -275,7 +298,7 @@ class ScenarioForm:
             )
             opened = LaunchTarget(scenario_id=name, character_id=character_id)
         except Refusal as refused:
-            ui.notify(str(refused), type="negative", multi_line=True)
+            alert(str(refused))
             return
         finally:
             self.button.props(remove="loading")

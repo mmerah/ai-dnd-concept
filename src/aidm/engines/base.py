@@ -202,7 +202,7 @@ class ItemSheet[I: Item](Sheet):
         return [owner.fact(f"{owner.mention} drops {item.name}", card=f"Dropped {item.name}")]
 
 
-class World[M: Person, P: Person](Mutable):
+class World[P: Person, M: Person](Mutable):
     player: P
     source: str = ""
     party: list[Slug] = Field(default_factory=list)

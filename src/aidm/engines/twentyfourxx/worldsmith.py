@@ -5,15 +5,13 @@ from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Refusal, Slug
 from aidm.core.play import DecisionOption
-from aidm.engines.hiring import HIRED
+from aidm.engines.hiring import HIRED, UNWRITTEN_CAST
 from aidm.engines.scenes.packs import ScenePack
 from aidm.engines.twentyfourxx.world import Kit, SkillDie
 
 AUTHORING = (
     "24XX AUTHORING\n"
-    "The cast carries no dice until the player hires them in play. An npc is a name, a brief, "
-    "and whether the player has met them. A threat is a brief that the player's own roll meets, "
-    "never a stat block. The player is an operator on a job in a hard science-fiction future. "
+    f"{UNWRITTEN_CAST}The player is an operator on a job in a hard science-fiction future. "
     "Write scenes as work sites, stations, ships, and the people who hold them."
 )
 HIRING = (

@@ -9,7 +9,7 @@ from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import DecisionOption
 from aidm.core.views import Rows
-from aidm.engines.base import Gauge, Person, named_unmet
+from aidm.engines.base import Gauge, Person
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 
@@ -164,12 +164,6 @@ class Loner3eWorld(SceneWorld[Loner3eCast]):
         facts.extend(hit.refill("the conflict is over"))
         facts.extend(striker.refill("the conflict is over"))
         return Struck(facts=facts, loser=hit.name)
-
-    def check_unnamed(self, *texts: str) -> None:
-        """The whole cast, not this scene's hidden list: a sheet row outlives its scene."""
-        unmet = [entry for entry in self.cast.values() if not entry.known]
-        if leaked := sorted(set(named_unmet("\n".join(texts), unmet))):
-            raise Refusal(f"this names what the player has not met: {leaked}. Say it another way.")
 
     def check_conflict(self, actor: Loner3eCast, opponent: Loner3eCast | None) -> None:
         if opponent is None:
