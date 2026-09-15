@@ -96,35 +96,7 @@ class Defend(Frozen):
     actor_id: Slug | None = Field(default=None, description=ACTOR)
 
 
-class Helper(Frozen):
-    actor_id: Slug = Field(description="Exact id of the hired member who helps.")
-    hindered: str = Field(default="", description="Why the helper is hindered. Empty when none is.")
-    risk: str = Field(
-        default="",
-        description="What the helper suffers in full on a disaster, named before the roll. "
-        "Empty when helping puts them in no danger.",
-    )
-    deadly: bool = Field(default=False, description=DEADLY.format(who="helper"))
-    defend_with: Slug | None = Field(default=None, description=DEFEND_WITH.format(who="helper"))
-    hindrance: str = Field(default="", description=HINDRANCE)
-
-    @model_validator(mode="after")
-    def _defend_fields(self) -> Self:
-        check_risk(
-            self.risk, deadly=self.deadly, defend_with=self.defend_with, hindrance=self.hindrance
-        )
-        return self
-
-
-class Roll(Attempt):
-    actor_id: Slug | None = Field(default=None, description=ACTOR)
-    skill: str = Field(default="", description="Which skill to roll. Empty rolls the plain d6.")
-    helped: str = Field(default="", description="Why circumstances help. Empty when none do.")
-    helped_by: Helper | None = Field(
-        default=None,
-        description="The hired member who rolls their own die. Null when none helps.",
-    )
-    hindered: str = Field(default="", description="Why the actor is hindered. Empty when none is.")
+class Staked(Frozen):
     risk: str = Field(
         default="",
         description="What the actor suffers in full on a disaster, named before the roll. "
@@ -140,6 +112,29 @@ class Roll(Attempt):
             self.risk, deadly=self.deadly, defend_with=self.defend_with, hindrance=self.hindrance
         )
         return self
+
+
+class Helper(Staked):
+    actor_id: Slug = Field(description="Exact id of the hired member who helps.")
+    hindered: str = Field(default="", description="Why the helper is hindered. Empty when none is.")
+    risk: str = Field(
+        default="",
+        description="What the helper suffers in full on a disaster, named before the roll. "
+        "Empty when helping puts them in no danger.",
+    )
+    deadly: bool = Field(default=False, description=DEADLY.format(who="helper"))
+    defend_with: Slug | None = Field(default=None, description=DEFEND_WITH.format(who="helper"))
+
+
+class Roll(Staked, Attempt):
+    actor_id: Slug | None = Field(default=None, description=ACTOR)
+    skill: str = Field(default="", description="Which skill to roll. Empty rolls the plain d6.")
+    helped: str = Field(default="", description="Why circumstances help. Empty when none do.")
+    helped_by: Helper | None = Field(
+        default=None,
+        description="The hired member who rolls their own die. Null when none helps.",
+    )
+    hindered: str = Field(default="", description="Why the actor is hindered. Empty when none is.")
 
 
 class Raise(Frozen):

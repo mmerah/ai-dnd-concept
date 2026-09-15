@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from functools import partial
 from hashlib import sha1
 from pathlib import Path
+from typing import Literal
 
 from nicegui import app, ui
 
@@ -31,11 +32,19 @@ def media_url(path: Path) -> str:
 
 
 def alert(message: str) -> None:
-    ui.notify(message, type="negative", multi_line=True, position="top")
+    _notify(message, "negative")
 
 
 def warn(message: str) -> None:
-    ui.notify(message, type="warning", multi_line=True, position="top")
+    _notify(message, "warning")
+
+
+def note(message: str, *, good: bool = False) -> None:
+    _notify(message, "positive" if good else "info")
+
+
+def _notify(message: str, kind: Literal["negative", "warning", "positive", "info"]) -> None:
+    ui.notify(message, type=kind, multi_line=True, position="top")
 
 
 def page_header(

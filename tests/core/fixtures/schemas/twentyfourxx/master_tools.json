@@ -380,6 +380,29 @@
           "description": "The attempt, in a few words the player reads.",
           "type": "string"
         },
+        "risk": {
+          "default": "",
+          "description": "What the actor suffers in full on a disaster, named before the roll. Empty when they are in no danger.",
+          "type": "string"
+        },
+        "deadly": {
+          "default": false,
+          "description": "Whether `risk` is death. A disaster then kills the actor instead of leaving `risk` on them as a hindrance; a setback then injures them instead of `hindrance` landing.",
+          "type": "boolean"
+        },
+        "defend_with": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Exact id of the actor's item or a ship function that breaks to spare them. Null when nothing shields them."
+        },
+        "hindrance": {
+          "default": "",
+          "description": "What the hit leaves behind once the gear absorbs it, as a hindrance. Empty when the gear breaks harmlessly.",
+          "type": "string"
+        },
         "actor_id": {
           "type": [
             "string",
@@ -401,15 +424,6 @@
         "helped_by": {
           "additionalProperties": false,
           "properties": {
-            "actor_id": {
-              "description": "Exact id of the hired member who helps.",
-              "type": "string"
-            },
-            "hindered": {
-              "default": "",
-              "description": "Why the helper is hindered. Empty when none is.",
-              "type": "string"
-            },
             "risk": {
               "default": "",
               "description": "What the helper suffers in full on a disaster, named before the roll. Empty when helping puts them in no danger.",
@@ -432,6 +446,15 @@
               "default": "",
               "description": "What the hit leaves behind once the gear absorbs it, as a hindrance. Empty when the gear breaks harmlessly.",
               "type": "string"
+            },
+            "actor_id": {
+              "description": "Exact id of the hired member who helps.",
+              "type": "string"
+            },
+            "hindered": {
+              "default": "",
+              "description": "Why the helper is hindered. Empty when none is.",
+              "type": "string"
             }
           },
           "required": [
@@ -447,29 +470,6 @@
         "hindered": {
           "default": "",
           "description": "Why the actor is hindered. Empty when none is.",
-          "type": "string"
-        },
-        "risk": {
-          "default": "",
-          "description": "What the actor suffers in full on a disaster, named before the roll. Empty when they are in no danger.",
-          "type": "string"
-        },
-        "deadly": {
-          "default": false,
-          "description": "Whether `risk` is death. A disaster then kills the actor instead of leaving `risk` on them as a hindrance; a setback then injures them instead of `hindrance` landing.",
-          "type": "boolean"
-        },
-        "defend_with": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": null,
-          "description": "Exact id of the actor's item or a ship function that breaks to spare them. Null when nothing shields them."
-        },
-        "hindrance": {
-          "default": "",
-          "description": "What the hit leaves behind once the gear absorbs it, as a hindrance. Empty when the gear breaks harmlessly.",
           "type": "string"
         }
       },

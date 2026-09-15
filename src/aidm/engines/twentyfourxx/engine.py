@@ -49,6 +49,7 @@ from aidm.engines.twentyfourxx.tools import (
     Roll,
     ShipUpgrade,
     Spend,
+    Staked,
     TakeLead,
 )
 from aidm.engines.twentyfourxx.world import (
@@ -396,7 +397,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         helping = None if helper is None else Helping(world.require_actor(helper.actor_id), helper)
         pool = self._pool(actor, helping, args)
 
-        staked: list[tuple[Crewmate, Roll | Helper]] = [(actor, args)]
+        staked: list[tuple[Crewmate, Staked]] = [(actor, args)]
         if helping is not None:
             staked.append((helping.who, helping.terms))
 

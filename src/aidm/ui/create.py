@@ -20,6 +20,7 @@ from aidm.ui.widgets import (
     game_path,
     heading,
     labeled_value,
+    note,
     page_body,
     page_header,
     page_intro,
@@ -226,7 +227,7 @@ class ScenarioForm:
         path = self.uploads / Path(event.file.name).name
         await event.file.save(path)
         self.document = path
-        ui.notify(f"Read {event.file.name}.")
+        note(f"Read {event.file.name}.")
 
     def choose_engine(self, event: ValueChangeEventArguments[str]) -> None:
         self.engine_id = EngineId(event.value)
