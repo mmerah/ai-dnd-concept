@@ -38,6 +38,11 @@ class Dungeon[N: Dweller](Mutable):
     ways: dict[Slug, list[Way]] = Field(default_factory=dict)
     npcs: dict[Slug, N] = Field(default_factory=dict)
     items: dict[Slug, Prop] = Field(default_factory=dict)
+    arc: str = Field(
+        default="",
+        description="What is really going on in this map: secrets, what can come, and what ties "
+        "one hidden thing to another. The player never reads it.",
+    )
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -405,6 +410,7 @@ class RoomWorld[N: Dweller, P: Person](Dungeon[N], World[N, P]):
         self.ways.update({key: [*ways] for key, ways in region.ways.items()})
         self.npcs.update(region.npcs)
         self.items.update(region.items)
+        self.arc = "\n".join(part for part in (self.arc, region.arc) if part)
         self.add_way(anchor_id, start, known=False)
         self.add_way(start, anchor_id, known=False)
 
