@@ -84,7 +84,7 @@ def test_a_second_save_on_the_same_form_lands(
     def spy_notify(message: str, **_kwargs: object) -> None:
         notified.append(message)
 
-    monkeypatch.setattr("aidm.ui.settings.ui.notify", spy_notify)
+    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
 
     # A stale snapshot reads a box moved back to its old value as no change at all.
     form = SettingsForm(offline_settings(tmp_path))
@@ -103,6 +103,27 @@ def test_a_second_save_on_the_same_form_lands(
 
     assert read_settings().roles.narrator.model == "sonnet"
     assert "Nothing changed." not in notified
+
+
+def test_a_no_op_save_tells_the_player_nothing_changed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    notified: list[str] = []
+
+    def spy_notify(message: str, **_kwargs: object) -> None:
+        notified.append(message)
+
+    monkeypatch.setattr("aidm.ui.widgets.ui.notify", spy_notify)
+
+    form = SettingsForm(offline_settings(tmp_path))
+    client = Client(ui.page("/"))
+    try:
+        with client:
+            form.save()
+    finally:
+        client.delete()
+
+    assert "Nothing changed." in notified
 
 
 def test_an_invalid_save_names_the_first_bad_key(

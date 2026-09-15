@@ -9,7 +9,7 @@ from pydantic.fields import FieldInfo
 
 from aidm.config import Settings, env_key, read_settings, save_settings
 from aidm.core.entities import Refusal, parse
-from aidm.ui.widgets import alert, page_body, page_header, page_intro
+from aidm.ui.widgets import alert, note, page_body, page_header, page_intro
 
 type Widget = ui.input | ui.switch | ui.select | ui.number
 # A cleared box writes no key at all, which is the only way back to a field's own default.
@@ -56,7 +56,7 @@ class SettingsForm:
     def save(self) -> None:
         changed = changes(self.settings, {path: box.value for path, box in self.boxes.items()})
         if not changed:
-            ui.notify("Nothing changed.", type="info")
+            note("Nothing changed.")
             return
         merged = self.settings.model_dump()
         for path, typed in changed.items():
@@ -75,7 +75,7 @@ class SettingsForm:
         save_settings(changed)
         # The snapshot the boxes are compared against, or a second save reads as no change.
         self.settings = read_settings()
-        ui.notify("Saved to .env. The keys apply at the next start.", type="positive")
+        note("Saved to .env. The keys apply at the next start.", good=True)
 
 
 def settings_page(settings: Settings) -> None:
