@@ -27,6 +27,7 @@ ANSWERED_BY_OPTION = (
 )
 NO_TURN = "no turn is open. The player starts one from the page. Wait to be spawned again."
 GAME_OVER = "The game is over. The player restarts from the page."
+RESTART = "The only way on is to restart."
 
 
 @dataclass(slots=True, kw_only=True)
@@ -55,7 +56,7 @@ class Turn:
     def _consume(self, answer: Answer) -> None:
         engine, draft = self.engine, self.draft
         if (ended := engine.over(draft)) is not None:
-            raise Refusal(f"{ended} The only way on is to restart.")
+            raise Refusal(f"{ended} {RESTART}")
         # Any input consumes the decision, a revision included: it never survives its own answer.
         consumed, draft.pending = draft.pending, None
         chosen = answer.option_id

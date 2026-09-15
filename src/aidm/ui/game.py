@@ -402,6 +402,7 @@ class GamePage:
             self.box = (
                 ui.input()
                 .classes("flex-grow")
+                .classes(remove="w-full")
                 .props('autogrow type=textarea borderless input-style="max-height: 9rem"')
             )
             self.box.bind_value(app.storage.tab, f"draft:{self.session.slug}")

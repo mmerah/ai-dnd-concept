@@ -12,7 +12,7 @@ from aidm.core.facts import Fact, traced
 from aidm.core.io import read_cached_text
 from aidm.core.model import AnyGame
 from aidm.core.play import Chapter, Interjection, Narration, SpokenLine
-from aidm.core.prompt import Sections, lines_of, section_if, sections, told_history
+from aidm.core.prompt import Sections, lines_of, recent_history, section_if, sections
 from aidm.core.tools import schema_text
 from aidm.core.views import Companion, NarratorView, Subject
 from aidm.engines.seam import AnyEngine
@@ -158,7 +158,7 @@ def _picture(
         lines_of(f"- {subject.headline}" for subject in others) if others else "(nobody else)"
     )
     return (
-        ("WHAT THE PLAYER HAS READ", told_history(scenes)),
+        ("WHAT THE PLAYER HAS READ", recent_history(scenes)),
         ("SCENE", f"{view.title}\n{view.situation}"),
         *section_if("WHAT THIS SCENE IS ABOUT", view.focus),
         ("WHO IS HERE", who_is_here),

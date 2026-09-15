@@ -1,3 +1,4 @@
+from collections import Counter
 from collections.abc import Sequence
 from typing import Literal
 
@@ -236,9 +237,8 @@ class TwentyfourxxWorld(SceneWorld[Crewmate]):
             (actor, self.require_gear(actor, item_id), hindrance)
             for actor, item_id, hindrance in claims
         ]
-        claimed: dict[int, int] = {}
-        for _, item, _ in resolved:
-            claimed[id(item)] = claimed.get(id(item), 0) + 1
+        # By identity: two actors can claim the same ship function, and Gear is unhashable.
+        claimed = Counter(id(item) for _, item, _ in resolved)
         for actor, item, hindrance in resolved:
             if item.breaks - item.broken_times < claimed[id(item)]:
                 raise Refusal(_broken(item))

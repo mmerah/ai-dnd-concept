@@ -31,8 +31,7 @@ class CharacterForm:
         self.create_button: ui.button | None = None
 
     def build(self) -> None:
-        with page_header("New character", look=self.runtime.engines[self.engine_id].look):
-            pass
+        page_header("New character", look=self.runtime.engines[self.engine_id].look)
         with page_body():
             page_intro(
                 "Character",
@@ -41,10 +40,8 @@ class CharacterForm:
             )
             with ui.card().classes("w-full"):
                 _engine_select(self.runtime, self.engine_id, self.choose_engine)
-                self.name = ui.input(label="Name").classes("w-full")
-                self.brief = ui.input(
-                    label="Brief", placeholder="Who are they, in one sentence?"
-                ).classes("w-full")
+                self.name = ui.input(label="Name")
+                self.brief = ui.input(label="Brief", placeholder="Who are they, in one sentence?")
                 self.steps()
                 heading("Preview")
                 self.preview()
@@ -90,7 +87,7 @@ class CharacterForm:
                 on_change=partial(self.write, step.id),
             )
             # Rebuilding the whole form on blur would destroy the field Tab just moved to.
-            typed.classes("w-full").on("blur", self.preview.refresh)
+            typed.on("blur", self.preview.refresh)
             return
         # Quasar returns typed text as its own key, so a typed answer only lands on a keyed label.
         options = {
@@ -106,7 +103,7 @@ class CharacterForm:
                 label=step.label,
                 multiple=True,
                 on_change=partial(self.choose_many, step.id),
-            ).classes("w-full")
+            )
         else:
             chosen = ui.select(
                 options=options,
@@ -115,7 +112,7 @@ class CharacterForm:
                 on_change=partial(self.choose, step.id),
                 with_input=step.allows_text,
                 new_value_mode="add-unique" if step.allows_text else None,
-            ).classes("w-full")
+            )
         if step.hint:
             chosen.props(f'hint="{step.hint}"')
 
@@ -180,8 +177,7 @@ class ScenarioForm:
         self.button: ui.button
 
     def build(self) -> None:
-        with page_header("New scenario", look=self.runtime.engines[self.engine_id].look):
-            pass
+        page_header("New scenario", look=self.runtime.engines[self.engine_id].look)
         with page_body():
             page_intro(
                 "Scenario",
@@ -214,7 +210,7 @@ class ScenarioForm:
     def form(self) -> None:
         engine = self.runtime.engines[self.engine_id]
         characters = self.catalog.characters_for(self.engine_id)
-        self.title = ui.input(label="Title").classes("w-full")
+        self.title = ui.input(label="Title")
         offered = {pack.id: pack.label for pack in engine.supplement_options()}
         self.supplements = (
             ui.select(
@@ -222,7 +218,7 @@ class ScenarioForm:
                 value=[],
                 label="Table sets beyond the SRD",
                 multiple=True,
-            ).classes("w-full")
+            )
             if offered
             else None
         )
@@ -230,31 +226,19 @@ class ScenarioForm:
             options={entry.id: f"{entry.label} — {entry.detail}" for entry in characters},
             value=characters[0].id if characters else None,
             label="Character",
-        ).classes("w-full")
-        self.premise = (
-            ui.textarea(label="Premise", placeholder="What is this adventure about?")
-            .classes("w-full")
-            .props("autogrow")
         )
-        self.scope = (
-            ui.textarea(
-                label="Scope",
-                placeholder="How far does this go, and does it tend toward an ending?",
-            )
-            .classes("w-full")
-            .props("autogrow")
+        self.premise = ui.textarea(label="Premise", placeholder="What is this adventure about?")
+        self.scope = ui.textarea(
+            label="Scope",
+            placeholder="How far does this go, and does it tend toward an ending?",
         )
-        self.style = ui.input(
-            label="Art style", placeholder=f"Leave empty for: {engine.art_style}"
-        ).classes("w-full")
+        self.style = ui.input(label="Art style", placeholder=f"Leave empty for: {engine.art_style}")
         self.voice = ui.input(
             label="Narrator voice", placeholder="Leave empty for the default voice"
-        ).classes("w-full")
+        )
         heading("Or upload the adventure")
-        (
-            ui.upload(on_upload=self.uploaded, max_files=1, auto_upload=True)
-            .props(f'accept="{",".join(SOURCE_SUFFIXES)}"')
-            .classes("w-full")
+        ui.upload(on_upload=self.uploaded, max_files=1, auto_upload=True).props(
+            f'accept="{",".join(SOURCE_SUFFIXES)}"'
         )
         with ui.row().classes("w-full items-center game-gap-xl"):
             self.button = ui.button(
@@ -320,7 +304,7 @@ def _engine_select(
         value=chosen,
         label="Rules",
         on_change=on_change,
-    ).classes("w-full")
+    )
 
 
 def _drop_stale(steps: tuple[CreationStep, ...], picks: dict[Slug, str]) -> None:

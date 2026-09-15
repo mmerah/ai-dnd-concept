@@ -43,13 +43,6 @@ class SaveOption:
 
 
 @dataclass(frozen=True, slots=True)
-class UnresumableSave:
-    """On disk, and the launcher cannot open it: said on the page, never deleted or migrated."""
-
-    slug: str
-
-
-@dataclass(frozen=True, slots=True)
 class LauncherCatalog:
     scenarios: tuple[CatalogEntry, ...]
     characters: tuple[CatalogEntry, ...]
@@ -103,18 +96,22 @@ class LauncherCatalog:
         )
         titles = {(entry.id, entry.engine): entry.label for entry in characters}
         played_by = {entry.id: entry.engine for entry in scenarios}
-        options = tuple(
-            option
-            for slug in store.slugs()
-            if (option := _save_option(slug, store, engines, titles, played_by, metas)) is not None
-        )
+        saves: list[SaveOption] = []
+        unresumable: list[str] = []
+        for slug in store.slugs():
+            try:
+                option = _save_option(slug, store, engines, titles, played_by, metas)
+            except Refusal as unreadable:
+                LOGGER.warning("skipping save %r: %s", slug, unreadable)
+                unresumable.append(slug)
+            else:
+                if option is not None:
+                    saves.append(option)
         return cls(
             scenarios=scenarios,
             characters=characters,
-            saves=tuple(option for option in options if isinstance(option, SaveOption)),
-            unresumable=tuple(
-                option.slug for option in options if isinstance(option, UnresumableSave)
-            ),
+            saves=tuple(saves),
+            unresumable=tuple(unresumable),
         )
 
 
@@ -125,31 +122,21 @@ def _save_option(
     titles: Mapping[tuple[Slug, EngineId], str],
     played_by: Mapping[Slug, EngineId],
     metas: Mapping[Slug, ScenarioMeta],
-) -> SaveOption | UnresumableSave | None:
-    try:
-        raw = store.read(slug)
-        if raw is None:
-            # Vanished between `slugs()` and `read`: listing it would hide a Start that works.
-            return None
-        engine = routed(decode(raw), engines)
-        state = engine.restore(raw)
-    except Refusal as unreadable:
-        # Skip rather than raise: one save the app could not resume must not hide the rest.
-        LOGGER.warning("skipping save %r: %s", slug, unreadable)
-        return UnresumableSave(slug=slug)
+) -> SaveOption | None:
+    raw = store.read(slug)
+    if raw is None:
+        # Vanished between `slugs()` and `read`: listing it would hide a Start that works.
+        return None
+    engine = routed(decode(raw), engines)
+    state = engine.restore(raw)
     title = titles.get((state.character_id, state.engine))
     if played_by.get(state.scenario_id) != state.engine or title is None:
-        LOGGER.warning("skipping save %r: its scenario or character is gone", slug)
-        return UnresumableSave(slug=slug)
+        raise Refusal("its scenario or character is gone")
     target = LaunchTarget(scenario_id=state.scenario_id, character_id=state.character_id)
     if slug != target.slug:
-        LOGGER.warning("skipping save %r: filed under another name", slug)
-        return UnresumableSave(slug=slug)
+        raise Refusal("filed under another name")
     if drifted := state.scenario.drift(metas[state.scenario_id]):
-        LOGGER.warning(
-            "skipping save %r: scenario differs from disk in: %s", slug, ", ".join(drifted)
-        )
-        return UnresumableSave(slug=slug)
+        raise Refusal(f"scenario differs from disk in: {', '.join(drifted)}")
     return SaveOption(
         target=target,
         scenario_label=state.scenario.title,

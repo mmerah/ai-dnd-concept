@@ -62,6 +62,10 @@ def installed(tmp_path: Path) -> SixthEngine:
         directory = tmp_path
 
     (tmp_path / "rules.md").write_text("Roll high.", encoding=ENCODING)
+    (tmp_path / "look.json").write_text(
+        '{"palette": {}, "dice": {"body": "#000", "ink": "#fff", "glow": "#fff"}}',
+        encoding=ENCODING,
+    )
     return Installed()
 
 

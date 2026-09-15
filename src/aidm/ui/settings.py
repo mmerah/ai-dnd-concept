@@ -124,16 +124,16 @@ def _widget(label: str, field: FieldInfo, value: object) -> Widget:
     if bare is SecretStr:
         # Never read a stored key back into the DOM; blank means "leave the stored key alone".
         placeholder = "set — type to replace" if value else "not set"
-        return ui.input(label, password=True, placeholder=placeholder).classes("w-full")
+        return ui.input(label, password=True, placeholder=placeholder)
     if bare is bool:
-        return ui.switch(label, value=value is True).classes("w-full")
+        return ui.switch(label, value=value is True)
     if get_origin(bare) is Literal:
         options = [str(option) for option in get_args(bare)]
-        return ui.select(options, label=label, value=str(value)).classes("w-full")
+        return ui.select(options, label=label, value=str(value))
     if bare is int or bare is float:
         number = value if isinstance(value, int | float) else None
-        return ui.number(label, value=number).classes("w-full")
-    return ui.input(label, value=_text(value)).classes("w-full")
+        return ui.number(label, value=number)
+    return ui.input(label, value=_text(value))
 
 
 def _unaliased(annotation: object) -> object:

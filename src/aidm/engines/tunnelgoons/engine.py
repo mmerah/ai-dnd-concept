@@ -3,12 +3,12 @@ from pathlib import Path
 from random import Random
 
 from aidm.core.creation import CreationStep, Picks, picked
-from aidm.core.entities import EngineId, Refusal, slug
+from aidm.core.entities import EngineId, Refusal
 from aidm.core.facts import Fact, roll
 from aidm.core.model import AnyCharacter, WorldsmithAnswer
 from aidm.core.play import DecisionOption
 from aidm.core.tools import MasterTool, NoArgs, master_tool
-from aidm.core.views import DiceLook, Look, Rows
+from aidm.core.views import Rows
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.rooms.engine import RoomEngine
 from aidm.engines.rooms.world import Prop
@@ -64,20 +64,6 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
     title = "TUNNEL GOONS"
     art_style = "Old-school fantasy illustration in black ink, cross-hatched, no text or lettering."
     meanwhile_turns = 4
-    look = Look(
-        palette={
-            "game-bg": "#191411",
-            "game-surface": "#261e18",
-            "game-surface-raised": "#34281f",
-            "game-text": "#f4e7d5",
-            "game-muted": "#c6b29c",
-            "game-border": "#534030",
-            "game-accent": "#eab078",
-            "game-wash": "rgba(234, 176, 120, .08)",
-            "game-radius": "8px",
-        },
-        dice=DiceLook(body="#3b4048", ink="#f3efe6", glow="#7fb069"),
-    )
     directory = Path(__file__).parent
     game = TunnelGoonsGame
     scenario = TunnelGoonsScenario
@@ -138,7 +124,7 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
             kit=tuple(picked(picks, f"item-{number}") for number in range(1, STARTING_ITEMS + 1)),
         )
         sheet.unpack_kit(())
-        return TunnelGoonsCharacter(id=slug(name, ()), engine=self.id, payload=sheet)
+        return self.sheet_character(name, sheet)
 
     def preview_character(self, character: AnyCharacter) -> Rows:
         sheet = self.player_of(character)

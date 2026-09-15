@@ -78,6 +78,10 @@ def installed(tmp_path: Path) -> FifthEngine:
     (tmp_path / "packs" / "srd.json").write_text(
         '{"name": "The SRD", "source": "the test", "license": "CC0"}', encoding=ENCODING
     )
+    (tmp_path / "look.json").write_text(
+        '{"palette": {}, "dice": {"body": "#000", "ink": "#fff", "glow": "#fff"}}',
+        encoding=ENCODING,
+    )
     return engine_at(tmp_path)()
 
 

@@ -51,7 +51,7 @@ class LaunchForm:
             value=self.scenario_id,
             label="Scenario",
             on_change=self.choose_scenario,
-        ).classes("w-full")
+        )
         ui.label(scenario.detail).classes("text-sm opacity-70")
         characters = {
             entry.id: f"{entry.label} — {entry.detail}"
@@ -65,7 +65,7 @@ class LaunchForm:
             value=chosen,
             label="Character",
             on_change=self.choose_character,
-        ).classes("w-full")
+        )
         if chosen is None:
             ui.label("No character is written for these rules.").classes("text-negative")
             return
@@ -169,8 +169,7 @@ def _open_game(target: LaunchTarget) -> None:
 
 
 def _refused_page(message: str) -> None:
-    with page_header("AI Dungeon Master"):
-        pass
+    page_header("AI Dungeon Master")
     with (
         page_body(),
         ui.card().classes("w-full"),

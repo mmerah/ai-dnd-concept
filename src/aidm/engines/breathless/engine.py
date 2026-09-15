@@ -11,7 +11,7 @@ from aidm.core.model import AnyCharacter, PackSelection, WorldsmithAnswer
 from aidm.core.play import PendingDecision, PendingOption
 from aidm.core.prompt import Sections, lines_of, sentence
 from aidm.core.tools import MasterTool, master_tool
-from aidm.core.views import DiceLook, Look, Panel, PanelRow, Rows
+from aidm.core.views import Panel, PanelRow, Rows
 from aidm.engines.base import DROP_ITEM, PLAYER_ID, DropItem, banded, oracle_roll
 from aidm.engines.breathless.tools import (
     ASK_WORLD,
@@ -65,21 +65,6 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
     title = "BREATHLESS"
     art_style = (
         "Grim survival-horror illustration: dim, desaturated, wet surfaces, no text or lettering."
-    )
-    look = Look(
-        palette={
-            "game-bg": "#0d1818",
-            "game-surface": "#162525",
-            "game-surface-raised": "#203332",
-            "game-text": "#e0eeea",
-            "game-muted": "#a8c1bb",
-            "game-border": "#35504b",
-            "game-accent": "#94d5be",
-            "game-wash": "rgba(148, 213, 190, .07)",
-            "game-radius": "5px",
-            "game-heading": "'Arial Narrow', 'Helvetica Neue', Arial, sans-serif",
-        },
-        dice=DiceLook(body="#5a1216", ink="#efe1d3", glow="#e0393e"),
     )
     directory = Path(__file__).parent
     game = BreathlessGame
@@ -149,12 +134,7 @@ class BreathlessEngine(SceneEngine[Survivor, BreathlessGame, Pack]):
                 items={slug(item, ()): Supply(name=item, die=STARTING_ITEM)},
             ),
         )
-        return BreathlessCharacter(
-            id=slug(name, ()),
-            engine=self.id,
-            packs=packs,
-            payload=player,
-        )
+        return self.sheet_character(name, player, packs)
 
     def preview_character(self, character: AnyCharacter) -> Rows:
         sheet = self.player_of(character).require_sheet()

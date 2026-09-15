@@ -211,14 +211,7 @@ class RoomEngine[N: Dweller, P: Person, G: Game[Any]](Engine[P, N, G]):
         return self.world_of(draft).move(args.to_id, args.with_ids)
 
     def meanwhile(self, draft: G, args: Meanwhile, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).meanwhile(
-            dweller_id=args.dweller_id,
-            dweller_to=args.dweller_to,
-            item_id=args.item_id,
-            item_to=args.item_to,
-            shut_from=args.shut_from,
-            shut_to=args.shut_to,
-        )
+        return self.world_of(draft).meanwhile(args)
 
     def tick(self, draft: G, *, counted: bool) -> None:
         world = self.world_of(draft)

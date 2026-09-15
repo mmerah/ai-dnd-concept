@@ -47,6 +47,9 @@ def install() -> None:
     ui.textarea.default_props("outlined stack-label")
     ui.select.default_props("outlined stack-label")
     ui.number.default_props("outlined stack-label")
+    for field in (ui.input, ui.textarea, ui.select, ui.number, ui.switch, ui.upload):
+        field.default_classes("w-full")
+    ui.textarea.default_props("autogrow")
     ui.card.default_classes("game-card")
     # A layer before Quasar's own outranks it; `:root` keeps the first paint dark before `body`.
     root = "".join(f"--{key}: {value};" for key, value in NEUTRAL_PALETTE.items())
