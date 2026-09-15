@@ -385,11 +385,17 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         helping = None if helper is None else Helping(world.require_actor(helper.actor_id), helper)
         pool = self._pool(actor, helping, args)
 
-        claims: list[tuple[Crewmate, Slug, str]] = []
-        if (item_id := args.defend_with) is not None:
-            claims.append((actor, item_id, args.hindrance))
-        if helping is not None and helping.terms.defend_with is not None:
-            claims.append((helping.who, helping.terms.defend_with, helping.terms.hindrance))
+        staked: list[tuple[Crewmate, Roll | Helper]] = []
+        if helping is not None:
+            staked.append((helping.who, helping.terms))
+        staked.append((actor, args))
+
+        # The actor's claim is refused first; the hits land helper-first.
+        claims: list[tuple[Crewmate, Slug, str]] = [
+            (who, terms.defend_with, terms.hindrance)
+            for who, terms in reversed(staked)
+            if terms.defend_with is not None
+        ]
         world.check_defenses(claims)
 
         label = "+".join(f"d{face}" for face in pool.faces)
@@ -414,26 +420,17 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         facts = [rolled.fact, actor.fact(line, card=line, dice=(rolled.event,))]
         if result != "success":
             disaster = result == "disaster"
-            if helping is not None and helping.terms.risk:
+            for who, terms in staked:
+                if not terms.risk:
+                    continue
                 facts.extend(
                     world.take_hit(
-                        helping.who,
-                        helping.terms.defend_with,
-                        helping.terms.risk,
-                        helping.terms.hindrance,
+                        who,
+                        terms.defend_with,
+                        terms.risk,
+                        terms.hindrance,
                         disaster=disaster,
-                        deadly=helping.terms.deadly,
-                    )
-                )
-            if args.risk:
-                facts.extend(
-                    world.take_hit(
-                        actor,
-                        args.defend_with,
-                        args.risk,
-                        args.hindrance,
-                        disaster=disaster,
-                        deadly=args.deadly,
+                        deadly=terms.deadly,
                     )
                 )
         self._succession(draft)
