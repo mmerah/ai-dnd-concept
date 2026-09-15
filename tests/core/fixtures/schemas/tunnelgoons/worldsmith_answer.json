@@ -211,10 +211,15 @@
     "start": {
       "description": "Exact id of the place this map starts from.",
       "type": "string"
+    },
+    "recap": {
+      "description": "One paragraph on the part of the map the player leaves behind: what they did there, cost, learned and missed.",
+      "type": "string"
     }
   },
   "required": [
-    "start"
+    "start",
+    "recap"
   ],
   "type": "object"
 }

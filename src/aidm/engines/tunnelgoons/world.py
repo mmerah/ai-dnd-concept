@@ -81,6 +81,10 @@ class Npc(Adventurer, Dweller):
         # SRD: an NPC's Difficulty Score is also its Health Points, so one counter serves both.
         return (("Health", f"{self.hp} (its Difficulty Score)"),)
 
+    def required(self) -> str:
+        parts = (super().required(), "health above zero" if self.hp.current == 0 else "")
+        return ", ".join(part for part in parts if part)
+
 
 class Goon(Adventurer):
     hp: Gauge = Field(default_factory=lambda: Gauge(current=HP_START, maximum=HP_START))
@@ -121,7 +125,9 @@ class TunnelGoonsWorld(RoomWorld[Npc, Goon]):
         members = [member for member in self.members() if member.hired]
         order = [self.player.id, *(member.id for member in members)]
         index = order.index(actor.id)
-        return members[index] if index < len(members) else None
+        return next(
+            (member for member in members[index:] if member.require_sheet().level == 1), None
+        )
 
 
 TunnelGoonsGame = Game[TunnelGoonsWorld]

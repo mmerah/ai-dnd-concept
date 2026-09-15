@@ -322,7 +322,7 @@
             "null"
           ],
           "default": null,
-          "description": "Exact id of a hired party member here who acts. Null for the player."
+          "description": "Leave empty."
         }
       },
       "type": "object"

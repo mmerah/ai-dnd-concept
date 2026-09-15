@@ -1,13 +1,13 @@
 from collections.abc import Mapping
 
 from aidm.core.entities import Refusal, Slug
-from aidm.engines.base import Person, Thing, named_unmet
+from aidm.engines.base import Person, Thing, named_unmet, required_unmet
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld, resolved_id
 
 CROSSING = (
     "The player is leaving {left} for the place in SCENE. They asked for this: "
-    '"{pursuit}"\n\n'
+    '"{asked}"\n\n'
     "Their going is already told. Write the arrival. Cover the distance and the time in the "
     "fewest words that make it real. End on what they see first. WHAT HAPPENED names anyone "
     "who travelled with them. They have not acted in the new place yet, so settle nothing."
@@ -68,11 +68,7 @@ def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) ->
         if key != entry.id
     ]:
         unmet.append("cast entries under their own id: " + "; ".join(misfiled))
-    if broken := [
-        f"{eid}: {why}"
-        for eid, entry in draft.cast.items()
-        if eid not in filed and (why := entry.required())
-    ]:
+    if broken := required_unmet(draft.cast, filed):
         unmet.append(f"cast members as the worldsmith may write them: {broken}")
     read = "\n".join((draft.title, draft.focus, draft.situation))
     leaked = set(named_unmet(read, (everyone[entity_id] for entity_id in hidden)))

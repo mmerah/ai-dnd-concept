@@ -634,6 +634,25 @@ async def test_install_scene_appends_a_run_and_returns_the_opened_fact(case: Sce
 
 
 @pytest.mark.parametrize("case", CASES, ids=_case_id)
+async def test_depart_tells_the_narrator_the_players_words_not_the_pursuit(
+    case: SceneCase,
+) -> None:
+    """The master's `pursuit` is free text; screening it is out — replace it instead."""
+    draft = case.game().draft()
+    hidden_name = draft.payload.cast[case.unmet].name
+    draft.log[-1].exchanges.append(Exchange(words="They slip out through the back.", lines=()))
+    answer = {**case.base, "present": [case.met], "hidden": [case.unmet], "recap": "They fled."}
+    written = await case.engine.advance(
+        draft,
+        Generation(operation=DEPARTURE, detail=f"go find {hidden_name}"),
+        stub_worldsmith(answer),
+    )
+    assert written.telling is not None
+    assert "They slip out through the back." in written.telling
+    assert hidden_name not in written.telling
+
+
+@pytest.mark.parametrize("case", CASES, ids=_case_id)
 async def test_render_worldsmith_lists_the_player_first(case: SceneCase) -> None:
     prompts: list[str] = []
 

@@ -11,7 +11,7 @@ from aidm.core.tools import MasterTool, NoArgs, master_tool
 from aidm.core.views import DiceLook, Look, Rows
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.rooms.engine import RoomEngine
-from aidm.engines.rooms.world import MapDraft, Prop
+from aidm.engines.rooms.world import Prop
 from aidm.engines.tunnelgoons.tools import (
     LEVEL_UP,
     REST,
@@ -86,7 +86,6 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
     member = Npc
     hires = True
     guidance = AUTHORING
-    map_model = MapDraft[Npc]
 
     def world_of(self, state: TunnelGoonsGame) -> TunnelGoonsWorld:
         return state.payload
@@ -208,9 +207,9 @@ class TunnelGoonsEngine(RoomEngine[Npc, Goon, TunnelGoonsGame]):
 
     def level_up(self, draft: TunnelGoonsGame, args: LevelUp, _rng: Random) -> list[Fact]:
         world = self.world_of(draft)
-        actor = world.require_actor(args.actor_id)
+        actor = world.player if args.ability is None else world.require_actor(args.actor_id)
         if actor.require_sheet().level > 1:
-            raise Refusal(f"{actor.name} has already levelled up this adventure")
+            raise Refusal(f"{actor.name} has already levelled up")
         # Both or neither, by `LevelUp`; `or` narrows both for the fall-through.
         if args.ability is None or args.boost is None:
             draft.pending = actor.level_decision()

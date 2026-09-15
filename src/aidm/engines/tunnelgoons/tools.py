@@ -52,7 +52,7 @@ class LevelUp(Frozen):
     boost: Boost | None = Field(
         default=None, description="Health or Inventory to raise by 1. Null asks the player."
     )
-    actor_id: Slug | None = Field(default=None, description=ACTOR)
+    actor_id: Slug | None = Field(default=None, description="Leave empty.")
 
     @model_validator(mode="after")
     def _both_or_neither(self) -> Self:

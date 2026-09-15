@@ -1,14 +1,16 @@
 from random import Random
 
-from support.game import ENGINE, initialized, loner_sheet
-from support.table import change
+from support.game import ENGINE, initialized, loner_sheet, with_entity
+from support.table import change, refused
 
 from aidm.core.facts import cards
 from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.tools import Roll
-from aidm.engines.loner3e.world import outcome_for
+from aidm.engines.loner3e.world import Loner3eCast, outcome_for
 
 FOE = "mara"
+HIDDEN = Loner3eCast(id="watcher", name="The Watcher", brief="unseen so far", known=False)
+REVEALED = Loner3eCast(id="warden", name="The Warden", brief="already met", known=True)
 
 
 def _seal(**args: object) -> Roll:
@@ -117,3 +119,60 @@ def test_restoring_luck_shows_as_a_counter_card() -> None:
     facts = tuple(change(ENGINE, spent.draft(), "restore_luck", entity_id=PLAYER_ID))
     (event,) = cards(facts)
     assert event.card == "Luck +5 → 6/6"
+
+
+def test_drive_refuses_naming_a_hidden_entity_but_allows_a_revealed_one() -> None:
+    _, state = initialized()
+    state = with_entity(with_entity(state, HIDDEN), REVEALED)
+    draft = state.draft()
+    kael = loner_sheet(draft, PLAYER_ID)
+
+    assert "not met" in refused(
+        ENGINE, draft, "drive", entity_id=PLAYER_ID, nemesis="The Watcher hunts him"
+    )
+    assert kael.nemesis == ""
+
+    _ = change(ENGINE, draft, "drive", entity_id=PLAYER_ID, nemesis="The Warden hunts him")
+    assert kael.nemesis == "The Warden hunts him"
+
+
+def test_drive_refuses_naming_someone_unmet_who_is_not_in_this_scene() -> None:
+    """The sheet row outlives the scene that wrote it, so the screen is the whole cast."""
+    _, state = initialized()
+    draft = with_entity(state, HIDDEN).draft()
+    draft.payload.run.here.remove(HIDDEN.id)
+    kael = loner_sheet(draft, PLAYER_ID)
+
+    assert "not met" in refused(
+        ENGINE, draft, "drive", entity_id=PLAYER_ID, nemesis="The Watcher hunts him"
+    )
+    assert kael.nemesis == ""
+
+
+def test_change_tags_refuses_naming_a_hidden_entity_but_allows_a_revealed_one() -> None:
+    _, state = initialized()
+    state = with_entity(with_entity(state, HIDDEN), REVEALED)
+    draft = state.draft()
+    kael = loner_sheet(draft, PLAYER_ID)
+
+    before = list(kael.tagged("gear"))
+
+    assert "not met" in refused(
+        ENGINE,
+        draft,
+        "change_tags",
+        entity_id=PLAYER_ID,
+        kind="gear",
+        gained=["The Watcher's Key"],
+    )
+    assert kael.tagged("gear") == before
+
+    _ = change(
+        ENGINE,
+        draft,
+        "change_tags",
+        entity_id=PLAYER_ID,
+        kind="gear",
+        gained=["The Warden's Key"],
+    )
+    assert kael.tagged("gear") == [*before, "The Warden's Key"]

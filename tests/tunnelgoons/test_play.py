@@ -43,6 +43,7 @@ REGION = {
         }
     },
     "start": "deep-vault",
+    "recap": "They left the corridor behind and pressed on into the flooded cellar.",
 }
 
 
