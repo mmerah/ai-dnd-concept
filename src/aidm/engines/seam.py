@@ -67,7 +67,6 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     hires: bool = False
     directory: Path  # rules.md; a scene engine's packs/
     family_dir: Path
-    opening_sections: Sections
     game: type[G]
     member: type[M]
     scenario: type[AnyScenario]
@@ -95,23 +94,21 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
 
     def master_tools(self) -> tuple[MasterTool[G], ...]:
         """Each layer adds its own after `super()`'s: the seam, then the family, then the engine."""
-        shared = (
-            master_tool("reveal", REVEAL, Reveal, self.reveal),
+        world_of = self.world_of
+        return (
+            master_tool(
+                "reveal", REVEAL, Reveal, lambda d, a, _: world_of(d).reveal_hidden(a.entity_id)
+            ),
             master_tool("kill", KILL, Kill, self.kill),
             master_tool("join_party", JOIN_PARTY, JoinParty, self.join_party),
             master_tool("leave_party", LEAVE_PARTY, LeaveParty, self.leave_party),
+            *((master_tool("hire", HIRE_TOOL, Hire, self.hire),) if self.hires else ()),
         )
-        if not self.hires:
-            return shared
-        return (*shared, master_tool("hire", HIRE_TOOL, Hire, self.hire))
 
     def worldsmith_requests(self) -> dict[Slug, Request[G]]:
         if not self.hires:
             return {}
         return {HIRE: Request(HIRE_UNWRITTEN, self.write_hire)}
-
-    def reveal(self, draft: G, args: Reveal, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).reveal_hidden(args.entity_id)
 
     def kill(self, draft: G, args: Kill, _rng: Random) -> list[Fact]:
         return self.world_of(draft).kill(args.entity_id)
@@ -199,14 +196,11 @@ class Engine[P: Person, M: Person, G: Game[Any]](ABC):
     ) -> str:
         world = self.world_of(draft)
         family = self.family_sections(draft)
-        return self._render(world.source, draft.scenario.scope, family, intent, guidance, answer)
+        return self.render_worldsmith(
+            world.source, draft.scenario.scope, family, intent, guidance, answer
+        )
 
-    def render_opening(
-        self, source: str, scope: str, *, intent: str, guidance: str, answer: type[BaseModel]
-    ) -> str:
-        return self._render(source, scope, self.opening_sections, intent, guidance, answer)
-
-    def _render(
+    def render_worldsmith(
         self,
         source: str,
         scope: str,

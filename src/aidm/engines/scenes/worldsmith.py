@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 
 from aidm.core.entities import Refusal, Slug
-from aidm.engines.base import Person, Thing, named_unmet, required_unmet
+from aidm.engines.base import Person, Thing, leaked_names, required_unmet
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld, resolved_id
 
@@ -71,12 +71,9 @@ def scene_unmet[C: Person](draft: SceneDraft[C], world: SceneWorld[C] | None) ->
     if broken := required_unmet(draft.cast, filed):
         unmet.append(f"cast members as the worldsmith may write them: {broken}")
     read = "\n".join((draft.title, draft.focus, draft.situation))
-    leaked = set(named_unmet(read, (everyone[entity_id] for entity_id in hidden)))
-    for entity_id in (*present, *followers, *hidden):
-        entity = everyone[entity_id]
-        text = "\n".join((entity.brief, *(value for _, value in entity.rows())))
-        watchers = (everyone[other] for other in hidden if other != entity_id)
-        leaked.update(named_unmet(text, watchers))
+    watched = [everyone[entity_id] for entity_id in hidden]
+    scanned = (everyone[entity_id] for entity_id in (*present, *followers, *hidden))
+    leaked = leaked_names(read, scanned, watched)
     if named := sorted(leaked):
         unmet.append(f"a scene that does not name what is hidden: {named}")
     if met := sorted(

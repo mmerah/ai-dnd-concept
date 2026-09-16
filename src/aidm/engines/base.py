@@ -383,6 +383,15 @@ def named_unmet(text: str, entities: Iterable[Thing]) -> list[str]:
     ]
 
 
+def leaked_names(read: str, things: Iterable[Thing], hidden: Sequence[Thing]) -> set[str]:
+    """No text the player may read names something hidden; nothing watches itself."""
+    leaked = set(named_unmet(read, hidden))
+    for thing in things:
+        text = "\n".join((thing.brief, *(value for _, value in thing.rows())))
+        leaked.update(named_unmet(text, (other for other in hidden if other.id != thing.id)))
+    return leaked
+
+
 def banded(face: int, low: str, mid: str, high: str) -> str:
     return low if face <= 2 else mid if face <= 4 else high
 

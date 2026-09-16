@@ -1,5 +1,5 @@
 from aidm.core.entities import Refusal
-from aidm.engines.base import PLAYER_ID, named_unmet, required_unmet
+from aidm.engines.base import PLAYER_ID, leaked_names, required_unmet
 from aidm.engines.rooms.world import Dungeon, Dweller, MapDraft
 
 MAP_ASK = "Write the opening map."
@@ -64,11 +64,7 @@ def _named_unmet[N: Dweller](draft: MapDraft[N]) -> list[str]:
         ]
         hidden = [thing for thing in things if not thing.known]
         read = "\n".join((place.name, place.brief, place.description))
-        leaked.update(named_unmet(read, hidden))
-        for thing in things:
-            text = "\n".join((thing.brief, *(value for _, value in thing.rows())))
-            watchers = (other for other in hidden if other.id != thing.id)
-            leaked.update(named_unmet(text, watchers))
+        leaked.update(leaked_names(read, things, hidden))
     if named := sorted(leaked):
         return [f"places that do not name what is hidden there: {named}"]
     return []

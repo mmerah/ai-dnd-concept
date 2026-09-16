@@ -86,9 +86,10 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame]):
         return member.sign_on(answer.abilities)
 
     def master_tools(self) -> tuple[MasterTool[TunnelGoonsGame], ...]:
+        world_of = self.world_of
         return (
             *super().master_tools(),
-            master_tool("rest", REST, NoArgs, self.rest),
+            master_tool("rest", REST, NoArgs, lambda d, _a, _: world_of(d).rest()),
             master_tool("roll", ROLL, Roll, self.roll),
             master_tool("level_up", LEVEL_UP, LevelUp, self.level_up),
         )
@@ -134,9 +135,6 @@ class TunnelGoonsEngine(RoomEngine[Goon, Npc, TunnelGoonsGame]):
 
     def starting_items(self, player: Goon, taken: Iterable[str]) -> tuple[Prop, ...]:
         return player.unpack_kit(taken)
-
-    def rest(self, draft: TunnelGoonsGame, _args: NoArgs, _rng: Random) -> list[Fact]:
-        return self.world_of(draft).rest()
 
     def hire_prompt(self, draft: TunnelGoonsGame, member: Npc, terms: str) -> str:
         return self.render_request(

@@ -20,7 +20,6 @@ from support.tunnelgoons import (
 from aidm.core.entities import Refusal, parse
 from aidm.core.play import Exchange
 from aidm.engines.base import PLAYER_ID, Gauge
-from aidm.engines.rooms.tools import Move
 from aidm.engines.rooms.world import Place, Prop, RegionDraft
 from aidm.engines.tunnelgoons.tools import LevelUp, Roll
 from aidm.engines.tunnelgoons.world import GoonSheet, Npc, TunnelGoonsGame, TunnelGoonsWorld
@@ -252,21 +251,21 @@ def test_a_direct_level_up_for_the_second_of_three_members_does_not_requeue_a_le
     assert draft.pending.options[0].args["actor_id"] == third.id
 
 
-def test_move_refuses_a_locked_way(draft: TunnelGoonsGame, world: TunnelGoonsWorld) -> None:
+def test_move_refuses_a_locked_way(world: TunnelGoonsWorld) -> None:
     world.visits.append(HALL)
     with pytest.raises(Refusal, match="locked"):
-        _ = ENGINE.move(draft, Move(to_id=VAULT), Random(0))
+        _ = world.move(VAULT, ())
 
 
 def test_move_refuses_when_there_is_no_way(draft: TunnelGoonsGame) -> None:
     with pytest.raises(Refusal, match="no way leads"):
-        _ = ENGINE.move(draft, Move(to_id=CRYPT), Random(0))
+        _ = draft.payload.move(CRYPT, ())
 
 
 def test_move_reveals_the_destination_and_adds_a_visit(draft: TunnelGoonsGame) -> None:
     world = draft.payload
     before = len(world.visits)
-    _ = ENGINE.move(draft, Move(to_id=VAULT), Random(0))
+    _ = world.move(VAULT, ())
     assert world.current.id == VAULT
     assert world.places[VAULT].known
     assert len(world.visits) == before + 1
@@ -275,8 +274,8 @@ def test_move_reveals_the_destination_and_adds_a_visit(draft: TunnelGoonsGame) -
 def test_two_moves_open_no_chapter_and_install_closes_with_the_recap(
     draft: TunnelGoonsGame,
 ) -> None:
-    _ = ENGINE.move(draft, Move(to_id=HALL), Random(0))
-    _ = ENGINE.move(draft, Move(to_id=START), Random(0))
+    _ = draft.payload.move(HALL, ())
+    _ = draft.payload.move(START, ())
     assert [chapter.title for chapter in draft.log] == ["Start"]
     draft.log[-1].exchanges.append(Exchange(words="Look around.", lines=()))
 
@@ -297,13 +296,13 @@ def test_two_moves_open_no_chapter_and_install_closes_with_the_recap(
 def test_move_with_ids_brings_an_npc_here_and_refuses_one_standing_elsewhere() -> None:
     draft = small_world().draft()
     world = draft.payload
-    facts = ENGINE.move(draft, Move(to_id=VAULT, with_ids=(MIRA,)), Random(0))
+    facts = change(ENGINE, draft, "move", to_id=VAULT, with_ids=[MIRA])
     assert world.npcs[MIRA].place == VAULT
     assert any("Mira" in fact.trace for fact in facts)
 
     elsewhere = small_world().draft()
     with pytest.raises(Refusal, match="not here"):
-        _ = ENGINE.move(elsewhere, Move(to_id=VAULT, with_ids=(MANTIS,)), Random(0))
+        _ = elsewhere.payload.move(VAULT, (MANTIS,))
 
 
 def test_move_with_ids_refuses_a_co_located_npc_the_player_has_not_met() -> None:
@@ -314,7 +313,7 @@ def test_move_with_ids_refuses_a_co_located_npc_the_player_has_not_met() -> None
     assert not world.npcs[MANTIS].known
 
     with pytest.raises(Refusal, match="not here with the player"):
-        _ = ENGINE.move(draft, Move(to_id=START, with_ids=(MANTIS,)), Random(0))
+        _ = world.move(START, (MANTIS,))
 
     assert not world.npcs[MANTIS].known
 
@@ -324,7 +323,7 @@ def test_a_party_member_moves_with_the_player_and_is_named_in_the_trace() -> Non
     world = draft.payload
     world.party.append(MIRA)
 
-    facts = ENGINE.move(draft, Move(to_id=HALL), Random(0))
+    facts = world.move(HALL, ())
 
     assert world.npcs[MIRA].place == HALL
     assert any("Mira" in fact.trace and "along" in fact.trace for fact in facts)
@@ -334,13 +333,13 @@ def test_a_with_ids_entry_who_is_a_party_member_is_refused(draft: TunnelGoonsGam
     draft.payload.party.append(MIRA)
 
     with pytest.raises(Refusal, match="without with_ids"):
-        ENGINE.move(draft, Move(to_id=HALL, with_ids=(MIRA,)), Random(0))
+        draft.payload.move(HALL, (MIRA,))
 
 
 def test_unlock_way_then_move_passes(draft: TunnelGoonsGame, world: TunnelGoonsWorld) -> None:
     world.visits.append(HALL)
     _ = change(ENGINE, draft, "unlock_way", to_id=VAULT)
-    _ = ENGINE.move(draft, Move(to_id=VAULT), Random(0))
+    _ = world.move(VAULT, ())
     assert world.current.id == VAULT
 
 
