@@ -10,7 +10,6 @@ from mcp.server.transport_security import TransportSecuritySettings
 from aidm.app.runtime import Runtime
 from aidm.core.entities import Refusal
 from aidm.core.tools import schema_of
-from aidm.turn.run import NO_TURN
 
 LOGGER = logging.getLogger(__name__)
 
@@ -89,10 +88,7 @@ def _build_server(runtime: Runtime) -> Server[dict[str, object]]:
         """The lock replaces a sequential toolset: a CLI may call several tools at once."""
         async with lock:
             try:
-                turn = runtime.turn
-                if turn is None:
-                    raise Refusal(NO_TURN)
-                answered = turn.call(params.name, params.arguments or {})
+                answered = runtime.require_turn().call(params.name, params.arguments or {})
             except Refusal as refused:
                 return _content(str(refused), error=True)
             except Exception:

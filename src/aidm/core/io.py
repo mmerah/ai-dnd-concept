@@ -174,9 +174,10 @@ def decode(raw: str) -> JsonValue:
         raise Refusal(f"not JSON: {broken}") from broken
 
 
-def reject_duplicate_keys(raw: str) -> None:
-    """Called for the check alone; the value is thrown away."""
+def parse_unique[T: BaseModel](model: type[T], raw: str) -> T:
+    """The decode pass rejects a doubled key; validation then reads the text, not its result."""
     decode(raw)
+    return parse_json(model, raw)
 
 
 def routed[T](value: JsonValue, by_engine: Mapping[EngineId, T]) -> T:
@@ -188,9 +189,7 @@ def routed[T](value: JsonValue, by_engine: Mapping[EngineId, T]) -> T:
 
 
 def read_model[T: BaseModel](path: Path, model: type[T]) -> T:
-    raw = _read_text(path)
-    reject_duplicate_keys(raw)
-    return parse_json(model, raw)
+    return parse_unique(model, _read_text(path))
 
 
 def _read_text(path: Path) -> str:

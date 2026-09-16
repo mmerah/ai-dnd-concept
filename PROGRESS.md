@@ -12,12 +12,12 @@ no hidden-name scan.
 
 | | before | after | plan target |
 |---|---|---|---|
-| `src` | 10,248 | **10,196** | about 10,210, at most 10,220 |
+| `src` | 10,248 | **10,200** | about 10,210, at most 10,220 |
 | `tests` | 12,226 | **12,260** | about 12,230, at most 12,242 |
-| `qa` | 2,104 | **2,108** | unchanged |
+| `qa` | 2,104 | **2,104** | unchanged |
 
-`src` came in 14 under the target and `qa` and `tests` over it. All three are explained below; none
-is padding, and each was measured, never estimated.
+`src` came in 10 under the target and `tests` over it. Both are explained below; neither is
+padding, and each was measured, never estimated.
 
 **`tests` is 18 over the plan's cap, and this entry is the "stops and says so" the plan asks for.**
 The overrun is two tests, `test_media_off_asks_for_no_art_and_hides_what_an_earlier_run_cached` and
@@ -29,12 +29,10 @@ no art request, no speech request and no cached art shown" is the phase's own do
 step 4 nothing proved it. Both new tests were checked by deleting the gate and watching them fail.
 The plan's `tests` budget assumed step 4 needed no new test; that assumption was wrong.
 
-**`qa` is 4 over because step 11's premise was wrong** — see the next section.
-
-`src` at 10,196 is already below **phase 2's** target of "about 10,198". Phase 2 should re-measure
-rather than chase that number: the extra came from review findings folded into this phase (the
-drift rule moving into `ScenarioMeta`, `GameService.history()`, `DecisionOption`'s two projections
-and a magic trailing comma), not from any phase 2 step.
+`src` at 10,200 is within two lines of **phase 2's** target of "about 10,198". Phase 2 should
+re-measure rather than chase that number: the difference came from review findings folded into this
+phase (the drift rule moving into `ScenarioMeta`, `GameService.history()`, `DecisionOption`'s two
+projections and a magic trailing comma), not from any phase 2 step.
 
 ### Decided off-plan
 
@@ -84,21 +82,35 @@ and a magic trailing comma), not from any phase 2 step.
    `newest_clip()` reaches on three render paths. `media.py` already gated before its work; speech
    now matches it. Cost: +3 lines against the plan's shape.
 
+### Settled against the plan
+
+Three things the plan's shape left open were settled on the cleanest reading rather than the
+written one. All three were raised by the reviewers.
+
+7. **`reject_duplicate_keys` is gone; `core/io.py:parse_unique` replaces it.** Plan step 2 called it
+   "a rename and never a deletion", and the rename did make the discarded `decode` call legible —
+   but it left the real hazard in place: rejecting a doubled key and validating the text are two
+   steps that must always run together, and nothing said so. `parse_unique(model, raw)` does both,
+   `read_model` and `spawn.ask` each call it in one line, and the pair can no longer be separated.
+   The double parse stays load-bearing: strict mode reaches a tuple field only from JSON text, so
+   validating `decode`'s result is not an equivalent.
+8. **`Runtime.require_turn()` owns "no turn open is a refusal".** Deleting `Runtime.call` pushed
+   that rule into `app/mcp.py` and `qa/agents.py` both, while step 9 of the same phase was merging
+   a duplicated rule for exactly this reason. `require_turn` is not the pure forward step 11
+   deleted — it resolves an optional and carries the message — and both call sites are one line.
+9. **`Helping` is back in `engines/twentyfourxx/engine.py`, as a `NamedTuple`.** The plain tuple
+   step 6 asked for cost two positional reads (`helping[0]`, `helping[1]`) that name nothing, which
+   `CLAUDE.md` forbids. A `NamedTuple` is three lines against the frozen dataclass's six, keeps
+   every read named, lets `staked.append(helping)` stay one line because it really is a tuple, and
+   un-wraps `_pool`'s signature back onto one. It is the first `NamedTuple` in the tree; the shape
+   is a pair used as a pair, which is what the type is for.
+
 ### Known and accepted
 
-- **The `turn is None` guard exists twice**, in `app/mcp.py` and `qa/agents.py`. Step 9 of this same
-  phase adds a shared rule so two places cannot disagree about drift, while step 11 pushes one into
-  two. Accepted: the MCP boundary owns the production rule, and `qa/agents.py` is the harness
-  standing in for a CLI that would otherwise go through it. `tests/support/table.py` asserts instead
-  — a tool call outside a turn there is a harness bug, not a refusal anyone reads.
-- **`helping[0]` and `helping[1]` in `engines/twentyfourxx/engine.py`.** Deleting `Helping` bought
-  −6 lines and cost two positional reads that name nothing. Naming them again costs a line at each
-  site, which is the trade step 6 made deliberately.
 - **The tag and headline f-strings now exist in `core/views.py` and `engines/base.py` both.** Plan
   step 10 forbids a shared helper — "three lines to save none" — so this is a knowingly duplicated
   four lines.
-- **`reject_duplicate_keys` is a three-line wrapper that drops `decode`'s return value.** Both
-  reviewers asked for its deletion; plan step 2 calls it "a rename and never a deletion", and
-  `decode(raw)` with its result discarded reads as dead code at both call sites. Kept for the name.
+- **`tests/support/table.py` asserts rather than refusing** when a tool is called outside a turn: a
+  harness bug, not a refusal anyone reads.
 - **`Illustrator.open` and `Reader.open` are now one-caller constructor wrappers.** Inlining them
   moves ten lines of field-reading into `Runtime._open`, already the longest method in the file.

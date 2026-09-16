@@ -26,7 +26,6 @@ from aidm.app.runtime import Runtime
 from aidm.app.spawn import RunResult, Tools
 from aidm.config import Role
 from aidm.core.entities import Refusal
-from aidm.turn.run import NO_TURN
 
 LOGGER = logging.getLogger("qa.agents")
 
@@ -122,10 +121,7 @@ class ScriptedAgents:
 
     async def _call(self, name: str, args: dict[str, JsonValue], spoken: Spoken) -> None:
         try:
-            turn = self._runtime().turn
-            if turn is None:
-                raise Refusal(NO_TURN)
-            answered = turn.call(name, args)
+            answered = self._runtime().require_turn().call(name, args)
         except Refusal as refused:
             answered = f"REFUSED: {refused}"
         spoken.calls.append((name, args, answered))

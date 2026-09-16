@@ -22,7 +22,7 @@ from aidm.core.source import given_text
 from aidm.core.views import Chattiness, PlayerView
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
-from aidm.turn.run import RESTART, Turn
+from aidm.turn.run import NO_TURN, RESTART, Turn
 
 LOGGER = logging.getLogger(__name__)
 
@@ -331,6 +331,12 @@ class Runtime:
     @property
     def turn(self) -> Turn | None:
         return None if self.admitted is None else self.admitted.turn
+
+    def require_turn(self) -> Turn:
+        """A tool call between turns is refused, not a crash: nobody is playing one."""
+        if (turn := self.turn) is None:
+            raise Refusal(NO_TURN)
+        return turn
 
     @asynccontextmanager
     async def admit(self, session: GameService) -> AsyncGenerator[None]:
