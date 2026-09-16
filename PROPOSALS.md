@@ -118,10 +118,6 @@ Each of these was implemented fully, checked, and counted. Numbers are net `src`
    "simplifications" a careful reader proposes come back larger once formatted and type-checked.
    Any future refactor proposal should be measured the same way before it is planned.
 2. **Two things that look like drift are mechanisms.** The positional-only `/` on some abstract
-   methods (lets overrides rename ignored parameters) and the mixed lambda/method spelling of tool
-   bindings (each is the shorter form for its body length). Both deserve a one-line note in
-   CLAUDE.md so the next reviewer does not re-flag them.
-
-Both lines are now in CLAUDE.md:
-- "A positional-only `/` on an abstract method lets an override rename a parameter it ignores."
-- "A tool binding is a lambda when it fits on one line, else a method."
+   methods lets an override rename a parameter it ignores under ruff's ARG rule. The mixed
+   lambda/method spelling of tool bindings is each the shorter form for its body length. Not
+   written into CLAUDE.md, by decision; this file is the record.
