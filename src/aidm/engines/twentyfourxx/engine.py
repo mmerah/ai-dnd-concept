@@ -2,6 +2,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
+from typing import NamedTuple
 
 from aidm.core.creation import (
     CreationStep,
@@ -84,6 +85,11 @@ class DicePool:
     label: str
     die: int
     helped_by: str
+
+
+class Helping(NamedTuple):
+    who: Crewmate
+    terms: Helper
 
 
 class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
@@ -388,7 +394,7 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             args.hindrance,
             *(() if helper is None else (helper.hindered, helper.risk, helper.hindrance)),
         )
-        helping = None if helper is None else (world.require_actor(helper.actor_id), helper)
+        helping = None if helper is None else Helping(world.require_actor(helper.actor_id), helper)
         pool = self._pool(actor, helping, args)
 
         staked: list[tuple[Crewmate, Staked]] = [(actor, args)]
@@ -414,9 +420,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         line += pool.helped_by
         if args.hindered:
             line += f", hindered ({args.hindered})"
-        if helping is not None and helping[1].risk:
-            who, terms = helping
-            line += f", {who.name} risking {_staked(terms.risk, deadly=terms.deadly)}"
+        if helping is not None and helping.terms.risk:
+            terms = helping.terms
+            line += f", {helping.who.name} risking {_staked(terms.risk, deadly=terms.deadly)}"
         if args.risk:
             line += f", risking {_staked(args.risk, deadly=args.deadly)}"
         line += f" → {result}"
@@ -441,11 +447,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         self._succession(draft)
         return facts
 
-    def _pool(
-        self, actor: Crewmate, helping: tuple[Crewmate, Helper] | None, args: Roll
-    ) -> DicePool:
+    def _pool(self, actor: Crewmate, helping: Helping | None, args: Roll) -> DicePool:
         sheet = actor.require_sheet()
-        if helping is not None and helping[0] is actor:
+        if helping is not None and helping.who is actor:
             raise Refusal(f"{actor.name} cannot help their own roll")
 
         if args.skill:
