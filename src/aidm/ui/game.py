@@ -17,8 +17,8 @@ from aidm.core.facts import DiceEvent, Fact, cards
 from aidm.core.play import Answer, DecisionOption, Exchange, Marked
 from aidm.core.views import PlayerView
 from aidm.ui.dice import DiceTray, rolled_since
-from aidm.ui.dictation import Dictation
 from aidm.ui.widgets import (
+    Dictation,
     alert,
     avatar,
     decision_widget,
@@ -129,7 +129,7 @@ class GamePage:
 
     def build(self) -> None:
         session = self.session
-        self.view, self.history = session.player_view(), session.history()
+        self.view, self.history = session.player_view(), session.state.exchanges()
         if session.unopened:
             opener = ui.timer(0.1, lambda: self._opened(opener))
         else:
@@ -431,7 +431,7 @@ class GamePage:
 
     def poll_turn(self) -> None:
         session = self.session
-        self.view, self.history = session.player_view(), session.history()
+        self.view, self.history = session.player_view(), session.state.exchanges()
         now = Observed.of(session, self.view, self.history)
         if now.phase != self.seen.phase:
             self.step_started = None if now.phase is None else monotonic()

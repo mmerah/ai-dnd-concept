@@ -1,6 +1,7 @@
 import json
 from asyncio import CancelledError, Event, create_task, gather, sleep
 from collections.abc import Callable, Sequence
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -8,7 +9,13 @@ from pydantic import SecretStr
 from support.game import TARGET, initialized, with_entity
 from support.table import offline_settings
 
-from aidm.app.media import GeneratedImage, Illustrator, illustration_request, scene_key
+from aidm.app.media import (
+    ICON_DIR,
+    GeneratedImage,
+    Illustrator,
+    illustration_request,
+    scene_key,
+)
 from aidm.config import MediaConfig, ProviderConfig
 from aidm.core.io import FileStore, publish
 from aidm.core.views import NarratorView
@@ -202,14 +209,41 @@ async def test_a_reply_holding_unreadable_base64_leaves_illustrate_quiet(
     assert illustrator.claims.held == set()
 
 
-def test_illustrator_open_takes_the_passed_style_and_is_none_when_media_is_off(
+async def test_media_off_asks_for_no_art_and_hides_what_an_earlier_run_cached(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    engine, state = initialized()
+    scene = _scene(engine, state)
+    player = engine.player_view(state).player
+
+    async def _refuse(
+        _self: Illustrator, _prompt: str, _ratio: str, _references: Sequence[Path] = ()
+    ) -> GeneratedImage:
+        raise AssertionError("art was requested while media is off")
+
+    monkeypatch.setattr(Illustrator, "_generate", _refuse)
+    off = replace(_illustrator(tmp_path), config=MediaConfig())
+
+    # Nothing is cached yet, so an ungated `illustrate` would reach `_generate`.
+    await off.illustrate(scene, player, NARRATION)
+    (tmp_path / ICON_DIR).mkdir(parents=True)
+    (tmp_path / ICON_DIR / f"{player.id}.png").write_bytes(b"")
+    (tmp_path / f"{scene_key(scene)}.png").write_bytes(b"")
+
+    assert off.scene_art(scene) is None
+    assert off.icon(player.id) is None
+
+
+def test_illustrator_open_takes_the_passed_style_and_is_disabled_when_media_is_off(
     tmp_path: Path,
 ) -> None:
     store = FileStore(tmp_path)
     on = offline_settings(tmp_path).model_copy(update={"media": MediaConfig(enabled=True)})
     illustrator = Illustrator.open(on, store, TARGET.slug, style="woodcut", icon_dirs=())
-    assert illustrator is not None
     assert illustrator.style == "woodcut"
 
     off = offline_settings(tmp_path)
-    assert Illustrator.open(off, store, TARGET.slug, style="woodcut", icon_dirs=()) is None
+    assert (
+        Illustrator.open(off, store, TARGET.slug, style="woodcut", icon_dirs=()).config.enabled
+        is False
+    )

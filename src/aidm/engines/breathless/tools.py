@@ -41,10 +41,6 @@ class ChangeStress(Frozen):
         return amount
 
 
-class UseMedKit(Frozen):
-    actor_id: Slug | None = Field(default=None, description=ACTOR)
-
-
 class Roll(Attempt):
     actor_id: Slug | None = Field(default=None, description=ACTOR)
     skill: Skill | None = Field(

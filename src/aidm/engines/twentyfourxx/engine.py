@@ -79,17 +79,11 @@ from aidm.engines.twentyfourxx.worldsmith import (
 
 
 @dataclass(frozen=True, slots=True)
-class Pool:
+class DicePool:
     faces: tuple[int, ...]
     label: str
     die: int
     helped_by: str
-
-
-@dataclass(frozen=True, slots=True)
-class Helping:
-    who: Crewmate
-    terms: Helper
 
 
 class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
@@ -394,12 +388,12 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             args.hindrance,
             *(() if helper is None else (helper.hindered, helper.risk, helper.hindrance)),
         )
-        helping = None if helper is None else Helping(world.require_actor(helper.actor_id), helper)
+        helping = None if helper is None else (world.require_actor(helper.actor_id), helper)
         pool = self._pool(actor, helping, args)
 
         staked: list[tuple[Crewmate, Staked]] = [(actor, args)]
         if helping is not None:
-            staked.append((helping.who, helping.terms))
+            staked.append(helping)
 
         claims: list[tuple[Crewmate, Slug, str]] = [
             (who, terms.defend_with, terms.hindrance)
@@ -420,9 +414,9 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         line += pool.helped_by
         if args.hindered:
             line += f", hindered ({args.hindered})"
-        if helping is not None and helping.terms.risk:
-            terms = helping.terms
-            line += f", {helping.who.name} risking {_staked(terms.risk, deadly=terms.deadly)}"
+        if helping is not None and helping[1].risk:
+            who, terms = helping
+            line += f", {who.name} risking {_staked(terms.risk, deadly=terms.deadly)}"
         if args.risk:
             line += f", risking {_staked(args.risk, deadly=args.deadly)}"
         line += f" → {result}"
@@ -447,9 +441,11 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
         self._succession(draft)
         return facts
 
-    def _pool(self, actor: Crewmate, helping: Helping | None, args: Roll) -> Pool:
+    def _pool(
+        self, actor: Crewmate, helping: tuple[Crewmate, Helper] | None, args: Roll
+    ) -> DicePool:
         sheet = actor.require_sheet()
-        if helping is not None and helping.who is actor:
+        if helping is not None and helping[0] is actor:
             raise Refusal(f"{actor.name} cannot help their own roll")
 
         if args.skill:
@@ -466,16 +462,17 @@ class TwentyfourxxEngine(SceneEngine[Crewmate, TwentyfourxxGame, Pack]):
             faces.append(HELP_DIE)
         helped_by = ""
         if helping is not None:
-            if helping.terms.hindered:
+            who, terms = helping
+            if terms.hindered:
                 helper_die = HINDERED_DIE
-                hindered_note = f", hindered ({helping.terms.hindered})"
+                hindered_note = f", hindered ({terms.hindered})"
             else:
-                helper_die = helping.who.require_sheet().die(label)
+                helper_die = who.require_sheet().die(label)
                 hindered_note = ""
             faces.append(helper_die)
-            helped_by = f", helped by {helping.who.name} (d{helper_die}{hindered_note})"
+            helped_by = f", helped by {who.name} (d{helper_die}{hindered_note})"
 
-        return Pool(faces=tuple(faces), label=label, die=die, helped_by=helped_by)
+        return DicePool(faces=tuple(faces), label=label, die=die, helped_by=helped_by)
 
     def ask_world(self, _draft: TwentyfourxxGame, args: AskWorld, rng: Random) -> list[Fact]:
         return oracle_roll(args.question, 6, ("trouble now", "signs of it", "nothing"), rng)

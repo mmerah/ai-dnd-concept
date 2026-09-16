@@ -60,11 +60,11 @@ class Thing(Mutable):
 
     @property
     def tag(self) -> str:
-        return self.subject().tag
+        return f"{self.name}[{self.id}]"
 
     @property
     def headline(self) -> str:
-        return self.subject().headline
+        return self.tag + (f" — {self.brief}" if self.brief else "")
 
     @property
     def met_label(self) -> str:

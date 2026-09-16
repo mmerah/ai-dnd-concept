@@ -50,62 +50,51 @@ class RoleRunner:
                 return await run_builtin(role, config, provider, prompt, tools)
 
 
-@dataclass(frozen=True, slots=True)
-class Roles:
-    spawner: Spawner
-
-    async def master(self, turn: Turn) -> None:
-        """A crashed game master still played the turn, if it applied anything legal first."""
-        try:
-            await self.spawner.run("master", turn.picture(), None, turn)
-        except Refusal as failed:
-            if not turn.landed():
-                raise
-            LOGGER.warning(
-                "the game master failed after applying %d facts: %s", len(turn.facts), failed
-            )
-
-    async def narrate(
-        self,
-        engine: AnyEngine,
-        draft: AnyGame,
-        facts: tuple[Fact, ...],
-        prompt: str,
-    ) -> tuple[SpokenLine, ...]:
-        view = engine.narrator_view(draft)
-        evidence = traced(facts, told_only=True)
-        if (pending := draft.pending) is not None:
-            evidence += f"\n- {PAUSED.format(prompt=pending.prompt)}"
-        if draft.generation is not None:
-            evidence += f"\n- {REQUESTED}"
-        narration = await ask(
-            self.spawner,
-            "narrator",
-            render_narrator(
-                view,
-                evidence=evidence,
-                prompt=prompt,
-                scenes=draft.log,
-            ),
-            Narration,
-            view.check_narration,
+async def master(spawner: Spawner, turn: Turn) -> None:
+    """A crashed game master still played the turn, if it applied anything legal first."""
+    try:
+        await spawner.run("master", turn.picture(), None, turn)
+    except Refusal as failed:
+        if not turn.landed():
+            raise
+        LOGGER.warning(
+            "the game master failed after applying %d facts: %s", len(turn.facts), failed
         )
-        return view.spoken(narration.lines)
 
-    async def interject(
-        self, engine: AnyEngine, state: AnyGame, member: Companion
-    ) -> tuple[tuple[SpokenLine, ...], str]:
-        view = engine.narrator_view(state)
-        history = state.exchanges()
-        evidence = traced(history[-1].facts if history else (), told_only=True)
-        answer = await ask(
-            self.spawner,
-            "narrator",
-            render_interjection(view, member, state.log, evidence),
-            Interjection,
-            partial(view.check_interjection, member.id),
-        )
-        return view.spoken(answer.lines), answer.proposal
+
+async def narrate(
+    spawner: Spawner, engine: AnyEngine, draft: AnyGame, facts: tuple[Fact, ...], prompt: str
+) -> tuple[SpokenLine, ...]:
+    view = engine.narrator_view(draft)
+    evidence = traced(facts, told_only=True)
+    if (pending := draft.pending) is not None:
+        evidence += f"\n- {PAUSED.format(prompt=pending.prompt)}"
+    if draft.generation is not None:
+        evidence += f"\n- {REQUESTED}"
+    narration = await ask(
+        spawner,
+        "narrator",
+        render_narrator(view, evidence=evidence, prompt=prompt, scenes=draft.log),
+        Narration,
+        view.check_narration,
+    )
+    return view.spoken(narration.lines)
+
+
+async def interject(
+    spawner: Spawner, engine: AnyEngine, state: AnyGame, member: Companion
+) -> tuple[tuple[SpokenLine, ...], str]:
+    view = engine.narrator_view(state)
+    history = state.exchanges()
+    evidence = traced(history[-1].facts if history else (), told_only=True)
+    answer = await ask(
+        spawner,
+        "narrator",
+        render_interjection(view, member, state.log, evidence),
+        Interjection,
+        partial(view.check_interjection, member.id),
+    )
+    return view.spoken(answer.lines), answer.proposal
 
 
 def render_narrator(

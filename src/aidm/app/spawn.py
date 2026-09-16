@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, JsonValue, ValidationError
 
 from aidm.config import CliProvider, Role, RoleConfig
 from aidm.core.entities import Loose, Refusal, parse_json
-from aidm.core.io import check_json_keys
+from aidm.core.io import reject_duplicate_keys
 from aidm.core.model import AnyGame, Check, WorldsmithAnswer
 from aidm.core.tools import MasterTool
 
@@ -216,7 +216,7 @@ async def ask[T: BaseModel](
         spoken = await spawner.run(role, asked, session)
         session = spoken.session
         try:
-            check_json_keys(spoken.text)
+            reject_duplicate_keys(spoken.text)
             answer = parse_json(model, spoken.text)
             check(answer)
         except Refusal as invalid:

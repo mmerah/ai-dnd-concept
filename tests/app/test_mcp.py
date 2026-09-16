@@ -12,7 +12,9 @@ from aidm.app.mcp import MountedLifespan, endpoint
 from aidm.app.runtime import Runtime
 from aidm.app.spawn import RunResult, Tools
 from aidm.config import Role
+from aidm.core.entities import EngineId
 from aidm.core.play import Answer
+from aidm.engines.loner3e.engine import Loner3eEngine
 
 BASE_URL = "http://localhost:8123"
 REVEAL_VAULT_MAP: dict[str, object] = {"name": "reveal", "arguments": {"entity_id": "vault-map"}}
@@ -88,6 +90,12 @@ async def test_master_tools_over_the_mcp_endpoint(tmp_path: Path) -> None:
             assert result.get("isError") is True
             content = result.get("content")
             assert content is not None and "no turn is open" in content[0]["text"]
+
+            # First of the installed engines, so reading the engines instead would show it.
+            toolless = Loner3eEngine()
+            toolless.id = EngineId("mirror")
+            toolless.tools = {}
+            runtime.engines = {toolless.id: toolless, **runtime.engines}
 
             # Mid-turn: the engine's tools are published, and a landed call carries no error.
             service = runtime.session(

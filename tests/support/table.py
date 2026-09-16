@@ -165,7 +165,9 @@ class Table[G: AnyGame]:
     def call(self, name: str, args: dict[str, JsonValue]) -> str:
         """A refusal is an error result the CLI reads and carries on from, not a crash."""
         try:
-            answered = self.runtime.call(name, args)
+            turn = self.runtime.turn
+            assert turn is not None, "a tool call outside a turn is a harness bug"
+            answered = turn.call(name, args)
         except Refusal as refused:
             self.refusals.append(str(refused))
             answered = str(refused)

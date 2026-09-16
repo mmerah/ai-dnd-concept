@@ -167,7 +167,7 @@ def _page[G: AnyGame](table: Table[G]) -> GamePage:
     page.action_button = ui.button()
     page.over_label = ui.label()
     page.restart_item = ui.menu_item("Restart this game")
-    page.view, page.history = table.service.player_view(), table.service.history()
+    page.view, page.history = table.service.player_view(), table.service.state.exchanges()
     page.seen = Observed.of(table.service, page.view, page.history)
     return page
 
@@ -496,7 +496,7 @@ async def test_build_remembers_scene_art_already_on_disk_like_the_clip(tmp_path:
     settings = updated(offline_settings(tmp_path), media=MediaConfig(enabled=True).model_dump())
     table = open_game(tmp_path, settings=settings)
     session = table.service
-    assert session.media is not None
+    assert session.media.config.enabled
     art_dir = session.media.saves
     art_dir.mkdir(parents=True, exist_ok=True)
     key = scene_key(session.engine.narrator_view(session.state))

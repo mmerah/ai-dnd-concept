@@ -6,12 +6,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
 
-from pydantic import JsonValue
-
 from aidm.app.launch import LaunchTarget
 from aidm.app.media import ICON_DIR, Illustrator
 from aidm.app.providers import close_posting
-from aidm.app.roles import RoleRunner, Roles
+from aidm.app.roles import RoleRunner, interject, master, narrate
 from aidm.app.spawn import Spawner, worldsmith
 from aidm.app.speech import Reader
 from aidm.config import Role, Settings
@@ -21,11 +19,10 @@ from aidm.core.io import FileStore, Library
 from aidm.core.model import AnyCharacter, AnyGame, AnyScenario, PackSelection, ScenarioMeta
 from aidm.core.play import Answer, Exchange, Mark, SpokenLine
 from aidm.core.source import given_text
-from aidm.core.tools import MasterTool
 from aidm.core.views import Chattiness, PlayerView
 from aidm.engines.registry import build_engines
 from aidm.engines.seam import AnyEngine
-from aidm.turn.run import NO_TURN, RESTART, Turn
+from aidm.turn.run import RESTART, Turn
 
 LOGGER = logging.getLogger(__name__)
 
@@ -76,12 +73,12 @@ class GameService:
     scenario: AnyScenario
     character: AnyCharacter
     engine: AnyEngine
-    roles: Roles
+    spawner: Spawner
     store: FileStore
     state: AnyGame
     gate: "Runtime" = field(repr=False, compare=False)
-    media: Illustrator | None = None
-    reader: Reader | None = None
+    media: Illustrator
+    reader: Reader
     interjections: bool = True
     meanwhile: bool = True
     rng: Random = field(default_factory=Random)
@@ -104,7 +101,7 @@ class GameService:
 
     @property
     def presents(self) -> bool:
-        return self.media is not None or self.reader is not None
+        return self.media.config.enabled or self.reader.config.enabled
 
     @property
     def speaking(self) -> bool:
@@ -161,7 +158,7 @@ class GameService:
         self.turn, self.phase = turn, "master"
         try:
             if turn.played:
-                await self.roles.master(turn)
+                await master(self.spawner, turn)
             lines: tuple[SpokenLine, ...] = ()
             if turn.narrates():
                 self.phase = "narrator"
@@ -204,7 +201,7 @@ class GameService:
             return
         before = self.state
         try:
-            lines, proposal = await self.roles.interject(self.engine, self.state, member)
+            lines, proposal = await interject(self.spawner, self.engine, self.state, member)
         except Refusal as failed:
             LOGGER.warning("the party did not speak: %s", failed)
             return
@@ -229,7 +226,7 @@ class GameService:
             return False
         self.phase, grown = "worldsmith", True
         try:
-            written = await self.engine.advance(draft, request, worldsmith(self.roles.spawner))
+            written = await self.engine.advance(draft, request, worldsmith(self.spawner))
             if written.telling is None:
                 landed = self.engine.land(draft)
             else:
@@ -254,7 +251,7 @@ class GameService:
     ) -> tuple[SpokenLine, ...]:
         """Nothing landed means nothing to save, so the player hears why and keeps their words."""
         try:
-            return await self.roles.narrate(self.engine, draft, facts, prompt)
+            return await narrate(self.spawner, self.engine, draft, facts, prompt)
         except Refusal as failed:
             if not landed:
                 raise
@@ -269,36 +266,26 @@ class GameService:
     def player_view(self) -> PlayerView:
         return self.engine.player_view(self.state)
 
-    def history(self) -> tuple[Exchange, ...]:
-        return self.state.exchanges()
-
     def scene_art(self) -> Path | None:
-        if self.media is None:
-            return None
         return self.media.scene_art(self.engine.narrator_view(self.state))
 
     def icon(self, entity_id: Slug) -> Path | None:
-        if self.media is None:
-            return None
         return self.media.icon(entity_id)
 
     def newest_clip(self) -> Path | None:
         newest = self._newest()
-        if self.reader is None or newest is None:
-            return None
-        return self.reader.clip(newest)
+        return None if newest is None else self.reader.clip(newest)
 
     def illustrate(self, narration: str = "") -> None:
-        if self.media is None:
+        if not self.media.config.enabled:
             return
         view = self.engine.narrator_view(self.state)
         task = create_task(self.media.illustrate(view, self.player_view().player, narration))
         self.tasks.retain(task)
 
     def speak(self, newest: Exchange | None) -> None:
-        if self.reader is None or newest is None:
-            return
-        self.tasks.retain(create_task(self.reader.read(newest)))
+        if newest is not None:
+            self.tasks.retain(create_task(self.reader.read(newest)))
 
     def _newest(self) -> Exchange | None:
         history = self.state.exchanges()
@@ -344,17 +331,6 @@ class Runtime:
     @property
     def turn(self) -> Turn | None:
         return None if self.admitted is None else self.admitted.turn
-
-    def published_tools(self) -> tuple[MasterTool[AnyGame], ...]:
-        """A CLI lists tools only inside its own turn; between turns there is nothing to call."""
-        turn = self.turn
-        return () if turn is None else turn.published_tools()
-
-    def call(self, name: str, raw: JsonValue) -> str:
-        turn = self.turn
-        if turn is None:
-            raise Refusal(NO_TURN)
-        return turn.call(name, raw)
 
     @asynccontextmanager
     async def admit(self, session: GameService) -> AsyncGenerator[None]:
@@ -417,8 +393,7 @@ class Runtime:
                     f"save is {state.scenario_id!r}/{state.character_id!r}, "
                     f"selected is {target.scenario_id!r}/{character.id!r}"
                 )
-            if drifted := state.scenario.drift(scenario.meta):
-                raise Refusal(f"save scenario differs from selected in: {', '.join(drifted)}")
+            state.scenario.check_drift(scenario.meta)
         # A save armed before the switch went off must not spend itself on the next write.
         if not self.settings.meanwhile:
             engine.disarm(state)
@@ -435,7 +410,7 @@ class Runtime:
             scenario=scenario,
             character=character,
             engine=engine,
-            roles=Roles(self.spawner),
+            spawner=self.spawner,
             store=self.store,
             state=self._resumed(engine, target, scenario, character),
             gate=self,

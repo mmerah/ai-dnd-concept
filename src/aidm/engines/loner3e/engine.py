@@ -204,10 +204,10 @@ class Loner3eEngine(SceneEngine[Loner3eCast, Loner3eGame, Pack]):
         exchange: list[Fact] = []
         effects: tuple[str, ...] = ()
         if opponent is not None:
-            struck = world.strike(actor, opponent, outcome)
-            exchange, effects = _absorbed(struck.facts)
-            if struck.loser:
-                draft.note(DEFEAT_NOTE.format(name=struck.loser))
+            facts, loser = world.strike(actor, opponent, outcome)
+            exchange, effects = _absorbed(facts)
+            if loser:
+                draft.note(DEFEAT_NOTE.format(name=loser))
             elif PLAYER_ID in (actor.id, opponent.id):
                 draft.pending = PendingDecision(
                     kind="conflict",

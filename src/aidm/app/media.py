@@ -52,10 +52,8 @@ class Illustrator:
         *,
         style: str,
         icon_dirs: tuple[Path, ...],
-    ) -> Self | None:
+    ) -> Self:
         """Share authored icons across games while keeping generated canon and scenes per save."""
-        if not settings.media.enabled:
-            return None
         return cls(
             config=settings.media,
             provider=settings.providers.for_name(settings.media.provider),
@@ -65,9 +63,11 @@ class Illustrator:
         )
 
     def scene_art(self, scene: NarratorView) -> Path | None:
-        return _existing(self.saves, scene_key(scene))
+        return _existing(self.saves, scene_key(scene)) if self.config.enabled else None
 
     def icon(self, entity_id: Slug) -> Path | None:
+        if not self.config.enabled:
+            return None
         for directory in (*self.icon_dirs, self.saves / ICON_DIR):
             found = _existing(directory, entity_id)
             if found is not None:
@@ -75,6 +75,8 @@ class Illustrator:
         return None
 
     async def illustrate(self, scene: NarratorView, player: Subject, narration: str) -> None:
+        if not self.config.enabled:
+            return
         key = scene_key(scene)
         try:
             with self.claims.hold(key) as drawing:
