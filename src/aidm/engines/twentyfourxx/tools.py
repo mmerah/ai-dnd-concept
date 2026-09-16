@@ -3,7 +3,7 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Slug
-from aidm.engines.base import ACTOR, Attempt
+from aidm.engines.tools import ACTOR, Attempt
 
 CHANGE_HINDRANCES = "The actor picks up hindrances, sheds them, or both at once."
 GAIN_ITEM = "The actor gains an item and pays for it."

@@ -10,12 +10,12 @@ did not. Estimates from reading were optimistic every time; this file reports me
 
 **Result.** Three changes survive, together **−20 lines in src** (10,179 → 10,160 with one added
 comment), +2 in tests, all checks green, prompt and schema goldens byte-identical. They are
-implemented and combined on one branch, ready to land. Everything else was measured and cut; the
+landed on this branch, with the two decisions below taken as recommended. Everything else was measured and cut; the
 reasons are in the second table so nobody re-proposes them.
 
 ---
 
-## Survivors (implemented, measured, green)
+## Landed (implemented, measured, green)
 
 | # | Change | src | tests |
 |---|--------|-----|-------|
@@ -48,8 +48,8 @@ loses the tool vocabulary. About ten import lines repoint in `src` and four in `
 
 **Feature impact.** None. Pure relocation; `git diff -- tests/core/fixtures` is empty.
 
-**Decision D-S2.** `tests/engines/test_hiring.py` keeps a filename naming a module that no longer
-exists. Rename to `test_hire_tool.py`? Recommend yes, in the same commit.
+**D-S2, taken.** `tests/engines/test_hiring.py` is renamed `test_hire_tool.py`: the module it named no
+longer exists.
 
 ### S3. `filled()` and `joined()`
 
@@ -62,6 +62,7 @@ join the non-empty ones. Two one-line helpers name the idiom.
 def filled(*pairs: tuple[str, str]) -> Rows:
     return tuple(pair for pair in pairs if pair[1])
 
+
 # engines/base.py, with the other free functions
 def joined(*parts: str) -> str:
     return ", ".join(part for part in parts if part)
@@ -73,12 +74,12 @@ def joined(*parts: str) -> str:
 
 **Feature impact.** None. Same filter, same order; the master prompt goldens do not move.
 
-**Decision D-S3.** No docstrings on the helpers (with them the delta was −5). Recommend none: the
-names and one-line bodies say it.
+**D-S3, taken.** No docstrings on the helpers (with them the delta was −5); the names and one-line
+bodies say it.
 
 ---
 
-## Also applied on the branch, free
+## Also landed, free
 
 - `core/model.py:108`: one comment on `Game.generation`'s `exclude=True` ("in flight only, never
   saved; `restore` refuses a save that carries one"). +1 line. The `restore` guard is live and
@@ -121,6 +122,6 @@ Each of these was implemented fully, checked, and counted. Numbers are net `src`
    bindings (each is the shorter form for its body length). Both deserve a one-line note in
    CLAUDE.md so the next reviewer does not re-flag them.
 
-Suggested CLAUDE.md lines:
+Both lines are now in CLAUDE.md:
 - "A positional-only `/` on an abstract method lets an override rename a parameter it ignores."
 - "A tool binding is a lambda when it fits on one line, else a method."

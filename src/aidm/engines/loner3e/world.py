@@ -7,8 +7,8 @@ from aidm.core.entities import Frozen, Refusal, Slug
 from aidm.core.facts import Fact
 from aidm.core.model import Character, Game, Scenario
 from aidm.core.play import DecisionOption
-from aidm.core.views import Rows
-from aidm.engines.base import Gauge, Person
+from aidm.core.views import Rows, filled
+from aidm.engines.base import Gauge, Person, joined
 from aidm.engines.scenes.tools import SceneDraft
 from aidm.engines.scenes.world import SceneWorld
 
@@ -55,31 +55,26 @@ class Loner3eCast(Person):
         return self.tags.get(kind, [])
 
     def rows(self) -> Rows:
-        return tuple(
-            (label, value)
-            for label, value in (
-                ("Concept", self.concept),
-                ("Skills", ", ".join(self.tagged("skill"))),
-                ("Frailties", ", ".join(self.tagged("frailty"))),
-                ("Gear", ", ".join(self.tagged("gear"))),
-                ("Conditions", ", ".join(self.tagged("condition"))),
-                ("Goal", self.goal),
-                ("Motive", self.motive),
-                ("Nemesis", self.nemesis),
-                ("Luck", str(self.luck)),
-                ("Defeated", "yes" if self.defeated else ""),
-            )
-            if value
+        return filled(
+            ("Concept", self.concept),
+            ("Skills", ", ".join(self.tagged("skill"))),
+            ("Frailties", ", ".join(self.tagged("frailty"))),
+            ("Gear", ", ".join(self.tagged("gear"))),
+            ("Conditions", ", ".join(self.tagged("condition"))),
+            ("Goal", self.goal),
+            ("Motive", self.motive),
+            ("Nemesis", self.nemesis),
+            ("Luck", str(self.luck)),
+            ("Defeated", "yes" if self.defeated else ""),
         )
 
     def required(self) -> str:
-        parts = (
+        return joined(
             super().required(),
             "full luck" if self.luck.shortfall != 0 else "",
             "a luck pool of at least 1" if self.luck.maximum < 1 else "",
             "no defeat behind them" if self.defeated else "",
         )
-        return ", ".join(part for part in parts if part)
 
     def change_tags(self, kind: TagKind, gained: Sequence[str], lost: Sequence[str]) -> list[Fact]:
         self.tags[kind] = self.changed_tags(kind, self.tagged(kind), gained, lost)

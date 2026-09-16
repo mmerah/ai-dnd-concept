@@ -3,7 +3,7 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen
-from aidm.engines.hiring import HIRED
+from aidm.engines.tools import HIRED
 from aidm.engines.tunnelgoons.world import ABILITY_POINTS, AbilityScores
 
 AUTHORING = (

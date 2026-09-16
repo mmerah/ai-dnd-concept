@@ -24,10 +24,11 @@ from aidm.core.entities import Frozen, Refusal, Slug
 from aidm.core.model import Check, ScenarioMeta
 from aidm.core.play import Answer, Narration, narration_text
 from aidm.core.tools import schema_of
-from aidm.engines.base import ACTOR, PLAYER_ID
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.loner3e.world import Loner3eCast
 from aidm.engines.scenes.engine import MOVE_ON, WAY_UNWRITTEN
 from aidm.engines.scenes.tools import SceneDraft
+from aidm.engines.tools import ACTOR
 
 
 class _SchemaProbe(Frozen):

@@ -6,18 +6,12 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.entities import Frozen, Mutable, Refusal, Slug, check_unique
+from aidm.core.entities import Mutable, Refusal, Slug, check_unique
 from aidm.core.facts import DiceEvent, Fact, roll
 from aidm.core.prompt import Sections
 from aidm.core.views import Chattiness, Panel, PanelRow, Rows, Subject
 
 PLAYER_ID: Slug = "player"
-REVEAL = "A hidden entity here becomes known to the player."
-KILL = "Someone here dies."
-JOIN_PARTY = "A character here starts travelling with the player."
-LEAVE_PARTY = "A party member stops travelling with the player."
-ACTOR = "Exact id of a hired party member here who acts. Null for the player."
-DROP_ITEM = "The actor loses an item for good."
 UNKNOWN_ID = "unknown id {entity_id!r}. Use only the ids you were shown."
 IS_DEAD = "{name} is dead and takes no further part."
 
@@ -168,8 +162,7 @@ class Sheeted[S: Sheet](Person):
         return super().line(rows=rows, detail=detail)
 
     def required(self) -> str:
-        parts = (super().required(), "no sheet" if self.sheet is not None else "")
-        return ", ".join(part for part in parts if part)
+        return joined(super().required(), "no sheet" if self.sheet is not None else "")
 
     @property
     def hired(self) -> bool:
@@ -288,40 +281,6 @@ class World[P: Person, M: Person](Mutable):
         return self.player.rows()
 
 
-class Attempt(Frozen):
-    what: str = Field(
-        min_length=1,
-        description="The attempt, in a few words the player reads.",
-    )
-
-
-class Reveal(Frozen):
-    entity_id: Slug = Field(description="Exact id of something hidden here.")
-
-
-class Kill(Frozen):
-    entity_id: Slug = Field(description="Exact id of who here died.")
-
-
-class JoinParty(Frozen):
-    entity_id: Slug = Field(description="Exact id of who is joining.")
-
-
-class LeaveParty(Frozen):
-    entity_id: Slug = Field(description="Exact id of the party member leaving.")
-
-
-class DropItem(Frozen):
-    item_id: Slug = Field(description="Exact id of an item the actor carries.")
-    actor_id: Slug | None = Field(default=None, description=ACTOR)
-
-
-class AskWorld(Frozen):
-    question: str = Field(
-        min_length=1, description="A closed question about the world where nobody is acting."
-    )
-
-
 def character_panel(rows: Rows) -> Panel:
     return Panel(
         title="Character",
@@ -356,6 +315,10 @@ def party_panel(members: Sequence[Thing]) -> tuple[Panel, ...]:
 
 def trail_panel(titles: Iterable[str]) -> Panel:
     return Panel(title="Trail", rows=tuple(PanelRow(label=title, detail="") for title in titles))
+
+
+def joined(*parts: str) -> str:
+    return ", ".join(part for part in parts if part)
 
 
 def check_filing(pool: Mapping[Slug, Thing]) -> None:

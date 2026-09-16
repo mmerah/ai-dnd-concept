@@ -51,10 +51,6 @@ def note(message: str, *, good: bool = False) -> None:
     _notify(message, "positive" if good else "info")
 
 
-def _notify(message: str, kind: Literal["negative", "warning", "positive", "info"]) -> None:
-    ui.notify(message, type=kind, multi_line=True, position="top")
-
-
 def page_header(
     title: str, badge: str | None = None, *, home: bool = True, look: Look | None = None
 ) -> ui.header:
@@ -145,3 +141,7 @@ def decision_widget(
                 ui.label(option.label)
                 if option.detail:
                     ui.label(option.detail).classes("text-xs opacity-70")
+
+
+def _notify(message: str, kind: Literal["negative", "warning", "positive", "info"]) -> None:
+    ui.notify(message, type=kind, multi_line=True, position="top")

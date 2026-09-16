@@ -9,7 +9,7 @@ from support.table import ENGINE_IDS, ENGINES_BUILT, drain, game, open_table, pl
 
 from aidm.core.entities import EngineId, Refusal
 from aidm.core.model import Check, Generation
-from aidm.engines.hiring import HIRE
+from aidm.engines.tools import HIRE
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
 SEED = 19

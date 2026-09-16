@@ -127,3 +127,7 @@ class DiceLook(Frozen):
 class Look(Frozen):
     palette: Mapping[str, str]
     dice: DiceLook
+
+
+def filled(*pairs: tuple[str, str]) -> Rows:
+    return tuple(pair for pair in pairs if pair[1])

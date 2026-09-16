@@ -6,8 +6,9 @@ from support.twentyfourxx import ENGINE, KESTREL, LOCKPICKS, SABLE, hired, small
 
 from aidm.core.entities import Refusal
 from aidm.core.facts import Fact
-from aidm.engines.base import PLAYER_ID, AskWorld
+from aidm.engines.base import PLAYER_ID
 from aidm.engines.scenes.tools import NextScene
+from aidm.engines.tools import AskWorld
 from aidm.engines.twentyfourxx.engine import items_from_kits
 from aidm.engines.twentyfourxx.tools import Helper, Job, Raise, Roll
 from aidm.engines.twentyfourxx.world import (

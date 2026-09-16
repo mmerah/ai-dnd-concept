@@ -3,8 +3,8 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Slug
-from aidm.engines.base import Attempt
 from aidm.engines.loner3e.world import DIE_FACE, TagKind
+from aidm.engines.tools import Attempt
 
 CHANGE_TAGS = "A character here gains tags, loses tags, or both."
 DRIVE = "A living character's goal, motive or nemesis changes."

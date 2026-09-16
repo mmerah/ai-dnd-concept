@@ -3,7 +3,7 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from aidm.core.entities import Frozen, Slug
-from aidm.engines.base import ACTOR, Attempt
+from aidm.engines.tools import ACTOR, Attempt
 from aidm.engines.tunnelgoons.world import Ability, Boost
 
 REST = "The player and the party spend a night here and heal to full Health."
